@@ -90,6 +90,15 @@ void evoMapMem(Computer* comp) {
 	}
 }
 
+// The pages that stand in window 0 out of turn, and the NMI that brings one in
+static void evo_drop_virt(Computer* comp) {
+	comp->flgVDOS = 0;
+	comp->flgVNMI = 0;
+	comp->flgVDWP = 0;
+	comp->flgNMIR = 0;
+	comp->flgNMIS = 0;
+}
+
 void evoReset(Computer* comp) {
 	comp->flgDOS = 1;
 	comp->regBF = 0;
@@ -97,11 +106,7 @@ void evoReset(Computer* comp) {
 	comp->sdc->on = 1;
 	sdcReset(comp->sdc);
 	kbd_set_repeat(comp->keyb, 0);		// what the avr asks the ps/2 keyboard for
-	comp->flgVDOS = 0;
-	comp->flgVNMI = 0;
-	comp->flgVDWP = 0;
-	comp->flgNMIR = 0;
-	comp->flgNMIS = 0;
+	evo_drop_virt(comp);
 	comp->regM1CNT = 0;
 	for (int i = 0; i < 8; i++) {		// power-on pager: rom page 0 everywhere
 		comp->memFlag(i) = 0;
@@ -512,6 +517,29 @@ void evoOutEFF7(Computer* comp, int port, int val) {	// !dos
 	evoMapMem(comp);
 }
 
+// Where a snapshot expects to find the machine. Until the firmware sets the
+// pager up there is no pager at all here and the service rom stands in every
+// window, so a snapshot loaded into a machine fresh from reset runs the
+// service menu instead of the snapshot. This is what the firmware's own
+// "128k basic" entry leaves behind, read off ERS 0.61: the rom pair at the top
+// of the rom space (the 128 one with 7FFD.b4 = 0, the 48 one with it set,
+// TR-DOS in the odd page of each), ram 5 and 2, and the 7FFD page in window 3,
+// written through the two ports the firmware writes.
+static const unsigned char evo_snap_flag[8] = {0x80, 0x40, 0x40, 0xc0, 0x80, 0x40, 0x40, 0xc0};
+static const unsigned char evo_snap_page[8] = {0xc1, 0xfa, 0xfd, 0xff, 0xc3, 0xfa, 0xfd, 0xff};
+
+static void evo_snap_map(Computer* comp) {
+	comp->flgDOS = 0;
+	comp->flgROM = (comp->p7FFD & 0x10) ? 1 : 0;
+	evo_drop_virt(comp);
+	for (int i = 0; i < 8; i++) {
+		comp->memFlag(i) = evo_snap_flag[i];
+		comp->memPage(i) = evo_snap_page[i];
+	}
+	evoOutEFF7(comp, 0xeff7, 0x14);		// page ram like a 128K, not like a Pentagon 1024
+	evoOut77d(comp, 0x4377, 0x03);		// A14, A9, A8 high: pager on, TR-DOS signal free, palette closed; common video, 3.5 MHz
+}
+
 void evoOutFE(Computer* comp, int port, int val) {
 	xOutFE(comp, port, val);
 	comp->vid->nextbrd |= ((port ^ 8) & 8);
@@ -653,4 +681,5 @@ xPortDsc evo_port_tab[] = {
 };
 
 HardWare evo_hw_core = {HW_PENTEVO,HWG_ZX,"Baseconf","ZX Evolution (BaseConf)",16,MEM_4M,1.0,NULL,16,evo_port_tab,
-			zx_init,evoMapMem,evoOut,evoIn,evoMRd,evoMWr,evo_irq,zx_ack,evoReset,zx_sync,evo_keyp,evo_keyr,zx_vol};
+			zx_init,evoMapMem,evoOut,evoIn,evoMRd,evoMWr,evo_irq,zx_ack,evoReset,zx_sync,evo_keyp,evo_keyr,zx_vol,
+			evo_snap_map};
