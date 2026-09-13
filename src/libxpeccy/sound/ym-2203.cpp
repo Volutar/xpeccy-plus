@@ -75,6 +75,7 @@ public:
 		m_fmcnt = 0;
 		m_busy_end = 0;
 		m_timer_on[0] = m_timer_on[1] = 0;
+		m_recheck = 0;
 		m_adr = 0;
 		m_last = 0;
 		m_fm.set_clock_prescale(6);	// a reset picks /6; regs 2d..2f change it
@@ -128,10 +129,20 @@ public:
 				ay_tick(m_chip);
 			if (m_fmcnt < m_fmper) continue;
 			m_fmcnt = 0;
+			// ymfm reads the key state in prepare(), and clock() calls
+			// that only when a register was written. A key-on the chip
+			// raises itself - CSM, off timer A - lasts one sample, so the
+			// sample after the timer has to be made to look written to or
+			// the key is never let go and the note never retriggers.
+			if (m_recheck) {
+				m_fm.invalidate_caches();
+				m_recheck = 0;
+			}
 			for (int t = 0; t < 2; t++) {
 				if (m_timer_on[t] && ((int64_t)(m_clocks - m_timer_at[t]) >= 0)) {
 					m_timer_on[t] = 0;	// engine_timer_expired re-arms it
 					m_fm.engine_timer_expired(t);
+					if (t == 0) m_recheck = 1;
 					fired = 1;
 				}
 			}
@@ -190,6 +201,7 @@ private:
 		ss.save_restore(m_fmcnt);
 		ss.save_restore(m_timer_on[0]);
 		ss.save_restore(m_timer_on[1]);
+		ss.save_restore(m_recheck);
 		ss.save_restore(m_adr);
 		ss.save_restore(m_last);
 	}
@@ -237,6 +249,7 @@ private:
 	uint32_t m_fmper;		// master clocks in one fm sample
 	uint32_t m_ssgmul;		// ay_tick() calls per master clock
 	uint8_t m_timer_on[2];
+	uint8_t m_recheck;		// a timer fired: let ymfm see the key state again
 	uint8_t m_adr;
 	int32_t m_last;			// last fm sample
 
