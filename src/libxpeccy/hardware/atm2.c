@@ -76,6 +76,26 @@ void atm2Out77(Computer* comp, int port, int val) {		// dos
 	atm2MapMem(comp);
 }
 
+// Where a snapshot expects to find the machine (see comp_snap_map): the boot
+// rom stands in every window until the menu turns the pager on. This is what
+// its "SPECTRUM 128" entry leaves behind - rom #26 in window 0 with 7FFD.b4 = 0
+// and #24 with it set, which a 64K rom masks down to the 128 and the 48 one
+// with TR-DOS and the boot rom in the odd page of each, then ram 5 and 2 and
+// the 7FFD page in window 3. The one thing not copied is the speed: the menu
+// starts its 128 in turbo, and a snapshot wants the plain 3.5 MHz.
+static const unsigned char atm2_snap_flag[8] = {0x80, 0x40, 0x40, 0xc0, 0x80, 0x40, 0x40, 0xc0};
+static const unsigned char atm2_snap_page[8] = {0xd9, 0xfa, 0xfd, 0xff, 0xdb, 0xfa, 0xfd, 0xff};
+
+static void atm2_snap_map(Computer* comp) {
+	comp->flgDOS = 0;
+	comp->flgROM = (comp->p7FFD & 0x10) ? 1 : 0;
+	for (int i = 0; i < 8; i++) {
+		comp->memFlag(i) = atm2_snap_flag[i];
+		comp->memPage(i) = atm2_snap_page[i];
+	}
+	atm2Out77(comp, 0xff77, 0xa3);		// A8 high: pager on, A14: palette closed; #A3: common video, frame int, 3.5 MHz
+}
+
 void atm2OutF7(Computer* comp, int port, int val) {			// dos
 	int adr = (comp->flgROM ? 4 : 0) | ((port & 0xc000) >> 14);	// rom2.a15.a14
 	comp->memFlag(adr) = val & 0xc0;				// copy b6,7 to flag
@@ -339,6 +359,7 @@ xPortDsc atm_port_tab[] = {
 };
 
 HardWare atm_hw_core = {HW_ATM2,HWG_ZX,"ATM2","ATM Turbo 2+ (v7.10)",16,MEM_128K | MEM_256K | MEM_512K | MEM_1M,1.0,NULL,16,atm_port_tab,
-			zx_init,atm2MapMem,atm2Out,atm2In,stdMRd,stdMWr,zx_irq,zx_ack,atm2Reset,atm2_sync,atm2_keyp,atm2_keyr,zx_vol};
+			zx_init,atm2MapMem,atm2Out,atm2In,stdMRd,stdMWr,zx_irq,zx_ack,atm2Reset,atm2_sync,atm2_keyp,atm2_keyr,zx_vol,
+			atm2_snap_map};
 
 #undef USE_NEW_KBD
