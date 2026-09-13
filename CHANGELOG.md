@@ -23,7 +23,9 @@ before that point is upstream's history and is not repeated here.
 
 - **TurboSound FM sounds like the chip it emulates.** The FM half of the YM2203 runs
   on the ymfm core now; the one it replaces fed two of every channel's four operators
-  each other's registers, so no instrument came out the way it was written.
+  each other's registers, so no instrument came out the way it was written. The FM is
+  as loud against the AY as it is on a real board, and a track that speaks through the
+  chip's CSM mode says its words instead of holding one note.
 
 ### Fixed
 

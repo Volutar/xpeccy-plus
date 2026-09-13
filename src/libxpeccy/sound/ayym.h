@@ -54,7 +54,7 @@ void ym2203_reset(aymChip*);
 int ym2203_rd(aymChip*, int);
 void ym2203_wr(aymChip*, int, int);
 void ym2203_sync(aymChip*, int);
-sndPair ym2203_vol(aymChip*);
+int ym2203_fm_out(aymChip*);		// the fm half; the SSG one is ym_vol()
 void ym2203_free(aymChip*);		// drop the core, if this chip ever had one
 int ym2203_state_size(aymChip*, void**);	// its state as bytes: how many, where
 void ym2203_state_pack(aymChip*);	// the core into those bytes
