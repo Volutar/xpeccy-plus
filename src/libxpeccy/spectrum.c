@@ -692,6 +692,15 @@ void compReset(Computer* comp,int res) {
 	comp_heat_sync(comp);		// ram/rom size may have changed with hardware/romset
 }
 
+// All a snapshot says about paging is the 7FFD byte, so before one is applied
+// the machine has to stand where a 128K stands. A machine that pages through a
+// pager of its own comes up from reset under its firmware instead, and there a
+// snapshot would run the service rom; it puts its pager where a 128K's is here.
+void comp_snap_map(Computer* comp) {
+	if (comp->hw->snapmap)
+		comp->hw->snapmap(comp);
+}
+
 // cpu freq
 
 void comp_update_timings(Computer* comp) {

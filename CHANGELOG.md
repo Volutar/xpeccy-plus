@@ -27,6 +27,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **A snapshot opened on ZX Evolution (BaseConf) landed in the service menu** instead
+  of running - `.sna` and `.z80` alike.
+
 - **ZX Evolution had no sound from the AY ports** unless a program used `#FFFD` and
   `#BFFD` exactly, which a TurboSound FM player does not. It decodes them the way its
   firmware does now.

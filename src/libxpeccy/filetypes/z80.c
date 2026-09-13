@@ -154,6 +154,7 @@ int loadZ80_f(Computer* comp, FILE* file) {
 	comp->pEFF7 = 0x00;
 	memSetBank(comp->mem,0x00,MEM_ROM,1,MEM_16K,NULL,NULL,NULL);
 	memSetBank(comp->mem,0xc0,MEM_RAM,0,MEM_16K,NULL,NULL,NULL);
+	comp_snap_map(comp);
 	comp->vid->vidPage = 5;
 	comp_heat_reset(comp);		// snapshot load teleports state; pre-load hit counts are no longer valid
 

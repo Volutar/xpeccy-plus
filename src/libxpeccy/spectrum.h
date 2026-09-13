@@ -282,6 +282,7 @@ void compSetHwTurbo(Computer*,double);
 int compSetHardware(Computer*,const char*);
 void comp_set_layout(Computer*, vLayout*);
 void comp_set_snow(Computer*, int);
+void comp_snap_map(Computer*);
 
 // read-write cmos
 unsigned char cmsRd(Computer*);

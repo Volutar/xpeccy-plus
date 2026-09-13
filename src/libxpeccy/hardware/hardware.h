@@ -111,6 +111,7 @@ struct HardWare {
 	cbHwKey keyp;		// key press
 	cbHwKey keyr;		// key release
 	cbHwVol vol;		// read volume
+	cbhwcomp snapmap;	// stand where a snapshot expects the machine (NULL: nothing to do)
 };
 typedef struct HardWare HardWare;
 

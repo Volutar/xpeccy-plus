@@ -29,6 +29,7 @@ int loadSNA_f(Computer* comp, FILE* file, size_t fileSize) {
 	int is48 = (sna_hardware(fileSize) == SNAP_HW_48K);
 
 	compReset(comp, is48 ? RES_48 : RES_128);
+	comp_snap_map(comp);
 	comp_heat_reset(comp);		// snapshot load teleports state; pre-load hit counts are no longer valid
 
 	snaHead hd;
