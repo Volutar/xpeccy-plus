@@ -396,13 +396,6 @@
            </property>
           </widget>
          </item>
-         <item row="6" column="2">
-          <widget class="QLabel" name="label_14">
-           <property name="text">
-            <string>Out</string>
-           </property>
-          </widget>
-         </item>
          <item row="0" column="3">
           <widget class="QLineEdit" name="leFmOpStatus">
            <property name="enabled">
@@ -479,16 +472,6 @@
           <widget class="QLabel" name="label_9">
            <property name="text">
             <string>AR</string>
-           </property>
-          </widget>
-         </item>
-         <item row="6" column="3">
-          <widget class="QLineEdit" name="leFmOpOut">
-           <property name="enabled">
-            <bool>true</bool>
-           </property>
-           <property name="readOnly">
-            <bool>true</bool>
            </property>
           </widget>
          </item>

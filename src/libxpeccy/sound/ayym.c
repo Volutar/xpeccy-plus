@@ -60,8 +60,6 @@ void chip_set_type(aymChip* chip, int id) {
 	// 4294967.296 is 2^32 / 1000 (see tickFx)
 	chip->tickFx = (long long)(chip->frq * 2 * 4294967.296);
 	chip->tickAcc = 0;
-	chip->per = 500 / chip->frq;		// the fm half, for now
-	chip->cnt = chip->per;
 }
 
 void chip_set_xdev(aymChip* chip, ayxrd rcb, ayxwr wcb, void* ptr) {
@@ -82,6 +80,7 @@ aymChip* aymCreate(int tp) {
 }
 
 void aymDestroy(aymChip* chip) {
+	ym2203_free(chip);
 	free(chip);
 }
 

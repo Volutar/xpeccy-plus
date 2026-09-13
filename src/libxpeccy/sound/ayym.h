@@ -55,6 +55,7 @@ int ym2203_rd(aymChip*, int);
 void ym2203_wr(aymChip*, int, int);
 void ym2203_sync(aymChip*, int);
 sndPair ym2203_vol(aymChip*);
+void ym2203_free(aymChip*);		// drop the core, if this chip ever had one
 
 typedef void(*sccbwr)(aymChip*, int, int);
 typedef int(*sccbrd)(aymChip*, int);
@@ -88,63 +89,43 @@ typedef struct {
 	int step;		// env:vol change direction (+1 -1); noise:seed
 } aymChan;
 
+// The FM half of a YM2203 runs on ymfm (sound/ymfm/), which keeps its own
+// state. What follows is a view of it for the debugger's FM page, filled by
+// ym2203_fm_view() into storage the page owns.
+
 enum {
 	OPST_OFF = 0,
 	OPST_ATK,
 	OPST_DEC,
 	OPST_SUS,
-	OPST_REL,
-	OPST_HOLD
+	OPST_REL
 };
 
 typedef struct {
-	int rate;	// from register
-	int efrate;	// 2*rate+kscale (4*rate+2+kscale for REL), 64 if rate 0, 65 if 2ar+kscale>61
-	int shift;	// 0 if rate 0, 0 if ar>61, shift_tab[efrate] otherwise
-} xAdsr;
-
-typedef struct {
-	unsigned key:1;
-	int feedback;	// op1 only
-	int tlev;	// 0:max, 1024:min
-	struct {	// phase generator
-		unsigned phase:20;		// 20-bit phase 10.10 (max is 2*pi)
-		int freq;
-		int block;
-		int note;			// keycode
+	int tlev;				// total level, 0 loudest .. 127
+	struct {				// phase generator
+		unsigned phase;			// 10.10
+		int freq;			// f-number
+		int block;			// octave
 		int pstep;			// phase step
-		int mult;
-		int detune;			// from register
-		int dt;				// calculated value
 	} pg;
-	struct {		// envelope generator
-		int state;	// atk/dec/sus/rel/off
-		int ks;		// from reg.value (2bits)
-		int kscale;	// calculated (0-31)
-		xAdsr atk;
-		xAdsr dec;
-		xAdsr sus;
-		xAdsr rel;
-//		int atkrate;
-//		int decrate;
-//		int susrate;
-		int suslev;	// [0;1024]
-//		int relrate;
-		int envflag;
-		int envinv;
-		int att;			// 0:max, 1023:min
-		int out;			// att + tlev;
+	struct {				// envelope generator
+		int state;			// OPST_*
+		int ks;				// key scale
+		int atk, dec, sus, rel;		// rates, as the registers hold them
+		int suslev;			// sustain level, 0..15
+		int att;			// current attenuation, 0 loudest .. 1023
 	} eg;
-	int out;
-	int outp;	// previous output for op1 (feedback)
 } fmOper;
 
 typedef struct {
-	unsigned off:1;		// output = 0
-	fmOper op[4];		// operators
+	fmOper op[4];		// in algorithm order op1..op4; the registers hold
+				// them 1,3,2,4 and the core sorts that out
 	int algo;		// ops connection (algorithm)
-	int out;		// output (last operator output)
+	int out;		// what the channel is putting out, signed
 } fmChan;
+
+void ym2203_fm_view(aymChip*, fmChan*);	// fill one of those from the core
 
 struct aymChip {
 	unsigned coarse:1;	// 4-bit DAC volume
@@ -176,22 +157,9 @@ struct aymChip {
 	// amount: 500/1.773447 truncated to 281, 500/1.75 to 285.
 	long long tickFx;
 	long long tickAcc;
-	int per;		// what the fm half still counts in, until it goes
-	int cnt;
 
-	int pscnt;	// pre-scaler: (2,3,6) of master ticks
-	int fmcnt;	// fm: 12 pre-scaled ticks
-	int eg_timer;	// eg: 3 fm ticks
-	unsigned eg_cnt:12;// inc each eg tick (12 bit)
-	int sg_cnt;	// ssg divider counter
-
-	fmChan chanFM[3];	// fm channels
-	int fmdiv;		// divider for fm (2/3/6)
-	int sgdiv;		// divider for ssg
-	int divmode:2;		// 2bits
-	int ta_value;		// timerA initial value
-	int ta_cnt;		// timerA: 2 eg ticks
-	int tb_cnt;		// timerB: 32 eg ticks
+	void* fm;		// the fm core of a YM2203 (nothing for the other chips)
+	unsigned char fm_off[3];// fm channels the debugger mutes
 
 	unsigned char curReg;
 	unsigned char reg[256];
@@ -217,7 +185,6 @@ typedef struct {
 } TSound;
 
 void initNoise();
-void init_sin_tab();
 
 const scDesc* find_chip_type(int);	// its nominal clock, for one
 void chip_set_type(aymChip*, int);

@@ -122,8 +122,10 @@ int sndSync(Computer* comp) {
 			sndLev = comp->hw->vol(comp, &conf.snd.vol);
 			sndLev.left = sndLev.left * conf.snd.vol.master / 100;
 			sndLev.right = sndLev.right * conf.snd.vol.master / 100;
-			if (sndLev.left > 0x7fff) sndLev.left = 0x7fff;
-			if (sndLev.right > 0x7fff) sndLev.right = 0x7fff;
+			// both ends: FM is signed, and a sample under the low one
+			// wraps to the top of the range on the way into the ring
+			sndLev.left = toLimits(sndLev.left, -0x8000, 0x7fff);
+			sndLev.right = toLimits(sndLev.right, -0x8000, 0x7fff);
 
 			smpBuf[sb_pos & 127] = sndLev;
 			sb_pos++;

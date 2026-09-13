@@ -17,6 +17,12 @@ before that point is upstream's history and is not repeated here.
   switch per machine in the advanced settings, and under it a second one, off by
   default, for the machines whose RAM gives up under snow and hangs or resets.
 
+### Changed
+
+- **TurboSound FM sounds like the chip it emulates.** The FM half of the YM2203 runs
+  on the ymfm core now; the one it replaces fed two of every channel's four operators
+  each other's registers, so no instrument came out the way it was written.
+
 ### Fixed
 
 - **Every AY and YM played slightly sharp** - the clock period was kept in whole

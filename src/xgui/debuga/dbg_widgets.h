@@ -33,6 +33,7 @@ class xAYWidget : public xDockWidget {
 		void draw();
 	private:
 		Ui::AYWidget ui;
+		fmChan fmView[3];	// what the FM page shows, filled per refresh
 	private slots:
 		void offChan(int);
 };
