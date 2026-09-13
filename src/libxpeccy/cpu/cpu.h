@@ -176,7 +176,6 @@ enum {
 #define flgNOINT flags[60]		// Z80: don't handle INT after EI
 #define flgWAIT	flags[59]		// ALL: WAIT signal (dummy 1T)
 #define flgACK	flags[58]		// Z80: acknowledge INT after execution (prevent last-1T INT)
-#define flgLOCK flags[57]		// LR35902: CPU locked
 #define flgRetBRK flags[56]
 #define flgRFSH	flags[55]		// Z80: report M1 T4 (IRQ_CPU_RFSH); the ULA snow effect needs it
 

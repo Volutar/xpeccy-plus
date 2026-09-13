@@ -158,7 +158,7 @@ typedef struct Computer {
 	DiskIF* dif;
 	IDE* ide;
 	SDCard* sdc;
-	xCartridge* slot;		// cartrige slot (MSX, GB, NES)
+	xCartridge* slot;		// cartridge slot (Interface II, ALF)
 // sound
 	bitChan* beep;
 	TSound* ts;

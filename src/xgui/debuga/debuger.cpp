@@ -708,7 +708,6 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 
 	connect(wid_heat, &xHeatWidget::s_adr, ui_asm.dasmTable, &xDisasmTable::setAdrX);
 
-//	connect (ui.tbSaveVRam, SIGNAL(released()), this, SLOT(saveVRam()));
 // registers
 //	connect(ui.flagGroup,SIGNAL(buttonClicked(int)),this,SLOT(setFlags()));
 
@@ -2577,18 +2576,6 @@ void DebugWin::saveDumpToDisk(int idx) {
 	if (diskCreateFile(flp, dsc, (unsigned char*)data.data(), data.size()) == ERR_OK)
 		dumpwin->hide();
 
-}
-
-// videoram
-
-void DebugWin::saveVRam() {
-	QString path = QFileDialog::getSaveFileName(this, "Save video ram", "", "All files (*)", nullptr, QFileDialog::DontUseNativeDialog);
-	if (path.isEmpty()) return;
-	QFile file(path);
-	if (file.open(QFile::WriteOnly)) {
-		file.write((char*)conf.zx->vid->ram, MEM_256K);
-		file.close();
-	}
 }
 
 // memfinder

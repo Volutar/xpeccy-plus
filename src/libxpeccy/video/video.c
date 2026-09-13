@@ -982,9 +982,6 @@ void vidDrawTSLExt(Video*);
 void vidDrawTSLText(Video*);
 void vidDrawEvoText(Video*);
 
-// c64 vic-II
-
-
 // debug
 
 void vidBreak(Video* vid) {

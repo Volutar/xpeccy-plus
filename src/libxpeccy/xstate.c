@@ -71,11 +71,7 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 	ADD(comp->cpu, sizeof(CPU));
 	n = add_memory(list, n, comp->mem);
 
-	// the video chip, without the 320K of memory that only a non-ZX one has (a
-	// bios rom, and the vram of the v9938 / nes ppu / gbc / pc98 chips).
-	// Nothing outside HWG_ZX runs ahead, so nothing here reads them.
-	ADD(comp->vid, offsetof(Video, bios));
-	ADD((char*)comp->vid + offsetof(Video, oam), sizeof(Video) - offsetof(Video, oam));
+	ADD(comp->vid, sizeof(Video));
 	ADD(comp->vid->ula, sizeof(ulaPlus));
 
 	ADD(comp->beep, sizeof(bitChan));

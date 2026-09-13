@@ -57,10 +57,6 @@ class xFDDWidget : public xDockWidget {
 	private:
 		Ui::FDDWidget ui;
 };
-
-// gameboy
-
-
 // tape
 
 #include "ui_form_tape.h"

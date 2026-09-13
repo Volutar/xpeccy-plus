@@ -28,6 +28,13 @@ before that point is upstream's history and is not repeated here.
 - `--wav-out FILE` records the sound to a wav file from startup, the same recording
   the hotkey makes.
 
+### Removed
+
+- The machines that are not ZX Spectrum - MSX, Game Boy, NES, Commodore 64, BK0010,
+  IBM PC, PC-9801 and Specialist. They have not been built since 2026.4; now their
+  code is gone as well. The settings lose the CPU type, cartridge mapper and mouse
+  type rows with nothing left to pick in them.
+
 ### Changed
 
 - **TurboSound FM sounds like the chip it emulates.** The FM half of the YM2203 runs

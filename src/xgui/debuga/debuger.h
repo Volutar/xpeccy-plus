@@ -254,7 +254,6 @@ class DebugWin : public QMainWindow {
 		void saveDumpToB();
 		void saveDumpToC();
 		void saveDumpToD();
-		void saveVRam();
 	protected:
 		void keyPressEvent(QKeyEvent*);
 		void keyReleaseEvent(QKeyEvent*);

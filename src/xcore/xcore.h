@@ -398,8 +398,6 @@ typedef struct {
 	std::string name;
 	std::string gsFile;		// general sound
 	std::string fntFile;		// charset
-	std::string vBiosFile;		// video bios
-	std::string sBiosFile;		// sound bios (or use GS bios?)
 	QList<xRomFile> roms;
 } xRomset;
 

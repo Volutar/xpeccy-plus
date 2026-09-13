@@ -14,7 +14,6 @@ void MainWin::mousePressEvent(QMouseEvent *ev){
 			case Qt::LeftButton:
 				if (grabMice) {
 					comp->mouse->lmb = 1;
-					mouse_interrupt(comp->mouse);
 				} else if (comp->hw->grp == HWG_ZX) {	// zx: print dot address
 					if (ev->modifiers() & Qt::ControlModifier)
 						calcCoords(ev);
@@ -23,7 +22,6 @@ void MainWin::mousePressEvent(QMouseEvent *ev){
 			case Qt::RightButton:
 				if (grabMice) {
 					comp->mouse->rmb = 1;
-					mouse_interrupt(comp->mouse);
 				} else {
 					fillUserMenu();
 					userMenu->popup(QPoint(ev->xGlobalX,ev->xGlobalY));
@@ -45,7 +43,6 @@ void MainWin::mouseReleaseEvent(QMouseEvent *ev) {
 			case Qt::LeftButton:
 				if (grabMice) {
 					comp->mouse->lmb = 0;
-					mouse_interrupt(comp->mouse);
 #ifdef __APPLE__
 				} else if (comp->mouse->enable) {
 					grabMice = 1;
@@ -57,7 +54,6 @@ void MainWin::mouseReleaseEvent(QMouseEvent *ev) {
 			case Qt::RightButton:
 				if (grabMice) {
 					comp->mouse->rmb = 0;
-					mouse_interrupt(comp->mouse);
 				}
 				break;
 			case X_MidButton:
@@ -112,7 +108,6 @@ void MainWin::mouseMoveEvent(QMouseEvent *ev) {
 		comp->mouse->ydelta = ev->xGlobalY - dpos.y();
 		comp->mouse->xpos += comp->mouse->xdelta;
 		comp->mouse->ypos -= comp->mouse->ydelta;	// axis is reverted
-		mouse_interrupt(comp->mouse);
 		dumove = 1;
 		cursor().setPos(dpos);
 	}

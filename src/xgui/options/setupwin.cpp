@@ -1697,10 +1697,6 @@ void SetupWin::delRom() {
 		roms.gsFile.clear();
 	} else if (row == sz+1) {
 		roms.fntFile.clear();
-	} else if (row == sz+2) {
-		roms.vBiosFile.clear();
-	} else if (row == sz+3) {
-		roms.sBiosFile.clear();
 	}
 	rsmodel->fill(&roms);
 	fillRomSlots();
@@ -1721,10 +1717,6 @@ void SetupWin::editRom() {
 		f.name = roms.gsFile;
 	} else if (row == sz+1) {
 		f.name = roms.fntFile;
-	} else if (row == sz+2) {
-		f.name = roms.vBiosFile;
-	} else if (row == sz+3) {
-		f.name = roms.sBiosFile;
 	}
 	eidx = row;
 	rseditor->edit(f);
@@ -1740,10 +1732,6 @@ void SetupWin::setRom(xRomFile f) {
 		roms.gsFile = f.name;
 	} else if (eidx == sz+1) {
 		roms.fntFile = f.name;
-	} else if (eidx == sz+2) {
-		roms.vBiosFile = f.name;
-	} else if (eidx == sz+3) {
-		roms.sBiosFile = f.name;
 	}
 	rsmodel->fill(&roms);
 	fillRomSlots();
@@ -2293,7 +2281,6 @@ void SetupWin::sdcPathChanged() {
 
 void SetupWin::openSlot() {
 	Computer* comp = conf.zx;
-//	QString fnam = QFileDialog::getOpenFileName(this,"Cartridge slot","","MSX cartridge (*.rom)");
 //	if (fnam.isEmpty()) return;
 //	ui.cSlotName->setText(fnam);
 //	loadFile(comp, fnam.toLocal8Bit().data(), FT_SLOT_A, 0);

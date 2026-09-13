@@ -191,7 +191,6 @@ void saveConfig() {
 	fprintf(cfile, "\n[INPUT]\n\n");
 	fprintf(cfile, "mouse.swapButtons = %s\n", YESNO(conf.zx->mouse->swapButtons));
 	fprintf(cfile, "mouse.sensitivity = %f\n", conf.zx->mouse->sensitivity);
-	fprintf(cfile, "mouse.pctype = %i\n", conf.zx->mouse->pcmode);
 	fprintf(cfile, "keymap = %s\n", conf.kmapName.c_str());
 	fprintf(cfile, "gamepad.map = %s\n", conf.jmapNameA.c_str());
 	fprintf(cfile, "gamepad2.map = %s\n", conf.jmapNameB.c_str());
@@ -569,7 +568,6 @@ void loadConfig() {
 	int fprt;
 	newrs.fntFile.clear();
 	newrs.gsFile.clear();
-	newrs.vBiosFile.clear();
 	newrs.roms.clear();
 	conf.pal.clear();
 	shortcut_init();
@@ -720,7 +718,7 @@ void loadConfig() {
 					// kbd.scantab and mouse.wheel belong to the machine now and are
 					// not written here any more; an older config still sets them, once
 					if ((pnam=="mouse.wheel") || (pnam=="mouse.swapButtons") || (pnam=="mouse.sensitivity")
-						|| (pnam=="mouse.pctype") || (pnam=="frq.mul") || (pnam=="kbd.scantab"))
+						|| (pnam=="frq.mul") || (pnam=="kbd.scantab"))
 						xm_defer(pnam, pval);
 					if (pnam=="deadzone") conf.gpctrl->gpada->setDeadZone(arg.i);
 					if (pnam=="deadzone2") conf.gpctrl->gpadb->setDeadZone(arg.i);
@@ -823,8 +821,6 @@ void loadConfig() {
 						}
 						if (pnam=="gs") rsListist.back().gsFile=fnam;
 						if (pnam=="font") rsListist.back().fntFile=fnam;
-						if (pnam=="vga") rsListist.back().vBiosFile=fnam;
-						if (pnam=="snd") rsListist.back().sBiosFile=fnam;
 					}
 					break;
 				case SECT_SOUND:

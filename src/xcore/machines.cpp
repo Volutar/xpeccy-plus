@@ -538,8 +538,6 @@ void xm_set_roms(const xRomset& rs, bool poweron) {
 	bool withfnt = poweron || (rs.fntFile != conf.roms.fntFile);
 	conf.roms = rs;
 	Computer* comp = conf.zx;
-	memset(comp->vid->bios, 0xff, MEM_64K);
-	comp->vid->vga.cga = 1;
 	tsSetRomSize(comp->ts, 0);
 	mac_load_rom(comp, rs.roms, rs.gsFile, rs.fntFile, withfnt);
 	emu_unlock();
@@ -819,7 +817,6 @@ static const char* mac_word_name(xMacWord* tab, int val) {
 static bool mac_same_roms(const xRomset* rs, const xRomset* set) {
 	if (!rs || !set) return false;
 	if ((rs->gsFile != set->gsFile) || (rs->fntFile != set->fntFile)) return false;
-	if (!rs->vBiosFile.empty() || !rs->sBiosFile.empty()) return false;
 	if (rs->roms.size() != set->roms.size()) return false;
 	for (int i = 0; i < rs->roms.size(); i++) {
 		if ((rs->roms[i].name != set->roms[i].name)
@@ -994,7 +991,6 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	else if (nam == "mouse.wheel") comp->mouse->hasWheel = arg.b;
 	else if (nam == "mouse.swapButtons") comp->mouse->swapButtons = arg.b;
 	else if (nam == "mouse.sensitivity") comp->mouse->sensitivity = arg.d;
-	else if (nam == "mouse.pctype") comp->mouse->pcmode = arg.i;
 	else if (nam == "kbd.scantab") comp->keyb->pcmode = arg.i;
 	else if (nam == "ports") setWatchPorts(comp, QString::fromLocal8Bit(arg.s).split(","));
 }
@@ -1217,8 +1213,7 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 		case PS_INPUT:
 			if (nam == "mouse") comp->mouse->enable = arg.b;
 			else if ((nam == "mouse.wheel") || (nam == "mouse.swapButtons")
-				|| (nam == "mouse.sensitivity") || (nam == "mouse.pctype")
-				|| (nam == "kbd.scantab")) xm_defer(nam, val);
+				|| (nam == "mouse.sensitivity") || (nam == "kbd.scantab")) xm_defer(nam, val);
 			else if (nam == "joy.extbuttons") comp->joy->extbuttons = arg.b;
 			else if (nam == "keymap") conf.kmapName = val;
 			else if (nam == "gamepad.map") conf.jmapNameA = val;

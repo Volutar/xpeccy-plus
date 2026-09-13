@@ -52,11 +52,8 @@ int xRomsetModel::columnCount(const QModelIndex& idx) const {
 
 int xRomsetModel::rowCount(const QModelIndex& idx) const {
 	if (idx.isValid()) return 0;
-	// after the roms come GS, Font, VGA and SND. GS is General Sound and Font
-	// is what ATM Turbo and ZX Evo draw their text mode from, but VGA is the
-	// PC's video bios and SND the PC-9801's sound rom, and nothing else reads
-	// either - so a ZX-only build stops after Font and leaves those two rows
-	// out of reach
+	// after the roms come GS, the General Sound rom, and Font, what ATM Turbo
+	// and ZX Evo draw their text mode from
 	return rset->roms.size() + 2;
 }
 
@@ -95,10 +92,6 @@ QVariant xRomsetModel::data(const QModelIndex& idx, int role) const {
 						res = "GS";
 					} else if (row == rlsz+1) {
 						res = "Font";
-					} else if (row == rlsz+2) {
-						res = "VGA";
-					} else if (row == rlsz+3) {
-						res = "SND";
 					}
 					break;
 				case 1:
@@ -108,10 +101,6 @@ QVariant xRomsetModel::data(const QModelIndex& idx, int role) const {
 						res = QString(rset->gsFile.c_str());
 					} else if (row == rlsz+1) {
 						res = QString(rset->fntFile.c_str());
-					} else if (row == rlsz+2) {
-						res = QString(rset->vBiosFile.c_str());
-					} else if (row == rlsz+3) {
-						res = QString(rset->sBiosFile.c_str());
 					}
 					break;
 				case 2:

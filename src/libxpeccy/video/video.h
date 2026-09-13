@@ -91,13 +91,10 @@ struct Video {
 	unsigned debug:1;
 	unsigned upd:1;
 	unsigned tail:1;
-	unsigned cutscr:1;	// bk only: cut screen
 	unsigned linedbl:1;	// lines doubler
 
 	unsigned hblank:1;	// HBlank signal
-	unsigned hsync:1;	// HSync (pc)
 	unsigned vblank:1;	// VBlank signal
-	unsigned vsync:1;	// VSync (pc)
 
 	unsigned hbrd:1;	// border.H
 	unsigned vbrd:1;	// border.V
@@ -167,88 +164,10 @@ struct Video {
 
 	int idx;
 
-	unsigned sprblock:1;	// hw block sprites
-	unsigned bgblock:1;	// hw block bg
-	vCoord scrsize;		// << tsconf.xSize, tsconf.ySize, v9938::wid
+	vCoord scrsize;		// << tsconf.xSize, tsconf.ySize
 	vCoord sc;		// screen scroll registers
-	// nes
-	unsigned ntsc:1;	// set if ntsc, prerender line is 1 dot shorter each other frame
-	unsigned ppu_vb:1;	// set at vbs line, reset at vbrline or reading reg2
-	unsigned greyscale:1;	// show in greyscale
-	int vadr;		// nes videomem access addr
-	int fadr;
-	unsigned short tadr;	// nes tmp vadr
-	int vbsline;		// 1st line of VBlank
-	int vbrline;		// prerender line (usually last line of frame)
-	unsigned char oamadr;
-	// gbc
-	unsigned lcdon:1;
-	unsigned altile:1;
-	unsigned bigspr:1;
-	unsigned spren:1;	// sw enable sprites
-	unsigned bgen:1;	// sw enable bg
-	unsigned bgprior:1;
-	unsigned winen:1;	// sw enable win
-	unsigned winblock:1;	// hw block win
-	unsigned gbmode:1;	// gameboy capatible
-	unsigned char gbcmode;	// lcd mode (0,1,2,3)
-	unsigned short winmapadr;
-	unsigned short tilesadr;
-	unsigned short bgmapadr;
-	unsigned char wline;
-	int xpos;
-	vCoord win;		// win layout position
-	// v9938
-	unsigned high:1;
-	unsigned latch:1;
-	unsigned vastep:1;
-	unsigned spleft8:1;
-	unsigned bgleft8:1;
-	unsigned sp0hit:1;
-	unsigned spover:1;
-	unsigned master:1;
-	unsigned palhi:1;
-
-	unsigned bpage:1;
-	int blink0;
-	int blink1;
-	int blink;
-
-	unsigned char vbuf;
-	unsigned short spadr;
-	unsigned short bgadr;
-	int memMask;
-	int finex;
-	int finey;
-//	int lines;
 	int inth;		// interrupts
 	int intf;
-	int nt;
-	int dpb;		// dots per byte
-	int count;
-	unsigned char com;	// executed command
-	unsigned char arg;	// command argument
-	unsigned char dat;
-	int BGTiles;
-	int BGMap;
-	int BGColors;
-	int OBJTiles;
-	int OBJAttr;
-	// v9938 dma
-	vCoord src;
-	vCoord dst;
-	vCoord rct;
-	vCoord step;
-	int srcx;
-	int dstx;
-	int rctx;
-	unsigned char sr[16];			// ststus registers (0..9 actually)
-	unsigned char bgline[0x200];		// bg (full 2 screens)
-	unsigned char spline[0x108];		// sprites (8 max)
-	unsigned char prline[0x108];		// sprites priority
-//	unsigned char sprImg[256 * 256];
-	void(*pset)(Video*,int,int,unsigned char);
-	unsigned char(*col)(Video*,int,int);
 
 	struct {
 		int xPos;			// position of screen @ monitor [32|12] x [44|24|0]
@@ -277,48 +196,13 @@ struct Video {
 		unsigned char sfile[0x200];	// sprites = ram?
 //		int dmabytes;
 	} tsconf;
-	struct {
-		unsigned atrig:1;		// 3c0 flip-flop
-		unsigned blinken:1;		// blink enabled
-		unsigned cga:1;			// 1 if there is no ega/vga bios
-		int crt_idx;			// registers indexes
-		int seq_idx;
-		int grf_idx;
-		int atr_idx;
-		unsigned char dac_idx;
-		int dac_cnt;			// counter to read/write bytes to palette
-		int dac_mode;			// 0 read, 1 write
-		int dac_mask;			// mask for dac index
-		int cpl;			// 40/80 chars per line
-//		int line;			// chars line
-		int chline;			// line inside char
-		int chsize;			// char height (0-31)
-		int cadr;			// cursor address
-		unsigned char latch[4];
-		xColor dac_col;
-		cbvid ega_cbline;
-	} vga;
-
 	unsigned char line[0x500];		// buffer for render sprites & tiles
 	unsigned char linb[0x500];		// buffer for rendered bitplane
 	// TODO: allocate font only if it loaded
 	struct {
-		unsigned char* data;		// ATM/C64/CGA text mode font (8K for CGA font)		NOTE: pc98xx kanji.rom size is 282KB
+		unsigned char* data;		// ATM text mode font
 		int size;			// TODO:use it for uploadable font
 	} font;
-
-	unsigned char sprxspr;			// c64 spr-spr collisions
-	unsigned char sprxbgr;			// c64 spr-bgr collisions
-	unsigned char vbank;			// vicII bank (from CIA2)
-	unsigned char sbank;			// screen offset (reg#18 b1..3)
-	unsigned char cbank;			// char data offset (reg#18 b4..7)
-	unsigned char colram[0x1000];		// vicII color ram
-
-	unsigned char bios[MEM_64K];			// ega/vga bios
-	unsigned char ram[MEM_256K];			// video memory
-	unsigned char oam[MEM_256];			// nes/gb oam memory
-	unsigned char reg[256];				// max 256 registers
-	bool flag[256];
 
 	ulaPlus* ula;
 };

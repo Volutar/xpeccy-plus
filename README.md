@@ -25,8 +25,8 @@ so patches, ideas and bug reports are welcome.
 
 ## Goals
 
-- **ZX Spectrum only.** Since 2026.4 the other machines are not built. Their code is still
-  in the tree and `-DZXONLY=0` brings them back, but nothing is maintained there.
+- **ZX Spectrum only.** Since 2026.4 the other machines are not built, and since 2026.5
+  their code is gone from the tree.
 - **Works out of the box.** Releases come as a bundle with configuration and rom sets, so
   the emulator is ready to use right after unpacking.
 - **Comfortable to play with.** Better gamepad support, rewind, and a smoother way to work
