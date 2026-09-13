@@ -127,6 +127,36 @@ void tsSync(TSound* ts, int ns) {
 	ts->chipD->sync(ts->chipD, ns);
 }
 
+// The one chip type with state of its own outside the struct is the YM2203;
+// xstate.c asks here rather than knowing that.
+
+static aymChip* ts_chip(TSound* ts, int n) {
+	switch (n) {
+		case 0: return ts->chipA;
+		case 1: return ts->chipB;
+		case 2: return ts->chipC;
+		case 3: return ts->chipD;
+	}
+	return NULL;
+}
+
+int ts_state_range(TSound* ts, int n, void** ptr) {
+	aymChip* chip = ts_chip(ts, n);
+	return chip ? ym2203_state_size(chip, ptr) : 0;
+}
+
+void ts_state_capture(TSound* ts) {
+	int i;
+	for (i = 0; i < 4; i++)
+		ym2203_state_pack(ts_chip(ts, i));
+}
+
+void ts_state_restore(TSound* ts) {
+	int i;
+	for (i = 0; i < 4; i++)
+		ym2203_state_unpack(ts_chip(ts, i));
+}
+
 sndPair tsGetVolume(TSound* ts) {
 	sndPair res = ts->chipA->vol(ts->chipA);
 	sndPair tmp = ts->chipB->vol(ts->chipB);

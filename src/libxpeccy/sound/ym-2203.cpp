@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <vector>
 
 #include "ymfm/ymfm_opn.h"	// instantiates the engine for us, at its end
 
@@ -34,7 +35,9 @@ public:
 	typedef ymfm::fm_engine_base<ymfm::opn_registers> engine;
 
 	xfm(aymChip* chip) : m_chip(chip), m_fm(*this) {
+		m_state.reserve(1024);		// enough that the first pack does not grow it
 		reset();
+		pack();				// fixes the size for the snapshot
 	}
 
 	// --- ymfm_interface. The durations are in master clocks: update_timer()
@@ -151,10 +154,55 @@ public:
 
 	int out() const { return m_last; }
 
+	// --- the state, for run-ahead (see xstate.c)
+
+	int pack() {
+		ymfm::ymfm_saved_state ss(m_state, true);
+		save_restore(ss);
+		return (int)m_state.size();
+	}
+
+	void unpack() {
+		if (m_state.empty()) return;
+		ymfm::ymfm_saved_state ss(m_state, false);
+		save_restore(ss);
+		set_period();			// follows the prescale, which the engine holds
+	}
+
+	// the field list is fixed, so every pack writes the same number of bytes:
+	// after the first the buffer never grows again and this address stays put,
+	// which is what the snapshot's range list needs
+	const void* blob() const { return m_state.data(); }
+	int size() const { return (int)m_state.size(); }
+
 	// fill the debugger's view of the fm state
 	void view(fmChan* out);
 
 private:
+	// one field list for both directions, ymfm's own idiom
+	void save_restore(ymfm::ymfm_saved_state& ss) {
+		m_fm.save_restore(ss);
+		sr64(ss, m_clocks);
+		sr64(ss, m_frac);
+		sr64(ss, m_timer_at[0]);
+		sr64(ss, m_timer_at[1]);
+		sr64(ss, m_busy_end);
+		ss.save_restore(m_fmcnt);
+		ss.save_restore(m_timer_on[0]);
+		ss.save_restore(m_timer_on[1]);
+		ss.save_restore(m_adr);
+		ss.save_restore(m_last);
+	}
+
+	// ymfm's serialiser stops at 32 bits
+	static void sr64(ymfm::ymfm_saved_state& ss, uint64_t& v) {
+		uint32_t lo = (uint32_t)v;
+		uint32_t hi = (uint32_t)(v >> 32);
+		ss.save_restore(lo);
+		ss.save_restore(hi);
+		v = ((uint64_t)hi << 32) | lo;
+	}
+
 	void set_prescale(uint32_t pre) {
 		if (pre == m_fm.clock_prescale()) return;
 		m_fm.set_clock_prescale(pre);
@@ -191,6 +239,8 @@ private:
 	uint8_t m_timer_on[2];
 	uint8_t m_adr;
 	int32_t m_last;			// last fm sample
+
+	std::vector<uint8_t> m_state;
 };
 
 // the register slot an operator is written through: the OPN holds them
@@ -298,6 +348,21 @@ sndPair ym2203_vol(aymChip* chip) {
 void ym2203_fm_view(aymChip* chip, fmChan* out) {
 	if (chip->type == SND_YM2203)
 		fm_of(chip)->view(out);
+}
+
+int ym2203_state_size(aymChip* chip, void** ptr) {
+	if (!chip->fm) return 0;
+	xfm* fm = (xfm*)chip->fm;
+	*ptr = (void*)fm->blob();
+	return fm->size();
+}
+
+void ym2203_state_pack(aymChip* chip) {
+	if (chip->fm) ((xfm*)chip->fm)->pack();
+}
+
+void ym2203_state_unpack(aymChip* chip) {
+	if (chip->fm) ((xfm*)chip->fm)->unpack();
 }
 
 }	// extern "C"

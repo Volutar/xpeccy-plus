@@ -79,12 +79,20 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 	ADD(comp->vid->ula, sizeof(ulaPlus));
 
 	ADD(comp->beep, sizeof(bitChan));
+	// A chip can hold state outside its own struct - a YM2203's fm half
+	// does - and only the struct is here to copy. ts_state_range() hands
+	// that state over as bytes; xstate_save/_load fill and read them.
 	if (comp->ts) {
 		ADD(comp->ts, sizeof(TSound));
 		ADD(comp->ts->chipA, sizeof(aymChip));
 		ADD(comp->ts->chipB, sizeof(aymChip));
 		ADD(comp->ts->chipC, sizeof(aymChip));
 		ADD(comp->ts->chipD, sizeof(aymChip));
+		for (i = 0; i < 4; i++) {
+			void* p = NULL;
+			int sz = ts_state_range(comp->ts, i, &p);
+			ADD(p, sz);
+		}
 	}
 	// the General Sound is a whole second machine with 2M of its own. Every way
 	// into it returns at once while it is switched off, so a switched-off one
@@ -169,6 +177,7 @@ void xstate_destroy(xState* st) {
 int xstate_save(xState* st, Computer* comp) {
 	if (!st) return 0;
 	st->count = 0;
+	if (comp->ts) ts_state_capture(comp->ts);
 	int count = xst_build(comp, st->chunk);
 	if (count < 0) {
 		xlog(XLG_CORE, XLL_WARN, "state: the machine has more parts than the snapshot holds");
@@ -217,5 +226,6 @@ int xstate_load(xState* st, Computer* comp) {
 		memcpy(st->chunk[i].ptr, src, st->chunk[i].size);
 		src += st->chunk[i].size;
 	}
+	if (comp->ts) ts_state_restore(comp->ts);
 	return 1;
 }

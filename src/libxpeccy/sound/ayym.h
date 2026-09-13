@@ -56,6 +56,9 @@ void ym2203_wr(aymChip*, int, int);
 void ym2203_sync(aymChip*, int);
 sndPair ym2203_vol(aymChip*);
 void ym2203_free(aymChip*);		// drop the core, if this chip ever had one
+int ym2203_state_size(aymChip*, void**);	// its state as bytes: how many, where
+void ym2203_state_pack(aymChip*);	// the core into those bytes
+void ym2203_state_unpack(aymChip*);	// and back out of them
 
 typedef void(*sccbwr)(aymChip*, int, int);
 typedef int(*sccbrd)(aymChip*, int);
@@ -201,6 +204,12 @@ void tsLoadRom(TSound*, const char*);
 int tsReadRom(TSound*, int);
 
 sndPair tsGetVolume(TSound*);
+
+// Run-ahead: a chip can keep state outside its own struct, which is all a
+// snapshot copies. These hand that state over as a range of bytes instead.
+int ts_state_range(TSound*, int, void**);	// chip 0..3: its size, and where
+void ts_state_capture(TSound*);			// into those ranges
+void ts_state_restore(TSound*);			// and back out of them
 
 #ifdef __cplusplus
 }
