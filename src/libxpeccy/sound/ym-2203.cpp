@@ -280,7 +280,10 @@ void xfm::view(fmChan* out) {
 			v->pg.freq = cache.block_freq & 0x7ff;
 			v->pg.block = (cache.block_freq >> 11) & 7;
 			v->pg.pstep = cache.phase_step;
-			v->pg.phase = op->phase() << 10;
+			// where in the sine the operator is, in the 10.10 the chip
+			// keeps it: ymfm's phase() is free running, and all of it
+			// shifted up runs off the end of a signed int
+			v->pg.phase = (op->phase() & 0x3ff) << 10;
 			v->tlev = m_chip->reg[0x40 + r] & 0x7f;
 			v->eg.ks = (m_chip->reg[0x50 + r] >> 6) & 3;
 			v->eg.atk = m_chip->reg[0x50 + r] & 0x1f;

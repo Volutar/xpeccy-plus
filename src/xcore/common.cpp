@@ -11,11 +11,14 @@
 static const char* hexhalf = "0123456789ABCDEF";
 // static char hexbuf[5] = {'0','0','0','0',0x00};
 
+// unsigned, or a negative number never shifts down to zero and this spins
+// until the string eats the memory
 QString formbufword(int num) {
 	QString res;
-	while (num) {
-		res.prepend(hexhalf[num & 0x0f]);
-		num >>= 4;
+	unsigned int val = (unsigned int)num;
+	while (val) {
+		res.prepend(hexhalf[val & 0x0f]);
+		val >>= 4;
 	}
 	return res;
 }
