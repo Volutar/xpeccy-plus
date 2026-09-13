@@ -134,7 +134,6 @@ static int fdc_running(FDC* fdc) {
 
 int xstate_safe(Computer* comp) {
 	if (!comp || !comp->hw) return 0;
-	if (comp->hw->grp != HWG_ZX) return 0;		// the video memory above is skipped
 	if (comp->tape && comp->tape->on) return 0;	// the tape signal is not in the snapshot
 #ifdef HAVEZLIB
 	if (comp->rzx.play) return 0;			// a recording is read forwards only

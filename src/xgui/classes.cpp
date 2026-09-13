@@ -66,10 +66,6 @@ void xHexSpin::updateMask() {
 	unsigned mx;
 	QString rxp;
 	switch(base) {
-		case 8:
-			rxp = "[0-7]";
-			//setStyleSheet("border:1px solid red;");
-			break;
 		case 10:
 			rxp = "[0-9]";
 			//setStyleSheet("border:1px solid black;");
@@ -326,15 +322,8 @@ void xHexSpin::keyPressEvent(QKeyEvent* ev) {
 				setCursorPosition(pos);
 				break;
 			case Qt::Key_X:
-				if (hsflag & XHS_DEC) {
-					if (base == 8) {
-						setBase(10);
-					} else if (base == 10) {
-						setBase(16);
-					} else {
-						setBase(8);
-					}
-				}
+				if (hsflag & XHS_DEC)
+					setBase((base == 10) ? 16 : 10);
 				break;
 			default:
 				QLineEdit::keyPressEvent(ev);
@@ -522,7 +511,6 @@ QWidget* xItemDelegate::createEditor(QWidget* par, const QStyleOptionViewItem&, 
 		case XTYPE_LABEL: break;
 		case XTYPE_DUMP: rpt = 12; break;		// 6 bytes max
 		case XTYPE_BYTE: rpt = 2; break;
-		case XTYPE_OCTWRD: pat = "[0-7\\s]"; rpt = 6; break;
 	}
 	if (edt && (rpt > 0)) {
 		edt->setInputMask(QString(rpt,'h'));

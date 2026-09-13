@@ -75,7 +75,7 @@ int memrd(int adr, int m1, void* ptr) {
 	}
 #endif
 	unsigned char* fptr = comp_get_memcell_flag_ptr(comp, adr);
-	unsigned isExecByte = (cpu_get_pc(comp->cpu)-1+comp->cpu->cs.base) == adr;
+	unsigned isExecByte = (cpu_get_pc(comp->cpu) - 1) == adr;
 	if (fptr) {
 		unsigned char flag = *fptr;
 		if (comp->flgMAP) {
@@ -324,20 +324,17 @@ int comp_pwatch_val(Computer* comp, int idx) {
 
 int iord(int port, void* ptr) {
 	Computer* comp = (Computer*)ptr;
-// TODO: zx only
-	if (comp->hw->grp == HWG_ZX) {
-		if (comp->flgCNTI) {
-			// fuse reads the port after both halves of the i/o cycle have
-			// been contended (periph.c readport), so do the waiting first
-			vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
-			res4 = comp->cpu->t;
-			zx_cont_t1(comp, port);
-			zx_cont_tn(comp, port);
-			comp->cpu->t -= 4;		// z80_iord puts the four back
-		} else {
-			vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t + 3 - res4));
-			res4 = comp->cpu->t + 3;
-		}
+	if (comp->flgCNTI) {
+		// fuse reads the port after both halves of the i/o cycle have
+		// been contended (periph.c readport), so do the waiting first
+		vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
+		res4 = comp->cpu->t;
+		zx_cont_t1(comp, port);
+		zx_cont_tn(comp, port);
+		comp->cpu->t -= 4;		// z80_iord puts the four back
+	} else {
+		vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t + 3 - res4));
+		res4 = comp->cpu->t + 3;
 	}
 // play rzx
 #ifdef HAVEZLIB
@@ -375,21 +372,17 @@ int iord(int port, void* ptr) {
 void iowr(int port, int val, void* ptr) {
 	Computer* comp = (Computer*)ptr;
 	comp->flgBDI = (comp->flgDOS && (comp->dif->type == DIF_BDI)) ? 1 : 0;
-	if (comp->hw->grp == HWG_ZX) {
-		// sync video to current T
-		vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
-		res4 = comp->cpu->t;
-		if (comp->flgCNTI) {
-			zx_cont_t1(comp, port);
-			comp->hw->out(comp, port, val);
-			zx_cont_tn(comp, port);
-			comp->cpu->t -= 4;
-		} else {
-			vid_sync_fixed(comp->vid, comp->nsPerTickFixed);
-			res4++;
-			comp->hw->out(comp, port, val);
-		}
+	// sync video to current T
+	vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
+	res4 = comp->cpu->t;
+	if (comp->flgCNTI) {
+		zx_cont_t1(comp, port);
+		comp->hw->out(comp, port, val);
+		zx_cont_tn(comp, port);
+		comp->cpu->t -= 4;
 	} else {
+		vid_sync_fixed(comp->vid, comp->nsPerTickFixed);
+		res4++;
 		comp->hw->out(comp, port, val);
 	}
 	if (comp->vid->ula->palchan) {
@@ -642,9 +635,6 @@ void compReset(Computer* comp,int res) {
 	if (comp->hw->reset)
 		comp->hw->reset(comp);
 	comp->hw->mapMem(comp);
-	comp->cpu->cs.base = 0;		// for all except i80286
-	comp->cpu->ss.base = 0;
-	comp->cpu->cs.limit = 0xffff;
 	cpu_reset(comp->cpu);
 	comp_set_snow(comp, comp->flgSNOW);	// the cpu may have been swapped since
 	comp_heat_sync(comp);		// ram/rom size may have changed with hardware/romset
@@ -737,7 +727,6 @@ int compSetHardware(Computer* comp, const char* name) {
 //	comp->cpu->nod = 0;
 	comp->vid->mrd = vid_mrd_cb;
 	comp->tape->xen = 0;
-	mem_set_bus(comp->mem, hw->adrbus);
 	compSetBaseFrq(comp, 0);	// recalculations
 	comp_pwatch_sync(comp);
 	return 1;
@@ -750,7 +739,7 @@ int compExec(Computer* comp) {
 // breakpoints. A run-ahead frame is thrown away, so a break there would fire
 // twice: leave it to the pass that keeps its result
 	if (!comp->flgDBG && !x_runahead) {
-		bpChecker ch = comp_check_bp(comp, cpu_get_pc(comp->cpu) + comp->cpu->cs.base, MEM_BRK_FETCH | MEM_BRK_TFETCH);
+		bpChecker ch = comp_check_bp(comp, cpu_get_pc(comp->cpu), MEM_BRK_FETCH | MEM_BRK_TFETCH);
 		if (ch.t >= 0) {
 			comp->flgBRK = 1;
 			comp->brkt = ch.t;
@@ -782,20 +771,7 @@ int compExec(Computer* comp) {
 		}
 	}
 #endif
-#if 1
 	vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, res2 - res4));
-#else
-	if (res2 > res4) {
-		if (comp->hw->grp == HWG_ZX) {
-			if (res2 > res4 + 1)
-				vid_sync(comp->vid, (res2 - res4 - 1) * comp->nsPerTick);
-			comp->cpu->flgACK = comp->vid->intFRAME ? 1 : 0;
-			vid_sync(comp->vid, comp->nsPerTick);
-		} else {
-			vid_sync(comp->vid, (res2 - res4) * comp->nsPerTick);
-		}
-	}
-#endif
 // execution completed : get eated time & translate signals
 	nsTime = comp->vid->time;
 	comp->tickCount += res2;

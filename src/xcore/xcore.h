@@ -107,7 +107,6 @@ QString gethexbyte(int);
 QString gethexword(int);
 QString getPortString(int, int);
 bool parsePort(const QString&, int*, int*);
-QString getoctword(int);
 QString gethex6(int);
 QString gethexint(int);
 

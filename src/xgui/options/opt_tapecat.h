@@ -42,8 +42,8 @@ class xTapeCatModel : public xTableModel {
 		QIcon icoBrk;
 		QIcon icoDur;
 		int isNamed(int) const;
-		QString blockName(int, int) const;
-		QString blockInfo(int, int) const;
+		QString blockName(int) const;
+		QString blockInfo(int) const;
 		QVariant data(const QModelIndex&, int) const;
 		QVariant headerData(int, Qt::Orientation, int) const;
 };

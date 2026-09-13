@@ -288,9 +288,6 @@ void DebugWin::start() {
 	blockEnd = -1;
 	save_mem_map();
 	Computer* comp = conf.zx;
-	if (comp->hw->grp != tabMode) {
-		onPrfChange();		// update tabs
-	}
 	if (!comp->vid->tail)
 		vid_dark_tail(comp->vid);
 
@@ -312,7 +309,7 @@ void DebugWin::start() {
 	show();
 // fillall redrawing all vivisble widgets
 	if (!fillAll()) {
-		ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu) + comp->cpu->cs.base);
+		ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu));
 	}
 	if (memViewer->vis) {
 		memViewer->move(memViewer->winPos);
@@ -355,27 +352,13 @@ void DebugWin::resetTCount() {
 	}
 }
 
-// the panels this machine has: a dock with no machine list of its own is for all
-void DebugWin::applyDockList() {
-	foreach (xDockWidget* dw, dockWidgets) {
-		dw->setHidden(!(dw->hwList.isEmpty() || dw->hwList.contains(tabMode)));
-	}
-}
-
 void DebugWin::onPrfChange() {
 	if (!conf.zx) return;
-	Computer* comp = conf.zx;
 	save_mem_map();
 
-	tabMode = comp->hw->grp;
-	applyDockList();
-	setMiscBlocks();		// the bank fields are for the ZX group only
+	setMiscBlocks();
 
-	// set input line base
-	foreach(xHexSpin* xhs, dbgRegEdit) {
-		xhs->setBase(comp->hw->base);
-	}
-	unsigned int lim = (1 << comp->hw->adrbus);
+	unsigned int lim = MEM_64K;
 	wid_dump->setLimit(lim);
 	ui_asm.dasmScroll->setMaximum(lim - 1);
 
@@ -386,9 +369,8 @@ void DebugWin::onPrfChange() {
 	// ui.tabDiskDump->setDrive(ui.cbDrive->currentIndex());
 	wid_disk_dump->draw();
 
-	wid_dump->setBase(comp->hw->base, comp->hw->id);
 	wid_brk->moved();
-	styleTabBars();		// hiding panels changes what a tab bar carries
+	styleTabBars();
 
 	fillAll();
 }
@@ -578,7 +560,6 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 	xid_none = new xItemDelegate(XTYPE_NONE);
 	xid_byte = new xItemDelegate(XTYPE_BYTE);
 	xid_labl = new xItemDelegate(XTYPE_LABEL);
-	xid_octw = new xItemDelegate(XTYPE_OCTWRD);
 	xid_dump = new xItemDelegate(XTYPE_DUMP);
 
 // actions data
@@ -929,7 +910,7 @@ void DebugWin::doStep() {
 		tCount = comp->tickCount;
 	compExec(comp);
 	if (!fillAll()) {
-		ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu) + comp->cpu->cs.base);
+		ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu));
 		//fillDisasm();
 	}
 }
@@ -976,7 +957,7 @@ void DebugWin::stopTrace() {
 void DebugWin::reload() {
 	Computer* comp = conf.zx;
 	if (media_reload(comp) & RELOAD_SNAPSHOT)
-		ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu) + comp->cpu->cs.base);
+		ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu));
 	fillAll();
 }
 
@@ -1001,7 +982,7 @@ void DebugWin::keyPressEvent(QKeyEvent* ev) {
 			break;
 		case XCUT_LOAD:
 			load_file(comp, NULL, FG_ALL, -1);
-			ui_asm.dasmTable->setAdr(pc + comp->cpu->cs.base);
+			ui_asm.dasmTable->setAdr(pc);
 			//fillAll();
 			activateWindow();
 			break;
@@ -1017,9 +998,9 @@ void DebugWin::keyPressEvent(QKeyEvent* ev) {
 			}
 			break;
 		case XCUT_STEPOVER:
-			len = dasmSome(comp, pc + comp->cpu->cs.base, drow);
+			len = dasmSome(comp, pc, drow);
 			if (drow.oflag & OF_SKIPABLE) {
-				ptr = getBrkPtr(comp, pc + comp->cpu->cs.base + len);
+				ptr = getBrkPtr(comp, pc + len);
 				*ptr |= MEM_BRK_TFETCH;
 				stop();
 			} else {
@@ -1047,7 +1028,7 @@ void DebugWin::keyPressEvent(QKeyEvent* ev) {
 			rzxStop(comp);
 			compReset(comp, RES_DEFAULT);
 			if (!fillAll()) {
-				ui_asm.dasmTable->setAdr(pc + comp->cpu->cs.base);
+				ui_asm.dasmTable->setAdr(pc);
 				//fillDisasm();
 			}
 			break;
@@ -1107,15 +1088,9 @@ void DebugWin::customEvent(QEvent* ev) {
 	switch(ev->type()) {
 		case DBG_EVENT_STEP:
 			if ((traceType == DBG_TRACE_LOG) && logfile.isOpen()) {
-				dasmSome(comp, pcadr + comp->cpu->cs.base, tracemnm);
+				dasmSome(comp, pcadr, tracemnm);
 				tracestr = "\"";			// to avoid numbers conversion, like 3e4->3000
-				if (comp->cpu->core->group == CPUG_X86) {
-					tracestr.append(gethexword(cpu_get_regtype(comp->cpu, REG_CS)));
-					tracestr.append(":");
-					tracestr.append(gethexword(pcadr));
-				} else {
-					tracestr.append(gethexword(pcadr));
-				}
+				tracestr.append(gethexword(pcadr));
 				tracestr.append("\"|");
 				doStep();
 				traceregs = cpuGetRegs(comp->cpu);
@@ -1229,13 +1204,7 @@ void DebugWin::chLayout() {
 }
 
 int dbg_get_reg_adr(CPU* cpu, xRegister* reg) {
-	int a = reg->value;
-	if (reg->flag & REG_SEG) {
-		a = reg->base;
-	} else if (cpu->core->group == CPUG_X86) {
-		a += reg->base;
-	}
-	return a;
+	return reg->value;
 }
 
 // the same address by register name, for the dump hotkeys. -1 = this cpu
@@ -1776,7 +1745,6 @@ void DebugWin::showEvent(QShowEvent* ev) {
 	// while the window was away: the list for this one wins.
 	if (!dockLayout.isEmpty()) {
 		restoreState(dockLayout, DBG_LAYOUT_VERSION);
-		applyDockList();
 		styleTabBars();
 	}
 	if (reformWait) {
@@ -2209,7 +2177,7 @@ void DebugWin::fillStack() {
 	if (!conf.zx) return;
 	Computer* comp = conf.zx;
 	int sp = cpu_get_sp(comp->cpu);
-	int adr = sp + comp->cpu->ss.base;
+	int adr = sp;
 	int ofs = conf.dbg.stackofs;		// kept even where it is set, see DBG_STACK_OFS
 	int cnt = wid_stack_view->rowsFit();
 	QList<xStackRow> rows;
@@ -2261,12 +2229,11 @@ void DebugWin::editWatchPorts() {
 // PORTS is left to fillPorts: it is the only one that can be empty by itself
 
 void DebugWin::setMiscBlocks() {
-	bool zx = conf.zx && (conf.zx->hw->grp == HWG_ZX);
-	ui_misc.widMMap->setVisible(conf.dbg.showmmap && zx);
-	ui_misc.labPG0->setVisible(conf.dbg.showmmap && !zx);
-	ui_misc.labPG1->setVisible(conf.dbg.showmmap && !zx);
-	ui_misc.labPG2->setVisible(conf.dbg.showmmap && !zx);
-	ui_misc.labPG3->setVisible(conf.dbg.showmmap && !zx);
+	ui_misc.widMMap->setVisible(conf.dbg.showmmap);
+	ui_misc.labPG0->setVisible(false);
+	ui_misc.labPG1->setVisible(false);
+	ui_misc.labPG2->setVisible(false);
+	ui_misc.labPG3->setVisible(false);
 	ui_misc.labHeadSignal->setVisible(conf.dbg.showsig);
 	ui_misc.labDOS->setVisible(conf.dbg.showsig);
 	ui_misc.labROM->setVisible(conf.dbg.showsig);
@@ -2345,7 +2312,7 @@ int DebugWin::getAdr() {
 //		}
 //	} else {
 		idx = ui_asm.dasmTable->currentIndex();
-		adr = ui_asm.dasmTable->getData(idx.row(), 0, Qt::UserRole).toInt();		// already +cs.base
+		adr = ui_asm.dasmTable->getData(idx.row(), 0, Qt::UserRole).toInt();
 //	}
 
 	adr &= comp->mem->busmask;

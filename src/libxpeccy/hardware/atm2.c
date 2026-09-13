@@ -358,7 +358,7 @@ xPortDsc atm_port_tab[] = {
 	{-1, 0, 0}
 };
 
-HardWare atm_hw_core = {HW_ATM2,HWG_ZX,"ATM2","ATM Turbo 2+ (v7.10)",16,MEM_128K | MEM_256K | MEM_512K | MEM_1M,1.0,NULL,16,atm_port_tab,
+HardWare atm_hw_core = {HW_ATM2,"ATM2","ATM Turbo 2+ (v7.10)",MEM_128K | MEM_256K | MEM_512K | MEM_1M,1.0,NULL,atm_port_tab,
 			zx_init,atm2MapMem,atm2Out,atm2In,stdMRd,stdMWr,zx_irq,zx_ack,atm2Reset,atm2_sync,atm2_keyp,atm2_keyr,zx_vol,
 			atm2_snap_map};
 

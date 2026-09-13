@@ -118,14 +118,10 @@ int tapGetBlockTime(Tape* tape, int blk, int pos) {
 	return (totsz / TAPTPS);			// mks -> sec
 }
 
-int tapGetBlockSize(TapeBlock* block, int type) {
+int tapGetBlockSize(TapeBlock* block) {
 	int res = 0;
-	switch (type) {
-		case TFRM_ZX:
-			if (block->dataPos < 0) break;		// pure signal, no bytes to count
-			res = ((block->sigCount - block->dataPos) >> 4) - 2;
-			break;
-	}
+	if (block->dataPos >= 0)			// < 0: pure signal, no bytes to count
+		res = ((block->sigCount - block->dataPos) >> 4) - 2;
 	if (res < 0) res = 0;
 	return res;
 }
@@ -164,7 +160,7 @@ int tapGetBlockData(Tape* tape, int blockNum, unsigned char* dst,int maxsize) {
 int tapGetBlockHeader(TapeBlock* block, TapeBlockInfo* inf) {
 	int i;
 	if (!block->isHeader) return 0;
-	if (tapGetBlockSize(block, TFRM_ZX) != 17) return 0;
+	if (tapGetBlockSize(block) != 17) return 0;
 	inf->htype = tapGetBlockByte(block, 1);
 	for (i = 0; i < 10; i++)
 		inf->name[i] = tapGetBlockByte(block, i + 2);
@@ -177,31 +173,27 @@ int tapGetBlockHeader(TapeBlock* block, TapeBlockInfo* inf) {
 	return 1;
 }
 
-TapeBlockInfo tapGetBlockInfo(Tape* tap, int blk, int type) {
+TapeBlockInfo tapGetBlockInfo(Tape* tap, int blk) {
 	TapeBlock* block = &tap->blkData[blk];
 	TapeBlockInfo inf;
 	memset(&inf, 0x00, sizeof(TapeBlockInfo));
 	inf.htype = TAPE_HT_NONE;
 	inf.type = TAPE_DATA;
-	switch(type) {
-		case TFRM_ZX:
-			if (tapGetBlockHeader(block, &inf)) inf.type = TAPE_HEAD;
-			break;
-	}
+	if (tapGetBlockHeader(block, &inf)) inf.type = TAPE_HEAD;
 	strcpy(inf.text, block->text);
 	inf.hasBytes = block->hasBytes;
-	inf.size = tapGetBlockSize(block, type);
+	inf.size = tapGetBlockSize(block);
 	inf.time = block->time;
 	inf.breakPoint = block->breakPoint;
 	inf.stopMark = block->stopMark;
 	return inf;
 }
 
-int tapGetBlocksInfo(Tape* tap, TapeBlockInfo* dst, int type) {
+int tapGetBlocksInfo(Tape* tap, TapeBlockInfo* dst) {
 	int cnt = 0;
 	int i;
 	for (i=0; i < (int)tap->blkCount; i++) {
-		dst[cnt] = tapGetBlockInfo(tap,i,type);
+		dst[cnt] = tapGetBlockInfo(tap,i);
 		cnt++;
 	}
 	return cnt;

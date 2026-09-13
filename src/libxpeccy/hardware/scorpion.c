@@ -144,5 +144,5 @@ xPortDsc sco_port_tab[] = {
 	{-1, 0, 0}
 };
 
-HardWare sco_hw_core = {HW_SCORP,HWG_ZX,"Scorpion","ZS Scorpion",16,MEM_256K | MEM_1M,1.0,NULL,16,sco_port_tab,
+HardWare sco_hw_core = {HW_SCORP,"Scorpion","ZS Scorpion",MEM_256K | MEM_1M,1.0,NULL,sco_port_tab,
 				scrp_init,scoMapMem,scoOut,scoIn,scoMRd,stdMWr,zx_irq,zx_ack,zx_reset,zx_sync,zx_keyp,zx_keyr,zx_vol};

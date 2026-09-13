@@ -592,7 +592,7 @@ bool xm_set_layout(std::string nm) {
 	if (lay == NULL) return false;
 	conf.layName = nm;
 	comp_set_layout(conf.zx, &lay->lay);
-	vid_set_border(conf.zx->vid, brd_mode_for(conf.zx, conf.vid.border));
+	vid_set_border(conf.zx->vid, conf.vid.border);
 	if ((conf.zx->vid->res.x > 0) && (conf.zx->vid->res.y > 0))
 		vid_set_resolution(conf.zx->vid, conf.zx->vid->res.x, conf.zx->vid->res.y);
 	return true;

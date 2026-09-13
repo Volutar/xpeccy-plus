@@ -34,6 +34,9 @@ before that point is upstream's history and is not repeated here.
   IBM PC, PC-9801 and Specialist. They have not been built since 2026.4; now their
   code is gone as well. The settings lose the CPU type, cartridge mapper and mouse
   type rows with nothing left to pick in them.
+- Octal in the debugger, which only the BK ever used. Addresses read as four hex
+  digits everywhere, and X in a number field switches between hex and decimal
+  instead of cycling through octal on the way.
 
 ### Changed
 

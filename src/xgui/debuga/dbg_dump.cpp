@@ -41,34 +41,30 @@ int xDumpModel::mrd(int adr) const {
 	MemPage* pg;
 	int fadr;
 	int res = 0xff;
-	if (comp->cpu->core->group == CPUG_X86) {
-		res = comp->hw->mrd(comp, adr, 0);
-	} else {
-		switch(mode) {
-			case XVIEW_CPU:
-				pg = mem_get_page(comp->mem, adr);	// = &comp->mem->map[(adr >> 8) & 0xff];
-				fadr = mem_get_phys_adr(comp->mem, adr);	// = pg->num << 8) | (adr & 0xff);
-				switch (pg->type) {
-					case MEM_ROM: res = comp->mem->romData[fadr & comp->mem->romMask]; break;
-					case MEM_RAM: res = comp->mem->ramData[fadr & comp->mem->ramMask]; break;
-					case MEM_SLOT: res = memRd(comp->mem, adr % maxadr);
-						break;
-				}
-				res |= getBrk(comp, adr % maxadr) << 8;
-				break;
-			case XVIEW_RAM:
-				adr &= 0x3fff;
-				adr |= (page << 14);
-				res = comp->mem->ramData[adr & 0x3fffff];
-				res |= comp->brkRamMap[adr & 0x3fffff] << 8;
-				break;
-			case XVIEW_ROM:
-				adr &= 0x3fff;
-				adr |= (page << 14);
-				res = comp->mem->romData[adr & 0x7ffff];
-				res |= comp->brkRomMap[adr & 0x7ffff] << 8;
-				break;
-		}
+	switch(mode) {
+		case XVIEW_CPU:
+			pg = mem_get_page(comp->mem, adr);	// = &comp->mem->map[(adr >> 8) & 0xff];
+			fadr = mem_get_phys_adr(comp->mem, adr);	// = pg->num << 8) | (adr & 0xff);
+			switch (pg->type) {
+				case MEM_ROM: res = comp->mem->romData[fadr & comp->mem->romMask]; break;
+				case MEM_RAM: res = comp->mem->ramData[fadr & comp->mem->ramMask]; break;
+				case MEM_SLOT: res = memRd(comp->mem, adr % maxadr);
+					break;
+			}
+			res |= getBrk(comp, adr % maxadr) << 8;
+			break;
+		case XVIEW_RAM:
+			adr &= 0x3fff;
+			adr |= (page << 14);
+			res = comp->mem->ramData[adr & 0x3fffff];
+			res |= comp->brkRamMap[adr & 0x3fffff] << 8;
+			break;
+		case XVIEW_ROM:
+			adr &= 0x3fff;
+			adr |= (page << 14);
+			res = comp->mem->romData[adr & 0x7ffff];
+			res |= comp->brkRomMap[adr & 0x7ffff] << 8;
+			break;
 	}
 	return res;
 }
@@ -77,35 +73,31 @@ void xDumpModel::mwr(int adr, unsigned char bt) {
 	Computer* comp = conf.zx;
 	MemPage* pg;
 	int fadr;
-	if (comp->cpu->core->group == CPUG_X86) {
-		comp->hw->mwr(comp, adr, bt);
-	} else {
-		switch(mode) {
-			case XVIEW_CPU:
-				pg = mem_get_page(comp->mem, adr);	// = &comp->mem->map[(adr >> 8) & 0xff];
-				fadr = mem_get_phys_adr(comp->mem, adr);	// = pg->num << 8) | (adr & 0xff);
-				switch (pg->type) {
-					case MEM_ROM:
-						if (conf.dbg.romwr)
-							comp->mem->romData[fadr & comp->mem->romMask] = bt;
-						break;
-					case MEM_RAM:
-						comp->mem->ramData[fadr & comp->mem->ramMask] = bt;
-						break;
-					case MEM_SLOT:
-						break;
-				}
-				break;
-			case XVIEW_RAM:
-				adr &= 0x3fff;
-				adr |= (page << 14);
-				comp->mem->ramData[adr & comp->mem->ramMask] = bt;
-				break;
-			case XVIEW_ROM:
-				if (conf.dbg.romwr)
-					comp->mem->romData[((adr & 0x3fff) | (page << 14)) & comp->mem->romMask] = bt;
-				break;
-		}
+	switch(mode) {
+		case XVIEW_CPU:
+			pg = mem_get_page(comp->mem, adr);	// = &comp->mem->map[(adr >> 8) & 0xff];
+			fadr = mem_get_phys_adr(comp->mem, adr);	// = pg->num << 8) | (adr & 0xff);
+			switch (pg->type) {
+				case MEM_ROM:
+					if (conf.dbg.romwr)
+						comp->mem->romData[fadr & comp->mem->romMask] = bt;
+					break;
+				case MEM_RAM:
+					comp->mem->ramData[fadr & comp->mem->ramMask] = bt;
+					break;
+				case MEM_SLOT:
+					break;
+			}
+			break;
+		case XVIEW_RAM:
+			adr &= 0x3fff;
+			adr |= (page << 14);
+			comp->mem->ramData[adr & comp->mem->ramMask] = bt;
+			break;
+		case XVIEW_ROM:
+			if (conf.dbg.romwr)
+				comp->mem->romData[((adr & 0x3fff) | (page << 14)) & comp->mem->romMask] = bt;
+			break;
 	}
 }
 
@@ -131,23 +123,12 @@ void xDumpModel::setMode(int md, int pgn, int pgb, int pgs) {
 	update();
 }
 
-void xDumpModel::setView(int t) {
-	view = t;
-	update();
-}
-
 int xDumpModel::rowCount(const QModelIndex&) const {
 	return row_count;
 }
 
 int xDumpModel::columnCount(const QModelIndex&) const {
 	return col_count;
-}
-
-int check_seg(int adr, xSegPtr seg) {
-	if (adr < seg.base) return 0;
-	if (adr - seg.base > seg.limit) return 0;
-	return 1;
 }
 
 QVariant xDumpModel::data(const QModelIndex& idx, int role) const {
@@ -162,7 +143,6 @@ QVariant xDumpModel::data(const QModelIndex& idx, int role) const {
 	if (col >= columnCount()) return res;
 	int adr = (dmpadr + (row * dmpsize)) % maxadr;
 	int cadr = (adr + col - 1) % maxadr;
-	unsigned short wrd;
 	int flg = mrd(cadr) >> 8;
 	QByteArray arr;
 	QColor clr;
@@ -216,77 +196,30 @@ QVariant xDumpModel::data(const QModelIndex& idx, int role) const {
 			if (col == 0) {
 				if ((mode == XVIEW_RAM) || (mode == XVIEW_ROM))
 					adr &= 0x3fff;
-				switch(view) {
-					case XVIEW_OCTWRD:
-						res = QString::number(adr, 8).rightJustified(6, '0');
-						break;
-					default:
-						res = QString::number(adr, 16).toUpper();
-						break;
-				}
+				res = QString::number(adr, 16).toUpper();
 			} else if (col == 17) {
 				// no edit
 			} else {
-				switch(view) {
-					case XVIEW_OCTWRD:
-						wrd = mrd(cadr) & 0xff;
-						wrd += (mrd((cadr + 1) % maxadr) << 8) & 0xff00;
-						res = QString::number(wrd, 8).rightJustified(6,'0');
-						break;
-					default:
-						res = gethexbyte(mrd(cadr) & 0xff);
-						break;
-				}
+				res = gethexbyte(mrd(cadr) & 0xff);
 			}
 			break;
 		case Qt::DisplayRole:
 			if (col == 0) {
-				if (conf.zx->cpu->core->group == CPUG_X86) {
-					adr %= maxadr;
-					if (!conf.dbg.segment) {
-						res = QString::number(adr, 16).toUpper().rightJustified(6 , '0');
-					} else if (check_seg(adr, conf.zx->cpu->cs)) {
-						adr -= conf.zx->cpu->cs.base;
-						res = QString("CS:").append(gethexword(adr & 0xffff));
-					} else if (check_seg(adr, conf.zx->cpu->ss)) {
-						adr -= conf.zx->cpu->ss.base;
-						res = QString("SS:").append(gethexword(adr & 0xffff));
-					} else if (check_seg(adr, conf.zx->cpu->ds)) {
-						adr -= conf.zx->cpu->ds.base;
-						res = QString("DS:").append(gethexword(adr & 0xffff));
-					} else if (check_seg(adr, conf.zx->cpu->es)) {
-						adr -= conf.zx->cpu->es.base;
-						res = QString("ES:").append(gethexword(adr & 0xffff));
-					} else {
-						res = QString::number(adr, 16).toUpper().rightJustified(6 , '0');
-					}
-					// res = QString("DS:%0").arg(gethexword(adr & 0xffff));
-				} else {
-					if ((mode == XVIEW_RAM) || (mode == XVIEW_ROM)) {
-						adr %= pgsize;
-						adr += pgbase;
-						str = QString::number(page, conf.zx->hw->base).toUpper().rightJustified(2, '0').append(":");
-					}
-					str.append(QString::number(adr, conf.zx->hw->base).toUpper().rightJustified((conf.zx->hw->base == 16) ? 4 : 6, '0'));
-					res = str;
+				if ((mode == XVIEW_RAM) || (mode == XVIEW_ROM)) {
+					adr %= pgsize;
+					adr += pgbase;
+					str = gethexbyte(page).append(":");
 				}
+				str.append(gethexword(adr));
+				res = str;
 			} else if (col == 17) {
 				for(int i = 0; i < dmpsize; i++)
 					arr.append(mrd((adr + i) % maxadr) & 0xff);
 				res = getDumpString(arr, codePage);
 			} else {
-				switch (view) {
-					case XVIEW_OCTWRD:
-						wrd = mrd(cadr) & 0xff;
-						wrd += (mrd((cadr + 1) % maxadr) << 8) & 0xff00;
-						res = QString::number(wrd, 8).rightJustified(6,'0');
-						break;
-					default:
-						res = gethexbyte(mrd(cadr) & 0xff);
-						break;
-				}
-				break;
+				res = gethexbyte(mrd(cadr) & 0xff);
 			}
+			break;
 	}
 	return res;
 }
@@ -323,17 +256,8 @@ bool xDumpModel::setData(const QModelIndex& idx, const QVariant& val, int role) 
 		}
 	} else if (col < 17) {
 		nadr = (adr + col - 1) % maxadr;
-		switch(view) {
-			case XVIEW_OCTWRD:
-				fadr = str.toInt(NULL, 8) & 0xffff;
-				mwr(nadr++, fadr & 0xff);
-				mwr(nadr, (fadr >> 8) & 0xff);
-				break;
-			default:
-				bt = str.toInt(NULL, 16) & 0xff;
-				mwr(nadr, bt);
-				break;
-		}
+		bt = str.toInt(NULL, 16) & 0xff;
+		mwr(nadr, bt);
 		updateRow(row);
 		emit s_datach();
 	}
@@ -345,7 +269,6 @@ bool xDumpModel::setData(const QModelIndex& idx, const QVariant& val, int role) 
 xDumpTable::xDumpTable(QWidget* p):QTableView(p) {
 	markAdr = -1;
 	mode = XVIEW_CPU;
-	view = XVIEW_DEF;
 	rowBytes = 0;			// auto
 	model = new xDumpModel();
 	setModel(model);
@@ -364,24 +287,6 @@ void xDumpTable::setMode(int md, int pgn, int pgb, int pgs) {
 	pagenum = pgn;
 	pagesize = pgs;
 	model->setMode(md, pgn, pgb, pgs);
-}
-
-void xDumpTable::setView(int t) {
-	view = t;
-	switch(t) {
-		case XVIEW_OCTWRD:
-			for (int r = 0; r < model->rowCount(); r++) {
-				for (int c = 1; c < 17; c+=2) {
-					setSpan(r, c, 1, 2);
-				}
-			}
-			break;
-		default:
-			clearSpans();
-			break;
-	}
-	model->setView(t);
-	layoutColumns();		// an octal word needs a wider cell than a byte
 }
 
 int xDumpTable::rows() {
@@ -457,11 +362,9 @@ void xDumpTable::layoutColumns() {
 	int tw;			// one character of the text column
 #if (QT_VERSION >= QT_VERSION_CHECK(5,11,0))
 	w0 = fm.horizontalAdvance("0000:0000") + 10;
-	if (view == XVIEW_OCTWRD) cw = fm.horizontalAdvance("000000") + 8;
 	tw = fm.horizontalAdvance("0");
 #else
 	w0 = fm.width("0000:0000") + 10;
-	if (view == XVIEW_OCTWRD) cw = fm.width("000000") + 8;
 	tw = fm.width("0");
 #endif
 	// same reason as the disk dump: the form's minimum would override our width
@@ -721,7 +624,6 @@ xDumpWidget::xDumpWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
 
 	xid_addr = new xItemDelegate(XTYPE_LABEL);
 	xid_byte = new xItemDelegate(XTYPE_BYTE);
-	xid_octw = new xItemDelegate(XTYPE_OCTWRD);
 	xid_none = new xItemDelegate(XTYPE_NONE);
 
 	ui.dumpTable->setItemDelegate(xid_byte);
@@ -798,24 +700,6 @@ void xDumpWidget::customMenuAction(QAction* act) {
 	}
 }
 
-void xDumpWidget::setBase(int b, int t) {
-	switch(b) {
-		case 8:
-			for (b = 1; b < 18; b+=2) {
-				ui.dumpTable->setItemDelegateForColumn(b, xid_octw);
-			}
-			ui.dumpTable->setView(XVIEW_OCTWRD);
-			break;
-		default:
-			for (b = 1; b < 18; b+=2) {
-				ui.dumpTable->setItemDelegateForColumn(b, xid_byte);
-			}
-			ui.dumpTable->setView(XVIEW_DEF);
-			break;
-	}
-	ui.cbDumpView->setEnabled(true);
-}
-
 void xDumpWidget::draw() {
 	ui.dumpTable->update();
 	refill();
@@ -853,9 +737,8 @@ void xDumpWidget::refill() {
 	int page = ui.sbDumpPage->value();
 	int pbase = ui.leDumpPageBase->getValue();
 	int psize;
-	Computer* comp = conf.zx;
 	if (mode == XVIEW_CPU) {
-		psize = (1 << comp->hw->adrbus); // (comp->hw->id == HW_IBM_PC) ? MEM_4M : MEM_64K;
+		psize = MEM_64K;
 	} else {
 		psize = getRFIData(ui.cbDumpPageSize);
 	}

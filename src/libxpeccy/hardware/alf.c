@@ -136,5 +136,5 @@ sndPair alf_vol(Computer* comp, sndVolume* sv) {
 
 // zx_init, like every other ZX core: it is what sets the dot period from the cpu
 // clock, and without it the machine keeps the dot clock of whatever ran before.
-HardWare alf_hw_core = {HW_ALF,HWG_ZX,"ALF","ALF TV Game",16,MEM_64K | MEM_128K,1.0,NULL,16,NULL,
+HardWare alf_hw_core = {HW_ALF,"ALF","ALF TV Game",MEM_64K | MEM_128K,1.0,NULL,NULL,
 			zx_init,alf_mapmem,alf_iwr,alf_ird,alf_mrd,alf_mwr,zx_irq,zx_ack,alf_reset,alf_sync,NULL,NULL,alf_vol};

@@ -27,12 +27,6 @@ enum {
 	HW_ALF		// ALF TV Game (a ZX48 clone console)
 };
 
-// hw group
-enum {
-	HWG_NULL = 0,
-	HWG_ZX
-};
-
 // Hardware callbacks
 
 // std callback
@@ -64,14 +58,11 @@ typedef struct {
 
 struct HardWare {
 	int id;			// id
-	int grp;
 	const char* name;	// name used in conf file
 	const char* optName;	// name used in options window
-	int base;		// numbers base (8/10/16)
 	int mask;		// mem size bits (see memory.h)
 	double xscale;		// pixel ratio (x:y)
 	vLayout* lay;		// fixed layout ptr. if NULL, use from config
-	int adrbus;		// cpu adr bus width (16/20/24), pgsize = 2^(n-8)	TODO: must be in CPU core
 	xPortDsc* portab;	// tab of ports descriptors
 	cbhwcomp init;		// init (call on setting comp hardware)
 	cbhwcomp mapMem;	// map memory

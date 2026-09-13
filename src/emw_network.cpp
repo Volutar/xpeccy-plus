@@ -178,7 +178,7 @@ void MainWin::socketRead() {
 			while (cnt > 0) {
 				sprintf(dasmbuf, "%.6X : ", adr);
 				sock->write(dasmbuf);
-				mnm = cpuDisasm(comp->cpu, comp->cpu->cs.base + adr, dasmbuf, dasmrd, comp);
+				mnm = cpuDisasm(comp->cpu, adr, dasmbuf, dasmrd, comp);
 				sock->write(dasmbuf);
 				sock->write("\r\n");
 				adr += mnm.len;
@@ -203,7 +203,7 @@ void MainWin::socketRead() {
 				sock->write(dasmbuf);
 				dasmbuf[0] = 0x00;
 				do {
-					sprintf(dasmbuf, "%.2X ", dasmrd(comp->cpu->cs.base + adr, comp));
+					sprintf(dasmbuf, "%.2X ", dasmrd(adr, comp));
 					sock->write(dasmbuf);
 					adr++;
 					cnt--;

@@ -66,7 +66,7 @@ void xThread::tap_catch_load(Computer* comp) {
 	if (conf.tape.fast && comp->tape->blkData[blk].hasBytes) {
 		unsigned short de = comp->cpu->regDE;
 		unsigned short ix = comp->cpu->regIX;
-		TapeBlockInfo inf = tapGetBlockInfo(comp->tape,blk,TFRM_ZX);
+		TapeBlockInfo inf = tapGetBlockInfo(comp->tape,blk);
 		unsigned char* blkData = (unsigned char*)malloc(inf.size + 2);
 		tapGetBlockData(comp->tape,blk,blkData, inf.size + 2);
 #if 1
@@ -276,7 +276,7 @@ void xThread::emuCycle(Computer* comp) {
 			sndNsFixed += NS_TO_FIXED(tm);
 			// tape trap	TODO: rework it as a system breakpoint
 			int pc = cpu_get_pc(comp->cpu);
-			if ((comp->hw->grp == HWG_ZX) && (comp->mem->map[0].type == MEM_ROM) && comp->flgROM && !comp->flgDOS && !comp->flgEXT) {
+			if ((comp->mem->map[0].type == MEM_ROM) && comp->flgROM && !comp->flgDOS && !comp->flgEXT) {
 				if ((pc == 0x56c) || (pc == 0x5e7)) {	// load: ix:addr, de:len (0x580 ?) 56c/559
 					tap_catch_load(comp);
 				} else if (pc == 0x4d0) {				// save: ix:addr, de:len, a:block type(b7), hl:pilot len (1f80/0c98)?

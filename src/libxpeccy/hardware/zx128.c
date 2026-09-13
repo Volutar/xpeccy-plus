@@ -57,5 +57,5 @@ xPortDsc z128_port_tab[] = {
 	{-1, 0, 0}
 };
 
-HardWare z128_hw_core = {HW_ZX128,HWG_ZX,"ZX128","ZX 128K",16,MEM_128K,1.0,NULL,16,z128_port_tab,
+HardWare z128_hw_core = {HW_ZX128,"ZX128","ZX 128K",MEM_128K,1.0,NULL,z128_port_tab,
 			zx_init,z128MapMem,z128Out,z128In,stdMRd,stdMWr,zx_irq,zx_ack,zx_reset,zx_sync,zx_keyp,zx_keyr,zx_vol};

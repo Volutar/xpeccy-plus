@@ -91,5 +91,5 @@ xPortDsc p1m_port_tab[] = {
 	{-1, 0, 0}
 };
 
-HardWare p1m_hw_core = {HW_P1024,HWG_ZX,"Pentagon1024SL","Pentagon 1024 SL",16,MEM_1M,1.0,NULL,16,p1m_port_tab,
+HardWare p1m_hw_core = {HW_P1024,"Pentagon1024SL","Pentagon 1024 SL",MEM_1M,1.0,NULL,p1m_port_tab,
 			zx_init,p1mMapMem,p1mOut,p1mIn,stdMRd,stdMWr,zx_irq,zx_ack,zx_reset,zx_sync,zx_keyp,zx_keyr,zx_vol};

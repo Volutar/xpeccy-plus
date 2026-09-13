@@ -115,8 +115,7 @@ static void snd_start_playback() {
 // NOTE: need sync|flush devices if debug
 int sndSync(Computer* comp) {
 	if (!conf.emu.pause || comp->flgDBG) {
-		if (comp->hw->grp == HWG_ZX)
-			gsFlush(comp->gs);
+		gsFlush(comp->gs);
 //		saaFlush(comp->saa);
 		if (!conf.emu.fast && !conf.emu.pause) {
 			sndLev = comp->hw->vol(comp, &conf.snd.vol);

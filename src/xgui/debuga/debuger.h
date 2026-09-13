@@ -69,7 +69,6 @@ class DebugWin : public QMainWindow {
 		void updateStyle();
 	private:
 		unsigned block:1;
-		int tabMode;
 		cpuCore* curCpuCore;
 		QWidget* wid_cpu;
 		xDockWidget* wid_cpu_dock;
@@ -158,7 +157,6 @@ class DebugWin : public QMainWindow {
 		xItemDelegate* xid_none;
 		xItemDelegate* xid_byte;
 		xItemDelegate* xid_labl;
-		xItemDelegate* xid_octw;
 		xItemDelegate* xid_dump;
 
 		void fillCPU();
@@ -169,7 +167,6 @@ class DebugWin : public QMainWindow {
 		void fillPorts();
 		void setPortRow(int, QString, QString);
 		void setMiscBlocks();
-		void applyDockList();
 		void editWatchPorts();
 		void setLabelMenu(QWidget*, QString, QString, std::function<void()>);
 		void setHeaderMenu(QWidget*, QString, QString, std::function<void()>, int = 0);

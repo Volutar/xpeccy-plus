@@ -27,8 +27,7 @@ enum {
 	VID_BRD_SMALL,		// 288x224
 	VID_BRD_MEDIUM,		// 320x240
 	VID_BRD_FULL,		// 352x288
-	VID_BRD_OVERSCAN,	// as much as the machine's raster holds
-	VID_BRD_NATIVE		// whole visible area, as the layout puts it (non-ZX)
+	VID_BRD_OVERSCAN	// as much as the machine's raster holds
 };
 
 // screen mode

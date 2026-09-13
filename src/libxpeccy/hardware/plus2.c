@@ -97,5 +97,5 @@ xPortDsc pl2_port_tab[] = {
 	{-1, 0, 0}
 };
 
-HardWare pl2_hw_core = {HW_PLUS2A,HWG_ZX,"Plus2A","Spectrum +2A",16,MEM_128K,1.0,NULL,16,pl2_port_tab,
+HardWare pl2_hw_core = {HW_PLUS2A,"Plus2A","Spectrum +2A",MEM_128K,1.0,NULL,pl2_port_tab,
 			zx_init,pl2MapMem,pl2Out,pl2In,stdMRd,stdMWr,zx_irq,zx_ack,plusRes,zx_sync,zx_keyp,zx_keyr,zx_vol};

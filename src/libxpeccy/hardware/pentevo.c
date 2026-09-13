@@ -680,6 +680,6 @@ xPortDsc evo_port_tab[] = {
 	{-1, 0, 0}
 };
 
-HardWare evo_hw_core = {HW_PENTEVO,HWG_ZX,"Baseconf","ZX Evolution (BaseConf)",16,MEM_4M,1.0,NULL,16,evo_port_tab,
+HardWare evo_hw_core = {HW_PENTEVO,"Baseconf","ZX Evolution (BaseConf)",MEM_4M,1.0,NULL,evo_port_tab,
 			zx_init,evoMapMem,evoOut,evoIn,evoMRd,evoMWr,evo_irq,zx_ack,evoReset,zx_sync,evo_keyp,evo_keyr,zx_vol,
 			evo_snap_map};

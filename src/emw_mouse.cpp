@@ -5,7 +5,7 @@
 void MainWin::mousePressEvent(QMouseEvent *ev){
 	Computer* comp = conf.zx;
 	if (comp->flgDBG) {
-		if ((ev->button() == Qt::LeftButton) && (comp->hw->grp == HWG_ZX)) {
+		if (ev->button() == Qt::LeftButton) {
 			calcCoords(ev);
 		}
 		ev->ignore();
@@ -14,9 +14,8 @@ void MainWin::mousePressEvent(QMouseEvent *ev){
 			case Qt::LeftButton:
 				if (grabMice) {
 					comp->mouse->lmb = 1;
-				} else if (comp->hw->grp == HWG_ZX) {	// zx: print dot address
-					if (ev->modifiers() & Qt::ControlModifier)
-						calcCoords(ev);
+				} else if (ev->modifiers() & Qt::ControlModifier) {	// print dot address
+					calcCoords(ev);
 				}
 				break;
 			case Qt::RightButton:
@@ -96,7 +95,7 @@ void MainWin::wheelEvent(QWheelEvent* ev) {
 void MainWin::mouseMoveEvent(QMouseEvent *ev) {
 	Computer* comp = conf.zx;
 	if (!grabMice || conf.emu.pause) {
-		if ((ev->buttons() & Qt::LeftButton) && (comp->hw->grp == HWG_ZX)) {
+		if (ev->buttons() & Qt::LeftButton) {
 			calcCoords(ev);
 		}
 	} else if (dumove) {			// it was dummy move to center of screen

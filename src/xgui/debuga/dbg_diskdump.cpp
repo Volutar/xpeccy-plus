@@ -258,7 +258,6 @@ xDiskDumpWidget::xDiskDumpWidget(QString i, QString t, QWidget* p):xDockWidget(i
 	ui.cbDiskBytes->addItem("16/row", 16);
 	connect(ui.cbDiskBytes, SIGNAL(currentIndexChanged(int)), this, SLOT(bytes_changed()));
 
-	hwList << HWG_ZX;
 	setDrive(0);
 }
 

@@ -124,7 +124,6 @@ enum {
 	XTYPE_LABEL,
 	XTYPE_DUMP,
 	XTYPE_BYTE,
-	XTYPE_OCTWRD,
 };
 
 class xItemDelegate : public QItemDelegate {

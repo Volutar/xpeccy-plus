@@ -303,26 +303,12 @@ xMnem cpuDisasm(CPU* cpu, int adr, char* buf, cbdmr mrd, void* data) {
 						*buf++ = halfByte[tmp >> 4];
 						*buf++ = halfByte[tmp & 0x0f];
 						break;
-					case '6':		// = (adr + wrd[adr]) octal
-						dtw = mrd(adr++, data);
-						dtw |= (mrd(adr++, data) << 8);
-						mn.len += 2;
-						dtw += adr;
-						buf += sprintf(buf, "%o", dtw);
-						break;
 					case '7':		// = #adr
 						*buf++ = '#';
 						*buf++ = halfByte[(adr >> 12) & 0x0f];
 						*buf++ = halfByte[(adr >> 8) & 0x0f];
 						*buf++ = halfByte[(adr >> 4) & 0x0f];
 						*buf++ = halfByte[adr & 0x0f];
-						break;
-					case '8':		// = word (adr) octal
-						dtw = mrd(adr++, data);
-						dtw |= (mrd(adr++, data) << 8);
-						mn.len += 2;
-						// *buf++ = '#';
-						buf += sprintf(buf, "%o", dtw);
 						break;
 					case ':':
 						*buf++ = ':';
@@ -550,7 +536,6 @@ xRegister cpuGetReg(CPU* cpu, int id) {
 		reg.flag = rd->flag;
 		reg.name = rd->name;
 		reg.value = reg_get_value(cpu, rd);
-		reg.base = 0;
 	}
 	return reg;
 }

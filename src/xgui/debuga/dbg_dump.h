@@ -36,12 +36,6 @@ enum {
 	XVIEW_CPU,
 	XVIEW_RAM,
 	XVIEW_ROM,
-	XVIEW_SLT,
-};
-
-enum {
-	XVIEW_DEF = 0,
-	XVIEW_OCTWRD
 };
 
 class xDumpModel : public xTableModel {
@@ -58,13 +52,11 @@ class xDumpModel : public xTableModel {
 		Qt::ItemFlags flags(const QModelIndex&) const;
 		QVariant data(const QModelIndex&, int) const;
 		bool setData(const QModelIndex&, const QVariant&, int);
-		void setView(int);
 	signals:
 		void s_adrch(int);
 		void s_datach();
 	private:
 		int mode;
-		int view;
 		int page;
 		int pgbase;
 		int pgsize;
@@ -79,7 +71,6 @@ class xDumpTable:public QTableView {
 		int rows();
 		void setCodePage(int);
 		void setMode(int, int, int, int);
-		void setView(int);
 		void update();
 //		int getAdr();
 		unsigned int limit();
@@ -97,7 +88,6 @@ class xDumpTable:public QTableView {
 		void s_adrch(int);
 		void s_curadrch(int);
 	private:
-		int view;
 		int pagesize;
 		int pagenum;
 		int rowBytes;			// what setRowBytes was given
@@ -130,7 +120,6 @@ class xDumpWidget : public xDockWidget {
 	public slots:
 		void draw();
 		void setAdr(int);
-		void setBase(int, int);
 	private:
 		Ui::MemDump ui;
 		QMenu* cellMenu;
@@ -138,7 +127,6 @@ class xDumpWidget : public xDockWidget {
 		int romBase;
 		QItemDelegate* xid_addr;
 		QItemDelegate* xid_byte;
-		QItemDelegate* xid_octw;
 		QItemDelegate* xid_none;
 	private slots:
 		void adr_changed(int);

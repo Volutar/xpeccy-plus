@@ -39,7 +39,6 @@ typedef struct {
 #define REG_32		32
 // register flags (bit 0-7)
 #define REG_RO		1	// protect from changes in deBUGa
-#define REG_SEG		(1<<1)	// register is segment
 #define REG_RDMP	(1<<2)	// use register as line addr for regs-dump in deBUGa (new widget)
 // what a register is for (xRegDsc.group). Not a flag bit: a register has one
 #define REG_GRP_MAIN	1	// the working set (af, bc, a, x, ...)
@@ -52,15 +51,13 @@ typedef struct {
 #define REG_PC		(3<<8)	// execution pointer (pc, ip)
 #define REG_SP		(1<<8)	// stack (sp)
 #define REG_FLG		(2<<8)	// is flag
-#define REG_CS		(4<<8)	// code segment (base)
 
 typedef struct {
 	int id;
 	int size;
 	int flag;
 	const char* name;
-	int value;	// register value (selector)
-	int base;	// base address for segment register
+	int value;	// register value
 	int pair;	// id of register to show in the same line in deBUGa (0 = none)
 	int group;	// what the register is for, REG_GRP_* (0 = table says nothing)
 } xRegister;
@@ -126,15 +123,6 @@ struct opCode {
 };
 
 typedef struct {
-	int flag;
-	xreg16 ival;
-	xreg16 val;
-	int bper;
-	int per;
-	int cnt;
-} xTimer;
-
-typedef struct {
 	unsigned match:1;
 	int idx;
 	opCode* op;
@@ -142,27 +130,9 @@ typedef struct {
 	char arg[8][256];
 } xAsmScan;
 
-typedef struct {
-	int idx;			// 'visible' value
-	unsigned pl:2;			// priv.level
-	unsigned ar:5;			// type
-	unsigned ext:1;			// code is conforming | data is growing from limit to FFFF
-	unsigned wr:1;			// write enable (for data, 0 for code)
-	unsigned rd:1;			// read enable (for code, 1 for data)
-	unsigned pr:1;			// present
-	unsigned sys:1;			// !(ar & 0x10)
-	unsigned code:1;		// ar & 0x18 = 0x18
-	unsigned data:1;		// ar & 0x18 = 0x10
-	int base;		// segment base addr
-	int limit;			// segment size in bytes
-} xSegPtr;				// aka segment table descriptor
-
 enum {
 	CPUG_NONE = 0,
-	CPUG_X80,		// i8080-like (8080, z80, lr35902)
-	CPUG_MOS,		// 6502
-	CPUG_X86,		// x86
-	CPUG_PDP		// vm1,2
+	CPUG_X80		// i8080-like, which here means the z80
 };
 
 enum {
@@ -223,27 +193,6 @@ struct CPU {
 	reg16(twrd,hwr,lwr);
 	int tmpi;
 //	jmp_buf jbuf;			// for throws
-// internal timer (for vm1/2)
-	xTimer timer;
-// x86/87
-	// segment registers (+hidden parts)
-	xSegPtr cs;		// cs value,flag,base,limit
-	xSegPtr ss;		// ss value,flag,base,limit
-	xSegPtr ds;		// ds value,flag,base,limit
-	xSegPtr es;		// es value,flag,base,limit
-	xSegPtr gdtr;		// gdt (40 bits:base,limit)
-	xSegPtr idtr;		// idt (40 bits:base,limit)
-	xSegPtr ldtr;		// ldt (56 bits:idx,base,limit)
-	xSegPtr tsdr;		// task register (56 bits:idx,base,limit)
-	xSegPtr seg;		// operating segment (for EA and 'replace segment' prefixes)
-	xSegPtr gate;		// gate for far jmp/call/int
-	xSegPtr tmpdr;
-	struct {xSegPtr seg; reg16(adr,adrh,adrl); unsigned reg:1; unsigned cnt:5;} ea;
-	long double x87reg[9];	// x87 registers, [8] is readed from memory converted value
-	// callbacks, depend on x86 mode (real/prt)
-	unsigned char(*x86fetch)(CPU*);
-	unsigned char(*x86mrd)(CPU*,xSegPtr,int,unsigned short);
-	void(*x86mwr)(CPU*,xSegPtr,int,unsigned short,int);
 };
 
 struct cpuCore {

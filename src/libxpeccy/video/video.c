@@ -249,7 +249,6 @@ static void vid_crop_margin(Video* vid, vCoord mrg) {
 // size of the frame a mode gives on this machine, changing nothing
 vCoord vid_crop_size(Video* vid, int mode) {
 	vCoord sze, mrg;
-	if (mode == VID_BRD_NATIVE) return vid->vend;
 	mrg = brd_margin(vid, mode);
 	sze.x = vid->scrn.x + 2 * mrg.x;
 	sze.y = vid->scrn.y + 2 * mrg.y;
@@ -264,7 +263,6 @@ vCoord vid_crop_size(Video* vid, int mode) {
 void vid_widen_crop(Video* vid, int wid) {
 	vCoord mrg;
 	int mx;
-	if (vid->brdmode == VID_BRD_NATIVE) return;	// not a screen with a border around it
 	mrg = brd_margin(vid, vid->brdmode);
 	mx = (wid - vid->scrn.x) / 2;
 	if (mx > brd_max_x(vid)) mx = brd_max_x(vid);
@@ -274,13 +272,6 @@ void vid_widen_crop(Video* vid, int wid) {
 }
 
 void vid_upd_crop(Video* vid) {
-	if (vid->brdmode == VID_BRD_NATIVE) {		// whole visible area, as-is
-		vid->lcut.x = 0;
-		vid->lcut.y = 0;
-		vid->rcut = vid->vend;
-		vid->vsze = vid->vend;
-		return;
-	}
 	vid_crop_margin(vid, brd_margin(vid, vid->brdmode));
 }
 
@@ -325,7 +316,7 @@ void vid_set_resolution(Video* vid, int w, int h) {
 
 void vid_set_border(Video* vid, int brd) {
 	if (brd < VID_BRD_NONE) brd = VID_BRD_NONE;
-	else if (brd > VID_BRD_NATIVE) brd = VID_BRD_NATIVE;
+	else if (brd > VID_BRD_OVERSCAN) brd = VID_BRD_OVERSCAN;
 	vid->brdmode = brd;
 	vid_upd_crop(vid);
 }

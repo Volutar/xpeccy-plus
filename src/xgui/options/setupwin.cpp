@@ -14,7 +14,6 @@
 #include <QDirIterator>
 #include <QMessageBox>
 #include <QVector3D>
-#include <QLibrary>
 #include <QPainter>
 #include <QStyledItemDelegate>
 #include <QStylePainter>
@@ -782,7 +781,6 @@ void SetupWin::start() {
 	chasnow();
 	// the border sizes are a ZX thing: everything else keeps its layout's own
 	// visible area, and the slider would say nothing true about it
-	ui.bszsld->setEnabled(comp->hw->grp == HWG_ZX);
 	ui.bszsld->setValue(conf.vid.border);
 	chabsz();
 	ui.pathle->setText(QString::fromLocal8Bit(conf.scrShot.dir.c_str()));
@@ -1861,7 +1859,7 @@ void SetupWin::diskToRaw() {
 
 TRFile getHeadInfo(Tape* tape, int blk) {
 	TRFile res;
-	TapeBlockInfo inf = tapGetBlockInfo(tape,blk,TFRM_ZX);
+	TapeBlockInfo inf = tapGetBlockInfo(tape,blk);
 	unsigned char* dt = (unsigned char*)malloc(inf.size + 2);
 	tapGetBlockData(tape,blk,dt,inf.size+2);
 	for (int i=0; i<8; i++) res.name[i] = dt[i+2];
@@ -1931,7 +1929,7 @@ void SetupWin::copyToDisk() {
 		memcpy(&dsc.name[0],nm,8);
 		dsc.ext = 'C';
 		dsc.lst = dsc.hst = 0;
-		TapeBlockInfo binf = tapGetBlockInfo(comp->tape,dataBlock,TFRM_ZX);
+		TapeBlockInfo binf = tapGetBlockInfo(comp->tape,dataBlock);
 		int len = binf.size;
 		qDebug() << len;
 		if (len > 0xff00) {
@@ -1961,7 +1959,7 @@ void SetupWin::copyToDisk() {
 			return;
 		}
 	}
-	inf = tapGetBlockInfo(comp->tape,dataBlock,TFRM_ZX);
+	inf = tapGetBlockInfo(comp->tape,dataBlock);
 	dt = (unsigned char*)malloc(inf.size+2);		// +2 = +mark +crc
 	tapGetBlockData(comp->tape,dataBlock,dt,inf.size+2);
 	switch(diskCreateDescriptor(flp,&dsc)) {
@@ -2015,10 +2013,9 @@ void SetupWin::fillDiskCat() {
 // fixed sizes are the same everywhere, overscan is not
 void SetupWin::chabsz() {
 	Computer* comp = conf.zx;
-	int mode = brd_mode_for(comp, ui.bszsld->value());
+	int mode = ui.bszsld->value();
 	vCoord sze = vid_crop_size(comp->vid, mode);
-	QString nam = (mode == VID_BRD_NATIVE) ? "native" : brd_mode_name(mode);
-	ui.bszlab->setText(QString("%0 (%1×%2)").arg(nam).arg(sze.x).arg(sze.y));
+	ui.bszlab->setText(QString("%0 (%1×%2)").arg(brd_mode_name(mode)).arg(sze.x).arg(sze.y));
 }
 
 void SetupWin::chaflc() {
