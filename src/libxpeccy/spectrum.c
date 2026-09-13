@@ -553,12 +553,6 @@ Computer* compCreate() {
 	comp->joy = joyCreate();
 	comp->joyb = joyCreate();
 	comp->mouse = mouseCreate(comp_irq, comp);
-#ifndef XZXONLY
-	comp->ppi = ppi_create();
-	comp->ppib = ppi_create();
-	// comp->ps2c = ps2c_create(comp->keyb, comp->mouse, comp_irq, comp);
-	comp->ps2c = ps2c_create(comp_irq, comp);
-#endif
 // storage
 	comp->tape = tape_create(comp_irq, comp);
 	comp->dif = difCreate(DIF_NONE, comp_irq, comp);
@@ -572,22 +566,6 @@ Computer* compCreate() {
 	comp->sdrv = sdrvCreate(SDRV_NONE);
 	comp->saa = saaCreate();
 	comp->beep = bcCreate();
-#ifndef XZXONLY
-	comp->gbsnd = gbsCreate();
-	comp->nesapu = apuCreate(nes_apu_ext_rd, comp_irq, comp);
-// c64
-	comp->cia1 = cia_create(IRQ_CIA1, comp_irq, comp);
-	comp->cia2 = cia_create(IRQ_CIA2, comp_irq, comp);
-// ibm
-	comp->dma1 = dma_create(comp, 0);
-	comp->dma2 = dma_create(comp, 1);
-	comp->mpic = pic_create(1, comp_irq, comp);
-	comp->spic = pic_create(0, comp_irq, comp);
-	comp->pit = pit_create(comp_irq, comp);
-	comp->uart = uart_create(UART_DEFAULT, IRQ_COM1, comp_irq, comp);
-// pc9801;
-	comp->rtc = upd4990_create(comp_irq, comp);
-#endif
 // baseconf
 //tsconf
 	comp->tsconf.pwr_up = 1;
@@ -624,19 +602,6 @@ void compDestroy(Computer* comp) {
 	saaDestroy(comp->saa);
 	bcDestroy(comp->beep);
 	sltDestroy(comp->slot);
-#ifndef XZXONLY
-	gbsDestroy(comp->gbsnd);
-	apuDestroy(comp->nesapu);
-	ppi_destroy(comp->ppi);
-	ppi_destroy(comp->ppib);
-	ps2c_destroy(comp->ps2c);
-	dma_destroy(comp->dma1);
-	dma_destroy(comp->dma2);
-	pit_destroy(comp->pit);
-	cia_destroy(comp->cia1);
-	cia_destroy(comp->cia2);
-	upd4990_destroy(comp->rtc);
-#endif
 	free(comp);
 }
 
@@ -666,9 +631,6 @@ void compReset(Computer* comp,int res) {
 	vid_reset(comp->vid);
 	// kbdReleaseAll(comp->keyb);
 //	kbdSetMode(comp->keyb, KBD_SPECTRUM);
-#ifndef XZXONLY
-	ps2c_reset(comp->ps2c);
-#endif
 	difReset(comp->dif);
 	if (comp->gs->reset)
 		gsReset(comp->gs);
@@ -676,10 +638,6 @@ void compReset(Computer* comp,int res) {
 	ideReset(comp->ide);
 	saaReset(comp->saa);
 	sdcReset(comp->sdc);
-#ifndef XZXONLY
-	dma_reset(comp->dma1);
-	dma_reset(comp->dma2);
-#endif
 	compSetHwTurbo(comp, 1);		// whatever turbo it had switched on
 	if (comp->hw->reset)
 		comp->hw->reset(comp);
@@ -761,9 +719,6 @@ void comp_set_snow(Computer* comp, int on) {
 
 void comp_kbd_release(Computer* comp) {
 	kbdReleaseAll(comp->keyb);
-#ifndef XZXONLY
-	ps2c_clear(comp->ps2c);
-#endif
 }
 
 // hardware

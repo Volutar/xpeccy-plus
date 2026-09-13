@@ -28,7 +28,6 @@ void xTapeCatModel::fill(Tape* tap) {
 		int frm;
 		switch(conf.zx->hw->grp) {
 			case HWG_ZX: frm = TFRM_ZX; break;
-			case HWG_BK: frm = TFRM_BK; break;
 			default: frm = -1; break;	// no reader for this machine's tapes
 		}
 		inf = new TapeBlockInfo[row_count];

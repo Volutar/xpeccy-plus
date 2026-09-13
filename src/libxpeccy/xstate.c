@@ -104,8 +104,6 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 	}
 	ADD(comp->sdrv, sizeof(SDrive));
 	ADD(comp->saa, sizeof(saaChip));
-	ADD(comp->ppi, sizeof(PPI));
-	ADD(comp->ppib, sizeof(PPI));
 
 	// the storage controllers, their heads and their timers - but not the
 	// media. A floppy's own struct is taken up to its track data only, and an
@@ -114,7 +112,6 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 	if (comp->dif) {
 		ADD(comp->dif, sizeof(DiskIF));
 		ADD(comp->dif->fdc, offsetof(FDC, slst));
-		ADD(comp->dif->fdc2, offsetof(FDC, slst));
 		for (i = 0; i < 4; i++)
 			ADD(comp->dif->flp[i], offsetof(Floppy, data));
 	}
@@ -148,7 +145,6 @@ int xstate_safe(Computer* comp) {
 #endif
 	if (comp->dif) {
 		if (fdc_running(comp->dif->fdc)) return 0;
-		if (fdc_running(comp->dif->fdc2)) return 0;
 	}
 	return 1;
 }

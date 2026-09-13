@@ -836,172 +836,9 @@ ataAddr ide_profi_decode(int port, int dosen, int wr) {
 	return res;
 }
 
-// smk
-
-ataAddr ide_smk_decode(int port, int dosen, int wr) {
-	ataAddr res;
-	res.iorq = ((port & 0xfff0) == 0xffe0) ? 1 : 0;
-	res.hdd = 1;
-	res.port = ((port >> 1) & 7) ^ 7;
-	res.high = 0;
-	if (port & 1) res.port |= 0x10;	// 0x16, 0x17
-	if (res.port == 0x10) {
-		res.high = 1;
-		res.port = HDD_DATA;
-	}
-	return res;
-}
-
-void ide_smk_wr(IDE* ide, ataAddr adr, int val) {
-	if (adr.hdd) {
-		if (adr.port == HDD_DATA) {
-			if (adr.high) {
-				ide->bus &= 0x00ff;
-				ide->bus |= ((val << 8) & 0xff);
-				ataWr(ide->curDev, adr.port, ide->bus);
-			} else {
-				ide->bus &= 0xff00;
-				ide->bus |= (val & 0xff);
-			}
-		} else {
-			ide->bus &= 0xff00;
-			ide->bus |= (val & 0xff);
-			ataWr(ide->curDev, adr.port, ide->bus);
-		}
-	}
-}
-
-// upd7261 (nec pc98xx)
-// expected: wr 1,08; wr 1,40; rd 1, bit5 must be 0
-//		wr 1,00; rd 1, b6,7 must be 0		// invalid com ?
-
-#define flgBSY	flag[0]		// 0 when waiting command
-#define flgCOM	flag[1]		// if (bsy==1): 1:command written, waiting for regPCNT param, 0:execution phase
-#define flgDRQ	flag[2]
-
-#define regERR	reg[4]		// command execution result (b5,6 of status reg)
-#define regCNT	reg[5]		// 1 to regPCNT = param number
-#define regPCNT reg[6]		// waited params count for given command
-#define regCOM	reg[7]
-#define regPAR(_n) reg[7+(_n)]
-
-ataAddr ide_pc98_decode(int port, int dosen, int wr) {
-	ataAddr res;
-	res.iorq = ((port & 0x00fd) == 0x80);
-	res.port = (port >> 1) & 1;
-	res.hdd = 0;
-	res.high = 0;
-	return res;
-}
-
-typedef struct {
-	int mask;
-	int val;
-	int pcnt;
-	void(*exec)(IDE*);
-} ideCallItem;
-ideCallItem pc98_ide_tab[] = {
-	{0x1e, 0x08, 0, NULL},		// detect error
-	{0x1e, 0x0a, 0, NULL},		// recalibrate
-	{0x1e, 0x0c, 2, NULL},		// seek
-	{0x1e, 0x0e, 6, NULL},		// format
-	{0x1e, 0x10, 3, NULL},		// verify id
-	{0x1e, 0x12, 3, NULL},		// read id
-	{0x1e, 0x14, 2, NULL},		// diagnostic
-	{0x1e, 0x16, 7, NULL},		// read data
-	{0x1e, 0x18, 7, NULL},		// check
-	{0x1e, 0x1a, 7, NULL},		// scan
-	{0x1e, 0x1c, 7, NULL},		// verify
-	{0x1e, 0x1e, 7, NULL},		// write data
-	{0x1e, 0x02, 1, NULL},		// sense interrupt status
-	{0x1e, 0x04, 8, NULL},		// specify
-	{0x1e, 0x06, 0, NULL},		// sense unit status
-	{0, 0, 0, NULL}
-};
-
-ideCallItem* ide_pc98_getcom(int val) {
-	ideCallItem* itm = pc98_ide_tab;
-	while((itm->mask != 0) && ((itm->val ^ val) & itm->mask)) {
-		itm++;
-	}
-	return itm;
-}
-
-// exec ide->regCOM, fifo is ide->regPAR[]
-void ide_pc98_exec(IDE* ide) {
-	ide->flgCOM = 0;
-	ideCallItem* itm = ide_pc98_getcom(ide->regCOM);
-	if (itm->mask == 0) {
-		ide->flgBSY = 0;
-		ide->regERR = 3;			// 11:invalid command
-	} else {
-		if (itm->exec) {
-			ide->flgBSY = 1;
-			ide->regERR = 0;		// 00:in progress
-			itm->exec(ide);
-		} else {
-			ide->flgBSY = 0;
-			ide->regERR = 2;		// 10:succes
-			xlog(XLG_DISK, XLL_DEBUG, "pc9801 ide exec com (NULL): %.2X", ide->regCOM);
-		}
-	}
-}
-
-// adr.port = 0/1 (data/command-status)
-void ide_pc98_wr(IDE* ide, ataAddr adr, int val) {
-	if (adr.port & 1) {		// command
-		if (ide->flgBSY) {
-			if (ide->flgCOM) {	// write params
-				ide->regPAR(ide->regCNT) = val;
-				ide->regCNT++;
-				if (ide->regCNT > ide->regPCNT) {
-					ide_pc98_exec(ide);
-				}
-			} else {
-					// no effect?
-			}
-		} else {		// write command
-			ide->regCOM = val;
-			ideCallItem* itm = ide_pc98_getcom(val);
-			if (itm->mask == 0x00) {
-				ide->flgBSY = 0;
-				ide->regERR = 3;	// 11:invalid command
-			} else {
-				if (itm->pcnt) {		// params needed
-					ide->regCNT = 1;
-					ide->regPCNT = itm->pcnt;
-					ide->flgCOM = 1;
-				} else {			// no params, execute
-					ide_pc98_exec(ide);
-				}
-			}
-		}
-	} else {			// data
-
-	}
-}
-
-int ide_pc98_rd(IDE* ide, ataAddr adr) {
-	int res = 0;
-	if (adr.port & 1) {		// status
-		// b7:busy (flgBSY)
-		// b5,6:execution status:00-in process,01-error,10-success,11-invalid command
-		// b4:sense interrupt status (IS comamnds must be called)
-		// b3:address mark not found (0)
-		// b2:ID crc error (0)
-		// b1:sector not found
-		// b0:DRQ (flgDRQ)
-		res = (ide->flgBSY << 7) | ((ide->regERR & 3) << 5) | (ide->flgDRQ);
-	} else {			// data
-
-	}
-	return res;
-}
-
 // others
 
 ataAddr ideDecoder(IDE* ide, int port, int dosen, int wr) {
-#if 1
 	ataAddr res;
 	res.port = 0xff;
 	res.iorq = 0;
@@ -1014,127 +851,17 @@ ataAddr ideDecoder(IDE* ide, int port, int dosen, int wr) {
 		}
 	}
 	return res;
-#else
-	ataAddr res;
-	res.port = 0xff;
-	res.iorq = 0;
-	res.hdd = 0;
-	res.high = 0;
-	switch (ide->type) {
-		case IDE_ATM:
-			res.iorq = (((port & 0x001f) == 0x000f) && dosen) ? 1 : 0;
-			res.hdd = 1;
-			res.high = ((port & 0x1ff) == 0x10f) ? 1 : 0;
-			res.port = (port & 0xe0) >> 5;
-			break;
-		case IDE_NEMO_EVO:
-			res.iorq = (((port & 0xff) == 0xc8) || ((port & 0xff) == 0x11) || ((port & 0x1f) == 0x10)) ? 1 : 0;
-			res.hdd = 1;
-			res.high = ((port & 0xff) == 0x11) ? 1 : 0;
-			res.port = (port & 0xe0) >> 5;
-			break;
-		case IDE_NEMO:
-		case IDE_NEMOA8:
-			res.iorq = (dosen || (port & 6)) ? 0 : 1;
-			res.hdd = 1;
-			if (ide->type == IDE_NEMO) res.high = ((port & 0xe1) == 0x01) ? 1 : 0;
-			if (ide->type == IDE_NEMOA8) res.high = ((port & 0x1e0) == 0x100) ? 1 : 0;
-			res.port = (port & 0xe0) >> 5;		//  | (((port & 0x18) ^ 0x18) << 5) | 0x00f0);
-			break;
-		case IDE_SMUC:
-			res.iorq = (((port & 0x18a3) == 0x18a2) && dosen) ? 1 : 0;
-			res.hdd = ((port & 0xf8ff) == 0xf8be) ? 1 : 0;
-			if (port == 0xd8be) {
-				res.hdd = 1;
-				res.high = 1;
-			}
-			res.port = (port & 0x700) >> 8;
-			break;
-		case IDE_PROFI:
-			if (wr) port ^= 0x20;	// wr: eb -> cb; wr 0eb<->0cb; now rd/wr 0EB is data high
-			res.iorq = (((port & 0x00ff) == 0x00cb) || ((port & 0x7ff) == 0xeb)) ? 1 : 0;
-			if (port == 0x06ab) {
-				res.hdd = 0;
-				res.iorq = 1;
-			} else {
-				res.hdd = 1;
-			}
-			res.port = (port & 0x700) >> 8;
-			res.high = ((port & 0x7ff) == 0xeb) ? 1 : 0;
-			break;
-		case IDE_SMK:
-			res.iorq = ((port & 0xfff0) == 0xffe0) ? 1 : 0;
-			res.hdd = 1;
-			res.port = ((port >> 1) & 7) ^ 7;
-			res.high = 0;
-			if (port & 1) res.port |= 0x10;	// 0x16, 0x17
-			if (res.port == 0x10) {
-				res.high = 1;
-				res.port = HDD_DATA;
-			}
-			break;
-	}
-	return res;
-#endif
 }
 
 int ideIn(IDE* ide, int port, int* val, int dosen) {
 	ataAddr adr = ideDecoder(ide, port, dosen, 0);
 	if (!adr.iorq) return 0;
-#if 1
 	int res = 0xff;
 	if (ide->core) {
 		if (ide->core->read)
 			res = ide->core->read(ide, adr);
 	}
 	*val = res;
-#else
-	if (adr.hdd) {
-		if (ide->type == IDE_NEMO_EVO) {
-			if (adr.port == 0) {
-				if (adr.high) {
-					ide->hiTrig = 0;				// 11 : high, next 10 is low
-				} else {
-					if (ide->hiTrig) adr.high = 1;			// 10 : high byte
-					ide->hiTrig ^= 1;				// switch trigger
-				}
-			} else {
-				ide->hiTrig = 0;		// non-data ports : next 10 is low
-			}
-		}
-		if (adr.high) {
-			*val = ((ide->bus & 0xff00) >> 8);
-		} else {
-			ide->bus = ataRd(ide->curDev,adr.port);
-			*val = (ide->bus & 0x00ff);
-		}
-	} else {
-		if (ide->type == IDE_SMUC) {
-			//printf("smuc rd %.4X\n",port);
-			switch (port) {
-				case 0x5fba:		// version
-					*val = 0x28;	// 1
-					break;
-				case 0x5fbe:		// revision
-					*val = 0x40;	// 2
-					break;
-				case 0xffba:		// system
-					*val = (nvRd(ide->smuc.nv) ? 0xff : 0xbf);	// TODO: b7: INTRQ from HDD/CF, b6:SDA?
-					break;
-				case 0x7fba:		// virtual fdd
-					*val = ide->smuc.fdd | 0x3f;
-					break;
-				case 0x7ebe:		// pic (not used)
-				case 0x7fbe:
-					*val = 0xff;
-					break;
-				case 0xdfba:		// cmos
-					*val = (ide->smuc.sys & 0x80) ? 0xff : cmos_rd(ide->smuc.cmos, CMOS_DATA); // ide->smuc.cmos->data[ide->smuc.cmos->adr];
-					break;
-			}
-		}
-	}
-#endif
 	return 1;
 }
 
@@ -1142,93 +869,12 @@ int ideIn(IDE* ide, int port, int* val, int dosen) {
 int ideOut(IDE* ide, int port, int val,int dosen) {
 	ataAddr adr = ideDecoder(ide,port,dosen,1);
 	if (!adr.iorq) return 0;
-#if 1
 	if (adr.hdd && (adr.port == HDD_HEAD))
 		ide->curDev = (val & HDF_DRV) ? ide->slave : ide->master;	// write to head reg: select MASTER/SLAVE
 	if (ide->core) {
 		if (ide->core->write)
 			ide->core->write(ide, adr, val);
 	}
-#else
-	if (adr.hdd) {
-		if (adr.port == HDD_HEAD)
-			ide->curDev = (val & HDF_DRV) ? ide->slave : ide->master;	// write to head reg: select MASTER/SLAVE
-		if (ide->type == IDE_NEMO_EVO) {
-			if (adr.port == HDD_DATA) {
-				if (adr.high) {
-					ide->bus &= 0x00ff;
-					ide->bus |= (val << 8);
-					ide->hiTrig = 2;		// 11 : high, next 10 is low+wr
-				} else {
-					if (ide->hiTrig == 0) {		// 10 : low
-						ide->bus &= 0xff00;
-						ide->bus |= (val & 0xff);
-						ide->hiTrig = 1;
-					} else if (ide->hiTrig == 1) {	// 10 : high + wr
-						ide->bus &= 0x00ff;
-						ide->bus |= ((val & 0xff) << 8);
-						ataWr(ide->curDev,0,ide->bus);
-						ide->hiTrig = 0;
-					} else if (ide->hiTrig == 2) {	// 10 : low + wr (after 11)
-						ide->bus &= 0xff00;
-						ide->bus |= val;
-						ataWr(ide->curDev,0,ide->bus);
-						ide->hiTrig = 0;
-					}
-				}
-			} else {
-				ide->hiTrig = 0;		// non-data ports : next 10 is low
-				ataWr(ide->curDev,adr.port,val);
-			}
-		} else if (ide->type == IDE_SMK) {
-			if (adr.port == HDD_DATA) {
-				if (adr.high) {
-					ide->bus &= 0x00ff;
-					ide->bus |= ((val << 8) & 0xff);
-					ataWr(ide->curDev,adr.port,ide->bus);
-				} else {
-					ide->bus &= 0xff00;
-					ide->bus |= (val & 0xff);
-				}
-			} else {
-				ide->bus &= 0xff00;
-				ide->bus |= (val & 0xff);
-				ataWr(ide->curDev,adr.port,ide->bus);
-			}
-		} else {
-			if (adr.high) {
-				ide->bus &= 0x00ff;
-				ide->bus |= (val << 8);
-			} else {
-				ide->bus &= 0xff00;
-				ide->bus |= val;
-				ataWr(ide->curDev,adr.port,ide->bus);
-			}
-		}
-	} else {
-		if (ide->type == IDE_SMUC) {
-			//printf("smuc wr %.4X,%.2X\n",port,val);
-			switch (port) {
-				case 0xffba:			// system
-					ide->smuc.sys = val;
-					nvWr(ide->smuc.nv, val & 0x10, val & 0x40, val & 0x20);		// nv,sda,scl,wp
-					break;
-				case 0x7fba:			// virtual fdd
-					ide->smuc.fdd = val & 0xc0;
-					break;
-				case 0xdfba:			// cmos
-					if (ide->smuc.sys & 0x80) {		// data
-						cmos_wr(ide->smuc.cmos, CMOS_DATA, val);
-						// ide->smuc.cmos->data[ide->smuc.cmos->adr] = val;
-					} else {				// address
-						cmos_wr(ide->smuc.cmos, CMOS_ADR, val);
-						// ide->smuc.cmos->adr = val;
-					}
-					break;
-			}
-		}
-	}
-#endif
 	return 1;
 }
 
@@ -1245,8 +891,6 @@ IDECore ide_core_tab[] = {
 	{IDE_ATM,	ide_atm_decode,		ide_common_rd,	ide_common_wr},
 	{IDE_NEMO_EVO,	ide_nemoevo_decode,	ide_nemoevo_rd,	ide_nemoevo_wr},
 	{IDE_PROFI,	ide_profi_decode,	ide_common_rd,	ide_common_wr},
-	{IDE_SMK,	ide_smk_decode,		ide_common_rd,	ide_smk_wr},
-	{IDE_UPD7261,	ide_pc98_decode,	ide_pc98_rd,	ide_pc98_wr},
 	{IDE_NONE,	NULL,			NULL,		NULL}
 };
 

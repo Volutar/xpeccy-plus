@@ -16,10 +16,6 @@ typedef struct Video Video;
 #include <stdint.h>
 
 #include "ulaplus.h"
-#include "v9938.h"
-#include "gbcvideo.h"
-#include "nesppu.h"
-#include "upd7220.h"
 
 #define vid_irq(_v, _n) _v->xirq(_n, _v->xptr)
 
@@ -51,43 +47,7 @@ enum {
 	VID_TSL_256,	// TSConf 8bpp
 	VID_TSL_NORMAL,	// TSConf common screen
 	VID_TSL_TEXT,
-	VID_PRF_MC,	// Profi multicolor
-// v99xx
-//	VID_V9938,	// MSX2
-	VDP_TEXT1,
-	VDP_GRA1,
-	VDP_GRA2,
-	VDP_MCOL,
-	VDP_GRA3,
-	VDP_GRA4,
-	VDP_GRA5,
-	VDP_GRA6,
-	VDP_GRA7,
-	VDP_TEXT2,
-// game boy color
-	VID_GBC,	// Gameboy
-// nes
-	VID_NES,	// NES PPU
-// c64
-	VID_C64_TEXT,
-	VID_C64_TEXT_MC,
-	VID_C64_BITMAP,
-	VID_C64_BITMAP_MC,
-// bk
-	VID_BK_BW,
-	VID_BK_COL,
-// specialist
-	VID_SPCLST,
-// cga/ega/vga
-	CGA_TXT_L,	// txt 40
-	CGA_TXT_H,	// txt 80
-	CGA_GRF_L,	// grf 320 2bpp (cga)
-	CGA_GRF_H,	// grf 640 1bpp (cga)
-	VGA_GRF_L,	// grf 320 4bpp (ega)
-	VGA_GRF_H,	// grf 640 4bpp (ega)
-	VGA_GRF_256,	// grf 320 8bpp (vga)
-// pc98xx
-	VID_PC98XX
+	VID_PRF_MC	// Profi multicolor
 };
 
 extern int bufSize;
@@ -361,8 +321,6 @@ struct Video {
 	bool flag[256];
 
 	ulaPlus* ula;
-	upd7220* txt7220;
-	upd7220* grf7220;
 };
 
 Video* vidCreate(cbxrd, cbirq, void*);

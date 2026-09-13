@@ -13,7 +13,6 @@
 #include "dbg_finder.h"
 #include "dbg_memfill.h"
 #include "dbg_sprscan.h"
-#include "dbg_vmem_dump.h"
 #include "dbg_rdump.h"
 #include "dbg_palette.h"
 #include "dbg_heat.h"
@@ -40,52 +39,10 @@ class xAYWidget : public xDockWidget {
 
 // cia
 
-#ifndef XZXONLY
-
-#include "ui_form_cia.h"
-
-class xCiaWidget : public xDockWidget {
-	Q_OBJECT
-	public:
-		xCiaWidget(QString, QString, QWidget* = nullptr);
-	public slots:
-		void draw();
-	private:
-		Ui::CIAWidget ui;
-};
-
-#endif
 
 // cmos
 #include "dbg_cmos_dump.h"
 
-#ifndef XZXONLY
-
-// dma
-
-class xDmaTableModel : public xTableModel {
-	public:
-		xDmaTableModel(QObject* = nullptr);
-	private:
-		int rowCount(const QModelIndex& = QModelIndex()) const;
-		int columnCount(const QModelIndex& = QModelIndex()) const;
-		QVariant data(const QModelIndex&, int) const;
-		QVariant headerData(int, Qt::Orientation, int = Qt::DisplayRole) const;
-};
-
-#include "ui_form_dma.h"
-
-class xDmaWidget : public xDockWidget {
-	Q_OBJECT
-	public:
-		xDmaWidget(QString, QString, QWidget* = nullptr);
-	public slots:
-		void draw();
-	private:
-		Ui::DMAWidget ui;
-};
-
-#endif
 
 // fdc
 
@@ -103,105 +60,6 @@ class xFDDWidget : public xDockWidget {
 
 // gameboy
 
-#ifndef XZXONLY
-
-#include "ui_form_gameboy.h"
-#include "ui_form_vga.h"
-
-class xGameboyWidget : public xDockWidget {
-	Q_OBJECT
-	public:
-		xGameboyWidget(QString, QString, QWidget* = nullptr);
-	public slots:
-		void draw();
-	private:
-		Ui::GBWidget ui;
-};
-
-class xGBVideoModel : public xTableModel {
-	public:
-		xGBVideoModel(QObject* = nullptr);
-	private:
-		int rowCount(const QModelIndex& = QModelIndex()) const;
-		int columnCount(const QModelIndex& = QModelIndex()) const;
-		QVariant data(const QModelIndex&, int) const;
-};
-
-class xGBVideoWidget : public xDockWidget {
-	Q_OBJECT
-	public:
-		xGBVideoWidget(QString, QString, QWidget* = nullptr);
-	public slots:
-		void draw();
-	private:
-		Ui::TableWidget ui;
-};
-
-// nesapu
-
-// nesppu
-
-#include "ui_form_nesppu.h"
-
-class xPPUWidget : public xDockWidget {
-	Q_OBJECT
-	public:
-		xPPUWidget(QString, QString, QWidget* = nullptr);
-	public slots:
-		void draw();
-	private:
-		Ui::PPUWidget ui;
-};
-
-// pic
-
-class xPicModel : public xTableModel {
-	public:
-		xPicModel(QObject* = NULL);
-	private:
-		int rowCount(const QModelIndex& = QModelIndex()) const;
-		int columnCount(const QModelIndex& = QModelIndex()) const;
-		QVariant data(const QModelIndex&, int) const;
-		QVariant headerData(int, Qt::Orientation, int = Qt::DisplayRole) const;
-};
-
-#include "ui_form_pic.h"
-
-class xPicWidget : public xDockWidget {
-	Q_OBJECT
-	public:
-		xPicWidget(QString, QString, QWidget* = nullptr);
-	public slots:
-		void draw();
-	private:
-		Ui::PICWidget ui;
-};
-
-// pit
-
-class xPitModel : public xTableModel {
-	public:
-		xPitModel(QObject* = NULL);
-	private:
-		int rowCount(const QModelIndex& = QModelIndex()) const;
-		int columnCount(const QModelIndex& = QModelIndex()) const;
-		QVariant data(const QModelIndex&, int) const;
-		QVariant headerData(int, Qt::Orientation, int = Qt::DisplayRole) const;
-};
-
-#include "ui_form_pit.h"
-
-class xPitWidget : public xDockWidget {
-	Q_OBJECT
-	public:
-		xPitWidget(QString, QString, QWidget* = nullptr);
-	public slots:
-		void draw();
-	private:
-		Ui::PITWidget ui;
-};
-
-#endif
 
 // tape
 
@@ -217,57 +75,6 @@ class xTapeWidget : public xDockWidget {
 		Ui::TapeWidget ui;
 };
 
-#ifndef XZXONLY
-
-// vga
-
-class xVgaRegModel : public xTableModel {
-	public:
-		xVgaRegModel(QObject* = nullptr);
-	private:
-		int rowCount(const QModelIndex&) const;
-		int columnCount(const QModelIndex&) const;
-		QVariant data(const QModelIndex&, int) const;
-		QVariant headerData(int, Qt::Orientation, int = Qt::DisplayRole) const;
-};
-
-#include "ui_form_vga.h"
-
-class xVgaWidget : public xDockWidget {
-	Q_OBJECT
-	public:
-		xVgaWidget(QString, QString, QWidget* = nullptr);
-	public slots:
-		void draw();
-	private:
-		Ui::TableWidget ui;
-};
-
-// vic-ii
-
-class xVicRegsModel : public xTableModel {
-	public:
-		xVicRegsModel(QObject* = nullptr);
-	private:
-		int rowCount(const QModelIndex&) const;
-		int columnCount(const QModelIndex&) const;
-		QVariant data(const QModelIndex&, int) const;
-		QVariant headerData(int, Qt::Orientation, int = Qt::DisplayRole) const;
-};
-
-#include "ui_form_vic.h"
-
-class xVicWidget : public xDockWidget {
-	Q_OBJECT
-	public:
-		xVicWidget(QString, QString, QWidget* = nullptr);
-	public slots:
-		void draw();
-	private:
-		Ui::VICWidget ui;
-};
-
-#endif
 
 // zxscr
 
@@ -288,18 +95,3 @@ class xZXScrWidget : public xDockWidget {
 
 // ps/2
 
-#ifndef XZXONLY
-
-#include "ui_form_ps2.h"
-
-class xPS2Widget : public xDockWidget {
-	Q_OBJECT
-	public:
-		xPS2Widget(QString, QString, QWidget* = nullptr);
-	public slots:
-		void draw();
-	private:
-		Ui::PS2Widget ui;
-};
-
-#endif

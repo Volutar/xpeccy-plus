@@ -30,8 +30,7 @@ enum {
 };
 
 enum {
-	TFRM_ZX = 0,
-	TFRM_BK
+	TFRM_ZX = 0
 };
 
 #define	TAPE_TEXT_LEN	64	// room for a block label out of a tape image

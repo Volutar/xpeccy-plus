@@ -162,163 +162,6 @@ void pdosSync(DiskIF* dif, int ns) {
 */
 }
 
-#ifndef XZXONLY
-
-// pc (i8272 = upd765)
-
-int dpcIn(DiskIF* dif, int port, int* rptr, int dos) {
-	int res = 0xff;
-	switch (port & 7) {
-		case 0:
-			// b4:trk 0
-			// b3:side
-			// b2:index
-			// b1:wr protect
-			// b0:step dir
-			res = 0;
-			if (!dif->fdc->flp->trk == 0) res |= 0x10;
-			if (dif->fdc->side) res |= 0x08;
-			if (!dif->fdc->flp->index) res |= 0x04;
-			if (!dif->fdc->flp->protect) res |= 0x02;
-			if (dif->fdc->dir) res |= 0x01;
-			break;
-		case 1:
-			// b5:drive (0:a, 1:b)
-			// b4:wr
-			// b3:rd
-			// b2:write enable
-			// b1:drv 1 motor enable
-			// b0:drv 0 motor enable
-			res = 0;
-			if (dif->fdc->flp->id & 1) res |= 0x20;
-			if (dif->fdc->flop[1]->motor) res |= 2;
-			if (dif->fdc->flop[0]->motor) res |= 1;
-			break;
-		case 4:
-		case 5: res = uRead(dif->fdc, port & 1);
-			break;
-		case 7:
-			// b0: HD
-			// b7: disk changing (set on interrupt, reset on reading)
-			res = 0x7f;
-			if (!dif->fdc->flp->door) {
-				res |= 0x80;
-			} else if (dif->flpch) {
-				res |= 0x80;
-				dif->flpch = 0;
-			}
-			break;
-	}
-	*rptr = res;
-	return 1;
-}
-
-int dpcOut(DiskIF* dif, int port, int val, int dos) {
-	switch (port & 7) {
-		case 2:
-			// b4..7 = motor drive 0..3 (if 1, motor on when drive selected)
-			// b3 = enable int/dma
-			// b2 = 0:fdc reset
-			// b0,1 = drive select
-			dif->fdc->flp = dif->fdc->flop[val & 3];
-			if (val & (0x10 << (val & 3)))
-				dif->fdc->flp->motor = 1;
-			if (!(val & 4)) uReset(dif->fdc);
-			dif->inten = (val & 8) ? 1 : 0;
-			break;
-		case 4:
-		case 5: uWrite(dif->fdc, port & 1, val);
-			break;
-		case 6:
-			/*03F6	r/w	FIXED disk controller data register
-				 bit 7-4    reserved
-				 bit 3 = 0  reduce write current
-					 1  head select 3 enable
-				 bit 2 = 1  disk reset enable
-					 0  disk reset disable
-				 bit 1 = 0  disk initialization enable
-					 1  disk initialization disable
-				 bit 0	    reserved*/
-			break;
-		case 7:
-			// b0,1 = transfer rate: 00:500Kbit/s, 01:reserved,10:250Kbit/s, 11:reserved
-			switch(val & 3) {
-				case 0: dif->fdc->bytedelay = 16000; break;	// ns/byte
-				case 2: dif->fdc->bytedelay = 32000; break;
-			}
-			break;
-	}
-	return 1;
-}
-
-void dpc_irq(DiskIF* dif, int id) {
-	switch(id) {
-		case IRQ_FDD_RDY:			// NOTE: for 1st fdc only ?
-			dif->fdc->sr0 &= 0x1f;
-			dif->fdc->sr0 |= 0xc0;		// 110xxxxx: ready changed
-			dif->fdc->xirq(dif->fdc->irqn, dif->fdc->xptr);
-			dif->flpch = 1;
-			break;
-	}
-}
-
-void dpc_term(DiskIF* dif) {
-	uTCount(dif->fdc);
-}
-
-// pc98xx (upD765)
-
-// b0,1 = port
-// b2 = select 2nd fdc
-int p98in(DiskIF* dif, int port, int* rptr, int dos) {
-	int res = -1;
-	FDC* fdc = (port & 4) ? dif->fdc2 : dif->fdc;
-	switch(port & 3) {
-		case 0: res = uRead(fdc, 0); break;		// status
-		case 1: res = uRead(fdc, 1); break;		// data
-		case 2: res = 0x40; break;			// b6=1, b3=fdd2/3type(0:1mb,1:640kb),b2=fdd0/1type
-	}
-	*rptr = res;
-	return 1;
-}
-
-int p98out(DiskIF* dif, int port, int val, int dos) {
-	FDC* fdc = (port & 4) ? dif->fdc2 : dif->fdc;
-	switch(port & 3) {
-		case 1: uWrite(fdc, 1, val); break;			// com/param/data
-		case 2:	if (!(val & 0x80)) uReset(fdc);			// control register: b7:rst, b6:rdy, b4:1
-			break;
-	}
-	return 1;
-}
-
-void p98sync(DiskIF* dif, int ns) {
-	fdcSync(dif->fdc, ns);
-	fdcSync(dif->fdc2, ns);
-}
-
-// bk
-
-void vp1_reset(FDC*);
-unsigned short vp1_rd(FDC*, int);
-void vp1_wr(FDC*, int, unsigned short);
-
-void bkdReset(DiskIF* dif) {
-	vp1_reset(dif->fdc);
-}
-
-// rd doesn't using *res as result, it will return full 16-bit value
-int bkdIn(DiskIF* dif, int port, int* res, int dos) {
-	return vp1_rd(dif->fdc, port & 1) & 0xffff;
-}
-
-// wr will use *dos* argument as 16-bit value to write
-int bkdOut(DiskIF* dif, int port, int val, int dos) {
-	vp1_wr(dif->fdc, port & 1, dos & 0xffff);
-	return 1;
-}
-
-#endif
 
 // common
 
@@ -326,11 +169,6 @@ static DiskHW dhwTab[] = {
 	{DIF_NONE,dumReset,dumIn,dumOut,dumSync,NULL,NULL},
 	{DIF_BDI,bdiReset,bdiIn,bdiOut,dhwSync,NULL,NULL},
 	{DIF_P3DOS,pdosReset,pdosIn,pdosOut,pdosSync,NULL,NULL},		// upd765 (+3dos)
-#ifndef XZXONLY
-	{DIF_PC,pdosReset,dpcIn,dpcOut,pdosSync,dpc_irq,dpc_term},		// i8272 = upd765
-	{DIF_PC98,pdosReset,p98in,p98out,p98sync,NULL,dpc_term},		// upd765 (pc98)
-	{DIF_SMK512,bkdReset,bkdIn,bkdOut,dhwSync,NULL,NULL},
-#endif
 	{DIF_END,NULL,NULL,NULL,NULL,NULL,NULL}
 };
 
@@ -391,15 +229,11 @@ DiskIF* difCreate(int type, cbirq cb, void* p) {
 	DiskIF* dif = (DiskIF*)malloc(sizeof(DiskIF));
 	dif->fdc = fdc_create(cb, p);
 	fdc_set_irqn(dif->fdc, IRQ_FDC, IRQ_FDC_RD, IRQ_FDC_WR);
-	dif->fdc2 = fdc_create(cb, p);
-	fdc_set_irqn(dif->fdc2, IRQ_FDC2, IRQ_FDC2_RD, IRQ_FDC2_WR);
 	for (int i = 0; i < 4; i++) {
 		dif->flp[i] = flpCreate(i, dhw_irq, dif);
 		dif->fdc->flop[i] = dif->flp[i];
-		dif->fdc2->flop[i] = dif->flp[i];
 	}
 	dif->fdc->flp = dif->fdc->flop[0];
-	dif->fdc2->flp = dif->fdc->flop[0];
 	difSetHW(dif, type);
 	return dif;
 }
@@ -410,7 +244,6 @@ void difDestroy(DiskIF* dif) {
 	flpDestroy(dif->flp[2]);
 	flpDestroy(dif->flp[3]);
 	fdc_destroy(dif->fdc);
-	fdc_destroy(dif->fdc2);
 	free(dif);
 }
 

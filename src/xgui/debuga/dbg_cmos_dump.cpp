@@ -82,7 +82,7 @@ xCmosDumpWidget::xCmosDumpWidget(QString i, QString t, QWidget* p):xDockWidget(i
 	ui.setupUi(wid);
 	setObjectName("CMOSDUMPWIDGET");
 	ui.tabCmos->setModel(new xCmosDumpModel());
-	hwList << HWG_ZX << HWG_PC;
+	hwList << HWG_ZX;
 }
 
 void xCmosDumpWidget::draw() {

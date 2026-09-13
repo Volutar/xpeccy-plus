@@ -967,7 +967,6 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	else if (nam == "hdd.slave") ide_mount(comp->ide, IDE_SLAVE, QString::fromLocal8Bit(arg.s));
 	else if (nam == "sdcard") sdc_mount(comp->sdc, QString::fromLocal8Bit(arg.s));
 	else if (nam == "sdcard.lock") sdcSetLock(comp->sdc, arg.b);
-	else if (nam == "cartrige.type") comp->slot->mapType = arg.i;
 	else if (nam == "cartrige") {
 		if (conf.storePaths) sltSetPath(comp->slot, arg.s);
 	}
@@ -1036,7 +1035,6 @@ void xm_save_media(FILE* file) {
 	fprintf(file, "hdd.slave = %s\n", comp->ide->slave->image ? comp->ide->slave->image : "");
 	fprintf(file, "sdcard = %s\n", comp->sdc->image ? comp->sdc->image : "");
 	fprintf(file, "sdcard.lock = %s\n", YESNO(comp->sdc->lock));
-	fprintf(file, "cartrige.type = %i\n", comp->slot->mapType);
 	fprintf(file, "cartrige = %s\n", comp->slot->path ? comp->slot->path : "");
 }
 
@@ -1231,9 +1229,7 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 			else if (nam == "sdclock") xm_defer("sdcard.lock", val);
 			break;
 		case PS_SLOT:
-			if ((nam == "slot.type") || (nam == "slotA.type") || (nam == "type"))
-				xm_defer("cartrige.type", val);
-			else if (nam == "path") xm_defer("cartrige", val);
+			if (nam == "path") xm_defer("cartrige", val);
 			break;
 		case PS_DEBUGA:
 			if (nam == "ports") setWatchPorts(comp, QString::fromLocal8Bit(val.c_str()).split(","));

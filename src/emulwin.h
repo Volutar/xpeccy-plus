@@ -143,11 +143,6 @@ typedef struct {
 		void disconnected();
 		void socketRead();
 
-#ifndef XZXONLY
-		void saveVRAM();
-		void saveGBVRAM();
-		void saveNESPPU();
-#endif
 		void debugAction();
 		void frame_timer();
 	private:

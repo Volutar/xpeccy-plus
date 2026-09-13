@@ -35,13 +35,6 @@ enum {
 	ERR_TZX_SIGN,		// tzx signature error
 	ERR_TZX_UNKNOWN,	// tzx unsupported block
 
-	ERR_T64_SIGN,		// T64 signature
-	ERR_C64T_SIGN,		// C64 raw tape signature
-
-	ERR_CAS_SIGN,		// CAS block signature
-	ERR_CAS_TYPE,		// CAS unknown block type
-	ERR_CAS_EOF,		// CAS unexpected end of file
-
 	ERR_WAV_HEAD,		// wrong wave header
 	ERR_WAV_FORMAT,		// unsupported wav format
 
@@ -66,10 +59,7 @@ enum {
 
 	ERR_TD0_SIGN,		// td0 signature error
 	ERR_TD0_TYPE,		// unsupported td0 type
-	ERR_TD0_VERSION,	// unsupported version ( <20)
-
-	ERR_NES_HEAD,		// header error
-	ERR_NES_MAPPER		// unsupported mapper
+	ERR_TD0_VERSION		// unsupported version ( <20)
 };
 
 // spg
@@ -180,14 +170,6 @@ int snaGetHardware(const char*);
 
 int loadSPG(Computer*,const char*, int);
 
-int loadT64(Computer*,const char*,int);
-
-int loadBIN(Computer*, const char*, int);
-
-int loadC64prg(Computer*, const char*, int);
-
-int loadRKSmem(Computer*, const char*, int);
-
 int load_ima(Computer*, const char*, int);
 
 // tape
@@ -200,12 +182,6 @@ int loadTZX(Computer*,const char*, int);
 
 int loadWAV(Computer*, const char*, int);
 int saveWAV(Computer*, const char*, int);
-
-int loadC64RawTap(Computer*, const char*, int);
-
-int loadCAS(Computer*, const char*, int);
-
-int loadRKStap(Computer*, const char*, int);
 
 // disk
 
@@ -232,19 +208,9 @@ int saveDSK(Computer*,const char*,int);
 
 int loadTD0(Computer*,const char*,int);
 
-int loadBkIMG(Computer*,const char*,int);
-int bkLoadToTape(Computer*,const char*,int);
-
-// pc98xx disk
-
-int loadFDI98(Computer*, const char*, int);
-
 // cartridge
 
 int loadSlot(Computer*,const char*, int);
-int loadNes(Computer*, const char*, int);
-int loadGB(Computer*, const char*, int);
-int loadMSX(Computer*, const char*, int);
 
 #ifdef __cplusplus
 }

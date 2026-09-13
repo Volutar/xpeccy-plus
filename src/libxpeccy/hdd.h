@@ -20,9 +20,7 @@ enum {
 	IDE_SMUC,
 	IDE_ATM,
 	IDE_NEMO_EVO,	// with hi/low trigger
-	IDE_PROFI,
-	IDE_SMK,	// for BK
-	IDE_UPD7261	// pc9801
+	IDE_PROFI
 };
 // device select (+ IDE_NONE)
 enum {

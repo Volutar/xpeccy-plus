@@ -385,9 +385,6 @@ void DebugWin::onPrfChange() {
 
 	// ui.tabDiskDump->setDrive(ui.cbDrive->currentIndex());
 	wid_disk_dump->draw();
-#ifndef XZXONLY
-	wid_vmem_dump->setVMem(conf.zx->vid->ram);
-#endif
 
 	wid_dump->setBase(comp->hw->base, comp->hw->id);
 	wid_brk->moved();
@@ -464,27 +461,10 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 	wid_brk = new xBreakWidget(":/images/stop.png","Breakpoints");
 	wid_heat = new xHeatWidget(":/images/memory.png","Heat map");
 	wid_pal = new xPalWidget(":/images/palette.png", "Palette");
-#ifndef XZXONLY
-	wid_vmem_dump = new xVMemDumpWidget("","VMEM");
-	wid_dma = new xDmaWidget("","DMA");
-	wid_pit = new xPitWidget("","PIT");
-	wid_pic = new xPicWidget("","PIC");
-	wid_vga = new xVgaWidget(":/images/display.png","VGA");
-	wid_gb = new xGameboyWidget(":/images/gameboy.png","GameBoy");
-	wid_gbv = new xGBVideoWidget(":/images/gameboy.png", "GBVideo");
-	wid_ppu = new xPPUWidget(":/images/nespad.png","NES PPU");
-	wid_cia = new xCiaWidget("","CIA");
-	wid_vic = new xVicWidget("","VIC");
-	wid_ps2 = new xPS2Widget("","PS/2");
-#endif
 
 	dockWidgets << wid_dump << wid_rdump << wid_disk_dump << wid_cmos_dump;
 	dockWidgets << wid_brk << wid_zxscr << wid_ay << wid_tape;
 	dockWidgets << wid_fdd << wid_heat << wid_pal;
-#ifndef XZXONLY
-	dockWidgets << wid_vmem_dump << wid_gb << wid_gbv << wid_ppu;
-	dockWidgets << wid_cia << wid_dma << wid_pic << wid_pit << wid_vga << wid_ps2;
-#endif
 
 	// misc used to be one monolithic MISCTOOLBAR pinned to the window edge.
 	// two docks instead, so they can be dragged and split like the rest
@@ -931,7 +911,7 @@ void DebugWin::chDumpView() {
 	page = ui.sbDumpPage->value();
 	pbase = ui.leDumpPageBase->getValue();
 	if (mode == XVIEW_CPU) {
-		psize = (comp->hw->id == HW_IBM_PC) ? MEM_4M : MEM_64K;
+		psize = MEM_64K;
 	} else {
 		psize = getRFIData(ui.cbDumpPageSize);
 	}
@@ -1708,26 +1688,12 @@ void DebugWin::setDefaultLayout() {
 
 	tabifyDockWidget(wid_dump, wid_rdump);
 	tabifyDockWidget(wid_dump, wid_disk_dump);
-#ifndef XZXONLY
-	tabifyDockWidget(wid_dump, wid_vmem_dump);
-#endif
 	tabifyDockWidget(wid_dump, wid_cmos_dump);
 	tabifyDockWidget(wid_brk, wid_zxscr);
 	tabifyDockWidget(wid_brk, wid_ay);
 	tabifyDockWidget(wid_brk, wid_tape);
 	tabifyDockWidget(wid_brk, wid_fdd);
 	tabifyDockWidget(wid_brk, wid_heat);
-#ifndef XZXONLY
-	tabifyDockWidget(wid_brk, wid_gb);
-	tabifyDockWidget(wid_brk, wid_gbv);
-	tabifyDockWidget(wid_brk, wid_ppu);
-	tabifyDockWidget(wid_brk, wid_cia);
-	tabifyDockWidget(wid_brk, wid_dma);
-	tabifyDockWidget(wid_brk, wid_pic);
-	tabifyDockWidget(wid_brk, wid_pit);
-	tabifyDockWidget(wid_brk, wid_vga);
-	tabifyDockWidget(wid_brk, wid_ps2);
-#endif
 	tabifyDockWidget(wid_brk, wid_pal);
 	wid_dump->raise();
 	wid_brk->raise();
@@ -2117,20 +2083,15 @@ void DebugWin::jumpToLabel(QString lab) {
 int rdbyte(int adr, void* ptr) {
 	Computer* comp = (Computer*)ptr;
 	int res = -1;
-//	if (comp->hw->id == HW_IBM_PC) {
-//		res = comp->hw->mrd(comp, adr, 0);
-//	} else {
-		MemPage* pg = mem_get_page(comp->mem, adr);	// = &comp->mem->map[(adr >> 8) & 0xff];
-		int fadr = mem_get_phys_adr(comp->mem, adr);	// = pg->num << 8) | (adr & 0xff);
-		switch (pg->type) {
-			case MEM_RAM: res = comp->mem->ramData[fadr & comp->mem->ramMask]; break;
-			case MEM_ROM: res = comp->mem->romData[fadr & comp->mem->romMask]; break;
-			case MEM_SLOT:
-				if (!comp->slot) break;
-				if (!comp->slot->data) break;
-				res = sltRead(comp->slot, SLT_PRG, adr & 0xffff); break;
-		}
-//	}
+	MemPage* pg = mem_get_page(comp->mem, adr);	// = &comp->mem->map[(adr >> 8) & 0xff];
+	int fadr = mem_get_phys_adr(comp->mem, adr);	// = pg->num << 8) | (adr & 0xff);
+	switch (pg->type) {
+		case MEM_RAM: res = comp->mem->ramData[fadr & comp->mem->ramMask]; break;
+		case MEM_ROM: res = comp->mem->romData[fadr & comp->mem->romMask]; break;
+		// through the map: the page the machine has in the window is
+		// the one the bank's own reader knows how to find
+		case MEM_SLOT: res = memRd(comp->mem, adr & 0xffff); break;
+	}
 	return res;
 }
 
@@ -2741,47 +2702,3 @@ void DebugWin::loadDump() {
 
 // ps/2 widget (tmp here)
 
-#ifndef XZXONLY
-
-xPS2Widget::xPS2Widget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
-	QWidget* wid = new QWidget;
-	setWidget(wid);
-	ui.setupUi(wid);
-	setObjectName("PS2WIDGET");
-	hwList << HWG_PC;
-}
-
-QString get_hex_queue_z(unsigned long d) {
-	QString r;
-	while (d & 0xff) {
-		if (!r.isEmpty()) r.append(",");
-		r.append(gethexbyte(d & 0xff));
-		d >>= 8;
-	}
-	return r;
-}
-
-QString get_hex_queue_n(unsigned long d, int l) {
-	QString r;
-	while (l > 0) {
-		if (!r.isEmpty()) r.append(",");
-		r.append(gethexbyte(d & 0xff));
-		d >>= 8;
-		l--;
-	}
-	return r;
-}
-
-void xPS2Widget::draw() {
-	PS2Ctrl* ctrl = conf.zx->ps2c;
-//	Keyboard* k = ctrl->kbd;
-//	Mouse* m = ctrl->mouse;
-	ui.lab_ps2ctrl->setText(getbinbyte(ctrl->ram[0x00]));
-	ui.lab_ps2status->setText(getbinbyte(ctrl->status));
-	ui.lab_ps2outbuf->setText(gethexbyte(ctrl->outbuf));
-	ui.lab_ps2inbuf->setText(gethexbyte(ctrl->inbuf));
-//	ui.lab_ps2kdata->setText(k->outbuf ? get_hex_queue_z(k->outbuf) : "-");
-//	ui.lab_ps2mdata->setText(m->queueSize ? get_hex_queue_n(m->outbuf, m->queueSize) : "-");
-}
-
-#endif

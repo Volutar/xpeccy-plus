@@ -10,7 +10,7 @@ xRDumpWidget::xRDumpWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) 
 	ui.setupUi(wid);
 	setObjectName("REG DUMP");
 	connect(this, &QDockWidget::visibilityChanged, this, &xRDumpWidget::draw);
-	hwList << HWG_ZX << HWG_GB << HWG_MSX << HWG_SPCLST;
+	hwList << HWG_ZX;
 }
 
 void xRDumpWidget::draw() {

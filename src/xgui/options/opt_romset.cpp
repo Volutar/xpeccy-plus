@@ -57,11 +57,7 @@ int xRomsetModel::rowCount(const QModelIndex& idx) const {
 	// PC's video bios and SND the PC-9801's sound rom, and nothing else reads
 	// either - so a ZX-only build stops after Font and leaves those two rows
 	// out of reach
-#ifdef XZXONLY
 	return rset->roms.size() + 2;
-#else
-	return rset->roms.size() + 4;
-#endif
 }
 
 

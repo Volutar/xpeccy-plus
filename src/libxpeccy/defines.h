@@ -58,36 +58,18 @@ enum {
 	IRQ_CPU_HALT,	// enter halt cycle
 	IRQ_CPU_ACK,	// = sync + set flgACK if interrupt (Z80)
 	IRQ_CPU_RFSH,	// = sync + the refresh address is on the bus (Z80 M1 T4)
-	IRQ_FDC,	// ibm, pc98
+	IRQ_FDC,
 	IRQ_FDC_RD,
 	IRQ_FDC_WR,
-	IRQ_FDC2,	// pc98 (2nd fdc)
-	IRQ_FDC2_RD,
-	IRQ_FDC2_WR,
 	IRQ_FDD_RDY,	// fdd rdy signal changed
 	IRQ_HDD_PRI,
-	IRQ_SLAVE_PIC,	// pic
-	IRQ_MASTER_PIC,
-	IRQ_COM1,	// uart8250 com1 = mouse
-	IRQ_KBD,	// ps/2 controller kbd int || gbc buttons
-	IRQ_MOUSE,	// ps/2 controller mouse int
-	IRQ_MOUSE_DATA,	// mouse moving (mouse -> uart -> pic -> cpu)
+	IRQ_MOUSE_DATA,	// mouse moving
 	IRQ_MOUSE_ACK,
-	IRQ_KBD_DATA,
+	IRQ_KBD_DATA,	// ps/2 keyboard (zx evo)
 	IRQ_KBD_ACK,
-	IRQ_UART_0,
-	IRQ_RESET,
-	IRQ_PIT_CH0,
-	IRQ_PIT_CH1,
-	IRQ_PIT_CH2,
-	IRQ_APU,	// nes
-	IRQ_CIA1,	// commodore
-	IRQ_CIA2,
-	IRQ_VIC,
 	IRQ_TAP_0,	// tape
 	IRQ_TAP_1,
-	IRQ_TAP_BLK,
-	IRQ_RTC_TP,	// upd4990 tp
+	IRQ_TAP_BLK
 };
 
 typedef void(*cbirq)(int, void*);

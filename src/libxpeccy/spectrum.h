@@ -15,21 +15,11 @@ extern "C" {
 #include "hdd.h"
 #include "sdcard.h"
 #include "cartridge.h"
-#include "i8255_ppi.h"
-#include "i8253_pit.h"
-#include "i8259_pic.h"
-#include "i8042_kbd.h"
-#include "i8237_dma.h"
-#include "mos6526_cia.h"
-#include "uart.h"
-#include "upd4990_rtc.h"
 
 #include "sound/ayym.h"
 #include "sound/gs.h"
 #include "sound/saa1099.h"
 #include "sound/soundrive.h"
-#include "sound/gbsound.h"
-#include "sound/nesapu.h"
 
 #ifdef HAVEZLIB
 	#include <zlib.h>
@@ -67,7 +57,6 @@ typedef struct {
 #define p1FFD	reg[1]
 #define pEFF7	reg[2]
 #define prt2	reg[3]
-#define regNEST	reg[4]		// nes type
 
 #define flgBRK	sysflag[0]		// breakpoint catched
 #define flgDBG	sysflag[1]		// debug execution
@@ -176,24 +165,8 @@ typedef struct Computer {
 	GSound* gs;
 	SDrive* sdrv;
 	saaChip* saa;
-	gbSound* gbsnd;
-	nesAPU* nesapu;
 // misc
-	PPI* ppi;			// i8255-like chip
-	PPI* ppib;
 	CMOS cmos;
-// c64
-	CIA* cia1;		// mos6526
-	CIA* cia2;
-// ibm
-	PIT* pit;		// i8253, timer
-	PIC* mpic;		// i8259, master pic
-	PIC* spic;		//	slave pic
-	PS2Ctrl* ps2c;		// i8042
-	i8237DMA* dma1;		// i8237, 8-bit dma
-	i8237DMA* dma2;		// i8237, 16-bit dma
-	upd4990* rtc;
-	UART* uart;		// com1 (mouse) controller
 
 #ifdef HAVEZLIB
 
@@ -233,21 +206,6 @@ typedef struct Computer {
 		unsigned char p21af;
 		unsigned char pwr_up;		// 1 on 1st run, 0 after reading 00AF
 	} tsconf;
-	struct {
-		struct {
-			struct {
-				long per;
-				long cnt;
-			} div;		// divider (16KHz, inc FF04)
-			struct {
-				long per;
-				long cnt;
-			} t;		// manual timer
-		} timer;
-
-		unsigned char iram[256];	// internal ram (FF80..FFFE)
-		unsigned char iomap[128];
-	} gb;
 } Computer;
 
 // The two conversions the per-instruction sync paths need. Not inverses of each

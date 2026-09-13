@@ -17,9 +17,6 @@ enum {
 	DIF_NONE = 0,
 	DIF_BDI,
 	DIF_P3DOS,
-	DIF_PC,
-	DIF_SMK512,
-	DIF_PC98,
 	DIF_END	= -1
 };
 
@@ -135,7 +132,6 @@ struct DiskIF {
 	Floppy* flp[4];
 	DiskHW* hw;
 	FDC* fdc;
-	FDC* fdc2;
 };
 
 extern int fdcFlag;

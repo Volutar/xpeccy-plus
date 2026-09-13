@@ -125,9 +125,6 @@ int tapGetBlockSize(TapeBlock* block, int type) {
 			if (block->dataPos < 0) break;		// pure signal, no bytes to count
 			res = ((block->sigCount - block->dataPos) >> 4) - 2;
 			break;
-		case TFRM_BK:
-			res = (block->sigCount - (4096 + 1 + 2 + 8 + 1 + 2 + 32 + 128 + 8 + 1 + 2 + 32 + 256) * 2) >> 5;
-			break;
 	}
 	if (res < 0) res = 0;
 	return res;

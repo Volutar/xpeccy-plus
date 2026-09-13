@@ -813,13 +813,7 @@ void xDumpWidget::setBase(int b, int t) {
 			ui.dumpTable->setView(XVIEW_DEF);
 			break;
 	}
-	if (t == HW_IBM_PC) {
-		ui.cbDumpView->setCurrentIndex(0);		// cpu only
-		ui.cbDumpView->setEnabled(false);
-	} else {
-		ui.cbDumpView->setEnabled(true);
-	}
-
+	ui.cbDumpView->setEnabled(true);
 }
 
 void xDumpWidget::draw() {

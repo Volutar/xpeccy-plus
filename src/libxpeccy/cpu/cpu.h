@@ -167,16 +167,7 @@ enum {
 
 enum {
 	CPU_NONE = 0,		// dummy
-	CPU_Z80,		// ZX, MSX, *PC88xx
-	CPU_I8080,
-	CPU_I8086,		// *PC98xx
-	CPU_I80186,
-	CPU_V30,
-	CPU_I80286,		// IBM
-	CPU_LR35902,		// GB, GBC
-	CPU_6502,		// NES, Commodore
-	CPU_VM1,		// BK
-	CPU_VM2
+	CPU_Z80
 };
 
 #define flgTMP flags[63]
