@@ -526,8 +526,12 @@ static xPort evoPortMap[] = {
 	{0xffff,0xfadf,2,2,2,xInFADF,	NULL},		// k-mouse (fadf,fbdf,ffdf)
 	{0xffff,0xfbdf,2,2,2,xInFBDF,	NULL},
 	{0xffff,0xffdf,2,2,2,xInFFDF,	NULL},
-	{0xfeff,0xbffd,2,2,2,NULL,	xOutBFFD},	// ay/ym; bffd, fffd
-	{0xfeff,0xfffd,2,2,2,xInFFFD,	xOutFFFD},
+	// ay/ym. The fpga takes the low byte as #fd and then a15, a14 alone -
+	// "loa==PORTFD" and "a[15:14]" in zports.v - so a9..a13 are no part of
+	// it. A mask that wants them all set drops every write a player makes
+	// through any other high byte, which is most of them.
+	{0xc0ff,0xbffd,2,2,2,NULL,	xOutBFFD},
+	{0xc0ff,0xfffd,2,2,2,xInFFFD,	xOutFFFD},
 	// dos only
 	{0x009f,0x001f,1,2,2,evoInBDI,	evoOutBDI},	// bdi 1f,3f,5f,7f
 	{0x00ff,0x00ff,1,2,2,evoInBDI,	evoOutFF},	// bdi ff + set palette

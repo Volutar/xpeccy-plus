@@ -25,6 +25,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **ZX Evolution had no sound from the AY ports** unless a program used `#FFFD` and
+  `#BFFD` exactly, which a TurboSound FM player does not. It decodes them the way its
+  firmware does now.
+
 - **Every AY and YM played slightly sharp** - the clock period was kept in whole
   nanoseconds. They are exact now, so the pitch drops a fraction of a semitone onto
   where it belongs.
