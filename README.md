@@ -168,6 +168,10 @@ keeps its own terms, like the rom images.
 The debugger's default font, DejaVu Sans Mono 2.37, is built into the binary so it looks the
 same on every platform. It keeps its own terms too - see [`LICENSE_DEJAVU`](LICENSE_DEJAVU).
 
+The FM half of the YM2203, the chip a TurboSound FM board carries, is emulated by
+[ymfm](https://github.com/aaronsgiles/ymfm) by Aaron Giles, under the BSD 3-Clause license -
+see [`LICENSE_YMFM`](LICENSE_YMFM). Its sources are in `src/libxpeccy/sound/ymfm/`.
+
 ## Credits and license
 
 Xpeccy was written by **SAM style** (<https://github.com/samstyle/Xpeccy>) and is
