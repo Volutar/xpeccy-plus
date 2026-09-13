@@ -53,6 +53,8 @@
         <file>res/help/cond-syntax.html</file>
         <file>res/fallback/config.conf</file>
         <file>res/layouts.conf</file>
+        <file>res/machines/alf.conf</file>
+        <file>res/machines/alf128.conf</file>
         <file>res/machines/atm2.conf</file>
         <file>res/machines/evo-baseconf.conf</file>
         <file>res/machines/evo-tsconf.conf</file>

@@ -139,8 +139,8 @@ static xFileGroupInfo fg_dum = {0, "", -1, NULL, NULL, {0}};
 
 static xFileHWInfo fh_tab[] = {
 	{FH_SPECTRUM, {FG_SNAPSHOT, FG_TAPE, FG_DISK_A, FG_DISK_B, FG_DISK_C, FG_DISK_D, FG_RAW, FG_RZX, FG_IF2_ROM, 0}},
-#ifndef XZXONLY
 	{FH_ALF, {FG_IF2_ROM, FG_SNAPSHOT, 0}},
+#ifndef XZXONLY
 	{FH_GAMEBOY, {FG_GAMEBOY, 0}},
 	{FH_MSX, {FG_MSX, FG_MSXTAPE, 0}},
 	{FH_NES, {FG_NES, 0}},
@@ -160,8 +160,8 @@ static xFileHWInfo fh_tab[] = {
 
 static xFileHWInfo hw_tab[] = {
 	{FH_SPECTRUM, {HW_ATM1, HW_ATM2, HW_P1024, HW_PENT, HW_PENTEVO, HW_PHOENIX, HW_PLUS2A, HW_PLUS3, HW_PROFI, HW_SCORP, HW_TSLAB, HW_ZX48, HW_ZX128, 0}},
-#ifndef XZXONLY
 	{FH_ALF, {HW_ALF, 0}},
+#ifndef XZXONLY
 	{FH_GAMEBOY, {HW_GBC, 0}},
 	{FH_MSX, {HW_MSX, HW_MSX2, 0}},
 	{FH_NES, {HW_NES, 0}},

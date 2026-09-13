@@ -31,7 +31,7 @@ if(XLOGHOT)
 endif()
 
 # Build only the ZX Spectrum machines and what they need. The other platforms
-# (MSX, Game Boy, NES, Commodore 64, BK0010, IBM PC, PC-9801, Specialist, ALF)
+# (MSX, Game Boy, NES, Commodore 64, BK0010, IBM PC, PC-9801, Specialist)
 # and their cpu cores, video/sound chips, file formats and debugger panels are
 # then neither compiled nor linked. -DZXONLY=0 builds the lot again; the file
 # list that goes with it is below, next to the source glob.
@@ -217,7 +217,6 @@ file(GLOB_RECURSE SOURCES
 if(ZXONLY)
 	set(NONZX_SOURCES
 		# machines
-		libxpeccy/hardware/alf.c
 		libxpeccy/hardware/bk0010-01.c
 		libxpeccy/hardware/c64.c
 		libxpeccy/hardware/gameboy.c

@@ -24,7 +24,7 @@ enum {
 	HW_TSLAB,	// ZX Evolution (TSConf)
 	HW_PROFI,	// Profi
 	HW_PHOENIX,	// ZXM Phoenix
-	HW_ALF,		// ALF (ZX48K-like console)
+	HW_ALF,		// ALF TV Game (a ZX48 clone console)
 	HW_MSX,		// MSX 1
 	HW_MSX2,	// MSX 2
 	HW_GBC,		// Game boy color (gameboy capatible)
@@ -41,7 +41,6 @@ enum {
 enum {
 	HWG_NULL = 0,
 	HWG_ZX,
-	HWG_ALF,
 	HWG_MSX,
 	HWG_GB,
 	HWG_NES,

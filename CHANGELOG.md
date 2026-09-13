@@ -11,6 +11,15 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- ALF TV Game, the Belarusian ZX Spectrum console, is back in the machine list - in the
+  stock 64K shape and with the 128K memory expansion. Its ROM is bundled, so it boots
+  into the games menu straight away, and a cartridge opens as a cartridge image. The
+  console has no keyboard, so the keys drive its two joysticks instead: arrows with
+  Space or Enter for player one, WASD with left Shift or left Ctrl for player two.
+  A keyboard layout of your own still wins, and picking this machine does not change
+  the layout you have.
+  Thanks to Prusak, whose [zxbyte.ru](https://zxbyte.ru/alf.htm) has the schematic,
+  the port map and the ROM dumps this was built from.
 - Pentagon starts with the memory pattern a real one comes up with, specks and all.
 - The ULA snow effect: the rubbish a 48K or 128K puts on screen when the interrupt
   vector points at a screen bank. On for those two machines, off for the rest, with a
@@ -28,6 +37,11 @@ before that point is upstream's history and is not repeated here.
   chip's CSM mode says its words instead of holding one note.
 
 ### Fixed
+
+- **ALF TV Game ran a shade too fast and its second joystick was scrambled.** The frame
+  was 68964 T instead of the 69888 a 48K has, because the machine kept the screen clock
+  of whichever one ran before it; and player two's joystick reads in an order of its
+  own, where it was being given player one's.
 
 - **A snapshot opened on ZX Evolution (BaseConf) or ATM Turbo 2+ landed in the
   machine's boot menu** instead of running - `.sna` and `.z80` alike.

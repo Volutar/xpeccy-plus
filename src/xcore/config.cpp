@@ -916,7 +916,9 @@ void loadConfig() {
 	xm_finish_load();
 	conf.gpctrl->gpada->loadMap(conf.jmapNameA);
 	conf.gpctrl->gpadb->loadMap(conf.jmapNameB);
-	loadKeys();
+	// xm_set() loads the keys itself; a migrating profile only names its layout
+	// after that has run, so that path needs them loaded again
+	if (schema < 2) loadKeys();
 	// this must be after setCurrentProfile
 	vid_set_zoom(conf.vid.scale);
 	vid_set_fullscreen(conf.vid.fullScreen);
