@@ -824,7 +824,8 @@ void MainWin::drawIcons(QPainter& pnt) {
 	}
 // put leds
 // keyboard
-	if (conf.led.keys && (comp->hw->grp == HWG_ZX)) {
+	// keyp is the test, not the group: ALF is a ZX with no keyboard at all
+	if (conf.led.keys && (comp->hw->grp == HWG_ZX) && comp->hw->keyp) {
 		pnt.drawImage(3, 10, leds[led_kbd]);
 		if (~comp->keyb->port & 0x01) pnt.fillRect(3 + 3, 10 + 17, 8, 2, Qt::gray);
 		if (~comp->keyb->port & 0x02) pnt.fillRect(3 + 3, 10 + 14, 8, 2, Qt::gray);

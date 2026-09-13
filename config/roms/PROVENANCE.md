@@ -61,9 +61,15 @@ and with every emulator of them for decades.
 | `zxevo-fe.rom` | ZX Evo (BaseConf) | NedoPC group | grey | EVO Reset Service 0.61 FE, `4d440af2f2d746094527aa6789390705` |
 | `tsconf.rom` | ZX Evo (TSConf) | TS-Labs | grey | TS-BIOS, shipped elsewhere as `ts-bios.rom`, `d5f199df3832dc749fe0d12f1ce8f26f` |
 | `phoenix.rom` | ZXM-Phoenix | ZXM-Phoenix authors | grey | BIOS 5.03, `892a393093f373ad3b4c9453f529b523` |
+| `alf.rom` | ALF TV Game | SKB Zapad, Brest | grey | 32K: games menu in bank 0, 48 BASIC in bank 1, `f879e22ae833687ccdfc4745aa56b804` |
 
-Source: `256s-*.rom` from <https://github.com/trufanov-nok/fuse-extra-roms>; the rest
-from the images that have circulated with these machines and with Xpeccy itself.
+Source: `256s-*.rom` from <https://github.com/trufanov-nok/fuse-extra-roms>; `alf.rom`
+from <https://zxbyte.ru/alf.htm>, which publishes it as a dump of the console's 27C256;
+the rest from the images that have circulated with these machines and with Xpeccy itself.
+
+`alf.rom` is the original firmware, not the patched one that also circulates: it checks
+it is running on a genuine console and prints "Не укради" if it is not, and this
+emulator passes that check - which makes it a better image to ship and a useful test.
 
 ## Tier 4 - rights holder defunct or unknown, bundled by convention
 

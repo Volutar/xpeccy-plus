@@ -11,9 +11,7 @@ int hwflags = 0;
 extern HardWare dum_hw_core;
 extern HardWare z48_hw_core;
 extern HardWare z128_hw_core;
-#ifndef XZXONLY
 extern HardWare alf_hw_core;
-#endif
 extern HardWare pnt_hw_core;
 extern HardWare p1m_hw_core;
 extern HardWare sco_hw_core;
@@ -54,9 +52,10 @@ tabHwItem tabHwPtr[] = {
 	{HW_PHOENIX, &phx_hw_core},
 	{HW_PENTEVO, &evo_hw_core},
 	{HW_TSLAB, &tsl_hw_core},
-#ifndef XZXONLY
 	{HW_DUMMY, NULL},
 	{HW_ALF, &alf_hw_core},
+#ifndef XZXONLY
+	{HW_DUMMY, NULL},
 	{HW_MSX, &mx1_hw_core},
 	{HW_MSX2, &mx2_hw_core},
 	{HW_DUMMY, NULL},
@@ -97,8 +96,8 @@ HardWare hwTab[] = {
 		HW_ZX48,HWG_ZX,"ZX48","ZX 48K",16,MEM_64K | MEM_16K,1.0,NULL,16,NULL,
 		zx_init,speMapMem,speOut,speIn,stdMRd,stdMWr,zx_irq,zx_ack,zx48_reset,zx_sync,zx_keyp,zx_keyr,zx_vol
 	},{
-		HW_ALF,HWG_ALF,"ALF","ALF TV Game",16,MEM_64K | MEM_128K,1.0,NULL,16,NULL,
-		NULL,alf_mapmem,alf_iwr,alf_ird,alf_mrd,alf_mwr,zx_irq,zx_ack,alf_reset,alf_sync,NULL,NULL,alf_vol
+		HW_ALF,HWG_ZX,"ALF","ALF TV Game",16,MEM_64K | MEM_128K,1.0,NULL,16,NULL,
+		zx_init,alf_mapmem,alf_iwr,alf_ird,alf_mrd,alf_mwr,zx_irq,zx_ack,alf_reset,alf_sync,NULL,NULL,alf_vol
 	},{
 		HW_PENT,HWG_ZX,"Pentagon","Pentagon",16,MEM_128K | MEM_512K,1.0,NULL,16,zx_port_tab_a,
 		zx_init,penMapMem,penOut,penIn,stdMRd,stdMWr,zx_irq,zx_ack,speReset,zx_sync,zx_keyp,zx_keyr,zx_vol

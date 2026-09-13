@@ -1,5 +1,19 @@
 #include "hardware.h"
 
+// ALF TV Game ("Elf"), a ZX48 clone console on the T34VG1 gate array, built in
+// Brest 1991-1995. It has no keyboard: two joysticks, a cartridge slot and the
+// beeper. Window 0 holds a 16K page picked by #5F - bit 7 says whether it comes
+// from the cartridge or from the machine's own rom, the rest is the page number
+// - and the internal rom is the games menu in page 0 with Sinclair BASIC 48 in
+// page 1, which is what cartridge games return to. 128K is an aftermarket
+// memory expansion: plain #7FFD paging, and no #7FFD at all on a stock 64K one.
+//
+// Every port is decoded on two or three address lines, which is what the masks
+// below say: #5F on a7=0, a1=1, a0=1, and #FE on a7=1, a0=0. The bank number is
+// seven bits wide on the connector but the firmware only ever walks six of
+// them, so six is what is masked here. Ground truth for all of it, schematic
+// and rom dumps included, is zxbyte.ru/alf.htm.
+
 #define regRomN	reg[0x5f]
 
 int alf_sltrd(int adr, void* ptr) {
@@ -39,12 +53,11 @@ void alf_reset(Computer* comp) {
 	alf_mapmem(comp);
 }
 
-// 1F rd:kempston
+// 1F rd: joystick 1, kempston order and active high. d5..d7 are not wired to
+// anything and read 1,0,1, so an idle stick reads #a0 - no extra buttons here,
+// whatever the setting says: the pad has two and both go to the same fire line.
 int alf_in1F(Computer* comp, int adr) {
-	int res = comp->joy->state;
-	if (!comp->joy->extbuttons) res &= 0x1f;
-	res ^= 0xa0;
-	return res;
+	return (comp->joy->state & 0x1f) ^ 0xa0;
 }
 
 // 5F wr:rom page
@@ -59,9 +72,18 @@ void alf_outFE(Computer* comp, int adr, int data) {
 	comp->beep->lev = !!(data & 0x10);
 }
 
-// FE rd: 2nd joystick
+// FE rd: joystick 2, active low and in an order of its own - fire, down, right,
+// up, left - not the one joystick 1 has. d5..d7 are not wired: d6 always reads
+// 0, d5 and d7 float, and a program is told to ignore all three.
 int alf_inFE(Computer* comp, int adr) {
-	return comp->joyb->state ^ 0x1f;		// invert 5 bits
+	int st = comp->joyb->state;
+	int res = 0;
+	if (st & XJ_FIRE) res |= 0x01;
+	if (st & XJ_DOWN) res |= 0x02;
+	if (st & XJ_RIGHT) res |= 0x04;
+	if (st & XJ_UP) res |= 0x08;
+	if (st & XJ_LEFT) res |= 0x10;
+	return res ^ 0x1f;
 }
 
 void alf_out7FFD(Computer* comp, int adr, int data) {
@@ -112,5 +134,7 @@ sndPair alf_vol(Computer* comp, sndVolume* sv) {
 	return p;
 }
 
-HardWare alf_hw_core = {HW_ALF,HWG_ALF,"ALF","ALF TV Game",16,MEM_64K | MEM_128K,1.0,NULL,16,NULL,
-			NULL,alf_mapmem,alf_iwr,alf_ird,alf_mrd,alf_mwr,zx_irq,zx_ack,alf_reset,alf_sync,NULL,NULL,alf_vol};
+// zx_init, like every other ZX core: it is what sets the dot period from the cpu
+// clock, and without it the machine keeps the dot clock of whatever ran before.
+HardWare alf_hw_core = {HW_ALF,HWG_ZX,"ALF","ALF TV Game",16,MEM_64K | MEM_128K,1.0,NULL,16,NULL,
+			zx_init,alf_mapmem,alf_iwr,alf_ird,alf_mrd,alf_mwr,zx_irq,zx_ack,alf_reset,alf_sync,NULL,NULL,alf_vol};

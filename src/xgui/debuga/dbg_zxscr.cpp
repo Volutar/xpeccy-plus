@@ -20,7 +20,7 @@ xZXScrWidget::xZXScrWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) 
 	// setting initial values
 	ui.sldScale->setValue(conf.dbg.scrzoom);
 
-	hwList << HWG_ZX << HWG_ALF;
+	hwList << HWG_ZX;
 }
 
 void xZXScrWidget::draw() {
