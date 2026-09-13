@@ -16,6 +16,8 @@ before that point is upstream's history and is not repeated here.
   vector points at a screen bank. On for those two machines, off for the rest, with a
   switch per machine in the advanced settings, and under it a second one, off by
   default, for the machines whose RAM gives up under snow and hangs or resets.
+- `--wav-out FILE` records the sound to a wav file from startup, the same recording
+  the hotkey makes.
 
 ### Changed
 
