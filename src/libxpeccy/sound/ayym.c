@@ -33,7 +33,7 @@ sndPair sc_dum_vol(aymChip* chip) {sndPair vol = {0,0}; return vol;}
 static const scDesc snd_chip_tab[] = {
 	{SND_AY, "AY-3-8910", "AY8910", 1.773447, ay_reset, ay_rd, ay_wr, ay_sync, ay_vol},
 	{SND_YM, "Yamaha-2149", "YM2149", 1.75, ay_reset, ym_rd, ym_wr, ay_sync, ym_vol},
-	{SND_YM2203, "Yamaha-2203", "YM2203", 3.5, ym2203_reset, ym2203_rd, ym2203_wr, ym2203_sync, ym2203_vol},
+	{SND_YM2203, "Yamaha-2203", "YM2203", 3.5, ym2203_reset, ym2203_rd, ym2203_wr, ym2203_sync, ym_vol},
 	{SND_NONE, "Dummy", "NULL", 1.0, sc_dum_res, sc_dum_rd, sc_dum_wr, sc_dum_sync, sc_dum_vol}
 };
 
@@ -157,14 +157,21 @@ void ts_state_restore(TSound* ts) {
 		ym2203_state_unpack(ts_chip(ts, i));
 }
 
+// The SSG halves are levels in 0..XMAXVOL and go through the soft clip, the way
+// two AYs have always been mixed here. The FM halves are signed and sit on top
+// of it: on the board they reach the summing node through their own resistor,
+// the same one a hard panned SSG channel has.
 sndPair tsGetVolume(TSound* ts) {
-	sndPair res = ts->chipA->vol(ts->chipA);
-	sndPair tmp = ts->chipB->vol(ts->chipB);
-	res = mixer(res, tmp);
-	tmp = ts->chipC->vol(ts->chipC);
-	res = mixer(res, tmp);
-	tmp = ts->chipD->vol(ts->chipD);
-	res = mixer(res, tmp);
+	aymChip* chip = ts->chipA;
+	sndPair res = chip->vol(chip);
+	int i, fm = ym2203_fm_out(chip);
+	for (i = 1; i < 4; i++) {
+		chip = ts_chip(ts, i);
+		res = mixer(res, chip->vol(chip));
+		fm += ym2203_fm_out(chip);
+	}
+	res.left += fm;
+	res.right += fm;
 	return res;
 }
 

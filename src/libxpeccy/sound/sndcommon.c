@@ -7,16 +7,12 @@
 // mixer
 #define XMAXVOL 16384
 
-// A soft clip for two levels in 0..XMAXVOL. A signed one - the FM half of a
-// YM2203 - drops the divisor instead of raising it, to zero when the two are
-// full scale and opposite, so it has a floor. Summing the FM outside this,
-// the way zx_vol() sums everything else, would suit it better.
+// A soft clip for two levels in 0..XMAXVOL. Only for those: a signed level
+// would drop the divisor instead of raising it, and go loud rather than clip.
 sndPair mixer(sndPair vol1, sndPair vol2) {
 	int div = XMAXVOL + (vol1.left * vol2.left) / XMAXVOL;
-	if (div < XMAXVOL / 16) div = XMAXVOL / 16;
 	vol1.left = (vol1.left + vol2.left) * XMAXVOL / div;
 	div = XMAXVOL + (vol1.right * vol2.right) / XMAXVOL;
-	if (div < XMAXVOL / 16) div = XMAXVOL / 16;
 	vol1.right = (vol1.right + vol2.right) * XMAXVOL / div;
 	return vol1;
 }

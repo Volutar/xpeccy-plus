@@ -22,11 +22,14 @@ void ay_tick(aymChip*);
 void ay_set_reg(aymChip*, int);
 }
 
-// ymfm hands out the three FM channels already summed, while ay_mix_stereo()
-// averages its three - so an AY here is worth one channel at full, not three,
-// and the sum has to be divided by three to sit on the same scale. Taken at
-// face value one chip reaches 40956, past what the 16 bit output holds.
-#define FM_DIV	3
+// Where the FM half sits against the SSG one. The board puts both into the same
+// summing node, the FM through the resistor a hard panned SSG channel has, and
+// the FM DAC swings further than that channel does - so the FM comes out the
+// louder of the two. 4/5 of ymfm's output is where a real TSFM has it: measured
+// off nedoPC's own level test (tsfm_volume_test), which plays each source alone
+// at full level, recorded from the board and from here.
+#define FM_MUL	4
+#define FM_DIV	5
 
 namespace {
 
@@ -156,7 +159,7 @@ public:
 			m_out.clear();
 			m_fm.output(m_out, 0, 32767, chanmask());
 			m_out.roundtrip_fp();		// the DAC's 10.3 float
-			m_last = m_out.data[0];
+			m_last = m_out.data[0] * FM_MUL / FM_DIV;
 		}
 		// nothing else can have moved the status byte, and this runs once
 		// per cpu instruction
@@ -251,7 +254,7 @@ private:
 	uint8_t m_timer_on[2];
 	uint8_t m_recheck;		// a timer fired: let ymfm see the key state again
 	uint8_t m_adr;
-	int32_t m_last;			// last fm sample
+	int32_t m_last;			// last fm sample, at the level it is mixed in
 
 	std::vector<uint8_t> m_state;
 };
@@ -348,14 +351,9 @@ int ym2203_rd(aymChip* chip, int adr) {
 	return (chip->curReg < 0x10) ? ym_rd(chip, adr) : -1;
 }
 
-sndPair ym2203_vol(aymChip* chip) {
-	sndPair v = ym_vol(chip);
-	if (!chip->blk_fm) {
-		int fm = fm_of(chip)->out() / FM_DIV;
-		v.left += fm;
-		v.right += fm;
-	}
-	return v;
+// the fm half alone: the SSG one is ym_vol(), the chip's own vol callback
+int ym2203_fm_out(aymChip* chip) {
+	return chip->fm ? ((xfm*)chip->fm)->out() : 0;
 }
 
 void ym2203_fm_view(aymChip* chip, fmChan* out) {
