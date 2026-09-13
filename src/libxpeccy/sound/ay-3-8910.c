@@ -177,10 +177,11 @@ void ay_tick(aymChip* ay) {
 }
 
 void ay_sync(aymChip* ay, int ns) {
-	if (ay->per < 1) return;
-	ay->cnt -= ns;
-	while (ay->cnt < 0) {
-		ay->cnt += ay->per;
+	if ((ay->tickFx < 1) || (ns < 1)) return;
+	ay->tickAcc += (long long)ns * ay->tickFx;
+	long long cnt = ay->tickAcc >> 32;
+	ay->tickAcc &= 0xffffffffLL;
+	while (cnt-- > 0) {
 		ay_tick(ay);
 	}
 }

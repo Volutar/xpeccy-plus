@@ -19,6 +19,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **Every AY and YM played slightly sharp** - the clock period was kept in whole
+  nanoseconds. They are exact now, so the pitch drops a fraction of a semitone onto
+  where it belongs.
+
 - A window opened from the settings, such as the advanced machine settings, no longer
   lets the settings behind it close first.
 

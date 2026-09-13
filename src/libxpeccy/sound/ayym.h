@@ -171,8 +171,13 @@ struct aymChip {
 	aymChan chanN;
 	aymChan chanE;
 	int eForm;		// envelope form
-	int per;		// period ns len
-	int cnt;		// ns countdown
+	// half periods per nanosecond, 32.32, with the leftover kept between
+	// calls. Whole nanoseconds left every chip sharp by a different
+	// amount: 500/1.773447 truncated to 281, 500/1.75 to 285.
+	long long tickFx;
+	long long tickAcc;
+	int per;		// what the fm half still counts in, until it goes
+	int cnt;
 
 	int pscnt;	// pre-scaler: (2,3,6) of master ticks
 	int fmcnt;	// fm: 12 pre-scaled ticks

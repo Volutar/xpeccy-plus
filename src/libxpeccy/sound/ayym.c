@@ -56,7 +56,11 @@ void chip_set_type(aymChip* chip, int id) {
 		chip->frq = dsc->frq;
 	if (chip->frq == 0)
 		chip->frq = 1.0;
-	chip->per = 500 / chip->frq;		// 1000/frq = full period, 500/frq = half-period
+	// a tick is a half period, so twice the clock; frq is in MHz, and the
+	// 4294967.296 is 2^32 / 1000 (see tickFx)
+	chip->tickFx = (long long)(chip->frq * 2 * 4294967.296);
+	chip->tickAcc = 0;
+	chip->per = 500 / chip->frq;		// the fm half, for now
 	chip->cnt = chip->per;
 }
 
