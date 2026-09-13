@@ -107,8 +107,6 @@ void conf_init(char* wpath, char* confdir) {
 	conf.emu.pause = 0;
 	conf.emu.fast = 0;
 	conf.gpctrl = new xGamepadController;
-
-	init_sin_tab();
 }
 
 void saveConfig() {

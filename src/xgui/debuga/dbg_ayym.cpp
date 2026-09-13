@@ -23,8 +23,8 @@ xAYWidget::xAYWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
 void xAYWidget::offChan(int st) {
 	Computer* comp = conf.zx;
 	aymChip* chp = comp->ts->chipA;
-	int chn = ui.sbChanNum->value();
-	chp->chanFM[chn].off = (st == Qt::Checked);
+	int chn = ui.sbChanNum->value() & 3;
+	if (chn < 3) chp->fm_off[chn] = (st == Qt::Checked);
 }
 
 QString getAYmix(aymChan* ch) {
@@ -84,7 +84,6 @@ QString getOpStatusName(int id) {
 
 void xAYWidget::draw() {
 	Computer* comp = conf.zx;
-	tsGetVolume(comp->ts);		// to update FM output value
 	aymChip* chp;
 	switch (ui.cbChipSelect->currentIndex()) {
 		case 1: chp = comp->ts->chipB; break;
@@ -109,28 +108,28 @@ void xAYWidget::draw() {
 	ui.labLevB->setText(chp->chanB.lev ? "1" : "0");
 	ui.labLevC->setText(chp->chanC.lev ? "1" : "0");
 	ui.labLevN->setText(chp->chanN.lev ? "1" : "0");
-	// fm
-	int chn = ui.sbChanNum->value() & 3;
+	// fm. the state lives in the core, so ask for a copy of it first
+	ym2203_fm_view(chp, fmView);
+	int chn = ui.sbChanNum->value() % 3;
 	int opn = ui.sbOpNum->value() & 3;
-	fmChan* ch = &chp->chanFM[chn];
+	fmChan* ch = &fmView[chn];
 	fmOper* op = &ch->op[opn];
-	ui.fmChanOff->setChecked(ch->off);
+	ui.fmChanOff->setChecked(chp->fm_off[chn]);
 	ui.leFmChanFrq->setText(gethexword(op->pg.freq));
 	ui.leFmChanBase->setText(gethexbyte(op->pg.block));
 	ui.leFmChanStep->setText(gethexint(op->pg.pstep));
 	ui.leFmChanAlg->setText(gethexbyte(ch->algo));
 	ui.leFmChanOut->setText(QString::number(ch->out));
 	ui.leFmOpStatus->setText(getOpStatusName(op->eg.state));
-	ui.leFmOpAR->setText(gethexbyte(op->eg.atk.rate));
-	ui.leFmOpDR->setText(gethexbyte(op->eg.dec.rate));
-	ui.leFmOpSR->setText(gethexbyte(op->eg.sus.rate));
+	ui.leFmOpAR->setText(gethexbyte(op->eg.atk));
+	ui.leFmOpDR->setText(gethexbyte(op->eg.dec));
+	ui.leFmOpSR->setText(gethexbyte(op->eg.sus));
 	ui.leFmOpSL->setText(gethexword(op->eg.suslev));
-	ui.leFmOpRR->setText(gethexbyte(op->eg.rel.rate));
+	ui.leFmOpRR->setText(gethexbyte(op->eg.rel));
 	ui.leFmOpTL->setText(gethexword(op->tlev));
 	ui.leFmOpKS->setText(gethexbyte(op->eg.ks));
 	ui.leFmOpEGAmp->setText(gethexword(op->eg.att));
 	ui.leFmOpPhase->setText(gethexint(op->pg.phase).right(5));
-	ui.leFmOpOut->setText(QString::number(op->out));	// signed
 
 	drawHBar(ui.labBeep, comp->beep->val, 256);
 }

@@ -57,6 +57,7 @@ void help() {
 	printf("--brk FILE\t\tload breakpoints list (*.xbrk)\n");
 	printf("--disk X\t\tselect drive to loading file (0..3 | a..d | A..D)\n");
 	printf("--sdcard PATH\t\tset SD card image, or a folder served as one\n");
+	printf("--wav-out FILE\t\trecord the sound to a wav file from the start\n");
 	printf("--style\t\t\tMacOSX only: use native qt style, else 'fusion' will be forced\n");
 	printf("--xmap FILE\t\tLoad *.xmap file\n");
 	printf("--confdir DIR\t\tChange config directory\n");
@@ -443,6 +444,10 @@ int main(int ac,char** av) {
 						case '3': case 'd': case 'D': drv = 3; break;
 					}
 				}
+				i++;
+			} else if (!strcmp(parg, "--wav-out")) {
+				if (snd_wav_open(av[i]) != ERR_OK)
+					xlog(XLG_SOUND, XLL_WARN, "can't open %s for wav output", av[i]);
 				i++;
 			} else if (!strcmp(parg, "--xmap")) {
 				load_xmap(av[i]);

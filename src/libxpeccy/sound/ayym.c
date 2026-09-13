@@ -56,8 +56,10 @@ void chip_set_type(aymChip* chip, int id) {
 		chip->frq = dsc->frq;
 	if (chip->frq == 0)
 		chip->frq = 1.0;
-	chip->per = 500 / chip->frq;		// 1000/frq = full period, 500/frq = half-period
-	chip->cnt = chip->per;
+	// a tick is a half period, so twice the clock; frq is in MHz, and the
+	// 4294967.296 is 2^32 / 1000 (see tickFx)
+	chip->tickFx = (long long)(chip->frq * 2 * 4294967.296);
+	chip->tickAcc = 0;
 }
 
 void chip_set_xdev(aymChip* chip, ayxrd rcb, ayxwr wcb, void* ptr) {
@@ -78,6 +80,7 @@ aymChip* aymCreate(int tp) {
 }
 
 void aymDestroy(aymChip* chip) {
+	ym2203_free(chip);
 	free(chip);
 }
 
@@ -122,6 +125,36 @@ void tsSync(TSound* ts, int ns) {
 	ts->chipB->sync(ts->chipB, ns);
 	ts->chipC->sync(ts->chipC, ns);
 	ts->chipD->sync(ts->chipD, ns);
+}
+
+// The one chip type with state of its own outside the struct is the YM2203;
+// xstate.c asks here rather than knowing that.
+
+static aymChip* ts_chip(TSound* ts, int n) {
+	switch (n) {
+		case 0: return ts->chipA;
+		case 1: return ts->chipB;
+		case 2: return ts->chipC;
+		case 3: return ts->chipD;
+	}
+	return NULL;
+}
+
+int ts_state_range(TSound* ts, int n, void** ptr) {
+	aymChip* chip = ts_chip(ts, n);
+	return chip ? ym2203_state_size(chip, ptr) : 0;
+}
+
+void ts_state_capture(TSound* ts) {
+	int i;
+	for (i = 0; i < 4; i++)
+		ym2203_state_pack(ts_chip(ts, i));
+}
+
+void ts_state_restore(TSound* ts) {
+	int i;
+	for (i = 0; i < 4; i++)
+		ym2203_state_unpack(ts_chip(ts, i));
 }
 
 sndPair tsGetVolume(TSound* ts) {

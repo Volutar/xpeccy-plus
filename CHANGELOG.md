@@ -16,8 +16,24 @@ before that point is upstream's history and is not repeated here.
   vector points at a screen bank. On for those two machines, off for the rest, with a
   switch per machine in the advanced settings, and under it a second one, off by
   default, for the machines whose RAM gives up under snow and hangs or resets.
+- `--wav-out FILE` records the sound to a wav file from startup, the same recording
+  the hotkey makes.
+
+### Changed
+
+- **TurboSound FM sounds like the chip it emulates.** The FM half of the YM2203 runs
+  on the ymfm core now; the one it replaces fed two of every channel's four operators
+  each other's registers, so no instrument came out the way it was written.
 
 ### Fixed
+
+- **ZX Evolution had no sound from the AY ports** unless a program used `#FFFD` and
+  `#BFFD` exactly, which a TurboSound FM player does not. It decodes them the way its
+  firmware does now.
+
+- **Every AY and YM played slightly sharp** - the clock period was kept in whole
+  nanoseconds. They are exact now, so the pitch drops a fraction of a semitone onto
+  where it belongs.
 
 - A window opened from the settings, such as the advanced machine settings, no longer
   lets the settings behind it close first.
