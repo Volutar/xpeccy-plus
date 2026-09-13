@@ -203,8 +203,29 @@ void initKeyMap() {
 	} while (keyMapInit[idx].key != ENDKEY);
 }
 
-void loadKeys() {
-	initKeyMap();
+static bool keys_have_joy() {
+	for (int i = 0; keyMap[i].key != ENDKEY; i++) {
+		if (keyMap[i].joyMask) return true;
+	}
+	return false;
+}
+
+// A machine with no keyboard - the ALF console - has nothing to type on, so the
+// keys that would send ZX keys drive its two joysticks instead. Laid over
+// whatever layout is loaded, and only when that layout binds no joystick at all,
+// so a layout that says where the joystick lives always wins. The layout the
+// user picked is never changed: switching to such a machine and back must not
+// lose it, which is why this is not "switch to the console's own layout".
+static void keys_joy_only() {
+	setKey("LEFT", "JL");	setKey("RIGHT", "JR");
+	setKey("UP", "JU");	setKey("DOWN", "JD");
+	setKey("SPC", "JF");	setKey("ENT", "JF");
+	setKey("A", "JL*");	setKey("D", "JR*");
+	setKey("W", "JU*");	setKey("S", "JD*");
+	setKey("LS", "JF*");	setKey("LC", "JF*");
+}
+
+static void load_key_file() {
 	if (conf.kmapName.empty() || (conf.kmapName == "default")) return;
 	QFile file(xres_path("keymaps", QString::fromLocal8Bit(conf.kmapName.c_str())));
 	if (!file.open(QFile::ReadOnly)) {
@@ -233,6 +254,13 @@ void loadKeys() {
 			setKey(vec[0].c_str(), keys);
 		}
 	}
+}
+
+void loadKeys() {
+	initKeyMap();
+	load_key_file();
+	if (conf.zx && conf.zx->hw && !conf.zx->hw->keyp && !keys_have_joy())
+		keys_joy_only();
 }
 
 // key translation qt->xkey

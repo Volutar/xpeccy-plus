@@ -784,6 +784,7 @@ bool xm_set(std::string id) {
 	loadPalette();
 	xm_load_nvram();
 	comp_kbd_release(conf.zx);
+	loadKeys();		// a machine with no keyboard puts the joystick on the keys
 	mouseReleaseAll(conf.zx->mouse);
 	compReset(conf.zx, RES_DEFAULT);
 	// The images were closed above, when the machine we came from let go of
