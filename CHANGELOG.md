@@ -48,6 +48,12 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **ZX Evolution and TSConf lost their NVRAM settings on every start.** What the
+  firmware keeps there - the boot target, the TR-DOS drive, autoboot - was written
+  over with an empty block before the machine came up, so every launch came up on
+  the defaults, TSConf in TR-DOS. Whatever a machine had saved before is gone: set
+  it once more and it stays.
+
 - **ALF TV Game ran a shade too fast and its second joystick was scrambled.** The frame
   was 68964 T instead of the 69888 a 48K has, because the machine kept the screen clock
   of whichever one ran before it; and player two's joystick reads in an order of its

@@ -557,6 +557,11 @@ void loadConfig() {
 	std::string pnm = "default";
 	int section = SECT_NONE;
 	int schema = 1;
+	// the machine the config asks for. conf.macId names the one that is
+	// running, and xm_set() is what puts it there: setting it here would have
+	// the machine we are starting count as one we are leaving, and the step
+	// that keeps what a machine holds writes a blank nvram over its file.
+	std::string macwant;
 	std::string macover;
 	std::map<std::string, std::string> oldprf;
 	std::vector<std::string> vect;
@@ -851,7 +856,7 @@ void loadConfig() {
 					break;
 				case SECT_GENERAL:
 					if (pnam=="schema") schema = arg.i;
-					if (pnam=="machine") conf.macId = pval;
+					if (pnam=="machine") macwant = pval;
 					if (pnam=="lastdir") conf.lastDir = pval;
 					if (pnam=="savepaths") conf.storePaths = arg.b;
 					if (pnam == "fdcturbo") setFlagBit(arg.b, &fdcFlag, FDC_FAST);
@@ -900,7 +905,7 @@ void loadConfig() {
 		std::string file = oldprf.count(pnm) ? oldprf[pnm] : "xpeccy.conf";
 		ok = xm_migrate(pnm.empty() ? std::string("default") : pnm, file);
 	} else {
-		ok = xm_set(conf.macId);
+		ok = xm_set(macwant);
 	}
 	if (!ok) {
 		xlog(XLG_CONF, XLL_WARN, "no machine to start, taking the first one");
