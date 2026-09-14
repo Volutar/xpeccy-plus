@@ -34,14 +34,14 @@
 #define	MAC_DIR		"machines"
 #define	MAC_SUFFIX	".conf"
 
-// Every machine as the user has it, and the same ones without their patch -
-// which is what a patch is written against. A machine of the user's own has no
+// Every machine as the user has it, and - built on demand, since only the one
+// that is running is ever asked for - the same machine without its patch, which
+// is what a patch is written against. A machine of the user's own has no
 // built-in half, so its "stock" is the machine it inherits.
 static QList<xMachine> macList;
 static QMap<QString, xMachine> macStock;
-static QStringList macShipped;		// the ids that ship, patched or not
 
-QString xm_user_path(const std::string& id) {
+static QString xm_user_path(const std::string& id) {
 	return xres_dir(MAC_DIR) + SLASH + QString::fromLocal8Bit(id.c_str()) + MAC_SUFFIX;
 }
 
@@ -58,6 +58,9 @@ typedef struct {
 	QList<xMacLine> lines;
 } xMacFile;
 
+// Both stay loaded for the life of the process: which ids are in them is what
+// tells a machine that ships from one of the user's own, and xm_stock() builds
+// from them long after the list is up.
 static QMap<QString, xMacFile> macSrc;		// what ships
 static QMap<QString, xMacFile> macUsr;		// what the user wrote
 
@@ -206,6 +209,33 @@ static QString mac_key_place(const QString& key, QString* sect) {
 	return key;
 }
 
+// one line of a machine file, and the same thing out of a flat key: the table
+// above is the only place that says where a key lives
+
+static xMacLine mac_line(const char* sect, const char* name, const std::string& val) {
+	xMacLine ln;
+	ln.sect = sect;
+	ln.name = name;
+	ln.val = val;
+	return ln;
+}
+
+static xMacLine mac_line_of_key(const QString& key, const std::string& val) {
+	QString sect;
+	QString nam = mac_key_place(key, &sect);	// fills sect, so not inline
+	return mac_line(sect.toLocal8Bit().data(), nam.toLocal8Bit().data(), val);
+}
+
+static void mac_line_set(QList<xMacLine>& lines, const xMacLine& ln) {
+	for (int i = 0; i < lines.size(); i++) {
+		if ((lines[i].sect == ln.sect) && (lines[i].name == ln.name)) {
+			lines[i] = ln;
+			return;
+		}
+	}
+	lines << ln;
+}
+
 static void mac_defaults(xMachine& mac) {
 	mac.memory = 128;
 	mac.cpu = "Z80";
@@ -242,7 +272,7 @@ static void mac_defaults(xMachine& mac) {
 static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 	const char* id = mac.id.c_str();
 	xArg arg;
-	foreach(xMacLine ln, lines) {
+	foreach(const xMacLine& ln, lines) {
 		const std::string& nam = ln.name;
 		const std::string& val = ln.val;
 		arg.s = val.c_str();
@@ -319,10 +349,14 @@ static bool mac_known(const QString& id) {
 
 static xMachine mac_build(const QString& id, int depth, bool withUser) {
 	xMachine mac;
-	QList<xMacLine> lines = macSrc.value(id).lines;
-	QList<xMacLine> mine = macUsr.value(id).lines;
+	const QList<xMacLine>& lines = macSrc.value(id).lines;
+	const QList<xMacLine>& mine = macUsr.value(id).lines;
 	QString parent;
-	foreach(xMacLine ln, lines + mine) {
+	foreach(const xMacLine& ln, lines) {
+		if ((ln.sect == "machine") && (ln.name == "inherit"))
+			parent = QString::fromLocal8Bit(ln.val.c_str());
+	}
+	foreach(const xMacLine& ln, mine) {		// the user's file has the last word
 		if ((ln.sect == "machine") && (ln.name == "inherit"))
 			parent = QString::fromLocal8Bit(ln.val.c_str());
 	}
@@ -383,30 +417,31 @@ void xm_load_all() {
 	macSrc.clear();
 	macUsr.clear();
 	mac_scan();
-	macShipped = macSrc.keys();
-	QStringList ids = macShipped;
+	QStringList ids = macSrc.keys();
 	foreach(QString id, macUsr.keys()) {
 		if (!ids.contains(id)) ids << id;
 	}
 	foreach(QString id, ids) {
 		macList << mac_build(id, 0, true);
-		macStock[id] = mac_build(id, 0, false);
 	}
 	std::sort(macList.begin(), macList.end(), mac_before);
 	xlog(XLG_CONF, XLL_INFO, "%i machines, %i of them the user's",
 		(int)macList.size(), (int)macUsr.size());
 }
 
-// the machine as it ships, which is what a patch of the user's is written
-// against; for a machine of their own it is the one it inherits
+// The machine as it ships, which is what a patch of the user's is written
+// against; for a machine of their own it is the one it inherits. Built when
+// asked and kept, since the answer only changes when the list is read again.
 
 const xMachine* xm_stock(std::string id) {
-	QMap<QString, xMachine>::const_iterator it = macStock.find(QString::fromLocal8Bit(id.c_str()));
-	return (it == macStock.end()) ? NULL : &it.value();
+	QString qid = QString::fromLocal8Bit(id.c_str());
+	if (!mac_known(qid)) return NULL;
+	if (!macStock.contains(qid)) macStock[qid] = mac_build(qid, 0, false);
+	return &macStock[qid];
 }
 
 bool xm_ships(const std::string& id) {
-	return macShipped.contains(QString::fromLocal8Bit(id.c_str()));
+	return macSrc.contains(QString::fromLocal8Bit(id.c_str()));
 }
 
 const QList<xMachine>& xm_list() {
@@ -457,10 +492,6 @@ const xMachine* xm_find_by_core(std::string hw) {
 
 typedef QList<QPair<std::string, std::string> > xMacOver;
 static QMap<QString, xMacOver> macOver;
-
-void xm_over_clear() {
-	macOver.clear();
-}
 
 // A machine is only worth writing back once it has been built. Until then
 // conf.macId is no more than what the config file asked for, while the Computer
@@ -615,25 +646,30 @@ void xm_set_roms(const xRomset& rs, bool poweron) {
 	emu_unlock();
 }
 
-static void mac_put(QStringList& out, const char* nam, const std::string& val, const std::string& def) {
-	if (val != def) out << QString("%1 = %2").arg(nam).arg(QString::fromLocal8Bit(val.c_str()));
+// What differs from the machine as it ships, as the lines of its file. The key
+// is the flat name the vocabulary tables use; mac_line_of_key puts it in its
+// section.
+
+static void mac_put(QList<xMacLine>& out, const char* nam, const std::string& val, const std::string& def) {
+	if (val != def) out << mac_line_of_key(nam, val);
 }
 
-static void mac_put(QStringList& out, const char* nam, int val, int def) {
-	if (val != def) out << QString("%1 = %2").arg(nam).arg(val);
+static void mac_put(QList<xMacLine>& out, const char* nam, int val, int def) {
+	if (val != def) out << mac_line_of_key(nam, std::string(QString::number(val).toLatin1().data()));
 }
 
-static void mac_put(QStringList& out, const char* nam, double val, double def) {
-	if (fabs(val - def) > 1e-6) out << QString("%1 = %2").arg(nam).arg(val, 0, 'g', 8);
+static void mac_put(QList<xMacLine>& out, const char* nam, double val, double def) {
+	if (fabs(val - def) > 1e-6)
+		out << mac_line_of_key(nam, std::string(QString::number(val, 'g', 8).toLatin1().data()));
 }
 
-static void mac_put_yn(QStringList& out, const char* nam, int val, int def) {
-	if (!val != !def) out << QString("%1 = %2").arg(nam).arg(YESNO(val));
+static void mac_put_yn(QList<xMacLine>& out, const char* nam, int val, int def) {
+	if (!val != !def) out << mac_line_of_key(nam, std::string(YESNO(val)));
 }
 
 // the files that are the user's own, as keys of the machine's block
 
-static void mac_put_roms(QStringList& out, const xMachine* base) {
+static void mac_put_roms(QList<xMacLine>& out, const xMachine* base) {
 	xRomset def = base->roms;
 	foreach(xRomFile rf, conf.roms.roms) {
 		int i = 0;
@@ -644,13 +680,14 @@ static void mac_put_roms(QStringList& out, const xMachine* base) {
 		QString val = QString::fromLocal8Bit(rf.name.c_str());
 		if (rf.foffset || rf.fsize)
 			val += QString(":%1:%2").arg(rf.foffset).arg(rf.fsize);
-		out << QString("rom%1 = %2").arg(rf.roffset / 16).arg(val);
+		out << mac_line_of_key(QString("rom%1").arg(rf.roffset / 16),
+			std::string(val.toLocal8Bit().data()));
 	}
 	foreach(xRomFile rf, def.roms) {		// a bank the user emptied
 		int i = 0;
 		while ((i < conf.roms.roms.size()) && (conf.roms.roms[i].roffset != rf.roffset)) i++;
 		if (i >= conf.roms.roms.size())
-			out << QString("rom%1 = ").arg(rf.roffset / 16);
+			out << mac_line_of_key(QString("rom%1").arg(rf.roffset / 16), std::string());
 	}
 	// "rom." tells these from the sound chip's own gs key
 	mac_put(out, "rom.gs", conf.roms.gsFile, def.gsFile);
@@ -883,7 +920,7 @@ static bool mac_same_roms(const xRomset* rs, const xRomset* set) {
 
 // everything about the machine in use that differs from what it ships with
 
-static void mac_put_all(QStringList& out, const xMachine* mac) {
+static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	if (!mac || !conf.zx) return;
 	Computer* comp = conf.zx;
 	std::string cpu = comp->cpu->core->name;
@@ -933,42 +970,20 @@ static void mac_put_all(QStringList& out, const xMachine* mac) {
 // away from, so coming back finds them; a machine with nothing of the user's
 // left in it has no file at all.
 
-static xMacLine mac_line(const char* sect, const char* name, const std::string& val) {
-	xMacLine ln;
-	ln.sect = sect;
-	ln.name = name;
-	ln.val = val;
-	return ln;
-}
+// What a write did. MACW_SAME is the common case - the settings were applied
+// again with nothing changed - and it is worth telling apart, because only a
+// file that really moved is worth rebuilding the machine list for.
 
-static void mac_line_set(QList<xMacLine>& lines, const xMacLine& ln) {
-	for (int i = 0; i < lines.size(); i++) {
-		if ((lines[i].sect == ln.sect) && (lines[i].name == ln.name)) {
-			lines[i] = ln;
-			return;
-		}
-	}
-	lines << ln;
-}
+#define	MACW_FAIL	0
+#define	MACW_SAME	1
+#define	MACW_WROTE	2
 
-// mac_put_all writes one flat block; a definition file parts it into sections
-
-static void mac_lines_of_keys(QList<xMacLine>& lines, const QStringList& keys) {
-	foreach(QString line, keys) {
-		QString sect;
-		QString key = line.section('=', 0, 0).trimmed();
-		QString nam = mac_key_place(key, &sect);	// fills sect, so not inline
-		mac_line_set(lines, mac_line(sect.toLocal8Bit().data(), nam.toLocal8Bit().data(),
-			std::string(line.section('=', 1).trimmed().toLocal8Bit().data())));
-	}
-}
-
-static bool mac_write(const std::string& id, const QList<xMacLine>& lines, bool own) {
+static int mac_write(const std::string& id, const QList<xMacLine>& lines) {
 	QStringList out;
-	out << (own ? "# A machine of your own. Delete this file to drop it."
-		: "# What you changed on a machine that ships. Delete this file to take it as it comes.");
+	out << (xm_ships(id) ? "# What you changed on a machine that ships. Delete this file to take it as it comes."
+		: "# A machine of your own. Delete this file to drop it.");
 	QMap<QString, QStringList> part;
-	foreach(xMacLine ln, lines) {
+	foreach(const xMacLine& ln, lines) {
 		part[QString::fromLocal8Bit(ln.sect.c_str())] << QString("%1 = %2")
 			.arg(QString::fromLocal8Bit(ln.name.c_str()))
 			.arg(QString::fromLocal8Bit(ln.val.c_str()));
@@ -983,42 +998,40 @@ static bool mac_write(const std::string& id, const QList<xMacLine>& lines, bool 
 	out << "";
 	QByteArray txt = out.join("\n").toLocal8Bit();
 	QFile file(xm_user_path(id));
-	if (file.open(QFile::ReadOnly) && (file.readAll() == txt)) return true;
+	if (file.open(QFile::ReadOnly) && (file.readAll() == txt)) return MACW_SAME;
 	file.close();
 	QDir().mkpath(xres_dir(MAC_DIR));
 	if (!file.open(QFile::WriteOnly)) {
 		xlog(XLG_CONF, XLL_ERROR, "can't write %s", xm_user_path(id).toLocal8Bit().data());
-		return false;
+		return MACW_FAIL;
 	}
 	file.write(txt);
 	file.close();
-	return true;
+	return MACW_WROTE;
 }
 
 // the running machine, written back into its own file
 
 void xm_save_over() {
-	if (!macLive || conf.macId.empty() || !conf.zx) return;
+	if (!macLive || !conf.zx) return;
 	const xMachine* mac = xm_find(conf.macId);
 	const xMachine* base = xm_stock(conf.macId);
 	if (!mac || !base) return;
-	QStringList keys;
-	mac_put_all(keys, base);
-	bool own = !xm_ships(conf.macId);
-	bool named = own || (mac->name != base->name);
-	if (!own && !named && keys.isEmpty()) {		// nothing of the user's left
-		if (QFile::exists(xm_user_path(conf.macId))) {
-			QFile::remove(xm_user_path(conf.macId));
-			xm_load_all();
-		}
+	std::string id = conf.macId;		// xm_load_all invalidates mac and base
+	bool own = !xm_ships(id);		// its file is the machine, not a patch
+	QList<xMacLine> lines;
+	if (own) {
+		lines << mac_line("machine", "name", mac->name);
+		lines << mac_line("machine", "inherit", mac->parent);
+	} else if (mac->name != base->name) {
+		lines << mac_line("machine", "name", mac->name);
+	}
+	mac_put_all(lines, base);
+	if (lines.isEmpty()) {			// nothing of the user's left
+		if (QFile::remove(xm_user_path(id))) xm_load_all();
 		return;
 	}
-	QList<xMacLine> lines;
-	if (named) lines << mac_line("machine", "name", mac->name);
-	if (own) lines << mac_line("machine", "inherit", mac->parent);
-	mac_lines_of_keys(lines, keys);
-	std::string id = conf.macId;		// xm_load_all invalidates mac and base
-	if (mac_write(id, lines, own)) xm_load_all();
+	if (mac_write(id, lines) == MACW_WROTE) xm_load_all();
 }
 
 // "Restore machine": what the user changed on it goes. A machine that ships
@@ -1029,17 +1042,16 @@ void xm_reset_over() {
 	const xMachine* mac = xm_find(conf.macId);
 	if (!mac) return;
 	std::string id = conf.macId;
-	std::string name = mac->name;
-	std::string parent = mac->parent;
-	bool own = !xm_ships(id);
-	conf.macId.clear();			// so xm_set does not save what we are dropping
-	if (own) {
-		QList<xMacLine> lines;
-		lines << mac_line("machine", "name", name);
-		lines << mac_line("machine", "inherit", parent);
-		mac_write(id, lines, true);
-	} else {
+	QList<xMacLine> lines;
+	if (!xm_ships(id)) {			// keep the machine, drop only its settings
+		lines << mac_line("machine", "name", mac->name);
+		lines << mac_line("machine", "inherit", mac->parent);
+	}
+	xm_drop_running();			// so xm_set does not save what we are dropping
+	if (lines.isEmpty()) {
 		QFile::remove(xm_user_path(id));
+	} else {
+		mac_write(id, lines);
 	}
 	xm_load_all();
 	xm_set(id);
@@ -1061,12 +1073,9 @@ void xm_over_migrate() {
 			continue;
 		}
 		QList<xMacLine> lines = macUsr.value(qid).lines;
-		QStringList keys;
-		foreach(xMacOver::value_type kv, ov)
-			keys << QString("%1 = %2").arg(QString::fromLocal8Bit(kv.first.c_str()))
-				.arg(QString::fromLocal8Bit(kv.second.c_str()));
-		mac_lines_of_keys(lines, keys);
-		if (mac_write(id, lines, !xm_ships(id))) done++;
+		foreach(const xMacOver::value_type& kv, ov)
+			mac_line_set(lines, mac_line_of_key(QString::fromLocal8Bit(kv.first.c_str()), kv.second));
+		if (mac_write(id, lines) == MACW_WROTE) done++;
 	}
 	macOver.clear();
 	if (!done) return;
@@ -1439,9 +1448,8 @@ static void mac_migrate_romset(const std::string& id) {
 
 QStringList xm_user_files() {
 	QStringList res;
-	foreach(QString nam, QDir(xres_dir(MAC_DIR)).entryList(
-			QStringList() << ("*" MAC_SUFFIX), QDir::Files, QDir::Name))
-		res << MAC_DIR "/" + nam;
+	foreach(QString id, macUsr.keys())
+		res << MAC_DIR "/" + id + MAC_SUFFIX;
 	return res;
 }
 
@@ -1472,7 +1480,7 @@ QString xm_list_name(const xMachine& mac) {
 
 // a file name out of a name a person typed
 
-std::string xm_id_of_name(const std::string& name) {
+static std::string xm_id_of_name(const std::string& name) {
 	QString res;
 	foreach(QChar c, QString::fromLocal8Bit(name.c_str()).toLower()) {
 		if (c.isLetterOrNumber()) res += c;
@@ -1513,13 +1521,11 @@ bool xm_save_as(const std::string& id, const std::string& name) {
 	// against the machine it inherits, which is that machine as it ships
 	const xMachine* base = xm_stock(conf.macId);
 	if (!base || xm_find(id)) return false;
-	QStringList keys;
-	mac_put_all(keys, base);
 	QList<xMacLine> lines;
 	lines << mac_line("machine", "name", name);
 	lines << mac_line("machine", "inherit", conf.macId);
-	mac_lines_of_keys(lines, keys);
-	if (!mac_write(id, lines, true)) return false;
+	mac_put_all(lines, base);
+	if (mac_write(id, lines) == MACW_FAIL) return false;
 	xm_load_all();
 	return true;
 }

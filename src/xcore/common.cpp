@@ -190,10 +190,12 @@ std::pair<std::string,std::string> splitline(std::string line, char delim) {
 	return res;
 }
 
-// A file that ships inside the binary and can be replaced by one of the user's
-// own: the list a user picks from is both, and the config directory wins on a
-// name collision. `kind` is the folder the two share - palettes, shaders,
-// styles, keymaps.
+// A file that ships inside the binary with one of the user's own beside it.
+// `kind` is the folder the two share - palettes, shaders, styles, keymaps,
+// machines. The list a user picks from is both, and for everything read through
+// xres_path() the config directory wins outright on a name collision; machines
+// read the two halves apart (xres_dir/xres_root) so that the user's file can
+// patch the built-in one instead of hiding it.
 
 #define	XRES_ROOT	":/res/"
 
@@ -209,12 +211,12 @@ QString xres_path(const char* kind, const QString& name) {
 	if (name.isEmpty()) return name;
 	QString own = xres_dir(kind) + SLASH + name;
 	if (QFile::exists(own)) return own;
-	return QString(XRES_ROOT) + kind + "/" + name;
+	return xres_root(kind) + "/" + name;
 }
 
 QStringList xres_list(const char* kind, const QStringList& filt) {
 	QStringList res = QDir(xres_dir(kind)).entryList(filt, QDir::Files, QDir::Name);
-	foreach(QString nam, QDir(QString(XRES_ROOT) + kind).entryList(filt, QDir::Files, QDir::Name)) {
+	foreach(QString nam, QDir(xres_root(kind)).entryList(filt, QDir::Files, QDir::Name)) {
 		if (!res.contains(nam)) res << nam;
 	}
 	res.sort(Qt::CaseInsensitive);

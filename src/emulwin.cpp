@@ -970,6 +970,7 @@ void MainWin::closeEvent(QCloseEvent* ev) {
 		emit s_keywin_close();
 		layouts_save();		// their own files, not the settings one
 		xm_save_nvram();
+		xm_save_over();		// ...and what the user changed on the machine
 		saveConfig();
 #ifdef USENETWORK
 		closeServer();

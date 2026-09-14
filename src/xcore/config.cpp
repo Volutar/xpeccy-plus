@@ -110,7 +110,6 @@ void conf_init(char* wpath, char* confdir) {
 }
 
 void saveConfig() {
-	xm_save_over();		// the machine keeps its own settings, in its own file
 	FILE* cfile = fopen(conf.path.confFile.c_str(), "wb");
 	if (!cfile) {
 		shitHappens("Can't write main config");
@@ -541,7 +540,6 @@ void loadConfig() {
 	}
 	layouts_load_all();
 	xm_load_all();
-	xm_over_clear();
 	xm_drop_running();	// nothing of the running machine goes into a file now
 	if (!conf.zx) {
 		conf.zx = compCreate();
@@ -711,7 +709,7 @@ void loadConfig() {
 						oldprf[pnam] = pval;
 					}
 					break;
-				case SECT_MACOVER:
+				case SECT_MACOVER:	// only a config written before schema 3 has this
 					xm_over_add(macover, pnam, pval);
 					break;
 				case SECT_MEDIA:
@@ -901,7 +899,7 @@ void loadConfig() {
 	foreach(xRomset rs, rsListist) addRomset(rs);
 //	prfLoadAll();
 	setOutput(soutnam.c_str());
-	xm_over_migrate();		// a config from before the machine files
+	if (schema < 3) xm_over_migrate();	// a config from before the machine files
 	bool ok = false;
 	if (schema < 2) {			// a config from before the machines: bring it across
 		std::string file = oldprf.count(pnm) ? oldprf[pnm] : "xpeccy.conf";

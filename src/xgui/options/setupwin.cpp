@@ -1192,6 +1192,10 @@ void SetupWin::apply() {
 	// still there after a switch away and back
 	xm_save_over();
 	updateMachineButtons();
+	// the mark on the machine may have just appeared or gone
+	int midx = ui.machbox->findData(QString::fromLocal8Bit(conf.macId.c_str()));
+	const xMachine* cmac = xm_find(conf.macId);
+	if (cmac && (midx >= 0)) ui.machbox->setItemText(midx, xm_list_name(*cmac));
 
 	emit s_apply();
 
@@ -1453,14 +1457,11 @@ void SetupWin::cfgReset() {
 // the machine it was made from. What was changed on that machine is already its
 // own file, so it is left as it is.
 
-// what the buttons may do, and the mark on the machine in the list
+// what the two buttons may do with the machine that is up
 
 void SetupWin::updateMachineButtons() {
-	const xMachine* mac = xm_find(conf.macId);
 	ui.pbDelMachine->setEnabled(xm_is_users(conf.macId));
 	ui.pbResetMachine->setEnabled(xm_is_changed(conf.macId));
-	int idx = ui.machbox->findData(QString::fromLocal8Bit(conf.macId.c_str()));
-	if (mac && (idx >= 0)) ui.machbox->setItemText(idx, xm_list_name(*mac));
 }
 
 void SetupWin::saveMachine() {
@@ -1516,10 +1517,6 @@ void SetupWin::delMachine() {
 }
 
 void SetupWin::resetMachine() {
-	if (!xm_is_changed(conf.macId)) {
-		showInfo("Nothing has been changed on this machine.");
-		return;
-	}
 	if (!areSure(xm_is_users(conf.macId)
 		? "Drop everything you changed on this machine, back to the one it was made from?"
 		: "Take this machine as it ships, dropping everything you changed on it?")) return;

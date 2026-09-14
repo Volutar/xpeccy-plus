@@ -228,9 +228,8 @@ int xm_set_hardware(std::string);
 void xm_save_over();
 void xm_reset_over();		// drop it and take the machine as it ships
 
-// a config written before those files kept the same settings in [MACHINE.<id>]
+// a config written before schema 3 kept the same settings in [MACHINE.<id>]
 // blocks; they are read into a staging map and written out as files once
-void xm_over_clear();
 void xm_over_add(const std::string&, const std::string&, const std::string&);
 void xm_over_migrate();
 void xm_drop_running();		// the config is being read from scratch
@@ -468,7 +467,6 @@ void xm_load_all();
 // machines of the user's own: making one out of the running machine, and
 // dropping it again
 bool xm_save_as(const std::string&, const std::string&);
-std::string xm_id_of_name(const std::string&);
 std::string xm_free_id(const std::string&);
 bool xm_name_free(const std::string&);
 bool xm_delete(const std::string&);
@@ -476,7 +474,6 @@ bool xm_ships(const std::string&);	// it comes with the emulator
 bool xm_is_users(const std::string&);	// the user made it
 bool xm_is_changed(const std::string&);	// it carries something of theirs
 QString xm_list_name(const xMachine&);	// its name, marked when it does
-QString xm_user_path(const std::string&);
 QStringList xm_user_files();
 bool xm_is_user_file(const QString&);
 const QList<xMachine>& xm_list();
