@@ -73,8 +73,7 @@ void fill_machine_list(QComboBox* box) {
 		if (!family.empty() && (mac.family != family))
 			box->insertSeparator(9999);
 		family = mac.family;
-		box->addItem(QString::fromLocal8Bit(mac.name.c_str()),
-			QString::fromLocal8Bit(mac.id.c_str()));
+		box->addItem(xm_list_name(mac), QString::fromLocal8Bit(mac.id.c_str()));
 	}
 }
 
@@ -738,7 +737,7 @@ void SetupWin::start() {
 // machine
 	int idx;
 	fill_machine_list(ui.machbox);
-	ui.pbDelMachine->setEnabled(xm_is_users(conf.macId));
+	updateMachineButtons();
 	roms = conf.roms;
 	rsmodel->fill(&roms);
 	fillRomSlots();
@@ -1192,6 +1191,7 @@ void SetupWin::apply() {
 	// the machine carries what the page put in it: into its own file, so it is
 	// still there after a switch away and back
 	xm_save_over();
+	updateMachineButtons();
 
 	emit s_apply();
 
@@ -1452,6 +1452,16 @@ void SetupWin::cfgReset() {
 // A machine of the user's own: this one, under a name of its own, inheriting
 // the machine it was made from. What was changed on that machine is already its
 // own file, so it is left as it is.
+
+// what the buttons may do, and the mark on the machine in the list
+
+void SetupWin::updateMachineButtons() {
+	const xMachine* mac = xm_find(conf.macId);
+	ui.pbDelMachine->setEnabled(xm_is_users(conf.macId));
+	ui.pbResetMachine->setEnabled(xm_is_changed(conf.macId));
+	int idx = ui.machbox->findData(QString::fromLocal8Bit(conf.macId.c_str()));
+	if (mac && (idx >= 0)) ui.machbox->setItemText(idx, xm_list_name(*mac));
+}
 
 void SetupWin::saveMachine() {
 	const xMachine* mac = xm_find(conf.macId);

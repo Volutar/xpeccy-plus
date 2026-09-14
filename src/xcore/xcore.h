@@ -475,6 +475,7 @@ bool xm_delete(const std::string&);
 bool xm_ships(const std::string&);	// it comes with the emulator
 bool xm_is_users(const std::string&);	// the user made it
 bool xm_is_changed(const std::string&);	// it carries something of theirs
+QString xm_list_name(const xMachine&);	// its name, marked when it does
 QString xm_user_path(const std::string&);
 QStringList xm_user_files();
 bool xm_is_user_file(const QString&);

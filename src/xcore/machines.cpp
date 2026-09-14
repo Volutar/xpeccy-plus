@@ -1457,7 +1457,17 @@ bool xm_is_users(const std::string& id) {
 }
 
 bool xm_is_changed(const std::string& id) {
-	return QFile::exists(xm_user_path(id));
+	return macUsr.contains(QString::fromLocal8Bit(id.c_str()));
+}
+
+// How a machine reads in a list. A machine that ships is marked when it carries
+// something of the user's - a machine of their own is not, since there is no
+// "as it ships" to tell it from, and the mark would be on it for ever.
+
+QString xm_list_name(const xMachine& mac) {
+	QString res = QString::fromLocal8Bit(mac.name.c_str());
+	if (xm_ships(mac.id) && xm_is_changed(mac.id)) res += " *";
+	return res;
 }
 
 // a file name out of a name a person typed

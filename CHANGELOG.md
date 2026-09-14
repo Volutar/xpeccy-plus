@@ -65,7 +65,8 @@ before that point is upstream's history and is not repeated here.
   back and your settings are still there, instead of quietly going back to stock.
   They live in a file of the machine's own under `machines/`, so an update can still
   fix the machine itself without touching them, and "Restore machine" is what throws
-  them away.
+  them away. A machine carrying settings of yours is marked with a `*` in the machine
+  list, in the menu and in the settings alike.
 
 - **Saving a machine under a name that is already taken** made a second machine with
   the same name in the list. Saving now always makes a machine of your own and asks

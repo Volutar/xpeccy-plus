@@ -1198,7 +1198,7 @@ void MainWin::fillUserMenu() {
 		if (!family.empty() && (mac.family != family))
 			profileMenu->addSeparator();
 		family = mac.family;
-		act = profileMenu->addAction(QString::fromLocal8Bit(mac.name.c_str()));
+		act = profileMenu->addAction(xm_list_name(mac));
 		act->setData(mac.id.c_str());
 		act->setCheckable(true);
 		act->setChecked(mac.id == conf.macId);
