@@ -62,44 +62,17 @@ static xFileTypeInfo ft_tab[] = {
 	{FL_HOBETA, 0, ".$", "*.$?", loadHobeta, NULL, "Hobeta file"},
 	{FL_SLT_ROM, 0, ".rom", "*.rom", loadSlot, NULL, "Cartrige image"},
 	{FL_SLT_BIN, 0, ".bin", "*.bin", loadSlot, NULL, "Cartrige image"},
-#ifndef XZXONLY
-	{FL_GB, 0, ".gb", "*.gb", loadGB, NULL, "GB cartrige"},
-	{FL_GBC, 0, ".gbc", "*.gbc", loadGB, NULL, "GBC cartrige"},
-	{FL_MSX, 0, ".rom", "*.rom", loadMSX, NULL, "MSX cartrige"},
-	{FL_MX1, 0, ".mx1", "*.mx1", loadMSX, NULL, "MSX1 cartrige"},
-	{FL_MX2, 0, ".mx2", "*.mx2", loadMSX, NULL, "MSX2 cartrige"},
-	{FL_CAS, 0, ".cas", "*.cas", loadCAS, NULL, "MSX cassette"},
-	{FL_NES, 0, ".nes", "*.nes", loadNes, NULL, "NES cartrige"},
-	{FL_T64, 0, ".t64", "*.t64", loadT64, NULL, "T64 tape image"},
-	{FL_C64TAP, 0, ".tap", "*.tap", loadC64RawTap, NULL, "C64 raw tape image"},
-	{FL_C64PRG, 0, ".prg", "*.prg", loadC64prg, NULL, "C64 PRG snapshot"},
-	{FL_BKBIN, 0, ".bin", "*.bin", loadBIN, NULL, "BK bin data"},
-	{FL_BKIMG, 0, ".img", "*.img", loadBkIMG, NULL, "BK disk image"},
-	{FL_BKBKD, 0, ".bkd", "*.bkd", loadBkIMG, NULL, "BK disk image"},
-	{FL_RKS, 0, ".rks", "*.rks", loadRKSmem, NULL, "RKS to memory"},
-#endif
 	{FL_IMA, 1, ".ima", "*.ima", load_ima, NULL, "1.44 FDD image"},
 	{FL_PCIMG, 1, ".img", "*.img", load_ima, NULL, "1.44 FDD image"},
 #ifdef HAVEZLIB
 	{FL_RZX, 0, ".rzx", "*.rzx", loadRZX, NULL, "RZX playback"},
 #endif
-#ifndef XZXONLY
-	{FL_BKRAWTAP, 0, NULL, "*", bkLoadToTape, NULL, "RAW file to BK tape"},
-#endif
 	{FL_RAW, 0, NULL, "*", loadRaw, NULL, "RAW file to TRDOS disk"},			// * for all files; *.* for all files that have extension
-#ifndef XZXONLY
-	{FL_98FDI, 1, ".fdi", "*.fdi", loadFDI98, NULL, "pc98xx FDI disk image"},
-#endif
-//	{FL_98HDM, 0, NULL, "*.hdm", loadHDM, NULL, "pc98xx HDM disk image"},
 	{0, 0, NULL, NULL, NULL, NULL, NULL}
 };
 
 static xFileTypeInfo ft_sltraw = {FL_SLT_BIN, 0, NULL, NULL, loadSlot, NULL, "RAW cartrige image"};
 static xFileTypeInfo ft_raw = {FL_RAW, 0, NULL, NULL, loadRaw, NULL, "RAW file to disk A"};
-#ifndef XZXONLY
-static xFileTypeInfo ft_bktap = {FL_RAW, 0, NULL, NULL, bkLoadToTape, NULL, "RAW file to BK tape"};
-static xFileTypeInfo ft_rkstap = {FL_RKS, 0, NULL, NULL, loadRKStap, NULL, "RKS to tape"};
-#endif
 static xFileTypeInfo ft_dum = {FL_NONE, 0, NULL, NULL, NULL, NULL, "Dummy entry"};
 
 // 3rd parameter
@@ -116,22 +89,6 @@ static xFileGroupInfo fg_tab[] = {
 	{FG_RAW, "", 0, "Raw file to disk", &ft_raw, {FL_RAW, 0}},
 	{FG_IF2_ROM, "", -1, "Cartrige image", &ft_sltraw, {FL_SLT_ROM, FL_SLT_BIN, 0}},
 	{FG_RZX, "", -1, "RZX playback", NULL, {FL_RZX, 0}},
-#ifndef XZXONLY
-	{FG_GAMEBOY, "", -1, "GB cartrige", NULL, {FL_GB, FL_GBC, 0}},
-	{FG_MSX, "", -1, "MSX cartrige", NULL, {FL_MSX, FL_MX1, FL_MX2, 0}},
-	{FG_MSXTAPE, "", 4, "MSX cassette", NULL, {FL_CAS, 0}},
-	{FG_NES, "", -1, "NES cartrige", NULL, {FL_NES, 0}},
-	{FG_CMDTAPE, "", -1, "Commodore tape", NULL, {FL_T64, FL_C64TAP, 0}},
-	{FG_CMDSNAP, "", -1, "Commodore snapshot", NULL, {FL_C64PRG, 0}},
-	{FG_BKDATA, "", -1, "BK bin data to mem", NULL, {FL_BKBIN, 0}},
-	{FG_BKTAPE, ".wav", -1, "BK tape", NULL, {FL_WAV, 0}},
-	{FG_BKRAW, "", -1, "BK raw file to tape", &ft_bktap,  {FL_BKRAWTAP, 0}},
-	{FG_PCDISK, "", 0, "FDD image", NULL, {FL_IMA, FL_PCIMG, 0}},
-	{FG_98DISK, "", 0, "98xx FDD image", NULL, {FL_98FDI, 0}},
-	{FG_BKDISK, "", 0, "BK disk image", NULL, {FL_BKIMG, FL_BKBKD, FL_UDI, 0}},
-	{FG_RKSTAP, "", -1, "RKS to tape", &ft_rkstap, {FL_RKS, 0}},
-	{FG_RKSMEM, "", -1, "RKS to memory", NULL, {FL_RKS, 0}},
-#endif
 	{0, "", -1, NULL, NULL, {0}}
 };
 
@@ -140,17 +97,6 @@ static xFileGroupInfo fg_dum = {0, "", -1, NULL, NULL, {0}};
 static xFileHWInfo fh_tab[] = {
 	{FH_SPECTRUM, {FG_SNAPSHOT, FG_TAPE, FG_DISK_A, FG_DISK_B, FG_DISK_C, FG_DISK_D, FG_RAW, FG_RZX, FG_IF2_ROM, 0}},
 	{FH_ALF, {FG_IF2_ROM, FG_SNAPSHOT, 0}},
-#ifndef XZXONLY
-	{FH_GAMEBOY, {FG_GAMEBOY, 0}},
-	{FH_MSX, {FG_MSX, FG_MSXTAPE, 0}},
-	{FH_NES, {FG_NES, 0}},
-	{FH_CMD, {FG_CMDTAPE, FG_CMDSNAP, 0}},
-	{FH_BK, {FG_BKDATA, FG_BKTAPE, FG_BKRAW, FG_BKDISK, 0}},
-	{FH_SLOTS, {FG_GAMEBOY, FG_NES, FG_MSX, FG_IF2_ROM, 0}},
-	{FH_SPCLST, {FG_RKSMEM, FG_RKSTAP, 0}},
-	{FH_PC, {FG_PCDISK, 0}},
-	{FH_98XX, {FG_98DISK, 0}},
-#endif
 	{FH_DRIVE_A, {FG_DISK_A, FG_RAW, 0}},
 	{FH_DRIVE_B, {FG_DISK_B, FG_RAW, 0}},
 	{FH_DRIVE_C, {FG_DISK_C, FG_RAW, 0}},
@@ -161,16 +107,6 @@ static xFileHWInfo fh_tab[] = {
 static xFileHWInfo hw_tab[] = {
 	{FH_SPECTRUM, {HW_ATM1, HW_ATM2, HW_P1024, HW_PENT, HW_PENTEVO, HW_PHOENIX, HW_PLUS2A, HW_PLUS3, HW_PROFI, HW_SCORP, HW_TSLAB, HW_ZX48, HW_ZX128, 0}},
 	{FH_ALF, {HW_ALF, 0}},
-#ifndef XZXONLY
-	{FH_GAMEBOY, {HW_GBC, 0}},
-	{FH_MSX, {HW_MSX, HW_MSX2, 0}},
-	{FH_NES, {HW_NES, 0}},
-	{FH_CMD, {HW_C64, 0}},
-	{FH_BK, {HW_BK0010, HW_BK0011M, 0}},
-	{FH_SPCLST, {HW_SPCLST, 0}},
-	{FH_PC, {HW_IBM_PC, 0}},
-	{FH_98XX, {HW_PC9801, 0}},
-#endif
 	{0, {0}}
 };
 
@@ -359,14 +295,7 @@ static xFilerError err_tab[] = {
 	{ERR_TD0_VERSION, "Unsupported TD0 version"},
 	{ERR_WAV_HEAD, "Wrong WAV header"},
 	{ERR_WAV_FORMAT, "Unsupported WAV format"},
-	{ERR_NES_HEAD, "Wrong NES header"},
-	{ERR_NES_MAPPER, "Unsupported mapper"},
-	{ERR_T64_SIGN, "Wrong T64 header"},
-	{ERR_C64T_SIGN, "Wrong C64 raw tape header"},
 	{ERR_TRD_SNF, "Wrong disk structure for TRD file"},
-	{ERR_CAS_EOF, "CAS: unexpected end of file"},
-	{ERR_CAS_SIGN, "CAS: wrong block signature"},
-	{ERR_CAS_TYPE, "CAS: wrong block type"},
 	{ERR_OK, ""}
 };
 

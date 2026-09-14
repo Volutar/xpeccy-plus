@@ -163,9 +163,6 @@ void tzxBlock15(FILE* file, Tape* tape) {
 	tape->isData = 0;
 }
 
-// #16: c64 block data	TODO
-// #17: c64 turbo block data	TODO
-
 // #20,<len:2> : pause or stop tape
 void tzxBlock20(FILE* file, Tape* tape) {
 	int len = fgetw(file) * 1e6 / TAPTICKNS;

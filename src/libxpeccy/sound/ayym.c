@@ -257,8 +257,12 @@ void tsOut(TSound* ts, int port, int val) {
 				break;
 			case TS_ZXNEXT:
 				if ((val & 0x9c) == 0x9c) {
+					// The scheme came from the ZX Next, the SID on index 0
+					// did not: chipD is a chip with no type, so what is
+					// written to it goes nowhere - which is what an empty
+					// socket does.
 					switch (val & 3) {
-						case 0: ts->curChip = ts->chipD; break;		// sid
+						case 0: ts->curChip = ts->chipD; break;		// sid, never fitted
 						case 1: ts->curChip = ts->chipC; break;		// psg 2
 						case 2: ts->curChip = ts->chipB; break;		// psg 1
 						case 3: ts->curChip = ts->chipA; break;		// psg 0 (default)

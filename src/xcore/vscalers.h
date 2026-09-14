@@ -8,7 +8,6 @@ extern const char* brdModeTab[];
 const char* brd_mode_name(int);
 int brd_mode_id(const char*);
 int brd_mode_pcnt(int);
-int brd_mode_for(Computer*, int);
 
 // Where the frame goes inside the window, in window pixels. The picture is
 // always drawn at a whole multiple of the dot, so this is the window itself in

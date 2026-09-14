@@ -30,16 +30,6 @@ if(XLOGHOT)
 	add_definitions(-DXLOG_HOT)
 endif()
 
-# Build only the ZX Spectrum machines and what they need. The other platforms
-# (MSX, Game Boy, NES, Commodore 64, BK0010, IBM PC, PC-9801, Specialist)
-# and their cpu cores, video/sound chips, file formats and debugger panels are
-# then neither compiled nor linked. -DZXONLY=0 builds the lot again; the file
-# list that goes with it is below, next to the source glob.
-option(ZXONLY "build the ZX machines only" ON)
-if(ZXONLY)
-	add_definitions(-DXZXONLY)
-endif()
-
 # The log locks with a plain pthread mutex, the first thing in libxpeccy that
 # needs the threads library by name rather than through Qt
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -203,104 +193,11 @@ add_custom_target(version_header ALL
 	COMMENT "Generating version.h"
 )
 
-# sources. The pattern is spelled out from CMAKE_CURRENT_SOURCE_DIR: written as
-# "./src", the glob keeps the "/./" in every path it returns, and the ZX-only
-# filter below then matches nothing
+# sources
 file(GLOB_RECURSE SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
 )
-
-# ZX-only build: the sources only a non-ZX machine needs. The #ifdef XZXONLY
-# guards in the code cover what still refers to them; this list is what keeps
-# them out of the binary.
-if(ZXONLY)
-	set(NONZX_SOURCES
-		# machines
-		libxpeccy/hardware/bk0010-01.c
-		libxpeccy/hardware/c64.c
-		libxpeccy/hardware/gameboy.c
-		libxpeccy/hardware/ibm_pc_at.c
-		libxpeccy/hardware/msx.c
-		libxpeccy/hardware/msx2.c
-		libxpeccy/hardware/nes.c
-		libxpeccy/hardware/pc9801.c
-		libxpeccy/hardware/specialist.c
-		# cpu cores other than the z80
-		libxpeccy/cpu/1801vm1/1801vm1.c
-		libxpeccy/cpu/1801vm1/1801vm1_asm.c
-		libxpeccy/cpu/i8080/i8080.c
-		libxpeccy/cpu/i8080/i8080_op.c
-		libxpeccy/cpu/LR35902/lr35902.c
-		libxpeccy/cpu/LR35902/lr_nopref.c
-		libxpeccy/cpu/LR35902/lr_pref_cb.c
-		libxpeccy/cpu/LR35902/lr_tab.c
-		libxpeccy/cpu/MOS6502/6502.c
-		libxpeccy/cpu/MOS6502/6502_alu.c
-		libxpeccy/cpu/MOS6502/6502_opcode.c
-		libxpeccy/cpu/x86/i286_alu.c
-		libxpeccy/cpu/x86/i286_rot.c
-		libxpeccy/cpu/x86/i80286.c
-		libxpeccy/cpu/x86/i80286_0F.c
-		libxpeccy/cpu/x86/i80286_nop.c
-		libxpeccy/cpu/x86/i80287.c
-		"libxpeccy/cpu/NEC V30/v30.c"
-		"libxpeccy/cpu/NEC V30/v30_emu80_op.c"
-		"libxpeccy/cpu/NEC V30/v30opc.c"
-		"libxpeccy/cpu/NEC V30/v30opc_0f.c"
-		# video controllers
-		libxpeccy/video/bk0010.c
-		libxpeccy/video/gbcvideo.c
-		libxpeccy/video/nesppu.c
-		libxpeccy/video/specialist_gpu.c
-		libxpeccy/video/upd7220.c
-		libxpeccy/video/v9938.c
-		libxpeccy/video/vga.c
-		libxpeccy/video/vic-ii.c
-		# sound chips
-		libxpeccy/sound/gbsound.c
-		libxpeccy/sound/nesapu.c
-		# support chips
-		libxpeccy/i8042_kbd.c
-		libxpeccy/i8237_dma.c
-		libxpeccy/i8253_pit.c
-		libxpeccy/i8255_ppi.c
-		libxpeccy/i8259_pic.c
-		libxpeccy/mos6526_cia.c
-		libxpeccy/uart.c
-		libxpeccy/vp1_128.c
-		libxpeccy/upd4990_rtc.c
-		# file formats
-		libxpeccy/filetypes/bkbin.c
-		libxpeccy/filetypes/bkimg.c
-		libxpeccy/filetypes/c64prg.c
-		libxpeccy/filetypes/cas.c
-		libxpeccy/filetypes/fdi98.c
-		libxpeccy/filetypes/gbc.c
-		libxpeccy/filetypes/msx.c
-		libxpeccy/filetypes/nes.c
-		libxpeccy/filetypes/rks.c
-		libxpeccy/filetypes/t64.c
-		# debugger panels
-		xgui/debuga/dbg_cia.cpp
-		xgui/debuga/dbg_dma.cpp
-		xgui/debuga/dbg_gameboy.cpp
-		xgui/debuga/dbg_nesppu.cpp
-		xgui/debuga/dbg_pic.cpp
-		xgui/debuga/dbg_pit.cpp
-		xgui/debuga/dbg_vga_regs.cpp
-		xgui/debuga/dbg_vic_regs.cpp
-		xgui/debuga/dbg_vmem_dump.cpp
-	)
-	foreach(f ${NONZX_SOURCES})
-		set(p "${CMAKE_CURRENT_SOURCE_DIR}/src/${f}")
-		# a renamed or deleted file would drop out of the list silently
-		if(NOT EXISTS "${p}")
-			message(FATAL_ERROR "ZXONLY: no such source: ${p}")
-		endif()
-		list(REMOVE_ITEM SOURCES "${p}")
-	endforeach()
-endif()
 
 # Objective-C++ is not in the glob: it only builds on macOS
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -336,7 +233,6 @@ set(MOCFILES
 	./src/xgui/debuga/dbg_disasm.h
 	./src/xgui/debuga/dbg_brkpoints.h
 	./src/xgui/debuga/dbg_diskdump.h
-	./src/xgui/debuga/dbg_vmem_dump.h
 	./src/xgui/debuga/dbg_cmos_dump.h
 	./src/xgui/debuga/dbg_widgets.h
 	./src/xgui/debuga/dbg_rdump.h
@@ -358,22 +254,6 @@ set(MOCFILES
 	./src/xgui/classes.h
 	./src/xgui/labelist.h
 )
-
-# the only Q_OBJECT header that belongs to a machine we do not build
-if(ZXONLY)
-	list(REMOVE_ITEM MOCFILES ./src/xgui/debuga/dbg_vmem_dump.h)
-endif()
-
-# What moc emits depends on ZXONLY - dbg_widgets.h declares fewer classes with
-# XZXONLY on - but the rule cmake writes for a moc file depends on the header
-# alone, not on the flags the way an object file does. Flip the option in a
-# build directory that already exists and make keeps the stale moc output, which
-# fails at link with "undefined reference to vtable for xCiaWidget". This stamp
-# holds the option's value, so it changes when the option does (configure_file
-# rewrites it only then), and every moc call is made to depend on it. Not the Qt4
-# one: qt4_wrap_cpp takes no DEPENDS and would moc the stamp as a header.
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/zxonly.stamp.in ${CMAKE_CURRENT_BINARY_DIR}/zxonly.stamp @ONLY)
-set(MOCDEPS ${CMAKE_CURRENT_BINARY_DIR}/zxonly.stamp)
 
 # Qt5 / Qt6
 
@@ -418,7 +298,7 @@ elseif(${QTVERSION} EQUAL 5)
 	set(LIBRARIES ${LIBRARIES} Qt5::Widgets)
 	qt5_add_resources(RESOURCES ${QRCFILES})
 	qt5_wrap_ui(UIHEADERS ${UIFILES})
-	qt5_wrap_cpp(MOCHEADERS ${MOCFILES} DEPENDS ${MOCDEPS})
+	qt5_wrap_cpp(MOCHEADERS ${MOCFILES})
 	set(CPACK_RPM_PACKAGE_REQUIRES "libQt5Gui5 >= 5.3, libQt5Widgets5 >= 5.3")
 	set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt5gui5 (>=5.3), libqt5widgets5 (>=5.3)")
 
@@ -451,7 +331,7 @@ elseif(${QTVERSION} EQUAL 6)
 	set(LIBRARIES ${LIBRARIES} Qt6::Widgets Qt6::Core Qt6::Gui Qt6::Core5Compat)
 	qt6_add_resources(RESOURCES ${QRCFILES})
 	qt6_wrap_ui(UIHEADERS ${UIFILES})
-	qt6_wrap_cpp(MOCHEADERS ${MOCFILES} DEPENDS ${MOCDEPS})
+	qt6_wrap_cpp(MOCHEADERS ${MOCFILES})
 	set(CPACK_RPM_PACKAGE_REQUIRES "libQt6Gui6 >= 6.1, libQt6Widgets6 >= 6.1, libQt6Core5Compat6 >= 6.1")
 	set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6gui6 (>=6.1), libqt6widgets6 (>=6.1), libqt6core5compat6 >= 6.1")
 	if(${USEQTNETWORK})
@@ -513,12 +393,6 @@ if(ZLIB_FOUND)
 	set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, zlib1g (>=1.2)")
 	set(CPACK_RPM_PACKAGE_DEPENDS "${CPACK_RPM_PACKAGE_DEPENDS}, zlib >= 1.2")
 endif(ZLIB_FOUND)
-
-# flags
-
-if(${IBM})
-	add_definitions(-DUSEIBM=1)
-endif()
 
 # other
 

@@ -693,5 +693,5 @@ xPortDsc zx_port_tab_ts[] = {
 	{-1, 0, 0}
 };
 
-HardWare tsl_hw_core = {HW_TSLAB,HWG_ZX,"TSConf","ZX Evolution (TSConf)",16,MEM_4M,1.0,NULL,16,zx_port_tab_ts,
+HardWare tsl_hw_core = {HW_TSLAB,"TSConf","ZX Evolution (TSConf)",MEM_4M,1.0,NULL,zx_port_tab_ts,
 			zx_init,tslMapMem,tslOut,tslIn,tslMRd,tslMWr,ts_irq,ts_ack,tslReset,zx_sync,ts_keyp,ts_keyr,zx_vol};

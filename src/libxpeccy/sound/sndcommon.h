@@ -23,7 +23,7 @@ typedef struct {
 //	long accum;			// ns accumulator
 	int step;			// halfperiod counter
 	unsigned int perH;		// halfperiod for lev=1
-	unsigned int perL;		// halfperiod for lev=0. gameboy has different halfperiod lenght
+	unsigned int perL;		// halfperiod for lev=0
 	int pcount;			// current halfperiod counter
 } bitChan;
 

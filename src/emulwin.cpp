@@ -824,8 +824,8 @@ void MainWin::drawIcons(QPainter& pnt) {
 	}
 // put leds
 // keyboard
-	// keyp is the test, not the group: ALF is a ZX with no keyboard at all
-	if (conf.led.keys && (comp->hw->grp == HWG_ZX) && comp->hw->keyp) {
+	// ALF is a ZX with no keyboard at all, so the test is keyp
+	if (conf.led.keys && comp->hw->keyp) {
 		pnt.drawImage(3, 10, leds[led_kbd]);
 		if (~comp->keyb->port & 0x01) pnt.fillRect(3 + 3, 10 + 17, 8, 2, Qt::gray);
 		if (~comp->keyb->port & 0x02) pnt.fillRect(3 + 3, 10 + 14, 8, 2, Qt::gray);
@@ -1155,14 +1155,6 @@ void MainWin::initUserMenu() {
 	resMenu->addAction("ROMpage1")->setData(RES_48);
 	resMenu->addAction("ROMpage2")->setData(RES_SHADOW);
 	resMenu->addAction("ROMpage3")->setData(RES_DOS);
-#if defined(ISDEBUG) && !defined(XZXONLY)
-	userMenu->addSeparator();
-	QMenu* dbgMenu = userMenu->addMenu(QIcon(":/images/debuga.png"),"Debug");
-	dbgMenu->addAction(QIcon(),QString("Save v9938 vram..."),this,SLOT(saveVRAM()));
-	dbgMenu->addAction(QIcon(),QString("Save GB VRAM..."), this, SLOT(saveGBVRAM()));
-//	dbgMenu->addAction(QIcon(),QString("Save GS RAM..."),this,SLOT(saveGSRAM()));
-	dbgMenu->addAction(QIcon(),QString("Save NES PPU vram..."),this,SLOT(saveNESPPU()));
-#endif
 }
 
 void MainWin::fillUserMenu() {
@@ -1471,51 +1463,6 @@ void MainWin::palSelected(QAction* act) {
 
 // debug stufffff
 
-#ifndef XZXONLY
-void MainWin::saveVRAM() {
-	QString path = QFileDialog::getSaveFileName(this,"Save VRAM");
-	if (path.isEmpty()) return;
-	QFile file(path);
-	xColor xcol;
-	Computer* comp = conf.zx;
-	if (file.open(QFile::WriteOnly)) {
-		file.write((char*)comp->vid->ram, 0x20000);
-		file.write((char*)comp->vid->reg, 64);
-		for (int i = 0; i < 16; i++) {
-			xcol = vid_get_col(comp->vid, i);
-			file.putChar(xcol.r);
-			file.putChar(xcol.g);
-			file.putChar(xcol.b);
-		}
-
-		file.close();
-	}
-}
-
-void MainWin::saveGBVRAM() {
-	QString path = QFileDialog::getSaveFileName(this,"Save GB VRAM");
-	if (path.isEmpty()) return;
-	QFile file(path);
-	Computer* comp = conf.zx;
-	if (file.open(QFile::WriteOnly)) {
-		file.write((char*)comp->vid->ram, 0x2000);
-		file.write((char*)comp->gb.iomap, 0x80);
-		file.close();
-	}
-}
-
-void MainWin::saveNESPPU() {
-	QString path = QFileDialog::getSaveFileName(this,"Save GB VRAM");
-	if (path.isEmpty()) return;
-	QFile file(path);
-	Computer* comp = conf.zx;
-	if (file.open(QFile::WriteOnly)) {
-		file.write((char*)comp->vid->ram, 0x4000);
-		file.write((char*)comp->vid->oam, 0x100);
-		file.close();
-	}
-}
-#endif
 
 void MainWin::debugAction() {
 	sndDebug();

@@ -25,18 +25,12 @@ void xTapeCatModel::fill(Tape* tap) {
 	name.clear();
 	info.clear();
 	if (row_count > 0) {
-		int frm;
-		switch(conf.zx->hw->grp) {
-			case HWG_ZX: frm = TFRM_ZX; break;
-			case HWG_BK: frm = TFRM_BK; break;
-			default: frm = -1; break;	// no reader for this machine's tapes
-		}
 		inf = new TapeBlockInfo[row_count];
-		tapGetBlocksInfo(tap, inf, frm);
+		tapGetBlocksInfo(tap, inf);
 		for (int i = 0; i < row_count; i++) {
 			dur << QString(getTimeString(inf[i].time).c_str());
-			name << blockName(i, frm);
-			info << blockInfo(i, frm);
+			name << blockName(i);
+			info << blockInfo(i);
 		}
 	}
 	update();
@@ -51,8 +45,7 @@ int xTapeCatModel::isNamed(int row) const {
 // what the block is: the name a header carries, or the kind of block it is. Our
 // own words go in lower case and italics, so a name is never in doubt
 
-QString xTapeCatModel::blockName(int row, int frm) const {
-	if (frm < 0) return QString();
+QString xTapeCatModel::blockName(int row) const {
 	if (isNamed(row)) return QString::fromLocal8Bit(inf[row].name);
 	if (!inf[row].hasBytes) return QString("custom");	// a signal, not bytes
 	if (inf[row].type != TAPE_HEAD) return QString("data");
@@ -67,9 +60,8 @@ QString xTapeCatModel::blockName(int row, int frm) const {
 
 // what a header says about the file, in the words BASIC uses for it
 
-QString xTapeCatModel::blockInfo(int row, int frm) const {
+QString xTapeCatModel::blockInfo(int row) const {
 	QString res;
-	if (frm < 0) return res;
 	int nam = (inf[row].par1 >> 8) & 0x1f;			// arrays: the variable's letter
 	QChar var = QLatin1Char(nam ? 'a' + nam - 1 : '?');
 	if (inf[row].type == TAPE_HEAD) {

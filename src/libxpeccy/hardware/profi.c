@@ -181,5 +181,5 @@ xPortDsc zx_port_tab_p[] = {
 	{-1, 0, 0}
 };
 
-HardWare prf_hw_core = {HW_PROFI,HWG_ZX,"Profi","Profi",16,MEM_512K | MEM_1M,1.0,NULL,16,zx_port_tab_p,
+HardWare prf_hw_core = {HW_PROFI,"Profi","Profi",MEM_512K | MEM_1M,1.0,NULL,zx_port_tab_p,
 			prf_init,prfMapMem,prfOut,prfIn,stdMRd,stdMWr,zx_irq,zx_ack,prfReset,zx_sync,prf_keyp,prf_keyr,zx_vol};

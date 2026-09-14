@@ -75,46 +75,6 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="labPG0">
-     <property name="text">
-      <string>ROM:00</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="labPG1">
-     <property name="text">
-      <string>RAM:05</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="labPG2">
-     <property name="text">
-      <string>RAM:02</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="labPG3">
-     <property name="text">
-      <string>RAM:00</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item>
     <widget class="QLabel" name="labPorts">
      <property name="text">
       <string>PORTS</string>

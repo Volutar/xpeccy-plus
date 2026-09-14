@@ -288,9 +288,6 @@ void DebugWin::start() {
 	blockEnd = -1;
 	save_mem_map();
 	Computer* comp = conf.zx;
-	if (comp->hw->grp != tabMode) {
-		onPrfChange();		// update tabs
-	}
 	if (!comp->vid->tail)
 		vid_dark_tail(comp->vid);
 
@@ -312,7 +309,7 @@ void DebugWin::start() {
 	show();
 // fillall redrawing all vivisble widgets
 	if (!fillAll()) {
-		ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu) + comp->cpu->cs.base);
+		ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu));
 	}
 	if (memViewer->vis) {
 		memViewer->move(memViewer->winPos);
@@ -355,27 +352,13 @@ void DebugWin::resetTCount() {
 	}
 }
 
-// the panels this machine has: a dock with no machine list of its own is for all
-void DebugWin::applyDockList() {
-	foreach (xDockWidget* dw, dockWidgets) {
-		dw->setHidden(!(dw->hwList.isEmpty() || dw->hwList.contains(tabMode)));
-	}
-}
-
 void DebugWin::onPrfChange() {
 	if (!conf.zx) return;
-	Computer* comp = conf.zx;
 	save_mem_map();
 
-	tabMode = comp->hw->grp;
-	applyDockList();
-	setMiscBlocks();		// the bank fields are for the ZX group only
+	setMiscBlocks();
 
-	// set input line base
-	foreach(xHexSpin* xhs, dbgRegEdit) {
-		xhs->setBase(comp->hw->base);
-	}
-	unsigned int lim = (1 << comp->hw->adrbus);
+	unsigned int lim = MEM_64K;
 	wid_dump->setLimit(lim);
 	ui_asm.dasmScroll->setMaximum(lim - 1);
 
@@ -385,13 +368,9 @@ void DebugWin::onPrfChange() {
 
 	// ui.tabDiskDump->setDrive(ui.cbDrive->currentIndex());
 	wid_disk_dump->draw();
-#ifndef XZXONLY
-	wid_vmem_dump->setVMem(conf.zx->vid->ram);
-#endif
 
-	wid_dump->setBase(comp->hw->base, comp->hw->id);
 	wid_brk->moved();
-	styleTabBars();		// hiding panels changes what a tab bar carries
+	styleTabBars();
 
 	fillAll();
 }
@@ -464,27 +443,10 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 	wid_brk = new xBreakWidget(":/images/stop.png","Breakpoints");
 	wid_heat = new xHeatWidget(":/images/memory.png","Heat map");
 	wid_pal = new xPalWidget(":/images/palette.png", "Palette");
-#ifndef XZXONLY
-	wid_vmem_dump = new xVMemDumpWidget("","VMEM");
-	wid_dma = new xDmaWidget("","DMA");
-	wid_pit = new xPitWidget("","PIT");
-	wid_pic = new xPicWidget("","PIC");
-	wid_vga = new xVgaWidget(":/images/display.png","VGA");
-	wid_gb = new xGameboyWidget(":/images/gameboy.png","GameBoy");
-	wid_gbv = new xGBVideoWidget(":/images/gameboy.png", "GBVideo");
-	wid_ppu = new xPPUWidget(":/images/nespad.png","NES PPU");
-	wid_cia = new xCiaWidget("","CIA");
-	wid_vic = new xVicWidget("","VIC");
-	wid_ps2 = new xPS2Widget("","PS/2");
-#endif
 
 	dockWidgets << wid_dump << wid_rdump << wid_disk_dump << wid_cmos_dump;
 	dockWidgets << wid_brk << wid_zxscr << wid_ay << wid_tape;
 	dockWidgets << wid_fdd << wid_heat << wid_pal;
-#ifndef XZXONLY
-	dockWidgets << wid_vmem_dump << wid_gb << wid_gbv << wid_ppu;
-	dockWidgets << wid_cia << wid_dma << wid_pic << wid_pit << wid_vga << wid_ps2;
-#endif
 
 	// misc used to be one monolithic MISCTOOLBAR pinned to the window edge.
 	// two docks instead, so they can be dragged and split like the rest
@@ -598,7 +560,6 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 	xid_none = new xItemDelegate(XTYPE_NONE);
 	xid_byte = new xItemDelegate(XTYPE_BYTE);
 	xid_labl = new xItemDelegate(XTYPE_LABEL);
-	xid_octw = new xItemDelegate(XTYPE_OCTWRD);
 	xid_dump = new xItemDelegate(XTYPE_DUMP);
 
 // actions data
@@ -728,7 +689,6 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 
 	connect(wid_heat, &xHeatWidget::s_adr, ui_asm.dasmTable, &xDisasmTable::setAdrX);
 
-//	connect (ui.tbSaveVRam, SIGNAL(released()), this, SLOT(saveVRam()));
 // registers
 //	connect(ui.flagGroup,SIGNAL(buttonClicked(int)),this,SLOT(setFlags()));
 
@@ -782,12 +742,11 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 	setHeaderMenu(ui_misc.labPorts, ":/images/bars.png", "Watched ports...", [this](){
 		editWatchPorts();
 	});
-	// MEMMAP: the four 16K banks. Only a ZX pages in 16K blocks, so the fields
-	// are for that group and the rest keep the labels they always had
-	mmapType[0] = ui_misc.cbPG0;	mmapPage[0] = ui_misc.numPG0;	mmapLab[0] = ui_misc.labPG0;
-	mmapType[1] = ui_misc.cbPG1;	mmapPage[1] = ui_misc.numPG1;	mmapLab[1] = ui_misc.labPG1;
-	mmapType[2] = ui_misc.cbPG2;	mmapPage[2] = ui_misc.numPG2;	mmapLab[2] = ui_misc.labPG2;
-	mmapType[3] = ui_misc.cbPG3;	mmapPage[3] = ui_misc.numPG3;	mmapLab[3] = ui_misc.labPG3;
+	// MEMMAP: the four 16K banks
+	mmapType[0] = ui_misc.cbPG0;	mmapPage[0] = ui_misc.numPG0;
+	mmapType[1] = ui_misc.cbPG1;	mmapPage[1] = ui_misc.numPG1;
+	mmapType[2] = ui_misc.cbPG2;	mmapPage[2] = ui_misc.numPG2;
+	mmapType[3] = ui_misc.cbPG3;	mmapPage[3] = ui_misc.numPG3;
 	QWidgetList mmapMenu;
 	mmapMenu << ui_misc.widMMap;
 	for (i = 0; i < 4; i++) {
@@ -803,10 +762,9 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 			.arg(i * 0x4000 + 0x3fff, 4, 16, QChar('0')).toUpper();
 		mmapType[i]->setToolTip(tip);
 		mmapPage[i]->setToolTip(tip);
-		mmapLab[i]->setToolTip(tip);
 		connect(mmapType[i], QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, i](int){mmapEdit(i);});
 		connect(mmapPage[i], &xHexSpin::valueChanged, this, [this, i](int){mmapEdit(i);});
-		mmapMenu << mmapType[i] << mmapPage[i] << mmapLab[i];
+		mmapMenu << mmapType[i] << mmapPage[i];
 	}
 	// anywhere in the block answers the right button, the way FRAME does, and
 	// so does the MEMMAP title over it - the one of the two that wears the dot
@@ -931,7 +889,7 @@ void DebugWin::chDumpView() {
 	page = ui.sbDumpPage->value();
 	pbase = ui.leDumpPageBase->getValue();
 	if (mode == XVIEW_CPU) {
-		psize = (comp->hw->id == HW_IBM_PC) ? MEM_4M : MEM_64K;
+		psize = MEM_64K;
 	} else {
 		psize = getRFIData(ui.cbDumpPageSize);
 	}
@@ -950,7 +908,7 @@ void DebugWin::doStep() {
 		tCount = comp->tickCount;
 	compExec(comp);
 	if (!fillAll()) {
-		ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu) + comp->cpu->cs.base);
+		ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu));
 		//fillDisasm();
 	}
 }
@@ -997,7 +955,7 @@ void DebugWin::stopTrace() {
 void DebugWin::reload() {
 	Computer* comp = conf.zx;
 	if (media_reload(comp) & RELOAD_SNAPSHOT)
-		ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu) + comp->cpu->cs.base);
+		ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu));
 	fillAll();
 }
 
@@ -1022,7 +980,7 @@ void DebugWin::keyPressEvent(QKeyEvent* ev) {
 			break;
 		case XCUT_LOAD:
 			load_file(comp, NULL, FG_ALL, -1);
-			ui_asm.dasmTable->setAdr(pc + comp->cpu->cs.base);
+			ui_asm.dasmTable->setAdr(pc);
 			//fillAll();
 			activateWindow();
 			break;
@@ -1038,9 +996,9 @@ void DebugWin::keyPressEvent(QKeyEvent* ev) {
 			}
 			break;
 		case XCUT_STEPOVER:
-			len = dasmSome(comp, pc + comp->cpu->cs.base, drow);
+			len = dasmSome(comp, pc, drow);
 			if (drow.oflag & OF_SKIPABLE) {
-				ptr = getBrkPtr(comp, pc + comp->cpu->cs.base + len);
+				ptr = getBrkPtr(comp, pc + len);
 				*ptr |= MEM_BRK_TFETCH;
 				stop();
 			} else {
@@ -1068,7 +1026,7 @@ void DebugWin::keyPressEvent(QKeyEvent* ev) {
 			rzxStop(comp);
 			compReset(comp, RES_DEFAULT);
 			if (!fillAll()) {
-				ui_asm.dasmTable->setAdr(pc + comp->cpu->cs.base);
+				ui_asm.dasmTable->setAdr(pc);
 				//fillDisasm();
 			}
 			break;
@@ -1128,15 +1086,9 @@ void DebugWin::customEvent(QEvent* ev) {
 	switch(ev->type()) {
 		case DBG_EVENT_STEP:
 			if ((traceType == DBG_TRACE_LOG) && logfile.isOpen()) {
-				dasmSome(comp, pcadr + comp->cpu->cs.base, tracemnm);
+				dasmSome(comp, pcadr, tracemnm);
 				tracestr = "\"";			// to avoid numbers conversion, like 3e4->3000
-				if (comp->cpu->core->group == CPUG_X86) {
-					tracestr.append(gethexword(cpu_get_regtype(comp->cpu, REG_CS)));
-					tracestr.append(":");
-					tracestr.append(gethexword(pcadr));
-				} else {
-					tracestr.append(gethexword(pcadr));
-				}
+				tracestr.append(gethexword(pcadr));
 				tracestr.append("\"|");
 				doStep();
 				traceregs = cpuGetRegs(comp->cpu);
@@ -1249,16 +1201,6 @@ void DebugWin::setScrAtr(int adr, int atr) {
 void DebugWin::chLayout() {
 }
 
-int dbg_get_reg_adr(CPU* cpu, xRegister* reg) {
-	int a = reg->value;
-	if (reg->flag & REG_SEG) {
-		a = reg->base;
-	} else if (cpu->core->group == CPUG_X86) {
-		a += reg->base;
-	}
-	return a;
-}
-
 // the same address by register name, for the dump hotkeys. -1 = this cpu
 // has no such register
 
@@ -1266,7 +1208,7 @@ int dbg_get_reg_adr_name(CPU* cpu, const char* name) {
 	xRegBunch bunch = cpuGetRegs(cpu);
 	for (int i = 0; (i < 32) && (bunch.regs[i].id != REG_EOT); i++) {
 		if (!strcmp(bunch.regs[i].name, name))
-			return dbg_get_reg_adr(cpu, &bunch.regs[i]);
+			return bunch.regs[i].value;
 	}
 	return -1;
 }
@@ -1278,7 +1220,7 @@ void DebugWin::regClick(QMouseEvent* ev) {
 	Computer* comp = conf.zx;
 	xRegBunch bunch = cpuGetRegs(comp->cpu);
 	xRegister reg = bunch.regs[id];
-	int adr = dbg_get_reg_adr(comp->cpu, &reg);
+	int adr = reg.value;
 	//qDebug() << adr;
 	switch (ev->button()) {
 		case Qt::RightButton:
@@ -1708,27 +1650,21 @@ void DebugWin::setDefaultLayout() {
 
 	tabifyDockWidget(wid_dump, wid_rdump);
 	tabifyDockWidget(wid_dump, wid_disk_dump);
-#ifndef XZXONLY
-	tabifyDockWidget(wid_dump, wid_vmem_dump);
-#endif
 	tabifyDockWidget(wid_dump, wid_cmos_dump);
 	tabifyDockWidget(wid_brk, wid_zxscr);
 	tabifyDockWidget(wid_brk, wid_ay);
 	tabifyDockWidget(wid_brk, wid_tape);
 	tabifyDockWidget(wid_brk, wid_fdd);
 	tabifyDockWidget(wid_brk, wid_heat);
-#ifndef XZXONLY
-	tabifyDockWidget(wid_brk, wid_gb);
-	tabifyDockWidget(wid_brk, wid_gbv);
-	tabifyDockWidget(wid_brk, wid_ppu);
-	tabifyDockWidget(wid_brk, wid_cia);
-	tabifyDockWidget(wid_brk, wid_dma);
-	tabifyDockWidget(wid_brk, wid_pic);
-	tabifyDockWidget(wid_brk, wid_pit);
-	tabifyDockWidget(wid_brk, wid_vga);
-	tabifyDockWidget(wid_brk, wid_ps2);
-#endif
 	tabifyDockWidget(wid_brk, wid_pal);
+	// A panel has no close button, so the only way one can be hidden is a
+	// debuga.layout that was written while it was - which a build with more
+	// machines in it could do. Reset is the way back. Here, not in the loop
+	// above: a dock has no parent until addDockWidget, and showing one then
+	// would put it on screen as a window of its own.
+	foreach (xDockWidget* dw, dockWidgets) {
+		dw->setVisible(true);
+	}
 	wid_dump->raise();
 	wid_brk->raise();
 
@@ -1811,7 +1747,6 @@ void DebugWin::showEvent(QShowEvent* ev) {
 	// while the window was away: the list for this one wins.
 	if (!dockLayout.isEmpty()) {
 		restoreState(dockLayout, DBG_LAYOUT_VERSION);
-		applyDockList();
 		styleTabBars();
 	}
 	if (reformWait) {
@@ -2011,19 +1946,6 @@ void DebugWin::setCPU() {
 
 // memory map section
 
-QString getPageName(MemPage& pg) {
-	QString res;
-	switch(pg.type) {
-		case MEM_RAM: res = "RAM:"; break;
-		case MEM_ROM: res = "ROM:"; break;
-		case MEM_EXT: res = "EXT:"; break;
-		case MEM_SLOT: res = "SLT:"; break;
-		default: res = "---:"; break;
-	}
-	res.append(gethexbyte(pg.num >> 6));
-	return res;
-}
-
 // A bank the user forced is marked the way a changed register is. The type
 // beside it goes bold instead: a style sheet on a combo box makes Qt draw the
 // whole widget through the sheet, and its arrow changes shape with it.
@@ -2036,19 +1958,16 @@ void DebugWin::setMMapMark(int idx, bool on) {
 }
 
 void DebugWin::fillMem() {
-	Computer* comp = conf.zx;
 	// each field costs a style pass, so fill them only while they are up - the
-	// same rule the docks are refreshed by. The labels stand in for them where
-	// the fields are hidden, so those are written either way
-	bool edit = ui_misc.widMMap->isVisible();
+	// same rule the docks are refreshed by
+	if (!ui_misc.widMMap->isVisible()) return;
+	Computer* comp = conf.zx;
 	MemPage pg;
 	int page;
 	block = 1;
 	for (int i = 0; i < 4; i++) {
 		pg = comp->mem->map[i << 6];
 		page = pg.num >> 6;
-		mmapLab[i]->setText(getPageName(pg));
-		if (!edit) continue;
 		// the machine pages whenever it likes and says nothing: a bank stays
 		// marked as forced only while the value put there is still in the map
 		if (mmapForced[i] != ((pg.type << 16) | page)) mmapForced[i] = -1;
@@ -2117,20 +2036,15 @@ void DebugWin::jumpToLabel(QString lab) {
 int rdbyte(int adr, void* ptr) {
 	Computer* comp = (Computer*)ptr;
 	int res = -1;
-//	if (comp->hw->id == HW_IBM_PC) {
-//		res = comp->hw->mrd(comp, adr, 0);
-//	} else {
-		MemPage* pg = mem_get_page(comp->mem, adr);	// = &comp->mem->map[(adr >> 8) & 0xff];
-		int fadr = mem_get_phys_adr(comp->mem, adr);	// = pg->num << 8) | (adr & 0xff);
-		switch (pg->type) {
-			case MEM_RAM: res = comp->mem->ramData[fadr & comp->mem->ramMask]; break;
-			case MEM_ROM: res = comp->mem->romData[fadr & comp->mem->romMask]; break;
-			case MEM_SLOT:
-				if (!comp->slot) break;
-				if (!comp->slot->data) break;
-				res = sltRead(comp->slot, SLT_PRG, adr & 0xffff); break;
-		}
-//	}
+	MemPage* pg = mem_get_page(comp->mem, adr);	// = &comp->mem->map[(adr >> 8) & 0xff];
+	int fadr = mem_get_phys_adr(comp->mem, adr);	// = pg->num << 8) | (adr & 0xff);
+	switch (pg->type) {
+		case MEM_RAM: res = comp->mem->ramData[fadr & comp->mem->ramMask]; break;
+		case MEM_ROM: res = comp->mem->romData[fadr & comp->mem->romMask]; break;
+		// through the map: the page the machine has in the window is
+		// the one the bank's own reader knows how to find
+		case MEM_SLOT: res = memRd(comp->mem, adr & 0xffff); break;
+	}
 	return res;
 }
 
@@ -2249,7 +2163,7 @@ void DebugWin::fillStack() {
 	if (!conf.zx) return;
 	Computer* comp = conf.zx;
 	int sp = cpu_get_sp(comp->cpu);
-	int adr = sp + comp->cpu->ss.base;
+	int adr = sp;
 	int ofs = conf.dbg.stackofs;		// kept even where it is set, see DBG_STACK_OFS
 	int cnt = wid_stack_view->rowsFit();
 	QList<xStackRow> rows;
@@ -2301,12 +2215,7 @@ void DebugWin::editWatchPorts() {
 // PORTS is left to fillPorts: it is the only one that can be empty by itself
 
 void DebugWin::setMiscBlocks() {
-	bool zx = conf.zx && (conf.zx->hw->grp == HWG_ZX);
-	ui_misc.widMMap->setVisible(conf.dbg.showmmap && zx);
-	ui_misc.labPG0->setVisible(conf.dbg.showmmap && !zx);
-	ui_misc.labPG1->setVisible(conf.dbg.showmmap && !zx);
-	ui_misc.labPG2->setVisible(conf.dbg.showmmap && !zx);
-	ui_misc.labPG3->setVisible(conf.dbg.showmmap && !zx);
+	ui_misc.widMMap->setVisible(conf.dbg.showmmap);
 	ui_misc.labHeadSignal->setVisible(conf.dbg.showsig);
 	ui_misc.labDOS->setVisible(conf.dbg.showsig);
 	ui_misc.labROM->setVisible(conf.dbg.showsig);
@@ -2385,7 +2294,7 @@ int DebugWin::getAdr() {
 //		}
 //	} else {
 		idx = ui_asm.dasmTable->currentIndex();
-		adr = ui_asm.dasmTable->getData(idx.row(), 0, Qt::UserRole).toInt();		// already +cs.base
+		adr = ui_asm.dasmTable->getData(idx.row(), 0, Qt::UserRole).toInt();
 //	}
 
 	adr &= comp->mem->busmask;
@@ -2618,18 +2527,6 @@ void DebugWin::saveDumpToDisk(int idx) {
 
 }
 
-// videoram
-
-void DebugWin::saveVRam() {
-	QString path = QFileDialog::getSaveFileName(this, "Save video ram", "", "All files (*)", nullptr, QFileDialog::DontUseNativeDialog);
-	if (path.isEmpty()) return;
-	QFile file(path);
-	if (file.open(QFile::WriteOnly)) {
-		file.write((char*)conf.zx->vid->ram, MEM_256K);
-		file.close();
-	}
-}
-
 // memfinder
 
 void DebugWin::doFind() {
@@ -2741,47 +2638,3 @@ void DebugWin::loadDump() {
 
 // ps/2 widget (tmp here)
 
-#ifndef XZXONLY
-
-xPS2Widget::xPS2Widget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
-	QWidget* wid = new QWidget;
-	setWidget(wid);
-	ui.setupUi(wid);
-	setObjectName("PS2WIDGET");
-	hwList << HWG_PC;
-}
-
-QString get_hex_queue_z(unsigned long d) {
-	QString r;
-	while (d & 0xff) {
-		if (!r.isEmpty()) r.append(",");
-		r.append(gethexbyte(d & 0xff));
-		d >>= 8;
-	}
-	return r;
-}
-
-QString get_hex_queue_n(unsigned long d, int l) {
-	QString r;
-	while (l > 0) {
-		if (!r.isEmpty()) r.append(",");
-		r.append(gethexbyte(d & 0xff));
-		d >>= 8;
-		l--;
-	}
-	return r;
-}
-
-void xPS2Widget::draw() {
-	PS2Ctrl* ctrl = conf.zx->ps2c;
-//	Keyboard* k = ctrl->kbd;
-//	Mouse* m = ctrl->mouse;
-	ui.lab_ps2ctrl->setText(getbinbyte(ctrl->ram[0x00]));
-	ui.lab_ps2status->setText(getbinbyte(ctrl->status));
-	ui.lab_ps2outbuf->setText(gethexbyte(ctrl->outbuf));
-	ui.lab_ps2inbuf->setText(gethexbyte(ctrl->inbuf));
-//	ui.lab_ps2kdata->setText(k->outbuf ? get_hex_queue_z(k->outbuf) : "-");
-//	ui.lab_ps2mdata->setText(m->queueSize ? get_hex_queue_n(m->outbuf, m->queueSize) : "-");
-}
-
-#endif

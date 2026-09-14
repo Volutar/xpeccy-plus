@@ -125,10 +125,8 @@
         <file>images/redCircle.png</file>
         <file>images/memory.png</file>
         <file>images/heatmap.png</file>
-        <file>images/msx.png</file>
         <file>images/stop.png</file>
         <file>images/floppyRed.png</file>
-        <file>images/gameboy.png</file>
         <file>images/label.png</file>
         <file>images/bars.png</file>
         <file>images/arrGreen.png</file>
@@ -146,7 +144,6 @@
         <file>images/arrdn.png</file>
         <file>images/gamepad.png</file>
         <file>images/edit.png</file>
-        <file>images/nespad.png</file>
         <file>images/diskGreen.png</file>
         <file>images/diskRed.png</file>
         <file>images/tapeRed.png</file>
@@ -158,7 +155,6 @@
         <file>images/arrleft.png</file>
         <file>images/speaker2.png</file>
         <file>images/palette.png</file>
-        <file>images/commodore.png</file>
         <file>images/rewind.png</file>
         <file>images/refresh.png</file>
         <file>images/button-k.png</file>

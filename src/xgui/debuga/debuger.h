@@ -69,7 +69,6 @@ class DebugWin : public QMainWindow {
 		void updateStyle();
 	private:
 		unsigned block:1;
-		int tabMode;
 		cpuCore* curCpuCore;
 		QWidget* wid_cpu;
 		xDockWidget* wid_cpu_dock;
@@ -107,27 +106,11 @@ class DebugWin : public QMainWindow {
 		xDiskDumpWidget* wid_disk_dump;
 		xCmosDumpWidget* wid_cmos_dump;
 		xZXScrWidget* wid_zxscr;
-#ifndef XZXONLY
-		xVMemDumpWidget* wid_vmem_dump;
-		xDmaWidget* wid_dma;
-		xPitWidget* wid_pit;
-		xPicWidget* wid_pic;
-		xVgaWidget* wid_vga;
-		xPS2Widget* wid_ps2;
-#endif
 		xAYWidget* wid_ay;
 		xTapeWidget* wid_tape;
 		xFDDWidget* wid_fdd;
 		xBreakWidget* wid_brk;
 		xPalWidget* wid_pal;
-#ifndef XZXONLY
-		xGameboyWidget* wid_gb;
-		xGBVideoWidget* wid_gbv;
-		xPPUWidget* wid_ppu;
-		// apu (future)
-		xCiaWidget* wid_cia;
-		xVicWidget* wid_vic;
-#endif
 		xHeatWidget* wid_heat;
 		QList<xDockWidget*> dockWidgets;
 
@@ -135,7 +118,6 @@ class DebugWin : public QMainWindow {
 		MemPage mem_map[256];		// the map as it was on entry, for Restore
 		QComboBox* mmapType[4];
 		xHexSpin* mmapPage[4];
-		QLabel* mmapLab[4];
 		int mmapForced[4];		// (type << 16) | page the user forced, -1 = none
 
 		QList<xLabel*> dbgRegLabs;
@@ -174,7 +156,6 @@ class DebugWin : public QMainWindow {
 		xItemDelegate* xid_none;
 		xItemDelegate* xid_byte;
 		xItemDelegate* xid_labl;
-		xItemDelegate* xid_octw;
 		xItemDelegate* xid_dump;
 
 		void fillCPU();
@@ -185,7 +166,6 @@ class DebugWin : public QMainWindow {
 		void fillPorts();
 		void setPortRow(int, QString, QString);
 		void setMiscBlocks();
-		void applyDockList();
 		void editWatchPorts();
 		void setLabelMenu(QWidget*, QString, QString, std::function<void()>);
 		void setHeaderMenu(QWidget*, QString, QString, std::function<void()>, int = 0);
@@ -270,7 +250,6 @@ class DebugWin : public QMainWindow {
 		void saveDumpToB();
 		void saveDumpToC();
 		void saveDumpToD();
-		void saveVRam();
 	protected:
 		void keyPressEvent(QKeyEvent*);
 		void keyReleaseEvent(QKeyEvent*);

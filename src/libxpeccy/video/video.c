@@ -107,10 +107,6 @@ Video* vidCreate(cbxrd cb, cbirq ci, void* dptr) {
 	vid->inten = 0x01;		// FRAME INT for all
 
 	vid->ula = ula_create();
-#ifndef XZXONLY
-	vid->txt7220 = upd7220_create();
-	vid->grf7220 = upd7220_create();
-#endif
 
 	vid_set_border(vid, VID_BRD_FULL);
 
@@ -133,10 +129,6 @@ Video* vidCreate(cbxrd cb, cbirq ci, void* dptr) {
 
 void vidDestroy(Video* vid) {
 	ula_destroy(vid->ula);
-#ifndef XZXONLY
-	upd7220_destroy(vid->txt7220);
-	upd7220_destroy(vid->grf7220);
-#endif
 	free(vid);
 }
 
@@ -257,7 +249,6 @@ static void vid_crop_margin(Video* vid, vCoord mrg) {
 // size of the frame a mode gives on this machine, changing nothing
 vCoord vid_crop_size(Video* vid, int mode) {
 	vCoord sze, mrg;
-	if (mode == VID_BRD_NATIVE) return vid->vend;
 	mrg = brd_margin(vid, mode);
 	sze.x = vid->scrn.x + 2 * mrg.x;
 	sze.y = vid->scrn.y + 2 * mrg.y;
@@ -272,7 +263,6 @@ vCoord vid_crop_size(Video* vid, int mode) {
 void vid_widen_crop(Video* vid, int wid) {
 	vCoord mrg;
 	int mx;
-	if (vid->brdmode == VID_BRD_NATIVE) return;	// not a screen with a border around it
 	mrg = brd_margin(vid, vid->brdmode);
 	mx = (wid - vid->scrn.x) / 2;
 	if (mx > brd_max_x(vid)) mx = brd_max_x(vid);
@@ -282,13 +272,6 @@ void vid_widen_crop(Video* vid, int wid) {
 }
 
 void vid_upd_crop(Video* vid) {
-	if (vid->brdmode == VID_BRD_NATIVE) {		// whole visible area, as-is
-		vid->lcut.x = 0;
-		vid->lcut.y = 0;
-		vid->rcut = vid->vend;
-		vid->vsze = vid->vend;
-		return;
-	}
 	vid_crop_margin(vid, brd_margin(vid, vid->brdmode));
 }
 
@@ -333,7 +316,7 @@ void vid_set_resolution(Video* vid, int w, int h) {
 
 void vid_set_border(Video* vid, int brd) {
 	if (brd < VID_BRD_NONE) brd = VID_BRD_NONE;
-	else if (brd > VID_BRD_NATIVE) brd = VID_BRD_NATIVE;
+	else if (brd > VID_BRD_OVERSCAN) brd = VID_BRD_OVERSCAN;
 	vid->brdmode = brd;
 	vid_upd_crop(vid);
 }
@@ -990,19 +973,6 @@ void vidDrawTSLExt(Video*);
 void vidDrawTSLText(Video*);
 void vidDrawEvoText(Video*);
 
-// c64 vic-II
-
-#ifndef XZXONLY
-
-void vidC64TDraw(Video*);
-void vidC64TMDraw(Video*);
-void vidC64BDraw(Video*);
-void vidC64BMDraw(Video*);
-void vidC64Line(Video*);
-void vidC64Fram(Video*);
-
-#endif
-
 // debug
 
 void vidBreak(Video* vid) {
@@ -1010,36 +980,6 @@ void vidBreak(Video* vid) {
 	// assert(0);
 }
 
-#ifndef XZXONLY
-
-// bk
-
-void bk_bw_dot(Video*);
-void bk_col_dot(Video*);
-
-// specialist
-
-void spc_dot(Video*);
-void spcv_ini(Video*);
-
-// vga
-
-void cga_t40_frm(Video*);
-void cga_t40_line(Video*);
-void cga320_2bpp_line(Video*);
-void cga640_1bpp_line(Video*);
-void vga320_4bpp_line(Video*);
-void vga640_4bpp_line(Video*);
-void vga256_line(Video*);
-void cga_t40_dot(Video*);
-void cga_lores_dot(Video*);
-void ega_hires_dot(Video*);
-void cga_t40_ini(Video*);
-void cga_t80_ini(Video*);
-void vga_glo_ini(Video*);
-void vga_ghi_ini(Video*);
-
-#endif
 
 // weiter
 
@@ -1059,42 +999,6 @@ static xVideoMode vidModeTab[] = {
 	{VID_TSL_TEXT, NULL, vidDrawTSLText, vts_hblk, vts_line, NULL, vts_frame},
 	{VID_PRF_MC, NULL, vidProfiScr, NULL, NULL, NULL, NULL},
 
-#ifndef XZXONLY
-	{VID_GBC, NULL, gbcvDraw, NULL, gbcvLine, gbcvVBL, gbcvFram},
-	{VID_NES, NULL, ppuDraw, ppuHBL, ppuLine, ppuFram, NULL},
-
-	{VDP_TEXT1, NULL, vdpText1, vdpHBlk, NULL, NULL, NULL},
-	{VDP_TEXT2, NULL, vdpDummy, vdpHBlk, NULL, NULL, NULL},
-	{VDP_MCOL, NULL, vdpMultcol, vdpHBlk, vdp_line, NULL, NULL},
-	{VDP_GRA1, NULL, vdpGra1, vdpHBlk, vdp_line, NULL, NULL},
-	{VDP_GRA2, NULL, vdpGra2, vdpHBlk, vdp_line, NULL, NULL},
-	{VDP_GRA3, NULL, vdpGra2, vdpHBlk, vdp_linex, NULL, NULL},
-	{VDP_GRA4, NULL, vdpGra4, vdpHBlk, vdp_linex, NULL, NULL},
-	{VDP_GRA5, NULL, vdpGra5, vdpHBlk, vdp_linex, NULL, NULL},
-	{VDP_GRA6, NULL, vdpGra6, vdpHBlk, vdp_linex, NULL, NULL},
-	{VDP_GRA7, NULL, vdpGra7, vdpHBlk, vdp_linex, NULL, NULL},
-
-	{VID_C64_TEXT, NULL, vidC64TDraw, NULL, vidC64Line, vidC64Fram, NULL},
-	{VID_C64_TEXT_MC, NULL, vidC64TMDraw, NULL, vidC64Line, vidC64Fram, NULL},
-	{VID_C64_BITMAP, NULL, vidC64BDraw, NULL, vidC64Line, vidC64Fram, NULL},
-	{VID_C64_BITMAP_MC, NULL, vidC64BMDraw, NULL, vidC64Line, vidC64Fram, NULL},
-
-	{VID_BK_BW, NULL, bk_bw_dot, NULL, NULL, NULL, NULL},
-	{VID_BK_COL, NULL, bk_col_dot, NULL, NULL, NULL, NULL},
-
-	{VID_SPCLST, spcv_ini, spc_dot, NULL, NULL, NULL, NULL},
-
-	{CGA_TXT_L, cga_t40_ini, cga_lores_dot, NULL, cga_t40_line, NULL, cga_t40_frm},
-	{CGA_TXT_H, cga_t80_ini, cga_t40_dot, NULL, cga_t40_line, NULL, cga_t40_frm},
-	{CGA_GRF_L, NULL, cga_lores_dot, NULL, cga320_2bpp_line, NULL, cga_t40_frm},
-	{CGA_GRF_H, NULL, cga_t40_dot, NULL, cga640_1bpp_line, NULL, cga_t40_frm},
-	{VGA_GRF_L, vga_glo_ini, cga_t40_dot, NULL, vga320_4bpp_line, NULL, cga_t40_frm},
-	{VGA_GRF_H, vga_ghi_ini, cga_t40_dot, NULL, vga640_4bpp_line, NULL, cga_t40_frm},
-	{VGA_GRF_256, vga_glo_ini, cga_lores_dot, NULL, vga256_line, NULL, cga_t40_frm},
-
-
-	{VID_PC98XX, NULL, upd7220_dot, NULL, upd7220_line, NULL, upd7220_frame},
-#endif
 
 	{VID_UNKNOWN, NULL, vidDrawBorder, NULL, NULL, NULL, NULL}
 };

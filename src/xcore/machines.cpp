@@ -538,8 +538,6 @@ void xm_set_roms(const xRomset& rs, bool poweron) {
 	bool withfnt = poweron || (rs.fntFile != conf.roms.fntFile);
 	conf.roms = rs;
 	Computer* comp = conf.zx;
-	memset(comp->vid->bios, 0xff, MEM_64K);
-	comp->vid->vga.cga = 1;
 	tsSetRomSize(comp->ts, 0);
 	mac_load_rom(comp, rs.roms, rs.gsFile, rs.fntFile, withfnt);
 	emu_unlock();
@@ -594,7 +592,7 @@ bool xm_set_layout(std::string nm) {
 	if (lay == NULL) return false;
 	conf.layName = nm;
 	comp_set_layout(conf.zx, &lay->lay);
-	vid_set_border(conf.zx->vid, brd_mode_for(conf.zx, conf.vid.border));
+	vid_set_border(conf.zx->vid, conf.vid.border);
 	if ((conf.zx->vid->res.x > 0) && (conf.zx->vid->res.y > 0))
 		vid_set_resolution(conf.zx->vid, conf.zx->vid->res.x, conf.zx->vid->res.y);
 	return true;
@@ -819,7 +817,6 @@ static const char* mac_word_name(xMacWord* tab, int val) {
 static bool mac_same_roms(const xRomset* rs, const xRomset* set) {
 	if (!rs || !set) return false;
 	if ((rs->gsFile != set->gsFile) || (rs->fntFile != set->fntFile)) return false;
-	if (!rs->vBiosFile.empty() || !rs->sBiosFile.empty()) return false;
 	if (rs->roms.size() != set->roms.size()) return false;
 	for (int i = 0; i < rs->roms.size(); i++) {
 		if ((rs->roms[i].name != set->roms[i].name)
@@ -967,7 +964,6 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	else if (nam == "hdd.slave") ide_mount(comp->ide, IDE_SLAVE, QString::fromLocal8Bit(arg.s));
 	else if (nam == "sdcard") sdc_mount(comp->sdc, QString::fromLocal8Bit(arg.s));
 	else if (nam == "sdcard.lock") sdcSetLock(comp->sdc, arg.b);
-	else if (nam == "cartrige.type") comp->slot->mapType = arg.i;
 	else if (nam == "cartrige") {
 		if (conf.storePaths) sltSetPath(comp->slot, arg.s);
 	}
@@ -995,7 +991,6 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	else if (nam == "mouse.wheel") comp->mouse->hasWheel = arg.b;
 	else if (nam == "mouse.swapButtons") comp->mouse->swapButtons = arg.b;
 	else if (nam == "mouse.sensitivity") comp->mouse->sensitivity = arg.d;
-	else if (nam == "mouse.pctype") comp->mouse->pcmode = arg.i;
 	else if (nam == "kbd.scantab") comp->keyb->pcmode = arg.i;
 	else if (nam == "ports") setWatchPorts(comp, QString::fromLocal8Bit(arg.s).split(","));
 }
@@ -1036,7 +1031,6 @@ void xm_save_media(FILE* file) {
 	fprintf(file, "hdd.slave = %s\n", comp->ide->slave->image ? comp->ide->slave->image : "");
 	fprintf(file, "sdcard = %s\n", comp->sdc->image ? comp->sdc->image : "");
 	fprintf(file, "sdcard.lock = %s\n", YESNO(comp->sdc->lock));
-	fprintf(file, "cartrige.type = %i\n", comp->slot->mapType);
 	fprintf(file, "cartrige = %s\n", comp->slot->path ? comp->slot->path : "");
 }
 
@@ -1219,8 +1213,7 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 		case PS_INPUT:
 			if (nam == "mouse") comp->mouse->enable = arg.b;
 			else if ((nam == "mouse.wheel") || (nam == "mouse.swapButtons")
-				|| (nam == "mouse.sensitivity") || (nam == "mouse.pctype")
-				|| (nam == "kbd.scantab")) xm_defer(nam, val);
+				|| (nam == "mouse.sensitivity") || (nam == "kbd.scantab")) xm_defer(nam, val);
 			else if (nam == "joy.extbuttons") comp->joy->extbuttons = arg.b;
 			else if (nam == "keymap") conf.kmapName = val;
 			else if (nam == "gamepad.map") conf.jmapNameA = val;
@@ -1231,9 +1224,7 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 			else if (nam == "sdclock") xm_defer("sdcard.lock", val);
 			break;
 		case PS_SLOT:
-			if ((nam == "slot.type") || (nam == "slotA.type") || (nam == "type"))
-				xm_defer("cartrige.type", val);
-			else if (nam == "path") xm_defer("cartrige", val);
+			if (nam == "path") xm_defer("cartrige", val);
 			break;
 		case PS_DEBUGA:
 			if (nam == "ports") setWatchPorts(comp, QString::fromLocal8Bit(val.c_str()).split(","));

@@ -35,21 +35,11 @@ enum {
 // keyboard type
 enum {
 	KBD_NONE = 0,
-// matrix-based
 	KBD_SPECTRUM,
 	KBD_PROFI,
 	KBD_ATM2_CODE,
 	KBD_ATM2_CPM,
-	KBD_ATM2_DIRECT,
-	KBD_MSX,
-	KBD_C64,
-	KBD_SPCLST,
-// code-based
-	KBD_BK,
-	KBD_PC_AT,
-	KBD_PC_XT,
-	KBD_PC_PS2,
-	KBD_NEC98XX
+	KBD_ATM2_DIRECT
 };
 
 // atm2 mode submodes
@@ -60,17 +50,11 @@ enum {
 	kbdDIRECT
 };
 
-// xt/at mode
+// what a ps/2 keyboard beside the matrix sends (zx evo)
 enum {
 	KBD_XT = 1,
 	KBD_AT,
-	KBD_PS2,
-	KBD_PC98
-};
-
-enum {
-	MOUSE_SERIAL = 1,
-	MOUSE_PS2
+	KBD_PS2
 };
 
 #define KFL_SHIFT	(1)
@@ -93,39 +77,12 @@ enum {
 #define XJ_BUT3		(1<<6)
 #define XJ_BUT4		(1<<7)
 #define XJ_JOYB		(1<<20)
-// msx extend keys
-#define MSXK_SHIFT	'S'
-#define MSXK_CTRL	'C'
-#define MSXK_BSP	'B'
-#define	MSXK_CAP	'P'
-#define MSXK_TAB	'T'
-#define MSXK_CODE	'D'
-#define MSXK_SEL	'L'
-#define MSXK_HOME	'H'
-#define MSXK_INS	'I'
-#define MSXK_DEL	'X'
-#define MSXK_STOP	'Z'
-#define MSXK_GRAPH	'G'
-#define	MSXK_F1		0x01
-#define MSXK_F2		0x02
-#define MSXK_F3		0x03
-#define MSXK_F4		0x04
-#define MSXK_F5		0x05
-#define	MSXK_ESC	0x0a
-#define	MSXK_LEFT	0x1c
-#define MSXK_UP		0x1d
-#define	MSXK_DOWN	0x1e
-#define	MSXK_RIGHT	0x1f
-
 typedef struct {
 	unsigned used:1;
 	unsigned enable:1;
 	unsigned hasWheel:1;
 	unsigned swapButtons:1;
-	unsigned lock:1;
 	double sensitivity;
-	int pcmode;
-	int com;
 
 	unsigned lmb:1;
 	unsigned rmb:1;
@@ -138,10 +95,6 @@ typedef struct {
 	int ydelta;
 	int autox;
 	int autoy;
-
-	int outbuf;
-	int queueSize;
-	int data;
 	// callbacks
 	cbirq xirq;
 	void* xptr;
@@ -175,12 +128,10 @@ typedef struct {
 	signed int key;		// XKEY_*
 	unsigned char zxKey[KEYSEQ_MAXLEN];
 	unsigned char extKey[KEYSEQ_MAXLEN];
-	unsigned char msxKey[KEYSEQ_MAXLEN];
 	atmKey atmCode;
 	int psCode;		// set 3
 	int atCode;		// set 2	0xXXYYZZ = ZZ,YY,XX in buffer
 	int xtCode;		// set 1
-	int necCode;		// nec pc98xx code
 	int joyMask;
 	unsigned char extShKey[KEYSEQ_MAXLEN];	// profi xt keyboard with Shift held, if it differs
 } keyEntry;
@@ -240,7 +191,6 @@ struct Keyboard {
 	unsigned grab:1;		// host keyboard grabbed: profi takes its xt layout
 	int prfshift;			// profi xt: Shift keys held
 	int prfsh[8];			// profi xt: keys that went down with their Shift pair
-	int msxMap[16];	// MSX keys map
 	// pc keyboard
 	unsigned lock:1;	// ps/2 keyboard disabled
 	int pcmode;		// xt/at/ps2 (self)
@@ -295,9 +245,6 @@ void mouseDestroy(Mouse*);
 void mousePress(Mouse*, int, int);
 void mouseRelease(Mouse*, int);
 void mouseReleaseAll(Mouse*);
-void mouse_interrupt(Mouse*);
-int mouse_rd(Mouse*);			// read data from mouse if any, return -1 if not
-void mouse_wr(Mouse*, int);
 
 Joystick* joyCreate();
 void joyDestroy(Joystick*);

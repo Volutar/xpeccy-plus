@@ -195,7 +195,6 @@ static const asAct* as_act(int hwid, int dif, int kind) {
 
 static const asAct* as_find(Computer* comp, int kind) {
 	if (!comp) return NULL;
-	if (comp->hw->grp != HWG_ZX) return NULL;	// zx only for now
 	return as_act(comp->hw->id, comp->dif->type, kind);
 }
 

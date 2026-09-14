@@ -8,9 +8,6 @@
 #include <QScreen>
 #include <QDebug>
 
-// The border sizes offered to the user. VID_BRD_NATIVE is not here: it is
-// picked automatically for machines outside the ZX family, whose raster is
-// not a 256x192 screen with a border around it.
 int drawX = 0;
 int drawY = 0;
 int drawW = 0;
@@ -59,7 +56,7 @@ int brd_mode_pcnt(int pcnt) {
 void vid_upd_scale() {
 	QSize scrsz;
 	Video* vid = conf.zx->vid;
-	double xscale = conf.zx->hw->xscale;		// BK is 2 pixels wide per dot
+	double xscale = conf.zx->hw->xscale;		// pixel aspect, 1.0 on every zx
 	int dwid;
 	int dhei;
 	vid_upd_crop(vid);					// the frame the border size asks for
@@ -111,16 +108,10 @@ void vid_set_fullscreen(int f) {
 	vid_upd_scale();
 }
 
-// The border sizes are a ZX thing: the rest of the machines have no 256x192
-// screen with a border around it, and keep whatever their layout shows.
-int brd_mode_for(Computer* comp, int mode) {
-	return (comp->hw->grp == HWG_ZX) ? mode : VID_BRD_NATIVE;
-}
-
 void vid_set_border_mode(int mode) {
 	Computer* comp = conf.zx;
 	conf.vid.border = mode;
-	vid_set_border(comp->vid, brd_mode_for(comp, mode));
+	vid_set_border(comp->vid, mode);
 	vid_upd_scale();
 }
 

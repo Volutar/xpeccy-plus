@@ -6,7 +6,6 @@ xAYWidget::xAYWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
 	QWidget* wid = new QWidget;
 	setWidget(wid);
 	ui.setupUi(wid);
-	hwList << HWG_ZX << HWG_MSX;
 	setObjectName("AYWIDGET");
 
 	ui.cbChipSelect->addItem("Sound chip A", 0);

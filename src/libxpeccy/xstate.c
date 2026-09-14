@@ -71,11 +71,7 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 	ADD(comp->cpu, sizeof(CPU));
 	n = add_memory(list, n, comp->mem);
 
-	// the video chip, without the 320K of memory that only a non-ZX one has (a
-	// bios rom, and the vram of the v9938 / nes ppu / gbc / pc98 chips).
-	// Nothing outside HWG_ZX runs ahead, so nothing here reads them.
-	ADD(comp->vid, offsetof(Video, bios));
-	ADD((char*)comp->vid + offsetof(Video, oam), sizeof(Video) - offsetof(Video, oam));
+	ADD(comp->vid, sizeof(Video));
 	ADD(comp->vid->ula, sizeof(ulaPlus));
 
 	ADD(comp->beep, sizeof(bitChan));
@@ -104,8 +100,6 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 	}
 	ADD(comp->sdrv, sizeof(SDrive));
 	ADD(comp->saa, sizeof(saaChip));
-	ADD(comp->ppi, sizeof(PPI));
-	ADD(comp->ppib, sizeof(PPI));
 
 	// the storage controllers, their heads and their timers - but not the
 	// media. A floppy's own struct is taken up to its track data only, and an
@@ -114,7 +108,6 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 	if (comp->dif) {
 		ADD(comp->dif, sizeof(DiskIF));
 		ADD(comp->dif->fdc, offsetof(FDC, slst));
-		ADD(comp->dif->fdc2, offsetof(FDC, slst));
 		for (i = 0; i < 4; i++)
 			ADD(comp->dif->flp[i], offsetof(Floppy, data));
 	}
@@ -141,14 +134,12 @@ static int fdc_running(FDC* fdc) {
 
 int xstate_safe(Computer* comp) {
 	if (!comp || !comp->hw) return 0;
-	if (comp->hw->grp != HWG_ZX) return 0;		// the video memory above is skipped
 	if (comp->tape && comp->tape->on) return 0;	// the tape signal is not in the snapshot
 #ifdef HAVEZLIB
 	if (comp->rzx.play) return 0;			// a recording is read forwards only
 #endif
 	if (comp->dif) {
 		if (fdc_running(comp->dif->fdc)) return 0;
-		if (fdc_running(comp->dif->fdc2)) return 0;
 	}
 	return 1;
 }

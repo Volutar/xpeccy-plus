@@ -223,27 +223,23 @@ int dasmrd(int adr, void* ptr) {
 	unsigned char res = 0xff;
 	int fadr;
 	MemPage* pg;
-	if (comp->cpu->core->group == CPUG_X86) {
-		res = comp->hw->mrd(comp, adr, 0) & 0xff;
-	} else {
-		switch (mode) {
-			case XVIEW_CPU:
-				pg = mem_get_page(comp->mem, adr);	// = &comp->mem->map[adr >> 8];
-				fadr = mem_get_phys_adr(comp->mem, adr);
-				switch (pg->type) {
-					case MEM_ROM: res = comp->mem->romData[fadr & comp->mem->romMask]; break;
-					case MEM_RAM: res = comp->mem->ramData[fadr & comp->mem->ramMask]; break;
-					case MEM_SLOT: res = memRd(comp->mem, adr);
-						break;
-				}
-				break;
-			case XVIEW_RAM:
-				res = comp->mem->ramData[((adr & 0x3fff) | (page << 14)) & comp->mem->ramMask];
-				break;
-			case XVIEW_ROM:
-				res = comp->mem->romData[((adr & 0x3fff) | (page << 14)) & comp->mem->romMask];
-				break;
-		}
+	switch (mode) {
+		case XVIEW_CPU:
+			pg = mem_get_page(comp->mem, adr);	// = &comp->mem->map[adr >> 8];
+			fadr = mem_get_phys_adr(comp->mem, adr);
+			switch (pg->type) {
+				case MEM_ROM: res = comp->mem->romData[fadr & comp->mem->romMask]; break;
+				case MEM_RAM: res = comp->mem->ramData[fadr & comp->mem->ramMask]; break;
+				case MEM_SLOT: res = memRd(comp->mem, adr);
+					break;
+			}
+			break;
+		case XVIEW_RAM:
+			res = comp->mem->ramData[((adr & 0x3fff) | (page << 14)) & comp->mem->ramMask];
+			break;
+		case XVIEW_ROM:
+			res = comp->mem->romData[((adr & 0x3fff) | (page << 14)) & comp->mem->romMask];
+			break;
 	}
 	return res;
 }
@@ -299,14 +295,7 @@ void placeLabel(Computer* comp, dasmData& drow) {
 				mn = cpuDisasm(comp->cpu, (drow.oadr - shift), NULL, dasmrd, comp);
 			}
 			if (shift < mn.len) {
-				switch(comp->hw->base) {
-					case 8:
-						num = getoctword(drow.oadr);
-						break;
-					default:
-						num = gethexword(drow.oadr).prepend("#").toUpper();
-						break;
-				}
+				num = gethexword(drow.oadr).prepend("#").toUpper();
 				if (shift == 0) {
 					drow.command.replace(num, QString("%0").arg(lab));
 				} else {
@@ -451,11 +440,10 @@ QList<dasmData> getDisasm(Computer* comp, int& adr) {
 	drow.info.clear();
 	drow.icon.clear();
 	int clen = 0;
-	int offset;
 //	int wid;
 	// 0:adr
 	QString lab;
-	xadr = mem_get_xadr(comp->mem, cpu_get_pc(comp->cpu) + comp->cpu->cs.base);
+	xadr = mem_get_xadr(comp->mem, cpu_get_pc(comp->cpu));
 	int abs = xadr.abs;		// remember pc cell
 	int pct = xadr.type;
 	switch (mode) {
@@ -478,7 +466,7 @@ QList<dasmData> getDisasm(Computer* comp, int& adr) {
 		default:
 			xadr = mem_get_xadr(comp->mem, adr);
 			drow.flag = getBrk(comp, xadr.adr);
-			drow.ispc = ((xadr.type == pct) && (abs == xadr.abs)) ? 1 : 0; // (xadr.adr == comp->cpu->pc + comp->cpu->cs.base) ? 1 : 0;
+			drow.ispc = ((xadr.type == pct) && (abs == xadr.abs)) ? 1 : 0;
 			drow.issel = ((adr >= blockStart) && (adr <= blockEnd)) ? 1 : 0;
 			break;
 	}
@@ -505,20 +493,7 @@ QList<dasmData> getDisasm(Computer* comp, int& adr) {
 		list.append(drow);
 	}
 	drow.islab = 0;			// next line is addr
-	if (comp->cpu->core->group == CPUG_X86) {
-		offset = adr - comp->cpu->cs.base;
-		if ((offset < 0) || (offset > comp->cpu->cs.limit)) {
-			drow.aname = QString::number(adr, comp->hw->base).toUpper().rightJustified(6, '0');
-		} else {
-			// TODO: Code segment name
-			xRegDsc* rd = find_reg_type(comp->cpu, REG_CS);
-			if (rd) {
-				drow.aname = QString("%0:%1").arg(rd->name).arg(gethexword(offset));
-			} else {
-				drow.aname = gethexword(offset);
-			}
-		}
-	} else if (conf.dbg.segment || (mode != XVIEW_CPU)) {
+	if (conf.dbg.segment || (mode != XVIEW_CPU)) {
 		switch(xadr.type) {
 			case MEM_RAM: drow.aname = "RAM:"; break;
 			case MEM_ROM: drow.aname = "ROM:"; break;
@@ -528,7 +503,7 @@ QList<dasmData> getDisasm(Computer* comp, int& adr) {
 		}
 		drow.aname.append(QString("%1:%2").arg(gethexbyte((xadr.bank >> 6) & 0xff)).arg(gethexword(xadr.adr & 0x3fff)));
 	} else {
-		drow.aname = QString::number(xadr.adr, comp->hw->base).toUpper().rightJustified((comp->hw->base == 8) ? 6 : 4, '0');
+		drow.aname = gethexword(xadr.adr);
 	}
 	// 2:command / 3:info
 	clen = dasmSome(comp, adr, drow);
@@ -565,7 +540,7 @@ int xDisasmModel::fill() {
 	dasmData drow;
 	QList<dasmData> list;
 	int row;
-	int adr = asmadr;		// (disasmAdr & 0xffff) + conf.zx->cpu->cs.base;
+	int adr = asmadr;
 	int res = 0;
 	dasm.clear();
 	for(row = 0; row < rowCount(); row++) {
@@ -590,7 +565,7 @@ int xDisasmModel::update_lst() {
 	int i;
 	Computer* comp = conf.zx;
 	int pc = cpu_get_pc(comp->cpu);
-	xMnem mnm = cpuDisasm(comp->cpu, pc + comp->cpu->cs.base, NULL, dasmrd, conf.zx);
+	xMnem mnm = cpuDisasm(comp->cpu, pc, NULL, dasmrd, conf.zx);
 	if (mnm.cond && mnm.met) {
 		for (i = 0; i < dasm.size(); i++) {
 			if ((dasm[i].adr == mnm.oadr) && (mnm.oadr != pc)) {
@@ -682,15 +657,15 @@ int str_to_adr(Computer* comp, QString str) {
 		if (xadr.type >= 0) {
 			adr = xadr.adr;
 			flag = true;
-		} else {						// other : adr in base of comp hardware (16 | 8)
-			adr = str.toInt(&flag, comp->hw->base);
+		} else {						// other : plain hex
+			adr = str.toInt(&flag, 16);
 		}
 	}
 	if (!flag) adr = -1;
 	return adr;
 }
 
-// convert string val to address (.reg, #HEXA 0xHEXA HEXA(base of computer) label)
+// convert string val to address (.reg, #HEXA, 0xHEXA, HEXA, label)
 int asmAddr(Computer* comp, QVariant val, xAdr xadr) {
 	QString lab;
 	QString str = val.toString();
@@ -1220,13 +1195,13 @@ void xDisasmTable::keyPressEvent(QKeyEvent* ev) {
 		case XCUT_TOPC:
 			if (mode != XVIEW_CPU) break;
 			if (!comp) break;
-			setAdr(pc + comp->cpu->cs.base, 0);
+			setAdr(pc, 0);
 			break;
 		case XCUT_SETPC:
 			if (mode != XVIEW_CPU) break;
 			if (!comp) break;
-			i = getData(idx.row(), 0, Qt::UserRole).toInt() - comp->cpu->cs.base;
-			if ((i >= 0) && (i <= comp->cpu->cs.limit)) {
+			i = getData(idx.row(), 0, Qt::UserRole).toInt();
+			if ((i >= 0) && (i <= 0xffff)) {
 				pc = i;
 				cpu_set_pc(comp->cpu, i);
 				updContent();

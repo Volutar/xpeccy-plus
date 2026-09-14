@@ -14,7 +14,6 @@
 #include <QDirIterator>
 #include <QMessageBox>
 #include <QVector3D>
-#include <QLibrary>
 #include <QPainter>
 #include <QStyledItemDelegate>
 #include <QStylePainter>
@@ -300,9 +299,6 @@ void opt_fill_psg_boxes(QComboBox* cbcount, QComboBox* cbtype, QComboBox* cbfrq,
 	cbfrq->clear();
 	cbfrq->addItem(QString::fromUtf8("1.773447 - ZX 128/+2/+3"));
 	cbfrq->addItem(QString::fromUtf8("1.75 - ZX 48/ZX-clones"));
-#ifndef XZXONLY
-	cbfrq->addItem(QString::fromUtf8("1.789773 - MSX"));
-#endif
 	cbfrq->addItem(QString::fromUtf8("3.5 - YM2203"));
 	cbstereo->clear();
 	cbstereo->addItem("Mono",AY_MONO);
@@ -332,57 +328,6 @@ void opt_set_psg_frq(QComboBox* box, double frq) {
 	box->setCurrentText(QString::number(frq, 'g', 7));
 }
 
-enum {
-	roleName = Qt::UserRole,
-	roleLib
-};
-
-void opt_fill_cpu_add(QComboBox* box, cpuCore* tab, QString libname) {
-	int i = 0;
-	int cnt = box->count();
-	QString name;
-	while (tab[i].type != CPU_NONE) {
-		name = QString(tab[i].name);
-		if (!libname.isEmpty()) {
-			name.append(" (").append(libname).append(")");
-		}
-		box->addItem(name);
-		box->setItemData(cnt, QString(tab[i].name), roleName);		// name of cpu
-		box->setItemData(cnt, libname, roleLib);			// name of library, empty for built-in
-		cnt++;
-		i++;
-	}
-}
-
-void opt_fill_cpu(QComboBox* box) {
-	box->clear();
-	opt_fill_cpu_add(box, cpuTab, "");	// buit-in
-#ifndef XZXONLY
-	// add modules to ui.cbCpu, type=filename (not number) -> all files (so/dll/dylib) from ${plgDir}/cpu
-	QDir dir(QString(conf.path.plgDir.c_str()) + SLASH + "cpu");
-	QStringList fnlst = dir.entryList(QStringList() << "*.*", QDir::Files, QDir::Name);
-	QLibrary lib;
-	cpuCore* tab;
-	cpuCore*(*foo)();
-//	QString cn;
-	foreach(QString fn, fnlst) {
-		if (QLibrary::isLibrary(fn)) {
-			lib.setFileName(dir.absoluteFilePath(fn));
-			if (lib.load()) {
-				foo = (cpuCore*(*)())(lib.resolve("getCore"));
-				if (foo) {
-					tab = foo();
-					opt_fill_cpu_add(box, tab, fn);
-				}
-				lib.unload();
-			} else {
-				qDebug() << lib.errorString();
-			}
-		}
-	}
-#endif
-}
-
 SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	setModal(true);
 	ui.setupUi(this);
@@ -394,14 +339,8 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	setWindowIcon(QGuiApplication::windowIcon());
 	ui.tabz->setTabIcon(ui.tabz->indexOf(ui.tab_4), QGuiApplication::windowIcon());
 
-#ifdef XZXONLY
-	// the z80 is the only core built, so there is nothing to pick: drop the row
-	// and let the clock row carry the name
-	ui.icoCpuType->hide();
-	ui.label_37->hide();
-	ui.cbCpu->hide();
+	// the z80 is the only core there is, so the clock row carries its name
 	ui.labCpuFreq->setText("CPU");
-#endif
 
 	spaceLedIcon(ui.cbKeysLed);
 	spaceLedIcon(ui.cbJoyLed);
@@ -499,11 +438,6 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.diskTypeBox->addItem("None",DIF_NONE);
 	ui.diskTypeBox->addItem("Beta Disk (VG93)",DIF_BDI);
 	ui.diskTypeBox->addItem("+3 DOS (uPD765)",DIF_P3DOS);
-#ifndef XZXONLY
-	ui.diskTypeBox->addItem("PC FDC (i8272)", DIF_PC);
-	ui.diskTypeBox->addItem("PC98xx (uPD765)", DIF_PC98);
-	ui.diskTypeBox->addItem("SMK512 (VP1-128)",DIF_SMK512);
-#endif
 	ui.disklist->addAction(ui.actCopyToTape);
 	ui.disklist->addAction(ui.actSaveHobeta);
 	ui.disklist->addAction(ui.actSaveRaw);
@@ -526,25 +460,10 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.hiface->addItem("SMUC",IDE_SMUC);
 	ui.hiface->addItem("ATM",IDE_ATM);
 	ui.hiface->addItem("Profi",IDE_PROFI);
-#ifndef XZXONLY
-	ui.hiface->addItem("SMK512",IDE_SMK);
-#endif
 	ui.hm_type->addItem(QIcon(":/images/cancel.png"),"Not connected",IDE_NONE);
 	ui.hm_type->addItem(QIcon(":/images/hdd.png"),"HDD (ATA)",IDE_ATA);
 	ui.hs_type->addItem(QIcon(":/images/cancel.png"),"Not connected",IDE_NONE);
 	ui.hs_type->addItem(QIcon(":/images/hdd.png"),"HDD (ATA)",IDE_ATA);
-// others
-	ui.cSlotType->addItem("No mapper",MAP_MSX_NOMAPPER);
-#ifdef XZXONLY
-	// the slot is Interface II here, which has no mapper to pick
-	ui.cSlotType->hide();
-	ui.label_27->hide();
-#else
-	ui.cSlotType->addItem("Konami 4",MAP_MSX_KONAMI4);
-	ui.cSlotType->addItem("Konami 5",MAP_MSX_KONAMI5);
-	ui.cSlotType->addItem("ASCII 8K",MAP_MSX_ASCII8);
-	ui.cSlotType->addItem("ASCII 16K",MAP_MSX_ASCII16);
-#endif
 // input
 //	padModel = new xPadMapModel();
 //	ui.tvPadTable->setModel(padModel);
@@ -556,13 +475,6 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.cbScanTab->addItem("Scanset 1 (XT)", KBD_XT);
 	ui.cbScanTab->addItem("Scanset 2 (AT)", KBD_AT);
 	ui.cbScanTab->addItem("Scanset 3 (PS/2)", KBD_PS2);
-	ui.cbMouseType->addItem("Serial", MOUSE_SERIAL);
-	ui.cbMouseType->addItem("PS/2", MOUSE_PS2);
-#ifdef XZXONLY
-	// only the PC reads the mouse as a serial or PS/2 device
-	ui.label_67->hide();
-	ui.cbMouseType->hide();
-#endif
 // all
 	connect(ui.okbut,SIGNAL(released()),this,SLOT(okay()));
 	connect(ui.apbut,SIGNAL(released()),this,SLOT(apply()));
@@ -834,21 +746,6 @@ void SetupWin::start() {
 	setmszbox(ui.machbox->currentIndex());
 	ui.mszbox->setCurrentIndex(ui.mszbox->findData(comp->mem->ramSize));
 	if (ui.mszbox->currentIndex() < 0) ui.mszbox->setCurrentIndex(ui.mszbox->count() - 1);
-	// fill cpu list
-	// TODO: correct for external libs
-	opt_fill_cpu(ui.cbCpu);
-	QString str = QString(comp->cpu->core->name);
-	if (comp->cpu->lib) {
-		str.append(" (").append(comp->cpu->libname).append(")");
-	}
-	ui.cbCpu->setCurrentIndex(ui.cbCpu->findText(str));
-/*
-	if (comp->cpu->lib) {
-		ui.cbCpu->setCurrentIndex(ui.cbCpu->findData(QString(comp->cpu->libname)));
-	} else {
-		ui.cbCpu->setCurrentIndex(ui.cbCpu->findData(comp->cpu->type));
-	}
-*/
 	ui.sbFreq->setValue(comp->cpuFrq);
 	ui.sbMult->setValue(comp->frqMul);
 	ui.scrpwait->setChecked(comp->flgEM1);
@@ -882,9 +779,6 @@ void SetupWin::start() {
 	ui.cbSnow->setChecked(comp->flgSNOW);
 	ui.cbSnowCrash->setChecked(comp->flgSNOWX);
 	chasnow();
-	// the border sizes are a ZX thing: everything else keeps its layout's own
-	// visible area, and the slider would say nothing true about it
-	ui.bszsld->setEnabled(comp->hw->grp == HWG_ZX);
 	ui.bszsld->setValue(conf.vid.border);
 	chabsz();
 	ui.pathle->setText(QString::fromLocal8Bit(conf.scrShot.dir.c_str()));
@@ -944,7 +838,6 @@ void SetupWin::start() {
 // input
 	buildkeylist();
 	setRFIndex(ui.cbScanTab, comp->keyb->pcmode);
-	setRFIndex(ui.cbMouseType, comp->mouse->pcmode);
 	idx = ui.keyMapBox->findText(QString(conf.kmapName.c_str()));
 	if (idx < 1) idx = 0;
 	ui.keyMapBox->setCurrentIndex(idx);
@@ -1020,7 +913,6 @@ void SetupWin::start() {
 	sdcPathChanged();
 
 	ui.cSlotName->setText(comp->slot->path);
-	setRFIndex(ui.cSlotType, comp->slot->mapType);
 // tape
 	ui.cbTapeAuto->setChecked(conf.tape.autostart);
 	ui.cbTapeFast->setChecked(conf.tape.fast);
@@ -1073,31 +965,10 @@ void SetupWin::apply() {
 		emit s_prf_changed();
 		return;
 	}
-	emu_lock();		// roms, memory size and cpu are rebuilt below
+	emu_lock();		// roms and memory size are rebuilt below
 	xm_set_roms(roms);
 	comp->resbank = getRFIData(ui.resbox);
 	memSetSize(comp->mem, getRFIData(ui.mszbox), -1);
-	// cpu
-	QString name = ui.cbCpu->itemData(ui.cbCpu->currentIndex(), roleName).toString();
-	QString libn = ui.cbCpu->itemData(ui.cbCpu->currentIndex(), roleLib).toString();
-	if (libn.isEmpty()) {	// built-in
-		cpu_set_type(comp->cpu, name.toLocal8Bit().data(), NULL, NULL);
-	} else {
-		std::string cpdir = conf.path.plgDir + SLASH + "cpu";
-		cpu_set_type(comp->cpu, name.toLocal8Bit().data(), cpdir.c_str(), libn.toLocal8Bit().data());
-	}
-/*
-	int res = getRFIData(ui.cbCpu);
-	if (res < 0) {
-		std::string fpath = conf.path.plgDir + SLASH + "cpu";
-		res = cpuSetLib(comp->cpu, fpath.c_str(), getRFSData(ui.cbCpu).toLocal8Bit().data());
-		if (res < 0) {
-			shitHappens("Can't set CPU from library");
-		}
-	} else {
-		cpuSetType(comp->cpu, getRFIData(ui.cbCpu));
-	}
-*/
 	compSetBaseFrq(comp, ui.sbFreq->value());
 	compSetTurbo(comp, ui.sbMult->value());
 	comp->flgEM1 = ui.scrpwait->isChecked();
@@ -1205,7 +1076,6 @@ void SetupWin::apply() {
 	comp->saa->enabled = ui.cbSAA->isChecked() ? 1 : 0;
 // input
 	comp->keyb->pcmode = getRFIData(ui.cbScanTab);
-	comp->mouse->pcmode = getRFIData(ui.cbMouseType);
 	comp->mouse->enable = ui.ratEnable->isChecked() ? 1 : 0;
 	comp->mouse->hasWheel = ui.ratWheel->isChecked() ? 1 : 0;
 	comp->mouse->swapButtons = ui.cbSwapButtons->isChecked() ? 1 : 0;
@@ -1268,8 +1138,6 @@ void SetupWin::apply() {
 // others
 	sdc_mount(comp->sdc, ui.sdPath->text());
 	sdcSetLock(comp->sdc, ui.sdlock->isChecked() ? 1 : 0);
-
-	comp->slot->mapType = getRFIData(ui.cSlotType);
 // tape
 	conf.tape.autostart = ui.cbTapeAuto->isChecked() ? 1 : 0;
 	conf.tape.fast = ui.cbTapeFast->isChecked() ? 1 : 0;
@@ -1305,7 +1173,7 @@ void SetupWin::apply() {
 	conf.dbg.showfrm = ui.cbDbgFrame->isChecked() ? 1 : 0;
 	conf.dbg.showray = ui.cbDbgRay->isChecked() ? 1 : 0;
 	setWatchPorts(conf.zx, portwid->getPorts());
-	name = getRFSData(ui.cbStyleSheet);
+	QString name = getRFSData(ui.cbStyleSheet);
 	std::string style = name.isEmpty() ? std::string() : name.toStdString();
 	if (style != conf.style) {
 		conf.style = style;
@@ -1825,10 +1693,6 @@ void SetupWin::delRom() {
 		roms.gsFile.clear();
 	} else if (row == sz+1) {
 		roms.fntFile.clear();
-	} else if (row == sz+2) {
-		roms.vBiosFile.clear();
-	} else if (row == sz+3) {
-		roms.sBiosFile.clear();
 	}
 	rsmodel->fill(&roms);
 	fillRomSlots();
@@ -1849,10 +1713,6 @@ void SetupWin::editRom() {
 		f.name = roms.gsFile;
 	} else if (row == sz+1) {
 		f.name = roms.fntFile;
-	} else if (row == sz+2) {
-		f.name = roms.vBiosFile;
-	} else if (row == sz+3) {
-		f.name = roms.sBiosFile;
 	}
 	eidx = row;
 	rseditor->edit(f);
@@ -1868,10 +1728,6 @@ void SetupWin::setRom(xRomFile f) {
 		roms.gsFile = f.name;
 	} else if (eidx == sz+1) {
 		roms.fntFile = f.name;
-	} else if (eidx == sz+2) {
-		roms.vBiosFile = f.name;
-	} else if (eidx == sz+3) {
-		roms.sBiosFile = f.name;
 	}
 	rsmodel->fill(&roms);
 	fillRomSlots();
@@ -2001,7 +1857,7 @@ void SetupWin::diskToRaw() {
 
 TRFile getHeadInfo(Tape* tape, int blk) {
 	TRFile res;
-	TapeBlockInfo inf = tapGetBlockInfo(tape,blk,TFRM_ZX);
+	TapeBlockInfo inf = tapGetBlockInfo(tape,blk);
 	unsigned char* dt = (unsigned char*)malloc(inf.size + 2);
 	tapGetBlockData(tape,blk,dt,inf.size+2);
 	for (int i=0; i<8; i++) res.name[i] = dt[i+2];
@@ -2071,7 +1927,7 @@ void SetupWin::copyToDisk() {
 		memcpy(&dsc.name[0],nm,8);
 		dsc.ext = 'C';
 		dsc.lst = dsc.hst = 0;
-		TapeBlockInfo binf = tapGetBlockInfo(comp->tape,dataBlock,TFRM_ZX);
+		TapeBlockInfo binf = tapGetBlockInfo(comp->tape,dataBlock);
 		int len = binf.size;
 		qDebug() << len;
 		if (len > 0xff00) {
@@ -2101,7 +1957,7 @@ void SetupWin::copyToDisk() {
 			return;
 		}
 	}
-	inf = tapGetBlockInfo(comp->tape,dataBlock,TFRM_ZX);
+	inf = tapGetBlockInfo(comp->tape,dataBlock);
 	dt = (unsigned char*)malloc(inf.size+2);		// +2 = +mark +crc
 	tapGetBlockData(comp->tape,dataBlock,dt,inf.size+2);
 	switch(diskCreateDescriptor(flp,&dsc)) {
@@ -2155,10 +2011,9 @@ void SetupWin::fillDiskCat() {
 // fixed sizes are the same everywhere, overscan is not
 void SetupWin::chabsz() {
 	Computer* comp = conf.zx;
-	int mode = brd_mode_for(comp, ui.bszsld->value());
+	int mode = ui.bszsld->value();
 	vCoord sze = vid_crop_size(comp->vid, mode);
-	QString nam = (mode == VID_BRD_NATIVE) ? "native" : brd_mode_name(mode);
-	ui.bszlab->setText(QString("%0 (%1×%2)").arg(nam).arg(sze.x).arg(sze.y));
+	ui.bszlab->setText(QString("%0 (%1×%2)").arg(brd_mode_name(mode)).arg(sze.x).arg(sze.y));
 }
 
 void SetupWin::chaflc() {
@@ -2421,7 +2276,6 @@ void SetupWin::sdcPathChanged() {
 
 void SetupWin::openSlot() {
 	Computer* comp = conf.zx;
-//	QString fnam = QFileDialog::getOpenFileName(this,"Cartridge slot","","MSX cartridge (*.rom)");
 //	if (fnam.isEmpty()) return;
 //	ui.cSlotName->setText(fnam);
 //	loadFile(comp, fnam.toLocal8Bit().data(), FT_SLOT_A, 0);

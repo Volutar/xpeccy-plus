@@ -48,7 +48,7 @@ const xCharDir kjoyChars[] = {
 	{'2', XJ_BUT2},
 	{'3', XJ_BUT3},
 	{'4', XJ_BUT4},
-	{'A', XJ_FIRE},	// nes buttons: a,b,start,select
+	{'A', XJ_FIRE},	// the same four under the letters a pad wears
 	{'B', XJ_BUT2},
 	{'S', XJ_BUT3},
 	{'O', XJ_BUT4},

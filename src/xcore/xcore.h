@@ -107,7 +107,6 @@ QString gethexbyte(int);
 QString gethexword(int);
 QString getPortString(int, int);
 bool parsePort(const QString&, int*, int*);
-QString getoctword(int);
 QString gethex6(int);
 QString gethexint(int);
 
@@ -398,8 +397,6 @@ typedef struct {
 	std::string name;
 	std::string gsFile;		// general sound
 	std::string fntFile;		// charset
-	std::string vBiosFile;		// video bios
-	std::string sBiosFile;		// sound bios (or use GS bios?)
 	QList<xRomFile> roms;
 } xRomset;
 

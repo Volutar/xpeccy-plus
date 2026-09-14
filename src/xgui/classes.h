@@ -28,7 +28,6 @@ class xDockWidget : public QDockWidget {
 	Q_OBJECT
 	public:
 		xDockWidget(QString = "", QString = "", QWidget* = nullptr);
-		QList<int> hwList;		// Hardware groups for showing this widget in deBUGa
 	private:
 		QIcon icon;
 		QString title;

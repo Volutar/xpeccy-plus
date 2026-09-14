@@ -9,30 +9,6 @@
 // TODO: cpu headers must be included cuz of callbacks, but flgX redefinition occurs
 // buuuuuuuuut it doesn't matter from here  (no flgX macros used)
 // undef redefined flgX after including
-#ifndef XZXONLY
-#include "NEC V30/v30.h"
-#include "1801vm1/1801vm1.h"
-#undef flgZ
-#include "i8080/i8080.h"
-#undef flgT
-#undef flgN
-#include "x86/i80286.h"
-#undef flgC
-#undef flgN
-#undef flgZ
-#include "LR35902/lr35902.h"
-#undef flgC
-#undef flgZ
-#undef flgI
-#undef flgD
-#undef flgV
-#undef flgN
-#include "MOS6502/6502.h"
-#undef flgN
-#undef flgH
-#undef flgZ
-#undef regA		// z80 keeps A in the high byte of AF, other cpus use the low one
-#endif
 #include "Z80/z80.h"
 
 // common
@@ -84,33 +60,13 @@ void nil_set_regs(CPU* cpu, xRegBunch bunch) {}
 int nil_get_flag(CPU* cpu) {return 0;}
 void nil_set_flag(CPU* cpu, int v) {}
 
-cpuCore dumCore = {CPU_NONE, CPUG_NONE, 0, "none", nil_reg_tab, 8, 8, NULL, nil_reset, nil_exec, nil_asm, nil_mnem};
+cpuCore dumCore = {CPU_NONE, "none", nil_reg_tab, 8, NULL, nil_reset, nil_exec, nil_asm, nil_mnem};
 
 extern xRegDsc z80RegTab[];
-#ifndef XZXONLY
-extern xRegDsc m6502RegTab[];
-extern xRegDsc lrRegTab[];
-extern xRegDsc i8080RegTab[];
-extern xRegDsc i086RegTab[];
-extern xRegDsc i286RegTab[];
-extern xRegDsc pdp11RegTab[];
-extern xRegDsc v30_regtab[];
-#endif
 
 cpuCore cpuTab[] = {
-	{CPU_Z80, CPUG_X80, 0,"Z80", z80RegTab, 16, 8, NULL, z80_reset, z80_exec, z80_asm, z80_mnem},
-#ifndef XZXONLY
-	{CPU_I8080, CPUG_X80, 0,"i8080", i8080RegTab, 16, 8, NULL, i8080_reset, i8080_exec, i8080_asm, i8080_mnem},
-	{CPU_LR35902, CPUG_X80, 0, "LR35902", lrRegTab, 16, 8, NULL, lr_reset, lr_exec, lr_asm, lr_mnem},
-	{CPU_6502, CPUG_MOS, 0, "MOS6502", m6502RegTab, 16, 8, NULL, m6502_reset, m6502_exec, m6502_asm, m6502_mnem},
-	{CPU_VM1, CPUG_PDP, 0, "1801VM1", pdp11RegTab, 16, 16, NULL, pdp11_reset, pdp11_exec, pdp11_asm, pdp11_mnem},
-	{CPU_VM2, CPUG_PDP, 1, "1801VM2", pdp11RegTab, 16, 16, NULL, pdp11_reset, pdp11_exec, pdp11_asm, pdp11_mnem},
-	{CPU_I8086, CPUG_X86, 0,"i8086", i086RegTab, 20, 16, NULL, i286_reset, i286_exec, i286_asm, i286_mnem},
-	{CPU_I80186, CPUG_X86, 1,"i80186", i086RegTab, 20, 16, NULL, i286_reset, i286_exec, i286_asm, i286_mnem},
-	{CPU_I80286, CPUG_X86, 2,"i80286", i286RegTab, 24, 16, NULL, i286_reset, i286_exec, i286_asm, i286_mnem},
-	{CPU_V30, CPUG_X86, 0, "NEC V30 (test)", v30_regtab, 20, 16, NULL, v30_reset, v30_exec, v30_asm, v30_mnem},
-#endif
-	{CPU_NONE, CPUG_NONE, 0, "none", nil_reg_tab, 8, 8, NULL, nil_reset, nil_exec, nil_asm, nil_mnem}
+	{CPU_Z80, "Z80", z80RegTab, 16, NULL, z80_reset, z80_exec, z80_asm, z80_mnem},
+	{CPU_NONE, "none", nil_reg_tab, 8, NULL, nil_reset, nil_exec, nil_asm, nil_mnem}
 };
 
 cpuCore* findCore(int type) {
@@ -124,7 +80,6 @@ cpuCore* findCore(int type) {
 void cpuSetCore(CPU* cpu, cpuCore* core) {
 	cpu->core = core;
 	cpu->type = core->type;
-	cpu->gen = core->gen;
 	cpu->busmask = (1 << core->adrbus) - 1;
 	if (core->init) {
 		core->init(cpu);
@@ -347,26 +302,12 @@ xMnem cpuDisasm(CPU* cpu, int adr, char* buf, cbdmr mrd, void* data) {
 						*buf++ = halfByte[tmp >> 4];
 						*buf++ = halfByte[tmp & 0x0f];
 						break;
-					case '6':		// = (adr + wrd[adr]) octal
-						dtw = mrd(adr++, data);
-						dtw |= (mrd(adr++, data) << 8);
-						mn.len += 2;
-						dtw += adr;
-						buf += sprintf(buf, "%o", dtw);
-						break;
 					case '7':		// = #adr
 						*buf++ = '#';
 						*buf++ = halfByte[(adr >> 12) & 0x0f];
 						*buf++ = halfByte[(adr >> 8) & 0x0f];
 						*buf++ = halfByte[(adr >> 4) & 0x0f];
 						*buf++ = halfByte[adr & 0x0f];
-						break;
-					case '8':		// = word (adr) octal
-						dtw = mrd(adr++, data);
-						dtw |= (mrd(adr++, data) << 8);
-						mn.len += 2;
-						// *buf++ = '#';
-						buf += sprintf(buf, "%o", dtw);
 						break;
 					case ':':
 						*buf++ = ':';
@@ -594,7 +535,6 @@ xRegister cpuGetReg(CPU* cpu, int id) {
 		reg.flag = rd->flag;
 		reg.name = rd->name;
 		reg.value = reg_get_value(cpu, rd);
-		reg.base = 0;
 	}
 	return reg;
 }

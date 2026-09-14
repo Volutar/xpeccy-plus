@@ -29,11 +29,6 @@ enum {
 	TAPE_DATA
 };
 
-enum {
-	TFRM_ZX = 0,
-	TFRM_BK
-};
-
 #define	TAPE_TEXT_LEN	64	// room for a block label out of a tape image
 
 // what a standard header says it carries (2nd byte of the block)
@@ -135,8 +130,8 @@ void tapSync(Tape*,int);
 void tapNextBlock(Tape*);
 void tapDetectLoader(Tape*, int tick, int regB);
 
-TapeBlockInfo tapGetBlockInfo(Tape*,int,int);
-int tapGetBlocksInfo(Tape*,TapeBlockInfo*, int);
+TapeBlockInfo tapGetBlockInfo(Tape*,int);
+int tapGetBlocksInfo(Tape*,TapeBlockInfo*);
 int tapGetBlockData(Tape*,int,unsigned char*,int);
 int tapGetBlockTime(Tape*,int,int);
 
