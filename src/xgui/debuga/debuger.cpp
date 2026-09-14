@@ -1663,6 +1663,14 @@ void DebugWin::setDefaultLayout() {
 	tabifyDockWidget(wid_brk, wid_fdd);
 	tabifyDockWidget(wid_brk, wid_heat);
 	tabifyDockWidget(wid_brk, wid_pal);
+	// A panel has no close button, so the only way one can be hidden is a
+	// debuga.layout that was written while it was - which a build with more
+	// machines in it could do. Reset is the way back. Here, not in the loop
+	// above: a dock has no parent until addDockWidget, and showing one then
+	// would put it on screen as a window of its own.
+	foreach (xDockWidget* dw, dockWidgets) {
+		dw->setVisible(true);
+	}
 	wid_dump->raise();
 	wid_brk->raise();
 
