@@ -77,11 +77,10 @@ static bool fm_takes(int hwid, int dif, int need, int snap) {
 bool fm_runs(const std::string& id, int need, int snap) {
 	if ((id == conf.macId) && conf.zx)
 		return fm_takes(conf.zx->hw->id, conf.zx->dif->type, need, snap);
-	const xMachine* def = xm_find(id);
-	if (!def) return false;
-	xMachine mac = xm_with_over(*def);
-	HardWare* hw = findHardware(mac.hw.c_str());
-	return hw && fm_takes(hw->id, mac.disk, need, snap);
+	const xMachine* mac = xm_find(id);
+	if (!mac) return false;
+	HardWare* hw = findHardware(mac->hw.c_str());
+	return hw && fm_takes(hw->id, mac->disk, need, snap);
 }
 
 void fm_clear() {

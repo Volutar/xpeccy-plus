@@ -61,6 +61,16 @@ before that point is upstream's history and is not repeated here.
   the defaults, TSConf in TR-DOS. Whatever a machine had saved before is gone: set
   it once more and it stays.
 
+- **What you change on a machine now stays with it.** Switch to another machine and
+  back and your settings are still there, instead of quietly going back to stock.
+  They live in a file of the machine's own under `machines/`, so an update can still
+  fix the machine itself without touching them, and "Restore machine" is what throws
+  them away.
+
+- **Saving a machine under a name that is already taken** made a second machine with
+  the same name in the list. Saving now always makes a machine of your own and asks
+  for a name nothing else wears.
+
 - **ALF TV Game ran a shade too fast and its second joystick was scrambled.** The frame
   was 68964 T instead of the 69888 a 48K has, because the machine kept the screen clock
   of whichever one ran before it; and player two's joystick reads in an order of its

@@ -201,6 +201,10 @@ QString xres_dir(const char* kind) {
 	return QString::fromLocal8Bit(conf.path.confDir.c_str()) + SLASH + kind;
 }
 
+QString xres_root(const char* kind) {
+	return QString(XRES_ROOT) + kind;
+}
+
 QString xres_path(const char* kind, const QString& name) {
 	if (name.isEmpty()) return name;
 	QString own = xres_dir(kind) + SLASH + name;

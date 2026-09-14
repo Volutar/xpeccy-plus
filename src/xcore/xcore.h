@@ -93,6 +93,7 @@ void copyFile(const char*, const char*);
 
 // a file that ships inside the binary, replaceable by one of the user's own
 QString xres_dir(const char*);
+QString xres_root(const char*);
 QString xres_path(const char*, const QString&);
 QStringList xres_list(const char*, const QStringList&);
 
@@ -217,22 +218,28 @@ void emu_unlock();
 
 // the running machine
 
-// switch to a machine by id, building it from its definition and the user's
-// own overrides on top
+// switch to a machine by id, keeping what the user changed on the one we leave
 bool xm_set(std::string);
 bool xm_set_layout(std::string);
 int xm_set_hardware(std::string);
 
-// what the user changed, per machine id, and what is mounted
+// what the user changed on the machine that is running: into its own file, and
+// back out of it again
+void xm_save_over();
+void xm_reset_over();		// drop it and take the machine as it ships
+
+// a config written before those files kept the same settings in [MACHINE.<id>]
+// blocks; they are read into a staging map and written out as files once
 void xm_over_clear();
 void xm_over_add(const std::string&, const std::string&, const std::string&);
+void xm_over_migrate();
+void xm_drop_running();		// the config is being read from scratch
+
 void xm_defer(const std::string&, const std::string&);
 bool xm_migrate(const std::string&, const std::string&);
 std::string xm_id_for_name(const std::string&);
 void xm_finish_load();
 void xm_save_nvram();
-void xm_reset_over();		// drop all of it and take the machine as it ships
-void xm_save(FILE*);
 void xm_save_media(FILE*);
 std::string getDiskString(Floppy*);
 
@@ -413,9 +420,9 @@ void xm_rom_set_file(xRomset&, int, const std::string&);
 
 // machines
 
-// What a machine is: read-only, from the binary's own resources or from
-// machines/ in the config directory, where a file of the same id shadows the
-// built-in one. See docs/machines-plan.md.
+// What a machine is: read-only, from the binary's own resources, with a file of
+// the same id in machines/ of the config directory patching it - and a file
+// with an id of its own being a machine of its own. See docs/machines-plan.md.
 
 typedef struct {
 	std::string id;
@@ -458,18 +465,23 @@ typedef struct {
 } xMachine;
 
 void xm_load_all();
-// machines of the user's own: saving the running one, and dropping it again
+// machines of the user's own: making one out of the running machine, and
+// dropping it again
 bool xm_save_as(const std::string&, const std::string&);
 std::string xm_id_of_name(const std::string&);
+std::string xm_free_id(const std::string&);
+bool xm_name_free(const std::string&);
 bool xm_delete(const std::string&);
-void xm_over_forget(const std::string&);
-bool xm_is_users(const std::string&);
+bool xm_ships(const std::string&);	// it comes with the emulator
+bool xm_is_users(const std::string&);	// the user made it
+bool xm_is_changed(const std::string&);	// it carries something of theirs
+QString xm_user_path(const std::string&);
 QStringList xm_user_files();
 bool xm_is_user_file(const QString&);
 const QList<xMachine>& xm_list();
-const xMachine* xm_find(std::string);
+const xMachine* xm_find(std::string);		// as the user has it
+const xMachine* xm_stock(std::string);		// as it ships
 const xMachine* xm_find_by_core(std::string);
-xMachine xm_with_over(const xMachine&);		// with what the user changed on it
 int xm_ram_size(std::string, int* mask = NULL);
 
 // layouts

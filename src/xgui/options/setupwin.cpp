@@ -472,6 +472,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 //	ui.tvPadTable->addAction(ui.actDelBinding);
 	ui.tabsGamepad->addTab(gpwid_a, "Gamepad A");
 	ui.tabsGamepad->addTab(gpwid_b, "Gamepad B");
+	ui.cbScanTab->addItem("As the machine has it", 0);
 	ui.cbScanTab->addItem("Scanset 1 (XT)", KBD_XT);
 	ui.cbScanTab->addItem("Scanset 2 (AT)", KBD_AT);
 	ui.cbScanTab->addItem("Scanset 3 (PS/2)", KBD_PS2);
@@ -1188,6 +1189,9 @@ void SetupWin::apply() {
 		ui.leDbgFont->setFont(dbgfnt);		// the new style sheet resets it
 	}
 	applyLogPage();
+	// the machine carries what the page put in it: into its own file, so it is
+	// still there after a switch away and back
+	xm_save_over();
 
 	emit s_apply();
 
@@ -1445,44 +1449,34 @@ void SetupWin::cfgReset() {
 	cfgLoaded();
 }
 
-// A machine of the user's own is this one with what was changed on it, kept
-// as a definition of its own. The machine it came from goes back to how it
-// ships - the settings did not disappear, they moved.
+// A machine of the user's own: this one, under a name of its own, inheriting
+// the machine it was made from. What was changed on that machine is already its
+// own file, so it is left as it is.
 
 void SetupWin::saveMachine() {
 	const xMachine* mac = xm_find(conf.macId);
 	if (!mac) return;
-	// a machine of your own starts as itself, so saving it again updates it
-	QString sug = QString::fromLocal8Bit(mac->name.c_str());
-	if (!xm_is_users(conf.macId)) sug += " (mine)";
 	bool ok = false;
-	QString name = QInputDialog::getText(this, "Save machine",
-		"Name for this machine:", QLineEdit::Normal, sug, &ok);
+	QString name = QInputDialog::getText(this, "Save as new machine",
+		"Name for the new machine:", QLineEdit::Normal,
+		QString::fromLocal8Bit(mac->name.c_str()) + " (mine)", &ok);
 	name = name.trimmed();
 	if (!ok || name.isEmpty()) return;
 	std::string nam = std::string(name.toLocal8Bit().data());
-	std::string id = xm_id_of_name(nam);
-	if (xm_find(id)) {
-		if (!xm_is_users(id)) {
-			shitHappens("A machine that ships is called that.<br>"
-				"Give this one a name of its own.");
-			return;
-		}
-		if (id == conf.macId) {
-			if (!areSure("Update this machine with what you changed on it?")) return;
-		} else if (!areSure("A machine of your own is already called that. Replace it?")) {
-			return;
-		}
+	if (!xm_name_free(nam)) {
+		shitHappens("A machine is already called that.<br>"
+			"Give this one a name of its own.");
+		return;
 	}
 	// what is saved is what the page shows, so the page goes in first
 	std::string was = conf.macId;
 	apply();
 	if (conf.macId != was) return;		// that was a machine switch, not a save
+	std::string id = xm_free_id(nam);
 	if (!xm_save_as(id, nam)) {
 		shitHappens("Could not write the machine file");
 		return;
 	}
-	xm_over_forget(conf.macId);	// what was changed here lives in that machine now
 	xm_set(id);
 	start();
 	emit s_prf_changed();
@@ -1491,7 +1485,7 @@ void SetupWin::saveMachine() {
 void SetupWin::delMachine() {
 	if (!xm_is_users(conf.macId)) {
 		shitHappens("This machine ships with the emulator, so there is nothing to delete.<br>"
-			"Restore machine defaults drops what you changed on it.");
+			"Restore machine drops what you changed on it.");
 		return;
 	}
 	if (!areSure("Delete this machine?")) return;
@@ -1512,7 +1506,13 @@ void SetupWin::delMachine() {
 }
 
 void SetupWin::resetMachine() {
-	if (!areSure("Take this machine as it ships, dropping everything you changed on it?")) return;
+	if (!xm_is_changed(conf.macId)) {
+		showInfo("Nothing has been changed on this machine.");
+		return;
+	}
+	if (!areSure(xm_is_users(conf.macId)
+		? "Drop everything you changed on this machine, back to the one it was made from?"
+		: "Take this machine as it ships, dropping everything you changed on it?")) return;
 	xm_reset_over();
 	start();
 	emit s_prf_changed();
