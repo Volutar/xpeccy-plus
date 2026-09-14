@@ -49,7 +49,9 @@ before that point is upstream's history and is not repeated here.
   start offset it used to ask for are behind a Custom button now, for the rare case
   that wants them. The picture is drawn in the machine's own colours, so a palette you
   loaded, greyscale and ULA+ all look like the real screen, and the flash attribute
-  blinks. Zoom moved in with the other switches and can Fit the picture to the panel.
+  blinks. Every picture is headed with the page it came from, and that heading lights
+  up when it is the screen the machine is showing. Zoom moved in with the other
+  switches and can Fit the picture to the panel.
   Clicking a dot still shows its pixel and attribute address, and on a shadow screen
   that address now reads from #C000, where the page actually is.
 

@@ -16,7 +16,7 @@ QString scr_page_name(int page) {
 		case XSCR_PAGE_MAIN: return QString("Main (5)");
 		case XSCR_PAGE_SHADOW: return QString("Shadow (7)");
 	}
-	return QString("Page %0").arg(page);
+	return QString("Page %0").arg(gethexbyte(page));
 }
 
 // Page 7 needs a core that can address past 64K, and a machine that has the
@@ -32,6 +32,14 @@ static bool scr_has_shadow(Computer* comp) {
 // are counted from.
 static int scr_page_base(int page) {
 	return (page == XSCR_PAGE_MAIN) ? 0x4000 : 0xc000;
+}
+
+// What a picture is headed with: the page it came from, and in Custom the
+// fact that you picked it yourself
+QString xZXScrView::tileName(int slot) const {
+	if (mode == XSCR_CUSTOM)
+		return QString("Custom (%0)").arg(gethexbyte(page[slot]));
+	return scr_page_name(page[slot]);
 }
 
 // VIEW
@@ -104,7 +112,7 @@ void xZXScrView::redraw() {
 
 // how much of a dot one pixel is worth, for a given screen count and direction
 double xZXScrView::fitScale(int count, bool horiz) const {
-	int head = (count > 1) ? (fontMetrics().height() + 2) : 0;
+	int head = fontMetrics().height() + 2;
 	double w, h;
 	if (horiz) {
 		w = (width() - (count - 1) * XSCR_GAP) / (double)(count * XSCR_TILEW);
@@ -120,7 +128,7 @@ double xZXScrView::fitScale(int count, bool horiz) const {
 xZXScrView::xScrGeom xZXScrView::geom() const {
 	xScrGeom g;
 	g.count = (mode == XSCR_BOTH) ? 2 : 1;
-	g.head = (g.count > 1) ? (fontMetrics().height() + 2) : 0;
+	g.head = fontMetrics().height() + 2;
 	// the Both view takes whichever arrangement leaves the picture bigger, so
 	// a tall dock stacks the screens and a wide one puts them side by side
 	bool horiz = (fitScale(g.count, true) >= fitScale(g.count, false));
@@ -168,7 +176,6 @@ void xZXScrView::paintEvent(QPaintEvent*) {
 		int bw = t.width() * XSCR_BRD / XSCR_TILEW;
 		int bh = t.height() * XSCR_BRD / XSCR_TILEH;
 		pnt.drawImage(t.adjusted(bw, bh, -bw, -bh), img[i]);
-		if (g.head < 1) continue;
 		// the caption names the screen and says whether it is the one on
 		// air: the live one gets the dock titles' own colours, the other
 		// the plain ones of the style
@@ -176,7 +183,7 @@ void xZXScrView::paintEvent(QPaintEvent*) {
 		bool live = (page[i] == comp->vid->vidPage);
 		pnt.fillRect(head, live ? hbg : palette().color(QPalette::Mid));
 		pnt.setPen(live ? htx : palette().color(QPalette::WindowText));
-		pnt.drawText(head, Qt::AlignCenter, scr_page_name(page[i]));
+		pnt.drawText(head, Qt::AlignCenter, tileName(i));
 	}
 }
 
@@ -263,8 +270,12 @@ xZXScrPanel::xZXScrPanel(QWidget* p):QWidget(p) {
 	ui.leScr->setMax(0xffff);
 	ui.leAtr->setMax(0xffff);
 	ui.leScrAdr->setMax(0x3fff);
-	ui.leScrPage->setBase(10);		// a page reads as a number, as it does in Shown
 	ui.leScrPage->setMax(0xff);
+	// a short value lines up with the long ones instead of floating in its box
+	ui.leScr->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+	ui.leAtr->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+	ui.leScrPage->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+	ui.leScrAdr->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
 	foreach (QAbstractButton* btn, grp->buttons())
 		connect(btn, &QAbstractButton::clicked, this, &xZXScrPanel::mode_changed);
@@ -347,22 +358,11 @@ void xZXScrPanel::setAddress(int adr, int atr) {
 	ui.leAtr->setValue(atr);
 }
 
-// Everything in the right column whose width must not follow its contents.
-// The name of the screen on air changes as the machine flips between them, and
-// a label that follows it drags the column, and with it the picture, about once
-// a frame; so it is held at the widest name it can ever carry. The four value
-// fields are held at four digits, which is what an address takes, so a page or
-// an offset does not sit in a box of its own size.
+// The four value fields are held at four digits, which is what an address
+// takes, so a page or an offset does not sit in a box of its own size - and
+// so nothing in the column moves when a value gets shorter.
 void xZXScrPanel::fit_fields() {
-	QFontMetrics fm = ui.labScrCur->fontMetrics();
-	int wid = fm.horizontalAdvance(scr_page_name(XSCR_PAGE_MAIN));
-	int one = fm.horizontalAdvance(scr_page_name(XSCR_PAGE_SHADOW));
-	if (one > wid) wid = one;
-	one = fm.horizontalAdvance(scr_page_name(255));	// the longest Page N
-	if (one > wid) wid = one;
-	wid += 6;		// slack: the metrics are not the whole of what a style draws
-	if (ui.labScrCur->minimumWidth() != wid)
-		ui.labScrCur->setMinimumWidth(wid);
+	QFontMetrics fm = ui.leScr->fontMetrics();
 	// the same slack xHexSpin's own XHS_AUTOW leaves for the frame and cursor
 	int few = fm.horizontalAdvance(QString(4, '0')) + 10;
 	if (ui.leScr->width() == few) return;
@@ -409,7 +409,6 @@ void xZXScrPanel::draw() {
 	view->redraw();
 
 	fit_fields();
-	ui.labScrCur->setText(scr_page_name(comp->vid->vidPage));
 }
 
 // DOCK

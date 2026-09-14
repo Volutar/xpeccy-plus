@@ -207,26 +207,6 @@
           <number>2</number>
          </property>
          <item row="0" column="0">
-          <widget class="QLabel" name="labScrCurCap">
-           <property name="toolTip">
-            <string>The screen the machine is showing now, whichever one you are looking at</string>
-           </property>
-           <property name="text">
-            <string>Shown:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="1">
-          <widget class="QLabel" name="labScrCur">
-           <property name="toolTip">
-            <string>The screen the machine is showing now, whichever one you are looking at</string>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="0">
           <widget class="QLabel" name="labScrPixCap">
            <property name="toolTip">
             <string>Address of the pixel byte holding the dot you clicked</string>
@@ -236,7 +216,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
+         <item row="0" column="1">
           <widget class="xHexSpin" name="leScr">
            <property name="toolTip">
             <string>Address of the pixel byte holding the dot you clicked. Click the picture to set it, right click for Copy</string>
@@ -246,7 +226,7 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="0">
+         <item row="1" column="0">
           <widget class="QLabel" name="labScrAtrCap">
            <property name="toolTip">
             <string>Address of the attribute byte colouring the cell you clicked</string>
@@ -256,7 +236,7 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="1">
+         <item row="1" column="1">
           <widget class="xHexSpin" name="leAtr">
            <property name="toolTip">
             <string>Address of the attribute byte colouring the cell you clicked. Click the picture to set it, right click for Copy</string>
@@ -266,31 +246,31 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="0" colspan="2">
+         <item row="2" column="0" colspan="2">
           <widget class="Line" name="lineScrTwo">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
           </widget>
          </item>
-         <item row="4" column="0">
+         <item row="3" column="0">
           <widget class="QLabel" name="labScrPageCap">
            <property name="toolTip">
-            <string>16K page the screen is read from</string>
+            <string>16K page the screen is read from, in hex</string>
            </property>
            <property name="text">
             <string>Page:</string>
            </property>
           </widget>
          </item>
-         <item row="4" column="1">
+         <item row="3" column="1">
           <widget class="xHexSpin" name="leScrPage">
            <property name="toolTip">
-            <string>16K page the screen is read from</string>
+            <string>16K page the screen is read from, in hex</string>
            </property>
           </widget>
          </item>
-         <item row="5" column="0">
+         <item row="4" column="0">
           <widget class="QLabel" name="labScrOfsCap">
            <property name="toolTip">
             <string>Where the screen starts inside that page</string>
@@ -300,7 +280,7 @@
            </property>
           </widget>
          </item>
-         <item row="5" column="1">
+         <item row="4" column="1">
           <widget class="xHexSpin" name="leScrAdr">
            <property name="toolTip">
             <string>Where the screen starts inside that page</string>

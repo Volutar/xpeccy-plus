@@ -58,6 +58,7 @@ class xZXScrView : public QWidget {
 		xScrGeom geom() const;
 		double fitScale(int count, bool horiz) const;
 		int pageFor(int slot) const;
+		QString tileName(int slot) const;
 		bool adrAt(const QPoint&, int* pix, int* atr) const;
 		void copyAdr(int) const;
 };
