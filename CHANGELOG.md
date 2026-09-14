@@ -48,6 +48,13 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **A program that drives the SD card itself got nowhere.** The card answered as
+  if it were past its idle state, so such a program took it for an old card and
+  read 512 times past the address it meant; and a single-block read that followed
+  a multi-block one never stopped. A card image and a folder served as one are
+  both affected.
+  Thanks to Alexander Nihirash, who brought the card contents and the test tool.
+
 - **ZX Evolution and TSConf lost their NVRAM settings on every start.** What the
   firmware keeps there - the boot target, the TR-DOS drive, autoboot - was written
   over with an empty block before the machine came up, so every launch came up on
