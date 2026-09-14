@@ -24,6 +24,7 @@
 #include "titlebar.h"
 #include "emulwin.h"
 #include "xgui/debuga/debuger.h"
+#include "xgui/scrwin.h"
 #include "xgui/options/setupwin.h"
 #include "filer.h"
 
@@ -275,6 +276,7 @@ int main(int ac,char** av) {
 	RZXWin rzxw(&mwin);
 	xWatcher wutw(&mwin);
 	keyWindow keyw(&mwin);
+	xScrWin scrw(&mwin);
 
 	mwin.onPrfChange();
 	dbgw.onPrfChange();
@@ -326,6 +328,14 @@ int main(int ac,char** av) {
 
 	app.connect(&mwin, SIGNAL(s_watch_upd(Computer*)), &wutw, SLOT(fillFields(Computer*)));
 	app.connect(&mwin, SIGNAL(s_watch_show()), &wutw, SLOT(show()));
+
+	app.connect(&dbgw, SIGNAL(wannaScrWin(bool)), &scrw, SLOT(setDetached(bool)));
+	app.connect(&scrw, SIGNAL(s_detach(bool)), &dbgw, SLOT(scrSetDetached(bool)));
+	app.connect(&app, SIGNAL(s_frame()), &scrw, SLOT(upd()));
+	app.connect(&dbgw, SIGNAL(s_scr_upd()), &scrw, SLOT(upd()));
+	app.connect(&mwin, SIGNAL(s_scr_show()), &dbgw, SLOT(scrToggle()));
+	app.connect(&optw, SIGNAL(s_apply()), &scrw, SLOT(updateStyle()));
+	dbgw.scrSetDetached(conf.dbg.scrdetach);
 
 	app.connect(&mwin, SIGNAL(s_keywin_shide()), &keyw, SLOT(switcher()));
 	app.connect(&mwin, SIGNAL(s_keywin_upd(Keyboard*)), &keyw, SLOT(upd(Keyboard*)));

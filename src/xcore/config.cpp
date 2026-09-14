@@ -218,6 +218,15 @@ void saveConfig() {
 	fprintf(cfile, "dmsize = %i\n", conf.dbg.dmsize);
 	fprintf(cfile, "stack.offset = %i\n", conf.dbg.stackofs);
 	fprintf(cfile, "scr.zoom = %i\n", conf.dbg.scrzoom);
+	fprintf(cfile, "scr.mode = %i\n", conf.dbg.scrmode);
+	fprintf(cfile, "scr.page = %i\n", conf.dbg.scrpage);
+	fprintf(cfile, "scr.offset = %i\n", conf.dbg.scrofs);
+	fprintf(cfile, "scr.no.pixels = %s\n", YESNO(conf.dbg.scrnopix));
+	fprintf(cfile, "scr.no.colors = %s\n", YESNO(conf.dbg.scrnoatr));
+	fprintf(cfile, "scr.no.flash = %s\n", YESNO(conf.dbg.scrnoflash));
+	fprintf(cfile, "scr.grid = %s\n", YESNO(conf.dbg.scrgrid));
+	fprintf(cfile, "scr.detached = %s\n", YESNO(conf.dbg.scrdetach));
+	fprintf(cfile, "scr.window = %i:%i:%i:%i\n",conf.dbg.scrpos.x(),conf.dbg.scrpos.y(),conf.dbg.scrsiz.width(),conf.dbg.scrsiz.height());
 	fprintf(cfile, "regs.layout = %i\n", conf.dbg.reglayout);
 	fprintf(cfile, "regs.split = %s\n", YESNO(conf.dbg.regsplit));
 	fprintf(cfile, "dim.address = %s\n", YESNO(conf.dbg.dimadr));
@@ -586,6 +595,16 @@ void loadConfig() {
 	conf.dbg.dmsize = 127;
 	conf.dbg.stackofs = -2;
 	conf.dbg.scrzoom = 1;
+	conf.dbg.scrmode = XSCR_AUTO;
+	conf.dbg.scrpage = XSCR_PAGE_MAIN;
+	conf.dbg.scrofs = 0;
+	conf.dbg.scrnopix = 0;
+	conf.dbg.scrnoatr = 0;
+	conf.dbg.scrnoflash = 0;
+	conf.dbg.scrgrid = 0;
+	conf.dbg.scrdetach = 0;
+	conf.dbg.scrpos = QPoint(-1, -1);	// let the window manager place it
+	conf.dbg.scrsiz = QSize(480, 340);
 	conf.dbg.reglayout = DBG_REGS_AUTO;
 	conf.dbg.regsplit = 1;
 	conf.dbg.dimadr = 0;
@@ -676,8 +695,28 @@ void loadConfig() {
 							fprt = atoi(vect[3].c_str()); if (fprt > 0) conf.dbg.siz.setHeight(fprt);
 						}
 					}
-					if ((pnam == "scr.zoom") && (arg.i > 0) && (arg.i < 4))
+					if ((pnam == "scr.zoom") && (arg.i >= XSCR_FIT) && (arg.i <= XSCR_ZOOMMAX))
 						conf.dbg.scrzoom = arg.i;
+					if ((pnam == "scr.mode") && (arg.i >= XSCR_AUTO) && (arg.i <= XSCR_CUSTOM))
+						conf.dbg.scrmode = arg.i;
+					if ((pnam == "scr.page") && (arg.i >= 0) && (arg.i < 256))
+						conf.dbg.scrpage = arg.i;
+					if ((pnam == "scr.offset") && (arg.i >= 0) && (arg.i < MEM_16K))
+						conf.dbg.scrofs = arg.i;
+					if (pnam == "scr.no.pixels") conf.dbg.scrnopix = arg.b;
+					if (pnam == "scr.no.colors") conf.dbg.scrnoatr = arg.b;
+					if (pnam == "scr.no.flash") conf.dbg.scrnoflash = arg.b;
+					if (pnam == "scr.grid") conf.dbg.scrgrid = arg.b;
+					if (pnam == "scr.detached") conf.dbg.scrdetach = arg.b;
+					if (pnam == "scr.window") {
+						vect = splitstr(pval,":");
+						if (vect.size() > 3) {
+							conf.dbg.scrpos.setX(atoi(vect[0].c_str()));
+							conf.dbg.scrpos.setY(atoi(vect[1].c_str()));
+							fprt = atoi(vect[2].c_str()); if (fprt > 0) conf.dbg.scrsiz.setWidth(fprt);
+							fprt = atoi(vect[3].c_str()); if (fprt > 0) conf.dbg.scrsiz.setHeight(fprt);
+						}
+					}
 					if (pnam == "ports") xm_defer(pnam, pval);
 					if ((pnam == "regs.layout") && ((arg.i == DBG_REGS_AUTO) || (arg.i == DBG_REGS_1COL)
 							|| (arg.i == DBG_REGS_2COL) || (arg.i == DBG_REGS_WIDE)))

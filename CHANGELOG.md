@@ -27,6 +27,10 @@ before that point is upstream's history and is not repeated here.
   default, for the machines whose RAM gives up under snow and hangs or resets.
 - `--wav-out FILE` records the sound to a wav file from startup, the same recording
   the hotkey makes.
+- **The debugger's screen panel can move into a window of its own**, with the button
+  in the panel or with Alt+S. There it follows the machine while it runs and stays
+  open after the debugger is closed, and it comes back at the size and in the place
+  you left it. Closing the window puts the panel back in the debugger.
 
 ### Removed
 
@@ -39,6 +43,15 @@ before that point is upstream's history and is not repeated here.
   instead of cycling through octal on the way.
 
 ### Changed
+
+- **The debugger's screen panel picks a screen with one click.** Main, shadow, or both
+  at once, with Auto following whatever the machine is showing - the memory bank and
+  start offset it used to ask for are behind a Custom button now, for the rare case
+  that wants them. The picture is drawn in the machine's own colours, so a palette you
+  loaded, greyscale and ULA+ all look like the real screen, and the flash attribute
+  blinks. Zoom moved in with the other switches and can Fit the picture to the panel.
+  Clicking a dot still shows its pixel and attribute address, and on a shadow screen
+  that address now reads from #C000, where the page actually is.
 
 - **TurboSound FM sounds like the chip it emulates.** The FM half of the YM2203 runs
   on the ymfm core now; the one it replaces fed two of every channel's four operators

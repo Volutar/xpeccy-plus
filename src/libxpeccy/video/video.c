@@ -404,31 +404,51 @@ void vid_dark_all() {
 //const unsigned char emptyBox[8] = {0x81,0x00,0x00,0x00,0x00,0x00,0x00,0x81};
 static unsigned char emptyBox[8] = {0x00,0x00,0x00,0x18,0x18,0x00,0x00,0x00};
 
+// Decode one ZX screen into an RGB888 buffer for the debugger. Colors come from
+// the machine's live palette, so ULA+ and a loaded preset both show as they do
+// on screen; VSCR_MONO is the one case that goes around the palette.
 void vid_get_screen(Video* vid, unsigned char* dst, int bank, int shift, int flag) {
 	if ((bank == 0xff) && (shift > 0x2800)) shift = 0x2800;
 	int pixadr = MADR(bank, shift);
 	int atradr = pixadr + 0x1800;
+	int plus = vid->ula->active;		// ULA+ puts the palette group in the attribute
+	int mono = (flag & VSCR_MONO);
 	unsigned char sbyte, abyte, aink, apap;
 	int prt, lin, row, xpos, bitn, cidx;
 	int sadr, aadr;
+	uint32_t ccol;
 	unsigned char cr,cg,cb;
+	aink = 0x0f;
+	apap = 0x00;
 	for (prt = 0; prt < 3; prt++) {
 		for (lin = 0; lin < 8; lin++) {
 			for (row = 0; row < 8; row++) {
 				for (xpos = 0; xpos < 32; xpos++) {
 					sadr = (prt << 11) | (lin << 5) | (row << 8) | xpos;
 					aadr = (prt << 8) | (lin << 5) | xpos;
-					sbyte = (flag & 2) ? emptyBox[row] : vid->mrd(pixadr + sadr, vid->xptr);
-					abyte = (flag & 1) ? 0x47 : vid->mrd(atradr + aadr, vid->xptr);
-					aink = (abyte & 0x07) | ((abyte & 0x40) >> 3);
-					apap = (abyte & 0x78) >> 3;
+					sbyte = (flag & VSCR_NOPIX) ? emptyBox[row] : vid->mrd(pixadr + sadr, vid->xptr);
+					if (!mono) {
+						abyte = vid->mrd(atradr + aadr, vid->xptr);
+						if (plus) {
+							aink = ((abyte & 0xc0) >> 2) | (abyte & 0x07);
+							apap = ((abyte & 0xc0) >> 2) | ((abyte & 0x38) >> 3) | 8;
+						} else {
+							if ((abyte & 0x80) && vid->flash && !(flag & VSCR_NOFLASH)) sbyte ^= 0xff;
+							aink = (abyte & 0x07) | ((abyte & 0x40) >> 3);
+							apap = (abyte & 0x78) >> 3;
+						}
+					}
 					for (bitn = 0; bitn < 8; bitn++) {
-						cidx = (sbyte & (128 >> bitn)) ? aink : apap;
-						// TODO: apply palette
-						cb = (cidx & 1) ? ((cidx & 8) ? 0xff : 0xa0) : 0x00;
-						cr = (cidx & 2) ? ((cidx & 8) ? 0xff : 0xa0) : 0x00;
-						cg = (cidx & 4) ? ((cidx & 8) ? 0xff : 0xa0) : 0x00;
-						if ((flag & 4) && ((lin ^ xpos) & 1)) {
+						if (mono) {
+							cr = cg = cb = (sbyte & (128 >> bitn)) ? 0xff : 0x00;
+						} else {
+							cidx = (sbyte & (128 >> bitn)) ? aink : apap;
+							ccol = greyScale ? vid->gpal[cidx] : vid->pal[cidx];
+							cr = ccol & 0xff;
+							cg = (ccol >> 8) & 0xff;
+							cb = (ccol >> 16) & 0xff;
+						}
+						if ((flag & VSCR_GRID) && ((lin ^ xpos) & 1)) {
 							*(dst++) = ((cr - 0x80) >> 1) + 0x80;
 							*(dst++) = ((cg - 0x80) >> 1) + 0x80;
 							*(dst++) = ((cb - 0x80) >> 1) + 0x80;

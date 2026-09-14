@@ -6,213 +6,323 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>492</width>
-    <height>290</height>
+    <width>460</width>
+    <height>270</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QHBoxLayout" name="horizontalLayout">
+  <layout class="QVBoxLayout" name="layScrMain">
+   <property name="spacing">
+    <number>3</number>
+   </property>
    <property name="leftMargin">
-    <number>5</number>
+    <number>3</number>
    </property>
    <property name="topMargin">
-    <number>5</number>
+    <number>3</number>
    </property>
    <property name="rightMargin">
-    <number>5</number>
+    <number>3</number>
    </property>
    <property name="bottomMargin">
-    <number>5</number>
+    <number>3</number>
    </property>
    <item>
-    <layout class="QVBoxLayout" name="verticalLayout">
+    <layout class="QHBoxLayout" name="layScrTop">
+     <property name="spacing">
+      <number>2</number>
+     </property>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,0,10">
+      <widget class="QToolButton" name="tbScrAuto">
+       <property name="toolTip">
+        <string>Follow the screen the machine shows</string>
+       </property>
+       <property name="text">
+        <string>Auto</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="tbScrMain">
+       <property name="toolTip">
+        <string>Normal screen, page 5</string>
+       </property>
+       <property name="text">
+        <string>Main</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="tbScrShadow">
+       <property name="toolTip">
+        <string>Shadow screen, page 7</string>
+       </property>
+       <property name="text">
+        <string>Shadow</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="tbScrBoth">
+       <property name="toolTip">
+        <string>Both screens at once</string>
+       </property>
+       <property name="text">
+        <string>Both</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="tbScrCustom">
+       <property name="toolTip">
+        <string>Any page at any offset</string>
+       </property>
+       <property name="text">
+        <string>Custom</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="spacerScrTop">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QToolButton" name="tbScrDetach">
+       <property name="toolTip">
+        <string>Show in a window of its own</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../xpeccy.qrc">
+         <normaloff>:/images/display.png</normaloff>:/images/display.png</iconset>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="layScrBody">
+     <property name="spacing">
+      <number>5</number>
+     </property>
+     <item>
+      <layout class="QVBoxLayout" name="layScrOpts">
+       <property name="spacing">
+        <number>2</number>
+       </property>
        <item>
-        <widget class="QLabel" name="label">
+        <widget class="QComboBox" name="cbScrZoom">
+         <property name="toolTip">
+          <string>Screen pixels per emulated dot, or Fit to use the whole panel</string>
+         </property>
+         <property name="frame">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="cbScrPix">
+         <property name="toolTip">
+          <string>Show the attributes alone</string>
+         </property>
          <property name="text">
-          <string>Zoom</string>
+          <string>no pixels</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="xSlider" name="sldScale">
-         <property name="minimum">
-          <number>1</number>
+        <widget class="QCheckBox" name="cbScrAtr">
+         <property name="toolTip">
+          <string>Show the pixels alone, white on black</string>
          </property>
-         <property name="maximum">
-          <number>3</number>
-         </property>
-         <property name="pageStep">
-          <number>1</number>
-         </property>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="tickPosition">
-          <enum>QSlider::TicksBelow</enum>
-         </property>
-         <property name="tickInterval">
-          <number>1</number>
+         <property name="text">
+          <string>no colors</string>
          </property>
         </widget>
        </item>
        <item>
-        <spacer name="horizontalSpacer">
+        <widget class="QCheckBox" name="cbScrFlash">
+         <property name="toolTip">
+          <string>Ignore the flash attribute</string>
+         </property>
+         <property name="text">
+          <string>no flash</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="cbScrGrid">
+         <property name="toolTip">
+          <string>Dim every other character cell</string>
+         </property>
+         <property name="text">
+          <string>show grid</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="Line" name="lineScrOne">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QGridLayout" name="layScrInfo">
+         <property name="horizontalSpacing">
+          <number>4</number>
+         </property>
+         <property name="verticalSpacing">
+          <number>2</number>
+         </property>
+         <item row="0" column="0">
+          <widget class="QLabel" name="labScrCurCap">
+           <property name="toolTip">
+            <string>The screen the machine is showing now, whichever one you are looking at</string>
+           </property>
+           <property name="text">
+            <string>Shown:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="labScrCur">
+           <property name="toolTip">
+            <string>The screen the machine is showing now, whichever one you are looking at</string>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="labScrPixCap">
+           <property name="toolTip">
+            <string>Address of the pixel byte holding the dot you clicked</string>
+           </property>
+           <property name="text">
+            <string>Screen:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="xHexSpin" name="leScr">
+           <property name="toolTip">
+            <string>Address of the pixel byte holding the dot you clicked. Click the picture to set it, right click for Copy</string>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="labScrAtrCap">
+           <property name="toolTip">
+            <string>Address of the attribute byte colouring the cell you clicked</string>
+           </property>
+           <property name="text">
+            <string>Attr:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="xHexSpin" name="leAtr">
+           <property name="toolTip">
+            <string>Address of the attribute byte colouring the cell you clicked. Click the picture to set it, right click for Copy</string>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0" colspan="2">
+          <widget class="Line" name="lineScrTwo">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="0">
+          <widget class="QLabel" name="labScrPageCap">
+           <property name="toolTip">
+            <string>16K page the screen is read from</string>
+           </property>
+           <property name="text">
+            <string>Page:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <widget class="xHexSpin" name="leScrPage">
+           <property name="toolTip">
+            <string>16K page the screen is read from</string>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="0">
+          <widget class="QLabel" name="labScrOfsCap">
+           <property name="toolTip">
+            <string>Where the screen starts inside that page</string>
+           </property>
+           <property name="text">
+            <string>Offset:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="1">
+          <widget class="xHexSpin" name="leScrAdr">
+           <property name="toolTip">
+            <string>Where the screen starts inside that page</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <spacer name="spacerScrOpts">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
-           <width>40</width>
-           <height>20</height>
+           <width>20</width>
+           <height>10</height>
           </size>
          </property>
         </spacer>
        </item>
       </layout>
-     </item>
-     <item>
-      <widget class="QLabel" name="scrLabel">
-       <property name="minimumSize">
-        <size>
-         <width>276</width>
-         <height>212</height>
-        </size>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="verticalSpacer_5">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>40</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QGridLayout" name="gridLayout_4">
-     <item row="3" column="1">
-      <widget class="QCheckBox" name="cbScrPix">
-       <property name="text">
-        <string>no pixels</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1">
-      <layout class="QGridLayout" name="gridLayout_6">
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_59">
-         <property name="text">
-          <string>Start</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_71">
-         <property name="text">
-          <string>VidPage</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="xHexSpin" name="leScrAdr"/>
-       </item>
-       <item row="1" column="1">
-        <widget class="QSpinBox" name="sbScrBank">
-         <property name="minimum">
-          <number>0</number>
-         </property>
-         <property name="maximum">
-          <number>255</number>
-         </property>
-         <property name="value">
-          <number>5</number>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_49">
-         <property name="text">
-          <string>Bank</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="xHexSpin" name="leScr">
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="labCurScr">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="xHexSpin" name="leAtr">
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_112">
-         <property name="text">
-          <string>(scr)</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label_113">
-         <property name="text">
-          <string>(atr)</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item row="4" column="1">
-      <widget class="QCheckBox" name="cbScrAtr">
-       <property name="text">
-        <string>no colors</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="1">
-      <widget class="QCheckBox" name="cbScrGrid">
-       <property name="text">
-        <string>show grid</string>
-       </property>
-      </widget>
-     </item>
-     <item row="6" column="1">
-      <spacer name="verticalSpacer_6">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>40</height>
-        </size>
-       </property>
-      </spacer>
      </item>
     </layout>
    </item>
@@ -224,12 +334,9 @@
    <extends>QLineEdit</extends>
    <header location="global">stdlib.h</header>
   </customwidget>
-  <customwidget>
-   <class>xSlider</class>
-   <extends>QSlider</extends>
-   <header location="global">stdlib.h</header>
-  </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../../xpeccy.qrc"/>
+ </resources>
  <connections/>
 </ui>

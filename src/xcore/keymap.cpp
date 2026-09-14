@@ -449,6 +449,7 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN | SCG_DEBUGA, XCUT_KEYBOARD, "key.keywin", "Show virtual keyboard", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_K)},
 	{SCG_MAIN, XCUT_TAPWIN, "key.tapewin", "Show tape player", QKeySequence(), QKeySequence()},
 	{SCG_MAIN, XCUT_RZXWIN, "key.rzxwin", "Show rzx player", QKeySequence(), QKeySequence()},
+	{SCG_MAIN | SCG_DEBUGA, XCUT_SCRWIN, "key.scrwin", "Show screen window", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_S)},
 	{SCG_MAIN, XCUT_TAPLAY, "key.tape.play", "Tape play", QKeySequence(), QKeySequence(Qt::Key_F4)},
 	{SCG_MAIN, XCUT_TAPREC, "key.tape.rec", "Tape rec", QKeySequence(), QKeySequence(Qt::Key_F5)},
 	{SCG_MAIN, XCUT_SCRSHOT, "key.scrshot", "Screenshot", QKeySequence(), QKeySequence(Qt::Key_F7)},
