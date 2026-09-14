@@ -56,6 +56,11 @@ void sdcReset(SDCard* sdc) {
 //	sdc->mode = SDC_IDLE;
 	sdc->state = SDC_FREE;
 	sdc->argCnt = 0;
+	sdc->acmd = 0;
+	sdc->cont = 0;
+	sdc->respCnt = 0;
+	sdc->buf.pos = -1;
+	sdc->idle = 1;
 }
 
 void sdcSetImage(SDCard* sdc, const char* name) {
@@ -163,10 +168,13 @@ int sdcRead(SDCard* sdc) {
 	return res;
 }
 
+// Every answer carries the idle bit until the card is brought out of idle with
+// ACMD41. A host that takes R1 = 0 for "not an SD card" then falls back to the
+// byte addressing an old card uses, and reads at 512 times the address it means.
 void sdcR1(SDCard* sdc, int resp) {
 	sdc->respCnt = 1;
 	sdc->respPos = 0;
-	sdc->resp[0] = resp & 0xff;
+	sdc->resp[0] = (resp | (sdc->idle ? R1_IDLE : 0)) & 0xff;
 }
 
 unsigned int sdcGetArg(SDCard* sdc, unsigned int mask) {
@@ -176,15 +184,13 @@ unsigned int sdcGetArg(SDCard* sdc, unsigned int mask) {
 
 void sdcExec(SDCard* sdc) {
 //	printf("SDC exec %.2X\n",sdc->arg[0] & 0x3f);
-	if ((sdc->arg[0] & 0x3f) == CMD12) {		// break
-		sdcR1(sdc,0);				// ok
-		sdc->state = SDC_FREE;
-	} else if ((sdc->arg[0] & 0xc0) == 0x40) {	// ??? allways true
+	if ((sdc->arg[0] & 0xc0) == 0x40) {		// %01xxxxxx : a command token
 		if (sdc->acmd) {
 //			printf("SD ACMD%.2i\n",sdc->arg[0] & 0x3f);
 			sdc->acmd = 0;		// reset ACMD
 			switch (sdc->arg[0] & 0x3f) {
-				case ACMD41:
+				case ACMD41:			// out of idle: the card is ready
+					sdc->idle = 0;
 					sdcR1(sdc,0);
 					break;
 				default:
@@ -195,11 +201,12 @@ void sdcExec(SDCard* sdc) {
 		} else {
 //			printf("SD CMD%.2i\n",sdc->arg[0] & 0x3f);
 			switch (sdc->arg[0] & 0x3f) {
-				case CMD00:
-					sdcR1(sdc,R1_IDLE);
+				case CMD00:			// soft reset: whatever it was doing is dropped
+					sdcReset(sdc);
+					sdcR1(sdc,0);
 					break;
 				case CMD08:
-					sdc->resp[0] = 0;		// R1:no error
+					sdc->resp[0] = sdc->idle ? R1_IDLE : 0;
 					sdc->resp[1] = sdc->arg[1];	// return 4 bytes of argument (ORLY)
 					sdc->resp[2] = sdc->arg[2];
 					sdc->resp[3] = sdc->arg[3];
@@ -216,9 +223,9 @@ void sdcExec(SDCard* sdc) {
 					sdc->blkSize = sdcGetArg(sdc,0xffffffff);
 					sdcR1(sdc,0);
 					break;
-				case CMD18:				// read multiple block
-					sdc->cont = 1;
 				case CMD17:				// read block
+				case CMD18:				// read multiple block
+					sdc->cont = ((sdc->arg[0] & 0x3f) == CMD18);
 					sdc->addr = sdcGetArg(sdc,0xffffffff);
 					if (sdc->addr < sdc->maxlba) {
 						sdcR1(sdc,0);
@@ -230,9 +237,9 @@ void sdcExec(SDCard* sdc) {
 						sdc->state = SDC_FREE;
 					}
 					break;
-				case CMD25:				// write multiple block
-					sdc->cont = 1;
 				case CMD24:				// write block
+				case CMD25:				// write multiple block
+					sdc->cont = ((sdc->arg[0] & 0x3f) == CMD25);
 					sdc->addr = sdcGetArg(sdc,0xffffffff);
 					if (sdc->addr < sdc->maxlba) {
 						sdcR1(sdc,0);
@@ -249,7 +256,7 @@ void sdcExec(SDCard* sdc) {
 					sdcR1(sdc,0);
 					break;
 				case CMD58:				// read OCR register
-					sdc->resp[0] = 0;		// r1
+					sdc->resp[0] = sdc->idle ? R1_IDLE : 0;
 					sdc->resp[1] = 0xc0;		// powerup ready.sdh(x)c
 					sdc->resp[2] = 0xff;		// all voltage is supported
 					sdc->resp[3] = 0x80;

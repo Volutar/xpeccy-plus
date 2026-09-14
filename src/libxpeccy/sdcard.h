@@ -48,6 +48,7 @@ typedef struct {
 	unsigned cont:1;
 	unsigned lock:1;
 	unsigned busy:1;
+	unsigned idle:1;	// in idle state: every R1 carries the bit until ACMD41
 
 //	unsigned char mode;	// page 18 of SDCard specification 3.01
 	unsigned char state;	// current action
