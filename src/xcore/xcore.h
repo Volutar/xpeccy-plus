@@ -421,7 +421,7 @@ void xm_rom_set_file(xRomset&, int, const std::string&);
 
 // What a machine is: read-only, from the binary's own resources, with a file of
 // the same id in machines/ of the config directory patching it - and a file
-// with an id of its own being a machine of its own. See docs/machines-plan.md.
+// with an id of its own being a machine of its own. See docs/machine-format.md.
 
 typedef struct {
 	std::string id;

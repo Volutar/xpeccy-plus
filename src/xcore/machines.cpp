@@ -29,7 +29,7 @@
 // way that file is the only place the user's settings live - there is nothing
 // about a machine in config.conf. The last part of this file brings a
 // pre-machines profile, and a pre-patch config, across.
-// See docs/machines-plan.md for the format.
+// See docs/machine-format.md for the format.
 
 #define	MAC_DIR		"machines"
 #define	MAC_SUFFIX	".conf"
