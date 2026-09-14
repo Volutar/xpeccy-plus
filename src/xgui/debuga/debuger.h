@@ -118,7 +118,6 @@ class DebugWin : public QMainWindow {
 		MemPage mem_map[256];		// the map as it was on entry, for Restore
 		QComboBox* mmapType[4];
 		xHexSpin* mmapPage[4];
-		QLabel* mmapLab[4];
 		int mmapForced[4];		// (type << 16) | page the user forced, -1 = none
 
 		QList<xLabel*> dbgRegLabs;

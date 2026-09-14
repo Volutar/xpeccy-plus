@@ -744,10 +744,10 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 	});
 	// MEMMAP: the four 16K banks. Only a ZX pages in 16K blocks, so the fields
 	// are for that group and the rest keep the labels they always had
-	mmapType[0] = ui_misc.cbPG0;	mmapPage[0] = ui_misc.numPG0;	mmapLab[0] = ui_misc.labPG0;
-	mmapType[1] = ui_misc.cbPG1;	mmapPage[1] = ui_misc.numPG1;	mmapLab[1] = ui_misc.labPG1;
-	mmapType[2] = ui_misc.cbPG2;	mmapPage[2] = ui_misc.numPG2;	mmapLab[2] = ui_misc.labPG2;
-	mmapType[3] = ui_misc.cbPG3;	mmapPage[3] = ui_misc.numPG3;	mmapLab[3] = ui_misc.labPG3;
+	mmapType[0] = ui_misc.cbPG0;	mmapPage[0] = ui_misc.numPG0;
+	mmapType[1] = ui_misc.cbPG1;	mmapPage[1] = ui_misc.numPG1;
+	mmapType[2] = ui_misc.cbPG2;	mmapPage[2] = ui_misc.numPG2;
+	mmapType[3] = ui_misc.cbPG3;	mmapPage[3] = ui_misc.numPG3;
 	QWidgetList mmapMenu;
 	mmapMenu << ui_misc.widMMap;
 	for (i = 0; i < 4; i++) {
@@ -763,10 +763,9 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 			.arg(i * 0x4000 + 0x3fff, 4, 16, QChar('0')).toUpper();
 		mmapType[i]->setToolTip(tip);
 		mmapPage[i]->setToolTip(tip);
-		mmapLab[i]->setToolTip(tip);
 		connect(mmapType[i], QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, i](int){mmapEdit(i);});
 		connect(mmapPage[i], &xHexSpin::valueChanged, this, [this, i](int){mmapEdit(i);});
-		mmapMenu << mmapType[i] << mmapPage[i] << mmapLab[i];
+		mmapMenu << mmapType[i] << mmapPage[i];
 	}
 	// anywhere in the block answers the right button, the way FRAME does, and
 	// so does the MEMMAP title over it - the one of the two that wears the dot
@@ -1952,19 +1951,6 @@ void DebugWin::setCPU() {
 
 // memory map section
 
-QString getPageName(MemPage& pg) {
-	QString res;
-	switch(pg.type) {
-		case MEM_RAM: res = "RAM:"; break;
-		case MEM_ROM: res = "ROM:"; break;
-		case MEM_EXT: res = "EXT:"; break;
-		case MEM_SLOT: res = "SLT:"; break;
-		default: res = "---:"; break;
-	}
-	res.append(gethexbyte(pg.num >> 6));
-	return res;
-}
-
 // A bank the user forced is marked the way a changed register is. The type
 // beside it goes bold instead: a style sheet on a combo box makes Qt draw the
 // whole widget through the sheet, and its arrow changes shape with it.
@@ -1977,19 +1963,16 @@ void DebugWin::setMMapMark(int idx, bool on) {
 }
 
 void DebugWin::fillMem() {
-	Computer* comp = conf.zx;
 	// each field costs a style pass, so fill them only while they are up - the
-	// same rule the docks are refreshed by. The labels stand in for them where
-	// the fields are hidden, so those are written either way
-	bool edit = ui_misc.widMMap->isVisible();
+	// same rule the docks are refreshed by
+	if (!ui_misc.widMMap->isVisible()) return;
+	Computer* comp = conf.zx;
 	MemPage pg;
 	int page;
 	block = 1;
 	for (int i = 0; i < 4; i++) {
 		pg = comp->mem->map[i << 6];
 		page = pg.num >> 6;
-		mmapLab[i]->setText(getPageName(pg));
-		if (!edit) continue;
 		// the machine pages whenever it likes and says nothing: a bank stays
 		// marked as forced only while the value put there is still in the map
 		if (mmapForced[i] != ((pg.type << 16) | page)) mmapForced[i] = -1;
@@ -2238,10 +2221,6 @@ void DebugWin::editWatchPorts() {
 
 void DebugWin::setMiscBlocks() {
 	ui_misc.widMMap->setVisible(conf.dbg.showmmap);
-	ui_misc.labPG0->setVisible(false);
-	ui_misc.labPG1->setVisible(false);
-	ui_misc.labPG2->setVisible(false);
-	ui_misc.labPG3->setVisible(false);
 	ui_misc.labHeadSignal->setVisible(conf.dbg.showsig);
 	ui_misc.labDOS->setVisible(conf.dbg.showsig);
 	ui_misc.labROM->setVisible(conf.dbg.showsig);
