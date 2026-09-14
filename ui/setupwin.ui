@@ -109,7 +109,7 @@
                   </size>
                  </property>
                  <property name="text">
-                  <string>Machine</string>
+                  <string>Model</string>
                  </property>
                 </widget>
                </item>
@@ -128,7 +128,8 @@
                   </size>
                  </property>
                  <property name="toolTip">
-                  <string>The machine being emulated</string>
+                  <string>The machine being emulated. Picking another one
+switches to it when the settings are applied</string>
                  </property>
                 </widget>
                </item>
