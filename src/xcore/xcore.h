@@ -300,6 +300,7 @@ enum {
 	XCUT_TAPREC,
 	XCUT_TAPWIN,
 	XCUT_RZXWIN,
+	XCUT_SCRWIN,
 	XCUT_FASTSAVE,
 	XCUT_NMI,
 	XCUT_RESET,
@@ -644,15 +645,25 @@ struct xConfig {
 		unsigned showray:1;
 		unsigned showfrm:1;
 		unsigned regsplit:1;	// light a changed byte on its own, not the whole register
+		unsigned scrnopix:1;	// screen panel: attributes alone
+		unsigned scrnoatr:1;	// screen panel: pixels alone
+		unsigned scrnoflash:1;	// screen panel: hold the flash attribute still
+		unsigned scrgrid:1;	// screen panel: dim every other cell
+		unsigned scrdetach:1;	// screen panel: shown in a window of its own
 		QFont font;
 		int dbsize;
 		int dwsize;
 		int dmsize;
 		int stackofs;		// first offset the stack panel shows, even, see DBG_STACK_OFS
-		int scrzoom;
+		int scrzoom;		// screen panel: pixels per dot, or XSCR_FIT
+		int scrmode;		// screen panel: which screen, XSCR_*
+		int scrpage;		// screen panel: page for XSCR_CUSTOM
+		int scrofs;		// screen panel: offset for XSCR_CUSTOM
 		int reglayout;		// register panel: columns, or DBG_REGS_AUTO
 		QPoint pos;
 		QSize siz;
+		QPoint scrpos;		// screen window, -1 for wherever it lands
+		QSize scrsiz;
 	} dbg;
 };
 
@@ -675,5 +686,25 @@ struct xConfig {
 #define DBG_REGS_1COL	1
 #define DBG_REGS_2COL	2
 #define DBG_REGS_WIDE	4	// 4 register columns, flags beside them
+
+// screen panel: which screen it shows
+
+enum {
+	XSCR_AUTO = 0,		// whichever the machine is showing
+	XSCR_MAIN,		// page 5
+	XSCR_SHADOW,		// page 7
+	XSCR_BOTH,		// both at once
+	XSCR_CUSTOM		// any page at any offset
+};
+
+#define XSCR_FIT	0	// zoom value for "use the whole panel"
+#define XSCR_ZOOMMAX	4
+
+// fast mode makes frames far quicker than a screen has anything new to say
+
+#define XSCR_FAST_EVERY	10
+
+#define XSCR_PAGE_MAIN		5
+#define XSCR_PAGE_SHADOW	7
 
 extern xConfig conf;

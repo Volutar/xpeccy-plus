@@ -23,6 +23,7 @@
 #include "libxpeccy/spectrum.h"
 #include "dbg_widgets.h"
 #include "dbg_stack.h"
+#include "dbg_zxscr.h"
 
 #include "ui_dumpdial.h"
 #include "ui_openDump.h"
@@ -60,12 +61,16 @@ class DebugWin : public QMainWindow {
 		void closed();
 		void wannaKeys();
 		void wannaWutch();
+		void wannaScrWin(bool);
+		void s_scr_upd();
 		void wannaOptions();
 		void needStep();
 	public slots:
 		void start();
 		void onPrfChange();
 		void setScrAtr(int, int);
+		void scrSetDetached(bool);
+		void scrToggle();
 		void updateStyle();
 	private:
 		unsigned block:1;

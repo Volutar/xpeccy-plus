@@ -239,6 +239,8 @@ set(MOCFILES
 	./src/xgui/debuga/dbg_palette.h
 	./src/xgui/debuga/dbg_heat.h
 	./src/watcher.h
+	./src/xgui/scrwin.h
+	./src/xgui/debuga/dbg_zxscr.h
 	./src/xgui/options/setupwin.h
 	./src/xgui/options/padbinder.h
 	./src/xgui/options/opt_romset.h

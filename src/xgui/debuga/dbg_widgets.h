@@ -72,22 +72,7 @@ class xTapeWidget : public xDockWidget {
 };
 
 
-// zxscr
-
-#include "ui_form_zxscreen.h"
-
-class xZXScrWidget : public xDockWidget {
-	Q_OBJECT
-	public:
-		xZXScrWidget(QString, QString, QWidget* = nullptr);
-		void setAddress(int, int);
-	public slots:
-		void draw();
-		void setZoom(int);
-	private:
-		Ui::ZXScrWidget ui;
-		QImage scrImg;
-};
+// zxscr: dbg_zxscr.h
 
 // ps/2
 

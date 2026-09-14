@@ -1141,6 +1141,7 @@ void MainWin::initUserMenu() {
 	connect(pckAct, &QAction::toggled, this, [](bool) {kbdReleaseAll(conf.zx->keyb);});
 	userMenu->addAction(QIcon(":/images/keyboardzx.png"),"Virtual keyboard",this,SIGNAL(s_keywin_shide()));
 	userMenu->addAction(QIcon(":/images/objective.png"),"Watcher", this, SIGNAL(s_watch_show()));
+	userMenu->addAction(QIcon(":/images/rulers.png"),"Screen", this, SIGNAL(s_scr_show()));
 	userMenu->addAction(QIcon(":/images/bug.png"), "Debugger", this, SLOT(doDebug()));
 	userMenu->addAction(QIcon(":/images/other.png"),"Options",this,SLOT(doOptions()));
 

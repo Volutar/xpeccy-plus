@@ -317,7 +317,6 @@ void DebugWin::start() {
 		memViewer->fillImage();
 	}
 	wid_brk->moved();		// to redraw all icons
-	wid_zxscr->setZoom(conf.dbg.scrzoom);
 	activateWindow();
 	ui_asm.dasmTable->setFocus();
 }
@@ -437,6 +436,7 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 	wid_disk_dump = new xDiskDumpWidget(":/images/floppy.png","FDD");
 	wid_cmos_dump = new xCmosDumpWidget("","CMOS");
 	wid_zxscr = new xZXScrWidget(":/images/rulers.png","Screen");
+	connect(wid_zxscr, &xZXScrWidget::s_detach, this, &DebugWin::scrSetDetached);
 	wid_ay = new xAYWidget(":/images/note.png","Sound Chip");
 	wid_tape = new xTapeWidget(":/images/tape.png","Tape");
 	wid_fdd = new xFDDWidget(":/images/floppy.png","FDC");
@@ -1163,6 +1163,9 @@ void DebugWin::fillNotCPU() {
 		if (dw->isVisible())
 			dw->draw();
 	}
+	// a stopped machine makes no frames, and the screen window is fed by
+	// those: while the debugger has the machine, it feeds the window itself
+	emit s_scr_upd();
 
 	setSignal(ui_misc.labDOS, comp->flgDOS);
 	setSignal(ui_misc.labROM, comp->flgROM);
@@ -1188,6 +1191,19 @@ bool DebugWin::fillAll() {
 	return fillDisasm();
 }
 
+
+// The dock and the detached window are two views of one panel, so the switch
+// between them goes through here: conf holds which it is, and both sides are
+// told, whichever of them asked.
+void DebugWin::scrSetDetached(bool on) {
+	conf.dbg.scrdetach = on ? 1 : 0;
+	wid_zxscr->setDetached(on);
+	emit wannaScrWin(on);
+}
+
+void DebugWin::scrToggle() {
+	scrSetDetached(!conf.dbg.scrdetach);
+}
 
 void DebugWin::setScrAtr(int adr, int atr) {
 	wid_zxscr->setAddress(adr, atr);
