@@ -60,13 +60,13 @@ void nil_set_regs(CPU* cpu, xRegBunch bunch) {}
 int nil_get_flag(CPU* cpu) {return 0;}
 void nil_set_flag(CPU* cpu, int v) {}
 
-cpuCore dumCore = {CPU_NONE, CPUG_NONE, 0, "none", nil_reg_tab, 8, 8, NULL, nil_reset, nil_exec, nil_asm, nil_mnem};
+cpuCore dumCore = {CPU_NONE, "none", nil_reg_tab, 8, NULL, nil_reset, nil_exec, nil_asm, nil_mnem};
 
 extern xRegDsc z80RegTab[];
 
 cpuCore cpuTab[] = {
-	{CPU_Z80, CPUG_X80, 0,"Z80", z80RegTab, 16, 8, NULL, z80_reset, z80_exec, z80_asm, z80_mnem},
-	{CPU_NONE, CPUG_NONE, 0, "none", nil_reg_tab, 8, 8, NULL, nil_reset, nil_exec, nil_asm, nil_mnem}
+	{CPU_Z80, "Z80", z80RegTab, 16, NULL, z80_reset, z80_exec, z80_asm, z80_mnem},
+	{CPU_NONE, "none", nil_reg_tab, 8, NULL, nil_reset, nil_exec, nil_asm, nil_mnem}
 };
 
 cpuCore* findCore(int type) {
@@ -80,7 +80,6 @@ cpuCore* findCore(int type) {
 void cpuSetCore(CPU* cpu, cpuCore* core) {
 	cpu->core = core;
 	cpu->type = core->type;
-	cpu->gen = core->gen;
 	cpu->busmask = (1 << core->adrbus) - 1;
 	if (core->init) {
 		core->init(cpu);

@@ -157,7 +157,7 @@ struct Video {
 	vCoord lcut;		// top left corner of the shown frame
 	vCoord rcut;		// bottom right corner (exclusive)
 	vCoord vsze;		// shown frame size
-	vCoord intp;		// intp.y = gbc lyc = 9938 iLine
+	vCoord intp;		// intp.y = the line TSConf raises its INT on
 	int intsize;
 	vCoord res;		// current resolution (-1 = from layout)
 

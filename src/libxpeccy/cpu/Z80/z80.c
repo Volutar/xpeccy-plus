@@ -574,8 +574,8 @@ void z80_set_regs(CPU* cpu, xRegBunch bunch) {
 // {id, family_id, generation, name, regtab, adr.size, data.size, @init, @reset, @exec, @txt2code, @disasm}
 // last entry must me with id=CPU_NONE
 static cpuCore z80core[] = {
-	{CPU_Z80, CPUG_X80, 0,"Z80ext", z80RegTab, 16, 8, NULL, z80_reset, z80_exec, z80_asm, z80_mnem},
-	{CPU_NONE, CPUG_NONE, 0, "none", NULL, 8, 8, NULL, NULL, NULL, NULL, NULL}
+	{CPU_Z80, "Z80ext", z80RegTab, 16, NULL, z80_reset, z80_exec, z80_asm, z80_mnem},
+	{CPU_NONE, "none", NULL, 8, NULL, NULL, NULL, NULL, NULL}
 };
 
 EXPORTDLL cpuCore* getCore() {return z80core;}

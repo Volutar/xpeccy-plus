@@ -779,8 +779,6 @@ void SetupWin::start() {
 	ui.cbSnow->setChecked(comp->flgSNOW);
 	ui.cbSnowCrash->setChecked(comp->flgSNOWX);
 	chasnow();
-	// the border sizes are a ZX thing: everything else keeps its layout's own
-	// visible area, and the slider would say nothing true about it
 	ui.bszsld->setValue(conf.vid.border);
 	chabsz();
 	ui.pathle->setText(QString::fromLocal8Bit(conf.scrShot.dir.c_str()));

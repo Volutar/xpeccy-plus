@@ -97,18 +97,11 @@ typedef int(*cbiack)(void*);
 typedef int(*cbdmr)(int, void*);
 
 #define OF_PREFIX	1
-#define OF_EXT		OF_PREFIX
 #define OF_SKIPABLE	(1<<1)		// opcode is skipable by f8
 #define OF_RELJUMP	(1<<2)
 #define OF_MBYTE	(1<<3)		// operand is byte from memory
 #define OF_MWORD	(1<<4)		// operand is word from memory
 #define OF_MEMADR	(1<<5)		// operand contains memory address (nn)
-#define OF_WORD		(1<<6)		// i286:use words for mod byte
-#define OF_PRT		(1<<7)		// i286:protect mode only
-#define OF_MODRM	(1<<8)		// i286:mod r/m byte present
-#define OF_COMEXT	(1<<9)		// mod r/m contains command extension bits
-#define OF_MODCOM	(OF_MODRM | OF_COMEXT)
-#define OF_GEN		(1<<10)		// opcode depends on cpu generation (86/186/286 or vm1/vm2) op->tab is sub-table[cpu->gen]
 
 typedef struct opCode opCode;
 
@@ -131,11 +124,6 @@ typedef struct {
 } xAsmScan;
 
 enum {
-	CPUG_NONE = 0,
-	CPUG_X80		// i8080-like, which here means the z80
-};
-
-enum {
 	CPU_NONE = 0,		// dummy
 	CPU_Z80
 };
@@ -155,7 +143,6 @@ enum {
 struct CPU {
 	// common part
 	int type;			// cpu type id
-	int gen;			// cpu generation (for x86: 0-8086, 1-80186, 2-80286 etc)
 	unsigned short intrq;		// interrupts request. each bit for each INT type, 1 = requested
 	unsigned short inten;		// interrupts enabled mask
 	int intvec;			// interrupt vector (internal/external)
@@ -197,12 +184,9 @@ struct CPU {
 
 struct cpuCore {
 	int type;				// cpu type
-	int group;				// cpu family
-	int gen;				// cpu generation
 	const char* name;			// printable name
 	xRegDsc* rdsctab;			// registers descriptors table
 	int adrbus;				// width of address bus (bits)
-	int databus;				// width of data bus (bits)
 	void (*init)(CPU*);			// call it when core changed
 	void (*reset)(CPU*);			// reset
 	int (*exec)(CPU*);			// exec opcode, return T

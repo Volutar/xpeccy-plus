@@ -742,8 +742,7 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 	setHeaderMenu(ui_misc.labPorts, ":/images/bars.png", "Watched ports...", [this](){
 		editWatchPorts();
 	});
-	// MEMMAP: the four 16K banks. Only a ZX pages in 16K blocks, so the fields
-	// are for that group and the rest keep the labels they always had
+	// MEMMAP: the four 16K banks
 	mmapType[0] = ui_misc.cbPG0;	mmapPage[0] = ui_misc.numPG0;
 	mmapType[1] = ui_misc.cbPG1;	mmapPage[1] = ui_misc.numPG1;
 	mmapType[2] = ui_misc.cbPG2;	mmapPage[2] = ui_misc.numPG2;
@@ -1202,10 +1201,6 @@ void DebugWin::setScrAtr(int adr, int atr) {
 void DebugWin::chLayout() {
 }
 
-int dbg_get_reg_adr(CPU* cpu, xRegister* reg) {
-	return reg->value;
-}
-
 // the same address by register name, for the dump hotkeys. -1 = this cpu
 // has no such register
 
@@ -1213,7 +1208,7 @@ int dbg_get_reg_adr_name(CPU* cpu, const char* name) {
 	xRegBunch bunch = cpuGetRegs(cpu);
 	for (int i = 0; (i < 32) && (bunch.regs[i].id != REG_EOT); i++) {
 		if (!strcmp(bunch.regs[i].name, name))
-			return dbg_get_reg_adr(cpu, &bunch.regs[i]);
+			return bunch.regs[i].value;
 	}
 	return -1;
 }
@@ -1225,7 +1220,7 @@ void DebugWin::regClick(QMouseEvent* ev) {
 	Computer* comp = conf.zx;
 	xRegBunch bunch = cpuGetRegs(comp->cpu);
 	xRegister reg = bunch.regs[id];
-	int adr = dbg_get_reg_adr(comp->cpu, &reg);
+	int adr = reg.value;
 	//qDebug() << adr;
 	switch (ev->button()) {
 		case Qt::RightButton:

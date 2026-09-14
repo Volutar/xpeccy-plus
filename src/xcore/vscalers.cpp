@@ -56,7 +56,7 @@ int brd_mode_pcnt(int pcnt) {
 void vid_upd_scale() {
 	QSize scrsz;
 	Video* vid = conf.zx->vid;
-	double xscale = conf.zx->hw->xscale;		// BK is 2 pixels wide per dot
+	double xscale = conf.zx->hw->xscale;		// pixel aspect, 1.0 on every zx
 	int dwid;
 	int dhei;
 	vid_upd_crop(vid);					// the frame the border size asks for

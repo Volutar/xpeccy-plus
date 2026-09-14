@@ -656,7 +656,8 @@ void comp_update_timings(Computer* comp) {
 	if (comp->hw->init)
 		comp->hw->init(comp);
 	comp->nsPerTick /= comp->frqMul * comp->hwMul;
-	// after hw->init: a machine may set its own nsPerTick from there
+	// after hw->init, which reads nsPerTick to set the dot period: the dot
+	// comes off the base clock, the turbo multiplier applies to the cpu alone
 	// The tick and the dot come off the same crystal - a ZX tick is exactly two
 	// dots - so derive the tick period from the dot period instead of rounding
 	// each from its own double. Rounded separately they can land one 16.16 unit

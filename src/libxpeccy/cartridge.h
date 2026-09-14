@@ -24,7 +24,7 @@ extern "C" {
 
 typedef struct {
 	char* path;
-	int memMask;			// data is 2^n bytes, this is n-1
+	int memMask;			// data is 2^n bytes, this is 2^n - 1
 	unsigned char* data;		// the image (malloc)
 	unsigned char* brkMap;		// one breakpoint byte per image byte
 } xCartridge;

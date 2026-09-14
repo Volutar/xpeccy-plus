@@ -43,7 +43,6 @@ enum {
 	IRQ_STOP,	// emulator exit
 	IRQ_PANIC,	// panic (stop if --panic)
 	IRQ_VID_INT,	// video
-	IRQ_VID_INTV,
 	IRQ_VID_IEND,
 	IRQ_VID_FRAME,
 	IRQ_VID_HBLANK,
@@ -63,10 +62,7 @@ enum {
 	IRQ_FDC_WR,
 	IRQ_FDD_RDY,	// fdd rdy signal changed
 	IRQ_HDD_PRI,
-	IRQ_MOUSE_DATA,	// mouse moving
-	IRQ_MOUSE_ACK,
 	IRQ_KBD_DATA,	// ps/2 keyboard (zx evo)
-	IRQ_KBD_ACK,
 	IRQ_TAP_0,	// tape
 	IRQ_TAP_1,
 	IRQ_TAP_BLK
