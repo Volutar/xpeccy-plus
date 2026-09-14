@@ -242,6 +242,9 @@ void vid_upd_timings(Video*, double);
 #define VSCR_NOFLASH	8	// hold the flash attribute still
 
 void vid_get_screen(Video*, unsigned char*, int, int, int);
+xColor vid_brd_col(Video*);
+int vid_scr_base(int);
+void vid_scr_adr(int, int, int, int*, int*);
 
 void vid_set_grey(int);
 xColor vid_get_col(Video*, int);

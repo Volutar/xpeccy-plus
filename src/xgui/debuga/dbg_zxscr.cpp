@@ -11,7 +11,7 @@
 
 // The two pages every 128K machine draws from have names of their own; any
 // other page is only ever a number
-QString scr_page_name(int page) {
+static QString scr_page_name(int page) {
 	switch (page) {
 		case XSCR_PAGE_MAIN: return QString("Main (5)");
 		case XSCR_PAGE_SHADOW: return QString("Shadow (7)");
@@ -25,13 +25,6 @@ QString scr_page_name(int page) {
 static bool scr_has_shadow(Computer* comp) {
 	if (comp->hw->mask && !(comp->hw->mask & ~(MEM_128K - 1))) return false;
 	return (comp->mem->ramSize >= (XSCR_PAGE_SHADOW + 1) * MEM_16K);
-}
-
-// A page is seen by the cpu at #4000 only when it is page 5. Everything else
-// has to be paged into the top window first, so that is the base its addresses
-// are counted from.
-static int scr_page_base(int page) {
-	return (page == XSCR_PAGE_MAIN) ? 0x4000 : 0xc000;
 }
 
 // What a picture is headed with: the page it came from, and in Custom the
@@ -65,27 +58,14 @@ QSize xZXScrView::minimumSizeHint() const {
 	return QSize(XSCR_TILEW / 2, XSCR_TILEH / 2);
 }
 
-void xZXScrView::setMode(int m) {
+// Everything the panel decides, in one go: the repaint comes from redraw(),
+// which follows on every call site anyway
+void xZXScrView::setView(int m, int z, int f, int pg, int sh) {
 	mode = m;
-	update();
-}
-
-void xZXScrView::setCustom(int pg, int sh) {
+	zoom = (z < XSCR_FIT) ? XSCR_FIT : (z > XSCR_ZOOMMAX) ? XSCR_ZOOMMAX : z;
+	flags = f;
 	cpage = pg;
 	cshift = sh;
-	update();
-}
-
-void xZXScrView::setFlags(int f) {
-	flags = f;
-	update();
-}
-
-void xZXScrView::setZoom(int z) {
-	if (z < XSCR_FIT) z = XSCR_FIT;
-	if (z > XSCR_ZOOMMAX) z = XSCR_ZOOMMAX;
-	zoom = z;
-	update();
 }
 
 int xZXScrView::pageFor(int slot) const {
@@ -111,7 +91,8 @@ void xZXScrView::redraw() {
 }
 
 // how much of a dot one pixel is worth, for a given screen count and direction
-double xZXScrView::fitScale(int count, bool horiz) const {
+double xZXScrView::fitScale(bool horiz) const {
+	int count = (mode == XSCR_BOTH) ? 2 : 1;
 	int head = fontMetrics().height() + 2;
 	double w, h;
 	if (horiz) {
@@ -131,8 +112,10 @@ xZXScrView::xScrGeom xZXScrView::geom() const {
 	g.head = fontMetrics().height() + 2;
 	// the Both view takes whichever arrangement leaves the picture bigger, so
 	// a tall dock stacks the screens and a wide one puts them side by side
-	bool horiz = (fitScale(g.count, true) >= fitScale(g.count, false));
-	double s = fitScale(g.count, horiz);
+	double sh = fitScale(true);
+	double sv = fitScale(false);
+	bool horiz = (sh >= sv);
+	double s = horiz ? sh : sv;
 	// a fixed zoom is exactly that; Fit snaps to whole pixels per dot as soon
 	// as there is room for one, and only scales down below that
 	if (zoom != XSCR_FIT) {
@@ -163,9 +146,7 @@ void xZXScrView::paintEvent(QPaintEvent*) {
 	QPainter pnt(this);
 	pnt.fillRect(rect(), palette().color(QPalette::Window));
 	// the border is one colour for the whole machine, so both screens get it
-	int bidx = comp->vid->nextbrd & 0x0f;
-	if (comp->vid->ula->active) bidx |= 8;
-	xColor bcol = vid_get_col(comp->vid, bidx);
+	xColor bcol = vid_brd_col(comp->vid);
 	xScrGeom g = geom();
 	QColor hbg = conf.pal.value("dbg.header.bg");
 	QColor htx = conf.pal.value("dbg.header.txt");
@@ -198,10 +179,9 @@ bool xZXScrView::adrAt(const QPoint& p, int* pix, int* atr) const {
 		int x = (int)((p.x() - t.left()) / s) - XSCR_BRD;
 		int y = (int)((p.y() - t.top()) / s) - XSCR_BRD;
 		if ((x < 0) || (x >= XSCR_W) || (y < 0) || (y >= XSCR_H)) return false;
-		int base = scr_page_base(page[i]);
+		int base = vid_scr_base(page[i]);
 		if (mode == XSCR_CUSTOM) base += cshift;
-		*pix = (base + (((y & 0xc0) << 5) | ((y & 0x38) << 2) | ((y & 7) << 8) | ((x & 0xf8) >> 3))) & 0xffff;
-		*atr = (base + 0x1800 + (((y & 0xf8) << 2) | ((x & 0xf8) >> 3))) & 0xffff;
+		vid_scr_adr(base, x, y, pix, atr);
 		return true;
 	}
 	return false;
@@ -255,7 +235,7 @@ xZXScrPanel::xZXScrPanel(QWidget* p):QWidget(p) {
 
 	// QToolButton only groups siblings it was told about, so the row needs a
 	// group of its own to stay exclusive
-	QButtonGroup* grp = new QButtonGroup(this);
+	grp = new QButtonGroup(this);
 	grp->addButton(ui.tbScrAuto, XSCR_AUTO);
 	grp->addButton(ui.tbScrMain, XSCR_MAIN);
 	grp->addButton(ui.tbScrShadow, XSCR_SHADOW);
@@ -286,28 +266,18 @@ xZXScrPanel::xZXScrPanel(QWidget* p):QWidget(p) {
 	connect(ui.cbScrGrid, &QCheckBox::toggled, this, &xZXScrPanel::opts_changed);
 	connect(ui.leScrPage, SIGNAL(valueChanged(int)), this, SLOT(custom_changed()));
 	connect(ui.leScrAdr, SIGNAL(valueChanged(int)), this, SLOT(custom_changed()));
-	connect(view, &xZXScrView::s_adr, this, &xZXScrPanel::show_adr);
+	connect(view, &xZXScrView::s_adr, this, &xZXScrPanel::setAddress);
 	connect(ui.tbScrDetach, &QToolButton::clicked, this, &xZXScrPanel::s_detach);
 
 	reload();
 }
 
-int xZXScrPanel::mode() const {
-	if (ui.tbScrMain->isChecked()) return XSCR_MAIN;
-	if (ui.tbScrShadow->isChecked()) return XSCR_SHADOW;
-	if (ui.tbScrBoth->isChecked()) return XSCR_BOTH;
-	if (ui.tbScrCustom->isChecked()) return XSCR_CUSTOM;
-	return XSCR_AUTO;
-}
-
+// the group was handed every button's XSCR_* id, so the mode table is written
+// once and read back through it
 void xZXScrPanel::apply_mode(int m) {
-	switch (m) {
-		case XSCR_MAIN: ui.tbScrMain->setChecked(true); break;
-		case XSCR_SHADOW: ui.tbScrShadow->setChecked(true); break;
-		case XSCR_BOTH: ui.tbScrBoth->setChecked(true); break;
-		case XSCR_CUSTOM: ui.tbScrCustom->setChecked(true); break;
-		default: ui.tbScrAuto->setChecked(true); break;
-	}
+	QAbstractButton* btn = grp->button(m);
+	if (!btn) btn = ui.tbScrAuto;
+	btn->setChecked(true);
 }
 
 // the settings live in conf, so the dock and the window always agree
@@ -328,7 +298,7 @@ void xZXScrPanel::reload() {
 
 void xZXScrPanel::mode_changed() {
 	if (hold) return;
-	conf.dbg.scrmode = mode();
+	conf.dbg.scrmode = grp->checkedId();
 	draw();
 }
 
@@ -349,10 +319,6 @@ void xZXScrPanel::custom_changed() {
 	draw();
 }
 
-void xZXScrPanel::show_adr(int pix, int atr) {
-	setAddress(pix, atr);
-}
-
 void xZXScrPanel::setAddress(int adr, int atr) {
 	ui.leScr->setValue(adr);
 	ui.leAtr->setValue(atr);
@@ -362,10 +328,10 @@ void xZXScrPanel::setAddress(int adr, int atr) {
 // takes, so a page or an offset does not sit in a box of its own size - and
 // so nothing in the column moves when a value gets shorter.
 void xZXScrPanel::fit_fields() {
-	QFontMetrics fm = ui.leScr->fontMetrics();
+	if (ui.leScr->font() == fitFont) return;	// nothing but the font moves these
+	fitFont = ui.leScr->font();
 	// the same slack xHexSpin's own XHS_AUTOW leaves for the frame and cursor
-	int few = fm.horizontalAdvance(QString(4, '0')) + 10;
-	if (ui.leScr->width() == few) return;
+	int few = QFontMetrics(fitFont).horizontalAdvance(QString(4, '0')) + 10;
 	ui.leScr->setFixedWidth(few);
 	ui.leAtr->setFixedWidth(few);
 	ui.leScrPage->setFixedWidth(few);
@@ -376,18 +342,14 @@ void xZXScrPanel::fit_fields() {
 
 void xZXScrPanel::draw() {
 	Computer* comp = conf.zx;
-	int m = mode();
 	bool shadow = scr_has_shadow(comp);
 	ui.tbScrShadow->setEnabled(shadow);
 	ui.tbScrBoth->setEnabled(shadow);
-	if (!shadow && ((m == XSCR_SHADOW) || (m == XSCR_BOTH))) {
-		hold = true;
-		apply_mode(XSCR_AUTO);
-		hold = false;
-		m = XSCR_AUTO;
-		conf.dbg.scrmode = m;
+	if (!shadow && ((conf.dbg.scrmode == XSCR_SHADOW) || (conf.dbg.scrmode == XSCR_BOTH))) {
+		conf.dbg.scrmode = XSCR_AUTO;
+		apply_mode(XSCR_AUTO);		// setChecked emits no clicked(), so no loop
 	}
-	bool custom = (m == XSCR_CUSTOM);
+	bool custom = (conf.dbg.scrmode == XSCR_CUSTOM);
 	ui.labScrPageCap->setVisible(custom);
 	ui.leScrPage->setVisible(custom);
 	ui.labScrOfsCap->setVisible(custom);
@@ -396,16 +358,17 @@ void xZXScrPanel::draw() {
 	// ULA+ spends the flash bit on the palette group, so there is no flash
 	ui.cbScrFlash->setEnabled(!comp->vid->ula->active);
 
+	// the controls all write conf as they are touched, so that is the one
+	// place the view is fed from - and a panel that is hidden cannot answer
+	// with widgets left behind
 	int flags = 0;
-	if (ui.cbScrPix->isChecked()) flags |= VSCR_NOPIX;
-	if (ui.cbScrAtr->isChecked()) flags |= VSCR_MONO;
-	if (ui.cbScrFlash->isChecked()) flags |= VSCR_NOFLASH;
-	if (ui.cbScrGrid->isChecked()) flags |= VSCR_GRID;
+	if (conf.dbg.scrnopix) flags |= VSCR_NOPIX;
+	if (conf.dbg.scrnoatr) flags |= VSCR_MONO;
+	if (conf.dbg.scrnoflash) flags |= VSCR_NOFLASH;
+	if (conf.dbg.scrgrid) flags |= VSCR_GRID;
 
-	view->setMode(m);
-	view->setZoom(getRFIData(ui.cbScrZoom));
-	view->setFlags(flags);
-	view->setCustom(ui.leScrPage->getValue(), ui.leScrAdr->getValue());
+	view->setView(conf.dbg.scrmode, conf.dbg.scrzoom, flags,
+		conf.dbg.scrpage, conf.dbg.scrofs);
 	view->redraw();
 
 	fit_fields();

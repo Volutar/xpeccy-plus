@@ -453,11 +453,8 @@ void MainWin::calcCoords(QMouseEvent* ev) {
 	int x = ((ev->xEventX - drawX) * comp->vid->vsze.x / drawW) + comp->vid->lcut.x - comp->vid->bord.x;
 	int y = ((ev->xEventY - drawY) * comp->vid->vsze.y / drawH) + comp->vid->lcut.y - comp->vid->bord.y;
 	if ((x >= 0) && (x < comp->vid->scrn.x) && (y >= 0) && (y < comp->vid->scrn.y)) {	// inside screen
-		// only page 5 is at #4000; any other screen page has to be put in the
-		// top window first, so that is where its addresses are counted from
-		int base = (comp->vid->vidPage == XSCR_PAGE_MAIN) ? 0x4000 : 0xc000;
-		int adr = ((y & 0xc0) << 5) | ((y & 0x38) << 2) | ((y & 7) << 8) | ((x & 0xf8) >> 3) | base;
-		int atr = ((y & 0xf8) << 2) | ((x & 0xf8) >> 3) | 0x1800 | base;
+		int adr, atr;
+		vid_scr_adr(vid_scr_base(comp->vid->vidPage), x, y, &adr, &atr);
 		setMessage(QString(" %0:%1 | %2 ").arg(gethexword(adr)).arg(x & 7).arg(gethexword(atr)));
 		emit s_scradr(adr, atr);
 	}

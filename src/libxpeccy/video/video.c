@@ -404,6 +404,24 @@ void vid_dark_all() {
 //const unsigned char emptyBox[8] = {0x81,0x00,0x00,0x00,0x00,0x00,0x00,0x81};
 static unsigned char emptyBox[8] = {0x00,0x00,0x00,0x18,0x18,0x00,0x00,0x00};
 
+xColor uint_to_xcol(uint32_t);		// defined below, beside the palette
+
+// What the ULA makes of an attribute byte: the ink and paper indexes, and the
+// flash bit inverting the pixels. ULA+ spends bits 6 and 7 on the palette group
+// instead, so in that mode there is no flash. Both drawers and the debugger's
+// screen panel read it here, so the panel cannot drift from the picture.
+static void zx_attr_cols(Video* vid, unsigned char abyte, unsigned char* sbyte,
+			unsigned char* ink, unsigned char* pap, int noflash) {
+	if (vid->ula->active) {
+		*ink = ((abyte & 0xc0) >> 2) | (abyte & 0x07);
+		*pap = ((abyte & 0xc0) >> 2) | ((abyte & 0x38) >> 3) | 8;
+	} else {
+		if ((abyte & 0x80) && vid->flash && !noflash) *sbyte ^= 0xff;
+		*ink = (abyte & 0x07) | ((abyte & 0x40) >> 3);
+		*pap = (abyte & 0x78) >> 3;
+	}
+}
+
 // Decode one ZX screen into an RGB888 buffer for the debugger. Colors come from
 // the machine's live palette, so ULA+ and a loaded preset both show as they do
 // on screen; VSCR_MONO is the one case that goes around the palette.
@@ -411,15 +429,14 @@ void vid_get_screen(Video* vid, unsigned char* dst, int bank, int shift, int fla
 	if ((bank == 0xff) && (shift > 0x2800)) shift = 0x2800;
 	int pixadr = MADR(bank, shift);
 	int atradr = pixadr + 0x1800;
-	int plus = vid->ula->active;		// ULA+ puts the palette group in the attribute
 	int mono = (flag & VSCR_MONO);
+	int grid = (flag & VSCR_GRID);
+	const uint32_t* pal = greyScale ? vid->gpal : vid->pal;
 	unsigned char sbyte, abyte, aink, apap;
-	int prt, lin, row, xpos, bitn, cidx;
+	int prt, lin, row, xpos, bitn;
 	int sadr, aadr;
-	uint32_t ccol;
+	xColor xcol;
 	unsigned char cr,cg,cb;
-	aink = 0x0f;
-	apap = 0x00;
 	for (prt = 0; prt < 3; prt++) {
 		for (lin = 0; lin < 8; lin++) {
 			for (row = 0; row < 8; row++) {
@@ -429,26 +446,18 @@ void vid_get_screen(Video* vid, unsigned char* dst, int bank, int shift, int fla
 					sbyte = (flag & VSCR_NOPIX) ? emptyBox[row] : vid->mrd(pixadr + sadr, vid->xptr);
 					if (!mono) {
 						abyte = vid->mrd(atradr + aadr, vid->xptr);
-						if (plus) {
-							aink = ((abyte & 0xc0) >> 2) | (abyte & 0x07);
-							apap = ((abyte & 0xc0) >> 2) | ((abyte & 0x38) >> 3) | 8;
-						} else {
-							if ((abyte & 0x80) && vid->flash && !(flag & VSCR_NOFLASH)) sbyte ^= 0xff;
-							aink = (abyte & 0x07) | ((abyte & 0x40) >> 3);
-							apap = (abyte & 0x78) >> 3;
-						}
+						zx_attr_cols(vid, abyte, &sbyte, &aink, &apap, flag & VSCR_NOFLASH);
 					}
 					for (bitn = 0; bitn < 8; bitn++) {
 						if (mono) {
 							cr = cg = cb = (sbyte & (128 >> bitn)) ? 0xff : 0x00;
 						} else {
-							cidx = (sbyte & (128 >> bitn)) ? aink : apap;
-							ccol = greyScale ? vid->gpal[cidx] : vid->pal[cidx];
-							cr = ccol & 0xff;
-							cg = (ccol >> 8) & 0xff;
-							cb = (ccol >> 16) & 0xff;
+							xcol = uint_to_xcol(pal[(sbyte & (128 >> bitn)) ? aink : apap]);
+							cr = xcol.r;
+							cg = xcol.g;
+							cb = xcol.b;
 						}
-						if ((flag & VSCR_GRID) && ((lin ^ xpos) & 1)) {
+						if (grid && ((lin ^ xpos) & 1)) {
 							*(dst++) = ((cr - 0x80) >> 1) + 0x80;
 							*(dst++) = ((cg - 0x80) >> 1) + 0x80;
 							*(dst++) = ((cb - 0x80) >> 1) + 0x80;
@@ -462,6 +471,28 @@ void vid_get_screen(Video* vid, unsigned char* dst, int bank, int shift, int fla
 			}
 		}
 	}
+}
+
+// The border colour the machine last asked for, packed the way the palette
+// holds it: the ULA+ palette group bit when that mode is on, and the grey copy
+// when grey mode is. For a view that has to agree with the picture on screen.
+xColor vid_brd_col(Video* vid) {
+	int idx = vid->nextbrd & 0x0f;
+	if (vid->ula->active) idx |= 8;
+	return uint_to_xcol(greyScale ? vid->gpal[idx] : vid->pal[idx]);
+}
+
+// A screen page is seen by the cpu at #4000 only when it is page 5; any other
+// one has to be paged into the top window first.
+int vid_scr_base(int page) {
+	return (page == 5) ? 0x4000 : 0xc000;
+}
+
+// Where the dot at x,y is held: the pixel byte and the attribute byte, counted
+// from the address its page is seen at.
+void vid_scr_adr(int base, int x, int y, int* pix, int* atr) {
+	if (pix) *pix = (base + (((y & 0xc0) << 5) | ((y & 0x38) << 2) | ((y & 7) << 8) | ((x & 0xf8) >> 3))) & 0xffff;
+	if (atr) *atr = (base + 0x1800 + (((y & 0xf8) << 2) | ((x & 0xf8) >> 3))) & 0xffff;
 }
 
 // ula 5c/6c horizontal timings:
@@ -677,14 +708,7 @@ void vidDrawNormal(Video* vid) {
 				adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
 				vid->atrbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
 				if (vid->idx < 0x1b00) vid->idx++;
-				if (vid->ula->active) {
-					ink = ((vid->atrbyte & 0xc0) >> 2) | (vid->atrbyte & 7);
-					pap = ((vid->atrbyte & 0xc0) >> 2) | ((vid->atrbyte & 0x38) >> 3) | 8;
-				} else {
-					if ((vid->atrbyte & 0x80) && vid->flash) scrbyte ^= 0xff;
-					ink = (vid->atrbyte & 0x07) | ((vid->atrbyte & 0x40) >> 3);
-					pap = (vid->atrbyte & 0x78) >> 3;
-				}
+				zx_attr_cols(vid, vid->atrbyte, &scrbyte, &ink, &pap, 0);
 			}
 			col = (scrbyte & 0x80) ? ink : pap;
 			scrbyte <<= 1;
@@ -743,14 +767,7 @@ void ula_dot(Video* vid) {
 		} else {
 			if ((xscr & 7) == 0) {
 				if (vid->idx < 0x1b00) vid->idx++;
-				if (vid->ula->active) {
-					ink = ((vid->atrbyte & 0xc0) >> 2) | (vid->atrbyte & 7);
-					pap = ((vid->atrbyte & 0xc0) >> 2) | ((vid->atrbyte & 0x38) >> 3) | 8;
-				} else {
-					if ((vid->atrbyte & 0x80) && vid->flash) scrbyte ^= 0xff;
-					ink = (vid->atrbyte & 0x07) | ((vid->atrbyte & 0x40) >> 3);
-					pap = (vid->atrbyte & 0x78) >> 3;
-				}
+				zx_attr_cols(vid, vid->atrbyte, &scrbyte, &ink, &pap, 0);
 			}
 			col = (scrbyte & 0x80) ? ink : pap;
 			scrbyte <<= 1;

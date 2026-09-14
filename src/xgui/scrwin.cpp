@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QCloseEvent>
+#include <QMenu>
 #include <QMoveEvent>
 #include <QResizeEvent>
 #include <QVBoxLayout>
@@ -25,8 +26,10 @@ xScrWin::xScrWin(QWidget* p):QDialog(p) {
 // the debugger hands its own font out child by child; this window is not one
 // of its children, so it takes the font here
 void xScrWin::updateStyle() {
+	// menus keep the interface font, the way DebugWin hands its own out
+	QFont uiFont = QApplication::font();
 	foreach (QWidget* wid, findChildren<QWidget*>())
-		wid->setFont(conf.dbg.font);
+		wid->setFont(qobject_cast<QMenu*>(wid) ? uiFont : conf.dbg.font);
 	setFont(conf.dbg.font);
 	panel->reload();
 }
@@ -58,8 +61,8 @@ void xScrWin::setDetached(bool on) {
 // Fast mode makes ten times as many frames and the screen has no more to say
 // for each, so there it takes every tenth.
 void xScrWin::upd() {
-	if (!isVisible()) return;
-	if (conf.emu.fast && ((conf.vid.fcount - lastfrm) < 10)) return;
+	if (!isVisible() || isMinimized()) return;
+	if (conf.emu.fast && ((conf.vid.fcount - lastfrm) < XSCR_FAST_EVERY)) return;
 	lastfrm = conf.vid.fcount;
 	panel->draw();
 }

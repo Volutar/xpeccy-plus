@@ -18,18 +18,13 @@
 // XSCR_* - the mode, zoom and page constants - are in xcore.h: the config
 // reader needs them too
 
-QString scr_page_name(int page);
-
 // The picture. Painted rather than laid out, so it can fill the panel, hold
 // two screens at once and answer a click with the address of the dot.
 class xZXScrView : public QWidget {
 	Q_OBJECT
 	public:
 		xZXScrView(QWidget* = nullptr);
-		void setMode(int);
-		void setCustom(int page, int shift);
-		void setFlags(int);
-		void setZoom(int);
+		void setView(int mode, int zoom, int flags, int page, int shift);
 		void redraw();			// re-read the machine, then repaint
 		QSize minimumSizeHint() const;
 	signals:
@@ -56,7 +51,7 @@ class xZXScrView : public QWidget {
 		QImage img[2];
 		int page[2];			// page each image was read from
 		xScrGeom geom() const;
-		double fitScale(int count, bool horiz) const;
+		double fitScale(bool horiz) const;
 		int pageFor(int slot) const;
 		QString tileName(int slot) const;
 		bool adrAt(const QPoint&, int* pix, int* atr) const;
@@ -80,12 +75,12 @@ class xZXScrPanel : public QWidget {
 		void mode_changed();
 		void opts_changed();
 		void custom_changed();
-		void show_adr(int, int);
 	private:
 		Ui::ZXScrWidget ui;
 		xZXScrView* view;
 		bool hold;			// reload() is moving the controls
-		int mode() const;
+		QButtonGroup* grp;		// the mode buttons, each carrying its XSCR_*
+		QFont fitFont;			// the font the field widths were measured in
 		void fit_fields();
 		void apply_mode(int);
 };

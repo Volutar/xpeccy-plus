@@ -700,6 +700,10 @@ enum {
 #define XSCR_FIT	0	// zoom value for "use the whole panel"
 #define XSCR_ZOOMMAX	4
 
+// fast mode makes frames far quicker than a screen has anything new to say
+
+#define XSCR_FAST_EVERY	10
+
 #define XSCR_PAGE_MAIN		5
 #define XSCR_PAGE_SHADOW	7
 
