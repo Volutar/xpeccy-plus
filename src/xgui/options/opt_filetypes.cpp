@@ -67,7 +67,7 @@ void xFileTypesBox::fill() {
 		box->insertSeparator(box->count());
 		foreach(const xMachine& mac, xm_list()) {
 			if (fm_runs(mac.id, rows[i].need))
-				ft_add(box, QString::fromLocal8Bit(mac.name.c_str()), mac.id.c_str(), "Always open on this machine");
+				ft_add(box, xm_list_name(mac), mac.id.c_str(), "Always open on this machine");
 		}
 		// a machine that is not there any more comes out as Auto
 		setRFIndex(box, QString::fromLocal8Bit(fm_pref(rows[i].key).c_str()), 0);

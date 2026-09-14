@@ -117,7 +117,7 @@ void saveConfig() {
 	}
 
 	fprintf(cfile,"[GENERAL]\n\n");
-	fprintf(cfile, "schema = 2\n");
+	fprintf(cfile, "schema = 3\n");
 	fprintf(cfile, "machine = %s\n", conf.macId.c_str());
 	fprintf(cfile, "lastdir = %s\n", conf.lastDir.c_str());
 	fprintf(cfile, "savepaths = %s\n", YESNO(conf.storePaths));
@@ -256,7 +256,6 @@ void saveConfig() {
 		i++;
 	}
 
-	xm_save(cfile);
 	xm_save_media(cfile);
 	fclose(cfile);
 }
@@ -541,7 +540,7 @@ void loadConfig() {
 	}
 	layouts_load_all();
 	xm_load_all();
-	xm_over_clear();
+	xm_drop_running();	// nothing of the running machine goes into a file now
 	if (!conf.zx) {
 		conf.zx = compCreate();
 		// what the machine says it is when software asks (ZX Evo does)
@@ -710,7 +709,7 @@ void loadConfig() {
 						oldprf[pnam] = pval;
 					}
 					break;
-				case SECT_MACOVER:
+				case SECT_MACOVER:	// only a config written before schema 3 has this
 					xm_over_add(macover, pnam, pval);
 					break;
 				case SECT_MEDIA:
@@ -900,6 +899,7 @@ void loadConfig() {
 	foreach(xRomset rs, rsListist) addRomset(rs);
 //	prfLoadAll();
 	setOutput(soutnam.c_str());
+	if (schema < 3) xm_over_migrate();	// a config from before the machine files
 	bool ok = false;
 	if (schema < 2) {			// a config from before the machines: bring it across
 		std::string file = oldprf.count(pnm) ? oldprf[pnm] : "xpeccy.conf";

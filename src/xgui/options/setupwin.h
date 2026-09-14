@@ -126,6 +126,7 @@ class SetupWin : public QDialog {
 		void resetMachine();
 		void showAdvanced();
 		void showRomFiles();
+		void updateMachineButtons();
 		void saveMachine();
 		void cfgExport();
 		void cfgImport();

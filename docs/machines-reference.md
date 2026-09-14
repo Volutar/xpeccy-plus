@@ -1,14 +1,15 @@
 # Machine reference table
 
-Phase 0 of `machines-plan.md`. This is the data the shipped machine definitions are generated
-from in phase 2, and the yardstick phase 1 audits today's profiles against.
+Where each machine's numbers came from, and which of them are still resting on nothing but
+convention. **The machines themselves are `res/machines/*.conf`** - those files are what the
+emulator runs and what to change; this table does not decide anything. It was written when
+they were generated and is kept for the one thing they cannot carry: provenance, and the
+open questions.
 
 Sources, in order of weight: the values that shipped after the raster-geometry work
 (`config/config.conf` layouts, validated against Spectaculator and Fuse), the shipped profiles,
 the cores themselves, and published hardware documentation. Anything that rests on nothing
 better than convention is marked **open** and left alone.
-
-Goes away with `machines-plan.md` when the rework is done.
 
 ---
 
