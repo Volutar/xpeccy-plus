@@ -93,7 +93,7 @@ typedef struct {
 		void s_debug_off();
 		// void s_prf_change(xProfile*);
 		void s_gamepad_plug();
-		void s_scradr(int, int);
+		void s_scradr(int, int, int, int);
 
 		void s_tape_show();
 		void s_tape_progress(Tape*);

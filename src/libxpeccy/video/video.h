@@ -234,6 +234,20 @@ vCoord vid_crop_size(Video*, int);
 void vid_upd_layout(Video*);
 void vid_upd_timings(Video*, double);
 
+// A screen the debugger's view wants, copied at the frame boundary. It decodes
+// in the gui thread, which reaches the memory whenever it is scheduled - by
+// then the machine has run on and is usually halfway through rewriting the
+// screen, which is what made moving sprites tear.
+
+#define VSCR_SLOTS	2		// the Both view is the most that is ever shown
+#define VSCR_BYTES	0x1b00		// pixels and attributes of one screen
+#define VSCR_ONAIR	-2		// whichever page the machine is showing
+
+void vid_scr_want(int slot, int page, int shift);
+void vid_scr_snap(Video*);
+const unsigned char* vid_scr_snap_get(int slot, int page, int shift);
+int vid_scr_snap_page(int slot);
+
 // what vid_get_screen() leaves out
 
 #define VSCR_MONO	1	// white on black, no attributes and no palette
@@ -241,10 +255,12 @@ void vid_upd_timings(Video*, double);
 #define VSCR_GRID	4	// dim every other 8x8 cell
 #define VSCR_NOFLASH	8	// hold the flash attribute still
 
-void vid_get_screen(Video*, unsigned char*, int, int, int);
+void vid_get_screen(Video*, unsigned char*, int, int, int, const unsigned char*);
 xColor vid_brd_col(Video*);
 int vid_scr_base(int);
 void vid_scr_adr(int, int, int, int*, int*);
+int vid_scr_dot(int, int*, int*);
+int vid_scr_bit(int);
 
 void vid_set_grey(int);
 xColor vid_get_col(Video*, int);

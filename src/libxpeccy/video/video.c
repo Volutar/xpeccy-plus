@@ -405,6 +405,85 @@ void vid_dark_all() {
 static unsigned char emptyBox[8] = {0x00,0x00,0x00,0x18,0x18,0x00,0x00,0x00};
 
 xColor uint_to_xcol(uint32_t);		// defined below, beside the palette
+int vid_zx_palette(Video*);
+
+// A packed colour as its grey self, by the weights the whole program greys with
+static uint32_t uint_to_grey(uint32_t col) {
+	int g = (((col >> 16) & 0xff) * 30 + (col & 0xff) * 76 + ((col >> 8) & 0xff) * 148) >> 8;
+	return g | (g << 8) | (g << 16) | (0xffu << 24);
+}
+
+// One colour as the debugger's screen view should paint it. A machine showing
+// the plain 16 zx colours keeps them in its live palette, ULA+ and a loaded
+// preset included. One whose palette is a hardware CRAM of its own - TSConf
+// and the like - has something else there entirely, while the screen being
+// decoded is still a ULA one, so that takes the preset out of bpal instead.
+static uint32_t vid_zxcol(Video* vid, int idx) {
+	idx &= 0xff;
+	if (vid_zx_palette(vid))
+		return greyScale ? vid->gpal[idx] : vid->pal[idx];
+	// bpal has no grey mirror the way pal has gpal, so this one is made here
+	return greyScale ? uint_to_grey(vid->bpal[idx]) : vid->bpal[idx];
+}
+
+// The screens the debugger's view asked for, as they stood at the last frame
+// boundary. Two copies: the emulation thread fills one while the gui reads the
+// other, the same way scrimg and bufimg are handled. A want is spent by the
+// snapshot that serves it, so a view that stops drawing stops the copying.
+static struct {
+	int want[VSCR_SLOTS];			// page asked for, -1 for none
+	int wshift[VSCR_SLOTS];
+	int page[2][VSCR_SLOTS];		// what each copy holds
+	int shift[2][VSCR_SLOTS];
+	int bank;				// the copy a reader may have
+	unsigned char data[2][VSCR_SLOTS][VSCR_BYTES];
+} scrSnap;
+
+void vid_scr_want(int slot, int page, int shift) {
+	if ((slot < 0) || (slot >= VSCR_SLOTS)) return;
+	scrSnap.want[slot] = page;
+	scrSnap.wshift[slot] = shift;
+}
+
+// the emulation thread, at the frame boundary and before run-ahead winds the
+// machine forward: the one moment the screen is not half rewritten
+void vid_scr_snap(Video* vid) {
+	int fill = scrSnap.bank ^ 1;
+	int slot, i, page, adr;
+	int (*mrd)(int, void*) = vid->mrd;
+	void* xptr = vid->xptr;
+	unsigned char* data;
+	for (slot = 0; slot < VSCR_SLOTS; slot++) {
+		page = scrSnap.want[slot];
+		scrSnap.want[slot] = -1;	// spent
+		if (page == VSCR_ONAIR) page = vid->vidPage;
+		scrSnap.page[fill][slot] = page;
+		scrSnap.shift[fill][slot] = scrSnap.wshift[slot];
+		if (page < 0) continue;
+		data = scrSnap.data[fill][slot];
+		// through the video's own read, so nothing here knows how memory is laid
+		// out - it is also what applies the machine's ram mask
+		adr = MADR(page, scrSnap.wshift[slot]);
+		for (i = 0; i < VSCR_BYTES; i++)
+			data[i] = mrd(adr + i, xptr);
+	}
+	scrSnap.bank = fill;
+}
+
+// the copy a reader may have, when it holds the screen being asked for
+const unsigned char* vid_scr_snap_get(int slot, int page, int shift) {
+	int bank = scrSnap.bank;
+	if ((slot < 0) || (slot >= VSCR_SLOTS)) return NULL;
+	if (scrSnap.page[bank][slot] < 0) return NULL;
+	if ((page != VSCR_ONAIR) && (scrSnap.page[bank][slot] != page)) return NULL;
+	if (scrSnap.shift[bank][slot] != shift) return NULL;
+	return scrSnap.data[bank][slot];
+}
+
+int vid_scr_snap_page(int slot) {
+	if ((slot < 0) || (slot >= VSCR_SLOTS)) return -1;
+	return scrSnap.page[scrSnap.bank][slot];
+}
 
 // What the ULA makes of an attribute byte: the ink and paper indexes, and the
 // flash bit inverting the pixels. ULA+ spends bits 6 and 7 on the palette group
@@ -422,50 +501,67 @@ static void zx_attr_cols(Video* vid, unsigned char abyte, unsigned char* sbyte,
 	}
 }
 
+static void vid_scr_rgb(uint32_t col, unsigned char* out) {
+	xColor xcol = uint_to_xcol(col);
+	out[0] = xcol.r;
+	out[1] = xcol.g;
+	out[2] = xcol.b;
+}
+
+// half way to the middle grey, which is what the grid does to a cell
+static void vid_scr_dim(unsigned char* c) {
+	int i;
+	for (i = 0; i < 3; i++)
+		c[i] = ((c[i] - 0x80) >> 1) + 0x80;
+}
+
 // Decode one ZX screen into an RGB888 buffer for the debugger. Colors come from
 // the machine's live palette, so ULA+ and a loaded preset both show as they do
-// on screen; VSCR_MONO is the one case that goes around the palette.
-void vid_get_screen(Video* vid, unsigned char* dst, int bank, int shift, int flag) {
+// on screen; VSCR_MONO is the one case that goes around the palette. src is a
+// copy taken at a frame boundary, or NULL to read the memory as it stands.
+void vid_get_screen(Video* vid, unsigned char* dst, int bank, int shift, int flag, const unsigned char* src) {
 	if ((bank == 0xff) && (shift > 0x2800)) shift = 0x2800;
 	int pixadr = MADR(bank, shift);
 	int atradr = pixadr + 0x1800;
 	int mono = (flag & VSCR_MONO);
 	int grid = (flag & VSCR_GRID);
-	const uint32_t* pal = greyScale ? vid->gpal : vid->pal;
+	// worked out once: the indexes run 0..15, or 0..63 under ULA+
+	uint32_t pal[64];
 	unsigned char sbyte, abyte, aink, apap;
-	int prt, lin, row, xpos, bitn;
+	int prt, lin, row, xpos, bitn, i;
 	int sadr, aadr;
-	xColor xcol;
-	unsigned char cr,cg,cb;
+	// the two colours of a cell, ready to be written: they cannot change from
+	// one dot of a byte to the next, and neither can the grid dimming
+	unsigned char cink[3], cpap[3];
+	if (!mono)
+		for (i = 0; i < 64; i++)
+			pal[i] = vid_zxcol(vid, i);
 	for (prt = 0; prt < 3; prt++) {
 		for (lin = 0; lin < 8; lin++) {
 			for (row = 0; row < 8; row++) {
 				for (xpos = 0; xpos < 32; xpos++) {
 					sadr = (prt << 11) | (lin << 5) | (row << 8) | xpos;
 					aadr = (prt << 8) | (lin << 5) | xpos;
-					sbyte = (flag & VSCR_NOPIX) ? emptyBox[row] : vid->mrd(pixadr + sadr, vid->xptr);
-					if (!mono) {
-						abyte = vid->mrd(atradr + aadr, vid->xptr);
+					sbyte = (flag & VSCR_NOPIX) ? emptyBox[row]
+						: src ? src[sadr] : vid->mrd(pixadr + sadr, vid->xptr);
+					if (mono) {
+						cink[0] = cink[1] = cink[2] = 0xff;
+						cpap[0] = cpap[1] = cpap[2] = 0x00;
+					} else {
+						abyte = src ? src[0x1800 + aadr] : vid->mrd(atradr + aadr, vid->xptr);
 						zx_attr_cols(vid, abyte, &sbyte, &aink, &apap, flag & VSCR_NOFLASH);
+						vid_scr_rgb(pal[aink], cink);
+						vid_scr_rgb(pal[apap], cpap);
+					}
+					if (grid && ((lin ^ xpos) & 1)) {
+						vid_scr_dim(cink);
+						vid_scr_dim(cpap);
 					}
 					for (bitn = 0; bitn < 8; bitn++) {
-						if (mono) {
-							cr = cg = cb = (sbyte & (128 >> bitn)) ? 0xff : 0x00;
-						} else {
-							xcol = uint_to_xcol(pal[(sbyte & (128 >> bitn)) ? aink : apap]);
-							cr = xcol.r;
-							cg = xcol.g;
-							cb = xcol.b;
-						}
-						if (grid && ((lin ^ xpos) & 1)) {
-							*(dst++) = ((cr - 0x80) >> 1) + 0x80;
-							*(dst++) = ((cg - 0x80) >> 1) + 0x80;
-							*(dst++) = ((cb - 0x80) >> 1) + 0x80;
-						} else {
-							*(dst++) = cr;
-							*(dst++) = cg;
-							*(dst++) = cb;
-						}
+						const unsigned char* c = (sbyte & (128 >> bitn)) ? cink : cpap;
+						*(dst++) = c[0];
+						*(dst++) = c[1];
+						*(dst++) = c[2];
 					}
 				}
 			}
@@ -479,13 +575,37 @@ void vid_get_screen(Video* vid, unsigned char* dst, int bank, int shift, int fla
 xColor vid_brd_col(Video* vid) {
 	int idx = vid->nextbrd & 0x0f;
 	if (vid->ula->active) idx |= 8;
-	return uint_to_xcol(greyScale ? vid->gpal[idx] : vid->pal[idx]);
+	return uint_to_xcol(vid_zxcol(vid, idx));
 }
 
 // A screen page is seen by the cpu at #4000 only when it is page 5; any other
 // one has to be paged into the top window first.
 int vid_scr_base(int page) {
 	return (page == 5) ? 0x4000 : 0xc000;
+}
+
+// Which bit of its byte the dot at x holds. Pixels run left to right and bits
+// the other way, so the leftmost dot of a byte is bit 7 - the number BIT, SET
+// and RES take.
+int vid_scr_bit(int x) {
+	return 7 - (x & 7);
+}
+
+// Which dot an address names, counted from where its page is seen: a raster
+// byte holds eight of them and an attribute byte colours a whole cell, so
+// either way this is the dot at the top left of what it covers. 0 when the
+// offset is past the screen.
+int vid_scr_dot(int off, int* x, int* y) {
+	if ((off < 0) || (off >= 0x1b00)) return 0;
+	if (off < 0x1800) {
+		*x = (off & 0x1f) << 3;
+		*y = (((off >> 5) & 7) << 3) | ((off >> 8) & 7) | (((off >> 11) & 3) << 6);
+	} else {
+		off -= 0x1800;
+		*x = (off & 0x1f) << 3;
+		*y = (off >> 5) << 3;
+	}
+	return 1;
 }
 
 // Where the dot at x,y is held: the pixel byte and the attribute byte, counted
@@ -631,8 +751,7 @@ xColor vid_get_col(Video* vid, int i) {
 
 void vid_set_col(Video* vid, int i, xColor xcol) {
 	vid->pal[i & 0xff] = xcol.r | (xcol.g << 8) | (xcol.b << 16) | (0xff << 24);
-	outcol = (xcol.b * 30 + xcol.r * 76 + xcol.g * 148) >> 8;
-	vid->gpal[i & 0xff] = outcol | (outcol << 8) | (outcol << 16) | (0xff << 24);
+	vid->gpal[i & 0xff] = uint_to_grey(vid->pal[i & 0xff]);
 }
 
 void vid_set_red(Video* vid, int i, int v) {

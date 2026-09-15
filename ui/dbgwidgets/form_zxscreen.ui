@@ -209,7 +209,7 @@
          <item row="0" column="0">
           <widget class="QLabel" name="labScrPixCap">
            <property name="toolTip">
-            <string>Address of the pixel byte holding the dot you clicked</string>
+            <string>Address of the byte holding the dot under the cursor, and which bit of it the dot is. Right click to copy the address</string>
            </property>
            <property name="text">
             <string>Screen:</string>
@@ -217,19 +217,22 @@
           </widget>
          </item>
          <item row="0" column="1">
-          <widget class="xHexSpin" name="leScr">
+          <widget class="QLabel" name="labScrPix">
            <property name="toolTip">
-            <string>Address of the pixel byte holding the dot you clicked. Click the picture to set it, right click for Copy</string>
+            <string>Address of the byte holding the dot under the cursor, and which bit of it the dot is. Right click to copy the address</string>
            </property>
-           <property name="readOnly">
-            <bool>true</bool>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignVCenter</set>
            </property>
           </widget>
          </item>
          <item row="1" column="0">
           <widget class="QLabel" name="labScrAtrCap">
            <property name="toolTip">
-            <string>Address of the attribute byte colouring the cell you clicked</string>
+            <string>Address of the attribute byte colouring the cell under the cursor. Right click to copy it</string>
            </property>
            <property name="text">
             <string>Attr:</string>
@@ -237,23 +240,66 @@
           </widget>
          </item>
          <item row="1" column="1">
-          <widget class="xHexSpin" name="leAtr">
+          <widget class="QLabel" name="labScrAtr">
            <property name="toolTip">
-            <string>Address of the attribute byte colouring the cell you clicked. Click the picture to set it, right click for Copy</string>
+            <string>Address of the attribute byte colouring the cell under the cursor. Right click to copy it</string>
            </property>
-           <property name="readOnly">
-            <bool>true</bool>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignVCenter</set>
            </property>
           </widget>
          </item>
-         <item row="2" column="0" colspan="2">
+         <item row="2" column="0">
+          <widget class="QLabel" name="labScrXYCap">
+           <property name="toolTip">
+            <string>Where the cursor is on the screen, in pixels from the top left corner</string>
+           </property>
+           <property name="text">
+            <string>XY:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLabel" name="labScrXY">
+           <property name="toolTip">
+            <string>Where the cursor is on the screen, in pixels from the top left corner</string>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="labScrFindCap">
+           <property name="toolTip">
+            <string>Type an address and the picture marks the dot it holds - the raster or the attributes, whichever the address is</string>
+           </property>
+           <property name="text">
+            <string>Find:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1" alignment="Qt::AlignRight">
+          <widget class="xHexSpin" name="leScrFind">
+           <property name="toolTip">
+            <string>Type an address and the picture marks the dot it holds - the raster or the attributes, whichever the address is</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="0" colspan="2">
           <widget class="Line" name="lineScrTwo">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
           </widget>
          </item>
-         <item row="3" column="0">
+         <item row="5" column="0">
           <widget class="QLabel" name="labScrPageCap">
            <property name="toolTip">
             <string>16K page the screen is read from, in hex</string>
@@ -263,14 +309,14 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="1">
+         <item row="5" column="1" alignment="Qt::AlignRight">
           <widget class="xHexSpin" name="leScrPage">
            <property name="toolTip">
             <string>16K page the screen is read from, in hex</string>
            </property>
           </widget>
          </item>
-         <item row="4" column="0">
+         <item row="6" column="0">
           <widget class="QLabel" name="labScrOfsCap">
            <property name="toolTip">
             <string>Where the screen starts inside that page</string>
@@ -280,7 +326,7 @@
            </property>
           </widget>
          </item>
-         <item row="4" column="1">
+         <item row="6" column="1" alignment="Qt::AlignRight">
           <widget class="xHexSpin" name="leScrAdr">
            <property name="toolTip">
             <string>Where the screen starts inside that page</string>

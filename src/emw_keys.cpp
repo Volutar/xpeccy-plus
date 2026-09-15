@@ -455,7 +455,7 @@ void MainWin::calcCoords(QMouseEvent* ev) {
 	if ((x >= 0) && (x < comp->vid->scrn.x) && (y >= 0) && (y < comp->vid->scrn.y)) {	// inside screen
 		int adr, atr;
 		vid_scr_adr(vid_scr_base(comp->vid->vidPage), x, y, &adr, &atr);
-		setMessage(QString(" %0:%1 | %2 ").arg(gethexword(adr)).arg(x & 7).arg(gethexword(atr)));
-		emit s_scradr(adr, atr);
+		setMessage(QString(" %0.%1 | %2 ").arg(gethexword(adr)).arg(vid_scr_bit(x)).arg(gethexword(atr)));
+		emit s_scradr(x, y, adr, atr);
 	}
 }
