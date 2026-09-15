@@ -70,6 +70,8 @@ extern OutSys* sndOutput;
 
 extern long long nsPerSampleFixed;
 
+int snd_scope(sndPair*, int);	// the newest samples sent out, for the scope
+
 void sndInit();
 void addOutput(std::string, bool(*)(),void(*)(),void(*)());
 void setOutput(const char*);

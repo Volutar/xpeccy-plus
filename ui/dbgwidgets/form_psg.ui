@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PSGPage</class>
+ <widget class="QWidget" name="PSGPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>500</width>
+    <height>260</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="layPsg">
+   <property name="spacing">
+    <number>8</number>
+   </property>
+   <property name="leftMargin">
+    <number>5</number>
+   </property>
+   <property name="topMargin">
+    <number>5</number>
+   </property>
+   <property name="rightMargin">
+    <number>5</number>
+   </property>
+   <property name="bottomMargin">
+    <number>5</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="layRegs">
+     <item>
+      <widget class="QLabel" name="labRegs">
+       <property name="text">
+        <string>Regs</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeft|Qt::AlignTop</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QWidget" name="wRegs" native="true"/>
+     </item>
+     <item>
+      <spacer name="spcRegs">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="cbNotes">
+       <property name="toolTip">
+        <string>Show the period as a note instead</string>
+       </property>
+       <property name="text">
+        <string>Notes</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="gridPsg" columnstretch="0,0,0,0,0,0,0,1">
+     <item row="0" column="7" rowspan="6">
+      <spacer name="spcPsgTail">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="labHdrPeriod">
+       <property name="text">
+        <string>Period</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QLabel" name="labHdrVol">
+       <property name="text">
+        <string>Vol</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3">
+      <widget class="QLabel" name="labHdrMix">
+       <property name="text">
+        <string>Mixer</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="4">
+      <widget class="QLabel" name="labHdrLev">
+       <property name="text">
+        <string>Lev</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="5">
+      <widget class="QLabel" name="labHdrState">
+       <property name="text">
+        <string>State</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="6">
+      <widget class="QLabel" name="labHdrMute">
+       <property name="text">
+        <string>Off</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="labRowA">
+       <property name="text">
+        <string>A</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QWidget" name="wPerA" native="true"/>
+     </item>
+     <item row="1" column="2">
+      <widget class="QWidget" name="wVolA" native="true"/>
+     </item>
+     <item row="1" column="3">
+      <widget class="QLabel" name="labMixA">
+       <property name="text">
+        <string>---</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="4">
+      <widget class="QWidget" name="wLevA" native="true"/>
+     </item>
+     <item row="1" column="5">
+      <widget class="QLabel" name="labStateA">
+       <property name="text">
+        <string>0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="6">
+      <widget class="QWidget" name="wMuteA" native="true"/>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="labRowB">
+       <property name="text">
+        <string>B</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QWidget" name="wPerB" native="true"/>
+     </item>
+     <item row="2" column="2">
+      <widget class="QWidget" name="wVolB" native="true"/>
+     </item>
+     <item row="2" column="3">
+      <widget class="QLabel" name="labMixB">
+       <property name="text">
+        <string>---</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="4">
+      <widget class="QWidget" name="wLevB" native="true"/>
+     </item>
+     <item row="2" column="5">
+      <widget class="QLabel" name="labStateB">
+       <property name="text">
+        <string>0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="6">
+      <widget class="QWidget" name="wMuteB" native="true"/>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="labRowC">
+       <property name="text">
+        <string>C</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QWidget" name="wPerC" native="true"/>
+     </item>
+     <item row="3" column="2">
+      <widget class="QWidget" name="wVolC" native="true"/>
+     </item>
+     <item row="3" column="3">
+      <widget class="QLabel" name="labMixC">
+       <property name="text">
+        <string>---</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="4">
+      <widget class="QWidget" name="wLevC" native="true"/>
+     </item>
+     <item row="3" column="5">
+      <widget class="QLabel" name="labStateC">
+       <property name="text">
+        <string>0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="6">
+      <widget class="QWidget" name="wMuteC" native="true"/>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="labRowN">
+       <property name="text">
+        <string>N</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QWidget" name="wPerN" native="true"/>
+     </item>
+     <item row="4" column="5">
+      <widget class="QLabel" name="labStateN">
+       <property name="text">
+        <string>0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLabel" name="labRowE">
+       <property name="text">
+        <string>E</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QWidget" name="wPerE" native="true"/>
+     </item>
+     <item row="5" column="2">
+      <widget class="QLabel" name="labVolE">
+       <property name="text">
+        <string>00</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="3" colspan="4">
+      <widget class="QWidget" name="wEnvForm" native="true"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <spacer name="spcPsg">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>0</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

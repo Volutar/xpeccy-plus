@@ -227,6 +227,11 @@ void saveConfig() {
 	fprintf(cfile, "scr.grid = %s\n", YESNO(conf.dbg.scrgrid));
 	fprintf(cfile, "scr.detached = %s\n", YESNO(conf.dbg.scrdetach));
 	fprintf(cfile, "scr.window = %i:%i:%i:%i\n",conf.dbg.scrpos.x(),conf.dbg.scrpos.y(),conf.dbg.scrsiz.width(),conf.dbg.scrsiz.height());
+	fprintf(cfile, "snd.chip = %i\n", conf.dbg.sndchip);
+	fprintf(cfile, "snd.fm = %s\n", YESNO(conf.dbg.sndfm));
+	fprintf(cfile, "snd.notes = %s\n", YESNO(conf.dbg.sndnotes));
+	fprintf(cfile, "snd.detached = %s\n", YESNO(conf.dbg.snddetach));
+	fprintf(cfile, "snd.window = %i:%i:%i:%i\n",conf.dbg.sndpos.x(),conf.dbg.sndpos.y(),conf.dbg.sndsiz.width(),conf.dbg.sndsiz.height());
 	fprintf(cfile, "regs.layout = %i\n", conf.dbg.reglayout);
 	fprintf(cfile, "regs.split = %s\n", YESNO(conf.dbg.regsplit));
 	fprintf(cfile, "dim.address = %s\n", YESNO(conf.dbg.dimadr));
@@ -605,6 +610,12 @@ void loadConfig() {
 	conf.dbg.scrdetach = 0;
 	conf.dbg.scrpos = QPoint(-1, -1);	// let the window manager place it
 	conf.dbg.scrsiz = QSize(480, 340);
+	conf.dbg.sndchip = 0;
+	conf.dbg.sndfm = 0;
+	conf.dbg.sndnotes = 0;
+	conf.dbg.snddetach = 0;
+	conf.dbg.sndpos = QPoint(-1, -1);
+	conf.dbg.sndsiz = QSize(560, 380);
 	conf.dbg.reglayout = DBG_REGS_AUTO;
 	conf.dbg.regsplit = 1;
 	conf.dbg.dimadr = 0;
@@ -715,6 +726,20 @@ void loadConfig() {
 							conf.dbg.scrpos.setY(atoi(vect[1].c_str()));
 							fprt = atoi(vect[2].c_str()); if (fprt > 0) conf.dbg.scrsiz.setWidth(fprt);
 							fprt = atoi(vect[3].c_str()); if (fprt > 0) conf.dbg.scrsiz.setHeight(fprt);
+						}
+					}
+					if ((pnam == "snd.chip") && (arg.i >= 0) && (arg.i < 4))
+						conf.dbg.sndchip = arg.i;
+					if (pnam == "snd.fm") conf.dbg.sndfm = arg.b;
+					if (pnam == "snd.notes") conf.dbg.sndnotes = arg.b;
+					if (pnam == "snd.detached") conf.dbg.snddetach = arg.b;
+					if (pnam == "snd.window") {
+						vect = splitstr(pval,":");
+						if (vect.size() > 3) {
+							conf.dbg.sndpos.setX(atoi(vect[0].c_str()));
+							conf.dbg.sndpos.setY(atoi(vect[1].c_str()));
+							fprt = atoi(vect[2].c_str()); if (fprt > 0) conf.dbg.sndsiz.setWidth(fprt);
+							fprt = atoi(vect[3].c_str()); if (fprt > 0) conf.dbg.sndsiz.setHeight(fprt);
 						}
 					}
 					if (pnam == "ports") xm_defer(pnam, pval);

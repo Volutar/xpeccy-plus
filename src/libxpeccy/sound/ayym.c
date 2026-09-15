@@ -130,7 +130,7 @@ void tsSync(TSound* ts, int ns) {
 // The one chip type with state of its own outside the struct is the YM2203;
 // xstate.c asks here rather than knowing that.
 
-static aymChip* ts_chip(TSound* ts, int n) {
+aymChip* ts_chip(TSound* ts, int n) {
 	switch (n) {
 		case 0: return ts->chipA;
 		case 1: return ts->chipB;

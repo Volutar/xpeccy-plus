@@ -104,6 +104,7 @@ double absd(double);
 QString getbinbyte(unsigned char);
 QString gethexshift(char);
 QString getdecshift(char);
+QString formbufword(int);	// hex, no padding - what the gethex* below are built on
 QString gethexbyte(int);
 QString gethexword(int);
 QString getPortString(int, int);
@@ -301,6 +302,7 @@ enum {
 	XCUT_TAPWIN,
 	XCUT_RZXWIN,
 	XCUT_SCRWIN,
+	XCUT_SNDWIN,
 	XCUT_FASTSAVE,
 	XCUT_NMI,
 	XCUT_RESET,
@@ -650,6 +652,9 @@ struct xConfig {
 		unsigned scrnoflash:1;	// screen panel: hold the flash attribute still
 		unsigned scrgrid:1;	// screen panel: dim every other cell
 		unsigned scrdetach:1;	// screen panel: shown in a window of its own
+		unsigned snddetach:1;	// sound panel: shown in a window of its own
+		unsigned sndfm:1;	// sound panel: the FM page of the chip, not the PSG one
+		unsigned sndnotes:1;	// sound panel: a period shown as the note it makes
 		QFont font;
 		int dbsize;
 		int dwsize;
@@ -660,10 +665,13 @@ struct xConfig {
 		int scrpage;		// screen panel: page for XSCR_CUSTOM
 		int scrofs;		// screen panel: offset for XSCR_CUSTOM
 		int reglayout;		// register panel: columns, or DBG_REGS_AUTO
+		int sndchip;		// sound panel: which chip it shows, 0..3
 		QPoint pos;
 		QSize siz;
 		QPoint scrpos;		// screen window, -1 for wherever it lands
 		QSize scrsiz;
+		QPoint sndpos;		// sound window, the same way
+		QSize sndsiz;
 	} dbg;
 };
 

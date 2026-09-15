@@ -86,11 +86,19 @@ typedef struct {
 	unsigned ndis:1;	// noise off
 	unsigned een:1;		// envelope on
 	unsigned lev:1;		// current signal level
+	unsigned mute:1;	// silenced from the debugger
 	int vol;
 	int per;		// period in ticks (0:channel off)
 	int cnt;		// ticks countdown
 	int step;		// env:vol change direction (+1 -1); noise:seed
 } aymChan;
+
+// what the debugger asks the AY code for
+int ay_chan_lev(aymChip*, aymChan*);	// what a channel puts out, 0..31
+double ay_chan_freq(aymChip*, aymChan*);	// the tone it is running at, Hz
+double ay_env_freq(aymChip*);		// how often the envelope repeats, Hz
+void ay_env_shape(int, unsigned char*, int);	// an envelope form, level by level
+void ay_poke_reg(aymChip*, int, int);	// write a register the way a port write does
 
 // The FM half of a YM2203 runs on ymfm (sound/ymfm/), which keeps its own
 // state. What follows is a view of it for the debugger's FM page, filled by
@@ -119,6 +127,9 @@ typedef struct {
 		int suslev;			// sustain level, 0..15
 		int att;			// current attenuation, 0 loudest .. 1023
 	} eg;
+	int key;			// keyed on: ymfm keeps this one to itself
+	int rofs;			// this operator's offset into the register file:
+					// the registers hold them 1,3,2,4, not 1,2,3,4
 } fmOper;
 
 typedef struct {
@@ -129,6 +140,7 @@ typedef struct {
 } fmChan;
 
 void ym2203_fm_view(aymChip*, fmChan*);	// fill one of those from the core
+void ym2203_poke_reg(aymChip*, int, int);	// write an FM register from outside
 
 struct aymChip {
 	unsigned coarse:1;	// 4-bit DAC volume
@@ -204,6 +216,7 @@ void tsLoadRom(TSound*, const char*);
 int tsReadRom(TSound*, int);
 
 sndPair tsGetVolume(TSound*);
+aymChip* ts_chip(TSound*, int);		// chip 0..3, NULL for anything else
 
 // Run-ahead: a chip can keep state outside its own struct, which is all a
 // snapshot copies. These hand that state over as a range of bytes instead.

@@ -207,6 +207,9 @@ void MainWin::xkey_press(int xkey) {
 			case XCUT_SCRWIN:
 				emit s_scr_show();
 				break;
+			case XCUT_SNDWIN:
+				emit s_snd_show();
+				break;
 			case XCUT_FAST:
 				if (conf.emu.pause) break;
 				conf.emu.fast ^= 1;

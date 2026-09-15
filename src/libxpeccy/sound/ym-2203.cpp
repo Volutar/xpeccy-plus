@@ -80,6 +80,7 @@ public:
 		m_timer_on[0] = m_timer_on[1] = 0;
 		m_recheck = 0;
 		m_adr = 0;
+		m_key[0] = m_key[1] = m_key[2] = 0;
 		m_last = 0;
 		m_fm.set_clock_prescale(6);	// a reset picks /6; regs 2d..2f change it
 		set_period();
@@ -96,6 +97,12 @@ public:
 	}
 
 	void write_data(int val) {
+		// which operators are keyed is ymfm's own business (m_keyon_live is
+		// private), and the debugger wants to show it: keep a copy
+		if (m_adr == 0x28) {
+			int c = val & 3;
+			if (c < 3) m_key[c] = (val >> 4) & 0x0f;
+		}
 		m_fm.write(m_adr, val & 0xff);
 		ymfm_set_busy_end(32 * m_fm.clock_prescale());
 		status();
@@ -166,6 +173,18 @@ public:
 		if (fired || m_chip->wait) status();
 	}
 
+	// A register written from the debugger. The address the machine has
+	// latched is put back: it may be halfway through its own select-then-write
+	// pair. The prescaler registers answer to the address alone, so they are
+	// left out - poking one would change the chip's clock behind its back.
+	void poke(int reg, int val) {
+		if ((reg >= 0x2d) && (reg <= 0x2f)) return;
+		uint8_t was = m_adr;
+		m_adr = reg & 0xff;
+		write_data(val);
+		m_adr = was;
+	}
+
 	int out() const { return m_last; }
 
 	// --- the state, for run-ahead (see xstate.c)
@@ -206,6 +225,9 @@ private:
 		ss.save_restore(m_timer_on[1]);
 		ss.save_restore(m_recheck);
 		ss.save_restore(m_adr);
+		ss.save_restore(m_key[0]);
+		ss.save_restore(m_key[1]);
+		ss.save_restore(m_key[2]);
 		ss.save_restore(m_last);
 	}
 
@@ -254,6 +276,7 @@ private:
 	uint8_t m_timer_on[2];
 	uint8_t m_recheck;		// a timer fired: let ymfm see the key state again
 	uint8_t m_adr;
+	uint8_t m_key[3];		// operators keyed on, per channel, in register order
 	int32_t m_last;			// last fm sample, at the level it is mixed in
 
 	std::vector<uint8_t> m_state;
@@ -276,6 +299,7 @@ void xfm::view(fmChan* out) {
 			fmOper* v = &vch->op[o];
 			ymfm::fm_operator<ymfm::opn_registers>* op = ch->debug_operator(o);
 			int r = (op_slot[o] << 2) | c;		// 0x30 + r, 0x40 + r, ...
+			v->rofs = r;
 			ymfm::opdata_cache& cache = op->debug_cache();
 			v->pg.freq = cache.block_freq & 0x7ff;
 			v->pg.block = (cache.block_freq >> 11) & 7;
@@ -292,6 +316,7 @@ void xfm::view(fmChan* out) {
 			v->eg.rel = m_chip->reg[0x80 + r] & 0x0f;
 			v->eg.suslev = (m_chip->reg[0x80 + r] >> 4) & 0x0f;
 			v->eg.att = op->debug_eg_attenuation();
+			v->key = (m_key[c] >> op_slot[o]) & 1;
 			// an OPN operator at rest is in release with nothing left to
 			// release, which is what the page should call off
 			switch (op->debug_eg_state()) {
@@ -357,6 +382,13 @@ int ym2203_rd(aymChip* chip, int adr) {
 // the fm half alone: the SSG one is ym_vol(), the chip's own vol callback
 int ym2203_fm_out(aymChip* chip) {
 	return chip->fm ? ((xfm*)chip->fm)->out() : 0;
+}
+
+void ym2203_poke_reg(aymChip* chip, int reg, int val) {
+	if (chip->type != SND_YM2203) return;
+	if ((reg < 0x10) || (reg >= 0xff)) return;	// the SSG half, and the status byte
+	chip->reg[reg] = val & 0xff;
+	fm_of(chip)->poke(reg, val);
 }
 
 void ym2203_fm_view(aymChip* chip, fmChan* out) {

@@ -25,6 +25,7 @@
 #include "emulwin.h"
 #include "xgui/debuga/debuger.h"
 #include "xgui/scrwin.h"
+#include "xgui/sndwin.h"
 #include "xgui/options/setupwin.h"
 #include "filer.h"
 
@@ -277,6 +278,7 @@ int main(int ac,char** av) {
 	xWatcher wutw(&mwin);
 	keyWindow keyw(&mwin);
 	xScrWin scrw(&mwin);
+	xSndWin sndw(&mwin);
 
 	mwin.onPrfChange();
 	dbgw.onPrfChange();
@@ -336,6 +338,13 @@ int main(int ac,char** av) {
 	app.connect(&mwin, SIGNAL(s_scr_show()), &dbgw, SLOT(scrToggle()));
 	app.connect(&optw, SIGNAL(s_apply()), &scrw, SLOT(updateStyle()));
 	dbgw.scrSetDetached(conf.dbg.scrdetach);
+
+	app.connect(&dbgw, SIGNAL(wannaSndWin(bool)), &sndw, SLOT(setDetached(bool)));
+	app.connect(&sndw, SIGNAL(s_detach(bool)), &dbgw, SLOT(sndSetDetached(bool)));
+	app.connect(&app, SIGNAL(s_frame()), &sndw, SLOT(upd()));
+	app.connect(&mwin, SIGNAL(s_snd_show()), &dbgw, SLOT(sndToggle()));
+	app.connect(&optw, SIGNAL(s_apply()), &sndw, SLOT(updateStyle()));
+	dbgw.sndSetDetached(conf.dbg.snddetach);
 
 	app.connect(&mwin, SIGNAL(s_keywin_shide()), &keyw, SLOT(switcher()));
 	app.connect(&mwin, SIGNAL(s_keywin_upd(Keyboard*)), &keyw, SLOT(upd(Keyboard*)));

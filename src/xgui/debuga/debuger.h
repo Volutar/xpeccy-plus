@@ -24,6 +24,7 @@
 #include "dbg_widgets.h"
 #include "dbg_stack.h"
 #include "dbg_zxscr.h"
+#include "dbg_sndchip.h"
 
 #include "ui_dumpdial.h"
 #include "ui_openDump.h"
@@ -63,6 +64,7 @@ class DebugWin : public QMainWindow {
 		void wannaWutch();
 		void wannaScrWin(bool);
 		void s_scr_upd();
+		void wannaSndWin(bool);
 		void wannaOptions();
 		void needStep();
 	public slots:
@@ -71,6 +73,8 @@ class DebugWin : public QMainWindow {
 		void showScrDot(int, int, int, int);
 		void scrSetDetached(bool);
 		void scrToggle();
+		void sndSetDetached(bool);
+		void sndToggle();
 		void updateStyle();
 	private:
 		unsigned block:1;
@@ -111,7 +115,7 @@ class DebugWin : public QMainWindow {
 		xDiskDumpWidget* wid_disk_dump;
 		xCmosDumpWidget* wid_cmos_dump;
 		xZXScrWidget* wid_zxscr;
-		xAYWidget* wid_ay;
+		xSndWidget* wid_ay;
 		xTapeWidget* wid_tape;
 		xFDDWidget* wid_fdd;
 		xBreakWidget* wid_brk;
