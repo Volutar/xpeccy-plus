@@ -50,6 +50,7 @@ xHexSpin::xHexSpin(QWidget* p):QLineEdit(p) {
 	value = 0x0000;
 	hsflag = XHS_DEC;
 	chgMask = 0;
+	isblank = false;
 	len = 6;
 	vtxt = "0000";
 	// setValidator(&vldtr);
@@ -85,7 +86,9 @@ void xHexSpin::updateMask() {
 		len++;
 	}
 	rxp.append(QString("{%0}").arg(len));	// 'len' times this char
-	setInputMask(QString(len, 'h'));	// to enter overwrite cursor mode. TODO:is there some legit method?
+	// the mask is what puts the cursor in overwrite mode; the part after the
+	// semicolon is what an empty position shows, for a field that may be empty
+	setInputMask((hsflag & XHS_BLANK) ? (QString(len, 'h') + ";-") : QString(len, 'h'));
 	setRegExp(vldtr, rxp);
 	refitWidth();
 }
@@ -108,6 +111,37 @@ void xHexSpin::setBase(int b) {
 
 void xHexSpin::setXFlag(int xf) {
 	hsflag = xf;
+	updateMask();			// XHS_BLANK decides what an empty position shows
+}
+
+// A field that may hold nothing shows the mask's blank character until it is
+// given a value or the caret lands in it. Without XHS_BLANK there is no such
+// state and this does nothing.
+void xHexSpin::setBlank() {
+	if (!(hsflag & XHS_BLANK) || isblank) return;
+	isblank = true;
+	setText(QString());
+}
+
+// there is something to show again: the text has to be forced out, since the
+// value it is built from never moved
+void xHexSpin::unblank() {
+	if (!isblank) return;
+	isblank = false;
+	hsflag |= XHS_UPD;
+}
+
+// typing into an empty field starts from zero, so the overwrite cursor has
+// something to overwrite
+void xHexSpin::startEdit() {
+	if (!isblank) return;
+	unblank();
+	onChange(value);
+}
+
+void xHexSpin::focusInEvent(QFocusEvent* ev) {
+	startEdit();
+	QLineEdit::focusInEvent(ev);
 }
 
 // The one flag that is switched while the field is alive, so it takes a setter
@@ -203,6 +237,7 @@ void xHexSpin::updatePal() {
 
 void xHexSpin::setValue(int nval) {
 	nval = minMaxCorrect(nval, min, max);
+	unblank();
 	int oldMask = chgMask;
 	if ((value == nval) && !(hsflag & XHS_UPD)) {
 		chgMask = 0;
@@ -270,6 +305,7 @@ void xHexSpin::onChange(int val) {
 }
 
 void xHexSpin::onTextChange(QString txt) {
+	if (isblank) return;		// the dashes are not a number to read
 	if (txt.size() < len) {
 		txt = txt.leftJustified(len, '0');
 	} else {
@@ -294,6 +330,7 @@ void xHexSpin::onTextChange(QString txt) {
 void xHexSpin::keyPressEvent(QKeyEvent* ev) {
 	QString txt;
 	int pos;
+	startEdit();			// the caret arriving is not the only way in
 	if (isReadOnly()) {
 		QLineEdit::keyPressEvent(ev);
 	} else {
@@ -314,7 +351,7 @@ void xHexSpin::keyPressEvent(QKeyEvent* ev) {
 				pos = cursorPosition();
 				txt = vtxt;
 				if (inputMask().isEmpty()) {
-					setInputMask(QString(len,'H'));
+					updateMask();	// the field's own mask, blank character and all
 				} else {
 					setInputMask(QString());
 				}

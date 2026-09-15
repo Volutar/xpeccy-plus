@@ -52,12 +52,13 @@ before that point is upstream's history and is not repeated here.
   blinks. Every picture is headed with the page it came from, and that heading lights
   up when it is the screen the machine is showing. Zoom moved in with the other
   switches and can Fit the picture to the panel.
-  Moving over a dot now tells you where it is and what holds it - the two addresses
-  and the bit of the byte, and the place on screen in pixels - with a dash where
-  there is no dot. A click holds the readout on one dot and marks it on the
-  picture, and Find takes an address and marks where that one lands; the right
-  button copies an address. On a shadow screen the address reads from #C000,
-  where the page actually is, in the emulator window too.
+  Moving over a dot now tells you where it is and what holds it - the place on
+  screen in pixels and in character cells, the two addresses, and the bit of the
+  byte - with dashes where there is no dot. A click holds the readout on one dot
+  and marks it on the picture; typing an address into either of the two fields
+  marks where that one lands, and the right button copies one. On a shadow screen
+  the address reads from #C000, where the page actually is, in the emulator
+  window too.
 
 - **TurboSound FM sounds like the chip it emulates.** The FM half of the YM2203 runs
   on the ymfm core now; the one it replaces fed two of every channel's four operators

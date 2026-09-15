@@ -57,6 +57,7 @@ xZXScrView::xZXScrView(QWidget* p):QWidget(p) {
 	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 	setContextMenuPolicy(Qt::DefaultContextMenu);
 	setMouseTracking(true);		// the readout follows the cursor, not the button
+	setFocusPolicy(Qt::ClickFocus);	// so the address fields can be let go of
 }
 
 QSize xZXScrView::minimumSizeHint() const {
@@ -279,7 +280,23 @@ void xZXScrView::markAdr(int adr) {
 	update();
 }
 
+void xZXScrView::setFocusFrom(QList<QWidget*> lst) {
+	focusFrom = lst;
+}
+
+// An address field holds on to the caret, and a field with the caret in it is
+// left alone - so without this the readout would stay dead after one edit,
+// with no obvious way of letting go. Coming back to the picture is that way.
+// Only those fields, though: the rest of the panel keeps what it is given.
+void xZXScrView::takeFocusBack() {
+	if (hasFocus()) return;
+	QWidget* foc = QApplication::focusWidget();
+	if (foc && focusFrom.contains(foc))
+		setFocus(Qt::MouseFocusReason);
+}
+
 void xZXScrView::mouseMoveEvent(QMouseEvent* ev) {
+	takeFocusBack();
 	if (markSlot >= 0) return;		// held on the marked dot
 	trackDot(ev->pos());
 }
@@ -314,9 +331,12 @@ void xZXScrView::contextMenuEvent(QContextMenuEvent* ev) {
 xZXScrPanel::xZXScrPanel(QWidget* p):QWidget(p) {
 	ui.setupUi(this);
 	hold = false;
+	// not even "nowhere" yet, so the first draw always shows
+	for (int i = 0; i < 4; i++) lastdot[i] = -2;
 
 	view = new xZXScrView;
-	view->setToolTip("Move over a dot to read where it is and what holds it, right click to copy an address");
+	view->setToolTip("Click to hold the readout. Right click copies");
+	view->setFocusFrom(QList<QWidget*>() << ui.leScr << ui.leAtr);
 	ui.layScrBody->insertWidget(0, view, 10);
 
 	ui.cbScrZoom->addItem("Zoom Fit", XSCR_FIT);
@@ -337,8 +357,10 @@ xZXScrPanel::xZXScrPanel(QWidget* p):QWidget(p) {
 	// moving is not news here the way it is in the register panel these borrow
 	// their look from. Their widths are pinned in fit_fields().
 	ui.leScrAdr->setMax(0x3fff);
-	ui.leScrFind->setMax(0xffff);
-	ui.leScrFind->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+	// these two show dashes while nothing is pointed at, so they say as much
+	// as the rows above them do
+	ui.leScr->setXFlag(XHS_DEC | XHS_BLANK | XHS_AUTOW);
+	ui.leAtr->setXFlag(XHS_DEC | XHS_BLANK | XHS_AUTOW);
 	ui.leScrPage->setMax(0xff);
 	// a short value lines up with the long ones instead of floating in its box
 	ui.leScrPage->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
@@ -353,9 +375,10 @@ xZXScrPanel::xZXScrPanel(QWidget* p):QWidget(p) {
 	connect(ui.cbScrGrid, &QCheckBox::toggled, this, &xZXScrPanel::opts_changed);
 	connect(ui.leScrPage, SIGNAL(valueChanged(int)), this, SLOT(custom_changed()));
 	connect(ui.leScrAdr, SIGNAL(valueChanged(int)), this, SLOT(custom_changed()));
-	connect(ui.leScrFind, SIGNAL(valueChanged(int)), this, SLOT(find_changed()));
+	connect(ui.leScr, SIGNAL(valueChanged(int)), this, SLOT(adr_changed(int)));
+	connect(ui.leAtr, SIGNAL(valueChanged(int)), this, SLOT(adr_changed(int)));
 	connect(view, &xZXScrView::s_dot, this, &xZXScrPanel::show_dot);
-	show_dot(-1, -1, -1, -1);
+	show_dot(-1, -1, -1, -1);		// nothing pointed at yet
 	connect(ui.tbScrDetach, &QToolButton::clicked, this, &xZXScrPanel::s_detach);
 
 	reload();
@@ -401,9 +424,9 @@ void xZXScrPanel::opts_changed() {
 	draw();
 }
 
-// the address typed in, shown as a mark on the picture
-void xZXScrPanel::find_changed() {
-	view->markAdr(ui.leScrFind->getValue());
+// an address typed into either field marks the dot it names
+void xZXScrPanel::adr_changed(int adr) {
+	view->markAdr(adr);
 }
 
 void xZXScrPanel::custom_changed() {
@@ -413,38 +436,67 @@ void xZXScrPanel::custom_changed() {
 	draw();
 }
 
-// Dashes rather than the last value that happened to be true: a stale
-// address reads as if the border had one.
+// The address fields are inputs as well as readouts, so off the picture they
+// keep what they hold - the mark on screen says where that is. Only XY, which
+// is nothing but a readout, goes to dashes.
+// An address the panel puts there is not the user typing it, so it must not
+// come back as an edit - and a field the caret is in belongs to the typist
+// and is left alone. -1 is no address at all.
+static bool show_adr(xHexSpin* fld, int adr) {
+	if (fld->hasFocus()) return false;
+	QSignalBlocker hush(fld);
+	if (adr < 0) {
+		fld->setBlank();
+	} else {
+		fld->setValue(adr);
+	}
+	return true;
+}
+
 void xZXScrPanel::show_dot(int x, int y, int pix, int atr) {
+	// nothing to redo for what is already on show. The addresses are in the
+	// comparison too: a program flipping screens moves them under a still cursor
+	int dot[4] = {x, y, pix, atr};
+	if (!memcmp(dot, lastdot, sizeof(dot))) return;
+	memcpy(lastdot, dot, sizeof(dot));
+	bool gotpix = show_adr(ui.leScr, pix);
+	bool gotatr = show_adr(ui.leAtr, atr);
+	// a field left to the typist shows something else, so this dot is not on
+	// show after all and must not be remembered as such
+	if (!gotpix || !gotatr) lastdot[0] = -2;
 	if (x < 0) {
-		ui.labScrPix->setText(QString(XSCR_NODOT) + XSCR_NOBIT);
-		ui.labScrAtr->setText(QString(XSCR_NODOT) + XSCR_ATRPAD);
+		// nothing is pointed at and nothing is marked, so there is no dot
+		ui.labScrBit->setText(XSCR_NOBIT);
 		ui.labScrXY->setText(XSCR_NOXY);
+		ui.labScrChar->setText(XSCR_NOXY);
 		return;
 	}
-	ui.labScrPix->setText(QString("#%0.%1").arg(gethexword(pix)).arg(vid_scr_bit(x)));
-	ui.labScrAtr->setText(QString("#%0%1").arg(gethexword(atr)).arg(XSCR_ATRPAD));
+	ui.labScrBit->setText(QString(".%0").arg(vid_scr_bit(x)));
+	// in dots, and in character cells under it: both are asked for often enough,
+	// and on one line they made the column twice as wide as anything else in it
 	ui.labScrXY->setText(QString("%0,%1").arg(x).arg(y));
+	ui.labScrChar->setText(QString("%0,%1").arg(x >> 3).arg(y >> 3));
 }
 
 // The four value fields are held at four digits, which is what an address
 // takes, so a page or an offset does not sit in a box of its own size - and
 // so nothing in the column moves when a value gets shorter.
 void xZXScrPanel::fit_fields() {
-	if (ui.labScrPix->font() == fitFont) return;	// nothing but the font moves these
-	fitFont = ui.labScrPix->font();
+	if (ui.labScrXY->font() == fitFont) return;	// nothing but the font moves these
+	fitFont = ui.labScrXY->font();
 	QFontMetrics fm(fitFont);
 	// the readout changes with every mouse move, so its column is held at the
 	// widest thing it can ever say
 	int wide = fm.horizontalAdvance(QString("255,191")) + 4;
-	ui.labScrPix->setMinimumWidth(wide);
-	ui.labScrAtr->setMinimumWidth(wide);
 	ui.labScrXY->setMinimumWidth(wide);
-	// the same slack xHexSpin's own XHS_AUTOW leaves for the frame and cursor
+	ui.labScrChar->setMinimumWidth(wide);
+	// the address fields size themselves from the digits they hold; the page,
+	// which counts to 0xff, is padded to four so the column does not step in
+	ui.leScr->refitWidth();
+	ui.leAtr->refitWidth();
 	int few = fm.horizontalAdvance(QString(4, '0')) + 10;
 	ui.leScrPage->setFixedWidth(few);
 	ui.leScrAdr->setFixedWidth(few);
-	ui.leScrFind->setFixedWidth(few);
 	// wide enough for its longest entry, and free to fill the column beyond that
 	ui.cbScrZoom->setMinimumWidth(comboFitWidth(ui.cbScrZoom));
 }
