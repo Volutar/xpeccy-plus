@@ -301,6 +301,9 @@ void xThread::emuCycle(Computer* comp) {
 			conf.vid.fcount++;
 			comp->frmCount++;
 			autostart_frame(comp);
+			// before run-ahead: the debugger's screen view wants the machine as
+			// it really stands, not the frame it is about to guess at
+			vid_scr_snap(comp->vid);
 			// the frame just made is not the one to show: run on to the one
 			// the player's last key press is already in
 			long rayOff = 0, lineOff = 0;

@@ -1205,10 +1205,8 @@ void DebugWin::scrToggle() {
 	scrSetDetached(!conf.dbg.scrdetach);
 }
 
-void DebugWin::setScrAtr(int adr, int atr) {
-	wid_zxscr->setAddress(adr, atr);
-//	ui.leScr->setValue(adr);
-//	ui.leAtr->setValue(atr);
+void DebugWin::showScrDot(int x, int y, int adr, int atr) {
+	wid_zxscr->showDot(x, y, adr, atr);
 }
 
 // ...

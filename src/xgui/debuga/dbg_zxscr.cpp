@@ -50,8 +50,13 @@ xZXScrView::xZXScrView(QWidget* p):QWidget(p) {
 		img[i].fill(Qt::black);
 		page[i] = XSCR_PAGE_MAIN;
 	}
+	markSlot = -1;
+	curSlot = -1;
+	curx = -1;
+	cury = -1;
 	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 	setContextMenuPolicy(Qt::DefaultContextMenu);
+	setMouseTracking(true);		// the readout follows the cursor, not the button
 }
 
 QSize xZXScrView::minimumSizeHint() const {
@@ -79,13 +84,26 @@ int xZXScrView::pageFor(int slot) const {
 	return comp->vid->vidPage;
 }
 
+// A running machine is read from the copy taken at the last frame boundary,
+// so the picture is never caught halfway through being rewritten. A stopped
+// one makes no frames and so has no copy - and a byte changed by hand in the
+// debugger has to show at once - so that is read as it stands.
 void xZXScrView::redraw() {
 	Computer* comp = conf.zx;
 	int cnt = (mode == XSCR_BOTH) ? 2 : 1;
 	int shift = (mode == XSCR_CUSTOM) ? cshift : 0;
+	bool running = !conf.emu.pause;
 	for (int i = 0; i < cnt; i++) {
-		page[i] = pageFor(i);
-		vid_get_screen(comp->vid, img[i].bits(), page[i], shift, flags);
+		// Auto asks for whichever screen is on air rather than the page it saw
+		// last time, so a program flipping between them still gets a copy
+		int want = (mode == XSCR_AUTO) ? VSCR_ONAIR : pageFor(i);
+		const unsigned char* src = NULL;
+		if (running) {
+			src = vid_scr_snap_get(i, want, shift);
+			vid_scr_want(i, want, shift);		// for the next frame
+		}
+		page[i] = src ? vid_scr_snap_page(i) : pageFor(i);
+		vid_get_screen(comp->vid, img[i].bits(), page[i], shift, flags, src);
 	}
 	update();
 }
@@ -123,6 +141,7 @@ xZXScrView::xScrGeom xZXScrView::geom() const {
 	} else if (s >= 1.0) {
 		s = (int)s;
 	}
+	g.scale = s;
 	int tw = (int)(XSCR_TILEW * s);
 	int th = (int)(XSCR_TILEH * s);
 	int allw = horiz ? (g.count * tw + (g.count - 1) * XSCR_GAP) : tw;
@@ -165,52 +184,123 @@ void xZXScrView::paintEvent(QPaintEvent*) {
 		pnt.fillRect(head, live ? hbg : palette().color(QPalette::Mid));
 		pnt.setPen(live ? htx : palette().color(QPalette::WindowText));
 		pnt.drawText(head, Qt::AlignCenter, tileName(i));
+		if (markSlot == i) paintMark(pnt, t, g.scale);
 	}
 }
 
-// the dot under a point, as the cpu would address it
-bool xZXScrView::adrAt(const QPoint& p, int* pix, int* atr) const {
+// where this screen's addresses are counted from
+int xZXScrView::baseFor(int slot) const {
+	int base = vid_scr_base(page[slot]);
+	if (mode == XSCR_CUSTOM) base += cshift;
+	return base;
+}
+
+// The marked cell, in two tones so it shows on any colour, with the eight dots
+// the raster address names picked out inside it.
+void xZXScrView::paintMark(QPainter& pnt, const QRect& t, double s) const {
+	int cw = (int)(8 * s);
+	if (cw < 4) cw = 4;
+	int bx = t.left() + (int)((XSCR_BRD + (curx & ~7)) * s);
+	int by = t.top() + (int)((XSCR_BRD + (cury & ~7)) * s);
+	int rh = (int)s;
+	if (rh < 1) rh = 1;
+	pnt.fillRect(QRect(bx, t.top() + (int)((XSCR_BRD + cury) * s), cw, rh), QColor(255, 255, 255, 110));
+	QRect cell(bx, by, cw, cw);
+	pnt.setPen(Qt::black);
+	pnt.drawRect(cell.adjusted(-1, -1, 0, 0));
+	pnt.setPen(Qt::white);
+	pnt.drawRect(cell.adjusted(0, 0, -1, -1));
+}
+
+// the dot under a point: where it is on the screen and what holds it. The
+// border strip around the picture is not a dot, and neither is the ground
+// between two screens.
+bool xZXScrView::dotAt(const QPoint& p, int* slot, int* dx, int* dy, int* pix, int* atr) const {
 	xScrGeom g = geom();
 	for (int i = 0; i < g.count; i++) {
 		QRect t = g.tile[i];
 		if (!t.contains(p)) continue;
 		if (t.width() < 1) return false;
-		double s = t.width() / (double)XSCR_TILEW;
-		int x = (int)((p.x() - t.left()) / s) - XSCR_BRD;
-		int y = (int)((p.y() - t.top()) / s) - XSCR_BRD;
+		int x = (int)((p.x() - t.left()) / g.scale) - XSCR_BRD;
+		int y = (int)((p.y() - t.top()) / g.scale) - XSCR_BRD;
 		if ((x < 0) || (x >= XSCR_W) || (y < 0) || (y >= XSCR_H)) return false;
-		int base = vid_scr_base(page[i]);
-		if (mode == XSCR_CUSTOM) base += cshift;
-		vid_scr_adr(base, x, y, pix, atr);
+		vid_scr_adr(baseFor(i), x, y, pix, atr);
+		*slot = i;
+		*dx = x;
+		*dy = y;
 		return true;
 	}
 	return false;
 }
 
+void xZXScrView::clearDot() {
+	curSlot = -1;
+	curx = -1;
+	cury = -1;
+	pixadr = -1;
+	atradr = -1;
+}
+
+void xZXScrView::trackDot(const QPoint& p) {
+	if (!dotAt(p, &curSlot, &curx, &cury, &pixadr, &atradr))
+		clearDot();
+	emit s_dot(curx, cury, pixadr, atradr);
+}
+
+// A click holds the readout on one dot and marks it on the picture, so the
+// numbers can be read, copied or screenshotted without the mouse having to
+// stay still. The next click lets it go again.
 void xZXScrView::mousePressEvent(QMouseEvent* ev) {
-	int pix, atr;
-	if ((ev->button() == Qt::LeftButton) && adrAt(ev->pos(), &pix, &atr)) {
-		pixadr = pix;
-		atradr = atr;
-		emit s_adr(pix, atr);
+	if (ev->button() != Qt::LeftButton) return;
+	bool held = (markSlot >= 0);
+	markSlot = -1;			// let go, so the readout can move again
+	trackDot(ev->pos());
+	if (!held && (curx >= 0)) markSlot = curSlot;
+	update();
+}
+
+// Where an address lands on the picture: the raster ones name a byte of eight
+// dots, the attribute ones a whole cell. Both mark the cell that holds them.
+void xZXScrView::markAdr(int adr) {
+	markSlot = -1;
+	clearDot();
+	if (adr >= 0) {
+		xScrGeom g = geom();
+		for (int i = 0; i < g.count; i++) {
+			if (!vid_scr_dot((adr - baseFor(i)) & 0xffff, &curx, &cury)) continue;
+			vid_scr_adr(baseFor(i), curx, cury, &pixadr, &atradr);
+			markSlot = i;
+			curSlot = i;
+			break;
+		}
+		if (markSlot < 0) clearDot();	// an address on no screen shown
 	}
+	emit s_dot(curx, cury, pixadr, atradr);
+	update();
+}
+
+void xZXScrView::mouseMoveEvent(QMouseEvent* ev) {
+	if (markSlot >= 0) return;		// held on the marked dot
+	trackDot(ev->pos());
+}
+
+void xZXScrView::leaveEvent(QEvent*) {
+	if (markSlot >= 0) return;		// held on the marked dot
+	clearDot();
+	emit s_dot(curx, cury, pixadr, atradr);
 }
 
 void xZXScrView::copyAdr(int adr) const {
 	QApplication::clipboard()->setText(gethexword(adr));
 }
 
+// The readout moves with the cursor, so it cannot be selected and copied.
+// This is where a value is taken from instead, for the dot the menu was
+// opened over.
 void xZXScrView::contextMenuEvent(QContextMenuEvent* ev) {
-	int pix, atr;
-	// the menu works on the dot it was opened over, so the fields follow the
-	// right button the same way they follow the left one
-	if (adrAt(ev->pos(), &pix, &atr)) {
-		pixadr = pix;
-		atradr = atr;
-		emit s_adr(pix, atr);
-	}
+	if (markSlot < 0) trackDot(ev->pos());
 	QMenu menu(this);
-	QAction* apix = menu.addAction(QString("Copy pixel address"));
+	QAction* apix = menu.addAction(QString("Copy screen address"));
 	QAction* aatr = menu.addAction(QString("Copy attribute address"));
 	apix->setEnabled(pixadr >= 0);
 	aatr->setEnabled(atradr >= 0);
@@ -226,7 +316,7 @@ xZXScrPanel::xZXScrPanel(QWidget* p):QWidget(p) {
 	hold = false;
 
 	view = new xZXScrView;
-	view->setToolTip("Click a dot to read its pixel and attribute address, right click to copy either");
+	view->setToolTip("Move over a dot to read where it is and what holds it, right click to copy an address");
 	ui.layScrBody->insertWidget(0, view, 10);
 
 	ui.cbScrZoom->addItem("Zoom Fit", XSCR_FIT);
@@ -243,17 +333,14 @@ xZXScrPanel::xZXScrPanel(QWidget* p):QWidget(p) {
 	grp->addButton(ui.tbScrCustom, XSCR_CUSTOM);
 	grp->setExclusive(true);
 
-	// The fields keep the default flags - no XHS_BGR, since a value moving is
-	// not news here the way it is in the register panel these borrow their look
-	// from. Their widths are pinned together in fit_fields() rather than by
-	// XHS_AUTOW, so all four line up whatever each one holds.
-	ui.leScr->setMax(0xffff);
-	ui.leAtr->setMax(0xffff);
+	// The two Custom inputs keep the default flags - no XHS_BGR, since a value
+	// moving is not news here the way it is in the register panel these borrow
+	// their look from. Their widths are pinned in fit_fields().
 	ui.leScrAdr->setMax(0x3fff);
+	ui.leScrFind->setMax(0xffff);
+	ui.leScrFind->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 	ui.leScrPage->setMax(0xff);
 	// a short value lines up with the long ones instead of floating in its box
-	ui.leScr->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-	ui.leAtr->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 	ui.leScrPage->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 	ui.leScrAdr->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
@@ -266,7 +353,9 @@ xZXScrPanel::xZXScrPanel(QWidget* p):QWidget(p) {
 	connect(ui.cbScrGrid, &QCheckBox::toggled, this, &xZXScrPanel::opts_changed);
 	connect(ui.leScrPage, SIGNAL(valueChanged(int)), this, SLOT(custom_changed()));
 	connect(ui.leScrAdr, SIGNAL(valueChanged(int)), this, SLOT(custom_changed()));
-	connect(view, &xZXScrView::s_adr, this, &xZXScrPanel::setAddress);
+	connect(ui.leScrFind, SIGNAL(valueChanged(int)), this, SLOT(find_changed()));
+	connect(view, &xZXScrView::s_dot, this, &xZXScrPanel::show_dot);
+	show_dot(-1, -1, -1, -1);
 	connect(ui.tbScrDetach, &QToolButton::clicked, this, &xZXScrPanel::s_detach);
 
 	reload();
@@ -312,6 +401,11 @@ void xZXScrPanel::opts_changed() {
 	draw();
 }
 
+// the address typed in, shown as a mark on the picture
+void xZXScrPanel::find_changed() {
+	view->markAdr(ui.leScrFind->getValue());
+}
+
 void xZXScrPanel::custom_changed() {
 	if (hold) return;
 	conf.dbg.scrpage = ui.leScrPage->getValue();
@@ -319,23 +413,38 @@ void xZXScrPanel::custom_changed() {
 	draw();
 }
 
-void xZXScrPanel::setAddress(int adr, int atr) {
-	ui.leScr->setValue(adr);
-	ui.leAtr->setValue(atr);
+// Dashes rather than the last value that happened to be true: a stale
+// address reads as if the border had one.
+void xZXScrPanel::show_dot(int x, int y, int pix, int atr) {
+	if (x < 0) {
+		ui.labScrPix->setText(QString(XSCR_NODOT) + XSCR_NOBIT);
+		ui.labScrAtr->setText(QString(XSCR_NODOT) + XSCR_ATRPAD);
+		ui.labScrXY->setText(XSCR_NOXY);
+		return;
+	}
+	ui.labScrPix->setText(QString("#%0.%1").arg(gethexword(pix)).arg(vid_scr_bit(x)));
+	ui.labScrAtr->setText(QString("#%0%1").arg(gethexword(atr)).arg(XSCR_ATRPAD));
+	ui.labScrXY->setText(QString("%0,%1").arg(x).arg(y));
 }
 
 // The four value fields are held at four digits, which is what an address
 // takes, so a page or an offset does not sit in a box of its own size - and
 // so nothing in the column moves when a value gets shorter.
 void xZXScrPanel::fit_fields() {
-	if (ui.leScr->font() == fitFont) return;	// nothing but the font moves these
-	fitFont = ui.leScr->font();
+	if (ui.labScrPix->font() == fitFont) return;	// nothing but the font moves these
+	fitFont = ui.labScrPix->font();
+	QFontMetrics fm(fitFont);
+	// the readout changes with every mouse move, so its column is held at the
+	// widest thing it can ever say
+	int wide = fm.horizontalAdvance(QString("255,191")) + 4;
+	ui.labScrPix->setMinimumWidth(wide);
+	ui.labScrAtr->setMinimumWidth(wide);
+	ui.labScrXY->setMinimumWidth(wide);
 	// the same slack xHexSpin's own XHS_AUTOW leaves for the frame and cursor
-	int few = QFontMetrics(fitFont).horizontalAdvance(QString(4, '0')) + 10;
-	ui.leScr->setFixedWidth(few);
-	ui.leAtr->setFixedWidth(few);
+	int few = fm.horizontalAdvance(QString(4, '0')) + 10;
 	ui.leScrPage->setFixedWidth(few);
 	ui.leScrAdr->setFixedWidth(few);
+	ui.leScrFind->setFixedWidth(few);
 	// wide enough for its longest entry, and free to fill the column beyond that
 	ui.cbScrZoom->setMinimumWidth(comboFitWidth(ui.cbScrZoom));
 }
@@ -411,8 +520,8 @@ void xZXScrWidget::setDetached(bool on) {
 	if (!on) panel->reload();
 }
 
-void xZXScrWidget::setAddress(int adr, int atr) {
-	panel->setAddress(adr, atr);
+void xZXScrWidget::showDot(int x, int y, int pix, int atr) {
+	panel->show_dot(x, y, pix, atr);
 }
 
 void xZXScrWidget::draw() {

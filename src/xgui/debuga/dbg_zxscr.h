@@ -18,35 +18,53 @@
 // XSCR_* - the mode, zoom and page constants - are in xcore.h: the config
 // reader needs them too
 
+// What the readout says when the cursor is not on a screen
+
+#define XSCR_NODOT	"#----"
+#define XSCR_NOBIT	".-"
+// the screen address carries a .bit the attribute one does not, so the
+// attribute line is padded to put the two addresses in one column
+#define XSCR_ATRPAD	"  "
+#define XSCR_NOXY	"-,-"
+
 // The picture. Painted rather than laid out, so it can fill the panel, hold
-// two screens at once and answer a click with the address of the dot.
+// two screens at once and name the dot under the cursor.
 class xZXScrView : public QWidget {
 	Q_OBJECT
 	public:
 		xZXScrView(QWidget* = nullptr);
 		void setView(int mode, int zoom, int flags, int page, int shift);
 		void redraw();			// re-read the machine, then repaint
+		void markAdr(int adr);		// mark the dot an address holds, -1 for none
 		QSize minimumSizeHint() const;
 	signals:
-		void s_adr(int, int);		// pixel and attribute address of the dot
+		// where the cursor is and what holds that dot; x is -1 for nowhere
+		void s_dot(int x, int y, int pix, int atr);
 	protected:
 		void paintEvent(QPaintEvent*);
 		void mousePressEvent(QMouseEvent*);
+		void mouseMoveEvent(QMouseEvent*);
+		void leaveEvent(QEvent*);
 		void contextMenuEvent(QContextMenuEvent*);
 	private:
 		// where the picture stands and how big it is, worked out in one go:
 		// the Both view picks its own orientation from the panel's shape
 		struct xScrGeom {
 			QRect tile[2];		// picture area of each screen
-			int head;		// caption height, 0 when there is one screen
+			int head;		// caption height
 			int count;
+			double scale;		// pixels per dot, for the hit test and the mark
 		};
 		int mode;
 		int zoom;
 		int flags;
 		int cpage;			// page for XSCR_CUSTOM
 		int cshift;			// offset for XSCR_CUSTOM
-		int pixadr;			// what the last click landed on
+		int markSlot;			// the screen the mark is on, -1 for no mark
+		int curSlot;			// the screen curx/cury are on
+		int curx;			// the dot the readout is on, -1 for none
+		int cury;
+		int pixadr;			// and the two addresses that hold it
 		int atradr;
 		QImage img[2];
 		int page[2];			// page each image was read from
@@ -54,7 +72,11 @@ class xZXScrView : public QWidget {
 		double fitScale(bool horiz) const;
 		int pageFor(int slot) const;
 		QString tileName(int slot) const;
-		bool adrAt(const QPoint&, int* pix, int* atr) const;
+		bool dotAt(const QPoint&, int* slot, int* x, int* y, int* pix, int* atr) const;
+		void paintMark(QPainter&, const QRect&, double scale) const;
+		void trackDot(const QPoint&);
+		void clearDot();
+		int baseFor(int slot) const;
 		void copyAdr(int) const;
 };
 
@@ -66,15 +88,16 @@ class xZXScrPanel : public QWidget {
 	public:
 		xZXScrPanel(QWidget* = nullptr);
 		void reload();			// take the settings back from conf
-		void setAddress(int, int);
 	signals:
 		void s_detach(bool);
 	public slots:
 		void draw();
+		void show_dot(int x, int y, int pix, int atr);
 	private slots:
 		void mode_changed();
 		void opts_changed();
 		void custom_changed();
+		void find_changed();
 	private:
 		Ui::ZXScrWidget ui;
 		xZXScrView* view;
@@ -89,7 +112,7 @@ class xZXScrWidget : public xDockWidget {
 	Q_OBJECT
 	public:
 		xZXScrWidget(QString, QString, QWidget* = nullptr);
-		void setAddress(int, int);
+		void showDot(int x, int y, int pix, int atr);
 		void setDetached(bool);
 	signals:
 		void s_detach(bool);

@@ -303,7 +303,7 @@ int main(int ac,char** av) {
 	app.connect(&mwin, SIGNAL(s_debug()), &dbgw, SLOT(start()));
 	app.connect(&mwin, SIGNAL(s_debug_off()), &dbgw, SLOT(close()));
 	app.connect(&mwin, SIGNAL(s_step()), &dbgw, SLOT(doStep()));
-	app.connect(&mwin, SIGNAL(s_scradr(int,int)), &dbgw, SLOT(setScrAtr(int,int)));
+	app.connect(&mwin, SIGNAL(s_scradr(int,int,int,int)), &dbgw, SLOT(showScrDot(int,int,int,int)));
 
 	app.connect(&mwin, SIGNAL(s_options()), &optw, SLOT(start()));
 	app.connect(&mwin, SIGNAL(s_gamepad_plug()), &optw, SLOT(setPadName()));

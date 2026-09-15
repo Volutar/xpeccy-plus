@@ -68,7 +68,7 @@ class DebugWin : public QMainWindow {
 	public slots:
 		void start();
 		void onPrfChange();
-		void setScrAtr(int, int);
+		void showScrDot(int, int, int, int);
 		void scrSetDetached(bool);
 		void scrToggle();
 		void updateStyle();
