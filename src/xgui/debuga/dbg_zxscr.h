@@ -18,13 +18,10 @@
 // XSCR_* - the mode, zoom and page constants - are in xcore.h: the config
 // reader needs them too
 
-// What the readout says when the cursor is not on a screen
+// The two addresses are fields you can also type into, so they keep whatever
+// they hold; XY is the one pure readout, and says so when there is no dot.
 
-#define XSCR_NODOT	"#----"
 #define XSCR_NOBIT	".-"
-// the screen address carries a .bit the attribute one does not, so the
-// attribute line is padded to put the two addresses in one column
-#define XSCR_ATRPAD	"  "
 #define XSCR_NOXY	"-,-"
 
 // The picture. Painted rather than laid out, so it can fill the panel, hold
@@ -34,6 +31,7 @@ class xZXScrView : public QWidget {
 	public:
 		xZXScrView(QWidget* = nullptr);
 		void setView(int mode, int zoom, int flags, int page, int shift);
+		void setFocusFrom(QList<QWidget*>);	// fields the picture may take the caret from
 		void redraw();			// re-read the machine, then repaint
 		void markAdr(int adr);		// mark the dot an address holds, -1 for none
 		QSize minimumSizeHint() const;
@@ -66,6 +64,7 @@ class xZXScrView : public QWidget {
 		int cury;
 		int pixadr;			// and the two addresses that hold it
 		int atradr;
+		QList<QWidget*> focusFrom;
 		QImage img[2];
 		int page[2];			// page each image was read from
 		xScrGeom geom() const;
@@ -75,6 +74,7 @@ class xZXScrView : public QWidget {
 		bool dotAt(const QPoint&, int* slot, int* x, int* y, int* pix, int* atr) const;
 		void paintMark(QPainter&, const QRect&, double scale) const;
 		void trackDot(const QPoint&);
+		void takeFocusBack();
 		void clearDot();
 		int baseFor(int slot) const;
 		void copyAdr(int) const;
@@ -97,11 +97,12 @@ class xZXScrPanel : public QWidget {
 		void mode_changed();
 		void opts_changed();
 		void custom_changed();
-		void find_changed();
+		void adr_changed(int);
 	private:
 		Ui::ZXScrWidget ui;
 		xZXScrView* view;
 		bool hold;			// reload() is moving the controls
+		int lastdot[4];			// what the readout already shows: x, y and the two addresses
 		QButtonGroup* grp;		// the mode buttons, each carrying its XSCR_*
 		QFont fitFont;			// the font the field widths were measured in
 		void fit_fields();

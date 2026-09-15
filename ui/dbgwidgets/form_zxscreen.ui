@@ -37,7 +37,7 @@
      <item>
       <widget class="QToolButton" name="tbScrAuto">
        <property name="toolTip">
-        <string>Follow the screen the machine shows</string>
+        <string>Follow the screen on air</string>
        </property>
        <property name="text">
         <string>Auto</string>
@@ -53,7 +53,7 @@
      <item>
       <widget class="QToolButton" name="tbScrMain">
        <property name="toolTip">
-        <string>Normal screen, page 5</string>
+        <string>Normal screen (page 5)</string>
        </property>
        <property name="text">
         <string>Main</string>
@@ -66,7 +66,7 @@
      <item>
       <widget class="QToolButton" name="tbScrShadow">
        <property name="toolTip">
-        <string>Shadow screen, page 7</string>
+        <string>Shadow screen (page 7)</string>
        </property>
        <property name="text">
         <string>Shadow</string>
@@ -118,7 +118,7 @@
      <item>
       <widget class="QToolButton" name="tbScrDetach">
        <property name="toolTip">
-        <string>Show in a window of its own</string>
+        <string>Show in its own window</string>
        </property>
        <property name="icon">
         <iconset resource="../../xpeccy.qrc">
@@ -144,7 +144,7 @@
        <item>
         <widget class="QComboBox" name="cbScrZoom">
          <property name="toolTip">
-          <string>Screen pixels per emulated dot, or Fit to use the whole panel</string>
+          <string>Pixels per dot</string>
          </property>
          <property name="frame">
           <bool>true</bool>
@@ -154,7 +154,7 @@
        <item>
         <widget class="QCheckBox" name="cbScrPix">
          <property name="toolTip">
-          <string>Show the attributes alone</string>
+          <string>Attributes only</string>
          </property>
          <property name="text">
           <string>no pixels</string>
@@ -164,7 +164,7 @@
        <item>
         <widget class="QCheckBox" name="cbScrAtr">
          <property name="toolTip">
-          <string>Show the pixels alone, white on black</string>
+          <string>Pixels only</string>
          </property>
          <property name="text">
           <string>no colors</string>
@@ -174,7 +174,7 @@
        <item>
         <widget class="QCheckBox" name="cbScrFlash">
          <property name="toolTip">
-          <string>Ignore the flash attribute</string>
+          <string>Hold the flash still</string>
          </property>
          <property name="text">
           <string>no flash</string>
@@ -184,7 +184,7 @@
        <item>
         <widget class="QCheckBox" name="cbScrGrid">
          <property name="toolTip">
-          <string>Dim every other character cell</string>
+          <string>Dim every other cell</string>
          </property>
          <property name="text">
           <string>show grid</string>
@@ -207,22 +207,22 @@
           <number>2</number>
          </property>
          <item row="0" column="0">
-          <widget class="QLabel" name="labScrPixCap">
+          <widget class="QLabel" name="labScrXYCap">
            <property name="toolTip">
-            <string>Address of the byte holding the dot under the cursor, and which bit of it the dot is. Right click to copy the address</string>
+            <string>Position in pixels</string>
            </property>
            <property name="text">
-            <string>Screen:</string>
+            <string>XY:</string>
            </property>
           </widget>
          </item>
-         <item row="0" column="1">
-          <widget class="QLabel" name="labScrPix">
+         <item row="0" column="1" colspan="2">
+          <widget class="QLabel" name="labScrXY">
            <property name="toolTip">
-            <string>Address of the byte holding the dot under the cursor, and which bit of it the dot is. Right click to copy the address</string>
+            <string>Position in pixels</string>
            </property>
            <property name="text">
-            <string/>
+            <string></string>
            </property>
            <property name="alignment">
             <set>Qt::AlignRight|Qt::AlignVCenter</set>
@@ -230,22 +230,22 @@
           </widget>
          </item>
          <item row="1" column="0">
-          <widget class="QLabel" name="labScrAtrCap">
+          <widget class="QLabel" name="labScrCharCap">
            <property name="toolTip">
-            <string>Address of the attribute byte colouring the cell under the cursor. Right click to copy it</string>
+            <string>Position in character cells</string>
            </property>
            <property name="text">
-            <string>Attr:</string>
+            <string>Char:</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="QLabel" name="labScrAtr">
+         <item row="1" column="1" colspan="2">
+          <widget class="QLabel" name="labScrChar">
            <property name="toolTip">
-            <string>Address of the attribute byte colouring the cell under the cursor. Right click to copy it</string>
+            <string>Position in character cells</string>
            </property>
            <property name="text">
-            <string/>
+            <string></string>
            </property>
            <property name="alignment">
             <set>Qt::AlignRight|Qt::AlignVCenter</set>
@@ -253,46 +253,87 @@
           </widget>
          </item>
          <item row="2" column="0">
-          <widget class="QLabel" name="labScrXYCap">
+          <widget class="QLabel" name="labScrPixCap">
            <property name="toolTip">
-            <string>Where the cursor is on the screen, in pixels from the top left corner</string>
+            <string>Pixel byte address. Type to find</string>
            </property>
            <property name="text">
-            <string>XY:</string>
+            <string>Screen:</string>
            </property>
           </widget>
          </item>
-         <item row="2" column="1">
-          <widget class="QLabel" name="labScrXY">
+         <item row="2" column="1" alignment="Qt::AlignRight">
+          <layout class="QHBoxLayout" name="leScrLay">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <item>
+          <widget class="QLabel" name="labScrPixPfx">
+           <property name="text">
+            <string>#</string>
+           </property>
+           <property name="indent">
+            <number>0</number>
+           </property>
+          </widget>
+           </item>
+           <item>
+            <widget class="xHexSpin" name="leScr">
+             <property name="toolTip">
+              <string>Pixel byte address. Type to find</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="2" column="2">
+          <widget class="QLabel" name="labScrBit">
            <property name="toolTip">
-            <string>Where the cursor is on the screen, in pixels from the top left corner</string>
+            <string>Which bit the dot is</string>
            </property>
            <property name="text">
-            <string/>
+            <string></string>
            </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignVCenter</set>
+           <property name="indent">
+            <number>0</number>
            </property>
           </widget>
          </item>
          <item row="3" column="0">
-          <widget class="QLabel" name="labScrFindCap">
+          <widget class="QLabel" name="labScrAtrCap">
            <property name="toolTip">
-            <string>Type an address and the picture marks the dot it holds - the raster or the attributes, whichever the address is</string>
+            <string>Attribute byte address. Type to find</string>
            </property>
            <property name="text">
-            <string>Find:</string>
+            <string>Attr:</string>
            </property>
           </widget>
          </item>
          <item row="3" column="1" alignment="Qt::AlignRight">
-          <widget class="xHexSpin" name="leScrFind">
-           <property name="toolTip">
-            <string>Type an address and the picture marks the dot it holds - the raster or the attributes, whichever the address is</string>
+          <layout class="QHBoxLayout" name="leAtrLay">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <item>
+          <widget class="QLabel" name="labScrAtrPfx">
+           <property name="text">
+            <string>#</string>
+           </property>
+           <property name="indent">
+            <number>0</number>
            </property>
           </widget>
+           </item>
+           <item>
+            <widget class="xHexSpin" name="leAtr">
+             <property name="toolTip">
+              <string>Attribute byte address. Type to find</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
-         <item row="4" column="0" colspan="2">
+         <item row="4" column="0" colspan="3">
           <widget class="Line" name="lineScrTwo">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
@@ -302,7 +343,7 @@
          <item row="5" column="0">
           <widget class="QLabel" name="labScrPageCap">
            <property name="toolTip">
-            <string>16K page the screen is read from, in hex</string>
+            <string>16K page in hex</string>
            </property>
            <property name="text">
             <string>Page:</string>
@@ -312,14 +353,14 @@
          <item row="5" column="1" alignment="Qt::AlignRight">
           <widget class="xHexSpin" name="leScrPage">
            <property name="toolTip">
-            <string>16K page the screen is read from, in hex</string>
+            <string>16K page in hex</string>
            </property>
           </widget>
          </item>
          <item row="6" column="0">
           <widget class="QLabel" name="labScrOfsCap">
            <property name="toolTip">
-            <string>Where the screen starts inside that page</string>
+            <string>Screen start in the page</string>
            </property>
            <property name="text">
             <string>Offset:</string>
@@ -329,7 +370,7 @@
          <item row="6" column="1" alignment="Qt::AlignRight">
           <widget class="xHexSpin" name="leScrAdr">
            <property name="toolTip">
-            <string>Where the screen starts inside that page</string>
+            <string>Screen start in the page</string>
            </property>
           </widget>
          </item>

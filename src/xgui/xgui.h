@@ -42,6 +42,7 @@ int comboFitWidth(QComboBox*);
 #define XHS_AUTOW (1<<4)	// keep width as narrow as the value needs
 #define XHS_SPLIT (1<<5)	// light the bytes that changed, not the whole value
 #define XHS_LIT (1<<6)		// keep the field lit whatever the value does
+#define XHS_BLANK (1<<7)	// may hold nothing at all, shown as dashes
 
 class xHexSpin : public QLineEdit {
 	Q_OBJECT
@@ -54,6 +55,7 @@ class xHexSpin : public QLineEdit {
 		void updatePal();
 		void refitWidth();
 		void setSplit(bool);
+		void setBlank();	// show no value at all, until one is set or typed
 		void setLit(bool);
 		int getMax();
 	signals:
@@ -66,6 +68,7 @@ class xHexSpin : public QLineEdit {
 		void onTextChange(QString);
 	private:
 		int chgMask;		// bytes changed by the last setValue, bit 0 = the lowest
+		bool isblank;		// holding nothing, with XHS_BLANK
 		int hsflag;
 		int base;
 		int value;
@@ -75,10 +78,13 @@ class xHexSpin : public QLineEdit {
 		QString vtxt;
 		QRegExpValidator vldtr;
 		void updateMask();
+		void unblank();
+		void startEdit();
 		int splitBytes();
 		bool wholeFieldLit();
 	protected:
 		void keyPressEvent(QKeyEvent*);
+		void focusInEvent(QFocusEvent*);
 		void wheelEvent(QWheelEvent*);
 		void paintEvent(QPaintEvent*);
 };
