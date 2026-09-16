@@ -123,6 +123,10 @@ void xHexSpin::setBlank() {
 	setText(QString());
 }
 
+bool xHexSpin::isBlank() const {
+	return isblank;
+}
+
 // there is something to show again: the text has to be forced out, since the
 // value it is built from never moved
 void xHexSpin::unblank() {
@@ -137,6 +141,15 @@ void xHexSpin::startEdit() {
 	if (!isblank) return;
 	unblank();
 	onChange(value);
+}
+
+// A field that sizes itself to what it holds has to be re-measured whenever
+// the font moves under it - a style sheet hands every widget a font of its own,
+// and without this the last digit is clipped by however much the new font is
+// wider than the one the width was worked out in.
+void xHexSpin::changeEvent(QEvent* ev) {
+	QLineEdit::changeEvent(ev);
+	if (ev->type() == QEvent::FontChange) refitWidth();
 }
 
 void xHexSpin::focusInEvent(QFocusEvent* ev) {

@@ -358,6 +358,24 @@ int sndGetRingDistance() {
 	return (posf - posp) & SND_RING_MASK;
 }
 
+// The last of what went to the sound device, newest last, for the debugger's
+// scope. It is the fill end of the ring, which is a buffer ahead of what is
+// being heard - that is the point, it is the freshest thing the machine made.
+// Read without a lock: the emulation thread is writing four bytes at a time
+// and the worst a torn read can do here is one wrong pixel.
+int snd_scope(sndPair* buf, int len) {
+	int max = SND_RING_SIZE / 4;
+	if (len > max) len = max;
+	if (len < 1) return 0;
+	int pos = posf & ~3;		// posf may be caught mid-frame
+	for (int i = len - 1; i >= 0; i--) {
+		pos -= 4;
+		buf[i].left = (short)(sbuf[pos & SND_RING_MASK] | (sbuf[(pos + 1) & SND_RING_MASK] << 8));
+		buf[i].right = (short)(sbuf[(pos + 2) & SND_RING_MASK] | (sbuf[(pos + 3) & SND_RING_MASK] << 8));
+	}
+	return len;
+}
+
 // How much sound we aim to keep in the ring. Under one callback block it
 // clicks by definition, so the setting is clamped well above that; the pacer
 // (pacing.cpp) trims emulated time to hold the ring here.

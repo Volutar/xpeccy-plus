@@ -56,6 +56,7 @@ class xHexSpin : public QLineEdit {
 		void refitWidth();
 		void setSplit(bool);
 		void setBlank();	// show no value at all, until one is set or typed
+		bool isBlank() const;	// holding nothing, the way setBlank() left it
 		void setLit(bool);
 		int getMax();
 	signals:
@@ -83,6 +84,7 @@ class xHexSpin : public QLineEdit {
 		int splitBytes();
 		bool wholeFieldLit();
 	protected:
+		void changeEvent(QEvent*);
 		void keyPressEvent(QKeyEvent*);
 		void focusInEvent(QFocusEvent*);
 		void wheelEvent(QWheelEvent*);

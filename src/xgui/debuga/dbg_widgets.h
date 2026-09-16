@@ -18,24 +18,6 @@
 #include "dbg_heat.h"
 
 void drawHBar(QLabel*, int, int);
-void drawVBar(QLabel*, int, int);
-
-// ay
-
-#include "ui_form_ay.h"
-
-class xAYWidget : public xDockWidget {
-	Q_OBJECT
-	public:
-		xAYWidget(QString, QString, QWidget* = nullptr);
-	public slots:
-		void draw();
-	private:
-		Ui::AYWidget ui;
-		fmChan fmView[3];	// what the FM page shows, filled per refresh
-	private slots:
-		void offChan(int);
-};
 
 // cia
 

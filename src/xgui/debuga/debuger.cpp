@@ -198,7 +198,6 @@ void DebugWin::updateStyle() {
 	}
 	foreach(xHexSpin* xhs, dbgRegEdit) {
 		xhs->updatePal();	// takes the new font from the parent
-		xhs->refitWidth();
 	}
 	fitMMapBoxes();
 	curCpuCore = nullptr;		// font changed: re-measure the register columns
@@ -437,7 +436,8 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 	wid_cmos_dump = new xCmosDumpWidget("","CMOS");
 	wid_zxscr = new xZXScrWidget(":/images/rulers.png","Screen");
 	connect(wid_zxscr, &xZXScrWidget::s_detach, this, &DebugWin::scrSetDetached);
-	wid_ay = new xAYWidget(":/images/note.png","Sound Chip");
+	wid_ay = new xSndWidget(":/images/note.png","Sound Chip");
+	connect(wid_ay, &xSndWidget::s_detach, this, &DebugWin::sndSetDetached);
 	wid_tape = new xTapeWidget(":/images/tape.png","Tape");
 	wid_fdd = new xFDDWidget(":/images/floppy.png","FDC");
 	wid_brk = new xBreakWidget(":/images/stop.png","Breakpoints");
@@ -1045,6 +1045,9 @@ void DebugWin::keyPressEvent(QKeyEvent* ev) {
 		case XCUT_KEYBOARD:
 			emit wannaKeys();
 			break;
+		case XCUT_SNDWIN:
+			sndToggle();
+			break;
 		case XCUT_OPEN_DUMP:
 			doOpenDump();
 			break;
@@ -1203,6 +1206,16 @@ void DebugWin::scrSetDetached(bool on) {
 
 void DebugWin::scrToggle() {
 	scrSetDetached(!conf.dbg.scrdetach);
+}
+
+void DebugWin::sndSetDetached(bool on) {
+	conf.dbg.snddetach = on ? 1 : 0;
+	wid_ay->setDetached(on);
+	emit wannaSndWin(on);
+}
+
+void DebugWin::sndToggle() {
+	sndSetDetached(!conf.dbg.snddetach);
 }
 
 void DebugWin::showScrDot(int x, int y, int adr, int atr) {
