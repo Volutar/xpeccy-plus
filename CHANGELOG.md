@@ -11,6 +11,16 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **A DC filter for the sound**, on the Sound page and off by default. The chips do
+  not swing about zero - an AY sits between silence and full - and that offset is not
+  sound, it only eats the headroom they all share. Worst is a device that walks its
+  own level up while it plays, a General Sound being the one that does: everything
+  else ends up crowded against the clip. With the filter on, each device has its
+  offset taken off before the mixer sees it, so one of them drifting no longer costs
+  the others anything. The waveform in the debugger sits around the middle of its box
+  as well.
+  Thanks to Volutar for asking for it, and for saying where it had to go.
+
 - ALF TV Game, the Belarusian ZX Spectrum console, is back in the machine list - in the
   stock 64K shape and with the 128K memory expansion. Its ROM is bundled, so it boots
   into the games menu straight away, and a cartridge opens as a cartridge image. The

@@ -1898,6 +1898,16 @@ thin, lower it again after a long clean spell</string>
                </widget>
               </item>
               <item>
+               <widget class="QCheckBox" name="dcbox">
+                <property name="toolTip">
+                 <string>Take the chips&apos; dc offset out of the output</string>
+                </property>
+                <property name="text">
+                 <string>DC filter</string>
+                </property>
+               </widget>
+              </item>
+              <item>
                <widget class="Line" name="line_3">
                 <property name="orientation">
                  <enum>Qt::Horizontal</enum>

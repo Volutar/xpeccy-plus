@@ -123,12 +123,15 @@ void alf_sync(Computer* comp, int ns) {
 	tsSync(comp->ts, ns);
 }
 
+// A beeper and the chips, and a dc blocker for each - see zx_vol().
 sndPair alf_vol(Computer* comp, sndVolume* sv) {
+	static sndDC dcBeep, dcAy;
 	sndPair p;
 	sndPair v;
-	p.left = comp->beep->val * sv->beep / 6;
-	p.right = p.left;
-	v = tsGetVolume(comp->ts);
+	v.left = comp->beep->val * sv->beep / 6;
+	v.right = v.left;
+	p = snd_dc(&dcBeep, v, sv->dc);
+	v = snd_dc(&dcAy, tsGetVolume(comp->ts), sv->dc);
 	p.left += v.left * sv->ay / 100;
 	p.right += v.right * sv->ay / 100;
 	return p;

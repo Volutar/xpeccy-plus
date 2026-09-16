@@ -161,6 +161,7 @@ void saveConfig() {
 	fprintf(cfile, "shader = %s\n", conf.vid.shader.c_str());
 	fprintf(cfile, "\n[SOUND]\n\n");
 	fprintf(cfile, "enabled = %s\n", YESNO(conf.snd.enabled));
+	fprintf(cfile, "dc.filter = %s\n", YESNO(conf.snd.vol.dc));
 	fprintf(cfile, "soundsys = %s\n", sndOutput->name);
 	fprintf(cfile, "rate = %i\n", conf.snd.rate);
 	fprintf(cfile, "rate_auto = %s\n", YESNO(conf.snd.rateauto));
@@ -890,6 +891,7 @@ void loadConfig() {
 					break;
 				case SECT_SOUND:
 					if (pnam=="enabled") conf.snd.enabled = arg.b;
+					if (pnam=="dc.filter") conf.snd.vol.dc = arg.b;
 					if (pnam=="soundsys") soutnam = pval;
 					// a config written by an older build can name a rate this
 					// one no longer offers; sndInit's default stands instead

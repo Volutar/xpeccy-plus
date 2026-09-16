@@ -806,6 +806,7 @@ void SetupWin::start() {
 	ui.cbSAA->setChecked(comp->saa->enabled);
 
 	ui.senbox->setChecked(conf.snd.enabled);
+	ui.dcbox->setChecked(conf.snd.vol.dc);
 	ui.outbox->setCurrentIndex(ui.outbox->findText(QString::fromLocal8Bit(sndOutput->name)));
 	// Auto keeps conf.snd.rate as the rate actually in use, so the box says
 	// which one that turned out to be rather than leaving the user guessing.
@@ -1024,6 +1025,7 @@ void SetupWin::apply() {
 	}
 // sound
 	conf.snd.enabled = ui.senbox->isChecked() ? 1 : 0;
+	conf.snd.vol.dc = ui.dcbox->isChecked() ? 1 : 0;
 
 	conf.snd.vol.master = ui.sbMasterVol->value();
 	conf.snd.vol.beep = ui.sbBeepVol->value();
