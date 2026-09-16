@@ -85,6 +85,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **The right-click menu is shorter.** Watcher, Screen and Sound chips sit under
+  Debugger now, and clicking Debugger, Favorites or Reset itself does the obvious
+  thing - opens the debugger, opens the favorites list, resets the machine - so the
+  `default` and `Manage...` items they used to carry are gone.
+
 - **The debugger's screen panel picks a screen with one click.** Main, shadow, or both
   at once, with Auto following whatever the machine is showing - the memory bank and
   start offset it used to ask for are behind a Custom button now, for the rare case
@@ -108,6 +113,11 @@ before that point is upstream's history and is not repeated here.
   chip's CSM mode says its words instead of holding one note.
 
 ### Fixed
+
+- **The right-click menu no longer picks an item by itself.** If the mouse moved a
+  little while the button was going down, letting it go counted as a click on
+  whatever was under the cursor by then - usually Open, and the file dialog came up
+  uninvited.
 
 - **A program that drives the SD card itself got nowhere.** The card answered as
   if it were past its idle state, so such a program took it for an old card and

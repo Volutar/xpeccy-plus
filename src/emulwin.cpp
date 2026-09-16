@@ -3,6 +3,7 @@
 #include <QTimer>
 #include <QMenu>
 #include <QMenuBar>
+#include <QSet>
 #include <QMessageBox>
 #include <QProgressBar>
 #include <QTableWidget>
@@ -1117,8 +1118,67 @@ void MainWin::updateSatellites() {
 
 // USER MENU
 
+// Qt never triggers a submenu's own action - a click on the root only opens the
+// submenu. This one does both: a root added here runs its action, so the menu
+// needs no separate item repeating what the root already says.
+class xRootMenu : public QMenu {
+	public:
+		xRootMenu(QWidget* p = nullptr) : QMenu(p) {}
+		void addRoot(QMenu* sub) {roots.insert(sub->menuAction());}
+	protected:
+		void showEvent(QShowEvent*) override;
+		void mousePressEvent(QMouseEvent*) override;
+		void mouseReleaseEvent(QMouseEvent*) override;
+		void keyPressEvent(QKeyEvent*) override;
+	private:
+		bool clickRoot(QAction*);
+		QSet<QAction*> roots;
+		bool pressed = false;
+};
+
+bool xRootMenu::clickRoot(QAction* act) {
+	if (!roots.contains(act)) return false;
+	act->menu()->hide();		// it may already be open under the cursor
+	hide();
+	act->trigger();
+	return true;
+}
+
+// MainWin::mousePressEvent pops this menu up on the press of the right button, so
+// that button's release lands inside the menu a moment later - and after even a small
+// move of the mouse it is on an item, which then fires. Only a release whose press
+// this menu saw is a click on it.
+void xRootMenu::showEvent(QShowEvent* ev) {
+	pressed = false;
+	QMenu::showEvent(ev);
+}
+
+void xRootMenu::mousePressEvent(QMouseEvent* ev) {
+	pressed = true;
+	QMenu::mousePressEvent(ev);
+}
+
+void xRootMenu::mouseReleaseEvent(QMouseEvent* ev) {
+	if (!pressed) return;
+	pressed = false;
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+	QPoint pos = ev->position().toPoint();
+#else
+	QPoint pos = ev->pos();
+#endif
+	if ((ev->button() == Qt::LeftButton) && clickRoot(actionAt(pos))) return;
+	QMenu::mouseReleaseEvent(ev);
+}
+
+void xRootMenu::keyPressEvent(QKeyEvent* ev) {
+	// Enter on a root does what a click does; Right still opens the submenu
+	if (((ev->key() == Qt::Key_Return) || (ev->key() == Qt::Key_Enter)) && clickRoot(activeAction())) return;
+	QMenu::keyPressEvent(ev);
+}
+
 void MainWin::initUserMenu() {
-	userMenu = new QMenu(this);
+	xRootMenu* menu = new xRootMenu(this);
+	userMenu = menu;
 	// the same dialog as the Load hotkey, every kind of image at once
 	userMenu->addAction(QIcon(":/images/fileopen.png"), "Open...", this, [this]() {
 		openMedia(QString(), FG_ALL, -1, conf.autorun);
@@ -1140,10 +1200,11 @@ void MainWin::initUserMenu() {
 	// the Profi changes its layout with the grab, so no key may stay down across it
 	connect(pckAct, &QAction::toggled, this, [](bool) {kbdReleaseAll(conf.zx->keyb);});
 	userMenu->addAction(QIcon(":/images/keyboardzx.png"),"Virtual keyboard",this,SIGNAL(s_keywin_shide()));
-	userMenu->addAction(QIcon(":/images/objective.png"),"Watcher", this, SIGNAL(s_watch_show()));
-	userMenu->addAction(QIcon(":/images/rulers.png"),"Screen", this, SIGNAL(s_scr_show()));
-	userMenu->addAction(QIcon(":/images/note.png"),"Sound chips", this, SIGNAL(s_snd_show()));
-	userMenu->addAction(QIcon(":/images/bug.png"), "Debugger", this, SLOT(doDebug()));
+	// the debugger and its detached panels
+	dbgMenu = userMenu->addMenu(QIcon(":/images/bug.png"), "Debugger");
+	dbgMenu->addAction(QIcon(":/images/objective.png"),"Watcher", this, SIGNAL(s_watch_show()));
+	dbgMenu->addAction(QIcon(":/images/rulers.png"),"Screen", this, SIGNAL(s_scr_show()));
+	dbgMenu->addAction(QIcon(":/images/note.png"),"Sound chips", this, SIGNAL(s_snd_show()));
 	userMenu->addAction(QIcon(":/images/other.png"),"Options",this,SLOT(doOptions()));
 
 	connect(profileMenu,SIGNAL(triggered(QAction*)),this,SLOT(profileSelected(QAction*)));
@@ -1152,12 +1213,27 @@ void MainWin::initUserMenu() {
 	connect(keyMenu,SIGNAL(triggered(QAction*)),this,SLOT(keySelected(QAction*)));
 	connect(palMenu,SIGNAL(triggered(QAction*)),this,SLOT(palSelected(QAction*)));
 
-	resMenu->addAction("default")->setData(RES_DEFAULT);
-	resMenu->addSeparator();
+	// roots that do something of their own, so the submenu needs no item for it
+	auto setRoot = [this, menu](QMenu* sub, auto slot) {
+		menu->addRoot(sub);
+		connect(sub->menuAction(), &QAction::triggered, this, slot);
+	};
+	setRoot(dbgMenu, &MainWin::doDebug);
+	setRoot(bookmarkMenu, &MainWin::favManage);
+	resMenu->menuAction()->setData(RES_DEFAULT);
+	setRoot(resMenu, [this](){reset(resMenu->menuAction());});
+
 	resMenu->addAction("ROMpage0")->setData(RES_128);
 	resMenu->addAction("ROMpage1")->setData(RES_48);
 	resMenu->addAction("ROMpage2")->setData(RES_SHADOW);
 	resMenu->addAction("ROMpage3")->setData(RES_DOS);
+}
+
+void MainWin::favManage() {
+	pause(true, PR_FILE);
+	fav_manage(this);
+	pause(false, PR_FILE);
+	setFocus();
 }
 
 void MainWin::fillUserMenu() {
@@ -1187,13 +1263,11 @@ void MainWin::fillUserMenu() {
 			setFocus();
 		});
 	}
-	bookmarkMenu->addSeparator();
-	bookmarkMenu->addAction("Manage...", this, [this]() {
-		pause(true, PR_FILE);
-		fav_manage(this);
-		pause(false, PR_FILE);
-		setFocus();
-	});
+	// the root itself opens the manager, so there is nothing here but the list
+	if (media.isEmpty() && conf.bookmarkList.isEmpty()) {
+		act = bookmarkMenu->addAction("empty");
+		act->setEnabled(false);
+	}
 	// fill machine menu
 	profileMenu->clear();
 	std::string family;

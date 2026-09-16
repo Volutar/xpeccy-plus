@@ -22,6 +22,8 @@ void MainWin::mousePressEvent(QMouseEvent *ev){
 				if (grabMice) {
 					comp->mouse->rmb = 1;
 				} else {
+					// opened on the press, so the release of the same button
+					// lands in the menu - xRootMenu drops it (see emulwin.cpp)
 					fillUserMenu();
 					userMenu->popup(QPoint(ev->xGlobalX,ev->xGlobalY));
 					userMenu->setFocus();
