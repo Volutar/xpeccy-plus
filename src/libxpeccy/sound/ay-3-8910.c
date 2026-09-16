@@ -241,7 +241,7 @@ sndPair ay_mix_stereo(int volA, int volB, int volC, int id, int sep) {
 
 // The level a channel is putting out, 0..31, before the DAC curve: the
 // envelope or the register volume, with whichever of the mixer gates is shut
-// silencing it. This is what the debugger shows; ay_chan_vol() below turns it
+// silencing it. This is what the debugger shows; ay_chan_dac() below turns it
 // into what the DAC does with it.
 // A period under one sample long is heard as a tone of its own rather than as a
 // gate. Both halves of the level ask this, so it is asked in one place.
@@ -313,39 +313,34 @@ void ay_poke_reg(aymChip* chip, int reg, int val) {
 	chip->curReg = was;
 }
 
-int ay_chan_vol(aymChip* ay, aymChan* ch) {
-	int vol = 0;
-#if 1
-	vol = ayDACvol[ay_chan_lev(ay, ch)];
+// A level through a DAC table, which is the only thing the two chips do
+// differently - the AY and the YM gate a channel alike. On the way it keeps the
+// loudest level seen, for the meter in the debugger: a channel is a square wave,
+// and a level read once a frame is the volume on one half of it and nothing on
+// the other, which reads as a meter falling to zero on a note that is still playing.
+int ay_chan_dac(aymChip* ay, aymChan* ch, const int* tab) {
+	int lev = ay_chan_lev(ay, ch);
+	if (lev > ch->levpk) ch->levpk = lev;
+	int vol = tab[lev];
 	if (ay_sub_period(ch)) vol >>= 1;			// half
-#elif 0
-	int mixlev = (ch->tdis || ch->lev) && (ch->ndis || ay->chanN.lev);
-	if (ch->een) {
-		if (mixlev) {
-			vol = ayDACvol[ay->chanE.vol & 0x1f];
-			if (ch->per < 0x60) vol >>= 1;
-		}
-	} else {
-		if ((ch->per < 0x60) || mixlev) {
-			vol = ayDACvol[ch->vol & 0x1f];
-		}
-	}
-#elif 0
-	int lev = (ch->per < 0x60) ? 1 : ch->lev;
-	if ((ch->tdis || /*ch->*/lev) && (ch->ndis || ay->chanN.lev)) {
-		vol = ch->een ? ay->chanE.vol : (ch->ndis && !ch->tdis && !lev/* && (ch->per < 0x60)*/) ? 0 : ch->vol;
-	} else {
-		vol = 0;
-	}
-	vol = ayDACvol[vol];						// AY:4-bit DAC volume
-//	if (ch->per < 0x60) vol >>= 1;
-#endif
 	return vol;
 }
 
-sndPair ay_vol(aymChip* chip) {
-	int volA = ay_chan_vol(chip, &chip->chanA);
-	int volB = ay_chan_vol(chip, &chip->chanB);
-	int volC = ay_chan_vol(chip, &chip->chanC);
+int ay_chan_peak(aymChan* ch) {
+	int res = ch->levpk;
+	ch->levpk = 0;
+	return res;
+}
+
+// Three channels through a DAC table and into the stereo mix. The AY and the YM
+// differ in that table and in nothing else, so this is the whole of both.
+sndPair ay_mix_tab(aymChip* chip, const int* tab) {
+	int volA = ay_chan_dac(chip, &chip->chanA, tab);
+	int volB = ay_chan_dac(chip, &chip->chanB, tab);
+	int volC = ay_chan_dac(chip, &chip->chanC, tab);
 	return ay_mix_stereo(volA, volB, volC, chip->stereo, chip->sep);
+}
+
+sndPair ay_vol(aymChip* chip) {
+	return ay_mix_tab(chip, ayDACvol);
 }

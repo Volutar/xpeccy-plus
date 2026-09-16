@@ -91,6 +91,7 @@ typedef struct {
 	int per;		// period in ticks (0:channel off)
 	int cnt;		// ticks countdown
 	int step;		// env:vol change direction (+1 -1); noise:seed
+	int levpk;		// loudest level since the debugger last looked
 } aymChan;
 
 // what the debugger asks the AY code for
@@ -98,6 +99,9 @@ int ay_chan_amp(aymChip*, aymChan*);	// what it is set to play, 0..31
 int ay_chan_lev(aymChip*, aymChan*);	// what it is putting out this instant
 double ay_chan_freq(aymChip*, aymChan*);	// the tone it is running at, Hz
 double ay_env_freq(aymChip*);		// how often the envelope repeats, Hz
+int ay_chan_peak(aymChan*);		// the loudest since the last call, and start again
+int ay_chan_dac(aymChip*, aymChan*, const int*);	// that level through a DAC table
+sndPair ay_mix_tab(aymChip*, const int*);	// all three, mixed, through one
 void ay_env_shape(int, unsigned char*, int);	// an envelope form, level by level
 void ay_poke_reg(aymChip*, int, int);	// write a register the way a port write does
 
