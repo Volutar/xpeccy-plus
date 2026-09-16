@@ -114,6 +114,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The right-click menu no longer picks an item by itself.** If the mouse moved a
+  little while the button was going down, letting it go counted as a click on
+  whatever was under the cursor by then - usually Open, and the file dialog came up
+  uninvited.
+
 - **A program that drives the SD card itself got nowhere.** The card answered as
   if it were past its idle state, so such a program took it for an old card and
   read 512 times past the address it meant; and a single-block read that followed

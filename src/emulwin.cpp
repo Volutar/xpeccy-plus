@@ -1126,11 +1126,14 @@ class xRootMenu : public QMenu {
 		xRootMenu(QWidget* p = nullptr) : QMenu(p) {}
 		void addRoot(QMenu* sub) {roots.insert(sub->menuAction());}
 	protected:
+		void showEvent(QShowEvent*) override;
+		void mousePressEvent(QMouseEvent*) override;
 		void mouseReleaseEvent(QMouseEvent*) override;
 		void keyPressEvent(QKeyEvent*) override;
 	private:
 		bool clickRoot(QAction*);
 		QSet<QAction*> roots;
+		bool pressed = false;
 };
 
 bool xRootMenu::clickRoot(QAction* act) {
@@ -1141,7 +1144,23 @@ bool xRootMenu::clickRoot(QAction* act) {
 	return true;
 }
 
+// MainWin::mousePressEvent pops this menu up on the press of the right button, so
+// that button's release lands inside the menu a moment later - and after even a small
+// move of the mouse it is on an item, which then fires. Only a release whose press
+// this menu saw is a click on it.
+void xRootMenu::showEvent(QShowEvent* ev) {
+	pressed = false;
+	QMenu::showEvent(ev);
+}
+
+void xRootMenu::mousePressEvent(QMouseEvent* ev) {
+	pressed = true;
+	QMenu::mousePressEvent(ev);
+}
+
 void xRootMenu::mouseReleaseEvent(QMouseEvent* ev) {
+	if (!pressed) return;
+	pressed = false;
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
 	QPoint pos = ev->position().toPoint();
 #else
