@@ -246,7 +246,10 @@ void tsOut(TSound* ts, int port, int val) {
 		switch (ts->type) {
 			case TS_NEDOPC:
 				if ((val & 0xf8) == 0xf8) {
-					ts->curChip = (val & 1) ? ts->chipA : ts->chipB;	// FF: AY0, FE: AY1
+					// bit 0 is the chip number, not a flag: #FE picks the first and
+					// #FF the second, which is what UnrealSpeccy does with the same
+					// scheme and what nedoPC's own FM test expects of #F8.
+					ts->curChip = (val & 1) ? ts->chipB : ts->chipA;
 					ts->r_stat = !(val & 2);
 					ts->chipA->blk_fm = !!(val & 4);
 					ts->chipB->blk_fm = !!(val & 4);
