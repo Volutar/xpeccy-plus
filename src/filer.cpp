@@ -48,7 +48,7 @@ typedef struct {
 
 static xFileTypeInfo ft_tab[] = {
 	{FL_SNA, 0, ".sna", "*.sna", loadSNA, saveSNA, "SNA snapshot"},
-	{FL_Z80, 0, ".z80", "*.z80", loadZ80, NULL, "Z80 snapshot"},
+	{FL_Z80, 0, ".z80", "*.z80", loadZ80, saveZ80, "Z80 snapshot"},
 	{FL_SPG, 0, ".spg", "*.spg", loadSPG, NULL, "SPG snapshot"},
 	{FL_TAP, 0, ".tap", "*.tap", loadTAP, saveTAP, "TAP tape image"},
 	{FL_TZX, 0, ".tzx", "*.tzx", loadTZX, NULL, "TZX tape image"},
@@ -295,6 +295,7 @@ static xFilerError err_tab[] = {
 	{ERR_TD0_VERSION, "Unsupported TD0 version"},
 	{ERR_WAV_HEAD, "Wrong WAV header"},
 	{ERR_WAV_FORMAT, "Unsupported WAV format"},
+	{ERR_Z80_HW, "Z80 snapshot: unsupported hardware"},
 	{ERR_TRD_SNF, "Wrong disk structure for TRD file"},
 	{ERR_OK, ""}
 };

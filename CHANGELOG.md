@@ -11,6 +11,13 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Snapshots can be saved as `.z80`**, not only `.sna`. Give the name a `.z80`
+  ending in the save dialog. The file holds the whole 128K (256K on a Scorpion),
+  the AY registers and where the beam was, and comes out three to five times
+  smaller than a `.sna` because it is packed. ZX 48K, 128K, +2, +2A, +3, Pentagon
+  128 and Scorpion 256 can be written this way; on a machine the format has no
+  name for it says so rather than write something wrong.
+
 - **An anti-alias filter for the sound**, on the Sound page. The mix is worked out
   32 times more often than the sound card plays it, and was averaged down, which
   folds everything too high to be played back into what you hear. The filter cuts
@@ -113,6 +120,11 @@ before that point is upstream's history and is not repeated here.
   chip's CSM mode says its words instead of holding one note.
 
 ### Fixed
+
+- **Two things about loading a `.z80`.** A snapshot taken in the middle of a frame
+  now starts with the beam where it was saved instead of at the top of the picture -
+  the file says where it was, and that was being skipped. And a snapshot that
+  carries a ROM page beside its RAM no longer loses every page after it.
 
 - **The right-click menu no longer picks an item by itself.** If the mouse moved a
   little while the button was going down, letting it go counted as a click on
