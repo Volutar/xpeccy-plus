@@ -37,6 +37,15 @@ void drawHBar(QLabel* lab, int lev, int max) {
 // it would only ever be empty, half or full.
 #define LEV_CELLS	10
 
+// How many refreshes a full bar takes to fall to nothing. A fifth of a second
+// at fifty a second: slow enough not to flicker, quick enough to follow a note.
+#define LEV_FALL	10
+
+// The row labels down the left of both tables get the same width, so the two
+// pages line up with each other when the tab row swaps them. Wide enough for
+// the longest of them, which is Op1 on the FM side.
+#define SND_LABEL_CELLS	4
+
 // The colours a level meter has everywhere: green over most of the range, amber
 // near the top, red at the end, so the bar says how loud it is without the
 // number being read. They are fixed rather than taken from the style - this is a
@@ -81,10 +90,24 @@ xLevelCell::xLevelCell(QWidget* p):QWidget(p) {
 	setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
 }
 
+// A meter rises at once and falls slowly, the way every meter does. What is
+// measured is already steady for a held note - see ay_chan_amp() - so this is
+// for the envelope: one fast enough to be heard as vibrato moves quicker than
+// the panel is refreshed, and without a fall it would read as noise.
 void xLevelCell::setLevel(int val, int max) {
-	if ((val == lev) && (max == top)) return;
-	lev = val;
-	top = (max > 0) ? max : 1;
+	int fall = (max > 0) ? max : 1;
+	top = fall;
+	fall /= LEV_FALL;
+	if (fall < 1) fall = 1;
+	int want;
+	if (val >= lev) {
+		want = val;		// rises at once, and -1 for no chip lands here too
+	} else {
+		want = lev - fall;
+		if (want < val) want = val;
+	}
+	if (want == lev) return;
+	lev = want;
 	update();
 }
 
@@ -129,6 +152,12 @@ void xLevelCell::paintEvent(QPaintEvent*) {
 	pnt.setPen(readableOn(ground, ink));
 	pnt.setClipRect(wid, 0, width() - wid, height());
 	pnt.drawText(rect(), Qt::AlignCenter, txt);
+}
+
+// How wide the row labels are, in both tables.
+static int labelWidth(const QWidget* w) {
+	QFontMetrics fm(w->font());
+	return fm.horizontalAdvance(QString(SND_LABEL_CELLS, '0'));
 }
 
 // PSG PAGE
@@ -234,6 +263,7 @@ xPSGPage::xPSGPage(QWidget* p):QWidget(p) {
 	// the block keeps to its own width: the fields are narrow, and without this
 	// the placeholder grows into the slack and drags the columns away from the label
 	ui.wRegs->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+	ui.gridPsg->setColumnMinimumWidth(0, labelWidth(this));
 	QGridLayout* rlay = new QGridLayout(ui.wRegs);
 	rlay->setContentsMargins(0, 0, 0, 0);
 	rlay->setSpacing(2);
@@ -267,13 +297,15 @@ xPSGPage::xPSGPage(QWidget* p):QWidget(p) {
 		connect(vol[i], &xHexSpin::valueChanged, this, [this, i](int v){vol_edited(i, v);});
 	}
 
-	// the period, and beside it the note it works out as - one or the other is
-	// shown, so the field can still be typed into whenever it is the one up
+	// the period, and beside it the note it works out as. Both at once rather
+	// than one or the other: the field stays typeable, the column stops changing
+	// width under the reader, and a period and a note answer different questions
 	QWidget* noteHost[4] = {ui.wPerA, ui.wPerB, ui.wPerC, ui.wPerE};
 	for (int i = 0; i < 4; i++) {
 		note[i] = new QLabel("-");
 		note[i]->setAlignment(Qt::AlignCenter);
-		noteHost[i]->layout()->addWidget(note[i]);
+		QBoxLayout* nlay = (QBoxLayout*)noteHost[i]->layout();
+		nlay->insertWidget(nlay->count() - 1, note[i]);
 	}
 
 	QWidget* levHost[3] = {ui.wLevA, ui.wLevB, ui.wLevC};
@@ -295,9 +327,6 @@ xPSGPage::xPSGPage(QWidget* p):QWidget(p) {
 	QVBoxLayout* elay = new QVBoxLayout(ui.wEnvForm);
 	elay->setContentsMargins(0, 0, 0, 0);
 	elay->addWidget(envView, 0, Qt::AlignLeft);
-	connect(ui.cbNotes, SIGNAL(stateChanged(int)), this, SLOT(notes_toggled(int)));
-	ui.cbNotes->setChecked(conf.dbg.sndnotes);
-	show_notes(conf.dbg.sndnotes);
 }
 
 // One editable hex field, sized to what it holds. `host`, when given, is a
@@ -308,9 +337,12 @@ xHexSpin* xPSGPage::addSpin(QWidget* host, int max) {
 	xhs->setMax(max);
 	xhs->setAlignment(Qt::AlignCenter);
 	if (host) {
-		QVBoxLayout* lay = new QVBoxLayout(host);
+		QHBoxLayout* lay = new QHBoxLayout(host);
 		lay->setContentsMargins(0, 0, 0, 0);
 		lay->addWidget(xhs);
+		// the noise row has no note beside it, and one item on its own would
+		// sit in the middle of the cell instead of under the column
+		lay->addStretch(1);
 	}
 	return xhs;
 }
@@ -367,21 +399,6 @@ void xPSGPage::mute_toggled(int chan, bool on) {
 	emu_unlock();
 }
 
-void xPSGPage::notes_toggled(int st) {
-	if (hold) return;
-	conf.dbg.sndnotes = (st == Qt::Checked) ? 1 : 0;
-	show_notes(conf.dbg.sndnotes);
-	draw();
-}
-
-// The period column is either the field or the note, never both: two numbers for
-// one thing in a column this narrow reads as clutter.
-void xPSGPage::show_notes(bool on) {
-	for (int i = 0; i < 3; i++) per[i]->setVisible(!on);
-	per[4]->setVisible(!on);
-	for (int i = 0; i < 4; i++) note[i]->setVisible(on);
-}
-
 void xPSGPage::blank() {
 	hold = true;
 	for (int i = 0; i < 16; i++) regs[i]->setBlank();
@@ -415,18 +432,22 @@ void xPSGPage::draw() {
 	aymChan* chan[3] = {&chip->chanA, &chip->chanB, &chip->chanC};
 	QLabel* mix[3] = {ui.labMixA, ui.labMixB, ui.labMixC};
 	QLabel* state[3] = {ui.labStateA, ui.labStateB, ui.labStateC};
+	// The tone and noise generators free-run at a rate nothing on this page can
+	// sample: a tone counter left as a reset leaves it flips at over 100 kHz, and
+	// even a musical note is thousands of times a refresh. Read while the machine
+	// runs the bit is a coin toss, so it is only shown when the machine is held -
+	// stepping, which is the one place the bit means anything.
+	bool held = conf.zx->flgDBG || conf.emu.pause;
 	for (int i = 0; i < 3; i++) {
 		mix[i]->setText(getAYmix(chan[i]));
-		lev[i]->setLevel(ay_chan_lev(chip, chan[i]), 31);
-		state[i]->setText(chan[i]->lev ? "1" : "0");
+		lev[i]->setLevel(ay_chan_amp(chip, chan[i]), 31);
+		state[i]->setText(!held ? "-" : (chan[i]->lev ? "1" : "0"));
 		mute[i]->setChecked(chan[i]->mute);
-		if (conf.dbg.sndnotes)
-			note[i]->setText(noteName(ay_chan_freq(chip, chan[i])));
+		note[i]->setText(noteName(ay_chan_freq(chip, chan[i])));
 	}
-	if (conf.dbg.sndnotes)			// hidden otherwise, and a log() a channel
-		note[3]->setText(noteName(ay_env_freq(chip)));
+	note[3]->setText(noteName(ay_env_freq(chip)));
 	hold = false;
-	ui.labStateN->setText(chip->chanN.lev ? "1" : "0");
+	ui.labStateN->setText(!held ? "-" : (chip->chanN.lev ? "1" : "0"));
 	ui.labVolE->setText(gethexbyte(chip->chanE.vol & 0x1f));
 	envView->setForm(chip->eForm);
 }
@@ -531,6 +552,7 @@ xFMPage::xFMPage(QWidget* p):QWidget(p) {
 			}
 		}
 	}
+	lay->setColumnMinimumWidth(0, labelWidth(this));
 	lay->setColumnStretch(FMC_COUNT + 1, 1);
 
 	connect(chanTabs, &QTabBar::currentChanged, this, &xFMPage::chan_changed);

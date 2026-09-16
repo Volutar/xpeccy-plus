@@ -94,7 +94,8 @@ typedef struct {
 } aymChan;
 
 // what the debugger asks the AY code for
-int ay_chan_lev(aymChip*, aymChan*);	// what a channel puts out, 0..31
+int ay_chan_amp(aymChip*, aymChan*);	// what it is set to play, 0..31
+int ay_chan_lev(aymChip*, aymChan*);	// what it is putting out this instant
 double ay_chan_freq(aymChip*, aymChan*);	// the tone it is running at, Hz
 double ay_env_freq(aymChip*);		// how often the envelope repeats, Hz
 void ay_env_shape(int, unsigned char*, int);	// an envelope form, level by level

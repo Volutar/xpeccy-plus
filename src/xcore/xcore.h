@@ -654,7 +654,6 @@ struct xConfig {
 		unsigned scrdetach:1;	// screen panel: shown in a window of its own
 		unsigned snddetach:1;	// sound panel: shown in a window of its own
 		unsigned sndfm:1;	// sound panel: the FM page of the chip, not the PSG one
-		unsigned sndnotes:1;	// sound panel: a period shown as the note it makes
 		QFont font;
 		int dbsize;
 		int dwsize;

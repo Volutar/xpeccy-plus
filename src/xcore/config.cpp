@@ -229,7 +229,6 @@ void saveConfig() {
 	fprintf(cfile, "scr.window = %i:%i:%i:%i\n",conf.dbg.scrpos.x(),conf.dbg.scrpos.y(),conf.dbg.scrsiz.width(),conf.dbg.scrsiz.height());
 	fprintf(cfile, "snd.chip = %i\n", conf.dbg.sndchip);
 	fprintf(cfile, "snd.fm = %s\n", YESNO(conf.dbg.sndfm));
-	fprintf(cfile, "snd.notes = %s\n", YESNO(conf.dbg.sndnotes));
 	fprintf(cfile, "snd.detached = %s\n", YESNO(conf.dbg.snddetach));
 	fprintf(cfile, "snd.window = %i:%i:%i:%i\n",conf.dbg.sndpos.x(),conf.dbg.sndpos.y(),conf.dbg.sndsiz.width(),conf.dbg.sndsiz.height());
 	fprintf(cfile, "regs.layout = %i\n", conf.dbg.reglayout);
@@ -612,7 +611,6 @@ void loadConfig() {
 	conf.dbg.scrsiz = QSize(480, 340);
 	conf.dbg.sndchip = 0;
 	conf.dbg.sndfm = 0;
-	conf.dbg.sndnotes = 0;
 	conf.dbg.snddetach = 0;
 	conf.dbg.sndpos = QPoint(-1, -1);
 	conf.dbg.sndsiz = QSize(560, 380);
@@ -731,7 +729,6 @@ void loadConfig() {
 					if ((pnam == "snd.chip") && (arg.i >= 0) && (arg.i < 4))
 						conf.dbg.sndchip = arg.i;
 					if (pnam == "snd.fm") conf.dbg.sndfm = arg.b;
-					if (pnam == "snd.notes") conf.dbg.sndnotes = arg.b;
 					if (pnam == "snd.detached") conf.dbg.snddetach = arg.b;
 					if (pnam == "snd.window") {
 						vect = splitstr(pval,":");

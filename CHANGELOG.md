@@ -37,18 +37,18 @@ before that point is upstream's history and is not repeated here.
   window of its own, with the button in the panel, the menu or Alt+A, and there it
   keeps up with the machine while it plays.
   The PSG page has all sixteen registers at the top and a row per channel: period,
-  volume, mixer and the state of the square wave, with the envelope drawn as its own
-  shape. The FM page has the timers and the channel 3 mode, a tab per channel, and a
+  volume, mixer and, while the machine is stopped, the state of its square wave -
+  running, it flips far too fast to be caught. The envelope is drawn as its shape. The FM page has the timers and the channel 3 mode, a tab per channel, and a
   row per operator with every parameter the chip has, which operators are keyed and
   where they are in their envelope, and a star on the ones that reach the output for
   the algorithm in use.
-  What a channel or an operator is putting out is a meter, green through amber to red
+  What a channel or an operator is playing at is a meter, green through amber to red
   the way any level meter is, so it can be watched rather than read. Every number on
   both pages can be typed over, and goes into the chip the way the machine would
   write it.
-  A PSG channel can be silenced on its own, to hear what the other two are doing,
-  and the Notes box turns the periods into the notes they play - A-4, C#5 and how
-  many cents off - the envelope included when its shape repeats.
+  Beside each period is the note it comes out as - A-4, C#5 and how many cents off -
+  the envelope included when its shape repeats. A PSG channel can be silenced on its
+  own, to hear what the other two are doing.
   Under both pages is an oscillogram of what is going out to the speakers.
   Thanks to Volutar for the design and for talking it through.
 

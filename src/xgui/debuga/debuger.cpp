@@ -1166,9 +1166,10 @@ void DebugWin::fillNotCPU() {
 		if (dw->isVisible())
 			dw->draw();
 	}
-	// a stopped machine makes no frames, and the screen window is fed by
-	// those: while the debugger has the machine, it feeds the window itself
+	// a stopped machine makes no frames, and the detached windows are fed by
+	// those: while the debugger has the machine, it feeds them itself
 	emit s_scr_upd();
+	emit s_snd_upd();
 
 	setSignal(ui_misc.labDOS, comp->flgDOS);
 	setSignal(ui_misc.labROM, comp->flgROM);
