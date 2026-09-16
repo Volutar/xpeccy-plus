@@ -249,6 +249,17 @@ static int ay_sub_period(aymChan* ch) {
 	return (ch->per < 0x60) && !ch->tdis;
 }
 
+// What a channel is set to play, 0..31 - the envelope when it is following one,
+// its own volume otherwise, and nothing at all when it is muted. This is the one
+// the meter shows. ay_chan_lev() below is a different question: it answers what
+// the DAC is being given at this instant, which for a tone channel is the volume
+// on one half of the square wave and zero on the other. Read once a frame that is
+// a number with no meaning, which is why the two are not the same call.
+int ay_chan_amp(aymChip* ay, aymChan* ch) {
+	if (ch->mute) return 0;
+	return (ch->een ? ay->chanE.vol : ch->vol) & 0x1f;
+}
+
 int ay_chan_lev(aymChip* ay, aymChan* ch) {
 	if (ch->mute) return 0;
 	if (!(ch->ndis || ay->chanN.lev)) return 0;

@@ -36,7 +36,7 @@ class xLevelCell : public QWidget {
 	protected:
 		void paintEvent(QPaintEvent*);
 	private:
-		int lev;
+		int lev;			// what is shown: the peak, on its way down
 		int top;
 		int digits;
 };
@@ -61,8 +61,6 @@ class xPSGPage : public QWidget {
 		xPSGPage(QWidget* = nullptr);
 		void setChip(aymChip*);
 		void draw();
-	private slots:
-		void notes_toggled(int);
 	private:
 		Ui::PSGPage ui;
 		aymChip* chip;
@@ -70,7 +68,7 @@ class xPSGPage : public QWidget {
 		xHexSpin* regs[16];		// the minidump
 		xHexSpin* per[5];		// period per row: A B C N E
 		xHexSpin* vol[3];		// volume per channel
-		QLabel* note[4];		// the period as a note, for A B C and E
+		QLabel* note[4];		// the period as a note, beside it: A B C and E
 		xLevelCell* lev[3];
 		QCheckBox* mute[3];
 		xAYEnvView* envView;
@@ -79,7 +77,6 @@ class xPSGPage : public QWidget {
 		void per_edited(int row, int val);
 		void vol_edited(int chan, int val);
 		void mute_toggled(int chan, bool on);
-		void show_notes(bool);
 		void blank();
 };
 
