@@ -85,6 +85,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **The right-click menu is shorter.** Watcher, Screen and Sound chips sit under
+  Debugger now, and clicking Debugger, Favorites or Reset itself does the obvious
+  thing - opens the debugger, opens the favorites list, resets the machine - so the
+  `default` and `Manage...` items they used to carry are gone.
+
 - **The debugger's screen panel picks a screen with one click.** Main, shadow, or both
   at once, with Auto following whatever the machine is showing - the memory bank and
   start offset it used to ask for are behind a Custom button now, for the rare case

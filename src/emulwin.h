@@ -212,9 +212,11 @@ typedef struct {
 		QMenu* shdMenu;
 		QMenu* keyMenu;
 		QMenu* palMenu;
+		QMenu* dbgMenu;
 		QAction* pckAct;
 
 		void initUserMenu();
+		void favManage();
 		void calcCoords(QMouseEvent*);
 		void dropAsk(QString);
 
