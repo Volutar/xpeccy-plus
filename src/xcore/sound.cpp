@@ -37,30 +37,18 @@ static short scopeBuf[SND_SCOPE_SIZE];
 static int scopePos = 0;
 static long long scopeNsFixed = 0;	// emulated time not yet turned into samples
 
-// What the scope keeps has its dc taken out on the way in. None of the chips swing
-// about zero - an AY sits between silence and full, and only an FM channel is
-// symmetrical - so without this the trace floats above the zero line, the whole lower
-// half of the box is dead and the line says nothing. It is a filter over the samples
-// themselves, not a shift of the picture: it follows the sound where it is, so a
-// change of level bends the wave there and then. One pole, corner under a hertz
-// (1<<18 samples is about a fifth of a second), which leaves the lowest note alone;
-// a square comes out of it leaning very slightly, the way one does.
-//
-// The master volume is deliberately not applied either, or turning the wheel down
-// would flatten the picture along with the sound.
-#define SND_SCOPE_DC_BITS	18
-static long long scopeDc = 0;
-static int scopeDcSet = 0;
+// The scope takes the offset out for itself, or the trace floats above the zero
+// line with the whole lower half of the box dead and the line saying nothing. Only
+// while nothing is filtered on the way to the speakers, though: two of these in
+// series would bend a wave twice. The master volume is deliberately not applied
+// either, or turning the wheel down would flatten the picture along with the sound.
+static sndDC scopeDc;
 
 static void scope_put(int lev) {
-	if (!scopeDcSet) {		// start settled, not sliding in from silence
-		scopeDc = (long long)lev << SND_SCOPE_DC_BITS;
-		scopeDcSet = 1;
-	}
-	scopeDc += lev - (scopeDc >> SND_SCOPE_DC_BITS);
-	lev -= (int)(scopeDc >> SND_SCOPE_DC_BITS);
-	// clamped here rather than through toLimits(): this runs over a million
-	// times a second and that one is a call into another file
+	sndPair p;
+	p.left = lev;
+	p.right = lev;
+	lev = snd_dc(&scopeDc, p, !conf.snd.vol.dc).left;
 	if (lev < -0x8000) lev = -0x8000;
 	if (lev > 0x7fff) lev = 0x7fff;
 	scopeBuf[scopePos & SND_SCOPE_MASK] = (short)lev;

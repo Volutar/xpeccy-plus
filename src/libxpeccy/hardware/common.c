@@ -186,42 +186,44 @@ void zx_keyr(Computer* comp, keyEntry* ent) {
 
 // volume
 
+// Every device is mixed here, and each has a dc blocker of its own on the way in.
+// The state sits here rather than in Computer on purpose: run-ahead never reaches
+// this function - its frame makes no sound - so there is nothing for a snapshot to
+// carry, and there is only ever one machine in the process anyway.
 sndPair zx_vol(Computer* comp, sndVolume* sv) {
+	static sndDC dcBeep, dcAy, dcGs, dcSdrv, dcSaa;
 	sndPair vol;
 	sndPair svol;
+	int dc = sv->dc;		// read once, so every device in one sample agrees
 	int lev = 0;
-	vol.left = 0;
-	vol.right = 0;
 	// 1:tape sound
-//	if (comp->tape->on) {
-		if (comp->tape->rec) {
-			lev = comp->tape->levRec ? 0x1000 * sv->tape / 100 : 0;
-		} else {
-			lev = (comp->tape->volPlay << 8) * sv->tape / 1600;
-		}
-//	}
-	// 2:beeper
-	// bcSync(comp->beep, -1);
+	if (comp->tape->rec) {
+		lev = comp->tape->levRec ? 0x1000 * sv->tape / 100 : 0;
+	} else {
+		lev = (comp->tape->volPlay << 8) * sv->tape / 1600;
+	}
+	// 2:beeper. The tape reaches the speaker on the same wire and is one level
+	// with it here, so the two share a blocker as well
 	lev += comp->beep->val * sv->beep / 6;
-	vol.left = lev;
-	vol.right = lev;
+	svol.left = lev;
+	svol.right = lev;
+	vol = snd_dc(&dcBeep, svol, dc);
 	// 3:turbo sound
-	svol = tsGetVolume(comp->ts);
+	svol = snd_dc(&dcAy, tsGetVolume(comp->ts), dc);
 	vol.left += svol.left * sv->ay / 100;
 	vol.right += svol.right * sv->ay / 100;
 	// 4:general sound
-	svol = gsVolume(comp->gs);
+	svol = snd_dc(&dcGs, gsVolume(comp->gs), dc);
 	vol.left += svol.left * sv->gs / 100;
 	vol.right += svol.right * sv->gs / 100;
 	// 5:soundrive
-	svol = sdrvVolume(comp->sdrv);
+	svol = snd_dc(&dcSdrv, sdrvVolume(comp->sdrv), dc);
 	vol.left += svol.left * sv->sdrv / 100;
 	vol.right += svol.right * sv->sdrv / 100;
 	// 6:saa
-	svol = saaVolume(comp->saa);
+	svol = snd_dc(&dcSaa, saaVolume(comp->saa), dc);
 	vol.left += svol.left * sv->saa / 100;
 	vol.right += svol.right * sv->saa / 100;
-	// end
 	return vol;
 }
 
