@@ -51,45 +51,9 @@ void ym_wr(aymChip* chip, int adr, int val) {
 
 // ym_sync = ay_sync (with 5-bit volumes)
 
-extern sndPair ay_mix_stereo(int, int, int, int, int);
-
-int ym_chan_vol(aymChip* ay, aymChan* ch) {
-	int vol = 0;
-#if 1
-	vol = ymDACvol[(ch->een ? ay->chanE.vol : ch->vol) & 0x1f];
-        if (ch->per < 0x60 && !ch->tdis)
-                vol >>= 1; // half
-        else
-                if (!(ch->tdis || ch->lev)) vol = 0;
-        if (!(ch->ndis || ay->chanN.lev)) vol = 0;
-#elif 0
-	int mixlev = (ch->tdis || ch->lev) && (ch->ndis || ay->chanN.lev);
-	if (ch->een) {
-		if (mixlev) {
-			vol = ymDACvol[ay->chanE.vol & 0x1f];
-			if (ch->per < 0x60) vol >>= 1;
-		}
-	} else {
-		if ((ch->per < 0x60) || mixlev) {
-			vol = ymDACvol[ch->vol & 0x1f];
-		}
-	}
-#elif 0
-	int lev = (ch->per < 0x60) ? 1 : ch->lev;
-	if ((ch->tdis || lev) && (ch->ndis || ay->chanN.lev)) {
-		vol = ch->een ? ay->chanE.vol : (ch->ndis && !ch->tdis && !lev) ? 0 : ch->vol;
-	} else {
-		vol = 0;
-	}
-	vol = ymDACvol[vol & 0x1f];						// YM:5-bit DAC volume
-//	if (ch->per < 0x60) vol >>= 1;
-#endif
-	return vol;
-}
-
+// Only the table is the YM's: the gate, the mix and the debugger's Lev column all
+// come from the AY code. Written out a second time here they drifted apart, and a
+// muted channel went on playing.
 sndPair ym_vol(aymChip* chip) {
-	int volA = ym_chan_vol(chip, &chip->chanA);
-	int volB = ym_chan_vol(chip, &chip->chanB);
-	int volC = ym_chan_vol(chip, &chip->chanC);
-	return ay_mix_stereo(volA, volB, volC, chip->stereo, chip->sep);
+	return ay_mix_tab(chip, ymDACvol);		// YM:5-bit DAC volume
 }

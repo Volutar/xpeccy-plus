@@ -241,7 +241,7 @@ sndPair ay_mix_stereo(int volA, int volB, int volC, int id, int sep) {
 
 // The level a channel is putting out, 0..31, before the DAC curve: the
 // envelope or the register volume, with whichever of the mixer gates is shut
-// silencing it. This is what the debugger shows; ay_chan_vol() below turns it
+// silencing it. This is what the debugger shows; ay_chan_dac() below turns it
 // into what the DAC does with it.
 // A period under one sample long is heard as a tone of its own rather than as a
 // gate. Both halves of the level ask this, so it is asked in one place.
@@ -249,42 +249,11 @@ static int ay_sub_period(aymChan* ch) {
 	return (ch->per < 0x60) && !ch->tdis;
 }
 
-// What a channel is set to play, 0..31 - the envelope when it is following one,
-// its own volume otherwise, and nothing at all when it is muted. This is the one
-// the meter shows. ay_chan_lev() below is a different question: it answers what
-// the DAC is being given at this instant, which for a tone channel is the volume
-// on one half of the square wave and zero on the other. Read once a frame that is
-// a number with no meaning, which is why the two are not the same call.
-int ay_chan_amp(aymChip* ay, aymChan* ch) {
-	if (ch->mute) return 0;
-	return (ch->een ? ay->chanE.vol : ch->vol) & 0x1f;
-}
-
 int ay_chan_lev(aymChip* ay, aymChan* ch) {
 	if (ch->mute) return 0;
 	if (!(ch->ndis || ay->chanN.lev)) return 0;
 	if (!ay_sub_period(ch) && !ch->tdis && !ch->lev) return 0;
 	return (ch->een ? ay->chanE.vol : ch->vol) & 0x1f;
-}
-
-// A tick is a half period of the chip clock and a tone channel flips its level
-// every `per` of them, so a whole square wave is twice that: clock / (16 * tone),
-// the figure the data sheet gives. 0 when the channel has no period at all.
-double ay_chan_freq(aymChip* ay, aymChan* ch) {
-	if (ch->per < 1) return 0.0;
-	return ay->frq * 1e6 / ch->per;
-}
-
-// How often the envelope comes round again, for the forms that do - which is what
-// makes one usable as a bass note. The bits are the ones ay_tick() acts on: with
-// CONT clear, or HOLD set, it runs once and stops; ALT makes the cycle a ramp each
-// way instead of one. That works out as clock / (256 * period), doubled for ALT.
-double ay_env_freq(aymChip* ay) {
-	int steps;
-	if (ay->chanE.per < 1) return 0.0;
-	if (!(ay->eForm & 8) || (ay->eForm & 1)) return 0.0;
-	steps = (ay->eForm & 2) ? 64 : 32;
-	return ay->frq * 2e6 / ((double)steps * ay->chanE.per);
 }
 
 // One period of every envelope shape, as levels 0..31, for the debugger to
@@ -313,39 +282,34 @@ void ay_poke_reg(aymChip* chip, int reg, int val) {
 	chip->curReg = was;
 }
 
-int ay_chan_vol(aymChip* ay, aymChan* ch) {
-	int vol = 0;
-#if 1
-	vol = ayDACvol[ay_chan_lev(ay, ch)];
+// A level through a DAC table, which is the only thing the two chips do
+// differently - the AY and the YM gate a channel alike. On the way it keeps the
+// loudest level seen, for the meter in the debugger: a channel is a square wave,
+// and a level read once a frame is the volume on one half of it and nothing on
+// the other, which reads as a meter falling to zero on a note that is still playing.
+int ay_chan_dac(aymChip* ay, aymChan* ch, const int* tab) {
+	int lev = ay_chan_lev(ay, ch);
+	if (lev > ch->levpk) ch->levpk = lev;
+	int vol = tab[lev];
 	if (ay_sub_period(ch)) vol >>= 1;			// half
-#elif 0
-	int mixlev = (ch->tdis || ch->lev) && (ch->ndis || ay->chanN.lev);
-	if (ch->een) {
-		if (mixlev) {
-			vol = ayDACvol[ay->chanE.vol & 0x1f];
-			if (ch->per < 0x60) vol >>= 1;
-		}
-	} else {
-		if ((ch->per < 0x60) || mixlev) {
-			vol = ayDACvol[ch->vol & 0x1f];
-		}
-	}
-#elif 0
-	int lev = (ch->per < 0x60) ? 1 : ch->lev;
-	if ((ch->tdis || /*ch->*/lev) && (ch->ndis || ay->chanN.lev)) {
-		vol = ch->een ? ay->chanE.vol : (ch->ndis && !ch->tdis && !lev/* && (ch->per < 0x60)*/) ? 0 : ch->vol;
-	} else {
-		vol = 0;
-	}
-	vol = ayDACvol[vol];						// AY:4-bit DAC volume
-//	if (ch->per < 0x60) vol >>= 1;
-#endif
 	return vol;
 }
 
-sndPair ay_vol(aymChip* chip) {
-	int volA = ay_chan_vol(chip, &chip->chanA);
-	int volB = ay_chan_vol(chip, &chip->chanB);
-	int volC = ay_chan_vol(chip, &chip->chanC);
+int ay_chan_peak(aymChan* ch) {
+	int res = ch->levpk;
+	ch->levpk = 0;
+	return res;
+}
+
+// Three channels through a DAC table and into the stereo mix. The AY and the YM
+// differ in that table and in nothing else, so this is the whole of both.
+sndPair ay_mix_tab(aymChip* chip, const int* tab) {
+	int volA = ay_chan_dac(chip, &chip->chanA, tab);
+	int volB = ay_chan_dac(chip, &chip->chanB, tab);
+	int volC = ay_chan_dac(chip, &chip->chanC, tab);
 	return ay_mix_stereo(volA, volB, volC, chip->stereo, chip->sep);
+}
+
+sndPair ay_vol(aymChip* chip) {
+	return ay_mix_tab(chip, ayDACvol);
 }

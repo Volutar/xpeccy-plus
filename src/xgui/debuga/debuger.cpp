@@ -1,4 +1,5 @@
 #include "xcore/xcore.h"
+#include "xcore/sound.h"
 
 #include <stdio.h>
 
@@ -324,7 +325,9 @@ void DebugWin::stop() {
 	Computer* comp = conf.zx;
 	if (!ui_asm.cbAccT->isChecked())
 		tCount = comp->tickCount;	// before compExec to add current opcode T
-	if (comp->flgDBG) compExec(comp);			// to prevent double breakpoint catch
+	// one opcode, and the scope has to hear it too or the wave has a notch in it
+	// at every resume
+	if (comp->flgDBG) snd_scope_step(comp, compExec(comp));
 	comp->flgDBG = 0;		// back to normal work, turn breakpoints on
 	comp->vid->debug = 0;
 	comp->flgMAP = ui_asm.actMaping->isChecked() ? 1 : 0;
@@ -906,7 +909,9 @@ void DebugWin::doStep() {
 	Computer* comp = conf.zx;
 	if (!ui_asm.cbAccT->isChecked())
 		tCount = comp->tickCount;
-	compExec(comp);
+	// the scope is fed from the emulation thread, which is not running while we
+	// hold the machine: carry it across this step ourselves
+	snd_scope_step(comp, compExec(comp));
 	if (!fillAll()) {
 		ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu));
 		//fillDisasm();
