@@ -342,6 +342,7 @@ int main(int ac,char** av) {
 	app.connect(&dbgw, SIGNAL(wannaSndWin(bool)), &sndw, SLOT(setDetached(bool)));
 	app.connect(&sndw, SIGNAL(s_detach(bool)), &dbgw, SLOT(sndSetDetached(bool)));
 	app.connect(&app, SIGNAL(s_frame()), &sndw, SLOT(upd()));
+	app.connect(&dbgw, SIGNAL(s_snd_upd()), &sndw, SLOT(upd()));
 	app.connect(&mwin, SIGNAL(s_snd_show()), &dbgw, SLOT(sndToggle()));
 	app.connect(&optw, SIGNAL(s_apply()), &sndw, SLOT(updateStyle()));
 	dbgw.sndSetDetached(conf.dbg.snddetach);

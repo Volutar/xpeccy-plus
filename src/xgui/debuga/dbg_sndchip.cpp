@@ -432,16 +432,22 @@ void xPSGPage::draw() {
 	aymChan* chan[3] = {&chip->chanA, &chip->chanB, &chip->chanC};
 	QLabel* mix[3] = {ui.labMixA, ui.labMixB, ui.labMixC};
 	QLabel* state[3] = {ui.labStateA, ui.labStateB, ui.labStateC};
+	// The tone and noise generators free-run at a rate nothing on this page can
+	// sample: a tone counter left as a reset leaves it flips at over 100 kHz, and
+	// even a musical note is thousands of times a refresh. Read while the machine
+	// runs the bit is a coin toss, so it is only shown when the machine is held -
+	// stepping, which is the one place the bit means anything.
+	bool held = conf.zx->flgDBG || conf.emu.pause;
 	for (int i = 0; i < 3; i++) {
 		mix[i]->setText(getAYmix(chan[i]));
 		lev[i]->setLevel(ay_chan_amp(chip, chan[i]), 31);
-		state[i]->setText(chan[i]->lev ? "1" : "0");
+		state[i]->setText(!held ? "-" : (chan[i]->lev ? "1" : "0"));
 		mute[i]->setChecked(chan[i]->mute);
 		note[i]->setText(noteName(ay_chan_freq(chip, chan[i])));
 	}
 	note[3]->setText(noteName(ay_env_freq(chip)));
 	hold = false;
-	ui.labStateN->setText(chip->chanN.lev ? "1" : "0");
+	ui.labStateN->setText(!held ? "-" : (chip->chanN.lev ? "1" : "0"));
 	ui.labVolE->setText(gethexbyte(chip->chanE.vol & 0x1f));
 	envView->setForm(chip->eForm);
 }

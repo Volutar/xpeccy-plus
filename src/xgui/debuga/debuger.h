@@ -65,6 +65,7 @@ class DebugWin : public QMainWindow {
 		void wannaScrWin(bool);
 		void s_scr_upd();
 		void wannaSndWin(bool);
+		void s_snd_upd();
 		void wannaOptions();
 		void needStep();
 	public slots:

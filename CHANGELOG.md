@@ -37,8 +37,8 @@ before that point is upstream's history and is not repeated here.
   window of its own, with the button in the panel, the menu or Alt+A, and there it
   keeps up with the machine while it plays.
   The PSG page has all sixteen registers at the top and a row per channel: period,
-  volume, mixer and the state of the square wave, with the envelope drawn as its own
-  shape. The FM page has the timers and the channel 3 mode, a tab per channel, and a
+  volume, mixer and, while the machine is stopped, the state of its square wave -
+  running, it flips far too fast to be caught. The envelope is drawn as its shape. The FM page has the timers and the channel 3 mode, a tab per channel, and a
   row per operator with every parameter the chip has, which operators are keyed and
   where they are in their envelope, and a star on the ones that reach the output for
   the algorithm in use.
