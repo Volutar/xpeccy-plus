@@ -241,6 +241,8 @@ int compSetHardware(Computer*,const char*);
 void comp_set_layout(Computer*, vLayout*);
 void comp_set_snow(Computer*, int);
 void comp_snap_map(Computer*);
+int comp_frame_ticks(Computer*);
+void comp_set_frame_tick(Computer*, int);
 
 // read-write cmos
 unsigned char cmsRd(Computer*);

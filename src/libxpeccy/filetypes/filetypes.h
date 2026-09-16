@@ -161,6 +161,7 @@ int snapHwRuns(int snap, int hwid);
 
 int loadZ80(Computer*,const char*, int);
 int loadZ80_f(Computer*, FILE*);
+int saveZ80(Computer*, const char*, int);
 int z80GetHardware(const char*);
 
 int loadSNA(Computer*,const char*, int);

@@ -423,7 +423,7 @@ void comp_irq(int t, void* ptr) {
 			comp->hCount = comp->frmtCount;			// fix T counter from INT to start of HALT
 			break;
 		case IRQ_VID_INT:
-			comp->fCount = (int)llround(comp->vid->nsPerFrame / comp->nsPerTick);	// T-states/frame, exact given precise nsPerTick
+			comp->fCount = comp_frame_ticks(comp);
 			comp->frmtCount = 0;
 			if (!comp->cpu->flgHALT) {
 				comp->hCount = comp->fCount;		// if not HALT-ed during frame, count all ticks
@@ -638,6 +638,30 @@ void compReset(Computer* comp,int res) {
 	cpu_reset(comp->cpu);
 	comp_set_snow(comp, comp->flgSNOW);	// the cpu may have been swapped since
 	comp_heat_sync(comp);		// ram/rom size may have changed with hardware/romset
+}
+
+// T in one frame of this machine, exact given a precise nsPerTick. A call and
+// not comp->fCount: that field is only filled at an interrupt, so it is stale
+// on a machine that has just been reset or had its timings changed.
+int comp_frame_ticks(Computer* comp) {
+	if (comp->nsPerTick <= 0) return 0;
+	return (int)llround(comp->vid->nsPerFrame / comp->nsPerTick);
+}
+
+// Stand the machine at tick T of its frame, counted from the interrupt, as a
+// snapshot taken mid-frame asks for. The tick counter and the beam have to
+// agree, and how many dots a tick is worth is the video's business. A tick
+// before the frame (-1) is the start of one, which is where a reset leaves it.
+void comp_set_frame_tick(Computer* comp, int tick) {
+	int flen = comp_frame_ticks(comp);
+	if ((tick < 0) || (flen < 1)) {
+		comp->frmtCount = 0;
+		vid_reset_ray(comp->vid);
+		return;
+	}
+	if (tick >= flen) tick = flen - 1;
+	comp->frmtCount = tick;
+	vid_set_ray(comp->vid, (int)((long long)tick * comp->vid->dotPerFrame / flen));
 }
 
 // All a snapshot says about paging is the 7FFD byte, so before one is applied
