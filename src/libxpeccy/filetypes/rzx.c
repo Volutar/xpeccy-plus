@@ -169,7 +169,7 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 			err = ERR_RZX_SIGN;
 		} else {
 			xlog(XLG_FILE, XLL_DEBUG, "RZX ver %i.%i",hd.major,hd.minor);
-			comp->rzx.file = tmpfile(); // fopen("/home/sam/rzx.tmp","w+b");
+			comp->rzx.file = fopen_tmp();
 			if (!comp->rzx.file) {
 				err = ERR_CANT_OPEN;
 			} else {

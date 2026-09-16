@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "filetypes.h"
 
@@ -32,6 +33,38 @@ size_t fgetSize(FILE* file) {
 	size_t res = ftell(file);
 	rewind(file);
 	return res;
+}
+
+// A scratch file to unpack into. Not tmpfile(): on Windows that asks for its
+// file in the root of the current drive, which an ordinary user cannot write
+// to, so it always failed and took the caller with it. This makes one in the
+// directory the environment names instead.
+FILE* fopen_tmp(void) {
+	static int cnt = 0;
+	const char* dir;
+	char path[1024];
+	FILE* file = NULL;
+#if defined(_WIN32)
+	dir = getenv("TEMP");
+	if (!dir) dir = getenv("TMP");
+	if (!dir) dir = ".";
+#else
+	dir = getenv("TMPDIR");
+	if (!dir) dir = "/tmp";
+#endif
+	snprintf(path, sizeof(path), "%s%sxpeccy-%u-%i.tmp", dir, SLASH, (unsigned)time(NULL), cnt++);
+#if defined(_WIN32)
+	// D: the crt drops the file when the last handle on it closes. Not every
+	// crt takes the flag, and then the file is left for TEMP's own housekeeping
+	file = fopen(path, "w+bD");
+#endif
+	if (!file) {
+		file = fopen(path, "w+b");
+#if !defined(_WIN32)
+		if (file) remove(path);		// gone the moment it is closed
+#endif
+	}
+	return file;
 }
 
 // can a machine on that core run a snapshot taken on that hardware: the

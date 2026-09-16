@@ -128,6 +128,7 @@ void fputi(int, FILE*);
 void fputw(unsigned short, FILE*);
 
 size_t fgetSize(FILE*);
+FILE* fopen_tmp(void);
 unsigned int freadLen(FILE*,int);
 void fputwLE(FILE*, unsigned short);
 
