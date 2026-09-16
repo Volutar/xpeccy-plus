@@ -121,6 +121,13 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **A saved `.sna` was losing three registers.** BC', DE' and HL' all went into the
+  same place in the header, so two of them were dropped and the third held the wrong
+  pair - a snapshot saved from here and loaded back resumed with the wrong values.
+  Two smaller things in the same save: taking a 48K snapshot left the running machine
+  with two bytes of its own stack overwritten and its stack pointer two lower, and
+  the R register went out with the wrong top bit.
+
 - **Two things about loading a `.z80`.** A snapshot taken in the middle of a frame
   now starts with the beam where it was saved instead of at the top of the picture -
   the file says where it was, and that was being skipped. And a snapshot that

@@ -137,15 +137,23 @@ int saveSNA(Computer* comp, const char* name, int drv) {
 	if (!file) return ERR_CANT_OPEN;
 	unsigned char bnk, i;
 	int sna48 = (comp->mem->ramSize < MEM_128K) ? 1 : 0;
+	// A 48K snapshot has nowhere to keep the pc, so it goes on the machine's
+	// own stack. That is a write to a running machine: what stood there and the
+	// stack pointer both go back once the file is written.
+	int sp = comp->cpu->regSP;
+	unsigned char stk[2] = {0, 0};
 	if (sna48) {
+		stk[0] = memRd(comp->mem, (sp - 1) & 0xffff);
+		stk[1] = memRd(comp->mem, (sp - 2) & 0xffff);
 		memWr(comp->mem, --comp->cpu->regSP, comp->cpu->regPCh);
 		memWr(comp->mem, --comp->cpu->regSP, comp->cpu->regPCl);
 	}
 	snaHead hd;
 	xreg16 rp;
+	memset(&hd, 0, sizeof(snaHead));
 	rp.w = comp->cpu->regHLa; hd._h = rp.h; hd._l = rp.l;
-	rp.w = comp->cpu->regDEa; hd._h = rp.h; hd._l = rp.l;
-	rp.w = comp->cpu->regBCa; hd._h = rp.h; hd._l = rp.l;
+	rp.w = comp->cpu->regDEa; hd._d = rp.h; hd._e = rp.l;
+	rp.w = comp->cpu->regBCa; hd._b = rp.h; hd._c = rp.l;
 	hd._a = comp->cpu->regAa; hd._f = comp->cpu->regFa;
 	hd.h = comp->cpu->regH; hd.l = comp->cpu->regL;
 	hd.d = comp->cpu->regD; hd.e = comp->cpu->regE;
@@ -155,7 +163,7 @@ int saveSNA(Computer* comp, const char* name, int drv) {
 	hd.hy = comp->cpu->regIYh; hd.ly = comp->cpu->regIYl;
 	hd.hsp = comp->cpu->regSPh; hd.lsp = comp->cpu->regSPl;
 	hd.i = comp->cpu->regI;
-	hd.r = comp->cpu->regR;
+	hd.r = z80_get_r(comp->cpu);	// bit 7 is kept apart from the counter
 	hd.imod = comp->cpu->regIM;
 	hd.flag19 = comp->cpu->flgIFF1 ? 4 : 0;
 	hd.border = comp->vid->brdcol & 7;
@@ -178,6 +186,11 @@ int saveSNA(Computer* comp, const char* name, int drv) {
 				fwrite(comp->mem->ramData + ((i << 14) & comp->mem->ramMask), MEM_16K, 1, file);
 			}
 		}
+	}
+	if (sna48) {			// give the machine its stack back
+		memWr(comp->mem, comp->cpu->regSP, stk[1]);
+		memWr(comp->mem, (comp->cpu->regSP + 1) & 0xffff, stk[0]);
+		comp->cpu->regSP = sp;
 	}
 	fclose(file);
 	mem_set_path(comp->mem, name);
