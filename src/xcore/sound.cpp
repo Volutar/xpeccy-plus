@@ -27,6 +27,46 @@ static int snd_bytes_to_ms(int bytes) {
 	return conf.snd.rate ? (bytes * 250 / conf.snd.rate) : 0;
 }
 
+// The scope's ring, mono, at the sub-sample rate: 0x20000 of them is about 90ms at
+// 44100. Written by the emulation thread while the machine plays and by the gui
+// thread while the debugger steps it - never both, since a held machine's thread is
+// not running - and read without a lock, where a torn sample is one wrong pixel.
+#define SND_SCOPE_SIZE	0x20000
+#define SND_SCOPE_MASK	(SND_SCOPE_SIZE - 1)
+static short scopeBuf[SND_SCOPE_SIZE];
+static int scopePos = 0;
+static long long scopeNsFixed = 0;	// emulated time not yet turned into samples
+
+// What the scope keeps has its dc taken out on the way in. None of the chips swing
+// about zero - an AY sits between silence and full, and only an FM channel is
+// symmetrical - so without this the trace floats above the zero line, the whole lower
+// half of the box is dead and the line says nothing. It is a filter over the samples
+// themselves, not a shift of the picture: it follows the sound where it is, so a
+// change of level bends the wave there and then. One pole, corner under a hertz
+// (1<<18 samples is about a fifth of a second), which leaves the lowest note alone;
+// a square comes out of it leaning very slightly, the way one does.
+//
+// The master volume is deliberately not applied either, or turning the wheel down
+// would flatten the picture along with the sound.
+#define SND_SCOPE_DC_BITS	18
+static long long scopeDc = 0;
+static int scopeDcSet = 0;
+
+static void scope_put(int lev) {
+	if (!scopeDcSet) {		// start settled, not sliding in from silence
+		scopeDc = (long long)lev << SND_SCOPE_DC_BITS;
+		scopeDcSet = 1;
+	}
+	scopeDc += lev - (scopeDc >> SND_SCOPE_DC_BITS);
+	lev -= (int)(scopeDc >> SND_SCOPE_DC_BITS);
+	// clamped here rather than through toLimits(): this runs over a million
+	// times a second and that one is a call into another file
+	if (lev < -0x8000) lev = -0x8000;
+	if (lev > 0x7fff) lev = 0x7fff;
+	scopeBuf[scopePos & SND_SCOPE_MASK] = (short)lev;
+	scopePos++;
+}
+
 static int smpCount = 0;
 OutSys *sndOutput = NULL;
 // static int sndChunks = 882;
@@ -119,6 +159,7 @@ int sndSync(Computer* comp) {
 //		saaFlush(comp->saa);
 		if (!conf.emu.fast && !conf.emu.pause) {
 			sndLev = comp->hw->vol(comp, &conf.snd.vol);
+			scope_put((sndLev.left + sndLev.right) / 2);
 			sndLev.left = sndLev.left * conf.snd.vol.master / 100;
 			sndLev.right = sndLev.right * conf.snd.vol.master / 100;
 			// both ends: FM is signed, and a sample under the low one
@@ -358,21 +399,35 @@ int sndGetRingDistance() {
 	return (posf - posp) & SND_RING_MASK;
 }
 
-// The last of what went to the sound device, newest last, for the debugger's
-// scope. It is the fill end of the ring, which is a buffer ahead of what is
-// being heard - that is the point, it is the freshest thing the machine made.
-// Read without a lock: the emulation thread is writing four bytes at a time
-// and the worst a torn read can do here is one wrong pixel.
-int snd_scope(sndPair* buf, int len) {
-	int max = SND_RING_SIZE / 4;
-	if (len > max) len = max;
-	if (len < 1) return 0;
-	int pos = posf & ~3;		// posf may be caught mid-frame
-	for (int i = len - 1; i >= 0; i--) {
-		pos -= 4;
-		buf[i].left = (short)(sbuf[pos & SND_RING_MASK] | (sbuf[(pos + 1) & SND_RING_MASK] << 8));
-		buf[i].right = (short)(sbuf[(pos + 2) & SND_RING_MASK] | (sbuf[(pos + 3) & SND_RING_MASK] << 8));
+double snd_scope_rate() {
+	return (double)conf.snd.rate * DISCRATE;
+}
+
+// Carry the capture across ns of emulated time on a machine the debugger is holding.
+// Nothing is being played then - sndSync() is not even called - but the mixer still
+// has an output for every moment of it, which is the whole point of tracing a beeper.
+void snd_scope_step(Computer* comp, int ns) {
+	if ((ns <= 0) || !comp->hw->vol) return;
+	scopeNsFixed += NS_TO_FIXED(ns);
+	while (scopeNsFixed > nsPerSampleFixed) {
+		sndPair lev = comp->hw->vol(comp, &conf.snd.vol);
+		scope_put((lev.left + lev.right) / 2);
+		scopeNsFixed -= nsPerSampleFixed;
 	}
+}
+
+// The newest `len` sub-samples, oldest first.
+int snd_scope(short* buf, int len) {
+	if (len > SND_SCOPE_SIZE) len = SND_SCOPE_SIZE;
+	if (len < 1) return 0;
+	// two runs at most, the ring being a power of two - a window is tens of
+	// thousands of samples and this is asked for once a frame
+	int pos = (scopePos - len) & SND_SCOPE_MASK;
+	int run = SND_SCOPE_SIZE - pos;
+	if (run > len) run = len;
+	memcpy(buf, scopeBuf + pos, run * sizeof(short));
+	if (run < len)
+		memcpy(buf + run, scopeBuf, (len - run) * sizeof(short));
 	return len;
 }
 

@@ -30,19 +30,22 @@ class xLevelCell : public QWidget {
 	Q_OBJECT
 	public:
 		xLevelCell(QWidget* = nullptr);
-		void setLevel(int val, int max);	// val < 0 for nothing to show
-		void setDigits(int);
+		void setLevel(int val, int max, bool fall);	// val < 0 for nothing at all
+		void setFigure(int);		// what the figure says, -1 for a dash
+		void setDigits(int);		// how wide the figure is written
 		QSize minimumSizeHint() const;
 	protected:
 		void paintEvent(QPaintEvent*);
 	private:
-		int lev;			// what is shown: the peak, on its way down
+		int lev;			// the bar: the peak, on its way down
+		int fig;			// the figure, which is not always the same thing
 		int top;
 		int digits;
 };
 
-// One period and a half of an envelope, drawn from what the core actually does
-// with that form. No readout of the form number: the shape is the readout.
+// Two ramps of an envelope, drawn from what the core actually does with that
+// form - so every form is the same length and a ramp the same slope. No readout
+// of the form number: the shape is the readout.
 class xAYEnvView : public QWidget {
 	Q_OBJECT
 	public:
@@ -68,8 +71,7 @@ class xPSGPage : public QWidget {
 		xHexSpin* regs[16];		// the minidump
 		xHexSpin* per[5];		// period per row: A B C N E
 		xHexSpin* vol[3];		// volume per channel
-		QLabel* note[4];		// the period as a note, beside it: A B C and E
-		xLevelCell* lev[3];
+		xLevelCell* lev[3];		// what the channel is putting out, bar and figure
 		QCheckBox* mute[3];
 		xAYEnvView* envView;
 		xHexSpin* addSpin(QWidget* host, int max);
@@ -80,24 +82,35 @@ class xPSGPage : public QWidget {
 		void blank();
 };
 
-// What went out to the sound device, newest at the right edge: one sample per
-// pixel of the box, at the output rate. The sub-sample rate the mixer runs at
-// would put a third of one cycle of a 1 kHz note across the whole box.
+// The mixer's own capture, newest at the right edge: a pixel column is the lowest
+// and the highest sample in it with the average drawn over them, on a fixed scale.
+// How much time the box holds follows the machine - see WAVE_SECS_* in the source.
 class xWaveView : public QWidget {
 	Q_OBJECT
 	public:
 		xWaveView(QWidget* = nullptr);
+		void refresh();			// take a new window of the capture
+		QString info() const;		// the peak and the timebase, for a label
 		QSize minimumSizeHint() const;
 	protected:
 		void paintEvent(QPaintEvent*);
+		void changeEvent(QEvent*);
 	private:
-		std::vector<sndPair> buf;	// held across paints, not built per frame
+		std::vector<short> buf;		// all held across refreshes, not built per frame
+		std::vector<int> cmin;
+		std::vector<int> cmax;
+		std::vector<int> cavg;
+		int peak;			// the loudest in the window, for the label
+		bool held;
+		int ruler() const;	// width of the scale down the left edge
+		mutable int rulw;	// what that measured, until the font changes
+		void sample();
 };
 
 // The operator table's columns, in the order they are shown. A column with a
 // register base is editable, the rest are readouts.
 enum {
-	FMC_DT = 0, FMC_MUL, FMC_KEY, FMC_ST, FMC_TL, FMC_RS, FMC_AR,
+	FMC_DT = 0, FMC_MUL, FMC_ST, FMC_TL, FMC_RS, FMC_AR,
 	FMC_DR, FMC_SL, FMC_SR, FMC_RR, FMC_EG, FMC_BKFQ, FMC_LEV, FMC_OUT,
 	FMC_COUNT
 };
@@ -145,6 +158,7 @@ class xSndPanel : public QWidget {
 		QStackedWidget* stack;
 		QToolButton* tbDetach;
 		QLabel* labBeep;
+		QLabel* labWave;		// the scope's peak and timebase, off the picture
 		int lastBeep;			// what the beeper bar was last drawn at
 		xWaveView* wave;
 		xPSGPage* psg;

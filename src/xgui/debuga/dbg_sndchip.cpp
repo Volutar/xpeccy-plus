@@ -85,29 +85,38 @@ static QColor levInk() {
 
 xLevelCell::xLevelCell(QWidget* p):QWidget(p) {
 	lev = -1;
+	fig = -1;
 	top = 1;
 	digits = 2;
 	setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
 }
 
-// A meter rises at once and falls slowly, the way every meter does. What is
-// measured is already steady for a held note - see ay_chan_amp() - so this is
-// for the envelope: one fast enough to be heard as vibrato moves quicker than
-// the panel is refreshed, and without a fall it would read as noise.
-void xLevelCell::setLevel(int val, int max) {
-	int fall = (max > 0) ? max : 1;
-	top = fall;
-	fall /= LEV_FALL;
-	if (fall < 1) fall = 1;
+// A meter rises at once and falls slowly, the way every meter does. What it is
+// given on a running machine is already the loudest the chip saw since the last
+// refresh (ay_chan_peak), so this is not there to catch the square wave - it is
+// what carries a note across the refreshes between its attack and its decay. A
+// machine standing still wants neither: the figure beside the bar is the exact
+// value and the bar has to agree with it.
+void xLevelCell::setLevel(int val, int max, bool fall) {
+	int step = (max > 0) ? max : 1;
+	top = step;
+	step /= LEV_FALL;
+	if (step < 1) step = 1;
 	int want;
-	if (val >= lev) {
+	if (!fall || (val >= lev)) {
 		want = val;		// rises at once, and -1 for no chip lands here too
 	} else {
-		want = lev - fall;
+		want = lev - step;
 		if (want < val) want = val;
 	}
 	if (want == lev) return;
 	lev = want;
+	update();
+}
+
+void xLevelCell::setFigure(int val) {
+	if (val == fig) return;
+	fig = val;
 	update();
 }
 
@@ -127,7 +136,11 @@ void xLevelCell::paintEvent(QPaintEvent*) {
 	opt.initFrom(this);
 	QColor ground = opt.palette.color(QPalette::Window);
 	QColor ink = opt.palette.color(QPalette::WindowText);
-	QString txt = (lev < 0) ? QString("-") : formbufword(lev).rightJustified(digits, '0');
+	// nothing at all where there is no figure to show: on a running machine the
+	// bar is the whole readout, and a dash sitting in it only breaks the picture
+	QString txt;
+	if (fig >= 0)
+		txt = formbufword(fig).rightJustified(digits, '0');
 
 	int wid = (lev <= 0) ? 0 : (width() * lev / top);
 	if (wid > width()) wid = width();
@@ -154,6 +167,13 @@ void xLevelCell::paintEvent(QPaintEvent*) {
 	pnt.drawText(rect(), Qt::AlignCenter, txt);
 }
 
+// Whether the machine is standing still. Half the panel reads differently when it
+// is - a value that is a coin toss on a running machine is worth showing here -
+// so it is one answer, not one per widget.
+static bool machineHeld() {
+	return conf.zx->flgDBG || conf.emu.pause;
+}
+
 // How wide the row labels are, in both tables.
 static int labelWidth(const QWidget* w) {
 	QFontMetrics fm(w->font());
@@ -161,20 +181,6 @@ static int labelWidth(const QWidget* w) {
 }
 
 // PSG PAGE
-
-// A frequency as the note nearest to it and how far off it is, in cents.
-// A4 is 440 Hz, so the octave numbers are the scientific ones - middle C is C-4.
-static QString noteName(double frq) {
-	static const char* nam[12] = {"C-", "C#", "D-", "D#", "E-", "F-",
-				"F#", "G-", "G#", "A-", "A#", "B-"};
-	if (frq < 8.0) return QString("-");		// below C-0, or nothing at all
-	double midi = 69.0 + 12.0 * log2(frq / 440.0);
-	int n = (int)floor(midi + 0.5);
-	int cent = (int)floor((midi - n) * 100.0 + 0.5);
-	if ((n < 12) || (n > 127)) return QString("-");
-	return QString("%0%1 %2%3").arg(nam[n % 12]).arg(n / 12 - 1)
-		.arg((cent < 0) ? "-" : "+").arg(qAbs(cent), 2, 10, QChar('0'));
-}
 
 static QString getAYmix(aymChan* ch) {
 	QString res = ch->tdis ? "-" : "T";
@@ -185,7 +191,11 @@ static QString getAYmix(aymChan* ch) {
 
 // ENVELOPE SHAPE
 
-#define AYENV_STEPS	48	// one period and a half, 32 levels each
+// Always two ramps of it, whatever the form: a ramp is then the same slope on every
+// shape, which is what tells them apart. That is one round of the shapes that go up
+// and down, two of the ones that saw, and a ramp and its tail for the ones that run
+// once and stop - the eight figures the datasheet draws.
+#define AYENV_STEPS	64		// two ramps of 32 levels
 
 xAYEnvView::xAYEnvView(QWidget* p):QWidget(p) {
 	form = -1;
@@ -201,24 +211,25 @@ void xAYEnvView::setForm(int f) {
 
 QSize xAYEnvView::minimumSizeHint() const {
 	int h = fontMetrics().height();
-	return QSize(h * 6, h * 3 / 2);
+	return QSize(h * 6, h * 2);
 }
 
 void xAYEnvView::paintEvent(QPaintEvent*) {
 	if (form < 0) return;
 	unsigned char lev[AYENV_STEPS];
-	ay_env_shape(form, lev, AYENV_STEPS);
+	int steps = AYENV_STEPS;
+	ay_env_shape(form, lev, steps);
 	QPainter pnt(this);
 	pnt.setPen(palette().color(QPalette::WindowText));
-	// one pixel column per step, the level running bottom to top
-	double dx = (double)(width() - 1) / AYENV_STEPS;
+	// A point per step, joined - not a stair per step. The shape is straight lines
+	// either way, and squaring off all 32 levels of a ramp only turns it into a
+	// staircase a few pixels tall.
+	double dx = (double)(width() - 1) / (steps - 1);
 	double dy = (double)(height() - 3) / 31;
 	QPolygonF line;
-	for (int i = 0; i < AYENV_STEPS; i++) {
-		double y = 1 + (31 - lev[i]) * dy;
-		line << QPointF(i * dx, y) << QPointF((i + 1) * dx, y);
-	}
-	pnt.setRenderHint(QPainter::Antialiasing, false);
+	for (int i = 0; i < steps; i++)
+		line << QPointF(i * dx, 1 + (31 - lev[i]) * dy);
+	pnt.setRenderHint(QPainter::Antialiasing, true);
 	pnt.drawPolyline(line);
 }
 
@@ -264,6 +275,10 @@ xPSGPage::xPSGPage(QWidget* p):QWidget(p) {
 	// the placeholder grows into the slack and drags the columns away from the label
 	ui.wRegs->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
 	ui.gridPsg->setColumnMinimumWidth(0, labelWidth(this));
+	// the row spacing the FM table has: five rows at the style's own pitch left
+	// the page loose beside it, and every pixel of it comes off the oscillogram
+	ui.gridPsg->setHorizontalSpacing(6);
+	ui.gridPsg->setVerticalSpacing(2);
 	QGridLayout* rlay = new QGridLayout(ui.wRegs);
 	rlay->setContentsMargins(0, 0, 0, 0);
 	rlay->setSpacing(2);
@@ -297,17 +312,10 @@ xPSGPage::xPSGPage(QWidget* p):QWidget(p) {
 		connect(vol[i], &xHexSpin::valueChanged, this, [this, i](int v){vol_edited(i, v);});
 	}
 
-	// the period, and beside it the note it works out as. Both at once rather
-	// than one or the other: the field stays typeable, the column stops changing
-	// width under the reader, and a period and a note answer different questions
-	QWidget* noteHost[4] = {ui.wPerA, ui.wPerB, ui.wPerC, ui.wPerE};
-	for (int i = 0; i < 4; i++) {
-		note[i] = new QLabel("-");
-		note[i]->setAlignment(Qt::AlignCenter);
-		QBoxLayout* nlay = (QBoxLayout*)noteHost[i]->layout();
-		nlay->insertWidget(nlay->count() - 1, note[i]);
-	}
-
+	// The bar and the figure are one cell and one number: the figure is what the
+	// channel is putting out at this instant, the bar is the peak of it, which is
+	// how loud the channel is. Beside the volume they looked like two answers to
+	// one question, and the volume register is not on the same scale anyway.
 	QWidget* levHost[3] = {ui.wLevA, ui.wLevB, ui.wLevC};
 	QWidget* muteHost[3] = {ui.wMuteA, ui.wMuteB, ui.wMuteC};
 	for (int i = 0; i < 3; i++) {
@@ -408,8 +416,10 @@ void xPSGPage::blank() {
 	QLabel* labs[6] = {ui.labMixA, ui.labMixB, ui.labMixC,
 			ui.labStateA, ui.labStateB, ui.labStateC};
 	for (int i = 0; i < 6; i++) labs[i]->setText("-");
-	for (int i = 0; i < 3; i++) lev[i]->setLevel(-1, 31);
-	for (int i = 0; i < 4; i++) note[i]->setText("-");
+	for (int i = 0; i < 3; i++) {
+		lev[i]->setLevel(-1, 31, false);
+		lev[i]->setFigure(-1);
+	}
 	ui.labStateN->setText("-");
 	ui.labVolE->setText("-");
 	envView->setForm(-1);
@@ -437,15 +447,22 @@ void xPSGPage::draw() {
 	// even a musical note is thousands of times a refresh. Read while the machine
 	// runs the bit is a coin toss, so it is only shown when the machine is held -
 	// stepping, which is the one place the bit means anything.
-	bool held = conf.zx->flgDBG || conf.emu.pause;
+	bool held = machineHeld();
 	for (int i = 0; i < 3; i++) {
 		mix[i]->setText(getAYmix(chan[i]));
-		lev[i]->setLevel(ay_chan_amp(chip, chan[i]), 31);
 		state[i]->setText(!held ? "-" : (chan[i]->lev ? "1" : "0"));
+		// what the chip is being handed at this instant: the volume with the tone
+		// bit, the noise bit and the envelope applied the way the mixer has them.
+		// The figure is only readable on a held machine; the bar is its peak, which
+		// is readable either way.
+		int out = ay_chan_lev(chip, chan[i]);
+		// the bar takes the peak the chip itself kept since the last refresh:
+		// asking once a frame lands on one half of the square wave or the other
+		// and the bar drops to nothing under a note that is still playing
+		lev[i]->setLevel(held ? out : ay_chan_peak(chan[i]), 31, !held);
+		lev[i]->setFigure(held ? out : -1);
 		mute[i]->setChecked(chan[i]->mute);
-		note[i]->setText(noteName(ay_chan_freq(chip, chan[i])));
 	}
-	note[3]->setText(noteName(ay_env_freq(chip)));
 	hold = false;
 	ui.labStateN->setText(!held ? "-" : (chip->chanN.lev ? "1" : "0"));
 	ui.labVolE->setText(gethexbyte(chip->chanE.vol & 0x1f));
@@ -485,7 +502,6 @@ static const struct {
 } fmColTab[FMC_COUNT] = {
 	{"DT",    0x30, 4, 0x07},
 	{"MUL",   0x30, 0, 0x0f},
-	{"Key",     -1, 0, 0},
 	{"St",      -1, 0, 0},
 	{"TL",    0x40, 0, 0x7f},
 	{"RS",    0x50, 6, 0x03},
@@ -497,7 +513,7 @@ static const struct {
 	{"EG",    0x90, 0, 0x0f},
 	{"Bk/Fq",   -1, 0, 0},
 	{"Lev",     -1, 0, 0},
-	{"Out",     -1, 0, 0}
+	{"",        -1, 0, 0}	// the carrier mark: the star says it
 };
 
 // Which operators reach the output, per algorithm, bit 0 being operator 1.
@@ -520,7 +536,7 @@ xFMPage::xFMPage(QWidget* p):QWidget(p) {
 
 	QGridLayout* lay = new QGridLayout(ui.wOpTable);
 	lay->setContentsMargins(0, 0, 0, 0);
-	lay->setHorizontalSpacing(6);
+	lay->setHorizontalSpacing(3);
 	lay->setVerticalSpacing(2);
 	for (int c = 0; c < FMC_COUNT; c++) {
 		QLabel* lab = new QLabel(fmColTab[c].name);
@@ -596,7 +612,8 @@ void xFMPage::op_edited(int op, int col, int val) {
 void xFMPage::blank() {
 	hold = true;
 	for (int o = 0; o < 4; o++) {
-		opLev[o]->setLevel(-1, 0x3ff);
+		opLev[o]->setLevel(-1, 0x3ff, false);
+		opLev[o]->setFigure(-1);
 		for (int c = 0; c < FMC_COUNT; c++) {
 			if (opEdit[o][c]) opEdit[o][c]->setBlank();
 			if (opLab[o][c]) opLab[o][c]->setText("-");
@@ -651,12 +668,13 @@ void xFMPage::draw() {
 			int reg = chip->reg[fmColTab[col].reg + op->rofs];
 			putValue(opEdit[o][col], (reg >> fmColTab[col].shift) & fmColTab[col].mask);
 		}
-		opLab[o][FMC_KEY]->setText(op->key ? "1" : "0");
 		opLab[o][FMC_ST]->setText(getOpStatusName(op->eg.state));
 		opLab[o][FMC_BKFQ]->setText(QString("%0:%1").arg(op->pg.block).arg(gethexword(op->pg.freq)));
 		// the core keeps an attenuation, 0 loudest; the column says Lev, so
 		// turn it round - loud is a big number, the way Unreal shows it
-		opLev[o]->setLevel(0x3ff - (op->eg.att & 0x3ff), 0x3ff);
+		int elev = 0x3ff - (op->eg.att & 0x3ff);
+		opLev[o]->setLevel(elev, 0x3ff, false);	// already steady, no need to hold it
+		opLev[o]->setFigure(elev);
 		opLab[o][FMC_OUT]->setText((carrier & (1 << o)) ? "*" : "");
 	}
 	hold = false;
@@ -664,63 +682,207 @@ void xFMPage::draw() {
 
 // WAVE
 
+// How much time the box holds. Running: two frames, so a tune moves across it.
+// Held: two milliseconds, fine enough to count the edges of a beeper routine.
+#define WAVE_SECS_RUN	0.04
+#define WAVE_SECS_HELD	0.002
+
+// How much the box covers either way from the middle, and it never changes: a scale
+// that follows the sound rescales the picture under it, so a passage getting louder
+// walks up and down the box instead of simply growing.
+//
+// Drawn on a curve rather than straight, because the chips cover a range no straight
+// scale shows at once: at a scale a loud beeper fits in, a quiet tune is a flicker
+// along the middle. The knee says how much the quiet end is lifted - loud still
+// reads as loud, and the order of two levels never changes.
+#define WAVE_FULL	0x2000
+#define WAVE_KNEE	32.0
+
 xWaveView::xWaveView(QWidget* p):QWidget(p) {
+	peak = 0;
+	rulw = -1;
+	held = false;
 	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+}
+
+// The levels the scale is marked at, loudest first - the top of the box and five
+// halvings of it. They are the same numbers the peak in the label is given in, so
+// one can be read against the other.
+static const int waveMarks[] = {WAVE_FULL, WAVE_FULL / 2, WAVE_FULL / 4,
+			WAVE_FULL / 8, WAVE_FULL / 16, WAVE_FULL / 32};
+#define WAVE_MARKS	(int)(sizeof(waveMarks) / sizeof(waveMarks[0]))
+
+// Asked for three times a frame, and it shapes text: measure it once and again
+// when the font changes under it.
+int xWaveView::ruler() const {
+	if (rulw < 0)
+		rulw = fontMetrics().horizontalAdvance(QStringLiteral("0000")) + 6;
+	return rulw;
+}
+
+void xWaveView::changeEvent(QEvent* ev) {
+	if (ev->type() == QEvent::FontChange) rulw = -1;
+	QWidget::changeEvent(ev);
 }
 
 QSize xWaveView::minimumSizeHint() const {
 	int h = fontMetrics().height();
-	return QSize(h * 8, h * 3);
+	return QSize(h * 8 + ruler(), h * 3);
+}
+
+// Reading the capture and painting it are split: the window is taken once per
+// refresh, which is once per emulated frame, and an expose only redraws what was
+// taken. It also lets the panel put the peak in a label of its own - drawn in the
+// corner of the picture it sat right where a quiet machine puts its line.
+void xWaveView::sample() {
+	int cols = width() - ruler();
+	peak = 0;
+	if (cols < 2) return;		// narrower than its own scale
+	cmin.assign(cols, 0);
+	cmax.assign(cols, 0);
+	cavg.assign(cols, 0);
+	// Two timebases, and which one is in use follows the machine rather than a
+	// switch: running, the box holds a couple of frames, which is what music looks
+	// like; held, it holds a couple of milliseconds, which is where the edges of a
+	// beeper or a digital routine can be counted.
+	held = machineHeld();
+	int want = (int)(snd_scope_rate() * (held ? WAVE_SECS_HELD : WAVE_SECS_RUN));
+	if (want < cols) want = cols;
+	buf.resize(want);
+	want = snd_scope(buf.data(), want);
+	if (want < 2) return;
+	// the lowest and highest sample in each pixel column, the way any audio editor
+	// draws a wave. One sample per column instead lands each column on its own phase
+	// of the waveform, and a steady square then draws as a picket with a slow wobble
+	// that looks like the level moving.
+	int lo = buf[0];
+	int hi = lo;
+	for (int c = 0; c < cols; c++) {
+		int a = (int)((long long)c * want / cols);
+		int b = (int)((long long)(c + 1) * want / cols);
+		if (b <= a) b = a + 1;
+		if (b > want) b = want;
+		int mn = buf[a];
+		int mx = mn;
+		long long sum = 0;
+		for (int i = a; i < b; i++) {
+			if (buf[i] < mn) mn = buf[i];
+			if (buf[i] > mx) mx = buf[i];
+			sum += buf[i];
+		}
+		cmin[c] = mn;
+		cmax[c] = mx;
+		// The average of the column is the decimation proper, and for a beeper it
+		// is the whole point: a digi is pulse width, so the carrier fills the box
+		// from top to bottom in every column and only the average has the tune in
+		// it. Min and max stay as the outline, which is where the peaks are.
+		cavg[c] = (int)(sum / (b - a));
+		if (mn < lo) lo = mn;
+		if (mx > hi) hi = mx;
+	}
+	peak = qMax(-lo, hi);
+	// The column average is only a box filter, and a box leaks: a tone above what
+	// the box can show - a beeper carrier at 40ms, say - comes back as a slow ripple
+	// along the middle. Two smoothing passes over the averages take that down to a
+	// few per cent. They are measured in pixels, not in time, so the same pass suits
+	// both timebases; all it costs is a corner rounded over a pixel or two.
+	for (int pass = 0; pass < 2; pass++) {
+		int prev = cavg[0];
+		for (int c = 1; c < cols - 1; c++) {
+			int cur = cavg[c];
+			cavg[c] = (prev + cur * 2 + cavg[c + 1]) / 4;
+			prev = cur;
+		}
+	}
+	// Each column is drawn as one stroke from its lowest sample to its highest,
+	// and two strokes that do not overlap leave a gap between them: wherever the
+	// wave moves further between columns than the stroke is tall, the line comes
+	// apart into dashes. Stretch each column to meet the one before it - against
+	// that column's own range, not the stretched one, so it cannot run away.
+	int pmin = cmin[0];
+	int pmax = cmax[0];
+	for (int c = 1; c < cols; c++) {
+		int mn = cmin[c];
+		int mx = cmax[c];
+		if (mn > pmax) cmin[c] = pmax;
+		else if (mx < pmin) cmax[c] = pmin;
+		pmin = mn;
+		pmax = mx;
+	}
+}
+
+void xWaveView::refresh() {
+	sample();
+	update();
+}
+
+QString xWaveView::info() const {
+	double secs = held ? WAVE_SECS_HELD : WAVE_SECS_RUN;
+	return QString("%0 %1ms").arg(gethexword(peak)).arg(qRound(secs * 1000));
 }
 
 void xWaveView::paintEvent(QPaintEvent*) {
-	int n = width();
-	if ((n < 2) || (height() < 4)) return;
-	buf.resize(n);			// kept across paints: this runs once a frame
-	n = snd_scope(buf.data(), n);
-	if (n < 2) return;
-	// Fitted to what is in the window, not to what the device takes: at full
-	// scale an ordinary AY tune is a flat line, and an AY never swings below
-	// zero at all, so half the box would always be empty. The span has a floor
-	// so silence is not magnified into noise, the zero line is drawn where zero
-	// really falls, and the peak is written in the corner: the scale is never a
-	// secret.
-	int lo = buf[0].left;
-	int hi = lo;
-	for (int i = 0; i < n; i++) {
-		int v = (buf[i].left + buf[i].right) / 2;
-		buf[i].left = v;		// the mix, kept for the second pass
-		if (v < lo) lo = v;
-		if (v > hi) hi = v;
-	}
-	int peak = (-lo > hi) ? -lo : hi;
-	if ((hi - lo) < 0x400) {
-		int mid = (hi + lo) / 2;
-		lo = mid - 0x200;
-		hi = mid + 0x200;
-	}
-	int pad = (hi - lo) / 16;
-	lo -= pad;
-	hi += pad;
-	int span = hi - lo;
+	int cols = width() - ruler();
+	if ((cols < 2) || (height() < 4)) return;
+	if ((int)cmin.size() != cols) sample();		// resized since the last refresh
+	// Zero is the middle of the box and stays there, and so does the scale: what
+	// moves is the wave.
 	int last = height() - 1;
+	int mid = last / 2;
+	double kmul = WAVE_KNEE / WAVE_FULL;	// the curve, worked out once
+	double kdiv = 1.0 / log1p(WAVE_KNEE);
+
 	QPainter pnt(this);
-	QColor txt = palette().color(QPalette::WindowText);
-	QColor line = txt;
-	line.setAlpha(80);
-	if ((lo <= 0) && (hi >= 0)) {
-		int y = last - (0 - lo) * last / span;
-		pnt.setPen(line);
-		pnt.drawLine(0, y, width() - 1, y);
+	// Its own black box with a green trace, the way the tape diagram and the beeper
+	// bar beside it are drawn: a scope is a scope whatever the rest of the window
+	// is wearing, and a signal has to read the same in every style.
+	pnt.fillRect(rect(), Qt::black);
+	int x0 = ruler();
+	auto ypos = [=](int v) {
+		double a = qMin((v < 0) ? -(double)v : (double)v, (double)WAVE_FULL);
+		double t = log1p(a * kmul) * kdiv;
+		int y = mid - (int)((v < 0 ? -t : t) * mid);
+		return toLimits(y, 0, last);
+	};
+
+	// The scale: what the box is worth is no longer written on the wave, since the
+	// wave no longer stretches to fill it - and the curve it is drawn on has to be
+	// read off something. A mark either side of zero for each level, the figure on
+	// the upper one.
+	QColor grid(0x30, 0x30, 0x30);
+	int step = fontMetrics().height();
+	int shown = -step;
+	for (int i = 0; i < WAVE_MARKS; i++) {
+		int y = ypos(waveMarks[i]);
+		int y2 = ypos(-waveMarks[i]);
+		pnt.setPen(grid);
+		pnt.drawLine(x0 - 3, y, cols + x0 - 1, y);
+		pnt.drawLine(x0 - 3, y2, cols + x0 - 1, y2);
+		if ((y - shown) < step) continue;	// no room for this one
+		shown = y;
+		pnt.setPen(QColor(0x60, 0x60, 0x60));
+		// the top mark sits on the edge: keep its figure inside the box
+		int ty = toLimits(y - step / 2, 0, height() - step);
+		pnt.drawText(QRect(0, ty, x0 - 5, step),
+			Qt::AlignRight | Qt::AlignVCenter, gethexword(waveMarks[i]));
 	}
+	pnt.setPen(QColor(0x80, 0x20, 0x20));	// zero, always halfway up
+	pnt.drawLine(x0 - 3, mid, cols + x0 - 1, mid);
+	// the outline first, dim, then the average over it. One stroke per column,
+	// but handed over in one call - the pen does not change along the way, and a
+	// drawLine() each is several hundred trips through the painter per frame.
+	QVector<QLine> bars;
+	bars.reserve(cols);
 	QPolygon trace;
-	trace.reserve(n);
-	for (int i = 0; i < n; i++)
-		trace << QPoint(i, last - (buf[i].left - lo) * last / span);
-	pnt.setPen(txt);
+	trace.reserve(cols);
+	for (int c = 0; c < cols; c++) {
+		bars << QLine(x0 + c, ypos(cmax[c]), x0 + c, ypos(cmin[c]));
+		trace << QPoint(x0 + c, ypos(cavg[c]));
+	}
+	pnt.setPen(QColor(0x18, 0x60, 0x18));
+	pnt.drawLines(bars);
+	pnt.setPen(QColor(0x30, 0xd0, 0x30));
 	pnt.drawPolyline(trace);
-	pnt.setPen(line);
-	pnt.drawText(rect().adjusted(0, 1, -2, 0), Qt::AlignRight | Qt::AlignTop, gethexword(peak));
 }
 
 // PANEL
@@ -755,6 +917,8 @@ xSndPanel::xSndPanel(QWidget* p):QWidget(p) {
 
 	QHBoxLayout* foot = new QHBoxLayout;
 	foot->addWidget(new QLabel("Wave"));
+	labWave = new QLabel;
+	foot->addWidget(labWave);
 	foot->addStretch(1);
 	foot->addWidget(new QLabel("Beeper"));
 	labBeep = new QLabel;
@@ -859,7 +1023,8 @@ void xSndPanel::draw() {
 		lastBeep = conf.zx->beep->val;
 		drawHBar(labBeep, lastBeep, 256);
 	}
-	wave->update();
+	wave->refresh();
+	labWave->setText(wave->info());
 }
 
 // DOCK

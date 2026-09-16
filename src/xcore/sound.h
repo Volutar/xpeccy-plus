@@ -70,7 +70,13 @@ extern OutSys* sndOutput;
 
 extern long long nsPerSampleFixed;
 
-int snd_scope(sndPair*, int);	// the newest samples sent out, for the scope
+// The scope's own capture, at the sub-sample rate - 32 of these go into one sample
+// of what reaches the speakers. The output ring cannot serve the scope on its own:
+// it is decimated, and it stops being filled the moment the debugger takes the
+// machine, which is exactly when a waveform is worth looking at.
+int snd_scope(short*, int);		// the newest sub-samples, oldest first
+double snd_scope_rate();		// how many of them a second
+void snd_scope_step(Computer*, int);	// carry the capture over ns of a held machine
 
 void sndInit();
 void addOutput(std::string, bool(*)(),void(*)(),void(*)());

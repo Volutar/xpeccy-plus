@@ -1343,7 +1343,9 @@ void MainWin::renderFrame() {
 		if (i) vid_clear_image();
 		comp->flgFRM = 0;
 		while (!comp->flgFRM && !comp->flgBRK && (guard-- > 0))
-			compExec(comp);
+			// no sound comes of this, but the time passes: the debugger's scope
+			// would have a two frame hole in it otherwise
+			snd_scope_step(comp, compExec(comp));
 	}
 	comp->flgFRM = 0;			// the frame is ours, not the pacer's
 	// A breakpoint hit inside this one cosmetic frame is dropped on purpose:
