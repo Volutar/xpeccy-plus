@@ -818,6 +818,7 @@ void SetupWin::start() {
 	ui.sldSndLatency->setRange(SND_LATENCY_MIN, SND_LATENCY_MAX);	// the block size sets the floor, keep the two together
 	ui.sldSndLatency->setValue(conf.snd.latency);
 	ui.chkSndLatAuto->setChecked(conf.snd.latauto);
+	ui.chkSndFilter->setChecked(conf.snd.filter);
 	chasndlat();
 
 	ui.sbMasterVol->setValue(conf.snd.vol.master);
@@ -1045,6 +1046,7 @@ void SetupWin::apply() {
 	// slider shows what the emulator settled on and is still the way to nudge
 	// it by hand
 	conf.snd.latauto = ui.chkSndLatAuto->isChecked() ? 1 : 0;
+	conf.snd.filter = ui.chkSndFilter->isChecked() ? 1 : 0;
 	int latency = ui.sldSndLatency->value();
 	// reopen on a changed latency too: the pacer would creep to the new target
 	// over tens of seconds, refilling the ring gets there at once

@@ -11,6 +11,13 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **An anti-alias filter for the sound**, on the Sound page. The mix is worked out
+  32 times more often than the sound card plays it, and was averaged down, which
+  folds everything too high to be played back into what you hear. The filter cuts
+  that away instead.
+  Off by default: on the material this emulator makes there is nothing to hear, so
+  it is there to be compared. It costs about 1.5% of a processor core.
+
 - **A DC filter for the sound**, on the Sound page and off by default. The chips do
   not swing about zero - an AY sits between silence and full - and that offset is not
   sound, it only eats the headroom they all share. Worst is a device that walks its

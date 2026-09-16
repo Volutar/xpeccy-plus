@@ -51,6 +51,17 @@ typedef struct {
 	int on;			// what it was called with last
 } sndDC;
 
+// What a sample has to fit in by the time it leaves. Written out by hand in four
+// places before this. Spelled out rather than through toLimits(), which lives in
+// xcore and has no business being reached for from here.
+static inline sndPair snd_clip16(sndPair lev) {
+	if (lev.left < -0x8000) lev.left = -0x8000;
+	else if (lev.left > 0x7fff) lev.left = 0x7fff;
+	if (lev.right < -0x8000) lev.right = -0x8000;
+	else if (lev.right > 0x7fff) lev.right = 0x7fff;
+	return lev;
+}
+
 static inline sndPair snd_dc(sndDC* st, sndPair lev, int on) {
 	if (on != st->on) {	// switched either way: settle on this sample,
 		st->on = on;	// rather than slide in from whatever it held

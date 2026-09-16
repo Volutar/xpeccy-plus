@@ -1900,10 +1900,20 @@ thin, lower it again after a long clean spell</string>
               <item>
                <widget class="QCheckBox" name="dcbox">
                 <property name="toolTip">
-                 <string>Take the chips&apos; dc offset out of the output</string>
+                 <string>Cuts the very lowest frequencies.&#10;The chips sit above zero rather than&#10;around it, which wastes loudness.</string>
                 </property>
                 <property name="text">
                  <string>DC filter</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="chkSndFilter">
+                <property name="toolTip">
+                 <string>Cuts the very highest frequencies.&#10;Too high to be played, they fold back&#10;down and are heard as false notes.</string>
+                </property>
+                <property name="text">
+                 <string>Anti-alias filter</string>
                 </property>
                </widget>
               </item>
