@@ -527,9 +527,11 @@ xFMPage::xFMPage(QWidget* p):QWidget(p) {
 
 	chanTabs = new QTabBar;
 	chanTabs->setDrawBase(false);
-	chanTabs->addTab("A");
-	chanTabs->addTab("B");
-	chanTabs->addTab("C");
+	// 1 2 3, not A B C: the mode register calls the third one Ch3, and the
+	// data sheet numbers them
+	chanTabs->addTab("1");
+	chanTabs->addTab("2");
+	chanTabs->addTab("3");
 	QVBoxLayout* clay = new QVBoxLayout(ui.wChanTabs);
 	clay->setContentsMargins(0, 0, 0, 0);
 	clay->addWidget(chanTabs);
@@ -571,6 +573,7 @@ xFMPage::xFMPage(QWidget* p):QWidget(p) {
 	lay->setColumnMinimumWidth(0, labelWidth(this));
 	lay->setColumnStretch(FMC_COUNT + 1, 1);
 
+	fitHeaders();
 	connect(chanTabs, &QTabBar::currentChanged, this, &xFMPage::chan_changed);
 	connect(ui.fmChanOff, SIGNAL(stateChanged(int)), this, SLOT(offChan(int)));
 }
@@ -582,6 +585,30 @@ void xFMPage::setChip(aymChip* c) {
 int xFMPage::channel() const {
 	int c = chanTabs->currentIndex();
 	return (c < 0) ? 0 : (c % 3);
+}
+
+// Every readout above the table is as wide as its widest value from the start.
+// They are laid out side by side, so one of them growing by a character - Out
+// going negative, Ch3 turning to "special" - pushes the row out and takes the
+// window with it, which it then keeps for the rest of the session.
+void xFMPage::fitHeaders() {
+	QFontMetrics fm(font());
+	struct { QLabel* lab; const char* wide; } tab[] = {
+		{ui.labTimerA, "Timer A FFFF off"},
+		{ui.labTimerB, "Timer B FF off"},
+		{ui.labCh3, "Ch3 special"},
+		{ui.labAlg, "Alg 7"},
+		{ui.labFb, "Fb 7"},
+		{ui.labBkFq, "Bk/Fq 7:FFFF"},
+		{ui.labChanOut, "Out -32768"}
+	};
+	for (int i = 0; i < (int)(sizeof(tab) / sizeof(tab[0])); i++)
+		tab[i].lab->setMinimumWidth(fm.horizontalAdvance(tab[i].wide));
+}
+
+void xFMPage::changeEvent(QEvent* ev) {
+	if (ev->type() == QEvent::FontChange) fitHeaders();
+	QWidget::changeEvent(ev);
 }
 
 void xFMPage::chan_changed(int) {

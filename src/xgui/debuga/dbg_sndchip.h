@@ -124,6 +124,8 @@ class xFMPage : public QWidget {
 	private slots:
 		void offChan(int);
 		void chan_changed(int);
+	protected:
+		void changeEvent(QEvent*);
 	private:
 		Ui::FMPage ui;
 		aymChip* chip;
@@ -133,6 +135,7 @@ class xFMPage : public QWidget {
 		QLabel* opLab[4][FMC_COUNT];	// and the other way round
 		xLevelCell* opLev[4];		// the Lev column, which is neither
 		fmChan fmView[3];		// the core's FM state, copied out per refresh
+		void fitHeaders();	// the readouts keep their widest width
 		void op_edited(int op, int col, int val);
 		int channel() const;
 		void blank();
