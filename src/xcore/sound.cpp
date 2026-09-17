@@ -662,7 +662,7 @@ void sndInit() {
 	conf.snd.latency = SND_LATENCY_DEF;
 	conf.snd.latauto = 1;
 	conf.snd.enabled = 1;
-	conf.snd.filter = 0;	// measured: no audible gain here, and it is not free
+	conf.snd.filter = 1;	// the block average it replaces folds everything above 22 kHz back in
 	sndOutput = NULL;
 	conf.snd.vol.beep = 100;
 	conf.snd.vol.tape = 100;
