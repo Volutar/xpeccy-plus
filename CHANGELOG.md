@@ -121,6 +121,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **A saved `.wav` carried a wrong length in its header**, which some players refuse
+  to open.
+
 - **RZX recordings play again on Windows**, where opening one always failed with
   "can't open file" - the scratch file it unpacks into was asked for in the root of
   the system drive. Some recordings still stop part-way with a playback error.
