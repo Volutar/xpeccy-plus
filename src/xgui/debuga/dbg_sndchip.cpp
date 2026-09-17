@@ -725,19 +725,25 @@ void xFMPage::draw() {
 #define WAVE_FULL	0x2000
 #define WAVE_KNEE	32.0
 
+// What the box is worth either way from the middle. Fitted to the wave it steps
+// by octaves and only shrinks once the wave is well inside, so it holds still
+// while the music stays within a couple of steps - and the scale down the side
+// says which one it is on. Unfitted it never moves at all.
+#define WAVE_SCALE_MIN	0x0100
+#define WAVE_SCALE_MAX	0x8000
+
 xWaveView::xWaveView(QWidget* p):QWidget(p) {
 	peak = 0;
+	scale = WAVE_SCALE_MIN;
 	rulw = -1;
 	held = false;
 	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 }
 
-// The levels the scale is marked at, loudest first - the top of the box and five
-// halvings of it. They are the same numbers the peak in the label is given in, so
-// one can be read against the other.
-static const int waveMarks[] = {WAVE_FULL, WAVE_FULL / 2, WAVE_FULL / 4,
-			WAVE_FULL / 8, WAVE_FULL / 16, WAVE_FULL / 32};
-#define WAVE_MARKS	(int)(sizeof(waveMarks) / sizeof(waveMarks[0]))
+// The scale is marked at the top of the box and five halvings of it, in the same
+// numbers as the peak in the label, so one can be read against the other.
+#define WAVE_MARKS	6
+
 
 // Asked for three times a frame, and it shapes text: measure it once and again
 // when the font changes under it.
@@ -808,6 +814,10 @@ void xWaveView::sample() {
 		if (mx > hi) hi = mx;
 	}
 	peak = qMax(-lo, hi);
+	// the fitted scale doubles until the wave is in and halves once it is well
+	// inside, so it holds still while the music stays within a couple of steps
+	while ((scale < peak) && (scale < WAVE_SCALE_MAX)) scale *= 2;
+	while ((scale > WAVE_SCALE_MIN) && (peak < scale / 4)) scale /= 2;
 	// The column average is only a box filter, and a box leaks: a tone above what
 	// the box can show - a beeper carrier at 40ms, say - comes back as a slow ripple
 	// along the middle. Two smoothing passes over the averages take that down to a
@@ -856,7 +866,9 @@ void xWaveView::paintEvent(QPaintEvent*) {
 	// moves is the wave.
 	int last = height() - 1;
 	int mid = last / 2;
-	double kmul = WAVE_KNEE / WAVE_FULL;	// the curve, worked out once
+	int full = conf.dbg.sndfit ? scale : WAVE_FULL;
+	bool curve = conf.dbg.sndlog;
+	double kmul = WAVE_KNEE / (double)full;	// the curve, worked out once
 	double kdiv = 1.0 / log1p(WAVE_KNEE);
 
 	QPainter pnt(this);
@@ -866,8 +878,8 @@ void xWaveView::paintEvent(QPaintEvent*) {
 	pnt.fillRect(rect(), Qt::black);
 	int x0 = ruler();
 	auto ypos = [=](int v) {
-		double a = qMin((v < 0) ? -(double)v : (double)v, (double)WAVE_FULL);
-		double t = log1p(a * kmul) * kdiv;
+		double a = qMin((v < 0) ? -(double)v : (double)v, (double)full);
+		double t = curve ? log1p(a * kmul) * kdiv : a / full;
 		int y = mid - (int)((v < 0 ? -t : t) * mid);
 		return toLimits(y, 0, last);
 	};
@@ -880,8 +892,9 @@ void xWaveView::paintEvent(QPaintEvent*) {
 	int step = fontMetrics().height();
 	int shown = -step;
 	for (int i = 0; i < WAVE_MARKS; i++) {
-		int y = ypos(waveMarks[i]);
-		int y2 = ypos(-waveMarks[i]);
+		int mark = full >> i;
+		int y = ypos(mark);
+		int y2 = ypos(-mark);
 		pnt.setPen(grid);
 		pnt.drawLine(x0 - 3, y, cols + x0 - 1, y);
 		pnt.drawLine(x0 - 3, y2, cols + x0 - 1, y2);
@@ -891,7 +904,7 @@ void xWaveView::paintEvent(QPaintEvent*) {
 		// the top mark sits on the edge: keep its figure inside the box
 		int ty = toLimits(y - step / 2, 0, height() - step);
 		pnt.drawText(QRect(0, ty, x0 - 5, step),
-			Qt::AlignRight | Qt::AlignVCenter, gethexword(waveMarks[i]));
+			Qt::AlignRight | Qt::AlignVCenter, gethexword(mark));
 	}
 	pnt.setPen(QColor(0x80, 0x20, 0x20));	// zero, always halfway up
 	pnt.drawLine(x0 - 3, mid, cols + x0 - 1, mid);
@@ -946,6 +959,26 @@ xSndPanel::xSndPanel(QWidget* p):QWidget(p) {
 	foot->addWidget(new QLabel("Wave"));
 	labWave = new QLabel;
 	foot->addWidget(labWave);
+	foot->addSpacing(12);
+	// how the box is drawn, beside the readout that says what it is showing
+	cbFit = new QCheckBox("Fit");
+	cbFit->setToolTip("Centre the trace and scale the box to it.\n"
+					"Off shows the level as it is, on one fixed scale.");
+	cbFit->setChecked(conf.dbg.sndfit);
+	foot->addWidget(cbFit);
+	cbLog = new QCheckBox("Log");
+	cbLog->setToolTip("Draw the wave on a curve, so a quiet tune is\n"
+					"still something to see beside a loud one.");
+	cbLog->setChecked(conf.dbg.sndlog);
+	foot->addWidget(cbLog);
+	connect(cbFit, &QCheckBox::toggled, this, [this](bool on){
+		conf.dbg.sndfit = on ? 1 : 0;
+		wave->update();
+	});
+	connect(cbLog, &QCheckBox::toggled, this, [this](bool on){
+		conf.dbg.sndlog = on ? 1 : 0;
+		wave->update();
+	});
 	foot->addStretch(1);
 	foot->addWidget(new QLabel("Beeper"));
 	labBeep = new QLabel;

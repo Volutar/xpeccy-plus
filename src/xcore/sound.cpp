@@ -37,18 +37,19 @@ static short scopeBuf[SND_SCOPE_SIZE];
 static int scopePos = 0;
 static long long scopeNsFixed = 0;	// emulated time not yet turned into samples
 
-// The scope takes the offset out for itself, or the trace floats above the zero
-// line with the whole lower half of the box dead and the line saying nothing. Only
-// while nothing is filtered on the way to the speakers, though: two of these in
-// series would bend a wave twice. The master volume is deliberately not applied
-// either, or turning the wheel down would flatten the picture along with the sound.
+// The scope can take the offset out for itself, which is the Fit switch on the
+// panel: without it the trace floats wherever the level puts it and the lower
+// half of the box is dead. With the sound's own dc filter on it is a second
+// pass over an already centred signal, which costs nothing and does nothing.
+// The master volume is deliberately not applied either, or turning the wheel
+// down would flatten the picture along with the sound.
 static sndDC scopeDc;
 
 static void scope_put(int lev) {
 	sndPair p;
 	p.left = lev;
 	p.right = lev;
-	p = snd_clip16(snd_dc(&scopeDc, p, !conf.snd.vol.dc));
+	p = snd_clip16(snd_dc(&scopeDc, p, conf.dbg.sndfit));
 	scopeBuf[scopePos & SND_SCOPE_MASK] = (short)p.left;
 	scopePos++;
 }

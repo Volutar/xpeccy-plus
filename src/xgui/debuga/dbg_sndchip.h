@@ -101,6 +101,7 @@ class xWaveView : public QWidget {
 		std::vector<int> cmax;
 		std::vector<int> cavg;
 		int peak;			// the loudest in the window, for the label
+		int scale;		// what the box is worth when it fits itself
 		bool held;
 		int ruler() const;	// width of the scale down the left edge
 		mutable int rulw;	// what that measured, until the font changes
@@ -161,6 +162,8 @@ class xSndPanel : public QWidget {
 		QStackedWidget* stack;
 		QToolButton* tbDetach;
 		QLabel* labBeep;
+		QCheckBox* cbFit;	// how the scope draws itself
+		QCheckBox* cbLog;
 		QLabel* labWave;		// the scope's peak and timebase, off the picture
 		int lastBeep;			// what the beeper bar was last drawn at
 		xWaveView* wave;

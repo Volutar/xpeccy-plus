@@ -45,11 +45,11 @@ before that point is upstream's history and is not repeated here.
   points at a screen bank. A switch per machine in the advanced settings, and under it a second
   one for the machines whose RAM gives up under snow and hangs.
 
-- **An anti-alias filter for the sound**, on the Sound page and on by default. It cuts what is
+- **High cut (anti-alias)** on the Sound page and on by default. It cuts what is
   too high to be played back instead of folding it into what you hear, and costs about 1.5% of a
   processor core. *(thanks to Volutar)*
 
-- **A DC filter for the sound**, on the Sound page and off by default: each device's offset
+- **Low cut (DC)** on the Sound page and off by default: each device's offset
   comes off before the mixer, so one of them drifting - a General Sound does - no longer eats
   the headroom they all share. *(thanks to Volutar)*
 
