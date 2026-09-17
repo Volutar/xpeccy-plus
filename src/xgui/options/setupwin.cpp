@@ -390,12 +390,12 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 		ui.ssfbox->addItem(QString(it->first.c_str()),it->second);
 	}
 	ui.cbContPattern->addItem("No contention", CONT_NONE);
-	ui.cbContPattern->addItem("ULA type A", CONT_PATA);
-	ui.cbContPattern->addItem("ULA type B", CONT_PATB);
+	ui.cbContPattern->addItem("Ferranti (48K, 128K, +2)", CONT_PATA);
+	ui.cbContPattern->addItem("Amstrad (+2A, +3)", CONT_PATB);
 	ui.cbFloatBus->addItem("None", FBUS_NONE);
-	ui.cbFloatBus->addItem("ULA", FBUS_ULA);
-	ui.cbFloatBus->addItem("Gate array", FBUS_ASIC);
-	ui.cbFloatBus->addItem("Port #FF", FBUS_ATTR);
+	ui.cbFloatBus->addItem("Ferranti ULA", FBUS_ULA);
+	ui.cbFloatBus->addItem("Amstrad gate array", FBUS_ASIC);
+	ui.cbFloatBus->addItem("Port #FF (clones)", FBUS_ATTR);
 	ui.cbEarBack->addItem("Issue 3", EAR_ISSUE3);
 	ui.cbEarBack->addItem("Issue 2", EAR_ISSUE2);
 	ui.cbEarBack->addItem("Nothing", EAR_NONE);
