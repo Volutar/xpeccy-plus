@@ -3,7 +3,6 @@
 #
 #   BIT n,r          does not copy bits 3 and 5 from the operand   (cb4x..cb7x)
 #   SCF / CCF        takes bits 3 and 5 from the wrong place       (37_1, 3f)
-#   RETN             does not restore IFF1 from IFF2               (ed7d)
 #   CPI / CPDR       flag bits 3 and 5                             (eda1, edb9_2)
 #   INIR/OTIR/...    MEMPTR, and flags on some of them             (edb[23ab]_1)
 #
@@ -56,7 +55,6 @@ cb7b
 cb7d
 cb7f_1
 cb7f
-ed7d
 eda1
 edb2_1
 edb3_1

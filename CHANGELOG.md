@@ -121,6 +121,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **`RETI` puts the interrupt state back**, the way the processor does and `RETN`
+  already did here. It changes nothing unless a program returns from an interrupt
+  with it and counts on that.
+
 - **A saved `.wav` carried a wrong length in its header**, which some players refuse
   to open.
 
