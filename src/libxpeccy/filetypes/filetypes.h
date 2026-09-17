@@ -142,6 +142,7 @@ unsigned int swap32(unsigned int);
 // rzx
 
 int loadRZX(Computer*, const char*, int);
+int rzxGetHardware(const char*);
 void rzxGetFrame(Computer*);
 
 // memory (snapshot)
@@ -159,7 +160,9 @@ enum {
 };
 
 int snapHwRuns(int snap, int hwid);
+int snapHwIs(int snap, int hwid);
 
+int z80_hardware_of(const unsigned char*, int);
 int loadZ80(Computer*,const char*, int);
 int loadZ80_f(Computer*, FILE*);
 int saveZ80(Computer*, const char*, int);
@@ -169,6 +172,7 @@ int loadSNA(Computer*,const char*, int);
 int saveSNA(Computer*, const char*, int);
 int loadSNA_f(Computer*, FILE*, size_t);
 int snaGetHardware(const char*);
+int sna_hardware_of(size_t);
 
 int loadSPG(Computer*,const char*, int);
 

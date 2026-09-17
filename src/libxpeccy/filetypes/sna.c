@@ -16,7 +16,7 @@ typedef struct {
 #pragma pack (pop)
 
 // the size is all there is: 49179 bytes for a 48K, more for a 128K
-static int sna_hardware(size_t size) {
+int sna_hardware_of(size_t size) {
 	return (size < 49180) ? SNAP_HW_48K : SNAP_HW_128K;
 }
 
@@ -26,7 +26,7 @@ int loadSNA_f(Computer* comp, FILE* file, size_t fileSize) {
 	//unsigned short adr;
 	char pageBuf[0x4000];
 	char tmpgBuf[0x4000];
-	int is48 = (sna_hardware(fileSize) == SNAP_HW_48K);
+	int is48 = (sna_hardware_of(fileSize) == SNAP_HW_48K);
 
 	compReset(comp, is48 ? RES_48 : RES_128);
 	comp_snap_map(comp);
@@ -129,7 +129,7 @@ int snaGetHardware(const char* name) {
 	if (!file) return SNAP_HW_UNKNOWN;
 	size_t size = fgetSize(file);
 	fclose(file);
-	return sna_hardware(size);
+	return sna_hardware_of(size);
 }
 
 int saveSNA(Computer* comp, const char* name, int drv) {

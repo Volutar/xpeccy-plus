@@ -12,6 +12,9 @@ static const xFileMac fm_tab[] = {
 	{FL_SNA, "sna", "SNA snapshot", FMN_SNAPSHOT, NULL, snaGetHardware},
 	{FL_Z80, "z80", "Z80 snapshot", FMN_SNAPSHOT, NULL, z80GetHardware},
 	{FL_SPG, "spg", "SPG snapshot", FMN_TSCONF, "evo-tsconf", NULL},
+#ifdef HAVEZLIB
+	{FL_RZX, "rzx", "RZX playback", FMN_RZX, NULL, rzxGetHardware},
+#endif
 	{FL_TAP, "tap", "TAP tape", FMN_ANY, NULL, NULL},
 	{FL_TZX, "tzx", "TZX tape", FMN_ANY, NULL, NULL},
 	{FL_WAV, "wav", "WAV tape", FMN_ANY, NULL, NULL},
@@ -40,7 +43,8 @@ static const struct {
 };
 
 static const char* fm_need_tab[] = {
-	"any machine", "TSConf", "Beta Disk (TR-DOS)", "+3 disk drive", "read from the file"
+	"any machine", "TSConf", "Beta Disk (TR-DOS)", "+3 disk drive", "read from the file",
+	"exactly the one it was recorded on"
 };
 
 static std::map<std::string, std::string> fm_pref_map;
@@ -57,7 +61,7 @@ static const xFileMac* fm_row(int ftype) {
 }
 
 const char* fm_need_text(int need) {
-	if ((need < FMN_ANY) || (need > FMN_SNAPSHOT)) return "";
+	if ((need < FMN_ANY) || (need > FMN_RZX)) return "";
 	return fm_need_tab[need];
 }
 
@@ -68,6 +72,7 @@ static bool fm_takes(int hwid, int dif, int need, int snap) {
 		case FMN_TRDOS: return autostart_can(hwid, dif, AS_DISK);
 		case FMN_PLUS3DOS: return autostart_can(hwid, dif, AS_DISK3);
 		case FMN_SNAPSHOT: return snapHwRuns(snap, hwid);
+		case FMN_RZX: return snapHwIs(snap, hwid);
 	}
 	return true;
 }

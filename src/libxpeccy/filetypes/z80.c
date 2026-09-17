@@ -164,18 +164,20 @@ static int z80_hardware(int v3, int hw, int mod) {
 	return SNAP_HW_UNKNOWN;		// Didaktik, Timex
 }
 
+// the same from a header already in memory - a snapshot inside an rzx never
+// reaches a file of its own
+int z80_hardware_of(const unsigned char* buf, int len) {
+	if (len < 8) return SNAP_HW_UNKNOWN;
+	if (buf[6] | buf[7]) return SNAP_HW_48K;	// PC set: version 1, always a 48K
+	if (len < 38) return SNAP_HW_UNKNOWN;
+	return z80_hardware((buf[30] | (buf[31] << 8)) > 23, buf[34], buf[37] & 0x80);
+}
+
 int z80GetHardware(const char* name) {
 	FILE* file = fopen(name, "rb");
 	if (!file) return SNAP_HW_UNKNOWN;
 	unsigned char buf[38];
-	int res = SNAP_HW_UNKNOWN;
-	if (fread(buf, 1, sizeof(buf), file) == sizeof(buf)) {
-		if (buf[6] | buf[7]) {				// PC set: version 1, always a 48K
-			res = SNAP_HW_48K;
-		} else {
-			res = z80_hardware((buf[30] | (buf[31] << 8)) > 23, buf[34], buf[37] & 0x80);
-		}
-	}
+	int res = z80_hardware_of(buf, (int)fread(buf, 1, sizeof(buf), file));
 	fclose(file);
 	return res;
 }
