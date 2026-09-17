@@ -521,6 +521,11 @@ void edB1(CPU* cpu) {
 	}
 }
 
+// wz = pc+1 here as well, for all four of inir/indr/otir/otdr. That was only
+// found in 2022-23 (rofl0r, then Manuel Sainz de Baranda for all four), so the
+// older references say wz keeps the bc+-1 of the inx/outx step - fuse's test
+// vectors among them. Rak's z80memptr, whose numbers come off a real machine,
+// is the one that tells them apart.
 void blkioRepeat(CPU* cpu, int adr) {
 	cpu->regPC -= 2;
 	z80_wait(cpu, adr, 5);
