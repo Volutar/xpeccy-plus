@@ -127,6 +127,7 @@ void zx_irq(Computer*, int);
 void zx_snow(Computer*);
 int zx_bank_of(Computer*, int);
 int zx_ack(Computer*);
+int zx_ear(Computer*);
 
 void xOutFE(Computer*, int, int);
 void xOutBFFD(Computer*, int, int);

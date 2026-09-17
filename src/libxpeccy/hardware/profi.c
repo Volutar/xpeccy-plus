@@ -87,7 +87,7 @@ void prfOutDFFD(Computer* comp, int port, int val) {
 
 int prfInFE(Computer* comp, int port) {
 	unsigned char res = kbd_rd(comp->keyb, port);
-	res |= ((comp->tape->volPlay & 0x80) ? 0x40 : 0x00);
+	res |= zx_ear(comp) ? 0x40 : 0x00;
 	return res;
 }
 

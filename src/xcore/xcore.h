@@ -438,6 +438,7 @@ typedef struct {
 	int ramNoise;			// bytes in a thousand that come up wrong in it
 	int cpufrq;			// Hz
 	int resbank;			// RES_*
+	int earback;			// EAR_*
 	unsigned contio:1;
 	unsigned contmem:1;
 	unsigned scrpwait:1;

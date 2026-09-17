@@ -232,7 +232,7 @@ int atm2inFE(Computer* comp, int port) {
 
 	//if (comp->keyb->mode == KBD_SPECTRUM) {
 	if ((comp->p77lo & 0x40) || (comp->keyb->core->id == KBD_SPECTRUM)) {
-		res |= (comp->tape->volPlay & 0x80) ? 0x40 : 0x00;
+		res |= zx_ear(comp) ? 0x40 : 0x00;
 //	} else if (comp->keyb->submode == kbdZX) {
 //		res |= (comp->tape->volPlay & 0x80) ? 0x40 : 0x00;
 	}

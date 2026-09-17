@@ -392,6 +392,9 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.cbContPattern->addItem("No contention", CONT_NONE);
 	ui.cbContPattern->addItem("ULA type A", CONT_PATA);
 	ui.cbContPattern->addItem("ULA type B", CONT_PATB);
+	ui.cbEarBack->addItem("Issue 3", EAR_ISSUE3);
+	ui.cbEarBack->addItem("Issue 2", EAR_ISSUE2);
+	ui.cbEarBack->addItem("Nothing", EAR_NONE);
 	ui.bszsld->setMaximum(VID_BRD_OVERSCAN);	// one tick per border size
 
 #if defined(USEOPENGL)
@@ -775,6 +778,7 @@ void SetupWin::start() {
 	ui.contMem->setChecked(comp->flgCNTM);
 	ui.contIO->setChecked(comp->flgCNTI);
 	setRFIndex(ui.cbContPattern, comp->vid->ula->conttype);
+	setRFIndex(ui.cbEarBack, comp->earback);
 	ui.cbEarlyTiming->setChecked(comp->vid->ula->early);
 	ui.cbSnow->setChecked(comp->flgSNOW);
 	ui.cbSnowCrash->setChecked(comp->flgSNOWX);
@@ -999,6 +1003,7 @@ void SetupWin::apply() {
 	comp->flgCNTM = ui.contMem->isChecked();
 	comp->flgCNTI = ui.contIO->isChecked() ? 1 : 0;
 	comp->vid->ula->conttype = getRFIData(ui.cbContPattern);
+	comp->earback = getRFIData(ui.cbEarBack);
 	comp->vid->ula->early = ui.cbEarlyTiming->isChecked();
 	comp_set_snow(comp, ui.cbSnow->isChecked() ? 1 : 0);
 	comp->flgSNOWX = ui.cbSnowCrash->isChecked() ? 1 : 0;

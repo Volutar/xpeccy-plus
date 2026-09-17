@@ -105,6 +105,11 @@ static xMacWord resetTab[] = {
 	{"dos", RES_DOS}, {"shadow", RES_SHADOW}, {NULL, 0}
 };
 
+// how much of the last out #FE the machine hears back on the ear input
+static xMacWord earTab[] = {
+	{"none", EAR_NONE}, {"2", EAR_ISSUE2}, {"3", EAR_ISSUE3}, {NULL, 0}
+};
+
 static int mac_word(xMacWord* tab, const std::string& val, int def, const char* id) {
 	for (int i = 0; tab[i].name; i++) {
 		if (!strcmp(tab[i].name, val.c_str())) return tab[i].val;
@@ -183,7 +188,7 @@ static const struct {
 } macSectTab[] = {
 	{"hw", "machine"}, {"cpu", "machine"}, {"cpu.frq", "machine"},
 	{"memory", "machine"}, {"ram.cold", "machine"}, {"ram.noise", "machine"},
-	{"reset", "machine"}, {"contio", "machine"},
+	{"reset", "machine"}, {"contio", "machine"}, {"issue", "machine"},
 	{"contmem", "machine"}, {"scrp.wait", "machine"},
 	{"geometry", "video"}, {"contPattern", "video"}, {"earlyTiming", "video"},
 	{"4t-border", "video"}, {"ULAplus", "video"}, {"DDpal", "video"},
@@ -241,6 +246,7 @@ static void mac_defaults(xMachine& mac) {
 	mac.cpu = "Z80";
 	mac.cpufrq = 3500000;
 	mac.resbank = RES_128;
+	mac.earback = EAR_ISSUE3;
 	mac.contio = 0;
 	mac.contmem = 0;
 	mac.scrpwait = 0;
@@ -289,6 +295,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "ram.noise") mac.ramNoise = toLimits(arg.i, 0, 1000);
 			else if (nam == "cpu.frq") mac.cpufrq = arg.i;
 			else if (nam == "reset") mac.resbank = mac_word(resetTab, val, RES_128, id);
+			else if (nam == "issue") mac.earback = mac_word(earTab, val, EAR_ISSUE3, id);
 			else if (nam == "contio") mac.contio = arg.b;
 			else if (nam == "contmem") mac.contmem = arg.b;
 			else if (nam == "scrp.wait") mac.scrpwait = arg.b;
@@ -810,6 +817,7 @@ static void mac_from_def(const xMachine* mac) {
 	memSetSize(comp->mem, mac_ram_size(mac->memory, comp->hw->mask), -1);
 	mac_cold_ram(comp, mac->ramCold, mac->ramNoise);
 	comp->resbank = mac->resbank;
+	comp->earback = mac->earback;
 	comp->flgCNTI = mac->contio;
 	comp->flgCNTM = mac->contmem;
 	comp->flgEM1 = mac->scrpwait;
@@ -930,6 +938,7 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put(out, "cpu.frq", int(comp->cpuFrq * 1e6), mac->cpufrq);
 	mac_put(out, "memory", comp->mem->ramSize >> 10, mac->memory);
 	mac_put(out, "reset", mac_word_name(resetTab, comp->resbank), mac_word_name(resetTab, mac->resbank));
+	mac_put(out, "issue", mac_word_name(earTab, comp->earback), mac_word_name(earTab, mac->earback));
 	mac_put_yn(out, "contio", comp->flgCNTI, mac->contio);
 	mac_put_yn(out, "contmem", comp->flgCNTM, mac->contmem);
 	mac_put_yn(out, "scrp.wait", comp->flgEM1, mac->scrpwait);
