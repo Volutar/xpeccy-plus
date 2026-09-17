@@ -91,8 +91,10 @@ void ed4B(CPU* cpu) {
 }
 
 // 4d	reti	4 3rd 3rd
+// The only thing that tells reti from retn is the pattern a peripheral sees
+// on the bus: both put iff2 back into iff1.
 void ed4D(CPU* cpu) {
-	// cpu->iff1 = cpu->iff2;
+	cpu->flgIFF1 = cpu->flgIFF2;
 	z80_ret(cpu);
 }
 

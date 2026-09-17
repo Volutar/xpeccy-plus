@@ -121,12 +121,18 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **`RETI` puts the interrupt state back**, the way the processor does and `RETN`
+  already did here. It changes nothing unless a program returns from an interrupt
+  with it and counts on that.
+
 - **A saved `.wav` carried a wrong length in its header**, which some players refuse
   to open.
 
-- **RZX recordings play again on Windows**, where opening one always failed with
-  "can't open file" - the scratch file it unpacks into was asked for in the root of
-  the system drive. Some recordings still stop part-way with a playback error.
+- **RZX recordings play again.** On Windows opening one always failed with "can't
+  open file" - the scratch file it unpacks into was asked for in the root of the
+  system drive. And a recording only replays on the machine it was made on; that
+  machine is read from the file now, instead of the recording being fed to whatever
+  was running and running out of input part way through.
 
 - **A saved `.sna` was losing three registers.** BC', DE' and HL' all went into the
   same place in the header, so two of them were dropped and the third held the wrong

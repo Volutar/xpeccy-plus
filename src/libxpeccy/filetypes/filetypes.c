@@ -81,6 +81,22 @@ int snapHwRuns(int snap, int hwid) {
 	return 1;			// a 48K, or one nobody knows
 }
 
+// An rzx replays an exact instruction stream, so the machine has to be the one
+// it was recorded on, not merely one that can run the snapshot: the frame is a
+// different length on each, and playback then runs out of input part way in.
+int snapHwIs(int snap, int hwid) {
+	switch (snap) {
+		case SNAP_HW_48K: return hwid == HW_ZX48;
+		case SNAP_HW_128K:
+		case SNAP_HW_PLUS2: return hwid == HW_ZX128;
+		case SNAP_HW_PLUS2A: return hwid == HW_PLUS2A;
+		case SNAP_HW_PLUS3: return hwid == HW_PLUS3;
+		case SNAP_HW_PENTAGON: return hwid == HW_PENT;
+		case SNAP_HW_SCORPION: return hwid == HW_SCORP;
+	}
+	return 1;			// one nobody knows: leave the machine alone
+}
+
 int fgetw(FILE* file) {
 	int res = fgetc(file) & 0xff;
 	res |= ((fgetc(file) & 0xff) << 8);

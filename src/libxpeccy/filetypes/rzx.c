@@ -147,6 +147,67 @@ int rzxGetSnapType(char* ext) {
 	return res;
 }
 
+// Enough of a deflated snapshot to read its header, and no more.
+static int rzx_head_unpack(FILE* file, int insize, unsigned char* dst, int dstsize) {
+	z_stream zs;
+	unsigned char in[512];
+	int rd = (insize > (int)sizeof(in)) ? (int)sizeof(in) : insize;
+	if (rd <= 0) return 0;
+	rd = fread(in, 1, rd, file);
+	if (rd <= 0) return 0;
+	memset(&zs, 0, sizeof(z_stream));
+	if (inflateInit(&zs) != Z_OK) return 0;
+	zs.next_in = in;
+	zs.avail_in = rd;
+	zs.next_out = dst;
+	zs.avail_out = dstsize;
+	inflate(&zs, Z_NO_FLUSH);		// a truncated stream is what we asked for
+	rd = dstsize - zs.avail_out;
+	inflateEnd(&zs);
+	return rd;
+}
+
+// What the recording was made on. It is the hardware of the snapshot playback
+// starts from, and unlike a snapshot on its own it has to be that machine
+// exactly - see snapHwIs().
+int rzxGetHardware(const char* name) {
+	FILE* file = fopen(name, "rb");
+	if (!file) return SNAP_HW_UNKNOWN;
+	int res = SNAP_HW_UNKNOWN;
+	rzxHead hd;
+	rzxSnap shd;
+	unsigned char head[64];
+	int type, len, n;
+	if ((fread(&hd, sizeof(rzxHead), 1, file) == 1) && !strncmp(hd.sign, "RZX!", 4)) {
+		while (1) {
+			type = fgetc(file);
+			len = fgeti(file);
+			if (feof(file) || (len < 5)) break;
+			if (type != 0x30) {			// not a snapshot block: step over it
+				fseek(file, len - 5, SEEK_CUR);
+				continue;
+			}
+			if (fread(&shd, sizeof(rzxSnap), 1, file) != 1) break;
+			shd.flag = swap32(shd.flag);
+			shd.usl = swap32(shd.usl);
+			n = 0;
+			if (!(shd.flag & 1)) {			// b0: the snapshot is a file of its own
+				n = (shd.flag & 2) ? rzx_head_unpack(file, len - 17, head, sizeof(head))
+						: (int)fread(head, 1, sizeof(head), file);
+			}
+			if (n > 0) {
+				switch (rzxGetSnapType(shd.ext)) {
+					case 0: res = sna_hardware_of(shd.usl); break;	// the size says it
+					case 1: res = z80_hardware_of(head, n); break;
+				}
+			}
+			break;					// playback starts from the first one
+		}
+	}
+	fclose(file);
+	return res;
+}
+
 int loadRZX(Computer* comp, const char* name, int drv) {
 	int err = ERR_OK;
 	comp->rzx.play = 0;
