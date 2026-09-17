@@ -27,7 +27,7 @@ so patches, ideas and bug reports are welcome.
 
 - **ZX Spectrum only.** Since 2026.4 the other machines are not built, and since 2026.5
   their code is gone from the tree.
-- **Works out of the box.** Releases come as a bundle with configuration and rom sets, so
+- **Works out of the box.** Releases come as a bundle with configuration and ROM images, so
   the emulator is ready to use right after unpacking.
 - **Comfortable to play with.** Better gamepad support, rewind, and a smoother way to work
   with tapes and disks.
@@ -44,8 +44,9 @@ the emulation core - but where the core itself was wrong, it was fixed.
 
 On top of upstream build `20260807`:
 
-- **Timing.** Memory contention on the 48K, 128K, +2 and +2A/+3 matches a real machine, and
-  frames are handed over at the machine's real rate rather than on a 20 ms timer.
+- **Timing.** Memory contention on the 48K, 128K, +2 and +2A/+3 matches a real machine, the
+  floating bus and ULA snow are there, and frames are handed over at the machine's real rate
+  rather than on a 20 ms timer.
 - **Input lag** on a par with Spectaculator, measured with a photosensor, and run ahead
   for less still.
 - **Ready to use.** Every machine is built in, ROMs and all, so it runs straight out of the
@@ -54,10 +55,14 @@ On top of upstream build `20260807`:
   command line, on a machine that can run it. A host folder can stand in for an SD card or
   a hard disk.
 - **A debugger worth using.** Movable panels, conditional breakpoints, a listing that reads
-  like one, a memory heat map, register layouts to choose from.
-- **Looks.** Eight interface styles, five border sizes, a picture always at whole pixels.
-- **Fixes.** A working ZX Evo, both of its cores, tape loading, disks with loaders of their own,
-  sound that does not click.
+  like one, a memory heat map, register layouts to choose from, and a screen and a sound chip
+  panel that detach into windows of their own.
+- **Sound.** The FM half of TurboSound runs on ymfm, latency looks after itself, and the mix
+  can be filtered.
+- **Snapshots.** Saved as `.z80` as well as `.sna`, and loaded with the beam where it stood.
+- **Looks.** Eight interface styles, six border sizes, a picture always at whole pixels.
+- **Fixes.** A working ZX Evo, BaseConf and TSConf alike, tape loading, disks with loaders of
+  their own, sound that does not click.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full list.
 
@@ -81,6 +86,7 @@ Options:
 | `-DUSEQTNETWORK=` | `0` (default) or `1` | QtNetwork support, experimental |
 | `-DXRELEASE=` | `0` (default) or `1` | release version string, without `-dev` and build date |
 | `-DTRIMDEPLOY=` | `ON` (default) or `OFF` | Windows: drop the Qt plugins the emulator never loads |
+| `-DXLOGHOT=` | `OFF` (default) or `ON` | build the log calls on the hot paths - per opcode or dot |
 
 The result is the `xpeccy-plus` executable. On Linux you can also build a package with
 `make package`, or install with `make install`.
@@ -111,7 +117,7 @@ as new as the one it was built on - built on Ubuntu 22.04 it wants glibc 2.35 or
 
 ### Windows
 
-Windows is built and tested here daily, unlike in upstream. What has to be installed:
+Windows is built and tested here daily. What has to be installed:
 
 | | |
 | --- | --- |
@@ -150,9 +156,10 @@ the version in brackets in the window title - `Xpeccy+ (2026.5-dev+20260912)`, a
 
 ## Bundled ROMs
 
-Releases ship with `config/`, so the emulator works right after unpacking: rom images for
-the ZX-compatible machines (`config/roms/`), a romset for each of them and a ready profile
-per machine.
+Releases ship with `config/`, so the emulator works right after unpacking. Machines, screen
+layouts, palettes, shaders, styles and keymaps are built into the binary; `config/` carries
+the ROM images (`config/roms/`), and a file of the same name dropped in there replaces a
+built-in one.
 
 The images are firmware of the emulated machines and are **not** covered by the MIT license
 of this project - they stay under the terms of their own copyright holders. Details:
@@ -163,7 +170,7 @@ No image was modified; the copyright messages inside them are intact.
 
 `config/boot.$B` is bundled for the same reason: TR-DOS images that carry no boot file of
 their own get it appended when they are opened. It is Dimon boot 2024 by Dmitry Yurinov and
-keeps its own terms, like the rom images.
+keeps its own terms, like the ROM images.
 
 The debugger's default font, DejaVu Sans Mono 2.37, is built into the binary so it looks the
 same on every platform. It keeps its own terms too - see [`LICENSE_DEJAVU`](LICENSE_DEJAVU).
@@ -190,4 +197,4 @@ this fork's.
 ## Contact
 
 Bug reports, ideas and patches: [GitHub issues](https://github.com/dotkoval/xpeccy-plus/issues)
-and pull requests.
+and pull requests. The [wiki](https://github.com/dotkoval/xpeccy-plus/wiki) has the roadmap.
