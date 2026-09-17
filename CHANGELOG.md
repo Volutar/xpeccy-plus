@@ -98,6 +98,12 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **Advanced settings for a machine is tidier.** The pickers sit together at the top
+  and the switches in one run under them; Even M1 and the DD palette, which belong to
+  the board rather than to the ULA, moved into a group of their own. The contention
+  patterns are named after the chips that have them - Ferranti and Amstrad - instead
+  of type A and type B.
+
 - **The right-click menu is shorter.** Watcher, Screen and Sound chips sit under
   Debugger now, and clicking Debugger, Favorites or Reset itself does the obvious
   thing - opens the debugger, opens the favorites list, resets the machine - so the

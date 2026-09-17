@@ -714,9 +714,9 @@ how much of it is read, and where it lands</string>
             <item>
              <widget class="QGroupBox" name="gbUla">
               <property name="title">
-               <string>ULA settings</string>
+               <string>ULA</string>
               </property>
-              <layout class="QGridLayout" name="gridLayout_ula" columnstretch="0,0,1">
+              <layout class="QGridLayout" name="gridLayout_ula" columnstretch="0,0,1" columnminimumwidth="0,120,0">
                <item row="0" column="1">
                 <widget class="QLabel" name="nam_geombox">
                  <property name="toolTip">
@@ -740,7 +740,7 @@ where in the frame the interrupt falls</string>
                    </property>
                    <property name="minimumSize">
                     <size>
-                     <width>170</width>
+                     <width>200</width>
                      <height>0</height>
                     </size>
                    </property>
@@ -807,10 +807,9 @@ where in the frame the interrupt falls</string>
                 <widget class="QLabel" name="nam_cbContPattern">
                  <property name="toolTip">
                   <string>How long the ULA holds the CPU off the bus,
-and over which banks:
-type A for 48K, 128K and +2 (banks 1, 3, 5, 7)
-type B for +2A and +3 (banks 4, 5, 6, 7)
-none for the clones</string>
+and over which banks: the Ferranti ULA takes
+banks 1, 3, 5, 7, the Amstrad gate array
+banks 4, 5, 6, 7, and the clones take none</string>
                  </property>
                  <property name="text">
                   <string>ULA pattern</string>
@@ -823,14 +822,13 @@ none for the clones</string>
                   <widget class="QComboBox" name="cbContPattern">
                    <property name="toolTip">
                     <string>How long the ULA holds the CPU off the bus,
-and over which banks:
-type A for 48K, 128K and +2 (banks 1, 3, 5, 7)
-type B for +2A and +3 (banks 4, 5, 6, 7)
-none for the clones</string>
+and over which banks: the Ferranti ULA takes
+banks 1, 3, 5, 7, the Amstrad gate array
+banks 4, 5, 6, 7, and the clones take none</string>
                    </property>
                    <property name="minimumSize">
                     <size>
-                     <width>170</width>
+                     <width>200</width>
                      <height>0</height>
                     </size>
                    </property>
@@ -851,138 +849,34 @@ none for the clones</string>
                  </item>
                 </layout>
                </item>
-               <item row="2" column="0">
-                <widget class="QCheckBox" name="contMem">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
                <item row="2" column="1">
-                <widget class="QLabel" name="nam_contMem">
-                 <property name="text">
-                  <string>Contended memory</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="2">
-                <widget class="QLabel" name="lab_contMem">
-                 <property name="font">
-                  <font>
-                   <italic>true</italic>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>The ULA holds the CPU off the screen banks while it draws</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="0">
-                <widget class="QCheckBox" name="contIO">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="1">
-                <widget class="QLabel" name="nam_contIO">
-                 <property name="text">
-                  <string>Contended I/O</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="2">
-                <widget class="QLabel" name="lab_contIO">
-                 <property name="font">
-                  <font>
-                   <italic>true</italic>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>It holds an in or out cycle the same way</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="4" column="0">
-                <widget class="QCheckBox" name="cbEarlyTiming">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="4" column="1">
-                <widget class="QLabel" name="nam_cbEarlyTiming">
-                 <property name="text">
-                  <string>Early timings</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="4" column="2">
-                <widget class="QLabel" name="lab_cbEarlyTiming">
-                 <property name="font">
-                  <font>
-                   <italic>true</italic>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Contention starts two dots earlier</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="5" column="0">
-                <widget class="QCheckBox" name="border4T">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="5" column="1">
-                <widget class="QLabel" name="nam_border4T">
-                 <property name="text">
-                  <string>4T border</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="5" column="2">
-                <widget class="QLabel" name="lab_border4T">
-                 <property name="font">
-                  <font>
-                   <italic>true</italic>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>The border colour changes every 4 T-states, not every dot</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="6" column="1">
                 <widget class="QLabel" name="nam_cbFloatBus">
                  <property name="toolTip">
-                  <string>What a port nothing answers reads back:
-none - #FF
-ULA - the byte the 48K/128K ULA is fetching
-gate array - the same on a +2A/+3, on its own ports
-port #FF - the clones: the attribute being shown</string>
+                  <string>What a port nothing answers reads back: the byte
+the ULA is fetching for the screen, which is how
+a program can follow the beam. The clones have
+no such bus, only a port #FF that gives the
+attribute of the cell being shown.</string>
                  </property>
                  <property name="text">
                   <string>Floating bus</string>
                  </property>
                 </widget>
                </item>
-               <item row="6" column="2">
+               <item row="2" column="2">
                 <layout class="QHBoxLayout" name="hl_cbFloatBus">
                  <item>
                   <widget class="QComboBox" name="cbFloatBus">
                    <property name="toolTip">
-                    <string>What a port nothing answers reads back:
-none - #FF
-ULA - the byte the 48K/128K ULA is fetching
-gate array - the same on a +2A/+3, on its own ports
-port #FF - the clones: the attribute being shown</string>
+                    <string>What a port nothing answers reads back: the byte
+the ULA is fetching for the screen, which is how
+a program can follow the beam. The clones have
+no such bus, only a port #FF that gives the
+attribute of the cell being shown.</string>
                    </property>
                    <property name="minimumSize">
                     <size>
-                     <width>170</width>
+                     <width>200</width>
                      <height>0</height>
                     </size>
                    </property>
@@ -1003,144 +897,7 @@ port #FF - the clones: the attribute being shown</string>
                  </item>
                 </layout>
                </item>
-               <item row="7" column="0">
-                <widget class="QCheckBox" name="cbSnow">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="7" column="1">
-                <widget class="QLabel" name="nam_cbSnow">
-                 <property name="text">
-                  <string>ULA snow...</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="7" column="2">
-                <widget class="QLabel" name="lab_cbSnow">
-                 <property name="font">
-                  <font>
-                   <italic>true</italic>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Rubbish when the interrupt vector points at a screen bank</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="8" column="0">
-                <widget class="QCheckBox" name="cbSnowCrash">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="8" column="1">
-                <widget class="QLabel" name="nam_cbSnowCrash">
-                 <property name="text">
-                  <string>...and it crashes</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="8" column="2">
-                <widget class="QLabel" name="lab_cbSnowCrash">
-                 <property name="font">
-                  <font>
-                   <italic>true</italic>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>This machine's RAM gives up under it: hangs or resets</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="9" column="0" colspan="3">
-                <widget class="Line" name="advline_1">
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                </widget>
-               </item>
-               <item row="10" column="0">
-                <widget class="QCheckBox" name="ulaPlus">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="10" column="1">
-                <widget class="QLabel" name="nam_ulaPlus">
-                 <property name="text">
-                  <string>ULA plus</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="10" column="2">
-                <widget class="QLabel" name="lab_ulaPlus">
-                 <property name="font">
-                  <font>
-                   <italic>true</italic>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>64 colours, when the program asks for them</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="11" column="0">
-                <widget class="QCheckBox" name="scrpwait">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="11" column="1">
-                <widget class="QLabel" name="nam_scrpwait">
-                 <property name="text">
-                  <string>Even M1</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="11" column="2">
-                <widget class="QLabel" name="lab_scrpwait">
-                 <property name="font">
-                  <font>
-                   <italic>true</italic>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>ZS Scorpion: an opcode fetch starts on an even T-state</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="12" column="0">
-                <widget class="QCheckBox" name="cbDDp">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="12" column="1">
-                <widget class="QLabel" name="nam_cbDDp">
-                 <property name="text">
-                  <string>DD palette</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="12" column="2">
-                <widget class="QLabel" name="lab_cbDDp">
-                 <property name="font">
-                  <font>
-                   <italic>true</italic>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Profi: its own palette registers</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="13" column="1">
+               <item row="3" column="1">
                 <widget class="QLabel" name="nam_cbEarBack">
                  <property name="toolTip">
                   <string>What bit 6 of port #FE reads back with no tape playing:
@@ -1153,7 +910,7 @@ none - nothing comes back (+2A, +3)</string>
                  </property>
                 </widget>
                </item>
-               <item row="13" column="2">
+               <item row="3" column="2">
                 <layout class="QHBoxLayout" name="hl_cbEarBack">
                  <item>
                   <widget class="QComboBox" name="cbEarBack">
@@ -1165,7 +922,7 @@ none - nothing comes back (+2A, +3)</string>
                    </property>
                    <property name="minimumSize">
                     <size>
-                     <width>170</width>
+                     <width>200</width>
                      <height>0</height>
                     </size>
                    </property>
@@ -1186,19 +943,253 @@ none - nothing comes back (+2A, +3)</string>
                  </item>
                 </layout>
                </item>
+               <item row="4" column="0" colspan="3">
+                <widget class="Line" name="advline_1">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="0">
+                <widget class="QCheckBox" name="contMem">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="1">
+                <widget class="QLabel" name="nam_contMem">
+                 <property name="text">
+                  <string>Contended memory</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="2">
+                <widget class="QLabel" name="lab_contMem">
+                 <property name="font">
+                  <font>
+                   <italic>true</italic>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>The ULA holds the CPU off the screen banks while it draws</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="0">
+                <widget class="QCheckBox" name="contIO">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="1">
+                <widget class="QLabel" name="nam_contIO">
+                 <property name="text">
+                  <string>Contended I/O</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="2">
+                <widget class="QLabel" name="lab_contIO">
+                 <property name="font">
+                  <font>
+                   <italic>true</italic>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>It holds an in or out cycle the same way</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="7" column="0">
+                <widget class="QCheckBox" name="cbEarlyTiming">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="7" column="1">
+                <widget class="QLabel" name="nam_cbEarlyTiming">
+                 <property name="text">
+                  <string>Early timings</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="7" column="2">
+                <widget class="QLabel" name="lab_cbEarlyTiming">
+                 <property name="font">
+                  <font>
+                   <italic>true</italic>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Contention starts two dots earlier</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="8" column="0">
+                <widget class="QCheckBox" name="border4T">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="8" column="1">
+                <widget class="QLabel" name="nam_border4T">
+                 <property name="text">
+                  <string>4T border</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="8" column="2">
+                <widget class="QLabel" name="lab_border4T">
+                 <property name="font">
+                  <font>
+                   <italic>true</italic>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>The border colour changes every 4 T-states, not every dot</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="9" column="0">
+                <widget class="QCheckBox" name="cbSnow">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="9" column="1">
+                <widget class="QLabel" name="nam_cbSnow">
+                 <property name="text">
+                  <string>ULA snow...</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="9" column="2">
+                <widget class="QLabel" name="lab_cbSnow">
+                 <property name="font">
+                  <font>
+                   <italic>true</italic>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Rubbish when the interrupt vector points at a screen bank</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="10" column="0">
+                <widget class="QCheckBox" name="cbSnowCrash">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="10" column="1">
+                <widget class="QLabel" name="nam_cbSnowCrash">
+                 <property name="text">
+                  <string>...and it crashes</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="10" column="2">
+                <widget class="QLabel" name="lab_cbSnowCrash">
+                 <property name="font">
+                  <font>
+                   <italic>true</italic>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>This machine's RAM gives up under it: hangs or resets</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="11" column="0">
+                <widget class="QCheckBox" name="ulaPlus">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="11" column="1">
+                <widget class="QLabel" name="nam_ulaPlus">
+                 <property name="text">
+                  <string>ULA plus</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="11" column="2">
+                <widget class="QLabel" name="lab_ulaPlus">
+                 <property name="font">
+                  <font>
+                   <italic>true</italic>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>64 colours, when the program asks for them</string>
+                 </property>
+                </widget>
+               </item>
               </layout>
              </widget>
             </item>
             <item>
-             <widget class="QGroupBox" name="gbPeripherals">
+             <widget class="QGroupBox" name="gbBoard">
               <property name="title">
-               <string>Peripherals</string>
+               <string>Board</string>
               </property>
-              <layout class="QVBoxLayout" name="verticalLayout_periph">
-               <item>
-                <widget class="QLabel" name="labPeriphTodo">
+              <layout class="QGridLayout" name="gridLayout_board" columnstretch="0,0,1" columnminimumwidth="0,120,0">
+               <item row="0" column="0">
+                <widget class="QCheckBox" name="scrpwait">
                  <property name="text">
-                  <string>Nothing here yet: what a machine has fitted still lives on the other pages.</string>
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QLabel" name="nam_scrpwait">
+                 <property name="text">
+                  <string>Even M1</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="2">
+                <widget class="QLabel" name="lab_scrpwait">
+                 <property name="font">
+                  <font>
+                   <italic>true</italic>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>ZS Scorpion: an opcode fetch starts on an even T-state</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QCheckBox" name="cbDDp">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLabel" name="nam_cbDDp">
+                 <property name="text">
+                  <string>DD palette</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="2">
+                <widget class="QLabel" name="lab_cbDDp">
+                 <property name="font">
+                  <font>
+                   <italic>true</italic>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Profi: its own palette registers</string>
                  </property>
                 </widget>
                </item>
