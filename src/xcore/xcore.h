@@ -657,6 +657,8 @@ struct xConfig {
 		unsigned scrdetach:1;	// screen panel: shown in a window of its own
 		unsigned snddetach:1;	// sound panel: shown in a window of its own
 		unsigned sndfm:1;	// sound panel: the FM page of the chip, not the PSG one
+		unsigned sndfit:1;	// sound panel: the scope centres and scales itself
+		unsigned sndlog:1;	// sound panel: the scope draws on a log curve
 		QFont font;
 		int dbsize;
 		int dwsize;
