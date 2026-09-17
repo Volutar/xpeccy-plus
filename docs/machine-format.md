@@ -53,6 +53,7 @@ is skipped without a word.
 | `ram.cold` | hex groups | what RAM holds at power-on, `ff*8 00*8` style; absent leaves it alone |
 | `ram.noise` | 0..1000 | bytes per thousand that come up wrong in that pattern |
 | `reset` | `basic128` `basic48` `dos` `shadow` | which ROM a reset lands in |
+| `issue` | `3` `2` `none` | what bit 6 of `#FE` reads with no tape playing: bit 4 of the last `OUT #FE` (issue 3), bit 4 or bit 3 (issue 2), or nothing at all (`none`, the +2A/+3) |
 | `contio` | yes/no | contended i/o |
 | `contmem` | yes/no | contended memory |
 | `scrp.wait` | yes/no | ZS Scorpion: an opcode fetch starts on an even T-state |

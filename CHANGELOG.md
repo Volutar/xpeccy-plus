@@ -121,6 +121,12 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **`IN #FE` bit 6 read as 1 whenever no tape was playing.** A real machine hears its
+  own last `OUT #FE` back on that bit, which is how a program tells an issue 2 board
+  from an issue 3 one; here it heard a stuck 1 and could tell nothing. Which board a
+  machine is is now a setting of its own, on the ULA block of the Machine page - and
+  the +2A/+3 are set to what they really do, which is feed nothing back at all.
+
 - **Two wrong flags in the Z80.** `BIT n,r` and `CPI` left the wrong value in the two
   undocumented flag bits. Only something written to tell one processor from another
   would notice, but that is what those programs are for.

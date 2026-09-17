@@ -259,10 +259,24 @@ int xIn1F(Computer* comp, int port) {
 	return joyInput(comp->joy);
 }
 
+// bit 6 of #FE: a playing tape is the whole of it, otherwise the machine hears
+// its own last out #FE, and how much of it is the issue 2 / issue 3 difference.
+// A stopped tape is not the tape - volPlay keeps the level it stopped on, which
+// this used to read as a permanent 1.
+int zx_ear(Computer* comp) {
+	if (comp->tape->on && !comp->tape->rec)
+		return !!(comp->tape->volPlay & 0x80);
+	switch (comp->earback) {
+		case EAR_ISSUE2: return comp->beep->lev || comp->tape->levRec;
+		case EAR_ISSUE3: return !!comp->beep->lev;
+	}
+	return 0;
+}
+
 int xInFE(Computer* comp, int port) {
 	comp->keyb->port &= (port >> 8);
 	unsigned char res = kbd_rd(comp->keyb, port) | 0xa0;		// set bits 7,5
-	if (comp->tape->volPlay & 0x80)
+	if (zx_ear(comp))
 		res |= 0x40;
 	tapDetectLoader(comp->tape, comp->tickCount, comp->cpu->regB);
 	return res;

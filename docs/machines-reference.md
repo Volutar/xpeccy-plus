@@ -39,6 +39,20 @@ Contention patterns are `vid_wait_dots()` in `video/video.c`: 1 is the Ferranti 
 `12,11,...,1,0,0,0,0` over banks 1/3/5/7, 2 the Amstrad ASIC's `2,1,0,0,14,...,3` over banks
 4-7 and mreq cycles only, 0 is no contention at all.
 
+The `issue` key is what bit 6 of `#FE` reads back with no tape playing, and only two values
+are settled. The 48K/128K/+2 get issue 3 - bit 4 of the last `OUT #FE` - from the World of
+Spectrum 48K reference, which also gives issue 2 as bit 4 *or* bit 3; issue 2 is a board
+variant of the same machine, so it is a patch the user makes rather than a machine of its own.
+The +2A/+3 get `none`, from the 128K reference: "Bit 6 of Port 0xfe of the +2A/+3 does not
+show the same dependence on what was written to Port 0xfe as it does on the other machines,
+and always returns 0 if there is no signal." Every clone is left at issue 3 and that is
+**open** - nobody has measured one.
+
+That same sentence of the 128K reference says the +2A/+3 return 255 from an unattached port
+instead of the screen byte the 48K/128K/+2 give. `plus3.c` still returns the attribute, and
+the floating bus is a raw `vid->atrbyte` on every machine that has one - Pentagon included,
+which has none at all. That is **open** and wants its own round.
+
 The **open** INT lengths are the ones nobody has confirmed a figure for. Three of them
 (Profi, ATM, TSConf) were deliberately left at 32 T in the raster work. The fourth is a real
 inconsistency: the +2A/+3 was named in that round's decision - 36 T for the 311-line machines

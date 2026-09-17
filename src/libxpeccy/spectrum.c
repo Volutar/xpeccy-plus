@@ -532,6 +532,7 @@ Computer* compCreate() {
 	Computer* comp = (Computer*)malloc(sizeof(Computer));
 	memset(comp, 0x00, sizeof(Computer));
 	comp->resbank = RES_48;
+	comp->earback = EAR_ISSUE3;
 	comp->flgFRN = 1;
 	comp->flgDBG = 0;
 	comp_brk_newstep(comp);		// vid is still NULL here, the call copes

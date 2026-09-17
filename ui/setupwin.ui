@@ -1092,6 +1092,52 @@ none for the clones</string>
                  </property>
                 </widget>
                </item>
+               <item row="12" column="1">
+                <widget class="QLabel" name="nam_cbEarBack">
+                 <property name="toolTip">
+                  <string>What bit 6 of port #FE reads back with no tape playing:
+issue 3 - bit 4 of the last OUT #FE
+issue 2 - bit 4 or bit 3 of it
+none - nothing comes back (+2A, +3)</string>
+                 </property>
+                 <property name="text">
+                  <string>Ear input</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="12" column="2">
+                <layout class="QHBoxLayout" name="hl_cbEarBack">
+                 <item>
+                  <widget class="QComboBox" name="cbEarBack">
+                   <property name="toolTip">
+                    <string>What bit 6 of port #FE reads back with no tape playing:
+issue 3 - bit 4 of the last OUT #FE
+issue 2 - bit 4 or bit 3 of it
+none - nothing comes back (+2A, +3)</string>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>170</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="sp_cbEarBack">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>10</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </item>
               </layout>
              </widget>
             </item>

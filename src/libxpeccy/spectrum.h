@@ -38,6 +38,14 @@ enum {
 	RES_SHADOW
 };
 
+// what bit 6 of #FE reads with no tape playing: the machine feeds its own last
+// out #FE back into the ear input, and how much of it depends on the board
+enum {
+	EAR_NONE = 0,		// +2A/+3: nothing comes back, the bit stays low
+	EAR_ISSUE3,		// bit 4 (the speaker) alone
+	EAR_ISSUE2		// bit 4 or bit 3 (the tape output)
+};
+
 enum {
 	DBG_VIEW_CODE = 0x00,
 	DBG_VIEW_BYTE = 0x10,
@@ -119,6 +127,7 @@ typedef struct Computer {
 
 	char* msg;		// message ptr for displaying outside
 	int resbank;		// rompart active after reset
+	int earback;		// EAR_*: the ear input with no tape playing
 
 	int snowBad;		// the ULA took a refresh cycle: the next opcode out of
 				// slow memory comes back wrong (flgSNOWX)
