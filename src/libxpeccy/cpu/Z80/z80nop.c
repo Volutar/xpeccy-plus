@@ -102,6 +102,7 @@ void npr06(CPU* cpu) {
 
 // 07	rlca		4
 void npr07(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regA = (cpu->regA << 1) | (cpu->regA >> 7);
 	cpu->flgF5 = !!(cpu->regA & 0x20);
 	cpu->flgH = 0;
@@ -151,6 +152,7 @@ void npr0E(CPU* cpu) {
 
 // 0F	rrca		4
 void npr0F(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->flgC = (cpu->regA & 1);
 	cpu->regA = (cpu->regA >> 1) | (cpu->regA << 7);
 	cpu->flgF5 = !!(cpu->regA & 0x20);
@@ -205,6 +207,7 @@ void npr16(CPU* cpu) {
 
 // 17	rla		4
 void npr17(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->tmp = cpu->regA;
 	cpu->regA = (cpu->regA << 1) | cpu->flgC;
 	cpu->flgF5 = !!(cpu->regA & 0x20);
@@ -255,6 +258,7 @@ void npr1E(CPU* cpu) {
 
 // 1F	rra		4
 void npr1F(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->tmp = cpu->regA;
 	cpu->regA = (cpu->regA >> 1) | (cpu->flgC << 7);
 	cpu->flgF5 = !!(cpu->regA & 0x20);
@@ -310,6 +314,7 @@ void npr26(CPU* cpu) {
 
 // 27	daa		4
 void npr27(CPU* cpu) {
+	cpu->flgFW = 1;
 	const unsigned char* tdaa = daaTab + 2 * (cpu->regA + 0x100 * (cpu->flgC | (cpu->flgN << 1) | (cpu->flgH << 2)));
 	z80_set_flag(cpu, *tdaa);
 	cpu->regA = *(tdaa + 1);
@@ -360,6 +365,7 @@ void npr2E(CPU* cpu) {
 
 // 2F	cpl		4
 void npr2F(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regA ^= 0xff;
 	cpu->flgF5 = !!(cpu->regA & 0x20);
 	cpu->flgH = 1;
@@ -419,10 +425,15 @@ void npr36(CPU* cpu) {
 }
 
 // 37	scf		4
+// Bits 3 and 5 come from A, with the flags they already hold ored in when the
+// instruction before this one did not write them (the Q register, flgQ here).
+// Found by David Banks in 2012 and the reason the same program reads a
+// different F on two machines that are otherwise alike.
 void npr37(CPU* cpu) {
-	cpu->flgF5 = !!(cpu->regA & 0x20);
+	cpu->flgFW = 1;
+	cpu->flgF5 = !!(cpu->regA & 0x20) || (!cpu->flgQ && cpu->flgF5);
 	cpu->flgH = 0;
-	cpu->flgF3 = !!(cpu->regA & 0x08);
+	cpu->flgF3 = !!(cpu->regA & 0x08) || (!cpu->flgQ && cpu->flgF3);
 	cpu->flgN = 0;
 	cpu->flgC = 1;
 }
@@ -471,9 +482,10 @@ void npr3E(CPU* cpu) {
 
 // 3F	ccf		4
 void npr3F(CPU* cpu) {
-	cpu->flgF5 = !!(cpu->regA & 0x20);
+	cpu->flgFW = 1;
+	cpu->flgF5 = !!(cpu->regA & 0x20) || (!cpu->flgQ && cpu->flgF5);
 	cpu->flgH = cpu->flgC;		// old C in H
-	cpu->flgF3 = !!(cpu->regA & 0x08);
+	cpu->flgF3 = !!(cpu->regA & 0x08) || (!cpu->flgQ && cpu->flgF3);
 	cpu->flgN = 0;
 	cpu->flgC ^= 1;
 }

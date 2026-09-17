@@ -100,6 +100,7 @@ int z80_int(CPU* cpu) {
 	int res = 0;
 	if (cpu->intrq & Z80_NMI) {		// nmi, ahead of int
 		if (!cpu->flgNOINT) {
+			cpu->flgFW = 0;		// taking one writes no flags (see flgQ)
 			cpu->regR++;
 			cpu->flgIFF2 = cpu->flgIFF1;
 			cpu->flgIFF1 = 0;
@@ -119,7 +120,8 @@ int z80_int(CPU* cpu) {
 		cpu->intrq &= ~Z80_NMI;
 	} else if (cpu->intrq & Z80_INT) {	// int
 		if (cpu->flgIFF1 && !cpu->flgNOINT && cpu->flgACK) {
-			cpu->flgIFF1 = 0;
+			cpu->flgFW = 0;		// ...nor does this one, but an im0
+			cpu->flgIFF1 = 0;	// instruction off the bus still can
 			cpu->flgIFF2 = 0;
 			if (cpu->flgHALT) {
 				cpu->regPC++;
@@ -178,6 +180,8 @@ int z80_exec(CPU* cpu) {
 	if (!res) {
 		cpu->t = 0;
 		cpu->opTab = npTab;
+		cpu->flgQ = cpu->flgFW;		// what the instruction before did
+		cpu->flgFW = 0;
 		do {
 			cpu->com = z80_fetch(cpu); // cpu->mrd(cpu->pc++,1,cpu->xptr);
 			cpu->op = &cpu->opTab[cpu->com];

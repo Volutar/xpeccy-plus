@@ -12,6 +12,7 @@ extern const unsigned char FVsubTab[8];
 // z = bit value, p/v = z, s = (val & (1 << bit) & 0x80), f3/f5 from the operand
 // cpu->f = (cpu->f & Z80_FC) | Z80_FH | (sz53pTab[val & (0x01 << bit)] & ~(Z80_F5 | Z80_F3)) | (val & (Z80_F5 | Z80_F3));}
 #define BIT(bit,val) {\
+	cpu->flgFW = 1;\
 	cpu->tmp = val & (1 << bit);\
 	cpu->flgS = !!(cpu->tmp & 0x80);\
 	cpu->flgZ = !cpu->tmp;\
@@ -24,6 +25,7 @@ extern const unsigned char FVsubTab[8];
 
 // cpu->f = (cpu->f & Z80_FC) | Z80_FH | (sz53pTab[val & (1 << bit)] & ~(Z80_F5 | Z80_F3)) | (cpu->hptr & (Z80_F5 | Z80_F3));}
 #define BITM(bit,val) {\
+	cpu->flgFW = 1;\
 	cpu->tmp = val & (1 << bit);\
 	cpu->flgS = !!(cpu->tmp & 0x80);\
 	cpu->flgZ = !cpu->tmp;\

@@ -127,9 +127,16 @@ before that point is upstream's history and is not repeated here.
   machine is is now a setting of its own, on the ULA block of the Machine page - and
   the +2A/+3 are set to what they really do, which is feed nothing back at all.
 
-- **Two wrong flags in the Z80.** `BIT n,r` and `CPI` left the wrong value in the two
-  undocumented flag bits. Only something written to tell one processor from another
-  would notice, but that is what those programs are for.
+- **`SCF` and `CCF` set the two undocumented flag bits the way a Zilog Z80 does.**
+  What ends up there depends on whether the instruction before touched the flags at
+  all - which is how those two tell one make of processor from another, and the
+  reason the same program can read a different F on two machines that are otherwise
+  alike.
+
+- **Two more wrong flags in the Z80.** `BIT n,r` and `CPI` left the wrong value in
+  the same two bits. Only something written to tell one processor from another would
+  notice, but that is what those programs are for - Patrik Rak's Z80 test suite now
+  passes every test it has, in all of its variants.
 
 - **`RETI` puts the interrupt state back**, the way the processor does and `RETN`
   already did here. It changes nothing unless a program returns from an interrupt

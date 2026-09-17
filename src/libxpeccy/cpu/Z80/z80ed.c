@@ -5,6 +5,7 @@
 
 // 40	in b,(c)	4 4in		wz = bc+1
 void ed40(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regWZ = cpu->regBC;
 	cpu->regB = z80_iord(cpu, cpu->regWZ++);
 	cpu->flgS = !!(cpu->regB & 0x80);
@@ -60,6 +61,7 @@ void ed47(CPU* cpu) {
 
 // 48	in c,(c)	4 4in		wz = port + 1
 void ed48(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regWZ = cpu->regBC;
 	cpu->regC = z80_iord(cpu, cpu->regWZ++);
 	cpu->flgS = !!(cpu->regC & 0x80);
@@ -106,6 +108,7 @@ void ed4F(CPU* cpu) {
 
 // 50	in d,(c)	4 4in	wz = port + 1
 void ed50(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regWZ = cpu->regBC;
 	cpu->regD = z80_iord(cpu, cpu->regWZ++);
 	cpu->flgS = !!(cpu->regD & 0x80);
@@ -144,6 +147,7 @@ void ed56(CPU* cpu) {
 
 // 57	ld a,i		5
 void ed57(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regA = cpu->regI;
 	cpu->flgS = !!(cpu->regA & 0x80);
 	cpu->flgZ = !cpu->regA;
@@ -157,6 +161,7 @@ void ed57(CPU* cpu) {
 
 // 58	in e,(c)	4 4in		wz = port + 1
 void ed58(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regWZ = cpu->regBC;
 	cpu->regE = z80_iord(cpu, cpu->regWZ++);
 	cpu->flgS = !!(cpu->regE & 0x80);
@@ -195,6 +200,7 @@ void ed5E(CPU* cpu) {
 
 // 5f	ld a,r		5
 void ed5F(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regA = (cpu->regR & 0x7f) | (cpu->regR7 & 0x80);
 	cpu->flgS = !!(cpu->regA & 0x80);
 	cpu->flgZ = !cpu->regA;
@@ -208,6 +214,7 @@ void ed5F(CPU* cpu) {
 
 // 60	in h,(c)	4 4in		wz = port + 1
 void ed60(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regWZ = cpu->regBC;
 	cpu->regH = z80_iord(cpu, cpu->regWZ++);
 	cpu->flgS = !!(cpu->regH & 0x80);
@@ -233,6 +240,7 @@ void ed62(CPU* cpu) {
 
 // 67	rrd		4 3rd 4 3wr	wz = hl + 1
 void ed67(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regWZ = cpu->regHL;
 	cpu->tmpb = z80_mrd(cpu, cpu->regWZ);
 	z80_wait(cpu, cpu->regWZ, 4);
@@ -249,6 +257,7 @@ void ed67(CPU* cpu) {
 
 // 68	in l,(c)	4 4in		wz = port + 1
 void ed68(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regWZ = cpu->regBC;
 	cpu->regL = z80_iord(cpu, cpu->regWZ++);
 	cpu->flgS = !!(cpu->regL & 0x80);
@@ -274,6 +283,7 @@ void ed6A(CPU* cpu) {
 
 // 6f	rld		4 3rd 4 3wr	wz = hl+1
 void ed6F(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regWZ = cpu->regHL;
 	cpu->tmpb = z80_mrd(cpu, cpu->regWZ);
 	z80_wait(cpu, cpu->regWZ, 4);
@@ -290,6 +300,7 @@ void ed6F(CPU* cpu) {
 
 // 70	in (c)		4 4in		wz = port + 1
 void ed70(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regWZ = cpu->regBC;
 	cpu->tmp = z80_iord(cpu, cpu->regWZ++);
 	cpu->flgS = !!(cpu->tmp & 0x80);
@@ -323,6 +334,7 @@ void ed73(CPU* cpu) {
 
 // 78	in a,(c)	4 4in		wz = port + 1
 void ed78(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regWZ = cpu->regBC;
 	cpu->regA = z80_iord(cpu, cpu->regWZ++);
 	cpu->flgS = !!(cpu->regA & 0x80);
@@ -356,6 +368,7 @@ void ed7B(CPU* cpu) {
 
 // a0	ldi	4 3rd 5wr
 void edA0(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->tmp = z80_mrd(cpu, cpu->regHL++);
 	z80_mwr(cpu, cpu->regDE, cpu->tmp);
 	z80_wait(cpu, cpu->regDE, 2);		// de still holds the address just written
@@ -371,6 +384,7 @@ void edA0(CPU* cpu) {
 
 // a1	cpi	4 3rd 5?	regWZ++
 void edA1(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->tmpb = z80_mrd(cpu, cpu->regHL);
 	cpu->tmpw = cpu->regA - cpu->tmpb;
 	cpu->tmp = ((cpu->regA & 0x08) >> 3) | ((cpu->tmpb & 0x08) >> 2) | ((cpu->tmpw & 0x08 ) >> 1);
@@ -392,6 +406,7 @@ void edA1(CPU* cpu) {
 
 // a2	ini	5 4in 3wr	wz = bc + 1 (before dec)
 void edA2(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regWZ = cpu->regBC + 1;
 	cpu->tmp = z80_iord(cpu, cpu->regBC);
 	z80_mwr(cpu, cpu->regHL++, cpu->tmp);
@@ -409,6 +424,7 @@ void edA2(CPU* cpu) {
 
 // a3	outi	5 3rd 4wr	wz = bc + 1 (after dec)
 void edA3(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->tmp = z80_mrd(cpu, cpu->regHL);
 	cpu->regB--;
 	cpu->regWZ = cpu->regBC + 1;
@@ -427,6 +443,7 @@ void edA3(CPU* cpu) {
 
 // a8	ldd	4 3rd 5wr
 void edA8(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->tmp = z80_mrd(cpu, cpu->regHL--);
 	z80_mwr(cpu, cpu->regDE, cpu->tmp);
 	z80_wait(cpu, cpu->regDE, 2);		// de still holds the address just written
@@ -442,6 +459,7 @@ void edA8(CPU* cpu) {
 
 // a9	cpd	4 3rd 5?	wz--
 void edA9(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->tmpb = z80_mrd(cpu, cpu->regHL);
 	cpu->tmpw = cpu->regA - cpu->tmpb;
 	cpu->tmp = ((cpu->regA & 0x08) >> 3) | ((cpu->tmpb & 0x08) >> 2) | ((cpu->tmpw & 0x08 ) >> 1);
@@ -461,6 +479,7 @@ void edA9(CPU* cpu) {
 
 // aa	ind	5 4in 3wr	wz = bc - 1 (before dec)
 void edAA(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->regWZ = cpu->regBC - 1;
 	cpu->tmp = z80_iord(cpu, cpu->regBC);
 	z80_mwr(cpu, cpu->regHL--, cpu->tmp);
@@ -478,6 +497,7 @@ void edAA(CPU* cpu) {
 
 // ab	outd	5 3rd 4wr	wz = bc - 1 (after dec)
 void edAB(CPU* cpu) {
+	cpu->flgFW = 1;
 	cpu->tmp = z80_mrd(cpu, cpu->regHL);
 	cpu->regB--;
 	cpu->regWZ = cpu->regBC - 1;
@@ -498,6 +518,7 @@ void edAB(CPU* cpu) {
 // adr is what the last cycle left on the bus - de for ldxr, hl for cpxr - and
 // the five idle ticks are contended against it
 void blkRepeat(CPU* cpu, int adr) {
+	cpu->flgFW = 1;
 	cpu->regPC -= 2;
 	z80_wait(cpu, adr, 5);
 	cpu->regWZ = cpu->regPC + 1;
@@ -527,6 +548,7 @@ void edB1(CPU* cpu) {
 // vectors among them. Rak's z80memptr, whose numbers come off a real machine,
 // is the one that tells them apart.
 void blkioRepeat(CPU* cpu, int adr) {
+	cpu->flgFW = 1;
 	cpu->regPC -= 2;
 	z80_wait(cpu, adr, 5);
 	cpu->regWZ = cpu->regPC + 1;

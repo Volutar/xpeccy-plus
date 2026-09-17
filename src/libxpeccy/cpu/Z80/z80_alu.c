@@ -2,6 +2,7 @@
 
 // ALU
 unsigned char z80_inc8(CPU* cpu, unsigned char v) {
+	cpu->flgFW = 1;
 	v++;
 	cpu->flgS = !!(v & 0x80);
 	cpu->flgZ = !v;
@@ -14,6 +15,7 @@ unsigned char z80_inc8(CPU* cpu, unsigned char v) {
 }
 
 unsigned char z80_dec8(CPU* cpu, unsigned char v) {
+	cpu->flgFW = 1;
 	cpu->flgH = !(v & 0x0f);
 	v--;
 	cpu->flgS = !!(v & 0x80);
@@ -26,6 +28,7 @@ unsigned char z80_dec8(CPU* cpu, unsigned char v) {
 }
 
 unsigned char z80_add8(CPU* cpu, unsigned char v, unsigned char c) {
+	cpu->flgFW = 1;
 	cpu->tmpw = cpu->regA + v + c;
 	cpu->tmp = ((cpu->regA & 0x88) >> 3) | ((v & 0x88) >> 2) | ((cpu->tmpw & 0x88) >> 1);
 	cpu->flgS = !!(cpu->ltw & 0x80);
@@ -41,6 +44,7 @@ unsigned char z80_add8(CPU* cpu, unsigned char v, unsigned char c) {
 
 // F3,F5 taked from result
 unsigned char z80_sub8(CPU* cpu, unsigned char v, unsigned char c) {
+	cpu->flgFW = 1;
 	cpu->tmpw = cpu->regA - v - c;
 	cpu->tmp = ((cpu->regA & 0x88) >> 3) | ((v & 0x88) >> 2) | ((cpu->tmpw & 0x88) >> 1);
 	cpu->flgS = !!(cpu->ltw & 0x80);
@@ -56,6 +60,7 @@ unsigned char z80_sub8(CPU* cpu, unsigned char v, unsigned char c) {
 
 // F3,F5 taked from operand
 void z80_cp8(CPU* cpu, unsigned char v) {
+	cpu->flgFW = 1;
 	cpu->tmpw = cpu->regA - v;
 	cpu->tmp = ((cpu->regA & 0x88) >> 3) | ((v & 0x88) >> 2) | ((cpu->tmpw & 0x88) >> 1);
 	cpu->flgS = !!(cpu->ltw & 0x80);
@@ -70,6 +75,7 @@ void z80_cp8(CPU* cpu, unsigned char v) {
 
 // S,Z,PV flags affected only by ADC
 unsigned short z80_add16(CPU* cpu, unsigned short v1, unsigned short v2) {
+	cpu->flgFW = 1;
 	cpu->regWZ = v1;
 	cpu->tmpi = v1 + v2;
 	cpu->tmp = ((v1 & 0x8800) >> 11) | ((v2 & 0x8800) >> 10) | ((cpu->tmpi & 0x8800) >> 9);
@@ -84,6 +90,7 @@ unsigned short z80_add16(CPU* cpu, unsigned short v1, unsigned short v2) {
 }
 
 unsigned short z80_adc16(CPU* cpu, unsigned short v1, unsigned short v2, unsigned char c) {
+	cpu->flgFW = 1;
 	cpu->regWZ = v1;
 	cpu->tmpi = v1 + v2 + c;
 	cpu->tmp = ((v1 & 0x8800) >> 11) | ((v2 & 0x8800) >> 10) | ((cpu->tmpi & 0x8800) >> 9);
@@ -101,6 +108,7 @@ unsigned short z80_adc16(CPU* cpu, unsigned short v1, unsigned short v2, unsigne
 }
 
 unsigned short z80_sub16(CPU* cpu, unsigned short v1, unsigned short v2, unsigned char c) {
+	cpu->flgFW = 1;
 	cpu->tmpi = v1 - v2 - c;
 	cpu->tmp = ((v1 & 0x8800) >> 11) | ((v2 & 0x8800) >> 10) | ((cpu->tmpi & 0x8800) >> 9);
 	cpu->regWZ = v1 + 1;
@@ -119,6 +127,7 @@ unsigned short z80_sub16(CPU* cpu, unsigned short v1, unsigned short v2, unsigne
 // logic
 
 void z80_and8(CPU* cpu, unsigned char v) {
+	cpu->flgFW = 1;
 	cpu->regA &= v;
 	cpu->flgS = !!(cpu->regA & 0x80);
 	cpu->flgZ = !cpu->regA;
@@ -131,6 +140,7 @@ void z80_and8(CPU* cpu, unsigned char v) {
 }
 
 void z80_or8(CPU* cpu, unsigned char v) {
+	cpu->flgFW = 1;
 	cpu->regA |= v;
 	cpu->flgS = !!(cpu->regA & 0x80);
 	cpu->flgZ = !cpu->regA;
@@ -143,6 +153,7 @@ void z80_or8(CPU* cpu, unsigned char v) {
 }
 
 void z80_xor8(CPU* cpu, unsigned char v) {
+	cpu->flgFW = 1;
 	cpu->regA ^= v;
 	cpu->flgS = !!(cpu->regA & 0x80);
 	cpu->flgZ = !cpu->regA;

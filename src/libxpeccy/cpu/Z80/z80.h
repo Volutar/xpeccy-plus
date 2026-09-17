@@ -52,6 +52,12 @@
 #define flgIFF1	flags[8]
 #define flgIFF2	flags[9]
 #define flgResPV flags[10]		// reset PV flag on INT
+// The Q register, which only scf and ccf can see: they or the last flag update
+// into bits 3 and 5, and "last" means the instruction right before this one.
+// flgFW is what the instruction now running has done, latched into flgQ by
+// z80_exec when the next one starts.
+#define flgFW	flags[11]		// this instruction has written the flags
+#define flgQ	flags[12]		// ...and so had the one before it
 
 #include "z80_macro.h"
 

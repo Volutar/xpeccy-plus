@@ -1,22 +1,15 @@
 # Tests where our Z80 gets the timing right but the result wrong. Each is kept
 # here so a new one stands out instead of hiding in the count.
 #
-#   SCF / CCF        bits 3 and 5 (37_1, 3f). Ours are taken from A alone; the
-#                    hardware ors in the last flag update as well, which needs a
-#                    Q register the core does not have. Rak's z80full fails the
-#                    same four tests (SCF, CCF, SCF/CCF (ST)).
-#
-#   INIR/OTIR/OTDR   the iteration that repeats: the flags it leaves (edb[23b]_1)
-#   CPDR             and the same for cpdr (edb9_2), and MEMPTR (edba_1). Here it
-#                    is fuse's expected data that is old - it predates David
-#                    Banks' 2018 flag findings and the 2023 one that all four i/o
-#                    block instructions put pc+1 in MEMPTR when they repeat. We
-#                    follow both, and Rak's z80full and z80memptr, which compare
-#                    against a real machine, pass every one of these.
+#   INIR/OTIR/OTDR   the iteration that repeats: the flags it leaves (edb[23b]_1),
+#   CPDR             the same for cpdr (edb9_2), and MEMPTR (edba_1). It is fuse's
+#                    expected data that is old here - it predates David Banks'
+#                    2018 flag findings and the 2023 one that all four i/o block
+#                    instructions put pc+1 in MEMPTR when they repeat. We follow
+#                    both, and Rak's z80full and z80memptr, which compare against
+#                    a real machine, pass every one of these.
 #
 # Regenerate after a fix: ./run.sh, then take the names under "--- state".
-37_1
-3f
 edb2_1
 edb3_1
 edb9_2
