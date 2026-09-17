@@ -68,6 +68,7 @@ is skipped without a word.
 | `4t-border` | yes/no | |
 | `snow` | yes/no | the ULA snow effect |
 | `snow.crash` | yes/no | ...and RAM that cannot take it: hangs or resets |
+| `floatbus` | `none` `ula` `asic` `attr` | what a port nothing answers reads back: `#FF`, the byte the 48K/128K ULA is fetching, the same on a +2A/+3 gate array (its own ports, paging on, bit 0 forced), or the clones' port `#FF`, which gives the attribute of the cell being shown |
 | `ULAplus` | yes/no | |
 | `DDpal` | yes/no | Profi's own palette registers |
 

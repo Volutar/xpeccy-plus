@@ -6,10 +6,6 @@ void penMapMem(Computer* comp) {
 
 // in
 
-int penInFF(Computer* comp, int port) {
-	return (comp->vid->vbrd || comp->vid->hbrd) ? 0xff : comp->vid->atrbyte & 0xff;
-}
-
 // out
 
 void penOut7FFD(Computer* comp, int port, int val) {
@@ -29,7 +25,7 @@ static xPort penPortMap[] = {
 	{0x05a3,0xfadf,0,2,2,xInFADF,	NULL},		// mouse
 	{0x05a3,0xfbdf,0,2,2,xInFBDF,	NULL},
 	{0x05a3,0xffdf,0,2,2,xInFFDF,	NULL},
-	{0x0000,0x0000,2,2,2,penInFF,	NULL}
+	{0x0000,0x0000,2,2,2,zx_in_float,	NULL}
 };
 
 void penOut(Computer* comp, int port, int val) {

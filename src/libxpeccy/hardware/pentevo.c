@@ -378,10 +378,6 @@ int evoInBFF7(Computer* comp, int port) {	// !dos
 	return (comp->pEFF7 & 0x80) ? evoInBEF7(comp, port) : 0xff;
 }
 
-int evoInFF(Computer* comp, int port) {
-	return (comp->vid->vbrd || comp->vid->hbrd) ? 0xff : comp->vid->atrbyte & 0xff;
-}
-
 // out
 
 // out (#BE),a - leave the NMI handler and the trd emulation both
@@ -582,7 +578,7 @@ static xPort evoPortMap[] = {
 	{0xffff,0xdff7,0,2,2,NULL,	evoOutDFF7},
 	{0xffff,0xeff7,0,2,2,NULL,	evoOutEFF7},
 
-	{0x0000,0x0000,2,2,2,evoInFF,	NULL}
+	{0x0000,0x0000,2,2,2,zx_in_float,	NULL}
 };
 
 void evoOutCmn(Computer* comp, int port, int val) {

@@ -448,6 +448,7 @@ typedef struct {
 	unsigned brd4t:1;
 	unsigned snow:1;		// the ULA snow effect
 	unsigned snowcrash:1;		// ...and ram that cannot take it
+	int floatbus;			// FBUS_*: what a port nothing answers reads back
 	int psgCount;
 	int psgType;			// SND_*
 	double psgFrq;			// MHz, 0 = the chip type's own clock

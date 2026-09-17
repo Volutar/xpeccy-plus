@@ -110,6 +110,8 @@ xPortValue* hwGetPorts(Computer*);
 HardWare* findHardware(const char*);
 int stdMRd(Computer*, int, int);
 void stdMWr(Computer*, int, int);
+int asicMRd(Computer*, int, int);	// stdMRd/stdMWr plus the +2A/+3 bus latch
+void asicMWr(Computer*, int, int);
 
 // debug IO
 
@@ -134,6 +136,7 @@ void xOutBFFD(Computer*, int, int);
 void xOutFFFD(Computer*, int, int);
 
 int xIn1F(Computer*, int);
+int zx_in_float(Computer*, int);	// a port nothing answers: the floating bus
 int xInFE(Computer*, int);
 int xInFFFD(Computer*, int);
 int xInFADF(Computer*, int);

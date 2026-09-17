@@ -46,6 +46,14 @@ enum {
 	EAR_ISSUE2		// bit 4 or bit 3 (the tape output)
 };
 
+// What a port nothing answers reads back. See zx_in_float() in hardware/common.c.
+enum {
+	FBUS_NONE = 0,	// nothing: it reads #FF
+	FBUS_ULA,	// the Ferranti ULA of the 48K/128K/+2: the byte it is fetching
+	FBUS_ASIC,	// the Amstrad gate array of the +2A/+3: the same, its own way
+	FBUS_ATTR	// the clones' port #FF: the attribute of the cell being shown
+};
+
 enum {
 	DBG_VIEW_CODE = 0x00,
 	DBG_VIEW_BYTE = 0x10,
@@ -128,6 +136,8 @@ typedef struct Computer {
 	char* msg;		// message ptr for displaying outside
 	int resbank;		// rompart active after reset
 	int earback;		// EAR_*: the ear input with no tape playing
+	int fbus;		// FBUS_*: what a port nothing answers reads back
+	unsigned char fbusLast;	// last byte to or from contended memory (FBUS_ASIC)
 
 	int snowBad;		// the ULA took a refresh cycle: the next opcode out of
 				// slow memory comes back wrong (flgSNOWX)

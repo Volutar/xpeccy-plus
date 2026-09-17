@@ -220,8 +220,16 @@ void vid_set_mode(Video*,int);
 void vid_reset_ray(Video*);
 void vid_set_ray(Video*, int);
 
+// How far an i/o cycle's ULA window sits from a memory cycle's at the same ray,
+// in dots. Fuse anchors both at the same tstate, but ula128.tap - which matches a
+// real 128K and Spectaculator pixel for pixel - only comes out right this way, so
+// the test wins over the model until we know why they differ. The wait states and
+// the floating bus are both read through it.
+#define IO_CONT_DOTS (-4)
+
 int vid_wait_dots(Video*, int, int, int);	// contention wait in dots, not ns
 int vid_snow(Video*, int, int);			// cpu refresh cycle: disturb the ULA if it is fetching now
+int vid_float_bus(Video*);			// the byte the ULA has on the bus now, -1 if none
 void vid_dark_tail(Video*);
 
 void vid_clear_image(void);

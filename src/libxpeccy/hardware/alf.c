@@ -99,7 +99,7 @@ static xPort alf_port_map[] = {
 	{0xc002,0x7ffd,2,2,2,NULL,	alf_out7FFD},
 	{0xc002,0xbffd,2,2,2,NULL,	xOutBFFD},
 	{0xc002,0xfffd,2,2,2,xInFFFD,	xOutFFFD},
-	{0x0000,0x0000,2,2,2,NULL,	NULL}
+	{0x0000,0x0000,2,2,2,zx_in_float,NULL}
 };
 
 int alf_ird(Computer* comp, int adr) {

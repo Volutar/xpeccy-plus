@@ -110,6 +110,12 @@ static xMacWord earTab[] = {
 	{"none", EAR_NONE}, {"2", EAR_ISSUE2}, {"3", EAR_ISSUE3}, {NULL, 0}
 };
 
+// what a port nothing answers reads back
+static xMacWord fbusTab[] = {
+	{"none", FBUS_NONE}, {"ula", FBUS_ULA},
+	{"asic", FBUS_ASIC}, {"attr", FBUS_ATTR}, {NULL, 0}
+};
+
 static int mac_word(xMacWord* tab, const std::string& val, int def, const char* id) {
 	for (int i = 0; tab[i].name; i++) {
 		if (!strcmp(tab[i].name, val.c_str())) return tab[i].val;
@@ -192,7 +198,7 @@ static const struct {
 	{"contmem", "machine"}, {"scrp.wait", "machine"},
 	{"geometry", "video"}, {"contPattern", "video"}, {"earlyTiming", "video"},
 	{"4t-border", "video"}, {"ULAplus", "video"}, {"DDpal", "video"},
-	{"snow", "video"}, {"snow.crash", "video"},
+	{"snow", "video"}, {"snow.crash", "video"}, {"floatbus", "video"},
 	{"psg.count", "sound"}, {"psg.type", "sound"}, {"psg.frq", "sound"},
 	{"psg.stereo", "sound"}, {"gs", "sound"},
 	{"saa", "sound"}, {"soundrive", "sound"},
@@ -255,6 +261,7 @@ static void mac_defaults(xMachine& mac) {
 	mac.brd4t = 0;
 	mac.snow = 0;
 	mac.snowcrash = 0;
+	mac.floatbus = FBUS_NONE;
 	mac.ramCold.clear();
 	mac.ramNoise = 0;
 	mac.psgCount = 1;
@@ -308,6 +315,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "4t-border") mac.brd4t = arg.b;
 			else if (nam == "snow") mac.snow = arg.b;
 			else if (nam == "snow.crash") mac.snowcrash = arg.b;
+			else if (nam == "floatbus") mac.floatbus = mac_word(fbusTab, val, FBUS_NONE, id);
 			else if (nam == "ULAplus") mac.ulaplus = arg.b;
 			else if (nam == "DDpal") mac.ddpal = arg.b;
 		} else if (ln.sect == "sound") {
@@ -818,6 +826,7 @@ static void mac_from_def(const xMachine* mac) {
 	mac_cold_ram(comp, mac->ramCold, mac->ramNoise);
 	comp->resbank = mac->resbank;
 	comp->earback = mac->earback;
+	comp->fbus = mac->floatbus;
 	comp->flgCNTI = mac->contio;
 	comp->flgCNTM = mac->contmem;
 	comp->flgEM1 = mac->scrpwait;
@@ -948,6 +957,7 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put_yn(out, "4t-border", comp->vid->brdstep & 0x06, mac->brd4t);
 	mac_put_yn(out, "snow", comp->flgSNOW, mac->snow);
 	mac_put_yn(out, "snow.crash", comp->flgSNOWX, mac->snowcrash);
+	mac_put(out, "floatbus", mac_word_name(fbusTab, comp->fbus), mac_word_name(fbusTab, mac->floatbus));
 	mac_put_yn(out, "ULAplus", comp->vid->ula->enabled, mac->ulaplus);
 	mac_put_yn(out, "DDpal", comp->flgDDP, mac->ddpal);
 	mac_put(out, "psg.count", mac_psg_count(comp), mac->psgCount);

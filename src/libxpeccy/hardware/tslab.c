@@ -201,10 +201,6 @@ int tsInBFF7(Computer* comp, int port) {
 	return res;
 }
 
-int tsInFFnd(Computer* comp, int port) {
-	return (comp->vid->vbrd || comp->vid->hbrd) ? 0xff : comp->vid->atrbyte & 0xff;
-}
-
 // out
 
 void tsOutBDI(Computer* comp, int port, int val) {		// dos
@@ -601,7 +597,7 @@ static xPort tsPortMap[] = {
 	{0x009f,0x001f,1,2,2,tsInBDI,	tsOutBDI},	// 1f,3f,5f,7f
 	{0x00ff,0x00ff,1,2,2,tsInFF,	tsOutFF},	// ff
 
-	{0x0000,0x0000,2,2,2,tsInFFnd,	NULL},
+	{0x0000,0x0000,2,2,2,zx_in_float,	NULL},
 };
 
 // FMAPS register window: writing a byte there is the same as out to the matching #xxAF port
