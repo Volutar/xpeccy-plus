@@ -70,6 +70,9 @@ int saveWAV(Computer* comp, const char* name, int drv) {
 		hd.blockAlign = 1;
 		hd.bitsPerSample = 8;
 		memcpy(hd.subchunk2Id, "data", 4);
+		// neither size is known until the samples are written: both are filled
+		// in below
+		hd.chunkSize = 0;
 		hd.subchunk2Size = 0;
 
 		FILE* file = fopen(name, "wb");
@@ -95,7 +98,9 @@ int saveWAV(Computer* comp, const char* name, int drv) {
 					}
 				}
 			}
-			fseek(file, sizeof(wavHead) - 4, SEEK_SET);
+			fseek(file, 4, SEEK_SET);		// riff size: everything after it
+			fputi(sz + sizeof(wavHead) - 8, file);
+			fseek(file, sizeof(wavHead) - 4, SEEK_SET);	// data size
 			fputi(sz, file);
 			fclose(file);
 		} else {
