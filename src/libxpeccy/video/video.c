@@ -635,6 +635,14 @@ void vid_scr_adr(int base, int x, int y, int* pix, int* atr) {
 static int contTabA[] = {12,11,10,9,8,7,6,5,4,3,2,1,0,0,0,0};		// 48K 128K +2 (bank 1,3,5,7)
 static int contTabB[] = {2,1,0,0,14,13,12,11,10,9,8,7,6,5,4,3};		// +2A +3 (bank 4,5,6,7)
 
+// Where the ray stands in the ULA's fetch group, counted from the dot it
+// starts fetching on - which is ahead of the first pixel it will show. The
+// wait table, the snow phase and the floating bus all hang on this one
+// number, so it is written once. dotofs is the caller's own anchor.
+static int ula_fetch_x(Video* vid, int dotofs) {
+	return vid->ray.x - vid->bord.x + (vid->ula->early ? 10 : 8) + dotofs;
+}
+
 // The delay for one bus cycle, read at the dot the cycle starts on. Returns
 // dots, not nanoseconds: the callers want time in fixed point, so multiplying
 // by the dot period here would both round and be thrown away.
@@ -643,7 +651,7 @@ static int contTabB[] = {2,1,0,0,14,13,12,11,10,9,8,7,6,5,4,3};		// +2A +3 (bank
 // Amstrad ASIC of the +2A/+3 only the former - same split as fuse's
 // ula_contention / ula_contention_no_mreq.
 // dotofs shifts the window for callers whose cycle is anchored differently -
-// see IO_CONT_DOTS in spectrum.c
+// see IO_CONT_DOTS
 int vid_wait_dots(Video* vid, int adr, int mreq, int dotofs) {
 	int xscr;
 	int* contTab = NULL;
@@ -661,9 +669,7 @@ int vid_wait_dots(Video* vid, int adr, int mreq, int dotofs) {
 	if (!contTab) return 0;				// unknown patern
 	if (!adr) return 0;				// address not in contention limits
 	if (vid->vbrd) return 0;			// border (vertical)
-	xscr = vid->ray.x - vid->bord.x;
-	// dots the ULA starts fetching ahead of the first displayed pixel
-	xscr += (vid->ula->early ? 10 : 8) + dotofs;
+	xscr = ula_fetch_x(vid, dotofs);
 	if (xscr < 0) return 0;				// line before contention
 	if (xscr >= vid->scrn.x) return 0;		// line after contention
 	return contTab[xscr & 0x0f];			// wait length in dots
@@ -719,7 +725,7 @@ static int ula_burst_adr(Video* vid, int adr) {
 int vid_snow(Video* vid, int r, int bank) {
 	if (vid->ula->conttype != CONT_PATA) return 0;	// the Ferranti ULA and nothing else
 	if (vid->vbrd) return 0;
-	switch (((vid->ray.x - vid->bord.x + (vid->ula->early ? 10 : 8)) & 15) >> 1) {
+	switch ((ula_fetch_x(vid, 0) & 15) >> 1) {
 		case ULA_SNOW_PH:
 			vid->snowLow = r & 0x7f;
 			vid->snowBank = bank;
@@ -729,6 +735,36 @@ int vid_snow(Video* vid, int r, int bank) {
 			return 1;
 	}
 	return 0;
+}
+
+// FLOATING BUS
+//
+// The ULA reads a 16-pixel group as four bytes back to back - pixels,
+// attribute, next pixels, next attribute, two dots each - and then leaves the
+// bus alone for the other eight dots of the group. A cpu read of a port
+// nothing answers sees whatever is there, which is how a program can tell
+// where the beam is.
+//
+// The wait table counts down to the end of the burst, so the four reads are
+// the last eight dots of the window it holds the cpu for - four dots before
+// the group they belong to reaches the screen. This is only ever read by an
+// i/o cycle, which sits IO_CONT_DOTS from a memory one, so both corrections
+// are in the anchor here.
+//
+// Returns the byte on the bus, or -1 while it is idle - what that means is the
+// caller's, since the machines that have one answer differently.
+int vid_float_bus(Video* vid) {
+	int x, y, col, phase, pix, atr;
+	if (vid->vbrd) return -1;
+	x = ula_fetch_x(vid, IO_CONT_DOTS - 4);
+	if (x < 0) return -1;			// left border, before the first burst
+	if (x >= vid->scrn.x) return -1;	// right border and retrace
+	phase = (x >> 1) & 7;			// two dots per read, four reads then idle
+	if (phase > 3) return -1;
+	y = vid->ray.y - vid->bord.y;
+	col = ((x >> 4) << 1) | (phase >> 1);	// a group is two character cells
+	vid_scr_adr(0, col << 3, y, &pix, &atr);
+	return vid->mrd(MADR(vid->vidPage, (phase & 1) ? atr : pix), vid->xptr) & 0xff;
 }
 
 void vid_set_grey(int f) {

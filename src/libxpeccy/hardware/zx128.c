@@ -12,10 +12,6 @@ void z128MapMem(Computer* comp) {
 
 // in
 
-int z128InFF(Computer* comp, int port) {
-	return (comp->vid->vbrd || comp->vid->hbrd) ? 0xff : comp->vid->atrbyte & 0xff;
-}
-
 // out
 
 void z128Out7FFD(Computer* comp, int port, int val) {
@@ -35,7 +31,7 @@ static xPort z128PortMap[] = {
 	{0x05a3,0xfadf,0,2,2,xInFADF,	NULL},		// mouse
 	{0x05a3,0xfbdf,0,2,2,xInFBDF,	NULL},
 	{0x05a3,0xffdf,0,2,2,xInFFDF,	NULL},
-	{0x0000,0x0000,2,2,2,z128InFF,	NULL}
+	{0x0000,0x0000,2,2,2,zx_in_float,	NULL}
 };
 
 void z128Out(Computer* comp, int port, int val) {

@@ -146,7 +146,7 @@ static xPort prfPortMap[] = {
 	{0x009f,0x001f,1,2,0,prfInBDI,	prfOutBDI},	// BDI 1f,3f,5f,7d
 	{0x00ff,0x00ff,1,2,0,prfInBDIFF,prfOutBDIFF},	// BDI ff
 
-	{0x0000,0x0000,2,2,2,NULL,	NULL}
+	{0x0000,0x0000,2,2,2,zx_in_float,NULL}
 };
 
 void prfOut(Computer* comp, int port, int val) {

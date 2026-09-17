@@ -11,6 +11,12 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **The floating bus**, on every machine that has one - the 48K, 128K and +2 the
+  Sinclair way, the +2A and +3 the Amstrad way. Reading a port nothing answers gives
+  back the byte the ULA is fetching for the screen, which is how games like Cobra and
+  Sidewize follow the beam. What a machine does is on the Model page of Options, under
+  Advanced settings.
+
 - **Snapshots can be saved as `.z80`**, not only `.sna`. Give the name a `.z80`
   ending in the save dialog. The file holds the whole 128K (256K on a Scorpion),
   the AY registers and where the beam was, and comes out three to five times

@@ -2,10 +2,6 @@
 
 // in
 
-int p3InFF(Computer* comp, int port) {
-	return (comp->vid->vbrd || comp->vid->hbrd) ? 0xff : comp->vid->atrbyte & 0xff;
-}
-
 int p3_dos_rd(Computer* comp, int port) {
 	int res = -1;
 	difIn(comp->dif, port, &res, 0);
@@ -41,7 +37,7 @@ static xPort p3PortMap[] = {
 	{0xe002,0x2ffd,2,2,2,p3_dos_rd,	p3_dos_wr},	// 2ffd/3ffd
 	{0xf002,0x1ffd,2,2,2,NULL,	p3Out1FFD},
 	{0x0003,0x00fe,2,2,2,xInFE,	xOutFE},
-	{0x0000,0x0000,2,2,2,p3InFF,	NULL}
+	{0x0000,0x0000,2,2,2,zx_in_float,	NULL}
 };
 
 void pl3Out(Computer* comp, int port, int val) {
@@ -64,4 +60,4 @@ xPortDsc pl3_port_tab[] = {
 
 void plusRes(Computer*);
 HardWare pl3_hw_core = {HW_PLUS3,"Plus3","Spectrum +3",MEM_128K,1.0,NULL,pl3_port_tab,
-			zx_init,pl2MapMem,pl3Out,pl3In,stdMRd,stdMWr,zx_irq,zx_ack,plusRes,zx_sync,zx_keyp,zx_keyr,zx_vol};
+			zx_init,pl2MapMem,pl3Out,pl3In,asicMRd,asicMWr,zx_irq,zx_ack,plusRes,zx_sync,zx_keyp,zx_keyr,zx_vol};

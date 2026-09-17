@@ -392,6 +392,10 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.cbContPattern->addItem("No contention", CONT_NONE);
 	ui.cbContPattern->addItem("ULA type A", CONT_PATA);
 	ui.cbContPattern->addItem("ULA type B", CONT_PATB);
+	ui.cbFloatBus->addItem("None", FBUS_NONE);
+	ui.cbFloatBus->addItem("ULA", FBUS_ULA);
+	ui.cbFloatBus->addItem("Gate array", FBUS_ASIC);
+	ui.cbFloatBus->addItem("Port #FF", FBUS_ATTR);
 	ui.cbEarBack->addItem("Issue 3", EAR_ISSUE3);
 	ui.cbEarBack->addItem("Issue 2", EAR_ISSUE2);
 	ui.cbEarBack->addItem("Nothing", EAR_NONE);
@@ -779,6 +783,7 @@ void SetupWin::start() {
 	ui.contIO->setChecked(comp->flgCNTI);
 	setRFIndex(ui.cbContPattern, comp->vid->ula->conttype);
 	setRFIndex(ui.cbEarBack, comp->earback);
+	setRFIndex(ui.cbFloatBus, comp->fbus);
 	ui.cbEarlyTiming->setChecked(comp->vid->ula->early);
 	ui.cbSnow->setChecked(comp->flgSNOW);
 	ui.cbSnowCrash->setChecked(comp->flgSNOWX);
@@ -1004,6 +1009,7 @@ void SetupWin::apply() {
 	comp->flgCNTI = ui.contIO->isChecked() ? 1 : 0;
 	comp->vid->ula->conttype = getRFIData(ui.cbContPattern);
 	comp->earback = getRFIData(ui.cbEarBack);
+	comp->fbus = getRFIData(ui.cbFloatBus);
 	comp->vid->ula->early = ui.cbEarlyTiming->isChecked();
 	comp_set_snow(comp, ui.cbSnow->isChecked() ? 1 : 0);
 	comp->flgSNOWX = ui.cbSnowCrash->isChecked() ? 1 : 0;

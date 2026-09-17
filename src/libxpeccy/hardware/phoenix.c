@@ -50,10 +50,6 @@ int phxInF7(Computer* comp, int port) {
 	return 0x00;
 }
 
-int phxInFF(Computer* comp, int port) {
-	return (comp->vid->vbrd || comp->vid->hbrd) ? 0xff : comp->vid->atrbyte & 0xff;
-}
-
 static xPort phxPortMap[] = {
 	{0x00ff,0x001f,0,2,2,xIn1F,	NULL},		// joystick
 	{0x0007,0x00fe,2,2,2,xInFE,	xOutFE},	// FE
@@ -67,7 +63,7 @@ static xPort phxPortMap[] = {
 	{0xffff,0xffdf,2,2,2,xInFFDF,	NULL},
 
 	{0xffff,0x00f7,2,2,2,phxInF7,	NULL},		// version
-	{0x0000,0x0000,2,2,2,phxInFF,	NULL}
+	{0x0000,0x0000,2,2,2,zx_in_float,	NULL}
 };
 
 void phxOut(Computer* comp, int port, int val) {

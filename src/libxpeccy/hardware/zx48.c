@@ -62,11 +62,6 @@ int spIn1F(Computer* comp, int port) {
 	return joyInput(comp->joy);
 }
 
-int spInFF(Computer* comp, int port) {
-	return (comp->vid->vbrd || comp->vid->hbrd) ? 0xff : comp->vid->atrbyte & 0xff;
-	//return comp->vid->atrbyte;
-}
-
 static xPort spePortMap[] = {
 	{0x0001,0x00fe,2,2,2,xInFE,	xOutFE},
 	{0xc002,0xfffd,2,2,2,xInFFFD,	xOutFFFD},
@@ -75,8 +70,7 @@ static xPort spePortMap[] = {
 	{0x0720,0xfbdf,2,2,2,xInFBDF,	NULL},
 	{0x0720,0xffdf,2,2,2,xInFFDF,	NULL},
 	{0x0021,0x001f,0,2,2,spIn1F,	NULL},
-	{0x0000,0x0000,0,2,2,spInFF,	NULL},		// all unknown ports is FF (nodos)
-	{0x0000,0x0000,2,2,2,NULL,	NULL}
+	{0x0000,0x0000,2,2,2,zx_in_float,NULL}		// a port nothing answers: the floating bus
 };
 
 void speOut(Computer* comp, int port, int val) {

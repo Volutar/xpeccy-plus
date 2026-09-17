@@ -955,21 +955,69 @@ none for the clones</string>
                  </property>
                 </widget>
                </item>
-               <item row="6" column="0">
+               <item row="6" column="1">
+                <widget class="QLabel" name="nam_cbFloatBus">
+                 <property name="toolTip">
+                  <string>What a port nothing answers reads back:
+none - #FF
+ULA - the byte the 48K/128K ULA is fetching
+gate array - the same on a +2A/+3, on its own ports
+port #FF - the clones: the attribute being shown</string>
+                 </property>
+                 <property name="text">
+                  <string>Floating bus</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="2">
+                <layout class="QHBoxLayout" name="hl_cbFloatBus">
+                 <item>
+                  <widget class="QComboBox" name="cbFloatBus">
+                   <property name="toolTip">
+                    <string>What a port nothing answers reads back:
+none - #FF
+ULA - the byte the 48K/128K ULA is fetching
+gate array - the same on a +2A/+3, on its own ports
+port #FF - the clones: the attribute being shown</string>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>170</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="sp_cbFloatBus">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>10</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </item>
+               <item row="7" column="0">
                 <widget class="QCheckBox" name="cbSnow">
                  <property name="text">
                   <string/>
                  </property>
                 </widget>
                </item>
-               <item row="6" column="1">
+               <item row="7" column="1">
                 <widget class="QLabel" name="nam_cbSnow">
                  <property name="text">
                   <string>ULA snow...</string>
                  </property>
                 </widget>
                </item>
-               <item row="6" column="2">
+               <item row="7" column="2">
                 <widget class="QLabel" name="lab_cbSnow">
                  <property name="font">
                   <font>
@@ -981,21 +1029,21 @@ none for the clones</string>
                  </property>
                 </widget>
                </item>
-               <item row="7" column="0">
+               <item row="8" column="0">
                 <widget class="QCheckBox" name="cbSnowCrash">
                  <property name="text">
                   <string/>
                  </property>
                 </widget>
                </item>
-               <item row="7" column="1">
+               <item row="8" column="1">
                 <widget class="QLabel" name="nam_cbSnowCrash">
                  <property name="text">
                   <string>...and it crashes</string>
                  </property>
                 </widget>
                </item>
-               <item row="7" column="2">
+               <item row="8" column="2">
                 <widget class="QLabel" name="lab_cbSnowCrash">
                  <property name="font">
                   <font>
@@ -1007,28 +1055,28 @@ none for the clones</string>
                  </property>
                 </widget>
                </item>
-               <item row="8" column="0" colspan="3">
+               <item row="9" column="0" colspan="3">
                 <widget class="Line" name="advline_1">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
                  </property>
                 </widget>
                </item>
-               <item row="9" column="0">
+               <item row="10" column="0">
                 <widget class="QCheckBox" name="ulaPlus">
                  <property name="text">
                   <string/>
                  </property>
                 </widget>
                </item>
-               <item row="9" column="1">
+               <item row="10" column="1">
                 <widget class="QLabel" name="nam_ulaPlus">
                  <property name="text">
                   <string>ULA plus</string>
                  </property>
                 </widget>
                </item>
-               <item row="9" column="2">
+               <item row="10" column="2">
                 <widget class="QLabel" name="lab_ulaPlus">
                  <property name="font">
                   <font>
@@ -1040,21 +1088,21 @@ none for the clones</string>
                  </property>
                 </widget>
                </item>
-               <item row="10" column="0">
+               <item row="11" column="0">
                 <widget class="QCheckBox" name="scrpwait">
                  <property name="text">
                   <string/>
                  </property>
                 </widget>
                </item>
-               <item row="10" column="1">
+               <item row="11" column="1">
                 <widget class="QLabel" name="nam_scrpwait">
                  <property name="text">
                   <string>Even M1</string>
                  </property>
                 </widget>
                </item>
-               <item row="10" column="2">
+               <item row="11" column="2">
                 <widget class="QLabel" name="lab_scrpwait">
                  <property name="font">
                   <font>
@@ -1066,21 +1114,21 @@ none for the clones</string>
                  </property>
                 </widget>
                </item>
-               <item row="11" column="0">
+               <item row="12" column="0">
                 <widget class="QCheckBox" name="cbDDp">
                  <property name="text">
                   <string/>
                  </property>
                 </widget>
                </item>
-               <item row="11" column="1">
+               <item row="12" column="1">
                 <widget class="QLabel" name="nam_cbDDp">
                  <property name="text">
                   <string>DD palette</string>
                  </property>
                 </widget>
                </item>
-               <item row="11" column="2">
+               <item row="12" column="2">
                 <widget class="QLabel" name="lab_cbDDp">
                  <property name="font">
                   <font>
@@ -1092,7 +1140,7 @@ none for the clones</string>
                  </property>
                 </widget>
                </item>
-               <item row="12" column="1">
+               <item row="13" column="1">
                 <widget class="QLabel" name="nam_cbEarBack">
                  <property name="toolTip">
                   <string>What bit 6 of port #FE reads back with no tape playing:
@@ -1105,7 +1153,7 @@ none - nothing comes back (+2A, +3)</string>
                  </property>
                 </widget>
                </item>
-               <item row="12" column="2">
+               <item row="13" column="2">
                 <layout class="QHBoxLayout" name="hl_cbEarBack">
                  <item>
                   <widget class="QComboBox" name="cbEarBack">

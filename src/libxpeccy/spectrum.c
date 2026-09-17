@@ -156,12 +156,6 @@ void memwr(int adr, int val, void* ptr) {
 // i/o contention uses the no-mreq table (fuse: ula_contend_port_early/late),
 // so the +2A/+3 asic contends no i/o at all. The address is a stand-in for
 // "a contended page" - the caller has already looked at the port itself.
-//
-// The i/o window sits two ticks later than the memory one. Fuse anchors both
-// at the same tstate, but ula128.tap - which matches a real 128K and
-// Spectaculator pixel for pixel - only comes out right this way, so the test
-// wins over the model until we know why they differ.
-#define IO_CONT_DOTS (-4)
 
 void zx_cont_delay(Computer* comp) {
 	long long wns = vid_wait_dots(comp->vid, 5 << 14, 0, IO_CONT_DOTS) * (long long)comp->vid->nsPerDotFixed;	// video is already at end of wait cycle

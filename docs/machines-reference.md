@@ -39,6 +39,15 @@ Contention patterns are `vid_wait_dots()` in `video/video.c`: 1 is the Ferranti 
 `12,11,...,1,0,0,0,0` over banks 1/3/5/7, 2 the Amstrad ASIC's `2,1,0,0,14,...,3` over banks
 4-7 and mreq cycles only, 0 is no contention at all.
 
+`floatbus` is what a port nothing answers reads back. The 48K, 128K and +2 get `ula`, the
++2A and +3 `asic`; both were checked against Woodmass's Float48K and Float128K, where the
+first of the four bytes lands one tick earlier than fuse prints it because these machines
+run early timings. The clones get `attr`, the documented port `#FF` that hands back the
+attribute of the cell being shown - not a floating bus, but what this emulator has always
+done for them and what a demo written for a Pentagon expects. The +2A/+3 rules (ports
+1, 5, ... 4093, paging on, bit 0 forced, the last contended-memory byte between fetches)
+are Ast A. Moore and Hikaru's, sky.relative-path.com/zx/floating_bus.html.
+
 The `issue` key is what bit 6 of `#FE` reads back with no tape playing, and only two values
 are settled. The 48K/128K/+2 get issue 3 - bit 4 of the last `OUT #FE` - from the World of
 Spectrum 48K reference, which also gives issue 2 as bit 4 *or* bit 3; issue 2 is a board
