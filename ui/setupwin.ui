@@ -1985,20 +1985,20 @@ thin, lower it again after a long clean spell</string>
               <item>
                <widget class="QCheckBox" name="dcbox">
                 <property name="toolTip">
-                 <string>Cuts the very lowest frequencies.&#10;The chips sit above zero rather than&#10;around it, which wastes loudness.</string>
+                 <string>Cuts the very lowest frequencies.&#10;The chips sit above zero rather than&#10;around it. That offset is not sound,&#10;and it wastes loudness the rest of&#10;the mix could use.</string>
                 </property>
                 <property name="text">
-                 <string>DC filter</string>
+                 <string>Low cut (DC)</string>
                 </property>
                </widget>
               </item>
               <item>
                <widget class="QCheckBox" name="chkSndFilter">
                 <property name="toolTip">
-                 <string>Cuts the very highest frequencies.&#10;Too high to be played, they fold back&#10;down and are heard as false notes.</string>
+                 <string>Cuts the very highest frequencies.&#10;The sound is worked out 32 times more&#10;often than the sound card plays it,&#10;and anything too high for the card to&#10;carry folds back down and is heard as&#10;notes that were never played.&#10;512 tap filter; costs a little cpu.</string>
                 </property>
                 <property name="text">
-                 <string>Anti-alias filter</string>
+                 <string>High cut (anti-alias)</string>
                 </property>
                </widget>
               </item>
