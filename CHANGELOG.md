@@ -121,6 +121,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **Two wrong flags in the Z80.** `BIT n,r` and `CPI` left the wrong value in the two
+  undocumented flag bits. Only something written to tell one processor from another
+  would notice, but that is what those programs are for.
+
 - **`RETI` puts the interrupt state back**, the way the processor does and `RETN`
   already did here. It changes nothing unless a program returns from an interrupt
   with it and counts on that.

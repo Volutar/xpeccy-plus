@@ -1,61 +1,22 @@
-# Tests where our Z80 gets the timing right but the result wrong. Each is a real
-# core bug, kept here so a new one stands out instead of hiding in the count.
+# Tests where our Z80 gets the timing right but the result wrong. Each is kept
+# here so a new one stands out instead of hiding in the count.
 #
-#   BIT n,r          does not copy bits 3 and 5 from the operand   (cb4x..cb7x)
-#   SCF / CCF        takes bits 3 and 5 from the wrong place       (37_1, 3f)
-#   CPI / CPDR       flag bits 3 and 5                             (eda1, edb9_2)
-#   INIR/OTIR/...    MEMPTR, and flags on some of them             (edb[23ab]_1)
+#   SCF / CCF        bits 3 and 5 (37_1, 3f). Ours are taken from A alone; the
+#                    hardware ors in the last flag update as well, which needs a
+#                    Q register the core does not have. Rak's z80full fails the
+#                    same four tests (SCF, CCF, SCF/CCF (ST)).
+#
+#   INIR/OTIR/OTDR   the iteration that repeats: the flags it leaves (edb[23b]_1)
+#   CPDR             and the same for cpdr (edb9_2), and MEMPTR (edba_1). Here it
+#                    is fuse's expected data that is old - it predates David
+#                    Banks' 2018 flag findings and the 2023 one that all four i/o
+#                    block instructions put pc+1 in MEMPTR when they repeat. We
+#                    follow both, and Rak's z80full and z80memptr, which compare
+#                    against a real machine, pass every one of these.
 #
 # Regenerate after a fix: ./run.sh, then take the names under "--- state".
 37_1
 3f
-cb40
-cb42
-cb44
-cb45
-cb47_1
-cb48
-cb49
-cb4a
-cb4b
-cb4c
-cb4d
-cb4f_1
-cb50
-cb51
-cb52
-cb53
-cb54
-cb55
-cb57_1
-cb57
-cb59
-cb5b
-cb5f_1
-cb60
-cb61
-cb63
-cb64
-cb65
-cb67_1
-cb68
-cb69
-cb6d
-cb6f_1
-cb71
-cb72
-cb73
-cb74
-cb75
-cb77_1
-cb78
-cb79
-cb7a
-cb7b
-cb7d
-cb7f_1
-cb7f
-eda1
 edb2_1
 edb3_1
 edb9_2

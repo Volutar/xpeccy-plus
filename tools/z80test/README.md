@@ -10,9 +10,15 @@ CC=C:/Qt/Tools/mingw1120_64/bin/gcc.exe ./run.sh      # windows, qt toolchain
 ```
 
 It exits 0 when the run matches `known-failures.txt` - a list of state failures
-that are real core bugs nobody has fixed yet - and 1 as soon as a timing failure
-turns up or that list changes either way. So a nonzero exit means *something
-moved*, not *the core is imperfect*.
+that have been looked at and left, with the reason beside each - and 1 as soon as
+a timing failure turns up or that list changes either way. So a nonzero exit
+means *something moved*, not *the core is imperfect*.
+
+Fuse's data is from 2017 and a couple of its expectations have been overtaken by
+later research, so it is not the last word. Patrik Rak's
+[Zilog Z80 CPU Test Suite](https://github.com/raxoft/z80test) compares against
+CRCs taken off a real 48K instead; it runs inside the emulator as a `.tap` and is
+what settles a disagreement with the vectors here.
 
 Failures come out in two groups, because they mean different things:
 
