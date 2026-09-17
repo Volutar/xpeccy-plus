@@ -384,7 +384,7 @@ void edA1(CPU* cpu) {
 	cpu->flgN = 1;
 	if (cpu->flgH) cpu->tmpw--;
 	cpu->flgF5 = !!(cpu->tmpw & 2);
-	cpu->flgF3 = !!(cpu->tmpw & 3);
+	cpu->flgF3 = !!(cpu->tmpw & 8);
 	cpu->regWZ++;
 }
 
