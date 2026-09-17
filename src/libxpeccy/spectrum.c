@@ -346,7 +346,8 @@ int iord(int port, void* ptr) {
 			return res;
 		} else {
 			rzxStop(comp);
-			xlog(XLG_CORE, XLL_DEBUG, "overIO");
+			xlog(XLG_CORE, XLL_DEBUG, "overIO frame %i pc=%04X port=%04X size=%i fetch-left %i",
+				comp->rzx.fCurrent, cpu_get_pc(comp->cpu), port, comp->rzx.frm.size, comp->rzx.frm.fetches);
 			comp->rzx.overio = 1;
 			return 0xff;
 		}

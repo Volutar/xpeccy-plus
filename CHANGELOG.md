@@ -121,6 +121,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **RZX recordings play again on Windows**, where opening one always failed with
+  "can't open file" - the scratch file it unpacks into was asked for in the root of
+  the system drive. Some recordings still stop part-way with a playback error.
+
 - **A saved `.sna` was losing three registers.** BC', DE' and HL' all went into the
   same place in the header, so two of them were dropped and the third held the wrong
   pair - a snapshot saved from here and loaded back resumed with the wrong values.
