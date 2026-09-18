@@ -82,9 +82,11 @@ void blkAddPulse(TapeBlock* blk, int len, int vol) {
 }
 
 // add pause. duration in mks
+// A pause is silence on the tape, not a level held: the centre puts no dc step in
+// the mix. Bit 7 is the ear bit and still flips, so a loader sees no change.
 void blkAddPause(TapeBlock* blk, int len) {
 	if (len < 1) return;
-	blkAddPulse(blk, len, -1);
+	blkAddPulse(blk, len, blk->vol ? 0x80 : 0x7f);
 }
 
 // add wave (2 pulses)

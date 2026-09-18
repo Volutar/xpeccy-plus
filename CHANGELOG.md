@@ -90,6 +90,13 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **A pause on the tape held a level instead of being silent**, which put a constant
+  offset on the sound between blocks and clicked at each end of it. *(thanks to Volutar)*
+
+- **The tape input sat on the sound even with no tape**, putting half its volume into
+  the mix as a constant and taking that much headroom from everything else. A machine
+  with nothing running is silent now. *(thanks to Volutar)*
+
 - **`IN #FE` bit 6** reads back the machine's own last `OUT #FE`, which is how a program tells
   an issue 2 board from an issue 3 one. Which board a machine is is a setting on the Machine
   page, and the +2A/+3 feed nothing back at all, as they really do.
