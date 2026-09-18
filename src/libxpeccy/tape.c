@@ -41,6 +41,42 @@ void tape_set_path(Tape* tap, const char* path) {
 	}
 }
 
+// signal edge detector
+
+#define EDGE_FIX	8			// fraction bits of the running averages
+#define EDGE_FLOOR	(150 << EDGE_FIX)	// a swing smaller than this is silence, not a signal
+
+// the averages follow the tape over ~12 ms, an order above the shortest pulse
+void tape_edge_reset(TapeEdge* det, int rate) {
+	int n = rate / 80;
+	det->shift = 1;
+	while ((1 << (det->shift + 1)) <= n)
+		det->shift++;
+	det->lev = 0;
+	det->first = 1;
+	det->dc = 0;
+	det->env = 0;
+}
+
+int tape_edge_step(TapeEdge* det, int amp) {
+	int val = amp << EDGE_FIX;
+	int dev, hyst;
+	if (det->first) {				// start on the signal, not on zero
+		det->first = 0;
+		det->dc = val;
+	}
+	det->dc += (val - det->dc) >> det->shift;
+	dev = val - det->dc;
+	det->env += (((dev < 0) ? -dev : dev) - det->env) >> (det->shift + 1);
+	hyst = det->env >> 2;				// the trip point follows the level of the recording
+	if (hyst < EDGE_FLOOR) hyst = EDGE_FLOOR;
+	if (det->lev ? (dev < -hyst) : (dev > hyst)) {
+		det->lev = !det->lev;
+		return 1;
+	}
+	return 0;
+}
+
 // blocks
 
 void blkClear(TapeBlock *blk) {
@@ -109,7 +145,7 @@ void blkAddByte(TapeBlock* blk, unsigned char data, int b0len, int b1len) {
 // current time in block
 // NOTE: not full time of block
 int tapGetBlockTime(Tape* tape, int blk, int pos) {
-	long totsz = 0;
+	long long totsz = 0;
 	int i;
 	if (pos > tape->blkData[blk].sigCount)
 		pos = tape->blkData[blk].sigCount;
@@ -450,7 +486,7 @@ void tapSync(Tape* tap, int ns) {
 					blkAddPulse(&tap->tmpBlock,mks,-1);
 				} else if (tap->tmpBlock.sigCount > 0) {
 					tap->tmpBlock.data[tap->tmpBlock.sigCount - 1].size += mks;
-					if (tap->tmpBlock.data[tap->tmpBlock.sigCount - 1].size > TAPTPS / 5) {		// 20000 mks ~ .2sec
+					if (tap->tmpBlock.data[tap->tmpBlock.sigCount - 1].size > TAPE_PAUSE_TICKS) {
 						tap->tmpBlock.sigCount--;
 						tapStoreBlock(tap);
 					}
@@ -591,10 +627,10 @@ void tap_add_block(Tape* tap, TapeBlock block) {
 	blk.data = malloc(blk.sigCount * sizeof(TapeSignal));
 	memcpy(blk.data, block.data, blk.sigCount * sizeof(TapeSignal));
 
-	blk.time = 0;
+	long long total = 0;
 	for (int i = 0; i < blk.sigCount; i++)
-		blk.time += blk.data[i].size;		// total time (ticks)
-	blk.time /= TAPTPS;				// seconds
+		total += blk.data[i].size;		// total time (ticks)
+	blk.time = (int)(total / TAPTPS);		// seconds
 
 	tap->blkCount++;
 	tap->blkData = (TapeBlock*)realloc(tap->blkData,tap->blkCount * sizeof(TapeBlock));
