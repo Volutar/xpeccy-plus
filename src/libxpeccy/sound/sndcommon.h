@@ -16,6 +16,13 @@ typedef struct {
 	signed int right;
 } sndPair;
 
+// What a unipolar level is worth at full scale: one AY channel at volume 15
+// already fills the whole of it, and the soft clip holds any sum of them there.
+// The beeper is given half, which is where Volutar put it - below that it is a
+// dwarf beside an AY, and it has to leave the chips room in the same int16.
+#define XMAXVOL		16384
+#define BEEP_MAX	(XMAXVOL / 2)
+
 extern char noizes[0x20000];
 
 typedef struct {
@@ -27,6 +34,12 @@ typedef struct {
 	unsigned int perL;		// halfperiod for lev=0
 	int pcount;			// current halfperiod counter
 } bitChan;
+
+// The beeper's share of the mix: val is the 0..255 above, vol the percent
+// from the options.
+static inline int bc_level(bitChan* ch, int vol) {
+	return ch->val * vol * BEEP_MAX / (0xff * 100);
+}
 
 bitChan* bcCreate();
 void bcDestroy(bitChan*);

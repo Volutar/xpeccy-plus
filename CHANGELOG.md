@@ -94,6 +94,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The beeper was too quiet beside the AY.** It had a quarter of the room the sound
+  chips had, so beeper music sat under anything an AY was playing. It gets half now.
+  *(thanks to Volutar)*
+
 - **Stop now stops the tape.** It used to start again by itself a moment later, because the
   program being loaded was still asking for it - and a tape that had run to its end could
   wind itself back and play for ever. The tape stays where you stopped it until you press

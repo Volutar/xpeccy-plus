@@ -4,9 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 
-// mixer
-#define XMAXVOL 16384
-
 // A soft clip for two levels in 0..XMAXVOL. Only for those: a signed level
 // would drop the divisor instead of raising it, and go loud rather than clip.
 sndPair mixer(sndPair vol1, sndPair vol2) {

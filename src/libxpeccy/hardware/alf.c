@@ -128,7 +128,7 @@ sndPair alf_vol(Computer* comp, sndVolume* sv) {
 	static sndDC dcBeep, dcAy;
 	sndPair p;
 	sndPair v;
-	v.left = comp->beep->val * sv->beep / 6;
+	v.left = bc_level(comp->beep, sv->beep);
 	v.right = v.left;
 	p = snd_dc(&dcBeep, v, sv->dc);
 	v = snd_dc(&dcAy, tsGetVolume(comp->ts), sv->dc);
