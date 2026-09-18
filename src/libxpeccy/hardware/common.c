@@ -196,11 +196,14 @@ sndPair zx_vol(Computer* comp, sndVolume* sv) {
 	sndPair svol;
 	int dc = sv->dc;		// read once, so every device in one sample agrees
 	int lev = 0;
-	// 1:tape sound
+	// 1:tape sound. volPlay is a level around 0x80, not a level above zero -
+	// bit 7 of it is the EAR bit the ULA reads - so it is centred here. Read as
+	// 0..255 it put half of the tape volume into the mix as a constant, which is
+	// what a machine with nothing running was sitting on.
 	if (comp->tape->rec) {
-		lev = comp->tape->levRec ? 0x1000 * sv->tape / 100 : 0;
+		lev = (comp->tape->levRec ? 0x800 : -0x800) * sv->tape / 100;
 	} else {
-		lev = (comp->tape->volPlay << 8) * sv->tape / 1600;
+		lev = ((comp->tape->volPlay - 0x80) << 8) * sv->tape / 1600;
 	}
 	// 2:beeper. The tape reaches the speaker on the same wire and is one level
 	// with it here, so the two share a blocker as well
