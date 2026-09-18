@@ -49,7 +49,7 @@ before that point is upstream's history and is not repeated here.
   too high to be played back instead of folding it into what you hear, and costs about 1.5% of a
   processor core. *(thanks to Volutar)*
 
-- **Low cut (DC)** on the Sound page and off by default: each device's offset
+- **Low cut (DC)** on the Sound page and on by default: each device's offset
   comes off before the mixer, so one of them drifting - a General Sound does - no longer eats
   the headroom they all share. *(thanks to Volutar)*
 
@@ -93,6 +93,10 @@ before that point is upstream's history and is not repeated here.
   everywhere, and X in a number field switches between hex and decimal.
 
 ### Fixed
+
+- **The beeper was too quiet beside the AY.** It had a quarter of the room the sound
+  chips had, so beeper music sat under anything an AY was playing. It gets half now.
+  *(thanks to Volutar)*
 
 - **Stop now stops the tape.** It used to start again by itself a moment later, because the
   program being loaded was still asking for it - and a tape that had run to its end could

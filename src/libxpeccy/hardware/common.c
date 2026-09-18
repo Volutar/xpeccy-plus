@@ -207,7 +207,7 @@ sndPair zx_vol(Computer* comp, sndVolume* sv) {
 	}
 	// 2:beeper. The tape reaches the speaker on the same wire and is one level
 	// with it here, so the two share a blocker as well
-	lev += comp->beep->val * sv->beep / 6;
+	lev += bc_level(comp->beep, sv->beep);
 	svol.left = lev;
 	svol.right = lev;
 	vol = snd_dc(&dcBeep, svol, dc);

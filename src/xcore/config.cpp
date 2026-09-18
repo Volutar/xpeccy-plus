@@ -615,8 +615,8 @@ void loadConfig() {
 	conf.dbg.scrsiz = QSize(480, 340);
 	conf.dbg.sndchip = 0;
 	conf.dbg.sndfm = 0;
-	conf.dbg.sndfit = 1;
-	conf.dbg.sndlog = 1;
+	conf.dbg.sndfit = 0;
+	conf.dbg.sndlog = 0;
 	conf.dbg.snddetach = 0;
 	conf.dbg.sndpos = QPoint(-1, -1);
 	conf.dbg.sndsiz = QSize(560, 380);
@@ -634,6 +634,7 @@ void loadConfig() {
 	conf.dbg.siz = QSize(960, 720);		// deBUGa default, until the user resizes it
 	conf.dbg.font = QFont("DejaVu Sans Mono", 9);		// default, shipped in the resources
 // init volumes
+	conf.snd.vol.dc = 1;		// most devices idle at a level, not at zero
 	conf.snd.vol.master = 100;
 	conf.snd.vol.beep = 100;
 	conf.snd.vol.tape = 100;
