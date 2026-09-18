@@ -8,7 +8,8 @@ extern "C" {
 
 #define TAPCPUNS	284		// ns per cpu tick @ 3.49MHz
 #define TAPTICKNS	TAPCPUNS	// ns in one tape tick
-#define TAPTPS		1e9/TAPTICKNS	// ticks per second
+#define TAPTPS		(1000000000/TAPTICKNS)	// ticks per second
+#define TAPE_PAUSE_TICKS (TAPTPS / 5)	// a gap this long is the end of a block
 
 // ZX spectrum signal timings
 // 1T ~ 284ns ~ 0.284mks @ 3.51MHz
@@ -113,6 +114,20 @@ typedef struct {
 	cbirq xirq;
 	void* xptr;
 } Tape;
+
+// tape signal edge detector: a stream of samples in, level changes out. It
+// tracks the recording's own centre line, so a dc offset or a level that
+// drifts over the tape does not matter.
+typedef struct {
+	int lev;		// level the signal stands at now
+	int first;		// the centre line has not been primed yet
+	int shift;		// time constant of the averages: 1 << shift samples
+	int dc;			// the centre line, 8 fraction bits
+	int env;		// how far the signal usually swings from it
+} TapeEdge;
+
+void tape_edge_reset(TapeEdge*, int rate);
+int tape_edge_step(TapeEdge*, int amp);		// !0 when the level changed
 
 Tape* tape_create(cbirq, void*);
 void tape_destroy(Tape*);

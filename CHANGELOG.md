@@ -90,6 +90,13 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **A wav is read as the tape it is a recording of.** It used to come out as one unplayable
+  block after minutes of reading; 800 seconds of cassette now take under a second. Standard
+  ZX blocks are decoded back into their bytes and carry their names in the tape map, a turbo
+  loader is kept as the signal itself, and a tape that decoded whole can be saved as `.tap`.
+  Opening a wav replaces the tape instead of adding to the end of it, and 8, 24 and 32 bit,
+  float and stereo recordings are read as well as 16 bit mono.
+
 - **A pause on the tape held a level instead of being silent**, which put a constant
   offset on the sound between blocks and clicked at each end of it. *(thanks to Volutar)*
 
