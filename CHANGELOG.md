@@ -90,6 +90,13 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **Tapes with a loader of their own load again.** The tape ran half a percent fast, which is
+  enough for a loader that times the pilot tone against a fixed length to refuse it outright -
+  ATF did. The last sound on a tape was cut a moment short, which leaves a loader waiting for
+  the end of its data for good - Deflektor did. And a tape that starts itself no longer begins
+  the next block before the ROM asks for it, which used to eat most of that block's pilot tone.
+  *(thanks to Volutar for the last one)*
+
 - **A wav is read as the tape it is a recording of.** It used to come out as one unplayable
   block after minutes of reading; 800 seconds of cassette now take under a second. Standard
   ZX blocks are decoded back into their bytes and carry their names in the tape map, a turbo

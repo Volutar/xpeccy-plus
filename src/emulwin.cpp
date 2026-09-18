@@ -561,8 +561,7 @@ void MainWin::tapStateChanged(int wut, int val) {
 					tapUserPlay(comp->tape);
 					emit s_tape_upd(comp->tape);
 					break;
-				case TWS_AUTOPLAY:
-					tapPlay(comp->tape);
+				case TWS_AUTOPLAY:	// the emulation thread has started it already
 					emit s_tape_upd(comp->tape);
 					break;
 				case TWS_STOP:
