@@ -722,7 +722,10 @@ void xFMPage::draw() {
 // scale shows at once: at a scale a loud beeper fits in, a quiet tune is a flicker
 // along the middle. The knee says how much the quiet end is lifted - loud still
 // reads as loud, and the order of two levels never changes.
-#define WAVE_FULL	0x2000
+//
+// It is the top of the fitted range on purpose, so turning Fit on only ever
+// zooms in on quiet material and never widens the box.
+#define WAVE_FULL	0x4000
 #define WAVE_KNEE	32.0
 
 // What the box is worth either way from the middle. Fitted to the wave it steps

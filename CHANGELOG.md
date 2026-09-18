@@ -49,7 +49,7 @@ before that point is upstream's history and is not repeated here.
   too high to be played back instead of folding it into what you hear, and costs about 1.5% of a
   processor core. *(thanks to Volutar)*
 
-- **Low cut (DC)** on the Sound page and off by default: each device's offset
+- **Low cut (DC)** on the Sound page and on by default: each device's offset
   comes off before the mixer, so one of them drifting - a General Sound does - no longer eats
   the headroom they all share. *(thanks to Volutar)*
 
