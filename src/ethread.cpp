@@ -105,7 +105,14 @@ void xThread::tap_catch_load(Computer* comp) {
 		tapNextBlock(comp->tape);
 		cpu_set_pc(comp->cpu, 0x5df);
 		free(blkData);
-	} else if (conf.tape.autostart) {
+	} else if (conf.tape.autostart && !comp->tape->on) {
+		// 05E7 is LD-EDGE-1, which the rom calls for every edge, so this is
+		// reached thousands of times per block. Start the tape here and let
+		// the gui know once: a signal per edge left stale ones in the queue,
+		// and one of those restarted the tape after the trap below had
+		// stopped it - the next block's pilot then ran out before the rom
+		// asked for it.
+		tapPlay(comp->tape);
 		emit tapeSignal(TW_STATE,TWS_AUTOPLAY);
 	}
 }

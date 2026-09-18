@@ -17,6 +17,7 @@ Tape* tape_create(cbirq cb, void* p) {
 	tap->xirq = cb;
 	tap->xptr = p;
 	tap->volPlay = 0x80;
+	tape_set_tick_ns(tap, TAPTICKNS);
 	tap->speed = 100;
 	tap->autorew = 1;
 	blkClear(&tap->tmpBlock);
@@ -29,6 +30,17 @@ void tape_destroy(Tape* tap) {
 	if (tap->tmpBlock.data)
 		free(tap->tmpBlock.data);
 	free(tap);
+}
+
+// The machine's own tick period: tzx/tap times are T states, and this is what
+// one of them lasts. A fixed 284ns tick (3.52MHz) made every pulse .6% short
+// of what a 3.5MHz loader measures, which is enough for a loader that checks
+// its pilot against a fixed length to reject the tape outright.
+// Kept as its reciprocal: tapSync runs once per opcode, and a divide by a
+// variable there is an idiv the compiler cannot fold away.
+void tape_set_tick_ns(Tape* tap, double ns) {
+	if (!tap || (ns <= 0)) return;
+	tap->ticksPerNsFixed = llround((double)(1LL << TAPE_RATE_BITS) / ns);
 }
 
 void tape_set_path(Tape* tap, const char* path) {
@@ -405,6 +417,7 @@ int tapPlay(Tape* tap) {
 		tap->rec = 0;
 		tap->on = 1;
 		tap->blkData[tap->block].vol = 0;
+		tap->tail = 0;
 		tap->sigLen = TAPTPS / 2;	// .5 sec
 		// tap->volPlay = (tap->volPlay & 0x80) ? 0x7f : 0x81;
 	}
@@ -467,11 +480,17 @@ void tapRewind(Tape* tap, int blk) {
 	}
 }
 
+// nothing more to play once this block is done: it is the last one, or the one
+// after it is marked to stop on
+static int tap_stops_after(Tape* tap) {
+	return ((tap->block + 1) >= tap->blkCount) || tap->blkData[tap->block + 1].breakPoint;
+}
+
 void tapSync(Tape* tap, int ns) {
-	tap->time += (ns * tap->speed / 100);
-	int mks = tap->time / TAPTICKNS;
+	tap->tickAcc += (long long)ns * tap->speed * tap->ticksPerNsFixed / 100;
+	int mks = (int)(tap->tickAcc >> TAPE_RATE_BITS);
 	int sig;
-	tap->time %= TAPTICKNS;
+	tap->tickAcc &= (1LL << TAPE_RATE_BITS) - 1;
 	if (tap->on) {
 		if (tap->rec) {
 			if (tap->wait) {
@@ -496,15 +515,25 @@ void tapSync(Tape* tap, int ns) {
 			tap->sigLen -= mks;
 			while ((tap->sigLen < 1) && tap->on) {
 				if (tap->pos >= (int)tap->blkData[tap->block].sigCount) {
-					tap->blkChange = 1;
-					tap->block++;
-					tap->pos = 0;
-					if (tap->block >= (int)tap->blkCount) {
-						tap->on = 0;
-					} else if (tap->blkData[tap->block].breakPoint) {
-						tap->on = 0;
+					if (tap_stops_after(tap) && !tap->tail) {
+						// A pulse is a level held, so the one the last pulse ends
+						// on is a level change of its own - and a loader reading
+						// the last byte of a block is waiting for exactly that.
+						// Stopping on the pulse swallowed it, so run the tape out
+						// at the new level the way it would past the recording.
+						tap->tail = 1;
+						tap->volPlay = (tap->volPlay & 0x80) ? 0x7f : 0x80;	// silence, the way a pause is written
+						tap->sigLen += TAPE_TAIL_TICKS;
+					} else {
+						tap->blkChange = 1;
+						tap->block++;
+						tap->pos = 0;
+						if (tap->tail) {
+							tap->tail = 0;
+							tapStop(tap);
+						}
+						tap->xirq(IRQ_TAP_BLK, tap->xptr);
 					}
-					tap->xirq(IRQ_TAP_BLK, tap->xptr);
 				} else {
 					sig = tap->volPlay;
 					tap->sigLen += tap->blkData[tap->block].data[tap->pos].size;
@@ -535,6 +564,7 @@ void tapSync(Tape* tap, int ns) {
 }
 
 void tapNextBlock(Tape* tap) {
+	tap->tail = 0;
 	tap->block++;
 	tap->pos = 0;
 	tap->blkChange = 1;

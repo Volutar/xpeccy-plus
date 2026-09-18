@@ -6,10 +6,16 @@ extern "C" {
 
 #include "defines.h"
 
+// A tape tick is one T state of the machine playing the tape - the real period
+// comes from the cpu clock through tape_set_tick_ns(), this is only the fallback.
 #define TAPCPUNS	284		// ns per cpu tick @ 3.49MHz
 #define TAPTICKNS	TAPCPUNS	// ns in one tape tick
+// The three below are counts of ticks, not durations: they are read against sigLen
+// and never turned back into seconds.
 #define TAPTPS		(1000000000/TAPTICKNS)	// ticks per second
 #define TAPE_PAUSE_TICKS (TAPTPS / 5)	// a gap this long is the end of a block
+#define TAPE_TAIL_TICKS  (TAPTPS / 10)	// run-out played after the last pulse
+#define TAPE_RATE_BITS	32		// fraction bits of ticksPerNsFixed
 
 // ZX spectrum signal timings
 // 1T ~ 284ns ~ 0.284mks @ 3.51MHz
@@ -93,13 +99,15 @@ typedef struct {
 	unsigned oldRec:1;	// previous rec signal
 	unsigned char speed;	// 95 to 105
 
+	unsigned tail:1;	// playing out the level change the last pulse ends on
 	unsigned autorew:1;	// play starts the tape over once it has run to the end
 	unsigned detectOn:1;	// auto play by CPU port-0xFE polling pattern (for loaders that bypass the ROM)
 	int detectLastTick;
 	int detectLastB;
 	int detectReads;
 
-	int time;
+	long long ticksPerNsFixed;	// ticks in one ns, TAPE_RATE_BITS fraction bits
+	long long tickAcc;		// ticks not played yet, same fraction
 	unsigned char volPlay;
 	int block;
 	int pos;
@@ -133,6 +141,7 @@ Tape* tape_create(cbirq, void*);
 void tape_destroy(Tape*);
 
 void tape_set_path(Tape*, const char*);
+void tape_set_tick_ns(Tape*, double);
 
 void tapEject(Tape*);
 int tapPlay(Tape*);
