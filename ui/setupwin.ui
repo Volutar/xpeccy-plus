@@ -2747,7 +2747,7 @@ so the same media is back on the next start</string>
                    </property>
                    <property name="icon">
                     <iconset resource="../xpeccy.qrc">
-                     <normaloff>:/images/cancel.png</normaloff>:/images/cancel.png</iconset>
+                     <normaloff>:/images/tape-eject.png</normaloff>:/images/tape-eject.png</iconset>
                    </property>
                   </widget>
                  </item>

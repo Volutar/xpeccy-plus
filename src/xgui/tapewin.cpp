@@ -11,6 +11,7 @@ TapeWin::TapeWin(QWidget *par):QDialog(par) {
 	connect(ui.stopBut,SIGNAL(released()),this,SLOT(doStop()));
 	connect(ui.loadBut,SIGNAL(released()),this,SLOT(doLoad()));
 	connect(ui.tbRewind,SIGNAL(released()),this,SLOT(doRewind()));
+	connect(ui.tbEject,SIGNAL(released()),this,SLOT(doEject()));
 	connect(ui.tapeList,SIGNAL(doubleClicked(QModelIndex)), this, SLOT(doDClick(QModelIndex)));
 	connect(ui.tapeList,SIGNAL(clicked(QModelIndex)), this, SLOT(doClick(QModelIndex)));
 	connect(ui.sldSpeed,SIGNAL(valueChanged(int)),this, SLOT(setSpeed(int)));
@@ -25,7 +26,9 @@ void TapeWin::show() {
 // on timer
 void TapeWin::updProgress(Tape* tape) {
 	if (!isVisible()) return;
-	if (!tape->on || tape->rec) {
+	// where the tape stands in this block, playing or not: gated on ->on the bar
+	// kept whatever it read when the tape stopped, so a rewind left it at 63%
+	if (tape->rec || (tape->block >= tape->blkCount)) {
 		ui.tapeBar->setValue(0);
 	} else {
 		ui.tapeBar->setMaximum(tape->blkData[tape->block].sigCount);
@@ -36,29 +39,21 @@ void TapeWin::updProgress(Tape* tape) {
 	ui.labBarVal->setText(ui.tapeBar->text());
 }
 
-// TODO: on play state changed
 void TapeWin::upd(Tape* tape) {
-	if (isVisible()) {
-		ui.sldSpeed->setValue(tape->speed);	// Setup has the same slider
-		if (tape->blkCount > 0) {
-			ui.playBut->setEnabled(!tape->on);
-			ui.recBut->setEnabled(!tape->on);
-			ui.stopBut->setEnabled(tape->on);
-			ui.tapeList->setEnabled(true);
-			ui.tbRewind->setEnabled(!tape->on);
-			// ui.tapeList->fill(tape);
-		} else {
-			ui.playBut->setEnabled(false);
-			ui.recBut->setEnabled(false);
-			ui.stopBut->setEnabled(false);
-			ui.tapeList->setEnabled(false);
-			ui.tbRewind->setEnabled(false);
-		}
-	}
+	if (!isVisible()) return;
+	ui.sldSpeed->setValue(tape->speed);	// Setup has the same slider
+	int got = (tape->blkCount > 0);
+	ui.playBut->setEnabled(got && !tape->on);
+	ui.recBut->setEnabled(got && !tape->on);
+	ui.stopBut->setEnabled(tape->on);
+	ui.tbRewind->setEnabled(got && !tape->on);
+	ui.tbEject->setEnabled(got && !tape->on);
+	ui.tapeList->setCurrent(tape->block);
 }
 
 // on block changed
 void TapeWin::updList(Tape* tape) {
+	if (!isVisible()) return;	// fill() walks every block: not for a hidden list
 	ui.tapeList->fill(tape);
 }
 
@@ -72,24 +67,27 @@ void TapeWin::doPlay() {
 
 void TapeWin::doStop() {
 	Tape* tap = conf.zx->tape;
-	tap->on = 0;
-	tap->rec = 0;
+	tapUserStop(tap);
 	upd(tap);
 }
 
 void TapeWin::doRec() {
 	Tape* tap = conf.zx->tape;
-	tap->rec = 1;
-	tap->on = 1;
+	tapRec(tap);
 	upd(tap);
 }
 
 void TapeWin::doRewind() {
 	Tape* tap = conf.zx->tape;
-	if (!tap->on) {
-		tapRewind(tap, 0);
-		upd(tap);
-	}
+	tapRewind(tap, 0);
+	upd(tap);
+}
+
+void TapeWin::doEject() {
+	Tape* tap = conf.zx->tape;
+	tapEject(tap);
+	upd(tap);
+	updList(tap);
 }
 
 void TapeWin::doLoad() {

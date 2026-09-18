@@ -60,6 +60,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **The tape player's buttons are laid out like a tape deck's** - record, play, rewind, stop,
+  eject - in one set of icons, and there is an eject button now, in the player and on the
+  Tape page of Options.
+
 - **The debugger's screen panel picks a screen with one click.** Main, shadow, both at once, or
   Auto following the machine; the bank and offset are behind a Custom button.
   - The picture is drawn in the machine's own colors, so a loaded palette, grayscale and ULA+
@@ -89,6 +93,18 @@ before that point is upstream's history and is not repeated here.
   everywhere, and X in a number field switches between hex and decimal.
 
 ### Fixed
+
+- **Stop now stops the tape.** It used to start again by itself a moment later, because the
+  program being loaded was still asking for it - and a tape that had run to its end could
+  wind itself back and play for ever. The tape stays where you stopped it until you press
+  play, rewind it or put another one in.
+
+- **Opening a tape with "Auto play / stop" turned off left the machine waiting for ever** when
+  fast loading was off as well: nothing ever pressed play. Starting a tape now presses it.
+
+- **The tape player follows the tape.** The mark on the block being played stayed behind after
+  a rewind, and the progress bar kept its last reading once the tape stopped. Recording from
+  the player's own button works too.
 
 - **Tapes with a loader of their own load again.** The tape ran half a percent fast, which is
   enough for a loader that times the pilot tone against a fixed length to refuse it outright -

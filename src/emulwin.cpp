@@ -561,11 +561,8 @@ void MainWin::tapStateChanged(int wut, int val) {
 					tapUserPlay(comp->tape);
 					emit s_tape_upd(comp->tape);
 					break;
-				case TWS_AUTOPLAY:	// the emulation thread has started it already
-					emit s_tape_upd(comp->tape);
-					break;
 				case TWS_STOP:
-					tapStop(comp->tape);
+					tapUserStop(comp->tape);
 					emit s_tape_upd(comp->tape);
 					break;
 				case TWS_REC:
@@ -1101,15 +1098,15 @@ void MainWin::updateSatellites() {
 	emit s_rzx_upd(comp);
 #endif
 // update tape window
-	if (comp->tape->on && !comp->tape->rec)
-		emit s_tape_progress(comp->tape);
-	if ((comp->tape->on && !comp->tape->rec) || comp->tape->blkChange || comp->tape->newBlock) {
-		emit s_tape_upd(comp->tape);
-		if (comp->tape->blkChange || comp->tape->newBlock) {
-			emit s_tape_blk(comp->tape);
-			comp->tape->blkChange = 0;
-			comp->tape->newBlock = 0;
-		}
+	emit s_tape_progress(comp->tape);
+	// unconditional: the window hides itself when it is not up, and it is what
+	// keeps the buttons and the block mark agreeing with the tape however the
+	// tape was moved - a rewind from the Tape map page included
+	emit s_tape_upd(comp->tape);
+	if (comp->tape->blkChange || comp->tape->newBlock) {
+		emit s_tape_blk(comp->tape);
+		comp->tape->blkChange = 0;
+		comp->tape->newBlock = 0;
 	}
 // update watcher
 	emit s_watch_upd(comp);

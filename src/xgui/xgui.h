@@ -172,11 +172,13 @@ enum {
 	TW_BREAK
 };
 
+// What the tape player window is being told to do. All of these are a person
+// pressing a button: the emulation thread owns the tape and moves it there,
+// and the window follows on its own refresh.
 enum {
-	TWS_PLAY = 1,		// as a person pressing the button
-	TWS_AUTOPLAY,		// as a loader asking for the tape
+	TWS_PLAY = 1,
 	TWS_REC,
-	TWS_STOP,
+	TWS_STOP,		// beats the automatics until the tape is started by hand
 	TWS_OPEN,
 	TWS_REWIND
 };
@@ -199,6 +201,7 @@ class TapeWin : public QDialog {
 		void doStop();
 		void doLoad();
 		void doRewind();
+		void doEject();
 		void doDClick(QModelIndex);
 		void doClick(QModelIndex);
 		void setSpeed(int);

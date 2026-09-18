@@ -140,6 +140,7 @@ static const asMachine as_mtab[] = {
 	{HW_NULL,	{AS_NOPE, NULL},	{AS_NOPE, NULL},		{AS_NOPE, NULL}}
 };
 
+static int as_kind = AS_NONE;	// what is being started: a tape has to be played
 static Computer* as_comp = NULL;
 static const asKey* as_seq = NULL;	// what is left to press: NULL when idle
 static int as_step = 0;
@@ -160,8 +161,20 @@ int autostart_busy() {
 	return !!as_seq;
 }
 
+// The last key is in and the rom is about to ask for the media. A tape also
+// has to be playing, so press that too - opening a tape to be started is a
+// person putting it in and pressing Play, and "Auto play / stop" is about
+// following the rom unattended, not about this. Nothing to press when fast
+// loading is on: the trap reads the block without the tape moving at all, and
+// one left rolling behind it would only run itself to the end.
+static void as_start_media(Computer* comp) {
+	if ((as_kind != AS_TAPE) || conf.tape.fast) return;
+	tapUserPlay(comp->tape);
+}
+
 static void autostart_stop() {
 	as_seq = NULL;
+	as_kind = AS_NONE;
 	as_step = 0;
 	as_wait = 0;
 	as_down = 0;
@@ -209,6 +222,7 @@ int autostart_arm(Computer* comp, int kind) {
 	compReset(comp, act->res);
 	comp->keyb->scanmask = 0;
 	as_comp = comp;
+	as_kind = kind;
 	as_seq = act->seq;
 	as_wait = -1;					// still waiting for the rom
 	as_life = AS_GIVEUP;
@@ -239,8 +253,10 @@ void autostart_frame(Computer* comp) {
 		as_down = 0;
 		as_wait = as_seq[as_step].gap;
 		as_step++;
-		if (!as_seq[as_step].keys)
+		if (!as_seq[as_step].keys) {
+			as_start_media(comp);
 			autostart_stop();	// the loading starts right about now
+		}
 	} else {
 		as_key(comp, &as_seq[as_step], 1);
 		as_down = 1;

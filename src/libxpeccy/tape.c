@@ -381,6 +381,7 @@ void tapStoreBlock(Tape* tap) {
 void tapEject(Tape* tap) {
 	int i;
 	tap->isData = 1;
+	tap->userStop = 0;
 	tap->block = 0;
 	tap->pos = 0;
 	tap_set_text(tap, NULL);
@@ -411,7 +412,18 @@ void tapStop(Tape* tap) {
 	tap->detectReads = 0;
 }
 
+// Stop, as a person pressing the button: it beats the automatics. The rom trap
+// and the loader detector are both still looking, so without this the tape is
+// playing again a few opcodes after the button comes up - and on a tape that
+// has run out there is nothing else to break the loop. Play, a rewind or
+// another tape hands control back.
+void tapUserStop(Tape* tap) {
+	tapStop(tap);
+	tap->userStop = 1;
+}
+
 int tapPlay(Tape* tap) {
+	if (tap->userStop) return tap->on;
 	if ((tap->block < tap->blkCount) && !tap->on) {
 		xlog(XLG_TAPE, XLL_INFO, "play, block %i of %i", tap->block, tap->blkCount);
 		tap->rec = 0;
@@ -430,6 +442,7 @@ int tapPlay(Tape* tap) {
 // loader detector below must not come through here, or a stray pattern during
 // a game would replay a tape nobody asked for.
 int tapUserPlay(Tape* tap) {
+	tap->userStop = 0;
 	if (tap->autorew && !tap->on && (tap->block >= tap->blkCount))
 		tapRewind(tap, 0);
 	return tapPlay(tap);
@@ -463,6 +476,7 @@ void tapDetectLoader(Tape* tap, int tick, int regB) {
 
 void tapRec(Tape* tap) {
 	xlog(XLG_TAPE, XLL_INFO, "record");
+	tap->userStop = 0;
 	tap->on = 1;
 	tap->rec = 1;
 	tap->wait = 1;
@@ -472,11 +486,12 @@ void tapRec(Tape* tap) {
 }
 
 void tapRewind(Tape* tap, int blk) {
+	tap->userStop = 0;
 	if (blk < tap->blkCount) {
 		tap->block = blk;
 		tap->pos = 0;
 	} else {
-		tap->on = 0;
+		tapStop(tap);
 	}
 }
 
@@ -572,9 +587,9 @@ void tapNextBlock(Tape* tap) {
 		tap->blkData[tap->block].vol = 0;
 		tap->volPlay = 0x7f;
 	} else {
-		// past the last block: start over only if the tape is set to rewind at
-		// its end, else stay there so nothing plays until it is rewound by hand
-		tap->block = tap->autorew ? 0 : tap->blkCount;
+		// past the last block: stay there. Only the Play button winds a tape
+		// back - which is what "Rewind at end" says it does - because winding
+		// back here let autoplay start it over for ever.
 		tapStop(tap);
 	}
 	tap->xirq(IRQ_TAP_BLK, tap->xptr);
