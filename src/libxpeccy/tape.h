@@ -100,6 +100,7 @@ typedef struct {
 	unsigned char speed;	// 95 to 105
 
 	unsigned tail:1;	// playing out the level change the last pulse ends on
+	unsigned userStop:1;	// stopped by hand: the automatics may not start it again
 	unsigned autorew:1;	// play starts the tape over once it has run to the end
 	unsigned detectOn:1;	// auto play by CPU port-0xFE polling pattern (for loaders that bypass the ROM)
 	int detectLastTick;
@@ -148,6 +149,7 @@ int tapPlay(Tape*);
 int tapUserPlay(Tape*);
 void tapRec(Tape*);
 void tapStop(Tape*);
+void tapUserStop(Tape*);
 void tapRewind(Tape*,int);
 
 void tapSync(Tape*,int);

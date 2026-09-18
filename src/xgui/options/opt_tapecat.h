@@ -33,6 +33,7 @@ class xTapeCatModel : public xTableModel {
 	public:
 		xTapeCatModel(QObject* p = NULL);
 		void fill(Tape*);
+		int setCurrent(int);
 	private:
 		int rcur;
 		TapeBlockInfo* inf;
@@ -62,6 +63,7 @@ class xTapeCatTable : public QTableView {
 	public:
 		xTapeCatTable(QWidget* = NULL);
 		void fill(Tape*);
+		void setCurrent(int);
 	private:
 		xTapeCatModel* model;
 };

@@ -134,41 +134,13 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QToolButton" name="tbRewind">
-       <property name="toolTip">
-        <string>Rewind to the start</string>
-       </property>
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="text">
-        <string>...</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../xpeccy.qrc">
-         <normaloff>:/images/rewind.png</normaloff>:/images/rewind.png</iconset>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QToolButton" name="playBut">
-       <property name="toolTip">
-        <string>Play</string>
-       </property>
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="text">
-        <string>...</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../xpeccy.qrc">
-         <normaloff>:/images/play.png</normaloff>:/images/play.png</iconset>
-       </property>
-      </widget>
-     </item>
-     <item>
       <widget class="QToolButton" name="recBut">
+       <property name="iconSize">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
        <property name="toolTip">
         <string>Record</string>
        </property>
@@ -180,12 +152,64 @@
        </property>
        <property name="icon">
         <iconset resource="../xpeccy.qrc">
-         <normaloff>:/images/rec.png</normaloff>:/images/rec.png</iconset>
+         <normaloff>:/images/tape-rec.png</normaloff>:/images/tape-rec.png</iconset>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="playBut">
+       <property name="iconSize">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Play</string>
+       </property>
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>...</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../xpeccy.qrc">
+         <normaloff>:/images/tape-play.png</normaloff>:/images/tape-play.png</iconset>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="tbRewind">
+       <property name="iconSize">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Rewind to the start</string>
+       </property>
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>...</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../xpeccy.qrc">
+         <normaloff>:/images/tape-rewind.png</normaloff>:/images/tape-rewind.png</iconset>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QToolButton" name="stopBut">
+       <property name="iconSize">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
        <property name="toolTip">
         <string>Stop</string>
        </property>
@@ -197,7 +221,30 @@
        </property>
        <property name="icon">
         <iconset resource="../xpeccy.qrc">
-         <normaloff>:/images/cancel.png</normaloff>:/images/cancel.png</iconset>
+         <normaloff>:/images/tape-stop.png</normaloff>:/images/tape-stop.png</iconset>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="tbEject">
+       <property name="iconSize">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Eject the tape</string>
+       </property>
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>...</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../xpeccy.qrc">
+         <normaloff>:/images/tape-eject.png</normaloff>:/images/tape-eject.png</iconset>
        </property>
       </widget>
      </item>
@@ -216,6 +263,12 @@
      </item>
      <item>
       <widget class="QToolButton" name="loadBut">
+       <property name="iconSize">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
        <property name="toolTip">
         <string>Open a tape image</string>
        </property>

@@ -104,7 +104,6 @@
         <file>images/doc-new.png</file>
         <file>images/pause.png</file>
         <file>images/play.png</file>
-        <file>images/rec.png</file>
         <file>images/MicrochipLogo.png</file>
         <file>images/YamahaLogo.png</file>
         <file>images/dollar.png</file>
@@ -126,6 +125,11 @@
         <file>images/memory.png</file>
         <file>images/heatmap.png</file>
         <file>images/stop.png</file>
+        <file>images/tape-rec.png</file>
+        <file>images/tape-play.png</file>
+        <file>images/tape-rewind.png</file>
+        <file>images/tape-stop.png</file>
+        <file>images/tape-eject.png</file>
         <file>images/floppyRed.png</file>
         <file>images/label.png</file>
         <file>images/bars.png</file>
@@ -155,7 +159,6 @@
         <file>images/arrleft.png</file>
         <file>images/speaker2.png</file>
         <file>images/palette.png</file>
-        <file>images/rewind.png</file>
         <file>images/refresh.png</file>
         <file>images/button-k.png</file>
         <file>images/wav.png</file>

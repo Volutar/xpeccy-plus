@@ -11,6 +11,7 @@
 xTapeCatModel::xTapeCatModel(QObject* p):xTableModel(p) {
 	setRows(0);
 	setCols(TCC_COUNT);
+	rcur = -1;
 	inf = NULL;
 	icoBrk = QIcon(":/images/stop.png");
 	icoDur = QIcon(":/images/clock.png");
@@ -18,7 +19,6 @@ xTapeCatModel::xTapeCatModel(QObject* p):xTableModel(p) {
 
 void xTapeCatModel::fill(Tape* tap) {
 	setRows(tap->blkCount);
-	rcur = tap->block;
 	if (inf) delete[] inf;
 	inf = NULL;
 	dur.clear();
@@ -33,7 +33,22 @@ void xTapeCatModel::fill(Tape* tap) {
 			info << blockInfo(i);
 		}
 	}
+	setCurrent(tap->block);
 	update();
+}
+
+// The block the tape stands on is read off the tape, not stored here: it moves
+// on a rewind, on a double click and at a block boundary, and only the last of
+// those used to refill the list - so the mark sat where the tape no longer was.
+// Repainting the two rows is cheap enough to do on every refresh.
+// !0 when it moved.
+int xTapeCatModel::setCurrent(int row) {
+	if (row == rcur) return 0;
+	int was = rcur;
+	rcur = row;
+	if ((was >= 0) && (was < row_count)) updateRow(was);
+	if ((row >= 0) && (row < row_count)) updateRow(row);
+	return 1;
 }
 
 // a name someone gave the file, as opposed to our own word for the block
@@ -218,7 +233,12 @@ xTapeCatTable::xTapeCatTable(QWidget* p):QTableView(p) {
 	setColumnWidth(TCC_NAME, TCC_NAME_WIDTH);
 }
 
-// tape player window will reset scroll on update
+// the marked block is kept in view
+void xTapeCatTable::setCurrent(int row) {
+	if (model->setCurrent(row))
+		scrollTo(model->index(row, 0), QAbstractItemView::EnsureVisible);
+}
+
 void xTapeCatTable::fill(Tape* tape) {
 	model->fill(tape);
 	scrollTo(model->index(tape->block, 0), QAbstractItemView::EnsureVisible);

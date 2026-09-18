@@ -107,13 +107,10 @@ void xThread::tap_catch_load(Computer* comp) {
 		free(blkData);
 	} else if (conf.tape.autostart && !comp->tape->on) {
 		// 05E7 is LD-EDGE-1, which the rom calls for every edge, so this is
-		// reached thousands of times per block. Start the tape here and let
-		// the gui know once: a signal per edge left stale ones in the queue,
-		// and one of those restarted the tape after the trap below had
-		// stopped it - the next block's pilot then ran out before the rom
-		// asked for it.
+		// reached thousands of times per block - hence the guard. The window
+		// is not told: it refreshes itself, and a signal per edge once left
+		// stale ones in the queue that restarted a tape already stopped.
 		tapPlay(comp->tape);
-		emit tapeSignal(TW_STATE,TWS_AUTOPLAY);
 	}
 }
 
@@ -293,7 +290,6 @@ void xThread::emuCycle(Computer* comp) {
 					comp->tape->sigLen = 1e6;
 					tapNextBlock(comp->tape);
 					tapStop(comp->tape);
-					emit tapeSignal(TW_STATE,TWS_STOP);
 				}
 			}
 		}
