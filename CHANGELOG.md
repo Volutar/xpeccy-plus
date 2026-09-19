@@ -106,6 +106,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **Applying the settings is quick again**, and the title bars take the new colour at
+  once. Every Apply was restyling the whole interface from scratch, which held the
+  settings window up for about a second; on Windows 10 the title bars changed colour
+  only after that window was closed.
+
 - **ZX Evolution kept switching its own clock** between 3.5 and 7 MHz while it ran.
 
 - **The beeper could stay switched on across a reset or a snapshot.** A program that
