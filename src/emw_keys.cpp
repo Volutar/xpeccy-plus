@@ -237,7 +237,7 @@ void MainWin::xkey_press(int xkey) {
 					setMessage(" not in rzx ");
 				} else {
 					int pos = xspeed_get() + ((xkey == XCUT_SPEED_UP) ? 1 : -1);
-					if (pos > xspeed_max()) {
+					if ((pos < 0) || (pos > xspeed_max())) {
 						setMessage(" limit reached ");
 					} else {
 						xspeed_set(pos);
