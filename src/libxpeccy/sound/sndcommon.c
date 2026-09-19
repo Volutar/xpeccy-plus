@@ -19,9 +19,13 @@ sndPair mixer(sndPair vol1, sndPair vol2) {
 #define OVERDIV 88			// ns/256 : transient const (ns to rise/lower sound level 1 step)
 #define OVERLIM (OVERDIV * 256)		// ns to full sound level restore
 
+void bcReset(bitChan* ch) {
+	memset(ch, 0x00, sizeof(bitChan));
+}
+
 bitChan* bcCreate() {
 	bitChan* ch = malloc(sizeof(bitChan));
-	memset(ch, 0x00, sizeof(bitChan));
+	bcReset(ch);
 	return ch;
 }
 
