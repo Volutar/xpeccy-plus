@@ -1431,7 +1431,7 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 			else if (nam == "contPattern") comp->vid->ula->conttype = arg.i;
 			else if (nam == "earlyTiming") comp->vid->ula->early = arg.b;
 			else if (nam == "DDpal") comp->flgDDP = arg.b;
-			else if (nam == "palette") conf.palette = val;
+			else if (nam == "palette") conf.palette = palette_name(val);
 			break;
 		case PS_SOUND:
 			if (nam == "psg.count") mac_set_psg(comp, toLimits(arg.i, 0, 3), comp->ts->chipA->type,

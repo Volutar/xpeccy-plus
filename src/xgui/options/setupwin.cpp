@@ -416,7 +416,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.cbShader->setVisible(false);
 #endif
 	//fill_palette_list(ui.cbPalPreset);
-	fillComboBox(ui.cbPalPreset, "palettes", QStringList() << "*.txt" << "*.pal", "default", conf.palette.c_str());
+	fillComboBox(ui.cbPalPreset, "palettes", QStringList() << "*.txt" << "*.pal", PAL_DEFAULT_NAME, conf.palette.c_str());
 	paleditor = new xPalEditor(this);
 	paleditor->setModal(true);
 	ui.cbNoflicMode->addItem("2-frames (fullscreen)", AF_2C_FULL);
@@ -824,7 +824,7 @@ void SetupWin::start() {
 	ui.cbDDp->setChecked(comp->flgDDP);
 	fill_shader_list(ui.cbShader);
 	//fill_palette_list(ui.cbPalPreset);
-	fillComboBox(ui.cbPalPreset, "palettes", QStringList() << "*.txt" << "*.pal", "default", conf.palette.c_str());
+	fillComboBox(ui.cbPalPreset, "palettes", QStringList() << "*.txt" << "*.pal", PAL_DEFAULT_NAME, conf.palette.c_str());
 // sound
 	ui.cbGS->setChecked(comp->gs->enable);
 	ui.gsrbox->setChecked(comp->gs->reset);

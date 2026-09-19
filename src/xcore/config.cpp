@@ -804,7 +804,7 @@ void loadConfig() {
 				case SECT_VIDEO:
 					// a config from before the layouts had a file of their own
 					if (pnam=="layout") addLayoutString(pval);
-					if (pnam=="palette") conf.palette = pval;
+					if (pnam=="palette") conf.palette = palette_name(pval);
 					if (pnam=="scrDir") conf.scrShot.dir = pval;
 					if (pnam=="scrFormat") conf.scrShot.format = pval;
 					if (pnam=="scrCount") conf.scrShot.count = arg.i;
