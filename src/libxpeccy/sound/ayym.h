@@ -96,6 +96,7 @@ typedef struct {
 
 // what the debugger asks the AY code for
 int ay_chan_lev(aymChip*, aymChan*);	// what it is putting out this instant
+void ay_set_speed(double);		// host speed, for the sub-period limit
 int ay_chan_peak(aymChan*);		// the loudest since the last call, and start again
 int ay_chan_dac(aymChip*, aymChan*, const int*);	// that level through a DAC table
 sndPair ay_mix_tab(aymChip*, const int*);	// all three, mixed, through one

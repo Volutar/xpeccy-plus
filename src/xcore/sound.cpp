@@ -75,6 +75,7 @@ long long nsPerSampleFixed = ns_per_sample_fixed(44100);
 void sndUpdateSpeed(void) {
 	double s = (conf.emu.speed > 0.0) ? conf.emu.speed : 1.0;
 	nsPerSampleFixed = (long long)(ns_per_sample_fixed(conf.snd.rate) * s);
+	ay_set_speed(s);
 }
 
 static int wavRate = 0;			// rate the open recording's header says
