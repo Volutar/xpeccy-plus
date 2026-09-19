@@ -94,6 +94,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The beeper could stay switched on across a reset or a snapshot.** A program that
+  left it on handed its level to whatever ran next, which sat on the sound and could
+  mislead a loader listening to the tape input. *(thanks to Volutar)*
+
 - **The beeper was too quiet beside the AY.** It had a quarter of the room the sound
   chips had, so beeper music sat under anything an AY was playing. It gets half now.
   *(thanks to Volutar)*

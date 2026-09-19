@@ -42,6 +42,7 @@ static inline int bc_level(bitChan* ch, int vol) {
 }
 
 bitChan* bcCreate();
+void bcReset(bitChan*);
 void bcDestroy(bitChan*);
 void bcSync(bitChan*, int);
 
