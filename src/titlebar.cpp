@@ -2,6 +2,7 @@
 
 #include <QWidget>
 #include <QColor>
+#include <QByteArray>
 
 #include "xcore/xcore.h"
 
@@ -64,14 +65,36 @@ void applyTitleBarStyle(QWidget* w) {
 
 	COLORREF capColor = bg.isValid() ? toColorRef(bg) : DWMWA_COLOR_DEFAULT;
 	COLORREF txtColor = txt.isValid() ? toColorRef(txt) : DWMWA_COLOR_DEFAULT;
-	DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, &capColor, sizeof(capColor));
-	DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, &txtColor, sizeof(txtColor));
-
 	// pre-Win11 fallback, and what DWMWA_COLOR_DEFAULT above actually renders
 	// as: always set explicitly, never left alone, so leaving a dark style
 	// puts this back rather than leaving the caption stuck dark.
 	BOOL dark = bg.isValid() ? (bg.lightness() < 128) : !systemAppsUseLightTheme();
+
+	// What this window was last given. The handle is part of it: Qt throws the
+	// native window away and builds a new one when a widget's flags change, and
+	// the attributes go with it.
+	QByteArray state(reinterpret_cast<const char*>(&hwnd), sizeof(hwnd));
+	state.append(reinterpret_cast<const char*>(&capColor), sizeof(capColor));
+	state.append(reinterpret_cast<const char*>(&txtColor), sizeof(txtColor));
+	state.append(dark ? '1' : '0');
+	if (w->property("xTitleBar").toByteArray() == state) return;
+	w->setProperty("xTitleBar", state);
+
+	DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, &capColor, sizeof(capColor));
+	DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, &txtColor, sizeof(txtColor));
 	DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof(dark));
+	// Windows 10 has no caption colour at all - only the dark flag lands there,
+	// and it reaches the screen when the window's activation next changes, not
+	// when it is set: without this the new colour arrived only once the dialog
+	// that changed it was closed. So say the window's own activation state to
+	// it twice, ending on the state it is really in. A frame change
+	// (SWP_FRAMECHANGED) is not enough there; Windows 11 repaints by itself and
+	// does not mind this either way.
+	if (IsWindowVisible(hwnd)) {
+		BOOL act = (GetActiveWindow() == hwnd);
+		SendMessageW(hwnd, WM_NCACTIVATE, !act, 0);
+		SendMessageW(hwnd, WM_NCACTIVATE, act, 0);
+	}
 }
 
 #else

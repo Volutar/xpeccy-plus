@@ -78,17 +78,29 @@ void xApp::d_frame() {
 }
 
 void xApp::d_style() {
+	QString sheet = styleSheet();		// a style that cannot be read leaves this alone
 	if (conf.style.empty()) {
-		setStyleSheet("");
+		sheet.clear();			// no style is a sheet of its own: the empty one
 	} else {
 		QFile file(xres_path("styles", QString::fromLocal8Bit(conf.style.c_str())));
 		if (file.open(QFile::ReadOnly)) {
-			setStyleSheet(file.readAll().data());
+			sheet = QString::fromUtf8(file.readAll());
 			file.close();
 		}
 	}
+	// setStyleSheet re-polishes every widget in the application - the best part
+	// of a second with one of the shipped styles - and this runs on every Apply,
+	// so hand it the same sheet twice and it does all of that for nothing. The
+	// file is compared, not the name: a style edited on disk still re-applies.
+	if (sheet != styleSheet())
+		setStyleSheet(sheet);
+	// Only the windows that have a native handle already: asking for one (winId()
+	// inside) creates it, and doing that here would make a real window out of
+	// every hidden dialog, menu and combo box popup in the application - half a
+	// second of them. A window with no handle is not on screen; the Show filter
+	// below colours it when it comes up.
 	foreach(QWidget* w, topLevelWidgets())
-		applyTitleBarStyle(w);
+		if (w->internalWinId()) applyTitleBarStyle(w);
 }
 
 // catches every top-level window's first Show, so a titlebar gets its colour
