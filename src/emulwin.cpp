@@ -1436,8 +1436,7 @@ void MainWin::renderFrame() {
 
 void MainWin::onPrfChange() {
 	Computer* comp = conf.zx;
-	comp->tape->detectOn = conf.tape.autostart;
-	comp->tape->autorew = conf.tape.rewind;
+	tape_apply_options(comp->tape);
 	if (comp->flgFRN) {
 		// loadPalette();		// already loaded for each profile
 		compReset(comp, RES_DEFAULT);

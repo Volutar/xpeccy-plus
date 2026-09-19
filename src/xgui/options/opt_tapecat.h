@@ -6,6 +6,7 @@
 #include <QStringList>
 #include <QTableView>
 
+#include "libxpeccy/spectrum.h"
 #include "libxpeccy/tape.h"
 #include "../classes.h"
 
@@ -64,6 +65,14 @@ class xTapeCatTable : public QTableView {
 		xTapeCatTable(QWidget* = NULL);
 		void fill(Tape*);
 		void setCurrent(int);
+		int current();			// the row the buttons work on, -1 for none
+		void blkMove(Tape*, int dir);
+		void blkDel(Tape*);
 	private:
 		xTapeCatModel* model;
 };
+
+// A tape block as a TR-DOS file, shared by the tape player and the Tape map
+// page of Options.
+int tape_disk_ready(Computer*, int drive);
+int tape_blk_to_disk(Tape*, int blk, Floppy*, QString* msg);

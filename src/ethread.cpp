@@ -60,15 +60,39 @@ void xThread::stop() {
 #endif
 }
 
-void xThread::tap_catch_load(Computer* comp) {
-	int blk = comp->tape->block;
-	if (blk >= comp->tape->blkCount) return;
-	if (conf.tape.fast && comp->tape->blkData[blk].hasBytes) {
+// atStart says the rom is at LD_START, the top of LD_BYTES, rather than inside
+// LD_EDGE_1: only there does the stack hold what LD_BYTES itself pushed, so only
+// there may a block be handed over and the rom sent to its own exit. Doing it
+// from LD_EDGE_1 returned into the middle of LD_BYTES with the block eaten - the
+// first block of a load went missing that way.
+void xThread::tap_catch_load(Computer* comp, int atStart) {
+	Tape* tap = comp->tape;
+	// Stop, pressed by hand, keeps the automatics off the tape - fast loading
+	// included, which moves it on without ever playing it. Play, a rewind or
+	// another tape hands it back.
+	if (tap->userStop) return;
+	// the rom is asking for a tape that has run out: "Rewind at end" puts it back
+	// to the start here too, not only under the Play button. Nothing to rewind
+	// for if neither of the automatics is on - Play does it then.
+	if (atStart && (conf.tape.fast || conf.tape.autostart))
+		tap_rewind_at_end(tap);
+	int blk = tap->block;
+	if (blk >= tap->blkCount) return;
+	if (conf.tape.fast && tap->blkData[blk].hasBytes) {
+		// A playing tape and a fast load get out of step: the rom reads the
+		// block by ear and moves on while the tape still stands on it, and the
+		// next block is then answered with this one. Fast loading owns the
+		// tape, so stop it; the rom's edge loop gives up within a few hundred
+		// T and comes back to LD_START, where the block is handed over.
+		if (!atStart || tap->on) {
+			tapStop(tap);
+			return;
+		}
 		unsigned short de = comp->cpu->regDE;
 		unsigned short ix = comp->cpu->regIX;
-		TapeBlockInfo inf = tapGetBlockInfo(comp->tape,blk);
+		TapeBlockInfo inf = tapGetBlockInfo(tap,blk);
 		unsigned char* blkData = (unsigned char*)malloc(inf.size + 2);
-		tapGetBlockData(comp->tape,blk,blkData, inf.size + 2);
+		tapGetBlockData(tap,blk,blkData, inf.size + 2);
 #if 1
 		unsigned char data = 0x01;
 		unsigned char crc = blkData[0];
@@ -102,15 +126,15 @@ void xThread::tap_catch_load(Computer* comp) {
 			comp->cpu->regHL = 0xff00;		// error
 		}
 #endif
-		tapNextBlock(comp->tape);
+		tapNextBlock(tap);
 		cpu_set_pc(comp->cpu, 0x5df);
 		free(blkData);
-	} else if (conf.tape.autostart && !comp->tape->on) {
+	} else if (conf.tape.autostart && !tap->on) {
 		// 05E7 is LD-EDGE-1, which the rom calls for every edge, so this is
 		// reached thousands of times per block - hence the guard. The window
 		// is not told: it refreshes itself, and a signal per edge once left
 		// stale ones in the queue that restarted a tape already stopped.
-		tapPlay(comp->tape);
+		tapPlay(tap);
 	}
 }
 
@@ -280,9 +304,9 @@ void xThread::emuCycle(Computer* comp) {
 			sndNsFixed += NS_TO_FIXED(tm);
 			// tape trap	TODO: rework it as a system breakpoint
 			int pc = cpu_get_pc(comp->cpu);
-			if ((comp->mem->map[0].type == MEM_ROM) && comp->flgROM && !comp->flgDOS && !comp->flgEXT) {
+			if (zx_rom_active(comp)) {
 				if ((pc == 0x56c) || (pc == 0x5e7)) {	// load: ix:addr, de:len (0x580 ?) 56c/559
-					tap_catch_load(comp);
+					tap_catch_load(comp, pc == 0x56c);
 				} else if (pc == 0x4d0) {				// save: ix:addr, de:len, a:block type(b7), hl:pilot len (1f80/0c98)?
 					tap_catch_save(comp);
 				}

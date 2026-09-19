@@ -327,7 +327,7 @@ void MainWin::xkey_press(int xkey) {
 				openMedia(QString(), FG_ALL, -1, conf.autorun);
 				break;
 			case XCUT_TAPLAY:
-				if (comp->tape->on) {
+				if (tape_running(comp->tape)) {
 					tapStateChanged(TW_STATE,TWS_STOP);
 				} else {
 					tapStateChanged(TW_STATE,TWS_PLAY);

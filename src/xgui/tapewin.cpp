@@ -1,3 +1,5 @@
+#include <QMenu>
+
 #include "xgui.h"
 #include "xcore/xcore.h"
 #include "../filer.h"
@@ -6,15 +8,31 @@ TapeWin::TapeWin(QWidget *par):QDialog(par) {
 	ui.setupUi(this);
 	setWindowFlags(Qt::Tool);
 	ui.stopBut->setEnabled(false);
+	// which drive Copy to disk writes to: the window has no disk page to take
+	// the answer from, so the button asks
+	QMenu* menu = new QMenu(this);
+	for (int i = 0; i < 4; i++)
+		menu->addAction(QString("Drive %0").arg(QChar('A' + i)))->setData(i);
+	ui.tbToDisk->setMenu(menu);
+	connect(menu, SIGNAL(triggered(QAction*)), this, SLOT(doToDisk(QAction*)));
 	connect(ui.playBut,SIGNAL(released()),this,SLOT(doPlay()));
 	connect(ui.recBut,SIGNAL(released()),this,SLOT(doRec()));
 	connect(ui.stopBut,SIGNAL(released()),this,SLOT(doStop()));
 	connect(ui.loadBut,SIGNAL(released()),this,SLOT(doLoad()));
+	connect(ui.saveBut,SIGNAL(released()),this,SLOT(doSave()));
 	connect(ui.tbRewind,SIGNAL(released()),this,SLOT(doRewind()));
 	connect(ui.tbEject,SIGNAL(released()),this,SLOT(doEject()));
+	connect(ui.tbBlkUp,SIGNAL(released()),this,SLOT(doBlkUp()));
+	connect(ui.tbBlkDn,SIGNAL(released()),this,SLOT(doBlkDn()));
+	connect(ui.tbBlkDel,SIGNAL(released()),this,SLOT(doBlkDel()));
 	connect(ui.tapeList,SIGNAL(doubleClicked(QModelIndex)), this, SLOT(doDClick(QModelIndex)));
 	connect(ui.tapeList,SIGNAL(clicked(QModelIndex)), this, SLOT(doClick(QModelIndex)));
 	connect(ui.sldSpeed,SIGNAL(valueChanged(int)),this, SLOT(setSpeed(int)));
+	// clicked, not toggled: upd() writes the boxes on every tick and toggled
+	// would send each of those back as a change of the user's
+	connect(ui.cbAuto,SIGNAL(clicked(bool)),this,SLOT(setOptions()));
+	connect(ui.cbFast,SIGNAL(clicked(bool)),this,SLOT(setOptions()));
+	connect(ui.cbRewind,SIGNAL(clicked(bool)),this,SLOT(setOptions()));
 }
 
 void TapeWin::show() {
@@ -43,18 +61,38 @@ void TapeWin::upd(Tape* tape) {
 	if (!isVisible()) return;
 	ui.sldSpeed->setValue(tape->speed);	// Setup has the same slider
 	int got = (tape->blkCount > 0);
+	int row = ui.tapeList->current();
+	// the tape can be swapped from anywhere - the menu, a drop, the command line -
+	// so the name is read here rather than written by this window's own buttons.
+	// Compared as bytes: this runs fifty times a second.
+	const char* path = tape->path ? tape->path : "";
+	if (tapeRaw != path) {
+		tapeRaw = path;
+		ui.tpath->setText(QString::fromLocal8Bit(path));
+	}
+	ui.cbAuto->setChecked(conf.tape.autostart);
+	ui.cbFast->setChecked(conf.tape.fast);
+	ui.cbRewind->setChecked(conf.tape.rewind);
 	ui.playBut->setEnabled(got && !tape->on);
 	ui.recBut->setEnabled(got && !tape->on);
-	ui.stopBut->setEnabled(tape->on);
+	ui.stopBut->setEnabled(tape_running(tape));
 	ui.tbRewind->setEnabled(got && !tape->on);
 	ui.tbEject->setEnabled(got && !tape->on);
+	ui.saveBut->setEnabled(got);
+	ui.tbToDisk->setEnabled(row >= 0);
+	ui.tbBlkUp->setEnabled(row > 0);
+	ui.tbBlkDn->setEnabled((row >= 0) && (row < tape->blkCount - 1));
+	ui.tbBlkDel->setEnabled(row >= 0);
 	ui.tapeList->setCurrent(tape->block);
 }
 
 // on block changed
 void TapeWin::updList(Tape* tape) {
 	if (!isVisible()) return;	// fill() walks every block: not for a hidden list
-	ui.tapeList->fill(tape);
+	int row = ui.tapeList->current();	// a refill drops the selection, and the
+	ui.tapeList->fill(tape);		// tape moves on while a block is picked
+	if ((row >= 0) && (row < tape->blkCount))
+		ui.tapeList->selectRow(row);
 }
 
 // slots
@@ -93,9 +131,57 @@ void TapeWin::doEject() {
 void TapeWin::doLoad() {
 	conf.emu.pause |= PR_FILE;
 	load_file(conf.zx, nullptr, FG_TAPE, -1);
+	upd(conf.zx->tape);
 	updList(conf.zx->tape);
-	// ui.tapeList->fill(conf.zx->tape);
 	conf.emu.pause &= ~PR_FILE;
+}
+
+void TapeWin::doSave() {
+	Tape* tap = conf.zx->tape;
+	if (tap->blkCount < 1) return;
+	conf.emu.pause |= PR_FILE;
+	save_file(conf.zx, tap->path, FG_TAPE, -1);
+	upd(tap);
+	conf.emu.pause &= ~PR_FILE;
+}
+
+// the three options are the same ones the Tape page of Options has, and they
+// take effect where they are set - this window has no Apply
+
+void TapeWin::setOptions() {
+	conf.tape.autostart = ui.cbAuto->isChecked() ? 1 : 0;
+	conf.tape.fast = ui.cbFast->isChecked() ? 1 : 0;
+	conf.tape.rewind = ui.cbRewind->isChecked() ? 1 : 0;
+	tape_apply_options(conf.zx->tape);
+}
+
+void TapeWin::doBlkUp() {
+	ui.tapeList->blkMove(conf.zx->tape, -1);
+}
+
+void TapeWin::doBlkDn() {
+	ui.tapeList->blkMove(conf.zx->tape, 1);
+}
+
+void TapeWin::doBlkDel() {
+	ui.tapeList->blkDel(conf.zx->tape);
+}
+
+void TapeWin::doToDisk(QAction* act) {
+	Computer* comp = conf.zx;
+	int row = ui.tapeList->current();
+	if ((row < 0) || !act) return;
+	int drv = act->data().toInt() & 3;
+	if (!tape_disk_ready(comp, drv)) return;
+	QString msg;
+	emu_lock();
+	int ok = tape_blk_to_disk(comp->tape, row, comp->dif->flp[drv], &msg);
+	emu_unlock();
+	if (ok) {
+		showInfo(msg.toLocal8Bit().constData());
+	} else {
+		shitHappens(msg.toLocal8Bit().constData());
+	}
 }
 
 void TapeWin::doDClick(QModelIndex idx) {
@@ -104,7 +190,6 @@ void TapeWin::doDClick(QModelIndex idx) {
 	if (col == TCC_BRK) return;
 	tapRewind(conf.zx->tape, row);
 	updList(conf.zx->tape);
-	//ui.tapeList->fill(conf.zx->tape);
 }
 
 void TapeWin::doClick(QModelIndex idx) {
@@ -113,7 +198,6 @@ void TapeWin::doClick(QModelIndex idx) {
 	if (col != TCC_BRK) return;
 	conf.zx->tape->blkData[row].breakPoint ^= 1;
 	updList(conf.zx->tape);
-	// ui.tapeList->fill(conf.zx->tape);
 }
 
 void TapeWin::setSpeed(int s) {

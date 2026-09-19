@@ -2979,7 +2979,7 @@ instead of playing them</string>
                   <item>
                    <widget class="QCheckBox" name="cbTapeRewind">
                     <property name="toolTip">
-                     <string>At the end of the tape, Play starts it again.
+                     <string>At the end of the tape, Play or the next load starts it again.
 Off: the tape stops at the end</string>
                     </property>
                     <property name="text">

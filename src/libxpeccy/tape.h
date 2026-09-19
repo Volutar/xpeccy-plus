@@ -151,6 +151,7 @@ void tapRec(Tape*);
 void tapStop(Tape*);
 void tapUserStop(Tape*);
 void tapRewind(Tape*,int);
+int tap_rewind_at_end(Tape*);
 
 void tapSync(Tape*,int);
 void tapNextBlock(Tape*);

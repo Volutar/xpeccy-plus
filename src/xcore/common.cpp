@@ -264,6 +264,25 @@ double xspeed_clock(void) {
 	return conf.zx->cpuFrq * conf.zx->frqMul * conf.zx->hwMul;
 }
 
+// Is the tape under way? Playing, or standing still with the automatics free to
+// take it - fast loading reads block after block without ever turning the motor
+// on, so ->on alone left the Stop button greyed out over a tape that was very
+// much running. Stop latches tape->userStop and every automatic honours it.
+// The tape options are kept in conf and read from there by the trap; these two
+// are the copies the tape itself carries. Both windows that can change an option
+// go through here.
+void tape_apply_options(Tape* tap) {
+	if (!tap) return;
+	tap->autorew = conf.tape.rewind;
+	tap->detectOn = conf.tape.autostart;
+}
+
+int tape_running(Tape* tap) {
+	if (!tap || (tap->blkCount < 1)) return 0;
+	if (tap->on) return 1;
+	return !tap->userStop && (conf.tape.autostart || conf.tape.fast);
+}
+
 // "3.5469 MHz", or anything a person types into that box. Out of range or
 // unreadable keeps what the machine already had rather than inventing a clock.
 double xcpu_frq_parse(const QString& txt, double def) {
