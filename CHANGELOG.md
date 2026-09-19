@@ -101,6 +101,10 @@ before that point is upstream's history and is not repeated here.
 - **The right-click menu is shorter.** Watcher, Screen and Sound chips sit under Debugger, and
   clicking Debugger, Favorites or Reset itself does the obvious thing.
 
+- **The colors a machine starts with are the Xpeccy+ palette** - the one that shipped as a
+  preset file, built in now and named `Xpeccy+` in the palette list where it said `default`.
+  Anything set to that preset comes up on it.
+
 ### Removed
 
 - **The machines that are not ZX Spectrum** - MSX, Game Boy, NES, Commodore 64, BK0010, IBM PC,

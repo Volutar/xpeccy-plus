@@ -269,10 +269,13 @@ void setWatchPorts(Computer*, QStringList);
 #define	SCR_HOB		5
 #define	SCR_DISK	6
 
+#define	PAL_DEFAULT_NAME	"Xpeccy+"	// the built-in palette, as the lists name it
+
 void conf_init(char*, char* confdir = NULL);
 QList<QColor> loadColors(std::string);
 int saveColors(std::string, QList<QColor>);
 void loadPalette();
+std::string palette_name(const std::string&);	// what a config's palette name means now
 void dbgPaletteDefaults();			// debugger colours: back to the built-in ones
 const char* dbgPaletteDefault(const char*);
 bool loadStylePalette(const std::string&);	// debugger colours shipped with a style sheet

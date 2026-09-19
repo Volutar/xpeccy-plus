@@ -1317,7 +1317,7 @@ void MainWin::fillUserMenu() {
 #endif
 	// fill palette menu
 	palMenu->clear();
-	act = palMenu->addAction("default");
+	act = palMenu->addAction(PAL_DEFAULT_NAME);
 	act->setData("");
 	act->setCheckable(true);
 	if (conf.palette.empty()) act->setChecked(true);
