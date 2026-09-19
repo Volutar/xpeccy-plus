@@ -72,9 +72,14 @@ before that point is upstream's history and is not repeated here.
   turbo is offered less room. The speed is never remembered - a machine always comes up on its
   own clock - and the base clock itself has moved to Advanced settings.
 
-- **The tape player's buttons are laid out like a tape deck's** - record, play, rewind, stop,
-  eject - in one set of icons, and there is an eject button now, in the player and on the
-  Tape page of Options.
+- **The tape player is the whole tape now.** The transport buttons are laid out like a tape
+  deck's - record, play, rewind, stop, eject - in one set of icons; the image it holds is named
+  across the top with Open and Save beside it; Auto play / stop, Fast loading and Rewind at end
+  are there rather than only in Options; and a block can be moved, dropped or copied to a disk
+  straight from the list. Options keeps the same page, with an eject button of its own.
+
+- **"Rewind at end" starts off**, and when it is on it winds the tape back for the next load as
+  well as for the Play button - so loading the same tape again after a reset just works.
 
 - **The debugger's screen panel picks a screen with one click.** Main, shadow, both at once, or
   Auto following the machine; the bank and offset are behind a Custom button.
@@ -122,9 +127,14 @@ before that point is upstream's history and is not repeated here.
   *(thanks to Volutar)*
 
 - **Stop now stops the tape.** It used to start again by itself a moment later, because the
-  program being loaded was still asking for it - and a tape that had run to its end could
-  wind itself back and play for ever. The tape stays where you stopped it until you press
-  play, rewind it or put another one in.
+  program being loaded was still asking for it, and with fast loading the button was greyed out
+  altogether although the tape was being read block after block. The tape stays where you
+  stopped it until you press play, rewind it or put another one in.
+
+- **Choosing a block in the tape player loaded the wrong one.** Double-clicking a block while
+  the machine was already waiting for a tape swallowed it and handed the loader everything
+  after it instead, so the first block never arrived and the load failed. A tape that starts
+  under a loader already listening no longer trips over itself either.
 
 - **Opening a tape with "Auto play / stop" turned off left the machine waiting for ever** when
   fast loading was off as well: nothing ever pressed play. Starting a tape now presses it.

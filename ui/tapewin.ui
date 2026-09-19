@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>460</width>
-    <height>260</height>
+    <width>560</width>
+    <height>370</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,40 +19,304 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="xTapeCatTable" name="tapeList">
-     <property name="enabled">
-      <bool>false</bool>
+    <layout class="QHBoxLayout" name="layTop" stretch="10,0,0">
+     <item>
+      <layout class="QVBoxLayout" name="layTapeCol">
+       <item>
+        <layout class="QHBoxLayout" name="layPath">
+         <item>
+          <widget class="QLineEdit" name="tpath">
+           <property name="toolTip">
+            <string>The tape image in the machine</string>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="loadBut">
+           <property name="toolTip">
+            <string>Open a tape image</string>
+           </property>
+           <property name="text">
+            <string>Load</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../xpeccy.qrc">
+             <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="saveBut">
+           <property name="toolTip">
+            <string>Save the tape to a file</string>
+           </property>
+           <property name="text">
+            <string>Save</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../xpeccy.qrc">
+             <normaloff>:/images/save_all.png</normaloff>:/images/save_all.png</iconset>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="laySpeed">
+         <item>
+          <widget class="QLabel" name="labSpeed">
+           <property name="toolTip">
+            <string>How fast the tape signal is played, in per cent of normal.
+A few images made on machines with an unusual clock
+load only when it is nudged either way</string>
+           </property>
+           <property name="text">
+            <string>Playback speed</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="xSlider" name="sldSpeed">
+           <property name="toolTip">
+            <string>How fast the tape signal is played, in per cent of normal.
+A few images made on machines with an unusual clock
+load only when it is nudged either way</string>
+           </property>
+           <property name="minimum">
+            <number>95</number>
+           </property>
+           <property name="maximum">
+            <number>105</number>
+           </property>
+           <property name="pageStep">
+            <number>1</number>
+           </property>
+           <property name="value">
+            <number>100</number>
+           </property>
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="tickPosition">
+            <enum>QSlider::TicksBelow</enum>
+           </property>
+           <property name="tickInterval">
+            <number>1</number>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="labSpeedVal">
+           <property name="minimumSize">
+            <size>
+             <width>34</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>100%</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <spacer name="spacerTape">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Minimum</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QFrame" name="linTop">
+       <property name="frameShape">
+        <enum>QFrame::VLine</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Sunken</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="layOpts">
+       <item>
+        <widget class="QCheckBox" name="cbAuto">
+         <property name="toolTip">
+          <string>Start the tape when a loader asks for it,
+stop it between blocks</string>
+         </property>
+         <property name="text">
+          <string>Auto play / stop</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="cbFast">
+         <property name="toolTip">
+          <string>Hand ROM blocks straight to the machine
+instead of playing them</string>
+         </property>
+         <property name="text">
+          <string>Fast loading</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="cbRewind">
+         <property name="toolTip">
+          <string>At the end of the tape, Play or the next load starts it again.
+Off: the tape stops at the end</string>
+         </property>
+         <property name="text">
+          <string>Rewind at end</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QFrame" name="linHead">
+     <property name="frameShape">
+      <enum>QFrame::HLine</enum>
      </property>
-     <property name="editTriggers">
-      <set>QAbstractItemView::NoEditTriggers</set>
+     <property name="frameShadow">
+      <enum>QFrame::Sunken</enum>
      </property>
-     <property name="selectionMode">
-      <enum>QAbstractItemView::NoSelection</enum>
-     </property>
-     <property name="selectionBehavior">
-      <enum>QAbstractItemView::SelectRows</enum>
-     </property>
-     <property name="gridStyle">
-      <enum>Qt::DotLine</enum>
-     </property>
-     <attribute name="horizontalHeaderStretchLastSection">
-      <bool>true</bool>
-     </attribute>
-     <attribute name="verticalHeaderVisible">
-      <bool>false</bool>
-     </attribute>
-     <attribute name="verticalHeaderMinimumSectionSize">
-      <number>17</number>
-     </attribute>
-     <attribute name="verticalHeaderDefaultSectionSize">
-      <number>17</number>
-     </attribute>
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
-     <item>
+    <layout class="QGridLayout" name="layMap" rowstretch="10,0" columnstretch="10,0">
+     <item row="0" column="0">
+      <widget class="xTapeCatTable" name="tapeList">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="editTriggers">
+        <set>QAbstractItemView::NoEditTriggers</set>
+       </property>
+       <property name="alternatingRowColors">
+        <bool>true</bool>
+       </property>
+       <property name="selectionMode">
+        <enum>QAbstractItemView::SingleSelection</enum>
+       </property>
+       <property name="selectionBehavior">
+        <enum>QAbstractItemView::SelectRows</enum>
+       </property>
+       <property name="gridStyle">
+        <enum>Qt::DotLine</enum>
+       </property>
+       <attribute name="horizontalHeaderStretchLastSection">
+        <bool>true</bool>
+       </attribute>
+       <attribute name="verticalHeaderVisible">
+        <bool>false</bool>
+       </attribute>
+       <attribute name="verticalHeaderMinimumSectionSize">
+        <number>17</number>
+       </attribute>
+       <attribute name="verticalHeaderDefaultSectionSize">
+        <number>17</number>
+       </attribute>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <layout class="QVBoxLayout" name="layBlkTools">
+       <item>
+        <widget class="QToolButton" name="tbToDisk">
+         <property name="toolTip">
+          <string>Copy the block to a disk as a TR-DOS file</string>
+         </property>
+         <property name="text">
+          <string>...</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../xpeccy.qrc">
+           <normaloff>:/images/floppy.png</normaloff>:/images/floppy.png</iconset>
+         </property>
+         <property name="popupMode">
+          <enum>QToolButton::InstantPopup</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="tbBlkUp">
+         <property name="toolTip">
+          <string>Move the block up</string>
+         </property>
+         <property name="text">
+          <string>Up</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../xpeccy.qrc">
+           <normaloff>:/images/arrow-up.png</normaloff>:/images/arrow-up.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="tbBlkDn">
+         <property name="toolTip">
+          <string>Move the block down</string>
+         </property>
+         <property name="text">
+          <string>Down</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../xpeccy.qrc">
+           <normaloff>:/images/arrow-down.png</normaloff>:/images/arrow-down.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="spacerBlkTools">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QToolButton" name="tbBlkDel">
+         <property name="toolTip">
+          <string>Delete the block</string>
+         </property>
+         <property name="text">
+          <string>Delete</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../xpeccy.qrc">
+           <normaloff>:/images/cancel.png</normaloff>:/images/cancel.png</iconset>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="1" column="0">
       <widget class="QProgressBar" name="tapeBar">
+       <property name="toolTip">
+        <string>How far the tape stands into the block it is on</string>
+       </property>
        <property name="value">
         <number>0</number>
        </property>
@@ -61,13 +325,16 @@
        </property>
       </widget>
      </item>
-     <item>
+     <item row="1" column="1">
       <widget class="QLabel" name="labBarVal">
        <property name="minimumSize">
         <size>
          <width>34</width>
          <height>0</height>
         </size>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
        </property>
        <property name="text">
         <string>0%</string>
@@ -77,62 +344,7 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
-     <item>
-      <widget class="QLabel" name="labSpeed">
-       <property name="toolTip">
-        <string>How fast the tape signal is played, in per cent of normal. A few images made on machines with an unusual clock load only when it is nudged either way</string>
-       </property>
-       <property name="text">
-        <string>Playback speed</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="xSlider" name="sldSpeed">
-       <property name="toolTip">
-        <string>How fast the tape signal is played, in per cent of normal. A few images made on machines with an unusual clock load only when it is nudged either way</string>
-       </property>
-       <property name="minimum">
-        <number>95</number>
-       </property>
-       <property name="maximum">
-        <number>105</number>
-       </property>
-       <property name="pageStep">
-        <number>1</number>
-       </property>
-       <property name="value">
-        <number>100</number>
-       </property>
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="tickPosition">
-        <enum>QSlider::TicksBelow</enum>
-       </property>
-       <property name="tickInterval">
-        <number>1</number>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="labSpeedVal">
-       <property name="minimumSize">
-        <size>
-         <width>34</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>100%</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
+    <layout class="QHBoxLayout" name="layTransport">
      <item>
       <widget class="QToolButton" name="recBut">
        <property name="iconSize">
@@ -260,26 +472,6 @@
         </size>
        </property>
       </spacer>
-     </item>
-     <item>
-      <widget class="QToolButton" name="loadBut">
-       <property name="iconSize">
-        <size>
-         <width>20</width>
-         <height>20</height>
-        </size>
-       </property>
-       <property name="toolTip">
-        <string>Open a tape image</string>
-       </property>
-       <property name="text">
-        <string>...</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../xpeccy.qrc">
-         <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
-       </property>
-      </widget>
      </item>
     </layout>
    </item>

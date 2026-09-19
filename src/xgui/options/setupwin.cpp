@@ -1179,8 +1179,7 @@ void SetupWin::apply() {
 	conf.tape.fast = ui.cbTapeFast->isChecked() ? 1 : 0;
 	conf.tape.rewind = ui.cbTapeRewind->isChecked() ? 1 : 0;
 	comp->tape->speed = ui.sldTapeSpeed->value();
-	comp->tape->detectOn = conf.tape.autostart;
-	comp->tape->autorew = conf.tape.rewind;
+	tape_apply_options(comp->tape);
 // input
 	conf.jmapNameA = gpwid_a->getMapName();
 	conf.jmapNameB = gpwid_b->getMapName();
@@ -1899,136 +1898,23 @@ void SetupWin::diskToRaw() {
 	showInfo(msg.c_str());
 }
 
-TRFile getHeadInfo(Tape* tape, int blk) {
-	TRFile res;
-	TapeBlockInfo inf = tapGetBlockInfo(tape,blk);
-	unsigned char* dt = (unsigned char*)malloc(inf.size + 2);
-	tapGetBlockData(tape,blk,dt,inf.size+2);
-	for (int i=0; i<8; i++) res.name[i] = dt[i+2];
-	switch (dt[1]) {
-		case 0:
-			res.ext = 'B';
-			res.lst = dt[12]; res.hst = dt[13];
-			res.llen = dt[16]; res.hlen = dt[17];
-			// autostart?
-			break;
-		case 3:
-			res.ext = 'C';
-			res.llen = dt[12]; res.hlen = dt[13];
-			res.lst = dt[14]; res.hst = dt[15];
-			break;
-		default:
-			res.ext = 0x00;
-	}
-	res.slen = res.hlen;
-	if (res.llen != 0) res.slen++;
-	free(dt);
-	return res;
-}
-
 void SetupWin::copyToDisk() {
-	unsigned char* dt;
-	unsigned char buf[256];
-	int pos;	// skip block type mark
-	TapeBlockInfo inf;
-	TRFile dsc;
-
 	QModelIndexList idl = ui.tapelist->selectionModel()->selectedRows();
 	if (idl.size() < 1) return;
-	int blk = idl.first().row();
-	if (blk < 0) return;
 	int dsk = ui.disktabs->currentIndex();
 	if (dsk < 0) dsk = 0;
 	if (dsk > 3) dsk = 3;
-	int headBlock = -1;
-	int dataBlock = -1;
 	Computer* comp = conf.zx;
-	if (!comp->tape->blkData[blk].hasBytes) {
-		shitHappens("This is not standard block");
-		return;
-	}
-	if (comp->tape->blkData[blk].isHeader) {
-		if ((int)comp->tape->blkCount == blk + 1) {
-			shitHappens("Header without data? Hmm...");
-		} else {
-			if (!comp->tape->blkData[blk+1].hasBytes) {
-				shitHappens("Data block is not standard");
-			} else {
-				headBlock = blk;
-				dataBlock = blk + 1;
-			}
-		}
+	if (!tape_disk_ready(comp, dsk)) return;
+	QString msg;
+	int ok = tape_blk_to_disk(comp->tape, idl.first().row(), comp->dif->flp[dsk], &msg);
+	updatedisknams();
+	fillDiskCat();
+	if (ok) {
+		showInfo(msg.toLocal8Bit().constData());
 	} else {
-		dataBlock = blk;
-		if (blk != 0) {
-			if (comp->tape->blkData[blk-1].isHeader) {
-				headBlock = blk - 1;
-			}
-		}
+		shitHappens(msg.toLocal8Bit().constData());
 	}
-	if (headBlock < 0) {
-		const char nm[] = "FILE    ";
-		memcpy(&dsc.name[0],nm,8);
-		dsc.ext = 'C';
-		dsc.lst = dsc.hst = 0;
-		TapeBlockInfo binf = tapGetBlockInfo(comp->tape,dataBlock);
-		int len = binf.size;
-		qDebug() << len;
-		if (len > 0xff00) {
-			shitHappens("Too much data for TRDos file");
-			return;
-		}
-		dsc.llen = len & 0xff;
-		dsc.hlen = ((len & 0xff00) >> 8);
-		dsc.slen = dsc.hlen;
-		if (dsc.llen != 0) dsc.slen++;
-	} else {
-		dsc = getHeadInfo(comp->tape, headBlock);
-		if (dsc.ext == 0x00) {
-			shitHappens("Yes, it happens");
-			return;
-		}
-	}
-	Floppy* flp = comp->dif->flp[dsk];
-	if (!flp->insert) {
-		newdisk(dsk, 0);
-		trd_format(flp);
-	} else if (diskGetType(flp) != DISK_TYPE_TRD) {
-		if (areSure("Not TRDOS disk. Format?<br>All data will be lost")) {
-			trd_format(flp);
-		} else {
-			// shitHappens("As you wish...");
-			return;
-		}
-	}
-	inf = tapGetBlockInfo(comp->tape,dataBlock);
-	dt = (unsigned char*)malloc(inf.size+2);		// +2 = +mark +crc
-	tapGetBlockData(comp->tape,dataBlock,dt,inf.size+2);
-	switch(diskCreateDescriptor(flp,&dsc)) {
-		case ERR_SHIT: shitHappens("Yes, it happens"); break;
-		case ERR_MANYFILES: shitHappens("Too many files @ disk"); break;
-		case ERR_NOSPACE: shitHappens("Not enough space @ disk"); break;
-		case ERR_OK:
-			pos = 0;
-			while (pos < inf.size) {
-				do {
-					buf[pos & 0xff] = (pos < inf.size) ? dt[pos+1] : 0x00;
-					pos++;
-				} while (pos & 0xff);
-
-				diskPutSectorData(flp,dsc.trk, dsc.sec+1, buf, 256);
-
-				dsc.sec++;
-				if (dsc.sec > 15) {
-					dsc.sec = 0;
-					dsc.trk++;
-				}
-			}
-			fillDiskCat();
-			showInfo("File(s) was copied");
-			break;
-	}
-	free(dt);
 }
 
 void SetupWin::fillDiskCat() {
@@ -2203,33 +2089,15 @@ void SetupWin::ejctape() {
 }
 
 void SetupWin::tblkup() {
-	Computer* comp = conf.zx;
-	int ps = ui.tapelist->currentIndex().row();
-	if (ps > 0) {
-		tapSwapBlocks(comp->tape,ps,ps-1);
-		buildtapelist();
-		ui.tapelist->selectRow(ps-1);
-	}
+	ui.tapelist->blkMove(conf.zx->tape, -1);
 }
 
 void SetupWin::tblkdn() {
-	Computer* comp = conf.zx;
-	int ps = ui.tapelist->currentIndex().row();
-	if ((ps != -1) && (ps < comp->tape->blkCount - 1)) {
-		tapSwapBlocks(comp->tape,ps,ps+1);
-		buildtapelist();
-		ui.tapelist->selectRow(ps+1);
-	}
+	ui.tapelist->blkMove(conf.zx->tape, 1);
 }
 
 void SetupWin::tblkrm() {
-	Computer* comp = conf.zx;
-	int ps = ui.tapelist->currentIndex().row();
-	if (ps != -1) {
-		tapDelBlock(comp->tape,ps);
-		buildtapelist();
-//		ui.tapelist->selectRow(ps);
-	}
+	ui.tapelist->blkDel(conf.zx->tape);
 }
 
 void SetupWin::chablock(QModelIndex idx) {

@@ -195,16 +195,23 @@ class TapeWin : public QDialog {
 	private:
 		Ui::TapeWin ui;
 		int state;
+		QByteArray tapeRaw;	// the path as the tape holds it, to notice a swap
 	private slots:
 		void doPlay();
 		void doRec();
 		void doStop();
 		void doLoad();
+		void doSave();
 		void doRewind();
 		void doEject();
 		void doDClick(QModelIndex);
 		void doClick(QModelIndex);
 		void setSpeed(int);
+		void setOptions();
+		void doBlkUp();
+		void doBlkDn();
+		void doBlkDel();
+		void doToDisk(QAction*);
 };
 
 // rzx player

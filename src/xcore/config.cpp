@@ -103,7 +103,7 @@ void conf_init(char* wpath, char* confdir) {
 	conf.running = 0;
 	conf.boot = 1;
 	conf.autorun = 1;
-	conf.tape.rewind = 1;
+	conf.tape.rewind = 0;		// a tape that ran out stays there until it is asked for
 	conf.emu.pause = 0;
 	conf.emu.fast = 0;
 	conf.emu.speed = 1.0;

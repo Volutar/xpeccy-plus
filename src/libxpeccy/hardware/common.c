@@ -319,12 +319,30 @@ int zx_ear(Computer* comp) {
 	return 0;
 }
 
+// the 48 basic rom itself is running: paged in at #0000, with neither TR-DOS nor
+// an extension holding the window. The tape trap asks the same question.
+int zx_rom_active(Computer* comp) {
+	return comp->flgROM && !comp->flgDOS && !comp->flgEXT
+		&& (comp->mem->map[0].type == MEM_ROM);
+}
+
+// The rom's own loader polls #FE in exactly the pattern tapDetectLoader looks
+// for, and the tape trap serves the rom - so the detector must not answer for
+// it, or a fast load gets a tape playing under it and the two fall out of step.
+// LD-EDGE-1/2 (#05E3..#05F8) is the only rom code that reads the port this way.
+// The address goes first: one field read, and false on every keyboard poll.
+static int zx_rom_ld_edge(Computer* comp) {
+	int pc = comp->cpu->regPC;
+	return (pc >= 0x05e3) && (pc <= 0x05f9) && zx_rom_active(comp);
+}
+
 int xInFE(Computer* comp, int port) {
 	comp->keyb->port &= (port >> 8);
 	unsigned char res = kbd_rd(comp->keyb, port) | 0xa0;		// set bits 7,5
 	if (zx_ear(comp))
 		res |= 0x40;
-	tapDetectLoader(comp->tape, comp->tickCount, comp->cpu->regB);
+	if (!zx_rom_ld_edge(comp))
+		tapDetectLoader(comp->tape, comp->tickCount, comp->cpu->regB);
 	return res;
 }
 

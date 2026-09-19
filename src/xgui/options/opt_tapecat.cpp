@@ -3,6 +3,7 @@
 #include "xcore/xcore.h"
 
 #include <QHeaderView>
+#include "../../filer.h"
 #include <QIcon>
 #include <QPainter>
 
@@ -239,8 +240,150 @@ void xTapeCatTable::setCurrent(int row) {
 		scrollTo(model->index(row, 0), QAbstractItemView::EnsureVisible);
 }
 
+// the row the buttons beside the list work on. currentIndex(), not the selection
+// model: this runs on the tape window's refresh, and selectedRows() builds a list
+// of persistent indexes every time.
+int xTapeCatTable::current() {
+	int row = currentIndex().row();
+	return ((row >= 0) && (row < model->rowCount())) ? row : -1;
+}
+
+// The emulation thread walks the block list on every rom load, so it is held
+// while the list is changed under it.
+
+void xTapeCatTable::blkMove(Tape* tape, int dir) {
+	int row = current();
+	int to = row + dir;
+	if ((row < 0) || (to < 0) || (to >= tape->blkCount)) return;
+	emu_lock();
+	tapSwapBlocks(tape, row, to);
+	emu_unlock();
+	fill(tape);
+	selectRow(to);
+}
+
+void xTapeCatTable::blkDel(Tape* tape) {
+	int row = current();
+	if (row < 0) return;
+	emu_lock();
+	tapDelBlock(tape, row);
+	emu_unlock();
+	fill(tape);
+}
+
 void xTapeCatTable::fill(Tape* tape) {
 	model->fill(tape);
 	scrollTo(model->index(tape->block, 0), QAbstractItemView::EnsureVisible);
 	setEnabled(tape->blkCount > 0);
+}
+
+// tape -> disk
+
+// What a header block says the file is. An unreadable type gives ext 0, which
+// the caller reads as "no header here after all".
+static TRFile tape_head_info(Tape* tape, int blk) {
+	TRFile res;
+	TapeBlockInfo inf = tapGetBlockInfo(tape, blk);
+	unsigned char* dt = (unsigned char*)malloc(inf.size + 2);
+	tapGetBlockData(tape, blk, dt, inf.size + 2);
+	for (int i = 0; i < 8; i++) res.name[i] = dt[i+2];
+	switch (dt[1]) {
+		case 0:
+			res.ext = 'B';
+			res.lst = dt[12]; res.hst = dt[13];
+			res.llen = dt[16]; res.hlen = dt[17];
+			break;
+		case 3:
+			res.ext = 'C';
+			res.llen = dt[12]; res.hlen = dt[13];
+			res.lst = dt[14]; res.hst = dt[15];
+			break;
+		default:
+			res.ext = 0x00;
+	}
+	res.slen = res.hlen;
+	if (res.llen != 0) res.slen++;
+	free(dt);
+	return res;
+}
+
+// The drive has to hold a TR-DOS disk before anything can be written to it.
+// Anything destructive is asked about first. !0 when it is ready.
+// (SetupWin::newdisk does the same three calls, but it is a member and ends by
+// relabelling its own page)
+int tape_disk_ready(Computer* comp, int drive) {
+	Floppy* flp = comp->dif->flp[drive & 3];
+	if (!flp->insert) {
+		if (saveChangedDisk(comp, drive & 3) != ERR_OK) return 0;
+		flp_insert(flp, NULL);
+		flp->changed = 1;
+		trd_format(flp);
+	} else if (diskGetType(flp) != DISK_TYPE_TRD) {
+		if (!areSure("Not TRDOS disk. Format?<br>All data will be lost")) return 0;
+		trd_format(flp);
+	}
+	return 1;
+}
+
+// Copies one tape block to the disk as a TR-DOS file: a header block is taken
+// with the data block after it, a data block with the header before it if there
+// is one, and a block with neither becomes FILE C. !0 when the file is there,
+// and *msg is what to tell the user either way.
+int tape_blk_to_disk(Tape* tape, int blk, Floppy* flp, QString* msg) {
+	TRFile dsc;
+	int headBlock = -1;
+	int dataBlock = -1;
+
+	if ((blk < 0) || (blk >= (int)tape->blkCount)) {
+		*msg = "No block picked";
+		return 0;
+	}
+	if (!tape->blkData[blk].hasBytes) {
+		*msg = "This is not a standard block";
+		return 0;
+	}
+	if (tape->blkData[blk].isHeader) {
+		if ((int)tape->blkCount == blk + 1) {
+			*msg = "Header without data? Hmm...";
+			return 0;
+		}
+		if (!tape->blkData[blk+1].hasBytes) {
+			*msg = "Data block is not standard";
+			return 0;
+		}
+		headBlock = blk;
+		dataBlock = blk + 1;
+	} else {
+		dataBlock = blk;
+		if ((blk > 0) && tape->blkData[blk-1].isHeader)
+			headBlock = blk - 1;
+	}
+	TapeBlockInfo inf = tapGetBlockInfo(tape, dataBlock);
+	if (headBlock < 0) {
+		dsc = diskMakeDescriptor("FILE", 'C', 0, inf.size);
+	} else {
+		dsc = tape_head_info(tape, headBlock);
+		if (dsc.ext == 0x00) {
+			*msg = "Yes, it happens";
+			return 0;
+		}
+	}
+	// diskCreateFile takes whole sectors out of the buffer, so the block is
+	// copied into one of that size with the tail zeroed
+	int secs = (inf.size + 0xff) >> 8;
+	unsigned char* dt = (unsigned char*)malloc(inf.size + 2);	// +mark +crc
+	unsigned char* sec = (unsigned char*)calloc(secs ? secs << 8 : 256, 1);
+	tapGetBlockData(tape, dataBlock, dt, inf.size + 2);
+	memcpy(sec, dt + 1, inf.size);
+	int err = diskCreateFile(flp, dsc, sec, inf.size);
+	free(dt);
+	free(sec);
+	switch (err) {
+		case ERR_OK: *msg = "File(s) was copied"; return 1;
+		case ERR_SIZE: *msg = "Too much data for a TR-DOS file"; break;
+		case ERR_MANYFILES: *msg = "Too many files on the disk"; break;
+		case ERR_NOSPACE: *msg = "Not enough space on the disk"; break;
+		default: *msg = "Yes, it happens"; break;
+	}
+	return 0;
 }

@@ -112,6 +112,8 @@ int xspeed_max(void);
 QString xspeed_name(int, bool ascii = false);
 double xspeed_clock(void);
 double xcpu_frq_parse(const QString&, double);
+int tape_running(Tape*);
+void tape_apply_options(Tape*);
 double absd(double);
 
 QString getbinbyte(unsigned char);
