@@ -164,7 +164,7 @@ switches to it when the settings are applied</string>
                   </size>
                  </property>
                  <property name="text">
-                  <string>CPU</string>
+                  <string>Speed</string>
                  </property>
                 </widget>
                </item>
@@ -182,7 +182,7 @@ switches to it when the settings are applied</string>
                    <height>16777215</height>
                   </size>
                  </property>
-                 <layout class="QHBoxLayout" name="horizontalLayout_freq">
+                 <layout class="QVBoxLayout" name="horizontalLayout_freq">
                   <property name="leftMargin">
                    <number>0</number>
                   </property>
@@ -196,60 +196,39 @@ switches to it when the settings are applied</string>
                    <number>0</number>
                   </property>
                   <item>
-                   <widget class="QDoubleSpinBox" name="sbFreq">
+                   <widget class="xSlider" name="sldSpeed">
                     <property name="toolTip">
-                     <string>Base clock of the machine. If the video runs off
-the same generator, it sets the frame rate too</string>
-                    </property>
-                    <property name="suffix">
-                     <string> MHz</string>
-                    </property>
-                    <property name="decimals">
-                     <number>4</number>
-                    </property>
-                    <property name="minimum">
-                     <double>0.500000000000000</double>
+                     <string>Left of x1 the whole emulation is slowed down and the
+frame rate drops. Right of it the CPU gets a multiplier
+and the frame rate stays where it was. Neither is saved</string>
                     </property>
                     <property name="maximum">
-                     <double>14.000000000000000</double>
+                     <number>6</number>
                     </property>
-                    <property name="singleStep">
-                     <double>0.010000000000000</double>
-                    </property>
-                    <property name="value">
-                     <double>3.500000000000000</double>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="labMult">
-                    <property name="text">
-                     <string>Mult</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QDoubleSpinBox" name="sbMult">
-                    <property name="toolTip">
-                     <string>Multiplier for the CPU clock</string>
-                    </property>
-                    <property name="prefix">
-                     <string>x</string>
-                    </property>
-                    <property name="decimals">
+                    <property name="pageStep">
                      <number>1</number>
                     </property>
-                    <property name="minimum">
-                     <double>0.100000000000000</double>
-                    </property>
-                    <property name="maximum">
-                     <double>8.000000000000000</double>
-                    </property>
-                    <property name="singleStep">
-                     <double>0.100000000000000</double>
-                    </property>
                     <property name="value">
-                     <double>1.000000000000000</double>
+                     <number>3</number>
+                    </property>
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                    <property name="tickPosition">
+                     <enum>QSlider::TicksBelow</enum>
+                    </property>
+                    <property name="tickInterval">
+                     <number>1</number>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="labSpeed">
+                    <property name="alignment">
+                     <set>Qt::AlignHCenter|Qt::AlignVCenter</set>
+                    </property>
+                    <property name="text">
+                     <string>x1</string>
                     </property>
                    </widget>
                   </item>
@@ -711,6 +690,106 @@ how much of it is read, and where it lands</string>
          <item>
           <widget class="QWidget" name="advBox" native="true">
            <layout class="QVBoxLayout" name="verticalLayout_adv">
+            <item>
+             <widget class="QGroupBox" name="gbCpu">
+              <property name="title">
+               <string>CPU</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_cpu" columnstretch="0,0,1" columnminimumwidth="22,120,0">
+               <item row="0" column="1">
+                <widget class="QLabel" name="nam_cpufrq">
+                 <property name="toolTip">
+                  <string>The crystal this board runs on. The dot clock comes
+off it as well, so changing it moves the frame rate too</string>
+                 </property>
+                 <property name="text">
+                  <string>Base clock</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="2">
+                <layout class="QHBoxLayout" name="hl_cbCpuFrq">
+                 <item>
+                <widget class="QComboBox" name="cbCpuFrq">
+                 <property name="minimumSize">
+                  <size>
+                   <width>200</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="editable">
+                  <bool>true</bool>
+                 </property>
+                 <property name="toolTip">
+                  <string>The crystal this board runs on. The dot clock comes
+off it as well, so changing it moves the frame rate too</string>
+                 </property>
+                </widget>
+                 </item>
+                 <item>
+                  <spacer name="sp_cbCpuFrq">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>10</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLabel" name="nam_cputurbo">
+                 <property name="toolTip">
+                  <string>The turbo steps this board has, as multipliers of the
+base clock: 1,2 is a board that can do 3.5 and 7 MHz.
+Alt+T walks them. It describes the board - it does not
+give one a turbo it never had (use the slider for that)</string>
+                 </property>
+                 <property name="text">
+                  <string>Turbo steps</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="2">
+                <layout class="QHBoxLayout" name="hl_leCpuTurbo">
+                 <item>
+                <widget class="QComboBox" name="cbCpuTurbo">
+                 <property name="minimumSize">
+                  <size>
+                   <width>200</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="toolTip">
+                  <string>The turbo steps this board has, as multipliers of the
+base clock: 1,2 is a board that can do 3.5 and 7 MHz.
+Alt+T walks them. It describes the board - it does not
+give one a turbo it never had (use the slider for that)</string>
+                 </property>
+                </widget>
+                 </item>
+                 <item>
+                  <spacer name="sp_leCpuTurbo">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>10</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </item>
             <item>
              <widget class="QGroupBox" name="gbUla">
               <property name="title">
@@ -5042,6 +5121,45 @@ lands sooner. The sound stays a frame behind</string>
                  </widget>
                 </item>
                 <item row="7" column="0">
+                 <widget class="QCheckBox" name="cbClockLed">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../xpeccy.qrc">
+                    <normaloff>:/images/clock.png</normaloff>:/images/clock.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>16</width>
+                    <height>16</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="1">
+                 <widget class="QLabel" name="namClockLed">
+                  <property name="text">
+                   <string>CPU clock</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>cbClockLed</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="2">
+                 <widget class="QLabel" name="labClockLed">
+                  <property name="font">
+                   <font>
+                    <italic>true</italic>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Shown while the CPU is off its base clock (bottom right)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="8" column="0">
                  <widget class="QCheckBox" name="cbMessage">
                   <property name="text">
                    <string/>
@@ -5058,7 +5176,7 @@ lands sooner. The sound stays a frame behind</string>
                   </property>
                  </widget>
                 </item>
-                <item row="7" column="1">
+                <item row="8" column="1">
                  <widget class="QLabel" name="namMessage">
                   <property name="text">
                    <string>Messages</string>
@@ -5068,7 +5186,7 @@ lands sooner. The sound stays a frame behind</string>
                   </property>
                  </widget>
                 </item>
-                <item row="7" column="2">
+                <item row="8" column="2">
                  <widget class="QLabel" name="labMessage">
                   <property name="font">
                    <font>

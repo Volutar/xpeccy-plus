@@ -99,6 +99,19 @@ QStringList xres_list(const char*, const QStringList&);
 
 int toPower(int);
 int toLimits(int, int, int);
+
+// the speed scale: 1/8 1/4 1/2 x1 x2 x4 x8, x1 in the middle
+#define XSPD_CENTER	3
+#define XSPD_MAX	6
+// ...and the ceiling on base x turbo x overclock, whoever asks for it
+#define XSPD_CLOCK_MAX	16
+double xspeed_mult(int);
+void xspeed_set(int);
+int xspeed_get(void);
+int xspeed_max(void);
+QString xspeed_name(int, bool ascii = false);
+double xspeed_clock(void);
+double xcpu_frq_parse(const QString&, double);
 double absd(double);
 
 QString getbinbyte(unsigned char);
@@ -307,6 +320,8 @@ enum {
 	XCUT_NMI,
 	XCUT_RESET,
 	XCUT_TURBO,
+	XCUT_SPEED_UP,
+	XCUT_SPEED_DOWN,
 //	XCUT_TVLINES,
 	XCUT_WAV_OUT,
 	XCUT_RELOAD_SHD,
@@ -437,6 +452,7 @@ typedef struct {
 	std::string ramCold;		// power-on ram pattern, hex groups with *N runs; empty = memory left alone
 	int ramNoise;			// bytes in a thousand that come up wrong in it
 	int cpufrq;			// Hz
+	std::string turboSteps;		// turbo steps this board has, "1" = none
 	int resbank;			// RES_*
 	int earback;			// EAR_*
 	unsigned contio:1;
@@ -482,6 +498,9 @@ QString xm_list_name(const xMachine&);	// its name, marked when it does
 QStringList xm_user_files();
 bool xm_is_user_file(const QString&);
 const QList<xMachine>& xm_list();
+std::string xm_turbo_str(Computer*);
+void xm_turbo_set(Computer*, std::string);
+int xm_turbo_index(Computer*);
 const xMachine* xm_find(std::string);		// as the user has it
 const xMachine* xm_stock(std::string);		// as it ships
 const xMachine* xm_find_by_core(std::string);
@@ -556,6 +575,10 @@ struct xConfig {
 		// frames the emulation runs ahead of the timeline it keeps, to hide
 		// the machine's own reaction time. 0 = off (see ethread.cpp)
 		int runahead;
+		// slow motion: how fast emulated time runs against the host's, 1.0 =
+		// normal. It is the host's pace and not the machine's clock, so the
+		// frame is the same length in T and the frame rate is what drops
+		double speed;
 	} emu;
 	struct {
 		unsigned fullScreen:1;	// use fullscreen
@@ -617,6 +640,7 @@ struct xConfig {
 		unsigned message:1;
 		unsigned fps:1;
 		unsigned halt:1;
+		unsigned clock:1;	// cpu clock, shown only when it is not the machine's own
 	} led;
 	struct {
 		unsigned enabled:1;	// write the log file

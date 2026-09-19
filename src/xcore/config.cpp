@@ -106,6 +106,8 @@ void conf_init(char* wpath, char* confdir) {
 	conf.tape.rewind = 1;
 	conf.emu.pause = 0;
 	conf.emu.fast = 0;
+	conf.emu.speed = 1.0;
+	conf.led.clock = 1;
 	conf.gpctrl = new xGamepadController;
 }
 
@@ -196,7 +198,6 @@ void saveConfig() {
 	fprintf(cfile, "keymap = %s\n", conf.kmapName.c_str());
 	fprintf(cfile, "gamepad.map = %s\n", conf.jmapNameA.c_str());
 	fprintf(cfile, "gamepad2.map = %s\n", conf.jmapNameB.c_str());
-	fprintf(cfile, "frq.mul = %f\n", conf.zx->frqMul);
 	// What each slot remembers, whether or not that pad is plugged in now.
 	// A sleeping wireless pad must read the same here as an awake one.
 	fprintf(cfile, "gamepad = %s\n", conf.gpctrl->gpada->padId().toConfig().toUtf8().data());
@@ -213,6 +214,7 @@ void saveConfig() {
 	fprintf(cfile, "message = %s\n", YESNO(conf.led.message));
 	fprintf(cfile, "fps = %s\n", YESNO(conf.led.fps));
 	fprintf(cfile, "halt = %s\n", YESNO(conf.led.halt));
+	fprintf(cfile, "clock = %s\n", YESNO(conf.led.clock));
 
 	fprintf(cfile, "\n[DEBUGA]\n\n");
 	fprintf(cfile, "dbsize = %i\n", conf.dbg.dbsize);
@@ -962,6 +964,7 @@ void loadConfig() {
 					if (pnam=="message") conf.led.message = arg.b;
 					if (pnam=="fps") conf.led.fps = arg.b;
 					if (pnam=="halt") conf.led.halt = arg.b;
+					if (pnam=="clock") conf.led.clock = arg.b;
 					break;
 			}
 		}

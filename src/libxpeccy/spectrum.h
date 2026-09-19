@@ -101,12 +101,22 @@ typedef struct {
 // reciprocal, and needs the extra bits to stay accurate for short tick periods
 #define TICK_FIXED_BITS 32
 
+// how many turbo steps a board may declare
+#define TURBO_STEP_MAX 8
+
 typedef struct Computer {
 	struct HardWare *hw;	// computer core - misc params, callbacks
 
 	double cpuFrq;
-	double frqMul;		// turbo the user asked for
-	double hwMul;		// turbo the machine switched on itself
+	double frqMul;		// overclock the user asked for, not a real machine's
+	double hwMul;		// turbo the machine is running at now
+	// The board's own turbo step. A machine that switches turbo from a port
+	// overwrites hwMul from there; on one whose turbo is a switch on the case
+	// this is all there is, so a reset puts hwMul back to it rather than to 1.
+	double turboStep;
+	// the steps this board has, x1 first, from its definition
+	double turboTab[TURBO_STEP_MAX];
+	int turboCount;
 	unsigned char intVector;
 
 	int brkt;		// breakpoint type (cpu, ram, rom...)

@@ -567,6 +567,9 @@ Computer* compCreate() {
 	comp->cmos.data[17] = 0xaa;	// 0a?
 	comp->frqMul = 1;
 	comp->hwMul = 1;
+	comp->turboStep = 1;
+	comp->turboTab[0] = 1;
+	comp->turboCount = 1;
 	compSetBaseFrq(comp, 3.5);
 //	compReset(comp, RES_DEFAULT);		// Can't reset here, cuz comp->resbank not defined yet
 	return comp;
@@ -629,7 +632,8 @@ void compReset(Computer* comp,int res) {
 	ideReset(comp->ide);
 	saaReset(comp->saa);
 	sdcReset(comp->sdc);
-	compSetHwTurbo(comp, 1);		// whatever turbo it had switched on
+	comp->hwMul = comp->turboStep;		// a port turbo sets its own again, a switch does not
+	comp_update_timings(comp);
 	if (comp->hw->reset)
 		comp->hw->reset(comp);
 	comp->hw->mapMem(comp);
@@ -710,11 +714,13 @@ void compSetBaseFrq(Computer* comp, double frq) {
 // reset put the machine's back without touching what the user asked for.
 
 void compSetTurbo(Computer* comp, double mult) {
+	if (comp->frqMul == mult) return;
 	comp->frqMul = mult;
 	comp_update_timings(comp);
 }
 
 void compSetHwTurbo(Computer* comp, double mult) {
+	if (comp->hwMul == mult) return;
 	comp->hwMul = mult;
 	comp_update_timings(comp);
 }

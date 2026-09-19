@@ -216,12 +216,33 @@ void MainWin::xkey_press(int xkey) {
 				updateHead();
 				break;
 			case XCUT_TURBO:
-				if (comp->frqMul < 2) {
-					compSetTurbo(comp, 2.0);
-					setMessage(" turbo on ");
+				// the board's own turbo, walked through the steps it declares.
+				// A machine that sets it from a port will set it again itself
+				if (comp->turboCount < 2) {
+					setMessage(" this machine has no turbo ");
+				} else if (comp->rzx.play) {
+					setMessage(" not while an rzx plays ");
 				} else {
-					compSetTurbo(comp, 1.0);
-					setMessage(" turbo off ");
+					// an unknown step reads as -1 and so starts the list over
+					int i = (xm_turbo_index(comp) + 1) % comp->turboCount;
+					comp->turboStep = comp->turboTab[i];
+					compSetHwTurbo(comp, comp->turboStep);
+					setMessage(QString(" %0 MHz (x%1) ").arg(xspeed_clock(), 0, 'g', 6)
+						.arg(comp->turboStep));
+				}
+				break;
+			case XCUT_SPEED_UP:
+			case XCUT_SPEED_DOWN:
+				if (comp->rzx.play) {
+					setMessage(" not while an rzx plays ");
+				} else {
+					int pos = xspeed_get() + ((xkey == XCUT_SPEED_UP) ? 1 : -1);
+					if (pos > xspeed_max()) {
+						setMessage(" not available with this machine's turbo ");
+					} else {
+						xspeed_set(pos);
+						setMessage(QString(" %0 ").arg(xspeed_name(pos, true)));
+					}
 				}
 				break;
 			case XCUT_NOFLICK:
