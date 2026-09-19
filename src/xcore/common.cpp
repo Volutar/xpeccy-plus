@@ -236,6 +236,7 @@ int xspeed_get(void) {
 // What the slider is doing, for the options label and for the message on the
 // screen. The screen font has no multiplication sign, so that one asks for ascii.
 QString xspeed_name(int pos, bool ascii) {
+	pos = toLimits(pos, 0, XSPD_MAX);
 	if (pos < XSPD_CENTER)
 		return QString("Slow motion 1/%0").arg(1 << (XSPD_CENTER - pos));
 	if (pos > XSPD_CENTER)

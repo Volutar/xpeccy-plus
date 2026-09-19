@@ -239,16 +239,28 @@ sndPair ay_mix_stereo(int volA, int volB, int volC, int id, int sep) {
 	return res;
 }
 
+// A period this short is not a gate any more but a tone of its own, so the
+// square is replaced by its mean level - in ay_chan_lev() below, and by the
+// half in ay_chan_dac(). Both ask here, so it is asked in one place.
+// The limit is a frequency and not a register value (period 5 is 22 kHz at
+// 1.75 MHz, and per is the register << 4), so slowing the emulation down has
+// to move it or tones that have come down into hearing stay silent.
+#define AY_SUB_LIMIT	0x60
+
+static int ay_sub_limit = AY_SUB_LIMIT;
+
+void ay_set_speed(double speed) {
+	ay_sub_limit = (speed > 0.0) ? (int)(AY_SUB_LIMIT * speed) : AY_SUB_LIMIT;
+}
+
+static int ay_sub_period(aymChan* ch) {
+	return (ch->per < ay_sub_limit) && !ch->tdis;
+}
+
 // The level a channel is putting out, 0..31, before the DAC curve: the
 // envelope or the register volume, with whichever of the mixer gates is shut
 // silencing it. This is what the debugger shows; ay_chan_dac() below turns it
 // into what the DAC does with it.
-// A period under one sample long is heard as a tone of its own rather than as a
-// gate. Both halves of the level ask this, so it is asked in one place.
-static int ay_sub_period(aymChan* ch) {
-	return (ch->per < 0x60) && !ch->tdis;
-}
-
 int ay_chan_lev(aymChip* ay, aymChan* ch) {
 	if (ch->mute) return 0;
 	if (!(ch->ndis || ay->chanN.lev)) return 0;
