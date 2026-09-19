@@ -192,7 +192,7 @@ static const struct {
 	const char* key;
 	const char* sect;
 } macSectTab[] = {
-	{"hw", "machine"}, {"cpu", "machine"}, {"cpu.frq", "machine"},
+	{"hw", "machine"}, {"cpu", "machine"}, {"cpu.frq", "machine"}, {"cpu.turbo", "machine"},
 	{"memory", "machine"}, {"ram.cold", "machine"}, {"ram.noise", "machine"},
 	{"reset", "machine"}, {"contio", "machine"}, {"issue", "machine"},
 	{"contmem", "machine"}, {"scrp.wait", "machine"},
@@ -247,10 +247,57 @@ static void mac_line_set(QList<xMacLine>& lines, const xMacLine& ln) {
 	lines << ln;
 }
 
+// "1,2,4" - the turbo steps a board has, x1 always first. Anything the list
+// cannot be read as leaves the board with no turbo rather than a made up one.
+static int mac_turbo_tab(const std::string& src, double* tab) {
+	int cnt = 0;
+	tab[cnt++] = 1.0;
+	foreach (QString part, QString::fromStdString(src).split(',', X_SkipEmptyParts)) {
+		bool ok = false;
+		double v = part.trimmed().toDouble(&ok);
+		if (!ok || (v < 0.1) || (v > 8.0)) continue;
+		if (v <= tab[cnt - 1]) continue;		// x1 is already there, and the list rises
+		if (cnt >= TURBO_STEP_MAX) break;
+		tab[cnt++] = v;
+	}
+	return cnt;
+}
+
+static std::string mac_turbo_str(const double* tab, int cnt) {
+	QStringList out;
+	for (int i = 0; i < cnt; i++)
+		out << QString::number(tab[i], 'g', 4);
+	return out.join(",").toStdString();
+}
+
+// the live board's steps, for the options page and the hotkey
+
+std::string xm_turbo_str(Computer* comp) {
+	if (!comp) return std::string("1");
+	return mac_turbo_str(comp->turboTab, comp->turboCount);
+}
+
+// which of them the board is on, -1 for a step the list no longer has
+int xm_turbo_index(Computer* comp) {
+	if (!comp) return -1;
+	for (int i = 0; i < comp->turboCount; i++) {
+		if (fabs(comp->turboTab[i] - comp->turboStep) < 1e-6) return i;
+	}
+	return -1;
+}
+
+void xm_turbo_set(Computer* comp, std::string src) {
+	if (!comp) return;
+	comp->turboCount = mac_turbo_tab(src, comp->turboTab);
+	if (xm_turbo_index(comp) < 0)		// a step that is gone: back to the base clock
+		compSetHwTurbo(comp, comp->turboStep = 1);
+}
+
 static void mac_defaults(xMachine& mac) {
 	mac.memory = 128;
 	mac.cpu = "Z80";
 	mac.cpufrq = 3500000;
+	mac.turboSteps = "1";
 	mac.resbank = RES_128;
 	mac.earback = EAR_ISSUE3;
 	mac.contio = 0;
@@ -301,6 +348,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "ram.cold") mac.ramCold = val;
 			else if (nam == "ram.noise") mac.ramNoise = toLimits(arg.i, 0, 1000);
 			else if (nam == "cpu.frq") mac.cpufrq = arg.i;
+			else if (nam == "cpu.turbo") mac.turboSteps = val;
 			else if (nam == "reset") mac.resbank = mac_word(resetTab, val, RES_128, id);
 			else if (nam == "issue") mac.earback = mac_word(earTab, val, EAR_ISSUE3, id);
 			else if (nam == "contio") mac.contio = arg.b;
@@ -822,6 +870,10 @@ static void mac_from_def(const xMachine* mac) {
 	xm_set_hardware(mac->hw);
 	mac_set_cpu(comp, mac->cpu);
 	compSetBaseFrq(comp, mac->cpufrq / 1e6);
+	comp->turboCount = mac_turbo_tab(mac->turboSteps, comp->turboTab);
+	comp->turboStep = 1;		// a machine comes up on its base clock...
+	conf.emu.speed = 1.0;		// ...and at normal speed: neither is a setting
+	compSetTurbo(comp, 1.0);
 	memSetSize(comp->mem, mac_ram_size(mac->memory, comp->hw->mask), -1);
 	mac_cold_ram(comp, mac->ramCold, mac->ramNoise);
 	comp->resbank = mac->resbank;
@@ -945,6 +997,7 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put(out, "hw", comp->hw->name, mac->hw);
 	mac_put(out, "cpu", cpu, mac->cpu);
 	mac_put(out, "cpu.frq", int(comp->cpuFrq * 1e6), mac->cpufrq);
+	mac_put(out, "cpu.turbo", mac_turbo_str(comp->turboTab, comp->turboCount), mac->turboSteps);
 	mac_put(out, "memory", comp->mem->ramSize >> 10, mac->memory);
 	mac_put(out, "reset", mac_word_name(resetTab, comp->resbank), mac_word_name(resetTab, mac->resbank));
 	mac_put(out, "issue", mac_word_name(earTab, comp->earback), mac_word_name(earTab, mac->earback));
@@ -1166,7 +1219,7 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	else if (nam == "cartrige") {
 		if (conf.storePaths) sltSetPath(comp->slot, arg.s);
 	}
-	else if (nam == "frq.mul") compSetTurbo(comp, (arg.d < 0.1) ? 0.1 : (arg.d > 8.0) ? 8.0 : arg.d);
+	else if (nam == "frq.mul") {}		// the overclock does not outlive a session any more
 	else if (nam == "tape.speed") { if ((arg.i > 94) && (arg.i < 106)) comp->tape->speed = arg.i; }
 	else if (nam == "psg.frq") {
 		aymChip* psg[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
@@ -1352,7 +1405,7 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 				if ((frq > 1) && (frq < 58)) frq *= 5e5;	// the old 2..28 field
 				compSetBaseFrq(comp, toLimits(frq, 100000, 28000000) / 1e6);
 			}
-			else if (nam == "frq.mul") compSetTurbo(comp, (arg.d < 0.1) ? 0.1 : (arg.d > 8.0) ? 8.0 : arg.d);
+			else if (nam == "frq.mul") {}		// dropped, see mac_set_defer_key
 			else if (nam == "memory") memSetSize(comp->mem, mac_ram_size(arg.i, comp->hw->mask), -1);
 			else if (nam == "contmem") comp->flgCNTM = arg.b;
 			else if (nam == "contio") comp->flgCNTI = arg.b;

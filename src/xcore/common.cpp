@@ -2,11 +2,13 @@
 #include <vector>
 #include <sstream>
 #include <stdlib.h>
+#include <math.h>
 #include <QString>
 #include <QDir>
 #include <QFile>
 
 #include "xcore.h"
+#include "sound.h"
 
 static const char* hexhalf = "0123456789ABCDEF";
 // static char hexbuf[5] = {'0','0','0','0',0x00};
@@ -201,6 +203,74 @@ std::pair<std::string,std::string> splitline(std::string line, char delim) {
 
 QString xres_dir(const char* kind) {
 	return QString::fromLocal8Bit(conf.path.confDir.c_str()) + SLASH + kind;
+}
+
+// The speed scale. One control for two different things: below x1 the host
+// runs emulated time slower, so the frame keeps its length in T and the rate
+// drops; above it the cpu gets a multiplier and the frame rate does not move.
+// Crossing x1 puts the other one back, or the two would multiply.
+
+double xspeed_mult(int pos) {
+	pos = toLimits(pos, 0, XSPD_MAX);
+	return (pos < XSPD_CENTER) ? 1.0 / (1 << (XSPD_CENTER - pos))
+				  : (double)(1 << (pos - XSPD_CENTER));
+}
+
+void xspeed_set(int pos) {
+	pos = toLimits(pos, 0, xspeed_max());
+	conf.emu.speed = (pos < XSPD_CENTER) ? xspeed_mult(pos) : 1.0;
+	sndUpdateSpeed();
+	if (conf.zx)
+		compSetTurbo(conf.zx, (pos > XSPD_CENTER) ? xspeed_mult(pos) : 1.0);
+}
+
+int xspeed_get(void) {
+	double m = (conf.emu.speed < 1.0) ? conf.emu.speed
+		 : (conf.zx ? conf.zx->frqMul : 1.0);
+	for (int i = 0; i <= XSPD_MAX; i++) {
+		if (fabs(m - xspeed_mult(i)) < 1e-6) return i;
+	}
+	return XSPD_CENTER;
+}
+
+// What the slider is doing, for the options label and for the message on the
+// screen. The screen font has no multiplication sign, so that one asks for ascii.
+QString xspeed_name(int pos, bool ascii) {
+	if (pos < XSPD_CENTER)
+		return QString("Slow motion 1/%0").arg(1 << (XSPD_CENTER - pos));
+	if (pos > XSPD_CENTER)
+		return QString("Overclock %0%1")
+			.arg(ascii ? QString("x") : QString::fromUtf8("×"))
+			.arg(1 << (pos - XSPD_CENTER));
+	return QString("Normal speed");
+}
+
+// How far the slider goes on this machine. The board's own turbo counts towards
+// the ceiling, so a board already at x4 is not offered the last step: that one
+// is where the host stops keeping up and the machine ends up slower in real time
+// than it is at its base clock. Nothing below that is refused - this is a speed
+// setting, not a claim about what the hardware could do.
+int xspeed_max(void) {
+	double hw = (conf.zx && (conf.zx->hwMul > 0.0)) ? conf.zx->hwMul : 1.0;
+	int pos = XSPD_MAX;
+	while ((pos > XSPD_CENTER) && (xspeed_mult(pos) * hw > XSPD_CLOCK_MAX + 1e-6))
+		pos--;
+	return pos;
+}
+
+// the clock the cpu is really on: the board's own turbo counts here too
+double xspeed_clock(void) {
+	if (!conf.zx) return 0.0;
+	return conf.zx->cpuFrq * conf.zx->frqMul * conf.zx->hwMul;
+}
+
+// "3.5469 MHz", or anything a person types into that box. Out of range or
+// unreadable keeps what the machine already had rather than inventing a clock.
+double xcpu_frq_parse(const QString& txt, double def) {
+	bool ok = false;
+	double v = QString(txt).remove("MHz", Qt::CaseInsensitive).trimmed().toDouble(&ok);
+	if (!ok || (v < 0.1) || (v > 28.0)) return def;
+	return v;
 }
 
 QString xres_root(const char* kind) {

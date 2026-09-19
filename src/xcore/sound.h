@@ -69,6 +69,7 @@ extern OutSys sndTab[];
 extern OutSys* sndOutput;
 
 extern long long nsPerSampleFixed;
+void sndUpdateSpeed(void);
 
 // The scope's own capture, at the sub-sample rate - 32 of these go into one sample
 // of what reaches the speakers. The output ring cannot serve the scope on its own:

@@ -487,6 +487,7 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 			comp->msg = NULL;
 		}
 		watchMedia();
+		watchClock();
 // satelites
 		updateSatellites();
 #if defined(__WIN32) && STICKY_KEY
@@ -871,6 +872,14 @@ void MainWin::drawIcons(QPainter& pnt) {
 	if (conf.led.halt) {
 		sprintf(numbuf, " %d : %d ",comp->hCount, comp->fCount);
 		drawText(&pnt, width() - strlen(numbuf) * 12 - 8, height() - 20, numbuf);
+	}
+// put cpu clock, but only when it is not the one the machine ships with: it is
+// there to say a run was not on stock timings, and drops to the tick counter's
+// line when that is switched off
+	double clk = xspeed_clock();
+	if (conf.led.clock && (fabs(clk - comp->cpuFrq) > 1e-6)) {
+		sprintf(numbuf, " %.6g MHz ", clk);
+		drawText(&pnt, width() - strlen(numbuf) * 12 - 8, height() - (conf.led.halt ? 40 : 20), numbuf);
 	}
 // put messages
 	if (msgTimer > 0) {
@@ -1462,6 +1471,22 @@ void MainWin::showMedia(const QString& path, int src) {
 	if (path == media_current()) return;
 	media_set_current(path);
 	updateHead();
+}
+
+// The board switching its own turbo is worth saying, but the machines that do
+// it write their configuration port far more often than they change it, so the
+// change is noticed here rather than announced from the port handler.
+void MainWin::watchClock() {
+	Computer* comp = conf.zx;
+	if (fabs(comp->hwMul - hwMulSeen) < 1e-6) return;
+	hwMulSeen = comp->hwMul;
+	// a machine switch resets the turbo and has its own message to show
+	if (macSeen != conf.macId) {
+		macSeen = conf.macId;
+		return;
+	}
+	setMessage(QString(" %0 MHz (x%1) ").arg(xspeed_clock(), 0, 'g', 6).arg(comp->hwMul));
+	xlog(XLG_HW, XLL_INFO, "turbo x%g: cpu at %.2f MHz", comp->hwMul, xspeed_clock());
 }
 
 void MainWin::watchMedia() {

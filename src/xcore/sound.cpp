@@ -67,6 +67,16 @@ static long long ns_per_sample_fixed(int rate) {
 }
 
 long long nsPerSampleFixed = ns_per_sample_fixed(44100);
+
+// Slow motion is a shorter sample period in emulated time, not a smaller budget
+// from the pacer: the machine then advances slower while the card still gets all
+// the samples it asks for, so the ring keeps up and the sound drops in pitch the
+// way a tape slowed down does. Starving the ring instead only made it crackle.
+void sndUpdateSpeed(void) {
+	double s = (conf.emu.speed > 0.0) ? conf.emu.speed : 1.0;
+	nsPerSampleFixed = (long long)(ns_per_sample_fixed(conf.snd.rate) * s);
+}
+
 static int wavRate = 0;			// rate the open recording's header says
 static sndPair sndLev;
 
@@ -263,7 +273,7 @@ void setOutput(const char* name) {
 		setOutput("NULL");
 	}
 	sndHeld = sndPlaybackActive();
-	nsPerSampleFixed = ns_per_sample_fixed(conf.snd.rate);
+	sndUpdateSpeed();
 	// a recording's rate is in its header and cannot change, so it ends here
 	// rather than play back at the wrong speed from this point on
 	if (conf.snd.wavfile && (conf.snd.rate != wavRate)) {

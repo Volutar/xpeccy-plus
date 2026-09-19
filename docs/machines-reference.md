@@ -39,6 +39,12 @@ Contention patterns are `vid_wait_dots()` in `video/video.c`: 1 is the Ferranti 
 `12,11,...,1,0,0,0,0` over banks 1/3/5/7, 2 the Amstrad ASIC's `2,1,0,0,14,...,3` over banks
 4-7 and mreq cycles only, 0 is no contention at all.
 
+`cpu.turbo` lists the turbo steps a board has, as multipliers of its base clock. Five of them
+switch it from a port and the core already does that: ZS Scorpion, ATM Turbo 2+ and Pentagon
+1024SL at x2, ZX Evo and TSConf at x2 and x4. Profi and ZXM-Phoenix have 7 MHz too, but no
+port for it in this emulator, so they are turbo by switch - Alt+T is the switch, and whether
+the real ZXM-Phoenix has a port for it (its `#EFF7` is decoded for nothing today) is **open**.
+
 `floatbus` is what a port nothing answers reads back. The 48K, 128K and +2 get `ula`, the
 +2A and +3 `asic`; both were checked against Woodmass's Float48K and Float128K, where the
 first of the four bytes lands one tick earlier than fuse prints it because these machines

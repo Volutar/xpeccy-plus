@@ -11,6 +11,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Alt+T switches the turbo the machine really has** - 7 MHz on a ZS Scorpion, ATM Turbo 2+,
+  Pentagon 1024SL, Profi and ZXM-Phoenix, 7 and 14 MHz on ZX Evolution and TSConf. The clock
+  it lands on is shown bottom right for as long as it is not the machine's own, and the
+  machine switching its turbo by itself says so too.
+
 - **The floating bus**, the Sinclair way on the 48K, 128K and +2 and the Amstrad way on the +2A
   and +3, which is what games that follow the beam - Cobra, Sidewize - need. A row per machine
   under Advanced settings.
@@ -60,6 +65,13 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **One slider for the machine's speed**, on the Machine page, with Alt+Plus and Alt+Minus on
+  the keypad. Left of x1 everything slows down together, picture and sound, the way a tape
+  played slower does. Right of it the CPU runs up to eight times faster while the picture
+  keeps its rate, which is what overclocking a machine does; a board already running its own
+  turbo is offered less room. The speed is never remembered - a machine always comes up on its
+  own clock - and the base clock itself has moved to Advanced settings.
+
 - **The tape player's buttons are laid out like a tape deck's** - record, play, rewind, stop,
   eject - in one set of icons, and there is an eject button now, in the player and on the
   Tape page of Options.
@@ -93,6 +105,8 @@ before that point is upstream's history and is not repeated here.
   everywhere, and X in a number field switches between hex and decimal.
 
 ### Fixed
+
+- **ZX Evolution kept switching its own clock** between 3.5 and 7 MHz while it ran.
 
 - **The beeper could stay switched on across a reset or a snapshot.** A program that
   left it on handed its level to whatever ran next, which sat on the sound and could

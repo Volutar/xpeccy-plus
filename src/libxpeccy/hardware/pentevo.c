@@ -420,10 +420,17 @@ void evoOut77(Computer* comp, int port, int val) {
 	comp->sdc->cs = (val & 2) ? 1 : 0;	// b1: 0 if sdc is selected
 }
 
+// Both ports that carry a turbo bit have to work out the same speed, or a write
+// to either flips the clock: #xx77 bit 3 is 14 MHz, else #EFF7 bit 4 picks 3.5
+// or 7. Unreal's set_turbo() (atm.cpp) for ATM3/Evo is the reference.
+static void evo_set_turbo(Computer* comp) {
+	compSetHwTurbo(comp, (comp->prt2 & 0x08) ? 4 : ((comp->pEFF7 & 0x10) ? 1 : 2));
+}
+
 void evoOut77d(Computer* comp, int port, int val) {
 	comp->prt2 = ((port & 0x4000) >> 7) | ((port & 0x0300) >> 3) | (val & 0x0f);	// a14.a9.a8.0.b3.b2.b1.b0
 	if (!(comp->prt2 & 0x40)) comp->flgDOS = 1;	// A9 low: hold TR-DOS on
-	compSetHwTurbo(comp,(val & 0x08) ? 4 : ((comp->pEFF7 & 0x10) ? 1 : 2));
+	evo_set_turbo(comp);
 	evoSetVideoMode(comp);
 	evoMapMem(comp);
 }
@@ -508,7 +515,7 @@ void evoOutDFF7(Computer* comp, int port, int val) {	// !dos
 
 void evoOutEFF7(Computer* comp, int port, int val) {	// !dos
 	comp->pEFF7 = val & 0xff;
-	compSetHwTurbo(comp,(comp->prt2 & 0x08) ? 4 : (val & 0x08) ? 2 : 1);
+	evo_set_turbo(comp);
 	evoSetVideoMode(comp);
 	evoMapMem(comp);
 }

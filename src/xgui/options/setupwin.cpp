@@ -42,6 +42,9 @@
 #include "libxpeccy/filetypes/filetypes.h"
 #include "libxpeccy/input/input.h"
 
+// the turbo step lists the box offers before a machine of its own adds one
+#define CPU_TURBO_ROWS	3
+
 void setRFIndex(QComboBox* box, QVariant data, int defidx) {
 	int idx = box->findData(data);
 	if (idx < 0) idx = defidx;
@@ -338,9 +341,6 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	setWindowIcon(QGuiApplication::windowIcon());
 	ui.tabz->setTabIcon(ui.tabz->indexOf(ui.tab_4), QGuiApplication::windowIcon());
 
-	// the z80 is the only core there is, so the clock row carries its name
-	ui.labCpuFreq->setText("CPU");
-
 	spaceLedIcon(ui.cbKeysLed);
 	spaceLedIcon(ui.cbJoyLed);
 	spaceLedIcon(ui.cbMouseLed);
@@ -348,6 +348,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	spaceLedIcon(ui.cbDiskLed);
 	spaceLedIcon(ui.cbFpsLed);
 	spaceLedIcon(ui.cbHaltLed);
+	spaceLedIcon(ui.cbClockLed);
 	spaceLedIcon(ui.cbMessage);
 
 	rseditor = new xRomsetEditor(this);
@@ -400,6 +401,12 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.cbEarBack->addItem("Issue 2", EAR_ISSUE2);
 	ui.cbEarBack->addItem("Nothing", EAR_NONE);
 	ui.bszsld->setMaximum(VID_BRD_OVERSCAN);	// one tick per border size
+	ui.sldSpeed->setMaximum(XSPD_MAX);		// one tick per step of the speed scale
+	ui.cbCpuFrq->addItem("3.5 MHz");
+	ui.cbCpuFrq->addItem("3.5469 MHz");
+	ui.cbCpuTurbo->addItem(QString::fromUtf8("×1 (no turbo)"), "1");
+	ui.cbCpuTurbo->addItem(QString::fromUtf8("×1, ×2"), "1,2");
+	ui.cbCpuTurbo->addItem(QString::fromUtf8("×1, ×2, ×4"), "1,2,4");
 
 #if defined(USEOPENGL)
 //	ui.cbScanlines->setVisible(false);
@@ -524,6 +531,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 // video
 	connect(ui.pathtb,SIGNAL(released()),this,SLOT(selsspath()));
 	connect(ui.bszsld,SIGNAL(valueChanged(int)),this,SLOT(chabsz()));
+	connect(ui.sldSpeed,SIGNAL(valueChanged(int)),this,SLOT(chaspd()));
 	connect(ui.sldNoflic,SIGNAL(valueChanged(int)),this,SLOT(chaflc()));
 	connect(ui.sldPsgSep,SIGNAL(valueChanged(int)),this,SLOT(chapsg()));
 	connect(ui.sldSndLatency,SIGNAL(valueChanged(int)),this,SLOT(chasndlat()));
@@ -753,8 +761,19 @@ void SetupWin::start() {
 	setmszbox(ui.machbox->currentIndex());
 	ui.mszbox->setCurrentIndex(ui.mszbox->findData(comp->mem->ramSize));
 	if (ui.mszbox->currentIndex() < 0) ui.mszbox->setCurrentIndex(ui.mszbox->count() - 1);
-	ui.sbFreq->setValue(comp->cpuFrq);
-	ui.sbMult->setValue(comp->frqMul);
+	ui.sldSpeed->setMaximum(xspeed_max());	// a board already on turbo has less room
+	ui.sldSpeed->setValue(xspeed_get());
+	ui.sldSpeed->setEnabled(!comp->rzx.play);	// an rzx is tied to the frame it was taken at
+	chaspd();
+	ui.cbCpuFrq->setEditText(QString("%0 MHz").arg(comp->cpuFrq, 0, 'g', 6));
+	// a list none of the rows has - an edited machine file - gets a row of its
+	// own rather than being quietly turned into one of the three
+	QString steps = QString::fromStdString(xm_turbo_str(comp));
+	while (ui.cbCpuTurbo->count() > CPU_TURBO_ROWS)
+		ui.cbCpuTurbo->removeItem(CPU_TURBO_ROWS);
+	if (ui.cbCpuTurbo->findData(steps) < 0)
+		ui.cbCpuTurbo->addItem(steps, steps);
+	setRFIndex(ui.cbCpuTurbo, steps);
 	ui.scrpwait->setChecked(comp->flgEM1);
 // emulation
 	ui.cbLowLat->setChecked(conf.vid.lowLatency);
@@ -943,6 +962,7 @@ void SetupWin::start() {
 	ui.cbMessage->setChecked(conf.led.message);
 	ui.cbFpsLed->setChecked(conf.led.fps);
 	ui.cbHaltLed->setChecked(conf.led.halt);
+	ui.cbClockLed->setChecked(conf.led.clock);
 // debuga
 	ui.sbDbSize->setValue(conf.dbg.dbsize);
 	ui.sbDwSize->setValue(conf.dbg.dwsize);
@@ -980,8 +1000,9 @@ void SetupWin::apply() {
 	xm_set_roms(roms);
 	comp->resbank = getRFIData(ui.resbox);
 	memSetSize(comp->mem, getRFIData(ui.mszbox), -1);
-	compSetBaseFrq(comp, ui.sbFreq->value());
-	compSetTurbo(comp, ui.sbMult->value());
+	compSetBaseFrq(comp, xcpu_frq_parse(ui.cbCpuFrq->currentText(), comp->cpuFrq));
+	xm_turbo_set(comp, getRFSData(ui.cbCpuTurbo).toStdString());
+	xspeed_set(ui.sldSpeed->value());
 	comp->flgEM1 = ui.scrpwait->isChecked();
 	if (comp->hw->id == HW_ZX48) comp->mem->ramMask = MEM_128K - 1;		// TODO: find a better way
 	emu_unlock();
@@ -1176,6 +1197,7 @@ void SetupWin::apply() {
 	conf.led.message = ui.cbMessage->isChecked() ? 1 : 0;
 	conf.led.fps = ui.cbFpsLed->isChecked() ? 1 : 0;
 	conf.led.halt = ui.cbHaltLed->isChecked() ? 1 : 0;
+	conf.led.clock = ui.cbClockLed->isChecked() ? 1 : 0;
 // debuga
 	conf.dbg.dbsize = ui.sbDbSize->value();
 	conf.dbg.dwsize = ui.sbDwSize->value();
@@ -2036,6 +2058,20 @@ void SetupWin::chabsz() {
 	int mode = ui.bszsld->value();
 	vCoord sze = vid_crop_size(comp->vid, mode);
 	ui.bszlab->setText(QString("%0 (%1×%2)").arg(brd_mode_name(mode)).arg(sze.x).arg(sze.y));
+}
+
+// the label beside the speed slider says which of the two things it is doing
+// and what the cpu ends up on - the board's own turbo is not in this number,
+// the clock indicator is where the whole truth is
+void SetupWin::chaspd() {
+	Computer* comp = conf.zx;
+	int pos = ui.sldSpeed->value();
+	QString txt = xspeed_name(pos);
+	if (pos >= XSPD_CENTER)
+		txt += QString(" (%0 MHz)").arg(comp->cpuFrq * xspeed_mult(pos), 0, 'g', 6);
+	else
+		txt += QString(" (%0 fps)").arg(1e9 / comp->vid->nsPerFrame * xspeed_mult(pos), 0, 'f', 1);
+	ui.labSpeed->setText(txt);
 }
 
 void SetupWin::chaflc() {

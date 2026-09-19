@@ -159,6 +159,9 @@ typedef struct {
 		int mediaSeen;		// the drive motors (bits 0..3) and the tape playing, as last seen
 		QByteArray mediaRaw[5];	// what each drive and the tape held, as last seen
 		void watchMedia();
+		double hwMulSeen = 1.0;	// the board's turbo as last reported
+		std::string macSeen;	// ...on this machine
+		void watchClock();
 		void showMedia(const QString&, int src);
 		std::string wantedShader();
 

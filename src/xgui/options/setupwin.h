@@ -87,6 +87,7 @@ class SetupWin : public QDialog {
 		void setmszbox(int);
 		void selsspath();
 		void chabsz();
+		void chaspd();
 		void chaflc();
 		void chapsg();
 		void chasnow();
