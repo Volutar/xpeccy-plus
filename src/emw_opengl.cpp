@@ -361,14 +361,14 @@ void MainWin::loadShader() {
 		prg.addShader(vtx_shd);
 		prg.addShader(frg_shd);
 		if (prg.link()) {
-			if (user_shader) setMessage(" Shader compiled ");
+			if (user_shader) setMessage(" shader compiled ");
 			return;
 		}
 		qDebug() << "program link:" << prg.log();
 	}
 
 	if (user_shader) {
-		setMessage(" Shader compile error ");
+		setMessage(" shader error ");
 		conf.vid.shader.clear();
 		loadShader();			// the hold above keeps the context
 	} else {

@@ -1053,7 +1053,7 @@ void MainWin::screenShot() {
 			img.save(QString(fnam.c_str()),fext.c_str());
 			break;
 	}
-	setMessage("screenshot saved");
+	setMessage(" screenshot saved ");
 }
 
 // video drawing
