@@ -115,6 +115,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **Tapes recorded as a raw waveform were read a fraction short.** Every pulse in a TZX
+  "direct recording" block lost one sample. Ordinary tapes survive that; the new high-speed
+  loaders do not, and DeciLoad tapes would not load at all. *(thanks to nutronic)*
+
 - **Applying the settings is quick again**, and the title bars take the new colour at
   once. Every Apply was restyling the whole interface from scratch, which held the
   settings window up for about a second; on Windows 10 the title bars changed colour

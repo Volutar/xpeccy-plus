@@ -128,37 +128,38 @@ void tzxBlock14(FILE* file, Tape* tape) {
 }
 
 // #15,<step:2>,<pause:2>,<last:1>,<len:3>,{data:len}
-// direct recording
+// direct recording: one bit per sample, 1 is the high level. A change opens the
+// next pulse, so the sample it happens on is the first of that one and not the
+// last of the one it closes - counting it into neither made every pulse a
+// sample short, which a loader reading four samples to a bit cannot survive.
 void tzxBlock15(FILE* file, Tape* tape) {
 	int size = fgetw(file) * TAPCPUNS / TAPTICKNS;
 	int pausems = fgetw(file);
 	int pause = pausems * 1e6 / TAPTICKNS;
-	int last = fgetc(file) & 7;
+	int last = fgetc(file) & 0xff;
+	if ((last < 1) || (last > 8)) last = 8;		// bits used in the last byte
 	int len = (fgett(file) - 1) * 8 + last;		// bits
 	int data = 0;
-	int cnt = 0;
-	int first = 1;
-	int tmp = 0;
+	int cnt;
+	int bit;
+	int lev = 0;
 	int memt = 0;
 	for (cnt = 0; cnt < len; cnt++) {
 		if ((cnt & 7) == 0)
 			data = fgetc(file) & 0xff;
-		if ((tmp ^ data) & 0x80) {	// bit changed
-			if (first) {
-				memt += size;
-				first = 0;
-			} else {
-				blkAddPulse(&tape->tmpBlock, memt, -1);
-				memt = 0;
-			}
-		} else {
-			memt += size;
-		}
-		tmp = data;
+		bit = (data & 0x80) ? 1 : 0;
 		data <<= 1;
+		if (cnt == 0) {
+			lev = bit;
+		} else if (bit != lev) {
+			blkAddPulse(&tape->tmpBlock, memt, lev ? 0xb0 : 0x50);
+			lev = bit;
+			memt = 0;
+		}
+		memt += size;
 	}
 	if (memt > 0)
-		blkAddPulse(&tape->tmpBlock, memt, -1);
+		blkAddPulse(&tape->tmpBlock, memt, lev ? 0xb0 : 0x50);
 	blkAddPause(&tape->tmpBlock, pause);
 	tape->isData = 0;
 }
