@@ -219,9 +219,9 @@ void MainWin::xkey_press(int xkey) {
 				// the board's own turbo, walked through the steps it declares.
 				// A machine that sets it from a port will set it again itself
 				if (comp->turboCount < 2) {
-					setMessage(" this machine has no turbo ");
+					setMessage(" model has no Turbo ");
 				} else if (comp->rzx.play) {
-					setMessage(" not while an rzx plays ");
+					setMessage(" not in rzx ");
 				} else {
 					// an unknown step reads as -1 and so starts the list over
 					int i = (xm_turbo_index(comp) + 1) % comp->turboCount;
@@ -234,11 +234,11 @@ void MainWin::xkey_press(int xkey) {
 			case XCUT_SPEED_UP:
 			case XCUT_SPEED_DOWN:
 				if (comp->rzx.play) {
-					setMessage(" not while an rzx plays ");
+					setMessage(" not in rzx ");
 				} else {
 					int pos = xspeed_get() + ((xkey == XCUT_SPEED_UP) ? 1 : -1);
 					if (pos > xspeed_max()) {
-						setMessage(" not available with this machine's turbo ");
+						setMessage(" limit reached ");
 					} else {
 						xspeed_set(pos);
 						setMessage(QString(" %0 ").arg(xspeed_name(pos, true)));
@@ -282,7 +282,7 @@ void MainWin::xkey_press(int xkey) {
 			case XCUT_RATIO:
 				vid_set_ratio(!conf.vid.keepRatio);
 				updateWindow();
-				setMessage(conf.vid.keepRatio ? " keep aspect ratio " : " ignore aspect ratio ");
+				setMessage(conf.vid.keepRatio ? " keep aspect " : " free aspect ");
 				saveConfig();
 				break;
 			case XCUT_MOUSE:
@@ -374,7 +374,7 @@ void MainWin::xkey_press(int xkey) {
 				pause(true, PR_FILE);
 				if (conf.snd.wavout) {
 					snd_wav_close();
-					setMessage("Stop WAV output");
+					setMessage(" stop WAV output ");
 				} else {
 					path = QFileDialog::getSaveFileName(this, "Sound output to wav", "", "Wave files (*.wav)",nullptr,QFileDialog::DontUseNativeDialog);
 					if (!path.isEmpty()) {
@@ -382,7 +382,7 @@ void MainWin::xkey_press(int xkey) {
 							path.append(".wav");
 						err = snd_wav_open(path.toLocal8Bit().data());
 						if (err == ERR_OK) {
-							setMessage("Start WAV output");
+							setMessage(" start WAV output ");
 						}
 					}
 				}
