@@ -115,6 +115,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **A tape block whose name is made of BASIC tokens or graphics reads as a name again.**
+  Such a name showed as an empty line in the block list. The tokens are spelled out now and
+  the graphics drawn; the name itself is untouched, so a block copied to a disk keeps the
+  bytes it had.
+
 - **Opening a tape while another one is playing works.** The deck kept running over the
   new image, which then began in the middle of its first block - the load either missed
   that block or never started at all.

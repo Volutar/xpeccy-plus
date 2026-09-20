@@ -37,6 +37,7 @@ enum {
 };
 
 #define	TAPE_TEXT_LEN	64	// room for a block label out of a tape image
+#define	TAPE_NAME_LEN	10	// the name a standard header carries
 
 // what a standard header says it carries (2nd byte of the block)
 enum {
@@ -54,7 +55,7 @@ typedef struct {
 
 	int type;			// TAPE_HEAD / TAPE_DATA
 	int htype;			// header: TAPE_HT_*
-	char name[32];			// header: the name, padding cut off
+	unsigned char name[TAPE_NAME_LEN];	// header: the name, as the bytes it is - tokens and control codes included
 	int dlen;			// header: length of the data block it announces
 	int par1;			// header: LINE for a program, address for code, name for an array
 	char text[TAPE_TEXT_LEN];	// what the image itself calls the block

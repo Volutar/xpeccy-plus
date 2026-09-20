@@ -127,6 +127,9 @@ bool parsePort(const QString&, int*, int*);
 QString gethex6(int);
 QString gethexint(int);
 
+// text in the zx spectrum's own character set, for showing only
+QString zx_text(const unsigned char*, int);
+
 typedef struct {
 	int err;
 	int value;
