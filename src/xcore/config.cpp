@@ -104,6 +104,7 @@ void conf_init(char* wpath, char* confdir) {
 	conf.boot = 1;
 	conf.autorun = 1;
 	conf.tape.rewind = 0;		// a tape that ran out stays there until it is asked for
+	conf.tape.exp = wav_export_default();
 	conf.emu.pause = 0;
 	conf.emu.fast = 0;
 	conf.emu.speed = 1.0;
@@ -189,6 +190,11 @@ void saveConfig() {
 	fprintf(cfile, "autoplay = %s\n", YESNO(conf.tape.autostart));
 	fprintf(cfile, "fast = %s\n", YESNO(conf.tape.fast));
 	fprintf(cfile, "rewind = %s\n", YESNO(conf.tape.rewind));
+	fprintf(cfile, "export.rate = %i\n", conf.tape.exp.rate);
+	fprintf(cfile, "export.bits = %i\n", conf.tape.exp.bits);
+	fprintf(cfile, "export.level = %i\n", conf.tape.exp.level);
+	fprintf(cfile, "export.lead = %i\n", conf.tape.exp.lead);
+	fprintf(cfile, "export.tail = %i\n", conf.tape.exp.tail);
 
 	fm_save(cfile);
 
@@ -953,6 +959,11 @@ void loadConfig() {
 					if (pnam=="autoplay") conf.tape.autostart = arg.b;
 					if (pnam=="fast") conf.tape.fast = arg.b;
 					if (pnam=="rewind") conf.tape.rewind = arg.b;
+					if (pnam=="export.rate") conf.tape.exp.rate = arg.i;
+					if (pnam=="export.bits") conf.tape.exp.bits = arg.i;
+					if (pnam=="export.level") conf.tape.exp.level = arg.i;
+					if (pnam=="export.lead") conf.tape.exp.lead = arg.i;
+					if (pnam=="export.tail") conf.tape.exp.tail = arg.i;
 					if (pnam=="speed") xm_defer("tape.speed", pval);
 					break;
 				case SECT_LEDS:

@@ -3,6 +3,7 @@
 #include "xgui.h"
 #include "xcore/xcore.h"
 #include "../filer.h"
+#include "ui_tapeexp.h"
 
 TapeWin::TapeWin(QWidget *par):QDialog(par) {
 	ui.setupUi(this);
@@ -20,6 +21,7 @@ TapeWin::TapeWin(QWidget *par):QDialog(par) {
 	connect(ui.stopBut,SIGNAL(released()),this,SLOT(doStop()));
 	connect(ui.loadBut,SIGNAL(released()),this,SLOT(doLoad()));
 	connect(ui.saveBut,SIGNAL(released()),this,SLOT(doSave()));
+	connect(ui.expBut,SIGNAL(released()),this,SLOT(doExport()));
 	connect(ui.tbRewind,SIGNAL(released()),this,SLOT(doRewind()));
 	connect(ui.tbEject,SIGNAL(released()),this,SLOT(doEject()));
 	connect(ui.tbBlkUp,SIGNAL(released()),this,SLOT(doBlkUp()));
@@ -143,6 +145,55 @@ void TapeWin::doSave() {
 	save_file(conf.zx, tap->path, FG_TAPE, -1);
 	upd(tap);
 	conf.emu.pause &= ~PR_FILE;
+}
+
+// The wav is a recording and the only thing on it is the signal, so what a
+// loader gets back depends on how it was written: the rate has to carry the
+// shortest pulse on the tape, and the tail has to be there at all, or the last
+// block ends with the file and the edge that closes it goes with it.
+void TapeWin::doExport() {
+	Tape* tap = conf.zx->tape;
+	if (tap->blkCount < 1) return;
+	QDialog dlg(this);
+	Ui::TapeExport eui;
+	eui.setupUi(&dlg);
+	int autorate = wav_export_rate(conf.zx);
+	eui.cbRate->addItem(QString("Auto (%0 Hz)").arg(autorate), 0);
+	for (int r : {44100, 48000, 96000, 192000})
+		eui.cbRate->addItem(QString("%0 Hz").arg(r), r);
+	eui.cbBits->addItem("16 bit", 16);
+	eui.cbBits->addItem("8 bit", 8);
+	setRFIndex(eui.cbRate, conf.tape.exp.rate);
+	setRFIndex(eui.cbBits, conf.tape.exp.bits);
+	eui.sbLevel->setValue(conf.tape.exp.level);
+	eui.sbLead->setValue(conf.tape.exp.lead);
+	eui.sbTail->setValue(conf.tape.exp.tail);
+	int secs = 0;
+	for (int i = 0; i < tap->blkCount; i++)
+		secs += tap->blkData[i].time;
+	// how big the file comes out: the one number that decides the rate in practice
+	auto showSize = [&]() {
+		int rate = getRFIData(eui.cbRate);
+		if (rate < 1) rate = autorate;
+		double mb = (double)secs * rate * getRFIData(eui.cbBits) / 8 / (1024.0 * 1024.0);
+		eui.labSize->setText(QString("%0 blocks, %1:%2, about %3 MB")
+			.arg(tap->blkCount).arg(secs / 60).arg(secs % 60, 2, 10, QChar('0')).arg(mb, 0, 'f', 1));
+	};
+	QObject::connect(eui.cbRate, &QComboBox::currentTextChanged, &dlg, showSize);
+	QObject::connect(eui.cbBits, &QComboBox::currentTextChanged, &dlg, showSize);
+	showSize();
+	if (dlg.exec() != QDialog::Accepted) return;
+	conf.tape.exp.rate = getRFIData(eui.cbRate);
+	conf.tape.exp.bits = getRFIData(eui.cbBits);
+	conf.tape.exp.level = eui.sbLevel->value();
+	conf.tape.exp.lead = eui.sbLead->value();
+	conf.tape.exp.tail = eui.sbTail->value();
+	QString path = file_ask_save("Export tape to WAV", "WAV tape recording (*.wav)", ".wav");
+	if (path.isEmpty()) return;
+	conf.emu.pause |= PR_FILE;
+	int err = saveWAVopt(conf.zx, path.toLocal8Bit().data(), &conf.tape.exp);
+	conf.emu.pause &= ~PR_FILE;
+	if (err != ERR_OK) shitHappens("Can't write that file");
 }
 
 // the three options are the same ones the Tape page of Options has, and they

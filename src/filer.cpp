@@ -637,6 +637,23 @@ int save_file(Computer* comp, const char* name, int id, int drv) {
 	return err;
 }
 
+
+// The save dialog on its own, for an export that is not one of the file types
+// the tables above know. Same dialog as every other open and save in the app.
+QString file_ask_save(const char* title, const char* filter, const char* ext) {
+	filer->setWindowTitle(title);
+	filer->setNameFilter(filter);
+	filer->setAcceptMode(QFileDialog::AcceptSave);
+	filer->setDirectory(conf.lastDir.c_str());
+	filer->setHistory(QStringList());
+	if (!filer->exec()) return QString();
+	QString path = filer->selectedFiles().first();
+	if (!path.endsWith(ext, Qt::CaseInsensitive))
+		path.append(ext);
+	conf.lastDir = std::string(QFileInfo(path).dir().absolutePath().toLocal8Bit().data());
+	return path;
+}
+
 // old
 
 void initFileDialog(QWidget* par) {

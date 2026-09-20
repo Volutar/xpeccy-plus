@@ -11,6 +11,12 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **The tape can be exported as a wav recording** - the button beside Save in the tape
+  player. Rate, sample size, level and the silence at either end are set in the dialog; Auto
+  picks a rate the shortest pulse on the tape survives, 44100 for an ordinary image and more
+  for a tzx that carries a direct recording. Pulse lengths now average exactly what the image
+  says, and the old export wrote a zero bit 11 per cent long.
+
 - **A breakpoint can write down what it caught.** Tick Log in the breakpoint editor and
   every hit leaves a line in the event log: where it fired, as both a cpu address and a
   page, what the access was and the byte it carried, every register, the flags, and which

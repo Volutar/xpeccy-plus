@@ -17,6 +17,7 @@
 #define WAV_MIN_PULSES	32			// fewer signal pulses than this is noise, not a block
 #define WAV_SIG_MAX	6000			// longer than any zx pulse: tape noise, not a signal
 #define WAV_DATA_MAX	0x20000
+#define WAV_EXP_SMP	4			// samples the shortest pulse must get on export
 
 typedef struct {
 	int format;		// 1 = pcm, 3 = float
@@ -289,59 +290,153 @@ int loadWAV(Computer* comp, const char* name, int drv) {
 	return ERR_OK;
 }
 
-int saveWAV(Computer* comp, const char* name, int drv) {
-	int err = ERR_OK;
-	if (comp->tape->blkCount < 1) {
-		err = ERR_TAP_EMPTY;
-	} else {
-		wavHead hd;
-		memcpy(hd.chunkId, "RIFF", 4);
-		memcpy(hd.format, "WAVE", 4);
-		memcpy(hd.subchunk1Id, "fmt ", 4);
-		hd.subchunk1Size = 16;
-		hd.audioFormat = 1;
-		hd.numChannels = 1;
-		hd.sampleRate = 22050;
-		hd.byteRate = 22050;
-		hd.blockAlign = 1;
-		hd.bitsPerSample = 8;
-		memcpy(hd.subchunk2Id, "data", 4);
-		// neither size is known until the samples are written: both are filled
-		// in below
-		hd.chunkSize = 0;
-		hd.subchunk2Size = 0;
+// --- export ---
 
-		FILE* file = fopen(name, "wb");
-		if (file) {
-			int i;
-			int pos;
-			int tm = 0;
-			int sz = 0;
-			unsigned char amp;
-			int tPerSample = TAPTPS / hd.sampleRate;
-			TapeBlock* blk;
-			fwrite((char*)&hd, sizeof(wavHead), 1, file);
-			for (i = 0; i < comp->tape->blkCount; i++) {
-				blk = &comp->tape->blkData[i];
-				tm = 0;
-				for (pos = 0; pos < blk->sigCount; pos++) {
-					tm = blk->data[pos].size;
-					amp = blk->data[pos].vol;
-					while (tm > 0) {
-						tm -= tPerSample;
-						fputc(amp, file);
-						sz++;
-					}
-				}
-			}
-			fseek(file, 4, SEEK_SET);		// riff size: everything after it
-			fputi(sz + sizeof(wavHead) - 8, file);
-			fseek(file, sizeof(wavHead) - 4, SEEK_SET);	// data size
-			fputi(sz, file);
-			fclose(file);
-		} else {
-			err = ERR_CANT_OPEN;
+// The wav is a recording of the tape, so every pulse becomes a run of samples.
+// The run boundaries are counted from the tape position in ticks, not from the
+// length of the pulse, so nothing is rounded twice and the tape keeps its
+// length: the average of the rounded runs comes out exact.
+
+static const int wav_rates[] = {44100, 48000, 96000, 192000, 0};
+
+// A pulse length in a tape image is a count of T states at the standard
+// 3.5 MHz, whatever clock the machine now playing it runs at - a 128K would
+// make the same image come out 1.3 per cent shorter. The export counts in
+// those, so one image always gives one file.
+#define WAV_TPS	3500000.0
+
+wavExport wav_export_default(void) {
+	wavExport o;
+	o.rate = 0;		// pick one from the tape
+	o.bits = 16;
+	o.level = 90;
+	o.lead = 500;
+	o.tail = 1000;
+	return o;
+}
+
+// a pause is marked by a volume at the middle (see blkAddPause); the level it
+// still carries is bit 7, the same as a pulse
+static int wav_pause(int vol) { return (vol == 0x80) || (vol == 0x7f); }
+static int wav_lev(int vol) { return (vol & 0x80) ? 1 : -1; }
+
+// the rate the shortest pulse on the tape needs to keep its shape. A standard
+// block asks for nothing above 44100, a tzx direct recording for much more.
+static int wav_pick_rate(Tape* tap) {
+	unsigned int least = 0;
+	int i, j;
+	for (i = 0; i < tap->blkCount; i++) {
+		TapeBlock* blk = &tap->blkData[i];
+		for (j = 0; j < blk->sigCount; j++) {
+			if (wav_pause(blk->data[j].vol)) continue;
+			if (!least || (blk->data[j].size < least))
+				least = blk->data[j].size;
 		}
 	}
-	return err;
+	if (!least) return wav_rates[0];
+	double need = WAV_EXP_SMP * WAV_TPS / least;
+	for (i = 0; wav_rates[i]; i++) {
+		if (wav_rates[i] >= need) return wav_rates[i];
+	}
+	return wav_rates[i-1];
+}
+
+static void wav_put(FILE* file, int lev, int amp, int bits, int count) {
+	int i;
+	if (bits == 8) {
+		int v = 0x80 + lev * amp;
+		for (i = 0; i < count; i++) fputc(v & 0xff, file);
+	} else {
+		int v = lev * amp;
+		for (i = 0; i < count; i++) {
+			fputc(v & 0xff, file);
+			fputc((v >> 8) & 0xff, file);
+		}
+	}
+}
+
+// what Auto would choose for the tape in the machine, so the gui can say so
+int wav_export_rate(Computer* comp) {
+	if (!comp || !comp->tape || (comp->tape->blkCount < 1)) return wav_rates[0];
+	return wav_pick_rate(comp->tape);
+}
+
+int saveWAVopt(Computer* comp, const char* name, wavExport* opt) {
+	Tape* tap = comp->tape;
+	wavExport o;
+	if (tap->blkCount < 1) return ERR_TAP_EMPTY;
+	o = opt ? *opt : wav_export_default();
+	if ((o.bits != 8) && (o.bits != 16)) o.bits = 16;
+	if (o.level < 1) o.level = 1;
+	if (o.level > 100) o.level = 100;
+	if (o.lead < 0) o.lead = 0;
+	if (o.tail < 0) o.tail = 0;
+	if (o.rate < 1) o.rate = wav_pick_rate(tap);
+	FILE* file = fopen(name, "wb");
+	if (!file) return ERR_CANT_OPEN;
+
+	wavHead hd;
+	memcpy(hd.chunkId, "RIFF", 4);
+	memcpy(hd.format, "WAVE", 4);
+	memcpy(hd.subchunk1Id, "fmt ", 4);
+	hd.subchunk1Size = 16;
+	hd.audioFormat = 1;
+	hd.numChannels = 1;
+	hd.sampleRate = o.rate;
+	hd.bitsPerSample = o.bits;
+	hd.blockAlign = o.bits / 8;
+	hd.byteRate = o.rate * hd.blockAlign;
+	memcpy(hd.subchunk2Id, "data", 4);
+	// neither size is known until the samples are written: both are filled
+	// in below
+	hd.chunkSize = 0;
+	hd.subchunk2Size = 0;
+	fwrite((char*)&hd, sizeof(wavHead), 1, file);
+
+	int amp = ((o.bits == 8) ? 127 : 32767) * o.level / 100;
+	double spt = o.rate / WAV_TPS;		// samples in one tape tick
+	long long done = 0;			// samples written so far
+	int i, j, n;
+
+	n = (int)((long long)o.rate * o.lead / 1000);
+	wav_put(file, 0, amp, o.bits, n);
+	done += n;
+	double acc = (double)done;
+	for (i = 0; i < tap->blkCount; i++) {
+		TapeBlock* blk = &tap->blkData[i];
+		for (j = 0; j < blk->sigCount; j++) {
+			acc += blk->data[j].size * spt;
+			n = (int)(acc - done + 0.5);
+			if (n < 1) n = 1;		// a pulse shorter than a sample still has to be one
+			if (wav_pause(blk->data[j].vol)) {
+				// a pause is silence, but it carries the level change that
+				// closes the pulse before it: written as silence alone that
+				// edge would be a move to the middle, which a loader is not
+				// bound to see. It is played out first, then the silence.
+				int edge = o.rate / 1000;
+				if (edge > n) edge = n;
+				wav_put(file, wav_lev(blk->data[j].vol), amp, o.bits, edge);
+				wav_put(file, 0, amp, o.bits, n - edge);
+			} else {
+				wav_put(file, wav_lev(blk->data[j].vol), amp, o.bits, n);
+			}
+			done += n;
+		}
+		acc = (double)done;
+	}
+	n = (int)((long long)o.rate * o.tail / 1000);
+	wav_put(file, 0, amp, o.bits, n);
+	done += n;
+
+	long long sz = done * hd.blockAlign;
+	fseek(file, 4, SEEK_SET);			// riff size: everything after it
+	fputi((int)(sz + sizeof(wavHead) - 8), file);
+	fseek(file, sizeof(wavHead) - 4, SEEK_SET);	// data size
+	fputi((int)sz, file);
+	fclose(file);
+	return ERR_OK;
+}
+
+int saveWAV(Computer* comp, const char* name, int drv) {
+	return saveWAVopt(comp, name, NULL);
 }
