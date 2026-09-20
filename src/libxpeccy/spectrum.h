@@ -266,6 +266,7 @@ void comp_kbd_release(Computer*);
 void compSetBaseFrq(Computer*,double);
 void compSetTurbo(Computer*,double);
 void compSetHwTurbo(Computer*,double);
+void comp_update_timings(Computer*);
 int compSetHardware(Computer*,const char*);
 void comp_set_layout(Computer*, vLayout*);
 void comp_set_snow(Computer*, int);

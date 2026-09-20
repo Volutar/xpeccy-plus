@@ -3,6 +3,7 @@
 #include <QWidget>
 #include <QColor>
 #include <QByteArray>
+#include <QVariant>
 
 #include "xcore/xcore.h"
 
