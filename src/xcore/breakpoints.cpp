@@ -132,6 +132,7 @@ xBrkPoint brkCreate(int type, int flag, int adr, int mask, int act = BRK_ACT_DBG
 	brk.last = 0;
 	brk.fired = 0;
 	brk.onchg = 0;
+	brk.log = 0;
 	return brk;
 }
 
@@ -201,6 +202,7 @@ void brkAdd(xBrkPoint brk, int flag) {
 		bp->read = brk.read;
 		bp->write = brk.write;
 		bp->action = brk.action;
+		bp->log = brk.log;
 		bp->cond = brk.cond;
 		bp->script = brk.script;
 	} else if (flag & BRKF_SYSTEM) {
@@ -345,13 +347,17 @@ void brkInstallList(std::vector<xBrkPoint>* list) {
 void brkInstallAll() {
 	Computer* comp = conf.zx;
 	int conds = 0;
+	int logs = 0;
 	cond_count = 0;
 	for (auto it = conf.brk.list.begin(); it != conf.brk.list.end(); it++) {
 		it->script = xexpr_compile(it->cond.c_str());	// cpu/labels may have changed
 		if (!it->cond.empty()) conds++;
+		if (it->log && xlog_on(XLG_BRK, XLL_INFO)) logs++;
 		if ((it->type == BRK_COND) && !it->off) cond_count++;
 	}
-	comp->flgCOND = conds ? 1 : 0;
+	// the flag is what makes the core record the last mem/io event: a
+	// condition reads it, and a logged hit prints it
+	comp->flgCOND = (conds || logs) ? 1 : 0;
 	comp_brk_newstep(comp);		// conditions start from a known beam position
 	memset(comp->brkAdrMap, 0x00, MEM_64K);
 	memset(comp->brkIOMap, 0x00, MEM_64K);
@@ -372,6 +378,150 @@ void brkInstallAll() {
 		brkInstall(&(*it), 0);
 	}
 #endif
+}
+
+// ------------------------------------------------------------------ logging
+
+// A hit as one line of the event log: what fired and on what, then every
+// register the cpu shows, the flags and the machine state around them. One hit
+// is one line, so the log keeps its columns and a trace greps by group.
+//
+// The registers are taken from the cpu's own table, so this is not Z80 code:
+// a core showing another set logs that set.
+
+static QString brk_log_page(const char* nm, int abs) {
+	return QString("%0:%1:%2").arg(nm).arg(gethexbyte(abs >> 14)).arg(gethexword(abs & 0x3fff));
+}
+
+// a cpu address in the page:offset form, for whatever the machine has paged
+// in at the time
+
+static QString brk_log_cell(Computer* comp, int cadr) {
+	xAdr xa = mem_get_xadr(comp->mem, cadr);
+	const char* nm;
+	switch (xa.type) {
+		case MEM_RAM: nm = "RAM"; break;
+		case MEM_ROM: nm = "ROM"; break;
+		case MEM_SLOT: nm = "SLT"; break;
+		default: nm = "EXT"; break;
+	}
+	return brk_log_page(nm, xa.abs);
+}
+
+// the breakpoint's own form of the address first, then the other one: a cell
+// says where the cpu saw it, a cpu address says which page it landed in
+
+static QString brk_log_place(xBrkPoint* brk, Computer* comp) {
+	int adr = comp->brka;
+	int cadr = comp->brkev.adr;
+	QString own;
+	switch (brk->type) {
+		case BRK_IOPORT: return QString("IO:%0").arg(gethexword(adr));
+		case BRK_IRQ: return QString("IRQ");
+		case BRK_COND: return QString("COND");
+		case BRK_CPUADR:
+			return QString("CPU:%0 %1").arg(gethexword(adr)).arg(brk_log_cell(comp, adr));
+		case BRK_MEMRAM: own = brk_log_page("RAM", adr); break;
+		case BRK_MEMROM: own = brk_log_page("ROM", adr); break;
+		case BRK_MEMSLT: own = brk_log_page("SLT", adr); break;
+		case BRK_MEMEXT: own = QString("EXT:%0").arg(gethex6(adr)); break;
+		default: return QString("BRK");
+	}
+	if (cadr >= 0) own.append(QString(" CPU:%0").arg(gethexword(cadr)));
+	return own;
+}
+
+// What the machine was doing when it was caught; an IRQ or a global condition
+// is not an access and says nothing here. It is the last mem/io event of the
+// instruction, the same one a condition reads - the breakpoint is raised
+// before the access is made and the instruction then runs on to its end. The
+// cpu address comes with it, so a byte belonging to another access of the same
+// instruction is not read as this one's; an instruction byte is latched as no
+// event at all and gets no value.
+
+static QString brk_log_access(xBrkPoint* brk, Computer* comp) {
+	if (brk->type == BRK_IOPORT) {
+		if (comp->brkev.in >= 0) return QString("IN=%0").arg(gethexbyte(comp->brkev.val));
+		if (comp->brkev.out >= 0) return QString("OUT=%0").arg(gethexbyte(comp->brkev.val));
+		return (comp->brkev.kind == MEM_BRK_WR) ? QString("OUT") : QString("IN");
+	}
+	if (comp->brkev.kind == MEM_BRK_FETCH) return QString("F");
+	if (comp->brkev.kind == MEM_BRK_RD) {
+		if (comp->brkev.rd < 0) return QString("RD");
+		return QString("RD %0=%1").arg(gethexword(comp->brkev.rd)).arg(gethexbyte(comp->brkev.mdt));
+	}
+	if (comp->brkev.kind == MEM_BRK_WR) {
+		if (comp->brkev.wr < 0) return QString("WR");
+		return QString("WR %0=%1").arg(gethexword(comp->brkev.wr)).arg(gethexbyte(comp->brkev.mdt));
+	}
+	return QString();
+}
+
+// PC is the instruction the breakpoint belongs to, not the one after it:
+// a write breakpoint is looked at once the instruction has run to its end,
+// and pc has moved on by then
+
+static QString brk_log_regs(Computer* comp, xRegBunch* bunch) {
+	QString res;
+	for (int i = 0; (i < 32) && (bunch->regs[i].id != REG_EOT); i++) {
+		xRegister* reg = &bunch->regs[i];
+		QString val;
+		if ((reg->flag & REG_TYPE_M) == REG_PC) reg->value = comp->brkpc;
+		switch (reg->size) {
+			case REG_BIT: val = QString::number(reg->value & 1); break;
+			case REG_2: val = QString::number(reg->value & 3); break;
+			case REG_BYTE: val = gethexbyte(reg->value); break;
+			case REG_24: val = gethex6(reg->value); break;
+			case REG_32: val = gethexint(reg->value); break;
+			default: val = gethexword(reg->value); break;
+		}
+		res.append(QString(" %0=%1").arg(reg->name).arg(val));
+	}
+	return res;
+}
+
+// the flag register spelled out, in the letters the cpu's own table names
+// them by
+
+static QString brk_log_flags(Computer* comp, const char* fnames) {
+	if (!fnames) return QString();
+	int val = cpu_get_flag(comp->cpu);
+	QString names(fnames);
+	QString res;
+	for (int i = 0; i < names.size(); i++)
+		res.append((val & (1 << (names.size() - i - 1))) ? names.at(i) : QChar('-'));
+	return res;
+}
+
+// where the machine stands: the rom page it runs and the ram page at the top
+// window, which is what tells two hits at the same address apart, plus the
+// signals the debugger's side panel shows
+
+static QString brk_log_state(Computer* comp) {
+	MemPage* pg0 = mem_get_page(comp->mem, 0x0000);
+	MemPage* pg3 = mem_get_page(comp->mem, 0xc000);
+	QString res;
+	res.append(QString(" ROMPG=%0").arg((pg0->type == MEM_ROM) ? QString::number(pg0->num >> 6) : QString("-")));
+	res.append(QString(" RAMPG=%0").arg((pg3->type == MEM_RAM) ? QString::number(pg3->num >> 6) : QString("-")));
+	res.append(QString(" DOS=%0 ROM=%1 CPM=%2").arg(comp->flgDOS).arg(comp->flgROM).arg(comp->flgCPM));
+	res.append(QString(" INT=%0").arg((comp->cpu->intrq & comp->cpu->inten) ? 1 : 0));
+	return res;
+}
+
+void brk_log_hit(xBrkPoint* brk, Computer* comp) {
+	if (!brk->log) return;
+	if (!xlog_on(XLG_BRK, XLL_INFO)) return;
+	QString line = brk_log_place(brk, comp);
+	QString acc = brk_log_access(brk, comp);
+	if (!acc.isEmpty()) line.append(QString(" %0").arg(acc));
+	line.append(QString(" n=%0/%1").arg(brk->count).arg(brk->hits));
+	if (!brk->cond.empty()) line.append(QString(" cond=%0").arg(brk->cond.c_str()));
+	xRegBunch bunch = cpuGetRegs(comp->cpu);
+	line.append(brk_log_regs(comp, &bunch));
+	QString flg = brk_log_flags(comp, bunch.flags);
+	if (!flg.isEmpty()) line.append(QString(" F=%0").arg(flg));
+	line.append(brk_log_state(comp));
+	xlog(XLG_BRK, XLL_INFO, "%s", line.toUtf8().constData());
 }
 
 // breakpoint list files
@@ -492,6 +642,7 @@ int brk_load_list(const char* fpath) {
 			brk.write = list.at(3).contains("W") ? 1 : 0;
 			brk.off = list.at(3).contains("0") ? 1 : 0;
 			brk.onchg = list.at(3).contains("E") ? 1 : 0;
+			brk.log = list.at(3).contains("L") ? 1 : 0;
 			if (list.at(0) == "IO") {
 				brk.type = BRK_IOPORT;
 				brk.adr = list.at(1).toInt(&b0, 16) & 0xffff;
@@ -649,6 +800,7 @@ int brk_save_list(const char* fpath) {
 			if (brk.write) flag.append("W");
 			if (brk.off) flag.append("0");
 			if (brk.onchg) flag.append("E");
+			if (brk.log) flag.append("L");
 			file.write(QString("%0:%1:%2:%3:%4:%5\n").arg(nm).arg(ar1).arg(ar2).arg(flag).arg(act).arg(brk.cond.c_str()).toUtf8());
 		}
 	}

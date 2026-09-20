@@ -100,6 +100,8 @@ int memrd(int adr, int m1, void* ptr) {
 		comp->flgBRK = 1;
 		comp->brkt = ch.t;
 		comp->brka = ch.a;
+		comp->brkev.kind = MEM_BRK_RD;
+		comp->brkev.adr = adr;
 	}
 	// the ULA took a refresh cycle from under this one and this machine's ram
 	// cannot take that (see zx_snow): the ram is left addressed the way the ULA
@@ -144,6 +146,8 @@ void memwr(int adr, int val, void* ptr) {
 			comp->flgBRK = 1;
 			comp->brkt = ch.t;
 			comp->brka = ch.a;
+			comp->brkev.kind = MEM_BRK_WR;
+			comp->brkev.adr = adr;
 		}
 	}
 	if (comp->flgCOND) {
@@ -353,6 +357,8 @@ int iord(int port, void* ptr) {
 		comp->flgBRK = 1;
 		comp->brkt = BRK_IOPORT;
 		comp->brka = port;
+		comp->brkev.kind = MEM_BRK_RD;
+		comp->brkev.adr = port;
 	}
 
 	res = comp->hw->in ? comp->hw->in(comp, port) : 0xff;
@@ -389,6 +395,8 @@ void iowr(int port, int val, void* ptr) {
 		comp->flgBRK = 1;
 		comp->brkt = BRK_IOPORT;
 		comp->brka = port;
+		comp->brkev.kind = MEM_BRK_WR;
+		comp->brkev.adr = port;
 	}
 	if (comp->flgCOND) {
 		comp->brkev.out = port;
@@ -768,6 +776,7 @@ int compSetHardware(Computer* comp, const char* name) {
 
 int compExec(Computer* comp) {
 	comp->vid->time = 0;
+	comp->flgBRKPRE = 0;
 // breakpoints. A run-ahead frame is thrown away, so a break there would fire
 // twice: leave it to the pass that keeps its result
 	if (!comp->flgDBG && !x_runahead) {
@@ -776,6 +785,9 @@ int compExec(Computer* comp) {
 			comp->flgBRK = 1;
 			comp->brkt = ch.t;
 			comp->brka = ch.a;
+			comp->brkev.kind = MEM_BRK_FETCH;
+			comp->brkev.adr = cpu_get_pc(comp->cpu);
+			comp->flgBRKPRE = 1;
 			if (*ch.ptr & MEM_BRK_TFETCH) {
 				*ch.ptr &= ~MEM_BRK_TFETCH;
 				comp->brkt = -1;		// temp (not in list)
@@ -785,6 +797,7 @@ int compExec(Computer* comp) {
 		if (comp->cpu->intrq && comp->flgIBRK) {
 			comp->flgBRK = 1;
 			comp->brkt = BRK_IRQ;
+			comp->flgBRKPRE = 1;
 			return 0;
 		}
 	}
@@ -875,7 +888,12 @@ void comp_brk_newstep(Computer* comp) {
 	comp->brkev.in = -1;
 	comp->brkev.out = -1;
 	comp->brkev.val = -1;
+	comp->brkev.kind = 0;
+	comp->brkev.adr = -1;
 	comp->brkray = comp->vid ? (comp->vid->ray.y * comp->vid->full.x + comp->vid->ray.x) : 0;
+	// the cpu stands in front of this instruction: a breakpoint it fires
+	// belongs here, wherever pc has moved on to by the time it is read
+	comp->brkpc = comp->cpu ? cpu_get_pc(comp->cpu) : 0;
 }
 
 // activate breakpoint w/o type (exit to debuga)

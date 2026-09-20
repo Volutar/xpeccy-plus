@@ -11,6 +11,13 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **A breakpoint can write down what it caught.** Tick Log in the breakpoint editor and
+  every hit leaves a line in the event log: where it fired, as both a cpu address and a
+  page, what the access was and the byte it carried, every register, the flags, and which
+  pages the machine had in. It goes alongside whatever else the breakpoint does, so one can
+  count and write, or stop in the debugger and write. The log itself has to be on
+  (Xpeccy+ -> General).
+
 - **Alt+T switches the turbo the machine really has** - 7 MHz on a ZS Scorpion, ATM Turbo 2+,
   Pentagon 1024SL, Profi and ZXM-Phoenix, 7 and 14 MHz on ZX Evolution and TSConf. The clock
   it lands on is shown bottom right for as long as it is not the machine's own, and the
@@ -114,6 +121,9 @@ before that point is upstream's history and is not repeated here.
   everywhere, and X in a number field switches between hex and decimal.
 
 ### Fixed
+
+- **A breakpoint on the interrupt no longer stops the machine dead.** Unless it was set to
+  open the debugger, the machine stood on the same interrupt and never went on.
 
 - **The mouse is usable on every host, and moves with the hand.** On some machines the
   emulated pointer shot off in one direction and no sensitivity setting would tame it - a host

@@ -214,6 +214,7 @@ typedef struct {
 	unsigned last:1;	// BRK_COND: condition was true on previous check
 	unsigned fired:1;	// BRK_COND: it fired on this instruction
 	unsigned onchg:1;	// BRK_COND: fire when it becomes true, not while it is
+	unsigned log:1;		// write a line to the event log on every hit
 	int type;
 	int adr;	// start adr (mem), port(io)
 	int eadr;	// end adr
@@ -236,6 +237,7 @@ xBrkPoint* brk_find(int, int);
 void brk_set_cond(xBrkPoint*, const char*);
 int brk_cond_true(xBrkPoint*, Computer*);
 int brk_check_cond(Computer*);
+void brk_log_hit(xBrkPoint*, Computer*);
 int brk_cond_count();
 int brk_load_list(const char*);
 int brk_save_list(const char*);

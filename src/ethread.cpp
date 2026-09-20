@@ -189,6 +189,7 @@ void xThread::brkAction(Computer* comp, xBrkPoint* ptr, int* brkskip) {
 	QString fnams;
 	QFile file;
 	int idx;
+	brk_log_hit(ptr, comp);		// logged whatever else it does, the debugger included
 	// TODO: fetch break continues to repeat, comp->brk=0 is not enough?
 	switch (ptr->action) {
 		case BRK_ACT_COUNT:			// counted by the caller, just go on
@@ -210,10 +211,11 @@ void xThread::brkAction(Computer* comp, xBrkPoint* ptr, int* brkskip) {
 			emit dbgRequest();
 			return;
 	}
-	// everything but the debugger goes on; a fetch break has to re-run the
-	// instruction it stopped in front of
+	// everything but the debugger goes on; a break raised before the cpu got
+	// to run - a fetch, or an interrupt about to be taken - has to step over
+	// itself, or the same check fires again and the machine stands still
 	comp->flgBRK = 0;
-	if (ptr->fetch && (ptr->type != BRK_COND)) *brkskip = 1;
+	if (comp->flgBRKPRE) *brkskip = 1;
 }
 
 // Run-ahead.
@@ -380,7 +382,7 @@ void xThread::emuCycle(Computer* comp) {
 					ptr->hits++;		// counted before the condition, HITS uses it
 					if (!brk_cond_true(ptr, comp)) {	// condition is false: go on
 						comp->flgBRK = 0;
-						if (ptr->fetch) brkskip = 1;
+						if (comp->flgBRKPRE) brkskip = 1;
 					} else {
 						ptr->count++;
 						brkAction(comp, ptr, &brkskip);

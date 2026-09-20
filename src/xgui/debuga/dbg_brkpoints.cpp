@@ -529,6 +529,7 @@ void xBrkManager::edit(xBrkPoint* sbrk) {
 		obrk.last = 0;
 		obrk.fired = 0;
 		obrk.onchg = 0;
+		obrk.log = 0;
 		obrk.hits = 0;
 		obrk.count = 0;
 		obrk.action = BRK_ACT_DBG;
@@ -540,6 +541,7 @@ void xBrkManager::edit(xBrkPoint* sbrk) {
 	ui.brkType->setCurrentIndex(ui.brkType->findData(obrk.type));
 	ui.brkFetch->setChecked(obrk.fetch);
 	ui.brkOnChange->setChecked(obrk.onchg);
+	ui.brkLog->setChecked(obrk.log);
 	ui.brkRead->setChecked(obrk.read);
 	ui.brkWrite->setChecked(obrk.write);
 	setLimits(obrk.type);
@@ -578,6 +580,7 @@ void xBrkManager::confirm() {
 	brk.last = 0;
 	brk.fired = 0;
 	brk.onchg = ui.brkOnChange->isChecked() ? 1 : 0;
+	brk.log = ui.brkLog->isChecked() ? 1 : 0;
 	brk_set_cond(&brk, cond.toLocal8Bit().data());
 	brk.type = ui.brkType->itemData(ui.brkType->currentIndex()).toInt();
 	brk.fetch = ui.brkFetch->isChecked() ? 1 : 0;
