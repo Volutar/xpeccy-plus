@@ -137,7 +137,7 @@
      <normaloff>:/images/dollar.png</normaloff>:/images/dollar.png</iconset>
    </property>
    <property name="text">
-    <string>...as hobeta</string>
+    <string>...as Hobeta</string>
    </property>
   </action>
   <action name="aSaveToA">

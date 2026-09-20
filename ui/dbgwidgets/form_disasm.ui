@@ -388,7 +388,7 @@
   </action>
   <action name="actViewText">
    <property name="text">
-    <string>Ascii</string>
+    <string>ASCII</string>
    </property>
   </action>
   <action name="actSaveMap">

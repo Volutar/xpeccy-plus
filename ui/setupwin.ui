@@ -1862,7 +1862,7 @@ border, instead of stretching it</string>
                    <bool>false</bool>
                   </property>
                   <property name="text">
-                   <string>No leds</string>
+                   <string>No LEDs</string>
                   </property>
                  </widget>
                 </item>
@@ -2074,7 +2074,7 @@ thin, lower it again after a long clean spell</string>
               <item>
                <widget class="QCheckBox" name="chkSndFilter">
                 <property name="toolTip">
-                 <string>Cuts the very highest frequencies.&#10;The sound is worked out 32 times more&#10;often than the sound card plays it,&#10;and anything too high for the card to&#10;carry folds back down and is heard as&#10;notes that were never played.&#10;512 tap filter; costs a little cpu.</string>
+                 <string>Cuts the very highest frequencies.&#10;The sound is worked out 32 times more&#10;often than the sound card plays it,&#10;and anything too high for the card to&#10;carry folds back down and is heard as&#10;notes that were never played.&#10;512 tap filter; costs a little CPU.</string>
                 </property>
                 <property name="text">
                  <string>High cut (anti-alias)</string>
@@ -3705,7 +3705,7 @@ Off: the tape stops at the end</string>
                  <item>
                   <widget class="QToolButton" name="tbToHobeta">
                    <property name="toolTip">
-                    <string>Save as hobeta</string>
+                    <string>Save as Hobeta</string>
                    </property>
                    <property name="text">
                     <string>...</string>
@@ -5870,7 +5870,7 @@ Right click: back to the style color</string>
      <normaloff>:/images/dollar.png</normaloff>:/images/dollar.png</iconset>
    </property>
    <property name="text">
-    <string>Save as hobeta</string>
+    <string>Save as Hobeta</string>
    </property>
   </action>
   <action name="actSaveRaw">

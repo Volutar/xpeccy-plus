@@ -221,7 +221,7 @@ void MainWin::xkey_press(int xkey) {
 				if (comp->turboCount < 2) {
 					setMessage(" model has no Turbo ");
 				} else if (comp->rzx.play) {
-					setMessage(" not in rzx ");
+					setMessage(" not in RZX ");
 				} else {
 					// an unknown step reads as -1 and so starts the list over
 					int i = (xm_turbo_index(comp) + 1) % comp->turboCount;
@@ -234,7 +234,7 @@ void MainWin::xkey_press(int xkey) {
 			case XCUT_SPEED_UP:
 			case XCUT_SPEED_DOWN:
 				if (comp->rzx.play) {
-					setMessage(" not in rzx ");
+					setMessage(" not in RZX ");
 				} else {
 					int pos = xspeed_get() + ((xkey == XCUT_SPEED_UP) ? 1 : -1);
 					if ((pos < 0) || (pos > xspeed_max())) {
@@ -373,7 +373,7 @@ void MainWin::xkey_press(int xkey) {
 					snd_wav_close();
 					setMessage(" stop WAV output ");
 				} else {
-					path = QFileDialog::getSaveFileName(this, "Sound output to wav", "", "Wave files (*.wav)",nullptr,QFileDialog::DontUseNativeDialog);
+					path = QFileDialog::getSaveFileName(this, "Sound output to WAV", "", "Wave files (*.wav)",nullptr,QFileDialog::DontUseNativeDialog);
 					if (!path.isEmpty()) {
 						if (!path.endsWith(".wav", Qt::CaseInsensitive))
 							path.append(".wav");
@@ -443,7 +443,7 @@ void MainWin::keyReleaseEvent(QKeyEvent *ev) {
 				// for debug
 				if ((ev->modifiers() & Qt::AltModifier) && (ev->key() == Qt::Key_PageUp)) {
 					comp->dif->fdc->debug ^= 1;
-					xlog(XLG_DISK, XLL_DEBUG, "fdc debug: %i", comp->dif->fdc->debug);
+					xlog(XLG_DISK, XLL_DEBUG, "FDC debug: %i", comp->dif->fdc->debug);
 				}
 				xkey_release(keyid);
 			}

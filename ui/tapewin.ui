@@ -65,7 +65,7 @@
          <item>
           <widget class="QToolButton" name="expBut">
            <property name="toolTip">
-            <string>Export the tape as a wav recording</string>
+            <string>Export the tape as a WAV recording</string>
            </property>
            <property name="text">
             <string>Export WAV</string>

@@ -389,7 +389,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if ((nam.compare(0, 3, "rom") == 0) && isdigit(nam[3]))
 				mac_rom_add(mac.roms.roms, val, atoi(nam.c_str() + 3));
 			else
-				xlog(XLG_CONF, XLL_WARN, "machine %s: unknown rom key '%s'", id, nam.c_str());
+				xlog(XLG_CONF, XLL_WARN, "machine %s: unknown ROM key '%s'", id, nam.c_str());
 		}
 	}
 }
@@ -634,7 +634,7 @@ static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std:
 		fpath = xm_rom_path(xrf.name);
 		file = fopen(fpath.c_str(), "rb");
 		if (!file) {
-			xlog(XLG_CONF, XLL_ERROR, "can't load rom file '%s'", fpath.c_str());
+			xlog(XLG_CONF, XLL_ERROR, "can't load ROM file '%s'", fpath.c_str());
 			continue;
 		}
 		if (xrf.fsize <= 0) {			// no size given: as far as the file reaches
@@ -670,7 +670,7 @@ static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std:
 				xlog(XLG_CONF, XLL_WARN, "short read from '%s'", fpath.c_str());
 			fclose(file);
 		} else {
-			xlog(XLG_CONF, XLL_ERROR, "can't load gs rom '%s'", fpath.c_str());
+			xlog(XLG_CONF, XLL_ERROR, "can't load GS ROM '%s'", fpath.c_str());
 			memset((char*)comp->gs->mem->romData, 0xff, MEM_32K);
 		}
 	}
