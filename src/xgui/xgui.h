@@ -202,6 +202,7 @@ class TapeWin : public QDialog {
 		void doStop();
 		void doLoad();
 		void doSave();
+		void doExport();
 		void doRewind();
 		void doEject();
 		void doDClick(QModelIndex);

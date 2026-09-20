@@ -1487,7 +1487,7 @@ void MainWin::watchClock() {
 		return;
 	}
 	setMessage(QString(" %0 MHz (x%1) ").arg(xspeed_clock(), 0, 'g', 6).arg(comp->hwMul));
-	xlog(XLG_HW, XLL_INFO, "turbo x%g: cpu at %.2f MHz", comp->hwMul, xspeed_clock());
+	xlog(XLG_HW, XLL_INFO, "turbo x%g: CPU at %.2f MHz", comp->hwMul, xspeed_clock());
 }
 
 void MainWin::watchMedia() {

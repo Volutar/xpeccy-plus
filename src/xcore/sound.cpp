@@ -278,7 +278,7 @@ void setOutput(const char* name) {
 	// a recording's rate is in its header and cannot change, so it ends here
 	// rather than play back at the wrong speed from this point on
 	if (conf.snd.wavfile && (conf.snd.rate != wavRate)) {
-		xlog(XLG_SOUND, XLL_INFO, "wav output stopped: rate is now %i Hz", conf.snd.rate);
+		xlog(XLG_SOUND, XLL_INFO, "WAV output stopped: rate is now %i Hz", conf.snd.rate);
 		snd_wav_close();
 	}
 }

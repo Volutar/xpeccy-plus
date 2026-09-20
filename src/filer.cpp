@@ -46,13 +46,19 @@ typedef struct {
 	int child[32];
 } xFileHWInfo;
 
+// Save takes the settings the export dialog holds, so the two roads to a wav
+// do not write different files
+static int save_wav(Computer* comp, const char* name, int drv) {
+	return saveWAVopt(comp, name, &conf.tape.exp);
+}
+
 static xFileTypeInfo ft_tab[] = {
 	{FL_SNA, 0, ".sna", "*.sna", loadSNA, saveSNA, "SNA snapshot"},
 	{FL_Z80, 0, ".z80", "*.z80", loadZ80, saveZ80, "Z80 snapshot"},
 	{FL_SPG, 0, ".spg", "*.spg", loadSPG, NULL, "SPG snapshot"},
 	{FL_TAP, 0, ".tap", "*.tap", loadTAP, saveTAP, "TAP tape image"},
 	{FL_TZX, 0, ".tzx", "*.tzx", loadTZX, NULL, "TZX tape image"},
-	{FL_WAV, 0, ".wav", "*.wav", loadWAV, saveWAV, "WAV tape image"},
+	{FL_WAV, 0, ".wav", "*.wav", loadWAV, save_wav, "WAV tape image"},
 	{FL_SCL, 1, ".scl", "*.scl", loadSCL, saveSCL, "SCL disk image"},
 	{FL_TRD, 1, ".trd", "*.trd", loadTRD, saveTRD, "TRD disk image"},
 	{FL_TD0, 1, ".td0", "*.td0", loadTD0, NULL, "TD0 disk image"},
@@ -635,6 +641,23 @@ int save_file(Computer* comp, const char* name, int id, int drv) {
 	}
 	file_errors(err);
 	return err;
+}
+
+
+// The save dialog on its own, for an export that is not one of the file types
+// the tables above know. Same dialog as every other open and save in the app.
+QString file_ask_save(const char* title, const char* filter, const char* ext) {
+	filer->setWindowTitle(title);
+	filer->setNameFilter(filter);
+	filer->setAcceptMode(QFileDialog::AcceptSave);
+	filer->setDirectory(conf.lastDir.c_str());
+	filer->setHistory(QStringList());
+	if (!filer->exec()) return QString();
+	QString path = filer->selectedFiles().first();
+	if (!path.endsWith(ext, Qt::CaseInsensitive))
+		path.append(ext);
+	conf.lastDir = std::string(QFileInfo(path).dir().absolutePath().toLocal8Bit().data());
+	return path;
 }
 
 // old

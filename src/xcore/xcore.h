@@ -632,6 +632,7 @@ struct xConfig {
 		unsigned autostart:1;
 		unsigned fast:1;
 		unsigned rewind:1;	// play starts a tape played to its end over
+		wavExport exp;		// what the wav export writes
 	} tape;
 //	struct {
 //		xGamepad* gpad;

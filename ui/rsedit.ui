@@ -55,7 +55,7 @@
         <string>Where the part lands in the machine's ROM</string>
        </property>
        <property name="text">
-        <string>Rom pos</string>
+        <string>ROM pos</string>
        </property>
       </widget>
      </item>

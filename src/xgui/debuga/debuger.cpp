@@ -2516,7 +2516,7 @@ void DebugWin::saveDumpBin() {
 void DebugWin::saveDumpHobeta() {
 	QByteArray data = getDumpData();
 	if (data.size() == 0) return;
-	QString path = QFileDialog::getSaveFileName(this,"Save memory dump as hobeta","","Hobeta files (*.$C)",nullptr,QFileDialog::DontUseNativeDialog);
+	QString path = QFileDialog::getSaveFileName(this,"Save memory dump as Hobeta","","Hobeta files (*.$C)",nullptr,QFileDialog::DontUseNativeDialog);
 	if (path.isEmpty()) return;
 	TRFile dsc;
 	QString name = dui.leStart->text();

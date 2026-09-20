@@ -141,7 +141,7 @@ void blkAddPulseLev(TapeBlock* blk, int len, int lev) {
 // the mix. Bit 7 is the ear bit and still flips, so a loader sees no change.
 void blkAddPause(TapeBlock* blk, int len) {
 	if (len < 1) return;
-	blkAddPulse(blk, len, blk->vol ? 0x80 : 0x7f);
+	blkAddPulse(blk, len, TAP_PAUSE_VOL(blk->vol));
 }
 
 // add wave (2 pulses)

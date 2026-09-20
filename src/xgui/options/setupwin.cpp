@@ -388,7 +388,9 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 // video
 	std::map<std::string,int>::iterator it;
 	for (it = shotFormat.begin(); it != shotFormat.end(); it++) {
-		ui.ssfbox->addItem(QString(it->first.c_str()),it->second);
+		// the key is the config value, the label is the format name as it is written
+		QString key = QString::fromStdString(it->first);
+		ui.ssfbox->addItem((key == "hobeta") ? QString("Hobeta") : key.toUpper(), key);
 	}
 	ui.cbContPattern->addItem("No contention", CONT_NONE);
 	ui.cbContPattern->addItem("Ferranti (48K, 128K, +2)", CONT_PATA);
@@ -810,7 +812,7 @@ void SetupWin::start() {
 	ui.bszsld->setValue(conf.vid.border);
 	chabsz();
 	ui.pathle->setText(QString::fromLocal8Bit(conf.scrShot.dir.c_str()));
-	ui.ssfbox->setCurrentIndex(ui.ssfbox->findText(conf.scrShot.format.c_str()));
+	ui.ssfbox->setCurrentIndex(ui.ssfbox->findData(QString::fromStdString(conf.scrShot.format)));
 	ui.scntbox->setValue(conf.scrShot.count);
 	ui.sintbox->setValue(conf.scrShot.interval);
 	ui.ssNoLeds->setChecked(conf.scrShot.noLeds);
@@ -1019,7 +1021,7 @@ void SetupWin::apply() {
 	vid_set_grey(ui.grayscale->isChecked() ? 1 : 0);
 //	scanlines = ui.cbScanlines->isChecked() ? 1 : 0;
 	conf.scrShot.dir = std::string(ui.pathle->text().toLocal8Bit().data());
-	conf.scrShot.format = getRFText(ui.ssfbox);
+	conf.scrShot.format = getRFSData(ui.ssfbox).toStdString();
 	conf.scrShot.count = ui.scntbox->value();
 	conf.scrShot.interval = ui.sintbox->value();
 	conf.scrShot.noLeds = ui.ssNoLeds->isChecked() ? 1 : 0;
