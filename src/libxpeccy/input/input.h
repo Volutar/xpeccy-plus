@@ -91,8 +91,8 @@ typedef struct {
 
 	int xpos;
 	int ypos;
-	int xdelta;
-	int ydelta;
+	int xdelta;		// already in emulated pixels, but not scaled by
+	int ydelta;		// sensitivity - that is done where the port is read
 	int autox;
 	int autoy;
 	// callbacks

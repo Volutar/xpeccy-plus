@@ -221,14 +221,23 @@ static QString sdl_line() {
 		.arg(run.major).arg(run.minor).arg(run.patch);
 }
 
+// every screen, not just the primary one: a mixed scale factor across two of
+// them is a class of bug on its own
 static QString screen_line() {
-	QScreen* scr = QGuiApplication::primaryScreen();
-	if (!scr) return "unknown";
-	return QString("%1x%2 @ %3 Hz, dpr %4, %5 dpi")
-		.arg(scr->geometry().width()).arg(scr->geometry().height())
-		.arg(scr->refreshRate(), 0, 'f', 3)
-		.arg(scr->devicePixelRatio(), 0, 'f', 2)
-		.arg(scr->logicalDotsPerInch(), 0, 'f', 0);
+	QScreen* pri = QGuiApplication::primaryScreen();
+	QString res;
+	foreach(QScreen* scr, QGuiApplication::screens()) {
+		if (!res.isEmpty()) res += " | ";
+		res += QString("'%1' %2x%3+%4+%5 @ %6 Hz, dpr %7, %8 dpi%9")
+			.arg(scr->name())
+			.arg(scr->geometry().width()).arg(scr->geometry().height())
+			.arg(scr->geometry().x()).arg(scr->geometry().y())
+			.arg(scr->refreshRate(), 0, 'f', 3)
+			.arg(scr->devicePixelRatio(), 0, 'f', 2)
+			.arg(scr->logicalDotsPerInch(), 0, 'f', 0)
+			.arg((scr == pri) ? ", primary" : "");
+	}
+	return res.isEmpty() ? "unknown" : res;
 }
 
 static void put(const QString& s) {

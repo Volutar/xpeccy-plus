@@ -115,6 +115,14 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The mouse is usable on every host, and moves with the hand.** On some machines the
+  emulated pointer shot off in one direction and no sensitivity setting would tame it - a host
+  that puts the pointer straight back where its device holds it, such as a virtual machine or a
+  remote desktop, had every move counted many times over. It also no longer jumps when the mouse
+  is grabbed, and one move of the hand takes it the same way across the monitor whatever size
+  the picture is drawn at, so sensitivity means the same thing at every zoom - and its slider
+  now has that in the middle.
+
 - **A tape block whose name is made of BASIC tokens or graphics reads as a name again.**
   Such a name showed as an empty line in the block list. The tokens are spelled out now and
   the graphics drawn; the name itself is untouched, so a block copied to a disk keeps the

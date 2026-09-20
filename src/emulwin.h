@@ -149,7 +149,12 @@ typedef struct {
 		void frame_timer();
 	private:
 		unsigned grabMice:1;
-		unsigned dumove:1;
+		QPoint warpAt;		// where the last recentering aimed
+		unsigned char warpTtl;	// events it stays a candidate for
+		unsigned char warpFail;	// recenterings the host undid in a row
+		QPoint mouseLast;	// where the pointer was at the previous move
+		double mouseRemX = 0.0;	// what the division by the zoom left over
+		double mouseRemY = 0.0;
 		unsigned block:1;
 		unsigned hasPicture:1;	// the emulation has handed over a frame
 		unsigned refit:1;	// geometry changed: re-read the frame before painting it
@@ -221,6 +226,11 @@ typedef struct {
 		void initUserMenu();
 		void favManage();
 		void calcCoords(QMouseEvent*);
+		QPoint winCenter();		// the middle of the window, on the screen
+		void winCursorTo(QPoint);
+		void mouseGrabOn();
+		void mouseGrabOff();
+		void mouseRecenter(int fresh = 0);
 		void dropAsk(QString);
 
 		void xkey_press(int);
