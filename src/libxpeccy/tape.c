@@ -385,8 +385,19 @@ void tapStoreBlock(Tape* tap) {
 	tap->wait = 1;
 }
 
+// A cassette comes out of a deck that is not running, and one goes into the
+// same. Leaving it rolling left the next image starting in the middle of its
+// first block, and nothing put that right: tapPlay returns early on a tape that
+// is already on, so the lead-in it gives a loader was never laid down.
 void tapEject(Tape* tap) {
 	int i;
+	tap->on = 0;
+	tap->rec = 0;
+	tap->wait = 0;
+	tap->tail = 0;
+	tap->sigLen = 0;			// tapSync puts the level at rest from here
+	tap->detectReads = 0;
+	blkClear(&tap->tmpBlock);		// a part-recorded block goes with the tape
 	tap->isData = 1;
 	tap->armed = 0;
 	tap->userStop = 0;

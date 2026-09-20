@@ -115,6 +115,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **Opening a tape while another one is playing works.** The deck kept running over the
+  new image, which then began in the middle of its first block - the load either missed
+  that block or never started at all.
+
 - **Tapes with a high-speed loader load.** A DeciLoad tape - 8b/10b encoding, a whole
   game in under a minute - did not load at all: the waveform it is recorded as was read
   a fraction short, and the tape then stopped where the loader took over instead of
