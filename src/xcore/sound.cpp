@@ -244,6 +244,9 @@ int sndSync(Computer* comp) {
 		}
 	}
 #if NEW_SMP_METHOD
+	// fast mode makes no sound to wait for: emuCycle() runs it a frame at a
+	// time instead, rather than handing the machine back after every sample
+	if (conf.emu.fast) return 0;
 	if (conf.snd.need > 0) return 0;
 #else
 	if (smpCount < sndChunks) return 0;

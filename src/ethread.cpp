@@ -342,6 +342,7 @@ void xThread::emuCycle(Computer* comp) {
 		}
 		if (comp->flgFRM) {
 			comp->flgFRM = 0;
+			if (conf.emu.fast) conf.snd.fill = 0;	// see sndSync()
 			conf.vid.fctime = paceClockNs();	// for the fps readout
 			conf.vid.fcount++;
 			comp->frmCount++;
