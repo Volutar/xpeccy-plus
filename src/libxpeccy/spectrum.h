@@ -94,6 +94,7 @@ typedef struct {
 #define flgCOND	sysflag[17]		// breakpoint conditions in use: latch mem/io events
 #define flgSNOW	sysflag[18]		// ULA snow effect (zx)
 #define flgSNOWX sysflag[19]		// ...and this machine's ram cannot take it
+#define flgBRKPRE sysflag[20]		// the break was raised before the instruction ran
 
 #define PWATCH_MAX	16		// ports the debugger can watch at once
 
@@ -125,8 +126,11 @@ typedef struct Computer {
 	struct {
 		int rd, wr, mdt;
 		int in, out, val;
+		int kind;	// MEM_BRK_* of the access that fired it
+		int adr;	// cpu address it was made at (-1 = no access)
 	} brkev;
 	int brkray;		// beam position (dots from frame start) before this instruction
+	int brkpc;		// pc before this instruction: where a breakpoint says it is
 	// ports the debugger watches. A hit is (bus & mask) == port; a port the
 	// machine keeps a copy of is read from there instead of the bus, the rest
 	// hold the last value that went through them (-1 = nothing yet). A port

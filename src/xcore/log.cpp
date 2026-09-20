@@ -358,6 +358,9 @@ void log_apply() {
 	if (xlog_is_open() || console)
 		write_header();
 	xlog_flush_early();
+	// a breakpoint that logs makes the core keep a record of every mem/io
+	// event, and it is only worth keeping while there is a log to write it to
+	if (conf.zx) brkInstallAll();
 }
 
 void log_done() {

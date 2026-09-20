@@ -33,7 +33,7 @@ unsigned char xlog_lev[XLG_COUNT];
 
 static const char* grp_name[XLG_COUNT] = {
 	"APP", "CONF", "CORE", "CPU", "VIDEO", "SOUND", "TAPE",
-	"DISK", "INPUT", "HW", "FILE", "GUI", "GL", "NET"
+	"DISK", "INPUT", "HW", "FILE", "GUI", "GL", "NET", "BRK"
 };
 
 static const char* lev_name[XLL_COUNT] = {

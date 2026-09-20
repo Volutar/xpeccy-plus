@@ -38,6 +38,7 @@ enum {
 	XLG_GUI,
 	XLG_GL,
 	XLG_NET,
+	XLG_BRK,	// breakpoints asked to log what they caught
 	XLG_COUNT
 };
 
