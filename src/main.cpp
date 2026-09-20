@@ -246,6 +246,8 @@ int main(int ac,char** av) {
 			cli_astart = 1;
 		} else if (!strcmp(earg, "--no-autostart")) {
 			cli_astart = 0;
+		} else if (!strcmp(earg, "--bench")) {
+			xhost_time_fixed = 1790000000;	// the machines are built below: freeze their clock first
 		} else if (!strcmp(earg, "-m") || !strcmp(earg, "--machine")
 				|| !strcmp(earg, "-p") || !strcmp(earg, "--profile")) {
 			pinned = true;
@@ -378,6 +380,12 @@ int main(int ac,char** av) {
 	int astart = (cli_astart < 0) ? conf.autorun : cli_astart;
 	xAdr xadr;
 	int tmpi;
+	int bnFrames = 0;
+	int bnSkip = 0;
+	int bnFull = 0;
+	int bnHash = 0;
+	const char* bnProf = NULL;
+	const char* bnShot = NULL;
 #ifdef __APPLE__
 	int style = 0;
 #endif
@@ -390,6 +398,10 @@ int main(int ac,char** av) {
 			hlp = 1;
 		} else if (log_arg(parg, i, ac, av)) {
 			// already dealt with, before the config was read
+		} else if (!strcmp(parg,"--bench-full")) {
+			bnFull = 1;
+		} else if (!strcmp(parg,"--bench-hash")) {
+			bnHash = 1;
 		} else if (!strcmp(parg,"--panic")) {
 			compflags |= CFLG_PANIC;
 		} else if (!strcmp(parg,"--autostart") || !strcmp(parg,"--no-autostart")) {
@@ -414,6 +426,14 @@ int main(int ac,char** av) {
 					cli_set_machine(mwin, dbgw, mid);
 				}
 				i++;
+			} else if (!strcmp(parg,"--bench")) {
+				bnFrames = atoi(av[i++]);
+			} else if (!strcmp(parg,"--bench-skip")) {
+				bnSkip = atoi(av[i++]);
+			} else if (!strcmp(parg,"--bench-prof")) {
+				bnProf = av[i++];
+			} else if (!strcmp(parg,"--bench-shot")) {
+				bnShot = av[i++];
 			} else if (!strcmp(parg,"--pc")) {
 				conf.zx->cpu->regPC = strtol(av[i],NULL,0) & 0xffff;
 				i++;
@@ -510,6 +530,13 @@ int main(int ac,char** av) {
 		app.setStyle(QStyleFactory::create("Fusion"));
 	}
 #endif
+	if (bnFrames > 0) {
+		ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot);
+		pacingClose();
+		sndClose();
+		log_done();
+		return 0;
+	}
 	if (!hlp) {
 //		mwin.blockSignals(true);
 		mwin.show();		// causes an exception on resizeEvent -> emit resized()

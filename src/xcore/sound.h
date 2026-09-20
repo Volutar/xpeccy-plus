@@ -86,6 +86,8 @@ void setOutput(const char*);
 void sndClose();
 int sndSync(Computer*);
 int sndGetRingDistance();
+int snd_ring_fill_pos();
+int snd_ring_byte(int);
 int sndGetRingTargetBytes();
 int sndPlaybackActive();
 void sndAutoTick(long long);

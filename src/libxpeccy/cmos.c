@@ -4,6 +4,7 @@
 #include <time.h>
 
 #include "cmos.h"
+#include "defines.h"
 
 /*
 00	secunds
@@ -48,7 +49,10 @@ int rtc_read(CMOS* cms) {
 	int res = -1;
 	time_t rtime;
 	struct tm* ctime;
-	time(&rtime);
+	if (xhost_time_fixed)
+		rtime = (time_t)xhost_time_fixed;
+	else
+		time(&rtime);
 	ctime = localtime(&rtime);
 //	int cur_time = (ctime->tm_hour << 16) + (ctime->tm_min << 8) + ctime->tm_sec;
 	switch (cms->adr) {

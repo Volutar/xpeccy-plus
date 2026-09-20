@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <time.h>
 
+long long xhost_time_fixed = 0;
+
 Memory* memCreate() {
 	Memory* mem = (Memory*)malloc(sizeof(Memory));
 	memset(mem, 0x00, sizeof(Memory));
@@ -103,7 +105,7 @@ static unsigned int cold_rnd(unsigned int* seed) {
 }
 
 void mem_cold_fill(Memory* mem, const unsigned char* pat, int len, int noise) {
-	unsigned int seed = (unsigned int)time(NULL) | 1;
+	unsigned int seed = (unsigned int)(xhost_time_fixed ? xhost_time_fixed : time(NULL)) | 1;
 	size_t size = mem_ram_extent(mem);
 	unsigned char weak[COLD_CELLS];
 	int pick = toLimits((noise * COLD_CELLS + COLD_BAD_PM / 2) / COLD_BAD_PM, 0, COLD_CELLS);

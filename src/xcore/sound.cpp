@@ -420,6 +420,15 @@ int sndGetRingDistance() {
 	return (posf - posp) & SND_RING_MASK;
 }
 
+// the bench hashes what went into the ring: where the fill stands, and a byte
+int snd_ring_fill_pos() {
+	return posf;
+}
+
+int snd_ring_byte(int pos) {
+	return sbuf[pos & SND_RING_MASK];
+}
+
 double snd_scope_rate() {
 	return (double)conf.snd.rate * DISCRATE;
 }
