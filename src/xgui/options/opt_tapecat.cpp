@@ -24,13 +24,17 @@ void xTapeCatModel::fill(Tape* tap) {
 	inf = NULL;
 	dur.clear();
 	name.clear();
+	named.clear();
 	info.clear();
 	if (row_count > 0) {
 		inf = new TapeBlockInfo[row_count];
 		tapGetBlocksInfo(tap, inf);
 		for (int i = 0; i < row_count; i++) {
+			QString nam = headName(i);
+			bool own = !nam.isEmpty();
 			dur << QString(getTimeString(inf[i].time).c_str());
-			name << blockName(i);
+			named << own;
+			name << (own ? nam : blockKind(i));
 			info << blockInfo(i);
 		}
 	}
@@ -55,14 +59,22 @@ int xTapeCatModel::setCurrent(int row) {
 // a name someone gave the file, as opposed to our own word for the block
 
 int xTapeCatModel::isNamed(int row) const {
-	return (inf[row].type == TAPE_HEAD) && inf[row].name[0];
+	return named.value(row, false);
 }
 
-// what the block is: the name a header carries, or the kind of block it is. Our
-// own words go in lower case and italics, so a name is never in doubt
+// The name a header carries, shown the way the machine would show it: the
+// tokens spelled out and the control codes dropped. Empty when the header has
+// no name, or nothing that can be seen of one.
 
-QString xTapeCatModel::blockName(int row) const {
-	if (isNamed(row)) return QString::fromLocal8Bit(inf[row].name);
+QString xTapeCatModel::headName(int row) const {
+	if (inf[row].type != TAPE_HEAD) return QString();
+	return zx_text(inf[row].name, TAPE_NAME_LEN);
+}
+
+// our own word for a block with no name, in lower case and italics, so a name
+// is never in doubt
+
+QString xTapeCatModel::blockKind(int row) const {
 	if (!inf[row].hasBytes) return QString("custom");	// a signal, not bytes
 	if (inf[row].type != TAPE_HEAD) return QString("data");
 	switch (inf[row].htype) {				// a header, but no name in it

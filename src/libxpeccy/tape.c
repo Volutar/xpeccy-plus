@@ -219,12 +219,8 @@ int tapGetBlockHeader(TapeBlock* block, TapeBlockInfo* inf) {
 	if (!block->isHeader) return 0;
 	if (tapGetBlockSize(block) != 17) return 0;
 	inf->htype = tapGetBlockByte(block, 1);
-	for (i = 0; i < 10; i++)
+	for (i = 0; i < TAPE_NAME_LEN; i++)			// padding and all: it is shown trimmed
 		inf->name[i] = tapGetBlockByte(block, i + 2);
-	i = 10;
-	while ((i > 0) && (inf->name[i - 1] == ' '))		// the name is padded with spaces
-		i--;
-	inf->name[i] = 0;
 	inf->dlen = tapGetBlockByte(block, 12) | (tapGetBlockByte(block, 13) << 8);
 	inf->par1 = tapGetBlockByte(block, 14) | (tapGetBlockByte(block, 15) << 8);
 	return 1;

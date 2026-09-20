@@ -41,10 +41,12 @@ class xTapeCatModel : public xTableModel {
 		QStringList dur;		// what the columns say, built once per fill: the
 		QStringList name;		// view asks for these again on every repaint, and
 		QStringList info;		// for every row it measures a column against
+		QList<bool> named;		// ...and whether that name is the header's own
 		QIcon icoBrk;
 		QIcon icoDur;
 		int isNamed(int) const;
-		QString blockName(int) const;
+		QString headName(int) const;
+		QString blockKind(int) const;
 		QString blockInfo(int) const;
 		QVariant data(const QModelIndex&, int) const;
 		QVariant headerData(int, Qt::Orientation, int) const;
