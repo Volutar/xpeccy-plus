@@ -325,6 +325,7 @@ void brkInstall(xBrkPoint* brk, int del) {
 				break;
 		}
 		if (ptr) {
+			if (msk & 0x0f) comp->flgBRKMEM = 1;
 			adr = brk->adr;
 			while (cnt > 0) {
 				*ptr &= 0xf0;
@@ -365,6 +366,7 @@ void brkInstallAll() {
 	clearMap(comp->brkRomMap, MEM_512K);
 	if (comp->slot->brkMap)
 		clearMap(comp->slot->brkMap, comp->slot->memMask + 1);
+	comp->flgBRKMEM = 0;		// brkInstall() sets it again for each point it puts in the maps
 	conf.brk.map.clear();
 	comp->flgIBRK = 0;
 #if 1

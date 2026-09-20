@@ -81,6 +81,7 @@ void cpuSetCore(CPU* cpu, cpuCore* core) {
 	cpu->core = core;
 	cpu->type = core->type;
 	cpu->busmask = (1 << core->adrbus) - 1;
+	cpu->pcdsc = find_reg_type(cpu, REG_PC);
 	if (core->init) {
 		core->init(cpu);
 	}
@@ -586,7 +587,7 @@ void cpu_set_regtype(CPU* cpu, int type, int val) {
 }
 
 int cpu_get_sp(CPU* cpu) {return cpu_get_regtype(cpu, REG_SP);}
-int cpu_get_pc(CPU* cpu) {return cpu_get_regtype(cpu, REG_PC);}
+int cpu_get_pc(CPU* cpu) {return cpu->pcdsc ? reg_get_value(cpu, cpu->pcdsc) : -1;}
 void cpu_set_pc(CPU* cpu, int val) {cpu_set_regtype(cpu, REG_PC, val);}
 // TODO: remove get/set flags callbacks from cpu core, flag register is marked as REG_FLG in cpu->core->rdtab and have get/set callbacks
 int cpu_get_flag(CPU* cpu) {return cpu_get_regtype(cpu, REG_FLG);}

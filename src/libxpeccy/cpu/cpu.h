@@ -165,6 +165,7 @@ struct CPU {
 	void* xptr;			// pointer to external data (almost always Computer*)
 	// core: runtime callbacks (depends on type)
 	struct cpuCore* core;
+	xRegDsc* pcdsc;			// the core's PC, looked up once: the core asks for it on every read
 	// opcode
 	reg16(com, hcom, lcom);
 	opCode* opTab;

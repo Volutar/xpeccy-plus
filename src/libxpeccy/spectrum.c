@@ -74,11 +74,14 @@ int memrd(int adr, int m1, void* ptr) {
 		comp->rzx.frm.fetches--;
 	}
 #endif
-	unsigned char* fptr = comp_get_memcell_flag_ptr(comp, adr);
-	unsigned isExecByte = (cpu_get_pc(comp->cpu) - 1) == adr;
-	if (fptr) {
-		unsigned char flag = *fptr;
-		if (comp->flgMAP) {
+	// only the debugger's aids want to know whether this is an instruction byte
+	unsigned isExecByte = 0;
+	if (comp->flgMAP || comp->flgHEAT || comp->flgCOND)
+		isExecByte = (cpu_get_pc(comp->cpu) - 1) == adr;
+	if (comp->flgMAP) {
+		unsigned char* fptr = comp_get_memcell_flag_ptr(comp, adr);
+		if (fptr) {
+			unsigned char flag = *fptr;
 			if (isExecByte) {
 				flag &= 0x0f;
 				flag |= DBG_VIEW_EXEC;
@@ -95,13 +98,15 @@ int memrd(int adr, int m1, void* ptr) {
 		// is a real data read (memory operand, stack pop, etc)
 		comp_heat_hit(comp, adr, isExecByte ? HEAT_EX : HEAT_RD);
 	}
-	bpChecker ch = comp_check_bp(comp, adr, MEM_BRK_RD);
-	if (ch.t >= 0) {
-		comp->flgBRK = 1;
-		comp->brkt = ch.t;
-		comp->brka = ch.a;
-		comp->brkev.kind = MEM_BRK_RD;
-		comp->brkev.adr = adr;
+	if (comp->flgBRKMEM) {
+		bpChecker ch = comp_check_bp(comp, adr, MEM_BRK_RD);
+		if (ch.t >= 0) {
+			comp->flgBRK = 1;
+			comp->brkt = ch.t;
+			comp->brka = ch.a;
+			comp->brkev.kind = MEM_BRK_RD;
+			comp->brkev.adr = adr;
+		}
 	}
 	// the ULA took a refresh cycle from under this one and this machine's ram
 	// cannot take that (see zx_snow): the ram is left addressed the way the ULA
@@ -132,7 +137,7 @@ void memwr(int adr, int val, void* ptr) {
 		// writes (incl. stack push/call) are always data traffic, never execution
 		comp_heat_hit(comp, adr, HEAT_WR);
 	}
-	unsigned char* fptr = comp_get_memcell_flag_ptr(comp, adr);
+	unsigned char* fptr = (comp->flgMAP || comp->flgBRKMEM) ? comp_get_memcell_flag_ptr(comp, adr) : NULL;
 	if (fptr) {
 		unsigned char flag = *fptr;
 		if (comp->flgMAP) {
@@ -780,7 +785,10 @@ int compExec(Computer* comp) {
 // breakpoints. A run-ahead frame is thrown away, so a break there would fire
 // twice: leave it to the pass that keeps its result
 	if (!comp->flgDBG && !x_runahead) {
-		bpChecker ch = comp_check_bp(comp, cpu_get_pc(comp->cpu), MEM_BRK_FETCH | MEM_BRK_TFETCH);
+		bpChecker ch;
+		ch.t = -1;
+		if (comp->flgBRKMEM)
+			ch = comp_check_bp(comp, cpu_get_pc(comp->cpu), MEM_BRK_FETCH | MEM_BRK_TFETCH);
 		if (ch.t >= 0) {
 			comp->flgBRK = 1;
 			comp->brkt = ch.t;
@@ -925,6 +933,7 @@ unsigned char* getBrkPtr(Computer* comp, int madr) {
 void setBrk(Computer* comp, int adr, unsigned char val) {
 	unsigned char* ptr = getBrkPtr(comp, adr);
 	if (ptr == NULL) return;
+	if (val & 0x0f) comp->flgBRKMEM = 1;
 	*ptr = (*ptr & 0xf0) | (val & 0x0f);
 }
 

@@ -57,6 +57,8 @@ void load_xmap(QString path) {
 			while(!file.atEnd()) {
 				file.read(buf, 8);
 				len = qfgeti(file);
+				// the flags may carry breakpoints: let the core look at the maps
+				comp->flgBRKMEM = 1;
 				if (!memcmp(buf, "ramflags", 8)) {
 					if (len <= MEM_4M) {
 						file.read((char*)comp->brkRamMap, len);
