@@ -336,13 +336,19 @@ static int zx_rom_ld_edge(Computer* comp) {
 	return (pc >= 0x05e3) && (pc <= 0x05f9) && zx_rom_active(comp);
 }
 
+// the read is the rom's own, not a loader's. Asked of the memory map and not
+// of the address alone, since a clone can page ram into window 0
+static int zx_rom_code(Computer* comp) {
+	return (comp->cpu->regPC < 0x4000) && zx_rom_active(comp);
+}
+
 int xInFE(Computer* comp, int port) {
 	comp->keyb->port &= (port >> 8);
 	unsigned char res = kbd_rd(comp->keyb, port) | 0xa0;		// set bits 7,5
 	if (zx_ear(comp))
 		res |= 0x40;
 	if (!zx_rom_ld_edge(comp))
-		tapDetectLoader(comp->tape, comp->tickCount, comp->cpu->regB);
+		tapDetectLoader(comp->tape, comp->tickCount, comp->cpu->regB, !zx_rom_code(comp));
 	return res;
 }
 

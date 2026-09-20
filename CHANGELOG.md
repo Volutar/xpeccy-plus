@@ -115,9 +115,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
-- **Tapes recorded as a raw waveform were read a fraction short.** Every pulse in a TZX
-  "direct recording" block lost one sample. Ordinary tapes survive that; the new high-speed
-  loaders do not, and DeciLoad tapes would not load at all. *(thanks to nutronic)*
+- **Tapes with a high-speed loader load.** A DeciLoad tape - 8b/10b encoding, a whole
+  game in under a minute - did not load at all: the waveform it is recorded as was read
+  a fraction short, and the tape then stopped where the loader took over instead of
+  running on into it. Nothing has to be switched off for one now.
 
 - **Applying the settings is quick again**, and the title bars take the new colour at
   once. Every Apply was restyling the whole interface from scratch, which held the

@@ -136,30 +136,30 @@ void tzxBlock15(FILE* file, Tape* tape) {
 	int size = fgetw(file) * TAPCPUNS / TAPTICKNS;
 	int pausems = fgetw(file);
 	int pause = pausems * 1e6 / TAPTICKNS;
-	int last = fgetc(file) & 0xff;
+	int last = fgetc(file);
 	if ((last < 1) || (last > 8)) last = 8;		// bits used in the last byte
 	int len = (fgett(file) - 1) * 8 + last;		// bits
 	int data = 0;
 	int cnt;
 	int bit;
-	int lev = 0;
+	int lev = -1;					// level of the pulse being measured
 	int memt = 0;
 	for (cnt = 0; cnt < len; cnt++) {
 		if ((cnt & 7) == 0)
 			data = fgetc(file) & 0xff;
 		bit = (data & 0x80) ? 1 : 0;
 		data <<= 1;
-		if (cnt == 0) {
-			lev = bit;
+		if (lev < 0) {
+			lev = bit;			// the level the recording opens on
 		} else if (bit != lev) {
-			blkAddPulse(&tape->tmpBlock, memt, lev ? 0xb0 : 0x50);
+			blkAddPulseLev(&tape->tmpBlock, memt, lev);
 			lev = bit;
 			memt = 0;
 		}
 		memt += size;
 	}
 	if (memt > 0)
-		blkAddPulse(&tape->tmpBlock, memt, lev ? 0xb0 : 0x50);
+		blkAddPulseLev(&tape->tmpBlock, memt, lev);
 	blkAddPause(&tape->tmpBlock, pause);
 	tape->isData = 0;
 }

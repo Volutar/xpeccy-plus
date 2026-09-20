@@ -129,6 +129,13 @@ void blkAddPulse(TapeBlock* blk, int len, int vol) {
 	blk->sigCount++;
 }
 
+// A pulse at a level of its own: a direct recording says what its level is
+// instead of letting it alternate. The byte a level comes out as stays
+// blkAddPulse's own business.
+void blkAddPulseLev(TapeBlock* blk, int len, int lev) {
+	blkAddPulse(blk, len, lev ? 0xb0 : 0x50);
+}
+
 // add pause. duration in mks
 // A pause is silence on the tape, not a level held: the centre puts no dc step in
 // the mix. Bit 7 is the ear bit and still flips, so a loader sees no change.
@@ -381,6 +388,7 @@ void tapStoreBlock(Tape* tap) {
 void tapEject(Tape* tap) {
 	int i;
 	tap->isData = 1;
+	tap->armed = 0;
 	tap->userStop = 0;
 	tap->block = 0;
 	tap->pos = 0;
@@ -409,6 +417,7 @@ void tapStop(Tape* tap) {
 		//tap->volPlay = 0x80;
 		// tap->pos = 0;
 	}
+	tap->armed = 0;
 	tap->detectReads = 0;
 }
 
@@ -433,6 +442,7 @@ int tapPlay(Tape* tap) {
 		tap->sigLen = TAPTPS / 2;	// .5 sec
 		// tap->volPlay = (tap->volPlay & 0x80) ? 0x7f : 0x81;
 	}
+	tap->armed = 0;
 	tap->detectReads = 0;
 	return tap->on;
 }
@@ -457,6 +467,16 @@ int tapUserPlay(Tape* tap) {
 	return tapPlay(tap);
 }
 
+// Fast loading hands a block over without the tape ever moving, so a loader
+// that follows the rom's part has to be given the tape at the moment it starts
+// listening: a fixed lead-in either cuts into its own set-up or lets the block
+// run past it. tapArmPlay leaves the tape standing on the block, and it is
+// pressed on the first read of the tape port that is not the rom's own.
+void tapArmPlay(Tape* tap) {
+	if (!tap->userStop)
+		tap->armed = 1;
+}
+
 // Detect loaders that bypass the ROM (custom in-game loaders): a tight loop reading
 // port 0xFE a fixed number of T-states apart, with B changing by exactly 1 each time,
 // is a strong sign of a bit-timing loop, so treat it as "a loader started" and play the
@@ -465,8 +485,15 @@ int tapUserPlay(Tape* tap) {
 // goes quiet either - so neither an irregular-read count nor an idle timeout can tell
 // "loading is over" from "unrelated code is also hitting this port". TZX #20 stop
 // markers and the manual Brk/Stop controls cover stopping instead.
-void tapDetectLoader(Tape* tap, int tick, int regB) {
-	if (!tap->detectOn || tap->on) {
+void tapDetectLoader(Tape* tap, int tick, int regB, int fromUser) {
+	// the arm is fast loading's own doing, so it answers whether or not "auto
+	// play / stop" is on. Stop by hand still blocks it, through tapArmPlay
+	if (!tap->on && tap->armed && fromUser) {
+		tap->armed = 0;
+		tapPlay(tap);
+		return;
+	}
+	if (tap->on || !tap->detectOn) {
 		tap->detectReads = 0;
 		return;
 	}
@@ -496,6 +523,7 @@ void tapRec(Tape* tap) {
 
 void tapRewind(Tape* tap, int blk) {
 	xlog(XLG_TAPE, XLL_INFO, "rewind to block %i of %i", blk, tap->blkCount);
+	tap->armed = 0;
 	tap->userStop = 0;
 	if (blk < tap->blkCount) {
 		tap->block = blk;
