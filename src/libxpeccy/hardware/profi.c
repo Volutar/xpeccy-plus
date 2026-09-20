@@ -85,9 +85,13 @@ void prfOutDFFD(Computer* comp, int port, int val) {
 
 // in
 
+// d7 is not wired here, so it reads 1 the way it does on a spectrum - a loader
+// that tests the parity of the byte rather than masking bit 6 reads it upside
+// down otherwise. d5 is the EXT key and comes from the keyboard scan.
 int prfInFE(Computer* comp, int port) {
-	unsigned char res = kbd_rd(comp->keyb, port);
+	unsigned char res = kbd_rd(comp->keyb, port) | 0x80;
 	res |= zx_ear(comp) ? 0x40 : 0x00;
+	zx_tape_detect(comp);
 	return res;
 }
 

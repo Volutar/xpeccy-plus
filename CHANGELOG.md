@@ -118,7 +118,8 @@ before that point is upstream's history and is not repeated here.
 - **Tapes with a high-speed loader load.** A DeciLoad tape - 8b/10b encoding, a whole
   game in under a minute - did not load at all: the waveform it is recorded as was read
   a fraction short, and the tape then stopped where the loader took over instead of
-  running on into it. Nothing has to be switched off for one now.
+  running on into it. Nothing has to be switched off for one now, and a Profi - where
+  one bit of the tape port read back wrong on top of all that - loads them as well.
 
 - **Applying the settings is quick again**, and the title bars take the new colour at
   once. Every Apply was restyling the whole interface from scratch, which held the

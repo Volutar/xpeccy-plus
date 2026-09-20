@@ -342,13 +342,18 @@ static int zx_rom_code(Computer* comp) {
 	return (comp->cpu->regPC < 0x4000) && zx_rom_active(comp);
 }
 
+// what a #FE read owes the tape, for a machine whose port handler is its own
+void zx_tape_detect(Computer* comp) {
+	if (zx_rom_ld_edge(comp)) return;
+	tapDetectLoader(comp->tape, comp->tickCount, comp->cpu->regB, !zx_rom_code(comp));
+}
+
 int xInFE(Computer* comp, int port) {
 	comp->keyb->port &= (port >> 8);
 	unsigned char res = kbd_rd(comp->keyb, port) | 0xa0;		// set bits 7,5
 	if (zx_ear(comp))
 		res |= 0x40;
-	if (!zx_rom_ld_edge(comp))
-		tapDetectLoader(comp->tape, comp->tickCount, comp->cpu->regB, !zx_rom_code(comp));
+	zx_tape_detect(comp);
 	return res;
 }
 
