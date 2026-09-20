@@ -60,6 +60,16 @@ void xThread::stop() {
 #endif
 }
 
+// A block with no bytes in it is a signal the rom cannot read: a custom
+// loader's data, a lead-out tone, a recording that did not decode. Nothing here
+// will ever start the tape for one - the port-#FE detector only knows the rom's
+// edge loop, and a loader like DeciLoad holds B still - so the automatics have
+// to run the tape on into such a block instead of stopping at it.
+static int tap_next_is_signal(Tape* tap) {
+	int n = tap->block + 1;
+	return (n < tap->blkCount) && !tap->blkData[n].hasBytes;
+}
+
 // atStart says the rom is at LD_START, the top of LD_BYTES, rather than inside
 // LD_EDGE_1: only there does the stack hold what LD_BYTES itself pushed, so only
 // there may a block be handed over and the rom sent to its own exit. Doing it
@@ -126,7 +136,12 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 			comp->cpu->regHL = 0xff00;		// error
 		}
 #endif
+		// the block is in memory and the tape never moved for it, so the loader
+		// that comes next would be handed silence: give it the tape when it asks
+		int sig = tap_next_is_signal(tap);
 		tapNextBlock(tap);
+		if (sig)
+			tapArmPlay(tap);
 		cpu_set_pc(comp->cpu, 0x5df);
 		free(blkData);
 	} else if (conf.tape.autostart && !tap->on) {
@@ -310,7 +325,8 @@ void xThread::emuCycle(Computer* comp) {
 				} else if (pc == 0x4d0) {				// save: ix:addr, de:len, a:block type(b7), hl:pilot len (1f80/0c98)?
 					tap_catch_save(comp);
 				}
-				if (conf.tape.autostart && !conf.tape.fast && ((pc == 0x5df) || (pc == 0x53a))) {
+				if (conf.tape.autostart && !conf.tape.fast && ((pc == 0x5df) || (pc == 0x53a))
+						&& !tap_next_is_signal(comp->tape)) {
 					comp->tape->sigLen = 1e6;
 					tapNextBlock(comp->tape);
 					tapStop(comp->tape);

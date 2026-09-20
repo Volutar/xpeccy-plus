@@ -99,6 +99,7 @@ typedef struct {
 	unsigned oldRec:1;	// previous rec signal
 	unsigned char speed;	// 95 to 105
 
+	unsigned armed:1;	// play as soon as a loader outside the rom asks for the tape
 	unsigned tail:1;	// playing out the level change the last pulse ends on
 	unsigned userStop:1;	// stopped by hand: the automatics may not start it again
 	unsigned autorew:1;	// play starts the tape over once it has run to the end
@@ -155,7 +156,8 @@ int tap_rewind_at_end(Tape*);
 
 void tapSync(Tape*,int);
 void tapNextBlock(Tape*);
-void tapDetectLoader(Tape*, int tick, int regB);
+void tapDetectLoader(Tape*, int tick, int regB, int fromUser);
+void tapArmPlay(Tape*);
 
 TapeBlockInfo tapGetBlockInfo(Tape*,int);
 int tapGetBlocksInfo(Tape*,TapeBlockInfo*);
@@ -172,6 +174,7 @@ TapeBlock makeTapeBlock(unsigned char*, int, int);
 
 void blkClear(TapeBlock*);
 void blkAddPulse(TapeBlock* blk, int len, int vol);
+void blkAddPulseLev(TapeBlock* blk, int len, int lev);
 void blkAddWave(TapeBlock*, int);
 void blkAddByte(TapeBlock*, unsigned char, int, int);
 void blkAddPause(TapeBlock*, int);
