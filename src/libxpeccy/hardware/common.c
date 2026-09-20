@@ -336,10 +336,12 @@ static int zx_rom_ld_edge(Computer* comp) {
 	return (pc >= 0x05e3) && (pc <= 0x05f9) && zx_rom_active(comp);
 }
 
-// the read is the rom's own, not a loader's. Asked of the memory map and not
-// of the address alone, since a clone can page ram into window 0
+// The read is the rom's own, not a loader's: whatever is doing it is running
+// from rom. Asked of the memory map rather than of the address, and of the map
+// rather than of the 48 rom being in: a 128 sits in its editor rom while it
+// starts a tape, and its keyboard poll is no more a loader than #05ED is.
 static int zx_rom_code(Computer* comp) {
-	return (comp->cpu->regPC < 0x4000) && zx_rom_active(comp);
+	return mem_get_page(comp->mem, comp->cpu->regPC)->type == MEM_ROM;
 }
 
 // what a #FE read owes the tape, for a machine whose port handler is its own
