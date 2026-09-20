@@ -135,8 +135,10 @@ void MainWin::pause(bool p, int msk) {
 		setWindowIcon(QIcon(":/images/pause.png"));
 	} else {
 		setWindowIcon(icon);
-		if (grabMice)
+		if (grabMice) {
 			grabMouse(QCursor(Qt::BlankCursor));
+			mouseRecenter();	// the pointer went its own way while paused
+		}
 		// input was ignored while paused: read the pads afresh, or a
 		// direction held across the pause stays dead until it is let go
 		conf.gpctrl->gpada->resync();
@@ -160,6 +162,8 @@ MainWin::MainWin() {
 	scrCounter = 0;
 	scrInterval = 0;
 	grabMice = 0;
+	warpTtl = 0;
+	warpFail = 0;
 	block = 0;
 	hasPicture = 0;
 	refit = 0;
@@ -529,10 +533,8 @@ void MainWin::focusInEvent(QFocusEvent*) {
 	conf.gpctrl->gpadb->resync();
 	if (conf.emu.pause & PR_DEBUG)
 		emit s_debug();
-	if (grabMice) {
-		dumove = 1;
-		cursor().setPos(pos() + QPoint(width()/2, height()/2));
-	}
+	if (grabMice)
+		mouseRecenter();
 }
 
 void MainWin::moveEvent(QMoveEvent* ev) {

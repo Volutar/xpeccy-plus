@@ -286,13 +286,10 @@ void MainWin::xkey_press(int xkey) {
 				saveConfig();
 				break;
 			case XCUT_MOUSE:
-				grabMice = !grabMice;
 				if (grabMice) {
-					grabMouse(QCursor(Qt::BlankCursor));
-					setMessage(" grab mouse ");
+					mouseGrabOff();
 				} else {
-					releaseMouse();
-					setMessage(" release mouse ");
+					mouseGrabOn();
 				}
 				break;
 			case XCUT_GRABKBD:

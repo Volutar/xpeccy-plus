@@ -66,6 +66,15 @@
 	#define SCREENSIZE QApplication::desktop()->screenGeometry().size()
 #endif
 
+// The screen a widget is on, in widget context. QCursor::pos and setPos go by
+// the primary screen when not given one, which is the wrong scale factor on a
+// second monitor. Not defined before Qt5: there is no QScreen at all
+#if QT_VERSION >= QT_VERSION_CHECK(5,14,0)
+	#define WIDGET_SCREEN screen()
+#elif QT_VERSION >= QT_VERSION_CHECK(5,0,0)
+	#define WIDGET_SCREEN (windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen())
+#endif
+
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
 	#include <QtCore5Compat>
 	#include <QSurfaceFormat>

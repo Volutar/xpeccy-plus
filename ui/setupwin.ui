@@ -2660,7 +2660,7 @@ thin, lower it again after a long clean spell</string>
               <item>
                <widget class="QLabel" name="label_66">
                 <property name="toolTip">
-                 <string>How far the emulated mouse goes for a move of the PC one</string>
+                 <string>How fast the emulated pointer moves. In the middle it keeps up with the PC one</string>
                 </property>
                 <property name="text">
                  <string>Sensitivity:</string>
@@ -2670,13 +2670,13 @@ thin, lower it again after a long clean spell</string>
               <item>
                <widget class="xSlider" name="sldSensitivity">
                 <property name="toolTip">
-                 <string>How far the emulated mouse goes for a move of the PC one</string>
+                 <string>How fast the emulated pointer moves. In the middle it keeps up with the PC one</string>
                 </property>
                 <property name="minimum">
                  <number>100</number>
                 </property>
                 <property name="maximum">
-                 <number>1000</number>
+                 <number>1900</number>
                 </property>
                 <property name="singleStep">
                  <number>10</number>
