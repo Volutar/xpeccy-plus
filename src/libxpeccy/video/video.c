@@ -1286,16 +1286,70 @@ void vid_tick(Video* vid) {
 	if (vid->intf > 0) vid->intf--;
 }
 
+// How many of the next n dots vid_tick() would do nothing for but draw and
+// count: the run stops short of the line end, the border edges, the blanking,
+// the interrupt edge and the end of a busy count, which are all left to
+// vid_tick() itself. 0 when the very next dot is one of those.
+static int vid_run_len(Video* vid, int n) {
+	int x = vid->ray.x;
+	int k = n;
+	if (vid->full.x - 1 - x < k) k = vid->full.x - 1 - x;
+	if ((vid->bord.x > x) && (vid->bord.x - 1 - x < k)) k = vid->bord.x - 1 - x;
+	if ((vid->vend.x > x) && (vid->vend.x - 1 - x < k)) k = vid->vend.x - 1 - x;
+	if ((vid->send.x > x) && (vid->send.x - 1 - x < k)) k = vid->send.x - 1 - x;
+	if (vid->intFRAME > 0) {
+		if (vid->intFRAME - 1 < k) k = vid->intFRAME - 1;
+	} else if ((vid->inten & 1) && (vid->ray.yb == vid->intp.y) && (vid->intp.x > vid->ray.xb)) {
+		if (vid->intp.x - 1 - vid->ray.xb < k) k = vid->intp.x - 1 - vid->ray.xb;
+	}
+	if ((vid->busy > 0) && (vid->busy - 1 < k)) k = vid->busy - 1;
+	return k;
+}
+
+// k dots of vid_tick() in a row, where vid_run_len() says none of them is an
+// event. The drawing is the same call per dot; what goes is the bookkeeping
+// between them. hbrd is the one flag that changes: vid_tick() works it out for
+// the dot it moves to, so the first dot still sees the value it was left.
+static void vid_run(Video* vid, int k) {
+	cbvid dot = vid->cb->dot;
+	int x = vid->ray.x;
+	int end = x + k;
+	for (; x < end; x++) {
+		if ((x & vid->brdstep) == 0)
+			vid->brdcol = vid->nextbrd;
+		vid->ray.x = x;
+		if (dot) dot(vid);
+		vid->hbrd = (x + 1 < vid->bord.x) || (x + 1 >= vid->send.x);
+	}
+	vid->ray.x = end;
+	vid->ray.xb += k;
+	vid->ray.xs += k;
+	if (vid->intFRAME > 0) vid->intFRAME -= k;
+	if (vid->busy > 0) vid->busy -= k;
+	vid->inth = (vid->inth > k) ? vid->inth - k : 0;
+	vid->intf = (vid->intf > k) ? vid->intf - k : 0;
+}
+
 // The ray steps in fixed point ns. vid->time stays whole ns for everything
 // downstream (sound pacing among others); the fraction it is owed rides along
 // in nsOwedFixed rather than being dropped once per call.
 void vid_sync_fixed(Video* vid, long long nsFixed) {
 	if (!nsFixed) return;			// no time passed: the tail below is a no-op
 	vid->nsDrawFixed += nsFixed;
-	while (vid->nsDrawFixed >= vid->nsPerDotFixed) {
-		vid->nsDrawFixed -= vid->nsPerDotFixed;
-		vid->nsOwedFixed += vid->nsPerDotFixed;
-		vid_tick(vid);
+	if (vid->nsDrawFixed >= vid->nsPerDotFixed) {
+		int n = (int)(vid->nsDrawFixed / vid->nsPerDotFixed);
+		vid->nsDrawFixed -= n * vid->nsPerDotFixed;
+		vid->nsOwedFixed += n * vid->nsPerDotFixed;
+		while (n > 0) {
+			int k = vid_run_len(vid, n);
+			if (k > 0) {
+				vid_run(vid, k);
+				n -= k;
+			} else {
+				vid_tick(vid);
+				n--;
+			}
+		}
 	}
 	// whole nanoseconds out, the rest stays owed. Once per call, not per dot:
 	// the dot loop runs ~143k times a frame.
