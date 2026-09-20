@@ -88,6 +88,8 @@ typedef struct {
 	unsigned int subchunk2Size;
 } wavHead;
 
+#pragma pack(pop)
+
 // what the tape export writes
 typedef struct {
 	int rate;	// samples per second, 0 = pick one from the shortest pulse
@@ -96,8 +98,6 @@ typedef struct {
 	int lead;	// ms of silence before the tape
 	int tail;	// ms of silence after it
 } wavExport;
-
-#pragma pack(pop)
 
 // disk specific operations
 
@@ -199,6 +199,8 @@ int loadWAV(Computer*, const char*, int);
 int saveWAV(Computer*, const char*, int);
 int saveWAVopt(Computer*, const char*, wavExport*);
 wavExport wav_export_default(void);
+const int* wav_export_rates(void);	// 0 terminated
+const int* wav_export_rates(void);	// 0 terminated
 int wav_export_rate(Computer*);
 
 // disk

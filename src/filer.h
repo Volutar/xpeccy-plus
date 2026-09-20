@@ -56,6 +56,7 @@ enum {
 
 void initFileDialog(QWidget*);
 void fitFileDialog(QWidget*);
+void file_errors(int);
 // the save dialog alone, for a file type the tables do not carry
 QString file_ask_save(const char* title, const char* filter, const char* ext);
 // the open dialog alone: the path, with id and drv set to what was picked in it

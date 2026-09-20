@@ -18,6 +18,7 @@
 #define WAV_SIG_MAX	6000			// longer than any zx pulse: tape noise, not a signal
 #define WAV_DATA_MAX	0x20000
 #define WAV_EXP_SMP	4			// samples the shortest pulse must get on export
+#define WAV_BUF_SMP	8192			// samples written at a time
 
 typedef struct {
 	int format;		// 1 = pcm, 3 = float
@@ -299,11 +300,9 @@ int loadWAV(Computer* comp, const char* name, int drv) {
 
 static const int wav_rates[] = {44100, 48000, 96000, 192000, 0};
 
-// A pulse length in a tape image is a count of T states at the standard
-// 3.5 MHz, whatever clock the machine now playing it runs at - a 128K would
-// make the same image come out 1.3 per cent shorter. The export counts in
-// those, so one image always gives one file.
-#define WAV_TPS	3500000.0
+// the dialog offers what Auto chooses from, so there is one list
+const int* wav_export_rates(void) { return wav_rates; }
+
 
 wavExport wav_export_default(void) {
 	wavExport o;
@@ -315,11 +314,6 @@ wavExport wav_export_default(void) {
 	return o;
 }
 
-// a pause is marked by a volume at the middle (see blkAddPause); the level it
-// still carries is bit 7, the same as a pulse
-static int wav_pause(int vol) { return (vol == 0x80) || (vol == 0x7f); }
-static int wav_lev(int vol) { return (vol & 0x80) ? 1 : -1; }
-
 // the rate the shortest pulse on the tape needs to keep its shape. A standard
 // block asks for nothing above 44100, a tzx direct recording for much more.
 static int wav_pick_rate(Tape* tap) {
@@ -328,30 +322,51 @@ static int wav_pick_rate(Tape* tap) {
 	for (i = 0; i < tap->blkCount; i++) {
 		TapeBlock* blk = &tap->blkData[i];
 		for (j = 0; j < blk->sigCount; j++) {
-			if (wav_pause(blk->data[j].vol)) continue;
+			if (TAP_VOL_PAUSE(blk->data[j].vol)) continue;
 			if (!least || (blk->data[j].size < least))
 				least = blk->data[j].size;
 		}
 	}
 	if (!least) return wav_rates[0];
-	double need = WAV_EXP_SMP * WAV_TPS / least;
+	double need = (double)WAV_EXP_SMP * TAPE_STD_TPS / least;
 	for (i = 0; wav_rates[i]; i++) {
 		if (wav_rates[i] >= need) return wav_rates[i];
 	}
 	return wav_rates[i-1];
 }
 
-static void wav_put(FILE* file, int lev, int amp, int bits, int count) {
-	int i;
-	if (bits == 8) {
-		int v = 0x80 + lev * amp;
-		for (i = 0; i < count; i++) fputc(v & 0xff, file);
-	} else {
-		int v = lev * amp;
-		for (i = 0; i < count; i++) {
-			fputc(v & 0xff, file);
-			fputc((v >> 8) & 0xff, file);
+// A run of samples is one value repeated, so each of the three levels gets a
+// buffer filled with it once and a run is written straight out of that. An
+// export is tens of millions of samples and a putc apiece costs more than the
+// writing does.
+typedef struct {
+	int bsz;				// bytes in one sample
+	unsigned char pat[3][WAV_BUF_SMP * 2];	// low, silence, high
+} wavPattern;
+
+static void wav_fill(wavPattern* wp, int amp, int bits) {
+	int i, k, v;
+	wp->bsz = bits / 8;
+	for (k = 0; k < 3; k++) {
+		v = (k - 1) * amp;
+		for (i = 0; i < WAV_BUF_SMP; i++) {
+			if (bits == 8) {
+				wp->pat[k][i] = (0x80 + v) & 0xff;
+			} else {
+				wp->pat[k][i * 2] = v & 0xff;
+				wp->pat[k][i * 2 + 1] = (v >> 8) & 0xff;
+			}
 		}
+	}
+}
+
+static void wav_put(FILE* file, wavPattern* wp, int lev, int count) {
+	const unsigned char* pat = wp->pat[lev + 1];
+	int n;
+	while (count > 0) {
+		n = (count > WAV_BUF_SMP) ? WAV_BUF_SMP : count;
+		fwrite(pat, wp->bsz, n, file);
+		count -= n;
 	}
 }
 
@@ -394,38 +409,42 @@ int saveWAVopt(Computer* comp, const char* name, wavExport* opt) {
 	fwrite((char*)&hd, sizeof(wavHead), 1, file);
 
 	int amp = ((o.bits == 8) ? 127 : 32767) * o.level / 100;
-	double spt = o.rate / WAV_TPS;		// samples in one tape tick
+	wavPattern* wp = (wavPattern*)malloc(sizeof(wavPattern));
+	wav_fill(wp, amp, o.bits);
+	double spt = (double)o.rate / TAPE_STD_TPS;	// samples in one tape tick
 	long long done = 0;			// samples written so far
 	int i, j, n;
 
 	n = (int)((long long)o.rate * o.lead / 1000);
-	wav_put(file, 0, amp, o.bits, n);
+	wav_put(file, wp, 0, n);
 	done += n;
 	double acc = (double)done;
 	for (i = 0; i < tap->blkCount; i++) {
 		TapeBlock* blk = &tap->blkData[i];
 		for (j = 0; j < blk->sigCount; j++) {
+			int vol = blk->data[j].vol;
+			int lev = TAP_VOL_LEV(vol) ? 1 : -1;
 			acc += blk->data[j].size * spt;
 			n = (int)(acc - done + 0.5);
 			if (n < 1) n = 1;		// a pulse shorter than a sample still has to be one
-			if (wav_pause(blk->data[j].vol)) {
+			if (TAP_VOL_PAUSE(vol)) {
 				// a pause is silence, but it carries the level change that
 				// closes the pulse before it: written as silence alone that
 				// edge would be a move to the middle, which a loader is not
 				// bound to see. It is played out first, then the silence.
 				int edge = o.rate / 1000;
 				if (edge > n) edge = n;
-				wav_put(file, wav_lev(blk->data[j].vol), amp, o.bits, edge);
-				wav_put(file, 0, amp, o.bits, n - edge);
+				wav_put(file, wp, lev, edge);
+				wav_put(file, wp, 0, n - edge);
 			} else {
-				wav_put(file, wav_lev(blk->data[j].vol), amp, o.bits, n);
+				wav_put(file, wp, lev, n);
 			}
 			done += n;
 		}
 		acc = (double)done;
 	}
 	n = (int)((long long)o.rate * o.tail / 1000);
-	wav_put(file, 0, amp, o.bits, n);
+	wav_put(file, wp, 0, n);
 	done += n;
 
 	long long sz = done * hd.blockAlign;
@@ -434,6 +453,7 @@ int saveWAVopt(Computer* comp, const char* name, wavExport* opt) {
 	fseek(file, sizeof(wavHead) - 4, SEEK_SET);	// data size
 	fputi((int)sz, file);
 	fclose(file);
+	free(wp);
 	return ERR_OK;
 }
 

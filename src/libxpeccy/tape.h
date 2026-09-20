@@ -31,6 +31,24 @@ extern "C" {
 #define	SIGN0LEN	855*TAPCPUNS/TAPTICKNS
 #define	SIGN1LEN	1710*TAPCPUNS/TAPTICKNS
 
+// A pulse carries its level in bit 7 of TapeSignal.vol. A pause is marked by
+// a volume at the middle, and still carries the level change that closes the
+// pulse before it. The lengths above are T states at the standard clock,
+// whatever clock the machine playing the tape runs at.
+#define TAP_VOL_PAUSE(v)	(((v) == 0x80) || ((v) == 0x7f))
+#define TAP_VOL_LEV(v)		(((v) & 0x80) ? 1 : 0)
+#define TAP_PAUSE_VOL(lev)	((lev) ? 0x80 : 0x7f)
+#define TAPE_STD_TPS		3500000
+
+// A pulse carries its level in bit 7 of TapeSignal.vol. A pause is marked by
+// a volume at the middle, and still carries the level change that closes the
+// pulse before it. The lengths above are T states at the standard clock,
+// whatever clock the machine playing the tape runs at.
+#define TAP_VOL_PAUSE(v)	(((v) == 0x80) || ((v) == 0x7f))
+#define TAP_VOL_LEV(v)		(((v) & 0x80) ? 1 : 0)
+#define TAP_PAUSE_VOL(lev)	((lev) ? 0x80 : 0x7f)
+#define TAPE_STD_TPS		3500000
+
 enum {
 	TAPE_HEAD = 0,
 	TAPE_DATA

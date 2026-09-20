@@ -159,8 +159,8 @@ void TapeWin::doExport() {
 	eui.setupUi(&dlg);
 	int autorate = wav_export_rate(conf.zx);
 	eui.cbRate->addItem(QString("Auto (%0 Hz)").arg(autorate), 0);
-	for (int r : {44100, 48000, 96000, 192000})
-		eui.cbRate->addItem(QString("%0 Hz").arg(r), r);
+	for (const int* r = wav_export_rates(); *r; r++)
+		eui.cbRate->addItem(QString("%0 Hz").arg(*r), *r);
 	eui.cbBits->addItem("16 bit", 16);
 	eui.cbBits->addItem("8 bit", 8);
 	setRFIndex(eui.cbRate, conf.tape.exp.rate);
@@ -176,8 +176,8 @@ void TapeWin::doExport() {
 		int rate = getRFIData(eui.cbRate);
 		if (rate < 1) rate = autorate;
 		double mb = (double)secs * rate * getRFIData(eui.cbBits) / 8 / (1024.0 * 1024.0);
-		eui.labSize->setText(QString("%0 blocks, %1:%2, about %3 MB")
-			.arg(tap->blkCount).arg(secs / 60).arg(secs % 60, 2, 10, QChar('0')).arg(mb, 0, 'f', 1));
+		eui.labSize->setText(QString("%0 blocks, %1, about %2 MB")
+			.arg(tap->blkCount).arg(getTimeString(secs).c_str()).arg(mb, 0, 'f', 1));
 	};
 	QObject::connect(eui.cbRate, &QComboBox::currentTextChanged, &dlg, showSize);
 	QObject::connect(eui.cbBits, &QComboBox::currentTextChanged, &dlg, showSize);
@@ -193,7 +193,7 @@ void TapeWin::doExport() {
 	conf.emu.pause |= PR_FILE;
 	int err = saveWAVopt(conf.zx, path.toLocal8Bit().data(), &conf.tape.exp);
 	conf.emu.pause &= ~PR_FILE;
-	if (err != ERR_OK) shitHappens("Can't write that file");
+	file_errors(err);
 }
 
 // the three options are the same ones the Tape page of Options has, and they
