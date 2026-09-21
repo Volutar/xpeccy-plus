@@ -2944,106 +2944,98 @@ load only when it is nudged either way</string>
                 </layout>
                </item>
                <item>
-                <widget class="QGroupBox" name="groupBox_9">
-                 <property name="minimumSize">
-                  <size>
-                   <width>200</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="title">
-                  <string/>
-                 </property>
-                 <layout class="QHBoxLayout" name="verticalLayout_34">
-                  <item>
-                   <layout class="QVBoxLayout" name="layTapeOptsTape">
-                    <item>
-                     <widget class="QCheckBox" name="cbTapeAuto">
-                      <property name="toolTip">
-                       <string>Start the tape when a loader asks for it,
+                <layout class="QHBoxLayout" name="verticalLayout_34">
+                 <item>
+                  <layout class="QVBoxLayout" name="layTapeOptsTape">
+                   <item>
+                    <widget class="QCheckBox" name="cbTapeAuto">
+                     <property name="toolTip">
+                      <string>Start the tape when a loader asks for it,
 stop it between blocks</string>
-                      </property>
-                      <property name="text">
-                       <string>Auto play / stop</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QCheckBox" name="cbTapeRewind">
-                      <property name="toolTip">
-                       <string>At the end of the tape, Play or the next load starts it again.
+                     </property>
+                     <property name="text">
+                      <string>Auto play / stop</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="cbTapeRewind">
+                     <property name="toolTip">
+                      <string>At the end of the tape, Play or the next load starts it again.
 Off: the tape stops at the end</string>
-                      </property>
-                      <property name="text">
-                       <string>Rewind at end</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <spacer name="layTapeOptsTapeEnd">
-                      <property name="orientation">
-                       <enum>Qt::Vertical</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>0</width>
-                        <height>0</height>
-                       </size>
-                      </property>
-                     </spacer>
-                    </item>
-                   </layout>
-                  </item>
-                  <item>
-                   <layout class="QVBoxLayout" name="layTapeOptsLoad">
-                    <item>
-                     <widget class="QCheckBox" name="cbTapeFast">
-                      <property name="toolTip">
-                       <string>Run at full speed, sound off and picture held, while a loader reads the tape</string>
-                      </property>
-                      <property name="text">
-                       <string>Fast loading</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QCheckBox" name="cbTapeFlash">
-                      <property name="toolTip">
-                       <string>Hand ROM blocks straight to the machine
-instead of playing them</string>
-                      </property>
-                      <property name="text">
-                       <string>Flash loading</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QCheckBox" name="cbTapeEdge">
-                      <property name="toolTip">
-                       <string>Under fast loading, a loader waiting for the next pulse gets it at once. Not exact</string>
-                      </property>
-                      <property name="text">
-                       <string>Edge detection</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <spacer name="layTapeOptsLoadEnd">
-                      <property name="orientation">
-                       <enum>Qt::Vertical</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>0</width>
-                        <height>0</height>
-                       </size>
-                      </property>
-                     </spacer>
-                    </item>
-                   </layout>
-                  </item>
-                 </layout>
-                </widget>
+                     </property>
+                     <property name="text">
+                      <string>Rewind at end</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="layTapeOptsTapeEnd">
+                     <property name="orientation">
+                      <enum>Qt::Vertical</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>0</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QVBoxLayout" name="layTapeOptsLoad">
+                   <item>
+                    <widget class="QCheckBox" name="cbTapeFast">
+                     <property name="toolTip">
+                      <string>Run at full speed, sound off and picture held, while a loader reads the tape</string>
+                     </property>
+                     <property name="text">
+                      <string>Fast loading</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <layout class="QVBoxLayout" name="layTapeOptsFast">
+                     <item>
+                      <widget class="QCheckBox" name="cbTapeFlash">
+                       <property name="toolTip">
+                        <string>With fast loading, hand ROM blocks straight to the machine</string>
+                       </property>
+                       <property name="text">
+                        <string>Flash loading</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="cbTapeEdge">
+                       <property name="toolTip">
+                        <string>With fast loading, a loader waiting for the next pulse gets it at once. Faster, not exact</string>
+                       </property>
+                       <property name="text">
+                        <string>Edge detection</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <spacer name="layTapeOptsLoadEnd">
+                     <property name="orientation">
+                      <enum>Qt::Vertical</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>0</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
                </item>
               </layout>
              </item>

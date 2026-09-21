@@ -615,6 +615,9 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 // tape
 	connect(ui.tapelist,SIGNAL(doubleClicked(QModelIndex)),this,SLOT(chablock(QModelIndex)));
 	connect(ui.tapelist,SIGNAL(clicked(QModelIndex)),this,SLOT(tlistclick(QModelIndex)));
+	// flash loading and edge detection only refine fast loading
+	connect(ui.cbTapeFast, &QCheckBox::toggled, ui.cbTapeFlash, &QWidget::setEnabled);
+	connect(ui.cbTapeFast, &QCheckBox::toggled, ui.cbTapeEdge, &QWidget::setEnabled);
 	connect(ui.tloadtb,SIGNAL(released()),this,SLOT(loatape()));
 	connect(ui.tsavetb,SIGNAL(released()),this,SLOT(savtape()));
 	connect(ui.tremotb,SIGNAL(released()),this,SLOT(ejctape()));
@@ -947,9 +950,11 @@ void SetupWin::start() {
 	ui.cSlotName->setText(comp->slot->path);
 // tape
 	ui.cbTapeAuto->setChecked(conf.tape.autostart);
-	ui.cbTapeFlash->setChecked(conf.tape.flash);
 	ui.cbTapeFast->setChecked(conf.tape.fast);
+	ui.cbTapeFlash->setChecked(conf.tape.flash);
 	ui.cbTapeEdge->setChecked(conf.tape.edge);
+	ui.cbTapeFlash->setEnabled(conf.tape.fast);
+	ui.cbTapeEdge->setEnabled(conf.tape.fast);
 	ui.cbTapeRewind->setChecked(conf.tape.rewind);
 	ui.sldTapeSpeed->setValue(comp->tape->speed);	// the readout follows in the slot
 	ui.tpathle->setText(QString::fromLocal8Bit(comp->tape->path));
@@ -1180,8 +1185,8 @@ void SetupWin::apply() {
 	sdcSetLock(comp->sdc, ui.sdlock->isChecked() ? 1 : 0);
 // tape
 	conf.tape.autostart = ui.cbTapeAuto->isChecked() ? 1 : 0;
-	conf.tape.flash = ui.cbTapeFlash->isChecked() ? 1 : 0;
 	conf.tape.fast = ui.cbTapeFast->isChecked() ? 1 : 0;
+	conf.tape.flash = ui.cbTapeFlash->isChecked() ? 1 : 0;
 	conf.tape.edge = ui.cbTapeEdge->isChecked() ? 1 : 0;
 	conf.tape.rewind = ui.cbTapeRewind->isChecked() ? 1 : 0;
 	comp->tape->speed = ui.sldTapeSpeed->value();

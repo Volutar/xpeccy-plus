@@ -57,6 +57,7 @@
 // rom's blocks and the loader they started has not asked for the rest yet.
 // Speedlock spends seven seconds decrypting itself there.
 #define FL_ARMED	750
+#define FL_GONE		25	// frames without the loader's reads that count as it having left
 #define FL_ATTRS	768
 
 static int fl_held = 0;
@@ -105,7 +106,13 @@ static struct {
 	bool last[64];
 } fl_loop;
 static int fl_reads = 0;		// tape->portReads at the last look
+// Auto stop for a loader that runs from ram: seen reading the tape from a known
+// edge loop since the tape started, and on which frame it last did
+static int fl_loop_seen = 0;
+static int fl_loop_frame = 0;
+static int fl_block = -1;		// the block the tape stood on last frame
 static int fl_bench = 0;		// --bench-loops
+static int fl_hold = 0;			// fastload_hold()
 int fastload_on = 0;			// fastload_step() has anything to do
 
 static int fl_byte(Computer* comp, int adr) {
@@ -405,8 +412,9 @@ int fastload_step(Computer* comp) {
 	Tape* tap = comp->tape;
 	CPU* cpu = comp->cpu;
 	int pc = cpu->regPC;
-	int edge = fl_bench ? (fl_bench == 2) : conf.tape.edge;
-	if (edge && tap->on) {
+	int skip = fl_held || fl_bench;		// else only watching for auto stop
+	int edge = fl_bench ? (fl_bench == 2) : tape_edge();
+	if (skip && edge && tap->on) {
 		// back where it was one or two opcodes ago: the head of a tight loop
 		if ((pc == fl_pc1) || (pc == fl_pc2))
 			fl_delay_step(comp, pc);
@@ -424,6 +432,8 @@ int fastload_step(Computer* comp) {
 		return 0;
 	}
 	if (!fl_loop.shape.kind) return 0;
+	fl_loop_seen = 1;
+	fl_loop_frame = comp->frmCount;
 	if (!fl_loop.period) {
 		// learning the loop: two turns in a row with nothing but B and R moved
 		int per = comp->tickCount - fl_loop.tick;
@@ -442,7 +452,9 @@ int fastload_step(Computer* comp) {
 				fl_loop.period = per;
 		}
 		fl_loop_take(comp);
-		if (!fl_loop.pmin) return 0;
+		if (!fl_loop.pmin || !skip) return 0;
+	} else if (!skip) {
+		return 0;
 	}
 	int per = edge ? (fl_loop.period ? fl_loop.period : fl_loop.pmin) : fl_loop.period;
 	if ((per <= 0) || !fl_quiet(comp) || !fl_loop_waits(comp)) return 0;
@@ -514,7 +526,31 @@ int fastload_busy() {
 	return fl_held;
 }
 
-void fastload_frame(Computer* comp) {
+void fastload_hold(int on) {
+	fl_hold = on;
+}
+
+// The tape has moved on to another block with the loader gone: the game has
+// what it wanted, so the tape stops there, as the rom's own load stops it. Only
+// for a loader known by its code - one that is not might be reading the tape in
+// a way that is not seen - and never inside a block. Auto play starts it again
+// when the loader comes back.
+static void fl_auto_stop(Computer* comp) {
+	Tape* tap = comp->tape;
+	if (!tap->on || tap->rec) {
+		fl_loop_seen = 0;
+		fl_block = tap->block;
+		return;
+	}
+	if (tap->block == fl_block) return;
+	fl_block = tap->block;
+	if (!conf.tape.autostart || !fl_loop_seen || (comp->frmCount - fl_loop_frame < FL_GONE)) return;
+	xlog(XLG_TAPE, XLL_INFO, "auto stop: the loader has left, block %i of %i", tap->block, tap->blkCount);
+	tapStop(tap);
+	fl_loop_seen = 0;
+}
+
+static void fl_frame(Computer* comp) {
 	Tape* tap = comp->tape;
 	int brd = fl_start;
 	fl_start = comp->vid->nextbrd;
@@ -523,7 +559,7 @@ void fastload_frame(Computer* comp) {
 	fl_reads = 0;
 	// Insert pressed by hand is the user's own fast mode, and autostart runs one
 	// of its own until the load begins
-	int may = conf.tape.fast && !tap->rec && !comp->flgDBG
+	int may = conf.tape.fast && !fl_hold && !tap->rec && !comp->flgDBG
 		&& !autostart_busy() && (fl_held || !conf.emu.fast);
 	if (!tap->armed)
 		fl_armed = 0;
@@ -559,4 +595,11 @@ void fastload_frame(Computer* comp) {
 		vid_flat_border(comp->vid, brd);
 	fl_drawn = draw;
 	comp->vid->nodraw = !draw;
+}
+
+void fastload_frame(Computer* comp) {
+	fl_auto_stop(comp);
+	fl_frame(comp);
+	Tape* tap = comp->tape;
+	fastload_on = fl_held || fl_bench || (tap->on && conf.tape.autostart);
 }

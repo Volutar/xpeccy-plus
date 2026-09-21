@@ -49,6 +49,7 @@ static FILE* file = nullptr;
 xThread::xThread() {
 	sndNsFixed = 0;
 	benchStop = -1;
+	earBlock = -1;
 	conf.emu.fast = 0;
 	finish = 0;
 }
@@ -72,6 +73,15 @@ static int tap_next_is_signal(Tape* tap) {
 	return (n < tap->blkCount) && !tap->blkData[n].hasBytes;
 }
 
+// The rom's load has returned with the tape near the end of the block, not in
+// the middle of it: a loader that has the rom read only part of a block reads
+// the rest itself, so the tape must go on. A few pulses are the checksum's
+// last edges and the closing one.
+static int tap_block_done(Tape* tap) {
+	if (tap->block >= tap->blkCount) return 1;
+	return ((int)tap->blkData[tap->block].sigCount - tap->pos) < 32;
+}
+
 // atStart says the rom is at LD_START, the top of LD_BYTES, rather than inside
 // LD_EDGE_1: only there does the stack hold what LD_BYTES itself pushed, so only
 // there may a block be handed over and the rom sent to its own exit. Doing it
@@ -86,11 +96,16 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 	// the rom is asking for a tape that has run out: "Rewind at end" puts it back
 	// to the start here too, not only under the Play button. Nothing to rewind
 	// for if neither of the automatics is on - Play does it then.
-	if (atStart && (conf.tape.flash || conf.tape.autostart))
+	if (atStart && (tape_flash() || conf.tape.autostart))
 		tap_rewind_at_end(tap);
 	int blk = tap->block;
 	if (blk >= tap->blkCount) return;
-	if (conf.tape.flash && tap->blkData[blk].hasBytes) {
+	// A loader that has the rom read only the first part of a block and reads
+	// the rest itself (Technician Ted) needs the block played, not handed over:
+	// the rom is left to read that part by ear.
+	if (atStart)
+		earBlock = (tap->blkData[blk].hasBytes && (tapGetBlockInfo(tap, blk).size > comp->cpu->regDE)) ? blk : -1;
+	if (tape_flash() && tap->blkData[blk].hasBytes && (blk != earBlock)) {
 		// A playing tape and a flash load get out of step: the rom reads the
 		// block by ear and moves on while the tape still stands on it, and the
 		// next block is then answered with this one. Flash loading owns the
@@ -146,7 +161,7 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 			tapArmPlay(tap);
 		cpu_set_pc(comp->cpu, 0x5df);
 		free(blkData);
-	} else if (conf.tape.autostart && !tap->on) {
+	} else if ((conf.tape.autostart || (blk == earBlock)) && !tap->on) {
 		// 05E7 is LD-EDGE-1, which the rom calls for every edge, so this is
 		// reached thousands of times per block - hence the guard. The window
 		// is not told: it refreshes itself, and a signal per edge once left
@@ -156,7 +171,7 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 }
 
 void xThread::tap_catch_save(Computer* comp) {
-	if (conf.tape.flash) {
+	if (tape_flash()) {
 		unsigned short de = comp->cpu->regDE;	// len
 		unsigned short ix = comp->cpu->regIX;	// adr
 		unsigned char crc = comp->cpu->regA;	// block type
@@ -331,8 +346,8 @@ void xThread::emuCycle(Computer* comp) {
 				} else if (pc == 0x4d0) {				// save: ix:addr, de:len, a:block type(b7), hl:pilot len (1f80/0c98)?
 					tap_catch_save(comp);
 				}
-				if (conf.tape.autostart && !conf.tape.flash && ((pc == 0x5df) || (pc == 0x53a))
-						&& !tap_next_is_signal(comp->tape)) {
+				if (conf.tape.autostart && !tape_flash() && ((pc == 0x5df) || (pc == 0x53a))
+						&& !tap_next_is_signal(comp->tape) && tap_block_done(comp->tape)) {
 					comp->tape->sigLen = 1e6;
 					tapNextBlock(comp->tape);
 					tapStop(comp->tape);
@@ -552,8 +567,7 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	pacingClose();		// the budget is handed out here, not by the timer
 	conf.emu.pause = 0;
 	// the bench picks its mode itself: fast loading would switch it under a tape
-	int tapeFast = conf.tape.fast;
-	conf.tape.fast = 0;
+	fastload_hold(1);
 	rzx_begin(comp);
 	// warm up: a tape or disk being started, a demo getting to its part. In
 	// the mode that is measured: where fast mode hands the machine back is not
@@ -664,7 +678,7 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 		}
 	}
 	fflush(stdout);
-	conf.tape.fast = tapeFast;
+	fastload_hold(0);
 	return done;
 }
 
