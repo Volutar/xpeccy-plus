@@ -976,6 +976,38 @@ static int ula_fill_brd(Video* vid, int k) {
 // attribute, so the colours are worked out once and the pixels only follow the
 // bits; the ULA's own fetches still happen at the dots they belong to.
 // The drawer with the late bursts (48K/128K timings).
+// The eight pixels of a cell: two colours and the bits of the byte between
+// them, so the palette is read twice instead of eight times.
+static void vid_cell_dots(Video* vid) {
+	int i;
+	if (vid->nodraw) {
+		for (i = 0; i < 8; i++) {
+			col = (scrbyte & 0x80) ? ink : pap;
+			scrbyte <<= 1;
+		}
+		return;
+	}
+	int32_t ci = greyScale ? vid->gpal[ink] : vid->pal[ink];
+	int32_t cp = greyScale ? vid->gpal[pap] : vid->pal[pap];
+	unsigned char* ptr = vid->ray.ptr;
+	for (i = 0; i < 8; i++) {
+		int32_t c;
+		if (scrbyte & 0x80) {
+			col = ink;
+			c = ci;
+		} else {
+			col = pap;
+			c = cp;
+		}
+		scrbyte <<= 1;
+		*(int32_t*)ptr = c;
+		*(int32_t*)(ptr + 4) = c;
+		ptr += 8;
+	}
+	outcol = (col == ink) ? ci : cp;
+	vid->ray.ptr = ptr;
+}
+
 // n dots the plain way, ray and border latch as vid_tick() would leave them
 static void ula_dots_plain(Video* vid, int n, cbvid dot) {
 	int x = vid->ray.x;
@@ -1021,11 +1053,7 @@ static int ula_run_scr(Video* vid, int k) {
 			nxtatr = vid->mrd(ula_burst_adr(vid, adr), vid->xptr);
 			vid->snowLow = -1;
 		}
-		for (int i = 0; i < 8; i++) {
-			col = (scrbyte & 0x80) ? ink : pap;
-			scrbyte <<= 1;
-			vid_dot_full(vid, col);
-		}
+		vid_cell_dots(vid);
 		xs += 8;
 		done += 8;
 		k -= 8;
@@ -1053,11 +1081,7 @@ static int nrm_run_scr(Video* vid, int k) {
 		zx_attr_cols(vid, vid->atrbyte, &scrbyte, &ink, &pap, 0);
 		adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
 		nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);	// dot 3
-		for (int i = 0; i < 8; i++) {
-			col = (scrbyte & 0x80) ? ink : pap;
-			scrbyte <<= 1;
-			vid_dot_full(vid, col);
-		}
+		vid_cell_dots(vid);
 		xs += 8;
 		done += 8;
 		k -= 8;
