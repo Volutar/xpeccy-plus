@@ -15,6 +15,7 @@
 #include "xcore/sound.h"
 #include "xcore/pacing.h"
 #include "xcore/autostart.h"
+#include "xcore/fastload.h"
 #include "xcore/vfat_scan.h"
 #include "xgui/xgui.h"
 #include "libxpeccy/spectrum.h"
@@ -439,6 +440,8 @@ int main(int ac,char** av) {
 				bnProf = av[i++];
 			} else if (!strcmp(parg,"--bench-shot")) {
 				bnShot = av[i++];
+			} else if (!strcmp(parg,"--bench-loops")) {
+				fastload_bench(atoi(av[i++]));
 			} else if (!strcmp(parg,"--pc")) {
 				conf.zx->cpu->regPC = strtol(av[i],NULL,0) & 0xffff;
 				i++;

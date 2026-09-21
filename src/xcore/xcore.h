@@ -630,7 +630,9 @@ struct xConfig {
 	} snd;
 	struct {
 		unsigned autostart:1;
-		unsigned fast:1;
+		unsigned flash:1;	// the rom's own loader is handed its blocks at once
+		unsigned fast:1;	// the machine runs flat out while a loader reads the tape
+		unsigned edge:1;	// ...and a loader waiting for an edge gets it at once
 		unsigned rewind:1;	// play starts a tape played to its end over
 		wavExport exp;		// what the wav export writes
 	} tape;

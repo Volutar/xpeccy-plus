@@ -332,7 +332,7 @@ int zx_rom_active(Computer* comp) {
 
 // The rom's own loader polls #FE in exactly the pattern tapDetectLoader looks
 // for, and the tape trap serves the rom - so the detector must not answer for
-// it, or a fast load gets a tape playing under it and the two fall out of step.
+// it, or a flash load gets a tape playing under it and the two fall out of step.
 // LD-EDGE-1/2 (#05E3..#05F8) is the only rom code that reads the port this way.
 // The address goes first: one field read, and false on every keyboard poll.
 static int zx_rom_ld_edge(Computer* comp) {
@@ -350,6 +350,7 @@ static int zx_rom_code(Computer* comp) {
 
 // what a #FE read owes the tape, for a machine whose port handler is its own
 void zx_tape_detect(Computer* comp) {
+	comp->tape->portReads++;	// the rom's own reads too: fast loading counts them
 	if (zx_rom_ld_edge(comp)) return;
 	tapDetectLoader(comp->tape, comp->tickCount, comp->cpu->regB, !zx_rom_code(comp));
 }

@@ -237,6 +237,7 @@ int vid_float_bus(Video*);			// the byte the ULA has on the bus now, -1 if none
 void vid_dark_tail(Video*);
 
 void vid_clear_image(void);
+void vid_flat_border(Video*, int idx);
 void vid_set_layout(Video*, vLayout*);
 void vid_set_resolution(Video*, int, int);
 void vid_set_border(Video*, int);

@@ -801,6 +801,23 @@ int compSetHardware(Computer* comp, const char* name) {
 
 // exec 1 opcode, sync devices, return eated ns
 
+// The end of a step: the video is synced over the T not synced yet, the counters
+// take all of them, the devices follow and a new frame is flagged. Returns the ns
+// the step took.
+static int comp_step_end(Computer* comp, int unsynced, int t) {
+	vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, unsynced));
+	nsTime = comp->vid->time;
+	comp->tickCount += t;
+	comp->frmtCount += t;
+	if (comp->hw->sync)
+		comp->hw->sync(comp, nsTime);
+	if (comp->vid->newFrame) {
+		comp->vid->newFrame = 0;
+		comp->flgFRM = 1;
+	}
+	return nsTime;
+}
+
 int compExec(Computer* comp) {
 	comp->vid->time = 0;
 	comp->flgBRKPRE = 0;
@@ -846,21 +863,17 @@ int compExec(Computer* comp) {
 		}
 	}
 #endif
-	vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, res2 - res4));
-// execution completed : get eated time & translate signals
-	nsTime = comp->vid->time;
-	comp->tickCount += res2;
-	comp->frmtCount += res2;
-// sync hardware
-	if (comp->hw->sync)
-		comp->hw->sync(comp, nsTime);
-// new frame
-	if (comp->vid->newFrame) {
-		comp->vid->newFrame = 0;
-		comp->flgFRM = 1;
-	}
-// return ns eated @ this step
-	return nsTime;
+	return comp_step_end(comp, res2 - res4, res2);
+}
+
+// Time passing with the cpu standing still: what compExec() does once the
+// opcode has run, for a caller that has already put the cpu where that time
+// leaves it. Syncing video and devices in one piece gives what a run of
+// opcodes gives them - every one of them carries its fractions over.
+int comp_skip_ticks(Computer* comp, int t) {
+	comp->vid->time = 0;
+	res4 = 0;
+	return comp_step_end(comp, t, t);
 }
 
 // cmos

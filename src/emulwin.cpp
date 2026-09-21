@@ -29,6 +29,7 @@
 #include "xcore/xcore.h"
 #include "xcore/sound.h"
 #include "xcore/autostart.h"
+#include "xcore/fastload.h"
 #include "emulwin.h"
 #include "filer.h"
 #include "watcher.h"
@@ -65,7 +66,7 @@ void MainWin::updateHead() {
 	const xMachine* mac = xm_find(conf.macId);
 	if (conf.zx && mac)
 		parts << QString::fromLocal8Bit(mac->name.c_str());
-	if (conf.emu.fast && !autostart_busy())		// autostart's own fast mode is not the user's
+	if (conf.emu.fast && !autostart_busy() && !fastload_busy())	// neither fast mode is the user's
 		parts << "fast";
 	setWindowTitle(parts.join(" - "));
 }
@@ -673,8 +674,8 @@ void MainWin::frame_timer() {
 		presentFrame();
 		return;
 	}
-	// autostart draws nothing, but vid_frame() still swaps scrimg/bufimg every
-	// frame: painting here would alternate between two stale buffers and flicker
+	// autostart draws nothing, and what bufimg still holds is the machine from
+	// before its reset: the window keeps the picture it had
 	if (autostart_busy()) return;
 	Computer* comp = conf.zx;
 	if (comp) {
@@ -1512,7 +1513,7 @@ void MainWin::watchMedia() {
 	}
 	int rose = seen & ~mediaSeen;
 	mediaSeen = seen;
-	// fast loading reads the tape without playing it, but it moves it on;
+	// flash loading reads the tape without playing it, but it moves it on;
 	// updateSatellites() clears the flag later in this same tick
 	if (comp->tape->blkChange)
 		rose |= 1 << MEDIA_TAPE;
