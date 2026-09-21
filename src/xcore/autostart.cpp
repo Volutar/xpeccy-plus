@@ -22,7 +22,8 @@
 // every machine that resets to a rom page takes the same route through 48
 // basic, which sits in every romset, and asks the beta disk to run boot. Evo
 // and TSConf cannot be reset to a rom page at all, so there it is their own
-// menu.
+// menu. ATM Turbo 2+ cannot either, but it can be stood in 48 basic the way a
+// snapshot stands it (comp_snap_map), and then takes the common route.
 //
 // What a machine boots into is romset business, so the table below matches the
 // romsets shipped in config/. A machine that is not in it is left alone.
@@ -116,6 +117,7 @@ static const asKey as_evo_disk[] = {
 typedef struct {
 	int res;		// reset bank to boot into, AS_NOPE if unsupported
 	const asKey* seq;
+	int snap;		// the reset boots a firmware: page as a snapshot would
 } asAct;
 
 typedef struct {
@@ -136,6 +138,7 @@ static const asMachine as_mtab[] = {
 	{HW_PLUS2A,	{RES_128, as_menu},	{AS_NOPE, NULL},		{AS_NOPE, NULL}},
 	{HW_PLUS3,	{RES_128, as_menu},	{AS_NOPE, NULL},		{RES_128, as_menu}},
 	{HW_TSLAB,	{RES_128, as_menu},	{RES_128, as_menu_last_run},	{AS_NOPE, NULL}},
+	{HW_ATM2,	{RES_48, as_keyword, 1},	{RES_48, as_trdos_basic, 1},	{AS_NOPE, NULL}},
 	{HW_PENTEVO,	{RES_128, as_evo_tape},	{RES_128, as_evo_disk},		{AS_NOPE, NULL}},
 	{HW_NULL,	{AS_NOPE, NULL},	{AS_NOPE, NULL},		{AS_NOPE, NULL}}
 };
@@ -220,6 +223,7 @@ int autostart_arm(Computer* comp, int kind) {
 	const asAct* act = as_find(comp, kind);
 	if (!act) return 0;
 	compReset(comp, act->res);
+	if (act->snap) comp_snap_map(comp);
 	comp->keyb->scanmask = 0;
 	as_comp = comp;
 	as_kind = kind;
