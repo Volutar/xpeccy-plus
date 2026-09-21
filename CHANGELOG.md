@@ -82,7 +82,14 @@ before that point is upstream's history and is not repeated here.
   played slower does. Right of it the CPU runs up to eight times faster while the picture
   keeps its rate, which is what overclocking a machine does; a board already running its own
   turbo is offered less room. The speed is never remembered - a machine always comes up on its
-  own clock - and the base clock itself has moved to Advanced settings.
+  own clock - and the base clock itself has moved to Advanced settings. Past 14 MHz no real
+  machine of these ever ran, so software that times itself against the picture may not keep up:
+  that speed is there to try, not guaranteed.
+
+- **The emulation is up to three times faster**, with nothing it emulates done differently -
+  every frame, sample and byte of memory comes out as before. Fast forward reaches about x18 on
+  the 48K and 128K, x29 on a Pentagon, x32 on ZX Evolution and x6 on TSConf, up from about x10
+  and x4, and playing at normal speed takes a third less of the processor.
 
 - **The tape player is the whole tape now.** The transport buttons are laid out like a tape
   deck's - record, play, rewind, stop, eject - in one set of icons; the image it holds is named
