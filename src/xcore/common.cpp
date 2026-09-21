@@ -281,7 +281,7 @@ void tape_apply_options(Tape* tap) {
 int tape_running(Tape* tap) {
 	if (!tap || (tap->blkCount < 1)) return 0;
 	if (tap->on) return 1;
-	return !tap->userStop && (conf.tape.autostart || conf.tape.flash);
+	return !tap->userStop && (conf.tape.autostart || tape_flash());
 }
 
 // "3.5469 MHz", or anything a person types into that box. Out of range or

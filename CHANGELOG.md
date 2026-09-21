@@ -11,17 +11,15 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
-- **Fast loading runs a tape through in seconds, whatever its loader.** While a loader is
-  reading the tape the machine runs flat out with the sound off, and the picture holds until a
-  new screen has come in. Turbo loaders, Speedlock, DeciLoad and OTLA load the same as at normal
-  speed: a three-minute tape takes about ten seconds. When the tape stops, the machine is back
-  to normal speed. What was called Fast loading until now, the ROM blocks handed straight to
-  the machine, is **Flash loading** now, as in other emulators; an existing setting carries over.
-  **Edge detection**, off by default, goes further for the common loaders - the ROM's, Speedlock,
-  Digital Integration, Alkatraz and the like: they get each pulse of the tape without waiting
-  for it or sitting out their own delays, which makes the load two to three times shorter
-  again - R-Type in four seconds - at the price of the machine not ending up exactly where a
-  real one would.
+- **Fast loading runs a tape through in seconds, whatever its loader.** One switch in the
+  tape player: while a loader is reading the tape the machine runs flat out with the sound off,
+  and the picture holds until a new screen has come in. Turbo loaders, Speedlock, DeciLoad and
+  OTLA all load, and a three-minute tape takes a few seconds - R-Type about four. When the tape
+  stops, the machine is back to normal speed. Two refinements sit under it in Options, both on:
+  **Flash loading** hands ROM blocks straight to the machine (what Fast loading used to mean), and
+  **Edge detection** lets the common loaders - the ROM's, Speedlock, Alkatraz and the like - have
+  each pulse without waiting for it. That last one leaves the machine not quite where a real one
+  would be; switch it off if a game does not load.
 
 - **The tape can be saved as a wav recording**, to play back into a real machine - the
   button beside Save in the tape player. The dialog sets the rate, the sample size, the level
@@ -105,8 +103,8 @@ before that point is upstream's history and is not repeated here.
 
 - **The tape player is the whole tape now.** The transport buttons are laid out like a tape
   deck's - record, play, rewind, stop, eject - in one set of icons; the image it holds is named
-  across the top with Open and Save beside it; Auto play / stop, the loading options and Rewind
-  at end are there rather than only in Options; and a block can be moved, dropped or copied to a disk
+  across the top with Open and Save beside it; Auto play / stop, Fast loading and Rewind at end
+  are there rather than only in Options; and a block can be moved, dropped or copied to a disk
   straight from the list. Options keeps the same page, with an eject button of its own.
 
 - **"Rewind at end" starts off**, and when it is on it winds the tape back for the next load as
@@ -145,6 +143,10 @@ before that point is upstream's history and is not repeated here.
   everywhere, and X in a number field switches between hex and decimal.
 
 ### Fixed
+
+- **Auto play / stop stops the tape after a game's own loader too**, not only after the ROM's -
+  Joe Blade 2 ran its tape on to the end. Technician Ted, which reads half a block through the
+  ROM and the rest itself, loads with the automatics on.
 
 - **ATM Turbo 2+ starts disks and tapes itself.** Opening a disk on it no longer switches the
   machine to a Pentagon.

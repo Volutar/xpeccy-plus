@@ -104,6 +104,8 @@ void conf_init(char* wpath, char* confdir) {
 	conf.boot = 1;
 	conf.autorun = 1;
 	conf.tape.rewind = 0;		// a tape that ran out stays there until it is asked for
+	conf.tape.flash = 1;		// both only refine fast loading, which the user switches
+	conf.tape.edge = 1;
 	conf.tape.exp = wav_export_default();
 	conf.emu.pause = 0;
 	conf.emu.fast = 0;
@@ -188,8 +190,8 @@ void saveConfig() {
 	fprintf(cfile, "\n[TAPE]\n\n");
 	fprintf(cfile, "speed = %i\n", conf.zx->tape->speed);
 	fprintf(cfile, "autoplay = %s\n", YESNO(conf.tape.autostart));
-	fprintf(cfile, "flash = %s\n", YESNO(conf.tape.flash));
 	fprintf(cfile, "fast = %s\n", YESNO(conf.tape.fast));
+	fprintf(cfile, "flash = %s\n", YESNO(conf.tape.flash));
 	fprintf(cfile, "edge = %s\n", YESNO(conf.tape.edge));
 	fprintf(cfile, "rewind = %s\n", YESNO(conf.tape.rewind));
 	fprintf(cfile, "export.rate = %i\n", conf.tape.exp.rate);
@@ -989,10 +991,7 @@ void loadConfig() {
 	foreach(xRomset rs, rsListist) addRomset(rs);
 //	prfLoadAll();
 	setOutput(soutnam.c_str());
-	if (schema < 4) {			// "fast" was the rom trap until it was named flash
-		conf.tape.flash = conf.tape.fast;
-		conf.tape.fast = 0;
-	}
+	if (schema < 4) conf.tape.flash = 1;	// "fast" was the rom trap alone until it was named flash
 	if (schema < 3) xm_over_migrate();	// a config from before the machine files
 	bool ok = false;
 	if (schema < 2) {			// a config from before the machines: bring it across

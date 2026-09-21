@@ -630,8 +630,8 @@ struct xConfig {
 	} snd;
 	struct {
 		unsigned autostart:1;
-		unsigned flash:1;	// the rom's own loader is handed its blocks at once
 		unsigned fast:1;	// the machine runs flat out while a loader reads the tape
+		unsigned flash:1;	// ...the rom's own loader is handed its blocks at once
 		unsigned edge:1;	// ...and a loader waiting for an edge gets it at once
 		unsigned rewind:1;	// play starts a tape played to its end over
 		wavExport exp;		// what the wav export writes
@@ -766,3 +766,7 @@ enum {
 #define XSCR_PAGE_SHADOW	7
 
 extern xConfig conf;
+
+// Flash loading and edge detection are refinements of fast loading, on only with it
+static inline int tape_flash() { return conf.tape.fast && conf.tape.flash; }
+static inline int tape_edge() { return conf.tape.fast && conf.tape.edge; }
