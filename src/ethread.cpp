@@ -47,6 +47,7 @@ static FILE* file = nullptr;
 
 xThread::xThread() {
 	sndNsFixed = 0;
+	benchStop = -1;
 	conf.emu.fast = 0;
 	finish = 0;
 }
@@ -352,6 +353,8 @@ void xThread::emuCycle(Computer* comp) {
 		if (comp->flgFRM) {
 			comp->flgFRM = 0;
 			if (conf.emu.fast) conf.snd.fill = 0;	// see sndSync()
+			if ((benchStop >= 0) && (conf.vid.fcount + 1 >= benchStop))
+				conf.snd.fill = 0;		// the bench stops on a frame, not on a sample
 			conf.vid.fctime = paceClockNs();	// for the fps readout
 			conf.vid.fcount++;
 			comp->frmCount++;
@@ -572,6 +575,7 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	int tk0 = comp->tickCount;
 	f0 = conf.vid.fcount;
 	int fl = f0;
+	benchStop = f0 + frames;	// the last cycle ends on the frame, whatever the budget
 	while ((conf.vid.fcount - f0 < frames) && !conf.emu.pause) {
 		conf.snd.need = full ? 256 : 0;
 		emu_lock();
