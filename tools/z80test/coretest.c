@@ -215,6 +215,9 @@ int main(int argc, char** argv) {
 	cpu->iwr = cb_iwr;
 	cpu->xack = cb_ack;
 	cpu->xirq = cb_irq;
+	// fuse's data has the contention events in it, so ask for them: the core
+	// only reports a bus cycle when the machine says it contends one
+	cpu->flgCONT = 1;
 	while (run_test(f));
 	fclose(f);
 	free(cpu);
