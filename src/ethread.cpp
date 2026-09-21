@@ -538,11 +538,14 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	pacingClose();		// the budget is handed out here, not by the timer
 	conf.emu.pause = 0;
 	rzx_begin(comp);
-	// warm up: a tape or disk being started, a demo getting to its part
-	conf.emu.fast = 1;
+	// warm up: a tape or disk being started, a demo getting to its part. In
+	// the mode that is measured: where fast mode hands the machine back is not
+	// where a cycle with sound does, so a switch between them would leave the
+	// two builds being compared on different instructions
+	conf.emu.fast = full ? 0 : 1;
 	int f0 = conf.vid.fcount;
 	while ((conf.vid.fcount - f0 < skip) && !conf.emu.pause) {
-		conf.snd.need = 0;
+		conf.snd.need = full ? 256 : 0;
 		emu_lock();
 		emuCycle(comp);
 		emu_unlock();
