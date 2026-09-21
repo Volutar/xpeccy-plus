@@ -547,6 +547,7 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	// two builds being compared on different instructions
 	conf.emu.fast = full ? 0 : 1;
 	int f0 = conf.vid.fcount;
+	benchStop = f0 + skip;		// and on a frame, so both builds start measuring on the same one
 	while ((conf.vid.fcount - f0 < skip) && !conf.emu.pause) {
 		conf.snd.need = full ? 256 : 0;
 		emu_lock();
