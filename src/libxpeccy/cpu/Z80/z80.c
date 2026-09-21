@@ -56,9 +56,9 @@ void z80_reset(CPU* cpu) {
 int z80_mrdx(CPU* cpu, int adr, int m1) {
 	cpu->adr = adr;
 	// A machine that contends nothing has nothing to say here, and the ray
-	// reaches the same dot at the sync below either way
+	// reaches the same dot at the transfer either way
 	if (cpu->flgCONT)
-		cpu->xirq(IRQ_CPU_CONT, cpu->xptr);	// wait states, sampled at T1
+		cpu->xcont(cpu->xptr, 1);		// wait states, sampled at T1
 	cpu->t += 2;		// T1, T2
 	// No sync before a read: the ray only has to be where it is for a write,
 	// which can change what the video is about to draw. A read changes
@@ -78,7 +78,7 @@ void z80_wait(CPU* cpu, int adr, int n) {
 		return;
 	}
 	while (n > 0) {
-		cpu->xirq(IRQ_CPU_CONTNM, cpu->xptr);
+		cpu->xcont(cpu->xptr, 0);
 		cpu->t++;
 		n--;
 	}
@@ -95,7 +95,7 @@ int z80_mrd(CPU* cpu, int adr) {
 void z80_mwr(CPU *cpu, int adr, int data) {
 	cpu->adr = adr;
 	if (cpu->flgCONT)
-		cpu->xirq(IRQ_CPU_CONT, cpu->xptr);	// wait states, sampled at T1
+		cpu->xcont(cpu->xptr, 1);		// wait states, sampled at T1
 	cpu->t += 2;		// T1, T2
 	cpu->xirq(IRQ_CPU_SYNC, cpu->xptr);	// the ray up to the transfer: a write can change what is drawn next
 	cpu->mwr(adr, data, cpu->xptr);

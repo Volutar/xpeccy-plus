@@ -747,12 +747,25 @@ void comp_set_layout(Computer* comp, vLayout* lay) {
 
 // The snow effect costs a video sync on every opcode fetch, so the cpu only
 // reports the refresh cycle while a machine actually wants it.
+// The start of a bus cycle on a machine that contends one: the ray up to it,
+// then the wait states. Called straight from the cpu rather than through
+// comp_irq and the machine's own irq handler - zx_contend() is what every one
+// of them does with it, and this runs on every memory access.
+static void comp_cont(void* ptr, int mreq) {
+	Computer* comp = (Computer*)ptr;
+	vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
+	res4 = comp->cpu->t;
+	zx_contend(comp, mreq);
+}
+
 // Contended memory. The cpu reports the start of every bus cycle for it, and
 // that is a call per memory access, so it only does so when a machine asks.
 void comp_set_cont(Computer* comp, int on) {
 	comp->flgCNTM = on ? 1 : 0;
-	if (comp->cpu)
+	if (comp->cpu) {
 		comp->cpu->flgCONT = comp->flgCNTM;
+		comp->cpu->xcont = comp_cont;
+	}
 }
 
 void comp_set_snow(Computer* comp, int on) {

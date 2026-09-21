@@ -163,6 +163,7 @@ struct CPU {
 	cbiw iwr;			// i/o writing
 	cbiack xack;			// interrupt vector acknowledge
 	cbirq xirq;			// send signal
+	void (*xcont)(void*, int);	// contend the bus cycle about to start (mreq)
 	void* xptr;			// pointer to external data (almost always Computer*)
 	// core: runtime callbacks (depends on type)
 	struct cpuCore* core;

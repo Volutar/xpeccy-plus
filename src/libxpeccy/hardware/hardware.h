@@ -127,6 +127,7 @@ int zx_dev_wr(Computer*, int, int);
 int zx_dev_rd(Computer*, int, int*);
 void zx_irq(Computer*, int);
 void zx_snow(Computer*);
+void zx_contend(Computer*, int);
 int zx_bank_of(Computer*, int);
 int zx_ack(Computer*);
 int zx_ear(Computer*);
