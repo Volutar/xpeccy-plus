@@ -88,7 +88,7 @@ before that point is upstream's history and is not repeated here.
 
 - **The emulation is up to three times faster**, with nothing it emulates done differently -
   every frame, sample and byte of memory comes out as before. Fast forward reaches about x18 on
-  the 48K and 128K, x29 on a Pentagon, x32 on ZX Evolution and x6 on TSConf, up from about x10
+  the 48K and 128K, x29 on a Pentagon, x30 on ZX Evolution and x6 on TSConf, up from about x10
   and x4, and playing at normal speed takes a third less of the processor.
 
 - **The tape player is the whole tape now.** The transport buttons are laid out like a tape
