@@ -54,6 +54,20 @@ inline void vid_dot_half(Video* vid, unsigned char idx) {
 	vid->ray.ptr += 4;
 }
 
+// k dots of one colour, the way vid_dot_full() puts them out
+static void vid_fill_dots(Video* vid, unsigned char idx, int k) {
+	if (vid->nodraw) return;
+	int32_t c = greyScale ? vid->gpal[idx] : vid->pal[idx];
+	unsigned char* ptr = vid->ray.ptr;
+	outcol = c;
+	while (k-- > 0) {
+		*(int32_t*)ptr = c;
+		*(int32_t*)(ptr + 4) = c;
+		ptr += 8;
+	}
+	vid->ray.ptr = ptr;
+}
+
 // Black out both image buffers. Wanted when the machine changes: the buffers
 // are shared by every machine and read back with the current one's row length,
 // so a frame left there by the machine before would come out skewed. Black is
@@ -931,6 +945,34 @@ void ula_dot(Video* vid) {
 	vid_dot_full(vid, col);
 }
 
+// A run of dots on a line above or below the screen: the ULA fetches nothing
+// there, so the whole stretch is border - in two colours if a write to the
+// border port is still waiting for the latch. Both ZX drawers land here.
+static int ula_run_brd(Video* vid, int k) {
+	if (!vid->vbrd) return 0;
+	int x = vid->ray.x;
+	int n = k;
+	if (vid->brdcol != vid->nextbrd) {
+		int i = 0;
+		while ((i < n) && ((x + i) & vid->brdstep))	// dots before the next latch
+			i++;
+		if (i > 0) {
+			col = vid->brdcol;
+			if (vid->ula->active) col |= 8;
+			vid_fill_dots(vid, col, i);
+			n -= i;
+		}
+		if (n > 0) vid->brdcol = vid->nextbrd;
+	}
+	if (n > 0) {
+		col = vid->brdcol;
+		if (vid->ula->active) col |= 8;
+		vid_fill_dots(vid, col, n);
+	}
+	vid->atrbyte = 0xff;
+	return k;
+}
+
 // alco 16col
 void vidDrawAlco(Video* vid) {
 	if (vid->vbrd || vid->hbrd) {
@@ -1177,8 +1219,8 @@ void vidBreak(Video* vid) {
 
 // id,(@on),(@every_visible_dot),(@HBlank),(@LineStart),(@VBlank),(@Frame)
 static xVideoMode vidModeTab[] = {
-	{VID_NORMAL, NULL, vidDrawNormal, NULL, NULL, NULL, NULL},
-	{VID_ULA_SCR, NULL, ula_dot, NULL, NULL, NULL, NULL},
+	{VID_NORMAL, NULL, vidDrawNormal, NULL, NULL, NULL, NULL, ula_run_brd},
+	{VID_ULA_SCR, NULL, ula_dot, NULL, NULL, NULL, NULL, ula_run_brd},
 	{VID_ALCO, NULL, vidDrawAlco, NULL, NULL, NULL, NULL},
 	{VID_HWMC, NULL, vidDrawHwmc, NULL, NULL, NULL, NULL},
 	{VID_ATM_EGA, NULL, vidDrawATMega, NULL, NULL, NULL, NULL},
@@ -1314,13 +1356,16 @@ static void vid_run(Video* vid, int k) {
 	cbvid dot = vid->cb->dot;
 	int x = vid->ray.x;
 	int end = x + k;
-	for (; x < end; x++) {
+	int done = vid->cb->run ? vid->cb->run(vid, k) : 0;
+	for (x += done; x < end; x++) {
 		if ((x & vid->brdstep) == 0)
 			vid->brdcol = vid->nextbrd;
 		vid->ray.x = x;
 		if (dot) dot(vid);
-		vid->hbrd = (x + 1 < vid->bord.x) || (x + 1 >= vid->send.x);
 	}
+	// the flags a dot leaves behind: hbrd cannot change inside a run, the
+	// edges bound it, so it is worked out once for where the ray ends up
+	vid->hbrd = (end < vid->bord.x) || (end >= vid->send.x);
 	vid->ray.x = end;
 	vid->ray.xb += k;
 	vid->ray.xs += k;
