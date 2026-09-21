@@ -105,8 +105,11 @@ OutSys* findOutSys(const char*);
 #define SND_FIR_SHIFT	24
 static int firTaps[SND_FIR_TAPS / 2] = {0};	// symmetric: half is enough
 
+// The window is held twice over, so the last SND_FIR_TAPS samples are always
+// one straight stretch of memory whatever the write position: the filter loop
+// then has no wrapping in it and the compiler can take it apart.
 static int sb_pos = 0;
-static sndPair smpBuf[SND_FIR_TAPS] = {{0,0}};
+static sndPair smpBuf[SND_FIR_TAPS * 2] = {{0,0}};
 
 #if defined(HAVESDL2)
 static SDL_AudioDeviceID sdldevid;
@@ -180,6 +183,7 @@ int sndSync(Computer* comp) {
 			sndLev = snd_clip16(sndLev);
 
 			smpBuf[sb_pos & SND_FIR_MASK] = sndLev;
+			smpBuf[(sb_pos & SND_FIR_MASK) + SND_FIR_TAPS] = sndLev;
 			sb_pos++;
 			if ((sb_pos % DISCRATE) == 0) {
 				if (conf.snd.filter) {
@@ -189,13 +193,11 @@ int sndSync(Computer* comp) {
 					// go: measured, a third off the time, and the same answer.
 					long long accL = 0;
 					long long accR = 0;
-					int lo = sb_pos & SND_FIR_MASK;
-					int hi = (sb_pos - 1) & SND_FIR_MASK;
+					const sndPair* win = smpBuf + (sb_pos & SND_FIR_MASK);
+					const sndPair* end = win + SND_FIR_TAPS - 1;
 					for (int i = 0; i < SND_FIR_TAPS / 2; i++) {
-						accL += (long long)(smpBuf[lo].left + smpBuf[hi].left) * firTaps[i];
-						accR += (long long)(smpBuf[lo].right + smpBuf[hi].right) * firTaps[i];
-						lo = (lo + 1) & SND_FIR_MASK;
-						hi = (hi - 1) & SND_FIR_MASK;
+						accL += (long long)(win[i].left + end[-i].left) * firTaps[i];
+						accR += (long long)(win[i].right + end[-i].right) * firTaps[i];
 					}
 					// the sinc overshoots a step a little, so the result can
 					// come out past what went in

@@ -166,8 +166,11 @@ sndPair tsGetVolume(TSound* ts) {
 	aymChip* chip = ts->chipA;
 	sndPair res = chip->vol(chip);
 	int i, fm = ym2203_fm_out(chip);
+	// an empty socket puts out nothing, and the soft clip leaves a level it is
+	// mixed with exactly as it was, so it is left out of the sum
 	for (i = 1; i < 4; i++) {
 		chip = ts_chip(ts, i);
+		if (chip->type == SND_NONE) continue;
 		res = mixer(res, chip->vol(chip));
 		fm += ym2203_fm_out(chip);
 	}
