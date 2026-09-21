@@ -40,6 +40,7 @@ void ay_reset(aymChip*);
 int ay_rd(aymChip*, int);
 void ay_wr(aymChip*, int, int);
 void ay_sync(aymChip*, int);
+void ay_flush(aymChip*);
 sndPair ay_vol(aymChip*);
 
 // yamaha-2149
@@ -175,6 +176,7 @@ struct aymChip {
 	// amount: 500/1.773447 truncated to 281, 500/1.75 to 285.
 	long long tickFx;
 	long long tickAcc;
+	int pendNs;		// time handed in but not yet counted into ticks, see ay_flush()
 
 	void* fm;		// the fm core of a YM2203 (nothing for the other chips)
 	unsigned char fm_off[3];// fm channels the debugger mutes

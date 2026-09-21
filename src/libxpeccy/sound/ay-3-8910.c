@@ -11,6 +11,7 @@ static int ayDACvol[32] = {0x0000,0x0000,0x00D0,0x00D0,0x0130,0x0130,0x01BC,0x01
                     0x2417,0x2417,0x2D54,0x2D54,0x35E8,0x35E8,0x3FFF,0x3FFF};
 
 void ay_reset(aymChip* chip) {
+	chip->pendNs = 0;
 	memset(chip->reg, 0x00, 256);
 	aymResetChan(&chip->chanA);
 	aymResetChan(&chip->chanB);
@@ -23,6 +24,7 @@ void ay_reset(aymChip* chip) {
 
 int ay_rd(aymChip* ay, int adr) {
 	unsigned char res = 0xff;
+	ay_flush(ay);
 	if (adr & 1) {
 		switch(ay->curReg & 0x0f) {					// AY:16 registers + mirrors
 			case 14:
@@ -126,6 +128,7 @@ void ay_set_reg(aymChip* chip, int val) {
 }
 
 void ay_wr(aymChip* chip, int adr, int val) {
+	ay_flush(chip);
 	if (adr & 1) {								// set current reg
 		chip->curReg = val & 0x0f;					// AY:16 registers + mirrors
 	} else {								// write data
@@ -239,13 +242,24 @@ static void ay_tick_n(aymChip* ay, int cnt) {
 	}
 }
 
-void ay_sync(aymChip* ay, int ns) {
+// The counters are only ever looked at when a register is read or written and
+// when a sample is taken, so the time in between is kept and counted in one go
+// at the next of those. The arithmetic is linear - the ticks land on the same
+// side of every wrap either way - so the chip comes out in the same state.
+void ay_flush(aymChip* ay) {
+	int ns = ay->pendNs;
+	ay->pendNs = 0;
 	if ((ay->tickFx < 1) || (ns < 1)) return;
 	ay->tickAcc += (long long)ns * ay->tickFx;
 	long long cnt = ay->tickAcc >> 32;
 	ay->tickAcc &= 0xffffffffLL;
 	if (cnt > 0)
 		ay_tick_n(ay, (int)cnt);
+}
+
+void ay_sync(aymChip* ay, int ns) {
+	if (ns > 0)
+		ay->pendNs += ns;
 }
 
 sndPair ay_mix_stereo(int volA, int volB, int volC, int id, int sep) {
@@ -350,6 +364,7 @@ void ay_env_shape(int form, unsigned char* out, int len) {
 // too. curReg is put back: the machine may be halfway through its own
 // select-then-write pair.
 void ay_poke_reg(aymChip* chip, int reg, int val) {
+	ay_flush(chip);
 	unsigned char was = chip->curReg;
 	chip->curReg = reg & 0xff;
 	ay_set_reg(chip, val & 0xff);
@@ -385,5 +400,6 @@ sndPair ay_mix_tab(aymChip* chip, const int* tab) {
 }
 
 sndPair ay_vol(aymChip* chip) {
+	ay_flush(chip);
 	return ay_mix_tab(chip, ayDACvol);
 }

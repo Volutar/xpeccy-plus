@@ -46,6 +46,7 @@ const scDesc* find_chip_type(int id) {
 
 void chip_set_type(aymChip* chip, int id) {
 	const scDesc* dsc = find_chip_type(id);
+	ay_flush(chip);			// the tick rate is about to move
 	chip->type = dsc->id;
 	chip->res = dsc->res;
 	chip->rd = dsc->rd;
