@@ -652,6 +652,7 @@ void compReset(Computer* comp,int res) {
 	comp->hw->mapMem(comp);
 	cpu_reset(comp->cpu);
 	comp_set_snow(comp, comp->flgSNOW);	// the cpu may have been swapped since
+	comp_set_cont(comp, comp->flgCNTM);
 	comp_heat_sync(comp);		// ram/rom size may have changed with hardware/romset
 }
 
@@ -746,6 +747,14 @@ void comp_set_layout(Computer* comp, vLayout* lay) {
 
 // The snow effect costs a video sync on every opcode fetch, so the cpu only
 // reports the refresh cycle while a machine actually wants it.
+// Contended memory. The cpu reports the start of every bus cycle for it, and
+// that is a call per memory access, so it only does so when a machine asks.
+void comp_set_cont(Computer* comp, int on) {
+	comp->flgCNTM = on ? 1 : 0;
+	if (comp->cpu)
+		comp->cpu->flgCONT = comp->flgCNTM;
+}
+
 void comp_set_snow(Computer* comp, int on) {
 	comp->flgSNOW = on ? 1 : 0;
 	if (comp->cpu)

@@ -880,7 +880,7 @@ static void mac_from_def(const xMachine* mac) {
 	comp->earback = mac->earback;
 	comp->fbus = mac->floatbus;
 	comp->flgCNTI = mac->contio;
-	comp->flgCNTM = mac->contmem;
+	comp_set_cont(comp, mac->contmem);
 	comp->flgEM1 = mac->scrpwait;
 	comp->flgDDP = mac->ddpal;
 	comp->vid->ula->conttype = mac->contPattern;
@@ -1407,7 +1407,7 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 			}
 			else if (nam == "frq.mul") {}		// dropped, see mac_set_defer_key
 			else if (nam == "memory") memSetSize(comp->mem, mac_ram_size(arg.i, comp->hw->mask), -1);
-			else if (nam == "contmem") comp->flgCNTM = arg.b;
+			else if (nam == "contmem") comp_set_cont(comp, arg.b);
 			else if (nam == "contio") comp->flgCNTI = arg.b;
 			else if (nam == "scrp.wait") comp->flgEM1 = arg.b;
 			else if (nam == "lastdir") conf.lastDir = val;

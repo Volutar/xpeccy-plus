@@ -47,10 +47,14 @@ void zx128_map_mem(Computer* comp, int extMask) {
 // INT handle/check
 
 void zx_sync(Computer* comp, int ns) {
-	// devices
-	difSync(comp->dif, ns);
-	gsSync(comp->gs, ns);
-	saaSync(comp->saa, ns);
+	// devices. This runs once per instruction, so the ones that are idle or
+	// not there at all are asked by the flag they check first, not by a call
+	if (comp->dif->fdc->plan || (comp->dif->fdc->flp->dwait > 0))
+		difSync(comp->dif, ns);
+	if (comp->gs->enable)
+		gsSync(comp->gs, ns);
+	if (comp->saa->enabled)
+		saaSync(comp->saa, ns);
 	tsSync(comp->ts, ns);
 	tapSync(comp->tape, ns);
 	bcSync(comp->beep, ns);

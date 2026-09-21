@@ -1028,7 +1028,7 @@ void SetupWin::apply() {
 	conf.scrShot.noBorder = ui.ssNoBord->isChecked() ? 1 : 0;
 	vid_set_border_mode(ui.bszsld->value());
 	comp->vid->brdstep = ui.border4T->isChecked() ? 7 : 1;
-	comp->flgCNTM = ui.contMem->isChecked();
+	comp_set_cont(comp, ui.contMem->isChecked());
 	comp->flgCNTI = ui.contIO->isChecked() ? 1 : 0;
 	comp->vid->ula->conttype = getRFIData(ui.cbContPattern);
 	comp->earback = getRFIData(ui.cbEarBack);
