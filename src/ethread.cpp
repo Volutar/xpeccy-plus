@@ -507,7 +507,11 @@ static DWORD WINAPI bench_prof_thread(LPVOID p) {
 		CONTEXT ctx;
 		ctx.ContextFlags = CONTEXT_CONTROL;
 		if (GetThreadContext(bp->target, &ctx)) {
+#ifdef _WIN64
 			bp->hits[ctx.Rip]++;
+#else
+			bp->hits[ctx.Eip]++;
+#endif
 			bp->total++;
 		}
 		ResumeThread(bp->target);
