@@ -9,6 +9,7 @@
 #include "xcore/sound.h"
 #include "xcore/pacing.h"
 #include "xcore/autostart.h"
+#include "xcore/fastload.h"
 #include "xcore/vfilters.h"
 #include "libxpeccy/cpu/Z80/z80.h"
 #include "libxpeccy/xstate.h"
@@ -78,21 +79,21 @@ static int tap_next_is_signal(Tape* tap) {
 // first block of a load went missing that way.
 void xThread::tap_catch_load(Computer* comp, int atStart) {
 	Tape* tap = comp->tape;
-	// Stop, pressed by hand, keeps the automatics off the tape - fast loading
+	// Stop, pressed by hand, keeps the automatics off the tape - flash loading
 	// included, which moves it on without ever playing it. Play, a rewind or
 	// another tape hands it back.
 	if (tap->userStop) return;
 	// the rom is asking for a tape that has run out: "Rewind at end" puts it back
 	// to the start here too, not only under the Play button. Nothing to rewind
 	// for if neither of the automatics is on - Play does it then.
-	if (atStart && (conf.tape.fast || conf.tape.autostart))
+	if (atStart && (conf.tape.flash || conf.tape.autostart))
 		tap_rewind_at_end(tap);
 	int blk = tap->block;
 	if (blk >= tap->blkCount) return;
-	if (conf.tape.fast && tap->blkData[blk].hasBytes) {
-		// A playing tape and a fast load get out of step: the rom reads the
+	if (conf.tape.flash && tap->blkData[blk].hasBytes) {
+		// A playing tape and a flash load get out of step: the rom reads the
 		// block by ear and moves on while the tape still stands on it, and the
-		// next block is then answered with this one. Fast loading owns the
+		// next block is then answered with this one. Flash loading owns the
 		// tape, so stop it; the rom's edge loop gives up within a few hundred
 		// T and comes back to LD_START, where the block is handed over.
 		if (!atStart || tap->on) {
@@ -155,7 +156,7 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 }
 
 void xThread::tap_catch_save(Computer* comp) {
-	if (conf.tape.fast) {
+	if (conf.tape.flash) {
 		unsigned short de = comp->cpu->regDE;	// len
 		unsigned short ix = comp->cpu->regIX;	// adr
 		unsigned char crc = comp->cpu->regA;	// block type
@@ -330,13 +331,16 @@ void xThread::emuCycle(Computer* comp) {
 				} else if (pc == 0x4d0) {				// save: ix:addr, de:len, a:block type(b7), hl:pilot len (1f80/0c98)?
 					tap_catch_save(comp);
 				}
-				if (conf.tape.autostart && !conf.tape.fast && ((pc == 0x5df) || (pc == 0x53a))
+				if (conf.tape.autostart && !conf.tape.flash && ((pc == 0x5df) || (pc == 0x53a))
 						&& !tap_next_is_signal(comp->tape)) {
 					comp->tape->sigLen = 1e6;
 					tapNextBlock(comp->tape);
 					tapStop(comp->tape);
 				}
 			}
+			// a loader's edge loop, counted instead of run
+			if (fastload_on)
+				sndNsFixed += NS_TO_FIXED(fastload_step(comp));
 		}
 		// sound buffer update. In fast mode there is nothing to mix - the
 		// only thing sndSync() still does there is run the GS, so a machine
@@ -359,6 +363,7 @@ void xThread::emuCycle(Computer* comp) {
 			conf.vid.fcount++;
 			comp->frmCount++;
 			autostart_frame(comp);
+			fastload_frame(comp);
 			// before run-ahead: the debugger's screen view wants the machine as
 			// it really stands, not the frame it is about to guess at
 			vid_scr_snap(comp->vid);
@@ -546,6 +551,9 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	setOutput("NULL");
 	pacingClose();		// the budget is handed out here, not by the timer
 	conf.emu.pause = 0;
+	// the bench picks its mode itself: fast loading would switch it under a tape
+	int tapeFast = conf.tape.fast;
+	conf.tape.fast = 0;
 	rzx_begin(comp);
 	// warm up: a tape or disk being started, a demo getting to its part. In
 	// the mode that is measured: where fast mode hands the machine back is not
@@ -656,6 +664,7 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 		}
 	}
 	fflush(stdout);
+	conf.tape.fast = tapeFast;
 	return done;
 }
 

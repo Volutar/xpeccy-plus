@@ -266,7 +266,7 @@ double xspeed_clock(void) {
 }
 
 // Is the tape under way? Playing, or standing still with the automatics free to
-// take it - fast loading reads block after block without ever turning the motor
+// take it - flash loading reads block after block without ever turning the motor
 // on, so ->on alone left the Stop button greyed out over a tape that was very
 // much running. Stop latches tape->userStop and every automatic honours it.
 // The tape options are kept in conf and read from there by the trap; these two
@@ -281,7 +281,7 @@ void tape_apply_options(Tape* tap) {
 int tape_running(Tape* tap) {
 	if (!tap || (tap->blkCount < 1)) return 0;
 	if (tap->on) return 1;
-	return !tap->userStop && (conf.tape.autostart || conf.tape.fast);
+	return !tap->userStop && (conf.tape.autostart || conf.tape.flash);
 }
 
 // "3.5469 MHz", or anything a person types into that box. Out of range or

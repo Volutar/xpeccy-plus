@@ -11,6 +11,18 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Fast loading runs a tape through in seconds, whatever its loader.** While a loader is
+  reading the tape the machine runs flat out with the sound off, and the picture holds until a
+  new screen has come in. Turbo loaders, Speedlock, DeciLoad and OTLA load the same as at normal
+  speed: a three-minute tape takes about ten seconds. When the tape stops, the machine is back
+  to normal speed. What was called Fast loading until now, the ROM blocks handed straight to
+  the machine, is **Flash loading** now, as in other emulators; an existing setting carries over.
+  **Edge detection**, off by default, goes further for the common loaders - the ROM's, Speedlock,
+  Digital Integration, Alkatraz and the like: they get each pulse of the tape without waiting
+  for it or sitting out their own delays, which makes the load two to three times shorter
+  again - R-Type in four seconds - at the price of the machine not ending up exactly where a
+  real one would.
+
 - **The tape can be saved as a wav recording**, to play back into a real machine - the
   button beside Save in the tape player. The dialog sets the rate, the sample size, the level
   and the silence at either end. Recordings written by earlier versions were mistimed, too
@@ -93,8 +105,8 @@ before that point is upstream's history and is not repeated here.
 
 - **The tape player is the whole tape now.** The transport buttons are laid out like a tape
   deck's - record, play, rewind, stop, eject - in one set of icons; the image it holds is named
-  across the top with Open and Save beside it; Auto play / stop, Fast loading and Rewind at end
-  are there rather than only in Options; and a block can be moved, dropped or copied to a disk
+  across the top with Open and Save beside it; Auto play / stop, the loading options and Rewind
+  at end are there rather than only in Options; and a block can be moved, dropped or copied to a disk
   straight from the list. Options keeps the same page, with an eject button of its own.
 
 - **"Rewind at end" starts off**, and when it is on it winds the tape back for the next load as

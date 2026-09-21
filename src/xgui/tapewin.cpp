@@ -33,7 +33,9 @@ TapeWin::TapeWin(QWidget *par):QDialog(par) {
 	// clicked, not toggled: upd() writes the boxes on every tick and toggled
 	// would send each of those back as a change of the user's
 	connect(ui.cbAuto,SIGNAL(clicked(bool)),this,SLOT(setOptions()));
+	connect(ui.cbFlash,SIGNAL(clicked(bool)),this,SLOT(setOptions()));
 	connect(ui.cbFast,SIGNAL(clicked(bool)),this,SLOT(setOptions()));
+	connect(ui.cbEdge,SIGNAL(clicked(bool)),this,SLOT(setOptions()));
 	connect(ui.cbRewind,SIGNAL(clicked(bool)),this,SLOT(setOptions()));
 }
 
@@ -73,7 +75,9 @@ void TapeWin::upd(Tape* tape) {
 		ui.tpath->setText(QString::fromLocal8Bit(path));
 	}
 	ui.cbAuto->setChecked(conf.tape.autostart);
+	ui.cbFlash->setChecked(conf.tape.flash);
 	ui.cbFast->setChecked(conf.tape.fast);
+	ui.cbEdge->setChecked(conf.tape.edge);
 	ui.cbRewind->setChecked(conf.tape.rewind);
 	ui.playBut->setEnabled(got && !tape->on);
 	ui.recBut->setEnabled(got && !tape->on);
@@ -201,7 +205,9 @@ void TapeWin::doExport() {
 
 void TapeWin::setOptions() {
 	conf.tape.autostart = ui.cbAuto->isChecked() ? 1 : 0;
+	conf.tape.flash = ui.cbFlash->isChecked() ? 1 : 0;
 	conf.tape.fast = ui.cbFast->isChecked() ? 1 : 0;
+	conf.tape.edge = ui.cbEdge->isChecked() ? 1 : 0;
 	conf.tape.rewind = ui.cbRewind->isChecked() ? 1 : 0;
 	tape_apply_options(conf.zx->tape);
 }

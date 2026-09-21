@@ -168,7 +168,7 @@ int autostart_busy() {
 // loading is on: the trap reads the block without the tape moving at all, and
 // one left rolling behind it would only run itself to the end.
 static void as_start_media(Computer* comp) {
-	if ((as_kind != AS_TAPE) || conf.tape.fast) return;
+	if ((as_kind != AS_TAPE) || conf.tape.flash) return;
 	tapUserPlay(comp->tape);
 }
 

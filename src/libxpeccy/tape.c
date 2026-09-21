@@ -474,7 +474,7 @@ int tapUserPlay(Tape* tap) {
 	return tapPlay(tap);
 }
 
-// Fast loading hands a block over without the tape ever moving, so a loader
+// Flash loading hands a block over without the tape ever moving, so a loader
 // that follows the rom's part has to be given the tape at the moment it starts
 // listening: a fixed lead-in either cuts into its own set-up or lets the block
 // run past it. tapArmPlay leaves the tape standing on the block, and it is
@@ -493,7 +493,7 @@ void tapArmPlay(Tape* tap) {
 // "loading is over" from "unrelated code is also hitting this port". TZX #20 stop
 // markers and the manual Brk/Stop controls cover stopping instead.
 void tapDetectLoader(Tape* tap, int tick, int regB, int fromUser) {
-	// the arm is fast loading's own doing, so it answers whether or not "auto
+	// the arm is flash loading's own doing, so it answers whether or not "auto
 	// play / stop" is on. Stop by hand still blocks it, through tapArmPlay
 	if (!tap->on && tap->armed && fromUser) {
 		tap->armed = 0;

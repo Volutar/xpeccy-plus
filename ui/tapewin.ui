@@ -166,39 +166,93 @@ load only when it is nudged either way</string>
       </widget>
      </item>
      <item>
-      <layout class="QVBoxLayout" name="layOpts">
+      <layout class="QHBoxLayout" name="layOpts">
        <item>
-        <widget class="QCheckBox" name="cbAuto">
-         <property name="toolTip">
-          <string>Start the tape when a loader asks for it,
+        <layout class="QVBoxLayout" name="layOptsTape">
+         <item>
+          <widget class="QCheckBox" name="cbAuto">
+           <property name="toolTip">
+            <string>Start the tape when a loader asks for it,
 stop it between blocks</string>
-         </property>
-         <property name="text">
-          <string>Auto play / stop</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="cbFast">
-         <property name="toolTip">
-          <string>Hand ROM blocks straight to the machine
-instead of playing them</string>
-         </property>
-         <property name="text">
-          <string>Fast loading</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="cbRewind">
-         <property name="toolTip">
-          <string>At the end of the tape, Play or the next load starts it again.
+           </property>
+           <property name="text">
+            <string>Auto play / stop</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="cbRewind">
+           <property name="toolTip">
+            <string>At the end of the tape, Play or the next load starts it again.
 Off: the tape stops at the end</string>
-         </property>
-         <property name="text">
-          <string>Rewind at end</string>
-         </property>
-        </widget>
+           </property>
+           <property name="text">
+            <string>Rewind at end</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="layOptsTapeEnd">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="layOptsLoad">
+         <item>
+          <widget class="QCheckBox" name="cbFast">
+           <property name="toolTip">
+            <string>Run at full speed, sound off and picture held, while a loader reads the tape</string>
+           </property>
+           <property name="text">
+            <string>Fast loading</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="cbFlash">
+           <property name="toolTip">
+            <string>Hand ROM blocks straight to the machine
+instead of playing them</string>
+           </property>
+           <property name="text">
+            <string>Flash loading</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="cbEdge">
+           <property name="toolTip">
+            <string>Under fast loading, a loader waiting for the next pulse gets it at once. Not exact</string>
+           </property>
+           <property name="text">
+            <string>Edge detection</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="layOptsLoadEnd">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
        </item>
       </layout>
      </item>

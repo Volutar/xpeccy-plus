@@ -126,6 +126,7 @@ typedef struct {
 	int detectLastTick;
 	int detectLastB;
 	int detectReads;
+	int portReads;		// reads of the tape port, cleared by the one counting them per frame
 
 	long long ticksPerNsFixed;	// ticks in one ns, TAPE_RATE_BITS fraction bits
 	long long tickAcc;		// ticks not played yet, same fraction

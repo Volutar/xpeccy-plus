@@ -120,7 +120,7 @@ void saveConfig() {
 	}
 
 	fprintf(cfile,"[GENERAL]\n\n");
-	fprintf(cfile, "schema = 3\n");
+	fprintf(cfile, "schema = 4\n");
 	fprintf(cfile, "machine = %s\n", conf.macId.c_str());
 	fprintf(cfile, "lastdir = %s\n", conf.lastDir.c_str());
 	fprintf(cfile, "savepaths = %s\n", YESNO(conf.storePaths));
@@ -188,7 +188,9 @@ void saveConfig() {
 	fprintf(cfile, "\n[TAPE]\n\n");
 	fprintf(cfile, "speed = %i\n", conf.zx->tape->speed);
 	fprintf(cfile, "autoplay = %s\n", YESNO(conf.tape.autostart));
+	fprintf(cfile, "flash = %s\n", YESNO(conf.tape.flash));
 	fprintf(cfile, "fast = %s\n", YESNO(conf.tape.fast));
+	fprintf(cfile, "edge = %s\n", YESNO(conf.tape.edge));
 	fprintf(cfile, "rewind = %s\n", YESNO(conf.tape.rewind));
 	fprintf(cfile, "export.rate = %i\n", conf.tape.exp.rate);
 	fprintf(cfile, "export.bits = %i\n", conf.tape.exp.bits);
@@ -957,7 +959,9 @@ void loadConfig() {
 					break;
 				case SECT_TAPE:
 					if (pnam=="autoplay") conf.tape.autostart = arg.b;
+					if (pnam=="flash") conf.tape.flash = arg.b;
 					if (pnam=="fast") conf.tape.fast = arg.b;
+					if (pnam=="edge") conf.tape.edge = arg.b;
 					if (pnam=="rewind") conf.tape.rewind = arg.b;
 					if (pnam=="export.rate") conf.tape.exp.rate = arg.i;
 					if (pnam=="export.bits") conf.tape.exp.bits = arg.i;
@@ -985,6 +989,10 @@ void loadConfig() {
 	foreach(xRomset rs, rsListist) addRomset(rs);
 //	prfLoadAll();
 	setOutput(soutnam.c_str());
+	if (schema < 4) {			// "fast" was the rom trap until it was named flash
+		conf.tape.flash = conf.tape.fast;
+		conf.tape.fast = 0;
+	}
 	if (schema < 3) xm_over_migrate();	// a config from before the machine files
 	bool ok = false;
 	if (schema < 2) {			// a config from before the machines: bring it across

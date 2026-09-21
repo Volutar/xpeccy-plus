@@ -83,6 +83,29 @@ void vid_clear_image(void) {
 	}
 }
 
+// The border of the frame last drawn (bufimg) in one colour, the screen left as
+// it is: a still picture taken out of a frame whose border kept changing looks
+// torn. Only the modes whose border is everything around a 256x192 screen.
+void vid_flat_border(Video* vid, int idx) {
+	switch (vid->vmode) {
+		case VID_NORMAL: case VID_ULA_SCR: case VID_ALCO: case VID_HWMC: break;
+		default: return;
+	}
+	int32_t c = greyScale ? vid->gpal[idx] : vid->pal[idx];
+	int w = vid->full.x * 2;		// 2 pixels per dot
+	int x0 = vid->bord.x * 2;
+	int x1 = vid->send.x * 2;
+	for (int y = 0; y < vid->full.y; y++) {
+		int32_t* row = (int32_t*)(bufimg + y * bytesPerLine);
+		int scr = (y >= vid->bord.y) && (y < vid->send.y);
+		for (int x = 0; x < (scr ? x0 : w); x++)
+			row[x] = c;
+		if (scr)
+			for (int x = x1; x < w; x++)
+				row[x] = c;
+	}
+}
+
 // end of a raster line: move to the next row of the buffer
 void vid_line(Video* vid) {
 	if (vid->linedbl) {
@@ -94,7 +117,9 @@ void vid_line(Video* vid) {
 }
 
 void vid_frame(Video* vid) {
-	if (!vid->debug) {
+	// an undrawn frame keeps the buffers where they are, so the last picture drawn
+	// stays in bufimg for as long as the drawing is off
+	if (!vid->debug && !vid->nodraw) {
 		scrimg = curbuf ? bufb : bufa;
 		bufimg = curbuf ? bufa : bufb;
 		curbuf = !curbuf;

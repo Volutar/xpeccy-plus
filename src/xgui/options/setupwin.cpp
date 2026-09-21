@@ -947,7 +947,9 @@ void SetupWin::start() {
 	ui.cSlotName->setText(comp->slot->path);
 // tape
 	ui.cbTapeAuto->setChecked(conf.tape.autostart);
+	ui.cbTapeFlash->setChecked(conf.tape.flash);
 	ui.cbTapeFast->setChecked(conf.tape.fast);
+	ui.cbTapeEdge->setChecked(conf.tape.edge);
 	ui.cbTapeRewind->setChecked(conf.tape.rewind);
 	ui.sldTapeSpeed->setValue(comp->tape->speed);	// the readout follows in the slot
 	ui.tpathle->setText(QString::fromLocal8Bit(comp->tape->path));
@@ -1178,7 +1180,9 @@ void SetupWin::apply() {
 	sdcSetLock(comp->sdc, ui.sdlock->isChecked() ? 1 : 0);
 // tape
 	conf.tape.autostart = ui.cbTapeAuto->isChecked() ? 1 : 0;
+	conf.tape.flash = ui.cbTapeFlash->isChecked() ? 1 : 0;
 	conf.tape.fast = ui.cbTapeFast->isChecked() ? 1 : 0;
+	conf.tape.edge = ui.cbTapeEdge->isChecked() ? 1 : 0;
 	conf.tape.rewind = ui.cbTapeRewind->isChecked() ? 1 : 0;
 	comp->tape->speed = ui.sldTapeSpeed->value();
 	tape_apply_options(comp->tape);

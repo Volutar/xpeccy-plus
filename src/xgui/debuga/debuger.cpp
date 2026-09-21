@@ -1,5 +1,6 @@
 #include "xcore/xcore.h"
 #include "xcore/sound.h"
+#include "xcore/fastload.h"
 
 #include <stdio.h>
 
@@ -288,6 +289,7 @@ void DebugWin::start() {
 	blockEnd = -1;
 	save_mem_map();
 	Computer* comp = conf.zx;
+	fastload_stop(comp);		// the debugger draws the frames it steps through
 	if (!comp->vid->tail)
 		vid_dark_tail(comp->vid);
 

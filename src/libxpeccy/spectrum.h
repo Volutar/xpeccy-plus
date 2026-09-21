@@ -262,6 +262,7 @@ void comp_set_identity(Computer*, const char*, int, int);
 void compDestroy(Computer*);
 void compReset(Computer*,int);
 int compExec(Computer*);
+int comp_skip_ticks(Computer*, int);
 void comp_irq(int, void*);
 
 //void compKeyPress(Computer*, int, keyEntry*);
