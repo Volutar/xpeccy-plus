@@ -948,8 +948,7 @@ void ula_dot(Video* vid) {
 // A run of dots on a line above or below the screen: the ULA fetches nothing
 // there, so the whole stretch is border - in two colours if a write to the
 // border port is still waiting for the latch. Both ZX drawers land here.
-static int ula_run_brd(Video* vid, int k) {
-	if (!vid->vbrd) return 0;
+static int ula_fill_brd(Video* vid, int k) {
 	int x = vid->ray.x;
 	int n = k;
 	if (vid->brdcol != vid->nextbrd) {
@@ -971,6 +970,99 @@ static int ula_run_brd(Video* vid, int k) {
 	}
 	vid->atrbyte = 0xff;
 	return k;
+}
+
+// Eight dots of the screen at once. A character cell holds one byte and one
+// attribute, so the colours are worked out once and the pixels only follow the
+// bits; the ULA's own fetches still happen at the dots they belong to.
+// The drawer with the late bursts (48K/128K timings).
+static int ula_run_scr(Video* vid, int k) {
+	if (vid->snowDup || (vid->snowLow >= 0)) return 0;	// a spoilt burst goes dot by dot
+	int xs = vid->ray.x - vid->bord.x;
+	int done = 0;
+	if (xs & 7) return 0;
+	while (k >= 8) {
+		scrbyte = nxtbyte;			// dot 0 or 8: what the burst read four dots ago
+		vid->atrbyte = nxtatr;
+		if ((xs & 15) == 0) {			// even cell: the odd cell's pixel byte
+			vid->idx++;
+			adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+			nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+			vid->idx--;
+		}
+		if (vid->idx < 0x1b00) vid->idx++;
+		zx_attr_cols(vid, vid->atrbyte, &scrbyte, &ink, &pap, 0);
+		if ((xs & 15) == 0) {			// dot 1: that cell's attribute
+			adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
+			nxtatr = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+		} else {				// dots 12 and 14: the next burst
+			adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+			nxtbyte = vid->mrd(ula_burst_adr(vid, adr), vid->xptr);
+			adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
+			nxtatr = vid->mrd(ula_burst_adr(vid, adr), vid->xptr);
+			vid->snowLow = -1;
+		}
+		for (int i = 0; i < 8; i++) {
+			col = (scrbyte & 0x80) ? ink : pap;
+			scrbyte <<= 1;
+			vid_dot_full(vid, col);
+		}
+		xs += 8;
+		done += 8;
+		k -= 8;
+	}
+	return done;
+}
+
+// The same for the drawer with the single early fetch (Pentagon and the rest)
+static int nrm_run_scr(Video* vid, int k) {
+	int xs = vid->ray.x - vid->bord.x;
+	int done = 0;
+	if (xs & 7) return 0;
+	while (k >= 8) {
+		scrbyte = nxtbyte;
+		adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
+		vid->atrbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+		if (vid->idx < 0x1b00) vid->idx++;
+		zx_attr_cols(vid, vid->atrbyte, &scrbyte, &ink, &pap, 0);
+		adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+		nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);	// dot 3
+		for (int i = 0; i < 8; i++) {
+			col = (scrbyte & 0x80) ? ink : pap;
+			scrbyte <<= 1;
+			vid_dot_full(vid, col);
+		}
+		xs += 8;
+		done += 8;
+		k -= 8;
+	}
+	return done;
+}
+
+// Where a run of dots can be drawn in one go. Beside the screen the drawer
+// still fetches, but from an address that does not move while the ray is off
+// the screen - so the read happens once and the stretch is filled.
+static int ula_run(Video* vid, int k) {
+	if (vid->vbrd) return ula_fill_brd(vid, k);
+	if (vid->hbrd) return 0;			// the bursts, dot by dot
+	return ula_run_scr(vid, k);
+}
+
+static int nrm_run(Video* vid, int k) {
+	int xs, i;
+	if (vid->vbrd) return ula_fill_brd(vid, k);
+	if (vid->hbrd) {
+		xs = vid->ray.x - vid->bord.x;
+		for (i = 0; i < k; i++) {
+			if (((xs + i) & 7) == 3) {	// the same address every cell out here
+				adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+				nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+				break;
+			}
+		}
+		return ula_fill_brd(vid, k);
+	}
+	return nrm_run_scr(vid, k);
 }
 
 // alco 16col
@@ -1219,8 +1311,8 @@ void vidBreak(Video* vid) {
 
 // id,(@on),(@every_visible_dot),(@HBlank),(@LineStart),(@VBlank),(@Frame)
 static xVideoMode vidModeTab[] = {
-	{VID_NORMAL, NULL, vidDrawNormal, NULL, NULL, NULL, NULL, ula_run_brd},
-	{VID_ULA_SCR, NULL, ula_dot, NULL, NULL, NULL, NULL, ula_run_brd},
+	{VID_NORMAL, NULL, vidDrawNormal, NULL, NULL, NULL, NULL, nrm_run},
+	{VID_ULA_SCR, NULL, ula_dot, NULL, NULL, NULL, NULL, ula_run},
 	{VID_ALCO, NULL, vidDrawAlco, NULL, NULL, NULL, NULL},
 	{VID_HWMC, NULL, vidDrawHwmc, NULL, NULL, NULL, NULL},
 	{VID_ATM_EGA, NULL, vidDrawATMega, NULL, NULL, NULL, NULL},
