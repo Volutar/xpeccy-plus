@@ -60,10 +60,10 @@ int z80_mrdx(CPU* cpu, int adr, int m1) {
 	if (cpu->flgCONT)
 		cpu->xirq(IRQ_CPU_CONT, cpu->xptr);	// wait states, sampled at T1
 	cpu->t += 2;		// T1, T2
-	// the ray has to reach the moment of the transfer before it happens: the
-	// video reads the same ram as it draws, so a read or write landing early
-	// shows up on screen a couple of dots off
-	cpu->xirq(IRQ_CPU_SYNC, cpu->xptr);
+	// No sync before a read: the ray only has to be where it is for a write,
+	// which can change what the video is about to draw. A read changes
+	// nothing, and the ticks it took are counted in at the end of the
+	// instruction like the rest.
 	int r = cpu->mrd(adr, m1, cpu->xptr) & 0xff;
 	cpu->t++;		// T3
 	return r;
@@ -97,7 +97,7 @@ void z80_mwr(CPU *cpu, int adr, int data) {
 	if (cpu->flgCONT)
 		cpu->xirq(IRQ_CPU_CONT, cpu->xptr);	// wait states, sampled at T1
 	cpu->t += 2;		// T1, T2
-	cpu->xirq(IRQ_CPU_SYNC, cpu->xptr);	// ray up to the transfer, see z80_mrdx
+	cpu->xirq(IRQ_CPU_SYNC, cpu->xptr);	// the ray up to the transfer: a write can change what is drawn next
 	cpu->mwr(adr, data, cpu->xptr);
 	cpu->t++;		// T3
 }

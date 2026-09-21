@@ -335,10 +335,17 @@ void xThread::emuCycle(Computer* comp) {
 				}
 			}
 		}
-		// sound buffer update
-		while (sndNsFixed > nsPerSampleFixed) {
-			sndSync(comp);
-			sndNsFixed -= nsPerSampleFixed;
+		// sound buffer update. In fast mode there is nothing to mix - the
+		// only thing sndSync() still does there is run the GS, so a machine
+		// without one skips the call and keeps the count
+		if (conf.emu.fast && !comp->gs->enable) {
+			while (sndNsFixed > nsPerSampleFixed)
+				sndNsFixed -= nsPerSampleFixed;
+		} else {
+			while (sndNsFixed > nsPerSampleFixed) {
+				sndSync(comp);
+				sndNsFixed -= nsPerSampleFixed;
+			}
 		}
 		if (comp->flgFRM) {
 			comp->flgFRM = 0;
