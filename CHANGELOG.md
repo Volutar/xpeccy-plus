@@ -12,25 +12,20 @@ before that point is upstream's history and is not repeated here.
 ### Added
 
 - **Fast loading runs a tape through in seconds, whatever its loader.** One switch in the
-  tape player: while a loader is reading the tape the machine runs flat out with the sound off,
-  and the picture holds until a new screen has come in. Turbo loaders, Speedlock, DeciLoad and
-  OTLA all load, and a three-minute tape takes a few seconds - R-Type about four. When the tape
-  stops, the machine is back to normal speed. Two refinements sit under it in Options, both on:
-  **Flash loading** hands ROM blocks straight to the machine (what Fast loading used to mean), and
-  **Edge detection** lets the common loaders - the ROM's, Speedlock, Alkatraz and the like - have
-  each pulse without waiting for it. That last one leaves the machine not quite where a real one
-  would be; switch it off if a game does not load.
+  tape player: while a loader reads the tape the machine runs flat out and silent, and the
+  picture holds until a new screen is in - R-Type takes about four seconds. Under it in
+  Options, both on: **Flash loading** hands ROM blocks straight to the machine (what Fast
+  loading used to mean), and **Edge detection** skips the wait for each pulse in the common
+  loaders - switch that one off if a game does not load.
 
-- **The tape can be saved as a wav recording**, to play back into a real machine - the
+- **The tape can be saved as a WAV recording**, to play back into a real machine - the
   button beside Save in the tape player. The dialog sets the rate, the sample size, the level
   and the silence at either end. Recordings written by earlier versions were mistimed, too
   quiet and cut off at the end; re-export anything that would not load.
 
-- **A breakpoint can write down what it caught.** Tick Log in the breakpoint editor and
-  every hit leaves a line in the event log: where it fired, as both a cpu address and a
-  page, what the access was and the byte it carried, every register, the flags, and which
-  pages the machine had in. It goes alongside whatever else the breakpoint does, so one can
-  count and write, or stop in the debugger and write. The log itself has to be on
+- **A breakpoint can write down what it caught.** Tick Log in the breakpoint editor and every
+  hit leaves a line in the event log - where it fired, the access and its byte, the registers
+  and the pages in - alongside whatever else the breakpoint does. The log itself has to be on
   (Xpeccy+ -> General).
 
 - **Alt+T switches the turbo the machine really has** - 7 MHz on a ZS Scorpion, ATM Turbo 2+,
@@ -82,19 +77,16 @@ before that point is upstream's history and is not repeated here.
 
 - **Pentagon starts with the memory pattern a real one comes up with**, specks and all.
 
-- **`--wav-out FILE`** records the sound to a wav file from startup, the same recording the
+- **`--wav-out FILE`** records the sound to a WAV file from startup, the same recording the
   hotkey makes.
 
 ### Changed
 
 - **One slider for the machine's speed**, on the Machine page, with Alt+Plus and Alt+Minus on
-  the keypad. Left of x1 everything slows down together, picture and sound, the way a tape
-  played slower does. Right of it the CPU runs up to eight times faster while the picture
-  keeps its rate, which is what overclocking a machine does; a board already running its own
-  turbo is offered less room. The speed is never remembered - a machine always comes up on its
-  own clock - and the base clock itself has moved to Advanced settings. Past 14 MHz no real
-  machine of these ever ran, so software that times itself against the picture may not keep up:
-  that speed is there to try, not guaranteed.
+  the keypad. Left of x1 picture and sound slow down together; right of it the CPU runs up to
+  eight times faster at the same frame rate, the way an overclocked machine does. It always
+  starts at x1, and the base clock has moved to Advanced settings. Past 14 MHz, software that
+  times itself against the picture may not keep up.
 
 - **The emulation is up to three times faster**, with nothing it emulates done differently -
   every frame, sample and byte of memory comes out as before. Fast forward reaches about x18 on
@@ -105,7 +97,7 @@ before that point is upstream's history and is not repeated here.
   deck's - record, play, rewind, stop, eject - in one set of icons; the image it holds is named
   across the top with Open and Save beside it; Auto play / stop, Fast loading and Rewind at end
   are there rather than only in Options; and a block can be moved, dropped or copied to a disk
-  straight from the list. Options keeps the same page, with an eject button of its own.
+  straight from the list.
 
 - **"Rewind at end" starts off**, and when it is on it winds the tape back for the next load as
   well as for the Play button - so loading the same tape again after a reset just works.
@@ -132,7 +124,6 @@ before that point is upstream's history and is not repeated here.
 
 - **The colors a machine starts with are the Xpeccy+ palette** - the one that shipped as a
   preset file, built in now and named `Xpeccy+` in the palette list where it said `default`.
-  Anything set to that preset comes up on it.
 
 ### Removed
 
@@ -144,127 +135,71 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
-- **Auto play / stop stops the tape after a game's own loader too**, not only after the ROM's -
-  Joe Blade 2 ran its tape on to the end. Technician Ted, which reads half a block through the
-  ROM and the rest itself, loads with the automatics on.
+- **More tapes load.** Loaders that time the tape themselves - ATF, Deflektor, Technician Ted -
+  load now, and so do high-speed DeciLoad tapes, on a Profi as well. A tape that starts itself
+  no longer eats the pilot tone of the next block. *(thanks to Volutar for the last one)*
 
-- **ATM Turbo 2+ starts disks and tapes itself.** Opening a disk on it no longer switches the
-  machine to a Pentagon.
+- **Stop stops the tape**, and it stays stopped until you press play, rewind it or put another
+  one in. Auto play / stop also stops it after a game's own loader, not only after the ROM's.
 
-- **A breakpoint on the interrupt no longer stops the machine dead.** Unless it was set to
-  open the debugger, the machine stood on the same interrupt and never went on.
+- **The tape player follows the tape.** A double-clicked block is the one that loads, a tape
+  opened while another plays starts from its beginning, and starting a tape with Auto play /
+  stop off presses play. The block mark and the progress bar keep up after a rewind or a stop,
+  and the record button records.
 
-- **The mouse is usable on every host, and moves with the hand.** On some machines the
-  emulated pointer shot off in one direction and no sensitivity setting would tame it - a host
-  that puts the pointer straight back where its device holds it, such as a virtual machine or a
-  remote desktop, had every move counted many times over. It also no longer jumps when the mouse
-  is grabbed, and one move of the hand takes it the same way across the monitor whatever size
-  the picture is drawn at, so sensitivity means the same thing at every zoom - and its slider
-  now has that in the middle.
+- **A WAV is read as the tape it is a recording of**, in under a second. Standard blocks come
+  back as their bytes, named in the tape map and ready to save as `.tap`; a turbo loader is
+  kept as the signal. Any sample size, float and stereo included, and opening one replaces the
+  tape rather than adding to it.
 
-- **A tape block whose name is made of BASIC tokens or graphics reads as a name again.**
-  Such a name showed as an empty line in the block list. The tokens are spelled out now and
-  the graphics drawn; the name itself is untouched, so a block copied to a disk keeps the
-  bytes it had.
+- **A tape block named in BASIC tokens or graphics** showed an empty name in the block list.
+  The tokens are spelled out and the graphics drawn now.
 
-- **Opening a tape while another one is playing works.** The deck kept running over the
-  new image, which then began in the middle of its first block - the load either missed
-  that block or never started at all.
-
-- **Tapes with a high-speed loader load.** A DeciLoad tape - 8b/10b encoding, a whole
-  game in under a minute - did not load at all: the waveform it is recorded as was read
-  a fraction short, and the tape then stopped where the loader took over instead of
-  running on into it. Nothing has to be switched off for one now, and a Profi - where
-  one bit of the tape port read back wrong on top of all that - loads them as well.
-
-- **Applying the settings is quick again**, and the title bars take the new colour at
-  once. Every Apply was restyling the whole interface from scratch, which held the
-  settings window up for about a second; on Windows 10 the title bars changed colour
-  only after that window was closed.
-
-- **ZX Evolution kept switching its own clock** between 3.5 and 7 MHz while it ran.
-
-- **The beeper could stay switched on across a reset or a snapshot.** A program that
-  left it on handed its level to whatever ran next, which sat on the sound and could
-  mislead a loader listening to the tape input. *(thanks to Volutar)*
-
-- **The beeper was too quiet beside the AY.** It had a quarter of the room the sound
-  chips had, so beeper music sat under anything an AY was playing. It gets half now.
+- **The tape no longer sits on the sound.** A pause between blocks is silent instead of holding
+  a level, and a machine with no tape is silent, so the headroom goes to everything else.
   *(thanks to Volutar)*
 
-- **Stop now stops the tape.** It used to start again by itself a moment later, because the
-  program being loaded was still asking for it, and with fast loading the button was greyed out
-  altogether although the tape was being read block after block. The tape stays where you
-  stopped it until you press play, rewind it or put another one in.
+- **The beeper** gets half the room the sound chips have instead of a quarter, and is let go on
+  a reset or a snapshot rather than handed on to whatever runs next. *(thanks to Volutar)*
 
-- **Choosing a block in the tape player loaded the wrong one.** Double-clicking a block while
-  the machine was already waiting for a tape swallowed it and handed the loader everything
-  after it instead, so the first block never arrived and the load failed. A tape that starts
-  under a loader already listening no longer trips over itself either.
+- **Every AY and YM played slightly sharp.** The pitch drops a fraction of a semitone onto
+  where it belongs.
 
-- **Opening a tape with "Auto play / stop" turned off left the machine waiting for ever** when
-  fast loading was off as well: nothing ever pressed play. Starting a tape now presses it.
+- **ZX Evolution had no sound from the AY ports** unless a program used `#FFFD` and `#BFFD`
+  exactly, which a TurboSound FM player does not. It decodes them the way its firmware does now.
 
-- **The tape player follows the tape.** The mark on the block being played stayed behind after
-  a rewind, and the progress bar kept its last reading once the tape stopped. Recording from
-  the player's own button works too.
-
-- **Tapes with a loader of their own load again.** The tape ran half a percent fast, which is
-  enough for a loader that times the pilot tone against a fixed length to refuse it outright -
-  ATF did. The last sound on a tape was cut a moment short, which leaves a loader waiting for
-  the end of its data for good - Deflektor did. And a tape that starts itself no longer begins
-  the next block before the ROM asks for it, which used to eat most of that block's pilot tone.
-  *(thanks to Volutar for the last one)*
-
-- **A wav is read as the tape it is a recording of.** It used to come out as one unplayable
-  block after minutes of reading; 800 seconds of cassette now take under a second. Standard
-  ZX blocks are decoded back into their bytes and carry their names in the tape map, a turbo
-  loader is kept as the signal itself, and a tape that decoded whole can be saved as `.tap`.
-  Opening a wav replaces the tape instead of adding to the end of it, and 8, 24 and 32 bit,
-  float and stereo recordings are read as well as 16 bit mono.
-
-- **A pause on the tape held a level instead of being silent**, which put a constant
-  offset on the sound between blocks and clicked at each end of it. *(thanks to Volutar)*
-
-- **The tape input sat on the sound even with no tape**, putting half its volume into
-  the mix as a constant and taking that much headroom from everything else. A machine
-  with nothing running is silent now. *(thanks to Volutar)*
+- **Z80 details.** `SCF` and `CCF` set the two undocumented flag bits the way a Zilog Z80 does,
+  `BIT n,r` and `CPI` no longer leave a wrong value in them, and `RETI` puts the interrupt
+  state back the way `RETN` does.
 
 - **`IN #FE` bit 6** reads back the machine's own last `OUT #FE`, which is how a program tells
   an issue 2 board from an issue 3 one. Which board a machine is is a setting on the Machine
   page, and the +2A/+3 feed nothing back at all, as they really do.
 
-- **`SCF` and `CCF`** set the two undocumented flag bits the way a Zilog Z80 does, which depends
-  on whether the instruction before them wrote the flags at all.
+- **Snapshots come back whole.** A saved `.sna` no longer loses BC', DE', HL' or the top bit of
+  R, nor overwrites two bytes of a 48K's stack. A `.z80` saved mid-frame starts with the beam
+  where it was, and one carrying a ROM page keeps every page after it.
 
-- **`BIT n,r` and `CPI`** left the wrong value in those same two bits.
+- **A snapshot opened on ZX Evolution (BaseConf) or ATM Turbo 2+** landed in the machine's boot
+  menu instead of running, `.sna` and `.z80` alike.
 
-- **`RETI`** puts the interrupt state back, the way `RETN` already did here.
+- **RZX recordings play again**, on Windows too, and on the machine they were made on.
 
 - **A saved `.wav`** carried a wrong length in its header, which some players refuse to open.
 
-- **RZX recordings play again.** On Windows the scratch file they unpack into was asked for in
-  the root of the system drive; and a recording now runs on the machine it was made on, which is
-  read from the file instead of being whatever happened to be running.
+- **ATM Turbo 2+ starts disks and tapes itself.** Opening a disk on it no longer switches the
+  machine to a Pentagon.
 
-- **A saved `.sna` was losing BC', DE' and HL'** - all three went into the same place in the
-  header. Taking a 48K snapshot also left two bytes of the running machine's stack overwritten,
-  and the R register went out with the wrong top bit.
+- **ZX Evolution kept switching its own clock** between 3.5 and 7 MHz while it ran.
 
-- **A `.z80` saved in the middle of a frame** starts with the beam where it was saved, and one
-  carrying a ROM page beside its RAM no longer loses every page after it.
-
-- **The right-click menu no longer picks an item by itself** when the mouse moved a little while
-  the button was going down - usually Open, and the file dialog came up uninvited.
+- **ZX Evolution and TSConf lost their NVRAM settings on every start** - the boot target, the
+  TR-DOS drive and autoboot came up stock each launch, TSConf in TR-DOS. Whatever was saved
+  before is gone: set it once more and it stays.
 
 - **A program that drives the SD card itself got nowhere.** The card answered as if it were past
   its idle state, and a single-block read following a multi-block one never stopped. A card
   image and a folder served as one are both affected. *(thanks to Alexander Nihirash for the
   card contents and the test tool)*
-
-- **ZX Evolution and TSConf lost their NVRAM settings on every start** - the boot target, the
-  TR-DOS drive and autoboot came up stock each launch, TSConf in TR-DOS. Whatever was saved
-  before is gone: set it once more and it stays.
 
 - **What you change on a machine now stays with it** across a switch to another machine and
   back. It lives in a file of the machine's own, so an update can still fix the machine itself
@@ -274,14 +209,18 @@ before that point is upstream's history and is not repeated here.
 - **Saving a machine under a name that is already taken** made a second machine with the same
   name. Saving now always makes a machine of your own and asks for a name nothing else wears.
 
-- **A snapshot opened on ZX Evolution (BaseConf) or ATM Turbo 2+** landed in the machine's boot
-  menu instead of running, `.sna` and `.z80` alike.
+- **A breakpoint on the interrupt no longer stops the machine dead.** Unless it was set to
+  open the debugger, the machine stood on the same interrupt and never went on.
 
-- **ZX Evolution had no sound from the AY ports** unless a program used `#FFFD` and `#BFFD`
-  exactly, which a TurboSound FM player does not. It decodes them the way its firmware does now.
+- **The mouse moves with the hand on every host.** It no longer shoots off in one direction in
+  a virtual machine or over a remote desktop, nor jumps when it is grabbed, and a sensitivity
+  setting means the same at every zoom.
 
-- **Every AY and YM played slightly sharp.** The pitch drops a fraction of a semitone onto
-  where it belongs.
+- **Applying the settings is quick again**, and on Windows 10 the title bars take a new color
+  at once instead of after the settings window closes.
+
+- **The right-click menu no longer picks an item by itself** when the mouse moved a little while
+  the button was going down - usually Open, and the file dialog came up uninvited.
 
 - **A window opened from the settings**, such as the advanced machine settings, no longer lets
   the settings behind it close first.
@@ -797,7 +736,7 @@ Entries marked **(Volutar)** are the work of [Volutar](https://github.com/Voluta
 - **Disk images with more than 80 tracks**, in both `.trd` and `.scl`. (Volutar)
 
 - **macOS builds again, and stays that way** - every change is built, started and packed into a
-  dmg on an Apple silicon runner.
+  DMG on an Apple silicon runner.
 
 - **The debugger's panels can be arranged freely** (experimental). Registers, disassembler,
   memory map and stack are dock panels now, so any of them can be dragged, split, tabbed or put
@@ -1013,7 +952,7 @@ SAM style. The base was build `20260807`.
   second `default` layout and profile, and left the windows holding values from the first
   configuration. The option is read before anything is initialized now.
 
-- **Windows with no icon of their own** - options, tape, rzx, watcher - had none at all on X11,
+- **Windows with no icon of their own** - options, tape, RZX, watcher - had none at all on X11,
   where there is no exe resource to fall back to. The application now carries an icon, which Qt
   hands to every window that does not set one. The Linux desktop entry also points at a path the
   icon theme spec knows, `share/icons/hicolor/128x128/apps`, instead of a flat `share/icons`.

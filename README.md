@@ -8,7 +8,7 @@ emulation code comes from that project. This fork does not claim authorship of i
 Current version: **2026.4.1**. Forked from upstream build `20260807`.
 
 Windows, Linux and macOS are built by CI on every nightly and off every release tag. The
-macOS build is arm64 only and carries no developer signature, so a downloaded dmg has to be
+macOS build is arm64 only and carries no developer signature, so a downloaded DMG has to be
 allowed through Gatekeeper by hand.
 
 ## Why a fork
@@ -54,9 +54,13 @@ On top of upstream build `20260807`:
 - **Media that starts itself.** A tape or disk opens and runs, from the menu, a drop or the
   command line, on a machine that can run it. A host folder can stand in for an SD card or
   a hard disk.
-- **A debugger worth using.** Movable panels, conditional breakpoints, a listing that reads
-  like one, a memory heat map, register layouts to choose from, and a screen and a sound chip
-  panel that detach into windows of their own.
+- **Tapes.** Fast loading that works whatever the loader, a WAV read back as the tape it
+  records and a tape written out as one, and a player laid out like a deck.
+- **Speed.** Up to three times faster with nothing emulated differently - fast forward at
+  x18 to x30 on most machines - and one slider from slow motion to an overclocked CPU.
+- **A debugger worth using.** Movable panels, conditional breakpoints that can log, a listing
+  that reads like one, a memory heat map, register layouts to choose from, and a screen and a
+  sound chip panel that detach into windows of their own.
 - **Sound.** The FM half of TurboSound runs on ymfm, latency looks after itself, and the mix
   can be filtered.
 - **Snapshots.** Saved as `.z80` as well as `.sna`, and loaded with the beam where it stood.
