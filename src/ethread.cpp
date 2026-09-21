@@ -519,6 +519,7 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	if (!comp) return 0;
 	blockSignals(true);
 	setOutput("NULL");
+	pacingClose();		// the budget is handed out here, not by the timer
 	conf.emu.pause = 0;
 	// warm up: a tape or disk being started, a demo getting to its part
 	conf.emu.fast = 1;
