@@ -320,8 +320,10 @@ void xThread::emuCycle(Computer* comp) {
 			}
 			sndNsFixed += NS_TO_FIXED(tm);
 			// tape trap	TODO: rework it as a system breakpoint
-			int pc = cpu_get_pc(comp->cpu);
+			// the rom check first: it is three flags, where asking the cpu for
+			// its pc is a call, and this runs on every instruction
 			if (zx_rom_active(comp)) {
+				int pc = cpu_get_pc(comp->cpu);
 				if ((pc == 0x56c) || (pc == 0x5e7)) {	// load: ix:addr, de:len (0x580 ?) 56c/559
 					tap_catch_load(comp, pc == 0x56c);
 				} else if (pc == 0x4d0) {				// save: ix:addr, de:len, a:block type(b7), hl:pilot len (1f80/0c98)?

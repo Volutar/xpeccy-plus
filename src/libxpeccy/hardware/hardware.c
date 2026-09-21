@@ -71,12 +71,14 @@ int stdMRd(Computer* comp, int adr, int m1) {
 			comp->hw->mapMem(comp);
 		}
 	}
-	return memRd(comp->mem, adr & 0xffff) & 0xff;
+	// the page is in hand, so the read goes straight at it rather than
+	// through memRd(), which would look the same page up again
+	return pg->rd ? (pg->rd(adr & 0xffff, pg->data) & 0xff) : 0xff;
 }
 
 void stdMWr(Computer *comp, int adr, int val) {
 	pg = mem_get_page(comp->mem, adr);	// = &comp->mem->map[(adr >> 8) & 0xff];
-	memWr(comp->mem,adr,val);
+	if (pg->wr) pg->wr(adr, val, pg->data);
 }
 
 // io
