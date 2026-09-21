@@ -203,6 +203,53 @@ static inline void ay_tone_n(aymChan* ch, int k) {
 		ch->lev ^= 1;
 }
 
+// The noise generator is a 17-bit shift register fed back with an XNOR, which
+// is affine over GF(2): with a constant 1 carried as bit 17 it is a matrix, and
+// n steps are the matrix to the n-th power. ay_lfsr_pow[k] is the 2^k-th power,
+// held as the images of the 18 state bits. It matters right after a reset,
+// where the noise period is one tick and a chip left alone in fast mode would
+// otherwise be stepped three and a half million times a second.
+#define AY_LFSR_BITS	18
+static unsigned int ay_lfsr_pow[32][AY_LFSR_BITS];
+static int ay_lfsr_ready = 0;
+
+static unsigned int ay_lfsr_apply(const unsigned int* m, unsigned int s) {
+	unsigned int r = 0;
+	for (int i = 0; i < AY_LFSR_BITS; i++)
+		if (s & (1u << i)) r ^= m[i];
+	return r;
+}
+
+static void ay_lfsr_init(void) {
+	int i, k;
+	for (i = 0; i < AY_LFSR_BITS; i++) {		// one step, bit by bit
+		unsigned int s = 1u << i;
+		unsigned int r;
+		if (i == 17) {
+			r = (1u << 17) | 1u;			// the constant stays, and is the XNOR's 1
+		} else {
+			r = (s << 1) & 0x1ffff;
+			if ((i == 13) || (i == 16)) r |= 1u;
+		}
+		ay_lfsr_pow[0][i] = r;
+	}
+	for (k = 1; k < 32; k++)
+		for (i = 0; i < AY_LFSR_BITS; i++)
+			ay_lfsr_pow[k][i] = ay_lfsr_apply(ay_lfsr_pow[k - 1], ay_lfsr_pow[k - 1][i]);
+	ay_lfsr_ready = 1;
+}
+
+// the register's low 17 bits after n steps; what lies above them is shifted
+// out by the steps that follow
+static int ay_lfsr_jump(int step, unsigned int n) {
+	unsigned int s = ((unsigned int)step & 0x1ffff) | (1u << 17);
+	int k;
+	if (!ay_lfsr_ready) ay_lfsr_init();
+	for (k = 0; n; k++, n >>= 1)
+		if (n & 1) s = ay_lfsr_apply(ay_lfsr_pow[k], s);
+	return (int)(s & 0x1ffff);
+}
+
 // cnt ticks at once, the same as calling ay_tick() cnt times: the channels do
 // not touch each other, so each is carried through its own wraps in one go
 static void ay_tick_n(aymChip* ay, int cnt) {
@@ -212,6 +259,12 @@ static void ay_tick_n(aymChip* ay, int cnt) {
 	ay_tone_n(&ay->chanC, cnt);
 	n = ay_count(&ay->chanN, cnt);
 	if (n > 0) {
+		// a long run is jumped to 32 short of its end, and the last 32 are
+		// stepped: those are what the whole 32 bits of the register hold
+		if (n > 64) {
+			ay->chanN.step = ay_lfsr_jump(ay->chanN.step, n - 32);
+			n = 32;
+		}
 		while (n-- > 0)
 			ay->chanN.step = (ay->chanN.step << 1) | ((((ay->chanN.step >> 13) ^ (ay->chanN.step >> 16)) & 1) ^ 1);
 		ay->chanN.lev = (ay->chanN.step >> 16) & 1;
