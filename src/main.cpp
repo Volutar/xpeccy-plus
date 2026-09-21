@@ -386,6 +386,7 @@ int main(int ac,char** av) {
 	int bnHash = 0;
 	const char* bnProf = NULL;
 	const char* bnShot = NULL;
+	int bnNodraw = 0;
 #ifdef __APPLE__
 	int style = 0;
 #endif
@@ -402,6 +403,8 @@ int main(int ac,char** av) {
 			bnFull = 1;
 		} else if (!strcmp(parg,"--bench-hash")) {
 			bnHash = 1;
+		} else if (!strcmp(parg,"--bench-nodraw")) {
+			bnNodraw = 1;
 		} else if (!strcmp(parg,"--panic")) {
 			compflags |= CFLG_PANIC;
 		} else if (!strcmp(parg,"--autostart") || !strcmp(parg,"--no-autostart")) {
@@ -531,7 +534,7 @@ int main(int ac,char** av) {
 	}
 #endif
 	if (bnFrames > 0) {
-		ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot);
+		ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot, bnNodraw);
 		pacingClose();
 		sndClose();
 		log_done();

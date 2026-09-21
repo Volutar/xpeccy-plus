@@ -514,7 +514,7 @@ static unsigned long long bench_mix(unsigned long long h, const unsigned char* p
 // a budget of 256 samples per cycle, the way the pacer hands them out.
 // hash folds every finished frame and every sample into one number, so two
 // builds can be shown to run the machine identically.
-int xThread::bench(int frames, int skip, int full, int hash, const char* prof, const char* shot) {
+int xThread::bench(int frames, int skip, int full, int hash, const char* prof, const char* shot, int nodraw) {
 	Computer* comp = conf.zx;
 	if (!comp) return 0;
 	blockSignals(true);
@@ -531,6 +531,7 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 		emu_unlock();
 	}
 	conf.emu.fast = full ? 0 : 1;
+	if (nodraw) comp->vid->nodraw = 1;	// what the picture itself costs
 #ifdef _WIN32
 	benchProf* bp = NULL;
 	HANDLE pth = NULL;
