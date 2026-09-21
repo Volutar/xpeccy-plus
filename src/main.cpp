@@ -246,8 +246,10 @@ int main(int ac,char** av) {
 			cli_astart = 1;
 		} else if (!strcmp(earg, "--no-autostart")) {
 			cli_astart = 0;
+#ifdef XBENCH
 		} else if (!strcmp(earg, "--bench")) {
 			xhost_time_fixed = 1790000000;	// the machines are built below: freeze their clock first
+#endif
 		} else if (!strcmp(earg, "-m") || !strcmp(earg, "--machine")
 				|| !strcmp(earg, "-p") || !strcmp(earg, "--profile")) {
 			pinned = true;
@@ -534,7 +536,12 @@ int main(int ac,char** av) {
 	}
 #endif
 	if (bnFrames > 0) {
+#ifdef XBENCH
 		ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot, bnNodraw);
+#else
+		(void)bnSkip; (void)bnFull; (void)bnHash; (void)bnProf; (void)bnShot; (void)bnNodraw;
+		xlog(XLG_APP, XLL_ERROR, "--bench is not in a release build");
+#endif
 		pacingClose();
 		sndClose();
 		log_done();

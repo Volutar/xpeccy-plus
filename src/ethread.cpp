@@ -471,6 +471,8 @@ void xThread::run() {
 	exit(0);
 }
 
+#ifdef XBENCH
+
 // Headless benchmark (--bench): runs the machine on this thread with no window,
 // the way run() does, and reports emulated frames per second of host time.
 // full = 0 is fast mode (no sound mixing), full = 1 mixes sound as real time
@@ -652,3 +654,5 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	fflush(stdout);
 	return done;
 }
+
+#endif
