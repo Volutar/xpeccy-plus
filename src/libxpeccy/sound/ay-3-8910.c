@@ -176,14 +176,76 @@ void ay_tick(aymChip* ay) {
 	}
 }
 
+// k ticks of ay_tick() on one counter: how many times it wrapped, with cnt
+// left where k single ticks would leave it. Most calls wrap nothing.
+static inline int ay_count(aymChan* ch, int k) {
+	int c = ch->cnt;
+	int p = ch->per;
+	int d = (c + 1 >= p) ? 1 : p - c;	// ticks to the next wrap
+	if (k < d) {
+		ch->cnt = c + k;
+		return 0;
+	}
+	k -= d;
+	if (k < p) {
+		ch->cnt = k;
+		return 1;
+	}
+	ch->cnt = k % p;
+	return 1 + k / p;
+}
+
+static inline void ay_tone_n(aymChan* ch, int k) {
+	if (ay_count(ch, k) & 1)
+		ch->lev ^= 1;
+}
+
+// cnt ticks at once, the same as calling ay_tick() cnt times: the channels do
+// not touch each other, so each is carried through its own wraps in one go
+static void ay_tick_n(aymChip* ay, int cnt) {
+	int n;
+	ay_tone_n(&ay->chanA, cnt);
+	ay_tone_n(&ay->chanB, cnt);
+	ay_tone_n(&ay->chanC, cnt);
+	n = ay_count(&ay->chanN, cnt);
+	if (n > 0) {
+		while (n-- > 0)
+			ay->chanN.step = (ay->chanN.step << 1) | ((((ay->chanN.step >> 13) ^ (ay->chanN.step >> 16)) & 1) ^ 1);
+		ay->chanN.lev = (ay->chanN.step >> 16) & 1;
+	}
+	n = ay_count(&ay->chanE, cnt);
+	// a held envelope (step 0) wraps without changing anything
+	while ((n-- > 0) && ay->chanE.step) {
+		ay->chanE.vol += ay->chanE.step;
+		if (ay->chanE.vol & ~31) {				// 32 || -1, as in ay_tick()
+			if (ay->eForm & 8) {
+				if (ay->eForm & 1) {
+					ay->chanE.vol -= ay->chanE.step;
+					ay->chanE.step = 0;
+					if (ay->eForm & 2) {
+						ay->chanE.vol ^= 0x1f;
+					}
+				} else if (ay->eForm & 2) {
+					ay->chanE.step = -ay->chanE.step;
+					ay->chanE.vol += ay->chanE.step;
+				} else {
+					ay->chanE.vol &= 0x1f;
+				}
+			} else {
+				ay->chanE.vol = 0;
+				ay->chanE.step = 0;
+			}
+		}
+	}
+}
+
 void ay_sync(aymChip* ay, int ns) {
 	if ((ay->tickFx < 1) || (ns < 1)) return;
 	ay->tickAcc += (long long)ns * ay->tickFx;
 	long long cnt = ay->tickAcc >> 32;
 	ay->tickAcc &= 0xffffffffLL;
-	while (cnt-- > 0) {
-		ay_tick(ay);
-	}
+	if (cnt > 0)
+		ay_tick_n(ay, (int)cnt);
 }
 
 sndPair ay_mix_stereo(int volA, int volB, int volC, int id, int sep) {
