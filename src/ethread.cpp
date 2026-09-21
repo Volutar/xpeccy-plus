@@ -420,6 +420,22 @@ void xThread::emuCycle(Computer* comp) {
 	comp->flgNMIRQ = 0;
 }
 
+// a recording opened since the last cycle starts playing here
+void xThread::rzx_begin(Computer* comp) {
+#if HAVEZLIB
+	if (comp->rzx.start) {
+		comp->rzx.start = 0;
+		comp->rzx.play = 1;
+		comp->rzx.fCount = 0;
+		comp->rzx.fCurrent = 0;
+		rewind(comp->rzx.file);
+		rzxGetFrame(comp);
+	}
+#else
+	(void)comp;
+#endif
+}
+
 void xThread::run() {
 	Computer* comp;
 	conf.snd.need = 0;		// reset sound buffer
@@ -430,16 +446,7 @@ void xThread::run() {
 		emu_lock();
 		comp = conf.zx;
 		if (comp) {
-#if HAVEZLIB
-			if (comp->rzx.start) {
-				comp->rzx.start = 0;
-				comp->rzx.play = 1;
-				comp->rzx.fCount = 0;
-				comp->rzx.fCurrent = 0;
-				rewind(comp->rzx.file);
-				rzxGetFrame(comp);
-			}
-#endif
+			rzx_begin(comp);
 			if (!conf.emu.pause) {
 				emuCycle(comp);
 			}
@@ -530,6 +537,7 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	setOutput("NULL");
 	pacingClose();		// the budget is handed out here, not by the timer
 	conf.emu.pause = 0;
+	rzx_begin(comp);
 	// warm up: a tape or disk being started, a demo getting to its part
 	conf.emu.fast = 1;
 	int f0 = conf.vid.fcount;
