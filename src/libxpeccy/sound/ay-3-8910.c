@@ -11,6 +11,7 @@ static int ayDACvol[32] = {0x0000,0x0000,0x00D0,0x00D0,0x0130,0x0130,0x01BC,0x01
                     0x2417,0x2417,0x2D54,0x2D54,0x35E8,0x35E8,0x3FFF,0x3FFF};
 
 void ay_reset(aymChip* chip) {
+	chip->pendNs = 0;
 	memset(chip->reg, 0x00, 256);
 	aymResetChan(&chip->chanA);
 	aymResetChan(&chip->chanB);
@@ -23,6 +24,7 @@ void ay_reset(aymChip* chip) {
 
 int ay_rd(aymChip* ay, int adr) {
 	unsigned char res = 0xff;
+	ay_flush(ay);
 	if (adr & 1) {
 		switch(ay->curReg & 0x0f) {					// AY:16 registers + mirrors
 			case 14:
@@ -126,6 +128,7 @@ void ay_set_reg(aymChip* chip, int val) {
 }
 
 void ay_wr(aymChip* chip, int adr, int val) {
+	ay_flush(chip);
 	if (adr & 1) {								// set current reg
 		chip->curReg = val & 0x0f;					// AY:16 registers + mirrors
 	} else {								// write data
@@ -176,14 +179,144 @@ void ay_tick(aymChip* ay) {
 	}
 }
 
-void ay_sync(aymChip* ay, int ns) {
+// k ticks of ay_tick() on one counter: how many times it wrapped, with cnt
+// left where k single ticks would leave it. Most calls wrap nothing.
+static inline int ay_count(aymChan* ch, int k) {
+	int c = ch->cnt;
+	int p = ch->per;
+	int d = (c + 1 >= p) ? 1 : p - c;	// ticks to the next wrap
+	if (k < d) {
+		ch->cnt = c + k;
+		return 0;
+	}
+	k -= d;
+	if (k < p) {
+		ch->cnt = k;
+		return 1;
+	}
+	ch->cnt = k % p;
+	return 1 + k / p;
+}
+
+static inline void ay_tone_n(aymChan* ch, int k) {
+	if (ay_count(ch, k) & 1)
+		ch->lev ^= 1;
+}
+
+// The noise generator is a 17-bit shift register fed back with an XNOR, which
+// is affine over GF(2): with a constant 1 carried as bit 17 it is a matrix, and
+// n steps are the matrix to the n-th power. ay_lfsr_pow[k] is the 2^k-th power,
+// held as the images of the 18 state bits. It matters right after a reset,
+// where the noise period is one tick and a chip left alone in fast mode would
+// otherwise be stepped three and a half million times a second.
+#define AY_LFSR_BITS	18
+static unsigned int ay_lfsr_pow[32][AY_LFSR_BITS];
+static int ay_lfsr_ready = 0;
+
+static unsigned int ay_lfsr_apply(const unsigned int* m, unsigned int s) {
+	unsigned int r = 0;
+	for (int i = 0; i < AY_LFSR_BITS; i++)
+		if (s & (1u << i)) r ^= m[i];
+	return r;
+}
+
+static void ay_lfsr_init(void) {
+	int i, k;
+	for (i = 0; i < AY_LFSR_BITS; i++) {		// one step, bit by bit
+		unsigned int s = 1u << i;
+		unsigned int r;
+		if (i == 17) {
+			r = (1u << 17) | 1u;			// the constant stays, and is the XNOR's 1
+		} else {
+			r = (s << 1) & 0x1ffff;
+			if ((i == 13) || (i == 16)) r |= 1u;
+		}
+		ay_lfsr_pow[0][i] = r;
+	}
+	for (k = 1; k < 32; k++)
+		for (i = 0; i < AY_LFSR_BITS; i++)
+			ay_lfsr_pow[k][i] = ay_lfsr_apply(ay_lfsr_pow[k - 1], ay_lfsr_pow[k - 1][i]);
+	ay_lfsr_ready = 1;
+}
+
+// the register's low 17 bits after n steps; what lies above them is shifted
+// out by the steps that follow
+static int ay_lfsr_jump(int step, unsigned int n) {
+	unsigned int s = ((unsigned int)step & 0x1ffff) | (1u << 17);
+	int k;
+	if (!ay_lfsr_ready) ay_lfsr_init();
+	for (k = 0; n; k++, n >>= 1)
+		if (n & 1) s = ay_lfsr_apply(ay_lfsr_pow[k], s);
+	return (int)(s & 0x1ffff);
+}
+
+// cnt ticks at once, the same as calling ay_tick() cnt times: the channels do
+// not touch each other, so each is carried through its own wraps in one go
+static void ay_tick_n(aymChip* ay, int cnt) {
+	int n;
+	ay_tone_n(&ay->chanA, cnt);
+	ay_tone_n(&ay->chanB, cnt);
+	ay_tone_n(&ay->chanC, cnt);
+	n = ay_count(&ay->chanN, cnt);
+	if (n > 0) {
+		// a long run is jumped to 32 short of its end, and the last 32 are
+		// stepped: those are what the whole 32 bits of the register hold
+		if (n > 64) {
+			ay->chanN.step = ay_lfsr_jump(ay->chanN.step, n - 32);
+			n = 32;
+		}
+		while (n-- > 0)
+			ay->chanN.step = (ay->chanN.step << 1) | ((((ay->chanN.step >> 13) ^ (ay->chanN.step >> 16)) & 1) ^ 1);
+		ay->chanN.lev = (ay->chanN.step >> 16) & 1;
+	}
+	n = ay_count(&ay->chanE, cnt);
+	// a held envelope (step 0) wraps without changing anything
+	while ((n-- > 0) && ay->chanE.step) {
+		ay->chanE.vol += ay->chanE.step;
+		if (ay->chanE.vol & ~31) {				// 32 || -1, as in ay_tick()
+			if (ay->eForm & 8) {
+				if (ay->eForm & 1) {
+					ay->chanE.vol -= ay->chanE.step;
+					ay->chanE.step = 0;
+					if (ay->eForm & 2) {
+						ay->chanE.vol ^= 0x1f;
+					}
+				} else if (ay->eForm & 2) {
+					ay->chanE.step = -ay->chanE.step;
+					ay->chanE.vol += ay->chanE.step;
+				} else {
+					ay->chanE.vol &= 0x1f;
+				}
+			} else {
+				ay->chanE.vol = 0;
+				ay->chanE.step = 0;
+			}
+		}
+	}
+}
+
+// The counters are only ever looked at when a register is read or written and
+// when a sample is taken, so the time in between is kept and counted in one go
+// at the next of those. The arithmetic is linear - the ticks land on the same
+// side of every wrap either way - so the chip comes out in the same state.
+void ay_flush(aymChip* ay) {
+	int ns = ay->pendNs;
+	ay->pendNs = 0;
 	if ((ay->tickFx < 1) || (ns < 1)) return;
 	ay->tickAcc += (long long)ns * ay->tickFx;
 	long long cnt = ay->tickAcc >> 32;
 	ay->tickAcc &= 0xffffffffLL;
-	while (cnt-- > 0) {
-		ay_tick(ay);
-	}
+	if (cnt > 0)
+		ay_tick_n(ay, (int)cnt);
+}
+
+void ay_sync(aymChip* ay, int ns) {
+	if (ns > 0)
+		ay->pendNs += ns;
+	// nothing may look at the chip for a long while - fast mode takes no
+	// samples - and the count is an int: settle it before it can wrap
+	if (ay->pendNs > (1 << 30))
+		ay_flush(ay);
 }
 
 sndPair ay_mix_stereo(int volA, int volB, int volC, int id, int sep) {
@@ -288,6 +421,7 @@ void ay_env_shape(int form, unsigned char* out, int len) {
 // too. curReg is put back: the machine may be halfway through its own
 // select-then-write pair.
 void ay_poke_reg(aymChip* chip, int reg, int val) {
+	ay_flush(chip);
 	unsigned char was = chip->curReg;
 	chip->curReg = reg & 0xff;
 	ay_set_reg(chip, val & 0xff);
@@ -323,5 +457,6 @@ sndPair ay_mix_tab(aymChip* chip, const int* tab) {
 }
 
 sndPair ay_vol(aymChip* chip) {
+	ay_flush(chip);
 	return ay_mix_tab(chip, ayDACvol);
 }

@@ -12,6 +12,7 @@ int ymDACvol[32] = {0x0000,0x0000,0x003B,0x0074,0x00A4,0x00CA,0x00FB,0x0134,
 // TODO: external rd/wr for regs E,F
 
 int ym_rd(aymChip* chip, int adr) {
+	ay_flush(chip);
 	unsigned char res = 0xff;
 	if (adr & 1) {
 		switch(chip->curReg) {
@@ -42,6 +43,7 @@ int ym_rd(aymChip* chip, int adr) {
 extern void ay_set_reg(aymChip*, int);
 
 void ym_wr(aymChip* chip, int adr, int val) {
+	ay_flush(chip);
 	if (adr & 1) {								// set current reg
 		chip->curReg = val & 0xff;					// YM:256 registers, no mirrors
 	} else {								// write data
@@ -55,5 +57,6 @@ void ym_wr(aymChip* chip, int adr, int val) {
 // come from the AY code. Written out a second time here they drifted apart, and a
 // muted channel went on playing.
 sndPair ym_vol(aymChip* chip) {
+	ay_flush(chip);					// a YM2203's SSG is ticked by its own sync
 	return ay_mix_tab(chip, ymDACvol);		// YM:5-bit DAC volume
 }

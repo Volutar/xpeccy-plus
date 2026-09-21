@@ -136,6 +136,7 @@ enum {
 #define flgACK	flags[58]		// Z80: acknowledge INT after execution (prevent last-1T INT)
 #define flgRetBRK flags[56]
 #define flgRFSH	flags[55]		// Z80: report M1 T4 (IRQ_CPU_RFSH); the ULA snow effect needs it
+#define flgCONT	flags[54]		// the machine contends the bus: report the start of each cycle
 
 #define regCallCnt regs[63].ih
 #define regExcCode regs[63].l		// exception code if flgEXC
@@ -162,9 +163,11 @@ struct CPU {
 	cbiw iwr;			// i/o writing
 	cbiack xack;			// interrupt vector acknowledge
 	cbirq xirq;			// send signal
+	void (*xcont)(void*, int);	// contend the bus cycle about to start (mreq)
 	void* xptr;			// pointer to external data (almost always Computer*)
 	// core: runtime callbacks (depends on type)
 	struct cpuCore* core;
+	xRegDsc* pcdsc;			// the core's PC, looked up once: the core asks for it on every read
 	// opcode
 	reg16(com, hcom, lcom);
 	opCode* opTab;

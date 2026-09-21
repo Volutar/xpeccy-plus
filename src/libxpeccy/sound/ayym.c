@@ -46,6 +46,7 @@ const scDesc* find_chip_type(int id) {
 
 void chip_set_type(aymChip* chip, int id) {
 	const scDesc* dsc = find_chip_type(id);
+	ay_flush(chip);			// the tick rate is about to move
 	chip->type = dsc->id;
 	chip->res = dsc->res;
 	chip->rd = dsc->rd;
@@ -120,11 +121,12 @@ void tsDestroy(TSound* ts) {
 	free(ts);
 }
 
+// an empty socket has nothing to count, and this runs once per instruction
 void tsSync(TSound* ts, int ns) {
-	ts->chipA->sync(ts->chipA, ns);
-	ts->chipB->sync(ts->chipB, ns);
-	ts->chipC->sync(ts->chipC, ns);
-	ts->chipD->sync(ts->chipD, ns);
+	if (ts->chipA->type != SND_NONE) ts->chipA->sync(ts->chipA, ns);
+	if (ts->chipB->type != SND_NONE) ts->chipB->sync(ts->chipB, ns);
+	if (ts->chipC->type != SND_NONE) ts->chipC->sync(ts->chipC, ns);
+	if (ts->chipD->type != SND_NONE) ts->chipD->sync(ts->chipD, ns);
 }
 
 // The one chip type with state of its own outside the struct is the YM2203;
@@ -165,8 +167,11 @@ sndPair tsGetVolume(TSound* ts) {
 	aymChip* chip = ts->chipA;
 	sndPair res = chip->vol(chip);
 	int i, fm = ym2203_fm_out(chip);
+	// an empty socket puts out nothing, and the soft clip leaves a level it is
+	// mixed with exactly as it was, so it is left out of the sum
 	for (i = 1; i < 4; i++) {
 		chip = ts_chip(ts, i);
+		if (chip->type == SND_NONE) continue;
 		res = mixer(res, chip->vol(chip));
 		fm += ym2203_fm_out(chip);
 	}

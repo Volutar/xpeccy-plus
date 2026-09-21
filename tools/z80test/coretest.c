@@ -107,12 +107,11 @@ static void cb_iwr(int adr, int val, void* ptr) {
 static int cb_ack(void* ptr) {return 0xff;}
 
 static void cb_irq(int id, void* ptr) {
-	switch (id) {
-		case IRQ_CPU_CONT:		// T1 of a bus cycle
-		case IRQ_CPU_CONTNM:		// one internal tick, address still held
-			ev(now(), "MC", cpu->adr & 0xffff, -1);
-			break;
-	}
+}
+
+// T1 of a bus cycle, or one internal tick with the address still held
+static void cb_cont(void* ptr, int mreq) {
+	ev(now(), "MC", cpu->adr & 0xffff, -1);
 }
 
 // ------------------------------------------------------------------- i/o
@@ -215,6 +214,10 @@ int main(int argc, char** argv) {
 	cpu->iwr = cb_iwr;
 	cpu->xack = cb_ack;
 	cpu->xirq = cb_irq;
+	// fuse's data has the contention events in it, so ask for them: the core
+	// only reports a bus cycle when the machine says it contends one
+	cpu->flgCONT = 1;
+	cpu->xcont = cb_cont;
 	while (run_test(f));
 	fclose(f);
 	free(cpu);

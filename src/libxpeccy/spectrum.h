@@ -95,6 +95,7 @@ typedef struct {
 #define flgSNOW	sysflag[18]		// ULA snow effect (zx)
 #define flgSNOWX sysflag[19]		// ...and this machine's ram cannot take it
 #define flgBRKPRE sysflag[20]		// the break was raised before the instruction ran
+#define flgBRKMEM sysflag[21]		// a memory breakpoint may be set: 0 lets the core skip the maps
 
 #define PWATCH_MAX	16		// ports the debugger can watch at once
 
@@ -274,6 +275,7 @@ void comp_update_timings(Computer*);
 int compSetHardware(Computer*,const char*);
 void comp_set_layout(Computer*, vLayout*);
 void comp_set_snow(Computer*, int);
+void comp_set_cont(Computer*, int);
 void comp_snap_map(Computer*);
 int comp_frame_ticks(Computer*);
 void comp_set_frame_tick(Computer*, int);

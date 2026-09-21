@@ -54,6 +54,20 @@ inline void vid_dot_half(Video* vid, unsigned char idx) {
 	vid->ray.ptr += 4;
 }
 
+// k dots of one colour, the way vid_dot_full() puts them out
+static void vid_fill_dots(Video* vid, unsigned char idx, int k) {
+	if (vid->nodraw) return;
+	int32_t c = greyScale ? vid->gpal[idx] : vid->pal[idx];
+	unsigned char* ptr = vid->ray.ptr;
+	outcol = c;
+	while (k-- > 0) {
+		*(int32_t*)ptr = c;
+		*(int32_t*)(ptr + 4) = c;
+		ptr += 8;
+	}
+	vid->ray.ptr = ptr;
+}
+
 // Black out both image buffers. Wanted when the machine changes: the buffers
 // are shared by every machine and read back with the current one's row length,
 // so a frame left there by the machine before would come out skewed. Black is
@@ -931,6 +945,208 @@ void ula_dot(Video* vid) {
 	vid_dot_full(vid, col);
 }
 
+// A run of dots on a line above or below the screen: the ULA fetches nothing
+// there, so the whole stretch is border - in two colours if a write to the
+// border port is still waiting for the latch. Both ZX drawers land here.
+static int ula_fill_brd(Video* vid, int k) {
+	int x = vid->ray.x;
+	int n = k;
+	if (vid->brdcol != vid->nextbrd) {
+		int i = 0;
+		while ((i < n) && ((x + i) & vid->brdstep))	// dots before the next latch
+			i++;
+		if (i > 0) {
+			col = vid->brdcol;
+			if (vid->ula->active) col |= 8;
+			vid_fill_dots(vid, col, i);
+			n -= i;
+		}
+		if (n > 0) vid->brdcol = vid->nextbrd;
+	}
+	if (n > 0) {
+		col = vid->brdcol;
+		if (vid->ula->active) col |= 8;
+		vid_fill_dots(vid, col, n);
+	}
+	vid->atrbyte = 0xff;
+	return k;
+}
+
+// Eight dots of the screen at once. A character cell holds one byte and one
+// attribute, so the colours are worked out once and the pixels only follow the
+// bits; the ULA's own fetches still happen at the dots they belong to.
+// The drawer with the late bursts (48K/128K timings).
+// The eight pixels of a cell: two colours and the bits of the byte between
+// them, so the palette is read twice instead of eight times.
+static void vid_cell_dots(Video* vid) {
+	int i;
+	if (vid->nodraw) {
+		for (i = 0; i < 8; i++) {
+			col = (scrbyte & 0x80) ? ink : pap;
+			scrbyte <<= 1;
+		}
+		return;
+	}
+	int32_t ci = greyScale ? vid->gpal[ink] : vid->pal[ink];
+	int32_t cp = greyScale ? vid->gpal[pap] : vid->pal[pap];
+	unsigned char* ptr = vid->ray.ptr;
+	for (i = 0; i < 8; i++) {
+		int32_t c;
+		if (scrbyte & 0x80) {
+			col = ink;
+			c = ci;
+		} else {
+			col = pap;
+			c = cp;
+		}
+		scrbyte <<= 1;
+		*(int32_t*)ptr = c;
+		*(int32_t*)(ptr + 4) = c;
+		ptr += 8;
+	}
+	outcol = (col == ink) ? ci : cp;
+	vid->ray.ptr = ptr;
+}
+
+// n dots the plain way, ray and border latch as vid_tick() would leave them
+static void ula_dots_plain(Video* vid, int n, cbvid dot) {
+	int x = vid->ray.x;
+	for (int i = 0; i < n; i++, x++) {
+		if ((x & vid->brdstep) == 0)
+			vid->brdcol = vid->nextbrd;
+		vid->ray.x = x;
+		dot(vid);
+	}
+	vid->ray.x = x;
+}
+
+static int ula_run_scr(Video* vid, int k) {
+	if (vid->snowDup || (vid->snowLow >= 0)) return 0;	// a spoilt burst goes dot by dot
+	int xs = vid->ray.x - vid->bord.x;
+	int done = 0;
+	if (xs & 7) {			// the rest of the cell the ray stands in
+		int head = 8 - (xs & 7);
+		if (head > k) head = k;
+		ula_dots_plain(vid, head, ula_dot);
+		xs += head;
+		done += head;
+		k -= head;
+	}
+	while (k >= 8) {
+		scrbyte = nxtbyte;			// dot 0 or 8: what the burst read four dots ago
+		vid->atrbyte = nxtatr;
+		if ((xs & 15) == 0) {			// even cell: the odd cell's pixel byte
+			vid->idx++;
+			adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+			nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+			vid->idx--;
+		}
+		if (vid->idx < 0x1b00) vid->idx++;
+		zx_attr_cols(vid, vid->atrbyte, &scrbyte, &ink, &pap, 0);
+		if ((xs & 15) == 0) {			// dot 1: that cell's attribute
+			adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
+			nxtatr = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+		} else {				// dots 12 and 14: the next burst
+			adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+			nxtbyte = vid->mrd(ula_burst_adr(vid, adr), vid->xptr);
+			adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
+			nxtatr = vid->mrd(ula_burst_adr(vid, adr), vid->xptr);
+			vid->snowLow = -1;
+		}
+		vid_cell_dots(vid);
+		xs += 8;
+		done += 8;
+		k -= 8;
+	}
+	return done;
+}
+
+// The same for the drawer with the single early fetch (Pentagon and the rest)
+static int nrm_run_scr(Video* vid, int k) {
+	int xs = vid->ray.x - vid->bord.x;
+	int done = 0;
+	if (xs & 7) {
+		int head = 8 - (xs & 7);
+		if (head > k) head = k;
+		ula_dots_plain(vid, head, vidDrawNormal);
+		xs += head;
+		done += head;
+		k -= head;
+	}
+	while (k >= 8) {
+		scrbyte = nxtbyte;
+		adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
+		vid->atrbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+		if (vid->idx < 0x1b00) vid->idx++;
+		zx_attr_cols(vid, vid->atrbyte, &scrbyte, &ink, &pap, 0);
+		adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+		nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);	// dot 3
+		vid_cell_dots(vid);
+		xs += 8;
+		done += 8;
+		k -= 8;
+	}
+	return done;
+}
+
+// Where a run of dots can be drawn in one go. Beside the screen the drawer
+// still fetches, but from an address that does not move while the ray is off
+// the screen - so the read happens once and the stretch is filled.
+// Beside the screen the late-burst ULA keeps fetching at its phases, but from
+// addresses that do not move while the ray is off the screen: the fetches are
+// made where they fall and the stretch itself is border.
+static int ula_run_hbrd(Video* vid, int k) {
+	if (vid->snowDup || (vid->snowLow >= 0)) return 0;	// a spoilt burst goes dot by dot
+	int xs = vid->ray.x - vid->bord.x;
+	for (int i = 0; i < k; i++) {
+		switch ((xs + i) & 15) {
+			case 12:
+				adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+				nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+				break;
+			case 14:
+			case 1:
+				adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
+				nxtatr = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+				break;
+			case 0:
+				scrbyte = nxtbyte;
+				vid->idx++;
+				adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+				nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+				vid->idx--;
+				break;
+			case 8:
+				scrbyte = nxtbyte;
+				break;
+		}
+	}
+	return ula_fill_brd(vid, k);
+}
+
+static int ula_run(Video* vid, int k) {
+	if (vid->vbrd) return ula_fill_brd(vid, k);
+	if (vid->hbrd) return ula_run_hbrd(vid, k);
+	return ula_run_scr(vid, k);
+}
+
+static int nrm_run(Video* vid, int k) {
+	int xs, i;
+	if (vid->vbrd) return ula_fill_brd(vid, k);
+	if (vid->hbrd) {
+		xs = vid->ray.x - vid->bord.x;
+		for (i = 0; i < k; i++) {
+			if (((xs + i) & 7) == 3) {	// the same address every cell out here
+				adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+				nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+				break;
+			}
+		}
+		return ula_fill_brd(vid, k);
+	}
+	return nrm_run_scr(vid, k);
+}
+
 // alco 16col
 void vidDrawAlco(Video* vid) {
 	if (vid->vbrd || vid->hbrd) {
@@ -1177,8 +1393,8 @@ void vidBreak(Video* vid) {
 
 // id,(@on),(@every_visible_dot),(@HBlank),(@LineStart),(@VBlank),(@Frame)
 static xVideoMode vidModeTab[] = {
-	{VID_NORMAL, NULL, vidDrawNormal, NULL, NULL, NULL, NULL},
-	{VID_ULA_SCR, NULL, ula_dot, NULL, NULL, NULL, NULL},
+	{VID_NORMAL, NULL, vidDrawNormal, NULL, NULL, NULL, NULL, nrm_run},
+	{VID_ULA_SCR, NULL, ula_dot, NULL, NULL, NULL, NULL, ula_run},
 	{VID_ALCO, NULL, vidDrawAlco, NULL, NULL, NULL, NULL},
 	{VID_HWMC, NULL, vidDrawHwmc, NULL, NULL, NULL, NULL},
 	{VID_ATM_EGA, NULL, vidDrawATMega, NULL, NULL, NULL, NULL},
@@ -1286,16 +1502,86 @@ void vid_tick(Video* vid) {
 	if (vid->intf > 0) vid->intf--;
 }
 
+// How many of the next n dots vid_tick() would do nothing for but draw and
+// count: the run stops short of the line end, the border edges, the blanking,
+// the interrupt edge and the end of a busy count, which are all left to
+// vid_tick() itself. 0 when the very next dot is one of those.
+static int vid_run_len(Video* vid, int n) {
+	int x = vid->ray.x;
+	int k = n;
+	if (vid->full.x - 1 - x < k) k = vid->full.x - 1 - x;
+	if ((vid->bord.x > x) && (vid->bord.x - 1 - x < k)) k = vid->bord.x - 1 - x;
+	if ((vid->vend.x > x) && (vid->vend.x - 1 - x < k)) k = vid->vend.x - 1 - x;
+	if ((vid->send.x > x) && (vid->send.x - 1 - x < k)) k = vid->send.x - 1 - x;
+	if (vid->intFRAME > 0) {
+		if (vid->intFRAME - 1 < k) k = vid->intFRAME - 1;
+	} else if ((vid->inten & 1) && (vid->ray.yb == vid->intp.y) && (vid->intp.x > vid->ray.xb)) {
+		if (vid->intp.x - 1 - vid->ray.xb < k) k = vid->intp.x - 1 - vid->ray.xb;
+	}
+	if ((vid->busy > 0) && (vid->busy - 1 < k)) k = vid->busy - 1;
+	return k;
+}
+
+// k dots of vid_tick() in a row, where vid_run_len() says none of them is an
+// event. The drawing is the same call per dot; what goes is the bookkeeping
+// between them. hbrd is the one flag that changes: vid_tick() works it out for
+// the dot it moves to, so the first dot still sees the value it was left.
+static void vid_run(Video* vid, int k) {
+	cbvid dot = vid->cb->dot;
+	int x = vid->ray.x;
+	int end = x + k;
+	int hbrd = (x < vid->bord.x) || (x >= vid->send.x);	// the same for every dot of the run
+	int done = 0;
+	if (vid->hbrd != hbrd) {
+		// left behind by a jump of the ray (vid_set_ray): as in vid_tick(), the
+		// first dot still sees it and the rest see the real one
+		if ((x & vid->brdstep) == 0)
+			vid->brdcol = vid->nextbrd;
+		if (dot) dot(vid);
+		vid->hbrd = hbrd;
+		vid->ray.x = x + 1;
+		done = 1;
+	}
+	if (vid->cb->run && (done < k))
+		done += vid->cb->run(vid, k - done);
+	for (x += done; x < end; x++) {
+		if ((x & vid->brdstep) == 0)
+			vid->brdcol = vid->nextbrd;
+		vid->ray.x = x;
+		if (dot) dot(vid);
+	}
+	// the flags a dot leaves behind: hbrd cannot change inside a run, the
+	// edges bound it, so it is worked out once for where the ray ends up
+	vid->hbrd = (end < vid->bord.x) || (end >= vid->send.x);
+	vid->ray.x = end;
+	vid->ray.xb += k;
+	vid->ray.xs += k;
+	if (vid->intFRAME > 0) vid->intFRAME -= k;
+	if (vid->busy > 0) vid->busy -= k;
+	vid->inth = (vid->inth > k) ? vid->inth - k : 0;
+	vid->intf = (vid->intf > k) ? vid->intf - k : 0;
+}
+
 // The ray steps in fixed point ns. vid->time stays whole ns for everything
 // downstream (sound pacing among others); the fraction it is owed rides along
 // in nsOwedFixed rather than being dropped once per call.
 void vid_sync_fixed(Video* vid, long long nsFixed) {
 	if (!nsFixed) return;			// no time passed: the tail below is a no-op
 	vid->nsDrawFixed += nsFixed;
-	while (vid->nsDrawFixed >= vid->nsPerDotFixed) {
-		vid->nsDrawFixed -= vid->nsPerDotFixed;
-		vid->nsOwedFixed += vid->nsPerDotFixed;
-		vid_tick(vid);
+	if (vid->nsDrawFixed >= vid->nsPerDotFixed) {
+		int n = (int)(vid->nsDrawFixed / vid->nsPerDotFixed);
+		vid->nsDrawFixed -= n * vid->nsPerDotFixed;
+		vid->nsOwedFixed += n * vid->nsPerDotFixed;
+		while (n > 0) {
+			int k = vid_run_len(vid, n);
+			if (k > 0) {
+				vid_run(vid, k);
+				n -= k;
+			} else {
+				vid_tick(vid);
+				n--;
+			}
+		}
 	}
 	// whole nanoseconds out, the rest stays owed. Once per call, not per dot:
 	// the dot loop runs ~143k times a frame.

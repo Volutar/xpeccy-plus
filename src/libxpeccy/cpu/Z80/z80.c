@@ -55,12 +55,15 @@ void z80_reset(CPU* cpu) {
 
 int z80_mrdx(CPU* cpu, int adr, int m1) {
 	cpu->adr = adr;
-	cpu->xirq(IRQ_CPU_CONT, cpu->xptr);	// wait states, sampled at T1
+	// A machine that contends nothing has nothing to say here, and the ray
+	// reaches the same dot at the transfer either way
+	if (cpu->flgCONT)
+		cpu->xcont(cpu->xptr, 1);		// wait states, sampled at T1
 	cpu->t += 2;		// T1, T2
-	// the ray has to reach the moment of the transfer before it happens: the
-	// video reads the same ram as it draws, so a read or write landing early
-	// shows up on screen a couple of dots off
-	cpu->xirq(IRQ_CPU_SYNC, cpu->xptr);
+	// No sync before a read: the ray only has to be where it is for a write,
+	// which can change what the video is about to draw. A read changes
+	// nothing, and the ticks it took are counted in at the end of the
+	// instruction like the rest.
 	int r = cpu->mrd(adr, m1, cpu->xptr) & 0xff;
 	cpu->t++;		// T3
 	return r;
@@ -70,8 +73,12 @@ int z80_mrdx(CPU* cpu, int adr, int m1) {
 // Ferranti ULA contends it just the same. One call per tick, as in fuse.
 void z80_wait(CPU* cpu, int adr, int n) {
 	cpu->adr = adr;
+	if (!cpu->flgCONT) {		// see z80_mrdx
+		cpu->t += n;
+		return;
+	}
 	while (n > 0) {
-		cpu->xirq(IRQ_CPU_CONTNM, cpu->xptr);
+		cpu->xcont(cpu->xptr, 0);
 		cpu->t++;
 		n--;
 	}
@@ -87,9 +94,10 @@ int z80_mrd(CPU* cpu, int adr) {
 
 void z80_mwr(CPU *cpu, int adr, int data) {
 	cpu->adr = adr;
-	cpu->xirq(IRQ_CPU_CONT, cpu->xptr);	// wait states, sampled at T1
+	if (cpu->flgCONT)
+		cpu->xcont(cpu->xptr, 1);		// wait states, sampled at T1
 	cpu->t += 2;		// T1, T2
-	cpu->xirq(IRQ_CPU_SYNC, cpu->xptr);	// ray up to the transfer, see z80_mrdx
+	cpu->xirq(IRQ_CPU_SYNC, cpu->xptr);	// the ray up to the transfer: a write can change what is drawn next
 	cpu->mwr(adr, data, cpu->xptr);
 	cpu->t++;		// T3
 }

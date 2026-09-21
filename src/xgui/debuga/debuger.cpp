@@ -1005,6 +1005,7 @@ void DebugWin::keyPressEvent(QKeyEvent* ev) {
 			if (drow.oflag & OF_SKIPABLE) {
 				ptr = getBrkPtr(comp, pc + len);
 				*ptr |= MEM_BRK_TFETCH;
+				comp->flgBRKMEM = 1;
 				stop();
 			} else {
 				doStep();
@@ -1026,6 +1027,7 @@ void DebugWin::keyPressEvent(QKeyEvent* ev) {
 			ptr = getBrkPtr(comp, i);
 			stop();
 			*ptr |= MEM_BRK_TFETCH;
+			comp->flgBRKMEM = 1;
 			break;
 		case XCUT_RESET:
 			rzxStop(comp);

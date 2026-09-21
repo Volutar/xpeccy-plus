@@ -200,7 +200,8 @@ switches to it when the settings are applied</string>
                     <property name="toolTip">
                      <string>Left of x1 the whole emulation is slowed down and the
 frame rate drops. Right of it the CPU gets a multiplier
-and the frame rate stays where it was. Neither is saved</string>
+and the frame rate stays where it was. Neither is saved.
+Past 14 MHz no real machine ran: timing is not guaranteed</string>
                     </property>
                     <property name="maximum">
                      <number>6</number>

@@ -47,6 +47,7 @@ static FILE* file = nullptr;
 
 xThread::xThread() {
 	sndNsFixed = 0;
+	benchStop = -1;
 	conf.emu.fast = 0;
 	finish = 0;
 }
@@ -320,8 +321,10 @@ void xThread::emuCycle(Computer* comp) {
 			}
 			sndNsFixed += NS_TO_FIXED(tm);
 			// tape trap	TODO: rework it as a system breakpoint
-			int pc = cpu_get_pc(comp->cpu);
+			// the rom check first: it is three flags, where asking the cpu for
+			// its pc is a call, and this runs on every instruction
 			if (zx_rom_active(comp)) {
+				int pc = cpu_get_pc(comp->cpu);
 				if ((pc == 0x56c) || (pc == 0x5e7)) {	// load: ix:addr, de:len (0x580 ?) 56c/559
 					tap_catch_load(comp, pc == 0x56c);
 				} else if (pc == 0x4d0) {				// save: ix:addr, de:len, a:block type(b7), hl:pilot len (1f80/0c98)?
@@ -335,13 +338,23 @@ void xThread::emuCycle(Computer* comp) {
 				}
 			}
 		}
-		// sound buffer update
-		while (sndNsFixed > nsPerSampleFixed) {
-			sndSync(comp);
-			sndNsFixed -= nsPerSampleFixed;
+		// sound buffer update. In fast mode there is nothing to mix - the
+		// only thing sndSync() still does there is run the GS, so a machine
+		// without one skips the call and keeps the count
+		if (conf.emu.fast && !comp->gs->enable) {
+			while (sndNsFixed > nsPerSampleFixed)
+				sndNsFixed -= nsPerSampleFixed;
+		} else {
+			while (sndNsFixed > nsPerSampleFixed) {
+				sndSync(comp);
+				sndNsFixed -= nsPerSampleFixed;
+			}
 		}
 		if (comp->flgFRM) {
 			comp->flgFRM = 0;
+			if (conf.emu.fast) conf.snd.fill = 0;	// see sndSync()
+			if ((benchStop >= 0) && (conf.vid.fcount + 1 >= benchStop))
+				conf.snd.fill = 0;		// the bench stops on a frame, not on a sample
 			conf.vid.fctime = paceClockNs();	// for the fps readout
 			conf.vid.fcount++;
 			comp->frmCount++;
@@ -410,6 +423,22 @@ void xThread::emuCycle(Computer* comp) {
 	comp->flgNMIRQ = 0;
 }
 
+// a recording opened since the last cycle starts playing here
+void xThread::rzx_begin(Computer* comp) {
+#if HAVEZLIB
+	if (comp->rzx.start) {
+		comp->rzx.start = 0;
+		comp->rzx.play = 1;
+		comp->rzx.fCount = 0;
+		comp->rzx.fCurrent = 0;
+		rewind(comp->rzx.file);
+		rzxGetFrame(comp);
+	}
+#else
+	(void)comp;
+#endif
+}
+
 void xThread::run() {
 	Computer* comp;
 	conf.snd.need = 0;		// reset sound buffer
@@ -420,16 +449,7 @@ void xThread::run() {
 		emu_lock();
 		comp = conf.zx;
 		if (comp) {
-#if HAVEZLIB
-			if (comp->rzx.start) {
-				comp->rzx.start = 0;
-				comp->rzx.play = 1;
-				comp->rzx.fCount = 0;
-				comp->rzx.fCurrent = 0;
-				rewind(comp->rzx.file);
-				rzxGetFrame(comp);
-			}
-#endif
+			rzx_begin(comp);
 			if (!conf.emu.pause) {
 				emuCycle(comp);
 			}
@@ -450,3 +470,193 @@ void xThread::run() {
 	raState = NULL;
 	exit(0);
 }
+
+#ifdef XBENCH
+
+// Headless benchmark (--bench): runs the machine on this thread with no window,
+// the way run() does, and reports emulated frames per second of host time.
+// full = 0 is fast mode (no sound mixing), full = 1 mixes sound as real time
+// play does, without the pacer's waits. prof names a file for a flat profile
+// of this thread, sampled from another one.
+
+#ifdef _WIN32
+#include <windows.h>
+#include <map>
+
+typedef struct {
+	HANDLE target;
+	volatile int stop;
+	int hz;
+	std::map<unsigned long long, int> hits;
+	int total;
+} benchProf;
+
+static DWORD WINAPI bench_prof_thread(LPVOID p) {
+	benchProf* bp = (benchProf*)p;
+	LARGE_INTEGER frq, now, next;
+	QueryPerformanceFrequency(&frq);
+	long long step = frq.QuadPart / bp->hz;
+	QueryPerformanceCounter(&next);
+	while (!bp->stop) {
+		next.QuadPart += step;
+		do {
+			YieldProcessor();
+			QueryPerformanceCounter(&now);
+		} while (now.QuadPart < next.QuadPart);
+		if (SuspendThread(bp->target) == (DWORD)-1) break;
+		CONTEXT ctx;
+		ctx.ContextFlags = CONTEXT_CONTROL;
+		if (GetThreadContext(bp->target, &ctx)) {
+#ifdef _WIN64
+			bp->hits[ctx.Rip]++;
+#else
+			bp->hits[ctx.Eip]++;
+#endif
+			bp->total++;
+		}
+		ResumeThread(bp->target);
+	}
+	return 0;
+}
+#endif
+
+// 64-bit mix over a block: only there to tell two runs apart
+static unsigned long long bench_mix(unsigned long long h, const unsigned char* ptr, int len) {
+	while (len >= 8) {
+		unsigned long long v;
+		memcpy(&v, ptr, 8);
+		h = (h ^ v) * 0x100000001b3ULL;
+		h ^= h >> 29;
+		ptr += 8;
+		len -= 8;
+	}
+	while (len-- > 0)
+		h = (h ^ *ptr++) * 0x100000001b3ULL;
+	return h;
+}
+
+// Runs the timed part: fast mode as run() does it, or full sound mixing with
+// a budget of 256 samples per cycle, the way the pacer hands them out.
+// hash folds every finished frame and every sample into one number, so two
+// builds can be shown to run the machine identically.
+int xThread::bench(int frames, int skip, int full, int hash, const char* prof, const char* shot, int nodraw) {
+	Computer* comp = conf.zx;
+	if (!comp) return 0;
+	blockSignals(true);
+	setOutput("NULL");
+	pacingClose();		// the budget is handed out here, not by the timer
+	conf.emu.pause = 0;
+	rzx_begin(comp);
+	// warm up: a tape or disk being started, a demo getting to its part. In
+	// the mode that is measured: where fast mode hands the machine back is not
+	// where a cycle with sound does, so a switch between them would leave the
+	// two builds being compared on different instructions
+	conf.emu.fast = full ? 0 : 1;
+	int f0 = conf.vid.fcount;
+	benchStop = f0 + skip;		// and on a frame, so both builds start measuring on the same one
+	while ((conf.vid.fcount - f0 < skip) && !conf.emu.pause) {
+		conf.snd.need = full ? 256 : 0;
+		emu_lock();
+		emuCycle(comp);
+		emu_unlock();
+	}
+	conf.emu.fast = full ? 0 : 1;
+	if (nodraw) comp->vid->nodraw = 1;	// what the picture itself costs
+#ifdef _WIN32
+	benchProf* bp = NULL;
+	HANDLE pth = NULL;
+	if (prof) {
+		bp = new benchProf;
+		bp->stop = 0;
+		bp->hz = 4000;
+		bp->total = 0;
+		DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &bp->target,
+			THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION, FALSE, 0);
+		pth = CreateThread(NULL, 0, bench_prof_thread, bp, 0, NULL);
+	}
+#endif
+	unsigned long long hFrm = 0xcbf29ce484222325ULL;
+	unsigned long long hSnd = 0xcbf29ce484222325ULL;
+	int spos = snd_ring_fill_pos();
+	long long t0 = paceClockNs();
+	int tk0 = comp->tickCount;
+	f0 = conf.vid.fcount;
+	int fl = f0;
+	benchStop = f0 + frames;	// the last cycle ends on the frame, whatever the budget
+	while ((conf.vid.fcount - f0 < frames) && !conf.emu.pause) {
+		conf.snd.need = full ? 256 : 0;
+		emu_lock();
+		emuCycle(comp);
+		emu_unlock();
+		if (hash) {
+			if (conf.vid.fcount != fl) {
+				fl = conf.vid.fcount;
+				Video* vid = comp->vid;
+				for (int y = 0; y < vid->full.y; y++)
+					hFrm = bench_mix(hFrm, bufimg + y * bytesPerLine, vid->full.x * 8);
+			}
+			int epos = snd_ring_fill_pos();
+			while (spos != epos) {
+				unsigned char b = snd_ring_byte(spos++);
+				hSnd = bench_mix(hSnd, &b, 1);
+			}
+		}
+	}
+	long long t1 = paceClockNs();
+#ifdef _WIN32
+	if (bp) {
+		bp->stop = 1;
+		WaitForSingleObject(pth, INFINITE);
+		CloseHandle(pth);
+		CloseHandle(bp->target);
+		FILE* file = fopen(prof, "wb");
+		if (file) {
+			fprintf(file, "base %llx\n", (unsigned long long)(size_t)GetModuleHandle(NULL));
+			fprintf(file, "total %i\n", bp->total);
+			for (auto it = bp->hits.begin(); it != bp->hits.end(); it++)
+				fprintf(file, "%llx %i\n", it->first, it->second);
+			fclose(file);
+		}
+		delete bp;
+	}
+#endif
+	int done = conf.vid.fcount - f0;
+	double sec = (t1 - t0) / 1e9;
+	double fps = (sec > 0) ? done / sec : 0;
+	double rt = (comp->vid->nsPerFrame > 0) ? 1e9 / comp->vid->nsPerFrame : 50;
+	int ticks = comp->tickCount - tk0;
+	fprintf(stdout, "bench: machine %s, %s, %i frames in %.3f s: %.1f fps, x%.2f real time, %.2f ns/T%s\n",
+		conf.macId.c_str(), full ? "full" : "fast", done, sec, fps, fps / rt,
+		(t1 - t0) / (double)(ticks ? ticks : 1), conf.emu.pause ? " (stopped early)" : "");
+	if (hash) {
+		CPU* cpu = comp->cpu;
+		unsigned long long hMem = bench_mix(0xcbf29ce484222325ULL, comp->mem->ramData, comp->mem->ramMask + 1);
+		int regs[] = {cpu->regPC, cpu->regSP, cpu->regAF, cpu->regBC, cpu->regDE, cpu->regHL,
+			cpu->regIX, cpu->regIY, cpu->regI, cpu->regR, comp->tickCount, comp->frmtCount};
+		unsigned long long hCpu = bench_mix(0xcbf29ce484222325ULL, (unsigned char*)regs, sizeof(regs));
+		fprintf(stdout, "hash: frames %016llx sound %016llx ram %016llx cpu %016llx pc %04X T %i\n",
+			hFrm, hSnd, hMem, hCpu, cpu->regPC & 0xffff, comp->frmtCount);
+	}
+	// the last finished frame, whole raster, as a binary ppm
+	if (shot) {
+		FILE* file = fopen(shot, "wb");
+		if (file) {
+			Video* vid = comp->vid;
+			fprintf(file, "P6\n%i %i\n255\n", vid->full.x * 2, vid->full.y);
+			for (int y = 0; y < vid->full.y; y++) {
+				unsigned char* ptr = bufimg + y * bytesPerLine;
+				for (int x = 0; x < vid->full.x * 2; x++) {
+					fputc(ptr[0], file);
+					fputc(ptr[1], file);
+					fputc(ptr[2], file);
+					ptr += 4;
+				}
+			}
+			fclose(file);
+		}
+	}
+	fflush(stdout);
+	return done;
+}
+
+#endif

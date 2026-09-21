@@ -123,3 +123,7 @@ typedef reg16(w,h,l) xreg16;
 #define MEM_4M	(1<<22)
 #define MEM_8M	(1<<23)
 #define MEM_16M	(1<<24)
+
+// Nonzero freezes the host clock the machine sees (its RTC, the power-on ram
+// pattern) at this time_t, so two runs can be compared byte for byte.
+extern long long xhost_time_fixed;

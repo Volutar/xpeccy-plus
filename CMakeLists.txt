@@ -30,6 +30,13 @@ if(XLOGHOT)
 	add_definitions(-DXLOG_HOT)
 endif()
 
+# The --bench mode: headless timing, hashes to prove two builds run a machine
+# identically, and a sampling profiler. A development tool, so a release leaves
+# it out. Not an option(): a cached one would outlive a switch to XRELEASE.
+if(NOT XRELEASE)
+	add_definitions(-DXBENCH)
+endif()
+
 # The log locks with a plain pthread mutex, the first thing in libxpeccy that
 # needs the threads library by name rather than through Qt
 set(THREADS_PREFER_PTHREAD_FLAG ON)

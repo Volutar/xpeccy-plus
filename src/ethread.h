@@ -11,6 +11,10 @@ class xThread : public QThread {
 		xThread();
 		unsigned finish:1;
 		long long sndNsFixed;
+#ifdef XBENCH
+		int bench(int frames, int skip, int full, int hash, const char* prof, const char* shot, int nodraw);
+#endif
+		int benchStop;		// the bench ends the cycle at this frame, -1: never
 	public slots:
 		void stop();
 	signals:
@@ -22,6 +26,7 @@ class xThread : public QThread {
 	private:
 		void run();
 		void emuCycle(Computer*);
+		void rzx_begin(Computer*);
 		int runAhead(Computer*, long*, long*);
 		void brkAction(Computer*, xBrkPoint*, int*);
 		void tap_catch_load(Computer*, int);

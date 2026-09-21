@@ -77,6 +77,10 @@ typedef struct {
 	cbvid line;		// visible line start
 	cbvid vbl;		// @vblank (right after last line)
 	cbvid frm;		// @1st visible line (called before cbLine)
+	// A stretch of dots at once, where the mode can do better than one call
+	// each (a border line is one colour). Takes the dots it wants and returns
+	// how many it drew; 0 leaves the whole run to the dot callback.
+	int (*run)(Video*, int);
 } xVideoMode;
 
 struct Video {
