@@ -146,6 +146,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **ATM Turbo 2+ starts disks and tapes itself.** Opening a disk on it no longer switches the
+  machine to a Pentagon.
+
 - **A breakpoint on the interrupt no longer stops the machine dead.** Unless it was set to
   open the debugger, the machine stood on the same interrupt and never went on.
 
