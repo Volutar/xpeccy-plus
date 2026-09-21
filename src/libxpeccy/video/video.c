@@ -1092,9 +1092,41 @@ static int nrm_run_scr(Video* vid, int k) {
 // Where a run of dots can be drawn in one go. Beside the screen the drawer
 // still fetches, but from an address that does not move while the ray is off
 // the screen - so the read happens once and the stretch is filled.
+// Beside the screen the late-burst ULA keeps fetching at its phases, but from
+// addresses that do not move while the ray is off the screen: the fetches are
+// made where they fall and the stretch itself is border.
+static int ula_run_hbrd(Video* vid, int k) {
+	if (vid->snowDup || (vid->snowLow >= 0)) return 0;	// a spoilt burst goes dot by dot
+	int xs = vid->ray.x - vid->bord.x;
+	for (int i = 0; i < k; i++) {
+		switch ((xs + i) & 15) {
+			case 12:
+				adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+				nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+				break;
+			case 14:
+			case 1:
+				adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
+				nxtatr = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+				break;
+			case 0:
+				scrbyte = nxtbyte;
+				vid->idx++;
+				adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+				nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+				vid->idx--;
+				break;
+			case 8:
+				scrbyte = nxtbyte;
+				break;
+		}
+	}
+	return ula_fill_brd(vid, k);
+}
+
 static int ula_run(Video* vid, int k) {
 	if (vid->vbrd) return ula_fill_brd(vid, k);
-	if (vid->hbrd) return 0;			// the bursts, dot by dot
+	if (vid->hbrd) return ula_run_hbrd(vid, k);
 	return ula_run_scr(vid, k);
 }
 
@@ -1498,7 +1530,20 @@ static void vid_run(Video* vid, int k) {
 	cbvid dot = vid->cb->dot;
 	int x = vid->ray.x;
 	int end = x + k;
-	int done = vid->cb->run ? vid->cb->run(vid, k) : 0;
+	int hbrd = (x < vid->bord.x) || (x >= vid->send.x);	// the same for every dot of the run
+	int done = 0;
+	if (vid->hbrd != hbrd) {
+		// left behind by a jump of the ray (vid_set_ray): as in vid_tick(), the
+		// first dot still sees it and the rest see the real one
+		if ((x & vid->brdstep) == 0)
+			vid->brdcol = vid->nextbrd;
+		if (dot) dot(vid);
+		vid->hbrd = hbrd;
+		vid->ray.x = x + 1;
+		done = 1;
+	}
+	if (vid->cb->run && (done < k))
+		done += vid->cb->run(vid, k - done);
 	for (x += done; x < end; x++) {
 		if ((x & vid->brdstep) == 0)
 			vid->brdcol = vid->nextbrd;
