@@ -976,11 +976,30 @@ static int ula_fill_brd(Video* vid, int k) {
 // attribute, so the colours are worked out once and the pixels only follow the
 // bits; the ULA's own fetches still happen at the dots they belong to.
 // The drawer with the late bursts (48K/128K timings).
+// n dots the plain way, ray and border latch as vid_tick() would leave them
+static void ula_dots_plain(Video* vid, int n, cbvid dot) {
+	int x = vid->ray.x;
+	for (int i = 0; i < n; i++, x++) {
+		if ((x & vid->brdstep) == 0)
+			vid->brdcol = vid->nextbrd;
+		vid->ray.x = x;
+		dot(vid);
+	}
+	vid->ray.x = x;
+}
+
 static int ula_run_scr(Video* vid, int k) {
 	if (vid->snowDup || (vid->snowLow >= 0)) return 0;	// a spoilt burst goes dot by dot
 	int xs = vid->ray.x - vid->bord.x;
 	int done = 0;
-	if (xs & 7) return 0;
+	if (xs & 7) {			// the rest of the cell the ray stands in
+		int head = 8 - (xs & 7);
+		if (head > k) head = k;
+		ula_dots_plain(vid, head, ula_dot);
+		xs += head;
+		done += head;
+		k -= head;
+	}
 	while (k >= 8) {
 		scrbyte = nxtbyte;			// dot 0 or 8: what the burst read four dots ago
 		vid->atrbyte = nxtatr;
@@ -1018,7 +1037,14 @@ static int ula_run_scr(Video* vid, int k) {
 static int nrm_run_scr(Video* vid, int k) {
 	int xs = vid->ray.x - vid->bord.x;
 	int done = 0;
-	if (xs & 7) return 0;
+	if (xs & 7) {
+		int head = 8 - (xs & 7);
+		if (head > k) head = k;
+		ula_dots_plain(vid, head, vidDrawNormal);
+		xs += head;
+		done += head;
+		k -= head;
+	}
 	while (k >= 8) {
 		scrbyte = nxtbyte;
 		adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
