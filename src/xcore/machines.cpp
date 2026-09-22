@@ -277,20 +277,30 @@ std::string xm_turbo_str(Computer* comp) {
 	return mac_turbo_str(comp->turboTab, comp->turboCount);
 }
 
-// which of them the board is on, -1 for a step the list no longer has
-int xm_turbo_index(Computer* comp) {
-	if (!comp) return -1;
+static int turbo_find(Computer* comp, double mul) {
 	for (int i = 0; i < comp->turboCount; i++) {
-		if (fabs(comp->turboTab[i] - comp->turboStep) < 1e-6) return i;
+		if (fabs(comp->turboTab[i] - mul) < 1e-6) return i;
 	}
 	return -1;
+}
+
+// which of them the board runs at - a port turbo may have set it, not the
+// switch - or -1 for a clock the list does not have
+int xm_turbo_index(Computer* comp) {
+	return comp ? turbo_find(comp, comp->hwMul) : -1;
+}
+
+// put the board on one of them; a reset brings hwMul back from turboStep
+void xm_turbo_step(Computer* comp, int idx) {
+	comp->turboStep = (idx < 0) ? 1 : comp->turboTab[idx];
+	compSetHwTurbo(comp, comp->turboStep);
 }
 
 void xm_turbo_set(Computer* comp, std::string src) {
 	if (!comp) return;
 	comp->turboCount = mac_turbo_tab(src, comp->turboTab);
-	if (xm_turbo_index(comp) < 0)		// a step that is gone: back to the base clock
-		compSetHwTurbo(comp, comp->turboStep = 1);
+	if (turbo_find(comp, comp->turboStep) < 0)		// a step that is gone: back to the base clock
+		xm_turbo_step(comp, -1);
 }
 
 static void mac_defaults(xMachine& mac) {

@@ -1196,9 +1196,12 @@ void MainWin::initUserMenu() {
 	});
 // submenu
 	bookmarkMenu = userMenu->addMenu(QIcon(":/images/star.png"),"Favorites");
+	userMenu->addSeparator();
 	profileMenu = userMenu->addMenu(QIcon(":/images/computer.png"),"Machine");
-	keyMenu = userMenu->addMenu(QIcon(":/images/keyboardzx.png"), "Keymap");
+	turboMenu = userMenu->addMenu(QIcon(":/images/clock.png"),"Turbo mode");
 	resMenu = userMenu->addMenu(QIcon(":/images/shutdown.png"),"Reset");
+	userMenu->addSeparator();
+	keyMenu = userMenu->addMenu(QIcon(":/images/keyboardzx.png"), "Keymap");
 	shdMenu = userMenu->addMenu(QIcon(":/images/shader.png"), "Shaders");
 	palMenu = userMenu->addMenu(QIcon(":/images/palette.png"), "ZX palette");
 
@@ -1291,6 +1294,20 @@ void MainWin::fillUserMenu() {
 		act->setCheckable(true);
 		act->setChecked(mac.id == conf.macId);
 	}
+	// fill turbo menu
+	turboMenu->clear();
+	Computer* comp = conf.zx;
+	if (comp) {
+		int cur = xm_turbo_index(comp);
+		for (int i = 0; i < comp->turboCount; i++) {
+			double mhz = comp->cpuFrq * comp->frqMul * comp->turboTab[i];
+			act = turboMenu->addAction(QString("x%1 (%2 MHz)").arg(comp->turboTab[i]).arg(mhz, 0, 'g', 6),
+				this, [this, i]() {setTurbo(i);});
+			act->setCheckable(true);
+			act->setChecked(i == cur);
+		}
+	}
+	turboMenu->setEnabled(comp && (comp->turboCount > 1) && !comp->rzx.play);
 	// fill keymaps menu
 	keyMenu->clear();
 	act = keyMenu->addAction("Default");
@@ -1546,6 +1563,22 @@ void MainWin::resetMachine(int res) {
 	emu_lock();		// reset re-inits the hardware
 	compReset(conf.zx, res);
 	emu_unlock();
+}
+
+// the board's own turbo, one of the steps it declares
+void MainWin::setTurbo(int idx) {
+	Computer* comp = conf.zx;
+	if (comp->turboCount < 2) {
+		setMessage(" model has no Turbo ");
+	} else if (comp->rzx.play) {
+		setMessage(" not in RZX ");
+	} else {
+		emu_lock();		// the new clock re-inits the hardware
+		xm_turbo_step(comp, idx);
+		emu_unlock();
+		setMessage(QString(" %0 MHz (x%1) ").arg(xspeed_clock(), 0, 'g', 6)
+			.arg(comp->turboStep));
+	}
 }
 
 

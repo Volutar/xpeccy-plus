@@ -29,7 +29,9 @@ before that point is upstream's history and is not repeated here.
   (Xpeccy+ -> General).
 
 - **Alt+T switches the turbo the machine really has** - 7 MHz on a ZS Scorpion, ATM Turbo 2+,
-  Pentagon 1024SL, Profi and ZXM-Phoenix, 7 and 14 MHz on ZX Evolution and TSConf. The clock
+  Pentagon 1024SL, Profi and ZXM-Phoenix, 7 and 14 MHz on ZX Evolution and TSConf. Turbo mode
+  in the right-click menu picks a step directly, and that menu now keeps Machine, Turbo mode
+  and Reset together. The clock
   it lands on is shown bottom right for as long as it is not the machine's own, and the
   machine switching its turbo by itself says so too.
 
