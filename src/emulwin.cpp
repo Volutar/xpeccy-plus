@@ -948,7 +948,10 @@ void MainWin::openMedia(const QString& path, int id, int drv, int run) {
 	if (!fpath.isEmpty() && media_machine(comp, fpath, id, drv, run, &mac)) {
 		if (!mac.empty()) setMachine(mac);
 		QByteArray loc = fpath.toLocal8Bit();
+		// the pause does not wait for the cycle, and a snapshot resets the machine
+		emu_lock();
 		load_file(comp, loc.data(), id, drv);
+		emu_unlock();
 		media_autorun(comp, run);
 	}
 	pause(false, PR_FILE);
