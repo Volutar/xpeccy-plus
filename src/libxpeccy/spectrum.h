@@ -261,6 +261,7 @@ Computer* compCreate();
 void comp_set_identity(Computer*, const char*, int, int);
 void compDestroy(Computer*);
 void compReset(Computer*,int);
+void compUserReset(Computer*,int);
 int compExec(Computer*);
 int comp_skip_ticks(Computer*, int);
 void comp_irq(int, void*);
