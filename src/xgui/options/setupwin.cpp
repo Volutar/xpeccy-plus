@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QComboBox>
 #include <QToolButton>
+#include <QRadioButton>
 #include <QFileInfo>
 #include <QDir>
 #include <QDirIterator>
@@ -375,10 +376,10 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	for (i = 1; i <= 6; i++)
 		ui.cbScale->addItem(QString("Scale x%0").arg(i), i);
 
-	ui.resbox->addItem("BASIC 48",RES_48);
-	ui.resbox->addItem("BASIC 128",RES_128);
-	ui.resbox->addItem("DOS",RES_DOS);
-	ui.resbox->addItem("SHADOW",RES_SHADOW);
+	resTarget = RES_128;
+	resGroup = new QButtonGroup(this);
+	connect(resGroup, QOverload<QAbstractButton*>::of(&QButtonGroup::buttonClicked), this,
+		[this](QAbstractButton* btn) {resTarget = resGroup->id(btn);});
 
 	ui.tvRomset->setColumnWidth(0,50);
 	ui.tvRomset->setColumnWidth(1,200);
@@ -517,11 +518,19 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	// so everything that reads and writes them stays as it is.
 	advWin = popOut(ui.advBox, "Machine: advanced settings");
 
-	// same for the set file by file: the page shows which file is in which
-	// slot, this window has the offsets and sizes behind it
+	// the page keeps one button for the ROM set; the slots and the reset
+	// target are in this window
+	romSetWin = popOut(ui.romBox, "Machine: ROM");
+	connect(ui.pbRomSet, &QPushButton::released, romSetWin, [this]() {romSetWin->adjustSize(); romSetWin->show(); romSetWin->raise();});
+
+	// same for the set file by file: the slots say which file is in which
+	// one, this window has the offsets and sizes behind it
 	romWin = popOut(ui.romAdvBox, "Machine: ROM files");
 	romWin->resize(620, 340);
-	connect(ui.pbRomAdvanced, SIGNAL(released()), this, SLOT(showRomFiles()));
+	QPushButton* pbExpert = romSetWin->findChild<QDialogButtonBox*>()->addButton(tr("Expert settings"), QDialogButtonBox::ActionRole);
+	pbExpert->setIcon(QIcon(":/images/settings.png"));
+	pbExpert->setToolTip(tr("Where each file starts, how much of it is read, and where it lands"));
+	connect(pbExpert, SIGNAL(released()), this, SLOT(showRomFiles()));
 // media
 	ftbox = new xFileTypesBox;
 	ftWin = popOut(ftbox, "Media: file types");
@@ -759,10 +768,10 @@ void SetupWin::start() {
 	fill_machine_list(ui.machbox);
 	updateMachineButtons();
 	roms = conf.roms;
+	resTarget = comp->resbank;
 	rsmodel->fill(&roms);
 	fillRomSlots();
 	ui.machbox->setCurrentIndex(ui.machbox->findData(QString::fromLocal8Bit(conf.macId.c_str())));
-	ui.resbox->setCurrentIndex(ui.resbox->findData(comp->resbank));
 	setmszbox(ui.machbox->currentIndex());
 	ui.mszbox->setCurrentIndex(ui.mszbox->findData(comp->mem->ramSize));
 	if (ui.mszbox->currentIndex() < 0) ui.mszbox->setCurrentIndex(ui.mszbox->count() - 1);
@@ -1007,7 +1016,7 @@ void SetupWin::apply() {
 	}
 	emu_lock();		// roms and memory size are rebuilt below
 	xm_set_roms(roms);
-	comp->resbank = getRFIData(ui.resbox);
+	comp->resbank = resTarget;
 	memSetSize(comp->mem, getRFIData(ui.mszbox), -1);
 	compSetBaseFrq(comp, xcpu_frq_parse(ui.cbCpuFrq->currentText(), comp->cpuFrq));
 	xm_turbo_set(comp, getRFSData(ui.cbCpuTurbo).toStdString());
@@ -1583,7 +1592,7 @@ void SetupWin::romPreset() {
 // THE SET AS THE MACHINE WEARS IT
 //
 // One row per slot, with the files to put in it. Where a file starts, how much
-// of it is read and where it lands are in the window behind Advanced.
+// of it is read and where it lands are in the window behind Expert settings.
 
 #define	RSLOT_GS	-1
 #define	RSLOT_FONT	-2
@@ -1632,6 +1641,41 @@ static QVector<int> rom_slot_cover(const xRomset& rs, int banks) {
 	return res;
 }
 
+// what each 16K bank of a core's ROM is, and which reset lands in it; a core
+// whose reset boots its own firmware takes no reset target from here
+
+struct xRomRole {
+	int res;
+	const char* name;
+};
+
+static const struct {
+	int hw;
+	xRomRole bank[4];
+} romRoles[] = {
+	{HW_ZX48, {{RES_48, "Basic 48"}, {RES_DOS, "TR-DOS"}, {-1, NULL}, {-1, NULL}}},
+	{HW_ZX128, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
+	{HW_PENT, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
+	{HW_P1024, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
+	{HW_SCORP, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
+	// plusRes() drops the paging a reset asked for, so every reset lands in the editor
+	{HW_PLUS2A, {{RES_128, "Editor 128"}, {-1, "Syntax 128"}, {-1, "+3DOS"}, {-1, "Basic 48"}}},
+	{HW_PLUS3, {{RES_128, "Editor 128"}, {-1, "Syntax 128"}, {-1, "+3DOS"}, {-1, "Basic 48"}}},
+	{HW_PROFI, {{RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
+	{HW_PHOENIX, {{-1, NULL}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
+	{HW_ATM2, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
+	{HW_PENTEVO, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
+	{HW_TSLAB, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
+	{HW_ALF, {{-1, "Menu"}, {-1, "Basic 48"}, {-1, NULL}, {-1, NULL}}},
+	{HW_NULL, {{-1, NULL}, {-1, NULL}, {-1, NULL}, {-1, NULL}}}
+};
+
+static xRomRole rom_role(int hw, int bank) {
+	int i = 0;
+	while ((romRoles[i].hw != HW_NULL) && (romRoles[i].hw != hw)) i++;
+	return romRoles[i].bank[bank];
+}
+
 void SetupWin::fillRomSlots() {
 	QLayoutItem* itm;
 	while ((itm = ui.gridRomSlots->takeAt(0)) != NULL) {
@@ -1642,15 +1686,49 @@ void SetupWin::fillRomSlots() {
 	if (!mac) return;
 	QStringList files = rom_files();
 	QVector<int> from = rom_slot_cover(roms, mac->romBanks);
+	int hw = conf.zx->hw->id;
+	bool resets = false;
 	int row = 0;
-	for (int i = 0; i < mac->romBanks; i++)
-		addRomSlot(row++, QString("ROM %0").arg(i), i, files, true, from[i]);
+	for (int i = 0; i < mac->romBanks; i++) {
+		xRomRole role = rom_role(hw, i);
+		QString name = QString("ROM %0").arg(i);
+		if (role.name) name += QString(" (%0)").arg(role.name);
+		addRomSlot(row, name, i, files, true, from[i]);
+		if (role.res >= 0) {
+			QRadioButton* rb = new QRadioButton;
+			rb->setToolTip(tr("Boot from this ROM"));
+			rb->setEnabled(!romSlotFileName(i).isEmpty() || (from[i] >= 0));
+			rb->setChecked(role.res == resTarget);
+			resGroup->addButton(rb, role.res);
+			ui.gridRomSlots->addWidget(rb, row, 0);
+			resets = true;
+		}
+		row++;
+	}
 	addRomSlot(row++, "GS", RSLOT_GS, files, conf.zx->gs->enable, -1);
 	// only a machine with a text mode draws from a font rom
 	addRomSlot(row++, "Font", RSLOT_FONT, files, !mac->roms.fntFile.empty(), -1);
 	// spare height under the rows, so they do not spread out
 	ui.gridRomSlots->addItem(new QSpacerItem(20, 0, QSizePolicy::Minimum,
 		QSizePolicy::Expanding), row, 0);
+	ui.labResetHint->setVisible(resets);
+	fillRomSummary();
+}
+
+// the page's one button: the files in the banks, in bank order
+
+void SetupWin::fillRomSummary() {
+	QStringList names;
+	const xMachine* mac = xm_find(conf.macId);
+	int banks = mac ? mac->romBanks : 4;
+	for (int i = 0; i < banks; i++) {
+		QString nam = romSlotFileName(i);
+		if (!nam.isEmpty())
+			names.append(QFileInfo(nam).completeBaseName());
+	}
+	QString txt = names.isEmpty() ? tr("(none)") : names.join(", ");
+	ui.pbRomSet->setText(txt);		// the button cuts it short itself
+	ui.pbRomSet->setToolTip(names.isEmpty() ? tr("The ROM files this machine runs") : names.join("\n"));
 }
 
 // the file in a slot, or an empty string when there is none
@@ -1671,7 +1749,6 @@ QString SetupWin::romSlotFileName(int slot) {
 
 void SetupWin::addRomSlot(int row, QString name, int slot, const QStringList& files, bool has, int from) {
 	QLabel* lab = new QLabel(name);
-	lab->setMinimumWidth(60);
 	lab->setEnabled(has);
 	QComboBox* box = new QComboBox;
 	box->setMinimumWidth(200);
@@ -1695,9 +1772,9 @@ void SetupWin::addRomSlot(int row, QString name, int slot, const QStringList& fi
 	btn->setToolTip(tr("Pick a ROM file"));
 	btn->setEnabled(has);
 	connect(btn, &QToolButton::released, this, [=](){ romSlotFile(box, slot); });
-	ui.gridRomSlots->addWidget(lab, row, 0);
-	ui.gridRomSlots->addWidget(box, row, 1);
-	ui.gridRomSlots->addWidget(btn, row, 2);
+	ui.gridRomSlots->addWidget(lab, row, 1);
+	ui.gridRomSlots->addWidget(box, row, 2);
+	ui.gridRomSlots->addWidget(btn, row, 3);
 }
 
 // a file from anywhere, which is kept as the path it is
@@ -1724,6 +1801,7 @@ void SetupWin::romSlotPick(int slot, const QString& file) {
 		xm_rom_set_file(roms, slot, name);
 	}
 	rsmodel->fill(&roms);
+	fillRomSummary();
 }
 
 void SetupWin::addRom() {

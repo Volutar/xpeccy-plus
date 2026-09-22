@@ -8,6 +8,7 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPushButton>
 #include <QSlider>
 #include <QStyledItemDelegate>
 #include <QTreeView>
@@ -97,6 +98,15 @@ class xHexSpin : public QLineEdit {
 class xSlider : public QSlider {
 	public:
 		xSlider(QWidget* p = NULL);
+	protected:
+		void paintEvent(QPaintEvent*);
+};
+
+// A push button with its icon at the right edge and its text from the left,
+// cut short to fit; Qt only centers the two together.
+class xSideButton : public QPushButton {
+	public:
+		xSideButton(QWidget* p = NULL);
 	protected:
 		void paintEvent(QPaintEvent*);
 };

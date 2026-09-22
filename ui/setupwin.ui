@@ -72,7 +72,7 @@
         <attribute name="title">
          <string>Machine</string>
         </attribute>
-        <layout class="QVBoxLayout" name="verticalLayout_39" stretch="0,0,10">
+        <layout class="QVBoxLayout" name="verticalLayout_39" stretch="0,0,0,10">
          <item>
           <widget class="QGroupBox" name="archArchGBox">
            <layout class="QHBoxLayout" name="horizontalLayout_9">
@@ -134,6 +134,115 @@ switches to it when the settings are applied</string>
                 </widget>
                </item>
                <item row="1" column="0">
+                <widget class="QLabel" name="icoMemory">
+                 <property name="minimumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="pixmap">
+                  <pixmap resource="../xpeccy.qrc">:/images/memory.png</pixmap>
+                 </property>
+                 <property name="scaledContents">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLabel" name="labMemory">
+                 <property name="minimumSize">
+                  <size>
+                   <width>80</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string>Memory</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="2" colspan="3">
+                <widget class="QComboBox" name="mszbox">
+                 <property name="minimumSize">
+                  <size>
+                   <width>200</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>200</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="toolTip">
+                  <string>How much RAM the machine has</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QLabel" name="icoRom">
+                 <property name="minimumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="pixmap">
+                  <pixmap resource="../xpeccy.qrc">:/images/filebin.png</pixmap>
+                 </property>
+                 <property name="scaledContents">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QLabel" name="labRom">
+                 <property name="minimumSize">
+                  <size>
+                   <width>80</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string>ROM</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="2" colspan="3">
+                <widget class="xSideButton" name="pbRomSet">
+                 <property name="minimumSize">
+                  <size>
+                   <width>200</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>200</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../xpeccy.qrc">
+                   <normaloff>:/images/settings.png</normaloff>:/images/settings.png</iconset>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0">
                 <widget class="QLabel" name="icoCpuFreq">
                  <property name="minimumSize">
                   <size>
@@ -155,7 +264,7 @@ switches to it when the settings are applied</string>
                  </property>
                 </widget>
                </item>
-               <item row="1" column="1">
+               <item row="3" column="1">
                 <widget class="QLabel" name="labCpuFreq">
                  <property name="minimumSize">
                   <size>
@@ -168,7 +277,7 @@ switches to it when the settings are applied</string>
                  </property>
                 </widget>
                </item>
-               <item row="1" column="2" colspan="3">
+               <item row="3" column="2" colspan="3">
                 <widget class="QWidget" name="freqBox" native="true">
                  <property name="minimumSize">
                   <size>
@@ -236,114 +345,6 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
                  </layout>
                 </widget>
                </item>
-               <item row="2" column="0">
-                <widget class="QLabel" name="icoMemory">
-                 <property name="minimumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
-                 </property>
-                 <property name="pixmap">
-                  <pixmap resource="../xpeccy.qrc">:/images/memory.png</pixmap>
-                 </property>
-                 <property name="scaledContents">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="1">
-                <widget class="QLabel" name="labMemory">
-                 <property name="minimumSize">
-                  <size>
-                   <width>80</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string>Memory</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="2" colspan="3">
-                <widget class="QComboBox" name="mszbox">
-                 <property name="minimumSize">
-                  <size>
-                   <width>200</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>200</width>
-                   <height>16777215</height>
-                  </size>
-                 </property>
-                 <property name="toolTip">
-                  <string>How much RAM the machine has</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="0">
-                <widget class="QLabel" name="icoReset">
-                 <property name="minimumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
-                 </property>
-                 <property name="pixmap">
-                  <pixmap resource="../xpeccy.qrc">:/images/refresh.png</pixmap>
-                 </property>
-                 <property name="scaledContents">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="1">
-                <widget class="QLabel" name="label_42">
-                 <property name="minimumSize">
-                  <size>
-                   <width>80</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string>Default reset</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="2" colspan="3">
-                <widget class="QComboBox" name="resbox">
-                 <property name="minimumSize">
-                  <size>
-                   <width>200</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>200</width>
-                   <height>16777215</height>
-                  </size>
-                 </property>
-                 <property name="toolTip">
-                  <string>Which ROM the machine starts from after a reset</string>
-                 </property>
-                </widget>
-               </item>
                <item row="4" column="2">
                 <spacer name="verticalSpacer_21">
                  <property name="orientation">
@@ -403,7 +404,7 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
                  <number>0</number>
                 </property>
                 <item>
-                 <widget class="QPushButton" name="pbAdvanced">
+                 <widget class="xSideButton" name="pbAdvanced">
                   <property name="icon">
                    <iconset resource="../xpeccy.qrc">
                     <normaloff>:/images/settings.png</normaloff>:/images/settings.png</iconset>
@@ -417,7 +418,7 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="pbResetMachine">
+                 <widget class="xSideButton" name="pbResetMachine">
                   <property name="icon">
                    <iconset resource="../xpeccy.qrc">
                     <normaloff>:/images/refresh.png</normaloff>:/images/refresh.png</iconset>
@@ -431,7 +432,7 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="pbSaveMachine">
+                 <widget class="xSideButton" name="pbSaveMachine">
                   <property name="icon">
                    <iconset resource="../xpeccy.qrc">
                     <normaloff>:/images/save_all.png</normaloff>:/images/save_all.png</iconset>
@@ -445,7 +446,7 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="pbDelMachine">
+                 <widget class="xSideButton" name="pbDelMachine">
                   <property name="icon">
                    <iconset resource="../xpeccy.qrc">
                     <normaloff>:/images/cancel.png</normaloff>:/images/cancel.png</iconset>
@@ -478,10 +479,7 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
           </widget>
          </item>
          <item>
-          <widget class="QGroupBox" name="gbRoms">
-           <property name="title">
-            <string>ROMs</string>
-           </property>
+          <widget class="QWidget" name="romBox" native="true">
            <layout class="QVBoxLayout" name="verticalLayout_roms">
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_slots">
@@ -502,66 +500,15 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
                 </property>
                </spacer>
               </item>
-              <item>
-               <widget class="QWidget" name="romButtons" native="true">
-                <property name="minimumSize">
-                 <size>
-                  <width>155</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>155</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                 <layout class="QVBoxLayout" name="verticalLayout_romsbtn">
-                  <property name="leftMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="topMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="rightMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="bottomMargin">
-                   <number>0</number>
-                  </property>
-                  <item>
-                   <widget class="QPushButton" name="pbRomAdvanced">
-                    <property name="toolTip">
-                     <string>Edit the set file by file: where each one starts,
-how much of it is read, and where it lands</string>
-                    </property>
-                    <property name="text">
-                     <string>Advanced</string>
-                    </property>
-                    <property name="icon">
-                     <iconset resource="../xpeccy.qrc">
-                      <normaloff>:/images/settings.png</normaloff>:/images/settings.png</iconset>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <spacer name="verticalSpacer_romsbtn">
-                    <property name="orientation">
-                     <enum>Qt::Vertical</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>20</width>
-                      <height>5</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                 </layout>
-               </widget>
-              </item>
              </layout>
             </item>
+             <item>
+              <widget class="QLabel" name="labResetHint">
+               <property name="text">
+                <string>Boots from the marked ROM</string>
+               </property>
+              </widget>
+             </item>
             <item>
              <widget class="QWidget" name="romAdvBox" native="true">
               <layout class="QVBoxLayout" name="verticalLayout_romadv">
@@ -4524,7 +4471,7 @@ Off: the tape stops at the end</string>
                     <number>0</number>
                    </property>
                    <item>
-                    <widget class="QPushButton" name="pbFavorites">
+                    <widget class="xSideButton" name="pbFavorites">
                      <property name="icon">
                       <iconset resource="../xpeccy.qrc">
                        <normaloff>:/images/star.png</normaloff>:/images/star.png</iconset>
@@ -4538,7 +4485,7 @@ Off: the tape stops at the end</string>
                     </widget>
                    </item>
                    <item>
-                    <widget class="QPushButton" name="pbCfgExport">
+                    <widget class="xSideButton" name="pbCfgExport">
                      <property name="icon">
                       <iconset resource="../xpeccy.qrc">
                        <normaloff>:/images/save_all.png</normaloff>:/images/save_all.png</iconset>
@@ -4552,7 +4499,7 @@ Off: the tape stops at the end</string>
                     </widget>
                    </item>
                    <item>
-                    <widget class="QPushButton" name="pbCfgImport">
+                    <widget class="xSideButton" name="pbCfgImport">
                      <property name="icon">
                       <iconset resource="../xpeccy.qrc">
                        <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
@@ -4566,7 +4513,7 @@ Off: the tape stops at the end</string>
                     </widget>
                    </item>
                    <item>
-                    <widget class="QPushButton" name="pbCfgReset">
+                    <widget class="xSideButton" name="pbCfgReset">
                      <property name="icon">
                       <iconset resource="../xpeccy.qrc">
                        <normaloff>:/images/refresh.png</normaloff>:/images/refresh.png</iconset>
@@ -5955,6 +5902,11 @@ Right click: back to the style color</string>
   <customwidget>
    <class>xHotkeyTable</class>
    <extends>QTableView</extends>
+   <header location="global">stdlib.h</header>
+  </customwidget>
+  <customwidget>
+   <class>xSideButton</class>
+   <extends>QPushButton</extends>
    <header location="global">stdlib.h</header>
   </customwidget>
   <customwidget>

@@ -4,6 +4,7 @@
 #include <QKeyEvent>
 #include <QShortcut>
 #include <QComboBox>
+#include <QButtonGroup>
 #include <QModelIndex>
 #include <QKeySequence>
 
@@ -33,6 +34,7 @@ class SetupWin : public QDialog {
 		QDialog* popOut(QWidget*, const char*);
 		void cfgLoaded();
 		void fillRomSlots();
+		void fillRomSummary();
 		void addRomSlot(int, QString, int, const QStringList&, bool, int);
 		QString romSlotFileName(int);
 		void romSlotPick(int, const QString&);
@@ -46,11 +48,14 @@ class SetupWin : public QDialog {
 
 		xRomsetEditor* rseditor;
 		QDialog* advWin;		// the machine-defining settings
+		QDialog* romSetWin;		// the slots and where a reset starts
 		QDialog* romWin;		// the set, file by file
 		QDialog* ftWin;			// the machine each file type is opened on
 		xFileTypesBox* ftbox;
 		xRomsetModel* rsmodel;
 		xRomset roms;			// the set the page edits, until Apply
+		int resTarget;			// where a reset starts, until Apply
+		QButtonGroup* resGroup;
 
 		QDialog* layeditor;
 //		xPadMapModel* padModel;

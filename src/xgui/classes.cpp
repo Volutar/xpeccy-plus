@@ -3,6 +3,7 @@
 
 #include <QPalette>
 #include <QPainter>
+#include <QStylePainter>
 #include <QStyle>
 #include <QStyleOptionSlider>
 #include <QStyleOptionComboBox>
@@ -419,6 +420,32 @@ void xSlider::paintEvent(QPaintEvent* ev) {
 		int x = QStyle::sliderPositionFromValue(minimum(), maximum(), val, span) + hnd / 2;
 		pnt.drawLine(x, height() - 4, x, height() - 1);
 	}
+}
+
+// xSideButton
+
+xSideButton::xSideButton(QWidget* p):QPushButton(p) {}
+
+void xSideButton::paintEvent(QPaintEvent*) {
+	QStylePainter pnt(this);
+	QStyleOptionButton opt;
+	initStyleOption(&opt);
+	QString txt = opt.text;
+	QIcon ico = opt.icon;
+	opt.text.clear();
+	opt.icon = QIcon();
+	pnt.drawControl(QStyle::CE_PushButton, opt);
+	QRect box = style()->subElementRect(QStyle::SE_PushButtonContents, &opt, this);
+	int gap = 6;
+	if (!ico.isNull()) {
+		QSize isz = iconSize();
+		QRect irc(box.right() - isz.width() + 1, box.top() + (box.height() - isz.height()) / 2, isz.width(), isz.height());
+		ico.paint(&pnt, irc, Qt::AlignCenter, isEnabled() ? QIcon::Normal : QIcon::Disabled);
+		box.setRight(irc.left() - gap);
+	}
+	box.setLeft(box.left() + gap / 2);
+	txt = fontMetrics().elidedText(txt, Qt::ElideRight, box.width());
+	pnt.drawItemText(box, Qt::AlignLeft | Qt::AlignVCenter, palette(), isEnabled(), txt, QPalette::ButtonText);
 }
 
 // xLabel
