@@ -87,6 +87,7 @@ typedef struct {
 		void openMedia(const QString& path, int id, int drv, int run);
 		void setMachine(const std::string&);
 		void resetMachine(int);
+		void setTurbo(int);
 		void addFavorite(const QString& path);
 	signals:
 		void s_options();
@@ -218,6 +219,7 @@ typedef struct {
 		QMenu* bookmarkMenu;
 		QMenu* profileMenu;
 		QMenu* resMenu;
+		QMenu* turboMenu;
 		QMenu* shdMenu;
 		QMenu* keyMenu;
 		QMenu* palMenu;

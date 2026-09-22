@@ -215,18 +215,8 @@ void MainWin::xkey_press(int xkey) {
 			case XCUT_TURBO:
 				// the board's own turbo, walked through the steps it declares.
 				// A machine that sets it from a port will set it again itself
-				if (comp->turboCount < 2) {
-					setMessage(" model has no Turbo ");
-				} else if (comp->rzx.play) {
-					setMessage(" not in RZX ");
-				} else {
-					// an unknown step reads as -1 and so starts the list over
-					int i = (xm_turbo_index(comp) + 1) % comp->turboCount;
-					comp->turboStep = comp->turboTab[i];
-					compSetHwTurbo(comp, comp->turboStep);
-					setMessage(QString(" %0 MHz (x%1) ").arg(xspeed_clock(), 0, 'g', 6)
-						.arg(comp->turboStep));
-				}
+				// an unknown step reads as -1 and so starts the list over
+				setTurbo((xm_turbo_index(comp) + 1) % std::max(comp->turboCount, 1));
 				break;
 			case XCUT_SPEED_UP:
 			case XCUT_SPEED_DOWN:
