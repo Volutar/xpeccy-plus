@@ -75,7 +75,7 @@ void MainWin::socketRead() {
 	} else if (com == "step") {
 		emit s_step();
 	} else if (com == "reset") {
-		compReset(comp, RES_DEFAULT);
+		resetMachine(RES_DEFAULT);
 	} else if (com == "cpu") {
 		//sock->write(getCoreName(comp->cpu->type));
 		sock->write(comp->cpu->core->name);

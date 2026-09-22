@@ -1533,10 +1533,15 @@ void MainWin::setMachine(const std::string& id) {
 }
 
 void MainWin::reset(QAction* act) {
-	Computer* comp = conf.zx;
+	resetMachine(act->data().toInt());
+}
+
+// A reset from the running machine's window: one landing mid-opcode lets the opcode
+// finish on the new state, and a jump then takes the pc back from the reset.
+void MainWin::resetMachine(int res) {
 	emit s_rzx_stop();
 	emu_lock();		// reset re-inits the hardware
-	compReset(comp,act->data().toInt());
+	compReset(conf.zx, res);
 	emu_unlock();
 }
 

@@ -139,10 +139,8 @@ void MainWin::xkey_press(int xkey) {
 				joyPress(comp->joy, kent.joyMask & 0xff);
 			}
 		}
-		if (xkey == XKEY_F12) {
-			compReset(comp,RES_DEFAULT);
-			emit s_rzx_stop();
-		}
+		if (xkey == XKEY_F12)
+			resetMachine(RES_DEFAULT);
 	} else {
 		switch (xkey) {
 			case XCUT_FULLSCR:
@@ -198,8 +196,7 @@ void MainWin::xkey_press(int xkey) {
 				scrInterval = 0;
 				break;
 			case XCUT_RES_DOS:
-				compReset(comp,RES_DOS);
-				emit s_rzx_stop();
+				resetMachine(RES_DOS);
 				break;
 			case XCUT_KEYBOARD:
 				emit s_keywin_shide();
@@ -364,8 +361,7 @@ void MainWin::xkey_press(int xkey) {
 				emit s_tape_show();
 				break;
 			case XCUT_RESET:
-				compReset(comp,RES_DEFAULT);
-				emit s_rzx_stop();
+				resetMachine(RES_DEFAULT);
 				break;
 			case XCUT_WAV_OUT:
 				pause(true, PR_FILE);

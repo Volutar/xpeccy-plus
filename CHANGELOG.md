@@ -159,6 +159,9 @@ before that point is upstream's history and is not repeated here.
   a level, and a machine with no tape is silent, so the headroom goes to everything else.
   *(thanks to Volutar)*
 
+- **Reset from the keyboard** (F12, Alt+F12) sometimes did not take, and the machine carried
+  on or hung until a second press. It takes every time now, as the menu one always did.
+
 - **The beeper** gets half the room the sound chips have instead of a quarter, and is let go on
   a reset or a snapshot rather than handed on to whatever runs next. *(thanks to Volutar)*
 
