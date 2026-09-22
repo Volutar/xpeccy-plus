@@ -104,6 +104,8 @@ before that point is upstream's history and is not repeated here.
 - **"Rewind at end" starts off**, and when it is on it winds the tape back for the next load as
   well as for the Play button - so loading the same tape again after a reset just works.
 
+- **A reset stops the tape, and switching the machine also winds it back** to the start.
+
 - **The debugger's screen panel picks a screen with one click.** Main, shadow, both at once, or
   Auto following the machine; the bank and offset are behind a Custom button.
   - The picture is drawn in the machine's own colors, so a loaded palette, grayscale and ULA+

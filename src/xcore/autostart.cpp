@@ -222,7 +222,7 @@ int autostart_arm(Computer* comp, int kind) {
 	autostart_stop();
 	const asAct* act = as_find(comp, kind);
 	if (!act) return 0;
-	compReset(comp, act->res);
+	compUserReset(comp, act->res);
 	if (act->snap) comp_snap_map(comp);
 	comp->keyb->scanmask = 0;
 	as_comp = comp;

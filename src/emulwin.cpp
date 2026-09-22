@@ -1561,7 +1561,7 @@ void MainWin::reset(QAction* act) {
 void MainWin::resetMachine(int res) {
 	emit s_rzx_stop();
 	emu_lock();		// reset re-inits the hardware
-	compReset(conf.zx, res);
+	compUserReset(conf.zx, res);
 	emu_unlock();
 }
 

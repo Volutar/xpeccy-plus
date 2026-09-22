@@ -610,6 +610,14 @@ void compDestroy(Computer* comp) {
 	free(comp);
 }
 
+// A reset the user asked for, not one a loader does: the tape stops where it
+// stands, and the automatics follow the rom again whatever Stop said before.
+void compUserReset(Computer* comp, int res) {
+	compReset(comp, res);
+	tapStop(comp->tape);
+	comp->tape->userStop = 0;
+}
+
 void compReset(Computer* comp,int res) {
 	int i;
 	comp->frmCount = 0;
