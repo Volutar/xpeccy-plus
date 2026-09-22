@@ -86,6 +86,7 @@ typedef struct {
 		void fillUserMenu();
 		void openMedia(const QString& path, int id, int drv, int run);
 		void setMachine(const std::string&);
+		void resetMachine(int);
 		void addFavorite(const QString& path);
 	signals:
 		void s_options();
