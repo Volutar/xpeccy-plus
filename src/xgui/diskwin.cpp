@@ -22,6 +22,15 @@ xDiskWin::xDiskWin(QWidget* p):QDialog(p) {
 	tabs = new QTabBar;
 	tabs->setExpanding(false);
 	list = new xDiskCatTable;
+	// as the list on the old Disk tab was: whole rows, several at once, no row numbers
+	list->setEditTriggers(QAbstractItemView::NoEditTriggers);
+	list->setAlternatingRowColors(true);
+	list->setSelectionMode(QAbstractItemView::ExtendedSelection);
+	list->setSelectionBehavior(QAbstractItemView::SelectRows);
+	list->verticalHeader()->hide();
+	list->horizontalHeader()->setStretchLastSection(false);
+	// a selected row does not make the headings bold
+	list->horizontalHeader()->setHighlightSections(false);
 	note = new QLabel;
 	toTape = diskButton(":/images/tape.png", "Copy to tape");
 	toHobeta = diskButton(":/images/dollar.png", "Save as Hobeta");
@@ -44,6 +53,34 @@ xDiskWin::xDiskWin(QWidget* p):QDialog(p) {
 	connect(toTape, &QToolButton::released, this, [this]() {copyToTape();});
 	connect(toHobeta, &QToolButton::released, this, [this]() {saveFiles(true);});
 	connect(toRaw, &QToolButton::released, this, [this]() {saveFiles(false);});
+}
+
+// The debugger's font, and the columns worked out from it: the name takes
+// what is left, the two 16-bit figures share a width, and so do the three that
+// never run past three digits. A new catalog resets the model and with it every
+// section's size, so this runs after each one.
+void xDiskWin::setColumns() {
+	list->setFont(conf.dbg.font);
+	QHeaderView* hdr = list->horizontalHeader();
+	// a theme that styles the headings draws them in its own font whatever
+	// setFont says, so the font goes in as a rule of the header's own
+	QFont fnt = conf.dbg.font;
+	QString size = (fnt.pointSizeF() > 0) ? QString("%0pt").arg(fnt.pointSizeF()) : QString("%0px").arg(fnt.pixelSize());
+	hdr->setStyleSheet(QString("QHeaderView::section {font-family: \"%0\"; font-size: %1; font-weight: bold;}").arg(fnt.family()).arg(size));
+	QFontMetrics fm(conf.dbg.font);
+	QFont bold = conf.dbg.font;
+	bold.setBold(true);
+	QFontMetrics fmb(bold);		// the headings are bold
+	int wide = qMax(fmb.horizontalAdvance("Length"), fm.horizontalAdvance("65535")) + 12;
+	int narrow = qMax(fmb.horizontalAdvance("SecLen"), fm.horizontalAdvance("000")) + 12;
+	hdr->setSectionResizeMode(0, QHeaderView::Stretch);
+	hdr->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+	for (int i = 2; i < 7; i++) {
+		hdr->setSectionResizeMode(i, QHeaderView::Fixed);
+		hdr->resizeSection(i, (i < 4) ? wide : narrow);
+	}
+	list->verticalHeader()->setMinimumSectionSize(fm.height() + 4);
+	list->verticalHeader()->setDefaultSectionSize(fm.height() + 4);
 }
 
 // one tab per drive the interface has: four on a Beta Disk, two on a +3
@@ -97,6 +134,7 @@ void xDiskWin::fill() {
 		note->setText(QString("%0 files").arg(cat.size()));
 	}
 	list->setCatalog(cat);
+	setColumns();
 	list->setEnabled(!cat.isEmpty());
 	pickedChanged();
 }

@@ -28,6 +28,7 @@ class xDiskWin : public QDialog {
 		int drive();
 		QList<int> picked();
 		void fill();
+		void setColumns();
 		void pickedChanged();
 		void copyToTape();
 		void saveFiles(bool hobeta);

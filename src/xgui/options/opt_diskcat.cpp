@@ -19,6 +19,9 @@ static QVariant dchNames[] = {"Name","Ext","Start","Length","SecLen","Trk","Sec"
 QVariant xDiskCatModel::headerData(int sect, Qt::Orientation ori, int role) const {
 	QVariant res;
 	if (ori != Qt::Horizontal) return res;
+	// a figure's heading stands over it
+	if ((role == Qt::TextAlignmentRole) && (sect > 1))
+		return int(Qt::AlignRight | Qt::AlignVCenter);
 	if (role != Qt::DisplayRole) return res;
 	if ((sect < 0) || (sect > 6)) return res;
 	res = dchNames[sect];
@@ -32,6 +35,9 @@ QVariant xDiskCatModel::data(const QModelIndex& idx, int role) const {
 	int col = idx.column();
 	if (row >= rowCount()) return res;
 	if (col >= columnCount()) return res;
+	// the figures line up on their last digit
+	if (role == Qt::TextAlignmentRole)
+		return (col > 1) ? int(Qt::AlignRight | Qt::AlignVCenter) : int(Qt::AlignLeft | Qt::AlignVCenter);
 	if (role != Qt::DisplayRole) return res;
 	TRFile dsc = cat[row];
 	switch(col) {

@@ -43,12 +43,12 @@ void MainWin::fillDrivesMenu() {
 		m->addAction(QIcon(":/images/fileopen.png"), "Open...", this, [this, i]() {
 			openMedia(QString(), FH_DRIVE_A + i, i, conf.autorun);
 		});
-		m->addAction(QIcon(":/images/new.png"), "New", this, [this, i]() {diskNew(i);});
+		m->addAction(QIcon(":/images/doc-new.png"), "New", this, [this, i]() {diskNew(i);});
 		act = m->addAction(QIcon(":/images/save_all.png"), "Save", this, [this, i]() {diskSave(i, false);});
 		act->setEnabled(flp->insert && flp->path && *flp->path);
 		act = m->addAction("Save as...", this, [this, i]() {diskSave(i, true);});
 		act->setEnabled(flp->insert);
-		act = m->addAction(QIcon(":/images/cancel.png"), "Eject", this, [this, i]() {diskEject(i);});
+		act = m->addAction(QIcon(":/images/tape-eject.png"), "Eject", this, [this, i]() {diskEject(i);});
 		act->setEnabled(flp->insert);
 		m->addSeparator();
 		act = m->addAction("Write protect");
@@ -66,7 +66,7 @@ void MainWin::fillDrivesMenu() {
 				QString("%0: %1").arg(i ? "Slave" : "Master").arg(drive_media(dev[i]->image, dev[i]->image != NULL)));
 			m->addAction(QIcon(":/images/fileopen.png"), "Open image...", this, [this, id]() {hddOpen(id, false);});
 			m->addAction("Open folder...", this, [this, id]() {hddOpen(id, true);});
-			act = m->addAction(QIcon(":/images/cancel.png"), "Eject", this, [this, id]() {
+			act = m->addAction(QIcon(":/images/tape-eject.png"), "Eject", this, [this, id]() {
 				driveOp([id]() {ide_mount(conf.zx->ide, id, QString());});
 			});
 			act->setEnabled(dev[i]->image != NULL);
@@ -84,13 +84,13 @@ void MainWin::fillDrivesMenu() {
 			QString("SD card: %0").arg(sdc->image ? drive_media(sdc->image, true) : QString("(no card)")));
 		m->addAction(QIcon(":/images/fileopen.png"), "Open image...", this, [this]() {sdcOpen(false);});
 		m->addAction("Open folder...", this, [this]() {sdcOpen(true);});
-		act = m->addAction(QIcon(":/images/cancel.png"), "Eject", this, [this]() {
+		act = m->addAction(QIcon(":/images/tape-eject.png"), "Eject", this, [this]() {
 			driveOp([]() {sdc_mount(conf.zx->sdc, QString());});
 		});
 		act->setEnabled(sdc->image != NULL);
 		m->addSeparator();
-		// a folder is served read only whatever this says
-		act = m->addAction("Read only");
+		// the card's lock switch; a folder is served read only whatever it says
+		act = m->addAction("Write protect");
 		act->setCheckable(true);
 		act->setChecked(sdc->lock || dir);
 		act->setEnabled(!dir);
@@ -104,7 +104,7 @@ void MainWin::fillDrivesMenu() {
 		m->addAction(QIcon(":/images/fileopen.png"), "Open...", this, [this]() {
 			openMedia(QString(), FH_SLOTS, 0, 0);
 		});
-		act = m->addAction(QIcon(":/images/cancel.png"), "Eject", this, [this]() {
+		act = m->addAction(QIcon(":/images/tape-eject.png"), "Eject", this, [this]() {
 			driveOp([]() {
 				Computer* comp = conf.zx;
 				sltEject(comp->slot);
