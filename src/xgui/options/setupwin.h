@@ -5,6 +5,9 @@
 #include <QShortcut>
 #include <QComboBox>
 #include <QButtonGroup>
+#include <QGridLayout>
+#include <QToolButton>
+#include <QLabel>
 #include <QModelIndex>
 #include <QKeySequence>
 
@@ -35,6 +38,12 @@ class SetupWin : public QDialog {
 		void cfgLoaded();
 		void fillRomSlots();
 		void fillRomSummary();
+		void buildDevices();
+		QToolButton* devRow(QGridLayout*, const QString&, QWidget*, QWidget*, const char*);
+		void fillDevSummary();
+		void showDevRows();
+		void tidySoundPage();
+		void fillGsRom(const QStringList&);
 		void addRomSlot(int, QString, int, const QStringList&, bool, int);
 		QString romSlotFileName(int);
 		void romSlotPick(int, const QString&);
@@ -56,6 +65,17 @@ class SetupWin : public QDialog {
 		xRomset roms;			// the set the page edits, until Apply
 		int resTarget;			// where a reset starts, until Apply
 		QButtonGroup* resGroup;
+
+		// the machine's devices, on the Machine page
+		QComboBox* gsBox;
+		QComboBox* gsRomBox;
+		QComboBox* joyBox;
+		QComboBox* mouseBox;
+		QLabel* tapeSum;
+		QLabel* sdSum;
+		QLabel* slotSum;
+		QList<QWidget*> sdRow;
+		QList<QWidget*> slotRow;
 
 		QDialog* layeditor;
 //		xPadMapModel* padModel;

@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QGroupBox>
 #include <QSlider>
 #include <QStyledItemDelegate>
 #include <QTreeView>
@@ -109,6 +110,20 @@ class xSideButton : public QPushButton {
 		xSideButton(QWidget* p = NULL);
 	protected:
 		void paintEvent(QPaintEvent*);
+};
+
+// A group box with an icon in front of its title. The title is padded with
+// spaces to make room, since no style draws an icon there.
+class xIconGroup : public QGroupBox {
+	public:
+		xIconGroup(const QIcon&, const QString&, QWidget* p = NULL);
+	protected:
+		void paintEvent(QPaintEvent*);
+		void changeEvent(QEvent*);
+	private:
+		QIcon icon;
+		QString text;
+		void padTitle();
 };
 
 class xLabel : public QLabel {

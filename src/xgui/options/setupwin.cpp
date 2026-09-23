@@ -79,6 +79,7 @@ void fill_machine_list(QComboBox* box) {
 		family = mac.family;
 		box->addItem(xm_list_name(mac), QString::fromLocal8Bit(mac.id.c_str()));
 	}
+	box->setMaxVisibleItems(box->count());
 }
 
 void fill_layout_list(QComboBox* box, QString txt = QString()) {
@@ -531,6 +532,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	pbExpert->setIcon(QIcon(":/images/settings.png"));
 	pbExpert->setToolTip(tr("Where each file starts, how much of it is read, and where it lands"));
 	connect(pbExpert, SIGNAL(released()), this, SLOT(showRomFiles()));
+	buildDevices();
 // media
 	ftbox = new xFileTypesBox;
 	ftWin = popOut(ftbox, "Media: file types");
@@ -840,7 +842,7 @@ void SetupWin::start() {
 	//fill_palette_list(ui.cbPalPreset);
 	fillComboBox(ui.cbPalPreset, "palettes", QStringList() << "*.txt" << "*.pal", PAL_DEFAULT_NAME, conf.palette.c_str());
 // sound
-	ui.cbGS->setChecked(comp->gs->enable);
+	gsBox->setCurrentIndex(comp->gs->enable ? 1 : 0);
 	ui.gsrbox->setChecked(comp->gs->reset);
 
 	ui.sdrvBox->setCurrentIndex(ui.sdrvBox->findData(comp->sdrv->type));
@@ -885,11 +887,11 @@ void SetupWin::start() {
 	idx = ui.keyMapBox->findText(QString(conf.kmapName.c_str()));
 	if (idx < 1) idx = 0;
 	ui.keyMapBox->setCurrentIndex(idx);
-	ui.ratEnable->setChecked(comp->mouse->enable);
+	mouseBox->setCurrentIndex(comp->mouse->enable ? 1 : 0);
 	ui.ratWheel->setChecked(comp->mouse->hasWheel);
 	ui.cbSwapButtons->setChecked(comp->mouse->swapButtons);
 	ui.sldSensitivity->setValue(comp->mouse->sensitivity * 1000.0f);
-	ui.cbKbuttons->setChecked(comp->joy->extbuttons);
+	joyBox->setCurrentIndex(comp->joy->extbuttons ? 1 : 0);
 	gpwid_a->update(conf.jmapNameA);
 	gpwid_b->update(conf.jmapNameB);
 //	ui.sldDeadZone->setValue(conf.joy.gpad->deadZone());
@@ -968,6 +970,7 @@ void SetupWin::start() {
 	ui.sldTapeSpeed->setValue(comp->tape->speed);	// the readout follows in the slot
 	ui.tpathle->setText(QString::fromLocal8Bit(comp->tape->path));
 	buildtapelist();
+	showDevRows();
 // tools
 	ui.sbPort->setValue(conf.port);
 	ui.cbConfexit->setChecked(conf.confexit);
@@ -1122,7 +1125,7 @@ void SetupWin::apply() {
 	}
 	comp->ts->type = (chips > 2) ? TS_ZXNEXT : (chips > 1) ? TS_NEDOPC : TS_NONE;
 
-	comp->gs->enable = ui.cbGS->isChecked() ? 1 : 0;
+	comp->gs->enable = gsBox->currentIndex();
 	comp->gs->reset = ui.gsrbox->isChecked() ? 1 : 0;
 
 	comp->sdrv->type = getRFIData(ui.sdrvBox);
@@ -1130,11 +1133,11 @@ void SetupWin::apply() {
 	comp->saa->enabled = ui.cbSAA->isChecked() ? 1 : 0;
 // input
 	comp->keyb->pcmode = getRFIData(ui.cbScanTab);
-	comp->mouse->enable = ui.ratEnable->isChecked() ? 1 : 0;
+	comp->mouse->enable = mouseBox->currentIndex();
 	comp->mouse->hasWheel = ui.ratWheel->isChecked() ? 1 : 0;
 	comp->mouse->swapButtons = ui.cbSwapButtons->isChecked() ? 1 : 0;
 	comp->mouse->sensitivity = ui.sldSensitivity->value() * 0.001f;
-	comp->joy->extbuttons = ui.cbKbuttons->isChecked() ? 1 : 0;
+	comp->joy->extbuttons = joyBox->currentIndex();
 	gpwid_a->apply();
 	gpwid_b->apply();
 /*
@@ -1455,6 +1458,379 @@ QDialog* SetupWin::popOut(QWidget* box, const char* title) {
 	return win;
 }
 
+#define	RSLOT_GS	-1
+#define	RSLOT_FONT	-2
+
+// THE MACHINE'S DEVICES
+//
+// One row per device on the Machine page: its name, the choice, and a button
+// for the rest. The widgets are the ones the other pages had, moved here, so
+// what reads and writes them stays as it is.
+
+// the items of a layout that is some widget's own, moved into a new widget
+static QWidget* devTakeGrid(QGridLayout* src) {
+	QWidget* wid = new QWidget;
+	QGridLayout* dst = new QGridLayout(wid);
+	dst->setContentsMargins(0, 0, 0, 0);
+	int r, c, rs, cs;
+	while (src->count() > 0) {
+		src->getItemPosition(0, &r, &c, &rs, &cs);
+		QLayoutItem* itm = src->takeAt(0);
+		if (itm->widget()) {
+			dst->addWidget(itm->widget(), r, c, rs, cs);
+			delete itm;
+		} else if (itm->layout()) {
+			itm->layout()->setParent(NULL);
+			dst->addLayout(itm->layout(), r, c, rs, cs);
+		} else {
+			dst->addItem(itm, r, c, rs, cs);
+		}
+	}
+	return wid;
+}
+
+// a layout inside another one, moved into a new widget
+static QWidget* devTakeLayout(QLayout* lay) {
+	QLayout* par = qobject_cast<QLayout*>(lay->parent());
+	if (par) par->removeItem(lay);
+	lay->setParent(NULL);
+	QWidget* wid = new QWidget;
+	QVBoxLayout* box = new QVBoxLayout(wid);
+	box->setContentsMargins(0, 0, 0, 0);
+	box->addLayout(lay);
+	return wid;
+}
+
+static QComboBox* devCombo(QStringList items) {
+	QComboBox* box = new QComboBox;
+	box->addItems(items);
+	return box;
+}
+
+QToolButton* SetupWin::devRow(QGridLayout* grid, const QString& name, QWidget* choice, QWidget* body, const char* title) {
+	int row = grid->rowCount();
+	QLabel* lab = new QLabel(name);
+	QToolButton* btn = new QToolButton;
+	btn->setIcon(QIcon(":/images/settings.png"));
+	if (body) {
+		QDialog* win = popOut(body, title);
+		btn->setToolTip(tr("More settings"));
+		connect(btn, &QToolButton::released, win, [win]() {win->adjustSize(); win->show(); win->raise();});
+	} else {
+		btn->setEnabled(false);
+	}
+	grid->addWidget(lab, row, 0);
+	// the widths it had on its old page mean nothing here
+	choice->setMinimumWidth(0);
+	choice->setMaximumWidth(QWIDGETSIZE_MAX);
+	grid->addWidget(choice, row, 1);
+	grid->addWidget(btn, row, 2);
+	return btn;
+}
+
+static QGridLayout* devGroup(QVBoxLayout* col, const char* icon, const QString& title) {
+	xIconGroup* box = new xIconGroup(QIcon(icon), title);
+	QGridLayout* grid = new QGridLayout(box);
+	grid->setColumnStretch(1, 1);
+	col->addWidget(box);
+	return grid;
+}
+
+// A pop-up laid out like Advanced settings: fields with a name first, then a
+// line, then check boxes with a name and, in italics, what they do.
+
+#define	SHEET_TEXT	300		// the description column; keeps the window near 520
+#define	SHEET_GAP	10		// from a name to its description, as in Advanced settings
+
+class xFollowEnabled : public QObject {
+	public:
+		xFollowEnabled(QWidget* src, QList<QWidget*> dst) : QObject(src) {
+			list = dst;
+			src->installEventFilter(this);
+			follow(src);
+		}
+	protected:
+		bool eventFilter(QObject* obj, QEvent* ev) {
+			if (ev->type() == QEvent::EnabledChange) follow((QWidget*)obj);
+			return false;
+		}
+	private:
+		QList<QWidget*> list;
+		void follow(QWidget* src) {
+			foreach(QWidget* w, list) w->setEnabled(src->isEnabled());
+		}
+};
+
+class xOptSheet {
+	public:
+		QWidget* body;
+		xOptSheet() {
+			body = new QWidget;
+			grid = new QGridLayout(body);
+			grid->setContentsMargins(0, 0, 0, 0);
+			grid->setColumnMinimumWidth(2, SHEET_TEXT);
+			grid->setColumnStretch(2, 1);
+		}
+		void field(const QString& name, QWidget* wid, const QString& desc = QString()) {
+			int row = grid->rowCount();
+			// as tall as its field, so the two read as one line at the top
+			QLabel* nam = new QLabel(name);
+			nam->setContentsMargins(0, 0, SHEET_GAP, 0);
+			nam->setMinimumHeight(wid->sizeHint().height());
+			grid->addWidget(nam, row, 1, Qt::AlignTop);
+			grid->addWidget(wid, row, 2, Qt::AlignTop);
+			wid->setToolTip(QString());
+			if (!desc.isEmpty()) grid->addWidget(text(desc), row + 1, 2, Qt::AlignTop);
+		}
+		void line() {
+			QFrame* frm = new QFrame;
+			frm->setFrameShape(QFrame::HLine);
+			frm->setFrameShadow(QFrame::Sunken);
+			grid->addWidget(frm, grid->rowCount(), 0, 1, 3);
+		}
+		// every option here is the machine's own unless it says otherwise
+		void check(QCheckBox* cb, const QString& name, const QString& desc, bool global = false) {
+			int row = grid->rowCount();
+			cb->setText(QString());
+			cb->setToolTip(QString());
+			xLabel* nam = new xLabel;
+			nam->setText(name);
+			if (global) nam->setToolTip(QObject::tr("Applies to all machines"));
+			QObject::connect(nam, &xLabel::clicked, cb, [cb]() {if (cb->isEnabled()) cb->click();});
+			QLabel* dsc = text(desc);
+			nam->setContentsMargins(0, 0, SHEET_GAP, 0);
+			// a description of two lines hangs from the top, next to its name
+			grid->addWidget(cb, row, 0, Qt::AlignTop);
+			grid->addWidget(nam, row, 1, Qt::AlignTop);
+			grid->addWidget(dsc, row, 2, Qt::AlignTop);
+			new xFollowEnabled(cb, QList<QWidget*>() << nam << dsc);
+		}
+	private:
+		QGridLayout* grid;
+		QLabel* text(const QString& str) {
+			QLabel* lab = new QLabel(str);
+			QFont fnt = lab->font();
+			fnt.setItalic(true);
+			lab->setFont(fnt);
+			lab->setWordWrap(true);
+			return lab;
+		}
+};
+
+// a slider and the figure it sets, as one field
+static QWidget* sliderField(QSlider* sld, QLabel* val) {
+	QWidget* wid = new QWidget;
+	QHBoxLayout* box = new QHBoxLayout(wid);
+	box->setContentsMargins(0, 0, 0, 0);
+	box->addWidget(sld, 1);
+	if (val) box->addWidget(val);
+	return wid;
+}
+
+void SetupWin::buildDevices() {
+	QWidget* area = new QWidget;
+	QHBoxLayout* cols = new QHBoxLayout(area);
+	cols->setContentsMargins(0, 0, 0, 0);
+	QVBoxLayout* left = new QVBoxLayout;
+	QVBoxLayout* right = new QVBoxLayout;
+	cols->addLayout(left, 1);
+	cols->addLayout(right, 1);
+	QToolButton* btn;
+
+	QGridLayout* grid = devGroup(left, ":/images/floppy.png", tr("Storage"));
+	tapeSum = new QLabel;
+	xOptSheet tape;
+	delete ui.labTapeSpeed;
+	tape.field(tr("Playback speed"), sliderField(ui.sldTapeSpeed, ui.labTapeSpeedVal),
+		tr("Per cent of normal. A few images made on machines with an unusual clock load only when it is nudged either way"));
+	tape.line();
+	tape.check(ui.cbTapeAuto, tr("Auto play / stop"), tr("Start the tape when a loader asks for it, stop it between blocks"), true);
+	tape.check(ui.cbTapeRewind, tr("Rewind at end"), tr("Play or the next load starts the tape again. Off: it stops at the end"), true);
+	tape.check(ui.cbTapeFast, tr("Fast loading"), tr("Full speed, sound off and picture held while a loader reads the tape"), true);
+	tape.check(ui.cbTapeFlash, tr("Flash loading"), tr("With fast loading: ROM blocks go straight to the machine"), true);
+	tape.check(ui.cbTapeEdge, tr("Edge detection"), tr("With fast loading: a loader waiting for a pulse gets it at once. Faster, not exact"), true);
+	devRow(grid, tr("Tape"), tapeSum, tape.body, "Machine: tape");
+	foreach(QCheckBox* cb, QList<QCheckBox*>() << ui.cbTapeAuto << ui.cbTapeRewind << ui.cbTapeFast << ui.cbTapeFlash << ui.cbTapeEdge)
+		connect(cb, &QCheckBox::toggled, this, &SetupWin::fillDevSummary);
+	// the rest of the tab is the tape player's now
+	ui.tabWidget_3->removeTab(ui.tabWidget_3->indexOf(ui.tab_9));
+
+	xOptSheet disk;
+	delete ui.label_68;
+	disk.field(tr("Interleave"), ui.cbFlpInterleave,
+		tr("Sector order on each track of a TRD or SCL image, set when it is opened. TR-DOS formats 1, 9, 2, 10..."));
+	disk.line();
+	disk.check(ui.bdtbox, tr("Fast disk access"), tr("No head-seek and rotation delays"), true);
+	disk.check(ui.cbAddBoot, tr("Add boot loader"), tr("Write a boot file into TR-DOS images that have none"), true);
+	devRow(grid, tr("Disk"), ui.diskTypeBox, disk.body, "Machine: disk");
+	delete ui.label_38;
+	ui.groupBox_10->hide();
+
+	devRow(grid, tr("Hard disk"), ui.hiface, ui.tabWidget_2, "Machine: hard disk");
+	ui.tabWidget_3->removeTab(ui.tabWidget_3->indexOf(ui.tab_10));
+
+	sdSum = new QLabel;
+	btn = devRow(grid, tr("SD card"), sdSum, devTakeLayout(ui.gridLayout_4), "Machine: SD card");
+	sdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << sdSum << btn;
+	connect(ui.sdPath, &QLineEdit::textChanged, this, &SetupWin::fillDevSummary);
+
+	slotSum = new QLabel;
+	btn = devRow(grid, tr("Cartridge"), slotSum, devTakeGrid(ui.gridLayout_7), "Machine: cartridge");
+	slotRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << slotSum << btn;
+	connect(ui.cSlotName, &QLineEdit::textChanged, this, &SetupWin::fillDevSummary);
+	ui.tabWidget_3->removeTab(ui.tabWidget_3->indexOf(ui.sdcTab));
+
+	grid = devGroup(left, ":/images/joystick.png", tr("Input"));
+	joyBox = devCombo(QStringList() << tr("Kempston 5-bit") << tr("Kempston 8-bit"));
+	devRow(grid, tr("Joystick"), joyBox, NULL, NULL);
+	ui.groupBox_3->hide();
+	mouseBox = devCombo(QStringList() << tr("None") << tr("Kempston mouse"));
+	ui.ratEnable->hide();
+	xOptSheet mouse;
+	delete ui.label_66;
+	mouse.field(tr("Sensitivity"), sliderField(ui.sldSensitivity, NULL),
+		tr("How fast the pointer moves. In the middle it keeps up with the PC one"));
+	mouse.line();
+	mouse.check(ui.ratWheel, tr("Wheel"), tr("The wheel is read too, as on the extended Kempston mouse"));
+	mouse.check(ui.cbSwapButtons, tr("Swap buttons"), tr("The left and right buttons trade places"));
+	devRow(grid, tr("Mouse"), mouseBox, mouse.body, "Machine: mouse");
+	ui.groupBox_5->hide();
+	devRow(grid, tr("PC keyboard"), ui.cbScanTab, NULL, NULL);
+	delete ui.label_65;
+	left->addStretch(1);
+
+	grid = devGroup(right, ":/images/speaker.png", tr("Sound"));
+	delete ui.labPsgCount;
+	devRow(grid, tr("PSG"), ui.cbPsgCount, devTakeGrid(ui.gridLayout_psg), "Machine: PSG");
+	ui.aygroup->hide();
+	devRow(grid, tr("DAC"), ui.sdrvBox, NULL, NULL);
+	delete ui.label_41;
+	gsBox = devCombo(QStringList() << tr("Off") << tr("On"));
+	delete ui.line_3;
+	xOptSheet gs;
+	gsRomBox = new QComboBox;
+	QToolButton* gsRomBtn = new QToolButton;
+	gsRomBtn->setIcon(QIcon(":/images/fileopen.png"));
+	gsRomBtn->setToolTip(tr("Pick a ROM file"));
+	connect(gsRomBox, QOverload<int>::of(&QComboBox::activated), this, [this](int idx) {
+		romSlotPick(RSLOT_GS, gsRomBox->itemData(idx).toString());
+	});
+	connect(gsRomBtn, &QToolButton::released, this, [this]() {romSlotFile(gsRomBox, RSLOT_GS);});
+	QWidget* gsRom = new QWidget;
+	QHBoxLayout* hbox = new QHBoxLayout(gsRom);
+	hbox->setContentsMargins(0, 0, 0, 0);
+	hbox->addWidget(gsRomBox, 1);
+	hbox->addWidget(gsRomBtn);
+	gs.field(tr("ROM"), gsRom);
+	gs.line();
+	gs.check(ui.gsrbox, tr("Reset"), tr("The card is reset with the machine"));
+	devRow(grid, tr("General Sound"), gsBox, gs.body, "Machine: General Sound");
+
+	grid = devGroup(right, ":/images/clock.png", tr("Board"));
+	devRow(grid, tr("Turbo"), ui.cbCpuTurbo, NULL, NULL);
+	delete ui.nam_cputurbo;
+	right->addStretch(1);
+
+	// one label width per column, so the choices line up from group to group
+	foreach(QVBoxLayout* col, QList<QVBoxLayout*>() << left << right) {
+		QList<QLabel*> labs;
+		for (int i = 0; i < col->count(); i++) {
+			QWidget* box = col->itemAt(i)->widget();
+			if (!box) continue;
+			QGridLayout* g = qobject_cast<QGridLayout*>(box->layout());
+			for (int row = 0; g && (row < g->rowCount()); row++) {
+				QLayoutItem* itm = g->itemAtPosition(row, 0);
+				QLabel* lab = itm ? qobject_cast<QLabel*>(itm->widget()) : NULL;
+				if (lab) labs << lab;
+			}
+		}
+		int wid = 0;
+		foreach(QLabel* lab, labs) wid = qMax(wid, lab->sizeHint().width());
+		foreach(QLabel* lab, labs) lab->setMinimumWidth(wid);
+	}
+	ui.verticalLayout_39->insertWidget(1, area);
+	tidySoundPage();
+}
+
+// The volumes, named the way the devices are, with the master set apart.
+// SAM Coupe's chip stays hidden: no machine here has one.
+
+void SetupWin::tidySoundPage() {
+	QGridLayout* grid = ui.gridLayout_14;
+	while (grid->count() > 0) {
+		QLayoutItem* itm = grid->takeAt(0);
+		if (itm->widget()) itm->widget()->hide();
+		delete itm;
+	}
+	struct {
+		QLabel* lab;
+		QString name;
+		QSlider* sld;
+		QSpinBox* spin;
+	} vols[] = {
+		{ui.label_14, tr("Master"), ui.sldMasterVol, ui.sbMasterVol},
+		{ui.label_9, tr("Beeper"), ui.sldBeepVol, ui.sbBeepVol},
+		{ui.label_10, tr("Tape"), ui.sldTapeVol, ui.sbTapeVol},
+		{ui.label_11, tr("PSG"), ui.sldAYVol, ui.sbAYVol},
+		{ui.label_30, tr("DAC"), ui.sldSdrvVol, ui.sbSdrvVol},
+		{new QLabel, tr("General Sound"), ui.sldGSVol, ui.sbGSVol}
+	};
+	int row = 0;
+	for (int i = 0; i < 6; i++) {
+		vols[i].lab->setText(vols[i].name);
+		vols[i].lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+		grid->addWidget(vols[i].lab, row, 0);
+		grid->addWidget(vols[i].sld, row, 1);
+		grid->addWidget(vols[i].spin, row, 2);
+		vols[i].lab->show();
+		vols[i].sld->show();
+		vols[i].spin->show();
+		row++;
+		if (i == 0) {
+			QFrame* frm = new QFrame;
+			frm->setFrameShape(QFrame::HLine);
+			frm->setFrameShadow(QFrame::Sunken);
+			grid->addWidget(frm, row++, 0, 1, 3);
+		}
+	}
+	grid->setColumnStretch(1, 1);
+	// the gaps that stood above GS reset and under the output rows
+	foreach(QLayout* lay, QList<QLayout*>() << ui.verticalLayout_22 << ui.gridLayout_5) {
+		for (int i = lay->count() - 1; i >= 0; i--) {
+			if (lay->itemAt(i)->spacerItem())
+				delete lay->takeAt(i);
+		}
+	}
+	// the groups keep their height, the page's spare room goes under them
+	ui.verticalLayout_43->addStretch(1);
+}
+
+// what the rows with no choice of their own show
+void SetupWin::fillDevSummary() {
+	QStringList tape;
+	if (ui.cbTapeFast->isChecked()) {
+		tape << tr("fast");
+		if (ui.cbTapeFlash->isChecked()) tape << tr("flash");
+		if (ui.cbTapeEdge->isChecked()) tape << tr("edge");
+	}
+	if (ui.cbTapeAuto->isChecked()) tape << tr("auto");
+	tapeSum->setText(tape.isEmpty() ? tr("plain") : tape.join(", "));
+	QString sd = ui.sdPath->text();
+	sdSum->setText(sd.isEmpty() ? tr("(no card)") : QFileInfo(sd).fileName());
+	QString slot = ui.cSlotName->text();
+	slotSum->setText(slot.isEmpty() ? tr("(empty)") : QFileInfo(slot).fileName());
+}
+
+// rows only some cores have
+void SetupWin::showDevRows() {
+	int hw = conf.zx->hw->id;
+	bool sd = (hw == HW_PENTEVO) || (hw == HW_TSLAB);
+	bool slot = (hw == HW_ZX48) || (hw == HW_ALF);
+	foreach(QWidget* w, sdRow) w->setVisible(sd);
+	foreach(QWidget* w, slotRow) w->setVisible(slot);
+	fillDevSummary();
+}
+
 void SetupWin::showAdvanced() {
 	advWin->show();
 	advWin->raise();
@@ -1594,8 +1970,6 @@ void SetupWin::romPreset() {
 // One row per slot, with the files to put in it. Where a file starts, how much
 // of it is read and where it lands are in the window behind Expert settings.
 
-#define	RSLOT_GS	-1
-#define	RSLOT_FONT	-2
 
 static QStringList rom_files() {
 	QDir dir(QString::fromLocal8Bit(conf.path.romDir.c_str()));
@@ -1705,13 +2079,13 @@ void SetupWin::fillRomSlots() {
 		}
 		row++;
 	}
-	addRomSlot(row++, "GS", RSLOT_GS, files, conf.zx->gs->enable, -1);
 	// only a machine with a text mode draws from a font rom
 	addRomSlot(row++, "Font", RSLOT_FONT, files, !mac->roms.fntFile.empty(), -1);
 	// spare height under the rows, so they do not spread out
 	ui.gridRomSlots->addItem(new QSpacerItem(20, 0, QSizePolicy::Minimum,
 		QSizePolicy::Expanding), row, 0);
 	ui.labResetHint->setVisible(resets);
+	fillGsRom(files);
 	fillRomSummary();
 }
 
@@ -1729,6 +2103,17 @@ void SetupWin::fillRomSummary() {
 	QString txt = names.isEmpty() ? tr("(none)") : names.join(", ");
 	ui.pbRomSet->setText(txt);		// the button cuts it short itself
 	ui.pbRomSet->setToolTip(names.isEmpty() ? tr("The ROM files this machine runs") : names.join("\n"));
+}
+
+// the General Sound's ROM, which its own window picks
+
+void SetupWin::fillGsRom(const QStringList& files) {
+	gsRomBox->clear();
+	gsRomBox->addItem(tr("(empty)"), QString());
+	foreach(QString f, files) gsRomBox->addItem(f, f);
+	QString cur = romSlotFileName(RSLOT_GS);
+	if (!cur.isEmpty() && (gsRomBox->findData(cur) < 0)) gsRomBox->insertItem(1, cur, cur);
+	gsRomBox->setCurrentIndex(qMax(0, gsRomBox->findData(cur)));
 }
 
 // the file in a slot, or an empty string when there is none

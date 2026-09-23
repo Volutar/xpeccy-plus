@@ -4,6 +4,7 @@
 #include <QPalette>
 #include <QPainter>
 #include <QStylePainter>
+#include <QStyleOption>
 #include <QStyle>
 #include <QStyleOptionSlider>
 #include <QStyleOptionComboBox>
@@ -446,6 +447,36 @@ void xSideButton::paintEvent(QPaintEvent*) {
 	box.setLeft(box.left() + gap / 2);
 	txt = fontMetrics().elidedText(txt, Qt::ElideRight, box.width());
 	pnt.drawItemText(box, Qt::AlignLeft | Qt::AlignVCenter, palette(), isEnabled(), txt, QPalette::ButtonText);
+}
+
+// xIconGroup
+
+#define	GROUP_ICON	16
+
+xIconGroup::xIconGroup(const QIcon& ico, const QString& txt, QWidget* p):QGroupBox(p) {
+	icon = ico;
+	text = txt;
+	padTitle();
+}
+
+void xIconGroup::padTitle() {
+	int spc = qMax(1, fontMetrics().horizontalAdvance(' '));
+	setTitle(QString((GROUP_ICON + 4 + spc - 1) / spc, ' ') + text);
+}
+
+void xIconGroup::changeEvent(QEvent* ev) {
+	QGroupBox::changeEvent(ev);
+	if ((ev->type() == QEvent::FontChange) || (ev->type() == QEvent::StyleChange)) padTitle();
+}
+
+void xIconGroup::paintEvent(QPaintEvent* ev) {
+	QGroupBox::paintEvent(ev);
+	QStyleOptionGroupBox opt;
+	initStyleOption(&opt);
+	QRect lab = style()->subControlRect(QStyle::CC_GroupBox, &opt, QStyle::SC_GroupBoxLabel, this);
+	QRect irc(lab.left(), lab.top() + (lab.height() - GROUP_ICON) / 2, GROUP_ICON, GROUP_ICON);
+	QPainter pnt(this);
+	icon.paint(&pnt, irc, Qt::AlignCenter, isEnabled() ? QIcon::Normal : QIcon::Disabled);
 }
 
 // xLabel
