@@ -52,8 +52,8 @@ On top of upstream build `20260807`:
 - **Ready to use.** Every machine is built in, ROMs and all, so it runs straight out of the
   archive, and what you change is kept for that machine. macOS builds included.
 - **Media that starts itself.** A tape or disk opens and runs, from the menu, a drop or the
-  command line, on a machine that can run it. A host folder can stand in for an SD card or
-  a hard disk.
+  command line, on a machine that can run it. A Disk manager lists and copies what is on a
+  TR-DOS disk, and a host folder can stand in for an SD card or a hard disk.
 - **Tapes.** Fast loading that works whatever the loader, a WAV read back as the tape it
   records and a tape written out as one, and a player laid out like a deck.
 - **Speed.** Up to three times faster with nothing emulated differently - fast forward at

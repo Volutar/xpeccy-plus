@@ -11,34 +11,31 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
-- **Disk manager** in the right-click menu: point at it for what is in each drive, with
-  Open, New, Save, Save as, Eject and Write protect; click it for a window with the same
-  controls that lists a TR-DOS disk and copies files to the tape or out as Hobeta or raw.
-  The window names each disk by its TR-DOS title, shows its free space and the track the head
-  is on, and follows whatever the machine or the tape player writes to it. A changed image
-  is marked with a star, in the window and in the menu, and the tape player's title says
-  when the tape has been changed. The cartridge, the SD card and the hard disk images have
-  items of their own beside it. *(thanks to Volutar)*
+- **Disk manager** in the right-click menu, with Open, New, Save, Eject and Write protect for
+  each drive. Clicked, it opens a window that lists a TR-DOS disk under its title, keeps up
+  with what is written to it, and copies files to the tape or out as Hobeta or raw. A changed
+  disk or tape is marked with a star. *(thanks to Volutar)*
 
 - **A Beta Disk can have fewer than four drives** - Number of drives in the disk settings. A
   drive left out is not there at all: no disk goes in, and software finds it missing.
 
-- **Reset to 48K, 128K, DOS and Service** as hotkeys, unbound until you give them keys. The
-  Reset menu names the starts the machine really has instead of ROM page numbers.
+- **Reset to 48K, 128K, DOS and Service** as hotkeys, unbound until you give them keys -
+  Reset to DOS included, which loses Alt+F12. The Reset menu names the starts the machine
+  really has instead of ROM page numbers.
 
 - **The Kempston joystick can be left out** of a machine, and the port then reads like any
   unused one. The +2A and +3 come without it, as they shipped.
 
 - **TurboSound FM** is a choice of its own for the sound chips, and the chip clock defaults to
-  Auto: half the processor clock, 3.5 MHz for TurboSound FM.
+  Auto: half the processor clock for an AY, 3.5 MHz for TurboSound FM.
 
 - **Fast loading runs a tape through in seconds, whatever its loader.** One switch in the
   tape player: while a loader reads the tape the machine runs flat out and silent, the
   loading screen is shown as it comes in, and the game starts at normal speed from its first
-  frame - R-Type takes about four seconds. Under it in
-  Options, both on: **Flash loading** hands ROM blocks straight to the machine (what Fast
-  loading used to mean), and **Edge detection** skips the wait for each pulse in the common
-  loaders - switch that one off if a game does not load.
+  frame - R-Type takes about four seconds. Under it in Options, both on: **Flash loading**
+  hands ROM blocks straight to the machine (what Fast loading used to mean), and **Edge
+  detection** skips the wait for each pulse in the common loaders - switch that one off if a
+  game does not load.
 
 - **The tape can be saved as a WAV recording**, to play back into a real machine - the
   button beside Save in the tape player. The dialog sets the rate, the sample size, the level
@@ -51,11 +48,10 @@ before that point is upstream's history and is not repeated here.
   (Xpeccy+ -> General).
 
 - **Alt+T switches the turbo the machine really has** - 7 MHz on a ZS Scorpion, ATM Turbo 2+,
-  Pentagon 1024SL, Profi and ZXM-Phoenix, 7 and 14 MHz on ZX Evolution and TSConf. Turbo mode
-  in the right-click menu picks a step directly, and that menu now keeps Machine, Turbo mode
-  and Reset together. The clock
-  it lands on is shown bottom right for as long as it is not the machine's own, and the
-  machine switching its turbo by itself says so too.
+  Pentagon 1024SL, Profi and ZXM-Phoenix, 7 and 14 MHz on ZX Evolution and TSConf, and Turbo
+  mode in the right-click menu picks a step directly. The clock it lands on is shown bottom
+  right for as long as it is not the machine's own, and the machine switching its turbo by
+  itself says so too.
 
 - **The floating bus**, the Sinclair way on the 48K, 128K and +2 and the Amstrad way on the +2A
   and +3, which is what games that follow the beam - Cobra, Sidewize - need. A row per machine
@@ -110,8 +106,8 @@ before that point is upstream's history and is not repeated here.
   Board, one row per device with its choice and a window for the rest, the settings that
   apply to every machine marked as such. The ROM set is one button there, and the ROM a
   reset starts from is picked on its slot. A controller built into a board cannot be swapped
-  out. The images moved to the Drives menu, so the Media tab keeps only what happens to the
-  files you open, File types included. Reset to DOS has no key by default any more.
+  out. The images moved to the right-click menu, so the Media tab keeps only what happens to
+  the files you open, File types included.
 
 - **One slider for the machine's speed**, on the Machine page, with Alt+Plus and Alt+Minus on
   the keypad. Left of x1 picture and sound slow down together; right of it the CPU runs up to
@@ -152,8 +148,9 @@ before that point is upstream's history and is not repeated here.
   in one run under them, and Even M1 and the DD palette in a group of their own. The contention
   patterns are named after the chips that have them, Ferranti and Amstrad.
 
-- **The right-click menu is shorter.** Watcher, Screen and Sound chips sit under Debugger, and
-  clicking Debugger, Favorites or Reset itself does the obvious thing.
+- **The right-click menu is shorter.** Watcher, Screen and Sound chips sit under Debugger,
+  Machine, Turbo mode and Reset stand together, and clicking Debugger, Favorites or Reset
+  itself does the obvious thing.
 
 - **The colors a machine starts with are the Xpeccy+ palette** - the one that shipped as a
   preset file, built in now and named `Xpeccy+` in the palette list where it said `default`.
@@ -169,10 +166,9 @@ before that point is upstream's history and is not repeated here.
 ### Fixed
 
 - **Smaller fixes around the drives and resets.** Reset to 48K on a +2A or +3 landed in the
-  128K menu. Opening a cartridge did nothing. Copying files off a disk with deleted files on
-  it picked the wrong ones. Ejecting a changed disk ignored Cancel. A disk in drive B at
-  start read as "No disk" the first time TR-DOS turned to it, and the drive light flickered
-  green while writing. *(thanks to Volutar for the last two)*
+  128K menu. Copying files off a disk with deleted files on it picked the wrong ones. Ejecting
+  a changed disk ignored Cancel. A disk in drive B at start read as "No disk" the first time
+  TR-DOS turned to it, and the drive light flickered green while writing. *(thanks to Volutar for the last two)*
 
 - **More tapes load.** Loaders that time the tape themselves - ATF, Deflektor, Technician Ted -
   load now, and so do high-speed DeciLoad tapes, on a Profi as well. A tape that starts itself
