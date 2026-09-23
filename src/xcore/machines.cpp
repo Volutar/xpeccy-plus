@@ -716,6 +716,62 @@ void xm_rom_set_file(xRomset& rs, int bank, const std::string& name) {
 	mac_rom_add(rs.roms, name, bank);
 }
 
+// how far a rom file reaches, in 16K banks
+
+static int rom_file_banks(const xRomFile& rf) {
+	int size = rf.fsize * 1024;
+	if (size <= 0) {
+		QFileInfo inf(QString::fromLocal8Bit(xm_rom_path(rf.name).c_str()));
+		size = inf.size() - rf.foffset * 1024;
+	}
+	return (size + MEM_16K - 1) / MEM_16K;
+}
+
+// a bank with no file of its own may still be covered by a big one in a bank
+// before it: for each bank, the slot it comes from, or -1
+
+QVector<int> xm_rom_cover(const xRomset& rs, int banks) {
+	QVector<int> res(banks, -1);
+	foreach(xRomFile rf, rs.roms) {
+		int first = rf.roffset / 16;
+		int last = first + rom_file_banks(rf);
+		for (int i = first + 1; (i < last) && (i < banks); i++) {
+			if (res[i] < 0) res[i] = first;
+		}
+	}
+	return res;
+}
+
+// Where a reset can take the running machine: the core says which bank each
+// target lands in, and the target is there when that bank holds something.
+// TR-DOS is no target without the Beta Disk that pages it in.
+
+QList<int> xm_reset_targets() {
+	QList<int> res;
+	const xMachine* mac = xm_find(conf.macId);
+	if (!mac || !conf.zx) return res;
+	int hw = conf.zx->hw->id;
+	QVector<int> cover = xm_rom_cover(conf.roms, mac->romBanks);
+	for (int i = 0; i < mac->romBanks; i++) {
+		xRomRole role = hw_rom_role(hw, i);
+		if (role.res < 0) continue;
+		bool own = false;
+		foreach(xRomFile rf, conf.roms.roms) {
+			if (rf.roffset / 16 == i) own = true;
+		}
+		if (!own && (cover[i] < 0)) continue;
+		if ((role.res == RES_DOS) && (conf.zx->dif->type != DIF_BDI)) continue;
+		res.append(role.res);
+	}
+	return res;
+}
+
+QString xm_reset_name(int res) {
+	int bank = conf.zx ? hw_reset_bank(conf.zx->hw->id, res) : -1;
+	const char* nam = (bank < 0) ? NULL : hw_rom_role(conf.zx->hw->id, bank).name;
+	return nam ? QString(nam) : QString();
+}
+
 // what conf.roms says, into the machine
 //
 // The text mode font is not rom: it is ram the machine fills itself - ZX Evo

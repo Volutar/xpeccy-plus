@@ -318,6 +318,9 @@ enum {
 	XCUT_SCRSHOT,
 	XCUT_COMBOSHOT,
 	XCUT_RES_DOS,
+	XCUT_RES_48,
+	XCUT_RES_128,
+	XCUT_RES_SERVICE,
 	XCUT_KEYBOARD,
 	XCUT_FAST,
 	XCUT_NOFLICK,
@@ -453,6 +456,9 @@ std::string xm_rom_path(const std::string&);
 // what the machine loads, and putting a changed set back as the user's own
 void xm_set_roms(const xRomset&, bool poweron = false);
 void xm_rom_set_file(xRomset&, int, const std::string&);
+QVector<int> xm_rom_cover(const xRomset&, int);	// per bank: the slot covering it, -1
+QList<int> xm_reset_targets();		// RES_* the running machine can reset to
+QString xm_reset_name(int);		// what that ROM is, for a menu
 
 // machines
 

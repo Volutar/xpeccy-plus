@@ -1474,7 +1474,6 @@ QDialog* SetupWin::popOut(QWidget* box, const char* title) {
 #define	RSLOT_FONT	-2
 #define	TRDOS_ROM	"trdos504t.rom"		// what a Beta Disk gets when its slot is empty
 
-static int rom_dos_bank(int);
 
 // THE MACHINE'S DEVICES
 //
@@ -1685,17 +1684,17 @@ void SetupWin::buildDevices() {
 	dosRomBtn->setIcon(QIcon(":/images/fileopen.png"));
 	dosRomBtn->setToolTip(tr("Pick a ROM file"));
 	connect(dosRomBox, QOverload<int>::of(&QComboBox::activated), this, [this](int idx) {
-		romSlotPick(rom_dos_bank(conf.zx->hw->id), dosRomBox->itemData(idx).toString());
+		romSlotPick(hw_reset_bank(conf.zx->hw->id, RES_DOS), dosRomBox->itemData(idx).toString());
 		fillRomSlots();
 	});
 	connect(dosRomBtn, &QToolButton::released, this, [this]() {
-		romSlotFile(dosRomBox, rom_dos_bank(conf.zx->hw->id));
+		romSlotFile(dosRomBox, hw_reset_bank(conf.zx->hw->id, RES_DOS));
 		fillRomSlots();
 	});
 	disk.field(tr("TR-DOS ROM"), fieldPair(dosRomBox, dosRomBtn, false), tr("The same slot as TR-DOS in the ROM window"));
 	// a Beta Disk put on a machine with nothing in that slot would not boot
 	connect(ui.diskTypeBox, QOverload<int>::of(&QComboBox::activated), this, [this]() {
-		int bank = rom_dos_bank(conf.zx->hw->id);
+		int bank = hw_reset_bank(conf.zx->hw->id, RES_DOS);
 		if ((getRFIData(ui.diskTypeBox) == DIF_BDI) && (bank >= 0) && romSlotFileName(bank).isEmpty()) {
 			romSlotPick(bank, TRDOS_ROM);
 			fillRomSlots();
@@ -2069,75 +2068,6 @@ void SetupWin::showRomFiles() {
 	romWin->raise();
 }
 
-// how far a rom file reaches, in 16K banks
-
-static int rom_file_banks(const xRomFile& rf) {
-	int size = rf.fsize * 1024;
-	if (size <= 0) {
-		QFileInfo inf(QString::fromLocal8Bit(xm_rom_path(rf.name).c_str()));
-		size = inf.size() - rf.foffset * 1024;
-	}
-	return (size + MEM_16K - 1) / MEM_16K;
-}
-
-// a bank with no file of its own may still be covered by a big one in a bank
-// before it: for each bank, the slot it comes from, or -1
-
-static QVector<int> rom_slot_cover(const xRomset& rs, int banks) {
-	QVector<int> res(banks, -1);
-	foreach(xRomFile rf, rs.roms) {
-		int first = rf.roffset / 16;
-		int last = first + rom_file_banks(rf);
-		for (int i = first + 1; (i < last) && (i < banks); i++) {
-			if (res[i] < 0) res[i] = first;
-		}
-	}
-	return res;
-}
-
-// what each 16K bank of a core's ROM is, and which reset lands in it; a core
-// whose reset boots its own firmware takes no reset target from here
-
-struct xRomRole {
-	int res;
-	const char* name;
-};
-
-static const struct {
-	int hw;
-	xRomRole bank[4];
-} romRoles[] = {
-	{HW_ZX48, {{RES_48, "Basic 48"}, {RES_DOS, "TR-DOS"}, {-1, NULL}, {-1, NULL}}},
-	{HW_ZX128, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
-	{HW_PENT, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
-	{HW_P1024, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
-	{HW_SCORP, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
-	// plusRes() drops the paging a reset asked for, so every reset lands in the editor
-	{HW_PLUS2A, {{RES_128, "Editor 128"}, {-1, "Syntax 128"}, {-1, "+3DOS"}, {-1, "Basic 48"}}},
-	{HW_PLUS3, {{RES_128, "Editor 128"}, {-1, "Syntax 128"}, {-1, "+3DOS"}, {-1, "Basic 48"}}},
-	{HW_PROFI, {{RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
-	{HW_PHOENIX, {{-1, NULL}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
-	{HW_ATM2, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
-	{HW_PENTEVO, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
-	{HW_TSLAB, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
-	{HW_ALF, {{-1, "Menu"}, {-1, "Basic 48"}, {-1, NULL}, {-1, NULL}}},
-	{HW_NULL, {{-1, NULL}, {-1, NULL}, {-1, NULL}, {-1, NULL}}}
-};
-
-static xRomRole rom_role(int hw, int bank) {
-	int i = 0;
-	while ((romRoles[i].hw != HW_NULL) && (romRoles[i].hw != hw)) i++;
-	return romRoles[i].bank[bank];
-}
-
-// the bank TR-DOS is paged from, or -1 on a core that has none of its own
-static int rom_dos_bank(int hw) {
-	for (int i = 0; i < 4; i++) {
-		if (rom_role(hw, i).res == RES_DOS) return i;
-	}
-	return -1;
-}
-
 void SetupWin::fillRomSlots() {
 	QLayoutItem* itm;
 	while ((itm = ui.gridRomSlots->takeAt(0)) != NULL) {
@@ -2147,12 +2077,12 @@ void SetupWin::fillRomSlots() {
 	const xMachine* mac = xm_find(conf.macId);
 	if (!mac) return;
 	QStringList files = rom_files();
-	QVector<int> from = rom_slot_cover(roms, mac->romBanks);
+	QVector<int> from = xm_rom_cover(roms, mac->romBanks);
 	int hw = conf.zx->hw->id;
 	bool resets = false;
 	int row = 0;
 	for (int i = 0; i < mac->romBanks; i++) {
-		xRomRole role = rom_role(hw, i);
+		xRomRole role = hw_rom_role(hw, i);
 		QString name = QString("ROM %0").arg(i);
 		if (role.name) name += QString(" (%0)").arg(role.name);
 		addRomSlot(row, name, i, files, true, from[i]);
@@ -2198,7 +2128,7 @@ void SetupWin::fillRomSummary() {
 // firmware carries it, or with no Beta Disk, there is nothing to pick
 
 void SetupWin::fillDosRom() {
-	int bank = rom_dos_bank(conf.zx->hw->id);
+	int bank = hw_reset_bank(conf.zx->hw->id, RES_DOS);
 	bool bdi = (getRFIData(ui.diskTypeBox) == DIF_BDI);
 	dosRomBox->clear();
 	if (bank < 0) {

@@ -108,6 +108,14 @@ xPortValue* hwGetPorts(Computer*);
 // extern HardWare hwTab[];
 
 HardWare* findHardware(const char*);
+
+typedef struct {
+	int res;		// RES_* that lands in this bank, -1 none
+	const char* name;	// what the bank holds, NULL unknown
+} xRomRole;
+
+xRomRole hw_rom_role(int hw, int bank);
+int hw_reset_bank(int hw, int res);
 int stdMRd(Computer*, int, int);
 void stdMWr(Computer*, int, int);
 int asicMRd(Computer*, int, int);	// stdMRd/stdMWr plus the +2A/+3 bus latch

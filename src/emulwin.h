@@ -87,6 +87,7 @@ typedef struct {
 		void openMedia(const QString& path, int id, int drv, int run);
 		void setMachine(const std::string&);
 		void resetMachine(int);
+		void resetTo(int);
 		void setTurbo(int);
 		void addFavorite(const QString& path);
 	signals:
