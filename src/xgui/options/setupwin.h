@@ -38,6 +38,7 @@ class SetupWin : public QDialog {
 		void cfgLoaded();
 		void fillRomSlots();
 		void fillRomSummary();
+		void makeDevWidgets();
 		void buildDevices();
 		QToolButton* devRow(QGridLayout*, const QString&, QWidget*, QWidget*, const char*);
 		void fillDevSummary();
@@ -67,6 +68,11 @@ class SetupWin : public QDialog {
 		int resTarget;			// where a reset starts, until Apply
 		QButtonGroup* resGroup;
 
+		// the devices' own controls, see makeDevWidgets()
+		QCheckBox *cbTapeAuto, *cbTapeRewind, *cbTapeFast, *cbTapeFlash, *cbTapeEdge, *bdtbox, *cbAddBoot, *a80box, *b80box, *c80box, *d80box, *adsbox, *bdsbox, *cdsbox, *ddsbox, *gsrbox, *ratWheel, *cbSwapButtons;
+		QComboBox *diskTypeBox, *cbFlpInterleave, *hiface, *hm_type, *hs_type, *sdrvBox, *cbScanTab, *cbCpuTurbo, *cbPsgCount, *cbPsgType, *cbPsgFrq, *cbPsgStereo;
+		xSlider *sldTapeSpeed, *sldPsgSep, *sldSensitivity;
+		QLabel *labTapeSpeedVal, *labPsgMhz, *labPsgSep;
 		// the machine's devices, on the Machine page
 		QComboBox* gsBox;
 		QComboBox* gsRomBox;
@@ -104,7 +110,6 @@ class SetupWin : public QDialog {
 		QFont dbgfnt;
 
 		int bindidx;
-		void buildtapelist();
 		void buildkeylist();
 		void buildpadlist();
 
@@ -124,18 +129,6 @@ class SetupWin : public QDialog {
 		void chapsg();
 		void chasnow();
 		void chasndlat();
-		void updatedisknams();
-		void loada(); void loadb(); void loadc(); void loadd();
-		void savea(); void saveb(); void savec(); void saved();
-		void ejcta(); void ejctb(); void ejctc(); void ejctd();
-		void newa(); void newb(); void newc(); void newd(); void newdisk(int, int=0);
-		void loatape(); void savtape(); void ejctape();
-		void tblkup(); void tblkdn(); void tblkrm();
-		void hddShowGeom(int);
-		void hddMasterImg(); void hddSlaveImg();
-		void hddMasterDir(); void hddSlaveDir();
-		void chablock(QModelIndex);
-		void tlistclick(QModelIndex);
 
 		void paledit();
 		void palchoosecol(QPoint);
@@ -144,12 +137,7 @@ class SetupWin : public QDialog {
 		void selLogDir();
 		void openLogDir();
 
-		void selSDCimg();
-		void selSDCdir();
-		void sdcPathChanged();
 
-		void openSlot();
-		void ejectSlot();
 
 		void addRom();
 		void editRom();
@@ -175,11 +163,6 @@ class SetupWin : public QDialog {
 		void bindAccept(xJoyMapEntry);
 		void setCurrentGamepad(int);
 
-		void fillDiskCat();
-		void copyToTape();
-		void copyToDisk();
-		void diskToHobeta();
-		void diskToRaw();
 
 
 		void edLayout();
