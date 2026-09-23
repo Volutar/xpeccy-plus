@@ -492,7 +492,9 @@ void tapArmPlay(Tape* tap) {
 // goes quiet either - so neither an irregular-read count nor an idle timeout can tell
 // "loading is over" from "unrelated code is also hitting this port". TZX #20 stop
 // markers and the manual Brk/Stop controls cover stopping instead.
-void tapDetectLoader(Tape* tap, int tick, int regB, int fromUser) {
+// Not every loader counts in B: Styx calls a one-read edge test and counts
+// elsewhere. So a read whose code tests the ear bit (earTest) counts as well.
+void tapDetectLoader(Tape* tap, int tick, int regB, int earTest, int fromUser) {
 	// the arm is flash loading's own doing, so it answers whether or not "auto
 	// play / stop" is on. Stop by hand still blocks it, through tapArmPlay
 	if (!tap->on && tap->armed && fromUser) {
@@ -508,7 +510,7 @@ void tapDetectLoader(Tape* tap, int tick, int regB, int fromUser) {
 	int bDiff = (regB - tap->detectLastB) & 0xff;
 	tap->detectLastTick = tick;
 	tap->detectLastB = regB & 0xff;
-	if ((tickDiff <= 500) && ((bDiff == 1) || (bDiff == 0xff))) {
+	if ((tickDiff <= 500) && (earTest || (bDiff == 1) || (bDiff == 0xff))) {
 		tap->detectReads++;
 		if (tap->detectReads >= 10)
 			tapPlay(tap);
