@@ -290,17 +290,22 @@ class xTwoPartPainter : public QObject {
 };
 
 
+// what the PSG row offers: how many chips, and whether they are the FM ones
+enum {PSG_NONE = 0, PSG_ONE, PSG_TS, PSG_TSFM, PSG_NEXT};
+
 void opt_fill_psg_boxes(QComboBox* cbcount, QComboBox* cbtype, QComboBox* cbfrq, QComboBox* cbstereo) {
 	cbcount->clear();
-	cbcount->addItem(QIcon(":/images/cancel.png"),"None",0);
-	cbcount->addItem(QString::fromUtf8("×1 - AY/YM"),1);
-	cbcount->addItem(QString::fromUtf8("×2 - TurboSound NedoPC"),2);
-	cbcount->addItem(QString::fromUtf8("×3 - TurboSound ZX Next"),3);
+	cbcount->addItem(QIcon(":/images/cancel.png"),"None",PSG_NONE);
+	cbcount->addItem(QString::fromUtf8("×1 - AY/YM"),PSG_ONE);
+	cbcount->addItem(QString::fromUtf8("×2 - TurboSound"),PSG_TS);
+	cbcount->addItem(QString::fromUtf8("×2 - TurboSound FM"),PSG_TSFM);
+	cbcount->addItem(QString::fromUtf8("×3 - ZX Next"),PSG_NEXT);
 	cbtype->clear();
 	cbtype->addItem(QIcon(":/images/MicrochipLogo.png"),"AY-3-8910",SND_AY);
 	cbtype->addItem(QIcon(":/images/YamahaLogo.png"),"Yamaha 2149",SND_YM);
 	cbtype->addItem(QIcon(":/images/YamahaLogo.png"),"Yamaha 2203",SND_YM2203);
 	cbfrq->clear();
+	cbfrq->addItem("Auto");			// its figure is filled in by chapsg()
 	cbfrq->addItem(QString::fromUtf8("1.773447 - ZX 128/+2/+3"));
 	cbfrq->addItem(QString::fromUtf8("1.75 - ZX 48/ZX-clones"));
 	cbfrq->addItem(QString::fromUtf8("3.5 - YM2203"));
@@ -549,6 +554,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	connect(ui.sldPsgSep,SIGNAL(valueChanged(int)),this,SLOT(chapsg()));
 	connect(ui.sldSndLatency,SIGNAL(valueChanged(int)),this,SLOT(chasndlat()));
 	connect(ui.cbPsgCount,SIGNAL(currentIndexChanged(int)),this,SLOT(chapsg()));
+	connect(ui.cbCpuFrq,SIGNAL(currentTextChanged(QString)),this,SLOT(chapsg()));
 	connect(ui.cbSnow,SIGNAL(toggled(bool)),this,SLOT(chasnow()));
 	connect(ui.cbPsgStereo,SIGNAL(currentIndexChanged(int)),this,SLOT(chapsg()));
 
@@ -873,12 +879,16 @@ void SetupWin::start() {
 	ui.sbSdrvVol->setValue(conf.snd.vol.sdrv);
 	ui.sbSAAVol->setValue(conf.snd.vol.saa);
 
-	int chips = (comp->ts->type == TS_ZXNEXT) ? 3 : (comp->ts->type == TS_NEDOPC) ? 2 : 1;
-	if (comp->ts->chipA->type == SND_NONE) chips = 0;
-	setRFIndex(ui.cbPsgCount, chips);
+	int psg = (comp->ts->type == TS_ZXNEXT) ? PSG_NEXT : (comp->ts->type == TS_NEDOPC) ? PSG_TS : PSG_ONE;
+	if (comp->ts->chipA->type == SND_YM2203) psg = PSG_TSFM;
+	if (comp->ts->chipA->type == SND_NONE) psg = PSG_NONE;
+	setRFIndex(ui.cbPsgCount, psg);
 	setRFIndex(ui.cbPsgType, (comp->ts->chipA->type == SND_NONE) ? SND_AY : comp->ts->chipA->type);
 	setRFIndex(ui.cbPsgStereo, comp->ts->chipA->stereo);
-	opt_set_psg_frq(ui.cbPsgFrq, comp->ts->chipA->frq);
+	if (comp->ts->frqAuto)
+		ui.cbPsgFrq->setCurrentIndex(0);
+	else
+		opt_set_psg_frq(ui.cbPsgFrq, comp->ts->chipA->frq);
 	ui.sldPsgSep->setValue(comp->ts->chipA->sep);
 	chapsg();
 // input
@@ -1111,18 +1121,19 @@ void SetupWin::apply() {
 		setOutput(nname.c_str());
 	}
 
-	int chips = getRFIData(ui.cbPsgCount);
-	int chtype = getRFIData(ui.cbPsgType);
-	double chfrq = opt_get_psg_frq(ui.cbPsgFrq);
+	int psg = getRFIData(ui.cbPsgCount);
+	int chips = (psg == PSG_NEXT) ? 3 : ((psg == PSG_TS) || (psg == PSG_TSFM)) ? 2 : (psg == PSG_ONE) ? 1 : 0;
+	int chtype = (psg == PSG_TSFM) ? SND_YM2203 : getRFIData(ui.cbPsgType);
+	if ((psg != PSG_TSFM) && (chtype == SND_YM2203)) chtype = SND_YM;
 	int chstereo = getRFIData(ui.cbPsgStereo);
 	int chsep = ui.sldPsgSep->value();
 	aymChip* chip[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
 	for (int i = 0; i < 3; i++) {			// one setting for all the chips
-		chip[i]->frq = chfrq;
 		chip_set_type(chip[i], (i < chips) ? chtype : SND_NONE);
 		chip[i]->stereo = chstereo;
 		chip[i]->sep = chsep;
 	}
+	ts_set_frq(comp->ts, opt_get_psg_frq(ui.cbPsgFrq), comp->cpuFrq);	// 0: Auto
 	comp->ts->type = (chips > 2) ? TS_ZXNEXT : (chips > 1) ? TS_NEDOPC : TS_NONE;
 
 	comp->gs->enable = gsBox->currentIndex();
@@ -1460,6 +1471,9 @@ QDialog* SetupWin::popOut(QWidget* box, const char* title) {
 
 #define	RSLOT_GS	-1
 #define	RSLOT_FONT	-2
+#define	TRDOS_ROM	"trdos504t.rom"		// what a Beta Disk gets when its slot is empty
+
+static int rom_dos_bank(int);
 
 // THE MACHINE'S DEVICES
 //
@@ -1578,7 +1592,13 @@ class xOptSheet {
 			nam->setContentsMargins(0, 0, SHEET_GAP, 0);
 			nam->setMinimumHeight(wid->sizeHint().height());
 			grid->addWidget(nam, row, 1, Qt::AlignTop);
-			grid->addWidget(wid, row, 2, Qt::AlignTop);
+			// a list keeps the width of the others on the page, as in Advanced settings
+			Qt::Alignment al = Qt::AlignTop;
+			if (qobject_cast<QComboBox*>(wid)) {
+				wid->setMinimumWidth(200);
+				al |= Qt::AlignLeft;
+			}
+			grid->addWidget(wid, row, 2, al);
 			wid->setToolTip(QString());
 			if (!desc.isEmpty()) grid->addWidget(text(desc), row + 1, 2, Qt::AlignTop);
 		}
@@ -1617,13 +1637,16 @@ class xOptSheet {
 		}
 };
 
-// a slider and the figure it sets, as one field
-static QWidget* sliderField(QSlider* sld, QLabel* val) {
+// a control and what goes after it - the figure a slider sets, a unit - as one
+// field; a slider takes the width, anything else keeps its own
+static QWidget* fieldPair(QWidget* main, QWidget* tail, bool wide) {
 	QWidget* wid = new QWidget;
 	QHBoxLayout* box = new QHBoxLayout(wid);
 	box->setContentsMargins(0, 0, 0, 0);
-	box->addWidget(sld, 1);
-	if (val) box->addWidget(val);
+	if (!wide && qobject_cast<QComboBox*>(main)) main->setMinimumWidth(200);
+	box->addWidget(main, wide ? 1 : 0);
+	if (tail) box->addWidget(tail);
+	if (!wide) box->addStretch(1);
 	return wid;
 }
 
@@ -1641,7 +1664,7 @@ void SetupWin::buildDevices() {
 	tapeSum = new QLabel;
 	xOptSheet tape;
 	delete ui.labTapeSpeed;
-	tape.field(tr("Playback speed"), sliderField(ui.sldTapeSpeed, ui.labTapeSpeedVal),
+	tape.field(tr("Playback speed"), fieldPair(ui.sldTapeSpeed, ui.labTapeSpeedVal, true),
 		tr("Per cent of normal. A few images made on machines with an unusual clock load only when it is nudged either way"));
 	tape.line();
 	tape.check(ui.cbTapeAuto, tr("Auto play / stop"), tr("Start the tape when a loader asks for it, stop it between blocks"), true);
@@ -1656,6 +1679,28 @@ void SetupWin::buildDevices() {
 	ui.tabWidget_3->removeTab(ui.tabWidget_3->indexOf(ui.tab_9));
 
 	xOptSheet disk;
+	dosRomBox = new QComboBox;
+	dosRomBtn = new QToolButton;
+	dosRomBtn->setIcon(QIcon(":/images/fileopen.png"));
+	dosRomBtn->setToolTip(tr("Pick a ROM file"));
+	connect(dosRomBox, QOverload<int>::of(&QComboBox::activated), this, [this](int idx) {
+		romSlotPick(rom_dos_bank(conf.zx->hw->id), dosRomBox->itemData(idx).toString());
+		fillRomSlots();
+	});
+	connect(dosRomBtn, &QToolButton::released, this, [this]() {
+		romSlotFile(dosRomBox, rom_dos_bank(conf.zx->hw->id));
+		fillRomSlots();
+	});
+	disk.field(tr("TR-DOS ROM"), fieldPair(dosRomBox, dosRomBtn, false), tr("The same slot as TR-DOS in the ROM window"));
+	// a Beta Disk put on a machine with nothing in that slot would not boot
+	connect(ui.diskTypeBox, QOverload<int>::of(&QComboBox::activated), this, [this]() {
+		int bank = rom_dos_bank(conf.zx->hw->id);
+		if ((getRFIData(ui.diskTypeBox) == DIF_BDI) && (bank >= 0) && romSlotFileName(bank).isEmpty()) {
+			romSlotPick(bank, TRDOS_ROM);
+			fillRomSlots();
+		}
+		fillDosRom();
+	});
 	delete ui.label_68;
 	disk.field(tr("Interleave"), ui.cbFlpInterleave,
 		tr("Sector order on each track of a TRD or SCL image, set when it is opened. TR-DOS formats 1, 9, 2, 10..."));
@@ -1688,20 +1733,32 @@ void SetupWin::buildDevices() {
 	ui.ratEnable->hide();
 	xOptSheet mouse;
 	delete ui.label_66;
-	mouse.field(tr("Sensitivity"), sliderField(ui.sldSensitivity, NULL),
+	mouse.field(tr("Sensitivity"), fieldPair(ui.sldSensitivity, NULL, true),
 		tr("How fast the pointer moves. In the middle it keeps up with the PC one"));
 	mouse.line();
 	mouse.check(ui.ratWheel, tr("Wheel"), tr("The wheel is read too, as on the extended Kempston mouse"));
 	mouse.check(ui.cbSwapButtons, tr("Swap buttons"), tr("The left and right buttons trade places"));
 	devRow(grid, tr("Mouse"), mouseBox, mouse.body, "Machine: mouse");
 	ui.groupBox_5->hide();
-	devRow(grid, tr("PC keyboard"), ui.cbScanTab, NULL, NULL);
+	btn = devRow(grid, tr("PC keyboard"), ui.cbScanTab, NULL, NULL);
+	kbdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << ui.cbScanTab << btn;
 	delete ui.label_65;
 	left->addStretch(1);
 
 	grid = devGroup(right, ":/images/speaker.png", tr("Sound"));
 	delete ui.labPsgCount;
-	devRow(grid, tr("PSG"), ui.cbPsgCount, devTakeGrid(ui.gridLayout_psg), "Machine: PSG");
+	xOptSheet psg;
+	delete ui.labPsgType;
+	psg.field(tr("Chip"), ui.cbPsgType);
+	delete ui.labPsgFrq;
+	psg.field(tr("Clock"), fieldPair(ui.cbPsgFrq, ui.labPsgMhz, false),
+		tr("Auto: half the CPU clock, and 3.5 MHz for TurboSound FM"));
+	delete ui.labPsgStereo;
+	delete ui.labPsgSepName;
+	psg.field(tr("Stereo"), ui.cbPsgStereo);
+	psg.field(tr("Separation"), fieldPair(ui.sldPsgSep, ui.labPsgSep, true),
+		tr("100%: the channels kept apart, 0%: mono"));
+	devRow(grid, tr("PSG"), ui.cbPsgCount, psg.body, "Machine: PSG");
 	ui.aygroup->hide();
 	devRow(grid, tr("DAC"), ui.sdrvBox, NULL, NULL);
 	delete ui.label_41;
@@ -1716,12 +1773,7 @@ void SetupWin::buildDevices() {
 		romSlotPick(RSLOT_GS, gsRomBox->itemData(idx).toString());
 	});
 	connect(gsRomBtn, &QToolButton::released, this, [this]() {romSlotFile(gsRomBox, RSLOT_GS);});
-	QWidget* gsRom = new QWidget;
-	QHBoxLayout* hbox = new QHBoxLayout(gsRom);
-	hbox->setContentsMargins(0, 0, 0, 0);
-	hbox->addWidget(gsRomBox, 1);
-	hbox->addWidget(gsRomBtn);
-	gs.field(tr("ROM"), gsRom);
+	gs.field(tr("ROM"), fieldPair(gsRomBox, gsRomBtn, false));
 	gs.line();
 	gs.check(ui.gsrbox, tr("Reset"), tr("The card is reset with the machine"));
 	devRow(grid, tr("General Sound"), gsBox, gs.body, "Machine: General Sound");
@@ -1826,8 +1878,24 @@ void SetupWin::showDevRows() {
 	int hw = conf.zx->hw->id;
 	bool sd = (hw == HW_PENTEVO) || (hw == HW_TSLAB);
 	bool slot = (hw == HW_ZX48) || (hw == HW_ALF);
+	// only these read PC scancodes
+	bool kbd = (hw == HW_ATM2) || (hw == HW_PENTEVO) || (hw == HW_TSLAB);
 	foreach(QWidget* w, sdRow) w->setVisible(sd);
 	foreach(QWidget* w, slotRow) w->setVisible(slot);
+	foreach(QWidget* w, kbdRow) w->setVisible(kbd);
+	// a controller on the board is not swapped out
+	const xMachine* mac = xm_find(conf.macId);
+	int bi = mac ? mac->builtin : 0;
+	QString fixed = tr("Built into this board");
+	ui.diskTypeBox->setEnabled(!(bi & MAC_BI_DISK));
+	ui.diskTypeBox->setToolTip((bi & MAC_BI_DISK) ? fixed : QString());
+	ui.hiface->setEnabled(!(bi & MAC_BI_IDE));
+	ui.hiface->setToolTip((bi & MAC_BI_IDE) ? fixed : QString());
+	// the +2A and +3 never page TR-DOS in
+	QStandardItemModel* difs = qobject_cast<QStandardItemModel*>(ui.diskTypeBox->model());
+	int bdi = ui.diskTypeBox->findData(DIF_BDI);
+	if (difs && (bdi >= 0)) difs->item(bdi)->setEnabled((hw != HW_PLUS2A) && (hw != HW_PLUS3));
+	fillDosRom();
 	fillDevSummary();
 }
 
@@ -2050,6 +2118,14 @@ static xRomRole rom_role(int hw, int bank) {
 	return romRoles[i].bank[bank];
 }
 
+// the bank TR-DOS is paged from, or -1 on a core that has none of its own
+static int rom_dos_bank(int hw) {
+	for (int i = 0; i < 4; i++) {
+		if (rom_role(hw, i).res == RES_DOS) return i;
+	}
+	return -1;
+}
+
 void SetupWin::fillRomSlots() {
 	QLayoutItem* itm;
 	while ((itm = ui.gridRomSlots->takeAt(0)) != NULL) {
@@ -2086,6 +2162,7 @@ void SetupWin::fillRomSlots() {
 		QSizePolicy::Expanding), row, 0);
 	ui.labResetHint->setVisible(resets);
 	fillGsRom(files);
+	fillDosRom();
 	fillRomSummary();
 }
 
@@ -2103,6 +2180,26 @@ void SetupWin::fillRomSummary() {
 	QString txt = names.isEmpty() ? tr("(none)") : names.join(", ");
 	ui.pbRomSet->setText(txt);		// the button cuts it short itself
 	ui.pbRomSet->setToolTip(names.isEmpty() ? tr("The ROM files this machine runs") : names.join("\n"));
+}
+
+// the TR-DOS ROM, which the Beta Disk's window picks; on a machine whose
+// firmware carries it, or with no Beta Disk, there is nothing to pick
+
+void SetupWin::fillDosRom() {
+	int bank = rom_dos_bank(conf.zx->hw->id);
+	bool bdi = (getRFIData(ui.diskTypeBox) == DIF_BDI);
+	dosRomBox->clear();
+	if (bank < 0) {
+		dosRomBox->addItem(tr("(in the firmware)"), QString());
+	} else {
+		dosRomBox->addItem(tr("(empty)"), QString());
+		foreach(QString f, rom_files()) dosRomBox->addItem(f, f);
+		QString cur = romSlotFileName(bank);
+		if (!cur.isEmpty() && (dosRomBox->findData(cur) < 0)) dosRomBox->insertItem(1, cur, cur);
+		dosRomBox->setCurrentIndex(qMax(0, dosRomBox->findData(cur)));
+	}
+	dosRomBox->setEnabled(bdi && (bank >= 0));
+	dosRomBtn->setEnabled(bdi && (bank >= 0));
 }
 
 // the General Sound's ROM, which its own window picks
@@ -2440,12 +2537,23 @@ void SetupWin::chaflc() {
 }
 
 void SetupWin::chapsg() {
-	int chips = getRFIData(ui.cbPsgCount);
-	int split = (chips > 0) && (getRFIData(ui.cbPsgStereo) != AY_MONO);
+	int psg = getRFIData(ui.cbPsgCount);
+	int on = (psg != PSG_NONE);
+	int fm = (psg == PSG_TSFM);
+	int split = on && (getRFIData(ui.cbPsgStereo) != AY_MONO);
 	ui.labPsgSep->setText(QString("%0%").arg(ui.sldPsgSep->value()));
-	ui.cbPsgType->setEnabled(chips > 0);
-	ui.cbPsgFrq->setEnabled(chips > 0);
-	ui.cbPsgStereo->setEnabled(chips > 0);
+	// TurboSound FM is two YM2203 and nothing else; the others never are
+	QStandardItemModel* types = qobject_cast<QStandardItemModel*>(ui.cbPsgType->model());
+	int fmrow = ui.cbPsgType->findData(SND_YM2203);
+	if (types && (fmrow >= 0)) types->item(fmrow)->setEnabled(fm);
+	if (fm) setRFIndex(ui.cbPsgType, SND_YM2203);
+	else if (getRFIData(ui.cbPsgType) == SND_YM2203) setRFIndex(ui.cbPsgType, SND_YM);
+	ui.cbPsgType->setEnabled(on && !fm);
+	ui.cbPsgFrq->setEnabled(on);
+	ui.cbPsgStereo->setEnabled(on);
+	// what Auto comes to on this machine, as the core works it out
+	double base = xcpu_frq_parse(ui.cbCpuFrq->currentText(), conf.zx->cpuFrq);
+	ui.cbPsgFrq->setItemText(0, QString("Auto - %0").arg(fm ? 3.5 : base / 2, 0, 'g', 7));
 	ui.sldPsgSep->setEnabled(split);
 	ui.labPsgSep->setEnabled(split);
 }

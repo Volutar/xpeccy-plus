@@ -58,6 +58,7 @@ is skipped without a word.
 | `contio` | yes/no | contended i/o |
 | `contmem` | yes/no | contended memory |
 | `scrp.wait` | yes/no | ZS Scorpion: an opcode fetch starts on an even T-state |
+| `builtin` | `disk` `ide` | controllers on the board itself: the options lock them. Read from the definition, never written back |
 
 ### `[video]`
 
@@ -79,7 +80,7 @@ is skipped without a word.
 |---|---|---|
 | `psg.count` | 0..3 | AY/YM chips (TurboSound) |
 | `psg.type` | `none` `ay` `ym` `ym2203` | |
-| `psg.frq` | MHz | absent means the chip type's own clock |
+| `psg.frq` | MHz | absent or 0 is Auto: half the cpu's `cpu.frq`, and 3.5 MHz for `ym2203` |
 | `psg.stereo` | `mono` `abc` `acb` `bac` `bca` `cab` `cba` | |
 | `soundrive` | `none` `covox` `soundrive1` `soundrive2` | |
 | `gs` | yes/no | General Sound |

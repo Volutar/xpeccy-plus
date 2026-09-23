@@ -44,6 +44,7 @@ class SetupWin : public QDialog {
 		void showDevRows();
 		void tidySoundPage();
 		void fillGsRom(const QStringList&);
+		void fillDosRom();
 		void addRomSlot(int, QString, int, const QStringList&, bool, int);
 		QString romSlotFileName(int);
 		void romSlotPick(int, const QString&);
@@ -69,6 +70,8 @@ class SetupWin : public QDialog {
 		// the machine's devices, on the Machine page
 		QComboBox* gsBox;
 		QComboBox* gsRomBox;
+		QComboBox* dosRomBox;
+		QToolButton* dosRomBtn;
 		QComboBox* joyBox;
 		QComboBox* mouseBox;
 		QLabel* tapeSum;
@@ -76,6 +79,7 @@ class SetupWin : public QDialog {
 		QLabel* slotSum;
 		QList<QWidget*> sdRow;
 		QList<QWidget*> slotRow;
+		QList<QWidget*> kbdRow;
 
 		QDialog* layeditor;
 //		xPadMapModel* padModel;

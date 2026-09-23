@@ -7,6 +7,7 @@
 #include <QFileInfo>
 #include <QFile>
 #include <QTextStream>
+#include <QRegularExpression>
 
 #include "xcore.h"
 #include "../filer.h"
@@ -195,7 +196,7 @@ static const struct {
 	{"hw", "machine"}, {"cpu", "machine"}, {"cpu.frq", "machine"}, {"cpu.turbo", "machine"},
 	{"memory", "machine"}, {"ram.cold", "machine"}, {"ram.noise", "machine"},
 	{"reset", "machine"}, {"contio", "machine"}, {"issue", "machine"},
-	{"contmem", "machine"}, {"scrp.wait", "machine"},
+	{"contmem", "machine"}, {"scrp.wait", "machine"}, {"builtin", "machine"},
 	{"geometry", "video"}, {"contPattern", "video"}, {"earlyTiming", "video"},
 	{"4t-border", "video"}, {"ULAplus", "video"}, {"DDpal", "video"},
 	{"snow", "video"}, {"snow.crash", "video"}, {"floatbus", "video"},
@@ -308,6 +309,7 @@ static void mac_defaults(xMachine& mac) {
 	mac.cpu = "Z80";
 	mac.cpufrq = 3500000;
 	mac.turboSteps = "1";
+	mac.builtin = 0;
 	mac.resbank = RES_128;
 	mac.earback = EAR_ISSUE3;
 	mac.contio = 0;
@@ -359,6 +361,14 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "ram.noise") mac.ramNoise = toLimits(arg.i, 0, 1000);
 			else if (nam == "cpu.frq") mac.cpufrq = arg.i;
 			else if (nam == "cpu.turbo") mac.turboSteps = val;
+			else if (nam == "builtin") {
+				mac.builtin = 0;
+				foreach(QString w, QString::fromStdString(val).split(QRegularExpression("[ ,]+"), X_SkipEmptyParts)) {
+					if (w == "disk") mac.builtin |= MAC_BI_DISK;
+					else if (w == "ide") mac.builtin |= MAC_BI_IDE;
+					else xlog(XLG_CONF, XLL_WARN, "machine %s: unknown builtin '%s'", id, w.toLocal8Bit().data());
+				}
+			}
 			else if (nam == "reset") mac.resbank = mac_word(resetTab, val, RES_128, id);
 			else if (nam == "issue") mac.earback = mac_word(earTab, val, EAR_ISSUE3, id);
 			else if (nam == "contio") mac.contio = arg.b;
@@ -831,10 +841,10 @@ static int mac_psg_count(Computer* comp) {
 static void mac_set_psg(Computer* comp, int count, int type, double frq, int stereo) {
 	aymChip* psg[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
 	for (int i = 0; i < 3; i++) {
-		psg[i]->frq = frq;		// 0: chip_set_type puts the chip's own clock in
 		psg[i]->stereo = stereo;
 		chip_set_type(psg[i], (i < count) ? type : SND_NONE);
 	}
+	ts_set_frq(comp->ts, frq, comp->cpuFrq);	// 0: Auto
 	comp->ts->type = (count > 2) ? TS_ZXNEXT : (count > 1) ? TS_NEDOPC : TS_NONE;
 }
 
@@ -1028,9 +1038,8 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put(out, "psg.count", mac_psg_count(comp), mac->psgCount);
 	if (mac_psg_count(comp) > 0) {		// with no chips there is nothing to keep
 		mac_put(out, "psg.type", mac_word_name(psgTypeTab, comp->ts->chipA->type), mac_word_name(psgTypeTab, mac->psgType));
-		// an unnamed clock in the definition is the chip type's own
-		mac_put(out, "psg.frq", comp->ts->chipA->frq,
-			mac->psgFrq ? mac->psgFrq : find_chip_type(mac->psgType)->frq);
+		// 0 is Auto, in the definition and in the file
+		mac_put(out, "psg.frq", comp->ts->frqAuto ? 0.0 : comp->ts->chipA->frq, mac->psgFrq);
 		mac_put(out, "psg.stereo", mac_word_name(stereoTab, comp->ts->chipA->stereo),
 			mac_word_name(stereoTab, mac->psgStereo));
 	}
@@ -1234,11 +1243,7 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	else if (nam == "frq.mul") {}		// the overclock does not outlive a session any more
 	else if (nam == "tape.speed") { if ((arg.i > 94) && (arg.i < 106)) comp->tape->speed = arg.i; }
 	else if (nam == "psg.frq") {
-		aymChip* psg[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
-		for (int i = 0; i < 3; i++) {
-			psg[i]->frq = arg.d;
-			chip_set_type(psg[i], psg[i]->type);	// the period follows the clock
-		}
+		ts_set_frq(comp->ts, arg.d, comp->cpuFrq);
 	}
 	else if (nam == "psg.stereo") {
 		comp->ts->chipA->stereo = arg.i;

@@ -456,6 +456,12 @@ void xm_rom_set_file(xRomset&, int, const std::string&);
 
 // machines
 
+// devices the board has on it, in a definition's builtin line
+enum {
+	MAC_BI_DISK = 1,
+	MAC_BI_IDE = 2
+};
+
 // What a machine is: read-only, from the binary's own resources, with a file of
 // the same id in machines/ of the config directory patching it - and a file
 // with an id of its own being a machine of its own. See docs/machine-format.md.
@@ -472,6 +478,7 @@ typedef struct {
 	int ramNoise;			// bytes in a thousand that come up wrong in it
 	int cpufrq;			// Hz
 	std::string turboSteps;		// turbo steps this board has, "1" = none
+	int builtin;			// MAC_BI_*: devices on the board, which the user cannot swap
 	int resbank;			// RES_*
 	int earback;			// EAR_*
 	unsigned contio:1;
