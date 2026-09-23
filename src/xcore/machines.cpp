@@ -86,6 +86,10 @@ static xMacWord sdrvTab[] = {
 	{"soundrive1", SDRV_105_1}, {"soundrive2", SDRV_105_2}, {NULL, 0}
 };
 
+static xMacWord joyTab[] = {
+	{"none", MAC_JOY_NONE}, {"kempston", MAC_JOY_KEMPSTON}, {"kempston8", MAC_JOY_KEMPSTON8}, {NULL, 0}
+};
+
 static xMacWord diskTab[] = {
 	{"none", DIF_NONE}, {"trdos", DIF_BDI}, {"plus3", DIF_P3DOS}, {NULL, 0}
 };
@@ -204,7 +208,7 @@ static const struct {
 	{"psg.stereo", "sound"}, {"gs", "sound"},
 	{"saa", "sound"}, {"soundrive", "sound"},
 	{"disk", "storage"}, {"ide", "storage"},
-	{"mouse", "input"}, {"mouse.wheel", "input"}, {"joy.buttons", "input"},
+	{"mouse", "input"}, {"mouse.wheel", "input"}, {"joy", "input"}, {"joy.buttons", "input"},
 	{"kbd.scantab", "input"},
 	{NULL, NULL}
 };
@@ -332,7 +336,7 @@ static void mac_defaults(xMachine& mac) {
 	mac.ide = IDE_NONE;
 	mac.mouse = 0;
 	mac.mouseWheel = 0;
-	mac.joyButtons = 0;
+	mac.joy = MAC_JOY_KEMPSTON;
 	mac.scantab = 0;
 	mac.gs = 0;
 	mac.saa = 0;
@@ -400,7 +404,9 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 		} else if (ln.sect == "input") {
 			if (nam == "mouse") mac.mouse = arg.b;
 			else if (nam == "mouse.wheel") mac.mouseWheel = arg.b;
-			else if (nam == "joy.buttons") mac.joyButtons = arg.b;
+			else if (nam == "joy") mac.joy = mac_word(joyTab, val, MAC_JOY_KEMPSTON, id);
+			// the key before joy was; it only ever meant the buttons
+			else if ((nam == "joy.buttons") && (mac.joy != MAC_JOY_NONE)) mac.joy = arg.b ? MAC_JOY_KEMPSTON8 : MAC_JOY_KEMPSTON;
 			else if (nam == "kbd.scantab") mac.scantab = mac_word(scanTab, val, 0, id);
 		} else if (ln.sect == "rom") {
 			if (nam == "banks") mac.romBanks = toLimits(arg.i, 1, 4);
@@ -917,7 +923,8 @@ static void mac_from_def(const xMachine* mac) {
 	ide_set_type(comp->ide, mac->ide);
 	comp->mouse->enable = mac->mouse;
 	comp->mouse->hasWheel = mac->mouseWheel;
-	comp->joy->extbuttons = mac->joyButtons;
+	comp->joy->type = (mac->joy == MAC_JOY_NONE) ? XJ_NONE : XJ_KEMPSTON;
+	comp->joy->extbuttons = (mac->joy == MAC_JOY_KEMPSTON8) ? 1 : 0;
 	comp->keyb->pcmode = mac->scantab;
 	conf.layName = mac->geometry;
 }
@@ -1050,7 +1057,8 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put(out, "ide", mac_word_name(ideTab, comp->ide->type), mac_word_name(ideTab, mac->ide));
 	mac_put_yn(out, "mouse", comp->mouse->enable, mac->mouse);
 	mac_put_yn(out, "mouse.wheel", comp->mouse->hasWheel, mac->mouseWheel);
-	mac_put_yn(out, "joy.buttons", comp->joy->extbuttons, mac->joyButtons);
+	int joy = (comp->joy->type != XJ_KEMPSTON) ? MAC_JOY_NONE : comp->joy->extbuttons ? MAC_JOY_KEMPSTON8 : MAC_JOY_KEMPSTON;
+	mac_put(out, "joy", mac_word_name(joyTab, joy), mac_word_name(joyTab, mac->joy));
 	mac_put(out, "kbd.scantab", mac_word_name(scanTab, comp->keyb->pcmode), mac_word_name(scanTab, mac->scantab));
 	mac_put_roms(out, mac);
 }

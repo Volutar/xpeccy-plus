@@ -99,7 +99,7 @@ is skipped without a word.
 |---|---|---|
 | `mouse` | yes/no | Kempston mouse |
 | `mouse.wheel` | yes/no | |
-| `joy.buttons` | yes/no | the extra Kempston buttons |
+| `joy` | `none` `kempston` `kempston8` | what answers on `#1F`: nothing (the port reads the floating bus), a Kempston joystick, or one with the extra buttons on d5..d7. The older `joy.buttons = yes` still reads as `kempston8` |
 | `kbd.scantab` | `none` `xt` `at` `ps2` | which PC keys the machine's keys sit on; `none` leaves the keyboard core's own type |
 
 ### `[rom]`

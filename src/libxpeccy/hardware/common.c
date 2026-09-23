@@ -262,8 +262,15 @@ int zx_dev_rd(Computer* comp, int adr, int* ptr) {
 	return 0;
 }
 
-int xIn1F(Computer* comp, int port) {
+// Kempston on #1F - or no Kempston, and the port reads what any port nothing
+// answers does, as it does on a machine that came without one
+int zx_in_joy(Computer* comp, int port) {
+	if (comp->joy->type != XJ_KEMPSTON) return zx_in_float(comp, port);
 	return joyInput(comp->joy);
+}
+
+int xIn1F(Computer* comp, int port) {
+	return zx_in_joy(comp, port);
 }
 
 // A port nothing answers. What comes back is `floatbus` in the machine's own

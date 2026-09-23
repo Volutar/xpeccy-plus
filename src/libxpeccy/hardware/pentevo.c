@@ -189,7 +189,7 @@ void evoMWr(Computer* comp, int adr, int val) {
 // in
 
 int evoIn1F(Computer* comp, int port) {	// !dos
-	return joyInput(comp->joy);
+	return zx_in_joy(comp, port);
 }
 
 int evoIn57(Computer* comp, int port) {	// !dos

@@ -456,6 +456,13 @@ void xm_rom_set_file(xRomset&, int, const std::string&);
 
 // machines
 
+// what answers on #1F
+enum {
+	MAC_JOY_NONE = 0,
+	MAC_JOY_KEMPSTON,
+	MAC_JOY_KEMPSTON8	// with the extra buttons on d5..d7
+};
+
 // devices the board has on it, in a definition's builtin line
 enum {
 	MAC_BI_DISK = 1,
@@ -500,7 +507,7 @@ typedef struct {
 	int ide;			// IDE_*
 	unsigned mouse:1;
 	unsigned mouseWheel:1;
-	unsigned joyButtons:1;
+	int joy;			// JOY_*
 	int scantab;			// KBD_*, 0 = the keyboard core's own type
 	unsigned gs:1;			// General Sound
 	unsigned saa:1;

@@ -73,6 +73,7 @@ class SetupWin : public QDialog {
 		QComboBox* dosRomBox;
 		QToolButton* dosRomBtn;
 		QComboBox* joyBox;
+		QLabel* joyHint;
 		QComboBox* mouseBox;
 		QLabel* tapeSum;
 		QLabel* sdSum;

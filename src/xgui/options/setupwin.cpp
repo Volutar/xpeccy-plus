@@ -901,7 +901,7 @@ void SetupWin::start() {
 	ui.ratWheel->setChecked(comp->mouse->hasWheel);
 	ui.cbSwapButtons->setChecked(comp->mouse->swapButtons);
 	ui.sldSensitivity->setValue(comp->mouse->sensitivity * 1000.0f);
-	joyBox->setCurrentIndex(comp->joy->extbuttons ? 1 : 0);
+	joyBox->setCurrentIndex((comp->joy->type != XJ_KEMPSTON) ? 0 : comp->joy->extbuttons ? 2 : 1);
 	gpwid_a->update(conf.jmapNameA);
 	gpwid_b->update(conf.jmapNameB);
 //	ui.sldDeadZone->setValue(conf.joy.gpad->deadZone());
@@ -1148,7 +1148,8 @@ void SetupWin::apply() {
 	comp->mouse->hasWheel = ui.ratWheel->isChecked() ? 1 : 0;
 	comp->mouse->swapButtons = ui.cbSwapButtons->isChecked() ? 1 : 0;
 	comp->mouse->sensitivity = ui.sldSensitivity->value() * 0.001f;
-	comp->joy->extbuttons = joyBox->currentIndex();
+	comp->joy->type = joyBox->currentIndex() ? XJ_KEMPSTON : XJ_NONE;
+	comp->joy->extbuttons = (joyBox->currentIndex() == 2) ? 1 : 0;
 	gpwid_a->apply();
 	gpwid_b->apply();
 /*
@@ -1726,8 +1727,15 @@ void SetupWin::buildDevices() {
 	ui.tabWidget_3->removeTab(ui.tabWidget_3->indexOf(ui.sdcTab));
 
 	grid = devGroup(left, ":/images/joystick.png", tr("Input"));
-	joyBox = devCombo(QStringList() << tr("Kempston 5-bit") << tr("Kempston 8-bit"));
+	joyBox = devCombo(QStringList() << tr("None") << tr("Kempston 5-bit") << tr("Kempston 8-bit"));
 	devRow(grid, tr("Joystick"), joyBox, NULL, NULL);
+	// the gamepads are bound to the Kempston, so say when there is none
+	joyHint = new QLabel(tr("No Kempston on this machine: bindings to it do nothing"));
+	QFont hfnt = joyHint->font();
+	hfnt.setItalic(true);
+	joyHint->setFont(hfnt);
+	ui.verticalLayout_2->insertWidget(1, joyHint);
+	connect(joyBox, QOverload<int>::of(&QComboBox::currentIndexChanged), joyHint, [this](int idx) {joyHint->setVisible(idx == 0);});
 	ui.groupBox_3->hide();
 	mouseBox = devCombo(QStringList() << tr("None") << tr("Kempston mouse"));
 	ui.ratEnable->hide();
@@ -1891,6 +1899,10 @@ void SetupWin::showDevRows() {
 	ui.diskTypeBox->setToolTip((bi & MAC_BI_DISK) ? fixed : QString());
 	ui.hiface->setEnabled(!(bi & MAC_BI_IDE));
 	ui.hiface->setToolTip((bi & MAC_BI_IDE) ? fixed : QString());
+	// ALF reads its two joysticks its own way, on #1F and #FE
+	joyBox->setEnabled(hw != HW_ALF);
+	joyHint->setVisible(joyBox->currentIndex() == 0);
+	joyBox->setToolTip((hw == HW_ALF) ? fixed : QString());
 	// the +2A and +3 never page TR-DOS in
 	QStandardItemModel* difs = qobject_cast<QStandardItemModel*>(ui.diskTypeBox->model());
 	int bdi = ui.diskTypeBox->findData(DIF_BDI);

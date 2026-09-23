@@ -140,6 +140,7 @@ void xOutFFFD(Computer*, int, int);
 
 int xIn1F(Computer*, int);
 int zx_in_float(Computer*, int);	// a port nothing answers: the floating bus
+int zx_in_joy(Computer*, int);		// #1F: Kempston, or the floating bus without one
 int xInFE(Computer*, int);
 int xInFFFD(Computer*, int);
 int xInFADF(Computer*, int);
