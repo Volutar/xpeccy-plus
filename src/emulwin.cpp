@@ -1214,10 +1214,11 @@ void MainWin::initUserMenu() {
 	dskMenu = userMenu->addMenu(QIcon(":/images/fdd_disk.png"), "Disk manager");
 	cartMenu = userMenu->addMenu(QIcon(":/images/cartrige.png"), "Cartridge");
 	sdcMenu = userMenu->addMenu(QIcon(":/images/sdcard.png"), "SD card");
-	hddMenu = userMenu->addMenu(QIcon(":/images/fdd.png"), "Drives");
+	hddMenu = userMenu->addMenu(QIcon(":/images/hdd.png"), "Drives");
 	diskWin = new xDiskWin(this);
 	diskWin->tapeChanged = [this]() {emit s_tape_upd(conf.zx->tape);};
 	diskWin->diskOp = [this](int op, int drv) {diskOp(op, drv);};
+
 	userMenu->addAction(QIcon(":/images/tape.png"), "Tape player", this, SIGNAL(s_tape_show()));
 	userMenu->addAction(QIcon(":/images/video.png"),"RZX player", this, SIGNAL(s_rzx_show()));
 	userMenu->addSeparator();

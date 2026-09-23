@@ -43,7 +43,10 @@ void tape_set_tick_ns(Tape* tap, double ns) {
 	tap->ticksPerNsFixed = llround((double)(1LL << TAPE_RATE_BITS) / ns);
 }
 
+// A loader names the tape once its blocks are in, and a save once they are out,
+// so this is also where the tape stops counting as changed.
 void tape_set_path(Tape* tap, const char* path) {
+	tap->changed = 0;
 	if (path != NULL) {
 		tap->path = realloc(tap->path, strlen(path) + 1);
 		strcpy(tap->path, path);
@@ -271,6 +274,7 @@ void tapSwapBlocks(Tape* tap, int b1, int b2) {
 		TapeBlock tmp = tap->blkData[b1];
 		tap->blkData[b1] = tap->blkData[b2];
 		tap->blkData[b2] = tmp;
+		tap->changed = 1;
 	}
 }
 
@@ -286,6 +290,7 @@ void tapDelBlock(Tape* tap, int blk) {
 			idx++;
 		}
 		tap->blkCount--;
+		tap->changed = 1;
 	}
 }
 
@@ -732,6 +737,7 @@ void tapAddFile(Tape* tap, const char* nm, int tp, unsigned short st, unsigned s
 
 void tap_add_block(Tape* tap, TapeBlock block) {
 	if (block.sigCount == 0) return;
+	tap->changed = 1;		// a loader clears it again as it names the tape
 	TapeBlock blk = block;
 	strcpy(blk.text, tap->blkText);
 	blk.data = malloc(blk.sigCount * sizeof(TapeSignal));

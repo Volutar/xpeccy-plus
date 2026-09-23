@@ -83,3 +83,6 @@ void media_autorun_forget();
 int save_file(Computer* comp, const char* name, int id, int drv);
 
 int saveChangedDisk(Computer*,int);
+// the Drives menu and the Disk manager name what is in a drive alike
+QString drive_media(const char* path, bool in);
+int drive_count(Computer*);

@@ -7,11 +7,13 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QCheckBox>
+#include <QTimer>
 
 #include "options/opt_diskcat.h"
 
 // Disk manager: what is in a drive, what is on the disk, and taking files off
-// it. Only a TR-DOS disk has a catalog to show.
+// it. Only a TR-DOS disk has a catalog to show. While it is up it watches the
+// drives, so a file written by the machine or copied in from the tape shows.
 
 enum {
 	DW_OPEN = 0,
@@ -42,9 +44,18 @@ class xDiskWin : public QDialog {
 		QToolButton* toTape;
 		QToolButton* toHobeta;
 		QToolButton* toRaw;
+		QLabel* head;
+		QTimer* watch;
 		QList<int> rows;		// catalog index of each row: deleted files are not shown
+		QList<TRFile> files;		// what the rows show, for finding the one under the head
+		int sides = 2;			// of the disk shown, as its system sector says
+		QList<QByteArray> seen;		// each drive as the window last showed it
 		int drive();
 		QList<int> picked();
+		QByteArray driveState(int);
+		QString driveName(int);
+		void watchDrives();
+		void showHead();
 		void fill();
 		void fillDrive(Floppy*);
 		void doOp(int);

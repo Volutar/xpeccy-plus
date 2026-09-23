@@ -38,6 +38,8 @@ QVariant xDiskCatModel::data(const QModelIndex& idx, int role) const {
 	// the figures line up on their last digit
 	if (role == Qt::TextAlignmentRole)
 		return (col > 1) ? int(Qt::AlignRight | Qt::AlignVCenter) : int(Qt::AlignLeft | Qt::AlignVCenter);
+	if (role == Qt::FontRole)
+		return (row == live) ? QVariant(liveFont) : res;
 	if (role != Qt::DisplayRole) return res;
 	TRFile dsc = cat[row];
 	switch(col) {
@@ -60,7 +62,17 @@ void xDiskCatModel::update() {
 
 void xDiskCatModel::setCatalog(QList<TRFile> c) {
 	cat = c;
+	live = -1;
 	emit endResetModel();
+}
+
+void xDiskCatModel::setLive(int row, QFont fnt) {
+	if (row == live) return;
+	int old = live;
+	live = row;
+	liveFont = fnt;
+	if (old >= 0) emit dataChanged(index(old, 0), index(old, columnCount() - 1));
+	if (row >= 0) emit dataChanged(index(row, 0), index(row, columnCount() - 1));
 }
 
 // table
@@ -78,4 +90,11 @@ xDiskCatTable::xDiskCatTable(QWidget* p):QTableView(p) {
 
 void xDiskCatTable::setCatalog(QList<TRFile> cat) {
 	model->setCatalog(cat);
+}
+
+// the file the head is over, in bold; -1 for none
+void xDiskCatTable::setLive(int row) {
+	QFont fnt = font();
+	fnt.setBold(true);
+	model->setLive(row, fnt);
 }
