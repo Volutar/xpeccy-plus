@@ -466,7 +466,10 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_NOFLICK, "key.noflick", "Noflick", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_N)},
 	{SCG_MAIN, XCUT_NMI, "key.nmi", "NMI", QKeySequence(), QKeySequence(Qt::Key_F10)},
 	{SCG_MAIN | SCG_DEBUGA, XCUT_RESET, "key.reset", "Reset", QKeySequence(), QKeySequence(Qt::Key_F12)},
-	{SCG_MAIN, XCUT_RES_DOS, "key.reset.dos", "Reset to DOS", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_F12)},
+	{SCG_MAIN, XCUT_RES_48, "key.reset.48", "Reset to 48K", QKeySequence(), QKeySequence()},
+	{SCG_MAIN, XCUT_RES_128, "key.reset.128", "Reset to 128K", QKeySequence(), QKeySequence()},
+	{SCG_MAIN, XCUT_RES_DOS, "key.reset.dos", "Reset to DOS", QKeySequence(), QKeySequence()},
+	{SCG_MAIN, XCUT_RES_SERVICE, "key.reset.service", "Reset to Service", QKeySequence(), QKeySequence()},
 	{SCG_MAIN, XCUT_TURBO, "key.turbo", "Switch turbo", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_T)},
 	// Qt::AltModifier, not Qt::ALT: mixing the two modifier enums leaves no
 	// exact operator| match and clang calls it ambiguous.

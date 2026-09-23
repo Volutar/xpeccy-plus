@@ -72,7 +72,7 @@ int scoMRd(Computer* comp, int adr, int m1) {
 // in
 
 int scrpIn1F(Computer* comp, int port) {
-	return joyInput(comp->joy);
+	return zx_in_joy(comp, port);
 }
 
 int scrpIn1FFD(Computer* comp, int port) {

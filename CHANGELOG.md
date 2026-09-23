@@ -11,6 +11,23 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **A Drives menu** in the right-click menu: what is in each drive, with Open, New, Save,
+  Save as, Eject and Write protect, the hard disk images with their properties, the SD card
+  and the cartridge. **Disk manager** in it lists a TR-DOS disk and copies files to the tape
+  or out as Hobeta or raw.
+
+- **A Beta Disk can have fewer than four drives** - Number of drives in the disk settings. A
+  drive left out is not there at all: no disk goes in, and software finds it missing.
+
+- **Reset to 48K, 128K, DOS and Service** as hotkeys, unbound until you give them keys. The
+  Reset menu names the starts the machine really has instead of ROM page numbers.
+
+- **The Kempston joystick can be left out** of a machine, and the port then reads like any
+  unused one. The +2A and +3 come without it, as they shipped.
+
+- **TurboSound FM** is a choice of its own for the sound chips, and the chip clock defaults to
+  Auto: half the processor clock, 3.5 MHz for TurboSound FM.
+
 - **Fast loading runs a tape through in seconds, whatever its loader.** One switch in the
   tape player: while a loader reads the tape the machine runs flat out and silent, and the
   picture holds until a new screen is in - R-Type takes about four seconds. Under it in
@@ -84,6 +101,13 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **The machine's devices are on the Machine page of Options.** Storage, Input, Sound and
+  Board, one row per device with its choice and a window for the rest, the settings that
+  apply to every machine marked as such. The ROM set is one button there, and the ROM a
+  reset starts from is picked on its slot. A controller built into a board cannot be swapped
+  out. The images moved to the Drives menu, so the Media tab keeps only what happens to the
+  files you open, File types included. Reset to DOS has no key by default any more.
+
 - **One slider for the machine's speed**, on the Machine page, with Alt+Plus and Alt+Minus on
   the keypad. Left of x1 picture and sound slow down together; right of it the CPU runs up to
   eight times faster at the same frame rate, the way an overclocked machine does. It always
@@ -138,6 +162,10 @@ before that point is upstream's history and is not repeated here.
   everywhere, and X in a number field switches between hex and decimal.
 
 ### Fixed
+
+- **Smaller fixes around the drives and resets.** Reset to 48K on a +2A or +3 landed in the
+  128K menu. Opening a cartridge did nothing. Copying files off a disk with deleted files on
+  it picked the wrong ones. Ejecting a changed disk ignored Cancel.
 
 - **More tapes load.** Loaders that time the tape themselves - ATF, Deflektor, Technician Ted -
   load now, and so do high-speed DeciLoad tapes, on a Profi as well. A tape that starts itself

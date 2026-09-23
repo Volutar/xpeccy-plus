@@ -4,6 +4,10 @@
 #include <QKeyEvent>
 #include <QShortcut>
 #include <QComboBox>
+#include <QButtonGroup>
+#include <QGridLayout>
+#include <QToolButton>
+#include <QLabel>
 #include <QModelIndex>
 #include <QKeySequence>
 
@@ -33,6 +37,16 @@ class SetupWin : public QDialog {
 		QDialog* popOut(QWidget*, const char*);
 		void cfgLoaded();
 		void fillRomSlots();
+		void fillRomSummary();
+		void makeDevWidgets();
+		void buildDevices();
+		QToolButton* devRow(QGridLayout*, const QString&, QWidget*, QWidget*, const char*);
+		void fillDevSummary();
+		void showDevRows();
+		void showDriveRows();
+		void tidySoundPage();
+		void fillGsRom(const QStringList&);
+		void fillDosRom();
 		void addRomSlot(int, QString, int, const QStringList&, bool, int);
 		QString romSlotFileName(int);
 		void romSlotPick(int, const QString&);
@@ -46,11 +60,35 @@ class SetupWin : public QDialog {
 
 		xRomsetEditor* rseditor;
 		QDialog* advWin;		// the machine-defining settings
+		QDialog* romSetWin;		// the slots and where a reset starts
 		QDialog* romWin;		// the set, file by file
-		QDialog* ftWin;			// the machine each file type is opened on
 		xFileTypesBox* ftbox;
 		xRomsetModel* rsmodel;
 		xRomset roms;			// the set the page edits, until Apply
+		int resTarget;			// where a reset starts, until Apply
+		QButtonGroup* resGroup;
+
+		// the devices' own controls, see makeDevWidgets()
+		QCheckBox *cbTapeAuto, *cbTapeRewind, *cbTapeFast, *cbTapeFlash, *cbTapeEdge, *bdtbox, *cbAddBoot, *a80box, *b80box, *c80box, *d80box, *adsbox, *bdsbox, *cdsbox, *ddsbox, *gsrbox, *ratWheel, *cbSwapButtons;
+		QComboBox *diskTypeBox, *cbFlpInterleave, *hiface, *hm_type, *hs_type, *sdrvBox, *cbScanTab, *cbCpuTurbo, *cbPsgCount, *cbPsgType, *cbPsgFrq, *cbPsgStereo;
+		xSlider *sldTapeSpeed, *sldPsgSep, *sldSensitivity;
+		QLabel *labTapeSpeedVal, *labPsgMhz, *labPsgSep;
+		// the machine's devices, on the Machine page
+		QComboBox* gsBox;
+		QComboBox* gsRomBox;
+		QComboBox* dosRomBox;
+		QToolButton* dosRomBtn;
+		QComboBox* joyBox;
+		QLabel* joyHint;
+		QComboBox* mouseBox;
+		QLabel* tapeSum;
+		QLabel* sdSum;
+		QLabel* slotSum;
+		QList<QWidget*> sdRow;
+		QList<QWidget*> slotRow;
+		QList<QWidget*> kbdRow;
+		QList<QWidget*> drvRow[4];
+		QComboBox* drvCountBox;
 
 		QDialog* layeditor;
 //		xPadMapModel* padModel;
@@ -72,7 +110,6 @@ class SetupWin : public QDialog {
 		QFont dbgfnt;
 
 		int bindidx;
-		void buildtapelist();
 		void buildkeylist();
 		void buildpadlist();
 
@@ -92,18 +129,6 @@ class SetupWin : public QDialog {
 		void chapsg();
 		void chasnow();
 		void chasndlat();
-		void updatedisknams();
-		void loada(); void loadb(); void loadc(); void loadd();
-		void savea(); void saveb(); void savec(); void saved();
-		void ejcta(); void ejctb(); void ejctc(); void ejctd();
-		void newa(); void newb(); void newc(); void newd(); void newdisk(int, int=0);
-		void loatape(); void savtape(); void ejctape();
-		void tblkup(); void tblkdn(); void tblkrm();
-		void hddShowGeom(int);
-		void hddMasterImg(); void hddSlaveImg();
-		void hddMasterDir(); void hddSlaveDir();
-		void chablock(QModelIndex);
-		void tlistclick(QModelIndex);
 
 		void paledit();
 		void palchoosecol(QPoint);
@@ -112,12 +137,7 @@ class SetupWin : public QDialog {
 		void selLogDir();
 		void openLogDir();
 
-		void selSDCimg();
-		void selSDCdir();
-		void sdcPathChanged();
 
-		void openSlot();
-		void ejectSlot();
 
 		void addRom();
 		void editRom();
@@ -143,11 +163,6 @@ class SetupWin : public QDialog {
 		void bindAccept(xJoyMapEntry);
 		void setCurrentGamepad(int);
 
-		void fillDiskCat();
-		void copyToTape();
-		void copyToDisk();
-		void diskToHobeta();
-		void diskToRaw();
 
 
 		void edLayout();

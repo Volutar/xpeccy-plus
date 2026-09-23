@@ -66,8 +66,8 @@ static xFileTypeInfo ft_tab[] = {
 	{FL_UDI, 1, ".udi", "*.udi", loadUDI, saveUDI, "UDI disk image"},
 	{FL_DSK, 1, ".dsk", "*.dsk", loadDSK, saveDSK, "DSK disk image"},
 	{FL_HOBETA, 0, ".$", "*.$?", loadHobeta, NULL, "Hobeta file"},
-	{FL_SLT_ROM, 0, ".rom", "*.rom", loadSlot, NULL, "Cartrige image"},
-	{FL_SLT_BIN, 0, ".bin", "*.bin", loadSlot, NULL, "Cartrige image"},
+	{FL_SLT_ROM, 0, ".rom", "*.rom", loadSlot, NULL, "Cartridge image"},
+	{FL_SLT_BIN, 0, ".bin", "*.bin", loadSlot, NULL, "Cartridge image"},
 	{FL_IMA, 1, ".ima", "*.ima", load_ima, NULL, "1.44 FDD image"},
 	{FL_PCIMG, 1, ".img", "*.img", load_ima, NULL, "1.44 FDD image"},
 #ifdef HAVEZLIB
@@ -77,7 +77,7 @@ static xFileTypeInfo ft_tab[] = {
 	{0, 0, NULL, NULL, NULL, NULL, NULL}
 };
 
-static xFileTypeInfo ft_sltraw = {FL_SLT_BIN, 0, NULL, NULL, loadSlot, NULL, "RAW cartrige image"};
+static xFileTypeInfo ft_sltraw = {FL_SLT_BIN, 0, NULL, NULL, loadSlot, NULL, "RAW cartridge image"};
 static xFileTypeInfo ft_raw = {FL_RAW, 0, NULL, NULL, loadRaw, NULL, "RAW file to disk A"};
 static xFileTypeInfo ft_dum = {FL_NONE, 0, NULL, NULL, NULL, NULL, "Dummy entry"};
 
@@ -93,7 +93,7 @@ static xFileGroupInfo fg_tab[] = {
 	{FG_DISK_C, ".trd", 2, "Disk C", NULL, {FL_SCL, FL_TRD, FL_TD0, FL_FDI, FL_UDI, FL_DSK, FL_IMA, FL_PCIMG, FL_HOBETA, 0}},
 	{FG_DISK_D, ".trd", 3, "Disk D", NULL, {FL_SCL, FL_TRD, FL_TD0, FL_FDI, FL_UDI, FL_DSK, FL_IMA, FL_PCIMG, FL_HOBETA, 0}},
 	{FG_RAW, "", 0, "Raw file to disk", &ft_raw, {FL_RAW, 0}},
-	{FG_IF2_ROM, "", -1, "Cartrige image", &ft_sltraw, {FL_SLT_ROM, FL_SLT_BIN, 0}},
+	{FG_IF2_ROM, "", -1, "Cartridge image", &ft_sltraw, {FL_SLT_ROM, FL_SLT_BIN, 0}},
 	{FG_RZX, "", -1, "RZX playback", NULL, {FL_RZX, 0}},
 	{0, "", -1, NULL, NULL, {0}}
 };
@@ -103,6 +103,7 @@ static xFileGroupInfo fg_dum = {0, "", -1, NULL, NULL, {0}};
 static xFileHWInfo fh_tab[] = {
 	{FH_SPECTRUM, {FG_SNAPSHOT, FG_TAPE, FG_DISK_A, FG_DISK_B, FG_DISK_C, FG_DISK_D, FG_RAW, FG_RZX, FG_IF2_ROM, 0}},
 	{FH_ALF, {FG_IF2_ROM, FG_SNAPSHOT, 0}},
+	{FH_SLOTS, {FG_IF2_ROM, 0}},
 	{FH_DRIVE_A, {FG_DISK_A, FG_RAW, 0}},
 	{FH_DRIVE_B, {FG_DISK_B, FG_RAW, 0}},
 	{FH_DRIVE_C, {FG_DISK_C, FG_RAW, 0}},
@@ -281,6 +282,7 @@ typedef struct {
 
 static xFilerError err_tab[] = {
 	{ERR_CANT_OPEN, "Can't open file"},
+	{ERR_NO_DRIVE, "The machine has no such drive"},
 	{ERR_RZX_SIGN, "Wrong RZX signature"},
 	{ERR_RZX_CRYPT, "Xpeccy cannot into crypted RZX"},
 	{ERR_RZX_UNPACK, "RZX unpack error"},
@@ -518,7 +520,9 @@ int load_file(Computer* comp, const char* name, int id, int drv) {
 	int err = ERR_OK;
 	if (drv < 0) drv = 0;
 	// a disk goes in only once the one it replaces is safe to lose
-	if (inf && inf->load) {
+	if (inf && inf->ch && !comp->dif->flp[drv & 3]->fitted) {
+		err = ERR_NO_DRIVE;
+	} else if (inf && inf->load) {
 		if (!inf->ch || (saveChangedDisk(comp, drv) == ERR_OK)) {
 			err = inf->load(comp, path.toLocal8Bit().data(), drv);
 			disk_boot(comp, drv, inf->id);

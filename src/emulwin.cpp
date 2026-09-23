@@ -1206,6 +1206,9 @@ void MainWin::initUserMenu() {
 	palMenu = userMenu->addMenu(QIcon(":/images/palette.png"), "ZX palette");
 
 	userMenu->addSeparator();
+	drvMenu = userMenu->addMenu(QIcon(":/images/fdd.png"), "Drives");
+	diskWin = new xDiskWin(this);
+	diskWin->tapeChanged = [this]() {emit s_tape_upd(conf.zx->tape);};
 	userMenu->addAction(QIcon(":/images/tape.png"), "Tape player", this, SIGNAL(s_tape_show()));
 	userMenu->addAction(QIcon(":/images/video.png"),"RZX player", this, SIGNAL(s_rzx_show()));
 	userMenu->addSeparator();
@@ -1236,11 +1239,6 @@ void MainWin::initUserMenu() {
 	setRoot(bookmarkMenu, &MainWin::favManage);
 	resMenu->menuAction()->setData(RES_DEFAULT);
 	setRoot(resMenu, [this](){reset(resMenu->menuAction());});
-
-	resMenu->addAction("ROMpage0")->setData(RES_128);
-	resMenu->addAction("ROMpage1")->setData(RES_48);
-	resMenu->addAction("ROMpage2")->setData(RES_SHADOW);
-	resMenu->addAction("ROMpage3")->setData(RES_DOS);
 }
 
 void MainWin::favManage() {
@@ -1308,6 +1306,23 @@ void MainWin::fillUserMenu() {
 		}
 	}
 	turboMenu->setEnabled(comp && (comp->turboCount > 1) && !comp->rzx.play);
+	fillDrivesMenu();
+	// the ROMs a reset can start from on this machine, the default one in bold
+	resMenu->clear();
+	QList<int> starts = xm_reset_targets();
+	foreach(int res, starts) {
+		act = resMenu->addAction(xm_reset_name(res));
+		act->setData(res);
+		if (comp && (res == comp->resbank)) {
+			QFont fnt = act->font();
+			fnt.setBold(true);
+			act->setFont(fnt);
+		}
+	}
+	if (starts.isEmpty()) {
+		act = resMenu->addAction("Boots its own firmware");
+		act->setEnabled(false);
+	}
 	// fill keymaps menu
 	keyMenu->clear();
 	act = keyMenu->addAction("Default");
@@ -1466,6 +1481,7 @@ void MainWin::onPrfChange() {
 		comp->flgFRN = 0;
 	}
 	emit s_keywin_upd(comp->keyb);
+	fillUserMenu();		// the turbo steps and the reset starts are the machine's
 	vid_upd_scale();
 	updateWindow();
 	// hasPicture: at start-up there is nothing in the buffer to clean up after,
@@ -1554,6 +1570,17 @@ void MainWin::setMachine(const std::string& id) {
 
 void MainWin::reset(QAction* act) {
 	resetMachine(act->data().toInt());
+}
+
+// A reset to one of the ROMs, from a hotkey: a machine that has no such start
+// says so and stays as it is
+void MainWin::resetTo(int res) {
+	if (xm_reset_targets().contains(res)) {
+		resetMachine(res);
+		return;
+	}
+	const char* nam = (res == RES_48) ? "48K" : (res == RES_128) ? "128K" : (res == RES_DOS) ? "DOS" : "Service";
+	setMessage(QString(" no %0 start here ").arg(nam));
 }
 
 // A reset from the running machine's window: one landing mid-opcode lets the opcode

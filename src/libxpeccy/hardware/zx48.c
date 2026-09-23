@@ -59,7 +59,7 @@ void speMapMem(Computer* comp) {
 // in
 
 int spIn1F(Computer* comp, int port) {
-	return joyInput(comp->joy);
+	return zx_in_joy(comp, port);
 }
 
 static xPort spePortMap[] = {

@@ -196,7 +196,16 @@ void MainWin::xkey_press(int xkey) {
 				scrInterval = 0;
 				break;
 			case XCUT_RES_DOS:
-				resetMachine(RES_DOS);
+				resetTo(RES_DOS);
+				break;
+			case XCUT_RES_48:
+				resetTo(RES_48);
+				break;
+			case XCUT_RES_128:
+				resetTo(RES_128);
+				break;
+			case XCUT_RES_SERVICE:
+				resetTo(RES_SHADOW);
 				break;
 			case XCUT_KEYBOARD:
 				emit s_keywin_shide();

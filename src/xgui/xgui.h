@@ -8,6 +8,9 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPushButton>
+#include <QGroupBox>
+#include <QGridLayout>
 #include <QSlider>
 #include <QStyledItemDelegate>
 #include <QTreeView>
@@ -100,6 +103,46 @@ class xSlider : public QSlider {
 	protected:
 		void paintEvent(QPaintEvent*);
 };
+
+// A push button with its icon at the right edge and its text from the left,
+// cut short to fit; Qt only centers the two together.
+class xSideButton : public QPushButton {
+	public:
+		xSideButton(QWidget* p = NULL);
+	protected:
+		void paintEvent(QPaintEvent*);
+};
+
+// A group box with an icon in front of its title. The title is padded with
+// spaces to make room, since no style draws an icon there.
+class xIconGroup : public QGroupBox {
+	public:
+		xIconGroup(const QIcon&, const QString&, QWidget* p = NULL);
+	protected:
+		void paintEvent(QPaintEvent*);
+		void changeEvent(QEvent*);
+	private:
+		QIcon icon;
+		QString text;
+		void padTitle();
+};
+
+// A pop-up laid out like Advanced settings: fields with a name first, then a
+// line, then check boxes with a name and, in italics, what they do.
+class xOptSheet {
+	public:
+		QWidget* body;
+		xOptSheet();
+		void field(const QString&, QWidget*, const QString& = QString());
+		void line();
+		void check(QCheckBox*, const QString&, const QString&, bool global = false);
+	private:
+		QGridLayout* grid;
+		QLabel* text(const QString&);
+};
+
+// a control and what goes after it, as one field of a sheet
+QWidget* fieldPair(QWidget*, QWidget*, bool);
 
 class xLabel : public QLabel {
 	Q_OBJECT

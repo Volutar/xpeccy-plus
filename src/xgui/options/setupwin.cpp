@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QComboBox>
 #include <QToolButton>
+#include <QRadioButton>
 #include <QFileInfo>
 #include <QDir>
 #include <QDirIterator>
@@ -78,6 +79,7 @@ void fill_machine_list(QComboBox* box) {
 		family = mac.family;
 		box->addItem(xm_list_name(mac), QString::fromLocal8Bit(mac.id.c_str()));
 	}
+	box->setMaxVisibleItems(box->count());
 }
 
 void fill_layout_list(QComboBox* box, QString txt = QString()) {
@@ -288,17 +290,22 @@ class xTwoPartPainter : public QObject {
 };
 
 
+// what the PSG row offers: how many chips, and whether they are the FM ones
+enum {PSG_NONE = 0, PSG_ONE, PSG_TS, PSG_TSFM, PSG_NEXT};
+
 void opt_fill_psg_boxes(QComboBox* cbcount, QComboBox* cbtype, QComboBox* cbfrq, QComboBox* cbstereo) {
 	cbcount->clear();
-	cbcount->addItem(QIcon(":/images/cancel.png"),"None",0);
-	cbcount->addItem(QString::fromUtf8("×1 - AY/YM"),1);
-	cbcount->addItem(QString::fromUtf8("×2 - TurboSound NedoPC"),2);
-	cbcount->addItem(QString::fromUtf8("×3 - TurboSound ZX Next"),3);
+	cbcount->addItem(QIcon(":/images/cancel.png"),"None",PSG_NONE);
+	cbcount->addItem(QString::fromUtf8("×1 - AY/YM"),PSG_ONE);
+	cbcount->addItem(QString::fromUtf8("×2 - TurboSound"),PSG_TS);
+	cbcount->addItem(QString::fromUtf8("×2 - TurboSound FM"),PSG_TSFM);
+	cbcount->addItem(QString::fromUtf8("×3 - ZX Next"),PSG_NEXT);
 	cbtype->clear();
 	cbtype->addItem(QIcon(":/images/MicrochipLogo.png"),"AY-3-8910",SND_AY);
 	cbtype->addItem(QIcon(":/images/YamahaLogo.png"),"Yamaha 2149",SND_YM);
 	cbtype->addItem(QIcon(":/images/YamahaLogo.png"),"Yamaha 2203",SND_YM2203);
 	cbfrq->clear();
+	cbfrq->addItem("Auto");			// its figure is filled in by chapsg()
 	cbfrq->addItem(QString::fromUtf8("1.773447 - ZX 128/+2/+3"));
 	cbfrq->addItem(QString::fromUtf8("1.75 - ZX 48/ZX-clones"));
 	cbfrq->addItem(QString::fromUtf8("3.5 - YM2203"));
@@ -330,9 +337,78 @@ void opt_set_psg_frq(QComboBox* box, double frq) {
 	box->setCurrentText(QString::number(frq, 'g', 7));
 }
 
+// The machine's devices, made here rather than in the .ui: they live in the
+// device pop-ups on the Machine page, which are built in code.
+void SetupWin::makeDevWidgets() {
+	cbTapeAuto = new QCheckBox;
+	cbTapeRewind = new QCheckBox;
+	cbTapeFast = new QCheckBox;
+	cbTapeFlash = new QCheckBox;
+	cbTapeEdge = new QCheckBox;
+	bdtbox = new QCheckBox;
+	cbAddBoot = new QCheckBox;
+	a80box = new QCheckBox;
+	b80box = new QCheckBox;
+	c80box = new QCheckBox;
+	d80box = new QCheckBox;
+	adsbox = new QCheckBox;
+	bdsbox = new QCheckBox;
+	cdsbox = new QCheckBox;
+	ddsbox = new QCheckBox;
+	gsrbox = new QCheckBox;
+	ratWheel = new QCheckBox;
+	cbSwapButtons = new QCheckBox;
+	diskTypeBox = new QComboBox;
+	cbFlpInterleave = new QComboBox;
+	hiface = new QComboBox;
+	hm_type = new QComboBox;
+	hs_type = new QComboBox;
+	sdrvBox = new QComboBox;
+	cbScanTab = new QComboBox;
+	cbCpuTurbo = new QComboBox;
+	cbPsgCount = new QComboBox;
+	cbPsgType = new QComboBox;
+	cbPsgFrq = new QComboBox;
+	cbPsgStereo = new QComboBox;
+	foreach(QComboBox* box, QList<QComboBox*>() << cbPsgCount << cbPsgType << cbPsgFrq) {
+		box->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+		box->setMinimumContentsLength(8);
+	}
+	cbPsgFrq->setEditable(true);
+	cbPsgFrq->setInsertPolicy(QComboBox::NoInsert);
+	cbPsgStereo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+	sldTapeSpeed = new xSlider;
+	sldTapeSpeed->setRange(95, 105);
+	sldTapeSpeed->setPageStep(1);
+	sldTapeSpeed->setValue(100);
+	sldTapeSpeed->setTickInterval(1);
+	sldPsgSep = new xSlider;
+	sldPsgSep->setRange(0, 100);
+	sldPsgSep->setPageStep(5);
+	sldPsgSep->setTickInterval(25);
+	sldPsgSep->setMinimumWidth(45);
+	sldSensitivity = new xSlider;
+	sldSensitivity->setRange(100, 1900);
+	sldSensitivity->setSingleStep(10);
+	sldSensitivity->setPageStep(100);
+	sldSensitivity->setValue(1000);
+	sldSensitivity->setTickInterval(100);
+	foreach(QSlider* sld, QList<QSlider*>() << sldTapeSpeed << sldPsgSep << sldSensitivity) {
+		sld->setOrientation(Qt::Horizontal);
+		sld->setTickPosition(QSlider::TicksBelow);
+	}
+	labTapeSpeedVal = new QLabel("100%");
+	labTapeSpeedVal->setMinimumWidth(34);
+	labPsgMhz = new QLabel("MHz");
+	labPsgSep = new QLabel("75%");
+	labPsgSep->setMinimumWidth(32);
+	labPsgSep->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+}
+
 SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	setModal(true);
 	ui.setupUi(this);
+	makeDevWidgets();
 	// a .ui iconset holds a single pixmap, which the title bar and the tab
 	// bar would have to downscale; the application icon carries every drawn
 	// size instead. It has to be set explicitly: an unset icon is inherited
@@ -375,10 +451,10 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	for (i = 1; i <= 6; i++)
 		ui.cbScale->addItem(QString("Scale x%0").arg(i), i);
 
-	ui.resbox->addItem("BASIC 48",RES_48);
-	ui.resbox->addItem("BASIC 128",RES_128);
-	ui.resbox->addItem("DOS",RES_DOS);
-	ui.resbox->addItem("SHADOW",RES_SHADOW);
+	resTarget = RES_128;
+	resGroup = new QButtonGroup(this);
+	connect(resGroup, QOverload<QAbstractButton*>::of(&QButtonGroup::buttonClicked), this,
+		[this](QAbstractButton* btn) {resTarget = resGroup->id(btn);});
 
 	ui.tvRomset->setColumnWidth(0,50);
 	ui.tvRomset->setColumnWidth(1,200);
@@ -406,9 +482,9 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.sldSpeed->setMaximum(XSPD_MAX);		// one tick per step of the speed scale
 	ui.cbCpuFrq->addItem("3.5 MHz");
 	ui.cbCpuFrq->addItem("3.5469 MHz");
-	ui.cbCpuTurbo->addItem(QString::fromUtf8("×1 (no turbo)"), "1");
-	ui.cbCpuTurbo->addItem(QString::fromUtf8("×1, ×2"), "1,2");
-	ui.cbCpuTurbo->addItem(QString::fromUtf8("×1, ×2, ×4"), "1,2,4");
+	cbCpuTurbo->addItem(QString::fromUtf8("×1 (no turbo)"), "1");
+	cbCpuTurbo->addItem(QString::fromUtf8("×1, ×2"), "1,2");
+	cbCpuTurbo->addItem(QString::fromUtf8("×1, ×2, ×4"), "1,2,4");
 
 #if defined(USEOPENGL)
 //	ui.cbScanlines->setVisible(false);
@@ -439,46 +515,40 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	for (i = 0; sndRateTab[i]; i++) {
 		ui.ratbox->addItem(QString::number(sndRateTab[i]), sndRateTab[i]);
 	}
-	opt_fill_psg_boxes(ui.cbPsgCount, ui.cbPsgType, ui.cbPsgFrq, ui.cbPsgStereo);
-	ui.cbPsgCount->setItemDelegate(new xTwoPartDelegate(ui.cbPsgCount));
-	ui.cbPsgFrq->setItemDelegate(new xTwoPartDelegate(ui.cbPsgFrq));
-	new xTwoPartPainter(ui.cbPsgCount);
-	new xTwoPartPainter(ui.cbPsgFrq);
-	ui.sdrvBox->addItem("None",SDRV_NONE);
-	ui.sdrvBox->addItem("Covox only",SDRV_COVOX);
-	ui.sdrvBox->addItem("Soundrive 1.05 mode 1",SDRV_105_1);
-	ui.sdrvBox->addItem("Soundrive 1.05 mode 2",SDRV_105_2);
+	opt_fill_psg_boxes(cbPsgCount, cbPsgType, cbPsgFrq, cbPsgStereo);
+	cbPsgCount->setItemDelegate(new xTwoPartDelegate(cbPsgCount));
+	cbPsgFrq->setItemDelegate(new xTwoPartDelegate(cbPsgFrq));
+	new xTwoPartPainter(cbPsgCount);
+	new xTwoPartPainter(cbPsgFrq);
+	sdrvBox->addItem("None",SDRV_NONE);
+	sdrvBox->addItem("Covox only",SDRV_COVOX);
+	sdrvBox->addItem("Soundrive 1.05 mode 1",SDRV_105_1);
+	sdrvBox->addItem("Soundrive 1.05 mode 2",SDRV_105_2);
 // flp
-	ui.disklist->horizontalHeader()->setVisible(true);
-	ui.diskTypeBox->addItem("None",DIF_NONE);
-	ui.diskTypeBox->addItem("Beta Disk (VG93)",DIF_BDI);
-	ui.diskTypeBox->addItem("+3 DOS (uPD765)",DIF_P3DOS);
-	ui.disklist->addAction(ui.actCopyToTape);
-	ui.disklist->addAction(ui.actSaveHobeta);
-	ui.disklist->addAction(ui.actSaveRaw);
+	diskTypeBox->addItem("None",DIF_NONE);
+	diskTypeBox->addItem("Beta Disk (VG93)",DIF_BDI);
+	diskTypeBox->addItem("+3 DOS (uPD765)",DIF_P3DOS);
 	// the order flp_format_trk_buf() lays the 16 sectors out in, for each value
-	ui.cbFlpInterleave->addItem("1, 9, 2, 10, 3… (TR-DOS)", 8);
-	ui.cbFlpInterleave->addItem("1, 2, 3, 4, 5… (in a row)", 1);
-	ui.cbFlpInterleave->addItem("1, 3, 5, 7, 9…", 2);
-	ui.cbFlpInterleave->addItem("1, 4, 7, 10, 13…", 3);
-	ui.cbFlpInterleave->addItem("1, 5, 9, 13, 2…", 4);
-	ui.cbFlpInterleave->addItem("1, 6, 11, 16, 2…", 5);
-	ui.cbFlpInterleave->addItem("1, 7, 13, 2, 8…", 6);
-	ui.cbFlpInterleave->addItem("1, 8, 15, 2, 9…", 7);
-// tape
-	ui.tapelist->addAction(ui.actCopyToDisk);
+	cbFlpInterleave->addItem("1, 9, 2, 10, 3… (TR-DOS)", 8);
+	cbFlpInterleave->addItem("1, 2, 3, 4, 5… (in a row)", 1);
+	cbFlpInterleave->addItem("1, 3, 5, 7, 9…", 2);
+	cbFlpInterleave->addItem("1, 4, 7, 10, 13…", 3);
+	cbFlpInterleave->addItem("1, 5, 9, 13, 2…", 4);
+	cbFlpInterleave->addItem("1, 6, 11, 16, 2…", 5);
+	cbFlpInterleave->addItem("1, 7, 13, 2, 8…", 6);
+	cbFlpInterleave->addItem("1, 8, 15, 2, 9…", 7);
 // hdd
-	ui.hiface->addItem("None",IDE_NONE);
-	ui.hiface->addItem("Nemo",IDE_NEMO);
-	ui.hiface->addItem("Nemo A8",IDE_NEMOA8);
-	ui.hiface->addItem("Nemo Evo",IDE_NEMO_EVO);
-	ui.hiface->addItem("SMUC",IDE_SMUC);
-	ui.hiface->addItem("ATM",IDE_ATM);
-	ui.hiface->addItem("Profi",IDE_PROFI);
-	ui.hm_type->addItem(QIcon(":/images/cancel.png"),"Not connected",IDE_NONE);
-	ui.hm_type->addItem(QIcon(":/images/hdd.png"),"HDD (ATA)",IDE_ATA);
-	ui.hs_type->addItem(QIcon(":/images/cancel.png"),"Not connected",IDE_NONE);
-	ui.hs_type->addItem(QIcon(":/images/hdd.png"),"HDD (ATA)",IDE_ATA);
+	hiface->addItem("None",IDE_NONE);
+	hiface->addItem("Nemo",IDE_NEMO);
+	hiface->addItem("Nemo A8",IDE_NEMOA8);
+	hiface->addItem("Nemo Evo",IDE_NEMO_EVO);
+	hiface->addItem("SMUC",IDE_SMUC);
+	hiface->addItem("ATM",IDE_ATM);
+	hiface->addItem("Profi",IDE_PROFI);
+	hm_type->addItem(QIcon(":/images/cancel.png"),"Not connected",IDE_NONE);
+	hm_type->addItem(QIcon(":/images/hdd.png"),"HDD (ATA)",IDE_ATA);
+	hs_type->addItem(QIcon(":/images/cancel.png"),"Not connected",IDE_NONE);
+	hs_type->addItem(QIcon(":/images/hdd.png"),"HDD (ATA)",IDE_ATA);
 // input
 //	padModel = new xPadMapModel();
 //	ui.tvPadTable->setModel(padModel);
@@ -487,10 +557,10 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 //	ui.tvPadTable->addAction(ui.actDelBinding);
 	ui.tabsGamepad->addTab(gpwid_a, "Gamepad A");
 	ui.tabsGamepad->addTab(gpwid_b, "Gamepad B");
-	ui.cbScanTab->addItem("As the machine has it", 0);
-	ui.cbScanTab->addItem("Scanset 1 (XT)", KBD_XT);
-	ui.cbScanTab->addItem("Scanset 2 (AT)", KBD_AT);
-	ui.cbScanTab->addItem("Scanset 3 (PS/2)", KBD_PS2);
+	cbScanTab->addItem("As the machine has it", 0);
+	cbScanTab->addItem("Scanset 1 (XT)", KBD_XT);
+	cbScanTab->addItem("Scanset 2 (AT)", KBD_AT);
+	cbScanTab->addItem("Scanset 3 (PS/2)", KBD_PS2);
 // all
 	connect(ui.okbut,SIGNAL(released()),this,SLOT(okay()));
 	connect(ui.apbut,SIGNAL(released()),this,SLOT(apply()));
@@ -517,29 +587,50 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	// so everything that reads and writes them stays as it is.
 	advWin = popOut(ui.advBox, "Machine: advanced settings");
 
-	// same for the set file by file: the page shows which file is in which
-	// slot, this window has the offsets and sizes behind it
+	// the page keeps one button for the ROM set; the slots and the reset
+	// target are in this window
+	romSetWin = popOut(ui.romBox, "Machine: ROM");
+	connect(ui.pbRomSet, &QPushButton::released, romSetWin, [this]() {romSetWin->adjustSize(); romSetWin->show(); romSetWin->raise();});
+
+	// same for the set file by file: the slots say which file is in which
+	// one, this window has the offsets and sizes behind it
 	romWin = popOut(ui.romAdvBox, "Machine: ROM files");
 	romWin->resize(620, 340);
-	connect(ui.pbRomAdvanced, SIGNAL(released()), this, SLOT(showRomFiles()));
+	QPushButton* pbExpert = romSetWin->findChild<QDialogButtonBox*>()->addButton(tr("Expert settings"), QDialogButtonBox::ActionRole);
+	pbExpert->setIcon(QIcon(":/images/settings.png"));
+	pbExpert->setToolTip(tr("Where each file starts, how much of it is read, and where it lands"));
+	connect(pbExpert, SIGNAL(released()), this, SLOT(showRomFiles()));
+	buildDevices();
 // media
+	// the file types sit on the page itself, there is room for them now
 	ftbox = new xFileTypesBox;
-	ftWin = popOut(ftbox, "Media: file types");
-	ftWin->resize(520, ftWin->sizeHint().height());
-	connect(ui.pbFileTypes, &QPushButton::released, ftWin, [this]() {ftWin->show(); ftWin->raise();});
-	QPushButton* ftdef = ftWin->findChild<QDialogButtonBox*>()->addButton(QDialogButtonBox::RestoreDefaults);
+	QGroupBox* ftgrp = new QGroupBox(tr("File types"));
+	QVBoxLayout* ftlay = new QVBoxLayout(ftgrp);
+	QLabel* fthint = new QLabel(tr("Which machine a snapshot, a tape or a disk is opened on"));
+	QFont fthf = fthint->font();
+	fthf.setItalic(true);
+	fthint->setFont(fthf);
+	ftlay->addWidget(fthint);
+	ftlay->addWidget(ftbox, 1);
+	QPushButton* ftdef = new QPushButton(tr("Restore defaults"));
 	ftdef->setToolTip("Every format back to Auto");
 	connect(ftdef, &QPushButton::released, ftbox, [this]() {ftbox->defaults();});
+	QHBoxLayout* ftbtn = new QHBoxLayout;
+	ftbtn->addStretch(1);
+	ftbtn->addWidget(ftdef);
+	ftlay->addLayout(ftbtn);
+	ui.verticalLayout_29->insertWidget(1, ftgrp, 1);
 // video
 	connect(ui.pathtb,SIGNAL(released()),this,SLOT(selsspath()));
 	connect(ui.bszsld,SIGNAL(valueChanged(int)),this,SLOT(chabsz()));
 	connect(ui.sldSpeed,SIGNAL(valueChanged(int)),this,SLOT(chaspd()));
 	connect(ui.sldNoflic,SIGNAL(valueChanged(int)),this,SLOT(chaflc()));
-	connect(ui.sldPsgSep,SIGNAL(valueChanged(int)),this,SLOT(chapsg()));
+	connect(sldPsgSep,SIGNAL(valueChanged(int)),this,SLOT(chapsg()));
 	connect(ui.sldSndLatency,SIGNAL(valueChanged(int)),this,SLOT(chasndlat()));
-	connect(ui.cbPsgCount,SIGNAL(currentIndexChanged(int)),this,SLOT(chapsg()));
+	connect(cbPsgCount,SIGNAL(currentIndexChanged(int)),this,SLOT(chapsg()));
+	connect(ui.cbCpuFrq,SIGNAL(currentTextChanged(QString)),this,SLOT(chapsg()));
 	connect(ui.cbSnow,SIGNAL(toggled(bool)),this,SLOT(chasnow()));
-	connect(ui.cbPsgStereo,SIGNAL(currentIndexChanged(int)),this,SLOT(chapsg()));
+	connect(cbPsgStereo,SIGNAL(currentIndexChanged(int)),this,SLOT(chapsg()));
 
 	connect(ui.layEdit,SIGNAL(released()),this,SLOT(edLayout()));
 	connect(ui.layAdd,SIGNAL(released()),this,SLOT(addNewLayout()));
@@ -583,64 +674,13 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	connect(ui.sbGSVol,SIGNAL(valueChanged(int)),ui.sldGSVol,SLOT(setValue(int)));
 	connect(ui.sbSdrvVol,SIGNAL(valueChanged(int)),ui.sldSdrvVol,SLOT(setValue(int)));
 	connect(ui.sbSAAVol,SIGNAL(valueChanged(int)),ui.sldSAAVol,SLOT(setValue(int)));
-
-// dos
-	connect(ui.newatb,SIGNAL(released()),this,SLOT(newa()));
-	connect(ui.newbtb,SIGNAL(released()),this,SLOT(newb()));
-	connect(ui.newctb,SIGNAL(released()),this,SLOT(newc()));
-	connect(ui.newdtb,SIGNAL(released()),this,SLOT(newd()));
-
-	connect(ui.loadatb,SIGNAL(released()),this,SLOT(loada()));
-	connect(ui.loadbtb,SIGNAL(released()),this,SLOT(loadb()));
-	connect(ui.loadctb,SIGNAL(released()),this,SLOT(loadc()));
-	connect(ui.loaddtb,SIGNAL(released()),this,SLOT(loadd()));
-
-	connect(ui.saveatb,SIGNAL(released()),this,SLOT(savea()));
-	connect(ui.savebtb,SIGNAL(released()),this,SLOT(saveb()));
-	connect(ui.savectb,SIGNAL(released()),this,SLOT(savec()));
-	connect(ui.savedtb,SIGNAL(released()),this,SLOT(saved()));
-
-	connect(ui.remoatb,SIGNAL(released()),this,SLOT(ejcta()));
-	connect(ui.remobtb,SIGNAL(released()),this,SLOT(ejctb()));
-	connect(ui.remoctb,SIGNAL(released()),this,SLOT(ejctc()));
-	connect(ui.remodtb,SIGNAL(released()),this,SLOT(ejctd()));
-
-	connect(ui.disktabs,SIGNAL(currentChanged(int)),this,SLOT(fillDiskCat()));
-	connect(ui.actCopyToTape,SIGNAL(triggered()),this,SLOT(copyToTape()));
-	connect(ui.actSaveHobeta,SIGNAL(triggered()),this,SLOT(diskToHobeta()));
-	connect(ui.actSaveRaw,SIGNAL(triggered()),this,SLOT(diskToRaw()));
-	connect(ui.tbToTape,SIGNAL(released()),this,SLOT(copyToTape()));
-	connect(ui.tbToHobeta,SIGNAL(released()),this,SLOT(diskToHobeta()));
-	connect(ui.tbToRaw,SIGNAL(released()),this,SLOT(diskToRaw()));
 // tape
-	connect(ui.tapelist,SIGNAL(doubleClicked(QModelIndex)),this,SLOT(chablock(QModelIndex)));
-	connect(ui.tapelist,SIGNAL(clicked(QModelIndex)),this,SLOT(tlistclick(QModelIndex)));
 	// flash loading and edge detection only refine fast loading
-	connect(ui.cbTapeFast, &QCheckBox::toggled, ui.cbTapeFlash, &QWidget::setEnabled);
-	connect(ui.cbTapeFast, &QCheckBox::toggled, ui.cbTapeEdge, &QWidget::setEnabled);
-	connect(ui.tloadtb,SIGNAL(released()),this,SLOT(loatape()));
-	connect(ui.tsavetb,SIGNAL(released()),this,SLOT(savtape()));
-	connect(ui.tremotb,SIGNAL(released()),this,SLOT(ejctape()));
-	connect(ui.blkuptb,SIGNAL(released()),this,SLOT(tblkup()));
-	connect(ui.blkdntb,SIGNAL(released()),this,SLOT(tblkdn()));
-	connect(ui.blkrmtb,SIGNAL(released()),this,SLOT(tblkrm()));
-	connect(ui.actCopyToDisk,SIGNAL(triggered()),this,SLOT(copyToDisk()));
-	connect(ui.tbToDisk,SIGNAL(released()),this,SLOT(copyToDisk()));
-	connect(ui.sldTapeSpeed, &QSlider::valueChanged, this, [this](int v){
-		ui.labTapeSpeedVal->setText(QString("%0%").arg(v));
+	connect(cbTapeFast, &QCheckBox::toggled, cbTapeFlash, &QWidget::setEnabled);
+	connect(cbTapeFast, &QCheckBox::toggled, cbTapeEdge, &QWidget::setEnabled);
+	connect(sldTapeSpeed, &QSlider::valueChanged, this, [this](int v){
+		labTapeSpeedVal->setText(QString("%0%").arg(v));
 	});
-// hdd
-	connect(ui.hm_pathtb,SIGNAL(released()),this,SLOT(hddMasterImg()));
-	connect(ui.hs_pathtb,SIGNAL(released()),this,SLOT(hddSlaveImg()));
-	connect(ui.hm_pathdir,SIGNAL(released()),this,SLOT(hddMasterDir()));
-	connect(ui.hs_pathdir,SIGNAL(released()),this,SLOT(hddSlaveDir()));
-// external
-	connect(ui.tbSDCimg,SIGNAL(released()),this,SLOT(selSDCimg()));
-	connect(ui.tbSDCdir,SIGNAL(released()),this,SLOT(selSDCdir()));
-	connect(ui.sdPath,SIGNAL(textChanged(QString)),this,SLOT(sdcPathChanged()));
-	connect(ui.tbsdcfree,SIGNAL(released()),ui.sdPath,SLOT(clear()));
-	connect(ui.cSlotOpen,SIGNAL(released()),this,SLOT(openSlot()));
-	connect(ui.cSlotEject,SIGNAL(released()),this,SLOT(ejectSlot()));
 // input
 //	connect(ui.tbPadNew, SIGNAL(released()),this,SLOT(newPadMap()));
 //	connect(ui.tbPadDelete,SIGNAL(released()),this,SLOT(delPadMap()));
@@ -759,10 +799,10 @@ void SetupWin::start() {
 	fill_machine_list(ui.machbox);
 	updateMachineButtons();
 	roms = conf.roms;
+	resTarget = comp->resbank;
 	rsmodel->fill(&roms);
 	fillRomSlots();
 	ui.machbox->setCurrentIndex(ui.machbox->findData(QString::fromLocal8Bit(conf.macId.c_str())));
-	ui.resbox->setCurrentIndex(ui.resbox->findData(comp->resbank));
 	setmszbox(ui.machbox->currentIndex());
 	ui.mszbox->setCurrentIndex(ui.mszbox->findData(comp->mem->ramSize));
 	if (ui.mszbox->currentIndex() < 0) ui.mszbox->setCurrentIndex(ui.mszbox->count() - 1);
@@ -774,11 +814,11 @@ void SetupWin::start() {
 	// a list none of the rows has - an edited machine file - gets a row of its
 	// own rather than being quietly turned into one of the three
 	QString steps = QString::fromStdString(xm_turbo_str(comp));
-	while (ui.cbCpuTurbo->count() > CPU_TURBO_ROWS)
-		ui.cbCpuTurbo->removeItem(CPU_TURBO_ROWS);
-	if (ui.cbCpuTurbo->findData(steps) < 0)
-		ui.cbCpuTurbo->addItem(steps, steps);
-	setRFIndex(ui.cbCpuTurbo, steps);
+	while (cbCpuTurbo->count() > CPU_TURBO_ROWS)
+		cbCpuTurbo->removeItem(CPU_TURBO_ROWS);
+	if (cbCpuTurbo->findData(steps) < 0)
+		cbCpuTurbo->addItem(steps, steps);
+	setRFIndex(cbCpuTurbo, steps);
 	ui.scrpwait->setChecked(comp->flgEM1);
 // emulation
 	ui.cbLowLat->setChecked(conf.vid.lowLatency);
@@ -831,10 +871,10 @@ void SetupWin::start() {
 	//fill_palette_list(ui.cbPalPreset);
 	fillComboBox(ui.cbPalPreset, "palettes", QStringList() << "*.txt" << "*.pal", PAL_DEFAULT_NAME, conf.palette.c_str());
 // sound
-	ui.cbGS->setChecked(comp->gs->enable);
-	ui.gsrbox->setChecked(comp->gs->reset);
+	gsBox->setCurrentIndex(comp->gs->enable ? 1 : 0);
+	gsrbox->setChecked(comp->gs->reset);
 
-	ui.sdrvBox->setCurrentIndex(ui.sdrvBox->findData(comp->sdrv->type));
+	sdrvBox->setCurrentIndex(sdrvBox->findData(comp->sdrv->type));
 
 	ui.cbSAA->setChecked(comp->saa->enabled);
 
@@ -862,25 +902,29 @@ void SetupWin::start() {
 	ui.sbSdrvVol->setValue(conf.snd.vol.sdrv);
 	ui.sbSAAVol->setValue(conf.snd.vol.saa);
 
-	int chips = (comp->ts->type == TS_ZXNEXT) ? 3 : (comp->ts->type == TS_NEDOPC) ? 2 : 1;
-	if (comp->ts->chipA->type == SND_NONE) chips = 0;
-	setRFIndex(ui.cbPsgCount, chips);
-	setRFIndex(ui.cbPsgType, (comp->ts->chipA->type == SND_NONE) ? SND_AY : comp->ts->chipA->type);
-	setRFIndex(ui.cbPsgStereo, comp->ts->chipA->stereo);
-	opt_set_psg_frq(ui.cbPsgFrq, comp->ts->chipA->frq);
-	ui.sldPsgSep->setValue(comp->ts->chipA->sep);
+	int psg = (comp->ts->type == TS_ZXNEXT) ? PSG_NEXT : (comp->ts->type == TS_NEDOPC) ? PSG_TS : PSG_ONE;
+	if (comp->ts->chipA->type == SND_YM2203) psg = PSG_TSFM;
+	if (comp->ts->chipA->type == SND_NONE) psg = PSG_NONE;
+	setRFIndex(cbPsgCount, psg);
+	setRFIndex(cbPsgType, (comp->ts->chipA->type == SND_NONE) ? SND_AY : comp->ts->chipA->type);
+	setRFIndex(cbPsgStereo, comp->ts->chipA->stereo);
+	if (comp->ts->frqAuto)
+		cbPsgFrq->setCurrentIndex(0);
+	else
+		opt_set_psg_frq(cbPsgFrq, comp->ts->chipA->frq);
+	sldPsgSep->setValue(comp->ts->chipA->sep);
 	chapsg();
 // input
 	buildkeylist();
-	setRFIndex(ui.cbScanTab, comp->keyb->pcmode);
+	setRFIndex(cbScanTab, comp->keyb->pcmode);
 	idx = ui.keyMapBox->findText(QString(conf.kmapName.c_str()));
 	if (idx < 1) idx = 0;
 	ui.keyMapBox->setCurrentIndex(idx);
-	ui.ratEnable->setChecked(comp->mouse->enable);
-	ui.ratWheel->setChecked(comp->mouse->hasWheel);
-	ui.cbSwapButtons->setChecked(comp->mouse->swapButtons);
-	ui.sldSensitivity->setValue(comp->mouse->sensitivity * 1000.0f);
-	ui.cbKbuttons->setChecked(comp->joy->extbuttons);
+	mouseBox->setCurrentIndex(comp->mouse->enable ? 1 : 0);
+	ratWheel->setChecked(comp->mouse->hasWheel);
+	cbSwapButtons->setChecked(comp->mouse->swapButtons);
+	sldSensitivity->setValue(comp->mouse->sensitivity * 1000.0f);
+	joyBox->setCurrentIndex((comp->joy->type != XJ_KEMPSTON) ? 0 : comp->joy->extbuttons ? 2 : 1);
 	gpwid_a->update(conf.jmapNameA);
 	gpwid_b->update(conf.jmapNameB);
 //	ui.sldDeadZone->setValue(conf.joy.gpad->deadZone());
@@ -892,73 +936,44 @@ void SetupWin::start() {
 //	buildpadlist();
 //	setRFIndex(ui.cbPadMap, conf.jmapNameA.c_str());
 // flp
-	ui.diskTypeBox->setCurrentIndex(ui.diskTypeBox->findData(comp->dif->type));
-	ui.bdtbox->setChecked(fdcFlag & FDC_FAST);
+	diskTypeBox->setCurrentIndex(diskTypeBox->findData(comp->dif->type));
+	bdtbox->setChecked(fdcFlag & FDC_FAST);
 	ui.mempaths->setChecked(conf.storePaths);
 	ui.cbAutorun->setChecked(conf.autorun);
 	ftbox->fill();
-	ui.cbAddBoot->setChecked(conf.boot);
-	setRFIndex(ui.cbFlpInterleave, flp_get_interleave());
+	int fitted = 0;
+	while ((fitted < 4) && comp->dif->flp[fitted]->fitted) fitted++;
+	setRFIndex(drvCountBox, qMax(1, fitted));
+	cbAddBoot->setChecked(conf.boot);
+	setRFIndex(cbFlpInterleave, flp_get_interleave());
 	Floppy* flp = comp->dif->flp[0];
-	ui.apathle->setText(QString::fromLocal8Bit(flp->path));
-		ui.a80box->setChecked(flp->trk80);
-		ui.adsbox->setChecked(flp->doubleSide);
-		ui.awpbox->setChecked(flp->protect);
+		a80box->setChecked(flp->trk80);
+		adsbox->setChecked(flp->doubleSide);
 	flp = comp->dif->flp[1];
-	ui.bpathle->setText(QString::fromLocal8Bit(flp->path));
-		ui.b80box->setChecked(flp->trk80);
-		ui.bdsbox->setChecked(flp->doubleSide);
-		ui.bwpbox->setChecked(flp->protect);
+		b80box->setChecked(flp->trk80);
+		bdsbox->setChecked(flp->doubleSide);
 	flp = comp->dif->flp[2];
-	ui.cpathle->setText(QString::fromLocal8Bit(flp->path));
-		ui.c80box->setChecked(flp->trk80);
-		ui.cdsbox->setChecked(flp->doubleSide);
-		ui.cwpbox->setChecked(flp->protect);
+		c80box->setChecked(flp->trk80);
+		cdsbox->setChecked(flp->doubleSide);
 	flp = comp->dif->flp[3];
-	ui.dpathle->setText(QString::fromLocal8Bit(flp->path));
-		ui.d80box->setChecked(flp->trk80);
-		ui.ddsbox->setChecked(flp->doubleSide);
-		ui.dwpbox->setChecked(flp->protect);
-	fillDiskCat();
+		d80box->setChecked(flp->trk80);
+		ddsbox->setChecked(flp->doubleSide);
 // hdd
-	ui.hiface->setCurrentIndex(ui.hiface->findData(comp->ide->type));
+	hiface->setCurrentIndex(hiface->findData(comp->ide->type));
 
-	ui.hm_type->setCurrentIndex(ui.hm_type->findData(comp->ide->master->type));
-	ATAPassport pass = ideGetPassport(comp->ide,IDE_MASTER);
-	ui.hm_path->setText(QString::fromLocal8Bit(comp->ide->master->image));
-	ui.hm_islba->setChecked(comp->ide->master->hasLBA);
-	ui.hm_gsec->setValue(pass.spt);
-	ui.hm_ghd->setValue(pass.hds);
-	ui.hm_gcyl->setValue(pass.cyls);
-	ui.hm_glba->setValue(comp->ide->master->maxlba);
-	ui.hm_capacity->setValue(comp->ide->master->maxlba >> 11);
+	hm_type->setCurrentIndex(hm_type->findData(comp->ide->master->type));
 
-	ui.hs_type->setCurrentIndex(ui.hm_type->findData(comp->ide->slave->type));
-	pass = ideGetPassport(comp->ide,IDE_SLAVE);
-	ui.hs_path->setText(QString::fromLocal8Bit(comp->ide->slave->image));
-	ui.hs_islba->setChecked(comp->ide->slave->hasLBA);
-	ui.hs_gsec->setValue(pass.spt);
-	ui.hs_ghd->setValue(pass.hds);
-	ui.hs_gcyl->setValue(pass.cyls);
-	ui.hs_glba->setValue(comp->ide->slave->maxlba);
-	ui.hs_capacity->setValue(comp->ide->slave->maxlba >> 11);
-// external
-	ui.sdPath->setText(QString::fromLocal8Bit(comp->sdc->image));
-	ui.sdlock->setChecked(comp->sdc->lock);
-	sdcPathChanged();
-
-	ui.cSlotName->setText(comp->slot->path);
+	hs_type->setCurrentIndex(hm_type->findData(comp->ide->slave->type));
 // tape
-	ui.cbTapeAuto->setChecked(conf.tape.autostart);
-	ui.cbTapeFast->setChecked(conf.tape.fast);
-	ui.cbTapeFlash->setChecked(conf.tape.flash);
-	ui.cbTapeEdge->setChecked(conf.tape.edge);
-	ui.cbTapeFlash->setEnabled(conf.tape.fast);
-	ui.cbTapeEdge->setEnabled(conf.tape.fast);
-	ui.cbTapeRewind->setChecked(conf.tape.rewind);
-	ui.sldTapeSpeed->setValue(comp->tape->speed);	// the readout follows in the slot
-	ui.tpathle->setText(QString::fromLocal8Bit(comp->tape->path));
-	buildtapelist();
+	cbTapeAuto->setChecked(conf.tape.autostart);
+	cbTapeFast->setChecked(conf.tape.fast);
+	cbTapeFlash->setChecked(conf.tape.flash);
+	cbTapeEdge->setChecked(conf.tape.edge);
+	cbTapeFlash->setEnabled(conf.tape.fast);
+	cbTapeEdge->setEnabled(conf.tape.fast);
+	cbTapeRewind->setChecked(conf.tape.rewind);
+	sldTapeSpeed->setValue(comp->tape->speed);	// the readout follows in the slot
+	showDevRows();
 // tools
 	ui.sbPort->setValue(conf.port);
 	ui.cbConfexit->setChecked(conf.confexit);
@@ -1007,10 +1022,10 @@ void SetupWin::apply() {
 	}
 	emu_lock();		// roms and memory size are rebuilt below
 	xm_set_roms(roms);
-	comp->resbank = getRFIData(ui.resbox);
+	comp->resbank = resTarget;
 	memSetSize(comp->mem, getRFIData(ui.mszbox), -1);
 	compSetBaseFrq(comp, xcpu_frq_parse(ui.cbCpuFrq->currentText(), comp->cpuFrq));
-	xm_turbo_set(comp, getRFSData(ui.cbCpuTurbo).toStdString());
+	xm_turbo_set(comp, getRFSData(cbCpuTurbo).toStdString());
 	xspeed_set(ui.sldSpeed->value());
 	comp->flgEM1 = ui.scrpwait->isChecked();
 	if (comp->hw->id == HW_ZX48) comp->mem->ramMask = MEM_128K - 1;		// TODO: find a better way
@@ -1099,33 +1114,35 @@ void SetupWin::apply() {
 		setOutput(nname.c_str());
 	}
 
-	int chips = getRFIData(ui.cbPsgCount);
-	int chtype = getRFIData(ui.cbPsgType);
-	double chfrq = opt_get_psg_frq(ui.cbPsgFrq);
-	int chstereo = getRFIData(ui.cbPsgStereo);
-	int chsep = ui.sldPsgSep->value();
+	int psg = getRFIData(cbPsgCount);
+	int chips = (psg == PSG_NEXT) ? 3 : ((psg == PSG_TS) || (psg == PSG_TSFM)) ? 2 : (psg == PSG_ONE) ? 1 : 0;
+	int chtype = (psg == PSG_TSFM) ? SND_YM2203 : getRFIData(cbPsgType);
+	if ((psg != PSG_TSFM) && (chtype == SND_YM2203)) chtype = SND_YM;
+	int chstereo = getRFIData(cbPsgStereo);
+	int chsep = sldPsgSep->value();
 	aymChip* chip[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
 	for (int i = 0; i < 3; i++) {			// one setting for all the chips
-		chip[i]->frq = chfrq;
 		chip_set_type(chip[i], (i < chips) ? chtype : SND_NONE);
 		chip[i]->stereo = chstereo;
 		chip[i]->sep = chsep;
 	}
+	ts_set_frq(comp->ts, opt_get_psg_frq(cbPsgFrq), comp->cpuFrq);	// 0: Auto
 	comp->ts->type = (chips > 2) ? TS_ZXNEXT : (chips > 1) ? TS_NEDOPC : TS_NONE;
 
-	comp->gs->enable = ui.cbGS->isChecked() ? 1 : 0;
-	comp->gs->reset = ui.gsrbox->isChecked() ? 1 : 0;
+	comp->gs->enable = gsBox->currentIndex();
+	comp->gs->reset = gsrbox->isChecked() ? 1 : 0;
 
-	comp->sdrv->type = getRFIData(ui.sdrvBox);
+	comp->sdrv->type = getRFIData(sdrvBox);
 
 	comp->saa->enabled = ui.cbSAA->isChecked() ? 1 : 0;
 // input
-	comp->keyb->pcmode = getRFIData(ui.cbScanTab);
-	comp->mouse->enable = ui.ratEnable->isChecked() ? 1 : 0;
-	comp->mouse->hasWheel = ui.ratWheel->isChecked() ? 1 : 0;
-	comp->mouse->swapButtons = ui.cbSwapButtons->isChecked() ? 1 : 0;
-	comp->mouse->sensitivity = ui.sldSensitivity->value() * 0.001f;
-	comp->joy->extbuttons = ui.cbKbuttons->isChecked() ? 1 : 0;
+	comp->keyb->pcmode = getRFIData(cbScanTab);
+	comp->mouse->enable = mouseBox->currentIndex();
+	comp->mouse->hasWheel = ratWheel->isChecked() ? 1 : 0;
+	comp->mouse->swapButtons = cbSwapButtons->isChecked() ? 1 : 0;
+	comp->mouse->sensitivity = sldSensitivity->value() * 0.001f;
+	comp->joy->type = joyBox->currentIndex() ? XJ_KEMPSTON : XJ_NONE;
+	comp->joy->extbuttons = (joyBox->currentIndex() == 2) ? 1 : 0;
 	gpwid_a->apply();
 	gpwid_b->apply();
 /*
@@ -1141,55 +1158,57 @@ void SetupWin::apply() {
 	conf.kmapName = kmname;
 	loadKeys();
 // flp
-	difSetHW(comp->dif, getRFIData(ui.diskTypeBox));
-	setFlagBit(ui.bdtbox->isChecked(),&fdcFlag,FDC_FAST);
-	conf.boot = ui.cbAddBoot->isChecked() ? 1 : 0;
+	difSetHW(comp->dif, getRFIData(diskTypeBox));
+	setFlagBit(bdtbox->isChecked(),&fdcFlag,FDC_FAST);
+	conf.boot = cbAddBoot->isChecked() ? 1 : 0;
 	conf.storePaths = ui.mempaths->isChecked() ? 1 : 0;
 	conf.autorun = ui.cbAutorun->isChecked() ? 1 : 0;
 	ftbox->apply();
-	flp_set_interleave(getRFIData(ui.cbFlpInterleave));
+	flp_set_interleave(getRFIData(cbFlpInterleave));
+	// a drive taken off the cable takes its disk with it: a changed one is
+	// saved first, or the drive stays
+	int fit = getRFIData(drvCountBox);
+	if (getRFIData(diskTypeBox) == DIF_P3DOS) fit = qMin(fit, 2);
+	for (int i = 3; i >= fit; i--) {
+		Floppy* dflp = comp->dif->flp[i];
+		if (dflp->fitted && dflp->insert && dflp->changed && (saveChangedDisk(comp, i) == ERR_CANCEL))
+			fit = i + 1;
+	}
+	difSetDrives(comp->dif, fit);
 
 	Floppy* flp = comp->dif->flp[0];
-	flp->trk80 = ui.a80box->isChecked() ? 1 : 0;
-	flp->doubleSide = ui.adsbox->isChecked() ? 1 : 0;
-	flp->protect = ui.awpbox->isChecked() ? 1 : 0;
+	flp->trk80 = a80box->isChecked() ? 1 : 0;
+	flp->doubleSide = adsbox->isChecked() ? 1 : 0;
 
 	flp = comp->dif->flp[1];
-	flp->trk80 = ui.b80box->isChecked() ? 1 : 0;
-	flp->doubleSide = ui.bdsbox->isChecked() ? 1 : 0;
-	flp->protect = ui.bwpbox->isChecked() ? 1 : 0;
+	flp->trk80 = b80box->isChecked() ? 1 : 0;
+	flp->doubleSide = bdsbox->isChecked() ? 1 : 0;
 
 	flp = comp->dif->flp[2];
-	flp->trk80 = ui.c80box->isChecked() ? 1 : 0;
-	flp->doubleSide = ui.cdsbox->isChecked() ? 1 : 0;
-	flp->protect = ui.cwpbox->isChecked() ? 1 : 0;
+	flp->trk80 = c80box->isChecked() ? 1 : 0;
+	flp->doubleSide = cdsbox->isChecked() ? 1 : 0;
 
 	flp = comp->dif->flp[3];
-	flp->trk80 = ui.d80box->isChecked() ? 1 : 0;
-	flp->doubleSide = ui.ddsbox->isChecked() ? 1 : 0;
-	flp->protect = ui.dwpbox->isChecked() ? 1 : 0;
+	flp->trk80 = d80box->isChecked() ? 1 : 0;
+	flp->doubleSide = ddsbox->isChecked() ? 1 : 0;
 
 // hdd
-	//comp->ide->type = getRFIData(ui.hiface);
-	ide_set_type(comp->ide, getRFIData(ui.hiface));
+	//comp->ide->type = getRFIData(hiface);
+	ide_set_type(comp->ide, getRFIData(hiface));
 
-	comp->ide->master->type = getRFIData(ui.hm_type);
-	ide_mount(comp->ide, IDE_MASTER, ui.hm_path->text());
-	comp->ide->master->hasLBA = ui.hm_islba->isChecked() ? 1 : 0;
-
-	comp->ide->slave->type = getRFIData(ui.hs_type);
-	ide_mount(comp->ide, IDE_SLAVE, ui.hs_path->text());
-	comp->ide->slave->hasLBA = ui.hs_islba->isChecked() ? 1 : 0;
+	comp->ide->master->type = getRFIData(hm_type);
+	comp->ide->slave->type = getRFIData(hs_type);
+	// what is mounted is the Drives menu's; a folder is read again on Apply
+	ide_remount(comp->ide);
 // others
-	sdc_mount(comp->sdc, ui.sdPath->text());
-	sdcSetLock(comp->sdc, ui.sdlock->isChecked() ? 1 : 0);
+	sdc_remount(comp->sdc);
 // tape
-	conf.tape.autostart = ui.cbTapeAuto->isChecked() ? 1 : 0;
-	conf.tape.fast = ui.cbTapeFast->isChecked() ? 1 : 0;
-	conf.tape.flash = ui.cbTapeFlash->isChecked() ? 1 : 0;
-	conf.tape.edge = ui.cbTapeEdge->isChecked() ? 1 : 0;
-	conf.tape.rewind = ui.cbTapeRewind->isChecked() ? 1 : 0;
-	comp->tape->speed = ui.sldTapeSpeed->value();
+	conf.tape.autostart = cbTapeAuto->isChecked() ? 1 : 0;
+	conf.tape.fast = cbTapeFast->isChecked() ? 1 : 0;
+	conf.tape.flash = cbTapeFlash->isChecked() ? 1 : 0;
+	conf.tape.edge = cbTapeEdge->isChecked() ? 1 : 0;
+	conf.tape.rewind = cbTapeRewind->isChecked() ? 1 : 0;
+	comp->tape->speed = sldTapeSpeed->value();
 	tape_apply_options(comp->tape);
 // input
 	conf.jmapNameA = gpwid_a->getMapName();
@@ -1446,6 +1465,336 @@ QDialog* SetupWin::popOut(QWidget* box, const char* title) {
 	return win;
 }
 
+#define	RSLOT_GS	-1
+#define	RSLOT_FONT	-2
+#define	TRDOS_ROM	"trdos504t.rom"		// what a Beta Disk gets when its slot is empty
+
+
+// THE MACHINE'S DEVICES
+//
+// One row per device on the Machine page: its name, the choice, and a button
+// for the rest. The widgets are the ones the other pages had, moved here, so
+// what reads and writes them stays as it is.
+
+static QComboBox* devCombo(QStringList items) {
+	QComboBox* box = new QComboBox;
+	box->addItems(items);
+	return box;
+}
+
+QToolButton* SetupWin::devRow(QGridLayout* grid, const QString& name, QWidget* choice, QWidget* body, const char* title) {
+	int row = grid->rowCount();
+	QLabel* lab = new QLabel(name);
+	QToolButton* btn = new QToolButton;
+	btn->setIcon(QIcon(":/images/settings.png"));
+	if (body) {
+		QDialog* win = popOut(body, title);
+		btn->setToolTip(tr("More settings"));
+		connect(btn, &QToolButton::released, win, [win]() {win->adjustSize(); win->show(); win->raise();});
+	} else {
+		btn->setEnabled(false);
+	}
+	grid->addWidget(lab, row, 0);
+	// the widths it had on its old page mean nothing here
+	choice->setMinimumWidth(0);
+	choice->setMaximumWidth(QWIDGETSIZE_MAX);
+	grid->addWidget(choice, row, 1);
+	grid->addWidget(btn, row, 2);
+	return btn;
+}
+
+static QGridLayout* devGroup(QVBoxLayout* col, const char* icon, const QString& title) {
+	xIconGroup* box = new xIconGroup(QIcon(icon), title);
+	QGridLayout* grid = new QGridLayout(box);
+	grid->setColumnStretch(1, 1);
+	col->addWidget(box);
+	return grid;
+}
+
+void SetupWin::buildDevices() {
+	QWidget* area = new QWidget;
+	QHBoxLayout* cols = new QHBoxLayout(area);
+	cols->setContentsMargins(0, 0, 0, 0);
+	QVBoxLayout* left = new QVBoxLayout;
+	QVBoxLayout* right = new QVBoxLayout;
+	cols->addLayout(left, 1);
+	cols->addLayout(right, 1);
+	QToolButton* btn;
+
+	QGridLayout* grid = devGroup(left, ":/images/floppy.png", tr("Storage"));
+	tapeSum = new QLabel;
+	xOptSheet tape;
+	tape.field(tr("Playback speed"), fieldPair(sldTapeSpeed, labTapeSpeedVal, true),
+		tr("Per cent of normal. A few images made on machines with an unusual clock load only when it is nudged either way"));
+	tape.line();
+	tape.check(cbTapeAuto, tr("Auto play / stop"), tr("Start the tape when a loader asks for it, stop it between blocks"), true);
+	tape.check(cbTapeRewind, tr("Rewind at end"), tr("Play or the next load starts the tape again. Off: it stops at the end"), true);
+	tape.check(cbTapeFast, tr("Fast loading"), tr("Full speed, sound off and picture held while a loader reads the tape"), true);
+	tape.check(cbTapeFlash, tr("Flash loading"), tr("With fast loading: ROM blocks go straight to the machine"), true);
+	tape.check(cbTapeEdge, tr("Edge detection"), tr("With fast loading: a loader waiting for a pulse gets it at once. Faster, not exact"), true);
+	devRow(grid, tr("Tape"), tapeSum, tape.body, "Machine: tape");
+	foreach(QCheckBox* cb, QList<QCheckBox*>() << cbTapeAuto << cbTapeRewind << cbTapeFast << cbTapeFlash << cbTapeEdge)
+		connect(cb, &QCheckBox::toggled, this, &SetupWin::fillDevSummary);
+
+	xOptSheet disk;
+	disk.check(bdtbox, tr("Fast disk access"), tr("No head-seek and rotation delays"), true);
+	disk.check(cbAddBoot, tr("Add boot loader"), tr("Write a boot file into TR-DOS images that have none"), true);
+	disk.line();
+	dosRomBox = new QComboBox;
+	dosRomBtn = new QToolButton;
+	dosRomBtn->setIcon(QIcon(":/images/fileopen.png"));
+	dosRomBtn->setToolTip(tr("Pick a ROM file"));
+	connect(dosRomBox, QOverload<int>::of(&QComboBox::activated), this, [this](int idx) {
+		romSlotPick(hw_reset_bank(conf.zx->hw->id, RES_DOS), dosRomBox->itemData(idx).toString());
+		fillRomSlots();
+	});
+	connect(dosRomBtn, &QToolButton::released, this, [this]() {
+		romSlotFile(dosRomBox, hw_reset_bank(conf.zx->hw->id, RES_DOS));
+		fillRomSlots();
+	});
+	disk.field(tr("TR-DOS ROM"), fieldPair(dosRomBox, dosRomBtn, false), tr("The same slot as TR-DOS in the ROM window"));
+	// a Beta Disk put on a machine with nothing in that slot would not boot
+	connect(diskTypeBox, QOverload<int>::of(&QComboBox::activated), this, [this]() {
+		int bank = hw_reset_bank(conf.zx->hw->id, RES_DOS);
+		if ((getRFIData(diskTypeBox) == DIF_BDI) && (bank >= 0) && romSlotFileName(bank).isEmpty()) {
+			romSlotPick(bank, TRDOS_ROM);
+			fillRomSlots();
+		}
+		fillDosRom();
+	});
+	disk.field(tr("Interleave"), cbFlpInterleave,
+		tr("Sector order on each track of a TRD or SCL image, set when it is opened. TR-DOS formats 1, 9, 2, 10..."));
+	// how many drives are on the cable, and what each is; the disk in one is
+	// the Drives menu's
+	drvCountBox = new QComboBox;
+	drvCountBox->addItem(QString::fromUtf8("×1 - A"), 1);
+	drvCountBox->addItem(QString::fromUtf8("×2 - A, B"), 2);
+	drvCountBox->addItem(QString::fromUtf8("×3 - A, B, C"), 3);
+	drvCountBox->addItem(QString::fromUtf8("×4 - A, B, C, D"), 4);
+	drvCountBox->setItemDelegate(new xTwoPartDelegate(drvCountBox));
+	new xTwoPartPainter(drvCountBox);
+	connect(drvCountBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {showDriveRows();});
+	disk.field(tr("Number of drives"), drvCountBox, tr("A drive left out is not there at all: software finds it missing"));
+	QWidget* drvs = new QWidget;
+	QGridLayout* dgrid = new QGridLayout(drvs);
+	dgrid->setContentsMargins(0, 0, 0, 0);
+	dgrid->addWidget(new QLabel(tr("80 cylinders")), 0, 1);
+	dgrid->addWidget(new QLabel(tr("Double side")), 0, 2);
+	QCheckBox* cyl[4] = {a80box, b80box, c80box, d80box};
+	QCheckBox* dsd[4] = {adsbox, bdsbox, cdsbox, ddsbox};
+	for (int i = 0; i < 4; i++) {
+		QLabel* lab = new QLabel;
+		lab->setPixmap(QIcon(QString(":/images/fdd_disk_%0.png").arg(QChar('A' + i))).pixmap(16, 16));
+		lab->setToolTip(QString("Drive %0").arg(QChar('A' + i)));
+		cyl[i]->setText(QString());
+		dsd[i]->setText(QString());
+		dgrid->addWidget(lab, i + 1, 0);
+		dgrid->addWidget(cyl[i], i + 1, 1, Qt::AlignHCenter);
+		dgrid->addWidget(dsd[i], i + 1, 2, Qt::AlignHCenter);
+		// a +3 has two drives
+		drvRow[i] << lab << cyl[i] << dsd[i];
+	}
+	dgrid->setColumnStretch(3, 1);
+	disk.field(tr("Drives"), drvs);
+	devRow(grid, tr("Disk"), diskTypeBox, disk.body, "Machine: disk");
+
+	// the images and what is in them are the Drives menu's
+	xOptSheet hdd;
+	hdd.field(tr("Master"), hm_type);
+	hdd.field(tr("Slave"), hs_type);
+	devRow(grid, tr("Hard disk"), hiface, hdd.body, "Machine: hard disk");
+
+	sdSum = new QLabel;
+	btn = devRow(grid, tr("SD card"), sdSum, NULL, NULL);
+	sdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << sdSum << btn;
+
+	slotSum = new QLabel;
+	btn = devRow(grid, tr("Cartridge"), slotSum, NULL, NULL);
+	slotRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << slotSum << btn;
+
+	grid = devGroup(left, ":/images/joystick.png", tr("Input"));
+	joyBox = devCombo(QStringList() << tr("None") << tr("Kempston 5-bit") << tr("Kempston 8-bit"));
+	devRow(grid, tr("Joystick"), joyBox, NULL, NULL);
+	// the gamepads are bound to the Kempston, so say when there is none
+	joyHint = new QLabel(tr("No Kempston on this machine: bindings to it do nothing"));
+	QFont hfnt = joyHint->font();
+	hfnt.setItalic(true);
+	joyHint->setFont(hfnt);
+	ui.verticalLayout_2->insertWidget(1, joyHint);
+	connect(joyBox, QOverload<int>::of(&QComboBox::currentIndexChanged), joyHint, [this](int idx) {joyHint->setVisible(idx == 0);});
+	mouseBox = devCombo(QStringList() << tr("None") << tr("Kempston mouse"));
+	xOptSheet mouse;
+	mouse.field(tr("Sensitivity"), fieldPair(sldSensitivity, NULL, true),
+		tr("How fast the pointer moves. In the middle it keeps up with the PC one"));
+	mouse.line();
+	mouse.check(ratWheel, tr("Wheel"), tr("The wheel is read too, as on the extended Kempston mouse"));
+	mouse.check(cbSwapButtons, tr("Swap buttons"), tr("The left and right buttons trade places"));
+	devRow(grid, tr("Mouse"), mouseBox, mouse.body, "Machine: mouse");
+	btn = devRow(grid, tr("PC keyboard"), cbScanTab, NULL, NULL);
+	kbdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << cbScanTab << btn;
+	left->addStretch(1);
+
+	grid = devGroup(right, ":/images/speaker.png", tr("Sound"));
+	xOptSheet psg;
+	psg.field(tr("Chip"), cbPsgType);
+	psg.field(tr("Clock"), fieldPair(cbPsgFrq, labPsgMhz, false),
+		tr("Auto: half the CPU clock, and 3.5 MHz for TurboSound FM"));
+	psg.field(tr("Stereo"), cbPsgStereo);
+	psg.field(tr("Separation"), fieldPair(sldPsgSep, labPsgSep, true),
+		tr("100%: the channels kept apart, 0%: mono"));
+	devRow(grid, tr("PSG"), cbPsgCount, psg.body, "Machine: PSG");
+	devRow(grid, tr("DAC"), sdrvBox, NULL, NULL);
+	gsBox = devCombo(QStringList() << tr("Off") << tr("On"));
+	xOptSheet gs;
+	gsRomBox = new QComboBox;
+	QToolButton* gsRomBtn = new QToolButton;
+	gsRomBtn->setIcon(QIcon(":/images/fileopen.png"));
+	gsRomBtn->setToolTip(tr("Pick a ROM file"));
+	connect(gsRomBox, QOverload<int>::of(&QComboBox::activated), this, [this](int idx) {
+		romSlotPick(RSLOT_GS, gsRomBox->itemData(idx).toString());
+	});
+	connect(gsRomBtn, &QToolButton::released, this, [this]() {romSlotFile(gsRomBox, RSLOT_GS);});
+	gs.field(tr("ROM"), fieldPair(gsRomBox, gsRomBtn, false));
+	gs.line();
+	gs.check(gsrbox, tr("Reset"), tr("The card is reset with the machine"));
+	devRow(grid, tr("General Sound"), gsBox, gs.body, "Machine: General Sound");
+
+	grid = devGroup(right, ":/images/clock.png", tr("Board"));
+	devRow(grid, tr("Turbo"), cbCpuTurbo, NULL, NULL);
+	right->addStretch(1);
+
+	// one label width per column, so the choices line up from group to group
+	foreach(QVBoxLayout* col, QList<QVBoxLayout*>() << left << right) {
+		QList<QLabel*> labs;
+		for (int i = 0; i < col->count(); i++) {
+			QWidget* box = col->itemAt(i)->widget();
+			if (!box) continue;
+			QGridLayout* g = qobject_cast<QGridLayout*>(box->layout());
+			for (int row = 0; g && (row < g->rowCount()); row++) {
+				QLayoutItem* itm = g->itemAtPosition(row, 0);
+				QLabel* lab = itm ? qobject_cast<QLabel*>(itm->widget()) : NULL;
+				if (lab) labs << lab;
+			}
+		}
+		int wid = 0;
+		foreach(QLabel* lab, labs) wid = qMax(wid, lab->sizeHint().width());
+		foreach(QLabel* lab, labs) lab->setMinimumWidth(wid);
+	}
+	ui.verticalLayout_39->insertWidget(1, area);
+	tidySoundPage();
+}
+
+// The volumes, named the way the devices are, with the master set apart.
+// SAM Coupe's chip stays hidden: no machine here has one.
+
+void SetupWin::tidySoundPage() {
+	QGridLayout* grid = ui.gridLayout_14;
+	while (grid->count() > 0) {
+		QLayoutItem* itm = grid->takeAt(0);
+		if (itm->widget()) itm->widget()->hide();
+		delete itm;
+	}
+	struct {
+		QLabel* lab;
+		QString name;
+		QSlider* sld;
+		QSpinBox* spin;
+	} vols[] = {
+		{ui.label_14, tr("Master"), ui.sldMasterVol, ui.sbMasterVol},
+		{ui.label_9, tr("Beeper"), ui.sldBeepVol, ui.sbBeepVol},
+		{ui.label_10, tr("Tape"), ui.sldTapeVol, ui.sbTapeVol},
+		{ui.label_11, tr("PSG"), ui.sldAYVol, ui.sbAYVol},
+		{ui.label_30, tr("DAC"), ui.sldSdrvVol, ui.sbSdrvVol},
+		{new QLabel, tr("General Sound"), ui.sldGSVol, ui.sbGSVol}
+	};
+	int row = 0;
+	for (int i = 0; i < 6; i++) {
+		vols[i].lab->setText(vols[i].name);
+		vols[i].lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+		grid->addWidget(vols[i].lab, row, 0);
+		grid->addWidget(vols[i].sld, row, 1);
+		grid->addWidget(vols[i].spin, row, 2);
+		vols[i].lab->show();
+		vols[i].sld->show();
+		vols[i].spin->show();
+		row++;
+		if (i == 0) {
+			QFrame* frm = new QFrame;
+			frm->setFrameShape(QFrame::HLine);
+			frm->setFrameShadow(QFrame::Sunken);
+			grid->addWidget(frm, row++, 0, 1, 3);
+		}
+	}
+	grid->setColumnStretch(1, 1);
+	// the gaps that stood above GS reset and under the output rows
+	foreach(QLayout* lay, QList<QLayout*>() << ui.verticalLayout_22 << ui.gridLayout_5) {
+		for (int i = lay->count() - 1; i >= 0; i--) {
+			if (lay->itemAt(i)->spacerItem())
+				delete lay->takeAt(i);
+		}
+	}
+	// the groups keep their height, the page's spare room goes under them
+	ui.verticalLayout_43->addStretch(1);
+}
+
+// what the rows with no choice of their own show
+void SetupWin::fillDevSummary() {
+	QStringList tape;
+	if (cbTapeFast->isChecked()) {
+		tape << tr("fast");
+		if (cbTapeFlash->isChecked()) tape << tr("flash");
+		if (cbTapeEdge->isChecked()) tape << tr("edge");
+	}
+	if (cbTapeAuto->isChecked()) tape << tr("auto");
+	tapeSum->setText(tape.isEmpty() ? tr("plain") : tape.join(", "));
+	Computer* comp = conf.zx;
+	QString sd = comp->sdc->image ? QString::fromLocal8Bit(comp->sdc->image) : QString();
+	QString slot = comp->slot->path ? QString::fromLocal8Bit(comp->slot->path) : QString();
+	sdSum->setText(sd.isEmpty() ? tr("(no card)") : QFileInfo(sd).fileName());
+	slotSum->setText(slot.isEmpty() ? tr("(empty)") : QFileInfo(slot).fileName());
+}
+
+// the rows of the drives that are fitted; a +3 has two at most
+void SetupWin::showDriveRows() {
+	int max = (getRFIData(diskTypeBox) == DIF_P3DOS) ? 2 : 4;
+	QStandardItemModel* cnts = qobject_cast<QStandardItemModel*>(drvCountBox->model());
+	for (int i = 0; i < 4; i++) {
+		if (cnts) cnts->item(i)->setEnabled(i < max);
+		foreach(QWidget* w, drvRow[i]) w->setVisible(i < qMin(max, getRFIData(drvCountBox)));
+	}
+}
+
+// rows only some cores have
+void SetupWin::showDevRows() {
+	int hw = conf.zx->hw->id;
+	bool sd = (hw == HW_PENTEVO) || (hw == HW_TSLAB);
+	bool slot = (hw == HW_ZX48) || (hw == HW_ALF);
+	// only these read PC scancodes
+	bool kbd = (hw == HW_ATM2) || (hw == HW_PENTEVO) || (hw == HW_TSLAB);
+	foreach(QWidget* w, sdRow) w->setVisible(sd);
+	foreach(QWidget* w, slotRow) w->setVisible(slot);
+	foreach(QWidget* w, kbdRow) w->setVisible(kbd);
+	showDriveRows();
+	// a controller on the board is not swapped out
+	const xMachine* mac = xm_find(conf.macId);
+	int bi = mac ? mac->builtin : 0;
+	QString fixed = tr("Built into this board");
+	diskTypeBox->setEnabled(!(bi & MAC_BI_DISK));
+	diskTypeBox->setToolTip((bi & MAC_BI_DISK) ? fixed : QString());
+	hiface->setEnabled(!(bi & MAC_BI_IDE));
+	hiface->setToolTip((bi & MAC_BI_IDE) ? fixed : QString());
+	// ALF reads its two joysticks its own way, on #1F and #FE
+	joyBox->setEnabled(hw != HW_ALF);
+	joyHint->setVisible(joyBox->currentIndex() == 0);
+	joyBox->setToolTip((hw == HW_ALF) ? fixed : QString());
+	// the +2A and +3 never page TR-DOS in
+	QStandardItemModel* difs = qobject_cast<QStandardItemModel*>(diskTypeBox->model());
+	int bdi = diskTypeBox->findData(DIF_BDI);
+	if (difs && (bdi >= 0)) difs->item(bdi)->setEnabled((hw != HW_PLUS2A) && (hw != HW_PLUS3));
+	fillDosRom();
+	fillDevSummary();
+}
+
 void SetupWin::showAdvanced() {
 	advWin->show();
 	advWin->raise();
@@ -1583,10 +1932,8 @@ void SetupWin::romPreset() {
 // THE SET AS THE MACHINE WEARS IT
 //
 // One row per slot, with the files to put in it. Where a file starts, how much
-// of it is read and where it lands are in the window behind Advanced.
+// of it is read and where it lands are in the window behind Expert settings.
 
-#define	RSLOT_GS	-1
-#define	RSLOT_FONT	-2
 
 static QStringList rom_files() {
 	QDir dir(QString::fromLocal8Bit(conf.path.romDir.c_str()));
@@ -1606,32 +1953,6 @@ void SetupWin::showRomFiles() {
 	romWin->raise();
 }
 
-// how far a rom file reaches, in 16K banks
-
-static int rom_file_banks(const xRomFile& rf) {
-	int size = rf.fsize * 1024;
-	if (size <= 0) {
-		QFileInfo inf(QString::fromLocal8Bit(xm_rom_path(rf.name).c_str()));
-		size = inf.size() - rf.foffset * 1024;
-	}
-	return (size + MEM_16K - 1) / MEM_16K;
-}
-
-// a bank with no file of its own may still be covered by a big one in a bank
-// before it: for each bank, the slot it comes from, or -1
-
-static QVector<int> rom_slot_cover(const xRomset& rs, int banks) {
-	QVector<int> res(banks, -1);
-	foreach(xRomFile rf, rs.roms) {
-		int first = rf.roffset / 16;
-		int last = first + rom_file_banks(rf);
-		for (int i = first + 1; (i < last) && (i < banks); i++) {
-			if (res[i] < 0) res[i] = first;
-		}
-	}
-	return res;
-}
-
 void SetupWin::fillRomSlots() {
 	QLayoutItem* itm;
 	while ((itm = ui.gridRomSlots->takeAt(0)) != NULL) {
@@ -1641,16 +1962,82 @@ void SetupWin::fillRomSlots() {
 	const xMachine* mac = xm_find(conf.macId);
 	if (!mac) return;
 	QStringList files = rom_files();
-	QVector<int> from = rom_slot_cover(roms, mac->romBanks);
+	QVector<int> from = xm_rom_cover(roms, mac->romBanks);
+	int hw = conf.zx->hw->id;
+	bool resets = false;
 	int row = 0;
-	for (int i = 0; i < mac->romBanks; i++)
-		addRomSlot(row++, QString("ROM %0").arg(i), i, files, true, from[i]);
-	addRomSlot(row++, "GS", RSLOT_GS, files, conf.zx->gs->enable, -1);
+	for (int i = 0; i < mac->romBanks; i++) {
+		xRomRole role = hw_rom_role(hw, i);
+		QString name = QString("ROM %0").arg(i);
+		if (role.name) name += QString(" (%0)").arg(role.name);
+		addRomSlot(row, name, i, files, true, from[i]);
+		if (role.res >= 0) {
+			QRadioButton* rb = new QRadioButton;
+			rb->setToolTip(tr("Boot from this ROM"));
+			rb->setEnabled(!romSlotFileName(i).isEmpty() || (from[i] >= 0));
+			rb->setChecked(role.res == resTarget);
+			resGroup->addButton(rb, role.res);
+			ui.gridRomSlots->addWidget(rb, row, 0);
+			resets = true;
+		}
+		row++;
+	}
 	// only a machine with a text mode draws from a font rom
 	addRomSlot(row++, "Font", RSLOT_FONT, files, !mac->roms.fntFile.empty(), -1);
 	// spare height under the rows, so they do not spread out
 	ui.gridRomSlots->addItem(new QSpacerItem(20, 0, QSizePolicy::Minimum,
 		QSizePolicy::Expanding), row, 0);
+	ui.labResetHint->setVisible(resets);
+	fillGsRom(files);
+	fillDosRom();
+	fillRomSummary();
+}
+
+// the page's one button: the files in the banks, in bank order
+
+void SetupWin::fillRomSummary() {
+	QStringList names;
+	const xMachine* mac = xm_find(conf.macId);
+	int banks = mac ? mac->romBanks : 4;
+	for (int i = 0; i < banks; i++) {
+		QString nam = romSlotFileName(i);
+		if (!nam.isEmpty())
+			names.append(QFileInfo(nam).completeBaseName());
+	}
+	QString txt = names.isEmpty() ? tr("(none)") : names.join(", ");
+	ui.pbRomSet->setText(txt);		// the button cuts it short itself
+	ui.pbRomSet->setToolTip(names.isEmpty() ? tr("The ROM files this machine runs") : names.join("\n"));
+}
+
+// the TR-DOS ROM, which the Beta Disk's window picks; on a machine whose
+// firmware carries it, or with no Beta Disk, there is nothing to pick
+
+void SetupWin::fillDosRom() {
+	int bank = hw_reset_bank(conf.zx->hw->id, RES_DOS);
+	bool bdi = (getRFIData(diskTypeBox) == DIF_BDI);
+	dosRomBox->clear();
+	if (bank < 0) {
+		dosRomBox->addItem(tr("(in the firmware)"), QString());
+	} else {
+		dosRomBox->addItem(tr("(empty)"), QString());
+		foreach(QString f, rom_files()) dosRomBox->addItem(f, f);
+		QString cur = romSlotFileName(bank);
+		if (!cur.isEmpty() && (dosRomBox->findData(cur) < 0)) dosRomBox->insertItem(1, cur, cur);
+		dosRomBox->setCurrentIndex(qMax(0, dosRomBox->findData(cur)));
+	}
+	dosRomBox->setEnabled(bdi && (bank >= 0));
+	dosRomBtn->setEnabled(bdi && (bank >= 0));
+}
+
+// the General Sound's ROM, which its own window picks
+
+void SetupWin::fillGsRom(const QStringList& files) {
+	gsRomBox->clear();
+	gsRomBox->addItem(tr("(empty)"), QString());
+	foreach(QString f, files) gsRomBox->addItem(f, f);
+	QString cur = romSlotFileName(RSLOT_GS);
+	if (!cur.isEmpty() && (gsRomBox->findData(cur) < 0)) gsRomBox->insertItem(1, cur, cur);
+	gsRomBox->setCurrentIndex(qMax(0, gsRomBox->findData(cur)));
 }
 
 // the file in a slot, or an empty string when there is none
@@ -1671,7 +2058,6 @@ QString SetupWin::romSlotFileName(int slot) {
 
 void SetupWin::addRomSlot(int row, QString name, int slot, const QStringList& files, bool has, int from) {
 	QLabel* lab = new QLabel(name);
-	lab->setMinimumWidth(60);
 	lab->setEnabled(has);
 	QComboBox* box = new QComboBox;
 	box->setMinimumWidth(200);
@@ -1695,9 +2081,9 @@ void SetupWin::addRomSlot(int row, QString name, int slot, const QStringList& fi
 	btn->setToolTip(tr("Pick a ROM file"));
 	btn->setEnabled(has);
 	connect(btn, &QToolButton::released, this, [=](){ romSlotFile(box, slot); });
-	ui.gridRomSlots->addWidget(lab, row, 0);
-	ui.gridRomSlots->addWidget(box, row, 1);
-	ui.gridRomSlots->addWidget(btn, row, 2);
+	ui.gridRomSlots->addWidget(lab, row, 1);
+	ui.gridRomSlots->addWidget(box, row, 2);
+	ui.gridRomSlots->addWidget(btn, row, 3);
 }
 
 // a file from anywhere, which is kept as the path it is
@@ -1724,6 +2110,7 @@ void SetupWin::romSlotPick(int slot, const QString& file) {
 		xm_rom_set_file(roms, slot, name);
 	}
 	rsmodel->fill(&roms);
+	fillRomSummary();
 }
 
 void SetupWin::addRom() {
@@ -1836,115 +2223,7 @@ void SetupWin::setmszbox(int idx) {
 	ui.mszbox->setCurrentIndex(ui.mszbox->findData(size));
 }
 
-void SetupWin::buildtapelist() {
-	ui.tapelist->fill(conf.zx->tape);
-}
-
-void SetupWin::copyToTape() {
-	int dsk = ui.disktabs->currentIndex();
-	QModelIndexList idx = ui.disklist->selectionModel()->selectedRows();
-	if (idx.size() == 0) return;
-	Computer* comp = conf.zx;
-	TRFile cat[128];
-	diskGetTRCatalog(comp->dif->flp[dsk],cat);
-	int row;
-	unsigned char* buf = new unsigned char[0xffff];
-	unsigned short line,start,len;
-	char name[10];
-	int savedFiles = 0;
-	for (int i=0; i<idx.size(); i++) {
-		row = idx[i].row();
-		if (diskGetSectorsData(comp->dif->flp[dsk],cat[row].trk, cat[row].sec+1, buf, cat[row].slen)) {
-			if (cat[row].slen == (cat[row].hlen + ((cat[row].llen == 0) ? 0 : 1))) {
-				start = ((cat[row].hst << 8) + cat[row].lst) & 0xffff;
-				len = ((cat[row].hlen << 8) + cat[row].llen) & 0xffff;
-				line = (cat[row].ext == 'B') ? (buf[start] + (buf[start+1] << 8)) & 0xffff : 0x8000;
-				memset(name,0x20,10);
-				memcpy(name,(char*)cat[row].name,8);
-				tapAddFile(comp->tape,name,(cat[row].ext == 'B') ? 0 : 3, start, len, line, buf,true);
-				savedFiles++;
-			} else {
-				shitHappens("File seems to be joined, skip");
-			}
-		} else {
-			shitHappens("Can't get file data, skip");
-		}
-	}
-	buildtapelist();
-	std::string msg = std::string(int2str(savedFiles)) + " of " + int2str(idx.size()) + " files copied";
-	showInfo(msg.c_str());
-}
-
 // hobeta header crc = ((105 + 257 * std::accumulate(data, data + 15, 0u)) & 0xffff))
-
-void SetupWin::diskToHobeta() {
-	QModelIndexList idx = ui.disklist->selectionModel()->selectedRows();
-	if (idx.size() == 0) return;
-	QString dir = QFileDialog::getExistingDirectory(this,"Save file(s) to...","",QFileDialog::DontUseNativeDialog | QFileDialog::ShowDirsOnly);
-	if (dir == "") return;
-	Computer* comp = conf.zx;
-	std::string sdir = std::string(dir.toLocal8Bit().data()) + SLASH;
-	Floppy* flp = comp->dif->flp[ui.disktabs->currentIndex()];		// selected floppy
-	int savedFiles = 0;
-	for (int i=0; i<idx.size(); i++) {
-		if (saveHobetaFile(flp,idx[i].row(),sdir.c_str()) == ERR_OK) savedFiles++;
-	}
-	std::string msg = std::string(int2str(savedFiles)) + " of " + int2str(idx.size()) + " files saved";
-	showInfo(msg.c_str());
-}
-
-void SetupWin::diskToRaw() {
-	QModelIndexList idx = ui.disklist->selectionModel()->selectedRows();
-	if (idx.size() == 0) return;
-	QString dir = QFileDialog::getExistingDirectory(this,"Save file(s) to...","",QFileDialog::DontUseNativeDialog | QFileDialog::ShowDirsOnly);
-	if (dir == "") return;
-	Computer* comp = conf.zx;
-	std::string sdir = std::string(dir.toLocal8Bit().data()) + SLASH;
-	Floppy* flp = comp->dif->flp[ui.disktabs->currentIndex()];
-	int savedFiles = 0;
-	for (int i=0; i<idx.size(); i++) {
-		if (saveRawFile(flp,idx[i].row(),sdir.c_str()) == ERR_OK) savedFiles++;
-	}
-	std::string msg = std::string(int2str(savedFiles)) + " of " + int2str(idx.size()) + " files saved";
-	showInfo(msg.c_str());
-}
-
-void SetupWin::copyToDisk() {
-	QModelIndexList idl = ui.tapelist->selectionModel()->selectedRows();
-	if (idl.size() < 1) return;
-	int dsk = ui.disktabs->currentIndex();
-	if (dsk < 0) dsk = 0;
-	if (dsk > 3) dsk = 3;
-	Computer* comp = conf.zx;
-	if (!tape_disk_ready(comp, dsk)) return;
-	QString msg;
-	int ok = tape_blk_to_disk(comp->tape, idl.first().row(), comp->dif->flp[dsk], &msg);
-	updatedisknams();
-	fillDiskCat();
-	if (ok) {
-		showInfo(msg.toLocal8Bit().constData());
-	} else {
-		shitHappens(msg.toLocal8Bit().constData());
-	}
-}
-
-void SetupWin::fillDiskCat() {
-	int dsk = ui.disktabs->currentIndex();
-	Computer* comp = conf.zx;
-	Floppy* flp = comp->dif->flp[dsk];
-	TRFile ct[128];
-	QList<TRFile> cat;
-	int catSize = 0;
-	ui.disklist->setEnabled(flp->insert);
-	if (flp->insert && (diskGetType(flp) == DISK_TYPE_TRD)) {
-		catSize = diskGetTRCatalog(flp, ct);
-		for(int i = 0; i < catSize; i++) {
-			if (ct[i].name[0] > 0x1f)
-				cat.append(ct[i]);
-		}
-	}
-	ui.disklist->setCatalog(cat);
-}
 
 // video
 
@@ -1977,14 +2256,25 @@ void SetupWin::chaflc() {
 }
 
 void SetupWin::chapsg() {
-	int chips = getRFIData(ui.cbPsgCount);
-	int split = (chips > 0) && (getRFIData(ui.cbPsgStereo) != AY_MONO);
-	ui.labPsgSep->setText(QString("%0%").arg(ui.sldPsgSep->value()));
-	ui.cbPsgType->setEnabled(chips > 0);
-	ui.cbPsgFrq->setEnabled(chips > 0);
-	ui.cbPsgStereo->setEnabled(chips > 0);
-	ui.sldPsgSep->setEnabled(split);
-	ui.labPsgSep->setEnabled(split);
+	int psg = getRFIData(cbPsgCount);
+	int on = (psg != PSG_NONE);
+	int fm = (psg == PSG_TSFM);
+	int split = on && (getRFIData(cbPsgStereo) != AY_MONO);
+	labPsgSep->setText(QString("%0%").arg(sldPsgSep->value()));
+	// TurboSound FM is two YM2203 and nothing else; the others never are
+	QStandardItemModel* types = qobject_cast<QStandardItemModel*>(cbPsgType->model());
+	int fmrow = cbPsgType->findData(SND_YM2203);
+	if (types && (fmrow >= 0)) types->item(fmrow)->setEnabled(fm);
+	if (fm) setRFIndex(cbPsgType, SND_YM2203);
+	else if (getRFIData(cbPsgType) == SND_YM2203) setRFIndex(cbPsgType, SND_YM);
+	cbPsgType->setEnabled(on && !fm);
+	cbPsgFrq->setEnabled(on);
+	cbPsgStereo->setEnabled(on);
+	// what Auto comes to on this machine, as the core works it out
+	double base = xcpu_frq_parse(ui.cbCpuFrq->currentText(), conf.zx->cpuFrq);
+	cbPsgFrq->setItemText(0, QString("Auto - %0").arg(fm ? 3.5 : base / 2, 0, 'g', 7));
+	sldPsgSep->setEnabled(split);
+	labPsgSep->setEnabled(split);
 }
 
 // the crash is a property of the snow, not a setting of its own: it says nothing
@@ -2030,205 +2320,6 @@ void SetupWin::palstore() {
 	}
 	// save palette to file, cuz Settings OK will reload palette from file
 	saveColors(getRFSData(ui.cbPalPreset).toStdString(), editpal);
-}
-
-// disk
-
-void SetupWin::newdisk(int idx, int ask) {
-	Computer* comp = conf.zx;
-	Floppy *flp = comp->dif->flp[idx];
-	if (saveChangedDisk(comp,idx & 3) != ERR_OK) return;
-	flp_insert(flp, NULL);
-	// diskClear(flp);
-	flp->changed = 1;
-	if (ask && areSure("Format for TRDOS?")) {
-		trd_format(flp);
-	}
-	updatedisknams();
-}
-
-void SetupWin::newa() {newdisk(0,1);}
-void SetupWin::newb() {newdisk(1,1);}
-void SetupWin::newc() {newdisk(2,1);}
-void SetupWin::newd() {newdisk(3,1);}
-
-void SetupWin::loada() {load_file(conf.zx, NULL, FH_DRIVE_A, 0); updatedisknams();}
-void SetupWin::loadb() {load_file(conf.zx, NULL, FH_DRIVE_B, 1); updatedisknams();}
-void SetupWin::loadc() {load_file(conf.zx, NULL, FH_DRIVE_C, 2); updatedisknams();}
-void SetupWin::loadd() {load_file(conf.zx, NULL, FH_DRIVE_D, 3); updatedisknams();}
-
-void SetupWin::savea() {Computer* comp = conf.zx; Floppy* flp = comp->dif->flp[0]; if (flp->insert) save_file(comp, flp->path, FG_DISK_A, 0); updatedisknams();}
-void SetupWin::saveb() {Computer* comp = conf.zx; Floppy* flp = comp->dif->flp[1]; if (flp->insert) save_file(comp, flp->path, FG_DISK_B, 1); updatedisknams();}
-void SetupWin::savec() {Computer* comp = conf.zx; Floppy* flp = comp->dif->flp[2]; if (flp->insert) save_file(comp, flp->path, FG_DISK_C, 2); updatedisknams();}
-void SetupWin::saved() {Computer* comp = conf.zx; Floppy* flp = comp->dif->flp[3]; if (flp->insert) save_file(comp, flp->path, FG_DISK_D, 3); updatedisknams();}
-
-void SetupWin::ejcta() {Computer* comp = conf.zx; saveChangedDisk(comp,0); flp_eject(comp->dif->flp[0]); updatedisknams();}
-void SetupWin::ejctb() {Computer* comp = conf.zx; saveChangedDisk(comp,1); flp_eject(comp->dif->flp[1]); updatedisknams();}
-void SetupWin::ejctc() {Computer* comp = conf.zx; saveChangedDisk(comp,2); flp_eject(comp->dif->flp[2]); updatedisknams();}
-void SetupWin::ejctd() {Computer* comp = conf.zx; saveChangedDisk(comp,3); flp_eject(comp->dif->flp[3]); updatedisknams();}
-
-void SetupWin::updatedisknams() {
-	Computer* comp = conf.zx;
-	ui.apathle->setText(QString::fromLocal8Bit(comp->dif->flp[0]->path));
-	ui.bpathle->setText(QString::fromLocal8Bit(comp->dif->flp[1]->path));
-	ui.cpathle->setText(QString::fromLocal8Bit(comp->dif->flp[2]->path));
-	ui.dpathle->setText(QString::fromLocal8Bit(comp->dif->flp[3]->path));
-	fillDiskCat();
-}
-
-// tape
-
-void SetupWin::loatape() {
-	Computer* comp = conf.zx;
-	load_file(comp, NULL, FG_TAPE, -1);
-	ui.tpathle->setText(QString::fromLocal8Bit(comp->tape->path));
-	buildtapelist();
-}
-
-void SetupWin::savtape() {
-	Computer* comp = conf.zx;
-	if (comp->tape->blkCount != 0) {
-		save_file(comp, comp->tape->path, FG_TAPE, -1);
-	}
-}
-
-void SetupWin::ejctape() {
-	Computer* comp = conf.zx;
-	tapEject(comp->tape);
-	ui.tpathle->setText(QString::fromLocal8Bit(comp->tape->path));
-	buildtapelist();
-}
-
-void SetupWin::tblkup() {
-	ui.tapelist->blkMove(conf.zx->tape, -1);
-}
-
-void SetupWin::tblkdn() {
-	ui.tapelist->blkMove(conf.zx->tape, 1);
-}
-
-void SetupWin::tblkrm() {
-	ui.tapelist->blkDel(conf.zx->tape);
-}
-
-void SetupWin::chablock(QModelIndex idx) {
-	Computer* comp = conf.zx;
-	int row = idx.row();
-	tapRewind(comp->tape,row);
-	buildtapelist();
-//	ui.tapelist->selectRow(row);
-}
-
-void SetupWin::tlistclick(QModelIndex idx) {
-	int row = idx.row();
-	int col = idx.column();
-	Computer* comp = conf.zx;
-	if ((row < 0) || (row >= comp->tape->blkCount)) return;
-	if (col != TCC_BRK) return;
-	comp->tape->blkData[row].breakPoint ^= 1;
-	buildtapelist();
-//	ui.tapelist->selectRow(row);
-}
-
-// hdd
-
-// show what the device reports after it was given an image or a folder
-void SetupWin::hddShowGeom(int wut) {
-	ATADev* dev = (wut == IDE_MASTER) ? conf.zx->ide->master : conf.zx->ide->slave;
-	QSpinBox* cyl = (wut == IDE_MASTER) ? ui.hm_gcyl : ui.hs_gcyl;
-	QSpinBox* sec = (wut == IDE_MASTER) ? ui.hm_gsec : ui.hs_gsec;
-	QSpinBox* hds = (wut == IDE_MASTER) ? ui.hm_ghd : ui.hs_ghd;
-	QSpinBox* lba = (wut == IDE_MASTER) ? ui.hm_glba : ui.hs_glba;
-	QSpinBox* cap = (wut == IDE_MASTER) ? ui.hm_capacity : ui.hs_capacity;
-	cyl->setValue(dev->pass.cyls);
-	sec->setValue(dev->pass.spt);
-	hds->setValue(dev->pass.hds);
-	lba->setValue(dev->maxlba);
-	cap->setValue(dev->maxlba >> 11);		// 512 (sector) -> 1024*1024 (Mb)
-}
-
-void SetupWin::hddMasterImg() {
-	QString path = QFileDialog::getOpenFileName(this,"Image for master HDD","","All files (*)",NULL,QFileDialog::DontUseNativeDialog | QFileDialog::DontConfirmOverwrite);
-	if (path.isEmpty()) return;
-	ui.hm_path->setText(path);
-	ide_mount(conf.zx->ide, IDE_MASTER, path);
-	hddShowGeom(IDE_MASTER);
-}
-
-// a host folder is served as a read only disk
-void SetupWin::hddMasterDir() {
-	QString path = QFileDialog::getExistingDirectory(this,"Folder to serve as master HDD","",QFileDialog::DontUseNativeDialog | QFileDialog::ShowDirsOnly);
-	if (path.isEmpty()) return;
-	ui.hm_path->setText(path);
-	ide_mount(conf.zx->ide, IDE_MASTER, path);
-	hddShowGeom(IDE_MASTER);
-}
-
-void SetupWin::hddSlaveDir() {
-	QString path = QFileDialog::getExistingDirectory(this,"Folder to serve as slave HDD","",QFileDialog::DontUseNativeDialog | QFileDialog::ShowDirsOnly);
-	if (path.isEmpty()) return;
-	ui.hs_path->setText(path);
-	ide_mount(conf.zx->ide, IDE_SLAVE, path);
-	hddShowGeom(IDE_SLAVE);
-}
-
-void SetupWin::hddSlaveImg() {
-	QString path = QFileDialog::getOpenFileName(this,"Image for slave HDD","","All files (*)",NULL,QFileDialog::DontUseNativeDialog | QFileDialog::DontConfirmOverwrite);
-	if (path.isEmpty()) return;
-	ui.hs_path->setText(path);
-	ide_mount(conf.zx->ide, IDE_SLAVE, path);
-	hddShowGeom(IDE_SLAVE);
-}
-
-/*
-void SetupWin::hddcap() {
-	int sz;
-	if (ui.hs_islba->isChecked()) {
-		sz = (ui.hs_glba->value() >> 9);
-	} else {
-		sz = ((ui.hs_gsec->value() * (ui.hs_ghd->value() + 1) * (ui.hs_gcyl->value() + 1)) >> 11);
-	}
-	ui.hs_capacity->setValue(sz);
-}
-*/
-
-// external
-
-void SetupWin::selSDCimg() {
-	QString fnam = QFileDialog::getOpenFileName(this,"Image for SD card","","All files (*.*)",nullptr,QFileDialog::DontUseNativeDialog);
-	if (!fnam.isEmpty()) ui.sdPath->setText(fnam);
-}
-
-// a host folder is served as a read only card, so the lock box follows the path
-void SetupWin::selSDCdir() {
-	QString fnam = QFileDialog::getExistingDirectory(this,"Folder to serve as SD card","",QFileDialog::DontUseNativeDialog | QFileDialog::ShowDirsOnly);
-	if (!fnam.isEmpty()) ui.sdPath->setText(fnam);
-}
-
-void SetupWin::sdcPathChanged() {
-	bool dir = !ui.sdPath->text().isEmpty() && QFileInfo(ui.sdPath->text()).isDir();
-	if (dir) ui.sdlock->setChecked(true);
-	ui.sdlock->setEnabled(!dir);
-}
-
-void SetupWin::openSlot() {
-	Computer* comp = conf.zx;
-//	if (fnam.isEmpty()) return;
-//	ui.cSlotName->setText(fnam);
-//	loadFile(comp, fnam.toLocal8Bit().data(), FT_SLOT_A, 0);
-	if (load_file(comp, NULL, FH_SLOTS, 0) == ERR_OK) {
-		ui.cSlotName->setText(comp->slot->path);
-	}
-}
-
-int testSlotOn(Computer*);
-
-void SetupWin::ejectSlot() {
-	Computer* comp = conf.zx;
-	sltEject(comp->slot);
-	ui.cSlotName->clear();
-	if (testSlotOn(comp))
-		compReset(comp,RES_DEFAULT);
 }
 
 // input

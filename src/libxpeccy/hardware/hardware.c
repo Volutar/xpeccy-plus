@@ -41,6 +41,44 @@ tabHwItem tabHwPtr[] = {
 	{HW_NULL, NULL},
 };
 
+// What each 16K bank of a core's ROM is, and which reset lands in it. A core
+// whose reset boots its own firmware takes no reset target at all.
+
+static const struct {
+	int hw;
+	xRomRole bank[4];
+} romRoles[] = {
+	{HW_ZX48, {{RES_48, "Basic 48"}, {RES_DOS, "TR-DOS"}, {-1, NULL}, {-1, NULL}}},
+	{HW_ZX128, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
+	{HW_PENT, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
+	{HW_P1024, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
+	{HW_SCORP, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
+	{HW_PLUS2A, {{RES_128, "Basic 128"}, {-1, "Syntax 128"}, {-1, "+3DOS"}, {RES_48, "Basic 48"}}},
+	{HW_PLUS3, {{RES_128, "Basic 128"}, {-1, "Syntax 128"}, {-1, "+3DOS"}, {RES_48, "Basic 48"}}},
+	{HW_PROFI, {{RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
+	// a reset to the service page lands on TR-DOS here, so it is no target
+	{HW_PHOENIX, {{-1, NULL}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
+	{HW_ATM2, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
+	{HW_PENTEVO, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
+	{HW_TSLAB, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
+	{HW_ALF, {{-1, "Menu"}, {-1, "Basic 48"}, {-1, NULL}, {-1, NULL}}},
+	{HW_NULL, {{-1, NULL}, {-1, NULL}, {-1, NULL}, {-1, NULL}}}
+};
+
+xRomRole hw_rom_role(int hw, int bank) {
+	int i = 0;
+	while ((romRoles[i].hw != HW_NULL) && (romRoles[i].hw != hw)) i++;
+	return romRoles[i].bank[bank & 3];		// an unknown core gets the empty last row
+}
+
+// the bank a reset lands in on this core, -1 when it has no such target
+int hw_reset_bank(int hw, int res) {
+	for (int i = 0; i < 4; i++) {
+		if (hw_rom_role(hw, i).res == res) return i;
+	}
+	return -1;
+}
+
 HardWare* findHardware(const char* name) {
 	tabHwItem* itm = tabHwPtr;
 	HardWare* hw = NULL;

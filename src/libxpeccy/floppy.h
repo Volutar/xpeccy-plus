@@ -38,6 +38,7 @@ typedef struct {
 	unsigned doubleSide:1;	// fdd is DS
 	unsigned motor:1;	// fdd motor is on
 	unsigned virt:1;	// fdd is virtual
+	unsigned fitted:1;	// a drive is on the cable at all
 	unsigned insert:1;	// disk inserted
 	unsigned door:1;	// door closed (auto close some time after insert)
 	unsigned protect:1;	// disk is write protected
@@ -73,6 +74,7 @@ void flp_sync(Floppy*, int);
 
 void flp_insert(Floppy*, const char*);
 void flp_eject(Floppy*);
+int flp_trk0(Floppy*);		// the head is at track 0, as the drive's sensor says
 
 unsigned char flpRd(Floppy*, int);
 void flpWr(Floppy*, int, unsigned char);

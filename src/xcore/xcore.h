@@ -318,6 +318,9 @@ enum {
 	XCUT_SCRSHOT,
 	XCUT_COMBOSHOT,
 	XCUT_RES_DOS,
+	XCUT_RES_48,
+	XCUT_RES_128,
+	XCUT_RES_SERVICE,
 	XCUT_KEYBOARD,
 	XCUT_FAST,
 	XCUT_NOFLICK,
@@ -453,8 +456,24 @@ std::string xm_rom_path(const std::string&);
 // what the machine loads, and putting a changed set back as the user's own
 void xm_set_roms(const xRomset&, bool poweron = false);
 void xm_rom_set_file(xRomset&, int, const std::string&);
+QVector<int> xm_rom_cover(const xRomset&, int);	// per bank: the slot covering it, -1
+QList<int> xm_reset_targets();		// RES_* the running machine can reset to
+QString xm_reset_name(int);		// what that ROM is, for a menu
 
 // machines
+
+// what answers on #1F
+enum {
+	MAC_JOY_NONE = 0,
+	MAC_JOY_KEMPSTON,
+	MAC_JOY_KEMPSTON8	// with the extra buttons on d5..d7
+};
+
+// devices the board has on it, in a definition's builtin line
+enum {
+	MAC_BI_DISK = 1,
+	MAC_BI_IDE = 2
+};
 
 // What a machine is: read-only, from the binary's own resources, with a file of
 // the same id in machines/ of the config directory patching it - and a file
@@ -472,6 +491,7 @@ typedef struct {
 	int ramNoise;			// bytes in a thousand that come up wrong in it
 	int cpufrq;			// Hz
 	std::string turboSteps;		// turbo steps this board has, "1" = none
+	int builtin;			// MAC_BI_*: devices on the board, which the user cannot swap
 	int resbank;			// RES_*
 	int earback;			// EAR_*
 	unsigned contio:1;
@@ -491,9 +511,10 @@ typedef struct {
 	int soundrive;			// SDRV_*
 	int disk;			// DIF_*
 	int ide;			// IDE_*
+	int drives;			// floppy drives on the cable, 1..4 from A
 	unsigned mouse:1;
 	unsigned mouseWheel:1;
-	unsigned joyButtons:1;
+	int joy;			// JOY_*
 	int scantab;			// KBD_*, 0 = the keyboard core's own type
 	unsigned gs:1;			// General Sound
 	unsigned saa:1;

@@ -146,6 +146,7 @@ int difOut(DiskIF*, int, int, int);
 int difIn(DiskIF*, int, int*, int);
 
 void difSetHW(DiskIF*, int);
+void difSetDrives(DiskIF*, int);	// how many drives are on the cable, from A
 void dif_align_flps(DiskIF*, FDC*, int, int, int, int);
 
 void add_crc_16(FDC*, unsigned char);

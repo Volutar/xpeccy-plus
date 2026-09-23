@@ -14,6 +14,7 @@
 
 #include "xcore/xcore.h"
 #include "xgui/xgui.h"
+#include "xgui/diskwin.h"
 #include "libxpeccy/spectrum.h"
 #include "watcher.h"
 #include "vkeyboard.h"
@@ -87,6 +88,15 @@ typedef struct {
 		void openMedia(const QString& path, int id, int drv, int run);
 		void setMachine(const std::string&);
 		void resetMachine(int);
+		void resetTo(int);
+		void fillDrivesMenu();
+		void driveOp(std::function<void()>);
+		void diskNew(int);
+		void diskSave(int, bool);
+		void diskEject(int);
+		void hddOpen(int, bool);
+		void hddProps(int);
+		void sdcOpen(bool);
 		void setTurbo(int);
 		void addFavorite(const QString& path);
 	signals:
@@ -219,6 +229,8 @@ typedef struct {
 		QMenu* bookmarkMenu;
 		QMenu* profileMenu;
 		QMenu* resMenu;
+		QMenu* drvMenu;
+		xDiskWin* diskWin;
 		QMenu* turboMenu;
 		QMenu* shdMenu;
 		QMenu* keyMenu;

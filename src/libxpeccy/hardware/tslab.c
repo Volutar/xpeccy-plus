@@ -190,7 +190,7 @@ int tsIn77(Computer* comp, int port) {
 }
 
 int tsIn1F(Computer* comp, int port) {
-	return joyInput(comp->joy);
+	return zx_in_joy(comp, port);
 }
 
 int tsInBFF7(Computer* comp, int port) {

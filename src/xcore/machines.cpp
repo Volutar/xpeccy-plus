@@ -7,6 +7,7 @@
 #include <QFileInfo>
 #include <QFile>
 #include <QTextStream>
+#include <QRegularExpression>
 
 #include "xcore.h"
 #include "../filer.h"
@@ -83,6 +84,10 @@ static xMacWord stereoTab[] = {
 static xMacWord sdrvTab[] = {
 	{"none", SDRV_NONE}, {"covox", SDRV_COVOX},
 	{"soundrive1", SDRV_105_1}, {"soundrive2", SDRV_105_2}, {NULL, 0}
+};
+
+static xMacWord joyTab[] = {
+	{"none", MAC_JOY_NONE}, {"kempston", MAC_JOY_KEMPSTON}, {"kempston8", MAC_JOY_KEMPSTON8}, {NULL, 0}
 };
 
 static xMacWord diskTab[] = {
@@ -195,15 +200,15 @@ static const struct {
 	{"hw", "machine"}, {"cpu", "machine"}, {"cpu.frq", "machine"}, {"cpu.turbo", "machine"},
 	{"memory", "machine"}, {"ram.cold", "machine"}, {"ram.noise", "machine"},
 	{"reset", "machine"}, {"contio", "machine"}, {"issue", "machine"},
-	{"contmem", "machine"}, {"scrp.wait", "machine"},
+	{"contmem", "machine"}, {"scrp.wait", "machine"}, {"builtin", "machine"},
 	{"geometry", "video"}, {"contPattern", "video"}, {"earlyTiming", "video"},
 	{"4t-border", "video"}, {"ULAplus", "video"}, {"DDpal", "video"},
 	{"snow", "video"}, {"snow.crash", "video"}, {"floatbus", "video"},
 	{"psg.count", "sound"}, {"psg.type", "sound"}, {"psg.frq", "sound"},
 	{"psg.stereo", "sound"}, {"gs", "sound"},
 	{"saa", "sound"}, {"soundrive", "sound"},
-	{"disk", "storage"}, {"ide", "storage"},
-	{"mouse", "input"}, {"mouse.wheel", "input"}, {"joy.buttons", "input"},
+	{"disk", "storage"}, {"ide", "storage"}, {"drives", "storage"},
+	{"mouse", "input"}, {"mouse.wheel", "input"}, {"joy", "input"}, {"joy.buttons", "input"},
 	{"kbd.scantab", "input"},
 	{NULL, NULL}
 };
@@ -308,6 +313,7 @@ static void mac_defaults(xMachine& mac) {
 	mac.cpu = "Z80";
 	mac.cpufrq = 3500000;
 	mac.turboSteps = "1";
+	mac.builtin = 0;
 	mac.resbank = RES_128;
 	mac.earback = EAR_ISSUE3;
 	mac.contio = 0;
@@ -328,9 +334,10 @@ static void mac_defaults(xMachine& mac) {
 	mac.soundrive = SDRV_NONE;
 	mac.disk = DIF_NONE;
 	mac.ide = IDE_NONE;
+	mac.drives = 4;
 	mac.mouse = 0;
 	mac.mouseWheel = 0;
-	mac.joyButtons = 0;
+	mac.joy = MAC_JOY_KEMPSTON;
 	mac.scantab = 0;
 	mac.gs = 0;
 	mac.saa = 0;
@@ -359,6 +366,14 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "ram.noise") mac.ramNoise = toLimits(arg.i, 0, 1000);
 			else if (nam == "cpu.frq") mac.cpufrq = arg.i;
 			else if (nam == "cpu.turbo") mac.turboSteps = val;
+			else if (nam == "builtin") {
+				mac.builtin = 0;
+				foreach(QString w, QString::fromStdString(val).split(QRegularExpression("[ ,]+"), X_SkipEmptyParts)) {
+					if (w == "disk") mac.builtin |= MAC_BI_DISK;
+					else if (w == "ide") mac.builtin |= MAC_BI_IDE;
+					else xlog(XLG_CONF, XLL_WARN, "machine %s: unknown builtin '%s'", id, w.toLocal8Bit().data());
+				}
+			}
 			else if (nam == "reset") mac.resbank = mac_word(resetTab, val, RES_128, id);
 			else if (nam == "issue") mac.earback = mac_word(earTab, val, EAR_ISSUE3, id);
 			else if (nam == "contio") mac.contio = arg.b;
@@ -387,10 +402,13 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 		} else if (ln.sect == "storage") {
 			if (nam == "disk") mac.disk = mac_word(diskTab, val, DIF_NONE, id);
 			else if (nam == "ide") mac.ide = mac_word(ideTab, val, IDE_NONE, id);
+			else if (nam == "drives") mac.drives = toLimits(arg.i, 1, 4);
 		} else if (ln.sect == "input") {
 			if (nam == "mouse") mac.mouse = arg.b;
 			else if (nam == "mouse.wheel") mac.mouseWheel = arg.b;
-			else if (nam == "joy.buttons") mac.joyButtons = arg.b;
+			else if (nam == "joy") mac.joy = mac_word(joyTab, val, MAC_JOY_KEMPSTON, id);
+			// the key before joy was; it only ever meant the buttons
+			else if ((nam == "joy.buttons") && (mac.joy != MAC_JOY_NONE)) mac.joy = arg.b ? MAC_JOY_KEMPSTON8 : MAC_JOY_KEMPSTON;
 			else if (nam == "kbd.scantab") mac.scantab = mac_word(scanTab, val, 0, id);
 		} else if (ln.sect == "rom") {
 			if (nam == "banks") mac.romBanks = toLimits(arg.i, 1, 4);
@@ -700,6 +718,62 @@ void xm_rom_set_file(xRomset& rs, int bank, const std::string& name) {
 	mac_rom_add(rs.roms, name, bank);
 }
 
+// how far a rom file reaches, in 16K banks
+
+static int rom_file_banks(const xRomFile& rf) {
+	int size = rf.fsize * 1024;
+	if (size <= 0) {
+		QFileInfo inf(QString::fromLocal8Bit(xm_rom_path(rf.name).c_str()));
+		size = inf.size() - rf.foffset * 1024;
+	}
+	return (size + MEM_16K - 1) / MEM_16K;
+}
+
+// a bank with no file of its own may still be covered by a big one in a bank
+// before it: for each bank, the slot it comes from, or -1
+
+QVector<int> xm_rom_cover(const xRomset& rs, int banks) {
+	QVector<int> res(banks, -1);
+	foreach(xRomFile rf, rs.roms) {
+		int first = rf.roffset / 16;
+		int last = first + rom_file_banks(rf);
+		for (int i = first + 1; (i < last) && (i < banks); i++) {
+			if (res[i] < 0) res[i] = first;
+		}
+	}
+	return res;
+}
+
+// Where a reset can take the running machine: the core says which bank each
+// target lands in, and the target is there when that bank holds something.
+// TR-DOS is no target without the Beta Disk that pages it in.
+
+QList<int> xm_reset_targets() {
+	QList<int> res;
+	const xMachine* mac = xm_find(conf.macId);
+	if (!mac || !conf.zx) return res;
+	int hw = conf.zx->hw->id;
+	QVector<int> cover = xm_rom_cover(conf.roms, mac->romBanks);
+	for (int i = 0; i < mac->romBanks; i++) {
+		xRomRole role = hw_rom_role(hw, i);
+		if (role.res < 0) continue;
+		bool own = false;
+		foreach(xRomFile rf, conf.roms.roms) {
+			if (rf.roffset / 16 == i) own = true;
+		}
+		if (!own && (cover[i] < 0)) continue;
+		if ((role.res == RES_DOS) && (conf.zx->dif->type != DIF_BDI)) continue;
+		res.append(role.res);
+	}
+	return res;
+}
+
+QString xm_reset_name(int res) {
+	int bank = conf.zx ? hw_reset_bank(conf.zx->hw->id, res) : -1;
+	const char* nam = (bank < 0) ? NULL : hw_rom_role(conf.zx->hw->id, bank).name;
+	return nam ? QString(nam) : QString();
+}
+
 // what conf.roms says, into the machine
 //
 // The text mode font is not rom: it is ram the machine fills itself - ZX Evo
@@ -831,10 +905,10 @@ static int mac_psg_count(Computer* comp) {
 static void mac_set_psg(Computer* comp, int count, int type, double frq, int stereo) {
 	aymChip* psg[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
 	for (int i = 0; i < 3; i++) {
-		psg[i]->frq = frq;		// 0: chip_set_type puts the chip's own clock in
 		psg[i]->stereo = stereo;
 		chip_set_type(psg[i], (i < count) ? type : SND_NONE);
 	}
+	ts_set_frq(comp->ts, frq, comp->cpuFrq);	// 0: Auto
 	comp->ts->type = (count > 2) ? TS_ZXNEXT : (count > 1) ? TS_NEDOPC : TS_NONE;
 }
 
@@ -904,10 +978,12 @@ static void mac_from_def(const xMachine* mac) {
 	comp->saa->enabled = mac->saa;
 	comp->sdrv->type = mac->soundrive;
 	difSetHW(comp->dif, mac->disk);
+	difSetDrives(comp->dif, mac->drives);
 	ide_set_type(comp->ide, mac->ide);
 	comp->mouse->enable = mac->mouse;
 	comp->mouse->hasWheel = mac->mouseWheel;
-	comp->joy->extbuttons = mac->joyButtons;
+	comp->joy->type = (mac->joy == MAC_JOY_NONE) ? XJ_NONE : XJ_KEMPSTON;
+	comp->joy->extbuttons = (mac->joy == MAC_JOY_KEMPSTON8) ? 1 : 0;
 	comp->keyb->pcmode = mac->scantab;
 	conf.layName = mac->geometry;
 }
@@ -1028,9 +1104,8 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put(out, "psg.count", mac_psg_count(comp), mac->psgCount);
 	if (mac_psg_count(comp) > 0) {		// with no chips there is nothing to keep
 		mac_put(out, "psg.type", mac_word_name(psgTypeTab, comp->ts->chipA->type), mac_word_name(psgTypeTab, mac->psgType));
-		// an unnamed clock in the definition is the chip type's own
-		mac_put(out, "psg.frq", comp->ts->chipA->frq,
-			mac->psgFrq ? mac->psgFrq : find_chip_type(mac->psgType)->frq);
+		// 0 is Auto, in the definition and in the file
+		mac_put(out, "psg.frq", comp->ts->frqAuto ? 0.0 : comp->ts->chipA->frq, mac->psgFrq);
 		mac_put(out, "psg.stereo", mac_word_name(stereoTab, comp->ts->chipA->stereo),
 			mac_word_name(stereoTab, mac->psgStereo));
 	}
@@ -1038,10 +1113,14 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put_yn(out, "saa", comp->saa->enabled, mac->saa);
 	mac_put(out, "soundrive", mac_word_name(sdrvTab, comp->sdrv->type), mac_word_name(sdrvTab, mac->soundrive));
 	mac_put(out, "disk", mac_word_name(diskTab, comp->dif->type), mac_word_name(diskTab, mac->disk));
+	int drives = 0;
+	while ((drives < 4) && comp->dif->flp[drives]->fitted) drives++;
+	mac_put(out, "drives", drives, mac->drives);
 	mac_put(out, "ide", mac_word_name(ideTab, comp->ide->type), mac_word_name(ideTab, mac->ide));
 	mac_put_yn(out, "mouse", comp->mouse->enable, mac->mouse);
 	mac_put_yn(out, "mouse.wheel", comp->mouse->hasWheel, mac->mouseWheel);
-	mac_put_yn(out, "joy.buttons", comp->joy->extbuttons, mac->joyButtons);
+	int joy = (comp->joy->type != XJ_KEMPSTON) ? MAC_JOY_NONE : comp->joy->extbuttons ? MAC_JOY_KEMPSTON8 : MAC_JOY_KEMPSTON;
+	mac_put(out, "joy", mac_word_name(joyTab, joy), mac_word_name(joyTab, mac->joy));
 	mac_put(out, "kbd.scantab", mac_word_name(scanTab, comp->keyb->pcmode), mac_word_name(scanTab, mac->scantab));
 	mac_put_roms(out, mac);
 }
@@ -1234,11 +1313,7 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	else if (nam == "frq.mul") {}		// the overclock does not outlive a session any more
 	else if (nam == "tape.speed") { if ((arg.i > 94) && (arg.i < 106)) comp->tape->speed = arg.i; }
 	else if (nam == "psg.frq") {
-		aymChip* psg[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
-		for (int i = 0; i < 3; i++) {
-			psg[i]->frq = arg.d;
-			chip_set_type(psg[i], psg[i]->type);	// the period follows the clock
-		}
+		ts_set_frq(comp->ts, arg.d, comp->cpuFrq);
 	}
 	else if (nam == "psg.stereo") {
 		comp->ts->chipA->stereo = arg.i;

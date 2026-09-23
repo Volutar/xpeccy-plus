@@ -1,3 +1,4 @@
+#include <QHeaderView>
 #include "opt_gamepad.h"
 
 #include "../xgui.h"
@@ -107,7 +108,20 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	ui.setupUi(this);
 	padmodel = new xPadMapModel(gp);
 	ui.tvMapView->setModel(padmodel);
-	ui.tvMapView->horizontalHeader()->resizeSection(2, 30);
+	// the input and the repeat fit what they hold, the action takes the rest
+	QHeaderView* hdr = ui.tvMapView->horizontalHeader();
+	hdr->setStretchLastSection(false);
+	hdr->setMinimumSectionSize(55);
+	hdr->setSectionResizeMode(0, QHeaderView::Interactive);
+	hdr->setSectionResizeMode(1, QHeaderView::Stretch);
+	hdr->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+	// the input's column fits what it holds, never under the width it always had
+	connect(padmodel, &QAbstractItemModel::modelReset, this, [this]() {
+		ui.tvMapView->resizeColumnToContents(0);
+		QHeaderView* hdr = ui.tvMapView->horizontalHeader();
+		if (hdr->sectionSize(0) < 90) hdr->resizeSection(0, 90);
+	});
+	hdr->resizeSection(0, 90);
 	connect(ui.cbGPName, SIGNAL(currentIndexChanged(int)), this, SLOT(devChanged(int)));
 	connect(ui.cbMapFile, SIGNAL(currentIndexChanged(int)), this, SLOT(mapChanged(int)));
 	connect(ui.tbAddMap, SIGNAL(released()), this, SLOT(addMap()));

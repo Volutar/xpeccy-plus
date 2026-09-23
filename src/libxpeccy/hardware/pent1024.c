@@ -17,7 +17,7 @@ void p1mMapMem(Computer* comp) {
 // in
 
 int p1mIn1F(Computer* comp, int port) {
-	return joyInput(comp->joy);
+	return zx_in_joy(comp, port);
 }
 
 int p1mInBFF7(Computer* comp, int port) {

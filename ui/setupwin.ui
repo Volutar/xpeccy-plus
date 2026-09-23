@@ -72,7 +72,7 @@
         <attribute name="title">
          <string>Machine</string>
         </attribute>
-        <layout class="QVBoxLayout" name="verticalLayout_39" stretch="0,0,10">
+        <layout class="QVBoxLayout" name="verticalLayout_39" stretch="0,0,0,10">
          <item>
           <widget class="QGroupBox" name="archArchGBox">
            <layout class="QHBoxLayout" name="horizontalLayout_9">
@@ -134,6 +134,115 @@ switches to it when the settings are applied</string>
                 </widget>
                </item>
                <item row="1" column="0">
+                <widget class="QLabel" name="icoMemory">
+                 <property name="minimumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="pixmap">
+                  <pixmap resource="../xpeccy.qrc">:/images/memory.png</pixmap>
+                 </property>
+                 <property name="scaledContents">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLabel" name="labMemory">
+                 <property name="minimumSize">
+                  <size>
+                   <width>80</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string>Memory</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="2" colspan="3">
+                <widget class="QComboBox" name="mszbox">
+                 <property name="minimumSize">
+                  <size>
+                   <width>200</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>200</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="toolTip">
+                  <string>How much RAM the machine has</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QLabel" name="icoRom">
+                 <property name="minimumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="pixmap">
+                  <pixmap resource="../xpeccy.qrc">:/images/filebin.png</pixmap>
+                 </property>
+                 <property name="scaledContents">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QLabel" name="labRom">
+                 <property name="minimumSize">
+                  <size>
+                   <width>80</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string>ROM</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="2" colspan="3">
+                <widget class="xSideButton" name="pbRomSet">
+                 <property name="minimumSize">
+                  <size>
+                   <width>200</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>200</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../xpeccy.qrc">
+                   <normaloff>:/images/settings.png</normaloff>:/images/settings.png</iconset>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0">
                 <widget class="QLabel" name="icoCpuFreq">
                  <property name="minimumSize">
                   <size>
@@ -155,7 +264,7 @@ switches to it when the settings are applied</string>
                  </property>
                 </widget>
                </item>
-               <item row="1" column="1">
+               <item row="3" column="1">
                 <widget class="QLabel" name="labCpuFreq">
                  <property name="minimumSize">
                   <size>
@@ -168,7 +277,7 @@ switches to it when the settings are applied</string>
                  </property>
                 </widget>
                </item>
-               <item row="1" column="2" colspan="3">
+               <item row="3" column="2" colspan="3">
                 <widget class="QWidget" name="freqBox" native="true">
                  <property name="minimumSize">
                   <size>
@@ -236,114 +345,6 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
                  </layout>
                 </widget>
                </item>
-               <item row="2" column="0">
-                <widget class="QLabel" name="icoMemory">
-                 <property name="minimumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
-                 </property>
-                 <property name="pixmap">
-                  <pixmap resource="../xpeccy.qrc">:/images/memory.png</pixmap>
-                 </property>
-                 <property name="scaledContents">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="1">
-                <widget class="QLabel" name="labMemory">
-                 <property name="minimumSize">
-                  <size>
-                   <width>80</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string>Memory</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="2" colspan="3">
-                <widget class="QComboBox" name="mszbox">
-                 <property name="minimumSize">
-                  <size>
-                   <width>200</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>200</width>
-                   <height>16777215</height>
-                  </size>
-                 </property>
-                 <property name="toolTip">
-                  <string>How much RAM the machine has</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="0">
-                <widget class="QLabel" name="icoReset">
-                 <property name="minimumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
-                 </property>
-                 <property name="pixmap">
-                  <pixmap resource="../xpeccy.qrc">:/images/refresh.png</pixmap>
-                 </property>
-                 <property name="scaledContents">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="1">
-                <widget class="QLabel" name="label_42">
-                 <property name="minimumSize">
-                  <size>
-                   <width>80</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string>Default reset</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="2" colspan="3">
-                <widget class="QComboBox" name="resbox">
-                 <property name="minimumSize">
-                  <size>
-                   <width>200</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>200</width>
-                   <height>16777215</height>
-                  </size>
-                 </property>
-                 <property name="toolTip">
-                  <string>Which ROM the machine starts from after a reset</string>
-                 </property>
-                </widget>
-               </item>
                <item row="4" column="2">
                 <spacer name="verticalSpacer_21">
                  <property name="orientation">
@@ -403,7 +404,7 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
                  <number>0</number>
                 </property>
                 <item>
-                 <widget class="QPushButton" name="pbAdvanced">
+                 <widget class="xSideButton" name="pbAdvanced">
                   <property name="icon">
                    <iconset resource="../xpeccy.qrc">
                     <normaloff>:/images/settings.png</normaloff>:/images/settings.png</iconset>
@@ -417,7 +418,7 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="pbResetMachine">
+                 <widget class="xSideButton" name="pbResetMachine">
                   <property name="icon">
                    <iconset resource="../xpeccy.qrc">
                     <normaloff>:/images/refresh.png</normaloff>:/images/refresh.png</iconset>
@@ -431,7 +432,7 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="pbSaveMachine">
+                 <widget class="xSideButton" name="pbSaveMachine">
                   <property name="icon">
                    <iconset resource="../xpeccy.qrc">
                     <normaloff>:/images/save_all.png</normaloff>:/images/save_all.png</iconset>
@@ -445,7 +446,7 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="pbDelMachine">
+                 <widget class="xSideButton" name="pbDelMachine">
                   <property name="icon">
                    <iconset resource="../xpeccy.qrc">
                     <normaloff>:/images/cancel.png</normaloff>:/images/cancel.png</iconset>
@@ -478,10 +479,7 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
           </widget>
          </item>
          <item>
-          <widget class="QGroupBox" name="gbRoms">
-           <property name="title">
-            <string>ROMs</string>
-           </property>
+          <widget class="QWidget" name="romBox" native="true">
            <layout class="QVBoxLayout" name="verticalLayout_roms">
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_slots">
@@ -502,66 +500,15 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
                 </property>
                </spacer>
               </item>
-              <item>
-               <widget class="QWidget" name="romButtons" native="true">
-                <property name="minimumSize">
-                 <size>
-                  <width>155</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>155</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                 <layout class="QVBoxLayout" name="verticalLayout_romsbtn">
-                  <property name="leftMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="topMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="rightMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="bottomMargin">
-                   <number>0</number>
-                  </property>
-                  <item>
-                   <widget class="QPushButton" name="pbRomAdvanced">
-                    <property name="toolTip">
-                     <string>Edit the set file by file: where each one starts,
-how much of it is read, and where it lands</string>
-                    </property>
-                    <property name="text">
-                     <string>Advanced</string>
-                    </property>
-                    <property name="icon">
-                     <iconset resource="../xpeccy.qrc">
-                      <normaloff>:/images/settings.png</normaloff>:/images/settings.png</iconset>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <spacer name="verticalSpacer_romsbtn">
-                    <property name="orientation">
-                     <enum>Qt::Vertical</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>20</width>
-                      <height>5</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                 </layout>
-               </widget>
-              </item>
              </layout>
             </item>
+             <item>
+              <widget class="QLabel" name="labResetHint">
+               <property name="text">
+                <string>Boots from the marked ROM</string>
+               </property>
+              </widget>
+             </item>
             <item>
              <widget class="QWidget" name="romAdvBox" native="true">
               <layout class="QVBoxLayout" name="verticalLayout_romadv">
@@ -729,52 +676,6 @@ off it as well, so changing it moves the frame rate too</string>
                  </item>
                  <item>
                   <spacer name="sp_cbCpuFrq">
-                   <property name="orientation">
-                    <enum>Qt::Horizontal</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>10</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                </layout>
-               </item>
-               <item row="1" column="1">
-                <widget class="QLabel" name="nam_cputurbo">
-                 <property name="toolTip">
-                  <string>The turbo steps this board has, as multipliers of the
-base clock: 1,2 is a board that can do 3.5 and 7 MHz.
-Alt+T walks them. It describes the board - it does not
-give one a turbo it never had (use the slider for that)</string>
-                 </property>
-                 <property name="text">
-                  <string>Turbo steps</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="2">
-                <layout class="QHBoxLayout" name="hl_leCpuTurbo">
-                 <item>
-                <widget class="QComboBox" name="cbCpuTurbo">
-                 <property name="minimumSize">
-                  <size>
-                   <width>200</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="toolTip">
-                  <string>The turbo steps this board has, as multipliers of the
-base clock: 1,2 is a board that can do 3.5 and 7 MHz.
-Alt+T walks them. It describes the board - it does not
-give one a turbo it never had (use the slider for that)</string>
-                 </property>
-                </widget>
-                 </item>
-                 <item>
-                  <spacer name="sp_leCpuTurbo">
                    <property name="orientation">
                     <enum>Qt::Horizontal</enum>
                    </property>
@@ -2083,23 +1984,6 @@ thin, lower it again after a long clean spell</string>
                </widget>
               </item>
               <item>
-               <widget class="Line" name="line_3">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QCheckBox" name="gsrbox">
-                <property name="toolTip">
-                 <string>Reset the General Sound with the machine</string>
-                </property>
-                <property name="text">
-                 <string>GS reset</string>
-                </property>
-               </widget>
-              </item>
-              <item>
                <spacer name="verticalSpacer_23">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
@@ -2118,7 +2002,7 @@ thin, lower it again after a long clean spell</string>
           </layout>
          </item>
          <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_32" stretch="1,1">
+          <layout class="QHBoxLayout" name="horizontalLayout_32">
            <item>
             <widget class="QGroupBox" name="groupBox_12">
              <property name="title">
@@ -2328,16 +2212,6 @@ thin, lower it again after a long clean spell</string>
                 </property>
                </spacer>
               </item>
-              <item row="4" column="0">
-               <widget class="QCheckBox" name="cbGS">
-                <property name="toolTip">
-                 <string>General Sound module</string>
-                </property>
-                <property name="text">
-                 <string>GS</string>
-                </property>
-               </widget>
-              </item>
               <item row="6" column="0">
                <widget class="QCheckBox" name="cbSAA">
                 <property name="toolTip">
@@ -2350,208 +2224,6 @@ thin, lower it again after a long clean spell</string>
               </item>
              </layout>
             </widget>
-           </item>
-           <item>
-            <layout class="QVBoxLayout" name="verticalLayout_20">
-             <item>
-              <widget class="QGroupBox" name="aygroup">
-               <property name="title">
-                <string>PSG (AY/YM)</string>
-               </property>
-               <property name="checkable">
-                <bool>false</bool>
-               </property>
-               <layout class="QGridLayout" name="gridLayout_psg" columnstretch="0,10">
-                <item row="0" column="0">
-                 <widget class="QLabel" name="labPsgCount">
-                  <property name="text">
-                   <string>Chips</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="1">
-                 <widget class="QComboBox" name="cbPsgCount">
-                  <property name="toolTip">
-                   <string>How many AY/YM chips the machine has (TurboSound)</string>
-                  </property>
-                  <property name="sizeAdjustPolicy">
-                   <enum>QComboBox::AdjustToMinimumContentsLengthWithIcon</enum>
-                  </property>
-                  <property name="minimumContentsLength">
-                   <number>8</number>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="0">
-                 <widget class="QLabel" name="labPsgType">
-                  <property name="text">
-                   <string>Type</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="1">
-                 <widget class="QComboBox" name="cbPsgType">
-                  <property name="toolTip">
-                   <string>Which chip: AY-3-8910 or YM2149</string>
-                  </property>
-                  <property name="sizeAdjustPolicy">
-                   <enum>QComboBox::AdjustToMinimumContentsLengthWithIcon</enum>
-                  </property>
-                  <property name="minimumContentsLength">
-                   <number>8</number>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="0">
-                 <widget class="QLabel" name="labPsgFrq">
-                  <property name="text">
-                   <string>Freq</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="1">
-                 <layout class="QHBoxLayout" name="horizontalLayout_34" stretch="10,0">
-                  <item>
-                   <widget class="QComboBox" name="cbPsgFrq">
-                    <property name="toolTip">
-                     <string>Clock the chips run at</string>
-                    </property>
-                    <property name="editable">
-                     <bool>true</bool>
-                    </property>
-                    <property name="insertPolicy">
-                     <enum>QComboBox::NoInsert</enum>
-                    </property>
-                    <property name="sizeAdjustPolicy">
-                     <enum>QComboBox::AdjustToMinimumContentsLengthWithIcon</enum>
-                    </property>
-                    <property name="minimumContentsLength">
-                     <number>8</number>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="labPsgMhz">
-                    <property name="text">
-                     <string>MHz</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="3" column="0">
-                 <widget class="QLabel" name="labPsgStereo">
-                  <property name="text">
-                   <string>Stereo</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="1">
-                 <layout class="QHBoxLayout" name="horizontalLayout_33" stretch="0,0,10,0">
-                  <property name="spacing">
-                   <number>4</number>
-                  </property>
-                  <item>
-                   <widget class="QComboBox" name="cbPsgStereo">
-                    <property name="toolTip">
-                     <string>How the three channels are spread over the two speakers</string>
-                    </property>
-                    <property name="sizeAdjustPolicy">
-                     <enum>QComboBox::AdjustToContents</enum>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="labPsgSepName">
-                    <property name="toolTip">
-                     <string>Stereo separation: 100% = channels kept apart, 0% = mono</string>
-                    </property>
-                    <property name="text">
-                     <string>Separation</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="xSlider" name="sldPsgSep">
-                    <property name="toolTip">
-                     <string>Stereo separation: 100% = channels kept apart, 0% = mono</string>
-                    </property>
-                    <property name="minimumSize">
-                     <size>
-                      <width>45</width>
-                      <height>0</height>
-                     </size>
-                    </property>
-                    <property name="maximum">
-                     <number>100</number>
-                    </property>
-                    <property name="pageStep">
-                     <number>5</number>
-                    </property>
-                    <property name="orientation">
-                     <enum>Qt::Horizontal</enum>
-                    </property>
-                    <property name="tickPosition">
-                     <enum>QSlider::TicksBelow</enum>
-                    </property>
-                    <property name="tickInterval">
-                     <number>25</number>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="labPsgSep">
-                    <property name="minimumSize">
-                     <size>
-                      <width>32</width>
-                      <height>0</height>
-                     </size>
-                    </property>
-                    <property name="text">
-                     <string>75%</string>
-                    </property>
-                    <property name="alignment">
-                     <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="4" column="1">
-                 <spacer name="verticalSpacer_16">
-                  <property name="orientation">
-                   <enum>Qt::Vertical</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>20</width>
-                    <height>40</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </widget>
-             </item>
-             <item>
-              <layout class="QGridLayout" name="gridLayout_12">
-               <item row="2" column="0">
-                <widget class="QLabel" name="label_41">
-                 <property name="text">
-                  <string>Soundrive</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="1">
-                <widget class="QComboBox" name="sdrvBox">
-                 <property name="toolTip">
-                  <string>Covox / Soundrive digital sound port</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-            </layout>
            </item>
           </layout>
          </item>
@@ -2604,16 +2276,6 @@ thin, lower it again after a long clean spell</string>
                 </property>
                </widget>
               </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="label_65">
-                <property name="text">
-                 <string>PC scantab</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QComboBox" name="cbScanTab"/>
-              </item>
              </layout>
             </widget>
            </item>
@@ -2623,123 +2285,6 @@ thin, lower it again after a long clean spell</string>
               <number>-1</number>
              </property>
             </widget>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <layout class="QVBoxLayout" name="verticalLayout_5">
-           <item>
-            <widget class="QGroupBox" name="groupBox_5">
-             <property name="title">
-              <string>Kempston mouse</string>
-             </property>
-             <layout class="QVBoxLayout" name="verticalLayout_3">
-              <item>
-               <widget class="QCheckBox" name="ratEnable">
-                <property name="toolTip">
-                 <string>Kempston mouse is plugged in</string>
-                </property>
-                <property name="text">
-                 <string>Enabled</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QCheckBox" name="ratWheel">
-                <property name="text">
-                 <string>Wheel</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QCheckBox" name="cbSwapButtons">
-                <property name="text">
-                 <string>Swap buttons</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="label_66">
-                <property name="toolTip">
-                 <string>How fast the emulated pointer moves. In the middle it keeps up with the PC one</string>
-                </property>
-                <property name="text">
-                 <string>Sensitivity:</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="xSlider" name="sldSensitivity">
-                <property name="toolTip">
-                 <string>How fast the emulated pointer moves. In the middle it keeps up with the PC one</string>
-                </property>
-                <property name="minimum">
-                 <number>100</number>
-                </property>
-                <property name="maximum">
-                 <number>1900</number>
-                </property>
-                <property name="singleStep">
-                 <number>10</number>
-                </property>
-                <property name="pageStep">
-                 <number>100</number>
-                </property>
-                <property name="value">
-                 <number>1000</number>
-                </property>
-                <property name="sliderPosition">
-                 <number>1000</number>
-                </property>
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="tickPosition">
-                 <enum>QSlider::TicksBelow</enum>
-                </property>
-                <property name="tickInterval">
-                 <number>100</number>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_39" stretch="0,10">
-            </layout>
-           </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox_3">
-             <property name="title">
-              <string>Kempston joystick</string>
-             </property>
-             <layout class="QVBoxLayout" name="verticalLayout_21">
-              <item>
-               <widget class="QCheckBox" name="cbKbuttons">
-                <property name="toolTip">
-                 <string>Kempston joystick with 4 buttons instead of one</string>
-                </property>
-                <property name="text">
-                 <string>4 buttons</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <spacer name="verticalSpacer_9">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
            </item>
           </layout>
          </item>
@@ -2760,20 +2305,6 @@ thin, lower it again after a long clean spell</string>
             <string>General</string>
            </property>
            <layout class="QGridLayout" name="gridLayout_media" columnstretch="1,0">
-            <item row="0" column="1">
-             <widget class="QPushButton" name="pbFileTypes">
-              <property name="toolTip">
-               <string>Which machine a snapshot, a tape or a disk is opened on</string>
-              </property>
-              <property name="text">
-               <string>File types...</string>
-              </property>
-              <property name="icon">
-               <iconset resource="../xpeccy.qrc">
-                <normaloff>:/images/computer.png</normaloff>:/images/computer.png</iconset>
-              </property>
-             </widget>
-            </item>
             <item row="0" column="0">
              <widget class="QCheckBox" name="cbAutorun">
               <property name="toolTip">
@@ -2797,1576 +2328,6 @@ so the same media is back on the next start</string>
              </widget>
             </item>
            </layout>
-          </widget>
-         </item>
-         <item>
-          <widget class="QTabWidget" name="tabWidget_3">
-           <property name="currentIndex">
-            <number>0</number>
-           </property>
-           <widget class="QWidget" name="tab_9">
-            <attribute name="icon">
-             <iconset resource="../xpeccy.qrc">
-              <normaloff>:/images/tape.png</normaloff>:/images/tape.png</iconset>
-            </attribute>
-            <attribute name="title">
-             <string>Tape</string>
-            </attribute>
-            <layout class="QVBoxLayout" name="verticalLayout_38" stretch="0,10">
-             <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_7">
-               <item>
-                <layout class="QGridLayout" name="gridLayout_19">
-                 <item row="0" column="3">
-                  <widget class="QToolButton" name="tremotb">
-                   <property name="toolTip">
-                    <string>Eject the tape</string>
-                   </property>
-                   <property name="text">
-                    <string>Eject</string>
-                   </property>
-                   <property name="icon">
-                    <iconset resource="../xpeccy.qrc">
-                     <normaloff>:/images/tape-eject.png</normaloff>:/images/tape-eject.png</iconset>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="2">
-                  <widget class="QToolButton" name="tsavetb">
-                   <property name="toolTip">
-                    <string>Save the tape to a file</string>
-                   </property>
-                   <property name="text">
-                    <string>Save</string>
-                   </property>
-                   <property name="icon">
-                    <iconset resource="../xpeccy.qrc">
-                     <normaloff>:/images/save_all.png</normaloff>:/images/save_all.png</iconset>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="0">
-                  <widget class="QLineEdit" name="tpathle">
-                   <property name="readOnly">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QToolButton" name="tloadtb">
-                   <property name="toolTip">
-                    <string>Open a tape image</string>
-                   </property>
-                   <property name="text">
-                    <string>Load</string>
-                   </property>
-                   <property name="icon">
-                    <iconset resource="../xpeccy.qrc">
-                     <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="0" colspan="4">
-                  <layout class="QHBoxLayout" name="horizontalLayout_31">
-                   <item>
-                    <widget class="QLabel" name="labTapeSpeed">
-                     <property name="toolTip">
-                      <string>How fast the tape signal is played, in per cent of normal.
-A few images made on machines with an unusual clock
-load only when it is nudged either way</string>
-                     </property>
-                     <property name="text">
-                      <string>Playback speed</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="xSlider" name="sldTapeSpeed">
-                     <property name="toolTip">
-                      <string>How fast the tape signal is played, in per cent of normal.
-A few images made on machines with an unusual clock
-load only when it is nudged either way</string>
-                     </property>
-                     <property name="minimum">
-                      <number>95</number>
-                     </property>
-                     <property name="maximum">
-                      <number>105</number>
-                     </property>
-                     <property name="pageStep">
-                      <number>1</number>
-                     </property>
-                     <property name="value">
-                      <number>100</number>
-                     </property>
-                     <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
-                     </property>
-                     <property name="tickPosition">
-                      <enum>QSlider::TicksBelow</enum>
-                     </property>
-                     <property name="tickInterval">
-                      <number>1</number>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLabel" name="labTapeSpeedVal">
-                     <property name="minimumSize">
-                      <size>
-                       <width>34</width>
-                       <height>0</height>
-                      </size>
-                     </property>
-                     <property name="text">
-                      <string>100%</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item row="2" column="0">
-                  <spacer name="verticalSpacer_27">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeType">
-                    <enum>QSizePolicy::Minimum</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>0</width>
-                     <height>0</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                </layout>
-               </item>
-               <item>
-                <layout class="QHBoxLayout" name="verticalLayout_34">
-                 <item>
-                  <layout class="QVBoxLayout" name="layTapeOptsTape">
-                   <item>
-                    <widget class="QCheckBox" name="cbTapeAuto">
-                     <property name="toolTip">
-                      <string>Start the tape when a loader asks for it,
-stop it between blocks</string>
-                     </property>
-                     <property name="text">
-                      <string>Auto play / stop</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="cbTapeRewind">
-                     <property name="toolTip">
-                      <string>At the end of the tape, Play or the next load starts it again.
-Off: the tape stops at the end</string>
-                     </property>
-                     <property name="text">
-                      <string>Rewind at end</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <spacer name="layTapeOptsTapeEnd">
-                     <property name="orientation">
-                      <enum>Qt::Vertical</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>0</width>
-                       <height>0</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QVBoxLayout" name="layTapeOptsLoad">
-                   <item>
-                    <widget class="QCheckBox" name="cbTapeFast">
-                     <property name="toolTip">
-                      <string>Run at full speed, sound off and picture held, while a loader reads the tape</string>
-                     </property>
-                     <property name="text">
-                      <string>Fast loading</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <layout class="QVBoxLayout" name="layTapeOptsFast">
-                     <item>
-                      <widget class="QCheckBox" name="cbTapeFlash">
-                       <property name="toolTip">
-                        <string>With fast loading, hand ROM blocks straight to the machine</string>
-                       </property>
-                       <property name="text">
-                        <string>Flash loading</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QCheckBox" name="cbTapeEdge">
-                       <property name="toolTip">
-                        <string>With fast loading, a loader waiting for the next pulse gets it at once. Faster, not exact</string>
-                       </property>
-                       <property name="text">
-                        <string>Edge detection</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <spacer name="layTapeOptsLoadEnd">
-                     <property name="orientation">
-                      <enum>Qt::Vertical</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>0</width>
-                       <height>0</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                  </layout>
-                 </item>
-                </layout>
-               </item>
-              </layout>
-             </item>
-             <item>
-              <widget class="QGroupBox" name="TMBox">
-               <property name="title">
-                <string>Tape map</string>
-               </property>
-               <layout class="QHBoxLayout" name="horizontalLayout_8">
-                <item>
-                 <widget class="xTapeCatTable" name="tapelist">
-                  <property name="contextMenuPolicy">
-                   <enum>Qt::ActionsContextMenu</enum>
-                  </property>
-                  <property name="editTriggers">
-                   <set>QAbstractItemView::NoEditTriggers</set>
-                  </property>
-                  <property name="alternatingRowColors">
-                   <bool>true</bool>
-                  </property>
-                  <property name="selectionMode">
-                   <enum>QAbstractItemView::SingleSelection</enum>
-                  </property>
-                  <property name="selectionBehavior">
-                   <enum>QAbstractItemView::SelectRows</enum>
-                  </property>
-                  <property name="gridStyle">
-                   <enum>Qt::DotLine</enum>
-                  </property>
-                  <attribute name="horizontalHeaderStretchLastSection">
-                   <bool>true</bool>
-                  </attribute>
-                  <attribute name="verticalHeaderVisible">
-                   <bool>false</bool>
-                  </attribute>
-                  <attribute name="verticalHeaderMinimumSectionSize">
-                   <number>17</number>
-                  </attribute>
-                  <attribute name="verticalHeaderDefaultSectionSize">
-                   <number>17</number>
-                  </attribute>
-                 </widget>
-                </item>
-                <item>
-                 <layout class="QVBoxLayout" name="verticalLayout_10">
-                  <item>
-                   <widget class="QToolButton" name="tbToDisk">
-                    <property name="toolTip">
-                     <string>Copy to disk</string>
-                    </property>
-                    <property name="text">
-                     <string>...</string>
-                    </property>
-                    <property name="icon">
-                     <iconset resource="../xpeccy.qrc">
-                      <normaloff>:/images/floppy.png</normaloff>:/images/floppy.png</iconset>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QToolButton" name="blkuptb">
-                    <property name="toolTip">
-                     <string>Move the block up</string>
-                    </property>
-                    <property name="text">
-                     <string>Up</string>
-                    </property>
-                    <property name="icon">
-                     <iconset resource="../xpeccy.qrc">
-                      <normaloff>:/images/arrow-up.png</normaloff>:/images/arrow-up.png</iconset>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QToolButton" name="blkdntb">
-                    <property name="toolTip">
-                     <string>Move the block down</string>
-                    </property>
-                    <property name="text">
-                     <string>Down</string>
-                    </property>
-                    <property name="icon">
-                     <iconset resource="../xpeccy.qrc">
-                      <normaloff>:/images/arrow-down.png</normaloff>:/images/arrow-down.png</iconset>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <spacer name="verticalSpacer_4">
-                    <property name="orientation">
-                     <enum>Qt::Vertical</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>20</width>
-                      <height>40</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                  <item>
-                   <widget class="QToolButton" name="blkrmtb">
-                    <property name="toolTip">
-                     <string>Delete the block</string>
-                    </property>
-                    <property name="text">
-                     <string>Delete</string>
-                    </property>
-                    <property name="icon">
-                     <iconset resource="../xpeccy.qrc">
-                      <normaloff>:/images/cancel.png</normaloff>:/images/cancel.png</iconset>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-               </layout>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-           <widget class="QWidget" name="tab_8">
-            <attribute name="icon">
-             <iconset resource="../xpeccy.qrc">
-              <normaloff>:/images/floppy.png</normaloff>:/images/floppy.png</iconset>
-            </attribute>
-            <attribute name="title">
-             <string>Disk</string>
-            </attribute>
-            <layout class="QVBoxLayout" name="verticalLayout_41">
-             <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_21" stretch="10,0">
-               <item>
-                <layout class="QGridLayout" name="gridLayout_20" columnstretch="0,10">
-                 <item row="0" column="1">
-                  <widget class="QComboBox" name="diskTypeBox">
-                   <property name="toolTip">
-                    <string>Disk interface the machine has</string>
-                   </property>
-                   <property name="maximumSize">
-                    <size>
-                     <width>200</width>
-                     <height>16777215</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="1">
-                  <spacer name="verticalSpacer_26">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>40</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                 <item row="0" column="0">
-                  <widget class="QLabel" name="label_38">
-                   <property name="toolTip">
-                    <string>Disk interface the machine has</string>
-                   </property>
-                   <property name="text">
-                    <string>Interface</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="0">
-                  <widget class="QLabel" name="label_68">
-                   <property name="toolTip">
-                    <string>The order a TRD or SCL image gets its sectors in on each track, taken when the image is opened. TR-DOS formats its disks 1, 9, 2, 10…</string>
-                   </property>
-                   <property name="text">
-                    <string>Interleave</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="1">
-                  <widget class="QComboBox" name="cbFlpInterleave">
-                   <property name="toolTip">
-                    <string>The order a TRD or SCL image gets its sectors in on each track, taken when the image is opened. TR-DOS formats its disks 1, 9, 2, 10…</string>
-                   </property>
-                   <property name="maximumSize">
-                    <size>
-                     <width>200</width>
-                     <height>16777215</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item>
-                <widget class="QGroupBox" name="groupBox_10">
-                 <property name="minimumSize">
-                  <size>
-                   <width>200</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <layout class="QVBoxLayout" name="verticalLayout_19">
-                  <item>
-                   <widget class="QCheckBox" name="bdtbox">
-                    <property name="toolTip">
-                     <string>No head-seek and rotation delays</string>
-                    </property>
-                    <property name="text">
-                     <string>Fast disk access</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QCheckBox" name="cbAddBoot">
-                    <property name="toolTip">
-                     <string>Write a boot file into TR-DOS images that have none</string>
-                    </property>
-                    <property name="text">
-                     <string>Add boot to TR-DOS images</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <spacer name="verticalSpacer_29">
-                    <property name="orientation">
-                     <enum>Qt::Vertical</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>20</width>
-                      <height>6</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item>
-              <widget class="QTabWidget" name="disktabs">
-               <property name="currentIndex">
-                <number>0</number>
-               </property>
-               <widget class="QWidget" name="taba">
-                <attribute name="title">
-                 <string>A:</string>
-                </attribute>
-                <layout class="QVBoxLayout" name="verticalLayout_4">
-                 <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_4">
-                   <item>
-                    <widget class="QLineEdit" name="apathle">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="newatb">
-                     <property name="toolTip">
-                      <string>Create an empty image in drive A:</string>
-                     </property>
-                     <property name="text">
-                      <string>...</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/doc-new.png</normaloff>:/images/doc-new.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="loadatb">
-                     <property name="toolTip">
-                      <string>Open a disk image in drive A:</string>
-                     </property>
-                     <property name="text">
-                      <string>Load</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="saveatb">
-                     <property name="toolTip">
-                      <string>Save drive A: to a file</string>
-                     </property>
-                     <property name="text">
-                      <string>Save</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/save_all.png</normaloff>:/images/save_all.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="remoatb">
-                     <property name="toolTip">
-                      <string>Eject the disk from drive A:</string>
-                     </property>
-                     <property name="text">
-                      <string>Eject</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/cancel.png</normaloff>:/images/cancel.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_5">
-                   <item>
-                    <widget class="QCheckBox" name="a80box">
-                     <property name="text">
-                      <string>80 cylinders</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="adsbox">
-                     <property name="text">
-                      <string>Double side</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="awpbox">
-                     <property name="text">
-                      <string>Write protect</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                </layout>
-               </widget>
-               <widget class="QWidget" name="tabb">
-                <attribute name="title">
-                 <string>B:</string>
-                </attribute>
-                <layout class="QVBoxLayout" name="verticalLayout_13">
-                 <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_10">
-                   <item>
-                    <widget class="QLineEdit" name="bpathle">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="newbtb">
-                     <property name="toolTip">
-                      <string>Create an empty image in drive B:</string>
-                     </property>
-                     <property name="text">
-                      <string>...</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/doc-new.png</normaloff>:/images/doc-new.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="loadbtb">
-                     <property name="toolTip">
-                      <string>Open a disk image in drive B:</string>
-                     </property>
-                     <property name="text">
-                      <string>Load</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="savebtb">
-                     <property name="toolTip">
-                      <string>Save drive B: to a file</string>
-                     </property>
-                     <property name="text">
-                      <string>Save</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/save_all.png</normaloff>:/images/save_all.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="remobtb">
-                     <property name="toolTip">
-                      <string>Eject the disk from drive B:</string>
-                     </property>
-                     <property name="text">
-                      <string>Eject</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/cancel.png</normaloff>:/images/cancel.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_6">
-                   <item>
-                    <widget class="QCheckBox" name="b80box">
-                     <property name="text">
-                      <string>80 cylinders</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="bdsbox">
-                     <property name="text">
-                      <string>Double side</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="bwpbox">
-                     <property name="text">
-                      <string>Write protect</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                </layout>
-               </widget>
-               <widget class="QWidget" name="tabc">
-                <attribute name="title">
-                 <string>C:</string>
-                </attribute>
-                <layout class="QVBoxLayout" name="verticalLayout_14">
-                 <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_12">
-                   <item>
-                    <widget class="QLineEdit" name="cpathle">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="newctb">
-                     <property name="toolTip">
-                      <string>Create an empty image in drive C:</string>
-                     </property>
-                     <property name="text">
-                      <string>...</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/doc-new.png</normaloff>:/images/doc-new.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="loadctb">
-                     <property name="toolTip">
-                      <string>Open a disk image in drive C:</string>
-                     </property>
-                     <property name="text">
-                      <string>Load</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="savectb">
-                     <property name="toolTip">
-                      <string>Save drive C: to a file</string>
-                     </property>
-                     <property name="text">
-                      <string>Save</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/save_all.png</normaloff>:/images/save_all.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="remoctb">
-                     <property name="toolTip">
-                      <string>Eject the disk from drive C:</string>
-                     </property>
-                     <property name="text">
-                      <string>Eject</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/cancel.png</normaloff>:/images/cancel.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_11">
-                   <item>
-                    <widget class="QCheckBox" name="c80box">
-                     <property name="text">
-                      <string>80 cylinders</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="cdsbox">
-                     <property name="text">
-                      <string>Double side</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="cwpbox">
-                     <property name="text">
-                      <string>Write protect</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                </layout>
-               </widget>
-               <widget class="QWidget" name="tabd">
-                <attribute name="title">
-                 <string>D:</string>
-                </attribute>
-                <layout class="QVBoxLayout" name="verticalLayout_15">
-                 <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_14">
-                   <item>
-                    <widget class="QLineEdit" name="dpathle">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="newdtb">
-                     <property name="toolTip">
-                      <string>Create an empty image in drive D:</string>
-                     </property>
-                     <property name="text">
-                      <string>...</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/doc-new.png</normaloff>:/images/doc-new.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="loaddtb">
-                     <property name="toolTip">
-                      <string>Open a disk image in drive D:</string>
-                     </property>
-                     <property name="text">
-                      <string>Load</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="savedtb">
-                     <property name="toolTip">
-                      <string>Save drive D: to a file</string>
-                     </property>
-                     <property name="text">
-                      <string>Save</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/save_all.png</normaloff>:/images/save_all.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QToolButton" name="remodtb">
-                     <property name="toolTip">
-                      <string>Eject the disk from drive D:</string>
-                     </property>
-                     <property name="text">
-                      <string>Eject</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/cancel.png</normaloff>:/images/cancel.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_13">
-                   <item>
-                    <widget class="QCheckBox" name="d80box">
-                     <property name="text">
-                      <string>80 cylinders</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="ddsbox">
-                     <property name="text">
-                      <string>Double side</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="dwpbox">
-                     <property name="text">
-                      <string>Write protect</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                </layout>
-               </widget>
-              </widget>
-             </item>
-             <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_20">
-               <item>
-                <widget class="xDiskCatTable" name="disklist">
-                 <property name="contextMenuPolicy">
-                  <enum>Qt::ActionsContextMenu</enum>
-                 </property>
-                 <property name="editTriggers">
-                  <set>QAbstractItemView::NoEditTriggers</set>
-                 </property>
-                 <property name="alternatingRowColors">
-                  <bool>true</bool>
-                 </property>
-                 <property name="selectionMode">
-                  <enum>QAbstractItemView::ExtendedSelection</enum>
-                 </property>
-                 <property name="selectionBehavior">
-                  <enum>QAbstractItemView::SelectRows</enum>
-                 </property>
-                 <property name="gridStyle">
-                  <enum>Qt::DotLine</enum>
-                 </property>
-                 <attribute name="horizontalHeaderStretchLastSection">
-                  <bool>true</bool>
-                 </attribute>
-                 <attribute name="verticalHeaderVisible">
-                  <bool>false</bool>
-                 </attribute>
-                 <attribute name="verticalHeaderMinimumSectionSize">
-                  <number>17</number>
-                 </attribute>
-                 <attribute name="verticalHeaderDefaultSectionSize">
-                  <number>17</number>
-                 </attribute>
-                </widget>
-               </item>
-               <item>
-                <layout class="QVBoxLayout" name="verticalLayout_6">
-                 <item>
-                  <widget class="QToolButton" name="tbToTape">
-                   <property name="toolTip">
-                    <string>Copy to tape</string>
-                   </property>
-                   <property name="text">
-                    <string>...</string>
-                   </property>
-                   <property name="icon">
-                    <iconset resource="../xpeccy.qrc">
-                     <normaloff>:/images/tape.png</normaloff>:/images/tape.png</iconset>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QToolButton" name="tbToHobeta">
-                   <property name="toolTip">
-                    <string>Save as Hobeta</string>
-                   </property>
-                   <property name="text">
-                    <string>...</string>
-                   </property>
-                   <property name="icon">
-                    <iconset resource="../xpeccy.qrc">
-                     <normaloff>:/images/dollar.png</normaloff>:/images/dollar.png</iconset>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QToolButton" name="tbToRaw">
-                   <property name="toolTip">
-                    <string>Save as raw</string>
-                   </property>
-                   <property name="text">
-                    <string>...</string>
-                   </property>
-                   <property name="icon">
-                    <iconset resource="../xpeccy.qrc">
-                     <normaloff>:/images/filebin.png</normaloff>:/images/filebin.png</iconset>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <spacer name="verticalSpacer_3">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>40</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                </layout>
-               </item>
-              </layout>
-             </item>
-            </layout>
-           </widget>
-           <widget class="QWidget" name="tab_10">
-            <attribute name="icon">
-             <iconset resource="../xpeccy.qrc">
-              <normaloff>:/images/hdd.png</normaloff>:/images/hdd.png</iconset>
-            </attribute>
-            <attribute name="title">
-             <string>HDD</string>
-            </attribute>
-            <layout class="QVBoxLayout" name="verticalLayout_11">
-             <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_17">
-               <item>
-                <widget class="QLabel" name="label_33">
-                 <property name="toolTip">
-                  <string>Interface the hard disks are attached to</string>
-                 </property>
-                 <property name="text">
-                  <string>Interface</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QComboBox" name="hiface">
-                 <property name="toolTip">
-                  <string>Interface the hard disks are attached to</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <spacer name="horizontalSpacer_3">
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-              </layout>
-             </item>
-             <item>
-              <widget class="QTabWidget" name="tabWidget_2">
-               <property name="currentIndex">
-                <number>0</number>
-               </property>
-               <widget class="QWidget" name="tab_2">
-                <attribute name="title">
-                 <string>Master</string>
-                </attribute>
-                <layout class="QVBoxLayout" name="verticalLayout_17">
-                 <item>
-                  <layout class="QGridLayout" name="gridLayout_10">
-                   <item row="0" column="1">
-                    <widget class="QComboBox" name="hm_type">
-                     <property name="toolTip">
-                      <string>What is attached: nothing, or an ATA hard disk</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="0">
-                    <widget class="QLabel" name="label_17">
-                     <property name="text">
-                      <string>Type</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QLabel" name="label_32">
-                     <property name="text">
-                      <string>Image/Path</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QLineEdit" name="hm_path"/>
-                   </item>
-                   <item row="1" column="2">
-                    <widget class="QToolButton" name="hm_pathtb">
-                     <property name="toolTip">
-                      <string>Disk image file</string>
-                     </property>
-                     <property name="text">
-                      <string>...</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/hdd.png</normaloff>:/images/hdd.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="3">
-                    <widget class="QToolButton" name="hm_pathdir">
-                     <property name="toolTip">
-                      <string>Serve a host folder as the disk (read only)</string>
-                     </property>
-                     <property name="text">
-                      <string>...</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QGridLayout" name="gridLayout_8" columnstretch="0,0,0,0">
-                   <item row="0" column="0">
-                    <widget class="QLabel" name="label_19">
-                     <property name="text">
-                      <string>C/H/S</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="3">
-                    <widget class="QSpinBox" name="hm_gsec">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                     <property name="minimum">
-                      <number>1</number>
-                     </property>
-                     <property name="maximum">
-                      <number>255</number>
-                     </property>
-                     <property name="value">
-                      <number>255</number>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="2">
-                    <widget class="QSpinBox" name="hm_ghd">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                     <property name="minimum">
-                      <number>1</number>
-                     </property>
-                     <property name="maximum">
-                      <number>16</number>
-                     </property>
-                     <property name="value">
-                      <number>15</number>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QSpinBox" name="hm_glba">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                     <property name="maximum">
-                      <number>5000000</number>
-                     </property>
-                     <property name="value">
-                      <number>4194304</number>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="2">
-                    <widget class="QLabel" name="label_20">
-                     <property name="text">
-                      <string>Capacity</string>
-                     </property>
-                     <property name="alignment">
-                      <set>Qt::AlignCenter</set>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QCheckBox" name="hm_islba">
-                     <property name="toolTip">
-                      <string>Use LBA addressing instead of C/H/S</string>
-                     </property>
-                     <property name="text">
-                      <string>LBA enabled</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="3">
-                    <widget class="QSpinBox" name="hm_capacity">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                     <property name="suffix">
-                      <string> Mb</string>
-                     </property>
-                     <property name="maximum">
-                      <number>128000</number>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="1">
-                    <widget class="QSpinBox" name="hm_gcyl">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                     <property name="minimum">
-                      <number>1</number>
-                     </property>
-                     <property name="maximum">
-                      <number>65535</number>
-                     </property>
-                     <property name="value">
-                      <number>1023</number>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <spacer name="verticalSpacer_7">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>40</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                </layout>
-               </widget>
-               <widget class="QWidget" name="tab_3">
-                <attribute name="title">
-                 <string>Slave</string>
-                </attribute>
-                <layout class="QVBoxLayout" name="verticalLayout_18">
-                 <item>
-                  <layout class="QGridLayout" name="gridLayout_11">
-                   <item row="0" column="0">
-                    <widget class="QLabel" name="label_18">
-                     <property name="text">
-                      <string>Type</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="1">
-                    <widget class="QComboBox" name="hs_type">
-                     <property name="toolTip">
-                      <string>What is attached: nothing, or an ATA hard disk</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QLabel" name="label_31">
-                     <property name="text">
-                      <string>Image/Path</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QLineEdit" name="hs_path">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="2">
-                    <widget class="QToolButton" name="hs_pathtb">
-                     <property name="toolTip">
-                      <string>Disk image file</string>
-                     </property>
-                     <property name="text">
-                      <string>...</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/hdd.png</normaloff>:/images/hdd.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="3">
-                    <widget class="QToolButton" name="hs_pathdir">
-                     <property name="toolTip">
-                      <string>Serve a host folder as the disk (read only)</string>
-                     </property>
-                     <property name="text">
-                      <string>...</string>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../xpeccy.qrc">
-                       <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QGridLayout" name="gridLayout_9" columnstretch="0,0,0,0">
-                   <item row="0" column="0">
-                    <widget class="QLabel" name="label_23">
-                     <property name="text">
-                      <string>C/H/S</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="3">
-                    <widget class="QSpinBox" name="hs_gsec">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                     <property name="minimum">
-                      <number>1</number>
-                     </property>
-                     <property name="maximum">
-                      <number>255</number>
-                     </property>
-                     <property name="value">
-                      <number>255</number>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="1">
-                    <widget class="QSpinBox" name="hs_gcyl">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                     <property name="minimum">
-                      <number>1</number>
-                     </property>
-                     <property name="maximum">
-                      <number>65535</number>
-                     </property>
-                     <property name="value">
-                      <number>1023</number>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="2">
-                    <widget class="QSpinBox" name="hs_ghd">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                     <property name="minimum">
-                      <number>1</number>
-                     </property>
-                     <property name="maximum">
-                      <number>16</number>
-                     </property>
-                     <property name="value">
-                      <number>15</number>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QSpinBox" name="hs_glba">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                     <property name="maximum">
-                      <number>5000000</number>
-                     </property>
-                     <property name="value">
-                      <number>4194304</number>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="2">
-                    <widget class="QLabel" name="label_21">
-                     <property name="text">
-                      <string>Capacity</string>
-                     </property>
-                     <property name="alignment">
-                      <set>Qt::AlignCenter</set>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="3">
-                    <widget class="QSpinBox" name="hs_capacity">
-                     <property name="readOnly">
-                      <bool>true</bool>
-                     </property>
-                     <property name="suffix">
-                      <string> Mb</string>
-                     </property>
-                     <property name="prefix">
-                      <string/>
-                     </property>
-                     <property name="maximum">
-                      <number>128000</number>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QCheckBox" name="hs_islba">
-                     <property name="toolTip">
-                      <string>Use LBA addressing instead of C/H/S</string>
-                     </property>
-                     <property name="text">
-                      <string>LBA enabled</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <spacer name="verticalSpacer_6">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>40</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                </layout>
-               </widget>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-           <widget class="QWidget" name="sdcTab">
-            <property name="enabled">
-             <bool>true</bool>
-            </property>
-            <attribute name="icon">
-             <iconset resource="../xpeccy.qrc">
-              <normaloff>:/images/sdcard.png</normaloff>:/images/sdcard.png</iconset>
-            </attribute>
-            <attribute name="title">
-             <string>Other</string>
-            </attribute>
-            <layout class="QVBoxLayout" name="verticalLayout_30">
-             <item>
-              <widget class="QGroupBox" name="groupBox_8">
-               <property name="title">
-                <string>SDCard</string>
-               </property>
-               <layout class="QHBoxLayout" name="horizontalLayout_28">
-                <item>
-                 <layout class="QGridLayout" name="gridLayout_4">
-                  <item row="0" column="1">
-                   <widget class="QLineEdit" name="sdPath">
-                    <property name="enabled">
-                     <bool>true</bool>
-                    </property>
-                    <property name="readOnly">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="2">
-                   <widget class="QToolButton" name="tbSDCimg">
-                    <property name="enabled">
-                     <bool>true</bool>
-                    </property>
-                    <property name="toolTip">
-                     <string>Card image file</string>
-                    </property>
-                    <property name="text">
-                     <string>...</string>
-                    </property>
-                    <property name="icon">
-                     <iconset resource="../xpeccy.qrc">
-                      <normaloff>:/images/sdcard.png</normaloff>:/images/sdcard.png</iconset>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="3">
-                   <widget class="QToolButton" name="tbSDCdir">
-                    <property name="toolTip">
-                     <string>Serve a host folder as the card (read only)</string>
-                    </property>
-                    <property name="text">
-                     <string>...</string>
-                    </property>
-                    <property name="icon">
-                     <iconset resource="../xpeccy.qrc">
-                      <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="4">
-                   <widget class="QToolButton" name="tbsdcfree">
-                    <property name="toolTip">
-                     <string>Eject the card</string>
-                    </property>
-                    <property name="text">
-                     <string>...</string>
-                    </property>
-                    <property name="icon">
-                     <iconset resource="../xpeccy.qrc">
-                      <normaloff>:/images/cancel.png</normaloff>:/images/cancel.png</iconset>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="label_35">
-                    <property name="enabled">
-                     <bool>true</bool>
-                    </property>
-                    <property name="text">
-                     <string>Image/Path</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="5">
-                   <widget class="QCheckBox" name="sdlock">
-                    <property name="toolTip">
-                     <string>Refuse writes to the card</string>
-                    </property>
-                    <property name="text">
-                     <string>Read only</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-               </layout>
-              </widget>
-             </item>
-             <item>
-              <widget class="QGroupBox" name="groupBox_11">
-               <property name="title">
-                <string>Cartridge slot</string>
-               </property>
-               <layout class="QGridLayout" name="gridLayout_7">
-                <item row="1" column="4">
-                 <widget class="QToolButton" name="cSlotEject">
-                  <property name="toolTip">
-                   <string>Eject the cartridge</string>
-                  </property>
-                  <property name="text">
-                   <string>...</string>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../xpeccy.qrc">
-                    <normaloff>:/images/cancel.png</normaloff>:/images/cancel.png</iconset>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="3">
-                 <widget class="QToolButton" name="cSlotOpen">
-                  <property name="toolTip">
-                   <string>Open a cartridge image</string>
-                  </property>
-                  <property name="text">
-                   <string>...</string>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../xpeccy.qrc">
-                    <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="0">
-                 <widget class="QLabel" name="label_70">
-                  <property name="text">
-                   <string>Image</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="1">
-                 <widget class="QLineEdit" name="cSlotName">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
-             </item>
-             <item>
-              <spacer name="verticalSpacer">
-               <property name="orientation">
-                <enum>Qt::Vertical</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>20</width>
-                 <height>129</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </widget>
           </widget>
          </item>
         </layout>
@@ -4524,7 +2485,7 @@ Off: the tape stops at the end</string>
                     <number>0</number>
                    </property>
                    <item>
-                    <widget class="QPushButton" name="pbFavorites">
+                    <widget class="xSideButton" name="pbFavorites">
                      <property name="icon">
                       <iconset resource="../xpeccy.qrc">
                        <normaloff>:/images/star.png</normaloff>:/images/star.png</iconset>
@@ -4538,7 +2499,7 @@ Off: the tape stops at the end</string>
                     </widget>
                    </item>
                    <item>
-                    <widget class="QPushButton" name="pbCfgExport">
+                    <widget class="xSideButton" name="pbCfgExport">
                      <property name="icon">
                       <iconset resource="../xpeccy.qrc">
                        <normaloff>:/images/save_all.png</normaloff>:/images/save_all.png</iconset>
@@ -4552,7 +2513,7 @@ Off: the tape stops at the end</string>
                     </widget>
                    </item>
                    <item>
-                    <widget class="QPushButton" name="pbCfgImport">
+                    <widget class="xSideButton" name="pbCfgImport">
                      <property name="icon">
                       <iconset resource="../xpeccy.qrc">
                        <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
@@ -4566,7 +2527,7 @@ Off: the tape stops at the end</string>
                     </widget>
                    </item>
                    <item>
-                    <widget class="QPushButton" name="pbCfgReset">
+                    <widget class="xSideButton" name="pbCfgReset">
                      <property name="icon">
                       <iconset resource="../xpeccy.qrc">
                        <normaloff>:/images/refresh.png</normaloff>:/images/refresh.png</iconset>
@@ -5877,42 +3838,6 @@ Right click: back to the style color</string>
     </layout>
    </item>
   </layout>
-  <action name="actCopyToTape">
-   <property name="icon">
-    <iconset resource="../xpeccy.qrc">
-     <normaloff>:/images/tape.png</normaloff>:/images/tape.png</iconset>
-   </property>
-   <property name="text">
-    <string>Copy to tape</string>
-   </property>
-  </action>
-  <action name="actCopyToDisk">
-   <property name="icon">
-    <iconset resource="../xpeccy.qrc">
-     <normaloff>:/images/floppy.png</normaloff>:/images/floppy.png</iconset>
-   </property>
-   <property name="text">
-    <string>Copy to disk</string>
-   </property>
-  </action>
-  <action name="actSaveHobeta">
-   <property name="icon">
-    <iconset resource="../xpeccy.qrc">
-     <normaloff>:/images/dollar.png</normaloff>:/images/dollar.png</iconset>
-   </property>
-   <property name="text">
-    <string>Save as Hobeta</string>
-   </property>
-  </action>
-  <action name="actSaveRaw">
-   <property name="icon">
-    <iconset resource="../xpeccy.qrc">
-     <normaloff>:/images/filebin.png</normaloff>:/images/filebin.png</iconset>
-   </property>
-   <property name="text">
-    <string>Save as raw</string>
-   </property>
-  </action>
   <action name="actAddBinding">
    <property name="icon">
     <iconset resource="../xpeccy.qrc">
@@ -5943,18 +3868,13 @@ Right click: back to the style color</string>
  </widget>
  <customwidgets>
   <customwidget>
-   <class>xDiskCatTable</class>
-   <extends>QTableView</extends>
-   <header location="global">stdlib.h</header>
-  </customwidget>
-  <customwidget>
-   <class>xTapeCatTable</class>
-   <extends>QTableView</extends>
-   <header location="global">stdlib.h</header>
-  </customwidget>
-  <customwidget>
    <class>xHotkeyTable</class>
    <extends>QTableView</extends>
+   <header location="global">stdlib.h</header>
+  </customwidget>
+  <customwidget>
+   <class>xSideButton</class>
+   <extends>QPushButton</extends>
    <header location="global">stdlib.h</header>
   </customwidget>
   <customwidget>

@@ -58,6 +58,7 @@ is skipped without a word.
 | `contio` | yes/no | contended i/o |
 | `contmem` | yes/no | contended memory |
 | `scrp.wait` | yes/no | ZS Scorpion: an opcode fetch starts on an even T-state |
+| `builtin` | `disk` `ide` | controllers on the board itself: the options lock them. Read from the definition, never written back |
 
 ### `[video]`
 
@@ -79,7 +80,7 @@ is skipped without a word.
 |---|---|---|
 | `psg.count` | 0..3 | AY/YM chips (TurboSound) |
 | `psg.type` | `none` `ay` `ym` `ym2203` | |
-| `psg.frq` | MHz | absent means the chip type's own clock |
+| `psg.frq` | MHz | absent or 0 is Auto: half the cpu's `cpu.frq`, and 3.5 MHz for `ym2203` |
 | `psg.stereo` | `mono` `abc` `acb` `bac` `bca` `cab` `cba` | |
 | `soundrive` | `none` `covox` `soundrive1` `soundrive2` | |
 | `gs` | yes/no | General Sound |
@@ -91,6 +92,7 @@ is skipped without a word.
 |---|---|---|
 | `disk` | `none` `trdos` `plus3` | disk interface |
 | `ide` | `none` `nemo` `nemo-a8` `nemo-evo` `smuc` `atm` `profi` | |
+| `drives` | 1..4 | floppy drives on the cable, from A; 4 if absent. A drive left out is not there at all: no disk goes in, and a restore finds no track 0 |
 
 ### `[input]`
 
@@ -98,7 +100,7 @@ is skipped without a word.
 |---|---|---|
 | `mouse` | yes/no | Kempston mouse |
 | `mouse.wheel` | yes/no | |
-| `joy.buttons` | yes/no | the extra Kempston buttons |
+| `joy` | `none` `kempston` `kempston8` | what answers on `#1F`: nothing (the port reads the floating bus), a Kempston joystick, or one with the extra buttons on d5..d7. The older `joy.buttons = yes` still reads as `kempston8` |
 | `kbd.scantab` | `none` `xt` `at` `ps2` | which PC keys the machine's keys sit on; `none` leaves the keyboard core's own type |
 
 ### `[rom]`

@@ -26,10 +26,13 @@ void pl2MapMem(Computer* comp) {
 	}
 }
 
+// A reset to 48K is what the menu's 48 BASIC does: ROM 3, paging locked.
+// compReset() says which one it was with bit 4 of 7FFD.
 void plusRes(Computer* comp) {
-	comp->p1FFD = 0;
-	comp->p7FFD = 0;
-	comp->flgROM = 0;
+	int b48 = (comp->p7FFD & 0x10) ? 1 : 0;
+	comp->p1FFD = b48 ? 0x04 : 0;
+	comp->p7FFD = b48 ? 0x30 : 0;
+	comp->flgROM = b48;
 	comp->flgDOS = 0;
 	comp->flgEXT = 0;
 	zx_set_vmode(comp);
