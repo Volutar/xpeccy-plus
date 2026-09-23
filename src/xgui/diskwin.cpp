@@ -31,6 +31,23 @@ xDiskWin::xDiskWin(QWidget* p):QDialog(p) {
 	list->horizontalHeader()->setStretchLastSection(false);
 	// a selected row does not make the headings bold
 	list->horizontalHeader()->setHighlightSections(false);
+	// what is in the drive, above what is on it
+	path = new QLineEdit;
+	path->setReadOnly(true);
+	btnOpen = diskButton(":/images/fileopen.png", "Open a disk image");
+	btnNew = diskButton(":/images/doc-new.png", "Insert a new disk");
+	btnSave = diskButton(":/images/save_all.png", "Save to the file it came from");
+	btnSaveAs = diskButton(":/images/floppy.png", "Save as...");
+	btnEject = diskButton(":/images/tape-eject.png", "Eject");
+	protect = new QCheckBox("Write protect");
+	QHBoxLayout* top = new QHBoxLayout;
+	top->addWidget(path, 1);
+	top->addWidget(btnOpen);
+	top->addWidget(btnNew);
+	top->addWidget(btnSave);
+	top->addWidget(btnSaveAs);
+	top->addWidget(btnEject);
+	top->addWidget(protect);
 	note = new QLabel;
 	toTape = diskButton(":/images/tape.png", "Copy to tape");
 	toHobeta = diskButton(":/images/dollar.png", "Save as Hobeta");
@@ -45,11 +62,21 @@ xDiskWin::xDiskWin(QWidget* p):QDialog(p) {
 	mid->addLayout(btns);
 	QVBoxLayout* lay = new QVBoxLayout(this);
 	lay->addWidget(tabs);
+	lay->addLayout(top);
 	lay->addLayout(mid, 1);
 	lay->addWidget(note);
 	resize(560, 360);
 	connect(tabs, &QTabBar::currentChanged, this, [this]() {fill();});
 	connect(list->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this]() {pickedChanged();});
+	connect(btnOpen, &QToolButton::released, this, [this]() {doOp(DW_OPEN);});
+	connect(btnNew, &QToolButton::released, this, [this]() {doOp(DW_NEW);});
+	connect(btnSave, &QToolButton::released, this, [this]() {doOp(DW_SAVE);});
+	connect(btnSaveAs, &QToolButton::released, this, [this]() {doOp(DW_SAVE_AS);});
+	connect(btnEject, &QToolButton::released, this, [this]() {doOp(DW_EJECT);});
+	connect(protect, &QCheckBox::clicked, this, [this](bool on) {
+		int drv = drive();
+		if (drv >= 0) conf.zx->dif->flp[drv]->protect = on ? 1 : 0;
+	});
 	connect(toTape, &QToolButton::released, this, [this]() {copyToTape();});
 	connect(toHobeta, &QToolButton::released, this, [this]() {saveFiles(true);});
 	connect(toRaw, &QToolButton::released, this, [this]() {saveFiles(false);});
@@ -101,9 +128,8 @@ void xDiskWin::refresh() {
 	fill();
 }
 
-void xDiskWin::showDrive(int drv) {
+void xDiskWin::showWindow() {
 	refresh();
-	tabs->setCurrentIndex(drv);
 	show();
 	raise();
 	activateWindow();
@@ -113,11 +139,33 @@ int xDiskWin::drive() {
 	return tabs->currentIndex();
 }
 
+void xDiskWin::doOp(int op) {
+	int drv = drive();
+	if ((drv < 0) || !diskOp) return;
+	diskOp(op, drv);
+}
+
+void xDiskWin::fillDrive(Floppy* flp) {
+	bool fit = flp && flp->fitted;	// a drive left out takes nothing
+	bool in = flp && flp->insert;
+	bool file = in && flp->path && *flp->path;
+	path->setText(!in ? QString() : file ? QString::fromLocal8Bit(flp->path) : QString("(new disk)"));
+	path->setCursorPosition(0);
+	btnOpen->setEnabled(fit);
+	btnNew->setEnabled(fit);
+	btnSave->setEnabled(file);
+	btnSaveAs->setEnabled(in);
+	btnEject->setEnabled(in);
+	protect->setEnabled(fit);
+	protect->setChecked(flp && flp->protect);
+}
+
 void xDiskWin::fill() {
 	QList<TRFile> cat;
 	rows.clear();
 	int drv = drive();
 	Floppy* flp = (drv < 0) ? NULL : conf.zx->dif->flp[drv];
+	fillDrive(flp);
 	if (!flp || !flp->insert) {
 		note->setText("No disk in the drive");
 	} else if (diskGetType(flp) != DISK_TYPE_TRD) {

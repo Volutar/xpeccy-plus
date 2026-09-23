@@ -11,10 +11,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
-- **A Drives menu** in the right-click menu: what is in each drive, with Open, New, Save,
-  Save as, Eject and Write protect, the hard disk images with their properties, the SD card
-  and the cartridge. **Disk manager** in it lists a TR-DOS disk and copies files to the tape
-  or out as Hobeta or raw.
+- **Disk manager** in the right-click menu: point at it for what is in each drive, with
+  Open, New, Save, Save as, Eject and Write protect; click it for a window with the same
+  controls that lists a TR-DOS disk and copies files to the tape or out as Hobeta or raw.
+  The cartridge, the SD card and the hard disk images have items of their own beside it.
 
 - **A Beta Disk can have fewer than four drives** - Number of drives in the disk settings. A
   drive left out is not there at all: no disk goes in, and software finds it missing.

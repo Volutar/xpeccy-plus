@@ -91,6 +91,7 @@ typedef struct {
 		void resetTo(int);
 		void fillDrivesMenu();
 		void driveOp(std::function<void()>);
+		void diskOp(int, int);
 		void diskNew(int);
 		void diskSave(int, bool);
 		void diskEject(int);
@@ -229,7 +230,10 @@ typedef struct {
 		QMenu* bookmarkMenu;
 		QMenu* profileMenu;
 		QMenu* resMenu;
-		QMenu* drvMenu;
+		QMenu* dskMenu;		// the floppies; its root opens the Disk manager
+		QMenu* cartMenu;
+		QMenu* sdcMenu;
+		QMenu* hddMenu;
 		xDiskWin* diskWin;
 		QMenu* turboMenu;
 		QMenu* shdMenu;
