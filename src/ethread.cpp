@@ -82,6 +82,21 @@ static int tap_block_done(Tape* tap) {
 	return ((int)tap->blkData[tap->block].sigCount - tap->pos) < 32;
 }
 
+static int tap_peek(int adr, void* data) {
+	return memRd(((Computer*)data)->mem, adr);
+}
+
+// The edge routine was called by the rom's own LD-BYTES, not by a copy of it in
+// ram (Krakout), which never comes back to LD_START to be handed a block and is
+// played to instead. LD-EDGE-2 calls LD-EDGE-1 itself: its caller is a word up.
+static int tap_rom_caller(Computer* comp) {
+	int sp = comp->cpu->regSP;
+	int ret = cpu_peek_word(tap_peek, comp, sp);
+	if (ret == 0x05e6)
+		ret = cpu_peek_word(tap_peek, comp, sp + 2);
+	return ret < 0x4000;
+}
+
 // atStart says the rom is at LD_START, the top of LD_BYTES, rather than inside
 // LD_EDGE_1: only there does the stack hold what LD_BYTES itself pushed, so only
 // there may a block be handed over and the rom sent to its own exit. Doing it
@@ -105,7 +120,8 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 	// the rom is left to read that part by ear.
 	if (atStart)
 		earBlock = (tap->blkData[blk].hasBytes && (tapGetBlockInfo(tap, blk).size > comp->cpu->regDE)) ? blk : -1;
-	if (tape_flash() && tap->blkData[blk].hasBytes && (blk != earBlock)) {
+	if (tape_flash() && tap->blkData[blk].hasBytes && (blk != earBlock)
+			&& (atStart || tap_rom_caller(comp))) {
 		// A playing tape and a flash load get out of step: the rom reads the
 		// block by ear and moves on while the tape still stands on it, and the
 		// next block is then answered with this one. Flash loading owns the
@@ -157,6 +173,7 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 		// that comes next would be handed silence: give it the tape when it asks
 		int sig = tap_next_is_signal(tap);
 		tapNextBlock(tap);
+		fastload_forget();
 		if (sig)
 			tapArmPlay(tap);
 		cpu_set_pc(comp->cpu, 0x5df);
@@ -273,19 +290,10 @@ static int ra_frame(Computer* comp) {
 	return guard > 0;
 }
 
-static void ra_back(Computer* comp, long rayOff, long lineOff) {
-	if (!xstate_load(raState, comp)) return;
-	// The image buffers are outside the snapshot and the ahead frame swaps
-	// them, so the ray goes back by its offset into whichever buffer is current
-	// after the rollback, not by the address it held before.
-	comp->vid->ray.ptr = scrimg + rayOff;
-	comp->vid->ray.lptr = scrimg + lineOff;
-}
-
 // 1 when the machine has been run on and has to be wound back afterwards.
 // xstate_safe() answers for everything the snapshot does not carry; what is
 // left here is this side's own policy.
-int xThread::runAhead(Computer* comp, long* rayOff, long* lineOff) {
+int xThread::runAhead(Computer* comp) {
 	if (comp != raOwner) {		// a new machine may well fit where the last one did not
 		raOwner = comp;
 		raBroken = 0;
@@ -300,8 +308,6 @@ int xThread::runAhead(Computer* comp, long* rayOff, long* lineOff) {
 		raBroken = 1;
 		return 0;
 	}
-	*rayOff = comp->vid->ray.ptr - scrimg;
-	*lineOff = comp->vid->ray.lptr - scrimg;
 	x_runahead = 1;
 	for (int i = 0; i < conf.emu.runahead; i++) {
 		if (!ra_frame(comp)) {
@@ -384,8 +390,7 @@ void xThread::emuCycle(Computer* comp) {
 			vid_scr_snap(comp->vid);
 			// the frame just made is not the one to show: run on to the one
 			// the player's last key press is already in
-			long rayOff = 0, lineOff = 0;
-			int wound = runAhead(comp, &rayOff, &lineOff);
+			int wound = runAhead(comp);
 // process noflic/scanlines (if !fast ???)
 // buffers is already switches, bufimg - just painted (greyscale, if flag is set), scrimg - new
 			if (!conf.emu.fast && (noflic > 0))
@@ -395,7 +400,7 @@ void xThread::emuCycle(Computer* comp) {
 
 			// printf("s_frame\n");
 			emit s_frame();
-			if (wound) ra_back(comp, rayOff, lineOff);
+			if (wound) xstate_load(raState, comp);
 		}
 #if LOG_OUTPUT
 // ...

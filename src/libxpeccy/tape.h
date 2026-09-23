@@ -176,6 +176,7 @@ int tap_rewind_at_end(Tape*);
 
 void tapSync(Tape*,int);
 void tapNextBlock(Tape*);
+void tap_copy_pos(Tape*, const Tape*);
 void tapDetectLoader(Tape*, int tick, int regB, int fromUser);
 void tapArmPlay(Tape*);
 

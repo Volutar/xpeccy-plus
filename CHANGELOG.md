@@ -29,8 +29,9 @@ before that point is upstream's history and is not repeated here.
   Auto: half the processor clock, 3.5 MHz for TurboSound FM.
 
 - **Fast loading runs a tape through in seconds, whatever its loader.** One switch in the
-  tape player: while a loader reads the tape the machine runs flat out and silent, and the
-  picture holds until a new screen is in - R-Type takes about four seconds. Under it in
+  tape player: while a loader reads the tape the machine runs flat out and silent, the
+  loading screen is shown as it comes in, and the game starts at normal speed from its first
+  frame - R-Type takes about four seconds. Under it in
   Options, both on: **Flash loading** hands ROM blocks straight to the machine (what Fast
   loading used to mean), and **Edge detection** skips the wait for each pulse in the common
   loaders - switch that one off if a game does not load.

@@ -528,6 +528,24 @@ void tapRec(Tape* tap) {
 	blkClear(&tap->tmpBlock);
 }
 
+// Where a playing tape stands, carried from a copy of the same image: what a
+// caller winding the machine back has to put back itself.
+void tap_copy_pos(Tape* dst, const Tape* src) {
+	dst->on = src->on;
+	dst->tail = src->tail;
+	dst->wait = src->wait;
+	dst->isData = src->isData;
+	dst->armed = src->armed;
+	dst->block = src->block;
+	dst->pos = src->pos;
+	dst->sigLen = src->sigLen;
+	dst->tickAcc = src->tickAcc;
+	dst->volPlay = src->volPlay;
+	dst->detectLastTick = src->detectLastTick;
+	dst->detectLastB = src->detectLastB;
+	dst->detectReads = src->detectReads;
+}
+
 void tapRewind(Tape* tap, int blk) {
 	xlog(XLG_TAPE, XLL_INFO, "rewind to block %i of %i", blk, tap->blkCount);
 	tap->armed = 0;

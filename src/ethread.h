@@ -28,7 +28,7 @@ class xThread : public QThread {
 		void run();
 		void emuCycle(Computer*);
 		void rzx_begin(Computer*);
-		int runAhead(Computer*, long*, long*);
+		int runAhead(Computer*);
 		void brkAction(Computer*, xBrkPoint*, int*);
 		void tap_catch_load(Computer*, int);
 		void tap_catch_save(Computer*);

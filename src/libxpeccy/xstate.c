@@ -24,6 +24,7 @@ struct xState {
 	int count;			// 0 = nothing saved
 	unsigned char* data;
 	size_t cap;			// bytes allocated
+	long ray, line;			// the ray's offsets into the current image buffer
 };
 
 #define ADD(_p, _s) do { \
@@ -133,8 +134,12 @@ static int fdc_running(FDC* fdc) {
 }
 
 int xstate_safe(Computer* comp) {
+	if (comp && comp->tape && comp->tape->on) return 0;	// the tape signal is not in the snapshot
+	return xstate_safe_tape_aside(comp);
+}
+
+int xstate_safe_tape_aside(Computer* comp) {
 	if (!comp || !comp->hw) return 0;
-	if (comp->tape && comp->tape->on) return 0;	// the tape signal is not in the snapshot
 #ifdef HAVEZLIB
 	if (comp->rzx.play) return 0;			// a recording is read forwards only
 #endif
@@ -192,6 +197,8 @@ int xstate_save(xState* st, Computer* comp) {
 		dst += st->chunk[i].size;
 	}
 	st->count = count;
+	st->ray = comp->vid->ray.ptr - scrimg;
+	st->line = comp->vid->ray.lptr - scrimg;
 	return 1;
 }
 
@@ -218,5 +225,10 @@ int xstate_load(xState* st, Computer* comp) {
 		src += st->chunk[i].size;
 	}
 	if (comp->ts) ts_state_restore(comp->ts);
+	// The image buffers are outside the snapshot and may have been swapped
+	// since, so the ray goes back by its offset into whichever buffer is
+	// current, not by the address it held before.
+	comp->vid->ray.ptr = scrimg + st->ray;
+	comp->vid->ray.lptr = scrimg + st->line;
 	return 1;
 }

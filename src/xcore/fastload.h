@@ -9,6 +9,8 @@ void fastload_frame(Computer*);
 void fastload_stop(Computer*);
 // the machine is being run through a load: the picture is held
 int fastload_busy();
+// the tape has moved in a way a wind back cannot undo: a flash load
+void fastload_forget();
 // keep fast loading from taking the machine (the bench runs its own mode)
 void fastload_hold(int);
 // after every opcode while fastload_on: skips an edge loop, returns the ns it moved on
