@@ -33,6 +33,7 @@ void dhwSync(DiskIF* dif, int ns) {
 
 void dhw_irq(int id, void* p) {
 	DiskIF* dif = p; // (DiskIF*)p;
+	if (id == IRQ_FDD_RDY) dif->doors = 1;	// a disk went in or out
 	if (dif->hw->irq && (dif->fdc->dma || dif->inten)) {
 		dif->hw->irq(dif, id);
 	}
@@ -235,6 +236,7 @@ void dif_align_flps(DiskIF* dif, FDC* fdc, int n0, int n1, int n2, int n3) {
 
 DiskIF* difCreate(int type, cbirq cb, void* p) {
 	DiskIF* dif = (DiskIF*)malloc(sizeof(DiskIF));
+	dif->doors = 0;
 	dif->fdc = fdc_create(cb, p);
 	fdc_set_irqn(dif->fdc, IRQ_FDC, IRQ_FDC_RD, IRQ_FDC_WR);
 	for (int i = 0; i < 4; i++) {
@@ -260,9 +262,17 @@ void difReset(DiskIF* dif) {
 	dif->hw->reset(dif);
 }
 
+// Every drive's door closes in its own time, not only the selected one's: a disk
+// put in B at start was not there when TR-DOS first turned to it.
 void difSync(DiskIF* dif, int ns) {
 	dif->hw->sync(dif, ns);
-	flp_sync(dif->fdc->flp, ns);
+	if (!dif->doors) return;
+	int wait = 0;
+	for (int i = 0; i < 4; i++) {
+		flp_sync(dif->flp[i], ns);
+		wait |= (dif->flp[i]->dwait > 0);
+	}
+	dif->doors = wait;
 }
 
 int difOut(DiskIF* dif, int port, int val, int dos) {

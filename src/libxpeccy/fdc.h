@@ -128,6 +128,7 @@ typedef struct {
 struct DiskIF {
 	unsigned flpch:1;	// flp changed (ibm)
 	unsigned inten:1;	// uPD765 interrupt enabled
+	unsigned doors:1;	// a drive's door is still closing: difSync has to run
 	int type;
 	Floppy* flp[4];
 	DiskHW* hw;
