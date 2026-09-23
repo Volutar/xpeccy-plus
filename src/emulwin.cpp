@@ -853,13 +853,18 @@ void MainWin::drawIcons(QPainter& pnt) {
 		pnt.drawImage(3, 70, comp->tape->rec ? leds[led_tap_red] : leds[led_tap_yellow]);
 	}
 // disc
+	// a write reads the sector headers on the way, so it wins over a read, or
+	// the led flickers green all through it
 	if (conf.led.disk) {
-		if (comp->dif->fdc->flp->rd) {
-			comp->dif->fdc->flp->rd = 0;
-			pnt.drawImage(3, 90, leds[led_disk_green]);
-		} else if (comp->dif->fdc->flp->wr) {
-			comp->dif->fdc->flp->wr = 0;
+		Floppy* flp = comp->dif->fdc->flp;
+		if (flp->wr) {
 			pnt.drawImage(3, 90, leds[led_disk_red]);
+		} else if (flp->rd) {
+			pnt.drawImage(3, 90, leds[led_disk_green]);
+		}
+		for (int i = 0; i < 4; i++) {
+			comp->dif->flp[i]->rd = 0;
+			comp->dif->flp[i]->wr = 0;
 		}
 	}
 // waveout
