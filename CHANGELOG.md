@@ -11,24 +11,6 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
-- **Disk manager** in the right-click menu, with Open, New, Save, Eject and Write protect for
-  each drive. Clicked, it opens a window that lists a TR-DOS disk under its title, keeps up
-  with what is written to it, and copies files to the tape or out as Hobeta or raw. A changed
-  disk or tape is marked with a star. *(thanks to Volutar)*
-
-- **A Beta Disk can have fewer than four drives** - Number of drives in the disk settings. A
-  drive left out is not there at all: no disk goes in, and software finds it missing.
-
-- **Reset to 48K, 128K, DOS and Service** as hotkeys, unbound until you give them keys -
-  Reset to DOS included, which loses Alt+F12. The Reset menu names the starts the machine
-  really has instead of ROM page numbers.
-
-- **The Kempston joystick can be left out** of a machine, and the port then reads like any
-  unused one. The +2A and +3 come without it, as they shipped.
-
-- **TurboSound FM** is a choice of its own for the sound chips, and the chip clock defaults to
-  Auto: half the processor clock for an AY, 3.5 MHz for TurboSound FM.
-
 - **Fast loading runs a tape through in seconds, whatever its loader.** One switch in the
   tape player: while a loader reads the tape the machine runs flat out and silent, the
   loading screen is shown as it comes in, and the game starts at normal speed from its first
@@ -36,6 +18,40 @@ before that point is upstream's history and is not repeated here.
   hands ROM blocks straight to the machine (what Fast loading used to mean), and **Edge
   detection** skips the wait for each pulse in the common loaders - switch that one off if a
   game does not load.
+
+- **Disk manager** in the right-click menu, with Open, New, Save, Eject and Write protect for
+  each drive. Clicked, it opens a window that lists a TR-DOS disk under its title, keeps up
+  with what is written to it, and copies files to the tape or out as Hobeta or raw. A changed
+  disk or tape is marked with a star. *(thanks to Volutar)*
+
+- **The debugger's sound panel, rebuilt.** One tab per chip - PSG1, FM1, PSG2, FM2 - built from
+  the machine in front of you, and it moves into a window of its own with the button, the menu
+  or Alt+A.
+  - The PSG page has all sixteen registers and a row per channel: the period, the mixer, the
+    envelope drawn as its shape, and how loud the channel is as a meter.
+  - The FM page has the timers and the channel 3 mode, a tab per channel, a row per operator
+    with every parameter the chip has, and a star on the operators that reach the output.
+  - Every number can be typed over, and a PSG channel can be silenced on its own.
+  - Under both pages is an oscillogram of the sound, fine enough to count the edges of a beeper
+    routine while you step. *(thanks to Volutar for the design)*
+
+- **ALF TV Game**, the Belarusian ZX Spectrum console, in the stock 64K shape and with the
+  128K expansion. Its ROM is bundled, so it boots into the games menu, and a cartridge opens
+  as a cartridge image. It has no keyboard, so the keys drive its two joysticks: arrows with
+  Space or Enter for player one, WASD with left Shift or left Ctrl for player two.
+  *(thanks to Prusak, whose [zxbyte.ru](https://zxbyte.ru/alf.htm) has the schematic and the
+  ROM dumps)*
+
+- **Closer to the real machines.**
+  - The floating bus, the Sinclair way on the 48K, 128K and +2 and the Amstrad way on the +2A
+    and +3, which is what games that follow the beam - Cobra, Sidewize - need.
+  - The ULA snow effect on the 48K and 128K: the rubbish on screen when the interrupt vector
+    points at a screen bank, with a second switch for the machines whose RAM hangs under it.
+  - Pentagon starts with the memory pattern a real one comes up with, specks and all.
+
+- **Snapshots can be saved as `.z80`**, not only `.sna` - give the name a `.z80` ending in the
+  save dialog. It is packed, so it comes out three to five times smaller; a machine the format
+  has no name for says so rather than write something wrong.
 
 - **The tape can be saved as a WAV recording**, to play back into a real machine - the
   button beside Save in the tape player. The dialog sets the rate, the sample size, the level
@@ -53,49 +69,15 @@ before that point is upstream's history and is not repeated here.
   right for as long as it is not the machine's own, and the machine switching its turbo by
   itself says so too.
 
-- **The floating bus**, the Sinclair way on the 48K, 128K and +2 and the Amstrad way on the +2A
-  and +3, which is what games that follow the beam - Cobra, Sidewize - need. A row per machine
-  under Advanced settings.
+- **Reset to 48K, 128K, DOS and Service** as hotkeys, unbound until you give them keys -
+  Reset to DOS included, which loses Alt+F12. The Reset menu names the starts the machine
+  really has instead of ROM page numbers.
 
-- **Snapshots can be saved as `.z80`**, not only `.sna` - give the name a `.z80` ending in the
-  save dialog. It is packed, so it comes out three to five times smaller; a machine the format
-  has no name for says so rather than write something wrong.
-
-- **The debugger's sound panel, rebuilt.** One tab per chip - PSG1, FM1, PSG2, FM2 - built from
-  the machine in front of you, and it moves into a window of its own with the button, the menu
-  or Alt+A.
-  - The PSG page has all sixteen registers and a row per channel: the period, the mixer, the
-    envelope drawn as its shape, and how loud the channel is as a meter.
-  - The FM page has the timers and the channel 3 mode, a tab per channel, a row per operator
-    with every parameter the chip has, and a star on the operators that reach the output.
-  - Every number can be typed over, and a PSG channel can be silenced on its own.
-  - Under both pages is an oscillogram of the sound, fine enough to count the edges of a beeper
-    routine while you step. *(thanks to Volutar for the design)*
-
-- **The debugger's screen panel can move into a window of its own**, with the button in the
-  panel or Alt+S. It follows the machine there, stays open after the debugger is closed, and
-  comes back at the size and in the place you left it.
-
-- **ALF TV Game**, the Belarusian ZX Spectrum console, in the stock 64K shape and with the
-  128K expansion. Its ROM is bundled, so it boots into the games menu, and a cartridge opens
-  as a cartridge image. It has no keyboard, so the keys drive its two joysticks: arrows with
-  Space or Enter for player one, WASD with left Shift or left Ctrl for player two.
-  *(thanks to Prusak, whose [zxbyte.ru](https://zxbyte.ru/alf.htm) has the schematic and the
-  ROM dumps)*
-
-- **The ULA snow effect** on the 48K and 128K: the rubbish on screen when the interrupt vector
-  points at a screen bank. A switch per machine in the advanced settings, and under it a second
-  one for the machines whose RAM gives up under snow and hangs.
-
-- **High cut (anti-alias)** on the Sound page and on by default. It cuts what is
-  too high to be played back instead of folding it into what you hear, and costs about 1.5% of a
-  processor core. *(thanks to Volutar)*
-
-- **Low cut (DC)** on the Sound page and on by default: each device's offset
-  comes off before the mixer, so one of them drifting - a General Sound does - no longer eats
-  the headroom they all share. *(thanks to Volutar)*
-
-- **Pentagon starts with the memory pattern a real one comes up with**, specks and all.
+- **Two filters on the Sound page**, both on by default. High cut (anti-alias) takes off what
+  is too high to be played back instead of folding it into what you hear, for about 1.5% of a
+  processor core; Low cut (DC) takes each device's offset off before the mixer, so one of them
+  drifting - a General Sound does - no longer eats the headroom they share. *(thanks to
+  Volutar)*
 
 - **`--wav-out FILE`** records the sound to a WAV file from startup, the same recording the
   hotkey makes.
@@ -103,11 +85,14 @@ before that point is upstream's history and is not repeated here.
 ### Changed
 
 - **The machine's devices are on the Machine page of Options.** Storage, Input, Sound and
-  Board, one row per device with its choice and a window for the rest, the settings that
-  apply to every machine marked as such. The ROM set is one button there, and the ROM a
-  reset starts from is picked on its slot. A controller built into a board cannot be swapped
-  out. The images moved to the right-click menu, so the Media tab keeps only what happens to
-  the files you open, File types included.
+  Board, one row per device with its choice and a window for the rest. The ROM set is one
+  button there, and the ROM a reset starts from is picked on its slot. The images moved to the
+  right-click menu, so the Media tab keeps only what happens to the files you open.
+  - A Beta Disk can have fewer than four drives, and a drive left out is not there at all.
+  - The Kempston joystick can be left out; the +2A and +3 come without it, as they shipped.
+  - TurboSound FM is a choice of its own, and the chip clock defaults to Auto: half the
+    processor clock for an AY, 3.5 MHz for TurboSound FM.
+  - A controller built into a board cannot be swapped out.
 
 - **One slider for the machine's speed**, on the Machine page, with Alt+Plus and Alt+Minus on
   the keypad. Left of x1 picture and sound slow down together; right of it the CPU runs up to
@@ -120,16 +105,13 @@ before that point is upstream's history and is not repeated here.
   the 48K and 128K, x29 on a Pentagon, x30 on ZX Evolution and x6 on TSConf, up from about x10
   and x4, and playing at normal speed takes a third less of the processor.
 
-- **The tape player is the whole tape now.** The transport buttons are laid out like a tape
-  deck's - record, play, rewind, stop, eject - in one set of icons; the image it holds is named
-  across the top with Open and Save beside it; Auto play / stop, Fast loading and Rewind at end
-  are there rather than only in Options; and a block can be moved, dropped or copied to a disk
-  straight from the list.
-
-- **"Rewind at end" starts off**, and when it is on it winds the tape back for the next load as
-  well as for the Play button - so loading the same tape again after a reset just works.
-
-- **A reset stops the tape, and switching the machine also winds it back** to the start.
+- **The tape player is the whole tape now.**
+  - The transport buttons are laid out like a tape deck's - record, play, rewind, stop,
+    eject - and the image it holds is named across the top with Open and Save beside it.
+  - Auto play / stop, Fast loading and Rewind at end are on the player. Rewind at end starts
+    off, and winds the tape back for the next load as well as for the Play button.
+  - A block can be moved, dropped or copied to a disk straight from the list.
+  - A reset stops the tape, and switching the machine also winds it back to the start.
 
 - **The debugger's screen panel picks a screen with one click.** Main, shadow, both at once, or
   Auto following the machine; the bank and offset are behind a Custom button.
@@ -139,18 +121,20 @@ before that point is upstream's history and is not repeated here.
     the screen the machine is showing.
   - Moving over a dot says where it is and what holds it; a click holds the readout on one dot,
     an address typed in marks where it lands, and the right button copies one.
+  - It moves into a window of its own with the button or Alt+S, which stays open after the
+    debugger is closed and comes back at the size and in the place you left it.
 
 - **TurboSound FM sounds like the chip it emulates.** The FM half of the YM2203 runs on the ymfm
   core, at the level it has against the AY on a real board, and a track that speaks through the
   chip's CSM mode says its words.
 
-- **Advanced settings for a machine is tidier**: the pickers together at the top, the switches
-  in one run under them, and Even M1 and the DD palette in a group of their own. The contention
-  patterns are named after the chips that have them, Ferranti and Amstrad.
-
 - **The right-click menu is shorter.** Watcher, Screen and Sound chips sit under Debugger,
   Machine, Turbo mode and Reset stand together, and clicking Debugger, Favorites or Reset
   itself does the obvious thing.
+
+- **Advanced settings for a machine is tidier**: the pickers together at the top, the switches
+  in one run under them, and Even M1 and the DD palette in a group of their own. The contention
+  patterns are named after the chips that have them, Ferranti and Amstrad.
 
 - **The colors a machine starts with are the Xpeccy+ palette** - the one that shipped as a
   preset file, built in now and named `Xpeccy+` in the palette list where it said `default`.
@@ -165,23 +149,15 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
-- **Smaller fixes around the drives and resets.** Reset to 48K on a +2A or +3 landed in the
-  128K menu. Copying files off a disk with deleted files on it picked the wrong ones. Ejecting
-  a changed disk ignored Cancel. A disk in drive B at start read as "No disk" the first time
-  TR-DOS turned to it, and the drive light flickered green while writing. *(thanks to Volutar for the last two)*
-
 - **More tapes load.** Loaders that time the tape themselves - ATF, Deflektor, Technician Ted -
   load now, and so do high-speed DeciLoad tapes, on a Profi as well. A tape that starts itself
   no longer eats the pilot tone of the next block, and Auto play starts the tape for a loader
   that does not count its edges in B, such as Styx's. *(thanks to Volutar for the last two)*
 
-- **Stop stops the tape**, and it stays stopped until you press play, rewind it or put another
-  one in. Auto play / stop also stops it after a game's own loader, not only after the ROM's.
-
-- **The tape player follows the tape.** A double-clicked block is the one that loads, a tape
-  opened while another plays starts from its beginning, and starting a tape with Auto play /
-  stop off presses play. The block mark and the progress bar keep up after a rewind or a stop,
-  and the record button records.
+- **The tape player does what it shows.** Stop stops the tape until you press play, rewind it
+  or put another one in, and Auto play / stop also stops it after a game's own loader. A
+  double-clicked block is the one that loads, a tape opened while another plays starts from
+  its beginning, the block mark and the progress bar keep up, and the record button records.
 
 - **A WAV is read as the tape it is a recording of**, in under a second. Standard blocks come
   back as their bytes, named in the tape map and ready to save as `.tap`; a turbo loader is
@@ -191,21 +167,10 @@ before that point is upstream's history and is not repeated here.
 - **A tape block named in BASIC tokens or graphics** showed an empty name in the block list.
   The tokens are spelled out and the graphics drawn now.
 
-- **The tape no longer sits on the sound.** A pause between blocks is silent instead of holding
-  a level, and a machine with no tape is silent, so the headroom goes to everything else.
-  *(thanks to Volutar)*
-
-- **Reset from the keyboard** (F12, Alt+F12) sometimes did not take, and the machine carried
-  on or hung until a second press. It takes every time now, as the menu one always did.
-
-- **The beeper** gets half the room the sound chips have instead of a quarter, and is let go on
-  a reset or a snapshot rather than handed on to whatever runs next. *(thanks to Volutar)*
-
-- **Every AY and YM played slightly sharp.** The pitch drops a fraction of a semitone onto
-  where it belongs.
-
-- **ZX Evolution had no sound from the AY ports** unless a program used `#FFFD` and `#BFFD`
-  exactly, which a TurboSound FM player does not. It decodes them the way its firmware does now.
+- **Sound.** Every AY and YM played a fraction of a semitone sharp. The beeper gets half the
+  room the sound chips have instead of a quarter, and is let go on a reset or a snapshot. A
+  pause between tape blocks is silent instead of holding a level, and so is a machine with no
+  tape. *(thanks to Volutar for the last two)*
 
 - **Z80 details.** `SCF` and `CCF` set the two undocumented flag bits the way a Zilog Z80 does,
   `BIT n,r` and `CPI` no longer leave a wrong value in them, and `RETI` puts the interrupt
@@ -215,38 +180,34 @@ before that point is upstream's history and is not repeated here.
   an issue 2 board from an issue 3 one. Which board a machine is is a setting on the Machine
   page, and the +2A/+3 feed nothing back at all, as they really do.
 
-- **Snapshots come back whole.** A saved `.sna` no longer loses BC', DE', HL' or the top bit of
-  R, nor overwrites two bytes of a 48K's stack. A `.z80` saved mid-frame starts with the beam
-  where it was, and one carrying a ROM page keeps every page after it.
+- **Snapshots and recordings come back whole.** A saved `.sna` no longer loses BC', DE', HL' or
+  the top bit of R, nor overwrites two bytes of a 48K's stack. A `.z80` saved mid-frame starts
+  with the beam where it was, and one carrying a ROM page keeps every page after it. On ZX
+  Evolution and ATM Turbo 2+ a snapshot runs instead of landing in the boot menu. RZX
+  recordings play again, on Windows too, and a saved `.wav` has the right length in its header.
 
-- **A snapshot opened on ZX Evolution (BaseConf) or ATM Turbo 2+** landed in the machine's boot
-  menu instead of running, `.sna` and `.z80` alike.
-
-- **RZX recordings play again**, on Windows too, and on the machine they were made on.
-
-- **A saved `.wav`** carried a wrong length in its header, which some players refuse to open.
+- **ZX Evolution** hears a TurboSound FM player on every AY port its firmware decodes, and no
+  longer switches its own clock between 3.5 and 7 MHz. It and TSConf keep their NVRAM settings
+  across starts now - whatever was saved before is gone, so set it once more.
 
 - **ATM Turbo 2+ starts disks and tapes itself.** Opening a disk on it no longer switches the
   machine to a Pentagon.
-
-- **ZX Evolution kept switching its own clock** between 3.5 and 7 MHz while it ran.
-
-- **ZX Evolution and TSConf lost their NVRAM settings on every start** - the boot target, the
-  TR-DOS drive and autoboot came up stock each launch, TSConf in TR-DOS. Whatever was saved
-  before is gone: set it once more and it stays.
 
 - **A program that drives the SD card itself got nowhere.** The card answered as if it were past
   its idle state, and a single-block read following a multi-block one never stopped. A card
   image and a folder served as one are both affected. *(thanks to Alexander Nihirash for the
   card contents and the test tool)*
 
-- **What you change on a machine now stays with it** across a switch to another machine and
-  back. It lives in a file of the machine's own, so an update can still fix the machine itself
-  without touching it; "Restore machine" throws it away, and a machine carrying your settings is
-  marked with a `*` in the list.
+- **What you change on a machine stays with it** across a switch to another machine and back,
+  and an update can still fix the machine itself. "Restore machine" throws it away, and a
+  machine carrying your settings is marked with a `*`. Saving a machine always makes one of
+  your own, under a name nothing else wears.
 
-- **Saving a machine under a name that is already taken** made a second machine with the same
-  name. Saving now always makes a machine of your own and asks for a name nothing else wears.
+- **Resets and drives.** F12 and Alt+F12 sometimes did not take until a second press. Reset to
+  48K on a +2A or +3 landed in the 128K menu. Copying files off a disk with deleted files on it
+  picked the wrong ones, and ejecting a changed disk ignored Cancel. A disk in drive B at start
+  read as "No disk" the first time TR-DOS turned to it, and the drive light flickered green
+  while writing. *(thanks to Volutar for the last two)*
 
 - **A breakpoint on the interrupt no longer stops the machine dead.** Unless it was set to
   open the debugger, the machine stood on the same interrupt and never went on.
@@ -255,14 +216,10 @@ before that point is upstream's history and is not repeated here.
   a virtual machine or over a remote desktop, nor jumps when it is grabbed, and a sensitivity
   setting means the same at every zoom.
 
-- **Applying the settings is quick again**, and on Windows 10 the title bars take a new color
-  at once instead of after the settings window closes.
-
-- **The right-click menu no longer picks an item by itself** when the mouse moved a little while
-  the button was going down - usually Open, and the file dialog came up uninvited.
-
-- **A window opened from the settings**, such as the advanced machine settings, no longer lets
-  the settings behind it close first.
+- **Smaller interface fixes.** Applying the settings is quick again, and on Windows 10 the
+  title bars take a new color at once. The right-click menu no longer picks an item by itself
+  when the mouse moves while the button goes down. A window opened from the settings no longer
+  lets the settings behind it close first.
 
 ## 2026.4.1 - 2026-09-12
 
