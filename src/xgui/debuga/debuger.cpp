@@ -463,9 +463,35 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 
 	wid_stack_view = new xStackView;
 	wid_stack_view->installEventFilter(this);	// refills to the height, see fillStack
+	// two halves over the lines, moving them by a word - the offset of the Debugger page
+	QWidget* wstack = new QWidget;
+	QVBoxLayout* stackLay = new QVBoxLayout(wstack);
+	stackLay->setContentsMargins(0, 0, 0, 0);
+	stackLay->setSpacing(0);
+	QHBoxLayout* stackBtns = new QHBoxLayout;
+	stackBtns->setSpacing(0);
+	// fillStack() disables the one that has reached DBG_STACK_OFS
+	auto stackBtn = [this, stackBtns](Qt::ArrowType arr, const char* tip, int dir) {
+		QToolButton* tb = new QToolButton;
+		tb->setArrowType(arr);
+		tb->setToolTip(tip);
+		tb->setAutoRepeat(true);
+		tb->setFocusPolicy(Qt::NoFocus);
+		tb->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+		connect(tb, &QToolButton::clicked, this, [this, dir](){
+			conf.dbg.stackofs += dir;
+			fillStack();
+		});
+		stackBtns->addWidget(tb);
+		return tb;
+	};
+	tbStackUp = stackBtn(Qt::UpArrow, "Scroll up a word", -2);
+	tbStackDn = stackBtn(Qt::DownArrow, "Scroll down a word", 2);
+	stackLay->addLayout(stackBtns);
+	stackLay->addWidget(wid_stack_view);
 	wid_stack = new xDockWidget("", "STACK");
 	wid_stack->setObjectName("STACK");
-	wid_stack->setWidget(wid_stack_view);
+	wid_stack->setWidget(wstack);
 
 	wid_anchor_l = make_edge_anchor("ANCHOR_L");
 	wid_anchor_r = make_edge_anchor("ANCHOR_R");
@@ -2203,6 +2229,8 @@ void DebugWin::fillStack() {
 	int adr = sp;
 	int ofs = conf.dbg.stackofs;		// kept even where it is set, see DBG_STACK_OFS
 	int cnt = wid_stack_view->rowsFit();
+	tbStackUp->setEnabled(ofs > -DBG_STACK_OFS);
+	tbStackDn->setEnabled(ofs < DBG_STACK_OFS);
 	QList<xStackRow> rows;
 	xStackRow row;
 	for (int i = 0; i < cnt; i++) {

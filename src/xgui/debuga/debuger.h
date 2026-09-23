@@ -11,6 +11,7 @@
 #include <QItemDelegate>
 #include <QMenu>
 #include <QButtonGroup>
+#include <QToolButton>
 #include <functional>
 #include <QTableWidget>
 #if QT_VERSION >= QT_VERSION_CHECK(5,4,0)
@@ -109,6 +110,8 @@ class DebugWin : public QMainWindow {
 		xDockWidget* wid_misc;		// memmap + ports + signals + ray
 		xDockWidget* wid_stack;
 		xStackView* wid_stack_view;	// its content, see fillStack
+		QToolButton* tbStackUp;		// over it, moving the offset by a word
+		QToolButton* tbStackDn;
 		QDockWidget* wid_anchor_l;	// empty strips at the window edges: something
 		QDockWidget* wid_anchor_r;	// to drop a panel next to, see make_edge_anchor
 		xDumpWidget* wid_dump;

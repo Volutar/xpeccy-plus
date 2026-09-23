@@ -9,6 +9,11 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
+### Added
+
+- **Arrow buttons on the debugger's stack panel** move it up or down a word at a time, the
+  same offset as in Setup.
+
 ## 2026.5 - 2026-09-23
 
 ### Added
