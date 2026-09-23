@@ -7,6 +7,8 @@ Notable changes in Xpeccy+, newest first. The format follows
 Xpeccy+ starts from [Xpeccy](https://github.com/samstyle/Xpeccy) build `20260807`. Anything
 before that point is upstream's history and is not repeated here.
 
+## Unreleased
+
 ## 2026.5 - 2026-09-23
 
 ### Added
