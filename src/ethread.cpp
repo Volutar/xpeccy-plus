@@ -82,6 +82,21 @@ static int tap_block_done(Tape* tap) {
 	return ((int)tap->blkData[tap->block].sigCount - tap->pos) < 32;
 }
 
+static int tap_peek(int adr, void* data) {
+	return memRd(((Computer*)data)->mem, adr);
+}
+
+// The edge routine was called by the rom's own LD-BYTES, not by a copy of it in
+// ram (Krakout), which never comes back to LD_START to be handed a block and is
+// played to instead. LD-EDGE-2 calls LD-EDGE-1 itself: its caller is a word up.
+static int tap_rom_caller(Computer* comp) {
+	int sp = comp->cpu->regSP;
+	int ret = cpu_peek_word(tap_peek, comp, sp);
+	if (ret == 0x05e6)
+		ret = cpu_peek_word(tap_peek, comp, sp + 2);
+	return ret < 0x4000;
+}
+
 // atStart says the rom is at LD_START, the top of LD_BYTES, rather than inside
 // LD_EDGE_1: only there does the stack hold what LD_BYTES itself pushed, so only
 // there may a block be handed over and the rom sent to its own exit. Doing it
@@ -105,7 +120,8 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 	// the rom is left to read that part by ear.
 	if (atStart)
 		earBlock = (tap->blkData[blk].hasBytes && (tapGetBlockInfo(tap, blk).size > comp->cpu->regDE)) ? blk : -1;
-	if (tape_flash() && tap->blkData[blk].hasBytes && (blk != earBlock)) {
+	if (tape_flash() && tap->blkData[blk].hasBytes && (blk != earBlock)
+			&& (atStart || tap_rom_caller(comp))) {
 		// A playing tape and a flash load get out of step: the rom reads the
 		// block by ear and moves on while the tape still stands on it, and the
 		// next block is then answered with this one. Flash loading owns the
