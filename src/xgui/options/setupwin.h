@@ -42,6 +42,7 @@ class SetupWin : public QDialog {
 		QToolButton* devRow(QGridLayout*, const QString&, QWidget*, QWidget*, const char*);
 		void fillDevSummary();
 		void showDevRows();
+		void showDriveRows();
 		void tidySoundPage();
 		void fillGsRom(const QStringList&);
 		void fillDosRom();
@@ -60,7 +61,6 @@ class SetupWin : public QDialog {
 		QDialog* advWin;		// the machine-defining settings
 		QDialog* romSetWin;		// the slots and where a reset starts
 		QDialog* romWin;		// the set, file by file
-		QDialog* ftWin;			// the machine each file type is opened on
 		xFileTypesBox* ftbox;
 		xRomsetModel* rsmodel;
 		xRomset roms;			// the set the page edits, until Apply
@@ -81,6 +81,8 @@ class SetupWin : public QDialog {
 		QList<QWidget*> sdRow;
 		QList<QWidget*> slotRow;
 		QList<QWidget*> kbdRow;
+		QList<QWidget*> drvRow[4];
+		QComboBox* drvCountBox;
 
 		QDialog* layeditor;
 //		xPadMapModel* padModel;

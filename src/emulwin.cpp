@@ -1206,6 +1206,9 @@ void MainWin::initUserMenu() {
 	palMenu = userMenu->addMenu(QIcon(":/images/palette.png"), "ZX palette");
 
 	userMenu->addSeparator();
+	drvMenu = userMenu->addMenu(QIcon(":/images/fdd.png"), "Drives");
+	diskWin = new xDiskWin(this);
+	diskWin->tapeChanged = [this]() {emit s_tape_upd(conf.zx->tape);};
 	userMenu->addAction(QIcon(":/images/tape.png"), "Tape player", this, SIGNAL(s_tape_show()));
 	userMenu->addAction(QIcon(":/images/video.png"),"RZX player", this, SIGNAL(s_rzx_show()));
 	userMenu->addSeparator();
@@ -1303,6 +1306,7 @@ void MainWin::fillUserMenu() {
 		}
 	}
 	turboMenu->setEnabled(comp && (comp->turboCount > 1) && !comp->rzx.play);
+	fillDrivesMenu();
 	// the ROMs a reset can start from on this machine, the default one in bold
 	resMenu->clear();
 	QList<int> starts = xm_reset_targets();

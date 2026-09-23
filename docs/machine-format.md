@@ -92,6 +92,7 @@ is skipped without a word.
 |---|---|---|
 | `disk` | `none` `trdos` `plus3` | disk interface |
 | `ide` | `none` `nemo` `nemo-a8` `nemo-evo` `smuc` `atm` `profi` | |
+| `drives` | 1..4 | floppy drives on the cable, from A; 4 if absent. A drive left out is not there at all: no disk goes in, and a restore finds no track 0 |
 
 ### `[input]`
 

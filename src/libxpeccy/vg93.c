@@ -245,8 +245,8 @@ void vgres00(FDC* fdc) {
 
 // do step in until TRK0 or Rtrk=0
 void vgres01(FDC* fdc) {
-	if ((fdc->flp->trk == 0) || (fdc->trk == 0)) {
-		if (fdc->flp->trk != 0)
+	if (flp_trk0(fdc->flp) || (fdc->trk == 0)) {
+		if (!flp_trk0(fdc->flp))
 			fdc->state |= 0x10;
 		fdc->trk = 0;
 		fdc->pos++;
@@ -647,7 +647,7 @@ unsigned char vgRead(FDC* fdc, int adr) {
 				fdc->state &= 0x99;
 				if (fdc->flp->protect) fdc->state |= 0x40;
 				if (fdc->flp->motor) fdc->state |= 0x20;
-				if (fdc->flp->trk == 0) fdc->state |= 0x04;
+				if (flp_trk0(fdc->flp)) fdc->state |= 0x04;
 				if (fdc->flp->insert && fdc->flp->door && fdc->flp->motor && fdc->flp->index) fdc->state |= 0x02;
 			} else if (fdc->fmode == 1) {
 				fdc->state &= 0xfd;

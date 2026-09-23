@@ -179,6 +179,14 @@ DiskHW* findDHW(int id) {
 	return (itm->id == DIF_END) ? NULL : itm;
 }
 
+void difSetDrives(DiskIF* dif, int cnt) {
+	for (int i = 0; i < 4; i++) {
+		Floppy* flp = dif->flp[i];
+		flp->fitted = (i < cnt) ? 1 : 0;
+		if (!flp->fitted && flp->insert) flp_eject(flp);
+	}
+}
+
 void difSetHW(DiskIF* dif, int type) {
 	dif->hw = findDHW(type);
 	if (!dif->hw)

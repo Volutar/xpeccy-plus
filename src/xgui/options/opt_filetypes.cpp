@@ -36,10 +36,7 @@ xFileTypesBox::xFileTypesBox(QWidget* par) : QWidget(par) {
 	table->setSelectionMode(QAbstractItemView::NoSelection);
 	table->setEditTriggers(QAbstractItemView::NoEditTriggers);
 	table->setFocusPolicy(Qt::NoFocus);
-	// tall enough for every row, so the window opens with no scroll bar
-	table->ensurePolished();
-	table->horizontalHeader()->ensurePolished();
-	table->setMinimumHeight(table->horizontalHeader()->sizeHint().height() + cnt * rowh + 2 * table->frameWidth());
+	// it shares its page, so it scrolls rather than grow the options window
 	lay->addWidget(table);
 }
 

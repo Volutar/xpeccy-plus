@@ -207,7 +207,7 @@ static const struct {
 	{"psg.count", "sound"}, {"psg.type", "sound"}, {"psg.frq", "sound"},
 	{"psg.stereo", "sound"}, {"gs", "sound"},
 	{"saa", "sound"}, {"soundrive", "sound"},
-	{"disk", "storage"}, {"ide", "storage"},
+	{"disk", "storage"}, {"ide", "storage"}, {"drives", "storage"},
 	{"mouse", "input"}, {"mouse.wheel", "input"}, {"joy", "input"}, {"joy.buttons", "input"},
 	{"kbd.scantab", "input"},
 	{NULL, NULL}
@@ -334,6 +334,7 @@ static void mac_defaults(xMachine& mac) {
 	mac.soundrive = SDRV_NONE;
 	mac.disk = DIF_NONE;
 	mac.ide = IDE_NONE;
+	mac.drives = 4;
 	mac.mouse = 0;
 	mac.mouseWheel = 0;
 	mac.joy = MAC_JOY_KEMPSTON;
@@ -401,6 +402,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 		} else if (ln.sect == "storage") {
 			if (nam == "disk") mac.disk = mac_word(diskTab, val, DIF_NONE, id);
 			else if (nam == "ide") mac.ide = mac_word(ideTab, val, IDE_NONE, id);
+			else if (nam == "drives") mac.drives = toLimits(arg.i, 1, 4);
 		} else if (ln.sect == "input") {
 			if (nam == "mouse") mac.mouse = arg.b;
 			else if (nam == "mouse.wheel") mac.mouseWheel = arg.b;
@@ -976,6 +978,7 @@ static void mac_from_def(const xMachine* mac) {
 	comp->saa->enabled = mac->saa;
 	comp->sdrv->type = mac->soundrive;
 	difSetHW(comp->dif, mac->disk);
+	difSetDrives(comp->dif, mac->drives);
 	ide_set_type(comp->ide, mac->ide);
 	comp->mouse->enable = mac->mouse;
 	comp->mouse->hasWheel = mac->mouseWheel;
@@ -1110,6 +1113,9 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put_yn(out, "saa", comp->saa->enabled, mac->saa);
 	mac_put(out, "soundrive", mac_word_name(sdrvTab, comp->sdrv->type), mac_word_name(sdrvTab, mac->soundrive));
 	mac_put(out, "disk", mac_word_name(diskTab, comp->dif->type), mac_word_name(diskTab, mac->disk));
+	int drives = 0;
+	while ((drives < 4) && comp->dif->flp[drives]->fitted) drives++;
+	mac_put(out, "drives", drives, mac->drives);
 	mac_put(out, "ide", mac_word_name(ideTab, comp->ide->type), mac_word_name(ideTab, mac->ide));
 	mac_put_yn(out, "mouse", comp->mouse->enable, mac->mouse);
 	mac_put_yn(out, "mouse.wheel", comp->mouse->hasWheel, mac->mouseWheel);

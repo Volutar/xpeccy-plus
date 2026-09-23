@@ -154,7 +154,7 @@ void udrvst00(FDC* fdc) {
 	uSetDrive(fdc);
 	fdc->sr3 = (fdc->flp->protect ? 0x40 : 0x00) |
 		((fdc->flp->insert && fdc->flp->door) ? 0x20 : 0x00) |
-		((fdc->flp->trk == 0) ? 0x10 : 0x00) |
+		(flp_trk0(fdc->flp) ? 0x10 : 0x00) |
 		(fdc->flp->doubleSide ? 0x08 : 0x00) |
 		(fdc->comBuf[0] & 7);
 	fdc->resBuf[0] = fdc->sr3;
@@ -179,7 +179,7 @@ void ucalib00(FDC* fdc) {
 }
 
 void ucalib01(FDC* fdc) {
-	if (fdc->flp->trk == 0) {
+	if (flp_trk0(fdc->flp)) {
 		fdc->sr0 &= 0x0f;
 		fdc->sr0 |= 0x20;	// SR0:0010xxxx
 		fdc->state &= 0xf0;

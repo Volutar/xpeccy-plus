@@ -10,6 +10,7 @@ Floppy* flpCreate(int id, cbflpirq cb, void* p) {
 	Floppy* flp = (Floppy*)malloc(sizeof(Floppy));
 	memset(flp,0x00,sizeof(Floppy));
 	flp->id = id;
+	flp->fitted = 1;
 	flp->trk80 = 1;
 	flp->doubleSide = 1;
 	flp->trk = 0;
@@ -344,6 +345,12 @@ void flp_insert(Floppy* flp, const char* path) {
 	flp->changed = 0;
 	if (!path) flpClearDisk(flp);
 	flp_set_path(flp, path);
+}
+
+// A drive that is not there has no sensor either: a restore steps out until
+// the controller gives up, which is how software finds a drive missing.
+int flp_trk0(Floppy* flp) {
+	return flp->fitted && (flp->trk == 0);
 }
 
 void flp_eject(Floppy* flp) {

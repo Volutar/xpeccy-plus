@@ -5,6 +5,8 @@
 #include <QPainter>
 #include <QStylePainter>
 #include <QStyleOption>
+#include <QHBoxLayout>
+#include <QFrame>
 #include <QStyle>
 #include <QStyleOptionSlider>
 #include <QStyleOptionComboBox>
@@ -477,6 +479,113 @@ void xIconGroup::paintEvent(QPaintEvent* ev) {
 	QRect irc(lab.left(), lab.top() + (lab.height() - GROUP_ICON) / 2, GROUP_ICON, GROUP_ICON);
 	QPainter pnt(this);
 	icon.paint(&pnt, irc, Qt::AlignCenter, isEnabled() ? QIcon::Normal : QIcon::Disabled);
+}
+
+// A pop-up laid out like Advanced settings: fields with a name first, then a
+// line, then check boxes with a name and, in italics, what they do.
+
+#define	SHEET_TEXT	300		// the description column; keeps the window near 520
+#define	SHEET_GAP	10		// from a name to its description, as in Advanced settings
+
+class xFollowEnabled : public QObject {
+	public:
+		xFollowEnabled(QWidget* src, QList<QWidget*> dst) : QObject(src) {
+			list = dst;
+			src->installEventFilter(this);
+			follow(src);
+		}
+	protected:
+		bool eventFilter(QObject* obj, QEvent* ev) {
+			if (ev->type() == QEvent::EnabledChange) follow((QWidget*)obj);
+			return false;
+		}
+	private:
+		QList<QWidget*> list;
+		void follow(QWidget* src) {
+			foreach(QWidget* w, list) w->setEnabled(src->isEnabled());
+		}
+};
+
+// the rows stay packed at the top: spare height goes under them, so a row that
+// hides moves only what is below it
+xOptSheet::xOptSheet() {
+	body = new QWidget;
+	QVBoxLayout* box = new QVBoxLayout(body);
+	box->setContentsMargins(0, 0, 0, 0);
+	QWidget* rows = new QWidget;
+	box->addWidget(rows);
+	box->addStretch(1);
+	grid = new QGridLayout(rows);
+	grid->setContentsMargins(0, 0, 0, 0);
+	grid->setColumnMinimumWidth(2, SHEET_TEXT);
+	grid->setColumnStretch(2, 1);
+}
+
+void xOptSheet::field(const QString& name, QWidget* wid, const QString& desc) {
+	int row = grid->rowCount();
+	// as tall as its field, so the two read as one line at the top
+	QLabel* nam = new QLabel(name);
+	nam->setContentsMargins(0, 0, SHEET_GAP, 0);
+	// a field of several lines keeps its name on the first one
+	if (wid->sizeHint().height() < 2 * nam->sizeHint().height())
+		nam->setMinimumHeight(wid->sizeHint().height());
+	grid->addWidget(nam, row, 1, Qt::AlignTop);
+	// a list keeps the width of the others on the page, as in Advanced settings
+	Qt::Alignment al = Qt::AlignTop;
+	if (qobject_cast<QComboBox*>(wid)) {
+		wid->setMinimumWidth(200);
+		al |= Qt::AlignLeft;
+	}
+	grid->addWidget(wid, row, 2, al);
+	wid->setToolTip(QString());
+	if (!desc.isEmpty()) grid->addWidget(text(desc), row + 1, 2, Qt::AlignTop);
+}
+
+void xOptSheet::line() {
+	QFrame* frm = new QFrame;
+	frm->setFrameShape(QFrame::HLine);
+	frm->setFrameShadow(QFrame::Sunken);
+	grid->addWidget(frm, grid->rowCount(), 0, 1, 3);
+}
+
+// every option here is the machine's own unless it says otherwise
+void xOptSheet::check(QCheckBox* cb, const QString& name, const QString& desc, bool global) {
+	int row = grid->rowCount();
+	cb->setText(QString());
+	cb->setToolTip(QString());
+	xLabel* nam = new xLabel;
+	nam->setText(name);
+	if (global) nam->setToolTip(QObject::tr("Applies to all machines"));
+	QObject::connect(nam, &xLabel::clicked, cb, [cb]() {if (cb->isEnabled()) cb->click();});
+	QLabel* dsc = text(desc);
+	nam->setContentsMargins(0, 0, SHEET_GAP, 0);
+	// a description of two lines hangs from the top, next to its name
+	grid->addWidget(cb, row, 0, Qt::AlignTop);
+	grid->addWidget(nam, row, 1, Qt::AlignTop);
+	grid->addWidget(dsc, row, 2, Qt::AlignTop);
+	new xFollowEnabled(cb, QList<QWidget*>() << nam << dsc);
+}
+
+QLabel* xOptSheet::text(const QString& str) {
+	QLabel* lab = new QLabel(str);
+	QFont fnt = lab->font();
+	fnt.setItalic(true);
+	lab->setFont(fnt);
+	lab->setWordWrap(true);
+	return lab;
+}
+
+// a control and what goes after it - the figure a slider sets, a unit - as one
+// field; a slider takes the width, anything else keeps its own
+QWidget* fieldPair(QWidget* main, QWidget* tail, bool wide) {
+	QWidget* wid = new QWidget;
+	QHBoxLayout* box = new QHBoxLayout(wid);
+	box->setContentsMargins(0, 0, 0, 0);
+	if (!wide && qobject_cast<QComboBox*>(main)) main->setMinimumWidth(200);
+	box->addWidget(main, wide ? 1 : 0);
+	if (tail) box->addWidget(tail);
+	if (!wide) box->addStretch(1);
+	return wid;
 }
 
 // xLabel

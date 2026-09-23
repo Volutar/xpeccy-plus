@@ -539,13 +539,25 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	connect(pbExpert, SIGNAL(released()), this, SLOT(showRomFiles()));
 	buildDevices();
 // media
+	// the file types sit on the page itself, there is room for them now
 	ftbox = new xFileTypesBox;
-	ftWin = popOut(ftbox, "Media: file types");
-	ftWin->resize(520, ftWin->sizeHint().height());
-	connect(ui.pbFileTypes, &QPushButton::released, ftWin, [this]() {ftWin->show(); ftWin->raise();});
-	QPushButton* ftdef = ftWin->findChild<QDialogButtonBox*>()->addButton(QDialogButtonBox::RestoreDefaults);
+	QGroupBox* ftgrp = new QGroupBox(tr("File types"));
+	QVBoxLayout* ftlay = new QVBoxLayout(ftgrp);
+	QLabel* fthint = new QLabel(tr("Which machine a snapshot, a tape or a disk is opened on"));
+	QFont fthf = fthint->font();
+	fthf.setItalic(true);
+	fthint->setFont(fthf);
+	ftlay->addWidget(fthint);
+	ftlay->addWidget(ftbox, 1);
+	QPushButton* ftdef = new QPushButton(tr("Restore defaults"));
 	ftdef->setToolTip("Every format back to Auto");
 	connect(ftdef, &QPushButton::released, ftbox, [this]() {ftbox->defaults();});
+	QHBoxLayout* ftbtn = new QHBoxLayout;
+	ftbtn->addStretch(1);
+	ftbtn->addWidget(ftdef);
+	ftlay->addLayout(ftbtn);
+	ui.verticalLayout_29->insertWidget(1, ftgrp, 1);
+	ui.pbFileTypes->hide();
 // video
 	connect(ui.pathtb,SIGNAL(released()),this,SLOT(selsspath()));
 	connect(ui.bszsld,SIGNAL(valueChanged(int)),this,SLOT(chabsz()));
@@ -918,6 +930,9 @@ void SetupWin::start() {
 	ui.mempaths->setChecked(conf.storePaths);
 	ui.cbAutorun->setChecked(conf.autorun);
 	ftbox->fill();
+	int fitted = 0;
+	while ((fitted < 4) && comp->dif->flp[fitted]->fitted) fitted++;
+	setRFIndex(drvCountBox, qMax(1, fitted));
 	ui.cbAddBoot->setChecked(conf.boot);
 	setRFIndex(ui.cbFlpInterleave, flp_get_interleave());
 	Floppy* flp = comp->dif->flp[0];
@@ -1172,41 +1187,43 @@ void SetupWin::apply() {
 	conf.autorun = ui.cbAutorun->isChecked() ? 1 : 0;
 	ftbox->apply();
 	flp_set_interleave(getRFIData(ui.cbFlpInterleave));
+	// a drive taken off the cable takes its disk with it: a changed one is
+	// saved first, or the drive stays
+	int fit = getRFIData(drvCountBox);
+	if (getRFIData(ui.diskTypeBox) == DIF_P3DOS) fit = qMin(fit, 2);
+	for (int i = 3; i >= fit; i--) {
+		Floppy* dflp = comp->dif->flp[i];
+		if (dflp->fitted && dflp->insert && dflp->changed && (saveChangedDisk(comp, i) == ERR_CANCEL))
+			fit = i + 1;
+	}
+	difSetDrives(comp->dif, fit);
 
 	Floppy* flp = comp->dif->flp[0];
 	flp->trk80 = ui.a80box->isChecked() ? 1 : 0;
 	flp->doubleSide = ui.adsbox->isChecked() ? 1 : 0;
-	flp->protect = ui.awpbox->isChecked() ? 1 : 0;
 
 	flp = comp->dif->flp[1];
 	flp->trk80 = ui.b80box->isChecked() ? 1 : 0;
 	flp->doubleSide = ui.bdsbox->isChecked() ? 1 : 0;
-	flp->protect = ui.bwpbox->isChecked() ? 1 : 0;
 
 	flp = comp->dif->flp[2];
 	flp->trk80 = ui.c80box->isChecked() ? 1 : 0;
 	flp->doubleSide = ui.cdsbox->isChecked() ? 1 : 0;
-	flp->protect = ui.cwpbox->isChecked() ? 1 : 0;
 
 	flp = comp->dif->flp[3];
 	flp->trk80 = ui.d80box->isChecked() ? 1 : 0;
 	flp->doubleSide = ui.ddsbox->isChecked() ? 1 : 0;
-	flp->protect = ui.dwpbox->isChecked() ? 1 : 0;
 
 // hdd
 	//comp->ide->type = getRFIData(ui.hiface);
 	ide_set_type(comp->ide, getRFIData(ui.hiface));
 
 	comp->ide->master->type = getRFIData(ui.hm_type);
-	ide_mount(comp->ide, IDE_MASTER, ui.hm_path->text());
-	comp->ide->master->hasLBA = ui.hm_islba->isChecked() ? 1 : 0;
-
 	comp->ide->slave->type = getRFIData(ui.hs_type);
-	ide_mount(comp->ide, IDE_SLAVE, ui.hs_path->text());
-	comp->ide->slave->hasLBA = ui.hs_islba->isChecked() ? 1 : 0;
+	// what is mounted is the Drives menu's; a folder is read again on Apply
+	ide_remount(comp->ide);
 // others
-	sdc_mount(comp->sdc, ui.sdPath->text());
-	sdcSetLock(comp->sdc, ui.sdlock->isChecked() ? 1 : 0);
+	sdc_remount(comp->sdc);
 // tape
 	conf.tape.autostart = ui.cbTapeAuto->isChecked() ? 1 : 0;
 	conf.tape.fast = ui.cbTapeFast->isChecked() ? 1 : 0;
@@ -1481,40 +1498,6 @@ QDialog* SetupWin::popOut(QWidget* box, const char* title) {
 // for the rest. The widgets are the ones the other pages had, moved here, so
 // what reads and writes them stays as it is.
 
-// the items of a layout that is some widget's own, moved into a new widget
-static QWidget* devTakeGrid(QGridLayout* src) {
-	QWidget* wid = new QWidget;
-	QGridLayout* dst = new QGridLayout(wid);
-	dst->setContentsMargins(0, 0, 0, 0);
-	int r, c, rs, cs;
-	while (src->count() > 0) {
-		src->getItemPosition(0, &r, &c, &rs, &cs);
-		QLayoutItem* itm = src->takeAt(0);
-		if (itm->widget()) {
-			dst->addWidget(itm->widget(), r, c, rs, cs);
-			delete itm;
-		} else if (itm->layout()) {
-			itm->layout()->setParent(NULL);
-			dst->addLayout(itm->layout(), r, c, rs, cs);
-		} else {
-			dst->addItem(itm, r, c, rs, cs);
-		}
-	}
-	return wid;
-}
-
-// a layout inside another one, moved into a new widget
-static QWidget* devTakeLayout(QLayout* lay) {
-	QLayout* par = qobject_cast<QLayout*>(lay->parent());
-	if (par) par->removeItem(lay);
-	lay->setParent(NULL);
-	QWidget* wid = new QWidget;
-	QVBoxLayout* box = new QVBoxLayout(wid);
-	box->setContentsMargins(0, 0, 0, 0);
-	box->addLayout(lay);
-	return wid;
-}
-
 static QComboBox* devCombo(QStringList items) {
 	QComboBox* box = new QComboBox;
 	box->addItems(items);
@@ -1550,106 +1533,6 @@ static QGridLayout* devGroup(QVBoxLayout* col, const char* icon, const QString& 
 	return grid;
 }
 
-// A pop-up laid out like Advanced settings: fields with a name first, then a
-// line, then check boxes with a name and, in italics, what they do.
-
-#define	SHEET_TEXT	300		// the description column; keeps the window near 520
-#define	SHEET_GAP	10		// from a name to its description, as in Advanced settings
-
-class xFollowEnabled : public QObject {
-	public:
-		xFollowEnabled(QWidget* src, QList<QWidget*> dst) : QObject(src) {
-			list = dst;
-			src->installEventFilter(this);
-			follow(src);
-		}
-	protected:
-		bool eventFilter(QObject* obj, QEvent* ev) {
-			if (ev->type() == QEvent::EnabledChange) follow((QWidget*)obj);
-			return false;
-		}
-	private:
-		QList<QWidget*> list;
-		void follow(QWidget* src) {
-			foreach(QWidget* w, list) w->setEnabled(src->isEnabled());
-		}
-};
-
-class xOptSheet {
-	public:
-		QWidget* body;
-		xOptSheet() {
-			body = new QWidget;
-			grid = new QGridLayout(body);
-			grid->setContentsMargins(0, 0, 0, 0);
-			grid->setColumnMinimumWidth(2, SHEET_TEXT);
-			grid->setColumnStretch(2, 1);
-		}
-		void field(const QString& name, QWidget* wid, const QString& desc = QString()) {
-			int row = grid->rowCount();
-			// as tall as its field, so the two read as one line at the top
-			QLabel* nam = new QLabel(name);
-			nam->setContentsMargins(0, 0, SHEET_GAP, 0);
-			nam->setMinimumHeight(wid->sizeHint().height());
-			grid->addWidget(nam, row, 1, Qt::AlignTop);
-			// a list keeps the width of the others on the page, as in Advanced settings
-			Qt::Alignment al = Qt::AlignTop;
-			if (qobject_cast<QComboBox*>(wid)) {
-				wid->setMinimumWidth(200);
-				al |= Qt::AlignLeft;
-			}
-			grid->addWidget(wid, row, 2, al);
-			wid->setToolTip(QString());
-			if (!desc.isEmpty()) grid->addWidget(text(desc), row + 1, 2, Qt::AlignTop);
-		}
-		void line() {
-			QFrame* frm = new QFrame;
-			frm->setFrameShape(QFrame::HLine);
-			frm->setFrameShadow(QFrame::Sunken);
-			grid->addWidget(frm, grid->rowCount(), 0, 1, 3);
-		}
-		// every option here is the machine's own unless it says otherwise
-		void check(QCheckBox* cb, const QString& name, const QString& desc, bool global = false) {
-			int row = grid->rowCount();
-			cb->setText(QString());
-			cb->setToolTip(QString());
-			xLabel* nam = new xLabel;
-			nam->setText(name);
-			if (global) nam->setToolTip(QObject::tr("Applies to all machines"));
-			QObject::connect(nam, &xLabel::clicked, cb, [cb]() {if (cb->isEnabled()) cb->click();});
-			QLabel* dsc = text(desc);
-			nam->setContentsMargins(0, 0, SHEET_GAP, 0);
-			// a description of two lines hangs from the top, next to its name
-			grid->addWidget(cb, row, 0, Qt::AlignTop);
-			grid->addWidget(nam, row, 1, Qt::AlignTop);
-			grid->addWidget(dsc, row, 2, Qt::AlignTop);
-			new xFollowEnabled(cb, QList<QWidget*>() << nam << dsc);
-		}
-	private:
-		QGridLayout* grid;
-		QLabel* text(const QString& str) {
-			QLabel* lab = new QLabel(str);
-			QFont fnt = lab->font();
-			fnt.setItalic(true);
-			lab->setFont(fnt);
-			lab->setWordWrap(true);
-			return lab;
-		}
-};
-
-// a control and what goes after it - the figure a slider sets, a unit - as one
-// field; a slider takes the width, anything else keeps its own
-static QWidget* fieldPair(QWidget* main, QWidget* tail, bool wide) {
-	QWidget* wid = new QWidget;
-	QHBoxLayout* box = new QHBoxLayout(wid);
-	box->setContentsMargins(0, 0, 0, 0);
-	if (!wide && qobject_cast<QComboBox*>(main)) main->setMinimumWidth(200);
-	box->addWidget(main, wide ? 1 : 0);
-	if (tail) box->addWidget(tail);
-	if (!wide) box->addStretch(1);
-	return wid;
-}
-
 void SetupWin::buildDevices() {
 	QWidget* area = new QWidget;
 	QHBoxLayout* cols = new QHBoxLayout(area);
@@ -1679,6 +1562,9 @@ void SetupWin::buildDevices() {
 	ui.tabWidget_3->removeTab(ui.tabWidget_3->indexOf(ui.tab_9));
 
 	xOptSheet disk;
+	disk.check(ui.bdtbox, tr("Fast disk access"), tr("No head-seek and rotation delays"), true);
+	disk.check(ui.cbAddBoot, tr("Add boot loader"), tr("Write a boot file into TR-DOS images that have none"), true);
+	disk.line();
 	dosRomBox = new QComboBox;
 	dosRomBtn = new QToolButton;
 	dosRomBtn->setIcon(QIcon(":/images/fileopen.png"));
@@ -1704,26 +1590,62 @@ void SetupWin::buildDevices() {
 	delete ui.label_68;
 	disk.field(tr("Interleave"), ui.cbFlpInterleave,
 		tr("Sector order on each track of a TRD or SCL image, set when it is opened. TR-DOS formats 1, 9, 2, 10..."));
-	disk.line();
-	disk.check(ui.bdtbox, tr("Fast disk access"), tr("No head-seek and rotation delays"), true);
-	disk.check(ui.cbAddBoot, tr("Add boot loader"), tr("Write a boot file into TR-DOS images that have none"), true);
+	// how many drives are on the cable, and what each is; the disk in one is
+	// the Drives menu's
+	drvCountBox = new QComboBox;
+	drvCountBox->addItem(QString::fromUtf8("×1 - A"), 1);
+	drvCountBox->addItem(QString::fromUtf8("×2 - A, B"), 2);
+	drvCountBox->addItem(QString::fromUtf8("×3 - A, B, C"), 3);
+	drvCountBox->addItem(QString::fromUtf8("×4 - A, B, C, D"), 4);
+	drvCountBox->setItemDelegate(new xTwoPartDelegate(drvCountBox));
+	new xTwoPartPainter(drvCountBox);
+	connect(drvCountBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {showDriveRows();});
+	disk.field(tr("Number of drives"), drvCountBox, tr("A drive left out is not there at all: software finds it missing"));
+	QWidget* drvs = new QWidget;
+	QGridLayout* dgrid = new QGridLayout(drvs);
+	dgrid->setContentsMargins(0, 0, 0, 0);
+	dgrid->addWidget(new QLabel(tr("80 cylinders")), 0, 1);
+	dgrid->addWidget(new QLabel(tr("Double side")), 0, 2);
+	QCheckBox* cyl[4] = {ui.a80box, ui.b80box, ui.c80box, ui.d80box};
+	QCheckBox* dsd[4] = {ui.adsbox, ui.bdsbox, ui.cdsbox, ui.ddsbox};
+	for (int i = 0; i < 4; i++) {
+		QLabel* lab = new QLabel;
+		lab->setPixmap(QIcon(QString(":/images/fdd_disk_%0.png").arg(QChar('A' + i))).pixmap(16, 16));
+		lab->setToolTip(QString("Drive %0").arg(QChar('A' + i)));
+		cyl[i]->setText(QString());
+		dsd[i]->setText(QString());
+		dgrid->addWidget(lab, i + 1, 0);
+		dgrid->addWidget(cyl[i], i + 1, 1, Qt::AlignHCenter);
+		dgrid->addWidget(dsd[i], i + 1, 2, Qt::AlignHCenter);
+		// a +3 has two drives
+		drvRow[i] << lab << cyl[i] << dsd[i];
+	}
+	dgrid->setColumnStretch(3, 1);
+	disk.field(tr("Drives"), drvs);
 	devRow(grid, tr("Disk"), ui.diskTypeBox, disk.body, "Machine: disk");
 	delete ui.label_38;
 	ui.groupBox_10->hide();
 
-	devRow(grid, tr("Hard disk"), ui.hiface, ui.tabWidget_2, "Machine: hard disk");
+	// the images and what is in them are the Drives menu's
+	xOptSheet hdd;
+	hdd.field(tr("Master"), ui.hm_type);
+	hdd.field(tr("Slave"), ui.hs_type);
+	devRow(grid, tr("Hard disk"), ui.hiface, hdd.body, "Machine: hard disk");
 	ui.tabWidget_3->removeTab(ui.tabWidget_3->indexOf(ui.tab_10));
 
 	sdSum = new QLabel;
-	btn = devRow(grid, tr("SD card"), sdSum, devTakeLayout(ui.gridLayout_4), "Machine: SD card");
+	btn = devRow(grid, tr("SD card"), sdSum, NULL, NULL);
 	sdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << sdSum << btn;
 	connect(ui.sdPath, &QLineEdit::textChanged, this, &SetupWin::fillDevSummary);
 
 	slotSum = new QLabel;
-	btn = devRow(grid, tr("Cartridge"), slotSum, devTakeGrid(ui.gridLayout_7), "Machine: cartridge");
+	btn = devRow(grid, tr("Cartridge"), slotSum, NULL, NULL);
 	slotRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << slotSum << btn;
 	connect(ui.cSlotName, &QLineEdit::textChanged, this, &SetupWin::fillDevSummary);
 	ui.tabWidget_3->removeTab(ui.tabWidget_3->indexOf(ui.sdcTab));
+	// and the disks are the Drives menu's: nothing is left of the media tabs
+	ui.tabWidget_3->removeTab(ui.tabWidget_3->indexOf(ui.tab_8));
+	ui.tabWidget_3->hide();
 
 	grid = devGroup(left, ":/images/joystick.png", tr("Input"));
 	joyBox = devCombo(QStringList() << tr("None") << tr("Kempston 5-bit") << tr("Kempston 8-bit"));
@@ -1880,6 +1802,16 @@ void SetupWin::fillDevSummary() {
 	slotSum->setText(slot.isEmpty() ? tr("(empty)") : QFileInfo(slot).fileName());
 }
 
+// the rows of the drives that are fitted; a +3 has two at most
+void SetupWin::showDriveRows() {
+	int max = (getRFIData(ui.diskTypeBox) == DIF_P3DOS) ? 2 : 4;
+	QStandardItemModel* cnts = qobject_cast<QStandardItemModel*>(drvCountBox->model());
+	for (int i = 0; i < 4; i++) {
+		if (cnts) cnts->item(i)->setEnabled(i < max);
+		foreach(QWidget* w, drvRow[i]) w->setVisible(i < qMin(max, getRFIData(drvCountBox)));
+	}
+}
+
 // rows only some cores have
 void SetupWin::showDevRows() {
 	int hw = conf.zx->hw->id;
@@ -1890,6 +1822,7 @@ void SetupWin::showDevRows() {
 	foreach(QWidget* w, sdRow) w->setVisible(sd);
 	foreach(QWidget* w, slotRow) w->setVisible(slot);
 	foreach(QWidget* w, kbdRow) w->setVisible(kbd);
+	showDriveRows();
 	// a controller on the board is not swapped out
 	const xMachine* mac = xm_find(conf.macId);
 	int bi = mac ? mac->builtin : 0;

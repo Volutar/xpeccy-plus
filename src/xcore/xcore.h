@@ -511,6 +511,7 @@ typedef struct {
 	int soundrive;			// SDRV_*
 	int disk;			// DIF_*
 	int ide;			// IDE_*
+	int drives;			// floppy drives on the cable, 1..4 from A
 	unsigned mouse:1;
 	unsigned mouseWheel:1;
 	int joy;			// JOY_*

@@ -84,6 +84,12 @@
         <file>images/speaker.png</file>
         <file>images/tape.png</file>
         <file>images/floppy.png</file>
+        <file>images/fdd.png</file>
+        <file>images/fdd_disk.png</file>
+        <file>images/fdd_disk_A.png</file>
+        <file>images/fdd_disk_B.png</file>
+        <file>images/fdd_disk_C.png</file>
+        <file>images/fdd_disk_D.png</file>
         <file>images/icons/xpeccy-plus-16.png</file>
         <file>images/icons/xpeccy-plus-24.png</file>
         <file>images/icons/xpeccy-plus-32.png</file>

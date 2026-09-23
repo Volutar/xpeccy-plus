@@ -10,6 +10,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QGroupBox>
+#include <QGridLayout>
 #include <QSlider>
 #include <QStyledItemDelegate>
 #include <QTreeView>
@@ -125,6 +126,23 @@ class xIconGroup : public QGroupBox {
 		QString text;
 		void padTitle();
 };
+
+// A pop-up laid out like Advanced settings: fields with a name first, then a
+// line, then check boxes with a name and, in italics, what they do.
+class xOptSheet {
+	public:
+		QWidget* body;
+		xOptSheet();
+		void field(const QString&, QWidget*, const QString& = QString());
+		void line();
+		void check(QCheckBox*, const QString&, const QString&, bool global = false);
+	private:
+		QGridLayout* grid;
+		QLabel* text(const QString&);
+};
+
+// a control and what goes after it, as one field of a sheet
+QWidget* fieldPair(QWidget*, QWidget*, bool);
 
 class xLabel : public QLabel {
 	Q_OBJECT
