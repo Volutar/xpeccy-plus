@@ -20,12 +20,12 @@
 int testSlotOn(Computer*);
 
 // a menu item's name for what is in a drive
-static QString drive_media(const char* path, bool in) {
+QString drive_media(const char* path, bool in) {
 	QString nam = !in ? QString("(empty)") : (path && *path) ? QFileInfo(QString::fromLocal8Bit(path)).fileName() : QString("(new disk)");
 	return nam.replace("&", "&&");
 }
 
-static int drive_count(Computer* comp) {
+int drive_count(Computer* comp) {
 	return (comp->dif->type == DIF_BDI) ? 4 : (comp->dif->type == DIF_P3DOS) ? 2 : 0;
 }
 
@@ -40,7 +40,7 @@ void MainWin::fillDrivesMenu() {
 		if (!flp->fitted) continue;
 		// the drive's letter is on its icon
 		QMenu* m = dskMenu->addMenu(QIcon(QString(":/images/fdd_disk_%0.png").arg(QChar('A' + i))),
-			drive_media(flp->path, flp->insert));
+			drive_media(flp->path, flp->insert) + ((flp->insert && flp->changed) ? " *" : ""));
 		m->addAction(QIcon(":/images/fileopen.png"), "Open...", this, [this, i]() {diskOp(DW_OPEN, i);});
 		m->addAction(QIcon(":/images/doc-new.png"), "New", this, [this, i]() {diskOp(DW_NEW, i);});
 		act = m->addAction(QIcon(":/images/save_all.png"), "Save", this, [this, i]() {diskOp(DW_SAVE, i);});

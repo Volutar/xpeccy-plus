@@ -239,6 +239,7 @@ class TapeWin : public QDialog {
 		Ui::TapeWin ui;
 		int state;
 		QByteArray tapeRaw;	// the path as the tape holds it, to notice a swap
+		int tapeChanged = -1;	// tape->changed as the title shows it
 	private slots:
 		void doPlay();
 		void doRec();

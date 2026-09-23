@@ -487,7 +487,7 @@ int fastload_step(Computer* comp) {
 		// a device that runs on its own would have to be stepped the way the
 		// opcodes step it
 		if ((comp->hw->sync != zx_sync) || comp->gs->enable || comp->saa->enabled
-				|| comp->dif->fdc->plan || (comp->dif->fdc->flp->dwait > 0)
+				|| comp->dif->fdc->plan || comp->dif->doors
 				|| comp->keyb->per)
 			return 0;
 		// inside the interrupt pulse the cpu latches it at every opcode's end

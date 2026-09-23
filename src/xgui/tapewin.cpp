@@ -72,6 +72,10 @@ void TapeWin::upd(Tape* tape) {
 		tapeRaw = path;
 		ui.tpath->setText(QString::fromLocal8Bit(path));
 	}
+	if (tapeChanged != tape->changed) {
+		tapeChanged = tape->changed;
+		setWindowTitle(tape->changed ? "Tape player - modified" : "Tape player");
+	}
 	ui.cbAuto->setChecked(conf.tape.autostart);
 	ui.cbFast->setChecked(conf.tape.fast);
 	ui.cbRewind->setChecked(conf.tape.rewind);

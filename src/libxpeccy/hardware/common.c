@@ -49,7 +49,7 @@ void zx128_map_mem(Computer* comp, int extMask) {
 void zx_sync(Computer* comp, int ns) {
 	// devices. This runs once per instruction, so the ones that are idle or
 	// not there at all are asked by the flag they check first, not by a call
-	if (comp->dif->fdc->plan || (comp->dif->fdc->flp->dwait > 0))
+	if (comp->dif->fdc->plan || comp->dif->doors)
 		difSync(comp->dif, ns);
 	if (comp->gs->enable)
 		gsSync(comp->gs, ns);
@@ -355,11 +355,32 @@ static int zx_rom_code(Computer* comp) {
 	return mem_get_page(comp->mem, comp->cpu->regPC)->type == MEM_ROM;
 }
 
+// The code right after the IN looks at the ear bit: AND #40, BIT 6,A, or RRA and
+// AND #20. A keyboard poll masks the key bits instead. The pc is past the IN.
+static int zx_ear_test(Computer* comp) {
+	int pc = comp->cpu->regPC;
+	unsigned char b[8];
+	for (int i = 0; i < 8; i++)
+		b[i] = memRd(comp->mem, (pc + i) & 0xffff) & 0xff;
+	for (int i = 0; i < 6; i++) {
+		if ((b[i] == 0xe6) && (b[i + 1] == 0x40)) return 1;
+		if ((b[i] == 0xcb) && (b[i + 1] == 0x77)) return 1;
+		if ((b[i] == 0x1f) && (b[i + 1] == 0xe6) && (b[i + 2] == 0x20)) return 1;
+	}
+	return 0;
+}
+
 // what a #FE read owes the tape, for a machine whose port handler is its own
 void zx_tape_detect(Computer* comp) {
-	comp->tape->portReads++;	// the rom's own reads too: fast loading counts them
+	Tape* tap = comp->tape;
+	tap->portReads++;	// the rom's own reads too: fast loading counts them
 	if (zx_rom_ld_edge(comp)) return;
-	tapDetectLoader(comp->tape, comp->tickCount, comp->cpu->regB, !zx_rom_code(comp));
+	int ram = !zx_rom_code(comp);
+	// only a stopped tape needs it, only from a loader in ram, and only for a
+	// read that came soon enough after the last to count at all
+	int ear = ram && !tap->on && tap->detectOn
+		&& (comp->tickCount - tap->detectLastTick <= 500) && zx_ear_test(comp);
+	tapDetectLoader(tap, comp->tickCount, comp->cpu->regB, ear, ram);
 }
 
 int xInFE(Computer* comp, int port) {

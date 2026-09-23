@@ -14,7 +14,11 @@ before that point is upstream's history and is not repeated here.
 - **Disk manager** in the right-click menu: point at it for what is in each drive, with
   Open, New, Save, Save as, Eject and Write protect; click it for a window with the same
   controls that lists a TR-DOS disk and copies files to the tape or out as Hobeta or raw.
-  The cartridge, the SD card and the hard disk images have items of their own beside it.
+  The window names each disk by its TR-DOS title, shows its free space and the track the head
+  is on, and follows whatever the machine or the tape player writes to it. A changed image
+  is marked with a star, in the window and in the menu, and the tape player's title says
+  when the tape has been changed. The cartridge, the SD card and the hard disk images have
+  items of their own beside it. *(thanks to Volutar)*
 
 - **A Beta Disk can have fewer than four drives** - Number of drives in the disk settings. A
   drive left out is not there at all: no disk goes in, and software finds it missing.
@@ -166,11 +170,14 @@ before that point is upstream's history and is not repeated here.
 
 - **Smaller fixes around the drives and resets.** Reset to 48K on a +2A or +3 landed in the
   128K menu. Opening a cartridge did nothing. Copying files off a disk with deleted files on
-  it picked the wrong ones. Ejecting a changed disk ignored Cancel.
+  it picked the wrong ones. Ejecting a changed disk ignored Cancel. A disk in drive B at
+  start read as "No disk" the first time TR-DOS turned to it, and the drive light flickered
+  green while writing. *(thanks to Volutar for the last two)*
 
 - **More tapes load.** Loaders that time the tape themselves - ATF, Deflektor, Technician Ted -
   load now, and so do high-speed DeciLoad tapes, on a Profi as well. A tape that starts itself
-  no longer eats the pilot tone of the next block. *(thanks to Volutar for the last one)*
+  no longer eats the pilot tone of the next block, and Auto play starts the tape for a loader
+  that does not count its edges in B, such as Styx's. *(thanks to Volutar for the last two)*
 
 - **Stop stops the tape**, and it stays stopped until you press play, rewind it or put another
   one in. Auto play / stop also stops it after a game's own loader, not only after the ROM's.

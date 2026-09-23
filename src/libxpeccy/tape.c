@@ -43,7 +43,10 @@ void tape_set_tick_ns(Tape* tap, double ns) {
 	tap->ticksPerNsFixed = llround((double)(1LL << TAPE_RATE_BITS) / ns);
 }
 
+// A loader names the tape once its blocks are in, and a save once they are out,
+// so this is also where the tape stops counting as changed.
 void tape_set_path(Tape* tap, const char* path) {
+	tap->changed = 0;
 	if (path != NULL) {
 		tap->path = realloc(tap->path, strlen(path) + 1);
 		strcpy(tap->path, path);
@@ -271,6 +274,7 @@ void tapSwapBlocks(Tape* tap, int b1, int b2) {
 		TapeBlock tmp = tap->blkData[b1];
 		tap->blkData[b1] = tap->blkData[b2];
 		tap->blkData[b2] = tmp;
+		tap->changed = 1;
 	}
 }
 
@@ -286,6 +290,7 @@ void tapDelBlock(Tape* tap, int blk) {
 			idx++;
 		}
 		tap->blkCount--;
+		tap->changed = 1;
 	}
 }
 
@@ -492,7 +497,9 @@ void tapArmPlay(Tape* tap) {
 // goes quiet either - so neither an irregular-read count nor an idle timeout can tell
 // "loading is over" from "unrelated code is also hitting this port". TZX #20 stop
 // markers and the manual Brk/Stop controls cover stopping instead.
-void tapDetectLoader(Tape* tap, int tick, int regB, int fromUser) {
+// Not every loader counts in B: Styx calls a one-read edge test and counts
+// elsewhere. So a read whose code tests the ear bit (earTest) counts as well.
+void tapDetectLoader(Tape* tap, int tick, int regB, int earTest, int fromUser) {
 	// the arm is flash loading's own doing, so it answers whether or not "auto
 	// play / stop" is on. Stop by hand still blocks it, through tapArmPlay
 	if (!tap->on && tap->armed && fromUser) {
@@ -508,7 +515,7 @@ void tapDetectLoader(Tape* tap, int tick, int regB, int fromUser) {
 	int bDiff = (regB - tap->detectLastB) & 0xff;
 	tap->detectLastTick = tick;
 	tap->detectLastB = regB & 0xff;
-	if ((tickDiff <= 500) && ((bDiff == 1) || (bDiff == 0xff))) {
+	if ((tickDiff <= 500) && (earTest || (bDiff == 1) || (bDiff == 0xff))) {
 		tap->detectReads++;
 		if (tap->detectReads >= 10)
 			tapPlay(tap);
@@ -730,6 +737,7 @@ void tapAddFile(Tape* tap, const char* nm, int tp, unsigned short st, unsigned s
 
 void tap_add_block(Tape* tap, TapeBlock block) {
 	if (block.sigCount == 0) return;
+	tap->changed = 1;		// a loader clears it again as it names the tape
 	TapeBlock blk = block;
 	strcpy(blk.text, tap->blkText);
 	blk.data = malloc(blk.sigCount * sizeof(TapeSignal));
