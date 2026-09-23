@@ -51,6 +51,8 @@ int xstate_load(xState*, Computer*);
 // either inside the snapshot or unmoved by an extra frame of emulation. This is
 // the other half of the coverage list above, so the two live in one file.
 int xstate_safe(Computer*);
+// The same, for a caller that carries the tape's position across itself.
+int xstate_safe_tape_aside(Computer*);
 
 #ifdef __cplusplus
 }

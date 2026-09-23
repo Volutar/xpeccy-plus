@@ -6,7 +6,8 @@
 // speed, so whatever loads at all loads this way too, turbo and direct
 // recordings included. What makes it stop at the right moment is the tape: the
 // automatics, a stop mark in the image or its end stop the deck, and the machine
-// is let go a few frames later.
+// is let go a few frames later - wound back to the frame the loader left, so
+// the game does not start at the host's speed.
 //
 // A loader is told from anything else by how often it reads the tape port. The
 // rom's edge loop reads it every ~60 T, DeciLoad once a bit, over a hundred times
@@ -19,8 +20,10 @@
 // buffers alone while it does, so the last frame drawn stays on screen. A new
 // one is drawn when the attributes have changed from the ones shown and have
 // then stood still for a frame - a loading screen is shown once it has come in
-// whole, not byte by byte - with its border in the one colour the frame began
-// with, not the loader's stripes caught halfway down.
+// whole, not byte by byte - and a few times a second whatever the attributes
+// do, since a loading screen may be drawn in one colour. It takes the border in
+// the one colour the frame began with, not the loader's stripes caught halfway
+// down.
 //
 // On top of that, a loader's edge loop is skipped through. Most of a load is
 // spent in a few instructions that read the port and count B until the level
@@ -59,14 +62,25 @@
 #define FL_ARMED	750
 #define FL_GONE		25	// frames without the loader's reads that count as it having left
 #define FL_ATTRS	768
+#define FL_REFRESH	250000000LL	// ns of host time a picture stays up at most
 
 static int fl_held = 0;
 static int fl_idle = 0;
 static int fl_armed = 0;		// frames the tape has been armed for
 static int fl_drawn = 0;		// the frame just made was drawn, to be shown
 static int fl_start = 0;		// the border the frame being made began with
+static long long fl_drawn_at = 0;	// host time the picture on screen was drawn
 static unsigned char fl_shown[FL_ATTRS];	// the attributes of the picture on screen
 static unsigned char fl_last[FL_ATTRS];		// the attributes a frame ago
+static int fl_loading = 0;		// the last frame had the loader's reads
+// Where the machine stood the frame the loader left, to be run again from at
+// normal speed once the timeouts above have said it is gone for good
+static struct {
+	xState* st;
+	int ok;
+	Tape tap;			// where the tape stood, which the snapshot does not carry
+	int frame;
+} fl_back;
 
 static void fl_attrs(Computer* comp, unsigned char* dst) {
 	Video* vid = comp->vid;
@@ -133,9 +147,15 @@ static flShape fl_loop_shape(Computer* comp, int pc) {
 	auto b = [&](int ofs) { return fl_byte(comp, pc + ofs); };
 	if ((b(-2) != 0xdb) || (b(-1) != 0xfe)) return sh;
 	int p;
-	// INC B / RET Z / LD A,n / IN A,(#FE) ... JR Z back to the INC B
+	// INC B / RET Z / LD A,n / IN A,(#FE) ... JR Z back to the INC B; the LD A,n
+	// may be left out, the loop's own AND leaving A at 0 for the next IN
+	int head = 0;
 	if ((b(-6) == 0x04) && (b(-5) == 0xc8) && (b(-4) == 0x3e)
-			&& ((b(-3) == 0x00) || (b(-3) == 0x7f) || (b(-3) == 0xff))) {
+			&& ((b(-3) == 0x00) || (b(-3) == 0x7f) || (b(-3) == 0xff)))
+		head = 6;
+	else if ((b(-4) == 0x04) && (b(-3) == 0xc8))
+		head = 4;
+	if (head) {
 		if (b(0) == 0x1f) {			// RRA, maybe NOP / AND A / RET Z / RET NC
 			int x = b(1);
 			p = ((x == 0x00) || (x == 0xa7) || (x == 0xc8) || (x == 0xd0)) ? 2 : 1;
@@ -150,7 +170,7 @@ static flShape fl_loop_shape(Computer* comp, int pc) {
 		} else {
 			return sh;
 		}
-		if ((b(p) == 0x28) && (((pc + p + 2 + (signed char)b(p + 1)) & 0xffff) == ((pc - 6) & 0xffff)))
+		if ((b(p) == 0x28) && (((pc + p + 2 + (signed char)b(p + 1)) & 0xffff) == ((pc - head) & 0xffff)))
 			sh.kind = 1;
 		return sh;
 	}
@@ -511,7 +531,42 @@ int fastload_step(Computer* comp) {
 	return ns;
 }
 
+// The loader has just left: keep the machine as it is, since the game starts
+// running now and would do so at the host's speed.
+static void fl_back_take(Computer* comp) {
+	if (!xstate_safe_tape_aside(comp)) return;
+	if (!fl_back.st) fl_back.st = xstate_create();
+	if (!fl_back.st || !xstate_save(fl_back.st, comp)) return;
+	fl_back.tap = *comp->tape;
+	fl_back.frame = comp->frmCount;
+	fl_back.ok = 1;
+}
+
+// It is gone for good: put the machine back where it left. A tape still playing
+// goes back with it; one stopped since stays where it stopped, at the block
+// boundary the automatics chose - played back to there, a rom call the game
+// makes on the way would be handed the rest of the block instead.
+static void fl_back_put(Computer* comp) {
+	Tape* tap = comp->tape;
+	Tape* old = &fl_back.tap;
+	if (!fl_back.ok || !xstate_safe_tape_aside(comp)) return;
+	if ((tap->blkData != old->blkData) || (tap->blkCount != old->blkCount) || tap->rec) return;
+	int frames = comp->frmCount - fl_back.frame;
+	if (!xstate_load(fl_back.st, comp)) return;
+	xlog(XLG_TAPE, XLL_INFO, "fast loading goes back %i frames, to where the loader left", frames);
+	if (tap->on)
+		tap_copy_pos(tap, old);
+	tap->portReads = 0;
+	fl_block = tap->block;
+}
+
+void fastload_forget() {
+	fl_back.ok = 0;
+}
+
 void fastload_stop(Computer* comp) {
+	fl_back.ok = 0;
+	fl_loading = 0;
 	if (!fl_held) return;
 	xlog(XLG_TAPE, XLL_INFO, "fast loading off, block %i of %i", comp->tape->block, comp->tape->blkCount);
 	fl_loop.pc = -1;
@@ -563,14 +618,23 @@ static void fl_frame(Computer* comp) {
 		&& !autostart_busy() && (fl_held || !conf.emu.fast);
 	if (!tap->armed)
 		fl_armed = 0;
-	if (may && tap->on && (reads >= FL_READS)) {
+	int loading = may && tap->on && (reads >= FL_READS);
+	if (loading) {
 		fl_idle = 0;
+		fl_back.ok = 0;
 	} else if (may && tap->armed && !tap->on && (++fl_armed < FL_ARMED)) {
 		fl_idle = 0;		// the rom's part is in, and the loader it ran asks for the tape soon
-	} else if (!may || !fl_held || (++fl_idle >= (tap->on ? FL_IDLE : FL_STOP))) {
+	} else if (!may || !fl_held) {
 		fastload_stop(comp);
 		return;
+	} else if (++fl_idle >= (tap->on ? FL_IDLE : FL_STOP)) {
+		fl_back_put(comp);
+		fastload_stop(comp);
+		return;
+	} else if (fl_loading) {
+		fl_back_take(comp);
 	}
+	fl_loading = loading;
 	unsigned char cur[FL_ATTRS];
 	fl_attrs(comp, cur);
 	if (!fl_held) {
@@ -580,13 +644,19 @@ static void fl_frame(Computer* comp) {
 		memcpy(fl_shown, cur, FL_ATTRS);
 		memcpy(fl_last, cur, FL_ATTRS);
 		fl_drawn = 1;		// the last frame at normal speed stays up
+		fl_drawn_at = conf.vid.fctime;
 	}
 	conf.emu.fast = 1;		// again every frame: a pause or a menu clears it
 	// the next frame is drawn, and its end swaps it into bufimg
-	int draw = memcmp(cur, fl_shown, FL_ATTRS) && !memcmp(cur, fl_last, FL_ATTRS);
+	// nothing past the frame a wind back would return to, or the picture would
+	// step back when it does
+	int draw = !fl_back.ok
+		&& ((memcmp(cur, fl_shown, FL_ATTRS) && !memcmp(cur, fl_last, FL_ATTRS))
+			|| (conf.vid.fctime - fl_drawn_at >= FL_REFRESH));
 	if (draw) {
 		xlog(XLG_TAPE, XLL_DEBUG, "fast loading shows a frame");
 		memcpy(fl_shown, cur, FL_ATTRS);
+		fl_drawn_at = conf.vid.fctime;
 	}
 	memcpy(fl_last, cur, FL_ATTRS);
 	// a frame left on screen takes the border colour it began with, not the
