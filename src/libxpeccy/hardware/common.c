@@ -313,7 +313,7 @@ int zx_in_float(Computer* comp, int port) {
 		case FBUS_ATTR:
 			if ((port & 0xff) != 0xff) return 0xff;
 			if (comp->vid->vbrd || comp->vid->hbrd) return 0xff;
-			return comp->vid->atrbyte & 0xff;
+			return vid_atrbyte(comp->vid);
 	}
 	return 0xff;
 }

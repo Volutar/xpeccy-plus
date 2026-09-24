@@ -18,12 +18,7 @@
 //
 // The picture is held: the video draws nothing, and vid_frame() leaves the
 // buffers alone while it does, so the last frame drawn stays on screen. A new
-// one is drawn when the attributes have changed from the ones shown and have
-// then stood still for a frame - a loading screen is shown once it has come in
-// whole, not byte by byte - and a few times a second whatever the attributes
-// do, since a loading screen may be drawn in one colour. It takes the border in
-// the one colour the frame began with, not the loader's stripes caught halfway
-// down.
+// one is drawn 30 times a second of host time, loader's stripes and all.
 //
 // On top of that, a loader's edge loop is skipped through. Most of a load is
 // spent in a few instructions that read the port and count B until the level
@@ -61,17 +56,12 @@
 // Speedlock spends seven seconds decrypting itself there.
 #define FL_ARMED	750
 #define FL_GONE		25	// frames without the loader's reads that count as it having left
-#define FL_ATTRS	768
-#define FL_REFRESH	250000000LL	// ns of host time a picture stays up at most
+#define FL_REFRESH	33333333LL	// ns of host time between pictures, 30 a second
 
 static int fl_held = 0;
 static int fl_idle = 0;
 static int fl_armed = 0;		// frames the tape has been armed for
-static int fl_drawn = 0;		// the frame just made was drawn, to be shown
-static int fl_start = 0;		// the border the frame being made began with
 static long long fl_drawn_at = 0;	// host time the picture on screen was drawn
-static unsigned char fl_shown[FL_ATTRS];	// the attributes of the picture on screen
-static unsigned char fl_last[FL_ATTRS];		// the attributes a frame ago
 static int fl_loading = 0;		// the last frame had the loader's reads
 // Where the machine stood the frame the loader left, to be run again from at
 // normal speed once the timeouts above have said it is gone for good
@@ -81,13 +71,6 @@ static struct {
 	Tape tap;			// where the tape stood, which the snapshot does not carry
 	int frame;
 } fl_back;
-
-static void fl_attrs(Computer* comp, unsigned char* dst) {
-	Video* vid = comp->vid;
-	int adr = MADR(vid->vidPage, 0x1800);
-	for (int i = 0; i < FL_ATTRS; i++)
-		dst[i] = vid->mrd(adr + i, vid->xptr) & 0xff;
-}
 
 // What an edge loop does with the byte its IN read: the tape bit is bit 6,
 // moved to bit 5 by an RRA or not, and the loop goes round while it matches
@@ -572,7 +555,6 @@ void fastload_stop(Computer* comp) {
 	fl_loop.pc = -1;
 	fl_held = 0;
 	fastload_on = fl_bench;
-	fl_drawn = 0;
 	conf.emu.fast = 0;
 	comp->vid->nodraw = 0;
 }
@@ -607,8 +589,6 @@ static void fl_auto_stop(Computer* comp) {
 
 static void fl_frame(Computer* comp) {
 	Tape* tap = comp->tape;
-	int brd = fl_start;
-	fl_start = comp->vid->nextbrd;
 	int reads = tap->portReads;
 	tap->portReads = 0;
 	fl_reads = 0;
@@ -635,35 +615,19 @@ static void fl_frame(Computer* comp) {
 		fl_back_take(comp);
 	}
 	fl_loading = loading;
-	unsigned char cur[FL_ATTRS];
-	fl_attrs(comp, cur);
 	if (!fl_held) {
 		xlog(XLG_TAPE, XLL_INFO, "fast loading on, block %i of %i, %i reads", tap->block, tap->blkCount, reads);
 		fl_held = 1;
 		fastload_on = 1;
-		memcpy(fl_shown, cur, FL_ATTRS);
-		memcpy(fl_last, cur, FL_ATTRS);
-		fl_drawn = 1;		// the last frame at normal speed stays up
 		fl_drawn_at = conf.vid.fctime;
 	}
 	conf.emu.fast = 1;		// again every frame: a pause or a menu clears it
 	// the next frame is drawn, and its end swaps it into bufimg
 	// nothing past the frame a wind back would return to, or the picture would
 	// step back when it does
-	int draw = !fl_back.ok
-		&& ((memcmp(cur, fl_shown, FL_ATTRS) && !memcmp(cur, fl_last, FL_ATTRS))
-			|| (conf.vid.fctime - fl_drawn_at >= FL_REFRESH));
-	if (draw) {
-		xlog(XLG_TAPE, XLL_DEBUG, "fast loading shows a frame");
-		memcpy(fl_shown, cur, FL_ATTRS);
+	int draw = !fl_back.ok && (conf.vid.fctime - fl_drawn_at >= FL_REFRESH);
+	if (draw)
 		fl_drawn_at = conf.vid.fctime;
-	}
-	memcpy(fl_last, cur, FL_ATTRS);
-	// a frame left on screen takes the border colour it began with, not the
-	// loader's stripes as they were when the ray went by
-	if (fl_drawn)
-		vid_flat_border(comp->vid, brd);
-	fl_drawn = draw;
 	comp->vid->nodraw = !draw;
 }
 

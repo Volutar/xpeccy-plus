@@ -81,6 +81,9 @@ typedef struct {
 	// each (a border line is one colour). Takes the dots it wants and returns
 	// how many it drew; 0 leaves the whole run to the dot callback.
 	int (*run)(Video*, int);
+	// Its dots leave nothing the machine can see but the border latch and
+	// atrbyte (vid_atrbyte()), so an undrawn frame skips them (vid_skips()).
+	int blind;
 } xVideoMode;
 
 struct Video {
@@ -90,7 +93,8 @@ struct Video {
 	unsigned intLINE:1;	// for TSConf
 	unsigned intDMA:1;	// for TSConf
 //	unsigned noScreen:1;
-	unsigned nodraw:1;	// emulate the raster but put no pixels out
+	unsigned nodraw:1;	// emulate the raster but put no pixels out; set at a frame start,
+				// since a blind mode's fetch counter stands still meanwhile
 	unsigned debug:1;
 	unsigned upd:1;
 	unsigned tail:1;
@@ -227,10 +231,10 @@ void vid_set_ray(Video*, int);
 int vid_wait_dots(Video*, int, int);		// contention wait in dots, not ns
 int vid_snow(Video*, int, int);			// cpu refresh cycle: disturb the ULA if it is fetching now
 int vid_float_bus(Video*);			// the byte the ULA has on the bus now, -1 if none
+int vid_atrbyte(Video*);			// the attribute the ULA last fetched, 0xff on the border
 void vid_dark_tail(Video*);
 
 void vid_clear_image(void);
-void vid_flat_border(Video*, int idx);
 void vid_set_layout(Video*, vLayout*);
 void vid_set_resolution(Video*, int, int);
 void vid_set_border(Video*, int);
