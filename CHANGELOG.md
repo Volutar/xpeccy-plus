@@ -14,12 +14,18 @@ before that point is upstream's history and is not repeated here.
 - **Arrow buttons on the debugger's stack panel** move it up or down a word at a time, the
   same offset as in Setup.
 
+### Changed
+
+- **No Kempston joystick on the stock ZX Spectrum 48K, 128K and +2**, as they came. Switch it
+  on in the machine's settings for a game that wants one.
+
 ### Fixed
 
 - **ZX Spectrum 48K and 128K timings match Fuse.** Slow memory, ports and the floating bus
-  were a tick early; the 48K now passes all 37 of Butler's timing tests, and Mark Woodmass's
-  IR Contention tests pass on both. A switched-off Kempston mouse, or a missing AY, now leaves
-  its ports to the floating bus instead of answering #FF.
+  were a tick early, and an interrupt still held was not taken again after EI. Butler's
+  timing tests now pass in full on the 48K and on the 128K with late timings, and Mark
+  Woodmass's IR Contention tests pass on both. A switched-off Kempston mouse, or a missing
+  AY, now leaves its ports to the floating bus instead of answering #FF.
 
 ## 2026.5 - 2026-09-23
 

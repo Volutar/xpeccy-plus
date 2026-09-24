@@ -157,11 +157,28 @@ void zx_irq(Computer* comp, int t) {
 		case IRQ_CPU_CONTNM:			// internal cycle, address on the bus
 			zx_contend(comp, 0);
 			break;
-		case IRQ_CPU_ACK:
+		case IRQ_CPU_ACK: {
+			// an instruction that ends in an i/o cycle leaves the video at its
+			// end, a tick past the one the cpu samples INT in: a pulse that
+			// began inside that tick is not there yet
+			int ahead = res4 - comp->cpu->t;
 			vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
 			res4 = comp->cpu->t;
-			comp->cpu->flgACK = !!comp->vid->intFRAME;
+			int act = comp->vid->intFRAME;
+			if (act && (ahead > 0) && (comp->vid->intsize - act < ahead * comp->nsPerTickFixed / comp->vid->nsPerDotFixed))
+				act = 0;
+			comp->cpu->flgACK = !!act;
+			// INT is a level: taken early in the pulse, it is taken again as soon
+			// as interrupts are back on and the pulse is still there (fuse does
+			// the same from EI). Butler's 128K timing tests count on it.
+#if HAVEZLIB
+			if (act && !comp->rzx.play)
+#else
+			if (act)
+#endif
+				comp->cpu->intrq |= Z80_INT;
 			break;
+		}
 	}
 }
 
