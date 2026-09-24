@@ -40,6 +40,8 @@ void ay_reset(aymChip*);
 int ay_rd(aymChip*, int);
 void ay_wr(aymChip*, int, int);
 void ay_sync(aymChip*, int);
+void ay_tick_n(aymChip*, int);		// that many half periods of the chip clock
+void ay_set_reg(aymChip*, int);
 void ay_flush(aymChip*);
 sndPair ay_vol(aymChip*);
 
@@ -54,7 +56,7 @@ sndPair ym_vol(aymChip*);
 void ym2203_reset(aymChip*);
 int ym2203_rd(aymChip*, int);
 void ym2203_wr(aymChip*, int, int);
-void ym2203_sync(aymChip*, int);
+void ym2203_flush(aymChip*);		// count the time sync has put by, see ay_flush()
 int ym2203_fm_out(aymChip*);		// the fm half; the SSG one is ym_vol()
 void ym2203_free(aymChip*);		// drop the core, if this chip ever had one
 int ym2203_state_size(aymChip*, void**);	// its state as bytes: how many, where
