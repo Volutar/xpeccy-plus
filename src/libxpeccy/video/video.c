@@ -56,7 +56,6 @@ inline void vid_dot_half(Video* vid, unsigned char idx) {
 
 // k dots of one colour, the way vid_dot_full() puts them out
 static void vid_fill_dots(Video* vid, unsigned char idx, int k) {
-	if (vid->nodraw) return;
 	int32_t c = greyScale ? vid->gpal[idx] : vid->pal[idx];
 	unsigned char* ptr = vid->ray.ptr;
 	outcol = c;
@@ -80,29 +79,6 @@ void vid_clear_image(void) {
 	while (cnt-- > 0) {
 		*pa++ = 0xff000000;
 		*pb++ = 0xff000000;
-	}
-}
-
-// The border of the frame last drawn (bufimg) in one colour, the screen left as
-// it is: a still picture taken out of a frame whose border kept changing looks
-// torn. Only the modes whose border is everything around a 256x192 screen.
-void vid_flat_border(Video* vid, int idx) {
-	switch (vid->vmode) {
-		case VID_NORMAL: case VID_ULA_SCR: case VID_ALCO: case VID_HWMC: break;
-		default: return;
-	}
-	int32_t c = greyScale ? vid->gpal[idx] : vid->pal[idx];
-	int w = vid->full.x * 2;		// 2 pixels per dot
-	int x0 = vid->bord.x * 2;
-	int x1 = vid->send.x * 2;
-	for (int y = 0; y < vid->full.y; y++) {
-		int32_t* row = (int32_t*)(bufimg + y * bytesPerLine);
-		int scr = (y >= vid->bord.y) && (y < vid->send.y);
-		for (int x = 0; x < (scr ? x0 : w); x++)
-			row[x] = c;
-		if (scr)
-			for (int x = x1; x < w; x++)
-				row[x] = c;
 	}
 }
 
@@ -808,6 +784,22 @@ int vid_float_bus(Video* vid) {
 	return vid->mrd(MADR(vid->vidPage, (phase & 1) ? atr : pix), vid->xptr) & 0xff;
 }
 
+// An undrawn frame of a mode marked blind moves the ray and nothing else
+static inline int vid_skips(Video* vid) {
+	return vid->nodraw && vid->cb->blind;
+}
+
+// Where the dots are skipped atrbyte is not kept, so it is read here from the
+// cell of the last dot the ray passed.
+int vid_atrbyte(Video* vid) {
+	int x, pix, atr;
+	if (!vid_skips(vid)) return vid->atrbyte;
+	x = vid->ray.x - 1 - vid->bord.x;
+	if (vid->vbrd || (x < 0) || (x >= vid->scrn.x)) return 0xff;
+	vid_scr_adr(0, x & ~7, vid->ray.y - vid->bord.y, &pix, &atr);
+	return vid->mrd(MADR(vid->vidPage, atr), vid->xptr) & 0xff;
+}
+
 void vid_set_grey(int f) {
 	greyScale = f;
 }
@@ -1007,13 +999,6 @@ static int ula_fill_brd(Video* vid, int k) {
 // them, so the palette is read twice instead of eight times.
 static void vid_cell_dots(Video* vid) {
 	int i;
-	if (vid->nodraw) {
-		for (i = 0; i < 8; i++) {
-			col = (scrbyte & 0x80) ? ink : pap;
-			scrbyte <<= 1;
-		}
-		return;
-	}
 	int32_t ci = greyScale ? vid->gpal[ink] : vid->pal[ink];
 	int32_t cp = greyScale ? vid->gpal[pap] : vid->pal[pap];
 	unsigned char* ptr = vid->ray.ptr;
@@ -1420,8 +1405,8 @@ void vidBreak(Video* vid) {
 
 // id,(@on),(@every_visible_dot),(@HBlank),(@LineStart),(@VBlank),(@Frame)
 static xVideoMode vidModeTab[] = {
-	{VID_NORMAL, NULL, vidDrawNormal, NULL, NULL, NULL, NULL, nrm_run},
-	{VID_ULA_SCR, NULL, ula_dot, NULL, NULL, NULL, NULL, ula_run},
+	{VID_NORMAL, NULL, vidDrawNormal, NULL, NULL, NULL, NULL, nrm_run, 1},
+	{VID_ULA_SCR, NULL, ula_dot, NULL, NULL, NULL, NULL, ula_run, 1},
 	{VID_ALCO, NULL, vidDrawAlco, NULL, NULL, NULL, NULL},
 	{VID_HWMC, NULL, vidDrawHwmc, NULL, NULL, NULL, NULL},
 	{VID_ATM_EGA, NULL, vidDrawATMega, NULL, NULL, NULL, NULL},
@@ -1459,7 +1444,7 @@ void vid_tick(Video* vid) {
 	if ((vid->ray.x & vid->brdstep) == 0)
 		vid->brdcol = vid->nextbrd;
 
-	if (vid->cb->dot)
+	if (vid->cb->dot && !vid_skips(vid))
 		vid->cb->dot(vid);
 	// move ray to next dot, update counters
 	vid->ray.x++;
@@ -1559,7 +1544,12 @@ static void vid_run(Video* vid, int k) {
 	int end = x + k;
 	int hbrd = (x < vid->bord.x) || (x >= vid->send.x);	// the same for every dot of the run
 	int done = 0;
-	if (vid->hbrd != hbrd) {
+	if (vid_skips(vid)) {
+		// only the border latch, at the first dot of the run it falls on
+		if (((x + vid->brdstep) & ~vid->brdstep) < end)
+			vid->brdcol = vid->nextbrd;
+		done = k;
+	} else if (vid->hbrd != hbrd) {
 		// left behind by a jump of the ray (vid_set_ray): as in vid_tick(), the
 		// first dot still sees it and the rest see the real one
 		if ((x & vid->brdstep) == 0)
