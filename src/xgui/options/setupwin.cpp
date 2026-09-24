@@ -880,7 +880,7 @@ void SetupWin::start() {
 
 	sdrvBox->setCurrentIndex(sdrvBox->findData(comp->sdrv->type));
 
-	ui.cbSAA->setChecked(comp->saa->enabled);
+	saaBox->setCurrentIndex(comp->saa->enabled ? 1 : 0);
 
 	ui.senbox->setChecked(conf.snd.enabled);
 	ui.dcbox->setChecked(conf.snd.vol.dc);
@@ -1135,7 +1135,7 @@ void SetupWin::apply() {
 
 	comp->sdrv->type = getRFIData(sdrvBox);
 
-	comp->saa->enabled = ui.cbSAA->isChecked() ? 1 : 0;
+	comp->saa->enabled = saaBox->currentIndex() ? 1 : 0;
 // input
 	comp->keyb->pcmode = getRFIData(cbScanTab);
 	comp->mouse->enable = mouseBox->currentIndex();
@@ -1659,6 +1659,8 @@ void SetupWin::buildDevices() {
 	gs.line();
 	gs.check(gsrbox, tr("Reset"), tr("The card is reset with the machine"));
 	devRow(grid, tr("General Sound"), gsBox, gs.body, "Machine: General Sound");
+	saaBox = devCombo(QStringList() << tr("Off") << tr("On"));
+	devRow(grid, tr("SAA1099"), saaBox, NULL, NULL);
 
 	grid = devGroup(right, ":/images/clock.png", tr("Board"));
 	devRow(grid, tr("Turbo"), cbCpuTurbo, NULL, NULL);
@@ -1686,7 +1688,6 @@ void SetupWin::buildDevices() {
 }
 
 // The volumes, named the way the devices are, with the master set apart.
-// SAM Coupe's chip stays hidden: no machine here has one.
 
 void SetupWin::tidySoundPage() {
 	QGridLayout* grid = ui.gridLayout_14;
@@ -1706,10 +1707,11 @@ void SetupWin::tidySoundPage() {
 		{ui.label_10, tr("Tape"), ui.sldTapeVol, ui.sbTapeVol},
 		{ui.label_11, tr("PSG"), ui.sldAYVol, ui.sbAYVol},
 		{ui.label_30, tr("DAC"), ui.sldSdrvVol, ui.sbSdrvVol},
-		{new QLabel, tr("General Sound"), ui.sldGSVol, ui.sbGSVol}
+		{new QLabel, tr("General Sound"), ui.sldGSVol, ui.sbGSVol},
+		{new QLabel, tr("SAA1099"), ui.sldSAAVol, ui.sbSAAVol}
 	};
 	int row = 0;
-	for (int i = 0; i < 6; i++) {
+	for (size_t i = 0; i < sizeof(vols) / sizeof(vols[0]); i++) {
 		vols[i].lab->setText(vols[i].name);
 		vols[i].lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 		grid->addWidget(vols[i].lab, row, 0);
