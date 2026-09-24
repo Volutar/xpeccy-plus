@@ -167,7 +167,7 @@ void memwr(int adr, int val, void* ptr) {
 // "a contended page" - the caller has already looked at the port itself.
 
 void zx_cont_delay(Computer* comp) {
-	long long wns = vid_wait_dots(comp->vid, 5 << 14, 0, IO_CONT_DOTS) * (long long)comp->vid->nsPerDotFixed;	// video is already at end of wait cycle
+	long long wns = vid_wait_dots(comp->vid, 5 << 14, 0) * (long long)comp->vid->nsPerDotFixed;	// video is already at end of wait cycle
 	int t0 = comp->cpu->t;
 	comp->cpu->t += ns_fixed_to_ticks_up(comp, wns);
 	vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - t0));

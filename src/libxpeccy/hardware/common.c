@@ -80,7 +80,7 @@ void zx_contend(Computer* comp, int mreq) {
 	if (!comp->flgCNTM) return;
 	MemPage* pg = mem_get_page(comp->mem, comp->cpu->adr);
 	if (pg->type != MEM_RAM) return;
-	int wdots = vid_wait_dots(comp->vid, pg->num << comp->mem->pgshift, mreq, 0);
+	int wdots = vid_wait_dots(comp->vid, pg->num << comp->mem->pgshift, mreq);
 	if (!wdots) return;
 	comp->cpu->t += ns_fixed_to_ticks_up(comp, (long long)wdots * comp->vid->nsPerDotFixed);
 	vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
@@ -392,14 +392,16 @@ int xInFE(Computer* comp, int port) {
 	return res;
 }
 
+// no chip, or a mouse switched off: the port is left to the floating bus
 int xInFFFD(Computer* comp, int port) {
+	if (comp->ts->curChip->type == SND_NONE) return zx_in_float(comp, port);
 	return tsIn(comp->ts, 0xfffd);
 }
 
 int xInFADF(Computer* comp, int port) {
 	unsigned char res = 0xff;
 	comp->mouse->used = 1;
-	if (!comp->mouse->enable) return res;
+	if (!comp->mouse->enable) return zx_in_float(comp, port);
 	if (comp->mouse->hasWheel) {
 		res &= 0x0f;
 		res |= ((comp->mouse->wheel & 0x0f) << 4);
@@ -417,12 +419,12 @@ int xInFADF(Computer* comp, int port) {
 
 int xInFBDF(Computer* comp, int port) {
 	comp->mouse->used = 1;
-	return comp->mouse->enable ? comp->mouse->xpos * comp->mouse->sensitivity : 0xff;
+	return comp->mouse->enable ? comp->mouse->xpos * comp->mouse->sensitivity : zx_in_float(comp, port);
 }
 
 int xInFFDF(Computer* comp, int port) {
 	comp->mouse->used = 1;
-	return comp->mouse->enable ? comp->mouse->ypos * comp->mouse->sensitivity : 0xff;
+	return comp->mouse->enable ? comp->mouse->ypos * comp->mouse->sensitivity : zx_in_float(comp, port);
 }
 
 // out
