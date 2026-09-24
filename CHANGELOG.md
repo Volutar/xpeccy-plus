@@ -13,6 +13,8 @@ before that point is upstream's history and is not repeated here.
 
 - **Arrow buttons on the debugger's stack panel** move it up or down a word at a time, the
   same offset as in Setup.
+- **SAA1099 is back** in the machine's Sound devices, with its own volume. Setup had hidden it
+  in 2026.5.
 
 ### Changed
 

@@ -76,6 +76,7 @@ class SetupWin : public QDialog {
 		int psgFrqMul = 1;	// the chip's clock against the AY's the setting holds
 		// the machine's devices, on the Machine page
 		QComboBox* gsBox;
+		QComboBox* saaBox;
 		QComboBox* gsRomBox;
 		QComboBox* dosRomBox;
 		QToolButton* dosRomBtn;
