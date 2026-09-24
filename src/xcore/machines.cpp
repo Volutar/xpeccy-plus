@@ -902,13 +902,20 @@ static int mac_psg_count(Computer* comp) {
 	return (comp->ts->type == TS_ZXNEXT) ? 3 : (comp->ts->type == TS_NEDOPC) ? 2 : 1;
 }
 
+// The clock is an AY's; an older file gave a YM2203 its own. No YM2203 runs
+// past 4.2 MHz, so a figure that would take it there is one of those.
+static double mac_psg_frq(int type, double frq) {
+	int mul = chip_frq_mul(type);
+	return ((mul > 1) && (frq * mul > 4.2)) ? frq / mul : frq;
+}
+
 static void mac_set_psg(Computer* comp, int count, int type, double frq, int stereo) {
 	aymChip* psg[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
 	for (int i = 0; i < 3; i++) {
 		psg[i]->stereo = stereo;
 		chip_set_type(psg[i], (i < count) ? type : SND_NONE);
 	}
-	ts_set_frq(comp->ts, frq, comp->cpuFrq);	// 0: Auto
+	ts_set_frq(comp->ts, mac_psg_frq(type, frq), comp->cpuFrq);	// 0: Auto
 	comp->ts->type = (count > 2) ? TS_ZXNEXT : (count > 1) ? TS_NEDOPC : TS_NONE;
 }
 
@@ -1105,7 +1112,7 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	if (mac_psg_count(comp) > 0) {		// with no chips there is nothing to keep
 		mac_put(out, "psg.type", mac_word_name(psgTypeTab, comp->ts->chipA->type), mac_word_name(psgTypeTab, mac->psgType));
 		// 0 is Auto, in the definition and in the file
-		mac_put(out, "psg.frq", comp->ts->frqAuto ? 0.0 : comp->ts->chipA->frq, mac->psgFrq);
+		mac_put(out, "psg.frq", comp->ts->frq, mac->psgFrq);
 		mac_put(out, "psg.stereo", mac_word_name(stereoTab, comp->ts->chipA->stereo),
 			mac_word_name(stereoTab, mac->psgStereo));
 	}
@@ -1313,7 +1320,7 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	else if (nam == "frq.mul") {}		// the overclock does not outlive a session any more
 	else if (nam == "tape.speed") { if ((arg.i > 94) && (arg.i < 106)) comp->tape->speed = arg.i; }
 	else if (nam == "psg.frq") {
-		ts_set_frq(comp->ts, arg.d, comp->cpuFrq);
+		ts_set_frq(comp->ts, mac_psg_frq(comp->ts->chipA->type, arg.d), comp->cpuFrq);
 	}
 	else if (nam == "psg.stereo") {
 		comp->ts->chipA->stereo = arg.i;
@@ -1522,9 +1529,9 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 			break;
 		case PS_SOUND:
 			if (nam == "psg.count") mac_set_psg(comp, toLimits(arg.i, 0, 3), comp->ts->chipA->type,
-					comp->ts->chipA->frq, comp->ts->chipA->stereo);
+					comp->ts->frq, comp->ts->chipA->stereo);
 			else if (nam == "psg.type") mac_set_psg(comp, mac_psg_count(comp), arg.i,
-					comp->ts->chipA->frq, comp->ts->chipA->stereo);
+					comp->ts->frq, comp->ts->chipA->stereo);
 			else if ((nam == "psg.frq") || (nam == "psg.stereo") || (nam == "psg.separation")
 				|| (nam == "gs.reset") || (nam == "gs.stereo")) xm_defer(nam, val);
 			else if (nam == "gs") comp->gs->enable = arg.b;

@@ -293,6 +293,12 @@ class xTwoPartPainter : public QObject {
 // what the PSG row offers: how many chips, and whether they are the FM ones
 enum {PSG_NONE = 0, PSG_ONE, PSG_TS, PSG_TSFM, PSG_NEXT};
 
+// the clock presets, as an AY's
+static const struct {double frq; const char* name;} psgFrqTab[] = {
+	{1.773447, "ZX 128/+2/+3"},
+	{1.75, "ZX 48/ZX-clones"},
+};
+
 void opt_fill_psg_boxes(QComboBox* cbcount, QComboBox* cbtype, QComboBox* cbfrq, QComboBox* cbstereo) {
 	cbcount->clear();
 	cbcount->addItem(QIcon(":/images/cancel.png"),"None",PSG_NONE);
@@ -305,10 +311,8 @@ void opt_fill_psg_boxes(QComboBox* cbcount, QComboBox* cbtype, QComboBox* cbfrq,
 	cbtype->addItem(QIcon(":/images/YamahaLogo.png"),"Yamaha 2149",SND_YM);
 	cbtype->addItem(QIcon(":/images/YamahaLogo.png"),"Yamaha 2203",SND_YM2203);
 	cbfrq->clear();
-	cbfrq->addItem("Auto");			// its figure is filled in by chapsg()
-	cbfrq->addItem(QString::fromUtf8("1.773447 - ZX 128/+2/+3"));
-	cbfrq->addItem(QString::fromUtf8("1.75 - ZX 48/ZX-clones"));
-	cbfrq->addItem(QString::fromUtf8("3.5 - YM2203"));
+	for (size_t i = 0; i <= sizeof(psgFrqTab) / sizeof(psgFrqTab[0]); i++)
+		cbfrq->addItem(QString());	// Auto and the presets, filled in by chapsg()
 	cbstereo->clear();
 	cbstereo->addItem("Mono",AY_MONO);
 	cbstereo->addItem("ABC",AY_ABC);
@@ -319,7 +323,7 @@ void opt_fill_psg_boxes(QComboBox* cbcount, QComboBox* cbtype, QComboBox* cbfrq,
 	cbstereo->addItem("CBA",AY_CBA);
 }
 
-// frequency items are "<mhz> (machines)", so cut the comment off
+// frequency items are "<mhz> - machines", so cut the comment off
 
 double opt_get_psg_frq(QComboBox* box) {
 	double frq = box->currentText().section(' ', 0, 0).toDouble();
@@ -908,12 +912,9 @@ void SetupWin::start() {
 	setRFIndex(cbPsgCount, psg);
 	setRFIndex(cbPsgType, (comp->ts->chipA->type == SND_NONE) ? SND_AY : comp->ts->chipA->type);
 	setRFIndex(cbPsgStereo, comp->ts->chipA->stereo);
-	if (comp->ts->frqAuto)
-		cbPsgFrq->setCurrentIndex(0);
-	else
-		opt_set_psg_frq(cbPsgFrq, comp->ts->chipA->frq);
 	sldPsgSep->setValue(comp->ts->chipA->sep);
-	chapsg();
+	chapsg();				// the presets at this chip's clock first
+	opt_set_psg_frq(cbPsgFrq, comp->ts->frq * psgFrqMul);	// 0 picks Auto
 // input
 	buildkeylist();
 	setRFIndex(cbScanTab, comp->keyb->pcmode);
@@ -1126,7 +1127,7 @@ void SetupWin::apply() {
 		chip[i]->stereo = chstereo;
 		chip[i]->sep = chsep;
 	}
-	ts_set_frq(comp->ts, opt_get_psg_frq(cbPsgFrq), comp->cpuFrq);	// 0: Auto
+	ts_set_frq(comp->ts, opt_get_psg_frq(cbPsgFrq) / psgFrqMul, comp->cpuFrq);	// 0: Auto
 	comp->ts->type = (chips > 2) ? TS_ZXNEXT : (chips > 1) ? TS_NEDOPC : TS_NONE;
 
 	comp->gs->enable = gsBox->currentIndex();
@@ -1638,7 +1639,7 @@ void SetupWin::buildDevices() {
 	xOptSheet psg;
 	psg.field(tr("Chip"), cbPsgType);
 	psg.field(tr("Clock"), fieldPair(cbPsgFrq, labPsgMhz, false),
-		tr("Auto: half the CPU clock, and 3.5 MHz for TurboSound FM"));
+		tr("Auto: follows the CPU clock"));
 	psg.field(tr("Stereo"), cbPsgStereo);
 	psg.field(tr("Separation"), fieldPair(sldPsgSep, labPsgSep, true),
 		tr("100%: the channels kept apart, 0%: mono"));
@@ -2270,9 +2271,22 @@ void SetupWin::chapsg() {
 	cbPsgType->setEnabled(on && !fm);
 	cbPsgFrq->setEnabled(on);
 	cbPsgStereo->setEnabled(on);
-	// what Auto comes to on this machine, as the core works it out
+	// the clock is shown as the chip's own, and set as an AY's
+	int mul = chip_frq_mul(getRFIData(cbPsgType));
+	double ay = opt_get_psg_frq(cbPsgFrq) / psgFrqMul;	// 0: Auto
+	bool moved = (mul != psgFrqMul);
+	psgFrqMul = mul;
 	double base = xcpu_frq_parse(ui.cbCpuFrq->currentText(), conf.zx->cpuFrq);
-	cbPsgFrq->setItemText(0, QString("Auto - %0").arg(fm ? 3.5 : base / 2, 0, 'g', 7));
+	QStringList txt(QString("Auto - %0").arg(base / 2 * mul, 0, 'g', 7));
+	for (const auto& p : psgFrqTab)
+		txt << QString("%0 - %1").arg(p.frq * mul, 0, 'g', 7).arg(p.name);
+	for (int i = 0; i < txt.size(); i++) {
+		if (cbPsgFrq->itemText(i) == txt[i]) continue;
+		cbPsgFrq->setItemText(i, txt[i]);
+		moved = true;
+	}
+	if (moved)		// renaming the current item wipes a figure typed in
+		opt_set_psg_frq(cbPsgFrq, ay * mul);
 	sldPsgSep->setEnabled(split);
 	labPsgSep->setEnabled(split);
 }

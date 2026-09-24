@@ -727,7 +727,7 @@ void comp_update_timings(Computer* comp) {
 void compSetBaseFrq(Computer* comp, double frq) {
 	if (frq > 0)
 		comp->cpuFrq = frq;
-	if (comp->ts->frqAuto)
+	if (comp->ts->frq <= 0)
 		ts_set_frq(comp->ts, 0, comp->cpuFrq);
 	comp_update_timings(comp);
 }

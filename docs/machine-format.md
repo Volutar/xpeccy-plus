@@ -80,7 +80,7 @@ is skipped without a word.
 |---|---|---|
 | `psg.count` | 0..3 | AY/YM chips (TurboSound) |
 | `psg.type` | `none` `ay` `ym` `ym2203` | |
-| `psg.frq` | MHz | absent or 0 is Auto: half the cpu's `cpu.frq`, and 3.5 MHz for `ym2203` |
+| `psg.frq` | MHz | an AY's clock, absent or 0 is Auto: half the cpu's `cpu.frq`; a `ym2203` runs at twice it |
 | `psg.stereo` | `mono` `abc` `acb` `bac` `bca` `cab` `cba` | |
 | `soundrive` | `none` `covox` `soundrive1` `soundrive2` | |
 | `gs` | yes/no | General Sound |
