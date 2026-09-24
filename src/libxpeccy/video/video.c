@@ -738,10 +738,9 @@ int vid_wait_dots(Video* vid, int adr, int mreq) {
 // 6-0 - they are the row address of the 4116s, and the row is what fails to
 // latch.
 //
-// The two phases sit two ticks apart, the distance between the ULA's own two
-// bursts, and a tick ahead of the wait table (hence the 2 dots in vid_snow):
-// they were measured while the table itself was a tick early, and the
-// measurement is what stands.
+// Those two ticks are also the wait table's entries worth 8 dots and 4, which
+// is why the phases take the same anchor as the wait states and sit two ticks
+// apart, the distance between the ULA's own two bursts.
 //
 // The count has to be in ticks and not dots: where a cpu tick falls against
 // the dot grid is not fixed - the layout can put it on an odd dot - and a
@@ -769,7 +768,7 @@ static int ula_burst_adr(Video* vid, int adr) {
 int vid_snow(Video* vid, int r, int bank) {
 	if (vid->ula->conttype != CONT_PATA) return 0;	// the Ferranti ULA and nothing else
 	if (vid->vbrd) return 0;
-	switch ((ula_fetch_x(vid, 2) & 15) >> 1) {
+	switch ((ula_fetch_x(vid, 0) & 15) >> 1) {
 		case ULA_SNOW_PH:
 			vid->snowLow = r & 0x7f;
 			vid->snowBank = bank;
