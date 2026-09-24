@@ -63,15 +63,18 @@ void chip_set_type(aymChip* chip, int id) {
 	chip->tickAcc = 0;
 }
 
-// The clock of all the chips, in MHz. 0 is Auto: half the cpu's base crystal,
-// the way the boards divide it, and 3.5 MHz for the YM2203 of TurboSound FM.
+// A chip's clock against an AY's: the SSG half of a YM2203 divides its own by two.
+int chip_frq_mul(int type) {
+	return (type == SND_YM2203) ? 2 : 1;
+}
+
+// The clock of all the chips, in MHz, as an AY's: 0 is Auto, half the cpu's
+// base crystal, the way the boards divide it.
 void ts_set_frq(TSound* ts, double frq, double base) {
 	aymChip* chip[3] = {ts->chipA, ts->chipB, ts->chipC};
-	ts->frqAuto = (frq <= 0) ? 1 : 0;
+	ts->frq = (frq > 0) ? frq : 0;
 	for (int i = 0; i < 3; i++) {
-		double f = frq;
-		if (ts->frqAuto)
-			f = (chip[i]->type == SND_YM2203) ? 3.5 : base / 2;
+		double f = ((ts->frq > 0) ? ts->frq : base / 2) * chip_frq_mul(chip[i]->type);
 		chip[i]->frq = (f > 0) ? f : 0;		// 0: the type's own clock
 		chip_set_type(chip[i], chip[i]->type);
 	}

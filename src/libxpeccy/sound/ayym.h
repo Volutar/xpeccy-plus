@@ -189,8 +189,8 @@ typedef struct {
 	unsigned mute_l:1;
 	unsigned mute_r:1;
 	unsigned r_stat:1;	// read status reg instead of chip regs
-	unsigned frqAuto:1;	// the clock follows the cpu's, see ts_set_frq
 	int type;
+	double frq;		// the clock as set, an AY's in MHz, 0 = Auto (see ts_set_frq)
 
 	struct {
 		unsigned char* data;
@@ -209,6 +209,7 @@ void initNoise();
 
 const scDesc* find_chip_type(int);	// its nominal clock, for one
 void chip_set_type(aymChip*, int);
+int chip_frq_mul(int);
 void ts_set_frq(TSound*, double, double);
 void chip_set_xdev(aymChip*, ayxrd, ayxwr, void*);
 

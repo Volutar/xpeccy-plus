@@ -73,6 +73,7 @@ class SetupWin : public QDialog {
 		QComboBox *diskTypeBox, *cbFlpInterleave, *hiface, *hm_type, *hs_type, *sdrvBox, *cbScanTab, *cbCpuTurbo, *cbPsgCount, *cbPsgType, *cbPsgFrq, *cbPsgStereo;
 		xSlider *sldTapeSpeed, *sldPsgSep, *sldSensitivity;
 		QLabel *labTapeSpeedVal, *labPsgMhz, *labPsgSep;
+		int psgFrqMul = 1;	// the chip's clock against the AY's the setting holds
 		// the machine's devices, on the Machine page
 		QComboBox* gsBox;
 		QComboBox* gsRomBox;

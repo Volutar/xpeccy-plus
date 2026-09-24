@@ -26,6 +26,9 @@ before that point is upstream's history and is not repeated here.
   timing tests now pass in full on the 48K and on the 128K with late timings, and Mark
   Woodmass's IR Contention tests pass on both. A switched-off Kempston mouse, or a missing
   AY, now leaves its ports to the floating bus instead of answering #FF.
+- **The PSG clock follows the chips.** Switching between one AY, TurboSound and TurboSound
+  FM keeps the clock chosen and shows it as the chip's own - 1.773447 MHz on an AY is
+  3.546894 MHz on the YM2203 - instead of leaving an FM clock on an AY.
 
 ## 2026.5 - 2026-09-23
 
