@@ -370,6 +370,7 @@ void xThread::emuCycle(Computer* comp) {
 				}
 				if (conf.tape.autostart && !tape_flash() && ((pc == 0x5df) || (pc == 0x53a))
 						&& !tap_next_is_signal(comp->tape) && tap_block_done(comp->tape)) {
+					tape_settle(comp->tape);
 					comp->tape->sigLen = 1e6;
 					tapNextBlock(comp->tape);
 					tapStop(comp->tape);
@@ -604,7 +605,7 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 		emu_unlock();
 	}
 	conf.emu.fast = full ? 0 : 1;
-	if (nodraw) comp->vid->nodraw = 1;	// what the picture itself costs
+	if (nodraw) vid_set_nodraw(comp->vid, 1);	// what the picture itself costs
 #ifdef _WIN32
 	benchProf* bp = NULL;
 	HANDLE pth = NULL;

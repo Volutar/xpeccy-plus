@@ -115,6 +115,7 @@ struct Video {
 				// kept because upstream's Video struct has it
 	long long nsDrawFixed;	// time handed in but not yet drawn, 16.16
 	long long nsOwedFixed;	// fraction of a ns owed to vid->time, carried not dropped
+	long long nsCalmFixed;	// nsDrawFixed may grow up to this with no dot drawn (vid_sync_lazy)
 	int time;		// whole ns drawn since the step began
 	int busy;		// (cycles) to emulate busy period
 	int dotPerFrame;
@@ -220,11 +221,34 @@ void vidDestroy(Video*);
 void vid_reset(Video*);
 void vid_sync(Video*,int);		// whole-ns entry point, for callers outside the ZX paths
 void vid_sync_fixed(Video*,long long);
+void vid_sync_lazy_slow(Video*,long long);
+void vid_unlazy(Video*);
+void vid_settle_slow(Video*);
+// The ray as vid_sync_fixed() would move it, but the dots of an undrawn blind
+// frame that pass no event are only counted, and walked when something looks:
+// vid_settle(), which every reader of the ray inside an instruction calls, or
+// the next vid_sync_fixed(). Only for the cpu's own bus cycles - the code that
+// runs between two of them must not change the video.
+static inline void vid_sync_lazy(Video* vid, long long nsFixed) {
+	long long d = vid->nsDrawFixed + nsFixed;
+	if ((nsFixed >= 0) && (d < vid->nsCalmFixed)) {
+		vid->nsDrawFixed = d;
+		return;
+	}
+	vid_sync_lazy_slow(vid, nsFixed);
+}
+// only dots vid_sync_lazy() counted: after a change of the dot period the
+// time left over can be a dot or more, and that waits for the next sync as ever
+static inline void vid_settle(Video* vid) {
+	if ((vid->nsDrawFixed >= vid->nsPerDotFixed) && (vid->nsCalmFixed > vid->nsPerDotFixed))
+		vid_settle_slow(vid);
+}
 // sets the dot period alone. vid_upd_timings() is the complete one - it also
 // re-derives nsPerLine/nsPerFrame, which the frame timer in emulwin.cpp reads
 void vid_set_dot_ns(Video*,double);
 // void vid_irq(Video*, int);
 void vid_set_mode(Video*,int);
+void vid_set_nodraw(Video*,int);
 void vid_reset_ray(Video*);
 void vid_set_ray(Video*, int);
 

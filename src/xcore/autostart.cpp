@@ -184,7 +184,7 @@ static void autostart_stop() {
 	as_life = 0;
 	if (as_held) {
 		conf.emu.fast = 0;
-		if (as_comp) as_comp->vid->nodraw = 0;
+		if (as_comp) vid_set_nodraw(as_comp->vid, 0);
 		as_held = 0;
 	}
 	as_comp = NULL;
@@ -237,7 +237,7 @@ void autostart_frame(Computer* comp) {
 	if (!as_seq) return;
 	if (!as_held) {			// not in arm(): the window is not up yet there
 		conf.emu.fast = 1;
-		comp->vid->nodraw = 1;
+		vid_set_nodraw(comp->vid, 1);
 		as_held = 1;
 	}
 	if (--as_life < 0) {		// a rom that never got to its keyboard

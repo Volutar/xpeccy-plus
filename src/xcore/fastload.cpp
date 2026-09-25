@@ -245,6 +245,7 @@ static int fl_loop_steady(Computer* comp) {
 // boundary counts, even one that keeps the level.
 static long long fl_tape_room(Computer* comp) {
 	Tape* tap = comp->tape;
+	tape_settle(tap);
 	if (!tap->on || tap->rec || (tap->sigLen < 2)) return 0;
 	// tape ticks in one T of the machine, the way tapSync() counts them
 	double tpt = (double)tap->ticksPerNsFixed / (1LL << TAPE_RATE_BITS) * tap->speed / 100.0
@@ -310,6 +311,7 @@ typedef struct {
 
 static void fl_probe(Computer* comp, flProbe* p) {
 	memset(p, 0, sizeof(*p));		// the padding is compared too
+	tape_settle(comp->tape);
 	memcpy(p->regs, comp->cpu->regs, sizeof(p->regs));
 	memcpy(p->flags, comp->cpu->flags, sizeof(p->flags));
 	p->tick = comp->tickCount;
@@ -577,7 +579,7 @@ void fastload_stop(Computer* comp) {
 	fl_held = 0;
 	fastload_on = fl_bench;
 	conf.emu.fast = 0;
-	comp->vid->nodraw = 0;
+	vid_set_nodraw(comp->vid, 0);
 }
 
 int fastload_busy() {
@@ -649,7 +651,7 @@ static void fl_frame(Computer* comp) {
 	int draw = !fl_back.ok && (conf.vid.fctime - fl_drawn_at >= FL_REFRESH);
 	if (draw)
 		fl_drawn_at = conf.vid.fctime;
-	comp->vid->nodraw = !draw;
+	vid_set_nodraw(comp->vid, !draw);
 }
 
 void fastload_frame(Computer* comp) {

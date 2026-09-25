@@ -1209,7 +1209,7 @@ void SetupWin::apply() {
 	conf.tape.flash = cbTapeFlash->isChecked() ? 1 : 0;
 	conf.tape.edge = cbTapeEdge->isChecked() ? 1 : 0;
 	conf.tape.rewind = cbTapeRewind->isChecked() ? 1 : 0;
-	comp->tape->speed = sldTapeSpeed->value();
+	tape_set_speed(comp->tape, sldTapeSpeed->value());
 	tape_apply_options(comp->tape);
 // input
 	conf.jmapNameA = gpwid_a->getMapName();

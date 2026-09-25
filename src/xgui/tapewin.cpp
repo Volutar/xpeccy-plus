@@ -258,6 +258,6 @@ void TapeWin::doClick(QModelIndex idx) {
 void TapeWin::setSpeed(int s) {
 	if (s < 95) return;
 	if (s > 105) return;
-	conf.zx->tape->speed = s;
+	tape_set_speed(conf.zx->tape, s);
 	ui.labSpeedVal->setText(QString("%0%").arg(s));
 }

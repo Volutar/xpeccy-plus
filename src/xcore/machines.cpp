@@ -1318,7 +1318,7 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 		if (conf.storePaths) sltSetPath(comp->slot, arg.s);
 	}
 	else if (nam == "frq.mul") {}		// the overclock does not outlive a session any more
-	else if (nam == "tape.speed") { if ((arg.i > 94) && (arg.i < 106)) comp->tape->speed = arg.i; }
+	else if (nam == "tape.speed") { if ((arg.i > 94) && (arg.i < 106)) tape_set_speed(comp->tape, arg.i); }
 	else if (nam == "psg.frq") {
 		ts_set_frq(comp->ts, mac_psg_frq(comp->ts->chipA->type, arg.d), comp->cpuFrq);
 	}
@@ -1540,7 +1540,7 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 			break;
 		case PS_TAPE:
 			if (nam == "path") xm_defer("tape", val);
-			else if ((nam == "speed") && (arg.i > 94) && (arg.i < 106)) comp->tape->speed = arg.i;
+			else if ((nam == "speed") && (arg.i > 94) && (arg.i < 106)) tape_set_speed(comp->tape, arg.i);
 			break;
 		case PS_DISK:
 			if (nam == "type") difSetHW(comp->dif, arg.i);
