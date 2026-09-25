@@ -700,8 +700,11 @@ void MainWin::frame_timer() {
 }
 
 void MainWin::d_frame() {
-	if (conf.emu.fast) return;
+	// before the fast check: a fast load started from the command line makes
+	// no frame at normal speed until it is over, and frame_timer() shows
+	// nothing without this
 	hasPicture = 1;
+	if (conf.emu.fast) return;
 #if defined(USEOPENGL) && !BLOCKGL
 	queue.append(texids[curtex]);
 	// Low latency keeps only the newest frame; buffered keeps a couple to
