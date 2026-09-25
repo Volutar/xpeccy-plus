@@ -29,7 +29,7 @@ before that point is upstream's history and is not repeated here.
   from the command line, where a 48K showed nothing until the load was over. With
   TurboSound FM it no longer runs at half the speed of a plain AY. Edge detection knows
   TOPSOFT's loader, so their Pentagon releases load on a 48K and 128K as well. It lets go
-  the moment the tape stops, and the fps readout settles within a second. Opening another
+  the moment the tape stops or runs into the last block's closing pause, and the fps readout settles within a second. Opening another
   image while one loads fast no longer types LOAD "" at normal speed.
 
 ### Fixed
@@ -42,11 +42,13 @@ before that point is upstream's history and is not repeated here.
 - **The PSG clock follows the chips.** Switching between one AY, TurboSound and TurboSound
   FM keeps the clock chosen and shows it as the chip's own - 1.773447 MHz on an AY is
   3.546894 MHz on the YM2203 - instead of leaving an FM clock on an AY.
-- **TZX tapes that lost blocks or reset after loading now start**, Dark Fusion, 48 Irons
-  and the AGAS, DIGGERSOFT and ATOSSOFT releases among them. Every block after a "stop the
+- **TZX tapes that lost blocks or reset after loading now start**, Dark Fusion, 48 Irons,
+  Highway Encounter, Spy vs Spy, Plummet, Chuckie Egg, Cosmopolice, Aliens, Saigon Combat
+  Unit and the AGAS, DIGGERSOFT and ATOSSOFT releases among them. Every block after a "stop the
   tape if 48K" block was dropped, a pilot tone given as separate pulses before its data
   was lost, the last edge of a block with no pause after it went missing, and the ROM trap
-  held up or stopped a custom loader that took over from the ROM.
+  held up or stopped a custom loader that took over from the ROM, or handed it the block
+  it was already reading. Freddy Hardest and Mambo end on a blue border again.
 
 ## 2026.5 - 2026-09-23
 
