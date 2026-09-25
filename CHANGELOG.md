@@ -15,6 +15,8 @@ before that point is upstream's history and is not repeated here.
   same offset as in Setup.
 - **SAA1099 is back** in the machine's Sound devices, with its own volume. Setup had hidden it
   in 2026.5.
+- **Flash loading works for games that carry their own copy of the ROM loader**, such as
+  Scooby Doo and Biggles, and a game reading its keys no longer starts the tape.
 - **Every TZX block is played**: CSW recordings, generalized data, jumps, loops and calls.
   A "stop the tape if 48K" block stops it on a 48K only, and the tape list says so.
 
