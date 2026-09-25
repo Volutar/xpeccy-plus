@@ -139,9 +139,12 @@ static flShape fl_loop_shape(Computer* comp, int pc) {
 	else if ((b(-4) == 0x04) && (b(-3) == 0xc8))
 		head = 4;
 	if (head) {
-		if (b(0) == 0x1f) {			// RRA, maybe NOP / AND A / RET Z / RET NC
+		if (b(0) == 0x1f) {			// RRA, maybe NOP / AND A / RET Z / RET NC / OR 0
 			int x = b(1);
-			p = ((x == 0x00) || (x == 0xa7) || (x == 0xc8) || (x == 0xd0)) ? 2 : 1;
+			if ((x == 0xf6) && (b(2) == 0x00))
+				p = 3;			// TOPSOFT's loader: RET NC made harmless
+			else
+				p = ((x == 0x00) || (x == 0xa7) || (x == 0xc8) || (x == 0xd0)) ? 2 : 1;
 			if ((b(p) != 0xa9) || (b(p + 1) != 0xe6) || (b(p + 2) != 0x20)) return sh;	// XOR C / AND #20
 			sh.rra = 1;
 			sh.mask = 0x20;
