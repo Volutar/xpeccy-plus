@@ -179,6 +179,20 @@ static flShape fl_loop_shape(Computer* comp, int pc) {
 	return sh;
 }
 
+// The code after an IN looks at the ear bit (AND #40, BIT 6,A, or RRA, maybe
+// XOR C, AND #20), which a keyboard poll does not.
+static int fl_tests_ear(Computer* comp, int pc) {
+	for (int i = 0; i < 6; i++) {
+		int x = fl_byte(comp, pc + i);
+		int y = fl_byte(comp, pc + i + 1);
+		if (((x == 0xe6) && (y == 0x40)) || ((x == 0xcb) && (y == 0x77))) return 1;
+		if ((x == 0x1f) && (((y == 0xe6) && (fl_byte(comp, pc + i + 2) == 0x20))
+				|| ((y == 0xa9) && (fl_byte(comp, pc + i + 2) == 0xe6) && (fl_byte(comp, pc + i + 3) == 0x20))))
+			return 1;
+	}
+	return 0;
+}
+
 // The flags INC B or DEC B leave for a B of b: the loop's last flag-setting
 // opcode before its IN, so they are what a turn leaves behind - and they follow
 // B, bit 3 and 5 of it included, so they have to be worked out for the B a skip
@@ -429,6 +443,10 @@ int fastload_step(Computer* comp) {
 	if (pc != fl_loop.pc) {				// a loop not seen before, or none
 		fl_loop.pc = pc;
 		fl_loop.shape = fl_loop_shape(comp, pc);
+		// a loader not known by its code has taken over from one that was (the
+		// rom's, Ninja Scooter): auto stop no longer knows when it is done
+		if (!fl_loop.shape.kind && fl_tests_ear(comp, pc))
+			fl_loop_seen = 0;
 		fl_loop.period = 0;
 		fl_loop.pmin = 0;
 		fl_loop_take(comp);
