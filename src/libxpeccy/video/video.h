@@ -50,6 +50,7 @@ enum {
 };
 
 extern int bufSize;
+extern int bufSwaps;		// pictures finished into bufimg so far
 extern int bytesPerLine;
 extern int greyScale;
 //extern int scanlines;

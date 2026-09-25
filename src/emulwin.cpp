@@ -167,6 +167,7 @@ MainWin::MainWin() {
 	warpFail = 0;
 	block = 0;
 	hasPicture = 0;
+	upSwaps = -1;
 	refit = 0;
 	mediaSrc = MEDIA_SNAP;
 	mediaSeen = 0;
@@ -381,7 +382,8 @@ void MainWin::gpInputChanged(int type, int num, int state) {
 // the time of that same frame - so the reading has no rounding of its own.
 struct FpsSample { int frames; qint64 ns; };
 static QList<FpsSample> fpsmem;
-#define FPS_WINDOW	(3000 / FPS_TICK_MS)	// samples kept: a 3 second window
+#define FPS_WINDOW	(1000 / FPS_TICK_MS)	// samples kept: a 1 second window
+static int fpsFast = 0;				// the window was taken in fast mode
 
 #if defined(__WIN32) && STICKY_KEY
 
@@ -405,12 +407,19 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 	Computer* comp = conf.zx;
 	if (ev->timerId() == secid) {		// 0.2 sec timer, fps counter
 		// printf("0.2 sec timer event\n");
+		// the rate jumps tenfold into and out of fast mode: start the window
+		// over rather than average across the jump
+		if (conf.emu.fast != fpsFast) {
+			fpsFast = conf.emu.fast;
+			fpsmem.clear();
+		}
 		if (!conf.emu.pause && conf.vid.fctime) {
 			FpsSample cur = {conf.vid.fcount, conf.vid.fctime};
 			fpsmem.append(cur);
 			qint64 dtNs = cur.ns - fpsmem.first().ns;
 			int dFrames = cur.frames - fpsmem.first().frames;
-			conf.vid.curfps = (dtNs > 0) ? (dFrames * 1e9 / dtNs) : 0.0;
+			if (dtNs > 0)			// one sample makes no rate yet: keep the last one
+				conf.vid.curfps = dFrames * 1e9 / dtNs;
 			while (fpsmem.size() > FPS_WINDOW)
 				fpsmem.removeFirst();
 		} else {
@@ -691,7 +700,12 @@ void MainWin::frame_timer() {
 	if (conf.vid.lowLatency && !conf.emu.fast && !conf.emu.pause) return;
 #if defined(USEOPENGL) && !BLOCKGL
 	if (conf.emu.fast || conf.emu.pause) {
-		uploadOffPaint();
+		// fast loading finishes a picture 30 times a second at most, and one
+		// upload of it is enough however often the window is painted
+		if (conf.emu.pause || (upSwaps != bufSwaps)) {
+			upSwaps = bufSwaps;
+			uploadOffPaint();
+		}
 		queue.clear();
 		queue.append(texids[curtex]);
 	}
@@ -705,6 +719,7 @@ void MainWin::d_frame() {
 	// nothing without this
 	hasPicture = 1;
 	if (conf.emu.fast) return;
+	upSwaps = -1;		// the texture the timer shows next is not this one
 #if defined(USEOPENGL) && !BLOCKGL
 	queue.append(texids[curtex]);
 	// Low latency keeps only the newest frame; buffered keeps a couple to

@@ -170,6 +170,7 @@ typedef struct {
 		double mouseRemY = 0.0;
 		unsigned block:1;
 		unsigned hasPicture:1;	// the emulation has handed over a frame
+		int upSwaps;		// bufSwaps at the last upload the timer made, -1: upload
 		unsigned refit:1;	// geometry changed: re-read the frame before painting it
 
 		std::string shdLoaded;	// the shader the program is linked with now
