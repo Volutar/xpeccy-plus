@@ -332,7 +332,8 @@ void xThread::tap_catch_load(Computer* comp, int atStart, int base, int dir) {
 			tapArmPlay(tap);
 		}
 		if (base != 0x0556)
-			xlog(XLG_TAPE, XLL_INFO, "block %i handed to the copy of LD-BYTES at %04X", blk, base);
+			xlog(XLG_TAPE, XLL_INFO, "block %i handed to the copy of LD-BYTES at %04X, the tape %s at block %i",
+				blk, base, tap->on ? "plays on" : "stands", tap->block);
 		if (overdata && (base != 0x0556)) {
 			// out through LD-8-BITS' RET NC, as a timeout leaves: NC, Z
 			cpu_set_pc(comp->cpu, (base + LDC_BITS_RET) & 0xffff);
