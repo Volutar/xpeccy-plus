@@ -49,7 +49,6 @@ static FILE* file = nullptr;
 xThread::xThread() {
 	sndNsFixed = 0;
 	benchStop = -1;
-	benchHeat = 0;
 	earBlock = -1;
 	conf.emu.fast = 0;
 	finish = 0;
@@ -443,7 +442,7 @@ void xThread::emuCycle(Computer* comp) {
 					}
 				}
 			}
-		} else if (brk_cond_count() && brk_check_cond(comp)) {	// conditions not bound to an address
+		} else if (brk_cond_n && brk_check_cond(comp)) {	// conditions not bound to an address
 			int stop = 0;
 			comp->brkt = BRK_COND;
 			comp->brka = 0;
@@ -580,7 +579,7 @@ static unsigned long long bench_mix(unsigned long long h, const unsigned char* p
 // a budget of 256 samples per cycle, the way the pacer hands them out.
 // hash folds every finished frame and every sample into one number, so two
 // builds can be shown to run the machine identically.
-int xThread::bench(int frames, int skip, int full, int hash, const char* prof, const char* shot, int nodraw) {
+int xThread::bench(int frames, int skip, int full, int hash, const char* prof, const char* shot, int nodraw, int heat) {
 	Computer* comp = conf.zx;
 	if (!comp) return 0;
 	blockSignals(true);
@@ -605,7 +604,7 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	}
 	conf.emu.fast = full ? 0 : 1;
 	if (nodraw) vid_set_nodraw(comp->vid, 1);	// what the picture itself costs
-	if (benchHeat) {
+	if (heat) {
 		comp->flgHEAT = 1;
 		comp_heat_sync(comp);
 		comp_heat_reset(comp);
@@ -684,14 +683,13 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 		unsigned long long hCpu = bench_mix(0xcbf29ce484222325ULL, (unsigned char*)regs, sizeof(regs));
 		fprintf(stdout, "hash: frames %016llx sound %016llx ram %016llx cpu %016llx pc %04X T %i\n",
 			hFrm, hSnd, hMem, hCpu, cpu->regPC & 0xffff, comp->frmtCount);
-		if (benchHeat) {
+		if (heat) {
 			unsigned long long hHeat = 0xcbf29ce484222325ULL;
 			xHeatBank* banks[] = {&comp->heatRam, &comp->heatRom};
 			for (xHeatBank* bk : banks) {
-				if (!bk->size) continue;
-				hHeat = bench_mix(hHeat, (unsigned char*)bk->rd, bk->size * sizeof(unsigned int));
-				hHeat = bench_mix(hHeat, (unsigned char*)bk->wr, bk->size * sizeof(unsigned int));
-				hHeat = bench_mix(hHeat, (unsigned char*)bk->ex, bk->size * sizeof(unsigned int));
+				unsigned int* cnt[] = {bk->rd, bk->wr, bk->ex};
+				for (unsigned int* c : cnt)
+					if (bk->size) hHeat = bench_mix(hHeat, (unsigned char*)c, bk->size * sizeof(unsigned int));
 			}
 			fprintf(stdout, "heat: %016llx\n", hHeat);
 		}

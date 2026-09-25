@@ -63,6 +63,23 @@ void memWr(Memory*, int, int);
 int memStdRd(int, void*);		// the page callbacks memSetBank() gives plain ram and rom
 void memStdWr(int, int, void*);
 
+// A byte of a page, and the page an address is in. A page of plain ram or rom
+// is read and written straight, which is what memStdRd/memStdWr would do.
+static inline MemPage* mem_get_page(Memory* mem, int adr) {
+	return &mem->map[(adr >> mem->pgshift) & 0xff];
+}
+static inline int mem_page_rd(MemPage* pg, int adr) {
+	if (pg->rd == memStdRd)
+		return ((unsigned char*)pg->data)[adr & 0xff];
+	return pg->rd ? (pg->rd(adr & 0xffff, pg->data) & 0xff) : 0xff;
+}
+static inline void mem_page_wr(MemPage* pg, int adr, int val) {
+	if (pg->wr == memStdWr)
+		((unsigned char*)pg->data)[adr & 0xff] = val & 0xff;
+	else if (pg->wr)
+		pg->wr(adr, val, pg->data);
+}
+
 void memSetSize(Memory*, int, int);
 // How much of ramData a machine can reach. Not ramSize: memSetBank puts a page
 // at ramData + (bank << pgshift & ramMask), and ZX48 runs with 64K of ram behind
@@ -80,7 +97,6 @@ int memFindAdr(Memory*, int, int);
 void mem_set_path(Memory*, const char*);
 void mem_set_bus(Memory*, int);
 int mem_get_phys_adr(Memory*, int);
-MemPage* mem_get_page(Memory*, int);
 
 #ifdef __cplusplus
 }

@@ -138,7 +138,6 @@ void tsDestroy(TSound* ts) {
 	free(ts);
 }
 
-// an empty socket has nothing to count, and this runs once per instruction
 // The one chip type with state of its own outside the struct is the YM2203;
 // xstate.c asks here rather than knowing that.
 

@@ -95,28 +95,24 @@ HardWare* findHardware(const char* name) {
 
 // mem
 
-static MemPage* pg;
-
 int stdMRd(Computer* comp, int adr, int m1) {
-	pg = mem_get_page(comp->mem, adr);	// = &comp->mem->map[(adr >> 8) & 0xff];
+	MemPage* pg = mem_get_page(comp->mem, adr);
 	if (m1 && (comp->dif->type == DIF_BDI)) {
-		if (comp->flgDOS && (pg->type == MEM_RAM)) {
+		// out of TR-DOS first, and then maybe back into it
+		if (comp->flgDOS && bdi_fetch_pages(comp, pg, adr)) {
 			comp->flgDOS = 0;
 			comp->hw->mapMem(comp);
 		}
-		if (!comp->flgDOS && ((adr & 0x3f00) == 0x3d00) && comp->flgROM && (pg->type == MEM_ROM)) {
+		if (!comp->flgDOS && bdi_fetch_pages(comp, pg, adr)) {
 			comp->flgDOS = 1;
 			comp->hw->mapMem(comp);
 		}
 	}
-	// the page is in hand, so the read goes straight at it rather than
-	// through memRd(), which would look the same page up again
-	return pg->rd ? (pg->rd(adr & 0xffff, pg->data) & 0xff) : 0xff;
+	return mem_page_rd(pg, adr);
 }
 
 void stdMWr(Computer *comp, int adr, int val) {
-	pg = mem_get_page(comp->mem, adr);	// = &comp->mem->map[(adr >> 8) & 0xff];
-	if (pg->wr) pg->wr(adr, val, pg->data);
+	mem_page_wr(mem_get_page(comp->mem, adr), adr, val);
 }
 
 // io

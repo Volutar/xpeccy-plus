@@ -239,7 +239,6 @@ int brk_cond_true(xBrkPoint*, Computer*);
 int brk_check_cond(Computer*);
 void brk_log_hit(xBrkPoint*, Computer*);
 extern int brk_cond_n;		// conditions not bound to an address, asked per instruction
-static inline int brk_cond_count() {return brk_cond_n;}
 int brk_load_list(const char*);
 int brk_save_list(const char*);
 

@@ -219,12 +219,7 @@ void ay_flush(aymChip* ay) {
 }
 
 void ay_sync(aymChip* ay, int ns) {
-	if (ns > 0)
-		ay->pendNs += ns;
-	// nothing may look at the chip for a long while - fast mode takes no
-	// samples - and the count is an int: settle it before it can wrap
-	if (ay->pendNs > (1 << 30))
-		ay_flush(ay);
+	ay_sync_ns(ay, ns);
 }
 
 sndPair ay_mix_stereo(int volA, int volB, int volC, int id, int sep) {

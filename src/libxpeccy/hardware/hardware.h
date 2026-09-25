@@ -116,6 +116,12 @@ typedef struct {
 
 xRomRole hw_rom_role(int hw, int bank);
 int hw_reset_bank(int hw, int res);
+// A fetch on a Beta Disk machine that pages TR-DOS: out, from ram while it is
+// in; in, from #3Dxx of the basic rom while it is out
+static inline int bdi_fetch_pages(Computer* comp, MemPage* pg, int adr) {
+	return comp->flgDOS ? (pg->type == MEM_RAM)
+		: (((adr & 0x3f00) == 0x3d00) && comp->flgROM && (pg->type == MEM_ROM));
+}
 int stdMRd(Computer*, int, int);
 void stdMWr(Computer*, int, int);
 int asicMRd(Computer*, int, int);	// stdMRd/stdMWr plus the +2A/+3 bus latch

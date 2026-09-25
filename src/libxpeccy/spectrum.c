@@ -66,34 +66,24 @@ int vid_mrd_cb(int adr, void* ptr) {
 
 // mrw,irw
 
-// stdMRd() without the two calls. A fetch on a Beta Disk machine can page
-// TR-DOS in or out, and that is left to stdMRd() itself.
-static inline int std_mrd(Computer* comp, int adr, int m1) {
-	MemPage* pg = &comp->mem->map[(adr >> comp->mem->pgshift) & 0xff];
-	if (m1 && (comp->dif->type == DIF_BDI)) {
-		if (comp->flgDOS ? (pg->type == MEM_RAM)
-				: (((adr & 0x3f00) == 0x3d00) && comp->flgROM && (pg->type == MEM_ROM)))
-			return stdMRd(comp, adr, m1);
-	}
-	if (pg->rd == memStdRd)
-		return ((unsigned char*)pg->data)[adr & 0xff];
-	return pg->rd ? (pg->rd(adr & 0xffff, pg->data) & 0xff) : 0xff;
-}
-
 __attribute__((noinline)) static int memrd_watched(Computer*, int, int);
 
 int memrd(int adr, int m1, void* ptr) {
 	Computer* comp = (Computer*)ptr;
 	adr &= comp->cpu->busmask;
-	// nothing watches the read and nothing spoils it
-	if (!(comp->flgMAP | comp->flgHEAT | comp->flgCOND | comp->flgBRKMEM) && !comp->snowBad
+	// nothing watches the read and nothing spoils it: stdMRd() without the
+	// calls, unless the fetch pages TR-DOS
+	if (!comp_mem_watched(comp) && !comp->snowBad
 #ifdef HAVEZLIB
 			&& !comp->rzx.play
 #endif
 			) {
-		if (comp->hw->mrd == stdMRd)
-			return std_mrd(comp, adr, m1);
-		return comp->hw->mrd(comp, adr, m1);
+		if (comp->hw->mrd != stdMRd)
+			return comp->hw->mrd(comp, adr, m1);
+		MemPage* pg = mem_get_page(comp->mem, adr);
+		if (m1 && (comp->dif->type == DIF_BDI) && bdi_fetch_pages(comp, pg, adr))
+			return stdMRd(comp, adr, m1);
+		return mem_page_rd(pg, adr);
 	}
 	return memrd_watched(comp, adr, m1);
 }
@@ -166,16 +156,11 @@ void memwr(int adr, int val, void* ptr) {
 	Computer* comp = (Computer*)ptr;
 	adr &= comp->cpu->busmask;
 	// nothing watches the write: stdMWr() without the two calls
-	if (!(comp->flgMAP | comp->flgHEAT | comp->flgCOND | comp->flgBRKMEM)) {
-		if (comp->hw->mwr != stdMWr) {
+	if (!comp_mem_watched(comp)) {
+		if (comp->hw->mwr == stdMWr)
+			mem_page_wr(mem_get_page(comp->mem, adr), adr, val);
+		else
 			comp->hw->mwr(comp, adr, val);
-			return;
-		}
-		MemPage* pg = &comp->mem->map[(adr >> comp->mem->pgshift) & 0xff];
-		if (pg->wr == memStdWr)
-			((unsigned char*)pg->data)[adr & 0xff] = val & 0xff;
-		else if (pg->wr)
-			pg->wr(adr, val, pg->data);
 		return;
 	}
 	memwr_watched(comp, adr, val);
@@ -467,13 +452,16 @@ int intrq(void* ptr) {
 
 void comp_irq(int t, void* ptr) {
 	Computer* comp = (Computer*)ptr;
-	// the INT sample at the end of every instruction is the machine's alone, and
-	// no unlazy: zx_irq() settles what it reads itself
-	if (t == IRQ_CPU_ACK) {
-		if (comp->hw->irq) comp->hw->irq(comp, t);
-		return;
-	}
+	// a machine's own handler may read or move the video, so the dots counted
+	// are drawn first - but not for what no handler needs it for
+	int unlazy = 1;
 	switch (t) {
+		case IRQ_CPU_ACK:		// every instruction: zx_irq() settles what it reads itself
+		case IRQ_TAP_0:			// no handler acts on these, and unlazying would only
+		case IRQ_TAP_1:			// cut short the calm stretch of a loader's edge loop
+		case IRQ_TAP_BLK:
+			unlazy = 0;
+			break;
 		case IRQ_BRK:
 			comp_brk(comp, -1);
 			break;
@@ -485,6 +473,7 @@ void comp_irq(int t, void* ptr) {
 			break;
 		case IRQ_CPU_HALT:
 			comp->hCount = comp->frmtCount;			// fix T counter from INT to start of HALT
+			unlazy = 0;
 			break;
 		case IRQ_VID_INT:
 			comp->fCount = comp_frame_ticks(comp);
@@ -508,19 +497,8 @@ void comp_irq(int t, void* ptr) {
 			zx_snow(comp);
 			return;			// not a machine's business
 	}
-	// a machine's own handler may read or move the video. Not a halt or a tape
-	// edge, which no handler acts on: unlazying there would only cut short the
-	// calm stretch of a loader's edge loop
-	switch (t) {
-		case IRQ_CPU_HALT:
-		case IRQ_TAP_0:
-		case IRQ_TAP_1:
-		case IRQ_TAP_BLK:
-			break;
-		default:
-			vid_unlazy(comp->vid);
-			break;
-	}
+	if (unlazy)
+		vid_unlazy(comp->vid);
 	if (comp->hw->irq) comp->hw->irq(comp, t);
 }
 

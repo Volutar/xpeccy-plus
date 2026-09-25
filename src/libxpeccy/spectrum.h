@@ -255,6 +255,12 @@ static inline int ns_fixed_to_ticks_up(Computer* comp, long long ns_fixed) {
 	return (int)((ns_fixed + comp->nsPerTickFixed - 1) / comp->nsPerTickFixed);
 }
 
+// Something of the debugger's looks at every memory access: the map, the heat
+// map, a condition or a memory breakpoint
+static inline int comp_mem_watched(Computer* comp) {
+	return comp->flgMAP | comp->flgHEAT | comp->flgCOND | comp->flgBRKMEM;
+}
+
 #include "hardware/hardware.h"
 
 Computer* compCreate();
