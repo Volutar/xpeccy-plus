@@ -40,6 +40,7 @@ void tape_destroy(Tape* tap) {
 // variable there is an idiv the compiler cannot fold away.
 void tape_set_tick_ns(Tape* tap, double ns) {
 	if (!tap || (ns <= 0)) return;
+	tape_settle(tap);		// the ns counted so far are of the old length
 	tap->ticksPerNsFixed = llround((double)(1LL << TAPE_RATE_BITS) / ns);
 }
 
@@ -392,6 +393,7 @@ void tapStoreBlock(Tape* tap) {
 // is already on, so the lead-in it gives a loader was never laid down.
 void tapEject(Tape* tap) {
 	int i;
+	tape_settle(tap);
 	tap->on = 0;
 	tap->rec = 0;
 	tap->wait = 0;
@@ -420,6 +422,7 @@ void tapEject(Tape* tap) {
 }
 
 void tapStop(Tape* tap) {
+	tape_settle(tap);
 	if (tap->on) {
 		xlog(XLG_TAPE, XLL_INFO, "stop, block %i of %i", tap->block, tap->blkCount);
 		tap->on = 0;
@@ -444,6 +447,7 @@ void tapUserStop(Tape* tap) {
 }
 
 int tapPlay(Tape* tap) {
+	tape_settle(tap);
 	if (tap->userStop) return tap->on;
 	if ((tap->block < tap->blkCount) && !tap->on) {
 		xlog(XLG_TAPE, XLL_INFO, "play, block %i of %i", tap->block, tap->blkCount);
@@ -525,6 +529,7 @@ void tapDetectLoader(Tape* tap, int tick, int regB, int earTest, int fromUser) {
 }
 
 void tapRec(Tape* tap) {
+	tape_settle(tap);
 	xlog(XLG_TAPE, XLL_INFO, "record");
 	tap->userStop = 0;
 	tap->on = 1;
@@ -538,6 +543,8 @@ void tapRec(Tape* tap) {
 // Where a playing tape stands, carried from a copy of the same image: what a
 // caller winding the machine back has to put back itself.
 void tap_copy_pos(Tape* dst, const Tape* src) {
+	dst->nsCalm = 0;			// worked out again at the next tapSync()
+	dst->nsLazy = src->nsLazy;
 	dst->on = src->on;
 	dst->tail = src->tail;
 	dst->wait = src->wait;
@@ -554,6 +561,7 @@ void tap_copy_pos(Tape* dst, const Tape* src) {
 }
 
 void tapRewind(Tape* tap, int blk) {
+	tape_settle(tap);
 	xlog(XLG_TAPE, XLL_INFO, "rewind to block %i of %i", blk, tap->blkCount);
 	tap->armed = 0;
 	tap->userStop = 0;
@@ -571,7 +579,46 @@ static int tap_stops_after(Tape* tap) {
 	return ((tap->block + 1) >= tap->blkCount) || tap->blkData[tap->block + 1].breakPoint;
 }
 
-void tapSync(Tape* tap, int ns) {
+// The ns tapSync() only counted: at speed 100, where each call would have made
+// them into ticks with no rounding, so the sum makes the same ticks
+static void tap_take_lazy(Tape* tap) {
+	tap->tickAcc += (long long)tap->nsLazy * tap->ticksPerNsFixed;
+	tap->nsLazy = 0;
+}
+
+// How many ns can pass before the pulse the tape stands in ends: until then
+// tapSync() would only count. Not while recording, nor at any other speed,
+// where each call rounds on its own.
+static void tap_calm(Tape* tap) {
+	long long tpn = tap->ticksPerNsFixed;
+	int sig = (tap->sigLen < (1 << 28)) ? tap->sigLen : (1 << 28);
+	tap->nsCalm = 0;
+	if (tap->rec || (tap->speed != 100) || (tpn <= 0) || (sig < 1)) return;
+	long long room = ((long long)sig << TAPE_RATE_BITS) - tap->tickAcc;
+	long long n = (room + tpn - 1) / tpn;
+	tap->nsCalm = (n < (1 << 30)) ? (int)n : (1 << 30);
+}
+
+// Before anything reads or moves where the tape stands: the ns counted are
+// played, and counting starts over at the next tapSync()
+void tape_settle(Tape* tap) {
+	if (tap->nsLazy)
+		tap_sync_slow(tap, 0);
+	tap->nsCalm = 0;
+}
+
+// sigLen as it would stand with the counted ns played, without playing them
+int tape_sig_len(Tape* tap) {
+	return tap->sigLen - (int)((tap->tickAcc + (long long)tap->nsLazy * tap->ticksPerNsFixed) >> TAPE_RATE_BITS);
+}
+
+void tape_set_speed(Tape* tap, int speed) {
+	tape_settle(tap);
+	tap->speed = speed;
+}
+
+void tap_sync_slow(Tape* tap, int ns) {
+	tap_take_lazy(tap);
 	tap->tickAcc += (long long)ns * tap->speed * tap->ticksPerNsFixed / 100;
 	int mks = (int)(tap->tickAcc >> TAPE_RATE_BITS);
 	int sig;
@@ -646,9 +693,11 @@ void tapSync(Tape* tap, int ns) {
 			tap->sigLen += TAPTPS / 2; // 5e5;	// .5 sec
 		}
 	}
+	tap_calm(tap);
 }
 
 void tapNextBlock(Tape* tap) {
+	tape_settle(tap);
 	tap->tail = 0;
 	tap->block++;
 	tap->pos = 0;

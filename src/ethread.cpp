@@ -358,6 +358,7 @@ void xThread::emuCycle(Computer* comp) {
 				}
 				if (conf.tape.autostart && !tape_flash() && ((pc == 0x5df) || (pc == 0x53a))
 						&& !tap_next_is_signal(comp->tape) && tap_block_done(comp->tape)) {
+					tape_settle(comp->tape);
 					comp->tape->sigLen = 1e6;
 					tapNextBlock(comp->tape);
 					tapStop(comp->tape);

@@ -16,7 +16,7 @@ void xTapeWidget::draw() {
 	Tape* tape = comp->tape;
 	drawHBar(ui.labTapein, tape->volPlay, 256);
 	drawHBar(ui.labTapeout, tape->levRec, 1);
-	ui.labSigLen->setText(tape->on ? QString("%0 mks").arg(tape->sigLen) : "");
+	ui.labSigLen->setText(tape->on ? QString("%0 mks").arg(tape_sig_len(tape)) : "");
 	ui.labTapeState->setText(tape->on ? (tape->rec ? "rec" : "play") : "stop");
 	ui.labTapePos->setText(tape->on ? QString::number(tape->pos - 1) : "--");
 	// draw tape diagram
@@ -46,7 +46,7 @@ void xTapeWidget::draw() {
 			pos = tape->pos;
 		}
 		blk = &tape->blkData[bnr];
-		time = tape->sigLen + (wid / 2) * XTDSTEP;
+		time = tape_sig_len(tape) + (wid / 2) * XTDSTEP;
 		while ((time >= 0) && (blk != NULL)) {
 			pos--;
 			if (pos < 0) {

@@ -131,6 +131,8 @@ typedef struct {
 
 	long long ticksPerNsFixed;	// ticks in one ns, TAPE_RATE_BITS fraction bits
 	long long tickAcc;		// ticks not played yet, same fraction
+	int nsLazy;		// ns tapSync() was handed and has not made into ticks yet
+	int nsCalm;		// nsLazy may grow up to this with no pulse ending
 	unsigned char volPlay;
 	int block;
 	int pos;
@@ -175,7 +177,21 @@ void tapUserStop(Tape*);
 void tapRewind(Tape*,int);
 int tap_rewind_at_end(Tape*);
 
-void tapSync(Tape*,int);
+void tap_sync_slow(Tape*,int);
+// Time for the tape. Up to the end of the pulse it stands in, nothing but a
+// count would change, so the ns are only added up - at normal speed, where
+// making them into ticks has no rounding. Whatever reads or moves where the
+// tape stands calls tape_settle() first; the level (volPlay) is always right.
+static inline void tapSync(Tape* tap, int ns) {
+	if ((long long)tap->nsLazy + ns < tap->nsCalm) {
+		tap->nsLazy += ns;
+		return;
+	}
+	tap_sync_slow(tap, ns);
+}
+void tape_settle(Tape*);
+int tape_sig_len(Tape*);
+void tape_set_speed(Tape*, int);
 void tapNextBlock(Tape*);
 void tap_copy_pos(Tape*, const Tape*);
 void tapDetectLoader(Tape*, int tick, int regB, int earTest, int fromUser);

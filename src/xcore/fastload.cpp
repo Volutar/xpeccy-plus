@@ -228,6 +228,7 @@ static int fl_loop_steady(Computer* comp) {
 // boundary counts, even one that keeps the level.
 static long long fl_tape_room(Computer* comp) {
 	Tape* tap = comp->tape;
+	tape_settle(tap);
 	if (!tap->on || tap->rec || (tap->sigLen < 2)) return 0;
 	// tape ticks in one T of the machine, the way tapSync() counts them
 	double tpt = (double)tap->ticksPerNsFixed / (1LL << TAPE_RATE_BITS) * tap->speed / 100.0
@@ -301,6 +302,7 @@ static void fl_probe(Computer* comp, flProbe* p) {
 	p->ry = comp->vid->ray.y;
 	p->blk = comp->tape->block;
 	p->pos = comp->tape->pos;
+	tape_settle(comp->tape);
 	p->sig = comp->tape->sigLen;
 	p->acc = comp->tape->tickAcc;
 }
