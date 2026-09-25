@@ -1,5 +1,6 @@
 #include "hardware.h"
 #include "../xlog.h"
+#include "../ldbytes.h"
 #include "../filetypes/filetypes.h"
 #include "../cpu/Z80/z80.h"
 
@@ -352,19 +353,13 @@ int zx_ear(Computer* comp) {
 // The rom's own loader polls #FE in exactly the pattern tapDetectLoader looks
 // for, and the tape trap serves the rom - so the detector must not answer for
 // it, or a flash load gets a tape playing under it and the two fall out of step.
-// LD-EDGE-1/2 (#05E3..#05F8) is the only rom code that reads the port this way.
+// LD-EDGE-1/2 (#05E3..#05F9) is the only rom code that reads the port this way,
+// and the same holds for a copy of LD-BYTES in ram that flash loading answers for.
 // The address goes first: one field read, and false on every keyboard poll.
-static int zx_rom_ld_edge(Computer* comp) {
+static int zx_ld_edge(Computer* comp) {
 	int pc = comp->cpu->regPC;
-	return (pc >= 0x05e3) && (pc <= 0x05f9) && zx_rom_active(comp);
-}
-
-// The same for a copy of LD-BYTES in ram that flash loading answers for
-static int zx_copy_ld_edge(Computer* comp) {
-	Tape* tap = comp->tape;
-	if (!tap->ldTrapped) return 0;
-	int ofs = (comp->cpu->regPC - tap->ldBase) & 0xffff;
-	return (ofs >= 0x8d) && (ofs <= 0xa3);		// #05E3-#05F9 in the rom
+	if (ld_edge(pc, LD_ROM_BASE) && zx_rom_active(comp)) return 1;
+	return (comp->tape->ldBase >= 0) && ld_edge(pc, comp->tape->ldBase);
 }
 
 // The read is the rom's own, not a loader's: whatever is doing it is running
@@ -405,13 +400,20 @@ int zx_in_use(Computer* comp, int pc) {
 // what a #FE read owes the tape, for a machine whose port handler is its own
 void zx_tape_detect(Computer* comp) {
 	Tape* tap = comp->tape;
-	if (zx_rom_ld_edge(comp) || zx_copy_ld_edge(comp)) {
+	if (zx_ld_edge(comp)) {
 		tap->portReads++;
 		return;
 	}
 	// A keyboard scan is no loader, however it steps B: it neither starts the
-	// tape nor counts for fast loading (Black Tiger's key definition)
-	int use = zx_in_use(comp, comp->cpu->regPC);
+	// tape nor counts for fast loading (Black Tiger's key definition). A loader
+	// reads from one IN over and over, so what it is is asked once a frame.
+	int pc = comp->cpu->regPC;
+	if ((pc != tap->inPc) || (comp->frmCount != tap->inFrame)) {
+		tap->inPc = pc;
+		tap->inFrame = comp->frmCount;
+		tap->inUse = zx_in_use(comp, pc);
+	}
+	int use = tap->inUse;
 	if (use == ZX_IN_KEYS) return;
 	tap->portReads++;	// the rom's own reads too: fast loading counts them
 	int ram = !zx_rom_code(comp);

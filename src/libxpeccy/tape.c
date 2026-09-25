@@ -20,6 +20,8 @@ Tape* tape_create(cbirq cb, void* p) {
 	tape_set_tick_ns(tap, TAPTICKNS);
 	tap->speed = 100;
 	tap->autorew = 1;
+	tap->ldBase = -1;
+	tap->inPc = -1;
 	blkClear(&tap->tmpBlock);
 	return tap;
 }

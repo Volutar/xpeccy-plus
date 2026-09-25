@@ -131,8 +131,12 @@ typedef struct {
 	int detectLastB;
 	int detectReads;
 	int portReads;		// reads of the tape port, cleared by the one counting them per frame
-	unsigned ldTrapped:1;	// flash loading answers for a copy of LD-BYTES in ram
-	int ldBase;		// where that copy starts
+	int ldBase;		// a copy of LD-BYTES in ram flash loading answers for, -1: none
+	int ldDir;		// its INC IX (+1) or DEC IX (-1)
+	int ldBlock;		// the block its edge routine was last checked on
+	int inPc;		// the last IN from the tape port looked at (zx_in_use)
+	int inFrame;		// on which frame
+	int inUse;		// and what it was
 
 	long long ticksPerNsFixed;	// ticks in one ns, TAPE_RATE_BITS fraction bits
 	long long tickAcc;		// ticks not played yet, same fraction
