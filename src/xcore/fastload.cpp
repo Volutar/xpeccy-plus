@@ -556,7 +556,7 @@ void fastload_stop(Computer* comp) {
 	fl_held = 0;
 	fastload_on = fl_bench;
 	conf.emu.fast = 0;
-	comp->vid->nodraw = 0;
+	vid_set_nodraw(comp->vid, 0);
 }
 
 int fastload_busy() {
@@ -628,7 +628,7 @@ static void fl_frame(Computer* comp) {
 	int draw = !fl_back.ok && (conf.vid.fctime - fl_drawn_at >= FL_REFRESH);
 	if (draw)
 		fl_drawn_at = conf.vid.fctime;
-	comp->vid->nodraw = !draw;
+	vid_set_nodraw(comp->vid, !draw);
 }
 
 void fastload_frame(Computer* comp) {

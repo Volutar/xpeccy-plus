@@ -412,6 +412,7 @@ void iowr(int port, int val, void* ptr) {
 
 int intrq(void* ptr) {
 	Computer* comp = (Computer*)ptr;
+	vid_unlazy(comp->vid);
 	return comp->hw->ack ? comp->hw->ack(comp) : 0xff;
 }
 
@@ -438,7 +439,7 @@ void comp_irq(int t, void* ptr) {
 			}
 			break;
 		case IRQ_CPU_SYNC:
-			vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
+			vid_sync_lazy(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
 			res4 = comp->cpu->t;
 			return;			// no machine acts on a plain sync
 		case IRQ_CPU_CONT:
@@ -447,11 +448,15 @@ void comp_irq(int t, void* ptr) {
 			res4 = comp->cpu->t;
 			break;
 		case IRQ_CPU_RFSH:
-			vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
+			vid_sync_lazy(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
 			res4 = comp->cpu->t;
 			zx_snow(comp);
 			return;			// not a machine's business
 	}
+	// a machine's own handler may read or move the video. Not the INT sample at
+	// the end of every instruction: zx_irq() settles what it reads itself
+	if (t != IRQ_CPU_ACK)
+		vid_unlazy(comp->vid);
 	if (comp->hw->irq) comp->hw->irq(comp, t);
 }
 
@@ -763,7 +768,7 @@ void comp_set_layout(Computer* comp, vLayout* lay) {
 // of them does with it, and this runs on every memory access.
 static void comp_cont(void* ptr, int mreq) {
 	Computer* comp = (Computer*)ptr;
-	vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
+	vid_sync_lazy(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
 	res4 = comp->cpu->t;
 	zx_contend(comp, mreq);
 }
@@ -815,7 +820,8 @@ int compSetHardware(Computer* comp, const char* name) {
 // take all of them, the devices follow and a new frame is flagged. Returns the ns
 // the step took.
 static int comp_step_end(Computer* comp, int unsynced, int t) {
-	vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, unsynced));
+	vid_sync_lazy(comp->vid, ticks_to_ns_fixed(comp, unsynced));
+	vid_settle(comp->vid);		// all of it walked, but the way to the next event is kept
 	nsTime = comp->vid->time;
 	comp->tickCount += t;
 	comp->frmtCount += t;
@@ -868,6 +874,7 @@ int compExec(Computer* comp) {
 #ifdef HAVEZLIB
 	if (comp->rzx.play) {
 		if (comp->rzx.frm.fetches == 0) {
+			vid_unlazy(comp->vid);
 			if (comp->hw->irq)
 				comp->hw->irq(comp, IRQ_RZX_INT);
 		}

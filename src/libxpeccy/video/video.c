@@ -150,11 +150,13 @@ void vidDestroy(Video* vid) {
 // The one place the dot period is set. nsPerDot is the whole-ns value other
 // code reads; nsPerDotFixed keeps the fraction, and is what the ray steps by.
 void vid_set_dot_ns(Video* vid, double nspd) {
+	vid_unlazy(vid);			// dots counted so far are of the old length
 	vid->nsPerDotExact = nspd;
 	vid->nsPerDot = (int)llround(nspd);
 	vid->nsPerDotFixed = NSD_TO_FIXED(nspd);
 	if (vid->nsPerDotFixed < 1)
 		vid->nsPerDotFixed = 1;		// never let vid_sync_fixed spin forever
+	vid->nsCalmFixed = vid->nsPerDotFixed;
 }
 
 void vid_upd_timings(Video* vid, double nspd) {
@@ -179,6 +181,7 @@ void vid_reset(Video* vid) {
 	vid->vidPage = 5;
 	vid->nsDrawFixed = 0;
 	vid->nsOwedFixed = 0;
+	vid->nsCalmFixed = vid->nsPerDotFixed;
 //	vidSetMode(vid, VID_NORMAL);
 }
 
@@ -198,6 +201,7 @@ void vid_reset_ray(Video* vid) {
 }
 
 void vid_set_ray(Video* vid, int dots) {
+	vid_unlazy(vid);
 	dots += vid->full.x * vid->intp.y;
 	dots += vid->intp.x;
 	dots %= vid->dotPerFrame;
@@ -305,6 +309,7 @@ void vid_upd_layout(Video* vid) {
 }
 
 void vid_set_layout(Video* vid, vLayout* lay) {
+	vid_unlazy(vid);
 	vid->full = lay->full;
 	vid->bord = lay->bord;
 	vid->blank = lay->blank;
@@ -687,6 +692,7 @@ int vid_wait_dots(Video* vid, int adr, int mreq) {
 	}
 	if (!contTab) return 0;				// unknown patern
 	if (!adr) return 0;				// address not in contention limits
+	vid_settle(vid);
 	if (vid->vbrd) return 0;			// border (vertical)
 	xscr = ula_fetch_x(vid, 0);
 	if (xscr < 0) return 0;				// line before contention
@@ -743,6 +749,7 @@ static int ula_burst_adr(Video* vid, int adr) {
 // refresh cycle the ram did not get.
 int vid_snow(Video* vid, int r, int bank) {
 	if (vid->ula->conttype != CONT_PATA) return 0;	// the Ferranti ULA and nothing else
+	vid_settle(vid);
 	if (vid->vbrd) return 0;
 	switch ((ula_fetch_x(vid, 0) & 15) >> 1) {
 		case ULA_SNOW_PH:
@@ -772,6 +779,7 @@ int vid_snow(Video* vid, int r, int bank) {
 // caller's, since the machines that have one answer differently.
 int vid_float_bus(Video* vid) {
 	int x, y, col, phase, pix, atr;
+	vid_settle(vid);
 	if (vid->vbrd) return -1;
 	x = ula_fetch_x(vid, -8);
 	if (x < 0) return -1;			// left border, before the first burst
@@ -784,6 +792,11 @@ int vid_float_bus(Video* vid) {
 	return vid->mrd(MADR(vid->vidPage, (phase & 1) ? atr : pix), vid->xptr) & 0xff;
 }
 
+void vid_set_nodraw(Video* vid, int on) {
+	vid_unlazy(vid);			// dots counted as undrawn stay undrawn
+	vid->nodraw = on ? 1 : 0;
+}
+
 // An undrawn frame of a mode marked blind moves the ray and nothing else
 static inline int vid_skips(Video* vid) {
 	return vid->nodraw && vid->cb->blind;
@@ -793,6 +806,7 @@ static inline int vid_skips(Video* vid) {
 // cell of the last dot the ray passed.
 int vid_atrbyte(Video* vid) {
 	int x, pix, atr;
+	vid_settle(vid);
 	if (!vid_skips(vid)) return vid->atrbyte;
 	x = vid->ray.x - 1 - vid->bord.x;
 	if (vid->vbrd || (x < 0) || (x >= vid->scrn.x)) return 0xff;
@@ -1430,6 +1444,7 @@ void vid_set_core(Video* vid, xVideoMode* xvm) {
 }
 
 void vid_set_mode(Video* vid, int mode) {
+	vid_unlazy(vid);
 	vid->vmode = mode;
 	int i = 0;
 	while ((vidModeTab[i].id != VID_UNKNOWN) && (vidModeTab[i].id != mode)) {
@@ -1579,12 +1594,11 @@ static void vid_run(Video* vid, int k) {
 	vid->intf = (vid->intf > k) ? vid->intf - k : 0;
 }
 
-// The ray steps in fixed point ns. vid->time stays whole ns for everything
-// downstream (sound pacing among others); the fraction it is owed rides along
-// in nsOwedFixed rather than being dropped once per call.
-void vid_sync_fixed(Video* vid, long long nsFixed) {
-	if (!nsFixed) return;			// no time passed: the tail below is a no-op
-	vid->nsDrawFixed += nsFixed;
+// Draws the whole dots that nsDrawFixed holds. The ray steps in fixed point ns.
+// vid->time stays whole ns for everything downstream (sound pacing among
+// others); the fraction it is owed rides along in nsOwedFixed rather than being
+// dropped once per call.
+static inline void vid_take_dots(Video* vid) {
 	if (vid->nsDrawFixed >= vid->nsPerDotFixed) {
 		int n = (int)(vid->nsDrawFixed / vid->nsPerDotFixed);
 		vid->nsDrawFixed -= n * vid->nsPerDotFixed;
@@ -1605,6 +1619,58 @@ void vid_sync_fixed(Video* vid, long long nsFixed) {
 	long long whole = FIXED_TO_NS(vid->nsOwedFixed);
 	vid->nsOwedFixed -= NS_TO_FIXED(whole);
 	vid->time += (int)whole;
+}
+
+// The same, out of line: the copy inlined in vid_sync_lazy_slow() is the hot one
+__attribute__((noinline)) static void vid_take(Video* vid) {
+	vid_take_dots(vid);
+}
+
+// The dots counted by vid_sync_lazy() are drawn, and it counts no more until the
+// next vid_sync_lazy_slow() has looked at the video again - for whatever runs
+// next may change it.
+void vid_unlazy(Video* vid) {
+	if (vid->nsCalmFixed > vid->nsPerDotFixed) {
+		vid->nsCalmFixed = vid->nsPerDotFixed;
+		vid_take(vid);
+	}
+}
+
+// How far the ray can go with nothing happening but the count: in an undrawn
+// blind frame, up to the next event vid_run_len() stops at. Dots drawn in a
+// run of k are the same as those drawn in two runs that add up to k, which is
+// what lets vid_sync_lazy() put them off. A drawn frame is left as it was.
+static inline void vid_calm(Video* vid) {
+	if (vid_skips(vid))
+		vid->nsCalmFixed = (vid_run_len(vid, 1 << 20) + 1) * vid->nsPerDotFixed;
+}
+
+void vid_sync_fixed(Video* vid, long long nsFixed) {
+	vid_unlazy(vid);
+	if (!nsFixed) return;			// no time passed: the tail is a no-op
+	vid->nsDrawFixed += nsFixed;
+	vid_take(vid);
+}
+
+// Past the calm stretch. The dots counted and these are drawn in one go, which
+// comes to the same as one call at a time; a step back in time is taken the
+// way vid_sync_fixed() took it, after the dots already counted.
+void vid_sync_lazy_slow(Video* vid, long long nsFixed) {
+	if (nsFixed < 0) vid_unlazy(vid);
+	vid->nsCalmFixed = vid->nsPerDotFixed;	// no counting while an event runs
+	if (!nsFixed) return;
+	vid->nsDrawFixed += nsFixed;
+	vid_take_dots(vid);
+	vid_calm(vid);
+}
+
+// the dots counted are all short of the next event, so what is left of the way
+// to it is known without looking again
+void vid_settle_slow(Video* vid) {
+	long long d = vid->nsDrawFixed;
+	long long calm = vid->nsCalmFixed;
+	vid_take(vid);
+	vid->nsCalmFixed = calm - (d - vid->nsDrawFixed);
 }
 
 void vid_sync(Video* vid, int ns) {

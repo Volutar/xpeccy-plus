@@ -592,7 +592,7 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 		emu_unlock();
 	}
 	conf.emu.fast = full ? 0 : 1;
-	if (nodraw) comp->vid->nodraw = 1;	// what the picture itself costs
+	if (nodraw) vid_set_nodraw(comp->vid, 1);	// what the picture itself costs
 #ifdef _WIN32
 	benchProf* bp = NULL;
 	HANDLE pth = NULL;

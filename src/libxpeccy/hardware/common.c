@@ -83,7 +83,7 @@ void zx_contend(Computer* comp, int mreq) {
 	int wdots = vid_wait_dots(comp->vid, pg->num << comp->mem->pgshift, mreq);
 	if (!wdots) return;
 	comp->cpu->t += ns_fixed_to_ticks_up(comp, (long long)wdots * comp->vid->nsPerDotFixed);
-	vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
+	vid_sync_lazy(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
 	res4 = comp->cpu->t;
 }
 
@@ -162,7 +162,9 @@ void zx_irq(Computer* comp, int t) {
 			// end, a tick past the one the cpu samples INT in: a pulse that
 			// began inside that tick is not there yet
 			int ahead = res4 - comp->cpu->t;
-			vid_sync_fixed(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
+			// lazy: dots still counted cross no event, so they leave intFRAME
+			// zero or not as it is, and a step back (ahead) walks them first
+			vid_sync_lazy(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
 			res4 = comp->cpu->t;
 			int act = comp->vid->intFRAME;
 			if (act && (ahead > 0) && (comp->vid->intsize - act < ahead * comp->nsPerTickFixed / comp->vid->nsPerDotFixed))
