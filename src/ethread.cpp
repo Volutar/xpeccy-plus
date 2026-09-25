@@ -10,6 +10,7 @@
 #include "xcore/pacing.h"
 #include "xcore/autostart.h"
 #include "xcore/fastload.h"
+#include "xcore/tapetrap.h"
 #include "xcore/vfilters.h"
 #include "libxpeccy/cpu/Z80/z80.h"
 #include "libxpeccy/xstate.h"
@@ -90,21 +91,20 @@ static int tap_past_pilot(Tape* tap) {
 	return (blk->dataPos > 0) && (tap->pos > blk->dataPos);
 }
 
-static int tap_peek(int adr, void* data) {
-	return memRd(((Computer*)data)->mem, adr);
-}
-
-// The edge routine was called by the rom's own LD-BYTES, not by a copy of it in
-// ram (Krakout), which never comes back to LD_START to be handed a block and is
-// played to instead. LD-EDGE-2 calls LD-EDGE-1 itself: its caller is a word up.
-// Nor does LD-8-BITS (05CD): a timeout there returns to whoever called LD-BYTES,
-// or to a loader that jumped straight into it for a block with no sync (Tutankhamun).
-static int tap_rom_caller(Computer* comp) {
+// The edge routine was called by the LD-BYTES it belongs to, not by a loader of
+// its own (Krakout, calling the rom's), which never comes back to LD_START to be
+// handed a block and is played to instead. LD-EDGE-2 calls LD-EDGE-1 itself: its
+// caller is a word up. Nor does LD-8-BITS (05CD): a timeout there returns to
+// whoever called LD-BYTES, or to a loader that jumped straight into it for a
+// block with no sync (Tutankhamun).
+static int tap_rom_caller(Computer* comp, int base) {
 	int sp = comp->cpu->regSP;
 	int ret = cpu_peek_word(tap_peek, comp, sp);
-	if (ret == 0x05e6)
+	if (ret == ((base + LDC_EDGE2_RET) & 0xffff))
 		ret = cpu_peek_word(tap_peek, comp, sp + 2);
-	return (ret < 0x4000) && (ret != 0x05cd);
+	if (ret == ((base + LDC_BITS_RET) & 0xffff)) return 0;
+	if (base == LD_ROM_BASE) return ret < 0x4000;
+	return ((ret - base) & 0xffff) < LDC_LEN;		// a copy is called by itself
 }
 
 // atStart says the rom is at LD_START, the top of LD_BYTES, rather than inside
@@ -112,7 +112,8 @@ static int tap_rom_caller(Computer* comp) {
 // there may a block be handed over and the rom sent to its own exit. Doing it
 // from LD_EDGE_1 returned into the middle of LD_BYTES with the block eaten - the
 // first block of a load went missing that way.
-void xThread::tap_catch_load(Computer* comp, int atStart) {
+// base is where LD-BYTES starts, #0556 or a copy's; dir is its INC or DEC IX.
+void xThread::tap_catch_load(Computer* comp, int atStart, int base, int dir) {
 	Tape* tap = comp->tape;
 	// Stop, pressed by hand, keeps the automatics off the tape - flash loading
 	// included, which moves it on without ever playing it. Play, a rewind or
@@ -131,7 +132,7 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 	if (atStart)
 		earBlock = (tap->blkData[blk].hasBytes && (tapGetBlockInfo(tap, blk).size > comp->cpu->regDE)) ? blk : -1;
 	if (tape_flash() && tap->blkData[blk].hasBytes && (blk != earBlock)
-			&& (atStart || tap_rom_caller(comp))) {
+			&& (atStart || tap_rom_caller(comp, base))) {
 		// A playing tape and a flash load get out of step: the rom reads the
 		// block by ear and moves on while the tape still stands on it, and the
 		// next block is then answered with this one. Flash loading owns the
@@ -145,68 +146,7 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 			tapStop(tap);
 			return;
 		}
-		unsigned short de = comp->cpu->regDE;
-		unsigned short ix = comp->cpu->regIX;
-		// read before the block lands: it may cover the stack
-		int ldret = (cpu_peek_word(tap_peek, comp, comp->cpu->regSP) == 0x053f);
-		TapeBlockInfo inf = tapGetBlockInfo(tap,blk);
-		unsigned char* blkData = (unsigned char*)malloc(inf.size + 2);
-		tapGetBlockData(tap,blk,blkData, inf.size + 2);
-#if 1
-		unsigned char data = 0x01;
-		unsigned char crc = blkData[0];
-		bool overdata = (inf.size < de);
-		int len = overdata ? inf.size : de;
-		int i;
-		for (i = 0; i < len; i++) {
-			data = blkData[i + 1];		// 1st data byte is type, not data
-			crc ^= data;
-			memWr(comp->mem, ix, data);
-			ix++;
-			de--;
-		}
-		if (!overdata) {
-			crc ^= blkData[i + 1];		// xor with tape crc (next byte after de|inf.size bytes)
-		}
-		comp->cpu->regL = data;			// last readed byte
-		comp->cpu->regH = crc;			// all bytes xored (0 if no errors)
-		comp->cpu->regIX = ix;			// next address
-		comp->cpu->regDE = de;			// remaining size (0 if all is good)
-#else
-		if (inf.size >= de) {
-			for (int i = 0; i < de; i++) {
-				memWr(comp->mem,ix,blkData[i + 1]);
-				ix++;
-			}
-			comp->cpu->regIX = ix;
-			comp->cpu->regDE = 0x0000;	// remaining len
-			comp->cpu->regHL = 0x0000;	// h = calculated_crc ^ tape_crc (=0 if no errors), l = last readed byte
-		} else {
-			comp->cpu->regHL = 0xff00;		// error
-		}
-#endif
-		// the block is in memory and the tape never moved for it, so the loader
-		// that comes next would be handed silence: give it the tape when it asks
-		int sig = tap_next_is_signal(tap);
-		// A block with no pause after it runs straight into the next one, and a
-		// loader that reads that one is timing it from here: play it now, with
-		// no lead-in, from the level the handed-over block ended on.
-		TapeBlock* cur = &tap->blkData[blk];
-		int last = cur->sigCount ? cur->data[cur->sigCount - 1].vol : 0x80;
-		tapNextBlock(tap);
-		fastload_forget();
-		if (!TAP_VOL_PAUSE(last) && (tap->block < tap->blkCount)) {
-			tap_play_on(tap, last);
-		} else if (sig) {
-			tapArmPlay(tap);
-		}
-		cpu_set_pc(comp->cpu, 0x5df);
-		// A loader that enters LD-BYTES past its PUSH of SA/LD-RET (JP #0562)
-		// keeps the border the edge loop left: blue, the data phase's colour
-		// for a tape back at the level it started on, not the lead-in's.
-		if (!ldret)
-			comp->hw->out(comp, 0x09fe, 0x09);
-		free(blkData);
+		tap_hand_over(comp, blk, base, dir);
 	} else if ((conf.tape.autostart || (blk == earBlock)) && !tap->on) {
 		// 05E7 is LD-EDGE-1, which the rom calls for every edge, so this is
 		// reached thousands of times per block - hence the guard. The window
@@ -214,6 +154,96 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 		// stale ones in the queue that restarted a tape already stopped.
 		tapPlay(tap);
 	}
+}
+
+// The block goes into memory as LD-BYTES would have read it, and the cpu leaves
+// LD-BYTES the way it would have after that.
+void xThread::tap_hand_over(Computer* comp, int blk, int base, int dir) {
+	Tape* tap = comp->tape;
+	int copy = (base != LD_ROM_BASE);
+	unsigned short de = comp->cpu->regDE;
+	unsigned short ix = comp->cpu->regIX;
+	// read before the block lands: it may cover the stack
+	int ldret = (cpu_peek_word(tap_peek, comp, comp->cpu->regSP)
+		== cpu_peek_word(tap_peek, comp, base + LDC_RET_OP));
+	TapeBlockInfo inf = tapGetBlockInfo(tap,blk);
+	unsigned char* blkData = (unsigned char*)malloc(inf.size + 2);
+	tapGetBlockData(tap,blk,blkData, inf.size + 2);
+#if 1
+	unsigned char data = 0x01;
+	unsigned char crc = blkData[0];
+	bool overdata = (inf.size < de);
+	int len = overdata ? inf.size : de;
+	int i;
+	for (i = 0; i < len; i++) {
+		data = blkData[i + 1];		// 1st data byte is type, not data
+		crc ^= data;
+		memWr(comp->mem, ix, data);
+		ix += dir;
+		de--;
+	}
+	if (!overdata) {
+		crc ^= blkData[i + 1];		// xor with tape crc (next byte after de|inf.size bytes)
+	} else if (copy) {
+		// Asked for more than the block holds, LD-BYTES reads its checksum
+		// as data and times out in the pause after it, H telling whether
+		// the block was whole: how a copy loads a block of unknown length
+		// (The Balrog and the Cat).
+		data = blkData[i + 1];
+		crc ^= data;
+		memWr(comp->mem, ix, data);
+		ix += dir;
+		de--;
+	}
+	comp->cpu->regL = data;			// last readed byte
+	comp->cpu->regH = crc;			// all bytes xored (0 if no errors)
+	comp->cpu->regIX = ix;			// next address
+	comp->cpu->regDE = de;			// remaining size (0 if all is good)
+#else
+	if (inf.size >= de) {
+		for (int i = 0; i < de; i++) {
+			memWr(comp->mem,ix,blkData[i + 1]);
+			ix++;
+		}
+		comp->cpu->regIX = ix;
+		comp->cpu->regDE = 0x0000;	// remaining len
+		comp->cpu->regHL = 0x0000;	// h = calculated_crc ^ tape_crc (=0 if no errors), l = last readed byte
+	} else {
+		comp->cpu->regHL = 0xff00;		// error
+	}
+#endif
+	// the block is in memory and the tape never moved for it, so the loader
+	// that comes next would be handed silence: give it the tape when it asks
+	int sig = tap_next_is_signal(tap);
+	// A block with no pause after it runs straight into the next one, and a
+	// loader that reads that one is timing it from here: play it now, with
+	// no lead-in, from the level the handed-over block ended on.
+	TapeBlock* cur = &tap->blkData[blk];
+	int last = cur->sigCount ? cur->data[cur->sigCount - 1].vol : 0x80;
+	tapNextBlock(tap);
+	fastload_forget();
+	if (!TAP_VOL_PAUSE(last) && (tap->block < tap->blkCount)) {
+		tap_play_on(tap, last);
+	} else if (sig) {
+		tapArmPlay(tap);
+	}
+	if (copy)
+		xlog(XLG_TAPE, XLL_INFO, "block %i handed to the copy of LD-BYTES at %04X, the tape %s at block %i",
+			blk, base, tap->on ? "plays on" : "stands", tap->block);
+	if (overdata && copy) {
+		// out through LD-8-BITS' RET NC, as a timeout leaves: NC, Z
+		cpu_set_pc(comp->cpu, (base + LDC_BITS_RET) & 0xffff);
+		cpu_set_flag(comp->cpu, (cpu_get_flag(comp->cpu) & ~0x01) | 0x40);
+	} else {
+		cpu_set_pc(comp->cpu, (base + LDC_TAIL) & 0xffff);
+	}
+	// A loader that enters LD-BYTES past its PUSH of SA/LD-RET (JP #0562)
+	// keeps the border the edge loop left: blue, the data phase's colour
+	// for a tape back at the level it started on, not the lead-in's. A
+	// copy has colours of its own, and keeps what it has.
+	if (!ldret && !copy)
+		comp->hw->out(comp, 0x09fe, 0x09);
+	free(blkData);
 }
 
 void xThread::tap_catch_save(Computer* comp) {
@@ -377,8 +407,8 @@ void xThread::emuCycle(Computer* comp) {
 			// register table
 			if (zx_rom_active(comp)) {
 				int pc = comp->cpu->regPC;
-				if ((pc == 0x56c) || (pc == 0x5e7)) {	// load: ix:addr, de:len (0x580 ?) 56c/559
-					tap_catch_load(comp, pc == 0x56c);
+				if ((pc == LD_ROM_BASE + LDC_START) || (pc == LD_ROM_BASE + LDC_EDGE1)) {	// load: ix:addr, de:len
+					tap_catch_load(comp, pc == LD_ROM_BASE + LDC_START);
 				} else if (pc == 0x4d0) {				// save: ix:addr, de:len, a:block type(b7), hl:pilot len (1f80/0c98)?
 					tap_catch_save(comp);
 				}
@@ -388,6 +418,14 @@ void xThread::emuCycle(Computer* comp) {
 					tapNextBlock(comp->tape);
 					tapStop(comp->tape);
 				}
+			}
+			// a copy of LD-BYTES in ram is trapped as the rom's is, once seen
+			if (tape_flash()) {
+				int start;
+				if (ldc_step(comp, &start))
+					tap_catch_load(comp, start, comp->tape->ldBase, comp->tape->ldDir);
+			} else if (comp->tape->ldBase >= 0) {
+				ldc_forget(comp);
 			}
 			// a loader's edge loop, counted instead of run
 			if (fastload_on)
@@ -413,6 +451,7 @@ void xThread::emuCycle(Computer* comp) {
 			conf.vid.fctime = paceClockNs();	// for the fps readout
 			conf.vid.fcount++;
 			comp->frmCount++;
+			ldc_frame();
 			autostart_frame(comp);
 			fastload_frame(comp);
 			// before run-ahead: the debugger's screen view wants the machine as

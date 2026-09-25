@@ -1,5 +1,6 @@
 #include "hardware.h"
 #include "../xlog.h"
+#include "../ldbytes.h"
 #include "../filetypes/filetypes.h"
 #include "../cpu/Z80/z80.h"
 
@@ -352,11 +353,13 @@ int zx_ear(Computer* comp) {
 // The rom's own loader polls #FE in exactly the pattern tapDetectLoader looks
 // for, and the tape trap serves the rom - so the detector must not answer for
 // it, or a flash load gets a tape playing under it and the two fall out of step.
-// LD-EDGE-1/2 (#05E3..#05F8) is the only rom code that reads the port this way.
+// LD-EDGE-1/2 (#05E3..#05F9) is the only rom code that reads the port this way,
+// and the same holds for a copy of LD-BYTES in ram that flash loading answers for.
 // The address goes first: one field read, and false on every keyboard poll.
-static int zx_rom_ld_edge(Computer* comp) {
+static int zx_ld_edge(Computer* comp) {
 	int pc = comp->cpu->regPC;
-	return (pc >= 0x05e3) && (pc <= 0x05f9) && zx_rom_active(comp);
+	if (ld_edge(pc, LD_ROM_BASE) && zx_rom_active(comp)) return 1;
+	return (comp->tape->ldBase >= 0) && ld_edge(pc, comp->tape->ldBase);
 }
 
 // The read is the rom's own, not a loader's: whatever is doing it is running
@@ -367,17 +370,29 @@ static int zx_rom_code(Computer* comp) {
 	return mem_get_page(comp->mem, comp->cpu->regPC)->type == MEM_ROM;
 }
 
-// The code right after the IN looks at the ear bit: AND #40, BIT 6,A, or RRA and
-// AND #20. A keyboard poll masks the key bits instead. The pc is past the IN.
-static int zx_ear_test(Computer* comp) {
-	int pc = comp->cpu->regPC;
-	unsigned char b[8];
-	for (int i = 0; i < 8; i++)
+// What the code right after an IN from #FE looks at: the ear bit (AND #40,
+// BIT 6,A, RRA and AND #20, maybe XOR C between), which is a loader, else the
+// key bits alone (AND with bits 0-4, BIT 0-4,A, OR #E0), which is a keyboard
+// scan. The ear wins: a loader may test for BREAK first (BIT 0,A, AND #40).
+// pc is the address after the IN.
+int zx_in_use(Computer* comp, int pc) {
+	unsigned char b[9];
+	for (int i = 0; i < 9; i++)
 		b[i] = memRd(comp->mem, (pc + i) & 0xffff) & 0xff;
 	for (int i = 0; i < 6; i++) {
-		if ((b[i] == 0xe6) && (b[i + 1] == 0x40)) return 1;
-		if ((b[i] == 0xcb) && (b[i + 1] == 0x77)) return 1;
-		if ((b[i] == 0x1f) && (b[i + 1] == 0xe6) && (b[i + 2] == 0x20)) return 1;
+		unsigned char x = b[i];
+		unsigned char y = b[i + 1];
+		if (((x == 0xe6) && (y == 0x40)) || ((x == 0xcb) && (y == 0x77))) return ZX_IN_EAR;
+		if ((x == 0x1f) && (((y == 0xe6) && (b[i + 2] == 0x20))
+				|| ((y == 0xa9) && (b[i + 2] == 0xe6) && (b[i + 3] == 0x20))))
+			return ZX_IN_EAR;
+	}
+	for (int i = 0; i < 6; i++) {
+		unsigned char x = b[i];
+		unsigned char y = b[i + 1];
+		if ((x == 0xe6) && y && !(y & 0xe0)) return ZX_IN_KEYS;
+		if ((x == 0xcb) && ((y & 0xc7) == 0x47) && (y < 0x68)) return ZX_IN_KEYS;
+		if ((x == 0xf6) && (y == 0xe0)) return ZX_IN_KEYS;
 	}
 	return 0;
 }
@@ -385,13 +400,27 @@ static int zx_ear_test(Computer* comp) {
 // what a #FE read owes the tape, for a machine whose port handler is its own
 void zx_tape_detect(Computer* comp) {
 	Tape* tap = comp->tape;
+	if (zx_ld_edge(comp)) {
+		tap->portReads++;
+		return;
+	}
+	// A keyboard scan is no loader, however it steps B: it neither starts the
+	// tape nor counts for fast loading (Black Tiger's key definition). A loader
+	// reads from one IN over and over, so what it is is asked once a frame.
+	int pc = comp->cpu->regPC;
+	if ((pc != tap->inPc) || (comp->frmCount != tap->inFrame)) {
+		tap->inPc = pc;
+		tap->inFrame = comp->frmCount;
+		tap->inUse = zx_in_use(comp, pc);
+	}
+	int use = tap->inUse;
+	if (use == ZX_IN_KEYS) return;
 	tap->portReads++;	// the rom's own reads too: fast loading counts them
-	if (zx_rom_ld_edge(comp)) return;
 	int ram = !zx_rom_code(comp);
 	// only a stopped tape needs it, only from a loader in ram, and only for a
 	// read that came soon enough after the last to count at all
 	int ear = ram && !tap->on && tap->detectOn
-		&& (comp->tickCount - tap->detectLastTick <= 500) && zx_ear_test(comp);
+		&& (comp->tickCount - tap->detectLastTick <= 500) && (use == ZX_IN_EAR);
 	tapDetectLoader(tap, comp->tickCount, comp->cpu->regB, ear, ram);
 }
 

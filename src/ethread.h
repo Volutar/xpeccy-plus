@@ -4,6 +4,7 @@
 #include <QMutex>
 
 #include "xcore/xcore.h"
+#include "libxpeccy/ldbytes.h"
 
 class xThread : public QThread {
 	Q_OBJECT
@@ -30,6 +31,7 @@ class xThread : public QThread {
 		void rzx_begin(Computer*);
 		int runAhead(Computer*);
 		void brkAction(Computer*, xBrkPoint*, int*);
-		void tap_catch_load(Computer*, int);
+		void tap_catch_load(Computer*, int, int base = LD_ROM_BASE, int dir = 1);
+		void tap_hand_over(Computer*, int blk, int base, int dir);
 		void tap_catch_save(Computer*);
 };

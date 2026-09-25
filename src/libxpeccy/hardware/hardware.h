@@ -152,6 +152,8 @@ static inline int zx_rom_active(Computer* comp) {
 		&& (comp->mem->map[0].type == MEM_ROM);
 }
 void zx_tape_detect(Computer*);
+enum {ZX_IN_EAR = 1, ZX_IN_KEYS};
+int zx_in_use(Computer*, int);
 
 void xOutFE(Computer*, int, int);
 void xOutBFFD(Computer*, int, int);
