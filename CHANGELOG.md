@@ -21,7 +21,9 @@ before that point is upstream's history and is not repeated here.
 - **No Kempston joystick on the stock ZX Spectrum 48K, 128K and +2**, as they came. Switch it
   on in the machine's settings for a game that wants one.
 - **Fast loading takes about a third less time**, and shows the loading screen as it comes
-  in, 30 times a second, with the loader's border stripes.
+  in, 30 times a second, with the loader's border stripes - also when the tape was started
+  from the command line, where a 48K showed nothing until the load was over. With
+  TurboSound FM it no longer runs at half the speed of a plain AY.
 
 ### Fixed
 
@@ -33,6 +35,9 @@ before that point is upstream's history and is not repeated here.
 - **The PSG clock follows the chips.** Switching between one AY, TurboSound and TurboSound
   FM keeps the clock chosen and shows it as the chip's own - 1.773447 MHz on an AY is
   3.546894 MHz on the YM2203 - instead of leaving an FM clock on an AY.
+- **TZX tapes that lost blocks load in full**, Dark Fusion and 48 Irons among them. Every
+  block after a "stop the tape if 48K" block was dropped, and so was a pilot tone given
+  as separate pulses before its data.
 
 ## 2026.5 - 2026-09-23
 
