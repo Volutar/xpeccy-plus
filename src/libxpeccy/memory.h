@@ -60,6 +60,8 @@ void memDestroy(Memory*);
 
 int memRd(Memory*, int);
 void memWr(Memory*, int, int);
+int memStdRd(int, void*);		// the page callbacks memSetBank() gives plain ram and rom
+void memStdWr(int, int, void*);
 
 void memSetSize(Memory*, int, int);
 // How much of ramData a machine can reach. Not ramSize: memSetBank puts a page

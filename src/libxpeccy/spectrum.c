@@ -66,9 +66,39 @@ int vid_mrd_cb(int adr, void* ptr) {
 
 // mrw,irw
 
+// stdMRd() without the two calls. A fetch on a Beta Disk machine can page
+// TR-DOS in or out, and that is left to stdMRd() itself.
+static inline int std_mrd(Computer* comp, int adr, int m1) {
+	MemPage* pg = &comp->mem->map[(adr >> comp->mem->pgshift) & 0xff];
+	if (m1 && (comp->dif->type == DIF_BDI)) {
+		if (comp->flgDOS ? (pg->type == MEM_RAM)
+				: (((adr & 0x3f00) == 0x3d00) && comp->flgROM && (pg->type == MEM_ROM)))
+			return stdMRd(comp, adr, m1);
+	}
+	if (pg->rd == memStdRd)
+		return ((unsigned char*)pg->data)[adr & 0xff];
+	return pg->rd ? (pg->rd(adr & 0xffff, pg->data) & 0xff) : 0xff;
+}
+
+__attribute__((noinline)) static int memrd_watched(Computer*, int, int);
+
 int memrd(int adr, int m1, void* ptr) {
 	Computer* comp = (Computer*)ptr;
 	adr &= comp->cpu->busmask;
+	// nothing watches the read and nothing spoils it
+	if (!(comp->flgMAP | comp->flgHEAT | comp->flgCOND | comp->flgBRKMEM) && !comp->snowBad
+#ifdef HAVEZLIB
+			&& !comp->rzx.play
+#endif
+			) {
+		if (comp->hw->mrd == stdMRd)
+			return std_mrd(comp, adr, m1);
+		return comp->hw->mrd(comp, adr, m1);
+	}
+	return memrd_watched(comp, adr, m1);
+}
+
+static int memrd_watched(Computer* comp, int adr, int m1) {
 #ifdef HAVEZLIB
 	if (m1 && comp->rzx.play && (comp->rzx.frm.fetches > 0)) {
 		comp->rzx.frm.fetches--;
@@ -130,9 +160,28 @@ int memrd(int adr, int m1, void* ptr) {
 	return res;
 }
 
+__attribute__((noinline)) static void memwr_watched(Computer*, int, int);
+
 void memwr(int adr, int val, void* ptr) {
 	Computer* comp = (Computer*)ptr;
 	adr &= comp->cpu->busmask;
+	// nothing watches the write: stdMWr() without the two calls
+	if (!(comp->flgMAP | comp->flgHEAT | comp->flgCOND | comp->flgBRKMEM)) {
+		if (comp->hw->mwr != stdMWr) {
+			comp->hw->mwr(comp, adr, val);
+			return;
+		}
+		MemPage* pg = &comp->mem->map[(adr >> comp->mem->pgshift) & 0xff];
+		if (pg->wr == memStdWr)
+			((unsigned char*)pg->data)[adr & 0xff] = val & 0xff;
+		else if (pg->wr)
+			pg->wr(adr, val, pg->data);
+		return;
+	}
+	memwr_watched(comp, adr, val);
+}
+
+static void memwr_watched(Computer* comp, int adr, int val) {
 	if (comp->flgHEAT && !x_runahead) {	// an ahead frame would count every access twice
 		// writes (incl. stack push/call) are always data traffic, never execution
 		comp_heat_hit(comp, adr, HEAT_WR);
