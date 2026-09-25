@@ -601,9 +601,20 @@ static void fl_auto_stop(Computer* comp) {
 		fl_block = tap->block;
 		return;
 	}
+	if (!conf.tape.autostart || !fl_loop_seen || (comp->frmCount - fl_loop_frame < FL_GONE)) {
+		fl_block = tap->block;
+		return;
+	}
+	// past the last block's data there is only its pause: nothing more to load
+	if ((tap->block == tap->blkCount - 1) && (tap->pos >= (int)tap->blkData[tap->block].sigCount)
+			&& TAP_VOL_PAUSE(tap->volPlay)) {
+		xlog(XLG_TAPE, XLL_INFO, "auto stop: the loader has left, the last block's pause");
+		tapStop(tap);
+		fl_loop_seen = 0;
+		return;
+	}
 	if (tap->block == fl_block) return;
 	fl_block = tap->block;
-	if (!conf.tape.autostart || !fl_loop_seen || (comp->frmCount - fl_loop_frame < FL_GONE)) return;
 	xlog(XLG_TAPE, XLL_INFO, "auto stop: the loader has left, block %i of %i", tap->block, tap->blkCount);
 	tapStop(tap);
 	fl_loop_seen = 0;
