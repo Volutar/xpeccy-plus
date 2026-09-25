@@ -235,11 +235,12 @@ int autostart_arm(Computer* comp, int kind) {
 
 void autostart_frame(Computer* comp) {
 	if (!as_seq) return;
-	if (!as_held) {			// not in arm(): the window is not up yet there
-		conf.emu.fast = 1;
-		vid_set_nodraw(comp->vid, 1);
-		as_held = 1;
-	}
+	// not in arm(): the window is not up yet there. Again every frame: fast
+	// loading from the tape before this one lets go on the first, and takes
+	// fast mode with it
+	conf.emu.fast = 1;
+	vid_set_nodraw(comp->vid, 1);
+	as_held = 1;
 	if (--as_life < 0) {		// a rom that never got to its keyboard
 		autostart_stop();
 		return;
