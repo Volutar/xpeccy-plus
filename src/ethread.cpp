@@ -49,6 +49,7 @@ static FILE* file = nullptr;
 xThread::xThread() {
 	sndNsFixed = 0;
 	benchStop = -1;
+	benchHeat = 0;
 	earBlock = -1;
 	conf.emu.fast = 0;
 	finish = 0;
@@ -606,6 +607,11 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	}
 	conf.emu.fast = full ? 0 : 1;
 	if (nodraw) vid_set_nodraw(comp->vid, 1);	// what the picture itself costs
+	if (benchHeat) {
+		comp->flgHEAT = 1;
+		comp_heat_sync(comp);
+		comp_heat_reset(comp);
+	}
 #ifdef _WIN32
 	benchProf* bp = NULL;
 	HANDLE pth = NULL;
@@ -680,6 +686,17 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 		unsigned long long hCpu = bench_mix(0xcbf29ce484222325ULL, (unsigned char*)regs, sizeof(regs));
 		fprintf(stdout, "hash: frames %016llx sound %016llx ram %016llx cpu %016llx pc %04X T %i\n",
 			hFrm, hSnd, hMem, hCpu, cpu->regPC & 0xffff, comp->frmtCount);
+		if (benchHeat) {
+			unsigned long long hHeat = 0xcbf29ce484222325ULL;
+			xHeatBank* banks[] = {&comp->heatRam, &comp->heatRom};
+			for (xHeatBank* bk : banks) {
+				if (!bk->size) continue;
+				hHeat = bench_mix(hHeat, (unsigned char*)bk->rd, bk->size * sizeof(unsigned int));
+				hHeat = bench_mix(hHeat, (unsigned char*)bk->wr, bk->size * sizeof(unsigned int));
+				hHeat = bench_mix(hHeat, (unsigned char*)bk->ex, bk->size * sizeof(unsigned int));
+			}
+			fprintf(stdout, "heat: %016llx\n", hHeat);
+		}
 	}
 	// the last finished frame, whole raster, as a binary ppm
 	if (shot) {

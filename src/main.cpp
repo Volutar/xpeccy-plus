@@ -408,6 +408,8 @@ int main(int ac,char** av) {
 			bnHash = 1;
 		} else if (!strcmp(parg,"--bench-nodraw")) {
 			bnNodraw = 1;
+		} else if (!strcmp(parg,"--bench-heat")) {
+			ethread.benchHeat = 1;
 		} else if (!strcmp(parg,"--panic")) {
 			compflags |= CFLG_PANIC;
 		} else if (!strcmp(parg,"--autostart") || !strcmp(parg,"--no-autostart")) {
