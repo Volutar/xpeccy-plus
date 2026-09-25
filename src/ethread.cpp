@@ -128,6 +128,10 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 		// tape, so stop it; the rom's edge loop gives up within a few hundred
 		// T and comes back to LD_START, where the block is handed over.
 		if (!atStart || tap->on) {
+			// a block the tape has already played out (to a loader of its
+			// own) is not the one the rom asks for now
+			if (tap->on && tap_block_done(tap))
+				tapNextBlock(tap);
 			tapStop(tap);
 			return;
 		}

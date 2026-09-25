@@ -23,17 +23,40 @@ typedef struct {
 
 static int sigLens[] = {PILOTLEN,SYNC1LEN,SYNC2LEN,SIGN0LEN,SIGN1LEN,0,-1};	// 0->SYNC3LEN
 
+// A data block goes after whatever #12/#13 pulses are pending: they are its own
+// pilot and sync (a #11 with no pilot relies on that), so they are kept, not replaced.
+static void tzxTakeData(Tape* tape, TapeBlock blk) {
+	TapeBlock* tmp = &tape->tmpBlock;
+	int pre = tmp->sigCount;
+	int i;
+	if (pre == 0) {
+		blk.breakPoint = tmp->breakPoint;	// a #20 stop before it
+		blk.stopMark = tmp->stopMark;
+		blkClear(tmp);
+		*tmp = blk;
+		return;
+	}
+	for (i = 0; i < blk.sigCount; i++)
+		blkAddPulse(tmp, blk.data[i].size, -1);
+	tmp->plen = blk.plen;
+	tmp->s1len = blk.s1len;
+	tmp->s2len = blk.s2len;
+	tmp->len0 = blk.len0;
+	tmp->len1 = blk.len1;
+	tmp->pdur = blk.pdur;
+	tmp->hasBytes = blk.hasBytes;
+	tmp->isHeader = blk.isHeader;
+	tmp->dataPos = pre + blk.dataPos;
+	blkClear(&blk);
+}
+
 // #10: <pause:2>,<datalen:2>,{data}
 void tzxBlock10(FILE* file, Tape* tape) {
 	int pause = fgetw(file) * 1e6 / TAPTICKNS;		// ms -> ticks
 	int len = fgetw(file);
 	char buf[0x10000];
 	fread(buf, len, 1, file);
-	int brk = tape->tmpBlock.breakPoint;			// to not override previous block20 flag
-	int stp = tape->tmpBlock.stopMark;
-	tape->tmpBlock = tapDataToBlock(buf, len, sigLens);
-	tape->tmpBlock.breakPoint = brk;
-	tape->tmpBlock.stopMark = stp;
+	tzxTakeData(tape, tapDataToBlock(buf, len, sigLens));
 	blkAddPause(&tape->tmpBlock, pause);
 	tap_add_block(tape, tape->tmpBlock);
 	blkClear(&tape->tmpBlock);
@@ -54,11 +77,7 @@ void tzxBlock11(FILE* file, Tape* tape) {
 	int len = fgett(file);		// freadLen(file, 3);
 	char* buf = (char*)malloc(len);
 	fread(buf, len-1, 1, file);
-	int brk = tape->tmpBlock.breakPoint;
-	int stp = tape->tmpBlock.stopMark;
-	tape->tmpBlock = tapDataToBlock(buf, len-1, altLens);
-	tape->tmpBlock.breakPoint = brk;
-	tape->tmpBlock.stopMark = stp;
+	tzxTakeData(tape, tapDataToBlock(buf, len-1, altLens));
 	int data = fgetc(file);		// last byte
 	if (bits > 8) bits = 8;
 	if (bits != 8) tape->isData = 0;
@@ -234,9 +253,9 @@ void tzxBlock28(FILE* file, Tape* tape) {
 	fseek(file, len, SEEK_CUR);
 }
 
-// #2A,<len:2>				stop if 48K
+// #2A,<len:4>				stop if 48K
 void tzxBlock2A(FILE* file, Tape* tape) {
-	fseek(file, 2, SEEK_CUR);
+	fseek(file, 4, SEEK_CUR);
 }
 
 // #2B,<len:2>,<lev:1>			set signal level
