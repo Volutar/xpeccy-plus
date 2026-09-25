@@ -349,13 +349,6 @@ int zx_ear(Computer* comp) {
 	return 0;
 }
 
-// the 48 basic rom itself is running: paged in at #0000, with neither TR-DOS nor
-// an extension holding the window. The tape trap asks the same question.
-int zx_rom_active(Computer* comp) {
-	return comp->flgROM && !comp->flgDOS && !comp->flgEXT
-		&& (comp->mem->map[0].type == MEM_ROM);
-}
-
 // The rom's own loader polls #FE in exactly the pattern tapDetectLoader looks
 // for, and the tape trap serves the rom - so the detector must not answer for
 // it, or a flash load gets a tape playing under it and the two fall out of step.

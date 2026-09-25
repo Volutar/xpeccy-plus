@@ -467,6 +467,12 @@ int intrq(void* ptr) {
 
 void comp_irq(int t, void* ptr) {
 	Computer* comp = (Computer*)ptr;
+	// the INT sample at the end of every instruction is the machine's alone, and
+	// no unlazy: zx_irq() settles what it reads itself
+	if (t == IRQ_CPU_ACK) {
+		if (comp->hw->irq) comp->hw->irq(comp, t);
+		return;
+	}
 	switch (t) {
 		case IRQ_BRK:
 			comp_brk(comp, -1);
@@ -502,12 +508,10 @@ void comp_irq(int t, void* ptr) {
 			zx_snow(comp);
 			return;			// not a machine's business
 	}
-	// a machine's own handler may read or move the video. Not the INT sample at
-	// the end of every instruction: zx_irq() settles what it reads itself. And
-	// not a halt or a tape edge, which no handler acts on: unlazying there would
-	// only cut short the calm stretch of a loader's edge loop
+	// a machine's own handler may read or move the video. Not a halt or a tape
+	// edge, which no handler acts on: unlazying there would only cut short the
+	// calm stretch of a loader's edge loop
 	switch (t) {
-		case IRQ_CPU_ACK:
 		case IRQ_CPU_HALT:
 		case IRQ_TAP_0:
 		case IRQ_TAP_1:

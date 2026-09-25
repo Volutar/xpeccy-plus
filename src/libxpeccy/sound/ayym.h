@@ -220,7 +220,25 @@ void tsDestroy(TSound*);
 void tsReset(TSound*);
 int tsIn(TSound*,int);
 void tsOut(TSound*,int,int);
-void tsSync(TSound*, int);
+// every chip type syncs with ay_sync(), and this runs on every instruction:
+// its two lines without the call
+static inline void ts_chip_sync(aymChip* chip, int ns) {
+	if (chip->type == SND_NONE) return;
+	if (chip->sync != ay_sync) {
+		chip->sync(chip, ns);
+		return;
+	}
+	if (ns > 0)
+		chip->pendNs += ns;
+	if (chip->pendNs > (1 << 30))
+		ay_flush(chip);
+}
+static inline void tsSync(TSound* ts, int ns) {
+	ts_chip_sync(ts->chipA, ns);
+	ts_chip_sync(ts->chipB, ns);
+	ts_chip_sync(ts->chipC, ns);
+	ts_chip_sync(ts->chipD, ns);
+}
 void tsSetRomSize(TSound*, int);
 void tsLoadRom(TSound*, const char*);
 int tsReadRom(TSound*, int);

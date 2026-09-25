@@ -139,7 +139,12 @@ void zx_contend(Computer*, int);
 int zx_bank_of(Computer*, int);
 int zx_ack(Computer*);
 int zx_ear(Computer*);
-int zx_rom_active(Computer*);
+// the 48 basic rom itself is running: paged in at #0000, with neither TR-DOS nor
+// an extension holding the window. The tape trap asks the same question.
+static inline int zx_rom_active(Computer* comp) {
+	return comp->flgROM && !comp->flgDOS && !comp->flgEXT
+		&& (comp->mem->map[0].type == MEM_ROM);
+}
 void zx_tape_detect(Computer*);
 
 void xOutFE(Computer*, int, int);

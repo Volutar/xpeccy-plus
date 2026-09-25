@@ -160,11 +160,7 @@ int brk_cond_true(xBrkPoint* brk, Computer* comp) {
 // global conditions: fire on false->true edge only, else a condition like
 // 'A==5' would stop on every instruction while A stays 5
 
-static int cond_count = 0;
-
-int brk_cond_count() {
-	return cond_count;
-}
+int brk_cond_n = 0;
 
 // marks every condition that fired and returns how many there are: two of them
 // can come true on the same instruction, and both are entitled to their action.
@@ -349,12 +345,12 @@ void brkInstallAll() {
 	Computer* comp = conf.zx;
 	int conds = 0;
 	int logs = 0;
-	cond_count = 0;
+	brk_cond_n = 0;
 	for (auto it = conf.brk.list.begin(); it != conf.brk.list.end(); it++) {
 		it->script = xexpr_compile(it->cond.c_str());	// cpu/labels may have changed
 		if (!it->cond.empty()) conds++;
 		if (it->log && xlog_on(XLG_BRK, XLL_INFO)) logs++;
-		if ((it->type == BRK_COND) && !it->off) cond_count++;
+		if ((it->type == BRK_COND) && !it->off) brk_cond_n++;
 	}
 	// the flag is what makes the core record the last mem/io event: a
 	// condition reads it, and a logged hit prints it

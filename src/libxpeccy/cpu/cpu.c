@@ -28,7 +28,6 @@ int cpu_mrd(CPU* cpu, int adr) {return cpu->mrd(adr, 0, cpu->xptr);}
 void cpu_mwr(CPU* cpu, int adr, int v) {cpu->mwr(adr, v, cpu->xptr);}
 int cpu_ird(CPU* cpu, int adr) {return cpu->ird(adr, cpu->xptr);}
 void cpu_iwr(CPU* cpu, int adr, int v) {cpu->iwr(adr, v, cpu->xptr);}
-void cpu_irq(CPU* cpu, int id) {cpu->xirq(id, cpu->xptr);}
 
 // no-proc
 
@@ -215,12 +214,6 @@ void cpu_reset(CPU* cpu) {
 	if (!cpu->core) return;
 	if (!cpu->core->reset) return;
 	cpu->core->reset(cpu);
-}
-
-int cpu_exec(CPU* cpu) {
-	if (!cpu->core) return 1;
-	if (!cpu->core->exec) return 1;
-	return cpu->core->exec(cpu);
 }
 
 // disasm
