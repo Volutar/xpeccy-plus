@@ -31,6 +31,8 @@ static int sigLens[] = {PILOTLEN,SYNC1LEN,SYNC2LEN,SIGN0LEN,SIGN1LEN,0,-1};	// 0
 // with no pause after it hands its level on to the next, so one built from
 // scratch at the low level loses that edge whenever the pulses before it are an
 // odd count - and a loader reading the last bit of the block waits for it.
+// A pause keeps that edge too, but only before a block that is its own pilot,
+// sync and data: pulses from #12/#13 after a pause carry the level they meant.
 static void tzxAddBlock(Tape* tape) {
 	TapeBlock* blk = &tape->tmpBlock;
 	if ((tape->blkCount > 0) && (blk->sigCount > 0)) {
@@ -38,7 +40,9 @@ static void tzxAddBlock(Tape* tape) {
 		if (prv->sigCount > 0) {
 			int pv = prv->data[prv->sigCount - 1].vol;
 			int nv = blk->data[0].vol;
-			if (!TAP_VOL_PAUSE(pv) && !TAP_VOL_PAUSE(nv) && (TAP_VOL_LEV(pv) == TAP_VOL_LEV(nv))) {
+			int own = blk->hasBytes && (blk->pdur > 0)
+				&& (blk->dataPos == (int)blk->pdur + !!blk->s1len + !!blk->s2len);
+			if ((!TAP_VOL_PAUSE(pv) || own) && !TAP_VOL_PAUSE(nv) && (TAP_VOL_LEV(pv) == TAP_VOL_LEV(nv))) {
 				for (int i = 0; i < blk->sigCount; i++)
 					blk->data[i].vol ^= TAP_VOL_PAUSE(blk->data[i].vol) ? 0xff : 0xe0;
 			}
