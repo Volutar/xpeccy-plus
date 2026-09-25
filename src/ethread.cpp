@@ -82,6 +82,14 @@ static int tap_block_done(Tape* tap) {
 	return ((int)tap->blkData[tap->block].sigCount - tap->pos) < 32;
 }
 
+// The tape is into the block's data: its pilot is behind it, so the rom back at
+// LD_START can only find the next block's. A loader that had the rom read just
+// the head of a block (Chuckie Egg, Cosmopolice) leaves the tape there.
+static int tap_past_pilot(Tape* tap) {
+	TapeBlock* blk = &tap->blkData[tap->block];
+	return (blk->dataPos > 0) && (tap->pos > blk->dataPos);
+}
+
 static int tap_peek(int adr, void* data) {
 	return memRd(((Computer*)data)->mem, adr);
 }
@@ -132,7 +140,7 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 		if (!atStart || tap->on) {
 			// a block the tape has already played out (to a loader of its
 			// own) is not the one the rom asks for now
-			if (tap->on && tap_block_done(tap))
+			if (tap->on && (tap_block_done(tap) || (atStart && tap_past_pilot(tap))))
 				tapNextBlock(tap);
 			tapStop(tap);
 			return;
