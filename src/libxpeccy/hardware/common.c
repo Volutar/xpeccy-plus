@@ -375,10 +375,11 @@ static int zx_rom_code(Computer* comp) {
 	return mem_get_page(comp->mem, comp->cpu->regPC)->type == MEM_ROM;
 }
 
-// What the code right after an IN from #FE looks at, by the first test in it:
-// the ear bit (AND #40, BIT 6,A, RRA and AND #20, maybe XOR C between), which
-// is a loader, or the key bits alone (AND with bits 0-4, BIT 0-4,A, OR #E0),
-// which is a keyboard scan. pc is the address after the IN.
+// What the code right after an IN from #FE looks at: the ear bit (AND #40,
+// BIT 6,A, RRA and AND #20, maybe XOR C between), which is a loader, else the
+// key bits alone (AND with bits 0-4, BIT 0-4,A, OR #E0), which is a keyboard
+// scan. The ear wins: a loader may test for BREAK first (BIT 0,A, AND #40).
+// pc is the address after the IN.
 int zx_in_use(Computer* comp, int pc) {
 	unsigned char b[9];
 	for (int i = 0; i < 9; i++)
@@ -390,6 +391,10 @@ int zx_in_use(Computer* comp, int pc) {
 		if ((x == 0x1f) && (((y == 0xe6) && (b[i + 2] == 0x20))
 				|| ((y == 0xa9) && (b[i + 2] == 0xe6) && (b[i + 3] == 0x20))))
 			return ZX_IN_EAR;
+	}
+	for (int i = 0; i < 6; i++) {
+		unsigned char x = b[i];
+		unsigned char y = b[i + 1];
 		if ((x == 0xe6) && y && !(y & 0xe0)) return ZX_IN_KEYS;
 		if ((x == 0xcb) && ((y & 0xc7) == 0x47) && (y < 0x68)) return ZX_IN_KEYS;
 		if ((x == 0xf6) && (y == 0xe0)) return ZX_IN_KEYS;
