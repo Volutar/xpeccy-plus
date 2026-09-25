@@ -799,6 +799,13 @@ void vid_set_nodraw(Video* vid, int on) {
 	vid->nodraw = on ? 1 : 0;
 }
 
+// The pulse bounds the calm stretch, so the dots counted under the old one are
+// drawn first.
+void vid_set_int_frame(Video* vid, int dots) {
+	vid_unlazy(vid);
+	vid->intFRAME = dots;
+}
+
 // An undrawn frame of a mode marked blind moves the ray and nothing else
 static inline int vid_skips(Video* vid) {
 	return vid->nodraw && vid->cb->blind;

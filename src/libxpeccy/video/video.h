@@ -257,6 +257,7 @@ void vid_set_dot_ns(Video*,double);
 // void vid_irq(Video*, int);
 void vid_set_mode(Video*,int);
 void vid_set_nodraw(Video*,int);
+void vid_set_int_frame(Video*, int);		// dots left of the frame INT pulse, 0: none
 void vid_reset_ray(Video*);
 void vid_set_ray(Video*, int);
 

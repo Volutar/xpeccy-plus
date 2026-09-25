@@ -125,12 +125,12 @@ void zx_irq(Computer* comp, int t) {
 		case IRQ_VID_INT:			// frame int start
 #if HAVEZLIB
 			if (!comp->rzx.play) {		// ignore when playing rzx
-				comp->vid->intFRAME = comp->vid->intsize;
+				vid_set_int_frame(comp->vid, comp->vid->intsize);
 				comp->intVector = 0xff;
 				comp->cpu->intrq |= Z80_INT;
 			}
 #else
-			comp->vid->intFRAME = comp->vid->intsize;
+			vid_set_int_frame(comp->vid, comp->vid->intsize);
 			comp->intVector = 0xff;
 			comp->cpu->intrq |= Z80_INT;
 #endif
@@ -138,7 +138,7 @@ void zx_irq(Computer* comp, int t) {
 		case IRQ_RZX_INT:
 			comp->intVector = 0xff;
 			comp->cpu->intrq |= Z80_INT;
-			comp->vid->intFRAME = comp->vid->intsize;
+			vid_set_int_frame(comp->vid, comp->vid->intsize);
 #if HAVEZLIB
 			comp->rzx.fCurrent++;
 			comp->rzx.fCount--;

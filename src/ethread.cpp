@@ -187,9 +187,7 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 		tapNextBlock(tap);
 		fastload_forget();
 		if (!TAP_VOL_PAUSE(last) && (tap->block < tap->blkCount)) {
-			tapPlay(tap);
-			tap->sigLen = 0;
-			tap->volPlay = last;
+			tap_play_on(tap, last);
 		} else if (sig) {
 			tapArmPlay(tap);
 		}
@@ -372,8 +370,7 @@ void xThread::emuCycle(Computer* comp) {
 				}
 				if (conf.tape.autostart && !tape_flash() && ((pc == 0x5df) || (pc == 0x53a))
 						&& !tap_next_is_signal(comp->tape) && tap_block_done(comp->tape)) {
-					tape_settle(comp->tape);
-					comp->tape->sigLen = 1e6;
+					tape_set_sig_len(comp->tape, 1000000);
 					tapNextBlock(comp->tape);
 					tapStop(comp->tape);
 				}

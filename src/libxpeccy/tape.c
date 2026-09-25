@@ -617,6 +617,31 @@ int tape_sig_len(Tape* tap) {
 	return tap->sigLen - (int)((tap->tickAcc + (long long)tap->nsLazy * tap->ticksPerNsFixed) >> TAPE_RATE_BITS);
 }
 
+TapePos tape_pos(Tape* tap) {
+	tape_settle(tap);
+	TapePos p;
+	p.block = tap->block;
+	p.pos = tap->pos;
+	p.sigLen = tap->sigLen;
+	p.tickAcc = tap->tickAcc;
+	return p;
+}
+
+// what is left of the pulse the tape stands in, from outside the counting
+void tape_set_sig_len(Tape* tap, int len) {
+	tape_settle(tap);
+	tap->sigLen = len;
+}
+
+// Play from level vol with no lead-in: a block that runs straight on from one
+// the rom trap handed over
+int tap_play_on(Tape* tap, int vol) {
+	int on = tapPlay(tap);
+	tap->sigLen = 0;
+	tap->volPlay = vol & 0xff;
+	return on;
+}
+
 void tape_set_speed(Tape* tap, int speed) {
 	tape_settle(tap);
 	tap->speed = speed;
