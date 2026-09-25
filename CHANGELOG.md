@@ -22,6 +22,8 @@ before that point is upstream's history and is not repeated here.
 
 - **No Kempston joystick on the stock ZX Spectrum 48K, 128K and +2**, as they came. Switch it
   on in the machine's settings for a game that wants one.
+- **The emulation runs about a tenth faster** in fast mode, 15% on a Pentagon, with the
+  machine behaving exactly as before.
 - **Fast loading takes about half the time**, and shows the loading screen as it comes
   in, 30 times a second, with the loader's border stripes - also when the tape was started
   from the command line, where a 48K showed nothing until the load was over. With
