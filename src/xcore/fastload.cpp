@@ -294,6 +294,7 @@ typedef struct {
 
 static void fl_probe(Computer* comp, flProbe* p) {
 	memset(p, 0, sizeof(*p));		// the padding is compared too
+	tape_settle(comp->tape);
 	memcpy(p->regs, comp->cpu->regs, sizeof(p->regs));
 	memcpy(p->flags, comp->cpu->flags, sizeof(p->flags));
 	p->tick = comp->tickCount;
@@ -302,7 +303,6 @@ static void fl_probe(Computer* comp, flProbe* p) {
 	p->ry = comp->vid->ray.y;
 	p->blk = comp->tape->block;
 	p->pos = comp->tape->pos;
-	tape_settle(comp->tape);
 	p->sig = comp->tape->sigLen;
 	p->acc = comp->tape->tickAcc;
 }
