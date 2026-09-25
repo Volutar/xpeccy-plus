@@ -359,6 +359,14 @@ static int zx_rom_ld_edge(Computer* comp) {
 	return (pc >= 0x05e3) && (pc <= 0x05f9) && zx_rom_active(comp);
 }
 
+// The same for a copy of LD-BYTES in ram that flash loading answers for
+static int zx_copy_ld_edge(Computer* comp) {
+	Tape* tap = comp->tape;
+	if (!tap->ldTrapped) return 0;
+	int ofs = (comp->cpu->regPC - tap->ldBase) & 0xffff;
+	return (ofs >= 0x8d) && (ofs <= 0xa3);		// #05E3-#05F9 in the rom
+}
+
 // The read is the rom's own, not a loader's: whatever is doing it is running
 // from rom. Asked of the memory map rather than of the address, and of the map
 // rather than of the 48 rom being in: a 128 sits in its editor rom while it
@@ -386,7 +394,7 @@ static int zx_ear_test(Computer* comp) {
 void zx_tape_detect(Computer* comp) {
 	Tape* tap = comp->tape;
 	tap->portReads++;	// the rom's own reads too: fast loading counts them
-	if (zx_rom_ld_edge(comp)) return;
+	if (zx_rom_ld_edge(comp) || zx_copy_ld_edge(comp)) return;
 	int ram = !zx_rom_code(comp);
 	// only a stopped tape needs it, only from a loader in ram, and only for a
 	// read that came soon enough after the last to count at all

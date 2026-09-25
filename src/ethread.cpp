@@ -204,6 +204,8 @@ void xThread::tap_find_copy(Computer* comp) {
 	if (!ldc_check(comp, base, &dir)) return;
 	ldCopy = base;
 	ldCopyDir = dir;
+	comp->tape->ldTrapped = 1;
+	comp->tape->ldBase = base;
 	xlog(XLG_TAPE, XLL_INFO, "a copy of LD-BYTES at %04X%s", base, (dir < 0) ? ", loading downwards" : "");
 }
 
@@ -218,6 +220,7 @@ void xThread::tap_catch_copy(Computer* comp) {
 	if (start ? !ldc_check(comp, ldCopy, &ldCopyDir) : !ldc_check(comp, ldCopy, &dir, LDC_EDGE1, LDC_LEN)) {
 		xlog(XLG_TAPE, XLL_INFO, "the copy of LD-BYTES at %04X is gone", ldCopy);
 		ldCopy = -1;
+		comp->tape->ldTrapped = 0;
 		return;
 	}
 	tap_catch_load(comp, start, ldCopy, ldCopyDir);
@@ -518,6 +521,9 @@ void xThread::emuCycle(Computer* comp) {
 				}
 				if (ldCopy >= 0)
 					tap_catch_copy(comp);
+			} else if (ldCopy >= 0) {
+				ldCopy = -1;
+				comp->tape->ldTrapped = 0;
 			}
 			// a loader's edge loop, counted instead of run
 			if (fastload_on)
