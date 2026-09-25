@@ -1628,14 +1628,10 @@ __attribute__((noinline)) static void vid_take(Video* vid) {
 	vid_take_dots(vid);
 }
 
-// The dots counted by vid_sync_lazy() are drawn, and it counts no more until the
-// next vid_sync_lazy_slow() has looked at the video again - for whatever runs
-// next may change it.
-void vid_unlazy(Video* vid) {
-	if (vid->nsCalmFixed > vid->nsPerDotFixed) {
-		vid->nsCalmFixed = vid->nsPerDotFixed;
-		vid_take(vid);
-	}
+// vid_unlazy() found dots counted
+void vid_unlazy_slow(Video* vid) {
+	vid->nsCalmFixed = vid->nsPerDotFixed;
+	vid_take(vid);
 }
 
 // How far the ray can go with nothing happening but the count: in an undrawn

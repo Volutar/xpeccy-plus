@@ -454,9 +454,20 @@ void comp_irq(int t, void* ptr) {
 			return;			// not a machine's business
 	}
 	// a machine's own handler may read or move the video. Not the INT sample at
-	// the end of every instruction: zx_irq() settles what it reads itself
-	if (t != IRQ_CPU_ACK)
-		vid_unlazy(comp->vid);
+	// the end of every instruction: zx_irq() settles what it reads itself. And
+	// not a halt or a tape edge, which no handler acts on: unlazying there would
+	// only cut short the calm stretch of a loader's edge loop
+	switch (t) {
+		case IRQ_CPU_ACK:
+		case IRQ_CPU_HALT:
+		case IRQ_TAP_0:
+		case IRQ_TAP_1:
+		case IRQ_TAP_BLK:
+			break;
+		default:
+			vid_unlazy(comp->vid);
+			break;
+	}
 	if (comp->hw->irq) comp->hw->irq(comp, t);
 }
 
