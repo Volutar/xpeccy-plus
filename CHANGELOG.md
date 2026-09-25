@@ -27,7 +27,8 @@ before that point is upstream's history and is not repeated here.
   from the command line, where a 48K showed nothing until the load was over. With
   TurboSound FM it no longer runs at half the speed of a plain AY. Edge detection knows
   TOPSOFT's loader, so their Pentagon releases load on a 48K and 128K as well. It lets go
-  the moment the tape stops, and the fps readout settles within a second.
+  the moment the tape stops, and the fps readout settles within a second. Opening another
+  image while one loads fast no longer types LOAD "" at normal speed.
 
 ### Fixed
 
