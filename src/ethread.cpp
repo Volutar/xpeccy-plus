@@ -50,6 +50,10 @@ xThread::xThread() {
 	sndNsFixed = 0;
 	benchStop = -1;
 	earBlock = -1;
+	ldCopy = -1;
+	ldCopyDir = 1;
+	ldReads = 0;
+	ldProbed = -1;
 	conf.emu.fast = 0;
 	finish = 0;
 }
@@ -94,17 +98,129 @@ static int tap_peek(int adr, void* data) {
 	return memRd(((Computer*)data)->mem, adr);
 }
 
-// The edge routine was called by the rom's own LD-BYTES, not by a copy of it in
-// ram (Krakout), which never comes back to LD_START to be handed a block and is
-// played to instead. LD-EDGE-2 calls LD-EDGE-1 itself: its caller is a word up.
-// Nor does LD-8-BITS (05CD): a timeout there returns to whoever called LD-BYTES,
-// or to a loader that jumped straight into it for a block with no sync (Tutankhamun).
-static int tap_rom_caller(Computer* comp) {
+// Where things are in LD-BYTES, from its start (#0556) - in the rom or a copy
+#define LDC_LEN		0xa4	// up to the stripes after an edge, #05FA
+#define LDC_RET_OP	0x09	// the SA/LD-RET it pushes, #055F
+#define LDC_START	0x16	// LD_START, #056C
+#define LDC_INCIX	0x6d	// the second byte of INC IX, #05C3
+#define LDC_BITS_RET	0x77	// after LD-8-BITS' call, #05CD
+#define LDC_TAIL	0x89	// LD A,H / CP 1 / RET, #05DF
+#define LDC_EDGE2_RET	0x90	// after LD-EDGE-2's call, #05E6
+#define LDC_EDGE1	0x91	// LD-EDGE-1, #05E7
+#define LDC_IN_NEXT	0x9d	// after its IN A,(#FE), #05F3
+
+// The edge routine was called by the LD-BYTES it belongs to, not by a loader of
+// its own (Krakout, calling the rom's), which never comes back to LD_START to be
+// handed a block and is played to instead. LD-EDGE-2 calls LD-EDGE-1 itself: its
+// caller is a word up. Nor does LD-8-BITS (05CD): a timeout there returns to
+// whoever called LD-BYTES, or to a loader that jumped straight into it for a
+// block with no sync (Tutankhamun).
+static int tap_rom_caller(Computer* comp, int base) {
 	int sp = comp->cpu->regSP;
 	int ret = cpu_peek_word(tap_peek, comp, sp);
-	if (ret == 0x05e6)
+	if (ret == ((base + LDC_EDGE2_RET) & 0xffff))
 		ret = cpu_peek_word(tap_peek, comp, sp + 2);
-	return (ret < 0x4000) && (ret != 0x05cd);
+	if (ret == ((base + LDC_BITS_RET) & 0xffff)) return 0;
+	if (base == 0x0556) return ret < 0x4000;
+	return ((ret - base) & 0xffff) < LDC_LEN;		// a copy is called by itself
+}
+
+// LD-BYTES copied into ram, and often touched up on the way: the rom's bytes
+// #0556-#05F9 at another address, the calls inside it moved along. A copy is
+// the Sinclair rom's, whatever rom the machine runs, hence the table.
+static const unsigned char ldcRom[LDC_LEN] = {
+	0x14,0x08,0x15,0xF3,0x3E,0x0F,0xD3,0xFE,0x21,0x3F,0x05,0xE5,0xDB,0xFE,0x1F,0xE6,
+	0x20,0xF6,0x02,0x4F,0xBF,0xC0,0xCD,0xE7,0x05,0x30,0xFA,0x21,0x15,0x04,0x10,0xFE,
+	0x2B,0x7C,0xB5,0x20,0xF9,0xCD,0xE3,0x05,0x30,0xEB,0x06,0x9C,0xCD,0xE3,0x05,0x30,
+	0xE4,0x3E,0xC6,0xB8,0x30,0xE0,0x24,0x20,0xF1,0x06,0xC9,0xCD,0xE7,0x05,0x30,0xD5,
+	0x78,0xFE,0xD4,0x30,0xF4,0xCD,0xE7,0x05,0xD0,0x79,0xEE,0x03,0x4F,0x26,0x00,0x06,
+	0xB0,0x18,0x1F,0x08,0x20,0x07,0x30,0x0F,0xDD,0x75,0x00,0x18,0x0F,0xCB,0x11,0xAD,
+	0xC0,0x79,0x1F,0x4F,0x13,0x18,0x07,0xDD,0x7E,0x00,0xAD,0xC0,0xDD,0x23,0x1B,0x08,
+	0x06,0xB2,0x2E,0x01,0xCD,0xE3,0x05,0xD0,0x3E,0xCB,0xB8,0xCB,0x15,0x06,0xB0,0xD2,
+	0xCA,0x05,0x7C,0xAD,0x67,0x7A,0xB3,0x20,0xCA,0x7C,0xFE,0x01,0xC9,0xCD,0xE7,0x05,
+	0xD0,0x3E,0x16,0x3D,0x20,0xFD,0xA7,0x04,0xC8,0x3E,0x7F,0xDB,0xFE,0x1F,0xD0,0xA9,
+	0xE6,0x20,0x28,0xF3
+};
+
+// The operands of the calls and the jump inside it, which move with the copy
+static const int ldcRel[] = {0x0017, 0x0026, 0x002d, 0x003c, 0x0046, 0x0075, 0x0080, 0x008e};
+
+// What a copy may change and still read bytes as the rom does, which is all a
+// hand-over asks of it: border colours, the SA/LD-RET it pushes, BREAK, and the
+// timing constants. The stripes after an edge (#05FA on) are not compared.
+static int ldc_loose(int ofs) {
+	switch (ofs + 0x0556) {
+		case 0x055b: case 0x055f: case 0x0560: case 0x0568: case 0x05a1:	// colours, SA/LD-RET
+		case 0x056b: case 0x05f0: case 0x05f4:					// BREAK
+		case 0x0572: case 0x0573: case 0x0581: case 0x0588: case 0x0590:	// timings
+		case 0x0598: case 0x05a6: case 0x05c7: case 0x05cf: case 0x05d4: case 0x05e8:
+			return 1;
+	}
+	return 0;
+}
+
+// Is there a copy at base, from byte from up to to? Its INC IX may be a DEC IX,
+// for a loader that loads downwards: dir says which.
+static int ldc_check(Computer* comp, int base, int* dir, int from = 0, int to = LDC_LEN) {
+	// read as compared: most of what is looked at fails on the first bytes
+	auto b = [&](int i) { return memRd(comp->mem, (base + i) & 0xffff) & 0xff; };
+	int shift = (base - 0x0556) & 0xffff;
+	for (unsigned k = 0; k < sizeof(ldcRel) / sizeof(ldcRel[0]); k++) {
+		int i = ldcRel[k];
+		if ((i < from) || (i + 1 >= to)) continue;
+		int w = b(i) | (b(i + 1) << 8);
+		int v = ldcRom[i] | (ldcRom[i + 1] << 8);
+		if (((w - v) & 0xffff) != shift) return 0;
+	}
+	for (int i = from; i < to; i++) {
+		int r = 0;
+		for (unsigned k = 0; k < sizeof(ldcRel) / sizeof(ldcRel[0]); k++)
+			if ((i == ldcRel[k]) || (i == ldcRel[k] + 1)) r = 1;
+		if (r || ldc_loose(i)) continue;
+		if (i == LDC_INCIX) {
+			if ((b(i) != 0x23) && (b(i) != 0x2b)) return 0;
+			continue;
+		}
+		if (b(i) != ldcRom[i]) return 0;
+	}
+	if ((from <= LDC_INCIX) && (LDC_INCIX < to))
+		*dir = (b(LDC_INCIX) == 0x2b) ? -1 : 1;
+	return 1;
+}
+
+// A tape port read from ram: is it the IN of a copy's LD-EDGE-1? The reads
+// come every few dozen T, so an address is looked at once a frame.
+void xThread::tap_find_copy(Computer* comp) {
+	int pc = comp->cpu->regPC;
+	if (pc == ldProbed) return;
+	ldProbed = pc;
+	if (mem_get_page(comp->mem, pc)->type != MEM_RAM) return;
+	int base = (pc - LDC_IN_NEXT) & 0xffff;
+	if (base == ldCopy) return;
+	// IN A,(#FE) / RRA, which every copy keeps, before the whole of it
+	if ((memRd(comp->mem, (pc - 2) & 0xffff) != 0xdb) || (memRd(comp->mem, (pc - 1) & 0xffff) != 0xfe)
+			|| (memRd(comp->mem, pc) != 0x1f)) return;
+	int dir;
+	if (!ldc_check(comp, base, &dir)) return;
+	ldCopy = base;
+	ldCopyDir = dir;
+	xlog(XLG_TAPE, XLL_INFO, "a copy of LD-BYTES at %04X%s", base, (dir < 0) ? ", loading downwards" : "");
+}
+
+// The pc is at the copy's LD_START or LD-EDGE-1: is it still there? A loader
+// may have put something else over it since. The edge routine is compared on
+// every edge, the whole of it only where a block would be handed over.
+void xThread::tap_catch_copy(Computer* comp) {
+	int pc = comp->cpu->regPC;
+	int start = (pc == ((ldCopy + LDC_START) & 0xffff));
+	if (!start && (pc != ((ldCopy + LDC_EDGE1) & 0xffff))) return;
+	int dir;
+	if (start ? !ldc_check(comp, ldCopy, &ldCopyDir) : !ldc_check(comp, ldCopy, &dir, LDC_EDGE1, LDC_LEN)) {
+		xlog(XLG_TAPE, XLL_INFO, "the copy of LD-BYTES at %04X is gone", ldCopy);
+		ldCopy = -1;
+		return;
+	}
+	tap_catch_load(comp, start, ldCopy, ldCopyDir);
 }
 
 // atStart says the rom is at LD_START, the top of LD_BYTES, rather than inside
@@ -112,7 +228,8 @@ static int tap_rom_caller(Computer* comp) {
 // there may a block be handed over and the rom sent to its own exit. Doing it
 // from LD_EDGE_1 returned into the middle of LD_BYTES with the block eaten - the
 // first block of a load went missing that way.
-void xThread::tap_catch_load(Computer* comp, int atStart) {
+// base is where LD-BYTES starts, #0556 or a copy's; dir is its INC or DEC IX.
+void xThread::tap_catch_load(Computer* comp, int atStart, int base, int dir) {
 	Tape* tap = comp->tape;
 	// Stop, pressed by hand, keeps the automatics off the tape - flash loading
 	// included, which moves it on without ever playing it. Play, a rewind or
@@ -131,7 +248,7 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 	if (atStart)
 		earBlock = (tap->blkData[blk].hasBytes && (tapGetBlockInfo(tap, blk).size > comp->cpu->regDE)) ? blk : -1;
 	if (tape_flash() && tap->blkData[blk].hasBytes && (blk != earBlock)
-			&& (atStart || tap_rom_caller(comp))) {
+			&& (atStart || tap_rom_caller(comp, base))) {
 		// A playing tape and a flash load get out of step: the rom reads the
 		// block by ear and moves on while the tape still stands on it, and the
 		// next block is then answered with this one. Flash loading owns the
@@ -148,7 +265,8 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 		unsigned short de = comp->cpu->regDE;
 		unsigned short ix = comp->cpu->regIX;
 		// read before the block lands: it may cover the stack
-		int ldret = (cpu_peek_word(tap_peek, comp, comp->cpu->regSP) == 0x053f);
+		int ldret = (cpu_peek_word(tap_peek, comp, comp->cpu->regSP)
+			== cpu_peek_word(tap_peek, comp, base + LDC_RET_OP));
 		TapeBlockInfo inf = tapGetBlockInfo(tap,blk);
 		unsigned char* blkData = (unsigned char*)malloc(inf.size + 2);
 		tapGetBlockData(tap,blk,blkData, inf.size + 2);
@@ -162,7 +280,7 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 			data = blkData[i + 1];		// 1st data byte is type, not data
 			crc ^= data;
 			memWr(comp->mem, ix, data);
-			ix++;
+			ix += dir;
 			de--;
 		}
 		if (!overdata) {
@@ -200,11 +318,14 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 		} else if (sig) {
 			tapArmPlay(tap);
 		}
-		cpu_set_pc(comp->cpu, 0x5df);
+		if (base != 0x0556)
+			xlog(XLG_TAPE, XLL_INFO, "block %i handed to the copy of LD-BYTES at %04X", blk, base);
+		cpu_set_pc(comp->cpu, (base + LDC_TAIL) & 0xffff);
 		// A loader that enters LD-BYTES past its PUSH of SA/LD-RET (JP #0562)
 		// keeps the border the edge loop left: blue, the data phase's colour
-		// for a tape back at the level it started on, not the lead-in's.
-		if (!ldret)
+		// for a tape back at the level it started on, not the lead-in's. A
+		// copy has colours of its own, and keeps what it has.
+		if (!ldret && (base == 0x0556))
 			comp->hw->out(comp, 0x09fe, 0x09);
 		free(blkData);
 	} else if ((conf.tape.autostart || (blk == earBlock)) && !tap->on) {
@@ -389,6 +510,15 @@ void xThread::emuCycle(Computer* comp) {
 					tapStop(comp->tape);
 				}
 			}
+			// a copy of LD-BYTES in ram is trapped as the rom's is, once seen
+			if (tape_flash()) {
+				if (comp->tape->portReads != ldReads) {
+					ldReads = comp->tape->portReads;
+					tap_find_copy(comp);
+				}
+				if (ldCopy >= 0)
+					tap_catch_copy(comp);
+			}
 			// a loader's edge loop, counted instead of run
 			if (fastload_on)
 				sndNsFixed += NS_TO_FIXED(fastload_step(comp));
@@ -413,6 +543,7 @@ void xThread::emuCycle(Computer* comp) {
 			conf.vid.fctime = paceClockNs();	// for the fps readout
 			conf.vid.fcount++;
 			comp->frmCount++;
+			ldProbed = -1;
 			autostart_frame(comp);
 			fastload_frame(comp);
 			// before run-ahead: the debugger's screen view wants the machine as
