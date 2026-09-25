@@ -66,9 +66,29 @@ int vid_mrd_cb(int adr, void* ptr) {
 
 // mrw,irw
 
+__attribute__((noinline)) static int memrd_watched(Computer*, int, int);
+
 int memrd(int adr, int m1, void* ptr) {
 	Computer* comp = (Computer*)ptr;
 	adr &= comp->cpu->busmask;
+	// nothing watches the read and nothing spoils it: stdMRd() without the
+	// calls, unless the fetch pages TR-DOS
+	if (!comp_mem_watched(comp) && !comp->snowBad
+#ifdef HAVEZLIB
+			&& !comp->rzx.play
+#endif
+			) {
+		if (comp->hw->mrd != stdMRd)
+			return comp->hw->mrd(comp, adr, m1);
+		MemPage* pg = mem_get_page(comp->mem, adr);
+		if (m1 && (comp->dif->type == DIF_BDI) && bdi_fetch_pages(comp, pg, adr))
+			return stdMRd(comp, adr, m1);
+		return mem_page_rd(pg, adr);
+	}
+	return memrd_watched(comp, adr, m1);
+}
+
+static int memrd_watched(Computer* comp, int adr, int m1) {
 #ifdef HAVEZLIB
 	if (m1 && comp->rzx.play && (comp->rzx.frm.fetches > 0)) {
 		comp->rzx.frm.fetches--;
@@ -130,9 +150,23 @@ int memrd(int adr, int m1, void* ptr) {
 	return res;
 }
 
+__attribute__((noinline)) static void memwr_watched(Computer*, int, int);
+
 void memwr(int adr, int val, void* ptr) {
 	Computer* comp = (Computer*)ptr;
 	adr &= comp->cpu->busmask;
+	// nothing watches the write: stdMWr() without the two calls
+	if (!comp_mem_watched(comp)) {
+		if (comp->hw->mwr == stdMWr)
+			mem_page_wr(mem_get_page(comp->mem, adr), adr, val);
+		else
+			comp->hw->mwr(comp, adr, val);
+		return;
+	}
+	memwr_watched(comp, adr, val);
+}
+
+static void memwr_watched(Computer* comp, int adr, int val) {
 	if (comp->flgHEAT && !x_runahead) {	// an ahead frame would count every access twice
 		// writes (incl. stack push/call) are always data traffic, never execution
 		comp_heat_hit(comp, adr, HEAT_WR);
@@ -418,7 +452,16 @@ int intrq(void* ptr) {
 
 void comp_irq(int t, void* ptr) {
 	Computer* comp = (Computer*)ptr;
+	// a machine's own handler may read or move the video, so the dots counted
+	// are drawn first - but not for what no handler needs it for
+	int unlazy = 1;
 	switch (t) {
+		case IRQ_CPU_ACK:		// every instruction: zx_irq() settles what it reads itself
+		case IRQ_TAP_0:			// no handler acts on these, and unlazying would only
+		case IRQ_TAP_1:			// cut short the calm stretch of a loader's edge loop
+		case IRQ_TAP_BLK:
+			unlazy = 0;
+			break;
 		case IRQ_BRK:
 			comp_brk(comp, -1);
 			break;
@@ -430,6 +473,7 @@ void comp_irq(int t, void* ptr) {
 			break;
 		case IRQ_CPU_HALT:
 			comp->hCount = comp->frmtCount;			// fix T counter from INT to start of HALT
+			unlazy = 0;
 			break;
 		case IRQ_VID_INT:
 			comp->fCount = comp_frame_ticks(comp);
@@ -453,9 +497,7 @@ void comp_irq(int t, void* ptr) {
 			zx_snow(comp);
 			return;			// not a machine's business
 	}
-	// a machine's own handler may read or move the video. Not the INT sample at
-	// the end of every instruction: zx_irq() settles what it reads itself
-	if (t != IRQ_CPU_ACK)
+	if (unlazy)
 		vid_unlazy(comp->vid);
 	if (comp->hw->irq) comp->hw->irq(comp, t);
 }

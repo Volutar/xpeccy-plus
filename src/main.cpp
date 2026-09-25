@@ -390,6 +390,7 @@ int main(int ac,char** av) {
 	const char* bnProf = NULL;
 	const char* bnShot = NULL;
 	int bnNodraw = 0;
+	int bnHeat = 0;
 #ifdef __APPLE__
 	int style = 0;
 #endif
@@ -408,6 +409,8 @@ int main(int ac,char** av) {
 			bnHash = 1;
 		} else if (!strcmp(parg,"--bench-nodraw")) {
 			bnNodraw = 1;
+		} else if (!strcmp(parg,"--bench-heat")) {
+			bnHeat = 1;
 		} else if (!strcmp(parg,"--panic")) {
 			compflags |= CFLG_PANIC;
 		} else if (!strcmp(parg,"--autostart") || !strcmp(parg,"--no-autostart")) {
@@ -540,9 +543,9 @@ int main(int ac,char** av) {
 #endif
 	if (bnFrames > 0) {
 #ifdef XBENCH
-		ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot, bnNodraw);
+		ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot, bnNodraw, bnHeat);
 #else
-		(void)bnSkip; (void)bnFull; (void)bnHash; (void)bnProf; (void)bnShot; (void)bnNodraw;
+		(void)bnSkip; (void)bnFull; (void)bnHash; (void)bnProf; (void)bnShot; (void)bnNodraw; (void)bnHeat;
 		xlog(XLG_APP, XLL_ERROR, "--bench is not in a release build");
 #endif
 		pacingClose();

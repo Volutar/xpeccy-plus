@@ -220,7 +220,30 @@ void tsDestroy(TSound*);
 void tsReset(TSound*);
 int tsIn(TSound*,int);
 void tsOut(TSound*,int,int);
-void tsSync(TSound*, int);
+// ay_sync(), which every chip type syncs with: the time is only counted, and
+// the ticks made of it when something reads the chip (ay_flush)
+static inline void ay_sync_ns(aymChip* ay, int ns) {
+	if (ns > 0)
+		ay->pendNs += ns;
+	// nothing may look at the chip for a long while - fast mode takes no
+	// samples - and the count is an int: settle it before it can wrap
+	if (ay->pendNs > (1 << 30))
+		ay_flush(ay);
+}
+// this runs on every instruction: ay_sync() without the call
+static inline void ts_chip_sync(aymChip* chip, int ns) {
+	if (chip->type == SND_NONE) return;
+	if (chip->sync == ay_sync)
+		ay_sync_ns(chip, ns);
+	else
+		chip->sync(chip, ns);
+}
+static inline void tsSync(TSound* ts, int ns) {
+	ts_chip_sync(ts->chipA, ns);
+	ts_chip_sync(ts->chipB, ns);
+	ts_chip_sync(ts->chipC, ns);
+	ts_chip_sync(ts->chipD, ns);
+}
 void tsSetRomSize(TSound*, int);
 void tsLoadRom(TSound*, const char*);
 int tsReadRom(TSound*, int);

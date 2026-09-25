@@ -195,10 +195,6 @@ void memSetBank(Memory* mem, int page, int type, int bank, int siz, extmrd rd, e
 	}
 }
 
-MemPage* mem_get_page(Memory* mem, int adr) {
-	return &mem->map[(adr >> mem->pgshift) & 0xff];
-}
-
 // set page data
 void memPutData(Memory* mem, int type, int page, int sz, char* src) {
 	if (type == MEM_RAM) {

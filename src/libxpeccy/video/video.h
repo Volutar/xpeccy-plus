@@ -223,8 +223,15 @@ void vid_reset(Video*);
 void vid_sync(Video*,int);		// whole-ns entry point, for callers outside the ZX paths
 void vid_sync_fixed(Video*,long long);
 void vid_sync_lazy_slow(Video*,long long);
-void vid_unlazy(Video*);
+void vid_unlazy_slow(Video*);
 void vid_settle_slow(Video*);
+// The dots counted by vid_sync_lazy() are drawn, and it counts no more until the
+// next vid_sync_lazy_slow() has looked at the video again - for whatever runs
+// next may change it.
+static inline void vid_unlazy(Video* vid) {
+	if (vid->nsCalmFixed > vid->nsPerDotFixed)
+		vid_unlazy_slow(vid);
+}
 // The ray as vid_sync_fixed() would move it, but the dots of an undrawn blind
 // frame that pass no event are only counted, and walked when something looks:
 // vid_settle(), which every reader of the ray inside an instruction calls, or
@@ -250,6 +257,7 @@ void vid_set_dot_ns(Video*,double);
 // void vid_irq(Video*, int);
 void vid_set_mode(Video*,int);
 void vid_set_nodraw(Video*,int);
+void vid_set_int_frame(Video*, int);		// dots left of the frame INT pulse, 0: none
 void vid_reset_ray(Video*);
 void vid_set_ray(Video*, int);
 

@@ -125,12 +125,12 @@ void zx_irq(Computer* comp, int t) {
 		case IRQ_VID_INT:			// frame int start
 #if HAVEZLIB
 			if (!comp->rzx.play) {		// ignore when playing rzx
-				comp->vid->intFRAME = comp->vid->intsize;
+				vid_set_int_frame(comp->vid, comp->vid->intsize);
 				comp->intVector = 0xff;
 				comp->cpu->intrq |= Z80_INT;
 			}
 #else
-			comp->vid->intFRAME = comp->vid->intsize;
+			vid_set_int_frame(comp->vid, comp->vid->intsize);
 			comp->intVector = 0xff;
 			comp->cpu->intrq |= Z80_INT;
 #endif
@@ -138,7 +138,7 @@ void zx_irq(Computer* comp, int t) {
 		case IRQ_RZX_INT:
 			comp->intVector = 0xff;
 			comp->cpu->intrq |= Z80_INT;
-			comp->vid->intFRAME = comp->vid->intsize;
+			vid_set_int_frame(comp->vid, comp->vid->intsize);
 #if HAVEZLIB
 			comp->rzx.fCurrent++;
 			comp->rzx.fCount--;
@@ -347,13 +347,6 @@ int zx_ear(Computer* comp) {
 		case EAR_ISSUE3: return !!comp->beep->lev;
 	}
 	return 0;
-}
-
-// the 48 basic rom itself is running: paged in at #0000, with neither TR-DOS nor
-// an extension holding the window. The tape trap asks the same question.
-int zx_rom_active(Computer* comp) {
-	return comp->flgROM && !comp->flgDOS && !comp->flgEXT
-		&& (comp->mem->map[0].type == MEM_ROM);
 }
 
 // The rom's own loader polls #FE in exactly the pattern tapDetectLoader looks

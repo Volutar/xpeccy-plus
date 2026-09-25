@@ -186,9 +186,7 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 		tapNextBlock(tap);
 		fastload_forget();
 		if (!TAP_VOL_PAUSE(last) && (tap->block < tap->blkCount)) {
-			tapPlay(tap);
-			tap->sigLen = 0;
-			tap->volPlay = last;
+			tap_play_on(tap, last);
 		} else if (sig) {
 			tapArmPlay(tap);
 		}
@@ -359,10 +357,11 @@ void xThread::emuCycle(Computer* comp) {
 			}
 			sndNsFixed += NS_TO_FIXED(tm);
 			// tape trap	TODO: rework it as a system breakpoint
-			// the rom check first: it is three flags, where asking the cpu for
-			// its pc is a call, and this runs on every instruction
+			// this runs on every instruction, and the rom is paged in for most
+			// of them: the pc straight from the Z80, not through the cpu's
+			// register table
 			if (zx_rom_active(comp)) {
-				int pc = cpu_get_pc(comp->cpu);
+				int pc = comp->cpu->regPC;
 				if ((pc == 0x56c) || (pc == 0x5e7)) {	// load: ix:addr, de:len (0x580 ?) 56c/559
 					tap_catch_load(comp, pc == 0x56c);
 				} else if (pc == 0x4d0) {				// save: ix:addr, de:len, a:block type(b7), hl:pilot len (1f80/0c98)?
@@ -370,8 +369,7 @@ void xThread::emuCycle(Computer* comp) {
 				}
 				if (conf.tape.autostart && !tape_flash() && ((pc == 0x5df) || (pc == 0x53a))
 						&& !tap_next_is_signal(comp->tape) && tap_block_done(comp->tape)) {
-					tape_settle(comp->tape);
-					comp->tape->sigLen = 1e6;
+					tape_set_sig_len(comp->tape, 1000000);
 					tapNextBlock(comp->tape);
 					tapStop(comp->tape);
 				}
@@ -444,7 +442,7 @@ void xThread::emuCycle(Computer* comp) {
 					}
 				}
 			}
-		} else if (brk_cond_count() && brk_check_cond(comp)) {	// conditions not bound to an address
+		} else if (brk_cond_n && brk_check_cond(comp)) {	// conditions not bound to an address
 			int stop = 0;
 			comp->brkt = BRK_COND;
 			comp->brka = 0;
@@ -581,7 +579,7 @@ static unsigned long long bench_mix(unsigned long long h, const unsigned char* p
 // a budget of 256 samples per cycle, the way the pacer hands them out.
 // hash folds every finished frame and every sample into one number, so two
 // builds can be shown to run the machine identically.
-int xThread::bench(int frames, int skip, int full, int hash, const char* prof, const char* shot, int nodraw) {
+int xThread::bench(int frames, int skip, int full, int hash, const char* prof, const char* shot, int nodraw, int heat) {
 	Computer* comp = conf.zx;
 	if (!comp) return 0;
 	blockSignals(true);
@@ -606,6 +604,11 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	}
 	conf.emu.fast = full ? 0 : 1;
 	if (nodraw) vid_set_nodraw(comp->vid, 1);	// what the picture itself costs
+	if (heat) {
+		comp->flgHEAT = 1;
+		comp_heat_sync(comp);
+		comp_heat_reset(comp);
+	}
 #ifdef _WIN32
 	benchProf* bp = NULL;
 	HANDLE pth = NULL;
@@ -680,6 +683,16 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 		unsigned long long hCpu = bench_mix(0xcbf29ce484222325ULL, (unsigned char*)regs, sizeof(regs));
 		fprintf(stdout, "hash: frames %016llx sound %016llx ram %016llx cpu %016llx pc %04X T %i\n",
 			hFrm, hSnd, hMem, hCpu, cpu->regPC & 0xffff, comp->frmtCount);
+		if (heat) {
+			unsigned long long hHeat = 0xcbf29ce484222325ULL;
+			xHeatBank* banks[] = {&comp->heatRam, &comp->heatRom};
+			for (xHeatBank* bk : banks) {
+				unsigned int* cnt[] = {bk->rd, bk->wr, bk->ex};
+				for (unsigned int* c : cnt)
+					if (bk->size) hHeat = bench_mix(hHeat, (unsigned char*)c, bk->size * sizeof(unsigned int));
+			}
+			fprintf(stdout, "heat: %016llx\n", hHeat);
+		}
 	}
 	// the last finished frame, whole raster, as a binary ppm
 	if (shot) {

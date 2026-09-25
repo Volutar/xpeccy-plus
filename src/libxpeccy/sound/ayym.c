@@ -138,14 +138,6 @@ void tsDestroy(TSound* ts) {
 	free(ts);
 }
 
-// an empty socket has nothing to count, and this runs once per instruction
-void tsSync(TSound* ts, int ns) {
-	if (ts->chipA->type != SND_NONE) ts->chipA->sync(ts->chipA, ns);
-	if (ts->chipB->type != SND_NONE) ts->chipB->sync(ts->chipB, ns);
-	if (ts->chipC->type != SND_NONE) ts->chipC->sync(ts->chipC, ns);
-	if (ts->chipD->type != SND_NONE) ts->chipD->sync(ts->chipD, ns);
-}
-
 // The one chip type with state of its own outside the struct is the YM2203;
 // xstate.c asks here rather than knowing that.
 

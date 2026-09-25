@@ -503,7 +503,7 @@ void tsOut2AAF(Computer* comp, int port, int val) {
 	comp->vid->inten = val & 0xff;
 	// masking a source drops what it already has pending, the ack latch included: a stale
 	// flgLINT/flgDINT makes the next ack hand over the vector of an interrupt just masked
-	if (~val & 1) comp->vid->intFRAME = 0;
+	if (~val & 1) vid_set_int_frame(comp->vid, 0);
 	if (~val & 2) {
 		comp->vid->intLINE = 0;
 		comp->flgLINT = 0;

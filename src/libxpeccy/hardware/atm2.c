@@ -277,10 +277,8 @@ int atm2In(Computer* comp, int port) {
 }
 
 void atm2_sync(Computer* comp, int ns) {
-	if (!comp->flgZ_I) {
-		vid_unlazy(comp->vid);		// the INT is part of what the ray may run up to
-		comp->vid->intFRAME = 0;
-	}
+	if (!comp->flgZ_I)
+		vid_set_int_frame(comp->vid, 0);
 	zx_sync(comp, ns);
 }
 

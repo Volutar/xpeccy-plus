@@ -194,6 +194,16 @@ static inline void tapSync(Tape* tap, int ns) {
 }
 void tape_settle(Tape*);
 int tape_sig_len(Tape*);
+// where the tape stands, settled first
+typedef struct {
+	int block;
+	int pos;
+	int sigLen;
+	long long tickAcc;
+} TapePos;
+TapePos tape_pos(Tape*);
+void tape_set_sig_len(Tape*, int);
+int tap_play_on(Tape*, int);
 void tape_set_speed(Tape*, int);
 void tapNextBlock(Tape*);
 void tap_copy_pos(Tape*, const Tape*);

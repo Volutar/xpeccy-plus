@@ -203,7 +203,12 @@ void cpuDestroy(CPU*);
 int cpu_set_type(CPU*, const char*, const char*, const char*);
 
 void cpu_reset(CPU*);
-int cpu_exec(CPU*);
+// one opcode or interrupt, T back; called on every instruction
+static inline int cpu_exec(CPU* cpu) {
+	if (!cpu->core) return 1;
+	if (!cpu->core->exec) return 1;
+	return cpu->core->exec(cpu);
+}
 
 // built-in cores tab
 extern cpuCore cpuTab[];
@@ -235,7 +240,7 @@ int cpu_mrd(CPU*, int);
 void cpu_mwr(CPU*, int, int);
 int cpu_ird(CPU*, int);
 void cpu_iwr(CPU*, int, int);
-void cpu_irq(CPU*, int);
+static inline void cpu_irq(CPU* cpu, int id) {cpu->xirq(id, cpu->xptr);}
 
 #ifdef __cplusplus
 }
