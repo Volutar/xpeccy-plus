@@ -45,12 +45,11 @@
 #include "../libxpeccy/xstate.h"
 
 #define FL_READS	100	// tape port reads in a frame that make a loader
-// Frames without them before the machine is let go. With the tape playing that
-// is long: the rom waits a second before each block, a loader unpacks between
-// parts. With the tape stopped it is short, only enough for a basic loader to
-// start it again for the next block.
+// Frames without them, with the tape playing, before the machine is let go: the
+// rom waits a second before each block, a loader unpacks between parts. With the
+// tape stopped nothing more comes in, and it is let go at once - a tape the rom
+// trap has armed waits under FL_ARMED instead.
 #define FL_IDLE		100
-#define FL_STOP		25
 // Frames run flat out with the tape armed - flash loading has handed over the
 // rom's blocks and the loader they started has not asked for the rest yet.
 // Speedlock spends seven seconds decrypting itself there.
@@ -630,7 +629,8 @@ static void fl_frame(Computer* comp) {
 	} else if (!may || !fl_held) {
 		fastload_stop(comp);
 		return;
-	} else if (++fl_idle >= (tap->on ? FL_IDLE : FL_STOP)) {
+	} else if (!tap->on || (++fl_idle >= FL_IDLE)) {
+		// back to where the loader left, if that was taken (fl_back_take)
 		fl_back_put(comp);
 		fastload_stop(comp);
 		return;

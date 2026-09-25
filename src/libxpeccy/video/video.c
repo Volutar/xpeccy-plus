@@ -24,6 +24,7 @@ static unsigned char bufb[SCRBUF_SIZE];
 unsigned char* scrimg = bufa;			// current screen (raw/bw)
 unsigned char* bufimg = bufb;			// previous screen (mixed)
 static int curbuf = 0;
+int bufSwaps = 0;
 int bufSize = 3;
 
 // Ring buffer is used for antiflicker to store the history of frames.
@@ -99,6 +100,7 @@ void vid_frame(Video* vid) {
 		scrimg = curbuf ? bufb : bufa;
 		bufimg = curbuf ? bufa : bufb;
 		curbuf = !curbuf;
+		bufSwaps++;
 	}
 	vid->ray.lptr = scrimg;
 	vid->ray.ptr = scrimg;
