@@ -89,12 +89,14 @@ static int tap_peek(int adr, void* data) {
 // The edge routine was called by the rom's own LD-BYTES, not by a copy of it in
 // ram (Krakout), which never comes back to LD_START to be handed a block and is
 // played to instead. LD-EDGE-2 calls LD-EDGE-1 itself: its caller is a word up.
+// Nor does LD-8-BITS (05CD): a timeout there returns to whoever called LD-BYTES,
+// or to a loader that jumped straight into it for a block with no sync (Tutankhamun).
 static int tap_rom_caller(Computer* comp) {
 	int sp = comp->cpu->regSP;
 	int ret = cpu_peek_word(tap_peek, comp, sp);
 	if (ret == 0x05e6)
 		ret = cpu_peek_word(tap_peek, comp, sp + 2);
-	return ret < 0x4000;
+	return (ret < 0x4000) && (ret != 0x05cd);
 }
 
 // atStart says the rom is at LD_START, the top of LD_BYTES, rather than inside
@@ -176,10 +178,20 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 		// the block is in memory and the tape never moved for it, so the loader
 		// that comes next would be handed silence: give it the tape when it asks
 		int sig = tap_next_is_signal(tap);
+		// A block with no pause after it runs straight into the next one, and a
+		// loader that reads that one is timing it from here: play it now, with
+		// no lead-in, from the level the handed-over block ended on.
+		TapeBlock* cur = &tap->blkData[blk];
+		int last = cur->sigCount ? cur->data[cur->sigCount - 1].vol : 0x80;
 		tapNextBlock(tap);
 		fastload_forget();
-		if (sig)
+		if (!TAP_VOL_PAUSE(last) && (tap->block < tap->blkCount)) {
+			tapPlay(tap);
+			tap->sigLen = 0;
+			tap->volPlay = last;
+		} else if (sig) {
 			tapArmPlay(tap);
+		}
 		cpu_set_pc(comp->cpu, 0x5df);
 		free(blkData);
 	} else if ((conf.tape.autostart || (blk == earBlock)) && !tap->on) {

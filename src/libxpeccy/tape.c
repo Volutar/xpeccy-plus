@@ -101,6 +101,7 @@ void blkClear(TapeBlock *blk) {
 	}
 	blk->breakPoint = 0;
 	blk->stopMark = 0;
+	blk->stop48 = 0;
 	blk->isHeader = 0;
 	blk->hasBytes = 0;
 	blk->sigCount = 0;
@@ -242,6 +243,7 @@ TapeBlockInfo tapGetBlockInfo(Tape* tap, int blk) {
 	inf.time = block->time;
 	inf.breakPoint = block->breakPoint;
 	inf.stopMark = block->stopMark;
+	inf.stop48 = block->stop48;
 	return inf;
 }
 
@@ -346,6 +348,7 @@ void tapStoreBlock(Tape* tap) {
 
 	tblk->breakPoint = 0;
 	tblk->stopMark = 0;
+	tblk->stop48 = 0;
 	tblk->hasBytes = 0;
 	tblk->isHeader = 0;
 	if (cnt == 6) {
@@ -566,9 +569,11 @@ void tapRewind(Tape* tap, int blk) {
 }
 
 // nothing more to play once this block is done: it is the last one, or the one
-// after it is marked to stop on
+// after it is marked to stop on - by the user, or by the image for a 48K
 static int tap_stops_after(Tape* tap) {
-	return ((tap->block + 1) >= tap->blkCount) || tap->blkData[tap->block + 1].breakPoint;
+	if ((tap->block + 1) >= tap->blkCount) return 1;
+	TapeBlock* nxt = &tap->blkData[tap->block + 1];
+	return nxt->breakPoint || (nxt->stop48 && tap->is48);
 }
 
 void tapSync(Tape* tap, int ns) {
@@ -678,6 +683,8 @@ TapeBlock makeTapeBlock(unsigned char* ptr, int ln, int hd) {
 	nblk.len0 = SIGN0LEN;
 	nblk.len1 = SIGN1LEN;
 	nblk.breakPoint = 0;
+	nblk.stopMark = 0;
+	nblk.stop48 = 0;
 	nblk.hasBytes = 1;
 	nblk.isHeader = 0;
 	nblk.sigCount = 0;

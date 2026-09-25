@@ -139,9 +139,12 @@ static flShape fl_loop_shape(Computer* comp, int pc) {
 	else if ((b(-4) == 0x04) && (b(-3) == 0xc8))
 		head = 4;
 	if (head) {
-		if (b(0) == 0x1f) {			// RRA, maybe NOP / AND A / RET Z / RET NC
+		if (b(0) == 0x1f) {			// RRA, maybe NOP / AND A / RET Z / RET NC / OR 0
 			int x = b(1);
-			p = ((x == 0x00) || (x == 0xa7) || (x == 0xc8) || (x == 0xd0)) ? 2 : 1;
+			if ((x == 0xf6) && (b(2) == 0x00))
+				p = 3;			// TOPSOFT's loader: RET NC made harmless
+			else
+				p = ((x == 0x00) || (x == 0xa7) || (x == 0xc8) || (x == 0xd0)) ? 2 : 1;
 			if ((b(p) != 0xa9) || (b(p + 1) != 0xe6) || (b(p + 2) != 0x20)) return sh;	// XOR C / AND #20
 			sh.rra = 1;
 			sh.mask = 0x20;
@@ -177,6 +180,20 @@ static flShape fl_loop_shape(Computer* comp, int pc) {
 		sh.mask = 0x40;
 	}
 	return sh;
+}
+
+// The code after an IN looks at the ear bit (AND #40, BIT 6,A, or RRA, maybe
+// XOR C, AND #20), which a keyboard poll does not.
+static int fl_tests_ear(Computer* comp, int pc) {
+	for (int i = 0; i < 6; i++) {
+		int x = fl_byte(comp, pc + i);
+		int y = fl_byte(comp, pc + i + 1);
+		if (((x == 0xe6) && (y == 0x40)) || ((x == 0xcb) && (y == 0x77))) return 1;
+		if ((x == 0x1f) && (((y == 0xe6) && (fl_byte(comp, pc + i + 2) == 0x20))
+				|| ((y == 0xa9) && (fl_byte(comp, pc + i + 2) == 0xe6) && (fl_byte(comp, pc + i + 3) == 0x20))))
+			return 1;
+	}
+	return 0;
 }
 
 // The flags INC B or DEC B leave for a B of b: the loop's last flag-setting
@@ -429,6 +446,10 @@ int fastload_step(Computer* comp) {
 	if (pc != fl_loop.pc) {				// a loop not seen before, or none
 		fl_loop.pc = pc;
 		fl_loop.shape = fl_loop_shape(comp, pc);
+		// a loader not known by its code has taken over from one that was (the
+		// rom's, Ninja Scooter): auto stop no longer knows when it is done
+		if (fl_loop_seen && !fl_loop.shape.kind && fl_tests_ear(comp, pc))
+			fl_loop_seen = 0;
 		fl_loop.period = 0;
 		fl_loop.pmin = 0;
 		fl_loop_take(comp);
