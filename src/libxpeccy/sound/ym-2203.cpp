@@ -16,10 +16,6 @@
 
 extern "C" {
 #include "ayym.h"
-
-// the SSG half, from ay-3-8910.c
-void ay_tick(aymChip*);
-void ay_set_reg(aymChip*, int);
 }
 
 // Where the FM half sits against the SSG one. The board puts both into the same
@@ -126,17 +122,17 @@ public:
 		uint64_t left = m_frac >> 32;
 		int fired = 0;
 		m_frac &= 0xffffffffULL;
+		// the SSG: a tick is a half period of its own clock, and that
+		// clock is the master one over prescale/3 (so the /6 the chip resets
+		// into gives the 1.75 MHz an AY has at 3.5). Nothing below looks at
+		// it, so the whole stretch is counted at once.
+		ay_tick_n(m_chip, (int)(left * m_ssgmul));
 		while (left > 0) {
 			uint64_t step = m_fmper - m_fmcnt;	// to the next fm sample
 			if (step > left) step = left;
 			m_clocks += step;
 			m_fmcnt += step;
 			left -= step;
-			// the SSG: ay_tick() is a half period of its own clock, and
-			// that clock is the master one over prescale/3 (so the /6 the
-			// chip resets into gives the 1.75 MHz an AY has at 3.5)
-			for (uint64_t n = step * m_ssgmul; n > 0; n--)
-				ay_tick(m_chip);
 			if (m_fmcnt < m_fmper) continue;
 			m_fmcnt = 0;
 			// ymfm reads the key state in prepare(), and clock() calls
@@ -249,7 +245,7 @@ private:
 	void set_period() {
 		uint32_t pre = m_fm.clock_prescale();
 		m_fmper = pre * engine::OPERATORS;
-		// the SSG clock is master * 2 / (prescale * 2 / 3), and ay_tick() is
+		// the SSG clock is master * 2 / (prescale * 2 / 3), and a tick is
 		// a half period of it, so that many ticks per master clock
 		m_ssgmul = (pre == 2) ? 4 : (pre == 3) ? 2 : 1;
 		if (m_fmcnt >= m_fmper) m_fmcnt = 0;
@@ -272,7 +268,7 @@ private:
 	uint64_t m_busy_end;
 	uint32_t m_fmcnt;
 	uint32_t m_fmper;		// master clocks in one fm sample
-	uint32_t m_ssgmul;		// ay_tick() calls per master clock
+	uint32_t m_ssgmul;		// SSG ticks per master clock
 	uint8_t m_timer_on[2];
 	uint8_t m_recheck;		// a timer fired: let ymfm see the key state again
 	uint8_t m_adr;
@@ -355,11 +351,18 @@ void ym2203_reset(aymChip* chip) {
 	fm_of(chip)->reset();
 }
 
-void ym2203_sync(aymChip* chip, int ns) {
+// ay_sync() puts the time by, as for the AY, and ay_flush() hands it here
+// when something looks at the chip: a register access, the status, a sample.
+// run() carries its fraction, so one call over a stretch comes out as the
+// calls over its parts.
+void ym2203_flush(aymChip* chip) {
+	int ns = chip->pendNs;
+	chip->pendNs = 0;
 	fm_of(chip)->run(ns);
 }
 
 void ym2203_wr(aymChip* chip, int adr, int val) {
+	ym2203_flush(chip);
 	xfm* fm = fm_of(chip);
 	val &= 0xff;
 	if (adr & 1) {			// #fffd: the register number
@@ -381,19 +384,23 @@ int ym2203_rd(aymChip* chip, int adr) {
 
 // the fm half alone: the SSG one is ym_vol(), the chip's own vol callback
 int ym2203_fm_out(aymChip* chip) {
-	return chip->fm ? ((xfm*)chip->fm)->out() : 0;
+	if (!chip->fm) return 0;
+	ym2203_flush(chip);
+	return ((xfm*)chip->fm)->out();
 }
 
 void ym2203_poke_reg(aymChip* chip, int reg, int val) {
 	if (chip->type != SND_YM2203) return;
 	if ((reg < 0x10) || (reg >= 0xff)) return;	// the SSG half, and the status byte
+	ym2203_flush(chip);
 	chip->reg[reg] = val & 0xff;
 	fm_of(chip)->poke(reg, val);
 }
 
 void ym2203_fm_view(aymChip* chip, fmChan* out) {
-	if (chip->type == SND_YM2203)
-		fm_of(chip)->view(out);
+	if (chip->type != SND_YM2203) return;
+	ym2203_flush(chip);
+	fm_of(chip)->view(out);
 }
 
 int ym2203_state_size(aymChip* chip, void** ptr) {

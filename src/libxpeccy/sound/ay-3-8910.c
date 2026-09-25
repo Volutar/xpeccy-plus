@@ -136,51 +136,8 @@ void ay_wr(aymChip* chip, int adr, int val) {
 	}
 }
 
-void ay_tick(aymChip* ay) {
-	if (++ay->chanA.cnt >= ay->chanA.per) {
-		ay->chanA.cnt = 0;
-		ay->chanA.lev ^= 1;
-	}
-	if (++ay->chanB.cnt >= ay->chanB.per) {
-		ay->chanB.cnt = 0;
-		ay->chanB.lev ^= 1;
-	}
-	if (++ay->chanC.cnt >= ay->chanC.per) {
-		ay->chanC.cnt = 0;
-		ay->chanC.lev ^= 1;
-	}
-	if (++ay->chanN.cnt >= ay->chanN.per) {
-		ay->chanN.cnt = 0;
-		ay->chanN.step = (ay->chanN.step << 1) | ((((ay->chanN.step >> 13) ^ (ay->chanN.step >> 16)) & 1) ^ 1);
-		ay->chanN.lev = (ay->chanN.step >> 16) & 1;
-	}
-	if (++ay->chanE.cnt >= ay->chanE.per) {
-		ay->chanE.cnt = 0;
-		ay->chanE.vol += ay->chanE.step;
-		if (ay->chanE.vol & ~31) {				// 32 || -1
-			if (ay->eForm & 8) {				// 1xxx
-				if (ay->eForm & 1) {			// 1xx1 : 9,B,D,F : stop
-					ay->chanE.vol -= ay->chanE.step;
-					ay->chanE.step = 0;
-					if (ay->eForm & 2) {		// 1x11 : B,F : invert volume
-						ay->chanE.vol ^= 0x1f;
-					}
-				} else if (ay->eForm & 2) {		// 1x10 : A,E : change direction (wave)
-					ay->chanE.step = -ay->chanE.step;
-					ay->chanE.vol += ay->chanE.step;
-				} else {				// 1x00 : 8,C : repeat (saw)
-					ay->chanE.vol &= 0x1f;
-				}
-			} else {					// 0xxx : silent, stop
-				ay->chanE.vol = 0;
-				ay->chanE.step = 0;
-			}
-		}
-	}
-}
-
-// k ticks of ay_tick() on one counter: how many times it wrapped, with cnt
-// left where k single ticks would leave it. Most calls wrap nothing.
+// k ticks on one counter: how many times it wrapped, with cnt left where k
+// single ticks would leave it. Most calls wrap nothing.
 static inline int ay_count(aymChan* ch, int k) {
 	int c = ch->cnt;
 	int p = ch->per;
@@ -203,9 +160,9 @@ static inline void ay_tone_n(aymChan* ch, int k) {
 		ch->lev ^= 1;
 }
 
-// cnt ticks at once, the same as calling ay_tick() cnt times: the channels do
-// not touch each other, so each is carried through its own wraps in one go
-static void ay_tick_n(aymChip* ay, int cnt) {
+// cnt ticks, each a half period of the chip clock: the channels do not touch
+// each other, so each is carried through its own wraps in one go
+void ay_tick_n(aymChip* ay, int cnt) {
 	int n;
 	ay_tone_n(&ay->chanA, cnt);
 	ay_tone_n(&ay->chanB, cnt);
@@ -220,7 +177,7 @@ static void ay_tick_n(aymChip* ay, int cnt) {
 	// a held envelope (step 0) wraps without changing anything
 	while ((n-- > 0) && ay->chanE.step) {
 		ay->chanE.vol += ay->chanE.step;
-		if (ay->chanE.vol & ~31) {				// 32 || -1, as in ay_tick()
+		if (ay->chanE.vol & ~31) {				// 32 || -1
 			if (ay->eForm & 8) {
 				if (ay->eForm & 1) {
 					ay->chanE.vol -= ay->chanE.step;
@@ -247,6 +204,10 @@ static void ay_tick_n(aymChip* ay, int cnt) {
 // at the next of those. The arithmetic is linear - the ticks land on the same
 // side of every wrap either way - so the chip comes out in the same state.
 void ay_flush(aymChip* ay) {
+	if (ay->type == SND_YM2203) {		// its time runs the fm half as well
+		ym2203_flush(ay);
+		return;
+	}
 	int ns = ay->pendNs;
 	ay->pendNs = 0;
 	if ((ay->tickFx < 1) || (ns < 1)) return;
@@ -350,7 +311,7 @@ int ay_chan_lev(aymChip* ay, aymChan* ch) {
 
 // One period of every envelope shape, as levels 0..31, for the debugger to
 // draw. It is run on a scratch chip rather than written out as a table of its
-// own: the shapes then cannot drift from what ay_tick() actually does.
+// own: the shapes then cannot drift from what ay_tick_n() actually does.
 void ay_env_shape(int form, unsigned char* out, int len) {
 	aymChip tmp;
 	int i;
@@ -360,7 +321,7 @@ void ay_env_shape(int form, unsigned char* out, int len) {
 	ay_poke_reg(&tmp, 13, form);		// where the form is decoded
 	for (i = 0; i < len; i++) {
 		out[i] = tmp.chanE.vol & 0x1f;
-		ay_tick(&tmp);
+		ay_tick_n(&tmp, 1);
 	}
 }
 

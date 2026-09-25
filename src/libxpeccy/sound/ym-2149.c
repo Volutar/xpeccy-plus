@@ -40,8 +40,6 @@ int ym_rd(aymChip* chip, int adr) {
 	return res;
 }
 
-extern void ay_set_reg(aymChip*, int);
-
 void ym_wr(aymChip* chip, int adr, int val) {
 	ay_flush(chip);
 	if (adr & 1) {								// set current reg
@@ -57,6 +55,6 @@ void ym_wr(aymChip* chip, int adr, int val) {
 // come from the AY code. Written out a second time here they drifted apart, and a
 // muted channel went on playing.
 sndPair ym_vol(aymChip* chip) {
-	ay_flush(chip);					// a YM2203's SSG is ticked by its own sync
+	ay_flush(chip);					// a YM2203's fm half with it
 	return ay_mix_tab(chip, ymDACvol);		// YM:5-bit DAC volume
 }

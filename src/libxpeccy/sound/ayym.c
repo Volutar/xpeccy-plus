@@ -33,7 +33,7 @@ sndPair sc_dum_vol(aymChip* chip) {sndPair vol = {0,0}; return vol;}
 static const scDesc snd_chip_tab[] = {
 	{SND_AY, "AY-3-8910", "AY8910", 1.773447, ay_reset, ay_rd, ay_wr, ay_sync, ay_vol},
 	{SND_YM, "Yamaha-2149", "YM2149", 1.75, ay_reset, ym_rd, ym_wr, ay_sync, ym_vol},
-	{SND_YM2203, "Yamaha-2203", "YM2203", 3.5, ym2203_reset, ym2203_rd, ym2203_wr, ym2203_sync, ym_vol},
+	{SND_YM2203, "Yamaha-2203", "YM2203", 3.5, ym2203_reset, ym2203_rd, ym2203_wr, ay_sync, ym_vol},
 	{SND_NONE, "Dummy", "NULL", 1.0, sc_dum_res, sc_dum_rd, sc_dum_wr, sc_dum_sync, sc_dum_vol}
 };
 
@@ -254,6 +254,7 @@ void tsLoadRom(TSound* ts, const char* path) {
 int tsIn(TSound* ts, int port) {
 	int res = -1;
 	if (ts->r_stat && (ts->type == TS_NEDOPC)) {	// read status (TSFM only)
+		ay_flush(ts->curChip);
 		res = ts->curChip->reg[0xff] & 3;
 		if (ts->curChip->wait > 0) res |= 0x80;
 	} else {				// read registers
