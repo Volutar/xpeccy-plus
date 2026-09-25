@@ -69,6 +69,7 @@ enum {
 typedef struct {
 	unsigned breakPoint:1;
 	unsigned stopMark:1;		// the image asks for the tape to stop here
+	unsigned stop48:1;		// ...but only on a 48K
 	unsigned hasBytes:1;		// block holds bytes, not just a signal
 
 	int type;			// TAPE_HEAD / TAPE_DATA
@@ -89,6 +90,7 @@ typedef struct {
 typedef struct {
 	unsigned breakPoint:1;
 	unsigned stopMark:1;
+	unsigned stop48:1;		// the image asks a 48K to stop the tape here (TZX #2A)
 	unsigned hasBytes:1;
 	unsigned isHeader:1;
 	unsigned vol:1;
@@ -120,6 +122,7 @@ typedef struct {
 
 	unsigned armed:1;	// play as soon as a loader outside the rom asks for the tape
 	unsigned tail:1;	// playing out the level change the last pulse ends on
+	unsigned is48:1;	// the machine is a 48K, for stop48
 	unsigned userStop:1;	// stopped by hand: the automatics may not start it again
 	unsigned autorew:1;	// play starts the tape over once it has run to the end
 	unsigned changed:1;	// blocks added, moved or taken out since the image was read or saved

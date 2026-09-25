@@ -804,6 +804,7 @@ int compSetHardware(Computer* comp, const char* name) {
 //	comp->cpu->nod = 0;
 	comp->vid->mrd = vid_mrd_cb;
 	comp->tape->xen = 0;
+	comp->tape->is48 = (hw->id == HW_ZX48);	// what a TZX's "stop if 48K" means
 	compSetBaseFrq(comp, 0);	// recalculations
 	comp_pwatch_sync(comp);
 	return 1;
