@@ -53,7 +53,7 @@ void bcTransient(bitChan* ch, int ns) {
 	}
 }
 
-void bcSync(bitChan* ch, int ns) {
+void bc_sync_slow(bitChan* ch, int ns) {
 	int per;
 //	if (ns < 1) {
 //		ns = ch->accum;

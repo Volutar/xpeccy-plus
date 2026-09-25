@@ -44,7 +44,15 @@ static inline int bc_level(bitChan* ch, int vol) {
 bitChan* bcCreate();
 void bcReset(bitChan*);
 void bcDestroy(bitChan*);
-void bcSync(bitChan*, int);
+void bc_sync_slow(bitChan*, int);
+// Time for the beeper. Once the level has settled where the port put it, and no
+// wave is being made, the time changes nothing - which is nearly always, so that
+// is checked here and not in a call. The transient rounds on every call, so the
+// time cannot be put off and summed.
+static inline void bcSync(bitChan* ch, int ns) {
+	if ((ch->val == (ch->lev ? 0xff : 0)) && !(ch->perH && ch->perL)) return;
+	bc_sync_slow(ch, ns);
+}
 
 sndPair mixer(sndPair, sndPair);
 
