@@ -139,6 +139,8 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 		}
 		unsigned short de = comp->cpu->regDE;
 		unsigned short ix = comp->cpu->regIX;
+		// read before the block lands: it may cover the stack
+		int ldret = (cpu_peek_word(tap_peek, comp, comp->cpu->regSP) == 0x053f);
 		TapeBlockInfo inf = tapGetBlockInfo(tap,blk);
 		unsigned char* blkData = (unsigned char*)malloc(inf.size + 2);
 		tapGetBlockData(tap,blk,blkData, inf.size + 2);
@@ -191,6 +193,11 @@ void xThread::tap_catch_load(Computer* comp, int atStart) {
 			tapArmPlay(tap);
 		}
 		cpu_set_pc(comp->cpu, 0x5df);
+		// A loader that enters LD-BYTES past its PUSH of SA/LD-RET (JP #0562)
+		// keeps the border the edge loop left: blue, the data phase's colour
+		// for a tape back at the level it started on, not the lead-in's.
+		if (!ldret)
+			comp->hw->out(comp, 0x09fe, 0x09);
 		free(blkData);
 	} else if ((conf.tape.autostart || (blk == earBlock)) && !tap->on) {
 		// 05E7 is LD-EDGE-1, which the rom calls for every edge, so this is
