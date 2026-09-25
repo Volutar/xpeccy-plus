@@ -448,7 +448,7 @@ int fastload_step(Computer* comp) {
 		fl_loop.shape = fl_loop_shape(comp, pc);
 		// a loader not known by its code has taken over from one that was (the
 		// rom's, Ninja Scooter): auto stop no longer knows when it is done
-		if (!fl_loop.shape.kind && fl_tests_ear(comp, pc))
+		if (fl_loop_seen && !fl_loop.shape.kind && fl_tests_ear(comp, pc))
 			fl_loop_seen = 0;
 		fl_loop.period = 0;
 		fl_loop.pmin = 0;

@@ -84,14 +84,12 @@ static void tzxCloseBlock(Tape* tape, int ms) {
 
 // #10: <pause:2>,<datalen:2>,{data}
 void tzxBlock10(FILE* file, Tape* tape) {
-	int pause = fgetw(file) * 1e6 / TAPTICKNS;		// ms -> ticks
+	int pausems = fgetw(file);
 	int len = fgetw(file);
 	char buf[0x10000];
 	fread(buf, len, 1, file);
 	tzxTakeData(tape, tapDataToBlock(buf, len, sigLens));
-	blkAddPause(&tape->tmpBlock, pause);
-	tzxAddBlock(tape);
-	blkClear(&tape->tmpBlock);
+	tzxCloseBlock(tape, pausems);
 }
 
 // #11: <pilot:2>,<sync1:2>,<sync2:2>,<bit0:2>,<bit1:2>,<pilotcnt:2>,<usedbits:1>,<pause:2>,<datalen:3>,{data}
@@ -104,7 +102,7 @@ void tzxBlock11(FILE* file, Tape* tape) {
 	altLens[4] = fgetw(file) * TAPCPUNS / TAPTICKNS;	// 1
 	altLens[6] = fgetw(file);			// pilot pulses
 	int bits = fgetc(file);				// used bits in last byte
-	int pause = fgetw(file) * 1e6 / TAPTICKNS;
+	int pausems = fgetw(file);
 	int len = fgett(file);		// freadLen(file, 3);
 	char* buf = (char*)malloc(len);
 	fread(buf, len-1, 1, file);
@@ -117,9 +115,7 @@ void tzxBlock11(FILE* file, Tape* tape) {
 		bits--;
 		data <<= 1;
 	}
-	blkAddPause(&tape->tmpBlock, pause);
-	tzxAddBlock(tape);
-	blkClear(&tape->tmpBlock);
+	tzxCloseBlock(tape, pausems);
 	free(buf);
 }
 
@@ -287,7 +283,7 @@ static void tzxSymbol(Tape* tape, unsigned char* def, int npulses) {
 	for (i = 0; i < npulses; i++) {
 		int len = (def[1 + i * 2] | (def[2 + i * 2] << 8)) * TAPCPUNS / TAPTICKNS;
 		if (len == 0) break;
-		int cur = (blk->sigCount > 0) ? ((blk->data[blk->sigCount - 1].vol & 0x80) ? 1 : 0) : -1;
+		int cur = (blk->sigCount > 0) ? TAP_VOL_LEV(blk->data[blk->sigCount - 1].vol) : -1;
 		int keep = 0;				// no edge: the last pulse goes on
 		if (i == 0) {
 			if (flag == 1) keep = (cur >= 0);
@@ -485,8 +481,6 @@ int loadTZX(Computer* comp, const char* name, int drv) {
 	FILE* file = fopen(name, "rb");
 	if (!file) return ERR_CANT_OPEN;
 
-	int err = ERR_OK;
-
 	tzxHead hd;
 	fread((char*)&hd, sizeof(tzxHead), 1, file);
 	if ((strncmp(hd.sign, "ZXTape!",7) != 0) || (hd.eot != 0x1a)) {
@@ -517,6 +511,7 @@ int loadTZX(Computer* comp, const char* name, int drv) {
 	int loopCount = 0;
 	int callPc = -1;		// the #26 being run
 	int callIdx = 0;
+	int callCnt = 0;
 	int i, off;
 	while ((pc >= 0) && (pc < cnt) && (steps++ < TZX_MAX_STEPS)) {
 		fseek(file, blk[pc].pos, SEEK_SET);
@@ -545,7 +540,8 @@ int loadTZX(Computer* comp, const char* name, int drv) {
 				}
 				break;
 			case 0x26:
-				if (fgetw(file) > 0) {
+				callCnt = fgetw(file);
+				if (callCnt > 0) {
 					callPc = pc;
 					callIdx = 0;
 					pc += (short)fgetw(file);
@@ -559,8 +555,7 @@ int loadTZX(Computer* comp, const char* name, int drv) {
 					break;
 				}
 				callIdx++;
-				fseek(file, blk[callPc].pos, SEEK_SET);
-				if (callIdx < fgetw(file)) {
+				if (callIdx < callCnt) {
 					fseek(file, blk[callPc].pos + 2 + callIdx * 2, SEEK_SET);
 					pc = callPc + (short)fgetw(file);
 				} else {
@@ -585,5 +580,5 @@ int loadTZX(Computer* comp, const char* name, int drv) {
 	tap_set_text(tape, NULL);
 	tape_set_path(tape, name);
 	fclose(file);
-	return err;
+	return ERR_OK;
 }
