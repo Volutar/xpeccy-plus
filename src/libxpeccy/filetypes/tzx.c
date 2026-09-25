@@ -27,6 +27,26 @@ typedef struct {
 
 static int sigLens[] = {PILOTLEN,SYNC1LEN,SYNC2LEN,SIGN0LEN,SIGN1LEN,0,-1};	// 0->SYNC3LEN
 
+// Every pulse opens with a level change, the first one of a block too. A block
+// with no pause after it hands its level on to the next, so one built from
+// scratch at the low level loses that edge whenever the pulses before it are an
+// odd count - and a loader reading the last bit of the block waits for it.
+static void tzxAddBlock(Tape* tape) {
+	TapeBlock* blk = &tape->tmpBlock;
+	if ((tape->blkCount > 0) && (blk->sigCount > 0)) {
+		TapeBlock* prv = &tape->blkData[tape->blkCount - 1];
+		if (prv->sigCount > 0) {
+			int pv = prv->data[prv->sigCount - 1].vol;
+			int nv = blk->data[0].vol;
+			if (!TAP_VOL_PAUSE(pv) && !TAP_VOL_PAUSE(nv) && (TAP_VOL_LEV(pv) == TAP_VOL_LEV(nv))) {
+				for (int i = 0; i < blk->sigCount; i++)
+					blk->data[i].vol ^= TAP_VOL_PAUSE(blk->data[i].vol) ? 0xff : 0xe0;
+			}
+		}
+	}
+	tap_add_block(tape, *blk);
+}
+
 // A data block goes after whatever #12/#13 pulses are pending: they are its own
 // pilot and sync (a #11 with no pilot relies on that), so they are kept, not replaced.
 static void tzxTakeData(Tape* tape, TapeBlock blk) {
@@ -58,7 +78,7 @@ static void tzxTakeData(Tape* tape, TapeBlock blk) {
 // what is pending becomes a block of its own, closed by a pause of ms
 static void tzxCloseBlock(Tape* tape, int ms) {
 	blkAddPause(&tape->tmpBlock, ms * 1e6 / TAPTICKNS);
-	tap_add_block(tape, tape->tmpBlock);
+	tzxAddBlock(tape);
 	blkClear(&tape->tmpBlock);
 }
 
@@ -70,7 +90,7 @@ void tzxBlock10(FILE* file, Tape* tape) {
 	fread(buf, len, 1, file);
 	tzxTakeData(tape, tapDataToBlock(buf, len, sigLens));
 	blkAddPause(&tape->tmpBlock, pause);
-	tap_add_block(tape, tape->tmpBlock);
+	tzxAddBlock(tape);
 	blkClear(&tape->tmpBlock);
 }
 
@@ -98,7 +118,7 @@ void tzxBlock11(FILE* file, Tape* tape) {
 		data <<= 1;
 	}
 	blkAddPause(&tape->tmpBlock, pause);
-	tap_add_block(tape, tape->tmpBlock);
+	tzxAddBlock(tape);
 	blkClear(&tape->tmpBlock);
 	free(buf);
 }
@@ -152,7 +172,7 @@ void tzxBlock14(FILE* file, Tape* tape) {
 	// parts the blocks in the list
 	blkAddPause(&tape->tmpBlock, pause);
 	if (pausems > 100) {		// .1 sec will be block separator
-		tap_add_block(tape, tape->tmpBlock);
+		tzxAddBlock(tape);
 		blkClear(&tape->tmpBlock);
 	}
 	tape->isData = 0;
@@ -560,7 +580,7 @@ int loadTZX(Computer* comp, const char* name, int drv) {
 	}
 	free(blk);
 	if (tape->tmpBlock.sigCount > 0)
-		tap_add_block(tape, tape->tmpBlock);
+		tzxAddBlock(tape);
 	blkClear(&tape->tmpBlock);
 	tap_set_text(tape, NULL);
 	tape_set_path(tape, name);
