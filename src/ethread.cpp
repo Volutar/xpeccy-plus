@@ -288,6 +288,16 @@ void xThread::tap_catch_load(Computer* comp, int atStart, int base, int dir) {
 		}
 		if (!overdata) {
 			crc ^= blkData[i + 1];		// xor with tape crc (next byte after de|inf.size bytes)
+		} else if (base != 0x0556) {
+			// Asked for more than the block holds, LD-BYTES reads its checksum
+			// as data and times out in the pause after it, H telling whether
+			// the block was whole: how a copy loads a block of unknown length
+			// (The Balrog and the Cat).
+			data = blkData[i + 1];
+			crc ^= data;
+			memWr(comp->mem, ix, data);
+			ix += dir;
+			de--;
 		}
 		comp->cpu->regL = data;			// last readed byte
 		comp->cpu->regH = crc;			// all bytes xored (0 if no errors)
@@ -323,7 +333,13 @@ void xThread::tap_catch_load(Computer* comp, int atStart, int base, int dir) {
 		}
 		if (base != 0x0556)
 			xlog(XLG_TAPE, XLL_INFO, "block %i handed to the copy of LD-BYTES at %04X", blk, base);
-		cpu_set_pc(comp->cpu, (base + LDC_TAIL) & 0xffff);
+		if (overdata && (base != 0x0556)) {
+			// out through LD-8-BITS' RET NC, as a timeout leaves: NC, Z
+			cpu_set_pc(comp->cpu, (base + LDC_BITS_RET) & 0xffff);
+			cpu_set_flag(comp->cpu, (cpu_get_flag(comp->cpu) & ~0x01) | 0x40);
+		} else {
+			cpu_set_pc(comp->cpu, (base + LDC_TAIL) & 0xffff);
+		}
 		// A loader that enters LD-BYTES past its PUSH of SA/LD-RET (JP #0562)
 		// keeps the border the edge loop left: blue, the data phase's colour
 		// for a tape back at the level it started on, not the lead-in's. A
