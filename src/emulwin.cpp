@@ -862,6 +862,7 @@ void MainWin::paintEvent(QPaintEvent*) {
 
 #define MODE_ICON_W	60	// the pictures are twice this
 #define MODE_ICON_TOP	22	// below the fps readout
+#define MODE_ICON_TOP_NOFPS	5	// with no fps readout to clear
 #define MODE_ICON_RIGHT	5
 
 void MainWin::drawIcons(QPainter& pnt) {
@@ -937,7 +938,7 @@ void MainWin::drawIcons(QPainter& pnt) {
 		mode = (e > 0) ? osd_ffwd2 + e - 1 : osd_slow2 - e - 1;
 	}
 	if (mode != osd_none)
-		pnt.drawImage(width() - MODE_ICON_W - MODE_ICON_RIGHT, MODE_ICON_TOP, osdImg[mode]);
+		pnt.drawImage(width() - MODE_ICON_W - MODE_ICON_RIGHT, conf.led.fps ? MODE_ICON_TOP : MODE_ICON_TOP_NOFPS, osdImg[mode]);
 // put fps
 	if (conf.led.fps) {
 		sprintf(numbuf, " %.1f ", conf.vid.curfps);
