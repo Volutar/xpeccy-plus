@@ -45,14 +45,30 @@ static unsigned rw_writes = 0;		// x_media_writes the history started at
 static int rw_wait = 0;			// frames since the last snapshot
 static xState* rw_st = NULL;		// every save and every load goes through it
 
-// the output as played, as a ring: rw_snd_w counts every sample written
+// The machine's sound as a ring, at the output rate but in emulated time: the
+// sub-samples are averaged into it by the time they cover, so a stretch of
+// fast forward or slow motion takes as much of it as the frames it holds, and a
+// snapshot's place in it is where its frames are. rw_snd_w counts every sample.
 #define RW_SND_EXTRA	8	// seconds of sound over the history, since a snapshot waits for a safe frame
 typedef struct {
-	short left, right;	// what went into the ring, already clipped to 16 bits
+	short left, right;	// already clipped to 16 bits
 } rwSample;
 static std::vector<rwSample> rw_snd;
 static long long rw_snd_w = 0;
-static long long rw_snd_r = 0;		// where playing back reads from
+static long long rw_snd_per = 0;	// emulated time of one sample, 16.16 ns
+static int rw_snd_rate = 0, rw_snd_secs = 0;	// what size and period were worked out for
+// the sub-samples gathered for the next sample
+static struct {
+	long long ns;
+	int left, right, n;
+} rw_acc;
+// playing back: the stretch between the snapshot shown and the one before it,
+// read from pos down to lo, ratio samples to an output sample
+static struct {
+	double pos;
+	long long lo;
+	double ratio;
+} rw_seg;
 
 static double rw_fps(Computer* comp) {
 	return (comp->vid->nsPerFrame > 0) ? 1e9 / comp->vid->nsPerFrame : 50;
@@ -145,10 +161,9 @@ static void rw_take(Computer* comp, long long phase) {
 // Playing the history back. While the key is held every picture shown is the
 // next snapshot back: loaded and run for one frame that is thrown away
 // (xstate_run_frame), which draws what the screen showed then - multicolour
-// and all - for the price of one ordinary frame. The sound is the output as it
-// was played, kept in a ring of its own and read backwards step times as fast.
-// Let go, and the machine carries on from the snapshot on screen, with
-// everything newer dropped.
+// and all - for the price of one ordinary frame. Each picture plays the sound
+// between its snapshot and the one shown before it, backwards. Let go, and the
+// machine carries on from the snapshot on screen, with everything newer dropped.
 
 enum {
 	RW_REC = 0,	// taking snapshots
@@ -161,28 +176,46 @@ static std::atomic<int> rw_mode(RW_REC);
 static int rw_back = 0;		// the snapshot on screen
 static double rw_smp = 0;	// output samples until the next picture
 
-void rewind_sound(sndPair lev) {
+// called for every sub-sample, so the size and the period are only worked out
+// again when the rate or the length has moved
+void rewind_sound(sndPair lev, long long nsFixed) {
 	if (!conf.emu.rewind.on || (rw_mode != RW_REC)) return;
-	size_t cap = (size_t)(conf.emu.rewind.secs + RW_SND_EXTRA) * conf.snd.rate;
-	if (rw_snd.size() != cap) {
-		rw_snd.assign(cap, rwSample());
+	if ((conf.snd.rate != rw_snd_rate) || (conf.emu.rewind.secs != rw_snd_secs)) {
+		if (conf.snd.rate < 1) return;
+		rw_snd_rate = conf.snd.rate;
+		rw_snd_secs = conf.emu.rewind.secs;
+		rw_snd_per = NSD_TO_FIXED(1e9 / rw_snd_rate);
+		rw_snd.assign((size_t)(rw_snd_secs + RW_SND_EXTRA) * rw_snd_rate, rwSample());
 		rw_snd_w = 0;
+		rw_acc = {};
 	}
-	if (cap) rw_snd[rw_snd_w % cap] = {(short)lev.left, (short)lev.right};
+	rw_acc.left += lev.left;
+	rw_acc.right += lev.right;
+	rw_acc.n++;
+	rw_acc.ns += nsFixed;
+	if (rw_acc.ns < rw_snd_per) return;
+	rw_acc.ns -= rw_snd_per;
+	rw_snd[rw_snd_w % rw_snd.size()] = {(short)(rw_acc.left / rw_acc.n), (short)(rw_acc.right / rw_acc.n)};
 	rw_snd_w++;
+	rw_acc.left = rw_acc.right = rw_acc.n = 0;
 }
 
-// the next sample going back: step of them averaged, so the sound is not just
-// thinned out. Silence past the oldest one kept.
+// the next output sample going back: the samples its share of the stretch
+// covers, averaged, so the sound is sped up rather than thinned out. Silence
+// where there is none: past the oldest one kept, or a stretch with no sound in
+// it (fast mode makes none).
 static sndPair rw_snd_back() {
 	sndPair res = sndPair();
+	if (rw_seg.ratio <= 0) return res;
 	long long cap = (long long)rw_snd.size();
-	int step = conf.emu.rewind.step;
+	double next = std::max(rw_seg.pos - rw_seg.ratio, (double)rw_seg.lo);
+	long long a = (long long)next;
+	long long b = std::max((long long)rw_seg.pos, a + 1);
+	rw_seg.pos = next;
 	int left = 0, right = 0, n = 0;
-	for (int i = 0; i < step; i++) {
-		rw_snd_r--;
-		if ((rw_snd_r < 0) || (rw_snd_r < rw_snd_w - cap)) break;
-		const rwSample& p = rw_snd[rw_snd_r % cap];
+	for (long long i = a; i < b; i++) {
+		if ((i < 0) || (i < rw_snd_w - cap) || (i >= rw_snd_w)) continue;
+		const rwSample& p = rw_snd[i % cap];
 		left += p.left;
 		right += p.right;
 		n++;
@@ -208,6 +241,7 @@ static void rw_let_go(Computer* comp, long long* phase) {
 	int from = comp->frmCount;
 	rwEntry* e = rw_at(rw_back);
 	if (e) rw_snd_w = e->snd;
+	rw_acc = {};
 	if (rewind_restore(comp, rw_back, phase))
 		xlog(XLG_CORE, XLL_INFO, "rewind: played on from frame %i, key let go at %i", comp->frmCount, from);
 	rw_play_stop();
@@ -239,7 +273,6 @@ void rewind_frame(Computer* comp, long long* phase) {
 		fastload_stop(comp);		// it holds the picture back, and the speed
 		rw_back = -1;
 		rw_smp = 0;
-		rw_snd_r = rw_snd_w;
 		rw_mode = RW_PLAY;
 		return;
 	}
@@ -259,13 +292,17 @@ int rewind_play(Computer* comp, long long* phase) {
 	}
 	int shown = 0;
 	if (rw_smp <= 0) {
-		rw_smp += conf.snd.rate / rw_fps(comp);
+		double spf = conf.snd.rate / rw_fps(comp);
+		rw_smp += spf;
 		if ((rw_mode == RW_PLAY) && (rw_back + 1 < rewind_count()) && rw_show(comp, rw_back + 1, phase)) {
+			// the sound between this picture and the one shown before, backwards
+			rwEntry* e = rw_at(rw_back);
+			long long hi = e ? e->snd : rw_snd_w;
 			rw_back++;
 			shown = 1;
-			// the sound follows the pictures, never runs ahead of them
-			rwEntry* e = rw_at(rw_back);
-			if (e && (rw_snd_r < e->snd)) rw_snd_r = e->snd;
+			rw_seg.lo = rw_at(rw_back)->snd;
+			rw_seg.pos = (double)hi;
+			rw_seg.ratio = (hi - rw_seg.lo) / spf;
 		} else {
 			rw_mode = RW_END;
 		}

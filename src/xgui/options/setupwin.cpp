@@ -510,6 +510,17 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.cbRunAhead->addItem("Off", 0);
 	ui.cbRunAhead->addItem("1", 1);
 	ui.cbRunAhead->addItem("2", 2);
+	for (int f = 2; f <= 8; f <<= 1) {
+		ui.cbSlowmo->addItem(QString("1/%0").arg(f), f);
+		ui.cbFfwd->addItem(QString::fromUtf8("\u00d7%0").arg(f), f);
+	}
+	for (QComboBox* box : {ui.cbSlowmoKey, ui.cbFfwdKey}) {
+		box->addItem("Toggle", 0);
+		box->addItem("Hold", 1);
+	}
+	// the rewind's own settings mean nothing while it is off
+	for (QWidget* w : {(QWidget*)ui.sbRewStep, (QWidget*)ui.labRewStep, (QWidget*)ui.sbRewSecs, (QWidget*)ui.labRewSecs})
+		connect(ui.cbRewind, &QCheckBox::toggled, w, &QWidget::setEnabled);
 // sound
 	i = 0;
 	while (sndTab[i].name) {
@@ -828,16 +839,22 @@ void SetupWin::start() {
 // emulation
 	ui.cbLowLat->setChecked(conf.vid.lowLatency);
 	setRFIndex(ui.cbRunAhead, conf.emu.runahead, 0);
+	setRFIndex(ui.cbSlowmo, conf.emu.slowDiv, 1);
+	setRFIndex(ui.cbFfwd, conf.emu.ffMul, 1);
+	setRFIndex(ui.cbSlowmoKey, conf.emu.slowHold, 0);
+	setRFIndex(ui.cbFfwdKey, conf.emu.ffHold, 0);
 	ui.cbRewind->setChecked(conf.emu.rewind.on);
+	for (QWidget* w : {(QWidget*)ui.sbRewStep, (QWidget*)ui.labRewStep, (QWidget*)ui.sbRewSecs, (QWidget*)ui.labRewSecs})
+		w->setEnabled(conf.emu.rewind.on);
 	ui.sbRewStep->setValue(conf.emu.rewind.step);
 	ui.sbRewSecs->setValue(conf.emu.rewind.secs);
 	// Input lag, Rewind and Indicators are grids of their own, and columns line
 	// up between them only while all are given the same widths. Measure them
 	// here, not in the .ui: a style or a font would outgrow a number set there.
-	int ctlw = qMax(comboFitWidth(ui.cbRunAhead), qMax(ui.sbRewStep->sizeHint().width(), ui.sbRewSecs->sizeHint().width()));
+	int ctlw = qMax(comboFitWidth(ui.cbRunAhead), qMax(comboFitWidth(ui.cbSlowmo), comboFitWidth(ui.cbFfwd)));
 	ui.cbRunAhead->setFixedWidth(ctlw);
-	ui.sbRewStep->setFixedWidth(ctlw);
-	ui.sbRewSecs->setFixedWidth(ctlw);
+	ui.cbSlowmo->setFixedWidth(ctlw);
+	ui.cbFfwd->setFixedWidth(ctlw);
 	QGridLayout* emugrid[3] = {ui.gridLayout_lat, ui.gridLayout_rew, ui.gridLayout_23};
 	for (int col = 0; col < 2; col++) {
 		int wid = 0;
@@ -1020,6 +1037,11 @@ void SetupWin::start() {
 
 void SetupWin::apply() {
 	Computer* comp = conf.zx;
+	// the rewind history holds the machine as it was: it goes only if the
+	// machine or the history's own settings change
+	std::string macWas = xm_signature();
+	int rwStep = conf.emu.rewind.step;
+	int rwSecs = conf.emu.rewind.secs;
 // machine
 	// another machine is not this page with different values in it: it has its
 	// own, so load it and show them rather than writing these over it
@@ -1036,13 +1058,18 @@ void SetupWin::apply() {
 	memSetSize(comp->mem, getRFIData(ui.mszbox), -1);
 	compSetBaseFrq(comp, xcpu_frq_parse(ui.cbCpuFrq->currentText(), comp->cpuFrq));
 	xm_turbo_set(comp, getRFSData(cbCpuTurbo).toStdString());
-	xspeed_set(ui.sldSpeed->value());
+	if (ui.sldSpeed->value() != xspeed_get())
+		xspeed_set(ui.sldSpeed->value());
 	comp->flgEM1 = ui.scrpwait->isChecked();
 	if (comp->hw->id == HW_ZX48) comp->mem->ramMask = MEM_128K - 1;		// TODO: find a better way
 	emu_unlock();
 // emulation
 	conf.vid.lowLatency = ui.cbLowLat->isChecked() ? 1 : 0;
 	conf.emu.runahead = getRFIData(ui.cbRunAhead);
+	conf.emu.slowDiv = getRFIData(ui.cbSlowmo);
+	conf.emu.ffMul = getRFIData(ui.cbFfwd);
+	conf.emu.slowHold = getRFIData(ui.cbSlowmoKey) ? 1 : 0;
+	conf.emu.ffHold = getRFIData(ui.cbFfwdKey) ? 1 : 0;
 	conf.emu.rewind.on = ui.cbRewind->isChecked() ? 1 : 0;
 	conf.emu.rewind.step = ui.sbRewStep->value();
 	conf.emu.rewind.secs = ui.sbRewSecs->value();
@@ -1270,8 +1297,8 @@ void SetupWin::apply() {
 	// the machine carries what the page put in it: into its own file, so it is
 	// still there after a switch away and back
 	xm_save_over();
-	// the history carries the settings it was taken with
-	rewind_clear();
+	if ((xm_signature() != macWas) || (conf.emu.rewind.step != rwStep) || (conf.emu.rewind.secs != rwSecs))
+		rewind_clear();
 	updateMachineButtons();
 	// the mark on the machine may have just appeared or gone
 	int midx = ui.machbox->findData(QString::fromLocal8Bit(conf.macId.c_str()));

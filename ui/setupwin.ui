@@ -2830,7 +2830,7 @@ lands sooner. The sound stays a frame behind</string>
              <item>
               <widget class="QGroupBox" name="gbRewind">
                <property name="title">
-                <string>Rewind</string>
+                <string>Speed and rewind</string>
                </property>
                <layout class="QGridLayout" name="gridLayout_rew" columnstretch="0,0,1">
                 <property name="horizontalSpacing">
@@ -2842,7 +2842,9 @@ lands sooner. The sound stays a frame behind</string>
                 <item row="0" column="0">
                  <widget class="QCheckBox" name="cbRewind">
                   <property name="toolTip">
-                   <string>Hold the rewind key to go back in time</string>
+                   <string>EXPERIMENTAL. Hold the rewind key to go back in time.
+The history is kept in memory, 10-30 MB with the
+default step, and costs a little emulation speed</string>
                   </property>
                   <property name="text">
                    <string/>
@@ -2862,7 +2864,9 @@ lands sooner. The sound stays a frame behind</string>
                 <item row="0" column="1">
                  <widget class="QLabel" name="labRewind">
                   <property name="toolTip">
-                   <string>Hold the rewind key to go back in time</string>
+                   <string>EXPERIMENTAL. Hold the rewind key to go back in time.
+The history is kept in memory, 10-30 MB with the
+default step, and costs a little emulation speed</string>
                   </property>
                   <property name="text">
                    <string>Rewind</string>
@@ -2873,98 +2877,172 @@ lands sooner. The sound stays a frame behind</string>
                  </widget>
                 </item>
                 <item row="0" column="2">
-                 <widget class="QLabel" name="labRewindHint">
-                  <property name="font">
-                   <font>
-                    <italic>true</italic>
-                   </font>
+                 <layout class="QHBoxLayout" name="hlRewind">
+                  <property name="spacing">
+                   <number>6</number>
                   </property>
-                  <property name="text">
-                   <string>Hold the rewind key to go back in time</string>
-                  </property>
-                 </widget>
+                  <item>
+                   <widget class="QSpinBox" name="sbRewStep">
+                    <property name="toolTip">
+                     <string>Frames of history per frame shown going back.
+A smaller step rewinds more smoothly,
+but keeps more snapshots in memory</string>
+                    </property>
+                    <property name="suffix">
+                     <string> fr</string>
+                    </property>
+                    <property name="minimum">
+                     <number>1</number>
+                    </property>
+                    <property name="maximum">
+                     <number>50</number>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="labRewStep">
+                    <property name="toolTip">
+                     <string>Frames of history per frame shown going back.
+A smaller step rewinds more smoothly,
+but keeps more snapshots in memory</string>
+                    </property>
+                    <property name="text">
+                     <string>Step</string>
+                    </property>
+                    <property name="buddy">
+                     <cstring>sbRewStep</cstring>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QSpinBox" name="sbRewSecs">
+                    <property name="toolTip">
+                     <string>How far back you can go. It starts over when
+the machine writes to a disk, hard disk or SD card,
+when machine settings that affect the history
+change, and when Step or History is changed</string>
+                    </property>
+                    <property name="suffix">
+                     <string> s</string>
+                    </property>
+                    <property name="minimum">
+                     <number>5</number>
+                    </property>
+                    <property name="maximum">
+                     <number>300</number>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="labRewSecs">
+                    <property name="toolTip">
+                     <string>How far back you can go. It starts over when
+the machine writes to a disk, hard disk or SD card,
+when machine settings that affect the history
+change, and when Step or History is changed</string>
+                    </property>
+                    <property name="text">
+                     <string>History</string>
+                    </property>
+                    <property name="buddy">
+                     <cstring>sbRewSecs</cstring>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <spacer name="hlRewind_sp">
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                   </spacer>
+                  </item>
+                 </layout>
                 </item>
                 <item row="1" column="0">
-                 <widget class="QSpinBox" name="sbRewStep">
+                 <widget class="QComboBox" name="cbSlowmo">
                   <property name="toolTip">
-                   <string>Frames of history per frame shown going back</string>
-                  </property>
-                  <property name="suffix">
-                   <string> fr</string>
-                  </property>
-                  <property name="minimum">
-                   <number>1</number>
-                  </property>
-                  <property name="maximum">
-                   <number>50</number>
+                   <string>Speed while slow motion is on</string>
                   </property>
                  </widget>
                 </item>
                 <item row="1" column="1">
-                 <widget class="QLabel" name="labRewStep">
+                 <widget class="QLabel" name="labSlowmo">
                   <property name="toolTip">
-                   <string>Frames of history per frame shown going back</string>
+                   <string>Speed while slow motion is on</string>
                   </property>
                   <property name="text">
-                   <string>Step</string>
+                   <string>Slow motion</string>
                   </property>
                   <property name="buddy">
-                   <cstring>sbRewStep</cstring>
+                   <cstring>cbSlowmo</cstring>
                   </property>
                  </widget>
                 </item>
                 <item row="1" column="2">
-                 <widget class="QLabel" name="labRewStepHint">
-                  <property name="font">
-                   <font>
-                    <italic>true</italic>
-                   </font>
+                 <layout class="QHBoxLayout" name="hlSlowmo">
+                  <property name="spacing">
+                   <number>6</number>
                   </property>
-                  <property name="text">
-                   <string>Frames of history per frame shown</string>
-                  </property>
-                 </widget>
+                  <item>
+                   <widget class="QComboBox" name="cbSlowmoKey">
+                    <property name="toolTip">
+                     <string>Toggle: a press of the key switches it on and off.
+Hold: on while the key is held</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <spacer name="hlSlowmo_sp">
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                   </spacer>
+                  </item>
+                 </layout>
                 </item>
                 <item row="2" column="0">
-                 <widget class="QSpinBox" name="sbRewSecs">
+                 <widget class="QComboBox" name="cbFfwd">
                   <property name="toolTip">
-                   <string>How far back the rewind reaches</string>
-                  </property>
-                  <property name="suffix">
-                   <string> s</string>
-                  </property>
-                  <property name="minimum">
-                   <number>5</number>
-                  </property>
-                  <property name="maximum">
-                   <number>300</number>
+                   <string>Speed while fast forward is on.
+The sound plays sped up</string>
                   </property>
                  </widget>
                 </item>
                 <item row="2" column="1">
-                 <widget class="QLabel" name="labRewSecs">
+                 <widget class="QLabel" name="labFfwd">
                   <property name="toolTip">
-                   <string>How far back the rewind reaches</string>
+                   <string>Speed while fast forward is on.
+The sound plays sped up</string>
                   </property>
                   <property name="text">
-                   <string>History</string>
+                   <string>Fast forward</string>
                   </property>
                   <property name="buddy">
-                   <cstring>sbRewSecs</cstring>
+                   <cstring>cbFfwd</cstring>
                   </property>
                  </widget>
                 </item>
                 <item row="2" column="2">
-                 <widget class="QLabel" name="labRewSecsHint">
-                  <property name="font">
-                   <font>
-                    <italic>true</italic>
-                   </font>
+                 <layout class="QHBoxLayout" name="hlFfwd">
+                  <property name="spacing">
+                   <number>6</number>
                   </property>
-                  <property name="text">
-                   <string>A disk write starts it over</string>
-                  </property>
-                 </widget>
+                  <item>
+                   <widget class="QComboBox" name="cbFfwdKey">
+                    <property name="toolTip">
+                     <string>Toggle: a press of the key switches it on and off.
+Hold: on while the key is held</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <spacer name="hlFfwd_sp">
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                   </spacer>
+                  </item>
+                 </layout>
                 </item>
                </layout>
               </widget>

@@ -179,6 +179,7 @@ static void snd_ring_put(sndPair lev) {
 void snd_put(sndPair lev) {
 	if (conf.snd.need > 0)
 		conf.snd.need--;
+	if (!conf.snd.enabled) lev = sndPair();
 	snd_ring_put(lev);
 }
 
@@ -205,6 +206,8 @@ int sndSync(Computer* comp) {
 			// both ends: FM is signed, and a sample under the low one
 			// wraps to the top of the range on the way into the ring
 			sndLev = snd_clip16(sndLev);
+			// by emulated time, which the output is not at another speed
+			rewind_sound(sndLev, nsPerSampleFixed);
 
 			smpBuf[sb_pos & SND_FIR_MASK] = sndLev;
 			smpBuf[(sb_pos & SND_FIR_MASK) + SND_FIR_TAPS] = sndLev;
@@ -254,7 +257,6 @@ int sndSync(Computer* comp) {
 				if (conf.snd.wavout)
 					snd_wav_write();
 
-				rewind_sound(sndLev);
 				snd_ring_put(sndLev);
 			}
 			smpCount++;

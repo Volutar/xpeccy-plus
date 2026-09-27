@@ -14,9 +14,17 @@ before that point is upstream's history and is not repeated here.
 - **Rewind**: hold Delete to go back through the last 30 seconds of play, picture and sound,
   and carry on from any point. The step and the length are on Xpeccy+ -> Emulation.
 
-- **A VCR-style sign in the corner of the screen** while fast mode or rewind is on.
+- **Slow motion and fast forward keys**: End and Home run the machine at 1/4 and x4 of its
+  speed, sound included, as a toggle or while held. The speeds and the key behaviour are on
+  Xpeccy+ -> Emulation; loading a tape, disk or snapshot goes back to normal speed.
+
+- **A VCR-style sign in the corner of the screen** while rewind, fast mode, fast forward or
+  slow motion is on.
 
 ### Fixed
+
+- **Switching machines ends slow motion** set on the speed slider; it used to carry on
+  unseen.
 
 - **No crash when switching to TurboSound FM** in the options while a machine runs.
 

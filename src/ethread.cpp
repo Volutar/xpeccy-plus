@@ -369,7 +369,8 @@ int xThread::runAhead(Computer* comp) {
 	}
 	if (finish || raBroken) return 0;
 	if (conf.emu.runahead < 1) return 0;
-	if (conf.emu.fast || conf.emu.pause || comp->flgDBG || rewind_active()) return 0;
+	// fast forward already runs several frames per frame shown: no room for a second pass
+	if (conf.emu.fast || (conf.emu.speed > 1.0) || conf.emu.pause || comp->flgDBG || rewind_active()) return 0;
 	if (autostart_busy()) return 0;		// the typist counts frames of its own
 	if (!xstate_safe(comp)) return 0;
 	if (!raState) raState = xstate_create();

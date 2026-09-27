@@ -110,6 +110,11 @@ void conf_init(char* wpath, char* confdir) {
 	conf.emu.pause = 0;
 	conf.emu.fast = 0;
 	conf.emu.speed = 1.0;
+	conf.emu.tmode = XTM_NONE;
+	conf.emu.slowDiv = 4;
+	conf.emu.ffMul = 4;
+	conf.emu.slowHold = 0;
+	conf.emu.ffHold = 0;
 	conf.emu.rewind.on = 1;
 	conf.emu.rewind.step = 3;
 	conf.emu.rewind.secs = 30;
@@ -159,6 +164,10 @@ void saveConfig() {
 	// kept beside lowlatency: the two are one page in the options, and moving
 	// a key between sections later would orphan everyone's setting
 	fprintf(cfile, "runahead = %i\n", conf.emu.runahead);
+	fprintf(cfile, "slowmo = %i\n", conf.emu.slowDiv);
+	fprintf(cfile, "ffwd = %i\n", conf.emu.ffMul);
+	fprintf(cfile, "slowmo.hold = %s\n", YESNO(conf.emu.slowHold));
+	fprintf(cfile, "ffwd.hold = %s\n", YESNO(conf.emu.ffHold));
 	fprintf(cfile, "rewind = %s\n", YESNO(conf.emu.rewind.on));
 	fprintf(cfile, "rewind.step = %i\n", conf.emu.rewind.step);
 	fprintf(cfile, "rewind.secs = %i\n", conf.emu.rewind.secs);
@@ -831,6 +840,10 @@ void loadConfig() {
 					if (pnam=="keepratio") conf.vid.keepRatio = arg.b;
 					if (pnam=="lowlatency") conf.vid.lowLatency = arg.b;
 					if (pnam=="runahead") conf.emu.runahead = getRanged(arg.s, 0, 2);
+					if (pnam=="slowmo") conf.emu.slowDiv = toPower(getRanged(arg.s, 2, 8));
+					if (pnam=="ffwd") conf.emu.ffMul = toPower(getRanged(arg.s, 2, 8));
+					if (pnam=="slowmo.hold") conf.emu.slowHold = arg.b;
+					if (pnam=="ffwd.hold") conf.emu.ffHold = arg.b;
 					if (pnam=="rewind") conf.emu.rewind.on = arg.b;
 					if (pnam=="rewind.step") conf.emu.rewind.step = getRanged(arg.s, 1, 50);
 					if (pnam=="rewind.secs") conf.emu.rewind.secs = getRanged(arg.s, 5, 300);

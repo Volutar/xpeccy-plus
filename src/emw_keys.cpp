@@ -27,6 +27,11 @@ static QMap<qint32, int> key_press_map;
 // no grab, no autorep: get shortcut/keyid, xkey_press
 // no grab, autorepeat: if !shortcut then get keyid, xt_release, xt_press
 
+// the speed mode a shortcut switches, XTM_NONE for any other
+static int xcut_tmode(int keyid) {
+	return (keyid == XCUT_FFWD) ? XTM_FFWD : ((keyid == XCUT_SLOWMO) ? XTM_SLOW : XTM_NONE);
+}
+
 int ev_to_keyid(QKeyEvent* ev, bool kgrab) {
 	int keyid = -1;
 	if (!kgrab) {
@@ -94,8 +99,8 @@ void MainWin::keyPressEvent(QKeyEvent* ev) {
 				}
 				//xt_release(comp->keyb, kent);
 				//xt_press(comp->keyb, &kent);
-			} else {
-				xkey_press(keyid);
+			} else if (!xcut_tmode(keyid)) {
+				xkey_press(keyid);	// those two answer the press, not the repeat
 			}
 		} else {
 			xkey_press(keyid);
@@ -230,6 +235,14 @@ void MainWin::xkey_press(int xkey) {
 				// A machine that sets it from a port will set it again itself
 				// an unknown step reads as -1 and so starts the list over
 				setTurbo((xm_turbo_index(comp) + 1) % std::max(comp->turboCount, 1));
+				break;
+			case XCUT_FFWD:
+			case XCUT_SLOWMO:
+				if (comp->rzx.play) {
+					setMessage(" not in RZX ");
+				} else {
+					xspeed_key(xcut_tmode(xkey), 1);
+				}
 				break;
 			case XCUT_SPEED_UP:
 			case XCUT_SPEED_DOWN:
@@ -421,6 +434,8 @@ void MainWin::keyReleaseEvent(QKeyEvent *ev) {
 			}
 			if (keyid == XCUT_REWIND) {	// a hotkey held, not pressed
 				rewind_want(0);
+			} else if (xcut_tmode(keyid)) {
+				xspeed_key(xcut_tmode(keyid), 0);
 			} else if (keyid < 0) {	// not hotkeys
 #if defined(__linux) || defined(__BSD)
 				keyid = ev->nativeScanCode();

@@ -508,6 +508,7 @@ QString file_ask_open(Computer* comp, int* id, int* drv) {
 
 int load_file(Computer* comp, const char* name, int id, int drv) {
 	last_as_kind = AS_NONE;
+	xspeed_modes_off();
 	QString path;
 	if (name) {
 		path = QFileInfo(QString::fromLocal8Bit(name)).canonicalFilePath();

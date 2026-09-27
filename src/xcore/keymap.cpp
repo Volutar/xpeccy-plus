@@ -442,6 +442,8 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_PAUSE, "key.pause", "Pause", QKeySequence(), QKeySequence(Qt::Key_Pause)},
 	{SCG_MAIN, XCUT_FAST, "key.fast", "Fast mode", QKeySequence(), QKeySequence(Qt::Key_Insert)},
 	{SCG_MAIN, XCUT_REWIND, "key.rewind", "Rewind (hold)", QKeySequence(), QKeySequence(Qt::Key_Delete)},
+	{SCG_MAIN, XCUT_FFWD, "key.ffwd", "Fast forward", QKeySequence(), QKeySequence(Qt::Key_Home)},
+	{SCG_MAIN, XCUT_SLOWMO, "key.slowmo", "Slow motion", QKeySequence(), QKeySequence(Qt::Key_End)},
 	{SCG_MAIN | SCG_DEBUGA | SCG_DISASM, XCUT_SAVE, "key.save", "Save", QKeySequence(), QKeySequence(Qt::Key_F2)},
 	{SCG_MAIN | SCG_DEBUGA, XCUT_LOAD, "key.load", "Open", QKeySequence(), QKeySequence(Qt::Key_F3)},
 	{SCG_MAIN, XCUT_FASTSAVE, "key.fastsave", "Fast saving", QKeySequence(), QKeySequence(Qt::Key_F9)},
