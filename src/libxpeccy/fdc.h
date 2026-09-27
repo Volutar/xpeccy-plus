@@ -47,7 +47,7 @@ struct FDC {
 	unsigned brk:1;		// signal for debug
 	unsigned upd:1;		// 1 if uPD765, 0 if i8272
 	unsigned seekend:1;	// uPD765: set at end of seek/recalibrate com
-	unsigned irq:1;		// VG93:irq ; uPD765:exec
+	unsigned irq:1;		// WD1793:irq ; uPD765:exec
 	unsigned drq:1;		// 1:data request
 	unsigned dir:1;		// drq dir: 0 - cpu->fdc; 1 - fdc->cpu
 	unsigned mr:1;		// master reset
@@ -80,7 +80,7 @@ struct FDC {
 	int cnt;
 	int wait;		// pause (ns)
 	int tns;
-	int hold;		// vg93 turbo: ns left in this command to wait for the cpu to take a byte
+	int hold;		// wd1793 turbo: ns left in this command to wait for the cpu to take a byte
 	int drdy;		// time (ns) to replace fdc->insert signal by 0 (time between opening and closing a flp gate)
 
 	fdcCall* plan;		// current task

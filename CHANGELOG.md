@@ -29,6 +29,9 @@ before that point is upstream's history and is not repeated here.
 - **Clearer gamepad binding window**: the pad's buttons have plain names ("Right trigger",
   "D-pad up"), and the choice follows the field you click into.
 
+- **Controllers and chips are named by their part numbers** on the Machine page: Beta Disk
+  (WD1793), NemoIDE, YM2149 and so on.
+
 ### Fixed
 
 - **Radio buttons keep their place when checked** in every bundled style.

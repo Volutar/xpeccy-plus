@@ -135,8 +135,8 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 // A command in progress walks the track data and the fdc sector list, and
 // neither is in the snapshot. The motor bit would be the obvious test and is no
 // good: it sticks on for good on a drive with no disk in it. Idle means waiting
-// for a command - the vg93 leaves no plan behind at all, the upd765 parks on a
-// do-nothing plan and raises idle, and a freshly reset vg93 has neither yet.
+// for a command - the wd1793 leaves no plan behind at all, the upd765 parks on a
+// do-nothing plan and raises idle, and a freshly reset wd1793 has neither yet.
 static int fdc_running(FDC* fdc) {
 	return fdc && fdc->plan && !fdc->idle;
 }

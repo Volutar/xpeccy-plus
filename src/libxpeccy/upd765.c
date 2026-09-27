@@ -21,7 +21,7 @@
 #define TRBBYTE 1000
 #define TRBSRT 1
 
-int seekADR(FDC*);	// from VG93: wait & read ADR mark in fdc->buf
+int seekADR(FDC*);	// from WD1793: wait & read ADR mark in fdc->buf
 
 // wait until all args is done
 void uwargs(FDC* fdc) {
