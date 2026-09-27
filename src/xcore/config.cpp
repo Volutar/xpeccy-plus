@@ -110,6 +110,9 @@ void conf_init(char* wpath, char* confdir) {
 	conf.emu.pause = 0;
 	conf.emu.fast = 0;
 	conf.emu.speed = 1.0;
+	conf.emu.rewind.on = 1;
+	conf.emu.rewind.step = 3;
+	conf.emu.rewind.secs = 30;
 	conf.led.clock = 1;
 	conf.gpctrl = new xGamepadController;
 }
@@ -156,6 +159,9 @@ void saveConfig() {
 	// kept beside lowlatency: the two are one page in the options, and moving
 	// a key between sections later would orphan everyone's setting
 	fprintf(cfile, "runahead = %i\n", conf.emu.runahead);
+	fprintf(cfile, "rewind = %s\n", YESNO(conf.emu.rewind.on));
+	fprintf(cfile, "rewind.step = %i\n", conf.emu.rewind.step);
+	fprintf(cfile, "rewind.secs = %i\n", conf.emu.rewind.secs);
 	fprintf(cfile, "scale = %i\n", conf.vid.scale);
 	fprintf(cfile, "greyscale = %s\n", YESNO(greyScale));
 //	fprintf(cfile, "scanlines = %s\n", YESNO(scanlines));
@@ -825,6 +831,9 @@ void loadConfig() {
 					if (pnam=="keepratio") conf.vid.keepRatio = arg.b;
 					if (pnam=="lowlatency") conf.vid.lowLatency = arg.b;
 					if (pnam=="runahead") conf.emu.runahead = getRanged(arg.s, 0, 2);
+					if (pnam=="rewind") conf.emu.rewind.on = arg.b;
+					if (pnam=="rewind.step") conf.emu.rewind.step = getRanged(arg.s, 1, 50);
+					if (pnam=="rewind.secs") conf.emu.rewind.secs = getRanged(arg.s, 5, 300);
 					if (pnam=="border") conf.vid.border = brd_mode_id(arg.s);
 					// before 2026.4 this was a percentage of the machine's own border
 					if (pnam=="bordersize") conf.vid.border = brd_mode_pcnt(getRanged(arg.s, 0, 100));

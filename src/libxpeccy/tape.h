@@ -229,6 +229,7 @@ int tap_play_on(Tape*, int);
 void tape_set_speed(Tape*, int);
 void tapNextBlock(Tape*);
 void tap_copy_pos(Tape*, const Tape*);
+int tap_same_image(const Tape*, const Tape*);	// a position taken from one fits the other
 // what a read of the tape port is, for tapDetectLoader
 enum {
 	TAPE_RD_OTHER = 0,

@@ -10,6 +10,7 @@
 #include "xcore/pacing.h"
 #include "xcore/autostart.h"
 #include "xcore/fastload.h"
+#include "xcore/rewind.h"
 #include "xcore/tapetrap.h"
 #include "xcore/vfilters.h"
 #include "libxpeccy/cpu/Z80/z80.h"
@@ -358,17 +359,6 @@ static xState* raState = NULL;
 static Computer* raOwner = NULL;	// what raBroken was decided about
 static int raBroken = 0;		// the snapshot cannot be taken at all: stop trying
 
-// One frame, no breakpoints, no sound, nothing that reaches outside the
-// machine. The bound is only there to let go of a machine that never finishes a
-// frame - dummy hardware, say - instead of spinning on it every frame forever.
-static int ra_frame(Computer* comp) {
-	int guard = 200000;		// a frame is ~20000 opcodes
-	while (!comp->flgFRM && (guard-- > 0))
-		compExec(comp);
-	comp->flgFRM = 0;
-	return guard > 0;
-}
-
 // 1 when the machine has been run on and has to be wound back afterwards.
 // xstate_safe() answers for everything the snapshot does not carry; what is
 // left here is this side's own policy.
@@ -379,7 +369,7 @@ int xThread::runAhead(Computer* comp) {
 	}
 	if (finish || raBroken) return 0;
 	if (conf.emu.runahead < 1) return 0;
-	if (conf.emu.fast || conf.emu.pause || comp->flgDBG) return 0;
+	if (conf.emu.fast || conf.emu.pause || comp->flgDBG || rewind_active()) return 0;
 	if (autostart_busy()) return 0;		// the typist counts frames of its own
 	if (!xstate_safe(comp)) return 0;
 	if (!raState) raState = xstate_create();
@@ -387,26 +377,41 @@ int xThread::runAhead(Computer* comp) {
 		raBroken = 1;
 		return 0;
 	}
-	x_runahead = 1;
 	for (int i = 0; i < conf.emu.runahead; i++) {
-		if (!ra_frame(comp)) {
+		if (!xstate_run_frame(comp)) {
 			xlog(XLG_CORE, XLL_WARN, "run ahead: the machine does not finish a frame, giving up");
 			raBroken = 1;
 			break;
 		}
 	}
-	x_runahead = 0;
 	return 1;
 }
 
 void xThread::emuCycle(Computer* comp) {
 	int tm;
 	int brkskip = 0;
+	// the mode only changes at a frame end on this thread, so it is asked there
+	// and not on every opcode
+	bool rewinding = rewind_active();
 	// sndNsFixed is deliberately not cleared here: it holds the part of a sample
 	// not yet made, and a cycle can end anywhere. Clearing it dropped that
 	// remainder on every wake-up, and wake-ups come every 2ms.
 	conf.snd.fill = 1;
 	while (!comp->flgBRK && conf.snd.fill && !finish && !conf.emu.pause) {
+		// the rewind history playing back stands in for the machine
+		if (rewinding) {
+			int rw = rewind_play(comp, &sndNsFixed);
+			if (rw) {
+				if (rw > 1) {
+					conf.vid.fctime = paceClockNs();
+					conf.vid.fcount++;
+					emit s_frame();
+				}
+				if (conf.snd.need <= 0) conf.snd.fill = 0;
+				continue;
+			}
+			rewinding = false;
+		}
 		// exec 1 opcode (or handle INT, NMI)
 		if (conf.emu.pause) {
 			sndNsFixed += NS_TO_FIXED(1000);
@@ -468,6 +473,8 @@ void xThread::emuCycle(Computer* comp) {
 			ldc_frame();
 			autostart_frame(comp);
 			fastload_frame(comp);
+			rewind_frame(comp, &sndNsFixed);
+			rewinding = rewind_active();
 			// before run-ahead: the debugger's screen view wants the machine as
 			// it really stands, not the frame it is about to guess at
 			vid_scr_snap(comp->vid);
@@ -647,7 +654,7 @@ static unsigned long long bench_mix(unsigned long long h, const unsigned char* p
 // a budget of 256 samples per cycle, the way the pacer hands them out.
 // hash folds every finished frame and every sample into one number, so two
 // builds can be shown to run the machine identically.
-int xThread::bench(int frames, int skip, int full, int hash, const char* prof, const char* shot, int nodraw, int heat) {
+int xThread::bench(int frames, int skip, int full, int hash, const char* prof, const char* shot, int nodraw, int heat, int rw) {
 	Computer* comp = conf.zx;
 	if (!comp) return 0;
 	blockSignals(true);
@@ -656,6 +663,8 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	conf.emu.pause = 0;
 	// the bench picks its mode itself: fast loading would switch it under a tape
 	fastload_hold(1);
+	int rwOn = conf.emu.rewind.on;
+	conf.emu.rewind.on = (rw > 0);
 	rzx_begin(comp);
 	// warm up: a tape or disk being started, a demo getting to its part. In
 	// the mode that is measured: where fast mode hands the machine back is not
@@ -780,9 +789,51 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 			fclose(file);
 		}
 	}
+	if (rw > 1)
+		rewindCheck(comp, full);
+	else if (rw > 0)
+		fprintf(stdout, "rewind: %i snapshots, %u KB\n", rewind_count(), (unsigned)(rewind_bytes() >> 10));
+	conf.emu.rewind.on = rwOn;
 	fflush(stdout);
 	fastload_hold(0);
 	return done;
+}
+
+// Every snapshot but the newest is put back and the machine run on to the frame
+// of the next one, which it then has to be byte for byte. State that matters and
+// is outside the snapshot sends the two apart.
+void xThread::rewindCheck(Computer* comp, int full) {
+	rewind_hold(1);
+	int n = rewind_count();
+	int done = 0, bad = 0, lost = 0;
+	size_t bytes = rewind_bytes();
+	for (int back = n - 1; back > 0; back--) {
+		int to = rewind_frame_of(back - 1);
+		if (!rewind_load(comp, back, &sndNsFixed)) {
+			lost++;
+			continue;
+		}
+		// a cycle can end on every sample (sound on, or a GS to run), so the
+		// bound is in frames, not in cycles
+		int last = to + 1000;
+		while ((comp->frmCount != to) && (comp->frmCount < last) && !conf.emu.pause) {
+			conf.snd.need = full ? 256 : 0;
+			benchStop = conf.vid.fcount + 1;
+			emu_lock();
+			emuCycle(comp);
+			emu_unlock();
+		}
+		done++;
+		if (comp->frmCount != to) {
+			xlog(XLG_CORE, XLL_WARN, "rewind check: frame %i reached %i instead of %i", rewind_frame_of(back), comp->frmCount, to);
+			bad++;
+		} else if (!rewind_matches(comp, back - 1)) {
+			bad++;
+		}
+	}
+	rewind_hold(0);
+	fprintf(stdout, "rewind: %i snapshots, %u KB, %i checked, %i differ, %i not loaded\n",
+		n, (unsigned)(bytes >> 10), done, bad, lost);
 }
 
 #endif

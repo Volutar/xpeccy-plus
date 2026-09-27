@@ -615,6 +615,10 @@ void tapRec(Tape* tap) {
 
 // Where a playing tape stands, carried from a copy of the same image: what a
 // caller winding the machine back has to put back itself.
+int tap_same_image(const Tape* a, const Tape* b) {
+	return (a->blkData == b->blkData) && (a->blkCount == b->blkCount);
+}
+
 void tap_copy_pos(Tape* dst, const Tape* src) {
 	dst->nsCalm = 0;			// worked out again at the next tapSync()
 	dst->nsLazy = src->nsLazy;

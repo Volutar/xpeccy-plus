@@ -2828,6 +2828,148 @@ lands sooner. The sound stays a frame behind</string>
               </widget>
              </item>
              <item>
+              <widget class="QGroupBox" name="gbRewind">
+               <property name="title">
+                <string>Rewind</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_rew" columnstretch="0,0,1">
+                <property name="horizontalSpacing">
+                 <number>12</number>
+                </property>
+                <property name="verticalSpacing">
+                 <number>8</number>
+                </property>
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="cbRewind">
+                  <property name="toolTip">
+                   <string>Hold the rewind key to go back in time</string>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../xpeccy.qrc">
+                    <normaloff>:/images/tape-rewind.png</normaloff>:/images/tape-rewind.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>16</width>
+                    <height>16</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QLabel" name="labRewind">
+                  <property name="toolTip">
+                   <string>Hold the rewind key to go back in time</string>
+                  </property>
+                  <property name="text">
+                   <string>Rewind</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>cbRewind</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QLabel" name="labRewindHint">
+                  <property name="font">
+                   <font>
+                    <italic>true</italic>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Hold the rewind key to go back in time</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QSpinBox" name="sbRewStep">
+                  <property name="toolTip">
+                   <string>Frames of history per frame shown going back</string>
+                  </property>
+                  <property name="suffix">
+                   <string> fr</string>
+                  </property>
+                  <property name="minimum">
+                   <number>1</number>
+                  </property>
+                  <property name="maximum">
+                   <number>50</number>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLabel" name="labRewStep">
+                  <property name="toolTip">
+                   <string>Frames of history per frame shown going back</string>
+                  </property>
+                  <property name="text">
+                   <string>Step</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>sbRewStep</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QLabel" name="labRewStepHint">
+                  <property name="font">
+                   <font>
+                    <italic>true</italic>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Frames of history per frame shown</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QSpinBox" name="sbRewSecs">
+                  <property name="toolTip">
+                   <string>How far back the rewind reaches</string>
+                  </property>
+                  <property name="suffix">
+                   <string> s</string>
+                  </property>
+                  <property name="minimum">
+                   <number>5</number>
+                  </property>
+                  <property name="maximum">
+                   <number>300</number>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QLabel" name="labRewSecs">
+                  <property name="toolTip">
+                   <string>How far back the rewind reaches</string>
+                  </property>
+                  <property name="text">
+                   <string>History</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>sbRewSecs</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QLabel" name="labRewSecsHint">
+                  <property name="font">
+                   <font>
+                    <italic>true</italic>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>A disk write starts it over</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
               <widget class="QGroupBox" name="gbIndicators">
                <property name="title">
                 <string>Indicators</string>

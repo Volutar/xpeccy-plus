@@ -21,10 +21,8 @@
 // range, load the snapshot back, run the same N frames and hash again. State
 // that matters and is not in the list sends the two runs apart, and the hashes
 // differ. Keep N even, or the two runs end on different image buffers and the
-// ray pointers differ for no reason. Run in 2026-09 over all 12 ZX profiles: it
-// found the ZX48 ramMask case straight away. Worth building in properly before
-// rewind, which is far less forgiving of a gap than run-ahead - there a
-// rollback is 20 ms, here it would be seconds.
+// ray pointers differ for no reason. --bench-rewind 2 runs exactly that over
+// the whole rewind history (xcore/rewind.cpp), step by step.
 
 #pragma once
 
@@ -53,6 +51,25 @@ int xstate_load(xState*, Computer*);
 int xstate_safe(Computer*);
 // The same, for a caller that carries the tape's position across itself.
 int xstate_safe_tape_aside(Computer*);
+
+// One frame that is going to be thrown away: no breakpoints, nothing written to
+// a medium (x_runahead). 0 when the machine did not finish a frame at all.
+int xstate_run_frame(Computer*);
+
+// For a caller that keeps the bytes elsewhere (rewind). The meta is where the
+// bytes belong, xstate_meta_size() long, and has to be kept with them.
+size_t xstate_meta_size(void);
+// the size of the last save (0: none), its bytes and a copy of its meta
+size_t xstate_bytes(const xState*, const unsigned char** data, void* meta);
+// 1 when two metas put the same number of bytes in the same places
+int xstate_same_layout(const void* meta1, const void* meta2);
+// takes a meta and returns room for its bytes, to be filled before xstate_load
+unsigned char* xstate_put_begin(xState*, const void* meta);
+// how many of the saved bytes differ from other, a snapshot of the same layout,
+// the ray pointers aside; first gets the first of them
+size_t xstate_diff(const xState*, Computer*, const unsigned char* other, size_t* first);
+// which chunk an offset falls into, and where inside it (for a report)
+int xstate_chunk_at(const xState*, size_t off, size_t* inner);
 
 #ifdef __cplusplus
 }

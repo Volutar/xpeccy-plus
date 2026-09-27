@@ -40,6 +40,7 @@
 #include "xcore/vfilters.h"
 #include "xcore/vfat_scan.h"
 #include "libxpeccy/spectrum.h"
+#include "xcore/rewind.h"
 #include "libxpeccy/filetypes/filetypes.h"
 #include "libxpeccy/input/input.h"
 
@@ -827,15 +828,23 @@ void SetupWin::start() {
 // emulation
 	ui.cbLowLat->setChecked(conf.vid.lowLatency);
 	setRFIndex(ui.cbRunAhead, conf.emu.runahead, 0);
-	// Input lag and Indicators are grids of their own, and columns line up
-	// between two grids only while both are given the same widths. Measure them
+	ui.cbRewind->setChecked(conf.emu.rewind.on);
+	ui.sbRewStep->setValue(conf.emu.rewind.step);
+	ui.sbRewSecs->setValue(conf.emu.rewind.secs);
+	// Input lag, Rewind and Indicators are grids of their own, and columns line
+	// up between them only while all are given the same widths. Measure them
 	// here, not in the .ui: a style or a font would outgrow a number set there.
-	ui.cbRunAhead->setFixedWidth(comboFitWidth(ui.cbRunAhead));
-	QGridLayout* emugrid[2] = {ui.gridLayout_lat, ui.gridLayout_23};
+	int ctlw = qMax(comboFitWidth(ui.cbRunAhead), qMax(ui.sbRewStep->sizeHint().width(), ui.sbRewSecs->sizeHint().width()));
+	ui.cbRunAhead->setFixedWidth(ctlw);
+	ui.sbRewStep->setFixedWidth(ctlw);
+	ui.sbRewSecs->setFixedWidth(ctlw);
+	QGridLayout* emugrid[3] = {ui.gridLayout_lat, ui.gridLayout_rew, ui.gridLayout_23};
 	for (int col = 0; col < 2; col++) {
-		int wid = qMax(gridColWidth(emugrid[0], col), gridColWidth(emugrid[1], col));
-		emugrid[0]->setColumnMinimumWidth(col, wid);
-		emugrid[1]->setColumnMinimumWidth(col, wid);
+		int wid = 0;
+		for (QGridLayout* g : emugrid)
+			wid = qMax(wid, gridColWidth(g, col));
+		for (QGridLayout* g : emugrid)
+			g->setColumnMinimumWidth(col, wid);
 	}
 // video
 	ui.cbFullscreen->setChecked(conf.vid.fullScreen);
@@ -1034,6 +1043,9 @@ void SetupWin::apply() {
 // emulation
 	conf.vid.lowLatency = ui.cbLowLat->isChecked() ? 1 : 0;
 	conf.emu.runahead = getRFIData(ui.cbRunAhead);
+	conf.emu.rewind.on = ui.cbRewind->isChecked() ? 1 : 0;
+	conf.emu.rewind.step = ui.sbRewStep->value();
+	conf.emu.rewind.secs = ui.sbRewSecs->value();
 // video
 	conf.vid.fullScreen = ui.cbFullscreen->isChecked() ? 1 : 0;
 	conf.vid.keepRatio = ui.cbKeepRatio->isChecked() ? 1 : 0;
@@ -1258,6 +1270,8 @@ void SetupWin::apply() {
 	// the machine carries what the page put in it: into its own file, so it is
 	// still there after a switch away and back
 	xm_save_over();
+	// the history carries the settings it was taken with
+	rewind_clear();
 	updateMachineButtons();
 	// the mark on the machine may have just appeared or gone
 	int midx = ui.machbox->findData(QString::fromLocal8Bit(conf.macId.c_str()));

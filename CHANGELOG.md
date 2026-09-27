@@ -9,6 +9,13 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
+### Added
+
+- **Rewind**: hold Delete to go back through the last 30 seconds of play, picture and sound,
+  and carry on from any point. The step and the length are on Xpeccy+ -> Emulation.
+
+- **A VCR-style sign in the corner of the screen** while fast mode or rewind is on.
+
 ## 2026.5.1 - 2026-09-26
 
 ### Added

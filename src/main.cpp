@@ -391,6 +391,7 @@ int main(int ac,char** av) {
 	const char* bnShot = NULL;
 	int bnNodraw = 0;
 	int bnHeat = 0;
+	int bnRewind = 0;
 #ifdef __APPLE__
 	int style = 0;
 #endif
@@ -437,6 +438,8 @@ int main(int ac,char** av) {
 				i++;
 			} else if (!strcmp(parg,"--bench")) {
 				bnFrames = atoi(av[i++]);
+			} else if (!strcmp(parg,"--bench-rewind")) {
+				bnRewind = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-skip")) {
 				bnSkip = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-prof")) {
@@ -543,9 +546,9 @@ int main(int ac,char** av) {
 #endif
 	if (bnFrames > 0) {
 #ifdef XBENCH
-		ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot, bnNodraw, bnHeat);
+		ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot, bnNodraw, bnHeat, bnRewind);
 #else
-		(void)bnSkip; (void)bnFull; (void)bnHash; (void)bnProf; (void)bnShot; (void)bnNodraw; (void)bnHeat;
+		(void)bnSkip; (void)bnFull; (void)bnHash; (void)bnProf; (void)bnShot; (void)bnNodraw; (void)bnHeat; (void)bnRewind;
 		xlog(XLG_APP, XLL_ERROR, "--bench is not in a release build");
 #endif
 		pacingClose();

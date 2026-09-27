@@ -126,6 +126,7 @@ void sdcWrSector(SDCard* sdc) {
 	if (x_runahead) return;			// this frame is going to be rolled back
 	if ((sdc->addr < sdc->maxlba) && sdc->file) {
 		fseek(sdc->file,sdc->addr << 9,SEEK_SET);
+		x_media_writes++;
 		fwrite(sdc->buf.data + 1,512,1,sdc->file);
 	}
 }

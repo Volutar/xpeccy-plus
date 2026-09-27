@@ -5,6 +5,7 @@
 
 #include "sound.h"
 #include "xcore.h"
+#include "rewind.h"
 
 #include <iostream>
 #include <QMutex>
@@ -158,6 +159,29 @@ static long long sndAutoLastNs = 0;
 static int sndLogLat = 0;
 static int sndLogAuto = -1;
 
+static void snd_start_playback();
+
+static void snd_ring_put(sndPair lev) {
+	sbuf[posf & SND_RING_MASK] = lev.left & 0xff;
+	posf++;
+	sbuf[posf & SND_RING_MASK] = (lev.left >> 8) & 0xff;
+	posf++;
+	sbuf[posf & SND_RING_MASK] = lev.right & 0xff;
+	posf++;
+	sbuf[posf & SND_RING_MASK] = (lev.right >> 8) & 0xff;
+	posf++;
+	if (sndHeld && (sndGetRingDistance() >= sndGetRingTargetBytes()))
+		snd_start_playback();
+}
+
+// A sample made by something other than the machine: rewind plays the
+// history back through it.
+void snd_put(sndPair lev) {
+	if (conf.snd.need > 0)
+		conf.snd.need--;
+	snd_ring_put(lev);
+}
+
 static void snd_start_playback() {
 	sndHeld = 0;
 	sndLowMark = SND_LOW_NONE;
@@ -230,17 +254,8 @@ int sndSync(Computer* comp) {
 				if (conf.snd.wavout)
 					snd_wav_write();
 
-				sbuf[posf & SND_RING_MASK] = sndLev.left & 0xff;
-				posf++;
-				sbuf[posf & SND_RING_MASK] = (sndLev.left >> 8) & 0xff;
-				posf++;
-				sbuf[posf & SND_RING_MASK] = sndLev.right & 0xff;
-				posf++;
-				sbuf[posf & SND_RING_MASK] = (sndLev.right >> 8) & 0xff;
-				posf++;
-
-				if (sndHeld && (sndGetRingDistance() >= sndGetRingTargetBytes()))
-					snd_start_playback();
+				rewind_sound(sndLev);
+				snd_ring_put(sndLev);
 			}
 			smpCount++;
 		}
