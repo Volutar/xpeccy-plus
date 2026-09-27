@@ -370,12 +370,11 @@ int evo_cmos_rd(Computer* comp) {
 		case 0x0a: res = 0x00; break;
 		case 0x0b: res = 0x02; break;
 		case 0x0c:
-			res = 0x00;
+			res &= 0x10;		// b4: update flag
 			// b2: 0 if sdc write only
 			res |= 4;
 			// b3: 1 if sdc is in slot (image present)
 			if (comp->sdc->image) res |= 8;
-			// b4: rtc cells changed
 			break;
 		case 0x0d:	// pc keys flags
 			res = 0x80;

@@ -51,7 +51,12 @@ int rtc_read(CMOS* cms) {
 	else
 		time(&rtime);
 	ctime = localtime(&rtime);
-//	int cur_time = (ctime->tm_hour << 16) + (ctime->tm_min << 8) + ctime->tm_sec;
+	// register C b4 (UF) rises once a second and falls when C is read: a clock
+	// on screen is redrawn when it sees it
+	if (ctime->tm_sec != cms->sec) {
+		cms->sec = ctime->tm_sec;
+		cms->data[0x0c] |= 0x10;
+	}
 	switch (cms->adr) {
 		// TODO: non-bcd mode
 		case 0x00: res = (cms->data[0x0b] & 4) ? ctime->tm_sec : toBCD(ctime->tm_sec); break;
@@ -63,7 +68,10 @@ int rtc_read(CMOS* cms) {
 		case 0x09: res = (cms->data[0x0b] & 4) ? ctime->tm_year % 100 : toBCD(ctime->tm_year % 100); break;
 		case 0x0a: res = cms->data[0x0a] & 0x7f; break;
 		case 0x0b: res = cms->data[0x0b]; break;	// TODO: bin/12h bits
-		case 0x0c: res = cms->data[0x0c]; break;
+		case 0x0c:
+			res = cms->data[0x0c];
+			cms->data[0x0c] &= ~0x10;
+			break;
 		case 0x0d: res = 0x80; break;
 	}
 	return res;

@@ -47,6 +47,9 @@ before that point is upstream's history and is not repeated here.
 - **Disk access no longer starts the tape.** With a tape inserted, TR-DOS reading a disk kept
   starting and stopping it, with its sound and the fast loading sign.
 
+- **The ZX Evo start menu shows its clock**, and the clock chip's memory keeps every cell to
+  itself on ZX Evo, Pentagon 1024 and Profi; ZX Evo settings saved earlier are carried over.
+
 ## 2026.5.1 - 2026-09-26
 
 ### Added

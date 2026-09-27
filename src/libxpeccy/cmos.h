@@ -11,6 +11,7 @@ typedef struct {
 	unsigned char adr;
 	int mode;			// ZX Evo: what F0..FF read as
 	unsigned char data[256];	// a DS12887 has 128, the ZX Evo's clock 256
+	int sec;			// the second the update flag was last raised for
 } CMOS;
 
 unsigned char cmos_rd(CMOS*, int);
