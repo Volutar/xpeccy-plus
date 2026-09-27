@@ -41,6 +41,9 @@ before that point is upstream's history and is not repeated here.
 
 - **No crash when switching to TurboSound FM** in the options while a machine runs.
 
+- **Disk access no longer starts the tape.** With a tape inserted, TR-DOS reading a disk kept
+  starting and stopping it, with its sound and the fast loading sign.
+
 ## 2026.5.1 - 2026-09-26
 
 ### Added
