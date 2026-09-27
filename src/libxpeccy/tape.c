@@ -532,7 +532,9 @@ void tapArmPlay(Tape* tap) {
 // calls a one-read edge test, so a read whose code tests the ear bit is a
 // loader's too. A keyboard scan never starts the tape, however it steps B (Black
 // Tiger's key definition), and the rom's edge routine never does: the trap
-// serves it.
+// serves it. Nor does any other read from rom: TR-DOS calls the 48 rom's
+// BREAK-KEY over and over while it works the disk, from one place with nothing
+// moved.
 // Fuse stops a playing tape on two reads in a row unlike a loader's. Here it
 // takes a whole frame of reads unlike a loader's, and none like it: an interrupt
 // that scans the keys halfway through a load (Joe Blade 2), or a loader whose B
@@ -579,7 +581,7 @@ void tapDetectLoader(Tape* tap, int tick, int pc, const unsigned char* regs, int
 			tapStop(tap);
 		}
 	} else if (tap->detectOn && (kind != TAPE_RD_EDGE) && (kind != TAPE_RD_KEYS) && (tickDiff <= 500)
-			&& ((kind == TAPE_RD_EAR) || turn)) {
+			&& ((kind == TAPE_RD_EAR) || (turn && fromRam))) {
 		if (++tap->detectReads >= 10)
 			tapPlay(tap);
 	} else {
