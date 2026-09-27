@@ -33,6 +33,9 @@ before that point is upstream's history and is not repeated here.
 
 - **Radio buttons keep their place when checked** in every bundled style.
 
+- **A held hotkey no longer repeats**, so fast mode, pause and the like stay switched instead of
+  flickering; only the speed steps repeat.
+
 - **Switching machines ends slow motion** set on the speed slider; it used to carry on
   unseen.
 
