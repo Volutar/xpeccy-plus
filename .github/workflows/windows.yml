@@ -87,9 +87,21 @@ jobs:
       - name: Install Qt and MinGW
         run: |
           pip install --disable-pip-version-check aqtinstall
-          aqt install-qt windows desktop ${{ matrix.qt }} ${{ matrix.qt_arch }} `
+          # a failed aqt run does not stop pwsh by itself, and the mirrors hand
+          # out a corrupt archive now and then - without this the build went on
+          # with half of Qt missing and died at configure time instead
+          function Invoke-Aqt {
+            for ($i = 1; $i -le 3; $i++) {
+              aqt @args
+              if ($LASTEXITCODE -eq 0) { return }
+              Write-Host "::warning::aqt failed (attempt $i of 3), retrying"
+              Start-Sleep -Seconds 15
+            }
+            throw "aqt $args failed"
+          }
+          Invoke-Aqt install-qt windows desktop ${{ matrix.qt }} ${{ matrix.qt_arch }} `
             ${{ matrix.qt_modules && format('-m {0}', matrix.qt_modules) || '' }} -O C:\Qt
-          aqt install-tool windows desktop ${{ matrix.mingw_tool }} ${{ matrix.mingw_variant }} -O C:\Qt
+          Invoke-Aqt install-tool windows desktop ${{ matrix.mingw_tool }} ${{ matrix.mingw_variant }} -O C:\Qt
 
       - name: Fetch SDL2
         run: packaging\fetch-deps.ps1
