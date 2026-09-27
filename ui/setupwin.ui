@@ -2843,7 +2843,7 @@ lands sooner. The sound stays a frame behind</string>
                  <widget class="QCheckBox" name="cbRewind">
                   <property name="toolTip">
                    <string>EXPERIMENTAL. Hold the rewind key to go back in time.
-The history is kept in memory, 10-30 MB with the
+The history is kept in memory, 20-45 MB with the
 default step, and costs a little emulation speed</string>
                   </property>
                   <property name="text">
@@ -2865,7 +2865,7 @@ default step, and costs a little emulation speed</string>
                  <widget class="QLabel" name="labRewind">
                   <property name="toolTip">
                    <string>EXPERIMENTAL. Hold the rewind key to go back in time.
-The history is kept in memory, 10-30 MB with the
+The history is kept in memory, 20-45 MB with the
 default step, and costs a little emulation speed</string>
                   </property>
                   <property name="text">
