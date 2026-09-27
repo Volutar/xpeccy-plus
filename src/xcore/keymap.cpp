@@ -564,6 +564,13 @@ int shortcut_check(int grp, QKeySequence seq) {
 	return res;
 }
 
+// the hotkey a key means, -1 for none; a grabbed keyboard has none
+int hotkey_for(int key, Qt::KeyboardModifiers mod, bool kgrab) {
+	if (kgrab) return -1;
+	int id = shortcut_check(SCG_MAIN, QKeySequence(key | xNativeMods(mod)));
+	return (id < 0) ? shortcut_check(SCG_MAIN, QKeySequence(key)) : id;
+}
+
 int shortcut_match(int grp, int id, QKeySequence seq) {
 	int res = QKeySequence::NoMatch;
 	int i = 0;

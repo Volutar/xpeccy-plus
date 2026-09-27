@@ -33,12 +33,7 @@ static int xcut_tmode(int keyid) {
 }
 
 int ev_to_keyid(QKeyEvent* ev, bool kgrab) {
-	int keyid = -1;
-	if (!kgrab) {
-		keyid = shortcut_check(SCG_MAIN, QKeySequence(ev->key() | xNativeMods(ev->modifiers())));
-		if (keyid < 0)
-			keyid = shortcut_check(SCG_MAIN, QKeySequence(ev->key()));
-	}
+	int keyid = hotkey_for(ev->key(), ev->modifiers(), kgrab);
 	if (keyid < 0) {
 #if defined(__linux) || defined(__BSD)
 			keyid = ev->nativeScanCode();
@@ -426,17 +421,10 @@ void MainWin::keyReleaseEvent(QKeyEvent *ev) {
 		if (comp->flgDBG) {
 			ev->ignore();
 		} else {
-			keyid = -1;
-			if (!pckAct->isChecked()) {
-				keyid = shortcut_check(SCG_MAIN, QKeySequence(ev->key() | xNativeMods(ev->modifiers())));
-				if (keyid < 0)
-					keyid = shortcut_check(SCG_MAIN, QKeySequence(ev->key()));
-			}
-			if (keyid == XCUT_REWIND) {	// a hotkey held, not pressed
-				rewind_want(0);
-			} else if (xcut_tmode(keyid)) {
-				xspeed_key(xcut_tmode(keyid), 0);
-			} else if (keyid < 0) {	// not hotkeys
+			keyid = hotkey_for(ev->key(), ev->modifiers(), pckAct->isChecked());
+			if (keyid >= 0) {
+				xcut_release(keyid);
+			} else {	// not hotkeys
 #if defined(__linux) || defined(__BSD)
 				keyid = ev->nativeScanCode();
 #elif defined(__WIN32)
@@ -465,6 +453,15 @@ void MainWin::keyReleaseEvent(QKeyEvent *ev) {
 			}
 		}
 //	}
+}
+
+// a hotkey let go: only the ones that are held answer it
+void MainWin::xcut_release(int keyid) {
+	if (keyid == XCUT_REWIND) {
+		rewind_want(0);
+	} else if (xcut_tmode(keyid)) {
+		xspeed_key(xcut_tmode(keyid), 0);
+	}
 }
 
 void MainWin::xkey_release(int keyid) {

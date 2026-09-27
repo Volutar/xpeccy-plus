@@ -117,7 +117,6 @@ class xGamepad : public QObject {
 		static QString getEntryName(const xJoyMapEntry&);
 		static QList<xPadDev> devList();
 		void update();
-		void resync();
 
 		int mapSize();
 		void mapClear();

@@ -428,6 +428,7 @@ void set_shortcut_id(int, QKeySequence);
 void set_shortcut_name(const char*, QKeySequence);
 xShortcut* shortcut_tab();
 int shortcut_check(int, QKeySequence);
+int hotkey_for(int, Qt::KeyboardModifiers, bool);
 int shortcut_match(int, int, QKeySequence);
 Qt::KeyboardModifiers xNativeMods(Qt::KeyboardModifiers);
 

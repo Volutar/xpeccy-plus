@@ -9,15 +9,9 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>344</width>
-    <height>273</height>
+    <width>360</width>
+    <height>260</height>
    </rect>
-  </property>
-  <property name="sizePolicy">
-   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-    <horstretch>0</horstretch>
-    <verstretch>0</verstretch>
-   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>Gamepad binder</string>
@@ -27,108 +21,29 @@
     <normaloff>:/images/gamepad.png</normaloff>:/images/gamepad.png</iconset>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>12</number>
+   </property>
+   <property name="leftMargin">
+    <number>14</number>
+   </property>
+   <property name="topMargin">
+    <number>14</number>
+   </property>
+   <property name="rightMargin">
+    <number>14</number>
+   </property>
+   <property name="bottomMargin">
+    <number>14</number>
+   </property>
    <item>
-    <layout class="QGridLayout" name="gridLayout" columnstretch="0,0,0">
-     <item row="7" column="0">
-      <widget class="QLabel" name="pbRepLabel">
-       <property name="text">
-        <string>0 sec</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>is binding to</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="7" column="1">
-      <widget class="QSlider" name="pbRepSlider">
-       <property name="toolTip">
-        <string>How often it repeats while held. 0 = no repeat</string>
-       </property>
-       <property name="maximum">
-        <number>250</number>
-       </property>
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="1">
-      <widget class="QComboBox" name="cbMouseList">
-       <property name="toolTip">
-        <string>Which move or button</string>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="1">
-      <widget class="QComboBox" name="cbJoyList">
-       <property name="toolTip">
-        <string>Which direction or button</string>
-       </property>
-      </widget>
-     </item>
-     <item row="6" column="1">
-      <widget class="QLabel" name="label_2">
-       <property name="toolTip">
-        <string>How often it repeats while held. 0 = no repeat</string>
-       </property>
-       <property name="text">
-        <string>Autorepeat</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="0">
-      <widget class="QRadioButton" name="rbJoy">
-       <property name="toolTip">
-        <string>Send it to the Kempston joystick</string>
-       </property>
-       <property name="text">
-        <string>&amp;Kempston</string>
-       </property>
-       <attribute name="buttonGroup">
-        <string notr="true">bgrDevType</string>
-       </attribute>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QPushButton" name="pbPadBind">
-       <property name="toolTip">
-        <string>Move a stick or push a button on the gamepad to catch it</string>
-       </property>
-       <property name="text">
-        <string>Push to set</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../xpeccy.qrc">
-         <normaloff>:/images/gamepad.png</normaloff>:/images/gamepad.png</iconset>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="0">
-      <widget class="QRadioButton" name="rbMouse">
-       <property name="toolTip">
-        <string>Send it to the Kempston mouse</string>
-       </property>
-       <property name="text">
-        <string>K&amp;Mouse</string>
-       </property>
-       <attribute name="buttonGroup">
-        <string notr="true">bgrDevType</string>
-       </attribute>
-      </widget>
-     </item>
+    <layout class="QGridLayout" name="gridLayout" columnstretch="0,1,0" columnminimumwidth="0,90,0">
+     <property name="horizontalSpacing">
+      <number>12</number>
+     </property>
+     <property name="verticalSpacing">
+      <number>8</number>
+     </property>
      <item row="0" column="0">
       <widget class="QLabel" name="label">
        <property name="toolTip">
@@ -139,8 +54,41 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
+     <item row="0" column="1" colspan="2">
+      <widget class="QPushButton" name="pbPadBind">
+       <property name="toolTip">
+        <string>Move a stick or push a button on the gamepad to catch it</string>
+       </property>
+       <property name="text">
+        <string>Push to set</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0" colspan="3">
+      <widget class="Line" name="line1">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QRadioButton" name="rbKey">
+       <property name="toolTip">
+        <string>Press this key or hotkey, as the host keyboard does</string>
+       </property>
+       <property name="text">
+        <string>&amp;Host key</string>
+       </property>
+       <attribute name="buttonGroup">
+        <string notr="true">bgrDevType</string>
+       </attribute>
+      </widget>
+     </item>
+     <item row="2" column="1" colspan="2">
       <layout class="QVBoxLayout" name="verticalLayout_3">
+       <property name="spacing">
+        <number>0</number>
+       </property>
        <item>
         <widget class="QKeySequenceEdit" name="seqField">
          <property name="toolTip">
@@ -156,25 +104,88 @@
          <property name="text">
           <string>Push to set</string>
          </property>
-         <property name="icon">
-          <iconset resource="../xpeccy.qrc">
-           <normaloff>:/images/keyboard.png</normaloff>:/images/keyboard.png</iconset>
-         </property>
         </widget>
        </item>
       </layout>
      </item>
-     <item row="2" column="0">
-      <widget class="QRadioButton" name="rbKey">
+     <item row="3" column="0">
+      <widget class="QRadioButton" name="rbJoy">
        <property name="toolTip">
-        <string>Send it as a PC key press</string>
+        <string>Send it to the Kempston joystick</string>
        </property>
        <property name="text">
-        <string>&amp;PCKey</string>
+        <string>&amp;Kempston</string>
        </property>
        <attribute name="buttonGroup">
         <string notr="true">bgrDevType</string>
        </attribute>
+      </widget>
+     </item>
+     <item row="3" column="1" colspan="2">
+      <widget class="QComboBox" name="cbJoyList">
+       <property name="toolTip">
+        <string>Which direction or button</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QRadioButton" name="rbMouse">
+       <property name="toolTip">
+        <string>Send it to the Kempston mouse</string>
+       </property>
+       <property name="text">
+        <string>&amp;Mouse</string>
+       </property>
+       <attribute name="buttonGroup">
+        <string notr="true">bgrDevType</string>
+       </attribute>
+      </widget>
+     </item>
+     <item row="4" column="1" colspan="2">
+      <widget class="QComboBox" name="cbMouseList">
+       <property name="toolTip">
+        <string>Which move or button</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0" colspan="3">
+      <widget class="Line" name="line2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="toolTip">
+        <string>How often it repeats while held. 0 = no repeat</string>
+       </property>
+       <property name="text">
+        <string>Autorepeat</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="1">
+      <widget class="QSlider" name="pbRepSlider">
+       <property name="toolTip">
+        <string>How often it repeats while held. 0 = no repeat</string>
+       </property>
+       <property name="maximum">
+        <number>250</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="2">
+      <widget class="QLabel" name="pbRepLabel">
+       <property name="text">
+        <string>0 sec</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
       </widget>
      </item>
     </layout>
