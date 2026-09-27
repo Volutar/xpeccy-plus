@@ -21,7 +21,7 @@
 #define TRBBYTE 1000
 #define TRBSRT 1
 
-int seekADR(FDC*);	// from VG93: wait & read ADR mark in fdc->buf
+int seekADR(FDC*);	// from WD1793: wait & read ADR mark in fdc->buf
 
 // wait until all args is done
 void uwargs(FDC* fdc) {
@@ -832,10 +832,9 @@ static fdcCall uInvalid[] = {&uwargs,&uinv00,&uTerm};
 // 00001000 R [ST0],[PCN]
 // sense interrupt status
 
-// TODO: pc98 upd765 wants status.bit4 = 1 after sending com 08
 void usint00(FDC* fdc) {
 	fdc->intr = 0;
-	if (!fdc->seekend && fdc->upd) {
+	if (!fdc->seekend) {
 		fdc->plan = uInvalid;
 		fdc->pos = 0;
 	} else {

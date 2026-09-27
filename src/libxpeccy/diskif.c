@@ -48,7 +48,7 @@ void fdc_set_hd(FDC* fdc, int hd) {
 	flp_set_hd(fdc->flop[3], hd);
 }
 
-// BDI (VG93)
+// BDI (WD1793)
 
 void vgReset(FDC*);
 unsigned char vgRead(FDC*, int);
@@ -60,7 +60,7 @@ int bdiGetPort(int port) {
 	if ((port & 0x9f) == 0x9f) {			// 1xxxxx11 : bdi system port
 		res = BDI_SYS;
 	} else {
-		switch (port & 0xff) {			// 0xxxxx11 : vg93 registers
+		switch (port & 0xff) {			// 0xxxxx11 : wd1793 registers
 			case 0x1f: res = FDC_COM; break;	// 000xxx11
 			case 0x3f: res = FDC_TRK; break;	// 001xxx11
 			case 0x5f: res = FDC_SEC; break;	// 010xxx11
@@ -193,7 +193,6 @@ void difSetHW(DiskIF* dif, int type) {
 	if (!dif->hw)
 		dif->hw = findDHW(DIF_NONE);
 	dif->type = dif->hw->id;
-	dif->fdc->upd = (dif->hw->id == DIF_P3DOS) ? 1 : 0;	// difference between upd765 & i8272
 }
 
 FDC* fdc_create(cbirq cb, void* p) {

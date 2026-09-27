@@ -308,9 +308,9 @@ void opt_fill_psg_boxes(QComboBox* cbcount, QComboBox* cbtype, QComboBox* cbfrq,
 	cbcount->addItem(QString::fromUtf8("×2 - TurboSound FM"),PSG_TSFM);
 	cbcount->addItem(QString::fromUtf8("×3 - ZX Next"),PSG_NEXT);
 	cbtype->clear();
-	cbtype->addItem(QIcon(":/images/MicrochipLogo.png"),"AY-3-8910",SND_AY);
-	cbtype->addItem(QIcon(":/images/YamahaLogo.png"),"Yamaha 2149",SND_YM);
-	cbtype->addItem(QIcon(":/images/YamahaLogo.png"),"Yamaha 2203",SND_YM2203);
+	cbtype->addItem(QIcon(":/images/MicrochipLogo.png"),find_chip_type(SND_AY)->name,SND_AY);
+	cbtype->addItem(QIcon(":/images/YamahaLogo.png"),find_chip_type(SND_YM)->name,SND_YM);
+	cbtype->addItem(QIcon(":/images/YamahaLogo.png"),find_chip_type(SND_YM2203)->name,SND_YM2203);
 	cbfrq->clear();
 	for (size_t i = 0; i <= sizeof(psgFrqTab) / sizeof(psgFrqTab[0]); i++)
 		cbfrq->addItem(QString());	// Auto and the presets, filled in by chapsg()
@@ -542,8 +542,8 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	sdrvBox->addItem("Soundrive 1.05 mode 2",SDRV_105_2);
 // flp
 	diskTypeBox->addItem("None",DIF_NONE);
-	diskTypeBox->addItem("Beta Disk (VG93)",DIF_BDI);
-	diskTypeBox->addItem("+3 DOS (uPD765)",DIF_P3DOS);
+	diskTypeBox->addItem("Beta Disk (WD1793)",DIF_BDI);
+	diskTypeBox->addItem("+3 (uPD765)",DIF_P3DOS);
 	// the order flp_format_trk_buf() lays the 16 sectors out in, for each value
 	cbFlpInterleave->addItem("1, 9, 2, 10, 3… (TR-DOS)", 8);
 	cbFlpInterleave->addItem("1, 2, 3, 4, 5… (in a row)", 1);
@@ -555,11 +555,11 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	cbFlpInterleave->addItem("1, 8, 15, 2, 9…", 7);
 // hdd
 	hiface->addItem("None",IDE_NONE);
-	hiface->addItem("Nemo",IDE_NEMO);
-	hiface->addItem("Nemo A8",IDE_NEMOA8);
-	hiface->addItem("Nemo Evo",IDE_NEMO_EVO);
+	hiface->addItem("NemoIDE",IDE_NEMO);
+	hiface->addItem("NemoIDE A8",IDE_NEMOA8);
+	hiface->addItem("NemoIDE (ZX Evo)",IDE_NEMO_EVO);
 	hiface->addItem("SMUC",IDE_SMUC);
-	hiface->addItem("ATM",IDE_ATM);
+	hiface->addItem("ATM Turbo",IDE_ATM);
 	hiface->addItem("Profi",IDE_PROFI);
 	hm_type->addItem(QIcon(":/images/cancel.png"),"Not connected",IDE_NONE);
 	hm_type->addItem(QIcon(":/images/hdd.png"),"HDD (ATA)",IDE_ATA);

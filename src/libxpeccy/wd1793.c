@@ -17,7 +17,7 @@ static int vg_step_time(FDC* fdc) {
 	return turbo ? VG_TURBO_STEP : pauses[fdc->com & 3];
 }
 
-// 1818vg93
+// WD1793 (KR1818VG93 on the Soviet clones)
 
 // add byte to CRC
 void add_crc_16(FDC* fdc, unsigned char val) {

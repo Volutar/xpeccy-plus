@@ -6,14 +6,6 @@
 #define FDC_FAST	1
 
 enum {
-	FDC_NONE = 0,
-	FDC_VG93,
-	FDC_UPD765,
-	FDC_VP1_128,
-	FDC_I8272
-};
-
-enum {
 	DIF_NONE = 0,
 	DIF_BDI,
 	DIF_P3DOS,
@@ -45,9 +37,8 @@ typedef void(*fdcCall)(FDC*);
 struct FDC {
 	const int id;
 	unsigned brk:1;		// signal for debug
-	unsigned upd:1;		// 1 if uPD765, 0 if i8272
 	unsigned seekend:1;	// uPD765: set at end of seek/recalibrate com
-	unsigned irq:1;		// VG93:irq ; uPD765:exec
+	unsigned irq:1;		// WD1793:irq ; uPD765:exec
 	unsigned drq:1;		// 1:data request
 	unsigned dir:1;		// drq dir: 0 - cpu->fdc; 1 - fdc->cpu
 	unsigned mr:1;		// master reset
@@ -64,7 +55,7 @@ struct FDC {
 	unsigned char sec;
 	unsigned char data;
 	unsigned char com;
-	unsigned char state;	// vp1-128 : mode (seek/rd/wr)
+	unsigned char state;	// status register
 	unsigned char tmp;
 	unsigned short wdata;
 	unsigned short tdata;
@@ -80,7 +71,7 @@ struct FDC {
 	int cnt;
 	int wait;		// pause (ns)
 	int tns;
-	int hold;		// vg93 turbo: ns left in this command to wait for the cpu to take a byte
+	int hold;		// wd1793 turbo: ns left in this command to wait for the cpu to take a byte
 	int drdy;		// time (ns) to replace fdc->insert signal by 0 (time between opening and closing a flp gate)
 
 	fdcCall* plan;		// current task
@@ -126,7 +117,6 @@ typedef struct {
 } DiskHW;
 
 struct DiskIF {
-	unsigned flpch:1;	// flp changed (ibm)
 	unsigned inten:1;	// uPD765 interrupt enabled
 	unsigned doors:1;	// a drive's door is still closing: difSync has to run
 	int type;
