@@ -349,6 +349,7 @@ enum {
 	XCUT_RELOAD_SHD,
 	XCUT_RELOAD,
 	XCUT_FAVORITE,
+	XCUT_REWIND,
 
 	XCUT_STEPIN,
 	XCUT_STEPOVER,
@@ -616,6 +617,13 @@ struct xConfig {
 		// frames the emulation runs ahead of the timeline it keeps, to hide
 		// the machine's own reaction time. 0 = off (see ethread.cpp)
 		int runahead;
+		// rewind (xcore/rewind.cpp): a snapshot every step frames, secs of them
+		// kept; going back shows one snapshot a frame
+		struct {
+			unsigned on:1;
+			int step;
+			int secs;
+		} rewind;
 		// slow motion: how fast emulated time runs against the host's, 1.0 =
 		// normal. It is the host's pace and not the machine's clock, so the
 		// frame is the same length in T and the frame rate is what drops

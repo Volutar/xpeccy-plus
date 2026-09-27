@@ -50,6 +50,15 @@ enum {
 	leds_count
 };
 
+// what the machine's speed is doing, shown in the top right corner
+enum {
+	osd_none = 0,
+	osd_fast,
+	osd_rewind,
+	osd_pause,
+	osd_count
+};
+
 typedef struct {
 	int showTime;	// in 1/50 sec
 	int x;
@@ -189,6 +198,7 @@ typedef struct {
 		int secid;
 		int cmsid;
 		QImage leds[leds_count];
+		QImage osdImg[osd_count];
 
 		QTimer frm_tmr;
 		int frm_ns;

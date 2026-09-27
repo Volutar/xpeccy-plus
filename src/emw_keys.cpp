@@ -3,6 +3,7 @@
 #include "xcore/xcore.h"
 #include "xcore/vscalers.h"
 #include "xcore/sound.h"
+#include "xcore/rewind.h"
 
 #include <QMenu>
 #include <QFileDialog>
@@ -216,6 +217,9 @@ void MainWin::xkey_press(int xkey) {
 			case XCUT_SNDWIN:
 				emit s_snd_show();
 				break;
+			case XCUT_REWIND:
+				rewind_want(1);
+				break;
 			case XCUT_FAST:
 				if (conf.emu.pause) break;
 				conf.emu.fast ^= 1;
@@ -415,7 +419,9 @@ void MainWin::keyReleaseEvent(QKeyEvent *ev) {
 				if (keyid < 0)
 					keyid = shortcut_check(SCG_MAIN, QKeySequence(ev->key()));
 			}
-			if (keyid < 0) {	// not hotkeys
+			if (keyid == XCUT_REWIND) {	// a hotkey held, not pressed
+				rewind_want(0);
+			} else if (keyid < 0) {	// not hotkeys
 #if defined(__linux) || defined(__BSD)
 				keyid = ev->nativeScanCode();
 #elif defined(__WIN32)

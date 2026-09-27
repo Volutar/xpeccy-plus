@@ -60,6 +60,7 @@ void flpWr(Floppy* flp, int hd, unsigned char val) {
 	if (hd & !flp->doubleSide) return;	// saving on HD1 for SS Floppy
 	if (flp->insert && flp->door) {
 		flp->changed = 1;
+		x_media_writes++;
 		flp->data[(flp->trk << 1) | hd].byte[flp->pos] = val;
 	}
 }

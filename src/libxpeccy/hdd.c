@@ -151,6 +151,7 @@ void ataWriteSector(ATADev* dev) {
 		if (dev->file) {
 			long pos = dev->lba * dev->pass.bps + dev->offset;
 			fseek(dev->file, pos, SEEK_SET);
+			x_media_writes++;
 			fwrite((char*)dev->buf.data, dev->pass.bps, 1, dev->file);
 		}
 	}

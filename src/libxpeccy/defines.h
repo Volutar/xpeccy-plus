@@ -1,11 +1,15 @@
 #pragma once
 
-// Non-zero while a frame that is going to be rolled back is running (run-ahead,
-// see ethread.cpp). Breakpoints sit it out - a break in such a frame would fire
-// twice - and so do the floppy / sd / hdd writers, whose media are outside the
-// snapshot and would keep what such a frame wrote. It lives here rather than in
-// xstate.h because those writers are handed a device, never a Computer.
+// Non-zero while a frame that is going to be thrown away is running
+// (xstate_run_frame: run-ahead, rewind). Breakpoints sit it out - a break in
+// such a frame would fire twice - and so do the floppy / sd / hdd writers, whose
+// media are outside the snapshot and would keep what such a frame wrote. It
+// lives here rather than in xstate.h because those writers are handed a device,
+// never a Computer.
 extern int x_runahead;
+// Bumped on every write to a medium those writers make. A snapshot taken
+// before a write cannot be put back after it: the medium stays written.
+extern unsigned x_media_writes;
 
 #include <stdint.h>
 #include <math.h>

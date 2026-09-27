@@ -40,6 +40,7 @@
 #include "xcore.h"
 #include "fastload.h"
 #include "autostart.h"
+#include "rewind.h"
 #include "../libxpeccy/cpu/Z80/z80.h"
 #include "../libxpeccy/hardware/hardware.h"
 #include "../libxpeccy/xstate.h"
@@ -526,7 +527,7 @@ static void fl_back_put(Computer* comp) {
 	Tape* tap = comp->tape;
 	Tape* old = &fl_back.tap;
 	if (!fl_back.ok || !xstate_safe_tape_aside(comp)) return;
-	if ((tap->blkData != old->blkData) || (tap->blkCount != old->blkCount) || tap->rec) return;
+	if (!tap_same_image(tap, old) || tap->rec) return;
 	int frames = comp->frmCount - fl_back.frame;
 	if (!xstate_load(fl_back.st, comp)) return;
 	xlog(XLG_TAPE, XLL_INFO, "fast loading goes back %i frames, to where the loader left", frames);
@@ -569,7 +570,7 @@ static void fl_frame(Computer* comp) {
 	// Insert pressed by hand is the user's own fast mode, and autostart runs one
 	// of its own until the load begins
 	int may = conf.tape.fast && !fl_hold && !tap->rec && !comp->flgDBG
-		&& !autostart_busy() && (fl_held || !conf.emu.fast);
+		&& !autostart_busy() && !rewind_active() && (fl_held || !conf.emu.fast);
 	if (!tap->armed)
 		fl_armed = 0;
 	// the rom's part is in, and the loader it ran asks for the tape soon

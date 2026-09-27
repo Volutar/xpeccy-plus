@@ -29,6 +29,7 @@
 #include "xcore/xcore.h"
 #include "xcore/sound.h"
 #include "xcore/autostart.h"
+#include "xcore/rewind.h"
 #include "xcore/fastload.h"
 #include "emulwin.h"
 #include "filer.h"
@@ -191,6 +192,11 @@ MainWin::MainWin() {
 	leds[led_disk_green].load(":/images/diskGreen.png");
 	leds[led_disk_red].load(":/images/diskRed.png");
 	leds[led_wav].load(":/images/wav.png");
+	osdImg[osd_fast].load(":/images/osd-time-fast.png");
+	osdImg[osd_rewind].load(":/images/osd-time-rewind.png");
+	osdImg[osd_pause].load(":/images/osd-time-pause.png");
+	for (QImage& img : osdImg)
+		img.setDevicePixelRatio(2);	// drawn at half its size, sharp on a HiDPI screen
 
 //	conf.joy.gpad->open(); // conf.joy.curName);
 
@@ -536,6 +542,7 @@ void MainWin::focusOutEvent(QFocusEvent*) {
 		releaseMouse();
 	}
 	emit s_keywin_rall(comp->keyb);
+	rewind_want(0);		// its key will not be seen going up
 }
 
 void MainWin::focusInEvent(QFocusEvent*) {
@@ -829,6 +836,10 @@ void MainWin::paintEvent(QPaintEvent*) {
 	pnt.end();
 }
 
+#define MODE_ICON_W	60	// the pictures are twice this
+#define MODE_ICON_TOP	24	// below the fps readout
+#define MODE_ICON_RIGHT	6
+
 void MainWin::drawIcons(QPainter& pnt) {
 	Computer* comp = conf.zx;
 // screenshot
@@ -889,6 +900,15 @@ void MainWin::drawIcons(QPainter& pnt) {
 	if (conf.snd.wavout) {
 		pnt.drawImage(3, 110, leds[led_wav]);
 	}
+// put the speed mode, VCR style, clear of the fps readout
+	int mode = osd_none;
+	if (rewind_active()) {
+		mode = osd_rewind;
+	} else if (conf.emu.fast) {
+		mode = osd_fast;
+	}
+	if (mode != osd_none)
+		pnt.drawImage(width() - MODE_ICON_W - MODE_ICON_RIGHT, MODE_ICON_TOP, osdImg[mode]);
 // put fps
 	if (conf.led.fps) {
 		sprintf(numbuf, " %.1f ", conf.vid.curfps);

@@ -13,6 +13,7 @@
 #include "../filer.h"
 #include "../xgui/xgui.h"
 #include "autostart.h"
+#include "rewind.h"
 #include "vfat_scan.h"
 #include "vscalers.h"
 
@@ -1021,6 +1022,7 @@ bool xm_set(std::string id) {
 	}
 	emu_lock();
 	conf.emu.pause |= PR_EXTRA;
+	rewind_clear();
 	// the start and a machine put back to its defaults are not a change of machine
 	bool another = !conf.macId.empty() && (conf.macId != id);
 	if (!conf.macId.empty()) {			// what the machine we leave keeps
