@@ -89,6 +89,7 @@ void chip_set_xdev(aymChip* chip, ayxrd rcb, ayxwr wcb, void* ptr) {
 aymChip* aymCreate(int tp) {
 	aymChip* chip = (aymChip*)malloc(sizeof(aymChip));
 	memset(chip, 0x00, sizeof(aymChip));
+	ay_reset(chip);		// an empty socket is never reset, and may be made a chip later
 	chip_set_type(chip, tp); // aymSetType(ay,tp);
 	chip->stereo = AY_MONO;
 	chip->sep = 75;		// see ay_mix_stereo()
