@@ -7,14 +7,10 @@ enum {
 	CMOS_DATA
 };
 
-#define CMOS_NMI 1
-
 typedef struct {
 	unsigned char adr;
-	int mode;
-	unsigned char data[256];
-	int inten;
-	int intrq;
+	int mode;			// ZX Evo: what F0..FF read as
+	unsigned char data[256];	// a DS12887 has 128, the ZX Evo's clock 256
 } CMOS;
 
 unsigned char cmos_rd(CMOS*, int);

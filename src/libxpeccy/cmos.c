@@ -42,9 +42,6 @@ int toBCD(int val) {
 	return rrt;
 }
 
-// static int last_time = 0;
-// static int cur_time = 0;
-
 int rtc_read(CMOS* cms) {
 	int res = -1;
 	time_t rtime;
@@ -64,7 +61,7 @@ int rtc_read(CMOS* cms) {
 		case 0x07: res = (cms->data[0x0b] & 4) ? ctime->tm_mday : toBCD(ctime->tm_mday); break;
 		case 0x08: res = (cms->data[0x0b] & 4) ? ctime->tm_mon + 1 : toBCD(ctime->tm_mon + 1); break;	// tm_mon = 0..11, cmos = 1..12
 		case 0x09: res = (cms->data[0x0b] & 4) ? ctime->tm_year % 100 : toBCD(ctime->tm_year % 100); break;
-		case 0x0a: res = cms->data[0x0a] & 0x7f; break; // if (cur_time == last_time) {res = 0x26;} else {res=0xa6; last_time = cur_time;} break;
+		case 0x0a: res = cms->data[0x0a] & 0x7f; break;
 		case 0x0b: res = cms->data[0x0b]; break;	// TODO: bin/12h bits
 		case 0x0c: res = cms->data[0x0c]; break;
 		case 0x0d: res = 0x80; break;
@@ -88,14 +85,10 @@ void cmos_wr(CMOS* cms, int port, int val) {
 	switch(port) {
 		case CMOS_ADR:
 			cms->adr = val & 0x7f;
-			if (val & 0x80) {
-				cms->inten &= ~CMOS_NMI;
-			} else {
-				cms->inten |= CMOS_NMI;
-			}
 			break;
 		case CMOS_DATA:
-			cms->data[cms->adr & 0x7f] = val & 0xff;
+			if ((cms->adr == 0x0c) || (cms->adr == 0x0d)) break;	// read-only
+			cms->data[cms->adr] = val & 0xff;
 			break;
 	}
 }

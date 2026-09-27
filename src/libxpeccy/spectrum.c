@@ -951,49 +951,6 @@ int comp_skip_ticks(Computer* comp, int t) {
 	return comp_step_end(comp, t, t);
 }
 
-// cmos
-
-// The flags the avr keeps for the machine, read back through the same block
-// (manual 9.6.4, and MODE_* in the avr's main.h, which has moved on since the
-// manual was written: b0 vga, b2 caps led, b3 tape out, b4..5 the raster on
-// BaseConf). Only cell 0 answers; the rest read as 0xFF. The picture here is
-// always progressive, so vga reads as set, and the raster bits stay at
-// pentagon - the one this emulator gives BaseConf, its layout being fixed.
-#define MODE_VGA	0x01
-
-unsigned char cmsRd(Computer* comp) {
-	unsigned char res = 0xff;
-	if (comp->cmos.adr >= 0x70) {
-		switch(comp->cmos.mode) {
-			case 0:					// base configuration version
-			case 1: res = comp->verblk[comp->cmos.adr & 0x0f]; break;		// bootloader version
-			case 2: res = xt_read(comp->keyb); break; //keyReadCode(comp->keyb); break;		// read PC keyboard keycode (TODO: used here only)
-			case 3: if (!(comp->cmos.adr & 0x0f)) res = MODE_VGA; break;	// avr flags
-		}
-	} else {
-		res = cmos_rd(&comp->cmos, CMOS_DATA);
-	}
-	return res & 0xff;
-}
-
-void cmsWr(Computer* comp, int val) {
-	switch (comp->cmos.adr) {
-		case 0x0c:
-			if (val & 1) {
-				comp->keyb->outbuf = 0;
-			}
-			break;
-		default:
-			if (comp->cmos.adr > 0x6f) {
-				comp->cmos.mode = val;	// write to F0..FF : set F0..FF reading mode
-				//printf("cmos mode %i\n",val);
-			} else {
-				cmos_wr(&comp->cmos, CMOS_DATA, val);
-			}
-			break;
-	}
-}
-
 // breaks
 
 // end of an instruction as breakpoint conditions see it: the mem/io events it
