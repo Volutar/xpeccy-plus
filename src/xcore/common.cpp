@@ -218,14 +218,43 @@ double xspeed_mult(int pos) {
 
 void xspeed_set(int pos) {
 	pos = toLimits(pos, 0, xspeed_max());
+	conf.emu.tmode = XTM_NONE;
 	conf.emu.speed = (pos < XSPD_CENTER) ? xspeed_mult(pos) : 1.0;
 	sndUpdateSpeed();
 	if (conf.zx)
 		compSetTurbo(conf.zx, (pos > XSPD_CENTER) ? xspeed_mult(pos) : 1.0);
 }
 
+// Slow motion and fast forward are emulated time run slower or faster than the
+// host's, the way the slider's slow half is, but they start from normal speed:
+// the slider goes back to x1 first, and moving it again ends them.
+void xspeed_toggle(int mode) {
+	int was = conf.emu.tmode;
+	xspeed_set(XSPD_CENTER);
+	if (was == mode) return;
+	conf.emu.tmode = mode;
+	conf.emu.speed = (mode == XTM_SLOW) ? 1.0 / conf.emu.slowDiv : (double)conf.emu.ffMul;
+	sndUpdateSpeed();
+}
+
+void xspeed_key(int mode, int down) {
+	int hold = (mode == XTM_SLOW) ? conf.emu.slowHold : conf.emu.ffHold;
+	if (down) {
+		if (!hold || (conf.emu.tmode != mode))
+			xspeed_toggle(mode);
+	} else if (hold && (conf.emu.tmode == mode)) {
+		xspeed_toggle(mode);
+	}
+}
+
+// Another tape, disk or machine is another game: it starts at normal speed.
+void xspeed_modes_off() {
+	if (conf.emu.tmode) xspeed_set(XSPD_CENTER);
+}
+
 int xspeed_get(void) {
-	double m = (conf.emu.speed < 1.0) ? conf.emu.speed
+	// the slider does not show slow motion or fast forward, which are not on it
+	double m = (!conf.emu.tmode && (conf.emu.speed < 1.0)) ? conf.emu.speed
 		 : (conf.zx ? conf.zx->frqMul : 1.0);
 	for (int i = 0; i <= XSPD_MAX; i++) {
 		if (fabs(m - xspeed_mult(i)) < 1e-6) return i;

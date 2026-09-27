@@ -964,8 +964,7 @@ static void mac_from_def(const xMachine* mac) {
 	compSetBaseFrq(comp, mac->cpufrq / 1e6);
 	comp->turboCount = mac_turbo_tab(mac->turboSteps, comp->turboTab);
 	comp->turboStep = 1;		// a machine comes up on its base clock...
-	conf.emu.speed = 1.0;		// ...and at normal speed: neither is a setting
-	compSetTurbo(comp, 1.0);
+	xspeed_set(XSPD_CENTER);	// ...and at normal speed: neither is a setting
 	memSetSize(comp->mem, mac_ram_size(mac->memory, comp->hw->mask), -1);
 	mac_cold_ram(comp, mac->ramCold, mac->ramNoise);
 	comp->resbank = mac->resbank;
@@ -1183,6 +1182,17 @@ static int mac_write(const std::string& id, const QList<xMacLine>& lines) {
 }
 
 // the running machine, written back into its own file
+
+std::string xm_signature() {
+	const xMachine* base = xm_stock(conf.macId);
+	if (!macLive || !conf.zx || !base) return "";
+	QList<xMacLine> lines;
+	mac_put_all(lines, base);
+	std::string res = conf.macId;
+	for (const xMacLine& ln : lines)
+		res += "\n" + ln.sect + "." + ln.name + "=" + ln.val;
+	return res;
+}
 
 void xm_save_over() {
 	if (!macLive || !conf.zx) return;

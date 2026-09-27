@@ -195,6 +195,10 @@ MainWin::MainWin() {
 	osdImg[osd_fast].load(":/images/osd-time-fast.png");
 	osdImg[osd_rewind].load(":/images/osd-time-rewind.png");
 	osdImg[osd_pause].load(":/images/osd-time-pause.png");
+	for (int i = 0; i < 3; i++) {
+		osdImg[osd_ffwd2 + i].load(QString(":/images/osd-time-ffwd%0.png").arg(2 << i));
+		osdImg[osd_slow2 + i].load(QString(":/images/osd-time-slow%0.png").arg(2 << i));
+	}
 	for (QImage& img : osdImg)
 		img.setDevicePixelRatio(2);	// drawn at half its size, sharp on a HiDPI screen
 
@@ -542,7 +546,9 @@ void MainWin::focusOutEvent(QFocusEvent*) {
 		releaseMouse();
 	}
 	emit s_keywin_rall(comp->keyb);
-	rewind_want(0);		// its key will not be seen going up
+	rewind_want(0);		// their keys will not be seen going up
+	xspeed_key(XTM_SLOW, 0);
+	xspeed_key(XTM_FFWD, 0);
 }
 
 void MainWin::focusInEvent(QFocusEvent*) {
@@ -837,8 +843,8 @@ void MainWin::paintEvent(QPaintEvent*) {
 }
 
 #define MODE_ICON_W	60	// the pictures are twice this
-#define MODE_ICON_TOP	24	// below the fps readout
-#define MODE_ICON_RIGHT	6
+#define MODE_ICON_TOP	22	// below the fps readout
+#define MODE_ICON_RIGHT	5
 
 void MainWin::drawIcons(QPainter& pnt) {
 	Computer* comp = conf.zx;
@@ -906,6 +912,9 @@ void MainWin::drawIcons(QPainter& pnt) {
 		mode = osd_rewind;
 	} else if (conf.emu.fast) {
 		mode = osd_fast;
+	} else if (conf.emu.speed != 1.0) {
+		int e = ilogb(conf.emu.speed);		// x2 x4 x8 are 1..3, 1/2 1/4 1/8 are -1..-3
+		mode = (e > 0) ? osd_ffwd2 + e - 1 : osd_slow2 - e - 1;
 	}
 	if (mode != osd_none)
 		pnt.drawImage(width() - MODE_ICON_W - MODE_ICON_RIGHT, MODE_ICON_TOP, osdImg[mode]);

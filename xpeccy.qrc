@@ -170,6 +170,12 @@
         <file>images/osd-time-fast.png</file>
         <file>images/osd-time-rewind.png</file>
         <file>images/osd-time-pause.png</file>
+        <file>images/osd-time-ffwd2.png</file>
+        <file>images/osd-time-ffwd4.png</file>
+        <file>images/osd-time-ffwd8.png</file>
+        <file>images/osd-time-slow2.png</file>
+        <file>images/osd-time-slow4.png</file>
+        <file>images/osd-time-slow8.png</file>
         <file>images/shader.png</file>
         <file>images/filter.png</file>
         <file>images/font.png</file>

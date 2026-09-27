@@ -18,8 +18,9 @@ void rewind_frame(Computer*, long long* phase);
 // not playing (the key was let go: the machine is back on the snapshot shown),
 // 1 for a sample, 2 for a sample and a new picture.
 int rewind_play(Computer*, long long* phase);
-// every output sample the machine makes, for playing back
-void rewind_sound(sndPair);
+// every sound sub-sample the machine makes and the emulated time it covers
+// (16.16 ns), for playing back
+void rewind_sound(sndPair, long long nsFixed);
 // the key, down or up (any thread)
 void rewind_want(int);
 // 1 while the history is being played back (any thread)

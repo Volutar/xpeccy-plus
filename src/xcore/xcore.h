@@ -114,6 +114,16 @@ int toLimits(int, int, int);
 #define XSPD_MAX	6
 // ...and the ceiling on base x turbo x overclock, whoever asks for it
 #define XSPD_CLOCK_MAX	16
+// slow motion and fast forward: switched on and off by a key each, at the
+// factor the options set, and gone as soon as the speed is set any other way
+enum {
+	XTM_NONE = 0,
+	XTM_SLOW,
+	XTM_FFWD
+};
+void xspeed_toggle(int);
+void xspeed_key(int mode, int down);	// its key, as Toggle or Hold says
+void xspeed_modes_off();		// back to normal speed if either is on
 double xspeed_mult(int);
 void xspeed_set(int);
 int xspeed_get(void);
@@ -256,6 +266,7 @@ int xm_set_hardware(std::string);
 // what the user changed on the machine that is running: into its own file, and
 // back out of it again
 void xm_save_over();
+std::string xm_signature();	// what the running machine is, as text: equal means the same machine
 void xm_reset_over();		// drop it and take the machine as it ships
 
 // a config written before schema 3 kept the same settings in [MACHINE.<id>]
@@ -350,6 +361,8 @@ enum {
 	XCUT_RELOAD,
 	XCUT_FAVORITE,
 	XCUT_REWIND,
+	XCUT_FFWD,
+	XCUT_SLOWMO,
 
 	XCUT_STEPIN,
 	XCUT_STEPOVER,
@@ -617,6 +630,11 @@ struct xConfig {
 		// frames the emulation runs ahead of the timeline it keeps, to hide
 		// the machine's own reaction time. 0 = off (see ethread.cpp)
 		int runahead;
+		int tmode;		// XTM_*, never saved
+		int slowDiv;		// slow motion runs at 1/slowDiv: 2, 4, 8
+		int ffMul;		// fast forward at ffMul: 2, 4, 8
+		unsigned slowHold:1;	// on only while its key is held, else a toggle
+		unsigned ffHold:1;
 		// rewind (xcore/rewind.cpp): a snapshot every step frames, secs of them
 		// kept; going back shows one snapshot a frame
 		struct {

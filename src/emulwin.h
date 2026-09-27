@@ -56,7 +56,9 @@ enum {
 	osd_fast,
 	osd_rewind,
 	osd_pause,
-	osd_count
+	osd_ffwd2,	// x2, then x4 and x8 after it
+	osd_slow2 = osd_ffwd2 + 3,	// 1/2, then 1/4 and 1/8
+	osd_count = osd_slow2 + 3
 };
 
 typedef struct {
