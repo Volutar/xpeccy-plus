@@ -110,10 +110,50 @@ static rwEntry* rw_at(int back) {
 	return &rw_ring[n - 1 - back];
 }
 
+// The most the history has held on this machine, for the log. Filling up is
+// growth by definition, so nothing is said until it is full; then once, and
+// again each time a heavier stretch raises the mark by a megabyte. A write to a
+// medium empties the history but keeps the mark; another machine starts over.
+#define RW_LOG_STEP	((size_t)1 << 20)
+static size_t rw_peak = 0;		// 0: not told yet on this machine
+static bool rw_capped = false;		// the cap has been told about
+
+static void rw_log_forget() {
+	rw_peak = 0;
+	rw_capped = false;
+}
+
+static void rw_log_size(Computer* comp, size_t max, bool capped) {
+	if (rw_ring.empty()) return;
+	const rwEntry& e = rw_ring.back();
+	double secs = (e.frame - rw_ring.front().frame) / rw_fps(comp);
+	if (capped && !rw_capped) {
+		rw_capped = true;
+		xlog(XLG_CORE, XLL_WARN, "rewind: history hit the %u MB cap, %.1f s kept",
+			(unsigned)(RW_MEM_MAX >> 20), secs);
+	}
+	if ((rw_ring.size() < max) && !capped) return;
+	size_t count = rw_ring.size();
+	size_t tables = count * (sizeof(rwEntry) + e.meta.size() + e.pages.size() * sizeof(rwPage*));
+	size_t sound = rw_snd.size() * sizeof(rwSample);
+	size_t total = rw_mem + tables + sound + e.size;	// e.size: the scratch snapshot
+	if (rw_peak && (total < rw_peak + RW_LOG_STEP)) return;
+	rw_peak = total;
+	const double mb = 1 << 20;
+	xlog(XLG_CORE, XLL_INFO, "rewind: history peak %.1f MB - %.1f MB in %u snapshots (%u KB each), "
+		"%.1f MB sound, %.1f MB tables; %.1f s",
+		total / mb, rw_mem / mb, (unsigned)count, (unsigned)(rw_mem / count >> 10),
+		sound / mb, tables / mb, secs);
+}
+
 static void rw_trim(Computer* comp) {
 	size_t max = (size_t)(conf.emu.rewind.secs * rw_fps(comp) / conf.emu.rewind.step) + 1;
-	while ((rw_ring.size() > max) || ((rw_mem > RW_MEM_MAX) && (rw_ring.size() > 1)))
+	bool capped = false;
+	while ((rw_ring.size() > max) || ((rw_mem > RW_MEM_MAX) && (rw_ring.size() > 1))) {
+		capped |= (rw_ring.size() <= max);
 		rw_pop_front();
+	}
+	rw_log_size(comp, max, capped);
 }
 
 static void rw_take(Computer* comp, long long phase) {
@@ -260,6 +300,7 @@ void rewind_frame(Computer* comp, long long* phase) {
 	if (rw_clear_req.exchange(0) || (comp != rw_comp)) {
 		rw_drop_all();
 		rw_play_stop();
+		rw_log_forget();
 		rw_comp = comp;
 	}
 	if (!conf.emu.rewind.on) {
