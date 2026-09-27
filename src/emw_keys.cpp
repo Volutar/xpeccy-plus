@@ -25,11 +25,17 @@ static QMap<qint32, int> key_press_map;
 // keygrab, no autorep: get keyid, xkey_press
 // keygrab, autorepeat: get keyid, xt_release, xt_press
 // no grab, no autorep: get shortcut/keyid, xkey_press
-// no grab, autorepeat: if !shortcut then get keyid, xt_release, xt_press
+// no grab, autorepeat: a shortcut only if it is a step (xcut_repeats), else the key's own repeat
 
 // the speed mode a shortcut switches, XTM_NONE for any other
 static int xcut_tmode(int keyid) {
 	return (keyid == XCUT_FFWD) ? XTM_FFWD : ((keyid == XCUT_SLOWMO) ? XTM_SLOW : XTM_NONE);
+}
+
+// A held key repeats a shortcut only when the shortcut is a step: every other
+// one switches, opens or fires something, and a repeat undoes it or fires it again.
+static bool xcut_repeats(int keyid) {
+	return (keyid == XCUT_SPEED_UP) || (keyid == XCUT_SPEED_DOWN);
 }
 
 int ev_to_keyid(QKeyEvent* ev, bool kgrab) {
@@ -94,8 +100,8 @@ void MainWin::keyPressEvent(QKeyEvent* ev) {
 				}
 				//xt_release(comp->keyb, kent);
 				//xt_press(comp->keyb, &kent);
-			} else if (!xcut_tmode(keyid)) {
-				xkey_press(keyid);	// those two answer the press, not the repeat
+			} else if (xcut_repeats(keyid)) {
+				xkey_press(keyid);
 			}
 		} else {
 			xkey_press(keyid);
