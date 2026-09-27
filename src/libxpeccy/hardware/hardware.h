@@ -109,6 +109,11 @@ xPortValue* hwGetPorts(Computer*);
 
 HardWare* findHardware(const char*);
 
+// the ZX Evo's clock, BaseConf and TSConf alike (pentevo.c)
+void evo_cmos_adr(Computer*, int);
+int evo_cmos_rd(Computer*);
+void evo_cmos_wr(Computer*, int);
+
 typedef struct {
 	int res;		// RES_* that lands in this bank, -1 none
 	const char* name;	// what the bank holds, NULL unknown

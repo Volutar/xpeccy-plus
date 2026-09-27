@@ -339,18 +339,42 @@ int evoIn8F(Computer* comp, int port) {
 	return comp->reg8F;
 }
 
-int evoInBEF7(Computer* comp, int port) {	// dos
-	int res = cmsRd(comp);
-	switch (comp->cmos.adr & 0xff) {
+// The clock is the avr standing in for a DS12887 (avr/rtc.c, gluk_get_reg): all
+// 256 cells behind an 8-bit address, and F0..FF its own extension, read as what
+// the last write there picked.
+// Mode 3 is the flags the avr keeps for the machine (manual 9.6.4, and MODE_* in
+// the avr's main.h, which has moved on since the manual was written: b0 vga, b2
+// caps led, b3 tape out, b4..5 the raster on BaseConf). Only cell 0 answers. The
+// picture here is always progressive, so vga reads as set, and the raster bits
+// stay at pentagon - the one this emulator gives BaseConf, its layout being fixed.
+#define MODE_VGA	0x01
+
+void evo_cmos_adr(Computer* comp, int val) {
+	comp->cmos.adr = val & 0xff;
+}
+
+int evo_cmos_rd(Computer* comp) {
+	int res;
+	if (comp->cmos.adr >= 0xf0) {
+		switch (comp->cmos.mode) {
+			case 0:					// base configuration version
+			case 1: res = comp->verblk[comp->cmos.adr & 0x0f]; break;	// bootloader version
+			case 2: res = xt_read(comp->keyb); break;		// ps/2 keyboard log
+			case 3: res = (comp->cmos.adr & 0x0f) ? 0xff : MODE_VGA; break;	// avr flags
+			default: res = 0xff; break;
+		}
+		return res;
+	}
+	res = cmos_rd(&comp->cmos, CMOS_DATA);
+	switch (comp->cmos.adr) {
 		case 0x0a: res = 0x00; break;
 		case 0x0b: res = 0x02; break;
 		case 0x0c:
-			res = 0x00;
+			res &= 0x10;		// b4: update flag
 			// b2: 0 if sdc write only
 			res |= 4;
 			// b3: 1 if sdc is in slot (image present)
 			if (comp->sdc->image) res |= 8;
-			// b4: rtc cells changed
 			break;
 		case 0x0d:	// pc keys flags
 			res = 0x80;
@@ -370,12 +394,25 @@ int evoInBEF7(Computer* comp, int port) {	// dos
 			if (comp->keyb->flag2 & 1) res |= 32;
 			break;
 	}
-//	printf("cmos rd: %.2X\n", res);
 	return res;
 }
 
+void evo_cmos_wr(Computer* comp, int val) {
+	if (comp->cmos.adr >= 0xf0) {
+		comp->cmos.mode = val;
+	} else if (comp->cmos.adr == 0x0c) {
+		if (val & 1) comp->keyb->outbuf = 0;	// b0: clear the ps/2 keyboard log
+	} else {
+		cmos_wr(&comp->cmos, CMOS_DATA, val);
+	}
+}
+
+int evoInBEF7(Computer* comp, int port) {	// dos
+	return evo_cmos_rd(comp);
+}
+
 int evoInBFF7(Computer* comp, int port) {	// !dos
-	return (comp->pEFF7 & 0x80) ? evoInBEF7(comp, port) : 0xff;
+	return (comp->pEFF7 & 0x80) ? evo_cmos_rd(comp) : 0xff;
 }
 
 // out
@@ -486,31 +523,21 @@ void evoOut7FFD(Computer* comp, int port, int val) {
 }
 
 void evoOutBEF7(Computer* comp, int port, int val) {	// dos
-	cmsWr(comp,val);
-	switch(comp->cmos.adr) {
-		case 0x0a:
-			// set eeprom adr
-			break;
-		case 0x0c:
-			if (val & 1) comp->keyb->outbuf = 0;
-			// b7: eeprom access enabled
-			break;
-	}
+	evo_cmos_wr(comp, val);
 }
 
 void evoOutDEF7(Computer* comp, int port, int val) {	// dos
-	cmos_wr(&comp->cmos, CMOS_ADR, val);
+	evo_cmos_adr(comp, val);
 }
 
 void evoOutBFF7(Computer* comp, int port, int val) {	// !dos
 	if (comp->pEFF7 & 0x80)
-		evoOutBEF7(comp,port,val);
+		evo_cmos_wr(comp, val);
 }
 
 void evoOutDFF7(Computer* comp, int port, int val) {	// !dos
-	if (comp->pEFF7 & 0x80) {
-		cmos_wr(&comp->cmos, CMOS_ADR, val);
-	}
+	if (comp->pEFF7 & 0x80)
+		evo_cmos_adr(comp, val);
 }
 
 void evoOutEFF7(Computer* comp, int port, int val) {	// !dos

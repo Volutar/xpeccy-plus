@@ -289,10 +289,6 @@ void comp_snap_reset(Computer*, int);
 int comp_frame_ticks(Computer*);
 void comp_set_frame_tick(Computer*, int);
 
-// read-write cmos
-unsigned char cmsRd(Computer*);
-void cmsWr(Computer*, int);
-
 void rzxStop(Computer*);
 
 void comp_brk(Computer*, int);

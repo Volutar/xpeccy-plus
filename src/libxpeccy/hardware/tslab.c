@@ -196,7 +196,7 @@ int tsIn1F(Computer* comp, int port) {
 int tsInBFF7(Computer* comp, int port) {
 	int res = 0xff;
 	if (comp->pEFF7 & 0x80) {
-		res = cmsRd(comp);
+		res = evo_cmos_rd(comp);
 	}
 	return res;
 }
@@ -269,12 +269,12 @@ void tsOut7FFD(Computer* comp, int port, int val) {
 
 void tsOutBFF7(Computer* comp, int port, int val) {
 	if (comp->pEFF7 & 0x80)
-		cmsWr(comp,val);
+		evo_cmos_wr(comp, val);
 }
 
 void tsOutDFF7(Computer* comp, int port, int val) {
 	if (comp->pEFF7 & 0x80)
-		cmos_wr(&comp->cmos, CMOS_ADR, val);
+		evo_cmos_adr(comp, val);
 }
 
 void tsOutEFF7(Computer* comp, int port, int val) {

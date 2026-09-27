@@ -630,6 +630,15 @@ static void xm_load_nvram() {
 	std::string seed = std::string(":/res/nvram/") + conf.macId + ".cmos";
 	bool have = QFile::exists(QString::fromLocal8Bit(seed.c_str()));
 	mac_nv_read(mac_nv_path(".cmos"), conf.zx->cmos.data, 256, have ? seed.c_str() : NULL);
+	// the ZX Evo's clock took 7 address bits until 2026.6, so a file from then keeps
+	// cells 80..EF in 00..6F and nothing above
+	int id = conf.zx->hw->id;
+	if ((id == HW_PENTEVO) || (id == HW_TSLAB)) {
+		unsigned char* nv = conf.zx->cmos.data;
+		int i = 0x80;
+		while ((i < 0x100) && !nv[i]) i++;
+		if (i == 0x100) memcpy(nv + 0x80, nv, 0x80);
+	}
 	mac_nv_read(mac_nv_path(".nvram"), conf.zx->ide->smuc.nv->mem, 256, NULL);
 }
 
