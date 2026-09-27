@@ -267,6 +267,11 @@ typedef struct {
 
 		void xkey_press(int);
 		void xkey_release(int);
+		void xcut_release(int);
+		int mapHotkey(const QKeySequence&, int, Qt::Key*, Qt::KeyboardModifier*);
+		bool mapIsHotkey(const xJoyMapEntry&);
+		void mapReplayHeld(xGamepad*);
+		void mapKeySeq(const xJoyMapEntry&, bool);
 
 		void closeEvent(QCloseEvent*);
 		void dragEnterEvent(QDragEnterEvent*);

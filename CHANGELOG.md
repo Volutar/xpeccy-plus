@@ -18,10 +18,20 @@ before that point is upstream's history and is not repeated here.
   speed, sound included, as a toggle or while held. The speeds and the key behaviour are on
   Xpeccy+ -> Emulation; loading a tape, disk or snapshot goes back to normal speed.
 
-- **A VCR-style sign in the corner of the screen** while rewind, fast mode, fast forward or
-  slow motion is on.
+- **A VCR-style sign in the corner of the screen** while the machine is paused, or while
+  rewind, fast mode, fast forward or slow motion is on.
+
+- **Gamepad buttons press hotkeys**: a key bound to the pad acts as that key on the host
+  keyboard, so it can rewind, or pause the machine and start it again.
+
+### Changed
+
+- **Clearer gamepad binding window**: the pad's buttons have plain names ("Right trigger",
+  "D-pad up"), and the choice follows the field you click into.
 
 ### Fixed
+
+- **Radio buttons keep their place when checked** in every bundled style.
 
 - **Switching machines ends slow motion** set on the speed slider; it used to carry on
   unseen.

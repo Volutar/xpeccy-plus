@@ -36,4 +36,5 @@ class xPadBinder : public QDialog {
 		void setPadButtonText();
 		void setKeyButtonText();
 		void keyPressEvent(QKeyEvent*);
+		bool eventFilter(QObject*, QEvent*);
 };

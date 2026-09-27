@@ -241,6 +241,9 @@ QCheckBox::indicator:checked, QGroupBox::indicator:checked, QMenu::indicator:che
 }
 
 QRadioButton::indicator:checked {
+	/* 8 + 2*3 = 12 + 2*1: the dot must not change the box size */
+	width: 8px;
+	height: 8px;
 	background-color: #49483e;
 	border: 3px solid #1e1f1c;
 }

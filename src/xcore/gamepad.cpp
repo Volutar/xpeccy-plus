@@ -201,6 +201,8 @@ xJoyMapEntry xGamepad::mapItem(int i) {
 }
 
 void xGamepad::setItem(int i, xJoyMapEntry xjm) {
+	xjm.rps = 0;		// not held: pause() puts back what is
+	xjm.cnt = 0;
 	if ((i < 0) || (i >= map.size())) {
 		map.append(xjm);
 	} else {
@@ -259,6 +261,7 @@ void xGamepad::loadMap(std::string mapname) {
 							break;
 					}
 					jent.rpt = 0;
+					jent.rps = 0;
 					jent.cnt = 0;
 					ptr = strtok(NULL, ":\n");
 					if (ptr)
@@ -718,14 +721,6 @@ void xGamepad::update() {
 	}
 }
 
-// Forget what is held, so the next update() reports the pad from scratch.
-// The window uses it on the way back from a pause: a direction held across
-// one would otherwise stay dead until it is let go.
-void xGamepad::resync() {
-	jState.clear();
-	hatPrev.clear();
-}
-
 // The order the four virtual buttons of a hat are laid out in, from
 // VIRTKEYBASE up. Both ways of naming a hat direction read from here.
 static const char* hatDirName[4] = {"up", "down", "left", "right"};
@@ -747,16 +742,65 @@ QString xGamepad::getButtonName(int n) {
 	return QString("Hat %0 %1").arg(n >> 2).arg(hatDirName[n & 3]);
 }
 
+#if HAVESDL2
+
+// SDL's own names are config keys ("righttrigger"); these are what the gui says.
+// Looked up by that key, so a button an older SDL lacks costs nothing.
+static const struct {
+	const char* sdl;
+	const char* name;		// button, or axis at +
+	const char* neg;		// axis at -
+} padNameTab[] = {
+	{"a", "A", NULL},
+	{"b", "B", NULL},
+	{"x", "X", NULL},
+	{"y", "Y", NULL},
+	{"back", "Back", NULL},
+	{"guide", "Guide", NULL},
+	{"start", "Start", NULL},
+	{"leftstick", "Left stick click", NULL},
+	{"rightstick", "Right stick click", NULL},
+	{"leftshoulder", "Left bumper", NULL},
+	{"rightshoulder", "Right bumper", NULL},
+	{"dpup", "D-pad up", NULL},
+	{"dpdown", "D-pad down", NULL},
+	{"dpleft", "D-pad left", NULL},
+	{"dpright", "D-pad right", NULL},
+	{"misc1", "Share", NULL},
+	{"paddle1", "Paddle 1", NULL},
+	{"paddle2", "Paddle 2", NULL},
+	{"paddle3", "Paddle 3", NULL},
+	{"paddle4", "Paddle 4", NULL},
+	{"touchpad", "Touchpad", NULL},
+	{"leftx", "Left stick right", "Left stick left"},
+	{"lefty", "Left stick down", "Left stick up"},
+	{"rightx", "Right stick right", "Right stick left"},
+	{"righty", "Right stick down", "Right stick up"},
+	{"lefttrigger", "Left trigger", NULL},
+	{"righttrigger", "Right trigger", NULL},
+	{NULL, NULL, NULL}
+};
+
+static QString padNiceName(const char* sdl, int state) {
+	if (sdl == NULL) return QString();
+	for (int i = 0; padNameTab[i].sdl; i++) {
+		if (!strcmp(sdl, padNameTab[i].sdl))
+			return QString((state < 0 && padNameTab[i].neg) ? padNameTab[i].neg : padNameTab[i].name);
+	}
+	return QString(sdl);
+}
+
+#endif
+
 // How a binding reads in the gui - the map table and the bind dialog both
 // say it this way.
 QString xGamepad::getEntryName(const xJoyMapEntry& jent) {
 	switch (jent.type) {
 #if HAVESDL2
 		case JOY_CBUTTON:
-			return QString(SDL_GameControllerGetStringForButton((SDL_GameControllerButton)jent.num));
+			return padNiceName(SDL_GameControllerGetStringForButton((SDL_GameControllerButton)jent.num), 1);
 		case JOY_CAXIS:
-			return QString("%0 %1").arg(SDL_GameControllerGetStringForAxis((SDL_GameControllerAxis)jent.num))
-				.arg((jent.state < 0) ? "-" : "+");
+			return padNiceName(SDL_GameControllerGetStringForAxis((SDL_GameControllerAxis)jent.num), jent.state);
 #endif
 		case JOY_BUTTON:
 			return getButtonName(jent.num);

@@ -2,6 +2,8 @@
 
 #include <SDL.h>
 
+#include <QLineEdit>
+
 #include "padbinder.h"
 
 // TODO: use xKeyEditor for binding to pc key ?
@@ -50,7 +52,15 @@ xPadBinder::xPadBinder(QWidget* p):QDialog(p) {
 	ui.seqField->setEnabled(false);
 	ui.seqField->setVisible(false);
 #endif
-	resize(minimumSize());
+	ui.seqField->installEventFilter(this);
+	foreach(QLineEdit* led, ui.seqField->findChildren<QLineEdit*>())
+		led->installEventFilter(this);	// the one that takes the click
+	ui.cbJoyList->installEventFilter(this);
+	ui.cbMouseList->installEventFilter(this);
+
+	// room for the longest value, so the slider does not move as it changes
+	ui.pbRepLabel->setMinimumWidth(ui.pbRepLabel->fontMetrics().horizontalAdvance("0.00 sec"));
+	layout()->setSizeConstraint(QLayout::SetFixedSize);
 }
 
 // TODO: select radiobutton (e->dev)
@@ -141,6 +151,24 @@ void xPadBinder::setMouseDir() {
 	ent.key = ENDKEY;
 #endif
 	ent.dir = ui.cbMouseList->itemData(ui.cbMouseList->currentIndex()).toInt();
+}
+
+// The choice follows the field the user goes to. Only a click or Tab: the
+// focus a window hands out on opening must not change what the entry is.
+bool xPadBinder::eventFilter(QObject* obj, QEvent* ev) {
+	if (ev->type() == QEvent::FocusIn) {
+		Qt::FocusReason why = static_cast<QFocusEvent*>(ev)->reason();
+		if ((why == Qt::MouseFocusReason) || (why == Qt::TabFocusReason) || (why == Qt::BacktabFocusReason)) {
+			if ((obj == ui.seqField) || (obj->parent() == ui.seqField)) {
+				ui.rbKey->setChecked(true);
+			} else if (obj == ui.cbJoyList) {
+				setJoyDir();
+			} else if (obj == ui.cbMouseList) {
+				setMouseDir();
+			}
+		}
+	}
+	return QDialog::eventFilter(obj, ev);
 }
 
 // set key bind

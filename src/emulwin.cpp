@@ -141,10 +141,8 @@ void MainWin::pause(bool p, int msk) {
 			grabMouse(QCursor(Qt::BlankCursor));
 			mouseRecenter();	// the pointer went its own way while paused
 		}
-		// input was ignored while paused: read the pads afresh, or a
-		// direction held across the pause stays dead until it is let go
-		conf.gpctrl->gpada->resync();
-		conf.gpctrl->gpadb->resync();
+		mapReplayHeld(conf.gpctrl->gpada);
+		mapReplayHeld(conf.gpctrl->gpadb);
 	}
 }
 
@@ -285,25 +283,60 @@ MainWin::~MainWin() {
 // gamepad mapper
 // xJoyMapEntry::key is XKEY_*
 
-void MainWin::mapRelease(Computer* comp, xJoyMapEntry ent) {
+// A bound key is a host key: the hotkey it means, as on the keyboard, or -1.
+// Splits the i-th key of the sequence on the way.
+int MainWin::mapHotkey(const QKeySequence& seq, int i, Qt::Key* key, Qt::KeyboardModifier* mod) {
+	*key = Qt::Key(seq[i] & ~Qt::KeyboardModifierMask);
+	*mod = Qt::KeyboardModifier(seq[i] & Qt::KeyboardModifierMask);
+	return hotkey_for(*key, *mod, pckAct->isChecked());
+}
+
+bool MainWin::mapIsHotkey(const xJoyMapEntry& ent) {
+	if (ent.dev != JMAP_KEY) return false;
 	Qt::Key key;
 	Qt::KeyboardModifier mod;
-	int xkey;
+	for (int i = 0; i < ent.seq.count(); i++) {
+		if (mapHotkey(ent.seq, i, &key, &mod) >= 0) return true;
+	}
+	return false;
+}
+
+// Presses are dropped while nobody listens: put back what is held. Not
+// hotkeys, or the button that has just lifted a pause sets it again.
+void MainWin::mapReplayHeld(xGamepad* gp) {
+	for (int i = 0; i < gp->mapSize(); i++) {
+		xJoyMapEntry ent = gp->mapItem(i);
+		if (ent.rps && !mapIsHotkey(ent))
+			mapPress(conf.zx, ent);
+	}
+}
+
+void MainWin::mapKeySeq(const xJoyMapEntry& ent, bool down) {
+	Qt::Key key;
+	Qt::KeyboardModifier mod;
+	for (int i = 0; i < ent.seq.count(); i++) {
+		int xkey = mapHotkey(ent.seq, i, &key, &mod);
+		if (xkey >= 0) {
+			if (down) xkey_press(xkey); else xcut_release(xkey);
+			continue;
+		}
+		static const struct {int mod; int key;} modKeys[] = {
+			{Qt::ShiftModifier, XKEY_LSHIFT}, {Qt::ControlModifier, XKEY_LCTRL}, {Qt::AltModifier, XKEY_LALT}
+		};
+		for (auto& m : modKeys) {
+			if (mod & m.mod) {
+				if (down) xkey_press(m.key); else xkey_release(m.key);
+			}
+		}
+		xkey = qKey2id(key, mod);
+		if (down) xkey_press(xkey); else xkey_release(xkey);
+	}
+}
+
+void MainWin::mapRelease(Computer* comp, xJoyMapEntry ent) {
 	switch(ent.dev) {
 		case JMAP_KEY:
-#if !USE_SEQ_BIND
-			xkey_release(ent.key);
-#else
-			for(int i = 0; i < ent.seq.count(); i++) {
-				key = Qt::Key(ent.seq[i] & ~Qt::KeyboardModifierMask);
-				mod = Qt::KeyboardModifier(ent.seq[i] & Qt::KeyboardModifierMask);
-				xkey = qKey2id(key, mod);
-				if (mod & Qt::ShiftModifier) {xkey_release(XKEY_LSHIFT);}
-				if (mod & Qt::ControlModifier) {xkey_release(XKEY_LCTRL);}
-				if (mod & Qt::AltModifier) {xkey_release(XKEY_LALT);}
-				xkey_release(xkey);
-			}
-#endif
+			mapKeySeq(ent, false);
 			break;
 		case JMAP_JOY:
 			joyRelease(comp->joy, ent.dir);
@@ -318,25 +351,9 @@ void MainWin::mapRelease(Computer* comp, xJoyMapEntry ent) {
 }
 
 void MainWin::mapPress(Computer* comp, xJoyMapEntry ent) {
-	Qt::Key key;
-	Qt::KeyboardModifier mod;
-	int xkey;
 	switch(ent.dev) {
 		case JMAP_KEY:
-#if !USE_SEQ_BIND
-			xkey_press(ent.key);
-#else
-			for(int i = 0; i < ent.seq.count(); i++) {
-				key = Qt::Key(ent.seq[i] & ~Qt::KeyboardModifierMask);
-				mod = Qt::KeyboardModifier(ent.seq[i] & Qt::KeyboardModifierMask);
-				xkey = qKey2id(key, mod);
-				//qDebug() << ent.seq[i] << key << mod << xkey;
-				if (mod & Qt::ShiftModifier) {xkey_press(XKEY_LSHIFT);}
-				if (mod & Qt::ControlModifier) {xkey_press(XKEY_LCTRL);}
-				if (mod & Qt::AltModifier) {xkey_press(XKEY_LALT);}
-				xkey_press(xkey);
-			}
-#endif
+			mapKeySeq(ent, true);
 			break;
 		case JMAP_JOY:
 			joyPress(comp->joy, ent.dir);
@@ -364,11 +381,14 @@ void MainWin::mapJoystick(xGamepad* gp, Computer* comp, int type, int num, int s
 			(gp == conf.gpctrl->gpada) ? 'A' : 'B',
 			xGamepad::getEntryName(ev).toUtf8().data(), (int)presslist.size());
 	}
+	// a release always goes through, so the map knows what is held; a press
+	// only while the window listens, and paused only a hotkey
+	bool live = isActiveWindow();
 	foreach(xJoyMapEntry xjm, presslist) {
-		if (xjm.rps) {
-			mapPress(comp, xjm);
-		} else {
+		if (!xjm.rps) {
 			mapRelease(comp, xjm);
+		} else if (live && (!conf.emu.pause || mapIsHotkey(xjm))) {
+			mapPress(comp, xjm);
 		}
 	}
 }
@@ -376,8 +396,6 @@ void MainWin::mapJoystick(xGamepad* gp, Computer* comp, int type, int num, int s
 // for xGamepad
 
 void MainWin::gpInputChanged(int type, int num, int state) {
-	if (conf.emu.pause) return;
-	if (!isActiveWindow()) return;
 	xGamepad* gp = (xGamepad*)sender();
 	// an axis reaches the map at full deflection, the way it always did -
 	// mouse bindings take their step from the size of it
@@ -552,8 +570,8 @@ void MainWin::focusOutEvent(QFocusEvent*) {
 }
 
 void MainWin::focusInEvent(QFocusEvent*) {
-	conf.gpctrl->gpada->resync();		// same as leaving a pause
-	conf.gpctrl->gpadb->resync();
+	mapReplayHeld(conf.gpctrl->gpada);
+	mapReplayHeld(conf.gpctrl->gpadb);
 	if (conf.emu.pause & PR_DEBUG)
 		emit s_debug();
 	if (grabMice)
@@ -908,7 +926,9 @@ void MainWin::drawIcons(QPainter& pnt) {
 	}
 // put the speed mode, VCR style, clear of the fps readout
 	int mode = osd_none;
-	if (rewind_active()) {
+	if (conf.emu.pause) {		// the title's icon is not there in fullscreen
+		mode = osd_pause;
+	} else if (rewind_active()) {
 		mode = osd_rewind;
 	} else if (conf.emu.fast) {
 		mode = osd_fast;
