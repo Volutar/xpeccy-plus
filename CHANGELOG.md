@@ -16,6 +16,10 @@ before that point is upstream's history and is not repeated here.
 
 - **A VCR-style sign in the corner of the screen** while fast mode or rewind is on.
 
+### Fixed
+
+- **No crash when switching to TurboSound FM** in the options while a machine runs.
+
 ## 2026.5.1 - 2026-09-26
 
 ### Added
