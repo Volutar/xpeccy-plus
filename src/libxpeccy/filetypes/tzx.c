@@ -1,9 +1,7 @@
 #include <stdlib.h>
 #include "filetypes.h"
 
-#ifdef HAVEZLIB
 #include <zlib.h>
-#endif
 
 #pragma pack (push, 1)
 
@@ -235,7 +233,6 @@ void tzxBlock18(FILE* file, Tape* tape) {
 	if (comp == 2) {
 		rle = NULL;
 		rlen = 0;
-#ifdef HAVEZLIB
 		z_stream strm;
 		long cap = 0;
 		memset(&strm, 0, sizeof(strm));
@@ -255,7 +252,6 @@ void tzxBlock18(FILE* file, Tape* tape) {
 			}
 			inflateEnd(&strm);
 		}
-#endif
 	}
 	long long samples = 0;
 	long long ticks = 0;

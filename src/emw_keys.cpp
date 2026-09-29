@@ -371,9 +371,7 @@ void MainWin::xkey_press(int xkey) {
 				pause(false,PR_FILE);
 				break;
 			case XCUT_NMI:
-#if HAVEZLIB
 				if (comp->rzx.play) break;
-#endif
 				if (comp->cpu->type != CPU_Z80) break;
 				comp_irq(IRQ_NMI, comp);
 				break;

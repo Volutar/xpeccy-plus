@@ -21,9 +21,7 @@ extern "C" {
 #include "sound/saa1099.h"
 #include "sound/soundrive.h"
 
-#ifdef HAVEZLIB
 	#include <zlib.h>
-#endif
 
 extern int compflags;
 
@@ -202,7 +200,6 @@ typedef struct Computer {
 // misc
 	CMOS cmos;
 
-#ifdef HAVEZLIB
 
 	struct {
 		unsigned start:1;
@@ -221,7 +218,6 @@ typedef struct Computer {
 		} frm;
 	} rzx;
 
-#endif
 
 	// brkRamMap..brkIOMap is skipped by the state snapshot: 4.6 MB of debugger
 	// bookkeeping that no rollback needs, so xstate.c takes this struct as the

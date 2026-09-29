@@ -475,7 +475,6 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 //			conf.prof.changed = 0;
 //		}
 		if (block) return;
-#if HAVEZLIB
 		if (comp->rzx.start) {
 			emit s_rzx_start();
 		} else if (comp->rzx.stop) {
@@ -488,7 +487,6 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 			emit s_rzx_stop();
 			pause(false, PR_RZX);
 		}
-#endif
 // buttons autorepeat switcher (added: for 2nd gamepad too)
 		QList<xJoyMapEntry> presslist = conf.gpctrl->gpada->repTick();
 		xJoyMapEntry xjm;
@@ -644,7 +642,6 @@ void MainWin::tapStateChanged(int wut, int val) {
 
 // connection between rzx player and emulation state
 void MainWin::rzxStateChanged(int state) {
-#ifdef HAVEZLIB
 	Computer* comp = conf.zx;
 	switch(state) {
 		case RWS_PLAY:
@@ -668,7 +665,6 @@ void MainWin::rzxStateChanged(int state) {
 			pause(false,PR_RZX);
 			break;
 	}
-#endif
 }
 
 // Hand the shown part of the raster to the texture. The rest of the buffer is
@@ -1187,7 +1183,6 @@ void MainWin::closeEvent(QCloseEvent* ev) {
 }
 
 void MainWin::checkState() {
-#ifdef HAVEZLIB
 	Computer* comp = conf.zx;
 	if (comp->rzx.start) {
 		emit s_rzx_start();
@@ -1195,7 +1190,6 @@ void MainWin::checkState() {
 		emit s_rzx_stop();
 	}
 		//rzxWin->startPlay();
-#endif
 	//emit s_tape_list(comp->tape);
 	//tapeWin->buildList(comp->tape);
 	//tapeWin->setCheck(comp->tape->block);
@@ -1300,9 +1294,7 @@ void MainWin::updateSatellites() {
 	if (block) return;
 	Computer* comp = conf.zx;
 // update rzx window
-#ifdef HAVEZLIB
 	emit s_rzx_upd(comp);
-#endif
 // update tape window
 	emit s_tape_progress(comp->tape);
 	// unconditional: the window hides itself when it is not up, and it is what

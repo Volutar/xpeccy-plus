@@ -70,9 +70,7 @@ static xFileTypeInfo ft_tab[] = {
 	{FL_SLT_BIN, 0, ".bin", "*.bin", loadSlot, NULL, "Cartridge image"},
 	{FL_IMA, 1, ".ima", "*.ima", load_ima, NULL, "1.44 FDD image"},
 	{FL_PCIMG, 1, ".img", "*.img", load_ima, NULL, "1.44 FDD image"},
-#ifdef HAVEZLIB
 	{FL_RZX, 0, ".rzx", "*.rzx", loadRZX, NULL, "RZX playback"},
-#endif
 	{FL_RAW, 0, NULL, "*", loadRaw, NULL, "RAW file to TRDOS disk"},			// * for all files; *.* for all files that have extension
 	{0, 0, NULL, NULL, NULL, NULL, NULL}
 };

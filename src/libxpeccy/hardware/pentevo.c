@@ -693,9 +693,7 @@ void evo_irq(Computer* comp, int t) {
 				break;
 			}
 			comp->flgNMIR = 0;		// the NMI comes instead of the frame int
-#if HAVEZLIB
 			if (!comp->rzx.play)
-#endif
 				evo_nmi(comp);
 			break;
 		default:
