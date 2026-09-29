@@ -107,7 +107,7 @@ class SetupWin : public QDialog {
 		QComboBox* drvCountBox;
 		// video recording
 		QLineEdit *leRecFfmpeg, *leRecDir, *leRecExtra, *leRecVOver, *leRecSOver;
-		QComboBox *cbRecSrc, *cbRecScale, *cbRecFps, *cbRecBox, *cbRecCodec, *cbRecPreset, *cbRecAcodec, *cbRecAbr;
+		QComboBox *cbRecSrc, *cbRecScale, *cbRecFps, *cbRecBox, *cbRecCodec, *cbRecPreset, *cbRecAcodec, *cbRecAbr, *cbRecChroma;
 		QSpinBox* sbRecCrf;
 		QCheckBox *cbRec60, *cbRecPitch, *cbRecStart, *cbRecStop;
 		QComboBox *cbRecStartAt, *cbRecStopAt;
@@ -115,7 +115,7 @@ class SetupWin : public QDialog {
 		QDialog* recHelpWin = NULL;
 		QLineEdit* leRecName;
 		QTextEdit* teRecCmd;
-		QLabel *labRecSrc, *labRecOut, *labRecFfm, *labRecSize;
+		QLabel *labRecSrc, *labRecOut, *labRecFfm, *labRecSize, *labRecFmt;
 		xElideLabel* labRecName;
 		int recBoxKeep = 0;	// the container picked for a codec that has a choice
 		bool recFilling = false;	// the controls are being set, not changed

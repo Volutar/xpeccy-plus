@@ -238,26 +238,46 @@ static int vr_codec(int codec) {
 	return ((codec < 0) || (codec >= (int)(sizeof(vrCodec) / sizeof(vrCodec[0])))) ? VREC_H264 : codec;
 }
 
-bool vrec_420_only(int codec) {
-	return vrCodec[vr_codec(codec)].yuv420;
+bool vrec_420_only(int codec, int chroma) {
+	codec = vr_codec(codec);
+	return vrCodec[codec].yuv420 || ((chroma == VREC_CH_420) && (vrCodec[codec].family != VF_FFV1));
 }
 
-// 4:2:0 at an odd scale puts two dots' colours in one: those codecs get the
-// even scales alone, and an odd one goes up to the next
-int vrec_scale_for(int codec, int n) {
+// 4:2:0 at an odd scale puts two dots' colours in one: it gets the even
+// scales alone, and an odd one goes up to the next
+int vrec_scale_for(int codec, int chroma, int n) {
 	n = qBound(1, n, VREC_SCALE_MAX);
-	if (vrec_420_only(codec) && (n & 1)) n = qMin(n + 1, VREC_SCALE_MAX);
+	if (vrec_420_only(codec, chroma) && (n & 1)) n = qMin(n + 1, VREC_SCALE_MAX);
 	return n;
 }
 
-// What the encoder is handed. 4:4:4 where it can be: 4:2:0 shares one colour
-// between 2x2 pixels, which at an odd scale is two dots, and halves a shader's
-// grid, which is mostly colour. FFV1 keeps the RGB; the cards want nv12.
-static const char* vr_pix_fmt(int codec) {
-	codec = vr_codec(codec);
-	if (vrCodec[codec].family == VF_FFV1) return "bgr0";
-	if (!vrCodec[codec].yuv420) return "yuv444p";
-	return (vrCodec[codec].family == VF_SVT) ? "yuv420p" : "nv12";
+// 4:2:0 plays everywhere, and 4:4:4 is kept for where 4:2:0 spoils the picture:
+// it shares one colour between 2x2 pixels, which at an odd scale is two dots,
+// and it halves a shader's grid, which is mostly colour (29 dB at any crf)
+int vrec_chroma(const xRecord& rec) {
+	int codec = vr_codec(rec.codec);
+	if (vrCodec[codec].family == VF_FFV1) return VREC_RGB;
+	if (vrec_420_only(codec, rec.chroma)) return VREC_420;
+	if (rec.chroma == VREC_CH_444) return VREC_444;
+	if (rec.source == VREC_SRC_SCREEN) return VREC_444;
+	return (qBound(1, rec.scale, VREC_SCALE_MAX) & 1) ? VREC_444 : VREC_420;
+}
+
+// Auto is AAC in MP4, which the system players and the editors take, and Opus
+// in MKV, where it is at home
+int vrec_acodec(const xRecord& rec) {
+	if (rec.acodec != VREC_AUDIO_AUTO) return rec.acodec;
+	return (vr_ext(rec) == "mkv") ? VREC_OPUS : VREC_AAC;
+}
+
+// what the encoder is handed: FFV1 keeps the RGB, the cards want nv12
+static const char* vr_pix_fmt(const xRecord& rec) {
+	int family = vrCodec[vr_codec(rec.codec)].family;
+	switch (vrec_chroma(rec)) {
+		case VREC_RGB: return "bgr0";
+		case VREC_444: return "yuv444p";
+	}
+	return ((family == VF_X264) || (family == VF_X265) || (family == VF_SVT)) ? "yuv420p" : "nv12";
 }
 
 // The encoder and its quality and speed. The cards take a constant quantizer as
@@ -281,8 +301,8 @@ static QStringList vr_encoder(const xRecord& rec) {
 			break;
 		case VF_NVENC:
 			res << "-preset" << QString("p%0").arg(pre + 1) << "-rc" << "constqp" << "-qp" << q;
-			if (!vrCodec[codec].av1)
-				res << "-profile:v" << (vrCodec[codec].hevc ? "rext" : "high444p");	// 4:4:4
+			if (vrec_chroma(rec) == VREC_444)
+				res << "-profile:v" << (vrCodec[codec].hevc ? "rext" : "high444p");
 			break;
 		case VF_AMF:
 			res << "-quality" << ((pre < 3) ? "speed" : (pre < 5) ? "balanced" : "quality");
@@ -323,9 +343,10 @@ bool vrec_codec_works(const QString& prog, int codec) {
 	if (lists[prog].contains(QString(" %0 ").arg(vrCodec[codec].ff))) {
 		xRecord rec = conf.rec;
 		rec.codec = codec;
+		rec.chroma = VREC_CH_420;	// the verdict is the codec's, not the settings'
 		QStringList args;
 		args << "-hide_banner" << "-v" << "error" << "-f" << "lavfi" << "-i" << "color=c=black:s=256x256:d=0.1";
-		args << "-frames:v" << "1" << "-pix_fmt" << vr_pix_fmt(codec) << vr_encoder(rec) << "-f" << "null" << "-";
+		args << "-frames:v" << "1" << "-pix_fmt" << vr_pix_fmt(rec) << vr_encoder(rec) << "-f" << "null" << "-";
 		QProcess prc;
 		prc.start(prog, args);
 		ok = prc.waitForFinished(20000) && (prc.exitStatus() == QProcess::NormalExit) && (prc.exitCode() == 0);
@@ -359,7 +380,7 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const Q
 	int ow = w;
 	int oh = h;
 	if (rec.source == VREC_SRC_PICTURE) {
-		int n = vrec_scale_for(rec.codec, rec.scale);
+		int n = vrec_scale_for(rec.codec, rec.chroma, rec.scale);
 		ow = w / 2 * n;
 		oh = h * n;
 	}
@@ -368,7 +389,7 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const Q
 	// converted the way an HD player reads them back
 	QString vf = QString("scale=%0:%1:flags=neighbor").arg(vr_even(ow)).arg(vr_even(oh));
 	if (!lossless) vf += ":out_color_matrix=bt709";
-	vf += QString(",format=") + vr_pix_fmt(rec.codec);
+	vf += QString(",format=") + vr_pix_fmt(rec);
 	if (rec.fps60) vf += ",framerate=fps=60";
 	// what the settings make of the picture; an override stands in for all of it
 	QStringList& ev = cmd.video;
@@ -405,7 +426,7 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const Q
 	if (lossless) {
 		ms << "-c:a" << "flac";
 	} else {
-		bool opus = (rec.acodec == VREC_OPUS);
+		bool opus = (vrec_acodec(rec) == VREC_OPUS);
 		ms << "-c:a" << (opus ? "libopus" : "aac") << "-b:a" << QString("%0k").arg(rec.abitrate);
 		// FFmpeg before 4.3 calls opus in mp4 experimental and refuses it without this
 		if (opus && (ext == "mp4")) ms << "-strict" << "-2";

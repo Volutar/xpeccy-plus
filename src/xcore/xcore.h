@@ -603,6 +603,7 @@ typedef struct {
 	int fps;		// VREC_FPS_*
 	int container;		// VREC_MP4, VREC_MKV
 	int codec;		// VREC_H264...
+	int chroma;		// VREC_CH_*
 	int crf;
 	std::string preset;
 	unsigned fps60:1;	// blend up to 60 fps
@@ -613,7 +614,7 @@ typedef struct {
 	int autoStartAdr;
 	int autoStopOp;		// own is a reset
 	int autoStopAdr;
-	int acodec;		// VREC_AAC, VREC_OPUS; FFV1 takes FLAC whatever this says
+	int acodec;		// VREC_AAC, VREC_OPUS, VREC_AUDIO_AUTO; FFV1 takes FLAC whatever this says
 	int abitrate;		// kbps
 	std::string extra;	// more encoder options, as typed
 	std::string videoOver;	// the picture's options, as typed, in place of the ones made

@@ -2610,6 +2610,8 @@ void SetupWin::buildRecording() {
 	labRecSize = new QLabel;
 	labRecSize->setToolTip(tr("The video's frame and rate, with the border and scale set on this page"));
 	grid->addWidget(labRecSize, 1, 4, Qt::AlignCenter);
+	labRecFmt = new QLabel;
+	grid->addWidget(labRecFmt, 2, 4, Qt::AlignCenter);
 	// the lists share the width up to the button, which keeps to the right edge
 	for (int i = 1; i <= 3; i++)
 		grid->setColumnStretch(i, 1);
@@ -2622,6 +2624,11 @@ void SetupWin::buildRecording() {
 	cbRecCodec = new QComboBox;
 	// the list is filled by showFfmpeg(), which knows what the program can do
 	cbRecCodec->setToolTip(tr("-c:v x264, x265, SVT-AV1, NVENC, AMF, QSV or FFV1; AMF, QSV and AV1 write 4:2:0"));
+	cbRecChroma = new QComboBox;
+	cbRecChroma->addItem(tr("Auto"), VREC_CH_AUTO);
+	cbRecChroma->addItem("4:2:0", VREC_CH_420);
+	cbRecChroma->addItem("4:4:4", VREC_CH_444);
+	cbRecChroma->setToolTip(tr("Auto: 4:2:0, and 4:4:4 at an odd scale or for the screen"));
 	cbRecBox = new QComboBox;
 	cbRecBox->addItem("MP4", VREC_MP4);
 	cbRecBox->addItem("MKV", VREC_MKV);
@@ -2631,16 +2638,16 @@ void SetupWin::buildRecording() {
 	cbRecPreset = new QComboBox;
 	for (int i = 0; vrecPresets[i]; i++)
 		cbRecPreset->addItem(vrecPresets[i], vrecPresets[i]);
-	cbRecPreset->setToolTip(tr("-preset, NVENC p1..p7: slower packs smaller, but can hold the machine up"));
+	cbRecPreset->setToolTip(tr("-preset, AMF -quality: slower packs smaller,\nbut can hold the machine up"));
 	cbRecAbr = new QComboBox;
 	for (int i = 0; recBitrates[i]; i++)
 		cbRecAbr->addItem(QString("%0 kbps").arg(recBitrates[i]), recBitrates[i]);
 	cbRecAbr->setToolTip("-b:a");
-	// Opus keeps an AY's square waves clean where AAC smears them, at any bitrate
 	cbRecAcodec = new QComboBox;
+	cbRecAcodec->addItem(tr("Auto"), VREC_AUDIO_AUTO);
 	cbRecAcodec->addItem("AAC", VREC_AAC);
 	cbRecAcodec->addItem("Opus", VREC_OPUS);
-	cbRecAcodec->setToolTip(tr("-c:a aac | libopus; FFV1 takes FLAC"));
+	cbRecAcodec->setToolTip(tr("-c:a; Auto is AAC in MP4, Opus in MKV"));
 	leRecExtra = new QLineEdit;
 	leRecExtra->setToolTip(tr("Added to the encoder's options, as typed"));
 	// empty, each shows what it would stand in for
@@ -2653,8 +2660,9 @@ void SetupWin::buildRecording() {
 	leRecName = new QLineEdit;
 	leRecName->setPlaceholderText(VREC_NAME_DEF);
 	// rich text, the one tooltip here that is a list
-	leRecName->setToolTip(tr("<b>%d</b> date, 20260929<br><b>%t</b> time, 153012<br>"
-		"<b>%image</b> the image in use, else the machine<br><b>%machine</b> the machine"));
+	// nobr: Qt wraps a rich tooltip at its own width, and a key is one line
+	leRecName->setToolTip(tr("<nobr><b>%d</b> date, 20260929</nobr><br><nobr><b>%t</b> time, 153012</nobr><br>"
+		"<nobr><b>%image</b> the image in use, else the machine</nobr><br><nobr><b>%machine</b> the machine</nobr>"));
 	teRecCmd = new QTextEdit;
 	teRecCmd->setAcceptRichText(false);
 	teRecCmd->setReadOnly(true);
@@ -2671,10 +2679,11 @@ void SetupWin::buildRecording() {
 	});
 	xOptSheet adv;
 	adv.group(tr("Video"), 0);
-	adv.row(tr("Codec"), cbRecCodec);
 	adv.row(tr("Container"), cbRecBox);
+	adv.row(tr("Codec"), cbRecCodec);
+	adv.row(tr("Preset"), cbRecPreset);
 	adv.row(tr("Quality (CRF)"), sbRecCrf);
-	adv.row(tr("Speed"), cbRecPreset);
+	adv.row(tr("Color"), cbRecChroma);
 	// one piece, so the frame is no wider than its lists
 	cbRec60->setText(tr("Blend up to 60 fps"));
 	adv.wide(cbRec60);
@@ -2743,8 +2752,9 @@ void SetupWin::buildRecording() {
 		setRFIndex(cbRecBox, lossy ? recBoxKeep : VREC_MKV);
 		recEnables();
 	});
-	foreach(QComboBox* box, QList<QComboBox*>() << cbRecBox << cbRecCodec << cbRecPreset << cbRecAcodec << cbRecAbr)
+	foreach(QComboBox* box, QList<QComboBox*>() << cbRecBox << cbRecCodec << cbRecPreset << cbRecAcodec << cbRecAbr << cbRecChroma)
 		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showRecCmd);
+	connect(cbRecChroma, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::recEnables);
 	connect(sbRecCrf, QOverload<int>::of(&QSpinBox::valueChanged), this, &SetupWin::showRecCmd);
 	connect(leRecExtra, &QLineEdit::textChanged, this, &SetupWin::showRecCmd);
 	foreach(QLineEdit* led, QList<QLineEdit*>() << leRecVOver << leRecSOver) {
@@ -2829,18 +2839,23 @@ void SetupWin::showRecSize() {
 // a control is live only while it changes what is recorded: an override stands
 // in for what the ones it covers make, and the pitch is kept or not only at 50 FPS
 void SetupWin::recEnables() {
-	bool lossy = getRFIData(cbRecCodec) != VREC_FFV1;
+	int codec = getRFIData(cbRecCodec);
+	int chroma = getRFIData(cbRecChroma);
+	bool lossy = codec != VREC_FFV1;
 	bool video = leRecVOver->text().trimmed().isEmpty();
 	bool sound = leRecSOver->text().trimmed().isEmpty();
 	cbRecScale->setEnabled((getRFIData(cbRecSrc) == VREC_SRC_PICTURE) && video);
-	// 4:2:0 alone: an odd scale puts two dots' colours in one, so those are off
-	// and one that was picked goes up to the next
-	bool even = vrec_420_only(getRFIData(cbRecCodec));
+	// 4:2:0, the codec's or the one asked for: an odd scale puts two dots'
+	// colours in one, so those are off and one that was picked goes up to the next
+	bool even = vrec_420_only(codec, chroma);
 	QStandardItemModel* sm = qobject_cast<QStandardItemModel*>(cbRecScale->model());
 	for (int i = 0; sm && (i < sm->rowCount()); i++)
 		sm->item(i)->setEnabled(!even || !(cbRecScale->itemData(i).toInt() & 1));
 	int sc = getRFIData(cbRecScale);
-	if (vrec_scale_for(getRFIData(cbRecCodec), sc) != sc) setRFIndex(cbRecScale, vrec_scale_for(getRFIData(cbRecCodec), sc));
+	int fit = vrec_scale_for(codec, chroma, sc);
+	if (fit != sc) setRFIndex(cbRecScale, fit);
+	// the cards, AV1 and FFV1 have one format of their own
+	cbRecChroma->setEnabled(lossy && video && !vrec_420_only(codec, VREC_CH_AUTO));
 	cbRecBox->setEnabled(lossy);
 	sbRecCrf->setEnabled(lossy && video);
 	cbRecPreset->setEnabled(lossy && video);
@@ -2930,6 +2945,7 @@ xRecord SetupWin::recFromUi() {
 	rec.fps = getRFIData(cbRecFps);
 	rec.container = getRFIData(cbRecBox);
 	rec.codec = getRFIData(cbRecCodec);
+	rec.chroma = getRFIData(cbRecChroma);
 	if (rec.codec == VREC_FFV1) rec.container = recBoxKeep;	// the list says MKV, the choice stays
 	rec.crf = sbRecCrf->value();
 	rec.preset = getRFSData(cbRecPreset).toStdString();
@@ -2959,6 +2975,25 @@ void SetupWin::showRecCmd() {
 	QString name = vrec_file_name(leRecName->text(), media_image_name(conf.zx), QDateTime::currentDateTime());
 	vrecCmd cmd = vrec_command(rec, in.width(), in.height(), conf.zx->vid->nsPerFrame, conf.snd.rate, name, false);
 	labRecName->setFull(cmd.out);
+	// the colour resolution the video is written in, under its size
+	if (!rec.videoOver.empty()) {
+		labRecFmt->setText(tr("format: custom"));
+		labRecFmt->setToolTip(tr("Video override sets it"));
+	} else switch (vrec_chroma(rec)) {
+		case VREC_RGB:
+			labRecFmt->setText(tr("format RGB"));
+			labRecFmt->setToolTip(tr("FFV1 keeps every pixel as it is"));
+			break;
+		case VREC_444:
+			labRecFmt->setText(tr("format 4:4:4 (*)"));
+			labRecFmt->setToolTip((rec.chroma == VREC_CH_444) ? tr("Some players and editors cannot open it")
+				: tr("An odd scale or a shader needs every pixel's own colour.\nSome players and editors cannot open it"));
+			break;
+		default:
+			labRecFmt->setText(tr("format 4:2:0"));
+			labRecFmt->setToolTip(tr("Plays everywhere"));
+			break;
+	}
 	leRecVOver->setPlaceholderText(vrec_args_line(cmd.video));
 	leRecSOver->setPlaceholderText(vrec_args_line(cmd.sound));
 	teRecCmd->setPlainText(vrec_command_line(cmd.enc, true) + "\n\n" + vrec_command_line(cmd.mux, true));
@@ -2976,6 +3011,7 @@ void SetupWin::fillRecording() {
 	setRFIndex(cbRecBox, conf.rec.container);
 	recBoxKeep = conf.rec.container;
 	setRFIndex(cbRecCodec, conf.rec.codec);
+	setRFIndex(cbRecChroma, conf.rec.chroma);
 	sbRecCrf->setValue(conf.rec.crf);
 	int idx = cbRecPreset->findData(QString::fromStdString(conf.rec.preset));
 	cbRecPreset->setCurrentIndex(idx < 0 ? 2 : idx);

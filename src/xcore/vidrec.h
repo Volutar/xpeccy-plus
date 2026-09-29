@@ -23,7 +23,8 @@ enum {
 };
 
 enum {VREC_MP4 = 0, VREC_MKV};
-enum {VREC_AAC = 0, VREC_OPUS};
+enum {VREC_AAC = 0, VREC_OPUS, VREC_AUDIO_AUTO};
+enum {VREC_CH_AUTO = 0, VREC_CH_420, VREC_CH_444};
 enum {VREC_H264 = 0, VREC_H265, VREC_FFV1, VREC_H264_NVENC, VREC_H265_NVENC, VREC_H264_AMF, VREC_H265_AMF, VREC_H264_QSV, VREC_H265_QSV,
 	VREC_AV1, VREC_AV1_NVENC, VREC_AV1_AMF, VREC_AV1_QSV};
 
@@ -39,8 +40,11 @@ QString vrec_ffmpeg_version(const QString&);	// its first line of -version, empt
 QString vrec_dir();				// where the videos go
 QString vrec_dir_auto();			// ...when the settings name none
 bool vrec_codec_works(const QString& prog, int codec);	// the build has it, and this machine what it runs on
-bool vrec_420_only(int codec);		// AMF, QSV, AV1: an odd scale is off
-int vrec_scale_for(int codec, int n);	// ...and goes up to the next
+bool vrec_420_only(int codec, int chroma);	// AMF, QSV, AV1 or 4:2:0 asked for: an odd scale is off
+int vrec_scale_for(int codec, int chroma, int n);	// ...and goes up to the next
+int vrec_acodec(const xRecord&);		// VREC_AAC or VREC_OPUS, Auto resolved
+enum {VREC_420 = 0, VREC_444, VREC_RGB};
+int vrec_chroma(const xRecord&);		// what the picture is written as
 
 // the two FFmpeg runs a recording makes
 typedef struct {

@@ -12,8 +12,9 @@ before that point is upstream's history and is not repeated here.
 ### Added
 
 - **Video recording**: Ctrl+F7 writes what the machine shows to an MP4 or MKV file through
-  FFmpeg, sound included (Opus, or AAC) - the bare picture scaled by whole pixels, or the
-  window with its shader. The folder, the frame rate (the machine's own, or 50 fps for video
+  FFmpeg, sound included - the bare picture scaled by whole pixels, or the window with its
+  shader. It is written so any player opens it, in full color only where the picture needs
+  it, and the choice is yours in the settings. The folder, the frame rate (the machine's own, or 50 fps for video
   sites) and a file name template are in Options -> Video; H.264, H.265 and AV1 go through the
   graphics card too (NVIDIA, AMD, Intel) where it can, and FFmpeg's own options for the
   picture or the sound can be typed in instead. A recording can start and stop by itself - at
