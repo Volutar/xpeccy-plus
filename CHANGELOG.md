@@ -64,6 +64,9 @@ before that point is upstream's history and is not repeated here.
 - **The ZX Evo start menu shows its clock**, and the clock chip's memory keeps every cell to
   itself on ZX Evo, Pentagon 1024 and Profi; ZX Evo settings saved earlier are carried over.
 
+- **TSConf honours the write protection of RAM mapped at #0000**, so a program writing there
+  no longer overwrites it.
+
 ## 2026.5.1 - 2026-09-26
 
 ### Added
