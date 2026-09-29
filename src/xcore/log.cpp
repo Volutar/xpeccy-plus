@@ -13,9 +13,7 @@
 #include <QStringList>
 
 #include <SDL.h>
-#ifdef HAVEZLIB
 #include <zlib.h>
-#endif
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -254,9 +252,7 @@ static void write_header() {
 	put(QString("host: %1").arg(host_line()));
 	put(QString("qt: build %1, run %2").arg(QT_VERSION_STR).arg(qVersion()));
 	put(QString("sdl: %1").arg(sdl_line()));
-#ifdef HAVEZLIB
 	put(QString("zlib: build %1").arg(ZLIB_VERSION));
-#endif
 	put(QString("screen: %1").arg(screen_line()));
 	put(QString("config: %1").arg(QString::fromStdString(conf.path.confDir)));
 	const xMachine* mac = xm_find(conf.macId);

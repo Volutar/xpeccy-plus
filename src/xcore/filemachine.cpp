@@ -12,9 +12,7 @@ static const xFileMac fm_tab[] = {
 	{FL_SNA, "sna", "SNA snapshot", FMN_SNAPSHOT, NULL, snaGetHardware},
 	{FL_Z80, "z80", "Z80 snapshot", FMN_SNAPSHOT, NULL, z80GetHardware},
 	{FL_SPG, "spg", "SPG snapshot", FMN_TSCONF, "evo-tsconf", NULL},
-#ifdef HAVEZLIB
 	{FL_RZX, "rzx", "RZX playback", FMN_RZX, NULL, rzxGetHardware},
-#endif
 	{FL_TAP, "tap", "TAP tape", FMN_ANY, NULL, NULL},
 	{FL_TZX, "tzx", "TZX tape", FMN_ANY, NULL, NULL},
 	{FL_WAV, "wav", "WAV tape", FMN_ANY, NULL, NULL},

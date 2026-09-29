@@ -68,13 +68,9 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 	// frame buffer is skipped the same way - 64K of the head range, and the
 	// only thing that reads it is a recording being played, which never runs
 	// ahead. See the note beside brkRamMap in spectrum.h.
-#ifdef HAVEZLIB
 	ADD(comp, offsetof(Computer, rzx.frm.data));
 	ADD((char*)comp + offsetof(Computer, rzx.frm.pos),
 		offsetof(Computer, brkRamMap) - offsetof(Computer, rzx.frm.pos));
-#else
-	ADD(comp, offsetof(Computer, brkRamMap));
-#endif
 	ADD((char*)comp + offsetof(Computer, heatRam), sizeof(Computer) - offsetof(Computer, heatRam));
 
 	ADD(comp->cpu, sizeof(CPU));
@@ -148,9 +144,7 @@ int xstate_safe(Computer* comp) {
 
 int xstate_safe_tape_aside(Computer* comp) {
 	if (!comp || !comp->hw) return 0;
-#ifdef HAVEZLIB
 	if (comp->rzx.play) return 0;			// a recording is read forwards only
-#endif
 	if (comp->dif) {
 		if (fdc_running(comp->dif->fdc)) return 0;
 	}

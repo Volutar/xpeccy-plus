@@ -1,4 +1,3 @@
-#ifdef HAVEZLIB
 
 #include <stdio.h>
 #include "../xlog.h"
@@ -329,4 +328,3 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 	return err;
 }
 
-#endif

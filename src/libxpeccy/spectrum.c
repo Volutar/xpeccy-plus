@@ -74,9 +74,7 @@ int memrd(int adr, int m1, void* ptr) {
 	// nothing watches the read and nothing spoils it: stdMRd() without the
 	// calls, unless the fetch pages TR-DOS
 	if (!comp_mem_watched(comp) && !comp->snowBad
-#ifdef HAVEZLIB
 			&& !comp->rzx.play
-#endif
 			) {
 		if (comp->hw->mrd != stdMRd)
 			return comp->hw->mrd(comp, adr, m1);
@@ -89,11 +87,9 @@ int memrd(int adr, int m1, void* ptr) {
 }
 
 static int memrd_watched(Computer* comp, int adr, int m1) {
-#ifdef HAVEZLIB
 	if (m1 && comp->rzx.play && (comp->rzx.frm.fetches > 0)) {
 		comp->rzx.frm.fetches--;
 	}
-#endif
 	// only the debugger's aids want to know whether this is an instruction byte
 	unsigned isExecByte = 0;
 	if (comp->flgMAP || comp->flgHEAT || comp->flgCOND)
@@ -374,7 +370,6 @@ int iord(int port, void* ptr) {
 		res4 = comp->cpu->t + 3;
 	}
 // play rzx
-#ifdef HAVEZLIB
 	int res = 0xff;
 	if (comp->rzx.play) {
 		if (comp->rzx.frm.pos < comp->rzx.frm.size) {
@@ -389,7 +384,6 @@ int iord(int port, void* ptr) {
 			return 0xff;
 		}
 	}
-#endif
 	comp->flgBDI = (comp->flgDOS && (comp->dif->type == DIF_BDI)) ? 1 : 0;
 // brk
 	if (comp->brkIOMap[port] & MEM_BRK_RD) {
@@ -553,14 +547,12 @@ void comp_slt_wr(Computer* comp, int adr, int val) {
 // rzx
 
 void rzxStop(Computer* zx) {
-#ifdef HAVEZLIB
 	zx->rzx.play = 0;
 	if (zx->rzx.file) fclose(zx->rzx.file);
 	zx->rzx.file = NULL;
 	zx->rzx.fCount = 0;
 	zx->rzx.frm.size = 0;
 	zx->rzx.stop = 1;
-#endif
 }
 
 // What the machine answers when asked what it is, through the version block of
@@ -619,9 +611,7 @@ Computer* compCreate() {
 //tsconf
 	comp->tsconf.pwr_up = 1;
 // rzx
-#ifdef HAVEZLIB
 	comp->rzx.file = NULL;
-#endif
 	compSetHardware(comp, "Dummy");
 	gsReset(comp->gs);
 	comp->cmos.data[17] = 0xaa;	// 0a?
@@ -671,10 +661,8 @@ void compReset(Computer* comp,int res) {
 	for (i = 0; i < comp->pwcount; i++) {	// what a watched port held is history now
 		comp->pwatch[i].val = -1;
 	}
-#ifdef HAVEZLIB
 	if (comp->rzx.play)
 		rzxStop(comp);
-#endif
 
 	if (res == RES_DEFAULT)
 		res = comp->resbank;
@@ -747,14 +735,10 @@ void comp_snap_map(Computer* comp) {
 // The reset a snapshot loader starts from. A recording being played is left
 // playing: the snapshot may be the one inside it, read from its open file.
 void comp_snap_reset(Computer* comp, int res) {
-#ifdef HAVEZLIB
 	int play = comp->rzx.play;
 	comp->rzx.play = 0;
 	compReset(comp, res);
 	comp->rzx.play = play;
-#else
-	compReset(comp, res);
-#endif
 	comp_snap_map(comp);
 	comp_heat_reset(comp);
 }
@@ -929,7 +913,6 @@ int compExec(Computer* comp) {
 // scorpion WAIT: add 1T to odd-T command
 	if (comp->flgEM1 && (res2 & 1))
 		res2++;
-#ifdef HAVEZLIB
 	if (comp->rzx.play) {
 		if (comp->rzx.frm.fetches == 0) {
 			vid_unlazy(comp->vid);
@@ -937,7 +920,6 @@ int compExec(Computer* comp) {
 				comp->hw->irq(comp, IRQ_RZX_INT);
 		}
 	}
-#endif
 	return comp_step_end(comp, res2 - res4, res2);
 }
 

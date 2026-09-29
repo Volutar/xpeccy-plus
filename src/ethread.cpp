@@ -545,7 +545,6 @@ void xThread::emuCycle(Computer* comp) {
 
 // a recording opened since the last cycle starts playing here
 void xThread::rzx_begin(Computer* comp) {
-#if HAVEZLIB
 	if (comp->rzx.start) {
 		comp->rzx.start = 0;
 		comp->rzx.play = 1;
@@ -554,9 +553,6 @@ void xThread::rzx_begin(Computer* comp) {
 		rewind(comp->rzx.file);
 		rzxGetFrame(comp);
 	}
-#else
-	(void)comp;
-#endif
 }
 
 void xThread::run() {

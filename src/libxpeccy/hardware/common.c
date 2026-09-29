@@ -124,27 +124,19 @@ void zx_snow(Computer* comp) {
 void zx_irq(Computer* comp, int t) {
 	switch(t) {
 		case IRQ_VID_INT:			// frame int start
-#if HAVEZLIB
 			if (!comp->rzx.play) {		// ignore when playing rzx
 				vid_set_int_frame(comp->vid, comp->vid->intsize);
 				comp->intVector = 0xff;
 				comp->cpu->intrq |= Z80_INT;
 			}
-#else
-			vid_set_int_frame(comp->vid, comp->vid->intsize);
-			comp->intVector = 0xff;
-			comp->cpu->intrq |= Z80_INT;
-#endif
 			break;
 		case IRQ_RZX_INT:
 			comp->intVector = 0xff;
 			comp->cpu->intrq |= Z80_INT;
 			vid_set_int_frame(comp->vid, comp->vid->intsize);
-#if HAVEZLIB
 			comp->rzx.fCurrent++;
 			comp->rzx.fCount--;
 			rzxGetFrame(comp);
-#endif
 			break;
 		case IRQ_VID_IEND:			// frame int end (for tsconf see in tslab.c)
 			comp->cpu->intrq &= ~Z80_INT;
@@ -174,11 +166,7 @@ void zx_irq(Computer* comp, int t) {
 			// INT is a level: taken early in the pulse, it is taken again as soon
 			// as interrupts are back on and the pulse is still there (fuse does
 			// the same from EI). Butler's 128K timing tests count on it.
-#if HAVEZLIB
 			if (act && !comp->rzx.play)
-#else
-			if (act)
-#endif
 				comp->cpu->intrq |= Z80_INT;
 			break;
 		}
