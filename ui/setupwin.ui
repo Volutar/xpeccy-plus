@@ -639,7 +639,7 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
           <widget class="QWidget" name="advBox" native="true">
            <layout class="QVBoxLayout" name="verticalLayout_adv">
             <item>
-             <widget class="QGroupBox" name="gbCpu">
+             <widget class="xIconGroup" name="gbCpu">
               <property name="title">
                <string>CPU</string>
               </property>
@@ -693,7 +693,7 @@ off it as well, so changing it moves the frame rate too</string>
              </widget>
             </item>
             <item>
-             <widget class="QGroupBox" name="gbUla">
+             <widget class="xIconGroup" name="gbUla">
               <property name="title">
                <string>ULA</string>
               </property>
@@ -1117,7 +1117,7 @@ none - nothing comes back (+2A, +3)</string>
              </widget>
             </item>
             <item>
-             <widget class="QGroupBox" name="gbBoard">
+             <widget class="xIconGroup" name="gbBoard">
               <property name="title">
                <string>Board</string>
               </property>
@@ -1221,7 +1221,7 @@ none - nothing comes back (+2A, +3)</string>
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_24">
            <item>
-            <widget class="QGroupBox" name="vidViewGBox">
+            <widget class="xIconGroup" name="vidViewGBox">
              <property name="title">
               <string>Picture</string>
              </property>
@@ -1511,7 +1511,7 @@ border, instead of stretching it</string>
             </widget>
            </item>
            <item>
-            <widget class="QGroupBox" name="antiflickerGBox">
+            <widget class="xIconGroup" name="antiflickerGBox">
              <property name="title">
               <string>Anti-flicker</string>
              </property>
@@ -1632,7 +1632,7 @@ border, instead of stretching it</string>
             </widget>
            </item>
            <item>
-            <widget class="QGroupBox" name="groupBox">
+            <widget class="xIconGroup" name="groupBox">
              <property name="title">
               <string>Screenshots</string>
              </property>
@@ -1791,7 +1791,7 @@ border, instead of stretching it</string>
             </widget>
            </item>
            <item>
-            <widget class="QGroupBox" name="gbRecording">
+            <widget class="xIconGroup" name="gbRecording">
              <property name="title">
               <string>Recording</string>
              </property>
@@ -4091,6 +4091,12 @@ Right click: back to the style color</string>
    <class>xSlider</class>
    <extends>QSlider</extends>
    <header location="global">stdlib.h</header>
+  </customwidget>
+  <customwidget>
+   <class>xIconGroup</class>
+   <extends>QGroupBox</extends>
+   <header location="global">stdlib.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources>

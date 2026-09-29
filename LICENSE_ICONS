@@ -1,0 +1,23 @@
+Some of the icons in images/ come from free icon sets and keep their own terms.
+Files not listed here are Xpeccy's own or were drawn for Xpeccy+.
+
+Oxygen icon theme - (c) 2007 Nuno Pinheiro, David Vignoni, David Miller,
+Johann Ollivier Lapeyre, Kenneth Wimer, Riccardo Iaconelli and others.
+GNU LGPL v3 or later, https://invent.kde.org/frameworks/oxygen-icons
+  speaker.png, speaker-16.png (edited)
+
+FatCow Farm-Fresh icons - (c) FatCow Web Hosting, http://www.fatcow.com/free-icons
+Creative Commons Attribution 3.0, https://creativecommons.org/licenses/by/3.0/
+  grp-screenshot.png, grp-screenshot-16.png (edited), grp-filename.png,
+  grp-filename-16.png, grp-cpu.png, grp-cpu-16.png, grp-board.png, grp-board-16.png
+
+Fugue icons - (c) Yusuke Kamiyamane, https://p.yusukekamiyamane.com/
+Creative Commons Attribution 3.0, https://creativecommons.org/licenses/by/3.0/
+  grp-ula.png, grp-ula-16.png
+
+Twemoji - (c) Twitter, Inc and other contributors, https://github.com/jdecked/twemoji
+Creative Commons Attribution 4.0, https://creativecommons.org/licenses/by/4.0/
+  grp-auto.png, grp-auto-16.png (scaled down)
+
+FFmpeg logo - public domain, https://commons.wikimedia.org/wiki/File:FFmpeg_icon.svg
+  grp-ffmpeg.png, grp-ffmpeg-16.png (rendered from the SVG)

@@ -45,6 +45,9 @@ before that point is upstream's history and is not repeated here.
 - **Controllers and chips are named by their part numbers** on the Machine page: Beta Disk
   (WD1793), NemoIDE, YM2149 and so on.
 
+- **Icons on the settings groups** of the Video page and of the machine's and the
+  recording's advanced settings, and clearer Sound and Board ones on the Machine page.
+
 ### Fixed
 
 - **Radio buttons keep their place when checked** in every bundled style.

@@ -164,6 +164,26 @@
         <file>images/copy.png</file>
         <file>images/arrleft.png</file>
         <file>images/speaker2.png</file>
+        <file>images/grp-picture.png</file>
+        <file>images/grp-antiflicker.png</file>
+        <file>images/grp-screenshot.png</file>
+        <file>images/grp-record.png</file>
+        <file>images/grp-picture-16.png</file>
+        <file>images/grp-antiflicker-16.png</file>
+        <file>images/grp-screenshot-16.png</file>
+        <file>images/speaker-16.png</file>
+        <file>images/grp-filename.png</file>
+        <file>images/grp-filename-16.png</file>
+        <file>images/grp-auto.png</file>
+        <file>images/grp-auto-16.png</file>
+        <file>images/grp-ffmpeg.png</file>
+        <file>images/grp-ffmpeg-16.png</file>
+        <file>images/grp-board.png</file>
+        <file>images/grp-board-16.png</file>
+        <file>images/grp-cpu.png</file>
+        <file>images/grp-cpu-16.png</file>
+        <file>images/grp-ula.png</file>
+        <file>images/grp-ula-16.png</file>
         <file>images/palette.png</file>
         <file>images/refresh.png</file>
         <file>images/button-k.png</file>

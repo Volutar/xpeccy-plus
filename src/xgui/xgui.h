@@ -117,7 +117,9 @@ class xSideButton : public QPushButton {
 // spaces to make room, since no style draws an icon there.
 class xIconGroup : public QGroupBox {
 	public:
-		xIconGroup(const QIcon&, const QString&, QWidget* p = NULL);
+		xIconGroup(const QString&, const QString&, QWidget* p = NULL);
+		xIconGroup(QWidget* p = NULL);
+		void setIcon(const QString&);
 	protected:
 		void paintEvent(QPaintEvent*);
 		void changeEvent(QEvent*);
@@ -135,7 +137,7 @@ class xOptSheet {
 	public:
 		QWidget* body;
 		xOptSheet();
-		void group(const QString&, int side = -1);
+		void group(const QString&, int side = -1, const QString& icon = QString());
 		void field(const QString&, QWidget*, const QString& = QString());
 		void row(const QString&, QWidget*);
 		void wide(QWidget*);
