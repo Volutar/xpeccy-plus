@@ -4,6 +4,7 @@
 #include "../cpu/Z80/z80.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #pragma pack (push, 1)
 
@@ -39,7 +40,14 @@ int loadSPG(Computer* comp, const char* name, int drv) {
 	unsigned char blkInfo[768];
 	unsigned char inbuf[0x4000];
 	unsigned char outbuf[0xffff];
-	fread((char*)&hd, sizeof(spgHead), 1, file);
+	if ((fread((char*)&hd, sizeof(spgHead), 1, file) != 1) || memcmp(hd.sign, "SpectrumProg", 12)) {
+		fclose(file);
+		return ERR_SPG_SIGN;
+	}
+	if (hd.fmt != 0x10) {			// 0.x has another layout altogether
+		fclose(file);
+		return ERR_SPG_VERSION;
+	}
 	fread((char*)blkInfo, 768, 1, file);
 
 	// printf("spg ver %i.%i\n",(hd.fmt & 0xf0) >> 4, hd.fmt & 0x0f);
@@ -55,22 +63,28 @@ int loadSPG(Computer* comp, const char* name, int drv) {
 		pg = blkInfo[idx+2];
 
 		fread((char*)inbuf, sze, 1, file);
+		int dst = (pg << 14) + addr;
+		unsigned char* src = inbuf;
 		switch (blkInfo[idx + 1] & 0xc0) {
 			case 0x00:
-				memcpy(comp->mem->ramData + (pg << 14) + addr, inbuf, sze);
 				break;
 			case 0x40:
 				sze = demegalz(inbuf, outbuf);		// it works?
-				memcpy(comp->mem->ramData + (pg << 14) + addr, outbuf, sze);
+				src = outbuf;
 				break;
 			case 0x80:
 				sze = dehrust(inbuf, outbuf);		// no 'last 6 bytes'
-				memcpy(comp->mem->ramData + (pg << 14) + addr, outbuf, sze);
+				src = outbuf;
 				break;
 			default:
 				xlog(XLG_FILE, XLL_WARN, "(%.2X,%.4X,%.4X) unknown compression",pg,addr,sze);
+				sze = 0;
 				break;
 		}
+		if (dst + sze > comp->mem->ramMask + 1)		// a block runs off the end of ram
+			sze = comp->mem->ramMask + 1 - dst;
+		if (sze > 0)
+			memcpy(comp->mem->ramData + dst, src, sze);
 
 		if (blkInfo[idx] & 0x80) break;			// last block flag
 		idx += 3;
@@ -85,7 +99,10 @@ int loadSPG(Computer* comp, const char* name, int drv) {
 	comp->cpu->inten = Z80_NMI | (comp->cpu->flgIFF1 ? Z80_INT : 0);
 	comp->cpu->regIM = 1;				// im 1
 	comp->cpu->regI = 0x3f;				// i = 3F
-	comp->flgDOS = 0;					// basic 48 in bank0
+	comp->cpu->regIY = 0x5c3a;			// what the 48K rom's IM 1 handler wants
+	comp->cpu->regHLa = 0x2758;
+	comp->tsconf.p21af = 0x01;			// window 0 mapped by DOS/ROM128: basic 48
+	comp->flgDOS = 0;
 	comp->flgROM = 1;
 	comp->flgCPM = 0;
 	comp->p7FFD = 0x10;

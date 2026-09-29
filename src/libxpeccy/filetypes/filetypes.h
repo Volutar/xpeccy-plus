@@ -60,7 +60,10 @@ enum {
 	ERR_TD0_SIGN,		// td0 signature error
 	ERR_TD0_TYPE,		// unsupported td0 type
 	ERR_TD0_VERSION,	// unsupported version ( <20)
-	ERR_NO_DRIVE		// the machine has no such drive
+	ERR_NO_DRIVE,		// the machine has no such drive
+
+	ERR_SPG_SIGN,		// not an spg
+	ERR_SPG_VERSION		// an spg of a version not supported (0.x)
 };
 
 // spg
