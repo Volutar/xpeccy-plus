@@ -2621,7 +2621,7 @@ void SetupWin::buildRecording() {
 	// the rest, in a pop-up laid out as Machine: advanced settings
 	cbRecCodec = new QComboBox;
 	// the list is filled by showFfmpeg(), which knows what the program can do
-	cbRecCodec->setToolTip(tr("-c:v libx264 | libx265 | h264_nvenc | hevc_nvenc | ffv1"));
+	cbRecCodec->setToolTip(tr("-c:v x264, x265, SVT-AV1, NVENC, AMF, QSV or FFV1; AMF, QSV and AV1 write 4:2:0"));
 	cbRecBox = new QComboBox;
 	cbRecBox->addItem("MP4", VREC_MP4);
 	cbRecBox->addItem("MKV", VREC_MKV);
@@ -2833,6 +2833,14 @@ void SetupWin::recEnables() {
 	bool video = leRecVOver->text().trimmed().isEmpty();
 	bool sound = leRecSOver->text().trimmed().isEmpty();
 	cbRecScale->setEnabled((getRFIData(cbRecSrc) == VREC_SRC_PICTURE) && video);
+	// 4:2:0 alone: an odd scale puts two dots' colours in one, so those are off
+	// and one that was picked goes up to the next
+	bool even = vrec_420_only(getRFIData(cbRecCodec));
+	QStandardItemModel* sm = qobject_cast<QStandardItemModel*>(cbRecScale->model());
+	for (int i = 0; sm && (i < sm->rowCount()); i++)
+		sm->item(i)->setEnabled(!even || !(cbRecScale->itemData(i).toInt() & 1));
+	int sc = getRFIData(cbRecScale);
+	if (vrec_scale_for(getRFIData(cbRecCodec), sc) != sc) setRFIndex(cbRecScale, vrec_scale_for(getRFIData(cbRecCodec), sc));
 	cbRecBox->setEnabled(lossy);
 	sbRecCrf->setEnabled(lossy && video);
 	cbRecPreset->setEnabled(lossy && video);
@@ -2899,8 +2907,14 @@ void SetupWin::showFfmpeg() {
 	cbRecCodec->clear();
 	cbRecCodec->addItem("H.264", VREC_H264);
 	cbRecCodec->addItem("H.265", VREC_H265);
-	if (vrec_codec_works(prog, VREC_H264_NVENC)) cbRecCodec->addItem("NVENC H.264", VREC_H264_NVENC);
-	if (vrec_codec_works(prog, VREC_H265_NVENC)) cbRecCodec->addItem("NVENC H.265", VREC_H265_NVENC);
+	static const struct {int id; const char* name;} probed[] = {
+		{VREC_AV1, "AV1"},
+		{VREC_H264_NVENC, "NVENC H.264"}, {VREC_H265_NVENC, "NVENC H.265"}, {VREC_AV1_NVENC, "NVENC AV1"},
+		{VREC_H264_AMF, "AMF H.264"}, {VREC_H265_AMF, "AMF H.265"}, {VREC_AV1_AMF, "AMF AV1"},
+		{VREC_H264_QSV, "QSV H.264"}, {VREC_H265_QSV, "QSV H.265"}, {VREC_AV1_QSV, "QSV AV1"},
+	};
+	for (const auto& enc : probed)
+		if (vrec_codec_works(prog, enc.id)) cbRecCodec->addItem(enc.name, enc.id);
 	cbRecCodec->addItem(tr("FFV1, lossless"), VREC_FFV1);
 	int idx = cbRecCodec->findData(cur);
 	cbRecCodec->setCurrentIndex(idx < 0 ? 0 : idx);

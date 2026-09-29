@@ -198,40 +198,143 @@ static QString vr_even(int v) {
 
 const char* vrecPresets[] = {"ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", NULL};
 
-// NVENC: its presets p1..p7 in the order of x264's, and a constant quantizer -
-// its -cq rate control ignores the setting below about 18 and the picture stops
-// getting better, -qp gets better with it as -crf does
-static QStringList vr_nvenc(const xRecord& rec) {
-	int pre = 3;
+// the speed as an index into vrecPresets, veryfast when it is none of them
+static int vr_preset(const xRecord& rec) {
 	for (int i = 0; vrecPresets[i]; i++)
-		if (rec.preset == vrecPresets[i]) pre = i + 1;
-	bool hevc = (rec.codec == VREC_H265_NVENC);
-	return QStringList() << "-c:v" << (hevc ? "hevc_nvenc" : "h264_nvenc") << "-preset" << QString("p%0").arg(pre)
-		<< "-rc" << "constqp" << "-qp" << QString::number(rec.crf)
-		<< "-profile:v" << (hevc ? "rext" : "high444p");	// 4:4:4
+		if (rec.preset == vrecPresets[i]) return i;
+	return 2;
 }
 
-// One frame through the encoder: a build lists NVENC whether or not there is
-// a card to run it on. Asked once per program; the first use of the card is slow.
+// What each VREC_* codec is. Some take 4:2:0 alone: AMF, QSV and AV1. Those that
+// a build may have without the machine running them are tried before they are
+// offered (see vrec_codec_works).
+enum {VF_X264 = 0, VF_X265, VF_FFV1, VF_NVENC, VF_AMF, VF_QSV, VF_SVT};
+
+static const struct {
+	const char* ff;		// FFmpeg's name for it
+	int family;
+	bool hevc;
+	bool av1;
+	bool yuv420;
+	bool tried;
+} vrCodec[] = {
+	{"libx264", VF_X264, false, false, false, false},	// VREC_H264
+	{"libx265", VF_X265, true, false, false, false},	// VREC_H265
+	{"ffv1", VF_FFV1, false, false, false, false},		// VREC_FFV1
+	{"h264_nvenc", VF_NVENC, false, false, false, true},
+	{"hevc_nvenc", VF_NVENC, true, false, false, true},
+	{"h264_amf", VF_AMF, false, false, true, true},
+	{"hevc_amf", VF_AMF, true, false, true, true},
+	{"h264_qsv", VF_QSV, false, false, true, true},
+	{"hevc_qsv", VF_QSV, true, false, true, true},
+	{"libsvtav1", VF_SVT, false, true, true, true},		// VREC_AV1: not in every build
+	{"av1_nvenc", VF_NVENC, false, true, true, true},
+	{"av1_amf", VF_AMF, false, true, true, true},
+	{"av1_qsv", VF_QSV, false, true, true, true},
+};
+static_assert(sizeof(vrCodec) / sizeof(vrCodec[0]) == VREC_AV1_QSV + 1, "a codec without its row");
+
+static int vr_codec(int codec) {
+	return ((codec < 0) || (codec >= (int)(sizeof(vrCodec) / sizeof(vrCodec[0])))) ? VREC_H264 : codec;
+}
+
+bool vrec_420_only(int codec) {
+	return vrCodec[vr_codec(codec)].yuv420;
+}
+
+// 4:2:0 at an odd scale puts two dots' colours in one: those codecs get the
+// even scales alone, and an odd one goes up to the next
+int vrec_scale_for(int codec, int n) {
+	n = qBound(1, n, VREC_SCALE_MAX);
+	if (vrec_420_only(codec) && (n & 1)) n = qMin(n + 1, VREC_SCALE_MAX);
+	return n;
+}
+
+// What the encoder is handed. 4:4:4 where it can be: 4:2:0 shares one colour
+// between 2x2 pixels, which at an odd scale is two dots, and halves a shader's
+// grid, which is mostly colour. FFV1 keeps the RGB; the cards want nv12.
+static const char* vr_pix_fmt(int codec) {
+	codec = vr_codec(codec);
+	if (vrCodec[codec].family == VF_FFV1) return "bgr0";
+	if (!vrCodec[codec].yuv420) return "yuv444p";
+	return (vrCodec[codec].family == VF_SVT) ? "yuv420p" : "nv12";
+}
+
+// The encoder and its quality and speed. The cards take a constant quantizer as
+// -crf is, measured on NVENC and AMF: rate controls that aim at a quality stop
+// getting better below about 18. The speed goes onto each one's own presets in
+// x264's order. AV1 counts its quantizer 0..255, and 2.8 times the setting
+// matches x264's picture at 18 (NVENC AV1, measured).
+static QStringList vr_encoder(const xRecord& rec) {
+	int codec = vr_codec(rec.codec);
+	int pre = vr_preset(rec);
+	QString q = QString::number(vrCodec[codec].av1 ? qMin(255, (int)lround(rec.crf * 2.8)) : rec.crf);
+	QString preset = QString::fromStdString(rec.preset);
+	QStringList res;
+	res << "-c:v" << vrCodec[codec].ff;
+	switch (vrCodec[codec].family) {
+		case VF_X264:
+			res << "-preset" << preset << "-crf" << q;
+			break;
+		case VF_X265:
+			res << "-preset" << preset << "-crf" << q << "-x265-params" << "log-level=error";
+			break;
+		case VF_NVENC:
+			res << "-preset" << QString("p%0").arg(pre + 1) << "-rc" << "constqp" << "-qp" << q;
+			if (!vrCodec[codec].av1)
+				res << "-profile:v" << (vrCodec[codec].hevc ? "rext" : "high444p");	// 4:4:4
+			break;
+		case VF_AMF:
+			res << "-quality" << ((pre < 3) ? "speed" : (pre < 5) ? "balanced" : "quality");
+			res << "-rc" << "cqp" << "-qp_i" << q << "-qp_p" << q;
+			if (codec == VREC_H264_AMF) res << "-qp_b" << q;	// the others have no B frames here
+			break;
+		case VF_QSV:
+			res << "-preset" << vrecPresets[qMax(pre, 2)] << "-global_quality" << q;	// its presets start at veryfast
+			break;
+		case VF_SVT:
+			// SVT's fast presets blur pixel art whatever the crf (34 dB at p10,
+			// 42 at p8): veryfast is p8, and the others step from there
+			res << "-preset" << QString::number(qBound(4, 10 - pre, 10)) << "-crf" << QString::number(qMin(63, rec.crf));
+			break;
+	}
+	return res;
+}
+
+// One frame through the encoder: a build lists the card encoders whether or
+// not there is a card to run them on. What the build has not got at all is
+// known from one list of its encoders. Asked once per program; the first use
+// of a card is slow.
 bool vrec_codec_works(const QString& prog, int codec) {
+	static QHash<QString, QString> lists;
 	static QHash<QString, bool> known;
-	if ((codec != VREC_H264_NVENC) && (codec != VREC_H265_NVENC)) return true;
+	codec = vr_codec(codec);
+	if (!vrCodec[codec].tried) return true;
 	if (prog.isEmpty()) return false;
 	QString key = QString("%0|%1").arg(prog).arg(codec);
 	if (known.contains(key)) return known[key];
-	xRecord rec = conf.rec;
-	rec.codec = codec;
-	QStringList args;
-	args << "-hide_banner" << "-v" << "error" << "-f" << "lavfi" << "-i" << "color=c=black:s=256x256:d=0.1";
-	args << "-frames:v" << "1" << "-pix_fmt" << "yuv444p" << vr_nvenc(rec) << "-f" << "null" << "-";
-	QProcess prc;
-	prc.start(prog, args);
-	bool ok = prc.waitForFinished(20000) && (prc.exitStatus() == QProcess::NormalExit) && (prc.exitCode() == 0);
-	if (prc.state() != QProcess::NotRunning) {
-		prc.kill();
-		prc.waitForFinished(1000);
+	if (!lists.contains(prog)) {
+		QProcess prc;
+		prc.start(prog, QStringList() << "-hide_banner" << "-encoders");
+		prc.waitForFinished(5000);
+		lists[prog] = QString::fromLocal8Bit(prc.readAllStandardOutput());
 	}
-	xlog(XLG_VIDEO, XLL_INFO, "%s: %s", codec == VREC_H265_NVENC ? "hevc_nvenc" : "h264_nvenc", ok ? "works" : "not here");
+	bool ok = false;
+	if (lists[prog].contains(QString(" %0 ").arg(vrCodec[codec].ff))) {
+		xRecord rec = conf.rec;
+		rec.codec = codec;
+		QStringList args;
+		args << "-hide_banner" << "-v" << "error" << "-f" << "lavfi" << "-i" << "color=c=black:s=256x256:d=0.1";
+		args << "-frames:v" << "1" << "-pix_fmt" << vr_pix_fmt(codec) << vr_encoder(rec) << "-f" << "null" << "-";
+		QProcess prc;
+		prc.start(prog, args);
+		ok = prc.waitForFinished(20000) && (prc.exitStatus() == QProcess::NormalExit) && (prc.exitCode() == 0);
+		if (prc.state() != QProcess::NotRunning) {
+			prc.kill();
+			prc.waitForFinished(1000);
+		}
+	}
+	xlog(XLG_VIDEO, XLL_INFO, "%s: %s", vrCodec[codec].ff, ok ? "works" : "not here");
 	known[key] = ok;
 	return ok;
 }
@@ -256,7 +359,7 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const Q
 	int ow = w;
 	int oh = h;
 	if (rec.source == VREC_SRC_PICTURE) {
-		int n = qBound(1, rec.scale, VREC_SCALE_MAX);
+		int n = vrec_scale_for(rec.codec, rec.scale);
 		ow = w / 2 * n;
 		oh = h * n;
 	}
@@ -264,35 +367,13 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const Q
 	// neighbour, so a dot stays a block of whole pixels, and the colours
 	// converted the way an HD player reads them back
 	QString vf = QString("scale=%0:%1:flags=neighbor").arg(vr_even(ow)).arg(vr_even(oh));
-	if (lossless) {
-		vf += ",format=bgr0";
-	} else {
-		vf += ":out_color_matrix=bt709";
-		// 4:4:4: 4:2:0 shares one colour between 2x2 pixels, which at an odd
-		// scale is two dots, and halves a shader's grid, which is mostly colour
-		vf += ",format=yuv444p";
-	}
+	if (!lossless) vf += ":out_color_matrix=bt709";
+	vf += QString(",format=") + vr_pix_fmt(rec.codec);
 	if (rec.fps60) vf += ",framerate=fps=60";
 	// what the settings make of the picture; an override stands in for all of it
 	QStringList& ev = cmd.video;
 	ev << "-vf" << vf;
-	switch (rec.codec) {
-		case VREC_FFV1:
-			ev << "-c:v" << "ffv1";
-			break;
-		case VREC_H265:
-			ev << "-c:v" << "libx265" << "-preset" << QString::fromStdString(rec.preset);
-			ev << "-crf" << QString::number(rec.crf) << "-x265-params" << "log-level=error";
-			break;
-		case VREC_H264_NVENC:
-		case VREC_H265_NVENC:
-			ev << vr_nvenc(rec);
-			break;
-		default:
-			ev << "-c:v" << "libx264" << "-preset" << QString::fromStdString(rec.preset);
-			ev << "-crf" << QString::number(rec.crf);
-			break;
-	}
+	ev << vr_encoder(rec);
 	if (!lossless)
 		ev << "-color_primaries" << "bt709" << "-color_trc" << "bt709" << "-colorspace" << "bt709";
 	// the input and the file are the recorder's own whatever the user says
@@ -331,7 +412,7 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const Q
 	}
 	ma << vr_or(rec.soundOver, ms);
 	if (ext == "mp4") {
-		if ((rec.codec == VREC_H265) || (rec.codec == VREC_H265_NVENC))
+		if (vrCodec[vr_codec(rec.codec)].hevc)
 			ma << "-tag:v" << "hvc1";	// or Apple's players refuse it
 		ma << "-movflags" << "+faststart";
 	}

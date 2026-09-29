@@ -48,7 +48,7 @@ static const char* recSrcName[] = {"picture", "screen", NULL};
 static const char* recFpsName[] = {"machine", "50", NULL};
 static const char* recBoxName[] = {"mp4", "mkv", NULL};
 static const char* recAudioName[] = {"aac", "opus", NULL};
-static const char* recCodecName[] = {"h264", "h265", "ffv1", "h264_nvenc", "h265_nvenc", NULL};
+static const char* recCodecName[] = {"h264", "h265", "ffv1", "h264_nvenc", "h265_nvenc", "h264_amf", "h265_amf", "h264_qsv", "h265_qsv", "av1", "av1_nvenc", "av1_amf", "av1_qsv", NULL};
 
 static int rec_id(const char** tab, const std::string& nam, int def) {
 	for (int i = 0; tab[i]; i++)
