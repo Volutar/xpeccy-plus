@@ -196,6 +196,7 @@ MainWin::MainWin() {
 	osdImg[osd_rewind].load(":/images/osd-time-rewind.png");
 	osdImg[osd_pause].load(":/images/osd-time-pause.png");
 	osdImg[osd_rec].load(":/images/osd-rec.png");
+	osdImg[osd_rec_off].load(":/images/osd-rec-off.png");
 	for (int i = 0; i < 3; i++) {
 		osdImg[osd_ffwd2 + i].load(QString(":/images/osd-time-ffwd%0.png").arg(2 << i));
 		osdImg[osd_slow2 + i].load(QString(":/images/osd-time-slow%0.png").arg(2 << i));
@@ -840,7 +841,8 @@ void MainWin::paintEvent(QPaintEvent*) {
 	if (vrec_wants_screen()) {
 		grabScreen();
 		// the sign is the user's alone: the picture under it is drawn again
-		if (recOsd()) {
+		int rec = recOsd();
+		if (rec != osd_none) {
 			const qreal r = widgetDpr(this);
 			QRect slot = modeSlot();
 			QPainter top(this);
@@ -854,7 +856,7 @@ void MainWin::paintEvent(QPaintEvent*) {
 			glDisable(GL_SCISSOR_TEST);
 			glFlush();
 			top.endNativePainting();
-			top.drawImage(slot.topLeft(), osdImg[osd_rec]);
+			top.drawImage(slot.topLeft(), osdImg[rec]);
 			top.end();
 		}
 	}
@@ -964,9 +966,26 @@ QRect MainWin::modeSlot() {
 		MODE_ICON_W, MODE_ICON_W * 3 / 5);
 }
 
-// the recording sign is lit now
-bool MainWin::recOsd() {
-	return (vrec_state() == VREC_RUN) && !((QDateTime::currentMSecsSinceEpoch() / REC_BLINK_MS) & 1);
+// the speed mode, VCR style
+int MainWin::speedOsd() {
+	if (conf.emu.pause)		// the title's icon is not there in fullscreen
+		return osd_pause;
+	if (rewind_active())
+		return osd_rewind;
+	if (conf.emu.fast)
+		return osd_fast;
+	if (conf.emu.speed != 1.0) {
+		int e = ilogb(conf.emu.speed);		// x2 x4 x8 are 1..3, 1/2 1/4 1/8 are -1..-3
+		return (e > 0) ? osd_ffwd2 + e - 1 : osd_slow2 - e - 1;
+	}
+	return osd_none;
+}
+
+// the recording sign now: it blinks, and its dark phase gives way to a speed mode
+int MainWin::recOsd() {
+	if (vrec_state() != VREC_RUN) return osd_none;
+	if (!((QDateTime::currentMSecsSinceEpoch() / REC_BLINK_MS) & 1)) return osd_rec;
+	return (speedOsd() == osd_none) ? osd_rec_off : osd_none;
 }
 
 void MainWin::drawIcons(QPainter& pnt) {
@@ -1030,21 +1049,12 @@ void MainWin::drawIcons(QPainter& pnt) {
 		pnt.drawImage(3, 110, leds[led_wav]);
 	}
 // put the speed mode, VCR style, clear of the fps readout
-	int mode = osd_none;
-	if (conf.emu.pause) {		// the title's icon is not there in fullscreen
-		mode = osd_pause;
-	} else if (rewind_active()) {
-		mode = osd_rewind;
-	} else if (conf.emu.fast) {
-		mode = osd_fast;
-	} else if (conf.emu.speed != 1.0) {
-		int e = ilogb(conf.emu.speed);		// x2 x4 x8 are 1..3, 1/2 1/4 1/8 are -1..-3
-		mode = (e > 0) ? osd_ffwd2 + e - 1 : osd_slow2 - e - 1;
-	}
+	int mode = speedOsd();
 	// recording blinks, taking turns with the speed mode. Recording the window,
 	// it is put on after the picture has been read (see paintEvent)
-	if (recOsd() && !vrec_wants_screen())
-		mode = osd_rec;
+	int rec = recOsd();
+	if ((rec != osd_none) && !vrec_wants_screen())
+		mode = rec;
 	if (mode != osd_none)
 		pnt.drawImage(modeSlot().topLeft(), osdImg[mode]);
 // put fps

@@ -59,6 +59,7 @@ enum {
 	osd_ffwd2,	// x2, then x4 and x8 after it
 	osd_slow2 = osd_ffwd2 + 3,	// 1/2, then 1/4 and 1/8
 	osd_rec = osd_slow2 + 3,	// recording, taking turns with the others
+	osd_rec_off,	// its other phase, with no speed mode to take turns with
 	osd_count
 };
 
@@ -229,7 +230,8 @@ typedef struct {
 		void grabScreen();
 		void drawPicture();
 		QRect modeSlot();
-		bool recOsd();
+		int speedOsd();
+		int recOsd();
 		void drawIcons(QPainter&);
 		void presentFrame();
 		void uploadFrame();
