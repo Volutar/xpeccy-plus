@@ -62,6 +62,7 @@ class SetupWin : public QDialog {
 		void applyRecording();
 		void showFfmpeg();
 		void showRecCmd();
+		void recEnables();
 		void showRecSize();
 		void recSizes(QSize*, QSize*);
 		void alignVideoLabels();
@@ -104,7 +105,7 @@ class SetupWin : public QDialog {
 		QList<QWidget*> drvRow[4];
 		QComboBox* drvCountBox;
 		// video recording
-		QLineEdit *leRecFfmpeg, *leRecDir, *leRecExtra;
+		QLineEdit *leRecFfmpeg, *leRecDir, *leRecExtra, *leRecVOver, *leRecSOver;
 		QComboBox *cbRecSrc, *cbRecScale, *cbRecFps, *cbRecBox, *cbRecCodec, *cbRecPreset, *cbRecAbr;
 		QSpinBox* sbRecCrf;
 		QCheckBox *cbRec60, *cbRecPitch;
