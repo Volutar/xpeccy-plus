@@ -897,6 +897,9 @@ void SetupWin::start() {
 	ui.cbSnowCrash->setChecked(comp->flgSNOWX);
 	chasnow();
 	ui.bszsld->setValue(conf.vid.border);
+	// the setting is global and stays as it was; only this machine ignores it
+	ui.bszsld->setEnabled(comp->vid->brdmin < VID_BRD_OVERSCAN);
+	ui.bszsld->setToolTip(ui.bszsld->isEnabled() ? QString() : tr("This machine always shows its whole frame"));
 	chabsz();
 	ui.pathle->setText(QString::fromLocal8Bit(conf.scrShot.dir.c_str()));
 	ui.ssfbox->setCurrentIndex(ui.ssfbox->findData(QString::fromStdString(conf.scrShot.format)));
@@ -2288,10 +2291,12 @@ void SetupWin::setmszbox(int idx) {
 // video
 
 // the label beside the slider says what the mode gives on this machine - the
-// fixed sizes are the same everywhere, overscan is not
+// fixed sizes are the same everywhere, overscan is not, and a machine whose own
+// screen modes need more border shows that much whatever the slider says
 void SetupWin::chabsz() {
 	Computer* comp = conf.zx;
 	int mode = ui.bszsld->value();
+	if (mode < comp->vid->brdmin) mode = comp->vid->brdmin;
 	vCoord sze = vid_crop_size(comp->vid, mode);
 	ui.bszlab->setText(QString("%0 (%1×%2)").arg(brd_mode_name(mode)).arg(sze.x).arg(sze.y));
 }

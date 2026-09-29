@@ -523,6 +523,7 @@ typedef struct {
 	unsigned snow:1;		// the ULA snow effect
 	unsigned snowcrash:1;		// ...and ram that cannot take it
 	int floatbus;			// FBUS_*: what a port nothing answers reads back
+	int brdmin;			// VID_BRD_*: the frame its own screen modes fill
 	int psgCount;
 	int psgType;			// SND_*
 	double psgFrq;			// MHz, 0 = the chip type's own clock

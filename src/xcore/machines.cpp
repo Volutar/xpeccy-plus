@@ -204,7 +204,7 @@ static const struct {
 	{"contmem", "machine"}, {"scrp.wait", "machine"}, {"builtin", "machine"},
 	{"geometry", "video"}, {"contPattern", "video"}, {"earlyTiming", "video"},
 	{"4t-border", "video"}, {"ULAplus", "video"}, {"DDpal", "video"},
-	{"snow", "video"}, {"snow.crash", "video"}, {"floatbus", "video"},
+	{"snow", "video"}, {"snow.crash", "video"}, {"floatbus", "video"}, {"border.min", "video"},
 	{"psg.count", "sound"}, {"psg.type", "sound"}, {"psg.frq", "sound"},
 	{"psg.stereo", "sound"}, {"gs", "sound"},
 	{"saa", "sound"}, {"soundrive", "sound"},
@@ -326,6 +326,7 @@ static void mac_defaults(xMachine& mac) {
 	mac.snow = 0;
 	mac.snowcrash = 0;
 	mac.floatbus = FBUS_NONE;
+	mac.brdmin = VID_BRD_NONE;
 	mac.ramCold.clear();
 	mac.ramNoise = 0;
 	mac.psgCount = 1;
@@ -390,6 +391,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "snow") mac.snow = arg.b;
 			else if (nam == "snow.crash") mac.snowcrash = arg.b;
 			else if (nam == "floatbus") mac.floatbus = mac_word(fbusTab, val, FBUS_NONE, id);
+			else if (nam == "border.min") mac.brdmin = brd_mode_id(val.c_str());
 			else if (nam == "ULAplus") mac.ulaplus = arg.b;
 			else if (nam == "DDpal") mac.ddpal = arg.b;
 		} else if (ln.sect == "sound") {
@@ -987,6 +989,7 @@ static void mac_from_def(const xMachine* mac) {
 	comp->vid->ula->early = mac->early;
 	comp->vid->ula->enabled = mac->ulaplus;
 	comp->vid->brdstep = mac->brd4t ? 7 : 1;
+	comp->vid->brdmin = mac->brdmin;
 	comp_set_snow(comp, mac->snow);
 	comp->flgSNOWX = mac->snowcrash;
 	mac_set_psg(comp, mac->psgCount, mac->psgType, mac->psgFrq, mac->psgStereo);

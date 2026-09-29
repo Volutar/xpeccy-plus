@@ -248,6 +248,7 @@ static int brd_max_x(Video* vid) {
 // machine is like that) gets a smaller frame rather than black bars.
 static vCoord brd_margin(Video* vid, int mode) {
 	vCoord mrg;
+	if (mode < vid->brdmin) mode = vid->brdmin;
 	mrg.x = brd_max_x(vid);
 	mrg.y = vid->bord.y;					// border above the screen
 	if (vid->full.y - vid->send.y < mrg.y)			// ...and below it
