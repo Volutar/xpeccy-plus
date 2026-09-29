@@ -429,6 +429,8 @@ void xThread::emuCycle(Computer* comp) {
 				tm = compExec(comp);			// TODO: it exits when fetch-brk is occured, pc doesn't changed
 			}
 			sndNsFixed += NS_TO_FIXED(tm);
+			int watch = vrecWatch.load(std::memory_order_relaxed);
+			if (watch) vrec_auto_pc(comp, watch);
 			// tape trap	TODO: rework it as a system breakpoint
 			// this runs on every instruction, and the rom is paged in for most
 			// of them: the pc straight from the Z80, not through the cpu's

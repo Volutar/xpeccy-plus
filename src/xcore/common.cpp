@@ -35,6 +35,16 @@ QString gethex6(int num) {
 	return res.rightJustified(6, '0');
 }
 
+// Resets the user asked for, counted for whoever wants to know one happened.
+// Kept out of the machine: rewind and run-ahead put that back, and the count
+// would go back with it.
+std::atomic<int> xUserResets(0);
+
+void x_user_reset(Computer* comp, int res) {
+	xUserResets.fetch_add(1);
+	compUserReset(comp, res);
+}
+
 QString gethexword(int num) {
 	QString res = formbufword(num & 0xffff);
 	return res.rightJustified(4, '0');

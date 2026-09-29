@@ -1,0 +1,38 @@
+<!-- Command line switches for video recording. Shown by the "?" button in the
+     Auto recording frame of Recording: advanced settings, loaded from the Qt
+     resource as :/res/help/rec-cli.html. Qt's rich text understands a subset
+     of html, keep it simple: tables, lists, tt/b/i. -->
+
+<h3>Switches</h3>
+<p>each holds for this run only and is not written to the settings</p>
+<table cellpadding="0" cellspacing="0">
+<tr><td><tt>&nbsp;--video-out FILE&nbsp;</tt></td><td><b>record</b> from the start into FILE; <tt>.mp4</tt> or <tt>.mkv</tt> picks the container</td></tr>
+<tr><td><tt>&nbsp;--video-auto&nbsp;</tt></td><td>switch the <b>autostart</b> and the <b>autostop</b> on, with the conditions set in the options</td></tr>
+<tr><td><tt>&nbsp;--no-video-auto&nbsp;</tt></td><td>switch both <b>off</b></td></tr>
+<tr><td><tt>&nbsp;--video-autostart AT&nbsp;</tt></td><td><b>start</b> when AT is met, once after each reset</td></tr>
+<tr><td><tt>&nbsp;--video-autostop AT&nbsp;</tt></td><td><b>stop</b> any recording when AT is met</td></tr>
+</table>
+
+<h3>AT</h3>
+<table cellpadding="0" cellspacing="0">
+<tr><td><tt>&nbsp;ram&nbsp;</tt></td><td>start: the first <b>code run from RAM</b>, the system area #5B00-#5CCA aside</td></tr>
+<tr><td><tt>&nbsp;reset&nbsp;</tt></td><td>stop: a <b>reset</b> - F12, the menu, the debugger, a file started</td></tr>
+<tr><td><tt>&nbsp;==ADR&nbsp;</tt></td><td>the PC <b>equals</b> ADR; the same as ADR alone</td></tr>
+<tr><td><tt>&nbsp;&gt;=ADR&nbsp;</tt></td><td>the PC is ADR <b>or above</b></td></tr>
+<tr><td><tt>&nbsp;&lt;=ADR&nbsp;</tt></td><td>the PC is ADR <b>or below</b></td></tr>
+</table>
+
+<h3>ADR</h3>
+<table cellpadding="0" cellspacing="0">
+<tr><td><tt>&nbsp;#6000&nbsp; $6000&nbsp; 0x6000&nbsp;</tt></td><td>in <b>hex</b></td></tr>
+<tr><td><tt>&nbsp;24576&nbsp;</tt></td><td>in <b>decimal</b></td></tr>
+</table>
+
+<h3>Examples</h3>
+<table cellpadding="0" cellspacing="0">
+<tr><td><tt>&nbsp;--video-auto demo.sna&nbsp;</tt></td><td>as the options say</td></tr>
+<tr><td><tt>&nbsp;--video-autostart ram --video-autostop reset&nbsp;</tt></td><td>from the program's first code to a reset</td></tr>
+<tr><td><tt>&nbsp;--video-autostart 0x8000 --video-autostop "&lt;=#3FFF"&nbsp;</tt></td><td>from #8000 to the first call into ROM</td></tr>
+<tr><td><tt>&nbsp;--video-out C:\videos\demo.mkv&nbsp;</tt></td><td>all of it, into that file</td></tr>
+</table>
+<p>put <tt>&lt;</tt>, <tt>&gt;</tt> and a leading <tt>#</tt> in quotes: a shell reads them as redirections and a comment</p>

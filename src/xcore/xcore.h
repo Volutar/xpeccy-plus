@@ -141,6 +141,9 @@ QString getdecshift(char);
 QString formbufword(int);	// hex, no padding - what the gethex* below are built on
 QString gethexbyte(int);
 QString gethexword(int);
+extern std::atomic<int> xUserResets;
+void x_user_reset(Computer*, int);
+int unreal_num(QString, bool*);		// #/$/0x hex, else decimal
 QString getPortString(int, int);
 bool parsePort(const QString&, int*, int*);
 QString gethex6(int);
@@ -604,6 +607,12 @@ typedef struct {
 	std::string preset;
 	unsigned fps60:1;	// blend up to 60 fps
 	unsigned keepPitch:1;	// at 50 fps: stretch the sound in time, not in pitch
+	unsigned autoStart:1;	// start by itself...
+	unsigned autoStop:1;	// ...stop by itself
+	int autoStartOp;	// VREC_AT_*: own is code in ram
+	int autoStartAdr;
+	int autoStopOp;		// own is a reset
+	int autoStopAdr;
 	int abitrate;		// kbps
 	std::string extra;	// more encoder options, as typed
 	std::string videoOver;	// the picture's options, as typed, in place of the ones made

@@ -122,6 +122,12 @@ void conf_init(char* wpath, char* confdir) {
 	conf.rec.preset = "veryfast";
 	conf.rec.fps60 = 0;
 	conf.rec.keepPitch = 0;
+	conf.rec.autoStart = 0;
+	conf.rec.autoStop = 0;
+	conf.rec.autoStartOp = VREC_AT_OWN;
+	conf.rec.autoStartAdr = 0;
+	conf.rec.autoStopOp = VREC_AT_OWN;
+	conf.rec.autoStopAdr = 0;
 	conf.rec.name = VREC_NAME_DEF;
 	conf.rec.abitrate = 192;
 	conf.running = 0;
@@ -193,6 +199,10 @@ void saveConfig() {
 	fprintf(cfile, "rec.preset = %s\n", conf.rec.preset.c_str());
 	fprintf(cfile, "rec.fps60 = %s\n", YESNO(conf.rec.fps60));
 	fprintf(cfile, "rec.keeppitch = %s\n", YESNO(conf.rec.keepPitch));
+	fprintf(cfile, "rec.autostart = %s\n", YESNO(conf.rec.autoStart));
+	fprintf(cfile, "rec.autostart.at = %s\n", vrec_auto_text(conf.rec.autoStartOp, conf.rec.autoStartAdr, "ram").toLocal8Bit().data());
+	fprintf(cfile, "rec.autostop = %s\n", YESNO(conf.rec.autoStop));
+	fprintf(cfile, "rec.autostop.at = %s\n", vrec_auto_text(conf.rec.autoStopOp, conf.rec.autoStopAdr, "reset").toLocal8Bit().data());
 	fprintf(cfile, "rec.name = %s\n", conf.rec.name.c_str());
 	fprintf(cfile, "rec.abitrate = %i\n", conf.rec.abitrate);
 	fprintf(cfile, "rec.extra = %s\n", conf.rec.extra.c_str());
@@ -887,6 +897,10 @@ void loadConfig() {
 					if (pnam=="rec.preset") conf.rec.preset = pval;
 					if (pnam=="rec.fps60") conf.rec.fps60 = arg.b;
 					if (pnam=="rec.keeppitch") conf.rec.keepPitch = arg.b;
+					if (pnam=="rec.autostart") conf.rec.autoStart = arg.b;
+					if (pnam=="rec.autostart.at") vrec_auto_parse(QString::fromLocal8Bit(pval.c_str()), &conf.rec.autoStartOp, &conf.rec.autoStartAdr);
+					if (pnam=="rec.autostop") conf.rec.autoStop = arg.b;
+					if (pnam=="rec.autostop.at") vrec_auto_parse(QString::fromLocal8Bit(pval.c_str()), &conf.rec.autoStopOp, &conf.rec.autoStopAdr);
 					if (pnam=="rec.name") conf.rec.name = pval;
 					if (pnam=="rec.abitrate") conf.rec.abitrate = getRanged(arg.s, 64, 512);
 					if (pnam=="rec.extra") conf.rec.extra = pval;

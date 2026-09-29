@@ -11,6 +11,7 @@
 #include <string>
 
 #include "xcore/xcore.h"
+#include "xcore/vidrec.h"
 #include "xcore/log.h"
 #include "xcore/sound.h"
 #include "xcore/pacing.h"
@@ -61,6 +62,11 @@ void help() {
 	printf("--disk X\t\tselect drive to loading file (0..3 | a..d | A..D)\n");
 	printf("--sdcard PATH\t\tset SD card image, or a folder served as one\n");
 	printf("--wav-out FILE\t\trecord the sound to a WAV file from the start\n");
+	printf("--video-out FILE\trecord a video from the start (.mp4 or .mkv)\n");
+	printf("--video-auto\t\tauto start and stop, as the options set them, whatever they say about being on\n");
+	printf("--no-video-auto\t\tno auto start or stop, whatever the options say\n");
+	printf("--video-autostart AT\tstart at code in ram, or the PC against an address: ram | ==#6000 | \">=#8000\"\n");
+	printf("--video-autostop AT\tstop at a reset, or the PC against an address: reset | ==#0000\n");
 	printf("--style\t\t\tMacOSX only: use native qt style, else 'fusion' will be forced\n");
 	printf("--xmap FILE\t\tLoad *.xmap file\n");
 	printf("--confdir DIR\t\tChange config directory\n");
@@ -377,6 +383,7 @@ int main(int ac,char** av) {
 	int adr = 0x4000;
 
 	int dbg = 0;
+	QString vidOut;		// --video-out
 	int hlp = 0;
 	int drv = 0;
 	int lab = 1;
@@ -412,6 +419,18 @@ int main(int ac,char** av) {
 			bnNodraw = 1;
 		} else if (!strcmp(parg,"--bench-heat")) {
 			bnHeat = 1;
+		} else if (!strcmp(parg,"--video-auto")) {
+			vrec_auto_cli(1);
+		} else if (!strcmp(parg,"--no-video-auto")) {
+			vrec_auto_cli(0);
+		} else if (!strcmp(parg,"--video-autostart")) {
+			if ((i >= ac) || !vrec_auto_cli_start(QString::fromLocal8Bit(av[i])))
+				xlog(XLG_APP, XLL_WARN, "--video-autostart needs ram or an address, as >=#6000");
+			i++;
+		} else if (!strcmp(parg,"--video-autostop")) {
+			if ((i >= ac) || !vrec_auto_cli_stop(QString::fromLocal8Bit(av[i])))
+				xlog(XLG_APP, XLL_WARN, "--video-autostop needs reset or an address, as ==#0000");
+			i++;
 		} else if (!strcmp(parg,"--panic")) {
 			compflags |= CFLG_PANIC;
 		} else if (!strcmp(parg,"--autostart") || !strcmp(parg,"--no-autostart")) {
@@ -511,6 +530,9 @@ int main(int ac,char** av) {
 					}
 				}
 				i++;
+			} else if (!strcmp(parg, "--video-out")) {
+				vidOut = QString::fromLocal8Bit(av[i]);
+				i++;
 			} else if (!strcmp(parg, "--wav-out")) {
 				if (snd_wav_open(av[i]) != ERR_OK)
 					xlog(XLG_SOUND, XLL_WARN, "can't open %s for WAV output", av[i]);
@@ -530,6 +552,7 @@ int main(int ac,char** av) {
 	// tape or disk from the command line: mounting is not enough, so press
 	// what the user would press by hand. Here, after every option is known
 	media_autorun(conf.zx, astart);
+	vrec_auto_apply();
 
 	// a document macOS handed over before there was a window to open it through
 	if (!app.pendingFile.isEmpty()) {
@@ -567,6 +590,7 @@ int main(int ac,char** av) {
 		// content is never put on screen on macOS.
 		QTimer::singleShot(0, &mwin, [&](){
 			ethread.start();
+			if (!vidOut.isEmpty() && mwin.recStart(vidOut)) vrec_manual();
 			mwin.raise();
 			mwin.activateWindow();
 			if (dbg) mwin.doDebug();

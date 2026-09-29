@@ -112,6 +112,7 @@ typedef struct {
 		void sdcOpen(bool);
 		void setTurbo(int);
 		void addFavorite(const QString& path);
+		bool recStart(const QString& file = QString());
 	signals:
 		void s_options();
 		void s_debug();

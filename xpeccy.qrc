@@ -50,6 +50,7 @@
         <file>res/keymaps/ZX Spectrum 128K.map</file>
         <file>res/keymaps/ZX Spectrum 48K.map</file>
         <file>res/help/cond-syntax.html</file>
+        <file>res/help/rec-cli.html</file>
         <file>res/fallback/config.conf</file>
         <file>res/layouts.conf</file>
         <file>res/machines/alf.conf</file>

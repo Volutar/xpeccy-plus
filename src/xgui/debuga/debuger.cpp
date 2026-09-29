@@ -1059,7 +1059,7 @@ void DebugWin::keyPressEvent(QKeyEvent* ev) {
 			break;
 		case XCUT_RESET:
 			rzxStop(comp);
-			compUserReset(comp, RES_DEFAULT);
+			x_user_reset(comp, RES_DEFAULT);
 			if (!fillAll()) {
 				ui_asm.dasmTable->setAdr(pc);
 				//fillDisasm();

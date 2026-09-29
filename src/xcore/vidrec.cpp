@@ -39,6 +39,7 @@
 #include "../libxpeccy/filetypes/filetypes.h"
 #include "rewind.h"
 #include "../libxpeccy/video/video.h"
+#include "../libxpeccy/cpu/Z80/z80.h"
 #include "../libxpeccy/xlog.h"
 
 #define VR_QUEUE_MAX	(256 << 20)	// bytes of pictures the encoder may fall behind by
@@ -391,9 +392,179 @@ QString vrec_file_name(const QString& tpl, const QString& image, const QDateTime
 	return res.isEmpty() ? when.toString("yyyyMMdd_HHmmss") : res;
 }
 
+// AUTO
+
+std::atomic<int> vrecWatch(0);
+static std::atomic<int> vaStartSeen(0);	// the emulation met the start condition
+static std::atomic<int> vaStopSeen(0);	// ...or the stop one
+static int vaResets = -1;		// the user's resets seen so far
+
+// One end, start or stop: on, and at what. The command line's say for this
+// run lies over the settings (-1: none), and the two are resolved once into
+// what the emulation reads at every opcode.
+typedef struct {
+	int on;
+	int op;		// VREC_AT_*
+	int adr;
+} vaEnd;
+
+enum {VA_START = 0, VA_STOP};
+static vaEnd vaCli[2] = {{-1, -1, 0}, {-1, -1, 0}};
+static vaEnd vaEff[2];
+
+static void va_resolve() {
+	vaEff[VA_START] = {conf.rec.autoStart, conf.rec.autoStartOp, conf.rec.autoStartAdr};
+	vaEff[VA_STOP] = {conf.rec.autoStop, conf.rec.autoStopOp, conf.rec.autoStopAdr};
+	for (int i = 0; i < 2; i++) {
+		if (vaCli[i].on >= 0) vaEff[i].on = vaCli[i].on;
+		if (vaCli[i].op >= 0) {
+			vaEff[i].op = vaCli[i].op;
+			vaEff[i].adr = vaCli[i].adr;
+		}
+	}
+}
+
+static const char* vaOps[] = {"", "==", ">=", "<="};	// in VREC_AT_* order
+
+bool vrec_auto_parse(const QString& str, int* op, int* adr) {
+	QString txt = str.trimmed();
+	if ((txt.compare("ram", Qt::CaseInsensitive) == 0) || (txt.compare("reset", Qt::CaseInsensitive) == 0)) {
+		*op = VREC_AT_OWN;
+		return true;
+	}
+	int o = VREC_AT_EQ;
+	for (int i = VREC_AT_EQ; i <= VREC_AT_LE; i++) {
+		if (txt.startsWith(vaOps[i])) {
+			o = i;
+			txt = txt.mid(2);
+			break;
+		}
+	}
+	bool ok;
+	int a = unreal_num(txt, &ok);
+	if (!ok || (a < 0) || (a > 0xffff)) return false;
+	*op = o;
+	*adr = a;
+	return true;
+}
+
+// own: what VREC_AT_OWN is called at this end, "ram" or "reset"
+QString vrec_auto_text(int op, int adr, const char* own) {
+	if ((op <= VREC_AT_OWN) || (op > VREC_AT_LE)) return own;
+	return QString("%0#%1").arg(vaOps[op], gethexword(adr));
+}
+
+void vrec_auto_cli(int on) {
+	vaCli[VA_START].on = on;
+	vaCli[VA_STOP].on = on;
+}
+
+static bool va_cli_at(int end, const QString& str) {
+	if (!vrec_auto_parse(str, &vaCli[end].op, &vaCli[end].adr)) return false;
+	vaCli[end].on = 1;
+	return true;
+}
+
+bool vrec_auto_cli_start(const QString& str) {
+	return va_cli_at(VA_START, str);
+}
+
+bool vrec_auto_cli_stop(const QString& str) {
+	return va_cli_at(VA_STOP, str);
+}
+
+// The ROMs run code of their own in ram: 128K BASIC its paging routines in the
+// printer buffer, TR-DOS the RET it keeps at #5CC2. A program starts at PROG
+// (#5CCB) or above, so the system area is not counted.
+#define VA_SYS_FROM	0x5b00
+#define VA_SYS_TO	0x5ccb
+
+static bool va_pc_is(const vaEnd& end, Computer* comp, int pc) {
+	switch (end.op) {
+		case VREC_AT_EQ: return pc == end.adr;
+		case VREC_AT_GE: return pc >= end.adr;
+		case VREC_AT_LE: return pc <= end.adr;
+	}
+	if ((pc >= VA_SYS_FROM) && (pc < VA_SYS_TO)) return false;
+	return mem_get_page(comp->mem, pc)->type == MEM_RAM;
+}
+
+void vrec_auto_pc(Computer* comp, int watch) {
+	int pc = comp->cpu->regPC;
+	if ((watch & VREC_WATCH_START) && va_pc_is(vaEff[VA_START], comp, pc)) {
+		vrecWatch.fetch_and(~VREC_WATCH_START);
+		vaStartSeen.store(1);
+		xlog(XLG_VIDEO, XLL_INFO, "auto recording: start at #%.4X", pc);
+	}
+	if ((watch & VREC_WATCH_STOP) && va_pc_is(vaEff[VA_STOP], comp, pc)) {
+		vrecWatch.fetch_and(~VREC_WATCH_STOP);
+		vaStopSeen.store(1);
+		xlog(XLG_VIDEO, XLL_INFO, "auto recording: stop at #%.4X", pc);
+	}
+}
+
+// the start is armed while nothing is being recorded, a recording going on is left alone
+static void va_arm(bool now) {
+	if (vaEff[VA_START].on && now) {
+		vrecWatch.fetch_or(VREC_WATCH_START);
+	} else {
+		vrecWatch.fetch_and(~VREC_WATCH_START);
+	}
+}
+
+void vrec_auto_apply() {
+	va_resolve();
+	vaResets = xUserResets.load();
+	vaStartSeen.store(0);
+	va_arm(vrState.load() == VREC_IDLE);
+}
+
+// a recording has begun: the pc is watched for its end, if that is how it ends
+static void va_began() {
+	vaStopSeen.store(0);
+	if (vaEff[VA_STOP].on && (vaEff[VA_STOP].op != VREC_AT_OWN))
+		vrecWatch.fetch_or(VREC_WATCH_STOP);
+}
+
+int vrec_auto_tick() {
+	int resets = xUserResets.load();
+	if (resets != vaResets) {
+		vaResets = resets;
+		vaStartSeen.store(0);
+		// a reset ends the recording when that is its stop, and arms the start
+		// again unless something is left recording
+		bool running = (vrState.load() == VREC_RUN);
+		bool stop = running && vaEff[VA_STOP].on && (vaEff[VA_STOP].op == VREC_AT_OWN);
+		va_arm(stop || !running);
+		if (stop) return VREC_AUTO_STOP;
+	}
+	if (vaStopSeen.load()) {
+		vaStopSeen.store(0);
+		if (vrState.load() == VREC_RUN) return VREC_AUTO_STOP;
+	}
+	// the last one is still being written after a reset: this one waits for it
+	if (vaStartSeen.load() && (vrState.load() == VREC_IDLE)) {
+		vaStartSeen.store(0);
+		return VREC_AUTO_START;
+	}
+	return VREC_AUTO_NONE;
+}
+
+// The settings changed. A start switched on arms at the next reset, not now:
+// a game already running is in ram, and would start a recording at Apply.
+void vrec_auto_settings() {
+	va_resolve();
+	if (!vaEff[VA_START].on) va_arm(false);
+}
+
+void vrec_manual() {
+	vaStartSeen.store(0);
+	vrecWatch.fetch_and(~VREC_WATCH_START);
+}
+
 // START / STOP
 
-bool vrec_start(Computer* comp, const QString& base, int scrW, int scrH, QString* err) {
+bool vrec_start(Computer* comp, const QString& base, int scrW, int scrH, QString* err, const QString& file) {
 	if (vrState.load() != VREC_IDLE) {
 		*err = "the last video is still being written";
 		return false;
@@ -408,7 +579,8 @@ bool vrec_start(Computer* comp, const QString& base, int scrW, int scrH, QString
 		*err = "FFmpeg not found, see Options";
 		return false;
 	}
-	QString dir = vrec_dir();
+	// a file named on the command line: its own folder, its container by the extension
+	QString dir = file.isEmpty() ? vrec_dir() : QFileInfo(file).absolutePath();
 	if (!QDir().mkpath(dir)) {
 		*err = "cannot make the folder for videos";
 		return false;
@@ -422,7 +594,14 @@ bool vrec_start(Computer* comp, const QString& base, int scrW, int scrH, QString
 		*err = "no picture to record";
 		return false;
 	}
-	vrecCmd cmd = vrec_command(rec, w, h, vid->nsPerFrame, conf.snd.rate, QDir(dir).filePath(vrec_file_name(QString::fromLocal8Bit(conf.rec.name.c_str()), base, QDateTime::currentDateTime())));
+	QString name = vrec_file_name(QString::fromLocal8Bit(conf.rec.name.c_str()), base, QDateTime::currentDateTime());
+	if (!file.isEmpty()) {
+		QString ext = QFileInfo(file).suffix().toLower();
+		if (ext == "mkv") rec.container = VREC_MKV;
+		if (ext == "mp4") rec.container = VREC_MP4;
+		name = QFileInfo(file).completeBaseName();
+	}
+	vrecCmd cmd = vrec_command(rec, w, h, vid->nsPerFrame, conf.snd.rate, QDir(dir).filePath(name));
 	vrWriter* wr = new vrWriter;
 	wr->prog = prog;
 	wr->cmd = cmd;
@@ -440,6 +619,7 @@ bool vrec_start(Computer* comp, const QString& base, int scrW, int scrH, QString
 	vrState.store(VREC_RUN);
 	vrGen.fetch_add(1);
 	vrOn.store(1, std::memory_order_release);
+	va_began();
 	xlog(XLG_VIDEO, XLL_INFO, "recording to %s", cmd.out.toLocal8Bit().data());
 	xlog(XLG_VIDEO, XLL_DEBUG, "%s", vrec_command_line(cmd.enc).toLocal8Bit().data());
 	wr->start();
@@ -449,6 +629,7 @@ bool vrec_start(Computer* comp, const QString& base, int scrW, int scrH, QString
 void vrec_stop() {
 	if (vrState.load() != VREC_RUN) return;
 	vrOn.store(0);
+	vrecWatch.fetch_and(~VREC_WATCH_STOP);
 	vrState.store(VREC_FINISH);
 	QMutexLocker lock(&vrMutex);
 	vrStopping = true;
@@ -587,6 +768,7 @@ static QByteArray screen_frame(const QImage& img) {
 static void vr_fail(const QString& msg) {
 	vr_say(msg);
 	vrOn.store(0);
+	vrecWatch.fetch_and(~VREC_WATCH_STOP);
 	QMutexLocker lock(&vrMutex);
 	vrStopping = true;
 	vrState.store(VREC_FINISH);

@@ -63,6 +63,7 @@ class SetupWin : public QDialog {
 		void showFfmpeg();
 		void showRecCmd();
 		void recEnables();
+		QWidget* recCondBox(QCheckBox*, QComboBox*, QLineEdit*, const QString&);
 		void showRecSize();
 		void recSizes(QSize*, QSize*);
 		void alignVideoLabels();
@@ -108,7 +109,10 @@ class SetupWin : public QDialog {
 		QLineEdit *leRecFfmpeg, *leRecDir, *leRecExtra, *leRecVOver, *leRecSOver;
 		QComboBox *cbRecSrc, *cbRecScale, *cbRecFps, *cbRecBox, *cbRecCodec, *cbRecPreset, *cbRecAbr;
 		QSpinBox* sbRecCrf;
-		QCheckBox *cbRec60, *cbRecPitch;
+		QCheckBox *cbRec60, *cbRecPitch, *cbRecStart, *cbRecStop;
+		QComboBox *cbRecStartAt, *cbRecStopAt;
+		QLineEdit *leRecStartAt, *leRecStopAt;
+		QDialog* recHelpWin = NULL;
 		QLineEdit* leRecName;
 		QTextEdit* teRecCmd;
 		QLabel *labRecSrc, *labRecOut, *labRecFfm, *labRecSize;

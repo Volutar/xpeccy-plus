@@ -555,7 +555,7 @@ static bool parseRange(QString str, xBrkPoint* p) {
 // a number the way unreal writes it: 0x forces hex, # and $ too, everything
 // else is decimal (that is what unreal's own sscanf("%i") does)
 
-static int unreal_num(QString str, bool* ok) {
+int unreal_num(QString str, bool* ok) {
 	str = str.trimmed();
 	if (str.startsWith("#") || str.startsWith("$"))
 		return str.mid(1).toInt(ok, 16);

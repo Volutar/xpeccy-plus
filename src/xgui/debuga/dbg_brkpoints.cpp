@@ -1,8 +1,6 @@
 #include <QApplication>
 #include <QFileDialog>
 #include <QStyleOptionButton>
-#include <QTextBrowser>
-#include <QVBoxLayout>
 
 #include "xcore/xcore.h"
 #include "dbg_brkpoints.h"
@@ -488,27 +486,9 @@ void xBrkManager::chaCond(QString str) {
 	}
 }
 
+// the text lives in res/help/cond-syntax.html, built into the binary
 void xBrkManager::condHelp() {
-	if (!helpWin) {
-		// the text lives in res/help/cond-syntax.html, built into the binary
-		QFile file(":/res/help/cond-syntax.html");
-		QString txt = "no help text in this build";
-		if (file.open(QFile::ReadOnly)) {
-			txt = QString::fromUtf8(file.readAll());
-			file.close();
-		}
-		helpWin = new QDialog(this);
-		helpWin->setWindowTitle("Expression syntax");
-		helpWin->resize(620, 640);
-		QTextBrowser* brw = new QTextBrowser(helpWin);
-		brw->document()->setDefaultStyleSheet("td {padding-right:16px;} p {margin:2px 0px;} li {margin:2px 0px;}");
-		brw->setHtml(txt);
-		QVBoxLayout* lay = new QVBoxLayout(helpWin);
-		lay->setContentsMargins(4, 4, 4, 4);
-		lay->addWidget(brw);
-	}
-	helpWin->show();
-	helpWin->raise();
+	help_window(this, &helpWin, ":/res/help/cond-syntax.html", "Expression syntax");
 }
 
 void xBrkManager::edit(xBrkPoint* sbrk) {
