@@ -620,6 +620,10 @@ typedef struct {
 	std::string videoOver;	// the picture's options, as typed, in place of the ones made
 	std::string soundOver;	// ...and the sound's
 	std::string name;	// the file name's template, see vrec_file_name()
+	std::string probePath;	// the FFmpeg last asked what it can do, see vrec_probe()
+	std::string probeStamp;	// ...its size and time, so a new file is asked again
+	std::string probeVersion;
+	unsigned probeWorks;
 } xRecord;
 
 struct xConfig {

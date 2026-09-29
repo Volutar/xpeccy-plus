@@ -12,6 +12,7 @@
 #include <QKeySequence>
 
 #include "../../xcore/xcore.h"
+#include "../../xcore/vidrec.h"
 #include "../portwatch.h"
 #include "padbinder.h"
 #include "opt_romset.h"
@@ -27,11 +28,14 @@
 #include "ui_layedit.h"
 
 class QTextEdit;
+class QThread;
 
 class SetupWin : public QDialog {
 	Q_OBJECT
 	public:
 		SetupWin(QWidget*);
+		void prewarmFfmpeg();
+		void stopProbe();
 	public slots:
 		void start();
 		void setPadName();
@@ -61,6 +65,10 @@ class SetupWin : public QDialog {
 		void fillRecording();
 		void applyRecording();
 		void showFfmpeg();
+		void askFfmpeg(const QString& prog);
+		void probeFfmpeg();
+		void showProbe(const vrecProbe&);
+		void fillCodecs(unsigned works);
 		void showRecCmd();
 		void recEnables();
 		QWidget* recCondBox(QCheckBox*, QComboBox*, QLineEdit*, const QString&);
@@ -120,6 +128,10 @@ class SetupWin : public QDialog {
 		xElideLabel* labRecName;
 		int recBoxKeep = 0;	// the container picked for a codec that has a choice
 		bool recFilling = false;	// the controls are being set, not changed
+		bool recProbing = false;	// FFmpeg is being asked what it can do
+		QString recProbeFor;		// ...and this is the one the field names
+		QThread* recProbeThr = NULL;
+		std::atomic<bool> recProbeStop{false};
 
 		QDialog* layeditor;
 //		xPadMapModel* padModel;

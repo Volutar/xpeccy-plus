@@ -1,3 +1,4 @@
+#include <QThread>
 #include <QStandardItemModel>
 #include <QInputDialog>
 #include <QColorDialog>
@@ -2917,17 +2918,83 @@ void SetupWin::showFfmpeg() {
 		prog = vrec_ffmpeg_auto();
 		if (!prog.isEmpty()) leRecFfmpeg->setText(QDir::toNativeSeparators(prog));
 	}
-	QString ver = vrec_ffmpeg_version(prog);
-	btnRecGet->setVisible(ver.isEmpty());
-	if (!ver.isEmpty()) {
-		leRecFfmpeg->setToolTip("FFmpeg " + vrec_ffmpeg_release(ver));
-	} else if (prog.isEmpty()) {
+	askFfmpeg(QDir::cleanPath(prog));
+}
+
+// what the program can do: from the settings while they are about this very
+// file, else asked; one running already sees the program changed and asks again
+void SetupWin::askFfmpeg(const QString& prog) {
+	recProbeFor = prog;
+	vrecProbe res;
+	if (prog.isEmpty() || vrec_probe_known(prog, &res)) {
+		showProbe(res);
+	} else if (!recProbing) {
+		probeFfmpeg();
+	}
+}
+
+// On the way out: a probe still running is told to stop after the FFmpeg run
+// it is in, and waited for, or it would outlive the log it writes to
+void SetupWin::stopProbe() {
+	recProbeStop = true;
+	if (recProbeThr) recProbeThr->wait(25000);
+}
+
+// Soon after the start, so Options finds the answer ready: once for each new
+// FFmpeg, and the emulation, a thread of its own, goes on meanwhile
+void SetupWin::prewarmFfmpeg() {
+	QString prog = QDir::cleanPath(vrec_ffmpeg());
+	if (!prog.isEmpty()) askFfmpeg(prog);
+}
+
+// Asking FFmpeg what it can do runs it a dozen times, so it is done on a thread
+// of its own and Options opens meanwhile, with the codecs that need no asking
+void SetupWin::probeFfmpeg() {
+	QString prog = recProbeFor;
+	recProbing = true;
+	leRecFfmpeg->setToolTip(tr("Checking what it can do"));
+	btnRecGet->hide();
+	fillCodecs(0);
+	showRecCmd();
+	vrecProbe* res = new vrecProbe;
+	xRecord rec = conf.rec;		// a copy: the thread must not read what the GUI writes
+	std::atomic<bool>* stop = &recProbeStop;
+	QThread* thr = QThread::create([prog, rec, res, stop]() { *res = vrec_probe(prog, rec, stop); });
+	recProbeThr = thr;
+	connect(thr, &QThread::finished, this, [this, thr, prog, res]() {
+		thr->deleteLater();
+		recProbeThr = NULL;
+		vrecProbe got = *res;
+		delete res;
+		recProbing = false;
+		if (recProbeStop) return;		// cut short, so not an answer
+		if (!got.version.isEmpty()) vrec_probe_keep(prog, got);
+		if (prog != recProbeFor) {
+			showFfmpeg();		// the field was changed meanwhile
+		} else {
+			showProbe(got);
+			showRecCmd();
+		}
+	});
+	thr->start();
+}
+
+void SetupWin::showProbe(const vrecProbe& res) {
+	btnRecGet->setVisible(res.version.isEmpty());
+	if (!res.version.isEmpty()) {
+		leRecFfmpeg->setToolTip("FFmpeg " + vrec_ffmpeg_release(res.version));
+	} else if (recProbeFor.isEmpty()) {
 		leRecFfmpeg->setPlaceholderText(tr("Not found: pick ffmpeg"));
 		leRecFfmpeg->setToolTip(tr("Not in the config folder, not on PATH"));
 	} else {
 		leRecFfmpeg->setToolTip(tr("This does not run as FFmpeg"));
 	}
-	// the codecs, NVENC only where this program runs it here; the pick stays if it can
+	fillCodecs(res.works);
+}
+
+// The codecs, the cards' only where this program runs them here. The pick
+// stays; while nobody knows yet, it stays listed as well.
+void SetupWin::fillCodecs(unsigned works) {
 	int cur = cbRecCodec->count() ? getRFIData(cbRecCodec) : conf.rec.codec;
 	cbRecCodec->clear();
 	cbRecCodec->addItem("H.264", VREC_H264);
@@ -2939,7 +3006,7 @@ void SetupWin::showFfmpeg() {
 		{VREC_H264_QSV, "QSV H.264"}, {VREC_H265_QSV, "QSV H.265"}, {VREC_AV1_QSV, "QSV AV1"},
 	};
 	for (const auto& enc : probed)
-		if (vrec_codec_works(prog, enc.id)) cbRecCodec->addItem(enc.name, enc.id);
+		if ((works & (1u << enc.id)) || (recProbing && (enc.id == cur))) cbRecCodec->addItem(enc.name, enc.id);
 	cbRecCodec->addItem(tr("FFV1, lossless"), VREC_FFV1);
 	int idx = cbRecCodec->findData(cur);
 	cbRecCodec->setCurrentIndex(idx < 0 ? 0 : idx);
@@ -2986,7 +3053,10 @@ void SetupWin::showRecCmd() {
 	vrecCmd cmd = vrec_command(rec, in.width(), in.height(), conf.zx->vid->nsPerFrame, conf.snd.rate, name, false);
 	labRecName->setFull(cmd.out);
 	// the colour resolution the video is written in, under its size
-	if (!rec.videoOver.empty()) {
+	if (recProbing) {
+		labRecFmt->setText(tr("checking FFmpeg..."));
+		labRecFmt->setToolTip(tr("Which encoders it runs here, asked once for each program"));
+	} else if (!rec.videoOver.empty()) {
 		labRecFmt->setText(tr("format: custom"));
 		labRecFmt->setToolTip(tr("Video override sets it"));
 	} else switch (vrec_chroma(rec)) {

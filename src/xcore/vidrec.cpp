@@ -26,7 +26,6 @@
 #include <QFileInfo>
 #include <QMutex>
 #include <QProcess>
-#include <QHash>
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QThread>
@@ -153,25 +152,6 @@ QString vrec_ffmpeg_release(const QString& line) {
 	return ver;
 }
 
-// asked once per program: Options opens with it
-QString vrec_ffmpeg_version(const QString& path) {
-	static QHash<QString, QString> known;
-	if (path.isEmpty()) return QString();
-	if (known.contains(path)) return known[path];
-	QProcess prc;
-	prc.start(path, QStringList() << "-hide_banner" << "-version");
-	QString line;
-	if (prc.waitForFinished(5000)) {
-		line = QString::fromLocal8Bit(prc.readAllStandardOutput()).section('\n', 0, 0).trimmed();
-		if (!line.startsWith("ffmpeg")) line.clear();
-	} else {
-		prc.kill();
-		prc.waitForFinished(1000);
-	}
-	known[path] = line;
-	return line;
-}
-
 QString vrec_dir() {
 	return conf.rec.dir.empty() ? vrec_dir_auto() : QString::fromLocal8Bit(conf.rec.dir.c_str());
 }
@@ -231,7 +211,7 @@ static int vr_preset(const xRecord& rec) {
 
 // What each VREC_* codec is. Some take 4:2:0 alone: AMF, QSV and AV1. Those that
 // a build may have without the machine running them are tried before they are
-// offered (see vrec_codec_works).
+// offered (see vrec_probe).
 enum {VF_X264 = 0, VF_X265, VF_FFV1, VF_NVENC, VF_AMF, VF_QSV, VF_SVT};
 
 static const struct {
@@ -345,43 +325,71 @@ static QStringList vr_encoder(const xRecord& rec) {
 	return res;
 }
 
-// One frame through the encoder: a build lists the card encoders whether or
-// not there is a card to run them on. What the build has not got at all is
-// known from one list of its encoders. Asked once per program; the first use
-// of a card is slow.
-bool vrec_codec_works(const QString& prog, int codec) {
-	static QHash<QString, QString> lists;
-	static QHash<QString, bool> known;
-	codec = vr_codec(codec);
-	if (!vrCodec[codec].tried) return true;
-	if (prog.isEmpty()) return false;
-	QString key = QString("%0|%1").arg(prog).arg(codec);
-	if (known.contains(key)) return known[key];
-	if (!lists.contains(prog)) {
-		QProcess prc;
-		prc.start(prog, QStringList() << "-hide_banner" << "-encoders");
-		prc.waitForFinished(5000);
-		lists[prog] = QString::fromLocal8Bit(prc.readAllStandardOutput());
+// the file as it is on disk: a new build in the same place is a new program
+static QString vr_stamp(const QString& prog) {
+	QFileInfo inf(prog);
+	if (!inf.isFile()) return QString();
+	return QString("%0:%1").arg(inf.size()).arg(inf.lastModified().toMSecsSinceEpoch() / 1000);
+}
+
+bool vrec_probe_known(const QString& prog, vrecProbe* res) {
+	if (prog.isEmpty() || (QString::fromLocal8Bit(conf.rec.probePath.c_str()) != prog)) return false;
+	if (vr_stamp(prog) != QString::fromStdString(conf.rec.probeStamp)) return false;
+	res->version = QString::fromLocal8Bit(conf.rec.probeVersion.c_str());
+	res->works = conf.rec.probeWorks;
+	return true;
+}
+
+void vrec_probe_keep(const QString& prog, const vrecProbe& res) {
+	conf.rec.probePath = std::string(prog.toLocal8Bit().data());
+	conf.rec.probeStamp = vr_stamp(prog).toStdString();
+	conf.rec.probeVersion = std::string(res.version.toLocal8Bit().data());
+	conf.rec.probeWorks = res.works;
+}
+
+// the program's output, empty if it does not finish in time
+static QString vr_run(const QString& prog, const QStringList& args, int ms, bool* ok = NULL) {
+	QProcess prc;
+	prc.start(prog, args);
+	bool done = prc.waitForFinished(ms);
+	if (ok) *ok = done && (prc.exitStatus() == QProcess::NormalExit) && (prc.exitCode() == 0);
+	if (!done) {
+		prc.kill();
+		prc.waitForFinished(1000);
+		return QString();
 	}
-	bool ok = false;
-	if (lists[prog].contains(QString(" %0 ").arg(vrCodec[codec].ff))) {
-		xRecord rec = conf.rec;
-		rec.codec = codec;
-		rec.chroma = VREC_CH_420;	// the verdict is the codec's, not the settings'
-		QStringList args;
-		args << "-hide_banner" << "-v" << "error" << "-f" << "lavfi" << "-i" << "color=c=black:s=256x256:d=0.1";
-		args << "-frames:v" << "1" << "-pix_fmt" << vr_pix_fmt(rec) << vr_encoder(rec) << "-f" << "null" << "-";
-		QProcess prc;
-		prc.start(prog, args);
-		ok = prc.waitForFinished(20000) && (prc.exitStatus() == QProcess::NormalExit) && (prc.exitCode() == 0);
-		if (prc.state() != QProcess::NotRunning) {
-			prc.kill();
-			prc.waitForFinished(1000);
+	return QString::fromLocal8Bit(prc.readAllStandardOutput());
+}
+
+// What the program is, and which encoders it runs here. A build lists the card
+// encoders whether or not there is a card to run them on, so each of those is
+// given one frame; what the build has not got at all is known from one list of
+// its encoders. It runs the program a dozen times, the first use of a card is
+// slow and a virus scanner looks at every start: Options keeps the answer
+// (vrec_probe_keep) and asks again only for another file. Touches no globals.
+vrecProbe vrec_probe(const QString& prog, xRecord rec, const std::atomic<bool>* stop) {
+	vrecProbe res;
+	res.version = vr_run(prog, QStringList() << "-hide_banner" << "-version", 10000).section('\n', 0, 0).trimmed();
+	if (!res.version.startsWith("ffmpeg")) {
+		res.version.clear();
+		return res;
+	}
+	QString list = vr_run(prog, QStringList() << "-hide_banner" << "-encoders", 10000);
+	for (int codec = 0; codec <= VREC_AV1_QSV; codec++) {
+		if (stop && stop->load()) break;	// the program is closing
+		bool ok = !vrCodec[codec].tried;
+		if (!ok && list.contains(QString(" %0 ").arg(vrCodec[codec].ff))) {
+			rec.codec = codec;
+			rec.chroma = VREC_CH_420;	// the verdict is the codec's, not the settings'
+			QStringList args;
+			args << "-hide_banner" << "-v" << "error" << "-f" << "lavfi" << "-i" << "color=c=black:s=256x256:d=0.1";
+			args << "-frames:v" << "1" << "-pix_fmt" << vr_pix_fmt(rec) << vr_encoder(rec) << "-f" << "null" << "-";
+			vr_run(prog, args, 20000, &ok);
+			xlog(XLG_VIDEO, XLL_INFO, "%s: %s", vrCodec[codec].ff, ok ? "works" : "not here");
 		}
+		if (ok) res.works |= 1u << codec;
 	}
-	xlog(XLG_VIDEO, XLL_INFO, "%s: %s", vrCodec[codec].ff, ok ? "works" : "not here");
-	known[key] = ok;
-	return ok;
+	return res;
 }
 
 // what keeps FFmpeg quiet, left out of the command Options shows

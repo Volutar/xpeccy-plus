@@ -36,13 +36,18 @@ enum {VREC_IDLE = 0, VREC_RUN, VREC_FINISH};
 
 QString vrec_ffmpeg();				// the program that will be run, empty if none
 QString vrec_ffmpeg_auto();			// ...when the settings name none
-QString vrec_ffmpeg_version(const QString&);	// its first line of -version, empty if it does not run
-QString vrec_ffmpeg_release(const QString&);	// ...and the release number in that line
+QString vrec_ffmpeg_release(const QString&);	// the release number in its -version line
 QString vrec_ffmpeg_dir();			// where a copy fetched for the user goes
 QString vrec_find_tool(const QString&);	// on PATH, or in Homebrew on macOS
 QString vrec_dir();				// where the videos go
 QString vrec_dir_auto();			// ...when the settings name none
-bool vrec_codec_works(const QString& prog, int codec);	// the build has it, and this machine what it runs on
+typedef struct {
+	QString version;	// its -version line, empty if it is not FFmpeg
+	unsigned works = 0;	// a bit per VREC_* codec this machine can record with
+} vrecProbe;
+vrecProbe vrec_probe(const QString& prog, xRecord rec, const std::atomic<bool>* stop = NULL);	// runs it: slow, and safe off the GUI thread
+bool vrec_probe_known(const QString& prog, vrecProbe*);	// the settings keep the answer for this very file
+void vrec_probe_keep(const QString& prog, const vrecProbe&);
 bool vrec_420_only(int codec, int chroma);	// AMF, QSV, AV1 or 4:2:0 asked for: an odd scale is off
 int vrec_scale_for(int codec, int chroma, int n);	// ...and goes up to the next
 int vrec_acodec(const xRecord&);		// VREC_AAC or VREC_OPUS, Auto resolved

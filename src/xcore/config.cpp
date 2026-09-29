@@ -134,6 +134,7 @@ void conf_init(char* wpath, char* confdir) {
 	conf.rec.name = VREC_NAME_DEF;
 	conf.rec.acodec = VREC_AUDIO_AUTO;
 	conf.rec.abitrate = 192;
+	conf.rec.probeWorks = 0;
 	conf.running = 0;
 	conf.boot = 1;
 	conf.autorun = 1;
@@ -214,6 +215,16 @@ void saveConfig() {
 	fprintf(cfile, "rec.extra = %s\n", conf.rec.extra.c_str());
 	fprintf(cfile, "rec.video.override = %s\n", conf.rec.videoOver.c_str());
 	fprintf(cfile, "rec.sound.override = %s\n", conf.rec.soundOver.c_str());
+	fprintf(cfile, "rec.probe.path = %s\n", conf.rec.probePath.c_str());
+	fprintf(cfile, "rec.probe.stamp = %s\n", conf.rec.probeStamp.c_str());
+	fprintf(cfile, "rec.probe.version = %s\n", conf.rec.probeVersion.c_str());
+	std::string works;
+	for (int i = 0; recCodecName[i]; i++) {
+		if (!(conf.rec.probeWorks & (1u << i))) continue;
+		if (!works.empty()) works += ",";
+		works += recCodecName[i];
+	}
+	fprintf(cfile, "rec.probe.codecs = %s\n", works.c_str());
 	fprintf(cfile, "fullscreen = %s\n", YESNO(conf.vid.fullScreen));
 	fprintf(cfile, "keepratio = %s\n", YESNO(conf.vid.keepRatio));
 	fprintf(cfile, "lowlatency = %s\n", YESNO(conf.vid.lowLatency));
@@ -914,6 +925,16 @@ void loadConfig() {
 					if (pnam=="rec.extra") conf.rec.extra = pval;
 					if (pnam=="rec.video.override") conf.rec.videoOver = pval;
 					if (pnam=="rec.sound.override") conf.rec.soundOver = pval;
+					if (pnam=="rec.probe.path") conf.rec.probePath = pval;
+					if (pnam=="rec.probe.stamp") conf.rec.probeStamp = pval;
+					if (pnam=="rec.probe.version") conf.rec.probeVersion = pval;
+					if (pnam=="rec.probe.codecs") {
+						conf.rec.probeWorks = 0;
+						foreach(QString nm, QString::fromStdString(pval).split(',', X_SkipEmptyParts)) {
+							int id = rec_id(recCodecName, nm.trimmed().toStdString(), -1);
+							if (id >= 0) conf.rec.probeWorks |= 1u << id;
+						}
+					}
 					if (pnam=="fullscreen") conf.vid.fullScreen = arg.b;
 					if (pnam=="keepratio") conf.vid.keepRatio = arg.b;
 					if (pnam=="lowlatency") conf.vid.lowLatency = arg.b;
