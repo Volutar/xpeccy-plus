@@ -1,0 +1,369 @@
+// Getting FFmpeg for the video recorder. Windows: the newest release of BtbN's
+// static build into the config folder, checked against its sha256, with the
+// curl and tar every Windows 10 has. Linux: the distribution's package through
+// pkexec. macOS: Homebrew.
+
+#include <QApplication>
+#include <QCryptographicHash>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QLabel>
+#include <QProcess>
+#include <QProgressBar>
+#include <QPushButton>
+#include <QRegularExpression>
+#include <QStandardPaths>
+#include <QVBoxLayout>
+
+#include <functional>
+
+#include "xgui.h"
+#include "../xcore/xcore.h"
+#include "../xcore/vidrec.h"
+
+#define FG_BASE		"https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/"
+#define FG_MASTER	"ffmpeg-master-latest-win64-gpl.zip"
+
+class xFfGet : public QDialog {
+	public:
+		xFfGet(QWidget* p);
+		bool installed;
+		void reject() override;
+	protected:
+		void showEvent(QShowEvent*) override;
+	private:
+		QLabel* lab;
+		QLabel* labLine;	// what the program says, as it goes
+		QProgressBar* bar;
+		QDialogButtonBox* box;
+		QPushButton* btnGo;
+		QProcess* prc;
+		bool running;
+		QByteArray out;		// the step's stdout, for the one step that reads it
+		QString tail;		// the program's last line, what a failure shows
+		QString offer();
+		void go();
+		void run(const QString& prog, const QStringList& args, std::function<void()> next);
+		void output(const QByteArray& chunk);
+		void finish(const QString& html);
+		void fail(const QString& msg);
+#ifdef _WIN32
+		QString tmp;		// where the download goes
+		QString name;
+		QString sha;
+		void getList();
+		void check();
+		void install();
+#else
+		QString pm;
+		QStringList pmArgs;
+#endif
+};
+
+#ifdef _WIN32
+// the system's own, not one a shell put first on PATH
+static QString fg_system_tool(const QString& exe) {
+	QString path = qEnvironmentVariable("SystemRoot") + "/System32/" + exe;
+	return QFileInfo(path).isFile() ? path : QStandardPaths::findExecutable(exe);
+}
+#else
+// what installs FFmpeg here, and how it is told to without asking
+static bool fg_manager(QString* pm, QStringList* args) {
+#ifdef __APPLE__
+	*pm = vrec_find_tool("brew");
+	*args = QStringList() << "install" << "ffmpeg";
+	return !pm->isEmpty();
+#else
+	static const struct {const char* pm; const char* args;} tab[] = {
+		{"apt-get", "install -y ffmpeg"},
+		{"dnf", "install -y ffmpeg"},
+		{"pacman", "-S --noconfirm --needed ffmpeg"},
+		{"zypper", "--non-interactive install ffmpeg"},
+	};
+	QString pkexec = QStandardPaths::findExecutable("pkexec");
+	for (const auto& row : tab) {
+		QString path = QStandardPaths::findExecutable(row.pm);
+		if (path.isEmpty()) continue;
+		// pkexec clears the environment, so apt's quiet mode goes through env
+		*pm = pkexec;
+		*args = QStringList() << "env" << "DEBIAN_FRONTEND=noninteractive" << path << QString(row.args).split(' ');
+		return !pkexec.isEmpty();
+	}
+	return false;
+#endif
+}
+#endif
+
+xFfGet::xFfGet(QWidget* p):QDialog(p) {
+	setWindowTitle(tr("Get FFmpeg"));
+	installed = false;
+	running = false;
+	prc = NULL;
+	QVBoxLayout* lay = new QVBoxLayout(this);
+	lab = new QLabel;
+	lab->setWordWrap(true);
+	lab->setTextInteractionFlags(Qt::TextBrowserInteraction);
+	lab->setOpenExternalLinks(true);
+	lab->setMinimumWidth(420);
+	lay->addWidget(lab);
+	bar = new QProgressBar;
+	bar->setTextVisible(false);
+	bar->hide();
+	lay->addWidget(bar);
+	labLine = new QLabel;
+	QFont fnt = labLine->font();
+	fnt.setItalic(true);
+	labLine->setFont(fnt);
+	labLine->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+	labLine->hide();
+	lay->addWidget(labLine);
+	box = new QDialogButtonBox(QDialogButtonBox::Cancel);
+	btnGo = box->addButton(tr("Get it"), QDialogButtonBox::AcceptRole);
+	lay->addWidget(box);
+	connect(box, &QDialogButtonBox::rejected, this, &xFfGet::reject);
+	connect(btnGo, &QPushButton::clicked, this, &xFfGet::go);
+	lab->setText(offer());
+}
+
+// a style sheet colours the text and leaves the links Qt's blue, which a dark
+// theme drowns: they take the text's colour, told apart by the underline. Not
+// before the window shows: that is when the sheet reaches the palette
+void xFfGet::showEvent(QShowEvent* ev) {
+	QString col = lab->palette().color(QPalette::WindowText).name();
+	QString txt = lab->text();
+	txt.replace("</a>", "</span></a>");
+	txt.replace(QRegularExpression("(<a [^>]*>)"), QString("\\1<span style=\"color:%0\">").arg(col));
+	lab->setText(txt);
+	QDialog::showEvent(ev);
+}
+
+// what will be done, asked before it is
+QString xFfGet::offer() {
+	QString head = tr("Video recording runs FFmpeg, which is not part of Xpeccy+.") + "<br><br>";
+#ifdef _WIN32
+	return head + tr("Download the latest release of the build at "
+		"<a href=\"https://github.com/BtbN/FFmpeg-Builds\">github.com/BtbN/FFmpeg-Builds</a> "
+		"(about 190 MB, GPL) into the config folder?");
+#else
+	if (fg_manager(&pm, &pmArgs)) {
+#ifdef __APPLE__
+		return head + tr("Install it with Homebrew?");
+#else
+		return head + tr("Install it with %0? The system asks for your password.").arg(QFileInfo(pmArgs.at(2)).fileName());
+#endif
+	}
+	btnGo->hide();
+#ifdef __APPLE__
+	return head + tr("It comes from Homebrew: install that from <a href=\"https://brew.sh\">brew.sh</a>, "
+		"then run <b>brew install ffmpeg</b>.");
+#else
+	return head + tr("Install the <b>ffmpeg</b> package with your package manager.");
+#endif
+#endif
+}
+
+void xFfGet::run(const QString& prog, const QStringList& args, std::function<void()> next) {
+	if (prog.isEmpty()) {
+		fail(tr("A tool this needs is missing"));
+		return;
+	}
+	// the step before may be the one finishing now
+	if (prc) prc->deleteLater();
+	prc = new QProcess(this);
+	tail.clear();
+	out.clear();
+	connect(prc, &QProcess::readyReadStandardOutput, this, [this]() {
+		QByteArray chunk = prc->readAllStandardOutput();
+		out.append(chunk);
+		output(chunk);
+	});
+	connect(prc, &QProcess::readyReadStandardError, this, [this]() {
+		output(prc->readAllStandardError());
+	});
+	connect(prc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this, [this, next](int code, QProcess::ExitStatus st) {
+		if (!running) return;		// cancelled
+		if ((st != QProcess::NormalExit) || (code != 0)) {
+			fail(tail.isEmpty() ? tr("It stopped with code %0").arg(code) : tail);
+		} else {
+			next();
+		}
+	});
+	connect(prc, &QProcess::errorOccurred, this, [this, prog](QProcess::ProcessError err) {
+		if (running && (err == QProcess::FailedToStart))
+			fail(tr("%0 does not start").arg(QFileInfo(prog).fileName()));
+	});
+	prc->start(prog, args);
+}
+
+// a percentage moves the bar, any other line is kept for a failure to show
+void xFfGet::output(const QByteArray& chunk) {
+	static QRegularExpression pct("(\\d+(?:\\.\\d+)?)%\\s*$");
+	foreach(QString line, QString::fromLocal8Bit(chunk).split(QRegularExpression("[\r\n]"), X_SkipEmptyParts)) {
+		line = line.trimmed();
+		if (line.isEmpty()) continue;
+		QRegularExpressionMatch m = pct.match(line);
+		if (m.hasMatch()) {
+			bar->setValue(int(m.captured(1).toDouble() * 10));
+		} else {
+			tail = line;
+			labLine->setText(line);
+		}
+	}
+}
+
+void xFfGet::go() {
+	running = true;
+	btnGo->hide();
+	bar->setRange(0, 0);
+	bar->show();
+#ifdef _WIN32
+	tmp = QString::fromLocal8Bit(conf.path.confDir.c_str()) + "/ffmpeg.part/";
+	QDir(tmp).removeRecursively();
+	if (!QDir().mkpath(tmp)) {
+		fail(tr("Cannot write into the config folder"));
+		return;
+	}
+	lab->setText(tr("Looking up the latest release"));
+	run(fg_system_tool("curl.exe"), QStringList() << "-fsSL" << FG_BASE "checksums.sha256", [this]() { getList(); });
+#else
+	// a package manager has the system's lock: it is left to finish, not stopped midway
+	box->button(QDialogButtonBox::Cancel)->setEnabled(false);
+	labLine->show();
+	lab->setText(tr("Installing FFmpeg"));
+	run(pm, pmArgs, [this]() {
+		QString path = vrec_ffmpeg_auto();
+		if (path.isEmpty()) {
+			fail(tr("It was installed, but no ffmpeg is on the PATH"));
+		} else {
+			installed = true;
+			finish(tr("FFmpeg is installed: %0").arg(path).toHtmlEscaped());
+		}
+	});
+#endif
+}
+
+#ifdef _WIN32
+// the newest release in the list, the development build if the names ever change
+void xFfGet::getList() {
+	static QRegularExpression rx("^([0-9a-f]{64})\\s+(ffmpeg-n(\\d+)\\.(\\d+)-latest-win64-gpl-[\\d.]+\\.zip)$");
+	int best = -1;
+	QString master;
+	foreach(QString line, QString::fromLatin1(out).split('\n')) {
+		line = line.trimmed();
+		if (line.endsWith(" " FG_MASTER)) master = line.section(' ', 0, 0);
+		QRegularExpressionMatch m = rx.match(line);
+		if (!m.hasMatch()) continue;
+		int ver = m.captured(3).toInt() * 1000 + m.captured(4).toInt();
+		if (ver > best) {
+			best = ver;
+			sha = m.captured(1);
+			name = m.captured(2);
+		}
+	}
+	if (name.isEmpty() && (master.length() == 64)) {
+		sha = master;
+		name = FG_MASTER;
+	}
+	if (name.isEmpty()) {
+		fail(tr("No Windows build in the release list"));
+		return;
+	}
+	bar->setRange(0, 1000);
+	bar->setValue(0);
+	lab->setText(tr("Downloading %0").arg(name));
+	run(fg_system_tool("curl.exe"), QStringList() << "-fL" << "--progress-bar" << "-o" << QDir::toNativeSeparators(tmp + name) << FG_BASE + name,
+		[this]() { check(); });
+}
+
+void xFfGet::check() {
+	lab->setText(tr("Checking the download"));
+	bar->setRange(0, 0);
+	QFile file(tmp + name);
+	QCryptographicHash hash(QCryptographicHash::Sha256);
+	if (file.open(QFile::ReadOnly)) {
+		while (!file.atEnd()) {
+			hash.addData(file.read(1 << 20));
+			QApplication::processEvents();
+			if (!running) return;		// cancelled meanwhile
+		}
+		file.close();
+	}
+	if (hash.result().toHex() != sha.toLatin1()) {
+		fail(tr("The download is damaged, its checksum does not match"));
+		return;
+	}
+	lab->setText(tr("Unpacking"));
+	QDir().mkpath(tmp + "x");
+	run(fg_system_tool("tar.exe"), QStringList() << "-xf" << QDir::toNativeSeparators(tmp + name)
+		<< "-C" << QDir::toNativeSeparators(tmp + "x") << "--strip-components" << "1" << "*/bin/ffmpeg.exe" << "*/LICENSE.txt",
+		[this]() { install(); });
+}
+
+// into <config>/ffmpeg/bin/, where vrec_ffmpeg_auto() looks
+void xFfGet::install() {
+	QString dir = vrec_ffmpeg_dir();
+	QString exe = dir + "bin/ffmpeg.exe";
+	QDir().mkpath(dir + "bin");
+	QFile::remove(exe);
+	QFile::remove(dir + "LICENSE.txt");
+	if (!QFile::rename(tmp + "x/bin/ffmpeg.exe", exe)) {
+		fail(tr("Cannot put ffmpeg.exe into %0").arg(QDir::toNativeSeparators(dir + "bin")));
+		return;
+	}
+	QFile::rename(tmp + "x/LICENSE.txt", dir + "LICENSE.txt");
+	QDir(tmp).removeRecursively();
+	QString ver = vrec_ffmpeg_version(QDir::cleanPath(exe));
+	if (ver.isEmpty()) {
+		fail(tr("The program downloaded does not run"));
+	} else {
+		installed = true;
+		finish(tr("FFmpeg %0 is ready.").arg(vrec_ffmpeg_release(ver)).toHtmlEscaped());
+	}
+}
+#endif
+
+// the end either way: what came of it, and Cancel is only a way out now
+void xFfGet::finish(const QString& html) {
+	running = false;
+	bar->hide();
+	labLine->hide();
+	lab->setText(html);
+	QPushButton* btn = box->button(QDialogButtonBox::Cancel);
+	btn->setEnabled(true);
+	btn->setText(tr("Close"));
+}
+
+void xFfGet::fail(const QString& msg) {
+#ifdef _WIN32
+	if (!tmp.isEmpty()) QDir(tmp).removeRecursively();
+#endif
+	finish(tr("FFmpeg was not installed.") + "<br><br>" + msg.toHtmlEscaped());
+}
+
+// cancel: the download is stopped and what it left is taken away
+void xFfGet::reject() {
+#ifndef _WIN32
+	if (running) return;		// a package manager is left to finish
+#endif
+	running = false;
+	if (prc && (prc->state() != QProcess::NotRunning)) {
+		prc->kill();
+		prc->waitForFinished(2000);
+	}
+#ifdef _WIN32
+	if (!tmp.isEmpty()) QDir(tmp).removeRecursively();
+#endif
+	QDialog::reject();
+}
+
+// true when an FFmpeg is there to be used afterwards; the settings go back to
+// Auto, which finds it, so a path that no longer runs does not stand in its way
+bool ffmpeg_get(QWidget* parent) {
+	xFfGet dlg(parent);
+	dlg.exec();
+	if (dlg.installed) conf.rec.ffmpeg.clear();
+	return dlg.installed;
+}

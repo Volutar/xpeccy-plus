@@ -2602,9 +2602,21 @@ void SetupWin::buildRecording() {
 		showFfmpeg();
 	});
 	connect(leRecFfmpeg, &QLineEdit::editingFinished, this, &SetupWin::showFfmpeg);
+	// shown while there is no FFmpeg to run
+	btnRecGet = rec_button(":/images/arrow-down.png", tr("Get FFmpeg"));
+	connect(btnRecGet, &QToolButton::released, this, [this]() {
+		if (!ffmpeg_get(this)) return;
+		leRecFfmpeg->clear();		// as the settings now are: Auto, which finds it
+		showFfmpeg();
+	});
+	QWidget* ffBtns = new QWidget;
+	QHBoxLayout* ffLay = new QHBoxLayout(ffBtns);
+	ffLay->setContentsMargins(0, 0, 0, 0);
+	ffLay->addWidget(btnRecGet);
+	ffLay->addWidget(btn);
 	labRecFfm = new QLabel(tr("FFmpeg"));
 	grid->addWidget(labRecFfm, 2, 0);
-	grid->addWidget(fieldPair(leRecFfmpeg, btn, true), 2, 1, 1, 3);
+	grid->addWidget(fieldPair(leRecFfmpeg, ffBtns, true), 2, 1, 1, 3);
 
 	// what the video comes out as, after where it goes
 	labRecSize = new QLabel;
@@ -2906,11 +2918,9 @@ void SetupWin::showFfmpeg() {
 		if (!prog.isEmpty()) leRecFfmpeg->setText(QDir::toNativeSeparators(prog));
 	}
 	QString ver = vrec_ffmpeg_version(prog);
+	btnRecGet->setVisible(ver.isEmpty());
 	if (!ver.isEmpty()) {
-		// "ffmpeg version 8.0.1-full_build-www.gyan.dev": a release keeps its number
-		ver = ver.section(' ', 2, 2);
-		if (!ver.isEmpty() && ver.at(0).isDigit()) ver = ver.section('-', 0, 0);
-		leRecFfmpeg->setToolTip("FFmpeg " + ver);
+		leRecFfmpeg->setToolTip("FFmpeg " + vrec_ffmpeg_release(ver));
 	} else if (prog.isEmpty()) {
 		leRecFfmpeg->setPlaceholderText(tr("Not found: pick ffmpeg"));
 		leRecFfmpeg->setToolTip(tr("Not in the config folder, not on PATH"));

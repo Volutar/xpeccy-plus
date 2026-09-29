@@ -37,6 +37,9 @@ enum {VREC_IDLE = 0, VREC_RUN, VREC_FINISH};
 QString vrec_ffmpeg();				// the program that will be run, empty if none
 QString vrec_ffmpeg_auto();			// ...when the settings name none
 QString vrec_ffmpeg_version(const QString&);	// its first line of -version, empty if it does not run
+QString vrec_ffmpeg_release(const QString&);	// ...and the release number in that line
+QString vrec_ffmpeg_dir();			// where a copy fetched for the user goes
+QString vrec_find_tool(const QString&);	// on PATH, or in Homebrew on macOS
 QString vrec_dir();				// where the videos go
 QString vrec_dir_auto();			// ...when the settings name none
 bool vrec_codec_works(const QString& prog, int codec);	// the build has it, and this machine what it runs on

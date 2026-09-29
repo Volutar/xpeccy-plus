@@ -20,6 +20,8 @@ before that point is upstream's history and is not repeated here.
   picture or the sound can be typed in instead. A recording can start and stop by itself - at
   the program's first code, at a reset, or when the PC reaches an address - and the command
   line has switches for all of it.
+  Without FFmpeg, the record key offers to get it: downloaded on Windows, installed by the
+  package manager on Linux and by Homebrew on macOS.
 
 - **Rewind**: hold Delete to go back through the last 30 seconds of play, picture and sound,
   and carry on from any point. The step and the length are on Xpeccy+ -> Emulation.

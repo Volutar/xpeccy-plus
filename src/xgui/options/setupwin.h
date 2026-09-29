@@ -116,6 +116,7 @@ class SetupWin : public QDialog {
 		QLineEdit* leRecName;
 		QTextEdit* teRecCmd;
 		QLabel *labRecSrc, *labRecOut, *labRecFfm, *labRecSize, *labRecFmt;
+		QToolButton* btnRecGet;
 		xElideLabel* labRecName;
 		int recBoxKeep = 0;	// the container picked for a codec that has a choice
 		bool recFilling = false;	// the controls are being set, not changed
