@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "sound.h"
+#include "vidrec.h"
 #include "xcore.h"
 #include "rewind.h"
 
@@ -170,6 +171,7 @@ static void snd_ring_put(sndPair lev) {
 	posf++;
 	sbuf[posf & SND_RING_MASK] = (lev.right >> 8) & 0xff;
 	posf++;
+	vrec_sample(lev);		// what was heard, whatever made it
 	if (sndHeld && (sndGetRingDistance() >= sndGetRingTargetBytes()))
 		snd_start_playback();
 }

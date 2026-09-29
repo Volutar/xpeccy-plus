@@ -13,6 +13,7 @@
 
 #include "log.h"
 #include "filemachine.h"
+#include "vidrec.h"
 
 #ifdef _WIN32
 	#include <windows.h>
@@ -41,6 +42,18 @@ enum {
 };
 
 std::map<std::string, int> shotFormat;
+
+// the recording's choices as the config file spells them, in VREC_* order
+static const char* recSrcName[] = {"picture", "screen", NULL};
+static const char* recFpsName[] = {"machine", "50", NULL};
+static const char* recBoxName[] = {"mp4", "mkv", NULL};
+static const char* recCodecName[] = {"h264", "h265", "ffv1", "h264_nvenc", "h265_nvenc", NULL};
+
+static int rec_id(const char** tab, const std::string& nam, int def) {
+	for (int i = 0; tab[i]; i++)
+		if (nam == tab[i]) return i;
+	return def;
+}
 xConfig conf;
 
 void conf_init(char* wpath, char* confdir) {
@@ -100,6 +113,17 @@ void conf_init(char* wpath, char* confdir) {
 	mkdir((conf.path.confDir + "\\styles").c_str());
 #endif
 	conf.scrShot.format = "png";
+	conf.rec.source = VREC_SRC_PICTURE;
+	conf.rec.scale = 4;
+	conf.rec.fps = VREC_FPS_50;
+	conf.rec.container = VREC_MP4;
+	conf.rec.codec = VREC_H264;
+	conf.rec.crf = 18;
+	conf.rec.preset = "veryfast";
+	conf.rec.fps60 = 0;
+	conf.rec.keepPitch = 0;
+	conf.rec.name = VREC_NAME_DEF;
+	conf.rec.abitrate = 192;
 	conf.running = 0;
 	conf.boot = 1;
 	conf.autorun = 1;
@@ -158,6 +182,20 @@ void saveConfig() {
 	fprintf(cfile, "scrInterval = %i\n", conf.scrShot.interval);
 	fprintf(cfile, "scrNoLeds = %s\n", YESNO(conf.scrShot.noLeds));
 	fprintf(cfile, "scrNoBord = %s\n", YESNO(conf.scrShot.noBorder));
+	fprintf(cfile, "rec.ffmpeg = %s\n", conf.rec.ffmpeg.c_str());
+	fprintf(cfile, "rec.dir = %s\n", conf.rec.dir.c_str());
+	fprintf(cfile, "rec.source = %s\n", recSrcName[conf.rec.source]);
+	fprintf(cfile, "rec.scale = %i\n", conf.rec.scale);
+	fprintf(cfile, "rec.fps = %s\n", recFpsName[conf.rec.fps]);
+	fprintf(cfile, "rec.container = %s\n", recBoxName[conf.rec.container]);
+	fprintf(cfile, "rec.codec = %s\n", recCodecName[conf.rec.codec]);
+	fprintf(cfile, "rec.crf = %i\n", conf.rec.crf);
+	fprintf(cfile, "rec.preset = %s\n", conf.rec.preset.c_str());
+	fprintf(cfile, "rec.fps60 = %s\n", YESNO(conf.rec.fps60));
+	fprintf(cfile, "rec.keeppitch = %s\n", YESNO(conf.rec.keepPitch));
+	fprintf(cfile, "rec.name = %s\n", conf.rec.name.c_str());
+	fprintf(cfile, "rec.abitrate = %i\n", conf.rec.abitrate);
+	fprintf(cfile, "rec.extra = %s\n", conf.rec.extra.c_str());
 	fprintf(cfile, "fullscreen = %s\n", YESNO(conf.vid.fullScreen));
 	fprintf(cfile, "keepratio = %s\n", YESNO(conf.vid.keepRatio));
 	fprintf(cfile, "lowlatency = %s\n", YESNO(conf.vid.lowLatency));
@@ -836,6 +874,20 @@ void loadConfig() {
 					if (pnam=="scrInterval") conf.scrShot.interval = arg.i;
 					if (pnam=="scrNoLeds") conf.scrShot.noLeds = arg.b;
 					if (pnam=="scrNoBord") conf.scrShot.noBorder = arg.b;
+					if (pnam=="rec.ffmpeg") conf.rec.ffmpeg = pval;
+					if (pnam=="rec.dir") conf.rec.dir = pval;
+					if (pnam=="rec.source") conf.rec.source = rec_id(recSrcName, pval, VREC_SRC_PICTURE);
+					if (pnam=="rec.scale") conf.rec.scale = getRanged(arg.s, 1, VREC_SCALE_MAX);
+					if (pnam=="rec.fps") conf.rec.fps = rec_id(recFpsName, pval, VREC_FPS_50);
+					if (pnam=="rec.container") conf.rec.container = rec_id(recBoxName, pval, VREC_MP4);
+					if (pnam=="rec.codec") conf.rec.codec = rec_id(recCodecName, pval, VREC_H264);
+					if (pnam=="rec.crf") conf.rec.crf = getRanged(arg.s, 0, 51);
+					if (pnam=="rec.preset") conf.rec.preset = pval;
+					if (pnam=="rec.fps60") conf.rec.fps60 = arg.b;
+					if (pnam=="rec.keeppitch") conf.rec.keepPitch = arg.b;
+					if (pnam=="rec.name") conf.rec.name = pval;
+					if (pnam=="rec.abitrate") conf.rec.abitrate = getRanged(arg.s, 64, 512);
+					if (pnam=="rec.extra") conf.rec.extra = pval;
 					if (pnam=="fullscreen") conf.vid.fullScreen = arg.b;
 					if (pnam=="keepratio") conf.vid.keepRatio = arg.b;
 					if (pnam=="lowlatency") conf.vid.lowLatency = arg.b;

@@ -129,20 +129,43 @@ class xIconGroup : public QGroupBox {
 
 // A pop-up laid out like Advanced settings: fields with a name first, then a
 // line, then check boxes with a name and, in italics, what they do.
+class xSheetColumns;
+
 class xOptSheet {
 	public:
 		QWidget* body;
 		xOptSheet();
+		void group(const QString&, int side = -1);
 		void field(const QString&, QWidget*, const QString& = QString());
+		void row(const QString&, QWidget*);
+		void wide(QWidget*);
 		void line();
 		void check(QCheckBox*, const QString&, const QString&, bool global = false);
 	private:
+		QVBoxLayout* box;
+		QWidget* rows;
 		QGridLayout* grid;
+		QHBoxLayout* pair;	// the row of frames side by side, while one is being filled
+		QVBoxLayout* half[2];
+		xSheetColumns* cols;
 		QLabel* text(const QString&);
 };
 
 // a control and what goes after it, as one field of a sheet
 QWidget* fieldPair(QWidget*, QWidget*, bool);
+
+// a text that shortens in the middle to the width it gets, whole in its tooltip
+class xElideLabel : public QLabel {
+	public:
+		xElideLabel(QWidget* p = NULL);
+		void setFull(const QString&);
+		QSize sizeHint() const;
+		QSize minimumSizeHint() const;
+	protected:
+		void paintEvent(QPaintEvent*);
+	private:
+		QString full;
+};
 
 class xLabel : public QLabel {
 	Q_OBJECT

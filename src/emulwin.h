@@ -58,7 +58,8 @@ enum {
 	osd_pause,
 	osd_ffwd2,	// x2, then x4 and x8 after it
 	osd_slow2 = osd_ffwd2 + 3,	// 1/2, then 1/4 and 1/8
-	osd_count = osd_slow2 + 3
+	osd_rec = osd_slow2 + 3,	// recording, taking turns with the others
+	osd_count
 };
 
 typedef struct {
@@ -223,6 +224,11 @@ typedef struct {
 		bool saveChanged();
 		void updateHead();
 		void screenShot();
+		void videoRec();
+		void grabScreen();
+		void drawPicture();
+		QRect modeSlot();
+		bool recOsd();
 		void drawIcons(QPainter&);
 		void presentFrame();
 		void uploadFrame();

@@ -94,6 +94,7 @@ int sndPlaybackActive();
 void sndAutoTick(long long);
 
 int snd_wav_open(const char*);
+wavHead wav_prepare(unsigned int rate, unsigned short chans);
 void snd_wav_close();
 void snd_wav_write();
 

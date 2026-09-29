@@ -1796,16 +1796,6 @@ border, instead of stretching it</string>
               <string>Recording</string>
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_rec">
-              <item>
-               <widget class="QLabel" name="labRecTodo">
-                <property name="text">
-                 <string>Nothing here yet: this is where writing the picture to a video file will live, with the size it writes and the settings FFmpeg needs.</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
              </layout>
             </widget>
            </item>
