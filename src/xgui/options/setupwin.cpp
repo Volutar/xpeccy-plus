@@ -2635,7 +2635,12 @@ void SetupWin::buildRecording() {
 	cbRecAbr = new QComboBox;
 	for (int i = 0; recBitrates[i]; i++)
 		cbRecAbr->addItem(QString("%0 kbps").arg(recBitrates[i]), recBitrates[i]);
-	cbRecAbr->setToolTip(tr("-c:a aac -b:a; FFV1 takes FLAC"));
+	cbRecAbr->setToolTip("-b:a");
+	// Opus keeps an AY's square waves clean where AAC smears them, at any bitrate
+	cbRecAcodec = new QComboBox;
+	cbRecAcodec->addItem("AAC", VREC_AAC);
+	cbRecAcodec->addItem("Opus", VREC_OPUS);
+	cbRecAcodec->setToolTip(tr("-c:a aac | libopus; FFV1 takes FLAC"));
 	leRecExtra = new QLineEdit;
 	leRecExtra->setToolTip(tr("Added to the encoder's options, as typed"));
 	// empty, each shows what it would stand in for
@@ -2674,7 +2679,12 @@ void SetupWin::buildRecording() {
 	cbRec60->setText(tr("Blend up to 60 fps"));
 	adv.wide(cbRec60);
 	adv.group(tr("Sound"), 1);
-	adv.row(tr("AAC bitrate"), cbRecAbr);
+	QWidget* sndBox = new QWidget;
+	QHBoxLayout* sndLay = new QHBoxLayout(sndBox);
+	sndLay->setContentsMargins(0, 0, 0, 0);
+	sndLay->addWidget(cbRecAcodec);
+	sndLay->addWidget(cbRecAbr);
+	adv.row(tr("Codec"), sndBox);
 	cbRecPitch->setText(tr("Keep pitch at 50 FPS"));
 	adv.wide(cbRecPitch);
 	// the frame takes the column's width from Sound, and neither the template
@@ -2733,7 +2743,7 @@ void SetupWin::buildRecording() {
 		setRFIndex(cbRecBox, lossy ? recBoxKeep : VREC_MKV);
 		recEnables();
 	});
-	foreach(QComboBox* box, QList<QComboBox*>() << cbRecBox << cbRecCodec << cbRecPreset << cbRecAbr)
+	foreach(QComboBox* box, QList<QComboBox*>() << cbRecBox << cbRecCodec << cbRecPreset << cbRecAcodec << cbRecAbr)
 		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showRecCmd);
 	connect(sbRecCrf, QOverload<int>::of(&QSpinBox::valueChanged), this, &SetupWin::showRecCmd);
 	connect(leRecExtra, &QLineEdit::textChanged, this, &SetupWin::showRecCmd);
@@ -2827,6 +2837,7 @@ void SetupWin::recEnables() {
 	sbRecCrf->setEnabled(lossy && video);
 	cbRecPreset->setEnabled(lossy && video);
 	cbRec60->setEnabled(video);
+	cbRecAcodec->setEnabled(lossy && sound);
 	cbRecAbr->setEnabled(lossy && sound);
 	cbRecPitch->setEnabled((getRFIData(cbRecFps) == VREC_FPS_50) && sound);
 	cbRecStartAt->setEnabled(cbRecStart->isChecked());
@@ -2908,6 +2919,7 @@ xRecord SetupWin::recFromUi() {
 	if (rec.codec == VREC_FFV1) rec.container = recBoxKeep;	// the list says MKV, the choice stays
 	rec.crf = sbRecCrf->value();
 	rec.preset = getRFSData(cbRecPreset).toStdString();
+	rec.acodec = getRFIData(cbRecAcodec);
 	rec.abitrate = getRFIData(cbRecAbr);
 	rec.extra = std::string(leRecExtra->text().trimmed().toLocal8Bit().data());
 	rec.videoOver = std::string(leRecVOver->text().trimmed().toLocal8Bit().data());
@@ -2953,6 +2965,12 @@ void SetupWin::fillRecording() {
 	sbRecCrf->setValue(conf.rec.crf);
 	int idx = cbRecPreset->findData(QString::fromStdString(conf.rec.preset));
 	cbRecPreset->setCurrentIndex(idx < 0 ? 2 : idx);
+	setRFIndex(cbRecAcodec, conf.rec.acodec);
+	// the codec and the bitrate as wide as the wider, measured here as the
+	// Emulation page's lists are: a style or a font would outgrow a width set once
+	int sndw = qMax(comboFitWidth(cbRecAcodec), comboFitWidth(cbRecAbr));
+	cbRecAcodec->setFixedWidth(sndw);
+	cbRecAbr->setFixedWidth(sndw);
 	idx = cbRecAbr->findData(conf.rec.abitrate);
 	cbRecAbr->setCurrentIndex(idx < 0 ? 1 : idx);
 	leRecExtra->setText(QString::fromLocal8Bit(conf.rec.extra.c_str()));

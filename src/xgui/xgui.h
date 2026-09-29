@@ -147,6 +147,7 @@ class xOptSheet {
 		QGridLayout* grid;
 		QHBoxLayout* pair;	// the row of frames side by side, while one is being filled
 		QVBoxLayout* half[2];
+		int nameSet;		// the column the frame being filled is in: 1 lines its names up apart
 		xSheetColumns* cols;
 		QLabel* text(const QString&);
 };

@@ -107,7 +107,7 @@ class SetupWin : public QDialog {
 		QComboBox* drvCountBox;
 		// video recording
 		QLineEdit *leRecFfmpeg, *leRecDir, *leRecExtra, *leRecVOver, *leRecSOver;
-		QComboBox *cbRecSrc, *cbRecScale, *cbRecFps, *cbRecBox, *cbRecCodec, *cbRecPreset, *cbRecAbr;
+		QComboBox *cbRecSrc, *cbRecScale, *cbRecFps, *cbRecBox, *cbRecCodec, *cbRecPreset, *cbRecAcodec, *cbRecAbr;
 		QSpinBox* sbRecCrf;
 		QCheckBox *cbRec60, *cbRecPitch, *cbRecStart, *cbRecStop;
 		QComboBox *cbRecStartAt, *cbRecStopAt;

@@ -324,7 +324,10 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const Q
 	if (lossless) {
 		ms << "-c:a" << "flac";
 	} else {
-		ms << "-c:a" << "aac" << "-b:a" << QString("%0k").arg(rec.abitrate);
+		bool opus = (rec.acodec == VREC_OPUS);
+		ms << "-c:a" << (opus ? "libopus" : "aac") << "-b:a" << QString("%0k").arg(rec.abitrate);
+		// FFmpeg before 4.3 calls opus in mp4 experimental and refuses it without this
+		if (opus && (ext == "mp4")) ms << "-strict" << "-2";
 	}
 	ma << vr_or(rec.soundOver, ms);
 	if (ext == "mp4") {
