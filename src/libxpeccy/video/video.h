@@ -126,6 +126,7 @@ struct Video {
 
 	int brdstep;
 	int brdmode;		// VID_BRD_* : how much border to show
+	int brdmin;		// VID_BRD_* : the least the machine's own picture needs
 	unsigned char brdcol;
 	unsigned char nextbrd;
 

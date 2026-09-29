@@ -64,6 +64,9 @@ before that point is upstream's history and is not repeated here.
 - **The ZX Evo start menu shows its clock**, and the clock chip's memory keeps every cell to
   itself on ZX Evo, Pentagon 1024 and Profi; ZX Evo settings saved earlier are carried over.
 
+- **TSConf, ZX Evo and ATM Turbo show their own screen modes whole** whatever the border size;
+  on TSConf the border setting is locked.
+
 - **TSConf honours the write protection of RAM mapped at #0000**, so a program writing there
   no longer overwrites it.
 
