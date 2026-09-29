@@ -3056,7 +3056,7 @@ void SetupWin::showRecCmd() {
 	recSizes(&in, &out);
 	// what the file will be called, with the image in use now; the file names
 	// alone, and none of the options that only keep FFmpeg quiet
-	QString name = vrec_file_name(leRecName->text(), media_image_name(conf.zx), QDateTime::currentDateTime());
+	QString name = vrec_file_name(leRecName->text(), media_image_name(), QDateTime::currentDateTime());
 	vrecCmd cmd = vrec_command(rec, in.width(), in.height(), conf.zx->vid->nsPerFrame, conf.snd.rate, name, false);
 	labRecName->setFull(cmd.out);
 	// the colour resolution the video is written in, under its size
