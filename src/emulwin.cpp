@@ -936,7 +936,6 @@ void MainWin::videoRec() {
 // file: the one the command line names, else the settings' folder and template
 bool MainWin::recStart(const QString& file) {
 	Computer* comp = conf.zx;
-	QString base = media_image_name(comp);
 	int sw = 0;
 	int sh = 0;
 #if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
@@ -948,7 +947,7 @@ bool MainWin::recStart(const QString& file) {
 #endif
 	QString err;
 	// started, the blinking sign says so: a message would be in the video
-	if (vrec_start(comp, base, sw, sh, &err, file)) return true;
+	if (vrec_start(comp, media_image_name(), sw, sh, &err, file)) return true;
 	setMessage(QString(" video: %0 ").arg(err), 4.0);
 	xlog(XLG_VIDEO, XLL_WARN, "recording not started: %s", err.toLocal8Bit().data());
 	return false;
@@ -1706,6 +1705,7 @@ void MainWin::showMedia(const QString& path, int src) {
 	mediaSrc = src;
 	if (path == media_current()) return;
 	media_set_current(path);
+	vrec_note_image(media_image_name());	// a recording is named after it
 	updateHead();
 }
 

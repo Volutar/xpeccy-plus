@@ -32,7 +32,7 @@ extern const char* vrecPresets[];		// the speeds, x264's names, fastest first
 enum {VREC_IDLE = 0, VREC_RUN, VREC_FINISH};
 
 #define VREC_SCALE_MAX	8
-#define VREC_NAME_DEF	"%d_%t_%image"
+#define VREC_NAME_DEF	"xpeccy-plus_%d_%t_%image"
 
 QString vrec_ffmpeg();				// the program that will be run, empty if none
 QString vrec_ffmpeg_auto();			// ...when the settings name none
@@ -71,8 +71,9 @@ QString vrec_command_line(const QStringList&, bool lines = false);
 QString vrec_args_line(const QStringList&);
 QString vrec_file_name(const QString& tpl, const QString& image, const QDateTime& when);
 
-bool vrec_start(Computer*, const QString& base, int scrW, int scrH, QString* err, const QString& file = QString());
+bool vrec_start(Computer*, const QString& image, int scrW, int scrH, QString* err, const QString& file = QString());
 void vrec_stop();
+void vrec_note_image(const QString&);	// the image in use, while it records
 void vrec_wait();			// until the last one is written, for the exit
 int vrec_state();
 QString vrec_message();			// what the window should say, once

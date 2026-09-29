@@ -68,6 +68,17 @@ static QWaitCondition vrNotFull;
 static std::deque<vrJob*> vrQueue;
 static qint64 vrQueued = 0;
 static bool vrStopping = false;
+// The name is settled on stop, with the image last in use while it recorded:
+// a recording is usually started before the game is loaded
+static QString vrImage;
+static bool vrByFile;		// the command line named the file: it keeps that name
+static QString vrTpl;
+static QString vrDir;
+static QString vrExt;
+static QDateTime vrWhen;
+// What the writer puts the video together as. Made on the GUI thread in
+// vrec_stop(): the name reads the settings, which the writer must not.
+static QString vrFinal;
 static QString vrMsg;
 static QImage vrScreen;
 
@@ -504,8 +515,8 @@ QString vrec_command_line(const QStringList& args, bool lines) {
 }
 
 // The file name, extension aside: %d the date, %t the time, %image the image
-// in use (else the machine), %machine the machine. One pass, so a key that
-// turns up in an image's name is left as it is.
+// in use (the machine when there is none), %machine the machine. One pass, so
+// a key that turns up in an image's name is left as it is.
 QString vrec_file_name(const QString& tpl, const QString& image, const QDateTime& when) {
 	QString src = tpl.trimmed().isEmpty() ? QString(VREC_NAME_DEF) : tpl.trimmed();
 	static const QRegularExpression key("%(image|machine|d|t)");
@@ -518,7 +529,7 @@ QString vrec_file_name(const QString& tpl, const QString& image, const QDateTime
 		QString k = m.captured(1);
 		if (k == "d") res += when.toString("yyyyMMdd");
 		else if (k == "t") res += when.toString("HHmmss");
-		else if (k == "image") res += image;
+		else if (k == "image") res += image.isEmpty() ? QString::fromStdString(conf.macId) : image;
 		else res += QString::fromStdString(conf.macId);
 		pos = m.capturedEnd();
 	}
@@ -701,7 +712,7 @@ void vrec_manual() {
 
 // START / STOP
 
-bool vrec_start(Computer* comp, const QString& base, int scrW, int scrH, QString* err, const QString& file) {
+bool vrec_start(Computer* comp, const QString& image, int scrW, int scrH, QString* err, const QString& file) {
 	if (vrState.load() != VREC_IDLE) {
 		*err = "the last video is still being written";
 		return false;
@@ -731,7 +742,9 @@ bool vrec_start(Computer* comp, const QString& base, int scrW, int scrH, QString
 		*err = "no picture to record";
 		return false;
 	}
-	QString name = vrec_file_name(QString::fromLocal8Bit(conf.rec.name.c_str()), base, QDateTime::currentDateTime());
+	QDateTime when = QDateTime::currentDateTime();
+	QString tpl = QString::fromLocal8Bit(conf.rec.name.c_str());
+	QString name = vrec_file_name(tpl, image, when);
 	if (!file.isEmpty()) {
 		QString ext = QFileInfo(file).suffix().toLower();
 		if (ext == "mkv") rec.container = VREC_MKV;
@@ -748,6 +761,13 @@ bool vrec_start(Computer* comp, const QString& base, int scrW, int scrH, QString
 		vrStopping = false;
 		vrMsg.clear();
 		vrScreen = QImage();
+		vrImage = image;
+		vrByFile = !file.isEmpty();
+		vrTpl = tpl;
+		vrDir = dir;
+		vrExt = cmd.out.mid(cmd.out.lastIndexOf('.'));
+		vrWhen = when;
+		vrFinal.clear();
 	}
 	vrSrc = rec.source;
 	vrW = w;
@@ -770,8 +790,17 @@ void vrec_stop() {
 	vrState.store(VREC_FINISH);
 	QMutexLocker lock(&vrMutex);
 	vrStopping = true;
+	if (!vrByFile)
+		vrFinal = QDir(vrDir).filePath(vrec_file_name(vrTpl, vrImage, vrWhen)) + vrExt;
 	vrNotEmpty.wakeAll();
 	vrNotFull.wakeAll();
+}
+
+// the image in use now: while a recording runs, the last one there was names it
+void vrec_note_image(const QString& image) {
+	if (image.isEmpty() || (vrState.load() != VREC_RUN)) return;
+	QMutexLocker lock(&vrMutex);
+	vrImage = image;
 }
 
 void vrec_wait() {
@@ -1020,6 +1049,13 @@ void vrWriter::run() {
 		encOk = false;
 	}
 	if (encOk) {
+		{
+			QMutexLocker lock(&vrMutex);
+			if (!vrFinal.isEmpty()) {
+				cmd.out = vrFinal;
+				cmd.mux.last() = cmd.out;
+			}
+		}
 		QProcess mux;
 		mux.setStandardOutputFile(QProcess::nullDevice());
 		xlog(XLG_VIDEO, XLL_DEBUG, "ffmpeg %s", cmd.mux.join(' ').toLocal8Bit().data());
