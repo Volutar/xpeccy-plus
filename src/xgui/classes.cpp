@@ -497,7 +497,7 @@ void xIconGroup::paintEvent(QPaintEvent* ev) {
 class xSheetColumns : public QObject {
 	public:
 		QList<QGridLayout*> grids;
-		QList<QLabel*> names;
+		QList<QLabel*> names[2];	// the right column's frames line up among themselves
 		QList<QCheckBox*> checks;
 		QHash<QGridLayout*, QList<QWidget*> > sized;	// side by side: the frame's own width
 		xSheetColumns(QWidget* body) : QObject(body) {
@@ -506,12 +506,14 @@ class xSheetColumns : public QObject {
 	protected:
 		bool eventFilter(QObject*, QEvent* ev) {
 			if (ev->type() != QEvent::Show) return false;
-			int wid = 0;
-			foreach(QLabel* lab, names) {
-				lab->setMinimumWidth(0);
-				wid = qMax(wid, lab->sizeHint().width());
+			for (int i = 0; i < 2; i++) {
+				int wid = 0;
+				foreach(QLabel* lab, names[i]) {
+					lab->setMinimumWidth(0);
+					wid = qMax(wid, lab->sizeHint().width());
+				}
+				foreach(QLabel* lab, names[i]) lab->setMinimumWidth(wid);
 			}
-			foreach(QLabel* lab, names) lab->setMinimumWidth(wid);
 			// Every name starts where a check box's text does, in every frame, with
 			// or without a check box in it. The grids have no spacing of their own:
 			// a grid leaves it out after an empty column, and the names moved about.
@@ -579,6 +581,7 @@ xOptSheet::xOptSheet() {
 	cols = new xSheetColumns(body);
 	cols->grids.append(grid);
 	pair = NULL;
+	nameSet = 0;
 }
 
 // A frame of its own; what follows goes into it. side 0 and 1 put it in the
@@ -603,6 +606,7 @@ void xOptSheet::group(const QString& title, int side) {
 		half[side & 1]->insertWidget(half[side & 1]->count() - 1, frm);
 		if (side & 1) frm->setMinimumWidth(SHEET_SIDE_MIN);
 	}
+	nameSet = (side >= 0) ? (side & 1) : 0;
 	grid = sheet_grid(frm, pair != NULL);
 	cols->grids.append(grid);
 }
@@ -613,7 +617,7 @@ void xOptSheet::row(const QString& name, QWidget* wid) {
 	QLabel* nam = new QLabel(name);
 	nam->setContentsMargins(0, 0, SHEET_GAP, 0);
 	grid->addWidget(nam, row, 1);
-	cols->names.append(nam);
+	cols->names[nameSet].append(nam);
 	// a line of text takes the width, anything else keeps the lists' own
 	bool line = qobject_cast<QLineEdit*>(wid) != NULL;
 	grid->addWidget(fieldPair(wid, NULL, line), row, 2);
@@ -642,7 +646,7 @@ void xOptSheet::field(const QString& name, QWidget* wid, const QString& desc) {
 	if (wid->sizeHint().height() < 2 * nam->sizeHint().height())
 		nam->setMinimumHeight(wid->sizeHint().height());
 	grid->addWidget(nam, row, 1, Qt::AlignTop);
-	cols->names.append(nam);
+	cols->names[nameSet].append(nam);
 	// a list keeps the width of the others on the page, as in Advanced settings
 	Qt::Alignment al = Qt::AlignTop;
 	if (qobject_cast<QComboBox*>(wid)) {
@@ -677,7 +681,7 @@ void xOptSheet::check(QCheckBox* cb, const QString& name, const QString& desc, b
 	grid->addWidget(nam, row, 1, Qt::AlignTop);
 	grid->addWidget(dsc, row, 2, Qt::AlignTop);
 	new xFollowEnabled(cb, QList<QWidget*>() << nam << dsc);
-	cols->names.append(nam);
+	cols->names[nameSet].append(nam);
 	cols->checks.append(cb);
 }
 
