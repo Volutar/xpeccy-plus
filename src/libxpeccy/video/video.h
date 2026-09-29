@@ -203,6 +203,10 @@ struct Video {
 		ePair(scrLine, loffh, loffl);
 		ePair(intLine, ilinh, ilinl);	// INT line
 		unsigned char intInc;		// VSINTH b7..4: lines the INT line moves on after each frame INT
+		struct {			// written by the cpu, taken at the start of the blanking (video_ports.v)
+			unsigned char vconf, vpage, gxl, gxh, palsel, t0xl, t0xh, t1xl, t1xh, t0g, t1g, gyl, gyh;
+			unsigned short mask;	// TSL_LAT_* of the fields waiting
+		} lat;
 		unsigned palUpd:1;		// cram was written: apply it at the next line start
 		unsigned char cram[0x200];	// pal = colram?
 		unsigned char sfile[0x200];	// sprites = ram?
@@ -324,6 +328,23 @@ void vid_fnt_load(Video*, const char*);
 void vid_fnt_del(Video*);
 
 void tslUpdatePorts(Video*);
+
+// TSConf registers the controller takes at the start of a line, not at once
+enum {
+	TSL_LAT_VCONF = 1 << 0,
+	TSL_LAT_VPAGE = 1 << 1,
+	TSL_LAT_GXL = 1 << 2,
+	TSL_LAT_GXH = 1 << 3,
+	TSL_LAT_PAL = 1 << 4,
+	TSL_LAT_T0XL = 1 << 5,
+	TSL_LAT_T0XH = 1 << 6,
+	TSL_LAT_T1XL = 1 << 7,
+	TSL_LAT_T1XH = 1 << 8,
+	TSL_LAT_T0G = 1 << 9,
+	TSL_LAT_T1G = 1 << 10,
+	TSL_LAT_GYL = 1 << 11,		// GYOffs itself is at once, but the row counter reloads
+	TSL_LAT_GYH = 1 << 12		// from it only at the next line start
+};
 
 #ifdef __cplusplus
 }

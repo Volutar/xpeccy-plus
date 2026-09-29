@@ -83,7 +83,8 @@ void tslReset(Computer* comp) {
 	comp->vid->tsconf.intLine = 0;
 	comp->vid->tsconf.intInc = 0;
 	comp->vid->tsconf.hsint = 2;		// HSINT resets to 1
-	comp->vid->intp.x = 0;
+	comp->vid->tsconf.lat.mask = 0;
+	comp->vid->intp.x = comp->vid->tsconf.hsint;
 	comp->vid->intp.y = 0;
 	comp->vid->inten = 1;
 	comp->flgLINT = 0;		// the ack latches are not cleared anywhere else
@@ -304,7 +305,8 @@ void tsOut7FFD(Computer* comp, int port, int val) {
 	comp->p7FFD = (lck == 3) ? ((val & ~0x20) | (comp->p7FFD & 0x20)) : (val & 0xff);
 	comp->flgROM = (val & 0x10) ? 1 : 0;
 	memSetBank(comp->mem,0xc0,MEM_RAM,num, MEM_16K,NULL,NULL,NULL);
-	comp->vid->vidPage = (val & 8) ? 7 : 5;
+	comp->vid->vidPage = (val & 8) ? 7 : 5;	// at once, over whatever waits
+	comp->vid->tsconf.lat.mask &= ~TSL_LAT_VPAGE;
 	tslMapMem(comp);
 }
 
@@ -332,23 +334,19 @@ int tsIn00AF(Computer* comp, int port) {
 	return res;
 }
 
-void tsOut00AF(Computer* comp, int port, int val) {comp->vid->tsconf.p00af = val & 0xff;}
-void tsOut01AF(Computer* comp, int port, int val) {comp->vid->vidPage = val & 0xff;}
-void tsOut02AF(Computer* comp, int port, int val) {comp->vid->tsconf.soxl = val & 0xff;}
-void tsOut03AF(Computer* comp, int port, int val) {comp->vid->tsconf.soxh = val & 1;}
+// the registers video_ports.v latches at the line start wait in tsconf.lat until then
+#define TS_LAT(fld, bit, v) {comp->vid->tsconf.lat.fld = (v); comp->vid->tsconf.lat.mask |= (bit);}
 
-void tsOut04AF(Computer* comp, int port, int val) {
-	comp->vid->tsconf.soyl = val & 0xff;
-	comp->vid->tsconf.scrLine = 0;
-}
+void tsOut00AF(Computer* comp, int port, int val) TS_LAT(vconf, TSL_LAT_VCONF, val & 0xff)
+void tsOut01AF(Computer* comp, int port, int val) TS_LAT(vpage, TSL_LAT_VPAGE, val & 0xff)
+void tsOut02AF(Computer* comp, int port, int val) TS_LAT(gxl, TSL_LAT_GXL, val & 0xff)
+void tsOut03AF(Computer* comp, int port, int val) TS_LAT(gxh, TSL_LAT_GXH, val & 1)
 
-void tsOut05AF(Computer* comp, int port, int val) {
-	comp->vid->tsconf.soyh = val & 1;
-	comp->vid->tsconf.scrLine = 0;
-}
+void tsOut04AF(Computer* comp, int port, int val) TS_LAT(gyl, TSL_LAT_GYL, val & 0xff)
+void tsOut05AF(Computer* comp, int port, int val) TS_LAT(gyh, TSL_LAT_GYH, val & 1)
 
 void tsOut06AF(Computer* comp, int port, int val) {comp->vid->tsconf.tconfig = val & 0xff;}
-void tsOut07AF(Computer* comp, int port, int val) {comp->vid->tsconf.p07af = val & 0xff;}
+void tsOut07AF(Computer* comp, int port, int val) TS_LAT(palsel, TSL_LAT_PAL, val & 0xff)
 void tsOut0FAF(Computer* comp, int port, int val) {comp->vid->nextbrd = val & 0xff;}
 
 void tsOut10AF(Computer* comp, int port, int val) {
@@ -369,8 +367,8 @@ void tsOut15AF(Computer* comp, int port, int val) {
 }
 
 void tsOut16AF(Computer* comp, int port, int val) {comp->vid->tsconf.TMPage = val & 0xff;}
-void tsOut17AF(Computer* comp, int port, int val) {comp->vid->tsconf.T0GPage = val & 0xf8;}
-void tsOut18AF(Computer* comp, int port, int val) {comp->vid->tsconf.T1GPage = val & 0xf8;}
+void tsOut17AF(Computer* comp, int port, int val) TS_LAT(t0g, TSL_LAT_T0G, val & 0xf8)
+void tsOut18AF(Computer* comp, int port, int val) TS_LAT(t1g, TSL_LAT_T1G, val & 0xf8)
 void tsOut19AF(Computer* comp, int port, int val) {comp->vid->tsconf.SGPage = val & 0xf8;}
 
 void tsOut1AAF(Computer* comp, int port, int val) {comp->dmaSrc.l = val & 0xff;}
@@ -398,7 +396,8 @@ void tsOut21AF(Computer* comp, int port, int val) {
 }
 
 void tsOut22AF(Computer* comp, int port, int val) {
-	comp->vid->tsconf.hsint = (val << 1); // + comp->vid->blank.x;		// base value, real pos = base + shift by line rendering
+	// counted in dots from the start of the blanking, as ray.xb is (video_sync.v)
+	comp->vid->tsconf.hsint = (val << 1);
 	comp->vid->intp.x = comp->vid->tsconf.hsint;
 }
 
@@ -589,12 +588,12 @@ void tsOut2AAF(Computer* comp, int port, int val) {
 	}
 }
 
-void tsOut40AF(Computer* comp, int port, int val) {comp->vid->tsconf.t0xl = val & 0xff;}
-void tsOut41AF(Computer* comp, int port, int val) {comp->vid->tsconf.t0xh = val & 1;}
+void tsOut40AF(Computer* comp, int port, int val) TS_LAT(t0xl, TSL_LAT_T0XL, val & 0xff)
+void tsOut41AF(Computer* comp, int port, int val) TS_LAT(t0xh, TSL_LAT_T0XH, val & 1)
 void tsOut42AF(Computer* comp, int port, int val) {comp->vid->tsconf.t0yl = val & 0xff;}
 void tsOut43AF(Computer* comp, int port, int val) {comp->vid->tsconf.t0yh = val & 1;}
-void tsOut44AF(Computer* comp, int port, int val) {comp->vid->tsconf.t1xl = val & 0xff;}
-void tsOut45AF(Computer* comp, int port, int val) {comp->vid->tsconf.t1xh = val & 1;}
+void tsOut44AF(Computer* comp, int port, int val) TS_LAT(t1xl, TSL_LAT_T1XL, val & 0xff)
+void tsOut45AF(Computer* comp, int port, int val) TS_LAT(t1xh, TSL_LAT_T1XH, val & 1)
 void tsOut46AF(Computer* comp, int port, int val) {comp->vid->tsconf.t1yl = val & 0xff;}
 void tsOut47AF(Computer* comp, int port, int val) {comp->vid->tsconf.t1yh = val & 1;}
 

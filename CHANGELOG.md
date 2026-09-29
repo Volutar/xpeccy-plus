@@ -70,6 +70,14 @@ before that point is upstream's history and is not repeated here.
 - **TSConf honours the write protection of RAM mapped at #0000**, so a program writing there
   no longer overwrites it.
 
+- **TSConf follows its FPGA sources more closely:**
+  - the frame interrupt comes once a frame at 7 and 14 MHz, and is no longer lost when line
+    interrupts are on;
+  - DMA copies every block to the palette and the sprites, and works with the hard disk;
+  - disks run from the SD card as virtual drives, and TR-DOS can page memory and play sound;
+  - 1024K paging through #7FFD, 16-colour scrolling by a single pixel, and SPG files start
+    with BASIC 48 in place.
+
 ## 2026.5.1 - 2026-09-26
 
 ### Added
