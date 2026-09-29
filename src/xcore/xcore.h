@@ -613,6 +613,7 @@ typedef struct {
 	int autoStartAdr;
 	int autoStopOp;		// own is a reset
 	int autoStopAdr;
+	int acodec;		// VREC_AAC, VREC_OPUS; FFV1 takes FLAC whatever this says
 	int abitrate;		// kbps
 	std::string extra;	// more encoder options, as typed
 	std::string videoOver;	// the picture's options, as typed, in place of the ones made

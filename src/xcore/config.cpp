@@ -47,6 +47,7 @@ std::map<std::string, int> shotFormat;
 static const char* recSrcName[] = {"picture", "screen", NULL};
 static const char* recFpsName[] = {"machine", "50", NULL};
 static const char* recBoxName[] = {"mp4", "mkv", NULL};
+static const char* recAudioName[] = {"aac", "opus", NULL};
 static const char* recCodecName[] = {"h264", "h265", "ffv1", "h264_nvenc", "h265_nvenc", NULL};
 
 static int rec_id(const char** tab, const std::string& nam, int def) {
@@ -129,6 +130,7 @@ void conf_init(char* wpath, char* confdir) {
 	conf.rec.autoStopOp = VREC_AT_OWN;
 	conf.rec.autoStopAdr = 0;
 	conf.rec.name = VREC_NAME_DEF;
+	conf.rec.acodec = VREC_OPUS;	// cleaner than AAC on an AY; editors that want AAC get it by hand
 	conf.rec.abitrate = 192;
 	conf.running = 0;
 	conf.boot = 1;
@@ -204,6 +206,7 @@ void saveConfig() {
 	fprintf(cfile, "rec.autostop = %s\n", YESNO(conf.rec.autoStop));
 	fprintf(cfile, "rec.autostop.at = %s\n", vrec_auto_text(conf.rec.autoStopOp, conf.rec.autoStopAdr, "reset").toLocal8Bit().data());
 	fprintf(cfile, "rec.name = %s\n", conf.rec.name.c_str());
+	fprintf(cfile, "rec.audio = %s\n", recAudioName[conf.rec.acodec]);
 	fprintf(cfile, "rec.abitrate = %i\n", conf.rec.abitrate);
 	fprintf(cfile, "rec.extra = %s\n", conf.rec.extra.c_str());
 	fprintf(cfile, "rec.video.override = %s\n", conf.rec.videoOver.c_str());
@@ -902,6 +905,7 @@ void loadConfig() {
 					if (pnam=="rec.autostop") conf.rec.autoStop = arg.b;
 					if (pnam=="rec.autostop.at") vrec_auto_parse(QString::fromLocal8Bit(pval.c_str()), &conf.rec.autoStopOp, &conf.rec.autoStopAdr);
 					if (pnam=="rec.name") conf.rec.name = pval;
+					if (pnam=="rec.audio") conf.rec.acodec = rec_id(recAudioName, pval, VREC_OPUS);
 					if (pnam=="rec.abitrate") conf.rec.abitrate = getRanged(arg.s, 64, 512);
 					if (pnam=="rec.extra") conf.rec.extra = pval;
 					if (pnam=="rec.video.override") conf.rec.videoOver = pval;

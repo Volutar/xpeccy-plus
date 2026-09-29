@@ -23,6 +23,7 @@ enum {
 };
 
 enum {VREC_MP4 = 0, VREC_MKV};
+enum {VREC_AAC = 0, VREC_OPUS};
 enum {VREC_H264 = 0, VREC_H265, VREC_FFV1, VREC_H264_NVENC, VREC_H265_NVENC};
 
 extern const char* vrecPresets[];		// the speeds, x264's names, fastest first
