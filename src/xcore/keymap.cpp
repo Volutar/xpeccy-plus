@@ -479,6 +479,7 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_SPEED_UP, "key.speed.up", "Speed up", QKeySequence(), QKeySequence(Qt::AltModifier | Qt::KeypadModifier | Qt::Key_Plus)},
 	{SCG_MAIN, XCUT_SPEED_DOWN, "key.speed.down", "Speed down", QKeySequence(), QKeySequence(Qt::AltModifier | Qt::KeypadModifier | Qt::Key_Minus)},
 //	{SCG_MAIN, XCUT_TVLINES, "key.scanlines", "Switch scanlines", QKeySequence(), QKeySequence()},
+	{SCG_MAIN, XCUT_VIDREC, "key.video.rec", "Start/stop video recording", QKeySequence(), QKeySequence(Qt::CTRL | Qt::Key_F7)},
 	{SCG_MAIN, XCUT_WAV_OUT, "key.write.wav", "Start/stop WAV output", QKeySequence(), QKeySequence()},
 	{SCG_MAIN, XCUT_RELOAD_SHD, "key.reload.shader", "Reload shader", QKeySequence(), QKeySequence()},
 	{SCG_MAIN, XCUT_RELOAD, "key.reload", "Reload snapshot and labels", QKeySequence(), QKeySequence()},

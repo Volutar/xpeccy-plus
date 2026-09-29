@@ -11,6 +11,7 @@
 #include "xcore/autostart.h"
 #include "xcore/fastload.h"
 #include "xcore/rewind.h"
+#include "xcore/vidrec.h"
 #include "xcore/tapetrap.h"
 #include "xcore/vfilters.h"
 #include "libxpeccy/cpu/Z80/z80.h"
@@ -406,6 +407,7 @@ void xThread::emuCycle(Computer* comp) {
 				if (rw > 1) {
 					conf.vid.fctime = paceClockNs();
 					conf.vid.fcount++;
+					vrec_frame(comp);
 					emit s_frame();
 				}
 				if (conf.snd.need <= 0) conf.snd.fill = 0;
@@ -489,7 +491,7 @@ void xThread::emuCycle(Computer* comp) {
 					comp->vid->vsze.x * 2, comp->vid->vsze.y, bytesPerLine,
 					noflic / 100.0, noflicGamma, noflicMode);
 
-			// printf("s_frame\n");
+			vrec_frame(comp);
 			emit s_frame();
 			if (wound) xstate_load(raState, comp);
 		}

@@ -347,6 +347,15 @@ QString media_current() {
 	return media_now;
 }
 
+// what a video of the machine is named after: the image in use, else what is
+// in the deck or drive A - a tape about to be started - else the machine
+QString media_image_name(Computer* comp) {
+	QString res = QFileInfo(media_now).completeBaseName();
+	if (res.isEmpty() && comp->tape->path) res = QFileInfo(QString::fromLocal8Bit(comp->tape->path)).completeBaseName();
+	if (res.isEmpty() && comp->dif->flp[0]->path) res = QFileInfo(QString::fromLocal8Bit(comp->dif->flp[0]->path)).completeBaseName();
+	return res.isEmpty() ? QString::fromStdString(conf.macId) : res;
+}
+
 void media_set_current(const QString& path) {
 	media_now = path;
 }

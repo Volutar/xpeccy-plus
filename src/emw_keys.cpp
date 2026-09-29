@@ -351,6 +351,9 @@ void MainWin::xkey_press(int xkey) {
 					tapStateChanged(TW_STATE,TWS_REC);
 				}
 				break;
+			case XCUT_VIDREC:
+				videoRec();
+				break;
 			case XCUT_SCRSHOT:
 				if (scrCounter == 0) {
 					scrCounter = 1;

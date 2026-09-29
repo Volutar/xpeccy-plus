@@ -70,6 +70,7 @@ int media_reload(Computer*);
 QString file_take_snapshot();
 // the image in use, as the window title names it; empty when none
 QString media_current();
+QString media_image_name(Computer*);
 void media_set_current(const QString& path);
 // the machine that file should be opened on, before it is (xcore/filemachine.h):
 // *mac comes back empty to keep the running one, false means do not open it

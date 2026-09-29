@@ -482,10 +482,67 @@ void xIconGroup::paintEvent(QPaintEvent* ev) {
 }
 
 // A pop-up laid out like Advanced settings: fields with a name first, then a
-// line, then check boxes with a name and, in italics, what they do.
+// line, then check boxes with a name and, in italics, what they do. A bigger
+// one puts them in frames, one row to a field, as Advanced settings does.
 
 #define	SHEET_TEXT	300		// the description column; keeps the window near 520
-#define	SHEET_GAP	10		// from a name to its description, as in Advanced settings
+#define	SHEET_GAP	16		// from a name to its description, as in Advanced settings
+#define	SHEET_SIDE_MIN	300		// the right column of a row of frames, which takes a wider window
+#define	SHEET_CTRL	200		// a list's width, as in Advanced settings
+
+// Every frame of a sheet is a grid of its own, so the columns are lined up
+// across them here, once the style has given the labels their font.
+class xSheetColumns : public QObject {
+	public:
+		QList<QGridLayout*> grids;
+		QList<QLabel*> names;
+		QList<QCheckBox*> checks;
+		QHash<QGridLayout*, QList<QWidget*> > sized;	// side by side: the frame's own width
+		xSheetColumns(QWidget* body) : QObject(body) {
+			body->installEventFilter(this);
+		}
+	protected:
+		bool eventFilter(QObject*, QEvent* ev) {
+			if (ev->type() != QEvent::Show) return false;
+			int wid = 0;
+			foreach(QLabel* lab, names) {
+				lab->setMinimumWidth(0);
+				wid = qMax(wid, lab->sizeHint().width());
+			}
+			foreach(QLabel* lab, names) lab->setMinimumWidth(wid);
+			// Every name starts where a check box's text does, in every frame, with
+			// or without a check box in it. The grids have no spacing of their own:
+			// a grid leaves it out after an empty column, and the names moved about.
+			int off = 0;
+			if (!checks.isEmpty()) {
+				QCheckBox* cb = checks.first();
+				QStyleOptionButton opt;
+				opt.initFrom(cb);
+				opt.text = "x";
+				off = cb->style()->subElementRect(QStyle::SE_CheckBoxContents, &opt, cb).left();
+			}
+			foreach(QGridLayout* grd, grids) grd->setColumnMinimumWidth(0, off);
+			// a frame that shares its row is as wide as its longest value needs
+			foreach(QList<QWidget*> list, sized) {
+				int cw = 0;
+				foreach(QWidget* wid, list) {
+					wid->setMinimumWidth(0);
+					wid->setMaximumWidth(QWIDGETSIZE_MAX);
+					cw = qMax(cw, wid->sizeHint().width());
+				}
+				foreach(QWidget* wid, list) wid->setFixedWidth(cw);
+			}
+			return false;
+		}
+};
+
+static QGridLayout* sheet_grid(QWidget* wid, bool side = false) {
+	QGridLayout* grd = new QGridLayout(wid);
+	grd->setHorizontalSpacing(0);		// see xSheetColumns
+	grd->setColumnMinimumWidth(2, side ? 0 : SHEET_TEXT);
+	grd->setColumnStretch(2, 1);
+	return grd;
+}
 
 class xFollowEnabled : public QObject {
 	public:
@@ -510,15 +567,68 @@ class xFollowEnabled : public QObject {
 // hides moves only what is below it
 xOptSheet::xOptSheet() {
 	body = new QWidget;
-	QVBoxLayout* box = new QVBoxLayout(body);
+	box = new QVBoxLayout(body);
 	box->setContentsMargins(0, 0, 0, 0);
-	QWidget* rows = new QWidget;
+	rows = new QWidget;
 	box->addWidget(rows);
 	box->addStretch(1);
-	grid = new QGridLayout(rows);
+	grid = sheet_grid(rows);
 	grid->setContentsMargins(0, 0, 0, 0);
-	grid->setColumnMinimumWidth(2, SHEET_TEXT);
-	grid->setColumnStretch(2, 1);
+	cols = new xSheetColumns(body);
+	cols->grids.append(grid);
+	pair = NULL;
+}
+
+// A frame of its own; what follows goes into it. side 0 and 1 put it in the
+// left or right column of a row of frames, -1 across the sheet under them.
+void xOptSheet::group(const QString& title, int side) {
+	if (grid->count() == 0) rows->hide();		// nothing before the first frame
+	QGroupBox* frm = new QGroupBox(title);
+	if (side < 0) {
+		pair = NULL;
+		box->insertWidget(box->count() - 1, frm);
+	} else {
+		if (!pair) {
+			pair = new QHBoxLayout;
+			box->insertLayout(box->count() - 1, pair);
+			// the left column keeps its width, the right one takes what the window gives
+			for (int i = 0; i < 2; i++) {
+				half[i] = new QVBoxLayout;
+				half[i]->addStretch(1);		// a shorter column keeps its frames at the top
+				pair->addLayout(half[i], i);
+			}
+		}
+		half[side & 1]->insertWidget(half[side & 1]->count() - 1, frm);
+		if (side & 1) frm->setMinimumWidth(SHEET_SIDE_MIN);
+	}
+	grid = sheet_grid(frm, pair != NULL);
+	cols->grids.append(grid);
+}
+
+// one line: the name and the control, at a list's width
+void xOptSheet::row(const QString& name, QWidget* wid) {
+	int row = grid->rowCount();
+	QLabel* nam = new QLabel(name);
+	nam->setContentsMargins(0, 0, SHEET_GAP, 0);
+	grid->addWidget(nam, row, 1);
+	cols->names.append(nam);
+	// a line of text takes the width, anything else keeps the lists' own
+	bool line = qobject_cast<QLineEdit*>(wid) != NULL;
+	grid->addWidget(fieldPair(wid, NULL, line), row, 2);
+	// after fieldPair, which sets its own
+	if (pair) {
+		cols->sized[grid].append(wid);
+	} else if (!line) {
+		wid->setMinimumWidth(SHEET_CTRL);
+	}
+	new xFollowEnabled(wid, QList<QWidget*>() << nam);
+}
+
+// across the whole frame, under the rows
+void xOptSheet::wide(QWidget* wid) {
+	grid->addWidget(wid, grid->rowCount(), 0, 1, 3);
+	QCheckBox* cb = qobject_cast<QCheckBox*>(wid);
+	if (cb) cols->checks.append(cb);
 }
 
 void xOptSheet::field(const QString& name, QWidget* wid, const QString& desc) {
@@ -530,10 +640,11 @@ void xOptSheet::field(const QString& name, QWidget* wid, const QString& desc) {
 	if (wid->sizeHint().height() < 2 * nam->sizeHint().height())
 		nam->setMinimumHeight(wid->sizeHint().height());
 	grid->addWidget(nam, row, 1, Qt::AlignTop);
+	cols->names.append(nam);
 	// a list keeps the width of the others on the page, as in Advanced settings
 	Qt::Alignment al = Qt::AlignTop;
 	if (qobject_cast<QComboBox*>(wid)) {
-		wid->setMinimumWidth(200);
+		wid->setMinimumWidth(SHEET_CTRL);
 		al |= Qt::AlignLeft;
 	}
 	grid->addWidget(wid, row, 2, al);
@@ -564,6 +675,8 @@ void xOptSheet::check(QCheckBox* cb, const QString& name, const QString& desc, b
 	grid->addWidget(nam, row, 1, Qt::AlignTop);
 	grid->addWidget(dsc, row, 2, Qt::AlignTop);
 	new xFollowEnabled(cb, QList<QWidget*>() << nam << dsc);
+	cols->names.append(nam);
+	cols->checks.append(cb);
 }
 
 QLabel* xOptSheet::text(const QString& str) {
@@ -586,6 +699,31 @@ QWidget* fieldPair(QWidget* main, QWidget* tail, bool wide) {
 	if (tail) box->addWidget(tail);
 	if (!wide) box->addStretch(1);
 	return wid;
+}
+
+// xElideLabel
+
+xElideLabel::xElideLabel(QWidget* p):QLabel(p) {}
+
+void xElideLabel::setFull(const QString& str) {
+	full = str;
+	setToolTip(str);
+	update();
+}
+
+// it takes the width it is given, and asks for none
+QSize xElideLabel::sizeHint() const {
+	return QSize(0, QLabel::sizeHint().height());
+}
+
+QSize xElideLabel::minimumSizeHint() const {
+	return sizeHint();
+}
+
+void xElideLabel::paintEvent(QPaintEvent*) {
+	QPainter pnt(this);
+	QString txt = fontMetrics().elidedText(full, Qt::ElideMiddle, contentsRect().width());
+	style()->drawItemText(&pnt, contentsRect(), alignment(), palette(), isEnabled(), txt, foregroundRole());
 }
 
 // xLabel

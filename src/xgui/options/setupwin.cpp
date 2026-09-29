@@ -20,6 +20,10 @@
 #include <QStylePainter>
 #include <QStyleOptionComboBox>
 #include <QLineEdit>
+#include <QTextEdit>
+#include <QAbstractTextDocumentLayout>
+#include <QFontDatabase>
+#include <QDateTime>
 #include <QGuiApplication>
 #include <QDesktopServices>
 #include <QUrl>
@@ -30,6 +34,7 @@
 
 #include "filer.h"
 #include "setupwin.h"
+#include "xcore/vidrec.h"
 #include "xgui/xgui.h"
 #include "xgui/favorites.h"
 #include "xcore/gamepad.h"
@@ -617,6 +622,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	pbExpert->setToolTip(tr("Where each file starts, how much of it is read, and where it lands"));
 	connect(pbExpert, SIGNAL(released()), this, SLOT(showRomFiles()));
 	buildDevices();
+	buildRecording();
 // media
 	// the file types sit on the page itself, there is room for them now
 	ftbox = new xFileTypesBox;
@@ -890,6 +896,7 @@ void SetupWin::start() {
 	ui.sintbox->setValue(conf.scrShot.interval);
 	ui.ssNoLeds->setChecked(conf.scrShot.noLeds);
 	ui.ssNoBord->setChecked(conf.scrShot.noBorder);
+	fillRecording();
 	ui.geombox->clear();
 	foreach(xLayout lay, conf.layList) {
 		ui.geombox->addItem(QString::fromLocal8Bit(lay.name.c_str()));
@@ -1088,6 +1095,7 @@ void SetupWin::apply() {
 	conf.scrShot.interval = ui.sintbox->value();
 	conf.scrShot.noLeds = ui.ssNoLeds->isChecked() ? 1 : 0;
 	conf.scrShot.noBorder = ui.ssNoBord->isChecked() ? 1 : 0;
+	applyRecording();
 	vid_set_border_mode(ui.bszsld->value());
 	comp->vid->brdstep = ui.border4T->isChecked() ? 7 : 1;
 	comp_set_cont(comp, ui.contMem->isChecked());
@@ -2517,4 +2525,359 @@ void SetupWin::triggerColor() {
 			conf.pal[cn] = col;
 	}
 	setToolButtonColor(obj, cn, dn);
+}
+
+// VIDEO RECORDING
+//
+// The group on the Video page holds what changes from one video to the next;
+// how FFmpeg encodes it is in a pop-up of its own. The tooltips name the FFmpeg
+// options a control sets, and the pop-up ends with the command lines in full.
+
+static const int recBitrates[] = {128, 192, 256, 320, 0};
+
+static QToolButton* rec_button(const char* icon, const QString& tip) {
+	QToolButton* btn = new QToolButton;
+	btn->setIcon(QIcon(icon));
+	btn->setToolTip(tip);
+	return btn;
+}
+
+void SetupWin::buildRecording() {
+	QGridLayout* grid = new QGridLayout;
+	ui.verticalLayout_rec->addLayout(grid);
+
+	// the picture: three lists and the button after them
+	cbRecSrc = new QComboBox;
+	cbRecSrc->addItem(tr("RAW frame"), VREC_SRC_PICTURE);
+	cbRecSrc->addItem(tr("Screen"), VREC_SRC_SCREEN);
+	cbRecSrc->setToolTip(tr("RAW frame: the machine's picture, no shader or indicators\nScreen: the window as shown"));
+#if !defined(USEOPENGL)
+	// nothing to read the window back from
+	cbRecSrc->setItemData(1, 0, Qt::UserRole - 1);
+#endif
+	cbRecScale = new QComboBox;
+	for (int n = 1; n <= VREC_SCALE_MAX; n++)
+		cbRecScale->addItem(QString("Scale x%0").arg(n), n);
+	cbRecScale->setToolTip("-vf scale=W:H:flags=neighbor");
+	cbRecFps = new QComboBox;
+	cbRecFps->addItem(tr("Real FPS"), VREC_FPS_MACHINE);
+	cbRecFps->addItem(tr("50 FPS"), VREC_FPS_50);
+	cbRecFps->setToolTip(tr("-framerate: the machine's own, or 50 with the sound fitted to it"));
+	foreach(QComboBox* box, QList<QComboBox*>() << cbRecSrc << cbRecScale << cbRecFps) {
+		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showRecSize);
+	}
+	connect(cbRecSrc, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
+		cbRecScale->setEnabled(getRFIData(cbRecSrc) == VREC_SRC_PICTURE);
+	});
+	labRecSrc = new QLabel(tr("Source"));
+	grid->addWidget(labRecSrc, 0, 0);
+	grid->addWidget(cbRecSrc, 0, 1);
+	grid->addWidget(cbRecScale, 0, 2);
+	grid->addWidget(cbRecFps, 0, 3);
+
+	// where to and where from, ending under the last list
+	leRecDir = new QLineEdit;
+	leRecDir->setToolTip(tr("Folder videos are saved in"));
+	QToolButton* btn = rec_button(":/images/fileopen.png", tr("Pick the folder"));
+	connect(btn, &QToolButton::released, this, [this]() {
+		QString dir = leRecDir->text();
+		if (dir.isEmpty()) dir = leRecDir->placeholderText();
+		dir = QFileDialog::getExistingDirectory(this, tr("Videos folder"), dir, QFileDialog::ShowDirsOnly);
+		if (!dir.isEmpty()) leRecDir->setText(QDir::toNativeSeparators(dir));
+	});
+	labRecOut = new QLabel(tr("Output"));
+	grid->addWidget(labRecOut, 1, 0);
+	grid->addWidget(fieldPair(leRecDir, btn, true), 1, 1, 1, 3);
+
+	leRecFfmpeg = new QLineEdit;
+	btn = rec_button(":/images/fileopen.png", tr("Pick the program"));
+	connect(btn, &QToolButton::released, this, [this]() {
+		QString path = QFileDialog::getOpenFileName(this, tr("FFmpeg"), QFileInfo(leRecFfmpeg->text()).path(),
+#ifdef _WIN32
+			"ffmpeg.exe (ffmpeg.exe);;Programs (*.exe)"
+#else
+			QString()
+#endif
+		);
+		if (path.isEmpty()) return;
+		leRecFfmpeg->setText(QDir::toNativeSeparators(path));
+		showFfmpeg();
+	});
+	connect(leRecFfmpeg, &QLineEdit::editingFinished, this, &SetupWin::showFfmpeg);
+	labRecFfm = new QLabel(tr("FFmpeg"));
+	grid->addWidget(labRecFfm, 2, 0);
+	grid->addWidget(fieldPair(leRecFfmpeg, btn, true), 2, 1, 1, 3);
+
+	// what the video comes out as, after where it goes
+	labRecSize = new QLabel;
+	labRecSize->setToolTip(tr("The video's frame and rate, with the border and scale set on this page"));
+	grid->addWidget(labRecSize, 1, 4, Qt::AlignCenter);
+	// the lists share the width up to the button, which keeps to the right edge
+	for (int i = 1; i <= 3; i++)
+		grid->setColumnStretch(i, 1);
+	// the page's own settings move it too
+	connect(ui.bszsld, &QSlider::valueChanged, this, &SetupWin::showRecSize);
+	connect(ui.cbScale, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showRecSize);
+	connect(ui.cbFullscreen, &QCheckBox::toggled, this, &SetupWin::showRecSize);
+
+	// the rest, in a pop-up laid out as Machine: advanced settings
+	cbRecCodec = new QComboBox;
+	// the list is filled by showFfmpeg(), which knows what the program can do
+	cbRecCodec->setToolTip(tr("-c:v libx264 | libx265 | h264_nvenc | hevc_nvenc | ffv1"));
+	cbRecBox = new QComboBox;
+	cbRecBox->addItem("MP4", VREC_MP4);
+	cbRecBox->addItem("MKV", VREC_MKV);
+	sbRecCrf = new QSpinBox;
+	sbRecCrf->setRange(0, 51);
+	sbRecCrf->setToolTip(tr("-crf, NVENC -qp: lower is better, 18 looks lossless"));
+	cbRecPreset = new QComboBox;
+	for (int i = 0; vrecPresets[i]; i++)
+		cbRecPreset->addItem(vrecPresets[i], vrecPresets[i]);
+	cbRecPreset->setToolTip(tr("-preset, NVENC p1..p7: slower packs smaller, but can hold the machine up"));
+	cbRecAbr = new QComboBox;
+	for (int i = 0; recBitrates[i]; i++)
+		cbRecAbr->addItem(QString("%0 kbps").arg(recBitrates[i]), recBitrates[i]);
+	cbRecAbr->setToolTip(tr("-c:a aac -b:a; FFV1 takes FLAC"));
+	leRecExtra = new QLineEdit;
+	leRecExtra->setToolTip(tr("Added to the encoder's options, as typed"));
+	cbRec60 = new QCheckBox;
+	cbRecPitch = new QCheckBox;
+	leRecName = new QLineEdit;
+	leRecName->setPlaceholderText(VREC_NAME_DEF);
+	// rich text, the one tooltip here that is a list
+	leRecName->setToolTip(tr("<b>%d</b> date, 20260929<br><b>%t</b> time, 153012<br>"
+		"<b>%image</b> the image in use, else the machine<br><b>%machine</b> the machine"));
+	teRecCmd = new QTextEdit;
+	teRecCmd->setAcceptRichText(false);
+	teRecCmd->setReadOnly(true);
+	teRecCmd->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+	// a part to a line, broken again only where it does not fit, and the box
+	// as tall as what is in it
+	teRecCmd->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+	teRecCmd->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	teRecCmd->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	// a QTextEdit, not a plain one: that one lays out only what is in view, so
+	// the lines it counts under the edge are short of the wrapped ones
+	connect(teRecCmd->document()->documentLayout(), &QAbstractTextDocumentLayout::documentSizeChanged, this, [this](const QSizeF& sz) {
+		teRecCmd->setFixedHeight(int(sz.height() + 0.5) + 2 * teRecCmd->frameWidth());
+	});
+	xOptSheet adv;
+	adv.group(tr("Video"), 0);
+	adv.row(tr("Codec"), cbRecCodec);
+	adv.row(tr("Container"), cbRecBox);
+	adv.row(tr("Quality (CRF)"), sbRecCrf);
+	adv.row(tr("Speed"), cbRecPreset);
+	// one piece, so the frame is no wider than its lists
+	cbRec60->setText(tr("Blend up to 60 fps"));
+	adv.wide(cbRec60);
+	adv.group(tr("Sound"), 1);
+	adv.row(tr("AAC bitrate"), cbRecAbr);
+	cbRecPitch->setText(tr("Keep pitch at 50 FPS"));
+	adv.wide(cbRecPitch);
+	// the frame takes the column's width from Sound, and neither the template
+	// nor what it gives asks for more: a longer name must not move the frames
+	adv.group(tr("File name template"), 1);
+	leRecName->setMinimumWidth(0);
+	leRecName->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+	adv.wide(leRecName);
+	labRecName = new xElideLabel;
+	QFont nfnt = labRecName->font();
+	nfnt.setItalic(true);
+	labRecName->setFont(nfnt);
+	labRecName->setAlignment(Qt::AlignCenter);
+	adv.wide(labRecName);
+	adv.group("FFmpeg");
+	adv.row(tr("Extra options"), leRecExtra);
+	adv.wide(teRecCmd);
+	// the checkboxes lose their tooltips to the sheet, their names keep one
+	cbRec60->setToolTip("framerate=fps=60");
+	cbRecPitch->setToolTip(tr("-af atempo: sped up in time, not in pitch"));
+	connect(cbRecCodec, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
+		bool lossy = getRFIData(cbRecCodec) != VREC_FFV1;
+		// FFV1 goes into MKV only, and the choice made for the others is kept
+		if (!lossy && cbRecBox->isEnabled()) recBoxKeep = getRFIData(cbRecBox);
+		setRFIndex(cbRecBox, lossy ? recBoxKeep : VREC_MKV);
+		cbRecBox->setEnabled(lossy);
+		sbRecCrf->setEnabled(lossy);
+		cbRecPreset->setEnabled(lossy);
+		cbRecAbr->setEnabled(lossy);
+	});
+	foreach(QComboBox* box, QList<QComboBox*>() << cbRecBox << cbRecCodec << cbRecPreset << cbRecAbr)
+		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showRecCmd);
+	connect(sbRecCrf, QOverload<int>::of(&QSpinBox::valueChanged), this, &SetupWin::showRecCmd);
+	connect(leRecExtra, &QLineEdit::textChanged, this, &SetupWin::showRecCmd);
+	connect(cbRecPitch, &QCheckBox::toggled, this, &SetupWin::showRecCmd);
+	// the pitch is only kept or not when 50 FPS changes the speed
+	connect(cbRecFps, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
+		cbRecPitch->setEnabled(getRFIData(cbRecFps) == VREC_FPS_50);
+	});
+	connect(leRecName, &QLineEdit::textChanged, this, &SetupWin::showRecCmd);
+	connect(cbRec60, &QCheckBox::toggled, this, &SetupWin::showRecSize);
+	QDialog* win = popOut(adv.body, "Recording: advanced settings");
+	xSideButton* adb = new xSideButton;
+	adb->setIcon(QIcon(":/images/settings.png"));
+	adb->setText(tr("Advanced settings"));
+	adb->setToolTip(tr("Codec, quality, sound, and the FFmpeg command"));
+	// as wide as Machine: advanced settings, the other pop-up of this size
+	connect(adb, &QPushButton::released, win, [this, win]() {
+		win->adjustSize();
+		int wid = advWin->sizeHint().width();
+		if (win->width() < wid) win->resize(wid, win->height());
+		win->show();
+		win->raise();
+		// the command is wrapped to its box only once shown, and may take a line more
+		QTimer::singleShot(0, win, [win]() {win->adjustSize();});
+	});
+	// as wide as the Machine page's buttons: a box of their width, which the
+	// style sheet's min-width on a push button cannot override
+	QWidget* adbox = new QWidget;
+	adbox->setFixedWidth(ui.machButtons->maximumWidth());
+	QVBoxLayout* adlay = new QVBoxLayout(adbox);
+	adlay->setContentsMargins(0, 0, 0, 0);
+	adlay->addWidget(adb);
+	grid->addWidget(adbox, 0, 4);
+}
+
+// the first column of the Video page's groups, one width for all of them
+void SetupWin::alignVideoLabels() {
+	QList<QLabel*> col = QList<QLabel*>() << ui.label_3 << ui.labPalPreset << ui.labShader
+		<< ui.label_12 << ui.antiflickerModeLabel << ui.label_5 << ui.label_13 << ui.label_7
+		<< labRecSrc << labRecOut << labRecFfm;
+	// Picture sets its column in the .ui, a label may be wider in a bigger font
+	int wid = ui.gridLayout_2->columnMinimumWidth(0);
+	foreach(QLabel* lab, col) {
+		lab->setMinimumWidth(0);
+		lab->ensurePolished();
+		wid = qMax(wid, lab->sizeHint().width());
+	}
+	foreach(QLabel* lab, col)
+		lab->setMinimumWidth(wid);
+}
+
+// the pictures handed to FFmpeg and the video made of them, as the page is set now
+void SetupWin::recSizes(QSize* in, QSize* out) {
+	vCoord sze = vid_crop_size(conf.zx->vid, ui.bszsld->value());
+	if (getRFIData(cbRecSrc) == VREC_SRC_SCREEN) {
+		qreal r = devicePixelRatioF();
+		QSize win = ui.cbFullscreen->isChecked() ? QGuiApplication::primaryScreen()->size()
+			: QSize(sze.x * getRFIData(ui.cbScale), sze.y * getRFIData(ui.cbScale));
+		*in = QSize(int(win.width() * r + 0.5) & ~1, int(win.height() * r + 0.5) & ~1);
+		*out = *in;
+	} else {
+		int n = getRFIData(cbRecScale);
+		*in = QSize(sze.x * 2, sze.y);
+		*out = QSize((sze.x * n) & ~1, (sze.y * n) & ~1);
+	}
+}
+
+void SetupWin::showRecSize() {
+	QSize in;
+	QSize out;
+	recSizes(&in, &out);
+	QString fps = "50";
+	if (cbRec60->isChecked()) {
+		fps = "60";
+	} else if (getRFIData(cbRecFps) == VREC_FPS_MACHINE) {
+		fps = QString::number(1e9 / conf.zx->vid->nsPerFrame, 'f', 2);
+	}
+	labRecSize->setText(QString("%0%1%2 @ %3 fps").arg(out.width()).arg(QChar(0xd7)).arg(out.height()).arg(fps));
+	showRecCmd();
+}
+
+void SetupWin::showFfmpeg() {
+	QString prog = leRecFfmpeg->text().trimmed();
+	if (prog.isEmpty()) {
+		// Auto: what it finds goes straight into the field
+		prog = vrec_ffmpeg_auto();
+		if (!prog.isEmpty()) leRecFfmpeg->setText(QDir::toNativeSeparators(prog));
+	}
+	QString ver = vrec_ffmpeg_version(prog);
+	if (!ver.isEmpty()) {
+		// "ffmpeg version 8.0.1-full_build-www.gyan.dev": a release keeps its number
+		ver = ver.section(' ', 2, 2);
+		if (!ver.isEmpty() && ver.at(0).isDigit()) ver = ver.section('-', 0, 0);
+		leRecFfmpeg->setToolTip("FFmpeg " + ver);
+	} else if (prog.isEmpty()) {
+		leRecFfmpeg->setPlaceholderText(tr("Not found: pick ffmpeg"));
+		leRecFfmpeg->setToolTip(tr("Not in the config folder, not on PATH"));
+	} else {
+		leRecFfmpeg->setToolTip(tr("This does not run as FFmpeg"));
+	}
+	// the codecs, NVENC only where this program runs it here; the pick stays if it can
+	int cur = cbRecCodec->count() ? getRFIData(cbRecCodec) : conf.rec.codec;
+	cbRecCodec->clear();
+	cbRecCodec->addItem("H.264", VREC_H264);
+	cbRecCodec->addItem("H.265", VREC_H265);
+	if (vrec_codec_works(prog, VREC_H264_NVENC)) cbRecCodec->addItem("NVENC H.264", VREC_H264_NVENC);
+	if (vrec_codec_works(prog, VREC_H265_NVENC)) cbRecCodec->addItem("NVENC H.265", VREC_H265_NVENC);
+	cbRecCodec->addItem(tr("FFV1, lossless"), VREC_FFV1);
+	int idx = cbRecCodec->findData(cur);
+	cbRecCodec->setCurrentIndex(idx < 0 ? 0 : idx);
+}
+
+// the settings as the controls have them, for the command shown
+xRecord SetupWin::recFromUi() {
+	xRecord rec = conf.rec;
+	rec.ffmpeg = std::string(leRecFfmpeg->text().trimmed().toLocal8Bit().data());
+	rec.dir = std::string(leRecDir->text().trimmed().toLocal8Bit().data());
+	rec.source = getRFIData(cbRecSrc);
+	rec.scale = getRFIData(cbRecScale);
+	rec.fps = getRFIData(cbRecFps);
+	rec.container = getRFIData(cbRecBox);
+	rec.codec = getRFIData(cbRecCodec);
+	if (rec.codec == VREC_FFV1) rec.container = recBoxKeep;	// the list says MKV, the choice stays
+	rec.crf = sbRecCrf->value();
+	rec.preset = getRFSData(cbRecPreset).toStdString();
+	rec.abitrate = getRFIData(cbRecAbr);
+	rec.extra = std::string(leRecExtra->text().trimmed().toLocal8Bit().data());
+	rec.fps60 = cbRec60->isChecked() ? 1 : 0;
+	rec.keepPitch = cbRecPitch->isChecked() ? 1 : 0;
+	rec.name = std::string(leRecName->text().trimmed().toLocal8Bit().data());
+	return rec;
+}
+
+void SetupWin::showRecCmd() {
+	if (recFilling) return;
+	xRecord rec = recFromUi();
+	QSize in;
+	QSize out;
+	recSizes(&in, &out);
+	// what the file will be called, with the image in use now; the file names
+	// alone, and none of the options that only keep FFmpeg quiet
+	QString name = vrec_file_name(leRecName->text(), media_image_name(conf.zx), QDateTime::currentDateTime());
+	vrecCmd cmd = vrec_command(rec, in.width(), in.height(), conf.zx->vid->nsPerFrame, conf.snd.rate, name, false);
+	labRecName->setFull(cmd.out);
+	teRecCmd->setPlainText(vrec_command_line(cmd.enc, true) + "\n\n" + vrec_command_line(cmd.mux, true));
+}
+
+void SetupWin::fillRecording() {
+	recFilling = true;
+	leRecFfmpeg->setText(QString::fromLocal8Bit(conf.rec.ffmpeg.c_str()));
+	leRecDir->setText(QString::fromLocal8Bit(conf.rec.dir.c_str()));
+	leRecDir->setPlaceholderText(QDir::toNativeSeparators(vrec_dir_auto()));
+	showFfmpeg();
+	setRFIndex(cbRecSrc, conf.rec.source);
+	cbRecScale->setEnabled(conf.rec.source == VREC_SRC_PICTURE);
+	setRFIndex(cbRecScale, conf.rec.scale);
+	setRFIndex(cbRecFps, conf.rec.fps);
+	setRFIndex(cbRecBox, conf.rec.container);
+	recBoxKeep = conf.rec.container;
+	setRFIndex(cbRecCodec, conf.rec.codec);
+	cbRecPitch->setEnabled(conf.rec.fps == VREC_FPS_50);
+	sbRecCrf->setValue(conf.rec.crf);
+	int idx = cbRecPreset->findData(QString::fromStdString(conf.rec.preset));
+	cbRecPreset->setCurrentIndex(idx < 0 ? 2 : idx);
+	idx = cbRecAbr->findData(conf.rec.abitrate);
+	cbRecAbr->setCurrentIndex(idx < 0 ? 1 : idx);
+	leRecExtra->setText(QString::fromLocal8Bit(conf.rec.extra.c_str()));
+	cbRec60->setChecked(conf.rec.fps60);
+	cbRecPitch->setChecked(conf.rec.keepPitch);
+	leRecName->setText(QString::fromLocal8Bit(conf.rec.name.c_str()));
+	recFilling = false;
+	showRecSize();
+	alignVideoLabels();
+}
+
+void SetupWin::applyRecording() {
+	conf.rec = recFromUi();
 }

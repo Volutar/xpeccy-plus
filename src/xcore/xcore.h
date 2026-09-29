@@ -363,6 +363,7 @@ enum {
 	XCUT_REWIND,
 	XCUT_FFWD,
 	XCUT_SLOWMO,
+	XCUT_VIDREC,
 
 	XCUT_STEPIN,
 	XCUT_STEPOVER,
@@ -590,6 +591,24 @@ void save_xmap(QString);
 
 #define	YESNO(cnd) ((cnd) ? "yes" : "no")
 
+// video recording, see vidrec.cpp
+typedef struct {
+	std::string ffmpeg;	// the program; empty: config/ffmpeg, then PATH
+	std::string dir;	// empty: the system's videos folder
+	int source;		// VREC_SRC_*
+	int scale;		// of the emulated picture, 1..VREC_SCALE_MAX
+	int fps;		// VREC_FPS_*
+	int container;		// VREC_MP4, VREC_MKV
+	int codec;		// VREC_H264...
+	int crf;
+	std::string preset;
+	unsigned fps60:1;	// blend up to 60 fps
+	unsigned keepPitch:1;	// at 50 fps: stretch the sound in time, not in pitch
+	int abitrate;		// kbps
+	std::string extra;	// more encoder options, as typed
+	std::string name;	// the file name's template, see vrec_file_name()
+} xRecord;
+
 struct xConfig {
 	// the machine, one per process, and the workspace around it
 	Computer* zx;
@@ -698,6 +717,7 @@ struct xConfig {
 		std::string format;
 		std::string dir;
 	} scrShot;
+	xRecord rec;
 	struct {
 		unsigned dock:1;	// glued under the emulator window
 		int width;		// window width; the height follows the picture

@@ -26,6 +26,8 @@
 #include "ui_setupwin.h"
 #include "ui_layedit.h"
 
+class QTextEdit;
+
 class SetupWin : public QDialog {
 	Q_OBJECT
 	public:
@@ -54,6 +56,16 @@ class SetupWin : public QDialog {
 		void fillDbgPalette();
 		void fillLogPage();
 		void applyLogPage();
+		// video recording
+		void buildRecording();
+		void fillRecording();
+		void applyRecording();
+		void showFfmpeg();
+		void showRecCmd();
+		void showRecSize();
+		void recSizes(QSize*, QSize*);
+		void alignVideoLabels();
+		xRecord recFromUi();
 
 		Ui::SetupWin ui;
 		Ui::LayEditor layUi;
@@ -91,6 +103,17 @@ class SetupWin : public QDialog {
 		QList<QWidget*> kbdRow;
 		QList<QWidget*> drvRow[4];
 		QComboBox* drvCountBox;
+		// video recording
+		QLineEdit *leRecFfmpeg, *leRecDir, *leRecExtra;
+		QComboBox *cbRecSrc, *cbRecScale, *cbRecFps, *cbRecBox, *cbRecCodec, *cbRecPreset, *cbRecAbr;
+		QSpinBox* sbRecCrf;
+		QCheckBox *cbRec60, *cbRecPitch;
+		QLineEdit* leRecName;
+		QTextEdit* teRecCmd;
+		QLabel *labRecSrc, *labRecOut, *labRecFfm, *labRecSize;
+		xElideLabel* labRecName;
+		int recBoxKeep = 0;	// the container picked for a codec that has a choice
+		bool recFilling = false;	// the controls are being set, not changed
 
 		QDialog* layeditor;
 //		xPadMapModel* padModel;
