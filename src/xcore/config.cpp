@@ -47,7 +47,8 @@ std::map<std::string, int> shotFormat;
 static const char* recSrcName[] = {"picture", "screen", NULL};
 static const char* recFpsName[] = {"machine", "50", NULL};
 static const char* recBoxName[] = {"mp4", "mkv", NULL};
-static const char* recAudioName[] = {"aac", "opus", NULL};
+static const char* recAudioName[] = {"aac", "opus", "auto", NULL};
+static const char* recChromaName[] = {"auto", "420", "444", NULL};
 static const char* recCodecName[] = {"h264", "h265", "ffv1", "h264_nvenc", "h265_nvenc", "h264_amf", "h265_amf", "h264_qsv", "h265_qsv", "av1", "av1_nvenc", "av1_amf", "av1_qsv", NULL};
 
 static int rec_id(const char** tab, const std::string& nam, int def) {
@@ -119,6 +120,7 @@ void conf_init(char* wpath, char* confdir) {
 	conf.rec.fps = VREC_FPS_50;
 	conf.rec.container = VREC_MP4;
 	conf.rec.codec = VREC_H264;
+	conf.rec.chroma = VREC_CH_AUTO;
 	conf.rec.crf = 18;
 	conf.rec.preset = "veryfast";
 	conf.rec.fps60 = 0;
@@ -130,7 +132,7 @@ void conf_init(char* wpath, char* confdir) {
 	conf.rec.autoStopOp = VREC_AT_OWN;
 	conf.rec.autoStopAdr = 0;
 	conf.rec.name = VREC_NAME_DEF;
-	conf.rec.acodec = VREC_OPUS;	// cleaner than AAC on an AY; editors that want AAC get it by hand
+	conf.rec.acodec = VREC_AUDIO_AUTO;
 	conf.rec.abitrate = 192;
 	conf.running = 0;
 	conf.boot = 1;
@@ -197,6 +199,7 @@ void saveConfig() {
 	fprintf(cfile, "rec.fps = %s\n", recFpsName[conf.rec.fps]);
 	fprintf(cfile, "rec.container = %s\n", recBoxName[conf.rec.container]);
 	fprintf(cfile, "rec.codec = %s\n", recCodecName[conf.rec.codec]);
+	fprintf(cfile, "rec.chroma = %s\n", recChromaName[conf.rec.chroma]);
 	fprintf(cfile, "rec.crf = %i\n", conf.rec.crf);
 	fprintf(cfile, "rec.preset = %s\n", conf.rec.preset.c_str());
 	fprintf(cfile, "rec.fps60 = %s\n", YESNO(conf.rec.fps60));
@@ -896,6 +899,7 @@ void loadConfig() {
 					if (pnam=="rec.fps") conf.rec.fps = rec_id(recFpsName, pval, VREC_FPS_50);
 					if (pnam=="rec.container") conf.rec.container = rec_id(recBoxName, pval, VREC_MP4);
 					if (pnam=="rec.codec") conf.rec.codec = rec_id(recCodecName, pval, VREC_H264);
+					if (pnam=="rec.chroma") conf.rec.chroma = rec_id(recChromaName, pval, VREC_CH_AUTO);
 					if (pnam=="rec.crf") conf.rec.crf = getRanged(arg.s, 0, 51);
 					if (pnam=="rec.preset") conf.rec.preset = pval;
 					if (pnam=="rec.fps60") conf.rec.fps60 = arg.b;
@@ -905,7 +909,7 @@ void loadConfig() {
 					if (pnam=="rec.autostop") conf.rec.autoStop = arg.b;
 					if (pnam=="rec.autostop.at") vrec_auto_parse(QString::fromLocal8Bit(pval.c_str()), &conf.rec.autoStopOp, &conf.rec.autoStopAdr);
 					if (pnam=="rec.name") conf.rec.name = pval;
-					if (pnam=="rec.audio") conf.rec.acodec = rec_id(recAudioName, pval, VREC_OPUS);
+					if (pnam=="rec.audio") conf.rec.acodec = rec_id(recAudioName, pval, VREC_AUDIO_AUTO);
 					if (pnam=="rec.abitrate") conf.rec.abitrate = getRanged(arg.s, 64, 512);
 					if (pnam=="rec.extra") conf.rec.extra = pval;
 					if (pnam=="rec.video.override") conf.rec.videoOver = pval;
