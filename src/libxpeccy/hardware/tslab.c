@@ -22,20 +22,19 @@
 #define dmaSrc	xreg[0]
 #define dmaDst	xreg[1]
 
+// Ram in window 0 without W0_WE (#21AF bit 1) reads but drops writes.
+static void tslNoWr(int adr, int val, void* data) {}
+
 void tslMapMem(Computer* comp) {
 // bank0 maping taken from Unreal(TSConf)
 	if (comp->flgVDOS) {
 		memSetBank(comp->mem,0x00,MEM_RAM,0xff, MEM_16K,NULL,NULL,NULL);		// vdos on : ramFF in bank0
-	} else if (comp->tsconf.p21af & 8) {
-		if (comp->tsconf.p21af & 4)
-			memSetBank(comp->mem,0x00,MEM_RAM,comp->tsconf.Page0, MEM_16K,NULL,NULL,NULL);
-		else
-			memSetBank(comp->mem,0x00,MEM_RAM, (comp->tsconf.Page0 & 0xfc) | ((comp->flgROM) ? 1 : 0) | (comp->flgDOS ? 0 : 2), MEM_16K,NULL,NULL,NULL);
 	} else {
-		if (comp->tsconf.p21af & 4)
-			memSetBank(comp->mem,0x00,MEM_ROM,comp->tsconf.Page0, MEM_16K,NULL,NULL,NULL);
+		int pg = (comp->tsconf.p21af & 4) ? comp->tsconf.Page0 : (comp->tsconf.Page0 & 0xfc) | ((comp->flgROM) ? 1 : 0) | (comp->flgDOS ? 0 : 2);
+		if (comp->tsconf.p21af & 8)
+			memSetBank(comp->mem,0x00,MEM_RAM,pg, MEM_16K,NULL,(comp->tsconf.p21af & 2) ? NULL : tslNoWr,NULL);
 		else
-			memSetBank(comp->mem,0x00,MEM_ROM, (comp->tsconf.Page0 & 0xfc) | ((comp->flgROM) ? 1 : 0) | (comp->flgDOS ? 0 : 2), MEM_16K,NULL,NULL,NULL);
+			memSetBank(comp->mem,0x00,MEM_ROM,pg, MEM_16K,NULL,NULL,NULL);
 	}
 }
 
