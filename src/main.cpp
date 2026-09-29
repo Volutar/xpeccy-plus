@@ -596,8 +596,10 @@ int main(int ac,char** av) {
 			if (dbg) mwin.doDebug();
 			if (!lab) shitHappens("Can't open labels file");
 		});
+		QTimer::singleShot(5000, &optw, &SetupWin::prewarmFfmpeg);
 //		mwin.blockSignals(false);
 		app.exec();
+		optw.stopProbe();
 		ethread.stop();
 		ethread.wait();
 	}

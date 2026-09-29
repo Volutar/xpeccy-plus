@@ -11,6 +11,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QLabel>
+#include <QMap>
 #include <QProcess>
 #include <QProgressBar>
 #include <QPushButton>
@@ -40,6 +41,8 @@ class xFfGet : public QDialog {
 		QProgressBar* bar;
 		QDialogButtonBox* box;
 		QPushButton* btnGo;
+		QPushButton* btnLatest;	// Windows: the newest release, btnGo the one before
+		bool latest;
 		QProcess* prc;
 		bool running;
 		QByteArray out;		// the step's stdout, for the one step that reads it
@@ -50,6 +53,7 @@ class xFfGet : public QDialog {
 		void output(const QByteArray& chunk);
 		void finish(const QString& html);
 		void fail(const QString& msg);
+		void ready(const QString& prog);
 #ifdef _WIN32
 		QString tmp;		// where the download goes
 		QString name;
@@ -102,6 +106,8 @@ xFfGet::xFfGet(QWidget* p):QDialog(p) {
 	installed = false;
 	running = false;
 	prc = NULL;
+	latest = false;
+	btnLatest = NULL;
 	QVBoxLayout* lay = new QVBoxLayout(this);
 	lab = new QLabel;
 	lab->setWordWrap(true);
@@ -121,7 +127,21 @@ xFfGet::xFfGet(QWidget* p):QDialog(p) {
 	labLine->hide();
 	lay->addWidget(labLine);
 	box = new QDialogButtonBox(QDialogButtonBox::Cancel);
+#ifdef _WIN32
+	btnGo = box->addButton(tr("Get previous"), QDialogButtonBox::AcceptRole);
+	btnLatest = box->addButton(tr("Get latest"), QDialogButtonBox::AcceptRole);
+	connect(btnLatest, &QPushButton::clicked, this, [this]() {
+		latest = true;
+		go();
+	});
+#else
 	btnGo = box->addButton(tr("Get it"), QDialogButtonBox::AcceptRole);
+#endif
+	btnGo->setDefault(true);
+	// the icons Options and the Drives menu give theirs
+	foreach(QPushButton* btn, QList<QPushButton*>() << btnGo << btnLatest)
+		if (btn) btn->setIcon(QIcon(":/images/arrow-down.png"));
+	box->button(QDialogButtonBox::Cancel)->setIcon(QIcon(":/images/cancel.png"));
 	lay->addWidget(box);
 	connect(box, &QDialogButtonBox::rejected, this, &xFfGet::reject);
 	connect(btnGo, &QPushButton::clicked, this, &xFfGet::go);
@@ -144,9 +164,12 @@ void xFfGet::showEvent(QShowEvent* ev) {
 QString xFfGet::offer() {
 	QString head = tr("Video recording runs FFmpeg, which is not part of Xpeccy+.") + "<br><br>";
 #ifdef _WIN32
-	return head + tr("Download the latest release of the build at "
+	return head + tr("Download a release of the build at "
 		"<a href=\"https://github.com/BtbN/FFmpeg-Builds\">github.com/BtbN/FFmpeg-Builds</a> "
-		"(about 190 MB, GPL) into the config folder?");
+		"(about 190&nbsp;MB, GPL) into the config folder?") + "<br><br>"
+		+ tr("The latest release is built for the newest graphics drivers: with an older one, the "
+		"card encoders (NVENC, AMF, QSV) may not run. The previous release works with older drivers "
+		"and records just as well.");
 #else
 	if (fg_manager(&pm, &pmArgs)) {
 #ifdef __APPLE__
@@ -217,6 +240,7 @@ void xFfGet::output(const QByteArray& chunk) {
 void xFfGet::go() {
 	running = true;
 	btnGo->hide();
+	if (btnLatest) btnLatest->hide();
 	bar->setRange(0, 0);
 	bar->show();
 #ifdef _WIN32
@@ -238,30 +262,35 @@ void xFfGet::go() {
 		if (path.isEmpty()) {
 			fail(tr("It was installed, but no ffmpeg is on the PATH"));
 		} else {
-			installed = true;
-			finish(tr("FFmpeg is installed: %0").arg(path).toHtmlEscaped());
+			ready(path);
 		}
 	});
 #endif
 }
 
 #ifdef _WIN32
-// the newest release in the list, the development build if the names ever change
+// The newest release in the list, or the newest of the major version before
+// it; the development build if the names ever change. BtbN builds the newest
+// major version against the newest NVENC, which wants a driver most people
+// do not have yet.
 void xFfGet::getList() {
 	static QRegularExpression rx("^([0-9a-f]{64})\\s+(ffmpeg-n(\\d+)\\.(\\d+)-latest-win64-gpl-[\\d.]+\\.zip)$");
-	int best = -1;
+	QMap<int, QPair<QString, QString> > rel;	// major * 1000 + minor: sha, name
 	QString master;
 	foreach(QString line, QString::fromLatin1(out).split('\n')) {
 		line = line.trimmed();
 		if (line.endsWith(" " FG_MASTER)) master = line.section(' ', 0, 0);
 		QRegularExpressionMatch m = rx.match(line);
-		if (!m.hasMatch()) continue;
-		int ver = m.captured(3).toInt() * 1000 + m.captured(4).toInt();
-		if (ver > best) {
-			best = ver;
-			sha = m.captured(1);
-			name = m.captured(2);
-		}
+		if (m.hasMatch())
+			rel[m.captured(3).toInt() * 1000 + m.captured(4).toInt()] = qMakePair(m.captured(1), m.captured(2));
+	}
+	if (!rel.isEmpty()) {
+		int pick = rel.lastKey();
+		// the keys go up: the one just below the latest major version is the newest before it
+		QMap<int, QPair<QString, QString> >::iterator it = rel.lowerBound(pick / 1000 * 1000);
+		if (!latest && (it != rel.begin())) pick = (--it).key();
+		sha = rel[pick].first;
+		name = rel[pick].second;
 	}
 	if (name.isEmpty() && (master.length() == 64)) {
 		sha = master;
@@ -315,15 +344,25 @@ void xFfGet::install() {
 	}
 	QFile::rename(tmp + "x/LICENSE.txt", dir + "LICENSE.txt");
 	QDir(tmp).removeRecursively();
-	QString ver = vrec_ffmpeg_version(QDir::cleanPath(exe));
-	if (ver.isEmpty()) {
-		fail(tr("The program downloaded does not run"));
-	} else {
-		installed = true;
-		finish(tr("FFmpeg %0 is ready.").arg(vrec_ffmpeg_release(ver)).toHtmlEscaped());
-	}
+	ready(QDir::cleanPath(exe));
 }
 #endif
+
+// Asked what it can do before the dialog says it is ready, so Options has the
+// answer at once: the file is new, and a copy in the same place is new too
+void xFfGet::ready(const QString& prog) {
+	lab->setText(tr("Checking what it runs here"));
+	bar->setRange(0, 0);
+	QApplication::processEvents();
+	vrecProbe res = vrec_probe(prog, conf.rec);
+	if (res.version.isEmpty()) {
+		fail(tr("The program installed does not run"));
+		return;
+	}
+	vrec_probe_keep(prog, res);
+	installed = true;
+	finish(tr("FFmpeg %0 is ready.").arg(vrec_ffmpeg_release(res.version)).toHtmlEscaped());
+}
 
 // the end either way: what came of it, and Cancel is only a way out now
 void xFfGet::finish(const QString& html) {
