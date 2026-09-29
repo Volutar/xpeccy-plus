@@ -41,6 +41,8 @@ bool vrec_codec_works(const QString& prog, int codec);	// the build has it, and 
 typedef struct {
 	QStringList enc;	// pictures to video
 	QStringList mux;	// video and sound to the file
+	QStringList video;	// the picture's options as the settings make them, override or not
+	QStringList sound;	// ...and the sound's
 	QString out;
 	QString tmpVideo;
 	QString tmpAudio;
@@ -49,6 +51,7 @@ typedef struct {
 
 vrecCmd vrec_command(const xRecord&, int w, int h, int ns, int rate, const QString& path, bool quiet = true);
 QString vrec_command_line(const QStringList&, bool lines = false);
+QString vrec_args_line(const QStringList&);
 QString vrec_file_name(const QString& tpl, const QString& image, const QDateTime& when);
 
 bool vrec_start(Computer*, const QString& base, int scrW, int scrH, QString* err);

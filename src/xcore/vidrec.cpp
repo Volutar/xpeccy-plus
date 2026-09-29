@@ -185,6 +185,12 @@ static QStringList vr_split(const QString& str) {
 	return res;
 }
 
+// the user's options for a part of the command, or the ones made for it
+static QStringList vr_or(const std::string& over, const QStringList& made) {
+	QStringList res = vr_split(QString::fromLocal8Bit(over.c_str()));
+	return res.isEmpty() ? made : res;
+}
+
 static QString vr_even(int v) {
 	return QString::number(v & ~1);
 }
@@ -266,30 +272,34 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const Q
 		vf += ",format=yuv444p";
 	}
 	if (rec.fps60) vf += ",framerate=fps=60";
+	// what the settings make of the picture; an override stands in for all of it
+	QStringList& ev = cmd.video;
+	ev << "-vf" << vf;
+	switch (rec.codec) {
+		case VREC_FFV1:
+			ev << "-c:v" << "ffv1";
+			break;
+		case VREC_H265:
+			ev << "-c:v" << "libx265" << "-preset" << QString::fromStdString(rec.preset);
+			ev << "-crf" << QString::number(rec.crf) << "-x265-params" << "log-level=error";
+			break;
+		case VREC_H264_NVENC:
+		case VREC_H265_NVENC:
+			ev << vr_nvenc(rec);
+			break;
+		default:
+			ev << "-c:v" << "libx264" << "-preset" << QString::fromStdString(rec.preset);
+			ev << "-crf" << QString::number(rec.crf);
+			break;
+	}
+	if (!lossless)
+		ev << "-color_primaries" << "bt709" << "-color_trc" << "bt709" << "-colorspace" << "bt709";
+	// the input and the file are the recorder's own whatever the user says
 	QStringList& ea = cmd.enc;
 	vr_quiet(ea, quiet);
 	ea << "-f" << "rawvideo" << "-pix_fmt" << "rgb0" << "-s" << QString("%0x%1").arg(w).arg(h);
 	ea << "-framerate" << fps << "-i" << "-";
-	ea << "-vf" << vf;
-	switch (rec.codec) {
-		case VREC_FFV1:
-			ea << "-c:v" << "ffv1";
-			break;
-		case VREC_H265:
-			ea << "-c:v" << "libx265" << "-preset" << QString::fromStdString(rec.preset);
-			ea << "-crf" << QString::number(rec.crf) << "-x265-params" << "log-level=error";
-			break;
-		case VREC_H264_NVENC:
-		case VREC_H265_NVENC:
-			ea << vr_nvenc(rec);
-			break;
-		default:
-			ea << "-c:v" << "libx264" << "-preset" << QString::fromStdString(rec.preset);
-			ea << "-crf" << QString::number(rec.crf);
-			break;
-	}
-	if (!lossless)
-		ea << "-color_primaries" << "bt709" << "-color_trc" << "bt709" << "-colorspace" << "bt709";
+	ea << vr_or(rec.videoOver, ev);
 	ea << vr_split(QString::fromLocal8Bit(rec.extra.c_str()));
 	ea << "-an" << cmd.tmpVideo;
 
@@ -298,21 +308,24 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const Q
 	vr_quiet(ma, quiet);
 	ma << "-i" << cmd.tmpVideo << "-i" << cmd.tmpAudio;
 	ma << "-map" << "0:v:0" << "-map" << "1:a:0" << "-c:v" << "copy";
+	QStringList& ms = cmd.sound;
 	if (rec.fps == VREC_FPS_50) {
-		// a machine frame lasts 20 ms of video: the sound follows it
+		// a machine frame lasts 20 ms of video: the sound follows it. Its
+		// pitch goes with the wav's header, so an override keeps that
 		double ratio = ns / VR_FRAME_NS;
 		if (rec.keepPitch) {
-			ma << "-af" << QString("atempo=%0").arg(ratio, 0, 'f', 6);
+			ms << "-af" << QString("atempo=%0").arg(ratio, 0, 'f', 6);
 		} else {
 			cmd.wavRate = (int)lround(rate * ratio);
-			ma << "-ar" << "48000";
+			ms << "-ar" << "48000";
 		}
 	}
 	if (lossless) {
-		ma << "-c:a" << "flac";
+		ms << "-c:a" << "flac";
 	} else {
-		ma << "-c:a" << "aac" << "-b:a" << QString("%0k").arg(rec.abitrate);
+		ms << "-c:a" << "aac" << "-b:a" << QString("%0k").arg(rec.abitrate);
 	}
+	ma << vr_or(rec.soundOver, ms);
 	if (ext == "mp4") {
 		if ((rec.codec == VREC_H265) || (rec.codec == VREC_H265_NVENC))
 			ma << "-tag:v" << "hvc1";	// or Apple's players refuse it
@@ -322,20 +335,32 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const Q
 	return cmd;
 }
 
+// one argument as it would be typed, so vr_split() reads it back
+static QString vr_quote(const QString& arg) {
+	return (arg.contains(' ') || arg.isEmpty()) ? "\"" + arg + "\"" : arg;
+}
+
+// as it would be typed, without the program's name
+QString vrec_args_line(const QStringList& args) {
+	QStringList res;
+	foreach(const QString& arg, args) res << vr_quote(arg);
+	return res.join(' ');
+}
+
 // as it would be typed; lines: a line to each part - the input, the filters,
 // the codec, the colour tags, the output
 QString vrec_command_line(const QStringList& args, bool lines) {
 	static const QStringList parts = QStringList() << "-vf" << "-c:v" << "-color_primaries" << "-an" << "-map" << "-movflags";
 	QString res("ffmpeg");
 	QString opt;
-	foreach(QString arg, args) {
+	foreach(const QString& arg, args) {
 		// -map -map on one line, but every input on its own
 		bool brk = lines && !opt.isEmpty() && (parts.contains(arg) || (arg == "-i")) && ((arg != opt) || (arg == "-i"));
 		bool chain = lines && (opt == "-vf");
 		if (arg.startsWith('-')) opt = arg;
-		if (arg.contains(' ') || arg.isEmpty()) arg = "\"" + arg + "\"";
-		if (chain) arg.replace(",", ",\n      ");		// a filter to a line
-		res += (brk ? "\n  " : " ") + arg;
+		QString txt = vr_quote(arg);
+		if (chain) txt.replace(",", ",\n      ");		// a filter to a line
+		res += (brk ? "\n  " : " ") + txt;
 	}
 	return res;
 }

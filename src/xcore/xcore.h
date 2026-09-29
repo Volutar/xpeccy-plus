@@ -606,6 +606,8 @@ typedef struct {
 	unsigned keepPitch:1;	// at 50 fps: stretch the sound in time, not in pitch
 	int abitrate;		// kbps
 	std::string extra;	// more encoder options, as typed
+	std::string videoOver;	// the picture's options, as typed, in place of the ones made
+	std::string soundOver;	// ...and the sound's
 	std::string name;	// the file name's template, see vrec_file_name()
 } xRecord;
 

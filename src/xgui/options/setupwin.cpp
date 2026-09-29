@@ -2566,9 +2566,7 @@ void SetupWin::buildRecording() {
 	foreach(QComboBox* box, QList<QComboBox*>() << cbRecSrc << cbRecScale << cbRecFps) {
 		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showRecSize);
 	}
-	connect(cbRecSrc, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
-		cbRecScale->setEnabled(getRFIData(cbRecSrc) == VREC_SRC_PICTURE);
-	});
+	connect(cbRecSrc, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::recEnables);
 	labRecSrc = new QLabel(tr("Source"));
 	grid->addWidget(labRecSrc, 0, 0);
 	grid->addWidget(cbRecSrc, 0, 1);
@@ -2640,6 +2638,11 @@ void SetupWin::buildRecording() {
 	cbRecAbr->setToolTip(tr("-c:a aac -b:a; FFV1 takes FLAC"));
 	leRecExtra = new QLineEdit;
 	leRecExtra->setToolTip(tr("Added to the encoder's options, as typed"));
+	// empty, each shows what it would stand in for
+	leRecVOver = new QLineEdit;
+	leRecVOver->setToolTip(tr("In place of the picture's options, from -vf on"));
+	leRecSOver = new QLineEdit;
+	leRecSOver->setToolTip(tr("In place of the sound's options when it is put in"));
 	cbRec60 = new QCheckBox;
 	cbRecPitch = new QCheckBox;
 	leRecName = new QLineEdit;
@@ -2688,6 +2691,8 @@ void SetupWin::buildRecording() {
 	adv.wide(labRecName);
 	adv.group("FFmpeg");
 	adv.row(tr("Extra options"), leRecExtra);
+	adv.row(tr("Video override"), leRecVOver);
+	adv.row(tr("Sound override"), leRecSOver);
 	adv.wide(teRecCmd);
 	// the checkboxes lose their tooltips to the sheet, their names keep one
 	cbRec60->setToolTip("framerate=fps=60");
@@ -2697,20 +2702,18 @@ void SetupWin::buildRecording() {
 		// FFV1 goes into MKV only, and the choice made for the others is kept
 		if (!lossy && cbRecBox->isEnabled()) recBoxKeep = getRFIData(cbRecBox);
 		setRFIndex(cbRecBox, lossy ? recBoxKeep : VREC_MKV);
-		cbRecBox->setEnabled(lossy);
-		sbRecCrf->setEnabled(lossy);
-		cbRecPreset->setEnabled(lossy);
-		cbRecAbr->setEnabled(lossy);
+		recEnables();
 	});
 	foreach(QComboBox* box, QList<QComboBox*>() << cbRecBox << cbRecCodec << cbRecPreset << cbRecAbr)
 		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showRecCmd);
 	connect(sbRecCrf, QOverload<int>::of(&QSpinBox::valueChanged), this, &SetupWin::showRecCmd);
 	connect(leRecExtra, &QLineEdit::textChanged, this, &SetupWin::showRecCmd);
+	foreach(QLineEdit* led, QList<QLineEdit*>() << leRecVOver << leRecSOver) {
+		connect(led, &QLineEdit::textChanged, this, &SetupWin::recEnables);
+		connect(led, &QLineEdit::textChanged, this, &SetupWin::showRecCmd);
+	}
 	connect(cbRecPitch, &QCheckBox::toggled, this, &SetupWin::showRecCmd);
-	// the pitch is only kept or not when 50 FPS changes the speed
-	connect(cbRecFps, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
-		cbRecPitch->setEnabled(getRFIData(cbRecFps) == VREC_FPS_50);
-	});
+	connect(cbRecFps, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::recEnables);
 	connect(leRecName, &QLineEdit::textChanged, this, &SetupWin::showRecCmd);
 	connect(cbRec60, &QCheckBox::toggled, this, &SetupWin::showRecSize);
 	QDialog* win = popOut(adv.body, "Recording: advanced settings");
@@ -2784,6 +2787,21 @@ void SetupWin::showRecSize() {
 	showRecCmd();
 }
 
+// a control is live only while it changes what is recorded: an override stands
+// in for what the ones it covers make, and the pitch is kept or not only at 50 FPS
+void SetupWin::recEnables() {
+	bool lossy = getRFIData(cbRecCodec) != VREC_FFV1;
+	bool video = leRecVOver->text().trimmed().isEmpty();
+	bool sound = leRecSOver->text().trimmed().isEmpty();
+	cbRecScale->setEnabled((getRFIData(cbRecSrc) == VREC_SRC_PICTURE) && video);
+	cbRecBox->setEnabled(lossy);
+	sbRecCrf->setEnabled(lossy && video);
+	cbRecPreset->setEnabled(lossy && video);
+	cbRec60->setEnabled(video);
+	cbRecAbr->setEnabled(lossy && sound);
+	cbRecPitch->setEnabled((getRFIData(cbRecFps) == VREC_FPS_50) && sound);
+}
+
 void SetupWin::showFfmpeg() {
 	QString prog = leRecFfmpeg->text().trimmed();
 	if (prog.isEmpty()) {
@@ -2830,6 +2848,8 @@ xRecord SetupWin::recFromUi() {
 	rec.preset = getRFSData(cbRecPreset).toStdString();
 	rec.abitrate = getRFIData(cbRecAbr);
 	rec.extra = std::string(leRecExtra->text().trimmed().toLocal8Bit().data());
+	rec.videoOver = std::string(leRecVOver->text().trimmed().toLocal8Bit().data());
+	rec.soundOver = std::string(leRecSOver->text().trimmed().toLocal8Bit().data());
 	rec.fps60 = cbRec60->isChecked() ? 1 : 0;
 	rec.keepPitch = cbRecPitch->isChecked() ? 1 : 0;
 	rec.name = std::string(leRecName->text().trimmed().toLocal8Bit().data());
@@ -2847,6 +2867,8 @@ void SetupWin::showRecCmd() {
 	QString name = vrec_file_name(leRecName->text(), media_image_name(conf.zx), QDateTime::currentDateTime());
 	vrecCmd cmd = vrec_command(rec, in.width(), in.height(), conf.zx->vid->nsPerFrame, conf.snd.rate, name, false);
 	labRecName->setFull(cmd.out);
+	leRecVOver->setPlaceholderText(vrec_args_line(cmd.video));
+	leRecSOver->setPlaceholderText(vrec_args_line(cmd.sound));
 	teRecCmd->setPlainText(vrec_command_line(cmd.enc, true) + "\n\n" + vrec_command_line(cmd.mux, true));
 }
 
@@ -2857,23 +2879,24 @@ void SetupWin::fillRecording() {
 	leRecDir->setPlaceholderText(QDir::toNativeSeparators(vrec_dir_auto()));
 	showFfmpeg();
 	setRFIndex(cbRecSrc, conf.rec.source);
-	cbRecScale->setEnabled(conf.rec.source == VREC_SRC_PICTURE);
 	setRFIndex(cbRecScale, conf.rec.scale);
 	setRFIndex(cbRecFps, conf.rec.fps);
 	setRFIndex(cbRecBox, conf.rec.container);
 	recBoxKeep = conf.rec.container;
 	setRFIndex(cbRecCodec, conf.rec.codec);
-	cbRecPitch->setEnabled(conf.rec.fps == VREC_FPS_50);
 	sbRecCrf->setValue(conf.rec.crf);
 	int idx = cbRecPreset->findData(QString::fromStdString(conf.rec.preset));
 	cbRecPreset->setCurrentIndex(idx < 0 ? 2 : idx);
 	idx = cbRecAbr->findData(conf.rec.abitrate);
 	cbRecAbr->setCurrentIndex(idx < 0 ? 1 : idx);
 	leRecExtra->setText(QString::fromLocal8Bit(conf.rec.extra.c_str()));
+	leRecVOver->setText(QString::fromLocal8Bit(conf.rec.videoOver.c_str()));
+	leRecSOver->setText(QString::fromLocal8Bit(conf.rec.soundOver.c_str()));
 	cbRec60->setChecked(conf.rec.fps60);
 	cbRecPitch->setChecked(conf.rec.keepPitch);
 	leRecName->setText(QString::fromLocal8Bit(conf.rec.name.c_str()));
 	recFilling = false;
+	recEnables();
 	showRecSize();
 	alignVideoLabels();
 }

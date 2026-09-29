@@ -196,6 +196,8 @@ void saveConfig() {
 	fprintf(cfile, "rec.name = %s\n", conf.rec.name.c_str());
 	fprintf(cfile, "rec.abitrate = %i\n", conf.rec.abitrate);
 	fprintf(cfile, "rec.extra = %s\n", conf.rec.extra.c_str());
+	fprintf(cfile, "rec.video.override = %s\n", conf.rec.videoOver.c_str());
+	fprintf(cfile, "rec.sound.override = %s\n", conf.rec.soundOver.c_str());
 	fprintf(cfile, "fullscreen = %s\n", YESNO(conf.vid.fullScreen));
 	fprintf(cfile, "keepratio = %s\n", YESNO(conf.vid.keepRatio));
 	fprintf(cfile, "lowlatency = %s\n", YESNO(conf.vid.lowLatency));
@@ -888,6 +890,8 @@ void loadConfig() {
 					if (pnam=="rec.name") conf.rec.name = pval;
 					if (pnam=="rec.abitrate") conf.rec.abitrate = getRanged(arg.s, 64, 512);
 					if (pnam=="rec.extra") conf.rec.extra = pval;
+					if (pnam=="rec.video.override") conf.rec.videoOver = pval;
+					if (pnam=="rec.sound.override") conf.rec.soundOver = pval;
 					if (pnam=="fullscreen") conf.vid.fullScreen = arg.b;
 					if (pnam=="keepratio") conf.vid.keepRatio = arg.b;
 					if (pnam=="lowlatency") conf.vid.lowLatency = arg.b;
