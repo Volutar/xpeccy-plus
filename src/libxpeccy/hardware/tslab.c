@@ -1,5 +1,6 @@
 #include "hardware.h"
 #include "../xlog.h"
+#include "../cpu/Z80/z80.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -18,9 +19,11 @@
 #define regMADR	reg[16]		// 15AF[0..3] = MapAddr
 #define dmaLen	reg[17]
 #define dmaCnt	reg[18]
+#define fmLow	reg[20]		// FMAPS: even byte waiting for its odd one
 
 #define dmaSrc	xreg[0]
 #define dmaDst	xreg[1]
+#define frmHold	xreg[2].i	// dots of frame INT pulse held while VDOS runs
 
 // Ram in window 0 without W0_WE (#21AF bit 1) reads but drops writes.
 static void tslNoWr(int adr, int val, void* data) {}
@@ -78,12 +81,22 @@ void tslReset(Computer* comp) {
 	comp->vid->tsconf.T1YOffset = 0;
 	comp->vid->tsconf.tconfig = 0;
 	comp->vid->tsconf.intLine = 0;
+	comp->vid->tsconf.intInc = 0;
+	comp->vid->tsconf.hsint = 2;		// HSINT resets to 1
 	comp->vid->intp.x = 0;
 	comp->vid->intp.y = 0;
 	comp->vid->inten = 1;
 	comp->flgLINT = 0;		// the ack latches are not cleared anywhere else
 	comp->flgDINT = 0;
 	comp->flgVDOS = 0;
+	comp->frmHold = 0;
+	comp->flgMEN = 0;			// FMAPS off
+	comp->sdc->on = 1;
+	for (int i = 0; i < 4; i++)		// FDDVirt = 0
+		comp->dif->fdc->flop[i]->virt = 0;
+	memSetBank(comp->mem, 0x40, MEM_RAM, 5, MEM_16K, NULL, NULL, NULL);
+	memSetBank(comp->mem, 0x80, MEM_RAM, 2, MEM_16K, NULL, NULL, NULL);
+	memSetBank(comp->mem, 0xc0, MEM_RAM, 0, MEM_16K, NULL, NULL, NULL);
 	tslUpdatePorts(comp->vid);
 	tslMapMem(comp);
 }
@@ -123,9 +136,9 @@ void tslUpdatePalX(void* ptr) {
 
 int tslMRd(Computer* comp, int adr, int m1) {
 	if (m1 && (comp->dif->type == DIF_BDI)) {
-		if (comp->flgDOS && (adr > 0x4000) && (!comp->flgVDOS)) {
+		if (comp->flgDOS && (adr >= 0x4000) && (!comp->flgVDOS)) {
 			comp->flgDOS = 0;
-			if (comp->flgROM) comp->hw->mapMem(comp);	// don't switch ROM0 to ROM2
+			comp->hw->mapMem(comp);
 		}
 		if (!comp->flgDOS && ((adr & 0xff00) == 0x3d00) && (comp->flgROM) && ((comp->tsconf.p21af & 0x04) == 0x00)) {
 			comp->flgDOS = 1;
@@ -141,14 +154,38 @@ void tslMWr(Computer* comp, int adr, int val) {
 	if (comp->flgMEN && (((adr & 0xf000) >> 12) == comp->regMADR)) {
 		if ((adr & 0xf00) == 0x400) {				// ts registers
 			tslRegWr(comp, adr & 0xff, val);
-		} else if ((adr & 0xe00) == 0x000) {			// palete
-			comp->vid->tsconf.cram[adr & 0x1ff] = val & 0xff;
-			comp->vid->tsconf.palUpd = 1;
-		} else if ((adr & 0xe00) == 0x200) {			// sprites
-			comp->vid->tsconf.sfile[adr & 0x1ff] = val & 0xff;
+		} else if ((adr & 0xc00) == 0x000) {			// cram, sfile: a word on its odd byte (zmaps.v)
+			unsigned char* ptr = (adr & 0x200) ? comp->vid->tsconf.sfile : comp->vid->tsconf.cram;
+			if (adr & 1) {
+				ptr[adr & 0x1fe] = comp->fmLow;
+				ptr[adr & 0x1ff] = val & 0xff;
+				if (~adr & 0x200) comp->vid->tsconf.palUpd = 1;
+			} else {
+				comp->fmLow = val & 0xff;
+			}
 		}
 	}
 	memWr(comp->mem,adr,val);
+}
+
+// VDOS takes the INT line away (zint.v): nothing is acknowledged, what is pending waits,
+// and the frame pulse stops counting until VDOS is left.
+static void ts_hold_frame(Computer* comp) {
+	comp->frmHold = comp->vid->intFRAME;
+	if (comp->frmHold) vid_set_int_frame(comp->vid, 0);
+}
+
+static void ts_set_vdos(Computer* comp, int on) {
+	if (comp->flgVDOS == !!on) return;
+	comp->flgVDOS = !!on;
+	if (on) {
+		ts_hold_frame(comp);
+	} else if (comp->frmHold) {
+		vid_set_int_frame(comp->vid, comp->frmHold);
+		comp->frmHold = 0;
+		comp->cpu->intrq |= Z80_INT;
+	}
+	tslMapMem(comp);
 }
 
 // in
@@ -156,8 +193,7 @@ void tslMWr(Computer* comp, int adr, int val) {
 int tsInFF(Computer* comp, int port) {			// dos
 	int res = -1;
 	if (comp->dif->fdc->flp->virt) {
-		comp->flgVDOS = 1;
-		tslMapMem(comp);
+		ts_set_vdos(comp, 1);
 	} else {
 		difIn(comp->dif, port, &res, 1);
 	}
@@ -167,8 +203,7 @@ int tsInFF(Computer* comp, int port) {			// dos
 int tsInBDI(Computer* comp, int port) {			// dos
 	int res = -1;
 	if (comp->flgVDOS) {
-		comp->flgVDOS = 0;
-		tslMapMem(comp);
+		ts_set_vdos(comp, 0);
 	} else {
 		res = tsInFF(comp, port);
 	}
@@ -181,20 +216,24 @@ int tsIn57(Computer* comp, int port) {
 	return res;
 }
 
+// the card is taken as always in and writable (zports.v, as on BaseConf)
 int tsIn77(Computer* comp, int port) {
-	int res = 0;
-	if (comp->sdc->image != NULL) res |= 0x01;	// inserted
-	if (comp->sdc->lock) res |= 0x02;		// wrprt
-	return res;
+	return 0x00;
 }
 
 int tsIn1F(Computer* comp, int port) {
 	return zx_in_joy(comp, port);
 }
 
+// the clock at #BFF7/#DFF7: #xxF7 is shut in DOS but open again in VDOS, where the
+// clock needs no #EFF7 (zports.v)
+static int ts_cmos_on(Computer* comp) {
+	return (!comp->flgBDI || comp->flgVDOS) && ((comp->pEFF7 & 0x80) || comp->flgBDI);
+}
+
 int tsInBFF7(Computer* comp, int port) {
 	int res = 0xff;
-	if (comp->pEFF7 & 0x80) {
+	if (ts_cmos_on(comp)) {
 		res = evo_cmos_rd(comp);
 	}
 	return res;
@@ -204,12 +243,10 @@ int tsInBFF7(Computer* comp, int port) {
 
 void tsOutBDI(Computer* comp, int port, int val) {		// dos
 	if (comp->flgVDOS) {
-		comp->flgVDOS = 0;
-		tslMapMem(comp);
+		ts_set_vdos(comp, 0);
 	} else {
 		if (comp->dif->fdc->flp->virt) {
-			comp->flgVDOS = 1;
-			tslMapMem(comp);
+			ts_set_vdos(comp, 1);
 		} else {
 			difOut(comp->dif, port, val, 1);
 		}
@@ -219,8 +256,7 @@ void tsOutBDI(Computer* comp, int port, int val) {		// dos
 void tsOutFF(Computer* comp, int port, int val) {		// dos
 	comp->dif->fdc->flp = comp->dif->fdc->flop[val & 3];
 	if (comp->dif->fdc->flp->virt) {
-		comp->flgVDOS = 1;
-		tslMapMem(comp);
+		ts_set_vdos(comp, 1);
 	} else if (comp->flgVDOS) {
 		// comp->dif->fdc->fptr = comp->dif->fdc->flop[val & 3];	// out VGSys[1:0]
 	} else {
@@ -247,37 +283,44 @@ void tsOut57(Computer* comp, int port, int val) {
 }
 
 void tsOut77(Computer* comp, int port, int val) {
-	comp->sdc->on = val & 1;
-	comp->sdc->cs = (val & 2) ? 1 : 0;
+	comp->sdc->cs = (val & 2) ? 1 : 0;	// b1: 0 selects the card; b0 is the SPI mode, not power
 }
 
+// MemConfig b7..6 (LCK128) says what #7FFD pages: 00 512K, 01 128K, 11 1024K with D5 as a
+// page bit instead of LOCK, and 10 picks 128K or 512K by the opcode that wrote it (zports.v)
 void tsOut7FFD(Computer* comp, int port, int val) {
 	if (comp->p7FFD & 0x20) return;
-	comp->p7FFD = val & 0xff;
-	comp->flgROM = (val & 0x10) ? 1 : 0;
-	int num = (val & 7) | ((val & 0xc0) >> 3);	// page (512K)
-	if (comp->tsconf.p21af & 0x80) {				// 1x : !a13
-		if (~port & 0x2000) num &= 7;
-	} else if (comp->tsconf.p21af & 0x40) {			// 01 : 128
-		num &= 7;
+	int lck = (comp->tsconf.p21af >> 6) & 3;
+	int num = val & 7;
+	switch (lck) {
+		case 0: num |= (val & 0xc0) >> 3; break;
+		case 2:				// OUT (n),A is D3: 128K; OUT (C),r is ED 41..79: 512K
+			if ((comp->cpu->com ^ (comp->cpu->com >> 1)) & 0x40)
+				num |= (val & 0xc0) >> 3;
+			break;
+		case 3: num |= ((val & 0xc0) >> 3) | (val & 0x20); break;
 	}
+	// 1024K leaves the lock as it was
+	comp->p7FFD = (lck == 3) ? ((val & ~0x20) | (comp->p7FFD & 0x20)) : (val & 0xff);
+	comp->flgROM = (val & 0x10) ? 1 : 0;
 	memSetBank(comp->mem,0xc0,MEM_RAM,num, MEM_16K,NULL,NULL,NULL);
 	comp->vid->vidPage = (val & 8) ? 7 : 5;
 	tslMapMem(comp);
 }
 
 void tsOutBFF7(Computer* comp, int port, int val) {
-	if (comp->pEFF7 & 0x80)
+	if (ts_cmos_on(comp))
 		evo_cmos_wr(comp, val);
 }
 
 void tsOutDFF7(Computer* comp, int port, int val) {
-	if (comp->pEFF7 & 0x80)
+	if (ts_cmos_on(comp))
 		evo_cmos_adr(comp, val);
 }
 
 void tsOutEFF7(Computer* comp, int port, int val) {
-	comp->pEFF7 = val & 0xff;
+	if (!comp->flgBDI)
+		comp->pEFF7 = val & 0xff;
 }
 
 // xxaf
@@ -365,7 +408,8 @@ void tsOut23AF(Computer* comp, int port, int val) {
 }
 
 void tsOut24AF(Computer* comp, int port, int val) {
-	comp->vid->tsconf.ilinh = val & 0xff;
+	comp->vid->tsconf.ilinh = val & 1;		// VSINT is 9 bits
+	comp->vid->tsconf.intInc = (val >> 4) & 0x0f;
 	comp->vid->intp.y = comp->vid->tsconf.intLine;
 }
 
@@ -375,111 +419,143 @@ void tsOut26AF(Computer* comp, int port, int val) {
 
 int tsIn27AF(Computer* comp, int port) {return 0x00;}
 
-void tsOut27AF(Computer* comp, int port, int val) {
-	int cnt, cnt2;
-	int tmp;
-	unsigned char* ptr = NULL;
-	int sadr = (comp->dmaSrc.ih << 14) | (comp->dmaSrc.w & 0x3ffe); // (comp->dma.src.x << 14) | ((comp->dma.src.h & 0x3f) << 8) | (comp->dma.src.l & 0xfe);
-	int dadr = (comp->dmaDst.ih << 14) | (comp->dmaDst.w & 0x3ffe); // (comp->dma.dst.x << 14) | ((comp->dma.dst.h & 0x3f) << 8) | (comp->dma.dst.l & 0xfe);
-	int lcnt = (comp->dmaLen + 1) << 1;
-//	comp->vid->tsconf.dmabytes = (comp->dmaLen + 1) * (comp->dmaCnt + 1);
-	switch (val & 0x87) {
-		case 0x01:		// ram->ram
-//			printf("dma ram-ram %X:%X->%X:%X, %Xx%X words, ctrl %.2X\n", comp->dmaSrc.ih, comp->dmaSrc.w, comp->dmaDst.ih, comp->dmaDst.w, comp->dmaCnt+1, comp->dmaLen+1, val);
-			for (cnt = 0; cnt <= comp->dmaCnt; cnt++) {
-				for (cnt2 = 0; cnt2 < lcnt; cnt2++) {
-					comp->mem->ramData[dadr + cnt2] = comp->mem->ramData[sadr + cnt2];
-				}
-				sadr += (val & 0x20) ? ((val & 0x08) ? 0x200 : 0x100) : lcnt;		// SALGN
-				dadr += (val & 0x10) ? ((val & 0x08) ? 0x200 : 0x100) : lcnt;		// DALGN
-			}
-			break;
-		case 0x81:		// blitter
-//			printf("dma blt %X:%X->%X:%X, %Xx%X words, ctrl %.2X\n", comp->dmaSrc.ih, comp->dmaSrc.w, comp->dmaDst.ih, comp->dmaDst.w, comp->dmaCnt+1, comp->dmaLen+1, val);
-			for (cnt = 0; cnt <= comp->dmaCnt; cnt++) {
-				for (cnt2 = 0; cnt2 < lcnt; cnt2++) {
-					tmp = comp->mem->ramData[sadr + cnt2];
-					if (val & 0x08) {
-						if (tmp != 0) comp->mem->ramData[dadr + cnt2] = tmp & 0xff;
-					} else {
-						if (tmp & 0xf0) {
-							comp->mem->ramData[dadr + cnt2] &= 0x0f;
-							comp->mem->ramData[dadr + cnt2] |= (tmp & 0xf0);
-						}
-						if (tmp & 0x0f) {
-							comp->mem->ramData[dadr + cnt2] &= 0xf0;
-							comp->mem->ramData[dadr + cnt2] |= (tmp & 0x0f);
-						}
-					}
-					// comp->mem->ramData[dadr + cnt2] = comp->mem->ramData[sadr + cnt2];
-				}
-				sadr += (val & 0x20) ? ((val & 0x08) ? 0x200 : 0x100) : lcnt;		// SALGN
-				dadr += (val & 0x10) ? ((val & 0x08) ? 0x200 : 0x100) : lcnt;		// DALGN
-			}
-			break;
-		case 0x02:		// SPI->RAM
-//			printf("spi->ram\t%.2X:%.4X,%.2X:%.3X\n",comp->dma.dst.x,dadr & 0x3fff,comp->dma.num,lcnt);
-			for (cnt = 0; cnt <= comp->dmaCnt; cnt++) {
-				for (cnt2 = 0; cnt2 < lcnt; cnt2++) {
-					comp->mem->ramData[dadr + cnt2] = sdcRead(comp->sdc) & 0xff;
-				}
-				dadr += (val & 0x10) ? ((val & 0x08) ? 0x200 : 0x100) : lcnt;
-			}
-			break;
-		case 0x82:		// RAM->SPI
-			for (cnt = 0; cnt <= comp->dmaCnt; cnt++) {
-				for (cnt2 = 0; cnt2 < lcnt; cnt2++) {
-					sdcWrite(comp->sdc, comp->mem->ramData[sadr + cnt2]);
-				}
-				sadr += (val & 0x20) ? ((val & 0x08) ? 0x200 : 0x100) : lcnt;
-			}
-			break;
-		case 0x03:		// IDE->RAM
-			for (cnt = 0; cnt <= comp->dmaCnt; cnt++) {
-				for (cnt2 = 0; cnt2 < lcnt; cnt2++) {
-					if (!ideIn(comp->ide, 0x00, &tmp, 1)) tmp = 0xff;
-					comp->mem->ramData[dadr + cnt2] = tmp & 0xff;
-				}
-				dadr += (val & 0x10) ? ((val & 0x08) ? 0x200 : 0x100) : lcnt;
-			}
-			break;
-		case 0x83:		// RAM->IDE
-			for (cnt = 0; cnt <= comp->dmaCnt; cnt++) {
-				for (cnt2 = 0; cnt2 < lcnt; cnt2++) {
-					ideOut(comp->ide, 0x00, comp->mem->ramData[sadr + cnt2], 1);
-				}
-				sadr += (val & 0x20) ? ((val & 0x08) ? 0x200 : 0x100) : lcnt;
-			}
-			break;
-		case 0x04:		// FILL->RAM
-			for (cnt = 0; cnt <= comp->dmaCnt; cnt++) {
-				for (cnt2 = 0; cnt2 < lcnt; cnt2++) {
-					comp->mem->ramData[dadr + cnt2] = comp->mem->ramData[sadr + (cnt2 & 1)];
-				}
-				dadr += (val & 0x10) ? ((val & 0x08) ? 0x200 : 0x100) : lcnt;		// DALGN
-			}
-			break;
-		case 0x84:		// RAM->CRAM
-		case 0x85:		// RAM->SFILE
-			ptr = (val & 1) ? comp->vid->tsconf.sfile : comp->vid->tsconf.cram;
-			for (cnt2 = 0; cnt2 < lcnt; cnt2++) {
-				*(ptr + ((dadr + cnt2) & 0x1ff)) = comp->mem->ramData[sadr + cnt2];
-			}
-			if (~val & 1) comp->vid->tsconf.palUpd = 1;
-			break;
-		default:
-			xlog(XLG_HW, XLL_DEBUG, "0x27AF: unsupported src-dst: %.2X",val & 0x87);
-			// comp->brk = 1;
-			break;
+// DMA as dma.v runs it. Addresses count 16-bit words over 21 bits, so 4 MB wraps round.
+// With S_ALGN/D_ALGN an address wraps inside its 256/512 byte block during a burst, and
+// each burst starts one block further on. The transfer is done at once.
+
+typedef struct {
+	int base;	// block part, or the whole address without align
+	int low;	// offset in the block the bursts start from
+	int pos;	// words into the current burst
+	int mask;	// block size - 1, 0 without align
+} tsDmaAdr;
+
+static void ts_dma_adr_init(tsDmaAdr* a, xreg32* r, int algn, int asz) {
+	int w = ((r->ih << 13) | ((r->w & 0x3ffe) >> 1)) & 0x1fffff;
+	a->mask = algn ? (asz ? 0xff : 0x7f) : 0;
+	a->base = w & ~a->mask;
+	a->low = w & a->mask;
+	a->pos = 0;
+}
+
+static int ts_dma_adr(tsDmaAdr* a) {
+	return a->mask ? ((a->base | ((a->low + a->pos) & a->mask)) & 0x1fffff) : ((a->base + a->pos) & 0x1fffff);
+}
+
+static void ts_dma_burst_end(tsDmaAdr* a) {
+	if (a->mask) {
+		a->base += a->mask + 1;
+		a->pos = 0;
 	}
-	comp->dmaSrc.ih = ((sadr & 0x3fc000) >> 14);
-	comp->dmaSrc.w = sadr & 0x3fff;
-//	comp->dma.src.h = ((sadr & 0x3f00) >> 8);
-//	comp->dma.src.l = sadr & 0xff;
-	comp->dmaDst.ih = ((dadr & 0x3fc000) >> 14);
-	comp->dmaDst.w = dadr & 0x3fff;
-//	comp->dmaDst.h = ((dadr & 0x3f00) >> 8);
-//	comp->dmaDst.l = dadr & 0xff;
+}
+
+static void ts_dma_adr_store(tsDmaAdr* a, xreg32* r) {
+	int w = ts_dma_adr(a);
+	r->ih = (w >> 13) & 0xff;
+	r->w = (w << 1) & 0x3ffe;
+}
+
+static int ts_dma_rd(Computer* comp, int w) {
+	unsigned char* p = comp->mem->ramData + (w << 1);
+	return p[0] | (p[1] << 8);
+}
+
+static void ts_dma_wr(Computer* comp, int w, int val) {
+	unsigned char* p = comp->mem->ramData + (w << 1);
+	p[0] = val & 0xff;
+	p[1] = (val >> 8) & 0xff;
+}
+
+// blitter: a source pixel that is not 0 goes over the destination (BLT1), or the two
+// are added, saturating when D6 asks (BLT2); pixels are bytes with A_SZ, nibbles without
+static int ts_blit(int src, int dst, int add, int sat, int asz) {
+	int res = 0;
+	int bits = asz ? 8 : 4;
+	int m = (1 << bits) - 1;
+	for (int sh = 0; sh < 16; sh += bits) {
+		int s = (src >> sh) & m;
+		int d = (dst >> sh) & m;
+		int v;
+		if (add) {
+			v = s + d;
+			if (v > m) v = sat ? m : (v & m);
+		} else {
+			v = s ? s : d;
+		}
+		res |= v << sh;
+	}
+	return res;
+}
+
+void tsOut27AF(Computer* comp, int port, int val) {
+	tsDmaAdr s, d;
+	int asz = (val & 0x08) ? 1 : 0;
+	int dev = ((val & 0x80) >> 4) | (val & 0x07);
+	int len = comp->dmaLen + 1;
+	int num = comp->dmaCnt + 1;
+	int data = 0;
+	int w;
+	ts_dma_adr_init(&s, &comp->dmaSrc, val & 0x20, asz);
+	ts_dma_adr_init(&d, &comp->dmaDst, val & 0x10, asz);
+	// W/R:DDEV that exist: ram, spi, ide, fill, add-blit, blit, and back, cram, sfile
+	if (!((0x3e5e >> dev) & 1)) {
+		xlog(XLG_HW, XLL_DEBUG, "0x27AF: unsupported src-dst: %.2X", val & 0x87);
+		return;
+	}
+	if (dev == 0x4) {			// fill: one word read, then written all over
+		data = ts_dma_rd(comp, ts_dma_adr(&s));
+		s.pos++;
+	}
+	for (int b = 0; b < num; b++) {
+		for (int i = 0; i < len; i++) {
+			switch (dev) {
+				case 0x1:
+					ts_dma_wr(comp, ts_dma_adr(&d), ts_dma_rd(comp, ts_dma_adr(&s)));
+					break;
+				case 0x9:
+				case 0x6:
+					w = ts_dma_adr(&d);
+					ts_dma_wr(comp, w, ts_blit(ts_dma_rd(comp, ts_dma_adr(&s)), ts_dma_rd(comp, w), dev == 0x6, val & 0x40, asz));
+					break;
+				case 0x2:
+					data = sdcRead(comp->sdc) & 0xff;
+					data |= (sdcRead(comp->sdc) & 0xff) << 8;
+					ts_dma_wr(comp, ts_dma_adr(&d), data);
+					break;
+				case 0xa:
+					data = ts_dma_rd(comp, ts_dma_adr(&s));
+					sdcWrite(comp->sdc, data & 0xff);
+					sdcWrite(comp->sdc, (data >> 8) & 0xff);
+					break;
+				case 0x3:
+					ts_dma_wr(comp, ts_dma_adr(&d), ataRd(comp->ide->curDev, HDD_DATA));
+					break;
+				case 0xb:
+					ataWr(comp->ide->curDev, HDD_DATA, ts_dma_rd(comp, ts_dma_adr(&s)));
+					break;
+				case 0x4:
+					ts_dma_wr(comp, ts_dma_adr(&d), data);
+					break;
+				case 0xc:
+				case 0xd: {
+					unsigned char* p = (dev == 0xc) ? comp->vid->tsconf.cram : comp->vid->tsconf.sfile;
+					data = ts_dma_rd(comp, ts_dma_adr(&s));
+					w = (ts_dma_adr(&d) & 0xff) << 1;
+					p[w] = data & 0xff;
+					p[w + 1] = (data >> 8) & 0xff;
+					break;
+				}
+			}
+			// both addresses step on every word, whatever the device; a fill read its one
+			if (dev != 0x4) s.pos++;
+			d.pos++;
+		}
+		if (dev != 0x4) ts_dma_burst_end(&s);
+		ts_dma_burst_end(&d);
+	}
+	if (dev == 0xc) comp->vid->tsconf.palUpd = 1;
+	ts_dma_adr_store(&s, &comp->dmaSrc);
+	ts_dma_adr_store(&d, &comp->dmaDst);
 	if (comp->vid->inten & 4) {
 		comp->vid->intDMA = 1;
 		comp->hw->irq(comp, IRQ_DMA);
@@ -577,21 +653,21 @@ static xPort tsPortMap[] = {
 	{0xffff,0x45af,2,2,2,NULL,	tsOut45AF},
 	{0xffff,0x46af,2,2,2,NULL,	tsOut46AF},
 	{0xffff,0x47af,2,2,2,NULL,	tsOut47AF},
-	// !dos
-	{0x00f7,0x00fe,0,2,2,xInFE,	tsOutFE},	// fe
-	{0x00ff,0x0057,0,2,2,tsIn57,	tsOut57},	// 57
-	{0x00ff,0x0077,0,2,2,tsIn77,	tsOut77},	// 77
+	// dos or not: only the joystick gives way to the disk; #xxF7 sorts itself out
+	{0x00f7,0x00fe,2,2,2,xInFE,	tsOutFE},	// fe
+	{0x00ff,0x0057,2,2,2,tsIn57,	tsOut57},	// 57
+	{0x00ff,0x0077,2,2,2,tsIn77,	tsOut77},	// 77
 	{0x00ff,0x001f,0,2,2,tsIn1F,	NULL},
 //	{0x00ff,0x00fb,0,2,2,NULL,	tsOutFB},	// fb
-	{0x10ff,0xeff7,0,2,2,NULL,	tsOutEFF7},	// eff7
-	{0x20ff,0xdff7,0,2,2,NULL,	tsOutDFF7},	// dff7
-	{0x40ff,0xbff7,0,2,2,tsInBFF7,	tsOutBFF7},	// bff7
-	{0x80ff,0x7ffd,0,2,2,NULL,	tsOut7FFD},	// 7ffd
-	{0xc0ff,0xbffd,0,2,2,NULL,	xOutBFFD},	// bffd
-	{0xc0ff,0xfffd,0,2,2,xInFFFD,	xOutFFFD},	// fffd
-	{0xffff,0xfadf,0,2,2,xInFADF,	NULL},		// fadf
-	{0xffff,0xfbdf,0,2,2,xInFBDF,	NULL},		// fbdf
-	{0xffff,0xffdf,0,2,2,xInFFDF,	NULL},		// ffdf
+	{0x10ff,0xeff7,2,2,2,NULL,	tsOutEFF7},	// eff7
+	{0x20ff,0xdff7,2,2,2,NULL,	tsOutDFF7},	// dff7
+	{0x40ff,0xbff7,2,2,2,tsInBFF7,	tsOutBFF7},	// bff7
+	{0x80ff,0x7ffd,2,2,2,NULL,	tsOut7FFD},	// 7ffd
+	{0xc0ff,0xbffd,2,2,2,NULL,	xOutBFFD},	// bffd
+	{0xc0ff,0xfffd,2,2,2,xInFFFD,	xOutFFFD},	// fffd
+	{0xffff,0xfadf,2,2,2,xInFADF,	NULL},		// fadf
+	{0xffff,0xfbdf,2,2,2,xInFBDF,	NULL},		// fbdf
+	{0xffff,0xffdf,2,2,2,xInFFDF,	NULL},		// ffdf
 	// dos
 	{0x009f,0x001f,1,2,2,tsInBDI,	tsOutBDI},	// 1f,3f,5f,7f
 	{0x00ff,0x00ff,1,2,2,tsInFF,	tsOutFF},	// ff
@@ -618,10 +694,22 @@ int tslIn(Computer* comp, int port) {
 
 // irq
 
-#include "../cpu/Z80/z80.h"
-
 void ts_irq(Computer* comp, int t) {
 	switch(t) {
+		case IRQ_VID_INT:
+			zx_irq(comp, t);
+			// the pulse is 32 cpu clocks at whatever speed the cpu runs (zint.v)
+			if (comp->vid->intFRAME)
+				vid_set_int_frame(comp->vid, (int)((32 * comp->nsPerTickFixed + comp->vid->nsPerDotFixed - 1) / comp->vid->nsPerDotFixed));
+			if (comp->vid->tsconf.intInc) {		// video_ports.v: past line 319 it wraps by 320
+				int v = comp->vid->tsconf.intLine + comp->vid->tsconf.intInc;
+				if ((v >> 6) == 5) v &= 0x3f;
+				comp->vid->tsconf.intLine = v & 0x1ff;
+				comp->vid->intp.y = comp->vid->tsconf.intLine;
+			}
+			if (comp->flgVDOS)
+				ts_hold_frame(comp);
+			break;
 		case IRQ_VID_IEND:
 			if (!comp->flgLINT && !comp->flgDINT) {
 				comp->cpu->intrq &= ~Z80_INT;	// reset cpu int line if there is no other ints
@@ -639,7 +727,13 @@ void ts_irq(Computer* comp, int t) {
 			break;
 		case IRQ_CPU_ACK:
 			zx_irq(comp, t);
-			comp->cpu->flgACK |= comp->flgLINT || comp->flgDINT;
+			// line and dma hold until acked; the cpu drops INT on every ack it takes
+			if (comp->flgLINT || comp->flgDINT) {
+				comp->cpu->flgACK = 1;
+				comp->cpu->intrq |= Z80_INT;
+			}
+			if (comp->flgVDOS)
+				comp->cpu->flgACK = 0;
 			break;
 		default:
 			zx_irq(comp, t);
@@ -650,6 +744,8 @@ void ts_irq(Computer* comp, int t) {
 int ts_ack(Computer* comp) {
 	if (comp->vid->intFRAME) {		// frame int have highest priority
 		comp->intVector = 0xff;
+		// taken is gone: the rest of the pulse must not hand it over again
+		vid_set_int_frame(comp->vid, 0);
 	} else if (comp->flgLINT) {		// line int
 		comp->flgLINT = 0;
 		comp->intVector = 0xfd;

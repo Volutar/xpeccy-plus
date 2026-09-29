@@ -91,6 +91,7 @@ struct Video {
 	unsigned nogfx:1;	// tsl : nogfx flag, pc98xx:disable display
 	unsigned newFrame:1;	// set @ start of VBlank
 	int intFRAME;		// aka INT
+	int intlen;		// dots the pulse in intFRAME started with
 	unsigned intLINE:1;	// for TSConf
 	unsigned intDMA:1;	// for TSConf
 //	unsigned noScreen:1;
@@ -201,6 +202,7 @@ struct Video {
 		ePair(T1YOffset,t1yh,t1yl);
 		ePair(scrLine, loffh, loffl);
 		ePair(intLine, ilinh, ilinl);	// INT line
+		unsigned char intInc;		// VSINTH b7..4: lines the INT line moves on after each frame INT
 		unsigned palUpd:1;		// cram was written: apply it at the next line start
 		unsigned char cram[0x200];	// pal = colram?
 		unsigned char sfile[0x200];	// sprites = ram?

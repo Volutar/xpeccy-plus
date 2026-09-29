@@ -148,16 +148,13 @@ int vidTSLRenderSprites(Video* vid) {
 int vidTSLRender16c(Video* vid) {
 	xscr = vid->tsconf.xOffset & 0x1ff;
 	yscr = (vid->tsconf.scrLine + vid->tsconf.yOffset) & 0x1ff;
-	adr = ((vid->vidPage & 0xf8) << 14) + (yscr << 8) + (xscr >> 1);
-	xadr = adr & ~0xff;
-	fadr = 0;
-	while (fadr < vid->scrsize.x) {
-		scrbyte = vid->mrd(adr, vid->xptr);
-		adr = ((adr + 1) & 0xff) | xadr;
-		vid->linb[fadr] = vid->tsconf.scrPal | ((scrbyte >> 4) & 0x0f);
-		fadr++;
-		vid->linb[fadr] = vid->tsconf.scrPal | (scrbyte & 0x0f);
-		fadr++;
+	xadr = ((vid->vidPage & 0xf8) << 14) + (yscr << 8);
+	// pixel by pixel: an odd X offset starts on the right nibble of a byte
+	for (fadr = 0; fadr < vid->scrsize.x; fadr++) {
+		if (!fadr || !(xscr & 1))
+			scrbyte = vid->mrd(xadr | (xscr >> 1), vid->xptr);
+		vid->linb[fadr] = vid->tsconf.scrPal | ((xscr & 1) ? (scrbyte & 0x0f) : (scrbyte >> 4));
+		xscr = (xscr + 1) & 0x1ff;
 	}
 	return vid->scrsize.x >> 2;		// 1/4
 }

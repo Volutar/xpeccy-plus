@@ -168,7 +168,7 @@ void zx_irq(Computer* comp, int t) {
 			vid_sync_lazy(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
 			res4 = comp->cpu->t;
 			int act = comp->vid->intFRAME;
-			if (act && (ahead > 0) && (comp->vid->intsize - act < ahead * comp->nsPerTickFixed / comp->vid->nsPerDotFixed))
+			if (act && (ahead > 0) && (comp->vid->intlen - act < ahead * comp->nsPerTickFixed / comp->vid->nsPerDotFixed))
 				act = 0;
 			comp->cpu->flgACK = !!act;
 			// INT is a level: taken early in the pulse, it is taken again as soon
