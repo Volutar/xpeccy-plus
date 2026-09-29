@@ -157,6 +157,7 @@ int z80_int(CPU* cpu) {
 					break;
 				case 1:
 					cpu->regR++;
+					cpu->xack(cpu->xptr);	// the ack cycle is there in IM 1 too, its byte unused
 					cpu->t = 2 + 5;	// 2 extra + 5 on RST38 fetch
 					z80_call(cpu, 0x38);	// +3 +3 execution. 13 total
 					break;

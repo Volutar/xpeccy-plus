@@ -305,6 +305,8 @@ static xFilerError err_tab[] = {
 	{ERR_WAV_FORMAT, "Unsupported WAV format"},
 	{ERR_Z80_HW, "Z80 snapshot: unsupported hardware"},
 	{ERR_TRD_SNF, "Wrong disk structure for TRD file"},
+	{ERR_SPG_SIGN, "Wrong SPG signature"},
+	{ERR_SPG_VERSION, "Unsupported SPG version"},
 	{ERR_OK, ""}
 };
 

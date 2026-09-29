@@ -148,16 +148,13 @@ int vidTSLRenderSprites(Video* vid) {
 int vidTSLRender16c(Video* vid) {
 	xscr = vid->tsconf.xOffset & 0x1ff;
 	yscr = (vid->tsconf.scrLine + vid->tsconf.yOffset) & 0x1ff;
-	adr = ((vid->vidPage & 0xf8) << 14) + (yscr << 8) + (xscr >> 1);
-	xadr = adr & ~0xff;
-	fadr = 0;
-	while (fadr < vid->scrsize.x) {
-		scrbyte = vid->mrd(adr, vid->xptr);
-		adr = ((adr + 1) & 0xff) | xadr;
-		vid->linb[fadr] = vid->tsconf.scrPal | ((scrbyte >> 4) & 0x0f);
-		fadr++;
-		vid->linb[fadr] = vid->tsconf.scrPal | (scrbyte & 0x0f);
-		fadr++;
+	xadr = ((vid->vidPage & 0xf8) << 14) + (yscr << 8);
+	// pixel by pixel: an odd X offset starts on the right nibble of a byte
+	for (fadr = 0; fadr < vid->scrsize.x; fadr++) {
+		if (!fadr || !(xscr & 1))
+			scrbyte = vid->mrd(xadr | (xscr >> 1), vid->xptr);
+		vid->linb[fadr] = vid->tsconf.scrPal | ((xscr & 1) ? (scrbyte & 0x0f) : (scrbyte >> 4));
+		xscr = (xscr + 1) & 0x1ff;
 	}
 	return vid->scrsize.x >> 2;		// 1/4
 }
@@ -270,8 +267,27 @@ void tslUpdatePorts(Video* vid) {
 
 // HBlank start
 void vts_hblk(Video* vid) {
-	// the controller counts the line from the leading edge of the blanking, and a handler
-	// setting the border for the line about to be drawn is meant to run inside those dots
+	// the line starts here for the controller: what the cpu wrote to the latched
+	// registers is taken now, and the line INT raised after it, so a handler's
+	// writes wait for the line after this one (video_ports.v, video_sync.v)
+	unsigned short m = vid->tsconf.lat.mask;
+	if (m) {
+		if (m & TSL_LAT_VCONF) vid->tsconf.p00af = vid->tsconf.lat.vconf;
+		if (m & TSL_LAT_VPAGE) vid->vidPage = vid->tsconf.lat.vpage;
+		if (m & TSL_LAT_GXL) vid->tsconf.soxl = vid->tsconf.lat.gxl;
+		if (m & TSL_LAT_GXH) vid->tsconf.soxh = vid->tsconf.lat.gxh;
+		if (m & TSL_LAT_PAL) vid->tsconf.p07af = vid->tsconf.lat.palsel;
+		if (m & TSL_LAT_T0XL) vid->tsconf.t0xl = vid->tsconf.lat.t0xl;
+		if (m & TSL_LAT_T0XH) vid->tsconf.t0xh = vid->tsconf.lat.t0xh;
+		if (m & TSL_LAT_T1XL) vid->tsconf.t1xl = vid->tsconf.lat.t1xl;
+		if (m & TSL_LAT_T1XH) vid->tsconf.t1xh = vid->tsconf.lat.t1xh;
+		if (m & TSL_LAT_T0G) vid->tsconf.T0GPage = vid->tsconf.lat.t0g;
+		if (m & TSL_LAT_T1G) vid->tsconf.T1GPage = vid->tsconf.lat.t1g;
+		if (m & TSL_LAT_GYL) vid->tsconf.soyl = vid->tsconf.lat.gyl;
+		if (m & TSL_LAT_GYH) vid->tsconf.soyh = vid->tsconf.lat.gyh;
+		if (m & (TSL_LAT_GYL | TSL_LAT_GYH)) vid->tsconf.scrLine = 0;
+		vid->tsconf.lat.mask = 0;
+	}
 	if (vid->inten & 2) {
 		vid->intLINE = 1;
 		vid->xirq(IRQ_VID_LINE, vid->xptr);
@@ -291,11 +307,6 @@ void vts_line(Video* vid) {
 	}
 	tslUpdatePorts(vid);
 	vidTSRender(vid);
-	// the int fires where the raster counters match HSINT/VSINT. hsint counts from the
-	// first visible dot, ray.xb from the leading edge of the blanking - hence blank.x.
-	// the dots the controller ate rendering the line are not part of the position: they
-	// moved the int about with the scene and lost it outright on a heavy line
-	vid->intp.x = (vid->tsconf.hsint + vid->blank.x) % vid->full.x;
 }
 
 // Frame start

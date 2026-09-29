@@ -805,6 +805,7 @@ void vid_set_nodraw(Video* vid, int on) {
 void vid_set_int_frame(Video* vid, int dots) {
 	vid_unlazy(vid);
 	vid->intFRAME = dots;
+	vid->intlen = dots;
 }
 
 // An undrawn frame of a mode marked blind moves the ray and nothing else
