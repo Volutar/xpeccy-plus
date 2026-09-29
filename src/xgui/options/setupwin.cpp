@@ -624,6 +624,13 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	connect(pbExpert, SIGNAL(released()), this, SLOT(showRomFiles()));
 	buildDevices();
 	buildRecording();
+	ui.vidViewGBox->setIcon(":/images/grp-picture.png");
+	ui.antiflickerGBox->setIcon(":/images/grp-antiflicker.png");
+	ui.groupBox->setIcon(":/images/grp-screenshot.png");
+	ui.gbRecording->setIcon(":/images/grp-record.png");
+	ui.gbCpu->setIcon(":/images/grp-cpu.png");
+	ui.gbUla->setIcon(":/images/grp-ula.png");
+	ui.gbBoard->setIcon(":/images/grp-board.png");
 // media
 	// the file types sit on the page itself, there is room for them now
 	ftbox = new xFileTypesBox;
@@ -1555,7 +1562,7 @@ QToolButton* SetupWin::devRow(QGridLayout* grid, const QString& name, QWidget* c
 }
 
 static QGridLayout* devGroup(QVBoxLayout* col, const char* icon, const QString& title) {
-	xIconGroup* box = new xIconGroup(QIcon(icon), title);
+	xIconGroup* box = new xIconGroup(icon, title);
 	QGridLayout* grid = new QGridLayout(box);
 	grid->setColumnStretch(1, 1);
 	col->addWidget(box);
@@ -1712,7 +1719,7 @@ void SetupWin::buildDevices() {
 	saaBox = devCombo(QStringList() << tr("Off") << tr("On"));
 	devRow(grid, tr("SAA1099"), saaBox, NULL, NULL);
 
-	grid = devGroup(right, ":/images/clock.png", tr("Board"));
+	grid = devGroup(right, ":/images/grp-board.png", tr("Board"));
 	devRow(grid, tr("Turbo"), cbCpuTurbo, NULL, NULL);
 	right->addStretch(1);
 
@@ -2691,7 +2698,7 @@ void SetupWin::buildRecording() {
 		teRecCmd->setFixedHeight(int(sz.height() + 0.5) + 2 * teRecCmd->frameWidth());
 	});
 	xOptSheet adv;
-	adv.group(tr("Video"), 0);
+	adv.group(tr("Video"), 0, ":/images/video.png");
 	adv.row(tr("Container"), cbRecBox);
 	adv.row(tr("Codec"), cbRecCodec);
 	adv.row(tr("Preset"), cbRecPreset);
@@ -2700,7 +2707,7 @@ void SetupWin::buildRecording() {
 	// one piece, so the frame is no wider than its lists
 	cbRec60->setText(tr("Blend up to 60 fps"));
 	adv.wide(cbRec60);
-	adv.group(tr("Sound"), 1);
+	adv.group(tr("Sound"), 1, ":/images/speaker.png");
 	QWidget* sndBox = new QWidget;
 	QHBoxLayout* sndLay = new QHBoxLayout(sndBox);
 	sndLay->setContentsMargins(0, 0, 0, 0);
@@ -2711,7 +2718,7 @@ void SetupWin::buildRecording() {
 	adv.wide(cbRecPitch);
 	// the frame takes the column's width from Sound, and neither the template
 	// nor what it gives asks for more: a longer name must not move the frames
-	adv.group(tr("File name template"), 1);
+	adv.group(tr("File name template"), 1, ":/images/grp-filename.png");
 	leRecName->setMinimumWidth(0);
 	leRecName->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
 	adv.wide(leRecName);
@@ -2724,7 +2731,7 @@ void SetupWin::buildRecording() {
 	// Across the sheet, the start and the stop side by side, each condition
 	// right after its switch. Code in ram serves a plain 48K/128K; a firmware
 	// that runs from ram, as Scorpion's does, needs the program's own address.
-	adv.group(tr("Auto recording"));
+	adv.group(tr("Auto recording"), -1, ":/images/grp-auto.png");
 	cbRecStart = new QCheckBox(tr("Autostart at"));
 	cbRecStart->setToolTip(tr("Armed once a reset; switched on here, from the next one"));
 	cbRecStartAt = new QComboBox;
@@ -2750,7 +2757,7 @@ void SetupWin::buildRecording() {
 	autoLay->addWidget(recCondBox(cbRecStop, cbRecStopAt, leRecStopAt, tr("Reset")), 1);
 	autoLay->addWidget(hlp);
 	adv.wide(autoRow);
-	adv.group("FFmpeg");
+	adv.group("FFmpeg", -1, ":/images/grp-ffmpeg.png");
 	adv.row(tr("Extra options"), leRecExtra);
 	adv.row(tr("Video override"), leRecVOver);
 	adv.row(tr("Sound override"), leRecSOver);

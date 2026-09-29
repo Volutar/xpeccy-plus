@@ -457,13 +457,24 @@ void xSideButton::paintEvent(QPaintEvent*) {
 
 #define	GROUP_ICON	16
 
-xIconGroup::xIconGroup(const QIcon& ico, const QString& txt, QWidget* p):QGroupBox(p) {
-	icon = ico;
-	text = txt;
+xIconGroup::xIconGroup(const QString& ico, const QString& txt, QWidget* p):QGroupBox(txt, p) {
+	setIcon(ico);
+}
+
+// promoted from a .ui: the title is set there, the icon afterwards
+xIconGroup::xIconGroup(QWidget* p):QGroupBox(p) {}
+
+// a "-16" file drawn beside the big one beats scaling the big one down
+void xIconGroup::setIcon(const QString& path) {
+	if (icon.isNull()) text = title();
+	icon = QIcon(path);
+	QString small = QString(path).replace(".png", QString("-%0.png").arg(GROUP_ICON));
+	if (QFile::exists(small)) icon.addFile(small, QSize(GROUP_ICON, GROUP_ICON));
 	padTitle();
 }
 
 void xIconGroup::padTitle() {
+	if (icon.isNull()) return;
 	int spc = qMax(1, fontMetrics().horizontalAdvance(' '));
 	setTitle(QString((GROUP_ICON + 4 + spc - 1) / spc, ' ') + text);
 }
@@ -586,9 +597,9 @@ xOptSheet::xOptSheet() {
 
 // A frame of its own; what follows goes into it. side 0 and 1 put it in the
 // left or right column of a row of frames, -1 across the sheet under them.
-void xOptSheet::group(const QString& title, int side) {
+void xOptSheet::group(const QString& title, int side, const QString& icon) {
 	if (grid->count() == 0) rows->hide();		// nothing before the first frame
-	QGroupBox* frm = new QGroupBox(title);
+	QGroupBox* frm = icon.isEmpty() ? new QGroupBox(title) : new xIconGroup(icon, title);
 	if (side < 0) {
 		pair = NULL;
 		box->insertWidget(box->count() - 1, frm);

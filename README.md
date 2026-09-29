@@ -183,6 +183,10 @@ The FM half of the YM2203, the chip a TurboSound FM board carries, is emulated b
 [ymfm](https://github.com/aaronsgiles/ymfm) by Aaron Giles, under the BSD 3-Clause license -
 see [`LICENSE_YMFM`](LICENSE_YMFM). Its sources are in `src/libxpeccy/sound/ymfm/`.
 
+Some icons come from Oxygen (LGPL v3), FatCow Farm-Fresh and Fugue (CC BY 3.0), Twemoji
+(CC BY 4.0) and the FFmpeg logo (public domain); which file is whose is in
+[`LICENSE_ICONS`](LICENSE_ICONS).
+
 ## Credits and license
 
 Xpeccy was written by **SAM style** (<https://github.com/samstyle/Xpeccy>) and is
