@@ -157,6 +157,9 @@ QWidget* fieldPair(QWidget*, QWidget*, bool);
 
 void help_window(QWidget* parent, QDialog** win, const QString& res, const QString& title);
 
+// offers to get FFmpeg and does: true when there is one to use afterwards
+bool ffmpeg_get(QWidget* parent);
+
 // a text that shortens in the middle to the width it gets, whole in its tooltip
 class xElideLabel : public QLabel {
 	public:

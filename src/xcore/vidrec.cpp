@@ -119,14 +119,38 @@ QString vrec_ffmpeg() {
 	return QFileInfo(path).isFile() ? path : QString();
 }
 
-// where a copy fetched for the user goes, else PATH
+// where a copy fetched for the user goes
+QString vrec_ffmpeg_dir() {
+	return QString::fromLocal8Bit(conf.path.confDir.c_str()) + "/ffmpeg/";
+}
+
+// a program on PATH, and on macOS in Homebrew, which a program started from
+// the Finder has no PATH to
+QString vrec_find_tool(const QString& name) {
+	QString path = QStandardPaths::findExecutable(name);
+#ifdef __APPLE__
+	if (path.isEmpty()) path = QStandardPaths::findExecutable(name, QStringList() << "/opt/homebrew/bin" << "/usr/local/bin");
+#endif
+	return path;
+}
+
+// the copy fetched for the user, else PATH
 QString vrec_ffmpeg_auto() {
-	QString dir = QString::fromLocal8Bit(conf.path.confDir.c_str()) + "/ffmpeg/";
+	QString dir = vrec_ffmpeg_dir();
 	foreach(QString sub, QStringList() << "" << "bin/") {
 		if (QFileInfo(dir + sub + FFMPEG_EXE).isFile())
 			return QDir::cleanPath(dir + sub + FFMPEG_EXE);
 	}
-	return QStandardPaths::findExecutable("ffmpeg");
+	return vrec_find_tool("ffmpeg");
+}
+
+// "ffmpeg version 8.0.1-full_build-www.gyan.dev" or "... n9.0.2-14-gebafaee10a":
+// a release keeps its number, anything else is shown whole
+QString vrec_ffmpeg_release(const QString& line) {
+	QString ver = line.section(' ', 2, 2);
+	if ((ver.size() > 1) && (ver.at(0) == 'n') && ver.at(1).isDigit()) ver.remove(0, 1);
+	if (!ver.isEmpty() && ver.at(0).isDigit()) ver = ver.section('-', 0, 0);
+	return ver;
 }
 
 // asked once per program: Options opens with it

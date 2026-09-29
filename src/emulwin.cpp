@@ -35,6 +35,7 @@
 #include "filer.h"
 #include "watcher.h"
 #include "xgui/favorites.h"
+#include "xgui/xgui.h"
 
 #include "xcore/vfilters.h"
 #include "xcore/vscalers.h"
@@ -920,6 +921,11 @@ void MainWin::videoRec() {
 	if (vrec_state() == VREC_RUN) {
 		vrec_stop();
 		setMessage(" video: finishing ");
+		return;
+	}
+	// none yet: offer one, and the next press records
+	if (vrec_ffmpeg().isEmpty()) {
+		ffmpeg_get(this);
 		return;
 	}
 	recStart();
