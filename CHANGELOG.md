@@ -15,7 +15,9 @@ before that point is upstream's history and is not repeated here.
   FFmpeg, sound included - the bare picture scaled by whole pixels, or the window with its
   shader. The folder, the frame rate (the machine's own, or 50 fps for video sites) and a file
   name template are in Options -> Video; NVENC is offered where the card has it, and FFmpeg's
-  own options for the picture or the sound can be typed in instead.
+  own options for the picture or the sound can be typed in instead. A recording can start and
+  stop by itself - at the program's first code, at a reset, or when the PC reaches an address -
+  and the command line has switches for all of it.
 
 - **Rewind**: hold Delete to go back through the last 30 seconds of play, picture and sound,
   and carry on from any point. The step and the length are on Xpeccy+ -> Emulation.

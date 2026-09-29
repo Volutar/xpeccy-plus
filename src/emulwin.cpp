@@ -534,6 +534,10 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 		watchClock();
 		QString vmsg = vrec_message();
 		if (!vmsg.isEmpty()) setMessage(vmsg, 4.0);
+		switch (vrec_auto_tick()) {
+			case VREC_AUTO_STOP: vrec_stop(); break;
+			case VREC_AUTO_START: recStart(); break;
+		}
 // satelites
 		updateSatellites();
 #if defined(__WIN32) && STICKY_KEY
@@ -912,11 +916,17 @@ void MainWin::grabScreen() {
 
 // A name that says what was on the machine: the image in use, else the machine.
 void MainWin::videoRec() {
+	vrec_manual();		// the hotkey has the last word over auto recording
 	if (vrec_state() == VREC_RUN) {
 		vrec_stop();
 		setMessage(" video: finishing ");
 		return;
 	}
+	recStart();
+}
+
+// file: the one the command line names, else the settings' folder and template
+bool MainWin::recStart(const QString& file) {
 	Computer* comp = conf.zx;
 	QString base = media_image_name(comp);
 	int sw = 0;
@@ -930,10 +940,10 @@ void MainWin::videoRec() {
 #endif
 	QString err;
 	// started, the blinking sign says so: a message would be in the video
-	if (!vrec_start(comp, base, sw, sh, &err)) {
-		setMessage(QString(" video: %0 ").arg(err), 4.0);
-		xlog(XLG_VIDEO, XLL_WARN, "recording not started: %s", err.toLocal8Bit().data());
-	}
+	if (vrec_start(comp, base, sw, sh, &err, file)) return true;
+	setMessage(QString(" video: %0 ").arg(err), 4.0);
+	xlog(XLG_VIDEO, XLL_WARN, "recording not started: %s", err.toLocal8Bit().data());
+	return false;
 }
 
 #define MODE_ICON_W	60	// the pictures are twice this
@@ -1760,7 +1770,7 @@ void MainWin::resetTo(int res) {
 void MainWin::resetMachine(int res) {
 	emit s_rzx_stop();
 	emu_lock();		// reset re-inits the hardware
-	compUserReset(conf.zx, res);
+	x_user_reset(conf.zx, res);
 	emu_unlock();
 }
 

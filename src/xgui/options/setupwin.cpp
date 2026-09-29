@@ -2689,6 +2689,35 @@ void SetupWin::buildRecording() {
 	labRecName->setFont(nfnt);
 	labRecName->setAlignment(Qt::AlignCenter);
 	adv.wide(labRecName);
+	// Across the sheet, the start and the stop side by side, each condition
+	// right after its switch. Code in ram serves a plain 48K/128K; a firmware
+	// that runs from ram, as Scorpion's does, needs the program's own address.
+	adv.group(tr("Auto recording"));
+	cbRecStart = new QCheckBox(tr("Autostart at"));
+	cbRecStart->setToolTip(tr("Armed once a reset; switched on here, from the next one"));
+	cbRecStartAt = new QComboBox;
+	cbRecStartAt->setToolTip(tr("Command line: --video-autostart ram | ==#6000"));
+	leRecStartAt = new QLineEdit;
+	cbRecStop = new QCheckBox(tr("Autostop at"));
+	cbRecStop->setToolTip(tr("Ends any recording, one started by hand too"));
+	cbRecStopAt = new QComboBox;
+	cbRecStopAt->setToolTip(tr("Command line: --video-autostop reset | ==#0000"));
+	leRecStopAt = new QLineEdit;
+	QToolButton* hlp = new QToolButton;
+	hlp->setText("?");
+	hlp->setToolTip(tr("Command line"));
+	// a child of the pop-up, which is modal: one of the setup window would be
+	// shut out until the pop-up closes
+	connect(hlp, &QToolButton::clicked, this, [this, hlp]() {
+		help_window(hlp->window(), &recHelpWin, ":/res/help/rec-cli.html", "Recording: command line");
+	});
+	QWidget* autoRow = new QWidget;
+	QHBoxLayout* autoLay = new QHBoxLayout(autoRow);
+	autoLay->setContentsMargins(0, 0, 0, 0);
+	autoLay->addWidget(recCondBox(cbRecStart, cbRecStartAt, leRecStartAt, tr("Code in RAM")), 1);
+	autoLay->addWidget(recCondBox(cbRecStop, cbRecStopAt, leRecStopAt, tr("Reset")), 1);
+	autoLay->addWidget(hlp);
+	adv.wide(autoRow);
 	adv.group("FFmpeg");
 	adv.row(tr("Extra options"), leRecExtra);
 	adv.row(tr("Video override"), leRecVOver);
@@ -2800,6 +2829,39 @@ void SetupWin::recEnables() {
 	cbRec60->setEnabled(video);
 	cbRecAbr->setEnabled(lossy && sound);
 	cbRecPitch->setEnabled((getRFIData(cbRecFps) == VREC_FPS_50) && sound);
+	cbRecStartAt->setEnabled(cbRecStart->isChecked());
+	leRecStartAt->setEnabled(cbRecStart->isChecked() && (getRFIData(cbRecStartAt) != VREC_AT_OWN));
+	cbRecStopAt->setEnabled(cbRecStop->isChecked());
+	leRecStopAt->setEnabled(cbRecStop->isChecked() && (getRFIData(cbRecStopAt) != VREC_AT_OWN));
+}
+
+// a switch and its condition: its own case (code in ram, a reset) or the pc
+// against an address
+QWidget* SetupWin::recCondBox(QCheckBox* cb, QComboBox* at, QLineEdit* adr, const QString& own) {
+	at->addItem(own, VREC_AT_OWN);
+	at->addItem("PC ==", VREC_AT_EQ);
+	at->addItem("PC >=", VREC_AT_GE);
+	at->addItem("PC <=", VREC_AT_LE);
+	adr->setPlaceholderText("#0000");
+	adr->setFixedWidth(adr->fontMetrics().horizontalAdvance("#00000") + 12);
+	QWidget* box = new QWidget;
+	QHBoxLayout* lay = new QHBoxLayout(box);
+	lay->setContentsMargins(0, 0, 0, 0);
+	lay->addWidget(cb);
+	lay->addWidget(at);
+	lay->addWidget(adr);
+	lay->addStretch(1);
+	connect(cb, &QCheckBox::toggled, this, &SetupWin::recEnables);
+	connect(at, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::recEnables);
+	return box;
+}
+
+// an address that does not read keeps the one before
+static void rec_cond_read(QComboBox* at, QLineEdit* adr, int* op, int* val) {
+	*op = getRFIData(at);
+	int o;
+	int a;
+	if ((*op != VREC_AT_OWN) && vrec_auto_parse(adr->text(), &o, &a)) *val = a;
 }
 
 void SetupWin::showFfmpeg() {
@@ -2852,6 +2914,10 @@ xRecord SetupWin::recFromUi() {
 	rec.soundOver = std::string(leRecSOver->text().trimmed().toLocal8Bit().data());
 	rec.fps60 = cbRec60->isChecked() ? 1 : 0;
 	rec.keepPitch = cbRecPitch->isChecked() ? 1 : 0;
+	rec.autoStart = cbRecStart->isChecked() ? 1 : 0;
+	rec.autoStop = cbRecStop->isChecked() ? 1 : 0;
+	rec_cond_read(cbRecStartAt, leRecStartAt, &rec.autoStartOp, &rec.autoStartAdr);
+	rec_cond_read(cbRecStopAt, leRecStopAt, &rec.autoStopOp, &rec.autoStopAdr);
 	rec.name = std::string(leRecName->text().trimmed().toLocal8Bit().data());
 	return rec;
 }
@@ -2894,6 +2960,12 @@ void SetupWin::fillRecording() {
 	leRecSOver->setText(QString::fromLocal8Bit(conf.rec.soundOver.c_str()));
 	cbRec60->setChecked(conf.rec.fps60);
 	cbRecPitch->setChecked(conf.rec.keepPitch);
+	cbRecStart->setChecked(conf.rec.autoStart);
+	setRFIndex(cbRecStartAt, conf.rec.autoStartOp);
+	leRecStartAt->setText("#" + gethexword(conf.rec.autoStartAdr));
+	cbRecStop->setChecked(conf.rec.autoStop);
+	setRFIndex(cbRecStopAt, conf.rec.autoStopOp);
+	leRecStopAt->setText("#" + gethexword(conf.rec.autoStopAdr));
 	leRecName->setText(QString::fromLocal8Bit(conf.rec.name.c_str()));
 	recFilling = false;
 	recEnables();
@@ -2903,4 +2975,5 @@ void SetupWin::fillRecording() {
 
 void SetupWin::applyRecording() {
 	conf.rec = recFromUi();
+	vrec_auto_settings();
 }

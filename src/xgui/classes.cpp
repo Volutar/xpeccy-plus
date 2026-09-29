@@ -2,6 +2,8 @@
 #include "../xcore/xcore.h"
 
 #include <QPalette>
+#include <QFile>
+#include <QTextBrowser>
 #include <QPainter>
 #include <QStylePainter>
 #include <QStyleOption>
@@ -699,6 +701,30 @@ QWidget* fieldPair(QWidget* main, QWidget* tail, bool wide) {
 	if (tail) box->addWidget(tail);
 	if (!wide) box->addStretch(1);
 	return wid;
+}
+
+// A page of help from the resources, in a window of its own: made on the first
+// call into *win, shown again after that
+void help_window(QWidget* parent, QDialog** win, const QString& res, const QString& title) {
+	if (!*win) {
+		QFile file(res);
+		QString txt = "no help text in this build";
+		if (file.open(QFile::ReadOnly)) {
+			txt = QString::fromUtf8(file.readAll());
+			file.close();
+		}
+		*win = new QDialog(parent);
+		(*win)->setWindowTitle(title);
+		(*win)->resize(620, 640);
+		QTextBrowser* brw = new QTextBrowser(*win);
+		brw->document()->setDefaultStyleSheet("td {padding-right:16px;} p {margin:2px 0px;} li {margin:2px 0px;}");
+		brw->setHtml(txt);
+		QVBoxLayout* lay = new QVBoxLayout(*win);
+		lay->setContentsMargins(4, 4, 4, 4);
+		lay->addWidget(brw);
+	}
+	(*win)->show();
+	(*win)->raise();
 }
 
 // xElideLabel

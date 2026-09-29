@@ -154,6 +154,8 @@ class xOptSheet {
 // a control and what goes after it, as one field of a sheet
 QWidget* fieldPair(QWidget*, QWidget*, bool);
 
+void help_window(QWidget* parent, QDialog** win, const QString& res, const QString& title);
+
 // a text that shortens in the middle to the width it gets, whole in its tooltip
 class xElideLabel : public QLabel {
 	public:

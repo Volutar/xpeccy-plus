@@ -4,6 +4,7 @@
 #include <QImage>
 #include <QStringList>
 #include <QDateTime>
+#include <atomic>
 
 #include "../libxpeccy/spectrum.h"
 #include "../libxpeccy/sound/sndcommon.h"
@@ -54,7 +55,7 @@ QString vrec_command_line(const QStringList&, bool lines = false);
 QString vrec_args_line(const QStringList&);
 QString vrec_file_name(const QString& tpl, const QString& image, const QDateTime& when);
 
-bool vrec_start(Computer*, const QString& base, int scrW, int scrH, QString* err);
+bool vrec_start(Computer*, const QString& base, int scrW, int scrH, QString* err, const QString& file = QString());
 void vrec_stop();
 void vrec_wait();			// until the last one is written, for the exit
 int vrec_state();
@@ -66,3 +67,21 @@ void vrec_screen(const QImage&);	// the window as painted, bottom row first
 // emulation thread
 void vrec_frame(Computer*);		// a picture has been made
 void vrec_sample(sndPair);		// a sample has gone to the output
+
+// Auto recording: the start is armed once per reset and fires on the pc (code
+// in ram, or against an address); the stop is a reset or the pc too, and ends
+// any recording. The emulation watches, the window starts and stops.
+enum {VREC_AUTO_NONE = 0, VREC_AUTO_START, VREC_AUTO_STOP};
+enum {VREC_AT_OWN = 0, VREC_AT_EQ, VREC_AT_GE, VREC_AT_LE};	// own: code in ram to start, a reset to stop
+enum {VREC_WATCH_START = 1, VREC_WATCH_STOP = 2};
+extern std::atomic<int> vrecWatch;		// what the emulation looks at the pc for
+bool vrec_auto_parse(const QString&, int* op, int* adr);	// "ram"/"reset", "#6000", "==#6000", ">=0x6000"...
+QString vrec_auto_text(int op, int adr, const char* own);
+void vrec_auto_pc(Computer*, int watch);	// emulation thread, while watching: at every opcode
+void vrec_auto_cli(int);		// --video-auto 1, --no-video-auto 0: both ends, for this run
+bool vrec_auto_cli_start(const QString&);	// --video-autostart AT
+bool vrec_auto_cli_stop(const QString&);	// --video-autostop AT
+void vrec_auto_apply();			// at the start: the start armed at once
+void vrec_auto_settings();		// the settings changed
+int vrec_auto_tick();			// the window, now and then: what to do
+void vrec_manual();			// started or stopped by hand: the start disarmed until a reset
