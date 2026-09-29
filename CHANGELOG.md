@@ -11,18 +11,16 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
-- **Video recording**: Ctrl+F7 writes what the machine shows to an MP4 or MKV file through
-  FFmpeg, sound included - the bare picture scaled by whole pixels, or the window with its
-  shader. It is written so any player opens it, in full color only where the picture needs
-  it, and the choice is yours in the settings. The folder, the frame rate (the machine's own, or 50 fps for video
-  sites) and a file name template are in Options -> Video; H.264, H.265 and AV1 go through the
-  graphics card too (NVIDIA, AMD, Intel) where it can, and FFmpeg's own options for the
-  picture or the sound can be typed in instead. A recording can start and stop by itself - at
-  the program's first code, at a reset, or when the PC reaches an address - and the command
-  line has switches for all of it.
-  Without FFmpeg, the record key offers to get it: downloaded on Windows (the latest release,
-  or the one before for older graphics drivers), installed by the package manager on Linux
-  and by Homebrew on macOS.
+- **Video recording**: Ctrl+F7 writes the picture and the sound to an MP4 or MKV file through
+  FFmpeg, in a form any player opens. The settings are on Options -> Video.
+  - The bare picture scaled by whole pixels, or the window as shown, shader included.
+  - The machine's own frame rate or 50 fps, a folder and a file name template.
+  - H.264, H.265 and AV1, on the graphics card too (NVIDIA, AMD, Intel), or FFmpeg's own
+    options typed in.
+  - It can start and stop by itself - at the program's first code, at a reset, or when the PC
+    reaches an address - and the command line has switches for all of it.
+  - Without FFmpeg, the record key offers to get it: downloaded on Windows, installed by the
+    package manager on Linux and by Homebrew on macOS.
 
 - **Rewind**: hold Delete to go back through the last 30 seconds of play, picture and sound,
   and carry on from any point. The step and the length are on Xpeccy+ -> Emulation.

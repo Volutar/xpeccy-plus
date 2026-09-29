@@ -29,8 +29,8 @@ so patches, ideas and bug reports are welcome.
   their code is gone from the tree.
 - **Works out of the box.** Releases come as a bundle with configuration and ROM images, so
   the emulator is ready to use right after unpacking.
-- **Comfortable to play with.** Better gamepad support, rewind, and a smoother way to work
-  with tapes and disks.
+- **Comfortable to play with.** Better gamepad support, and a smoother way to work with
+  tapes and disks.
 - **Fewer loading problems.** Fixes for RZX and for non-standard TZX loaders.
 - **A debugger worth using.** Interface work and more tools for people who develop for the
   machine, not only for those who poke at it.
@@ -58,6 +58,9 @@ On top of upstream build `20260807`:
   as the tape it records and a tape written out as one, and a player laid out like a deck.
 - **Speed.** Up to three times faster with nothing emulated differently - fast forward at
   x18 to x30 on most machines - and one slider from slow motion to an overclocked CPU.
+- **Rewind.** Hold a key to go back through the last half minute, picture and sound, and
+  keys for slow motion and fast forward.
+- **Video recording** to MP4 or MKV through FFmpeg, which the emulator offers to get.
 - **A debugger worth using.** Movable panels, conditional breakpoints that can log, a listing
   that reads like one, a memory heat map, register layouts to choose from, and a screen and a
   sound chip panel that detach into windows of their own.
@@ -182,6 +185,10 @@ same on every platform. It keeps its own terms too - see [`LICENSE_DEJAVU`](LICE
 The FM half of the YM2203, the chip a TurboSound FM board carries, is emulated by
 [ymfm](https://github.com/aaronsgiles/ymfm) by Aaron Giles, under the BSD 3-Clause license -
 see [`LICENSE_YMFM`](LICENSE_YMFM). Its sources are in `src/libxpeccy/sound/ymfm/`.
+
+FFmpeg is not shipped with Xpeccy+. Video recording runs it as a separate program, and the
+copy the emulator fetches on Windows is a GPL build from
+[BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds), kept under its own terms.
 
 Some icons come from Oxygen (LGPL v3), FatCow Farm-Fresh and Fugue (CC BY 3.0), Twemoji
 (CC BY 4.0) and the FFmpeg logo (public domain); which file is whose is in
