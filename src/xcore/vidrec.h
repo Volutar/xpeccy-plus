@@ -24,7 +24,8 @@ enum {
 
 enum {VREC_MP4 = 0, VREC_MKV};
 enum {VREC_AAC = 0, VREC_OPUS};
-enum {VREC_H264 = 0, VREC_H265, VREC_FFV1, VREC_H264_NVENC, VREC_H265_NVENC};
+enum {VREC_H264 = 0, VREC_H265, VREC_FFV1, VREC_H264_NVENC, VREC_H265_NVENC, VREC_H264_AMF, VREC_H265_AMF, VREC_H264_QSV, VREC_H265_QSV,
+	VREC_AV1, VREC_AV1_NVENC, VREC_AV1_AMF, VREC_AV1_QSV};
 
 extern const char* vrecPresets[];		// the speeds, x264's names, fastest first
 enum {VREC_IDLE = 0, VREC_RUN, VREC_FINISH};
@@ -37,7 +38,9 @@ QString vrec_ffmpeg_auto();			// ...when the settings name none
 QString vrec_ffmpeg_version(const QString&);	// its first line of -version, empty if it does not run
 QString vrec_dir();				// where the videos go
 QString vrec_dir_auto();			// ...when the settings name none
-bool vrec_codec_works(const QString& prog, int codec);	// the build has it, and this machine the hardware
+bool vrec_codec_works(const QString& prog, int codec);	// the build has it, and this machine what it runs on
+bool vrec_420_only(int codec);		// AMF, QSV, AV1: an odd scale is off
+int vrec_scale_for(int codec, int n);	// ...and goes up to the next
 
 // the two FFmpeg runs a recording makes
 typedef struct {
