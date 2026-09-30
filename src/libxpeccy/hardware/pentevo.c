@@ -33,7 +33,8 @@
 // in atm mode 011 and cancel each other out (video_modedecode.v). The atm modes
 // with no drawer of their own show a zx screen while neither #EFF7 bit is set.
 void evoSetVideoMode(Computer* comp) {
-	int pent = ((comp->pEFF7 & 0x01) << 1) | ((comp->pEFF7 & 0x20) >> 5);	// b0.b5 of #EFF7
+	int c16 = comp->pEFF7 & 0x01;
+	int hwmc = (comp->pEFF7 >> 5) & 0x01;
 	int mode = VID_UNKNOWN;
 	switch (comp->prt2 & 0x07) {
 		case 0x00: mode = VID_ATM_EGA; break;
@@ -41,12 +42,10 @@ void evoSetVideoMode(Computer* comp) {
 		case 0x06: mode = VID_ATM_TEXT; break;
 		case 0x07: mode = VID_EVO_TEXT; break;
 		case 0x03:
-			if (pent == 2) mode = VID_ALCO;
-			else if (pent == 1) mode = VID_HWMC;
-			else mode = VID_NORMAL;
+			mode = (c16 == hwmc) ? VID_NORMAL : (c16 ? VID_ALCO : VID_HWMC);
 			break;
 		default:
-			if ((pent == 0) || (pent == 3)) mode = VID_NORMAL;
+			if (c16 == hwmc) mode = VID_NORMAL;
 			break;
 	}
 	vid_set_mode(comp->vid, mode);
@@ -703,15 +702,15 @@ void evo_irq(Computer* comp, int t) {
 			comp->flgNMIR = 1;
 			break;
 		case IRQ_VID_INT:
-			if (comp->flgNMIR && !evo_in_nmi(comp)) {
-				comp->flgNMIR = 0;	// the NMI comes instead of the frame int
-				if (!comp->rzx.play)
-					evo_nmi(comp);
-				break;
-			}
-			comp->flgNMIR = 0;		// in NMI: dropped, and the int comes as usual
-			zx_irq(comp, t);
+		{	// an armed NMI comes instead of the frame int; in NMI it is dropped
+			int nmi = comp->flgNMIR && !evo_in_nmi(comp);
+			comp->flgNMIR = 0;
+			if (!nmi)
+				zx_irq(comp, t);
+			else if (!comp->rzx.play)
+				evo_nmi(comp);
 			break;
+		}
 		default:
 			zx_irq(comp, t);
 			break;

@@ -34,7 +34,23 @@
 #define	CMD58		0x3A	// + reads the OCR register
 #define	CMD59		0x3B	// + turn CRC
 
-static void sdc_idle(SDCard*);
+// The machine's reset: the card keeps its power, so it drops the command it was
+// in but stays initialised - a firmware that finds it back in idle takes it
+// for gone (ZX Evo's service rom: "SD card lost").
+void sdcReset(SDCard* sdc) {
+	sdc->state = SDC_FREE;
+	sdc->argCnt = 0;
+	sdc->acmd = 0;
+	sdc->cont = 0;
+	sdc->respCnt = 0;
+	sdc->buf.pos = -1;
+}
+
+// power-up or CMD0: back to idle, waiting for ACMD41
+static void sdc_idle(SDCard* sdc) {
+	sdcReset(sdc);
+	sdc->idle = 1;
+}
 
 SDCard* sdcCreate() {
 	SDCard* sdc = (SDCard*)malloc(sizeof(SDCard));
@@ -52,24 +68,6 @@ SDCard* sdcCreate() {
 void sdcDestroy(SDCard* sdc) {
 	sdcCloseFile(sdc);
 	free(sdc);
-}
-
-// The machine's reset: the card keeps its power, so it drops the command it was
-// in but stays initialised - a firmware that finds it back in idle takes it
-// for gone (ZX Evo's service rom: "SD card lost").
-void sdcReset(SDCard* sdc) {
-	sdc->state = SDC_FREE;
-	sdc->argCnt = 0;
-	sdc->acmd = 0;
-	sdc->cont = 0;
-	sdc->respCnt = 0;
-	sdc->buf.pos = -1;
-}
-
-// power-up or CMD0: back to idle, waiting for ACMD41
-static void sdc_idle(SDCard* sdc) {
-	sdcReset(sdc);
-	sdc->idle = 1;
 }
 
 void sdcSetImage(SDCard* sdc, const char* name) {

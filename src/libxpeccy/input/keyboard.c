@@ -210,10 +210,8 @@ void kbd_atm2code_release(Keyboard* kbd, keyEntry* ent) {
 
 // The scancode log as ZX Evo's avr keeps it (ps2.c, ps2keyboard_*_log): 16
 // bytes, and filling them all is an overflow. A read gives 0 when there is
-// nothing, and FF once on an overflow, which also starts the log over. After a
-// clear, logging starts again only with the first byte of a key's code.
+// nothing, and FF once on an overflow, which also starts the log over.
 #define XT_LOG_CLEARED	0xff		// logStart: cleared, nothing since
-#define XT_LOG_FRESH	0xfe		// logEnd: empty since the clear
 #define XT_LOG_OVER	0xff		// logEnd: overflowed
 
 void xt_log_clear(Keyboard* kbd) {
@@ -222,26 +220,24 @@ void xt_log_clear(Keyboard* kbd) {
 
 static int xt_log_empty(Keyboard* kbd) {
 	if (kbd->logStart == XT_LOG_CLEARED) return 1;
-	if (kbd->logEnd == XT_LOG_FRESH) return 1;
 	return (kbd->logEnd == kbd->logStart);
 }
 
 static void xt_log_byte(Keyboard* kbd, int bt) {
 	if (kbd->logEnd == XT_LOG_OVER) return;
-	if (kbd->logEnd == XT_LOG_FRESH)
-		kbd->logEnd = kbd->logStart;
 	kbd->log[kbd->logEnd] = bt & 0xff;
 	kbd->logEnd = (kbd->logEnd + 1) & 15;
 	if (kbd->logEnd == kbd->logStart)
 		kbd->logEnd = XT_LOG_OVER;
 }
 
-// a key's whole code, first byte in the low bits
+// a key's whole code, first byte in the low bits; so a log cleared mid-code
+// starts again on a key's first byte, as the avr's does
 static void xt_log_put(Keyboard* kbd, unsigned long code) {
 	if (!code) return;
 	if (kbd->logStart == XT_LOG_CLEARED) {
-		kbd->logEnd = XT_LOG_FRESH;
 		kbd->logStart = 0;
+		kbd->logEnd = 0;
 	}
 	while (code) {
 		xt_log_byte(kbd, code & 0xff);
