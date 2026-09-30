@@ -166,15 +166,24 @@ static void ts_cache_wr(Computer* comp, int adr) {
 	if (*c == tag) *c = 0;
 }
 
+// Every opcode fetch from #3Dxx of the 48K ROM, and leaving VDOS, hold the cpu clock for
+// one 7 MHz tact (zclock.v dos_stall): a whole tick at 3.5 and 7 MHz, two at 14
+static void ts_dos_stall(Computer* comp) {
+	comp->cpu->t += (comp->hwMul == 4) ? 2 : 1;
+}
+
 int tslMRd(Computer* comp, int adr, int m1) {
 	if (m1 && (comp->dif->type == DIF_BDI)) {
 		if (comp->flgDOS && (adr >= 0x4000) && (!comp->flgVDOS)) {
 			comp->flgDOS = 0;
 			comp->hw->mapMem(comp);
 		}
-		if (!comp->flgDOS && ((adr & 0xff00) == 0x3d00) && (comp->flgROM) && ((comp->tsconf.p21af & 0x04) == 0x00)) {
-			comp->flgDOS = 1;
-			comp->hw->mapMem(comp);
+		if (((adr & 0xff00) == 0x3d00) && (comp->flgROM) && ((comp->tsconf.p21af & 0x04) == 0x00)) {
+			ts_dos_stall(comp);
+			if (!comp->flgDOS) {
+				comp->flgDOS = 1;
+				comp->hw->mapMem(comp);
+			}
 		}
 	}
 	ts_cache_rd(comp, adr);
@@ -214,10 +223,13 @@ static void ts_set_vdos(Computer* comp, int on) {
 	comp->flgVDOS = !!on;
 	if (on) {
 		ts_hold_frame(comp);
-	} else if (comp->frmHold) {
-		vid_set_int_frame(comp->vid, comp->frmHold);
-		comp->frmHold = 0;
-		comp->cpu->intrq |= Z80_INT;
+	} else {
+		ts_dos_stall(comp);
+		if (comp->frmHold) {
+			vid_set_int_frame(comp->vid, comp->frmHold);
+			comp->frmHold = 0;
+			comp->cpu->intrq |= Z80_INT;
+		}
 	}
 	tslMapMem(comp);
 }
