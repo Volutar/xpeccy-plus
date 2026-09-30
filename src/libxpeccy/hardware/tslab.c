@@ -122,23 +122,20 @@ static const unsigned char tsl5bLevs[32] = {
 	197,205,213,222,230,238,246,255
 };
 
-void tslUpdatePalX(void* ptr);		// called from the video side at line start
-
-void tslUpdatePal(Computer* comp) {
-	int col;
+// a CRAM word takes effect at once, from the dot the ray is on (video_out.v reads CRAM per dot)
+static void tslUpdatePalEntry(Computer* comp, int i) {
+	int col = (comp->vid->tsconf.cram[(i << 1) + 1] << 8) | (comp->vid->tsconf.cram[i << 1]);
+	const unsigned char* tab = (col & 0x8000) ? tsl5bLevs : tslCoLevs;
 	xColor xcol;
-	for (int i = 0; i < 256; i++) {
-		col = (comp->vid->tsconf.cram[(i << 1) + 1] << 8) | (comp->vid->tsconf.cram[i << 1]);
-		const unsigned char* tab = (col & 0x8000) ? tsl5bLevs : tslCoLevs;
-		xcol.r = tab[(col >> 10) & 0x1f];
-		xcol.g = tab[(col >> 5) & 0x1f];
-		xcol.b = tab[col  & 0x1f];
-		vid_set_col(comp->vid, i, xcol);
-	}
+	xcol.r = tab[(col >> 10) & 0x1f];
+	xcol.g = tab[(col >> 5) & 0x1f];
+	xcol.b = tab[col  & 0x1f];
+	vid_set_col(comp->vid, i, xcol);
 }
 
-void tslUpdatePalX(void* ptr) {
-	tslUpdatePal((Computer*)ptr);
+void tslUpdatePal(Computer* comp) {
+	for (int i = 0; i < 256; i++)
+		tslUpdatePalEntry(comp, i);
 }
 
 // The cache (zmem.v): 256 words of RAM, one per A8..A1, tagged with page and A13..A9. At
@@ -169,15 +166,24 @@ static void ts_cache_wr(Computer* comp, int adr) {
 	if (*c == tag) *c = 0;
 }
 
+// Every opcode fetch from #3Dxx of the 48K ROM, and leaving VDOS, hold the cpu clock for
+// one 7 MHz tact (zclock.v dos_stall): a whole tick at 3.5 and 7 MHz, two at 14
+static void ts_dos_stall(Computer* comp) {
+	comp->cpu->t += (comp->hwMul == 4) ? 2 : 1;
+}
+
 int tslMRd(Computer* comp, int adr, int m1) {
 	if (m1 && (comp->dif->type == DIF_BDI)) {
 		if (comp->flgDOS && (adr >= 0x4000) && (!comp->flgVDOS)) {
 			comp->flgDOS = 0;
 			comp->hw->mapMem(comp);
 		}
-		if (!comp->flgDOS && ((adr & 0xff00) == 0x3d00) && (comp->flgROM) && ((comp->tsconf.p21af & 0x04) == 0x00)) {
-			comp->flgDOS = 1;
-			comp->hw->mapMem(comp);
+		if (((adr & 0xff00) == 0x3d00) && (comp->flgROM) && ((comp->tsconf.p21af & 0x04) == 0x00)) {
+			ts_dos_stall(comp);
+			if (!comp->flgDOS) {
+				comp->flgDOS = 1;
+				comp->hw->mapMem(comp);
+			}
 		}
 	}
 	ts_cache_rd(comp, adr);
@@ -195,7 +201,7 @@ void tslMWr(Computer* comp, int adr, int val) {
 			if (adr & 1) {
 				ptr[adr & 0x1fe] = comp->fmLow;
 				ptr[adr & 0x1ff] = val & 0xff;
-				if (~adr & 0x200) comp->vid->tsconf.palUpd = 1;
+				if (~adr & 0x200) tslUpdatePalEntry(comp, (adr & 0x1fe) >> 1);
 			} else {
 				comp->fmLow = val & 0xff;
 			}
@@ -217,10 +223,13 @@ static void ts_set_vdos(Computer* comp, int on) {
 	comp->flgVDOS = !!on;
 	if (on) {
 		ts_hold_frame(comp);
-	} else if (comp->frmHold) {
-		vid_set_int_frame(comp->vid, comp->frmHold);
-		comp->frmHold = 0;
-		comp->cpu->intrq |= Z80_INT;
+	} else {
+		ts_dos_stall(comp);
+		if (comp->frmHold) {
+			vid_set_int_frame(comp->vid, comp->frmHold);
+			comp->frmHold = 0;
+			comp->cpu->intrq |= Z80_INT;
+		}
 	}
 	tslMapMem(comp);
 }
@@ -587,7 +596,7 @@ static void ts_dma_word(Computer* comp) {
 			w = (ts_dma_adr(d) & 0xff) << 1;
 			p[w] = data & 0xff;
 			p[w + 1] = (data >> 8) & 0xff;
-			if (dev == 0xc) comp->vid->tsconf.palUpd = 1;
+			if (dev == 0xc) tslUpdatePalEntry(comp, w >> 1);
 			break;
 		}
 	}
