@@ -20,6 +20,7 @@
 #define dmaLen	reg[17]
 #define dmaCnt	reg[18]
 #define fmLow	reg[20]		// FMAPS: even byte waiting for its odd one
+#define fddOpen	reg[21]		// FDDVirt b7: the disk ports answer outside DOS too
 
 #define dmaSrc	xreg[0]
 #define dmaDst	xreg[1]
@@ -95,6 +96,7 @@ void tslReset(Computer* comp) {
 	comp->sdc->on = 1;
 	for (int i = 0; i < 4; i++)		// FDDVirt = 0
 		comp->dif->fdc->flop[i]->virt = 0;
+	comp->fddOpen = 0;
 	memSetBank(comp->mem, 0x40, MEM_RAM, 5, MEM_16K, NULL, NULL, NULL);
 	memSetBank(comp->mem, 0x80, MEM_RAM, 2, MEM_16K, NULL, NULL, NULL);
 	memSetBank(comp->mem, 0xc0, MEM_RAM, 0, MEM_16K, NULL, NULL, NULL);
@@ -191,17 +193,25 @@ static void ts_set_vdos(Computer* comp, int on) {
 
 // in
 
-int tsInFF(Computer* comp, int port) {			// dos
+// The disk ports answer in DOS, or anywhere with FDDVirt b7. A virtual drive only turns
+// VDOS on from DOS; outside it the drive is just not there (zports.v).
+static int ts_disk_open(Computer* comp) {
+	return comp->flgBDI || comp->fddOpen;
+}
+
+int tsInFF(Computer* comp, int port) {
 	int res = -1;
-	if (comp->dif->fdc->flp->virt) {
-		ts_set_vdos(comp, 1);
+	if (!ts_disk_open(comp)) {
+		res = zx_in_float(comp, port);
+	} else if (comp->dif->fdc->flp->virt) {
+		if (comp->flgBDI) ts_set_vdos(comp, 1);
 	} else {
 		difIn(comp->dif, port, &res, 1);
 	}
 	return res;
 }
 
-int tsInBDI(Computer* comp, int port) {			// dos
+int tsInBDI(Computer* comp, int port) {
 	int res = -1;
 	if (comp->flgVDOS) {
 		ts_set_vdos(comp, 0);
@@ -223,7 +233,7 @@ int tsIn77(Computer* comp, int port) {
 }
 
 int tsIn1F(Computer* comp, int port) {
-	return zx_in_joy(comp, port);
+	return comp->fddOpen ? tsInBDI(comp, port) : zx_in_joy(comp, port);
 }
 
 // the clock at #BFF7/#DFF7: #xxF7 is shut in DOS but open again in VDOS, where the
@@ -242,22 +252,24 @@ int tsInBFF7(Computer* comp, int port) {
 
 // out
 
-void tsOutBDI(Computer* comp, int port, int val) {		// dos
+void tsOutBDI(Computer* comp, int port, int val) {
+	if (!ts_disk_open(comp)) return;
 	if (comp->flgVDOS) {
 		ts_set_vdos(comp, 0);
 	} else {
 		if (comp->dif->fdc->flp->virt) {
-			ts_set_vdos(comp, 1);
+			if (comp->flgBDI) ts_set_vdos(comp, 1);
 		} else {
 			difOut(comp->dif, port, val, 1);
 		}
 	}
 }
 
-void tsOutFF(Computer* comp, int port, int val) {		// dos
+void tsOutFF(Computer* comp, int port, int val) {
+	if (!ts_disk_open(comp)) return;
 	comp->dif->fdc->flp = comp->dif->fdc->flop[val & 3];
 	if (comp->dif->fdc->flp->virt) {
-		ts_set_vdos(comp, 1);
+		if (comp->flgBDI) ts_set_vdos(comp, 1);
 	} else if (comp->flgVDOS) {
 		// comp->dif->fdc->fptr = comp->dif->fdc->flop[val & 3];	// out VGSys[1:0]
 	} else {
@@ -266,7 +278,7 @@ void tsOutFF(Computer* comp, int port, int val) {		// dos
 }
 
 void tsOutFE(Computer* comp, int port, int val) {
-	comp->vid->brdcol = 0xf0 | (val & 7);
+	comp->vid->brdcol = ((comp->vid->tsconf.p07af & 0x0f) << 4) | (val & 7);	// PalSel's own bank (video_ports.v)
 	comp->vid->nextbrd = comp->vid->brdcol;
 	comp->beep->lev = (val & 0x10) ? 1 : 0;
 	comp->tape->levRec = (val & 0x08) ? 1 : 0;
@@ -571,6 +583,7 @@ void tsOut29AF(Computer* comp, int port, int val) {
 	comp->dif->fdc->flop[1]->virt = (val & 0x02) ? 1 : 0;
 	comp->dif->fdc->flop[2]->virt = (val & 0x04) ? 1 : 0;
 	comp->dif->fdc->flop[3]->virt = (val & 0x08) ? 1 : 0;
+	comp->fddOpen = (val & 0x80) ? 1 : 0;
 }
 
 void tsOut2AAF(Computer* comp, int port, int val) {
@@ -667,9 +680,9 @@ static xPort tsPortMap[] = {
 	{0xffff,0xfadf,2,2,2,xInFADF,	NULL},		// fadf
 	{0xffff,0xfbdf,2,2,2,xInFBDF,	NULL},		// fbdf
 	{0xffff,0xffdf,2,2,2,xInFFDF,	NULL},		// ffdf
-	// dos
-	{0x009f,0x001f,1,2,2,tsInBDI,	tsOutBDI},	// 1f,3f,5f,7f
-	{0x00ff,0x00ff,1,2,2,tsInFF,	tsOutFF},	// ff
+	// the disk: in DOS, or with FDDVirt b7
+	{0x009f,0x001f,2,2,2,tsInBDI,	tsOutBDI},	// 1f,3f,5f,7f
+	{0x00ff,0x00ff,2,2,2,tsInFF,	tsOutFF},	// ff
 
 	{0x0000,0x0000,2,2,2,zx_in_float,	NULL},
 };
@@ -723,6 +736,8 @@ void ts_irq(Computer* comp, int t) {
 			comp->flgDINT = 1;
 			comp->cpu->intrq |= Z80_INT;
 			comp->vid->intDMA = 0;		// reset on vector request
+			break;
+		case IRQ_NMI:				// the NMI line is tied off on TSConf (top.v)
 			break;
 		case IRQ_CPU_ACK:
 			zx_irq(comp, t);

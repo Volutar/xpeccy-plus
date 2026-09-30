@@ -183,6 +183,9 @@ struct Video {
 	struct {
 		int xPos;			// position of screen @ monitor [32|12] x [44|24|0]
 		int yPos;
+		int tsXPos;			// the tiles/sprites window, the same unless TSConfig b0 widens it
+		int tsYPos;
+		vCoord tsSize;
 		unsigned char tconfig;		// port 06AF
 		unsigned char TMPage;		// tiles map page
 		unsigned char T0GPage;		// lay 0 graphics

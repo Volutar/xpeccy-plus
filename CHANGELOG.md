@@ -76,7 +76,10 @@ before that point is upstream's history and is not repeated here.
   - DMA copies every block to the palette and the sprites, and works with the hard disk;
   - disks run from the SD card as virtual drives, and TR-DOS can page memory and play sound;
   - 1024K paging through #7FFD, 16-colour scrolling by a single pixel, and SPG files start
-    with BASIC 48 in place.
+    with BASIC 48 in place;
+  - the picture can go over the sprites and tiles or hide them, sprites and tiles can cover
+    the border, the border drawn through #FE takes the chosen palette, and the disk
+    controller can be reached outside TR-DOS.
 
 ## 2026.5.1 - 2026-09-26
 
