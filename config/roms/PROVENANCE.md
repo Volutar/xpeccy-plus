@@ -55,7 +55,9 @@ and with every emulator of them for decades.
 | `256s-1.rom` | Scorpion ZS 256 | as above | grey | `643861ad34831b255bf2eb64e8b6ecb8` |
 | `256s-2.rom` | Scorpion ZS 256 | as above | grey | service ROM, `d8ad507b1c915a9acfe0d73957082926` |
 | `256s-3.rom` | Scorpion ZS 256 | Technology Research Ltd | grey | TR-DOS page of the set, `ce0723f9bc02f4948c15d3b3230ae831` |
+| `scorpion295.rom` | Scorpion ZS 256 | Scorpion / MOA | grey, given away by the maker | ROM 2.95 of 26.11.1994, 64K, CRC32 99F57CE1 (the image others call 2.94), `23add41c9c4a3f7cca845d3d5cf51367` |
 | `prof39f.rom` | Scorpion ZS 256 | ProfROM authors | grey | ProfROM 3.9f, 128K, `dcb8ebbe2d2f4c4afa58c43507987b9c` |
+| `prof401.rom` | Scorpion ZS 256 Turbo+ | MOA (Andrew Larchenko) / Scorpion | grey | ProfROM 4.01 of 13.07.1997, 256K, ROM disk "FirmWare BonusPak", CRC32 847A66E4, `b124c52cd462ce36d79086747115896f` |
 | `profi.rom` | Profi | Profi authors (KONDOR) | grey | Profi v0.2 with TR-DOS 5.04T, `65dff86e995761ffaffd0fc137f31fb2` |
 | `atm2.rom` | ATM Turbo 2+ | MicroART | grey | `28ce89a88089417db4d3057de942a1bb` |
 | `zxevo-fe.rom` | ZX Evo (BaseConf) | NedoPC group | grey | EVO Reset Service 0.61 FE, `4d440af2f2d746094527aa6789390705` |
@@ -65,7 +67,13 @@ and with every emulator of them for decades.
 
 Source: `256s-*.rom` from <https://github.com/trufanov-nok/fuse-extra-roms>; `alf.rom`
 from <https://zxbyte.ru/alf.htm>, which publishes it as a dump of the console's 27C256;
-the rest from the images that have circulated with these machines and with Xpeccy itself.
+`scorpion295.rom` is `ROM2_95.512` from the maker's own download,
+<https://web.archive.org/web/20060812213917/http://www.scorpion.ru:80/spectrum/files/rom2_95.zip>;
+the "2.95" circulating as `scorp295.rom` (CRC 0C6C1EF6) is a different image.
+`prof401.rom` from <https://speccy4ever.speccy.org/_SC.htm>, the CRC MAME's `scorpiontb` lists;
+it is the last ProfROM MOA built for the real board (4.02 runs only in MOA's own emulator, and
+the 4.xx.0NN builds are a later community fork). The rest from the images that have circulated
+with these machines and with Xpeccy itself.
 
 `alf.rom` is the original firmware, not the patched one that also circulates: it checks
 it is running on a genuine console and prints "Не укради" if it is not, and this

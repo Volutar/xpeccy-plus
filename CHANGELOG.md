@@ -35,6 +35,11 @@ before that point is upstream's history and is not repeated here.
 - **Gamepad buttons press hotkeys**: a key bound to the pad acts as that key on the host
   keyboard, so it can rewind, or pause the machine and start it again.
 
+- **Scorpion ZS 256 Turbo+** as a machine of its own, beside the yellow-board Scorpion ZS 256:
+  a longer frame of 316 lines, the 7 MHz turbo with the waits the board puts on memory and
+  ports, ProfROM 4.01 and SMUC. Both machines are built from the boards' schematics as
+  redrawn by romychs.
+
 ### Changed
 
 - **Clearer gamepad binding window**: the pad's buttons have plain names ("Right trigger",
@@ -105,6 +110,18 @@ before that point is upstream's history and is not repeated here.
     at every address the board decodes, and unused ports read #FF;
   - memory write protection, the clock registers and the disk ports in TR-DOS behave as on
     the board, and covox plays in TR-DOS too.
+
+- **Scorpion ZS 256 follows its board:**
+  - the maker's own ROM 2.95, the frame interrupt 32 T long, and an opcode fetched from RAM
+    waits for an even T-state as on the yellow board, where every instruction was stretched;
+  - the ports answer at the addresses the board decodes, and the Kempston port reads 0 with
+    no joystick instead of #FF;
+  - the Magic button opens the service monitor from 128 BASIC and TR-DOS from 48 BASIC;
+  - ProfROM switches its ROM planes only on a board that has it;
+  - port #FF gives the attribute 4 T ahead of the picture, as the board fetches it.
+
+- **SMUC works with ProfROM**: its clock keeps time, its NVRAM keeps all 2K of settings, and
+  the Kempston mouse works in the ProfROM monitor.
 
 - **Clock chip**: the day of the week counts from 1 as on the real chip (Sunday read 0),
   and the alarm registers read back, on ZX Evo, Pentagon 1024, Profi and SMUC.

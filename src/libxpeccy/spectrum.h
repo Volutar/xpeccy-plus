@@ -87,7 +87,7 @@ typedef struct {
 #define flgNMIRQ sysflag[4]		// NMI requested
 #define flgFRN	sysflag[5]		// need to reset when switch to profile
 #define flgDDP	sysflag[6]		// used ATM2+ only, but have options entry
-#define flgEM1	sysflag[7]		// (same for ZS Scorpion)
+#define flgEM1	sysflag[7]		// (same for Scorpion ZS 256)
 #define flgCNTM	sysflag[8]		// contended mem (zx)
 #define flgCNTI	sysflag[9]		// contended i/o (zx)
 #define flgIBRK	sysflag[10]		// break on interrupt
@@ -167,6 +167,7 @@ typedef struct Computer {
 	int tickCount;		// accumulate T
 	int frmtCount;		// accumulate T, but reset each INT
 	int hCount;		// T before HALT = frmtCount @ HALT
+	int waitDebt;		// T a machine still owes the next opcode fetch (Scorpion Turbo+)
 	int fCount;		// T in last frame
 	double nsPerTick;	// real ns/T, kept precise: truncating this to int was the
 				// root cause of a systemic ~0.3-0.9% emulation speed error
