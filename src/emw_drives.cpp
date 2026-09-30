@@ -63,8 +63,8 @@ void MainWin::fillDrivesMenu() {
 			int id = i ? IDE_SLAVE : IDE_MASTER;
 			QMenu* m = hddMenu->addMenu(QIcon(":/images/hdd.png"),
 				QString("%0: %1").arg(i ? "Slave" : "Master").arg(drive_media(dev[i]->image, dev[i]->image != NULL)));
-			m->addAction(QIcon(":/images/fileopen.png"), "Open image...", this, [this, id]() {hddOpen(id, false);});
-			m->addAction("Open folder...", this, [this, id]() {hddOpen(id, true);});
+			m->addAction(QIcon(":/images/hdd.png"), "Open image...", this, [this, id]() {hddOpen(id, false);});
+			m->addAction(QIcon(":/images/fileopen.png"), "Open folder...", this, [this, id]() {hddOpen(id, true);});
 			act = m->addAction(QIcon(":/images/tape-eject.png"), "Eject", this, [this, id]() {
 				driveOp([id]() {ide_mount(conf.zx->ide, id, QString());});
 			});
@@ -82,8 +82,8 @@ void MainWin::fillDrivesMenu() {
 		act = sdcMenu->addAction(sdc->image ? drive_media(sdc->image, true) : QString("(no card)"));
 		act->setEnabled(false);
 		sdcMenu->addSeparator();
-		sdcMenu->addAction(QIcon(":/images/fileopen.png"), "Open image...", this, [this]() {sdcOpen(false);});
-		sdcMenu->addAction("Open folder...", this, [this]() {sdcOpen(true);});
+		sdcMenu->addAction(QIcon(":/images/sdcard.png"), "Open image...", this, [this]() {sdcOpen(false);});
+		sdcMenu->addAction(QIcon(":/images/fileopen.png"), "Open folder...", this, [this]() {sdcOpen(true);});
 		act = sdcMenu->addAction(QIcon(":/images/tape-eject.png"), "Eject", this, [this]() {
 			driveOp([]() {sdc_mount(conf.zx->sdc, QString());});
 		});
