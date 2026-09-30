@@ -29,18 +29,27 @@
 
 #define xregBRKA xreg[0]
 
+// #xx77 b2..0 picks the atm mode; #EFF7 b0 (16c) and b5 (multicolor) count only
+// in atm mode 011 and cancel each other out (video_modedecode.v). The atm modes
+// with no drawer of their own show a zx screen while neither #EFF7 bit is set.
 void evoSetVideoMode(Computer* comp) {
-	int mode = (comp->pEFF7 & 0x20) | ((comp->pEFF7 & 0x01) << 1) | (comp->prt2 & 0x07);	// z5.z0.0.b2.b1.b0	b:FF77, z:eff7
-	switch (mode) {
-		case 0x03: vid_set_mode(comp->vid,VID_NORMAL); break;		// common
-		case 0x13: vid_set_mode(comp->vid,VID_ALCO); break;		// alco 16c
-		case 0x23: vid_set_mode(comp->vid,VID_HWMC); break;		// zx hardware multicolor
-		case 0x02: vid_set_mode(comp->vid,VID_ATM_HWM); break;	// atm hardware multicolor
-		case 0x00: vid_set_mode(comp->vid,VID_ATM_EGA); break;	// atm ega
-		case 0x06: vid_set_mode(comp->vid,VID_ATM_TEXT); break;	// atm text
-		case 0x07: vid_set_mode(comp->vid,VID_EVO_TEXT); break;	// pentevo text
-		default: vid_set_mode(comp->vid,VID_UNKNOWN); break;
+	int pent = ((comp->pEFF7 & 0x01) << 1) | ((comp->pEFF7 & 0x20) >> 5);	// b0.b5 of #EFF7
+	int mode = VID_UNKNOWN;
+	switch (comp->prt2 & 0x07) {
+		case 0x00: mode = VID_ATM_EGA; break;
+		case 0x02: mode = VID_ATM_HWM; break;
+		case 0x06: mode = VID_ATM_TEXT; break;
+		case 0x07: mode = VID_EVO_TEXT; break;
+		case 0x03:
+			if (pent == 2) mode = VID_ALCO;
+			else if (pent == 1) mode = VID_HWMC;
+			else mode = VID_NORMAL;
+			break;
+		default:
+			if ((pent == 0) || (pent == 3)) mode = VID_NORMAL;
+			break;
 	}
+	vid_set_mode(comp->vid, mode);
 }
 
 void evoSetBank(Computer* comp, int bank, int idx) { // memEntry me) {
