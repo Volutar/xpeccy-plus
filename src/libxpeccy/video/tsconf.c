@@ -321,17 +321,8 @@ void vts_hblk(Video* vid) {
 	}
 }
 
-void tslUpdatePalX(void*);
-
 // Line start
 void vts_line(Video* vid) {
-	// cram writes are taken at the line start, not in the middle of the line being
-	// drawn. unreal applies them at once, but doing that here leaves stray dots of
-	// the wrong colour - our write lands a dot or two off the hardware position
-	if (vid->tsconf.palUpd) {
-		vid->tsconf.palUpd = 0;
-		tslUpdatePalX(vid->xptr);
-	}
 	tslUpdatePorts(vid);
 	int load = vidTSRender(vid);
 	vid->tsconf.dramLoad = (load > 448) ? 448 : load;

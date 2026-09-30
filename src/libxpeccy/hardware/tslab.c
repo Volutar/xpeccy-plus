@@ -122,23 +122,20 @@ static const unsigned char tsl5bLevs[32] = {
 	197,205,213,222,230,238,246,255
 };
 
-void tslUpdatePalX(void* ptr);		// called from the video side at line start
-
-void tslUpdatePal(Computer* comp) {
-	int col;
+// a CRAM word takes effect at once, from the dot the ray is on (video_out.v reads CRAM per dot)
+static void tslUpdatePalEntry(Computer* comp, int i) {
+	int col = (comp->vid->tsconf.cram[(i << 1) + 1] << 8) | (comp->vid->tsconf.cram[i << 1]);
+	const unsigned char* tab = (col & 0x8000) ? tsl5bLevs : tslCoLevs;
 	xColor xcol;
-	for (int i = 0; i < 256; i++) {
-		col = (comp->vid->tsconf.cram[(i << 1) + 1] << 8) | (comp->vid->tsconf.cram[i << 1]);
-		const unsigned char* tab = (col & 0x8000) ? tsl5bLevs : tslCoLevs;
-		xcol.r = tab[(col >> 10) & 0x1f];
-		xcol.g = tab[(col >> 5) & 0x1f];
-		xcol.b = tab[col  & 0x1f];
-		vid_set_col(comp->vid, i, xcol);
-	}
+	xcol.r = tab[(col >> 10) & 0x1f];
+	xcol.g = tab[(col >> 5) & 0x1f];
+	xcol.b = tab[col  & 0x1f];
+	vid_set_col(comp->vid, i, xcol);
 }
 
-void tslUpdatePalX(void* ptr) {
-	tslUpdatePal((Computer*)ptr);
+void tslUpdatePal(Computer* comp) {
+	for (int i = 0; i < 256; i++)
+		tslUpdatePalEntry(comp, i);
 }
 
 // The cache (zmem.v): 256 words of RAM, one per A8..A1, tagged with page and A13..A9. At
@@ -195,7 +192,7 @@ void tslMWr(Computer* comp, int adr, int val) {
 			if (adr & 1) {
 				ptr[adr & 0x1fe] = comp->fmLow;
 				ptr[adr & 0x1ff] = val & 0xff;
-				if (~adr & 0x200) comp->vid->tsconf.palUpd = 1;
+				if (~adr & 0x200) tslUpdatePalEntry(comp, (adr & 0x1fe) >> 1);
 			} else {
 				comp->fmLow = val & 0xff;
 			}
@@ -587,7 +584,7 @@ static void ts_dma_word(Computer* comp) {
 			w = (ts_dma_adr(d) & 0xff) << 1;
 			p[w] = data & 0xff;
 			p[w + 1] = (data >> 8) & 0xff;
-			if (dev == 0xc) comp->vid->tsconf.palUpd = 1;
+			if (dev == 0xc) tslUpdatePalEntry(comp, w >> 1);
 			break;
 		}
 	}

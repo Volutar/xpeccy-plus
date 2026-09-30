@@ -213,7 +213,6 @@ struct Video {
 			unsigned char vconf, vpage, gxl, gxh, palsel, t0xl, t0xh, t1xl, t1xh, t0g, t1g, gyl, gyh;
 			unsigned short mask;	// TSL_LAT_* of the fields waiting
 		} lat;
-		unsigned palUpd:1;		// cram was written: apply it at the next line start
 		unsigned char cram[0x200];	// pal = colram?
 		unsigned char sfile[0x200];	// sprites = ram?
 //		int dmabytes;
