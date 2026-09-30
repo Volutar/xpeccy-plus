@@ -108,7 +108,12 @@ static void evo_drop_virt(Computer* comp) {
 	comp->flgNMIS = 0;
 }
 
-static void evo_set_turbo(Computer*);
+// Both ports that carry a turbo bit have to work out the same speed, or a write
+// to either flips the clock: #xx77 bit 3 is 14 MHz, else #EFF7 bit 4 picks 3.5
+// or 7. Unreal's set_turbo() (atm.cpp) for ATM3/Evo is the reference.
+static void evo_set_turbo(Computer* comp) {
+	compSetHwTurbo(comp, (comp->prt2 & 0x08) ? 4 : ((comp->pEFF7 & 0x10) ? 1 : 2));
+}
 
 void evoReset(Computer* comp) {
 	comp->flgDOS = 1;
@@ -341,12 +346,11 @@ static int evo_vg_masked(Computer* comp) {
 
 int evoInBDI(Computer* comp, int port) {
 	int res = 0xff;
-	if ((port & 0xff) == 0xff) {		// {intrq, drq, 1, what #FF was given}
+	int sys = ((port & 0xff) == 0xff);
+	if (sys || !evo_vg_masked(comp))
 		difIn(comp->dif, port, &res, 1);
+	if (sys)				// {intrq, drq, 1, what #FF was given}
 		res = (res & 0xc0) | 0x20 | (comp->regFFW & 0x1f);
-	} else if (!evo_vg_masked(comp)) {
-		difIn(comp->dif, port, &res, 1);
-	}
 	evo_trdemu(comp);
 	return res;
 }
@@ -484,13 +488,6 @@ void evoOut57(Computer* comp, int port, int val) {	// !dos
 void evoOut77(Computer* comp, int port, int val) {
 	// comp->sdc->on = (val & 1) ? 0 : 1;	// b0: must be 0
 	comp->sdc->cs = (val & 2) ? 1 : 0;	// b1: 0 if sdc is selected
-}
-
-// Both ports that carry a turbo bit have to work out the same speed, or a write
-// to either flips the clock: #xx77 bit 3 is 14 MHz, else #EFF7 bit 4 picks 3.5
-// or 7. Unreal's set_turbo() (atm.cpp) for ATM3/Evo is the reference.
-static void evo_set_turbo(Computer* comp) {
-	compSetHwTurbo(comp, (comp->prt2 & 0x08) ? 4 : ((comp->pEFF7 & 0x10) ? 1 : 2));
 }
 
 void evoOut77d(Computer* comp, int port, int val) {

@@ -59,6 +59,7 @@ int rtc_read(CMOS* cms) {
 	}
 	switch (cms->adr) {
 		// TODO: non-bcd mode
+		case 0x01: case 0x03: case 0x05: res = cms->data[cms->adr]; break;	// alarms, as written
 		case 0x00: res = (cms->data[0x0b] & 4) ? ctime->tm_sec : toBCD(ctime->tm_sec); break;
 		case 0x02: res = (cms->data[0x0b] & 4) ? ctime->tm_min : toBCD(ctime->tm_min); break;
 		case 0x04: res = (cms->data[0x0b] & 4) ? ctime->tm_hour : toBCD(ctime->tm_hour); break;
@@ -66,7 +67,6 @@ int rtc_read(CMOS* cms) {
 		case 0x07: res = (cms->data[0x0b] & 4) ? ctime->tm_mday : toBCD(ctime->tm_mday); break;
 		case 0x08: res = (cms->data[0x0b] & 4) ? ctime->tm_mon + 1 : toBCD(ctime->tm_mon + 1); break;	// tm_mon = 0..11, cmos = 1..12
 		case 0x09: res = (cms->data[0x0b] & 4) ? ctime->tm_year % 100 : toBCD(ctime->tm_year % 100); break;
-		case 0x01: case 0x03: case 0x05: res = cms->data[cms->adr]; break;	// alarms, as written
 		case 0x0a: res = cms->data[0x0a] & 0x7f; break;
 		case 0x0b: res = cms->data[0x0b]; break;	// TODO: bin/12h bits
 		case 0x0c:
