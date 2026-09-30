@@ -291,9 +291,10 @@ void sdcWrite(SDCard* sdc, int val) {
 	if (!sdc->image || !sdc->on || sdc->cs) return;
 //	printf("SD wr %.2X\n",val);
 	if (sdc->state == SDC_WRITE) {
-		if ((sdc->arg[0] = CMD25) && (sdc->buf.pos == 0) && (val == 0xfd)) {		// stop token for com25
+		if ((sdc->buf.pos == 0) && (val == 0xff)) {
+			// the host's gap before the data token: nothing yet
+		} else if (((sdc->arg[0] & 0x3f) == CMD25) && (sdc->buf.pos == 0) && (val == 0xfd)) {	// CMD25 stop token
 			sdc->state = SDC_FREE;
-//			printf("CMD25 BREAK (%i)\n",sdc->argCnt);
 		} else {
 			sdc->buf.data[sdc->buf.pos] = val & 0xff;
 			sdc->buf.pos++;

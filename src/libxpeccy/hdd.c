@@ -34,6 +34,7 @@ ATADev* ataCreate(int tp, cbirq cb, void* p, int id) {
 	ATADev* ata = (ATADev*)malloc(sizeof(ATADev));
 	memset(ata,0x00,sizeof(ATADev));
 	ata->type = tp;
+	ata->hasLBA = 1;		// every IDE disk since the mid-90s; off is for an old CHS-only one
 	ata->pass.cyls = 1024;
 	ata->pass.hds = 16;
 	ata->pass.vol = 1;
