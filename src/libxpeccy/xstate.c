@@ -120,6 +120,8 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 		ADD(comp->ide, sizeof(IDE));
 		ADD(comp->ide->master, sizeof(ATADev));
 		ADD(comp->ide->slave, sizeof(ATADev));
+		if (comp->ide->smuc.nv)		// SMUC's NVRAM is spoken to bit by bit
+			ADD(comp->ide->smuc.nv, sizeof(nvRam));
 	}
 	ADD(comp->sdc, sizeof(SDCard));
 

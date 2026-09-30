@@ -4,34 +4,36 @@
 extern "C" {
 #endif
 
+// 24C16: a 2K I2C EEPROM, the NVRAM on SMUC
+#define NV_SIZE	0x800
+
 enum {
 	NV_IDLE	= 0,
-	NV_WRITE = 2,
-	NV_COM,
-	NV_ADR
+	NV_RCV_CMD,
+	NV_RCV_ADR,
+	NV_RCV_DATA,
+	NV_SEND_DATA,
+	NV_RD_ACK
 };
 
 typedef struct {
-	unsigned stable:1;
-	unsigned ack:1;
-	unsigned rx:1;
-	unsigned tx:1;
-
-	int mode;
-	int sdc;
-	int sda;
-	int bitcount;
-	unsigned char data;		// data recieved from zx
-	unsigned adr:11;
-	unsigned bufpos:4;
-	unsigned char buf[16];		// buffer for writed data (real writing process after STOP condition)
-	unsigned char mem[0x7ff];	// 2K
+	int state;
+	int adr;
+	unsigned char datain;
+	unsigned char dataout;
+	int bitsin;
+	int bitsout;
+	unsigned sda:1;		// the lines as the host last left them
+	unsigned scl:1;
+	unsigned out:1;		// what the chip puts on SDA
+	unsigned outz:1;	// ...or SDA released, and the host's own level reads back
+	unsigned char mem[NV_SIZE];
 } nvRam;
 
 nvRam* nvCreate();
 void nvDestroy(nvRam*);
 
-void nvWr(nvRam*,int,int,int);	// sda,sdc,wp
+void nvWr(nvRam*,int,int);	// sda,scl
 int nvRd(nvRam*);
 
 #ifdef __cplusplus

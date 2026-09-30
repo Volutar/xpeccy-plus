@@ -641,14 +641,14 @@ static void xm_load_nvram() {
 		while ((i < 0x100) && !nv[i]) i++;
 		if (i == 0x100) memcpy(nv + 0x80, nv, 0x80);
 	}
-	mac_nv_read(mac_nv_path(".nvram"), conf.zx->ide->smuc.nv->mem, 256, NULL);
+	mac_nv_read(mac_nv_path(".nvram"), conf.zx->ide->smuc.nv->mem, NV_SIZE, NULL);
 }
 
 void xm_save_nvram() {
 	if (conf.macId.empty()) return;
 	mac_nv_write(mac_nv_path(".cmos"), conf.zx->cmos.data, 256);
 	if (conf.zx->ide->type == IDE_SMUC)
-		mac_nv_write(mac_nv_path(".nvram"), conf.zx->ide->smuc.nv->mem, 256);
+		mac_nv_write(mac_nv_path(".nvram"), conf.zx->ide->smuc.nv->mem, NV_SIZE);
 }
 
 // romset
