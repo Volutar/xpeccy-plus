@@ -594,17 +594,29 @@ static void evo_snap_map(Computer* comp) {
 	evoOut77d(comp, 0x4377, 0x03);		// A14, A9, A8 high: pager on, TR-DOS signal free, palette closed; common video, 3.5 MHz
 }
 
+// #FE, #F6 and #FC all write the border, A3 low making it bright; the beeper
+// and tape out are #FE's alone (zports.v portfe_wr_fclk, beeper_wr)
+static void evo_border(Computer* comp, int port, int val) {
+	comp->vid->nextbrd = (val & 0x07) | ((port ^ 8) & 8);
+}
+
 void evoOutFE(Computer* comp, int port, int val) {
 	xOutFE(comp, port, val);
-	comp->vid->nextbrd |= ((port ^ 8) & 8);
+	evo_border(comp, port, val);
+}
+
+static int evoInFE(Computer* comp, int port) {
+	return xInFE(comp, port) & ~0x20;	// b5 reads 0
 }
 
 // common for all firmware versions
 static xPort evoPortMap[] = {
-	{0x00f7,0x00fe,2,2,2,xInFE,	evoOutFE},	// A3 = border bright
+	{0x00ff,0x00fe,2,2,2,evoInFE,	evoOutFE},
+	{0x00ff,0x00f6,2,2,2,evoInFE,	evo_border},
+	{0x00ff,0x00fc,2,2,2,NULL,	evo_border},
 //	{0x00ff,0x00fb,2,2,2,NULL,	evoOutFB},	// covox
 	{0x00ff,0x00bf,2,2,2,evoInBF,	evoOutBF},
-	{0xc0fe,0x7ffd,2,2,2,NULL,	evoOut7FFD},
+	{0x80fe,0x7ffd,2,2,2,NULL,	evoOut7FFD},	// A15 low, FD or FC; A14 not decoded
 	{0xffff,0xfadf,2,2,2,xInFADF,	NULL},		// k-mouse (fadf,fbdf,ffdf)
 	{0xffff,0xfbdf,2,2,2,xInFBDF,	NULL},
 	{0xffff,0xffdf,2,2,2,xInFFDF,	NULL},
