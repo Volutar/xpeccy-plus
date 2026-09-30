@@ -90,8 +90,7 @@ void evoMapMem(Computer* comp) {
 		evoSetBank(comp, 0x80, adr+2); //comp->memMap[adr+2]);
 		evoSetBank(comp, 0xc0, adr+3); //comp->memMap[adr+3]);
 		evo_map_win0(comp);
-	} else {
-		comp->flgDOS = 1;
+	} else {				// no pager: the service rom everywhere; DOS is left to A9
 		memSetBank(comp->mem,0x00,MEM_ROM,0xff, MEM_16K, NULL, NULL, NULL);
 		memSetBank(comp->mem,0x40,MEM_ROM,0xff, MEM_16K, NULL, NULL, NULL);
 		memSetBank(comp->mem,0x80,MEM_ROM,0xff, MEM_16K, NULL, NULL, NULL);
@@ -153,7 +152,7 @@ int evoMRd(Computer* comp, int adr, int m1) {
 		if (comp->flgDOS && (comp->prt2 & 0x40) &&
 				(comp->memFlag((comp->flgROM << 2) | win) & 0x40)) {
 			comp->flgDOS = 0;
-			if (comp->flgROM) comp->hw->mapMem(comp);
+			comp->hw->mapMem(comp);		// dos feeds the rom pages of both maps
 		}
 		// enter TR-DOS: M1 from offset #3Dxx of a window whose map 1
 		// entry is rom with the dos7ffd bit set
@@ -193,15 +192,21 @@ int evoMRd(Computer* comp, int adr, int m1) {
 	return res;
 }
 
-// TODO: write protect, see xBF7)
-// adr = (flgRom << 2) | ((adr >> 14) & 3)
-// memFlag(adr) & 0x20 = write protect
+// #xBF7 protects the page its map puts in a window: not ram0, the NMI page or the
+// trd emulation page standing in window 0, and nothing with the pager off
+// (atm_pager.v wrdisable)
+static int evo_wprot(Computer* comp, int adr) {
+	if (!(comp->prt2 & 0x20)) return 0;
+	if ((adr < 0x4000) && (comp->flgVNMI || comp->flgVDOS || (comp->pEFF7 & 8))) return 0;
+	return comp->memFlag((comp->flgROM << 2) | ((adr >> 14) & 3)) & 0x20;
+}
+
 void evoMWr(Computer* comp, int adr, int val) {
 	if (comp->regBF & 4) {
 		vid_fnt_wr(comp->vid, adr & 0x7ff, val & 0xff);		// PentEvo: write font byte
 	}
 	if (comp->flgVDWP && (adr < 0x4000)) return;		// trd emulation page just came in
-	if (comp->memFlag((comp->flgROM << 2) | ((adr >> 14) & 3)) & 0x20) return;		// write protect
+	if (evo_wprot(comp, adr)) return;
 	memWr(comp->mem,adr,val);
 }
 
@@ -274,21 +279,10 @@ int evoInCfg(Computer* comp, int port) {
 }
 
 void evoOutCfg(Computer* comp, int port, int val) {
-	int i = 0;
 	switch(port & 0xff00) {
 		// the trap address, at both the addresses it has ever had
 		case 0x0000: case 0x1000: comp->xregBRKA.l = val; break;
 		case 0x0100: case 0x1100: comp->xregBRKA.h = val; break;
-		case 0x1200:
-			for (i = 0; i < 8; i++) {
-				if (val & 1) {
-					comp->memFlag(i) |= 0x20;
-				} else {
-					comp->memFlag(i) &= ~0x20;
-				}
-				val >>= 1;
-			}
-			break;
 		case 0x1300:
 			comp->dif->flp[0]->virt = !!(val & 1);
 			comp->dif->flp[1]->virt = !!(val & 2);
