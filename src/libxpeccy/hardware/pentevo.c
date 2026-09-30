@@ -127,8 +127,14 @@ void evoReset(Computer* comp) {
 }
 
 // Raise the NMI and arrange for the handler's page to come with it. Both go
-// together or the handler runs out of whatever was mapped at 0x0000.
+// together or the handler runs out of whatever was mapped at 0x0000. None is
+// taken while one is on its way or running (znmi.v: nmi_start && !in_nmi).
+static int evo_in_nmi(Computer* comp) {
+	return comp->flgNMIS || comp->flgVNMI;
+}
+
 static void evo_nmi(Computer* comp) {
+	if (evo_in_nmi(comp)) return;
 	comp->cpu->intrq |= Z80_NMI;
 	comp->flgNMIS = 1;
 }
@@ -697,13 +703,14 @@ void evo_irq(Computer* comp, int t) {
 			comp->flgNMIR = 1;
 			break;
 		case IRQ_VID_INT:
-			if (!comp->flgNMIR) {
-				zx_irq(comp, t);
+			if (comp->flgNMIR && !evo_in_nmi(comp)) {
+				comp->flgNMIR = 0;	// the NMI comes instead of the frame int
+				if (!comp->rzx.play)
+					evo_nmi(comp);
 				break;
 			}
-			comp->flgNMIR = 0;		// the NMI comes instead of the frame int
-			if (!comp->rzx.play)
-				evo_nmi(comp);
+			comp->flgNMIR = 0;		// in NMI: dropped, and the int comes as usual
+			zx_irq(comp, t);
 			break;
 		default:
 			zx_irq(comp, t);
