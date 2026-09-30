@@ -678,7 +678,8 @@ ataAddr ide_nemoevo_decode(int port, int dosen, int wr) {
 	res.iorq = (((port & 0xff) == 0xc8) || ((port & 0xff) == 0x11) || ((port & 0x1f) == 0x10)) ? 1 : 0;
 	res.hdd = 1;
 	res.high = ((port & 0xff) == 0x11) ? 1 : 0;
-	res.port = (port & 0xe0) >> 5;
+	// #C8 is CS1: alternate status / device control (zports.v ide_cs1_n)
+	res.port = ((port & 0xff) == 0xc8) ? HDD_ASTATE : (port & 0xe0) >> 5;
 	return res;
 }
 
