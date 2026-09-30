@@ -162,6 +162,21 @@ void ataAbort(ATADev* dev) {
 	dev->reg.err |= HDF_ABRT;
 }
 
+static int ata_present(ATADev* dev) {
+	return (dev->type == IDE_ATA) && (dev->image != NULL);
+}
+
+// identify data: a word, and a pair of words low first
+static void ata_put_word(ATADev* dev, int w, int val) {
+	dev->buf.data[w * 2] = val & 0xff;
+	dev->buf.data[w * 2 + 1] = (val >> 8) & 0xff;
+}
+
+static void ata_put_long(ATADev* dev, int w, int val) {
+	ata_put_word(dev, w, val & 0xffff);
+	ata_put_word(dev, w + 1, (val >> 16) & 0xffff);
+}
+
 void ataExec(ATADev* dev, unsigned char cm) {
 	dev->reg.state = HDF_DRDY | HDF_DSC;
 	dev->reg.err = 0x00;
@@ -304,26 +319,26 @@ void ataExec(ATADev* dev, unsigned char cm) {
 				break;
 			case 0xec:			// identify drive
 				ataClearBuf(dev);
-				dev->buf.data[0] = 0x04;
-				dev->buf.data[1] = 0x00;							// main word
-				dev->buf.data[2] = dev->pass.cyls & 0xff;
-				dev->buf.data[3] = ((dev->pass.cyls & 0xff00) >> 8);		// cylinders
-				dev->buf.data[6] = dev->pass.hds & 0xff;
-				dev->buf.data[7] = ((dev->pass.hds & 0xff00) >> 8);		// heads
-				dev->buf.data[8] = dev->pass.bpt & 0xff;
-				dev->buf.data[9] = ((dev->pass.bpt & 0xff00) >> 8);		// bytes per track
-				dev->buf.data[10] = dev->pass.bps & 0xff;
-				dev->buf.data[11] = ((dev->pass.bps & 0xff00) >> 8);		// bytes per sector
-				dev->buf.data[12] = dev->pass.spt & 0xff;
-				dev->buf.data[13] = ((dev->pass.spt & 0xff00) >> 8);		// sector per track
+				ata_put_word(dev, 0, 0x0004);		// main word
+				ata_put_word(dev, 1, dev->pass.cyls);
+				ata_put_word(dev, 3, dev->pass.hds);
+				ata_put_word(dev, 4, dev->pass.bpt);
+				ata_put_word(dev, 5, dev->pass.bps);
+				ata_put_word(dev, 6, dev->pass.spt);
 				copyStringToBuffer(&dev->buf.data[20],dev->pass.serial,20);	// serial (20 bytes)
-				dev->buf.data[40] = dev->pass.type & 0xff;
-				dev->buf.data[41] = ((dev->pass.type & 0xff00) >> 8);		// buffer type
-				dev->buf.data[42] = dev->pass.vol & 0xff;
-				dev->buf.data[43] = ((dev->pass.vol & 0xff00) >> 8);		// buffer size
+				ata_put_word(dev, 20, dev->pass.type);	// buffer type
+				ata_put_word(dev, 21, dev->pass.vol);	// buffer size
 				copyStringToBuffer(&dev->buf.data[46],dev->pass.mcver,8);	// microcode version (8 bytes)
 				copyStringToBuffer(&dev->buf.data[54],dev->pass.model,10);	// model (40 bytes)
 				dev->buf.data[99] = (dev->hasDMA ? 0x01 : 0x00) | (dev->hasLBA ? 0x02 : 0x00);	// lba/dma support
+				// words 54..58: the geometry in use, which 0x91 sets; 60..61: LBA sectors
+				ata_put_word(dev, 53, 0x0001);
+				ata_put_word(dev, 54, dev->pass.cyls);
+				ata_put_word(dev, 55, dev->pass.hds);
+				ata_put_word(dev, 56, dev->pass.spt);
+				ata_put_long(dev, 57, dev->pass.cyls * dev->pass.hds * dev->pass.spt);
+				if (dev->hasLBA)
+					ata_put_long(dev, 60, dev->maxlba);
 				dev->buf.pos = 0;
 				dev->buf.mode = HDB_READ;
 				dev->reg.state |= HDF_DRQ;
@@ -355,7 +370,7 @@ void ataExec(ATADev* dev, unsigned char cm) {
 
 unsigned short ataRd(ATADev* dev,int prt) {
 	unsigned short res = 0xffff;
-	if ((dev->type != IDE_ATA) || (dev->image == NULL)/* || dev->sleep*/) return res;
+	if (!ata_present(dev)) return res;
 	switch (prt) {
 		case HDD_DATA:
 			if ((dev->buf.mode == HDB_READ) && (dev->reg.state & HDF_DRQ)) {
@@ -416,7 +431,7 @@ unsigned short ataRd(ATADev* dev,int prt) {
 }
 
 void ataWr(ATADev* dev, int prt, unsigned short val) {
-	if ((dev->type != IDE_ATA) || (dev->image == NULL)/* || dev->sleep*/) return;
+	if (!ata_present(dev)) return;
 	switch (prt) {
 		case HDD_DATA:
 			if ((dev->buf.mode == HDB_WRITE) && (dev->reg.state & HDF_DRQ)) {
@@ -508,14 +523,20 @@ void ideDestroy(IDE* ide) {
 
 // TODO: check extension
 
+// cylinders of a 16 x 63 geometry over the whole volume, as far as CHS reaches
+static int ata_chs_cyls(int maxlba) {
+	int cyls = maxlba / (16 * 63);
+	return (cyls > 16383) ? 16383 : cyls;
+}
+
 void ata_load_raw(ATADev* dev) {
 	fseek(dev->file, 0, SEEK_END);
 	long fsz = ftell(dev->file);
-	long rsz = 16*63*512;			// 1 cylinder size (16 heads, 63 sectors, 512 bytes/sec)
-	dev->maxlba = (fsz / rsz) + ((fsz % rsz) ? rsz : 0);		// in 512byte units
+	dev->maxlba = fsz / 512;
+	dev->pass.bps = 512;
 	dev->pass.hds = 16;
 	dev->pass.spt = 63;
-	dev->pass.cyls = (dev->maxlba / 16 / 63);
+	dev->pass.cyls = ata_chs_cyls(dev->maxlba);
 	rewind(dev->file);
 	dev->offset = 0;
 }
@@ -573,7 +594,7 @@ void ideSetFolder(IDE* ide, int wut, const char* name, vFat* vf) {
 	dev->pass.hds = 16;
 	dev->pass.spt = 63;
 	dev->maxlba = vf->volume;
-	dev->pass.cyls = dev->maxlba / (dev->pass.hds * dev->pass.spt);
+	dev->pass.cyls = ata_chs_cyls(dev->maxlba);
 }
 
 void ideSetImage(IDE *ide, int wut, const char *name) {
@@ -632,6 +653,11 @@ int ide_ata_rd(IDE* ide, int adr, int hi) {
 	int res;
 	if (hi) {
 		res = (ide->bus >> 8) & 0xff;
+	} else if ((ide->curDev == ide->slave) && !ata_present(ide->slave) && ata_present(ide->master)
+			&& ((adr == HDD_STATE) || (adr == HDD_ASTATE))) {
+		// ATA: device 0 answers for an absent device 1 with a status of 00
+		ide->bus = 0x0000;
+		res = 0x00;
 	} else {
 		ide->bus = ataRd(ide->curDev, adr);
 		res = ide->bus & 0xff;
@@ -678,7 +704,8 @@ ataAddr ide_nemoevo_decode(int port, int dosen, int wr) {
 	res.iorq = (((port & 0xff) == 0xc8) || ((port & 0xff) == 0x11) || ((port & 0x1f) == 0x10)) ? 1 : 0;
 	res.hdd = 1;
 	res.high = ((port & 0xff) == 0x11) ? 1 : 0;
-	res.port = (port & 0xe0) >> 5;
+	// #C8 is CS1: alternate status / device control (zports.v ide_cs1_n)
+	res.port = ((port & 0xff) == 0xc8) ? HDD_ASTATE : (port & 0xe0) >> 5;
 	return res;
 }
 

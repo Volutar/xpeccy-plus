@@ -46,6 +46,9 @@ before that point is upstream's history and is not repeated here.
 - **Icons on the settings groups** of the Video page and of the machine's and the
   recording's advanced settings, and clearer Sound and Board ones on the Machine page.
 
+- **The Drives menu shows a folder icon for opening a folder** and the device's own for an
+  image.
+
 ### Fixed
 
 - **Radio buttons keep their place when checked** in every bundled style.
@@ -86,6 +89,19 @@ before that point is upstream's history and is not repeated here.
     change shows from the point on the line where it was made;
   - in text mode the sprites, tiles and border take the text's palette, and the picture over
     the sprites covers them only with the letters.
+
+- **ZX Evo (BaseConf) follows its FPGA sources more closely:**
+  - Pentagon 16-colour mode works, hardware multicolour shows its own attributes, and the
+    #EFF7 bits no longer spoil the ATM screen modes;
+  - the PS/2 keyboard buffer reads 0 when empty and holds 16 bytes, so programs that read
+    keys through it no longer see an overflow;
+  - the Magic Service can no longer be entered again from inside itself, and a breakpoint on
+    an EI instruction stops there;
+  - a reset no longer says "SD card lost".
+
+- **Hard disk images**: the whole of a large image is reachable, the disk reports its real
+  size, and NedoOS's hddfdisk finds it, so NedoOS installs on it and boots from it; the Nemo
+  IDE alternate status port works.
 
 ## 2026.5.1 - 2026-09-26
 

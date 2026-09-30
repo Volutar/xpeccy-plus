@@ -29,18 +29,26 @@
 
 #define xregBRKA xreg[0]
 
+// #xx77 b2..0 picks the atm mode; #EFF7 b0 (16c) and b5 (multicolor) count only
+// in atm mode 011 and cancel each other out (video_modedecode.v). The atm modes
+// with no drawer of their own show a zx screen while neither #EFF7 bit is set.
 void evoSetVideoMode(Computer* comp) {
-	int mode = (comp->pEFF7 & 0x20) | ((comp->pEFF7 & 0x01) << 1) | (comp->prt2 & 0x07);	// z5.z0.0.b2.b1.b0	b:FF77, z:eff7
-	switch (mode) {
-		case 0x03: vid_set_mode(comp->vid,VID_NORMAL); break;		// common
-		case 0x13: vid_set_mode(comp->vid,VID_ALCO); break;		// alco 16c
-		case 0x23: vid_set_mode(comp->vid,VID_HWMC); break;		// zx hardware multicolor
-		case 0x02: vid_set_mode(comp->vid,VID_ATM_HWM); break;	// atm hardware multicolor
-		case 0x00: vid_set_mode(comp->vid,VID_ATM_EGA); break;	// atm ega
-		case 0x06: vid_set_mode(comp->vid,VID_ATM_TEXT); break;	// atm text
-		case 0x07: vid_set_mode(comp->vid,VID_EVO_TEXT); break;	// pentevo text
-		default: vid_set_mode(comp->vid,VID_UNKNOWN); break;
+	int c16 = comp->pEFF7 & 0x01;
+	int hwmc = (comp->pEFF7 >> 5) & 0x01;
+	int mode = VID_UNKNOWN;
+	switch (comp->prt2 & 0x07) {
+		case 0x00: mode = VID_ATM_EGA; break;
+		case 0x02: mode = VID_ATM_HWM; break;
+		case 0x06: mode = VID_ATM_TEXT; break;
+		case 0x07: mode = VID_EVO_TEXT; break;
+		case 0x03:
+			mode = (c16 == hwmc) ? VID_NORMAL : (c16 ? VID_ALCO : VID_HWMC);
+			break;
+		default:
+			if (c16 == hwmc) mode = VID_NORMAL;
+			break;
 	}
+	vid_set_mode(comp->vid, mode);
 }
 
 void evoSetBank(Computer* comp, int bank, int idx) { // memEntry me) {
@@ -118,8 +126,14 @@ void evoReset(Computer* comp) {
 }
 
 // Raise the NMI and arrange for the handler's page to come with it. Both go
-// together or the handler runs out of whatever was mapped at 0x0000.
+// together or the handler runs out of whatever was mapped at 0x0000. None is
+// taken while one is on its way or running (znmi.v: nmi_start && !in_nmi).
+static int evo_in_nmi(Computer* comp) {
+	return comp->flgNMIS || comp->flgVNMI;
+}
+
 static void evo_nmi(Computer* comp) {
+	if (evo_in_nmi(comp)) return;
 	comp->cpu->intrq |= Z80_NMI;
 	comp->flgNMIS = 1;
 }
@@ -401,7 +415,7 @@ void evo_cmos_wr(Computer* comp, int val) {
 	if (comp->cmos.adr >= 0xf0) {
 		comp->cmos.mode = val;
 	} else if (comp->cmos.adr == 0x0c) {
-		if (val & 1) comp->keyb->outbuf = 0;	// b0: clear the ps/2 keyboard log
+		if (val & 1) xt_log_clear(comp->keyb);	// b0: clear the ps/2 keyboard log
 	} else {
 		cmos_wr(&comp->cmos, CMOS_DATA, val);
 	}
@@ -688,14 +702,15 @@ void evo_irq(Computer* comp, int t) {
 			comp->flgNMIR = 1;
 			break;
 		case IRQ_VID_INT:
-			if (!comp->flgNMIR) {
+		{	// an armed NMI comes instead of the frame int; in NMI it is dropped
+			int nmi = comp->flgNMIR && !evo_in_nmi(comp);
+			comp->flgNMIR = 0;
+			if (!nmi)
 				zx_irq(comp, t);
-				break;
-			}
-			comp->flgNMIR = 0;		// the NMI comes instead of the frame int
-			if (!comp->rzx.play)
+			else if (!comp->rzx.play)
 				evo_nmi(comp);
 			break;
+		}
 		default:
 			zx_irq(comp, t);
 			break;

@@ -106,25 +106,23 @@ void z80_mwr(CPU *cpu, int adr, int data) {
 
 int z80_int(CPU* cpu) {
 	int res = 0;
-	if (cpu->intrq & Z80_NMI) {		// nmi, ahead of int
-		if (!cpu->flgNOINT) {
-			cpu->flgFW = 0;		// taking one writes no flags (see flgQ)
-			cpu->regR++;
-			cpu->flgIFF2 = cpu->flgIFF1;
-			cpu->flgIFF1 = 0;
-			if (cpu->flgHALT) {		// an NMI leaves HALT the way an int does
-				cpu->regPC++;
-				cpu->flgHALT = 0;
-			}
-			if (cpu->flgRetBRK) {		// it is a call, so the debugger counts it
-				cpu->regCallCnt++;
-			}
-			cpu->t = 5;
-			z80_push(cpu, cpu->regPC);
-			cpu->regPC = 0x0066;
-			cpu->regWZ = cpu->regPC;
-			res = cpu->t;			// always 11
+	if (cpu->intrq & Z80_NMI) {		// nmi, ahead of int; EI holds off only the int
+		cpu->flgFW = 0;		// taking one writes no flags (see flgQ)
+		cpu->regR++;
+		cpu->flgIFF2 = cpu->flgIFF1;
+		cpu->flgIFF1 = 0;
+		if (cpu->flgHALT) {		// an NMI leaves HALT the way an int does
+			cpu->regPC++;
+			cpu->flgHALT = 0;
 		}
+		if (cpu->flgRetBRK) {		// it is a call, so the debugger counts it
+			cpu->regCallCnt++;
+		}
+		cpu->t = 5;
+		z80_push(cpu, cpu->regPC);
+		cpu->regPC = 0x0066;
+		cpu->regWZ = cpu->regPC;
+		res = cpu->t;			// always 11
 		cpu->intrq &= ~Z80_NMI;
 	} else if (cpu->intrq & Z80_INT) {	// int
 		if (cpu->flgIFF1 && !cpu->flgNOINT && cpu->flgACK) {

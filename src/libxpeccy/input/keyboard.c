@@ -208,14 +208,53 @@ void kbd_atm2code_release(Keyboard* kbd, keyEntry* ent) {
 
 // common codes
 
+// The scancode log as ZX Evo's avr keeps it (ps2.c, ps2keyboard_*_log): 16
+// bytes, and filling them all is an overflow. A read gives 0 when there is
+// nothing, and FF once on an overflow, which also starts the log over.
+#define XT_LOG_CLEARED	0xff		// logStart: cleared, nothing since
+#define XT_LOG_OVER	0xff		// logEnd: overflowed
+
+void xt_log_clear(Keyboard* kbd) {
+	kbd->logStart = XT_LOG_CLEARED;
+}
+
+static int xt_log_empty(Keyboard* kbd) {
+	if (kbd->logStart == XT_LOG_CLEARED) return 1;
+	return (kbd->logEnd == kbd->logStart);
+}
+
+static void xt_log_byte(Keyboard* kbd, int bt) {
+	if (kbd->logEnd == XT_LOG_OVER) return;
+	kbd->log[kbd->logEnd] = bt & 0xff;
+	kbd->logEnd = (kbd->logEnd + 1) & 15;
+	if (kbd->logEnd == kbd->logStart)
+		kbd->logEnd = XT_LOG_OVER;
+}
+
+// a key's whole code, first byte in the low bits; so a log cleared mid-code
+// starts again on a key's first byte, as the avr's does
+static void xt_log_put(Keyboard* kbd, unsigned long code) {
+	if (!code) return;
+	if (kbd->logStart == XT_LOG_CLEARED) {
+		kbd->logStart = 0;
+		kbd->logEnd = 0;
+	}
+	while (code) {
+		xt_log_byte(kbd, code & 0xff);
+		code >>= 8;
+	}
+}
+
 int xt_read(Keyboard* kbd) {
-	int res;
-	if (kbd->outbuf & 0xff) {
-		res = kbd->outbuf & 0xff;
+	int res = 0;
+	if (kbd->logStart == XT_LOG_CLEARED) return 0;
+	if (kbd->logEnd == XT_LOG_OVER) {
+		res = 0xff;
+		xt_log_clear(kbd);
+	} else if (!xt_log_empty(kbd)) {
+		res = kbd->log[kbd->logStart];
+		kbd->logStart = (kbd->logStart + 1) & 15;
 		kbd->lastkey = res;
-		kbd->outbuf >>= 8;
-	} else {
-		res = -1;
 	}
 	return res;
 }
@@ -303,7 +342,6 @@ void kbdReleaseAll(Keyboard* kbd) {
 	memset(kbd->prfsh, 0, sizeof(kbd->prfsh));
 	kbd->keycode = 0;
 	kbd->lastkey = 0;
-//	kbd->outbuf = 0;	//kbd->kbuf.pos = 0;
 //	kbd->flag = 0;
 	if (kbd->per > 0) {
 		kbd_release(kbd, &kbd->kent);
@@ -382,22 +420,21 @@ static int xt_rpt_due(Keyboard* kbd, int ns) {
 // that stops reading does not come back to a burst.
 void xt_rpt_sync(Keyboard* kbd, int ns) {
 	if (!xt_rpt_due(kbd, ns)) return;
-	if (kbd->lock || kbd->outbuf) return;
-	kbd->outbuf = add_msb(kbd->outbuf, xt_get_code(kbd, &kbd->kent, 0));
+	if (kbd->lock || !xt_log_empty(kbd)) return;
+	xt_log_put(kbd, xt_get_code(kbd, &kbd->kent, 0));
 }
 
 void xt_press(Keyboard* kbd, keyEntry* kent) {
 	if (kbd->lock) return;
-	kbd->outbuf = add_msb(kbd->outbuf, xt_get_code(kbd, kent, 0));
+	xt_log_put(kbd, xt_get_code(kbd, kent, 0));
 	kbd->kent = *kent;
 	kbd->per = kbd->kdel;
 	kbd->xirq(IRQ_KBD_DATA, kbd->xptr);
-	// printf("xt press, buf = %X\n", kbd->outbuf);
 }
 
 void xt_release(Keyboard* kbd, keyEntry* kent) {
 	if (kbd->lock) return;
-	kbd->outbuf = add_msb(kbd->outbuf, xt_get_code(kbd, kent, 1));	// kbd->outbuf = xt_get_code(kbd, kent, 1);
+	xt_log_put(kbd, xt_get_code(kbd, kent, 1));
 	kbd->per = 0;		// 0 for stopping autorepeat
 	kbd->xirq(IRQ_KBD_DATA, kbd->xptr);
 }

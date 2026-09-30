@@ -195,7 +195,9 @@ struct Keyboard {
 	unsigned lock:1;	// ps/2 keyboard disabled
 	int pcmode;		// xt/at/ps2 (self)
 	int pcmodeovr;		// override pcmode (0:pcmode, xt/at - convert scancodes in ps/2 controller)
-	unsigned long outbuf;	// 0 = empty, else key scancode
+	unsigned char log[16];	// scancodes not read yet, the avr's ring (XT_LOG_*)
+	unsigned char logStart;
+	unsigned char logEnd;
 	keyEntry kent;
 	int per;
 	int kdel;		// pc:delay after 1st press
@@ -236,6 +238,7 @@ void kbd_wr(Keyboard*, int, int);
 //void xt_press(Keyboard*, keyEntry*);
 //void xt_release(Keyboard*, keyEntry*);
 int xt_read(Keyboard*);
+void xt_log_clear(Keyboard*);
 // void kbd_nec_write(Keyboard*, int, int);
 //void xt_sync(Keyboard*, int);
 // end of TODO

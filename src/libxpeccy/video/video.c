@@ -1239,6 +1239,7 @@ void vidDrawHwmc(Video* vid) {
 			if ((xscr & 7) == 0) {
 				scrbyte = nxtbyte;
 				adr = ((yscr & 0xc0) << 5) | ((yscr & 7) << 8) | ((yscr & 0x38) << 2) | ((xscr & 0xf8) >> 3);
+				adr |= 0x2000;		// the cell's attribute, one per 8x1 (video_addrgen.v addr_phm)
 				vid->atrbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
 				if ((vid->atrbyte & 0x80) && vid->flash) scrbyte ^= 0xff;
 				ink = (vid->atrbyte & 0x07) | ((vid->atrbyte & 0x40) >> 3);
