@@ -93,6 +93,10 @@ void tslReset(Computer* comp) {
 	comp->flgVDOS = 0;
 	comp->frmHold = 0;
 	comp->flgMEN = 0;			// FMAPS off
+	comp->tsconf.cacheConf = 0;
+	memset(comp->tsconf.cache, 0, sizeof(comp->tsconf.cache));
+	comp->tsconf.cpuDram = 0;
+	comp->tsconf.dma.act = 0;
 	comp->sdc->on = 1;
 	for (int i = 0; i < 4; i++)		// FDDVirt = 0
 		comp->dif->fdc->flop[i]->virt = 0;
@@ -137,6 +141,34 @@ void tslUpdatePalX(void* ptr) {
 	tslUpdatePal((Computer*)ptr);
 }
 
+// The cache (zmem.v): 256 words of RAM, one per A8..A1, tagged with page and A13..A9. At
+// 14 MHz a RAM read it cannot answer waits for the 7 MHz DRAM: 2 or 3 ticks by the phase
+// of the DRAM cycle, as unreal counts it. Writes do not wait; one to a cached word drops it.
+static int ts_cache_tag(Computer* comp, int adr) {
+	MemPage* pg = &comp->mem->map[(adr >> 8) & 0xff];
+	if (pg->type != MEM_RAM) return 0;
+	return 0x8000 | ((pg->num >> 6) << 5) | ((adr >> 9) & 0x1f);
+}
+
+static void ts_cache_rd(Computer* comp, int adr) {
+	int tag = ts_cache_tag(comp, adr);
+	if (!tag) return;
+	unsigned short* c = &comp->tsconf.cache[(adr >> 1) & 0xff];
+	if ((*c == tag) && (comp->tsconf.cacheConf & (1 << ((adr >> 14) & 3)))) return;
+	*c = tag;
+	comp->tsconf.cpuDram++;
+	if (comp->hwMul == 4)
+		comp->cpu->t += 2 + ((comp->tickCount + comp->cpu->t) & 1);
+}
+
+static void ts_cache_wr(Computer* comp, int adr) {
+	int tag = ts_cache_tag(comp, adr);
+	if (!tag) return;
+	comp->tsconf.cpuDram++;
+	unsigned short* c = &comp->tsconf.cache[(adr >> 1) & 0xff];
+	if (*c == tag) *c = 0;
+}
+
 int tslMRd(Computer* comp, int adr, int m1) {
 	if (m1 && (comp->dif->type == DIF_BDI)) {
 		if (comp->flgDOS && (adr >= 0x4000) && (!comp->flgVDOS)) {
@@ -148,6 +180,7 @@ int tslMRd(Computer* comp, int adr, int m1) {
 			comp->hw->mapMem(comp);
 		}
 	}
+	ts_cache_rd(comp, adr);
 	return memRd(comp->mem,adr);
 }
 
@@ -168,6 +201,7 @@ void tslMWr(Computer* comp, int adr, int val) {
 			}
 		}
 	}
+	ts_cache_wr(comp, adr);
 	memWr(comp->mem,adr,val);
 }
 
@@ -383,14 +417,10 @@ void tsOut17AF(Computer* comp, int port, int val) TS_LAT(t0g, TSL_LAT_T0G, val &
 void tsOut18AF(Computer* comp, int port, int val) TS_LAT(t1g, TSL_LAT_T1G, val & 0xf8)
 void tsOut19AF(Computer* comp, int port, int val) {comp->vid->tsconf.SGPage = val & 0xf8;}
 
-void tsOut1AAF(Computer* comp, int port, int val) {comp->dmaSrc.l = val & 0xff;}
-void tsOut1BAF(Computer* comp, int port, int val) {comp->dmaSrc.h = val & 0xff;}
-void tsOut1CAF(Computer* comp, int port, int val) {comp->dmaSrc.ih = val & 0xff;}
-void tsOut1DAF(Computer* comp, int port, int val) {comp->dmaDst.l = val & 0xff;}
-void tsOut1EAF(Computer* comp, int port, int val) {comp->dmaDst.h = val & 0xff;}
-void tsOut1FAF(Computer* comp, int port, int val) {comp->dmaDst.ih = val & 0xff;}
+void tsOut2BAF(Computer* comp, int port, int val) {comp->tsconf.cacheConf = val & 0x0f;}
 
 void tsOut20AF(Computer* comp, int port, int val) {
+	comp->tsconf.cacheConf = (val & 4) ? 0x0f : 0x00;	// SysConfig b2 sets every window at once
 	switch (val & 3) {
 		case 0: compSetHwTurbo(comp,1); break;
 		case 1: compSetHwTurbo(comp,2); break;
@@ -428,18 +458,12 @@ void tsOut26AF(Computer* comp, int port, int val) {
 	comp->dmaLen = val & 0xff;
 }
 
-int tsIn27AF(Computer* comp, int port) {return 0x00;}
+int tsIn27AF(Computer* comp, int port) {return comp->tsconf.dma.act ? 0x80 : 0x00;}	// DMAStatus
 
 // DMA as dma.v runs it. Addresses count 16-bit words over 21 bits, so 4 MB wraps round.
 // With S_ALGN/D_ALGN an address wraps inside its 256/512 byte block during a burst, and
 // each burst starts one block further on. The transfer is done at once.
 
-typedef struct {
-	int base;	// block part, or the whole address without align
-	int low;	// offset in the block the bursts start from
-	int pos;	// words into the current burst
-	int mask;	// block size - 1, 0 without align
-} tsDmaAdr;
 
 static void ts_dma_adr_init(tsDmaAdr* a, xreg32* r, int algn, int asz) {
 	int w = ((r->ih << 13) | ((r->w & 0x3ffe) >> 1)) & 0x1fffff;
@@ -465,6 +489,25 @@ static void ts_dma_adr_store(tsDmaAdr* a, xreg32* r) {
 	r->ih = (w >> 13) & 0xff;
 	r->w = (w << 1) & 0x3ffe;
 }
+
+// The address registers are the addresses the transfer works on (dma.v): a program may set
+// the next one up while a transfer still runs, and that transfer carries on from there.
+static void ts_dma_set(Computer* comp, xreg32* r, tsDmaAdr* a, int byte, int val) {
+	if (comp->tsconf.dma.act) ts_dma_adr_store(a, r);
+	switch (byte) {
+		case 0: r->l = val & 0xff; break;
+		case 1: r->h = val & 0xff; break;
+		default: r->ih = val & 0xff; break;
+	}
+	if (comp->tsconf.dma.act) ts_dma_adr_init(a, r, a->mask, comp->tsconf.dma.asz);
+}
+
+void tsOut1AAF(Computer* comp, int port, int val) {ts_dma_set(comp, &comp->dmaSrc, &comp->tsconf.dma.s, 0, val);}
+void tsOut1BAF(Computer* comp, int port, int val) {ts_dma_set(comp, &comp->dmaSrc, &comp->tsconf.dma.s, 1, val);}
+void tsOut1CAF(Computer* comp, int port, int val) {ts_dma_set(comp, &comp->dmaSrc, &comp->tsconf.dma.s, 2, val);}
+void tsOut1DAF(Computer* comp, int port, int val) {ts_dma_set(comp, &comp->dmaDst, &comp->tsconf.dma.d, 0, val);}
+void tsOut1EAF(Computer* comp, int port, int val) {ts_dma_set(comp, &comp->dmaDst, &comp->tsconf.dma.d, 1, val);}
+void tsOut1FAF(Computer* comp, int port, int val) {ts_dma_set(comp, &comp->dmaDst, &comp->tsconf.dma.d, 2, val);}
 
 static int ts_dma_rd(Computer* comp, int w) {
 	unsigned char* p = comp->mem->ramData + (w << 1);
@@ -498,79 +541,131 @@ static int ts_blit(int src, int dst, int add, int sat, int asz) {
 	return res;
 }
 
+// The transfer runs on the DRAM cycles nobody else wants (arbiter.v: video, cpu, tiles and
+// sprites come first), and on the device's own time for SPI and IDE: DRAM cycles a word takes,
+// and dots the device takes, per W/R:DDEV
+static const unsigned char tsDmaDram[16] = {0,2,1,1,1,0,3,0, 0,3,1,1,1,1,0,0};
+static const unsigned char tsDmaDots[16] = {0,0,8,2,0,0,0,0, 0,0,8,2,0,0,0,0};
+
+static void ts_dma_word(Computer* comp) {
+	int dev = comp->tsconf.dma.dev;
+	tsDmaAdr* s = &comp->tsconf.dma.s;
+	tsDmaAdr* d = &comp->tsconf.dma.d;
+	int data, w;
+	switch (dev) {
+		case 0x1:
+			ts_dma_wr(comp, ts_dma_adr(d), ts_dma_rd(comp, ts_dma_adr(s)));
+			break;
+		case 0x9:
+		case 0x6:
+			w = ts_dma_adr(d);
+			ts_dma_wr(comp, w, ts_blit(ts_dma_rd(comp, ts_dma_adr(s)), ts_dma_rd(comp, w), dev == 0x6, comp->tsconf.dma.sat, comp->tsconf.dma.asz));
+			break;
+		case 0x2:
+			data = sdcRead(comp->sdc) & 0xff;
+			data |= (sdcRead(comp->sdc) & 0xff) << 8;
+			ts_dma_wr(comp, ts_dma_adr(d), data);
+			break;
+		case 0xa:
+			data = ts_dma_rd(comp, ts_dma_adr(s));
+			sdcWrite(comp->sdc, data & 0xff);
+			sdcWrite(comp->sdc, (data >> 8) & 0xff);
+			break;
+		case 0x3:
+			ts_dma_wr(comp, ts_dma_adr(d), ataRd(comp->ide->curDev, HDD_DATA));
+			break;
+		case 0xb:
+			ataWr(comp->ide->curDev, HDD_DATA, ts_dma_rd(comp, ts_dma_adr(s)));
+			break;
+		case 0x4:
+			ts_dma_wr(comp, ts_dma_adr(d), comp->tsconf.dma.data);
+			break;
+		case 0xc:
+		case 0xd: {
+			unsigned char* p = (dev == 0xc) ? comp->vid->tsconf.cram : comp->vid->tsconf.sfile;
+			data = ts_dma_rd(comp, ts_dma_adr(s));
+			w = (ts_dma_adr(d) & 0xff) << 1;
+			p[w] = data & 0xff;
+			p[w + 1] = (data >> 8) & 0xff;
+			if (dev == 0xc) comp->vid->tsconf.palUpd = 1;
+			break;
+		}
+	}
+	// both addresses step on every word, whatever the device; a fill read its one
+	if (dev != 0x4) s->pos++;
+	d->pos++;
+	if (++comp->tsconf.dma.word >= comp->tsconf.dma.len) {
+		comp->tsconf.dma.word = 0;
+		comp->tsconf.dma.len = comp->dmaLen + 1;	// DMALen is read again for every burst
+		comp->tsconf.dma.bursts--;
+		if (dev != 0x4) ts_dma_burst_end(s);
+		ts_dma_burst_end(d);
+	}
+}
+
+static void ts_dma_end(Computer* comp) {
+	comp->tsconf.dma.act = 0;
+	ts_dma_adr_store(&comp->tsconf.dma.s, &comp->dmaSrc);
+	ts_dma_adr_store(&comp->tsconf.dma.d, &comp->dmaDst);
+	if (comp->vid->inten & 4) {
+		comp->vid->intDMA = 1;
+		comp->hw->irq(comp, IRQ_DMA);
+	}
+}
+
+// ns of emulated time went by: the transfer moves on with what it was left of them
+static void ts_dma_run(Computer* comp, int ns) {
+	int ramc = tsDmaDram[comp->tsconf.dma.dev] * 448;
+	int devc = tsDmaDots[comp->tsconf.dma.dev];
+	long long f = ((long long)ns << NS_FIXED_BITS) + comp->tsconf.dma.frac;
+	int dots = (int)(f / comp->vid->nsPerDotFixed);
+	comp->tsconf.dma.frac = f % comp->vid->nsPerDotFixed;
+	comp->tsconf.dma.free += (long long)dots * (448 - comp->vid->tsconf.dramLoad) - comp->tsconf.cpuDram * 448;
+	if (comp->tsconf.dma.free < 0) comp->tsconf.dma.free = 0;
+	comp->tsconf.dma.time += dots;
+	while (comp->tsconf.dma.act && (comp->tsconf.dma.free >= ramc) && (comp->tsconf.dma.time >= devc)) {
+		comp->tsconf.dma.free -= ramc;
+		comp->tsconf.dma.time -= devc;
+		ts_dma_word(comp);
+		if (comp->tsconf.dma.bursts <= 0)
+			ts_dma_end(comp);
+	}
+	// what nobody took is not banked for later: DRAM cycles pass whether used or not
+	if (comp->tsconf.dma.free > ramc) comp->tsconf.dma.free = ramc;
+	if (comp->tsconf.dma.time > devc) comp->tsconf.dma.time = devc;
+}
+
+void ts_sync(Computer* comp, int ns) {
+	zx_sync(comp, ns);
+	if (comp->tsconf.dma.act)
+		ts_dma_run(comp, ns);
+	comp->tsconf.cpuDram = 0;
+}
+
+// DMACtrl: a write starts the transfer (again, if one is running: dma.v)
 void tsOut27AF(Computer* comp, int port, int val) {
-	tsDmaAdr s, d;
 	int asz = (val & 0x08) ? 1 : 0;
 	int dev = ((val & 0x80) >> 4) | (val & 0x07);
-	int len = comp->dmaLen + 1;
-	int num = comp->dmaCnt + 1;
-	int data = 0;
-	int w;
-	ts_dma_adr_init(&s, &comp->dmaSrc, val & 0x20, asz);
-	ts_dma_adr_init(&d, &comp->dmaDst, val & 0x10, asz);
 	// W/R:DDEV that exist: ram, spi, ide, fill, add-blit, blit, and back, cram, sfile
 	if (!((0x3e5e >> dev) & 1)) {
 		xlog(XLG_HW, XLL_DEBUG, "0x27AF: unsupported src-dst: %.2X", val & 0x87);
 		return;
 	}
+	comp->tsconf.dma.dev = dev;
+	comp->tsconf.dma.asz = asz;
+	comp->tsconf.dma.sat = (val & 0x40) ? 1 : 0;
+	comp->tsconf.dma.len = comp->dmaLen + 1;
+	comp->tsconf.dma.bursts = comp->dmaCnt + 1;
+	comp->tsconf.dma.word = 0;
+	comp->tsconf.dma.free = 0;
+	comp->tsconf.dma.time = 0;
+	ts_dma_adr_init(&comp->tsconf.dma.s, &comp->dmaSrc, val & 0x20, asz);
+	ts_dma_adr_init(&comp->tsconf.dma.d, &comp->dmaDst, val & 0x10, asz);
 	if (dev == 0x4) {			// fill: one word read, then written all over
-		data = ts_dma_rd(comp, ts_dma_adr(&s));
-		s.pos++;
+		comp->tsconf.dma.data = ts_dma_rd(comp, ts_dma_adr(&comp->tsconf.dma.s));
+		comp->tsconf.dma.s.pos++;
 	}
-	for (int b = 0; b < num; b++) {
-		for (int i = 0; i < len; i++) {
-			switch (dev) {
-				case 0x1:
-					ts_dma_wr(comp, ts_dma_adr(&d), ts_dma_rd(comp, ts_dma_adr(&s)));
-					break;
-				case 0x9:
-				case 0x6:
-					w = ts_dma_adr(&d);
-					ts_dma_wr(comp, w, ts_blit(ts_dma_rd(comp, ts_dma_adr(&s)), ts_dma_rd(comp, w), dev == 0x6, val & 0x40, asz));
-					break;
-				case 0x2:
-					data = sdcRead(comp->sdc) & 0xff;
-					data |= (sdcRead(comp->sdc) & 0xff) << 8;
-					ts_dma_wr(comp, ts_dma_adr(&d), data);
-					break;
-				case 0xa:
-					data = ts_dma_rd(comp, ts_dma_adr(&s));
-					sdcWrite(comp->sdc, data & 0xff);
-					sdcWrite(comp->sdc, (data >> 8) & 0xff);
-					break;
-				case 0x3:
-					ts_dma_wr(comp, ts_dma_adr(&d), ataRd(comp->ide->curDev, HDD_DATA));
-					break;
-				case 0xb:
-					ataWr(comp->ide->curDev, HDD_DATA, ts_dma_rd(comp, ts_dma_adr(&s)));
-					break;
-				case 0x4:
-					ts_dma_wr(comp, ts_dma_adr(&d), data);
-					break;
-				case 0xc:
-				case 0xd: {
-					unsigned char* p = (dev == 0xc) ? comp->vid->tsconf.cram : comp->vid->tsconf.sfile;
-					data = ts_dma_rd(comp, ts_dma_adr(&s));
-					w = (ts_dma_adr(&d) & 0xff) << 1;
-					p[w] = data & 0xff;
-					p[w + 1] = (data >> 8) & 0xff;
-					break;
-				}
-			}
-			// both addresses step on every word, whatever the device; a fill read its one
-			if (dev != 0x4) s.pos++;
-			d.pos++;
-		}
-		if (dev != 0x4) ts_dma_burst_end(&s);
-		ts_dma_burst_end(&d);
-	}
-	if (dev == 0xc) comp->vid->tsconf.palUpd = 1;
-	ts_dma_adr_store(&s, &comp->dmaSrc);
-	ts_dma_adr_store(&d, &comp->dmaDst);
-	if (comp->vid->inten & 4) {
-		comp->vid->intDMA = 1;
-		comp->hw->irq(comp, IRQ_DMA);
-	}
+	comp->tsconf.dma.act = 1;
 }
 
 void tsOut28AF(Computer* comp, int port, int val) {
@@ -655,7 +750,7 @@ static xPort tsPortMap[] = {
 	{0xffff,0x28af,2,2,2,NULL,	tsOut28AF},
 	{0xffff,0x29af,2,2,2,NULL,	tsOut29AF},
 	{0xffff,0x2aaf,2,2,2,NULL,	tsOut2AAF},
-	{0xffff,0x2baf,2,2,2,NULL,	NULL},		// cache config
+	{0xffff,0x2baf,2,2,2,NULL,	tsOut2BAF},	// cache config
 
 	{0xffff,0x40af,2,2,2,NULL,	tsOut40AF},
 	{0xffff,0x41af,2,2,2,NULL,	tsOut41AF},
@@ -692,13 +787,23 @@ static void tslRegWr(Computer* comp, int reg, int val) {
 	hwOut(tsPortMap, comp, (reg << 8) | 0xaf, val, 1);
 }
 
+// At 14 MHz the cpu drops to 3.5 MHz for a tick on the ports outside the FPGA - the AY,
+// and the WD1793 whenever it answers (zclock.v): 4 ticks of its own
+static void ts_io_stall(Computer* comp, int port) {
+	if (comp->hwMul != 4) return;
+	if ((((port & 0x80ff) == 0x80fd)) || (((port & 0x9f) == 0x1f) && (comp->flgBDI || comp->fddOpen)))
+		comp->cpu->t += 4;
+}
+
 void tslOut(Computer* comp, int port, int val) {
+	ts_io_stall(comp, port);
 	zx_dev_wr(comp, port, val);
 	hwOut(tsPortMap, comp, port, val, 1);
 }
 
 int tslIn(Computer* comp, int port) {
 	int res = -1;
+	ts_io_stall(comp, port);
 	if (zx_dev_rd(comp, port, &res)) return res;
 	res = hwIn(tsPortMap, comp, port);
 	return  res;
@@ -799,4 +904,4 @@ xPortDsc zx_port_tab_ts[] = {
 };
 
 HardWare tsl_hw_core = {HW_TSLAB,"TSConf","ZX Evolution (TSConf)",MEM_4M,1.0,NULL,zx_port_tab_ts,
-			zx_init,tslMapMem,tslOut,tslIn,tslMRd,tslMWr,ts_irq,ts_ack,tslReset,zx_sync,ts_keyp,ts_keyr,zx_vol};
+			zx_init,tslMapMem,tslOut,tslIn,tslMRd,tslMWr,ts_irq,ts_ack,tslReset,ts_sync,ts_keyp,ts_keyr,zx_vol};

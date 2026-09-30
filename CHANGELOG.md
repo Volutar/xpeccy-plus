@@ -79,7 +79,9 @@ before that point is upstream's history and is not repeated here.
     with BASIC 48 in place;
   - the picture can go over the sprites and tiles or hide them, sprites and tiles can cover
     the border, the border drawn through #FE takes the chosen palette, and the disk
-    controller can be reached outside TR-DOS.
+    controller can be reached outside TR-DOS;
+  - at 14 MHz the processor waits for memory its cache does not hold, and DMA takes time,
+    sharing memory with the picture and the processor, as on the board.
 
 ## 2026.5.1 - 2026-09-26
 

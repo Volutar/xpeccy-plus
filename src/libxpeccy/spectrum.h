@@ -61,6 +61,14 @@ enum {
 	DBG_VIEW_EXEC = 0x50
 };
 
+// a TSConf DMA address: 16-bit words, wrapping in its 256/512-byte block with align on
+typedef struct {
+	int base;	// block part, or the whole address without align
+	int low;	// offset in the block the bursts start from
+	int pos;	// words into the current burst
+	int mask;	// block size - 1, 0 without align
+} tsDmaAdr;
+
 typedef struct {
 	int t;
 	int a;
@@ -235,6 +243,17 @@ typedef struct Computer {
 		unsigned char Page0;
 		unsigned char p21af;
 		unsigned char pwr_up;		// 1 on 1st run, 0 after reading 00AF
+		unsigned char cacheConf;	// CacheConfig: b0..3 cache windows 0..3
+		unsigned short cache[256];	// tags of the 256-word cache: b15 valid, {page, A13..A9}
+		int cpuDram;			// DRAM cycles the cpu took since the last sync
+		struct {			// a DMA transfer in progress
+			unsigned char act, dev, asz, sat;
+			int len, bursts, word, data;
+			tsDmaAdr s, d;
+			long long free;		// DRAM cycles banked, in 1/448ths
+			int time;		// dots banked, for the device side of SPI and IDE
+			long long frac;		// ns (16.16) not yet a whole dot
+		} dma;
 	} tsconf;
 } Computer;
 

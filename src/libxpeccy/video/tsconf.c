@@ -23,7 +23,10 @@ int vidTSLRenderTiles(Video* vid, int lay, unsigned short yoffs, unsigned short 
 	adr = (vid->tsconf.TMPage << 14) | ((yscr & 0x1f8) << 5) | (lay ? 0x80 : 0x00);		// start of TMap line (full.adr)
 	xscr = (0x200 - xoffs) & 0x1ff;								// pos in line buf
 	xadr = vid->tsconf.tconfig & (lay ? 8 : 4);
+	// the TSU only fetches the tiles across its window, plus two (video_mode.v x_tiles)
+	int ntiles = (vid->tsconf.tsSize.x >> 3) + 2;
 	do {											// 64 tiles in row
+		int vis = ((((adr & 0x7f) >> 1) - (xoffs >> 3)) & 63) < ntiles;
 		tile = vid->mrd(adr, vid->xptr) | (vid->mrd(adr + 1, vid->xptr) << 8);		// tile dsc
 		adr += 2;
 
@@ -31,7 +34,7 @@ int vidTSLRenderTiles(Video* vid, int lay, unsigned short yoffs, unsigned short 
 			fadr = gpage << 14;
 			fadr += ((tile & 0xfc0) << 5) | ((yscr & 7) << 8) | ((tile & 0x3f) << 2);	// full addr of row of this tile
 			if (tile & 0x8000) fadr ^= 0x0700;						// YFlip
-			res += 2;			// 8 dots, 2 memory readings
+			if (vis) res += 2;		// 8 dots, 2 memory readings
 			col = palhi | ((tile >> 8) & 0x30);					// palette (b7..4 of color)
 			if (tile & 0x4000) {							// XFlip
 				xscr += 8;
@@ -113,7 +116,7 @@ int vidTSLRenderSprites(Video* vid) {
 			xscr = (spr.ys + 1) << 3;		// Ysize - 000:8; 001:16; 010:24; ...
 			yscr = vid->ray.y - vid->tsconf.tsYPos;	// line on screen
 			if (((yscr - adr) & 0x1ff) < xscr) {	// if sprite visible on current line
-				res += xscr >> 2;		// 1/4 : 4 dots each memory access
+				res += (spr.xs + 1) << 1;	// a word for every 4 dots across
 				yscr -= adr;			// line inside sprite;
 				if (spr.yf) yscr = xscr - yscr - 1;	// YFlip (Ysize - norm.pos - 1)
 				tile = spr.tnum + ((yscr & 0x1f8) << 3);	// shift to current tile line
@@ -194,10 +197,11 @@ int vidTSLRenderText(Video* vid) {
 			fadr++;
 		} while (fadr & 7);
 	}
-	return 0;
+	return vid->scrsize.x >> 1;		// 4 of every 8 cycles
 }
 
-// return ticks @ 7MHz (aka dots) eaten for line rendering
+// DRAM cycles (one a dot) the line takes: bitmap fetch as video_mode.v sets it, tile map
+// prefetch, a word per 4 tile/sprite pixels
 int vidTSRender(Video* vid) {
 	int res = 0;
 
@@ -228,7 +232,7 @@ int vidTSRender(Video* vid) {
 			res += vidTSLRenderText(vid);		// rendered as double-density
 			break;
 	}
-	if (vid->vmode != VID_TSL_NORMAL) res += 32;		// shit
+	if (gfx && (vid->vmode == VID_TSL_NORMAL)) res += 32;	// ZX: 1 of 8 over 256 dots
 	if (gfx) vid->tsconf.scrLine++;
 	if (!tsu) return res;
 // tiles/sprites (render to vid->line)
@@ -313,7 +317,8 @@ void vts_line(Video* vid) {
 		tslUpdatePalX(vid->xptr);
 	}
 	tslUpdatePorts(vid);
-	vidTSRender(vid);
+	int load = vidTSRender(vid);
+	vid->tsconf.dramLoad = (load > 448) ? 448 : load;
 }
 
 // Frame start
