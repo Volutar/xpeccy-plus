@@ -32,7 +32,7 @@ all in dots; two dots make one CPU tick, so T per line is `full.x / 2` and the I
 | Profi | 3 500 000 | Profi | 224 | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
 | ATM Turbo 2+ | 3 500 000 | ATM Turbo 2+ | 224 | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
 | ZXM-Phoenix | 3 500 000 | Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
-| ZX Evolution (BaseConf) | 3 500 000 | Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
+| ZX Evolution (BaseConf) | 3 500 000 | Evo | 224 | 320 | 71 680 | 32 | 0 (none) | no | no | no | no |
 | ZX Evolution (TSConf) | 3 500 000 | TSConf | 224 | 320 | 71 680 | 32 **open** | 0 (none) | no | no | no | no |
 
 Contention patterns are `vid_wait_dots()` in `video/video.c`: 1 is the Ferranti ULA's
@@ -50,7 +50,8 @@ the real ZXM-Phoenix has a port for it (its `#EFF7` is decoded for nothing today
 first of the four bytes lands one tick earlier than fuse prints it because these machines
 run early timings. The clones get `attr`, the documented port `#FF` that hands back the
 attribute of the cell being shown - not a floating bus, but what this emulator has always
-done for them and what a demo written for a Pentagon expects. The +2A/+3 rules (ports
+done for them and what a demo written for a Pentagon expects. ZX Evo's BaseConf is `none`:
+its fpga drives FF on any read nothing claims (`zbus.v`). The +2A/+3 rules (ports
 1, 5, ... 4093, paging on, bit 0 forced, the last contended-memory byte between fetches)
 are Ast A. Moore and Hikaru's, sky.relative-path.com/zx/floating_bus.html.
 
