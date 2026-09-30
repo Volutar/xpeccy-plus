@@ -653,10 +653,19 @@ ATAPassport ideGetPassport(IDE* ide, int iface) {
 int ide_dum_rd(IDE* ide, int port, int* val, int dos) {return 0;}
 int ide_dum_wr(IDE* ide, int port, int val, int dos) {return 0;}
 
+static int ata_present(ATADev* dev) {
+	return (dev->type == IDE_ATA) && (dev->image != NULL);
+}
+
 int ide_ata_rd(IDE* ide, int adr, int hi) {
 	int res;
 	if (hi) {
 		res = (ide->bus >> 8) & 0xff;
+	} else if ((ide->curDev == ide->slave) && !ata_present(ide->slave) && ata_present(ide->master)
+			&& ((adr == HDD_STATE) || (adr == HDD_ASTATE))) {
+		// ATA: device 0 answers for an absent device 1 with a status of 00
+		ide->bus = 0x0000;
+		res = 0x00;
 	} else {
 		ide->bus = ataRd(ide->curDev, adr);
 		res = ide->bus & 0xff;
