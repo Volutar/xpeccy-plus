@@ -208,8 +208,8 @@ int vidTSLRenderText(Video* vid) {
 		tile = vid->mrd(adr, vid->xptr);		// char nr
 		col = vid->mrd(adr | 0x80, vid->xptr);
 		adr = ((adr + 1) & 0x7f) | xadr;
-		ink = (col & 0x0f) | (vid->tsconf.scrPal);
-		pap = ((col & 0xf0) >> 4)  | (vid->tsconf.scrPal);
+		ink = (col & 0x0f) | 0x10;			// b4 marks ink for the mixer; PalSel goes on at the output
+		pap = (col & 0xf0) >> 4;
 		scrbyte = vid->mrd(MADR(vid->vidPage ^ 1, (tile << 3) | (yscr & 7)), vid->xptr);	// char line data (8 dots)
 		do {
 			vid->linb[fadr & 0x3ff] = (scrbyte & 0x80) ? ink : pap;
@@ -392,22 +392,20 @@ void vidDrawTSLExt(Video* vid) {
 	vid_dot_full(vid, ts_mix(vid, gfx, vis));
 }
 
-// tsconf text: two text pixels to a dot, which ts_mix() only hears of as TS_TEXT. With
-// GFXOVR the text stays on top even on paper: the ink/paper of each pixel is gone by now
-
-#define TS_TEXT 0x100
+// tsconf text: two text pixels to a dot, each mixed on its own. Hires puts out only the low
+// nibble of the mix under PalSel, so the tiles, sprites and border lose their palette bits too
+// (video_render.v vplex_out, video_out.v vdata)
 
 void vidDrawTSLText(Video* vid) {
 	xscr = vid->ray.x - vid->tsconf.xPos;
 	yscr = vid->ray.y - vid->tsconf.yPos;
-	int in = (xscr >= 0) && (xscr < vid->scrsize.x) && (yscr >= 0) && (yscr < vid->scrsize.y);
-	int c = ts_mix(vid, in ? TS_TEXT : -1, 1);
-	if (c != TS_TEXT) {
-		vid_dot_full(vid, c);
-	} else {
-		xscr <<= 1;
-		vid_dot_half(vid, vid->linb[xscr]);
-		xscr++;
-		vid_dot_half(vid, vid->linb[xscr]);
+	if ((xscr < 0) || (xscr >= vid->scrsize.x) || (yscr < 0) || (yscr >= vid->scrsize.y)) {
+		vid_dot_full(vid, vid->tsconf.scrPal | (ts_mix(vid, -1, 0) & 0x0f));
+		return;
+	}
+	xscr <<= 1;
+	for (int h = 0; h < 2; h++) {
+		int t = vid->linb[xscr + h];
+		vid_dot_half(vid, vid->tsconf.scrPal | (ts_mix(vid, t & 0x0f, t & 0x10) & 0x0f));
 	}
 }
