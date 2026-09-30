@@ -24,6 +24,7 @@
 #define flgNMIS	flag[104]	// map the NMI page in on the next M1
 
 #define regPal(_n) reg[0xe0 + (_n)]	// what was last written to palette cell n
+#define regPalLo(_n) reg[0xd0 + (_n)]	// the byte its low colour bits came from
 #define memFlag(_n) reg[0xf0 + (_n)]
 #define memPage(_n) reg[0xf8 + (_n)]
 
@@ -245,7 +246,9 @@ int evoInCfg(Computer* comp, int port) {
 			case 0x0c00: res = comp->prt2 | (comp->flgDOS ? 0x10 : 0x00); break;
 			// the palette cell the border colour points at, in the format
 			// it was written in through #FF - bits 2,3 read back as 1
-			case 0x0d00: res = (comp->regPal(comp->vid->brdcol & 0x0f) & 0xf3) | 0x0c; break;
+			// with pal444 the low colour bits (video_palframe.v palcolor)
+			case 0x0d00: res = (((comp->regBF & 0x20) ? comp->regPalLo(comp->vid->nextbrd & 0x0f)
+					: comp->regPal(comp->vid->nextbrd & 0x0f)) & 0xf3) | 0x0c; break;
 			case 0x0e00: res = comp->vid->fntbyte; break;	// font byte the text mode is showing
 			case 0x0f00: res = comp->vid->nextbrd & 0x0f; break;	// last one written
 			case 0x1000: res = comp->xregBRKA.l; break;
@@ -302,7 +305,7 @@ void evoOutCfg(Computer* comp, int port, int val) {
 }
 
 int evoInBF(Computer* comp, int port) {
-	return comp->regBF;
+	return comp->regBF & 0x3f;		// b7, b6 are not there
 }
 
 // TR-DOS emulation. Touching a disk controller register with the selected
@@ -520,11 +523,14 @@ void evoOutFF(Computer* comp, int port, int val) {		// dos
 	difOut(comp->dif, 0xff, val, 1);
 	xColor xcol;
 	if (!(comp->prt2 & 0x80)) {	// A14 of #xx77 low: palette writes allowed
-		int adr = comp->vid->brdcol & 0x0f;
+		int adr = comp->vid->nextbrd & 0x0f;
+		// #BF b5 (pal444): the low bit of each channel comes from the port's
+		// high byte, laid out as the data is; else it repeats the high bit
+		if (!(comp->regBF & 0x20)) port = (port & 0xff) | ((val << 8) & 0xff00);
 		comp->regPal(adr) = val & 0xff;			// for the #0DBx readback
+		comp->regPalLo(adr) = (port >> 8) & 0xff;
 		val ^= 0xff;					// inverse colors
 		port ^= 0xff00;
-		if (!comp->flgDDP) port = (port & 0xff) | ((val << 8) & 0xff00);
 		xcol.b = atm3clev[((val & 0x01) << 3) | ((val & 0x20) >> 3) | ((port & 0x0100) >> 7) | ((port & 0x2000) >> 13)];
 		xcol.r = atm3clev[((val & 0x02) << 2) | ((val & 0x40) >> 4) | ((port & 0x0200) >> 8) | ((port & 0x4000) >> 14)];
 		xcol.g = atm3clev[((val & 0x10) >> 1) | ((val & 0x80) >> 5) | ((port & 0x1000) >> 11)| ((port & 0x8000) >> 15)];
