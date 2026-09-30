@@ -1948,6 +1948,9 @@ thin, lower it again after a long clean spell</string>
              <layout class="QVBoxLayout" name="verticalLayout_22">
               <item>
                <widget class="QCheckBox" name="senbox">
+                <property name="toolTip">
+                 <string>Off plays silence.&#10;The sound card still sets the pace.</string>
+                </property>
                 <property name="text">
                  <string>Enabled</string>
                 </property>

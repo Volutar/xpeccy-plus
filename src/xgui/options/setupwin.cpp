@@ -752,6 +752,8 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	while (tbarr[i] != NULL) {
 		connect(tbarr[i], SIGNAL(released()), this, SLOT(selectColor()));
 		connect(tbarr[i], SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(triggerColor()));
+		if (tbarr[i]->toolTip().isEmpty())
+			tbarr[i]->setToolTip(tr("Right click: back to the style color"));
 		i++;
 	}
 // profiles manager
