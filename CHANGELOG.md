@@ -81,7 +81,11 @@ before that point is upstream's history and is not repeated here.
     the border, the border drawn through #FE takes the chosen palette, and the disk
     controller can be reached outside TR-DOS;
   - at 14 MHz the processor waits for memory its cache does not hold, and DMA takes time,
-    sharing memory with the picture and the processor, as on the board.
+    sharing memory with the picture and the processor, as on the board;
+  - sprites and tiles changed mid-frame move on the line the board moves them, and a palette
+    change shows from the point on the line where it was made;
+  - in text mode the sprites, tiles and border take the text's palette, and the picture over
+    the sprites covers them only with the letters.
 
 ## 2026.5.1 - 2026-09-26
 
