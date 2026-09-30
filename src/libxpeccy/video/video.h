@@ -205,6 +205,8 @@ struct Video {
 		ePair(T1YOffset,t1yh,t1yl);
 		ePair(scrLine, loffh, loffl);
 		ePair(intLine, ilinh, ilinl);	// INT line
+		unsigned char tsNext[0x200];	// tiles and sprites of the next line, drawn during this one
+		unsigned short tmb[2][4][64];	// tile map rows read ahead, per layer (video_ts.v tmbuf)
 		int dramLoad;			// DRAM cycles of this line the video and the tiles/sprites take, of 448
 		unsigned char intInc;		// VSINTH b7..4: lines the INT line moves on after each frame INT
 		struct {			// written by the cpu, taken at the start of the blanking (video_ports.v)
