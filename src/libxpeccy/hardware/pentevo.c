@@ -107,6 +107,8 @@ static void evo_drop_virt(Computer* comp) {
 	comp->flgNMIS = 0;
 }
 
+static void evo_set_turbo(Computer*);
+
 void evoReset(Computer* comp) {
 	comp->flgDOS = 1;
 	comp->regBF = 0;
@@ -123,6 +125,8 @@ void evoReset(Computer* comp) {
 	for (int i = 0; i < 4; i++) {
 		comp->dif->flp[i]->virt = 0;
 	}
+	evo_set_turbo(comp);			// #EFF7 = 0: 7 MHz
+	evoSetVideoMode(comp);
 }
 
 // Raise the NMI and arrange for the handler's page to come with it. Both go
