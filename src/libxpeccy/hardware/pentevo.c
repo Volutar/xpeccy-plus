@@ -382,8 +382,8 @@ int evo_cmos_rd(Computer* comp) {
 	}
 	res = cmos_rd(&comp->cmos, CMOS_DATA);
 	switch (comp->cmos.adr) {
-		case 0x0a: res = 0x00; break;
-		case 0x0b: res = 0x02; break;
+		case 0x0a: res = comp->cmos.data[0x0a]; break;		// the avr keeps whatever is written
+		case 0x0b: res = (comp->cmos.data[0x0b] & 0x04) | 0x02; break;	// binary bit; always 24h
 		case 0x0c:
 			res &= 0x10;		// b4: update flag
 			// b2: 0 if sdc write only
@@ -392,7 +392,7 @@ int evo_cmos_rd(Computer* comp) {
 			if (comp->sdc->image) res |= 8;
 			break;
 		case 0x0d:	// pc keys flags
-			res = 0x80;
+			res = 0x00;
 			// b0:left ctrl
 			// b1:right ctrl
 			// b2:left alt
@@ -400,7 +400,7 @@ int evo_cmos_rd(Computer* comp) {
 			// b4:left shift
 			// b5:right shift
 			// b6:f12 (allways controlled by emulator)
-			// b7:=1
+			// b7:=0
 			if (comp->keyb->flag1 & 2) res |= 1;
 			if (comp->keyb->flag2 & 2) res |= 2;
 			if (comp->keyb->flag1 & 4) res |= 4;
@@ -408,6 +408,7 @@ int evo_cmos_rd(Computer* comp) {
 			if (comp->keyb->flag1 & 1) res |= 16;
 			if (comp->keyb->flag2 & 1) res |= 32;
 			break;
+		case 0x0e: res = 0x00; break;	// b0..2: left, right Win and Menu, not kept here
 	}
 	return res;
 }
@@ -417,7 +418,7 @@ void evo_cmos_wr(Computer* comp, int val) {
 		comp->cmos.mode = val;
 	} else if (comp->cmos.adr == 0x0c) {
 		if (val & 1) xt_log_clear(comp->keyb);	// b0: clear the ps/2 keyboard log
-	} else {
+	} else if (comp->cmos.adr != 0x0e) {		// #0E is keys, not nvram
 		cmos_wr(&comp->cmos, CMOS_DATA, val);
 	}
 }
