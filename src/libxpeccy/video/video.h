@@ -205,6 +205,7 @@ struct Video {
 		ePair(T1YOffset,t1yh,t1yl);
 		ePair(scrLine, loffh, loffl);
 		ePair(intLine, ilinh, ilinl);	// INT line
+		int dramLoad;			// DRAM cycles of this line the video and the tiles/sprites take, of 448
 		unsigned char intInc;		// VSINTH b7..4: lines the INT line moves on after each frame INT
 		struct {			// written by the cpu, taken at the start of the blanking (video_ports.v)
 			unsigned char vconf, vpage, gxl, gxh, palsel, t0xl, t0xh, t1xl, t1xh, t0g, t1g, gyl, gyh;
