@@ -721,6 +721,13 @@ void evo_irq(Computer* comp, int t) {
 	}
 }
 
+// The acknowledge cycle ends the pulse (zint.v: intend), so a handler that
+// enables interrupts at once does not take the same one twice.
+static int evo_ack(Computer* comp) {
+	vid_set_int_frame(comp->vid, 0);
+	return zx_ack(comp);
+}
+
 xPortDsc evo_port_tab[] = {
 	{0x7ffd, REG_BYTE, offsetof(Computer, p7FFD)},
 	{0xeff7, REG_BYTE, offsetof(Computer, pEFF7)},
@@ -728,5 +735,5 @@ xPortDsc evo_port_tab[] = {
 };
 
 HardWare evo_hw_core = {HW_PENTEVO,"Baseconf","ZX Evolution (BaseConf)",MEM_4M,1.0,NULL,evo_port_tab,
-			zx_init,evoMapMem,evoOut,evoIn,evoMRd,evoMWr,evo_irq,zx_ack,evoReset,zx_sync,evo_keyp,evo_keyr,zx_vol,
+			zx_init,evoMapMem,evoOut,evoIn,evoMRd,evoMWr,evo_irq,evo_ack,evoReset,zx_sync,evo_keyp,evo_keyr,zx_vol,
 			evo_snap_map};
