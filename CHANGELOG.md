@@ -97,11 +97,22 @@ before that point is upstream's history and is not repeated here.
     keys through it no longer see an overflow;
   - the Magic Service can no longer be entered again from inside itself, and a breakpoint on
     an EI instruction stops there;
-  - a reset no longer says "SD card lost".
+  - a reset no longer says "SD card lost", and leaves the machine at 7 MHz with the ZX
+    screen, as the board does;
+  - the frame interrupt is as long and as late as on the board, and is taken once however
+    short the handler;
+  - the 12-bit palette follows the port bit programs set, the border ports and #7FFD answer
+    at every address the board decodes, and unused ports read #FF;
+  - memory write protection, the clock registers and the disk ports in TR-DOS behave as on
+    the board, and covox plays in TR-DOS too.
+
+- **Clock chip**: the day of the week counts from 1 as on the real chip (Sunday read 0),
+  and the alarm registers read back, on ZX Evo, Pentagon 1024, Profi and SMUC.
 
 - **Hard disk images**: the whole of a large image is reachable, the disk reports its real
   size, and NedoOS's hddfdisk finds it, so NedoOS installs on it and boots from it; the Nemo
-  IDE alternate status port works.
+  IDE alternate status port works. A new disk supports LBA unless it is switched off, and
+  a sector written to an SD card is no longer shifted by a byte.
 
 ## 2026.5.1 - 2026-09-26
 
