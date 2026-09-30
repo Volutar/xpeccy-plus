@@ -19,7 +19,7 @@ static int xadr;	// = pos with XFlip
 int vidTSLRenderTiles(Video* vid, int lay, unsigned short yoffs, unsigned short xoffs, unsigned char gpage, unsigned char palhi) {
 	int j;
 	int res = 0;
-	yscr = vid->ray.y - vid->tsconf.yPos + yoffs;						// line in TMap
+	yscr = vid->ray.y - vid->tsconf.tsYPos + yoffs;						// line in TMap
 	adr = (vid->tsconf.TMPage << 14) | ((yscr & 0x1f8) << 5) | (lay ? 0x80 : 0x00);		// start of TMap line (full.adr)
 	xscr = (0x200 - xoffs) & 0x1ff;								// pos in line buf
 	xadr = vid->tsconf.tconfig & (lay ? 8 : 4);
@@ -111,7 +111,7 @@ int vidTSLRenderSprites(Video* vid) {
 		if (spr.act) {
 			adr = spr.y;
 			xscr = (spr.ys + 1) << 3;		// Ysize - 000:8; 001:16; 010:24; ...
-			yscr = vid->ray.y - vid->tsconf.yPos;	// line on screen
+			yscr = vid->ray.y - vid->tsconf.tsYPos;	// line on screen
 			if (((yscr - adr) & 0x1ff) < xscr) {	// if sprite visible on current line
 				res += xscr >> 2;		// 1/4 : 4 dots each memory access
 				yscr -= adr;			// line inside sprite;
@@ -134,7 +134,7 @@ int vidTSLRenderSprites(Video* vid) {
 					col |= (vid->mrd(fadr, vid->xptr) & 0x0f);		// right pixel
 					if (col & 0x0f) vid->line[adr & 0x1ff] = col;
 					if (spr.xf) adr--; else adr++;
-					fadr++;
+					fadr = (fadr & ~0xff) | ((fadr + 1) & 0xff);
 				}
 			}
 		}
@@ -208,15 +208,16 @@ int vidTSRender(Video* vid) {
 		if (vid->tsconf.tconfig & 0x20) res += 8;
 		if (vid->tsconf.tconfig & 0x40) res += 8;
 	}
-// check if this is screen line (not top/bottom border)
-	if (vid->ray.y < vid->tsconf.yPos) return res;
-	if (vid->ray.y >= (vid->tsconf.yPos + vid->scrsize.y)) return res;
+// the bitmap and the tiles/sprites each have a window of their own
+	int gfx = (vid->ray.y >= vid->tsconf.yPos) && (vid->ray.y < vid->tsconf.yPos + vid->scrsize.y);
+	int tsu = (vid->ray.y >= vid->tsconf.tsYPos) && (vid->ray.y < vid->tsconf.tsYPos + vid->tsconf.tsSize.y);
+	if (!gfx && !tsu) return res;
 // prepare layers
 	sadr = 0x000;					// adr inside SFILE
 	memset(vid->line,0x00,0x200);		// clear tile-sprite line
 	memset(vid->linb,0x00,0x200);
 // bitplane/text (render to vid->linb)
-	switch(vid->vmode) {
+	if (gfx) switch(vid->vmode) {
 		case VID_TSL_16:
 			res += vidTSLRender16c(vid);
 			break;
@@ -228,6 +229,8 @@ int vidTSRender(Video* vid) {
 			break;
 	}
 	if (vid->vmode != VID_TSL_NORMAL) res += 32;		// shit
+	if (gfx) vid->tsconf.scrLine++;
+	if (!tsu) return res;
 // tiles/sprites (render to vid->line)
 // S0
 	if (vid->tsconf.tconfig & 0x80) res += vidTSLRenderSprites(vid);
@@ -239,7 +242,6 @@ int vidTSRender(Video* vid) {
 	if (vid->tsconf.tconfig & 0x40) res += vidTSLRenderTiles(vid,1,vid->tsconf.T1YOffset,vid->tsconf.T1XOffset,vid->tsconf.T1GPage,vid->tsconf.T1Pal76);
 // S2
 	if (vid->tsconf.tconfig & 0x80) res += vidTSLRenderSprites(vid);
-	vid->tsconf.scrLine++;
 	return res;
 }
 
@@ -252,6 +254,11 @@ void tslUpdatePorts(Video* vid) {
 	vid->scrsize.y = tslYRes[(val >> 6) & 3];
 	vid->tsconf.xPos = (vid->vend.x - vid->scrsize.x) / 2;
 	vid->tsconf.yPos = (vid->vend.y - vid->scrsize.y) / 2;
+	int m = (vid->tsconf.tconfig & 1) ? 3 : (val >> 6) & 3;	// TSConfig b0: tiles and sprites over the whole 360x288
+	vid->tsconf.tsSize.x = tslXRes[m];
+	vid->tsconf.tsSize.y = tslYRes[m];
+	vid->tsconf.tsXPos = (vid->vend.x - vid->tsconf.tsSize.x) / 2;
+	vid->tsconf.tsYPos = (vid->vend.y - vid->tsconf.tsSize.y) / 2;
 	switch(val & 3) {
 		case 0: vid_set_mode(vid,VID_TSL_NORMAL); break;
 		case 1: vid_set_mode(vid,VID_TSL_16); break;
@@ -314,33 +321,35 @@ void vts_frame(Video* vid) {
 	vid->tsconf.scrLine = 0;
 }
 
-void scanExtLine(Video* vid) {
-	xscr = vid->ray.x - vid->tsconf.xPos;
-	yscr = vid->ray.y - vid->tsconf.yPos;
-	if ((yscr >= 0) && (yscr < vid->scrsize.y) && (xscr >= 0) && (xscr < vid->scrsize.x)) {
-		if (((vid->vmode == VID_TSL_16) || (vid->vmode == VID_TSL_256)) && !vid->nogfx)		// put bitmap pixel
-			col = vid->linb[xscr];
-		if (vid->line[xscr] & 0x0f)							// put not-transparent tiles/sprites pixel
-			col = vid->line[xscr];
-	}
+// What a dot shows (video_render.v). gfx is the bitmap's colour, or -1 outside its window;
+// vis says it is not a hole, which is what GFXOVR (VConfig b3) puts it over the tiles on.
+// Only the tile/sprite layer is transparent without it: bitmap colour 0 is a colour.
+static int ts_mix(Video* vid, int gfx, int vis) {
+	int tx = vid->ray.x - vid->tsconf.tsXPos;
+	int ty = vid->ray.y - vid->tsconf.tsYPos;
+	int ts = -1;
+	if (!(vid->tsconf.p00af & 0x10) && (tx >= 0) && (tx < vid->tsconf.tsSize.x) && (ty >= 0) && (ty < vid->tsconf.tsSize.y)
+			&& (vid->line[tx] & 0x0f))		// NOTSU is VConfig b4
+		ts = vid->line[tx];
+	int under = (ts < 0) ? vid->brdcol : ts;		// what shows through the bitmap
+	if (gfx < 0) return under;
+	if (vid->tsconf.p00af & 0x08) return (vis && !vid->nogfx) ? gfx : under;
+	return (ts >= 0) ? ts : (vid->nogfx ? vid->brdcol : gfx);
 }
 
 // tsconf normal screen (separated 'cuz of palette)
 
 void vidDrawTSLNormal(Video* vid) {
+	int gfx = -1;
+	int vis = 0;
 	xscr = vid->ray.x - vid->bord.x;
 	yscr = vid->ray.y - vid->bord.y;
-	if ((yscr < 0) || (yscr >= vid->scrn.y) || vid->nogfx) {
-		col = vid->brdcol;
-	} else {
-//		xadr = vid->vidPage;
+	if ((yscr >= 0) && (yscr < vid->scrn.y) && !vid->nogfx) {
 		if ((xscr & 7) == 4) {
 			adr = ((yscr & 0xc0) << 5) | ((yscr & 7) << 8) | ((yscr & 0x38) << 2) | (((xscr + 4) & 0xf8) >> 3);
 			nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
 		}
-		if ((xscr < 0) || (xscr >= vid->scrn.x)) {
-			col = vid->brdcol;
-		} else {
+		if ((xscr >= 0) && (xscr < vid->scrn.x)) {
 			if ((xscr & 7) == 0) {
 				scrbyte = nxtbyte;
 				adr = 0x1800 | ((yscr & 0xc0) << 2) | ((yscr & 0x38) << 2) | (((xscr + 4) & 0xf8) >> 3);
@@ -349,35 +358,41 @@ void vidDrawTSLNormal(Video* vid) {
 				ink = (vid->atrbyte & 0x07) | ((vid->atrbyte & 0x40) >> 3);
 				pap = (vid->atrbyte & 0x78) >> 3;
 			}
-			col = vid->tsconf.scrPal | ((scrbyte & 0x80) ? ink : pap);
+			vis = scrbyte & 0x80;
+			gfx = vid->tsconf.scrPal | (vis ? ink : pap);
 			scrbyte <<= 1;
 		}
 	}
-	scanExtLine(vid);
-	vid_dot_full(vid, col);
+	vid_dot_full(vid, ts_mix(vid, gfx, vis));
 }
 
 // tsconf extend mode (out pre-rendered bitmap/TSU layers)
 
 void vidDrawTSLExt(Video* vid) {
-	col = vid->brdcol;
-	scanExtLine(vid);
-	vid_dot_full(vid, col);
-	// vidPutDot(&vid->ray, vid->pal, col);
+	int gfx = -1;
+	int vis = 0;
+	xscr = vid->ray.x - vid->tsconf.xPos;
+	yscr = vid->ray.y - vid->tsconf.yPos;
+	if ((yscr >= 0) && (yscr < vid->scrsize.y) && (xscr >= 0) && (xscr < vid->scrsize.x)) {
+		gfx = vid->linb[xscr];
+		vis = (vid->vmode == VID_TSL_16) ? (gfx & 0x0f) : gfx;
+	}
+	vid_dot_full(vid, ts_mix(vid, gfx, vis));
 }
 
-// tsconf text
+// tsconf text: two text pixels to a dot, which ts_mix() only hears of as TS_TEXT. With
+// GFXOVR the text stays on top even on paper: the ink/paper of each pixel is gone by now
+
+#define TS_TEXT 0x100
 
 void vidDrawTSLText(Video* vid) {
 	xscr = vid->ray.x - vid->tsconf.xPos;
 	yscr = vid->ray.y - vid->tsconf.yPos;
-	if ((xscr < 0) || (xscr >= vid->scrsize.x) || (yscr < 0) || (yscr >= vid->scrsize.y)) {
-		vid_dot_full(vid, vid->brdcol);
-	} else if (vid->line[xscr] & 0x0f) {			// put not-transparent tiles/sprites pixel
-		vid_dot_full(vid, vid->line[xscr]);
+	int in = (xscr >= 0) && (xscr < vid->scrsize.x) && (yscr >= 0) && (yscr < vid->scrsize.y);
+	int c = ts_mix(vid, in ? TS_TEXT : -1, 1);
+	if (c != TS_TEXT) {
+		vid_dot_full(vid, c);
 	} else {
-		// colour 0 is a colour here, not a hole: only the tile/sprite layer is
-		// transparent, the text one is not (draw_tstx in unreal does the same)
 		xscr <<= 1;
 		vid_dot_half(vid, vid->linb[xscr]);
 		xscr++;
