@@ -34,6 +34,8 @@
 #define	CMD58		0x3A	// + reads the OCR register
 #define	CMD59		0x3B	// + turn CRC
 
+static void sdc_idle(SDCard*);
+
 SDCard* sdcCreate() {
 	SDCard* sdc = (SDCard*)malloc(sizeof(SDCard));
 	if (!sdc) return NULL;
@@ -43,7 +45,7 @@ SDCard* sdcCreate() {
 	sdc->blkSize = 512;
 	sdcSetCapacity(sdc,SDC_DEFAULT);
 	sdc->file = NULL;
-	sdcReset(sdc);
+	sdc_idle(sdc);
 	return sdc;
 }
 
@@ -52,14 +54,21 @@ void sdcDestroy(SDCard* sdc) {
 	free(sdc);
 }
 
+// The machine's reset: the card keeps its power, so it drops the command it was
+// in but stays initialised - a firmware that finds it back in idle takes it
+// for gone (ZX Evo's service rom: "SD card lost").
 void sdcReset(SDCard* sdc) {
-//	sdc->mode = SDC_IDLE;
 	sdc->state = SDC_FREE;
 	sdc->argCnt = 0;
 	sdc->acmd = 0;
 	sdc->cont = 0;
 	sdc->respCnt = 0;
 	sdc->buf.pos = -1;
+}
+
+// power-up or CMD0: back to idle, waiting for ACMD41
+static void sdc_idle(SDCard* sdc) {
+	sdcReset(sdc);
 	sdc->idle = 1;
 }
 
@@ -203,7 +212,7 @@ void sdcExec(SDCard* sdc) {
 //			printf("SD CMD%.2i\n",sdc->arg[0] & 0x3f);
 			switch (sdc->arg[0] & 0x3f) {
 				case CMD00:			// soft reset: whatever it was doing is dropped
-					sdcReset(sdc);
+					sdc_idle(sdc);
 					sdcR1(sdc,0);
 					break;
 				case CMD08:
