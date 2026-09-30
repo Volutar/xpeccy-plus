@@ -410,7 +410,7 @@ void evo_cmos_wr(Computer* comp, int val) {
 	if (comp->cmos.adr >= 0xf0) {
 		comp->cmos.mode = val;
 	} else if (comp->cmos.adr == 0x0c) {
-		if (val & 1) comp->keyb->outbuf = 0;	// b0: clear the ps/2 keyboard log
+		if (val & 1) xt_log_clear(comp->keyb);	// b0: clear the ps/2 keyboard log
 	} else {
 		cmos_wr(&comp->cmos, CMOS_DATA, val);
 	}
