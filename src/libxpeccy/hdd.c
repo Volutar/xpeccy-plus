@@ -162,6 +162,17 @@ void ataAbort(ATADev* dev) {
 	dev->reg.err |= HDF_ABRT;
 }
 
+// identify data: a word, and a pair of words low first
+static void ata_put_word(ATADev* dev, int w, int val) {
+	dev->buf.data[w * 2] = val & 0xff;
+	dev->buf.data[w * 2 + 1] = (val >> 8) & 0xff;
+}
+
+static void ata_put_long(ATADev* dev, int w, int val) {
+	ata_put_word(dev, w, val & 0xffff);
+	ata_put_word(dev, w + 1, (val >> 16) & 0xffff);
+}
+
 void ataExec(ATADev* dev, unsigned char cm) {
 	dev->reg.state = HDF_DRDY | HDF_DSC;
 	dev->reg.err = 0x00;
@@ -324,6 +335,14 @@ void ataExec(ATADev* dev, unsigned char cm) {
 				copyStringToBuffer(&dev->buf.data[46],dev->pass.mcver,8);	// microcode version (8 bytes)
 				copyStringToBuffer(&dev->buf.data[54],dev->pass.model,10);	// model (40 bytes)
 				dev->buf.data[99] = (dev->hasDMA ? 0x01 : 0x00) | (dev->hasLBA ? 0x02 : 0x00);	// lba/dma support
+				// words 54..58: the geometry in use, which 0x91 sets; 60..61: LBA sectors
+				dev->buf.data[106] = 0x01;
+				ata_put_word(dev, 54, dev->pass.cyls);
+				ata_put_word(dev, 55, dev->pass.hds);
+				ata_put_word(dev, 56, dev->pass.spt);
+				ata_put_long(dev, 57, dev->pass.cyls * dev->pass.hds * dev->pass.spt);
+				if (dev->hasLBA)
+					ata_put_long(dev, 60, dev->maxlba);
 				dev->buf.pos = 0;
 				dev->buf.mode = HDB_READ;
 				dev->reg.state |= HDF_DRQ;
@@ -508,14 +527,20 @@ void ideDestroy(IDE* ide) {
 
 // TODO: check extension
 
+// cylinders of a 16 x 63 geometry over the whole volume, as far as CHS reaches
+static int ata_chs_cyls(int maxlba) {
+	int cyls = maxlba / (16 * 63);
+	return (cyls > 16383) ? 16383 : cyls;
+}
+
 void ata_load_raw(ATADev* dev) {
 	fseek(dev->file, 0, SEEK_END);
 	long fsz = ftell(dev->file);
-	long rsz = 16*63*512;			// 1 cylinder size (16 heads, 63 sectors, 512 bytes/sec)
-	dev->maxlba = (fsz / rsz) + ((fsz % rsz) ? rsz : 0);		// in 512byte units
+	dev->maxlba = fsz / 512;
+	dev->pass.bps = 512;
 	dev->pass.hds = 16;
 	dev->pass.spt = 63;
-	dev->pass.cyls = (dev->maxlba / 16 / 63);
+	dev->pass.cyls = ata_chs_cyls(dev->maxlba);
 	rewind(dev->file);
 	dev->offset = 0;
 }
@@ -573,7 +598,7 @@ void ideSetFolder(IDE* ide, int wut, const char* name, vFat* vf) {
 	dev->pass.hds = 16;
 	dev->pass.spt = 63;
 	dev->maxlba = vf->volume;
-	dev->pass.cyls = dev->maxlba / (dev->pass.hds * dev->pass.spt);
+	dev->pass.cyls = ata_chs_cyls(dev->maxlba);
 }
 
 void ideSetImage(IDE *ide, int wut, const char *name) {
