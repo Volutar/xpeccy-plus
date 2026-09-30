@@ -16,6 +16,7 @@
 #define reg6F	reg[19]
 #define reg8F	reg[20]
 #define regM1CNT reg[21]
+#define regFFW	reg[22]		// last write to the disk system register #FF
 
 #define flgVDOS	flag[100]	// trd emulation: ram page FE @ 0x0000
 #define flgVNMI flag[101]	// in NMI: ram page FF @ 0x0000
@@ -304,8 +305,8 @@ int evoInBF(Computer* comp, int port) {
 
 // TR-DOS emulation. Touching a disk controller register with the selected
 // drive marked virtual (#13BD) swaps ram page FE in over the TR-DOS rom, and
-// it stays there until the rom writes #BE. The chip itself still sees the
-// access - on the board it sits on the bus either way. The page cannot be
+// it stays there until the rom writes #BE. The chip is not selected for it
+// (evo_vg_masked), except the #FF system register. The page cannot be
 // written to for the rest of the instruction, which is what stops an INI from
 // landing in it.
 //
@@ -331,9 +332,21 @@ void evo_trdemu(Computer* comp) {
 	evoMapMem(comp);
 }
 
+// A drive marked virtual is not selected on the chip (zports.v vg_matched_n):
+// the access only feeds the trd emulation. One with a disk in it is ours, as
+// in evo_trdemu().
+static int evo_vg_masked(Computer* comp) {
+	return comp->dif->fdc->flp->virt && !comp->dif->fdc->flp->insert;
+}
+
 int evoInBDI(Computer* comp, int port) {
-	int res = -1;
-	difIn(comp->dif, port, &res, 1);
+	int res = 0xff;
+	if ((port & 0xff) == 0xff) {		// {intrq, drq, 1, what #FF was given}
+		difIn(comp->dif, port, &res, 1);
+		res = (res & 0xc0) | 0x20 | (comp->regFFW & 0x1f);
+	} else if (!evo_vg_masked(comp)) {
+		difIn(comp->dif, port, &res, 1);
+	}
 	evo_trdemu(comp);
 	return res;
 }
@@ -508,13 +521,15 @@ void evoOutBF7(Computer* comp, int port, int val) {
 }
 
 void evoOutBDI(Computer* comp, int port, int val) {		// dos
-	difOut(comp->dif, port, val, 1);
+	if (!evo_vg_masked(comp))
+		difOut(comp->dif, port, val, 1);
 	evo_trdemu(comp);
 }
 
 static const unsigned char atm3clev[16] = {0x00,0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88,0x99,0xaa,0xbb,0xcc,0xdd,0xee,0xff};
 
 void evoOutFF(Computer* comp, int port, int val) {		// dos
+	comp->regFFW = val & 0xff;
 	difOut(comp->dif, 0xff, val, 1);
 	xColor xcol;
 	if (!(comp->prt2 & 0x80)) {	// A14 of #xx77 low: palette writes allowed
@@ -630,7 +645,7 @@ static xPort evoPortMap[] = {
 	{0x00ff,0x008f,1,2,2,evoIn8F,	evoOut8F},
 	{0x80ff,0x0057,1,2,2,evoIn57,	evoOut57},	// dos 57, a15=0: spi wr
 	{0x80ff,0x8057,1,2,2,evoIn57,	evoOut77},	// dos 57, a15=1: control spi
-	{0x00ff,0x0077,1,2,2,NULL,	evoOut77d},
+	{0x00ff,0x0077,1,2,2,evoIn77,	evoOut77d},
 	{0xffff,0xbef7,1,2,2,evoInBEF7,	evoOutBEF7},	// nvram
 	{0xffff,0xdef7,1,2,2,NULL,	evoOutDEF7},
 	{0x07ff,0x07f7,1,2,2,NULL,	evoOutF7},	// x7f7
@@ -671,6 +686,8 @@ static void evo_shadow(Computer* comp) {
 void evoOut(Computer* comp, int port, int val) {
 	evo_shadow(comp);
 	zx_dev_wr(comp, port, val);
+	if (comp->flgBDI && ((port & 0xff) == 0xfb))	// covox has no shadow term (zports.v covox_wr)
+		sdrvWrite(comp->sdrv, port, val);
 	hwOut(evoCfgPortMap, comp, port, val, 1);
 }
 
