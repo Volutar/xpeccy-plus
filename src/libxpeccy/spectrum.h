@@ -167,7 +167,8 @@ typedef struct Computer {
 	int tickCount;		// accumulate T
 	int frmtCount;		// accumulate T, but reset each INT
 	int hCount;		// T before HALT = frmtCount @ HALT
-	int waitDebt;		// T a machine still owes the next opcode fetch (Scorpion Turbo+)
+	int waitDebt;		// T a board with its own arbiter still owes the next bus cycle
+	int waitPaid;		// what comp_cont_hw() last paid of it, for comp_owe()
 	int fCount;		// T in last frame
 	double nsPerTick;	// real ns/T, kept precise: truncating this to int was the
 				// root cause of a systemic ~0.3-0.9% emulation speed error
@@ -271,10 +272,15 @@ static inline int ns_fixed_to_ticks_up(Computer* comp, long long ns_fixed) {
 	return (int)((ns_fixed + comp->nsPerTickFixed - 1) / comp->nsPerTickFixed);
 }
 
-// the ticks a stretch of ns took, to the nearest: what a board that drops its
-// turbo for a while owes the next bus cycle (waitDebt)
-static inline int ns_to_ticks_round(Computer* comp, int ns) {
-	return (int)((((long long)ns << NS_FIXED_BITS) + comp->nsPerTickFixed / 2) / comp->nsPerTickFixed);
+// A board that drops its turbo for a while owes the next bus cycle what a step
+// took once more: the step's own ticks, not the debt it paid on the way, or the
+// debt grows with every step. Called after each step, owing or not.
+static inline void comp_owe(Computer* comp, int ns, int owe) {
+	if (owe) {
+		int t = (int)((NS_TO_FIXED(ns) + comp->nsPerTickFixed / 2) / comp->nsPerTickFixed);
+		if (t > comp->waitPaid) comp->waitDebt += t - comp->waitPaid;
+	}
+	comp->waitPaid = 0;
 }
 
 // Something of the debugger's looks at every memory access: the map, the heat

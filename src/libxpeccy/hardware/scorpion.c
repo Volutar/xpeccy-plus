@@ -29,7 +29,7 @@ void scrp_init(Computer* comp) {
 void scrptp_init(Computer* comp) {
 	zx_init(comp);
 	chip_set_xdev(comp->ts->chipA, scrp_ayx_rd, NULL, comp);
-	comp->waitDebt = 0;
+	comp->waitDebt = comp->waitPaid = 0;
 }
 
 // Turbo+ in turbo (PLD 15.3): the cpu runs off the 7 MHz dot clock and a RAM
@@ -106,11 +106,9 @@ void scoSync(Computer* comp, int ns) {
 	}
 }
 
-// Turbo+: while INT is up the PLD drops the turbo, so an opcode run then took
-// twice its turbo ticks - owed to the next bus cycle (comp_cont_hw)
+// Turbo+: while INT is up the PLD drops the turbo
 void scoTpSync(Computer* comp, int ns) {
-	if ((comp->hwMul > 1) && comp->vid->intFRAME)
-		comp->waitDebt += ns_to_ticks_round(comp, ns);
+	comp_owe(comp, ns, (comp->hwMul > 1) && comp->vid->intFRAME);
 	scoSync(comp, ns);
 }
 
