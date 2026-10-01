@@ -109,7 +109,9 @@ before that point is upstream's history and is not repeated here.
   - the 12-bit palette follows the port bit programs set, the border ports and #7FFD answer
     at every address the board decodes, and unused ports read #FF;
   - memory write protection, the clock registers and the disk ports in TR-DOS behave as on
-    the board, and covox plays in TR-DOS too.
+    the board, and covox plays in TR-DOS too;
+  - 14 MHz is no longer a flat 14: the processor waits for memory, the sound chip and the
+    disk controller as on the board, about 11 MHz on typical code.
 
 - **Scorpion ZS 256 follows its board:**
   - the maker's own ROM 2.95, the frame interrupt 32 T long, and an opcode fetched from RAM
