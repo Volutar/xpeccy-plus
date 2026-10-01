@@ -7,35 +7,34 @@ they were generated and is kept for the one thing they cannot carry: provenance,
 open questions.
 
 Sources, in order of weight: the values that shipped after the raster-geometry work
-(`config/config.conf` layouts, validated against Spectaculator and Fuse), the shipped profiles,
-the cores themselves, and published hardware documentation. Anything that rests on nothing
-better than convention is marked **open** and left alone.
+(the layouts in `res/layouts.conf`, validated against Spectaculator and Fuse), the shipped
+definitions, the cores themselves, and published hardware documentation. Anything that rests
+on nothing better than convention is marked **open** and left alone.
 
 ---
 
 ## 1. Timing and video
 
-`layout` names an entry of the `[VIDEO]` layout table in `config.conf`. Its fields, in file
-order, are `full.x:full.y:bord.x:bord.y:blank.x:blank.y:intSize:intpos.y:intpos.x:scr.x:scr.y`,
-all in dots; two dots make one CPU tick, so T per line is `full.x / 2` and the INT pulse is
+`layout` names an entry of `res/layouts.conf`. Its fields, in file order, are
+`full.x:full.y:bord.x:bord.y:blank.x:blank.y:intSize:intpos.y:intpos.x:scr.x:scr.y`, all in dots; two dots make one CPU tick, so T per line is `full.x / 2` and the INT pulse is
 `intSize / 2` ticks.
 
 | machine | CPU, Hz | layout | T/line | lines | T/frame | INT, T | contPattern | contio | contmem | 4t-border | earlyTiming |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| ZX Spectrum 48K | 3 500 000 | ZX 48K | 224 | 312 | 69 888 | 32 | 1 (Ferranti) | yes | yes | yes | yes |
-| ZX Spectrum 128K / +2 | 3 546 900 | ZX 128K | 228 | 311 | 70 908 | 36 | 1 (Ferranti) | yes | yes | yes | yes |
-| ZX Spectrum +2A | 3 546 900 | ZX +2A/+3 | 228 | 311 | 70 908 | 32 **open** | 2 (Amstrad) | no | yes | yes | yes |
-| ZX Spectrum +3 | 3 546 900 | ZX +2A/+3 | 228 | 311 | 70 908 | 32 **open** | 2 (Amstrad) | no | yes | yes | yes |
-| Pentagon | 3 500 000 | Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
-| Pentagon 1024 SL | 3 500 000 | Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
-| Scorpion ZS 256 | 3 500 000 | Scorpion | 224 | 312 | 69 888 | 32 | 0 (none) | no | no | yes | no |
-| Scorpion ZS 256 Turbo+ | 3 500 000 | Scorpion Turbo+ | 224 | 316 | 70 784 | 32 | 0 (none) | no | no | yes | no |
-| Profi v3 | 3 500 000 | Profi | 224 | 320 | 71 680 | 32 **open** | 0 (none) | no | no | no | no |
-| Profi v5 | 3 500 000 | Profi v5 | 224 **open** | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
-| ATM Turbo 2+ | 3 500 000 | ATM Turbo 2+ | 224 | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
-| ZXM-Phoenix | 3 500 000 | Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
-| ZX Evolution (BaseConf) | 3 500 000 | Evo | 224 | 320 | 71 680 | 32 | 0 (none) | no | no | no | no |
-| ZX Evolution (TSConf) | 3 500 000 | TSConf | 224 | 320 | 71 680 | 32 **open** | 0 (none) | no | no | no | no |
+| ZX Spectrum 48K | 3 500 000 | ULA.48 | 224 | 312 | 69 888 | 32 | 1 (Ferranti) | yes | yes | yes | yes |
+| ZX Spectrum 128K / +2 | 3 546 900 | ULA.128 | 228 | 311 | 70 908 | 36 | 1 (Ferranti) | yes | yes | yes | yes |
+| ZX Spectrum +2A | 3 546 900 | ULA.Plus3 | 228 | 311 | 70 908 | 32 **open** | 2 (Amstrad) | no | yes | yes | yes |
+| ZX Spectrum +3 | 3 546 900 | ULA.Plus3 | 228 | 311 | 70 908 | 32 **open** | 2 (Amstrad) | no | yes | yes | yes |
+| Pentagon | 3 500 000 | ULA.Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
+| Pentagon 1024 SL | 3 500 000 | ULA.Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
+| Scorpion ZS 256 | 3 500 000 | ULA.Scorpion | 224 | 312 | 69 888 | 32 | 0 (none) | no | no | yes | no |
+| Scorpion ZS 256 Turbo+ | 3 500 000 | ULA.ScorpionTP | 224 | 316 | 70 784 | 32 | 0 (none) | no | no | yes | no |
+| Profi v3 | 3 500 000 | ULA.Profi | 224 | 320 | 71 680 | 32 **open** | 0 (none) | no | no | no | no |
+| Profi v5 | 3 500 000 | ULA.Profi5 | 224 **open** | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
+| ATM Turbo 2+ | 3 500 000 | ULA.ATM2 | 224 | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
+| ZXM-Phoenix | 3 500 000 | ULA.Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
+| ZX Evolution (BaseConf) | 3 500 000 | ULA.Evo | 224 | 320 | 71 680 | 32 | 0 (none) | no | no | no | no |
+| ZX Evolution (TSConf) | 3 500 000 | ULA.TSConf | 224 | 320 | 71 680 | 32 | 0 (none) | no | no | no | no |
 
 Contention patterns are `vid_wait_dots()` in `video/video.c`: 1 is the Ferranti ULA's
 `12,11,...,1,0,0,0,0` over banks 1/3/5/7, 2 the Amstrad ASIC's `2,1,0,0,14,...,3` over banks
@@ -49,11 +48,11 @@ ZXM-Phoenix has a port for it (its `#EFF7` is decoded for nothing today) is **op
 
 `floatbus` is what a port nothing answers reads back. The 48K, 128K and +2 get `ula`, the
 +2A and +3 `asic`; both were checked against Woodmass's Float48K and Float128K, where the
-first of the four bytes lands one tick earlier than fuse prints it because these machines
+first of the four bytes lands one tick earlier than Fuse prints it because these machines
 run early timings. The clones get `attr`, the documented port `#FF` that hands back the
 attribute of the cell being shown - not a floating bus, but what this emulator has always
 done for them and what a demo written for a Pentagon expects. ZX Evo's BaseConf is `none`:
-its fpga drives FF on any read nothing claims (`zbus.v`). The +2A/+3 rules (ports
+its FPGA drives FF on any read nothing claims (`zbus.v`). The +2A/+3 rules (ports
 1, 5, ... 4093, paging on, bit 0 forced, the last contended-memory byte between fetches)
 are Ast A. Moore and Hikaru's, sky.relative-path.com/zx/floating_bus.html.
 
@@ -66,16 +65,10 @@ show the same dependence on what was written to Port 0xfe as it does on the othe
 and always returns 0 if there is no signal." Every clone is left at issue 3 and that is
 **open** - nobody has measured one.
 
-That same sentence of the 128K reference says the +2A/+3 return 255 from an unattached port
-instead of the screen byte the 48K/128K/+2 give. `plus3.c` still returns the attribute, and
-the floating bus is a raw `vid->atrbyte` on every machine that has one - Pentagon included,
-which has none at all. That is **open** and wants its own round.
-
-The **open** INT lengths are the ones nobody has confirmed a figure for. Three of them
-(Profi, ATM, TSConf) were deliberately left at 32 T in the raster work. The fourth is a real
-inconsistency: the +2A/+3 was named in that round's decision - 36 T for the 311-line machines
-plus Pentagon and Scorpion - but its layout line still says 32 T while the 128K and Pentagon
-lines carry 36. Nothing on screen changes either way; only a program sampling the INT line late
+The **open** INT lengths are the ones nobody has confirmed a figure for. Two of them, Profi
+and ATM, are left at 32 T; TSConf's 32 T is its FPGA sources'. The +2A/+3 is a real
+inconsistency: 36 T was decided for the 311-line machines plus Pentagon and Scorpion, but its
+layout line still says 32 T while the 128K and Pentagon lines carry 36. Nothing on screen changes either way; only a program sampling the INT line late
 in a long instruction can tell.
 
 The two Scorpion ZS 256 boards are read off their schematics, not off an emulator's preset:
@@ -107,7 +100,7 @@ after INT - UnrealSpeccy's preset, credited to DDp - and `VR3-15E9B638`, the sta
 `VR3-5A0AB56B`, really CRC FB0579B6) has INT about a line before the paper, on a 320-line frame.
 A real v3.2 Kramis board, photographed in its BIOS menu with and without turbo, puts INT 47 T
 before the first paper dot: the menu HALTs, counts a fixed delay and then draws border bands,
-whose line says where INT is to two lines, and whose colour changes - each one a few lines
+whose line says where INT is to two lines, and whose color changes - each one a few lines
 apart, so some fall in the paper and show as a step between the left and the right border -
 say where in the line to about 10 T. A timing test run on that board (`build/profitest/`) gives
 a 320-line frame, 71 680 T: every figure it printed came out 1.0256 times short of the model,
@@ -121,27 +114,23 @@ nothing else behind it and stays 224 T until a board confirms it, but v5 takes t
 BIOS rewrites the palette right after a HALT with 17 writes to `#7E`, each of which is a border
 write too, and with INT at the paper they flicker beside the title of the palette test.
 
-The Profi turbo is the v3.2 schematic's: the cpu and the video share a 3.5 MHz DRAM slot and a
-RAM access waits for the cpu's turn; ROM, i/o and refresh run without waits, and the VG93's HLD
+The Profi turbo is the v3.2 schematic's: the CPU and the video share a 3.5 MHz DRAM slot and a
+RAM access waits for the CPU's turn; ROM, i/o and refresh run without waits, and the VG93's HLD
 drops the turbo altogether. A cycle that starts on a slot edge waits two (a NOP in RAM is 6 T).
 One that starts between edges has 71 ns to get its request to U28, and waits three, not one.
 The timing test on a real v3.2 matches it in all sixteen cases it measures, the mixed pairs that
 start on the second phase included; an owner's timing table from the 90s does in all
 ten entries checked (`ADD A,N` 6, `ADD HL,BC` 7, `ADC A,(IX+d)` 13, `BIT b,(IX+d)` 15, in
 3.5 MHz T), with its data reads from ROM - `ADD A,(HL)` is 5 there, not the 6 of `ADD A,N` -
-where the one-wait reading is out in seven. And the photographs' band steps fit only a colour
+where the one-wait reading is out in seven. And the photographs' band steps fit only a color
 period of 1220-1231 turbo T: this gives 1230, the one-wait reading 1106. The v3.2 manual's fix for
 an unstable turbo - 200-400 pF on that very path - is what makes it miss. The v4.01 drawings
-add the cpu at 3.5 MHz while IORQ is low, which would fit the band steps as well (1226); the
+add the CPU at 3.5 MHz while IORQ is low, which would fit the band steps as well (1226); the
 test's OUT and IN, 8 T like the model, rule it out on the v3.2.
-
-**None of these is being changed by this rework** (decided 2026-09-09): the timings stay as
-they ship. They are listed so a definition generated from this table carries today's value on
-purpose rather than by accident.
 
 ## 2. Memory, storage and sound
 
-RAM is what the core's `mask` field allows; the bold size is what the shipped profile picks.
+RAM is what the core's `mask` field allows; the bold size is what the shipped definition picks.
 
 | machine | RAM | disk | HDD | sound | mouse |
 |---|---|---|---|---|---|
@@ -161,22 +150,12 @@ RAM is what the core's `mask` field allows; the bold size is what the shipped pr
 | ZX Evolution (TSConf) | **4M** | Beta Disk | NemoIDE | 2 YM 1.75, ABC (TurboSound) + Covox | yes |
 
 The sound column gives the chip, its clock in MHz and the channel order. Both belong to the
-machine: decision 6 of the plan made them a global preference, which meant the clock no
-longer followed the machine, and that was reversed on 2026-09-12.
+machine, not to a global preference, so the clock follows the machine.
 
-This table is what the definitions in `res/machines/` are generated from, so a row that is
-wrong silently becomes a machine that is wrong: the HDD column said "none" everywhere and
-the mouse column "no" for every clone until 2026-09-12, and the definitions shipped that way.
-
-**There is no separate `+ TR-DOS` machine.** The plan asked for one (5.1 and 7.3 there) and
-that was reversed: a Beta Disk on a 48K or a 128K is a setting, and once a machine of your
-own can be built on top of a shipped one, a second list entry says nothing. An old
+**There is no separate `+ TR-DOS` machine**: a Beta Disk on a 48K or a 128K is a setting, and
+a machine of your own can be built on top of a shipped one. An old
 `+ TR-DOS` profile migrates to the bare machine, so the interface is switched on by hand.
-Section 4 still records which banks such a ROM set needs.
-
-The shipped profile is the authority on what a machine carries (decided 2026-09-09), with
-one correction: the 128K had a three-chip TurboSound, and is back to the one AY it comes
-with.
+Section 4 records which banks such a ROM set needs.
 
 ## 3. Port decode
 
@@ -190,13 +169,11 @@ Only the fields that separate one machine from another; the rest is common ZX.
 
 The 0x8002 mask is what makes a Pentagon a Pentagon here: a write to 0x3FFD pages as well,
 where a Sinclair machine ignores it. Bits 6-7 are the 512K extension the 128K does not have.
-Both differences are why the 128K needed its own core (phase 1) instead of borrowing
-Pentagon's.
+Both differences are why the 128K has its own core instead of borrowing Pentagon's.
 
 ## 4. ROM banks
 
-The bank index is `roffset / 16K` in today's romset table and becomes the `rom<N>` key in the
-machine definition (plan, 6.2). ROM paging is `(flgDOS ? 2 : 0) | flgROM` on every 128K-style machine,
+The bank index is the `rom<N>` key of the machine definition. ROM paging is `(flgDOS ? 2 : 0) | flgROM` on every 128K-style machine,
 so bank 0 is the 128 editor, 1 the 48 BASIC, and 2/3 the interface ROM.
 
 | machine | 0 | 1 | 2 | 3 |
@@ -224,6 +201,6 @@ ATM, Profi and both Evo sets name `font = sgen.rom`.
 
 ## 5. Names
 
-The display names and machine ids are section 7.3 of the plan; nothing in this file competes
-with it. The core names phase 1 settles on are `ZX48`, `ZX128`, `Plus2A`, `Plus3`, `Pentagon`,
-`Pentagon1024SL`, `Scorpion`, `ScorpionTP`, `Profi3`, `Profi`, `ATM2`, `Phoenix`, `Baseconf`, `TSConf`.
+The display names and the machine ids are the definitions' own. The cores, the `hw` key, are
+`ZX48`, `ZX128`, `Plus2A`, `Plus3`, `Pentagon`,
+`Pentagon1024SL`, `Scorpion`, `ScorpionTP`, `Profi3`, `Profi`, `ATM2`, `Phoenix`, `Baseconf`, `TSConf` and `ALF`.

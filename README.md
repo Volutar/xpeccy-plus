@@ -66,10 +66,13 @@ On top of upstream build `20260807`:
   sound chip panel that detach into windows of their own.
 - **Sound.** The FM half of TurboSound runs on ymfm, latency looks after itself, and the mix
   can be filtered.
-- **Snapshots.** Saved as `.z80` as well as `.sna`, and loaded with the beam where it stood.
-- **Looks.** Eight interface styles, six border sizes, a picture always at whole pixels.
-- **Fixes.** A working ZX Evo, BaseConf and TSConf alike, tape loading, disks with loaders of
-  their own, sound that does not click.
+- **Snapshots.** Saved as `.z80` as well as `.sna`; a `.z80` comes back exactly where it was
+  saved.
+- **Looks.** Eight interface styles, six border sizes, a picture always at whole pixels, and
+  an optional antiflicker that leaves moving pictures alone.
+- **Machines built from their own sources.** ZX Evo, BaseConf and TSConf alike, follows its
+  FPGA sources; Scorpion ZS 256 and Profi, two boards each, follow their schematics.
+- **Fixes.** Tape loading, disks with loaders of their own, sound that does not click.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full list.
 

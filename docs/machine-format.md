@@ -81,7 +81,7 @@ is skipped without a word.
 |---|---|---|
 | `psg.count` | 0..3 | AY/YM chips (TurboSound) |
 | `psg.type` | `none` `ay` `ym` `ym2203` | |
-| `psg.frq` | MHz | an AY's clock, absent or 0 is Auto: half the cpu's `cpu.frq`; a `ym2203` runs at twice it |
+| `psg.frq` | MHz | an AY's clock, absent or 0 is Auto: half the CPU's `cpu.frq`; a `ym2203` runs at twice it |
 | `psg.stereo` | `mono` `abc` `acb` `bac` `bca` `cab` `cba` | |
 | `soundrive` | `none` `covox` `soundrive1` `soundrive2` | |
 | `gs` | yes/no | General Sound |
@@ -130,7 +130,7 @@ the machine in a throwaway `--confdir`, quitting, and looking at what the emulat
 ## Proving a definition is applied
 
 Start the machine in a throwaway `--confdir`, close the window properly (a killed process
-never runs `saveConfig()`), and look at `machines/<id>.conf` in that directory. Only what
+saves nothing), and look at `machines/<id>.conf` in that directory. Only what
 differs from the definition is written, so **no file at all means every key took**. A key that
 was ignored shows up there with the default value.
 
