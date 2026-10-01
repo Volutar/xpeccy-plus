@@ -110,7 +110,7 @@ void scoSync(Computer* comp, int ns) {
 // twice its turbo ticks - owed to the next bus cycle (comp_cont_hw)
 void scoTpSync(Computer* comp, int ns) {
 	if ((comp->hwMul > 1) && comp->vid->intFRAME)
-		comp->waitDebt += (int)((((long long)ns << NS_FIXED_BITS) + comp->nsPerTickFixed / 2) / comp->nsPerTickFixed);
+		comp->waitDebt += ns_to_ticks_round(comp, ns);
 	scoSync(comp, ns);
 }
 

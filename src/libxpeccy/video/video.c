@@ -1375,9 +1375,11 @@ void vidDrawEvoText(Video* vid) {
 	}
 }
 
-// profi 512x240
+// profi 512x240: the left byte of a pair from +#2000, the right from +0.
+// v5 takes the attribute from page #38/#3A; v3 has none: ink is the color of
+// the last OUT #FE, paper its inverse - which is what the border shows here.
 
-void vidProfiScr(Video* vid) {
+static void vid_profi(Video* vid, int mono) {
 	yscr = vid->ray.y - vid->bord.y + 24;	// (240-192)/2 = 24
 	if ((yscr < 0) || (yscr > 239)) {
 		vid_dot_full(vid, vid->brdcol);
@@ -1394,20 +1396,24 @@ void vidProfiScr(Video* vid) {
 				} else {
 					adr |= 0x2000;
 				}
-				if (vid->vidPage == 7) {
-					scrbyte = vid->mrd(MADR(6, adr), vid->xptr);
-					col = vid->mrd(MADR(0x3a, adr), vid->xptr);		// b0..2 ink, b3..5 pap, b6 inkBR, b7 papBR
+				int pg = (vid->vidPage == 7) ? 6 : 4;
+				scrbyte = vid->mrd(MADR(pg, adr), vid->xptr);
+				if (mono) {
+					pap = vid->brdcol & 7;
+					ink = pap ^ 7;
 				} else {
-					scrbyte = vid->mrd(MADR(4, adr), vid->xptr);
-					col = vid->mrd(MADR(0x38, adr), vid->xptr);
+					col = vid->mrd(MADR(pg + 0x34, adr), vid->xptr);	// b0..2 ink, b3..5 pap, b6 inkBR, b7 papBR
+					ink = (col & 0x07) | ((col & 0x40) >> 3);
+					pap = ((col & 0x38) >> 3) | ((col & 0x80) >> 4);
 				}
-				ink = (col & 0x07) | ((col & 0x40) >> 3);
-				pap = (col & 0x78) >> 3;
 				vidDrawByteDD(vid);
 			}
 		}
 	}
 }
+
+static void vidProfiScr(Video* vid) {vid_profi(vid, 0);}
+static void vidProfiMono(Video* vid) {vid_profi(vid, 1);}
 
 // tsconf
 
@@ -1444,6 +1450,7 @@ static xVideoMode vidModeTab[] = {
 	{VID_TSL_256, NULL, vidDrawTSLExt, vts_hblk, vts_line, NULL, vts_frame},		// vidDrawTSL256
 	{VID_TSL_TEXT, NULL, vidDrawTSLText, vts_hblk, vts_line, NULL, vts_frame},
 	{VID_PRF_MC, NULL, vidProfiScr, NULL, NULL, NULL, NULL},
+	{VID_PRF_MONO, NULL, vidProfiMono, NULL, NULL, NULL, NULL},
 
 
 	{VID_UNKNOWN, NULL, vidDrawBorder, NULL, NULL, NULL, NULL}

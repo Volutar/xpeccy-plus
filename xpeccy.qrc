@@ -61,6 +61,7 @@
         <file>res/machines/pent.conf</file>
         <file>res/machines/pent1024.conf</file>
         <file>res/machines/phoenix.conf</file>
+        <file>res/machines/profi3.conf</file>
         <file>res/machines/profi.conf</file>
         <file>res/machines/scorp.conf</file>
         <file>res/machines/scorptp.conf</file>

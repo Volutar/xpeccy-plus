@@ -46,7 +46,8 @@ enum {
 	VID_TSL_256,	// TSConf 8bpp
 	VID_TSL_NORMAL,	// TSConf common screen
 	VID_TSL_TEXT,
-	VID_PRF_MC	// Profi multicolor
+	VID_PRF_MC,	// Profi 512x240, v5: in color
+	VID_PRF_MONO	// Profi 512x240, v3: in the border colors
 };
 
 extern int bufSize;

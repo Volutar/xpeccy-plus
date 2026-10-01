@@ -271,6 +271,12 @@ static inline int ns_fixed_to_ticks_up(Computer* comp, long long ns_fixed) {
 	return (int)((ns_fixed + comp->nsPerTickFixed - 1) / comp->nsPerTickFixed);
 }
 
+// the ticks a stretch of ns took, to the nearest: what a board that drops its
+// turbo for a while owes the next bus cycle (waitDebt)
+static inline int ns_to_ticks_round(Computer* comp, int ns) {
+	return (int)((((long long)ns << NS_FIXED_BITS) + comp->nsPerTickFixed / 2) / comp->nsPerTickFixed);
+}
+
 // Something of the debugger's looks at every memory access: the map, the heat
 // map, a condition or a memory breakpoint
 static inline int comp_mem_watched(Computer* comp) {

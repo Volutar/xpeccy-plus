@@ -40,6 +40,16 @@ before that point is upstream's history and is not repeated here.
   ports, ProfROM 4.01 and SMUC. Both machines are built from the boards' schematics as
   redrawn by romychs.
 
+- **Profi v3 and Profi v5** instead of one Profi that was a mix of both. Each starts in its
+  own factory BIOS: JV "Kramis" V.02 on v3, Micco ROM Bios 2.0 on v5 (1.0 is bundled too).
+  - v3: 256K to 1M, including the 768K a board with three rows of chips had; 512x240 in the
+    border's two colors, as the board draws it.
+  - v5: the palette, the clock and the hard disk, on the ports the v5 controller gives them.
+  - The 7 MHz turbo takes the waits the board puts on RAM, and goes off while the disk
+    drive's head is loaded. Thanks to Volutar for the turbo measurements and the schematic.
+  - Fixed on both: paper brightness in 512x240, the Covox (on the parallel port, in stereo),
+    writes to `#DFFD` reaching the sound chip, and the disk ports under CP/M.
+
 ### Changed
 
 - **Clearer gamepad binding window**: the pad's buttons have plain names ("Right trigger",

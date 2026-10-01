@@ -58,7 +58,9 @@ and with every emulator of them for decades.
 | `scorpion295.rom` | Scorpion ZS 256 | Scorpion / MOA | grey, given away by the maker | ROM 2.95 of 26.11.1994, 64K, CRC32 99F57CE1 (the image others call 2.94), `23add41c9c4a3f7cca845d3d5cf51367` |
 | `prof39f.rom` | Scorpion ZS 256 | ProfROM authors | grey | ProfROM 3.9f, 128K, `dcb8ebbe2d2f4c4afa58c43507987b9c` |
 | `prof401.rom` | Scorpion ZS 256 Turbo+ | MOA (Andrew Larchenko) / Scorpion | grey | ProfROM 4.01 of 13.07.1997, 256K, ROM disk "FirmWare BonusPak", CRC32 847A66E4, `b124c52cd462ce36d79086747115896f` |
-| `profi.rom` | Profi | Profi authors (KONDOR) | grey | Profi v0.2 with TR-DOS 5.04T, `65dff86e995761ffaffd0fc137f31fb2` |
+| `profi-kramis02.rom` | Profi v3 | JV "Kramis" / Kondor | grey | the v3 boards' own: BIOS JV "KRAMIS" V.02 of 10.1990 with TR-DOS 5.03, CRC32 77327F52, `720f23bec22581f37fb55bd7a928fde2` |
+| `profi-bios10.rom` | Profi v5 | Micco Software / Kondor | grey | ROM Bios 1.0 of 21.09.93, read off a Kondor 5.04 board; TR-DOS 5.04T, CRC32 10DA289A, `f4ab0dd91cd7d207879767d4fe5bf30e` |
+| `profi-bios20.rom` | Profi v5 | Micco Software / Kondor | grey | ROM Bios 2.0 of 17.04.94, TR-DOS 5.04T, CRC32 36F5F7BD, `02877e403f22d10d12ef0296ccb96f60` |
 | `atm2.rom` | ATM Turbo 2+ | MicroART | grey | `28ce89a88089417db4d3057de942a1bb` |
 | `zxevo-fe.rom` | ZX Evo (BaseConf) | NedoPC group | grey | EVO Reset Service 0.61 FE, `4d440af2f2d746094527aa6789390705` |
 | `tsconf.rom` | ZX Evo (TSConf) | TS-Labs | grey | TS-BIOS, shipped elsewhere as `ts-bios.rom`, `d5f199df3832dc749fe0d12f1ce8f26f` |
@@ -70,6 +72,9 @@ from <https://zxbyte.ru/alf.htm>, which publishes it as a dump of the console's 
 `scorpion295.rom` is `ROM2_95.512` from the maker's own download,
 <https://web.archive.org/web/20060812213917/http://www.scorpion.ru:80/spectrum/files/rom2_95.zip>;
 the "2.95" circulating as `scorp295.rom` (CRC 0C6C1EF6) is a different image.
+`profi-*.rom` from <https://speccy4ever.speccy.org/_PR.htm> (`PJV02`, `PB10`, `PB20`, named
+there by CRC). The `profi.rom` shipped before was V.02's BIOS page with someone's TR-DOS 5.04T
+in place of the 5.03 the board came with.
 `prof401.rom` from <https://speccy4ever.speccy.org/_SC.htm>, the CRC MAME's `scorpiontb` lists;
 it is the last ProfROM MOA built for the real board (4.02 runs only in MOA's own emulator, and
 the 4.xx.0NN builds are a later community fork). The rest from the images that have circulated

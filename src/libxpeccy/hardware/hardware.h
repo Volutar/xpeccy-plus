@@ -25,7 +25,8 @@ enum {
 	HW_PROFI,	// Profi
 	HW_PHOENIX,	// ZXM Phoenix
 	HW_ALF,		// ALF TV Game (a ZX48 clone console)
-	HW_SCORPTP	// Scorpion ZS 256 Turbo+
+	HW_SCORPTP,	// Scorpion ZS 256 Turbo+
+	HW_PROFI3	// Profi v3.x (HW_PROFI is v5)
 };
 
 // Hardware callbacks
@@ -79,7 +80,7 @@ struct HardWare {
 	cbHwKey keyr;		// key release
 	cbHwVol vol;		// read volume
 	cbhwcomp snapmap;	// stand where a snapshot expects the machine (NULL: nothing to do)
-	cbHwIrq cont;		// a bus cycle starts, the ray synced to it (NULL: the ULA's contention)
+	cbHwIrq cont;		// a bus cycle starts in turbo, the ray synced to it (NULL: the ULA's contention)
 };
 typedef struct HardWare HardWare;
 

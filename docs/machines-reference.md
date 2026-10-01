@@ -30,7 +30,8 @@ all in dots; two dots make one CPU tick, so T per line is `full.x / 2` and the I
 | Pentagon 1024 SL | 3 500 000 | Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
 | Scorpion ZS 256 | 3 500 000 | Scorpion | 224 | 312 | 69 888 | 32 | 0 (none) | no | no | yes | no |
 | Scorpion ZS 256 Turbo+ | 3 500 000 | Scorpion Turbo+ | 224 | 316 | 70 784 | 32 | 0 (none) | no | no | yes | no |
-| Profi | 3 500 000 | Profi | 224 | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
+| Profi v3 | 3 500 000 | Profi | 224 | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
+| Profi v5 | 3 500 000 | Profi v5 | 224 **open** | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
 | ATM Turbo 2+ | 3 500 000 | ATM Turbo 2+ | 224 | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
 | ZXM-Phoenix | 3 500 000 | Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
 | ZX Evolution (BaseConf) | 3 500 000 | Evo | 224 | 320 | 71 680 | 32 | 0 (none) | no | no | no | no |
@@ -43,8 +44,8 @@ Contention patterns are `vid_wait_dots()` in `video/video.c`: 1 is the Ferranti 
 `cpu.turbo` lists the turbo steps a board has, as multipliers of its base clock. Five of them
 switch it from a port and the core already does that: Scorpion ZS 256 Turbo+, ATM Turbo 2+ and Pentagon
 1024SL at x2, ZX Evo and TSConf at x2 and x4. Profi and ZXM-Phoenix have 7 MHz too, but no
-port for it in this emulator, so they are turbo by switch - Alt+T is the switch, and whether
-the real ZXM-Phoenix has a port for it (its `#EFF7` is decoded for nothing today) is **open**.
+port for it, so they are turbo by switch - Alt+T is the switch, and whether the real
+ZXM-Phoenix has a port for it (its `#EFF7` is decoded for nothing today) is **open**.
 
 `floatbus` is what a port nothing answers reads back. The 48K, 128K and +2 get `ula`, the
 +2A and +3 `asic`; both were checked against Woodmass's Float48K and Float128K, where the
@@ -97,9 +98,32 @@ the layout keeps 40 T so the frame is 352 wide like every other machine, and the
 board blanks are drawn in the border color. Blank plus left border is 136 dots either way, so
 no timing moves.
 
-Also still open from that work: Profi's `intpos` puts the first paper dot 32 T after the
-interrupt where UnrealSpeccy's preset says 12 580, and ATM Turbo 2+ is 11 T out. Neither has an
-official figure behind it.
+Also still open from that work: ATM Turbo 2+ is 11 T out, with no official figure behind it.
+
+The Profi's frame comes from a 2K sync PROM, and more than one was in circulation. Decoded
+(dumps in `build/refs/profi/rom/`, all v3): `VR3-0A1DFAFD` puts the first paper dot 12 580 T
+after INT - UnrealSpeccy's preset, credited to DDp - and `VR3-15E9B638`, the standard SAMX6,
+12 588 T with 32-line borders, which is ZXMAK2's. A third family (the file named
+`VR3-5A0AB56B`, really CRC FB0579B6) has INT about a line before the paper, on a 320-line frame.
+A real v3.2 Kramis board, photographed in its BIOS menu with and without turbo, puts INT 47 T
+before the first paper dot: the menu HALTs, counts a fixed delay and then draws border bands,
+whose line says where INT is to two lines, and whose colour changes - each one a few lines
+apart, so some fall in the paper and show as a step between the left and the right border -
+say where in the line to about 10 T. Which frame length that board had is **open**. The v5 PROM (`VR5-D2D4A7C8`, from a Kondor 5.04)
+decodes to a 216 T line, a 67 392 T frame and 13 860 T to the paper. The line length has
+nothing else behind it and stays 224 T until a board confirms it, but v5 takes the 13 860 T: its
+BIOS rewrites the palette right after a HALT with 17 writes to `#7E`, each of which is a border
+write too, and with INT at the paper they flicker beside the title of the palette test.
+
+The Profi turbo is the v3.2 schematic's: the cpu and the video share a 3.5 MHz DRAM slot and a
+RAM access waits for the cpu's turn; ROM, i/o and refresh run without waits, and the VG93's HLD
+drops the turbo altogether. A cycle that starts on a slot edge waits two (a NOP in RAM is 6 T,
+which an owner's timing table confirms). One that starts between edges has 71 ns to get its
+request to U28, and waits three, not one: the photographs' band steps fit only a colour period
+of 1220-1231 turbo T, this gives 1230 and the one-wait reading 1106. The v3.2 manual's fix for
+an unstable turbo - 200-400 pF on that very path - is what makes it miss. The v4.01 board has a
+second mechanism, the cpu at 3.5 MHz while IORQ is low, which would fit the photographs as well
+(1226) but is not on the v3.2 drawings.
 
 **None of these is being changed by this rework** (decided 2026-09-09): the timings stay as
 they ship. They are listed so a definition generated from this table carries today's value on
@@ -119,7 +143,8 @@ RAM is what the core's `mask` field allows; the bold size is what the shipped pr
 | Pentagon 1024 SL | **1M** | Beta Disk | none | 1 YM 1.75, ABC + Covox | yes |
 | Scorpion ZS 256 | **256K** | Beta Disk | none | 1 AY 1.75, BAC + Covox | yes |
 | Scorpion ZS 256 Turbo+ | **256K**, 1M | Beta Disk | SMUC | 1 AY 1.75, BAC + Covox | yes |
-| Profi | 512K, **1M** | Beta Disk | Profi | 1 YM 1.75, ACB + Covox | yes |
+| Profi v3 | 256K, **512K**, 768K, 1M | Beta Disk | none | 1 AY 1.75, ACB + Covox | yes |
+| Profi v5 | 512K, **1M** | Beta Disk | Profi | 1 YM 1.75, ACB + Covox | yes |
 | ATM Turbo 2+ | 128K, 256K, 512K, **1M** | Beta Disk | ATM | 1 YM 1.75, ABC + Covox | yes |
 | ZXM-Phoenix | **2M** | Beta Disk | none | 1 YM 1.75, ABC + Covox | yes |
 | ZX Evolution (BaseConf) | **4M** | Beta Disk | NemoIDE | 2 YM 1.75, ABC (TurboSound) + Covox | yes |
@@ -177,7 +202,8 @@ so bank 0 is the 128 editor, 1 the 48 BASIC, and 2/3 the interface ROM.
 | Pentagon 128 (TR-DOS 5.03) | 128p-0.rom | 128p-1.rom | gluck.rom | trdos.rom |
 | Scorpion ZS 256 | scorpion295.rom (ROM 2.95), 64K combined | | | |
 | Scorpion ZS 256 Turbo+ | prof401.rom (ProfROM 4.01), 256K combined | | | |
-| Profi | profi.rom, 64K combined | | | |
+| Profi v3 | profi-kramis02.rom (JV "KRAMIS" V.02, TR-DOS 5.03), 64K combined | | | |
+| Profi v5 | profi-bios20.rom (Micco ROM Bios 2.0), or profi-bios10.rom (1.0), 64K combined | | | |
 | ATM Turbo 2+ | atm2.rom, 64K combined | | | |
 | ZXM-Phoenix | phoenix.rom, 64K combined | | | |
 | ZX Evolution (BaseConf) | zxevo-fe.rom, 512K combined | | | |
@@ -190,4 +216,4 @@ ATM, Profi and both Evo sets name `font = sgen.rom`.
 
 The display names and machine ids are section 7.3 of the plan; nothing in this file competes
 with it. The core names phase 1 settles on are `ZX48`, `ZX128`, `Plus2A`, `Plus3`, `Pentagon`,
-`Pentagon1024SL`, `Scorpion`, `ScorpionTP`, `Profi`, `ATM2`, `Phoenix`, `Baseconf`, `TSConf`.
+`Pentagon1024SL`, `Scorpion`, `ScorpionTP`, `Profi3`, `Profi`, `ATM2`, `Phoenix`, `Baseconf`, `TSConf`.

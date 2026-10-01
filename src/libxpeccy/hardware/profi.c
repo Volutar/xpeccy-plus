@@ -1,61 +1,112 @@
 #include "../spectrum.h"
 
-#define	p7E	reg[16]
+// Profi: the old boards (v3.x, Kramis / TOO "Profi") and the new ones (v5.0x,
+// Kondor). Ports 7FFD and DFFD mean the same on both; v5 adds the palette and
+// the extended port map (CP/M with ROM14): clock, IDE, a second home for the
+// FDC and the 8255. Ground truth is the boards' own albums and manuals, plus
+// the v3.2 schematic for the turbo; UnrealSpeccy and ZXMAK2 for the rest.
+
+#define	pFE	reg[16]		// last OUT #FE: the palette index comes from it
 #define pDFFD	reg[17]
 
-// Profi ROM: EXT,DOS,128,48
+// CP/M with ROM14: the v5 controller's extended port map
+static int prf_ext(Computer* comp) {
+	return comp->flgCPM && comp->flgROM;
+}
+
+// A 16K bank of RAM, or nothing where a row of chips is not fitted: a board
+// with 768K has three rows of four, pages #00-#2F
+static void prf_ram(Computer* comp, int adr, int bank) {
+	int fitted = ((bank << 14) & comp->mem->ramMask) < comp->mem->ramSize;
+	memSetBank(comp->mem, adr, fitted ? MEM_RAM : MEM_EXT, bank, MEM_16K, NULL, NULL, NULL);	// MEM_EXT reads #FF
+}
+
+// Profi ROM: SYS,DOS,128,48
 void prfMapMem(Computer* comp) {
 	if (comp->pDFFD & 0x10) {
-		memSetBank(comp->mem, 0x00, MEM_RAM, 0, MEM_16K, NULL, NULL, NULL);
+		prf_ram(comp, 0x00, 0);
 	} else {
 		memSetBank(comp->mem, 0x00, MEM_ROM, (comp->flgDOS ? 0 : 2) | (comp->flgROM ? 1 : 0), MEM_16K, NULL, NULL, NULL);
 	}
 	int bank = ((comp->pDFFD & 7) << 3) | (comp->p7FFD & 7);
-	memSetBank(comp->mem, 0x40, MEM_RAM, (comp->pDFFD & 0x08) ? bank : 5, MEM_16K, NULL, NULL, NULL);
-	memSetBank(comp->mem, 0x80, MEM_RAM, ((comp->pDFFD & 0x40) && (comp->p7FFD & 8)) ? 6 : 2, MEM_16K, NULL, NULL, NULL);
-	memSetBank(comp->mem, 0xc0, MEM_RAM, (comp->pDFFD & 0x08) ? 7 : bank, MEM_16K, NULL, NULL, NULL);
+	prf_ram(comp, 0x40, (comp->pDFFD & 0x08) ? bank : 5);
+	prf_ram(comp, 0x80, ((comp->pDFFD & 0x40) && (comp->p7FFD & 8)) ? 6 : 2);
+	prf_ram(comp, 0xc0, (comp->pDFFD & 0x08) ? 7 : bank);
 }
 
+// hw->init runs again on every turbo change: a debt from the old speed goes
 void prf_init(Computer* comp) {
 	zx_init(comp);
 	kbd_set_type(comp->keyb, KBD_PROFI);
+	comp->waitDebt = 0;
+}
+
+// Turbo (v3.2 schematic). The cpu and the video take turns at a 3.5 MHz DRAM
+// slot; a RAM access waits for the cpu's slot, ROM, i/o and refresh do not.
+// T3 comes at the second slot edge after the request: two waits for a cycle
+// that starts on a slot edge. One that starts between edges has 71 ns to get
+// its request to U28 and on a real board misses it - the manual's fix for an
+// unstable turbo, 200-400 pF on that path, makes sure it does - so it waits
+// three. A NOP in RAM is 6 T. The video never holds the cpu.
+// HLD of the VG93 drops the turbo, and the board runs 3.5 MHz with no waits.
+static int prf_hld(Computer* comp) {
+	Floppy* flp = comp->dif->fdc->flp;
+	return flp && flp->motor;
+}
+
+// The phase is the beam's, which is where the board counts its slots from: one
+// dot is one turbo tick, a slot two dots, and the paper starts on a slot edge.
+// The cycle's T1 is at the dot after the ray. comp_cont_hw() has paid waitDebt.
+static void prf_cont(Computer* comp, int mreq) {
+	if (!mreq || (comp->hwMul < 2) || prf_hld(comp)) return;
+	if (mem_get_page(comp->mem, comp->cpu->adr)->type != MEM_RAM) return;
+	Video* vid = comp->vid;
+	vid_unlazy(vid);
+	int odd = (vid->ray.x + 1 - vid->blank.x - vid->bord.x) & 1;
+	comp->cpu->t += odd ? 3 : 2;
+}
+
+// with HLD up an opcode run took twice its turbo ticks - owed to the next bus cycle
+void prfSync(Computer* comp, int ns) {
+	if ((comp->hwMul > 1) && prf_hld(comp))
+		comp->waitDebt += ns_to_ticks_round(comp, ns);
+	zx_sync(comp, ns);
 }
 
 // out
 
-// INFO: out (xx7E),nn
-// xx - inverted GGGRRRBB
-// nn - inverted color index for next out (0..15)
+// v5 palette: an OUT with A0 and A7 low while 80DS is on writes ~A15..A8 as
+// GGGRRRBB into the entry the previous OUT #FE named, inverted
+static const unsigned char prfCol3[8] = {0,36,73,109,146,182,219,255};
+static const unsigned char prfCol2[4] = {0,85,170,255};
 
-// static const unsigned char prfColB[4] = {0,80,160,255};
-static const unsigned char prfColTab[8] = {0,40,80,120,160,200,228,255};
-
-void prfOut7E(Computer* comp, int port, int val) {
-	if (comp->pDFFD & 0x80) {
-		xColor col;
-		port ^= 0xff00;
-		col.b = prfColTab[(port & 0x0300) >> 7];
-		col.r = prfColTab[(port & 0x1c00) >> 10];
-		col.g = prfColTab[(port & 0xe000) >> 13];
-		vid_set_col(comp->vid, comp->p7E & 15, col);
-		comp->p7E = ~val & 15;
-	}
+static void prfOutPal(Computer* comp, int port, int val) {
+	if (!comp->flgDDP || !(comp->pDFFD & 0x80)) return;
+	xColor col;
+	int c = ~port >> 8;
+	col.g = prfCol3[(c >> 5) & 7];
+	col.r = prfCol3[(c >> 2) & 7];
+	col.b = prfCol2[c & 3];
+	vid_set_col(comp->vid, ~comp->pFE & 15, col);
 }
 
+// in 512x240 the border is drawn inverted
+static void prf_border(Computer* comp) {
+	comp->vid->nextbrd = comp->pFE & 7;
+	if (comp->pDFFD & 0x80)
+		comp->vid->nextbrd ^= 7;
+}
+
+// FE is decoded on A0 alone, so #7E is a border write too
 void prfOutFE(Computer* comp, int port, int val) {
 	xOutFE(comp, port, val);
-	if (comp->pDFFD & 0x80) {
-		comp->vid->nextbrd ^= 7;
-		comp->vid->brdcol = comp->vid->nextbrd;
-	}
+	comp->pFE = val & 0xff;
+	prf_border(comp);
 }
 
-void prfOutAS(Computer* comp, int port, int val) {
-	cmos_wr(&comp->cmos, CMOS_ADR, val);
-}
-
-void prfOutDS(Computer* comp, int port, int val) {
-	cmos_wr(&comp->cmos, CMOS_DATA, val);
+// clock: A5 up is the address, down the data
+void prfOutCMOS(Computer* comp, int port, int val) {
+	cmos_wr(&comp->cmos, (port & 0x20) ? CMOS_ADR : CMOS_DATA, val);
 }
 
 void prfOutBDI(Computer* comp, int port, int val) {
@@ -66,21 +117,34 @@ void prfOutBDIFF(Computer* comp, int port, int val) {
 	difOut(comp->dif, 0xff, val, 1);
 }
 
+// Covox on the 8255: port B is the right channel, port C the left
+static void prf_covox(Computer* comp, int ch, int val) {
+	if (comp->sdrv->type != SDRV_COVOX) return;
+	comp->sdrv->chan[ch] = val & 0xff;
+	comp->sdrv->chan[ch + 1] = val & 0xff;
+}
+
+void prfOut8255(Computer* comp, int port, int val) {
+	switch (port & 0x60) {
+		case 0x20: prf_covox(comp, 2, val); break;
+		case 0x40: prf_covox(comp, 0, val); break;
+	}
+}
+
 void prfOut7FFD(Computer* comp, int port, int val) {
 	if ((~comp->pDFFD & 0x10) && (comp->p7FFD & 0x20)) return;	// 7FFD is blocked
 	comp->p7FFD = val & 0xff;
 	comp->flgROM = (val & 0x10) ? 1 : 0;
 	comp->vid->vidPage = (val & 0x08) ? 7 : 5;
 	prfMapMem(comp);
-//	printf("OUT 7FFD,%.2X\n",val);
 }
 
 void prfOutDFFD(Computer* comp, int port, int val) {
 	comp->pDFFD = val;
 	comp->flgCPM = (val & 0x20) ? 1 : 0;
-	vid_set_mode(comp->vid, (val & 0x80) ? VID_PRF_MC : VID_NORMAL);
+	vid_set_mode(comp->vid, (val & 0x80) ? ((comp->hw->id == HW_PROFI) ? VID_PRF_MC : VID_PRF_MONO) : VID_NORMAL);
+	prf_border(comp);
 	prfMapMem(comp);
-//	printf("OUT DFFD,%.2X\n",val);
 }
 
 // in
@@ -107,66 +171,95 @@ int prfInBDIFF(Computer* comp, int port) {
 	return res;
 }
 
-int prfInDS(Computer* comp, int port) {
+int prfInCMOS(Computer* comp, int port) {
 	return cmos_rd(&comp->cmos, CMOS_DATA);
 }
 
-static xPort prfPortMap[] = {
-	// common
-	{0x00f7,0x00fe,2,2,2,prfInFE,	prfOutFE},
-	{0x8002,0x7ffd,2,2,2,NULL,	prfOut7FFD},
-	{0x2002,0xdffd,2,2,2,NULL,	prfOutDFFD},
-	{0xc002,0xbffd,2,2,2,NULL,	xOutBFFD},
-	{0xc002,0xfffd,2,2,2,xInFFFD,	xOutFFFD},
-	{0x00ff,0x00f7,2,2,2,dummyIn,	dummyOut},	// f7 (off?)
-
-	// * * CPM
-	{0x00ff,0x007e,2,2,1,NULL,	prfOut7E},	// 7e cpm:palete (?)
-
-	// !DOS ROM CPM
-	{0x009f,0x0083,0,1,1,prfInBDI,	prfOutBDI},
-	{0x00ff,0x003f,0,1,1,prfInBDIFF,prfOutBDIFF},
-
-	// !DOS !ROM CPM
-	{0x00ff,0x00df,0,1,1,prfInDS,	prfOutDS},	// cmos DATA
-	{0x00ff,0x00bf,0,1,1,NULL,	prfOutAS},	// cmos ADR
-	{0x009f,0x008f,0,1,1,dummyIn,	dummyOut},	// 8f,af,cf,ef (BB51/3)
-
-	// !DOS !ROM CPM
-	{0x009f,0x001f,0,0,1,prfInBDI,	prfOutBDI},	// 1f,3f,5f,7f (fdc)
-	{0x00ff,0x00bf,0,0,1,prfInBDIFF,prfOutBDIFF},	// bf (bdi ff)
-
-	// !DOS !ROM !CPM
-	{0x009f,0x001f,0,0,0,dummyIn,	dummyOut},	// 1f,3f,5f,7f (BB55)
-
-	// !DOS * !CPM
-	{0x00ff,0x00ff,0,2,0,dummyIn,	NULL},		// in FF
-	{0x00ff,0x001f,0,2,0,xIn1F,	NULL},		// 1f (K-joy) : !dos !cpm
-	{0xffff,0xfadf,0,2,0,xInFADF,	NULL},
-	{0xffff,0xfbdf,0,2,0,xInFBDF,	NULL},
-	{0xffff,0xffdf,0,2,0,xInFFDF,	NULL},
-
-	// DOS * !CPM
-	{0x009f,0x001f,1,2,0,prfInBDI,	prfOutBDI},	// BDI 1f,3f,5f,7d
-	{0x00ff,0x00ff,1,2,0,prfInBDIFF,prfOutBDIFF},	// BDI ff
-
-	{0x0000,0x0000,2,2,2,zx_in_float,NULL}
-};
-
-void prfOut(Computer* comp, int port, int val) {
-	zx_dev_wr(comp, port, val);
-	hwOut(prfPortMap, comp, port, val, 1);
+// the joystick sits on port A of the 8255
+int prfIn8255(Computer* comp, int port) {
+	return (port & 0x60) ? 0xff : zx_in_joy(comp, port);
 }
 
-int prfIn(Computer* comp, int port) {
+#define PRF_COMMON \
+	{0x0081,0x0000,2,2,2,NULL,	prfOutPal},	/* before FE: it takes the index FE had */ \
+	{0x0001,0x00fe,2,2,2,prfInFE,	prfOutFE}, \
+	{0x8002,0x7ffd,2,2,2,NULL,	prfOut7FFD}, \
+	{0x2002,0xdffd,2,2,2,NULL,	prfOutDFFD}, \
+	{0xe002,0xbffd,2,2,2,NULL,	xOutBFFD}, \
+	{0xe002,0xfffd,2,2,2,xInFFFD,	xOutFFFD},
+
+// dos,rom,cpm: 0/1, 2 = either
+#define PRF_BASIC \
+	{0x009f,0x001f,1,2,0,prfInBDI,	prfOutBDI},	/* TR-DOS: 1f,3f,5f,7f fdc */ \
+	{0x00ff,0x00ff,1,2,0,prfInBDIFF,prfOutBDIFF},	/* ff fdc system */ \
+	{0x0083,0x0003,0,2,0,prfIn8255,	prfOut8255},	/* BASIC: 1f,3f,5f,7f 8255 */ \
+	{0xffff,0xfadf,0,2,0,xInFADF,	NULL},		/* mouse */ \
+	{0xffff,0xfbdf,0,2,0,xInFBDF,	NULL}, \
+	{0xffff,0xffdf,0,2,0,xInFFDF,	NULL}, \
+	{0x0000,0x0000,2,2,2,zx_in_float,NULL}
+
+// The CP/M bit takes the FDC from TR-DOS and gives it to code in RAM, so the
+// CP/M rows hold with DOS in or out.
+
+// v3: one CP/M map, whatever ROM14 says
+static xPort prf3PortMap[] = {
+	PRF_COMMON
+	{0x009f,0x001f,2,2,1,prfInBDI,	prfOutBDI},	// 1f,3f,5f,7f fdc
+	{0x00ff,0x00bf,2,2,1,prfInBDIFF,prfOutBDIFF},	// bf fdc system
+	PRF_BASIC
+};
+
+// v5: CP/M with ROM14 is the extended map (IDE is in prf5In/prf5Out)
+static xPort prf5PortMap[] = {
+	PRF_COMMON
+	{0x009f,0x0083,2,1,1,prfInBDI,	prfOutBDI},	// 83,a3,c3,e3 fdc
+	{0x00ff,0x003f,2,1,1,prfInBDIFF,prfOutBDIFF},	// 3f fdc system
+	{0x009f,0x009f,2,1,1,prfInCMOS,	prfOutCMOS},	// bf,ff address; 9f,df data
+	{0x009f,0x0087,2,1,1,NULL,	prfOut8255},	// 87,a7,c7,e7 8255
+	{0x009f,0x001f,2,0,1,prfInBDI,	prfOutBDI},	// 1f,3f,5f,7f fdc
+	{0x00ff,0x00bf,2,0,1,prfInBDIFF,prfOutBDIFF},	// bf fdc system
+	PRF_BASIC
+};
+
+// The devices every ZX core shares, but the IDE answers only on the v5's
+// extended map and the Covox is on the 8255, not on #FB
+static int prf_dev_wr(Computer* comp, int port, int val, int ide) {
+	if (gsWrite(comp->gs, port, val)) return 1;
+	if (!comp->flgBDI && saaWrite(comp->saa, port, val)) return 1;
+	if (!comp->flgBDI && (comp->sdrv->type != SDRV_COVOX) && sdrvWrite(comp->sdrv, port, val)) return 1;
+	if (ide && ideOut(comp->ide, port, val, 0)) return 1;
+	return ula_wr(comp->vid->ula, port, val);
+}
+
+static int prf_dev_rd(Computer* comp, int port, int* res, int ide) {
+	if (gsRead(comp->gs, port, res)) return 1;
+	if (ide && ideIn(comp->ide, port, res, 0)) return 1;
+	return ula_rd(comp->vid->ula, port, res);
+}
+
+void prf3Out(Computer* comp, int port, int val) {
+	if (!prf_dev_wr(comp, port, val, 0))
+		hwOut(prf3PortMap, comp, port, val, 1);
+}
+
+int prf3In(Computer* comp, int port) {
 	int res = -1;
-	if (zx_dev_rd(comp, port, &res)) return res;
-	res = hwIn(prfPortMap, comp, port);
-	return res;
+	return prf_dev_rd(comp, port, &res, 0) ? res : hwIn(prf3PortMap, comp, port);
+}
+
+void prf5Out(Computer* comp, int port, int val) {
+	if (!prf_dev_wr(comp, port, val, prf_ext(comp)))
+		hwOut(prf5PortMap, comp, port, val, 1);
+}
+
+int prf5In(Computer* comp, int port) {
+	int res = -1;
+	return prf_dev_rd(comp, port, &res, prf_ext(comp)) ? res : hwIn(prf5PortMap, comp, port);
 }
 
 void prfReset(Computer* comp) {
 	kbd_set_type(comp->keyb, KBD_PROFI);
+	comp->pFE = 0;
 	prfOutDFFD(comp, 0, 0);
 }
 
@@ -185,5 +278,10 @@ xPortDsc zx_port_tab_p[] = {
 	{-1, 0, 0}
 };
 
-HardWare prf_hw_core = {HW_PROFI,"Profi","Profi",MEM_512K | MEM_1M,1.0,NULL,zx_port_tab_p,
-			prf_init,prfMapMem,prfOut,prfIn,stdMRd,stdMWr,zx_irq,zx_ack,prfReset,zx_sync,prf_keyp,prf_keyr,zx_vol};
+HardWare prf3_hw_core = {HW_PROFI3,"Profi3","Profi v3",MEM_256K | MEM_512K | MEM_768K | MEM_1M,1.0,NULL,zx_port_tab_p,
+			prf_init,prfMapMem,prf3Out,prf3In,stdMRd,stdMWr,zx_irq,zx_ack,prfReset,prfSync,prf_keyp,prf_keyr,zx_vol,
+			NULL,prf_cont};
+
+HardWare prf_hw_core = {HW_PROFI,"Profi","Profi v5",MEM_512K | MEM_1M,1.0,NULL,zx_port_tab_p,
+			prf_init,prfMapMem,prf5Out,prf5In,stdMRd,stdMWr,zx_irq,zx_ack,prfReset,prfSync,prf_keyp,prf_keyr,zx_vol,
+			NULL,prf_cont};
