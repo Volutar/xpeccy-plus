@@ -58,6 +58,7 @@ extern int greyScale;
 extern int noflic;
 extern int noflicMode;
 extern float noflicGamma;
+extern int noflicAhead;		// the adaptive antiflicker looks at frames run ahead
 
 extern unsigned char* scrimg;
 extern unsigned char* bufimg;
