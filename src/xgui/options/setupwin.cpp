@@ -2252,24 +2252,27 @@ void SetupWin::buildkeylist() {
 		QString::fromLocal8Bit(conf.kmapName.c_str()));
 }
 
+// the core's mask bit, and the size it stands for (768K has no bit of its own)
 struct xMemName {
 	int mask;
+	int size;
 	const char* name;
 };
 
 static xMemName memNameTab[] = {
-	{MEM_16K, "16 KB"},
-	{MEM_32K, "32 KB"},
-	{MEM_64K, "64 KB"},
-	{MEM_128K, "128 KB"},
-	{MEM_256K, "256 KB"},
-	{MEM_512K, "512 KB"},
-	{MEM_1M, "1024 KB"},
-	{MEM_2M, "2 MB"},
-	{MEM_4M, "4 MB"},
-	{MEM_8M, "8 MB"},
-	{MEM_16M, "16 MB"},
-	{-1, ""}
+	{MEM_16K, MEM_16K, "16 KB"},
+	{MEM_32K, MEM_32K, "32 KB"},
+	{MEM_64K, MEM_64K, "64 KB"},
+	{MEM_128K, MEM_128K, "128 KB"},
+	{MEM_256K, MEM_256K, "256 KB"},
+	{MEM_512K, MEM_512K, "512 KB"},
+	{MEM_768K, MEM_512K + MEM_256K, "768 KB"},
+	{MEM_1M, MEM_1M, "1024 KB"},
+	{MEM_2M, MEM_2M, "2 MB"},
+	{MEM_4M, MEM_4M, "4 MB"},
+	{MEM_8M, MEM_8M, "8 MB"},
+	{MEM_16M, MEM_16M, "16 MB"},
+	{-1, 0, ""}
 };
 
 void SetupWin::setmszbox(int idx) {
@@ -2282,7 +2285,7 @@ void SetupWin::setmszbox(int idx) {
 	idx = 0;
 	while (memNameTab[idx].mask > 0) {
 		if (t & memNameTab[idx].mask)
-			ui.mszbox->addItem(memNameTab[idx].name, memNameTab[idx].mask);
+			ui.mszbox->addItem(memNameTab[idx].name, memNameTab[idx].size);
 		idx++;
 	}
 	ui.mszbox->setCurrentIndex(ui.mszbox->findData(size));

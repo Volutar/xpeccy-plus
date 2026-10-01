@@ -59,11 +59,12 @@ void mem_set_bus(Memory* mem, int bw) {
 
 void memSetSize(Memory* mem, int ramSz, int romSz) {
 //	printf("setMemSize %i %i\n",ramSz,romSz);
+	// a size that is not a power of two (a Profi with 768K) is what is fitted,
+	// behind the mask of the next one up
 	if (ramSz > 0) {
 		ramSz = toLimits(ramSz, MEM_256, MEM_4M);
-		ramSz = getNearPower(ramSz);
 		mem->ramSize = ramSz;
-		mem->ramMask = ramSz - 1;
+		mem->ramMask = getNearPower(ramSz) - 1;
 	}
 	if (romSz > 0) {
 		romSz = toLimits(romSz, MEM_256, MEM_512K);

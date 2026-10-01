@@ -899,6 +899,7 @@ int xm_set_hardware(std::string nm) {
 // Both go through here, so what a key means is written once.
 
 static int mac_ram_size(int kb, int mask) {
+	if ((kb == 768) && (mask & MEM_768K)) return MEM_512K + MEM_256K;
 	int sz = kb ? kb : 64;
 	sz = toLimits(toPower(sz << 10), MEM_256, MEM_4M);
 	if ((mask != 0) && (~mask & sz)) {	// the core has no such size
