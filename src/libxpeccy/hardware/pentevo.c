@@ -30,6 +30,8 @@
 #define memPage(_n) reg[0xf8 + (_n)]
 
 #define xregBRKA xreg[0]
+#define xregCode xreg[1]	// the cached opcode word: 8000 | A15..A1, 0 when empty
+#define xregData xreg[2]	// the cached data word
 
 // #xx77 b2..0 picks the atm mode; #EFF7 b0 (16c) and b5 (multicolor) count only
 // in atm mode 011 and cancel each other out (video_modedecode.v). The atm modes
@@ -148,8 +150,42 @@ static void evo_nmi(Computer* comp) {
 	comp->flgNMIS = 1;
 }
 
+// The two words zmem.v keeps between the cpu and the DRAM: the last opcode word
+// and the last data word read from ram, by A15..A1. At 14 MHz a ram read that
+// neither answers waits for the 7 MHz DRAM cycle, 2 or 3 ticks by its phase (as
+// for TSConf). A rom access or any i/o empties both, a write drops a word it hits.
+static void evo_cache_clear(Computer* comp) {
+	comp->xregCode.w = 0;
+	comp->xregData.w = 0;
+}
+
+static void evo_cache_rd(Computer* comp, int adr, int m1) {
+	if (mem_get_page(comp->mem, adr)->type != MEM_RAM) {
+		evo_cache_clear(comp);
+		return;
+	}
+	int tag = 0x8000 | (adr >> 1);
+	if ((comp->xregCode.w == tag) || (comp->xregData.w == tag)) return;
+	if (m1) comp->xregCode.w = tag; else comp->xregData.w = tag;
+	if (comp->hwMul == 4)
+		comp->cpu->t += 2 + ((comp->tickCount + comp->cpu->t) & 1);
+}
+
+static void evo_cache_wr(Computer* comp, int adr) {
+	if (mem_get_page(comp->mem, adr)->type != MEM_RAM) {
+		evo_cache_clear(comp);
+		return;
+	}
+	int tag = 0x8000 | (adr >> 1);
+	if (comp->xregCode.w == tag) comp->xregCode.w = 0;
+	if (comp->xregData.w == tag) comp->xregData.w = 0;
+}
+
 int evoMRd(Computer* comp, int adr, int m1) {
-	if (!m1) return memRd(comp->mem, adr);
+	if (!m1) {
+		evo_cache_rd(comp, adr, 0);
+		return memRd(comp->mem, adr);
+	}
 	int nmient = 0;
 	if (comp->dif->type == DIF_BDI) {
 		int win = (adr >> 14) & 3;
@@ -188,6 +224,10 @@ int evoMRd(Computer* comp, int adr, int m1) {
 		evo_nmi(comp);
 	}
 	comp->flgVDWP = 0;
+	if (nmient)
+		evo_cache_clear(comp);		// nmi_buf_clr
+	else
+		evo_cache_rd(comp, adr, 1);
 	int res = nmient ? 0x00 : memRd(comp->mem, adr);
 	// The second M1 after out (#BE) puts the map back - after this fetch, so
 	// that RETN's own opcode still comes from the handler's page. The count
@@ -196,6 +236,7 @@ int evoMRd(Computer* comp, int adr, int m1) {
 	if (comp->regM1CNT) {
 		comp->regM1CNT--;
 		if ((comp->regM1CNT == 0) && comp->flgVNMI) {
+			evo_cache_clear(comp);
 			comp->flgVNMI = 0;
 			evoMapMem(comp);
 		}
@@ -218,6 +259,7 @@ void evoMWr(Computer* comp, int adr, int val) {
 	}
 	if (comp->flgVDWP && (adr < 0x4000)) return;		// trd emulation page just came in
 	if (evo_wprot(comp, adr)) return;
+	evo_cache_wr(comp, adr);
 	memWr(comp->mem,adr,val);
 }
 
@@ -697,6 +739,7 @@ static void evo_io_stall(Computer* comp, int port) {
 void evoOut(Computer* comp, int port, int val) {
 	evo_shadow(comp);
 	evo_io_stall(comp, port);
+	evo_cache_clear(comp);
 	zx_dev_wr(comp, port, val);
 	if (comp->flgBDI && ((port & 0xff) == 0xfb))	// covox has no shadow term (zports.v covox_wr)
 		sdrvWrite(comp->sdrv, port, val);
@@ -707,6 +750,7 @@ int evoIn(Computer* comp, int port) {
 	int res = -1;
 	evo_shadow(comp);
 	evo_io_stall(comp, port);
+	evo_cache_clear(comp);
 	if (zx_dev_rd(comp, port, &res)) return res;
 	return hwIn(evoCfgPortMap, comp, port);
 }
