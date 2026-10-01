@@ -21,9 +21,8 @@ static int ring_head = 0; // last frame idx
 static int ring_wid = 0;
 static int ring_hei = 0;
 
-// Adaptive modes mix a pixel only after its pattern has held this many frames
-// in a row: a moving picture repeats A,B,A by chance, but not for three periods.
-#define AF_CONFIRM_2C	4
+// Adaptive modes mix a pixel only after its pattern has held for a while: a moving
+// picture repeats A,B,A by chance, but not for three periods. 3C counts triples.
 #define AF_CONFIRM_3C	4
 #define AF_RUN_MAX	15
 // per pixel: frames the 2C pattern has held (low nibble), the 3C one (high)
@@ -40,9 +39,10 @@ static inline unsigned char run_step(unsigned char run, bool hit) {
 #define AF_SHIFT_X	16	// search range, pixels (2 a dot)
 #define AF_SHIFT_Y	8	// search range, rows
 typedef struct {
-	int dx, dy;		// t-2 moved by this is t; 0,0 when the band does not scroll
+	int dx, dy;		// the older frame moved by this is the newer; 0,0 when the band does not scroll
 } afShift;
-static std::vector<afShift> af_bands;
+static std::vector<afShift> af_bands;		// t-2 to t
+static std::vector<afShift> af_bands_ahead;	// t+2 to t
 
 // Picks the band's shift from a sample of its rows. Only a whole-dot half shift
 // can be followed, and only a clear winner over no shift at all is taken.
@@ -52,35 +52,74 @@ static afShift af_find_shift(const uint32_t* cur, int cstride, const uint32_t* o
 	if (y1 > hei) y1 = hei;
 	int xa = AF_SHIFT_X, xb = wid - AF_SHIFT_X;
 	if (xb <= xa) return res;
-	int best = -1, bdx = 0, bdy = 0, cost0 = 0;
+	auto cost = [&](int dx, int dy) {
+		int n = 0;
+		for (int y = y0 + 1; y < y1; y += 3) {	// odd step: rows of both parities
+			int yo = y - dy;
+			if ((yo < 0) || (yo >= hei)) continue;
+			const uint32_t* pc = cur + y * cstride;
+			const uint32_t* po = old + yo * wid - dx;
+			for (int x = xa; x < xb; x += 2)
+				n += (pc[x] != po[x]);
+		}
+		return n;
+	};
+	int cost0 = cost(0, 0);
+	if (cost0 < 16) return res;		// a band that changed little keeps no shift
+	int best = -1, bdx = 0, bdy = 0;
 	for (int dy = -AF_SHIFT_Y; dy <= AF_SHIFT_Y; dy++) {
 		for (int dx = -AF_SHIFT_X; dx <= AF_SHIFT_X; dx += 2) {
-			if (dx && dy) continue;			// along one axis at a time
-			int cost = 0;
-			for (int y = y0 + 1; y < y1; y += 3) {	// odd step: rows of both parities
-				int yo = y - dy;
-				if ((yo < 0) || (yo >= hei)) continue;
-				const uint32_t* pc = cur + y * cstride;
-				const uint32_t* po = old + yo * wid - dx;
-				for (int x = xa; x < xb; x += 2)
-					cost += (pc[x] != po[x]);
-			}
-			if (!dx && !dy) {
-				cost0 = cost;
-			} else if ((best < 0) || (cost < best)) {
-				best = cost;
+			if ((dx && dy) || (!dx && !dy)) continue;	// along one axis at a time
+			int c = cost(dx, dy);
+			if ((best < 0) || (c < best)) {
+				best = c;
 				bdx = dx;
 				bdy = dy;
 			}
 		}
 	}
-	// a band that changed little, or that no shift explains, keeps no shift
-	if ((cost0 < 16) || (best < 0) || (best * 4 >= cost0)) return res;
+	if (best * 4 >= cost0) return res;		// no shift explains the band
 	if ((bdx & 3) || (bdy & 1)) return res;		// half the shift is not a whole dot / row
 	res.dx = bdx;
 	res.dy = bdy;
 	return res;
 }
+
+static void af_fill_shifts(std::vector<afShift>& v, const uint32_t* cur, int cstride, const uint32_t* old, int wid, int hei) {
+	v.resize((hei + AF_BAND - 1) / AF_BAND);
+	for (size_t b = 0; b < v.size(); b++)
+		v[b] = af_find_shift(cur, cstride, old, wid, hei, b * AF_BAND);
+}
+
+// A,B,A across three frames, oldest or newest first alike: c is A in the end
+// frame `far`, `mid` holds B. Tried along the band's shift first, then in place -
+// unless the shift shows the pixel simply moved. On a hit, *mate is B.
+// A shift of an odd number of rows still tells motion, but it is not followed to
+// pair: a picture interleaved by line would meet its other set of lines.
+static inline bool af_triple(uint32_t c, const uint32_t* mid, int ms, const uint32_t* far, int fs, int wid, int hei,
+		int x, int y, const afShift& s, uint32_t* mate) {
+	bool moved = false;
+	if (s.dx || s.dy) {
+		int x2 = x - s.dx, y2 = y - s.dy;
+		if ((x2 >= 0) && (x2 < wid) && (y2 >= 0) && (y2 < hei)) {
+			uint32_t m = mid[(y - s.dy / 2) * ms + x - s.dx / 2];
+			moved = (c == m);
+			if (!moved && !(s.dy & 3) && (c == far[y2 * fs + x2])) {
+				*mate = m;
+				return true;
+			}
+		}
+	}
+	if (moved) return false;
+	uint32_t m = mid[y * ms + x];
+	if ((c != m) && (c == far[y * fs + x])) {
+		*mate = m;
+		return true;
+	}
+	return false;
+}
+
+#define AF_SPAN		6	// frames a pixel has to alternate for, around this one
 
 static void ring_rotate(void) {
 	ring_head = (ring_head + RING_FRAMES - 1) % RING_FRAMES;
@@ -182,7 +221,10 @@ static bool rgb_has_multi_component(uint32_t c) {
 // nothing is spent on the raster around it.
 // reset: the frame before this one was not mixed (fast mode, rewind, mixing
 // off), so the history does not lead up to it.
-void scrMix(unsigned char* src, unsigned char* dst, int wid, int hei, int stride, double ratio, float gamma, int mode, int reset) {
+// ahead: the AF_AHEAD frames that follow, run ahead, or NULL; they let a flicker
+// that has just started be mixed sooner.
+void scrMix(unsigned char* src, unsigned char* dst, int wid, int hei, int stride, double ratio, float gamma, int mode, int reset,
+		const uint32_t* ahead) {
 	const double ratio_x2 = ratio * 2.0;
 	int size = wid * hei;			// pixels in one frame of the ring
 
@@ -220,10 +262,11 @@ void scrMix(unsigned char* src, unsigned char* dst, int wid, int hei, int stride
 	int x = 0, y = 0;
 	const afShift* band = NULL;
 	bool adaptive = (mode == AF_2C_ADAPTIVE) || (mode == AF_3C_ADAPTIVE);
+	if (!adaptive) ahead = NULL;
+	const uint32_t* ahead2 = ahead ? ahead + size : NULL;	// t+2; size counts down below
 	if (adaptive) {
-		af_bands.resize((hei + AF_BAND - 1) / AF_BAND);
-		for (size_t b = 0; b < af_bands.size(); b++)
-			af_bands[b] = af_find_shift(p0, stride / 4, f2, wid, hei, b * AF_BAND);
+		af_fill_shifts(af_bands, p0, stride / 4, f2, wid, hei);
+		if (ahead) af_fill_shifts(af_bands_ahead, p0, stride / 4, ahead2, wid, hei);
 		band = af_bands.data();
 	}
 	ring_rotate();
@@ -237,33 +280,28 @@ void scrMix(unsigned char* src, unsigned char* dst, int wid, int hei, int stride
 		const uint32_t c5 = *p5;
 		uint32_t output_color = c0;
 		bool multi_components;
-		bool aba, per3;
-		unsigned char run2, run3;
+		bool aba = false, per3, mix2 = false;
+		unsigned char run2 = 0, run3;
 		uint32_t mate = c1;		// what c0 is mixed with in 2C
 		if (adaptive) {
-			const afShift& s = band[y / AF_BAND];
-			bool moved = false;		// t-1 shifted is this pixel: plain motion
-			aba = false;
-			if (s.dx || s.dy) {
-				int x2 = x - s.dx, y2 = y - s.dy;
-				int xh = x - s.dx / 2, yh = y - s.dy / 2;
-				if ((x2 >= 0) && (x2 < wid) && (y2 >= 0) && (y2 < hei)) {
-					uint32_t m = f1[yh * wid + xh];
-					moved = (c0 == m);
-					if ((c0 == f2[y2 * wid + x2]) && !moved) {
-						aba = true;
-						mate = m;
-					}
-				}
-			}
-			if (!aba && !moved) aba = (c0 == c2 && c0 != c1);
+			aba = af_triple(c0, f1, wid, f2, wid, wid, hei, x, y, band[y / AF_BAND], &mate);
+			run2 = run_step(*pr & 0x0F, aba);
+			// frames alternating around this one: run2+2 back to here, and with the
+			// same pair going on ahead, two more
+			int span = aba ? run2 + 2 : 0;
+			uint32_t mf;
+			if (aba && (span < AF_SPAN) && ahead
+					&& af_triple(c0, ahead, wid, ahead2, wid, wid, hei, x, y, af_bands_ahead[y / AF_BAND], &mf)
+					&& (mf == mate))
+				span += 2;
+			mix2 = (span >= AF_SPAN);
 		}
 
 		switch (mode) {
 		// 2C+3C (adaptive)
 		case AF_3C_ADAPTIVE:
 			// skip static pixels
-			if (c0 == c1 && c0 == c2 && !aba) {
+			if (c0 == c1 && c0 == c2 && !mix2) {
 				*pr = 0;
 				break;
 			}
@@ -274,12 +312,11 @@ void scrMix(unsigned char* src, unsigned char* dst, int wid, int hei, int stride
 								rgb_has_multi_component(c2);
 			// static RGB-image check
 			per3 = !multi_components && c0 == c3 && c1 == c4 && c2 == c5;
-			run2 = run_step(*pr & 0x0F, aba);
 			run3 = run_step(*pr >> 4, per3);
 			*pr = run2 | (run3 << 4);
 			if (per3 && run3 >= AF_CONFIRM_3C) {
 				output_color = blend_3c(c0, c1, c2, ratio_x2);
-			} else if (aba && run2 >= AF_CONFIRM_2C) {
+			} else if (mix2) {
 				// fallback to 2C blending
 				output_color = blend_2c(c0, mate, ratio);
 			}
@@ -287,9 +324,8 @@ void scrMix(unsigned char* src, unsigned char* dst, int wid, int hei, int stride
 
 		// 2C only (adaptive)
 		case AF_2C_ADAPTIVE:
-			run2 = run_step(*pr & 0x0F, aba);
 			*pr = run2;
-			if (aba && run2 >= AF_CONFIRM_2C)
+			if (mix2)
 				output_color = blend_2c(c0, mate, ratio);
 			break;
 

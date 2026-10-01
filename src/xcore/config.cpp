@@ -245,6 +245,7 @@ void saveConfig() {
 	fprintf(cfile, "noflick = %i\n", noflic);
 	fprintf(cfile, "noflick.mode = %i\n", noflicMode);
 	fprintf(cfile, "noflick.gamma = %f\n", noflicGamma);
+	fprintf(cfile, "noflick.ahead = %s\n", YESNO(noflicAhead));
 	fprintf(cfile, "shader = %s\n", conf.vid.shader.c_str());
 	fprintf(cfile, "\n[SOUND]\n\n");
 	fprintf(cfile, "enabled = %s\n", YESNO(conf.snd.enabled));
@@ -958,6 +959,7 @@ void loadConfig() {
 					if (pnam=="noflic") noflic = arg.b ? 50 : 25;		// old parameter
 					if (pnam=="noflick") noflic = getRanged(arg.s, 0, 50);	// new parameter
 					if (pnam=="noflick.mode") noflicMode = arg.i;
+					if (pnam=="noflick.ahead") noflicAhead = (arg.b || (arg.i > 0)) ? 1 : 0;
 					if (pnam=="noflick.gamma") {
 						noflicGamma = arg.d;
 						if (noflicGamma < 1) noflicGamma = 1;

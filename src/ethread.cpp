@@ -2,6 +2,7 @@
 
 #include <QWaitCondition>
 #include <QTime>
+#include <vector>
 
 #include "ethread.h"
 #include "xcore/xcore.h"
@@ -361,16 +362,15 @@ static Computer* raOwner = NULL;	// what raBroken was decided about
 static int mixFrame = -2;		// conf.vid.fcount of the last frame antiflicker mixed
 static int raBroken = 0;		// the snapshot cannot be taken at all: stop trying
 
-// 1 when the machine has been run on and has to be wound back afterwards.
-// xstate_safe() answers for everything the snapshot does not carry; what is
-// left here is this side's own policy.
-int xThread::runAhead(Computer* comp) {
+// The snapshot run-ahead and the antiflicker's look ahead wind back to, when this
+// frame allows one. xstate_safe() answers for everything the snapshot does not
+// carry; what is left here is this side's own policy.
+static int ra_snapshot(Computer* comp, int finish) {
 	if (comp != raOwner) {		// a new machine may well fit where the last one did not
 		raOwner = comp;
 		raBroken = 0;
 	}
 	if (finish || raBroken) return 0;
-	if (conf.emu.runahead < 1) return 0;
 	// fast forward already runs several frames per frame shown: no room for a second pass
 	if (conf.emu.fast || (conf.emu.speed > 1.0) || conf.emu.pause || comp->flgDBG || rewind_active()) return 0;
 	if (autostart_busy()) return 0;		// the typist counts frames of its own
@@ -380,14 +380,59 @@ int xThread::runAhead(Computer* comp) {
 		raBroken = 1;
 		return 0;
 	}
-	for (int i = 0; i < conf.emu.runahead; i++) {
-		if (!xstate_run_frame(comp)) {
-			xlog(XLG_CORE, XLL_WARN, "run ahead: the machine does not finish a frame, giving up");
-			raBroken = 1;
-			break;
-		}
-	}
 	return 1;
+}
+
+static int ra_run_frame(Computer* comp) {
+	if (xstate_run_frame(comp)) return 1;
+	xlog(XLG_CORE, XLL_WARN, "run ahead: the machine does not finish a frame, giving up");
+	raBroken = 1;
+	return 0;
+}
+
+// 1 when the machine has been run on and has to be wound back afterwards.
+int xThread::runAhead(Computer* comp) {
+	if (conf.emu.runahead < 1) return 0;
+	if (!ra_snapshot(comp, finish)) return 0;
+	for (int i = 0; (i < conf.emu.runahead) && ra_run_frame(comp); i++);
+	return 1;
+}
+
+// The adaptive antiflicker's look ahead: the next frames are run on the same
+// snapshot and handed over as pictures, then the machine and the picture shown go
+// back as they were. On top of run-ahead it carries on from the frame shown.
+static std::vector<uint32_t> afShown;
+static std::vector<uint32_t> afFrames;
+
+static uint32_t* af_crop(Video* vid) {
+	return (uint32_t*)(bufimg + vid->lcut.y * bytesPerLine + vid->lcut.x * 8);
+}
+
+static void af_copy(uint32_t* dst, int dstride, const uint32_t* src, int sstride, int wid, int hei) {
+	for (int y = 0; y < hei; y++)
+		memcpy(dst + y * dstride, src + y * sstride, wid * 4);
+}
+
+// AF_AHEAD frames after the one shown, or NULL
+static const uint32_t* af_look_ahead(Computer* comp, int wound, int finish) {
+	if (!noflicAhead || (noflic < 1)) return NULL;
+	if ((noflicMode != AF_2C_ADAPTIVE) && (noflicMode != AF_3C_ADAPTIVE)) return NULL;
+	if (!wound && !ra_snapshot(comp, finish)) return NULL;
+	Video* vid = comp->vid;
+	int wid = vid->vsze.x * 2;
+	int hei = vid->vsze.y;
+	int line = bytesPerLine / 4;
+	afShown.resize(wid * hei);
+	afFrames.resize(AF_AHEAD * wid * hei);
+	af_copy(afShown.data(), wid, af_crop(vid), line, wid, hei);
+	int got = 0;
+	while ((got < AF_AHEAD) && ra_run_frame(comp)) {
+		af_copy(afFrames.data() + got * wid * hei, wid, af_crop(vid), line, wid, hei);
+		got++;
+	}
+	if (!wound) xstate_load(raState, comp);
+	af_copy(af_crop(vid), line, afShown.data(), wid, wid, hei);	// the frames run on drew over it
+	return (got == AF_AHEAD) ? afFrames.data() : NULL;
 }
 
 void xThread::emuCycle(Computer* comp) {
@@ -490,9 +535,10 @@ void xThread::emuCycle(Computer* comp) {
 // process noflic/scanlines (if !fast ???)
 // buffers is already switches, bufimg - just painted (greyscale, if flag is set), scrimg - new
 			if (!conf.emu.fast && (noflic > 0)) {
-				scrMix(pscr, bufimg + comp->vid->lcut.y * bytesPerLine + comp->vid->lcut.x * 8,
+				const uint32_t* ahead = af_look_ahead(comp, wound, finish);
+				scrMix(pscr, (unsigned char*)af_crop(comp->vid),
 					comp->vid->vsze.x * 2, comp->vid->vsze.y, bytesPerLine,
-					noflic / 100.0, noflicGamma, noflicMode, conf.vid.fcount != mixFrame + 1);
+					noflic / 100.0, noflicGamma, noflicMode, conf.vid.fcount != mixFrame + 1, ahead);
 				mixFrame = conf.vid.fcount;
 			}
 
