@@ -17,6 +17,7 @@
 #define reg8F	reg[20]
 #define regM1CNT reg[21]
 #define regFFW	reg[22]		// last write to the disk system register #FF
+#define regHALF	reg[23]		// 14 MHz: a fclk of DRAM wait not yet a whole tick
 
 #define flgVDOS	flag[100]	// trd emulation: ram page FE @ 0x0000
 #define flgVNMI flag[101]	// in NMI: ram page FF @ 0x0000
@@ -152,8 +153,10 @@ static void evo_nmi(Computer* comp) {
 
 // The two words zmem.v keeps between the cpu and the DRAM: the last opcode word
 // and the last data word read from ram, by A15..A1. At 14 MHz a ram read that
-// neither answers waits for the 7 MHz DRAM cycle, 2 or 3 ticks by its phase (as
-// for TSConf). A rom access or any i/o empties both, a write drops a word it hits.
+// neither answers waits for the 7 MHz DRAM cycle: 6..3 fclk for an opcode and
+// 5..2 for data by the phase of the 4-fclk cycle it starts in (zmem.v wait
+// tables). A tick is 2 fclk, so an odd one is carried to the next wait. A rom
+// access or any i/o empties both words, a write drops a word it hits.
 static void evo_cache_clear(Computer* comp) {
 	comp->xregCode.w = 0;
 	comp->xregData.w = 0;
@@ -167,8 +170,12 @@ static void evo_cache_rd(Computer* comp, int adr, int m1) {
 	int tag = 0x8000 | (adr >> 1);
 	if ((comp->xregCode.w == tag) || (comp->xregData.w == tag)) return;
 	if (m1) comp->xregCode.w = tag; else comp->xregData.w = tag;
-	if (comp->hwMul == 4)
-		comp->cpu->t += 2 + ((comp->tickCount + comp->cpu->t) & 1);
+	if (comp->hwMul == 4) {
+		int phase = (((comp->tickCount + comp->cpu->t) & 1) << 1) + comp->regHALF;	// fclk into the cycle
+		int wait = comp->regHALF + (m1 ? 6 : 5) - (phase & 3);
+		comp->cpu->t += wait >> 1;
+		comp->regHALF = wait & 1;
+	}
 }
 
 static void evo_cache_wr(Computer* comp, int adr) {
