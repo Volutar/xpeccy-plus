@@ -38,7 +38,7 @@ void prfMapMem(Computer* comp) {
 void prf_init(Computer* comp) {
 	zx_init(comp);
 	kbd_set_type(comp->keyb, KBD_PROFI);
-	comp->waitDebt = 0;
+	comp->waitDebt = comp->waitPaid = 0;
 }
 
 // Turbo (v3.2 schematic). The cpu and the video take turns at a 3.5 MHz DRAM
@@ -66,10 +66,9 @@ static void prf_cont(Computer* comp, int mreq) {
 	comp->cpu->t += odd ? 3 : 2;
 }
 
-// with HLD up an opcode run took twice its turbo ticks - owed to the next bus cycle
+// HLD up drops the turbo
 void prfSync(Computer* comp, int ns) {
-	if ((comp->hwMul > 1) && prf_hld(comp))
-		comp->waitDebt += ns_to_ticks_round(comp, ns);
+	comp_owe(comp, ns, (comp->hwMul > 1) && prf_hld(comp));
 	zx_sync(comp, ns);
 }
 

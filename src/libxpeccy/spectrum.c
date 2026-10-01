@@ -821,6 +821,7 @@ static void comp_cont(void* ptr, int mreq) {
 static void comp_cont_hw(void* ptr, int mreq) {
 	Computer* comp = (Computer*)ptr;
 	comp->cpu->t += comp->waitDebt;
+	comp->waitPaid += comp->waitDebt;
 	comp->waitDebt = 0;
 	vid_sync_lazy(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
 	res4 = comp->cpu->t;
