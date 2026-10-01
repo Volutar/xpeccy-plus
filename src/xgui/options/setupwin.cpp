@@ -512,15 +512,10 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.cbNoflicMode->addItem("2-frames (adaptive)", AF_2C_ADAPTIVE);
 	ui.cbNoflicMode->addItem("3-frames (fullscreen)", AF_3C_FULL);
 	ui.cbNoflicMode->addItem("2-/3-frames (adaptive)", AF_3C_ADAPTIVE);
-	// in the column the Picture group keeps its check boxes in, so they line up
-	cbNoflicAhead = new QCheckBox(tr("Look ahead"));
-	cbNoflicAhead->setToolTip(tr("Adaptive modes: frames run ahead to catch a flicker as it starts"));
-	QWidget* afbox = new QWidget;
-	afbox->setFixedWidth(ui.picOptions->maximumWidth());
-	QVBoxLayout* aflay = new QVBoxLayout(afbox);
-	aflay->setContentsMargins(0, 0, 0, 0);
-	aflay->addWidget(cbNoflicAhead);
-	ui.antiFlickerGridLayout->addWidget(afbox, 1, 4);
+	// the check box columns as wide as Recording's buttons, so every group's
+	// fields end at one edge
+	foreach(QWidget* col, QList<QWidget*>() << ui.picRight << ui.afRight << ui.ssRight)
+		col->setFixedWidth(ui.machButtons->maximumWidth());
 // emulation
 	ui.cbRunAhead->addItem("Off", 0);
 	ui.cbRunAhead->addItem("1", 1);
@@ -894,7 +889,7 @@ void SetupWin::start() {
 	setRFIndex(ui.cbScale, conf.vid.scale, 1);	// x2 if the file says something odd
 	ui.sldNoflic->setValue(noflic); chaflc();
 	ui.cbNoflicMode->setCurrentIndex(noflicMode);
-	cbNoflicAhead->setChecked(noflicAhead);
+	ui.cbNoflicAhead->setChecked(noflicAhead);
 	ui.sbNoflicGamma->setValue(noflicGamma);
 	ui.grayscale->setChecked(greyScale);
 //	ui.cbScanlines->setChecked(scanlines);
@@ -1109,7 +1104,7 @@ void SetupWin::apply() {
 	conf.vid.scale = getRFIData(ui.cbScale);
 	noflic = ui.sldNoflic->value();
 	noflicMode = ui.cbNoflicMode->currentIndex();
-	noflicAhead = cbNoflicAhead->isChecked() ? 1 : 0;
+	noflicAhead = ui.cbNoflicAhead->isChecked() ? 1 : 0;
 	noflicGamma = ui.sbNoflicGamma->value();
 	vid_set_grey(ui.grayscale->isChecked() ? 1 : 0);
 //	scanlines = ui.cbScanlines->isChecked() ? 1 : 0;
@@ -2834,7 +2829,7 @@ void SetupWin::buildRecording() {
 // the first column of the Video page's groups, one width for all of them
 void SetupWin::alignVideoLabels() {
 	QList<QLabel*> col = QList<QLabel*>() << ui.label_3 << ui.labPalPreset << ui.labShader
-		<< ui.label_12 << ui.antiflickerModeLabel << ui.label_5 << ui.label_13 << ui.label_7
+		<< ui.label_12 << ui.antiflickerModeLabel << ui.label_13 << ui.label_5
 		<< labRecSrc << labRecOut << labRecFfm;
 	// Picture sets its column in the .ui, a label may be wider in a bigger font
 	int wid = ui.gridLayout_2->columnMinimumWidth(0);

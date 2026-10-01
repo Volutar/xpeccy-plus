@@ -39,12 +39,6 @@
        <property name="enabled">
         <bool>true</bool>
        </property>
-       <property name="minimumSize">
-        <size>
-         <width>493</width>
-         <height>0</height>
-        </size>
-       </property>
        <property name="tabShape">
         <enum>QTabWidget::Rounded</enum>
        </property>
@@ -1426,83 +1420,86 @@ none - nothing comes back (+2A, +3)</string>
                </spacer>
               </item>
               <item>
-               <widget class="QWidget" name="picOptions" native="true">
-                <property name="minimumSize">
-                 <size>
-                  <width>80</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>80</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <layout class="QVBoxLayout" name="verticalLayout_23">
-                 <property name="leftMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="topMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="rightMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="bottomMargin">
-                  <number>0</number>
-                 </property>
+               <widget class="QWidget" name="picRight" native="true">
+                <layout class="QHBoxLayout" name="picRightLayout">
+                 <property name="leftMargin"><number>0</number></property>
+                 <property name="topMargin"><number>0</number></property>
+                 <property name="rightMargin"><number>0</number></property>
+                 <property name="bottomMargin"><number>0</number></property>
                  <item>
-                  <widget class="QComboBox" name="cbScale">
-                   <property name="toolTip">
-                    <string>Window size: screen pixels per emulated pixel.
-Integer scaling, so every pixel is the same size</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="cbFullscreen">
-                   <property name="toolTip">
-                    <string>Fill the screen with the picture. Alt+Enter does the same</string>
-                   </property>
-                   <property name="text">
-                    <string>Fullscreen</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="cbKeepRatio">
-                   <property name="toolTip">
-                    <string>Fullscreen: keep the picture's shape and show more
-border, instead of stretching it</string>
-                   </property>
-                   <property name="text">
-                    <string>Keep ratio</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="grayscale">
-                   <property name="toolTip">
-                    <string>Draw the picture in shades of gray</string>
-                   </property>
-                   <property name="text">
-                    <string>Gray scale</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <spacer name="verticalSpacer_pic">
+                  <widget class="Line" name="picLine">
                    <property name="orientation">
                     <enum>Qt::Vertical</enum>
                    </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>5</height>
-                    </size>
-                   </property>
-                  </spacer>
+                  </widget>
+                 </item>
+                 <item>
+                   <layout class="QVBoxLayout" name="verticalLayout_23">
+                    <property name="leftMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>0</number>
+                    </property>
+                    <item>
+                     <widget class="QComboBox" name="cbScale">
+                      <property name="toolTip">
+                       <string>Window size: screen pixels per emulated pixel.
+Integer scaling, so every pixel is the same size</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QCheckBox" name="cbFullscreen">
+                      <property name="toolTip">
+                       <string>Fill the screen with the picture. Alt+Enter does the same</string>
+                      </property>
+                      <property name="text">
+                       <string>Fullscreen</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QCheckBox" name="cbKeepRatio">
+                      <property name="toolTip">
+                       <string>Fullscreen: keep the picture's shape and show more
+border, instead of stretching it</string>
+                      </property>
+                      <property name="text">
+                       <string>Keep ratio</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QCheckBox" name="grayscale">
+                      <property name="toolTip">
+                       <string>Draw the picture in shades of gray</string>
+                      </property>
+                      <property name="text">
+                       <string>Gray scale</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <spacer name="verticalSpacer_pic">
+                      <property name="orientation">
+                       <enum>Qt::Vertical</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>20</width>
+                        <height>5</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                   </layout>
                  </item>
                 </layout>
                </widget>
@@ -1515,117 +1512,186 @@ border, instead of stretching it</string>
              <property name="title">
               <string>Anti-flicker</string>
              </property>
-             <layout class="QGridLayout" name="antiFlickerGridLayout">
-              <item row="0" column="0">
-               <widget class="QLabel" name="label_12">
-                <property name="toolTip">
-                 <string>How much of the frames before is left in the picture</string>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>55</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>Intensity</string>
-                </property>
-               </widget>
+             <layout class="QHBoxLayout" name="afLayout">
+              <item>
+               <layout class="QGridLayout" name="antiFlickerGridLayout" columnstretch="0,0,1">
+                <item row="0" column="0">
+                 <widget class="QLabel" name="label_12">
+                  <property name="toolTip">
+                   <string>How much of the frames before is left in the picture</string>
+                  </property>
+                  <property name="text">
+                   <string>Intensity</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="xSlider" name="sldNoflic">
+                  <property name="minimumSize">
+                   <size>
+                    <width>200</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>200</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                  <property name="toolTip">
+                   <string>How much of the frames before is left in the picture</string>
+                  </property>
+                  <property name="maximum">
+                   <number>50</number>
+                  </property>
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="tickPosition">
+                   <enum>QSlider::TicksBelow</enum>
+                  </property>
+                  <property name="tickInterval">
+                   <number>5</number>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QLabel" name="labNoflic">
+                  <property name="text">
+                   <string>%</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="antiflickerModeLabel">
+                  <property name="toolTip">
+                   <string>Blending method:
+2-frames (Gigascreen)
+3-frames (3Color)</string>
+                  </property>
+                  <property name="text">
+                   <string>Mode</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1" colspan="2">
+                 <layout class="QHBoxLayout" name="afModeLayout">
+                  <item>
+                   <widget class="QComboBox" name="cbNoflicMode">
+                    <property name="toolTip">
+                     <string>Blending method:
+2-frames (Gigascreen)
+3-frames (3Color)</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="antiflickerGammaLabel">
+                    <property name="toolTip">
+                     <string>Gamma the frames are blended with. Typical: 1.8-2.4
+(2.2 is close to a CRT, 1.0 blends linearly)</string>
+                    </property>
+                    <property name="text">
+                     <string>Gamma</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QDoubleSpinBox" name="sbNoflicGamma">
+                    <property name="toolTip">
+                     <string>Gamma the frames are blended with. Typical: 1.8-2.4
+(2.2 is close to a CRT, 1.0 blends linearly)</string>
+                    </property>
+                    <property name="decimals">
+                     <number>2</number>
+                    </property>
+                    <property name="minimum">
+                     <double>1.000000000000000</double>
+                    </property>
+                    <property name="maximum">
+                     <double>3.000000000000000</double>
+                    </property>
+                    <property name="singleStep">
+                     <double>0.100000000000000</double>
+                    </property>
+                    <property name="value">
+                     <double>2.200000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <spacer name="afModeSpacer">
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>0</width>
+                      <height>0</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
               </item>
-              <item row="0" column="1" colspan="3">
-               <widget class="xSlider" name="sldNoflic">
-                <property name="toolTip">
-                 <string>How much of the frames before is left in the picture</string>
-                </property>
-                <property name="maximum">
-                 <number>50</number>
-                </property>
+              <item>
+               <spacer name="afSpacer">
                 <property name="orientation">
                  <enum>Qt::Horizontal</enum>
                 </property>
-                <property name="tickPosition">
-                 <enum>QSlider::TicksBelow</enum>
-                </property>
-                <property name="tickInterval">
-                 <number>5</number>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="4">
-               <widget class="QLabel" name="labNoflic">
-                <property name="maximumSize">
+                <property name="sizeHint" stdset="0">
                  <size>
-                  <width>83</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>%</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="0">
-               <widget class="QLabel" name="antiflickerModeLabel">
-                <property name="toolTip">
-                 <string>Blending method:
-2-frames (Gigascreen)
-3-frames (3Color)</string>
-                </property>
-                <property name="text">
-                 <string>Mode</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QComboBox" name="cbNoflicMode">
-                <property name="toolTip">
-                 <string>Blending method:
-2-frames (Gigascreen)
-3-frames (3Color)</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="2">
-               <widget class="QLabel" name="antiflickerGammaLabel">
-                <property name="minimumSize">
-                 <size>
-                  <width>30</width>
+                  <width>24</width>
                   <height>0</height>
                  </size>
                 </property>
-                <property name="toolTip">
-                 <string>Gamma the frames are blended with. Typical: 1.8-2.4
-(2.2 is close to a CRT, 1.0 blends linearly)</string>
-                </property>
-                <property name="text">
-                 <string>Gamma</string>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
+               </spacer>
               </item>
-              <item row="1" column="3">
-               <widget class="QDoubleSpinBox" name="sbNoflicGamma">
-                <property name="toolTip">
-                 <string>Gamma the frames are blended with. Typical: 1.8-2.4
-(2.2 is close to a CRT, 1.0 blends linearly)</string>
-                </property>
-                <property name="decimals">
-                 <number>2</number>
-                </property>
-                <property name="minimum">
-                 <double>1.000000000000000</double>
-                </property>
-                <property name="maximum">
-                 <double>3.000000000000000</double>
-                </property>
-                <property name="singleStep">
-                 <double>0.100000000000000</double>
-                </property>
-                <property name="value">
-                 <double>2.200000000000000</double>
-                </property>
+              <item>
+               <widget class="QWidget" name="afRight" native="true">
+                <layout class="QHBoxLayout" name="afRightLayout">
+                 <property name="leftMargin"><number>0</number></property>
+                 <property name="topMargin"><number>0</number></property>
+                 <property name="rightMargin"><number>0</number></property>
+                 <property name="bottomMargin"><number>0</number></property>
+                 <item>
+                  <widget class="Line" name="afLine">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <layout class="QVBoxLayout" name="afColumn">
+                   <item>
+                    <widget class="QCheckBox" name="cbNoflicAhead">
+                     <property name="toolTip">
+                      <string>Adaptive modes: frames run ahead to catch a flicker as it starts</string>
+                     </property>
+                     <property name="text">
+                      <string>Look ahead</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="afColSpacer">
+                     <property name="orientation">
+                      <enum>Qt::Vertical</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>0</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
                </widget>
               </item>
              </layout>
@@ -1638,62 +1704,71 @@ border, instead of stretching it</string>
              </property>
              <layout class="QHBoxLayout" name="horizontalLayout_22">
               <item>
-               <layout class="QVBoxLayout" name="verticalLayout_31">
-                <item>
-                 <layout class="QGridLayout" name="gridLayout_3">
-                 <item row="0" column="1">
+               <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,1">
+                <item row="0" column="0">
+                 <widget class="QLabel" name="label_13">
+                  <property name="text">
+                   <string>Output</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <layout class="QHBoxLayout" name="horizontalLayout_24">
+                  <item>
+                   <widget class="QLineEdit" name="pathle">
+                    <property name="toolTip">
+                     <string>Folder screenshots are saved in</string>
+                    </property>
+                    <property name="readOnly">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QToolButton" name="pathtb">
+                    <property name="toolTip">
+                     <string>Pick the folder</string>
+                    </property>
+                    <property name="icon">
+                     <iconset resource="../xpeccy.qrc">
+                      <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="label_5">
+                  <property name="text">
+                   <string>Format</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <layout class="QHBoxLayout" name="horizontalLayout_3">
+                  <item>
                    <widget class="QComboBox" name="ssfbox">
                     <property name="toolTip">
                      <string>File format screenshots are saved in</string>
                     </property>
                    </widget>
                   </item>
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="label_5">
-                    <property name="text">
-                     <string>Format</string>
+                  <item>
+                   <spacer name="ssFmtSpacer">
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
                     </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="0">
-                   <widget class="QLabel" name="label_13">
-                    <property name="text">
-                     <string>Path</string>
+                    <property name="sizeType">
+                     <enum>QSizePolicy::Fixed</enum>
                     </property>
-                   </widget>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>8</width>
+                      <height>0</height>
+                     </size>
+                    </property>
+                   </spacer>
                   </item>
-                  <item row="1" column="1">
-                   <layout class="QHBoxLayout" name="horizontalLayout_24">
-                    <item>
-                     <widget class="QLineEdit" name="pathle">
-                      <property name="toolTip">
-                       <string>Folder screenshots are saved in</string>
-                      </property>
-                      <property name="readOnly">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QToolButton" name="pathtb">
-                      <property name="toolTip">
-                       <string>Pick the folder</string>
-                      </property>
-                      <property name="text">
-                       <string>...</string>
-                      </property>
-                      <property name="icon">
-                       <iconset resource="../xpeccy.qrc">
-                        <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </item>
-                 </layout>
-                </item>
-                <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_3">
                   <item>
                    <widget class="QLabel" name="label_7">
                     <property name="text">
@@ -1736,8 +1811,8 @@ border, instead of stretching it</string>
                     </property>
                     <property name="sizeHint" stdset="0">
                      <size>
-                      <width>40</width>
-                      <height>20</height>
+                      <width>0</width>
+                      <height>0</height>
                      </size>
                     </property>
                    </spacer>
@@ -1747,45 +1822,61 @@ border, instead of stretching it</string>
                </layout>
               </item>
               <item>
-               <widget class="Line" name="line_2">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
+               <widget class="QWidget" name="ssRight" native="true">
+                <layout class="QHBoxLayout" name="ssRightLayout">
+                 <property name="leftMargin"><number>0</number></property>
+                 <property name="topMargin"><number>0</number></property>
+                 <property name="rightMargin"><number>0</number></property>
+                 <property name="bottomMargin"><number>0</number></property>
+                 <item>
+                  <widget class="Line" name="ssLine">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <layout class="QVBoxLayout" name="ssColumn">
+                   <item>
+                    <widget class="QCheckBox" name="ssNoLeds">
+                     <property name="toolTip">
+                      <string>Leave the indicators out of the screenshot</string>
+                     </property>
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>No LEDs</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="ssNoBord">
+                     <property name="toolTip">
+                      <string>Screen only, without the border</string>
+                     </property>
+                     <property name="text">
+                      <string>No border</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="ssColSpacer">
+                     <property name="orientation">
+                      <enum>Qt::Vertical</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>0</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
                </widget>
-              </item>
-              <item>
-               <layout class="QVBoxLayout" name="verticalLayout_7">
-                <item>
-                 <widget class="QCheckBox" name="ssNoLeds">
-                  <property name="toolTip">
-                   <string>Leave the indicators out of the screenshot</string>
-                  </property>
-                  <property name="enabled">
-                   <bool>false</bool>
-                  </property>
-                  <property name="text">
-                   <string>No LEDs</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="ssNoBord">
-                  <property name="toolTip">
-                   <string>Screen only, without the border</string>
-                  </property>
-                  <property name="text">
-                   <string>No border</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLabel" name="label_26">
-                  <property name="text">
-                   <string/>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
               </item>
              </layout>
             </widget>

@@ -56,6 +56,7 @@ before that point is upstream's history and is not repeated here.
   pixel is mixed only once it has flickered for a few frames, a scrolling two-page picture is
   mixed along its movement, and the first frame after fast mode or rewind is clean. Look ahead,
   beside the gamma, catches a flicker sooner by running the next frames in advance.
+  The 2-/3-frame adaptive mode is now the default.
 
 - **Clearer gamepad binding window**: the pad's buttons have plain names ("Right trigger",
   "D-pad up"), and the choice follows the field you click into.
@@ -69,12 +70,18 @@ before that point is upstream's history and is not repeated here.
 - **The Drives menu shows a folder icon for opening a folder** and the device's own for an
   image.
 
+- **A tidier Video page in Options**: the check boxes of every group stand in one column, and
+  the screenshot folder is set the way the recording one is.
+
 ### Fixed
 
 - **Snapshots no longer crash soon after loading.** A program timed to the interrupt took an
   extra one on load. A `.z80` now comes back exactly where it was saved; a `.sna` keeps no
   place in the frame, so F2 saves one at the frame's interrupt, and says so on screen when the
   machine was paused. The save dialog suggests `.z80`.
+
+- **The Options tabs sit on a base line in every bundled style**, and separator lines are no
+  longer near-black in the dark ones.
 
 - **Radio buttons keep their place when checked** in every bundled style.
 

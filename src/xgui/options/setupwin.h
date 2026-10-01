@@ -124,7 +124,6 @@ class SetupWin : public QDialog {
 		QLineEdit* leRecName;
 		QTextEdit* teRecCmd;
 		QLabel *labRecSrc, *labRecOut, *labRecFfm, *labRecSize, *labRecFmt;
-		QCheckBox* cbNoflicAhead;
 		QToolButton* btnRecGet;
 		xElideLabel* labRecName;
 		int recBoxKeep = 0;	// the container picked for a codec that has a choice
