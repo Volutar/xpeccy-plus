@@ -161,11 +161,16 @@ int evoMRd(Computer* comp, int adr, int m1) {
 			comp->hw->mapMem(comp);		// dos feeds the rom pages of both maps
 		}
 		// enter TR-DOS: M1 from offset #3Dxx of a window whose map 1
-		// entry is rom with the dos7ffd bit set
-		if (!comp->flgDOS && ((adr & 0x3f00) == 0x3d00) && comp->flgROM &&
+		// entry is rom with the dos7ffd bit set. Every such fetch, in DOS
+		// already or not, holds the clock for 4 fclk so the rom can answer
+		// (atm_pager.v zclk_stall): a 7 MHz tact, two ticks at 14 MHz.
+		if (((adr & 0x3f00) == 0x3d00) && comp->flgROM &&
 				((comp->memFlag(4 | win) & 0xc0) == 0x80)) {
-			comp->flgDOS = 1;
-			comp->hw->mapMem(comp);
+			comp->cpu->t += (comp->hwMul == 4) ? 2 : 1;
+			if (!comp->flgDOS) {
+				comp->flgDOS = 1;
+				comp->hw->mapMem(comp);
+			}
 		}
 	}
 	// The NMI handler's page comes in on the fetch from 0x0066, and that fetch
