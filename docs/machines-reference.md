@@ -113,6 +113,8 @@ say where in the line to about 10 T. A timing test run on that board (`build/pro
 a 320-line frame, 71 680 T: every figure it printed came out 1.0256 times short of the model,
 which is that frame over the 69 888 the test assumed - and with this layout the emulator prints
 the same sixteen figures to the hundredth. Both agree with the `FB0579B6` PROM family above.
+Tact Meter 1.0 (Strunov, 2006) on the same board reads 71 680 T per interrupt at 3.5 MHz and,
+in turbo, 143 206 for code in ROM and 88 208 for code in RAM; the emulator reads the same.
 
 The v5 PROM (`VR5-D2D4A7C8`, from a Kondor 5.04) decodes to a 216 T line, a 67 392 T frame and 13 860 T to the paper. The line length has
 nothing else behind it and stays 224 T until a board confirms it, but v5 takes the 13 860 T: its
