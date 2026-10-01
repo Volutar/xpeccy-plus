@@ -17,6 +17,7 @@
 #define reg8F	reg[20]
 #define regM1CNT reg[21]
 #define regFFW	reg[22]		// last write to the disk system register #FF
+#define regHALF	reg[23]		// 14 MHz: a fclk of DRAM wait not yet a whole tick
 
 #define flgVDOS	flag[100]	// trd emulation: ram page FE @ 0x0000
 #define flgVNMI flag[101]	// in NMI: ram page FF @ 0x0000
@@ -30,6 +31,8 @@
 #define memPage(_n) reg[0xf8 + (_n)]
 
 #define xregBRKA xreg[0]
+#define xregCode xreg[1]	// the cached opcode word: 8000 | A15..A1, 0 when empty
+#define xregData xreg[2]	// the cached data word
 
 // #xx77 b2..0 picks the atm mode; #EFF7 b0 (16c) and b5 (multicolor) count only
 // in atm mode 011 and cancel each other out (video_modedecode.v). The atm modes
@@ -148,8 +151,49 @@ static void evo_nmi(Computer* comp) {
 	comp->flgNMIS = 1;
 }
 
+// The two words zmem.v keeps between the cpu and the DRAM: the last opcode word
+// and the last data word read from ram, by A15..A1. At 14 MHz a ram read that
+// neither answers waits for the 7 MHz DRAM cycle: 6..3 fclk for an opcode and
+// 5..2 for data by the phase of the 4-fclk cycle it starts in (zmem.v wait
+// tables). A tick is 2 fclk, so an odd one is carried to the next wait. A rom
+// access or any i/o empties both words, a write drops a word it hits.
+static void evo_cache_clear(Computer* comp) {
+	comp->xregCode.w = 0;
+	comp->xregData.w = 0;
+}
+
+// the word's tag, or 0 for rom, which empties the cache
+static int evo_cache_tag(Computer* comp, int adr) {
+	if (mem_get_page(comp->mem, adr)->type == MEM_RAM) return 0x8000 | (adr >> 1);
+	evo_cache_clear(comp);
+	return 0;
+}
+
+static void evo_cache_rd(Computer* comp, int adr, int m1) {
+	int tag = evo_cache_tag(comp, adr);
+	if (!tag) return;
+	if ((comp->xregCode.w == tag) || (comp->xregData.w == tag)) return;
+	if (m1) comp->xregCode.w = tag; else comp->xregData.w = tag;
+	if (comp->hwMul == 4) {
+		int phase = (((comp->tickCount + comp->cpu->t) & 1) << 1) + comp->regHALF;	// fclk into the cycle
+		int wait = comp->regHALF + (m1 ? 6 : 5) - (phase & 3);
+		comp->cpu->t += wait >> 1;
+		comp->regHALF = wait & 1;
+	}
+}
+
+static void evo_cache_wr(Computer* comp, int adr) {
+	int tag = evo_cache_tag(comp, adr);
+	if (!tag) return;
+	if (comp->xregCode.w == tag) comp->xregCode.w = 0;
+	if (comp->xregData.w == tag) comp->xregData.w = 0;
+}
+
 int evoMRd(Computer* comp, int adr, int m1) {
-	if (!m1) return memRd(comp->mem, adr);
+	if (!m1) {
+		evo_cache_rd(comp, adr, 0);
+		return memRd(comp->mem, adr);
+	}
 	int nmient = 0;
 	if (comp->dif->type == DIF_BDI) {
 		int win = (adr >> 14) & 3;
@@ -161,11 +205,16 @@ int evoMRd(Computer* comp, int adr, int m1) {
 			comp->hw->mapMem(comp);		// dos feeds the rom pages of both maps
 		}
 		// enter TR-DOS: M1 from offset #3Dxx of a window whose map 1
-		// entry is rom with the dos7ffd bit set
-		if (!comp->flgDOS && ((adr & 0x3f00) == 0x3d00) && comp->flgROM &&
+		// entry is rom with the dos7ffd bit set. Every such fetch, in DOS
+		// already or not, holds the clock for 4 fclk so the rom can answer
+		// (atm_pager.v zclk_stall): a 7 MHz tact, two ticks at 14 MHz.
+		if (((adr & 0x3f00) == 0x3d00) && comp->flgROM &&
 				((comp->memFlag(4 | win) & 0xc0) == 0x80)) {
-			comp->flgDOS = 1;
-			comp->hw->mapMem(comp);
+			comp->cpu->t += (comp->hwMul == 4) ? 2 : 1;
+			if (!comp->flgDOS) {
+				comp->flgDOS = 1;
+				comp->hw->mapMem(comp);
+			}
 		}
 	}
 	// The NMI handler's page comes in on the fetch from 0x0066, and that fetch
@@ -183,6 +232,10 @@ int evoMRd(Computer* comp, int adr, int m1) {
 		evo_nmi(comp);
 	}
 	comp->flgVDWP = 0;
+	if (nmient)
+		evo_cache_clear(comp);		// nmi_buf_clr
+	else
+		evo_cache_rd(comp, adr, 1);
 	int res = nmient ? 0x00 : memRd(comp->mem, adr);
 	// The second M1 after out (#BE) puts the map back - after this fetch, so
 	// that RETN's own opcode still comes from the handler's page. The count
@@ -191,6 +244,7 @@ int evoMRd(Computer* comp, int adr, int m1) {
 	if (comp->regM1CNT) {
 		comp->regM1CNT--;
 		if ((comp->regM1CNT == 0) && comp->flgVNMI) {
+			evo_cache_clear(comp);
 			comp->flgVNMI = 0;
 			evoMapMem(comp);
 		}
@@ -213,6 +267,7 @@ void evoMWr(Computer* comp, int adr, int val) {
 	}
 	if (comp->flgVDWP && (adr < 0x4000)) return;		// trd emulation page just came in
 	if (evo_wprot(comp, adr)) return;
+	evo_cache_wr(comp, adr);
 	memWr(comp->mem,adr,val);
 }
 
@@ -680,8 +735,19 @@ static void evo_shadow(Computer* comp) {
 	if ((comp->regBF & 0x01) || !(comp->prt2 & 0x40)) comp->flgBDI = 1;
 }
 
+// At 14 MHz the ports outside the fpga - the AY and, in DOS, the WD1793 - hold
+// the clock for 6 fclk, 3 ticks (zclock.v io_wait, zports.v external_port)
+static void evo_io_stall(Computer* comp, int port) {
+	if (comp->hwMul != 4) return;
+	int lo = port & 0xff;
+	if (((lo == 0xfd) && (port & 0x8000)) || (comp->flgBDI && ((lo & 0x9f) == 0x1f)))
+		comp->cpu->t += 3;
+}
+
 void evoOut(Computer* comp, int port, int val) {
 	evo_shadow(comp);
+	evo_io_stall(comp, port);
+	evo_cache_clear(comp);
 	zx_dev_wr(comp, port, val);
 	if (comp->flgBDI && ((port & 0xff) == 0xfb))	// covox has no shadow term (zports.v covox_wr)
 		sdrvWrite(comp->sdrv, port, val);
@@ -691,6 +757,8 @@ void evoOut(Computer* comp, int port, int val) {
 int evoIn(Computer* comp, int port) {
 	int res = -1;
 	evo_shadow(comp);
+	evo_io_stall(comp, port);
+	evo_cache_clear(comp);
 	if (zx_dev_rd(comp, port, &res)) return res;
 	return hwIn(evoCfgPortMap, comp, port);
 }
