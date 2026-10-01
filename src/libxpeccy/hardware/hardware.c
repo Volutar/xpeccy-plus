@@ -14,6 +14,7 @@ extern HardWare sco_hw_core;
 extern HardWare scotp_hw_core;
 extern HardWare atm_hw_core;
 extern HardWare prf_hw_core;
+extern HardWare prf3_hw_core;
 extern HardWare phx_hw_core;
 extern HardWare evo_hw_core;
 extern HardWare tsl_hw_core;
@@ -34,6 +35,7 @@ tabHwItem tabHwPtr[] = {
 	{HW_SCORP, &sco_hw_core},
 	{HW_SCORPTP, &scotp_hw_core},
 	{HW_ATM2, &atm_hw_core},
+	{HW_PROFI3, &prf3_hw_core},
 	{HW_PROFI, &prf_hw_core},
 	{HW_PHOENIX, &phx_hw_core},
 	{HW_PENTEVO, &evo_hw_core},
@@ -59,6 +61,7 @@ static const struct {
 	{HW_PLUS2A, {{RES_128, "Basic 128"}, {-1, "Syntax 128"}, {-1, "+3DOS"}, {RES_48, "Basic 48"}}},
 	{HW_PLUS3, {{RES_128, "Basic 128"}, {-1, "Syntax 128"}, {-1, "+3DOS"}, {RES_48, "Basic 48"}}},
 	{HW_PROFI, {{RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
+	{HW_PROFI3, {{RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
 	// a reset to the service page lands on TR-DOS here, so it is no target
 	{HW_PHOENIX, {{-1, NULL}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
 	{HW_ATM2, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},

@@ -25,7 +25,8 @@ enum {
 	HW_PROFI,	// Profi
 	HW_PHOENIX,	// ZXM Phoenix
 	HW_ALF,		// ALF TV Game (a ZX48 clone console)
-	HW_SCORPTP	// Scorpion ZS 256 Turbo+
+	HW_SCORPTP,	// Scorpion ZS 256 Turbo+
+	HW_PROFI3	// Profi v3.x (HW_PROFI is v5)
 };
 
 // Hardware callbacks
