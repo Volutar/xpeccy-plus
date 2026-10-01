@@ -4,7 +4,7 @@ GLSL post-processing filters for the OpenGL build. Pick one in Options - Video, 
 `shader = <file>` in `config/config.conf`. The bundled default is `tvline-nocurve-light.txt`.
 An empty `shader =` turns filtering off.
 
-Like the rom images, **these files are not covered by the MIT license of Xpeccy+** - each one
+Like the ROM images, **these files are not covered by the MIT license of Xpeccy+** - each one
 keeps the terms of its own author, listed below.
 
 ## Aperture grille and shadow mask - Timothy Lottes, tuned by Volutar
@@ -42,4 +42,4 @@ Written for this project. Same MIT license as the rest of Xpeccy+.
 | `composite-crt.txt`, `composite-crt-flat.txt` | composite / RF home TV, with and without curvature |
 | `monitor-1084.txt`, `monitor-1084-flat.txt` | Commodore 1084 shadow-mask RGB monitor |
 | `pvm-sharp.txt` | Sony PVM broadcast monitor, sharp |
-| `zx-rf-artifact.txt` | ZX Spectrum RF colour artifacts |
+| `zx-rf-artifact.txt` | ZX Spectrum RF color artifacts |

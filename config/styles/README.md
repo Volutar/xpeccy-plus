@@ -7,9 +7,9 @@ it to, which on Windows is light and on most Linux desktops follows the system t
 
 | File | Look |
 | --- | --- |
-| `Light.qss` | the greys Windows itself draws - same as `System` there |
-| `Dark.qss` | neutral dark grey, the usual editor palette |
-| `Sublime.qss` | Monokai, the colour scheme Sublime Text ships with |
+| `Light.qss` | the grays Windows itself draws - same as `System` there |
+| `Dark.qss` | neutral dark gray, the usual editor palette |
+| `Sublime.qss` | Monokai, the color scheme Sublime Text ships with |
 | `Gruvbox.qss` | warm brown-olive dark, mustard accent - Pavel Pertsev |
 | `Solarized Dark.qss` | low contrast, blue-green dark - Ethan Schoonover |
 | `Solarized Light.qss` | the same palette on warm paper instead of white |
@@ -22,7 +22,7 @@ dropped in this folder joins the list, and one named like a built-in replaces it
 Gruvbox, Solarized and Dracula are the work of their authors and carry the MIT license, same as
 the rest of Xpeccy+; the palettes are reproduced here, nothing else is taken from them.
 
-Every file has the same rules and differs only in colours, so a palette can be moved from one
+Every file has the same rules and differs only in colors, so a palette can be moved from one
 to another by hand. Each file lists its palette in the header comment.
 
 ## Four rules that look odd out of context
@@ -33,10 +33,10 @@ instead of the user.
 
 **Arrows and check marks come from `url(:/images/styles/...)`.** Once any style sheet is set,
 Qt stops asking the desktop theme to draw those marks and falls back to its own: a filled
-triangle in the text colour, framed by a bevel that looks its age on a light background. A
+triangle in the text color, framed by a bevel that looks its age on a light background. A
 style sheet cannot draw a chevron either - the CSS border triangle every web page uses ends up
-as a filled rectangle in Qt - and there is no property that recolours a mark on its own, the
-one available colour is the widget's text colour. So the marks are drawn ahead of time, in two
+as a filled rectangle in Qt - and there is no property that recolors a mark on its own, the
+one available color is the widget's text color. So the marks are drawn ahead of time, in two
 tints, and live in the application resources: a resource path is absolute, while a relative
 `url()` would be resolved against the working directory rather than against this file. See
 `packaging/make-style-icons.py` to change a shape or a tint.
@@ -49,7 +49,7 @@ nothing on a box that has no title. The second rule takes the margin back off th
 label, and a dialog's OK / Apply / Cancel row visibly reflows the moment a style is picked. The
 values match what the platform style gives those buttons.
 
-## Debugger highlight colours
+## Debugger highlight colors
 
 The disassembler's PC row, the selected row, the constants in the listing, the panel headers, the
 changed-value fields and the id / data / crc markers in the track dump are not part of a style sheet - Qt has nowhere to put
@@ -58,15 +58,15 @@ of its own in the `.pal` file next to it: `Dracula.qss` and `Dracula.pal`, same
 `name = #rrggbb` lines, `;` starts a comment.
 
 Picking a style in Setup does two things, once, at the moment the style changes: it puts the
-built-in colours back and then reads the `.pal` over them. So every style starts from the same
-place - `System` ends up with the defaults, and a `.pal` naming only a few colours leaves no
+built-in colors back and then reads the `.pal` over them. So every style starts from the same
+place - `System` ends up with the defaults, and a `.pal` naming only a few colors leaves no
 leftovers from the style before.
 
-From there the colours belong to the configuration like any other: change any of them in Setup -
+From there the colors belong to the configuration like any other: change any of them in Setup -
 Xpeccy+ - Debugger - Palette (right click on a swatch puts the built-in default back) and what you set
 stays, both when the emulator is restarted and when the same style is picked again later. Only
 switching to a *different* style starts the two steps over.
 
-On Windows 11, `dbg.header.bg`/`dbg.header.txt` also colour the native titlebar of every window
+On Windows 11, `dbg.header.bg`/`dbg.header.txt` also color the native titlebar of every window
 (via DWM - see `src/titlebar.cpp`), so picking a style tints the titlebar the same as the
 debugger's panel headers instead of leaving it the plain system one. `System` leaves it alone.

@@ -26,7 +26,7 @@ before that point is upstream's history and is not repeated here.
   and carry on from any point. The step and the length are on Xpeccy+ -> Emulation.
 
 - **Slow motion and fast forward keys**: End and Home run the machine at 1/4 and x4 of its
-  speed, sound included, as a toggle or while held. The speeds and the key behaviour are on
+  speed, sound included, as a toggle or while held. The speeds and the key behavior are on
   Xpeccy+ -> Emulation; loading a tape, disk or snapshot goes back to normal speed.
 
 - **A VCR-style sign in the corner of the screen** while the machine is paused, or while
@@ -37,8 +37,8 @@ before that point is upstream's history and is not repeated here.
 
 - **Scorpion ZS 256 Turbo+** as a machine of its own, beside the yellow-board Scorpion ZS 256:
   a longer frame of 316 lines, the 7 MHz turbo with the waits the board puts on memory and
-  ports, ProfROM 4.01 and SMUC. Both machines are built from the boards' schematics as
-  redrawn by romychs.
+  ports, ProfROM 4.01 and SMUC. Both machines are built from the boards' schematics
+  *(redrawn by romychs)*.
 
 - **Profi v3 and Profi v5** instead of one Profi that was a mix of both. Each starts in its
   own factory BIOS: JV "Kramis" V.02 on v3, Micco ROM Bios 2.0 on v5 (1.0 is bundled too).
@@ -46,44 +46,32 @@ before that point is upstream's history and is not repeated here.
     border's two colors, as the board draws it.
   - v5: the palette, the clock and the hard disk, on the ports the v5 controller gives them.
   - The 7 MHz turbo takes the waits the board puts on RAM, and goes off while the disk
-    drive's head is loaded. Thanks to Volutar for the turbo measurements and the schematic.
+    drive's head is loaded *(thanks to Volutar for the measurements and the schematic)*.
   - Fixed on both: paper brightness in 512x240, the Covox (on the parallel port, in stereo),
     writes to `#DFFD` reaching the sound chip, and the disk ports under CP/M.
 
 ### Changed
 
-- **Adaptive antiflicker leaves moving pictures alone and follows scrolling GigaScreen**: a
-  pixel is mixed only once it has flickered for a few frames, a scrolling two-page picture is
-  mixed along its movement, and the first frame after fast mode or rewind is clean. Look ahead,
-  beside the gamma, catches a flicker sooner by running the next frames in advance.
-  The 2-/3-frame adaptive mode is now the default.
+- **Adaptive antiflicker leaves moving pictures alone and follows scrolling GigaScreen.**
+  Antiflicker is still off out of the box (Intensity 0); once switched on, it now starts in
+  the adaptive 2-/3-frame mode. Look ahead, beside the gamma, catches a flicker sooner by
+  running the next frames in advance.
 
 - **Clearer gamepad binding window**: the pad's buttons have plain names ("Right trigger",
   "D-pad up"), and the choice follows the field you click into.
 
-- **Controllers and chips are named by their part numbers** on the Machine page: Beta Disk
-  (WD1793), NemoIDE, YM2149 and so on.
-
-- **Icons on the settings groups** of the Video page and of the machine's and the
-  recording's advanced settings, and clearer Sound and Board ones on the Machine page.
-
-- **The Drives menu shows a folder icon for opening a folder** and the device's own for an
-  image.
-
-- **A tidier Video page in Options**: the check boxes of every group stand in one column, and
-  the screenshot folder is set the way the recording one is.
+- **Tidier Options**: controllers and chips are named by their part numbers - Beta Disk
+  (WD1793), NemoIDE, YM2149 - the settings groups have icons, and the check boxes of the
+  Video page stand in one column. The Drives menu shows a folder icon for a folder.
 
 ### Fixed
 
-- **Snapshots no longer crash soon after loading.** A program timed to the interrupt took an
-  extra one on load. A `.z80` now comes back exactly where it was saved; a `.sna` keeps no
-  place in the frame, so F2 saves one at the frame's interrupt, and says so on screen when the
-  machine was paused. The save dialog suggests `.z80`.
+- **Snapshots no longer crash soon after loading.** A `.z80` comes back exactly where it was
+  saved; a `.sna` keeps no place in the frame, so F2 saves one at the frame's interrupt. The
+  save dialog suggests `.z80`.
 
-- **The Options tabs sit on a base line in every bundled style**, and separator lines are no
-  longer near-black in the dark ones.
-
-- **Radio buttons keep their place when checked** in every bundled style.
+- **Bundled styles**: the Options tabs sit on a base line, radio buttons keep their place when
+  checked, and separator lines are no longer near-black in the dark styles.
 
 - **A held hotkey no longer repeats**, so fast mode, pause and the like stay switched instead of
   flickering; only the speed steps repeat.
@@ -93,73 +81,46 @@ before that point is upstream's history and is not repeated here.
 
 - **No crash when switching to TurboSound FM** in the options while a machine runs.
 
-- **Disk access and waiting for a key no longer start the tape.** With a tape inserted, TR-DOS
-  reading a disk, or a program waiting for a key press, kept starting and stopping it, with its
-  sound and the fast loading sign.
+- **Disk access and waiting for a key no longer start the tape**, with its sound and the fast
+  loading sign.
 
-- **The ZX Evo start menu shows its clock**, and the clock chip's memory keeps every cell to
-  itself on ZX Evo, Pentagon 1024 and Profi; ZX Evo settings saved earlier are carried over.
+- **Clock chip**: the ZX Evo start menu shows its clock, every cell of the chip's memory keeps
+  to itself, the day of the week counts from 1 and the alarm registers read back - on ZX Evo,
+  Pentagon 1024, Profi and SMUC. ZX Evo settings saved earlier are carried over.
 
 - **TSConf, ZX Evo and ATM Turbo show their own screen modes whole** whatever the border size;
   on TSConf the border setting is locked.
 
-- **TSConf honours the write protection of RAM mapped at #0000**, so a program writing there
-  no longer overwrites it.
-
 - **TSConf follows its FPGA sources more closely:**
-  - the frame interrupt comes once a frame at 7 and 14 MHz, and is no longer lost when line
-    interrupts are on;
-  - DMA copies every block to the palette and the sprites, and works with the hard disk;
-  - disks run from the SD card as virtual drives, and TR-DOS can page memory and play sound;
-  - 1024K paging through #7FFD, 16-colour scrolling by a single pixel, and SPG files start
-    with BASIC 48 in place;
-  - the picture can go over the sprites and tiles or hide them, sprites and tiles can cover
-    the border, the border drawn through #FE takes the chosen palette, and the disk
-    controller can be reached outside TR-DOS;
-  - at 14 MHz the processor waits for memory its cache does not hold, and DMA takes time,
-    sharing memory with the picture and the processor, as on the board;
-  - sprites and tiles changed mid-frame move on the line the board moves them, and a palette
-    change shows from the point on the line where it was made;
-  - in text mode the sprites, tiles and border take the text's palette, and the picture over
-    the sprites covers them only with the letters.
+  - interrupts, DMA, 1024K paging and SPG files work as on the board, and RAM mapped at #0000
+    keeps its write protection;
+  - sprites, tiles, the border and the palette are drawn as the board draws them, changes in
+    mid-frame and text mode included;
+  - at 14 MHz the processor waits for memory its cache does not hold, and DMA takes time;
+  - disks run from the SD card as virtual drives, and TR-DOS can page memory and play sound.
 
 - **ZX Evo (BaseConf) follows its FPGA sources more closely:**
-  - Pentagon 16-colour mode works, hardware multicolour shows its own attributes, and the
-    #EFF7 bits no longer spoil the ATM screen modes;
-  - the PS/2 keyboard buffer reads 0 when empty and holds 16 bytes, so programs that read
-    keys through it no longer see an overflow;
-  - the Magic Service can no longer be entered again from inside itself, and a breakpoint on
-    an EI instruction stops there;
-  - a reset no longer says "SD card lost", and leaves the machine at 7 MHz with the ZX
-    screen, as the board does;
-  - the frame interrupt is as long and as late as on the board, and is taken once however
-    short the handler;
-  - the 12-bit palette follows the port bit programs set, the border ports and #7FFD answer
-    at every address the board decodes, and unused ports read #FF;
-  - memory write protection, the clock registers and the disk ports in TR-DOS behave as on
-    the board, and covox plays in TR-DOS too;
-  - 14 MHz is no longer a flat 14: the processor waits for memory, the sound chip and the
-    disk controller as on the board, about 11 MHz on typical code.
+  - Pentagon 16-color mode, hardware multicolor and the ATM screen modes show as they should;
+  - keys read through the PS/2 port, the Magic Service, a reset and the frame interrupt
+    behave as on the board, and a reset no longer says "SD card lost";
+  - the ports, the palette, memory write protection, the clock and the disk ports in TR-DOS
+    answer as the board decodes them, and Covox plays in TR-DOS too;
+  - 14 MHz is no longer a flat 14: with the waits the board puts on memory, the sound chip and
+    the disk controller, it is about 11 MHz on typical code.
 
 - **Scorpion ZS 256 follows its board:**
-  - the maker's own ROM 2.95, the frame interrupt 32 T long, and an opcode fetched from RAM
-    waits for an even T-state as on the yellow board, where every instruction was stretched;
-  - the ports answer at the addresses the board decodes, and the Kempston port reads 0 with
-    no joystick instead of #FF;
+  - the maker's own ROM 2.95, and the ports, the frame interrupt and the instruction timing
+    of the yellow board;
   - the Magic button opens the service monitor from 128 BASIC and TR-DOS from 48 BASIC;
-  - ProfROM switches its ROM planes only on a board that has it;
-  - port #FF gives the attribute 4 T ahead of the picture, as the board fetches it.
+  - the Kempston port reads 0 with no joystick instead of #FF.
 
 - **SMUC works with ProfROM**: its clock keeps time, its NVRAM keeps all 2K of settings, and
   the Kempston mouse works in the ProfROM monitor.
 
-- **Clock chip**: the day of the week counts from 1 as on the real chip (Sunday read 0),
-  and the alarm registers read back, on ZX Evo, Pentagon 1024, Profi and SMUC.
-
-- **Hard disk images**: the whole of a large image is reachable, the disk reports its real
-  size, and NedoOS's hddfdisk finds it, so NedoOS installs on it and boots from it; the Nemo
-  IDE alternate status port works. A new disk supports LBA unless it is switched off, and
-  a sector written to an SD card is no longer shifted by a byte.
+- **Hard disk images and SD cards**: the whole of a large image is reachable and the disk
+  reports its real size, so NedoOS installs on it and boots from it; a new disk supports LBA,
+  the NemoIDE alternate status port works, and a sector written to an SD card is no longer
+  shifted by a byte.
 
 ## 2026.5.1 - 2026-09-26
 
