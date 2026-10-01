@@ -685,8 +685,18 @@ static void evo_shadow(Computer* comp) {
 	if ((comp->regBF & 0x01) || !(comp->prt2 & 0x40)) comp->flgBDI = 1;
 }
 
+// At 14 MHz the ports outside the fpga - the AY and, in DOS, the WD1793 - hold
+// the clock for 6 fclk, 3 ticks (zclock.v io_wait, zports.v external_port)
+static void evo_io_stall(Computer* comp, int port) {
+	if (comp->hwMul != 4) return;
+	int lo = port & 0xff;
+	if (((lo == 0xfd) && (port & 0x8000)) || (comp->flgBDI && ((lo & 0x9f) == 0x1f)))
+		comp->cpu->t += 3;
+}
+
 void evoOut(Computer* comp, int port, int val) {
 	evo_shadow(comp);
+	evo_io_stall(comp, port);
 	zx_dev_wr(comp, port, val);
 	if (comp->flgBDI && ((port & 0xff) == 0xfb))	// covox has no shadow term (zports.v covox_wr)
 		sdrvWrite(comp->sdrv, port, val);
@@ -696,6 +706,7 @@ void evoOut(Computer* comp, int port, int val) {
 int evoIn(Computer* comp, int port) {
 	int res = -1;
 	evo_shadow(comp);
+	evo_io_stall(comp, port);
 	if (zx_dev_rd(comp, port, &res)) return res;
 	return hwIn(evoCfgPortMap, comp, port);
 }
