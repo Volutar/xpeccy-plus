@@ -18,7 +18,7 @@ int greyScale = 0;
 int noflic = 0;
 int noflicMode = 3;		// AF_3C_ADAPTIVE
 float noflicGamma = 2.2f;
-int noflicAhead = 0;
+int noflicAhead = 1;
 
 static unsigned char bufa[SCRBUF_SIZE];
 static unsigned char bufb[SCRBUF_SIZE];
