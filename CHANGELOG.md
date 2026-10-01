@@ -54,8 +54,8 @@ before that point is upstream's history and is not repeated here.
 
 - **Adaptive antiflicker leaves moving pictures alone and follows scrolling GigaScreen.**
   Antiflicker is still off out of the box (Intensity 0); once switched on, it now starts in
-  the adaptive 2-/3-frame mode. Look ahead, beside the gamma, catches a flicker sooner by
-  running the next frames in advance.
+  the adaptive 2-/3-frame mode, with Look ahead on: it catches a flicker sooner by running
+  the next frames in advance.
 
 - **Clearer gamepad binding window**: the pad's buttons have plain names ("Right trigger",
   "D-pad up"), and the choice follows the field you click into.
