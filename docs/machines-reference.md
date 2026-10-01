@@ -30,7 +30,7 @@ all in dots; two dots make one CPU tick, so T per line is `full.x / 2` and the I
 | Pentagon 1024 SL | 3 500 000 | Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
 | Scorpion ZS 256 | 3 500 000 | Scorpion | 224 | 312 | 69 888 | 32 | 0 (none) | no | no | yes | no |
 | Scorpion ZS 256 Turbo+ | 3 500 000 | Scorpion Turbo+ | 224 | 316 | 70 784 | 32 | 0 (none) | no | no | yes | no |
-| Profi v3 | 3 500 000 | Profi | 224 | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
+| Profi v3 | 3 500 000 | Profi | 224 | 320 | 71 680 | 32 **open** | 0 (none) | no | no | no | no |
 | Profi v5 | 3 500 000 | Profi v5 | 224 **open** | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
 | ATM Turbo 2+ | 3 500 000 | ATM Turbo 2+ | 224 | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
 | ZXM-Phoenix | 3 500 000 | Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
@@ -109,8 +109,12 @@ A real v3.2 Kramis board, photographed in its BIOS menu with and without turbo, 
 before the first paper dot: the menu HALTs, counts a fixed delay and then draws border bands,
 whose line says where INT is to two lines, and whose colour changes - each one a few lines
 apart, so some fall in the paper and show as a step between the left and the right border -
-say where in the line to about 10 T. Which frame length that board had is **open**. The v5 PROM (`VR5-D2D4A7C8`, from a Kondor 5.04)
-decodes to a 216 T line, a 67 392 T frame and 13 860 T to the paper. The line length has
+say where in the line to about 10 T. A timing test run on that board (`build/profitest/`) gives
+a 320-line frame, 71 680 T: every figure it printed came out 1.0256 times short of the model,
+which is that frame over the 69 888 the test assumed - and with this layout the emulator prints
+the same sixteen figures to the hundredth. Both agree with the `FB0579B6` PROM family above.
+
+The v5 PROM (`VR5-D2D4A7C8`, from a Kondor 5.04) decodes to a 216 T line, a 67 392 T frame and 13 860 T to the paper. The line length has
 nothing else behind it and stays 224 T until a board confirms it, but v5 takes the 13 860 T: its
 BIOS rewrites the palette right after a HALT with 17 writes to `#7E`, each of which is a border
 write too, and with INT at the paper they flicker beside the title of the palette test.
@@ -119,14 +123,15 @@ The Profi turbo is the v3.2 schematic's: the cpu and the video share a 3.5 MHz D
 RAM access waits for the cpu's turn; ROM, i/o and refresh run without waits, and the VG93's HLD
 drops the turbo altogether. A cycle that starts on a slot edge waits two (a NOP in RAM is 6 T).
 One that starts between edges has 71 ns to get its request to U28, and waits three, not one.
-An owner's timing table from the 90s, each instruction run over and over, matches this in all
+The timing test on a real v3.2 matches it in all sixteen cases it measures, the mixed pairs that
+start on the second phase included; an owner's timing table from the 90s does in all
 ten entries checked (`ADD A,N` 6, `ADD HL,BC` 7, `ADC A,(IX+d)` 13, `BIT b,(IX+d)` 15, in
 3.5 MHz T), with its data reads from ROM - `ADD A,(HL)` is 5 there, not the 6 of `ADD A,N` -
 where the one-wait reading is out in seven. And the photographs' band steps fit only a colour
 period of 1220-1231 turbo T: this gives 1230, the one-wait reading 1106. The v3.2 manual's fix for
-an unstable turbo - 200-400 pF on that very path - is what makes it miss. The v4.01 board has a
-second mechanism, the cpu at 3.5 MHz while IORQ is low, which would fit the photographs as well
-(1226) but is not on the v3.2 drawings.
+an unstable turbo - 200-400 pF on that very path - is what makes it miss. The v4.01 drawings
+add the cpu at 3.5 MHz while IORQ is low, which would fit the band steps as well (1226); the
+test's OUT and IN, 8 T like the model, rule it out on the v3.2.
 
 **None of these is being changed by this rework** (decided 2026-09-09): the timings stay as
 they ship. They are listed so a definition generated from this table carries today's value on
