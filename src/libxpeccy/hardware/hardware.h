@@ -15,7 +15,7 @@ enum {
 	HW_ZX128,	// ZX Spectrum 128K (and the grey +2, which is one)
 	HW_PENT,	// Pentagon
 	HW_P1024,	// Pentagon1024SL
-	HW_SCORP,	// ZS Scorpion
+	HW_SCORP,	// Scorpion ZS 256
 	HW_PLUS2A,	// ZX Spectrum +2A
 	HW_PLUS3,	// ZX Spectrum +3
 	HW_ATM1,	// ATM 1
@@ -24,7 +24,8 @@ enum {
 	HW_TSLAB,	// ZX Evolution (TSConf)
 	HW_PROFI,	// Profi
 	HW_PHOENIX,	// ZXM Phoenix
-	HW_ALF		// ALF TV Game (a ZX48 clone console)
+	HW_ALF,		// ALF TV Game (a ZX48 clone console)
+	HW_SCORPTP	// Scorpion ZS 256 Turbo+
 };
 
 // Hardware callbacks
@@ -78,6 +79,7 @@ struct HardWare {
 	cbHwKey keyr;		// key release
 	cbHwVol vol;		// read volume
 	cbhwcomp snapmap;	// stand where a snapshot expects the machine (NULL: nothing to do)
+	cbHwIrq cont;		// a bus cycle starts, the ray synced to it (NULL: the ULA's contention)
 };
 typedef struct HardWare HardWare;
 

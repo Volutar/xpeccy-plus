@@ -135,6 +135,7 @@ static const asMachine as_mtab[] = {
 	{HW_PROFI,	{RES_128, as_menu},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
 	{HW_PHOENIX,	{RES_128, as_menu2},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
 	{HW_SCORP,	{RES_128, as_scorpion},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
+	{HW_SCORPTP,	{RES_128, as_scorpion},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
 	{HW_PLUS2A,	{RES_128, as_menu},	{AS_NOPE, NULL},		{AS_NOPE, NULL}},
 	{HW_PLUS3,	{RES_128, as_menu},	{AS_NOPE, NULL},		{RES_128, as_menu}},
 	{HW_TSLAB,	{RES_128, as_menu},	{RES_128, as_menu_last_run},	{AS_NOPE, NULL}},

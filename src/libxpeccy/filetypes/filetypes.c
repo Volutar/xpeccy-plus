@@ -76,7 +76,7 @@ int snapHwRuns(int snap, int hwid) {
 		case SNAP_HW_PENTAGON: return hwid != HW_ZX48;
 		case SNAP_HW_PLUS2A:
 		case SNAP_HW_PLUS3: return (hwid == HW_PLUS2A) || (hwid == HW_PLUS3);
-		case SNAP_HW_SCORPION: return hwid == HW_SCORP;
+		case SNAP_HW_SCORPION: return (hwid == HW_SCORP) || (hwid == HW_SCORPTP);
 	}
 	return 1;			// a 48K, or one nobody knows
 }
@@ -92,7 +92,7 @@ int snapHwIs(int snap, int hwid) {
 		case SNAP_HW_PLUS2A: return hwid == HW_PLUS2A;
 		case SNAP_HW_PLUS3: return hwid == HW_PLUS3;
 		case SNAP_HW_PENTAGON: return hwid == HW_PENT;
-		case SNAP_HW_SCORPION: return hwid == HW_SCORP;
+		case SNAP_HW_SCORPION: return (hwid == HW_SCORP) || (hwid == HW_SCORPTP);
 	}
 	return 1;			// one nobody knows: leave the machine alone
 }

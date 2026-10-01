@@ -666,6 +666,12 @@ int ide_ata_rd(IDE* ide, int adr, int hi) {
 	return res;
 }
 
+// a write to the head register picks master or slave
+static void ide_select(IDE* ide, int adr, int val) {
+	if (adr == HDD_HEAD)
+		ide->curDev = (val & HDF_DRV) ? ide->slave : ide->master;
+}
+
 void ide_ata_wr(IDE* ide, int adr, int hi, int val) {
 	if (hi) {
 		ide->bus &= 0xff;
@@ -673,6 +679,7 @@ void ide_ata_wr(IDE* ide, int adr, int hi, int val) {
 	} else {
 		ide->bus &= 0xff00;
 		ide->bus |= (val & 0xff);
+		ide_select(ide, adr, val);
 		ataWr(ide->curDev, adr, ide->bus);
 	}
 }
@@ -750,6 +757,7 @@ void ide_nemoevo_wr(IDE* ide, ataAddr adr, int val) {
 			}
 		} else {
 			ide->hiTrig = 0;		// non-data ports : next 10 is low
+			ide_select(ide, adr.port, val);
 			ataWr(ide->curDev, adr.port, val);
 		}
 	}
@@ -779,45 +787,57 @@ ataAddr ide_nemoa8_decode(int port, int dosen, int wr) {
 
 // smuc
 
+// All in TR-DOS space: 1x?11xxx 101xx?10. A15, A13 and A2 pick the register,
+// A8-A10 the drive's one; the rest is not decoded.
+#define SMUC_VER	0x0000		// #5FBA
+#define SMUC_REV	0x0004		// #5FBE
+#define SMUC_VFDD	0x2000		// #7FBA
+#define SMUC_PIC	0x2004		// #7xBE, an i8259 socket
+#define SMUC_RTC	0x8000		// #DFBA
+#define SMUC_IDEHI	0x8004		// #D8BE
+#define SMUC_SYS	0xa000		// #FFBA
+#define SMUC_IDE	0xa004		// #F8BE..#FFBE
+
 ataAddr ide_smuc_decode(int port, int dosen, int wr) {
 	ataAddr res;
-	res.iorq = (((port & 0x18a3) == 0x18a2) && dosen) ? 1 : 0;
-	res.hdd = ((port & 0xf8ff) == 0xf8be) ? 1 : 0;
-	if (port == 0xd8be) {
+	res.iorq = (((port & 0x18e3) == 0x18a2) && dosen) ? 1 : 0;
+	res.high = 0;
+	res.hdd = 0;
+	res.port = port & 0xa004;
+	if (res.port == SMUC_IDE) {
+		res.hdd = 1;
+		res.port = (port & 0x700) >> 8;
+	} else if (res.port == SMUC_IDEHI) {
 		res.hdd = 1;
 		res.high = 1;
-	} else {
-		res.high = 0;
+		res.port = HDD_DATA;
 	}
-	res.port = (port & 0x700) >> 8;
 	return res;
 }
 
+// SYS bit 7 puts the drive's CS1 block where CS0 is: only its register 6,
+// alternate status / device control, is there
+static int smuc_ide_reg(IDE* ide, ataAddr adr) {
+	if (adr.high || !(ide->smuc.sys & 0x80)) return adr.port;
+	return (adr.port == 6) ? HDD_ASTATE : -1;
+}
+
+// Version, revision, the empty PIC socket, the virtual FDD's spare bits and the
+// IDE reset are UnrealSpeccy's, which ProfROM works with (MAME differs); no SMUC
+// schematic has been found to check them
 int ide_smuc_rd(IDE* ide, ataAddr adr) {
 	int res = 0xff;
 	if (adr.hdd) {
-		res = ide_ata_rd(ide, adr.port, adr.high);
+		int reg = smuc_ide_reg(ide, adr);
+		if (reg >= 0) res = ide_ata_rd(ide, reg, adr.high);
 	} else {
 		switch (adr.port) {
-			case 0x5fba:		// version
-				res = 0x28;	// 1
-				break;
-			case 0x5fbe:		// revision
-				res = 0x40;	// 2
-				break;
-			case 0xffba:		// system
-				res = (nvRd(ide->smuc.nv) ? 0xff : 0xbf);	// TODO: b7: INTRQ from HDD/CF, b6:SDA?
-				break;
-			case 0x7fba:		// virtual fdd
-				res = ide->smuc.fdd | 0x3f;
-				break;
-			case 0x7ebe:		// pic (not used)
-			case 0x7fbe:
-				res = 0xff;
-				break;
-			case 0xdfba:		// cmos
-				res = (ide->smuc.sys & 0x80) ? 0xff : cmos_rd(ide->smuc.cmos, CMOS_DATA); // ide->smuc.cmos->data[ide->smuc.cmos->adr];
-				break;
+			case SMUC_VER: res = 0x3f; break;
+			case SMUC_REV: res = 0x57; break;
+			case SMUC_SYS: res = nvRd(ide->smuc.nv) ? 0xff : 0xbf; break;	// b6: SDA
+			case SMUC_VFDD: res = ide->smuc.fdd | 0x37; break;
+			case SMUC_PIC: res = 0x57; break;
+			case SMUC_RTC: res = cmos_rd(ide->smuc.cmos, CMOS_DATA); break;
 		}
 	}
 	return res;
@@ -825,24 +845,20 @@ int ide_smuc_rd(IDE* ide, ataAddr adr) {
 
 void ide_smuc_wr(IDE* ide, ataAddr adr, int val) {
 	if (adr.hdd) {
-		ide_ata_wr(ide, adr.port, adr.high, val);
+		int reg = smuc_ide_reg(ide, adr);
+		if (reg >= 0) ide_ata_wr(ide, reg, adr.high, val);
 	} else {
 		switch (adr.port) {
-			case 0xffba:			// system
+			case SMUC_SYS:
+				if (val & 1) ideReset(ide);
 				ide->smuc.sys = val;
-				nvWr(ide->smuc.nv, val & 0x10, val & 0x40, val & 0x20);		// nv,sda,scl,wp
+				nvWr(ide->smuc.nv, val & 0x10, val & 0x40);		// sda,scl
 				break;
-			case 0x7fba:			// virtual fdd
-				ide->smuc.fdd = val & 0xc0;
+			case SMUC_VFDD:
+				ide->smuc.fdd = val & 0xc8;
 				break;
-			case 0xdfba:			// cmos
-				if (ide->smuc.sys & 0x80) {		// data
-					cmos_wr(ide->smuc.cmos, CMOS_DATA, val);
-					// ide->smuc.cmos->data[ide->smuc.cmos->adr] = val;
-				} else {				// address
-					cmos_wr(ide->smuc.cmos, CMOS_ADR, val);
-					// ide->smuc.cmos->adr = val;
-				}
+			case SMUC_RTC:
+				cmos_wr(ide->smuc.cmos, (ide->smuc.sys & 0x80) ? CMOS_DATA : CMOS_ADR, val);
 				break;
 		}
 	}
@@ -854,13 +870,14 @@ ataAddr ide_profi_decode(int port, int dosen, int wr) {
 	ataAddr res;
 	if (wr) port ^= 0x20;	// wr: eb -> cb; wr 0eb<->0cb; now rd/wr 0EB is data high
 	res.iorq = (((port & 0x00ff) == 0x00cb) || ((port & 0x7ff) == 0xeb)) ? 1 : 0;
-	if (port == 0x06ab) {
+	res.port = (port & 0x700) >> 8;
+	if (port == 0x06ab) {		// no drive register
 		res.hdd = 0;
 		res.iorq = 1;
+		res.port = 0xff;
 	} else {
 		res.hdd = 1;
 	}
-	res.port = (port & 0x700) >> 8;
 	res.high = ((port & 0x7ff) == 0xeb) ? 1 : 0;
 	return res;
 }
@@ -876,7 +893,6 @@ ataAddr ideDecoder(IDE* ide, int port, int dosen, int wr) {
 	if (ide->core) {
 		if (ide->core->decode) {
 			res = ide->core->decode(port, dosen, wr);
-			if (!res.hdd) res.port = port;
 		}
 	}
 	return res;
@@ -898,8 +914,6 @@ int ideIn(IDE* ide, int port, int* val, int dosen) {
 int ideOut(IDE* ide, int port, int val,int dosen) {
 	ataAddr adr = ideDecoder(ide,port,dosen,1);
 	if (!adr.iorq) return 0;
-	if (adr.hdd && (adr.port == HDD_HEAD))
-		ide->curDev = (val & HDF_DRV) ? ide->slave : ide->master;	// write to head reg: select MASTER/SLAVE
 	if (ide->core) {
 		if (ide->core->write)
 			ide->core->write(ide, adr, val);

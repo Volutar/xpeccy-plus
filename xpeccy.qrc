@@ -63,6 +63,7 @@
         <file>res/machines/phoenix.conf</file>
         <file>res/machines/profi.conf</file>
         <file>res/machines/scorp.conf</file>
+        <file>res/machines/scorptp.conf</file>
         <file>res/machines/zx128.conf</file>
         <file>res/machines/zx48.conf</file>
         <file>res/machines/zxplus2.conf</file>

@@ -1144,7 +1144,7 @@ none - nothing comes back (+2A, +3)</string>
                   </font>
                  </property>
                  <property name="text">
-                  <string>ZS Scorpion: an opcode fetch starts on an even T-state</string>
+                  <string>Scorpion ZS 256: an opcode fetch from RAM starts on an even T-state</string>
                  </property>
                 </widget>
                </item>

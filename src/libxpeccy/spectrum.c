@@ -814,13 +814,26 @@ static void comp_cont(void* ptr, int mreq) {
 	zx_contend(comp, mreq);
 }
 
+// A machine that arbitrates the bus itself (hw->cont). What the last opcode
+// still owes (waitDebt) is paid first, so the wait is taken from where the
+// cycle really starts.
+static void comp_cont_hw(void* ptr, int mreq) {
+	Computer* comp = (Computer*)ptr;
+	comp->cpu->t += comp->waitDebt;
+	comp->waitDebt = 0;
+	vid_sync_lazy(comp->vid, ticks_to_ns_fixed(comp, comp->cpu->t - res4));
+	res4 = comp->cpu->t;
+	comp->hw->cont(comp, mreq);
+}
+
 // Contended memory. The cpu reports the start of every bus cycle for it, and
 // that is a call per memory access, so it only does so when a machine asks.
 void comp_set_cont(Computer* comp, int on) {
 	comp->flgCNTM = on ? 1 : 0;
 	if (comp->cpu) {
-		comp->cpu->flgCONT = comp->flgCNTM;
-		comp->cpu->xcont = comp_cont;
+		int own = comp->hw && comp->hw->cont;
+		comp->cpu->flgCONT = comp->flgCNTM || own;
+		comp->cpu->xcont = own ? comp_cont_hw : comp_cont;
 	}
 }
 
@@ -910,9 +923,6 @@ int compExec(Computer* comp) {
 	res4 = 0;
 // exec cpu opcode OR handle interrupt. get T states back
 	res2 = cpu_exec(comp->cpu);
-// scorpion WAIT: add 1T to odd-T command
-	if (comp->flgEM1 && (res2 & 1))
-		res2++;
 	if (comp->rzx.play) {
 		if (comp->rzx.frm.fetches == 0) {
 			vid_unlazy(comp->vid);

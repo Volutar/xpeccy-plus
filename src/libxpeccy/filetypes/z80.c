@@ -358,7 +358,8 @@ static int z80_snap_hw(int hwid) {
 		case HW_PLUS2A: return SNAP_HW_PLUS2A;
 		case HW_PLUS3: return SNAP_HW_PLUS3;
 		case HW_PENT: return SNAP_HW_PENTAGON;
-		case HW_SCORP: return SNAP_HW_SCORPION;
+		case HW_SCORP:
+		case HW_SCORPTP: return SNAP_HW_SCORPION;
 	}
 	return SNAP_HW_UNKNOWN;
 }

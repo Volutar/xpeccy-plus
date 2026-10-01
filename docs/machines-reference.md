@@ -28,7 +28,8 @@ all in dots; two dots make one CPU tick, so T per line is `full.x / 2` and the I
 | ZX Spectrum +3 | 3 546 900 | ZX +2A/+3 | 228 | 311 | 70 908 | 32 **open** | 2 (Amstrad) | no | yes | yes | yes |
 | Pentagon | 3 500 000 | Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
 | Pentagon 1024 SL | 3 500 000 | Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
-| ZS Scorpion 256 | 3 500 000 | Scorpion | 224 | 312 | 69 888 | 36 | 0 (none) | no | no | yes | no |
+| Scorpion ZS 256 | 3 500 000 | Scorpion | 224 | 312 | 69 888 | 32 | 0 (none) | no | no | yes | no |
+| Scorpion ZS 256 Turbo+ | 3 500 000 | Scorpion Turbo+ | 224 | 316 | 70 784 | 32 | 0 (none) | no | no | yes | no |
 | Profi | 3 500 000 | Profi | 224 | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
 | ATM Turbo 2+ | 3 500 000 | ATM Turbo 2+ | 224 | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
 | ZXM-Phoenix | 3 500 000 | Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
@@ -40,7 +41,7 @@ Contention patterns are `vid_wait_dots()` in `video/video.c`: 1 is the Ferranti 
 4-7 and mreq cycles only, 0 is no contention at all.
 
 `cpu.turbo` lists the turbo steps a board has, as multipliers of its base clock. Five of them
-switch it from a port and the core already does that: ZS Scorpion, ATM Turbo 2+ and Pentagon
+switch it from a port and the core already does that: Scorpion ZS 256 Turbo+, ATM Turbo 2+ and Pentagon
 1024SL at x2, ZX Evo and TSConf at x2 and x4. Profi and ZXM-Phoenix have 7 MHz too, but no
 port for it in this emulator, so they are turbo by switch - Alt+T is the switch, and whether
 the real ZXM-Phoenix has a port for it (its `#EFF7` is decoded for nothing today) is **open**.
@@ -72,9 +73,29 @@ which has none at all. That is **open** and wants its own round.
 The **open** INT lengths are the ones nobody has confirmed a figure for. Three of them
 (Profi, ATM, TSConf) were deliberately left at 32 T in the raster work. The fourth is a real
 inconsistency: the +2A/+3 was named in that round's decision - 36 T for the 311-line machines
-plus Pentagon and Scorpion - but its layout line still says 32 T while the 128K, Pentagon and
-Scorpion lines carry 36. Nothing on screen changes either way; only a program sampling the INT
-line late in a long instruction can tell.
+plus Pentagon and Scorpion - but its layout line still says 32 T while the 128K and Pentagon
+lines carry 36. Nothing on screen changes either way; only a program sampling the INT line late
+in a long instruction can tell.
+
+The two Scorpion ZS 256 boards are read off their schematics, not off an emulator's preset:
+github.com/romychs/YScorp for the yellow board and github.com/romychs/Scorpion256TPlus for the
+Turbo+. The yellow board has 312 lines and the Turbo+ 316: the Turbo+ board as built reloads its
+line counter with #44 where the paper schematic says #48 (one pin of DD5, checked on a real V16
+board), and the maker's page says the Turbo+ frame is slightly longer. INT is clocked by the end
+of the frame sync, 64 lines above the paper, and the first paper dot comes about 14 340 T after
+it, the pixel pipeline adding ~4 T. The Turbo+ makes a 32 T pulse with a flip-flop (the maker
+gives 9 us); the yellow board's is an RC pulse of roughly 45 T that varies with the chips, left
+at 32 T as every emulator has it. The yellow board holds an opcode fetch from RAM, and only from
+RAM, to an even T (`scrp.wait`); the Turbo+ has no such wait with its PLD 15.3, only with the
+older 15.1. In turbo the Turbo+ runs off the 7 MHz dot clock and its PLD makes a RAM access
+wait for the phase the video leaves free (one dot in four on the screen, one in two in the
+border), adds a wait to every i/o cycle, and drops to 3.5 MHz while INT is up.
+
+Horizontally the two layouts are the same on purpose. The Turbo+ clocks its blanking off H5,
+48 T against the yellow board's 40 T, which leaves 20 T of border on the left instead of 28;
+the layout keeps 40 T so the frame is 352 wide like every other machine, and the 8 dots the
+board blanks are drawn in the border color. Blank plus left border is 136 dots either way, so
+no timing moves.
 
 Also still open from that work: Profi's `intpos` puts the first paper dot 32 T after the
 interrupt where UnrealSpeccy's preset says 12 580, and ATM Turbo 2+ is 11 T out. Neither has an
@@ -96,7 +117,8 @@ RAM is what the core's `mask` field allows; the bold size is what the shipped pr
 | ZX Spectrum +3 | **128K** | uPD765 | none | 1 AY 1.773, mono | no |
 | Pentagon | **128K**, 512K | Beta Disk | none | 1 YM 1.75, ABC + Covox | yes |
 | Pentagon 1024 SL | **1M** | Beta Disk | none | 1 YM 1.75, ABC + Covox | yes |
-| ZS Scorpion 256 | **256K**, 1M | Beta Disk | SMUC | 1 YM 1.75, BAC + Covox | yes |
+| Scorpion ZS 256 | **256K** | Beta Disk | none | 1 AY 1.75, BAC + Covox | yes |
+| Scorpion ZS 256 Turbo+ | **256K**, 1M | Beta Disk | SMUC | 1 AY 1.75, BAC + Covox | yes |
 | Profi | 512K, **1M** | Beta Disk | Profi | 1 YM 1.75, ACB + Covox | yes |
 | ATM Turbo 2+ | 128K, 256K, 512K, **1M** | Beta Disk | ATM | 1 YM 1.75, ABC + Covox | yes |
 | ZXM-Phoenix | **2M** | Beta Disk | none | 1 YM 1.75, ABC + Covox | yes |
@@ -153,8 +175,8 @@ so bank 0 is the 128 editor, 1 the 48 BASIC, and 2/3 the interface ROM.
 | ZX Spectrum +3 (v4.1) | plus3-41.rom, 64K combined | | | |
 | Pentagon 128 | 128p-0.rom | 128p-1.rom | gluck.rom | trdos504t.rom |
 | Pentagon 128 (TR-DOS 5.03) | 128p-0.rom | 128p-1.rom | gluck.rom | trdos.rom |
-| ZS Scorpion 256 | 256s-0.rom | 256s-1.rom | 256s-2.rom | 256s-3.rom |
-| ZS Scorpion 256 (ProfROM 3.9f) | prof39f.rom, 128K combined | | | |
+| Scorpion ZS 256 | scorpion295.rom (ROM 2.95), 64K combined | | | |
+| Scorpion ZS 256 Turbo+ | prof401.rom (ProfROM 4.01), 256K combined | | | |
 | Profi | profi.rom, 64K combined | | | |
 | ATM Turbo 2+ | atm2.rom, 64K combined | | | |
 | ZXM-Phoenix | phoenix.rom, 64K combined | | | |
@@ -168,4 +190,4 @@ ATM, Profi and both Evo sets name `font = sgen.rom`.
 
 The display names and machine ids are section 7.3 of the plan; nothing in this file competes
 with it. The core names phase 1 settles on are `ZX48`, `ZX128`, `Plus2A`, `Plus3`, `Pentagon`,
-`Pentagon1024SL`, `Scorpion`, `Profi`, `ATM2`, `Phoenix`, `Baseconf`, `TSConf`.
+`Pentagon1024SL`, `Scorpion`, `ScorpionTP`, `Profi`, `ATM2`, `Phoenix`, `Baseconf`, `TSConf`.
