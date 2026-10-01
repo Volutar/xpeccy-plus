@@ -188,34 +188,43 @@ void vid_reset(Video* vid) {
 //	vidSetMode(vid, VID_NORMAL);
 }
 
-// move ray to 1 dot before INT
-void vid_reset_ray(Video* vid) {
-/*
-	vid->ray.x = vid->intp.x - 1;
-	vid->ray.y = vid->intp.y;
-	if (vid->ray.x < 0) {
-		vid->ray.x += vid->full.x;
-		vid->ray.y--;
-		if (vid->ray.y < 0)
-			vid->ray.y += vid->full.y;
-	}
-*/
-	vid_set_ray(vid, -1);
+// a dot count wrapped into one frame; C keeps the sign of %
+static int vid_wrap(Video* vid, int dots) {
+	dots %= vid->dotPerFrame;
+	return (dots < 0) ? dots + vid->dotPerFrame : dots;
 }
 
+// Put the ray this many dots after the INT. intp is counted from the blanking
+// edges (xb/yb), not from the top-left of the raster, so every counter vid_tick()
+// keeps is worked out from that one position: the INT fires on xb/yb, and a
+// stale pair fires it at the old place, or at once.
 void vid_set_ray(Video* vid, int dots) {
 	vid_unlazy(vid);
-	dots += vid->full.x * vid->intp.y;
-	dots += vid->intp.x;
-	dots %= vid->dotPerFrame;
-	// C keeps the sign, and vid_reset_ray() asks for one dot before the INT:
-	// a layout with intpos 0:0 (TSConf, and the built-in default) would put the
-	// ray a dot before the buffer and the next tick would write there
-	if (dots < 0) dots += vid->dotPerFrame;
-	vid->ray.y = dots / vid->full.x;
-	vid->ray.x = dots % vid->full.x;
+	int fx = vid->full.x;
+	int b = vid_wrap(vid, vid->intp.y * fx + vid->intp.x + dots);
+	vid->ray.yb = b / fx;
+	vid->ray.xb = b % fx;
+	// xb/yb restart where the ray reaches vend.x on line vend.y - 1
+	int p = vid_wrap(vid, b + (vid->vend.y - 1) * fx + vid->vend.x);
+	vid->ray.y = p / fx;
+	vid->ray.x = p % fx;
+	// xs/ys restart at bord.x on line bord.y
+	int s = vid_wrap(vid, p - vid->bord.y * fx - vid->bord.x);
+	vid->ray.ys = s / fx;
+	vid->ray.xs = s % fx;
+	vid->hblank = (vid->ray.x >= vid->vend.x);
+	vid->vblank = (vid->ray.y >= vid->vend.y);
+	vid->hbrd = (vid->ray.x < vid->bord.x) || (vid->ray.x >= vid->send.x);
+	vid->vbrd = (vid->ray.y < vid->bord.y) || (vid->ray.y >= vid->send.y);
 	vid->ray.lptr = scrimg + vid->ray.y * bytesPerLine;
 	vid->ray.ptr = vid->ray.lptr + vid->ray.x * 8;
+}
+
+// How many dots the ray is past the INT, the other way round from vid_set_ray()
+int vid_ray_dots(Video* vid) {
+	vid_unlazy(vid);
+	int fx = vid->full.x;
+	return vid_wrap(vid, (vid->ray.yb - vid->intp.y) * fx + vid->ray.xb - vid->intp.x);
 }
 
 // Border shown on each side, in dots and lines. The frame is the same size on

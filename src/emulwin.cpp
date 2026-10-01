@@ -1639,10 +1639,9 @@ void MainWin::renderFrame() {
 	// second draws a whole one from the top. Clearing between them keeps the
 	// half-frame out of the picture.
 	//
-	// vid_reset_ray() looks like the shortcut and is not: it puts the ray at
+	// vid_set_ray() looks like the shortcut and is not: it puts the ray at
 	// the interrupt, which is mid-line, so a frame drawn from there lands in
-	// the buffer split and shifted. It is right for a snapshot, where the
-	// pacer draws the next frame, and wrong for drawing one here and now.
+	// the buffer split and shifted.
 	emu_lock();
 	for (int i = 0; i < 2; i++) {
 		int guard = 1 << 19;

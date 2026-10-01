@@ -186,8 +186,8 @@ int z80GetHardware(const char* name) {
 // Byte 57 counts the quarter of the frame down from there, bytes 55-56 the T
 // left in that quarter; the quarter itself is not in the file - it is the frame
 // of whatever machine reads it - so a snapshot from another machine's timings
-// lands a few T out. Versions 1 and 2 say nothing (low < 0), and -1 is the
-// start of the frame.
+// lands a few T out. Versions 1 and 2 say nothing (low < 0), and -1 lets
+// comp_set_frame_tick() pick.
 static int z80_frame_tick(Computer* comp, int low, int hi) {
 	int quart = comp_frame_ticks(comp) / 4;
 	if ((low < 0) || (quart < 1)) return -1;
@@ -406,6 +406,10 @@ static void z80_write_page(FILE* file, unsigned char* src, int num) {
 	fwrite(raw ? src : buf, raw ? MEM_16K : len, 1, file);
 }
 
+int z80CanSave(Computer* comp) {
+	return z80_snap_hw(comp->hw->id) != SNAP_HW_UNKNOWN;
+}
+
 int saveZ80(Computer* comp, const char* name, int drv) {
 	int snap = z80_snap_hw(comp->hw->id);
 	if (snap == SNAP_HW_UNKNOWN) return ERR_Z80_HW;
@@ -451,7 +455,7 @@ int saveZ80(Computer* comp, const char* name, int drv) {
 	// 55: the frame split in quarters, counted down from the interrupt
 	int flen = comp_frame_ticks(comp);
 	int quart = (flen > 3) ? (flen / 4) : 1;
-	int tick = comp->frmtCount;				// T since the interrupt
+	int tick = comp_get_frame_tick(comp);			// T since the interrupt
 	if (tick < 0) tick = 0;
 	if (tick >= quart * 4) tick = quart * 4 - 1;
 	fputw(quart - (tick % quart) - 1, file);

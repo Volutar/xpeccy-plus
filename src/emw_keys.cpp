@@ -329,11 +329,13 @@ void MainWin::xkey_press(int xkey) {
 				pause(true, PR_OPTS);
 				emit s_options();
 				break;
-			case XCUT_SAVE:
+			case XCUT_SAVE: {
+				int live = !conf.emu.pause && !comp->flgDBG;
 				pause(true,PR_FILE);
-				save_file(comp, NULL, FG_ALL, -1);
+				save_file(comp, NULL, FG_ALL, -1, live);
 				pause(false,PR_FILE);
 				break;
+			}
 			case XCUT_LOAD:
 				openMedia(QString(), FG_ALL, -1, conf.autorun);
 				break;

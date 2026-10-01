@@ -316,6 +316,7 @@ void comp_snap_map(Computer*);
 void comp_snap_reset(Computer*, int);
 int comp_frame_ticks(Computer*);
 void comp_set_frame_tick(Computer*, int);
+int comp_get_frame_tick(Computer*);
 
 void rzxStop(Computer*);
 

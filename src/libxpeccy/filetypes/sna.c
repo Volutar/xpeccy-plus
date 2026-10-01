@@ -116,7 +116,7 @@ int loadSNA(Computer* comp, const char* name, int drv) {
 	fclose(file);
 	if (res == ERR_OK) {
 		mem_set_path(comp->mem, name);
-		vid_reset_ray(comp->vid);
+		comp_set_frame_tick(comp, -1);		// the file does not say where in the frame
 	}
 	return res;
 }

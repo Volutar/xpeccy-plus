@@ -71,6 +71,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **Snapshots no longer crash soon after loading.** A program timed to the interrupt took an
+  extra one on load. A `.z80` now comes back exactly where it was saved; a `.sna` keeps no
+  place in the frame, so F2 saves one at the frame's interrupt, and says so on screen when the
+  machine was paused. The save dialog suggests `.z80`.
+
 - **Radio buttons keep their place when checked** in every bundled style.
 
 - **A held hotkey no longer repeats**, so fast mode, pause and the like stay switched instead of
