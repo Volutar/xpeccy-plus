@@ -35,6 +35,7 @@ on nothing better than convention is marked **open** and left alone.
 | ZXM-Phoenix | 3 500 000 | ULA.Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
 | ZX Evolution (BaseConf) | 3 500 000 | ULA.Evo | 224 | 320 | 71 680 | 32 | 0 (none) | no | no | no | no |
 | ZX Evolution (TSConf) | 3 500 000 | ULA.TSConf | 224 | 320 | 71 680 | 32 | 0 (none) | no | no | no | no |
+| ALF TV Game / 128K | 3 500 000 | ULA.48 | 224 | 312 | 69 888 | 32 **open** | 0 (none) **open** | no | no | no | no |
 
 Contention patterns are `vid_wait_dots()` in `video/video.c`: 1 is the Ferranti ULA's
 `12,11,...,1,0,0,0,0` over banks 1/3/5/7, 2 the Amstrad ASIC's `2,1,0,0,14,...,3` over banks
@@ -93,6 +94,10 @@ no timing moves.
 
 Also still open from that work: ATM Turbo 2+ is 11 T out, with no official figure behind it.
 
+ALF TV Game runs on the 48K's layout with no contention. Its ports and joysticks come from
+its schematic ([zxbyte.ru/alf.htm](https://zxbyte.ru/alf.htm)); nobody has measured its
+frame, so both are **open**.
+
 The Profi's frame comes from a 2K sync PROM, and more than one was in circulation. Decoded
 (dumps in `build/refs/profi/rom/`, all v3): `VR3-0A1DFAFD` puts the first paper dot 12 580 T
 after INT - UnrealSpeccy's preset, credited to DDp - and `VR3-15E9B638`, the standard SAMX6,
@@ -148,6 +153,8 @@ RAM is what the core's `mask` field allows; the bold size is what the shipped de
 | ZXM-Phoenix | **2M** | Beta Disk | none | 1 YM 1.75, ABC + Covox | yes |
 | ZX Evolution (BaseConf) | **4M** | Beta Disk | NemoIDE | 2 YM 1.75, ABC (TurboSound) + Covox | yes |
 | ZX Evolution (TSConf) | **4M** | Beta Disk | NemoIDE | 2 YM 1.75, ABC (TurboSound) + Covox | yes |
+| ALF TV Game | **64K**, 128K | none | none | beeper | no |
+| ALF TV Game 128K | 64K, **128K** | none | none | 1 YM 1.75, ABC | no |
 
 The sound column gives the chip, its clock in MHz and the channel order. Both belong to the
 machine, not to a global preference, so the clock follows the machine.
@@ -195,9 +202,10 @@ so bank 0 is the 128 editor, 1 the 48 BASIC, and 2/3 the interface ROM.
 | ZXM-Phoenix | phoenix.rom, 64K combined | | | |
 | ZX Evolution (BaseConf) | zxevo-fe.rom, 512K combined | | | |
 | ZX Evolution (TSConf) | tsconf.rom, 64K combined | | | |
+| ALF TV Game / 128K | alf.rom, 32K combined: the games menu, then BASIC 48 | | | |
 
-Every ZX machine except the Sinclair ones also names `gs = gs105b.rom` (General Sound), and
-ATM, Profi and both Evo sets name `font = sgen.rom`.
+Every machine except the 48K, the +2A/+3 and ALF also names `gs = gs105b.rom` (General Sound),
+and ATM and both Evo sets name `font = sgen.rom`.
 
 ## 5. Names
 
