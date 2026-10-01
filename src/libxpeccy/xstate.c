@@ -13,7 +13,7 @@
 int x_runahead = 0;
 unsigned x_media_writes = 0;
 
-#define XST_MAX_CHUNKS	40
+#define XST_MAX_CHUNKS	48
 
 typedef struct {
 	void* ptr;
@@ -110,20 +110,30 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 	// media. A floppy's own struct is taken up to its track data only, and an
 	// fdc up to its sector list: both are 400K of the track being transferred,
 	// and xstate_safe() refuses a frame while a transfer is running.
+	// What names the medium - its path, open file, folder volume and size - is
+	// left out too: an older snapshot would put back a path and a file that
+	// were freed when the medium was changed since.
 	if (comp->dif) {
 		ADD(comp->dif, sizeof(DiskIF));
 		ADD(comp->dif->fdc, offsetof(FDC, slst));
 		for (i = 0; i < 4; i++)
-			ADD(comp->dif->flp[i], offsetof(Floppy, data));
+			ADD(comp->dif->flp[i], offsetof(Floppy, path));
 	}
 	if (comp->ide) {
+		ATADev* dev[2] = {comp->ide->master, comp->ide->slave};
 		ADD(comp->ide, sizeof(IDE));
-		ADD(comp->ide->master, sizeof(ATADev));
-		ADD(comp->ide->slave, sizeof(ATADev));
+		for (i = 0; i < 2; i++) {
+			if (!dev[i]) continue;
+			ADD(dev[i], offsetof(ATADev, maxlba));
+			ADD((char*)dev[i] + offsetof(ATADev, buf), offsetof(ATADev, pass) - offsetof(ATADev, buf));
+		}
 		if (comp->ide->smuc.nv)		// SMUC's NVRAM is spoken to bit by bit
 			ADD(comp->ide->smuc.nv, sizeof(nvRam));
 	}
-	ADD(comp->sdc, sizeof(SDCard));
+	if (comp->sdc) {
+		ADD(comp->sdc, offsetof(SDCard, capacity));
+		ADD((char*)comp->sdc + offsetof(SDCard, buf), sizeof(SDCard) - offsetof(SDCard, buf));
+	}
 
 	return n;
 }
