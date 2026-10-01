@@ -117,10 +117,13 @@ write too, and with INT at the paper they flicker beside the title of the palett
 
 The Profi turbo is the v3.2 schematic's: the cpu and the video share a 3.5 MHz DRAM slot and a
 RAM access waits for the cpu's turn; ROM, i/o and refresh run without waits, and the VG93's HLD
-drops the turbo altogether. A cycle that starts on a slot edge waits two (a NOP in RAM is 6 T,
-which an owner's timing table confirms). One that starts between edges has 71 ns to get its
-request to U28, and waits three, not one: the photographs' band steps fit only a colour period
-of 1220-1231 turbo T, this gives 1230 and the one-wait reading 1106. The v3.2 manual's fix for
+drops the turbo altogether. A cycle that starts on a slot edge waits two (a NOP in RAM is 6 T).
+One that starts between edges has 71 ns to get its request to U28, and waits three, not one.
+An owner's timing table from the 90s, each instruction run over and over, matches this in all
+ten entries checked (`ADD A,N` 6, `ADD HL,BC` 7, `ADC A,(IX+d)` 13, `BIT b,(IX+d)` 15, in
+3.5 MHz T), with its data reads from ROM - `ADD A,(HL)` is 5 there, not the 6 of `ADD A,N` -
+where the one-wait reading is out in seven. And the photographs' band steps fit only a colour
+period of 1220-1231 turbo T: this gives 1230, the one-wait reading 1106. The v3.2 manual's fix for
 an unstable turbo - 200-400 pF on that very path - is what makes it miss. The v4.01 board has a
 second mechanism, the cpu at 3.5 MHz while IORQ is low, which would fit the photographs as well
 (1226) but is not on the v3.2 drawings.
