@@ -52,6 +52,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **Adaptive antiflicker leaves moving pictures alone and follows scrolling GigaScreen**: a
+  pixel is mixed only once it has flickered for a few frames, a scrolling two-page picture is
+  mixed along its movement, and the first frame after fast mode or rewind is clean.
+
 - **Clearer gamepad binding window**: the pad's buttons have plain names ("Right trigger",
   "D-pad up"), and the choice follows the field you click into.
 

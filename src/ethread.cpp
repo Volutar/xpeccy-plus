@@ -358,6 +358,7 @@ void xThread::brkAction(Computer* comp, xBrkPoint* ptr, int* brkskip) {
 
 static xState* raState = NULL;
 static Computer* raOwner = NULL;	// what raBroken was decided about
+static int mixFrame = -2;		// conf.vid.fcount of the last frame antiflicker mixed
 static int raBroken = 0;		// the snapshot cannot be taken at all: stop trying
 
 // 1 when the machine has been run on and has to be wound back afterwards.
@@ -488,10 +489,12 @@ void xThread::emuCycle(Computer* comp) {
 			int wound = runAhead(comp);
 // process noflic/scanlines (if !fast ???)
 // buffers is already switches, bufimg - just painted (greyscale, if flag is set), scrimg - new
-			if (!conf.emu.fast && (noflic > 0))
+			if (!conf.emu.fast && (noflic > 0)) {
 				scrMix(pscr, bufimg + comp->vid->lcut.y * bytesPerLine + comp->vid->lcut.x * 8,
 					comp->vid->vsze.x * 2, comp->vid->vsze.y, bytesPerLine,
-					noflic / 100.0, noflicGamma, noflicMode);
+					noflic / 100.0, noflicGamma, noflicMode, conf.vid.fcount != mixFrame + 1);
+				mixFrame = conf.vid.fcount;
+			}
 
 			vrec_frame(comp);
 			emit s_frame();
