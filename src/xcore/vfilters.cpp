@@ -1,5 +1,7 @@
 #include <QColor>
 #include <math.h>
+#include <string.h>
+#include <vector>
 #include "vfilters.h"
 
 // Linear->sRGB conversion table
@@ -16,6 +18,69 @@ static inline float clampf(float x, float lo, float hi) {
 float last_gamma = 0;
 uint32_t *ring_base = NULL;
 static int ring_head = 0; // last frame idx
+static int ring_wid = 0;
+static int ring_hei = 0;
+
+// Adaptive modes mix a pixel only after its pattern has held this many frames
+// in a row: a moving picture repeats A,B,A by chance, but not for three periods.
+#define AF_CONFIRM_2C	4
+#define AF_CONFIRM_3C	4
+#define AF_RUN_MAX	15
+// per pixel: frames the 2C pattern has held (low nibble), the 3C one (high)
+static std::vector<unsigned char> af_runs;
+
+static inline unsigned char run_step(unsigned char run, bool hit) {
+	return hit ? (run < AF_RUN_MAX ? run + 1 : AF_RUN_MAX) : 0;
+}
+
+// A scrolling GigaScreen picture is the same page shifted between t-2 and t, and
+// the other page at t is t-1 shifted by half that. Rows are searched in bands,
+// so a static picture and a scroller, or two scroll layers, each get their own.
+#define AF_BAND		16	// rows in a band
+#define AF_SHIFT_X	16	// search range, pixels (2 a dot)
+#define AF_SHIFT_Y	8	// search range, rows
+typedef struct {
+	int dx, dy;		// t-2 moved by this is t; 0,0 when the band does not scroll
+} afShift;
+static std::vector<afShift> af_bands;
+
+// Picks the band's shift from a sample of its rows. Only a whole-dot half shift
+// can be followed, and only a clear winner over no shift at all is taken.
+static afShift af_find_shift(const uint32_t* cur, int cstride, const uint32_t* old, int wid, int hei, int y0) {
+	afShift res = {0, 0};
+	int y1 = y0 + AF_BAND;
+	if (y1 > hei) y1 = hei;
+	int xa = AF_SHIFT_X, xb = wid - AF_SHIFT_X;
+	if (xb <= xa) return res;
+	int best = -1, bdx = 0, bdy = 0, cost0 = 0;
+	for (int dy = -AF_SHIFT_Y; dy <= AF_SHIFT_Y; dy++) {
+		for (int dx = -AF_SHIFT_X; dx <= AF_SHIFT_X; dx += 2) {
+			if (dx && dy) continue;			// along one axis at a time
+			int cost = 0;
+			for (int y = y0 + 1; y < y1; y += 3) {	// odd step: rows of both parities
+				int yo = y - dy;
+				if ((yo < 0) || (yo >= hei)) continue;
+				const uint32_t* pc = cur + y * cstride;
+				const uint32_t* po = old + yo * wid - dx;
+				for (int x = xa; x < xb; x += 2)
+					cost += (pc[x] != po[x]);
+			}
+			if (!dx && !dy) {
+				cost0 = cost;
+			} else if ((best < 0) || (cost < best)) {
+				best = cost;
+				bdx = dx;
+				bdy = dy;
+			}
+		}
+	}
+	// a band that changed little, or that no shift explains, keeps no shift
+	if ((cost0 < 16) || (best < 0) || (best * 4 >= cost0)) return res;
+	if ((bdx & 3) || (bdy & 1)) return res;		// half the shift is not a whole dot / row
+	res.dx = bdx;
+	res.dy = bdy;
+	return res;
+}
 
 static void ring_rotate(void) {
 	ring_head = (ring_head + RING_FRAMES - 1) % RING_FRAMES;
@@ -115,7 +180,9 @@ static bool rgb_has_multi_component(uint32_t c) {
 // dst is the top left corner of the shown frame inside the whole raster, so
 // only that part is mixed - the ring keeps frames of exactly that size, and
 // nothing is spent on the raster around it.
-void scrMix(unsigned char* src, unsigned char* dst, int wid, int hei, int stride, double ratio, float gamma, int mode) {
+// reset: the frame before this one was not mixed (fast mode, rewind, mixing
+// off), so the history does not lead up to it.
+void scrMix(unsigned char* src, unsigned char* dst, int wid, int hei, int stride, double ratio, float gamma, int mode, int reset) {
 	const double ratio_x2 = ratio * 2.0;
 	int size = wid * hei;			// pixels in one frame of the ring
 
@@ -124,15 +191,41 @@ void scrMix(unsigned char* src, unsigned char* dst, int wid, int hei, int stride
 	// Rebuild gamma LUTs if Gamma value has changed
 	if (last_gamma != gamma) { rebuild_gamma_lut(gamma); }
 
+	// a history of another size or from before a gap would mix in a picture that
+	// is not there: start it again from this frame, shown as it is
+	if (reset || (wid != ring_wid) || (hei != ring_hei)) {
+		ring_wid = wid;
+		ring_hei = hei;
+		af_runs.assign(size, 0);
+		for (int i = 0; i < RING_FRAMES; i++) {
+			uint32_t *pf = ring_get_frame(i, size);
+			for (int y = 0; y < hei; y++)
+				memcpy(pf + y * wid, dst + y * stride, wid * 4);
+		}
+		return;
+	}
+
 	// screen is in GL_RGBA 32-bit format: Red,Green,Blue,Alpha
 	uint32_t *p0 = reinterpret_cast<uint32_t*>(dst);
+	unsigned char *pr = af_runs.data();
 	uint32_t *p1 = ring_get_frame(0, size);
 	uint32_t *p2 = ring_get_frame(1, size);
 	uint32_t *p3 = ring_get_frame(2, size);
 	uint32_t *p4 = ring_get_frame(3, size);
 	uint32_t *p5 = ring_get_frame(4, size);
+	const uint32_t *f1 = p1;		// t-1 and t-2 from their first pixel, for the shifted reads
+	const uint32_t *f2 = p2;
 	int rest = wid;				// pixels left in the current line
 	const int skip = stride - wid * 4;	// from a line's last pixel to the next line's first
+	int x = 0, y = 0;
+	const afShift* band = NULL;
+	bool adaptive = (mode == AF_2C_ADAPTIVE) || (mode == AF_3C_ADAPTIVE);
+	if (adaptive) {
+		af_bands.resize((hei + AF_BAND - 1) / AF_BAND);
+		for (size_t b = 0; b < af_bands.size(); b++)
+			af_bands[b] = af_find_shift(p0, stride / 4, f2, wid, hei, b * AF_BAND);
+		band = af_bands.data();
+	}
 	ring_rotate();
 
 	while (size > 0) {
@@ -144,32 +237,60 @@ void scrMix(unsigned char* src, unsigned char* dst, int wid, int hei, int stride
 		const uint32_t c5 = *p5;
 		uint32_t output_color = c0;
 		bool multi_components;
+		bool aba, per3;
+		unsigned char run2, run3;
+		uint32_t mate = c1;		// what c0 is mixed with in 2C
+		if (adaptive) {
+			const afShift& s = band[y / AF_BAND];
+			bool moved = false;		// t-1 shifted is this pixel: plain motion
+			aba = false;
+			if (s.dx || s.dy) {
+				int x2 = x - s.dx, y2 = y - s.dy;
+				int xh = x - s.dx / 2, yh = y - s.dy / 2;
+				if ((x2 >= 0) && (x2 < wid) && (y2 >= 0) && (y2 < hei)) {
+					uint32_t m = f1[yh * wid + xh];
+					moved = (c0 == m);
+					if ((c0 == f2[y2 * wid + x2]) && !moved) {
+						aba = true;
+						mate = m;
+					}
+				}
+			}
+			if (!aba && !moved) aba = (c0 == c2 && c0 != c1);
+		}
 
 		switch (mode) {
 		// 2C+3C (adaptive)
 		case AF_3C_ADAPTIVE:
 			// skip static pixels
-			if (c0 == c1 && c0 == c2)
+			if (c0 == c1 && c0 == c2 && !aba) {
+				*pr = 0;
 				break;
+			}
 
 			// 3Color simple check
 			multi_components =	rgb_has_multi_component(c0) ||
 								rgb_has_multi_component(c1) ||
 								rgb_has_multi_component(c2);
 			// static RGB-image check
-			if (!multi_components && c0 == c3 && c1 == c4 && c2 == c5) {
+			per3 = !multi_components && c0 == c3 && c1 == c4 && c2 == c5;
+			run2 = run_step(*pr & 0x0F, aba);
+			run3 = run_step(*pr >> 4, per3);
+			*pr = run2 | (run3 << 4);
+			if (per3 && run3 >= AF_CONFIRM_3C) {
 				output_color = blend_3c(c0, c1, c2, ratio_x2);
-			} else {
+			} else if (aba && run2 >= AF_CONFIRM_2C) {
 				// fallback to 2C blending
-				if (c0 == c2 && c0 != c1)
-					output_color = blend_2c(c0, c1, ratio);
+				output_color = blend_2c(c0, mate, ratio);
 			}
 			break;
 
 		// 2C only (adaptive)
 		case AF_2C_ADAPTIVE:
-			if (c0 == c2 && c0 != c1)
-				output_color = blend_2c(c0, c1, ratio);
+			run2 = run_step(*pr & 0x0F, aba);
+			*pr = run2;
+			if (aba && run2 >= AF_CONFIRM_2C)
+				output_color = blend_2c(c0, mate, ratio);
 			break;
 
 		// 2C only (fullscreen)
@@ -198,9 +319,13 @@ void scrMix(unsigned char* src, unsigned char* dst, int wid, int hei, int stride
 		p2++;
 		p3++;
 		p4++;
+		pr++;
 		size--;
+		x++;
 		if (--rest == 0) {			// next line of the frame
 			rest = wid;
+			x = 0;
+			y++;
 			p0 = reinterpret_cast<uint32_t*>(reinterpret_cast<unsigned char*>(p0) + skip);
 		}
 	}

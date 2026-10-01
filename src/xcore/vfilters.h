@@ -7,4 +7,4 @@ enum {
 	AF_3C_ADAPTIVE
 };
 
-void scrMix(unsigned char *src, unsigned char *p0, int wid, int hei, int stride, double mass, float gamma, int mode);
+void scrMix(unsigned char *src, unsigned char *p0, int wid, int hei, int stride, double mass, float gamma, int mode, int reset);
