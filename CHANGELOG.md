@@ -81,8 +81,9 @@ before that point is upstream's history and is not repeated here.
 
 - **No crash when switching to TurboSound FM** in the options while a machine runs.
 
-- **Disk access no longer starts the tape.** With a tape inserted, TR-DOS reading a disk kept
-  starting and stopping it, with its sound and the fast loading sign.
+- **Disk access and waiting for a key no longer start the tape.** With a tape inserted, TR-DOS
+  reading a disk, or a program waiting for a key press, kept starting and stopping it, with its
+  sound and the fast loading sign.
 
 - **The ZX Evo start menu shows its clock**, and the clock chip's memory keeps every cell to
   itself on ZX Evo, Pentagon 1024 and Profi; ZX Evo settings saved earlier are carried over.

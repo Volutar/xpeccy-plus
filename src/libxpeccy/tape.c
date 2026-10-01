@@ -524,17 +524,17 @@ void tapArmPlay(Tape* tap) {
 }
 
 // Auto play / stop, after Fuse's loader_detect_loader(). Ten reads in a row
-// within 500 T of each other, from the same place with one register moved at
-// most, start a stopped tape: an edge loop moves its counter and that is all
-// (ZXMAK2 asks the same; DeciLoad counts in D and reloads it), where code that
-// samples the port for a signal stores what it reads (Popeye 3's title, which
-// Spectaculator leaves the tape stopped for). Not every loader counts: Styx
-// calls a one-read edge test, so a read whose code tests the ear bit is a
-// loader's too. A keyboard scan never starts the tape, however it steps B (Black
-// Tiger's key definition), and the rom's edge routine never does: the trap
-// serves it. Nor does any other read from rom: TR-DOS calls the 48 rom's
-// BREAK-KEY over and over while it works the disk, from one place with nothing
-// moved.
+// within 500 T of each other, from the same place with one register moved,
+// start a stopped tape: an edge loop moves its counter and that is all (ZXMAK2
+// asks the same; DeciLoad counts in D and reloads it), where code that samples
+// the port for a signal stores what it reads (Popeye 3's title, which
+// Spectaculator leaves the tape stopped for), and a loop that moves nothing is
+// waiting for a key (Insult's LD A,#7F / IN / RRCA / JR C). Not every loader
+// counts: Styx calls a one-read edge test, so a read whose code tests the ear
+// bit is a loader's too. A keyboard scan never starts the tape, however it
+// steps B (Black Tiger's key definition), and the rom's edge routine never
+// does: the trap serves it. Nor does any other read from rom: TR-DOS calls the
+// 48 rom's BREAK-KEY over and over while it works the disk.
 // Fuse stops a playing tape on two reads in a row unlike a loader's. Here it
 // takes a whole frame of reads unlike a loader's, and none like it: an interrupt
 // that scans the keys halfway through a load (Joe Blade 2), or a loader whose B
@@ -549,11 +549,11 @@ void tapDetectLoader(Tape* tap, int tick, int pc, const unsigned char* regs, int
 	int tickDiff = tick - tap->detectLastTick;
 	int bDiff = (regs[1] - tap->detectRegs[1]) & 0xff;
 	int step = (bDiff == 1) || (bDiff == 0xff);
-	// a counter alone moved, or nothing, since a read from the same place
+	// one register alone, the loop's counter, moved since a read from the same place
 	int moved = 0;
 	for (int i = 0; i < 7; i++)
 		moved += (regs[i] != tap->detectRegs[i]);
-	int turn = (pc == tap->detectLastPc) && (moved < 2);
+	int turn = (pc == tap->detectLastPc) && (moved == 1);
 	tap->detectLastTick = tick;
 	tap->detectLastPc = pc;
 	memcpy(tap->detectRegs, regs, 7);
