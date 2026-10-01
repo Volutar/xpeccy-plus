@@ -79,7 +79,7 @@ struct HardWare {
 	cbHwKey keyr;		// key release
 	cbHwVol vol;		// read volume
 	cbhwcomp snapmap;	// stand where a snapshot expects the machine (NULL: nothing to do)
-	cbHwIrq cont;		// a bus cycle starts, the ray synced to it (NULL: the ULA's contention)
+	cbHwIrq cont;		// a bus cycle starts in turbo, the ray synced to it (NULL: the ULA's contention)
 };
 typedef struct HardWare HardWare;
 

@@ -768,6 +768,7 @@ void comp_update_timings(Computer* comp) {
 	} else {
 		comp->nsPerTickFixed = NSD_TO_FIXED(comp->nsPerTick);
 	}
+	comp_set_cont(comp, comp->flgCNTM);	// a turbo arbiter follows hwMul
 }
 
 void compSetBaseFrq(Computer* comp, double frq) {
@@ -828,10 +829,11 @@ static void comp_cont_hw(void* ptr, int mreq) {
 
 // Contended memory. The cpu reports the start of every bus cycle for it, and
 // that is a call per memory access, so it only does so when a machine asks.
+// A board's own arbiter (hw->cont) is its turbo's, so it is asked only in turbo.
 void comp_set_cont(Computer* comp, int on) {
 	comp->flgCNTM = on ? 1 : 0;
 	if (comp->cpu) {
-		int own = comp->hw && comp->hw->cont;
+		int own = comp->hw && comp->hw->cont && (comp->hwMul > 1);
 		comp->cpu->flgCONT = comp->flgCNTM || own;
 		comp->cpu->xcont = own ? comp_cont_hw : comp_cont;
 	}
