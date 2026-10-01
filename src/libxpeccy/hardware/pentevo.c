@@ -162,12 +162,16 @@ static void evo_cache_clear(Computer* comp) {
 	comp->xregData.w = 0;
 }
 
+// the word's tag, or 0 for rom, which empties the cache
+static int evo_cache_tag(Computer* comp, int adr) {
+	if (mem_get_page(comp->mem, adr)->type == MEM_RAM) return 0x8000 | (adr >> 1);
+	evo_cache_clear(comp);
+	return 0;
+}
+
 static void evo_cache_rd(Computer* comp, int adr, int m1) {
-	if (mem_get_page(comp->mem, adr)->type != MEM_RAM) {
-		evo_cache_clear(comp);
-		return;
-	}
-	int tag = 0x8000 | (adr >> 1);
+	int tag = evo_cache_tag(comp, adr);
+	if (!tag) return;
 	if ((comp->xregCode.w == tag) || (comp->xregData.w == tag)) return;
 	if (m1) comp->xregCode.w = tag; else comp->xregData.w = tag;
 	if (comp->hwMul == 4) {
@@ -179,11 +183,8 @@ static void evo_cache_rd(Computer* comp, int adr, int m1) {
 }
 
 static void evo_cache_wr(Computer* comp, int adr) {
-	if (mem_get_page(comp->mem, adr)->type != MEM_RAM) {
-		evo_cache_clear(comp);
-		return;
-	}
-	int tag = 0x8000 | (adr >> 1);
+	int tag = evo_cache_tag(comp, adr);
+	if (!tag) return;
 	if (comp->xregCode.w == tag) comp->xregCode.w = 0;
 	if (comp->xregData.w == tag) comp->xregData.w = 0;
 }
