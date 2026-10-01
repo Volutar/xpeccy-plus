@@ -2,6 +2,8 @@
 #include "xcore/xcore.h"
 #include "xcore/autostart.h"
 #include "xcore/filemachine.h"
+#include "xcore/sound.h"
+#include "libxpeccy/cpu/Z80/z80.h"
 #include "xgui/xgui.h"
 
 #include <QDebug>
@@ -576,7 +578,32 @@ int media_reload(Computer* comp) {
 	return res;
 }
 
-int save_file(Computer* comp, const char* name, int id, int drv) {
+// Run the machine on to the end of the next INT acknowledge, where loading puts
+// a .sna with interrupts off back, a frame and a bit at most. Returns 0 if it
+// never got there: interrupts kept off, or a breakpoint.
+static int snap_align(Computer* comp) {
+	CPU* cpu = comp->cpu;
+	int flen = comp_frame_ticks(comp);
+	int t0 = comp->tickCount;
+	int done = 0;
+	emu_lock();
+	while ((comp->tickCount - t0 < flen + flen / 4) && !done && !comp->flgBRK) {
+		int iff = cpu->flgIFF1;
+		int pc = cpu->regPC;
+		int sp = cpu->regSP;
+		snd_scope_step(comp, compExec(comp));
+		// taken: interrupts went off and the pc was pushed - past a HALT if the
+		// cpu sat in one - where a DI pushes nothing
+		if (iff && !cpu->flgIFF1 && (cpu->regSP == ((sp - 2) & 0xffff))) {
+			int ret = memRd(comp->mem, cpu->regSP) | (memRd(comp->mem, (cpu->regSP + 1) & 0xffff) << 8);
+			done = (ret == pc) || (ret == ((pc + 1) & 0xffff));
+		}
+	}
+	emu_unlock();
+	return done;
+}
+
+int save_file(Computer* comp, const char* name, int id, int drv, int live) {
 	QString path = QString::fromLocal8Bit(name);
 	QString flt;
 	QString ext;
@@ -624,7 +651,11 @@ int save_file(Computer* comp, const char* name, int id, int drv) {
 					}
 					// if no filetypes found, add default extension
 					if (flg) {
-						path.append(grp->defext);
+						// a .z80 keeps where the beam was, a .sna does not
+						if ((grp->id == FG_SNAPSHOT) && z80CanSave(comp))
+							path.append(".z80");
+						else
+							path.append(grp->defext);
 					}
 				} else {
 					tin = file_detect_type(flt);
@@ -645,6 +676,13 @@ int save_file(Computer* comp, const char* name, int id, int drv) {
 	if (inf) {
 		xlog(XLG_FILE, XLL_INFO, "filetype: %s", inf->name);
 		if (inf->save) {
+			// a .sna has no frame position: a running machine is saved where
+			// loading puts it back, a held one stays put and is told so
+			if (inf->id == FL_SNA) {
+				int aligned = live && !comp->rzx.play && snap_align(comp);
+				if (!aligned)
+					comp->msg = (char*)(z80CanSave(comp) ? " SNA: no frame position, use Z80 " : " SNA: no frame position ");
+			}
 			err = inf->save(comp, path.toLocal8Bit().data(), drv);
 		} else {
 			shitHappens("Can't save that");

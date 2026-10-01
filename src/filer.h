@@ -81,7 +81,8 @@ int file_autostart_kind();
 void media_autorun(Computer*, int run);
 // drop that record: media a profile puts back was not opened by the user
 void media_autorun_forget();
-int save_file(Computer* comp, const char* name, int id, int drv);
+// live: the machine was running, so a snapshot may run it on to a better moment
+int save_file(Computer* comp, const char* name, int id, int drv, int live = 0);
 
 int saveChangedDisk(Computer*,int);
 // the Drives menu and the Disk manager name what is in a drive alike

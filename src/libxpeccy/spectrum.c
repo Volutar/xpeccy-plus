@@ -707,20 +707,81 @@ int comp_frame_ticks(Computer* comp) {
 	return (int)llround(comp->vid->nsPerFrame / comp->nsPerTick);
 }
 
+// The frame length in T, 0 when the machine has no usable frame to stand in
+static int comp_frame_ok(Computer* comp) {
+	int flen = comp_frame_ticks(comp);
+	return ((flen > 0) && (comp->vid->dotPerFrame > 0)) ? flen : 0;
+}
+
+// Ticks and dots past the INT, one the inverse of the other. The cpu's ticks
+// start on dots that are a multiple of a tick from where the blanking counters
+// start, as they have since the machine was made, so on a layout whose INT dot
+// is odd the cpu sees the pulse half a T in - and a snapshot has to be stood on
+// the same grid. A tick that is not a whole number of dots is scaled instead.
+static int comp_tick_to_dots(Computer* comp, int flen, int tick) {
+	Video* vid = comp->vid;
+	int dpt = vid->dotPerFrame / flen;
+	if (dpt * flen != vid->dotPerFrame)
+		return (int)((long long)tick * vid->dotPerFrame / flen);
+	return tick * dpt - (vid->intp.y * vid->full.x + vid->intp.x) % dpt;
+}
+
+static int comp_dots_to_tick(Computer* comp, int flen, int dots) {
+	Video* vid = comp->vid;
+	int dpt = vid->dotPerFrame / flen;
+	if (dpt * flen != vid->dotPerFrame)
+		return (int)((long long)dots * flen / vid->dotPerFrame);
+	return ((dots + (vid->intp.y * vid->full.x + vid->intp.x) % dpt) / dpt) % flen;
+}
+
+// Where a snapshot with no frame position (.sna, .z80 v1/v2) is put. With
+// interrupts off it is taken as saved the way a running machine saves one: at
+// the end of the INT acknowledge. The instruction the INT lands in ends 2 to 5 T
+// after it, which the file cannot say, so it is taken as 2. With them on it
+// was saved at some point mid-frame, and goes just after the pulse: an INT
+// taken on load breaks code that times itself to the interrupt.
+static int comp_snap_tick(Computer* comp, int flen) {
+	if (!comp->cpu->flgIFF1)
+		return 2 + ((comp->cpu->regIM == 2) ? 19 : 13);
+	return (int)(((long long)comp->vid->intsize * flen + comp->vid->dotPerFrame - 1) / comp->vid->dotPerFrame);
+}
+
 // Stand the machine at tick T of its frame, counted from the interrupt, as a
 // snapshot taken mid-frame asks for. The tick counter and the beam have to
-// agree, and how many dots a tick is worth is the video's business. A tick
-// before the frame (-1) is the start of one, which is where a reset leaves it.
+// agree, and how many dots a tick is worth is the video's business. A snapshot
+// that does not say (-1) lands at comp_snap_tick().
 void comp_set_frame_tick(Computer* comp, int tick) {
-	int flen = comp_frame_ticks(comp);
-	if ((tick < 0) || (flen < 1)) {
+	Video* vid = comp->vid;
+	int flen = comp_frame_ok(comp);
+	if (!flen) {
 		comp->frmtCount = 0;
-		vid_reset_ray(comp->vid);
+		vid_set_ray(vid, -1);
 		return;
 	}
+	if (tick < 0) tick = comp_snap_tick(comp, flen);
 	if (tick >= flen) tick = flen - 1;
+	int dots = comp_tick_to_dots(comp, flen, tick);
 	comp->frmtCount = tick;
-	vid_set_ray(comp->vid, (int)((long long)tick * comp->vid->dotPerFrame / flen));
+	vid_set_ray(vid, dots);
+	// the INT line as it stands at that tick, not as the reset before left it,
+	// and not yet sampled by the cpu: the machine raises it its own way and
+	// the pulse is cut to what is left of it
+	comp->cpu->flgACK = 0;
+	vid_set_int_frame(vid, 0);
+	comp->cpu->intrq &= ~Z80_INT;
+	int left = vid->intsize - dots;
+	if ((dots >= 0) && (left > 0) && (vid->inten & 1) && comp->hw->irq && !comp->rzx.play) {
+		comp->hw->irq(comp, IRQ_VID_INT);
+		if (vid->intFRAME > left) vid->intFRAME = left;
+	}
+}
+
+// Where comp_set_frame_tick() would have to put the machine back to. Taken off
+// the beam, not frmtCount: that is zeroed inside the instruction the INT lands
+// in and then given all of its T, so it runs a few T ahead of the beam.
+int comp_get_frame_tick(Computer* comp) {
+	int flen = comp_frame_ok(comp);
+	return flen ? comp_dots_to_tick(comp, flen, vid_ray_dots(comp->vid)) : 0;
 }
 
 // All a snapshot says about paging is the 7FFD byte, so before one is applied
