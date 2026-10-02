@@ -120,7 +120,7 @@ before that point is upstream's history and is not repeated here.
 - **Hard disk images and SD cards**: the whole of a large image is reachable and the disk
   reports its real size, so NedoOS installs on it and boots from it; a new disk supports LBA,
   the NemoIDE alternate status port works, and a sector written to an SD card is no longer
-  shifted by a byte.
+  shifted by a byte. A folder with NedoOS in it, served as a hard disk, boots on ZX Evo too.
 
 ## 2026.5.1 - 2026-09-26
 

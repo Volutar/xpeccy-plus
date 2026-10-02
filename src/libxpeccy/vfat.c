@@ -190,6 +190,7 @@ vFat* vfat_create(void) {
 	memset(vf, 0x00, sizeof(vFat));
 	vf->spc = VF_SPC;
 	vf->cnode = -1;
+	vf->hddport = -1;				// only an IDE disk serves a boot sector
 	vf->serial = 0x58504543;			// XPEC
 	return vf;
 }
@@ -299,6 +300,42 @@ static void vfat_geometry(vFat* vf, unsigned int volume) {
 	vf->clusters = (vf->partSize - vf->dataStart) / vf->spc;
 }
 
+// NedoOS boots from an HDD through the IS-DOS boot sector at LBA 2..3, which
+// hddfdisk takes from ZXLDR and points at that file's first sector; do the same.
+// ZXLDR carries the sector twice: for Nemo IDE ports first, then for ATM ones.
+#define VF_ZXLDR_MAX	0x10000
+
+static void vfat_hddboot(vFat* vf) {
+	static const unsigned char sig[] = {0x18, 0x38, 0x00, 0xc3, 0x83, 0x5e, 0x18, 0x40};
+	unsigned char* buf;
+	unsigned char* sec;
+	vfNode* nod;
+	FILE* file;
+	unsigned int len, i;
+	int idx;
+	vf->hddboots = 0;
+	for (idx = vf->node[0].child; idx >= 0; idx = vf->node[idx].next) {
+		if (!vf->node[idx].isdir && !memcmp(vf->node[idx].sname, "ZXLDR      ", 11)) break;
+	}
+	if (idx < 0) return;
+	nod = vf->node + idx;
+	if (!nod->host || !nod->clust || (nod->size > VF_ZXLDR_MAX)) return;
+	file = fopen(nod->host, "rb");
+	if (!file) return;
+	buf = (unsigned char*)malloc(nod->size);
+	len = buf ? fread(buf, 1, nod->size, file) : 0;
+	fclose(file);
+	for (i = 0; (i + VF_SECSIZE <= len) && (vf->hddboots < VF_HDDBOOTS); i++) {
+		if (memcmp(buf + i, sig, sizeof(sig))) continue;
+		sec = vf->hddboot[vf->hddboots++];
+		memcpy(sec, buf + i, VF_SECSIZE);
+		memset(sec + 8, 0x00, 0x2e - 8);		// LBA mode, no IS-DOS partitions
+		wr32(sec + 10, vf->partStart + vf->dataStart + (nod->clust - 2) * vf->spc);
+		i += VF_SECSIZE - 1;
+	}
+	free(buf);
+}
+
 int vfat_build(vFat* vf, unsigned int minsec) {
 	unsigned int volume, cbytes, need;
 	int i;
@@ -340,6 +377,7 @@ int vfat_build(vFat* vf, unsigned int minsec) {
 		vf->used += need;
 		vf->order[vf->ordcnt++] = i;
 	}
+	vfat_hddboot(vf);
 	return 1;
 }
 
@@ -538,6 +576,8 @@ int vfat_read(vFat* vf, unsigned int lba, unsigned char* dst) {
 		vfat_mbr(vf, dst);
 	} else if (lba < vf->partStart) {
 		// gap between the MBR and the partition
+		if (((lba == 2) || (lba == 3)) && (vf->hddport >= 0) && (vf->hddport < vf->hddboots))
+			memcpy(dst, vf->hddboot[vf->hddport], VF_SECSIZE);
 	} else {
 		rel = lba - vf->partStart;
 		if (rel < vf->reserved) {

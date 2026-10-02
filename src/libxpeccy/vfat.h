@@ -13,6 +13,13 @@ extern "C" {
 #define VF_SECSIZE	512
 #define VF_MAXNAME	255
 
+// IDE port sets the HDD boot sector comes in
+enum {
+	VF_PORT_NEMO = 0,
+	VF_PORT_ATM,
+	VF_HDDBOOTS
+};
+
 typedef struct {
 	unsigned isdir:1;
 	unsigned lfn:1;			// name doesn't fit 8.3, needs long name entries
@@ -49,6 +56,9 @@ typedef struct {
 	unsigned int clusters;		// data clusters in the partition
 	unsigned int used;		// clusters handed out
 	unsigned int serial;
+	unsigned char hddboot[VF_HDDBOOTS][VF_SECSIZE];	// IS-DOS boot sectors for LBA 2 and 3, per port set
+	int hddboots;			// how many of them were found
+	int hddport;			// which one to serve: VF_PORT_*, -1 for none
 
 	int cnode;			// cached open file
 	FILE* cfile;
