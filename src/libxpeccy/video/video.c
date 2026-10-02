@@ -670,14 +670,14 @@ static int contTabB[] = {2,1,0,0,14,13,12,11,10,9,8,7,6,5,4,3};		// +2A +3 (bank
 
 // Where the ray stands in the ULA's fetch group, counted from the dot it
 // starts fetching on - which is ahead of the first pixel it will show. The
-// wait table, the snow phase and the floating bus all hang on this one
+// wait table, the snow phase and the floating bus all count from this one
 // number, so it is written once. dotofs is the caller's own anchor.
 // Early timings put the wait table where fuse has it (48K: 14335), which is
 // what Butler's 48K timing tests pass on; late ones are a tick later. The
-// +2A/+3 keeps its old anchor, a tick earlier: nothing has measured it.
+// +2A/+3 gate array has no late version and is three ticks ahead of the
+// early ULA, as photos of Rak's timing test on a real +3 and +2A show.
 static int ula_fetch_x(Video* vid, int dotofs) {
-	int base = vid->ula->early ? 8 : 6;
-	if (vid->ula->conttype == CONT_PATB) base += 2;
+	int base = (vid->ula->conttype == CONT_PATB) ? 14 : (vid->ula->early ? 8 : 6);
 	return vid->ray.x - vid->bord.x + base + dotofs;
 }
 
@@ -691,6 +691,7 @@ static int ula_fetch_x(Video* vid, int dotofs) {
 // at the same point, as it does in fuse.
 int vid_wait_dots(Video* vid, int adr, int mreq) {
 	int xscr;
+	int end = vid->scrn.x;
 	int* contTab = NULL;
 	switch (vid->ula->conttype) {
 		case CONT_PATA:
@@ -701,6 +702,7 @@ int vid_wait_dots(Video* vid, int adr, int mreq) {
 			if (!mreq) return 0;		// asic contends mreq cycles only
 			adr &= 0x10000;
 			contTab = contTabB;
+			end += 2;			// the gate array holds one tick past the line
 			break;
 	}
 	if (!contTab) return 0;				// unknown patern
@@ -709,7 +711,7 @@ int vid_wait_dots(Video* vid, int adr, int mreq) {
 	if (vid->vbrd) return 0;			// border (vertical)
 	xscr = ula_fetch_x(vid, 0);
 	if (xscr < 0) return 0;				// line before contention
-	if (xscr >= vid->scrn.x) return 0;		// line after contention
+	if (xscr >= end) return 0;			// line after contention
 	return contTab[xscr & 0x0f];			// wait length in dots
 }
 
@@ -787,6 +789,8 @@ int vid_snow(Video* vid, int r, int bank) {
 // The first read comes 3T into the wait table's window (fuse: 14338 against
 // 14335 on a 48K), and the port is read with the ray at the end of the i/o
 // cycle, a tick after fuse reads it (periph.c readport) - eight dots in all.
+// The +2A/+3 gate array reads two ticks later against its own wait window,
+// which is how a photo of Hikaru's test on a real +2A lines up with Rak's.
 //
 // Returns the byte on the bus, or -1 while it is idle - what that means is the
 // caller's, since the machines that have one answer differently.
@@ -794,7 +798,7 @@ int vid_float_bus(Video* vid) {
 	int x, y, col, phase, pix, atr;
 	vid_settle(vid);
 	if (vid->vbrd) return -1;
-	x = ula_fetch_x(vid, -8);
+	x = ula_fetch_x(vid, (vid->ula->conttype == CONT_PATB) ? -12 : -8);
 	if (x < 0) return -1;			// left border, before the first burst
 	if (x >= vid->scrn.x) return -1;	// right border and retrace
 	phase = (x >> 1) & 7;			// two dots per read, four reads then idle
