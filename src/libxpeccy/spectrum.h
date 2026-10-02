@@ -317,6 +317,7 @@ void comp_snap_map(Computer*);
 void comp_snap_reset(Computer*, int);
 int comp_frame_ticks(Computer*);
 void comp_set_frame_tick(Computer*, int);
+void comp_power_phase(Computer*);	// the frame position a machine is switched on at
 int comp_get_frame_tick(Computer*);
 
 void rzxStop(Computer*);

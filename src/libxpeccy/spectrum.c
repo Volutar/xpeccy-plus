@@ -782,6 +782,15 @@ void comp_set_frame_tick(Computer* comp, int tick) {
 	}
 }
 
+// The ULA comes up at any point of its frame (Time to First INT on a real 48K);
+// a reset leaves it where it is.
+void comp_power_phase(Computer* comp) {
+	static unsigned int calls = 0;
+	int flen = comp_frame_ok(comp);
+	if (!flen) return;
+	comp_set_frame_tick(comp, (int)((((xhost_seed() + calls++) * 2654435761u) >> 8) % (unsigned int)flen));
+}
+
 // Where comp_set_frame_tick() would have to put the machine back to. Taken off
 // the beam, not frmtCount: that is zeroed inside the instruction the INT lands
 // in and then given all of its T, so it runs a few T ahead of the beam.

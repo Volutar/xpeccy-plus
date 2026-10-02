@@ -133,3 +133,4 @@ typedef reg16(w,h,l) xreg16;
 // Nonzero freezes the host clock the machine sees (its RTC, the power-on ram
 // pattern) at this time_t, so two runs can be compared byte for byte.
 extern long long xhost_time_fixed;
+unsigned int xhost_seed(void);

@@ -1052,6 +1052,7 @@ bool xm_set(std::string id) {
 	loadKeys();		// a machine with no keyboard puts the joystick on the keys
 	mouseReleaseAll(conf.zx->mouse);
 	compReset(conf.zx, RES_DEFAULT);
+	comp_power_phase(conf.zx);
 	tapStop(conf.zx->tape);		// the tape starts over with the machine
 	tapRewind(conf.zx->tape, 0);
 	// The images were closed above, when the machine we came from let go of

@@ -105,8 +105,13 @@ static unsigned int cold_rnd(unsigned int* seed) {
 	return s;
 }
 
+// What varies from one switch-on to the next: the host clock, or the clock --bench froze
+unsigned int xhost_seed(void) {
+	return (unsigned int)(xhost_time_fixed ? xhost_time_fixed : time(NULL));
+}
+
 void mem_cold_fill(Memory* mem, const unsigned char* pat, int len, int noise) {
-	unsigned int seed = (unsigned int)(xhost_time_fixed ? xhost_time_fixed : time(NULL)) | 1;
+	unsigned int seed = xhost_seed() | 1;
 	size_t size = mem_ram_extent(mem);
 	unsigned char weak[COLD_CELLS];
 	int pick = toLimits((noise * COLD_CELLS + COLD_BAD_PM / 2) / COLD_BAD_PM, 0, COLD_CELLS);
