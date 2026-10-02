@@ -578,6 +578,13 @@ static void ataCloseFile(ATADev* dev) {
 	dev->vfat = NULL;
 }
 
+// a folder serves the HDD boot sector written for this interface's ports
+static void ide_vfat_port(IDE* ide) {
+	int port = (ide->type == IDE_ATM) ? VF_PORT_ATM : VF_PORT_NEMO;
+	if (ide->master->vfat) ide->master->vfat->hddport = port;
+	if (ide->slave->vfat) ide->slave->vfat->hddport = port;
+}
+
 // mount a synthetic volume built from a host folder. The device takes ownership
 // of the volume; the folder path is kept in ->image, as with an image file.
 void ideSetFolder(IDE* ide, int wut, const char* name, vFat* vf) {
@@ -596,6 +603,7 @@ void ideSetFolder(IDE* ide, int wut, const char* name, vFat* vf) {
 	dev->pass.spt = 63;
 	dev->maxlba = vf->volume;
 	dev->pass.cyls = ata_chs_cyls(dev->maxlba);
+	ide_vfat_port(ide);
 }
 
 void ideSetImage(IDE *ide, int wut, const char *name) {
@@ -953,6 +961,7 @@ void ide_set_type(IDE* ide, int id) {
 		ide->type = IDE_NONE;
 		ide->core = NULL;
 	}
+	ide_vfat_port(ide);
 }
 
 // reopening is ide_mount()'s job: only it knows a path may be a folder
