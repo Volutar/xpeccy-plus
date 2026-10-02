@@ -159,6 +159,7 @@ typedef struct Computer {
 	int earback;		// EAR_*: the ear input with no tape playing
 	int fbus;		// FBUS_*: what a port nothing answers reads back
 	unsigned char fbusLast;	// last byte to or from contended memory (FBUS_ASIC)
+	int fbusTick;		// tickCount + cpu->t of fbusLast
 
 	int snowBad;		// the ULA took a refresh cycle: the next opcode out of
 				// slow memory comes back wrong (flgSNOWX)

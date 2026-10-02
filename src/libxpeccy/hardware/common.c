@@ -287,19 +287,22 @@ int xIn1F(Computer* comp, int port) {
 // The Amstrad machines are the awkward one. Their gate array only leaves the
 // bus open on ports 1, 5, 9 ... 4093 and only while paging is on, so a +3 in
 // 48K mode has no floating bus at all; what comes back always has bit 0 set;
-// and between the four reads the bus keeps the last byte that went to or came
-// from contended memory instead of going to #FF. Worked out by Ast A. Moore
-// and Hikaru in 2017 - sky.relative-path.com/zx/floating_bus.html.
+// and between the four reads the bus keeps whichever came last, the gate
+// array's own fetch or a byte that went to or came from contended memory,
+// instead of going to #FF. Worked out by Ast A. Moore and Hikaru in 2017 -
+// sky.relative-path.com/zx/floating_bus.html.
 int zx_in_float(Computer* comp, int port) {
-	int res;
+	int res, age;
 	switch (comp->fbus) {
 		case FBUS_ULA:
-			res = vid_float_bus(comp->vid);
+			res = vid_float_bus(comp->vid, NULL);
 			return (res < 0) ? 0xff : res;
 		case FBUS_ASIC:
 			if (((port & 0xf003) != 1) || (comp->p7FFD & 0x20)) return 0xff;
-			res = vid_float_bus(comp->vid);
-			if (res < 0) res = comp->fbusLast;
+			res = vid_float_bus(comp->vid, &age);
+			if (ticks_to_ns_fixed(comp, comp->tickCount + comp->cpu->t - comp->fbusTick)
+					< (long long)age * comp->vid->nsPerDotFixed)
+				res = comp->fbusLast;		// the cpu's access came later
 			return res | 1;
 		case FBUS_ATTR:
 			if ((port & 0xff) != 0xff) return 0xff;
@@ -309,18 +312,24 @@ int zx_in_float(Computer* comp, int port) {
 	return 0xff;
 }
 
-// The bus a +2A/+3 hands back between those fetches is the last byte that went
-// to or came from contended memory, so those two machines watch their own
+// The bus a +2A/+3 hands back between those fetches can be the last byte that
+// went to or came from contended memory, so those two machines watch their own
 // accesses for it. `zx_bank_of() & 4` is banks 4-7, the set their gate array
 // contends.
+static void asic_latch(Computer* comp, int adr, int val) {
+	if (!(zx_bank_of(comp, adr) & 4)) return;
+	comp->fbusLast = val & 0xff;
+	comp->fbusTick = comp->tickCount + comp->cpu->t;
+}
+
 int asicMRd(Computer* comp, int adr, int m1) {
 	int res = stdMRd(comp, adr, m1);
-	if (zx_bank_of(comp, adr) & 4) comp->fbusLast = res & 0xff;
+	asic_latch(comp, adr, res);
 	return res;
 }
 
 void asicMWr(Computer* comp, int adr, int val) {
-	if (zx_bank_of(comp, adr) & 4) comp->fbusLast = val & 0xff;
+	asic_latch(comp, adr, val);
 	stdMWr(comp, adr, val);
 }
 

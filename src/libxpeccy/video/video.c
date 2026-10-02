@@ -793,20 +793,34 @@ int vid_snow(Video* vid, int r, int bank) {
 // which is how a photo of Hikaru's test on a real +2A lines up with Rak's.
 //
 // Returns the byte on the bus, or -1 while it is idle - what that means is the
-// caller's, since the machines that have one answer differently.
-int vid_float_bus(Video* vid) {
-	int x, y, col, phase, pix, atr;
+// caller's, since the machines that have one answer differently. Given age,
+// an idle moment returns instead the last byte fetched - the attribute that
+// closed the last group read, on this line or an earlier one - and how many
+// dots ago.
+int vid_float_bus(Video* vid, int* age) {
+	int x, y, last, col, phase, pix, atr;
 	vid_settle(vid);
-	if (vid->vbrd) return -1;
 	x = ula_fetch_x(vid, (vid->ula->conttype == CONT_PATB) ? -12 : -8);
-	if (x < 0) return -1;			// left border, before the first burst
-	if (x >= vid->scrn.x) return -1;	// right border and retrace
-	phase = (x >> 1) & 7;			// two dots per read, four reads then idle
-	if (phase > 3) return -1;
 	y = vid->ray.y - vid->bord.y;
-	col = ((x >> 4) << 1) | (phase >> 1);	// a group is two character cells
-	vid_scr_adr(0, col << 3, y, &pix, &atr);
-	return vid->mrd(MADR(vid->vidPage, (phase & 1) ? atr : pix), vid->xptr) & 0xff;
+	if (!vid->vbrd && (x >= 0) && (x < vid->scrn.x)) {
+		phase = (x >> 1) & 7;			// two dots per read, four reads then idle
+		if (phase < 4) {
+			if (age) *age = 0;
+			col = ((x >> 4) << 1) | (phase >> 1);	// a group is two character cells
+			vid_scr_adr(0, col << 3, y, &pix, &atr);
+			return vid->mrd(MADR(vid->vidPage, (phase & 1) ? atr : pix), vid->xptr) & 0xff;
+		}
+		last = x & ~15;				// this group
+	} else {
+		last = vid->scrn.x - 16;		// the last group of the line
+		if (x < 0) y--;				// above, on the left border
+		if ((y < 0) || (y >= vid->scrn.y)) y = vid->scrn.y - 1;
+	}
+	if (!age) return -1;
+	*age = (vid->ray.y - vid->bord.y - y) * vid->full.x + x - (last + 7);
+	if (*age < 0) *age += vid->full.x * vid->full.y;	// the previous frame's
+	vid_scr_adr(0, last + 8, y, NULL, &atr);
+	return vid->mrd(MADR(vid->vidPage, atr), vid->xptr) & 0xff;
 }
 
 void vid_set_nodraw(Video* vid, int on) {
