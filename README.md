@@ -5,7 +5,7 @@ A ZX Spectrum emulator with a built-in debugger.
 Xpeccy+ is a fork of [Xpeccy](https://github.com/samstyle/Xpeccy) by SAM style. All the
 emulation code comes from that project. This fork does not claim authorship of it.
 
-Current version: **2026.6**. Forked from upstream build `20260807`.
+Current version: **2026.6.1**. Forked from upstream build `20260807`.
 
 Windows, Linux and macOS are built by CI on every nightly and off every release tag. The
 macOS build is arm64 only and carries no developer signature, so a downloaded DMG has to be
@@ -45,8 +45,8 @@ the emulation core - but where the core itself was wrong, it was fixed.
 On top of upstream build `20260807`:
 
 - **Timing.** Memory contention on the 48K, 128K, +2 and +2A/+3 matches a real machine, the
-  floating bus and ULA snow are there, Richard Butler's timing tests pass, and frames are
-  handed over at the machine's real rate rather than on a 20 ms timer.
+  floating bus and ULA snow are there, timing tests come out as photographed on real machines,
+  and frames are handed over at the machine's real rate rather than on a 20 ms timer.
 - **Input lag** on a par with Spectaculator, measured with a photosensor, and run ahead
   for less still.
 - **Ready to use.** Every machine is built in, ROMs and all, so it runs straight out of the

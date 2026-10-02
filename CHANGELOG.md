@@ -9,6 +9,8 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
+## 2026.6.1 - 2026-10-03
+
 ### Fixed
 
 - **The 48K, 128K, +2, +2A and +3 behave as the real machines do.** Each point is checked against
