@@ -11,16 +11,26 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
-- **The 48K, 128K, +2, +2A and +3 behave as the real machines do**, checked against tests by Patrik
-  Rak, Hikaru, Weiv, Mark Woodmass and Richard and Tim Butler as photographed on them:
-  - +2A/+3: memory waits come two ticks earlier and last a tick longer on each line, and an
-    unused port between screen reads returns the last screen byte.
-  - 128K and +2: reading port 7FFD switches memory pages, as on the real board.
-  - 128K and +2: a port in the #C000-#FFFF range waits like the memory there when a slow page
-    is paged in.
-  - The +2 runs with late ULA timings, as every +2 tested does; the 128K keeps early ones.
-  - 48K: the EAR bit still reads 1 for a short while after a program turns it off.
-  - A machine switched on starts at a random point of its frame; a reset leaves it where it was.
+- **The 48K, 128K, +2, +2A and +3 behave as the real machines do.** Each point is checked against
+  a test as run on the real machine, with results from the
+  [ZX Spectrum tests wiki](https://github.com/redcode/ZXSpectrum/wiki): photos by Guesser, Ricardo
+  Martínez Cantero, Víctor Iborra, Marta Sevillano Mancilla, Brendon Alford and Richard Chandler.
+  - +2A/+3: memory waits come two ticks earlier and last a tick longer on each line - Patrik Rak's
+    Timing Test on a real +3 and +2A. An unused port between screen reads returns the last screen
+    byte - Hikaru's +2A/+3 Floating Bus Test on a real +2A.
+  - 128K and +2: reading port 7FFD switches memory pages, as on the real board - Mark Woodmass's
+    FloatFFD on a real 128K.
+  - 128K and +2: a port in the #C000-#FFFF range waits like the memory there when a slow page is
+    paged in. Patrik Rak measured it on a real 128K in 2007: "The IO behaves the same way as on
+    48k, with the addition of contending also ports in #C000-#FFFF range in case a contended page
+    is paged in" ([World of Spectrum](https://worldofspectrum.org/forums/discussion/comment/215386/#Comment_215386)).
+  - The +2 runs with late ULA timings, as every +2 tested does, and the 128K keeps early ones -
+    Richard and Tim Butler's 128K timing tests on three 128Ks and three +2s, and Rak's test and
+    Woodmass's OUTI Time on a +2.
+  - 48K: the EAR bit still reads 1 for a short while after a program turns it off - Weiv's
+    FE-Delay on a real issue 2 and issue 6A 48K.
+  - A machine switched on starts at a random point of its frame, and a reset leaves it where it
+    was - Peter Helcmanovsky's Time to First INT on a real 48K.
 
 ## 2026.6 - 2026-10-02
 
