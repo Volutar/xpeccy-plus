@@ -1,4 +1,5 @@
 #include "hardware.h"
+#include <math.h>
 #include "../xlog.h"
 #include "../ldbytes.h"
 #include "../filetypes/filetypes.h"
@@ -333,18 +334,53 @@ void asicMWr(Computer* comp, int adr, int val) {
 	stdMWr(comp, adr, val);
 }
 
+// The ear input's RC network, fitted to FE-Delay on a real issue 2 and issue 6A
+// 48K: time constants and hold in T at 3.5 MHz, the rest a share of full charge.
+static const struct earRC {
+	double charge, drain, level, jump, mic, hold;
+} earRCTab[] = {
+	{475, 2070, 0.58, 0.48, 0.034, 32},	// issue 2
+	{500, 1119, 0.62, 0.02, 0.05, 32},	// issue 3
+};
+
+// Bit 4 goes to lev, or bit 3 to mic under bit 4: bring the charge up to now,
+// and on a drop work out the tick bit 6 falls back to 0 at (earDead).
+static void zx_ear_edge(Computer* comp, int lev, int mic) {
+	const struct earRC* rc = &earRCTab[(comp->earback == EAR_ISSUE2) ? 0 : 1];
+	const double tpt = (1e9 / 3.5e6) / comp->nsPerTick;	// machine ticks in a 3.5 MHz T
+	int now = comp->tickCount + comp->cpu->t;
+	double dt = (double)(unsigned)(now - comp->earTick) / tpt;
+	if (comp->beep->lev) {
+		double top = 1.0 + (comp->tape->levRec ? rc->mic : 0.0);
+		comp->earV = top - (top - comp->earV) * exp(-dt / rc->charge);
+	} else {
+		comp->earV *= exp(-dt / rc->drain);
+	}
+	if (lev && !comp->beep->lev)
+		comp->earV += (1.0 + (mic ? rc->mic : 0.0) - comp->earV) * rc->jump;
+	if (!lev && comp->beep->lev) {
+		double hold = rc->hold;
+		if (comp->earV > rc->level)
+			hold = fmax(hold, rc->drain * log(comp->earV / rc->level));
+		comp->earDead = now + (int)(hold * tpt);
+	}
+	comp->earTick = now;
+}
+
 // bit 6 of #FE: a playing tape is the whole of it, otherwise the machine hears
 // its own last out #FE, and how much of it is the issue 2 / issue 3 difference.
 // A stopped tape is not the tape - volPlay keeps the level it stopped on, which
 // this used to read as a permanent 1.
 int zx_ear(Computer* comp) {
+	int ear;
 	if (comp->tape->on && !comp->tape->rec)
 		return !!(comp->tape->volPlay & 0x80);
-	switch (comp->earback) {
-		case EAR_ISSUE2: return comp->beep->lev || comp->tape->levRec;
-		case EAR_ISSUE3: return !!comp->beep->lev;
-	}
-	return 0;
+	if (comp->earback == EAR_NONE)
+		return 0;
+	ear = comp->beep->lev || (comp->earRC && (comp->tickCount + comp->cpu->t - comp->earDead < 0));
+	if (comp->earback == EAR_ISSUE2)
+		ear |= comp->tape->levRec;
+	return ear;
 }
 
 // The rom's own loader polls #FE in exactly the pattern tapDetectLoader looks
@@ -467,9 +503,13 @@ int xInFFDF(Computer* comp, int port) {
 // out
 
 void xOutFE(Computer* comp, int port, int val) {
+	int lev = (val & 0x10) ? 1 : 0;
+	int mic = (val & 0x08) ? 1 : 0;
 	comp->vid->nextbrd = (val & 0x07);
-	comp->beep->lev = (val & 0x10) ? 1 : 0;
-	comp->tape->levRec = (val & 0x08) ? 1 : 0;
+	if (comp->earRC && ((lev != comp->beep->lev) || (lev && (mic != comp->tape->levRec))))
+		zx_ear_edge(comp, lev, mic);
+	comp->beep->lev = lev;
+	comp->tape->levRec = mic;
 }
 
 void xOutBFFD(Computer* comp, int port, int val) {

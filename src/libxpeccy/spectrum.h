@@ -157,6 +157,10 @@ typedef struct Computer {
 	char* msg;		// message ptr for displaying outside
 	int resbank;		// rompart active after reset
 	int earback;		// EAR_*: the ear input with no tape playing
+	int earRC;		// the ear input holds its charge after bit 4 drops (zx_ear)
+	double earV;		// that charge, 0..1, as of earTick
+	int earTick;		// tickCount + cpu->t when earV was
+	int earDead;		// ...and when bit 6 reads 0 again after bit 4 went down
 	int fbus;		// FBUS_*: what a port nothing answers reads back
 	unsigned char fbusLast;	// last byte to or from contended memory (FBUS_ASIC)
 	int fbusTick;		// tickCount + cpu->t of fbusLast
