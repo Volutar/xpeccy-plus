@@ -55,6 +55,7 @@ is skipped without a word.
 | `ram.noise` | 0..1000 | bytes per thousand that come up wrong in that pattern |
 | `reset` | `basic128` `basic48` `dos` `shadow` | which ROM a reset lands in |
 | `issue` | `3` `2` `none` | what bit 6 of `#FE` reads with no tape playing: bit 4 of the last `OUT #FE` (issue 3), bit 4 or bit 3 (issue 2), or nothing at all (`none`, the +2A/+3) |
+| `ear.rc` | yes/no | bit 6 keeps reading 1 for a while after bit 4 drops, as the 48K's ear input does; measured on the 48K only |
 | `contio` | yes/no | contended i/o |
 | `contmem` | yes/no | contended memory |
 | `scrp.wait` | yes/no | Scorpion ZS 256: an opcode fetch from RAM starts on an even T-state |

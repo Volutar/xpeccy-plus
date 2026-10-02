@@ -210,9 +210,15 @@ void zx_free_ticks(Computer* comp, int t) {
 	res4 = comp->cpu->t;
 }
 
+// A port is slow where a memory address would be: on a 128K the page at #C000
+// counts too (Rak, measured on a real 128K, WoS forum 2007)
+static int zx_port_slow(Computer* comp, int port) {
+	return zx_bank_of(comp, port) & 1;
+}
+
 // Contention on T1
 void zx_cont_t1(Computer* comp, int port) {
-	if ((port & 0xc000) == 0x4000)
+	if (zx_port_slow(comp, port))
 		zx_cont_delay(comp);
 	zx_free_ticks(comp, 1);
 }
@@ -220,7 +226,7 @@ void zx_cont_t1(Computer* comp, int port) {
 // Contention on T2-T4
 void zx_cont_tn(Computer* comp, int port) {
 	// zx_cont_t1 took the first of the four slots, three are left here
-	if ((port & 0xc000) == 0x4000) {
+	if (zx_port_slow(comp, port)) {
 		if (port & 1) {			// C:1 C:1 C:1 C:1
 			zx_cont_delay(comp);
 			zx_free_ticks(comp, 1);
@@ -774,6 +780,15 @@ void comp_set_frame_tick(Computer* comp, int tick) {
 		comp->hw->irq(comp, IRQ_VID_INT);
 		if (vid->intFRAME > left) vid->intFRAME = left;
 	}
+}
+
+// The ULA comes up at any point of its frame (Time to First INT on a real 48K);
+// a reset leaves it where it is.
+void comp_power_phase(Computer* comp) {
+	static unsigned int calls = 0;
+	int flen = comp_frame_ok(comp);
+	if (!flen) return;
+	comp_set_frame_tick(comp, (int)((((xhost_seed() + calls++) * 2654435761u) >> 8) % (unsigned int)flen));
 }
 
 // Where comp_set_frame_tick() would have to put the machine back to. Taken off

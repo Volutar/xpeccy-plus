@@ -277,7 +277,7 @@ int vid_ray_dots(Video*);
 
 int vid_wait_dots(Video*, int, int);		// contention wait in dots, not ns
 int vid_snow(Video*, int, int);			// cpu refresh cycle: disturb the ULA if it is fetching now
-int vid_float_bus(Video*);			// the byte the ULA has on the bus now, -1 if none
+int vid_float_bus(Video*, int*);		// the byte the ULA has on the bus now, -1 if none
 int vid_atrbyte(Video*);			// the attribute the ULA last fetched, 0xff on the border
 void vid_dark_tail(Video*);
 

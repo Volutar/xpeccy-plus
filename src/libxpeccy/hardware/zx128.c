@@ -10,8 +10,6 @@ void z128MapMem(Computer* comp) {
 	zx128_map_mem(comp, 0);
 }
 
-// in
-
 // out
 
 void z128Out7FFD(Computer* comp, int port, int val) {
@@ -22,9 +20,19 @@ void z128Out7FFD(Computer* comp, int port, int val) {
 	z128MapMem(comp);
 }
 
+// in
+
+// The latch ignores the read line, so a read of 7FFD pages with the bus byte
+// (FloatFFD on a real 128K).
+int z128In7FFD(Computer* comp, int port) {
+	int res = zx_in_float(comp, port);
+	z128Out7FFD(comp, port, res);
+	return res;
+}
+
 static xPort z128PortMap[] = {
 	{0x0001,0x00fe,2,2,2,xInFE,	xOutFE},
-	{0xc002,0x7ffd,2,2,2,NULL,	z128Out7FFD},
+	{0xc002,0x7ffd,2,2,2,z128In7FFD,	z128Out7FFD},
 	{0xc002,0xbffd,2,2,2,NULL,	xOutBFFD},
 	{0xc002,0xfffd,2,2,2,xInFFFD,	xOutFFFD},
 	{0x00ff,0x001f,0,2,2,xIn1F,	NULL},		// joystick

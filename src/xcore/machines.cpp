@@ -200,7 +200,7 @@ static const struct {
 } macSectTab[] = {
 	{"hw", "machine"}, {"cpu", "machine"}, {"cpu.frq", "machine"}, {"cpu.turbo", "machine"},
 	{"memory", "machine"}, {"ram.cold", "machine"}, {"ram.noise", "machine"},
-	{"reset", "machine"}, {"contio", "machine"}, {"issue", "machine"},
+	{"reset", "machine"}, {"contio", "machine"}, {"issue", "machine"}, {"ear.rc", "machine"},
 	{"contmem", "machine"}, {"scrp.wait", "machine"}, {"builtin", "machine"},
 	{"geometry", "video"}, {"contPattern", "video"}, {"earlyTiming", "video"},
 	{"4t-border", "video"}, {"ULAplus", "video"}, {"DDpal", "video"},
@@ -317,6 +317,7 @@ static void mac_defaults(xMachine& mac) {
 	mac.builtin = 0;
 	mac.resbank = RES_128;
 	mac.earback = EAR_ISSUE3;
+	mac.earrc = 0;
 	mac.contio = 0;
 	mac.contmem = 0;
 	mac.scrpwait = 0;
@@ -378,6 +379,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			}
 			else if (nam == "reset") mac.resbank = mac_word(resetTab, val, RES_128, id);
 			else if (nam == "issue") mac.earback = mac_word(earTab, val, EAR_ISSUE3, id);
+			else if (nam == "ear.rc") mac.earrc = arg.b;
 			else if (nam == "contio") mac.contio = arg.b;
 			else if (nam == "contmem") mac.contmem = arg.b;
 			else if (nam == "scrp.wait") mac.scrpwait = arg.b;
@@ -981,6 +983,7 @@ static void mac_from_def(const xMachine* mac) {
 	mac_cold_ram(comp, mac->ramCold, mac->ramNoise);
 	comp->resbank = mac->resbank;
 	comp->earback = mac->earback;
+	comp->earRC = mac->earrc;
 	comp->fbus = mac->floatbus;
 	comp->flgCNTI = mac->contio;
 	comp_set_cont(comp, mac->contmem);
@@ -1052,6 +1055,7 @@ bool xm_set(std::string id) {
 	loadKeys();		// a machine with no keyboard puts the joystick on the keys
 	mouseReleaseAll(conf.zx->mouse);
 	compReset(conf.zx, RES_DEFAULT);
+	comp_power_phase(conf.zx);
 	tapStop(conf.zx->tape);		// the tape starts over with the machine
 	tapRewind(conf.zx->tape, 0);
 	// The images were closed above, when the machine we came from let go of
@@ -1110,6 +1114,7 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put(out, "memory", comp->mem->ramSize >> 10, mac->memory);
 	mac_put(out, "reset", mac_word_name(resetTab, comp->resbank), mac_word_name(resetTab, mac->resbank));
 	mac_put(out, "issue", mac_word_name(earTab, comp->earback), mac_word_name(earTab, mac->earback));
+	mac_put_yn(out, "ear.rc", comp->earRC, mac->earrc);
 	mac_put_yn(out, "contio", comp->flgCNTI, mac->contio);
 	mac_put_yn(out, "contmem", comp->flgCNTM, mac->contmem);
 	mac_put_yn(out, "scrp.wait", comp->flgEM1, mac->scrpwait);

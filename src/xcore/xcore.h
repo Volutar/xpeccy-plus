@@ -513,6 +513,7 @@ typedef struct {
 	int builtin;			// MAC_BI_*: devices on the board, which the user cannot swap
 	int resbank;			// RES_*
 	int earback;			// EAR_*
+	unsigned earrc:1;
 	unsigned contio:1;
 	unsigned contmem:1;
 	unsigned scrpwait:1;

@@ -22,9 +22,10 @@ on nothing better than convention is marked **open** and left alone.
 | machine | CPU, Hz | layout | T/line | lines | T/frame | INT, T | contPattern | contio | contmem | 4t-border | earlyTiming |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | ZX Spectrum 48K | 3 500 000 | ULA.48 | 224 | 312 | 69 888 | 32 | 1 (Ferranti) | yes | yes | yes | yes |
-| ZX Spectrum 128K / +2 | 3 546 900 | ULA.128 | 228 | 311 | 70 908 | 36 | 1 (Ferranti) | yes | yes | yes | yes |
-| ZX Spectrum +2A | 3 546 900 | ULA.Plus3 | 228 | 311 | 70 908 | 32 **open** | 2 (Amstrad) | no | yes | yes | yes |
-| ZX Spectrum +3 | 3 546 900 | ULA.Plus3 | 228 | 311 | 70 908 | 32 **open** | 2 (Amstrad) | no | yes | yes | yes |
+| ZX Spectrum 128K | 3 546 900 | ULA.128 | 228 | 311 | 70 908 | 36 | 1 (Ferranti) | yes | yes | yes | yes |
+| ZX Spectrum +2 | 3 546 900 | ULA.128 | 228 | 311 | 70 908 | 36 | 1 (Ferranti) | yes | yes | yes | no |
+| ZX Spectrum +2A | 3 546 900 | ULA.Plus3 | 228 | 311 | 70 908 | 32 **open** | 2 (Amstrad) | no | yes | yes | - |
+| ZX Spectrum +3 | 3 546 900 | ULA.Plus3 | 228 | 311 | 70 908 | 32 **open** | 2 (Amstrad) | no | yes | yes | - |
 | Pentagon | 3 500 000 | ULA.Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
 | Pentagon 1024 SL | 3 500 000 | ULA.Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
 | Scorpion ZS 256 | 3 500 000 | ULA.Scorpion | 224 | 312 | 69 888 | 32 | 0 (none) | no | no | yes | no |
@@ -40,6 +41,12 @@ on nothing better than convention is marked **open** and left alone.
 Contention patterns are `vid_wait_dots()` in `video/video.c`: 1 is the Ferranti ULA's
 `12,11,...,1,0,0,0,0` over banks 1/3/5/7, 2 the Amstrad ASIC's `2,1,0,0,14,...,3` over banks
 4-7 and mreq cycles only, 0 is no contention at all.
+
+Early or late timing is a property of the Ferranti ULA, and of the single machine: the 128K
+"toastracks" tested read early, every +2 tested reads late (Butler's 128K timing test, Rak's
+timing test and Woodmass's OUTI Time, results of real machines on the redcode/ZXSpectrum wiki).
+The gate array of the +2A/+3 has one timing and ignores the key; its anchor and the extra
+tick at the end of each line come from photos of Rak's test on a real +3 and +2A.
 
 `cpu.turbo` lists the turbo steps a board has, as multipliers of its base clock. Five of them
 switch it from a port and the core already does that: Scorpion ZS 256 Turbo+, ATM Turbo 2+ and Pentagon

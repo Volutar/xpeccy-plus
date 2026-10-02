@@ -9,6 +9,19 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
+### Fixed
+
+- **The 48K, 128K, +2, +2A and +3 behave as the real machines do**, checked against tests by Patrik
+  Rak, Hikaru, Weiv, Mark Woodmass and Richard and Tim Butler as photographed on them:
+  - +2A/+3: memory waits come two ticks earlier and last a tick longer on each line, and an
+    unused port between screen reads returns the last screen byte.
+  - 128K and +2: reading port 7FFD switches memory pages, as on the real board.
+  - 128K and +2: a port in the #C000-#FFFF range waits like the memory there when a slow page
+    is paged in.
+  - The +2 runs with late ULA timings, as every +2 tested does; the 128K keeps early ones.
+  - 48K: the EAR bit still reads 1 for a short while after a program turns it off.
+  - A machine switched on starts at a random point of its frame; a reset leaves it where it was.
+
 ## 2026.6 - 2026-10-02
 
 ### Added
