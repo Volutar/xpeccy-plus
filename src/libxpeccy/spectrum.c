@@ -210,9 +210,15 @@ void zx_free_ticks(Computer* comp, int t) {
 	res4 = comp->cpu->t;
 }
 
+// A port is slow where a memory address would be: on a 128K the page at #C000
+// counts too (Rak, measured on a real 128K, WoS forum 2007)
+static int zx_port_slow(Computer* comp, int port) {
+	return zx_bank_of(comp, port) & 1;
+}
+
 // Contention on T1
 void zx_cont_t1(Computer* comp, int port) {
-	if ((port & 0xc000) == 0x4000)
+	if (zx_port_slow(comp, port))
 		zx_cont_delay(comp);
 	zx_free_ticks(comp, 1);
 }
@@ -220,7 +226,7 @@ void zx_cont_t1(Computer* comp, int port) {
 // Contention on T2-T4
 void zx_cont_tn(Computer* comp, int port) {
 	// zx_cont_t1 took the first of the four slots, three are left here
-	if ((port & 0xc000) == 0x4000) {
+	if (zx_port_slow(comp, port)) {
 		if (port & 1) {			// C:1 C:1 C:1 C:1
 			zx_cont_delay(comp);
 			zx_free_ticks(comp, 1);
