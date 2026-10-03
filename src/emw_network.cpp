@@ -1,6 +1,11 @@
 #include "emulwin.h"
 #include "filer.h"
 
+#include <QApplication>
+#include <QMouseEvent>
+#include <QContextMenuEvent>
+#include <QPainter>
+
 // socket
 
 #ifdef USENETWORK
@@ -210,6 +215,80 @@ void MainWin::socketRead() {
 				} while (cnt & 15);
 				sock->write("\r\n");
 			}
+		}
+	} else if (com == "winshot") {
+		// the window as painted, or the menu open over it: a path may have spaces
+		QWidget* w = QApplication::activePopupWidget();
+		QPixmap pic = w ? w->grab() : QPixmap();
+#if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
+		// The picture is read from the framebuffer, where the last frame left
+		// it, and the window rendered around it: rendering the picture widget
+		// itself would clear its framebuffer.
+		if (!w) {
+			const qreal r = widgetDpr(this);
+			QImage img(int(width() * r + 0.5), int(height() * r + 0.5), QImage::Format_RGBA8888);
+			makeCurrent();
+			glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject());
+			glPixelStorei(GL_PACK_ALIGNMENT, 4);
+			glReadPixels(0, 0, img.width(), img.height(), GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
+			doneCurrent();
+			img.setDevicePixelRatio(r);
+			QRect scr(mapTo(frame, QPoint(0, 0)), size());
+			QRegion around = QRegion(frame->rect()).subtracted(scr);
+			pic = QPixmap(frame->size() * widgetDpr(frame));
+			pic.setDevicePixelRatio(widgetDpr(frame));
+			pic.fill(Qt::black);
+			if (!around.isEmpty())		// an empty region would render the lot
+				frame->render(&pic, QPoint(), around);
+			QPainter pnt(&pic);
+			pnt.drawImage(scr.topLeft(), img.mirrored());
+			if (fsBar && fsBar->isVisible())		// it is over the picture
+				fsBar->render(&pnt, fsBar->pos());
+		}
+#endif
+		if (pic.isNull()) pic = frame->grab();
+		QString path = QString(arr).trimmed().mid(com.size()).trimmed();
+		if (!path.isEmpty() && pic.save(path)) {
+			// where it is, in the coordinates click takes
+			QRect rc((w ? w : frame)->geometry());
+			rc.moveTopLeft(frame->mapFromGlobal(w ? w->mapToGlobal(QPoint(0, 0)) : frame->mapToGlobal(QPoint(0, 0))));
+			sock->write(QString("ok %0 %1 %2 %3\r\n").arg(rc.x()).arg(rc.y()).arg(rc.width()).arg(rc.height()).toUtf8());
+		} else {
+			sock->write("failed\r\n");
+		}
+	} else if (com == "move") {
+		// move X Y: the pointer seen at a point of the window, buttons up
+		if (prm.size() > 2) {
+			QPoint gp = frame->mapToGlobal(QPoint(prm[1].toInt(), prm[2].toInt()));
+			QWidget* w = QApplication::widgetAt(gp);
+			if (w) {
+				QMouseEvent mev(QEvent::MouseMove, w->mapFromGlobal(gp), gp, Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+				QApplication::sendEvent(w, &mev);
+			}
+			sock->write(w ? w->metaObject()->className() : "nothing");
+			sock->write("\r\n");
+		}
+	} else if (com == "click") {
+		// click X Y [right]: at a point of the window, whatever is there
+		if (prm.size() > 2) {
+			QPoint gp = frame->mapToGlobal(QPoint(prm[1].toInt(), prm[2].toInt()));
+			Qt::MouseButton btn = ((prm.size() > 3) && (prm[3] == "right")) ? Qt::RightButton : Qt::LeftButton;
+			QWidget* w = QApplication::widgetAt(gp);
+			if (w) {
+				QMouseEvent prs(QEvent::MouseButtonPress, w->mapFromGlobal(gp), gp, btn, btn, Qt::NoModifier);
+				QApplication::sendEvent(w, &prs);
+				w = QApplication::widgetAt(gp);		// the press may have put a menu there
+				if (w) {
+					QMouseEvent rls(QEvent::MouseButtonRelease, w->mapFromGlobal(gp), gp, btn, Qt::NoButton, Qt::NoModifier);
+					QApplication::sendEvent(w, &rls);
+					if (btn == Qt::RightButton) {	// the window system makes this one of a real click
+						QContextMenuEvent cme(QContextMenuEvent::Mouse, w->mapFromGlobal(gp), gp);
+						QApplication::sendEvent(w, &cme);
+					}
+				}
+			}
+			sock->write(w ? w->metaObject()->className() : "nothing");
+			sock->write("\r\n");
 		}
 	} else {
 		sock->write("Unrecognized command\r\n");
