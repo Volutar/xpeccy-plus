@@ -9,6 +9,13 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
+### Fixed
+
+- +2A/+3: once 48 BASIC has locked the memory paging, port 1FFD is locked as well and can no
+  longer switch the ROM or turn on the all-RAM mode.
+- Z80: SCF and CCF after a DD or FD prefix set flag bits 3 and 5 as a real CPU does - found by
+  Tony Brewer.
+
 ## 2026.6.1 - 2026-10-03
 
 ### Fixed
