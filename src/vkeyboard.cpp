@@ -116,7 +116,7 @@ void keyWindow::setDock(bool d) {
 
 void keyWindow::snap() {
 	if (!dock) return;
-	QWidget* par = parentWidget();
+	QWidget* par = parentWidget() ? parentWidget()->window() : nullptr;
 	// A window that is not on screen yet has no geometry worth reading: this
 	// window is built before the emulator window is shown, and taking its size
 	// then put the keyboard off the screen entirely. Whatever is missed here

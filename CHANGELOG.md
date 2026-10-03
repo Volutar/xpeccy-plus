@@ -9,6 +9,17 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
+### Added
+
+- **A menu bar, a toolbar and a status bar.** The menus show each command's hotkey, and File
+  keeps the last ten images opened. The toolbar holds the buttons you choose: right-click it to
+  add or remove one, drag one to move it. The status bar shows the machine, the clock, the tape
+  and each drive, lit while it reads or writes; click one for its window, right-click it for its
+  menu. In fullscreen they are hidden, and the menu comes up when the pointer rests at the top of
+  the screen.
+- Menus no longer pause the machine. It can pause instead while another application has the
+  focus (Options, Xpeccy+ page).
+
 ### Fixed
 
 - 48K, 128K and +2: the MIC bit is heard with the beeper, a tenth as loud as EAR, as both leave the

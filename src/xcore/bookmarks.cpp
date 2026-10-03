@@ -16,15 +16,17 @@ static QString bkm_key(const QString& path) {
 	return QDir::cleanPath(QFileInfo(path).absoluteFilePath());
 }
 
-int findBookmark(const QString& path) {
+static bool bkm_same(const QString& a, const QString& b) {
 #ifdef _WIN32
-	Qt::CaseSensitivity cs = Qt::CaseInsensitive;
+	return bkm_key(a).compare(bkm_key(b), Qt::CaseInsensitive) == 0;
 #else
-	Qt::CaseSensitivity cs = Qt::CaseSensitive;
+	return bkm_key(a) == bkm_key(b);
 #endif
-	QString key = bkm_key(path);
+}
+
+int findBookmark(const QString& path) {
 	for (int i = 0; i < conf.bookmarkList.size(); i++) {
-		if (bkm_key(QString::fromLocal8Bit(conf.bookmarkList[i].path.c_str())).compare(key, cs) == 0)
+		if (bkm_same(QString::fromLocal8Bit(conf.bookmarkList[i].path.c_str()), path))
 			return i;
 	}
 	return -1;
@@ -47,4 +49,19 @@ void delBookmark(int idx) {
 
 void clearBookmarks() {
 	conf.bookmarkList.clear();
+}
+
+// Recent files: one entry per file, however its path was written
+void recent_remove(const QString& path) {
+	for (int i = conf.recentList.size() - 1; i >= 0; i--) {
+		if (bkm_same(conf.recentList[i], path))
+			conf.recentList.removeAt(i);
+	}
+}
+
+void recent_add(const QString& path) {
+	recent_remove(path);
+	conf.recentList.prepend(bkm_key(path));
+	while (conf.recentList.size() > RECENT_MAX)
+		conf.recentList.removeLast();
 }

@@ -125,17 +125,16 @@ void MainWin::keyPressEvent(QKeyEvent *ev) {
 
 #endif
 
-void MainWin::xkey_press(int xkey) {
+// cmd: a hotkey asked for from a menu, which a grabbed keyboard does not take
+void MainWin::xkey_press(int xkey, bool cmd) {
 	keyEntry kent = getKeyEntry(xkey);
 //	printf("xkey_press %s\n", kent.name);
 	int x;
-	int y;
 	int err;
-	QSize wsz;
 	QString path;
 	Computer* comp = conf.zx;
 	comp->keyb->grab = pckAct->isChecked();
-	if (pckAct->isChecked()) {
+	if (pckAct->isChecked() && !cmd) {
 		// xt_press(comp->keyb, &kent);
 		if (comp->hw->keyp)
 			comp->hw->keyp(comp, &kent);
@@ -155,12 +154,8 @@ void MainWin::xkey_press(int xkey) {
 				setMessage(conf.vid.fullScreen ? " fullscreen on " : " fullscreen off ");
 				updateWindow();
 				saveConfig();
-				if (!conf.vid.fullScreen) {
-					wsz = SCREENSIZE;
-					x = (wsz.width() - width()) / 2;
-					y = (wsz.height() - height()) / 2;
-					move(x, y);
-				}
+				if (!conf.vid.fullScreen)
+					QTimer::singleShot(0, this, &MainWin::placeWindow);
 				break;
 			case XCUT_SIZEX1:
 				vid_set_zoom(1);
@@ -321,9 +316,7 @@ void MainWin::xkey_press(int xkey) {
 				emit s_debug();
 				break;
 			case XCUT_MENU:
-				fillUserMenu();
-				userMenu->popup(pos() + QPoint(20,20));
-				userMenu->setFocus();
+				popupUserMenu(mapToGlobal(QPoint(20,20)));
 				break;
 			case XCUT_OPTIONS:
 				pause(true, PR_OPTS);

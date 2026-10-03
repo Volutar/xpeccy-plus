@@ -1030,6 +1030,7 @@ void SetupWin::start() {
 // tools
 	ui.sbPort->setValue(conf.port);
 	ui.cbConfexit->setChecked(conf.confexit);
+	ui.cbPauseInactive->setChecked(conf.pauseInactive);
 // leds
 	ui.cbMouseLed->setChecked(conf.led.mouse);
 	ui.cbJoyLed->setChecked(conf.led.joy);
@@ -1287,6 +1288,7 @@ void SetupWin::apply() {
 // tools
 	conf.port = ui.sbPort->value() & 0xffff;
 	conf.confexit = ui.cbConfexit->isChecked() ? 1 : 0;
+	conf.pauseInactive = ui.cbPauseInactive->isChecked() ? 1 : 0;
 // leds
 	conf.led.mouse = ui.cbMouseLed->isChecked() ? 1 : 0;
 	conf.led.joy = ui.cbJoyLed->isChecked() ? 1 : 0;

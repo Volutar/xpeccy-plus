@@ -2540,6 +2540,16 @@ so the same media is back on the next start</string>
                    </widget>
                   </item>
                   <item row="3" column="0" colspan="2">
+                   <widget class="QCheckBox" name="cbPauseInactive">
+                    <property name="toolTip">
+                     <string>Pause while another application has the focus</string>
+                    </property>
+                    <property name="text">
+                     <string>Pause when inactive</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="0" colspan="2">
                    <spacer name="verticalSpacer_appgrid">
                     <property name="orientation">
                      <enum>Qt::Vertical</enum>

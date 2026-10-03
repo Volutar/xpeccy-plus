@@ -30,9 +30,7 @@ void MainWin::mousePressEvent(QMouseEvent *ev){
 				} else {
 					// opened on the press, so the release of the same button
 					// lands in the menu - xRootMenu drops it (see emulwin.cpp)
-					fillUserMenu();
-					userMenu->popup(QPoint(ev->xGlobalX,ev->xGlobalY));
-					userMenu->setFocus();
+					popupUserMenu(QPoint(ev->xGlobalX,ev->xGlobalY));
 				}
 				break;
 			default: break;
@@ -150,6 +148,7 @@ void MainWin::mouseRecenter(int fresh) {
 
 void MainWin::mouseMoveEvent(QMouseEvent *ev) {
 	Computer* comp = conf.zx;
+	fsReveal(ev->xEventY);
 	if (!grabMice || conf.emu.pause) {
 		if (ev->buttons() & Qt::LeftButton) {
 			calcCoords(ev);

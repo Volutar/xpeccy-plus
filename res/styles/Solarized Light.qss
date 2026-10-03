@@ -130,6 +130,25 @@ QToolButton::menu-indicator {
 	image: none;
 }
 
+/* A button with a list beside it gives the arrow a place of its own, or
+ * the arrow is drawn over the icon. One that is all list marks its corner. */
+QToolButton[popupMode="1"] {
+	padding-right: 13px;
+}
+
+QToolButton::menu-button {
+	border: none;
+	width: 13px;
+}
+
+QToolBar QToolButton[popupMode="2"]::menu-indicator {
+	image: url(:/images/styles/arrow-down-dark.png);
+	subcontrol-origin: padding;
+	subcontrol-position: bottom right;
+	width: 9px;
+	height: 9px;
+}
+
 /* ---- combo box ----------------------------------------------------- */
 
 /* The arrows come from the application resources. A style sheet cannot draw

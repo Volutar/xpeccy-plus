@@ -168,7 +168,6 @@ typedef struct {
 } xArg;
 
 // pause reasons
-#define	PR_MENU		1
 #define	PR_FILE		(1<<1)
 #define	PR_OPTS		(1<<2)
 #define	PR_DEBUG	(1<<3)
@@ -177,6 +176,7 @@ typedef struct {
 #define	PR_EXTRA	(1<<6)
 #define PR_RZX		(1<<7)
 #define	PR_EXIT		(1<<8)
+#define	PR_FOCUS	(1<<9)		// another application has the focus
 
 // labels
 
@@ -445,6 +445,9 @@ typedef struct {
 
 void addBookmark(std::string,std::string);
 int findBookmark(const QString&);		// -1 when the file is not in the list
+#define RECENT_MAX 10
+void recent_add(const QString&);
+void recent_remove(const QString&);
 void setBookmark(int,std::string,std::string);
 void delBookmark(int);
 void swapBookmarks(int,int);
@@ -655,11 +658,13 @@ struct xConfig {
 	unsigned boot:1;		// add boot to trdos floppies
 	unsigned autorun:1;		// reset and start media opened from the gui
 	unsigned confexit:1;		// confirm on exit
+	unsigned pauseInactive:1;	// pause while another application has the focus
 	int xpos;			// window position
 	int ypos;
 	QList<xRomset> rsList;
 	QList<xLayout> layList;
 	QList<xBookmark> bookmarkList;
+	QStringList recentList;		// the images opened last, newest first (RECENT_MAX)
 	QMap<QString, QColor> pal;
 	QString labpath;
 	std::string style;
@@ -699,6 +704,12 @@ struct xConfig {
 		std::string shader;
 		int shd_support;
 	} vid;
+	struct {
+		unsigned toolbar:1;	// the bars of the main window, off in fullscreen anyway
+		unsigned statusbar:1;
+		int tbIcons;		// 16 or 24
+		std::string tbItems;	// the toolbar's buttons, ids and "|", comma-separated; "*" for the default ones
+	} win;
 	struct {
 		unsigned enabled:1;
 		unsigned wavout:1;	// recording to wav, at the output rate

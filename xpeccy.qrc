@@ -191,6 +191,10 @@
         <file>images/button-k.png</file>
         <file>images/wav.png</file>
         <file>images/osd-time-fast.png</file>
+        <file>images/time-fast.png</file>
+        <file>images/time-ffwd.png</file>
+        <file>images/time-pause.png</file>
+        <file>images/time-slow.png</file>
         <file>images/osd-time-rewind.png</file>
         <file>images/osd-time-pause.png</file>
         <file>images/osd-time-ffwd2.png</file>
