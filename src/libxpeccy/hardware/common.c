@@ -508,7 +508,7 @@ void xOutFE(Computer* comp, int port, int val) {
 	comp->vid->nextbrd = (val & 0x07);
 	if (comp->earRC && ((lev != comp->beep->lev) || (lev && (mic != comp->tape->levRec))))
 		zx_ear_edge(comp, lev, mic);
-	comp->beep->lev = lev;
+	bc_out(comp->beep, lev, mic);
 	comp->tape->levRec = mic;
 }
 

@@ -27,7 +27,9 @@ extern char noizes[0x20000];
 
 typedef struct {
 	unsigned lev:1;			// 1/0 target level
-	int val;			// current sound level (0..255)
+	unsigned mic:1;			// bit 3 rides on the same wire (a ULA machine)
+	int val;			// current sound level (0..255, a little over with mic)
+	int lo, hi;			// the level val goes to with lev 0 and 1
 //	long accum;			// ns accumulator
 	int step;			// halfperiod counter
 	unsigned int perH;		// halfperiod for lev=1
@@ -45,12 +47,13 @@ bitChan* bcCreate();
 void bcReset(bitChan*);
 void bcDestroy(bitChan*);
 void bc_sync_slow(bitChan*, int);
+void bc_out(bitChan*, int ear, int mic);
 // Time for the beeper. Once the level has settled where the port put it, and no
 // wave is being made, the time changes nothing - which is nearly always, so that
 // is checked here and not in a call. The transient rounds on every call, so the
 // time cannot be put off and summed.
 static inline void bcSync(bitChan* ch, int ns) {
-	if ((ch->val == (ch->lev ? 0xff : 0)) && !(ch->perH && ch->perL)) return;
+	if ((ch->val == (ch->lev ? ch->hi : ch->lo)) && !(ch->perH && ch->perL)) return;
 	bc_sync_slow(ch, ns);
 }
 

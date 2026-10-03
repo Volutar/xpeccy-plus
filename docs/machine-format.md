@@ -87,6 +87,7 @@ is skipped without a word.
 | `soundrive` | `none` `covox` `soundrive1` `soundrive2` | |
 | `gs` | yes/no | General Sound |
 | `saa` | yes/no | SAA1099 |
+| `beeper.mic` | yes/no | bit 3 (MIC) is heard with the beeper, at a tenth of bit 4, as on a ULA |
 
 ### `[storage]`
 

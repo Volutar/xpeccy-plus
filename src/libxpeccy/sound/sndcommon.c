@@ -20,11 +20,14 @@ sndPair mixer(sndPair vol1, sndPair vol2) {
 #define OVERLIM (OVERDIV * 256)		// ns to full sound level restore
 
 void bcReset(bitChan* ch) {
+	int mic = ch->mic;
 	memset(ch, 0x00, sizeof(bitChan));
+	ch->mic = mic;
+	ch->hi = 0xff;
 }
 
 bitChan* bcCreate() {
-	bitChan* ch = malloc(sizeof(bitChan));
+	bitChan* ch = calloc(1, sizeof(bitChan));
 	bcReset(ch);
 	return ch;
 }
@@ -34,23 +37,27 @@ void bcDestroy(bitChan* ch) {
 }
 
 void bcTransient(bitChan* ch, int ns) {
-	if (ch->lev) {
-		if (ns > OVERLIM) {
-			ch->val = 0xff;
-		} else {
-			ch->val += ns / OVERDIV;
-			if (ch->val > 0xff)
-				ch->val = 0xff;
-		}
+	int top = ch->lev ? ch->hi : ch->lo;
+	if (ns > OVERLIM) {
+		ch->val = top;
+	} else if (ch->val < top) {
+		ch->val += ns / OVERDIV;
+		if (ch->val > top)
+			ch->val = top;
 	} else {
-		if (ns > OVERLIM) {
-			ch->val = 0;
-		} else {
-			ch->val -= ns / OVERDIV;
-			if (ch->val < 0)
-				ch->val = 0;
-		}
+		ch->val -= ns / OVERDIV;
+		if (ch->val < top)
+			ch->val = top;
 	}
+}
+
+// EAR (bit 4) and MIC (bit 3) leave a ULA on one pin, at 0.34, 0.73, 3.66 and
+// 3.79 V for none, MIC, EAR and both (issue 3), so MIC alone is a tenth of EAR.
+// Scaled so EAR alone stays where the beeper always was.
+void bc_out(bitChan* ch, int ear, int mic) {
+	ch->lev = ear;
+	ch->lo = (ch->mic && mic) ? 30 : 0;
+	ch->hi = (ch->mic && mic) ? 265 : 0xff;
 }
 
 void bc_sync_slow(bitChan* ch, int ns) {

@@ -207,7 +207,7 @@ static const struct {
 	{"snow", "video"}, {"snow.crash", "video"}, {"floatbus", "video"}, {"border.min", "video"},
 	{"psg.count", "sound"}, {"psg.type", "sound"}, {"psg.frq", "sound"},
 	{"psg.stereo", "sound"}, {"gs", "sound"},
-	{"saa", "sound"}, {"soundrive", "sound"},
+	{"saa", "sound"}, {"soundrive", "sound"}, {"beeper.mic", "sound"},
 	{"disk", "storage"}, {"ide", "storage"}, {"drives", "storage"},
 	{"mouse", "input"}, {"mouse.wheel", "input"}, {"joy", "input"}, {"joy.buttons", "input"},
 	{"kbd.scantab", "input"},
@@ -344,6 +344,7 @@ static void mac_defaults(xMachine& mac) {
 	mac.scantab = 0;
 	mac.gs = 0;
 	mac.saa = 0;
+	mac.beepmic = 0;
 	mac.ulaplus = 0;
 	mac.ddpal = 0;
 	mac.romBanks = 4;
@@ -404,6 +405,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "soundrive") mac.soundrive = mac_word(sdrvTab, val, SDRV_NONE, id);
 			else if (nam == "gs") mac.gs = arg.b;
 			else if (nam == "saa") mac.saa = arg.b;
+			else if (nam == "beeper.mic") mac.beepmic = arg.b;
 		} else if (ln.sect == "storage") {
 			if (nam == "disk") mac.disk = mac_word(diskTab, val, DIF_NONE, id);
 			else if (nam == "ide") mac.ide = mac_word(ideTab, val, IDE_NONE, id);
@@ -999,6 +1001,8 @@ static void mac_from_def(const xMachine* mac) {
 	mac_set_psg(comp, mac->psgCount, mac->psgType, mac->psgFrq, mac->psgStereo);
 	comp->gs->enable = mac->gs;
 	comp->saa->enabled = mac->saa;
+	comp->beep->mic = mac->beepmic;
+	bc_out(comp->beep, comp->beep->lev, comp->tape->levRec);
 	comp->sdrv->type = mac->soundrive;
 	difSetHW(comp->dif, mac->disk);
 	difSetDrives(comp->dif, mac->drives);
@@ -1137,6 +1141,7 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	}
 	mac_put_yn(out, "gs", comp->gs->enable, mac->gs);
 	mac_put_yn(out, "saa", comp->saa->enabled, mac->saa);
+	mac_put_yn(out, "beeper.mic", comp->beep->mic, mac->beepmic);
 	mac_put(out, "soundrive", mac_word_name(sdrvTab, comp->sdrv->type), mac_word_name(sdrvTab, mac->soundrive));
 	mac_put(out, "disk", mac_word_name(diskTab, comp->dif->type), mac_word_name(diskTab, mac->disk));
 	int drives = 0;

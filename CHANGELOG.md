@@ -9,6 +9,11 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
+### Fixed
+
+- 48K, 128K and +2: the MIC bit is heard with the beeper, a tenth as loud as EAR, as both leave the
+  ULA on one pin. Speech in Cobra's Arc and the second voice in Dizzy are back.
+
 ## 2026.6.2 - 2026-10-03
 
 ### Fixed
