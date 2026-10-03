@@ -283,7 +283,6 @@ if(${QTVERSION} EQUAL 4)
 	include(${QT_USE_FILE})
 	qt4_add_resources(RESOURCES ${QRCFILES})
 	qt4_wrap_ui(UIHEADERS ${UIFILES})
-	qt4_wrap_cpp(MOCHEADERS ${MOCFILES})
 	set(CPACK_RPM_PACKAGE_REQUIRES "libqt4 >= 4.6, libqt4-x11 >= 4.6")
 	set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqtcore4 (>=4.6), libqtgui4 (>=4.6)")
 
@@ -300,6 +299,8 @@ if(${QTVERSION} EQUAL 4)
 		add_definitions("-DUSEOPENGL")
 	endif()
 
+	# after the options: moc has to see USEOPENGL, or MainWin gets QWidget as its base
+	qt4_wrap_cpp(MOCHEADERS ${MOCFILES})
 	set(LIBRARIES ${LIBRARIES} ${QT_LIBRARIES})
 	set(QT_VER ${QT_VERSION_MAJOR}.${QT_VERSION_MINOR}.${QT_VERSION_PATCH})
 
@@ -309,7 +310,6 @@ elseif(${QTVERSION} EQUAL 5)
 	set(LIBRARIES ${LIBRARIES} Qt5::Widgets)
 	qt5_add_resources(RESOURCES ${QRCFILES})
 	qt5_wrap_ui(UIHEADERS ${UIFILES})
-	qt5_wrap_cpp(MOCHEADERS ${MOCFILES})
 	set(CPACK_RPM_PACKAGE_REQUIRES "libQt5Gui5 >= 5.3, libQt5Widgets5 >= 5.3")
 	set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt5gui5 (>=5.3), libqt5widgets5 (>=5.3)")
 
@@ -329,6 +329,8 @@ elseif(${QTVERSION} EQUAL 5)
 		add_definitions("-DUSEOPENGL")
 	endif()
 
+	# after the options: moc has to see USEOPENGL, or MainWin gets QWidget as its base
+	qt5_wrap_cpp(MOCHEADERS ${MOCFILES})
 	set(QT_VER ${Qt5Widgets_VERSION})
 	get_target_property(QMAKE_EXE Qt5::qmake IMPORTED_LOCATION)
 
@@ -342,7 +344,6 @@ elseif(${QTVERSION} EQUAL 6)
 	set(LIBRARIES ${LIBRARIES} Qt6::Widgets Qt6::Core Qt6::Gui Qt6::Core5Compat)
 	qt6_add_resources(RESOURCES ${QRCFILES})
 	qt6_wrap_ui(UIHEADERS ${UIFILES})
-	qt6_wrap_cpp(MOCHEADERS ${MOCFILES})
 	set(CPACK_RPM_PACKAGE_REQUIRES "libQt6Gui6 >= 6.1, libQt6Widgets6 >= 6.1, libQt6Core5Compat6 >= 6.1")
 	set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6gui6 (>=6.1), libqt6widgets6 (>=6.1), libqt6core5compat6 >= 6.1")
 	if(${USEQTNETWORK})
@@ -361,6 +362,8 @@ elseif(${QTVERSION} EQUAL 6)
 		add_definitions("-DUSEOPENGL")
 	endif()
 
+	# after the options: moc has to see USEOPENGL, or MainWin gets QWidget as its base
+	qt6_wrap_cpp(MOCHEADERS ${MOCFILES})
 	set(QT_VER ${Qt6Widgets_VERSION})
 	get_target_property(QMAKE_EXE Qt6::qmake IMPORTED_LOCATION)
 else()
