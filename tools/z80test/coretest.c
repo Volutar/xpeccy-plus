@@ -42,7 +42,7 @@
 // The Z80 core reaches for four things that live in cpu.c; pulling that file in
 // would drag every other core along - cpuTab[] names the reset, exec and asm
 // entry points of all six - so they are answered here instead. Two of them are
-// no-ops on paths the tests never reach and cpu_irq is a one-line forwarder, but
+// no-ops on paths the tests never reach (cpu_irq is inline in cpu.h now), but
 // parity is a copy and has to stay identical to the one in cpu.c.
 
 int parity(int val) {
@@ -54,7 +54,6 @@ int parity(int val) {
 	return p & 1;
 }
 
-void cpu_irq(CPU* cpu, int id) {cpu->xirq(id, cpu->xptr);}
 unsigned short cpu_peek_word(cbdmr mrd, void* data, int adr) {return 0;}
 xAsmScan scanAsmTab(const char* src, opCode* tab) {xAsmScan r; memset(&r, 0, sizeof(r)); return r;}
 

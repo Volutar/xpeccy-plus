@@ -66,10 +66,10 @@ static xPort spePortMap[] = {
 	{0x0001,0x00fe,2,2,2,xInFE,	xOutFE},
 	{0xc002,0xfffd,2,2,2,xInFFFD,	xOutFFFD},
 	{0xc002,0xbffd,2,2,2,NULL,	xOutBFFD},
+	{0x00e1,0x001f,0,2,2,spIn1F,	NULL},		// Kempston decodes A5..A7, so #FF1F is the joystick and #FFDF is not
 	{0x0320,0xfadf,2,2,2,xInFADF,	NULL},
 	{0x0720,0xfbdf,2,2,2,xInFBDF,	NULL},
 	{0x0720,0xffdf,2,2,2,xInFFDF,	NULL},
-	{0x0021,0x001f,0,2,2,spIn1F,	NULL},
 	{0x0000,0x0000,2,2,2,zx_in_float,NULL}		// a port nothing answers: the floating bus
 };
 

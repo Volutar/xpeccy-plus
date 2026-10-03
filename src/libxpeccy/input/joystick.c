@@ -29,9 +29,8 @@ unsigned char joyInput(Joystick* joy) {
 	joy->used = 1;
 	switch (joy->type) {
 		case XJ_KEMPSTON:
-			res = joy->state;
-			if (!joy->extbuttons)
-				res |= ~0x1f;
+			// the interface pulls d5..d7 low: idle reads 0, as its manual says
+			res = joy->extbuttons ? joy->state : (joy->state & 0x1f);
 			break;
 	}
 	return res;
