@@ -9,6 +9,8 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
+## 2026.6.2 - 2026-10-03
+
 ### Fixed
 
 - +2A/+3: once 48 BASIC has locked the memory paging, port 1FFD is locked as well and can no
