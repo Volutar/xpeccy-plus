@@ -1082,20 +1082,46 @@ none - nothing comes back (+2A, +3)</string>
                 </widget>
                </item>
                <item row="11" column="0">
-                <widget class="QCheckBox" name="ulaPlus">
+                <widget class="QCheckBox" name="cbBeepMic">
                  <property name="text">
                   <string/>
                  </property>
                 </widget>
                </item>
                <item row="11" column="1">
+                <widget class="QLabel" name="nam_cbBeepMic">
+                 <property name="text">
+                  <string>MIC in the beeper</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="11" column="2">
+                <widget class="QLabel" name="lab_cbBeepMic">
+                 <property name="font">
+                  <font>
+                   <italic>true</italic>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Bit 3 is heard with bit 4, a tenth as loud, as from a ULA</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="12" column="0">
+                <widget class="QCheckBox" name="ulaPlus">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="12" column="1">
                 <widget class="QLabel" name="nam_ulaPlus">
                  <property name="text">
                   <string>ULA plus</string>
                  </property>
                 </widget>
                </item>
-               <item row="11" column="2">
+               <item row="12" column="2">
                 <widget class="QLabel" name="lab_ulaPlus">
                  <property name="font">
                   <font>

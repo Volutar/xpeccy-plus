@@ -514,6 +514,7 @@ typedef struct {
 	int resbank;			// RES_*
 	int earback;			// EAR_*
 	unsigned earrc:1;
+	unsigned beepmic:1;
 	unsigned contio:1;
 	unsigned contmem:1;
 	unsigned scrpwait:1;
