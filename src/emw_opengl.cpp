@@ -266,6 +266,7 @@ void MainWin::resizeGL(int w, int h) {
 	const int vw = int(w * r + 0.5);
 	const int vh = int(h * r + 0.5);
 	glViewport(0, 0, vw, vh);
+	paintOwed = 1;
 	qDebug() << "resizeGL logical" << w << h << "dpr" << r << "viewport" << vw << vh;
 }
 

@@ -291,7 +291,8 @@ int main(int ac,char** av) {
 	// a second of that.
 	app.d_style();
 
-	MainWin mwin;
+	QMainWindow mframe;		// before the picture in it, so it goes after it
+	MainWin mwin(&mframe);
 	os_win = &mwin;
 	xThread ethread;
 	DebugWin dbgw(&mwin);
@@ -309,9 +310,9 @@ int main(int ac,char** av) {
 //	mwin.loadShader();
 	mwin.fillUserMenu();
 	if ((conf.xpos >= 0) && (conf.ypos >= 0))
-		mwin.move(conf.xpos, conf.ypos);
+		mframe.move(conf.xpos, conf.ypos);
 
-	app.connect(&ethread, SIGNAL(s_close()), &mwin, SLOT(close()));
+	app.connect(&ethread, SIGNAL(s_close()), &mframe, SLOT(close()));
 
 	app.connect(&ethread, SIGNAL(s_frame()), &app, SLOT(d_frame()));
 	app.connect(&app, SIGNAL(s_frame()), &mwin, SLOT(d_frame()));
@@ -581,7 +582,7 @@ int main(int ac,char** av) {
 	}
 	if (!hlp) {
 //		mwin.blockSignals(true);
-		mwin.show();		// causes an exception on resizeEvent -> emit resized()
+		mframe.show();
 		mwin.updateWindow();
 		mwin.checkState();
 		conf.running = 1;
@@ -591,8 +592,8 @@ int main(int ac,char** av) {
 		QTimer::singleShot(0, &mwin, [&](){
 			ethread.start();
 			if (!vidOut.isEmpty() && mwin.recStart(vidOut)) vrec_manual();
-			mwin.raise();
-			mwin.activateWindow();
+			mframe.raise();
+			mframe.activateWindow();
 			if (dbg) mwin.doDebug();
 			if (!lab) shitHappens("Can't open labels file");
 		});

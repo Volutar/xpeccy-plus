@@ -23,6 +23,7 @@
 enum {
 	SECT_NONE = 0,
 	SECT_BOOKMARK,
+	SECT_RECENT,
 	SECT_PROFILES,
 	SECT_VIDEO,
 	SECT_ROMSETS,
@@ -173,6 +174,7 @@ void saveConfig() {
 	fprintf(cfile, "addboot = %s\n", YESNO(conf.boot));
 	fprintf(cfile, "autorun = %s\n", YESNO(conf.autorun));
 	fprintf(cfile, "exit.confirm = %s\n",YESNO(conf.confexit));
+	fprintf(cfile, "pause.inactive = %s\n", YESNO(conf.pauseInactive));
 	fprintf(cfile, "port = %i\n", conf.port);
 	fprintf(cfile, "winpos = %i,%i\n",conf.xpos,conf.ypos);
 	fprintf(cfile, "keywin.dock = %s\n", YESNO(conf.keywin.dock));
@@ -184,6 +186,10 @@ void saveConfig() {
 	foreach(xBookmark bkm, conf.bookmarkList) {
 		fprintf(cfile, "%s = %s\n", bkm.name.c_str(), bkm.path.c_str());
 	}
+
+	fprintf(cfile, "\n[RECENT]\n\n");
+	foreach(QString path, conf.recentList)
+		fprintf(cfile, "file = %s\n", path.toLocal8Bit().data());
 
 	fprintf(cfile, "\n[VIDEO]\n\n");
 	fprintf(cfile, "palette = %s\n", conf.palette.c_str());
@@ -227,6 +233,10 @@ void saveConfig() {
 	fprintf(cfile, "rec.probe.codecs = %s\n", works.c_str());
 	fprintf(cfile, "fullscreen = %s\n", YESNO(conf.vid.fullScreen));
 	fprintf(cfile, "keepratio = %s\n", YESNO(conf.vid.keepRatio));
+	fprintf(cfile, "toolbar = %s\n", YESNO(conf.win.toolbar));
+	fprintf(cfile, "toolbar.icons = %i\n", conf.win.tbIcons);
+	fprintf(cfile, "toolbar.items = %s\n", conf.win.tbItems.c_str());
+	fprintf(cfile, "statusbar = %s\n", YESNO(conf.win.statusbar));
 	fprintf(cfile, "lowlatency = %s\n", YESNO(conf.vid.lowLatency));
 	// kept beside lowlatency: the two are one page in the options, and moving
 	// a key between sections later would orphan everyone's setting
@@ -693,6 +703,10 @@ void loadConfig() {
 	conf.keywin.width = 0;
 	conf.vid.border = VID_BRD_FULL;
 	conf.vid.scale = 2;		// a config with no scale must not make a zero-size window
+	conf.win.toolbar = 1;
+	conf.win.statusbar = 1;
+	conf.win.tbIcons = 24;
+	conf.win.tbItems = "*";
 	conf.dbg.dbsize = 8;
 	conf.dbg.dwsize = 4;
 	conf.dbg.dmsize = 127;
@@ -757,6 +771,7 @@ void loadConfig() {
 		// value is how a rom bank is emptied and a setting is cleared
 		if (pnam[0] == '[') {
 			if (pnam=="[BOOKMARKS]") section = SECT_BOOKMARK;
+			if (pnam=="[RECENT]") section = SECT_RECENT;
 			if (pnam=="[PROFILES]") section = SECT_PROFILES;
 			if (pnam=="[MEDIA]") section = SECT_MEDIA;
 			if (pnam.compare(0, 9, "[MACHINE.") == 0) {
@@ -867,6 +882,10 @@ void loadConfig() {
 				case SECT_BOOKMARK:
 					addBookmark(pnam, pval);
 					break;
+				case SECT_RECENT:
+					if ((pnam == "file") && (conf.recentList.size() < RECENT_MAX))
+						conf.recentList.append(QString::fromLocal8Bit(pval.c_str()));
+					break;
 				case SECT_PROFILES:		// only a config written before schema 2 has this
 					if (pnam == "current") {
 						pnm = pval;
@@ -938,6 +957,10 @@ void loadConfig() {
 					}
 					if (pnam=="fullscreen") conf.vid.fullScreen = arg.b;
 					if (pnam=="keepratio") conf.vid.keepRatio = arg.b;
+					if (pnam=="toolbar") conf.win.toolbar = arg.b;
+					if (pnam=="toolbar.icons") conf.win.tbIcons = (arg.i == 16) ? 16 : 24;
+					if (pnam=="toolbar.items") conf.win.tbItems = pval;
+					if (pnam=="statusbar") conf.win.statusbar = arg.b;
 					if (pnam=="lowlatency") conf.vid.lowLatency = arg.b;
 					if (pnam=="runahead") conf.emu.runahead = getRanged(arg.s, 0, 2);
 					if (pnam=="slowmo") conf.emu.slowDiv = toPower(getRanged(arg.s, 2, 8));
@@ -1079,6 +1102,7 @@ void loadConfig() {
 					if (pnam == "addboot") conf.boot = arg.b;
 					if (pnam == "autorun") conf.autorun = arg.b;
 					if (pnam == "exit.confirm") conf.confexit = arg.b;
+					if (pnam == "pause.inactive") conf.pauseInactive = arg.b;
 					if (pnam == "flpinterleave") flp_set_interleave(arg.i);
 					if (pnam == "style") conf.style = std::string(arg.s);
 					break;

@@ -65,7 +65,7 @@ void MainWin::socketRead() {
 	} else if (com == "closedbg") {
 		emit s_debug_off();
 	} else if (com == "quit") {
-		close();
+		frame->close();
 	} else if (com == "exit") {
 		sock->close();
 	} else if (com == "pause") {

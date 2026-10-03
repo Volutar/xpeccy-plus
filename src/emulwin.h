@@ -1,6 +1,10 @@
 #pragma once
 
 #include <QLabel>
+#include <QMainWindow>
+#include <QMenuBar>
+#include <QStatusBar>
+#include <QToolBar>
 #include <QTimer>
 #include <QWidget>
 #include <QString>
@@ -92,7 +96,7 @@ typedef struct {
 #endif
 	Q_OBJECT
 	public:
-		MainWin();
+		MainWin(QMainWindow*);
 		~MainWin();
 //		Computer* comp;
 		void checkState();
@@ -157,7 +161,6 @@ typedef struct {
 	private slots:
 		void updateSatellites();
 		void menuHide();
-		void menuShow();
 		void optResize();
 		void optApply();
 		void dbgReturn();
@@ -186,6 +189,7 @@ typedef struct {
 		unsigned hasPicture:1;	// the emulation has handed over a frame
 		int upSwaps;		// bufSwaps at the last upload the timer made, -1: upload
 		unsigned refit:1;	// geometry changed: re-read the frame before painting it
+		unsigned paintOwed:1;	// presentFrame asked, or resizeGL left an empty framebuffer
 
 		std::string shdLoaded;	// the shader the program is linked with now
 		int mediaSrc;		// where the image in use is: a drive, the tape, or a snapshot
@@ -198,7 +202,6 @@ typedef struct {
 		void showMedia(const QString&, int src);
 		std::string wantedShader();
 
-		QIcon icon;
 		int timid;
 		int secid;
 		int cmsid;
@@ -265,6 +268,76 @@ typedef struct {
 		QAction* pckAct;
 
 		void initUserMenu();
+		// the menu bar of the window around this one
+		QMainWindow* frame;
+		QMenu* fileMenu;
+		QMenu* viewMenu;
+		QAction* recAct;
+		QAction* wavAct;
+		QAction* fullAct;
+		QAction* ratioAct;
+		QList<QAction*> sizeActs;
+		typedef struct {QAction* act; QString name; int id;} xCutAct;
+		QList<xCutAct> cutActs;		// menu items that are hotkeys, to show the key
+		QHash<int, QAction*> cutById;
+		QAction* cutAct(const QString& name, int id, const QString& icon = QString());
+		QAction* cutAction(QMenu*, const QString& name, int id, const QString& icon = QString());
+		QMenu* sizeMenu;
+		QMenu* recentMenu;
+		void fillRecent();
+		// the toolbar and the status bar (emw_bars.cpp)
+		QToolBar* toolBar;
+		QStatusBar* statusBar;
+		QLabel* sbMachine;
+		QLabel* sbClock;
+		QLabel* sbTape;
+		QLabel* sbDisk[4];	// "A:" and so on
+		QLabel* sbDiskIcon[4];
+		QWidget* sbDiskBox[4] = {nullptr, nullptr, nullptr, nullptr};
+		QLabel* sbTapeIcon;
+		QWidget* sbTapeBox = nullptr;
+		QPixmap sbPix[7];	// SB_*
+		int sbTapeShown = -1;
+		int sbDiskShown[4] = {-1, -1, -1, -1};
+		int flpSeen[4] = {0, 0, 0, 0};	// bit 0 read, bit 1 written since the status bar last looked
+		QMenu* flpMenu[4] = {nullptr, nullptr, nullptr, nullptr};	// each drive's own, from the Drives menu
+		void tapeMenu(const QPoint&);
+		QLabel* sbFps;
+		QAction* tbShowAct;
+		QAction* sbShowAct;
+		QAction* pauseAct;
+		QAction* fastAct;
+		QAction* tapeAct;
+		QAction* tapeRecAct;
+		QAction* mouseAct;
+		QAction* ffAct;
+		QAction* slowAct;
+		QAction* diskAct;
+		typedef struct {QString id; QString group; QAction* act; int kind; QMenu* list;} xTbItem;
+		QList<xTbItem> tbCatalog;	// everything a button can be
+		QStringList tbList;		// what the bar holds, ids and separators
+		const xTbItem* tbFind(const QString&);
+		void initBars();
+		void tbBuild();
+		void tbApply();
+		void tbMove(int, int);
+		void tbMenu(const QPoint&, int);
+		void showBars();
+		void syncActions();
+		void updateStatus();
+		void cutTexts();
+		void initMenuBar();
+		// the menu over the picture in fullscreen, while the pointer is at the top
+		QMenuBar* fsBar;
+		QTimer fsShow;
+		int fsY;		// where the pointer was last seen over the picture
+		unsigned fsTall:1;	// a line taller than the screen, while a menu is up
+		bool fsCompose(bool);
+		void popupUserMenu(const QPoint&);
+		void placeWindow();
+		void fsReveal(int y);
+		void fsHide();
+		void showAbout();
 		void favManage();
 		void calcCoords(QMouseEvent*);
 		QPoint winCenter();		// the middle of the window, on the screen
@@ -274,7 +347,7 @@ typedef struct {
 		void mouseRecenter(int fresh = 0);
 		void dropAsk(QString);
 
-		void xkey_press(int);
+		void xkey_press(int, bool cmd = false);
 		void xkey_release(int);
 		void xcut_release(int);
 		int mapHotkey(const QKeySequence&, int, Qt::Key*, Qt::KeyboardModifier*);
@@ -283,6 +356,8 @@ typedef struct {
 		void mapKeySeq(const xJoyMapEntry&, bool);
 
 		void closeEvent(QCloseEvent*);
+		bool eventFilter(QObject*, QEvent*) override;
+		bool focusNextPrevChild(bool) override {return false;}	// Tab is a key of the machine
 		void dragEnterEvent(QDragEnterEvent*);
 		void dropEvent(QDropEvent*);
 		void paintEvent(QPaintEvent*);
@@ -295,7 +370,6 @@ typedef struct {
 		void focusOutEvent(QFocusEvent*);
 		void focusInEvent(QFocusEvent*);
 		void timerEvent(QTimerEvent*);
-		void moveEvent(QMoveEvent*);
 #if defined(USEOPENGL) && !BLOCKGL
 		unsigned curtex:2;
 		GLuint texids[4];

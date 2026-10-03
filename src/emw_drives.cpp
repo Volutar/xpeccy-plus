@@ -34,6 +34,7 @@ void MainWin::fillDrivesMenu() {
 	QAction* act;
 	QMenu* menus[] = {dskMenu, hddMenu, sdcMenu, cartMenu};
 	for (QMenu* m : menus) m->clear();
+	for (int i = 0; i < 4; i++) flpMenu[i] = nullptr;
 	int drives = drive_count(comp);
 	for (int i = 0; i < drives; i++) {
 		Floppy* flp = comp->dif->flp[i];
@@ -41,6 +42,7 @@ void MainWin::fillDrivesMenu() {
 		// the drive's letter is on its icon
 		QMenu* m = dskMenu->addMenu(QIcon(QString(":/images/fdd_disk_%0.png").arg(QChar('A' + i))),
 			drive_media(flp->path, flp->insert) + ((flp->insert && flp->changed) ? " *" : ""));
+		flpMenu[i] = m;
 		m->addAction(QIcon(":/images/fileopen.png"), "Open...", this, [this, i]() {diskOp(DW_OPEN, i);});
 		m->addAction(QIcon(":/images/doc-new.png"), "New", this, [this, i]() {diskOp(DW_NEW, i);});
 		act = m->addAction(QIcon(":/images/save_all.png"), "Save", this, [this, i]() {diskOp(DW_SAVE, i);});
