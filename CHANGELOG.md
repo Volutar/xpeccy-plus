@@ -17,6 +17,8 @@ before that point is upstream's history and is not repeated here.
   Tony Brewer.
 - Kempston joystick: port 31 reads 0 with the stick at rest, as the interface's manual says, and
   on the 48K it answers whatever the upper byte of the port address is.
+- +2, and any machine set to late timings: ULA snow is back. The +2 now snows as a real one does
+  in Mark Woodmass's IR Contention 128.
 
 ## 2026.6.1 - 2026-10-03
 

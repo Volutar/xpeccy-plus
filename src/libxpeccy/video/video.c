@@ -959,6 +959,8 @@ void vidDrawNormal(Video* vid) {
 }
 
 // this mode default for ZX48K ULA (defferent moments of pix/atr read)
+static int adr2;		// the odd box's pixel address, taken at the even box's start
+
 void ula_dot(Video* vid) {
 	if (vid->vbrd) {
 		col = vid->brdcol;
@@ -968,8 +970,10 @@ void ula_dot(Video* vid) {
 		xscr = vid->ray.x - vid->bord.x;
 		yscr = vid->ray.y - vid->bord.y;
 		// dots 12/14 and 0/1 are the ULA's two bursts; vid_snow says whether a
-		// cpu refresh cycle caught one of them
-		switch(xscr & 15) {
+		// cpu refresh cycle caught one of them. A late ULA fetches a tick later, as
+		// it waits a tick later, while the picture stays put.
+		int ph = (xscr - (vid->ula->early ? 0 : 2)) & 15;
+		switch (ph) {
 			case 12:
 				adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
 				nxtbyte = vid->mrd(ula_burst_adr(vid, adr), vid->xptr);
@@ -979,15 +983,25 @@ void ula_dot(Video* vid) {
 				nxtatr = vid->mrd(ula_burst_adr(vid, adr), vid->xptr);
 				vid->snowLow = -1;	// the burst is over, and with it the address it was given
 				break;		// 2dots before each even box: box atr
+		}
+		switch (xscr & 15) {
 			case 0:
 				scrbyte = nxtbyte;
 				vid->atrbyte = nxtatr;
-				if (vid->snowDup) break;	// burst lost: nxtbyte/nxtatr stay as they are
 				vid->idx++;		// lame (idx is still not updated, but we need address of next box)
-				adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
-				nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+				adr2 = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
 				vid->idx--;
-				break;		// start of even box: next (odd) box pix
+				break;		// start of even box
+			case 8:
+				scrbyte = nxtbyte;
+				vid->atrbyte = nxtatr;
+				break;		// odd box start
+		}
+		switch (ph) {
+			case 0:
+				if (vid->snowDup) break;	// burst lost: nxtbyte/nxtatr stay as they are
+				nxtbyte = vid->mrd(MADR(vid->vidPage, adr2), vid->xptr);
+				break;		// next (odd) box pix
 			case 1:
 				if (vid->snowDup) {
 					vid->snowDup = 0;
@@ -995,11 +1009,7 @@ void ula_dot(Video* vid) {
 				}
 				adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
 				nxtatr = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
-				break;		// 2nd dot of even box: next (odd) box atr
-			case 8:
-				scrbyte = nxtbyte;
-				vid->atrbyte = nxtatr;
-				break;		// odd box start
+				break;		// next (odd) box atr
 		}
 		if (vid->hbrd) {
 			col = vid->brdcol;
@@ -1085,7 +1095,10 @@ static void ula_dots_plain(Video* vid, int n, cbvid dot) {
 	vid->ray.x = x;
 }
 
+static int ula_run_scr_late(Video* vid, int k);
+
 static int ula_run_scr(Video* vid, int k) {
+	if (!vid->ula->early) return ula_run_scr_late(vid, k);
 	if (vid->snowDup || (vid->snowLow >= 0)) return 0;	// a spoilt burst goes dot by dot
 	int xs = vid->ray.x - vid->bord.x;
 	int done = 0;
@@ -1117,6 +1130,49 @@ static int ula_run_scr(Video* vid, int k) {
 			adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
 			nxtatr = vid->mrd(ula_burst_adr(vid, adr), vid->xptr);
 			vid->snowLow = -1;
+		}
+		vid_cell_dots(vid);
+		xs += 8;
+		done += 8;
+		k -= 8;
+	}
+	return done;
+}
+
+// The same for a late ULA, whose bursts all come a tick later (see ula_dot)
+static int ula_run_scr_late(Video* vid, int k) {
+	if (vid->snowDup || (vid->snowLow >= 0)) return 0;	// a spoilt burst goes dot by dot
+	int xs = vid->ray.x - vid->bord.x;
+	int done = 0;
+	if (xs & 7) {
+		int head = 8 - (xs & 7);
+		if (head > k) head = k;
+		ula_dots_plain(vid, head, ula_dot);
+		xs += head;
+		done += head;
+		k -= head;
+	}
+	while (k >= 8) {
+		if ((xs & 15) == 0) {			// dot 0: the first burst's attribute
+			adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
+			nxtatr = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+		}
+		scrbyte = nxtbyte;
+		vid->atrbyte = nxtatr;
+		if ((xs & 15) == 0) {
+			vid->idx++;
+			adr2 = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+			vid->idx--;
+		}
+		if (vid->idx < 0x1b00) vid->idx++;
+		zx_attr_cols(vid, vid->atrbyte, &scrbyte, &ink, &pap, 0);
+		if ((xs & 15) == 0) {			// dots 2 and 3: the second burst
+			nxtbyte = vid->mrd(MADR(vid->vidPage, adr2), vid->xptr);
+			adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
+			nxtatr = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+		} else {				// dot 14: the next pixel byte
+			adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+			nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
 		}
 		vid_cell_dots(vid);
 		xs += 8;
@@ -1163,6 +1219,34 @@ static int nrm_run_scr(Video* vid, int k) {
 static int ula_run_hbrd(Video* vid, int k) {
 	if (vid->snowDup || (vid->snowLow >= 0)) return 0;	// a spoilt burst goes dot by dot
 	int xs = vid->ray.x - vid->bord.x;
+	if (!vid->ula->early) {			// late: the bursts a tick on, as in ula_dot
+		for (int i = 0; i < k; i++) {
+			int x = (xs + i) & 15;
+			switch ((x - 2) & 15) {
+				case 12:
+					adr = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+					nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+					break;
+				case 14:
+				case 1:
+					adr = 0x1800 | ((vid->idx & 0x1f00) >> 3) | (vid->idx & 0x1f);
+					nxtatr = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+					break;
+				case 0:
+					nxtbyte = vid->mrd(MADR(vid->vidPage, adr2), vid->xptr);
+					break;
+			}
+			if (x == 0) {
+				scrbyte = nxtbyte;
+				vid->idx++;
+				adr2 = (vid->idx & 0x181f) | ((vid->idx & 0x700) >> 3) | ((vid->idx & 0xe0) << 3);
+				vid->idx--;
+			} else if (x == 8) {
+				scrbyte = nxtbyte;
+			}
+		}
+		return ula_fill_brd(vid, k);
+	}
 	for (int i = 0; i < k; i++) {
 		switch ((xs + i) & 15) {
 			case 12:
