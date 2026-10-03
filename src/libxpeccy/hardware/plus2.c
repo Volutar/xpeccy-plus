@@ -51,6 +51,8 @@ int p2_dos_rd(Computer* comp, int port) {
 // out
 
 void p2Out1FFD(Computer* comp, int port, int val) {
+	// the 7FFD lock holds this port too
+	if (comp->p7FFD & 0x20) return;
 	comp->p1FFD = val & 0xff;
 	pl2MapMem(comp);
 }

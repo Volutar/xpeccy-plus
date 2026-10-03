@@ -842,6 +842,8 @@ void nprDC(CPU* cpu) {
 
 // dd	prefix IX	4
 void nprDD(CPU* cpu) {
+	// fetched as an instruction of its own, which zeroes Q
+	cpu->flgQ = 0;
 	cpu->opTab = ddTab;
 }
 
@@ -1054,6 +1056,7 @@ void nprFC(CPU* cpu) {
 
 // fd	prefix IY	4
 void nprFD(CPU* cpu) {
+	cpu->flgQ = 0;
 	cpu->opTab = fdTab;
 }
 

@@ -12,6 +12,8 @@ int p3_dos_rd(Computer* comp, int port) {
 
 void pl2MapMem(Computer*);
 void p3Out1FFD(Computer* comp, int port, int val) {
+	// the 7FFD lock holds this port too
+	if (comp->p7FFD & 0x20) return;
 	comp->p1FFD = val & 0xff;
 	comp->dif->fdc->flp->motor = (val & 8) ? 1 : 0;
 	pl2MapMem(comp);
