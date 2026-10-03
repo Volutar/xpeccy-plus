@@ -902,6 +902,7 @@ void SetupWin::start() {
 	ui.cbEarlyTiming->setChecked(comp->vid->ula->early);
 	ui.cbSnow->setChecked(comp->flgSNOW);
 	ui.cbSnowCrash->setChecked(comp->flgSNOWX);
+	ui.cbBeepMic->setChecked(comp->beep->mic);
 	chasnow();
 	ui.bszsld->setValue(conf.vid.border);
 	// the setting is global and stays as it was; only this machine ignores it
@@ -1125,6 +1126,8 @@ void SetupWin::apply() {
 	comp->vid->ula->early = ui.cbEarlyTiming->isChecked();
 	comp_set_snow(comp, ui.cbSnow->isChecked() ? 1 : 0);
 	comp->flgSNOWX = ui.cbSnowCrash->isChecked() ? 1 : 0;
+	comp->beep->mic = ui.cbBeepMic->isChecked() ? 1 : 0;
+	bc_out(comp->beep, comp->beep->lev, comp->tape->levRec);
 	// The ula type also picks the screen drawer. The reset above ran before this
 	// line and saw the old type, so it has to be redone here - but only while a
 	// plain zx screen is up: a machine sitting in one of its own modes keeps it
