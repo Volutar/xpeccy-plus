@@ -312,6 +312,7 @@ typedef struct {
 		QAction* mouseAct;
 		QAction* ffAct;
 		QAction* slowAct;
+		QAction* rewAct;
 		QAction* diskAct;
 		typedef struct {QString id; QString group; QAction* act; int kind; QMenu* list;} xTbItem;
 		QList<xTbItem> tbCatalog;	// everything a button can be
