@@ -317,11 +317,14 @@ typedef struct {
 		QAction* rewAct;
 		QAction* diskAct;
 		QAction* muteAct;
+		QAction* watchAct;
+		QMenu* helpMenu;
 		typedef struct {QString id; QString group; QAction* act; int kind; QMenu* list;} xTbItem;
 		QList<xTbItem> tbCatalog;	// everything a button can be
 		QStringList tbList;		// what the bar holds, ids and separators
 		const xTbItem* tbFind(const QString&);
 		void initBars();
+		void initMachineMenus();
 		void tbBuild();
 		void tbFill(QToolBar*);
 		void tbApply();

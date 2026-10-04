@@ -381,6 +381,7 @@ void MainWin::initBars() {
 
 	tbList = QString::fromStdString((conf.win.tbItems == "*") ? std::string(tbDefault) : conf.win.tbItems).split(',', X_SkipEmptyParts);
 	tbBuild();
+	initMachineMenus();
 
 	xStatusBar* sb = new xStatusBar(frame);
 	statusBar = sb;
