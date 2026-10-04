@@ -316,6 +316,7 @@ typedef struct {
 		QAction* slowAct;
 		QAction* rewAct;
 		QAction* diskAct;
+		QAction* muteAct;
 		typedef struct {QString id; QString group; QAction* act; int kind; QMenu* list;} xTbItem;
 		QList<xTbItem> tbCatalog;	// everything a button can be
 		QStringList tbList;		// what the bar holds, ids and separators
@@ -328,6 +329,7 @@ typedef struct {
 		void tbMenu(const QPoint&, int);
 		void showBars();
 		void syncActions();
+		QMenu* volumeMenu();
 		void updateStatus();
 		void cutTexts();
 		void initMenuBar();

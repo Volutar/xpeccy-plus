@@ -13,6 +13,9 @@
 #include <QContextMenuEvent>
 #include <QHBoxLayout>
 #include <QTimer>
+#include <QSlider>
+#include <QLabel>
+#include <QWidgetAction>
 #include <functional>
 
 #include "emulwin.h"
@@ -41,7 +44,7 @@ static QPixmap sb_tint(const QString& path, QColor col, double alpha) {
 
 // what a toolbar holds until the user says otherwise
 static const char* tbDefault = "key.load,key.save,|,menu.reset,menu.machine,|,key.tapewin,menu.disks,|,"
-	"key.fullscreen,|,menu.debug,key.options,~,key.rewind,key.slowmo,key.pause,key.ffwd,key.fast";
+	"key.fullscreen,key.keywin,|,menu.debug,key.options,|,key.mute,~,key.rewind,key.slowmo,key.pause,key.ffwd,key.fast";
 
 enum {TB_PLAIN = 0, TB_LIST, TB_SPLIT};	// a button; a list that opens on a click; a button with a list beside it
 
@@ -336,6 +339,14 @@ void MainWin::initBars() {
 	add("menu.debug", "Debug", dbgMenu->menuAction(), TB_SPLIT);
 	add("key.scrwin", "Debug", cut("Screen", XCUT_SCRWIN, "rulers"), TB_PLAIN);
 	add("key.sndwin", "Debug", cut("Sound chips", XCUT_SNDWIN, "note"), TB_PLAIN);
+	muteAct = cut("Mute", XCUT_MUTE, "speaker");
+	muteAct->setCheckable(true);
+	{
+		QIcon icon(":/images/speaker.png");
+		icon.addFile(":/images/speaker-mute.png", QSize(), QIcon::Normal, QIcon::On);
+		muteAct->setIcon(icon);
+	}
+	add("key.mute", "Sound", muteAct, TB_SPLIT, volumeMenu());
 	foreach(const xTbItem& it, tbCatalog) {
 		// a list opened from here has had no right-click menu fill it; one opened
 		// inside a menu has, and refilling everything on each hover costs disk reads
@@ -547,6 +558,38 @@ void MainWin::showBars() {
 	sbShowAct->setChecked(conf.win.statusbar);
 }
 
+// the master volume, beside the mute button
+QMenu* MainWin::volumeMenu() {
+	QMenu* menu = new QMenu(this);
+	QWidget* box = new QWidget(menu);
+	QHBoxLayout* lay = new QHBoxLayout(box);
+	lay->setContentsMargins(8, 4, 8, 4);
+	QSlider* sld = new QSlider(Qt::Horizontal, box);
+	sld->setRange(0, 100);
+	sld->setPageStep(10);
+	sld->setMinimumWidth(120);
+	QLabel* lab = new QLabel(box);
+	lab->setMinimumWidth(lab->fontMetrics().boundingRect("100%").width());
+	lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+	lay->addWidget(sld);
+	lay->addWidget(lab);
+	QWidgetAction* wact = new QWidgetAction(menu);
+	wact->setDefaultWidget(box);
+	menu->addAction(wact);
+	auto show = [lab](int v) {lab->setText(QString("%0%").arg(v));};
+	connect(sld, &QSlider::valueChanged, this, [show](int v) {
+		conf.snd.vol.master = v;
+		show(v);
+	});
+	// the wheel over the picture moves it too
+	connect(menu, &QMenu::aboutToShow, this, [sld, show]() {
+		sld->setValue(conf.snd.vol.master);
+		show(conf.snd.vol.master);
+	});
+	connect(menu, &QMenu::aboutToHide, this, [this]() {saveConfig();});
+	return menu;
+}
+
 // the buttons that are switches, read from what they switch
 void MainWin::syncActions() {
 	Computer* comp = conf.zx;
@@ -561,6 +604,7 @@ void MainWin::syncActions() {
 	mouseAct->setChecked(grabMice);
 	recAct->setChecked(vrec_state() == VREC_RUN);
 	wavAct->setChecked(conf.snd.wavout);
+	muteAct->setChecked(conf.snd.mute);
 	fullAct->setChecked(conf.vid.fullScreen);
 	ratioAct->setChecked(conf.vid.keepRatio);
 	for (int i = 0; i < sizeActs.size(); i++)

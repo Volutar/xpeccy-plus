@@ -359,6 +359,7 @@ enum {
 	XCUT_RZXWIN,
 	XCUT_SCRWIN,
 	XCUT_SNDWIN,
+	XCUT_MUTE,
 	XCUT_FASTSAVE,
 	XCUT_NMI,
 	XCUT_RESET,
@@ -720,6 +721,7 @@ struct xConfig {
 	struct {
 		unsigned enabled:1;
 		unsigned wavout:1;	// recording to wav, at the output rate
+		unsigned mute:1;	// the speakers only: recordings keep the sound
 		unsigned fill:1;	// 1 while snd buffer not filled, 0 at end of snd buffer
 		// samples the emulation still owes. Filled by the pacer's timer thread
 		// (pacing.cpp), drained by the emulation thread, so it has to be atomic -
