@@ -171,6 +171,7 @@ bool xApp::event(QEvent* ev) {
 				pendingFile = path;
 			break;
 		case QEvent::User:
+			frame_taken();
 			emit s_frame();
 			break;
 		default:

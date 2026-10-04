@@ -762,8 +762,10 @@ void MainWin::uploadFrame() {
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, vid->full.x * 2);
 	glPixelStorei(GL_UNPACK_SKIP_PIXELS, vid->lcut.x * 2);
 	glPixelStorei(GL_UNPACK_SKIP_ROWS, vid->lcut.y);
+	const unsigned char* img = frame_shown_lock();
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, vid->vsze.x * 2, vid->vsze.y, 0,
-		GL_RGBA, GL_UNSIGNED_BYTE, comp->flgDBG ? scrimg : bufimg);
+		GL_RGBA, GL_UNSIGNED_BYTE, comp->flgDBG ? scrimg : img);
+	frame_shown_unlock();
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 	glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
 	glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
@@ -917,9 +919,12 @@ void MainWin::paintEvent(QPaintEvent*) {
 	// a dot stays a block of whole pixels.
 	Computer* comp = conf.zx;
 	Video* vid = comp->vid;
-	QImage img(comp->flgDBG ? scrimg : bufimg, vid->full.x * 2, bufSize / bytesPerLine, bytesPerLine, QImage::Format_RGBA8888);
-	pnt.drawImage(QRect(drawX, drawY, drawW, drawH), img,
-		QRect(vid->lcut.x * 2, vid->lcut.y, vid->vsze.x * 2, vid->vsze.y));
+	// cut out under the lock and scaled after it: the emulation waits on it
+	const unsigned char* shown = frame_shown_lock();
+	QImage img = QImage(comp->flgDBG ? scrimg : shown, vid->full.x * 2, bufSize / bytesPerLine, bytesPerLine, QImage::Format_RGBA8888)
+		.copy(vid->lcut.x * 2, vid->lcut.y, vid->vsze.x * 2, vid->vsze.y);
+	frame_shown_unlock();
+	pnt.drawImage(QRect(drawX, drawY, drawW, drawH), img);
 #endif
 	drawIcons(pnt);
 	pnt.end();
@@ -1313,8 +1318,9 @@ void MainWin::screenShot() {
 	Video* vid = comp->vid;
 	// the shown frame, taken out of the whole raster. The screen sits in the
 	// middle of it, so there is no lopsided border left to trim.
-	QImage img(bufimg, vid->full.x * 2, bufSize / bytesPerLine, bytesPerLine, QImage::Format_RGBA8888);
+	QImage img(frame_shown_lock(), vid->full.x * 2, bufSize / bytesPerLine, bytesPerLine, QImage::Format_RGBA8888);
 	img = img.copy(vid->lcut.x * 2, vid->lcut.y, vid->vsze.x * 2, vid->vsze.y);
+	frame_shown_unlock();
 	char* sptr = (char*)(comp->mem->ramData + (comp->vid->vidPage << 14));
 	switch (frm) {
 		case SCR_HOB:
@@ -2072,6 +2078,7 @@ void MainWin::renderFrame() {
 	// emuCycle() would only clear the flag without acting on it, and the
 	// machine runs into the same breakpoint again as soon as it goes on
 	comp->flgBRK = 0;
+	frame_publish();
 	emu_unlock();
 }
 

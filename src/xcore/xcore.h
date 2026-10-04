@@ -259,6 +259,12 @@ int brk_save_list(const char*);
 void emu_lock();
 void emu_unlock();
 
+// the last finished picture, for the gui to read while the emulation draws on
+void frame_publish();
+void frame_taken();		// the gui has the frame signal: the next one may be sent
+const unsigned char* frame_shown_lock();
+void frame_shown_unlock();
+
 // the running machine
 
 // switch to a machine by id, keeping what the user changed on the one we leave
