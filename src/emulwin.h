@@ -103,6 +103,7 @@ typedef struct {
 		void loadLabels(const char*);
 		void fillUserMenu();
 		void openMedia(const QString& path, int id, int drv, int run);
+		void fsOverlay(QWidget*);
 		void setMachine(const std::string&);
 		void resetMachine(int);
 		void resetTo(int);
@@ -336,6 +337,7 @@ typedef struct {
 		int fsY;		// where the pointer was last seen over the picture
 		unsigned fsTall:1;	// a line taller than the screen, while a menu is up
 		bool fsCompose(bool);
+		bool fsHeld();
 		void popupUserMenu(const QPoint&);
 		void placeWindow();
 		void fsReveal(int y);

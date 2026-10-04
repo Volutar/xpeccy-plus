@@ -105,7 +105,7 @@ void MainWin::updateWindow() {
 	showBars();
 	if (conf.vid.fullScreen) {
 #if defined(__WIN32)
-		fsTall = fsWantTall(QApplication::activePopupWidget() || (fsBar && fsBar->isVisible()));
+		fsTall = fsWantTall(fsHeld());
 #endif
 		wsz = SCREENSIZE + QSize(0, fsTall ? 1 : 0);
 		frame->setWindowState(frame->windowState() | Qt::WindowFullScreen);
@@ -678,7 +678,7 @@ void MainWin::menuHide() {
 	QTimer::singleShot(0, this, [this]() {
 		if (QApplication::activePopupWidget()) return;
 		setFocus();
-		if (!fsBar || !fsBar->isVisible()) fsCompose(false);
+		fsCompose(false);
 	});
 }
 
@@ -1748,7 +1748,7 @@ void MainWin::fsHide() {
 		fsTool->hide();
 		setFocus();
 	}
-	if (!userMenu->isVisible()) fsCompose(false);
+	fsCompose(false);
 }
 
 // A window that covers the monitor exactly is scanned out on its own, past the
@@ -1756,14 +1756,14 @@ void MainWin::fsHide() {
 // the bottom of the screen - it is composed with the rest. With Low latency it
 // is made that only while a menu is up, and the switch flashes the screen;
 // without, it stays composed, and the compositor's frame of lag is the price.
-// Says whether it changed: a menu waits for the switch.
+// on: a menu is about to open. Says whether it changed: the menu waits for the switch.
 bool MainWin::fsCompose(bool on) {
 #if defined(__WIN32)
 	if (!conf.vid.fullScreen) {
 		fsTall = 0;
 		return false;
 	}
-	on = fsWantTall(on);
+	on = fsWantTall(on || fsHeld());
 	// The window is asked, not the flag: the system can put a fullscreen
 	// window back to the screen's size behind our back, and a menu opened
 	// over it then is never drawn - while it holds the mouse and the keys.
@@ -1781,6 +1781,30 @@ bool MainWin::fsCompose(bool on) {
 	(void)on;
 	return false;
 #endif
+}
+
+// a window of ours, not a menu or a tip: those are seen to by fsCompose's callers
+static bool fs_window(QWidget* w) {
+	Qt::WindowType type = w->windowType();
+	return (type != Qt::Popup) && (type != Qt::ToolTip);
+}
+
+// What has to be seen over the picture: a menu, the bar at the top, or a window
+// of ours - the docked keyboard, say, which is otherwise never drawn over one
+// scanned out on its own, yet takes the clicks.
+bool MainWin::fsHeld() {
+	if (QApplication::activePopupWidget() || (fsBar && fsBar->isVisible())) return true;
+	QRect scr = frame->geometry();
+	foreach(QWidget* w, QApplication::topLevelWidgets()) {
+		if ((w == frame) || !w->isVisible() || w->isMinimized() || !fs_window(w)) continue;
+		if (w->frameGeometry().intersects(scr)) return true;
+	}
+	return false;
+}
+
+// a window has come, gone or moved
+void MainWin::fsOverlay(QWidget* w) {
+	if ((w != frame) && fs_window(w)) fsCompose(false);
 }
 
 // Back from fullscreen: where the window was, else in the middle - either way

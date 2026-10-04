@@ -121,6 +121,8 @@ void xApp::d_style() {
 		if (w->internalWinId()) applyTitleBarStyle(w);
 }
 
+static MainWin* os_win = NULL;		// the window every open goes through, once there is one
+
 // catches every top-level window's first Show, so a titlebar gets its colour
 // (and a file dialog its columns) without touching each of the dozen
 // QDialog/QMainWindow classes individually
@@ -132,10 +134,20 @@ bool xApp::eventFilter(QObject* obj, QEvent* ev) {
 			fitFileDialog(w);
 		}
 	}
+	switch (ev->type()) {
+		case QEvent::Show:
+		case QEvent::Hide:
+		case QEvent::Move:
+		case QEvent::WindowStateChange:
+			if (os_win && obj->isWidgetType() && static_cast<QWidget*>(obj)->isWindow())
+				os_win->fsOverlay(static_cast<QWidget*>(obj));
+			break;
+		default:
+			break;
+	}
 	return QApplication::eventFilter(obj, ev);
 }
 
-static MainWin* os_win = NULL;		// the window every open goes through, once there is one
 
 static void cli_set_machine(MainWin& mwin, DebugWin& dbgw, const std::string& id) {
 	mwin.setMachine(id);
