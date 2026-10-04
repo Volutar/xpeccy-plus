@@ -124,7 +124,7 @@ void ataSetLBA(ATADev* dev) {
 }
 
 void ataReadSector(ATADev* dev) {
-	long nps;
+	long long nps;
 	ataSetLBA(dev);
 	if (dev->lba >= dev->maxlba) {					// sector not found
 		dev->reg.state |= HDF_ERR;
@@ -133,8 +133,8 @@ void ataReadSector(ATADev* dev) {
 		if (dev->vfat) {
 			vfat_read(dev->vfat, dev->lba, dev->buf.data);
 		} else if (dev->file) {
-			nps = dev->lba * dev->pass.bps + dev->offset;
-			fseek(dev->file,nps,SEEK_SET);			// if filesize < nps, there will be 0xFF in buf
+			nps = (long long)dev->lba * dev->pass.bps + dev->offset;
+			x_fseek(dev->file, nps, SEEK_SET);			// if filesize < nps, there will be 0xFF in buf
 			fread((char*)dev->buf.data,dev->pass.bps,1,dev->file);
 		} else {
 			ataClearBuf(dev);
@@ -150,8 +150,8 @@ void ataWriteSector(ATADev* dev) {
 		dev->reg.err |= (HDF_ABRT | HDF_IDNF);
 	} else if (!dev->vfat) {			// a folder is served read only
 		if (dev->file) {
-			long pos = dev->lba * dev->pass.bps + dev->offset;
-			fseek(dev->file, pos, SEEK_SET);
+			long long pos = (long long)dev->lba * dev->pass.bps + dev->offset;
+			x_fseek(dev->file, pos, SEEK_SET);
 			x_media_writes++;
 			fwrite((char*)dev->buf.data, dev->pass.bps, 1, dev->file);
 		}
@@ -531,8 +531,8 @@ static int ata_chs_cyls(int maxlba) {
 }
 
 void ata_load_raw(ATADev* dev) {
-	fseek(dev->file, 0, SEEK_END);
-	long fsz = ftell(dev->file);
+	x_fseek(dev->file, 0, SEEK_END);
+	long long fsz = x_ftell(dev->file);
 	dev->maxlba = fsz / 512;
 	dev->pass.bps = 512;
 	dev->pass.hds = 16;

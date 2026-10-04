@@ -120,8 +120,9 @@ void sdcRdSector(SDCard* sdc) {
 	if ((sdc->addr < sdc->maxlba) && sdc->vfat) {
 		vfat_read(sdc->vfat, sdc->addr, sdc->buf.data + 1);
 	} else if ((sdc->addr < sdc->maxlba) && sdc->file) {
-		fseek(sdc->file,sdc->addr << 9,SEEK_SET);
-		fread(sdc->buf.data + 1, 512, 1, sdc->file);
+		x_fseek(sdc->file, (long long)sdc->addr << 9, SEEK_SET);
+		if (fread(sdc->buf.data + 1, 512, 1, sdc->file) != 1)		// past the end of a rounded up image
+			memset(sdc->buf.data + 1, 0xff, 512);
 	} else {
 		memset((void*)&sdc->buf.data[1],0xff,512);
 	}
@@ -132,7 +133,7 @@ void sdcWrSector(SDCard* sdc) {
 	if (sdc->vfat) return;			// a folder is served read only
 	if (x_runahead) return;			// this frame is going to be rolled back
 	if ((sdc->addr < sdc->maxlba) && sdc->file) {
-		fseek(sdc->file,sdc->addr << 9,SEEK_SET);
+		x_fseek(sdc->file, (long long)sdc->addr << 9, SEEK_SET);
 		x_media_writes++;
 		fwrite(sdc->buf.data + 1,512,1,sdc->file);
 	}
@@ -338,9 +339,9 @@ void sdcOpenFile(SDCard* sdc) {
 	if (sdc->image) {
 		sdc->file = fopen(sdc->image,"rb+");
 		if (sdc->file) {
-			fseek(sdc->file, 0, SEEK_END);
-			int sz = ftell(sdc->file);
-			int sz2 = 256;
+			x_fseek(sdc->file, 0, SEEK_END);
+			long long sz = x_ftell(sdc->file);
+			long long sz2 = 256;
 			while (sz2 < sz)
 				sz2 <<= 1;
 			sdc->capacity = sz2 >> 20;	// MegaBytes

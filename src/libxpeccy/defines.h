@@ -12,8 +12,27 @@ extern int x_runahead;
 extern unsigned x_media_writes;
 
 #include <stdint.h>
+#include <stdio.h>
 #include <math.h>
 #include <time.h>
+
+// File positions in 64 bits: long is 32 bits on Windows, and a disk image is
+// bigger than 2G as often as not
+static inline int x_fseek(FILE* file, long long pos, int whence) {
+#ifdef _WIN32
+	return _fseeki64(file, pos, whence);
+#else
+	return fseeko(file, (off_t)pos, whence);
+#endif
+}
+
+static inline long long x_ftell(FILE* file) {
+#ifdef _WIN32
+	return _ftelli64(file);
+#else
+	return ftello(file);
+#endif
+}
 
 // Emulated time is carried as 16.16 fixed point nanoseconds, and the `Fixed`
 // suffix on a name means a value in that format rather than a plain count of
