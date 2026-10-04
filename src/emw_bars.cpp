@@ -16,6 +16,7 @@
 #include <QSlider>
 #include <QLabel>
 #include <QWidgetAction>
+#include <QStyleOptionSlider>
 #include <functional>
 
 #include "emulwin.h"
@@ -229,6 +230,25 @@ void xToolBar::paintEvent(QPaintEvent* ev) {
 	QPainter pnt(this);
 	pnt.fillRect(dropX - 1, 2, 2, height() - 4, palette().highlight());
 }
+
+// A volume is set by eye: a click puts the handle where it lands, and the press
+// then drags it, instead of the slider stepping towards the click a page at a time.
+class xVolSlider : public QSlider {
+	public:
+		xVolSlider(QWidget* p) : QSlider(Qt::Horizontal, p) {}
+	protected:
+		void mousePressEvent(QMouseEvent* ev) override {
+			if (ev->button() == Qt::LeftButton) {
+				QStyleOptionSlider opt;
+				initStyleOption(&opt);
+				QRect groove = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderGroove, this);
+				QRect handle = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, this);
+				int x = int(ev->xEventX) - groove.x() - handle.width() / 2;
+				setValue(QStyle::sliderValueFromPosition(minimum(), maximum(), x, groove.width() - handle.width(), opt.upsideDown));
+			}
+			QSlider::mousePressEvent(ev);
+		}
+};
 
 // MainWin
 
@@ -564,7 +584,7 @@ QMenu* MainWin::volumeMenu() {
 	QWidget* box = new QWidget(menu);
 	QHBoxLayout* lay = new QHBoxLayout(box);
 	lay->setContentsMargins(8, 4, 8, 4);
-	QSlider* sld = new QSlider(Qt::Horizontal, box);
+	QSlider* sld = new xVolSlider(box);
 	sld->setRange(0, 100);
 	sld->setPageStep(10);
 	sld->setMinimumWidth(120);
