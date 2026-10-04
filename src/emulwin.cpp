@@ -5,6 +5,7 @@
 #include <QMenuBar>
 #include <QSet>
 #include <QMessageBox>
+#include <QPointer>
 #include <QProgressBar>
 #include <QTableWidget>
 #include <QTime>
@@ -1870,9 +1871,21 @@ void MainWin::fillRecent() {
 	}
 }
 
+// not modal: the machine goes on, and a second ask brings the open one forward
 void MainWin::showAbout() {
-	pause(true, PR_FILE);
-	QMessageBox::about(this, "About " XPRODUCT,
+	static QPointer<QMessageBox> box;
+	if (box) {
+		box->raise();
+		box->activateWindow();
+		return;
+	}
+	box = new QMessageBox(this);
+	box->setAttribute(Qt::WA_DeleteOnClose);
+	box->setModal(false);
+	box->setWindowTitle("About " XPRODUCT);
+	box->setIconPixmap(frame->windowIcon().pixmap(64, 64));
+	box->setTextInteractionFlags(Qt::TextBrowserInteraction);
+	box->setText(
 		"<b>" XPRODUCT "</b> " XVERSION "<br><br>"
 		"ZX Spectrum and clones emulator.<br>"
 		"By Oleksandr \".koval\" Kovalchuk, a fork of "
@@ -1888,8 +1901,8 @@ void MainWin::showAbout() {
 		"<a href=\"https://github.com/dotkoval/xpeccy-plus#bundled-roms\">details</a>.<br><br>"
 		"Qt " QT_VERSION_STR ", SDL " QT_STRINGIFY(SDL_MAJOR_VERSION) "." QT_STRINGIFY(SDL_MINOR_VERSION)
 		"." QT_STRINGIFY(SDL_PATCHLEVEL));
-	pause(false, PR_FILE);
-	setFocus();
+	connect(box, &QDialog::finished, this, [this]() {setFocus();});
+	box->show();
 }
 
 void MainWin::favManage() {
