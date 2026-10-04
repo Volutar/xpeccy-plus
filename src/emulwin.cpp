@@ -672,9 +672,14 @@ bool MainWin::eventFilter(QObject* obj, QEvent* ev) {
 
 // a menu does not hold the machine: nothing it does needs it stopped
 void MainWin::menuHide() {
-	setFocus();
-	// the line fullscreen grew for it goes too, unless the bar over the picture is still up
-	if (!fsBar || !fsBar->isVisible()) fsCompose(false);
+	// A submenu closing leaves its parent open, and Favorites is one in the right-click
+	// menu: what is still up is asked once it has gone. The line fullscreen grew for the
+	// menus goes with the last of them, unless the bar over the picture is still there.
+	QTimer::singleShot(0, this, [this]() {
+		if (QApplication::activePopupWidget()) return;
+		setFocus();
+		if (!fsBar || !fsBar->isVisible()) fsCompose(false);
+	});
 }
 
 
