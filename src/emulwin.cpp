@@ -1865,9 +1865,16 @@ void MainWin::showAbout() {
 	QMessageBox::about(this, "About " XPRODUCT,
 		"<b>" XPRODUCT "</b> " XVERSION "<br><br>"
 		"ZX Spectrum and clones emulator.<br>"
-		"A fork of <a href=\"https://github.com/samstyle/Xpeccy\">Xpeccy</a> by SAM style.<br><br>"
+		"By Oleksandr \".koval\" Kovalchuk, a fork of "
+		"<a href=\"https://github.com/samstyle/Xpeccy\">Xpeccy</a> by SAM style.<br>"
+		"MIT license.<br><br>"
 		"<a href=\"https://github.com/dotkoval/xpeccy-plus\">github.com/dotkoval/xpeccy-plus</a><br><br>"
-		"Qt " QT_VERSION_STR);
+		"Built in: <a href=\"https://github.com/aaronsgiles/ymfm\">ymfm</a> by Aaron Giles "
+		"(BSD 3-Clause) and DejaVu Sans Mono (Bitstream Vera license).<br>"
+		"ROM images, icons and FFmpeg keep their own terms: "
+		"<a href=\"https://github.com/dotkoval/xpeccy-plus#bundled-roms\">details</a>.<br><br>"
+		"Qt " QT_VERSION_STR ", SDL " QT_STRINGIFY(SDL_MAJOR_VERSION) "." QT_STRINGIFY(SDL_MINOR_VERSION)
+		"." QT_STRINGIFY(SDL_PATCHLEVEL));
 	pause(false, PR_FILE);
 	setFocus();
 }
