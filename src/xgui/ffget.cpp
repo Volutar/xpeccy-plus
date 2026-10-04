@@ -33,8 +33,6 @@ class xFfGet : public QDialog {
 		xFfGet(QWidget* p);
 		bool installed;
 		void reject() override;
-	protected:
-		void showEvent(QShowEvent*) override;
 	private:
 		QLabel* lab;
 		QLabel* labLine;	// what the program says, as it goes
@@ -146,18 +144,6 @@ xFfGet::xFfGet(QWidget* p):QDialog(p) {
 	connect(box, &QDialogButtonBox::rejected, this, &xFfGet::reject);
 	connect(btnGo, &QPushButton::clicked, this, &xFfGet::go);
 	lab->setText(offer());
-}
-
-// a style sheet colours the text and leaves the links Qt's blue, which a dark
-// theme drowns: they take the text's colour, told apart by the underline. Not
-// before the window shows: that is when the sheet reaches the palette
-void xFfGet::showEvent(QShowEvent* ev) {
-	QString col = lab->palette().color(QPalette::WindowText).name();
-	QString txt = lab->text();
-	txt.replace("</a>", "</span></a>");
-	txt.replace(QRegularExpression("(<a [^>]*>)"), QString("\\1<span style=\"color:%0\">").arg(col));
-	lab->setText(txt);
-	QDialog::showEvent(ev);
 }
 
 // what will be done, asked before it is

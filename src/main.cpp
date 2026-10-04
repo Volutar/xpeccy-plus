@@ -101,6 +101,17 @@ void xApp::d_style() {
 	// file is compared, not the name: a style edited on disk still re-applies.
 	if (sheet != styleSheet())
 		setStyleSheet(sheet);
+	// a sheet cannot colour links, and Qt's blue drowns in a dark one: the
+	// style names its own in its .pal, the platform's comes back without one
+	static const QColor sysLink = palette().color(QPalette::Link);
+	QColor link = stylePaletteColor(conf.style, "ui.link");
+	if (!link.isValid()) link = sysLink;
+	QPalette pal = palette();
+	if (pal.color(QPalette::Link) != link) {
+		pal.setColor(QPalette::Link, link);
+		pal.setColor(QPalette::LinkVisited, link);
+		setPalette(pal);
+	}
 	// Only the windows that have a native handle already: asking for one (winId()
 	// inside) creates it, and doing that here would make a real window out of
 	// every hidden dialog, menu and combo box popup in the application - half a
