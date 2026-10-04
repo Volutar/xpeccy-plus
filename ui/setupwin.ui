@@ -2860,10 +2860,10 @@ in config.conf</string>
                 <item row="0" column="0">
                  <widget class="QCheckBox" name="cbLowLat">
                   <property name="toolTip">
-                   <string>Show each frame at once for low input lag,
-best with VRR or a high refresh rate.
-Off: frames are buffered, for smoother motion
-on a fixed-refresh display</string>
+                   <string>Show each frame as soon as it is made.
+In a window the desktop still holds it a frame;
+fullscreen skips that, but menus flash opening.
+Off: frames are buffered, for smoother motion</string>
                   </property>
                   <property name="text">
                    <string/>
@@ -2883,10 +2883,10 @@ on a fixed-refresh display</string>
                 <item row="0" column="1">
                  <widget class="QLabel" name="labLowLat">
                   <property name="toolTip">
-                   <string>Show each frame at once for low input lag,
-best with VRR or a high refresh rate.
-Off: frames are buffered, for smoother motion
-on a fixed-refresh display</string>
+                   <string>Show each frame as soon as it is made.
+In a window the desktop still holds it a frame;
+fullscreen skips that, but menus flash opening.
+Off: frames are buffered, for smoother motion</string>
                   </property>
                   <property name="text">
                    <string>Low latency</string>
@@ -2904,14 +2904,14 @@ on a fixed-refresh display</string>
                    </font>
                   </property>
                   <property name="text">
-                   <string>Show each frame at once instead of buffering</string>
+                   <string>Show each frame at once, fully only in fullscreen</string>
                   </property>
                  </widget>
                 </item>
                 <item row="1" column="0">
                  <widget class="QComboBox" name="cbRunAhead">
                   <property name="toolTip">
-                   <string>EXPERIMENTAL. Emulates each frame twice over to show
+                   <string>Emulates each frame twice over to show
 one the machine has not reached yet, so a key press
 lands sooner. The sound stays a frame behind</string>
                   </property>
@@ -2920,7 +2920,7 @@ lands sooner. The sound stays a frame behind</string>
                 <item row="1" column="1">
                  <widget class="QLabel" name="labRunAhead">
                   <property name="toolTip">
-                   <string>EXPERIMENTAL. Emulates each frame twice over to show
+                   <string>Emulates each frame twice over to show
 one the machine has not reached yet, so a key press
 lands sooner. The sound stays a frame behind</string>
                   </property>
@@ -2940,7 +2940,7 @@ lands sooner. The sound stays a frame behind</string>
                    </font>
                   </property>
                   <property name="text">
-                   <string>EXPERIMENTAL. Frames to run ahead, keys respond sooner</string>
+                   <string>Frames to run ahead, keys respond sooner</string>
                   </property>
                  </widget>
                 </item>

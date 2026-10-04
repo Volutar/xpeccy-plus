@@ -337,6 +337,17 @@ QTabBar::tab:selected {
 	color: #f8f8f2;
 }
 
+/* the tab in front carries the accent on its outer edge; padding keeps the height */
+QTabBar::tab:top:selected {
+	border-top: 2px solid #66d9ef;
+	padding-top: 2px;
+}
+
+QTabBar::tab:bottom:selected {
+	border-bottom: 2px solid #66d9ef;
+	padding-bottom: 2px;
+}
+
 QTabBar::tab:disabled {
 	color: #75715e;
 }
@@ -556,6 +567,13 @@ QMenu::separator {
 	margin: 3px 6px;
 }
 
+/* a checked item with an icon shows no check mark, only this frame */
+QMenu::icon:checked {
+	background-color: #49483e;
+	border: 1px solid #66d9ef;
+	border-radius: 2px;
+}
+
 QMenu::indicator {
 	margin-left: 4px;
 }
@@ -564,7 +582,12 @@ QMenu::indicator {
 
 QToolBar {
 	border: none;
-	spacing: 2px;
+	spacing: 1px;
+	padding: 1px;
+}
+
+/* as tight as the system style draws them, or the bar does not fit at x2 */
+QToolBar QToolButton {
 	padding: 1px;
 }
 
@@ -572,7 +595,7 @@ QToolBar::separator {
 	background-color: #414339;
 	width: 1px;
 	height: 1px;
-	margin: 3px;
+	margin: 3px 2px;
 }
 
 QStatusBar {

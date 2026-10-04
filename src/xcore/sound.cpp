@@ -494,6 +494,7 @@ int sndGetRingTargetBytes() {
 
 void sdlPlayAudio(void*, Uint8* stream, int len) {
 	int want = len;
+	Uint8* out = stream;
 //	printf("len = %i\n",len);
 	// conf.snd.need is no longer filled here - it is filled from a steady
 	// timer in pacing.cpp, so frame making does not run in audio-buffer sized
@@ -516,6 +517,7 @@ void sdlPlayAudio(void*, Uint8* stream, int len) {
 			len--;
 		}
 	}
+	if (conf.snd.mute) memset(out, 0, want);	// signed 16 bit: silence is zero
 	// how little the ring was left with. while idle it is not drained at all,
 	// so leave the mark alone.
 	if (!idle) {
@@ -707,6 +709,7 @@ void sndInit() {
 	conf.snd.latency = SND_LATENCY_DEF;
 	conf.snd.latauto = 1;
 	conf.snd.enabled = 1;
+	conf.snd.mute = 0;
 	conf.snd.filter = 1;	// the block average it replaces folds everything above 22 kHz back in
 	sndOutput = NULL;
 	conf.snd.vol.beep = 100;

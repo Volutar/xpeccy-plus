@@ -4,6 +4,8 @@
 #include <QColor>
 #include <QByteArray>
 #include <QVariant>
+#include <QCoreApplication>
+#include <QAbstractNativeEventFilter>
 
 #include "xcore/xcore.h"
 
@@ -98,6 +100,30 @@ void applyTitleBarStyle(QWidget* w) {
 	}
 }
 
+// A mouse move waiting in the queue is what ends the wait (SDL does the same)
+class xCaptionClick : public QAbstractNativeEventFilter {
+	public:
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+		bool nativeEventFilter(const QByteArray&, void* message, qintptr*) override {
+#else
+		bool nativeEventFilter(const QByteArray&, void* message, long*) override {
+#endif
+			MSG* msg = static_cast<MSG*>(message);
+			if ((msg->message == WM_NCLBUTTONDOWN) && (msg->wParam == HTCAPTION)) {
+				POINT pt;
+				GetCursorPos(&pt);
+				ScreenToClient(msg->hwnd, &pt);
+				PostMessageW(msg->hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(pt.x, pt.y));
+			}
+			return false;
+		}
+};
+
+void installTitleBarClickFix() {
+	static xCaptionClick filter;
+	QCoreApplication::instance()->installNativeEventFilter(&filter);
+}
+
 #else
 
 // X11/Wayland window managers draw and own the titlebar themselves with no
@@ -105,6 +131,9 @@ void applyTitleBarStyle(QWidget* w) {
 // Cocoa call (NSWindow) that nobody here can build-test. Left as a no-op on
 // both rather than guessing.
 void applyTitleBarStyle(QWidget*) {
+}
+
+void installTitleBarClickFix() {
 }
 
 #endif

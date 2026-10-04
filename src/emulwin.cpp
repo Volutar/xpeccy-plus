@@ -105,7 +105,7 @@ void MainWin::updateWindow() {
 	showBars();
 	if (conf.vid.fullScreen) {
 #if defined(__WIN32)
-		fsTall = fsWantTall(QApplication::activePopupWidget() || (fsBar && fsBar->isVisible()));
+		fsTall = fsWantTall(fsHeld());
 #endif
 		wsz = SCREENSIZE + QSize(0, fsTall ? 1 : 0);
 		frame->setWindowState(frame->windowState() | Qt::WindowFullScreen);
@@ -678,7 +678,7 @@ void MainWin::menuHide() {
 	QTimer::singleShot(0, this, [this]() {
 		if (QApplication::activePopupWidget()) return;
 		setFocus();
-		if (!fsBar || !fsBar->isVisible()) fsCompose(false);
+		fsCompose(false);
 	});
 }
 
@@ -762,8 +762,10 @@ void MainWin::uploadFrame() {
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, vid->full.x * 2);
 	glPixelStorei(GL_UNPACK_SKIP_PIXELS, vid->lcut.x * 2);
 	glPixelStorei(GL_UNPACK_SKIP_ROWS, vid->lcut.y);
+	const unsigned char* img = frame_shown_lock();
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, vid->vsze.x * 2, vid->vsze.y, 0,
-		GL_RGBA, GL_UNSIGNED_BYTE, comp->flgDBG ? scrimg : bufimg);
+		GL_RGBA, GL_UNSIGNED_BYTE, comp->flgDBG ? scrimg : img);
+	frame_shown_unlock();
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 	glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
 	glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
@@ -917,9 +919,12 @@ void MainWin::paintEvent(QPaintEvent*) {
 	// a dot stays a block of whole pixels.
 	Computer* comp = conf.zx;
 	Video* vid = comp->vid;
-	QImage img(comp->flgDBG ? scrimg : bufimg, vid->full.x * 2, bufSize / bytesPerLine, bytesPerLine, QImage::Format_RGBA8888);
-	pnt.drawImage(QRect(drawX, drawY, drawW, drawH), img,
-		QRect(vid->lcut.x * 2, vid->lcut.y, vid->vsze.x * 2, vid->vsze.y));
+	// cut out under the lock and scaled after it: the emulation waits on it
+	const unsigned char* shown = frame_shown_lock();
+	QImage img = QImage(comp->flgDBG ? scrimg : shown, vid->full.x * 2, bufSize / bytesPerLine, bytesPerLine, QImage::Format_RGBA8888)
+		.copy(vid->lcut.x * 2, vid->lcut.y, vid->vsze.x * 2, vid->vsze.y);
+	frame_shown_unlock();
+	pnt.drawImage(QRect(drawX, drawY, drawW, drawH), img);
 #endif
 	drawIcons(pnt);
 	pnt.end();
@@ -1046,8 +1051,13 @@ bool MainWin::recStart(const QString& file) {
 #define REC_BLINK_MS	500
 
 // where the speed mode and the recording sign go
+// the status bar has the rate, when it is there
+bool MainWin::fpsOsd() {
+	return conf.led.fps && !statusBar->isVisible();
+}
+
 QRect MainWin::modeSlot() {
-	return QRect(width() - MODE_ICON_W - MODE_ICON_RIGHT, conf.led.fps ? MODE_ICON_TOP : MODE_ICON_TOP_NOFPS,
+	return QRect(width() - MODE_ICON_W - MODE_ICON_RIGHT, fpsOsd() ? MODE_ICON_TOP : MODE_ICON_TOP_NOFPS,
 		MODE_ICON_W, MODE_ICON_W * 3 / 5);
 }
 
@@ -1148,7 +1158,7 @@ void MainWin::drawIcons(QPainter& pnt) {
 	if (mode != osd_none)
 		pnt.drawImage(modeSlot().topLeft(), osdImg[mode]);
 // put fps
-	if (conf.led.fps) {
+	if (fpsOsd()) {
 		sprintf(numbuf, " %.1f ", conf.vid.curfps);
 		drawText(&pnt, width() - (strlen(numbuf) * 12) - 5, 5, numbuf);
 	}
@@ -1313,8 +1323,9 @@ void MainWin::screenShot() {
 	Video* vid = comp->vid;
 	// the shown frame, taken out of the whole raster. The screen sits in the
 	// middle of it, so there is no lopsided border left to trim.
-	QImage img(bufimg, vid->full.x * 2, bufSize / bytesPerLine, bytesPerLine, QImage::Format_RGBA8888);
+	QImage img(frame_shown_lock(), vid->full.x * 2, bufSize / bytesPerLine, bytesPerLine, QImage::Format_RGBA8888);
 	img = img.copy(vid->lcut.x * 2, vid->lcut.y, vid->vsze.x * 2, vid->vsze.y);
+	frame_shown_unlock();
 	char* sptr = (char*)(comp->mem->ramData + (comp->vid->vidPage << 14));
 	switch (frm) {
 		case SCR_HOB:
@@ -1742,7 +1753,7 @@ void MainWin::fsHide() {
 		fsTool->hide();
 		setFocus();
 	}
-	if (!userMenu->isVisible()) fsCompose(false);
+	fsCompose(false);
 }
 
 // A window that covers the monitor exactly is scanned out on its own, past the
@@ -1750,14 +1761,14 @@ void MainWin::fsHide() {
 // the bottom of the screen - it is composed with the rest. With Low latency it
 // is made that only while a menu is up, and the switch flashes the screen;
 // without, it stays composed, and the compositor's frame of lag is the price.
-// Says whether it changed: a menu waits for the switch.
+// on: a menu is about to open. Says whether it changed: the menu waits for the switch.
 bool MainWin::fsCompose(bool on) {
 #if defined(__WIN32)
 	if (!conf.vid.fullScreen) {
 		fsTall = 0;
 		return false;
 	}
-	on = fsWantTall(on);
+	on = fsWantTall(on || fsHeld());
 	// The window is asked, not the flag: the system can put a fullscreen
 	// window back to the screen's size behind our back, and a menu opened
 	// over it then is never drawn - while it holds the mouse and the keys.
@@ -1775,6 +1786,30 @@ bool MainWin::fsCompose(bool on) {
 	(void)on;
 	return false;
 #endif
+}
+
+// a window of ours, not a menu or a tip: those are seen to by fsCompose's callers
+static bool fs_window(QWidget* w) {
+	Qt::WindowType type = w->windowType();
+	return (type != Qt::Popup) && (type != Qt::ToolTip);
+}
+
+// What has to be seen over the picture: a menu, the bar at the top, or a window
+// of ours - the docked keyboard, say, which is otherwise never drawn over one
+// scanned out on its own, yet takes the clicks.
+bool MainWin::fsHeld() {
+	if (QApplication::activePopupWidget() || (fsBar && fsBar->isVisible())) return true;
+	QRect scr = frame->geometry();
+	foreach(QWidget* w, QApplication::topLevelWidgets()) {
+		if ((w == frame) || !w->isVisible() || w->isMinimized() || !fs_window(w)) continue;
+		if (w->frameGeometry().intersects(scr)) return true;
+	}
+	return false;
+}
+
+// a window has come, gone or moved
+void MainWin::fsOverlay(QWidget* w) {
+	if ((w != frame) && fs_window(w)) fsCompose(false);
 }
 
 // Back from fullscreen: where the window was, else in the middle - either way
@@ -1835,9 +1870,19 @@ void MainWin::showAbout() {
 	QMessageBox::about(this, "About " XPRODUCT,
 		"<b>" XPRODUCT "</b> " XVERSION "<br><br>"
 		"ZX Spectrum and clones emulator.<br>"
-		"A fork of <a href=\"https://github.com/samstyle/Xpeccy\">Xpeccy</a> by SAM style.<br><br>"
-		"<a href=\"https://github.com/dotkoval/xpeccy-plus\">github.com/dotkoval/xpeccy-plus</a><br><br>"
-		"Qt " QT_VERSION_STR);
+		"By Oleksandr \".koval\" Kovalchuk, a fork of "
+		"<a href=\"https://github.com/samstyle/Xpeccy\">Xpeccy</a> by SAM style.<br>"
+		"MIT license.<br><br>"
+		"<a href=\"https://github.com/dotkoval/xpeccy-plus\">github.com/dotkoval/xpeccy-plus</a><br>"
+		"Support the project: <a href=\"https://paypal.me/OKovalchuk\">PayPal</a> or "
+		"<a href=\"https://ko-fi.com/oleksandrkovalkovalchuk25949\">Ko-fi</a><br><br>"
+		"Thanks to everyone for the feedback, and especially to Volutar for regular testing.<br><br>"
+		"Built in: <a href=\"https://github.com/aaronsgiles/ymfm\">ymfm</a> by Aaron Giles "
+		"(BSD 3-Clause) and DejaVu Sans Mono (Bitstream Vera license).<br>"
+		"ROM images, icons and FFmpeg keep their own terms: "
+		"<a href=\"https://github.com/dotkoval/xpeccy-plus#bundled-roms\">details</a>.<br><br>"
+		"Qt " QT_VERSION_STR ", SDL " QT_STRINGIFY(SDL_MAJOR_VERSION) "." QT_STRINGIFY(SDL_MINOR_VERSION)
+		"." QT_STRINGIFY(SDL_PATCHLEVEL));
 	pause(false, PR_FILE);
 	setFocus();
 }
@@ -2072,6 +2117,7 @@ void MainWin::renderFrame() {
 	// emuCycle() would only clear the flag without acting on it, and the
 	// machine runs into the same breakpoint again as soon as it goes on
 	comp->flgBRK = 0;
+	frame_publish();
 	emu_unlock();
 }
 

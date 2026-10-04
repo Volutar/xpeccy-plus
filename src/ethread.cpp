@@ -43,6 +43,53 @@ void emu_unlock() {
 	emuGuard.unlock();
 }
 
+// What the gui shows is a copy of bufimg taken at the frame's end, not bufimg
+// itself: antiflicker mixes into it in place and run-ahead draws over it, so a
+// gui running late - a window being dragged - read a frame half made.
+static std::vector<unsigned char> shownImg;
+static QMutex shownGuard;
+static int shownSwaps = -1;		// bufSwaps of the copy, -1: none yet
+static long long shownNs = 0;
+
+// fast mode and fast forward make frames far quicker than anyone looks at them
+#define SHOWN_FAST_NS 10000000LL
+
+void frame_publish() {
+	QMutexLocker lock(&shownGuard);
+	shownImg.resize(bufSize);
+	memcpy(shownImg.data(), bufimg, bufSize);
+	shownSwaps = bufSwaps;
+	shownNs = paceClockNs();
+}
+
+// Set from the frame signal until the gui has taken it. A gui held up for a while
+// would otherwise work through a queue of frames long gone, one repaint each.
+static std::atomic<int> frameOwed{0};
+
+void frame_taken() {
+	frameOwed = 0;
+}
+
+// 1 when the gui is to be told: it shows the newest copy whenever it gets there
+static int frame_hand_over() {
+	bool quick = conf.emu.fast || (conf.emu.speed > 1.0);
+	if ((shownSwaps != bufSwaps) && (!quick || (paceClockNs() - shownNs >= SHOWN_FAST_NS)))
+		frame_publish();
+	return !frameOwed.exchange(1);
+}
+
+// A paused machine is only drawn by the gui thread itself, so bufimg is safe then.
+const unsigned char* frame_shown_lock() {
+	shownGuard.lock();
+	// a copy from a machine with a smaller raster is not read past its end
+	if (conf.emu.pause || ((int)shownImg.size() < bufSize)) return bufimg;
+	return shownImg.data();
+}
+
+void frame_shown_unlock() {
+	shownGuard.unlock();
+}
+
 #define LOG_OUTPUT 0
 #if LOG_OUTPUT
 static FILE* file = nullptr;
@@ -454,7 +501,7 @@ void xThread::emuCycle(Computer* comp) {
 					conf.vid.fctime = paceClockNs();
 					conf.vid.fcount++;
 					vrec_frame(comp);
-					emit s_frame();
+					if (frame_hand_over()) emit s_frame();
 				}
 				if (conf.snd.need <= 0) conf.snd.fill = 0;
 				continue;
@@ -543,7 +590,7 @@ void xThread::emuCycle(Computer* comp) {
 			}
 
 			vrec_frame(comp);
-			emit s_frame();
+			if (frame_hand_over()) emit s_frame();
 			if (wound) xstate_load(raState, comp);
 		}
 #if LOG_OUTPUT

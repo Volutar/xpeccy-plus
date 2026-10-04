@@ -337,7 +337,7 @@ static void mac_defaults(xMachine& mac) {
 	mac.soundrive = SDRV_NONE;
 	mac.disk = DIF_NONE;
 	mac.ide = IDE_NONE;
-	mac.drives = 4;
+	mac.drives = 2;		// more is rare enough to be asked for
 	mac.mouse = 0;
 	mac.mouseWheel = 0;
 	mac.joy = MAC_JOY_KEMPSTON;

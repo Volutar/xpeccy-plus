@@ -103,6 +103,7 @@ typedef struct {
 		void loadLabels(const char*);
 		void fillUserMenu();
 		void openMedia(const QString& path, int id, int drv, int run);
+		void fsOverlay(QWidget*);
 		void setMachine(const std::string&);
 		void resetMachine(int);
 		void resetTo(int);
@@ -315,6 +316,7 @@ typedef struct {
 		QAction* slowAct;
 		QAction* rewAct;
 		QAction* diskAct;
+		QAction* muteAct;
 		typedef struct {QString id; QString group; QAction* act; int kind; QMenu* list;} xTbItem;
 		QList<xTbItem> tbCatalog;	// everything a button can be
 		QStringList tbList;		// what the bar holds, ids and separators
@@ -327,6 +329,7 @@ typedef struct {
 		void tbMenu(const QPoint&, int);
 		void showBars();
 		void syncActions();
+		QMenu* volumeMenu();
 		void updateStatus();
 		void cutTexts();
 		void initMenuBar();
@@ -336,6 +339,8 @@ typedef struct {
 		int fsY;		// where the pointer was last seen over the picture
 		unsigned fsTall:1;	// a line taller than the screen, while a menu is up
 		bool fsCompose(bool);
+		bool fpsOsd();
+		bool fsHeld();
 		void popupUserMenu(const QPoint&);
 		void placeWindow();
 		void fsReveal(int y);
