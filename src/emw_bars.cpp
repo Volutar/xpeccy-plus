@@ -41,7 +41,7 @@ static QPixmap sb_tint(const QString& path, QColor col, double alpha) {
 
 // what a toolbar holds until the user says otherwise
 static const char* tbDefault = "key.load,key.save,|,menu.reset,menu.machine,|,key.tapewin,menu.disks,|,"
-	"key.fullscreen,|,menu.debug,key.options,~,key.slowmo,key.pause,key.ffwd,key.fast";
+	"key.fullscreen,|,menu.debug,key.options,~,key.rewind,key.slowmo,key.pause,key.ffwd,key.fast";
 
 enum {TB_PLAIN = 0, TB_LIST, TB_SPLIT};	// a button; a list that opens on a click; a button with a list beside it
 
@@ -145,7 +145,10 @@ bool xToolBar::eventFilter(QObject* obj, QEvent* ev) {
 			pressIdx = -1;
 			pressEaten = false;
 			QWidget* w = static_cast<QWidget*>(obj);
-			if (btn) btn->setDown(false);
+			if (btn && btn->isDown()) {
+				btn->setDown(false);
+				emit btn->released();		// a held button would never see its release
+			}
 			QDrag* drag = new QDrag(this);
 			QMimeData* mime = new QMimeData;
 			mime->setData(TB_MIME, QByteArray::number(from));
@@ -275,6 +278,11 @@ void MainWin::initBars() {
 	add("key.ffwd", "Time", ffAct, TB_PLAIN);
 	slowAct = speed("Slow motion", XCUT_SLOWMO, XTM_SLOW, "time-slow");
 	add("key.slowmo", "Time", slowAct, TB_PLAIN);
+	// held like its key: the button's press and release drive it, see tbBuild
+	rewAct = new QAction(QIcon(":/images/time-rewind.png"), "Rewind", this);
+	cutActs.append({rewAct, QString("Rewind"), XCUT_REWIND});
+	cutById[XCUT_REWIND] = rewAct;
+	add("key.rewind", "Time", rewAct, TB_PLAIN);
 	// not the key's own action: a tape armed to start by itself counts as playing
 	// there, so a click on a button that shows it stopped would stop it
 	tapeAct = new QAction(QIcon(":/images/tape-play.png"), "Tape play", this);
@@ -417,6 +425,10 @@ void MainWin::tbBuild() {
 			btn->setPopupMode((it->kind == TB_LIST) ? QToolButton::InstantPopup : QToolButton::MenuButtonPopup);
 		if (it->act->menu())
 			btn->setToolTip(tb_name(it->act));
+		if (it->act == rewAct) {
+			connect(btn, &QToolButton::pressed, this, [this]() {xkey_press(XCUT_REWIND, true);});
+			connect(btn, &QToolButton::released, this, [this]() {xcut_release(XCUT_REWIND);});
+		}
 	}
 	static_cast<xToolBar*>(toolBar)->watch();
 }
@@ -518,6 +530,7 @@ void MainWin::syncActions() {
 	fastAct->setChecked(conf.emu.fast);
 	ffAct->setChecked(conf.emu.tmode == XTM_FFWD);
 	slowAct->setChecked(conf.emu.tmode == XTM_SLOW);
+	rewAct->setEnabled(conf.emu.rewind.on);
 	diskAct->setEnabled(!dskMenu->isEmpty());
 	tapeAct->setChecked(comp->tape->on && !comp->tape->rec);	// moving, not waiting to be started
 	tapeRecAct->setChecked(comp->tape->on && comp->tape->rec);
