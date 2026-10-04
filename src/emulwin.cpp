@@ -1586,10 +1586,15 @@ QAction* MainWin::cutAction(QMenu* menu, const QString& name, int id, const QStr
 }
 
 // the keys as they are now, after Options too
+// the key a hotkey is on, as the menus write it; empty when it has none
+QString MainWin::cutKey(int id) {
+	xShortcut* sc = find_shortcut_id(id);
+	return (sc && !sc->seq.isEmpty()) ? sc->seq.toString(QKeySequence::NativeText) : QString();
+}
+
 void MainWin::cutTexts() {
 	foreach(const xCutAct& cut, cutActs) {
-		xShortcut* sc = find_shortcut_id(cut.id);
-		QString key = (sc && !sc->seq.isEmpty()) ? sc->seq.toString(QKeySequence::NativeText) : QString();
+		QString key = cutKey(cut.id);
 		QString text = cut.name;
 		QString tip = cut.name;
 		tip.remove("...");

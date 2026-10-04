@@ -605,6 +605,12 @@ void MainWin::syncActions() {
 	recAct->setChecked(vrec_state() == VREC_RUN);
 	wavAct->setChecked(conf.snd.wavout);
 	muteAct->setChecked(conf.snd.mute);
+	// the button is the volume too: what a click does, then where the volume stands
+	QString tip = conf.snd.mute ? "Unmute" : "Mute";
+	QString key = cutKey(XCUT_MUTE);
+	if (!key.isEmpty()) tip += QString(" (%0)").arg(key);
+	tip += QString(" - volume %0%").arg(conf.snd.vol.master);
+	if (muteAct->toolTip() != tip) muteAct->setToolTip(tip);	// a change repaints the button
 	fullAct->setChecked(conf.vid.fullScreen);
 	ratioAct->setChecked(conf.vid.keepRatio);
 	for (int i = 0; i < sizeActs.size(); i++)

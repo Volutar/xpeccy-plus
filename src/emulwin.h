@@ -332,6 +332,7 @@ typedef struct {
 		QMenu* volumeMenu();
 		void updateStatus();
 		void cutTexts();
+		QString cutKey(int);
 		void initMenuBar();
 		// the menu over the picture in fullscreen, while the pointer is at the top
 		QMenuBar* fsBar;
