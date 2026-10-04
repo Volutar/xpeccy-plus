@@ -1887,7 +1887,7 @@ void MainWin::showAbout() {
 	box->setTextInteractionFlags(Qt::TextBrowserInteraction);
 	box->setText(
 		"<b>" XPRODUCT "</b> " XVERSION "<br><br>"
-		"ZX Spectrum and clones emulator.<br>"
+		"A ZX Spectrum and clones emulator, made for playing and for coding alike.<br>"
 		"By Oleksandr \".koval\" Kovalchuk, a fork of "
 		"<a href=\"https://github.com/samstyle/Xpeccy\">Xpeccy</a> by SAM style.<br>"
 		"MIT license.<br><br>"
