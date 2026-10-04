@@ -256,7 +256,10 @@ void MainWin::initBars() {
 	};
 	auto cut = [this](const char* name, int xcut, const char* icon) {return cutAct(name, xcut, icon);};
 	add("key.load", "File", cut("Open...", XCUT_LOAD, "fileopen"), TB_PLAIN);
-	add("menu.favorites", "File", bookmarkMenu->menuAction(), TB_SPLIT);
+	// a button of its own: the menu bar took over the list's own action, which has no icon there
+	QAction* favAct = new QAction(QIcon(":/images/star.png"), "Favorites", this);
+	connect(favAct, &QAction::triggered, this, &MainWin::favManage);
+	add("menu.favorites", "File", favAct, TB_SPLIT, bookmarkMenu);
 	add("key.reload", "File", cut("Reload", XCUT_RELOAD, "refresh"), TB_PLAIN);
 	add("key.save", "File", cut("Save...", XCUT_SAVE, "save_all"), TB_PLAIN);
 	add("key.fastsave", "File", cut("Save changed disks", XCUT_FASTSAVE, "floppy"), TB_PLAIN);
@@ -321,10 +324,10 @@ void MainWin::initBars() {
 	foreach(const xTbItem& it, tbCatalog) {
 		// a list opened from here has had no right-click menu fill it; one opened
 		// inside a menu has, and refilling everything on each hover costs disk reads
-		if (it.act->menu())
-			connect(it.act->menu(), &QMenu::aboutToShow, this, [this]() {
+		if (QMenu* list = it.list ? it.list : it.act->menu())
+			connect(list, &QMenu::aboutToShow, this, [this]() {
 				if (!QApplication::activePopupWidget()) fillUserMenu();
-			}, Qt::UniqueConnection);
+			});
 		// a switch shows its tick in a menu, which its icon would take the place of
 		if (it.act->isCheckable())
 			it.act->setIconVisibleInMenu(false);

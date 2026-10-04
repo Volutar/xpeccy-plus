@@ -16,6 +16,7 @@
 #include <QDesktopServices>
 #include <QActionGroup>
 #include <QLayout>
+#include <QWindow>
 #include <QContextMenuEvent>
 #include <QStyleOption>
 #include <QApplication>
@@ -112,6 +113,12 @@ void MainWin::updateWindow() {
 		// the picture: a whole number of pixels per dot, or it would be
 		// resampled and some columns come out a pixel wider than others
 		wsz = QSize(drawW, drawH);
+		// Qt 5 forgets a window is fullscreen once it has been resized - the layout
+		// does that - and leaving would then do nothing, title bar never coming back:
+		// it is told fullscreen again first, which changes nothing where it already is.
+		if (QWindow* win = frame->windowHandle())
+			win->setWindowStates(win->windowStates() | Qt::WindowFullScreen);
+		frame->setWindowState(frame->windowState() | Qt::WindowFullScreen);
 		frame->setWindowState(frame->windowState() & ~Qt::WindowFullScreen);
 	}
 	setFixedSize(wsz);
