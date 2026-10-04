@@ -26,6 +26,9 @@ before that point is upstream's history and is not repeated here.
   much its subfolders hold, so a loader beside a large collection is found again. It takes ten
   times as many files as before, thousands of files with similar long names no longer take minutes
   to mount, and what does not fit is reported. *(thanks to nodeus for the report)*
+- SD card images over 1 GB work: one of 1 to 2 GB hung the emulator as it opened, a bigger one
+  showed an empty card. Hard disk images over 2 GB work on Windows too.
+  *(thanks to nodeus for the report)*
 - Interface styles: links take a color of the style's own, readable on the dark ones too.
 - 48K, 128K and +2: the MIC bit is heard with the beeper, a tenth as loud as EAR, as both leave the
   ULA on one pin. Speech in Cobra's Arc and the second voice in Dizzy are back.

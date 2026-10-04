@@ -3,6 +3,7 @@
 #include <time.h>
 
 #include "vfat.h"
+#include "defines.h"
 
 // Synthetic read-only FAT32 volume over a host directory.
 //
@@ -604,7 +605,7 @@ static void vfat_file(vFat* vf, int idx, unsigned int sec, unsigned char* dst) {
 		vf->cnode = vf->cfile ? idx : -1;
 	}
 	if (!vf->cfile) return;
-	if (fseek(vf->cfile, off, SEEK_SET)) return;
+	if (x_fseek(vf->cfile, off, SEEK_SET)) return;
 	rd = vf->node[idx].size - off;
 	if (rd > VF_SECSIZE) rd = VF_SECSIZE;
 	rd = fread(dst, 1, rd, vf->cfile);		// a short read leaves the tail zeroed
