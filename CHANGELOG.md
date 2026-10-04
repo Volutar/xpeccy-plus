@@ -17,12 +17,26 @@ before that point is upstream's history and is not repeated here.
   and each drive, lit while it reads or writes; click one for its window, right-click it for its
   menu. In fullscreen they are hidden, and the menu and the toolbar come up when the pointer rests
   at the top of the screen. With Low latency on, the screen flashes as a menu opens and closes there; with it
-  off, it does not.
+  off, it does not. The frame rate leaves the picture while the status bar shows it.
+- A Mute button on the toolbar, with the volume beside it. It silences the speakers only:
+  recordings keep the sound. The toolbar starts with it and the virtual keyboard.
+  *(thanks to Volutar for the idea)*
 - Menus no longer pause the machine. It can pause instead while another application has the
   focus (Options, Xpeccy+ page).
 
+### Changed
+
+- Machines have two floppy drives unless set otherwise, and the +3 has two, as its disk
+  interface does. Run ahead is no longer marked experimental, and About says who maintains
+  Xpeccy+, under what license, and what it is built with. *(thanks to Volutar)*
+
 ### Fixed
 
+- Antiflicker no longer flickers while a window is being dragged, and on Windows a click on a
+  window's title bar no longer holds the picture for half a second. *(thanks to Volutar for the
+  report)*
+- Fullscreen with Low latency on: the docked virtual keyboard is shown over the picture. It took
+  clicks without being seen. *(thanks to Volutar for the report)*
 - A folder served as an SD card or a hard disk: the files in its root are always there, however
   much its subfolders hold, so a loader beside a large collection is found again. It takes ten
   times as many files as before, thousands of files with similar long names no longer take minutes
@@ -30,7 +44,9 @@ before that point is upstream's history and is not repeated here.
 - SD card images over 1 GB work: one of 1 to 2 GB hung the emulator as it opened, a bigger one
   showed an empty card. Hard disk images over 2 GB work on Windows too.
   *(thanks to nodeus for the report)*
-- Interface styles: links take a color of the style's own, readable on the dark ones too.
+- Interface styles: links take a color of the style's own, readable on the dark ones too. The
+  selected tab stands out, and a checked menu item with an icon is framed.
+  *(thanks to Volutar for the report)*
 - 48K, 128K and +2: the MIC bit is heard with the beeper, a tenth as loud as EAR, as both leave the
   ULA on one pin. Speech in Cobra's Arc and the second voice in Dizzy are back.
 
