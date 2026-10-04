@@ -157,41 +157,14 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 				if (!conf.vid.fullScreen)
 					QTimer::singleShot(0, this, &MainWin::placeWindow);
 				break;
-			case XCUT_SIZEX1:
-				vid_set_zoom(1);
+			case XCUT_SIZEX1: case XCUT_SIZEX2: case XCUT_SIZEX3:
+			case XCUT_SIZEX4: case XCUT_SIZEX5: case XCUT_SIZEX6:
+				x = xkey - XCUT_SIZEX1 + 1;
+				if (x == conf.vid.scale) break;		// the size it already is
+				vid_set_zoom(x);
 				updateWindow();
 				saveConfig();
-				setMessage(" size x1 ");
-				break;
-			case XCUT_SIZEX2:
-				vid_set_zoom(2);
-				updateWindow();
-				saveConfig();
-				setMessage(" size x2 ");
-				break;
-			case XCUT_SIZEX3:
-				vid_set_zoom(3);
-				updateWindow();
-				saveConfig();
-				setMessage(" size x3 ");
-				break;
-			case XCUT_SIZEX4:
-				vid_set_zoom(4);
-				updateWindow();
-				saveConfig();
-				setMessage(" size x4 ");
-				break;
-			case XCUT_SIZEX5:
-				vid_set_zoom(5);
-				updateWindow();
-				saveConfig();
-				setMessage(" size x5 ");
-				break;
-			case XCUT_SIZEX6:
-				vid_set_zoom(6);
-				updateWindow();
-				saveConfig();
-				setMessage(" size x6 ");
+				setMessage(QString(" size x%0 ").arg(x));
 				break;
 			case XCUT_COMBOSHOT:
 				scrCounter = conf.scrShot.count;

@@ -287,6 +287,7 @@ typedef struct {
 		void fillRecent();
 		// the toolbar and the status bar (emw_bars.cpp)
 		QToolBar* toolBar;
+		QToolBar* fsTool = nullptr;	// the same buttons over the picture in fullscreen, under fsBar
 		QStatusBar* statusBar;
 		QLabel* sbMachine;
 		QLabel* sbClock;
@@ -320,6 +321,7 @@ typedef struct {
 		const xTbItem* tbFind(const QString&);
 		void initBars();
 		void tbBuild();
+		void tbFill(QToolBar*);
 		void tbApply();
 		void tbMove(int, int);
 		void tbMenu(const QPoint&, int);

@@ -182,6 +182,8 @@ void MainWin::initializeGL() {
 	// written against #version 330, and a context older than that explains a
 	// black window better than any guess
 	conf.vid.shd_support = QOpenGLShader::hasOpenGLShaders(QOpenGLShader::Vertex) && QOpenGLShader::hasOpenGLShaders(QOpenGLShader::Fragment);
+	// the menus were built before this was known, the shader list with only "none" in it
+	QTimer::singleShot(0, this, &MainWin::fillUserMenu);
 	if (QOpenGLContext* ctx = QOpenGLContext::currentContext()) {
 		const QSurfaceFormat f = ctx->format();
 		const char* prof =

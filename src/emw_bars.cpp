@@ -52,6 +52,7 @@ class xToolBar : public QToolBar {
 		xToolBar(QWidget* p) : QToolBar(p) {setAcceptDrops(true);}
 		std::function<void(const QPoint&, int)> onMenu;		// at a point of the screen, on an item or -1
 		std::function<void(int, int)> onMove;			// an item dragged from one place to another
+		bool opaque = false;	// over the picture: no ground showing through
 		void watch();
 		QSize sizeHint() const override {return QSize(0, QToolBar::sizeHint().height());}
 		QSize minimumSizeHint() const override {return QSize(0, QToolBar::minimumSizeHint().height());}
@@ -216,6 +217,10 @@ void xToolBar::dropEvent(QDropEvent* ev) {
 }
 
 void xToolBar::paintEvent(QPaintEvent* ev) {
+	if (opaque) {		// a style sheet gives a bar no ground of its own; the window's is taken
+		QPainter pnt(this);
+		pnt.fillRect(rect(), parentWidget()->palette().window());
+	}
 	QToolBar::paintEvent(ev);
 	if (dropX < 0) return;
 	QPainter pnt(this);
@@ -226,15 +231,25 @@ void xToolBar::paintEvent(QPaintEvent* ev) {
 
 void MainWin::initBars() {
 	frame->setContextMenuPolicy(Qt::PreventContextMenu);	// its own one lists the bars
-	xToolBar* tb = new xToolBar(frame);
-	toolBar = tb;
-	tb->setObjectName("toolbar");
-	tb->setMovable(false);
-	tb->setFloatable(false);
-	tb->setFocusPolicy(Qt::NoFocus);
-	tb->onMenu = [this](const QPoint& pos, int idx) {tbMenu(pos, idx);};
-	tb->onMove = [this](int from, int to) {tbMove(from, to);};
-	frame->addToolBar(Qt::TopToolBarArea, tb);
+	auto makeBar = [this]() {
+		xToolBar* tb = new xToolBar(frame);
+		tb->setObjectName("toolbar");
+		tb->setMovable(false);
+		tb->setFloatable(false);
+		tb->setFocusPolicy(Qt::NoFocus);
+		tb->onMenu = [this](const QPoint& pos, int idx) {tbMenu(pos, idx);};
+		tb->onMove = [this](int from, int to) {tbMove(from, to);};
+		return tb;
+	};
+	toolBar = makeBar();
+	frame->addToolBar(Qt::TopToolBarArea, toolBar);
+	// fullscreen's own, out of the layout like fsBar, so the picture keeps its place
+	if (fsBar) {
+		xToolBar* tb = makeBar();
+		tb->opaque = true;
+		fsTool = tb;
+		fsTool->hide();
+	}
 
 	// the catalog: everything a button can be, in the groups the Add menu shows
 	auto add = [this](const char* id, const char* grp, QAction* act, int kind, QMenu* list = nullptr) {
@@ -398,28 +413,34 @@ static QString tb_name(QAction* act) {
 	return name;
 }
 
+// both bars hold the same actions, so a switch shows the same on either
 void MainWin::tbBuild() {
-	toolBar->clear();
-	toolBar->setIconSize(QSize(conf.win.tbIcons, conf.win.tbIcons));
+	tbFill(toolBar);
+	if (fsTool) tbFill(fsTool);
+}
+
+void MainWin::tbFill(QToolBar* bar) {
+	bar->clear();
+	bar->setIconSize(QSize(conf.win.tbIcons, conf.win.tbIcons));
 	foreach(const QString& id, tbList) {
 		if (id == TB_SEPARATOR) {
-			toolBar->addSeparator();
+			bar->addSeparator();
 			continue;
 		}
 		if (id == TB_SPACE) {
 			QWidget* space = new QWidget;
 			space->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-			toolBar->addWidget(space);
+			bar->addWidget(space);
 			continue;
 		}
 		const xTbItem* it = tbFind(id);
 		if (!it) {
 			// an id this build does not know is kept, so another build still finds it
-			toolBar->addSeparator()->setVisible(false);
+			bar->addSeparator()->setVisible(false);
 			continue;
 		}
-		toolBar->addAction(it->act);
-		QToolButton* btn = qobject_cast<QToolButton*>(toolBar->widgetForAction(it->act));
+		bar->addAction(it->act);
+		QToolButton* btn = qobject_cast<QToolButton*>(bar->widgetForAction(it->act));
 		if (!btn) continue;
 		btn->setFocusPolicy(Qt::NoFocus);
 		if (it->list)
@@ -433,7 +454,7 @@ void MainWin::tbBuild() {
 			connect(btn, &QToolButton::released, this, [this]() {xcut_release(XCUT_REWIND);});
 		}
 	}
-	static_cast<xToolBar*>(toolBar)->watch();
+	static_cast<xToolBar*>(bar)->watch();
 }
 
 // the list as the user left it, and the bar rebuilt from it

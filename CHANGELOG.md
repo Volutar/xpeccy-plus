@@ -15,8 +15,8 @@ before that point is upstream's history and is not repeated here.
   keeps the last ten images opened. The toolbar holds the buttons you choose: right-click it to
   add or remove one, drag one to move it. The status bar shows the machine, the clock, the tape
   and each drive, lit while it reads or writes; click one for its window, right-click it for its
-  menu. In fullscreen they are hidden, and the menu comes up when the pointer rests at the top of
-  the screen. With Low latency on, the screen flashes as a menu opens and closes there; with it
+  menu. In fullscreen they are hidden, and the menu and the toolbar come up when the pointer rests
+  at the top of the screen. With Low latency on, the screen flashes as a menu opens and closes there; with it
   off, it does not.
 - Menus no longer pause the machine. It can pause instead while another application has the
   focus (Options, Xpeccy+ page).

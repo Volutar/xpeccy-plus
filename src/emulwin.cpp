@@ -113,12 +113,12 @@ void MainWin::updateWindow() {
 		// the picture: a whole number of pixels per dot, or it would be
 		// resampled and some columns come out a pixel wider than others
 		wsz = QSize(drawW, drawH);
-		// Qt 5 forgets a window is fullscreen once it has been resized - the layout
-		// does that - and leaving would then do nothing, title bar never coming back:
-		// it is told fullscreen again first, which changes nothing where it already is.
-		if (QWindow* win = frame->windowHandle())
-			win->setWindowStates(win->windowStates() | Qt::WindowFullScreen);
-		frame->setWindowState(frame->windowState() | Qt::WindowFullScreen);
+		// Qt 5 forgets a widget is fullscreen once it has been resized - the layout
+		// does that - while its window stays so, and leaving would then do nothing,
+		// title bar never coming back: the widget is told fullscreen again first.
+		QWindow* win = frame->windowHandle();
+		if (win && (win->windowStates() & Qt::WindowFullScreen))
+			frame->setWindowState(frame->windowState() | Qt::WindowFullScreen);
 		frame->setWindowState(frame->windowState() & ~Qt::WindowFullScreen);
 	}
 	setFixedSize(wsz);
@@ -672,9 +672,14 @@ bool MainWin::eventFilter(QObject* obj, QEvent* ev) {
 
 // a menu does not hold the machine: nothing it does needs it stopped
 void MainWin::menuHide() {
-	setFocus();
-	// the line fullscreen grew for it goes too, unless the bar over the picture is still up
-	if (!fsBar || !fsBar->isVisible()) fsCompose(false);
+	// A submenu closing leaves its parent open, and Favorites is one in the right-click
+	// menu: what is still up is asked once it has gone. The line fullscreen grew for the
+	// menus goes with the last of them, unless the bar over the picture is still there.
+	QTimer::singleShot(0, this, [this]() {
+		if (QApplication::activePopupWidget()) return;
+		setFocus();
+		if (!fsBar || !fsBar->isVisible()) fsCompose(false);
+	});
 }
 
 
@@ -1708,6 +1713,11 @@ void MainWin::initMenuBar() {
 		fsBar->setGeometry(0, 0, frame->width(), fsBar->sizeHint().height());
 		fsBar->raise();
 		fsBar->show();
+		if (fsTool && conf.win.toolbar) {	// the toolbar comes with it, if there is one in a window
+			fsTool->setGeometry(0, fsBar->height(), frame->width(), fsTool->sizeHint().height());
+			fsTool->raise();
+			fsTool->show();
+		}
 	});
 }
 
@@ -1717,7 +1727,8 @@ void MainWin::fsReveal(int y) {
 	fsY = y;
 	if (!fsBar || !conf.vid.fullScreen || grabMice) return;
 	if (fsBar->isVisible()) {
-		if ((y > fsBar->height() + FS_EDGE) && !QApplication::activePopupWidget())
+		int bottom = fsBar->height() + (fsTool->isVisible() ? fsTool->height() : 0);
+		if ((y > bottom + FS_EDGE) && !QApplication::activePopupWidget())
 			fsHide();
 	} else if ((y <= FS_EDGE) && !fsShow.isActive()) {
 		fsShow.start(FS_DELAY);
@@ -1728,6 +1739,7 @@ void MainWin::fsHide() {
 	fsShow.stop();
 	if (fsBar && fsBar->isVisible()) {
 		fsBar->hide();
+		fsTool->hide();
 		setFocus();
 	}
 	if (!userMenu->isVisible()) fsCompose(false);

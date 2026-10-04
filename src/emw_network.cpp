@@ -245,6 +245,8 @@ void MainWin::socketRead() {
 			pnt.drawImage(scr.topLeft(), img.mirrored());
 			if (fsBar && fsBar->isVisible())		// it is over the picture
 				fsBar->render(&pnt, fsBar->pos());
+			if (fsTool && fsTool->isVisible())
+				fsTool->render(&pnt, fsTool->pos());
 		}
 #endif
 		if (pic.isNull()) pic = frame->grab();
