@@ -221,6 +221,7 @@ int main(int ac,char** av) {
 
 	xApp app(ac,av,true);
 	app.installEventFilter(&app);	// colours each window's titlebar on its first Show
+	installTitleBarClickFix();
 
 // SDL comes second on purpose. Its video init builds an NSApplication of its
 // own when there is none yet, installs its own delegate on it and calls
