@@ -64,6 +64,14 @@
 
 // mainwin
 
+#if defined(__WIN32)
+// Fullscreen is a line taller than the screen to be composed: for good without
+// Low latency, else only while a menu is up (see fsCompose)
+static bool fsWantTall(bool menuUp) {
+	return menuUp || !conf.vid.lowLatency;
+}
+#endif
+
 void MainWin::updateHead() {
 	QStringList parts;
 	QString media = media_current();
@@ -95,6 +103,9 @@ void MainWin::updateWindow() {
 	blockSignals(true);
 	showBars();
 	if (conf.vid.fullScreen) {
+#if defined(__WIN32)
+		fsTall = fsWantTall(QApplication::activePopupWidget() || (fsBar && fsBar->isVisible()));
+#endif
 		wsz = SCREENSIZE + QSize(0, fsTall ? 1 : 0);
 		frame->setWindowState(frame->windowState() | Qt::WindowFullScreen);
 	} else {
@@ -1717,8 +1728,9 @@ void MainWin::fsHide() {
 
 // A window that covers the monitor exactly is scanned out on its own, past the
 // compositor, and a menu opened over it is never drawn. One line taller - off
-// the bottom of the screen - it is composed with the rest, so it is made that
-// while a menu is up and put back after, where the lag is the fullscreen one.
+// the bottom of the screen - it is composed with the rest. With Low latency it
+// is made that only while a menu is up, and the switch flashes the screen;
+// without, it stays composed, and the compositor's frame of lag is the price.
 // Says whether it changed: a menu waits for the switch.
 bool MainWin::fsCompose(bool on) {
 #if defined(__WIN32)
@@ -1726,6 +1738,7 @@ bool MainWin::fsCompose(bool on) {
 		fsTall = 0;
 		return false;
 	}
+	on = fsWantTall(on);
 	// The window is asked, not the flag: the system can put a fullscreen
 	// window back to the screen's size behind our back, and a menu opened
 	// over it then is never drawn - while it holds the mouse and the keys.
@@ -1736,7 +1749,7 @@ bool MainWin::fsCompose(bool on) {
 	if (on && (size().height() > scr.height()))
 		setFixedSize(scr);		// the same size again would change nothing
 	setFixedSize(scr + QSize(0, on ? 1 : 0));
-	xlog(XLG_GUI, XLL_INFO, "fullscreen: %s, window was %ix%i", on ? "composed for a menu" : "on its own again",
+	xlog(XLG_GUI, XLL_INFO, "fullscreen: %s, window was %ix%i", on ? "composed" : "on its own again",
 		frame->width(), frame->height());
 	return on;
 #else
