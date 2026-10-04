@@ -1713,6 +1713,11 @@ void MainWin::initMenuBar() {
 		fsBar->setGeometry(0, 0, frame->width(), fsBar->sizeHint().height());
 		fsBar->raise();
 		fsBar->show();
+		if (fsTool && conf.win.toolbar) {	// the toolbar comes with it, if there is one in a window
+			fsTool->setGeometry(0, fsBar->height(), frame->width(), fsTool->sizeHint().height());
+			fsTool->raise();
+			fsTool->show();
+		}
 	});
 }
 
@@ -1722,7 +1727,8 @@ void MainWin::fsReveal(int y) {
 	fsY = y;
 	if (!fsBar || !conf.vid.fullScreen || grabMice) return;
 	if (fsBar->isVisible()) {
-		if ((y > fsBar->height() + FS_EDGE) && !QApplication::activePopupWidget())
+		int bottom = fsBar->height() + (fsTool->isVisible() ? fsTool->height() : 0);
+		if ((y > bottom + FS_EDGE) && !QApplication::activePopupWidget())
 			fsHide();
 	} else if ((y <= FS_EDGE) && !fsShow.isActive()) {
 		fsShow.start(FS_DELAY);
@@ -1733,6 +1739,7 @@ void MainWin::fsHide() {
 	fsShow.stop();
 	if (fsBar && fsBar->isVisible()) {
 		fsBar->hide();
+		fsTool->hide();
 		setFocus();
 	}
 	if (!userMenu->isVisible()) fsCompose(false);
