@@ -411,17 +411,15 @@ const char* dbgPaletteDefault(const char* name) {
 	return "";
 }
 
-// A style sheet may bring debugger colours along, in a .pal file next to it
+// A style sheet may bring colours along, in a .pal file next to it
 // (Dark.qss -> Dark.pal), same 'name = #rrggbb' lines as the [PALETTE] section.
-// Only the names the file mentions are touched, the rest is left as it is.
-// Called when the style changes, never on startup: whatever the user edited
-// afterwards is in config.conf and must win.
 
-bool loadStylePalette(const std::string& style) {
-	if (style.empty()) return false;
+static QMap<QString, QColor> readStylePalette(const std::string& style) {
+	QMap<QString, QColor> map;
+	if (style.empty()) return map;
 	QFile file(xres_path("styles",
 		QFileInfo(QString::fromLocal8Bit(style.c_str())).completeBaseName() + ".pal"));
-	if (!file.open(QFile::ReadOnly | QFile::Text)) return false;
+	if (!file.open(QFile::ReadOnly | QFile::Text)) return map;
 	QTextStream strm(&file);
 	while (!strm.atEnd()) {
 		QString line = strm.readLine();
@@ -432,10 +430,27 @@ bool loadStylePalette(const std::string& style) {
 		QString nam = line.left(pos).trimmed();
 		QColor col(line.mid(pos + 1).trimmed());
 		if (!nam.isEmpty() && col.isValid())
-			conf.pal[nam] = col;
+			map[nam] = col;
 	}
 	file.close();
-	return true;
+	return map;
+}
+
+// The debugger colours in it go into conf.pal. Only the names the file
+// mentions are touched, the rest is left as it is. Called when the style
+// changes, never on startup: whatever the user edited afterwards is in
+// config.conf and must win. The ui.* ones are the style's, not the user's,
+// and are read each time it is applied (stylePaletteColor).
+
+void loadStylePalette(const std::string& style) {
+	QMap<QString, QColor> map = readStylePalette(style);
+	for (QMap<QString, QColor>::const_iterator it = map.constBegin(); it != map.constEnd(); ++it)
+		if (!it.key().startsWith("ui."))
+			conf.pal[it.key()] = it.value();
+}
+
+QColor stylePaletteColor(const std::string& style, const QString& name) {
+	return readStylePalette(style).value(name);
 }
 
 void copyFile(const char* src, const char* dst) {

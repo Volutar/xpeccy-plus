@@ -70,3 +70,10 @@ switching to a *different* style starts the two steps over.
 On Windows 11, `dbg.header.bg`/`dbg.header.txt` also color the native titlebar of every window
 (via DWM - see `src/titlebar.cpp`), so picking a style tints the titlebar the same as the
 debugger's panel headers instead of leaving it the plain system one. `System` leaves it alone.
+
+## Links
+
+A style sheet cannot color a link either, and Qt's own blue is lost on a dark one. `ui.link` in
+the `.pal` is the link color in every window. It is not a debugger color: it is read from the
+`.pal` each time the style is applied, never kept in `config.conf`, and a style without one
+leaves the platform's.

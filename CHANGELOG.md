@@ -22,6 +22,7 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- Interface styles: links take a color of the style's own, readable on the dark ones too.
 - 48K, 128K and +2: the MIC bit is heard with the beeper, a tenth as loud as EAR, as both leave the
   ULA on one pin. Speech in Cobra's Arc and the second voice in Dizzy are back.
 

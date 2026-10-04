@@ -306,7 +306,8 @@ void loadPalette();
 std::string palette_name(const std::string&);	// what a config's palette name means now
 void dbgPaletteDefaults();			// debugger colours: back to the built-in ones
 const char* dbgPaletteDefault(const char*);
-bool loadStylePalette(const std::string&);	// debugger colours shipped with a style sheet
+void loadStylePalette(const std::string&);	// debugger colours shipped with a style sheet
+QColor stylePaletteColor(const std::string&, const QString&);	// one colour of that file, invalid if none
 void loadConfig();
 void saveConfig();
 bool reloadConfig();
