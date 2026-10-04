@@ -12,6 +12,9 @@ extern "C" {
 
 #define VF_SECSIZE	512
 #define VF_MAXNAME	255
+#define VF_MAXDENTS	65536		// FAT's limit on the entries of one directory
+#define VF_MAXFILE	0xfffffffeLL	// and on the size of a file
+#define VF_FULL		-2		// vfat_add: the directory has no room for the entry
 
 // IDE port sets the HDD boot sector comes in
 enum {
@@ -26,7 +29,7 @@ typedef struct {
 	char* name;			// name shown to the guest, UTF-8
 	char* host;			// host path (files only), in the local 8-bit encoding
 	char sname[12];			// generated 8.3 name, space padded, no dot
-	unsigned int shash;		// hash of sname: siblings are compared by it first
+	unsigned int shash;		// hash of sname and parent, the key in vFat.stab
 	int parent;			// owning directory, -1 for root
 	int child;			// first child, -1 if none
 	int last;			// last child, so appending doesn't walk the list
@@ -37,12 +40,15 @@ typedef struct {
 	unsigned short date;		// last write, FAT format
 	unsigned short time;
 	int ecnt;			// directory entries this node takes in its parent
+	int dents;			// entries this directory holds so far, end marker included
 } vfNode;
 
 typedef struct {
 	vfNode* node;
 	int nodes;
 	int cap;
+	int* stab;			// open addressing table of nodes by shash, -1 = free
+	unsigned int scap;		// its size, a power of two
 	int* order;			// nodes holding clusters, sorted by first cluster
 	int ordcnt;
 
@@ -67,7 +73,8 @@ typedef struct {
 vFat* vfat_create(void);
 void vfat_free(vFat*);
 
-// name: UTF-8; host: local 8-bit path (files only); returns node index or -1
+// name: UTF-8; host: local 8-bit path (files only); returns node index,
+// VF_FULL if the parent directory has no room left, or -1 on failure
 int vfat_add(vFat*, int parent, const char* name, const char* host, unsigned int size, unsigned int mtime, int isdir);
 // lay the tree out on a volume of at least minsec sectors; 0 on failure
 int vfat_build(vFat*, unsigned int minsec);

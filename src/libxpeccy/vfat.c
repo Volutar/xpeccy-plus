@@ -106,13 +106,15 @@ static int sname_char(unsigned int chr, int* lossy) {
 	return '_';
 }
 
-// build a space padded 8.3 name; returns 1 if it doesn't match the real name
-static int sname_make(const char* name, char* dst) {
+// build a space padded 8.3 name; returns 1 if it doesn't match the real name,
+// *ulen is the length of the real one in UTF-16
+static int sname_make(const char* name, char* dst, int* ulen) {
 	unsigned short buf[VF_MAXNAME + 1];
 	int len = utf16(name, buf, VF_MAXNAME);
 	int lossy = 0;
 	int dot = -1;
 	int i, c, pos;
+	*ulen = len;
 	memset(dst, ' ', 11);
 	dst[11] = 0;
 	for (i = len - 1; i > 0; i--) {			// last dot, a leading one belongs to the base
@@ -152,28 +154,74 @@ static unsigned char sname_sum(const char* sname) {
 	return sum;
 }
 
-static unsigned int sname_hash(const char* sname) {
-	unsigned int res = 0;
+// the key of an 8.3 name in the table: siblings share a parent
+static unsigned int sname_hash(int parent, const char* sname) {
+	unsigned int res = (unsigned int)parent;
 	int i;
 	for (i = 0; i < 11; i++)
 		res = res * 31 + (unsigned char)sname[i];
-	return res;
+	return res * 0x9e3779b1u;
 }
 
-// make the 8.3 name unique among the siblings of parent
-static void sname_uniq(vFat* vf, int parent, char* sname) {
-	char tail[10];
-	unsigned int hash;
-	int idx, len, pos, n;
-	for (n = 1; n < 1000000; n++) {
-		hash = sname_hash(sname);
-		idx = (parent < 0) ? -1 : vf->node[parent].child;
-		while (idx >= 0) {			// a full folder makes this walk long: compare hashes
-			if ((vf->node[idx].shash == hash) && !memcmp(vf->node[idx].sname, sname, 11)) break;
-			idx = vf->node[idx].next;
-		}
-		if (idx < 0) return;			// free
-		sprintf(tail, "~%i", n);
+static unsigned int stab_pos(vFat* vf, unsigned int hash) {
+	return (hash ^ (hash >> 16)) & (vf->scap - 1);
+}
+
+static int sname_taken(vFat* vf, int parent, const char* sname) {
+	unsigned int hash = sname_hash(parent, sname);
+	unsigned int pos;
+	int idx;
+	for (pos = stab_pos(vf, hash); (idx = vf->stab[pos]) >= 0; pos = (pos + 1) & (vf->scap - 1)) {
+		if ((vf->node[idx].shash == hash) && (vf->node[idx].parent == parent) && !memcmp(vf->node[idx].sname, sname, 11))
+			return 1;
+	}
+	return 0;
+}
+
+static void stab_put(vFat* vf, int idx) {
+	unsigned int pos = stab_pos(vf, vf->node[idx].shash);
+	while (vf->stab[pos] >= 0)
+		pos = (pos + 1) & (vf->scap - 1);
+	vf->stab[pos] = idx;
+}
+
+// keep the table at most half full; 0 if out of memory
+static int stab_room(vFat* vf) {
+	unsigned int cap;
+	int* tab;
+	int i;
+	if ((unsigned int)(vf->nodes + 1) * 2 <= vf->scap) return 1;
+	cap = vf->scap ? (vf->scap * 2) : 1024;
+	tab = (int*)malloc(cap * sizeof(int));
+	if (!tab) return 0;
+	memset(tab, 0xff, cap * sizeof(int));
+	free(vf->stab);
+	vf->stab = tab;
+	vf->scap = cap;
+	for (i = 0; i < vf->nodes; i++)
+		stab_put(vf, i);
+	return 1;
+}
+
+// make the 8.3 name unique among the siblings of parent: BASE~1..~4 first,
+// then two letters, a hash of the long name and ~1..~9, as Windows does - a
+// folder of names alike would otherwise try every number for every name
+static void sname_uniq(vFat* vf, int parent, char* sname, const char* name) {
+	const unsigned char* s;
+	char base[12];
+	char tail[16];
+	unsigned int lhash = 0x811c9dc5;
+	int len, pos, n;
+	for (s = (const unsigned char*)name; *s; s++)
+		lhash = (lhash ^ *s) * 0x01000193;
+	memcpy(base, sname, 12);
+	for (n = 0; n < 1000000; n++) {
+		if (!sname_taken(vf, parent, sname)) return;
+		memcpy(sname, base, 11);
+		if (n < 4)
+			sprintf(tail, "~%i", n + 1);
+		else
+			sprintf(tail, "%04X~%i", (lhash + (n - 4) / 9) & 0xffff, (n - 4) % 9 + 1);
 		len = strlen(tail);
 		pos = 8 - len;
 		while ((pos > 0) && (sname[pos - 1] == ' ')) pos--;
@@ -204,6 +252,7 @@ void vfat_free(vFat* vf) {
 		free(vf->node[i].host);
 	}
 	free(vf->node);
+	free(vf->stab);
 	free(vf->order);
 	free(vf);
 }
@@ -218,10 +267,16 @@ static char* xstrdup(const char* s) {
 
 int vfat_add(vFat* vf, int parent, const char* name, const char* host, unsigned int size, unsigned int mtime, int isdir) {
 	vfNode* nod;
-	int idx, prev;
+	char sname[12];
+	int idx, prev, lfn, ecnt, ulen;
 	time_t tim;
 	struct tm* tms;
 	if (!vf) return -1;
+	if (!name) name = "";
+	lfn = sname_make(name, sname, &ulen);
+	ecnt = lfn ? (divup(ulen, 13) + 1) : 1;		// the 8.3 entry and 13 characters per long one
+	if ((parent >= 0) && (vf->node[parent].dents + ecnt > VF_MAXDENTS)) return VF_FULL;
+	if (!stab_room(vf)) return -1;
 	if (vf->nodes >= vf->cap) {
 		vf->cap = vf->cap ? (vf->cap * 2) : 64;
 		vf->node = (vfNode*)realloc(vf->node, vf->cap * sizeof(vfNode));
@@ -231,16 +286,20 @@ int vfat_add(vFat* vf, int parent, const char* name, const char* host, unsigned 
 	nod = vf->node + idx;
 	memset(nod, 0x00, sizeof(vfNode));
 	nod->isdir = isdir ? 1 : 0;
-	nod->name = xstrdup(name ? name : "");
+	nod->name = xstrdup(name);
 	nod->host = xstrdup(host);
 	nod->parent = parent;
 	nod->child = -1;
 	nod->last = -1;
 	nod->next = -1;
 	nod->size = isdir ? 0 : size;
-	nod->lfn = sname_make(nod->name, nod->sname) ? 1 : 0;
-	sname_uniq(vf, parent, nod->sname);
-	nod->shash = sname_hash(nod->sname);
+	nod->lfn = lfn ? 1 : 0;
+	nod->ecnt = ecnt;
+	nod->dents = (parent < 0) ? 2 : 3;		// the label or dot and dotdot, and the end marker
+	memcpy(nod->sname, sname, 12);
+	sname_uniq(vf, parent, nod->sname, name);
+	nod->shash = sname_hash(parent, nod->sname);
+	stab_put(vf, idx);
 	tim = (time_t)mtime;
 	tms = localtime(&tim);
 	if (tms && (tms->tm_year >= 80)) {
@@ -251,6 +310,7 @@ int vfat_add(vFat* vf, int parent, const char* name, const char* host, unsigned 
 		nod->time = 0;
 	}
 	if (parent >= 0) {				// append, keeping the order the scanner used
+		vf->node[parent].dents += ecnt;
 		prev = vf->node[parent].last;
 		if (prev < 0)
 			vf->node[parent].child = idx;
@@ -263,22 +323,8 @@ int vfat_add(vFat* vf, int parent, const char* name, const char* host, unsigned 
 
 // layout
 
-static int node_entries(vFat* vf, int idx) {
-	unsigned short buf[VF_MAXNAME + 1];
-	int len;
-	if (!vf->node[idx].lfn) return 1;
-	len = utf16(vf->node[idx].name, buf, VF_MAXNAME);
-	return divup(len, 13) + 1;
-}
-
 static unsigned int dir_bytes(vFat* vf, int idx) {
-	unsigned int cnt = (idx == 0) ? 1 : 2;		// volume label, or dot and dotdot
-	int chd = vf->node[idx].child;
-	while (chd >= 0) {
-		cnt += vf->node[chd].ecnt;
-		chd = vf->node[chd].next;
-	}
-	return (cnt + 1) * 32;				// + end of directory marker
+	return vf->node[idx].dents * 32;
 }
 
 static void vfat_geometry(vFat* vf, unsigned int volume) {
@@ -340,8 +386,6 @@ int vfat_build(vFat* vf, unsigned int minsec) {
 	unsigned int volume, cbytes, need;
 	int i;
 	if (!vf || (vf->nodes < 1)) return 0;
-	for (i = 0; i < vf->nodes; i++)
-		vf->node[i].ecnt = node_entries(vf, i);
 	volume = VF_MINVOL;
 	while (volume < minsec)
 		volume <<= 1;
