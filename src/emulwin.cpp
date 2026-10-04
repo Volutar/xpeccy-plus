@@ -1051,8 +1051,13 @@ bool MainWin::recStart(const QString& file) {
 #define REC_BLINK_MS	500
 
 // where the speed mode and the recording sign go
+// the status bar has the rate, when it is there
+bool MainWin::fpsOsd() {
+	return conf.led.fps && !statusBar->isVisible();
+}
+
 QRect MainWin::modeSlot() {
-	return QRect(width() - MODE_ICON_W - MODE_ICON_RIGHT, conf.led.fps ? MODE_ICON_TOP : MODE_ICON_TOP_NOFPS,
+	return QRect(width() - MODE_ICON_W - MODE_ICON_RIGHT, fpsOsd() ? MODE_ICON_TOP : MODE_ICON_TOP_NOFPS,
 		MODE_ICON_W, MODE_ICON_W * 3 / 5);
 }
 
@@ -1153,7 +1158,7 @@ void MainWin::drawIcons(QPainter& pnt) {
 	if (mode != osd_none)
 		pnt.drawImage(modeSlot().topLeft(), osdImg[mode]);
 // put fps
-	if (conf.led.fps) {
+	if (fpsOsd()) {
 		sprintf(numbuf, " %.1f ", conf.vid.curfps);
 		drawText(&pnt, width() - (strlen(numbuf) * 12) - 5, 5, numbuf);
 	}

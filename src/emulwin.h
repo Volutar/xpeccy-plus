@@ -337,6 +337,7 @@ typedef struct {
 		int fsY;		// where the pointer was last seen over the picture
 		unsigned fsTall:1;	// a line taller than the screen, while a menu is up
 		bool fsCompose(bool);
+		bool fpsOsd();
 		bool fsHeld();
 		void popupUserMenu(const QPoint&);
 		void placeWindow();
