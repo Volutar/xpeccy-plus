@@ -352,21 +352,6 @@ QTabBar::tab:disabled {
 	color: #75715e;
 }
 
-/* the Options pages: document mode draws no pane, so the bar carries the base */
-
-QTabWidget#tabz > QTabBar {
-	qproperty-drawBase: 0;
-	border-bottom: 1px solid #414339;
-}
-
-QTabWidget#tabz > QTabBar::tab:top {
-	border-bottom: 1px solid #414339;
-}
-
-QTabWidget#tabz > QTabBar::tab:top:selected {
-	border-bottom-color: #1e1f1c;
-}
-
 /* ---- item views ---------------------------------------------------- */
 
 QAbstractItemView {

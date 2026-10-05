@@ -45,6 +45,7 @@ class SetupWin : public QDialog {
 		void fillRomSlots();
 		void fillRomSummary();
 		void makeDevWidgets();
+		void buildSidebar();
 		void buildDevices();
 		QToolButton* devRow(QGridLayout*, const QString&, QWidget*, QWidget*, const char*);
 		void fillDevSummary();

@@ -6,6 +6,7 @@
 #include <QPushButton>
 #include <QKeySequence>
 #include <QKeyEvent>
+#include <QVector>
 
 #include "../xgui.h"
 
@@ -37,9 +38,11 @@ class xHotkeyModel : public xTableModel {
 		int rowCount(const QModelIndex& idx = QModelIndex()) const;
 		int columnCount(const QModelIndex& idx = QModelIndex()) const;
 		QVariant data(const QModelIndex& idx, int role) const;
-		// void updateCell(int, int);
+		int cut(int row) const;			// the shortcut on a row, -1 on a heading
+		int rowOf(int id) const;
 	private:
-		int rows;
+		struct xRow {int tab; QString text;};	// a heading has no shortcut
+		QVector<xRow> list;
 };
 
 class xHotkeyTable : public QTableView {
