@@ -32,6 +32,9 @@ before that point is upstream's history and is not repeated here.
   signs and messages there fade out when they are over instead of vanishing (Options,
   Appearance). Shift held as a file is picked in the open dialog asks whether to run it or
   only put it in, as a drop does. *(thanks to Volutar for the idea)*
+- Quick save and quick load, in the File menu and the hotkeys (no key by default). The save
+  lasts the session on any machine, and is kept as a .z80 beside the config, so it outlives
+  the session, on the machines that format can hold. *(thanks to Volutar for the idea)*
 
 ### Changed
 
@@ -47,7 +50,8 @@ before that point is upstream's history and is not repeated here.
 ### Fixed
 
 - Debugger: a click on the palette shows the color clicked - it showed one further down,
-  mostly black - and the CMOS panel is only there on machines with a clock chip.
+  mostly black - the CMOS panel is only there on machines with a clock chip, and the disk
+  panels only on machines with a disk interface.
   *(thanks to Volutar for the report)*
 - Debugger: editing an instruction's bytes no longer pads the field with blanks past the column,
   and a label picked from the list goes into a watcher expression once, not twice.

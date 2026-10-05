@@ -3739,7 +3739,7 @@ Right click: back to the style color</string>
                    </font>
                   </property>
                   <property name="text">
-                   <string>HALT count and frame count (bottom right)</string>
+                   <string>T-states to the HALT and in the frame (bottom right)</string>
                   </property>
                  </widget>
                 </item>

@@ -485,6 +485,8 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_RELOAD_SHD, "key.reload.shader", "Reload shader", QKeySequence(), QKeySequence()},
 	{SCG_MAIN, XCUT_RELOAD, "key.reload", "Reload snapshot and labels", QKeySequence(), QKeySequence()},
 	{SCG_MAIN, XCUT_FAVORITE, "key.favorite.add", "Add to Favorites", QKeySequence(), QKeySequence()},
+	{SCG_MAIN, XCUT_QUICKSAVE, "key.quick.save", "Quick save", QKeySequence(), QKeySequence()},
+	{SCG_MAIN, XCUT_QUICKLOAD, "key.quick.load", "Quick load", QKeySequence(), QKeySequence()},
 
 	{SCG_DEBUGA, XCUT_STEPIN, "key.dbg.stepin", "Debugger: Step in", QKeySequence(), QKeySequence(Qt::Key_F7)},
 	{SCG_DEBUGA, XCUT_STEPOVER, "key.dbg.stepover", "Debugger: Step over", QKeySequence(), QKeySequence(Qt::Key_F8)},

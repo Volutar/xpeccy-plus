@@ -1680,6 +1680,8 @@ void MainWin::initMenuBar() {
 	fileMenu->addSeparator();
 	cutAction(fileMenu, "Save...", XCUT_SAVE, "save_all");
 	cutAction(fileMenu, "Save changed disks", XCUT_FASTSAVE, "floppy");
+	cutAction(fileMenu, "Quick save", XCUT_QUICKSAVE);
+	cutAction(fileMenu, "Quick load", XCUT_QUICKLOAD);
 	fileMenu->addSeparator();
 	cutAction(fileMenu, "Screenshot", XCUT_SCRSHOT, "grp-screenshot");
 	cutAction(fileMenu, "Screenshot series", XCUT_COMBOSHOT);
