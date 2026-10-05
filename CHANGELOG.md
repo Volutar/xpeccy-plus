@@ -34,6 +34,9 @@ before that point is upstream's history and is not repeated here.
 - Machines have two floppy drives unless set otherwise, and the +3 has two, as its disk
   interface does. Run ahead is no longer marked experimental, and About says who maintains
   Xpeccy+, under what license, and what it is built with. *(thanks to Volutar)*
+- Options: the pages are one list down the left side instead of tabs within tabs, with pages
+  of their own for Appearance (the style and the indicators) and File types, and the hotkeys
+  in sections, as the menus have them. *(thanks to Volutar for the idea)*
 - The wheel over the picture no longer changes the volume, it was too easily turned: Alt+wheel
   does. About no longer stops the machine while it is open. *(thanks to Volutar)*
 
