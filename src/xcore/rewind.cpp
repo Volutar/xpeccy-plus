@@ -214,6 +214,8 @@ enum {
 static std::atomic<int> rw_key(0);
 static std::atomic<int> rw_mode(RW_REC);
 static int rw_back = 0;		// the snapshot on screen
+static int rw_from = 0;		// comp->frmCount when the rewind began
+static std::atomic<int> rw_tenths(0);	// see rewind_back_tenths
 static double rw_smp = 0;	// output samples until the next picture
 
 // called for every sub-sample, so the size and the period are only worked out
@@ -313,6 +315,8 @@ void rewind_frame(Computer* comp, long long* phase) {
 		xlog(XLG_CORE, XLL_INFO, "rewind: %i snapshots back to frame %i", rewind_count(), rewind_frame_of(rewind_count() - 1));
 		fastload_stop(comp);		// it holds the picture back, and the speed
 		rw_back = -1;
+		rw_from = comp->frmCount;
+		rw_tenths = 0;
 		rw_smp = 0;
 		rw_mode = RW_PLAY;
 		return;
@@ -323,6 +327,10 @@ void rewind_frame(Computer* comp, long long* phase) {
 	if (!xstate_safe_tape_aside(comp)) return;	// tried again next frame
 	rw_wait = 0;
 	rw_take(comp, *phase);
+}
+
+int rewind_back_tenths() {
+	return rw_tenths;
 }
 
 int rewind_play(Computer* comp, long long* phase) {
@@ -341,6 +349,7 @@ int rewind_play(Computer* comp, long long* phase) {
 			long long hi = e ? e->snd : rw_snd_w;
 			rw_back++;
 			shown = 1;
+			rw_tenths = (int)((rw_from - rw_at(rw_back)->frame) * 10 / rw_fps(comp) + 0.5);
 			rw_seg.lo = rw_at(rw_back)->snd;
 			rw_seg.pos = (double)hi;
 			rw_seg.ratio = (hi - rw_seg.lo) / spf;
