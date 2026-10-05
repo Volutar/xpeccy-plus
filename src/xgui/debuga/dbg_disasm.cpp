@@ -730,6 +730,37 @@ static int adr_for_row(Computer* comp, int target, int row, int exact) {
 	return start;
 }
 
+// The assembler knows numbers only: a label among the operands becomes its address.
+// A register or condition keeps its meaning even if a label has its name.
+static QString asm_labels(const QString& src) {
+	static const QStringList regs = {"a", "b", "c", "d", "e", "h", "l", "i", "r", "f", "af", "bc", "de", "hl", "sp",
+		"ix", "iy", "ixh", "ixl", "iyh", "iyl", "xh", "xl", "yh", "yl", "nz", "z", "nc", "po", "pe", "p", "m"};
+	QString out;
+	int n = src.size();
+	int i = 0;
+	while ((i < n) && !src.at(i).isSpace()) out += src.at(i++);	// the mnemonic
+	while (i < n) {
+		QChar chr = src.at(i);
+		if (chr.isLetter() || (chr == QChar('_'))) {
+			int start = i;
+			while ((i < n) && (src.at(i).isLetterOrNumber() || (src.at(i) == QChar('_')))) i++;
+			QString name = src.mid(start, i - start);
+			xAdr xadr = find_label(name);
+			if ((xadr.type >= 0) && !regs.contains(name.toLower())) {
+				out += QString("0x%0").arg(xadr.adr & 0xffff, 0, 16);
+			} else {
+				out += name;
+			}
+		} else if (chr.isDigit()) {			// a number whole: 0x1F is not a label x1F
+			while ((i < n) && (src.at(i).isLetterOrNumber() || (src.at(i) == QChar('_')))) out += src.at(i++);
+		} else {
+			out += chr;
+			i++;
+		}
+	}
+	return out;
+}
+
 bool xDisasmModel::setData(const QModelIndex& cidx, const QVariant& val, int role) {
 	if (!cidx.isValid()) return false;
 	if (role != Qt::EditRole) return false;
@@ -851,8 +882,7 @@ bool xDisasmModel::setData(const QModelIndex& cidx, const QVariant& val, int rol
 					buf[1] = (idx >> 8) & 0xff;
 				}
 			} else {			// code
-				// TODO: replace label name
-				len = cpuAsm(comp->cpu, str.toLocal8Bit().data(), buf, adr);
+				len = cpuAsm(comp->cpu, asm_labels(str).toLocal8Bit().data(), buf, adr);
 				if (len > 0) {
 					for(idx = 0; idx < len; idx++) {
 						*ptr &= 0x0f;
