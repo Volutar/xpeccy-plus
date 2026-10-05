@@ -1,6 +1,7 @@
 #include "dbg_disasm.h"
 #include "dbg_dump.h"
 #include "../../xcore/xcore.h"
+#include "../../xcore/xexpr.h"
 #include "../../libxpeccy/cpu/Z80/z80.h"
 
 #include <QDebug>
@@ -730,35 +731,74 @@ static int adr_for_row(Computer* comp, int target, int row, int exact) {
 	return start;
 }
 
-// The assembler knows numbers only: a label among the operands becomes its address.
-// A register or condition keeps its meaning even if a label has its name.
-static QString asm_labels(const QString& src) {
-	static const QStringList regs = {"a", "b", "c", "d", "e", "h", "l", "i", "r", "f", "af", "bc", "de", "hl", "sp",
-		"ix", "iy", "ixh", "ixl", "iyh", "iyl", "xh", "xl", "yh", "yl", "nz", "z", "nc", "po", "pe", "p", "m"};
-	QString out;
-	int n = src.size();
-	int i = 0;
-	while ((i < n) && !src.at(i).isSpace()) out += src.at(i++);	// the mnemonic
-	while (i < n) {
-		QChar chr = src.at(i);
-		if (chr.isLetter() || (chr == QChar('_'))) {
+// The assembler reads a number and nothing else: an operand with a label in it is
+// worked out here, so label+2, -label and (ix+label) come out as numbers too. The
+// brackets and an index register are kept, and so is any operand without a label.
+// Empty when an operand cannot be worked out, so nothing is assembled from it.
+static bool asm_is_reg(const QString& name) {
+	static const QStringList conds = {"nz", "z", "nc", "c", "po", "pe", "p", "m", "af", "hx", "lx", "hy", "ly", "xh", "xl", "yh", "yl"};
+	bool err = false;
+	cpu_get_reg(conf.zx->cpu, name.toUpper().toLocal8Bit().data(), &err);
+	return !err || conds.contains(name.toLower());
+}
+
+static bool asm_has_label(const QString& op) {
+	int n = op.size();
+	for (int i = 0; i < n; ) {
+		QChar chr = op.at(i);
+		if (chr.isDigit()) {			// a number whole: 0x1F is not a label x1F
+			while ((i < n) && lab_char(op.at(i))) i++;
+		} else if (lab_char(chr)) {
 			int start = i;
-			while ((i < n) && (src.at(i).isLetterOrNumber() || (src.at(i) == QChar('_')) || (src.at(i) == QChar('.')))) i++;
-			QString name = src.mid(start, i - start);
-			xAdr xadr = find_label(name);
-			if ((xadr.type >= 0) && !regs.contains(name.toLower())) {
-				out += QString("0x%0").arg(xadr.adr & 0xffff, 0, 16);
-			} else {
-				out += name;
-			}
-		} else if (chr.isDigit()) {			// a number whole: 0x1F is not a label x1F
-			while ((i < n) && (src.at(i).isLetterOrNumber() || (src.at(i) == QChar('_')))) out += src.at(i++);
+			while ((i < n) && lab_char(op.at(i))) i++;
+			QString name = op.mid(start, i - start);
+			if ((find_label(name).type >= 0) && !asm_is_reg(name)) return true;
 		} else {
-			out += chr;
 			i++;
 		}
 	}
-	return out;
+	return false;
+}
+
+static QString asm_operand(QString op) {
+	op = op.trimmed();
+	if (!asm_has_label(op)) return op;
+	bool brk = op.startsWith('(') && op.endsWith(')');
+	QString in = brk ? op.mid(1, op.size() - 2).trimmed() : op;
+	QString idx;
+	if (in.startsWith("ix", Qt::CaseInsensitive) || in.startsWith("iy", Qt::CaseInsensitive)) {
+		idx = in.left(2);
+		in = "0" + in.mid(2);		// the displacement, its sign included
+	}
+	xExpr exp = xexpr_compile(in.toLocal8Bit().data());
+	bool err = false;
+	int val = (int)xexpr_eval(exp, conf.zx, &err);
+	if (err || !xexpr_ok(exp)) return QString();
+	QString num = idx.isEmpty() ? QString("0x%0").arg(val & 0xffff, 0, 16)
+		: QString("%0%1").arg((val < 0) ? "-" : "+").arg(QString("0x%0").arg(qAbs(val) & 0xff, 0, 16));
+	return brk ? QString("(%0%1)").arg(idx).arg(num) : (idx + num);
+}
+
+QString asm_labels(const QString& src) {
+	QString str = src.trimmed();
+	int sp = str.indexOf(' ');
+	if (sp < 0) return str;
+	QString res = str.left(sp) + " ";
+	QStringList ops;
+	int depth = 0;
+	int from = sp + 1;
+	for (int i = from; i <= str.size(); i++) {
+		QChar chr = (i < str.size()) ? str.at(i) : QChar(',');
+		if (chr == '(') depth++;
+		if (chr == ')') depth--;
+		if ((chr == ',') && (depth == 0)) {
+			QString op = asm_operand(str.mid(from, i - from));
+			if (op.isEmpty()) return QString();
+			ops.append(op);
+			from = i + 1;
+		}
+	}
+	return res + ops.join(",");
 }
 
 bool xDisasmModel::setData(const QModelIndex& cidx, const QVariant& val, int role) {
