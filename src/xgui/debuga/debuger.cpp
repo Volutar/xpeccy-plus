@@ -362,6 +362,10 @@ void DebugWin::machinePanels() {
 	int hw = conf.zx->hw->id;
 	wid_cmos_dump->setVisible((hw == HW_P1024) || (hw == HW_PENTEVO) || (hw == HW_TSLAB) || (hw == HW_PROFI)
 		|| (conf.zx->ide->type == IDE_SMUC));
+	// and the disk panels only with a disk interface
+	bool disk = (conf.zx->dif->type != DIF_NONE);
+	wid_disk_dump->setVisible(disk);
+	wid_fdd->setVisible(disk);
 }
 
 void DebugWin::onPrfChange() {
