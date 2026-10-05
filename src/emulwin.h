@@ -333,6 +333,9 @@ typedef struct {
 		void showBars();
 		void syncActions();
 		QMenu* volumeMenu();
+		class xVolBox* volPop;
+		QTimer volTimer;
+		void volumeChanged();
 		void updateStatus();
 		void cutTexts();
 		QString cutKey(int);

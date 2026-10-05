@@ -78,17 +78,15 @@ void MainWin::wheelEvent(QWheelEvent* ev) {
 	} else if (grabMice) {
 		if (comp->mouse->hasWheel)
 			mousePress(comp->mouse, (ev->yDelta < 0) ? XM_WHEELDN : XM_WHEELUP, 0);
+	} else if (ev->modifiers() & Qt::AltModifier) {
+		// the volume, with Alt: a bare wheel is too easily turned. Alt turns the
+		// wheel sideways on Windows and X11, so either axis is taken
+		int d = ev->angleDelta().y() ? ev->angleDelta().y() : ev->angleDelta().x();
+		if (!d) return;
+		conf.snd.vol.master = toLimits(conf.snd.vol.master + ((d > 0) ? 5 : -5), 0, 100);
+		volumeChanged();
 	} else {
-		if (ev->yDelta < 0) {
-			conf.snd.vol.master -= 5;
-			if (conf.snd.vol.master < 0)
-				conf.snd.vol.master = 0;
-		} else {
-			conf.snd.vol.master += 5;
-			if (conf.snd.vol.master > 100)
-				conf.snd.vol.master = 100;
-		}
-		setMessage(QString(" volume %0% ").arg(conf.snd.vol.master));
+		ev->ignore();
 	}
 }
 

@@ -250,6 +250,37 @@ class xVolSlider : public QSlider {
 		}
 };
 
+// the slider and the figure beside it: in the button's list, and in the pop-up
+// Alt+wheel brings up
+class xVolBox : public QFrame {
+	public:
+		xVolBox(QWidget* p, Qt::WindowFlags f = Qt::WindowFlags()) : QFrame(p, f) {
+			QHBoxLayout* lay = new QHBoxLayout(this);
+			lay->setContentsMargins(8, 4, 8, 4);
+			sld = new xVolSlider(this);
+			sld->setRange(0, 100);
+			sld->setPageStep(10);
+			sld->setMinimumWidth(120);
+			lab = new QLabel(this);
+			lab->setMinimumWidth(lab->fontMetrics().boundingRect("100%").width());
+			lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+			lay->addWidget(sld);
+			lay->addWidget(lab);
+			connect(sld, &QSlider::valueChanged, this, [this](int v) {
+				conf.snd.vol.master = v;
+				figure();
+			});
+		}
+		void load() {
+			sld->setValue(conf.snd.vol.master);
+			figure();		// the value may not have moved
+		}
+	private:
+		QSlider* sld;
+		QLabel* lab;
+		void figure() {lab->setText(QString("%0%").arg(conf.snd.vol.master));}
+};
+
 // MainWin
 
 void MainWin::initBars() {
@@ -367,6 +398,17 @@ void MainWin::initBars() {
 		muteAct->setIcon(icon);
 	}
 	add("key.mute", "Sound", muteAct, TB_SPLIT, volumeMenu());
+	// shown, not used: it takes no focus and no clicks, so the machine keeps the keys
+	volPop = new xVolBox(this, Qt::ToolTip | Qt::FramelessWindowHint);
+	volPop->setFrameShape(QFrame::StyledPanel);
+	volPop->setAttribute(Qt::WA_ShowWithoutActivating);
+	volPop->setAttribute(Qt::WA_TransparentForMouseEvents);
+	volTimer.setSingleShot(true);
+	volTimer.setInterval(1500);
+	connect(&volTimer, &QTimer::timeout, this, [this]() {
+		volPop->hide();
+		saveConfig();
+	});
 	foreach(const xTbItem& it, tbCatalog) {
 		// a list opened from here has had no right-click menu fill it; one opened
 		// inside a menu has, and refilling everything on each hover costs disk reads
@@ -582,33 +624,28 @@ void MainWin::showBars() {
 // the master volume, beside the mute button
 QMenu* MainWin::volumeMenu() {
 	QMenu* menu = new QMenu(this);
-	QWidget* box = new QWidget(menu);
-	QHBoxLayout* lay = new QHBoxLayout(box);
-	lay->setContentsMargins(8, 4, 8, 4);
-	QSlider* sld = new xVolSlider(box);
-	sld->setRange(0, 100);
-	sld->setPageStep(10);
-	sld->setMinimumWidth(120);
-	QLabel* lab = new QLabel(box);
-	lab->setMinimumWidth(lab->fontMetrics().boundingRect("100%").width());
-	lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-	lay->addWidget(sld);
-	lay->addWidget(lab);
+	xVolBox* box = new xVolBox(menu);
 	QWidgetAction* wact = new QWidgetAction(menu);
 	wact->setDefaultWidget(box);
 	menu->addAction(wact);
-	auto show = [lab](int v) {lab->setText(QString("%0%").arg(v));};
-	connect(sld, &QSlider::valueChanged, this, [show](int v) {
-		conf.snd.vol.master = v;
-		show(v);
-	});
-	// the wheel over the picture moves it too
-	connect(menu, &QMenu::aboutToShow, this, [sld, show]() {
-		sld->setValue(conf.snd.vol.master);
-		show(conf.snd.vol.master);
-	});
+	connect(menu, &QMenu::aboutToShow, box, &xVolBox::load);	// the wheel moves it too
 	connect(menu, &QMenu::aboutToHide, this, [this]() {saveConfig();});
 	return menu;
+}
+
+// Alt+wheel moved the volume: the slider comes up under the button for a moment,
+// where the toolbar shows one, and the picture says it otherwise
+void MainWin::volumeChanged() {
+	QWidget* btn = toolBar->isVisible() ? toolBar->widgetForAction(muteAct) : nullptr;
+	if (btn && btn->isVisible()) {
+		volPop->load();
+		volPop->adjustSize();
+		volPop->move(btn->mapToGlobal(QPoint(0, btn->height())));
+		volPop->show();
+	} else {
+		setMessage(QString(" volume %0% ").arg(conf.snd.vol.master));
+	}
+	volTimer.start();	// and the file is written once the wheel stops
 }
 
 // the buttons that are switches, read from what they switch
