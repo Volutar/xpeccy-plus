@@ -24,7 +24,7 @@ before that point is upstream's history and is not repeated here.
   Alt+wheel over the picture sets the volume and shows it under the button.
   *(thanks to Volutar for the idea)*
 - Menus no longer pause the machine. It can pause instead while another application has the
-  focus (Options, Xpeccy+ page).
+  focus (Options, Application page).
 - Debugger: label names are offered as they are typed - in the listing, the dump, the watcher
   and breakpoint conditions - and an instruction typed into the listing takes labels in its
   operands, sums like label+2 included. *(thanks to Volutar for the idea)*
