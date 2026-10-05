@@ -104,7 +104,7 @@ class xDisasmTable : public QTableView {
 		void scrolDn(Qt::KeyboardModifiers = Qt::NoModifier);
 
 		void copyToCbrd();
-		void jumpMarked(int, Qt::KeyboardModifiers);
+		void jumpMarked(int, bool);
 		void pushHistory(int);
 		int rowForAdr(int);
 		void selectAdr(int, int);

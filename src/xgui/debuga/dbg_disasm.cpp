@@ -1214,12 +1214,13 @@ void xDisasmTable::selectAdr(int adr, int col) {
 		setCurrentIndex(model->index(row, col));
 }
 
-void xDisasmTable::jumpMarked(int idx, Qt::KeyboardModifiers mod) {
+// a bookmark: go to it, or put it where the listing is
+void xDisasmTable::jumpMarked(int idx, bool go) {
 	if ((idx < 0) || (idx > 4)) return;
-	if (mod & Qt::AltModifier) {
+	if (go) {
 		int adr = storedAddress[idx];
 		if (adr >= 0) setAdr(adr);
-	} else if (mod & Qt::ControlModifier) {
+	} else {
 		storedAddress[idx] = getAdr();
 	}
 }
@@ -1233,9 +1234,10 @@ void xDisasmTable::keyPressEvent(QKeyEvent* ev) {
 	xAdr xadr;
 	Qt::KeyboardModifiers mod = ev->modifiers();
 	int key = shortcut_event(SCG_DISASM, ev);
-	// the breakpoint key takes a modifier for its kind: Alt read, Ctrl write, Shift cpu address
-	if ((key < 0) && (shortcut_find(SCG_DISASM, hotkey_key(ev), Qt::NoModifier) == XCUT_SETBRK))
-		key = XCUT_SETBRK;
+	if ((key < 0) && (shortcut_event(SCG_DEBUGA, ev) >= 0)) {
+		ev->ignore();		// the debugger's own key: it goes on to the window
+		return;
+	}
 	if (key < 0)
 		key = ev->key();
 	Computer* comp = conf.zx;
@@ -1287,18 +1289,18 @@ void xDisasmTable::keyPressEvent(QKeyEvent* ev) {
 				emit rqRefillAll();
 			}
 			break;
-		case XCUT_SAVE:
-			ev->ignore();		// send it to debuga
+		case XCUT_MARK1: case XCUT_MARK2: case XCUT_MARK3: case XCUT_MARK4: case XCUT_MARK5:
+			jumpMarked(key - XCUT_MARK1, false);
+			break;
+		case XCUT_GOMARK1: case XCUT_GOMARK2: case XCUT_GOMARK3: case XCUT_GOMARK4: case XCUT_GOMARK5:
+			jumpMarked(key - XCUT_GOMARK1, true);
 			break;
 		case XCUT_SETBRK:
+		case XCUT_SETBRK_RD:
+		case XCUT_SETBRK_WR:
+		case XCUT_SETBRK_ADR:
 			adr = getData(idx.row(), 0, Qt::UserRole).toInt();	// bus addr
-#ifndef __WIN32__
-			if (mod & Qt::ShiftModifier) {
-#else
-			if ((mod & Qt::ShiftModifier) &&
-				!(mod & Qt::ControlModifier) &&
-				!(mod & Qt::AltModifier)) {
-#endif
+			if (key == XCUT_SETBRK_ADR) {
 				bpr = BRK_CPUADR;
 				bpt = 0;
 			} else {
@@ -1317,9 +1319,9 @@ void xDisasmTable::keyPressEvent(QKeyEvent* ev) {
 				}
 				// adr = xadr.abs;
 			}
-			if (mod & Qt::AltModifier) {
+			if (key == XCUT_SETBRK_RD) {
 				bpt |= MEM_BRK_RD;
-			} else if (mod & Qt::ControlModifier) {
+			} else if (key == XCUT_SETBRK_WR) {
 				bpt |= MEM_BRK_WR;
 			} else {
 				bpt |= MEM_BRK_FETCH;
@@ -1362,25 +1364,8 @@ void xDisasmTable::keyPressEvent(QKeyEvent* ev) {
 			edit(currentIndex());
 			break;
 		default:
-			if (mod & Qt::ControlModifier) {
-				switch(ev->key()) {
-					case Qt::Key_C: copyToCbrd(); break;
-					case Qt::Key_1: jumpMarked(0, mod); break;
-					case Qt::Key_2: jumpMarked(1, mod); break;
-					case Qt::Key_3: jumpMarked(2, mod); break;
-					case Qt::Key_4: jumpMarked(3, mod); break;
-					case Qt::Key_5: jumpMarked(4, mod); break;
-					default: QTableView::keyPressEvent(ev); break;
-				}
-			} else if (mod & Qt::AltModifier) {
-				switch(ev->key()) {
-					case Qt::Key_1: jumpMarked(0, mod); break;
-					case Qt::Key_2: jumpMarked(1, mod); break;
-					case Qt::Key_3: jumpMarked(2, mod); break;
-					case Qt::Key_4: jumpMarked(3, mod); break;
-					case Qt::Key_5: jumpMarked(4, mod); break;
-					default: QTableView::keyPressEvent(ev); break;
-				}
+			if ((mod & Qt::ControlModifier) && (ev->key() == Qt::Key_C)) {
+				copyToCbrd();
 			} else {
 				QTableView::keyPressEvent(ev);
 			}

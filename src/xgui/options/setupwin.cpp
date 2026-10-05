@@ -26,6 +26,7 @@
 #include <QFontDatabase>
 #include <QDateTime>
 #include <QGuiApplication>
+#include <QScreen>
 #include <QDesktopServices>
 #include <QUrl>
 #include <QDebug>
@@ -880,6 +881,21 @@ static int gridColWidth(QGridLayout* grid, int col) {
 	return wid;
 }
 
+// Over the middle of the main window, frames and all: Qt places a dialog before
+// it knows the invisible borders Windows 11 draws around one, and on a page as
+// wide as the window that shows. Kept on the screen it lands on.
+void SetupWin::centerOver(QWidget* win) {
+	if (!win) return;
+	QRect fr = frameGeometry();
+	QPoint at = win->frameGeometry().center() - QPoint(fr.width() / 2, fr.height() / 2);
+	if (QScreen* scr = QGuiApplication::screenAt(win->frameGeometry().center())) {
+		QRect av = scr->availableGeometry();
+		at.setX(qBound(av.left(), at.x(), qMax(av.left(), av.right() + 1 - fr.width())));
+		at.setY(qBound(av.top(), at.y(), qMax(av.top(), av.bottom() + 1 - fr.height())));
+	}
+	move(at + (pos() - fr.topLeft()));
+}
+
 // the Hotkeys page, its search ready: the list of keys a user asks for
 void SetupWin::startHotkeys() {
 	start();
@@ -1122,7 +1138,9 @@ void SetupWin::start() {
 	fillDbgPalette();
 	fillComboBox(ui.cbStyleSheet, "styles", QStringList() << "*.qss", "System", conf.style.c_str());
 
+	bool shown = isVisible();
 	show();
+	if (!shown) centerOver(parentWidget() ? parentWidget()->window() : nullptr);
 }
 
 void SetupWin::apply() {

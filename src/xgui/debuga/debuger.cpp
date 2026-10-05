@@ -1013,10 +1013,6 @@ void DebugWin::keyPressEvent(QKeyEvent* ev) {
 	}
 	int i;
 	int key = shortcut_event(SCG_DEBUGA, ev);
-	if ((key < 0) && (ev->key() == Qt::Key_Escape) && !ev->isAutoRepeat()) {
-		stop();			// Esc closes the debugger whatever the keys are
-		return;
-	}
 	if (key < 0)
 		key = ev->key() | xNativeMods(ev->modifiers());
 	unsigned char* ptr;
@@ -1118,6 +1114,7 @@ void DebugWin::keyPressEvent(QKeyEvent* ev) {
 			doFind();
 			break;
 		case XCUT_DEBUG:
+		case XCUT_DBG_CLOSE:
 			if (!ev->isAutoRepeat())
 				stop();
 			break;
