@@ -9,6 +9,7 @@
 #include <QProgressBar>
 #include <QTableWidget>
 #include <QTime>
+#include <QDateTime>
 #include <QUrl>
 #include <QMimeData>
 #include <QPainter>
@@ -1049,6 +1050,7 @@ bool MainWin::recStart(const QString& file) {
 #define MODE_ICON_TOP	22	// below the fps readout
 #define MODE_ICON_TOP_NOFPS	5	// with no fps readout to clear
 #define MODE_ICON_RIGHT	5
+#define RW_SECS_LINGER	1500	// ms the rewind's seconds stay up after it
 #define REC_BLINK_MS	500
 
 // where the speed mode and the recording sign go
@@ -1151,6 +1153,13 @@ void MainWin::drawIcons(QPainter& pnt) {
 	}
 // put the speed mode, VCR style, clear of the fps readout
 	int mode = speedOsd();
+	// how far back a rewind has gone, beside its sign, and a moment longer once the
+	// key is let go so it can be read
+	static qint64 rwSeen = 0;
+	qint64 now = QDateTime::currentMSecsSinceEpoch();
+	if (mode == osd_rewind) rwSeen = now;
+	bool rwSecs = (now - rwSeen) < RW_SECS_LINGER;
+	if (rwSecs && (mode == osd_none)) mode = osd_rewind;
 	// recording blinks, taking turns with the speed mode. Recording the window,
 	// it is put on after the picture has been read (see paintEvent)
 	int rec = recOsd();
@@ -1158,6 +1167,12 @@ void MainWin::drawIcons(QPainter& pnt) {
 		mode = rec;
 	if (mode != osd_none)
 		pnt.drawImage(modeSlot().topLeft(), osdImg[mode]);
+	if (rwSecs && (mode == osd_rewind)) {
+		int t = rewind_back_tenths();
+		sprintf(numbuf, " -%d.%ds ", t / 10, t % 10);
+		QRect slot = modeSlot();
+		drawText(&pnt, slot.left() - strlen(numbuf) * 12, slot.center().y() - 6, numbuf);
+	}
 // put fps
 	if (fpsOsd()) {
 		sprintf(numbuf, " %.1f ", conf.vid.curfps);
@@ -1218,14 +1233,19 @@ void MainWin::dropEvent(QDropEvent* ev) {
 	}
 }
 
-// shift on a drop: this one file, run or just mounted
-void MainWin::dropAsk(QString path) {
+// shift on a drop or in the open dialog: this one file, run or just mounted.
+// 1 run, 0 mount, -1 neither
+int MainWin::askRun() {
 	QMenu menu(this);
 	QAction* run = menu.addAction(QIcon(":/images/play.png"), "Run");
 	menu.addAction(QIcon(":/images/cd.png"), "Mount");
 	QAction* act = menu.exec(QCursor::pos());
-	if (!act) return;
-	openMedia(path, FG_ALL, 0, (act == run) ? 1 : 0);
+	return act ? ((act == run) ? 1 : 0) : -1;
+}
+
+void MainWin::dropAsk(QString path) {
+	int run = askRun();
+	if (run >= 0) openMedia(path, FG_ALL, 0, run);
 }
 
 // One way in for "the user opened a medium", whatever pointed at it: an empty
@@ -1236,6 +1256,11 @@ void MainWin::openMedia(const QString& path, int id, int drv, int run) {
 	Computer* comp = conf.zx;
 	pause(true, PR_FILE);
 	QString fpath = path.isEmpty() ? file_ask_open(comp, &id, &drv) : path;
+	// Shift held as the dialog is left asks, as it does on a drop
+	if (path.isEmpty() && !fpath.isEmpty() && (QGuiApplication::queryKeyboardModifiers() & Qt::ShiftModifier)) {
+		run = askRun();
+		if (run < 0) fpath.clear();
+	}
 	std::string mac;
 	if (!fpath.isEmpty() && media_machine(comp, fpath, id, drv, run, &mac)) {
 		if (!mac.empty()) setMachine(mac);

@@ -6,6 +6,8 @@ xPalWidget::xPalWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
 	QWidget* wid = new QWidget;
 	setWidget(wid);
 	ui.setupUi(wid);
+	// exactly the picture: a taller label centers it, and a click is counted from its edge
+	ui.labPalette->setFixedSize(256, 256);
 	setObjectName("PAL");
 }
 

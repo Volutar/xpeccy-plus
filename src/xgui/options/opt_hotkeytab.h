@@ -38,6 +38,7 @@ class xHotkeyModel : public xTableModel {
 		int rowCount(const QModelIndex& idx = QModelIndex()) const;
 		int columnCount(const QModelIndex& idx = QModelIndex()) const;
 		QVariant data(const QModelIndex& idx, int role) const;
+		Qt::ItemFlags flags(const QModelIndex& idx) const;
 		int cut(int row) const;			// the shortcut on a row, -1 on a heading
 		int rowOf(int id) const;
 	private:

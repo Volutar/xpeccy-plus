@@ -28,6 +28,9 @@ before that point is upstream's history and is not repeated here.
 - Debugger: label names are offered as they are typed - in the listing, the dump, the watcher
   and breakpoint conditions - and an instruction typed into the listing takes labels in its
   operands, sums like label+2 included. *(thanks to Volutar for the idea)*
+- Rewinding shows how many seconds back it has gone, beside its sign on the picture, and Shift
+  held as a file is picked in the open dialog asks whether to run it or only put it in, as a
+  drop does. *(thanks to Volutar for the idea)*
 
 ### Changed
 
@@ -42,6 +45,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- Debugger: a click on the palette shows the color clicked - it showed one further down,
+  mostly black - and the CMOS panel is only there on machines with a clock chip.
+  *(thanks to Volutar for the report)*
 - Debugger: editing an instruction's bytes no longer pads the field with blanks past the column,
   and a label picked from the list goes into a watcher expression once, not twice.
   *(thanks to Volutar for the report)*

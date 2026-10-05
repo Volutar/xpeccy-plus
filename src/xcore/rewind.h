@@ -25,6 +25,9 @@ void rewind_sound(sndPair, long long nsFixed);
 void rewind_want(int);
 // 1 while the history is being played back (any thread)
 int rewind_active();
+// how far back the picture shown is from where the rewind began, in tenths of a
+// second of emulated time; the last one stays after the key is let go (any thread)
+int rewind_back_tenths();
 // the machine is not the one the history was taken from: drop it at the next
 // frame. Safe from any thread.
 void rewind_clear();

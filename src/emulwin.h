@@ -361,6 +361,7 @@ typedef struct {
 		void mouseGrabOff();
 		void mouseRecenter(int fresh = 0);
 		void dropAsk(QString);
+		int askRun();
 
 		void xkey_press(int, bool cmd = false);
 		void xkey_release(int);

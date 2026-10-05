@@ -4,6 +4,7 @@
 #include <QVBoxLayout>
 #include <QHeaderView>
 #include <QFont>
+#include <QStyledItemDelegate>
 
 // PortableText, not NativeText: NativeText follows Qt's own Ctrl/Meta convention,
 // which is inverted from ours on macOS and swaps the symbols.
@@ -68,6 +69,23 @@ xHotkeyModel::xHotkeyModel(QObject* p):xTableModel(p) {
 		list += sec[s];
 	}
 }
+
+// a heading is a label, not a row to pick
+Qt::ItemFlags xHotkeyModel::flags(const QModelIndex& idx) const {
+	return (cut(idx.row()) < 0) ? Qt::ItemIsEnabled : xTableModel::flags(idx);
+}
+
+// and the pointer passing over it lights nothing
+class xHotkeyItem : public QStyledItemDelegate {
+	public:
+		xHotkeyItem(QObject* p) : QStyledItemDelegate(p) {}
+	protected:
+		void initStyleOption(QStyleOptionViewItem* opt, const QModelIndex& idx) const override {
+			QStyledItemDelegate::initStyleOption(opt, idx);
+			if (!(idx.flags() & Qt::ItemIsSelectable))
+				opt->state &= ~(QStyle::State_MouseOver | QStyle::State_HasFocus);
+		}
+};
 
 int xHotkeyModel::cut(int row) const {
 	return ((row < 0) || (row >= list.size())) ? -1 : list[row].tab;
@@ -134,6 +152,7 @@ xHotkeyTable::xHotkeyTable(QWidget* p):QTableView(p) {
 	model = new xHotkeyModel();
 	edt = new xKeyEditor();
 	setModel(model);
+	setItemDelegate(new xHotkeyItem(this));
 	for (int r = 0; r < model->rowCount(); r++)
 		if (model->cut(r) < 0) setSpan(r, 0, 1, 2);
 	// name column fits the longest name, keys take the rest

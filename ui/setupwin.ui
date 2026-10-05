@@ -2475,7 +2475,7 @@ thin, lower it again after a long clean spell</string>
                </font>
               </property>
               <property name="text">
-               <string>Starts a tape or a disk at once; hold Shift on a drop to choose</string>
+               <string>Starts a tape or a disk at once; hold Shift as you open one to choose</string>
               </property>
              </widget>
             </item>
@@ -3303,8 +3303,11 @@ Hold: on while the key is held</string>
                <attribute name="verticalHeaderVisible">
                 <bool>false</bool>
                </attribute>
+               <attribute name="verticalHeaderMinimumSectionSize">
+                <number>16</number>
+               </attribute>
                <attribute name="verticalHeaderDefaultSectionSize">
-                <number>24</number>
+                <number>19</number>
                </attribute>
               </widget>
              </item>
