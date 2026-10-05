@@ -1232,9 +1232,10 @@ void xDisasmTable::keyPressEvent(QKeyEvent* ev) {
 	int adr;
 	xAdr xadr;
 	Qt::KeyboardModifiers mod = ev->modifiers();
-	int key = shortcut_check(SCG_DISASM, QKeySequence(ev->key() | mod));
-	if (key < 0)
-		key = shortcut_check(SCG_DISASM, QKeySequence(ev->key()));
+	int key = shortcut_event(SCG_DISASM, ev);
+	// the breakpoint key takes a modifier for its kind: Alt read, Ctrl write, Shift cpu address
+	if ((key < 0) && (shortcut_find(SCG_DISASM, hotkey_key(ev), Qt::NoModifier) == XCUT_SETBRK))
+		key = XCUT_SETBRK;
 	if (key < 0)
 		key = ev->key();
 	Computer* comp = conf.zx;
@@ -1316,7 +1317,6 @@ void xDisasmTable::keyPressEvent(QKeyEvent* ev) {
 				}
 				// adr = xadr.abs;
 			}
-			// modifiers doesn't work with new hotkeys (hotkey not detected)
 			if (mod & Qt::AltModifier) {
 				bpt |= MEM_BRK_RD;
 			} else if (mod & Qt::ControlModifier) {

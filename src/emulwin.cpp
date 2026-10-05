@@ -20,6 +20,7 @@
 #include <QLayout>
 #include <QWindow>
 #include <QContextMenuEvent>
+#include <QShortcut>
 #include <QStyleOption>
 #include <QApplication>
 
@@ -183,6 +184,17 @@ MainWin::MainWin(QMainWindow* frm) {
 	frame->setCentralWidget(this);
 	frame->layout()->setSizeConstraint(QLayout::SetFixedSize);
 	frame->installEventFilter(this);
+#ifdef __WIN32
+	// Qt on Windows hands Shift+F10 to the system menu unless a shortcut claims it;
+	// this one claims it and passes it on as the key it is, F10's scan code with it
+	QShortcut* sf10 = new QShortcut(QKeySequence(Qt::SHIFT | Qt::Key_F10), frame);
+	sf10->setContext(Qt::WindowShortcut);
+	sf10->setAutoRepeat(false);		// one press, one NMI
+	connect(sf10, &QShortcut::activated, this, [this]() {
+		QKeyEvent ev(QEvent::KeyPress, Qt::Key_F10, Qt::ShiftModifier, XKEY_F10, 0x79, 0);
+		keyPressEvent(&ev);
+	});
+#endif
 	frame->setWindowTitle(XPTITLE);
 	setFocusPolicy(Qt::StrongFocus);
 	setMouseTracking(true);
@@ -1641,11 +1653,28 @@ QAction* MainWin::cutAction(QMenu* menu, const QString& name, int id, const QStr
 	return act;
 }
 
+// once, when an old config had its keys moved to the presets
+void MainWin::hotkeysNote() {
+	if (!hotkeys_migrated()) return;
+	QString key = cutKey(XCUT_HOTKEYS);
+	setMessage(key.isEmpty() ? QString(" new hotkeys: see Options ") : QString(" new hotkeys: %0 lists them ").arg(key), 8.0);
+}
+
+// a context menu asked for from the keyboard is not one: the menu key is a key
+// here like any other, and the menu is on the mouse
+void MainWin::contextMenuEvent(QContextMenuEvent* ev) {
+	if (ev->reason() == QContextMenuEvent::Keyboard) {
+		ev->accept();
+	} else {
+		ev->ignore();
+	}
+}
+
 // the keys as they are now, after Options too
 // the key a hotkey is on, as the menus write it; empty when it has none
 QString MainWin::cutKey(int id) {
 	xShortcut* sc = find_shortcut_id(id);
-	return (sc && !sc->seq.isEmpty()) ? sc->seq.toString(QKeySequence::NativeText) : QString();
+	return (sc && !sc->seq[0].isEmpty()) ? sc->seq[0].toString(QKeySequence::NativeText) : QString();
 }
 
 void MainWin::cutTexts() {

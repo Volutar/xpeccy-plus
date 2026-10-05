@@ -38,6 +38,7 @@ class SetupWin : public QDialog {
 		void stopProbe();
 	public slots:
 		void start();
+		void startHotkeys();
 		void setPadName();
 	private:
 		QDialog* popOut(QWidget*, const char*);

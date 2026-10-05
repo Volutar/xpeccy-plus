@@ -371,12 +371,18 @@ void saveConfig() {
 	fprintf(cfile, "\n[LOG]\n\n");
 	log_save(cfile);
 
+	// the preset in use, and Custom whether in use or not: only its own keys
 	fprintf(cfile, "\n[KEYS]\n\n");
-	xShortcut* tab = shortcut_tab();
-	int i = 0;
-	while (tab[i].id > 0) {
-		fprintf(cfile, "%s = %s\n", tab[i].name, tab[i].seq.toString().toLocal8Bit().data());
-		i++;
+	const xHotkeySet& hks = hotkeys_get();
+	fprintf(cfile, "preset = %s\n", hotkeys_preset_name(hks.preset));
+	fprintf(cfile, "custom.base = %s\n", hotkeys_preset_name(hks.base));
+	for (auto& ov : hks.over) {
+		xShortcut* cut = find_shortcut_id(ov.first);
+		if (!cut) continue;
+		QList<QKeySequence> lst;
+		lst << ov.second.first;
+		if (!ov.second.second.isEmpty()) lst << ov.second.second;
+		fprintf(cfile, "%s = %s\n", cut->name, QKeySequence::listToString(lst).toUtf8().data());
 	}
 
 	xm_save_media(cfile);
@@ -712,7 +718,7 @@ void loadConfig() {
 	newrs.gsFile.clear();
 	newrs.roms.clear();
 	conf.pal.clear();
-	shortcut_init();
+	hotkeys_load_begin();
 	conf.xpos = -1;
 	conf.ypos = -1;
 	conf.keywin.dock = 0;
@@ -810,7 +816,7 @@ void loadConfig() {
 		} else {
 			switch (section) {
 				case SECT_KEYS:
-					set_shortcut_name(pnam.c_str(), QKeySequence(arg.s));
+					hotkeys_load_line(pnam, pval);
 					break;
 				case SECT_PALETTE:
 					col = QColor(arg.s);
@@ -1149,6 +1155,7 @@ void loadConfig() {
 			}
 		}
 	}
+	hotkeys_load_end();
 	padLoadControllerDb();		// before the pads open, it decides their layout
 	conf.gpctrl->rescan();
 	foreach(xRomset rs, rsListist) addRomset(rs);
