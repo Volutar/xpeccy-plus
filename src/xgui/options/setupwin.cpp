@@ -436,6 +436,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	spaceLedIcon(ui.cbHaltLed);
 	spaceLedIcon(ui.cbClockLed);
 	spaceLedIcon(ui.cbMessage);
+	spaceLedIcon(ui.cbFadeLed);
 
 	rseditor = new xRomsetEditor(this);
 	rseditor->setModal(true);
@@ -1088,6 +1089,7 @@ void SetupWin::start() {
 	ui.cbTapeLed->setChecked(conf.led.tape);
 	ui.cbDiskLed->setChecked(conf.led.disk);
 	ui.cbMessage->setChecked(conf.led.message);
+	ui.cbFadeLed->setChecked(conf.led.fade);
 	ui.cbFpsLed->setChecked(conf.led.fps);
 	ui.cbHaltLed->setChecked(conf.led.halt);
 	ui.cbClockLed->setChecked(conf.led.clock);
@@ -1346,6 +1348,7 @@ void SetupWin::apply() {
 	conf.led.tape = ui.cbTapeLed->isChecked() ? 1 : 0;
 	conf.led.disk = ui.cbDiskLed->isChecked() ? 1 : 0;
 	conf.led.message = ui.cbMessage->isChecked() ? 1 : 0;
+	conf.led.fade = ui.cbFadeLed->isChecked() ? 1 : 0;
 	conf.led.fps = ui.cbFpsLed->isChecked() ? 1 : 0;
 	conf.led.halt = ui.cbHaltLed->isChecked() ? 1 : 0;
 	conf.led.clock = ui.cbClockLed->isChecked() ? 1 : 0;

@@ -772,6 +772,7 @@ struct xConfig {
 		unsigned fps:1;
 		unsigned halt:1;
 		unsigned clock:1;	// cpu clock, shown only when it is not the machine's own
+		unsigned fade:1;	// signs and messages fade away instead of vanishing
 	} led;
 	struct {
 		unsigned enabled:1;	// write the log file
