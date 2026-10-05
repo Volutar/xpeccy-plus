@@ -441,7 +441,7 @@ void MainWin::keyReleaseEvent(QKeyEvent *ev) {
 		if (comp->flgDBG) {
 			ev->ignore();
 		} else {
-			keyid = hotkey_for(hotkey_key(ev), ev->modifiers(), pckAct->isChecked());
+			keyid = hotkeyOf(ev);
 			if (keyid >= 0) {
 				xcut_release(keyid);
 			} else {	// not hotkeys

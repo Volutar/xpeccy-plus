@@ -21,6 +21,7 @@
 #include <QWindow>
 #include <QContextMenuEvent>
 #include <QShortcut>
+#include <QSet>
 #include <QStyleOption>
 #include <QApplication>
 
@@ -636,6 +637,53 @@ void MainWin::focusInEvent(QFocusEvent*) {
 		emit s_debug();
 	if (grabMice)
 		mouseRecenter();
+}
+
+// A tool window passes on the hotkeys it has no use of its own for: the F-keys,
+// Pause, Scroll Lock and anything with Alt, Ctrl or Cmd. A bare Del, Home or End
+// edits or moves there, and Esc closes it.
+static bool sat_passes(QKeyEvent* ev) {
+	int key = ev->key();
+	if ((key >= Qt::Key_F1) && (key <= Qt::Key_F35)) return true;
+	if ((key == Qt::Key_Pause) || (key == Qt::Key_ScrollLock)) return true;
+	return ev->modifiers() & (Qt::AltModifier | Qt::ControlModifier | Qt::MetaModifier);
+}
+
+// On the whole application, since a key goes to whichever widget has the focus
+// in a window; an object of its own, so the main window's events pass it once.
+class xSatFilter : public QObject {
+	public:
+		xSatFilter(MainWin* m) : QObject(m), mw(m) {}
+		QSet<QWidget*> wins;
+	protected:
+		bool eventFilter(QObject* obj, QEvent* ev) override {
+			if ((ev->type() != QEvent::KeyPress) && (ev->type() != QEvent::KeyRelease)) return false;
+			QWidget* wid = qobject_cast<QWidget*>(obj);
+			QKeyEvent* kev = static_cast<QKeyEvent*>(ev);
+			if (!wid || !sat_passes(kev) || !wins.contains(wid->window())) return false;
+			if (QApplication::activeModalWidget() || (mw->hotkeyOf(kev) < 0)) return false;
+			if (ev->type() == QEvent::KeyPress) {
+				mw->kPress(kev);
+			} else {
+				mw->kRelease(kev);
+			}
+			return true;
+		}
+	private:
+		MainWin* mw;
+};
+
+void MainWin::addSatellite(QWidget* win) {
+	if (!satFilter) {
+		satFilter = new xSatFilter(this);
+		qApp->installEventFilter(satFilter);
+	}
+	satFilter->wins.insert(win);
+}
+
+// the hotkey a key press means here, -1 for none
+int MainWin::hotkeyOf(QKeyEvent* ev) {
+	return hotkey_for(hotkey_key(ev), ev->modifiers(), pckAct->isChecked());
 }
 
 // what happens to the window happens to the frame
@@ -1589,6 +1637,7 @@ void MainWin::initUserMenu() {
 	sdcMenu = userMenu->addMenu(QIcon(":/images/sdcard.png"), "SD card");
 	hddMenu = userMenu->addMenu(QIcon(":/images/hdd.png"), "Drives");
 	diskWin = new xDiskWin(this);
+	addSatellite(diskWin);
 	diskWin->tapeChanged = [this]() {emit s_tape_upd(conf.zx->tape);};
 	diskWin->diskOp = [this](int op, int drv) {diskOp(op, drv);};
 

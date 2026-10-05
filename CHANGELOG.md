@@ -43,6 +43,8 @@ before that point is upstream's history and is not repeated here.
   - An older config keeps the keys you changed and takes Modern for the rest.
   - Hotkeys work in any keyboard layout, and a hotkey's Shift or Ctrl no longer holds Caps or
     Symbol Shift down on the machine.
+  - Hotkeys work from the tape, RZX, screen, sound and disk windows too, all but the keys
+    those windows use themselves. *(thanks to Volutar)*
 
 - **Labels as you type in the debugger**: label names are offered in the listing, the dump, the
   watcher and breakpoint conditions, and the listing assembles labels in operands, label+2

@@ -37,6 +37,8 @@
 #define XREL_KEYS "Ctrl+Alt"
 #endif
 
+class xSatFilter;
+
 #if USE_QT_GAMEPAD
 #include <QGamepad>
 #include <QGamepadManager>
@@ -113,6 +115,8 @@ typedef struct {
 		~MainWin();
 //		Computer* comp;
 		void checkState();
+		void addSatellite(QWidget*);
+		int hotkeyOf(QKeyEvent*);
 		void hotkeysNote();
 		void loadLabels(const char*);
 		void fillUserMenu();
@@ -197,6 +201,7 @@ typedef struct {
 		unsigned grabMice:1;
 		long long mouseReadAt = 0;	// when a program last read the mouse, host ns
 		bool relArmed = false;		// both release keys are down, nothing else since
+		xSatFilter* satFilter = nullptr;	// passes the tool windows' hotkeys on to this one
 		void releaseChord(QKeyEvent*, bool);
 		void fast_key(bool);
 		QPoint warpAt;		// where the last recentering aimed
