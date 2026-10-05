@@ -434,6 +434,10 @@ void xDumpTable::gotoReg(const char* name) {
 void xDumpTable::keyPressEvent(QKeyEvent* ev) {
 	QModelIndex idx = currentIndex();
 	int key = shortcut_event(SCG_DUMP, ev);
+	if ((key < 0) && (shortcut_event(SCG_DEBUGA, ev) >= 0)) {
+		ev->ignore();
+		return;
+	}
 	if (key < 0)
 		key = ev->key();
 	switch(key) {
@@ -481,9 +485,6 @@ void xDumpTable::keyPressEvent(QKeyEvent* ev) {
 		case Qt::Key_Return:
 			if (state() == QAbstractItemView::EditingState) break;
 			edit(currentIndex());
-			ev->ignore();
-			break;
-		case Qt::Key_F2:
 			ev->ignore();
 			break;
 		default:

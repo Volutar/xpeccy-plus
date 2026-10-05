@@ -443,7 +443,7 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_REWIND, "key.rewind", "Rewind (hold)", {}},
 	{SCG_MAIN, XCUT_FFWD, "key.ffwd", "Fast forward", {}},
 	{SCG_MAIN, XCUT_SLOWMO, "key.slowmo", "Slow motion", {}},
-	{SCG_MAIN | SCG_DEBUGA | SCG_DISASM, XCUT_SAVE, "key.save", "Save", {}},
+	{SCG_MAIN | SCG_DEBUGA, XCUT_SAVE, "key.save", "Save", {}},
 	{SCG_MAIN | SCG_DEBUGA, XCUT_LOAD, "key.load", "Open", {}},
 	{SCG_MAIN, XCUT_FASTSAVE, "key.fastsave", "Fast saving", {}},
 	{SCG_MAIN, XCUT_MOUSE, "key.mouse.grab", "Grab mouse", {}},
@@ -500,10 +500,24 @@ static xShortcut short_tab[] = {
 	{SCG_DEBUGA, XCUT_LABELS, "key.dbg.labels", "Debugger: Switch labels", {}},
 	{SCG_DEBUGA, XCUT_LABLIST, "key.dbg.lablist", "Debugger: Show labels list", {}},
 	{SCG_DEBUGA, XCUT_DBG_RELOAD, "key.dbg.reload", "Debugger: Reload snapshot and labels", {}},
+	{SCG_DEBUGA, XCUT_DBG_CLOSE, "key.dbg.close", "Debugger: Close", {}},
 
 	{SCG_DISASM, XCUT_TOPC, "key.disasm.topc", "Disasm: Jump to PC", {}},
 	{SCG_DISASM, XCUT_SETPC, "key.disasm.setpc", "Disasm: Set PC", {}},
 	{SCG_DISASM, XCUT_SETBRK, "key.disasm.setbrk", "Disasm: Breakpoint", {}},
+	{SCG_DISASM, XCUT_SETBRK_RD, "key.disasm.setbrk.rd", "Disasm: Breakpoint on read", {}},
+	{SCG_DISASM, XCUT_SETBRK_WR, "key.disasm.setbrk.wr", "Disasm: Breakpoint on write", {}},
+	{SCG_DISASM, XCUT_SETBRK_ADR, "key.disasm.setbrk.adr", "Disasm: Breakpoint on CPU address", {}},
+	{SCG_DISASM, XCUT_MARK1, "key.disasm.mark.1", "Disasm: Bookmark 1", {}},
+	{SCG_DISASM, XCUT_MARK2, "key.disasm.mark.2", "Disasm: Bookmark 2", {}},
+	{SCG_DISASM, XCUT_MARK3, "key.disasm.mark.3", "Disasm: Bookmark 3", {}},
+	{SCG_DISASM, XCUT_MARK4, "key.disasm.mark.4", "Disasm: Bookmark 4", {}},
+	{SCG_DISASM, XCUT_MARK5, "key.disasm.mark.5", "Disasm: Bookmark 5", {}},
+	{SCG_DISASM, XCUT_GOMARK1, "key.disasm.gomark.1", "Disasm: Go to bookmark 1", {}},
+	{SCG_DISASM, XCUT_GOMARK2, "key.disasm.gomark.2", "Disasm: Go to bookmark 2", {}},
+	{SCG_DISASM, XCUT_GOMARK3, "key.disasm.gomark.3", "Disasm: Go to bookmark 3", {}},
+	{SCG_DISASM, XCUT_GOMARK4, "key.disasm.gomark.4", "Disasm: Go to bookmark 4", {}},
+	{SCG_DISASM, XCUT_GOMARK5, "key.disasm.gomark.5", "Disasm: Go to bookmark 5", {}},
 	{SCG_DISASM, XCUT_JUMPTO, "key.disasm.jump", "Disasm: Jump to operand", {}},
 	{SCG_DISASM, XCUT_RETFROM, "key.disasm.ret", "Disasm: Return", {}},
 	{SCG_DISASM, XCUT_GOTOADR, "key.disasm.goto", "Disasm: Go to address", {}},
@@ -529,6 +543,34 @@ typedef struct {
 
 // Qt::AltModifier, not Qt::ALT, beside Qt::KeypadModifier: mixing the two
 // modifier enums leaves no exact operator| match and clang calls it ambiguous.
+
+// The machine keeps every key it has; the emulator takes the F-keys, the block
+// over the arrows and one modifier that is no ZX key: Alt here, Cmd on a Mac.
+// Ctrl is Symbol Shift, so only what opens a dialog sits on it.
+#ifdef __APPLE__
+#define HK_MOD Qt::META
+#define HK_MODM Qt::MetaModifier
+#define HK_APP Qt::META
+#else
+#define HK_MOD Qt::ALT
+#define HK_MODM Qt::AltModifier
+#define HK_APP Qt::CTRL
+#endif
+
+// the debugger's breakpoints, bookmarks and Esc, alike in both presets.
+// Alt+Space is the window menu on Windows, so a read is Shift+Alt+Space
+#define DEBUGGER_KEYS \
+	{XCUT_SETBRK, {QKeySequence(Qt::Key_Space)}}, \
+	{XCUT_SETBRK_RD, {QKeySequence(Qt::SHIFT | Qt::ALT | Qt::Key_Space)}}, \
+	{XCUT_SETBRK_WR, {QKeySequence(HK_APP | Qt::Key_Space)}}, \
+	{XCUT_SETBRK_ADR, {QKeySequence(Qt::SHIFT | Qt::Key_Space)}}, \
+	{XCUT_DBG_CLOSE, {QKeySequence(Qt::Key_Escape)}}, \
+	{XCUT_MARK1, {QKeySequence(HK_APP | Qt::Key_1)}}, {XCUT_MARK2, {QKeySequence(HK_APP | Qt::Key_2)}}, \
+	{XCUT_MARK3, {QKeySequence(HK_APP | Qt::Key_3)}}, {XCUT_MARK4, {QKeySequence(HK_APP | Qt::Key_4)}}, \
+	{XCUT_MARK5, {QKeySequence(HK_APP | Qt::Key_5)}}, \
+	{XCUT_GOMARK1, {QKeySequence(Qt::ALT | Qt::Key_1)}}, {XCUT_GOMARK2, {QKeySequence(Qt::ALT | Qt::Key_2)}}, \
+	{XCUT_GOMARK3, {QKeySequence(Qt::ALT | Qt::Key_3)}}, {XCUT_GOMARK4, {QKeySequence(Qt::ALT | Qt::Key_4)}}, \
+	{XCUT_GOMARK5, {QKeySequence(Qt::ALT | Qt::Key_5)}},
 
 // the keys as they have always been, after UnrealSpeccy
 static const xCutDef cutClassic[] = {
@@ -584,7 +626,7 @@ static const xCutDef cutClassic[] = {
 
 	{XCUT_TOPC, {QKeySequence(Qt::Key_Home)}},
 	{XCUT_SETPC, {QKeySequence(Qt::Key_End)}},
-	{XCUT_SETBRK, {QKeySequence(Qt::Key_Space)}},
+	DEBUGGER_KEYS
 	{XCUT_JUMPTO, {QKeySequence(Qt::Key_F4)}},
 	{XCUT_RETFROM, {QKeySequence(Qt::Key_F5)}},
 	{XCUT_GOTOADR, {QKeySequence(Qt::Key_G)}},
@@ -600,19 +642,6 @@ static const xCutDef cutClassic[] = {
 	{-1, {}}
 };
 
-// The machine keeps every key it has; the emulator takes the F-keys, the block
-// over the arrows and one modifier that is no ZX key: Alt here, Cmd on a Mac.
-// Ctrl is Symbol Shift, so only what opens a dialog sits on it.
-#ifdef __APPLE__
-#define HK_MOD Qt::META
-#define HK_MODM Qt::MetaModifier
-#define HK_APP Qt::META
-#else
-#define HK_MOD Qt::ALT
-#define HK_MODM Qt::AltModifier
-#define HK_APP Qt::CTRL
-#endif
-
 static const xCutDef cutModern[] = {
 	{XCUT_OPTIONS, {QKeySequence(HK_APP | Qt::Key_Comma)}},
 	{XCUT_SAVE, {QKeySequence(Qt::Key_F2), QKeySequence(HK_APP | Qt::Key_S)}},
@@ -625,7 +654,11 @@ static const xCutDef cutModern[] = {
 	{XCUT_VIDREC, {QKeySequence(Qt::SHIFT | Qt::Key_F7)}},
 	{XCUT_QUICKLOAD, {QKeySequence(Qt::Key_F9)}},
 	{XCUT_QUICKUNDO, {QKeySequence(Qt::SHIFT | Qt::Key_F9)}},
+#ifdef __APPLE__
 	{XCUT_DEBUG, {QKeySequence(Qt::Key_F10)}},
+#else
+	{XCUT_DEBUG, {QKeySequence(Qt::Key_F10), QKeySequence(Qt::CTRL | Qt::Key_Cancel)}},
+#endif
 	{XCUT_NMI, {QKeySequence(Qt::SHIFT | Qt::Key_F10)}},
 #ifdef __APPLE__
 	{XCUT_FULLSCR, {QKeySequence(Qt::CTRL | Qt::META | Qt::Key_F), QKeySequence(Qt::META | Qt::Key_Return)}},
@@ -670,7 +703,7 @@ static const xCutDef cutModern[] = {
 
 	{XCUT_TOPC, {QKeySequence(Qt::Key_Home)}},
 	{XCUT_SETPC, {QKeySequence(Qt::Key_End)}},
-	{XCUT_SETBRK, {QKeySequence(Qt::Key_Space)}},
+	DEBUGGER_KEYS
 	{XCUT_JUMPTO, {QKeySequence(Qt::ALT | Qt::Key_Right)}},
 	{XCUT_RETFROM, {QKeySequence(Qt::ALT | Qt::Key_Left)}},
 	{XCUT_GOTOADR, {QKeySequence(Qt::Key_G), QKeySequence(HK_APP | Qt::Key_G)}},
