@@ -34,7 +34,7 @@ before that point is upstream's history and is not repeated here.
     Shift+F10 is NMI, F1 lists the keys, and the Alt+arrows rewind, run fast, slow down and
     run flat out.
   - The Hotkeys page searches by action or by key, says when a key is already taken, and
-    takes a second key for each action.
+    takes a second key for each action. *(thanks to Volutar for the search)*
   - An older config keeps the keys you changed and takes Modern for the rest.
   - Hotkeys work in any keyboard layout, and a hotkey's Shift or Ctrl no longer holds Caps or
     Symbol Shift down on the machine.
