@@ -3303,8 +3303,11 @@ Hold: on while the key is held</string>
                <attribute name="verticalHeaderVisible">
                 <bool>false</bool>
                </attribute>
+               <attribute name="verticalHeaderMinimumSectionSize">
+                <number>16</number>
+               </attribute>
                <attribute name="verticalHeaderDefaultSectionSize">
-                <number>24</number>
+                <number>19</number>
                </attribute>
               </widget>
              </item>
