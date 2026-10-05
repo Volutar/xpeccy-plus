@@ -106,11 +106,11 @@
          </item>
          <item>
           <property name="text">
-           <string>Appearance</string>
+           <string>Debugger</string>
           </property>
           <property name="icon">
            <iconset resource="../xpeccy.qrc">
-            <normaloff>:/images/palette.png</normaloff>:/images/palette.png</iconset>
+            <normaloff>:/images/bug.png</normaloff>:/images/bug.png</iconset>
           </property>
          </item>
          <item>
@@ -124,11 +124,11 @@
          </item>
          <item>
           <property name="text">
-           <string>Debugger</string>
+           <string>Appearance</string>
           </property>
           <property name="icon">
            <iconset resource="../xpeccy.qrc">
-            <normaloff>:/images/bug.png</normaloff>:/images/bug.png</iconset>
+            <normaloff>:/images/palette.png</normaloff>:/images/palette.png</iconset>
           </property>
          </item>
          <item>
@@ -2857,501 +2857,6 @@ Hold: on while the key is held</string>
              </item>
             </layout>
            </widget>
-<widget class="QWidget" name="tabLook">
- <layout class="QVBoxLayout" name="verticalLayout_look">
-  <item>
-   <widget class="QGroupBox" name="gbInterface">
-    <property name="title">
-     <string>Interface</string>
-    </property>
-    <layout class="QGridLayout" name="gridLayout_look" columnstretch="0,1">
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="label_22">
-                    <property name="toolTip">
-                     <string>Interface style, from config/styles</string>
-                    </property>
-                    <property name="text">
-                     <string>Style</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QComboBox" name="cbStyleSheet">
-                    <property name="toolTip">
-                     <string>Interface style, from config/styles</string>
-                    </property>
-                    <property name="minimumSize">
-                     <size>
-                      <width>180</width>
-                      <height>0</height>
-                     </size>
-                    </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>180</width>
-                      <height>16777215</height>
-                     </size>
-                    </property>
-                   </widget>
-                  </item>
-    </layout>
-   </widget>
-  </item>
-             <item>
-              <widget class="QGroupBox" name="gbIndicators">
-               <property name="title">
-                <string>Indicators</string>
-               </property>
-               <layout class="QGridLayout" name="gridLayout_23" columnstretch="0,0,1">
-                <property name="horizontalSpacing">
-                 <number>12</number>
-                </property>
-                <property name="verticalSpacing">
-                 <number>8</number>
-                </property>
-                <item row="0" column="0">
-                 <widget class="QCheckBox" name="cbKeysLed">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../xpeccy.qrc">
-                    <normaloff>:/images/scanled.png</normaloff>:/images/scanled.png</iconset>
-                  </property>
-                  <property name="iconSize">
-                   <size>
-                    <width>16</width>
-                    <height>16</height>
-                   </size>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="1">
-                 <widget class="QLabel" name="namKeysLed">
-                  <property name="text">
-                   <string>Keyboard</string>
-                  </property>
-                  <property name="buddy">
-                   <cstring>cbKeysLed</cstring>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="2">
-                 <widget class="QLabel" name="labKeysLed">
-                  <property name="font">
-                   <font>
-                    <italic>true</italic>
-                   </font>
-                  </property>
-                  <property name="text">
-                   <string>Rows of keys the program is reading (ZX only)</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="0">
-                 <widget class="QCheckBox" name="cbJoyLed">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../xpeccy.qrc">
-                    <normaloff>:/images/joystick.png</normaloff>:/images/joystick.png</iconset>
-                  </property>
-                  <property name="iconSize">
-                   <size>
-                    <width>16</width>
-                    <height>16</height>
-                   </size>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="1">
-                 <widget class="QLabel" name="namJoyLed">
-                  <property name="text">
-                   <string>Joystick</string>
-                  </property>
-                  <property name="buddy">
-                   <cstring>cbJoyLed</cstring>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="2">
-                 <widget class="QLabel" name="labJoyLed">
-                  <property name="font">
-                   <font>
-                    <italic>true</italic>
-                   </font>
-                  </property>
-                  <property name="text">
-                   <string>Blinks while the joystick is read</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="0">
-                 <widget class="QCheckBox" name="cbMouseLed">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../xpeccy.qrc">
-                    <normaloff>:/images/mouse.png</normaloff>:/images/mouse.png</iconset>
-                  </property>
-                  <property name="iconSize">
-                   <size>
-                    <width>16</width>
-                    <height>16</height>
-                   </size>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="1">
-                 <widget class="QLabel" name="namMouseLed">
-                  <property name="text">
-                   <string>Mouse</string>
-                  </property>
-                  <property name="buddy">
-                   <cstring>cbMouseLed</cstring>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="2">
-                 <widget class="QLabel" name="labMouseLed">
-                  <property name="font">
-                   <font>
-                    <italic>true</italic>
-                   </font>
-                  </property>
-                  <property name="text">
-                   <string>Blinks while the mouse is read</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="0">
-                 <widget class="QCheckBox" name="cbTapeLed">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../xpeccy.qrc">
-                    <normaloff>:/images/tapeYellow.png</normaloff>:/images/tapeYellow.png</iconset>
-                  </property>
-                  <property name="iconSize">
-                   <size>
-                    <width>16</width>
-                    <height>16</height>
-                   </size>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="1">
-                 <widget class="QLabel" name="namTapeLed">
-                  <property name="text">
-                   <string>Tape</string>
-                  </property>
-                  <property name="buddy">
-                   <cstring>cbTapeLed</cstring>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="2">
-                 <widget class="QLabel" name="labTapeLed">
-                  <property name="font">
-                   <font>
-                    <italic>true</italic>
-                   </font>
-                  </property>
-                  <property name="text">
-                   <string>On while the tape plays, red while it records</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="4" column="0">
-                 <widget class="QCheckBox" name="cbDiskLed">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../xpeccy.qrc">
-                    <normaloff>:/images/diskGreen.png</normaloff>:/images/diskGreen.png</iconset>
-                  </property>
-                  <property name="iconSize">
-                   <size>
-                    <width>16</width>
-                    <height>16</height>
-                   </size>
-                  </property>
-                 </widget>
-                </item>
-                <item row="4" column="1">
-                 <widget class="QLabel" name="namDiskLed">
-                  <property name="text">
-                   <string>Disk</string>
-                  </property>
-                  <property name="buddy">
-                   <cstring>cbDiskLed</cstring>
-                  </property>
-                 </widget>
-                </item>
-                <item row="4" column="2">
-                 <widget class="QLabel" name="labDiskLed">
-                  <property name="font">
-                   <font>
-                    <italic>true</italic>
-                   </font>
-                  </property>
-                  <property name="text">
-                   <string>Green on a disk read, red on a write</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="5" column="0">
-                 <widget class="QCheckBox" name="cbFpsLed">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../xpeccy.qrc">
-                    <normaloff>:/images/bars.png</normaloff>:/images/bars.png</iconset>
-                  </property>
-                  <property name="iconSize">
-                   <size>
-                    <width>16</width>
-                    <height>16</height>
-                   </size>
-                  </property>
-                 </widget>
-                </item>
-                <item row="5" column="1">
-                 <widget class="QLabel" name="namFpsLed">
-                  <property name="text">
-                   <string>FPS</string>
-                  </property>
-                  <property name="buddy">
-                   <cstring>cbFpsLed</cstring>
-                  </property>
-                 </widget>
-                </item>
-                <item row="5" column="2">
-                 <widget class="QLabel" name="labFpsLed">
-                  <property name="font">
-                   <font>
-                    <italic>true</italic>
-                   </font>
-                  </property>
-                  <property name="text">
-                   <string>Frames per second (top right)</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="6" column="0">
-                 <widget class="QCheckBox" name="cbHaltLed">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../xpeccy.qrc">
-                    <normaloff>:/images/pause.png</normaloff>:/images/pause.png</iconset>
-                  </property>
-                  <property name="iconSize">
-                   <size>
-                    <width>16</width>
-                    <height>16</height>
-                   </size>
-                  </property>
-                 </widget>
-                </item>
-                <item row="6" column="1">
-                 <widget class="QLabel" name="namHaltLed">
-                  <property name="text">
-                   <string>HALT</string>
-                  </property>
-                  <property name="buddy">
-                   <cstring>cbHaltLed</cstring>
-                  </property>
-                 </widget>
-                </item>
-                <item row="6" column="2">
-                 <widget class="QLabel" name="labHaltLed">
-                  <property name="font">
-                   <font>
-                    <italic>true</italic>
-                   </font>
-                  </property>
-                  <property name="text">
-                   <string>HALT count and frame count (bottom right)</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="7" column="0">
-                 <widget class="QCheckBox" name="cbClockLed">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../xpeccy.qrc">
-                    <normaloff>:/images/clock.png</normaloff>:/images/clock.png</iconset>
-                  </property>
-                  <property name="iconSize">
-                   <size>
-                    <width>16</width>
-                    <height>16</height>
-                   </size>
-                  </property>
-                 </widget>
-                </item>
-                <item row="7" column="1">
-                 <widget class="QLabel" name="namClockLed">
-                  <property name="text">
-                   <string>CPU clock</string>
-                  </property>
-                  <property name="buddy">
-                   <cstring>cbClockLed</cstring>
-                  </property>
-                 </widget>
-                </item>
-                <item row="7" column="2">
-                 <widget class="QLabel" name="labClockLed">
-                  <property name="font">
-                   <font>
-                    <italic>true</italic>
-                   </font>
-                  </property>
-                  <property name="text">
-                   <string>Shown while the CPU is off its base clock (bottom right)</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="8" column="0">
-                 <widget class="QCheckBox" name="cbMessage">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../xpeccy.qrc">
-                    <normaloff>:/images/label.png</normaloff>:/images/label.png</iconset>
-                  </property>
-                  <property name="iconSize">
-                   <size>
-                    <width>16</width>
-                    <height>16</height>
-                   </size>
-                  </property>
-                 </widget>
-                </item>
-                <item row="8" column="1">
-                 <widget class="QLabel" name="namMessage">
-                  <property name="text">
-                   <string>Messages</string>
-                  </property>
-                  <property name="buddy">
-                   <cstring>cbMessage</cstring>
-                  </property>
-                 </widget>
-                </item>
-                <item row="8" column="2">
-                 <widget class="QLabel" name="labMessage">
-                  <property name="font">
-                   <font>
-                    <italic>true</italic>
-                   </font>
-                  </property>
-                  <property name="text">
-                   <string>What the emulator has just done (bottom left)</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="9" column="0">
-                 <widget class="QCheckBox" name="cbFadeLed">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../xpeccy.qrc">
-                    <normaloff>:/images/display.png</normaloff>:/images/display.png</iconset>
-                  </property>
-                  <property name="iconSize">
-                   <size>
-                    <width>16</width>
-                    <height>16</height>
-                   </size>
-                  </property>
-                 </widget>
-                </item>
-                <item row="9" column="1">
-                 <widget class="QLabel" name="namFadeLed">
-                  <property name="text">
-                   <string>Fade out</string>
-                  </property>
-                  <property name="buddy">
-                   <cstring>cbFadeLed</cstring>
-                  </property>
-                 </widget>
-                </item>
-                <item row="9" column="2">
-                 <widget class="QLabel" name="labFadeLed">
-                  <property name="font">
-                   <font>
-                    <italic>true</italic>
-                   </font>
-                  </property>
-                  <property name="text">
-                   <string>Signs and messages fade away instead of vanishing</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
-             </item>
-  <item>
-   <spacer name="verticalSpacer_look">
-    <property name="orientation">
-     <enum>Qt::Vertical</enum>
-    </property>
-    <property name="sizeHint" stdset="0">
-     <size>
-      <width>20</width>
-      <height>40</height>
-     </size>
-    </property>
-   </spacer>
-  </item>
- </layout>
-</widget>
-           <widget class="QWidget" name="tab_13">
-            <layout class="QVBoxLayout" name="verticalLayout_40">
-             <item>
-              <widget class="xHotkeyTable" name="tvHotkeys">
-               <property name="selectionMode">
-                <enum>QAbstractItemView::SingleSelection</enum>
-               </property>
-               <property name="selectionBehavior">
-                <enum>QAbstractItemView::SelectRows</enum>
-               </property>
-               <property name="gridStyle">
-                <enum>Qt::DotLine</enum>
-               </property>
-               <attribute name="horizontalHeaderVisible">
-                <bool>false</bool>
-               </attribute>
-               <attribute name="horizontalHeaderDefaultSectionSize">
-                <number>200</number>
-               </attribute>
-               <attribute name="horizontalHeaderStretchLastSection">
-                <bool>true</bool>
-               </attribute>
-               <attribute name="verticalHeaderVisible">
-                <bool>false</bool>
-               </attribute>
-               <attribute name="verticalHeaderMinimumSectionSize">
-                <number>16</number>
-               </attribute>
-               <attribute name="verticalHeaderDefaultSectionSize">
-                <number>19</number>
-               </attribute>
-              </widget>
-             </item>
-            </layout>
-           </widget>
            <widget class="QWidget" name="tab_12">
             <layout class="QHBoxLayout" name="horizontalLayout_37" stretch="10,0">
              <item>
@@ -3878,6 +3383,501 @@ Right click: back to the style color</string>
              </item>
             </layout>
            </widget>
+           <widget class="QWidget" name="tab_13">
+            <layout class="QVBoxLayout" name="verticalLayout_40">
+             <item>
+              <widget class="xHotkeyTable" name="tvHotkeys">
+               <property name="selectionMode">
+                <enum>QAbstractItemView::SingleSelection</enum>
+               </property>
+               <property name="selectionBehavior">
+                <enum>QAbstractItemView::SelectRows</enum>
+               </property>
+               <property name="gridStyle">
+                <enum>Qt::DotLine</enum>
+               </property>
+               <attribute name="horizontalHeaderVisible">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="horizontalHeaderDefaultSectionSize">
+                <number>200</number>
+               </attribute>
+               <attribute name="horizontalHeaderStretchLastSection">
+                <bool>true</bool>
+               </attribute>
+               <attribute name="verticalHeaderVisible">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="verticalHeaderMinimumSectionSize">
+                <number>16</number>
+               </attribute>
+               <attribute name="verticalHeaderDefaultSectionSize">
+                <number>19</number>
+               </attribute>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+<widget class="QWidget" name="tabLook">
+ <layout class="QVBoxLayout" name="verticalLayout_look">
+  <item>
+   <widget class="QGroupBox" name="gbInterface">
+    <property name="title">
+     <string>Interface</string>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_look" columnstretch="0,1">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_22">
+                    <property name="toolTip">
+                     <string>Interface style, from config/styles</string>
+                    </property>
+                    <property name="text">
+                     <string>Style</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QComboBox" name="cbStyleSheet">
+                    <property name="toolTip">
+                     <string>Interface style, from config/styles</string>
+                    </property>
+                    <property name="minimumSize">
+                     <size>
+                      <width>180</width>
+                      <height>0</height>
+                     </size>
+                    </property>
+                    <property name="maximumSize">
+                     <size>
+                      <width>180</width>
+                      <height>16777215</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+    </layout>
+   </widget>
+  </item>
+             <item>
+              <widget class="QGroupBox" name="gbIndicators">
+               <property name="title">
+                <string>Indicators</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_23" columnstretch="0,0,1">
+                <property name="horizontalSpacing">
+                 <number>12</number>
+                </property>
+                <property name="verticalSpacing">
+                 <number>8</number>
+                </property>
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="cbKeysLed">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../xpeccy.qrc">
+                    <normaloff>:/images/scanled.png</normaloff>:/images/scanled.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>16</width>
+                    <height>16</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QLabel" name="namKeysLed">
+                  <property name="text">
+                   <string>Keyboard</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>cbKeysLed</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QLabel" name="labKeysLed">
+                  <property name="font">
+                   <font>
+                    <italic>true</italic>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Rows of keys the program is reading (ZX only)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="cbJoyLed">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../xpeccy.qrc">
+                    <normaloff>:/images/joystick.png</normaloff>:/images/joystick.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>16</width>
+                    <height>16</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLabel" name="namJoyLed">
+                  <property name="text">
+                   <string>Joystick</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>cbJoyLed</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QLabel" name="labJoyLed">
+                  <property name="font">
+                   <font>
+                    <italic>true</italic>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Blinks while the joystick is read</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="cbMouseLed">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../xpeccy.qrc">
+                    <normaloff>:/images/mouse.png</normaloff>:/images/mouse.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>16</width>
+                    <height>16</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QLabel" name="namMouseLed">
+                  <property name="text">
+                   <string>Mouse</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>cbMouseLed</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QLabel" name="labMouseLed">
+                  <property name="font">
+                   <font>
+                    <italic>true</italic>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Blinks while the mouse is read</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="cbTapeLed">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../xpeccy.qrc">
+                    <normaloff>:/images/tapeYellow.png</normaloff>:/images/tapeYellow.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>16</width>
+                    <height>16</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QLabel" name="namTapeLed">
+                  <property name="text">
+                   <string>Tape</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>cbTapeLed</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="2">
+                 <widget class="QLabel" name="labTapeLed">
+                  <property name="font">
+                   <font>
+                    <italic>true</italic>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>On while the tape plays, red while it records</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="cbDiskLed">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../xpeccy.qrc">
+                    <normaloff>:/images/diskGreen.png</normaloff>:/images/diskGreen.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>16</width>
+                    <height>16</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QLabel" name="namDiskLed">
+                  <property name="text">
+                   <string>Disk</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>cbDiskLed</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="2">
+                 <widget class="QLabel" name="labDiskLed">
+                  <property name="font">
+                   <font>
+                    <italic>true</italic>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Green on a disk read, red on a write</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="cbFpsLed">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../xpeccy.qrc">
+                    <normaloff>:/images/bars.png</normaloff>:/images/bars.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>16</width>
+                    <height>16</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QLabel" name="namFpsLed">
+                  <property name="text">
+                   <string>FPS</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>cbFpsLed</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="2">
+                 <widget class="QLabel" name="labFpsLed">
+                  <property name="font">
+                   <font>
+                    <italic>true</italic>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Frames per second (top right)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="0">
+                 <widget class="QCheckBox" name="cbHaltLed">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../xpeccy.qrc">
+                    <normaloff>:/images/pause.png</normaloff>:/images/pause.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>16</width>
+                    <height>16</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="1">
+                 <widget class="QLabel" name="namHaltLed">
+                  <property name="text">
+                   <string>HALT</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>cbHaltLed</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="2">
+                 <widget class="QLabel" name="labHaltLed">
+                  <property name="font">
+                   <font>
+                    <italic>true</italic>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>HALT count and frame count (bottom right)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="0">
+                 <widget class="QCheckBox" name="cbClockLed">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../xpeccy.qrc">
+                    <normaloff>:/images/clock.png</normaloff>:/images/clock.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>16</width>
+                    <height>16</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="1">
+                 <widget class="QLabel" name="namClockLed">
+                  <property name="text">
+                   <string>CPU clock</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>cbClockLed</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="2">
+                 <widget class="QLabel" name="labClockLed">
+                  <property name="font">
+                   <font>
+                    <italic>true</italic>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Shown while the CPU is off its base clock (bottom right)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="8" column="0">
+                 <widget class="QCheckBox" name="cbMessage">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../xpeccy.qrc">
+                    <normaloff>:/images/label.png</normaloff>:/images/label.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>16</width>
+                    <height>16</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item row="8" column="1">
+                 <widget class="QLabel" name="namMessage">
+                  <property name="text">
+                   <string>Messages</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>cbMessage</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item row="8" column="2">
+                 <widget class="QLabel" name="labMessage">
+                  <property name="font">
+                   <font>
+                    <italic>true</italic>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>What the emulator has just done (bottom left)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="9" column="0">
+                 <widget class="QCheckBox" name="cbFadeLed">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../xpeccy.qrc">
+                    <normaloff>:/images/display.png</normaloff>:/images/display.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>16</width>
+                    <height>16</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item row="9" column="1">
+                 <widget class="QLabel" name="namFadeLed">
+                  <property name="text">
+                   <string>Fade out</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>cbFadeLed</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item row="9" column="2">
+                 <widget class="QLabel" name="labFadeLed">
+                  <property name="font">
+                   <font>
+                    <italic>true</italic>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Signs and messages fade away instead of vanishing</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+  <item>
+   <spacer name="verticalSpacer_look">
+    <property name="orientation">
+     <enum>Qt::Vertical</enum>
+    </property>
+    <property name="sizeHint" stdset="0">
+     <size>
+      <width>20</width>
+      <height>40</height>
+     </size>
+    </property>
+   </spacer>
+  </item>
+ </layout>
+</widget>
            <widget class="QWidget" name="tab_5">
             <layout class="QVBoxLayout" name="verticalLayout_32">
              <item>
