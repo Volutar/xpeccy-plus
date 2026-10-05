@@ -46,6 +46,7 @@
 #include "watcher.h"
 #include "xgui/favorites.h"
 #include "xgui/xgui.h"
+#include "xcore/pacing.h"
 
 #include "xcore/vfilters.h"
 #include "xcore/vscalers.h"
@@ -1134,8 +1135,9 @@ void MainWin::drawIcons(QPainter& pnt) {
 		comp->joy->used = 0;
 	}
 // mouse
-	if (comp->mouse->used && conf.led.mouse) {
-		pnt.drawImage(3, 50, leds[led_mouse]);
+	if (comp->mouse->used) {
+		mouseReadAt = paceClockNs();
+		if (conf.led.mouse) pnt.drawImage(3, 50, leds[led_mouse]);
 		comp->mouse->used = 0;
 	}
 	// the status bar has these, when it is there
@@ -1596,7 +1598,10 @@ void MainWin::initUserMenu() {
 	pckAct = userMenu->addAction(QIcon(":/images/keyboard.png"),"Grab keyboard");
 	pckAct->setCheckable(true);
 	// the Profi changes its layout with the grab, so no key may stay down across it
-	connect(pckAct, &QAction::toggled, this, [](bool) {kbdReleaseAll(conf.zx->keyb);});
+	connect(pckAct, &QAction::toggled, this, [this](bool on) {
+		kbdReleaseAll(conf.zx->keyb);
+		setMessage(on ? " grab keyboard, " XREL_KEYS " lets go " : " release keyboard ");
+	});
 	cutActs.append({pckAct, pckAct->text(), XCUT_GRABKBD});	// its key, shown; the action is its own
 	cutAction(userMenu, "Virtual keyboard", XCUT_KEYBOARD, "keyboardzx");
 	// the debugger and its detached panels
@@ -1711,6 +1716,7 @@ void MainWin::initMenuBar() {
 	cutAction(fileMenu, "Save changed disks", XCUT_FASTSAVE, "floppy");
 	cutAction(fileMenu, "Quick save", XCUT_QUICKSAVE);
 	cutAction(fileMenu, "Quick load", XCUT_QUICKLOAD);
+	cutAction(fileMenu, "Undo quick load", XCUT_QUICKUNDO);
 	fileMenu->addSeparator();
 	cutAction(fileMenu, "Screenshot", XCUT_SCRSHOT, "grp-screenshot");
 	cutAction(fileMenu, "Screenshot series", XCUT_COMBOSHOT);

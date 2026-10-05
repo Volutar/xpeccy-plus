@@ -7,6 +7,7 @@
 
 #include <QMenu>
 #include <QFileDialog>
+#include <QGuiApplication>
 
 void MainWin::kPress(QKeyEvent* ev) {
 	keyPressEvent(ev);
@@ -36,6 +37,22 @@ static int xcut_tmode(int keyid) {
 // one switches, opens or fires something, and a repeat undoes it or fires it again.
 static bool xcut_repeats(int keyid) {
 	return (keyid == XCUT_SPEED_UP) || (keyid == XCUT_SPEED_DOWN);
+}
+
+void MainWin::releaseChord(QKeyEvent* ev, bool down) {
+	int key = ev->key();
+	if ((key != Qt::Key_Control) && (key != XREL_KEY2)) {
+		if (down) relArmed = false;		// another key between: Ctrl+Alt+Del is not it
+		return;
+	}
+	if (down) {
+		if ((QGuiApplication::queryKeyboardModifiers() & XREL_MODS) == XREL_MODS) relArmed = true;
+		return;
+	}
+	if (!relArmed) return;
+	relArmed = false;
+	if (grabMice) mouseGrabOff();
+	if (pckAct->isChecked()) pckAct->setChecked(false);
 }
 
 int ev_to_keyid(QKeyEvent* ev, bool kgrab) {
@@ -70,6 +87,7 @@ void MainWin::keyPressEvent(QKeyEvent* ev) {
 	int keyid;
 	keyEntry kent;
 	Computer* comp = conf.zx;
+	releaseChord(ev, true);
 //	qDebug() << ev->key();
 	if (comp->flgDBG) {
 		ev->ignore();
@@ -151,8 +169,6 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 				joyPress(comp->joy, kent.joyMask & 0xff);
 			}
 		}
-		if (xkey == XKEY_F12)
-			resetMachine(RES_DEFAULT);
 	} else {
 		switch (xkey) {
 			case XCUT_FULLSCR:
@@ -208,8 +224,7 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 				break;
 			case XCUT_FAST:
 				if (conf.emu.pause) break;
-				conf.emu.fast ^= 1;
-				updateHead();
+				fast_key(true);
 				break;
 			case XCUT_TURBO:
 				// the board's own turbo, walked through the steps it declares.
@@ -269,6 +284,13 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 			case XCUT_QUICKLOAD:
 				setMessage(quick_load(comp) ? " quick load " : " nothing quick saved ");
 				break;
+			case XCUT_QUICKUNDO:
+				setMessage(quick_undo(comp) ? " quick load undone " : " nothing to undo ");
+				break;
+			case XCUT_TAPE_START:
+				tapStateChanged(TW_REWIND, 0);
+				setMessage(" tape to start ");
+				break;
 			case XCUT_FAVORITE:
 				// adds only: taking one out stays in the menu, where it can be seen
 				path = media_current();
@@ -294,8 +316,7 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 				}
 				break;
 			case XCUT_GRABKBD:
-				pckAct->setChecked(!pckAct->isChecked());
-				setMessage(pckAct->isChecked() ? " grab keyboard " : " release keyboard ");
+				pckAct->setChecked(!pckAct->isChecked());	// its message comes with the switch
 				break;
 			case XCUT_PAUSE:
 				conf.emu.pause ^= PR_PAUSE;
@@ -410,6 +431,7 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 
 void MainWin::keyReleaseEvent(QKeyEvent *ev) {
 	if (ev->isAutoRepeat()) return;
+	releaseChord(ev, false);
 	Computer* comp = conf.zx;
 //	if (relskip) {
 //		relskip = 0;
@@ -453,9 +475,19 @@ void MainWin::keyReleaseEvent(QKeyEvent *ev) {
 //	}
 }
 
+// Fast mode's key, as its setting says it works
+void MainWin::fast_key(bool down) {
+	static xHoldKey key;
+	if (!xhold_switches(&key, conf.emu.fastHold, conf.emu.fast, down)) return;
+	conf.emu.fast ^= 1;
+	updateHead();
+}
+
 // a hotkey let go: only the ones that are held answer it
 void MainWin::xcut_release(int keyid) {
-	if (keyid == XCUT_REWIND) {
+	if (keyid == XCUT_FAST) {
+		fast_key(false);
+	} else if (keyid == XCUT_REWIND) {
 		rewind_want(0);
 	} else if (xcut_tmode(keyid)) {
 		xspeed_key(xcut_tmode(keyid), 0);

@@ -9,6 +9,7 @@
 
 #include "xcore.h"
 #include "sound.h"
+#include "pacing.h"
 
 static const char* hexhalf = "0123456789ABCDEF";
 // static char hexbuf[5] = {'0','0','0','0',0x00};
@@ -247,14 +248,28 @@ void xspeed_toggle(int mode) {
 	sndUpdateSpeed();
 }
 
-void xspeed_key(int mode, int down) {
-	int hold = (mode == XTM_SLOW) ? conf.emu.slowHold : conf.emu.ffHold;
+// A tap shorter than this switches a hybrid key's mode; a longer press only holds it.
+#define XHOLD_TAP_NS	300000000LL
+
+bool xhold_switches(xHoldKey* key, int hold, bool on, bool down) {
 	if (down) {
-		if (!hold || (conf.emu.tmode != mode))
-			xspeed_toggle(mode);
-	} else if (hold && (conf.emu.tmode == mode)) {
-		xspeed_toggle(mode);
+		key->offByPress = false;
+		if ((hold == XHOLD_TOGGLE) || !on) {
+			key->downAt = paceClockNs();
+			return true;
+		}
+		key->offByPress = (hold == XHOLD_HYBRID);	// a tap switched it on, this press off
+		return key->offByPress;
 	}
+	if (!on || key->offByPress) return false;
+	return (hold == XHOLD_HOLD) || ((hold == XHOLD_HYBRID) && (paceClockNs() - key->downAt >= XHOLD_TAP_NS));
+}
+
+void xspeed_key(int mode, int down) {
+	static xHoldKey keys[2];
+	int hold = (mode == XTM_SLOW) ? conf.emu.slowHold : conf.emu.ffHold;
+	if (xhold_switches(&keys[mode == XTM_SLOW], hold, conf.emu.tmode == mode, down))
+		xspeed_toggle(mode);
 }
 
 // Another tape, disk or machine is another game: it starts at normal speed.

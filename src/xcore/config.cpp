@@ -148,14 +148,24 @@ void conf_init(char* wpath, char* confdir) {
 	conf.emu.tmode = XTM_NONE;
 	conf.emu.slowDiv = 4;
 	conf.emu.ffMul = 4;
-	conf.emu.slowHold = 0;
-	conf.emu.ffHold = 0;
+	conf.emu.slowHold = XHOLD_HYBRID;
+	conf.emu.ffHold = XHOLD_HYBRID;
+	conf.emu.fastHold = XHOLD_HYBRID;
 	conf.emu.rewind.on = 1;
 	conf.emu.rewind.step = 3;
 	conf.emu.rewind.secs = 30;
 	conf.led.clock = 1;
 	conf.led.fade = 1;
 	conf.gpctrl = new xGamepadController;
+}
+
+// how a speed key works, as the config writes it; "yes" and "no" are the two an
+// older config knew, and its "no" was the only default there was, so it is taken
+// for the default there is now
+static const char* holdNames[] = {"toggle", "hold", "hybrid", NULL};
+
+static int hold_mode(const std::string& val) {
+	return (val == "yes") ? XHOLD_HOLD : rec_id(holdNames, val, XHOLD_HYBRID);
 }
 
 void saveConfig() {
@@ -242,8 +252,9 @@ void saveConfig() {
 	fprintf(cfile, "runahead = %i\n", conf.emu.runahead);
 	fprintf(cfile, "slowmo = %i\n", conf.emu.slowDiv);
 	fprintf(cfile, "ffwd = %i\n", conf.emu.ffMul);
-	fprintf(cfile, "slowmo.hold = %s\n", YESNO(conf.emu.slowHold));
-	fprintf(cfile, "ffwd.hold = %s\n", YESNO(conf.emu.ffHold));
+	fprintf(cfile, "slowmo.hold = %s\n", holdNames[conf.emu.slowHold]);
+	fprintf(cfile, "ffwd.hold = %s\n", holdNames[conf.emu.ffHold]);
+	fprintf(cfile, "fast.hold = %s\n", holdNames[conf.emu.fastHold]);
 	fprintf(cfile, "rewind = %s\n", YESNO(conf.emu.rewind.on));
 	fprintf(cfile, "rewind.step = %i\n", conf.emu.rewind.step);
 	fprintf(cfile, "rewind.secs = %i\n", conf.emu.rewind.secs);
@@ -983,8 +994,9 @@ void loadConfig() {
 					if (pnam=="runahead") conf.emu.runahead = getRanged(arg.s, 0, 2);
 					if (pnam=="slowmo") conf.emu.slowDiv = toPower(getRanged(arg.s, 2, 8));
 					if (pnam=="ffwd") conf.emu.ffMul = toPower(getRanged(arg.s, 2, 8));
-					if (pnam=="slowmo.hold") conf.emu.slowHold = arg.b;
-					if (pnam=="ffwd.hold") conf.emu.ffHold = arg.b;
+					if (pnam=="slowmo.hold") conf.emu.slowHold = hold_mode(pval);
+					if (pnam=="ffwd.hold") conf.emu.ffHold = hold_mode(pval);
+					if (pnam=="fast.hold") conf.emu.fastHold = hold_mode(pval);
 					if (pnam=="rewind") conf.emu.rewind.on = arg.b;
 					if (pnam=="rewind.step") conf.emu.rewind.step = getRanged(arg.s, 1, 50);
 					if (pnam=="rewind.secs") conf.emu.rewind.secs = getRanged(arg.s, 5, 300);

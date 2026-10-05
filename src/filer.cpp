@@ -718,15 +718,38 @@ int quick_save(Computer* comp) {
 	return res;
 }
 
+// what a quick load replaced, to take it back with
+static xState* undoState = NULL;
+static std::string undoMac;
+
 int quick_load(Computer* comp) {
 	int res = 0;
 	emu_lock();
+	if (!undoState) undoState = xstate_create();
+	undoMac = (undoState && xstate_save(undoState, comp)) ? conf.macId : std::string();
 	if (quickState && (quickMac == conf.macId))
 		res = xstate_load(quickState, comp);
 	if (!res) {
 		QString path = quick_path();
 		if (QFileInfo::exists(path))
 			res = (load_file(comp, path.toLocal8Bit().data(), FG_ALL, 0) == ERR_OK);
+	}
+	emu_unlock();
+	return res;
+}
+
+// back to before the last quick load; again, and that load is back
+int quick_undo(Computer* comp) {
+	if (!undoState || (undoMac != conf.macId)) return 0;
+	emu_lock();
+	xState* was = xstate_create();
+	bool kept = was && xstate_save(was, comp);
+	int res = xstate_load(undoState, comp);
+	if (res && kept) {
+		xstate_destroy(undoState);
+		undoState = was;
+	} else if (was) {
+		xstate_destroy(was);
 	}
 	emu_unlock();
 	return res;

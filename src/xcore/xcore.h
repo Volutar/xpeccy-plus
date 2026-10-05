@@ -124,6 +124,13 @@ enum {
 };
 void xspeed_toggle(int);
 void xspeed_key(int mode, int down);	// its key, as Toggle or Hold says
+
+// a key that switches a mode, as XHOLD_* says: true when this press or release switches it
+typedef struct {
+	long long downAt;	// when the press that switched it on came
+	bool offByPress;	// the press switched it off: its release does nothing
+} xHoldKey;
+bool xhold_switches(xHoldKey*, int hold, bool on, bool down);
 void xspeed_modes_off();		// back to normal speed if either is on
 double xspeed_mult(int);
 void xspeed_set(int);
@@ -328,6 +335,10 @@ extern std::map<std::string, int> shotFormat;
 
 // keymap
 
+// a key that switches a speed mode: a toggle, on while held, or both - a tap
+// switches it and a longer press holds it only for as long as the key is down
+enum {XHOLD_TOGGLE = 0, XHOLD_HOLD, XHOLD_HYBRID};
+
 enum {
 	XCUT_SIZEX1 = 0x10000,
 	XCUT_SIZEX2,
@@ -375,6 +386,8 @@ enum {
 	XCUT_QUICKSAVE,
 	XCUT_QUICKLOAD,
 	XCUT_HOTKEYS,
+	XCUT_QUICKUNDO,
+	XCUT_TAPE_START,
 	XCUT_REWIND,
 	XCUT_FFWD,
 	XCUT_SLOWMO,
@@ -711,8 +724,9 @@ struct xConfig {
 		int tmode;		// XTM_*, never saved
 		int slowDiv;		// slow motion runs at 1/slowDiv: 2, 4, 8
 		int ffMul;		// fast forward at ffMul: 2, 4, 8
-		unsigned slowHold:1;	// on only while its key is held, else a toggle
-		unsigned ffHold:1;
+		int slowHold;		// XHOLD_*: how the key works
+		int ffHold;
+		int fastHold;		// Fast mode's key
 		// rewind (xcore/rewind.cpp): a snapshot every step frames, secs of them
 		// kept; going back shows one snapshot a frame
 		struct {
