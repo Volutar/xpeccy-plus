@@ -155,6 +155,7 @@ void conf_init(char* wpath, char* confdir) {
 	conf.emu.rewind.step = 3;
 	conf.emu.rewind.secs = 30;
 	conf.led.clock = 1;
+	conf.led.fade = 1;
 	conf.gpctrl = new xGamepadController;
 }
 
@@ -319,6 +320,7 @@ void saveConfig() {
 	fprintf(cfile, "fps = %s\n", YESNO(conf.led.fps));
 	fprintf(cfile, "halt = %s\n", YESNO(conf.led.halt));
 	fprintf(cfile, "clock = %s\n", YESNO(conf.led.clock));
+	fprintf(cfile, "fade = %s\n", YESNO(conf.led.fade));
 
 	fprintf(cfile, "\n[DEBUGA]\n\n");
 	fprintf(cfile, "dbsize = %i\n", conf.dbg.dbsize);
@@ -1146,6 +1148,7 @@ void loadConfig() {
 					if (pnam=="fps") conf.led.fps = arg.b;
 					if (pnam=="halt") conf.led.halt = arg.b;
 					if (pnam=="clock") conf.led.clock = arg.b;
+					if (pnam=="fade") conf.led.fade = arg.b;
 					break;
 			}
 		}

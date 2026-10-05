@@ -1051,6 +1051,9 @@ bool MainWin::recStart(const QString& file) {
 #define MODE_ICON_TOP_NOFPS	5	// with no fps readout to clear
 #define MODE_ICON_RIGHT	5
 #define RW_SECS_LINGER	1500	// ms the rewind's seconds stay up after it
+#define SIGN_FADE_MS	500	// and any other sign
+#define SIGN_FADE_FROM	0.6	// how pale a sign turns as soon as it is over
+#define MSG_FADE_FRAMES	25	// the last frames of a message, fading
 #define REC_BLINK_MS	500
 
 // where the speed mode and the recording sign go
@@ -1153,26 +1156,50 @@ void MainWin::drawIcons(QPainter& pnt) {
 	}
 // put the speed mode, VCR style, clear of the fps readout
 	int mode = speedOsd();
-	// how far back a rewind has gone, beside its sign, and a moment longer once the
-	// key is let go so it can be read
-	static qint64 rwSeen = 0;
+	// A sign whose state is over fades away rather than blinking out - pale at
+	// once, so it does not read as still on. The rewind's stays longer: its
+	// seconds under it are there to be read.
+	static int signOn = osd_none;
+	static int signGone = osd_none;
+	static qint64 signGoneAt = 0;
 	qint64 now = QDateTime::currentMSecsSinceEpoch();
-	if (mode == osd_rewind) rwSeen = now;
-	bool rwSecs = (now - rwSeen) < RW_SECS_LINGER;
-	if (rwSecs && (mode == osd_none)) mode = osd_rewind;
+	if (mode != osd_none) {
+		signOn = mode;
+		signGone = osd_none;
+	} else if (signOn != osd_none) {
+		signGone = conf.led.fade ? signOn : osd_none;
+		signGoneAt = now;
+		signOn = osd_none;
+	}
+	double fade = 1.0;
+	if ((mode == osd_none) && (signGone != osd_none)) {
+		int len = (signGone == osd_rewind) ? RW_SECS_LINGER : SIGN_FADE_MS;
+		if (now - signGoneAt < len) {
+			mode = signGone;
+			fade = SIGN_FADE_FROM * (1.0 - double(now - signGoneAt) / len);
+		} else {
+			signGone = osd_none;
+		}
+	}
 	// recording blinks, taking turns with the speed mode. Recording the window,
 	// it is put on after the picture has been read (see paintEvent)
 	int rec = recOsd();
-	if ((rec != osd_none) && !vrec_wants_screen())
+	if ((rec != osd_none) && !vrec_wants_screen()) {
 		mode = rec;
+		fade = 1.0;
+	}
+	pnt.setOpacity(fade);
 	if (mode != osd_none)
 		pnt.drawImage(modeSlot().topLeft(), osdImg[mode]);
-	if (rwSecs && (mode == osd_rewind)) {
+	// how far back a rewind has gone, under its sign, to the right like it and the
+	// same gap below it as to the edge
+	if (mode == osd_rewind) {
 		int t = rewind_back_tenths();
 		sprintf(numbuf, " -%d.%ds ", t / 10, t % 10);
 		QRect slot = modeSlot();
-		drawText(&pnt, slot.left() - strlen(numbuf) * 12, slot.center().y() - 6, numbuf);
+		drawText(&pnt, width() - strlen(numbuf) * 12 - MODE_ICON_RIGHT, slot.bottom() + 1 + MODE_ICON_RIGHT, numbuf);
 	}
+	pnt.setOpacity(1.0);
 // put fps
 	if (fpsOsd()) {
 		sprintf(numbuf, " %.1f ", conf.vid.curfps);
@@ -1194,7 +1221,10 @@ void MainWin::drawIcons(QPainter& pnt) {
 // put messages
 	if (msgTimer > 0) {
 		if (conf.led.message) {
+			if (conf.led.fade && (msgTimer < MSG_FADE_FRAMES))	// its last moments, fading
+				pnt.setOpacity(double(msgTimer) / MSG_FADE_FRAMES);
 			drawText(&pnt, 5, height() - 20, msg.toLocal8Bit().data());
+			pnt.setOpacity(1.0);
 		}
 		msgTimer--;
 	}
