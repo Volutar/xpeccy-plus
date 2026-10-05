@@ -4,6 +4,7 @@
 #include "xcore/filemachine.h"
 #include "xcore/sound.h"
 #include "libxpeccy/cpu/Z80/z80.h"
+#include "libxpeccy/xstate.h"
 #include "xgui/xgui.h"
 
 #include <QDebug>
@@ -694,6 +695,42 @@ int save_file(Computer* comp, const char* name, int id, int drv, int live) {
 	return err;
 }
 
+
+// quick save: the machine as it is, in memory for any machine - an xstate is not a
+// file, it holds the live machine's own pointers - and as a .z80 where it can be one
+static xState* quickState = NULL;
+static std::string quickMac;		// the machine the one in memory is of
+
+static QString quick_path() {
+	QString dir = QString::fromLocal8Bit(conf.path.confDir.c_str()) + "/quick";
+	QDir().mkpath(dir);
+	return dir + "/" + QString::fromLocal8Bit(conf.macId.c_str()) + ".z80";
+}
+
+int quick_save(Computer* comp) {
+	emu_lock();
+	if (!quickState) quickState = xstate_create();
+	int res = (quickState && xstate_save(quickState, comp)) ? 1 : 0;
+	quickMac = res ? conf.macId : std::string();
+	if (res && z80CanSave(comp) && (saveZ80(comp, quick_path().toLocal8Bit().data(), 0) == ERR_OK))
+		res = 2;
+	emu_unlock();
+	return res;
+}
+
+int quick_load(Computer* comp) {
+	int res = 0;
+	emu_lock();
+	if (quickState && (quickMac == conf.macId))
+		res = xstate_load(quickState, comp);
+	if (!res) {
+		QString path = quick_path();
+		if (QFileInfo::exists(path))
+			res = (load_file(comp, path.toLocal8Bit().data(), FG_ALL, 0) == ERR_OK);
+	}
+	emu_unlock();
+	return res;
+}
 
 // The save dialog on its own, for an export that is not one of the file types
 // the tables above know. Same dialog as every other open and save in the app.

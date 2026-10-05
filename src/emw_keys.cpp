@@ -256,6 +256,13 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 				pause(false, PR_FILE);
 				setMessage(x ? " reloaded " : " nothing to reload ");
 				break;
+			case XCUT_QUICKSAVE:
+				x = quick_save(comp);
+				setMessage((x == 2) ? " quick save " : (x == 1) ? " quick save, until exit " : " can't quick save ");
+				break;
+			case XCUT_QUICKLOAD:
+				setMessage(quick_load(comp) ? " quick load " : " nothing quick saved ");
+				break;
 			case XCUT_FAVORITE:
 				// adds only: taking one out stays in the menu, where it can be seen
 				path = media_current();
