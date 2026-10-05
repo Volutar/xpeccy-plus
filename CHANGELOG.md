@@ -11,68 +11,72 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
-- **A menu bar, a toolbar and a status bar.** The menus show each command's hotkey, and File
-  keeps the last ten images opened. Machine, Media and Debug hold what the toolbar's buttons do,
-  so nothing needs the toolbar, and switch rewind and fast disk access on and off. The toolbar holds the buttons you choose: right-click it to
-  add or remove one, drag one to move it. The status bar shows the machine, the clock, the tape
-  and each drive, lit while it reads or writes; click one for its window, right-click it for its
-  menu. In fullscreen they are hidden, and the menu and the toolbar come up when the pointer rests
-  at the top of the screen. With Low latency on, the screen flashes as a menu opens and closes there; with it
-  off, it does not. The frame rate leaves the picture while the status bar shows it.
-- A Mute button on the toolbar, with the volume beside it. It silences the speakers only:
-  recordings keep the sound. The toolbar starts with it and the virtual keyboard.
-  Alt+wheel over the picture sets the volume and shows it under the button.
-  *(thanks to Volutar for the idea)*
-- Menus no longer pause the machine. It can pause instead while another application has the
-  focus (Options, Application page).
-- Debugger: label names are offered as they are typed - in the listing, the dump, the watcher
-  and breakpoint conditions - and an instruction typed into the listing takes labels in its
-  operands, sums like label+2 included. *(thanks to Volutar for the idea)*
-- Rewinding shows how many seconds back it has gone, under its sign on the picture, and the
-  signs and messages there fade out when they are over instead of vanishing (Options,
-  Appearance). Shift held as a file is picked in the open dialog asks whether to run it or
-  only put it in, as a drop does. *(thanks to Volutar for the idea)*
-- Quick save and quick load, in the File menu and the hotkeys (no key by default). The save
-  lasts the session on any machine, and is kept as a .z80 beside the config, so it outlives
-  the session, on the machines that format can hold. *(thanks to Volutar for the idea)*
+- **A menu bar, a toolbar and a status bar**:
+  - The menus carry every command with its hotkey. File keeps the last ten images opened;
+    Machine, Media and Debug hold what the toolbar's buttons do.
+  - The toolbar holds the buttons you choose: right-click it to add or remove one, drag one to
+    move it. It starts with Mute and the virtual keyboard.
+  - The status bar shows the machine, the clock, the tape and each drive; a click opens its
+    window, a right-click its menu. The frame rate leaves the picture while the bar shows it.
+  - In fullscreen they come up when the pointer rests at the top of the screen. With Low
+    latency on, the screen flashes as a menu opens there. *(thanks to Volutar)*
+
+- **Mute**: a toolbar button silences the speakers, while recordings keep the sound. The volume
+  is beside it, and Alt+wheel over the picture sets it - the bare wheel no longer does, it was
+  too easily turned. *(thanks to Volutar)*
+
+- **Quick save and quick load** in the File menu, with no key by default: the save lasts the
+  session on any machine, and outlives it on those a .z80 can hold. *(thanks to Volutar)*
+
+- **Labels as you type in the debugger**: label names are offered in the listing, the dump, the
+  watcher and breakpoint conditions, and the listing assembles labels in operands, label+2
+  included. *(thanks to Volutar for the idea)*
+
+- **Rewind shows how far back it has gone**, in seconds under its sign; signs and messages on
+  the picture fade out when they are over (Options, Appearance). *(thanks to Volutar)*
+
+- **Shift held in the open dialog** asks whether to run the file or only put it in, as it does
+  on a drop.
 
 ### Changed
 
-- Machines have two floppy drives unless set otherwise, and the +3 has two, as its disk
-  interface does. Run ahead is no longer marked experimental, and About says who maintains
-  Xpeccy+, under what license, and what it is built with. *(thanks to Volutar)*
-- Options: the pages are one list down the left side instead of tabs within tabs, with pages
-  of their own for Appearance (the style and the indicators) and File types, and the hotkeys
-  in sections, as the menus have them. *(thanks to Volutar for the idea)*
-- The wheel over the picture no longer changes the volume, it was too easily turned: Alt+wheel
-  does. About no longer stops the machine while it is open. *(thanks to Volutar)*
+- **Options** is one list of pages down the left side, with Appearance and File types of their
+  own and the hotkeys in sections, as in the menus. *(thanks to Volutar for the idea)*
+
+- **Menus no longer pause the machine.** It can pause instead while another application has the
+  focus (Options, Application).
+
+- **Smaller things**: two floppy drives unless a machine says otherwise, Run ahead no longer
+  marked experimental, and an About that names the maintainer and the license and no longer
+  stops the machine. *(thanks to Volutar)*
 
 ### Fixed
 
-- Debugger: a click on the palette shows the color clicked - it showed one further down,
-  mostly black - the CMOS panel is only there on machines with a clock chip, and the disk
-  panels only on machines with a disk interface.
-  *(thanks to Volutar for the report)*
-- Debugger: editing an instruction's bytes no longer pads the field with blanks past the column,
-  and a label picked from the list goes into a watcher expression once, not twice.
-  *(thanks to Volutar for the report)*
-- Antiflicker no longer flickers while a window is being dragged, and on Windows a click on a
-  window's title bar no longer holds the picture for half a second. *(thanks to Volutar for the
+- **Debugger**: a click on the palette shows the color clicked, an instruction's bytes are
+  edited without blanks padding the field, a label from the list goes into a watcher once, and
+  the CMOS and disk panels show only on machines that have them. *(thanks to Volutar for the
   report)*
-- Fullscreen with Low latency on: the docked virtual keyboard is shown over the picture. It took
-  clicks without being seen. *(thanks to Volutar for the report)*
-- A folder served as an SD card or a hard disk: the files in its root are always there, however
-  much its subfolders hold, so a loader beside a large collection is found again. It takes ten
-  times as many files as before, thousands of files with similar long names no longer take minutes
-  to mount, and what does not fit is reported. *(thanks to nodeus for the report)*
-- SD card images over 1 GB work: one of 1 to 2 GB hung the emulator as it opened, a bigger one
-  showed an empty card. Hard disk images over 2 GB work on Windows too.
-  *(thanks to nodeus for the report)*
-- Interface styles: links take a color of the style's own, readable on the dark ones too. The
-  selected tab stands out, and a checked menu item with an icon is framed.
-  *(thanks to Volutar for the report)*
-- 48K, 128K and +2: the MIC bit is heard with the beeper, a tenth as loud as EAR, as both leave the
-  ULA on one pin. Speech in Cobra's Arc and the second voice in Dizzy are back.
+
+- **Antiflicker** no longer flickers while a window is being dragged, and on Windows a click on
+  a title bar no longer holds the picture for half a second. *(thanks to Volutar for the
+  report)*
+
+- **The docked virtual keyboard** shows over the picture in fullscreen with Low latency on; it
+  took clicks without being seen. *(thanks to Volutar for the report)*
+
+- **A folder as an SD card or a hard disk** always has the files in its root, however much its
+  subfolders hold. It takes ten times as many files, mounts thousands of similar long names in
+  seconds and says what does not fit. *(thanks to nodeus for the report)*
+
+- **Large disk images**: SD cards over 1 GB work - one of 1 to 2 GB hung the emulator, a bigger
+  one read as empty - and so do hard disks over 2 GB on Windows. *(thanks to nodeus for the
+  report)*
+
+- **Interface styles**: links take a color of the style's own, the selected tab stands out, and
+  a checked menu item with an icon is framed. *(thanks to Volutar for the report)*
+
+- **MIC is heard with the beeper** on the 48K, 128K and +2, a tenth as loud as EAR: speech in
+  Cobra's Arc and the second voice in Dizzy are back.
 
 ## 2026.6.2 - 2026-10-03
 
