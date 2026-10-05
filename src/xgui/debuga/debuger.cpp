@@ -355,11 +355,21 @@ void DebugWin::resetTCount() {
 	}
 }
 
+// the panels only some machines have
+void DebugWin::machinePanels() {
+	if (!conf.zx) return;
+	// the clock chip is there on these boards and behind a SMUC, and nowhere else
+	int hw = conf.zx->hw->id;
+	wid_cmos_dump->setVisible((hw == HW_P1024) || (hw == HW_PENTEVO) || (hw == HW_TSLAB) || (hw == HW_PROFI)
+		|| (conf.zx->ide->type == IDE_SMUC));
+}
+
 void DebugWin::onPrfChange() {
 	if (!conf.zx) return;
 	save_mem_map();
 
 	setMiscBlocks();
+	machinePanels();
 
 	unsigned int lim = MEM_64K;
 	wid_dump->setLimit(lim);
@@ -1810,6 +1820,7 @@ void DebugWin::showEvent(QShowEvent* ev) {
 	// while the window was away: the list for this one wins.
 	if (!dockLayout.isEmpty()) {
 		restoreState(dockLayout, DBG_LAYOUT_VERSION);
+		machinePanels();
 		styleTabBars();
 	}
 	if (reformWait) {

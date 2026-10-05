@@ -79,6 +79,7 @@ class DebugWin : public QMainWindow {
 		void sndToggle();
 		void updateStyle();
 	private:
+		void machinePanels();
 		unsigned block:1;
 		cpuCore* curCpuCore;
 		QWidget* wid_cpu;
