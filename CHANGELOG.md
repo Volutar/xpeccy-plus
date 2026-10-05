@@ -25,6 +25,9 @@ before that point is upstream's history and is not repeated here.
   *(thanks to Volutar for the idea)*
 - Menus no longer pause the machine. It can pause instead while another application has the
   focus (Options, Xpeccy+ page).
+- Debugger: label names are offered as they are typed - in the listing, the dump, the watcher
+  and breakpoint conditions - and an instruction typed into the listing takes labels in its
+  operands, sums like label+2 included. *(thanks to Volutar for the idea)*
 
 ### Changed
 
@@ -36,6 +39,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- Debugger: editing an instruction's bytes no longer pads the field with blanks past the column,
+  and a label picked from the list goes into a watcher expression once, not twice.
+  *(thanks to Volutar for the report)*
 - Antiflicker no longer flickers while a window is being dragged, and on Windows a click on a
   window's title bar no longer holds the picture for half a second. *(thanks to Volutar for the
   report)*
