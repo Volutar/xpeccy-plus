@@ -12,7 +12,8 @@ before that point is upstream's history and is not repeated here.
 ### Added
 
 - **A menu bar, a toolbar and a status bar.** The menus show each command's hotkey, and File
-  keeps the last ten images opened. The toolbar holds the buttons you choose: right-click it to
+  keeps the last ten images opened. Machine, Media and Debug hold what the toolbar's buttons do,
+  so nothing needs the toolbar, and switch rewind and fast disk access on and off. The toolbar holds the buttons you choose: right-click it to
   add or remove one, drag one to move it. The status bar shows the machine, the clock, the tape
   and each drive, lit while it reads or writes; click one for its window, right-click it for its
   menu. In fullscreen they are hidden, and the menu and the toolbar come up when the pointer rests
@@ -20,6 +21,7 @@ before that point is upstream's history and is not repeated here.
   off, it does not. The frame rate leaves the picture while the status bar shows it.
 - A Mute button on the toolbar, with the volume beside it. It silences the speakers only:
   recordings keep the sound. The toolbar starts with it and the virtual keyboard.
+  Alt+wheel over the picture sets the volume and shows it under the button.
   *(thanks to Volutar for the idea)*
 - Menus no longer pause the machine. It can pause instead while another application has the
   focus (Options, Xpeccy+ page).
@@ -29,6 +31,8 @@ before that point is upstream's history and is not repeated here.
 - Machines have two floppy drives unless set otherwise, and the +3 has two, as its disk
   interface does. Run ahead is no longer marked experimental, and About says who maintains
   Xpeccy+, under what license, and what it is built with. *(thanks to Volutar)*
+- The wheel over the picture no longer changes the volume, it was too easily turned: Alt+wheel
+  does. About no longer stops the machine while it is open. *(thanks to Volutar)*
 
 ### Fixed
 
