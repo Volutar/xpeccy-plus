@@ -247,6 +247,9 @@ void MainWin::socketRead() {
 				fsBar->render(&pnt, fsBar->pos());
 			if (fsTool && fsTool->isVisible())
 				fsTool->render(&pnt, fsTool->pos());
+			// the window's own, laid out over the picture when its arrow is open
+			if (toolBar->isVisible() && toolBar->geometry().intersects(scr))
+				toolBar->render(&pnt, toolBar->pos());
 		}
 #endif
 		if (pic.isNull()) pic = frame->grab();
