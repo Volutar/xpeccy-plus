@@ -23,7 +23,6 @@
 enum {
 	SECT_NONE = 0,
 	SECT_BOOKMARK,
-	SECT_RECENT,
 	SECT_PROFILES,
 	SECT_VIDEO,
 	SECT_ROMSETS,
@@ -182,15 +181,14 @@ void saveConfig() {
 	fprintf(cfile, "keywin.width = %i\n", conf.keywin.width);
 	fprintf(cfile, "flpinterleave = %i\n", flp_get_interleave());
 	fprintf(cfile, "style = %s\n", conf.style.c_str());
+	// a key, not a section: builds up to 2026.6 read an unknown section as the one before
+	foreach(QString path, conf.recentList)
+		fprintf(cfile, "recent = %s\n", path.toLocal8Bit().data());
 
 	fprintf(cfile, "\n[BOOKMARKS]\n\n");
 	foreach(xBookmark bkm, conf.bookmarkList) {
 		fprintf(cfile, "%s = %s\n", bkm.name.c_str(), bkm.path.c_str());
 	}
-
-	fprintf(cfile, "\n[RECENT]\n\n");
-	foreach(QString path, conf.recentList)
-		fprintf(cfile, "file = %s\n", path.toLocal8Bit().data());
 
 	fprintf(cfile, "\n[VIDEO]\n\n");
 	fprintf(cfile, "palette = %s\n", conf.palette.c_str());
@@ -788,8 +786,8 @@ void loadConfig() {
 		// a line with nothing after the = is a value, not a section: an empty
 		// value is how a rom bank is emptied and a setting is cleared
 		if (pnam[0] == '[') {
+			section = SECT_NONE;	// a section this build does not know is skipped whole
 			if (pnam=="[BOOKMARKS]") section = SECT_BOOKMARK;
-			if (pnam=="[RECENT]") section = SECT_RECENT;
 			if (pnam=="[PROFILES]") section = SECT_PROFILES;
 			if (pnam=="[MEDIA]") section = SECT_MEDIA;
 			if (pnam.compare(0, 9, "[MACHINE.") == 0) {
@@ -899,10 +897,6 @@ void loadConfig() {
 					break;
 				case SECT_BOOKMARK:
 					addBookmark(pnam, pval);
-					break;
-				case SECT_RECENT:
-					if ((pnam == "file") && (conf.recentList.size() < RECENT_MAX))
-						conf.recentList.append(QString::fromLocal8Bit(pval.c_str()));
 					break;
 				case SECT_PROFILES:		// only a config written before schema 2 has this
 					if (pnam == "current") {
@@ -1106,6 +1100,8 @@ void loadConfig() {
 					if (pnam=="schema") schema = arg.i;
 					if (pnam=="machine") macwant = pval;
 					if (pnam=="lastdir") conf.lastDir = pval;
+					if ((pnam == "recent") && (conf.recentList.size() < RECENT_MAX))
+						conf.recentList.append(QString::fromLocal8Bit(pval.c_str()));
 					if (pnam=="savepaths") conf.storePaths = arg.b;
 					if (pnam == "fdcturbo") setFlagBit(arg.b, &fdcFlag, FDC_FAST);
 					if (pnam == "port") conf.port = arg.i & 0xffff;
