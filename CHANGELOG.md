@@ -28,9 +28,10 @@ before that point is upstream's history and is not repeated here.
 - Debugger: label names are offered as they are typed - in the listing, the dump, the watcher
   and breakpoint conditions - and an instruction typed into the listing takes labels in its
   operands, sums like label+2 included. *(thanks to Volutar for the idea)*
-- Rewinding shows how many seconds back it has gone, beside its sign on the picture, and Shift
-  held as a file is picked in the open dialog asks whether to run it or only put it in, as a
-  drop does. *(thanks to Volutar for the idea)*
+- Rewinding shows how many seconds back it has gone, under its sign on the picture, and the
+  signs and messages there fade out when they are over instead of vanishing (Options,
+  Appearance). Shift held as a file is picked in the open dialog asks whether to run it or
+  only put it in, as a drop does. *(thanks to Volutar for the idea)*
 
 ### Changed
 
