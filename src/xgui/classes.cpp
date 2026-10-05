@@ -17,6 +17,9 @@
 #include <QTabBar>
 #include <QFontMetrics>
 #include <QDebug>
+#include <QCompleter>
+#include <QStringListModel>
+#include <QAbstractItemView>
 
 QString gethexword(int);
 QString gethexbyte(uchar);
@@ -898,26 +901,79 @@ xItemDelegate::xItemDelegate(int t) {
 }
 
 QWidget* xItemDelegate::createEditor(QWidget* par, const QStyleOptionViewItem&, const QModelIndex&) const {
+	if (type == XTYPE_NONE) return NULL;
 	QLineEdit* edt = new QLineEdit(par);
-	QString pat("[0-9A-Fa-f\\s]");
-	int rpt = 0;
+	QRegExpValidator* vld;
 	switch (type) {
-		case XTYPE_NONE: delete(edt); edt = NULL; break;
-		case XTYPE_ADR: rpt = 4; break;
-		case XTYPE_LABEL: break;
-		case XTYPE_DUMP: rpt = 12; break;		// 6 bytes max
-		case XTYPE_BYTE: rpt = 2; break;
-	}
-	if (edt && (rpt > 0)) {
-		edt->setInputMask(QString(rpt,'h'));
-		edt->setMaxLength(rpt);
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-		edt->setValidator(new QRegExpValidator(QRegExp(QString("%0+").arg(pat))));
-#else
-		edt->setValidator(new QRegularExpressionValidator(QRegularExpression(QString("%0+").arg(pat))));
-#endif
+		case XTYPE_ADR: edt->setInputMask("hhhh"); break;
+		case XTYPE_BYTE: edt->setInputMask("hh"); break;
+		case XTYPE_LABEL: label_complete(edt); break;
+		case XTYPE_DUMP:
+			// as many bytes as the row has: a mask would pad the field with blanks to its length
+			vld = new QRegExpValidator(edt);
+			setRegExp(*vld, "[0-9A-Fa-f]*");
+			edt->setValidator(vld);
+			edt->setMaxLength(32);
+			break;
 	}
 	return edt;
+}
+
+// label completion
+
+// a character of a label name: an assembler's local labels have a dot in them
+bool lab_char(QChar chr) {
+	return chr.isLetterOrNumber() || (chr == QChar('_')) || (chr == QChar('.'));
+}
+
+// The labels are offered as a name is typed. It is the word under the caret that
+// is completed, not the field, so it works inside an instruction or an expression.
+void label_complete(QLineEdit* edt) {
+	QCompleter* cmp = new QCompleter(edt);
+	QStringListModel* mod = new QStringListModel(cmp);
+	cmp->setModel(mod);
+	cmp->setWidget(edt);
+	cmp->setCaseSensitivity(Qt::CaseInsensitive);
+	cmp->setFilterMode(Qt::MatchContains);	// a big set from an assembler is searched, not browsed
+	// the word around the caret, and what of it is before the caret
+	auto word = [edt](int* from, int* to) {
+		QString txt = edt->text();
+		int pos = edt->cursorPosition();
+		int s = pos;
+		int e = pos;
+		while ((s > 0) && lab_char(txt.at(s - 1))) s--;
+		while ((e < txt.size()) && lab_char(txt.at(e))) e++;
+		*from = s;
+		*to = e;
+		// a number is not a name: #C000, 0x1F, 12
+		if ((s > 0) && (txt.at(s - 1) == QChar('#'))) return QString();
+		if ((s < pos) && txt.at(s).isDigit()) return QString();
+		return txt.mid(s, pos - s);
+	};
+	QObject::connect(edt, &QLineEdit::textEdited, cmp, [cmp, mod, word]() {
+		int s, e;
+		QString pre = word(&s, &e);
+		if ((pre.size() < 2) || !conf.curlabset) {
+			cmp->popup()->hide();
+			return;
+		}
+		if (mod->rowCount() != conf.curlabset->list.size())	// a label added, or another set
+			mod->setStringList(conf.curlabset->list.keys());
+		cmp->setCompletionPrefix(pre);
+		if (cmp->completionCount() < 1) {
+			cmp->popup()->hide();
+			return;
+		}
+		cmp->complete();
+		cmp->popup()->setCurrentIndex(cmp->completionModel()->index(0, 0));	// Enter takes the first
+	});
+	QObject::connect(cmp, QOverload<const QString&>::of(&QCompleter::activated), edt, [edt, word](const QString& lab) {
+		int s, e;
+		word(&s, &e);
+		QString txt = edt->text();
+		edt->setText(txt.left(s) + lab + txt.mid(e));
+		edt->setCursorPosition(s + lab.size());
+	});
 }
 
 // dock widget

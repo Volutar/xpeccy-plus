@@ -50,6 +50,7 @@ xWatcher::xWatcher(QWidget* p):QDialog(p) {
 	nui.cbType->addItem("RAM addr", WUT_RAM);
 	nui.cbType->addItem("ROM addr", WUT_ROM);
 	connect(nui.tbLabel, SIGNAL(released()), labswin, SLOT(show()));
+	label_complete(nui.leExpression);
 	connect(labswin, SIGNAL(labSelected(QString)), this, SLOT(insertLabel(QString)));
 
 	for(i = 0; i < 14; i++) ui.wchMemTab->setColumnWidth(i, 30);

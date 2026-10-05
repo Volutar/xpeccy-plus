@@ -323,6 +323,7 @@ xBrkManager::xBrkManager(QWidget* p):QDialog(p) {
 
 	connect(ui.brkType, SIGNAL(currentIndexChanged(int)), this, SLOT(chaType(int)));
 	connect(ui.leCond, SIGNAL(textChanged(QString)), this, SLOT(chaCond(QString)));
+	label_complete(ui.leCond);
 	connect(ui.tbCondHelp, SIGNAL(clicked()), this, SLOT(condHelp()));
 //	connect(ui.brkAdrHex, SIGNAL(valueChanged(int)), ui.brkAdrEnd, SLOT(setMin(int)));
 	connect(ui.pbOK, SIGNAL(clicked()), this, SLOT(confirm()));

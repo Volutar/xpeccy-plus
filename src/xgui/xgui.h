@@ -158,6 +158,8 @@ class xOptSheet {
 QWidget* fieldPair(QWidget*, QWidget*, bool);
 
 void help_window(QWidget* parent, QDialog** win, const QString& res, const QString& title);
+void label_complete(QLineEdit*);
+bool lab_char(QChar);
 
 // offers to get FFmpeg and does: true when there is one to use afterwards
 bool ffmpeg_get(QWidget* parent);
@@ -212,9 +214,7 @@ class xItemDelegate : public QItemDelegate {
 	public:
 		xItemDelegate(int);
 		int type;
-		// QWidget* createEditor (QWidget*, const QStyleOptionViewItem&, const QModelIndex&) const;
 	private:
-		QRegExpValidator vld;
 		QWidget* createEditor(QWidget*, const QStyleOptionViewItem&, const QModelIndex&) const;
 };
 

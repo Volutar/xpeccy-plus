@@ -1,6 +1,7 @@
 #include "dbg_disasm.h"
 #include "dbg_dump.h"
 #include "../../xcore/xcore.h"
+#include "../../xcore/xexpr.h"
 #include "../../libxpeccy/cpu/Z80/z80.h"
 
 #include <QDebug>
@@ -730,6 +731,76 @@ static int adr_for_row(Computer* comp, int target, int row, int exact) {
 	return start;
 }
 
+// The assembler reads a number and nothing else: an operand with a label in it is
+// worked out here, so label+2, -label and (ix+label) come out as numbers too. The
+// brackets and an index register are kept, and so is any operand without a label.
+// Empty when an operand cannot be worked out, so nothing is assembled from it.
+static bool asm_is_reg(const QString& name) {
+	static const QStringList conds = {"nz", "z", "nc", "c", "po", "pe", "p", "m", "af", "hx", "lx", "hy", "ly", "xh", "xl", "yh", "yl"};
+	bool err = false;
+	cpu_get_reg(conf.zx->cpu, name.toUpper().toLocal8Bit().data(), &err);
+	return !err || conds.contains(name.toLower());
+}
+
+static bool asm_has_label(const QString& op) {
+	int n = op.size();
+	for (int i = 0; i < n; ) {
+		QChar chr = op.at(i);
+		if (chr.isDigit()) {			// a number whole: 0x1F is not a label x1F
+			while ((i < n) && lab_char(op.at(i))) i++;
+		} else if (lab_char(chr)) {
+			int start = i;
+			while ((i < n) && lab_char(op.at(i))) i++;
+			QString name = op.mid(start, i - start);
+			if ((find_label(name).type >= 0) && !asm_is_reg(name)) return true;
+		} else {
+			i++;
+		}
+	}
+	return false;
+}
+
+static QString asm_operand(QString op) {
+	op = op.trimmed();
+	if (!asm_has_label(op)) return op;
+	bool brk = op.startsWith('(') && op.endsWith(')');
+	QString in = brk ? op.mid(1, op.size() - 2).trimmed() : op;
+	QString idx;
+	if (in.startsWith("ix", Qt::CaseInsensitive) || in.startsWith("iy", Qt::CaseInsensitive)) {
+		idx = in.left(2);
+		in = "0" + in.mid(2);		// the displacement, its sign included
+	}
+	xExpr exp = xexpr_compile(in.toLocal8Bit().data());
+	bool err = false;
+	int val = (int)xexpr_eval(exp, conf.zx, &err);
+	if (err || !xexpr_ok(exp)) return QString();
+	QString num = idx.isEmpty() ? QString("0x%0").arg(val & 0xffff, 0, 16)
+		: QString("%0%1").arg((val < 0) ? "-" : "+").arg(QString("0x%0").arg(qAbs(val) & 0xff, 0, 16));
+	return brk ? QString("(%0%1)").arg(idx).arg(num) : (idx + num);
+}
+
+QString asm_labels(const QString& src) {
+	QString str = src.trimmed();
+	int sp = str.indexOf(' ');
+	if (sp < 0) return str;
+	QString res = str.left(sp) + " ";
+	QStringList ops;
+	int depth = 0;
+	int from = sp + 1;
+	for (int i = from; i <= str.size(); i++) {
+		QChar chr = (i < str.size()) ? str.at(i) : QChar(',');
+		if (chr == '(') depth++;
+		if (chr == ')') depth--;
+		if ((chr == ',') && (depth == 0)) {
+			QString op = asm_operand(str.mid(from, i - from));
+			if (op.isEmpty()) return QString();
+			ops.append(op);
+			from = i + 1;
+		}
+	}
+	return res + ops.join(",");
+}
+
 bool xDisasmModel::setData(const QModelIndex& cidx, const QVariant& val, int role) {
 	if (!cidx.isValid()) return false;
 	if (role != Qt::EditRole) return false;
@@ -851,8 +922,7 @@ bool xDisasmModel::setData(const QModelIndex& cidx, const QVariant& val, int rol
 					buf[1] = (idx >> 8) & 0xff;
 				}
 			} else {			// code
-				// TODO: replace label name
-				len = cpuAsm(comp->cpu, str.toLocal8Bit().data(), buf, adr);
+				len = cpuAsm(comp->cpu, asm_labels(str).toLocal8Bit().data(), buf, adr);
 				if (len > 0) {
 					for(idx = 0; idx < len; idx++) {
 						*ptr &= 0x0f;
@@ -876,6 +946,14 @@ bool xDisasmModel::setData(const QModelIndex& cidx, const QVariant& val, int rol
 
 static bool is_word_char(QChar chr) {
 	return chr.isLetterOrNumber() || (chr == QChar(0x5f)) || (chr == QChar(0x23)) || (chr == QChar(0x24));
+}
+
+// an instruction is typed with the labels offered
+QWidget* xDasmSyntax::createEditor(QWidget* par, const QStyleOptionViewItem& opt, const QModelIndex& idx) const {
+	QWidget* wid = QStyledItemDelegate::createEditor(par, opt, idx);
+	if (QLineEdit* edt = qobject_cast<QLineEdit*>(wid))
+		label_complete(edt);
+	return wid;
 }
 
 xDasmSyntax::xDasmSyntax(QObject* p):QStyledItemDelegate(p) {

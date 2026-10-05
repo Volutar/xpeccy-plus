@@ -125,6 +125,7 @@ class xDisasmTable : public QTableView {
 class xDasmSyntax : public QStyledItemDelegate {
 	public:
 		xDasmSyntax(QObject* = NULL);
+		QWidget* createEditor(QWidget*, const QStyleOptionViewItem&, const QModelIndex&) const;
 	protected:
 		void paint(QPainter*, const QStyleOptionViewItem&, const QModelIndex&) const;
 };
