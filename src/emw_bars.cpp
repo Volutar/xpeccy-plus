@@ -56,7 +56,6 @@ class xToolBar : public QToolBar {
 		xToolBar(QWidget* p) : QToolBar(p) {setAcceptDrops(true);}
 		std::function<void(const QPoint&, int)> onMenu;		// at a point of the screen, on an item or -1
 		std::function<void(int, int)> onMove;			// an item dragged from one place to another
-		bool opaque = false;	// over the picture: no ground showing through
 		void watch();
 		QSize sizeHint() const override {return QSize(0, QToolBar::sizeHint().height());}
 		QSize minimumSizeHint() const override {return QSize(0, QToolBar::minimumSizeHint().height());}
@@ -221,7 +220,9 @@ void xToolBar::dropEvent(QDropEvent* ev) {
 }
 
 void xToolBar::paintEvent(QPaintEvent* ev) {
-	if (opaque) {		// a style sheet gives a bar no ground of its own; the window's is taken
+	// A style sheet gives a bar no ground of its own, and both bars are seen over the
+	// picture: fullscreen's, and the window's one when its arrow lays the rest out under it
+	{
 		QPainter pnt(this);
 		pnt.fillRect(rect(), parentWidget()->palette().window());
 	}
@@ -300,7 +301,6 @@ void MainWin::initBars() {
 	// fullscreen's own, out of the layout like fsBar, so the picture keeps its place
 	if (fsBar) {
 		xToolBar* tb = makeBar();
-		tb->opaque = true;
 		fsTool = tb;
 		fsTool->hide();
 	}
