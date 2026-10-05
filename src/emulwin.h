@@ -24,6 +24,19 @@
 #include "vkeyboard.h"
 #include "ethread.h"
 
+// The two keys that let the mouse and the keyboard go, pressed together and let
+// go with nothing between them: Ctrl and the second one. On a Mac Qt names Cmd
+// Control and Ctrl Meta.
+#ifdef __APPLE__
+#define XREL_KEY2 Qt::Key_Meta
+#define XREL_MODS (Qt::ControlModifier | Qt::MetaModifier)
+#define XREL_KEYS "Ctrl+Cmd"
+#else
+#define XREL_KEY2 Qt::Key_Alt
+#define XREL_MODS (Qt::ControlModifier | Qt::AltModifier)
+#define XREL_KEYS "Ctrl+Alt"
+#endif
+
 #if USE_QT_GAMEPAD
 #include <QGamepad>
 #include <QGamepadManager>
@@ -182,6 +195,10 @@ typedef struct {
 		void frame_timer();
 	private:
 		unsigned grabMice:1;
+		long long mouseReadAt = 0;	// when a program last read the mouse, host ns
+		bool relArmed = false;		// both release keys are down, nothing else since
+		void releaseChord(QKeyEvent*, bool);
+		void fast_key(bool);
 		QPoint warpAt;		// where the last recentering aimed
 		unsigned char warpTtl;	// events it stays a candidate for
 		unsigned char warpFail;	// recenterings the host undid in a row

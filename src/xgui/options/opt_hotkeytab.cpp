@@ -53,14 +53,14 @@ static int hk_section(const xShortcut& cut) {
 	switch (cut.id) {
 		case XCUT_LOAD: case XCUT_RELOAD: case XCUT_SAVE: case XCUT_FASTSAVE: case XCUT_FAVORITE:
 		case XCUT_SCRSHOT: case XCUT_COMBOSHOT: case XCUT_VIDREC: case XCUT_WAV_OUT: case XCUT_OPTIONS:
-		case XCUT_QUICKSAVE: case XCUT_QUICKLOAD: case XCUT_HOTKEYS:
+		case XCUT_QUICKSAVE: case XCUT_QUICKLOAD: case XCUT_QUICKUNDO: case XCUT_HOTKEYS:
 			return HK_FILE;
 		case XCUT_RESET: case XCUT_RES_48: case XCUT_RES_128: case XCUT_RES_DOS: case XCUT_RES_SERVICE:
 		case XCUT_NMI: case XCUT_TURBO: case XCUT_SPEED_UP: case XCUT_SPEED_DOWN: case XCUT_MUTE:
 			return HK_MACHINE;
 		case XCUT_PAUSE: case XCUT_FAST: case XCUT_REWIND: case XCUT_FFWD: case XCUT_SLOWMO:
 			return HK_TIME;
-		case XCUT_TAPWIN: case XCUT_TAPLAY: case XCUT_TAPREC: case XCUT_RZXWIN:
+		case XCUT_TAPWIN: case XCUT_TAPLAY: case XCUT_TAPREC: case XCUT_TAPE_START: case XCUT_RZXWIN:
 			return HK_MEDIA;
 		case XCUT_MOUSE: case XCUT_GRABKBD:
 			return HK_INPUT;

@@ -25,14 +25,19 @@ before that point is upstream's history and is not repeated here.
   is beside it, and Alt+wheel over the picture sets it - the bare wheel no longer does, it was
   too easily turned. *(thanks to Volutar)*
 
-- **Quick save and quick load** on F5 and F9: the save lasts the session on any machine, and
-  outlives it on those a .z80 can hold. *(thanks to Volutar)*
+- **Quick save and quick load** on F5 and F9, and Shift+F9 takes a quick load back: the save
+  lasts the session on any machine, and outlives it on those a .z80 can hold.
+  *(thanks to Volutar)*
 
 - **Hotkey layouts**: Modern, the new default, and Classic, the keys as they were. Keys you
   change are kept as Custom, whichever layout is picked.
   - Modern leaves the machine every key it has: Esc is BREAK, F10 opens the debugger,
-    Shift+F10 is NMI, F1 lists the keys, and the Alt+arrows rewind, run fast, slow down and
-    run flat out.
+    Shift+F10 is NMI, Shift+F4 takes the tape to its start, and the Alt+arrows rewind, run
+    fast, slow down and run flat out.
+  - Fast forward, slow motion and Fast mode switch on a tap and hold for as long as the key
+    is held; Options, Emulation, has the old toggle and hold too.
+  - Ctrl+Alt (Ctrl+Cmd on a Mac) lets the mouse and the keyboard go, and a click on the
+    picture takes the mouse only while a program reads it.
   - The Hotkeys page searches by action or by key, says when a key is already taken, and
     takes a second key for each action. *(thanks to Volutar for the search)*
   - An older config keeps the keys you changed and takes Modern for the rest.

@@ -524,9 +524,10 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 		ui.cbSlowmo->addItem(QString("1/%0").arg(f), f);
 		ui.cbFfwd->addItem(QString::fromUtf8("\u00d7%0").arg(f), f);
 	}
-	for (QComboBox* box : {ui.cbSlowmoKey, ui.cbFfwdKey}) {
-		box->addItem("Toggle", 0);
-		box->addItem("Hold", 1);
+	for (QComboBox* box : {ui.cbSlowmoKey, ui.cbFfwdKey, ui.cbFastKey}) {
+		box->addItem("Toggle", XHOLD_TOGGLE);
+		box->addItem("Hold", XHOLD_HOLD);
+		box->addItem("Tap or hold", XHOLD_HYBRID);
 	}
 	// the rewind's own settings mean nothing while it is off
 	for (QWidget* w : {(QWidget*)ui.sbRewStep, (QWidget*)ui.labRewStep, (QWidget*)ui.sbRewSecs, (QWidget*)ui.labRewSecs})
@@ -921,8 +922,9 @@ void SetupWin::start() {
 	setRFIndex(ui.cbRunAhead, conf.emu.runahead, 0);
 	setRFIndex(ui.cbSlowmo, conf.emu.slowDiv, 1);
 	setRFIndex(ui.cbFfwd, conf.emu.ffMul, 1);
-	setRFIndex(ui.cbSlowmoKey, conf.emu.slowHold, 0);
-	setRFIndex(ui.cbFfwdKey, conf.emu.ffHold, 0);
+	setRFIndex(ui.cbSlowmoKey, conf.emu.slowHold, XHOLD_HYBRID);
+	setRFIndex(ui.cbFfwdKey, conf.emu.ffHold, XHOLD_HYBRID);
+	setRFIndex(ui.cbFastKey, conf.emu.fastHold, XHOLD_HYBRID);
 	ui.cbRewind->setChecked(conf.emu.rewind.on);
 	for (QWidget* w : {(QWidget*)ui.sbRewStep, (QWidget*)ui.labRewStep, (QWidget*)ui.sbRewSecs, (QWidget*)ui.labRewSecs})
 		w->setEnabled(conf.emu.rewind.on);
@@ -1157,8 +1159,9 @@ void SetupWin::apply() {
 	conf.emu.runahead = getRFIData(ui.cbRunAhead);
 	conf.emu.slowDiv = getRFIData(ui.cbSlowmo);
 	conf.emu.ffMul = getRFIData(ui.cbFfwd);
-	conf.emu.slowHold = getRFIData(ui.cbSlowmoKey) ? 1 : 0;
-	conf.emu.ffHold = getRFIData(ui.cbFfwdKey) ? 1 : 0;
+	conf.emu.slowHold = getRFIData(ui.cbSlowmoKey);
+	conf.emu.ffHold = getRFIData(ui.cbFfwdKey);
+	conf.emu.fastHold = getRFIData(ui.cbFastKey);
 	conf.emu.rewind.on = ui.cbRewind->isChecked() ? 1 : 0;
 	conf.emu.rewind.step = ui.sbRewStep->value();
 	conf.emu.rewind.secs = ui.sbRewSecs->value();

@@ -1,5 +1,6 @@
 #include "emulwin.h"
 #include "xcore/vscalers.h"
+#include "xcore/pacing.h"
 
 #include <QMenu>
 #if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
@@ -7,6 +8,9 @@
 #include <QScreen>
 #include <QWindow>
 #endif
+
+// how long after the last read of the mouse a click still takes it
+#define MOUSE_READ_NS	1000000000LL
 
 void MainWin::mousePressEvent(QMouseEvent *ev){
 	Computer* comp = conf.zx;
@@ -48,10 +52,8 @@ void MainWin::mouseReleaseEvent(QMouseEvent *ev) {
 			case Qt::LeftButton:
 				if (grabMice) {
 					comp->mouse->lmb = 0;
-#ifdef __APPLE__
-				} else if (comp->mouse->enable) {
-					mouseGrabOn();
-#endif
+				} else if (comp->mouse->enable && (comp->mouse->used || (paceClockNs() - mouseReadAt < MOUSE_READ_NS))) {
+					mouseGrabOn();		// a click takes it only while a program reads it
 				}
 				break;
 			case Qt::RightButton:
@@ -117,7 +119,7 @@ void MainWin::winCursorTo(QPoint pos) {
 void MainWin::mouseGrabOn() {
 	grabMice = 1;
 	grabMouse(QCursor(Qt::BlankCursor));
-	setMessage(" grab mouse ");
+	setMessage(" grab mouse, " XREL_KEYS " lets go ");
 	mouseRecenter(1);
 }
 

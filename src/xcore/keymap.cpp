@@ -483,6 +483,8 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_FAVORITE, "key.favorite.add", "Add to Favorites", {}},
 	{SCG_MAIN, XCUT_QUICKSAVE, "key.quick.save", "Quick save", {}},
 	{SCG_MAIN, XCUT_QUICKLOAD, "key.quick.load", "Quick load", {}},
+	{SCG_MAIN, XCUT_QUICKUNDO, "key.quick.undo", "Undo quick load", {}},
+	{SCG_MAIN, XCUT_TAPE_START, "key.tape.start", "Tape to start", {}},
 
 	{SCG_DEBUGA, XCUT_STEPIN, "key.dbg.stepin", "Debugger: Step in", {}},
 	{SCG_DEBUGA, XCUT_STEPOVER, "key.dbg.stepover", "Debugger: Step over", {}},
@@ -612,16 +614,17 @@ static const xCutDef cutClassic[] = {
 #endif
 
 static const xCutDef cutModern[] = {
-	{XCUT_HOTKEYS, {QKeySequence(Qt::Key_F1)}},
 	{XCUT_OPTIONS, {QKeySequence(HK_APP | Qt::Key_Comma)}},
 	{XCUT_SAVE, {QKeySequence(Qt::Key_F2), QKeySequence(HK_APP | Qt::Key_S)}},
 	{XCUT_LOAD, {QKeySequence(Qt::Key_F3), QKeySequence(HK_APP | Qt::Key_O)}},
 	{XCUT_TAPLAY, {QKeySequence(Qt::Key_F4)}},
+	{XCUT_TAPE_START, {QKeySequence(Qt::SHIFT | Qt::Key_F4)}},
 	{XCUT_QUICKSAVE, {QKeySequence(Qt::Key_F5)}},
 	{XCUT_TAPWIN, {QKeySequence(Qt::Key_F6)}},
 	{XCUT_SCRSHOT, {QKeySequence(Qt::Key_F7)}},
 	{XCUT_VIDREC, {QKeySequence(Qt::SHIFT | Qt::Key_F7)}},
 	{XCUT_QUICKLOAD, {QKeySequence(Qt::Key_F9)}},
+	{XCUT_QUICKUNDO, {QKeySequence(Qt::SHIFT | Qt::Key_F9)}},
 	{XCUT_DEBUG, {QKeySequence(Qt::Key_F10)}},
 	{XCUT_NMI, {QKeySequence(Qt::SHIFT | Qt::Key_F10)}},
 #ifdef __APPLE__
@@ -649,6 +652,7 @@ static const xCutDef cutModern[] = {
 	{XCUT_SIZEX5, {QKeySequence(HK_MOD | Qt::Key_5)}},
 	{XCUT_SIZEX6, {QKeySequence(HK_MOD | Qt::Key_6)}},
 	{XCUT_KEYBOARD, {QKeySequence(HK_MOD | Qt::Key_K)}},
+	{XCUT_NOFLICK, {QKeySequence(HK_MOD | Qt::Key_N)}},
 	{XCUT_MOUSE, {QKeySequence(Qt::ALT | Qt::Key_M)}},		// Cmd+M minimizes on a Mac
 	{XCUT_GRABKBD, {QKeySequence(Qt::Key_ScrollLock), QKeySequence(HK_MOD | Qt::Key_G)}},
 

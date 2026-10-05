@@ -88,6 +88,7 @@ int save_file(Computer* comp, const char* name, int id, int drv, int live = 0);
 // only, 2 memory and file. Load: 0 nothing to load, 1 done.
 int quick_save(Computer*);
 int quick_load(Computer*);
+int quick_undo(Computer*);
 
 int saveChangedDisk(Computer*,int);
 // the Drives menu and the Disk manager name what is in a drive alike
