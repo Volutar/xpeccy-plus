@@ -420,13 +420,12 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	setModal(true);
 	ui.setupUi(this);
 	makeDevWidgets();
-	// a .ui iconset holds a single pixmap, which the title bar and the tab
-	// bar would have to downscale; the application icon carries every drawn
+	// a .ui iconset holds a single pixmap, which the title bar would have
+	// to downscale; the application icon carries every drawn
 	// size instead. It has to be set explicitly: an unset icon is inherited
 	// from the parent window, which wears the pause icon while this dialog
 	// is open.
 	setWindowIcon(QGuiApplication::windowIcon());
-	ui.tabz->setTabIcon(ui.tabz->indexOf(ui.tab_4), QGuiApplication::windowIcon());
 
 	spaceLedIcon(ui.cbKeysLed);
 	spaceLedIcon(ui.cbJoyLed);
@@ -761,6 +760,57 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 		i++;
 	}
 // profiles manager
+	buildSidebar();
+}
+
+// The page in front, as tables show a selection, with a bar in the style's link color.
+// Every icon gets the same square, or a narrow one pulls its name to the left.
+class xPageItem : public QStyledItemDelegate {
+	public:
+		xPageItem(QObject* p) : QStyledItemDelegate(p) {}
+		QSize sizeHint(const QStyleOptionViewItem& opt, const QModelIndex& idx) const override {
+			return QSize(QStyledItemDelegate::sizeHint(opt, idx).width(), 32);
+		}
+		// the selection in the theme's own colors: the native style frames it in its blue
+		void paint(QPainter* pnt, const QStyleOptionViewItem& opt, const QModelIndex& idx) const override {
+			QStyleOptionViewItem o(opt);
+			initStyleOption(&o, idx);
+			bool sel = o.state & QStyle::State_Selected;
+			o.state &= ~(QStyle::State_Selected | QStyle::State_HasFocus | QStyle::State_MouseOver);
+			if (sel) {
+				pnt->fillRect(o.rect, o.palette.color(QPalette::Highlight));
+				o.palette.setColor(QPalette::Text, o.palette.color(QPalette::HighlightedText));
+				pnt->fillRect(QRect(o.rect.left(), o.rect.top(), 3, o.rect.height()), o.palette.color(QPalette::Link));
+			}
+			const QWidget* wid = o.widget;
+			(wid ? wid->style() : QApplication::style())->drawControl(QStyle::CE_ItemViewItem, &o, pnt, wid);
+		}
+	protected:
+		void initStyleOption(QStyleOptionViewItem* opt, const QModelIndex& idx) const override {
+			QStyledItemDelegate::initStyleOption(opt, idx);
+			opt->decorationSize = opt->widget ? static_cast<const QAbstractItemView*>(opt->widget)->iconSize() : opt->decorationSize;
+		}
+};
+
+// The pages are a list down the left side: one level, and room for as many as there are.
+void SetupWin::buildSidebar() {
+	QListWidget* list = ui.pageList;
+	list->setItemDelegate(new xPageItem(list));
+	// as wide as the longest name: the list measures nothing until it is shown
+	int wid = 0;
+	for (int i = 0; i < list->count(); i++)
+		wid = qMax(wid, list->fontMetrics().horizontalAdvance(list->item(i)->text()));
+	list->setFixedWidth(wid + list->iconSize().width() + 36);
+	// a page starts level with the list
+	for (int i = 0; i < ui.pages->count(); i++) {
+		if (QLayout* lay = ui.pages->widget(i)->layout()) {
+			QMargins mrg = lay->contentsMargins();
+			mrg.setTop(0);
+			lay->setContentsMargins(mrg);
+		}
+	}
+	connect(list, &QListWidget::currentRowChanged, ui.pages, &QStackedWidget::setCurrentIndex);
+	list->setCurrentRow(0);
 }
 
 void SetupWin::okay() {
