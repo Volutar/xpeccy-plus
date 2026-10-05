@@ -1218,14 +1218,19 @@ void MainWin::dropEvent(QDropEvent* ev) {
 	}
 }
 
-// shift on a drop: this one file, run or just mounted
-void MainWin::dropAsk(QString path) {
+// shift on a drop or in the open dialog: this one file, run or just mounted.
+// 1 run, 0 mount, -1 neither
+int MainWin::askRun() {
 	QMenu menu(this);
 	QAction* run = menu.addAction(QIcon(":/images/play.png"), "Run");
 	menu.addAction(QIcon(":/images/cd.png"), "Mount");
 	QAction* act = menu.exec(QCursor::pos());
-	if (!act) return;
-	openMedia(path, FG_ALL, 0, (act == run) ? 1 : 0);
+	return act ? ((act == run) ? 1 : 0) : -1;
+}
+
+void MainWin::dropAsk(QString path) {
+	int run = askRun();
+	if (run >= 0) openMedia(path, FG_ALL, 0, run);
 }
 
 // One way in for "the user opened a medium", whatever pointed at it: an empty
@@ -1236,6 +1241,11 @@ void MainWin::openMedia(const QString& path, int id, int drv, int run) {
 	Computer* comp = conf.zx;
 	pause(true, PR_FILE);
 	QString fpath = path.isEmpty() ? file_ask_open(comp, &id, &drv) : path;
+	// Shift held as the dialog is left asks, as it does on a drop
+	if (path.isEmpty() && !fpath.isEmpty() && (QGuiApplication::queryKeyboardModifiers() & Qt::ShiftModifier)) {
+		run = askRun();
+		if (run < 0) fpath.clear();
+	}
 	std::string mac;
 	if (!fpath.isEmpty() && media_machine(comp, fpath, id, drv, run, &mac)) {
 		if (!mac.empty()) setMachine(mac);
