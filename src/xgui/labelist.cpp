@@ -102,8 +102,9 @@ xLabeList::xLabeList(QWidget* p):QDialog(p) {
 	ui.list->setModel(mod);
 
 	connect(ui.name, SIGNAL(textChanged(QString)), mod, SLOT(reset(QString)));
-	connect(ui.list, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(listDoubleClicked(QModelIndex)));
-	connect(ui.list, SIGNAL(activated(QModelIndex)), this, SLOT(listDoubleClicked(QModelIndex)));		// maybe this is better than doubleClicked ? os-depending
+	// a double click or Enter, as the platform has it; a double click also emits
+	// doubleClicked, and listening to both put the label in twice
+	connect(ui.list, SIGNAL(activated(QModelIndex)), this, SLOT(listDoubleClicked(QModelIndex)));
 	connect(ui.cbLabelSet, SIGNAL(currentIndexChanged(int)), this, SLOT(changeLabelSet()));
 
 	connect(ui.tbAddGrp, SIGNAL(released()), this, SLOT(newGroup()));
