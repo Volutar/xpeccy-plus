@@ -1886,22 +1886,31 @@ void MainWin::showAbout() {
 	box->setWindowTitle("About " XPRODUCT);
 	box->setIconPixmap(frame->windowIcon().pixmap(64, 64));
 	box->setTextInteractionFlags(Qt::TextBrowserInteraction);
-	box->setText(
-		"<b>" XPRODUCT "</b> " XVERSION "<br><br>"
-		"A ZX Spectrum and clones emulator, made for playing and for coding alike.<br>"
-		"By Oleksandr \".koval\" Kovalchuk, a fork of "
-		"<a href=\"https://github.com/samstyle/Xpeccy\">Xpeccy</a> by SAM style.<br>"
-		"MIT license.<br><br>"
+	// the slogan and the versions in grey: halfway between the text and the ground, so
+	// it reads on every style, dark or light
+	box->ensurePolished();
+	QColor txt = box->palette().color(QPalette::WindowText);
+	QColor bgr = box->palette().color(QPalette::Window);
+	QString dim = QColor((txt.red() + bgr.red()) / 2, (txt.green() + bgr.green()) / 2, (txt.blue() + bgr.blue()) / 2).name();
+	QString dot = QString(" %0 ").arg(QChar(0x00B7));
+	box->setText(QString(
+		"<span style='font-size:large'><b>" XPRODUCT "</b></span>&nbsp;&nbsp;" XVERSION "<br>"
+		"<i style='color:%0'>It really whips the llama's T-states!</i><br><br>"
+		"An accurate ZX Spectrum and clones emulator:<br>"
+		"comfortable to play on, built to develop with.<br><br>"
+		"By Oleksandr \".koval\" Kovalchuk%1MIT license<br>"
+		"A fork of <a href=\"https://github.com/samstyle/Xpeccy\">Xpeccy</a> by SAM style<br><br>"
 		"<a href=\"https://github.com/dotkoval/xpeccy-plus\">github.com/dotkoval/xpeccy-plus</a><br>"
-		"Support the project: <a href=\"https://paypal.me/OKovalchuk\">PayPal</a> or "
+		"Support the project: <a href=\"https://paypal.me/OKovalchuk\">PayPal</a>%1"
 		"<a href=\"https://ko-fi.com/oleksandrkovalkovalchuk25949\">Ko-fi</a><br><br>"
-		"Thanks to everyone for the feedback, and especially to Volutar for regular testing.<br><br>"
-		"Built in: <a href=\"https://github.com/aaronsgiles/ymfm\">ymfm</a> by Aaron Giles "
-		"(BSD 3-Clause) and DejaVu Sans Mono (Bitstream Vera license).<br>"
+		"Thanks to everyone for the feedback, and especially<br>"
+		"to Volutar for regular testing.<br><br>"
+		"Includes <a href=\"https://github.com/aaronsgiles/ymfm\">ymfm</a> by Aaron Giles (BSD 3-Clause) and<br>"
+		"DejaVu Sans Mono (Bitstream Vera license).<br>"
 		"ROM images, icons and FFmpeg keep their own terms: "
-		"<a href=\"https://github.com/dotkoval/xpeccy-plus#bundled-roms\">details</a>.<br><br>"
-		"Qt " QT_VERSION_STR ", SDL " QT_STRINGIFY(SDL_MAJOR_VERSION) "." QT_STRINGIFY(SDL_MINOR_VERSION)
-		"." QT_STRINGIFY(SDL_PATCHLEVEL));
+		"<a href=\"https://github.com/dotkoval/xpeccy-plus#bundled-roms\">details</a><br><br>"
+		"<small style='color:%0'>Qt " QT_VERSION_STR "%1SDL " QT_STRINGIFY(SDL_MAJOR_VERSION) "."
+		QT_STRINGIFY(SDL_MINOR_VERSION) "." QT_STRINGIFY(SDL_PATCHLEVEL) "</small>").arg(dim, dot));
 	connect(box, &QDialog::finished, this, [this]() {setFocus();});
 	box->show();
 }
