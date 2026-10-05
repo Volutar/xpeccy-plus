@@ -16,6 +16,7 @@
 #include <QSlider>
 #include <QLabel>
 #include <QWidgetAction>
+#include <QStyleOptionSlider>
 #include <functional>
 
 #include "emulwin.h"
@@ -55,7 +56,6 @@ class xToolBar : public QToolBar {
 		xToolBar(QWidget* p) : QToolBar(p) {setAcceptDrops(true);}
 		std::function<void(const QPoint&, int)> onMenu;		// at a point of the screen, on an item or -1
 		std::function<void(int, int)> onMove;			// an item dragged from one place to another
-		bool opaque = false;	// over the picture: no ground showing through
 		void watch();
 		QSize sizeHint() const override {return QSize(0, QToolBar::sizeHint().height());}
 		QSize minimumSizeHint() const override {return QSize(0, QToolBar::minimumSizeHint().height());}
@@ -220,7 +220,9 @@ void xToolBar::dropEvent(QDropEvent* ev) {
 }
 
 void xToolBar::paintEvent(QPaintEvent* ev) {
-	if (opaque) {		// a style sheet gives a bar no ground of its own; the window's is taken
+	// A style sheet gives a bar no ground of its own, and both bars are seen over the
+	// picture: fullscreen's, and the window's one when its arrow lays the rest out under it
+	{
 		QPainter pnt(this);
 		pnt.fillRect(rect(), parentWidget()->palette().window());
 	}
@@ -229,6 +231,56 @@ void xToolBar::paintEvent(QPaintEvent* ev) {
 	QPainter pnt(this);
 	pnt.fillRect(dropX - 1, 2, 2, height() - 4, palette().highlight());
 }
+
+// A volume is set by eye: a click puts the handle where it lands, and the press
+// then drags it, instead of the slider stepping towards the click a page at a time.
+class xVolSlider : public QSlider {
+	public:
+		xVolSlider(QWidget* p) : QSlider(Qt::Horizontal, p) {}
+	protected:
+		void mousePressEvent(QMouseEvent* ev) override {
+			if (ev->button() == Qt::LeftButton) {
+				QStyleOptionSlider opt;
+				initStyleOption(&opt);
+				QRect groove = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderGroove, this);
+				QRect handle = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, this);
+				int x = int(ev->xEventX) - groove.x() - handle.width() / 2;
+				setValue(QStyle::sliderValueFromPosition(minimum(), maximum(), x, groove.width() - handle.width(), opt.upsideDown));
+			}
+			QSlider::mousePressEvent(ev);
+		}
+};
+
+// the slider and the figure beside it: in the button's list, and in the pop-up
+// Alt+wheel brings up
+class xVolBox : public QFrame {
+	public:
+		xVolBox(QWidget* p, Qt::WindowFlags f = Qt::WindowFlags()) : QFrame(p, f) {
+			QHBoxLayout* lay = new QHBoxLayout(this);
+			lay->setContentsMargins(8, 4, 8, 4);
+			sld = new xVolSlider(this);
+			sld->setRange(0, 100);
+			sld->setPageStep(10);
+			sld->setMinimumWidth(120);
+			lab = new QLabel(this);
+			lab->setMinimumWidth(lab->fontMetrics().boundingRect("100%").width());
+			lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+			lay->addWidget(sld);
+			lay->addWidget(lab);
+			connect(sld, &QSlider::valueChanged, this, [this](int v) {
+				conf.snd.vol.master = v;
+				figure();
+			});
+		}
+		void load() {
+			sld->setValue(conf.snd.vol.master);
+			figure();		// the value may not have moved
+		}
+	private:
+		QSlider* sld;
+		QLabel* lab;
+		void figure() {lab->setText(QString("%0%").arg(conf.snd.vol.master));}
+};
 
 // MainWin
 
@@ -249,7 +301,6 @@ void MainWin::initBars() {
 	// fullscreen's own, out of the layout like fsBar, so the picture keeps its place
 	if (fsBar) {
 		xToolBar* tb = makeBar();
-		tb->opaque = true;
 		fsTool = tb;
 		fsTool->hide();
 	}
@@ -275,9 +326,9 @@ void MainWin::initBars() {
 	auto cut = [this](const char* name, int xcut, const char* icon) {return cutAct(name, xcut, icon);};
 	add("key.load", "File", cut("Open...", XCUT_LOAD, "fileopen"), TB_PLAIN);
 	// a button of its own: the menu bar took over the list's own action, which has no icon there
+	// a click opens the list itself, Organize... is at its foot
 	QAction* favAct = new QAction(QIcon(":/images/star.png"), "Favorites", this);
-	connect(favAct, &QAction::triggered, this, &MainWin::favManage);
-	add("menu.favorites", "File", favAct, TB_SPLIT, bookmarkMenu);
+	add("menu.favorites", "File", favAct, TB_LIST, bookmarkMenu);
 	add("key.reload", "File", cut("Reload", XCUT_RELOAD, "refresh"), TB_PLAIN);
 	add("key.save", "File", cut("Save...", XCUT_SAVE, "save_all"), TB_PLAIN);
 	add("key.fastsave", "File", cut("Save changed disks", XCUT_FASTSAVE, "floppy"), TB_PLAIN);
@@ -347,6 +398,17 @@ void MainWin::initBars() {
 		muteAct->setIcon(icon);
 	}
 	add("key.mute", "Sound", muteAct, TB_SPLIT, volumeMenu());
+	// shown, not used: it takes no focus and no clicks, so the machine keeps the keys
+	volPop = new xVolBox(this, Qt::ToolTip | Qt::FramelessWindowHint);
+	volPop->setFrameShape(QFrame::StyledPanel);
+	volPop->setAttribute(Qt::WA_ShowWithoutActivating);
+	volPop->setAttribute(Qt::WA_TransparentForMouseEvents);
+	volTimer.setSingleShot(true);
+	volTimer.setInterval(1500);
+	connect(&volTimer, &QTimer::timeout, this, [this]() {
+		volPop->hide();
+		saveConfig();
+	});
 	foreach(const xTbItem& it, tbCatalog) {
 		// a list opened from here has had no right-click menu fill it; one opened
 		// inside a menu has, and refilling everything on each hover costs disk reads
@@ -361,6 +423,7 @@ void MainWin::initBars() {
 
 	tbList = QString::fromStdString((conf.win.tbItems == "*") ? std::string(tbDefault) : conf.win.tbItems).split(',', X_SkipEmptyParts);
 	tbBuild();
+	initMachineMenus();
 
 	xStatusBar* sb = new xStatusBar(frame);
 	statusBar = sb;
@@ -561,33 +624,28 @@ void MainWin::showBars() {
 // the master volume, beside the mute button
 QMenu* MainWin::volumeMenu() {
 	QMenu* menu = new QMenu(this);
-	QWidget* box = new QWidget(menu);
-	QHBoxLayout* lay = new QHBoxLayout(box);
-	lay->setContentsMargins(8, 4, 8, 4);
-	QSlider* sld = new QSlider(Qt::Horizontal, box);
-	sld->setRange(0, 100);
-	sld->setPageStep(10);
-	sld->setMinimumWidth(120);
-	QLabel* lab = new QLabel(box);
-	lab->setMinimumWidth(lab->fontMetrics().boundingRect("100%").width());
-	lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-	lay->addWidget(sld);
-	lay->addWidget(lab);
+	xVolBox* box = new xVolBox(menu);
 	QWidgetAction* wact = new QWidgetAction(menu);
 	wact->setDefaultWidget(box);
 	menu->addAction(wact);
-	auto show = [lab](int v) {lab->setText(QString("%0%").arg(v));};
-	connect(sld, &QSlider::valueChanged, this, [show](int v) {
-		conf.snd.vol.master = v;
-		show(v);
-	});
-	// the wheel over the picture moves it too
-	connect(menu, &QMenu::aboutToShow, this, [sld, show]() {
-		sld->setValue(conf.snd.vol.master);
-		show(conf.snd.vol.master);
-	});
+	connect(menu, &QMenu::aboutToShow, box, &xVolBox::load);	// the wheel moves it too
 	connect(menu, &QMenu::aboutToHide, this, [this]() {saveConfig();});
 	return menu;
+}
+
+// Alt+wheel moved the volume: the slider comes up under the button for a moment,
+// where the toolbar shows one, and the picture says it otherwise
+void MainWin::volumeChanged() {
+	QWidget* btn = toolBar->isVisible() ? toolBar->widgetForAction(muteAct) : nullptr;
+	if (btn && btn->isVisible()) {
+		volPop->load();
+		volPop->adjustSize();
+		volPop->move(btn->mapToGlobal(QPoint(0, btn->height())));
+		volPop->show();
+	} else {
+		setMessage(QString(" volume %0% ").arg(conf.snd.vol.master));
+	}
+	volTimer.start();	// and the file is written once the wheel stops
 }
 
 // the buttons that are switches, read from what they switch
@@ -605,6 +663,12 @@ void MainWin::syncActions() {
 	recAct->setChecked(vrec_state() == VREC_RUN);
 	wavAct->setChecked(conf.snd.wavout);
 	muteAct->setChecked(conf.snd.mute);
+	// the button is the volume too: what a click does, then where the volume stands
+	QString tip = conf.snd.mute ? "Unmute" : "Mute";
+	QString key = cutKey(XCUT_MUTE);
+	if (!key.isEmpty()) tip += QString(" (%0)").arg(key);
+	tip += QString(" - volume %0%").arg(conf.snd.vol.master);
+	if (muteAct->toolTip() != tip) muteAct->setToolTip(tip);	// a change repaints the button
 	fullAct->setChecked(conf.vid.fullScreen);
 	ratioAct->setChecked(conf.vid.keepRatio);
 	for (int i = 0; i < sizeActs.size(); i++)

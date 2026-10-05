@@ -5,6 +5,7 @@
 #include <QMenuBar>
 #include <QSet>
 #include <QMessageBox>
+#include <QPointer>
 #include <QProgressBar>
 #include <QTableWidget>
 #include <QTime>
@@ -1533,7 +1534,7 @@ void MainWin::initUserMenu() {
 	cutAction(userMenu, "Virtual keyboard", XCUT_KEYBOARD, "keyboardzx");
 	// the debugger and its detached panels
 	dbgMenu = userMenu->addMenu(QIcon(":/images/bug.png"), "Debugger");
-	dbgMenu->addAction(QIcon(":/images/objective.png"),"Watcher", this, SIGNAL(s_watch_show()));
+	watchAct = dbgMenu->addAction(QIcon(":/images/objective.png"),"Watcher", this, SIGNAL(s_watch_show()));
 	dbgMenu->addAction(QIcon(":/images/rulers.png"),"Screen", this, SIGNAL(s_scr_show()));
 	dbgMenu->addAction(QIcon(":/images/note.png"),"Sound chips", this, SIGNAL(s_snd_show()));
 	cutAction(userMenu, "Options...", XCUT_OPTIONS, "other");
@@ -1586,10 +1587,15 @@ QAction* MainWin::cutAction(QMenu* menu, const QString& name, int id, const QStr
 }
 
 // the keys as they are now, after Options too
+// the key a hotkey is on, as the menus write it; empty when it has none
+QString MainWin::cutKey(int id) {
+	xShortcut* sc = find_shortcut_id(id);
+	return (sc && !sc->seq.isEmpty()) ? sc->seq.toString(QKeySequence::NativeText) : QString();
+}
+
 void MainWin::cutTexts() {
 	foreach(const xCutAct& cut, cutActs) {
-		xShortcut* sc = find_shortcut_id(cut.id);
-		QString key = (sc && !sc->seq.isEmpty()) ? sc->seq.toString(QKeySequence::NativeText) : QString();
+		QString key = cutKey(cut.id);
 		QString text = cut.name;
 		QString tip = cut.name;
 		tip.remove("...");
@@ -1681,6 +1687,7 @@ void MainWin::initMenuBar() {
 	cutAction(viewMenu, "Virtual keyboard", XCUT_KEYBOARD, "keyboardzx");
 
 	QMenu* help = new xMenu("Help", this);
+	helpMenu = help;
 	bar->addMenu(help);
 	help->addAction("Project page", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus"));
@@ -1865,11 +1872,23 @@ void MainWin::fillRecent() {
 	}
 }
 
+// not modal: the machine goes on, and a second ask brings the open one forward
 void MainWin::showAbout() {
-	pause(true, PR_FILE);
-	QMessageBox::about(this, "About " XPRODUCT,
+	static QPointer<QMessageBox> box;
+	if (box) {
+		box->raise();
+		box->activateWindow();
+		return;
+	}
+	box = new QMessageBox(this);
+	box->setAttribute(Qt::WA_DeleteOnClose);
+	box->setModal(false);
+	box->setWindowTitle("About " XPRODUCT);
+	box->setIconPixmap(frame->windowIcon().pixmap(64, 64));
+	box->setTextInteractionFlags(Qt::TextBrowserInteraction);
+	box->setText(
 		"<b>" XPRODUCT "</b> " XVERSION "<br><br>"
-		"ZX Spectrum and clones emulator.<br>"
+		"A ZX Spectrum and clones emulator, made for playing and for coding alike.<br>"
 		"By Oleksandr \".koval\" Kovalchuk, a fork of "
 		"<a href=\"https://github.com/samstyle/Xpeccy\">Xpeccy</a> by SAM style.<br>"
 		"MIT license.<br><br>"
@@ -1883,8 +1902,8 @@ void MainWin::showAbout() {
 		"<a href=\"https://github.com/dotkoval/xpeccy-plus#bundled-roms\">details</a>.<br><br>"
 		"Qt " QT_VERSION_STR ", SDL " QT_STRINGIFY(SDL_MAJOR_VERSION) "." QT_STRINGIFY(SDL_MINOR_VERSION)
 		"." QT_STRINGIFY(SDL_PATCHLEVEL));
-	pause(false, PR_FILE);
-	setFocus();
+	connect(box, &QDialog::finished, this, [this]() {setFocus();});
+	box->show();
 }
 
 void MainWin::favManage() {
@@ -1892,6 +1911,82 @@ void MainWin::favManage() {
 	fav_manage(this);
 	pause(false, PR_FILE);
 	setFocus();
+}
+
+// Machine, Media and Debug on the menu bar: what the buttons do, for a window
+// with no toolbar, put between Favorites and Help
+void MainWin::initMachineMenus() {
+	QMenu* mac = new xMenu("Machine", this);
+	mac->addMenu(profileMenu);
+	mac->addMenu(resMenu);
+	mac->addAction(cutById.value(XCUT_NMI));
+	mac->addMenu(turboMenu);
+	mac->addSeparator();
+	mac->addAction(pauseAct);
+	mac->addAction(fastAct);
+	mac->addAction(slowAct);
+	mac->addAction(ffAct);
+	// the rewind itself is a key held down, which a menu cannot do; this is whether it may
+	QAction* rewOnAct = mac->addAction("Allow rewind", this, [this](bool on) {
+		conf.emu.rewind.on = on ? 1 : 0;
+		saveConfig();
+	});
+	rewOnAct->setCheckable(true);
+	mac->addSeparator();
+	mac->addAction(muteAct);
+	mac->addSeparator();
+	mac->addAction(pckAct);
+	mac->addAction(mouseAct);
+	mac->addMenu(keyMenu);
+
+	QMenu* media = new xMenu("Media", this);
+	media->addAction(cutById.value(XCUT_TAPWIN));
+	media->addAction(tapeAct);
+	media->addAction(tapeRecAct);
+	media->addSeparator();
+	media->addAction(diskAct);
+	// its own action: the drives' list is called Disk manager where its root opens the window
+	QAction* drvAct = new QAction(QIcon(":/images/fdd.png"), "Floppy drives", this);
+	drvAct->setMenu(dskMenu);
+	media->addAction(drvAct);
+	QAction* fdcFastAct = media->addAction("Fast disk access", this, [this](bool on) {
+		setFlagBit(on, &fdcFlag, FDC_FAST);
+		saveConfig();
+	});
+	fdcFastAct->setCheckable(true);
+	media->addSeparator();
+	media->addMenu(cartMenu);
+	media->addMenu(sdcMenu);
+	media->addMenu(hddMenu);
+	media->addSeparator();
+	media->addAction(cutById.value(XCUT_RZXWIN));
+
+	// one list, not the right-click menu's submenu
+	QMenu* dbg = new xMenu("Debug", this);
+	dbg->addAction(cutAct("Debugger", XCUT_DEBUG, "bug"));
+	dbg->addSeparator();
+	dbg->addAction(watchAct);
+	dbg->addAction(cutById.value(XCUT_SCRWIN));
+	dbg->addAction(cutById.value(XCUT_SNDWIN));
+
+	// their submenus are filled where the right-click menu fills them, before the
+	// switches are read: what a drive offers is known only once its list is made
+	connect(mac, &QMenu::aboutToShow, this, &MainWin::fillUserMenu);
+	connect(media, &QMenu::aboutToShow, this, &MainWin::fillUserMenu);
+	foreach(QMenu* m, QList<QMenu*>() << mac << media << dbg) {
+		frame->menuBar()->insertMenu(helpMenu->menuAction(), m);
+		if (fsBar) fsBar->insertMenu(helpMenu->menuAction(), m);
+		connect(m, &QMenu::aboutToHide, this, &MainWin::menuHide);
+		connect(m, &QMenu::aboutToShow, this, &MainWin::syncActions);
+	}
+	// the switches only these menus have
+	connect(mac, &QMenu::aboutToShow, this, [rewOnAct]() {rewOnAct->setChecked(conf.emu.rewind.on);});
+	connect(media, &QMenu::aboutToShow, this, [this, drvAct, fdcFastAct]() {
+		bool drives = !dskMenu->isEmpty();
+		drvAct->setVisible(drives);
+		fdcFastAct->setVisible(drives);
+		fdcFastAct->setChecked(fdcFlag & FDC_FAST);
+	});
 }
 
 void MainWin::fillUserMenu() {

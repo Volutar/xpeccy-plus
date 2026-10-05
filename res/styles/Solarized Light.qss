@@ -595,6 +595,13 @@ QToolBar::separator {
 	margin: 3px 2px;
 }
 
+/* the arrow to what does not fit: the system's own is faint on a dark ground */
+QToolBarExtension {
+	qproperty-icon: url(:/images/styles/chevron-dark.png);
+	padding: 0px;
+	border: none;
+}
+
 QStatusBar {
 	background-color: #fdf6e3;
 	color: #586e75;
