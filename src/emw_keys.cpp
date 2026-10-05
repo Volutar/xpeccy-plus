@@ -39,7 +39,7 @@ static bool xcut_repeats(int keyid) {
 }
 
 int ev_to_keyid(QKeyEvent* ev, bool kgrab) {
-	int keyid = hotkey_for(ev->key(), ev->modifiers(), kgrab);
+	int keyid = hotkey_for(hotkey_key(ev), ev->modifiers(), kgrab);
 	if (keyid < 0) {
 #if defined(__linux) || defined(__BSD)
 			keyid = ev->nativeScanCode();
@@ -104,6 +104,12 @@ void MainWin::keyPressEvent(QKeyEvent* ev) {
 				xkey_press(keyid);
 			}
 		} else {
+			// a hotkey's own Shift or Ctrl is not the machine's Caps or Symbol Shift:
+			// they are let go there before the hotkey acts, a reset or an NMI included
+			if ((keyid >= 0x10000) && (ev->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier))) {
+				static const int mods[] = {XKEY_LSHIFT, XKEY_RSHIFT, XKEY_LCTRL, XKEY_RCTRL};
+				for (int m : mods) xkey_release(m);
+			}
 			xkey_press(keyid);
 		}
 	}
@@ -134,7 +140,7 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 	QString path;
 	Computer* comp = conf.zx;
 	comp->keyb->grab = pckAct->isChecked();
-	if (pckAct->isChecked() && !cmd) {
+	if (pckAct->isChecked() && !cmd && (xkey != XCUT_GRABKBD)) {
 		// xt_press(comp->keyb, &kent);
 		if (comp->hw->keyp)
 			comp->hw->keyp(comp, &kent);
@@ -288,8 +294,8 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 				}
 				break;
 			case XCUT_GRABKBD:
-				pckAct->setChecked(true);
-				setMessage(" grab keyboard ");
+				pckAct->setChecked(!pckAct->isChecked());
+				setMessage(pckAct->isChecked() ? " grab keyboard " : " release keyboard ");
 				break;
 			case XCUT_PAUSE:
 				conf.emu.pause ^= PR_PAUSE;
@@ -307,6 +313,10 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 			case XCUT_OPTIONS:
 				pause(true, PR_OPTS);
 				emit s_options();
+				break;
+			case XCUT_HOTKEYS:
+				pause(true, PR_OPTS);
+				emit s_hotkeys();
 				break;
 			case XCUT_SAVE: {
 				int live = !conf.emu.pause && !comp->flgDBG;
@@ -409,7 +419,7 @@ void MainWin::keyReleaseEvent(QKeyEvent *ev) {
 		if (comp->flgDBG) {
 			ev->ignore();
 		} else {
-			keyid = hotkey_for(ev->key(), ev->modifiers(), pckAct->isChecked());
+			keyid = hotkey_for(hotkey_key(ev), ev->modifiers(), pckAct->isChecked());
 			if (keyid >= 0) {
 				xcut_release(keyid);
 			} else {	// not hotkeys

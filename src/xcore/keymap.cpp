@@ -1,6 +1,7 @@
 #include <fstream>
 
 #include <QFile>
+#include <QKeyEvent>
 
 #include <string.h>
 #include <math.h>
@@ -88,7 +89,7 @@ static keyEntry keyMapInit[] = {
 	{".",XKEY_PERIOD,{'S','m'},{'S','m'},{0x2e,0xf3},0x49,0x49,0x34,0,{'S','t'}},
 	{"/",XKEY_BSLASH,{'S','c'},{'S','v'},{0x5c,0x85},0x4a,0x4a,0x35,0,{'S','c'}},
 
-	{"ESC",XKEY_ESC,{0,0},{'C','1'},{0x1b,0x39},0x08,0x76,0x01,0},	// NOTE: pc98xx esc code is 00
+	{"ESC",XKEY_ESC,{'C',' '},{'C','1'},{0x1b,0x39},0x08,0x76,0x01,0},	// NOTE: pc98xx esc code is 00
 	{"F1",XKEY_F1,{0,0},{'a'|0x80,0},{0x61,0xb1},0x07,0x05,0x3b,0},
 	{"F2",XKEY_F2,{0,0},{'b'|0x80,0},{0x62,0xb2},0x0f,0x06,0x3c,0},
 	{"F3",XKEY_F3,{0,0},{'c'|0x80,0},{0x63,0xb3},0x17,0x04,0x3d,0},
@@ -432,102 +433,410 @@ int key2qid(int key) {
 
 // shortcuts
 
+// what each action is; its keys come from the preset or Custom (hotkeys_set)
 static xShortcut short_tab[] = {
-#ifdef __APPLE__
-	{SCG_MAIN | SCG_DEBUGA, XCUT_OPTIONS, "key.options", "Options", QKeySequence(), QKeySequence(Qt::META | Qt::Key_Comma)},
-#else
-	{SCG_MAIN | SCG_DEBUGA, XCUT_OPTIONS, "key.options", "Options", QKeySequence(), QKeySequence(Qt::Key_F1)},
-#endif
-	{SCG_MAIN | SCG_DEBUGA, XCUT_DEBUG, "key.debuger", "Debugger", QKeySequence(), QKeySequence(Qt::Key_Escape)},
-	{SCG_MAIN, XCUT_PAUSE, "key.pause", "Pause", QKeySequence(), QKeySequence(Qt::Key_Pause)},
-	{SCG_MAIN, XCUT_FAST, "key.fast", "Fast mode", QKeySequence(), QKeySequence(Qt::Key_Insert)},
-	{SCG_MAIN, XCUT_REWIND, "key.rewind", "Rewind (hold)", QKeySequence(), QKeySequence(Qt::Key_Delete)},
-	{SCG_MAIN, XCUT_FFWD, "key.ffwd", "Fast forward", QKeySequence(), QKeySequence(Qt::Key_Home)},
-	{SCG_MAIN, XCUT_SLOWMO, "key.slowmo", "Slow motion", QKeySequence(), QKeySequence(Qt::Key_End)},
-	{SCG_MAIN | SCG_DEBUGA | SCG_DISASM, XCUT_SAVE, "key.save", "Save", QKeySequence(), QKeySequence(Qt::Key_F2)},
-	{SCG_MAIN | SCG_DEBUGA, XCUT_LOAD, "key.load", "Open", QKeySequence(), QKeySequence(Qt::Key_F3)},
-	{SCG_MAIN, XCUT_FASTSAVE, "key.fastsave", "Fast saving", QKeySequence(), QKeySequence(Qt::Key_F9)},
-	{SCG_MAIN, XCUT_MOUSE, "key.mouse.grab", "Grab mouse", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_M)},
-	{SCG_MAIN, XCUT_GRABKBD, "key.keyboard.grab","Grab keyboard", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_G)},
-	{SCG_MAIN | SCG_DEBUGA, XCUT_KEYBOARD, "key.keywin", "Show virtual keyboard", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_K)},
-	{SCG_MAIN, XCUT_TAPWIN, "key.tapewin", "Show tape player", QKeySequence(), QKeySequence()},
-	{SCG_MAIN, XCUT_RZXWIN, "key.rzxwin", "Show RZX player", QKeySequence(), QKeySequence()},
-	{SCG_MAIN | SCG_DEBUGA, XCUT_SCRWIN, "key.scrwin", "Show screen window", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_S)},
-	{SCG_MAIN | SCG_DEBUGA, XCUT_SNDWIN, "key.sndwin", "Show sound chip window", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_A)},
-	{SCG_MAIN, XCUT_MUTE, "key.mute", "Mute", QKeySequence(), QKeySequence()},
-	{SCG_MAIN, XCUT_TAPLAY, "key.tape.play", "Tape play", QKeySequence(), QKeySequence(Qt::Key_F4)},
-	{SCG_MAIN, XCUT_TAPREC, "key.tape.rec", "Tape rec", QKeySequence(), QKeySequence(Qt::Key_F5)},
-	{SCG_MAIN, XCUT_SCRSHOT, "key.scrshot", "Screenshot", QKeySequence(), QKeySequence(Qt::Key_F7)},
-	{SCG_MAIN, XCUT_COMBOSHOT, "key.scrshot.combo", "Screenshot combo", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_F7)},
-	{SCG_MAIN, XCUT_SIZEX1, "key.size.x1", "Size x1", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_1)},
-	{SCG_MAIN, XCUT_SIZEX2, "key.size.x2", "Size x2", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_2)},
-	{SCG_MAIN, XCUT_SIZEX3, "key.size.x3", "Size x3", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_3)},
-	{SCG_MAIN, XCUT_SIZEX4, "key.size.x4", "Size x4", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_4)},
-	{SCG_MAIN, XCUT_SIZEX5, "key.size.x5", "Size x5", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_5)},
-	{SCG_MAIN, XCUT_SIZEX6, "key.size.x6", "Size x6", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_6)},
-	{SCG_MAIN, XCUT_FULLSCR, "key.fullscreen", "Fullscreen", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_Return)},
-	{SCG_MAIN, XCUT_RATIO, "key.ratio", "Keep aspect ratio", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_R)},
-	{SCG_MAIN, XCUT_NOFLICK, "key.noflick", "Noflick", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_N)},
-	{SCG_MAIN, XCUT_NMI, "key.nmi", "NMI", QKeySequence(), QKeySequence(Qt::Key_F10)},
-	{SCG_MAIN | SCG_DEBUGA, XCUT_RESET, "key.reset", "Reset", QKeySequence(), QKeySequence(Qt::Key_F12)},
-	{SCG_MAIN, XCUT_RES_48, "key.reset.48", "Reset to 48K", QKeySequence(), QKeySequence()},
-	{SCG_MAIN, XCUT_RES_128, "key.reset.128", "Reset to 128K", QKeySequence(), QKeySequence()},
-	{SCG_MAIN, XCUT_RES_DOS, "key.reset.dos", "Reset to DOS", QKeySequence(), QKeySequence()},
-	{SCG_MAIN, XCUT_RES_SERVICE, "key.reset.service", "Reset to Service", QKeySequence(), QKeySequence()},
-	{SCG_MAIN, XCUT_TURBO, "key.turbo", "Switch turbo", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_T)},
-	// Qt::AltModifier, not Qt::ALT: mixing the two modifier enums leaves no
-	// exact operator| match and clang calls it ambiguous.
-	{SCG_MAIN, XCUT_SPEED_UP, "key.speed.up", "Speed up", QKeySequence(), QKeySequence(Qt::AltModifier | Qt::KeypadModifier | Qt::Key_Plus)},
-	{SCG_MAIN, XCUT_SPEED_DOWN, "key.speed.down", "Speed down", QKeySequence(), QKeySequence(Qt::AltModifier | Qt::KeypadModifier | Qt::Key_Minus)},
-//	{SCG_MAIN, XCUT_TVLINES, "key.scanlines", "Switch scanlines", QKeySequence(), QKeySequence()},
-	{SCG_MAIN, XCUT_VIDREC, "key.video.rec", "Start/stop video recording", QKeySequence(), QKeySequence(Qt::CTRL | Qt::Key_F7)},
-	{SCG_MAIN, XCUT_WAV_OUT, "key.write.wav", "Start/stop WAV output", QKeySequence(), QKeySequence()},
-	{SCG_MAIN, XCUT_RELOAD_SHD, "key.reload.shader", "Reload shader", QKeySequence(), QKeySequence()},
-	{SCG_MAIN, XCUT_RELOAD, "key.reload", "Reload snapshot and labels", QKeySequence(), QKeySequence()},
-	{SCG_MAIN, XCUT_FAVORITE, "key.favorite.add", "Add to Favorites", QKeySequence(), QKeySequence()},
-	{SCG_MAIN, XCUT_QUICKSAVE, "key.quick.save", "Quick save", QKeySequence(), QKeySequence()},
-	{SCG_MAIN, XCUT_QUICKLOAD, "key.quick.load", "Quick load", QKeySequence(), QKeySequence()},
+	{SCG_MAIN | SCG_DEBUGA, XCUT_OPTIONS, "key.options", "Options", {}},
+	{SCG_MAIN, XCUT_HOTKEYS, "key.hotkeys", "Hotkeys list", {}},
+	{SCG_MAIN | SCG_DEBUGA, XCUT_DEBUG, "key.debuger", "Debugger", {}},
+	{SCG_MAIN, XCUT_PAUSE, "key.pause", "Pause", {}},
+	{SCG_MAIN, XCUT_FAST, "key.fast", "Fast mode", {}},
+	{SCG_MAIN, XCUT_REWIND, "key.rewind", "Rewind (hold)", {}},
+	{SCG_MAIN, XCUT_FFWD, "key.ffwd", "Fast forward", {}},
+	{SCG_MAIN, XCUT_SLOWMO, "key.slowmo", "Slow motion", {}},
+	{SCG_MAIN | SCG_DEBUGA | SCG_DISASM, XCUT_SAVE, "key.save", "Save", {}},
+	{SCG_MAIN | SCG_DEBUGA, XCUT_LOAD, "key.load", "Open", {}},
+	{SCG_MAIN, XCUT_FASTSAVE, "key.fastsave", "Fast saving", {}},
+	{SCG_MAIN, XCUT_MOUSE, "key.mouse.grab", "Grab mouse", {}},
+	{SCG_MAIN, XCUT_GRABKBD, "key.keyboard.grab","Grab keyboard", {}},
+	{SCG_MAIN | SCG_DEBUGA, XCUT_KEYBOARD, "key.keywin", "Show virtual keyboard", {}},
+	{SCG_MAIN, XCUT_TAPWIN, "key.tapewin", "Show tape player", {}},
+	{SCG_MAIN, XCUT_RZXWIN, "key.rzxwin", "Show RZX player", {}},
+	{SCG_MAIN | SCG_DEBUGA, XCUT_SCRWIN, "key.scrwin", "Show screen window", {}},
+	{SCG_MAIN | SCG_DEBUGA, XCUT_SNDWIN, "key.sndwin", "Show sound chip window", {}},
+	{SCG_MAIN, XCUT_MUTE, "key.mute", "Mute", {}},
+	{SCG_MAIN, XCUT_TAPLAY, "key.tape.play", "Tape play", {}},
+	{SCG_MAIN, XCUT_TAPREC, "key.tape.rec", "Tape rec", {}},
+	{SCG_MAIN, XCUT_SCRSHOT, "key.scrshot", "Screenshot", {}},
+	{SCG_MAIN, XCUT_COMBOSHOT, "key.scrshot.combo", "Screenshot combo", {}},
+	{SCG_MAIN, XCUT_SIZEX1, "key.size.x1", "Size x1", {}},
+	{SCG_MAIN, XCUT_SIZEX2, "key.size.x2", "Size x2", {}},
+	{SCG_MAIN, XCUT_SIZEX3, "key.size.x3", "Size x3", {}},
+	{SCG_MAIN, XCUT_SIZEX4, "key.size.x4", "Size x4", {}},
+	{SCG_MAIN, XCUT_SIZEX5, "key.size.x5", "Size x5", {}},
+	{SCG_MAIN, XCUT_SIZEX6, "key.size.x6", "Size x6", {}},
+	{SCG_MAIN, XCUT_FULLSCR, "key.fullscreen", "Fullscreen", {}},
+	{SCG_MAIN, XCUT_RATIO, "key.ratio", "Keep aspect ratio", {}},
+	{SCG_MAIN, XCUT_NOFLICK, "key.noflick", "Noflick", {}},
+	{SCG_MAIN, XCUT_NMI, "key.nmi", "NMI", {}},
+	{SCG_MAIN | SCG_DEBUGA, XCUT_RESET, "key.reset", "Reset", {}},
+	{SCG_MAIN, XCUT_RES_48, "key.reset.48", "Reset to 48K", {}},
+	{SCG_MAIN, XCUT_RES_128, "key.reset.128", "Reset to 128K", {}},
+	{SCG_MAIN, XCUT_RES_DOS, "key.reset.dos", "Reset to DOS", {}},
+	{SCG_MAIN, XCUT_RES_SERVICE, "key.reset.service", "Reset to Service", {}},
+	{SCG_MAIN, XCUT_TURBO, "key.turbo", "Switch turbo", {}},
+	{SCG_MAIN, XCUT_SPEED_UP, "key.speed.up", "Speed up", {}},
+	{SCG_MAIN, XCUT_SPEED_DOWN, "key.speed.down", "Speed down", {}},
+	{SCG_MAIN, XCUT_VIDREC, "key.video.rec", "Start/stop video recording", {}},
+	{SCG_MAIN, XCUT_WAV_OUT, "key.write.wav", "Start/stop WAV output", {}},
+	{SCG_MAIN, XCUT_RELOAD_SHD, "key.reload.shader", "Reload shader", {}},
+	{SCG_MAIN, XCUT_RELOAD, "key.reload", "Reload snapshot and labels", {}},
+	{SCG_MAIN, XCUT_FAVORITE, "key.favorite.add", "Add to Favorites", {}},
+	{SCG_MAIN, XCUT_QUICKSAVE, "key.quick.save", "Quick save", {}},
+	{SCG_MAIN, XCUT_QUICKLOAD, "key.quick.load", "Quick load", {}},
 
-	{SCG_DEBUGA, XCUT_STEPIN, "key.dbg.stepin", "Debugger: Step in", QKeySequence(), QKeySequence(Qt::Key_F7)},
-	{SCG_DEBUGA, XCUT_STEPOVER, "key.dbg.stepover", "Debugger: Step over", QKeySequence(), QKeySequence(Qt::Key_F8)},
-	{SCG_DEBUGA, XCUT_STEPOUT, "key.dbg.stepout", "Debugger: Step out", QKeySequence(), QKeySequence(Qt::Key_F6)},
-	{SCG_DEBUGA, XCUT_FASTSTEP, "key.dbg.faststep", "Debugger: Fast step", QKeySequence(), QKeySequence(Qt::ALT | Qt::Key_F7)},
-	{SCG_DEBUGA, XCUT_TMPBRK, "key.dbg.runtohere", "Debugger: Stop here", QKeySequence(), QKeySequence(Qt::Key_F9)},
-	{SCG_DEBUGA, XCUT_TRACE, "key.dbg.trace", "Debugger: Trace", QKeySequence(), QKeySequence(Qt::CTRL | Qt::Key_T)},
-	{SCG_DEBUGA, XCUT_OPEN_DUMP, "key.dbg.opendump", "Debugger: Load dump", QKeySequence(), QKeySequence(Qt::CTRL | Qt::Key_O)},
-	{SCG_DEBUGA, XCUT_SAVE_DUMP, "key.dbg.savedump", "Debugger: Save dump", QKeySequence(), QKeySequence(Qt::CTRL | Qt::Key_S)},
-	{SCG_DEBUGA, XCUT_OPEN_XMAP, "key.dbg.openxmap", "Debugger: Load xmap", QKeySequence(), QKeySequence()},
-	{SCG_DEBUGA, XCUT_SAVE_XMAP, "key.dbg.savexmap", "Debugger: Save xmap", QKeySequence(), QKeySequence()},
-	{SCG_DEBUGA, XCUT_FINDER, "key.dbg.finder", "Debugger: Find pattern", QKeySequence(), QKeySequence(Qt::CTRL | Qt::Key_F)},
-	{SCG_DEBUGA, XCUT_LABELS, "key.dbg.labels", "Debugger: Switch labels", QKeySequence(), QKeySequence(Qt::CTRL | Qt::Key_L)},
-	{SCG_DEBUGA, XCUT_LABLIST, "key.dbg.lablist", "Debugger: Show labels list", QKeySequence(), QKeySequence()},
-	{SCG_DEBUGA, XCUT_DBG_RELOAD, "key.dbg.reload", "Debugger: Reload snapshot and labels", QKeySequence(), QKeySequence()},
+	{SCG_DEBUGA, XCUT_STEPIN, "key.dbg.stepin", "Debugger: Step in", {}},
+	{SCG_DEBUGA, XCUT_STEPOVER, "key.dbg.stepover", "Debugger: Step over", {}},
+	{SCG_DEBUGA, XCUT_STEPOUT, "key.dbg.stepout", "Debugger: Step out", {}},
+	{SCG_DEBUGA, XCUT_FASTSTEP, "key.dbg.faststep", "Debugger: Fast step", {}},
+	{SCG_DEBUGA, XCUT_TMPBRK, "key.dbg.runtohere", "Debugger: Stop here", {}},
+	{SCG_DEBUGA, XCUT_TRACE, "key.dbg.trace", "Debugger: Trace", {}},
+	{SCG_DEBUGA, XCUT_OPEN_DUMP, "key.dbg.opendump", "Debugger: Load dump", {}},
+	{SCG_DEBUGA, XCUT_SAVE_DUMP, "key.dbg.savedump", "Debugger: Save dump", {}},
+	{SCG_DEBUGA, XCUT_OPEN_XMAP, "key.dbg.openxmap", "Debugger: Load xmap", {}},
+	{SCG_DEBUGA, XCUT_SAVE_XMAP, "key.dbg.savexmap", "Debugger: Save xmap", {}},
+	{SCG_DEBUGA, XCUT_FINDER, "key.dbg.finder", "Debugger: Find pattern", {}},
+	{SCG_DEBUGA, XCUT_LABELS, "key.dbg.labels", "Debugger: Switch labels", {}},
+	{SCG_DEBUGA, XCUT_LABLIST, "key.dbg.lablist", "Debugger: Show labels list", {}},
+	{SCG_DEBUGA, XCUT_DBG_RELOAD, "key.dbg.reload", "Debugger: Reload snapshot and labels", {}},
 
-	{SCG_DISASM, XCUT_TOPC, "key.disasm.topc", "Disasm: Jump to PC", QKeySequence(), QKeySequence(Qt::Key_Home)},
-	{SCG_DISASM, XCUT_SETPC, "key.disasm.setpc", "Disasm: Set PC", QKeySequence(), QKeySequence(Qt::Key_End)},
-	{SCG_DISASM, XCUT_SETBRK, "key.disasm.setbrk", "Disasm: Breakpoint", QKeySequence(), QKeySequence(Qt::Key_Space)},
-	{SCG_DISASM, XCUT_JUMPTO, "key.disasm.jump", "Disasm: Jump to operand", QKeySequence(), QKeySequence(Qt::Key_F4)},
-	{SCG_DISASM, XCUT_RETFROM, "key.disasm.ret", "Disasm: Return", QKeySequence(), QKeySequence(Qt::Key_F5)},
-	{SCG_DISASM, XCUT_GOTOADR, "key.disasm.goto", "Disasm: Go to address", QKeySequence(), QKeySequence(Qt::Key_G)},
+	{SCG_DISASM, XCUT_TOPC, "key.disasm.topc", "Disasm: Jump to PC", {}},
+	{SCG_DISASM, XCUT_SETPC, "key.disasm.setpc", "Disasm: Set PC", {}},
+	{SCG_DISASM, XCUT_SETBRK, "key.disasm.setbrk", "Disasm: Breakpoint", {}},
+	{SCG_DISASM, XCUT_JUMPTO, "key.disasm.jump", "Disasm: Jump to operand", {}},
+	{SCG_DISASM, XCUT_RETFROM, "key.disasm.ret", "Disasm: Return", {}},
+	{SCG_DISASM, XCUT_GOTOADR, "key.disasm.goto", "Disasm: Go to address", {}},
 
-	{SCG_DUMP, XCUT_DUMP_GOTOADR, "key.dump.goto", "Dump: Go to address", QKeySequence(), QKeySequence(Qt::Key_G)},
-	{SCG_DUMP, XCUT_DUMP_REG_PC, "key.dump.goto.pc", "Dump: Go to (PC)", QKeySequence(), QKeySequence(Qt::CTRL | Qt::Key_P)},
-	{SCG_DUMP, XCUT_DUMP_REG_SP, "key.dump.goto.sp", "Dump: Go to (SP)", QKeySequence(), QKeySequence(Qt::CTRL | Qt::Key_S)},
-	{SCG_DUMP, XCUT_DUMP_REG_BC, "key.dump.goto.bc", "Dump: Go to (BC)", QKeySequence(), QKeySequence(Qt::CTRL | Qt::Key_B)},
-	{SCG_DUMP, XCUT_DUMP_REG_DE, "key.dump.goto.de", "Dump: Go to (DE)", QKeySequence(), QKeySequence(Qt::CTRL | Qt::Key_D)},
-	{SCG_DUMP, XCUT_DUMP_REG_HL, "key.dump.goto.hl", "Dump: Go to (HL)", QKeySequence(), QKeySequence(Qt::CTRL | Qt::Key_H)},
-	{SCG_DUMP, XCUT_DUMP_REG_IX, "key.dump.goto.ix", "Dump: Go to (IX)", QKeySequence(), QKeySequence(Qt::CTRL | Qt::Key_X)},
-	{SCG_DUMP, XCUT_DUMP_REG_IY, "key.dump.goto.iy", "Dump: Go to (IY)", QKeySequence(), QKeySequence(Qt::CTRL | Qt::Key_Y)},
+	{SCG_DUMP, XCUT_DUMP_GOTOADR, "key.dump.goto", "Dump: Go to address", {}},
+	{SCG_DUMP, XCUT_DUMP_REG_PC, "key.dump.goto.pc", "Dump: Go to (PC)", {}},
+	{SCG_DUMP, XCUT_DUMP_REG_SP, "key.dump.goto.sp", "Dump: Go to (SP)", {}},
+	{SCG_DUMP, XCUT_DUMP_REG_BC, "key.dump.goto.bc", "Dump: Go to (BC)", {}},
+	{SCG_DUMP, XCUT_DUMP_REG_DE, "key.dump.goto.de", "Dump: Go to (DE)", {}},
+	{SCG_DUMP, XCUT_DUMP_REG_HL, "key.dump.goto.hl", "Dump: Go to (HL)", {}},
+	{SCG_DUMP, XCUT_DUMP_REG_IX, "key.dump.goto.ix", "Dump: Go to (IX)", {}},
+	{SCG_DUMP, XCUT_DUMP_REG_IY, "key.dump.goto.iy", "Dump: Go to (IY)", {}},
 
-	{0, -1, NULL, NULL, QKeySequence(), QKeySequence()}
+	{0, -1, NULL, NULL, {}}
 };
 
-void shortcut_init() {
-	int i = 0;
-	while (short_tab[i].text != NULL) {
-		short_tab[i].seq = short_tab[i].def;
-		i++;
+// presets: an action not listed has no key
+
+typedef struct {
+	int id;
+	QKeySequence key[2];
+} xCutDef;
+
+// Qt::AltModifier, not Qt::ALT, beside Qt::KeypadModifier: mixing the two
+// modifier enums leaves no exact operator| match and clang calls it ambiguous.
+
+// the keys as they have always been, after UnrealSpeccy
+static const xCutDef cutClassic[] = {
+#ifdef __APPLE__
+	{XCUT_OPTIONS, {QKeySequence(Qt::META | Qt::Key_Comma)}},
+#else
+	{XCUT_OPTIONS, {QKeySequence(Qt::Key_F1)}},
+#endif
+	{XCUT_DEBUG, {QKeySequence(Qt::Key_Escape)}},
+	{XCUT_PAUSE, {QKeySequence(Qt::Key_Pause)}},
+	{XCUT_FAST, {QKeySequence(Qt::Key_Insert)}},
+	{XCUT_REWIND, {QKeySequence(Qt::Key_Delete)}},
+	{XCUT_FFWD, {QKeySequence(Qt::Key_Home)}},
+	{XCUT_SLOWMO, {QKeySequence(Qt::Key_End)}},
+	{XCUT_SAVE, {QKeySequence(Qt::Key_F2)}},
+	{XCUT_LOAD, {QKeySequence(Qt::Key_F3)}},
+	{XCUT_FASTSAVE, {QKeySequence(Qt::Key_F9)}},
+	{XCUT_MOUSE, {QKeySequence(Qt::ALT | Qt::Key_M)}},
+	{XCUT_GRABKBD, {QKeySequence(Qt::ALT | Qt::Key_G)}},
+	{XCUT_KEYBOARD, {QKeySequence(Qt::ALT | Qt::Key_K)}},
+	{XCUT_SCRWIN, {QKeySequence(Qt::ALT | Qt::Key_S)}},
+	{XCUT_SNDWIN, {QKeySequence(Qt::ALT | Qt::Key_A)}},
+	{XCUT_TAPLAY, {QKeySequence(Qt::Key_F4)}},
+	{XCUT_TAPREC, {QKeySequence(Qt::Key_F5)}},
+	{XCUT_SCRSHOT, {QKeySequence(Qt::Key_F7)}},
+	{XCUT_COMBOSHOT, {QKeySequence(Qt::ALT | Qt::Key_F7)}},
+	{XCUT_SIZEX1, {QKeySequence(Qt::ALT | Qt::Key_1)}},
+	{XCUT_SIZEX2, {QKeySequence(Qt::ALT | Qt::Key_2)}},
+	{XCUT_SIZEX3, {QKeySequence(Qt::ALT | Qt::Key_3)}},
+	{XCUT_SIZEX4, {QKeySequence(Qt::ALT | Qt::Key_4)}},
+	{XCUT_SIZEX5, {QKeySequence(Qt::ALT | Qt::Key_5)}},
+	{XCUT_SIZEX6, {QKeySequence(Qt::ALT | Qt::Key_6)}},
+	{XCUT_FULLSCR, {QKeySequence(Qt::ALT | Qt::Key_Return)}},
+	{XCUT_RATIO, {QKeySequence(Qt::ALT | Qt::Key_R)}},
+	{XCUT_NOFLICK, {QKeySequence(Qt::ALT | Qt::Key_N)}},
+	{XCUT_NMI, {QKeySequence(Qt::Key_F10)}},
+	{XCUT_RESET, {QKeySequence(Qt::Key_F12)}},
+	{XCUT_TURBO, {QKeySequence(Qt::ALT | Qt::Key_T)}},
+	{XCUT_SPEED_UP, {QKeySequence(Qt::AltModifier | Qt::KeypadModifier | Qt::Key_Plus)}},
+	{XCUT_SPEED_DOWN, {QKeySequence(Qt::AltModifier | Qt::KeypadModifier | Qt::Key_Minus)}},
+	{XCUT_VIDREC, {QKeySequence(Qt::CTRL | Qt::Key_F7)}},
+
+	{XCUT_STEPIN, {QKeySequence(Qt::Key_F7)}},
+	{XCUT_STEPOVER, {QKeySequence(Qt::Key_F8)}},
+	{XCUT_STEPOUT, {QKeySequence(Qt::Key_F6)}},
+	{XCUT_FASTSTEP, {QKeySequence(Qt::ALT | Qt::Key_F7)}},
+	{XCUT_TMPBRK, {QKeySequence(Qt::Key_F9)}},
+	{XCUT_TRACE, {QKeySequence(Qt::CTRL | Qt::Key_T)}},
+	{XCUT_OPEN_DUMP, {QKeySequence(Qt::CTRL | Qt::Key_O)}},
+	{XCUT_SAVE_DUMP, {QKeySequence(Qt::CTRL | Qt::Key_S)}},
+	{XCUT_FINDER, {QKeySequence(Qt::CTRL | Qt::Key_F)}},
+	{XCUT_LABELS, {QKeySequence(Qt::CTRL | Qt::Key_L)}},
+
+	{XCUT_TOPC, {QKeySequence(Qt::Key_Home)}},
+	{XCUT_SETPC, {QKeySequence(Qt::Key_End)}},
+	{XCUT_SETBRK, {QKeySequence(Qt::Key_Space)}},
+	{XCUT_JUMPTO, {QKeySequence(Qt::Key_F4)}},
+	{XCUT_RETFROM, {QKeySequence(Qt::Key_F5)}},
+	{XCUT_GOTOADR, {QKeySequence(Qt::Key_G)}},
+
+	{XCUT_DUMP_GOTOADR, {QKeySequence(Qt::Key_G)}},
+	{XCUT_DUMP_REG_PC, {QKeySequence(Qt::CTRL | Qt::Key_P)}},
+	{XCUT_DUMP_REG_SP, {QKeySequence(Qt::CTRL | Qt::Key_S)}},
+	{XCUT_DUMP_REG_BC, {QKeySequence(Qt::CTRL | Qt::Key_B)}},
+	{XCUT_DUMP_REG_DE, {QKeySequence(Qt::CTRL | Qt::Key_D)}},
+	{XCUT_DUMP_REG_HL, {QKeySequence(Qt::CTRL | Qt::Key_H)}},
+	{XCUT_DUMP_REG_IX, {QKeySequence(Qt::CTRL | Qt::Key_X)}},
+	{XCUT_DUMP_REG_IY, {QKeySequence(Qt::CTRL | Qt::Key_Y)}},
+	{-1, {}}
+};
+
+// The machine keeps every key it has; the emulator takes the F-keys, the block
+// over the arrows and one modifier that is no ZX key: Alt here, Cmd on a Mac.
+// Ctrl is Symbol Shift, so only what opens a dialog sits on it.
+#ifdef __APPLE__
+#define HK_MOD Qt::META
+#define HK_MODM Qt::MetaModifier
+#define HK_APP Qt::META
+#else
+#define HK_MOD Qt::ALT
+#define HK_MODM Qt::AltModifier
+#define HK_APP Qt::CTRL
+#endif
+
+static const xCutDef cutModern[] = {
+	{XCUT_HOTKEYS, {QKeySequence(Qt::Key_F1)}},
+	{XCUT_OPTIONS, {QKeySequence(HK_APP | Qt::Key_Comma)}},
+	{XCUT_SAVE, {QKeySequence(Qt::Key_F2), QKeySequence(HK_APP | Qt::Key_S)}},
+	{XCUT_LOAD, {QKeySequence(Qt::Key_F3), QKeySequence(HK_APP | Qt::Key_O)}},
+	{XCUT_TAPLAY, {QKeySequence(Qt::Key_F4)}},
+	{XCUT_QUICKSAVE, {QKeySequence(Qt::Key_F5)}},
+	{XCUT_TAPWIN, {QKeySequence(Qt::Key_F6)}},
+	{XCUT_SCRSHOT, {QKeySequence(Qt::Key_F7)}},
+	{XCUT_VIDREC, {QKeySequence(Qt::SHIFT | Qt::Key_F7)}},
+	{XCUT_QUICKLOAD, {QKeySequence(Qt::Key_F9)}},
+	{XCUT_DEBUG, {QKeySequence(Qt::Key_F10)}},
+	{XCUT_NMI, {QKeySequence(Qt::SHIFT | Qt::Key_F10)}},
+#ifdef __APPLE__
+	{XCUT_FULLSCR, {QKeySequence(Qt::CTRL | Qt::META | Qt::Key_F), QKeySequence(Qt::META | Qt::Key_Return)}},
+#else
+	{XCUT_FULLSCR, {QKeySequence(Qt::ALT | Qt::Key_Return), QKeySequence(Qt::Key_F11)}},
+#endif
+	{XCUT_RESET, {QKeySequence(Qt::Key_F12), QKeySequence(HK_MOD | Qt::Key_R)}},
+	{XCUT_RES_DOS, {QKeySequence(Qt::ALT | Qt::Key_F12)}},
+
+	{XCUT_PAUSE, {QKeySequence(Qt::Key_Pause), QKeySequence(HK_MOD | Qt::Key_P)}},
+	{XCUT_REWIND, {QKeySequence(Qt::Key_Delete), QKeySequence(HK_MOD | Qt::Key_Left)}},
+	{XCUT_FFWD, {QKeySequence(Qt::Key_Home), QKeySequence(HK_MOD | Qt::Key_Right)}},
+	{XCUT_SLOWMO, {QKeySequence(Qt::Key_End), QKeySequence(HK_MOD | Qt::Key_Down)}},
+	{XCUT_FAST, {QKeySequence(Qt::Key_Insert), QKeySequence(HK_MOD | Qt::Key_Up)}},
+	{XCUT_SPEED_UP, {QKeySequence(HK_MODM | Qt::KeypadModifier | Qt::Key_Plus), QKeySequence(HK_MOD | Qt::Key_Equal)}},
+	{XCUT_SPEED_DOWN, {QKeySequence(HK_MODM | Qt::KeypadModifier | Qt::Key_Minus), QKeySequence(HK_MOD | Qt::Key_Minus)}},
+	{XCUT_TURBO, {QKeySequence(HK_MOD | Qt::Key_T)}},
+	{XCUT_MUTE, {QKeySequence(HK_MOD | Qt::Key_U)}},
+
+	{XCUT_SIZEX1, {QKeySequence(HK_MOD | Qt::Key_1)}},
+	{XCUT_SIZEX2, {QKeySequence(HK_MOD | Qt::Key_2)}},
+	{XCUT_SIZEX3, {QKeySequence(HK_MOD | Qt::Key_3)}},
+	{XCUT_SIZEX4, {QKeySequence(HK_MOD | Qt::Key_4)}},
+	{XCUT_SIZEX5, {QKeySequence(HK_MOD | Qt::Key_5)}},
+	{XCUT_SIZEX6, {QKeySequence(HK_MOD | Qt::Key_6)}},
+	{XCUT_KEYBOARD, {QKeySequence(HK_MOD | Qt::Key_K)}},
+	{XCUT_MOUSE, {QKeySequence(Qt::ALT | Qt::Key_M)}},		// Cmd+M minimizes on a Mac
+	{XCUT_GRABKBD, {QKeySequence(Qt::Key_ScrollLock), QKeySequence(HK_MOD | Qt::Key_G)}},
+
+	// the debugger keeps the Borland steps it has always had
+	{XCUT_STEPIN, {QKeySequence(Qt::Key_F7)}},
+	{XCUT_STEPOVER, {QKeySequence(Qt::Key_F8)}},
+	{XCUT_STEPOUT, {QKeySequence(Qt::SHIFT | Qt::Key_F8)}},
+	{XCUT_FASTSTEP, {QKeySequence(Qt::ALT | Qt::Key_F7)}},
+	{XCUT_TMPBRK, {QKeySequence(Qt::Key_F4)}},
+	{XCUT_TRACE, {QKeySequence(HK_APP | Qt::Key_T)}},
+	{XCUT_OPEN_DUMP, {QKeySequence(HK_APP | Qt::Key_O)}},
+	{XCUT_SAVE_DUMP, {QKeySequence(HK_APP | Qt::SHIFT | Qt::Key_S)}},
+	{XCUT_FINDER, {QKeySequence(HK_APP | Qt::Key_F)}},
+	{XCUT_LABELS, {QKeySequence(HK_APP | Qt::Key_L)}},
+
+	{XCUT_TOPC, {QKeySequence(Qt::Key_Home)}},
+	{XCUT_SETPC, {QKeySequence(Qt::Key_End)}},
+	{XCUT_SETBRK, {QKeySequence(Qt::Key_Space)}},
+	{XCUT_JUMPTO, {QKeySequence(Qt::ALT | Qt::Key_Right)}},
+	{XCUT_RETFROM, {QKeySequence(Qt::ALT | Qt::Key_Left)}},
+	{XCUT_GOTOADR, {QKeySequence(Qt::Key_G), QKeySequence(HK_APP | Qt::Key_G)}},
+
+	{XCUT_DUMP_GOTOADR, {QKeySequence(Qt::Key_G), QKeySequence(HK_APP | Qt::Key_G)}},
+	{XCUT_DUMP_REG_PC, {QKeySequence(Qt::CTRL | Qt::Key_P)}},
+	{XCUT_DUMP_REG_SP, {QKeySequence(Qt::CTRL | Qt::Key_S)}},
+	{XCUT_DUMP_REG_BC, {QKeySequence(Qt::CTRL | Qt::Key_B)}},
+	{XCUT_DUMP_REG_DE, {QKeySequence(Qt::CTRL | Qt::Key_D)}},
+	{XCUT_DUMP_REG_HL, {QKeySequence(Qt::CTRL | Qt::Key_H)}},
+	{XCUT_DUMP_REG_IX, {QKeySequence(Qt::CTRL | Qt::Key_X)}},
+	{XCUT_DUMP_REG_IY, {QKeySequence(Qt::CTRL | Qt::Key_Y)}},
+	{-1, {}}
+};
+
+static const char* presetNames[HKP_COUNT] = {"modern", "classic", "custom"};
+
+const char* hotkeys_preset_name(int p) {
+	return ((p >= 0) && (p < HKP_COUNT)) ? presetNames[p] : presetNames[HKP_MODERN];
+}
+
+int hotkeys_preset_id(const char* name) {
+	for (int p = 0; p < HKP_COUNT; p++)
+		if (!strcmp(name, presetNames[p])) return p;
+	return -1;
+}
+
+void hotkeys_default(int preset, int id, QKeySequence* out) {
+	out[0] = out[1] = QKeySequence();
+	const xCutDef* tab = (preset == HKP_CLASSIC) ? cutClassic : cutModern;
+	for (int i = 0; tab[i].id >= 0; i++) {
+		if (tab[i].id == id) {
+			out[0] = tab[i].key[0];
+			out[1] = tab[i].key[1];
+			return;
+		}
 	}
+}
+
+// the keys an action has in a set: Custom's own, else its preset's
+void hotkeys_resolve(const xHotkeySet& set, int id, QKeySequence* out) {
+	if (set.preset == HKP_CUSTOM) {
+		auto it = set.over.find(id);
+		if (it != set.over.end()) {
+			out[0] = it->second.first;
+			out[1] = it->second.second;
+			return;
+		}
+		hotkeys_default(set.base, id, out);
+	} else {
+		hotkeys_default(set.preset, id, out);
+	}
+}
+
+static xHotkeySet hkSet;
+
+const xHotkeySet& hotkeys_get() {
+	return hkSet;
+}
+
+void hotkeys_set(const xHotkeySet& set) {
+	hkSet = set;
+	for (int i = 0; short_tab[i].id >= 0; i++)
+		hotkeys_resolve(hkSet, short_tab[i].id, short_tab[i].seq);
+}
+
+void shortcut_init() {
+	hotkeys_set(xHotkeySet());
+}
+
+// [KEYS] in the config: the preset, Custom's base and Custom's own keys. A config
+// from before the presets has every key and no preset: what it changed from the
+// old defaults becomes Custom over Modern, and the rest moves to Modern.
+
+static bool hkSawPreset;
+static bool hkMigrated;
+static std::map<std::string, std::string> hkLines;
+
+void hotkeys_load_begin() {
+	hkSawPreset = false;
+	hkMigrated = false;
+	hkLines.clear();
+	shortcut_init();
+}
+
+void hotkeys_load_line(const std::string& name, const std::string& val) {
+	if (name == "preset") {
+		int p = hotkeys_preset_id(val.c_str());
+		if (p >= 0) hkSet.preset = p;
+		hkSawPreset = true;
+	} else if (name == "custom.base") {
+		int p = hotkeys_preset_id(val.c_str());
+		if ((p >= 0) && (p != HKP_CUSTOM)) hkSet.base = p;
+	} else {
+		hkLines[name] = val;
+	}
+}
+
+// the other actions that answer to a key where this one works
+QList<int> hotkeys_holders(const xHotkeySet& set, int id, const QKeySequence& seq) {
+	QList<int> res;
+	xShortcut* me = find_shortcut_id(id);
+	if (!me || seq.isEmpty()) return res;
+	QKeySequence keys[2];
+	for (int i = 0; short_tab[i].id >= 0; i++) {
+		if ((short_tab[i].id == id) || !(short_tab[i].grp & me->grp)) continue;
+		hotkeys_resolve(set, short_tab[i].id, keys);
+		if ((keys[0] == seq) || (keys[1] == seq)) res.append(short_tab[i].id);
+	}
+	return res;
+}
+
+// an action's keys in Custom, which keeps only what differs from its base
+void hotkeys_put(xHotkeySet& set, int id, const QKeySequence* keys) {
+	QKeySequence base[2];
+	hotkeys_default(set.base, id, base);
+	if ((keys[0] == base[0]) && (keys[1] == base[1])) {
+		set.over.erase(id);
+	} else {
+		set.over[id] = {keys[0], keys[1]};
+	}
+}
+
+// a key given to an action in Custom, taken from whichever other had it there
+void hotkeys_assign(xHotkeySet& set, int id, int slot, const QKeySequence& seq) {
+	QKeySequence keys[2];
+	for (int other : hotkeys_holders(set, id, seq)) {
+		hotkeys_resolve(set, other, keys);
+		for (int s = 0; s < 2; s++)
+			if (keys[s] == seq) keys[s] = QKeySequence();
+		hotkeys_put(set, other, keys);
+	}
+	hotkeys_resolve(set, id, keys);
+	if (keys[slot ^ 1] == seq) keys[slot ^ 1] = QKeySequence();	// not twice on one action
+	keys[slot] = seq;
+	hotkeys_put(set, id, keys);
+}
+
+void hotkeys_load_end() {
+	xHotkeySet set = hkSet;
+	set.over.clear();
+	if (hkSawPreset) {
+		for (auto& ln : hkLines) {
+			xShortcut* cut = find_shortcut_name(ln.first.c_str());
+			if (!cut) continue;
+			QList<QKeySequence> lst = QKeySequence::listFromString(QString::fromStdString(ln.second));
+			set.over[cut->id] = {lst.value(0), lst.value(1)};
+		}
+	} else if (!hkLines.empty()) {
+		// the user's keys go over Modern and win, the ones left as they were move on
+		hkMigrated = true;
+		set.preset = HKP_CUSTOM;
+		set.base = HKP_MODERN;
+		QKeySequence def[2];
+		for (auto& ln : hkLines) {
+			xShortcut* cut = find_shortcut_name(ln.first.c_str());
+			if (!cut) continue;
+			QKeySequence seq(QString::fromStdString(ln.second));
+			hotkeys_default(HKP_CLASSIC, cut->id, def);
+			if (seq != def[0]) hotkeys_assign(set, cut->id, 0, seq);
+		}
+		if (set.over.empty()) set.preset = HKP_MODERN;
+	}
+	hotkeys_set(set);
+	hkLines.clear();
+}
+
+// a config from before the presets was read this run
+bool hotkeys_migrated() {
+	return hkMigrated;
 }
 
 xShortcut* find_shortcut_id(int id) {
@@ -544,47 +853,50 @@ xShortcut* find_shortcut_name(const char* name) {
 	return (short_tab[i].id < 0) ? NULL : &short_tab[i];
 }
 
-void set_shortcut_id(int id, QKeySequence seq) {
-	xShortcut* cut = find_shortcut_id(id);
-	if (cut != NULL)
-		cut->seq = seq;
-}
-
-void set_shortcut_name(const char* name, QKeySequence seq) {
-	xShortcut* cut = find_shortcut_name(name);
-	if (cut != NULL)
-		cut->seq = seq;
-}
-
-int shortcut_check(int grp, QKeySequence seq) {
-	int res = -1;
-	int i = 0;
-	while (short_tab[i].id >= 0) {
-		if (short_tab[i].seq.matches(seq) && !short_tab[i].seq.isEmpty() && (short_tab[i].grp & grp)) {
-			res = short_tab[i].id;
-		}
-		i++;
+static int shortcut_check(int grp, QKeySequence seq) {
+	if (seq.isEmpty()) return -1;
+	for (int i = 0; short_tab[i].id >= 0; i++) {
+		if (!(short_tab[i].grp & grp)) continue;
+		if ((short_tab[i].seq[0] == seq) || (short_tab[i].seq[1] == seq))
+			return short_tab[i].id;
 	}
-	return res;
+	return -1;
 }
 
-// the hotkey a key means, -1 for none; a grabbed keyboard has none
+// The key a hotkey is matched by. A key the layout gave a letter of its own to
+// (Cyrillic and the like) is taken by where it is, so Alt+M is Alt+M in any
+// layout; anything Qt names in Latin-1 or as a special key is left as it is.
+int hotkey_key(QKeyEvent* ev) {
+	int key = ev->key();
+	if ((key < 0x100) || (key >= 0x01000000)) return key;
+#if defined(__APPLE__)
+	int lat = key2qid(qKey2id(key));
+#else
+	int lat = key2qid(ev->nativeScanCode());
+#endif
+	return (lat == Qt::Key_unknown) ? key : lat;
+}
+
+// The action a key press means in a group, -1 for none. Only the exact combination
+// counts, so Shift+F2 is not F2. A key off the keypad is also tried without it:
+// Ins/Home/End come from there with NumLock off, and a Mac marks every arrow so.
+int shortcut_find(int grp, int key, Qt::KeyboardModifiers mod) {
+	mod = xNativeMods(mod);
+	int id = shortcut_check(grp, QKeySequence(key | mod));
+	if ((id < 0) && (mod & Qt::KeypadModifier))
+		id = shortcut_check(grp, QKeySequence(key | (mod & ~Qt::KeypadModifier)));
+	return id;
+}
+
+int shortcut_event(int grp, QKeyEvent* ev) {
+	return shortcut_find(grp, hotkey_key(ev), ev->modifiers());
+}
+
+// the hotkey a key means in the main window, -1 for none; a grabbed keyboard
+// goes to the machine whole, but for the key that lets it go
 int hotkey_for(int key, Qt::KeyboardModifiers mod, bool kgrab) {
-	if (kgrab) return -1;
-	int id = shortcut_check(SCG_MAIN, QKeySequence(key | xNativeMods(mod)));
-	return (id < 0) ? shortcut_check(SCG_MAIN, QKeySequence(key)) : id;
-}
-
-int shortcut_match(int grp, int id, QKeySequence seq) {
-	int res = QKeySequence::NoMatch;
-	int i = 0;
-	while(short_tab[i].id >= 0) {
-		if ((short_tab[i].id == id) && (short_tab[i].grp & grp) && !short_tab[i].seq.isEmpty()) {
-			res = short_tab[i].seq.matches(seq);
-		}
-		i++;
-	}
-	return res;
+	int id = shortcut_find(SCG_MAIN, key, mod);
+	return (kgrab && (id != XCUT_GRABKBD)) ? -1 : id;
 }
 
 xShortcut* shortcut_tab() {

@@ -762,6 +762,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	}
 // profiles manager
 	buildSidebar();
+	ui.verticalLayout_40->insertWidget(0, ui.tvHotkeys->controls());
 }
 
 // The page in front, as tables show a selection, with a bar in the style's link color.
@@ -878,9 +879,17 @@ static int gridColWidth(QGridLayout* grid, int col) {
 	return wid;
 }
 
+// the Hotkeys page, its search ready: the list of keys a user asks for
+void SetupWin::startHotkeys() {
+	start();
+	ui.pageList->setCurrentRow(ui.pages->indexOf(ui.tab_13));
+	ui.tvHotkeys->focusFilter();
+}
+
 void SetupWin::start() {
 	Computer* comp = conf.zx;
 	fillLogPage();
+	ui.tvHotkeys->load();
 // machine
 	int idx;
 	fill_machine_list(ui.machbox);
@@ -1116,6 +1125,7 @@ void SetupWin::start() {
 
 void SetupWin::apply() {
 	Computer* comp = conf.zx;
+	ui.tvHotkeys->commit();
 	// the rewind history holds the machine as it was: it goes only if the
 	// machine or the history's own settings change
 	std::string macWas = xm_signature();

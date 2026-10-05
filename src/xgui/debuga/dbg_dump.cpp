@@ -433,10 +433,7 @@ void xDumpTable::gotoReg(const char* name) {
 
 void xDumpTable::keyPressEvent(QKeyEvent* ev) {
 	QModelIndex idx = currentIndex();
-	Qt::KeyboardModifiers mod = ev->modifiers();
-	int key = shortcut_check(SCG_DUMP, QKeySequence(ev->key() | mod));
-	if (key < 0)
-		key = shortcut_check(SCG_DUMP, QKeySequence(ev->key()));
+	int key = shortcut_event(SCG_DUMP, ev);
 	if (key < 0)
 		key = ev->key();
 	switch(key) {

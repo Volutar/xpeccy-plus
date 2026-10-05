@@ -12,6 +12,7 @@
 #include <SDL_joystick.h>
 
 #include <QKeySequence>
+class QKeyEvent;
 #include <QString>
 #include <QPoint>
 #include <QColor>
@@ -373,6 +374,7 @@ enum {
 	XCUT_FAVORITE,
 	XCUT_QUICKSAVE,
 	XCUT_QUICKLOAD,
+	XCUT_HOTKEYS,
 	XCUT_REWIND,
 	XCUT_FFWD,
 	XCUT_SLOWMO,
@@ -431,20 +433,41 @@ typedef struct {
 	int id;
 	const char* name;
 	const char* text;
-	QKeySequence seq;
-	QKeySequence def;
+	QKeySequence seq[2];	// live keys: the main one and an alternate
 } xShortcut;
+
+// The keys come from a preset, or from Custom: a preset (its base) with the
+// user's own changes over it. Custom is kept while a preset is in use.
+enum {HKP_MODERN = 0, HKP_CLASSIC, HKP_CUSTOM, HKP_COUNT};
+
+struct xHotkeySet {
+	int preset = HKP_MODERN;
+	int base = HKP_MODERN;			// what Custom is changed from
+	std::map<int, std::pair<QKeySequence, QKeySequence>> over;	// Custom's own keys, by action id
+};
 
 void shortcut_init();
 xShortcut* find_shortcut_id(int);
 xShortcut* find_shortcut_name(const char*);
-void set_shortcut_id(int, QKeySequence);
-void set_shortcut_name(const char*, QKeySequence);
 xShortcut* shortcut_tab();
-int shortcut_check(int, QKeySequence);
+int shortcut_find(int, int, Qt::KeyboardModifiers);
 int hotkey_for(int, Qt::KeyboardModifiers, bool);
-int shortcut_match(int, int, QKeySequence);
+int hotkey_key(QKeyEvent*);
+int shortcut_event(int, QKeyEvent*);
 Qt::KeyboardModifiers xNativeMods(Qt::KeyboardModifiers);
+void hotkeys_default(int, int, QKeySequence*);
+void hotkeys_resolve(const xHotkeySet&, int, QKeySequence*);
+QList<int> hotkeys_holders(const xHotkeySet&, int, const QKeySequence&);
+void hotkeys_put(xHotkeySet&, int, const QKeySequence*);
+void hotkeys_assign(xHotkeySet&, int, int, const QKeySequence&);
+const xHotkeySet& hotkeys_get();
+void hotkeys_set(const xHotkeySet&);
+const char* hotkeys_preset_name(int);
+int hotkeys_preset_id(const char*);
+void hotkeys_load_begin();
+void hotkeys_load_line(const std::string&, const std::string&);
+void hotkeys_load_end();
+bool hotkeys_migrated();
 
 // bookmarks
 

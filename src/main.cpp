@@ -357,6 +357,7 @@ int main(int ac,char** av) {
 	app.connect(&mwin, SIGNAL(s_scradr(int,int,int,int)), &dbgw, SLOT(showScrDot(int,int,int,int)));
 
 	app.connect(&mwin, SIGNAL(s_options()), &optw, SLOT(start()));
+	app.connect(&mwin, SIGNAL(s_hotkeys()), &optw, SLOT(startHotkeys()));
 	app.connect(&mwin, SIGNAL(s_gamepad_plug()), &optw, SLOT(setPadName()));
 	app.connect(&optw, SIGNAL(closed()), &mwin, SLOT(optApply()));
 	app.connect(&optw, SIGNAL(s_apply()), &mwin, SLOT(optResize()));
@@ -620,6 +621,7 @@ int main(int ac,char** av) {
 			mframe.raise();
 			mframe.activateWindow();
 			if (dbg) mwin.doDebug();
+			mwin.hotkeysNote();
 			if (!lab) shitHappens("Can't open labels file");
 		});
 		QTimer::singleShot(5000, &optw, &SetupWin::prewarmFfmpeg);

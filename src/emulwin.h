@@ -100,6 +100,7 @@ typedef struct {
 		~MainWin();
 //		Computer* comp;
 		void checkState();
+		void hotkeysNote();
 		void loadLabels(const char*);
 		void fillUserMenu();
 		void openMedia(const QString& path, int id, int drv, int run);
@@ -121,6 +122,7 @@ typedef struct {
 		bool recStart(const QString& file = QString());
 	signals:
 		void s_options();
+		void s_hotkeys();
 		void s_debug();
 		void s_debug_off();
 		// void s_prf_change(xProfile*);
@@ -380,6 +382,7 @@ typedef struct {
 		void keyPressEvent(QKeyEvent*);
 		void keyReleaseEvent(QKeyEvent*);
 		void mousePressEvent(QMouseEvent*);
+		void contextMenuEvent(QContextMenuEvent*);
 		void mouseReleaseEvent(QMouseEvent*);
 		void mouseMoveEvent(QMouseEvent*);
 		void wheelEvent(QWheelEvent*);
