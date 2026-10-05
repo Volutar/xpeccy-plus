@@ -743,7 +743,7 @@ static QString asm_labels(const QString& src) {
 		QChar chr = src.at(i);
 		if (chr.isLetter() || (chr == QChar('_'))) {
 			int start = i;
-			while ((i < n) && (src.at(i).isLetterOrNumber() || (src.at(i) == QChar('_')))) i++;
+			while ((i < n) && (src.at(i).isLetterOrNumber() || (src.at(i) == QChar('_')) || (src.at(i) == QChar('.')))) i++;
 			QString name = src.mid(start, i - start);
 			xAdr xadr = find_label(name);
 			if ((xadr.type >= 0) && !regs.contains(name.toLower())) {
@@ -906,6 +906,14 @@ bool xDisasmModel::setData(const QModelIndex& cidx, const QVariant& val, int rol
 
 static bool is_word_char(QChar chr) {
 	return chr.isLetterOrNumber() || (chr == QChar(0x5f)) || (chr == QChar(0x23)) || (chr == QChar(0x24));
+}
+
+// an instruction is typed with the labels offered
+QWidget* xDasmSyntax::createEditor(QWidget* par, const QStyleOptionViewItem& opt, const QModelIndex& idx) const {
+	QWidget* wid = QStyledItemDelegate::createEditor(par, opt, idx);
+	if (QLineEdit* edt = qobject_cast<QLineEdit*>(wid))
+		label_complete(edt);
+	return wid;
 }
 
 xDasmSyntax::xDasmSyntax(QObject* p):QStyledItemDelegate(p) {
