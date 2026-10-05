@@ -328,6 +328,8 @@ int main(int ac,char** av) {
 	keyWindow keyw(&mwin);
 	xScrWin scrw(&mwin);
 	xSndWin sndw(&mwin);
+	for (QWidget* win : std::initializer_list<QWidget*>{&tapw, &rzxw, &wutw, &scrw, &sndw})
+		mwin.addSatellite(win);
 
 	mwin.onPrfChange();
 	dbgw.onPrfChange();
