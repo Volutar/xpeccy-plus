@@ -50,6 +50,7 @@ void MainWin::disconnected() {
 static char dasmbuf[256];
 extern int dasmrd(int adr, void* ptr);
 extern int str_to_adr(Computer* comp, QString str);
+extern QString asm_labels(const QString&);
 
 void MainWin::socketRead() {
 	QTcpSocket* sock = (QTcpSocket*)sender();
@@ -133,6 +134,18 @@ void MainWin::socketRead() {
 	} else if (com == "load") {
 		if (prm.size() > 1) {
 			load_file(comp, prm[1].toLocal8Bit().data(), FG_ALL, 0);
+		}
+	} else if (com == "asm") {
+		// asm ADR instruction: what the listing does with one typed into it
+		if (prm.size() > 2) {
+			adr = str_to_adr(comp, prm[1]);
+			QString src = QString(arr).trimmed().mid(com.size()).trimmed();
+			src = src.mid(src.indexOf(' ') + 1).replace("#", "0x");
+			char buf[16];
+			cnt = cpuAsm(comp->cpu, asm_labels(src).toLocal8Bit().data(), buf, adr);
+			for (int i = 0; i < cnt; i++)
+				comp->hw->mwr(comp, adr + i, buf[i] & 0xff);
+			sock->write(QString("%0 bytes\r\n").arg(qMax(cnt, 0)).toUtf8());
 		}
 	} else if ((com == "poke") || (com == "memwr")) {
 		if (prm.size() > 2) {
