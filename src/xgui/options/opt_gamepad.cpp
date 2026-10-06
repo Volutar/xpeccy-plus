@@ -492,8 +492,8 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 		return rb;
 	};
 	radio(GPS_KEMPSTON, "Kempston", 0, 0);
-	radio(GPS_SINCLAIR1, pad_scheme_name(GPS_SINCLAIR1), 1, 0)->setToolTip("Keys 6-0: left, right, down, up, fire");
-	radio(GPS_SINCLAIR2, pad_scheme_name(GPS_SINCLAIR2), 2, 0)->setToolTip("Keys 1-5: left, right, down, up, fire");
+	radio(GPS_SINCLAIR1, pad_scheme_name(GPS_SINCLAIR1), 1, 0)->setToolTip("Also Sinclair 1, Interface 2 port 1\nKeys 6-0: left, right, down, up, fire");
+	radio(GPS_SINCLAIR2, pad_scheme_name(GPS_SINCLAIR2), 2, 0)->setToolTip("Also Sinclair 2, Interface 2 port 2\nKeys 1-5: left, right, down, up, fire");
 	radio(GPS_CURSOR, pad_scheme_name(GPS_CURSOR), 0, 1);
 	cbQaop = new QComboBox;
 	cbQaop->addItem("Space", GPS_QAOP);
@@ -502,7 +502,7 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	radio(GPS_QAOP, "QAOP", 1, 1, cbQaop);
 	radio(GPS_CUSTOM, "Custom", 2, 1)->setToolTip("Spectrum keys of your own");
 	rgrid->setColumnStretch(1, 1);
-	grpScheme->button(GPS_KEMPSTON)->setToolTip("Switched on by itself when in use.\nFire 2-4 come with an 8-button one");
+	grpScheme->button(GPS_KEMPSTON)->setToolTip("Switched on by itself when picked.\nFire 2-4 come with an 8-button one");
 	grid->addWidget(new QLabel("Joystick"), row, 0, Qt::AlignTop);
 	grid->addWidget(radios, row++, 1);
 
