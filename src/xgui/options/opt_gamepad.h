@@ -67,8 +67,8 @@ class xPadRowEdit : public QDialog {
 		QLabel* labKept;
 		QList<xJoyMapEntry> kept;		// a target the editor has no control for, as it was
 		xInputBox* inBox;
-		QComboBox* cbAlias;
-		QList<xJoyMapEntry> choices;		// what cbAlias offers, past its first line
+		QPushButton* btnPick;			// "Add from list", every input by name
+		QList<xJoyMapEntry> choices;		// what its menu offers
 		QPushButton* btnDefault;
 		QLabel* labHint;
 		QCheckBox* chkTurbo;
@@ -77,6 +77,7 @@ class xPadRowEdit : public QDialog {
 		void addInput(const xJoyMapEntry&);
 		void showInputs();
 		bool takeTarget();
+		void syncTarget();
 };
 
 // One player: which device, which joystick, and the table.

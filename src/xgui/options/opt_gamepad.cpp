@@ -7,12 +7,32 @@
 #include <QHeaderView>
 #include <QKeyEvent>
 #include <QMenu>
+#include <QStyleOptionButton>
 #include <QVBoxLayout>
 
 #include "opt_gamepad.h"
 
 #include "../xgui.h"
 #include "../../xcore/xcore.h"
+
+// a button as wide as the longest of its texts, so changing it moves nothing
+class xTextsButton : public QPushButton {
+	public:
+		xTextsButton(const QStringList& t):QPushButton(t.value(0)) {texts = t;}
+		QSize sizeHint() const {
+			QSize sz = QPushButton::sizeHint();
+			QStyleOptionButton opt;
+			initStyleOption(&opt);
+			foreach(const QString& t, texts) {
+				opt.text = t;
+				QSize cont(fontMetrics().horizontalAdvance(t), fontMetrics().height());
+				sz.setWidth(qMax(sz.width(), style()->sizeFromContents(QStyle::CT_PushButton, &opt, cont, this).width()));
+			}
+			return sz;
+		}
+	private:
+		QStringList texts;
+};
 
 static QLabel* padNote(const QString& txt) {
 	QLabel* lab = new QLabel(txt);
@@ -125,6 +145,7 @@ void xInputBox::mousePressEvent(QMouseEvent* ev) {
 
 xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 	setModal(true);
+	setProperty("xCenterOnce", true);
 	gpad = NULL;
 	idx = -1;
 	fresh = true;
@@ -138,13 +159,11 @@ xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 	cbKey = new QComboBox;
 	const char* zx = pad_zx_keys();
 	for (int i = 0; zx[i]; i++) cbKey->addItem(pad_zx_name(zx[i]), int(zx[i]));
-	btnPress = new QPushButton("Press a key");
-	btnPress->setMinimumWidth(btnPress->sizeHint().width());	// the longer of its two texts
-	btnPress->setText("Press");
+	btnPress = new xTextsButton(QStringList() << "Press" << "Press a key");
 	btnPress->setCheckable(true);
 	btnPress->setToolTip("Press a PC key: the Spectrum key it is on");
 	btnPress->installEventFilter(this);
-	labMod = new QLabel("with");
+	labMod = new QLabel("Modifier");
 	labMod->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 	cbMod = new QComboBox;
 	cbMod->addItem("-", 0);
@@ -183,16 +202,11 @@ xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 	lg->addWidget(labKept, 5, 1, 1, 2);
 	lg->setRowStretch(6, 1);
 	tgtBox = left;
-	connect(cbKey, QOverload<int>::of(&QComboBox::activated), rbKey, [this]() {rbKey->setChecked(true);});
-	connect(cbMod, QOverload<int>::of(&QComboBox::activated), rbKey, [this]() {rbKey->setChecked(true);});
-	connect(cbJoy, QOverload<int>::of(&QComboBox::activated), rbJoy, [this]() {rbJoy->setChecked(true);});
-	connect(cbCut, QOverload<int>::of(&QComboBox::activated), rbCut, [this]() {rbCut->setChecked(true);});
+	foreach(QRadioButton* rb, QList<QRadioButton*>() << rbKey << rbJoy << rbCut << rbKept)
+		connect(rb, &QRadioButton::toggled, this, [this]() {syncTarget();});
 	connect(btnPress, &QPushButton::toggled, this, [this](bool on) {
 		btnPress->setText(on ? "Press a key" : "Press");
-		if (on) {
-			rbKey->setChecked(true);
-			btnPress->setFocus();		// the key goes to it
-		}
+		if (on) btnPress->setFocus();		// the key goes to it
 	});
 
 	// right: what presses it
@@ -202,12 +216,13 @@ xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 	inBox = new xInputBox;
 	inBox->setMinimumWidth(220);
 	rg->addWidget(inBox, 0, 0, 1, 2);
-	cbAlias = new QComboBox;
-	cbAlias->setToolTip("An input picked from the list: no pad needed");
+	btnPick = new QPushButton("Add from list");
+	btnPick->setToolTip("An input picked by name: no pad needed");
+	btnPick->setMenu(new QMenu(btnPick));
 	QPushButton* btnClear = new QPushButton("Clear");
 	btnDefault = new QPushButton("Defaults");
 	QHBoxLayout* rb = new QHBoxLayout;
-	rb->addWidget(cbAlias);
+	rb->addWidget(btnPick);
 	rb->addStretch(1);
 	rb->addWidget(btnClear);
 	rb->addWidget(btnDefault);
@@ -217,12 +232,6 @@ xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 	rg->addWidget(labHint, 2, 0, 1, 2);
 	rg->setRowStretch(3, 1);
 
-	connect(cbAlias, QOverload<int>::of(&QComboBox::activated), this, [this](int i) {
-		if ((i < 1) || (i > choices.size())) return;
-		addInput(choices.at(i - 1));
-		cbAlias->setCurrentIndex(0);
-		inBox->setFocus();
-	});
 	connect(btnClear, &QPushButton::clicked, this, [this]() {
 		inputs().clear();
 		defFlag() = false;
@@ -321,6 +330,15 @@ void xPadRowEdit::showInputs() {
 	inBox->setText(txt);
 }
 
+// only the option picked on the left is live, the rest greyed
+void xPadRowEdit::syncTarget() {
+	foreach(QWidget* w, QList<QWidget*>() << cbKey << btnPress << labMod << cbMod) w->setEnabled(rbKey->isChecked());
+	cbJoy->setEnabled(rbJoy->isChecked());
+	cbCut->setEnabled(rbCut->isChecked());
+	labKept->setEnabled(rbKept->isChecked());
+	if (!rbKey->isChecked()) btnPress->setChecked(false);
+}
+
 // what the left side says, into cur; false if it says nothing
 bool xPadRowEdit::takeTarget() {
 	xJoyMapEntry t;
@@ -399,21 +417,23 @@ bool xPadRowEdit::edit(xGamepad* gp, int i) {
 	rbKept->setVisible(own && !kept.isEmpty());
 	labKept->setVisible(own && !kept.isEmpty());
 	labKept->setText(xGamepad::targetsName(kept));
+	syncTarget();
 	// the right side: the device in use
 	bool keys = gp->isKeyboard();
 	findChild<QGroupBox*>("inputs")->setTitle(keys ? "PC Keyboard" : "Gamepad");
-	cbAlias->setVisible(!keys);
-	cbAlias->clear();
-	cbAlias->addItem("Add...");
+	btnPick->setVisible(!keys);
+	QMenu* pick = btnPick->menu();
+	pick->clear();
 	choices = xGamepad::inputChoices(gp->asController());
-	int lw = 0;
-	foreach(const xJoyMapEntry& e, choices) {
-		QString nm = xGamepad::getEntryName(e);
-		cbAlias->addItem(nm);
-		lw = qMax(lw, cbAlias->fontMetrics().horizontalAdvance(nm));
+	for (int n = 0; n < choices.size(); n++) {
+		if ((n > 0) && (choices.at(n).type != JOY_VDIR) && (choices.at(n - 1).type == JOY_VDIR))
+			pick->addSeparator();		// the aliases, then the inputs one by one
+		xJoyMapEntry e = choices.at(n);
+		pick->addAction(xGamepad::getEntryName(e), this, [this, e]() {
+			addInput(e);
+			inBox->setFocus();
+		});
 	}
-	// the list as wide as its names, not as the box: a scroll bar and margins on top
-	cbAlias->view()->setMinimumWidth(lw + cbAlias->style()->pixelMetric(QStyle::PM_ScrollBarExtent) + 24);
 	btnDefault->setVisible(joy);
 	labHint->setText(keys ? "Press keys here to bind them" : "Press buttons on the pad to bind them");
 	chkTurbo->setChecked(cur.rapid);
