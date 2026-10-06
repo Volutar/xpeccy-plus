@@ -1204,6 +1204,19 @@ static int mac_write(const std::string& id, const QList<xMacLine>& lines) {
 	return MACW_WROTE;
 }
 
+// A player set to drive the Kempston switches it on: picking Kempston for a pad
+// is all it takes. It is the stock 5-button one, the one most software reads;
+// it stays as a change to the machine, saved like any other.
+bool xm_pad_kempston() {
+	if (!macLive || !conf.zx || !conf.gpctrl) return false;
+	if (conf.zx->joy->type == XJ_KEMPSTON) return false;
+	if (!conf.gpctrl->gpada->drivesKempston() && !conf.gpctrl->gpadb->drivesKempston()) return false;
+	conf.zx->joy->extbuttons = 0;
+	conf.zx->joy->type = XJ_KEMPSTON;
+	xlog(XLG_INPUT, XLL_INFO, "Kempston switched on for '%s': a player drives it", conf.macId.c_str());
+	return true;
+}
+
 // the running machine, written back into its own file
 
 std::string xm_signature() {

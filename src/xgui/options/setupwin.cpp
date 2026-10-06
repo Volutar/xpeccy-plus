@@ -1,4 +1,5 @@
 #include <QThread>
+#include <QTimer>
 #include <QStandardItemModel>
 #include <QInputDialog>
 #include <QColorDialog>
@@ -448,13 +449,6 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	layUi.setupUi(layeditor);
 	layeditor->setModal(true);
 
-	padial = new xPadBinder(this);
-	gpwid_a = new xGamepadWidget(conf.gpctrl->gpada);
-	gpwid_b = new xGamepadWidget(conf.gpctrl->gpadb);
-	connect(gpwid_a, &xGamepadWidget::s_edit_entry, padial, &xPadBinder::start);
-	connect(gpwid_b, &xGamepadWidget::s_edit_entry, padial, &xPadBinder::start);
-	connect(padial, &xPadBinder::bindReady, this, &SetupWin::bindAccept);
-
 	kedit = new xKeyEditor(this);
 
 	int i;
@@ -578,13 +572,25 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	hs_type->addItem(QIcon(":/images/cancel.png"),"Not connected",IDE_NONE);
 	hs_type->addItem(QIcon(":/images/hdd.png"),"HDD (ATA)",IDE_ATA);
 // input
-//	padModel = new xPadMapModel();
-//	ui.tvPadTable->setModel(padModel);
-//	ui.tvPadTable->addAction(ui.actAddBinding);
-//	ui.tvPadTable->addAction(ui.actEditBinding);
-//	ui.tvPadTable->addAction(ui.actDelBinding);
-	ui.tabsGamepad->addTab(gpwid_a, "Gamepad A");
-	ui.tabsGamepad->addTab(gpwid_b, "Gamepad B");
+	// the pads have a window of their own, live; this only says what is in it
+	{
+		xIconGroup* grp = new xIconGroup(":/images/gamepad.png", tr("Gamepads"));
+		QGridLayout* grd = new QGridLayout(grp);
+		grd->setColumnStretch(1, 1);
+		for (int i = 0; i < 2; i++) {
+			padSum[i] = new QLabel;
+			grd->addWidget(new QLabel(tr("Player %0").arg(i + 1)), i, 0);
+			grd->addWidget(padSum[i], i, 1);
+		}
+		QPushButton* btn = new QPushButton(tr("Gamepads..."));
+		connect(btn, &QPushButton::clicked, this, [this]() {
+			emit s_padwin();	// returns when the window is closed
+			padSummary();
+		});
+		grd->addWidget(btn, 2, 0, 1, 2, Qt::AlignLeft);
+		ui.verticalLayout_2->addWidget(grp);
+		ui.verticalLayout_2->addStretch(1);
+	}
 	cbScanTab->addItem("As the machine has it", 0);
 	cbScanTab->addItem("Scanset 1 (XT)", KBD_XT);
 	cbScanTab->addItem("Scanset 2 (AT)", KBD_AT);
@@ -717,19 +723,6 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	connect(sldTapeSpeed, &QSlider::valueChanged, this, [this](int v){
 		labTapeSpeedVal->setText(QString("%0%").arg(v));
 	});
-// input
-//	connect(ui.tbPadNew, SIGNAL(released()),this,SLOT(newPadMap()));
-//	connect(ui.tbPadDelete,SIGNAL(released()),this,SLOT(delPadMap()));
-//	connect(ui.cbPadMap, SIGNAL(currentIndexChanged(int)),this,SLOT(chaPadMap(int)));
-//	connect(ui.tbAddBind,SIGNAL(clicked(bool)),this, SLOT(addBinding()));
-//	connect(ui.tbEditBind,SIGNAL(clicked(bool)),this,SLOT(editBinding()));
-//	connect(ui.tbDelBind,SIGNAL(clicked(bool)),this,SLOT(delBinding()));
-//	connect(ui.actAddBinding,SIGNAL(triggered()),this,SLOT(addBinding()));
-//	connect(ui.actEditBinding,SIGNAL(triggered()),this,SLOT(editBinding()));
-//	connect(ui.tvPadTable,SIGNAL(doubleClicked(QModelIndex)),this,SLOT(editBinding()));
-//	connect(ui.actDelBinding,SIGNAL(triggered()),this,SLOT(delBinding()));
-//	connect(padial, SIGNAL(bindReady(xJoyMapEntry)), this, SLOT(bindAccept(xJoyMapEntry)));
-//	connect(ui.cbGamepad, SIGNAL(currentIndexChanged(int)),this,SLOT(setCurrentGamepad(int)));
 //tools
 	connect(ui.pbFavorites, &QPushButton::clicked, this, [this]() {fav_manage(this);});
 // debuga
@@ -861,10 +854,6 @@ void SetupWin::fillDbgPalette() {
 	// with, and the same one "System" restores
 	for (int i = 0; names[i]; i++)
 		setToolButtonColor(tb[i], names[i], dbgPaletteDefault(names[i]));
-}
-
-void SetupWin::setPadName() {
-//	ui.lePadName->setText(conf.joy.gpad->name());
 }
 
 // What a grid's column really needs: the widest cell in it, taking a widget
@@ -1056,16 +1045,7 @@ void SetupWin::start() {
 	cbSwapButtons->setChecked(comp->mouse->swapButtons);
 	sldSensitivity->setValue(comp->mouse->sensitivity * 1000.0f);
 	joyBox->setCurrentIndex((comp->joy->type != XJ_KEMPSTON) ? 0 : comp->joy->extbuttons ? 2 : 1);
-	gpwid_a->update(conf.jmapNameA);
-	gpwid_b->update(conf.jmapNameB);
-//	ui.sldDeadZone->setValue(conf.joy.gpad->deadZone());
-//	ui.cbGamepad->blockSignals(true);
-//	fillRFBox(ui.cbGamepad, conf.joy.gpad->getList());
-//	setRFIndex(ui.cbGamepad, conf.joy.gpad->name()); // curName);
-//	ui.cbGamepad->blockSignals(false);
-//	padModel->update();
-//	buildpadlist();
-//	setRFIndex(ui.cbPadMap, conf.jmapNameA.c_str());
+	padSummary();
 // flp
 	diskTypeBox->setCurrentIndex(diskTypeBox->findData(comp->dif->type));
 	bdtbox->setChecked(fdcFlag & FDC_FAST);
@@ -1297,16 +1277,6 @@ void SetupWin::apply() {
 	comp->mouse->sensitivity = sldSensitivity->value() * 0.001f;
 	comp->joy->type = joyBox->currentIndex() ? XJ_KEMPSTON : XJ_NONE;
 	comp->joy->extbuttons = (joyBox->currentIndex() == 2) ? 1 : 0;
-	gpwid_a->apply();
-	gpwid_b->apply();
-/*
-	conf.joy.gpad->setDeadZone(ui.sldDeadZone->value());
-	if (ui.cbGamepad->currentIndex() < 1) {
-		conf.joy.gpad->close();
-	} else {
-		conf.joy.gpad->open(getRFSData(ui.cbGamepad));
-	}
-*/
 	std::string kmname = getRFText(ui.keyMapBox);
 	if (kmname == "none") kmname = "default";
 	conf.kmapName = kmname;
@@ -1364,10 +1334,6 @@ void SetupWin::apply() {
 	conf.tape.rewind = cbTapeRewind->isChecked() ? 1 : 0;
 	tape_set_speed(comp->tape, sldTapeSpeed->value());
 	tape_apply_options(comp->tape);
-// input
-	conf.jmapNameA = gpwid_a->getMapName();
-	conf.jmapNameB = gpwid_b->getMapName();
-//	conf.joy.gpad->loadMap(conf.jmapNameA);
 // tools
 	conf.port = ui.sbPort->value() & 0xffff;
 	conf.confexit = ui.cbConfexit->isChecked() ? 1 : 0;
@@ -1773,13 +1739,6 @@ void SetupWin::buildDevices() {
 	grid = devGroup(left, ":/images/joystick.png", tr("Input"));
 	joyBox = devCombo(QStringList() << tr("None") << tr("Kempston 5-bit") << tr("Kempston 8-bit"));
 	devRow(grid, tr("Joystick"), joyBox, NULL, NULL);
-	// the gamepads are bound to the Kempston, so say when there is none
-	joyHint = new QLabel(tr("No Kempston on this machine: bindings to it do nothing"));
-	QFont hfnt = joyHint->font();
-	hfnt.setItalic(true);
-	joyHint->setFont(hfnt);
-	ui.verticalLayout_2->insertWidget(1, joyHint);
-	connect(joyBox, QOverload<int>::of(&QComboBox::currentIndexChanged), joyHint, [this](int idx) {joyHint->setVisible(idx == 0);});
 	mouseBox = devCombo(QStringList() << tr("None") << tr("Kempston mouse"));
 	xOptSheet mouse;
 	mouse.field(tr("Sensitivity"), fieldPair(sldSensitivity, NULL, true),
@@ -1945,7 +1904,6 @@ void SetupWin::showDevRows() {
 	hiface->setToolTip((bi & MAC_BI_IDE) ? fixed : QString());
 	// ALF reads its two joysticks its own way, on #1F and #FE
 	joyBox->setEnabled(hw != HW_ALF);
-	joyHint->setVisible(joyBox->currentIndex() == 0);
 	joyBox->setToolTip((hw == HW_ALF) ? fixed : QString());
 	// the +2A and +3 never page TR-DOS in
 	QStandardItemModel* difs = qobject_cast<QStandardItemModel*>(diskTypeBox->model());
@@ -2336,12 +2294,6 @@ void SetupWin::setRom(xRomFile f) {
 
 // lists
 
-void SetupWin::buildpadlist() {
-//	QDir dir(conf.path.confDir.c_str());
-//	QStringList lst = dir.entryList(QStringList() << "*.pad",QDir::Files,QDir::Name);
-//	fillRFBox(ui.cbPadMap, lst);
-}
-
 void SetupWin::buildkeylist() {
 	fillComboBox(ui.keyMapBox, "keymaps", QStringList() << "*.map", "none",
 		QString::fromLocal8Bit(conf.kmapName.c_str()));
@@ -2500,109 +2452,21 @@ void SetupWin::palstore() {
 	saveColors(getRFSData(ui.cbPalPreset).toStdString(), editpal);
 }
 
-// input
-
-void SetupWin::setCurrentGamepad(int idx) {
-//	if (idx > 0) {			// 0 is 'none'
-//		conf.joy.gpad->open(idx-1);
-//	} else {
-//		conf.joy.gpad->close();
-//	}
-}
-
-void SetupWin::newPadMap() {
-//	QString nam = QInputDialog::getText(this,"Enter...","New gamepad map name");
-//	if (nam.isEmpty()) return;
-//	nam.append(".pad");
-//	std::string name = nam.toStdString();
-//	if (padCreate(name)) {
-//		ui.cbPadMap->addItem(nam, nam);
-//		ui.cbPadMap->setCurrentIndex(ui.cbPadMap->count() - 1);
-//	} else {
-//		showInfo("Map with that name already exists");
-//	}
-}
-
-void SetupWin::delPadMap() {
-//	if (ui.cbPadMap->currentIndex() == 0) return;
-//	QString name = getRFSData(ui.cbPadMap);
-//	if (name.isEmpty()) return;
-//	if (!areSure("Delete this map?")) return;
-//	padDelete(name.toStdString());
-//	ui.cbPadMap->removeItem(ui.cbPadMap->currentIndex());
-//	ui.cbPadMap->setCurrentIndex(0);
-}
-
-void SetupWin::chaPadMap(int idx) {
-//	idx--;
-//	if (idx < 0) {
-//		conf.joy.gpad->mapClear();
-//	} else {
-//		conf.joy.gpad->loadMap(getRFSData(ui.cbPadMap).toStdString());
-//	}
-//	padModel->update();
-}
-
-void SetupWin::addBinding() {
-//	if (getRFSData(ui.cbPadMap).isEmpty()) return;
-//	bindidx = -1;
-//	xJoyMapEntry jent;
-//	jent.dev = JOY_NONE;
-//	jent.dev = JMAP_JOY;
-#if USE_SEQ_BIND
-//	jent.seq = QKeySequence();
-#else
-//	jent.key = ENDKEY;
-#endif
-//	jent.dir = XJ_NONE;
-//	jent.rpt = 0;
-//	padial->start(jent);
-}
-
-void SetupWin::editBinding() {
-//	bindidx = ui.tvPadTable->currentIndex().row();
-//	if (bindidx < 0) return;
-//	padial->start(conf.joy.gpad->mapItem(bindidx));
-}
-
-void SetupWin::bindAccept(xJoyMapEntry ent) {
-	((xGamepadWidget*)(ui.tabsGamepad->currentWidget()))->entryReady(ent);		// TODO: construct something more elegant
-
-//	if (ent.type == JOY_NONE) return;
-//	if (ent.dev == JMAP_NONE) return;
-//	if ((bindidx < 0) || (bindidx >= (int)conf.joy.gpad->map.size())) {
-//		conf.joy.gpad->setItem(-1, ent);
-//	} else {
-//		conf.joy.gpad->setItem(bindidx, ent);
-//	}
-//	conf.joy.gpad->saveMap(getRFSData(ui.cbPadMap).toStdString());
-//	padModel->update();
-}
-
-//extern bool qmidx_greater(const QModelIndex, const QModelIndex);
-
-void SetupWin::delBinding() {
-//	QModelIndexList lst = ui.tvPadTable->selectionModel()->selectedRows();
-//	if (!lst.isEmpty()) {
-//		std::sort(lst.begin(), lst.end(), qmidx_greater);
-//		if (areSure("Delete this binding(s)?")) {
-//			int row;
-//			foreach(QModelIndex idx, lst) {
-//				row = idx.row();
-//				conf.joy.gpad->delItem(row); // map.erase(conf.joy.gpad->map.begin() + row);
-//			}
-//			padModel->update();
-//			conf.joy.gpad->saveMap(getRFSData(ui.cbPadMap).toStdString());
-//		}
-//	}
-/*
-		int row = ui.tvPadTable->currentIndex().row();
-		if (row < 0) return;
-		if (!areSure("Delete this binding?")) return;
-		conf.joy.map.erase(conf.joy.map.begin() + row);
-		padModel->update();
-		padSaveConfig(getRFSData(ui.cbPadMap).toStdString());
-*/
+// what each player's pad is and what it stands for, as the window has it
+void SetupWin::padSummary() {
+	xGamepad* pad[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
+	for (int i = 0; i < 2; i++) {
+		QString dev = pad[i]->padId().title();
+		if (pad[i]->isKeyboard()) {
+			dev = pad_kbd_name(pad[i]->keyboard());
+		} else if (dev.isEmpty()) {
+			padSum[i]->setText(tr("None"));
+			continue;
+		} else if (!pad[i]->isOpened()) {
+			dev += tr(" (not connected)");
+		}
+		padSum[i]->setText(QString("%0 - %1").arg(dev, pad_scheme_name(pad[i]->scheme())));
+	}
 }
 
 void SetupWin::selectDbgFont() {

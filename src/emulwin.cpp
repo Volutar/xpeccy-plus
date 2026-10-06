@@ -347,6 +347,7 @@ int MainWin::mapHotkey(const QKeySequence& seq, int i, Qt::Key* key, Qt::Keyboar
 }
 
 bool MainWin::mapIsHotkey(const xJoyMapEntry& ent) {
+	if (ent.dev == JMAP_CUT) return true;
 	if (ent.dev != JMAP_KEY) return false;
 	Qt::Key key;
 	Qt::KeyboardModifier mod;
@@ -402,7 +403,26 @@ void MainWin::mapRelease(Computer* comp, xJoyMapEntry ent) {
 		case JMAP_MOUSE:
 			mouseRelease(comp->mouse, ent.dir);
 			break;
+		case JMAP_CUT:
+			xcut_release(ent.dir);
+			break;
+		case JMAP_ZX:
+			mapZxKey(comp, ent.dir, false);
+			break;
 	}
+}
+
+// a Spectrum key straight into the machine, past the PC layout
+void MainWin::mapZxKey(Computer* comp, int ch, bool down) {
+	keyEntry kent = getKeyEntry(ENDKEY);		// the blank one
+	memset(kent.zxKey, 0, sizeof(kent.zxKey));
+	kent.zxKey[0] = ch;
+	if (down) {
+		if (comp->hw->keyp) comp->hw->keyp(comp, &kent);
+	} else {
+		if (comp->hw->keyr) comp->hw->keyr(comp, &kent);
+	}
+	emit s_keywin_upd(comp->keyb);
 }
 
 void MainWin::mapPress(Computer* comp, xJoyMapEntry ent) {
@@ -419,7 +439,28 @@ void MainWin::mapPress(Computer* comp, xJoyMapEntry ent) {
 		case JMAP_MOUSE:
 			mousePress(comp->mouse, ent.dir, abs(ent.state / 4096));
 			break;
+		case JMAP_CUT:
+			xkey_press(ent.dir, true);
+			break;
+		case JMAP_ZX:
+			mapZxKey(comp, ent.dir, true);
+			break;
 	}
+}
+
+// A player on the keyboard takes its keys before the layout and the hotkeys
+// do, so Ctrl held for fire does not turn the arrows into hotkeys.
+bool MainWin::padKey(QKeyEvent* ev, bool down) {
+	if (pckAct->isChecked() || conf.zx->flgDBG) return false;
+	int id = pad_key_id(ev);
+	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
+	bool took = false;
+	for (xGamepad* gp : pads) {
+		if (!gp->bindsKey(id)) continue;
+		took = true;
+		if (!ev->isAutoRepeat()) mapJoystick(gp, conf.zx, JOY_KEY, id, down ? 1 : 0);
+	}
+	return took;
 }
 
 // TODO: choose gamepad (gpad/gpadb)
@@ -585,6 +626,7 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 		}
 		watchMedia();
 		watchClock();
+		watchPads();
 		QString vmsg = vrec_message();
 		if (!vmsg.isEmpty()) setMessage(vmsg, 4.0);
 		switch (vrec_auto_tick()) {
@@ -625,6 +667,13 @@ void MainWin::focusOutEvent(QFocusEvent*) {
 		releaseMouse();
 	}
 	emit s_keywin_rall(comp->keyb);
+	// nor will the keys of a player on the keyboard
+	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
+	for (xGamepad* gp : pads) {
+		if (!gp->isKeyboard()) continue;	// a pad goes on being read, see mapReplayHeld
+		foreach(xJoyMapEntry ent, gp->dropHeld())
+			mapRelease(comp, ent);
+	}
 	rewind_want(0);		// their keys will not be seen going up
 	xspeed_key(XTM_SLOW, 0);
 	xspeed_key(XTM_FFWD, 0);
@@ -1640,6 +1689,13 @@ void MainWin::initUserMenu() {
 	addSatellite(diskWin);
 	diskWin->tapeChanged = [this]() {emit s_tape_upd(conf.zx->tape);};
 	diskWin->diskOp = [this](int op, int drv) {diskOp(op, drv);};
+	padWin = new xPadWin(this);
+	addSatellite(padWin);
+	// a model never met before took a slot: say so, and show what it does
+	connect(conf.gpctrl, &xGamepadController::newPad, this, [this](int slot) {
+		setMessage(QString(" gamepad: player %0 ").arg(slot + 1));
+		if (!conf.vid.fullScreen) padWin->showWindow();
+	});
 
 	cutAction(userMenu, "Tape player", XCUT_TAPWIN, "tape");
 	cutAction(userMenu, "RZX player", XCUT_RZXWIN, "video");
@@ -1653,6 +1709,7 @@ void MainWin::initUserMenu() {
 	});
 	cutActs.append({pckAct, pckAct->text(), XCUT_GRABKBD});	// its key, shown; the action is its own
 	cutAction(userMenu, "Virtual keyboard", XCUT_KEYBOARD, "keyboardzx");
+	cutAction(userMenu, "Gamepads", XCUT_PADWIN, "gamepad");
 	// the debugger and its detached panels
 	dbgMenu = userMenu->addMenu(QIcon(":/images/bug.png"), "Debugger");
 	watchAct = dbgMenu->addAction(QIcon(":/images/objective.png"),"Watcher", this, SIGNAL(s_watch_show()));
@@ -2088,6 +2145,7 @@ void MainWin::initMachineMenus() {
 	mac->addAction(pckAct);
 	mac->addAction(mouseAct);
 	mac->addMenu(keyMenu);
+	mac->addAction(cutById.value(XCUT_PADWIN));
 
 	QMenu* media = new xMenu("Media", this);
 	media->addAction(cutById.value(XCUT_TAPWIN));
@@ -2420,6 +2478,29 @@ void MainWin::watchClock() {
 	}
 	setMessage(QString(" %0 MHz (x%1) ").arg(xspeed_clock(), 0, 'g', 6).arg(comp->hwMul));
 	xlog(XLG_HW, XLL_INFO, "turbo x%g: CPU at %.2f MHz", comp->hwMul, xspeed_clock());
+}
+
+// A pad set to drive the Kempston switches it on, whatever brought that about:
+// the pad plugged in, its scheme picked, or a machine switched to.
+void MainWin::watchPads() {
+	if (xm_pad_kempston())
+		setMessage(" Kempston switched on ");
+	// Fire 2..4 come and go with an 8-button Kempston: a machine switch, Options
+	int k8 = (conf.zx->joy->type == XJ_KEMPSTON) && conf.zx->joy->extbuttons;
+	if (k8 != padK8) {
+		padK8 = k8;
+		conf.gpctrl->gpada->rebuild();
+		conf.gpctrl->gpadb->rebuild();
+		padWin->sync();
+	}
+}
+
+void MainWin::padWinShow() {
+	padWin->showWindow();
+}
+
+void MainWin::padWinModal() {
+	padWin->execOver();
 }
 
 void MainWin::watchMedia() {

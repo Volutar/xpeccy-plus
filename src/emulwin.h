@@ -19,6 +19,7 @@
 #include "xcore/xcore.h"
 #include "xgui/xgui.h"
 #include "xgui/diskwin.h"
+#include "xgui/padwin.h"
 #include "libxpeccy/spectrum.h"
 #include "watcher.h"
 #include "vkeyboard.h"
@@ -143,7 +144,6 @@ typedef struct {
 		void s_debug();
 		void s_debug_off();
 		// void s_prf_change(xProfile*);
-		void s_gamepad_plug();
 		void s_scradr(int, int, int, int);
 
 		void s_tape_show();
@@ -170,6 +170,8 @@ typedef struct {
 	public slots:
 		void d_frame();
 		void doOptions();
+		void padWinShow();
+		void padWinModal();
 		void doDebug();
 		void updateWindow();
 		void pause(bool, int);
@@ -224,6 +226,8 @@ typedef struct {
 		double hwMulSeen = 1.0;	// the board's turbo as last reported
 		std::string macSeen;	// ...on this machine
 		void watchClock();
+		void watchPads();
+		int padK8 = -1;		// the machine's Kempston had 8 buttons, as last seen
 		void showMedia(const QString&, int src);
 		std::string wantedShader();
 
@@ -285,6 +289,7 @@ typedef struct {
 		QMenu* sdcMenu;
 		QMenu* hddMenu;
 		xDiskWin* diskWin;
+		xPadWin* padWin;
 		QMenu* turboMenu;
 		QMenu* shdMenu;
 		QMenu* keyMenu;
@@ -393,6 +398,8 @@ typedef struct {
 		int mapHotkey(const QKeySequence&, int, Qt::Key*, Qt::KeyboardModifier*);
 		bool mapIsHotkey(const xJoyMapEntry&);
 		void mapReplayHeld(xGamepad*);
+		bool padKey(QKeyEvent*, bool);
+		void mapZxKey(Computer*, int, bool);
 		void mapKeySeq(const xJoyMapEntry&, bool);
 
 		void closeEvent(QCloseEvent*);

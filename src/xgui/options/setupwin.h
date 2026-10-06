@@ -14,13 +14,11 @@
 #include "../../xcore/xcore.h"
 #include "../../xcore/vidrec.h"
 #include "../portwatch.h"
-#include "padbinder.h"
 #include "opt_romset.h"
 #include "opt_diskcat.h"
 #include "opt_tapecat.h"
 #include "opt_hotkeytab.h"
 #include "opt_paledit.h"
-#include "opt_gamepad.h"
 #include "opt_filetypes.h"
 
 #include "ui_rsedit.h"
@@ -39,7 +37,6 @@ class SetupWin : public QDialog {
 	public slots:
 		void start();
 		void startHotkeys();
-		void setPadName();
 	private:
 		void centerOver(QWidget*);
 		QDialog* popOut(QWidget*, const char*);
@@ -106,7 +103,6 @@ class SetupWin : public QDialog {
 		QComboBox* dosRomBox;
 		QToolButton* dosRomBtn;
 		QComboBox* joyBox;
-		QLabel* joyHint;
 		QComboBox* mouseBox;
 		QLabel* tapeSum;
 		QLabel* sdSum;
@@ -137,14 +133,11 @@ class SetupWin : public QDialog {
 		std::atomic<bool> recProbeStop{false};
 
 		QDialog* layeditor;
-//		xPadMapModel* padModel;
 		xKeyEditor* kedit;
 		xPalEditor* paleditor;
 
-		xPadBinder* padial;
 		xPortWatch* portwid;
-		xGamepadWidget* gpwid_a;
-		xGamepadWidget* gpwid_b;
+		QLabel* padSum[2];
 
 		QList<QColor> editpal;
 
@@ -157,12 +150,12 @@ class SetupWin : public QDialog {
 
 		int bindidx;
 		void buildkeylist();
-		void buildpadlist();
 
 	signals:
 		void closed();
 		void s_apply();
 		void s_prf_changed();
+		void s_padwin();		// open the gamepads window
 	private slots:
 		void reject();
 		void apply();
@@ -200,14 +193,7 @@ class SetupWin : public QDialog {
 		void cfgReset();
 		void delMachine();
 
-		void newPadMap();
-		void delPadMap();
-		void chaPadMap(int);
-		void addBinding();
-		void editBinding();
-		void delBinding();
-		void bindAccept(xJoyMapEntry);
-		void setCurrentGamepad(int);
+		void padSummary();
 
 
 

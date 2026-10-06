@@ -109,6 +109,7 @@ class xSlider : public QSlider {
 class xSideButton : public QPushButton {
 	public:
 		xSideButton(QWidget* p = NULL);
+		QSize sizeHint() const;
 	protected:
 		void paintEvent(QPaintEvent*);
 };

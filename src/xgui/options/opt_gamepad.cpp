@@ -1,290 +1,735 @@
+#include <QDialogButtonBox>
+#include <QFileDialog>
+#include <QGridLayout>
+#include <QGroupBox>
+#include <QHBoxLayout>
 #include <QHeaderView>
+#include <QKeyEvent>
+#include <QMenu>
+#include <QVBoxLayout>
+
 #include "opt_gamepad.h"
 
 #include "../xgui.h"
 #include "../../xcore/xcore.h"
 
-#include <QInputDialog>
-#include <QLabel>
-#include <QLayout>
+static QLabel* padNote(const QString& txt) {
+	QLabel* lab = new QLabel(txt);
+	QFont fnt = lab->font();
+	fnt.setItalic(true);
+	lab->setFont(fnt);
+	return lab;
+}
 
-// Gamepad map table model
+// Table model
 
-xPadMapModel::xPadMapModel(xGamepad* gp, QObject* p):QAbstractItemModel(p) {
+xPadTableModel::xPadTableModel(xGamepad* gp, QObject* p):QAbstractTableModel(p) {
 	gpad = gp;
+	update();
 }
 
-QModelIndex xPadMapModel::index(int row, int col, const QModelIndex& idx) const {
-	return createIndex(row, col);
-}
-
-QModelIndex xPadMapModel::parent(const QModelIndex& idx) const {
-	return QModelIndex();
-}
-
-int xPadMapModel::rowCount(const QModelIndex& idx) const {
-	if (idx.isValid()) return 0;
-	return gpad->mapSize();
-}
-
-int xPadMapModel::columnCount(const QModelIndex& par) const {
-	if (par.isValid()) return 0;
-	return 3;
-}
-
-QVariant xPadMapModel::data(const QModelIndex& idx, int role) const {
-	QVariant res;
-	if (!idx.isValid()) return res;
-	int row = idx.row();
-	int col = idx.column();
-	if ((row < 0) || (row >= rowCount())) return res;
-	if ((col < 0) || (col >= columnCount())) return res;
-	xJoyMapEntry jent = gpad->mapItem(row);
-	QString str;
-	switch (role) {
-		case Qt::DisplayRole:
-			switch(col) {
-				case 0:
-					res = xGamepad::getEntryName(jent);
-					break;
-				case 1:
-					switch(jent.dev) {
-						case JMAP_KEY:
-#if USE_SEQ_BIND
-							str = QString("Key: %0").arg(jent.seq.toString());
-#else
-							str = QString("Key %0").arg(getKeyNameById(jent.key));
-#endif
-							break;
-						case JMAP_JOY:
-							str = "Joystick ";
-							switch (jent.dir) {
-								case XJ_UP: str.append("up"); break;
-								case XJ_DOWN: str.append("down"); break;
-								case XJ_RIGHT: str.append("right"); break;
-								case XJ_LEFT: str.append("left"); break;
-								case XJ_FIRE: str.append("fire"); break;
-								case XJ_BUT2: str.append("button2"); break;
-								case XJ_BUT3: str.append("button3"); break;
-								case XJ_BUT4: str.append("button4"); break;
-								default: str.append("??"); break;
-							}
-							break;
-						case JMAP_MOUSE:
-							str = "Mouse ";
-							switch (jent.dir) {
-								case XM_UP: str.append("up"); break;
-								case XM_DOWN: str.append("down"); break;
-								case XM_LEFT: str.append("left"); break;
-								case XM_RIGHT: str.append("right"); break;
-								case XM_LMB: str.append("LB"); break;
-								case XM_MMB: str.append("MB"); break;
-								case XM_RMB: str.append("RB"); break;
-								case XM_WHEELUP: str.append("wheel up"); break;
-								case XM_WHEELDN: str.append("wheel down"); break;
-								default: str.append("??"); break;
-							}
-					}
-					res = str;
-					break;
-				case 2:
-					if (jent.rpt > 0)
-						res = QString("%0 sec").arg(jent.rpt / 50.0);
-					break;
-			}
-			break;
+void xPadTableModel::update() {
+	beginResetModel();
+	shown.clear();
+	for (int i = 0; i < gpad->rowCount(); i++) {
+		if (gpad->rowShown(i)) shown.append(i);
 	}
-	return res;
-}
-
-void xPadMapModel::update() {
 	endResetModel();
 }
 
-// Gamepad setings widget
+int xPadTableModel::padRow(int r) const {
+	return ((r >= 0) && (r < shown.size())) ? shown.at(r) : -1;
+}
+
+int xPadTableModel::rowCount(const QModelIndex& idx) const {
+	return idx.isValid() ? 0 : shown.size() + 1;
+}
+
+int xPadTableModel::columnCount(const QModelIndex& idx) const {
+	return idx.isValid() ? 0 : 3;
+}
+
+QVariant xPadTableModel::headerData(int sec, Qt::Orientation ori, int role) const {
+	if ((ori != Qt::Horizontal) || (role != Qt::DisplayRole)) return QVariant();
+	switch (sec) {
+		case 0: return QString("Spectrum");
+		case 1: return QString(gpad->isKeyboard() ? "Keyboard" : "Gamepad");
+		case 2: return QString("Turbo");
+	}
+	return QVariant();
+}
+
+QVariant xPadTableModel::data(const QModelIndex& idx, int role) const {
+	if (!idx.isValid()) return QVariant();
+	int row = padRow(idx.row());
+	if (row < 0) {				// the adding row
+		if ((role == Qt::DecorationRole) && (idx.column() == 0)) return QIcon(":/images/add.png");
+		if (role == Qt::ToolTipRole) return QString("Double-click to add a binding");
+		return QVariant();
+	}
+	switch (role) {
+		case Qt::DisplayRole:
+			if (idx.column() == 0) return gpad->rowName(row);
+			if (idx.column() == 1) {
+				QString ins = xGamepad::inputsName(gpad->rowInputs(row));
+				return ins.isEmpty() ? QString("-") : ins;
+			}
+			break;
+		case Qt::ToolTipRole:
+			// what "Gamepad up" stands for on this pad
+			if (idx.column() == 1) {
+				QStringList res;
+				foreach(const xJoyMapEntry& e, gpad->rowInputs(row)) {
+					if (e.type == JOY_VDIR) res.append(xGamepad::inputsName(gpad->aliasInputs(e.num)));
+				}
+				if (!res.isEmpty()) return res.join(", ");
+			}
+			break;
+		case Qt::FontRole:
+			if ((idx.column() == 0) && (row < PR_JOY)) {
+				QFont fnt;
+				fnt.setBold(true);
+				return fnt;
+			}
+			break;
+		case Qt::CheckStateRole:
+			if (idx.column() == 2) return gpad->row(row).rapid ? Qt::Checked : Qt::Unchecked;
+			break;
+	}
+	return QVariant();
+}
+
+// Input box
+
+xInputBox::xInputBox(QWidget* p):QLabel(p) {
+	setFocusPolicy(Qt::StrongFocus);
+	setFrameShape(QFrame::StyledPanel);
+	setWordWrap(true);
+	setMinimumHeight(fontMetrics().height() * 2 + 8);
+	setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+}
+
+// every key but the two a dialog cannot do without
+void xInputBox::keyPressEvent(QKeyEvent* ev) {
+	if ((ev->key() == Qt::Key_Escape) || (ev->key() == Qt::Key_Tab) || (ev->key() == Qt::Key_Backtab)) {
+		QLabel::keyPressEvent(ev);
+		return;
+	}
+	if (!ev->isAutoRepeat() && onKey) onKey(pad_key_id(ev));
+	ev->accept();
+}
+
+void xInputBox::mousePressEvent(QMouseEvent* ev) {
+	setFocus();
+	QLabel::mousePressEvent(ev);
+}
+
+// Row editor
+
+xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
+	setModal(true);
+	gpad = NULL;
+	idx = -1;
+	fresh = true;
+
+	// left: what the Spectrum gets
+	QGroupBox* left = new QGroupBox("Spectrum");
+	QGridLayout* lg = new QGridLayout(left);
+	labFixed = new QLabel;
+	lg->addWidget(labFixed, 0, 0, 1, 3);
+	rbKey = new QRadioButton("Key");
+	cbKey = new QComboBox;
+	const char* zx = pad_zx_keys();
+	for (int i = 0; zx[i]; i++) cbKey->addItem(pad_zx_name(zx[i]), int(zx[i]));
+	btnPress = new QPushButton("Press");
+	btnPress->setCheckable(true);
+	btnPress->setToolTip("Press a PC key: the Spectrum key it is on");
+	btnPress->installEventFilter(this);
+	rbJoy = new QRadioButton("Kempston");
+	cbJoy = new QComboBox;
+	cbJoy->addItem("Up", XJ_UP);
+	cbJoy->addItem("Down", XJ_DOWN);
+	cbJoy->addItem("Left", XJ_LEFT);
+	cbJoy->addItem("Right", XJ_RIGHT);
+	cbJoy->addItem("Fire", XJ_FIRE);
+	cbJoy->addItem("Fire 2", XJ_BUT2);
+	cbJoy->addItem("Fire 3", XJ_BUT3);
+	cbJoy->addItem("Fire 4", XJ_BUT4);
+	rbCut = new QRadioButton("Action");
+	cbCut = new QComboBox;
+	xShortcut* tab = shortcut_tab();
+	for (int i = 0; tab[i].text; i++) {
+		if (tab[i].grp & SCG_MAIN) cbCut->addItem(tab[i].text, tab[i].id);
+	}
+	cbCut->model()->sort(0);
+	rbKept = new QRadioButton("As it was");
+	labKept = new QLabel;
+	lg->addWidget(rbKey, 1, 0);
+	lg->addWidget(cbKey, 1, 1);
+	lg->addWidget(btnPress, 1, 2);
+	lg->addWidget(rbJoy, 2, 0);
+	lg->addWidget(cbJoy, 2, 1);
+	lg->addWidget(rbCut, 3, 0);
+	lg->addWidget(cbCut, 3, 1, 1, 2);
+	lg->addWidget(rbKept, 4, 0);
+	lg->addWidget(labKept, 4, 1, 1, 2);
+	lg->setRowStretch(5, 1);
+	tgtBox = left;
+	connect(cbKey, QOverload<int>::of(&QComboBox::activated), rbKey, [this]() {rbKey->setChecked(true);});
+	connect(cbJoy, QOverload<int>::of(&QComboBox::activated), rbJoy, [this]() {rbJoy->setChecked(true);});
+	connect(cbCut, QOverload<int>::of(&QComboBox::activated), rbCut, [this]() {rbCut->setChecked(true);});
+	connect(btnPress, &QPushButton::toggled, this, [this](bool on) {
+		btnPress->setText(on ? "Press a key" : "Press");
+		if (on) {
+			rbKey->setChecked(true);
+			btnPress->setFocus();		// the key goes to it
+		}
+	});
+
+	// right: what presses it
+	QGroupBox* right = new QGroupBox;
+	right->setObjectName("inputs");
+	QGridLayout* rg = new QGridLayout(right);
+	inBox = new xInputBox;
+	inBox->setMinimumWidth(220);
+	rg->addWidget(inBox, 0, 0, 1, 2);
+	cbAlias = new QComboBox;
+	cbAlias->addItem("Add...");
+	for (int r = 0; r < 4; r++) {
+		xJoyMapEntry e;
+		e.type = JOY_VDIR;
+		e.num = r;
+		cbAlias->addItem(xGamepad::getEntryName(e), r);
+	}
+	QPushButton* btnClear = new QPushButton("Clear");
+	btnDefault = new QPushButton("Defaults");
+	QHBoxLayout* rb = new QHBoxLayout;
+	rb->addWidget(cbAlias);
+	rb->addStretch(1);
+	rb->addWidget(btnClear);
+	rb->addWidget(btnDefault);
+	rg->addLayout(rb, 1, 0, 1, 2);
+	labHint = padNote(QString());
+	labHint->setWordWrap(true);
+	rg->addWidget(labHint, 2, 0, 1, 2);
+	sldDead = new QSlider(Qt::Horizontal);
+	sldDead->setRange(0, 32768);
+	sldDead->setToolTip("How far a stick has to move before it counts");
+	deadRow = new QWidget;
+	QHBoxLayout* db = new QHBoxLayout(deadRow);
+	db->setContentsMargins(0, 0, 0, 0);
+	db->addWidget(new QLabel("Stick dead zone"));
+	db->addWidget(sldDead, 1);
+	rg->addWidget(deadRow, 3, 0, 1, 2);
+	rg->setRowStretch(4, 1);
+
+	connect(cbAlias, QOverload<int>::of(&QComboBox::activated), this, [this](int i) {
+		if (i < 1) return;
+		xJoyMapEntry e;
+		e.type = JOY_VDIR;
+		e.num = cbAlias->itemData(i).toInt();
+		addInput(e);
+		cbAlias->setCurrentIndex(0);
+		inBox->setFocus();
+	});
+	connect(btnClear, &QPushButton::clicked, this, [this]() {
+		inputs().clear();
+		defFlag() = false;
+		fresh = false;
+		showInputs();
+		inBox->setFocus();
+	});
+	connect(btnDefault, &QPushButton::clicked, this, [this]() {
+		defFlag() = true;
+		fresh = true;
+		showInputs();
+		inBox->setFocus();
+	});
+	connect(sldDead, &QSlider::valueChanged, this, [this](int v) {if (gpad) gpad->setDeadZone(v);});
+	inBox->onKey = [this](int id) {
+		if (!gpad->isKeyboard()) return;
+		xJoyMapEntry e;
+		e.type = JOY_KEY;
+		e.num = id;
+		addInput(e);
+	};
+
+	chkTurbo = new QCheckBox("Turbo: repeats while held");
+	QDialogButtonBox* bbox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+	connect(bbox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+	connect(bbox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+	QHBoxLayout* cols = new QHBoxLayout;
+	cols->addWidget(left);
+	cols->addWidget(padNote(QString::fromUtf8("\xe2\x86\x90")));		// a left arrow: the right side presses the left
+	cols->addWidget(right, 1);
+	QVBoxLayout* lay = new QVBoxLayout(this);
+	lay->addLayout(cols);
+	lay->addWidget(chkTurbo);
+	lay->addWidget(bbox);
+	// Enter is a key a player may well want to bind
+	foreach(QPushButton* b, findChildren<QPushButton*>()) {
+		b->setAutoDefault(false);
+		b->setDefault(false);
+	}
+}
+
+// "Press": the next PC key picks the Spectrum key the layout has it on
+bool xPadRowEdit::eventFilter(QObject* obj, QEvent* ev) {
+	if ((obj == btnPress) && btnPress->isChecked() && (ev->type() == QEvent::KeyPress)) {
+		QKeyEvent* kev = (QKeyEvent*)ev;
+		if (kev->key() == Qt::Key_Escape) {
+			btnPress->setChecked(false);
+			return true;
+		}
+		keyEntry kent = getKeyEntry(pad_key_id(kev));
+		if (kent.zxKey[0] && !kent.zxKey[1]) {
+			int i = cbKey->findData(int(kent.zxKey[0]));
+			if (i >= 0) cbKey->setCurrentIndex(i);
+		}
+		btnPress->setChecked(false);
+		return true;
+	}
+	return QDialog::eventFilter(obj, ev);
+}
+
+QList<xJoyMapEntry>& xPadRowEdit::inputs() {
+	return gpad->isKeyboard() ? cur.key : cur.pad;
+}
+
+// whether those are the defaults: only a joystick row has any
+bool& xPadRowEdit::defFlag() {
+	return gpad->isKeyboard() ? cur.keyDef : cur.padDef;
+}
+
+// The first input caught replaces what the row had, the next ones add to it.
+void xPadRowEdit::addInput(const xJoyMapEntry& in) {
+	if (fresh) {
+		inputs().clear();
+		fresh = false;
+	}
+	defFlag() = false;
+	foreach(const xJoyMapEntry& e, inputs()) {
+		if ((e.type == in.type) && (e.num == in.num) && (e.state == in.state)) return;
+	}
+	inputs().append(in);
+	showInputs();
+}
+
+void xPadRowEdit::showInputs() {
+	QList<xJoyMapEntry> lst;
+	if ((idx >= 0) && (idx < PR_JOY) && defFlag()) {
+		lst = gpad->defInputs(idx, gpad->isKeyboard());
+	} else {
+		lst = inputs();
+	}
+	QString txt = xGamepad::inputsName(lst);
+	if (txt.isEmpty()) txt = gpad->isKeyboard() ? "Nothing yet: click here and press a key" : "Nothing yet";
+	inBox->setText(txt);
+}
+
+// what the left side says, into cur; false if it says nothing
+bool xPadRowEdit::takeTarget() {
+	xJoyMapEntry t;
+	if (rbKept->isChecked()) {
+		cur.tgt = kept;
+		return !kept.isEmpty();
+	}
+	if (rbJoy->isChecked()) {
+		t.dev = JMAP_JOY;
+		t.dir = cbJoy->currentData().toInt();
+	} else if (rbCut->isChecked()) {
+		t.dev = JMAP_CUT;
+		t.dir = cbCut->currentData().toInt();
+	} else {
+		t.dev = JMAP_ZX;
+		t.dir = cbKey->currentData().toInt();
+	}
+	cur.tgt.clear();
+	cur.tgt.append(t);
+	return true;
+}
+
+bool xPadRowEdit::edit(xGamepad* gp, int i) {
+	gpad = gp;
+	idx = i;
+	cur = (i < 0) ? xPadRow() : gp->row(i);
+	fresh = (i >= 0);
+	bool joy = (i >= 0) && (i < PR_JOY);
+	bool custom = joy && (gp->scheme() == GPS_CUSTOM);
+	bool own = !joy || custom;
+	setWindowTitle(joy ? QString(pad_role_name(i)) : QString((i < 0) ? "New binding" : "Binding"));
+	// the left side: the joystick's own and fixed, a key on Custom, anything on an extra row
+	QStringList tnames;
+	foreach(const xJoyMapEntry& t, gp->rowTargets(i)) tnames.append(xGamepad::getTargetName(t));
+	labFixed->setText(QString("%0: %1").arg(gp->rowName(i).section(' ', 0, 0), tnames.join(" + ")));
+	labFixed->setVisible(!own);
+	foreach(QWidget* w, QList<QWidget*>() << rbKey << cbKey << btnPress) w->setVisible(own);
+	foreach(QWidget* w, QList<QWidget*>() << rbJoy << cbJoy << rbCut << cbCut) w->setVisible(own && !custom);
+	QList<xJoyMapEntry> tgt = (i < 0) ? QList<xJoyMapEntry>() : gp->rowTargets(i);
+	kept.clear();
+	rbKey->setChecked(true);
+	cbKey->setCurrentIndex(0);
+	if (!tgt.isEmpty()) {
+		const xJoyMapEntry& t = tgt.first();
+		switch (t.dev) {
+			case JMAP_ZX:
+				cbKey->setCurrentIndex(qMax(0, cbKey->findData(t.dir)));
+				break;
+			case JMAP_JOY:
+				rbJoy->setChecked(true);
+				cbJoy->setCurrentIndex(qMax(0, cbJoy->findData(t.dir)));
+				break;
+			case JMAP_CUT:
+				rbCut->setChecked(true);
+				cbCut->setCurrentIndex(qMax(0, cbCut->findData(t.dir)));
+				break;
+			default:		// a PC key or the mouse, from an old .pad
+				kept = tgt;
+				rbKept->setChecked(true);
+				break;
+		}
+	}
+	rbKept->setVisible(own && !kept.isEmpty());
+	labKept->setVisible(own && !kept.isEmpty());
+	labKept->setText(xGamepad::targetsName(kept));
+	// the right side: the device in use
+	bool keys = gp->isKeyboard();
+	findChild<QGroupBox*>("inputs")->setTitle(keys ? "Keyboard" : "Gamepad");
+	cbAlias->setVisible(!keys);
+	btnDefault->setVisible(joy);
+	labHint->setText(keys ? "Press keys here to bind them" : "Press buttons on the pad to bind them");
+	deadRow->setVisible(!keys && joy && (i < PR_FIRE));
+	sldDead->blockSignals(true);
+	sldDead->setValue(gp->deadZone());
+	sldDead->blockSignals(false);
+	chkTurbo->setChecked(cur.rapid);
+	btnPress->setChecked(false);
+	showInputs();
+	// a button pressed on the pad: by name where SDL has the layout, never twice
+	QMetaObject::Connection con = connect(gp, &xGamepad::inputChanged, this, [this](int type, int num, int state) {
+		if (!isActiveWindow() || gpad->isKeyboard() || (state == 0) || !gpad->bindable(type)) return;
+		xJoyMapEntry e;
+		e.type = type;
+		e.num = num;
+		e.state = (state < 0) ? -1 : 1;
+		addInput(e);
+	});
+	inBox->setFocus();
+	adjustSize();
+	bool ok = false;
+	if (exec() == QDialog::Accepted) {
+		if (!own || takeTarget()) {
+			cur.rapid = chkTurbo->isChecked();
+			gp->setRow(i, cur);
+			ok = true;
+		}
+	}
+	disconnect(con);
+	return ok;
+}
+
+// One player's panel
 
 xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	gpad = gp;
-	ui.setupUi(this);
-	padmodel = new xPadMapModel(gp);
-	ui.tvMapView->setModel(padmodel);
-	// the input and the repeat fit what they hold, the action takes the rest
-	QHeaderView* hdr = ui.tvMapView->horizontalHeader();
+	editor = new xPadRowEdit(this);
+	QGridLayout* grid = new QGridLayout(this);
+	grid->setColumnStretch(1, 1);
+	int row = 0;
+
+	cbDevice = new QComboBox;
+	grid->addWidget(new QLabel("Device"), row, 0);
+	grid->addWidget(cbDevice, row++, 1);
+	// what the last press did, so a pad can be tried out right here
+	labTry = padNote("Press a button to try it");
+	grid->addWidget(labTry, row++, 1);
+
+	// the joysticks, two columns; Kempston and QAOP each carry a choice of their own
+	QWidget* radios = new QWidget;
+	QGridLayout* rgrid = new QGridLayout(radios);
+	rgrid->setContentsMargins(0, 0, 0, 0);
+	grpScheme = new QButtonGroup(this);
+	// a radio button, and what goes right after it in its cell
+	auto radio = [this, rgrid](int id, const char* text, int r, int c, QWidget* tail = nullptr) {
+		QRadioButton* rb = new QRadioButton(text);
+		grpScheme->addButton(rb, id);
+		rgrid->addWidget(fieldPair(rb, tail, false), r, c);
+		return rb;
+	};
+	radio(GPS_KEMPSTON, "Kempston", 0, 0);
+	radio(GPS_SINCLAIR1, pad_scheme_name(GPS_SINCLAIR1), 1, 0);
+	radio(GPS_SINCLAIR2, pad_scheme_name(GPS_SINCLAIR2), 2, 0);
+	radio(GPS_CURSOR, pad_scheme_name(GPS_CURSOR), 0, 1);
+	cbQaop = new QComboBox;
+	cbQaop->addItem("Space", GPS_QAOP);
+	cbQaop->addItem("M", GPS_QAOPM);
+	cbQaop->setToolTip("The key fire presses");
+	radio(GPS_QAOP, "QAOP", 1, 1, cbQaop);
+	radio(GPS_CUSTOM, "Custom", 2, 1)->setToolTip("Spectrum keys of your own");
+	rgrid->setColumnStretch(1, 1);
+	grpScheme->button(GPS_KEMPSTON)->setToolTip("Switched on by itself when in use.\nFire 2-4 come with an 8-button one");
+	grid->addWidget(new QLabel("Joystick"), row, 0, Qt::AlignTop);
+	grid->addWidget(radios, row++, 1);
+
+	model = new xPadTableModel(gp, this);
+	table = new QTableView;
+	table->setModel(model);
+	table->setItemDelegateForColumn(2, new xCheckItem(table));
+	table->setSelectionBehavior(QAbstractItemView::SelectRows);
+	table->setSelectionMode(QAbstractItemView::SingleSelection);
+	table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+	table->setContextMenuPolicy(Qt::CustomContextMenu);
+	table->verticalHeader()->hide();
+	table->verticalHeader()->setDefaultSectionSize(table->fontMetrics().height() + 4);
+	// the eight rows of Kempston 8 and the adding one, with no scrolling
+	int rowh = qMax(table->verticalHeader()->defaultSectionSize(), table->verticalHeader()->minimumSectionSize());
+	table->setMinimumHeight(rowh * 10 + table->horizontalHeader()->sizeHint().height() + 4);
+	table->setMinimumWidth(420);
+	QHeaderView* hdr = table->horizontalHeader();
 	hdr->setStretchLastSection(false);
-	hdr->setMinimumSectionSize(55);
-	hdr->setSectionResizeMode(0, QHeaderView::Interactive);
+	hdr->setHighlightSections(false);
+	hdr->setSectionResizeMode(0, QHeaderView::Fixed);	// see nameWidth()
 	hdr->setSectionResizeMode(1, QHeaderView::Stretch);
 	hdr->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-	// the input's column fits what it holds, never under the width it always had
-	connect(padmodel, &QAbstractItemModel::modelReset, this, [this]() {
-		ui.tvMapView->resizeColumnToContents(0);
-		QHeaderView* hdr = ui.tvMapView->horizontalHeader();
-		if (hdr->sectionSize(0) < 90) hdr->resizeSection(0, 90);
+	// the icon at the right edge, as the Machine page's buttons have it
+	auto sideButton = [](const char* text, const char* icon) {
+		xSideButton* btn = new xSideButton;
+		btn->setText(text);
+		btn->setIcon(QIcon(icon));
+		return btn;
+	};
+	QPushButton* btnSave = sideButton("Save as...", ":/images/floppy.png");
+	btnSave->setToolTip("Keep these bindings in a file, for a game or to share");
+	QPushButton* btnLoad = sideButton("Load...", ":/images/fileopen.png");
+	QPushButton* btnReset = sideButton("Reset", ":/images/refresh.png");
+	btnReset->setToolTip("Back to the joystick's defaults");
+	QVBoxLayout* bbox = new QVBoxLayout;
+	bbox->addWidget(btnSave);
+	bbox->addWidget(btnLoad);
+	bbox->addSpacing(12);
+	bbox->addWidget(btnReset);
+	bbox->addStretch(1);
+	QHBoxLayout* tbox = new QHBoxLayout;
+	tbox->addWidget(table, 1);
+	tbox->addLayout(bbox);
+	grid->addLayout(tbox, row++, 0, 1, 2);
+
+	sldTurbo = new QSlider(Qt::Horizontal);
+	sldTurbo->setRange(1, 25);
+	labTurbo = new QLabel;
+	labTurbo->setMinimumWidth(labTurbo->fontMetrics().horizontalAdvance("25 Hz"));
+	grid->addWidget(new QLabel("Turbo rate"), row, 0);
+	grid->addWidget(fieldPair(sldTurbo, labTurbo, true), row++, 1);
+	grid->addWidget(padNote("Double-click a row to change it, right-click for more"), row++, 0, 1, 2);
+	grid->setRowStretch(row, 1);
+
+	connect(cbDevice, QOverload<int>::of(&QComboBox::activated), this, [this]() {
+		setDevFromCombo();
+		tableChanged();
 	});
-	hdr->resizeSection(0, 90);
-	connect(ui.cbGPName, SIGNAL(currentIndexChanged(int)), this, SLOT(devChanged(int)));
-	connect(ui.cbMapFile, SIGNAL(currentIndexChanged(int)), this, SLOT(mapChanged(int)));
-	connect(ui.tbAddMap, SIGNAL(released()), this, SLOT(addMap()));
-	connect(ui.tbDelMap, SIGNAL(released()), this, SLOT(delMap()));
-	connect(ui.tbAddEntry, SIGNAL(released()), this, SLOT(addEntry()));
-	connect(ui.tbEditEntry, SIGNAL(released()), this, SLOT(editEntry()));
-	connect(ui.tbDelEntry, SIGNAL(released()), this, SLOT(delEntry()));
-	connect(ui.tvMapView, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(editEntry()));
+	connect(grpScheme, QOverload<QAbstractButton*>::of(&QButtonGroup::buttonClicked), this, [this]() {schemeFromControls();});
+	connect(cbQaop, QOverload<int>::of(&QComboBox::activated), this, [this]() {
+		grpScheme->button(GPS_QAOP)->setChecked(true);
+		schemeFromControls();
+	});
+	connect(table, &QTableView::doubleClicked, this, [this](const QModelIndex& idx) {
+		if (idx.column() == 2) return;		// that one is the turbo box
+		editRow(model->padRow(idx.row()));
+	});
+	connect(table, &QTableView::clicked, this, [this](const QModelIndex& idx) {
+		if (idx.column() == 2) toggleTurbo(model->padRow(idx.row()));
+	});
+	connect(table, &QTableView::customContextMenuRequested, this, [this](const QPoint& pos) {rowMenu(pos);});
+	connect(btnSave, &QPushButton::clicked, this, [this]() {saveAs();});
+	connect(btnLoad, &QPushButton::clicked, this, [this]() {load();});
+	connect(btnReset, &QPushButton::clicked, this, [this]() {reset();});
+	connect(sldTurbo, &QSlider::valueChanged, this, [this](int v) {
+		gpad->setTurboRate(v);
+		labTurbo->setText(QString("%0 Hz").arg(v));
+	});
+	connect(gpad, &xGamepad::inputChanged, this, [this](int t, int n, int s) {inputChanged(t, n, s);});
 }
 
-// Every connected pad, and - when the one this slot remembers is not among
-// them - that one too, marked as away. A pad asleep in a drawer must still
-// be the selected item, or closing this page would throw it away.
+void xGamepadWidget::tell() {
+	if (changed) changed();
+}
+
+// What the name column needs, worked out from the text rather than asked of the
+// view: the table on the tab not shown has no rows laid out to ask.
+int xGamepadWidget::nameWidth() {
+	QFont bold = table->font();
+	bold.setBold(true);
+	QFontMetrics fmb(bold);
+	QFontMetrics fm(table->font());
+	int w = table->horizontalHeader()->fontMetrics().horizontalAdvance("Spectrum");
+	for (int r = 0; r < model->rowCount(); r++) {
+		int i = model->padRow(r);
+		if (i < 0) continue;
+		QString txt = gpad->rowName(i);
+		w = qMax(w, ((i < PR_JOY) ? fmb : fm).horizontalAdvance(txt));
+	}
+	return w + 20;		// the cell's margins
+}
+
+void xGamepadWidget::setNameWidth(int w) {
+	table->horizontalHeader()->resizeSection(0, w);
+}
+
+void xGamepadWidget::tableChanged() {
+	model->update();
+	tell();
+}
+
+void xGamepadWidget::schemeFromControls() {
+	int id = grpScheme->checkedId();
+	if (id == GPS_QAOP) id = cbQaop->currentData().toInt();
+	gpad->setScheme(id);
+	tableChanged();
+}
+
+// Every connected pad and the keyboard, and - when the pad this player
+// remembers is not among them - that one too, marked as away. A pad asleep
+// in a drawer must still be the selected item, or a refresh would throw it away.
 void xGamepadWidget::updateList() {
 	QList<xPadDev> devs = xGamepad::devList();
 	xPadId want = gpad->padId();
 	int sel = 0;
-	ui.cbGPName->blockSignals(true);			// don't call devChanged automaticly
-	ui.cbGPName->clear();
-	ui.cbGPName->addItem("none");
+	cbDevice->blockSignals(true);			// not a choice of the user's
+	cbDevice->clear();
+	cbDevice->addItem("None");
+	for (int k = GPK_ARROWS; k <= GPK_WASD; k++)
+		cbDevice->addItem(pad_kbd_name(k), pad_kbd_key(k));
+	if (gpad->keyboard() == GPK_ARROWS) sel = 1;
+	if (gpad->keyboard() == GPK_WASD) sel = 2;
 	for (int i = 0; i < devs.size(); i++) {
-		ui.cbGPName->addItem(devs.at(i).label, devs.at(i).id.toConfig());
-		if (devs.at(i).id.sameAs(want))
-			sel = ui.cbGPName->count() - 1;
+		cbDevice->addItem(devs.at(i).label, devs.at(i).id.toConfig());
+		if (!gpad->isKeyboard() && devs.at(i).id.sameAs(want))
+			sel = cbDevice->count() - 1;
 	}
 	if (!sel && !want.isEmpty()) {
-		ui.cbGPName->addItem(QString("%0 (not connected)").arg(want.title()), want.toConfig());
-		sel = ui.cbGPName->count() - 1;
+		cbDevice->addItem(QString("%0 (not connected)").arg(want.title()), want.toConfig());
+		sel = cbDevice->count() - 1;
 	}
-	ui.cbGPName->setEnabled(true);
-	ui.cbGPName->setCurrentIndex(sel);
-	ui.cbGPName->blockSignals(false);
+	cbDevice->setCurrentIndex(sel);
+	cbDevice->blockSignals(false);
 }
 
-void xGamepadWidget::update(std::string mapname) {
-	QStringList lst;
-	int i;
+void xGamepadWidget::refresh() {
 	updateList();
-	ui.sldDeadZone->setValue(gpad->deadZone());
-	QDir dir(conf.path.confDir.c_str());
-	ui.cbMapFile->clear();
-	lst = dir.entryList(QStringList() << "*.pad",QDir::Files,QDir::Name);
-	lst.prepend("none");
-	ui.cbMapFile->addItems(lst);
-	if (mapname.empty()) {
-		ui.cbMapFile->setCurrentIndex(0);
-	} else {
-		i = ui.cbMapFile->findText(mapname.c_str());
-		if (i < 0) i = 0;
-		ui.cbMapFile->setCurrentIndex(i);
-	}
-
-	padmodel->update();
+	int s = gpad->scheme();
+	cbQaop->setCurrentIndex((s == GPS_QAOPM) ? 1 : 0);
+	if (s == GPS_QAOPM) s = GPS_QAOP;
+	QAbstractButton* rb = grpScheme->button(s);
+	if (rb) rb->setChecked(true);
+	sldTurbo->blockSignals(true);
+	sldTurbo->setValue(gpad->turboRate());
+	sldTurbo->blockSignals(false);
+	labTurbo->setText(QString("%0 Hz").arg(gpad->turboRate()));
+	labTry->setText(gpad->isKeyboard() ? "Press a key to try it" : "Press a button to try it");
+	model->update();
 }
 
-// Only an explicit 'none' clears the slot. Anything else is a device the
-// user named, connected or not, and the controller works out which pad each
-// slot ends up on.
+// Only an explicit None clears the player. Anything else is a device the user
+// named, connected or not, and the controller works out which pad each player
+// ends up on.
 void xGamepadWidget::setDevFromCombo() {
-	if (ui.cbGPName->currentIndex() < 1) {
-		gpad->close();
-		gpad->setPadId(xPadId());
-	} else {
-		gpad->setPadId(xPadId::fromConfig(ui.cbGPName->currentData().toString()));
-	}
-	conf.gpctrl->rescan();
-}
-
-void xGamepadWidget::apply() {
-	gpad->setDeadZone(ui.sldDeadZone->value());
-	setDevFromCombo();
-}
-
-std::string xGamepadWidget::getMapName() {
-	std::string str;
-	if (ui.cbMapFile->currentIndex() == 0) return str;
-	str = ui.cbMapFile->currentText().toStdString();
-	return str;
-}
-
-// take effect at once, so the pad can be tried out without leaving the page
-void xGamepadWidget::devChanged(int idx) {
-	setDevFromCombo();
-}
-
-void xGamepadWidget::mapChanged(int idx) {
-	if (idx < 1) {
-		gpad->mapClear();
-	} else {
-		gpad->loadMap(ui.cbMapFile->currentText().toStdString());
-	}
-	padmodel->update();
-}
-
-void xGamepadWidget::addMap() {
-	QString nam = QInputDialog::getText(this,"Enter...","New gamepad map name");
-	if (nam.isEmpty()) return;
-	nam.append(".pad");
-	std::string name = nam.toStdString();
-	if (padCreate(name)) {
-		ui.cbMapFile->addItem(nam, nam);
-		ui.cbMapFile->setCurrentIndex(ui.cbMapFile->count() - 1);
-	} else {
-		showInfo("Map with that name already exists");
-	}
-}
-
-void xGamepadWidget::delMap() {
-	if (ui.cbMapFile->currentIndex() == 0) return;
-	QString name = ui.cbMapFile->currentText();
-	if (name.isEmpty()) return;
-	if (!areSure("Delete this map?")) return;
-	padDelete(name.toStdString());
-	ui.cbMapFile->removeItem(ui.cbMapFile->currentIndex());
-	ui.cbMapFile->setCurrentIndex(0);
-}
-
-void xGamepadWidget::addEntry() {
-	if (ui.cbMapFile->currentIndex() == 0) return;
-	bindidx = -1;
-	xJoyMapEntry jent;
-	jent.dev = JOY_NONE;
-	jent.dev = JMAP_JOY;
-#if USE_SEQ_BIND
-	jent.seq = QKeySequence();
-#else
-	jent.key = ENDKEY;
-#endif
-	jent.dir = XJ_NONE;
-	jent.rpt = 0;
-	emit s_edit_entry(gpad, jent);
-//	padial->start(jent);
-}
-
-void xGamepadWidget::entryReady(xJoyMapEntry ent) {
-	if (ent.type == JOY_NONE) return;
-	if (ent.dev == JMAP_NONE) return;
-	gpad->setItem(bindidx, ent);
-	gpad->saveMap(ui.cbMapFile->currentText().toStdString());
-	padmodel->update();
-}
-
-void xGamepadWidget::editEntry() {
-	bindidx = ui.tvMapView->currentIndex().row();
-	if (bindidx < 0) return;
-	emit s_edit_entry(gpad, gpad->mapItem(bindidx));
-//	padial->start(conf.joy.gpad->mapItem(bindidx));
-}
-
-extern bool qmidx_greater(const QModelIndex, const QModelIndex);
-
-void xGamepadWidget::delEntry() {
-	QModelIndexList lst = ui.tvMapView->selectionModel()->selectedRows();
-	if (!lst.isEmpty()) {
-		std::sort(lst.begin(), lst.end(), qmidx_greater);
-		if (areSure("Delete this binding(s)?")) {
-			int row;
-			foreach(QModelIndex idx, lst) {
-				row = idx.row();
-				gpad->delItem(row); // map.erase(conf.joy.gpad->map.begin() + row);
-			}
-			padmodel->update();
-			gpad->saveMap(ui.cbMapFile->currentText().toStdString());
+	QString dat = cbDevice->currentData().toString();
+	int kbd = pad_kbd_find(dat);
+	gpad->setKeyboard(kbd);
+	if (kbd == GPK_NONE) {
+		if (cbDevice->currentIndex() < 1) {
+			gpad->close();
+			gpad->setPadId(xPadId());
+		} else {
+			gpad->setPadId(xPadId::fromConfig(dat));
 		}
 	}
+	conf.gpctrl->rescan();
+	labTry->setText(gpad->isKeyboard() ? "Press a key to try it" : "Press a button to try it");
+}
+
+void xGamepadWidget::editRow(int i) {
+	if ((i < -1) || (i >= gpad->rowCount())) return;
+	if (editor->edit(gpad, i)) tableChanged();
+}
+
+void xGamepadWidget::delRow(int i) {
+	if (i < 0) return;
+	gpad->delRow(i);
+	tableChanged();
+}
+
+void xGamepadWidget::toggleTurbo(int i) {
+	if (i < 0) return;
+	xPadRow r = gpad->row(i);
+	r.rapid = !r.rapid;
+	gpad->setRow(i, r);
+	tableChanged();
+}
+
+void xGamepadWidget::rowMenu(const QPoint& pos) {
+	QModelIndex idx = table->indexAt(pos);
+	int i = idx.isValid() ? model->padRow(idx.row()) : -1;
+	QMenu menu(this);
+	menu.addAction(QIcon(":/images/add.png"), "Add...", this, [this]() {editRow(-1);});
+	if (i >= 0) {
+		menu.addAction(QIcon(":/images/edit.png"), "Change...", this, [this, i]() {editRow(i);});
+		menu.addAction(QIcon((i < PR_JOY) ? ":/images/refresh.png" : ":/images/cancel.png"),
+			(i < PR_JOY) ? "Back to defaults" : "Delete", this, [this, i]() {delRow(i);});
+		QAction* act = menu.addAction("Turbo", this, [this, i]() {toggleTurbo(i);});
+		act->setCheckable(true);
+		act->setChecked(gpad->row(i).rapid);
+	}
+	menu.exec(table->viewport()->mapToGlobal(pos));
+}
+
+void xGamepadWidget::saveAs() {
+	QString path = QFileDialog::getSaveFileName(this, "Save bindings", QString::fromStdString(conf.path.confDir),
+		"Bindings (*.pad)");
+	if (path.isEmpty()) return;
+	if (!path.endsWith(".pad")) path.append(".pad");
+	if (!gpad->saveFile(path.toStdString())) showInfo("Can't write the file");
+}
+
+void xGamepadWidget::load() {
+	QString path = QFileDialog::getOpenFileName(this, "Load bindings", QString::fromStdString(conf.path.confDir),
+		"Bindings (*.pad)");
+	if (path.isEmpty()) return;
+	if (!gpad->loadFile(path.toStdString())) {
+		showInfo("Can't read the file");
+		return;
+	}
+	refresh();
+	tell();
+}
+
+void xGamepadWidget::reset() {
+	if (!areSure("Back to the joystick's defaults? Extra rows go.")) return;
+	gpad->resetRows();
+	tableChanged();
+}
+
+void xGamepadWidget::tryShow(const xJoyMapEntry& ev) {
+	QString what = gpad->whatDoes(ev.type, ev.num, ev.state).join(", ");
+	labTry->setText(QString("%0: %1").arg(xGamepad::getEntryName(ev), what.isEmpty() ? QString("nothing") : what));
+}
+
+// A press and what it does. A pad SDL knows the layout of reports each push
+// twice, by name and by number: the name is the one the table binds.
+void xGamepadWidget::inputChanged(int type, int num, int state) {
+	if (!isVisible() || (state == 0) || gpad->isKeyboard() || !gpad->bindable(type)) return;
+	xJoyMapEntry ev;
+	ev.type = type;
+	ev.num = num;
+	ev.state = state;
+	tryShow(ev);
+}
+
+void xGamepadWidget::keyTry(int id) {
+	if (!gpad->isKeyboard()) return;
+	xJoyMapEntry ev;
+	ev.type = JOY_KEY;
+	ev.num = id;
+	ev.state = 1;
+	tryShow(ev);
 }
