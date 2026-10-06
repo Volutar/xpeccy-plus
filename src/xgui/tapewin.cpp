@@ -8,6 +8,7 @@
 TapeWin::TapeWin(QWidget *par):QDialog(par) {
 	ui.setupUi(this);
 	setWindowFlags(Qt::Tool);
+	setProperty("xCenterOnce", true);
 	ui.stopBut->setEnabled(false);
 	// which drive Copy to disk writes to: the window has no disk page to take
 	// the answer from, so the button asks
@@ -39,7 +40,6 @@ TapeWin::TapeWin(QWidget *par):QDialog(par) {
 
 void TapeWin::show() {
 	QDialog::show();
-	center_once(this);
 	upd(conf.zx->tape);		// takes the speed slider with it
 	updList(conf.zx->tape);
 }

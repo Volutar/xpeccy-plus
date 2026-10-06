@@ -255,6 +255,8 @@ class xGamepad : public QObject {
 		SDL_GameController* scptr;
 #endif
 		void emitChanged(int, int, int);
+		bool rowOnDefaults(int);
+		QList<xJoyMapEntry> flatInputs(const QList<xJoyMapEntry>&);	// aliases opened up
 };
 
 class xGamepadController : public QObject {

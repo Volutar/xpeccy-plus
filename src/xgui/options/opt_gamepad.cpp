@@ -347,17 +347,14 @@ bool xPadRowEdit::takeTarget() {
 	} else {
 		t.dev = JMAP_ZX;
 		t.dir = cbKey->currentData().toInt();
-		int mod = cbMod->currentData().toInt();
-		cur.tgt.clear();
-		if (mod && (mod != t.dir)) {
-			xJoyMapEntry m = t;
-			m.dir = mod;
-			cur.tgt.append(m);
-		}
-		cur.tgt.append(t);
-		return true;
 	}
 	cur.tgt.clear();
+	int mod = cbMod->currentData().toInt();
+	if ((t.dev == JMAP_ZX) && mod && (mod != t.dir)) {	// the modifier goes down first
+		xJoyMapEntry m = t;
+		m.dir = mod;
+		cur.tgt.append(m);
+	}
 	cur.tgt.append(t);
 	return true;
 }
@@ -421,8 +418,9 @@ bool xPadRowEdit::edit(xGamepad* gp, int i) {
 	choices = xGamepad::inputChoices(gp->asController());
 	int lw = 0;
 	foreach(const xJoyMapEntry& e, choices) {
-		cbAlias->addItem(xGamepad::getEntryName(e));
-		lw = qMax(lw, cbAlias->fontMetrics().horizontalAdvance(xGamepad::getEntryName(e)));
+		QString nm = xGamepad::getEntryName(e);
+		cbAlias->addItem(nm);
+		lw = qMax(lw, cbAlias->fontMetrics().horizontalAdvance(nm));
 	}
 	// the list as wide as its names, not as the box: a scroll bar and margins on top
 	cbAlias->view()->setMinimumWidth(lw + cbAlias->style()->pixelMetric(QStyle::PM_ScrollBarExtent) + 24);
@@ -773,7 +771,7 @@ void xGamepadWidget::inputChanged(int type, int num, int state) {
 		ev.type = type;
 		ev.num = num;
 		ev.state = state;
-		tryShow(ev);		// "...: nothing"
+		labTry->setText(QString("%0: nothing").arg(xGamepad::getEntryName(ev)));
 		return;
 	}
 	QString held = gpad->heldText();

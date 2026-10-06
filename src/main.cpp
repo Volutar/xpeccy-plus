@@ -132,6 +132,9 @@ bool xApp::eventFilter(QObject* obj, QEvent* ev) {
 		if (w && w->isWindow()) {
 			applyTitleBarStyle(w);
 			fitFileDialog(w);
+			// a tool window asks for it: once it has a frame to measure
+			if (w->property("xCenterOnce").toBool() && !w->property("xCentered").toBool())
+				QTimer::singleShot(0, w, [w]() {center_once(w);});
 		}
 	}
 	switch (ev->type()) {
@@ -378,10 +381,7 @@ int main(int ac,char** av) {
 	app.connect(&mwin, SIGNAL(s_rzx_start()), &rzxw, SLOT(startPlay()));
 	app.connect(&mwin, SIGNAL(s_rzx_stop()), &rzxw, SLOT(stop()));
 	app.connect(&mwin, SIGNAL(s_rzx_upd(Computer*)), &rzxw, SLOT(upd(Computer*)));
-	app.connect(&mwin, &MainWin::s_rzx_show, &rzxw, [&rzxw]() {
-		rzxw.show();
-		center_once(&rzxw);
-	});
+	app.connect(&mwin, SIGNAL(s_rzx_show()), &rzxw, SLOT(show()));
 
 	app.connect(&mwin, SIGNAL(s_watch_upd(Computer*)), &wutw, SLOT(fillFields(Computer*)));
 	app.connect(&mwin, SIGNAL(s_watch_show()), &wutw, SLOT(show()));

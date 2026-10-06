@@ -3,6 +3,7 @@
 RZXWin::RZXWin(QWidget *par):QDialog(par) {
 	ui.setupUi(this);
 	setWindowFlags(Qt::Tool);
+	setProperty("xCenterOnce", true);
 	state = RWS_STOP;
 	ui.ppButton->setEnabled(false);
 	ui.stopButton->setEnabled(false);
