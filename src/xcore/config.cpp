@@ -310,14 +310,17 @@ void saveConfig() {
 	fprintf(cfile, "mouse.swapButtons = %s\n", YESNO(conf.zx->mouse->swapButtons));
 	fprintf(cfile, "mouse.sensitivity = %f\n", conf.zx->mouse->sensitivity);
 	fprintf(cfile, "keymap = %s\n", conf.kmapName.c_str());
-	fprintf(cfile, "gamepad.map = %s\n", conf.jmapNameA.c_str());
-	fprintf(cfile, "gamepad2.map = %s\n", conf.jmapNameB.c_str());
+	fprintf(cfile, "gamepad.seen = %s\n", conf.gpctrl->seen.join(",").toUtf8().data());
 	// What each slot remembers, whether or not that pad is plugged in now.
 	// A sleeping wireless pad must read the same here as an awake one.
-	fprintf(cfile, "gamepad = %s\n", conf.gpctrl->gpada->padId().toConfig().toUtf8().data());
-	fprintf(cfile, "deadzone = %i\n", conf.gpctrl->gpada->deadZone());
-	fprintf(cfile, "gamepad2 = %s\n", conf.gpctrl->gpadb->padId().toConfig().toUtf8().data());
-	fprintf(cfile, "deadzone2 = %i\n", conf.gpctrl->gpadb->deadZone());
+	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
+	for (int i = 0; i < 2; i++) {
+		const char* pfx = i ? "gamepad2" : "gamepad";
+		fprintf(cfile, "%s = %s\n", pfx, pads[i]->isKeyboard() ? pad_kbd_key(pads[i]->keyboard())
+			: pads[i]->padId().toConfig().toUtf8().data());
+		fprintf(cfile, "deadzone%s = %i\n", i ? "2" : "", pads[i]->deadZone());
+		pads[i]->saveConf(cfile, pfx);
+	}
 
 	fprintf(cfile, "\n[LEDS]\n\n");
 	fprintf(cfile, "mouse = %s\n", YESNO(conf.led.mouse));
@@ -711,6 +714,9 @@ void loadConfig() {
 	std::string pnm = "default";
 	int section = SECT_NONE;
 	int schema = 1;
+	bool padNew[2] = {false, false};	// the player's table is in the file
+	conf.gpctrl->gpada->resetRows();
+	conf.gpctrl->gpadb->resetRows();
 	// the machine the config asks for. conf.macId names the one that is
 	// running, and xm_set() is what puts it there: setting it here would have
 	// the machine we are starting count as one we are leaving, and the step
@@ -930,8 +936,18 @@ void loadConfig() {
 					break;
 				case SECT_INPUT:
 					if (pnam=="keymap") conf.kmapName = pval;
-					if (pnam=="gamepad.map") conf.jmapNameA = pval;
-					if (pnam=="gamepad2.map") conf.jmapNameB = pval;
+					// gamepad.map is from before the table; the rest is the table
+					if (pnam=="gamepad.map") {
+						conf.jmapNameA = pval;
+					} else if (pnam=="gamepad2.map") {
+						conf.jmapNameB = pval;
+					} else if (pnam=="gamepad.seen") {
+						conf.gpctrl->seen = QString(pval.c_str()).split(',', X_SkipEmptyParts);
+					} else if (pnam.compare(0, 9, "gamepad2.") == 0) {
+						if (conf.gpctrl->gpadb->loadConf(pnam.substr(9), pval) && (pnam == "gamepad2.joystick")) padNew[1] = true;
+					} else if (pnam.compare(0, 8, "gamepad.") == 0) {
+						if (conf.gpctrl->gpada->loadConf(pnam.substr(8), pval) && (pnam == "gamepad.joystick")) padNew[0] = true;
+					}
 					// kbd.scantab and mouse.wheel belong to the machine now and are
 					// not written here any more; an older config still sets them, once
 					if ((pnam=="mouse.wheel") || (pnam=="mouse.swapButtons") || (pnam=="mouse.sensitivity")
@@ -939,8 +955,15 @@ void loadConfig() {
 						xm_defer(pnam, pval);
 					if (pnam=="deadzone") conf.gpctrl->gpada->setDeadZone(arg.i);
 					if (pnam=="deadzone2") conf.gpctrl->gpadb->setDeadZone(arg.i);
-					if (pnam=="gamepad") conf.gpctrl->gpada->setPadId(xPadId::fromConfig(arg.s));
-					if (pnam=="gamepad2") conf.gpctrl->gpadb->setPadId(xPadId::fromConfig(arg.s));
+					if ((pnam=="gamepad") || (pnam=="gamepad2")) {
+						xGamepad* gp = (pnam=="gamepad") ? conf.gpctrl->gpada : conf.gpctrl->gpadb;
+						int kbd = pad_kbd_find(QString::fromStdString(pval));
+						if (kbd != GPK_NONE) {
+							gp->setKeyboard(kbd);
+						} else {
+							gp->setPadId(xPadId::fromConfig(arg.s));
+						}
+					}
 					break;
 				case SECT_VIDEO:
 					// a config from before the layouts had a file of their own
@@ -1190,8 +1213,9 @@ void loadConfig() {
 		}
 	}
 	xm_finish_load();
-	conf.gpctrl->gpada->loadMap(conf.jmapNameA);
-	conf.gpctrl->gpadb->loadMap(conf.jmapNameB);
+	// a config from before the table only names a map file
+	if (!padNew[0] && !conf.jmapNameA.empty()) conf.gpctrl->gpada->importMap(conf.path.confDir + SLASH + conf.jmapNameA);
+	if (!padNew[1] && !conf.jmapNameB.empty()) conf.gpctrl->gpadb->importMap(conf.path.confDir + SLASH + conf.jmapNameB);
 	// xm_set() loads the keys itself; a migrating profile only names its layout
 	// after that has run, so that path needs them loaded again
 	if (schema < 2) loadKeys();

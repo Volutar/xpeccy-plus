@@ -251,13 +251,11 @@ set(MOCFILES
 	./src/xgui/sndwin.h
 	./src/xgui/debuga/dbg_sndchip.h
 	./src/xgui/options/setupwin.h
-	./src/xgui/options/padbinder.h
 	./src/xgui/options/opt_romset.h
 	./src/xgui/options/opt_diskcat.h
 	./src/xgui/options/opt_tapecat.h
 	./src/xgui/options/opt_hotkeytab.h
 	./src/xgui/options/opt_paledit.h
-	./src/xgui/options/opt_gamepad.h
 	./src/vkeyboard.h
 #	./src/xcore/xcore.h
 	./src/xcore/gamepad.h

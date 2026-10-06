@@ -434,6 +434,23 @@ void xSlider::paintEvent(QPaintEvent* ev) {
 
 xSideButton::xSideButton(QWidget* p):QPushButton(p) {}
 
+#define SIDE_GAP	6	// between the text and the icon at the edge
+
+// What paintEvent lays out - the text, its gaps and the icon - put through the
+// style for its padding: the style's own hint has the icon beside the text.
+QSize xSideButton::sizeHint() const {
+	QSize sz = QPushButton::sizeHint();
+	if (icon().isNull()) return sz;
+	QStyleOptionButton opt;
+	initStyleOption(&opt);
+	opt.text.clear();
+	opt.icon = QIcon();
+	QSize cont(fontMetrics().horizontalAdvance(text()) + SIDE_GAP / 2 + SIDE_GAP + iconSize().width(),
+		fontMetrics().height());
+	int w = style()->sizeFromContents(QStyle::CT_PushButton, &opt, cont, this).width();
+	return QSize(qMax(sz.width(), w), sz.height());
+}
+
 void xSideButton::paintEvent(QPaintEvent*) {
 	QStylePainter pnt(this);
 	QStyleOptionButton opt;
@@ -444,7 +461,7 @@ void xSideButton::paintEvent(QPaintEvent*) {
 	opt.icon = QIcon();
 	pnt.drawControl(QStyle::CE_PushButton, opt);
 	QRect box = style()->subElementRect(QStyle::SE_PushButtonContents, &opt, this);
-	int gap = 6;
+	int gap = SIDE_GAP;
 	if (!ico.isNull()) {
 		QSize isz = iconSize();
 		QRect irc(box.right() - isz.width() + 1, box.top() + (box.height() - isz.height()) / 2, isz.width(), isz.height());

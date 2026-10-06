@@ -62,7 +62,7 @@ static int hk_section(const xShortcut& cut) {
 			return HK_TIME;
 		case XCUT_TAPWIN: case XCUT_TAPLAY: case XCUT_TAPREC: case XCUT_TAPE_START: case XCUT_RZXWIN:
 			return HK_MEDIA;
-		case XCUT_MOUSE: case XCUT_GRABKBD:
+		case XCUT_MOUSE: case XCUT_GRABKBD: case XCUT_PADWIN:
 			return HK_INPUT;
 		case XCUT_DEBUG: case XCUT_SCRWIN: case XCUT_SNDWIN:
 			return HK_DEBUG;

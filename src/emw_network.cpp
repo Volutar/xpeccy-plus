@@ -233,6 +233,8 @@ void MainWin::socketRead() {
 		// the window as painted, or the menu or dialog open over it: a path may have spaces
 		QWidget* w = QApplication::activePopupWidget();
 		if (!w) w = QApplication::activeModalWidget();
+		if (!w && QApplication::activeWindow() && (QApplication::activeWindow() != frame))
+			w = QApplication::activeWindow();		// a tool window
 		QPixmap pic = w ? w->grab() : QPixmap();
 #if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
 		// The picture is read from the framebuffer, where the last frame left

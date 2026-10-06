@@ -283,6 +283,7 @@ int xm_set_hardware(std::string);
 // what the user changed on the machine that is running: into its own file, and
 // back out of it again
 void xm_save_over();
+bool xm_pad_kempston();		// switch the Kempston on if a pad drives it; true if it did
 std::string xm_signature();	// what the running machine is, as text: equal means the same machine
 void xm_reset_over();		// drop it and take the machine as it ships
 
@@ -371,6 +372,7 @@ enum {
 	XCUT_RZXWIN,
 	XCUT_SCRWIN,
 	XCUT_SNDWIN,
+	XCUT_PADWIN,
 	XCUT_MUTE,
 	XCUT_FASTSAVE,
 	XCUT_NMI,
@@ -692,7 +694,7 @@ struct xConfig {
 	xRomset roms;			// what it loads: its own, that variant, your files
 	std::string palette;		// colour palette file
 	std::string kmapName;		// keyboard layout
-	std::string jmapNameA;		// gamepad maps
+	std::string jmapNameA;		// the .pad an old config names, brought into the table once
 	std::string jmapNameB;
 	std::string lastDir;
 	struct {

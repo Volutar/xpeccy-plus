@@ -134,20 +134,23 @@ keyEntry getKeyEntry(int qkey) {
 	return keyMap[idx];
 }
 
+// A key's name and id are the same in every layout - setKey() changes what a
+// key presses, never which key it is - so these read the table the layouts
+// start from, and work before any layout is loaded, as reading config.conf is.
 int getKeyIdByName(const char* name) {
 	int idx = 0;
-	while ((keyMap[idx].key != ENDKEY) && strcmp(name, keyMap[idx].name)) {
+	while ((keyMapInit[idx].key != ENDKEY) && strcmp(name, keyMapInit[idx].name)) {
 		idx++;
 	}
-	return keyMap[idx].key;
+	return keyMapInit[idx].key;
 }
 
 const char* getKeyNameById(int id) {
 	int idx = 0;
-	while ((keyMap[idx].key != ENDKEY) && (keyMap[idx].key != id)) {
+	while ((keyMapInit[idx].key != ENDKEY) && (keyMapInit[idx].key != id)) {
 		idx++;
 	}
-	return keyMap[idx].name;
+	return keyMapInit[idx].name;
 }
 
 void setKey(const char* kname, const char* kstr) {
@@ -450,6 +453,7 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_GRABKBD, "key.keyboard.grab","Grab keyboard", {}},
 	{SCG_MAIN | SCG_DEBUGA, XCUT_KEYBOARD, "key.keywin", "Show virtual keyboard", {}},
 	{SCG_MAIN, XCUT_TAPWIN, "key.tapewin", "Show tape player", {}},
+	{SCG_MAIN, XCUT_PADWIN, "key.padwin", "Show gamepads window", {}},
 	{SCG_MAIN, XCUT_RZXWIN, "key.rzxwin", "Show RZX player", {}},
 	{SCG_MAIN | SCG_DEBUGA, XCUT_SCRWIN, "key.scrwin", "Show screen window", {}},
 	{SCG_MAIN | SCG_DEBUGA, XCUT_SNDWIN, "key.sndwin", "Show sound chip window", {}},

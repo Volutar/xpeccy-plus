@@ -1,4 +1,7 @@
 #include <QDebug>
+#include <QKeyEvent>
+#include <QFileInfo>
+#include <QUrl>
 
 #if USE_QT_GAMEPAD
 #include <QGamepadManager>
@@ -68,6 +71,9 @@ const xCharDir kmouChars[] = {
 	{'-', XM_NONE}
 };
 
+// the four directions as files and the gui spell them, in PR_* order
+static const char* dirName[4] = {"up", "down", "left", "right"};
+
 const xCharDir hatChars[] = {
 	{'U', SDL_HAT_UP},
 	{'D', SDL_HAT_DOWN},
@@ -82,6 +88,7 @@ const xCharDir pabhChars[] = {
 	{'H', JOY_HAT},
 	{'C', JOY_CBUTTON},
 	{'X', JOY_CAXIS},
+	{'G', JOY_VDIR},
 	{'-', JOY_NONE}
 };
 
@@ -90,8 +97,16 @@ const xCharDir devChars[] = {
 	{'J', JMAP_JOY},
 	{'B', JMAP_JOYB},
 	{'M', JMAP_MOUSE},
+	{'A', JMAP_CUT},
+	{'Z', JMAP_ZX},
 	{'-', JMAP_NONE}
 };
+
+int sign(int v) {
+	if (v < 0) return -1;
+	if (v > 0) return 1;
+	return 0;
+}
 
 char padGetChar(int val, const xCharDir* tab) {
 	int idx = 0;
@@ -119,6 +134,14 @@ static int padParseSource(const char* str, xJoyMapEntry* jent) {
 	jent->type = padGetId(str[0], pabhChars);
 	jent->state = 0;
 	switch (jent->type) {
+		case JOY_VDIR: {		// Gup Gdown Gleft Gright
+			jent->num = -1;
+			for (int i = 0; i < 4; i++) {
+				if (!strcmp(str + 1, dirName[i])) jent->num = i;
+			}
+			if (jent->num < 0) return 0;
+			break;
+		}
 		case JOY_CBUTTON:
 		case JOY_CAXIS:
 			len = 0;
@@ -164,27 +187,518 @@ static int padParseSource(const char* str, xJoyMapEntry* jent) {
 	return 1;
 }
 
-// the same the other way round, for saveMap
-static void padWriteSource(FILE* file, const xJoyMapEntry& jent) {
+// The pad half the other way round, as config.conf keeps it
+static QString padSourceStr(const xJoyMapEntry& jent) {
 	switch (jent.type) {
 #if HAVESDL2
 		case JOY_CBUTTON:
-			fprintf(file, "C%s", SDL_GameControllerGetStringForButton((SDL_GameControllerButton)jent.num));
-			break;
+			return QString("C%0").arg(SDL_GameControllerGetStringForButton((SDL_GameControllerButton)jent.num));
 		case JOY_CAXIS:
-			fprintf(file, "X%s%c", SDL_GameControllerGetStringForAxis((SDL_GameControllerAxis)jent.num),
-				(jent.state < 0) ? '-' : '+');
-			break;
+			return QString("X%0%1").arg(SDL_GameControllerGetStringForAxis((SDL_GameControllerAxis)jent.num))
+				.arg(QChar((jent.state < 0) ? '-' : '+'));
 #endif
 		case JOY_AXIS:
-			fprintf(file, "A%i%c", jent.num, (jent.state < 0) ? '-' : '+');
-			break;
+			return QString("A%0%1").arg(jent.num).arg(QChar((jent.state < 0) ? '-' : '+'));
 		case JOY_HAT:
-			fprintf(file, "H%i%c", jent.num, padGetChar(jent.state, hatChars));
+			return QString("H%0%1").arg(jent.num).arg(QChar(padGetChar(jent.state, hatChars)));
+		case JOY_VDIR:
+			return QString("G%0").arg(dirName[jent.num & 3]);
+	}
+	return QString("%0%1").arg(QChar(padGetChar(jent.type, pabhChars))).arg(jent.num);
+}
+
+// What an entry presses: Z<Spectrum key> J<dir> B<dir> M<dir> A<action>, or
+// K<PC key sequence> as an old .pad has it. The argument is percent-encoded
+// in config.conf, where ';' and ' ' part the fields; an old .pad has it bare.
+static int padParseTarget(const char* str, xJoyMapEntry* jent, bool enc) {
+	jent->dev = str[0] ? padGetId(str[0], devChars) : JMAP_NONE;
+	QString arg = str[0] ? QString::fromUtf8(str + 1) : QString();
+	if (enc) arg = QUrl::fromPercentEncoding(arg.toUtf8());
+	switch (jent->dev) {
+		case JMAP_KEY:		// KUP, KLEFT, KQ, KA
+			jent->seq = QKeySequence::fromString(arg);
+			if (jent->seq.isEmpty())
+				jent->dev = JMAP_NONE;
+			break;
+		case JMAP_ZX:		// Zq, Z1, ZC (Caps Shift), ZS (Symbol Shift), ZE (Enter), Z%20
+			if ((arg.size() == 1) && strchr(pad_zx_keys(), arg.at(0).toLatin1())) {
+				jent->dir = arg.at(0).toLatin1();
+			} else {
+				jent->dev = JMAP_NONE;
+			}
+			break;
+		case JMAP_JOY:		// JU, JD, JL, JR, JF, J2, J3, J4
+		case JMAP_JOYB:
+			jent->dir = padGetId(str[1], kjoyChars);
+			break;
+		case JMAP_MOUSE:	// MD, ML, M[ M| M] M^ Mv
+			jent->dir = padGetId(str[1], kmouChars);
+			break;
+		case JMAP_CUT: {	// Akey.rewind
+			xShortcut* cut = find_shortcut_name(arg.toUtf8().data());
+			if (cut) {
+				jent->dir = cut->id;
+			} else {
+				jent->dev = JMAP_NONE;
+			}
+			break;
+		}
+		default:
+			jent->dev = JMAP_NONE;	// ignore it
+			break;
+	}
+	return (jent->dev != JMAP_NONE) ? 1 : 0;
+}
+
+static QString padTargetStr(const xJoyMapEntry& jent) {
+	QString arg;
+	xShortcut* cut;
+	switch (jent.dev) {
+		case JMAP_KEY:
+			arg = jent.seq.toString();
+			break;
+		case JMAP_ZX:
+			arg = QChar(jent.dir);
+			break;
+		case JMAP_JOY:
+		case JMAP_JOYB:
+			arg = QChar(padGetChar(jent.dir, kjoyChars));
+			break;
+		case JMAP_MOUSE:
+			arg = QChar(padGetChar(jent.dir, kmouChars));
+			break;
+		case JMAP_CUT:
+			cut = find_shortcut_id(jent.dir);
+			if (!cut) return QString();
+			arg = QString(cut->name);
 			break;
 		default:
-			fprintf(file, "%c%i", padGetChar(jent.type, pabhChars), jent.num);
-			break;
+			return QString();
+	}
+	return QChar(padGetChar(jent.dev, devChars)) + QString::fromLatin1(QUrl::toPercentEncoding(arg, "+"));
+}
+
+// One line of an old .pad file, "<pad>:<target>[:<repeat>]". Returns 0 for a
+// line that binds nothing.
+static int padParseLine(char* buf, xJoyMapEntry* jent, const char* mapname) {
+	char* ptr = strtok(buf, ":\r\n");
+	if (!ptr) return 0;
+	if (!padParseSource(ptr, jent)) {
+		xlog(XLG_INPUT, XLL_WARN, "map '%s': can't read '%s'", mapname, ptr);
+		return 0;
+	}
+	ptr = strtok(NULL, ":\r\n");
+	if (!ptr) return 0;
+	if (!padParseTarget(ptr, jent, false)) return 0;
+	jent->rpt = 0;
+	jent->rps = 0;
+	jent->cnt = 0;
+	ptr = strtok(NULL, ":\r\n");
+	if (ptr)
+		jent->rpt = atoi(ptr);
+	return 1;
+}
+
+static xJoyMapEntry padTgt(const char* str) {
+	xJoyMapEntry e;
+	padParseTarget(str, &e, false);
+	return e;
+}
+
+static xJoyMapEntry padSrc(const char* str) {
+	xJoyMapEntry e;
+	padParseSource(str, &e);
+	return e;
+}
+
+static xJoyMapEntry padAlias(int r) {
+	xJoyMapEntry e;
+	e.type = JOY_VDIR;
+	e.num = r;
+	return e;
+}
+
+// The Spectrum key an old .pad's PC key means, as the stock layout has it:
+// a digit, a letter, Space, Enter. 0 when it is not one of those.
+static int padZxOfSeq(const QKeySequence& seq) {
+	if (seq.count() != 1) return 0;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+	int c = seq[0].toCombined();
+#else
+	int c = seq[0];
+#endif
+	if (c & Qt::KeyboardModifierMask) return 0;
+	int k = c & ~Qt::KeyboardModifierMask;
+	if ((k >= Qt::Key_0) && (k <= Qt::Key_9)) return '0' + (k - Qt::Key_0);
+	if ((k >= Qt::Key_A) && (k <= Qt::Key_Z)) return 'a' + (k - Qt::Key_A);
+	if (k == Qt::Key_Space) return ' ';
+	if ((k == Qt::Key_Return) || (k == Qt::Key_Enter)) return 'E';
+	return 0;
+}
+
+static bool padSameTarget(const xJoyMapEntry& a, const xJoyMapEntry& b) {
+	int za = (a.dev == JMAP_ZX) ? a.dir : (a.dev == JMAP_KEY) ? padZxOfSeq(a.seq) : 0;
+	int zb = (b.dev == JMAP_ZX) ? b.dir : (b.dev == JMAP_KEY) ? padZxOfSeq(b.seq) : 0;
+	if (za || zb) return za == zb;
+	if (a.dev != b.dev) return false;
+	return (a.dev == JMAP_KEY) ? (a.seq == b.seq) : (a.dir == b.dir);
+}
+
+// Schemes
+
+static const struct {
+	const char* key;
+	const char* name;
+	const char* role[PR_JOY];	// what each joystick row presses
+} schTab[GPS_COUNT] = {
+	{"kempston", "Kempston", {"JU", "JD", "JL", "JR", "JF", "J2", "J3", "J4"}},
+	{"sinclair1", "Sinclair/Interface II (6-0)", {"Z9", "Z8", "Z6", "Z7", "Z0"}},
+	{"sinclair2", "Sinclair/Interface II (1-5)", {"Z4", "Z3", "Z1", "Z2", "Z5"}},
+	{"cursor", "Cursor/Protek/AGF", {"Z7", "Z6", "Z5", "Z8", "Z0"}},
+	{"qaop", "QAOP + Space", {"Zq", "Za", "Zo", "Zp", "Z "}},
+	{"qaopm", "QAOP + M", {"Zq", "Za", "Zo", "Zp", "Zm"}},
+	{"custom", "Custom", {NULL}}
+};
+
+// the keys Custom starts from, until the user picks others
+static const char* customDef[PR_FIRE + 1] = {"Zq", "Za", "Zo", "Zp", "Z "};
+
+static const char* roleName[PR_JOY] = {"Up", "Down", "Left", "Right", "Fire", "Fire 2", "Fire 3", "Fire 4"};
+static const char* roleKey[PR_JOY] = {"up", "down", "left", "right", "fire", "fire2", "fire3", "fire4"};
+
+// "Gamepad up" and the rest: the d-pad and the left stick. A pad SDL knows
+// the layout of is bound by name, any other by number, as its first hat and
+// axes.
+static const char* aliasCtrl[4][2] = {
+	{"Cdpup", "Xlefty-"}, {"Cdpdown", "Xlefty+"}, {"Cdpleft", "Xleftx-"}, {"Cdpright", "Xleftx+"}
+};
+static const char* aliasRaw[4][2] = {
+	{"H0U", "A1-"}, {"H0D", "A1+"}, {"H0L", "A0-"}, {"H0R", "A0+"}
+};
+// The four face buttons. Fire takes the ones no other row has, and Kempston 8
+// gives the last three to Fire 2..4.
+static const char* faceCtrl[4] = {"Ca", "Cb", "Cx", "Cy"};
+static const char* faceRaw[4] = {"B0", "B1", "B2", "B3"};
+// and on the keyboard, the two layouts it comes in: the arrows and Ctrl, or WASD and Space
+static const char* defKeys[2][PR_FIRE + 1][2] = {
+	{{"UP", NULL}, {"DOWN", NULL}, {"LEFT", NULL}, {"RIGHT", NULL}, {"LC", "RC"}},
+	{{"W", NULL}, {"S", NULL}, {"A", NULL}, {"D", NULL}, {"SPC", NULL}}
+};
+
+const char* pad_scheme_key(int s) {
+	return ((s >= 0) && (s < GPS_COUNT)) ? schTab[s].key : schTab[GPS_KEMPSTON].key;
+}
+
+const char* pad_scheme_name(int s) {
+	return ((s >= 0) && (s < GPS_COUNT)) ? schTab[s].name : schTab[GPS_KEMPSTON].name;
+}
+
+static int padSchemeFind(const std::string& key) {
+	for (int i = 0; i < GPS_COUNT; i++) {
+		if (key == schTab[i].key) return i;
+	}
+	return -1;
+}
+
+static const char* kbdKey[3] = {"", "keyboard", "keyboard.wasd"};
+static const char* kbdName[3] = {"None", "Keyboard: arrows + Ctrl", "Keyboard: WASD + Space"};
+
+const char* pad_kbd_key(int k) {
+	return ((k >= 0) && (k < 3)) ? kbdKey[k] : kbdKey[GPK_NONE];
+}
+
+int pad_kbd_find(const QString& key) {
+	for (int k = GPK_ARROWS; k < 3; k++) {
+		if (key == kbdKey[k]) return k;
+	}
+	return GPK_NONE;
+}
+
+const char* pad_kbd_name(int k) {
+	return ((k >= 0) && (k < 3)) ? kbdName[k] : kbdName[GPK_NONE];
+}
+
+const char* pad_role_name(int r) {
+	return ((r >= 0) && (r < PR_JOY)) ? roleName[r] : "";
+}
+
+// in the keymap's zxKey terms: digits, small letters, Enter, Caps, Symbol, Space
+const char* pad_zx_keys() {
+	return "1234567890qwertyuiopasdfghjklEC" "zxcvbnmS ";
+}
+
+QString pad_zx_name(int c) {
+	switch (c) {
+		case 'E': return QString("Enter");
+		case 'C': return QString("Caps Shift");
+		case 'S': return QString("Symbol Shift");
+		case ' ': return QString("Space");
+	}
+	return QString(QChar(c).toUpper());
+}
+
+// the names the keymap gives keys are short; these are the ones worth spelling out
+static const struct {
+	const char* map;
+	const char* gui;
+} keyNameTab[] = {
+	{"UP", "Up arrow"}, {"DOWN", "Down arrow"}, {"LEFT", "Left arrow"}, {"RIGHT", "Right arrow"},
+	{"LC", "Left Ctrl"}, {"RC", "Right Ctrl"}, {"LS", "Left Shift"}, {"RS", "Right Shift"},
+	{"LA", "Left Alt"}, {"RA", "Right Alt"}, {"SPC", "Space"}, {"ENT", "Enter"}, {"BSP", "Backspace"},
+	{"CAPS", "Caps Lock"}, {"TAB", "Tab"}, {"ESC", "Esc"}, {"PGUP", "Page Up"}, {"PGDN", "Page Down"},
+	{"DEL", "Delete"}, {"INS", "Insert"}, {"HOME", "Home"}, {"END", "End"}, {"NENT", "Num Enter"},
+	{"NLOCK", "Num Lock"}, {"NSLASH", "Num /"}, {"NMUL", "Num *"}, {"NMINUS", "Num -"}, {"NPLUS", "Num +"},
+	{"NDOT", "Num ."}, {NULL, NULL}
+};
+
+QString pad_key_name(int id) {
+	const char* nm = getKeyNameById(id);
+	if (!nm || !nm[0]) return QString("Key #%0").arg(id);
+	for (int i = 0; keyNameTab[i].map; i++) {
+		if (!strcmp(nm, keyNameTab[i].map)) return QString(keyNameTab[i].gui);
+	}
+	if ((nm[0] == 'N') && (nm[1] >= '0') && (nm[1] <= '9') && !nm[2])
+		return QString("Num %0").arg(QChar(nm[1]));
+	return QString(nm);
+}
+
+int pad_key_id(QKeyEvent* ev) {
+#if defined(__linux) || defined(__BSD) || defined(__WIN32)
+	return ev->nativeScanCode();		// the keymap counts keys by scan code here
+#else
+	return qKey2id(ev->key(), ev->modifiers());		// as the layout takes it
+#endif
+}
+
+// The table
+
+void xGamepad::resetRows() {
+	rows.clear();
+	for (int i = 0; i < PR_JOY; i++)
+		rows.append(xPadRow());
+	rebuild();
+}
+
+int xGamepad::rowCount() {return rows.size();}
+
+// The extra fire buttons follow the machine: an 8-button Kempston has them.
+bool xGamepad::rowShown(int i) {
+	if ((i < PR_FIRE2) || (i >= PR_JOY)) return true;
+	if (scm != GPS_KEMPSTON) return false;
+	return conf.zx && (conf.zx->joy->type == XJ_KEMPSTON) && conf.zx->joy->extbuttons;
+}
+
+xPadRow xGamepad::row(int i) {
+	return ((i >= 0) && (i < rows.size())) ? rows[i] : xPadRow();
+}
+
+void xGamepad::setRow(int i, const xPadRow& r) {
+	if ((i < 0) || (i >= rows.size())) {
+		rows.append(r);
+	} else {
+		rows[i] = r;
+	}
+	rebuild();
+}
+
+// an extra row goes; a joystick row goes back to its defaults
+void xGamepad::delRow(int i) {
+	if ((i < 0) || (i >= rows.size())) return;
+	if (i < PR_JOY) {
+		QList<xJoyMapEntry> tgt = rows[i].tgt;
+		rows[i] = xPadRow();
+		rows[i].tgt = tgt;
+	} else {
+		rows.removeAt(i);
+	}
+	rebuild();
+}
+
+int xGamepad::scheme() {return scm;}
+
+void xGamepad::setScheme(int s) {
+	if ((s < 0) || (s >= GPS_COUNT)) s = GPS_KEMPSTON;
+	scm = s;
+	rebuild();
+}
+
+int xGamepad::turboRate() {return trate;}
+
+void xGamepad::setTurboRate(int r) {
+	trate = qBound(1, r, 25);
+	rebuild();
+}
+
+// the other way round from padRpt(): an old .pad's repeat period as a rate
+static int padRateOfRpt(int rpt) {
+	return qBound(1, qRound(25.0 / qMax(1, rpt)), 25);
+}
+
+bool xGamepad::isKeyboard() {return kbd != GPK_NONE;}
+
+int xGamepad::keyboard() {return kbd;}
+
+void xGamepad::setKeyboard(int k) {
+	if (k != GPK_NONE) {
+		close();
+		pid = xPadId();
+		ctrl = false;
+	}
+	kbd = k;
+	rebuild();
+}
+
+bool xGamepad::isLive() {
+	return isKeyboard() || isOpened();
+}
+
+// A pad not plugged in yet is shown by the names its layout would give, if SDL
+// knows the model - the table should not change its words when it turns up.
+// Worked out where the pad changes and kept: the table asks it all the time.
+static bool padIsCtrl(const xPadId& pid) {
+#if HAVESDL2
+	if (pid.guid.isEmpty()) return false;
+	char* mp = SDL_GameControllerMappingForGUID(SDL_JoystickGetGUIDFromString(pid.guid.toUtf8().data()));
+	if (!mp) return false;
+	SDL_free(mp);
+	return true;
+#else
+	return false;
+#endif
+}
+
+bool xGamepad::asController() {
+	return ctrl;
+}
+
+bool xGamepad::bindable(int type) {
+	if (type == JOY_HAT) return false;
+	return !(isController() && ((type == JOY_BUTTON) || (type == JOY_AXIS)));
+}
+
+QList<xJoyMapEntry> xGamepad::aliasInputs(int r) {
+	QList<xJoyMapEntry> res;
+	if ((r < 0) || (r > 3)) return res;
+	for (int k = 0; k < 2; k++)
+		res.append(padSrc(asController() ? aliasCtrl[r][k] : aliasRaw[r][k]));
+	return res;
+}
+
+// The pad inputs every other shown row has, for Fire's leftovers.
+QList<xJoyMapEntry> xGamepad::defInputs(int i, bool keys) {
+	QList<xJoyMapEntry> res;
+	if ((i < 0) || (i >= PR_JOY)) return res;
+	if (keys) {
+		if (i > PR_FIRE) return res;
+		for (int k = 0; k < 2; k++) {
+			const char* nm = defKeys[(kbd == GPK_WASD) ? 1 : 0][i][k];
+			if (!nm) continue;
+			xJoyMapEntry e;
+			e.type = JOY_KEY;
+			e.num = getKeyIdByName(nm);
+			if (e.num != ENDKEY) res.append(e);
+		}
+		return res;
+	}
+	const char** face = asController() ? faceCtrl : faceRaw;
+	if (i < PR_FIRE) {
+		res.append(padAlias(i));
+	} else if (i > PR_FIRE) {
+		res.append(padSrc(face[i - PR_FIRE]));
+	} else {
+		QList<xJoyMapEntry> used;
+		for (int r = 0; r < rows.size(); r++) {
+			if ((r == PR_FIRE) || !rowShown(r)) continue;
+			used.append(rowInputs(r));
+		}
+		for (int k = 0; k < 4; k++) {
+			xJoyMapEntry e = padSrc(face[k]);
+			bool taken = false;
+			foreach(const xJoyMapEntry& u, used) {
+				if ((u.type == e.type) && (u.num == e.num)) taken = true;
+			}
+			if (!taken) res.append(e);
+		}
+	}
+	return res;
+}
+
+QList<xJoyMapEntry> xGamepad::rowInputs(int i) {
+	if ((i < 0) || (i >= rows.size())) return QList<xJoyMapEntry>();
+	const xPadRow& r = rows[i];
+	bool joy = (i < PR_JOY);		// an extra row has no defaults
+	if (isKeyboard()) return (joy && r.keyDef) ? defInputs(i, true) : r.key;
+	return (joy && r.padDef) ? defInputs(i, false) : r.pad;
+}
+
+QList<xJoyMapEntry> xGamepad::rowTargets(int i) {
+	QList<xJoyMapEntry> res;
+	if ((i < 0) || (i >= rows.size())) return res;
+	if (i >= PR_JOY) return rows[i].tgt;
+	if (scm == GPS_CUSTOM) {
+		res = rows[i].tgt;
+		if (res.isEmpty() && (i <= PR_FIRE)) res.append(padTgt(customDef[i]));
+		return res;
+	}
+	if (schTab[scm].role[i]) res.append(padTgt(schTab[scm].role[i]));
+	return res;
+}
+
+// a Spectrum key the way a row names it: bare
+static QString padTargetShort(const xJoyMapEntry& e) {
+	if (e.dev == JMAP_KEY) return e.seq.toString(QKeySequence::NativeText);
+	return xGamepad::getTargetName(e);
+}
+
+QString xGamepad::targetsName(const QList<xJoyMapEntry>& lst) {
+	QStringList res;
+	foreach(const xJoyMapEntry& e, lst) res.append(padTargetShort(e));
+	return res.join(" + ");
+}
+
+QString xGamepad::inputsName(const QList<xJoyMapEntry>& lst) {
+	QStringList res;
+	foreach(const xJoyMapEntry& e, lst) res.append(getEntryName(e));
+	return res.join(", ");
+}
+
+// "Up" on the Kempston, "Up (Q)" where it is a key; an extra row by what it presses
+QString xGamepad::rowName(int i) {
+	if ((i < 0) || (i >= rows.size())) return QString();
+	if (i >= PR_JOY) return targetsName(rows[i].tgt);
+	if (scm == GPS_KEMPSTON) return QString(roleName[i]);
+	return QString("%0 (%1)").arg(roleName[i], targetsName(rowTargets(i)));
+}
+
+static int padRpt(int rate) {
+	return qMax(1, qRound(25.0 / qMax(1, rate)));
+}
+
+// Every input of every shown row, times every target of it.
+void xGamepad::rebuild() {
+	map.clear();
+	for (int i = 0; i < rows.size(); i++) {
+		if (!rowShown(i)) continue;
+		QList<xJoyMapEntry> tgt = rowTargets(i);
+		QList<xJoyMapEntry> ins;
+		foreach(const xJoyMapEntry& in, rowInputs(i)) {
+			if (in.type == JOY_VDIR) {
+				ins.append(aliasInputs(in.num));
+			} else {
+				ins.append(in);
+			}
+		}
+		foreach(const xJoyMapEntry& in, ins) {
+			foreach(xJoyMapEntry e, tgt) {
+				e.type = in.type;
+				e.num = in.num;
+				e.state = in.state;
+				e.rpt = rows[i].rapid ? padRpt(trate) : 0;
+				e.rps = 0;
+				e.cnt = 0;
+				map.append(e);
+			}
+		}
 	}
 }
 
@@ -192,145 +706,275 @@ int xGamepad::mapSize() {
 	return map.size();
 }
 
-void xGamepad::mapClear() {
-	map.clear();
-}
-
 xJoyMapEntry xGamepad::mapItem(int i) {
 	return map[i];
 }
 
-void xGamepad::setItem(int i, xJoyMapEntry xjm) {
-	xjm.rps = 0;		// not held: pause() puts back what is
-	xjm.cnt = 0;
-	if ((i < 0) || (i >= map.size())) {
-		map.append(xjm);
-	} else {
-		map[i] = xjm;
+// What one input does now, for the gui: a press only.
+QStringList xGamepad::whatDoes(int type, int num, int state) {
+	QStringList res;
+	if (state == 0) return res;
+	foreach(const xJoyMapEntry& e, map) {
+		if ((e.type != type) || (e.num != num)) continue;
+		if (((type == JOY_AXIS) || (type == JOY_CAXIS)) && (sign(e.state) != sign(state))) continue;
+		if ((type == JOY_HAT) && !(e.state & state)) continue;
+		res.append(getTargetName(e));
+	}
+	return res;
+}
+
+bool xGamepad::drivesKempston() {
+	if (!isLive()) return false;
+	foreach(const xJoyMapEntry& e, map) {
+		if (e.dev == JMAP_JOY) return true;
+	}
+	return false;
+}
+
+bool xGamepad::bindsKey(int id) {
+	if (!isKeyboard()) return false;
+	foreach(const xJoyMapEntry& e, map) {
+		if ((e.type == JOY_KEY) && (e.num == id)) return true;
+	}
+	return false;
+}
+
+QList<xJoyMapEntry> xGamepad::dropHeld() {
+	QList<xJoyMapEntry> res;
+	for (int i = 0; i < map.size(); i++) {
+		if (!map[i].rps) continue;
+		res.append(map[i]);
+		map[i].rps = 0;
+		map[i].cnt = 0;
+	}
+	return res;
+}
+
+// config.conf and .pad files
+
+static QString padInputsStr(const QList<xJoyMapEntry>& lst, bool def) {
+	if (def) return QString("*");
+	QStringList res;
+	foreach(const xJoyMapEntry& e, lst) {
+		if (e.type == JOY_KEY) {
+			res.append(QString::fromLatin1(QUrl::toPercentEncoding(QString(getKeyNameById(e.num)))));
+		} else {
+			res.append(padSourceStr(e));
+		}
+	}
+	return res.join(' ');
+}
+
+static QList<xJoyMapEntry> padParseInputs(const QString& str, bool keys, bool* def) {
+	QList<xJoyMapEntry> res;
+	QString f = str.trimmed();
+	*def = (f == "*");
+	if (*def) return res;
+	foreach(QString tok, f.split(' ', X_SkipEmptyParts)) {
+		xJoyMapEntry e;
+		if (keys) {
+			e.type = JOY_KEY;
+			e.num = getKeyIdByName(QUrl::fromPercentEncoding(tok.toUtf8()).toUtf8().data());
+			if (e.num != ENDKEY) res.append(e);
+		} else if (padParseSource(tok.toUtf8().data(), &e)) {
+			res.append(e);
+		}
+	}
+	return res;
+}
+
+static QString padTargetsStr(const QList<xJoyMapEntry>& lst) {
+	QStringList res;
+	foreach(const xJoyMapEntry& e, lst) res.append(padTargetStr(e));
+	return res.join(' ');
+}
+
+static QList<xJoyMapEntry> padParseTargets(const QString& str) {
+	QList<xJoyMapEntry> res;
+	foreach(QString tok, str.trimmed().split(' ', X_SkipEmptyParts)) {
+		xJoyMapEntry e;
+		if (padParseTarget(tok.toUtf8().data(), &e, true)) res.append(e);
+	}
+	return res;
+}
+
+// "joystick = qaop", "turbo = 10", a line per joystick row off its defaults
+// ("fire = <pad>;<keys>;<turbo>", * for the defaults), the keys of Custom,
+// and a line per extra row ("extra = <targets>;<pad>;<keys>;<turbo>"). In
+// config.conf each name has the player's prefix.
+void xGamepad::saveConf(FILE* file, const char* pfx) {
+	QString p = (pfx && pfx[0]) ? QString("%0.").arg(pfx) : QString();
+	QByteArray px = p.toUtf8();
+	fprintf(file, "%sjoystick = %s\n", px.data(), pad_scheme_key(scm));
+	fprintf(file, "%sturbo = %i\n", px.data(), trate);
+	QStringList keys;
+	bool own = false;
+	for (int i = 0; i < PR_JOY; i++) {
+		const xPadRow& r = rows[i];
+		if (i <= PR_FIRE) keys.append(padTargetsStr(r.tgt));
+		if (!r.tgt.isEmpty()) own = true;
+		if (r.padDef && r.keyDef && !r.rapid) continue;
+		fprintf(file, "%s%s = %s;%s;%i\n", px.data(), roleKey[i], padInputsStr(r.pad, r.padDef).toUtf8().data(),
+			padInputsStr(r.key, r.keyDef).toUtf8().data(), r.rapid ? 1 : 0);
+	}
+	if (own) fprintf(file, "%scustom = %s\n", px.data(), keys.join(';').toUtf8().data());
+	for (int i = PR_JOY; i < rows.size(); i++) {
+		const xPadRow& r = rows[i];
+		fprintf(file, "%sextra = %s;%s;%s;%i\n", px.data(), padTargetsStr(r.tgt).toUtf8().data(),
+			padInputsStr(r.pad, false).toUtf8().data(), padInputsStr(r.key, false).toUtf8().data(), r.rapid ? 1 : 0);
 	}
 }
 
-void xGamepad::delItem(int i) {
-	if (i < 0) return;
-	if (i >= map.size()) return;
-	map.erase(map.begin() + i);
+bool xGamepad::loadConf(const std::string& name, const std::string& val) {
+	QStringList fld = QString::fromUtf8(val.c_str()).split(';');
+	while (fld.size() < 4) fld.append(QString());
+	if (name == "joystick") {
+		int s = padSchemeFind(val);
+		scm = (s < 0) ? GPS_KEMPSTON : s;
+	} else if (name == "turbo") {
+		trate = qBound(1, atoi(val.c_str()), 25);
+	} else if (name == "custom") {
+		for (int i = 0; i <= PR_FIRE; i++)
+			rows[i].tgt = padParseTargets(fld.at(i));
+	} else if (name == "extra") {
+		xPadRow r;
+		bool def;
+		r.tgt = padParseTargets(fld.at(0));
+		if (r.tgt.isEmpty()) return true;
+		r.pad = padParseInputs(fld.at(1), false, &def);
+		r.key = padParseInputs(fld.at(2), true, &def);
+		r.rapid = fld.at(3).toInt() > 0;
+		rows.append(r);
+	} else {
+		int i = 0;
+		while ((i < PR_JOY) && (name != roleKey[i])) i++;
+		if (i >= PR_JOY) return false;
+		rows[i].pad = padParseInputs(fld.at(0), false, &rows[i].padDef);
+		rows[i].key = padParseInputs(fld.at(1), true, &rows[i].keyDef);
+		rows[i].rapid = fld.at(2).toInt() > 0;
+	}
+	rebuild();
+	return true;
 }
 
-void xGamepad::loadMap(std::string mapname) {
-	if (mapname.empty()) return;
-	xJoyMapEntry jent;
-	FILE* file;
-	char buf[1024];
-	char* ptr;
+bool xGamepad::saveFile(const std::string& path) {
+	FILE* file = fopen(path.c_str(), "wb");
+	if (!file) return false;
+	saveConf(file, "");
+	fclose(file);
+	return true;
+}
 
-	std::string path = conf.path.confDir + SLASH + mapname;
-	file = fopen(path.c_str(), "rb");
-	if (file) {
-		map.clear();
-		while(!feof(file)) {
-			memset(buf, 0x00, 1024);
-			fgets(buf, 1023, file);
-			ptr = strtok(buf, ":\n");
-			if (ptr && !padParseSource(ptr, &jent)) {
-				xlog(XLG_INPUT, XLL_WARN, "map '%s': can't read '%s'", mapname.c_str(), ptr);
-			} else if (ptr) {
-				ptr = strtok(NULL, ":\n");
-				if (ptr) {		// there was 1st :
-					jent.dev = padGetId(ptr[0], devChars);
-					switch (jent.dev) {
-						case JMAP_KEY:		// KUP, KLEFT, KQ, KA
-#if USE_SEQ_BIND
-							jent.seq = QKeySequence::fromString(QString(&ptr[1]));
-							if (jent.seq.isEmpty())
-								jent.dev = JMAP_NONE;
-#else
-							jent.key = getKeyIdByName(&ptr[1]);
-							if (jent.key == ENDKEY)
-								jent.dev = JMAP_NONE;
-#endif
-							break;
-						case JMAP_JOY:		// JU, JD, JL, JR, JF, J2, J3, J4
-						case JMAP_JOYB:
-							jent.dir = padGetId(ptr[1], kjoyChars);
-							break;
-						case JMAP_MOUSE:	// MD, ML, M[ M| M] M^ Mv
-							jent.dir = padGetId(ptr[1], kmouChars);
-							break;
-						default:
-							jent.dev = JMAP_NONE;	// ignore it
-							break;
-					}
-					jent.rpt = 0;
-					jent.rps = 0;
-					jent.cnt = 0;
-					ptr = strtok(NULL, ":\n");
-					if (ptr)
-						jent.rpt = atoi(ptr);
-					if (jent.dev != JMAP_NONE)
-						map.push_back(jent);
+// A table saved by Save as, or a .pad from before the table: the first has a
+// "joystick =" line.
+bool xGamepad::loadFile(const std::string& path) {
+	FILE* file = fopen(path.c_str(), "rb");
+	if (!file) return false;
+	QList<std::pair<std::string, std::string> > lines;
+	char buf[1024];
+	bool table = false;
+	while (fgets(buf, sizeof(buf), file)) {
+		std::pair<std::string, std::string> spl = splitline(buf);
+		if (spl.first.empty() || spl.second.empty()) continue;
+		if (spl.first == "joystick") table = true;
+		lines.append(spl);
+	}
+	fclose(file);
+	if (!table) {
+		importMap(path);
+		return true;
+	}
+	scm = GPS_KEMPSTON;
+	resetRows();
+	for (int i = 0; i < lines.size(); i++)
+		loadConf(lines[i].first, lines[i].second);
+	return true;
+}
+
+// the joystick row of a scheme a target is, -1 for none
+static int padRoleOf(int s, const xJoyMapEntry& e) {
+	for (int r = 0; r < PR_JOY; r++) {
+		const char* t = schTab[s].role[r];
+		if (t && padSameTarget(padTgt(t), e)) return r;
+	}
+	return -1;
+}
+
+// A .pad from before the table, by its path. The joystick it covers most of
+// is the scheme and the bindings to it its rows; the rest are extra rows, one
+// per target. The kempston.pad that shipped is the defaults: it is told by
+// what it binds to, since one the gui ever saved has its hat written as
+// buttons 12-15.
+void xGamepad::importMap(std::string path) {
+	scm = GPS_KEMPSTON;
+	resetRows();
+	if (path.empty()) return;
+	QList<xJoyMapEntry> ents;
+	FILE* fh = fopen(path.c_str(), "rb");
+	if (!fh) return;
+	char buf[1024];
+	xJoyMapEntry jent;
+	while (fgets(buf, sizeof(buf), fh)) {
+		if (padParseLine(buf, &jent, path.c_str())) ents.append(jent);
+	}
+	fclose(fh);
+	bool joy = true;
+	foreach(const xJoyMapEntry& e, ents) {
+		if (e.dev != JMAP_JOY) joy = false;
+	}
+	QString name = QFileInfo(QString::fromStdString(path)).fileName();
+	if (ents.isEmpty() || ((name == "kempston.pad") && joy)) return;
+	// a scheme is only taken for a map that covers most of its rows: one key
+	// in common - the A of WASD is QAOP's down - would read as nonsense
+	int best = 2;
+	int found = -1;
+	for (int s = 0; s < GPS_CUSTOM; s++) {
+		int roles = 0;
+		for (int r = 0; r < PR_JOY; r++) {
+			foreach(const xJoyMapEntry& e, ents) {
+				if (padRoleOf(s, e) == r) {
+					roles++;
+					break;
 				}
 			}
 		}
-		fclose(file);
-		xlog(XLG_INPUT, XLL_DEBUG, "map '%s': %i bindings", mapname.c_str(), (int)map.size());
-	}
-}
-
-void xGamepad::saveMap(std::string mapname) {
-	if (mapname.empty()) return;
-	std::string path = conf.path.confDir + SLASH + mapname;
-	FILE* file;
-	file = fopen(path.c_str(), "wb");
-	if (file) {
-		foreach(xJoyMapEntry jent, map) {
-			padWriteSource(file, jent);
-			fprintf(file, ":%c", padGetChar(jent.dev, devChars));
-			switch(jent.dev) {
-				case JMAP_KEY:
-#if USE_SEQ_BIND
-					fprintf(file, "%s", jent.seq.toString().toUtf8().data());
-#else
-					fprintf(file, "%s", getKeyNameById(jent.key));
-#endif
-					break;
-				case JMAP_JOY:
-				case JMAP_JOYB:
-					fputc(padGetChar(jent.dir, kjoyChars), file);
-					break;
-				case JMAP_MOUSE:
-					fputc(padGetChar(jent.dir, kmouChars), file);
-					break;
-				default:
-					fprintf(file, "?");
-			}
-			if (jent.rpt > 0)
-				fprintf(file, ":%i", jent.rpt);
-			fputc('\n', file);
+		if (roles > best) {
+			best = roles;
+			found = s;
 		}
-		fclose(file);
 	}
-}
-
-int padExists(std::string name) {
-	std::string path = conf.path.confDir + SLASH + name;
-	FILE* file = fopen(path.c_str(), "rb");
-	if (!file) return 0;
-	fclose(file);
-	return 1;
-}
-
-int padCreate(std::string name) {
-	if (padExists(name)) return 0;
-	std::string path = conf.path.confDir + SLASH + name;
-	FILE* file = fopen(path.c_str(), "wb");
-	if (!file) return 0;
-	fclose(file);
-	return 1;
-}
-
-void padDelete(std::string name) {
-	std::string path = conf.path.confDir + SLASH + name;
-	remove(path.c_str());
+	scm = (found < 0) ? GPS_KEMPSTON : found;
+	for (int r = 0; r < PR_JOY; r++)
+		rows[r].padDef = false;
+	foreach(xJoyMapEntry e, ents) {
+		xJoyMapEntry src;
+		src.type = e.type;
+		src.num = e.num;
+		src.state = e.state;
+		int k = (found < 0) ? -1 : padRoleOf(scm, e);
+		if (k < 0) {
+			// a PC key the stock layout has on the Spectrum is that Spectrum key now
+			int zx = (e.dev == JMAP_KEY) ? padZxOfSeq(e.seq) : 0;
+			if (zx) {
+				e.dev = JMAP_ZX;
+				e.dir = zx;
+			}
+			k = PR_JOY;
+			while ((k < rows.size()) && !padSameTarget(rows[k].tgt.first(), e)) k++;
+			if (k >= rows.size()) {
+				rows.append(xPadRow());
+				rows[k].tgt.append(e);
+			}
+		}
+		rows[k].pad.append(src);
+		if (e.rpt > 0) {
+			rows[k].rapid = true;
+			trate = padRateOfRpt(e.rpt);
+		}
+	}
+	rebuild();
+	xlog(XLG_INPUT, XLL_INFO, "pad %c: map '%s' brought in as %s and %i extra row(s)",
+		slot ? 'B' : 'A', path.c_str(), pad_scheme_key(scm), (int)rows.size() - PR_JOY);
 }
 
 // gamecontrollerdb.txt: SDL carries a big layout database of its own, this is
@@ -432,10 +1076,15 @@ QString xPadId::title() const {
 xGamepad::xGamepad(QObject* p):QObject(p) {
 	id = -1;
 	dead = 8192;
+	kbd = GPK_NONE;
+	ctrl = false;
+	trate = 10;
+	scm = GPS_KEMPSTON;
 	sjptr = NULL;
 #if HAVESDL2
 	scptr = NULL;
 #endif
+	resetRows();
 }
 
 xGamepad::~xGamepad() {
@@ -539,6 +1188,8 @@ void xGamepad::openDev(const xPadDev& dev) {
 	}
 	id = SDL_JoystickInstanceID(sjptr);
 	pid = dev.id;
+	ctrl = isController();
+	rebuild();		// a scheme binds a controller by name, a raw pad by number
 	xlog(XLG_INPUT, XLL_INFO, "pad open: %s [%s] %s, told apart by %s",
 		dev.label.toUtf8().data(), pid.guid.toUtf8().data(),
 		isController() ? "as controller" : "raw", pid.keyName().toUtf8().data());
@@ -556,6 +1207,7 @@ void xGamepad::close() {
 	if (sjptr) SDL_JoystickClose(sjptr);
 	sjptr = NULL;
 	id = -1;
+	ctrl = padIsCtrl(pid);
 	jState.clear();		// a pad that comes back starts from nothing held
 	hatPrev.clear();
 }
@@ -586,12 +1238,7 @@ xPadId xGamepad::padId() {
 
 void xGamepad::setPadId(const xPadId& np) {
 	pid = np;
-}
-
-int sign(int v) {
-	if (v < 0) return -1;
-	if (v > 0) return 1;
-	return 0;
+	if (!isOpened()) ctrl = padIsCtrl(pid);
 }
 
 // update() only reports changes, so this no longer filters them itself; all
@@ -643,6 +1290,7 @@ QList<xJoyMapEntry> xGamepad::scanMap(int type, int num, int st) {
 						break;
 					case JOY_BUTTON:
 					case JOY_CBUTTON:
+					case JOY_KEY:
 						xjm.cnt = xjm.rpt;
 						xjm.rps = 1;
 						presslist.append(xjm);
@@ -721,10 +1369,8 @@ void xGamepad::update() {
 	}
 }
 
-// The order the four virtual buttons of a hat are laid out in, from
-// VIRTKEYBASE up. Both ways of naming a hat direction read from here.
-static const char* hatDirName[4] = {"up", "down", "left", "right"};
-
+// The four virtual buttons of a hat are laid out from VIRTKEYBASE up in
+// dirName's order; both ways of naming a hat direction read from there.
 static int hatDirIdx(int state) {
 	switch (state) {
 		case SDL_HAT_UP: return 0;
@@ -739,7 +1385,7 @@ QString xGamepad::getButtonName(int n) {
 	if (n < VIRTKEYBASE)
 		return QString("Button %0").arg(n);
 	n -= VIRTKEYBASE;
-	return QString("Hat %0 %1").arg(n >> 2).arg(hatDirName[n & 3]);
+	return QString("Hat %0 %1").arg(n >> 2).arg(dirName[n & 3]);
 }
 
 #if HAVESDL2
@@ -751,10 +1397,10 @@ static const struct {
 	const char* name;		// button, or axis at +
 	const char* neg;		// axis at -
 } padNameTab[] = {
-	{"a", "A", NULL},
-	{"b", "B", NULL},
-	{"x", "X", NULL},
-	{"y", "Y", NULL},
+	{"a", "Button A", NULL},		// a bare letter reads as a key
+	{"b", "Button B", NULL},
+	{"x", "Button X", NULL},
+	{"y", "Button Y", NULL},
 	{"back", "Back", NULL},
 	{"guide", "Guide", NULL},
 	{"start", "Start", NULL},
@@ -804,11 +1450,52 @@ QString xGamepad::getEntryName(const xJoyMapEntry& jent) {
 #endif
 		case JOY_BUTTON:
 			return getButtonName(jent.num);
+		case JOY_KEY:
+			return pad_key_name(jent.num);
+		case JOY_VDIR: {
+			static const char* dir[4] = {"Gamepad up", "Gamepad down", "Gamepad left", "Gamepad right"};
+			return QString(dir[jent.num & 3]);
+		}
 		case JOY_AXIS:
 			return QString("Axis %0 %1").arg(jent.num).arg((jent.state < 0) ? "-" : "+");
 		case JOY_HAT: {
 			int d = hatDirIdx(jent.state);
-			return QString("Hat %0 %1").arg(jent.num).arg((d < 0) ? "??" : hatDirName[d]);
+			return QString("Hat %0 %1").arg(jent.num).arg((d < 0) ? "??" : dirName[d]);
+		}
+	}
+	return QString();
+}
+
+// What a binding drives, as the map table and the window say it.
+QString xGamepad::getTargetName(const xJoyMapEntry& jent) {
+	static const char* joyDir[] = {"up", "down", "left", "right", "fire", "button 2", "button 3", "button 4"};
+	static const int joyBit[] = {XJ_UP, XJ_DOWN, XJ_LEFT, XJ_RIGHT, XJ_FIRE, XJ_BUT2, XJ_BUT3, XJ_BUT4};
+	static const char* mouDir[] = {"up", "down", "left", "right", "left button", "middle button",
+		"right button", "wheel up", "wheel down"};
+	static const int mouBit[] = {XM_UP, XM_DOWN, XM_LEFT, XM_RIGHT, XM_LMB, XM_MMB, XM_RMB, XM_WHEELUP, XM_WHEELDN};
+	QString dir = "??";
+	unsigned i;
+	switch (jent.dev) {
+		case JMAP_KEY:
+#if USE_SEQ_BIND
+			return QString("PC key %0").arg(jent.seq.toString(QKeySequence::NativeText));
+#else
+			return QString("PC key %0").arg(getKeyNameById(jent.key));
+#endif
+		case JMAP_ZX:
+			return pad_zx_name(jent.dir);
+		case JMAP_JOY:
+		case JMAP_JOYB:
+			for (i = 0; i < sizeof(joyBit) / sizeof(int); i++)
+				if (jent.dir == joyBit[i]) dir = joyDir[i];
+			return QString((jent.dev == JMAP_JOY) ? "Kempston %0" : "Joystick 2 %0").arg(dir);
+		case JMAP_MOUSE:
+			for (i = 0; i < sizeof(mouBit) / sizeof(int); i++)
+				if (jent.dir == mouBit[i]) dir = mouDir[i];
+			return QString("Mouse %0").arg(dir);
+		case JMAP_CUT: {
+			xShortcut* cut = find_shortcut_id(jent.dir);
+			return cut ? QString(cut->text) : QString("??");
 		}
 	}
 	return QString();
@@ -832,6 +1519,7 @@ int xGamepad::deadZone() {return dead;}
 xGamepadController::xGamepadController(QObject* p):QObject(p) {
 	gpada = new xGamepad;
 	gpadb = new xGamepad;
+	gpadb->slot = 1;
 	startTimer(GP_POLL_MS, Qt::PreciseTimer);
 }
 
@@ -853,7 +1541,7 @@ void xGamepadController::rescan() {
 	QList<xPadDev> devs = xGamepad::devList();
 	xGamepad* slot[2] = {gpada, gpadb};
 	int pick[2] = {-1, -1};
-	bool done[2] = {false, false};
+	bool done[2] = {gpada->isKeyboard(), gpadb->isKeyboard()};	// on the keyboard: no pad
 	int n;
 	for (n = 0; n < 2; n++) {
 		int best = 0;
@@ -889,6 +1577,7 @@ void xGamepadController::rescan() {
 		pick[bslot] = bdev;
 	}
 	for (n = 0; n < 2; n++) {
+		if (slot[n]->isKeyboard()) continue;
 		if (pick[n] < 0) {
 			// Say so when pads are connected and none of them is the one
 			// this slot wants. Switching SDL's joystick driver changes both
@@ -902,6 +1591,28 @@ void xGamepadController::rescan() {
 			// openDev takes the device's own key, which may be sharper than
 			// what was remembered - a twin turning up tells them apart
 			slot[n]->openDev(devs.at(pick[n]));
+		}
+	}
+	meetNew(devs, pick);
+}
+
+// A model never met before goes to the first slot with no pad of its own, so
+// plugging one in is all it takes. Once per model: a pad the user took out of
+// a slot is not pushed back in the next time it is plugged.
+void xGamepadController::meetNew(const QList<xPadDev>& devs, const int* pick) {
+	xGamepad* slot[2] = {gpada, gpadb};
+	for (int i = 0; i < devs.size(); i++) {
+		const xPadId& id = devs.at(i).id;
+		QString key = id.guid.isEmpty() ? id.name : id.guid;
+		if (seen.contains(key)) continue;
+		seen.append(key);
+		if ((i == pick[0]) || (i == pick[1])) continue;
+		for (int s = 0; s < 2; s++) {
+			if (!slot[s]->padId().isEmpty() || slot[s]->isKeyboard()) continue;
+			slot[s]->openDev(devs.at(i));
+			xlog(XLG_INPUT, XLL_INFO, "pad %c: new pad '%s' taken", s ? 'B' : 'A', id.name.toUtf8().data());
+			emit newPad(s);
+			break;
 		}
 	}
 }
@@ -926,7 +1637,10 @@ void xGamepadController::timerEvent(QTimerEvent* e) {
 	}
 	// A pad going or coming shuffles SDL's device indices, so both slots are
 	// worked out again from what is there now.
-	if (changed) rescan();
+	if (changed) {
+		rescan();
+		emit devicesChanged();
+	}
 #endif
 	gpada->update();
 	gpadb->update();

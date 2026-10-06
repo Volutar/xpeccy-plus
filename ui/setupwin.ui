@@ -83,7 +83,7 @@
           </property>
           <property name="icon">
            <iconset resource="../xpeccy.qrc">
-            <normaloff>:/images/mouse.png</normaloff>:/images/mouse.png</iconset>
+            <normaloff>:/images/gamepad.png</normaloff>:/images/gamepad.png</iconset>
           </property>
          </item>
          <item>
@@ -2443,13 +2443,6 @@ thin, lower it again after a long clean spell</string>
                </widget>
               </item>
              </layout>
-            </widget>
-           </item>
-           <item>
-            <widget class="QTabWidget" name="tabsGamepad">
-             <property name="currentIndex">
-              <number>-1</number>
-             </property>
             </widget>
            </item>
           </layout>

@@ -88,6 +88,7 @@ void MainWin::keyPressEvent(QKeyEvent* ev) {
 	keyEntry kent;
 	Computer* comp = conf.zx;
 	releaseChord(ev, true);
+	if (padKey(ev, true)) return;
 //	qDebug() << ev->key();
 	if (comp->flgDBG) {
 		ev->ignore();
@@ -390,6 +391,9 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 			case XCUT_TAPWIN:
 				emit s_tape_show();
 				break;
+			case XCUT_PADWIN:
+				padWinShow();
+				break;
 			case XCUT_RESET:
 				resetMachine(RES_DEFAULT);
 				break;
@@ -432,6 +436,7 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 void MainWin::keyReleaseEvent(QKeyEvent *ev) {
 	if (ev->isAutoRepeat()) return;
 	releaseChord(ev, false);
+	if (padKey(ev, false)) return;
 	Computer* comp = conf.zx;
 //	if (relskip) {
 //		relskip = 0;

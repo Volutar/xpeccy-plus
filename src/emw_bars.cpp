@@ -45,7 +45,7 @@ static QPixmap sb_tint(const QString& path, QColor col, double alpha) {
 
 // what a toolbar holds until the user says otherwise
 static const char* tbDefault = "key.load,key.save,|,menu.reset,menu.machine,|,key.tapewin,menu.disks,|,"
-	"key.fullscreen,key.keywin,|,menu.debug,key.options,|,key.mute,~,key.rewind,key.slowmo,key.pause,key.ffwd,key.fast";
+	"key.fullscreen,key.keywin,key.padwin,|,menu.debug,key.options,|,key.mute,~,key.rewind,key.slowmo,key.pause,key.ffwd,key.fast";
 
 enum {TB_PLAIN = 0, TB_LIST, TB_SPLIT};	// a button; a list that opens on a click; a button with a list beside it
 
@@ -387,6 +387,7 @@ void MainWin::initBars() {
 	mouseAct->setCheckable(true);
 	add("key.mouse.grab", "Input", mouseAct, TB_PLAIN);
 	add("menu.keymap", "Input", keyMenu->menuAction(), TB_LIST);
+	add("key.padwin", "Input", cut("Gamepads", XCUT_PADWIN, "gamepad"), TB_PLAIN);
 	add("menu.debug", "Debug", dbgMenu->menuAction(), TB_SPLIT);
 	add("key.scrwin", "Debug", cut("Screen", XCUT_SCRWIN, "rulers"), TB_PLAIN);
 	add("key.sndwin", "Debug", cut("Sound chips", XCUT_SNDWIN, "note"), TB_PLAIN);

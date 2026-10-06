@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdio>
 #include <string>
 #include <QMap>
 #include <QObject>
@@ -25,7 +26,9 @@ enum {
 	JOY_BUTTON,
 	JOY_HAT,
 	JOY_CBUTTON,		// SDL_CONTROLLER_BUTTON_*
-	JOY_CAXIS		// SDL_CONTROLLER_AXIS_*
+	JOY_CAXIS,		// SDL_CONTROLLER_AXIS_*
+	JOY_KEY,		// a host key, num is its XKEY_*
+	JOY_VDIR		// "Gamepad up": a direction on whatever the pad has for it, num is PR_*
 };
 
 enum {
@@ -33,24 +36,82 @@ enum {
 	JMAP_KEY,
 	JMAP_JOY,
 	JMAP_JOYB,
-	JMAP_MOUSE
+	JMAP_MOUSE,
+	JMAP_CUT,		// an emulator action, dir is its XCUT_*
+	JMAP_ZX			// a Spectrum key, dir is its char in the keymap's zxKey terms
 };
 
 typedef struct {
-	int type;		// axis/button
-	int num;		// number of axis/button
-	int state;		// -x/+x for axis, 0/x for button
-	int dev;		// device for action JMAP_*
+	int type = JOY_NONE;	// axis/button
+	int num = 0;		// number of axis/button
+	int state = 0;		// -x/+x for axis, 0/x for button
+	int dev = JMAP_NONE;	// device for action JMAP_*
 #if USE_SEQ_BIND
 	QKeySequence seq;	// key sequence to activate
 #else
 	int key;		// key XKEY_* for keyboard
 #endif
-	int dir;		// XJ_* for kempston
-	int rps;		// repeat state (0:released, !0:pressed)
-	int rpt;		// repeat period (0 = no repeat)
-	int cnt;		// repeat counter
+	int dir = 0;		// XJ_* for kempston
+	int rps = 0;		// repeat state (0:released, !0:pressed)
+	int rpt = 0;		// repeat period (0 = no repeat)
+	int cnt = 0;		// repeat counter
 } xJoyMapEntry;
+
+// The joystick a player's joystick rows stand for. Changing it changes what
+// they press, never what presses them.
+enum {
+	GPS_KEMPSTON = 0,	// Fire 2..4 too when the machine's Kempston has them
+	GPS_SINCLAIR1,		// Interface 2, keys 6-0
+	GPS_SINCLAIR2,		// Interface 2, keys 1-5
+	GPS_CURSOR,		// keys 5-8 and 0
+	GPS_QAOP,		// fire on Space
+	GPS_QAOPM,		// fire on M
+	GPS_CUSTOM,		// Spectrum keys of the user's own
+	GPS_COUNT
+};
+
+// the host keyboard as a player's device, in the two layouts it comes in
+enum {
+	GPK_NONE = 0,
+	GPK_ARROWS,		// arrows and Ctrl
+	GPK_WASD		// WASD and Space
+};
+
+// the joystick rows, in this order; extra rows follow them
+enum {
+	PR_UP = 0,
+	PR_DOWN,
+	PR_LEFT,
+	PR_RIGHT,
+	PR_FIRE,
+	PR_FIRE2,		// an 8-button Kempston only
+	PR_FIRE3,
+	PR_FIRE4,
+	PR_JOY
+};
+
+const char* pad_scheme_key(int);		// config word
+const char* pad_scheme_name(int);		// what the gui says
+const char* pad_kbd_key(int);			// GPK_* as config.conf has it, "" for none
+int pad_kbd_find(const QString&);		// GPK_NONE if the word is not one
+const char* pad_kbd_name(int);			// what the gui says
+QString pad_key_name(int);			// a host key, XKEY_*, as the gui says it
+const char* pad_role_name(int);			// Up, Down...
+QString pad_zx_name(int);			// a Spectrum key, JMAP_ZX's dir
+const char* pad_zx_keys();			// all forty of them, in the order of the keyboard
+
+// One row of a player's table: what the Spectrum gets, and what presses it.
+// A joystick row takes its target from the joystick, and its inputs are the
+// defaults until the user picks others; an extra row has both of its own.
+class xPadRow {
+	public:
+		QList<xJoyMapEntry> tgt;	// an extra row's targets; a joystick row's on Custom
+		QList<xJoyMapEntry> pad;	// the pad inputs
+		QList<xJoyMapEntry> key;	// the host keys
+		bool padDef = true;		// a joystick row on its default pad inputs
+		bool keyDef = true;		// ...and keys
+		bool rapid = false;		// turbo: repeats while held, at the player's rate (turbo is a macro in fdc.h)
+};
 
 enum {
 	GPBACKEND_NONE = 0,
@@ -115,17 +176,54 @@ class xGamepad : public QObject {
 		void setPadId(const xPadId&);
 		static QString getButtonName(int);
 		static QString getEntryName(const xJoyMapEntry&);
+		static QString getTargetName(const xJoyMapEntry&);
 		static QList<xPadDev> devList();
 		void update();
 
-		int mapSize();
-		void mapClear();
-		xJoyMapEntry mapItem(int);
-		void setItem(int, xJoyMapEntry);
-		void delItem(int);
+		// the player plays from the host keyboard instead of a pad
+		bool isKeyboard();
+		int keyboard();			// GPK_*
+		void setKeyboard(int);
+		bool isLive();			// a pad open, or the keyboard
+		bool bindable(int);		// a JOY_* worth binding: a hat comes as buttons, a known pad by name
+		int slot = 0;			// 0 or 1: which player, for the log
 
-		void loadMap(std::string);
-		void saveMap(std::string);
+		// what the player's inputs do now
+		int mapSize();
+		xJoyMapEntry mapItem(int);
+		QStringList whatDoes(int, int, int);	// targets of one input, for the gui
+		bool drivesKempston();
+		bool bindsKey(int);
+		QList<xJoyMapEntry> dropHeld();		// let go of everything held, and say what was
+
+		// the table
+		int scheme();
+		void setScheme(int);
+		int turboRate();		// presses a second
+		void setTurboRate(int);
+		int rowCount();
+		bool rowShown(int);		// Fire 2..4 only where the Kempston has them
+		void rebuild();			// again: the machine's Kempston changed
+		xPadRow row(int);
+		void setRow(int, const xPadRow&);	// -1 adds an extra row
+		void delRow(int);
+		void resetRows();			// the joystick's defaults, no extra rows
+		QList<xJoyMapEntry> rowInputs(int);	// what presses it, with the device in use
+		QList<xJoyMapEntry> rowTargets(int);	// what it presses
+		QList<xJoyMapEntry> defInputs(int, bool keys);
+		QList<xJoyMapEntry> aliasInputs(int);	// what "Gamepad up" is on this pad
+		QString rowName(int);
+		static QString targetsName(const QList<xJoyMapEntry>&);
+		static QString inputsName(const QList<xJoyMapEntry>&);
+
+		// config.conf: "<prefix>.<name> = <value>"; a .pad file is the same
+		// lines with no prefix
+		void saveConf(FILE*, const char*);
+		bool loadConf(const std::string&, const std::string&);
+		bool saveFile(const std::string&);
+		bool loadFile(const std::string&);
+		void importMap(std::string);		// a .pad from before the table
+
 		QList<xJoyMapEntry> scanMap(int, int, int);
 		QList<xJoyMapEntry> repTick();
 	signals:
@@ -135,7 +233,12 @@ class xGamepad : public QObject {
 		int id;
 		int dead;
 		xPadId pid;
-		QList<xJoyMapEntry> map;			// gamepad map for gamepad
+		int kbd;				// GPK_*
+		bool ctrl;				// bound by controller names, see padIsCtrl()
+		int scm;				// GPS_*
+		int trate;				// turbo, presses a second
+		QList<xPadRow> rows;			// PR_JOY joystick rows, then the extras
+		QList<xJoyMapEntry> map;		// what is in effect, see rebuild()
 		QMap<int, QMap<int, int> > jState;	// last value handed out, per type and number
 		QMap<int, int> hatPrev;			// last hat value scanMap acted on
 		SDL_Joystick* sjptr;
@@ -143,6 +246,7 @@ class xGamepad : public QObject {
 		SDL_GameController* scptr;
 #endif
 		void emitChanged(int, int, int);
+		bool asController();
 };
 
 class xGamepadController : public QObject {
@@ -152,14 +256,19 @@ class xGamepadController : public QObject {
 		void rescan();
 		xGamepad* gpada;
 		xGamepad* gpadb;
+		QStringList seen;		// guids of the pads met so far, see newPad
+	signals:
+		void devicesChanged();
+		void newPad(int);		// a model never met before took slot 0/1
 	protected:
 		void timerEvent(QTimerEvent*);
+	private:
+		void meetNew(const QList<xPadDev>&, const int*);
 };
 
 // gamecontrollerdb.txt, if the user dropped one in the config dir
 void padLoadControllerDb();
 
-// operations with gamepad map files
-int padExists(std::string);
-int padCreate(std::string);
-void padDelete(std::string);
+// the key a key event is about, as the keymap counts keys (XKEY_*)
+class QKeyEvent;
+int pad_key_id(QKeyEvent*);

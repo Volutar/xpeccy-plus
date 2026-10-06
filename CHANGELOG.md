@@ -58,6 +58,18 @@ before that point is upstream's history and is not repeated here.
 - **Shift held in the open dialog** asks whether to run the file or only put it in, as it does
   on a drop.
 
+- **A Gamepads window**, from the toolbar, the Machine menu or Options, Input: for each player
+  a device and the joystick it stands for - Kempston, Sinclair/Interface II, Cursor/Protek/AGF,
+  QAOP or keys of your own. A pad plays at once, nothing to bind. *(thanks to Volutar for the
+  design)*
+  - Its table shows what the Spectrum gets and what presses it. A row can press any Spectrum
+    key, Caps and Symbol Shift included, a Kempston button or an emulator action, with turbo.
+  - The PC keyboard can be a player too, on the arrows and Ctrl or on WASD and Space, so a game
+    that wants QAOP plays on the arrows.
+  - Bindings save to a .pad file and load back; an older .pad or config is brought across.
+  - Picking Kempston switches it on for the machine, and a pad never plugged in before takes a
+    free player and opens the window.
+
 ### Changed
 
 - **Options** is one list of pages down the left side, with Appearance and File types of their
@@ -65,6 +77,9 @@ before that point is upstream's history and is not repeated here.
 
 - **Menus no longer pause the machine.** It can pause instead while another application has the
   focus (Options, Application).
+
+- **The numpad no longer plays the Kempston** in the stock keyboard layouts: the keyboard as a
+  player in the Gamepads window does it, on whichever keys you like.
 
 - **Smaller things**: two floppy drives unless a machine says otherwise, Run ahead no longer
   marked experimental, and an About that names the maintainer and the license and no longer

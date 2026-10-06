@@ -360,7 +360,6 @@ int main(int ac,char** av) {
 
 	app.connect(&mwin, SIGNAL(s_options()), &optw, SLOT(start()));
 	app.connect(&mwin, SIGNAL(s_hotkeys()), &optw, SLOT(startHotkeys()));
-	app.connect(&mwin, SIGNAL(s_gamepad_plug()), &optw, SLOT(setPadName()));
 	app.connect(&optw, SIGNAL(closed()), &mwin, SLOT(optApply()));
 	app.connect(&optw, SIGNAL(s_apply()), &mwin, SLOT(optResize()));
 	app.connect(&optw, SIGNAL(s_apply()), &app, SLOT(d_style()));
@@ -368,6 +367,7 @@ int main(int ac,char** av) {
 	app.connect(&optw, SIGNAL(s_apply()), &wutw, SLOT(updateStyle()));
 	app.connect(&optw, SIGNAL(s_prf_changed()), &mwin, SLOT(onPrfChange()));
 	app.connect(&optw, SIGNAL(s_prf_changed()), &dbgw, SLOT(onPrfChange()));
+	app.connect(&optw, SIGNAL(s_padwin()), &mwin, SLOT(padWinModal()));
 
 	app.connect(&mwin, SIGNAL(s_tape_upd(Tape*)), &tapw, SLOT(upd(Tape*)));
 	app.connect(&mwin, SIGNAL(s_tape_blk(Tape*)), &tapw, SLOT(updList(Tape*)));
