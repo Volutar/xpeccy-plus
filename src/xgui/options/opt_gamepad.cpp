@@ -491,8 +491,8 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 		return rb;
 	};
 	radio(GPS_KEMPSTON, "Kempston", 0, 0);
-	radio(GPS_SINCLAIR1, pad_scheme_name(GPS_SINCLAIR1), 1, 0);
-	radio(GPS_SINCLAIR2, pad_scheme_name(GPS_SINCLAIR2), 2, 0);
+	radio(GPS_SINCLAIR1, pad_scheme_name(GPS_SINCLAIR1), 1, 0)->setToolTip("Keys 6-0: left, right, down, up, fire");
+	radio(GPS_SINCLAIR2, pad_scheme_name(GPS_SINCLAIR2), 2, 0)->setToolTip("Keys 1-5: left, right, down, up, fire");
 	radio(GPS_CURSOR, pad_scheme_name(GPS_CURSOR), 0, 1);
 	cbQaop = new QComboBox;
 	cbQaop->addItem("Space", GPS_QAOP);

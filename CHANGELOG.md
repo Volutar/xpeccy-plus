@@ -59,7 +59,7 @@ before that point is upstream's history and is not repeated here.
   on a drop.
 
 - **A Gamepads window**, from the toolbar, the new Input menu or Options, Input: for each player
-  a device and the joystick it stands for - Kempston, Sinclair/Interface II, Cursor/Protek/AGF,
+  a device and the joystick it stands for - Kempston, either Interface 2 port, Cursor/Protek/AGF,
   QAOP or keys of your own. A pad plays at once, nothing to bind. *(thanks to Volutar for the
   design)*
   - Its table shows what the Spectrum gets and what presses it. A row can press any Spectrum
@@ -71,7 +71,8 @@ before that point is upstream's history and is not repeated here.
   - Bindings save to a .pad file and load back; an older .pad or config is brought across.
   - The Input menu and the toolbar button's list switch the first player's joystick mid-game.
   - Picking Kempston switches it on for the machine, and a pad never plugged in before takes a
-    free player and opens the window.
+    free player and opens the window. A pad coming back - plugged in or woken up - says so on
+    the screen.
 
 ### Changed
 
