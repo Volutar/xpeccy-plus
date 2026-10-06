@@ -71,8 +71,6 @@ class xPadRowEdit : public QDialog {
 		QList<xJoyMapEntry> choices;		// what cbAlias offers, past its first line
 		QPushButton* btnDefault;
 		QLabel* labHint;
-		QWidget* deadRow;
-		QSlider* sldDead;
 		QCheckBox* chkTurbo;
 		QList<xJoyMapEntry>& inputs();
 		bool& defFlag();
@@ -101,6 +99,9 @@ class xGamepadWidget : public QWidget {
 		QTableView* table;
 		QSlider* sldTurbo;
 		QLabel* labTurbo;
+		QLabel* labDeadName;
+		QSlider* sldDead;
+		QLabel* labDead;
 		xPadRowEdit* editor;
 		void setDevFromCombo();
 		void schemeFromControls();
