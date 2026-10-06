@@ -32,6 +32,7 @@ class xDiskWin : public QDialog {
 		std::function<void(int, int)> diskOp;	// DW_* on a drive, done by the main window
 	private:
 		QTabBar* tabs;
+		QCheckBox* fast;
 		QLineEdit* path;
 		QToolButton* btnOpen;
 		QToolButton* btnNew;

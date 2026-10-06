@@ -62,8 +62,14 @@ xDiskWin::xDiskWin(QWidget* p):QDialog(p) {
 	QHBoxLayout* mid = new QHBoxLayout;
 	mid->addWidget(list, 1);
 	mid->addLayout(btns);
+	// all the drives', so beside their tabs and not under them
+	fast = new QCheckBox("Fast disk access");
+	fast->setToolTip("No head-seek and rotation delays");
+	QHBoxLayout* row = new QHBoxLayout;
+	row->addWidget(tabs, 1);
+	row->addWidget(fast);
 	QVBoxLayout* lay = new QVBoxLayout(this);
-	lay->addWidget(tabs);
+	lay->addLayout(row);
 	lay->addLayout(top);
 	lay->addLayout(mid, 1);
 	head = new QLabel;
@@ -85,6 +91,10 @@ xDiskWin::xDiskWin(QWidget* p):QDialog(p) {
 	connect(protect, &QCheckBox::clicked, this, [this](bool on) {
 		int drv = drive();
 		if (drv >= 0) conf.zx->dif->flp[drv]->protect = on ? 1 : 0;
+	});
+	connect(fast, &QCheckBox::clicked, this, [](bool on) {
+		setFlagBit(on, &fdcFlag, FDC_FAST);
+		saveConfig();
 	});
 	connect(toTape, &QToolButton::released, this, [this]() {copyToTape();});
 	connect(toHobeta, &QToolButton::released, this, [this]() {saveFiles(true);});
@@ -192,6 +202,7 @@ void xDiskWin::refresh() {
 // changed is shown again, and only that.
 void xDiskWin::watchDrives() {
 	if (!isVisible()) return;
+	fast->setChecked(fdcFlag & FDC_FAST);	// the menu and Options set it too
 	if (tab_count() != tabs->count()) {
 		refresh();
 		return;
@@ -230,6 +241,7 @@ void xDiskWin::showHead() {
 }
 
 void xDiskWin::showWindow() {
+	fast->setChecked(fdcFlag & FDC_FAST);
 	refresh();
 	show();
 	raise();

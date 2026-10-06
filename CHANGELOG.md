@@ -13,7 +13,8 @@ before that point is upstream's history and is not repeated here.
 
 - **A menu bar, a toolbar and a status bar**:
   - The menus carry every command with its hotkey. File keeps the last ten images opened;
-    Machine, Media and Debug hold what the toolbar's buttons do.
+    Machine, Media and Debug hold what the toolbar's buttons do. A command shows its icon and
+    a setting its tick. *(thanks to Volutar)*
   - The toolbar holds the buttons you choose: right-click it to add or remove one, drag one to
     move it. It starts with Mute and the virtual keyboard.
   - The status bar shows the machine, the clock, the tape and each drive; a click opens its
@@ -85,8 +86,8 @@ before that point is upstream's history and is not repeated here.
 - **The numpad no longer plays the Kempston** in the stock keyboard layouts: the keyboard as a
   player in the Gamepads window does it, on whichever keys you like.
 
-- **Smaller things**: two floppy drives unless a machine says otherwise, Run ahead no longer
-  marked experimental, and an About that names the maintainer and the license and no longer
+- **Smaller things**: two floppy drives unless a machine says otherwise, Fast disk access in
+  the disk manager too, Run ahead no longer marked experimental, and an About that names the maintainer and the license and no longer
   stops the machine. *(thanks to Volutar)*
 
 ### Fixed
