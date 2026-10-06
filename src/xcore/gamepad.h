@@ -187,6 +187,7 @@ class xGamepad : public QObject {
 		int keyboard();			// GPK_*
 		void setKeyboard(int);
 		bool isLive();			// a pad open, or the keyboard
+		bool asController();		// bound by name: open as one, or a model SDL knows
 		bool inUse();			// a device picked, plugged in or not
 		bool bindable(int);		// a JOY_* worth binding: a hat comes as buttons, a known pad by name
 		int slot = 0;			// 0 or 1: which player, for the log
@@ -213,6 +214,9 @@ class xGamepad : public QObject {
 		void delRow(int);
 		void resetRows();			// the joystick's defaults, no extra rows
 		QList<xJoyMapEntry> rowInputs(int);	// what presses it, with the device in use
+		QList<xJoyMapEntry> liveInputs(int);	// ...less what another row has taken
+		static QList<xJoyMapEntry> inputChoices(bool);	// every input there is to bind, by name or not
+		QString heldText();			// what is held now and what it presses, for the gui
 		QList<xJoyMapEntry> rowTargets(int);	// what it presses
 		QList<xJoyMapEntry> defInputs(int, bool keys);
 		QList<xJoyMapEntry> aliasInputs(int);	// what "Gamepad up" is on this pad
@@ -251,7 +255,6 @@ class xGamepad : public QObject {
 		SDL_GameController* scptr;
 #endif
 		void emitChanged(int, int, int);
-		bool asController();
 };
 
 class xGamepadController : public QObject {

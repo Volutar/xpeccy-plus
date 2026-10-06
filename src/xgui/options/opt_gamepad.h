@@ -59,6 +59,8 @@ class xPadRowEdit : public QDialog {
 		QRadioButton* rbCut;
 		QRadioButton* rbKept;
 		QComboBox* cbKey;
+		QComboBox* cbMod;			// Caps or Symbol Shift held with the key
+		QLabel* labMod;
 		QPushButton* btnPress;
 		QComboBox* cbJoy;
 		QComboBox* cbCut;
@@ -66,6 +68,7 @@ class xPadRowEdit : public QDialog {
 		QList<xJoyMapEntry> kept;		// a target the editor has no control for, as it was
 		xInputBox* inBox;
 		QComboBox* cbAlias;
+		QList<xJoyMapEntry> choices;		// what cbAlias offers, past its first line
 		QPushButton* btnDefault;
 		QLabel* labHint;
 		QWidget* deadRow;
