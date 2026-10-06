@@ -352,8 +352,8 @@ static const struct {
 	const char* role[PR_JOY];	// what each joystick row presses
 } schTab[GPS_COUNT] = {
 	{"kempston", "Kempston", {"JU", "JD", "JL", "JR", "JF", "J2", "J3", "J4"}},
-	{"sinclair1", "Sinclair / Interface II (6-0)", {"Z9", "Z8", "Z6", "Z7", "Z0"}},
-	{"sinclair2", "Sinclair port 2 (left) (1-5)", {"Z4", "Z3", "Z1", "Z2", "Z5"}},
+	{"sinclair1", "Sinclair / Interface II", {"Z9", "Z8", "Z6", "Z7", "Z0"}},
+	{"sinclair2", "Sinclair port 2 (left)", {"Z4", "Z3", "Z1", "Z2", "Z5"}},
 	{"cursor", "Cursor/Protek/AGF", {"Z7", "Z6", "Z5", "Z8", "Z0"}},
 	{"qaop", "QAOP + Space", {"Zq", "Za", "Zo", "Zp", "Z "}},
 	{"qaopm", "QAOP + M", {"Zq", "Za", "Zo", "Zp", "Zm"}},
