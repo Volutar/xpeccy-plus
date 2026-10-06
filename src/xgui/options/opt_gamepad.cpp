@@ -215,14 +215,6 @@ xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 	labHint = padNote(QString());
 	labHint->setWordWrap(true);
 	rg->addWidget(labHint, 2, 0, 1, 2);
-	sldDead = new QSlider(Qt::Horizontal);
-	sldDead->setRange(0, 32768);
-	sldDead->setToolTip("How far a stick has to move before it counts");
-	deadRow = new QWidget;
-	QHBoxLayout* db = new QHBoxLayout(deadRow);
-	db->setContentsMargins(0, 0, 0, 0);
-	db->addWidget(new QLabel("Stick dead zone"));
-	db->addWidget(sldDead, 1);
 	rg->setRowStretch(3, 1);
 
 	connect(cbAlias, QOverload<int>::of(&QComboBox::activated), this, [this](int i) {
@@ -244,7 +236,6 @@ xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 		showInputs();
 		inBox->setFocus();
 	});
-	connect(sldDead, &QSlider::valueChanged, this, [this](int v) {if (gpad) gpad->setDeadZone(v);});
 	inBox->onKey = [this](int id) {
 		if (!gpad->isKeyboard()) return;
 		xJoyMapEntry e;
@@ -267,7 +258,6 @@ xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 	cols->addWidget(right, 1);
 	QVBoxLayout* lay = new QVBoxLayout(this);
 	lay->addLayout(cols);
-	lay->addWidget(deadRow);
 	lay->addWidget(chkTurbo);
 	lay->addWidget(bbox);
 	// Enter is a key a player may well want to bind
@@ -426,10 +416,6 @@ bool xPadRowEdit::edit(xGamepad* gp, int i) {
 	cbAlias->view()->setMinimumWidth(lw + cbAlias->style()->pixelMetric(QStyle::PM_ScrollBarExtent) + 24);
 	btnDefault->setVisible(joy);
 	labHint->setText(keys ? "Press keys here to bind them" : "Press buttons on the pad to bind them");
-	deadRow->setVisible(!keys);
-	sldDead->blockSignals(true);
-	sldDead->setValue(gp->deadZone());
-	sldDead->blockSignals(false);
 	chkTurbo->setChecked(cur.rapid);
 	btnPress->setChecked(false);
 	showInputs();
@@ -541,15 +527,25 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	QPushButton* btnAdd = sideButton("Add mapping", ":/images/add.png");
 	btnAdd->setToolTip("A key, a button or an action of your own");
 	QHBoxLayout* abox = new QHBoxLayout;
+	abox->addWidget(padNote("Double-click a row to change it, right-click for more"));
 	abox->addStretch(1);
 	abox->addWidget(btnAdd);
 	sldTurbo = new QSlider(Qt::Horizontal);
 	sldTurbo->setRange(1, 25);
 	labTurbo = new QLabel;
 	labTurbo->setMinimumWidth(labTurbo->fontMetrics().horizontalAdvance("25 Hz"));
-	QHBoxLayout* rbox = new QHBoxLayout;
-	rbox->addWidget(new QLabel("Turbo rate"));
-	rbox->addWidget(fieldPair(sldTurbo, labTurbo, true), 1);
+	sldDead = new QSlider(Qt::Horizontal);
+	sldDead->setRange(0, 100);
+	sldDead->setToolTip("How far a stick has to move before it counts");
+	labDead = new QLabel;
+	labDead->setMinimumWidth(labDead->fontMetrics().horizontalAdvance("100%"));
+	labDeadName = new QLabel("Stick dead zone");
+	QGridLayout* rbox = new QGridLayout;
+	rbox->addWidget(new QLabel("Turbo rate"), 0, 0);
+	rbox->addWidget(fieldPair(sldTurbo, labTurbo, true), 0, 1);
+	rbox->addWidget(labDeadName, 1, 0);
+	rbox->addWidget(fieldPair(sldDead, labDead, true), 1, 1);
+	rbox->setColumnStretch(1, 1);
 	QVBoxLayout* tcol = new QVBoxLayout;
 	tcol->addWidget(table, 1);
 	tcol->addLayout(abox);
@@ -558,7 +554,6 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	tbox->addLayout(tcol, 1);
 	tbox->addLayout(bbox);
 	grid->addLayout(tbox, row++, 0, 1, 2);
-	grid->addWidget(padNote("Double-click a row to change it, right-click for more"), row++, 0, 1, 2);
 	grid->setRowStretch(row, 1);
 
 	connect(cbDevice, QOverload<int>::of(&QComboBox::activated), this, [this]() {
@@ -585,6 +580,10 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	connect(sldTurbo, &QSlider::valueChanged, this, [this](int v) {
 		gpad->setTurboRate(v);
 		labTurbo->setText(QString("%0 Hz").arg(v));
+	});
+	connect(sldDead, &QSlider::valueChanged, this, [this](int v) {
+		gpad->setDeadZone(v * 32768 / 100);
+		labDead->setText(QString("%0%").arg(v));
 	});
 	connect(gpad, &xGamepad::inputChanged, this, [this](int t, int n, int s) {inputChanged(t, n, s);});
 }
@@ -616,13 +615,6 @@ void xGamepadWidget::setNameWidth(int w) {
 void xGamepadWidget::tableChanged() {
 	model->update();
 	tell();
-}
-
-// what the other player has is off here, but for the one this player is on
-void xGamepadWidget::syncSchemes() {
-	foreach(QAbstractButton* rb, grpScheme->buttons())
-		rb->setEnabled(conf.gpctrl->pickable(gpad, grpScheme->id(rb)));
-	cbQaop->setEnabled(grpScheme->button(GPS_QAOP)->isEnabled());
 }
 
 void xGamepadWidget::schemeFromControls() {
@@ -666,11 +658,18 @@ void xGamepadWidget::refresh() {
 	s = pad_scheme_kind(s);
 	QAbstractButton* rb = grpScheme->button(s);
 	if (rb) rb->setChecked(true);
-	syncSchemes();
 	sldTurbo->blockSignals(true);
 	sldTurbo->setValue(gpad->turboRate());
 	sldTurbo->blockSignals(false);
 	labTurbo->setText(QString("%0 Hz").arg(gpad->turboRate()));
+	int dz = (gpad->deadZone() * 100 + 16384) / 32768;	// the nearest percent
+	sldDead->blockSignals(true);
+	sldDead->setValue(dz);
+	sldDead->blockSignals(false);
+	labDead->setText(QString("%0%").arg(dz));
+	// a keyboard has no stick; greyed, not hidden, so the window keeps its size
+	labDeadName->setEnabled(!gpad->isKeyboard());
+	sldDead->parentWidget()->setEnabled(!gpad->isKeyboard());
 	labTry->setText(gpad->isKeyboard() ? "Press a key to try it" : "Press a button to try it");
 	model->update();
 }
@@ -691,7 +690,6 @@ void xGamepadWidget::setDevFromCombo() {
 		}
 	}
 	conf.gpctrl->rescan();
-	conf.gpctrl->untangle(gpad);
 	refresh();
 }
 
@@ -746,7 +744,6 @@ void xGamepadWidget::load() {
 		showInfo("Can't read the file");
 		return;
 	}
-	conf.gpctrl->untangle(gpad);		// the file may name the other player's joystick
 	refresh();
 	tell();
 }

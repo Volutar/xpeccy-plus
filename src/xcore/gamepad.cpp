@@ -1705,28 +1705,9 @@ void xGamepadController::rescan() {
 	meetNew(devs, pick);
 }
 
-// Two players never share a joystick: they would press the same keys. Both
-// QAOPs are one, and Custom is the players' own keys, so it is never taken.
-// A player with no device has nothing to share yet.
+// both QAOPs are one joystick, the key fire presses aside
 int pad_scheme_kind(int s) {
 	return (s == GPS_QAOPM) ? GPS_QAOP : s;
-}
-
-bool xGamepadController::taken(xGamepad* gp, int s) {
-	xGamepad* other = (gp == gpada) ? gpadb : gpada;
-	if ((s == GPS_CUSTOM) || !gp->inUse() || !other->inUse()) return false;
-	return pad_scheme_kind(other->scheme()) == pad_scheme_kind(s);
-}
-
-bool xGamepadController::pickable(xGamepad* gp, int s) {
-	return (pad_scheme_kind(gp->scheme()) == pad_scheme_kind(s)) || !taken(gp, s);
-}
-
-void xGamepadController::untangle(xGamepad* gp) {
-	if (!taken(gp, gp->scheme())) return;
-	int s = 0;
-	while (taken(gp, s)) s++;		// Custom at the end is never taken
-	gp->setScheme(s);
 }
 
 // A model never met before goes to the first slot with no pad of its own, so
@@ -1743,7 +1724,6 @@ void xGamepadController::meetNew(const QList<xPadDev>& devs, const int* pick) {
 		for (int s = 0; s < 2; s++) {
 			if (slot[s]->inUse()) continue;
 			slot[s]->openDev(devs.at(i));
-			untangle(slot[s]);
 			xlog(XLG_INPUT, XLL_INFO, "pad %c: new pad '%s' taken", s ? 'B' : 'A', id.name.toUtf8().data());
 			emit newPad(s);
 			break;

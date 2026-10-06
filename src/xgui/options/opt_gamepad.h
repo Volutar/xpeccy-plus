@@ -71,8 +71,6 @@ class xPadRowEdit : public QDialog {
 		QList<xJoyMapEntry> choices;		// what cbAlias offers, past its first line
 		QPushButton* btnDefault;
 		QLabel* labHint;
-		QWidget* deadRow;
-		QSlider* sldDead;
 		QCheckBox* chkTurbo;
 		QList<xJoyMapEntry>& inputs();
 		bool& defFlag();
@@ -90,7 +88,6 @@ class xGamepadWidget : public QWidget {
 		void keyTry(int);			// a key pressed in the window, for the try line
 		int nameWidth();			// the name column, as wide as its longest
 		void setNameWidth(int);
-		void syncSchemes();			// the other player's joystick cannot be picked
 		std::function<void()> changed;		// the player's input now does something else
 	private:
 		xGamepad* gpad;
@@ -102,6 +99,9 @@ class xGamepadWidget : public QWidget {
 		QTableView* table;
 		QSlider* sldTurbo;
 		QLabel* labTurbo;
+		QLabel* labDeadName;
+		QSlider* sldDead;
+		QLabel* labDead;
 		xPadRowEdit* editor;
 		void setDevFromCombo();
 		void schemeFromControls();
