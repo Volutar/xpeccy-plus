@@ -535,7 +535,7 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 
 	connect(cbDevice, QOverload<int>::of(&QComboBox::activated), this, [this]() {
 		setDevFromCombo();
-		tableChanged();
+		tell();
 	});
 	connect(grpScheme, QOverload<QAbstractButton*>::of(&QButtonGroup::buttonClicked), this, [this]() {schemeFromControls();});
 	connect(cbQaop, QOverload<int>::of(&QComboBox::activated), this, [this]() {
@@ -590,6 +590,13 @@ void xGamepadWidget::tableChanged() {
 	tell();
 }
 
+// what the other player has is off here, but for the one this player is on
+void xGamepadWidget::syncSchemes() {
+	foreach(QAbstractButton* rb, grpScheme->buttons())
+		rb->setEnabled(conf.gpctrl->pickable(gpad, grpScheme->id(rb)));
+	cbQaop->setEnabled(grpScheme->button(GPS_QAOP)->isEnabled());
+}
+
 void xGamepadWidget::schemeFromControls() {
 	int id = grpScheme->checkedId();
 	if (id == GPS_QAOP) id = cbQaop->currentData().toInt();
@@ -628,9 +635,10 @@ void xGamepadWidget::refresh() {
 	updateList();
 	int s = gpad->scheme();
 	cbQaop->setCurrentIndex((s == GPS_QAOPM) ? 1 : 0);
-	if (s == GPS_QAOPM) s = GPS_QAOP;
+	s = pad_scheme_kind(s);
 	QAbstractButton* rb = grpScheme->button(s);
 	if (rb) rb->setChecked(true);
+	syncSchemes();
 	sldTurbo->blockSignals(true);
 	sldTurbo->setValue(gpad->turboRate());
 	sldTurbo->blockSignals(false);
@@ -655,7 +663,8 @@ void xGamepadWidget::setDevFromCombo() {
 		}
 	}
 	conf.gpctrl->rescan();
-	labTry->setText(gpad->isKeyboard() ? "Press a key to try it" : "Press a button to try it");
+	conf.gpctrl->untangle(gpad);
+	refresh();
 }
 
 void xGamepadWidget::editRow(int i) {
@@ -709,6 +718,7 @@ void xGamepadWidget::load() {
 		showInfo("Can't read the file");
 		return;
 	}
+	conf.gpctrl->untangle(gpad);		// the file may name the other player's joystick
 	refresh();
 	tell();
 }

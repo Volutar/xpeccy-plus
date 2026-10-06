@@ -58,7 +58,7 @@ before that point is upstream's history and is not repeated here.
 - **Shift held in the open dialog** asks whether to run the file or only put it in, as it does
   on a drop.
 
-- **A Gamepads window**, from the toolbar, the Machine menu or Options, Input: for each player
+- **A Gamepads window**, from the toolbar, the new Input menu or Options, Input: for each player
   a device and the joystick it stands for - Kempston, Sinclair/Interface II, Cursor/Protek/AGF,
   QAOP or keys of your own. A pad plays at once, nothing to bind. *(thanks to Volutar for the
   design)*
@@ -67,6 +67,8 @@ before that point is upstream's history and is not repeated here.
   - The PC keyboard can be a player too, on the arrows and Ctrl or on WASD and Space, so a game
     that wants QAOP plays on the arrows.
   - Bindings save to a .pad file and load back; an older .pad or config is brought across.
+  - The Input menu and the toolbar button's list switch either player's joystick mid-game; two
+    players never share one.
   - Picking Kempston switches it on for the machine, and a pad never plugged in before takes a
     free player and opens the window.
 

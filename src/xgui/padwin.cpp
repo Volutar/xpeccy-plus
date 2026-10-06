@@ -15,7 +15,11 @@ xPadWin::xPadWin(QWidget* p):QDialog(p) {
 	xGamepad* pad[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
 	for (int i = 0; i < 2; i++) {
 		pan[i] = new xGamepadWidget(pad[i]);
-		pan[i]->changed = [this]() {sameWidths();};
+		pan[i]->changed = [this]() {
+			sameWidths();
+			pan[0]->syncSchemes();
+			pan[1]->syncSchemes();
+		};
 		tabs->addTab(pan[i], QIcon(":/images/gamepad.png"), QString("Player %0").arg(i + 1));
 	}
 	// a pad plugged in or pulled out while the window is up

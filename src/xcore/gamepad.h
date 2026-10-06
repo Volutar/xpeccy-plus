@@ -52,9 +52,10 @@ typedef struct {
 	int key;		// key XKEY_* for keyboard
 #endif
 	int dir = 0;		// XJ_* for kempston
-	int rps = 0;		// repeat state (0:released, !0:pressed)
-	int rpt = 0;		// repeat period (0 = no repeat)
-	int cnt = 0;		// repeat counter
+	int rps = 0;		// pressed now: the output, which turbo flips
+	int held = 0;		// the input is down
+	int rpt = 0;		// turbo, presses a second (0 = none)
+	int cnt = 0;		// turbo phase, see repTick()
 } xJoyMapEntry;
 
 // The joystick a player's joystick rows stand for. Changing it changes what
@@ -92,6 +93,7 @@ enum {
 
 const char* pad_scheme_key(int);		// config word
 const char* pad_scheme_name(int);		// what the gui says
+int pad_scheme_kind(int);			// the joystick: both QAOPs are one
 const char* pad_kbd_key(int);			// GPK_* as config.conf has it, "" for none
 int pad_kbd_find(const QString&);		// GPK_NONE if the word is not one
 const char* pad_kbd_name(int);			// what the gui says
@@ -185,6 +187,7 @@ class xGamepad : public QObject {
 		int keyboard();			// GPK_*
 		void setKeyboard(int);
 		bool isLive();			// a pad open, or the keyboard
+		bool inUse();			// a device picked, plugged in or not
 		bool bindable(int);		// a JOY_* worth binding: a hat comes as buttons, a known pad by name
 		int slot = 0;			// 0 or 1: which player, for the log
 
@@ -226,7 +229,7 @@ class xGamepad : public QObject {
 		void importMap(std::string);		// a .pad from before the table
 
 		QList<xJoyMapEntry> scanMap(int, int, int);
-		QList<xJoyMapEntry> repTick();
+		QList<xJoyMapEntry> repTick(int);	// turbo, ms since the last call
 	signals:
 		// type is JOY_*, num the button/axis/hat number, state its value
 		void inputChanged(int, int, int);
@@ -256,6 +259,9 @@ class xGamepadController : public QObject {
 	public:
 		xGamepadController(QObject* = nullptr);
 		void rescan();
+		bool taken(xGamepad*, int);	// the other player has that joystick
+		bool pickable(xGamepad*, int);	// not taken, or this player's own
+		void untangle(xGamepad*);	// off a joystick the other player has, to a free one
 		xGamepad* gpada;
 		xGamepad* gpadb;
 		QStringList seen;		// guids of the pads met so far, see newPad

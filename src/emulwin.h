@@ -227,6 +227,7 @@ typedef struct {
 		std::string macSeen;	// ...on this machine
 		void watchClock();
 		void watchPads();
+		void fillPadMenu();
 		int padK8 = -1;		// the machine's Kempston had 8 buttons, as last seen
 		void showMedia(const QString&, int src);
 		std::string wantedShader();
@@ -293,6 +294,7 @@ typedef struct {
 		QMenu* turboMenu;
 		QMenu* shdMenu;
 		QMenu* keyMenu;
+		QMenu* padMenu;		// the window, then each player's joystick
 		QMenu* palMenu;
 		QMenu* dbgMenu;
 		QAction* pckAct;
@@ -399,6 +401,9 @@ typedef struct {
 		bool mapIsHotkey(const xJoyMapEntry&);
 		void mapReplayHeld(xGamepad*);
 		bool padKey(QKeyEvent*, bool);
+		bool padLive();
+		void mapOut(Computer*, const xJoyMapEntry&);
+		long long padTurboNs = 0;	// when turbo was last stepped
 		void mapZxKey(Computer*, int, bool);
 		void mapKeySeq(const xJoyMapEntry&, bool);
 
