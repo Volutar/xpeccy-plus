@@ -86,8 +86,8 @@ before that point is upstream's history and is not repeated here.
 - **The numpad no longer plays the Kempston** in the stock keyboard layouts: the keyboard as a
   player in the Gamepads window does it, on whichever keys you like.
 
-- **Smaller things**: two floppy drives unless a machine says otherwise, Run ahead no longer
-  marked experimental, and an About that names the maintainer and the license and no longer
+- **Smaller things**: two floppy drives unless a machine says otherwise, Fast disk access in
+  the disk manager too, Run ahead no longer marked experimental, and an About that names the maintainer and the license and no longer
   stops the machine. *(thanks to Volutar)*
 
 ### Fixed
