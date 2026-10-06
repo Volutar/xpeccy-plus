@@ -378,7 +378,10 @@ int main(int ac,char** av) {
 	app.connect(&mwin, SIGNAL(s_rzx_start()), &rzxw, SLOT(startPlay()));
 	app.connect(&mwin, SIGNAL(s_rzx_stop()), &rzxw, SLOT(stop()));
 	app.connect(&mwin, SIGNAL(s_rzx_upd(Computer*)), &rzxw, SLOT(upd(Computer*)));
-	app.connect(&mwin, SIGNAL(s_rzx_show()), &rzxw, SLOT(show()));
+	app.connect(&mwin, &MainWin::s_rzx_show, &rzxw, [&rzxw]() {
+		rzxw.show();
+		center_once(&rzxw);
+	});
 
 	app.connect(&mwin, SIGNAL(s_watch_upd(Computer*)), &wutw, SLOT(fillFields(Computer*)));
 	app.connect(&mwin, SIGNAL(s_watch_show()), &wutw, SLOT(show()));

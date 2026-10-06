@@ -231,6 +231,7 @@ void xDiskWin::showHead() {
 void xDiskWin::showWindow() {
 	refresh();
 	show();
+	center_once(this);
 	raise();
 	activateWindow();
 }

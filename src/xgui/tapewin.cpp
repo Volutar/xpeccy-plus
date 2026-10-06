@@ -39,6 +39,7 @@ TapeWin::TapeWin(QWidget *par):QDialog(par) {
 
 void TapeWin::show() {
 	QDialog::show();
+	center_once(this);
 	upd(conf.zx->tape);		// takes the speed slider with it
 	updList(conf.zx->tape);
 }

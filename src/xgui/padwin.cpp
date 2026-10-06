@@ -3,9 +3,11 @@
 #include <QKeyEvent>
 #include <QPushButton>
 #include <QTabWidget>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #include "padwin.h"
+#include "xgui.h"
 #include "../xcore/xcore.h"
 
 xPadWin::xPadWin(QWidget* p):QDialog(p) {
@@ -60,6 +62,7 @@ void xPadWin::sync() {
 void xPadWin::showWindow() {
 	refreshAll();
 	show();
+	center_once(this);
 	raise();
 	activateWindow();
 }
@@ -69,6 +72,7 @@ void xPadWin::showWindow() {
 void xPadWin::execOver() {
 	if (isVisible()) hide();
 	refreshAll();
+	QTimer::singleShot(0, this, [this]() {center_once(this);});	// once exec() has shown it
 	exec();
 }
 
