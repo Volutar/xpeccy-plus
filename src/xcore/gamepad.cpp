@@ -352,8 +352,8 @@ static const struct {
 	const char* role[PR_JOY];	// what each joystick row presses
 } schTab[GPS_COUNT] = {
 	{"kempston", "Kempston", {"JU", "JD", "JL", "JR", "JF", "J2", "J3", "J4"}},
-	{"sinclair1", "Sinclair/Interface II (6-0)", {"Z9", "Z8", "Z6", "Z7", "Z0"}},
-	{"sinclair2", "Sinclair/Interface II (1-5)", {"Z4", "Z3", "Z1", "Z2", "Z5"}},
+	{"sinclair1", "Interface 2 (Port 1)", {"Z9", "Z8", "Z6", "Z7", "Z0"}},
+	{"sinclair2", "Interface 2 (Port 2)", {"Z4", "Z3", "Z1", "Z2", "Z5"}},
 	{"cursor", "Cursor/Protek/AGF", {"Z7", "Z6", "Z5", "Z8", "Z0"}},
 	{"qaop", "QAOP + Space", {"Zq", "Za", "Zo", "Zp", "Z "}},
 	{"qaopm", "QAOP + M", {"Zq", "Za", "Zo", "Zp", "Zm"}},
@@ -1737,6 +1737,9 @@ void xGamepadController::timerEvent(QTimerEvent* e) {
 	// it before would hand out the values of the previous tick.
 	SDL_Event ev;
 	bool changed = false;
+	// a slot waiting for a pad of its own: a pad never met before goes to one
+	// with none, and newPad says that
+	bool waits[2] = {gpada->inUse() && !gpada->isOpened(), gpadb->inUse() && !gpadb->isOpened()};
 	while (SDL_PollEvent(&ev)) {
 		switch (ev.type) {
 			case SDL_JOYDEVICEREMOVED:
@@ -1754,6 +1757,8 @@ void xGamepadController::timerEvent(QTimerEvent* e) {
 	if (changed) {
 		rescan();
 		emit devicesChanged();
+		if (waits[0] && gpada->isOpened()) emit padOn(0);
+		if (waits[1] && gpadb->isOpened()) emit padOn(1);
 	}
 #endif
 	gpada->update();
