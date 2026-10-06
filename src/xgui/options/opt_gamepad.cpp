@@ -1,3 +1,4 @@
+#include <QAbstractItemView>
 #include <QDialogButtonBox>
 #include <QFileDialog>
 #include <QGridLayout>
@@ -67,7 +68,7 @@ QVariant xPadTableModel::data(const QModelIndex& idx, int role) const {
 		case Qt::DisplayRole:
 			if (idx.column() == 0) return gpad->rowName(row);
 			if (idx.column() == 1) {
-				QString ins = xGamepad::inputsName(gpad->rowInputs(row));
+				QString ins = xGamepad::inputsName(gpad->liveInputs(row));
 				return ins.isEmpty() ? QString("-") : ins;
 			}
 			break;
@@ -75,7 +76,7 @@ QVariant xPadTableModel::data(const QModelIndex& idx, int role) const {
 			// what "Gamepad up" stands for on this pad
 			if (idx.column() == 1) {
 				QStringList res;
-				foreach(const xJoyMapEntry& e, gpad->rowInputs(row)) {
+				foreach(const xJoyMapEntry& e, gpad->liveInputs(row)) {
 					if (e.type == JOY_VDIR) res.append(xGamepad::inputsName(gpad->aliasInputs(e.num)));
 				}
 				if (!res.isEmpty()) return res.join(", ");
@@ -137,10 +138,19 @@ xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 	cbKey = new QComboBox;
 	const char* zx = pad_zx_keys();
 	for (int i = 0; zx[i]; i++) cbKey->addItem(pad_zx_name(zx[i]), int(zx[i]));
-	btnPress = new QPushButton("Press");
+	btnPress = new QPushButton("Press a key");
+	btnPress->setMinimumWidth(btnPress->sizeHint().width());	// the longer of its two texts
+	btnPress->setText("Press");
 	btnPress->setCheckable(true);
 	btnPress->setToolTip("Press a PC key: the Spectrum key it is on");
 	btnPress->installEventFilter(this);
+	labMod = new QLabel("with");
+	labMod->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+	cbMod = new QComboBox;
+	cbMod->addItem("-", 0);
+	cbMod->addItem(pad_zx_name('C'), int('C'));
+	cbMod->addItem(pad_zx_name('S'), int('S'));
+	cbMod->setToolTip("Held with the key: Caps Shift and 5 is cursor left");
 	rbJoy = new QRadioButton("Kempston");
 	cbJoy = new QComboBox;
 	cbJoy->addItem("Up", XJ_UP);
@@ -163,15 +173,18 @@ xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 	lg->addWidget(rbKey, 1, 0);
 	lg->addWidget(cbKey, 1, 1);
 	lg->addWidget(btnPress, 1, 2);
-	lg->addWidget(rbJoy, 2, 0);
-	lg->addWidget(cbJoy, 2, 1);
-	lg->addWidget(rbCut, 3, 0);
-	lg->addWidget(cbCut, 3, 1, 1, 2);
-	lg->addWidget(rbKept, 4, 0);
-	lg->addWidget(labKept, 4, 1, 1, 2);
-	lg->setRowStretch(5, 1);
+	lg->addWidget(labMod, 2, 0);
+	lg->addWidget(cbMod, 2, 1);
+	lg->addWidget(rbJoy, 3, 0);
+	lg->addWidget(cbJoy, 3, 1);
+	lg->addWidget(rbCut, 4, 0);
+	lg->addWidget(cbCut, 4, 1, 1, 2);
+	lg->addWidget(rbKept, 5, 0);
+	lg->addWidget(labKept, 5, 1, 1, 2);
+	lg->setRowStretch(6, 1);
 	tgtBox = left;
 	connect(cbKey, QOverload<int>::of(&QComboBox::activated), rbKey, [this]() {rbKey->setChecked(true);});
+	connect(cbMod, QOverload<int>::of(&QComboBox::activated), rbKey, [this]() {rbKey->setChecked(true);});
 	connect(cbJoy, QOverload<int>::of(&QComboBox::activated), rbJoy, [this]() {rbJoy->setChecked(true);});
 	connect(cbCut, QOverload<int>::of(&QComboBox::activated), rbCut, [this]() {rbCut->setChecked(true);});
 	connect(btnPress, &QPushButton::toggled, this, [this](bool on) {
@@ -190,13 +203,7 @@ xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 	inBox->setMinimumWidth(220);
 	rg->addWidget(inBox, 0, 0, 1, 2);
 	cbAlias = new QComboBox;
-	cbAlias->addItem("Add...");
-	for (int r = 0; r < 4; r++) {
-		xJoyMapEntry e;
-		e.type = JOY_VDIR;
-		e.num = r;
-		cbAlias->addItem(xGamepad::getEntryName(e), r);
-	}
+	cbAlias->setToolTip("An input picked from the list: no pad needed");
 	QPushButton* btnClear = new QPushButton("Clear");
 	btnDefault = new QPushButton("Defaults");
 	QHBoxLayout* rb = new QHBoxLayout;
@@ -219,11 +226,8 @@ xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 	rg->setRowStretch(3, 1);
 
 	connect(cbAlias, QOverload<int>::of(&QComboBox::activated), this, [this](int i) {
-		if (i < 1) return;
-		xJoyMapEntry e;
-		e.type = JOY_VDIR;
-		e.num = cbAlias->itemData(i).toInt();
-		addInput(e);
+		if ((i < 1) || (i > choices.size())) return;
+		addInput(choices.at(i - 1));
 		cbAlias->setCurrentIndex(0);
 		inBox->setFocus();
 	});
@@ -343,6 +347,15 @@ bool xPadRowEdit::takeTarget() {
 	} else {
 		t.dev = JMAP_ZX;
 		t.dir = cbKey->currentData().toInt();
+		int mod = cbMod->currentData().toInt();
+		cur.tgt.clear();
+		if (mod && (mod != t.dir)) {
+			xJoyMapEntry m = t;
+			m.dir = mod;
+			cur.tgt.append(m);
+		}
+		cur.tgt.append(t);
+		return true;
 	}
 	cur.tgt.clear();
 	cur.tgt.append(t);
@@ -363,17 +376,24 @@ bool xPadRowEdit::edit(xGamepad* gp, int i) {
 	foreach(const xJoyMapEntry& t, gp->rowTargets(i)) tnames.append(xGamepad::getTargetName(t));
 	labFixed->setText(QString("%0: %1").arg(gp->rowName(i).section(' ', 0, 0), tnames.join(" + ")));
 	labFixed->setVisible(!own);
-	foreach(QWidget* w, QList<QWidget*>() << rbKey << cbKey << btnPress) w->setVisible(own);
+	foreach(QWidget* w, QList<QWidget*>() << rbKey << cbKey << btnPress << labMod << cbMod) w->setVisible(own);
 	foreach(QWidget* w, QList<QWidget*>() << rbJoy << cbJoy << rbCut << cbCut) w->setVisible(own && !custom);
 	QList<xJoyMapEntry> tgt = (i < 0) ? QList<xJoyMapEntry>() : gp->rowTargets(i);
 	kept.clear();
 	rbKey->setChecked(true);
 	cbKey->setCurrentIndex(0);
+	cbMod->setCurrentIndex(0);
 	if (!tgt.isEmpty()) {
 		const xJoyMapEntry& t = tgt.first();
 		switch (t.dev) {
 			case JMAP_ZX:
-				cbKey->setCurrentIndex(qMax(0, cbKey->findData(t.dir)));
+				// Caps or Symbol Shift and a key after it: the modifier and the key
+				if ((tgt.size() > 1) && (tgt.at(1).dev == JMAP_ZX) && ((t.dir == 'C') || (t.dir == 'S'))) {
+					cbMod->setCurrentIndex(qMax(0, cbMod->findData(t.dir)));
+					cbKey->setCurrentIndex(qMax(0, cbKey->findData(tgt.at(1).dir)));
+				} else {
+					cbKey->setCurrentIndex(qMax(0, cbKey->findData(t.dir)));
+				}
 				break;
 			case JMAP_JOY:
 				rbJoy->setChecked(true);
@@ -396,9 +416,19 @@ bool xPadRowEdit::edit(xGamepad* gp, int i) {
 	bool keys = gp->isKeyboard();
 	findChild<QGroupBox*>("inputs")->setTitle(keys ? "PC Keyboard" : "Gamepad");
 	cbAlias->setVisible(!keys);
+	cbAlias->clear();
+	cbAlias->addItem("Add...");
+	choices = xGamepad::inputChoices(gp->asController());
+	int lw = 0;
+	foreach(const xJoyMapEntry& e, choices) {
+		cbAlias->addItem(xGamepad::getEntryName(e));
+		lw = qMax(lw, cbAlias->fontMetrics().horizontalAdvance(xGamepad::getEntryName(e)));
+	}
+	// the list as wide as its names, not as the box: a scroll bar and margins on top
+	cbAlias->view()->setMinimumWidth(lw + cbAlias->style()->pixelMetric(QStyle::PM_ScrollBarExtent) + 24);
 	btnDefault->setVisible(joy);
 	labHint->setText(keys ? "Press keys here to bind them" : "Press buttons on the pad to bind them");
-	deadRow->setVisible(!keys && joy && (i < PR_FIRE));
+	deadRow->setVisible(!keys);
 	sldDead->blockSignals(true);
 	sldDead->setValue(gp->deadZone());
 	sldDead->blockSignals(false);
@@ -737,12 +767,17 @@ void xGamepadWidget::tryShow(const xJoyMapEntry& ev) {
 // A press and what it does. A pad SDL knows the layout of reports each push
 // twice, by name and by number: the name is the one the table binds.
 void xGamepadWidget::inputChanged(int type, int num, int state) {
-	if (!isVisible() || (state == 0) || gpad->isKeyboard() || !gpad->bindable(type)) return;
-	xJoyMapEntry ev;
-	ev.type = type;
-	ev.num = num;
-	ev.state = state;
-	tryShow(ev);
+	if (!isVisible() || gpad->isKeyboard() || !gpad->bindable(type)) return;
+	if ((state != 0) && gpad->whatDoes(type, num, state).isEmpty()) {
+		xJoyMapEntry ev;
+		ev.type = type;
+		ev.num = num;
+		ev.state = state;
+		tryShow(ev);		// "...: nothing"
+		return;
+	}
+	QString held = gpad->heldText();
+	if (!held.isEmpty()) labTry->setText(held);
 }
 
 void xGamepadWidget::keyTry(int id) {

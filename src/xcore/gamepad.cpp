@@ -638,6 +638,67 @@ QList<xJoyMapEntry> xGamepad::rowInputs(int i) {
 	return (joy && r.padDef) ? defInputs(i, false) : r.pad;
 }
 
+// one input: the same button, or the same way along an axis or a hat
+static bool padSameInput(const xJoyMapEntry& a, const xJoyMapEntry& b) {
+	if ((a.type != b.type) || (a.num != b.num)) return false;
+	return (a.type == JOY_HAT) ? (a.state == b.state) : (sign(a.state) == sign(b.state));
+}
+
+static bool padHasInput(const QList<xJoyMapEntry>& lst, const xJoyMapEntry& e) {
+	foreach(const xJoyMapEntry& x, lst) {
+		if (padSameInput(x, e)) return true;
+	}
+	return false;
+}
+
+// A row's inputs as they work: a row on its defaults gives up whatever another
+// row binds by hand, the members of an alias included - so Left stick up bound
+// on its own row stops pressing Up as well. An alias untouched stays itself.
+QList<xJoyMapEntry> xGamepad::liveInputs(int i) {
+	QList<xJoyMapEntry> ins = rowInputs(i);
+	bool def = (i < PR_JOY) && (isKeyboard() ? rows[i].keyDef : rows[i].padDef);
+	if (!def) return ins;
+	QList<xJoyMapEntry> fixed;
+	for (int r = 0; r < rows.size(); r++) {
+		if ((r == i) || !rowShown(r)) continue;
+		if ((r < PR_JOY) && (isKeyboard() ? rows[r].keyDef : rows[r].padDef)) continue;
+		foreach(const xJoyMapEntry& e, rowInputs(r)) {
+			if (e.type == JOY_VDIR) fixed.append(aliasInputs(e.num)); else fixed.append(e);
+		}
+	}
+	QList<xJoyMapEntry> res;
+	foreach(const xJoyMapEntry& e, ins) {
+		if (e.type != JOY_VDIR) {
+			if (!padHasInput(fixed, e)) res.append(e);
+			continue;
+		}
+		QList<xJoyMapEntry> keep;
+		foreach(const xJoyMapEntry& a, aliasInputs(e.num)) {
+			if (!padHasInput(fixed, a)) keep.append(a);
+		}
+		if (keep.size() == aliasInputs(e.num).size()) res.append(e); else res.append(keep);
+	}
+	return res;
+}
+
+// What can be picked from a list, the aliases first: by name for a pad SDL
+// knows the layout of, by number for any other.
+QList<xJoyMapEntry> xGamepad::inputChoices(bool ctrl) {
+	static const char* ctrlSrc[] = {"Ca", "Cb", "Cx", "Cy", "Cleftshoulder", "Crightshoulder",
+		"Xlefttrigger+", "Xrighttrigger+", "Cdpup", "Cdpdown", "Cdpleft", "Cdpright",
+		"Xlefty-", "Xlefty+", "Xleftx-", "Xleftx+", "Xrighty-", "Xrighty+", "Xrightx-", "Xrightx+",
+		"Cleftstick", "Crightstick", "Cback", "Cstart", NULL};
+	static const char* rawSrc[] = {"B0", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11",
+		"H0U", "H0D", "H0L", "H0R", "A1-", "A1+", "A0-", "A0+", "A3-", "A3+", "A2-", "A2+", NULL};
+	QList<xJoyMapEntry> res;
+	for (int r = 0; r < 4; r++) res.append(padAlias(r));
+	for (const char** s = ctrl ? ctrlSrc : rawSrc; *s; s++) {
+		xJoyMapEntry e = padSrc(*s);
+		if (e.type != JOY_NONE) res.append(e);
+	}
+	return res;
+}
+
 QList<xJoyMapEntry> xGamepad::rowTargets(int i) {
 	QList<xJoyMapEntry> res;
 	if ((i < 0) || (i >= rows.size())) return res;
@@ -679,9 +740,7 @@ QString xGamepad::rowName(int i) {
 
 // The same binding: the same way on the same input, pressing the same thing.
 static bool padSameBinding(const xJoyMapEntry& a, const xJoyMapEntry& b) {
-	if ((a.type != b.type) || (a.num != b.num)) return false;
-	if ((a.type == JOY_HAT) ? (a.state != b.state) : (sign(a.state) != sign(b.state))) return false;
-	return padSameTarget(a, b);
+	return padSameInput(a, b) && padSameTarget(a, b);
 }
 
 // Every input of every shown row, times every target of it.
@@ -692,7 +751,7 @@ void xGamepad::rebuild() {
 		if (!rowShown(i)) continue;
 		QList<xJoyMapEntry> tgt = rowTargets(i);
 		QList<xJoyMapEntry> ins;
-		foreach(const xJoyMapEntry& in, rowInputs(i)) {
+		foreach(const xJoyMapEntry& in, liveInputs(i)) {
 			if (in.type == JOY_VDIR) {
 				ins.append(aliasInputs(in.num));
 			} else {
@@ -764,6 +823,22 @@ QStringList xGamepad::whatDoes(int type, int num, int state) {
 		res.append(getTargetName(e));
 	}
 	return res;
+}
+
+// "Left stick up + Left stick right: Kempston up, Kempston right"; empty when
+// nothing bound is held. A stick pushed on a slant is two inputs at once.
+QString xGamepad::heldText() {
+	QStringList ins;
+	QStringList outs;
+	foreach(const xJoyMapEntry& e, map) {
+		if (!e.held) continue;
+		QString in = getEntryName(e);
+		QString out = getTargetName(e);
+		if (!ins.contains(in)) ins.append(in);
+		if (!outs.contains(out)) outs.append(out);
+	}
+	if (ins.isEmpty()) return QString();
+	return QString("%0: %1").arg(ins.join(" + "), outs.join(", "));
 }
 
 bool xGamepad::drivesKempston() {
@@ -1509,7 +1584,7 @@ QString xGamepad::getEntryName(const xJoyMapEntry& jent) {
 
 // What a binding drives, as the map table and the window say it.
 QString xGamepad::getTargetName(const xJoyMapEntry& jent) {
-	static const char* joyDir[] = {"up", "down", "left", "right", "fire", "button 2", "button 3", "button 4"};
+	static const char* joyDir[] = {"up", "down", "left", "right", "fire", "fire 2", "fire 3", "fire 4"};
 	static const int joyBit[] = {XJ_UP, XJ_DOWN, XJ_LEFT, XJ_RIGHT, XJ_FIRE, XJ_BUT2, XJ_BUT3, XJ_BUT4};
 	static const char* mouDir[] = {"up", "down", "left", "right", "left button", "middle button",
 		"right button", "wheel up", "wheel down"};
