@@ -524,9 +524,19 @@ void xGamepad::setScheme(int s) {
 
 int xGamepad::turboRate() {return trate;}
 
+// a turbo rate as the map counts it, 20 ms ticks between one flip and the next
+static int padRpt(int rate) {
+	return qMax(1, qRound(25.0 / qMax(1, rate)));
+}
+
+// Only the period of what repeats moves, so a fire held down keeps going.
 void xGamepad::setTurboRate(int r) {
 	trate = qBound(1, r, 25);
-	rebuild();
+	for (int i = 0; i < map.size(); i++) {
+		if (map[i].rpt <= 0) continue;
+		map[i].rpt = padRpt(trate);
+		if (map[i].cnt) map[i].cnt = qMin(map[i].cnt, map[i].rpt);
+	}
 }
 
 // the other way round from padRpt(): an old .pad's repeat period as a rate
@@ -670,13 +680,17 @@ QString xGamepad::rowName(int i) {
 	return QString("%0 (%1)").arg(roleName[i], targetsName(rowTargets(i)));
 }
 
-static int padRpt(int rate) {
-	return qMax(1, qRound(25.0 / qMax(1, rate)));
+// The same binding: the same way on the same input, pressing the same thing.
+static bool padSameBinding(const xJoyMapEntry& a, const xJoyMapEntry& b) {
+	if ((a.type != b.type) || (a.num != b.num)) return false;
+	if ((a.type == JOY_HAT) ? (a.state != b.state) : (sign(a.state) != sign(b.state))) return false;
+	return padSameTarget(a, b);
 }
 
 // Every input of every shown row, times every target of it.
 void xGamepad::rebuild() {
-	map.clear();
+	QList<xJoyMapEntry> old;
+	old.swap(map);
 	for (int i = 0; i < rows.size(); i++) {
 		if (!rowShown(i)) continue;
 		QList<xJoyMapEntry> tgt = rowTargets(i);
@@ -700,6 +714,37 @@ void xGamepad::rebuild() {
 			}
 		}
 	}
+	// A binding held through the change stays held, mid-repeat too. One that
+	// went while down, or that lost its turbo in the off phase, goes into
+	// changes for the machine to be told (takeChanges()), or its key sticks.
+	foreach(const xJoyMapEntry& o, old) {
+		if (!o.rps && !o.cnt) continue;		// not held
+		int k = 0;
+		while ((k < map.size()) && !padSameBinding(o, map[k])) k++;
+		if (k >= map.size()) {
+			if (o.rps) {
+				changes.append(o);
+				changes.last().rps = 0;
+			}
+			continue;
+		}
+		xJoyMapEntry& e = map[k];
+		e.state = o.state;
+		if (e.rpt > 0) {
+			e.rps = o.rps;
+			e.cnt = o.cnt ? qMin(o.cnt, e.rpt) : e.rpt;
+		} else {
+			e.rps = 1;
+			e.cnt = 0;
+			if (!o.rps) changes.append(e);
+		}
+	}
+}
+
+QList<xJoyMapEntry> xGamepad::takeChanges() {
+	QList<xJoyMapEntry> res;
+	res.swap(changes);
+	return res;
 }
 
 int xGamepad::mapSize() {

@@ -15,12 +15,12 @@
 #include "../../xcore/gamepad.h"
 
 // A player's table: what the Spectrum gets, what presses it, turbo. The rows
-// a joystick does not have are left out, and the last row is the one that adds.
+// a joystick does not have are left out.
 class xPadTableModel : public QAbstractTableModel {
 	public:
 		xPadTableModel(xGamepad*, QObject* = nullptr);
 		void update();
-		int padRow(int) const;		// the player's row a table row shows, -1 for the adding one
+		int padRow(int) const;		// the player's row a table row shows, -1 for none
 		int rowCount(const QModelIndex& = QModelIndex()) const;
 		int columnCount(const QModelIndex& = QModelIndex()) const;
 		QVariant data(const QModelIndex&, int) const;

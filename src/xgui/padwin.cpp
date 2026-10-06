@@ -24,7 +24,7 @@ xPadWin::xPadWin(QWidget* p):QDialog(p) {
 		pan[0]->updateList();
 		pan[1]->updateList();
 	});
-	QPushButton* btnClose = new QPushButton("Close");
+	QPushButton* btnClose = new QPushButton(QIcon(":/images/cancel.png"), "Close");
 	btnClose->setAutoDefault(false);
 	connect(btnClose, &QPushButton::clicked, this, &QDialog::close);
 	QHBoxLayout* bottom = new QHBoxLayout;

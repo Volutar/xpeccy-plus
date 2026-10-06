@@ -2485,6 +2485,13 @@ void MainWin::watchClock() {
 void MainWin::watchPads() {
 	if (xm_pad_kempston())
 		setMessage(" Kempston switched on ");
+	// what a change to a player's table took from under a held button
+	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
+	for (xGamepad* gp : pads) {
+		foreach(xJoyMapEntry ent, gp->takeChanges()) {
+			if (ent.rps) mapPress(conf.zx, ent); else mapRelease(conf.zx, ent);
+		}
+	}
 	// Fire 2..4 come and go with an 8-button Kempston: a machine switch, Options
 	int k8 = (conf.zx->joy->type == XJ_KEMPSTON) && conf.zx->joy->extbuttons;
 	if (k8 != padK8) {
