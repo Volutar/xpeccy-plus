@@ -13,7 +13,8 @@ before that point is upstream's history and is not repeated here.
 
 - **A menu bar, a toolbar and a status bar**:
   - The menus carry every command with its hotkey. File keeps the last ten images opened;
-    Machine, Media and Debug hold what the toolbar's buttons do.
+    Machine, Media and Debug hold what the toolbar's buttons do. A command shows its icon and
+    a setting its tick. *(thanks to Volutar)*
   - The toolbar holds the buttons you choose: right-click it to add or remove one, drag one to
     move it. It starts with Mute and the virtual keyboard.
   - The status bar shows the machine, the clock, the tape and each drive; a click opens its

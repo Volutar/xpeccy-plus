@@ -1692,6 +1692,7 @@ void MainWin::initUserMenu() {
 	userMenu->addSeparator();
 	pckAct = userMenu->addAction(QIcon(":/images/keyboard.png"),"Grab keyboard");
 	pckAct->setCheckable(true);
+	pckAct->setIconVisibleInMenu(false);	// a setting: its tick, which an icon would take the place of
 	// the Profi changes its layout with the grab, so no key may stay down across it
 	connect(pckAct, &QAction::toggled, this, [this](bool on) {
 		kbdReleaseAll(conf.zx->keyb);
@@ -1856,6 +1857,7 @@ void MainWin::initMenuBar() {
 	fullAct->setCheckable(true);
 	ratioAct = cutAction(viewMenu, "Keep aspect ratio", XCUT_RATIO, "display");
 	ratioAct->setCheckable(true);
+	ratioAct->setIconVisibleInMenu(false);	// a setting: its tick, which an icon would take the place of
 	viewMenu->addSeparator();
 	viewMenu->addMenu(shdMenu);
 	viewMenu->addMenu(palMenu);

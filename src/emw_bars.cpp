@@ -417,9 +417,6 @@ void MainWin::initBars() {
 			connect(list, &QMenu::aboutToShow, this, [this]() {
 				if (!QApplication::activePopupWidget()) fillUserMenu();
 			});
-		// a switch shows its tick in a menu, which its icon would take the place of
-		if (it.act->isCheckable())
-			it.act->setIconVisibleInMenu(false);
 	}
 
 	tbList = QString::fromStdString((conf.win.tbItems == "*") ? std::string(tbDefault) : conf.win.tbItems).split(',', X_SkipEmptyParts);
