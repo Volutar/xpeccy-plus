@@ -482,6 +482,7 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	QWidget* radios = new QWidget;
 	QGridLayout* rgrid = new QGridLayout(radios);
 	rgrid->setContentsMargins(0, 0, 0, 0);
+	rgrid->setHorizontalSpacing(24);		// the columns read as two, not as one long line
 	grpScheme = new QButtonGroup(this);
 	// a radio button, and what goes right after it in its cell
 	auto radio = [this, rgrid](int id, const char* text, int r, int c, QWidget* tail = nullptr) {

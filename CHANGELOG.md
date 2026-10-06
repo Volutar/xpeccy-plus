@@ -59,7 +59,7 @@ before that point is upstream's history and is not repeated here.
   on a drop.
 
 - **A Gamepads window**, from the toolbar, the new Input menu or Options, Input: for each player
-  a device and the joystick it stands for - Kempston, either Interface 2 port, Cursor/Protek/AGF,
+  a device and the joystick it stands for - Kempston, either Sinclair port, Cursor/Protek/AGF,
   QAOP or keys of your own. A pad plays at once, nothing to bind. *(thanks to Volutar for the
   design)*
   - Its table shows what the Spectrum gets and what presses it. A row can press any Spectrum
