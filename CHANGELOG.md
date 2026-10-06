@@ -100,7 +100,8 @@ before that point is upstream's history and is not repeated here.
 
 - **Antiflicker** no longer flickers while a window is being dragged, and on Windows a click on
   a title bar no longer holds the picture for half a second. *(thanks to Volutar for the
-  report)*
+  report)* The adaptive modes leave alone a game that scrolls slower than the frame rate, such
+  as Robocop, where the picture blinked as it moved.
 
 - **The docked virtual keyboard** shows over the picture in fullscreen with Low latency on; it
   took clicks without being seen. *(thanks to Volutar for the report)*
