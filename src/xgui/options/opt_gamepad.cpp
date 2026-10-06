@@ -502,7 +502,7 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	radio(GPS_QAOP, "QAOP", 1, 1, cbQaop);
 	radio(GPS_CUSTOM, "Custom", 2, 1)->setToolTip("Spectrum keys of your own");
 	rgrid->setColumnStretch(1, 1);
-	grpScheme->button(GPS_KEMPSTON)->setToolTip("Switched on by itself when in use.\nFire 2-4 come with an 8-button one");
+	grpScheme->button(GPS_KEMPSTON)->setToolTip("Switched on by itself when picked.\nFire 2-4 come with an 8-button one");
 	grid->addWidget(new QLabel("Joystick"), row, 0, Qt::AlignTop);
 	grid->addWidget(radios, row++, 1);
 
