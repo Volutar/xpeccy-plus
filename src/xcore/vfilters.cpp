@@ -1,4 +1,5 @@
 #include <QColor>
+#include <limits.h>
 #include <math.h>
 #include <string.h>
 #include <vector>
@@ -44,28 +45,39 @@ typedef struct {
 static std::vector<afShift> af_bands;		// t-2 to t
 static std::vector<afShift> af_bands_ahead;	// t+2 to t
 
+#define AF_STILL	16	// a band with fewer changed pixels in the sample has not changed
+
 // Picks the band's shift from a sample of its rows. Only a whole-dot half shift
 // can be followed, and only a clear winner over no shift at all is taken.
-static afShift af_find_shift(const uint32_t* cur, int cstride, const uint32_t* old, int wid, int hei, int y0) {
+// A band that stood still between two of the three frames does not alternate: it
+// is a picture scrolled at a fraction of the frame rate, and following its shift
+// would pair every pixel with its neighbour.
+static afShift af_find_shift(const uint32_t* cur, int cstride, const uint32_t* mid, const uint32_t* old, int wid, int hei, int y0) {
 	afShift res = {0, 0};
 	int y1 = y0 + AF_BAND;
 	if (y1 > hei) y1 = hei;
 	int xa = AF_SHIFT_X, xb = wid - AF_SHIFT_X;
 	if (xb <= xa) return res;
-	auto cost = [&](int dx, int dy) {
+	// sampled pixels of a that differ from b moved by dx,dy, counted up to lim
+	auto diff = [&](const uint32_t* a, int astride, const uint32_t* b, int dx, int dy, int lim) {
 		int n = 0;
-		for (int y = y0 + 1; y < y1; y += 3) {	// odd step: rows of both parities
+		for (int y = y0 + 1; (y < y1) && (n < lim); y += 3) {	// odd step: rows of both parities
 			int yo = y - dy;
 			if ((yo < 0) || (yo >= hei)) continue;
-			const uint32_t* pc = cur + y * cstride;
-			const uint32_t* po = old + yo * wid - dx;
+			const uint32_t* pa = a + y * astride;
+			const uint32_t* pb = b + yo * wid - dx;
 			for (int x = xa; x < xb; x += 2)
-				n += (pc[x] != po[x]);
+				n += (pa[x] != pb[x]);
 		}
 		return n;
 	};
+	auto cost = [&](int dx, int dy) {
+		return diff(cur, cstride, old, dx, dy, INT_MAX);
+	};
 	int cost0 = cost(0, 0);
-	if (cost0 < 16) return res;		// a band that changed little keeps no shift
+	if (cost0 < AF_STILL) return res;		// a band that changed little keeps no shift
+	if ((diff(cur, cstride, mid, 0, 0, AF_STILL) < AF_STILL) || (diff(mid, wid, old, 0, 0, AF_STILL) < AF_STILL))
+		return res;
 	int best = -1, bdx = 0, bdy = 0;
 	for (int dy = -AF_SHIFT_Y; dy <= AF_SHIFT_Y; dy++) {
 		for (int dx = -AF_SHIFT_X; dx <= AF_SHIFT_X; dx += 2) {
@@ -85,10 +97,11 @@ static afShift af_find_shift(const uint32_t* cur, int cstride, const uint32_t* o
 	return res;
 }
 
-static void af_fill_shifts(std::vector<afShift>& v, const uint32_t* cur, int cstride, const uint32_t* old, int wid, int hei) {
+static void af_fill_shifts(std::vector<afShift>& v, const uint32_t* cur, int cstride, const uint32_t* mid, const uint32_t* old,
+		int wid, int hei) {
 	v.resize((hei + AF_BAND - 1) / AF_BAND);
 	for (size_t b = 0; b < v.size(); b++)
-		v[b] = af_find_shift(cur, cstride, old, wid, hei, b * AF_BAND);
+		v[b] = af_find_shift(cur, cstride, mid, old, wid, hei, b * AF_BAND);
 }
 
 // A,B,A across three frames, oldest or newest first alike: c is A in the end
@@ -265,8 +278,8 @@ void scrMix(unsigned char* src, unsigned char* dst, int wid, int hei, int stride
 	if (!adaptive) ahead = NULL;
 	const uint32_t* ahead2 = ahead ? ahead + size : NULL;	// t+2; size counts down below
 	if (adaptive) {
-		af_fill_shifts(af_bands, p0, stride / 4, f2, wid, hei);
-		if (ahead) af_fill_shifts(af_bands_ahead, p0, stride / 4, ahead2, wid, hei);
+		af_fill_shifts(af_bands, p0, stride / 4, f1, f2, wid, hei);
+		if (ahead) af_fill_shifts(af_bands_ahead, p0, stride / 4, ahead, ahead2, wid, hei);
 		band = af_bands.data();
 	}
 	ring_rotate();
