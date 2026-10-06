@@ -524,22 +524,15 @@ void xGamepad::setScheme(int s) {
 
 int xGamepad::turboRate() {return trate;}
 
-// a turbo rate as the map counts it, 20 ms ticks between one flip and the next
-static int padRpt(int rate) {
-	return qMax(1, qRound(25.0 / qMax(1, rate)));
-}
-
-// Only the period of what repeats moves, so a fire held down keeps going.
+// Only the rate of what repeats moves, so a fire held down keeps going.
 void xGamepad::setTurboRate(int r) {
 	trate = qBound(1, r, 25);
 	for (int i = 0; i < map.size(); i++) {
-		if (map[i].rpt <= 0) continue;
-		map[i].rpt = padRpt(trate);
-		if (map[i].cnt) map[i].cnt = qMin(map[i].cnt, map[i].rpt);
+		if (map[i].rpt > 0) map[i].rpt = trate;
 	}
 }
 
-// the other way round from padRpt(): an old .pad's repeat period as a rate
+// an old .pad's repeat period, in 20 ms ticks, as a rate
 static int padRateOfRpt(int rpt) {
 	return qBound(1, qRound(25.0 / qMax(1, rpt)), 25);
 }
@@ -560,6 +553,10 @@ void xGamepad::setKeyboard(int k) {
 
 bool xGamepad::isLive() {
 	return isKeyboard() || isOpened();
+}
+
+bool xGamepad::inUse() {
+	return isKeyboard() || !pid.isEmpty();
 }
 
 // A pad not plugged in yet is shown by the names its layout would give, if SDL
@@ -707,7 +704,7 @@ void xGamepad::rebuild() {
 				e.type = in.type;
 				e.num = in.num;
 				e.state = in.state;
-				e.rpt = rows[i].rapid ? padRpt(trate) : 0;
+				e.rpt = rows[i].rapid ? trate : 0;
 				e.rps = 0;
 				e.cnt = 0;
 				map.append(e);
@@ -718,7 +715,7 @@ void xGamepad::rebuild() {
 	// went while down, or that lost its turbo in the off phase, goes into
 	// changes for the machine to be told (takeChanges()), or its key sticks.
 	foreach(const xJoyMapEntry& o, old) {
-		if (!o.rps && !o.cnt) continue;		// not held
+		if (!o.held) continue;
 		int k = 0;
 		while ((k < map.size()) && !padSameBinding(o, map[k])) k++;
 		if (k >= map.size()) {
@@ -730,9 +727,10 @@ void xGamepad::rebuild() {
 		}
 		xJoyMapEntry& e = map[k];
 		e.state = o.state;
+		e.held = 1;
 		if (e.rpt > 0) {
 			e.rps = o.rps;
-			e.cnt = o.cnt ? qMin(o.cnt, e.rpt) : e.rpt;
+			e.cnt = o.cnt;
 		} else {
 			e.rps = 1;
 			e.cnt = 0;
@@ -787,9 +785,9 @@ bool xGamepad::bindsKey(int id) {
 QList<xJoyMapEntry> xGamepad::dropHeld() {
 	QList<xJoyMapEntry> res;
 	for (int i = 0; i < map.size(); i++) {
-		if (!map[i].rps) continue;
-		res.append(map[i]);
+		if (map[i].rps) res.append(map[i]);
 		map[i].rps = 0;
+		map[i].held = 0;
 		map[i].cnt = 0;
 	}
 	return res;
@@ -1306,6 +1304,7 @@ QList<xJoyMapEntry> xGamepad::scanMap(int type, int num, int st) {
 			if ((state == 0) && (type != JOY_HAT)) {
 				xjm.cnt = 0;
 				xjm.rps = 0;
+				xjm.held = 0;
 				presslist.append(xjm);
 			} else {
 				switch(type) {
@@ -1313,31 +1312,28 @@ QList<xJoyMapEntry> xGamepad::scanMap(int type, int num, int st) {
 					case JOY_CAXIS:
 						if (sign(state) == sign(xjm.state)) {
 							xjm.state = st;
-							xjm.cnt = xjm.rpt;
 							xjm.rps = 1;
 						} else {
-							xjm.cnt = 0;
 							xjm.rps = 0;
 						}
+						xjm.held = xjm.rps;
+						xjm.cnt = 0;
 						presslist.append(xjm);
 						break;
 					case JOY_HAT:
 						if (hst & xjm.state) {			// state changed
-							if (state & xjm.state) {	// pressed
-								xjm.cnt = xjm.rpt;
-								xjm.rps = 1;
-							} else {			// released
-								xjm.cnt = 0;
-								xjm.rps = 0;
-							}
+							xjm.rps = (state & xjm.state) ? 1 : 0;	// pressed or released
+							xjm.held = xjm.rps;
+							xjm.cnt = 0;
 							presslist.append(xjm);
 						}
 						break;
 					case JOY_BUTTON:
 					case JOY_CBUTTON:
 					case JOY_KEY:
-						xjm.cnt = xjm.rpt;
+						xjm.cnt = 0;
 						xjm.rps = 1;
+						xjm.held = 1;
 						presslist.append(xjm);
 						break;
 				}
@@ -1347,18 +1343,18 @@ QList<xJoyMapEntry> xGamepad::scanMap(int type, int num, int st) {
 	return presslist;
 }
 
-QList<xJoyMapEntry> xGamepad::repTick() {
+// Turbo. The phase runs on in thousandths of a flip by the time that went,
+// so the rate comes out right on average whatever it is.
+QList<xJoyMapEntry> xGamepad::repTick(int ms) {
 	QList<xJoyMapEntry> presslist;
 	for (int i = 0; i < map.size(); i++) {
 		xJoyMapEntry& xjm = map[i];
-		if (xjm.cnt > 0) {
-			xjm.cnt--;
-			if (xjm.cnt == 0) {
-				xjm.cnt = xjm.rpt;
-				xjm.rps = !xjm.rps;
-				presslist.append(xjm);
-			}
-		}
+		if (!xjm.held || (xjm.rpt <= 0)) continue;
+		xjm.cnt += 2 * xjm.rpt * ms;		// two flips a press
+		if (xjm.cnt < 1000) continue;
+		xjm.cnt -= 1000;
+		xjm.rps = !xjm.rps;
+		presslist.append(xjm);
 	}
 	return presslist;
 }
@@ -1641,6 +1637,30 @@ void xGamepadController::rescan() {
 	meetNew(devs, pick);
 }
 
+// Two players never share a joystick: they would press the same keys. Both
+// QAOPs are one, and Custom is the players' own keys, so it is never taken.
+// A player with no device has nothing to share yet.
+int pad_scheme_kind(int s) {
+	return (s == GPS_QAOPM) ? GPS_QAOP : s;
+}
+
+bool xGamepadController::taken(xGamepad* gp, int s) {
+	xGamepad* other = (gp == gpada) ? gpadb : gpada;
+	if ((s == GPS_CUSTOM) || !gp->inUse() || !other->inUse()) return false;
+	return pad_scheme_kind(other->scheme()) == pad_scheme_kind(s);
+}
+
+bool xGamepadController::pickable(xGamepad* gp, int s) {
+	return (pad_scheme_kind(gp->scheme()) == pad_scheme_kind(s)) || !taken(gp, s);
+}
+
+void xGamepadController::untangle(xGamepad* gp) {
+	if (!taken(gp, gp->scheme())) return;
+	int s = 0;
+	while (taken(gp, s)) s++;		// Custom at the end is never taken
+	gp->setScheme(s);
+}
+
 // A model never met before goes to the first slot with no pad of its own, so
 // plugging one in is all it takes. Once per model: a pad the user took out of
 // a slot is not pushed back in the next time it is plugged.
@@ -1653,8 +1673,9 @@ void xGamepadController::meetNew(const QList<xPadDev>& devs, const int* pick) {
 		seen.append(key);
 		if ((i == pick[0]) || (i == pick[1])) continue;
 		for (int s = 0; s < 2; s++) {
-			if (!slot[s]->padId().isEmpty() || slot[s]->isKeyboard()) continue;
+			if (slot[s]->inUse()) continue;
 			slot[s]->openDev(devs.at(i));
+			untangle(slot[s]);
 			xlog(XLG_INPUT, XLL_INFO, "pad %c: new pad '%s' taken", s ? 'B' : 'A', id.name.toUtf8().data());
 			emit newPad(s);
 			break;

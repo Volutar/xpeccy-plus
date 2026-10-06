@@ -360,6 +360,7 @@ bool MainWin::mapIsHotkey(const xJoyMapEntry& ent) {
 // Presses are dropped while nobody listens: put back what is held. Not
 // hotkeys, or the button that has just lifted a pause sets it again.
 void MainWin::mapReplayHeld(xGamepad* gp) {
+	if (!padLive()) return;
 	for (int i = 0; i < gp->mapSize(); i++) {
 		xJoyMapEntry ent = gp->mapItem(i);
 		if (ent.rps && !mapIsHotkey(ent))
@@ -477,15 +478,18 @@ void MainWin::mapJoystick(xGamepad* gp, Computer* comp, int type, int num, int s
 			(gp == conf.gpctrl->gpada) ? 'A' : 'B',
 			xGamepad::getEntryName(ev).toUtf8().data(), (int)presslist.size());
 	}
-	// a release always goes through, so the map knows what is held; a press
-	// only while the window listens, and paused only a hotkey
-	bool live = isActiveWindow();
-	foreach(xJoyMapEntry xjm, presslist) {
-		if (!xjm.rps) {
-			mapRelease(comp, xjm);
-		} else if (live && (!conf.emu.pause || mapIsHotkey(xjm))) {
-			mapPress(comp, xjm);
-		}
+	foreach(const xJoyMapEntry& xjm, presslist)
+		mapOut(comp, xjm);
+}
+
+// What a binding does to the machine. A release always goes through, so the
+// map knows what is held; a press only while the machine has the user's input
+// (padLive()), and paused only a hotkey.
+void MainWin::mapOut(Computer* comp, const xJoyMapEntry& ent) {
+	if (!ent.rps) {
+		mapRelease(comp, ent);
+	} else if (padLive() && (!conf.emu.pause || mapIsHotkey(ent))) {
+		mapPress(comp, ent);
 	}
 }
 
@@ -581,41 +585,15 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 			emit s_rzx_stop();
 			pause(false, PR_RZX);
 		}
-// buttons autorepeat switcher (added: for 2nd gamepad too)
-		QList<xJoyMapEntry> presslist = conf.gpctrl->gpada->repTick();
-		xJoyMapEntry xjm;
-		foreach(xjm, presslist) {
-			if (xjm.rps) {
-				mapPress(comp, xjm);
-			} else {
-				mapRelease(comp, xjm);
-			}
+// turbo, by the time that really went: this timer is a coarse one
+		long long now = paceClockNs();
+		int ms = (padTurboNs > 0) ? (int)qBound(0LL, (now - padTurboNs) / 1000000, 100LL) : 0;
+		padTurboNs = now;
+		xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
+		for (xGamepad* gp : pads) {
+			foreach(const xJoyMapEntry& xjm, gp->repTick(ms))
+				mapOut(comp, xjm);
 		}
-		presslist = conf.gpctrl->gpadb->repTick();
-		foreach(xjm, presslist) {
-			if (xjm.rps) {
-				mapPress(comp, xjm);
-			} else {
-				mapRelease(comp, xjm);
-			}
-		}
-#if 0
-		for (int i = 0; i < conf.joy.gpad->map.size(); i++) {
-			xJoyMapEntry& xjm = conf.joy.gpad->map[i];
-			if (xjm.cnt > 0) {
-				xjm.cnt--;
-				if (xjm.cnt == 0) {
-					xjm.cnt = xjm.rpt;
-					xjm.rps = !xjm.rps;
-					if (xjm.rps) {
-						mapPress(comp, xjm);
-					} else {
-						mapRelease(comp, xjm);
-					}
-				}
-			}
-		}
-#endif
 // process mouse auto move
 		comp->mouse->xpos += comp->mouse->autox;
 		comp->mouse->ypos += comp->mouse->autoy;
@@ -721,6 +699,15 @@ class xSatFilter : public QObject {
 	private:
 		MainWin* mw;
 };
+
+// The machine has the user's input: this window is the active one, or a tool
+// window of its own is - the gamepads window included, so a pad can be tried
+// in the game. Not a dialog, which wants the keys and buttons for itself.
+bool MainWin::padLive() {
+	if (isActiveWindow()) return true;
+	if (QApplication::activeModalWidget() || !satFilter) return false;
+	return satFilter->wins.contains(QApplication::activeWindow());
+}
 
 void MainWin::addSatellite(QWidget* win) {
 	if (!satFilter) {
@@ -1709,7 +1696,7 @@ void MainWin::initUserMenu() {
 	});
 	cutActs.append({pckAct, pckAct->text(), XCUT_GRABKBD});	// its key, shown; the action is its own
 	cutAction(userMenu, "Virtual keyboard", XCUT_KEYBOARD, "keyboardzx");
-	cutAction(userMenu, "Gamepads", XCUT_PADWIN, "gamepad");
+	padMenu = userMenu->addMenu(QIcon(":/images/gamepad.png"), "Gamepads");
 	// the debugger and its detached panels
 	dbgMenu = userMenu->addMenu(QIcon(":/images/bug.png"), "Debugger");
 	watchAct = dbgMenu->addAction(QIcon(":/images/objective.png"),"Watcher", this, SIGNAL(s_watch_show()));
@@ -1731,6 +1718,7 @@ void MainWin::initUserMenu() {
 	setRoot(dbgMenu, &MainWin::doDebug);
 	setRoot(bookmarkMenu, &MainWin::favManage);
 	setRoot(dskMenu, [this](){diskWin->showWindow();});
+	setRoot(padMenu, &MainWin::padWinShow);
 	resMenu->menuAction()->setData(RES_DEFAULT);
 	setRoot(resMenu, [this](){reset(resMenu->menuAction());});
 }
@@ -2141,11 +2129,12 @@ void MainWin::initMachineMenus() {
 	rewOnAct->setCheckable(true);
 	mac->addSeparator();
 	mac->addAction(muteAct);
-	mac->addSeparator();
-	mac->addAction(pckAct);
-	mac->addAction(mouseAct);
-	mac->addMenu(keyMenu);
-	mac->addAction(cutById.value(XCUT_PADWIN));
+
+	QMenu* inp = new xMenu("Input", this);
+	inp->addAction(pckAct);
+	inp->addAction(mouseAct);
+	inp->addMenu(keyMenu);
+	inp->addMenu(padMenu);
 
 	QMenu* media = new xMenu("Media", this);
 	media->addAction(cutById.value(XCUT_TAPWIN));
@@ -2180,8 +2169,9 @@ void MainWin::initMachineMenus() {
 	// their submenus are filled where the right-click menu fills them, before the
 	// switches are read: what a drive offers is known only once its list is made
 	connect(mac, &QMenu::aboutToShow, this, &MainWin::fillUserMenu);
+	connect(inp, &QMenu::aboutToShow, this, &MainWin::fillUserMenu);
 	connect(media, &QMenu::aboutToShow, this, &MainWin::fillUserMenu);
-	foreach(QMenu* m, QList<QMenu*>() << mac << media << dbg) {
+	foreach(QMenu* m, QList<QMenu*>() << mac << inp << media << dbg) {
 		frame->menuBar()->insertMenu(helpMenu->menuAction(), m);
 		if (fsBar) fsBar->insertMenu(helpMenu->menuAction(), m);
 		connect(m, &QMenu::aboutToHide, this, &MainWin::menuHide);
@@ -2274,6 +2264,7 @@ void MainWin::fillUserMenu() {
 		act = resMenu->addAction("Boots its own firmware");
 		act->setEnabled(false);
 	}
+	fillPadMenu();
 	// fill keymaps menu
 	keyMenu->clear();
 	act = keyMenu->addAction("Default");
@@ -2488,9 +2479,8 @@ void MainWin::watchPads() {
 	// what a change to a player's table took from under a held button
 	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
 	for (xGamepad* gp : pads) {
-		foreach(xJoyMapEntry ent, gp->takeChanges()) {
-			if (ent.rps) mapPress(conf.zx, ent); else mapRelease(conf.zx, ent);
-		}
+		foreach(const xJoyMapEntry& ent, gp->takeChanges())
+			mapOut(conf.zx, ent);
 	}
 	// Fire 2..4 come and go with an 8-button Kempston: a machine switch, Options
 	int k8 = (conf.zx->joy->type == XJ_KEMPSTON) && conf.zx->joy->extbuttons;
@@ -2499,6 +2489,29 @@ void MainWin::watchPads() {
 		conf.gpctrl->gpada->rebuild();
 		conf.gpctrl->gpadb->rebuild();
 		padWin->sync();
+	}
+}
+
+// Gamepads: Manage opens the window, and each player's joystick can be switched
+// right here, mid-game, the way a game's own control menu is answered.
+void MainWin::fillPadMenu() {
+	padMenu->clear();
+	padMenu->addAction(QIcon(":/images/gamepad.png"), "Manage...", this, &MainWin::padWinShow);
+	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
+	for (int p = 0; p < 2; p++) {
+		padMenu->addSection(QString("Player %0").arg(p + 1));
+		for (int s = 0; s < GPS_COUNT; s++) {
+			xGamepad* gp = pads[p];
+			QAction* act = padMenu->addAction(pad_scheme_name(s), this, [this, gp, p, s]() {
+				gp->setScheme(s);
+				padWin->sync();
+				saveConfig();
+				setMessage(QString(" player %0: %1 ").arg(p + 1).arg(pad_scheme_name(s)));
+			});
+			act->setCheckable(true);
+			act->setChecked(gp->scheme() == s);
+			act->setEnabled(conf.gpctrl->pickable(gp, s));
+		}
 	}
 }
 
