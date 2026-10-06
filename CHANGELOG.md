@@ -98,6 +98,9 @@ before that point is upstream's history and is not repeated here.
 - **MIC is heard with the beeper** on the 48K, 128K and +2, a tenth as loud as EAR: speech in
   Cobra's Arc and the second voice in Dizzy are back.
 
+- **128K and +2 paging**: port #3FFD pages memory like #7FFD, as on the real machines, so
+  software that tells a 128K from a +3 that way no longer takes it for a +3.
+
 ## 2026.6.2 - 2026-10-03
 
 ### Fixed
