@@ -2492,26 +2492,23 @@ void MainWin::watchPads() {
 	}
 }
 
-// Gamepads: Manage opens the window, and each player's joystick can be switched
-// right here, mid-game, the way a game's own control menu is answered.
+// Gamepads: Manage opens the window, and the first player's joystick can be
+// switched right here, mid-game, the way a game's own control menu is answered.
+// A second player is rare enough to be set up in the window.
 void MainWin::fillPadMenu() {
 	padMenu->clear();
 	padMenu->addAction(QIcon(":/images/gamepad.png"), "Manage...", this, &MainWin::padWinShow);
-	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
-	for (int p = 0; p < 2; p++) {
-		padMenu->addSection(QString("Player %0").arg(p + 1));
-		for (int s = 0; s < GPS_COUNT; s++) {
-			xGamepad* gp = pads[p];
-			QAction* act = padMenu->addAction(pad_scheme_name(s), this, [this, gp, p, s]() {
-				gp->setScheme(s);
-				padWin->sync();
-				saveConfig();
-				setMessage(QString(" player %0: %1 ").arg(p + 1).arg(pad_scheme_name(s)));
-			});
-			act->setCheckable(true);
-			act->setChecked(gp->scheme() == s);
-			act->setEnabled(conf.gpctrl->pickable(gp, s));
-		}
+	padMenu->addSeparator();
+	xGamepad* gp = conf.gpctrl->gpada;
+	for (int s = 0; s < GPS_COUNT; s++) {
+		QAction* act = padMenu->addAction(pad_scheme_name(s), this, [this, gp, s]() {
+			gp->setScheme(s);
+			padWin->sync();
+			saveConfig();
+			setMessage(QString(" joystick: %0 ").arg(pad_scheme_name(s)));
+		});
+		act->setCheckable(true);
+		act->setChecked(gp->scheme() == s);
 	}
 }
 

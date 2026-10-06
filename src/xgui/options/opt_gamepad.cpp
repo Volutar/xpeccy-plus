@@ -618,13 +618,6 @@ void xGamepadWidget::tableChanged() {
 	tell();
 }
 
-// what the other player has is off here, but for the one this player is on
-void xGamepadWidget::syncSchemes() {
-	foreach(QAbstractButton* rb, grpScheme->buttons())
-		rb->setEnabled(conf.gpctrl->pickable(gpad, grpScheme->id(rb)));
-	cbQaop->setEnabled(grpScheme->button(GPS_QAOP)->isEnabled());
-}
-
 void xGamepadWidget::schemeFromControls() {
 	int id = grpScheme->checkedId();
 	if (id == GPS_QAOP) id = cbQaop->currentData().toInt();
@@ -666,7 +659,6 @@ void xGamepadWidget::refresh() {
 	s = pad_scheme_kind(s);
 	QAbstractButton* rb = grpScheme->button(s);
 	if (rb) rb->setChecked(true);
-	syncSchemes();
 	sldTurbo->blockSignals(true);
 	sldTurbo->setValue(gpad->turboRate());
 	sldTurbo->blockSignals(false);
@@ -691,7 +683,6 @@ void xGamepadWidget::setDevFromCombo() {
 		}
 	}
 	conf.gpctrl->rescan();
-	conf.gpctrl->untangle(gpad);
 	refresh();
 }
 
@@ -746,7 +737,6 @@ void xGamepadWidget::load() {
 		showInfo("Can't read the file");
 		return;
 	}
-	conf.gpctrl->untangle(gpad);		// the file may name the other player's joystick
 	refresh();
 	tell();
 }

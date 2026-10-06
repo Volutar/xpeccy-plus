@@ -264,9 +264,6 @@ class xGamepadController : public QObject {
 	public:
 		xGamepadController(QObject* = nullptr);
 		void rescan();
-		bool taken(xGamepad*, int);	// the other player has that joystick
-		bool pickable(xGamepad*, int);	// not taken, or this player's own
-		void untangle(xGamepad*);	// off a joystick the other player has, to a free one
 		xGamepad* gpada;
 		xGamepad* gpadb;
 		QStringList seen;		// guids of the pads met so far, see newPad

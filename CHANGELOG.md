@@ -69,8 +69,7 @@ before that point is upstream's history and is not repeated here.
   - The PC keyboard can be a player too, on the arrows and Ctrl or on WASD and Space, so a game
     that wants QAOP plays on the arrows.
   - Bindings save to a .pad file and load back; an older .pad or config is brought across.
-  - The Input menu and the toolbar button's list switch either player's joystick mid-game; two
-    players never share one.
+  - The Input menu and the toolbar button's list switch the first player's joystick mid-game.
   - Picking Kempston switches it on for the machine, and a pad never plugged in before takes a
     free player and opens the window.
 
