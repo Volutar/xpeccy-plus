@@ -10,6 +10,7 @@
 
 xPadWin::xPadWin(QWidget* p):QDialog(p) {
 	setWindowTitle("Gamepads");
+	setProperty("xCenterOnce", true);
 	setWindowIcon(QIcon(":/images/gamepad.png"));
 	QTabWidget* tabs = new QTabWidget;
 	xGamepad* pad[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};

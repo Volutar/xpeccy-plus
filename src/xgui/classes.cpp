@@ -1,6 +1,8 @@
 #include "xgui.h"
 #include "../xcore/xcore.h"
 
+#include <QGuiApplication>
+#include <QScreen>
 #include <QPalette>
 #include <QFile>
 #include <QTextBrowser>
@@ -736,6 +738,28 @@ QWidget* fieldPair(QWidget* main, QWidget* tail, bool wide) {
 	if (tail) box->addWidget(tail);
 	if (!wide) box->addStretch(1);
 	return wid;
+}
+
+// Over the middle of a window, frames and all: Qt places a dialog before it
+// knows the invisible borders Windows 11 draws around one, and it lands a few
+// pixels off to the left. Kept on the screen it lands on. Call it shown.
+void center_over(QWidget* dlg, QWidget* win) {
+	if (!dlg || !win) return;
+	QRect fr = dlg->frameGeometry();
+	QPoint at = win->frameGeometry().center() - QPoint(fr.width() / 2, fr.height() / 2);
+	if (QScreen* scr = QGuiApplication::screenAt(win->frameGeometry().center())) {
+		QRect av = scr->availableGeometry();
+		at.setX(qBound(av.left(), at.x(), qMax(av.left(), av.right() + 1 - fr.width())));
+		at.setY(qBound(av.top(), at.y(), qMax(av.top(), av.bottom() + 1 - fr.height())));
+	}
+	dlg->move(at + (dlg->pos() - fr.topLeft()));
+}
+
+// the first time only: after that the window stays where the user put it
+void center_once(QWidget* dlg) {
+	if (!dlg || dlg->property("xCentered").toBool() || !dlg->parentWidget()) return;
+	dlg->setProperty("xCentered", true);
+	center_over(dlg, dlg->parentWidget()->window());
 }
 
 // A page of help from the resources, in a window of its own: made on the first

@@ -38,7 +38,6 @@ class SetupWin : public QDialog {
 		void start();
 		void startHotkeys();
 	private:
-		void centerOver(QWidget*);
 		QDialog* popOut(QWidget*, const char*);
 		void cfgLoaded();
 		void fillRomSlots();

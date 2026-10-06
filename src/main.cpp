@@ -132,6 +132,9 @@ bool xApp::eventFilter(QObject* obj, QEvent* ev) {
 		if (w && w->isWindow()) {
 			applyTitleBarStyle(w);
 			fitFileDialog(w);
+			// a tool window asks for it: once it has a frame to measure
+			if (w->property("xCenterOnce").toBool() && !w->property("xCentered").toBool())
+				QTimer::singleShot(0, w, [w]() {center_once(w);});
 		}
 	}
 	switch (ev->type()) {

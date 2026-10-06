@@ -158,6 +158,12 @@ class xOptSheet {
 // a control and what goes after it, as one field of a sheet
 QWidget* fieldPair(QWidget*, QWidget*, bool);
 
+// a window over the middle of another, and the first time a window is shown,
+// over the one it belongs to (see center_over in classes.cpp); a window with
+// the xCenterOnce property gets the second from xApp on its first show
+void center_over(QWidget*, QWidget*);
+void center_once(QWidget*);
+
 void help_window(QWidget* parent, QDialog** win, const QString& res, const QString& title);
 void label_complete(QLineEdit*);
 bool lab_char(QChar);

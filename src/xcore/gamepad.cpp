@@ -591,7 +591,7 @@ QList<xJoyMapEntry> xGamepad::aliasInputs(int r) {
 	return res;
 }
 
-// The pad inputs every other shown row has, for Fire's leftovers.
+// What presses a joystick row out of the box; liveInputs() takes from it what another row has.
 QList<xJoyMapEntry> xGamepad::defInputs(int i, bool keys) {
 	QList<xJoyMapEntry> res;
 	if ((i < 0) || (i >= PR_JOY)) return res;
@@ -613,29 +613,32 @@ QList<xJoyMapEntry> xGamepad::defInputs(int i, bool keys) {
 	} else if (i > PR_FIRE) {
 		res.append(padSrc(face[i - PR_FIRE]));
 	} else {
-		QList<xJoyMapEntry> used;
-		for (int r = 0; r < rows.size(); r++) {
-			if ((r == PR_FIRE) || !rowShown(r)) continue;
-			used.append(rowInputs(r));
-		}
+		// every face button, but those Fire 2..4 have on their own defaults
 		for (int k = 0; k < 4; k++) {
-			xJoyMapEntry e = padSrc(face[k]);
-			bool taken = false;
-			foreach(const xJoyMapEntry& u, used) {
-				if ((u.type == e.type) && (u.num == e.num)) taken = true;
-			}
-			if (!taken) res.append(e);
+			if ((k > 0) && rowShown(PR_FIRE + k) && rowOnDefaults(PR_FIRE + k)) continue;
+			res.append(padSrc(face[k]));
 		}
+	}
+	return res;
+}
+
+bool xGamepad::rowOnDefaults(int i) {
+	if ((i < 0) || (i >= PR_JOY)) return false;		// an extra row has no defaults
+	return isKeyboard() ? rows[i].keyDef : rows[i].padDef;
+}
+
+QList<xJoyMapEntry> xGamepad::flatInputs(const QList<xJoyMapEntry>& lst) {
+	QList<xJoyMapEntry> res;
+	foreach(const xJoyMapEntry& e, lst) {
+		if (e.type == JOY_VDIR) res.append(aliasInputs(e.num)); else res.append(e);
 	}
 	return res;
 }
 
 QList<xJoyMapEntry> xGamepad::rowInputs(int i) {
 	if ((i < 0) || (i >= rows.size())) return QList<xJoyMapEntry>();
-	const xPadRow& r = rows[i];
-	bool joy = (i < PR_JOY);		// an extra row has no defaults
-	if (isKeyboard()) return (joy && r.keyDef) ? defInputs(i, true) : r.key;
-	return (joy && r.padDef) ? defInputs(i, false) : r.pad;
+	if (rowOnDefaults(i)) return defInputs(i, isKeyboard());
+	return isKeyboard() ? rows[i].key : rows[i].pad;
 }
 
 // one input: the same button, or the same way along an axis or a hat
@@ -656,15 +659,10 @@ static bool padHasInput(const QList<xJoyMapEntry>& lst, const xJoyMapEntry& e) {
 // on its own row stops pressing Up as well. An alias untouched stays itself.
 QList<xJoyMapEntry> xGamepad::liveInputs(int i) {
 	QList<xJoyMapEntry> ins = rowInputs(i);
-	bool def = (i < PR_JOY) && (isKeyboard() ? rows[i].keyDef : rows[i].padDef);
-	if (!def) return ins;
+	if (!rowOnDefaults(i)) return ins;
 	QList<xJoyMapEntry> fixed;
 	for (int r = 0; r < rows.size(); r++) {
-		if ((r == i) || !rowShown(r)) continue;
-		if ((r < PR_JOY) && (isKeyboard() ? rows[r].keyDef : rows[r].padDef)) continue;
-		foreach(const xJoyMapEntry& e, rowInputs(r)) {
-			if (e.type == JOY_VDIR) fixed.append(aliasInputs(e.num)); else fixed.append(e);
-		}
+		if ((r != i) && rowShown(r) && !rowOnDefaults(r)) fixed.append(flatInputs(rowInputs(r)));
 	}
 	QList<xJoyMapEntry> res;
 	foreach(const xJoyMapEntry& e, ins) {
@@ -672,11 +670,12 @@ QList<xJoyMapEntry> xGamepad::liveInputs(int i) {
 			if (!padHasInput(fixed, e)) res.append(e);
 			continue;
 		}
+		QList<xJoyMapEntry> al = aliasInputs(e.num);
 		QList<xJoyMapEntry> keep;
-		foreach(const xJoyMapEntry& a, aliasInputs(e.num)) {
+		foreach(const xJoyMapEntry& a, al) {
 			if (!padHasInput(fixed, a)) keep.append(a);
 		}
-		if (keep.size() == aliasInputs(e.num).size()) res.append(e); else res.append(keep);
+		if (keep.size() == al.size()) res.append(e); else res.append(keep);
 	}
 	return res;
 }
@@ -684,15 +683,17 @@ QList<xJoyMapEntry> xGamepad::liveInputs(int i) {
 // What can be picked from a list, the aliases first: by name for a pad SDL
 // knows the layout of, by number for any other.
 QList<xJoyMapEntry> xGamepad::inputChoices(bool ctrl) {
-	static const char* ctrlSrc[] = {"Ca", "Cb", "Cx", "Cy", "Cleftshoulder", "Crightshoulder",
-		"Xlefttrigger+", "Xrighttrigger+", "Cdpup", "Cdpdown", "Cdpleft", "Cdpright",
-		"Xlefty-", "Xlefty+", "Xleftx-", "Xleftx+", "Xrighty-", "Xrighty+", "Xrightx-", "Xrightx+",
-		"Cleftstick", "Crightstick", "Cback", "Cstart", NULL};
-	static const char* rawSrc[] = {"B0", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11",
-		"H0U", "H0D", "H0L", "H0R", "A1-", "A1+", "A0-", "A0+", "A3-", "A3+", "A2-", "A2+", NULL};
+	static const char* ctrlMore[] = {"Cleftshoulder", "Crightshoulder", "Xlefttrigger+", "Xrighttrigger+",
+		"Xrighty-", "Xrighty+", "Xrightx-", "Xrightx+", "Cleftstick", "Crightstick", "Cback", "Cstart", NULL};
+	static const char* rawMore[] = {"B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11",
+		"A3-", "A3+", "A2-", "A2+", NULL};
 	QList<xJoyMapEntry> res;
 	for (int r = 0; r < 4; r++) res.append(padAlias(r));
-	for (const char** s = ctrl ? ctrlSrc : rawSrc; *s; s++) {
+	for (int k = 0; k < 4; k++) res.append(padSrc(ctrl ? faceCtrl[k] : faceRaw[k]));
+	for (int k = 0; k < 2; k++) {		// the d-pad, then the left stick
+		for (int r = 0; r < 4; r++) res.append(padSrc(ctrl ? aliasCtrl[r][k] : aliasRaw[r][k]));
+	}
+	for (const char** s = ctrl ? ctrlMore : rawMore; *s; s++) {
 		xJoyMapEntry e = padSrc(*s);
 		if (e.type != JOY_NONE) res.append(e);
 	}
@@ -750,15 +751,7 @@ void xGamepad::rebuild() {
 	for (int i = 0; i < rows.size(); i++) {
 		if (!rowShown(i)) continue;
 		QList<xJoyMapEntry> tgt = rowTargets(i);
-		QList<xJoyMapEntry> ins;
-		foreach(const xJoyMapEntry& in, liveInputs(i)) {
-			if (in.type == JOY_VDIR) {
-				ins.append(aliasInputs(in.num));
-			} else {
-				ins.append(in);
-			}
-		}
-		foreach(const xJoyMapEntry& in, ins) {
+		foreach(const xJoyMapEntry& in, flatInputs(liveInputs(i))) {
 			foreach(xJoyMapEntry e, tgt) {
 				e.type = in.type;
 				e.num = in.num;
