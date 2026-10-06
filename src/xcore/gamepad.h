@@ -195,6 +195,7 @@ class xGamepad : public QObject {
 		bool drivesKempston();
 		bool bindsKey(int);
 		QList<xJoyMapEntry> dropHeld();		// let go of everything held, and say what was
+		QList<xJoyMapEntry> takeChanges();	// presses (rps) and releases a rebuild owes the machine
 
 		// the table
 		int scheme();
@@ -239,6 +240,7 @@ class xGamepad : public QObject {
 		int trate;				// turbo, presses a second
 		QList<xPadRow> rows;			// PR_JOY joystick rows, then the extras
 		QList<xJoyMapEntry> map;		// what is in effect, see rebuild()
+		QList<xJoyMapEntry> changes;		// see takeChanges()
 		QMap<int, QMap<int, int> > jState;	// last value handed out, per type and number
 		QMap<int, int> hatPrev;			// last hat value scanMap acted on
 		SDL_Joystick* sjptr;

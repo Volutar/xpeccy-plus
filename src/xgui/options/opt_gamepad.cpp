@@ -42,7 +42,7 @@ int xPadTableModel::padRow(int r) const {
 }
 
 int xPadTableModel::rowCount(const QModelIndex& idx) const {
-	return idx.isValid() ? 0 : shown.size() + 1;
+	return idx.isValid() ? 0 : shown.size();
 }
 
 int xPadTableModel::columnCount(const QModelIndex& idx) const {
@@ -53,7 +53,7 @@ QVariant xPadTableModel::headerData(int sec, Qt::Orientation ori, int role) cons
 	if ((ori != Qt::Horizontal) || (role != Qt::DisplayRole)) return QVariant();
 	switch (sec) {
 		case 0: return QString("Spectrum");
-		case 1: return QString(gpad->isKeyboard() ? "Keyboard" : "Gamepad");
+		case 1: return QString(gpad->isKeyboard() ? "PC Keyboard" : "Gamepad");
 		case 2: return QString("Turbo");
 	}
 	return QVariant();
@@ -62,11 +62,7 @@ QVariant xPadTableModel::headerData(int sec, Qt::Orientation ori, int role) cons
 QVariant xPadTableModel::data(const QModelIndex& idx, int role) const {
 	if (!idx.isValid()) return QVariant();
 	int row = padRow(idx.row());
-	if (row < 0) {				// the adding row
-		if ((role == Qt::DecorationRole) && (idx.column() == 0)) return QIcon(":/images/add.png");
-		if (role == Qt::ToolTipRole) return QString("Double-click to add a binding");
-		return QVariant();
-	}
+	if (row < 0) return QVariant();
 	switch (role) {
 		case Qt::DisplayRole:
 			if (idx.column() == 0) return gpad->rowName(row);
@@ -220,8 +216,7 @@ xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 	db->setContentsMargins(0, 0, 0, 0);
 	db->addWidget(new QLabel("Stick dead zone"));
 	db->addWidget(sldDead, 1);
-	rg->addWidget(deadRow, 3, 0, 1, 2);
-	rg->setRowStretch(4, 1);
+	rg->setRowStretch(3, 1);
 
 	connect(cbAlias, QOverload<int>::of(&QComboBox::activated), this, [this](int i) {
 		if (i < 1) return;
@@ -256,14 +251,19 @@ xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 
 	chkTurbo = new QCheckBox("Turbo: repeats while held");
 	QDialogButtonBox* bbox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+	bbox->button(QDialogButtonBox::Ok)->setIcon(QIcon(":/images/ok-apply.png"));		// as Options has them
+	bbox->button(QDialogButtonBox::Cancel)->setIcon(QIcon(":/images/cancel.png"));
 	connect(bbox, &QDialogButtonBox::accepted, this, &QDialog::accept);
 	connect(bbox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 	QHBoxLayout* cols = new QHBoxLayout;
+	// at least as wide as with every control in it, whatever a row hides
+	left->setMinimumWidth(left->sizeHint().width());
 	cols->addWidget(left);
 	cols->addWidget(padNote(QString::fromUtf8("\xe2\x86\x90")));		// a left arrow: the right side presses the left
 	cols->addWidget(right, 1);
 	QVBoxLayout* lay = new QVBoxLayout(this);
 	lay->addLayout(cols);
+	lay->addWidget(deadRow);
 	lay->addWidget(chkTurbo);
 	lay->addWidget(bbox);
 	// Enter is a key a player may well want to bind
@@ -394,7 +394,7 @@ bool xPadRowEdit::edit(xGamepad* gp, int i) {
 	labKept->setText(xGamepad::targetsName(kept));
 	// the right side: the device in use
 	bool keys = gp->isKeyboard();
-	findChild<QGroupBox*>("inputs")->setTitle(keys ? "Keyboard" : "Gamepad");
+	findChild<QGroupBox*>("inputs")->setTitle(keys ? "PC Keyboard" : "Gamepad");
 	cbAlias->setVisible(!keys);
 	btnDefault->setVisible(joy);
 	labHint->setText(keys ? "Press keys here to bind them" : "Press buttons on the pad to bind them");
@@ -481,7 +481,7 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	table->setContextMenuPolicy(Qt::CustomContextMenu);
 	table->verticalHeader()->hide();
 	table->verticalHeader()->setDefaultSectionSize(table->fontMetrics().height() + 4);
-	// the eight rows of Kempston 8 and the adding one, with no scrolling
+	// the eight rows of Kempston 8 and an extra one, with no scrolling
 	int rowh = qMax(table->verticalHeader()->defaultSectionSize(), table->verticalHeader()->minimumSectionSize());
 	table->setMinimumHeight(rowh * 10 + table->horizontalHeader()->sizeHint().height() + 4);
 	table->setMinimumWidth(420);
@@ -496,6 +496,7 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 		xSideButton* btn = new xSideButton;
 		btn->setText(text);
 		btn->setIcon(QIcon(icon));
+		btn->setAutoDefault(false);		// none of them is what Enter should press
 		return btn;
 	};
 	QPushButton* btnSave = sideButton("Save as...", ":/images/floppy.png");
@@ -509,17 +510,26 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	bbox->addSpacing(12);
 	bbox->addWidget(btnReset);
 	bbox->addStretch(1);
-	QHBoxLayout* tbox = new QHBoxLayout;
-	tbox->addWidget(table, 1);
-	tbox->addLayout(bbox);
-	grid->addLayout(tbox, row++, 0, 1, 2);
-
+	QPushButton* btnAdd = sideButton("Add mapping", ":/images/add.png");
+	btnAdd->setToolTip("A key, a button or an action of your own");
+	QHBoxLayout* abox = new QHBoxLayout;
+	abox->addStretch(1);
+	abox->addWidget(btnAdd);
 	sldTurbo = new QSlider(Qt::Horizontal);
 	sldTurbo->setRange(1, 25);
 	labTurbo = new QLabel;
 	labTurbo->setMinimumWidth(labTurbo->fontMetrics().horizontalAdvance("25 Hz"));
-	grid->addWidget(new QLabel("Turbo rate"), row, 0);
-	grid->addWidget(fieldPair(sldTurbo, labTurbo, true), row++, 1);
+	QHBoxLayout* rbox = new QHBoxLayout;
+	rbox->addWidget(new QLabel("Turbo rate"));
+	rbox->addWidget(fieldPair(sldTurbo, labTurbo, true), 1);
+	QVBoxLayout* tcol = new QVBoxLayout;
+	tcol->addWidget(table, 1);
+	tcol->addLayout(abox);
+	tcol->addLayout(rbox);
+	QHBoxLayout* tbox = new QHBoxLayout;
+	tbox->addLayout(tcol, 1);
+	tbox->addLayout(bbox);
+	grid->addLayout(tbox, row++, 0, 1, 2);
 	grid->addWidget(padNote("Double-click a row to change it, right-click for more"), row++, 0, 1, 2);
 	grid->setRowStretch(row, 1);
 
@@ -536,6 +546,7 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 		if (idx.column() == 2) return;		// that one is the turbo box
 		editRow(model->padRow(idx.row()));
 	});
+	connect(btnAdd, &QPushButton::clicked, this, [this]() {editRow(-1);});
 	connect(table, &QTableView::clicked, this, [this](const QModelIndex& idx) {
 		if (idx.column() == 2) toggleTurbo(model->padRow(idx.row()));
 	});
@@ -564,7 +575,6 @@ int xGamepadWidget::nameWidth() {
 	int w = table->horizontalHeader()->fontMetrics().horizontalAdvance("Spectrum");
 	for (int r = 0; r < model->rowCount(); r++) {
 		int i = model->padRow(r);
-		if (i < 0) continue;
 		QString txt = gpad->rowName(i);
 		w = qMax(w, ((i < PR_JOY) ? fmb : fm).horizontalAdvance(txt));
 	}
