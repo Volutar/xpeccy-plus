@@ -31,7 +31,7 @@ before that point is upstream's history and is not repeated here.
 
 - **SZX snapshots**, the default format now: Save writes one, and so does quick save.
   - A 48K, 128K, +2, +2A, +3, Pentagon or Scorpion snapshot opens in the other emulators that
-    read the format, and theirs open here, inside an RZX recording too.
+    read the format, and theirs open here.
   - One saved here puts the machine back exactly: the sound chips, the beam to the dot, a disk
     command or a tape block halfway through.
   - ZX Evolution, TSConf, ATM, Profi, Phoenix and ALF save as SZX as well, which only Xpeccy+
@@ -102,6 +102,10 @@ before that point is upstream's history and is not repeated here.
   stops the machine. *(thanks to Volutar)*
 
 ### Fixed
+
+- **RZX playback** keeps in step with the recording to its end: the interrupt that ends a
+  recorded frame is taken right there or not at all. Recordings with an SZX snapshot play, and
+  one whose snapshot is kept beside it finds it there.
 
 - **The AY's port registers** keep what is written to them while the port is an input.
 
