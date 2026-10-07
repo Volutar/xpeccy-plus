@@ -27,8 +27,16 @@ before that point is upstream's history and is not repeated here.
   too easily turned. *(thanks to Volutar)*
 
 - **Quick save and quick load** on F5 and F9, and Shift+F9 takes a quick load back: the save
-  lasts the session on any machine, and outlives it on those a .z80 can hold.
-  *(thanks to Volutar)*
+  outlives the session on every machine. *(thanks to Volutar)*
+
+- **SZX snapshots**, the default format now: Save writes one, and so does quick save.
+  - A 48K, 128K, +2, +2A, +3, Pentagon or Scorpion snapshot opens in the other emulators that
+    read the format, and theirs open here, inside an RZX recording too.
+  - One saved here puts the machine back exactly: the sound chips, the beam to the dot, a disk
+    command or a tape block halfway through.
+  - ZX Evolution, TSConf, ATM, Profi, Phoenix and ALF save as SZX as well, which only Xpeccy+
+    opens.
+  - The tape and the disks are linked by name, not carried in the file.
 
 - **Hotkey layouts**: Modern, the new default, and Classic, the keys as they were. Keys you
   change are kept as Custom, whichever layout is picked.
@@ -94,6 +102,8 @@ before that point is upstream's history and is not repeated here.
   stops the machine. *(thanks to Volutar)*
 
 ### Fixed
+
+- **The AY's port registers** keep what is written to them while the port is an input.
 
 - **Tool windows** - the tape and RZX players, the disk manager - open over the middle of the
   main window, not a little to its left. A taller tape player gives the room to its block list.
