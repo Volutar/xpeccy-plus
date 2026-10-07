@@ -582,12 +582,23 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 			grd->addWidget(new QLabel(tr("Player %0").arg(i + 1)), i, 0);
 			grd->addWidget(padSum[i], i, 1);
 		}
+		cbPadFiles = new QCheckBox(tr("Game bindings"));
+		QLabel* lab = new QLabel(tr("Player 1 takes a .pad named after the image, until the next one"));
+		QFont fnt = lab->font();
+		fnt.setItalic(true);
+		lab->setFont(fnt);
 		QPushButton* btn = new QPushButton(tr("Gamepads..."));
 		connect(btn, &QPushButton::clicked, this, [this]() {
 			emit s_padwin();	// returns when the window is closed
 			padSummary();
 		});
 		grd->addWidget(btn, 2, 0, 1, 2, Qt::AlignLeft);
+		// a row of its own, so the players' column keeps its width
+		QHBoxLayout* gbox = new QHBoxLayout;
+		gbox->setSpacing(12);
+		gbox->addWidget(cbPadFiles);
+		gbox->addWidget(lab, 1);
+		grd->addLayout(gbox, 3, 0, 1, 2);
 		ui.verticalLayout_2->addWidget(grp);
 		ui.verticalLayout_2->addStretch(1);
 	}
@@ -1031,6 +1042,7 @@ void SetupWin::start() {
 	sldSensitivity->setValue(comp->mouse->sensitivity * 1000.0f);
 	joyBox->setCurrentIndex((comp->joy->type != XJ_KEMPSTON) ? 0 : comp->joy->extbuttons ? 2 : 1);
 	padSummary();
+	cbPadFiles->setChecked(conf.gpctrl->gameOn);
 // flp
 	diskTypeBox->setCurrentIndex(diskTypeBox->findData(comp->dif->type));
 	bdtbox->setChecked(fdcFlag & FDC_FAST);
@@ -1266,6 +1278,8 @@ void SetupWin::apply() {
 	if (kmname == "none") kmname = "default";
 	conf.kmapName = kmname;
 	loadKeys();
+	conf.gpctrl->gameOn = cbPadFiles->isChecked();
+	if (!conf.gpctrl->gameOn) conf.gpctrl->gameImage(QString());	// own bindings back now
 // flp
 	difSetHW(comp->dif, getRFIData(diskTypeBox));
 	setFlagBit(bdtbox->isChecked(),&fdcFlag,FDC_FAST);

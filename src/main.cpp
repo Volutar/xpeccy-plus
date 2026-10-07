@@ -165,7 +165,8 @@ static void open_cli_file(MainWin& mwin, DebugWin& dbgw, const char* path, int d
 		return;
 	if (!mac.empty())
 		cli_set_machine(mwin, dbgw, mac);
-	load_file(conf.zx, path, FG_ALL, drv);
+	if ((load_file(conf.zx, path, FG_ALL, drv) == ERR_OK) && (drv < 1))
+		mwin.padGame(QString::fromLocal8Bit(path));
 }
 
 // for apple users

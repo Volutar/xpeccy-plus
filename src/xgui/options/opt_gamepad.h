@@ -55,15 +55,19 @@ class xPadRowEdit : public QDialog {
 		bool fresh;				// the next input caught replaces the list
 		QLabel* labFixed;			// a joystick row's target, from the joystick
 		QWidget* tgtBox;
+		QRadioButton* rbVjoy;
 		QRadioButton* rbKey;
 		QRadioButton* rbJoy;
+		QRadioButton* rbMouse;
 		QRadioButton* rbCut;
 		QRadioButton* rbKept;
 		QComboBox* cbKey;
 		QComboBox* cbMod;			// Caps or Symbol Shift held with the key
 		QLabel* labMod;
 		QPushButton* btnPress;
+		QComboBox* cbVjoy;			// the player's joystick, whichever it is
 		QComboBox* cbJoy;
+		QComboBox* cbMouse;
 		QComboBox* cbCut;
 		QLabel* labKept;
 		QList<xJoyMapEntry> kept;		// a target the editor has no control for, as it was
@@ -92,11 +96,13 @@ class xGamepadWidget : public QWidget {
 		int nameWidth();			// the name column, as wide as its longest
 		void setNameWidth(int);
 		std::function<void()> changed;		// the player's input now does something else
+		std::function<void()> edited;		// ...and it was the table: what a .pad keeps
 	private:
 		xGamepad* gpad;
 		xPadTableModel* model;
 		QComboBox* cbDevice;
 		QLabel* labTry;
+		QLabel* labGame;			// player 1 on a game's .pad
 		QButtonGroup* grpScheme;
 		QComboBox* cbQaop;
 		QTableView* table;

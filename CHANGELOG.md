@@ -63,13 +63,16 @@ before that point is upstream's history and is not repeated here.
   a device and the joystick it stands for - Kempston, either Sinclair port, Cursor/Protek/AGF,
   QAOP or keys of your own. A pad plays at once, nothing to bind. *(thanks to Volutar for the
   design)*
-  - Its table shows what the Spectrum gets and what presses it. A row can press any Spectrum
-    key, with Caps or Symbol Shift if need be, a Kempston button or an emulator action, with
-    turbo. Its button is pressed on the pad or picked from a list, and a button given a row of
+  - Its table shows what the Spectrum gets and what presses it. A row can press the player's
+    joystick, whichever is picked, any Spectrum key - True Video, Edit and the like by name -,
+    a Kempston button, the Kempston mouse, which speeds up the longer it moves, or an emulator
+    action, with turbo. Its button is pressed on the pad or picked from a list, and a button given a row of
     its own stops pressing the one it had by default.
   - The PC keyboard can be a player too, on the arrows and Ctrl or on WASD and Space, so a game
     that wants QAOP plays on the arrows.
   - Bindings save to a .pad file and load back; an older .pad or config is brought across.
+    A .pad named after an image comes with it for player 1, over the player's own bindings
+    and until the next image; Save as offers that name, and a change asks where it goes.
   - The Input menu and the toolbar button's list switch the first player's joystick mid-game.
   - Picking Kempston switches it on for the machine, and a pad never plugged in before takes a
     free player and opens the window. A pad coming or going - plugged in or pulled out, woken up

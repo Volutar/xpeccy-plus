@@ -38,7 +38,8 @@ enum {
 	JMAP_JOYB,
 	JMAP_MOUSE,
 	JMAP_CUT,		// an emulator action, dir is its XCUT_*
-	JMAP_ZX			// a Spectrum key, dir is its char in the keymap's zxKey terms
+	JMAP_ZX,		// a Spectrum key, dir is its char in the keymap's zxKey terms
+	JMAP_VJOY		// the player's joystick, whichever it is: dir is XJ_*, pressed as that row
 };
 
 typedef struct {
@@ -71,6 +72,13 @@ enum {
 	GPS_COUNT
 };
 
+// where a change to a game's table goes, once the user has said
+enum {
+	GE_ASK = 0,
+	GE_FILE,		// into the game's .pad
+	GE_NOW			// nowhere: it lasts until the next image
+};
+
 // the host keyboard as a player's device, in the two layouts it comes in
 enum {
 	GPK_NONE = 0,
@@ -101,6 +109,8 @@ QString pad_key_name(int);			// a host key, XKEY_*, as the gui says it
 const char* pad_role_name(int);			// Up, Down...
 QString pad_zx_name(int);			// a Spectrum key, JMAP_ZX's dir
 const char* pad_zx_keys();			// all forty of them, in the order of the keyboard
+QString pad_zx_ext_name(int);			// what Caps Shift and this key make, empty if nothing
+const char* pad_zx_ext_keys();			// the keys that make something with Caps Shift
 
 // One row of a player's table: what the Spectrum gets, and what presses it.
 // A joystick row takes its target from the joystick, and its inputs are the
@@ -228,12 +238,16 @@ class xGamepad : public QObject {
 		// lines with no prefix
 		void saveConf(FILE*, const char*);
 		bool loadConf(const std::string&, const std::string&);
+		QStringList confLines();		// the table as "name = value", no prefix
+		void setConfLines(const QStringList&);
+		bool mergeFile(const std::string&);	// a game's file over this table: what it names wins
 		bool saveFile(const std::string&);
 		bool loadFile(const std::string&);
 		void importMap(std::string);		// a .pad from before the table
 
 		QList<xJoyMapEntry> scanMap(int, int, int);
 		QList<xJoyMapEntry> repTick(int);	// turbo, ms since the last call
+		void mouseStep(int, int*, int*);	// the mouse moved by the inputs held, ms since the last call
 	signals:
 		// type is JOY_*, num the button/axis/hat number, state its value
 		void inputChanged(int, int, int);
@@ -250,6 +264,9 @@ class xGamepad : public QObject {
 		QList<xJoyMapEntry> changes;		// see takeChanges()
 		QMap<int, QMap<int, int> > jState;	// last value handed out, per type and number
 		QMap<int, int> hatPrev;			// last hat value scanMap acted on
+		int mouseMs = 0;			// how long the mouse has been moving, for its speed
+		double mouseRem[2] = {0, 0};		// the part of a dot it has not moved yet
+		double axisLevel(const xJoyMapEntry&);	// how far an input is pushed, 0..1
 		SDL_Joystick* sjptr;
 #if HAVESDL2
 		SDL_GameController* scptr;
@@ -266,6 +283,15 @@ class xGamepadController : public QObject {
 		void rescan();
 		xGamepad* gpada;
 		xGamepad* gpadb;
+		// A game's own table for player 1: <image>.pad beside the image, in
+		// effect until the next image, with the player's own kept meanwhile.
+		bool gameOn = true;			// the option
+		QString gameFile;			// the .pad in effect, empty for none
+		int gameEdit = 0;			// GE_*: where a change to it goes
+		bool gameImage(const QString&);		// an image was opened: true if player 1's table changed
+		void gameKeep();			// the game's table becomes the player's own
+		QStringList tableLines(int);		// what config.conf keeps for a player
+		bool gameSave(const QString&);		// player 1's table as a game's file: without the player's own rows
 		QStringList seen;		// guids of the pads met so far, see newPad
 	signals:
 		void devicesChanged();
@@ -275,6 +301,8 @@ class xGamepadController : public QObject {
 	protected:
 		void timerEvent(QTimerEvent*);
 	private:
+		QStringList gameOwn;			// player 1's own table while a game's is in effect
+		QStringList gameLines;			// what the game's file said, as confLines() has it
 		void meetNew(const QList<xPadDev>&, const int*);
 };
 
