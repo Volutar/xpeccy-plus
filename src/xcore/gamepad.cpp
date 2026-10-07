@@ -233,10 +233,11 @@ static int padParseTarget(const char* str, xJoyMapEntry* jent, bool enc) {
 		case JMAP_JOY:		// JU, JD, JL, JR, JF, J2, J3, J4
 		case JMAP_JOYB:
 		case JMAP_VJOY:		// VU, VD, VL, VR, VF
-			jent->dir = padGetId(str[1], kjoyChars);
+			jent->dir = padGetId(arg.isEmpty() ? 0 : arg.at(0).toLatin1(), kjoyChars);
 			break;
 		case JMAP_MOUSE:	// MD, ML, M[ M| M] M^ Mv
-			jent->dir = padGetId(str[1], kmouChars);
+			// the argument, not str[1]: [ | ] ^ are percent-encoded in config.conf
+			jent->dir = padGetId(arg.isEmpty() ? 0 : arg.at(0).toLatin1(), kmouChars);
 			break;
 		case JMAP_CUT: {	// Akey.rewind
 			xShortcut* cut = find_shortcut_name(arg.toUtf8().data());
