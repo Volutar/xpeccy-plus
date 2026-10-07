@@ -38,7 +38,8 @@ enum {
 	JMAP_JOYB,
 	JMAP_MOUSE,
 	JMAP_CUT,		// an emulator action, dir is its XCUT_*
-	JMAP_ZX			// a Spectrum key, dir is its char in the keymap's zxKey terms
+	JMAP_ZX,		// a Spectrum key, dir is its char in the keymap's zxKey terms
+	JMAP_VJOY		// the player's joystick, whichever it is: dir is XJ_*, pressed as that row
 };
 
 typedef struct {
@@ -101,6 +102,8 @@ QString pad_key_name(int);			// a host key, XKEY_*, as the gui says it
 const char* pad_role_name(int);			// Up, Down...
 QString pad_zx_name(int);			// a Spectrum key, JMAP_ZX's dir
 const char* pad_zx_keys();			// all forty of them, in the order of the keyboard
+QString pad_zx_ext_name(int);			// what Caps Shift and this key make, empty if nothing
+const char* pad_zx_ext_keys();			// the keys that make something with Caps Shift
 
 // One row of a player's table: what the Spectrum gets, and what presses it.
 // A joystick row takes its target from the joystick, and its inputs are the
@@ -234,6 +237,7 @@ class xGamepad : public QObject {
 
 		QList<xJoyMapEntry> scanMap(int, int, int);
 		QList<xJoyMapEntry> repTick(int);	// turbo, ms since the last call
+		void mouseStep(int, int*, int*);	// the mouse moved by the inputs held, ms since the last call
 	signals:
 		// type is JOY_*, num the button/axis/hat number, state its value
 		void inputChanged(int, int, int);
@@ -250,6 +254,9 @@ class xGamepad : public QObject {
 		QList<xJoyMapEntry> changes;		// see takeChanges()
 		QMap<int, QMap<int, int> > jState;	// last value handed out, per type and number
 		QMap<int, int> hatPrev;			// last hat value scanMap acted on
+		int mouseMs = 0;			// how long the mouse has been moving, for its speed
+		double mouseRem[2] = {0, 0};		// the part of a dot it has not moved yet
+		double axisLevel(const xJoyMapEntry&);	// how far an input is pushed, 0..1
 		SDL_Joystick* sjptr;
 #if HAVESDL2
 		SDL_GameController* scptr;

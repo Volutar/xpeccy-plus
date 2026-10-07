@@ -402,7 +402,7 @@ void MainWin::mapRelease(Computer* comp, xJoyMapEntry ent) {
 			joyRelease(comp->joyb, ent.dir);
 			break;
 		case JMAP_MOUSE:
-			mouseRelease(comp->mouse, ent.dir);
+			mouseRelease(comp->mouse, ent.dir);	// the buttons: mouseStep() moves it
 			break;
 		case JMAP_CUT:
 			xcut_release(ent.dir);
@@ -438,7 +438,8 @@ void MainWin::mapPress(Computer* comp, xJoyMapEntry ent) {
 			joyPress(comp->joyb, ent.dir);
 			break;
 		case JMAP_MOUSE:
-			mousePress(comp->mouse, ent.dir, abs(ent.state / 4096));
+			if (ent.dir >= XM_LMB)		// buttons and wheel
+				mousePress(comp->mouse, ent.dir, 0);	// the moves are mouseStep()'s
 			break;
 		case JMAP_CUT:
 			xkey_press(ent.dir, true);
@@ -593,6 +594,12 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 		for (xGamepad* gp : pads) {
 			foreach(const xJoyMapEntry& xjm, gp->repTick(ms))
 				mapOut(comp, xjm);
+			int dx, dy;
+			gp->mouseStep(ms, &dx, &dy);
+			if (padLive() && !conf.emu.pause) {
+				comp->mouse->xpos += dx;
+				comp->mouse->ypos += dy;
+			}
 		}
 // process mouse auto move
 		comp->mouse->xpos += comp->mouse->autox;

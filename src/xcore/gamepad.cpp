@@ -99,6 +99,7 @@ const xCharDir devChars[] = {
 	{'M', JMAP_MOUSE},
 	{'A', JMAP_CUT},
 	{'Z', JMAP_ZX},
+	{'V', JMAP_VJOY},
 	{'-', JMAP_NONE}
 };
 
@@ -229,6 +230,7 @@ static int padParseTarget(const char* str, xJoyMapEntry* jent, bool enc) {
 			break;
 		case JMAP_JOY:		// JU, JD, JL, JR, JF, J2, J3, J4
 		case JMAP_JOYB:
+		case JMAP_VJOY:		// VU, VD, VL, VR, VF
 			jent->dir = padGetId(str[1], kjoyChars);
 			break;
 		case JMAP_MOUSE:	// MD, ML, M[ M| M] M^ Mv
@@ -262,6 +264,7 @@ static QString padTargetStr(const xJoyMapEntry& jent) {
 			break;
 		case JMAP_JOY:
 		case JMAP_JOYB:
+		case JMAP_VJOY:
 			arg = QChar(padGetChar(jent.dir, kjoyChars));
 			break;
 		case JMAP_MOUSE:
@@ -425,6 +428,27 @@ const char* pad_role_name(int r) {
 // in the keymap's zxKey terms: digits, small letters, Enter, Caps, Symbol, Space
 const char* pad_zx_keys() {
 	return "1234567890qwertyuiopasdfghjklEC" "zxcvbnmS ";
+}
+
+// what the 128K editor and BASIC make of Caps Shift held with a key
+static const struct {
+	char key;
+	const char* name;
+} zxExtTab[] = {
+	{'1', "Edit"}, {'2', "Caps Lock"}, {'3', "True Video"}, {'4', "Inv Video"},
+	{'5', "Cursor left"}, {'6', "Cursor down"}, {'7', "Cursor up"}, {'8', "Cursor right"},
+	{'9', "Graphics"}, {'0', "Delete"}, {' ', "Break"}, {'S', "Extend mode"}, {0, NULL}
+};
+
+const char* pad_zx_ext_keys() {
+	return "1234567890 S";
+}
+
+QString pad_zx_ext_name(int c) {
+	for (int i = 0; zxExtTab[i].name; i++) {
+		if (zxExtTab[i].key == c) return QString(zxExtTab[i].name);
+	}
+	return QString();
 }
 
 QString pad_zx_name(int c) {
@@ -720,6 +744,11 @@ static QString padTargetShort(const xJoyMapEntry& e) {
 }
 
 QString xGamepad::targetsName(const QList<xJoyMapEntry>& lst) {
+	// Caps Shift and a key, by what they make: "Cursor left"
+	if ((lst.size() == 2) && (lst[0].dev == JMAP_ZX) && (lst[0].dir == 'C') && (lst[1].dev == JMAP_ZX)) {
+		QString ext = pad_zx_ext_name(lst[1].dir);
+		if (!ext.isEmpty()) return ext;
+	}
 	QStringList res;
 	foreach(const xJoyMapEntry& e, lst) res.append(padTargetShort(e));
 	return res.join(" + ");
@@ -745,12 +774,33 @@ static bool padSameBinding(const xJoyMapEntry& a, const xJoyMapEntry& b) {
 }
 
 // Every input of every shown row, times every target of it.
+// the joystick row an XJ_* is
+static int vjoyRole(int xj) {
+	static const int bit[PR_JOY] = {XJ_UP, XJ_DOWN, XJ_LEFT, XJ_RIGHT, XJ_FIRE, XJ_BUT2, XJ_BUT3, XJ_BUT4};
+	for (int r = 0; r < PR_JOY; r++) {
+		if (bit[r] == xj) return r;
+	}
+	return PR_JOY;
+}
+
 void xGamepad::rebuild() {
 	QList<xJoyMapEntry> old;
 	old.swap(map);
 	for (int i = 0; i < rows.size(); i++) {
 		if (!rowShown(i)) continue;
-		QList<xJoyMapEntry> tgt = rowTargets(i);
+		QList<xJoyMapEntry> tgt;
+		foreach(const xJoyMapEntry& t, rowTargets(i)) {
+			if (t.dev != JMAP_VJOY) {
+				tgt.append(t);
+				continue;
+			}
+			int r = vjoyRole(t.dir);
+			if (r < PR_JOY) {
+				foreach(const xJoyMapEntry& v, rowTargets(r)) {
+					if (v.dev != JMAP_VJOY) tgt.append(v);
+				}
+			}
+		}
 		foreach(const xJoyMapEntry& in, flatInputs(liveInputs(i))) {
 			foreach(xJoyMapEntry e, tgt) {
 				e.type = in.type;
@@ -1427,6 +1477,57 @@ QList<xJoyMapEntry> xGamepad::repTick(int ms) {
 	return presslist;
 }
 
+double xGamepad::axisLevel(const xJoyMapEntry& e) {
+	int v = 32767;
+	if ((e.type == JOY_AXIS) && sjptr) v = SDL_JoystickGetAxis(sjptr, e.num);
+#if HAVESDL2
+	if ((e.type == JOY_CAXIS) && scptr) v = SDL_GameControllerGetAxis(scptr, (SDL_GameControllerAxis)e.num);
+#endif
+	if ((e.type != JOY_AXIS) && (e.type != JOY_CAXIS)) return 1.0;	// a button is all the way
+	v = abs(v);
+	if (v <= dead) return 0.0;
+	return qMin(1.0, double(v - dead) / double(32767 - dead));
+}
+
+// A slow start for the single dot, as Art Studio's own keys have it: well
+// under a dot a frame at first, a screen width in under a second at the top.
+#define MOUSE_SLOW	20.0		// dots a second when it starts
+#define MOUSE_FAST	400.0		// ...once it has moved for MOUSE_RAMP ms
+#define MOUSE_RAMP	800
+
+void xGamepad::mouseStep(int ms, int* dx, int* dy) {
+	double vx = 0;
+	double vy = 0;
+	foreach(const xJoyMapEntry& e, map) {
+		if (!e.held || (e.dev != JMAP_MOUSE)) continue;
+		double lev = axisLevel(e);
+		lev *= lev;		// fine control near the middle of a stick
+		switch (e.dir) {
+			case XM_UP: vy += lev; break;
+			case XM_DOWN: vy -= lev; break;
+			case XM_LEFT: vx -= lev; break;
+			case XM_RIGHT: vx += lev; break;
+		}
+	}
+	*dx = 0;
+	*dy = 0;
+	if ((vx == 0) && (vy == 0)) {
+		mouseMs = 0;
+		mouseRem[0] = 0;
+		mouseRem[1] = 0;
+		return;
+	}
+	mouseMs = qMin(mouseMs + ms, MOUSE_RAMP);
+	double k = double(mouseMs) / MOUSE_RAMP;
+	double speed = MOUSE_SLOW + (MOUSE_FAST - MOUSE_SLOW) * k * k;
+	mouseRem[0] += vx * speed * ms / 1000.0;
+	mouseRem[1] += vy * speed * ms / 1000.0;
+	*dx = (int)mouseRem[0];
+	*dy = (int)mouseRem[1];
+	mouseRem[0] -= *dx;
+	mouseRem[1] -= *dy;
+}
+
 // Report a value only when it moved. Keeping that here rather than in
 // scanMap means it stays right whether or not anyone is listening.
 void xGamepad::emitChanged(int type, int num, int state) {
@@ -1598,6 +1699,10 @@ QString xGamepad::getTargetName(const xJoyMapEntry& jent) {
 			for (i = 0; i < sizeof(joyBit) / sizeof(int); i++)
 				if (jent.dir == joyBit[i]) dir = joyDir[i];
 			return QString((jent.dev == JMAP_JOY) ? "Kempston %0" : "Joystick 2 %0").arg(dir);
+		case JMAP_VJOY:
+			for (i = 0; i < sizeof(joyBit) / sizeof(int); i++)
+				if (jent.dir == joyBit[i]) dir = joyDir[i];
+			return QString("Joystick %0").arg(dir);
 		case JMAP_MOUSE:
 			for (i = 0; i < sizeof(mouBit) / sizeof(int); i++)
 				if (jent.dir == mouBit[i]) dir = mouDir[i];
