@@ -86,6 +86,19 @@ void rzxGetFrame(Computer* comp) {
 									work = 0;
 								}
 								break;
+							case 0x02: {			// what Fuse records with
+								unsigned char* snap = (len > 1) ? (unsigned char*)malloc(len - 1) : NULL;
+								int ok = snap && (fread(snap, len - 1, 1, comp->rzx.file) == 1)
+									&& (loadSZX_buf(comp, snap, len - 1) == ERR_OK);
+								free(snap);
+								if (ok) {
+									fseek(comp->rzx.file, pos + len, SEEK_SET);
+								} else {
+									rzxStop(comp);
+									work = 0;
+								}
+								break;
+							}
 							default:
 								xlog(XLG_FILE, XLL_WARN, "unknown snapshot type");
 								rzxStop(comp);
@@ -142,6 +155,8 @@ int rzxGetSnapType(char* ext) {
 		res = 0;
 	} else if (!strncmp(ext, "z80", 3) || !strncmp(ext, "Z80", 3)) {
 		res = 1;
+	} else if (!strncmp(ext, "szx", 3) || !strncmp(ext, "SZX", 3)) {
+		res = 2;
 	}
 	return res;
 }
@@ -198,6 +213,7 @@ int rzxGetHardware(const char* name) {
 				switch (rzxGetSnapType(shd.ext)) {
 					case 0: res = sna_hardware_of(shd.usl); break;	// the size says it
 					case 1: res = z80_hardware_of(head, n); break;
+					case 2: res = szx_hardware_of(head, n); break;
 				}
 			}
 			break;					// playback starts from the first one

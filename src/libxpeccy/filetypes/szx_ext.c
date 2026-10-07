@@ -359,6 +359,7 @@ static const szxField fld_tape[] = {
 	FLD(Tape, detectRegs),
 	FLD(Tape, detectReads),
 	FLD(Tape, detectAlien),
+	FLDRAW("bits3", offsetof(Tape, detectAlien) + 4, 4),	// alien
 	FLD(Tape, paused),
 	FLD(Tape, portReads),
 	FLD(Tape, loaderReads),
@@ -541,8 +542,11 @@ void szx_ext_save(szxBuf* b, Computer* comp) {
 		rec_fields(b, XR_SDC, comp->sdc, fld_sdc);
 	if (comp->gs && comp->gs->enable)
 		ext_gs_save(b, comp);
-	if (comp->tape && comp->tape->blkCount)
-		rec_fields(b, XR_TAPE, comp->tape, fld_tape);
+	if (comp->tape && comp->tape->blkCount) {
+		Tape tape = *comp->tape;
+		tape.blkChange = 0;		// the window's to clear, not the tape's
+		rec_fields(b, XR_TAPE, &tape, fld_tape);
+	}
 }
 
 // --- reading ---
@@ -830,6 +834,7 @@ static void ext_fdc(Computer* comp, const unsigned char* p, size_t n) {
 	fdc->tns = t->tns;
 	fdc->hold = t->hold;
 	fdc->drdy = t->drdy;
+	fdc->pos = t->pos;
 	fdc->hlt = t->hlt;
 	fdc->hut = t->hut;
 	fdc->srt = t->srt;
@@ -1080,6 +1085,9 @@ void szx_ext_media(Computer* comp) {
 			tape->wait = tmp_.wait;
 			tape->armed = tmp_.armed;
 			tape->tail = tmp_.tail;
+			tape->userStop = tmp_.userStop;
+			tape->autoPlay = tmp_.autoPlay;
+			tape->alien = tmp_.alien;
 			tape->detectLastTick = tmp_.detectLastTick;
 			tape->detectLastPc = tmp_.detectLastPc;
 			memcpy(tape->detectRegs, tmp_.detectRegs, sizeof(tape->detectRegs));
@@ -1101,6 +1109,10 @@ void szx_ext_media(Computer* comp) {
 			tape->block = tmp_.block;
 			tape->pos = tmp_.pos;
 			tape->sigLen = tmp_.sigLen;
+		} else if ((id == XR_DIF) && comp->dif && (comp->dif->type != DIF_NONE)) {
+			// putting a disk in starts its door closing; the snapshot's had closed
+			EXT_TAKE(DiskIF, comp->dif, fld_dif, p, n)
+			comp->dif->doors = tmp_.doors;
 		} else if (((id & 0x00ffffff) == (XR_FLP & 0x00ffffff)) && (idx >= 0) && (idx < 4)) {
 			if (comp->dif && (comp->dif->type != DIF_NONE))
 				ext_flp(comp->dif->flp[idx], p, n);

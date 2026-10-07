@@ -593,6 +593,7 @@ static void szx_mount(Computer* comp, const QString& snap) {
 			if (!flp->insert || !flp->path || (QFileInfo(QString::fromLocal8Bit(flp->path)).canonicalFilePath() != path)) {
 				if (saveChangedDisk(comp, drv) != ERR_OK) continue;
 				if (inf->load(comp, path.toLocal8Bit().data(), drv) != ERR_OK) continue;
+				disk_boot(comp, drv, inf->id);		// as opening it does
 			}
 			flp->protect = m->protect ? 1 : 0;
 			flp->trk = m->cylinder;
