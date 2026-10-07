@@ -1686,6 +1686,9 @@ void MainWin::initUserMenu() {
 	connect(conf.gpctrl, &xGamepadController::padOn, this, [this](int slot) {
 		setMessage(QString(" gamepad on: player %0 ").arg(slot + 1));
 	});
+	connect(conf.gpctrl, &xGamepadController::padOff, this, [this](int slot) {
+		setMessage(QString(" gamepad off: player %0 ").arg(slot + 1));
+	});
 
 	cutAction(userMenu, "Tape player", XCUT_TAPWIN, "tape");
 	cutAction(userMenu, "RZX player", XCUT_RZXWIN, "video");

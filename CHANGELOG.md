@@ -72,8 +72,8 @@ before that point is upstream's history and is not repeated here.
   - Bindings save to a .pad file and load back; an older .pad or config is brought across.
   - The Input menu and the toolbar button's list switch the first player's joystick mid-game.
   - Picking Kempston switches it on for the machine, and a pad never plugged in before takes a
-    free player and opens the window. A pad coming back - plugged in or woken up - says so on
-    the screen.
+    free player and opens the window. A pad coming or going - plugged in or pulled out, woken up
+    or gone to sleep - says so on the screen.
 
 ### Changed
 

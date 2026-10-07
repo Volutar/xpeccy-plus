@@ -8,6 +8,7 @@
 #include <QKeyEvent>
 #include <QMenu>
 #include <QStyleOptionButton>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #include "opt_gamepad.h"
@@ -145,7 +146,6 @@ void xInputBox::mousePressEvent(QMouseEvent* ev) {
 
 xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 	setModal(true);
-	setProperty("xCenterOnce", true);
 	gpad = NULL;
 	idx = -1;
 	fresh = true;
@@ -216,9 +216,15 @@ xPadRowEdit::xPadRowEdit(QWidget* p):QDialog(p) {
 	inBox = new xInputBox;
 	inBox->setMinimumWidth(220);
 	rg->addWidget(inBox, 0, 0, 1, 2);
-	btnPick = new QPushButton("Add from list");
+	btnPick = new xSideButton;
+	btnPick->setText("Add from list");
+	btnPick->setIcon(QIcon(":/images/add.png"));
 	btnPick->setToolTip("An input picked by name: no pad needed");
-	btnPick->setMenu(new QMenu(btnPick));
+	pickMenu = new QMenu(btnPick);
+	// a menu of its own, not the button's: style sheets draw that arrow over the text
+	connect(btnPick, &QPushButton::clicked, this, [this]() {
+		pickMenu->exec(btnPick->mapToGlobal(QPoint(0, btnPick->height())));
+	});
 	QPushButton* btnClear = new QPushButton("Clear");
 	btnDefault = new QPushButton("Defaults");
 	QHBoxLayout* rb = new QHBoxLayout;
@@ -422,14 +428,13 @@ bool xPadRowEdit::edit(xGamepad* gp, int i) {
 	bool keys = gp->isKeyboard();
 	findChild<QGroupBox*>("inputs")->setTitle(keys ? "PC Keyboard" : "Gamepad");
 	btnPick->setVisible(!keys);
-	QMenu* pick = btnPick->menu();
-	pick->clear();
+	pickMenu->clear();
 	choices = xGamepad::inputChoices(gp->asController());
 	for (int n = 0; n < choices.size(); n++) {
 		if ((n > 0) && (choices.at(n).type != JOY_VDIR) && (choices.at(n - 1).type == JOY_VDIR))
-			pick->addSeparator();		// the aliases, then the inputs one by one
+			pickMenu->addSeparator();		// the aliases, then the inputs one by one
 		xJoyMapEntry e = choices.at(n);
-		pick->addAction(xGamepad::getEntryName(e), this, [this, e]() {
+		pickMenu->addAction(xGamepad::getEntryName(e), this, [this, e]() {
 			addInput(e);
 			inBox->setFocus();
 		});
@@ -449,7 +454,15 @@ bool xPadRowEdit::edit(xGamepad* gp, int i) {
 		addInput(e);
 	});
 	inBox->setFocus();
+	ensurePolished();		// sized with the style sheet's fonts and margins, before it is placed
+	btnPick->setMinimumWidth(btnPick->sizeHint().width());	// it elides rather than push the box wider
+	// and with the rows this one hides or shows: in a hidden window nothing tells the layouts
+	foreach(QWidget* w, findChildren<QWidget*>()) w->updateGeometry();
+	layout()->activate();
 	adjustSize();
+	// over the middle each time, a row of another kind being another size; once
+	// shown, as the last of the sizes only comes through then
+	QTimer::singleShot(0, this, [this]() {center_over(this, parentWidget()->window());});
 	bool ok = false;
 	if (exec() == QDialog::Accepted) {
 		if (!own || takeTarget()) {

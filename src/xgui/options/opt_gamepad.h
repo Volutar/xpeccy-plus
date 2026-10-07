@@ -7,6 +7,7 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QLabel>
+#include <QMenu>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSlider>
@@ -67,7 +68,8 @@ class xPadRowEdit : public QDialog {
 		QLabel* labKept;
 		QList<xJoyMapEntry> kept;		// a target the editor has no control for, as it was
 		xInputBox* inBox;
-		QPushButton* btnPick;			// "Add from list", every input by name
+		QPushButton* btnPick;			// "Add from list"
+		QMenu* pickMenu;			// every input, by name
 		QList<xJoyMapEntry> choices;		// what its menu offers
 		QPushButton* btnDefault;
 		QLabel* labHint;
