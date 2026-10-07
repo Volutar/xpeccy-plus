@@ -768,14 +768,27 @@ void xGamepadWidget::updateList() {
 		if (!gpad->isKeyboard() && devs.at(i).id.sameAs(want))
 			sel = cbDevice->count() - 1;
 	}
+	QList<xPadId> gone;
 	foreach(const xPadId& k, padsKnown) {
 		bool here = false;
 		foreach(const xPadDev& d, devs) {
 			if (d.id.sameAs(k)) here = true;
 		}
-		if (here) continue;
-		cbDevice->addItem(QString("%0 (not connected)").arg(k.title()), k.toConfig());
-		if (!gpad->isKeyboard() && k.sameAs(want)) sel = cbDevice->count() - 1;
+		if (!here) gone.append(k);
+	}
+	// two of a model, both out, are told apart by number
+	for (int i = 0; i < gone.size(); i++) {
+		QString t = gone.at(i).title();
+		int same = 0;
+		int nth = 0;
+		for (int j = 0; j < gone.size(); j++) {
+			if (gone.at(j).title() != t) continue;
+			same++;
+			if (j <= i) nth++;
+		}
+		if (same > 1) t += QString(" #%0").arg(nth);
+		cbDevice->addItem(QString("%0 (not connected)").arg(t), gone.at(i).toConfig());
+		if (!gpad->isKeyboard() && gone.at(i).sameAs(want)) sel = cbDevice->count() - 1;
 	}
 	cbDevice->setCurrentIndex(sel);
 	cbDevice->blockSignals(false);
