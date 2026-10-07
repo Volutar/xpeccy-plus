@@ -112,17 +112,15 @@ void ay_set_reg(aymChip* chip, int val) {
 			chip->chanE.vol = (val & 4) ? 0 : 31;
 			chip->chanE.step = (val & 4) ? 1 : -1;
 			break;
+		// the port latch takes the byte whichever way the port is set; it
+		// only reaches the pins while the port is an output
 		case 0x0e:
-			if (chip->reg[7] & 0x40) {
-				chip->reg[14] = val & 0xff;
-				if (chip->xwr) chip->xwr(0, val, chip->xptr);
-			}
+			chip->reg[14] = val & 0xff;
+			if ((chip->reg[7] & 0x40) && chip->xwr) chip->xwr(0, val, chip->xptr);
 			break;
 		case 0x0f:
-			if (chip->reg[7] & 0x80) {
-				chip->reg[15] = val & 0xff;
-				if (chip->xwr) chip->xwr(0, val, chip->xptr);
-			}
+			chip->reg[15] = val & 0xff;
+			if ((chip->reg[7] & 0x80) && chip->xwr) chip->xwr(0, val, chip->xptr);
 			break;
 	}
 }
