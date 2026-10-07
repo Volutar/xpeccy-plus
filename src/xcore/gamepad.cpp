@@ -1740,6 +1740,7 @@ void xGamepadController::timerEvent(QTimerEvent* e) {
 	// a slot waiting for a pad of its own: a pad never met before goes to one
 	// with none, and newPad says that
 	bool waits[2] = {gpada->inUse() && !gpada->isOpened(), gpadb->inUse() && !gpadb->isOpened()};
+	bool had[2] = {gpada->isOpened() != 0, gpadb->isOpened() != 0};
 	while (SDL_PollEvent(&ev)) {
 		switch (ev.type) {
 			case SDL_JOYDEVICEREMOVED:
@@ -1759,6 +1760,8 @@ void xGamepadController::timerEvent(QTimerEvent* e) {
 		emit devicesChanged();
 		if (waits[0] && gpada->isOpened()) emit padOn(0);
 		if (waits[1] && gpadb->isOpened()) emit padOn(1);
+		if (had[0] && !gpada->isOpened()) emit padOff(0);
+		if (had[1] && !gpadb->isOpened()) emit padOff(1);
 	}
 #endif
 	gpada->update();

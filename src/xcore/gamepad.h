@@ -271,6 +271,7 @@ class xGamepadController : public QObject {
 		void devicesChanged();
 		void newPad(int);		// a model never met before took slot 0/1
 		void padOn(int);		// slot 0/1 has its own pad again: plugged in or woken up
+		void padOff(int);		// slot 0/1 lost its pad: pulled out or gone to sleep
 	protected:
 		void timerEvent(QTimerEvent*);
 	private:
