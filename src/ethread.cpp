@@ -100,6 +100,7 @@ static FILE* file = nullptr;
 xThread::xThread() {
 	sndNsFixed = 0;
 	benchStop = -1;
+	benchRzx = 0;
 	earBlock = -1;
 	conf.emu.fast = 0;
 	finish = 0;
@@ -761,6 +762,20 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	int rwOn = conf.emu.rewind.on;
 	conf.emu.rewind.on = (rw > 0);
 	rzx_begin(comp);
+	// A recording's frame N, to compare with another player stopped there: the
+	// frames it counts, not the video's, and past the INT that ends it if the
+	// cpu takes one
+	if (benchRzx > 0) {
+		while (comp->rzx.play && (comp->rzx.fCurrent < benchRzx))
+			compExec(comp);
+		CPU* cpu = comp->cpu;
+		if ((cpu->intrq & Z80_INT) && cpu->flgACK && cpu->flgIFF1 && !cpu->flgNOINT)
+			compExec(comp);
+		fprintf(stdout, "rzx: frame %i, %s\n", comp->rzx.fCurrent, comp->rzx.play ? "playing" : "stopped");
+		fflush(stdout);
+		fastload_hold(0);
+		return 0;
+	}
 	// warm up: a tape or disk being started, a demo getting to its part. In
 	// the mode that is measured: where fast mode hands the machine back is not
 	// where a cycle with sound does, so a switch between them would leave the

@@ -529,6 +529,8 @@ int main(int ac,char** av) {
 				bnSteps = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-split")) {
 				bnSplit = 1;
+			} else if (!strcmp(parg,"--bench-rzx")) {
+				ethread.benchRzx = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-state")) {
 				bnState = av[i++];
 			} else if (!strcmp(parg,"--bench-loops")) {
@@ -635,7 +637,7 @@ int main(int ac,char** av) {
 #endif
 	if ((bnFrames > 0) || bnSave || bnState) {
 #ifdef XBENCH
-		if ((bnFrames > 0) || (bnSkip > 0) || (bnSteps > 0))
+		if ((bnFrames > 0) || (bnSkip > 0) || (bnSteps > 0) || (ethread.benchRzx > 0))
 			ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot, bnNodraw, bnHeat, bnRewind, bnSteps, bnSplit);
 		if (bnSave)
 			save_file(conf.zx, bnSave, FG_ALL, 0);

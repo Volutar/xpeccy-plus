@@ -16,6 +16,7 @@ class xThread : public QThread {
 		int bench(int frames, int skip, int full, int hash, const char* prof, const char* shot, int nodraw, int heat, int rewind, int steps, int split);
 #endif
 		int benchStop;		// the bench ends the cycle at this frame, -1: never
+		int benchRzx;		// the bench stops after the INT that ends this frame of a recording, 0: no
 		int earBlock;		// the block the rom reads only part of, -1: none
 	public slots:
 		void stop();
