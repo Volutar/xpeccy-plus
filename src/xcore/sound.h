@@ -77,6 +77,8 @@ void sndUpdateSpeed(void);
 // machine, which is exactly when a waveform is worth looking at.
 int snd_scope(short*, int);		// the newest sub-samples, oldest first
 double snd_scope_rate();		// how many of them a second
+// the mixer's history, back to what a start leaves it at (the bench)
+void snd_pipe_reset();
 void snd_scope_step(Computer*, int);	// carry the capture over ns of a held machine
 
 void sndInit();

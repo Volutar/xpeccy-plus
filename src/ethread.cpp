@@ -749,7 +749,7 @@ static unsigned long long bench_mix(unsigned long long h, const unsigned char* p
 // a budget of 256 samples per cycle, the way the pacer hands them out.
 // hash folds every finished frame and every sample into one number, so two
 // builds can be shown to run the machine identically.
-int xThread::bench(int frames, int skip, int full, int hash, const char* prof, const char* shot, int nodraw, int heat, int rw) {
+int xThread::bench(int frames, int skip, int full, int hash, const char* prof, const char* shot, int nodraw, int heat, int rw, int steps, int split) {
 	Computer* comp = conf.zx;
 	if (!comp) return 0;
 	blockSignals(true);
@@ -774,6 +774,15 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 		emuCycle(comp);
 		emu_unlock();
 	}
+	// and on to an instruction anywhere in the frame, where a snapshot is
+	// harder to take than at a frame boundary. A frame ended on the way is not
+	// counted, so the frames below are counted from here, as after a load.
+	while ((steps-- > 0) && !conf.emu.pause) {
+		emu_lock();
+		snd_scope_step(comp, compExec(comp));
+		comp->flgFRM = 0;
+		emu_unlock();
+	}
 	conf.emu.fast = full ? 0 : 1;
 	if (nodraw) vid_set_nodraw(comp->vid, 1);	// what the picture itself costs
 	if (heat) {
@@ -796,6 +805,12 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 #endif
 	unsigned long long hFrm = 0xcbf29ce484222325ULL;
 	unsigned long long hSnd = 0xcbf29ce484222325ULL;
+	// a run cut here by a snapshot and one that goes on have to hash alike: the
+	// mixer starts over and the frame drawn across the cut is left out
+	if (split) {
+		sndNsFixed = 0;
+		snd_pipe_reset();
+	}
 	int spos = snd_ring_fill_pos();
 	long long t0 = paceClockNs();
 	int tk0 = comp->tickCount;
@@ -809,7 +824,9 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 		emu_unlock();
 		if (hash) {
 			if (conf.vid.fcount != fl) {
+				int first = (fl == f0);
 				fl = conf.vid.fcount;
+				if (split && first) continue;
 				Video* vid = comp->vid;
 				for (int y = 0; y < vid->full.y; y++)
 					hFrm = bench_mix(hFrm, bufimg + y * bytesPerLine, vid->full.x * 8);

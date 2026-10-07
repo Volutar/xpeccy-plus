@@ -320,6 +320,10 @@ size_t xstate_diff(const xState* st, Computer* comp, const unsigned char* other,
 	return diff;
 }
 
+size_t xstate_chunk_size(const xState* st, int i) {
+	return (st && (i >= 0) && (i < st->m.count)) ? st->m.chunk[i].size : 0;
+}
+
 int xstate_chunk_at(const xState* st, size_t off, size_t* inner) {
 	int i;
 	for (i = 0; st && (i < st->m.count); i++) {

@@ -70,6 +70,8 @@ unsigned char* xstate_put_begin(xState*, const void* meta);
 size_t xstate_diff(const xState*, Computer*, const unsigned char* other, size_t* first);
 // which chunk an offset falls into, and where inside it (for a report)
 int xstate_chunk_at(const xState*, size_t off, size_t* inner);
+// how big a chunk is, 0 past the last
+size_t xstate_chunk_size(const xState*, int);
 
 #ifdef __cplusplus
 }

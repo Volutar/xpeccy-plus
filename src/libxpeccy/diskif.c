@@ -235,8 +235,7 @@ void dif_align_flps(DiskIF* dif, FDC* fdc, int n0, int n1, int n2, int n3) {
 }
 
 DiskIF* difCreate(int type, cbirq cb, void* p) {
-	DiskIF* dif = (DiskIF*)malloc(sizeof(DiskIF));
-	dif->doors = 0;
+	DiskIF* dif = (DiskIF*)calloc(1, sizeof(DiskIF));
 	dif->fdc = fdc_create(cb, p);
 	fdc_set_irqn(dif->fdc, IRQ_FDC, IRQ_FDC_RD, IRQ_FDC_WR);
 	for (int i = 0; i < 4; i++) {

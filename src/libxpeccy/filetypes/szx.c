@@ -44,7 +44,6 @@ enum {
 #define SZZ_HALTED	2
 #define SZZ_FSET	4
 
-#define SZR_COMPRESSED	1		// RAMP, ROM, GSRP
 
 #define SZB_CONNECTED	1		// B128
 #define SZB_CUSTOMROM	2
@@ -283,7 +282,9 @@ static void szx_rd_z80r(Computer* comp, szxLoad* ld, const unsigned char* p, siz
 	cpu->flgIFF1 = p[26] ? 1 : 0;
 	cpu->flgIFF2 = p[27] ? 1 : 0;
 	cpu->regIM = p[28] & 3;
-	cpu->inten = Z80_NMI | (cpu->flgIFF1 ? Z80_INT : 0);
+	// INT stays enabled from an EI until a DI, while IFF1 drops in a handler:
+	// IFF2 set means an EI came after the last DI, so RETN has interrupts back
+	cpu->inten = Z80_NMI | ((cpu->flgIFF1 || cpu->flgIFF2) ? Z80_INT : 0);
 	ld->tick = (int)rd_dword(p + 29);
 	// 33: what is left of the INT pulse, which the machine works out itself
 	if (ld->version >= 0x0101) {
@@ -363,8 +364,20 @@ static void szx_rd_b128(Computer* comp, szxLoad* ld, const unsigned char* p, siz
 	}
 	if (flags & SZB_CUSTOMROM)
 		xlog(XLG_FILE, XLL_INFO, "szx: custom TR-DOS rom not taken, the machine's own is used");
+	// The system register is set, not written: a write that takes MR high
+	// would start the RESTORE a real WD1793 runs coming out of reset, where the
+	// machine saved had finished it long ago. Whatever the reset before the
+	// load started is dropped for the same reason.
 	FDC* fdc = comp->dif->fdc;
-	difOut(comp->dif, 0xff, p[5], 1);		// the system register
+	int sys = p[5];
+	comp->dif->sys = sys;
+	fdc->flp = fdc->flop[sys & 3];
+	fdc->mr = (sys & 0x04) ? 1 : 0;
+	fdc->block = (sys & 0x08) ? 1 : 0;
+	fdc->side = (sys & 0x10) ? 0 : 1;
+	fdc->mfm = (sys & 0x40) ? 1 : 0;
+	fdc->plan = NULL;
+	fdc->idle = 1;
 	fdc->trk = p[6];
 	fdc->sec = p[7];
 	fdc->data = p[8];
@@ -617,8 +630,8 @@ int loadSZX_buf(Computer* comp, const unsigned char* buf, size_t len) {
 	comp->vid->brdcol = ld.fe & 7;
 	comp->vid->nextbrd = ld.fe & 7;
 
-	if (ext) szx_ext_load(comp, ext, extlen);
-	comp_set_frame_tick(comp, szx_ext_tick(comp, ld.tick));
+	if (!ext || !szx_ext_load(comp, ext, extlen))
+		comp_set_frame_tick(comp, ld.tick);
 	return ERR_OK;
 }
 

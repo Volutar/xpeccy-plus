@@ -503,7 +503,7 @@ void ataWr(ATADev* dev, int prt, unsigned short val) {
 // IDE interface
 
 IDE* ideCreate(int tp, cbirq cb, void* p) {
-	IDE* ide = (IDE*)malloc(sizeof(IDE));
+	IDE* ide = (IDE*)calloc(1, sizeof(IDE));
 	ide->master = ataCreate(IDE_NONE, cb, p, IRQ_HDD_PRI);
 	ide->slave = ataCreate(IDE_NONE, cb, p, IRQ_HDD_PRI);
 	ide->curDev = ide->master;

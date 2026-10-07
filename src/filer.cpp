@@ -71,6 +71,7 @@ static int save_szx(Computer* comp, const char* name, int drv) {
 		dptr[i] = disk[i].isEmpty() ? NULL : disk[i].constData();
 	}
 	szx_set_links(tape.isEmpty() ? NULL : tape.constData(), dptr);
+	szx_set_machine(conf.macId.c_str());
 	int res = saveSZX(comp, name, drv);
 	szx_set_links(NULL, NULL);
 	return res;
@@ -598,6 +599,7 @@ static void szx_mount(Computer* comp, const QString& snap) {
 		}
 		xlog(XLG_FILE, XLL_INFO, "szx: %s %s", (m->kind == SZX_MED_TAPE) ? "tape" : "disk", path.toLocal8Bit().constData());
 	}
+	szx_ext_media(comp);
 }
 
 int load_file(Computer* comp, const char* name, int id, int drv) {

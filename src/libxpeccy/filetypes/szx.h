@@ -38,9 +38,14 @@ int szx_media(const szxMedia** list);
 // creator block's own data, NULL when the block is someone else's.
 const unsigned char* szx_ext_find(const unsigned char* data, size_t len, size_t* extlen);
 int szx_ext_hardware(const unsigned char* file, size_t len);	// SNAP_HW_* of a file of ours
-void szx_ext_load(Computer*, const unsigned char* ext, size_t len);
-int szx_ext_tick(Computer*, int tick);		// where in the frame to stand the machine
+// 1 when it stood the machine where in the frame it was, exactly
+int szx_ext_load(Computer*, const unsigned char* ext, size_t len);
 int szx_ext_can_save(Computer*);		// a machine the spec cannot name, but we can
+// what the tape and the drives were doing, once the program has put the media
+// of szx_media() back in
+void szx_ext_media(Computer*);
+// the id of the running machine, written into the file with it
+void szx_set_machine(const char* id);
 int szx_libspectrum_swap(const unsigned char* data, size_t len);
 
 typedef struct szxBuf szxBuf;
@@ -66,6 +71,8 @@ void sb_dword(szxBuf*, unsigned);
 void sb_block(szxBuf*, unsigned id, szxBuf* body);
 int sb_deflate(szxBuf*, const unsigned char*, size_t);
 void sb_free(szxBuf*);
+
+#define SZR_COMPRESSED	1	// RAMP, ROM, GSRP: the data is zlib
 
 #define BID(a,b,c,d)	((unsigned)(a) | ((unsigned)(b) << 8) | ((unsigned)(c) << 16) | ((unsigned)(d) << 24))
 
