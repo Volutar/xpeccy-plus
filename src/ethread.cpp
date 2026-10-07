@@ -562,6 +562,10 @@ void xThread::emuCycle(Computer* comp) {
 			conf.vid.fctime = paceClockNs();	// for the fps readout
 			conf.vid.fcount++;
 			comp->frmCount++;
+			int mdx, mdy;
+			pad_mouse_frame(comp->vid->nsPerFrame, &mdx, &mdy);
+			comp->mouse->xpos += mdx;
+			comp->mouse->ypos += mdy;
 			ldc_frame();
 			autostart_frame(comp);
 			fastload_frame(comp);

@@ -1,5 +1,7 @@
 #include <QDebug>
 #include <QKeyEvent>
+#include <atomic>
+#include <cmath>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -1554,7 +1556,7 @@ double xGamepad::axisLevel(const xJoyMapEntry& e) {
 #define MOUSE_FAST	400.0		// ...once it has moved for MOUSE_RAMP ms
 #define MOUSE_RAMP	800
 
-void xGamepad::mouseStep(int ms, int* dx, int* dy) {
+void xGamepad::mouseSpeed(int ms, double* sx, double* sy) {
 	double vx = 0;
 	double vy = 0;
 	foreach(const xJoyMapEntry& e, map) {
@@ -1568,23 +1570,46 @@ void xGamepad::mouseStep(int ms, int* dx, int* dy) {
 			case XM_RIGHT: vx += lev; break;
 		}
 	}
-	*dx = 0;
-	*dy = 0;
+	*sx = 0;
+	*sy = 0;
 	if ((vx == 0) && (vy == 0)) {
 		mouseMs = 0;
-		mouseRem[0] = 0;
-		mouseRem[1] = 0;
 		return;
 	}
 	mouseMs = qMin(mouseMs + ms, MOUSE_RAMP);
 	double k = double(mouseMs) / MOUSE_RAMP;
 	double speed = MOUSE_SLOW + (MOUSE_FAST - MOUSE_SLOW) * k * k;
-	mouseRem[0] += vx * speed * ms / 1000.0;
-	mouseRem[1] += vy * speed * ms / 1000.0;
-	*dx = (int)mouseRem[0];
-	*dy = (int)mouseRem[1];
-	mouseRem[0] -= *dx;
-	mouseRem[1] -= *dy;
+	*sx = vx * speed;
+	*sy = vy * speed;
+}
+
+// The gui's timer does not beat with the frames - on Windows it comes 15 or
+// 31 ms apart - so moving the mouse from it left a frame in three still. The
+// speed crosses over, and every frame moves by its own length of it.
+static std::atomic<int> padMouseVel[2];		// dots a second, x1000
+
+void pad_mouse_set(double vx, double vy) {
+	padMouseVel[0].store((int)lround(vx * 1000), std::memory_order_relaxed);
+	padMouseVel[1].store((int)lround(vy * 1000), std::memory_order_relaxed);
+}
+
+void pad_mouse_frame(int ns, int* dx, int* dy) {
+	static double rem[2] = {0, 0};		// the part of a dot not moved yet
+	int vx = padMouseVel[0].load(std::memory_order_relaxed);
+	int vy = padMouseVel[1].load(std::memory_order_relaxed);
+	*dx = 0;
+	*dy = 0;
+	if (!vx && !vy) {
+		rem[0] = 0;
+		rem[1] = 0;
+		return;
+	}
+	rem[0] += vx / 1000.0 * ns / 1e9;
+	rem[1] += vy / 1000.0 * ns / 1e9;
+	*dx = (int)rem[0];
+	*dy = (int)rem[1];
+	rem[0] -= *dx;
+	rem[1] -= *dy;
 }
 
 // Report a value only when it moved. Keeping that here rather than in

@@ -403,7 +403,7 @@ void MainWin::mapRelease(Computer* comp, xJoyMapEntry ent) {
 			joyRelease(comp->joyb, ent.dir);
 			break;
 		case JMAP_MOUSE:
-			mouseRelease(comp->mouse, ent.dir);	// the buttons: mouseStep() moves it
+			mouseRelease(comp->mouse, ent.dir);	// the buttons: pad_mouse_frame() moves it
 			break;
 		case JMAP_CUT:
 			xcut_release(ent.dir);
@@ -440,7 +440,7 @@ void MainWin::mapPress(Computer* comp, xJoyMapEntry ent) {
 			break;
 		case JMAP_MOUSE:
 			if (ent.dir >= XM_LMB)		// buttons and wheel
-				mousePress(comp->mouse, ent.dir, 0);	// the moves are mouseStep()'s
+				mousePress(comp->mouse, ent.dir, 0);	// the moves are pad_mouse_frame()'s
 			break;
 		case JMAP_CUT:
 			xkey_press(ent.dir, true);
@@ -592,16 +592,18 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 		int ms = (padTurboNs > 0) ? (int)qBound(0LL, (now - padTurboNs) / 1000000, 100LL) : 0;
 		padTurboNs = now;
 		xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
+		double mvx = 0;
+		double mvy = 0;
 		for (xGamepad* gp : pads) {
 			foreach(const xJoyMapEntry& xjm, gp->repTick(ms))
 				mapOut(comp, xjm);
-			int dx, dy;
-			gp->mouseStep(ms, &dx, &dy);
-			if (padLive() && !conf.emu.pause) {
-				comp->mouse->xpos += dx;
-				comp->mouse->ypos += dy;
-			}
+			double vx, vy;
+			gp->mouseSpeed(ms, &vx, &vy);
+			mvx += vx;
+			mvy += vy;
 		}
+		bool mlive = padLive() && !conf.emu.pause;
+		pad_mouse_set(mlive ? mvx : 0, mlive ? mvy : 0);	// moved a frame at a time, by the emulation
 // process mouse auto move
 		comp->mouse->xpos += comp->mouse->autox;
 		comp->mouse->ypos += comp->mouse->autoy;
