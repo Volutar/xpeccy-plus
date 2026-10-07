@@ -452,11 +452,20 @@ bool xPadRowEdit::edit(xGamepad* gp, int i) {
 	foreach(QWidget* w, QList<QWidget*>() << rbKey << cbKey << btnPress << labMod << cbMod) w->setVisible(own);
 	foreach(QWidget* w, QList<QWidget*>() << rbVjoy << cbVjoy << rbJoy << cbJoy << rbMouse << cbMouse << rbCut << cbCut)
 		w->setVisible(own && !custom);
-	QList<xJoyMapEntry> tgt = (i < 0) ? QList<xJoyMapEntry>() : gp->rowTargets(i);
+	// A new row goes on from the last extra one: the same kind, the next item,
+	// so a run of keys or mouse moves is bound one after another. With none,
+	// another fire, turbo or not, is the likeliest.
+	QList<xJoyMapEntry> tgt;
+	bool next = false;
+	if (i >= 0) {
+		tgt = gp->rowTargets(i);
+	} else if (gp->rowCount() > PR_JOY) {
+		tgt = gp->rowTargets(gp->rowCount() - 1);
+		next = true;
+	}
 	kept.clear();
 	cbKey->setCurrentIndex(0);
 	cbMod->setCurrentIndex(0);
-	// a new row most likely wants another fire, turbo or not
 	cbVjoy->setCurrentIndex(cbVjoy->findData(XJ_FIRE));
 	if (custom) rbKey->setChecked(true); else rbVjoy->setChecked(true);
 	if (!tgt.isEmpty()) {
@@ -497,6 +506,19 @@ bool xPadRowEdit::edit(xGamepad* gp, int i) {
 				kept = tgt;
 				rbKept->setChecked(true);
 				break;
+		}
+	}
+	if (next) {
+		if (!kept.isEmpty()) {		// an old PC key is no kind to go on with
+			kept.clear();
+			rbVjoy->setChecked(true);
+		}
+		QComboBox* cb = rbVjoy->isChecked() ? cbVjoy : rbKey->isChecked() ? cbKey : rbJoy->isChecked() ? cbJoy
+			: rbMouse->isChecked() ? cbMouse : rbCut->isChecked() ? cbCut : nullptr;
+		if (cb) {
+			int n = cb->currentIndex() + 1;
+			while ((n < cb->count()) && !cb->itemData(n).isValid()) n++;	// past a separator
+			if (n < cb->count()) cb->setCurrentIndex(n);
 		}
 	}
 	rbKept->setVisible(own && !kept.isEmpty());
