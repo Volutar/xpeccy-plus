@@ -17,7 +17,7 @@
    <iconset resource="../xpeccy.qrc">
     <normaloff>:/images/tape.png</normaloff>:/images/tape.png</iconset>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,10,0">
    <item>
     <layout class="QHBoxLayout" name="layTop" stretch="10,0,0">
      <item>
