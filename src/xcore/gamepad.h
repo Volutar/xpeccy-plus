@@ -247,7 +247,7 @@ class xGamepad : public QObject {
 
 		QList<xJoyMapEntry> scanMap(int, int, int);
 		QList<xJoyMapEntry> repTick(int);	// turbo, ms since the last call
-		void mouseStep(int, int*, int*);	// the mouse moved by the inputs held, ms since the last call
+		void mouseSpeed(int, double*, double*);	// dots a second the inputs held move the mouse, ms since the last call
 	signals:
 		// type is JOY_*, num the button/axis/hat number, state its value
 		void inputChanged(int, int, int);
@@ -265,7 +265,6 @@ class xGamepad : public QObject {
 		QMap<int, QMap<int, int> > jState;	// last value handed out, per type and number
 		QMap<int, int> hatPrev;			// last hat value scanMap acted on
 		int mouseMs = 0;			// how long the mouse has been moving, for its speed
-		double mouseRem[2] = {0, 0};		// the part of a dot it has not moved yet
 		double axisLevel(const xJoyMapEntry&);	// how far an input is pushed, 0..1
 		SDL_Joystick* sjptr;
 #if HAVESDL2
@@ -305,6 +304,11 @@ class xGamepadController : public QObject {
 		QStringList gameLines;			// what the game's file said, as confLines() has it
 		void meetNew(const QList<xPadDev>&, const int*);
 };
+
+// The mouse the pads move: the gui sets its speed as it reads them, the
+// emulation takes it a frame at a time (dots moved in a frame of that many ns).
+void pad_mouse_set(double vx, double vy);
+void pad_mouse_frame(int ns, int* dx, int* dy);
 
 // gamecontrollerdb.txt, if the user dropped one in the config dir
 void padLoadControllerDb();
