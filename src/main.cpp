@@ -635,7 +635,7 @@ int main(int ac,char** av) {
 		app.setStyle(QStyleFactory::create("Fusion"));
 	}
 #endif
-	if ((bnFrames > 0) || bnSave || bnState) {
+	if ((bnFrames > 0) || bnSave || bnState || (ethread.benchRzx > 0)) {
 #ifdef XBENCH
 		if ((bnFrames > 0) || (bnSkip > 0) || (bnSteps > 0) || (ethread.benchRzx > 0))
 			ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot, bnNodraw, bnHeat, bnRewind, bnSteps, bnSplit);

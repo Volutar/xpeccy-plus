@@ -137,17 +137,18 @@ void zx_irq(Computer* comp, int t) {
 			// instruction later, and not while the pulse lasts (IRQ_CPU_ACK).
 			// An EI just before does not hold it off: the recorders count the
 			// EI delay in T, and the frame boundary starts the count again.
-			comp->intVector = 0xff;
-			comp->cpu->intrq |= Z80_INT;
-			comp->cpu->flgACK = 1;
-			comp->cpu->flgNOINT = 0;
-			vid_set_int_frame(comp->vid, comp->vid->intsize);
-			// a frame of no fetches runs nothing and takes no INT
+			// A snapshot recorded at the frame's end is loaded first, and the
+			// INT is the loaded machine's; a frame of no fetches runs nothing.
 			do {
 				comp->rzx.fCurrent++;
 				comp->rzx.fCount--;
 				rzxGetFrame(comp);
 			} while (comp->rzx.play && (comp->rzx.frm.fetches == 0));
+			comp->intVector = 0xff;
+			comp->cpu->intrq |= Z80_INT;
+			comp->cpu->flgACK = 1;
+			comp->cpu->flgNOINT = 0;
+			vid_set_int_frame(comp->vid, comp->vid->intsize);
 			break;
 		case IRQ_VID_IEND:			// frame int end (for tsconf see in tslab.c)
 			comp->cpu->intrq &= ~Z80_INT;

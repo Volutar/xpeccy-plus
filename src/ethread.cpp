@@ -522,8 +522,10 @@ void xThread::emuCycle(Computer* comp) {
 			// tape trap	TODO: rework it as a system breakpoint
 			// this runs on every instruction, and the rom is paged in for most
 			// of them: the pc straight from the Z80, not through the cpu's
-			// register table
-			if (zx_rom_active(comp)) {
+			// register table. None of it while a recording plays: the machine
+			// takes its input from the recording alone.
+			if (comp->rzx.play) {
+			} else if (zx_rom_active(comp)) {
 				int pc = comp->cpu->regPC;
 				if ((pc == LD_ROM_BASE + LDC_START) || (pc == LD_ROM_BASE + LDC_EDGE1)) {	// load: ix:addr, de:len
 					tap_catch_load(comp, pc == LD_ROM_BASE + LDC_START);
@@ -532,7 +534,8 @@ void xThread::emuCycle(Computer* comp) {
 				}
 			}
 			// a copy of LD-BYTES in ram is trapped as the rom's is, once seen
-			if (tape_flash()) {
+			if (comp->rzx.play) {
+			} else if (tape_flash()) {
 				int start;
 				if (ldc_step(comp, &start))
 					tap_catch_load(comp, start, comp->tape->ldBase, comp->tape->ldDir);
@@ -540,7 +543,7 @@ void xThread::emuCycle(Computer* comp) {
 				ldc_forget(comp);
 			}
 			// a loader's edge loop, counted instead of run
-			if (fastload_on)
+			if (fastload_on && !comp->rzx.play)
 				sndNsFixed += NS_TO_FIXED(fastload_step(comp));
 		}
 		// sound buffer update. In fast mode there is nothing to mix - the
