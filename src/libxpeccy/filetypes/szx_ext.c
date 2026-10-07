@@ -562,12 +562,14 @@ static int ext_next(const unsigned char* ext, size_t len, size_t* pos, unsigned*
 	return 1;
 }
 
-// the creator data of a file in memory, NULL when it is no file of ours
+// the creator data of a file in memory, NULL when it is no file of ours. Only
+// the head of a file may be there: MACH comes first, and that is what is read.
 static const unsigned char* ext_of_file(const unsigned char* file, size_t len, size_t* extlen) {
-	if ((len < 16) || memcmp(file, "ZXST", 4)) return NULL;
+	if ((len < 16 + 36) || memcmp(file, "ZXST", 4)) return NULL;
 	if (rd_dword(file + 8) != BID('C','R','T','R')) return NULL;
 	size_t n = rd_dword(file + 12);
-	if ((n < 36) || (n > len - 16)) return NULL;
+	if (n > len - 16) n = len - 16;
+	if (n < 36) return NULL;
 	return szx_ext_find(file + 16 + 36, n - 36, extlen);
 }
 
@@ -611,11 +613,7 @@ void szx_machine_of(const char* name, char* id, size_t idsize) {
 	size_t n = fread(buf, 1, sizeof(buf), file);
 	fclose(file);
 	const unsigned char* ext = ext_of_file(buf, n, &extlen);
-	if (ext) {
-		// the record may run past what was read: it is the first, so cut it there
-		if (extlen > n - (size_t)(ext - buf)) extlen = n - (size_t)(ext - buf);
-		ext_mach(ext, extlen, core, sizeof(core), id, idsize);
-	}
+	if (ext) ext_mach(ext, extlen, core, sizeof(core), id, idsize);
 }
 
 // libspectrum before 0.5.0 put F before A in the Z80R block where the spec has

@@ -412,6 +412,8 @@ int z80CanSave(Computer* comp) {
 
 int saveZ80(Computer* comp, const char* name, int drv) {
 	int snap = z80_snap_hw(comp->hw->id);
+	if ((snap == SNAP_HW_128K) && (comp->snapModel == SNAP_HW_PLUS2))
+		snap = SNAP_HW_PLUS2;		// the same core, the definition tells them apart
 	if (snap == SNAP_HW_UNKNOWN) return ERR_Z80_HW;
 	const z80Hardware* hwi = z80_hw(snap);
 	FILE* file = fopen(name, "wb");
