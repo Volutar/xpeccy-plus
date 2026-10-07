@@ -2528,11 +2528,14 @@ void MainWin::padGameEdited() {
 	QString name = QFileInfo(c->gameFile).fileName();
 	if (c->gameEdit == GE_ASK) {
 		QMessageBox box(QMessageBox::Question, "Gamepads",
-			QString("Player 1 is on %0, which came with the image.\nWhere should this change go?").arg(name),
+			QString("Player 1's bindings came with this game, from %0.\nSave your change?").arg(name),
 			QMessageBox::NoButton, QApplication::activeWindow());
-		QPushButton* btFile = box.addButton(QString("Into %0").arg(name), QMessageBox::AcceptRole);
-		QPushButton* btAll = box.addButton("For every image", QMessageBox::AcceptRole);
-		box.addButton("Until the next image", QMessageBox::RejectRole);
+		box.setInformativeText(QString("For this game: kept in %0.\n"
+			"As my bindings: for games without a .pad.\n"
+			"Just for now: until the next image.").arg(name));
+		QPushButton* btFile = box.addButton("For this game", QMessageBox::AcceptRole);
+		QPushButton* btAll = box.addButton("As my bindings", QMessageBox::AcceptRole);
+		box.addButton("Just for now", QMessageBox::RejectRole);
 		box.setDefaultButton(btFile);
 		// a style sheet's padding is not in a message box button's width
 		foreach(QAbstractButton* bt, box.buttons())
