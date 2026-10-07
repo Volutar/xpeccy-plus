@@ -2556,8 +2556,17 @@ void MainWin::padGameEdited() {
 void MainWin::fillPadMenu() {
 	padMenu->clear();
 	padMenu->addAction(QIcon(":/images/gamepad.png"), "Manage...", this, &MainWin::padWinShow);
-	padMenu->addSeparator();
 	xGamepad* gp = conf.gpctrl->gpada;
+	// what the list is for: the first player's device
+	QString dev = gp->isKeyboard() ? QString(pad_kbd_name(gp->keyboard()))
+		: gp->padId().isEmpty() ? QString("no device")
+		: gp->isOpened() ? gp->padId().title() : QString("%0 (not connected)").arg(gp->padId().title());
+	padMenu->addSeparator();		// a section's own title is not drawn by every style
+	QAction* head = padMenu->addAction(QString("Player 1: %0").arg(dev));
+	QFont fnt = head->font();
+	fnt.setItalic(true);
+	head->setFont(fnt);
+	head->setEnabled(false);
 	for (int s = 0; s < GPS_COUNT; s++) {
 		QAction* act = padMenu->addAction(pad_scheme_name(s), this, [this, gp, s]() {
 			gp->setScheme(s);
