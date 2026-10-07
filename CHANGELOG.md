@@ -96,7 +96,10 @@ before that point is upstream's history and is not repeated here.
 ### Fixed
 
 - **Tool windows** - the tape and RZX players, the disk manager - open over the middle of the
-  main window, not a little to its left.
+  main window, not a little to its left. A taller tape player gives the room to its block list.
+
+- **Rewind at end** works for a program that loads its own parts, such as levels: a tape that
+  has run out goes back to the start when the program asks for a block that is on it.
 
 - **Debugger**: a click on the palette shows the color clicked, an instruction's bytes are
   edited without blanks padding the field, a label from the list goes into a watcher once, and

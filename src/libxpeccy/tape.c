@@ -503,6 +503,23 @@ int tap_rewind_at_end(Tape* tap) {
 	return 1;
 }
 
+// A block with this flag byte and this many bytes of data is on the tape
+static int tap_holds_block(Tape* tap, int flag, int len) {
+	for (int i = 0; i < tap->blkCount; i++) {
+		TapeBlock* blk = &tap->blkData[i];
+		if (blk->hasBytes && (tapGetBlockSize(blk) == len) && (tapGetBlockByte(blk, 0) == flag))
+			return 1;
+	}
+	return 0;
+}
+
+// "Rewind at end" for a load: only when the block it asks for is on the tape.
+// Basic's LOAD always finds one; a program's part on another tape (Saigon's) does not.
+int tap_rewind_for(Tape* tap, int flag, int len) {
+	if ((tap->block < tap->blkCount) || !tap_holds_block(tap, flag, len)) return 0;
+	return tap_rewind_at_end(tap);
+}
+
 // Play, as a person pressing the button: a tape sitting at its end starts over,
 // else play would do nothing until it is rewound by hand. Only for that - the
 // loader detector below must not come through here, or a stray pattern during

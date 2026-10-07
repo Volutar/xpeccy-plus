@@ -157,12 +157,6 @@ static int tap_rom_caller(Computer* comp, int base) {
 	return ((ret - base) & 0xffff) < LDC_LEN;		// a copy is called by itself
 }
 
-// The load was asked for by basic: the rom's LD-BYTES, called from the rom -
-// through SA/LD-RET, which it pushes, or straight.
-static int tap_basic_load(Computer* comp, int base) {
-	return (base == LD_ROM_BASE) && (tap_caller(comp, tap_ld_ret(comp, base)) < 0x4000);
-}
-
 // atStart says the rom is at LD_START, the top of LD_BYTES, rather than inside
 // LD_EDGE_1: only there does the stack hold what LD_BYTES itself pushed, so only
 // there may a block be handed over and the rom sent to its own exit. Doing it
@@ -175,12 +169,12 @@ void xThread::tap_catch_load(Computer* comp, int atStart, int base, int dir) {
 	// included, which moves it on without ever playing it. Play, a rewind or
 	// another tape hands it back.
 	if (tap->userStop) return;
-	// basic's LOAD asks for a tape that has run out: "Rewind at end" puts it
-	// back to the start here too, not only under the Play button. Not for a
-	// program's own loader, which wants a part that is not there (Saigon's).
-	// Nothing to rewind for if neither of the automatics is on - Play does it.
-	if (atStart && (tape_flash() || conf.tape.autostart) && tap_basic_load(comp, base))
-		tap_rewind_at_end(tap);
+	// A load asks for a tape that has run out: "Rewind at end" puts it back to
+	// the start here too, not only under the Play button - for the block asked
+	// for, its flag (A') and its length. Nothing to rewind for if neither of the
+	// automatics is on - Play does it.
+	if (atStart && (tape_flash() || conf.tape.autostart))
+		tap_rewind_for(tap, comp->cpu->regAa & 0xff, comp->cpu->regDE);
 	int blk = tap->block;
 	if (blk >= tap->blkCount) return;
 	// A loader that has the rom read only the first part of a block and reads
