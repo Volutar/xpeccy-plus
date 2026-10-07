@@ -166,6 +166,8 @@ static const szxField fld_vid[] = {
 	FLD(Video, intf),
 	FLD(Video, idx),
 	FLD(Video, tsconf),
+	FLD(Video, line),		// the line TSConf's layers are drawn into, half done mid-line
+	FLD(Video, linb),
 	FLDEND
 };
 // a palette is the machine's only where its own ports write it: elsewhere it is
@@ -272,7 +274,7 @@ static const szxField fld_dif[] = {
 // a drive's head, motor and where the disk has turned to; what is in it is the
 // medium's, not the snapshot's
 static const szxField fld_flp[] = {
-	FLDRAW("bits", 0, 4),		// motor, door, changed, index
+	FLDRAW("bits", 0, 4),		// motor, virt, door, changed, index
 	FLD(Floppy, dwait),
 	FLDRAW("bits2", 8, 4),		// rd, wr
 	FLD(Floppy, trk),
@@ -383,6 +385,7 @@ static const szxField fld_tape[] = {
 #define XR_CPU	BID('C','P','U',' ')
 #define XR_COMP	BID('C','O','M','P')
 #define XR_VID	BID('V','I','D',' ')
+#define XR_MAP	BID('M','A','P',' ')	// what each 256-byte page of the cpu's space holds
 #define XR_PAL	BID('P','A','L',' ')
 #define XR_RAY	BID('R','A','Y',' ')
 #define XR_TS	BID('T','S',' ',' ')
@@ -393,6 +396,7 @@ static const szxField fld_tape[] = {
 #define XR_SDRV	BID('S','D','R','V')
 #define XR_DIF	BID('D','I','F',' ')
 #define XR_FDC	BID('F','D','C',' ')
+#define XR_FDCP	BID('F','D','C','P')	// the command in progress: its plan, and where in it
 #define XR_FLP	BID('F','L','P','0')	// ..3
 #define XR_IDE	BID('I','D','E',' ')
 #define XR_ATA	BID('A','T','A','0')	// master, 1 slave
@@ -463,6 +467,14 @@ void szx_ext_save(szxBuf* b, Computer* comp) {
 
 	rec_fields(b, XR_CPU, comp->cpu, fld_cpu);
 	rec_fields(b, XR_COMP, comp, fld_comp);
+	// The pager's own map: a core rebuilds it from its ports, but not every
+	// core keeps every window in a port (TSConf's #11AF..#13AF write it alone)
+	rec_begin(b, XR_MAP, &mark);
+	for (i = 0; i < 256; i++) {
+		sb_byte(b, comp->mem->map[i].type);
+		sb_dword(b, (unsigned)comp->mem->map[i].num);
+	}
+	rec_end(b, mark);
 	rec_fields(b, XR_VID, comp->vid, fld_vid);
 	if (ext_own_palette(comp))
 		rec_fields(b, XR_PAL, comp->vid, fld_vid_pal);
@@ -507,6 +519,13 @@ void szx_ext_save(szxBuf* b, Computer* comp) {
 	if (comp->dif && (comp->dif->type != DIF_NONE)) {
 		rec_fields(b, XR_DIF, comp->dif, fld_dif);
 		rec_fields(b, XR_FDC, comp->dif->fdc, fld_fdc);
+		rec_begin(b, XR_FDCP, &mark);
+		sb_dword(b, (unsigned)dif_plan_id(comp->dif));
+		sb_byte(b, (comp->dif->fdc->idle ? 1 : 0) | (comp->dif->fdc->seekend ? 2 : 0));
+		int sel = 0;
+		while ((sel < 3) && (comp->dif->fdc->flp != comp->dif->fdc->flop[sel])) sel++;
+		sb_byte(b, sel);			// the drive selected, by the controller's numbering
+		rec_end(b, mark);
 		for (i = 0; i < 4; i++)
 			if (comp->dif->flp[i]->fitted)
 				rec_fields(b, XR_FLP + ((unsigned)i << 24), comp->dif->flp[i], fld_flp);
@@ -628,6 +647,17 @@ const unsigned char* szx_ext_find(const unsigned char* data, size_t len, size_t*
 static unsigned char* ext_held = NULL;
 static size_t ext_held_len = 0;
 
+// the same as EXT_TAKE below for a struct with megabytes of data after its
+// head: the copy is on the heap and only the head is copied, which is all the
+// table reaches
+static void* ext_take_head(const void* obj, size_t size, size_t head, const szxField* tab, const unsigned char* p, size_t n) {
+	void* tmp = malloc(size);
+	if (!tmp) return NULL;
+	memcpy(tmp, obj, head);
+	fld_get(tmp, tab, p, n);
+	return tmp;
+}
+
 // a field table taken into a copy of the object, so a caller can pick the
 // members it wants out of bit fields that hold settings too
 #define EXT_TAKE(type, obj, tab, p, n) \
@@ -668,6 +698,21 @@ static void ext_comp(Computer* comp, const unsigned char* p, size_t n) {
 	comp->hw->mapMem(comp);
 }
 
+// After the core has paged from its ports: a page it did not put back is set
+// plainly, ram or rom, which is all a window paged from a port of its own is
+static void ext_map(Computer* comp, const unsigned char* p, size_t n) {
+	int i;
+	if (n < 256 * 5) return;
+	for (i = 0; i < 256; i++) {
+		int type = p[i * 5];
+		int num = (int)rd_dword(p + i * 5 + 1);
+		MemPage* pg = &comp->mem->map[i];
+		if ((pg->type == type) && (pg->num == num)) continue;
+		if ((type == MEM_RAM) || (type == MEM_ROM))
+			memSetBank(comp->mem, i, type, num, MEM_256, NULL, NULL, NULL);
+	}
+}
+
 static void ext_vid(Computer* comp, const unsigned char* p, size_t n) {
 	Video* vid = comp->vid;
 	EXT_TAKE(Video, vid, fld_vid, p, n)
@@ -702,6 +747,8 @@ static void ext_vid(Computer* comp, const unsigned char* p, size_t n) {
 	vid->intf = tmp_.intf;
 	vid->idx = tmp_.idx;
 	memcpy(&vid->tsconf, &tmp_.tsconf, sizeof(vid->tsconf));
+	memcpy(vid->line, tmp_.line, sizeof(vid->line));
+	memcpy(vid->linb, tmp_.linb, sizeof(vid->linb));
 	if (tmp_.vmode != vid->vmode)
 		vid_set_mode(vid, tmp_.vmode);
 }
@@ -753,65 +800,67 @@ static void ext_fm_load(Computer* comp, int n, const unsigned char* p, size_t le
 
 static void ext_fdc(Computer* comp, const unsigned char* p, size_t n) {
 	FDC* fdc = comp->dif->fdc;
-	EXT_TAKE(FDC, fdc, fld_fdc, p, n)
-	// a command running when the snapshot was taken is not in it
-	if (fdc->plan && !fdc->idle)
-		xlog(XLG_FILE, XLL_INFO, "szx: the disk controller was busy, the command is not carried over");
-	fdc->irq = tmp_.irq;
-	fdc->drq = tmp_.drq;
-	fdc->dir = tmp_.dir;
-	fdc->mr = tmp_.mr;
-	fdc->block = tmp_.block;
-	fdc->side = tmp_.side;
-	fdc->step = tmp_.step;
-	fdc->mfm = tmp_.mfm;
-	fdc->crchi = tmp_.crchi;
-	fdc->intr = tmp_.intr;
-	fdc->trk = tmp_.trk;
-	fdc->sec = tmp_.sec;
-	fdc->data = tmp_.data;
-	fdc->com = tmp_.com;
-	fdc->state = tmp_.state;
-	fdc->tmp = tmp_.tmp;
-	fdc->wdata = tmp_.wdata;
-	fdc->tdata = tmp_.tdata;
-	fdc->bytedelay = tmp_.bytedelay;
-	fdc->crc = tmp_.crc;
-	fdc->fcrc = tmp_.fcrc;
-	memcpy(fdc->buf, tmp_.buf, sizeof(fdc->buf));
-	fdc->fmode = tmp_.fmode;
-	fdc->cnt = tmp_.cnt;
-	fdc->wait = tmp_.wait;
-	fdc->tns = tmp_.tns;
-	fdc->hold = tmp_.hold;
-	fdc->drdy = tmp_.drdy;
-	fdc->hlt = tmp_.hlt;
-	fdc->hut = tmp_.hut;
-	fdc->srt = tmp_.srt;
-	memcpy(fdc->comBuf, tmp_.comBuf, sizeof(fdc->comBuf));
-	fdc->comCnt = tmp_.comCnt;
-	fdc->comPos = tmp_.comPos;
-	memcpy(fdc->resBuf, tmp_.resBuf, sizeof(fdc->resBuf));
-	fdc->resCnt = tmp_.resCnt;
-	fdc->resPos = tmp_.resPos;
-	fdc->sr0 = tmp_.sr0;
-	fdc->sr1 = tmp_.sr1;
-	fdc->sr2 = tmp_.sr2;
-	fdc->sr3 = tmp_.sr3;
+	FDC* t = (FDC*)ext_take_head(fdc, sizeof(FDC), offsetof(FDC, slst), fld_fdc, p, n);
+	if (!t) return;
+	fdc->irq = t->irq;
+	fdc->drq = t->drq;
+	fdc->dir = t->dir;
+	fdc->mr = t->mr;
+	fdc->block = t->block;
+	fdc->side = t->side;
+	fdc->step = t->step;
+	fdc->mfm = t->mfm;
+	fdc->crchi = t->crchi;
+	fdc->intr = t->intr;
+	fdc->trk = t->trk;
+	fdc->sec = t->sec;
+	fdc->data = t->data;
+	fdc->com = t->com;
+	fdc->state = t->state;
+	fdc->tmp = t->tmp;
+	fdc->wdata = t->wdata;
+	fdc->tdata = t->tdata;
+	fdc->bytedelay = t->bytedelay;
+	fdc->crc = t->crc;
+	fdc->fcrc = t->fcrc;
+	memcpy(fdc->buf, t->buf, sizeof(fdc->buf));
+	fdc->fmode = t->fmode;
+	fdc->cnt = t->cnt;
+	fdc->wait = t->wait;
+	fdc->tns = t->tns;
+	fdc->hold = t->hold;
+	fdc->drdy = t->drdy;
+	fdc->hlt = t->hlt;
+	fdc->hut = t->hut;
+	fdc->srt = t->srt;
+	memcpy(fdc->comBuf, t->comBuf, sizeof(fdc->comBuf));
+	fdc->comCnt = t->comCnt;
+	fdc->comPos = t->comPos;
+	memcpy(fdc->resBuf, t->resBuf, sizeof(fdc->resBuf));
+	fdc->resCnt = t->resCnt;
+	fdc->resPos = t->resPos;
+	fdc->sr0 = t->sr0;
+	fdc->sr1 = t->sr1;
+	fdc->sr2 = t->sr2;
+	fdc->sr3 = t->sr3;
+	free(t);
 	// the selected drive, out of the system register
 	if (comp->dif->type == DIF_BDI)
 		fdc->flp = fdc->flop[comp->dif->sys & 3];
 }
 
 static void ext_flp(Floppy* flp, const unsigned char* p, size_t n) {
-	EXT_TAKE(Floppy, flp, fld_flp, p, n)
-	flp->motor = tmp_.motor;
-	flp->door = tmp_.door;
-	flp->index = tmp_.index;
-	flp->dwait = tmp_.dwait;
-	flp->trk = tmp_.trk;
-	flp->field = tmp_.field;
-	flp->pos = tmp_.pos;
+	Floppy* t = (Floppy*)ext_take_head(flp, sizeof(Floppy), offsetof(Floppy, path), fld_flp, p, n);
+	if (!t) return;
+	flp->motor = t->motor;
+	flp->virt = t->virt;
+	flp->door = t->door;
+	flp->index = t->index;
+	flp->dwait = t->dwait;
+	flp->trk = t->trk;
+	flp->field = t->field;
+	flp->pos = t->pos;
+	free(t);
 }
 
 static void ext_ata(ATADev* ata, const unsigned char* p, size_t n) {
@@ -906,6 +955,7 @@ int szx_ext_load(Computer* comp, const unsigned char* ext, size_t len) {
 			case XR_CPU: ext_cpu(comp, p, n); break;
 			case XR_COMP: ext_comp(comp, p, n); break;
 			case XR_VID: ext_vid(comp, p, n); break;
+			case XR_MAP: ext_map(comp, p, n); break;
 			case XR_PAL:
 				if (ext_own_palette(comp)) fld_get(comp->vid, fld_vid_pal, p, n);
 				break;
@@ -940,6 +990,14 @@ int szx_ext_load(Computer* comp, const unsigned char* ext, size_t len) {
 				break;
 			case XR_FDC:
 				if (comp->dif && (comp->dif->type != DIF_NONE)) ext_fdc(comp, p, n);
+				break;
+			case XR_FDCP:
+				if (comp->dif && (comp->dif->type != DIF_NONE) && (n >= 5) && ((int)rd_dword(p) >= 0)) {
+					dif_plan_set(comp->dif, (int)rd_dword(p));
+					comp->dif->fdc->idle = p[4] & 1;
+					comp->dif->fdc->seekend = (p[4] >> 1) & 1;
+					if (n >= 6) comp->dif->fdc->flp = comp->dif->fdc->flop[p[5] & 3];
+				}
 				break;
 			case XR_IDE:
 				if (comp->ide && (comp->ide->type != IDE_NONE)) {
@@ -1044,7 +1102,7 @@ void szx_ext_media(Computer* comp) {
 			tape->pos = tmp_.pos;
 			tape->sigLen = tmp_.sigLen;
 		} else if (((id & 0x00ffffff) == (XR_FLP & 0x00ffffff)) && (idx >= 0) && (idx < 4)) {
-			if (comp->dif && (comp->dif->type != DIF_NONE) && comp->dif->flp[idx]->insert)
+			if (comp->dif && (comp->dif->type != DIF_NONE))
 				ext_flp(comp->dif->flp[idx], p, n);
 		}
 	}

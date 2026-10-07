@@ -247,6 +247,26 @@ DiskIF* difCreate(int type, cbirq cb, void* p) {
 	return dif;
 }
 
+int vg_plan_id(FDC*);
+void vg_plan_set(FDC*, int);
+int u_plan_id(FDC*);
+void u_plan_set(FDC*, int);
+
+int dif_plan_id(DiskIF* dif) {
+	switch (dif->type) {
+		case DIF_BDI: return vg_plan_id(dif->fdc);
+		case DIF_P3DOS: return u_plan_id(dif->fdc);
+	}
+	return 0;
+}
+
+void dif_plan_set(DiskIF* dif, int id) {
+	switch (dif->type) {
+		case DIF_BDI: vg_plan_set(dif->fdc, id); break;
+		case DIF_P3DOS: u_plan_set(dif->fdc, id); break;
+	}
+}
+
 void difDestroy(DiskIF* dif) {
 	flpDestroy(dif->flp[0]);
 	flpDestroy(dif->flp[1]);

@@ -304,7 +304,7 @@ int main(int ac,char** av) {
 		} else if (!strcmp(earg, "--no-autostart")) {
 			cli_astart = 0;
 #ifdef XBENCH
-		} else if (!strcmp(earg, "--bench")) {
+		} else if (!strncmp(earg, "--bench", 7)) {
 			xhost_time_fixed = 1790000000;	// the machines are built below: freeze their clock first
 #endif
 		} else if (!strcmp(earg, "-m") || !strcmp(earg, "--machine")

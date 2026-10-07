@@ -590,6 +590,25 @@ static vgComItem vgComTab[] = {
 	{0x00, 0x00, vgStop}		// othercom - do nothing
 };
 
+// Every plan a command can run, so a snapshot can name the one in progress:
+// 0 is none, n is the plan at n - 1 here
+static fdcCall* const vgPlans[] = {vgStop, vgCheck, vgRest, vgSeek, vgStepF, vgStepB, vgStep,
+	vgRdSec, vgWrSec, vgRdAdr, vgRdTrk, vgWrTrk, NULL};
+
+int vg_plan_id(FDC* fdc) {
+	int i;
+	if (!fdc->plan) return 0;
+	for (i = 0; vgPlans[i]; i++)
+		if (fdc->plan == vgPlans[i]) return i + 1;
+	return -1;
+}
+
+void vg_plan_set(FDC* fdc, int id) {
+	int i;
+	for (i = 0; vgPlans[i] && (i + 1 < id); i++);
+	fdc->plan = (id > 0) && vgPlans[i] ? vgPlans[i] : NULL;
+}
+
 void vgExec(FDC* fdc, unsigned char com) {
 	int idx;
 	// printf("com:%.2X trk:%.2X sec:%.2X dat:%.2X\n",com,fdc->trk,fdc->sec,fdc->data);
