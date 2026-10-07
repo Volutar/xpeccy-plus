@@ -429,6 +429,7 @@ int main(int ac,char** av) {
 	int bnHash = 0;
 	const char* bnProf = NULL;
 	const char* bnShot = NULL;
+	const char* bnSave = NULL;	// a snapshot of the machine at the end, by its extension
 	int bnNodraw = 0;
 	int bnHeat = 0;
 	int bnRewind = 0;
@@ -498,6 +499,8 @@ int main(int ac,char** av) {
 				bnProf = av[i++];
 			} else if (!strcmp(parg,"--bench-shot")) {
 				bnShot = av[i++];
+			} else if (!strcmp(parg,"--bench-save")) {
+				bnSave = av[i++];
 			} else if (!strcmp(parg,"--bench-loops")) {
 				fastload_bench(atoi(av[i++]));
 			} else if (!strcmp(parg,"--pc")) {
@@ -600,11 +603,14 @@ int main(int ac,char** av) {
 		app.setStyle(QStyleFactory::create("Fusion"));
 	}
 #endif
-	if (bnFrames > 0) {
+	if ((bnFrames > 0) || bnSave) {
 #ifdef XBENCH
-		ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot, bnNodraw, bnHeat, bnRewind);
+		if (bnFrames > 0)
+			ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot, bnNodraw, bnHeat, bnRewind);
+		if (bnSave)
+			save_file(conf.zx, bnSave, FG_ALL, 0);
 #else
-		(void)bnSkip; (void)bnFull; (void)bnHash; (void)bnProf; (void)bnShot; (void)bnNodraw; (void)bnHeat; (void)bnRewind;
+		(void)bnSkip; (void)bnFull; (void)bnHash; (void)bnProf; (void)bnShot; (void)bnNodraw; (void)bnHeat; (void)bnRewind; (void)bnSave;
 		xlog(XLG_APP, XLL_ERROR, "--bench is not in a release build");
 #endif
 		pacingClose();

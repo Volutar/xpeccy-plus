@@ -156,6 +156,8 @@ typedef struct Computer {
 
 	char* msg;		// message ptr for displaying outside
 	int resbank;		// rompart active after reset
+	int snapModel;		// SNAP_HW_* a snapshot names this machine as, 0: by its core
+	int romCustom;		// bytes of rom a snapshot put in, until the machine's own are loaded again
 	int earback;		// EAR_*: the ear input with no tape playing
 	int earRC;		// the ear input holds its charge after bit 4 drops (zx_ear)
 	double earV;		// that charge, 0..1, as of earTick

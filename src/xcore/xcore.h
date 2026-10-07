@@ -575,6 +575,7 @@ typedef struct {
 	unsigned contio:1;
 	unsigned contmem:1;
 	unsigned scrpwait:1;
+	int snapModel;			// SNAP_HW_* a snapshot names it as, 0 = by its core
 	std::string geometry;		// layout name
 	int contPattern;
 	unsigned early:1;

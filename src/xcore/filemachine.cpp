@@ -11,6 +11,7 @@
 static const xFileMac fm_tab[] = {
 	{FL_SNA, "sna", "SNA snapshot", FMN_SNAPSHOT, NULL, snaGetHardware},
 	{FL_Z80, "z80", "Z80 snapshot", FMN_SNAPSHOT, NULL, z80GetHardware},
+	{FL_SZX, "szx", "SZX snapshot", FMN_SNAPSHOT, NULL, szxGetHardware},
 	{FL_SPG, "spg", "SPG snapshot", FMN_TSCONF, "evo-tsconf", NULL},
 	{FL_RZX, "rzx", "RZX playback", FMN_RZX, NULL, rzxGetHardware},
 	{FL_TAP, "tap", "TAP tape", FMN_ANY, NULL, NULL},
@@ -37,6 +38,8 @@ static const struct {
 	{SNAP_HW_PLUS3, "zxplus3"},
 	{SNAP_HW_PENTAGON, "pent"},
 	{SNAP_HW_SCORPION, "scorp"},
+	{SNAP_HW_PENT512, "pent"},
+	{SNAP_HW_PENT1024, "pent1024"},
 	{SNAP_HW_UNKNOWN, NULL}
 };
 
@@ -128,6 +131,12 @@ xFileMacPick fm_pick(int ftype, const char* path) {
 		while ((fm_snap_tab[i].hw != SNAP_HW_UNKNOWN) && (fm_snap_tab[i].hw != snap))
 			i++;
 		target = fm_snap_tab[i].target ? fm_snap_tab[i].target : "";
+		// a file of ours names the very machine it was taken on
+		if ((snap >= SNAP_HW_CORE) && (ftype == FL_SZX)) {
+			char id[256];
+			szx_machine_of(path, id, sizeof(id));
+			target = id;
+		}
 	}
 	std::string pref = fm_pref(row->key);
 	if (pref == FM_KEEP) return pick;

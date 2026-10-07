@@ -120,6 +120,7 @@ struct DiskIF {
 	unsigned inten:1;	// uPD765 interrupt enabled
 	unsigned doors:1;	// a drive's door is still closing: difSync has to run
 	int type;
+	int sys;		// the last write to the interface's own port (Beta: #FF)
 	Floppy* flp[4];
 	DiskHW* hw;
 	FDC* fdc;
