@@ -132,12 +132,22 @@ void zx_irq(Computer* comp, int t) {
 			}
 			break;
 		case IRQ_RZX_INT:
+			// A recording's frame ends after the instruction that used up its
+			// fetches, and its INT is taken right there or not at all: not one
+			// instruction later, and not while the pulse lasts (IRQ_CPU_ACK).
+			// An EI just before does not hold it off: the recorders count the
+			// EI delay in T, and the frame boundary starts the count again.
 			comp->intVector = 0xff;
 			comp->cpu->intrq |= Z80_INT;
+			comp->cpu->flgACK = 1;
+			comp->cpu->flgNOINT = 0;
 			vid_set_int_frame(comp->vid, comp->vid->intsize);
-			comp->rzx.fCurrent++;
-			comp->rzx.fCount--;
-			rzxGetFrame(comp);
+			// a frame of no fetches runs nothing and takes no INT
+			do {
+				comp->rzx.fCurrent++;
+				comp->rzx.fCount--;
+				rzxGetFrame(comp);
+			} while (comp->rzx.play && (comp->rzx.frm.fetches == 0));
 			break;
 		case IRQ_VID_IEND:			// frame int end (for tsconf see in tslab.c)
 			comp->cpu->intrq &= ~Z80_INT;
@@ -163,7 +173,7 @@ void zx_irq(Computer* comp, int t) {
 			int act = comp->vid->intFRAME;
 			if (act && (ahead > 0) && (comp->vid->intlen - act < ahead * comp->nsPerTickFixed / comp->vid->nsPerDotFixed))
 				act = 0;
-			comp->cpu->flgACK = !!act;
+			comp->cpu->flgACK = !!act && !comp->rzx.play;
 			// INT is a level: taken early in the pulse, it is taken again as soon
 			// as interrupts are back on and the pulse is still there (fuse does
 			// the same from EI). Butler's 128K timing tests count on it.

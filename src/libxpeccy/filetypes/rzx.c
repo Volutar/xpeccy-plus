@@ -223,6 +223,27 @@ int rzxGetHardware(const char* name) {
 	return res;
 }
 
+// The snapshot a recording names instead of carrying: as written, else beside
+// the recording, the way the two are kept together.
+static FILE* rzx_open_beside(const char* rzx, const char* snap) {
+	FILE* file = fopen(snap, "rb");
+	if (file) return file;
+	const char* base = snap;
+	const char* p;
+	for (p = snap; *p; p++)
+		if ((*p == '/') || (*p == '\\') || (*p == ':')) base = p + 1;
+	size_t dir = 0;
+	for (p = rzx; *p; p++)
+		if ((*p == '/') || (*p == '\\')) dir = (size_t)(p - rzx) + 1;
+	char* path = (char*)malloc(dir + strlen(base) + 1);
+	if (!path) return NULL;
+	memcpy(path, rzx, dir);
+	strcpy(path + dir, base);
+	file = fopen(path, "rb");
+	free(path);
+	return file;
+}
+
 int loadRZX(Computer* comp, const char* name, int drv) {
 	int err = ERR_OK;
 	comp->rzx.play = 0;
@@ -264,7 +285,7 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 								buf = realloc(buf, len - 20);
 								memset(buf, 0x00, len - 20);
 								fread(buf, len - 21, 1, file);
-								sfile = fopen(buf, "rb");
+								sfile = rzx_open_beside(name, buf);
 								if (sfile) {
 									len = fgetSize(sfile);
 									fputc(0x30, comp->rzx.file);
