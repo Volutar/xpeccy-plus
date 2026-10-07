@@ -2,6 +2,8 @@
 #include <cctype>
 #include <QAbstractItemView>
 #include <QDialogButtonBox>
+#include <QDir>
+#include <QFileInfo>
 #include <QFileDialog>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -14,6 +16,7 @@
 #include <QVBoxLayout>
 
 #include "opt_gamepad.h"
+#include "../../filer.h"
 
 #include "../xgui.h"
 #include "../../xcore/xcore.h"
@@ -594,6 +597,9 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	grpScheme->button(GPS_KEMPSTON)->setToolTip("Switched on by itself when picked.\nFire 2-4 come with an 8-button one");
 	grid->addWidget(new QLabel("Joystick"), row, 0, Qt::AlignTop);
 	grid->addWidget(radios, row++, 1);
+	labGame = padNote(QString());
+	labGame->setVisible(false);
+	grid->addWidget(labGame, row++, 1);
 
 	model = new xPadTableModel(gp, this);
 	table = new QTableView;
@@ -690,6 +696,7 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	connect(sldTurbo, &QSlider::valueChanged, this, [this](int v) {
 		gpad->setTurboRate(v);
 		labTurbo->setText(QString("%0 Hz").arg(v));
+		if (edited) edited();
 	});
 	connect(sldDead, &QSlider::valueChanged, this, [this](int v) {
 		gpad->setDeadZone(v * 32768 / 100);
@@ -725,6 +732,7 @@ void xGamepadWidget::setNameWidth(int w) {
 void xGamepadWidget::tableChanged() {
 	model->update();
 	tell();
+	if (edited) edited();
 }
 
 void xGamepadWidget::schemeFromControls() {
@@ -805,6 +813,10 @@ void xGamepadWidget::refresh() {
 	sldTurbo->setValue(gpad->turboRate());
 	sldTurbo->blockSignals(false);
 	labTurbo->setText(QString("%0 Hz").arg(gpad->turboRate()));
+	QString game = (gpad == conf.gpctrl->gpada) ? conf.gpctrl->gameFile : QString();
+	labGame->setText(QString("From %0, until the next image").arg(QFileInfo(game).fileName()));
+	labGame->setToolTip(QDir::toNativeSeparators(game));
+	labGame->setVisible(!game.isEmpty());
 	int dz = (gpad->deadZone() * 100 + 16384) / 32768;	// the nearest percent
 	sldDead->blockSignals(true);
 	sldDead->setValue(dz);
@@ -871,12 +883,21 @@ void xGamepadWidget::rowMenu(const QPoint& pos) {
 	menu.exec(table->viewport()->mapToGlobal(pos));
 }
 
+// Beside the image, with its name: the file a game's bindings are looked for
+// under. The game's own file when that is what the player is on.
 void xGamepadWidget::saveAs() {
-	QString path = QFileDialog::getSaveFileName(this, "Save bindings", QString::fromStdString(conf.path.confDir),
-		"Bindings (*.pad)");
+	QString def = (gpad == conf.gpctrl->gpada) ? conf.gpctrl->gameFile : QString();
+	if (def.isEmpty()) {
+		QString img = media_current();
+		if (img.isEmpty() && !conf.recentList.isEmpty()) img = conf.recentList.first();
+		QFileInfo fi(img);
+		def = img.isEmpty() ? QString::fromStdString(conf.path.confDir) : fi.dir().filePath(fi.completeBaseName() + ".pad");
+	}
+	QString path = QFileDialog::getSaveFileName(this, "Save bindings", def, "Bindings (*.pad)");
 	if (path.isEmpty()) return;
 	if (!path.endsWith(".pad")) path.append(".pad");
-	if (!gpad->saveFile(path.toStdString())) showInfo("Can't write the file");
+	bool ok = (gpad == conf.gpctrl->gpada) ? conf.gpctrl->gameSave(path) : gpad->saveFile(path.toStdString());
+	if (!ok) showInfo("Can't write the file");
 }
 
 void xGamepadWidget::load() {
@@ -889,6 +910,7 @@ void xGamepadWidget::load() {
 	}
 	refresh();
 	tell();
+	if (edited) edited();
 }
 
 void xGamepadWidget::reset() {

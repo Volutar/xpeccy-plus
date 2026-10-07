@@ -72,6 +72,13 @@ enum {
 	GPS_COUNT
 };
 
+// where a change to a game's table goes, once the user has said
+enum {
+	GE_ASK = 0,
+	GE_FILE,		// into the game's .pad
+	GE_NOW			// nowhere: it lasts until the next image
+};
+
 // the host keyboard as a player's device, in the two layouts it comes in
 enum {
 	GPK_NONE = 0,
@@ -231,6 +238,9 @@ class xGamepad : public QObject {
 		// lines with no prefix
 		void saveConf(FILE*, const char*);
 		bool loadConf(const std::string&, const std::string&);
+		QStringList confLines();		// the table as "name = value", no prefix
+		void setConfLines(const QStringList&);
+		bool mergeFile(const std::string&);	// a game's file over this table: what it names wins
 		bool saveFile(const std::string&);
 		bool loadFile(const std::string&);
 		void importMap(std::string);		// a .pad from before the table
@@ -273,6 +283,15 @@ class xGamepadController : public QObject {
 		void rescan();
 		xGamepad* gpada;
 		xGamepad* gpadb;
+		// A game's own table for player 1: <image>.pad beside the image, in
+		// effect until the next image, with the player's own kept meanwhile.
+		bool gameOn = true;			// the option
+		QString gameFile;			// the .pad in effect, empty for none
+		int gameEdit = 0;			// GE_*: where a change to it goes
+		bool gameImage(const QString&);		// an image was opened: true if player 1's table changed
+		void gameKeep();			// the game's table becomes the player's own
+		QStringList tableLines(int);		// what config.conf keeps for a player
+		bool gameSave(const QString&);		// player 1's table as a game's file: without the player's own rows
 		QStringList seen;		// guids of the pads met so far, see newPad
 	signals:
 		void devicesChanged();
@@ -282,6 +301,8 @@ class xGamepadController : public QObject {
 	protected:
 		void timerEvent(QTimerEvent*);
 	private:
+		QStringList gameOwn;			// player 1's own table while a game's is in effect
+		QStringList gameLines;			// what the game's file said, as confLines() has it
 		void meetNew(const QList<xPadDev>&, const int*);
 };
 

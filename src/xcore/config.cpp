@@ -319,8 +319,10 @@ void saveConfig() {
 		fprintf(cfile, "%s = %s\n", pfx, pads[i]->isKeyboard() ? pad_kbd_key(pads[i]->keyboard())
 			: pads[i]->padId().toConfig().toUtf8().data());
 		fprintf(cfile, "deadzone%s = %i\n", i ? "2" : "", pads[i]->deadZone());
-		pads[i]->saveConf(cfile, pfx);
+		foreach(const QString& ln, conf.gpctrl->tableLines(i))
+			fprintf(cfile, "%s.%s\n", pfx, ln.toUtf8().data());
 	}
+	fprintf(cfile, "padfiles = %s\n", YESNO(conf.gpctrl->gameOn));
 
 	fprintf(cfile, "\n[LEDS]\n\n");
 	fprintf(cfile, "mouse = %s\n", YESNO(conf.led.mouse));
@@ -953,6 +955,7 @@ void loadConfig() {
 					if ((pnam=="mouse.wheel") || (pnam=="mouse.swapButtons") || (pnam=="mouse.sensitivity")
 						|| (pnam=="frq.mul") || (pnam=="kbd.scantab"))
 						xm_defer(pnam, pval);
+					if (pnam=="padfiles") conf.gpctrl->gameOn = arg.b;
 					if (pnam=="deadzone") conf.gpctrl->gpada->setDeadZone(arg.i);
 					if (pnam=="deadzone2") conf.gpctrl->gpadb->setDeadZone(arg.i);
 					if ((pnam=="gamepad") || (pnam=="gamepad2")) {

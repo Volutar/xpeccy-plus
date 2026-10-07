@@ -122,6 +122,7 @@ typedef struct {
 		void loadLabels(const char*);
 		void fillUserMenu();
 		void openMedia(const QString& path, int id, int drv, int run);
+		void padGame(const QString&);		// an image opened: player 1 takes its .pad, or its own table back
 		void fsOverlay(QWidget*);
 		void setMachine(const std::string&);
 		void resetMachine(int);
@@ -228,6 +229,7 @@ typedef struct {
 		void watchClock();
 		void watchPads();
 		void fillPadMenu();
+		void padGameEdited();
 		int padK8 = -1;		// the machine's Kempston had 8 buttons, as last seen
 		void showMedia(const QString&, int src);
 		std::string wantedShader();

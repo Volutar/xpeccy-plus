@@ -13,6 +13,7 @@ class xPadWin : public QDialog {
 		void showWindow();
 		void execOver();
 		void sync();				// the tables again, if they are up
+		std::function<void()> gameEdited;	// player 1's table changed by hand
 	protected:
 		bool eventFilter(QObject*, QEvent*);
 		void showEvent(QShowEvent*);

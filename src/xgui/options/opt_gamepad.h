@@ -96,11 +96,13 @@ class xGamepadWidget : public QWidget {
 		int nameWidth();			// the name column, as wide as its longest
 		void setNameWidth(int);
 		std::function<void()> changed;		// the player's input now does something else
+		std::function<void()> edited;		// ...and it was the table: what a .pad keeps
 	private:
 		xGamepad* gpad;
 		xPadTableModel* model;
 		QComboBox* cbDevice;
 		QLabel* labTry;
+		QLabel* labGame;			// player 1 on a game's .pad
 		QButtonGroup* grpScheme;
 		QComboBox* cbQaop;
 		QTableView* table;

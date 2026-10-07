@@ -4,6 +4,7 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QSet>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QPointer>
 #include <QProgressBar>
@@ -1404,7 +1405,10 @@ void MainWin::openMedia(const QString& path, int id, int drv, int run) {
 		emu_lock();
 		int err = load_file(comp, loc.data(), id, drv);
 		emu_unlock();
-		if (err == ERR_OK) recent_add(fpath);		// the list is saved with the rest on exit
+		if (err == ERR_OK) {
+			recent_add(fpath);		// the list is saved with the rest on exit
+			if (drv < 1) padGame(fpath);	// a disk in drive B is not the game
+		}
 		media_autorun(comp, run);
 	}
 	pause(false, PR_FILE);
@@ -1685,6 +1689,7 @@ void MainWin::initUserMenu() {
 	diskWin->diskOp = [this](int op, int drv) {diskOp(op, drv);};
 	padWin = new xPadWin(this);
 	addSatellite(padWin);
+	padWin->gameEdited = [this]() {padGameEdited();};
 	// a model never met before took a slot: say so, and show what it does
 	connect(conf.gpctrl, &xGamepadController::newPad, this, [this](int slot) {
 		setMessage(QString(" gamepad: player %0 ").arg(slot + 1));
@@ -2507,6 +2512,44 @@ void MainWin::watchPads() {
 	}
 }
 
+// An image opened: player 1 takes its .pad, or goes back to its own table.
+void MainWin::padGame(const QString& image) {
+	if (!conf.gpctrl->gameImage(image)) return;
+	padWin->sync();
+	QString game = conf.gpctrl->gameFile;
+	setMessage(game.isEmpty() ? QString(" gamepad: own bindings ") : QString(" gamepad: %0 ").arg(QFileInfo(game).fileName()));
+}
+
+// Player 1's table changed while a game's .pad is in effect: the first change
+// asks where changes go, and from then on they go there until the next image.
+void MainWin::padGameEdited() {
+	xGamepadController* c = conf.gpctrl;
+	if (c->gameFile.isEmpty()) return;
+	QString name = QFileInfo(c->gameFile).fileName();
+	if (c->gameEdit == GE_ASK) {
+		QMessageBox box(QMessageBox::Question, "Gamepads",
+			QString("Player 1 is on %0, which came with the image.\nWhere should this change go?").arg(name),
+			QMessageBox::NoButton, QApplication::activeWindow());
+		QPushButton* btFile = box.addButton(QString("Into %0").arg(name), QMessageBox::AcceptRole);
+		QPushButton* btAll = box.addButton("For every image", QMessageBox::AcceptRole);
+		box.addButton("Until the next image", QMessageBox::RejectRole);
+		box.setDefaultButton(btFile);
+		// a style sheet's padding is not in a message box button's width
+		foreach(QAbstractButton* bt, box.buttons())
+			bt->setMinimumWidth(bt->fontMetrics().horizontalAdvance(bt->text()) + 32);
+		box.exec();
+		if (box.clickedButton() == btAll) {
+			c->gameKeep();		// the table is the player's own from now on
+			padWin->sync();
+			saveConfig();
+			return;
+		}
+		c->gameEdit = (box.clickedButton() == btFile) ? GE_FILE : GE_NOW;
+	}
+	if ((c->gameEdit == GE_FILE) && !c->gameSave(c->gameFile))
+		setMessage(QString(" can't write %0 ").arg(name));
+}
+
 // Gamepads: Manage opens the window, and the first player's joystick can be
 // switched right here, mid-game, the way a game's own control menu is answered.
 // A second player is rare enough to be set up in the window.
@@ -2519,6 +2562,7 @@ void MainWin::fillPadMenu() {
 		QAction* act = padMenu->addAction(pad_scheme_name(s), this, [this, gp, s]() {
 			gp->setScheme(s);
 			padWin->sync();
+			padGameEdited();
 			saveConfig();
 			setMessage(QString(" joystick: %0 ").arg(pad_scheme_name(s)));
 		});
