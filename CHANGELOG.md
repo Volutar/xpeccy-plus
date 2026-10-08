@@ -36,7 +36,12 @@ before that point is upstream's history and is not repeated here.
     command or a tape block halfway through.
   - ZX Evolution, TSConf, ATM, Profi, Phoenix and ALF save as SZX as well, which only Xpeccy+
     opens.
+  - A snapshot opens on the machine it was taken on. What it was taken with and this machine
+    lacks - other ULA timings, ULA+, a Beta 128 - is named in a warning, and the machine's
+    settings are left alone.
   - The tape and the disks are linked by name, not carried in the file.
+  - What Xpeccy+ keeps in the format, TSConf and TurboSound FM included, is written up in
+    `docs/szx-format.md` for other emulators.
 
 - **Hotkey layouts**: Modern, the new default, and Classic, the keys as they were. Keys you
   change are kept as Custom, whichever layout is picked.
@@ -107,7 +112,14 @@ before that point is upstream's history and is not repeated here.
   recorded frame is taken right there or not at all. Recordings with an SZX snapshot play, and
   one whose snapshot is kept beside it finds it there.
 
-- **The AY's port registers** keep what is written to them while the port is an input.
+- **The AY** answers to registers 0-15 only, as the chip does: a higher number selects nothing
+  instead of landing on one of them, so a TurboSound FM tune on a plain AY no longer plays its FM
+  registers through it. The port registers keep what is written while the port is an input and
+  read back what drives the pins while it is an output - which is how a 128K's ROM looks for
+  the keypad.
+
+- **.sna snapshots** load IFF2 as saved, which LD A,I reads, and a **.z80** taken inside an NMI
+  handler gets its interrupts back at the RETN.
 
 - **Tool windows** - the tape and RZX players, the disk manager - open over the middle of the
   main window, not a little to its left. A taller tape player gives the room to its block list.
