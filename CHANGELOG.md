@@ -110,7 +110,8 @@ before that point is upstream's history and is not repeated here.
 
 - **RZX playback** keeps in step with the recording to its end: the interrupt that ends a
   recorded frame is taken right there or not at all. Recordings with an SZX snapshot play, and
-  one whose snapshot is kept beside it finds it there.
+  one whose snapshot is kept beside it finds it there. Two copies of the emulator opening a
+  recording in the same second no longer play each other's.
 
 - **The AY** answers to registers 0-15 only, as the chip does: a higher number selects nothing
   instead of landing on one of them, so a TurboSound FM tune on a plain AY no longer plays its FM

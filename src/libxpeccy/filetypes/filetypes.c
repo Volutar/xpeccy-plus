@@ -2,6 +2,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#if defined(_WIN32)
+#include <process.h>
+#define getpid _getpid
+#else
+#include <unistd.h>
+#endif
 
 #include "filetypes.h"
 
@@ -52,7 +58,8 @@ FILE* fopen_tmp(void) {
 	dir = getenv("TMPDIR");
 	if (!dir) dir = "/tmp";
 #endif
-	snprintf(path, sizeof(path), "%s%sxpeccy-%u-%i.tmp", dir, SLASH, (unsigned)time(NULL), cnt++);
+	// the pid too: two instances opening a file in the same second shared one
+	snprintf(path, sizeof(path), "%s%sxpeccy-%u-%u-%i.tmp", dir, SLASH, (unsigned)getpid(), (unsigned)time(NULL), cnt++);
 #if defined(_WIN32)
 	// D: the crt drops the file when the last handle on it closes. Not every
 	// crt takes the flag, and then the file is left for TEMP's own housekeeping
