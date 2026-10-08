@@ -281,12 +281,12 @@ static int rw_show(Computer* comp, int back, long long* phase) {
 }
 
 static void rw_let_go(Computer* comp, long long* phase) {
-	int from = comp->frmCount;
+	int from = rw_clock;
 	rwEntry* e = rw_at(rw_back);
 	if (e) rw_snd_w = e->snd;
 	rw_acc = {};
 	if (rewind_restore(comp, rw_back, phase))
-		xlog(XLG_CORE, XLL_INFO, "rewind: played on from frame %i, key let go at %i", comp->frmCount, from);
+		xlog(XLG_CORE, XLL_INFO, "rewind: played on from frame %i, key let go at %i", rw_clock, from);
 	rw_play_stop();
 }
 
@@ -328,7 +328,7 @@ void rewind_frame(Computer* comp, long long* phase) {
 	}
 	if (++rw_wait < conf.emu.rewind.step) return;
 	// a load runs flat out, and a history of it is worth nothing
-	if (fastload_busy() || autostart_busy() || comp->tape->rec) return;
+	if (fastload_busy() || autostart_busy() || rzx_seeking() || comp->tape->rec) return;
 	if (!xstate_safe_tape_aside(comp)) return;	// tried again next frame
 	rw_wait = 0;
 	rw_take(comp, *phase);
@@ -408,10 +408,7 @@ int rewind_load(Computer* comp, int back, long long* phase) {
 	rwEntry* e = rw_at(back);
 	if (!e || !rw_st || comp->tape->rec) return 0;
 	if (rw_media_changed()) return 0;
-	if (rzx_playing != rw_rzx) {		// the recording was closed: its file with it
-		rw_drop_all();
-		return 0;
-	}
+	if (rzx_playing != rw_rzx) return 0;	// rewind_frame() drops the history
 	unsigned char* dst = xstate_put_begin(rw_st, e->meta.data());
 	if (!dst) return 0;
 	rw_unpage(e, dst);

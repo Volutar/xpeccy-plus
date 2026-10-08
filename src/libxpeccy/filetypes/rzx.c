@@ -44,26 +44,32 @@ void rzx_reread(Computer* comp) {
 	x_fseek(file, comp->rzx.next, SEEK_SET);
 }
 
+// A frame: its fetches, its IN count, then the bytes - none for a repeat of the
+// last frame's (0xffff). Where it stands in the file is kept for rzx_reread().
+static void rzx_frame_in(Computer* comp) {
+	FILE* file = comp->rzx.file;
+	comp->rzx.frm.fetches = fgetw(file);
+	int size = fgetw(file);
+	if (size != 0xffff) {
+		comp->rzx.frm.size = size;
+		comp->rzx.dataAt = x_ftell(file);
+		if (size > 0)
+			fread(comp->rzx.frm.data, size, 1, file);
+	}
+	comp->rzx.frm.pos = 0;
+	comp->rzx.next = x_ftell(file);
+}
+
 void rzxGetFrame(Computer* comp) {
 	int type;
 	int len;
 	int work;
-	int size;
 	size_t pos;
 	if (!comp->rzx.file) {
 		rzxStop(comp);
 	} else {
 		if (comp->rzx.fCount > 0) {
-			comp->rzx.frm.fetches = fgetw(comp->rzx.file);
-			size = fgetw(comp->rzx.file);
-			if (size != 0xffff) {
-				comp->rzx.frm.size = size;
-				comp->rzx.dataAt = x_ftell(comp->rzx.file);
-				if (size > 0)
-					fread(comp->rzx.frm.data, size, 1, comp->rzx.file);
-			}
-			comp->rzx.frm.pos = 0;
-			comp->rzx.next = x_ftell(comp->rzx.file);
+			rzx_frame_in(comp);
 		} else {
 			work = 1;
 			while (work) {
@@ -73,17 +79,8 @@ void rzxGetFrame(Computer* comp) {
 				switch (type) {
 					case 0x80:					// IN block
 						comp->rzx.fCount = fgeti(comp->rzx.file);		// +0 frame count
-						size = fgeti(comp->rzx.file);				// +4 start Tstate
-						// vid_set_ray(comp->vid, size << 1);
-						comp->rzx.frm.fetches = fgetw(comp->rzx.file);		// +8.. frames		+0 fetches
-						size = fgetw(comp->rzx.file);				//			+2 size
-						if (size != 0xffff) {
-							comp->rzx.frm.size = size;
-							comp->rzx.dataAt = x_ftell(comp->rzx.file);
-							fread(comp->rzx.frm.data, comp->rzx.frm.size, 1, comp->rzx.file);// +4 data
-						}
-						comp->rzx.frm.pos = 0;
-						comp->rzx.next = x_ftell(comp->rzx.file);
+						fgeti(comp->rzx.file);					// +4 start Tstate
+						rzx_frame_in(comp);					// +8.. frames
 						work = 0;
 						break;
 					case 0x30:					// TODO: snapshot

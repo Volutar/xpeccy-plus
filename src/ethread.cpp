@@ -436,7 +436,7 @@ static int ra_run_frame(Computer* comp) {
 
 // 1 when the machine has been run on and has to be wound back afterwards.
 int xThread::runAhead(Computer* comp) {
-	if (conf.emu.runahead < 1) return 0;
+	if ((conf.emu.runahead < 1) || comp->rzx.play) return 0;	// a recording takes no input to win time on
 	if (!ra_snapshot(comp, finish)) return 0;
 	for (int i = 0; (i < conf.emu.runahead) && ra_run_frame(comp); i++);
 	return 1;
