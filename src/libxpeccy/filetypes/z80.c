@@ -242,7 +242,9 @@ int loadZ80_f(Computer* comp, FILE* file) {
 	comp->cpu->regIM = hd.flag29 & 3;
 	comp->cpu->flgIFF1 = hd.iff1;
 	comp->cpu->flgIFF2 = hd.iff2;
-	comp->cpu->inten = Z80_NMI | (hd.iff1 ? Z80_INT : 0);
+	// INT is gated by IFF1 in the core; the mask only says no DI came last, and
+	// inside an NMI handler a RETN gives IFF1 back with no EI
+	comp->cpu->inten = Z80_NMI | ((hd.iff1 || hd.iff2) ? Z80_INT : 0);
 	comp->vid->brdcol = (hd.flag12 >> 1) & 7;
 	comp->vid->nextbrd = comp->vid->brdcol;
 // unsupported things list

@@ -49,17 +49,12 @@ int loadSNA_f(Computer* comp, FILE* file, size_t fileSize) {
 	comp->cpu->regR = hd.r;
 	comp->cpu->regR7 = hd.r & 0x80;
 	comp->cpu->regIM = hd.imod & 3;
+	// the byte is IFF2, which the RETN that ends a .sna copies into IFF1
 	comp->cpu->flgIFF1 = !!(hd.flag19 & 4);
-	comp->cpu->flgIFF2 = 1;
+	comp->cpu->flgIFF2 = comp->cpu->flgIFF1;
 	comp->cpu->inten = Z80_NMI | (comp->cpu->flgIFF1 ? Z80_INT : 0);
 	comp->vid->brdcol = hd.border & 7;
 	comp->vid->nextbrd = hd.border & 7;
-
-	if (comp->cpu->flgIFF1) {
-		comp->cpu->inten |= Z80_INT;
-	} else {
-		comp->cpu->inten &= ~Z80_INT;
-	}
 
 	fread(pageBuf, 0x4000, 1, file);
 	memPutData(comp->mem,MEM_RAM,5,MEM_16K,pageBuf);
