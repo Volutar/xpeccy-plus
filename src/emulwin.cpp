@@ -576,18 +576,13 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 //			conf.prof.changed = 0;
 //		}
 		if (block) return;
-		if (comp->rzx.start) {
-			emit s_rzx_start();
-		} else if (comp->rzx.stop) {
-			emit s_rzx_stop();
-		}
 		if (comp->rzx.overio) {
 			comp->rzx.overio = 0;
 			pause(true, PR_RZX);
 			shitHappens("RZX playback error");
-			emit s_rzx_stop();
 			pause(false, PR_RZX);
 		}
+		rzxWatch();
 // turbo, by the time that really went: this timer is a coarse one
 		long long now = paceClockNs();
 		int ms = (padTurboNs > 0) ? (int)qBound(0LL, (now - padTurboNs) / 1000000, 100LL) : 0;
@@ -848,23 +843,20 @@ void MainWin::rzxStateChanged(int state) {
 	Computer* comp = conf.zx;
 	switch(state) {
 		case RWS_PLAY:
-			comp->rzx.start = 0;
 			pause(false,PR_RZX);
 			break;
 		case RWS_PAUSE:
 			pause(true,PR_RZX);
 			break;
 		case RWS_STOP:
+			emu_lock();		// the emulation reads the file
 			rzxStop(comp);
-			comp->rzx.stop = 0;
-			pause(false,PR_RZX);
+			emu_unlock();
+			rzxWatch();
 			break;
 		case RWS_OPEN:
 			pause(true,PR_RZX);
 			openMedia(QString(), FG_RZX, -1, 0, true);
-			if (comp->rzx.play) {
-				emit s_rzx_start();
-			}
 			pause(false,PR_RZX);
 			break;
 	}
@@ -1482,16 +1474,21 @@ void MainWin::closeEvent(QCloseEvent* ev) {
 }
 
 void MainWin::checkState() {
-	Computer* comp = conf.zx;
-	if (comp->rzx.start) {
+	rzxWatch();
+}
+
+// The player follows the recording the core has open, by its number: a flag
+// the emulation thread clears as it starts playing is gone before a timer here
+// looks, and a new recording is told from the one before it.
+void MainWin::rzxWatch() {
+	if (rzx_playing == rzxSeen) return;
+	rzxSeen = rzx_playing;
+	if (rzxSeen) {
 		emit s_rzx_start();
-	} else if (comp->rzx.stop) {
+	} else {
+		pause(false, PR_RZX);		// a pause of the player's outlives what it paused
 		emit s_rzx_stop();
 	}
-		//rzxWin->startPlay();
-	//emit s_tape_list(comp->tape);
-	//tapeWin->buildList(comp->tape);
-	//tapeWin->setCheck(comp->tape->block);
 }
 
 // ...
@@ -2679,7 +2676,6 @@ void MainWin::resetTo(int res) {
 // A reset from the running machine's window: one landing mid-opcode lets the opcode
 // finish on the new state, and a jump then takes the pc back from the reset.
 void MainWin::resetMachine(int res) {
-	emit s_rzx_stop();
 	emu_lock();		// reset re-inits the hardware
 	x_user_reset(conf.zx, res);
 	emu_unlock();

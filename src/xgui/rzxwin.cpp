@@ -185,7 +185,7 @@ RZXWin::RZXWin(QWidget *par):QDialog(par) {
 	ui.ppButton->setEnabled(false);
 	ui.stopButton->setEnabled(false);
 	connect(ui.ppButton,SIGNAL(released()),this,SLOT(playPause()));
-	connect(ui.stopButton,SIGNAL(released()),this,SLOT(stop()));
+	connect(ui.stopButton,SIGNAL(released()),this,SLOT(stopPressed()));
 	connect(ui.openButton,SIGNAL(released()),this,SLOT(open()));
 	connect(ui.blkList,SIGNAL(doubleClicked(QModelIndex)),this,SLOT(doDClick(QModelIndex)));
 	ui.progress->installEventFilter(this);
@@ -289,6 +289,9 @@ void RZXWin::stop() {
 	ui.ppButton->setIcon(QIcon(":/images/play.png"));
 	setProgress(0, ui.progress->maximum());
 	model->setCurrent(-1);
+}
+
+void RZXWin::stopPressed() {
 	emit stateChanged(RWS_STOP);
 }
 

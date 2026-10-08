@@ -219,8 +219,7 @@ typedef struct Computer {
 
 
 	struct {
-		unsigned start:1;
-		unsigned stop:1;
+		unsigned start:1;	// opened: the emulation thread starts it (rzx_begin)
 		unsigned play:1;
 		unsigned overio:1;
 		int fTotal;

@@ -562,7 +562,6 @@ void rzxStop(Computer* zx) {
 	zx->rzx.file = NULL;
 	zx->rzx.fCount = 0;
 	zx->rzx.frm.size = 0;
-	zx->rzx.stop = 1;
 }
 
 // What the machine answers when asked what it is, through the version block of

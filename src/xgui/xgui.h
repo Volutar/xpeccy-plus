@@ -371,4 +371,5 @@ class RZXWin : public QDialog {
 		void playPause();
 		void open();
 		void doDClick(QModelIndex);
+		void stopPressed();
 };
