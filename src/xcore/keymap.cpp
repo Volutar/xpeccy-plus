@@ -661,7 +661,7 @@ static const xCutDef cutModern[] = {
 #ifdef __APPLE__
 	{XCUT_DEBUG, {QKeySequence(Qt::Key_F10)}},
 #else
-	{XCUT_DEBUG, {QKeySequence(Qt::Key_F10), QKeySequence(Qt::CTRL | Qt::Key_Cancel)}},
+	{XCUT_DEBUG, {QKeySequence(Qt::Key_F10), QKeySequence(Qt::CTRL | Qt::Key_Pause)}},
 #endif
 	{XCUT_NMI, {QKeySequence(Qt::SHIFT | Qt::Key_F10)}},
 #ifdef __APPLE__
@@ -802,7 +802,10 @@ void hotkeys_load_line(const std::string& name, const std::string& val) {
 		int p = hotkeys_preset_id(val.c_str());
 		if ((p >= 0) && (p != HKP_CUSTOM)) hkSet.base = p;
 	} else {
-		hkLines[name] = val;
+		std::string& v = hkLines[name] = val;
+#ifdef _WIN32
+		v = QString::fromStdString(v).replace("Cancel", "Pause").toStdString();	// no key is Cancel since hotkey_key() names it
+#endif
 	}
 }
 
@@ -909,6 +912,11 @@ static int shortcut_check(int grp, QKeySequence seq) {
 // layout; anything Qt names in Latin-1 or as a special key is left as it is.
 int hotkey_key(QKeyEvent* ev) {
 	int key = ev->key();
+#ifdef _WIN32
+	// Windows makes both Ctrl+Pause and Ctrl+Scroll Lock VK_CANCEL; the scan code tells them apart
+	if (key == Qt::Key_Cancel)
+		return (ev->nativeScanCode() == XKEY_SCRLCK) ? Qt::Key_ScrollLock : Qt::Key_Pause;
+#endif
 	if ((key < 0x100) || (key >= 0x01000000)) return key;
 #if defined(__APPLE__)
 	int lat = key2qid(qKey2id(key));

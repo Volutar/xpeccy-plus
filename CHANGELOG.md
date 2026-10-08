@@ -65,7 +65,7 @@ before that point is upstream's history and is not repeated here.
   - Hotkeys work from the tape, RZX, screen, sound and disk windows too, all but the keys
     those windows use themselves. *(thanks to Volutar)*
   - The debugger's own keys are on the Hotkeys page as well: the kinds of breakpoint, the
-    bookmarks and Esc to close it. Ctrl+Break opens it.
+    bookmarks and Esc to close it. Ctrl+Pause opens it.
 
 - **Labels as you type in the debugger**: label names are offered in the listing, the dump, the
   watcher and breakpoint conditions, and the listing assembles labels in operands, label+2
