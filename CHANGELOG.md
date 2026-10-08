@@ -166,6 +166,9 @@ before that point is upstream's history and is not repeated here.
 - **128K and +2 paging**: port #3FFD pages memory like #7FFD, as on the real machines, so
   software that tells a 128K from a +3 that way no longer takes it for a +3.
 
+- **Apply in Options** no longer moves the paused machine on by a frame or two; the picture
+  stays as it was.
+
 ## 2026.6.2 - 2026-10-03
 
 ### Fixed
