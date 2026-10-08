@@ -136,11 +136,9 @@ void TapeWin::doEject() {
 }
 
 void TapeWin::doLoad() {
-	conf.emu.pause |= PR_FILE;
-	load_file(conf.zx, nullptr, FG_TAPE, -1);
+	emit wannaOpen();
 	upd(conf.zx->tape);
 	updList(conf.zx->tape);
-	conf.emu.pause &= ~PR_FILE;
 }
 
 void TapeWin::doSave() {

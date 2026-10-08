@@ -199,8 +199,6 @@ int loadZ80(Computer* comp, const char* name, int drv) {
 	if (!file) return ERR_CANT_OPEN;
 	int res = loadZ80_f(comp, file);
 	fclose(file);
-	if (res == ERR_OK)
-		mem_set_path(comp->mem, name);
 	return res;
 }
 
@@ -478,6 +476,5 @@ int saveZ80(Computer* comp, const char* name, int drv) {
 			z80_write_page(file, comp->mem->ramData + ((bank << 14) & comp->mem->ramMask), i);
 	}
 	fclose(file);
-	mem_set_path(comp->mem, name);
 	return ERR_OK;
 }

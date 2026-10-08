@@ -273,6 +273,8 @@ class TapeWin : public QDialog {
 		void updList(Tape*);
 		void upd(Tape*);
 		void show();
+	signals:
+		void wannaOpen();
 	private:
 		Ui::TapeWin ui;
 		int state;

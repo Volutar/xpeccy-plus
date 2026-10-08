@@ -83,8 +83,6 @@ static int save_szx(Computer* comp, const char* name, int drv) {
 	int res = build_szx(comp, &b);
 	if (res == ERR_OK)
 		res = szx_write(&b, name);
-	if (res == ERR_OK)
-		mem_set_path(comp->mem, name);
 	return res;
 }
 
@@ -654,14 +652,8 @@ static void szx_warn() {
 int load_file(Computer* comp, const char* name, int id, int drv) {
 	last_as_kind = AS_NONE;
 	xspeed_modes_off();
-	QString path;
-	if (name) {
-		path = QFileInfo(QString::fromLocal8Bit(name)).canonicalFilePath();
-		if (path.isEmpty()) return ERR_CANT_OPEN;
-	} else {
-		path = file_ask_open(comp, &id, &drv);
-		if (path.isEmpty()) return ERR_OK;
-	}
+	QString path = QFileInfo(QString::fromLocal8Bit(name)).canonicalFilePath();
+	if (path.isEmpty()) return ERR_CANT_OPEN;
 	xFileTypeInfo* inf = file_type_of(comp, id, path);
 	int err = ERR_OK;
 	if (drv < 0) drv = 0;
@@ -706,17 +698,15 @@ int load_file(Computer* comp, const char* name, int id, int drv) {
 	return err;
 }
 
-int media_reload(Computer* comp) {
-	int res = 0;
-	if (comp->mem->snapath) {
-		load_file(comp, comp->mem->snapath, FG_SNAPSHOT, 0);
-		res |= RELOAD_SNAPSHOT;
-	}
-	if (!conf.labpath.isEmpty()) {
-		loadLabels(conf.labpath.toLocal8Bit().data());
-		res |= RELOAD_LABELS;
-	}
-	return res;
+static xMediaOpen media_last = {QString(), FG_ALL, 0, 0, false};
+
+void media_opened(const QString& path, int id, int drv, int run, bool pinned) {
+	media_last = {path, id, drv, run, pinned};
+	if (drv < 1) labels_image(path);	// a disk in drive B is not the program
+}
+
+xMediaOpen media_last_open() {
+	return media_last;
 }
 
 // Run the machine on to the end of the next INT acknowledge, where loading puts
@@ -857,9 +847,6 @@ int quick_save(Computer* comp) {
 		if (szx_write(&b, path.toLocal8Bit().data()) == ERR_OK) {
 			res = 2;
 			QFile::remove(quick_path(".z80"));	// what builds before .szx left there
-			emu_lock();
-			mem_set_path(comp->mem, path.toLocal8Bit().data());
-			emu_unlock();
 		}
 	}
 	return res;

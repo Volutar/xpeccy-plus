@@ -1,5 +1,6 @@
 #include "xcore.h"
 
+#include <QDir>
 #include <QFile>
 #include <QFileDialog>
 
@@ -149,73 +150,104 @@ xAdr find_label(QString nm) {
 	return xadr;
 }
 
-int loadLabels(const char* fn) {
-	int res = 1;
-	QString path(fn);
+// One sjasmplus LABELSLIST file into the set named after it, which is then
+// the one in effect. 0: it could not be opened, and nothing changed.
+static int labels_read(const QString& path) {
 	QString line;
 	QString name;
 	QStringList arr;
-	QFile file;
 	xAdr xadr;
-	if (path.isEmpty())
-		path = QFileDialog::getOpenFileName(NULL, "Load SJASM labels",QString(),QString(),nullptr,QFileDialog::DontUseNativeDialog);
-	if (!path.isEmpty()) {
-		xLabelSet* set = newLabelSet(QFileInfo(path).fileName());
-		setLabelSet(set);
-		clear_labels();
-		file.setFileName(path);
-		if (file.open(QFile::ReadOnly)) {
-			while(!file.atEnd()) {
-				line = file.readLine();
-				if (line.startsWith(":"))
-					line.prepend("FF");
+	QFile file(path);
+	if (!file.open(QFile::ReadOnly)) return 0;
+	xLabelSet* set = newLabelSet(QFileInfo(path).fileName());
+	set->list.clear();		// before it is made current, or its old map is built for nothing
+	setLabelSet(set);
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
-				arr = line.split(QRegularExpression("[: \r\n]"),X_SkipEmptyParts);
+	static const QRegularExpression sep("[: \r\n]");
 #else
-				arr = line.split(QRegExp("[: \r\n]"),X_SkipEmptyParts);
+	static const QRegExp sep("[: \r\n]");
 #endif
-				if (arr.size() > 2) {
-					xadr.type = MEM_RAM;
-					xadr.bank = arr.at(0).toInt(NULL,16);
-					xadr.adr = arr.at(1).toInt(NULL,16);
-					if (xadr.bank == 0xff) {
-						switch (xadr.adr & 0xc000) {
-							case 0x0000: xadr.bank = 0; break;
-							case 0x4000: xadr.bank = 5; break;
-							case 0x8000: xadr.bank = 2; break;
-							case 0xc000: xadr.bank = 0; break;
-						}
-					}
-					xadr.adr &= 0x3fff;
-					xadr.abs = (xadr.bank << 14) | xadr.adr;
-					name = arr.at(2);
-					switch (xadr.bank) {
-						case 0xff:
-							xadr.type = -1;		// cpu
-							xadr.bank = -1;
-							break;
-						case 0x05:
-							xadr.adr |= 0x4000;
-							break;
-						case 0x02:
-							xadr.adr |= 0x8000;
-							break;
-						default:
-							xadr.adr |= 0xc000;
-							break;
-					}
-					//if (xadr.bank > 0)
-					//	xadr.bank = xadr.abs >> 8;
-					add_label(xadr, name);
-					//
+	while(!file.atEnd()) {
+		line = file.readLine();
+		if (line.startsWith(":"))
+			line.prepend("FF");
+		arr = line.split(sep, X_SkipEmptyParts);
+		if (arr.size() > 2) {
+			xadr.type = MEM_RAM;
+			xadr.bank = arr.at(0).toInt(NULL,16);
+			xadr.adr = arr.at(1).toInt(NULL,16);
+			if (xadr.bank == 0xff) {
+				switch (xadr.adr & 0xc000) {
+					case 0x0000: xadr.bank = 0; break;
+					case 0x4000: xadr.bank = 5; break;
+					case 0x8000: xadr.bank = 2; break;
+					case 0xc000: xadr.bank = 0; break;
 				}
 			}
-			conf.labpath = path;
-		} else {
-			res = 0;		// can't open file
+			xadr.adr &= 0x3fff;
+			xadr.abs = (xadr.bank << 14) | xadr.adr;
+			name = arr.at(2);
+			switch (xadr.bank) {
+				case 0xff:
+					xadr.type = -1;		// cpu
+					xadr.bank = -1;
+					break;
+				case 0x05:
+					xadr.adr |= 0x4000;
+					break;
+				case 0x02:
+					xadr.adr |= 0x8000;
+					break;
+				default:
+					xadr.adr |= 0xc000;
+					break;
+			}
+			//if (xadr.bank > 0)
+			//	xadr.bank = xadr.abs >> 8;
+			add_label(xadr, name);
+			//
 		}
 	}
-	return res;
+	xlog(XLG_FILE, XLL_INFO, "labels from %s", path.toLocal8Bit().constData());
+	return 1;
+}
+
+// A file the user named, on the command line or in the debugger: the one
+// Reload reads again. NULL asks for it.
+int loadLabels(const char* fn) {
+	QString path(fn);
+	if (path.isEmpty())
+		path = QFileDialog::getOpenFileName(NULL, "Load SJASM labels",QString(),QString(),nullptr,QFileDialog::DontUseNativeDialog);
+	if (path.isEmpty()) return 1;
+	if (!labels_read(path)) return 0;
+	conf.labpath = path;
+	return 1;
+}
+
+bool labels_named_on() {
+	return !conf.labpath.isEmpty() && conf.curlabset
+		&& (conf.curlabset->name == QFileInfo(conf.labpath).fileName());
+}
+
+// the labels an image came with last, and the set in effect before them
+static QString imgSet;
+static QString imgBefore;
+
+void labels_image(const QString& image) {
+	if (!imgSet.isEmpty()) {
+		// a set picked by hand since then stays
+		if (conf.curlabset && (conf.curlabset->name == imgSet))
+			setLabelSet(findLabelSet(imgBefore));
+		imgSet.clear();
+	}
+	if (!conf.dbg.imglabels || image.isEmpty()) return;
+	QFileInfo fi(image);
+	QString path = fi.dir().filePath(fi.completeBaseName() + ".labels");
+	if (!QFileInfo(path).isFile()) return;
+	QString before = conf.curlabset ? conf.curlabset->name : QString();
+	if (!labels_read(path)) return;
+	imgBefore = before;
+	imgSet = conf.curlabset->name;
 }
 
 int saveLabels(const char* fn) {

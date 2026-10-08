@@ -206,6 +206,10 @@ void clear_all_labels();
 
 int loadLabels(const char*);
 int saveLabels(const char*);
+// the labels file the user named is the set in effect
+bool labels_named_on();
+// an image opened: <image>.labels beside it is in effect until the next one
+void labels_image(const QString&);
 
 // comments
 
@@ -863,6 +867,7 @@ struct xConfig {
 		unsigned sndfm:1;	// sound panel: the FM page of the chip, not the PSG one
 		unsigned sndfit:1;	// sound panel: the scope centres and scales itself
 		unsigned sndlog:1;	// sound panel: the scope draws on a log curve
+		unsigned imglabels:1;	// an image's .labels comes with it
 		QFont font;
 		int dbsize;
 		int dwsize;

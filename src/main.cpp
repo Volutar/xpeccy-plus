@@ -6,6 +6,7 @@
 #include <QFontDatabase>
 #include <QStyleFactory>
 #include <QUrl>
+#include <QFileInfo>
 
 #include <locale.h>
 #include <string>
@@ -153,21 +154,17 @@ bool xApp::eventFilter(QObject* obj, QEvent* ev) {
 }
 
 
-static void cli_set_machine(MainWin& mwin, DebugWin& dbgw, const std::string& id) {
-	mwin.setMachine(id);
-	dbgw.onPrfChange();
-}
-
 // A file on the command line: the machine it wants first, unless the command
 // line names the machine itself.
-static void open_cli_file(MainWin& mwin, DebugWin& dbgw, const char* path, int drv, int run, bool pinned) {
+static void open_cli_file(MainWin& mwin, const char* path, int drv, int run, bool pinned) {
 	std::string mac;
 	if (!pinned && !media_machine(conf.zx, QString::fromLocal8Bit(path), FG_ALL, drv, run, &mac))
 		return;
 	if (!mac.empty())
-		cli_set_machine(mwin, dbgw, mac);
-	if ((load_file(conf.zx, path, FG_ALL, drv) == ERR_OK) && (drv < 1))
-		mwin.padGame(QString::fromLocal8Bit(path));
+		mwin.setMachine(mac);
+	if (load_file(conf.zx, path, FG_ALL, drv) != ERR_OK) return;
+	if (drv < 1) mwin.padGame(QString::fromLocal8Bit(path));
+	media_opened(QString::fromLocal8Bit(path), FG_ALL, drv, run, pinned);
 }
 
 // for apple users
@@ -378,6 +375,10 @@ int main(int ac,char** av) {
 	app.connect(&dbgw, SIGNAL(wannaKeys()), &keyw, SLOT(show()));
 	app.connect(&dbgw, SIGNAL(wannaWutch()), &wutw, SLOT(show()));
 	app.connect(&dbgw, SIGNAL(wannaOptions()), &optw, SLOT(start()));
+	app.connect(&dbgw, SIGNAL(wannaReload()), &mwin, SLOT(reloadMedia()));
+	// a tool window's open picks no machine and starts nothing
+	QObject::connect(&dbgw, &DebugWin::wannaOpen, &mwin, [&mwin]() {mwin.openMedia(QString(), FG_ALL, -1, 0, true);});
+	app.connect(&mwin, SIGNAL(s_machine()), &dbgw, SLOT(onPrfChange()));
 
 	app.connect(&mwin, SIGNAL(s_debug()), &dbgw, SLOT(start()));
 	app.connect(&mwin, SIGNAL(s_debug_off()), &dbgw, SLOT(close()));
@@ -399,6 +400,7 @@ int main(int ac,char** av) {
 	app.connect(&mwin, SIGNAL(s_tape_blk(Tape*)), &tapw, SLOT(updList(Tape*)));
 	app.connect(&mwin, SIGNAL(s_tape_progress(Tape*)), &tapw, SLOT(updProgress(Tape*)));
 	app.connect(&mwin, SIGNAL(s_tape_show()), &tapw, SLOT(show()));
+	QObject::connect(&tapw, &TapeWin::wannaOpen, &mwin, [&mwin]() {mwin.openMedia(QString(), FG_TAPE, -1, 0, true);});
 
 	app.connect(&rzxw, SIGNAL(stateChanged(int)), &mwin, SLOT(rzxStateChanged(int)));
 	app.connect(&rzxw, SIGNAL(seekTo(int)), &mwin, SLOT(rzxSeek(int)));
@@ -512,7 +514,7 @@ int main(int ac,char** av) {
 				if (mid.empty()) {
 					xlog(XLG_APP, XLL_ERROR, "no such machine: %s", av[i]);
 				} else {
-					cli_set_machine(mwin, dbgw, mid);
+					mwin.setMachine(mid);
 				}
 				i++;
 			} else if (!strcmp(parg,"--bench")) {
@@ -615,16 +617,19 @@ int main(int ac,char** av) {
 			} else if (!strcmp(parg, "--confdir")) {
 				i++;		// handled before conf_init above
 			} else if (strlen(parg) > 0) {
-				open_cli_file(mwin, dbgw, parg, drv, astart, pinned);
+				open_cli_file(mwin, parg, drv, astart, pinned);
 			}
 		} else if (strlen(parg) > 0) {
-			open_cli_file(mwin, dbgw, parg, drv, astart, pinned);
+			open_cli_file(mwin, parg, drv, astart, pinned);
 		}
 	}
 	// tape or disk from the command line: mounting is not enough, so press
 	// what the user would press by hand. Here, after every option is known
 	media_autorun(conf.zx, astart);
 	vrec_auto_apply();
+	// labels named on the command line win over an image's own
+	if (!conf.labpath.isEmpty())
+		setLabelSet(QFileInfo(conf.labpath).fileName());
 
 	// a document macOS handed over before there was a window to open it through
 	if (!app.pendingFile.isEmpty()) {

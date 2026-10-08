@@ -483,7 +483,7 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_VIDREC, "key.video.rec", "Start/stop video recording", {}},
 	{SCG_MAIN, XCUT_WAV_OUT, "key.write.wav", "Start/stop WAV output", {}},
 	{SCG_MAIN, XCUT_RELOAD_SHD, "key.reload.shader", "Reload shader", {}},
-	{SCG_MAIN, XCUT_RELOAD, "key.reload", "Reload snapshot and labels", {}},
+	{SCG_MAIN, XCUT_RELOAD, "key.reload", "Reload file", {}},
 	{SCG_MAIN, XCUT_FAVORITE, "key.favorite.add", "Add to Favorites", {}},
 	{SCG_MAIN, XCUT_QUICKSAVE, "key.quick.save", "Quick save", {}},
 	{SCG_MAIN, XCUT_QUICKLOAD, "key.quick.load", "Quick load", {}},
@@ -503,7 +503,7 @@ static xShortcut short_tab[] = {
 	{SCG_DEBUGA, XCUT_FINDER, "key.dbg.finder", "Debugger: Find pattern", {}},
 	{SCG_DEBUGA, XCUT_LABELS, "key.dbg.labels", "Debugger: Switch labels", {}},
 	{SCG_DEBUGA, XCUT_LABLIST, "key.dbg.lablist", "Debugger: Show labels list", {}},
-	{SCG_DEBUGA, XCUT_DBG_RELOAD, "key.dbg.reload", "Debugger: Reload snapshot and labels", {}},
+	{SCG_DEBUGA, XCUT_DBG_RELOAD, "key.dbg.reload", "Debugger: Reload file", {}},
 	{SCG_DEBUGA, XCUT_DBG_CLOSE, "key.dbg.close", "Debugger: Close", {}},
 
 	{SCG_DISASM, XCUT_TOPC, "key.disasm.topc", "Disasm: Jump to PC", {}},

@@ -71,6 +71,9 @@ before that point is upstream's history and is not repeated here.
   watcher and breakpoint conditions, and the listing assembles labels in operands, label+2
   included. *(thanks to Volutar for the idea)*
 
+- **An image's labels come with it**: a `.labels` file named after a snapshot, tape or disk
+  loads into the debugger when it is opened, until the next image (Options, Debugger).
+
 - **Rewind shows how far back it has gone**, in seconds under its sign; signs and messages on
   the picture fade out when they are over (Options, Appearance). *(thanks to Volutar)*
 
@@ -100,6 +103,9 @@ before that point is upstream's history and is not repeated here.
 
 - **Options** is one list of pages down the left side, with Appearance and File types of their
   own and the hotkeys in sections, as in the menus. *(thanks to Volutar for the idea)*
+
+- **Reload file** opens the last file again the way it was opened: any snapshot, tape, disk or
+  RZX, started or not. Labels are read again only when you loaded them yourself.
 
 - **Menus no longer pause the machine.** It can pause instead while another application has the
   focus (Options, Application).

@@ -119,9 +119,8 @@ typedef struct {
 		void addSatellite(QWidget*, bool allKeys = false);
 		int hotkeyOf(QKeyEvent*);
 		void hotkeysNote();
-		void loadLabels(const char*);
 		void fillUserMenu();
-		void openMedia(const QString& path, int id, int drv, int run);
+		void openMedia(const QString& path, int id, int drv, int run, bool pinned = false);
 		void padGame(const QString&);		// an image opened: player 1 takes its .pad, or its own table back
 		void fsOverlay(QWidget*);
 		void setMachine(const std::string&);
@@ -144,6 +143,7 @@ typedef struct {
 		void s_hotkeys();
 		void s_debug();
 		void s_debug_off();
+		void s_machine();		// setMachine() switched to another one
 		// void s_prf_change(xProfile*);
 		void s_scradr(int, int, int, int);
 
@@ -181,6 +181,7 @@ typedef struct {
 		void kPress(QKeyEvent*);
 		void kRelease(QKeyEvent*);
 		void loadShader();
+		bool reloadMedia();
 	private slots:
 		void updateSatellites();
 		void menuHide();

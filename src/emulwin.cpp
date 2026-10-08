@@ -818,7 +818,7 @@ void MainWin::tapStateChanged(int wut, int val) {
 					break;
 				case TWS_OPEN:
 					pause(true,PR_FILE);
-					load_file(comp, NULL, FG_TAPE, -1);
+					openMedia(QString(), FG_TAPE, -1, 0, true);
 					emit s_tape_upd(comp->tape);
 					pause(false,PR_FILE);
 					break;
@@ -861,7 +861,7 @@ void MainWin::rzxStateChanged(int state) {
 			break;
 		case RWS_OPEN:
 			pause(true,PR_RZX);
-			load_file(comp, NULL, FG_RZX, -1);
+			openMedia(QString(), FG_RZX, -1, 0, true);
 			if (comp->rzx.play) {
 				emit s_rzx_start();
 			}
@@ -1400,10 +1400,10 @@ void MainWin::dropAsk(QString path) {
 }
 
 // One way in for "the user opened a medium", whatever pointed at it: an empty
-// path asks the file dialog. The machine the file wants is set up first, then
+// path asks the file dialog, and pinned keeps the running machine. The machine the file wants is set up first, then
 // it is held while the file is read, and started right there - arming resets
 // it anyway, so there is nothing to gain from letting it run a cycle first.
-void MainWin::openMedia(const QString& path, int id, int drv, int run) {
+void MainWin::openMedia(const QString& path, int id, int drv, int run, bool pinned) {
 	Computer* comp = conf.zx;
 	pause(true, PR_FILE);
 	QString fpath = path.isEmpty() ? file_ask_open(comp, &id, &drv) : path;
@@ -1413,7 +1413,7 @@ void MainWin::openMedia(const QString& path, int id, int drv, int run) {
 		if (run < 0) fpath.clear();
 	}
 	std::string mac;
-	if (!fpath.isEmpty() && media_machine(comp, fpath, id, drv, run, &mac)) {
+	if (!fpath.isEmpty() && (pinned || media_machine(comp, fpath, id, drv, run, &mac))) {
 		if (!mac.empty()) setMachine(mac);
 		QByteArray loc = fpath.toLocal8Bit();
 		// the pause does not wait for the cycle, and a snapshot resets the machine
@@ -1423,12 +1423,25 @@ void MainWin::openMedia(const QString& path, int id, int drv, int run) {
 		if (err == ERR_OK) {
 			recent_add(fpath);		// the list is saved with the rest on exit
 			if (drv < 1) padGame(fpath);	// a disk in drive B is not the game
+			media_opened(fpath, id, drv, run, pinned);
 		}
 		media_autorun(comp, run);
 	}
 	pause(false, PR_FILE);
 	checkState();
 	emit s_tape_upd(comp->tape);
+}
+
+// The last open made again, the way it was made. The labels file the user
+// named is read again too, unless an image's own labels are over it.
+bool MainWin::reloadMedia() {
+	xMediaOpen last = media_last_open();
+	bool named = labels_named_on();
+	if (!last.path.isEmpty())
+		openMedia(last.path, last.id, last.drv, last.run, last.pinned);
+	if (!conf.labpath.isEmpty() && (named || last.path.isEmpty()))
+		loadLabels(conf.labpath.toLocal8Bit().data());
+	return !last.path.isEmpty() || !conf.labpath.isEmpty();
 }
 
 
@@ -2645,6 +2658,7 @@ void MainWin::setMachine(const std::string& id) {
 	xm_set(id);
 	onPrfChange();
 	emu_unlock();
+	emit s_machine();
 }
 
 void MainWin::reset(QAction* act) {

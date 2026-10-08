@@ -110,7 +110,6 @@ int loadSNA(Computer* comp, const char* name, int drv) {
 	int res = loadSNA_f(comp, file, fileSize);
 	fclose(file);
 	if (res == ERR_OK) {
-		mem_set_path(comp->mem, name);
 		comp_set_frame_tick(comp, -1);		// the file does not say where in the frame
 	}
 	return res;
@@ -185,6 +184,5 @@ int saveSNA(Computer* comp, const char* name, int drv) {
 		comp->cpu->regSP = sp;
 	}
 	fclose(file);
-	mem_set_path(comp->mem, name);
 	return ERR_OK;
 }

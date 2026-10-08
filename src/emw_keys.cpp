@@ -269,10 +269,7 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 				loadShader();
 				break;
 			case XCUT_RELOAD:
-				pause(true, PR_FILE);
-				x = media_reload(comp);
-				pause(false, PR_FILE);
-				setMessage(x ? " reloaded " : " nothing to reload ");
+				setMessage(reloadMedia() ? " reloaded " : " nothing to reload ");
 				break;
 			case XCUT_QUICKSAVE:
 				x = quick_save(comp);
