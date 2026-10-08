@@ -833,6 +833,7 @@ void MainWin::tapStateChanged(int wut, int val) {
 
 // the rzx player asks for a frame of the recording
 void MainWin::rzxSeek(int frame) {
+	if (rewind_active()) return;		// it stands in for the machine until let go
 	emu_lock();
 	rzx_seek_start(conf.zx, frame);
 	emu_unlock();

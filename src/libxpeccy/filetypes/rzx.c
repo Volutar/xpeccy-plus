@@ -32,6 +32,17 @@ typedef struct {
 // new
 
 static char* msgRzxStop = " RZX playback end ";
+static unsigned rzx_serial = 0;		// tells one playback from the next, see rzx_playing
+
+void rzx_reread(Computer* comp) {
+	FILE* file = comp->rzx.file;
+	if (!comp->rzx.play || !file) return;
+	if (comp->rzx.frm.size > 0) {
+		x_fseek(file, comp->rzx.dataAt, SEEK_SET);
+		fread(comp->rzx.frm.data, comp->rzx.frm.size, 1, file);
+	}
+	x_fseek(file, comp->rzx.next, SEEK_SET);
+}
 
 void rzxGetFrame(Computer* comp) {
 	int type;
@@ -47,10 +58,12 @@ void rzxGetFrame(Computer* comp) {
 			size = fgetw(comp->rzx.file);
 			if (size != 0xffff) {
 				comp->rzx.frm.size = size;
+				comp->rzx.dataAt = x_ftell(comp->rzx.file);
 				if (size > 0)
 					fread(comp->rzx.frm.data, size, 1, comp->rzx.file);
 			}
 			comp->rzx.frm.pos = 0;
+			comp->rzx.next = x_ftell(comp->rzx.file);
 		} else {
 			work = 1;
 			while (work) {
@@ -66,9 +79,11 @@ void rzxGetFrame(Computer* comp) {
 						size = fgetw(comp->rzx.file);				//			+2 size
 						if (size != 0xffff) {
 							comp->rzx.frm.size = size;
+							comp->rzx.dataAt = x_ftell(comp->rzx.file);
 							fread(comp->rzx.frm.data, comp->rzx.frm.size, 1, comp->rzx.file);// +4 data
 						}
 						comp->rzx.frm.pos = 0;
+						comp->rzx.next = x_ftell(comp->rzx.file);
 						work = 0;
 						break;
 					case 0x30:					// TODO: snapshot
@@ -353,6 +368,7 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 		} else {
 			xlog(XLG_FILE, XLL_DEBUG, "RZX ver %i.%i",hd.major,hd.minor);
 			comp->rzx.file = fopen_tmp();
+			rzx_playing = comp->rzx.file ? ++rzx_serial : 0;
 			if (!comp->rzx.file) {
 				err = ERR_CANT_OPEN;
 			} else {

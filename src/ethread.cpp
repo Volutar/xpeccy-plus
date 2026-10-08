@@ -955,7 +955,7 @@ void xThread::rewindCheck(Computer* comp, int full) {
 		// a cycle can end on every sample (sound on, or a GS to run), so the
 		// bound is in frames, not in cycles
 		int last = to + 1000;
-		while ((comp->frmCount != to) && (comp->frmCount < last) && !conf.emu.pause) {
+		while ((rewind_clock() != to) && (rewind_clock() < last) && !conf.emu.pause) {
 			conf.snd.need = full ? 256 : 0;
 			benchStop = conf.vid.fcount + 1;
 			emu_lock();
@@ -963,8 +963,8 @@ void xThread::rewindCheck(Computer* comp, int full) {
 			emu_unlock();
 		}
 		done++;
-		if (comp->frmCount != to) {
-			xlog(XLG_CORE, XLL_WARN, "rewind check: frame %i reached %i instead of %i", rewind_frame_of(back), comp->frmCount, to);
+		if (rewind_clock() != to) {
+			xlog(XLG_CORE, XLL_WARN, "rewind check: frame %i reached %i instead of %i", rewind_frame_of(back), rewind_clock(), to);
 			bad++;
 		} else if (!rewind_matches(comp, back - 1)) {
 			bad++;

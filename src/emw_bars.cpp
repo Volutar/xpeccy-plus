@@ -313,12 +313,8 @@ void MainWin::initBars() {
 	auto speed = [this](const char* name, int xcut, int mode, const char* icon) {
 		QAction* act = new QAction(QIcon(QString(":/images/%0.png").arg(icon)), name, this);
 		act->setCheckable(true);
-		connect(act, &QAction::triggered, this, [this, mode]() {
-			if (conf.zx->rzx.play) {
-				setMessage(" not in RZX ");
-			} else {
-				xspeed_toggle(mode);
-			}
+		connect(act, &QAction::triggered, this, [mode]() {
+			xspeed_toggle(mode);
 		});
 		cutActs.append({act, QString(name), xcut});
 		return act;

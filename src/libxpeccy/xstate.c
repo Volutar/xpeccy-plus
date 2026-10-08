@@ -65,9 +65,9 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 
 	// The machine itself, around the breakpoint maps: 4.6 MB of debugger
 	// bookkeeping in the middle of the struct that no rollback needs. The rzx
-	// frame buffer is skipped the same way - 64K of the head range, and the
-	// only thing that reads it is a recording being played, which never runs
-	// ahead. See the note beside brkRamMap in spectrum.h.
+	// frame buffer is skipped the same way - 64K of the head range, which
+	// xstate_load() reads back from the recording (rzx_reread). See the note
+	// beside brkRamMap in spectrum.h.
 	ADD(comp, offsetof(Computer, rzx.frm.data));
 	ADD((char*)comp + offsetof(Computer, rzx.frm.pos),
 		offsetof(Computer, brkRamMap) - offsetof(Computer, rzx.frm.pos));
@@ -156,7 +156,6 @@ int xstate_safe(Computer* comp) {
 
 int xstate_safe_tape_aside(Computer* comp) {
 	if (!comp || !comp->hw) return 0;
-	if (comp->rzx.play) return 0;			// a recording is read forwards only
 	if (comp->dif) {
 		if (fdc_running(comp->dif->fdc)) return 0;
 	}
@@ -249,6 +248,7 @@ int xstate_load(xState* st, Computer* comp) {
 	// current, not by the address it held before.
 	comp->vid->ray.ptr = scrimg + st->m.ray;
 	comp->vid->ray.lptr = scrimg + st->m.line;
+	rzx_reread(comp);
 	return 1;
 }
 

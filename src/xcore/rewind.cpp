@@ -9,6 +9,7 @@
 #include "rewind.h"
 #include "xcore.h"
 #include "fastload.h"
+#include "rzxseek.h"
 #include "autostart.h"
 #include "sound.h"
 #include "../libxpeccy/xstate.h"
@@ -32,7 +33,7 @@ typedef struct {
 	std::vector<rwPage*> pages;
 	size_t size;
 	Tape tape;		// where the tape stood; put back only onto the same tape
-	int frame;		// comp->frmCount when it was taken
+	int frame;		// rw_clock when it was taken
 	long long phase;	// see rewind_frame()
 	long long snd;		// rw_snd_w when it was taken
 } rwEntry;
@@ -41,6 +42,10 @@ static std::deque<rwEntry> rw_ring;
 static size_t rw_mem = 0;
 static std::atomic<int> rw_clear_req(0);
 static Computer* rw_comp = NULL;	// what the history was taken from
+static unsigned rw_rzx = 0;		// ...and the recording playing then (rzx_playing)
+// The history's own frame count. Not comp->frmCount: a reset or a snapshot -
+// every join in a recording - starts that one again, and the history spans them.
+static int rw_clock = 0;
 static unsigned rw_writes = 0;		// x_media_writes the history started at
 static int rw_wait = 0;			// frames since the last snapshot
 static xState* rw_st = NULL;		// every save and every load goes through it
@@ -187,7 +192,7 @@ static void rw_take(Computer* comp, long long phase) {
 		e.pages[i] = pg;
 	}
 	e.tape = *comp->tape;
-	e.frame = comp->frmCount;
+	e.frame = rw_clock;
 	e.phase = phase;
 	e.snd = rw_snd_w;
 	rw_ring.push_back(std::move(e));
@@ -210,7 +215,7 @@ enum {
 static std::atomic<int> rw_key(0);
 static std::atomic<int> rw_mode(RW_REC);
 static int rw_back = 0;		// the snapshot on screen
-static int rw_from = 0;		// comp->frmCount when the rewind began
+static int rw_from = 0;		// rw_clock when the rewind began
 static std::atomic<int> rw_tenths(0);	// see rewind_back_tenths
 static double rw_smp = 0;	// output samples until the next picture
 
@@ -295,11 +300,14 @@ void rewind_hold(int on) {
 #endif
 
 void rewind_frame(Computer* comp, long long* phase) {
-	if (rw_clear_req.exchange(0) || (comp != rw_comp)) {
+	rw_clock++;
+	// a recording starting or ending takes the machine over or lets it go
+	if (rw_clear_req.exchange(0) || (comp != rw_comp) || (rzx_playing != rw_rzx)) {
 		rw_drop_all();
 		rw_play_stop();
 		rw_log_forget();
 		rw_comp = comp;
+		rw_rzx = rzx_playing;
 	}
 	if (!conf.emu.rewind.on) {
 		rw_drop_all();
@@ -310,8 +318,9 @@ void rewind_frame(Computer* comp, long long* phase) {
 	if (rw_key && !rw_ring.empty() && !comp->tape->rec) {
 		xlog(XLG_CORE, XLL_INFO, "rewind: %i snapshots back to frame %i", rewind_count(), rewind_frame_of(rewind_count() - 1));
 		fastload_stop(comp);		// it holds the picture back, and the speed
+		rzx_seek_cancel(comp);		// the same
 		rw_back = -1;
-		rw_from = comp->frmCount;
+		rw_from = rw_clock;
 		rw_tenths = 0;
 		rw_smp = 0;
 		rw_mode = RW_PLAY;
@@ -383,6 +392,10 @@ int rewind_frame_of(int back) {
 	return e ? e->frame : -1;
 }
 
+int rewind_clock() {
+	return rw_clock;
+}
+
 // the bytes of a snapshot, in one piece
 static void rw_unpage(const rwEntry* e, unsigned char* dst) {
 	for (size_t i = 0; i < e->pages.size(); i++) {
@@ -395,6 +408,10 @@ int rewind_load(Computer* comp, int back, long long* phase) {
 	rwEntry* e = rw_at(back);
 	if (!e || !rw_st || comp->tape->rec) return 0;
 	if (rw_media_changed()) return 0;
+	if (rzx_playing != rw_rzx) {		// the recording was closed: its file with it
+		rw_drop_all();
+		return 0;
+	}
 	unsigned char* dst = xstate_put_begin(rw_st, e->meta.data());
 	if (!dst) return 0;
 	rw_unpage(e, dst);
@@ -403,6 +420,7 @@ int rewind_load(Computer* comp, int back, long long* phase) {
 		return 0;
 	}
 	if (phase) *phase = e->phase;
+	rw_clock = e->frame;
 	Tape* tap = comp->tape;
 	if (tap_same_image(tap, &e->tape)) {
 		tap_copy_pos(tap, &e->tape);

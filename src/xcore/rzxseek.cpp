@@ -50,3 +50,7 @@ void rzx_seek_frame(Computer* comp) {
 int rzx_seeking() {
 	return rs_target >= 0;
 }
+
+void rzx_seek_cancel(Computer* comp) {
+	if (rs_target >= 0) rs_stop(comp, 0);
+}

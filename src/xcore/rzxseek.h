@@ -9,3 +9,5 @@
 int rzx_seek_start(Computer*, int frame);
 void rzx_seek_frame(Computer*);
 int rzx_seeking();
+// let the machine go now - the rewind is about to take it
+void rzx_seek_cancel(Computer*);

@@ -235,11 +235,7 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 				break;
 			case XCUT_FFWD:
 			case XCUT_SLOWMO:
-				if (comp->rzx.play) {
-					setMessage(" not in RZX ");
-				} else {
-					xspeed_key(xcut_tmode(xkey), 1);
-				}
+				xspeed_key(xcut_tmode(xkey), 1);
 				break;
 			case XCUT_SPEED_UP:
 			case XCUT_SPEED_DOWN:
