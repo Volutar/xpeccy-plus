@@ -38,7 +38,6 @@ typedef struct aymChip aymChip;
 // ay-3-8910
 void ay_reset(aymChip*);
 int ay_rd(aymChip*, int);
-int ay_port_rd(aymChip*, int);
 void ay_wr(aymChip*, int, int);
 void ay_sync(aymChip*, int);
 void ay_tick_n(aymChip*, int);		// that many half periods of the chip clock
