@@ -285,12 +285,13 @@ xlog(XLG_FILE, XLL_DEBUG, ".z80 version 3");
 xlog(XLG_FILE, XLL_DEBUG, ".z80 version 2");
 			if (lst < 16) xlog(XLG_FILE, XLL_DEBUG, "Hardware: %s",v2hardware[lst]);
 		}
+		// 1ffd is a different port on each machine that has it, and goes
+		// first: a +3 takes it only while 7ffd is unlocked
+		if ((p1ffd >= 0) && z80_hw(hw)->p1ffd && snapHwRuns(hw, comp->hw->id))
+			comp->hw->out(comp, 0x1ffd, p1ffd);
 		// a 48K has no paging, and byte 35 means nothing there: taking it
 		// as 7ffd would put the 128 rom in on a machine that has one
 		comp->hw->out(comp, 0x7ffd, (hw == SNAP_HW_48K) ? 0x10 : pg);
-		// 1ffd is a different port on each machine that has it
-		if ((p1ffd >= 0) && z80_hw(hw)->p1ffd && snapHwRuns(hw, comp->hw->id))
-			comp->hw->out(comp, 0x1ffd, p1ffd);
 		switch (hw) {
 			case SNAP_HW_48K:
 			case SNAP_HW_128K:
