@@ -2362,12 +2362,12 @@ void MainWin::doOptions() {
 // out of the whole raster, so the picture stays right even though the machine
 // is paused and no new frame is coming.
 void MainWin::optResize() {
+	int bplWas = bytesPerLine;
+	int sizeWas = bufSize;
 	updateWindow();
-	// Apply rebuilds the machine and resets it, and the dialog stays up - so
-	// the machine is paused and cannot finish the frame it was drawing. What
-	// is in the buffer is half of one frame over half of another, read back
-	// with whatever row length the new layout has. Draw a whole one instead.
-	if (hasPicture) renderFrame();		// nothing to clean up before the first
+	// bufimg holds the last whole frame until a new layout; a redraw steps the machine on
+	if (hasPicture && ((bytesPerLine != bplWas) || (bufSize != sizeWas)))
+		renderFrame();		// nothing to clean up before the first
 	presentFrame();
 }
 
