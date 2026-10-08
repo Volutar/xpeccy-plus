@@ -43,6 +43,13 @@ static const struct {
 	{SNAP_HW_UNKNOWN, NULL}
 };
 
+std::string fm_snap_target(int snap) {
+	int i = 0;
+	while ((fm_snap_tab[i].hw != SNAP_HW_UNKNOWN) && (fm_snap_tab[i].hw != snap))
+		i++;
+	return fm_snap_tab[i].target ? fm_snap_tab[i].target : "";
+}
+
 static const char* fm_need_tab[] = {
 	"any machine", "TSConf", "Beta Disk (TR-DOS)", "+3 disk drive", "read from the file",
 	"exactly the one it was recorded on", "exactly the one it was taken on"
@@ -140,10 +147,7 @@ xFileMacPick fm_pick(int ftype, const char* path) {
 	std::string target = row->target ? row->target : "";
 	if (row->probe) {
 		snap = row->probe(path);
-		int i = 0;
-		while ((fm_snap_tab[i].hw != SNAP_HW_UNKNOWN) && (fm_snap_tab[i].hw != snap))
-			i++;
-		target = fm_snap_tab[i].target ? fm_snap_tab[i].target : "";
+		target = fm_snap_target(snap);
 		// a file of ours names the very machine it was taken on
 		if ((snap >= SNAP_HW_CORE) && (ftype == FL_SZX)) {
 			char id[256];

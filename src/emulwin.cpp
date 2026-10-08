@@ -43,6 +43,7 @@
 #include "xcore/autostart.h"
 #include "xcore/rewind.h"
 #include "xcore/fastload.h"
+#include "xcore/rzxseek.h"
 #include "emulwin.h"
 #include "filer.h"
 #include "watcher.h"
@@ -91,7 +92,7 @@ void MainWin::updateHead() {
 	const xMachine* mac = xm_find(conf.macId);
 	if (conf.zx && mac)
 		parts << QString::fromLocal8Bit(mac->name.c_str());
-	if (conf.emu.fast && !autostart_busy() && !fastload_busy())	// neither fast mode is the user's
+	if (conf.emu.fast && !autostart_busy() && !fastload_busy() && !rzx_seeking())	// none of them is the user's
 		parts << "fast";
 	frame->setWindowTitle(parts.join(" - "));
 }
@@ -828,6 +829,13 @@ void MainWin::tapStateChanged(int wut, int val) {
 			emit s_tape_upd(comp->tape);
 			break;
 	}
+}
+
+// the rzx player asks for a frame of the recording
+void MainWin::rzxSeek(int frame) {
+	emu_lock();
+	rzx_seek_start(conf.zx, frame);
+	emu_unlock();
 }
 
 // connection between rzx player and emulation state

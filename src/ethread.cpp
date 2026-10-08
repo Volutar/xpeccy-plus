@@ -11,6 +11,7 @@
 #include "xcore/pacing.h"
 #include "xcore/autostart.h"
 #include "xcore/fastload.h"
+#include "xcore/rzxseek.h"
 #include "xcore/rewind.h"
 #include "xcore/vidrec.h"
 #include "xcore/tapetrap.h"
@@ -101,6 +102,7 @@ xThread::xThread() {
 	sndNsFixed = 0;
 	benchStop = -1;
 	benchRzx = 0;
+	benchRzxSeek = -1;
 	earBlock = -1;
 	conf.emu.fast = 0;
 	finish = 0;
@@ -574,6 +576,7 @@ void xThread::emuCycle(Computer* comp) {
 			ldc_frame();
 			autostart_frame(comp);
 			fastload_frame(comp);
+			rzx_seek_frame(comp);
 			rewind_frame(comp, &sndNsFixed);
 			rewinding = rewind_active();
 			// before run-ahead: the debugger's screen view wants the machine as
@@ -770,8 +773,12 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	// frames it counts, not the video's, and past the INT that ends it if the
 	// cpu takes one
 	if (benchRzx > 0) {
-		while (comp->rzx.play && (comp->rzx.fCurrent < benchRzx))
-			compExec(comp);
+		for (int pass = (benchRzxSeek >= 0) ? 2 : 1; pass > 0; pass--) {
+			while (comp->rzx.play && (comp->rzx.fCurrent < benchRzx))
+				compExec(comp);
+			if (pass > 1)
+				fprintf(stdout, "rzx: seek to %i stands at %i\n", benchRzxSeek, rzx_seek(comp, benchRzxSeek));
+		}
 		CPU* cpu = comp->cpu;
 		if ((cpu->intrq & Z80_INT) && cpu->flgACK && cpu->flgIFF1 && !cpu->flgNOINT)
 			compExec(comp);
@@ -879,7 +886,7 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	int done = conf.vid.fcount - f0;
 	double sec = (t1 - t0) / 1e9;
 	double fps = (sec > 0) ? done / sec : 0;
-	double rt = (comp->vid->nsPerFrame > 0) ? 1e9 / comp->vid->nsPerFrame : 50;
+	double rt = comp_fps(comp);
 	int ticks = comp->tickCount - tk0;
 	fprintf(stdout, "bench: machine %s, %s, %i frames in %.3f s: %.1f fps, x%.2f real time, %.2f ns/T%s\n",
 		conf.macId.c_str(), full ? "full" : "fast", done, sec, fps, fps / rt,

@@ -14,6 +14,9 @@ class xTableModel : public QAbstractTableModel {
 		void setCols(int);
 		int rowCount(const QModelIndex& = QModelIndex()) const;
 		int columnCount(const QModelIndex& = QModelIndex()) const;
+		// the row a player stands on, drawn inverted; !0 when it moved
+		int markRow(int);
+		int markedRow() const {return row_mark;}
 	public slots:
 		void update();
 		void updateRow(int);
@@ -22,6 +25,8 @@ class xTableModel : public QAbstractTableModel {
 	protected:
 		int row_count;
 		int col_count;
+		int row_mark;
+		QVariant markRole(int row, int role) const;
 };
 
 class xDockWidget : public QDockWidget {

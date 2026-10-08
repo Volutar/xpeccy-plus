@@ -69,6 +69,8 @@ int load_file(Computer* comp, const char* name, int id, int drv);
 int media_reload(Computer*);
 // a snapshot loaded since the last call, empty when none
 QString file_take_snapshot();
+// the last recording opened for playback
+QString rzx_current();
 // the image in use, as the window title names it; empty when none
 QString media_current();
 QString media_image_name();

@@ -188,6 +188,7 @@ typedef struct {
 		void optApply();
 		void dbgReturn();
 		void rzxStateChanged(int);
+		void rzxSeek(int);
 		void profileSelected(QAction*);
 		void shdSelected(QAction*);
 		void keySelected(QAction*);

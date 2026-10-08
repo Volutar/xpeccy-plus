@@ -85,6 +85,14 @@ int hw_reset_bank(int hw, int res) {
 	return -1;
 }
 
+HardWare* findHardwareId(int id) {
+	for (tabHwItem* itm = tabHwPtr; itm->id != HW_NULL; itm++) {
+		if (itm->core && (itm->core->id == id))
+			return itm->core;
+	}
+	return NULL;
+}
+
 HardWare* findHardware(const char* name) {
 	tabHwItem* itm = tabHwPtr;
 	HardWare* hw = NULL;

@@ -70,10 +70,6 @@ static struct {
 	double ratio;
 } rw_seg;
 
-static double rw_fps(Computer* comp) {
-	return (comp->vid->nsPerFrame > 0) ? 1e9 / comp->vid->nsPerFrame : 50;
-}
-
 static void page_drop(rwPage* pg) {
 	if (--pg->refs > 0) return;
 	free(pg);
@@ -126,7 +122,7 @@ static void rw_log_forget() {
 static void rw_log_size(Computer* comp, size_t max, bool capped) {
 	if (rw_ring.empty()) return;
 	const rwEntry& e = rw_ring.back();
-	double secs = (e.frame - rw_ring.front().frame) / rw_fps(comp);
+	double secs = (e.frame - rw_ring.front().frame) / comp_fps(comp);
 	if (capped && !rw_capped) {
 		rw_capped = true;
 		xlog(XLG_CORE, XLL_WARN, "rewind: history hit the %u MB cap, %.1f s kept",
@@ -147,7 +143,7 @@ static void rw_log_size(Computer* comp, size_t max, bool capped) {
 }
 
 static void rw_trim(Computer* comp) {
-	size_t max = (size_t)(conf.emu.rewind.secs * rw_fps(comp) / conf.emu.rewind.step) + 1;
+	size_t max = (size_t)(conf.emu.rewind.secs * comp_fps(comp) / conf.emu.rewind.step) + 1;
 	bool capped = false;
 	while ((rw_ring.size() > max) || ((rw_mem > RW_MEM_MAX) && (rw_ring.size() > 1))) {
 		capped |= (rw_ring.size() <= max);
@@ -341,7 +337,7 @@ int rewind_play(Computer* comp, long long* phase) {
 	}
 	int shown = 0;
 	if (rw_smp <= 0) {
-		double spf = conf.snd.rate / rw_fps(comp);
+		double spf = conf.snd.rate / comp_fps(comp);
 		rw_smp += spf;
 		if ((rw_mode == RW_PLAY) && (rw_back + 1 < rewind_count()) && rw_show(comp, rw_back + 1, phase)) {
 			// the sound between this picture and the one shown before, backwards
@@ -349,7 +345,7 @@ int rewind_play(Computer* comp, long long* phase) {
 			long long hi = e ? e->snd : rw_snd_w;
 			rw_back++;
 			shown = 1;
-			rw_tenths = (int)((rw_from - rw_at(rw_back)->frame) * 10 / rw_fps(comp) + 0.5);
+			rw_tenths = (int)((rw_from - rw_at(rw_back)->frame) * 10 / comp_fps(comp) + 0.5);
 			rw_seg.lo = rw_at(rw_back)->snd;
 			rw_seg.pos = (double)hi;
 			rw_seg.ratio = (hi - rw_seg.lo) / spf;

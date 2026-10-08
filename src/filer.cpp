@@ -369,6 +369,12 @@ static int last_as_kind = AS_NONE;
 static int last_as_drv = 0;
 // and a snapshot loaded since the window last asked
 static QString last_snapshot;
+// the recording the RZX player shows
+static QString rzx_path;
+
+QString rzx_current() {
+	return rzx_path;
+}
 
 int file_autostart_kind() {
 	return last_as_kind;
@@ -678,6 +684,8 @@ int load_file(Computer* comp, const char* name, int id, int drv) {
 						last_snapshot = path;
 						break;
 				}
+				if (inf->id == FL_RZX)
+					rzx_path = path;
 			}
 		}
 	}

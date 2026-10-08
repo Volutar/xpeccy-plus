@@ -162,6 +162,37 @@ int loadRZX(Computer*, const char*, int);
 int rzxGetHardware(const char*);
 void rzxGetFrame(Computer*);
 
+// one block of a recording as the file has it
+typedef struct {
+	int id;			// 0x10 creator, 0x20/0x21 signature, 0x30 snapshot, 0x80 input
+	int size;		// bytes in the file, the 5 of the block's own head included
+	int frame;		// frames recorded before it
+	int flags;		// snapshot: b0 external, b1 packed; input: b0 encrypted, b1 packed
+	int frames;		// input: frames in the block
+	int tstart;		// input: T of the frame it starts in
+	int usl;		// snapshot: bytes unpacked
+	int hw;			// snapshot: SNAP_HW_*
+	int major;		// creator: program version
+	int minor;
+	char ext[5];		// snapshot: its format, as the file names it
+	char text[256];		// creator: program name; external snapshot: its file name
+} rzxBlock;
+
+typedef struct {
+	int major;		// format version
+	int minor;
+	int flags;		// b0: signed
+	int frames;		// in every input block
+	int snaps;		// snapshot blocks, the first one included
+	int junk;		// bytes after the last whole block
+	int count;
+	rzxBlock* blk;
+} rzxInfo;
+
+int rzx_info(const char*, rzxInfo*, int first);
+void rzx_info_free(rzxInfo*);
+int rzx_seek(Computer*, int frame);
+
 // memory (snapshot)
 
 // what a snapshot was taken on, read from the file without loading it

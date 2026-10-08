@@ -5,6 +5,10 @@
 // Fast loading: the machine runs flat out while a loader reads the tape.
 // frame() is called at the end of every emulated frame and decides it.
 void fastload_frame(Computer*);
+// Fast mode the emulator holds itself, with a picture drawn 30 times a second
+// of host time (only when draw allows it); release gives the machine back.
+void fast_hold_frame(Computer*, long long* drawnAt, int draw);
+void fast_hold_release(Computer*);
 // let the machine go now - the debugger is about to take it
 void fastload_stop(Computer*);
 // the machine is being run through a load: the picture is held

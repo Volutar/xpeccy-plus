@@ -51,3 +51,5 @@ typedef struct {
 } xFileMacPick;
 
 xFileMacPick fm_pick(int ftype, const char* path);
+// the machine a snapshot naming SNAP_HW_* is exactly, empty for none
+std::string fm_snap_target(int snap);
