@@ -576,13 +576,13 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 //			conf.prof.changed = 0;
 //		}
 		if (block) return;
+		rzxWatch();
 		if (comp->rzx.overio) {
 			comp->rzx.overio = 0;
 			pause(true, PR_RZX);
 			shitHappens("RZX playback error");
 			pause(false, PR_RZX);
 		}
-		rzxWatch();
 // turbo, by the time that really went: this timer is a coarse one
 		long long now = paceClockNs();
 		int ms = (padTurboNs > 0) ? (int)qBound(0LL, (now - padTurboNs) / 1000000, 100LL) : 0;
@@ -1420,7 +1420,7 @@ void MainWin::openMedia(const QString& path, int id, int drv, int run, bool pinn
 		media_autorun(comp, run);
 	}
 	pause(false, PR_FILE);
-	checkState();
+	rzxWatch();
 	emit s_tape_upd(comp->tape);
 }
 
@@ -1473,20 +1473,16 @@ void MainWin::closeEvent(QCloseEvent* ev) {
 	}
 }
 
-void MainWin::checkState() {
-	rzxWatch();
-}
-
 // The player follows the recording the core has open, by its number: a flag
 // the emulation thread clears as it starts playing is gone before a timer here
 // looks, and a new recording is told from the one before it.
 void MainWin::rzxWatch() {
 	if (rzx_playing == rzxSeen) return;
 	rzxSeen = rzx_playing;
+	pause(false, PR_RZX);		// a pause of the player's outlives what it paused
 	if (rzxSeen) {
 		emit s_rzx_start();
 	} else {
-		pause(false, PR_RZX);		// a pause of the player's outlives what it paused
 		emit s_rzx_stop();
 	}
 }

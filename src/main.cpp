@@ -665,7 +665,7 @@ int main(int ac,char** av) {
 //		mwin.blockSignals(true);
 		mframe.show();
 		mwin.updateWindow();
-		mwin.checkState();
+		mwin.rzxWatch();
 		conf.running = 1;
 		// Nothing paints the window until a frame arrives, so the event loop
 		// starts the machine before it does anything else - a window with no

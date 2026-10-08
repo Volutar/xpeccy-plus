@@ -115,7 +115,7 @@ typedef struct {
 		MainWin(QMainWindow*);
 		~MainWin();
 //		Computer* comp;
-		void checkState();
+		void rzxWatch();		// the RZX player told of a recording opened or closed
 		void addSatellite(QWidget*, bool allKeys = false);
 		int hotkeyOf(QKeyEvent*);
 		void hotkeysNote();
@@ -208,7 +208,6 @@ typedef struct {
 		bool relArmed = false;		// both release keys are down, nothing else since
 		xSatFilter* satFilter = nullptr;	// passes the tool windows' hotkeys on to this one
 		unsigned rzxSeen = 0;			// the recording the player was last told of
-		void rzxWatch();
 		void releaseChord(QKeyEvent*, bool);
 		void fast_key(bool);
 		QPoint warpAt;		// where the last recentering aimed
