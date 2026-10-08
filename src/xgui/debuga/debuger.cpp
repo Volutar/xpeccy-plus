@@ -1000,9 +1000,8 @@ void DebugWin::stopTrace() {
 }
 
 void DebugWin::reload() {
-	Computer* comp = conf.zx;
-	if (media_reload(comp) & RELOAD_SNAPSHOT)
-		ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu));
+	emit wannaReload();
+	ui_asm.dasmTable->setAdr(cpu_get_pc(conf.zx->cpu));
 	fillAll();
 }
 
@@ -1026,8 +1025,8 @@ void DebugWin::keyPressEvent(QKeyEvent* ev) {
 			emit wannaOptions();
 			break;
 		case XCUT_LOAD:
-			load_file(comp, NULL, FG_ALL, -1);
-			ui_asm.dasmTable->setAdr(pc);
+			emit wannaOpen();
+			ui_asm.dasmTable->setAdr(cpu_get_pc(comp->cpu));
 			//fillAll();
 			activateWindow();
 			break;

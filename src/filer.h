@@ -63,10 +63,17 @@ QString file_ask_save(const char* title, const char* filter, const char* ext);
 // the open dialog alone: the path, with id and drv set to what was picked in it
 QString file_ask_open(Computer*, int* id, int* drv);
 int load_file(Computer* comp, const char* name, int id, int drv);
-// load the last snapshot and labels file again; returns which of them it did
-#define RELOAD_SNAPSHOT	1
-#define RELOAD_LABELS	2
-int media_reload(Computer*);
+// the last open the user made, which Reload makes again
+typedef struct {
+	QString path;
+	int id;
+	int drv;
+	int run;
+	bool pinned;	// on the running machine, whatever the file wants
+} xMediaOpen;
+// a file the user opened: kept for Reload, and its labels come with it
+void media_opened(const QString& path, int id, int drv, int run, bool pinned);
+xMediaOpen media_last_open();
 // a snapshot loaded since the last call, empty when none
 QString file_take_snapshot();
 // the last recording opened for playback

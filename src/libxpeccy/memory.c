@@ -16,17 +16,11 @@ Memory* memCreate() {
 	memSetBank(mem, 0x80, MEM_RAM, 2, MEM_16K, NULL, NULL, NULL);
 	memSetBank(mem, 0xc0, MEM_RAM, 0, MEM_16K, NULL, NULL, NULL);
 	mem_set_bus(mem, 16);
-	mem->snapath = NULL;
 	return mem;
 }
 
 void memDestroy(Memory* mem) {
 	free(mem);
-}
-
-void mem_set_path(Memory* mem, const char* path) {
-	mem->snapath = realloc(mem->snapath, strlen(path) + 1);
-	strcpy(mem->snapath, path);
 }
 
 // return nearest 2^n greater than argument

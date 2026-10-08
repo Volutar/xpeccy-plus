@@ -745,8 +745,6 @@ int loadSZX(Computer* comp, const char* name, int drv) {
 		res = loadSZX_buf(comp, buf, len);
 	free(buf);
 	fclose(file);
-	if (res == ERR_OK)
-		mem_set_path(comp->mem, name);
 	return res;
 }
 
@@ -1037,7 +1035,5 @@ int saveSZX(Computer* comp, const char* name, int drv) {
 	int res = szx_build(comp, &b);
 	if (res == ERR_OK)
 		res = szx_write(&b, name);
-	if (res == ERR_OK)
-		mem_set_path(comp->mem, name);
 	return res;
 }

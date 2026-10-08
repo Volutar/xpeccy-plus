@@ -68,6 +68,8 @@ class DebugWin : public QMainWindow {
 		void wannaSndWin(bool);
 		void s_snd_upd();
 		void wannaOptions();
+		void wannaOpen();
+		void wannaReload();
 		void needStep();
 	public slots:
 		void start();
