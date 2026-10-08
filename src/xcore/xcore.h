@@ -129,6 +129,8 @@ void xspeed_key(int mode, int down);	// its key, as Toggle or Hold says
 typedef struct {
 	long long downAt;	// when the press that switched it on came
 	bool offByPress;	// the press switched it off: its release does nothing
+	bool held;		// down now: a release with no press before it - focus lost, a
+				// mode switched on from the toolbar - lets nothing go
 } xHoldKey;
 bool xhold_switches(xHoldKey*, int hold, bool on, bool down);
 void xspeed_modes_off();		// back to normal speed if either is on
