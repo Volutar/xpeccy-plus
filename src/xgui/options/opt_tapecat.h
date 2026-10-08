@@ -34,9 +34,7 @@ class xTapeCatModel : public xTableModel {
 	public:
 		xTapeCatModel(QObject* p = NULL);
 		void fill(Tape*);
-		int setCurrent(int);
 	private:
-		int rcur;
 		TapeBlockInfo* inf;
 		QStringList dur;		// what the columns say, built once per fill: the
 		QStringList name;		// view asks for these again on every repaint, and

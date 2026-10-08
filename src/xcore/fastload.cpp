@@ -547,8 +547,7 @@ void fastload_stop(Computer* comp) {
 	fl_loop.pc = -1;
 	fl_held = 0;
 	fastload_on = fl_bench;
-	conf.emu.fast = 0;
-	vid_set_nodraw(comp->vid, 0);
+	fast_hold_release(comp);
 }
 
 int fastload_busy() {
@@ -591,14 +590,23 @@ static void fl_frame(Computer* comp) {
 		fl_held = 1;
 		fl_drawn_at = conf.vid.fctime;
 	}
-	conf.emu.fast = 1;		// again every frame: a pause or a menu clears it
-	// the next frame is drawn, and its end swaps it into bufimg
 	// nothing past the frame a wind back would return to, or the picture would
 	// step back when it does
-	int draw = !fl_back.ok && (conf.vid.fctime - fl_drawn_at >= FL_REFRESH);
+	fast_hold_frame(comp, &fl_drawn_at, !fl_back.ok);
+}
+
+void fast_hold_frame(Computer* comp, long long* drawnAt, int draw) {
+	conf.emu.fast = 1;		// again every frame: a pause or a menu clears it
+	// the next frame is drawn, and its end swaps it into bufimg
+	draw = draw && (conf.vid.fctime - *drawnAt >= FL_REFRESH);
 	if (draw)
-		fl_drawn_at = conf.vid.fctime;
+		*drawnAt = conf.vid.fctime;
 	vid_set_nodraw(comp->vid, !draw);
+}
+
+void fast_hold_release(Computer* comp) {
+	conf.emu.fast = 0;
+	vid_set_nodraw(comp->vid, 0);
 }
 
 void fastload_frame(Computer* comp) {

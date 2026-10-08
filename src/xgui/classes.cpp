@@ -879,6 +879,23 @@ QString xTreeBox::currentFile() {
 xTableModel::xTableModel(QObject* p):QAbstractTableModel(p) {
 	row_count = 0;
 	col_count = 0;
+	row_mark = -1;
+}
+
+int xTableModel::markRow(int row) {
+	if (row == row_mark) return 0;
+	int was = row_mark;
+	row_mark = row;
+	if ((was >= 0) && (was < row_count)) updateRow(was);
+	if ((row >= 0) && (row < row_count)) updateRow(row);
+	return 1;
+}
+
+QVariant xTableModel::markRole(int row, int role) const {
+	if (row != row_mark) return QVariant();
+	if (role == X_BackgroundRole) return QColor(Qt::darkGray);
+	if (role == Qt::ForegroundRole) return QColor(Qt::white);
+	return QVariant();
 }
 
 QModelIndex xTableModel::index(int row, int col, const QModelIndex& p) const {

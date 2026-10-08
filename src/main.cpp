@@ -400,6 +400,7 @@ int main(int ac,char** av) {
 	app.connect(&mwin, SIGNAL(s_tape_show()), &tapw, SLOT(show()));
 
 	app.connect(&rzxw, SIGNAL(stateChanged(int)), &mwin, SLOT(rzxStateChanged(int)));
+	app.connect(&rzxw, SIGNAL(seekTo(int)), &mwin, SLOT(rzxSeek(int)));
 	app.connect(&mwin, SIGNAL(s_rzx_start()), &rzxw, SLOT(startPlay()));
 	app.connect(&mwin, SIGNAL(s_rzx_stop()), &rzxw, SLOT(stop()));
 	app.connect(&mwin, SIGNAL(s_rzx_upd(Computer*)), &rzxw, SLOT(upd(Computer*)));
@@ -531,6 +532,8 @@ int main(int ac,char** av) {
 				bnSplit = 1;
 			} else if (!strcmp(parg,"--bench-rzx")) {
 				ethread.benchRzx = atoi(av[i++]);
+			} else if (!strcmp(parg,"--bench-rzx-seek")) {
+				ethread.benchRzxSeek = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-state")) {
 				bnState = av[i++];
 			} else if (!strcmp(parg,"--bench-loops")) {

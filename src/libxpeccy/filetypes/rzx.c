@@ -164,7 +164,7 @@ int rzxGetSnapType(char* ext) {
 // Enough of a deflated snapshot to read its header, and no more.
 static int rzx_head_unpack(FILE* file, int insize, unsigned char* dst, int dstsize) {
 	z_stream zs;
-	unsigned char in[512];
+	unsigned char in[1024];
 	int rd = (insize > (int)sizeof(in)) ? (int)sizeof(in) : insize;
 	if (rd <= 0) return 0;
 	rd = fread(in, 1, rd, file);
@@ -181,45 +181,129 @@ static int rzx_head_unpack(FILE* file, int insize, unsigned char* dst, int dstsi
 	return rd;
 }
 
+static FILE* rzx_open_beside(const char*, const char*);
+
+static int rzx_snap_hardware(int type, int usl, const unsigned char* head, int n) {
+	if (n <= 0) return SNAP_HW_UNKNOWN;
+	switch (type) {
+		case 0: return sna_hardware_of(usl);		// the size says it
+		case 1: return z80_hardware_of(head, n);
+		case 2: return szx_hardware_of(head, n);
+	}
+	return SNAP_HW_UNKNOWN;
+}
+
+static rzxBlock* rzx_info_add(rzxInfo* inf) {
+	rzxBlock* blk = (rzxBlock*)realloc(inf->blk, (inf->count + 1) * sizeof(rzxBlock));
+	if (!blk) return NULL;
+	inf->blk = blk;
+	blk += inf->count++;
+	memset(blk, 0, sizeof(rzxBlock));
+	return blk;
+}
+
+// The block list of a recording, read without unpacking anything but the
+// head of each snapshot; with first, up to the first snapshot only. A block
+// whose length runs past the end of the file ends the walk, and what is left
+// is counted as junk.
+int rzx_info(const char* name, rzxInfo* inf, int first) {
+	memset(inf, 0, sizeof(rzxInfo));
+	FILE* file = fopen(name, "rb");
+	if (!file) return ERR_CANT_OPEN;
+	long long size = (long long)fgetSize(file);
+	rzxHead hd;
+	if ((fread(&hd, sizeof(rzxHead), 1, file) != 1) || strncmp(hd.sign, "RZX!", 4)) {
+		fclose(file);
+		return ERR_RZX_SIGN;
+	}
+	inf->major = hd.major;
+	inf->minor = hd.minor;
+	inf->flags = swap32(hd.flags);
+	unsigned char head[0x400];
+	rzxSnap shd;
+	FILE* ext;
+	int n;
+	long long at;
+	while ((at = x_ftell(file)) < size) {
+		int id = fgetc(file);
+		unsigned int len = (unsigned int)fgeti(file);
+		if (feof(file) || (len < 5) || (at + len > size)) {
+			inf->junk = (int)(size - at);
+			break;
+		}
+		rzxBlock* blk = rzx_info_add(inf);
+		if (!blk) break;
+		blk->id = id;
+		blk->size = len;
+		blk->frame = inf->frames;
+		switch (id) {
+			case 0x10:
+				if (len >= 29) {
+					fread(blk->text, 20, 1, file);
+					blk->text[20] = 0;
+					blk->major = fgetw(file);
+					blk->minor = fgetw(file);
+				}
+				break;
+			case 0x30:
+				if ((len < 17) || (fread(&shd, sizeof(rzxSnap), 1, file) != 1)) break;
+				blk->flags = swap32(shd.flag);
+				blk->usl = swap32(shd.usl);
+				memcpy(blk->ext, shd.ext, 4);
+				blk->ext[4] = 0;
+				n = 0;
+				if (blk->flags & 1) {			// b0: a file of its own, by name
+					fgeti(file);			// checksum
+					n = (len > 21) ? (int)len - 21 : 0;
+					if (n >= (int)sizeof(blk->text)) n = sizeof(blk->text) - 1;
+					fread(blk->text, n, 1, file);
+					blk->text[n] = 0;
+					n = 0;
+					ext = rzx_open_beside(name, blk->text);
+					if (ext) {
+						n = (int)fread(head, 1, sizeof(head), ext);
+						if (!blk->usl) blk->usl = (int)fgetSize(ext);
+						fclose(ext);
+					}
+				} else if (blk->flags & 2) {
+					n = rzx_head_unpack(file, len - 17, head, sizeof(head));
+				} else {
+					n = (int)fread(head, 1, sizeof(head), file);
+				}
+				blk->hw = rzx_snap_hardware(rzxGetSnapType(blk->ext), blk->usl, head, n);
+				inf->snaps++;
+				break;
+			case 0x80:
+				if (len < 18) break;
+				blk->frames = fgeti(file);
+				fgetc(file);
+				blk->tstart = fgeti(file);
+				blk->flags = fgeti(file);
+				inf->frames += blk->frames;
+				break;
+		}
+		if (first && (id == 0x30)) break;
+		x_fseek(file, at + len, SEEK_SET);
+	}
+	fclose(file);
+	return ERR_OK;
+}
+
+void rzx_info_free(rzxInfo* inf) {
+	free(inf->blk);
+	inf->blk = NULL;
+	inf->count = 0;
+}
+
 // What the recording was made on. It is the hardware of the snapshot playback
 // starts from, and unlike a snapshot on its own it has to be that machine
 // exactly - see snapHwIs().
 int rzxGetHardware(const char* name) {
-	FILE* file = fopen(name, "rb");
-	if (!file) return SNAP_HW_UNKNOWN;
+	rzxInfo inf;
 	int res = SNAP_HW_UNKNOWN;
-	rzxHead hd;
-	rzxSnap shd;
-	unsigned char head[64];
-	int type, len, n;
-	if ((fread(&hd, sizeof(rzxHead), 1, file) == 1) && !strncmp(hd.sign, "RZX!", 4)) {
-		while (1) {
-			type = fgetc(file);
-			len = fgeti(file);
-			if (feof(file) || (len < 5)) break;
-			if (type != 0x30) {			// not a snapshot block: step over it
-				fseek(file, len - 5, SEEK_CUR);
-				continue;
-			}
-			if (fread(&shd, sizeof(rzxSnap), 1, file) != 1) break;
-			shd.flag = swap32(shd.flag);
-			shd.usl = swap32(shd.usl);
-			n = 0;
-			if (!(shd.flag & 1)) {			// b0: the snapshot is a file of its own
-				n = (shd.flag & 2) ? rzx_head_unpack(file, len - 17, head, sizeof(head))
-						: (int)fread(head, 1, sizeof(head), file);
-			}
-			if (n > 0) {
-				switch (rzxGetSnapType(shd.ext)) {
-					case 0: res = sna_hardware_of(shd.usl); break;	// the size says it
-					case 1: res = z80_hardware_of(head, n); break;
-					case 2: res = szx_hardware_of(head, n); break;
-				}
-			}
-			break;					// playback starts from the first one
-		}
-	}
-	fclose(file);
+	if ((rzx_info(name, &inf, 1) == ERR_OK) && inf.snaps)
+		res = inf.blk[inf.count - 1].hw;	// playback starts from the first one
+	rzx_info_free(&inf);
 	return res;
 }
 
@@ -254,6 +338,8 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 	rzxSnap shd;
 	rzxFrm fhd;
 	FILE* sfile;
+	long long recpos = 0;
+	long long recend;
 	char* buf = NULL;
 	char* obuf = malloc(0x4000);
 	if (!file) {
@@ -326,8 +412,9 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 							fhd.tStart = fgeti(file);	// +5 T state @ start
 							fhd.flags = fgeti(file);	// +9 flags
 							comp->rzx.fTotal += fhd.fCount;
+							recpos = x_ftell(comp->rzx.file);
 							fputc(0x80, comp->rzx.file);
-							fputi(0, comp->rzx.file);		// ??? len
+							fputi(0, comp->rzx.file);		// the length, once it is known
 							fputi(fhd.fCount, comp->rzx.file);
 							fputi(fhd.tStart, comp->rzx.file);
 							// fputw(fhd.tStart, comp->rzx.file);
@@ -342,6 +429,11 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 								fread(buf, len - 18, 1, file);
 								fwrite(buf, len - 18, 1, comp->rzx.file);
 							}
+							// a seek steps over the block by it
+							recend = x_ftell(comp->rzx.file);
+							x_fseek(comp->rzx.file, recpos + 1, SEEK_SET);
+							fputi((int)(recend - recpos - 5), comp->rzx.file);
+							x_fseek(comp->rzx.file, recend, SEEK_SET);
 							break;
 						default:
 							fseek(file, len - 5, SEEK_CUR);
@@ -363,5 +455,57 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 	free(buf);
 	free(obuf);
 	return err;
+}
+
+// Plays from the snapshot nearest before the frame, or from where playback
+// stands if that is nearer. A snapshot is loaded just as playback reaching it
+// would load it, the INT of one after input included. Returns the frame it
+// stands at, which the caller runs on from; -1 when nothing plays.
+int rzx_seek(Computer* comp, int frame) {
+	FILE* file = comp->rzx.file;
+	if (!comp->rzx.play || !file) return -1;
+	long long here = x_ftell(file);
+	long long best = -1;
+	long long pos;
+	int bestFrame = 0;
+	int bestFirst = 0;
+	int done = 0;
+	int input = 0;
+	int type, len;
+	rewind(file);
+	while (1) {
+		pos = x_ftell(file);
+		type = fgetc(file);
+		if ((type == EOF) || (type == 0xff)) break;
+		len = fgeti(file);
+		if (feof(file)) break;
+		if (type == 0x30) {
+			if (done > frame) break;
+			best = pos;
+			bestFrame = done;
+			bestFirst = !input;
+		} else if (type == 0x80) {
+			done += fgeti(file);
+			input = 1;
+		}
+		x_fseek(file, pos + 5 + len, SEEK_SET);
+	}
+	if ((best < 0) || ((frame >= comp->rzx.fCurrent) && (comp->rzx.fCurrent >= bestFrame))) {
+		x_fseek(file, here, SEEK_SET);
+		return comp->rzx.fCurrent;
+	}
+	x_fseek(file, best, SEEK_SET);
+	if (bestFirst) {			// as playback starts
+		comp->rzx.fCount = 0;
+		comp->rzx.fCurrent = 0;
+		rzxGetFrame(comp);
+	} else {				// as the frame before it ends
+		comp->rzx.fCount = 1;
+		comp->rzx.fCurrent = bestFrame - 1;
+		comp->rzx.frm.fetches = 0;
+		vid_unlazy(comp->vid);
+		comp->hw->irq(comp, IRQ_RZX_INT);
+	}
+	return comp->rzx.play ? comp->rzx.fCurrent : -1;
 }
 

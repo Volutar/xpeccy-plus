@@ -708,6 +708,10 @@ void compReset(Computer* comp,int res) {
 // T in one frame of this machine, exact given a precise nsPerTick. A call and
 // not comp->fCount: that field is only filled at an interrupt, so it is stale
 // on a machine that has just been reset or had its timings changed.
+double comp_fps(Computer* comp) {
+	return (comp->vid->nsPerFrame > 0) ? 1e9 / comp->vid->nsPerFrame : 50;
+}
+
 int comp_frame_ticks(Computer* comp) {
 	if (comp->nsPerTick <= 0) return 0;
 	return (int)llround(comp->vid->nsPerFrame / comp->nsPerTick);

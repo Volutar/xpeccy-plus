@@ -6,14 +6,128 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>178</width>
-    <height>67</height>
+    <width>460</width>
+    <height>420</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>RZX Player</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,10,0,0">
+   <item>
+    <layout class="QHBoxLayout" name="layPath">
+     <item>
+      <widget class="QLineEdit" name="rpath">
+       <property name="toolTip">
+        <string>The recording being played</string>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="openButton">
+       <property name="toolTip">
+        <string>Open RZX</string>
+       </property>
+       <property name="text">
+        <string>...</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../xpeccy.qrc">
+         <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QFormLayout" name="layInfo">
+     <item row="0" column="0">
+      <widget class="QLabel" name="labCreatorT">
+       <property name="text">
+        <string>Recorded with</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="labCreator">
+       <property name="textInteractionFlags">
+        <set>Qt::TextSelectableByMouse</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="labMachineT">
+       <property name="text">
+        <string>Machine</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLabel" name="labMachine"/>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="labLengthT">
+       <property name="text">
+        <string>Length</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLabel" name="labLength"/>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="labSnapsT">
+       <property name="toolTip">
+        <string>Playback can start from any of them</string>
+       </property>
+       <property name="text">
+        <string>Snapshots</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLabel" name="labSnaps">
+       <property name="toolTip">
+        <string>Playback can start from any of them</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTableView" name="blkList">
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <property name="alternatingRowColors">
+      <bool>true</bool>
+     </property>
+     <property name="selectionMode">
+      <enum>QAbstractItemView::SingleSelection</enum>
+     </property>
+     <property name="selectionBehavior">
+      <enum>QAbstractItemView::SelectRows</enum>
+     </property>
+     <property name="gridStyle">
+      <enum>Qt::DotLine</enum>
+     </property>
+     <attribute name="horizontalHeaderStretchLastSection">
+      <bool>true</bool>
+     </attribute>
+     <attribute name="verticalHeaderVisible">
+      <bool>false</bool>
+     </attribute>
+     <attribute name="verticalHeaderMinimumSectionSize">
+      <number>17</number>
+     </attribute>
+     <attribute name="verticalHeaderDefaultSectionSize">
+      <number>17</number>
+     </attribute>
+    </widget>
+   </item>
    <item>
     <widget class="QProgressBar" name="progress">
      <property name="sizePolicy">
@@ -28,8 +142,8 @@
      <property name="value">
       <number>0</number>
      </property>
-     <property name="format">
-      <string>%v / %m sec</string>
+     <property name="textVisible">
+      <bool>false</bool>
      </property>
     </widget>
    </item>
@@ -77,16 +191,9 @@
       </spacer>
      </item>
      <item>
-      <widget class="QToolButton" name="openButton">
-       <property name="toolTip">
-        <string>Open RZX</string>
-       </property>
+      <widget class="QLabel" name="labTime">
        <property name="text">
-        <string>...</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../xpeccy.qrc">
-         <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
+        <string>0:00 / 0:00</string>
        </property>
       </widget>
      </item>

@@ -111,6 +111,7 @@ xPortValue* hwGetPorts(Computer*);
 // extern HardWare hwTab[];
 
 HardWare* findHardware(const char*);
+HardWare* findHardwareId(int);
 
 // the ZX Evo's clock, BaseConf and TSConf alike (pentevo.c)
 void evo_cmos_adr(Computer*, int);

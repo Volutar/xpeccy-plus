@@ -322,6 +322,7 @@ void comp_set_cont(Computer*, int);
 void comp_snap_map(Computer*);
 void comp_snap_reset(Computer*, int);
 int comp_frame_ticks(Computer*);
+double comp_fps(Computer*);		// frames a second of emulated time
 void comp_set_frame_tick(Computer*, int);
 void comp_power_phase(Computer*);	// the frame position a machine is switched on at
 int comp_get_frame_tick(Computer*);

@@ -301,6 +301,7 @@ class TapeWin : public QDialog {
 
 #include "ui_rzxplayer.h"
 #include "../libxpeccy/spectrum.h"
+#include "../libxpeccy/filetypes/filetypes.h"
 
 enum {
 	RWS_PLAY = 1,
@@ -309,21 +310,63 @@ enum {
 	RWS_OPEN
 };
 
+enum {
+	RZC_START = 0,
+	RZC_LEN,
+	RZC_KIND,
+	RZC_INFO,
+	RZC_COUNT
+};
+
+// the blocks of a recording, one row each
+typedef struct {
+	QStringList cells;
+	int frame;			// where a double click goes, -1 nowhere
+	int frames;
+	int blocks;			// input blocks in the row
+	bool input;
+} xRzxRow;
+
+class xRzxModel : public xTableModel {
+	public:
+		xRzxModel(QObject* p = NULL);
+		void fill(const rzxInfo*, double fps);
+		int setCurrent(int frame);
+		int frameAt(int row) const;
+		// what fill() found, for the window's summary
+		QString creator;
+		QString machine;
+		int snapStart;
+		int snapInside;
+		int snapEnd;
+	private:
+		QList<xRzxRow> rows;
+		QVariant data(const QModelIndex&, int) const;
+		QVariant headerData(int, Qt::Orientation, int) const;
+};
+
 class RZXWin : public QDialog {
 	Q_OBJECT
 	public:
 		RZXWin(QWidget*);
-		void setProgress(int,int);
 	public slots:
 		void startPlay();
 		void stop();
 		void upd(Computer*);
 	signals:
 		void stateChanged(int);
+		void seekTo(int);
+	protected:
+		bool eventFilter(QObject*, QEvent*);
 	private:
 		Ui::rzxPlayer ui;
+		xRzxModel* model;
 		int state;
+		double fps;
+		void fillInfo();
+		void setProgress(int,int);
 	private slots:
 		void playPause();
 		void open();
+		void doDClick(QModelIndex);
 };
