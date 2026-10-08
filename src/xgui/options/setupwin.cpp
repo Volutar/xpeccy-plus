@@ -946,14 +946,19 @@ void SetupWin::start() {
 		w->setEnabled(conf.emu.rewind.on);
 	ui.sbRewStep->setValue(conf.emu.rewind.step);
 	ui.sbRewSecs->setValue(conf.emu.rewind.secs);
-	// Input lag, Rewind and Indicators are grids of their own, and columns line
-	// up between them only while all are given the same widths. Measure them
-	// here, not in the .ui: a style or a font would outgrow a number set there.
+	fillComboBox(ui.cbStyleSheet, "styles", QStringList() << "*.qss", "System", conf.style.c_str());
+	for (int i = 1; i < ui.cbStyleSheet->count(); i++)
+		ui.cbStyleSheet->setItemText(i, QFileInfo(ui.cbStyleSheet->itemText(i)).completeBaseName());
+	// Input lag, Rewind, Interface and Indicators are grids of their own, and
+	// columns line up between them only while all are given the same widths.
+	// Measure them here, not in the .ui: a style or a font would outgrow a
+	// number set there.
 	int ctlw = qMax(comboFitWidth(ui.cbRunAhead), qMax(comboFitWidth(ui.cbSlowmo), comboFitWidth(ui.cbFfwd)));
 	ui.cbRunAhead->setFixedWidth(ctlw);
 	ui.cbSlowmo->setFixedWidth(ctlw);
 	ui.cbFfwd->setFixedWidth(ctlw);
-	QGridLayout* emugrid[3] = {ui.gridLayout_lat, ui.gridLayout_rew, ui.gridLayout_23};
+	ui.cbStyleSheet->setFixedWidth(comboFitWidth(ui.cbStyleSheet));
+	QGridLayout* emugrid[4] = {ui.gridLayout_lat, ui.gridLayout_rew, ui.gridLayout_look, ui.gridLayout_23};
 	for (int col = 0; col < 2; col++) {
 		int wid = 0;
 		for (QGridLayout* g : emugrid)
@@ -961,6 +966,7 @@ void SetupWin::start() {
 		for (QGridLayout* g : emugrid)
 			g->setColumnMinimumWidth(col, wid);
 	}
+	ui.cbStyleSheet->setFixedWidth(ui.gridLayout_look->columnMinimumWidth(1));	// as wide as the names under it
 // video
 	ui.cbFullscreen->setChecked(conf.vid.fullScreen);
 	ui.cbKeepRatio->setChecked(conf.vid.keepRatio);
@@ -1129,7 +1135,6 @@ void SetupWin::start() {
 	ui.leDbgFont->setFont(dbgfnt);
 // palette
 	fillDbgPalette();
-	fillComboBox(ui.cbStyleSheet, "styles", QStringList() << "*.qss", "System", conf.style.c_str());
 
 	bool shown = isVisible();
 	show();
