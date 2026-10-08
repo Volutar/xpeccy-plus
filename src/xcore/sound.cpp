@@ -460,6 +460,13 @@ double snd_scope_rate() {
 // Carry the capture across ns of emulated time on a machine the debugger is holding.
 // Nothing is being played then - sndSync() is not even called - but the mixer still
 // has an output for every moment of it, which is the whole point of tracing a beeper.
+void snd_pipe_reset() {
+	memset(smpBuf, 0, sizeof(smpBuf));
+	sb_pos = 0;
+	smpCount = 0;
+	sndLev = sndPair();
+}
+
 void snd_scope_step(Computer* comp, int ns) {
 	if ((ns <= 0) || !comp->hw->vol) return;
 	scopeNsFixed += NS_TO_FIXED(ns);

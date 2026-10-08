@@ -26,7 +26,8 @@ enum {
 	FL_SLT_BIN,
 	FL_SLT_ROM,
 	FL_IMA,
-	FL_PCIMG
+	FL_PCIMG,
+	FL_SZX
 };
 
 enum {
@@ -83,9 +84,9 @@ void media_autorun(Computer*, int run);
 void media_autorun_forget();
 // live: the machine was running, so a snapshot may run it on to a better moment
 int save_file(Computer* comp, const char* name, int id, int drv, int live = 0);
-// One slot per machine: kept in memory, and as a .z80 too where the format can
-// name the machine, so it outlives the session there. Save: 0 failed, 1 memory
-// only, 2 memory and file. Load: 0 nothing to load, 1 done.
+// One slot per machine: kept in memory, and as an .szx too, so it outlives the
+// session. Save: 0 failed, 1 memory only, 2 memory and file. Load: 0 nothing to
+// load, 1 done.
 int quick_save(Computer*);
 int quick_load(Computer*);
 int quick_undo(Computer*);

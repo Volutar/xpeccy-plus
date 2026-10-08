@@ -27,8 +27,21 @@ before that point is upstream's history and is not repeated here.
   too easily turned. *(thanks to Volutar)*
 
 - **Quick save and quick load** on F5 and F9, and Shift+F9 takes a quick load back: the save
-  lasts the session on any machine, and outlives it on those a .z80 can hold.
-  *(thanks to Volutar)*
+  outlives the session on every machine. *(thanks to Volutar)*
+
+- **SZX snapshots**, the default format now: Save writes one, and so does quick save.
+  - A 48K, 128K, +2, +2A, +3, Pentagon or Scorpion snapshot opens in the other emulators that
+    read the format, and theirs open here.
+  - One saved here puts the machine back exactly: the sound chips, the beam to the dot, a disk
+    command or a tape block halfway through.
+  - ZX Evolution, TSConf, ATM, Profi, Phoenix and ALF save as SZX as well, which only Xpeccy+
+    opens.
+  - A snapshot opens on the machine it was taken on. What it was taken with and this machine
+    lacks - other ULA timings, ULA+, a Beta 128 - is named in a warning, and the machine's
+    settings are left alone.
+  - The tape and the disks are linked by name, not carried in the file.
+  - What Xpeccy+ keeps in the format, TSConf and TurboSound FM included, is written up in
+    `docs/szx-format.md` for other emulators.
 
 - **Hotkey layouts**: Modern, the new default, and Classic, the keys as they were. Keys you
   change are kept as Custom, whichever layout is picked.
@@ -94,6 +107,20 @@ before that point is upstream's history and is not repeated here.
   stops the machine. *(thanks to Volutar)*
 
 ### Fixed
+
+- **RZX playback** keeps in step with the recording to its end: the interrupt that ends a
+  recorded frame is taken right there or not at all. Recordings with an SZX snapshot play, and
+  one whose snapshot is kept beside it finds it there. Two copies of the emulator opening a
+  recording in the same second no longer play each other's.
+
+- **The AY** answers to registers 0-15 only, as the chip does: a higher number selects nothing
+  instead of landing on one of them, so a TurboSound FM tune on a plain AY no longer plays its FM
+  registers through it. The port registers keep what is written while the port is an input and
+  read back what drives the pins while it is an output - which is how a 128K's ROM looks for
+  the keypad.
+
+- **.sna snapshots** load IFF2 as saved, which LD A,I reads, and a **.z80** taken inside an NMI
+  handler gets its interrupts back at the RETN.
 
 - **Tool windows** - the tape and RZX players, the disk manager - open over the middle of the
   main window, not a little to its left. A taller tape player gives the room to its block list.

@@ -705,6 +705,10 @@ void loadConfig() {
 		conf.zx = compCreate();
 		// what the machine says it is when software asks (ZX Evo does)
 		comp_set_identity(conf.zx, XPRODUCT, XBUILD_YMD, XRELEASE_BUILD);
+		int vmaj = 0;
+		int vmin = 0;
+		sscanf(XVERSION_BASE, "%d.%d", &vmaj, &vmin);
+		szx_set_creator(XPRODUCT, vmaj, vmin);
 		compSetHardware(conf.zx, "Dummy");
 	}
 	conf.bookmarkList.clear();

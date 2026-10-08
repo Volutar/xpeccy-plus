@@ -86,6 +86,19 @@ void rzxGetFrame(Computer* comp) {
 									work = 0;
 								}
 								break;
+							case 0x02: {			// what Fuse records with
+								unsigned char* snap = (len > 1) ? (unsigned char*)malloc(len - 1) : NULL;
+								int ok = snap && (fread(snap, len - 1, 1, comp->rzx.file) == 1)
+									&& (loadSZX_buf(comp, snap, len - 1) == ERR_OK);
+								free(snap);
+								if (ok) {
+									fseek(comp->rzx.file, pos + len, SEEK_SET);
+								} else {
+									rzxStop(comp);
+									work = 0;
+								}
+								break;
+							}
 							default:
 								xlog(XLG_FILE, XLL_WARN, "unknown snapshot type");
 								rzxStop(comp);
@@ -142,6 +155,8 @@ int rzxGetSnapType(char* ext) {
 		res = 0;
 	} else if (!strncmp(ext, "z80", 3) || !strncmp(ext, "Z80", 3)) {
 		res = 1;
+	} else if (!strncmp(ext, "szx", 3) || !strncmp(ext, "SZX", 3)) {
+		res = 2;
 	}
 	return res;
 }
@@ -198,6 +213,7 @@ int rzxGetHardware(const char* name) {
 				switch (rzxGetSnapType(shd.ext)) {
 					case 0: res = sna_hardware_of(shd.usl); break;	// the size says it
 					case 1: res = z80_hardware_of(head, n); break;
+					case 2: res = szx_hardware_of(head, n); break;
 				}
 			}
 			break;					// playback starts from the first one
@@ -205,6 +221,27 @@ int rzxGetHardware(const char* name) {
 	}
 	fclose(file);
 	return res;
+}
+
+// The snapshot a recording names instead of carrying: as written, else beside
+// the recording, the way the two are kept together.
+static FILE* rzx_open_beside(const char* rzx, const char* snap) {
+	FILE* file = fopen(snap, "rb");
+	if (file) return file;
+	const char* base = snap;
+	const char* p;
+	for (p = snap; *p; p++)
+		if ((*p == '/') || (*p == '\\') || (*p == ':')) base = p + 1;
+	size_t dir = 0;
+	for (p = rzx; *p; p++)
+		if ((*p == '/') || (*p == '\\')) dir = (size_t)(p - rzx) + 1;
+	char* path = (char*)malloc(dir + strlen(base) + 1);
+	if (!path) return NULL;
+	memcpy(path, rzx, dir);
+	strcpy(path + dir, base);
+	file = fopen(path, "rb");
+	free(path);
+	return file;
 }
 
 int loadRZX(Computer* comp, const char* name, int drv) {
@@ -248,7 +285,7 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 								buf = realloc(buf, len - 20);
 								memset(buf, 0x00, len - 20);
 								fread(buf, len - 21, 1, file);
-								sfile = fopen(buf, "rb");
+								sfile = rzx_open_beside(name, buf);
 								if (sfile) {
 									len = fgetSize(sfile);
 									fputc(0x30, comp->rzx.file);

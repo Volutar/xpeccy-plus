@@ -11,6 +11,7 @@
 static const xFileMac fm_tab[] = {
 	{FL_SNA, "sna", "SNA snapshot", FMN_SNAPSHOT, NULL, snaGetHardware},
 	{FL_Z80, "z80", "Z80 snapshot", FMN_SNAPSHOT, NULL, z80GetHardware},
+	{FL_SZX, "szx", "SZX snapshot", FMN_EXACT, NULL, szxGetHardware},
 	{FL_SPG, "spg", "SPG snapshot", FMN_TSCONF, "evo-tsconf", NULL},
 	{FL_RZX, "rzx", "RZX playback", FMN_RZX, NULL, rzxGetHardware},
 	{FL_TAP, "tap", "TAP tape", FMN_ANY, NULL, NULL},
@@ -37,12 +38,14 @@ static const struct {
 	{SNAP_HW_PLUS3, "zxplus3"},
 	{SNAP_HW_PENTAGON, "pent"},
 	{SNAP_HW_SCORPION, "scorp"},
+	{SNAP_HW_PENT512, "pent"},
+	{SNAP_HW_PENT1024, "pent1024"},
 	{SNAP_HW_UNKNOWN, NULL}
 };
 
 static const char* fm_need_tab[] = {
 	"any machine", "TSConf", "Beta Disk (TR-DOS)", "+3 disk drive", "read from the file",
-	"exactly the one it was recorded on"
+	"exactly the one it was recorded on", "exactly the one it was taken on"
 };
 
 static std::map<std::string, std::string> fm_pref_map;
@@ -59,7 +62,7 @@ static const xFileMac* fm_row(int ftype) {
 }
 
 const char* fm_need_text(int need) {
-	if ((need < FMN_ANY) || (need > FMN_RZX)) return "";
+	if ((need < FMN_ANY) || (need > FMN_EXACT)) return "";
 	return fm_need_tab[need];
 }
 
@@ -70,7 +73,20 @@ static bool fm_takes(int hwid, int dif, int need, int snap) {
 		case FMN_TRDOS: return autostart_can(hwid, dif, AS_DISK);
 		case FMN_PLUS3DOS: return autostart_can(hwid, dif, AS_DISK3);
 		case FMN_SNAPSHOT: return snapHwRuns(snap, hwid);
-		case FMN_RZX: return snapHwIs(snap, hwid);
+		case FMN_RZX:
+		case FMN_EXACT: return snapHwIs(snap, hwid);
+	}
+	return true;
+}
+
+// An SZX stands the machine at a point in its frame, so it is loaded on the
+// model it names: a core shared by several models is not enough, unless the
+// running machine is one of the user's own rather than a model of the table.
+static bool fm_exact_here(int snap, const std::string& target) {
+	if (target.empty() || (target == conf.macId)) return true;
+	if (snap >= SNAP_HW_CORE) return !xm_find(target);
+	for (int i = 0; fm_snap_tab[i].target; i++) {
+		if (conf.macId == fm_snap_tab[i].target) return false;
 	}
 	return true;
 }
@@ -128,6 +144,12 @@ xFileMacPick fm_pick(int ftype, const char* path) {
 		while ((fm_snap_tab[i].hw != SNAP_HW_UNKNOWN) && (fm_snap_tab[i].hw != snap))
 			i++;
 		target = fm_snap_tab[i].target ? fm_snap_tab[i].target : "";
+		// a file of ours names the very machine it was taken on
+		if ((snap >= SNAP_HW_CORE) && (ftype == FL_SZX)) {
+			char id[256];
+			szx_machine_of(path, id, sizeof(id));
+			target = id;
+		}
 	}
 	std::string pref = fm_pref(row->key);
 	if (pref == FM_KEEP) return pick;
@@ -136,7 +158,8 @@ xFileMacPick fm_pick(int ftype, const char* path) {
 		if (pref != conf.macId) pick.target = pref;
 		return pick;
 	}
-	if (fm_runs(conf.macId, row->need, snap)) return pick;
+	if (fm_runs(conf.macId, row->need, snap) && ((row->need != FMN_EXACT) || fm_exact_here(snap, target)))
+		return pick;
 	// the machine the file names first, then every other one that can take it
 	std::vector<std::string> can;
 	if (!target.empty() && fm_runs(target, row->need, snap))

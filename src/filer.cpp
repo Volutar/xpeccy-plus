@@ -4,6 +4,7 @@
 #include "xcore/filemachine.h"
 #include "xcore/sound.h"
 #include "libxpeccy/cpu/Z80/z80.h"
+#include "libxpeccy/filetypes/szx.h"
 #include "libxpeccy/xstate.h"
 #include "xgui/xgui.h"
 
@@ -55,9 +56,31 @@ static int save_wav(Computer* comp, const char* name, int drv) {
 	return saveWAVopt(comp, name, &conf.tape.exp);
 }
 
+// An .szx links to the tape and the disks it was taken with, by their names on
+// this host, the way Spectaculator writes them.
+static int save_szx(Computer* comp, const char* name, int drv) {
+	QByteArray tape;
+	QByteArray disk[4];
+	const char* dptr[4];
+	if (comp->tape->path && comp->tape->blkCount)
+		tape = QDir::toNativeSeparators(QString::fromLocal8Bit(comp->tape->path)).toLocal8Bit();
+	for (int i = 0; i < 4; i++) {
+		Floppy* flp = comp->dif->flp[i];
+		if (flp->insert && flp->path)
+			disk[i] = QDir::toNativeSeparators(QString::fromLocal8Bit(flp->path)).toLocal8Bit();
+		dptr[i] = disk[i].isEmpty() ? NULL : disk[i].constData();
+	}
+	szx_set_links(tape.isEmpty() ? NULL : tape.constData(), dptr);
+	szx_set_machine(conf.macId.c_str());
+	int res = saveSZX(comp, name, drv);
+	szx_set_links(NULL, NULL);
+	return res;
+}
+
 static xFileTypeInfo ft_tab[] = {
 	{FL_SNA, 0, ".sna", "*.sna", loadSNA, saveSNA, "SNA snapshot"},
 	{FL_Z80, 0, ".z80", "*.z80", loadZ80, saveZ80, "Z80 snapshot"},
+	{FL_SZX, 0, ".szx", "*.szx", loadSZX, save_szx, "SZX snapshot"},
 	{FL_SPG, 0, ".spg", "*.spg", loadSPG, NULL, "SPG snapshot"},
 	{FL_TAP, 0, ".tap", "*.tap", loadTAP, saveTAP, "TAP tape image"},
 	{FL_TZX, 0, ".tzx", "*.tzx", loadTZX, NULL, "TZX tape image"},
@@ -87,7 +110,7 @@ static xFileTypeInfo ft_dum = {FL_NONE, 0, NULL, NULL, NULL, NULL, "Dummy entry"
 // 0..3 : disk (must be inserted for save)
 // 4 : tape (block count > 0)
 static xFileGroupInfo fg_tab[] = {
-	{FG_SNAPSHOT, ".sna", -1, "Snapshot", NULL, {FL_SNA, FL_Z80, FL_SPG, 0}},
+	{FG_SNAPSHOT, ".szx", -1, "Snapshot", NULL, {FL_SZX, FL_SNA, FL_Z80, FL_SPG, 0}},
 	{FG_TAPE, ".tap", 4, "Tape", NULL, {FL_TAP, FL_TZX, FL_WAV, 0}},
 	{FG_DISK_A, ".trd", 0,"Disk A", NULL, {FL_SCL, FL_TRD, FL_TD0, FL_FDI, FL_UDI, FL_DSK, FL_IMA, FL_PCIMG, FL_HOBETA, 0}},
 	{FG_DISK_B, ".trd", 1, "Disk B", NULL, {FL_SCL, FL_TRD, FL_TD0, FL_FDI, FL_UDI, FL_DSK, FL_IMA, FL_PCIMG, FL_HOBETA, 0}},
@@ -308,6 +331,9 @@ static xFilerError err_tab[] = {
 	{ERR_TRD_SNF, "Wrong disk structure for TRD file"},
 	{ERR_SPG_SIGN, "Wrong SPG signature"},
 	{ERR_SPG_VERSION, "Unsupported SPG version"},
+	{ERR_SZX_SIGN, "Wrong SZX signature"},
+	{ERR_SZX_HW, "SZX snapshot: a machine this emulator does not have"},
+	{ERR_SZX_DATA, "SZX snapshot: no cpu or memory in it"},
 	{ERR_OK, ""}
 };
 
@@ -517,6 +543,97 @@ QString file_ask_open(Computer* comp, int* id, int* drv) {
 	return path;
 }
 
+// The tape and the disks an .szx links to or carries. A link that does not
+// resolve is looked for beside the snapshot, as Spectaculator writes plain names
+// too; a carried image is written out to the temp folder first. One already in
+// its place is left in, so a disk written to since is not thrown away.
+static void szx_mount(Computer* comp, const QString& snap) {
+	const szxMedia* med;
+	int count = szx_media(&med);
+	for (int i = 0; i < count; i++) {
+		const szxMedia* m = &med[i];
+		QString path;
+		if (m->data) {
+			QString name = QFileInfo(snap).completeBaseName();
+			if (m->kind != SZX_MED_TAPE) name += QString("-%1").arg(QChar('a' + m->drive));
+			path = QDir::temp().filePath(name + "." + QString::fromLocal8Bit(m->ext).toLower());
+			QFile file(path);
+			if (!file.open(QIODevice::WriteOnly) || (file.write((const char*)m->data, m->size) != (qint64)m->size)) {
+				xlog(XLG_FILE, XLL_WARN, "szx: cannot write the carried image to %s", path.toLocal8Bit().constData());
+				continue;
+			}
+		} else {
+			QString link = QDir::fromNativeSeparators(QString::fromLocal8Bit(m->path));
+			path = link;
+			if (!QFileInfo(path).isFile())
+				path = QFileInfo(snap).dir().filePath(QFileInfo(link).fileName());
+			if (!QFileInfo(path).isFile()) {
+				xlog(XLG_FILE, XLL_WARN, "szx: %s not found", m->path);
+				continue;
+			}
+		}
+		path = QFileInfo(path).canonicalFilePath();
+		xFileTypeInfo* inf = file_find_hw_ext(comp->hw->id, path);
+		int kind = inf ? as_kind_of(inf->id) : AS_NONE;
+		if ((m->kind == SZX_MED_TAPE) ? (kind != AS_TAPE) : ((kind != AS_DISK) && (kind != AS_DISK3))) {
+			xlog(XLG_FILE, XLL_WARN, "szx: %s is no image of the kind it is linked as", path.toLocal8Bit().constData());
+			continue;
+		}
+		if (m->kind == SZX_MED_TAPE) {
+			const char* now = comp->tape->path;
+			if (!now || (QFileInfo(QString::fromLocal8Bit(now)).canonicalFilePath() != path)) {
+				if (inf->load(comp, path.toLocal8Bit().data(), 0) != ERR_OK) continue;
+			}
+			if (m->block < comp->tape->blkCount)
+				tapRewind(comp->tape, m->block);
+		} else {
+			int drv = m->drive & 3;
+			Floppy* flp = comp->dif->flp[drv];
+			if (!flp->fitted) continue;
+			if (!flp->insert || !flp->path || (QFileInfo(QString::fromLocal8Bit(flp->path)).canonicalFilePath() != path)) {
+				if (saveChangedDisk(comp, drv) != ERR_OK) continue;
+				if (inf->load(comp, path.toLocal8Bit().data(), drv) != ERR_OK) continue;
+				disk_boot(comp, drv, inf->id);		// as opening it does
+			}
+			flp->protect = m->protect ? 1 : 0;
+			flp->trk = m->cylinder;
+		}
+		xlog(XLG_FILE, XLL_INFO, "szx: %s %s", (m->kind == SZX_MED_TAPE) ? "tape" : "disk", path.toLocal8Bit().constData());
+	}
+	szx_ext_media(comp);
+}
+
+// What the snapshot was taken with and this machine does not have. Nothing of
+// the machine is changed for it: the user is told, and decides.
+static void szx_warn() {
+	static const struct {
+		int note;
+		const char* text;
+	} tab[] = {
+		{SZN_RELATIVE, "a model this emulator does not have, loaded on its nearest relative"},
+		{SZN_TIMINGS, "the other ULA timings (early/late)"},
+		{SZN_ISSUE, "another board issue (2/3), so the EAR bit reads otherwise"},
+		{SZN_ULAPLUS, "ULA+ in use"},
+		{SZN_AY, "an AY"},
+		{SZN_BETA, "a Beta 128 disk interface"},
+		{SZN_COVOX, "a Covox"},
+		{SZN_DEVICE, "a device not emulated here (Interface 1, Multiface, SpecDrum...)"},
+		{0, NULL}
+	};
+	int notes = szx_notes();
+	if (!notes || !conf.running) return;
+	QString text = QObject::tr("The snapshot was taken with something this machine does not have:");
+	text += "\n";
+	for (int i = 0; tab[i].text; i++) {
+		if (notes & tab[i].note)
+			text += QString("\n- ") + tab[i].text;
+	}
+	text += "\n\n";
+	text += QObject::tr("It may not run as it did. The machine's settings are left as they are.");
+	QMessageBox mbx(QMessageBox::Warning, "SZX snapshot", text, QMessageBox::Ok);
+	mbx.exec();
+}
+
 int load_file(Computer* comp, const char* name, int id, int drv) {
 	last_as_kind = AS_NONE;
 	xspeed_modes_off();
@@ -537,12 +654,16 @@ int load_file(Computer* comp, const char* name, int id, int drv) {
 	} else if (inf && inf->load) {
 		if (!inf->ch || (saveChangedDisk(comp, drv) == ERR_OK)) {
 			err = inf->load(comp, path.toLocal8Bit().data(), drv);
+			if ((err == ERR_OK) && (inf->id == FL_SZX)) {
+				szx_mount(comp, path);
+				szx_warn();
+			}
 			disk_boot(comp, drv, inf->id);
 			if (err == ERR_OK) {
 				last_as_kind = as_kind_of(inf->id);
 				last_as_drv = drv;
 				switch (inf->id) {
-					case FL_SNA: case FL_Z80: case FL_SPG: case FL_RZX:
+					case FL_SNA: case FL_Z80: case FL_SZX: case FL_SPG: case FL_RZX:
 						last_snapshot = path;
 						break;
 				}
@@ -651,13 +772,8 @@ int save_file(Computer* comp, const char* name, int id, int drv, int live) {
 						i++;
 					}
 					// if no filetypes found, add default extension
-					if (flg) {
-						// a .z80 keeps where the beam was, a .sna does not
-						if ((grp->id == FG_SNAPSHOT) && z80CanSave(comp))
-							path.append(".z80");
-						else
-							path.append(grp->defext);
-					}
+					if (flg)
+						path.append(grp->defext);
 				} else {
 					tin = file_detect_type(flt);
 					if (tin->id != FL_NONE) {
@@ -682,7 +798,7 @@ int save_file(Computer* comp, const char* name, int id, int drv, int live) {
 			if (inf->id == FL_SNA) {
 				int aligned = live && !comp->rzx.play && snap_align(comp);
 				if (!aligned)
-					comp->msg = (char*)(z80CanSave(comp) ? " SNA: no frame position, use Z80 " : " SNA: no frame position ");
+					comp->msg = (char*)" SNA: no frame position, use SZX ";
 			}
 			err = inf->save(comp, path.toLocal8Bit().data(), drv);
 		} else {
@@ -696,15 +812,15 @@ int save_file(Computer* comp, const char* name, int id, int drv, int live) {
 }
 
 
-// quick save: the machine as it is, in memory for any machine - an xstate is not a
-// file, it holds the live machine's own pointers - and as a .z80 where it can be one
+// quick save: the machine as it is, in memory - an xstate is not a file, it
+// holds the live machine's own pointers - and as an .szx
 static xState* quickState = NULL;
 static std::string quickMac;		// the machine the one in memory is of
 
-static QString quick_path() {
+static QString quick_path(const char* ext = ".szx") {
 	QString dir = QString::fromLocal8Bit(conf.path.confDir.c_str()) + "/quick";
 	QDir().mkpath(dir);
-	return dir + "/" + QString::fromLocal8Bit(conf.macId.c_str()) + ".z80";
+	return dir + "/" + QString::fromLocal8Bit(conf.macId.c_str()) + ext;
 }
 
 int quick_save(Computer* comp) {
@@ -712,8 +828,10 @@ int quick_save(Computer* comp) {
 	if (!quickState) quickState = xstate_create();
 	int res = (quickState && xstate_save(quickState, comp)) ? 1 : 0;
 	quickMac = res ? conf.macId : std::string();
-	if (res && z80CanSave(comp) && (saveZ80(comp, quick_path().toLocal8Bit().data(), 0) == ERR_OK))
+	if (res && szxCanSave(comp) && (save_szx(comp, quick_path().toLocal8Bit().data(), 0) == ERR_OK)) {
 		res = 2;
+		QFile::remove(quick_path(".z80"));	// what builds before .szx left there
+	}
 	emu_unlock();
 	return res;
 }
@@ -731,6 +849,8 @@ int quick_load(Computer* comp) {
 		res = xstate_load(quickState, comp);
 	if (!res) {
 		QString path = quick_path();
+		if (!QFileInfo::exists(path))
+			path = quick_path(".z80");
 		if (QFileInfo::exists(path))
 			res = (load_file(comp, path.toLocal8Bit().data(), FG_ALL, 0) == ERR_OK);
 	}

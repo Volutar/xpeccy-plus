@@ -30,6 +30,7 @@
 #include "xgui/sndwin.h"
 #include "xgui/options/setupwin.h"
 #include "filer.h"
+#include "libxpeccy/xstate.h"
 
 #include <SDL.h>
 #undef main
@@ -196,6 +197,26 @@ bool xApp::event(QEvent* ev) {
 	return QApplication::event(ev);
 }
 
+#ifdef XBENCH
+// The raw machine state, as the rewind keeps it: the bytes, and beside them in
+// FILE.idx the size of each part, so two runs can be diffed part by part.
+static void bench_state(Computer* comp, const char* name) {
+	xState* st = xstate_create();
+	const unsigned char* data;
+	size_t len = (st && xstate_save(st, comp)) ? xstate_bytes(st, &data, NULL) : 0;
+	FILE* file = len ? fopen(name, "wb") : NULL;
+	if (file) {
+		fwrite(data, len, 1, file);
+		fclose(file);
+		file = fopen((std::string(name) + ".idx").c_str(), "w");
+		for (int i = 0; file && xstate_chunk_size(st, i); i++)
+			fprintf(file, "%i %u\n", i, (unsigned)xstate_chunk_size(st, i));
+		if (file) fclose(file);
+	}
+	xstate_destroy(st);
+}
+#endif
+
 int main(int ac,char** av) {
 	log_init();			// before anything that could have something to say
 #if defined(__WIN32)
@@ -283,7 +304,7 @@ int main(int ac,char** av) {
 		} else if (!strcmp(earg, "--no-autostart")) {
 			cli_astart = 0;
 #ifdef XBENCH
-		} else if (!strcmp(earg, "--bench")) {
+		} else if (!strncmp(earg, "--bench", 7)) {
 			xhost_time_fixed = 1790000000;	// the machines are built below: freeze their clock first
 #endif
 		} else if (!strcmp(earg, "-m") || !strcmp(earg, "--machine")
@@ -429,6 +450,10 @@ int main(int ac,char** av) {
 	int bnHash = 0;
 	const char* bnProf = NULL;
 	const char* bnShot = NULL;
+	const char* bnSave = NULL;	// a snapshot of the machine at the end, by its extension
+	int bnSteps = 0;		// instructions run after the skip, to stop mid-frame
+	int bnSplit = 0;		// hash so that a run cut by a snapshot and one that is not compare
+	const char* bnState = NULL;	// the raw machine state at the end, for a byte diff of two runs
 	int bnNodraw = 0;
 	int bnHeat = 0;
 	int bnRewind = 0;
@@ -498,6 +523,16 @@ int main(int ac,char** av) {
 				bnProf = av[i++];
 			} else if (!strcmp(parg,"--bench-shot")) {
 				bnShot = av[i++];
+			} else if (!strcmp(parg,"--bench-save")) {
+				bnSave = av[i++];
+			} else if (!strcmp(parg,"--bench-steps")) {
+				bnSteps = atoi(av[i++]);
+			} else if (!strcmp(parg,"--bench-split")) {
+				bnSplit = 1;
+			} else if (!strcmp(parg,"--bench-rzx")) {
+				ethread.benchRzx = atoi(av[i++]);
+			} else if (!strcmp(parg,"--bench-state")) {
+				bnState = av[i++];
 			} else if (!strcmp(parg,"--bench-loops")) {
 				fastload_bench(atoi(av[i++]));
 			} else if (!strcmp(parg,"--pc")) {
@@ -600,11 +635,16 @@ int main(int ac,char** av) {
 		app.setStyle(QStyleFactory::create("Fusion"));
 	}
 #endif
-	if (bnFrames > 0) {
+	if ((bnFrames > 0) || bnSave || bnState || (ethread.benchRzx > 0)) {
 #ifdef XBENCH
-		ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot, bnNodraw, bnHeat, bnRewind);
+		if ((bnFrames > 0) || (bnSkip > 0) || (bnSteps > 0) || (ethread.benchRzx > 0))
+			ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot, bnNodraw, bnHeat, bnRewind, bnSteps, bnSplit);
+		if (bnSave)
+			save_file(conf.zx, bnSave, FG_ALL, 0);
+		if (bnState)
+			bench_state(conf.zx, bnState);
 #else
-		(void)bnSkip; (void)bnFull; (void)bnHash; (void)bnProf; (void)bnShot; (void)bnNodraw; (void)bnHeat; (void)bnRewind;
+		(void)bnSkip; (void)bnFull; (void)bnHash; (void)bnProf; (void)bnShot; (void)bnNodraw; (void)bnHeat; (void)bnRewind; (void)bnSave; (void)bnSteps; (void)bnState; (void)bnSplit;
 		xlog(XLG_APP, XLL_ERROR, "--bench is not in a release build");
 #endif
 		pacingClose();

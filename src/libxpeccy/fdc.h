@@ -120,6 +120,7 @@ struct DiskIF {
 	unsigned inten:1;	// uPD765 interrupt enabled
 	unsigned doors:1;	// a drive's door is still closing: difSync has to run
 	int type;
+	int sys;		// the last write to the interface's own port (Beta: #FF)
 	Floppy* flp[4];
 	DiskHW* hw;
 	FDC* fdc;
@@ -138,6 +139,9 @@ int difIn(DiskIF*, int, int*, int);
 
 void difSetHW(DiskIF*, int);
 void difSetDrives(DiskIF*, int);	// how many drives are on the cable, from A
+// the plan in progress as a number a snapshot can keep, -1: one not known
+int dif_plan_id(DiskIF*);
+void dif_plan_set(DiskIF*, int);
 void dif_align_flps(DiskIF*, FDC*, int, int, int, int);
 
 void add_crc_16(FDC*, unsigned char);

@@ -100,6 +100,7 @@ static FILE* file = nullptr;
 xThread::xThread() {
 	sndNsFixed = 0;
 	benchStop = -1;
+	benchRzx = 0;
 	earBlock = -1;
 	conf.emu.fast = 0;
 	finish = 0;
@@ -521,8 +522,10 @@ void xThread::emuCycle(Computer* comp) {
 			// tape trap	TODO: rework it as a system breakpoint
 			// this runs on every instruction, and the rom is paged in for most
 			// of them: the pc straight from the Z80, not through the cpu's
-			// register table
-			if (zx_rom_active(comp)) {
+			// register table. None of it while a recording plays: the machine
+			// takes its input from the recording alone.
+			if (comp->rzx.play) {
+			} else if (zx_rom_active(comp)) {
 				int pc = comp->cpu->regPC;
 				if ((pc == LD_ROM_BASE + LDC_START) || (pc == LD_ROM_BASE + LDC_EDGE1)) {	// load: ix:addr, de:len
 					tap_catch_load(comp, pc == LD_ROM_BASE + LDC_START);
@@ -531,7 +534,8 @@ void xThread::emuCycle(Computer* comp) {
 				}
 			}
 			// a copy of LD-BYTES in ram is trapped as the rom's is, once seen
-			if (tape_flash()) {
+			if (comp->rzx.play) {
+			} else if (tape_flash()) {
 				int start;
 				if (ldc_step(comp, &start))
 					tap_catch_load(comp, start, comp->tape->ldBase, comp->tape->ldDir);
@@ -539,7 +543,7 @@ void xThread::emuCycle(Computer* comp) {
 				ldc_forget(comp);
 			}
 			// a loader's edge loop, counted instead of run
-			if (fastload_on)
+			if (fastload_on && !comp->rzx.play)
 				sndNsFixed += NS_TO_FIXED(fastload_step(comp));
 		}
 		// sound buffer update. In fast mode there is nothing to mix - the
@@ -749,7 +753,7 @@ static unsigned long long bench_mix(unsigned long long h, const unsigned char* p
 // a budget of 256 samples per cycle, the way the pacer hands them out.
 // hash folds every finished frame and every sample into one number, so two
 // builds can be shown to run the machine identically.
-int xThread::bench(int frames, int skip, int full, int hash, const char* prof, const char* shot, int nodraw, int heat, int rw) {
+int xThread::bench(int frames, int skip, int full, int hash, const char* prof, const char* shot, int nodraw, int heat, int rw, int steps, int split) {
 	Computer* comp = conf.zx;
 	if (!comp) return 0;
 	blockSignals(true);
@@ -761,6 +765,20 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	int rwOn = conf.emu.rewind.on;
 	conf.emu.rewind.on = (rw > 0);
 	rzx_begin(comp);
+	// A recording's frame N, to compare with another player stopped there: the
+	// frames it counts, not the video's, and past the INT that ends it if the
+	// cpu takes one
+	if (benchRzx > 0) {
+		while (comp->rzx.play && (comp->rzx.fCurrent < benchRzx))
+			compExec(comp);
+		CPU* cpu = comp->cpu;
+		if ((cpu->intrq & Z80_INT) && cpu->flgACK && cpu->flgIFF1 && !cpu->flgNOINT)
+			compExec(comp);
+		fprintf(stdout, "rzx: frame %i, %s\n", comp->rzx.fCurrent, comp->rzx.play ? "playing" : "stopped");
+		fflush(stdout);
+		fastload_hold(0);
+		return 0;
+	}
 	// warm up: a tape or disk being started, a demo getting to its part. In
 	// the mode that is measured: where fast mode hands the machine back is not
 	// where a cycle with sound does, so a switch between them would leave the
@@ -772,6 +790,15 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 		conf.snd.need = full ? 256 : 0;
 		emu_lock();
 		emuCycle(comp);
+		emu_unlock();
+	}
+	// and on to an instruction anywhere in the frame, where a snapshot is
+	// harder to take than at a frame boundary. A frame ended on the way is not
+	// counted, so the frames below are counted from here, as after a load.
+	while ((steps-- > 0) && !conf.emu.pause) {
+		emu_lock();
+		snd_scope_step(comp, compExec(comp));
+		comp->flgFRM = 0;
 		emu_unlock();
 	}
 	conf.emu.fast = full ? 0 : 1;
@@ -796,6 +823,12 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 #endif
 	unsigned long long hFrm = 0xcbf29ce484222325ULL;
 	unsigned long long hSnd = 0xcbf29ce484222325ULL;
+	// a run cut here by a snapshot and one that goes on have to hash alike: the
+	// mixer starts over and the frame drawn across the cut is left out
+	if (split) {
+		sndNsFixed = 0;
+		snd_pipe_reset();
+	}
 	int spos = snd_ring_fill_pos();
 	long long t0 = paceClockNs();
 	int tk0 = comp->tickCount;
@@ -809,7 +842,9 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 		emu_unlock();
 		if (hash) {
 			if (conf.vid.fcount != fl) {
+				int first = (fl == f0);
 				fl = conf.vid.fcount;
+				if (split && first) continue;
 				Video* vid = comp->vid;
 				for (int y = 0; y < vid->full.y; y++)
 					hFrm = bench_mix(hFrm, bufimg + y * bytesPerLine, vid->full.x * 8);

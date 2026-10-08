@@ -116,6 +116,11 @@ static xMacWord earTab[] = {
 	{"none", EAR_NONE}, {"2", EAR_ISSUE2}, {"3", EAR_ISSUE3}, {NULL, 0}
 };
 
+// what a snapshot calls the machine where its core alone does not say
+static xMacWord snapTab[] = {
+	{"core", 0}, {"plus2", SNAP_HW_PLUS2}, {NULL, 0}
+};
+
 // what a port nothing answers reads back
 static xMacWord fbusTab[] = {
 	{"none", FBUS_NONE}, {"ula", FBUS_ULA},
@@ -201,7 +206,7 @@ static const struct {
 	{"hw", "machine"}, {"cpu", "machine"}, {"cpu.frq", "machine"}, {"cpu.turbo", "machine"},
 	{"memory", "machine"}, {"ram.cold", "machine"}, {"ram.noise", "machine"},
 	{"reset", "machine"}, {"contio", "machine"}, {"issue", "machine"}, {"ear.rc", "machine"},
-	{"contmem", "machine"}, {"scrp.wait", "machine"}, {"builtin", "machine"},
+	{"contmem", "machine"}, {"scrp.wait", "machine"}, {"builtin", "machine"}, {"snapshot", "machine"},
 	{"geometry", "video"}, {"contPattern", "video"}, {"earlyTiming", "video"},
 	{"4t-border", "video"}, {"ULAplus", "video"}, {"DDpal", "video"},
 	{"snow", "video"}, {"snow.crash", "video"}, {"floatbus", "video"}, {"border.min", "video"},
@@ -321,6 +326,7 @@ static void mac_defaults(xMachine& mac) {
 	mac.contio = 0;
 	mac.contmem = 0;
 	mac.scrpwait = 0;
+	mac.snapModel = 0;
 	mac.contPattern = 0;
 	mac.early = 0;
 	mac.brd4t = 0;
@@ -384,6 +390,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "contio") mac.contio = arg.b;
 			else if (nam == "contmem") mac.contmem = arg.b;
 			else if (nam == "scrp.wait") mac.scrpwait = arg.b;
+			else if (nam == "snapshot") mac.snapModel = mac_word(snapTab, val, 0, id);
 			else if (nam != "inherit")	// mac_build's, and it is done with
 				xlog(XLG_CONF, XLL_WARN, "machine %s: unknown setting '%s'", id, nam.c_str());
 		} else if (ln.sect == "video") {
@@ -672,6 +679,7 @@ static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std:
 	int fsze;
 	FILE* file;
 	memset(comp->mem->romData, 0xff, MEM_512K);
+	comp->romCustom = 0;
 	foreach(xRomFile xrf, roms) {
 		int foff = xrf.foffset * 1024;
 		int roff = xrf.roffset * 1024;
@@ -984,6 +992,7 @@ static void mac_from_def(const xMachine* mac) {
 	memSetSize(comp->mem, mac_ram_size(mac->memory, comp->hw->mask), -1);
 	mac_cold_ram(comp, mac->ramCold, mac->ramNoise);
 	comp->resbank = mac->resbank;
+	comp->snapModel = mac->snapModel;
 	comp->earback = mac->earback;
 	comp->earRC = mac->earrc;
 	comp->fbus = mac->floatbus;

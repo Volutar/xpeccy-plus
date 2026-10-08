@@ -2,6 +2,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#if defined(_WIN32)
+#include <process.h>
+#define getpid _getpid
+#else
+#include <unistd.h>
+#endif
 
 #include "filetypes.h"
 
@@ -52,7 +58,8 @@ FILE* fopen_tmp(void) {
 	dir = getenv("TMPDIR");
 	if (!dir) dir = "/tmp";
 #endif
-	snprintf(path, sizeof(path), "%s%sxpeccy-%u-%i.tmp", dir, SLASH, (unsigned)time(NULL), cnt++);
+	// the pid too: two instances opening a file in the same second shared one
+	snprintf(path, sizeof(path), "%s%sxpeccy-%u-%u-%i.tmp", dir, SLASH, (unsigned)getpid(), (unsigned)time(NULL), cnt++);
 #if defined(_WIN32)
 	// D: the crt drops the file when the last handle on it closes. Not every
 	// crt takes the flag, and then the file is left for TEMP's own housekeeping
@@ -70,6 +77,7 @@ FILE* fopen_tmp(void) {
 // can a machine on that core run a snapshot taken on that hardware: the
 // paging has to be there, the rest is the machine's own business
 int snapHwRuns(int snap, int hwid) {
+	if (snap >= SNAP_HW_CORE) return hwid == snap - SNAP_HW_CORE;
 	switch (snap) {
 		case SNAP_HW_128K:
 		case SNAP_HW_PLUS2:
@@ -77,6 +85,9 @@ int snapHwRuns(int snap, int hwid) {
 		case SNAP_HW_PLUS2A:
 		case SNAP_HW_PLUS3: return (hwid == HW_PLUS2A) || (hwid == HW_PLUS3);
 		case SNAP_HW_SCORPION: return (hwid == HW_SCORP) || (hwid == HW_SCORPTP);
+		// pages past 128K through bits 6 and 7 of 7FFD
+		case SNAP_HW_PENT512: return (hwid == HW_PENT) || (hwid == HW_P1024);
+		case SNAP_HW_PENT1024: return hwid == HW_P1024;
 	}
 	return 1;			// a 48K, or one nobody knows
 }
@@ -85,6 +96,7 @@ int snapHwRuns(int snap, int hwid) {
 // it was recorded on, not merely one that can run the snapshot: the frame is a
 // different length on each, and playback then runs out of input part way in.
 int snapHwIs(int snap, int hwid) {
+	if (snap >= SNAP_HW_CORE) return hwid == snap - SNAP_HW_CORE;
 	switch (snap) {
 		case SNAP_HW_48K: return hwid == HW_ZX48;
 		case SNAP_HW_128K:
@@ -93,6 +105,8 @@ int snapHwIs(int snap, int hwid) {
 		case SNAP_HW_PLUS3: return hwid == HW_PLUS3;
 		case SNAP_HW_PENTAGON: return hwid == HW_PENT;
 		case SNAP_HW_SCORPION: return (hwid == HW_SCORP) || (hwid == HW_SCORPTP);
+		case SNAP_HW_PENT512: return hwid == HW_PENT;
+		case SNAP_HW_PENT1024: return hwid == HW_P1024;
 	}
 	return 1;			// one nobody knows: leave the machine alone
 }

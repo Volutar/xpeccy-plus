@@ -90,6 +90,7 @@ int bdiOut(DiskIF* dif, int port, int val, int dos) {
 	if (port == 0) {
 		return 0;
 	} else if (port == BDI_SYS) {
+		dif->sys = val & 0xff;
 		dif->fdc->flp = dif->fdc->flop[val & 3];	// select floppy
 		vgSetMR(dif->fdc,(val & 0x04) ? 1 : 0);		// master reset
 		dif->fdc->block = (val & 0x08) ? 1 : 0;
@@ -234,8 +235,7 @@ void dif_align_flps(DiskIF* dif, FDC* fdc, int n0, int n1, int n2, int n3) {
 }
 
 DiskIF* difCreate(int type, cbirq cb, void* p) {
-	DiskIF* dif = (DiskIF*)malloc(sizeof(DiskIF));
-	dif->doors = 0;
+	DiskIF* dif = (DiskIF*)calloc(1, sizeof(DiskIF));
 	dif->fdc = fdc_create(cb, p);
 	fdc_set_irqn(dif->fdc, IRQ_FDC, IRQ_FDC_RD, IRQ_FDC_WR);
 	for (int i = 0; i < 4; i++) {
@@ -245,6 +245,26 @@ DiskIF* difCreate(int type, cbirq cb, void* p) {
 	dif->fdc->flp = dif->fdc->flop[0];
 	difSetHW(dif, type);
 	return dif;
+}
+
+int vg_plan_id(FDC*);
+void vg_plan_set(FDC*, int);
+int u_plan_id(FDC*);
+void u_plan_set(FDC*, int);
+
+int dif_plan_id(DiskIF* dif) {
+	switch (dif->type) {
+		case DIF_BDI: return vg_plan_id(dif->fdc);
+		case DIF_P3DOS: return u_plan_id(dif->fdc);
+	}
+	return 0;
+}
+
+void dif_plan_set(DiskIF* dif, int id) {
+	switch (dif->type) {
+		case DIF_BDI: vg_plan_set(dif->fdc, id); break;
+		case DIF_P3DOS: u_plan_set(dif->fdc, id); break;
+	}
 }
 
 void difDestroy(DiskIF* dif) {

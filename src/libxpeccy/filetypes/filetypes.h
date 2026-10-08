@@ -63,7 +63,11 @@ enum {
 	ERR_NO_DRIVE,		// the machine has no such drive
 
 	ERR_SPG_SIGN,		// not an spg
-	ERR_SPG_VERSION		// an spg of a version not supported (0.x)
+	ERR_SPG_VERSION,	// an spg of a version not supported (0.x)
+
+	ERR_SZX_SIGN,		// not a zx-state file
+	ERR_SZX_HW,		// a machine this emulator does not have
+	ERR_SZX_DATA		// no cpu or no memory in it
 };
 
 // spg
@@ -169,11 +173,28 @@ enum {
 	SNAP_HW_PLUS2A,
 	SNAP_HW_PLUS3,
 	SNAP_HW_PENTAGON,
-	SNAP_HW_SCORPION
+	SNAP_HW_SCORPION,
+	SNAP_HW_PENT512,
+	SNAP_HW_PENT1024,
+	// a machine only our own files name: this core (HW_*) and nothing else
+	SNAP_HW_CORE = 0x100
 };
 
 int snapHwRuns(int snap, int hwid);
 int snapHwIs(int snap, int hwid);
+
+int loadSZX(Computer*, const char*, int);
+int loadSZX_buf(Computer*, const unsigned char*, size_t);
+int saveSZX(Computer*, const char*, int);
+int szxCanSave(Computer*);
+int szxGetHardware(const char*);
+int szx_hardware_of(const unsigned char*, size_t);
+// the machine id a file of ours names, empty for any other file
+void szx_machine_of(const char* name, char* id, size_t idsize);
+// what the file's creator block is signed with
+void szx_set_creator(const char* name, int major, int minor);
+// what a saved file links to: the tape and the four drives (NULL: nothing)
+void szx_set_links(const char* tape, const char* const* disks);
 
 int z80_hardware_of(const unsigned char*, int);
 int loadZ80(Computer*,const char*, int);
