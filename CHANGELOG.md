@@ -114,7 +114,8 @@ before that point is upstream's history and is not repeated here.
 - **The AY** answers to registers 0-15 only and reads back its port pins, as the chip does: a
   TurboSound FM tune on a plain AY no longer plays its FM part, and a 128K looks for its keypad.
 
-- **.sna and .z80 snapshots** keep interrupts as saved, in an NMI handler too.
+- **.sna and .z80 snapshots** keep interrupts as saved, in an NMI handler too, and a +2A or +3
+  one taken in 48 BASIC loads with its ROM.
 
 - **Tool windows** - the tape and RZX players, the disk manager - open over the middle of the
   main window, not a little to its left. A taller tape player gives the room to its block list.
