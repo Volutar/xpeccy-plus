@@ -45,7 +45,8 @@ before that point is upstream's history and is not repeated here.
 
 - **The RZX player shows what is in a recording**: what made it, the machine, its length and
   its snapshots, with a list of its blocks. A click on the bar goes to that point of the
-  recording, a double click on a block to where it starts.
+  recording, a double click on a block to where it starts. Fast forward, slow motion and
+  rewind work while it plays, and their keys work from the player's window too.
 
 - **Hotkey layouts**: Modern, the new default, and Classic, the keys as they were. Keys you
   change are kept as Custom, whichever layout is picked.
