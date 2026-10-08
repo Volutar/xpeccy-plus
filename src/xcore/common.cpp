@@ -253,15 +253,18 @@ void xspeed_toggle(int mode) {
 
 bool xhold_switches(xHoldKey* key, int hold, bool on, bool down) {
 	if (down) {
-		key->offByPress = false;
+		key->held = true;
 		if ((hold == XHOLD_TOGGLE) || !on) {
 			key->downAt = paceClockNs();
 			return true;
 		}
-		key->offByPress = (hold == XHOLD_HYBRID);	// a tap switched it on, this press off
-		return key->offByPress;
+		if (hold != XHOLD_HYBRID) return false;
+		key->held = false;		// a tap switched it on, this press off
+		return true;
 	}
-	if (!on || key->offByPress) return false;
+	if (!key->held) return false;
+	key->held = false;
+	if (!on) return false;
 	return (hold == XHOLD_HOLD) || ((hold == XHOLD_HYBRID) && (paceClockNs() - key->downAt >= XHOLD_TAP_NS));
 }
 

@@ -342,6 +342,7 @@ static FILE* rzx_open_beside(const char* rzx, const char* snap) {
 
 int loadRZX(Computer* comp, const char* name, int drv) {
 	int err = ERR_OK;
+	if (comp->rzx.file) rzxStop(comp);
 	comp->rzx.play = 0;
 	comp->rzx.fTotal = 0;
 	FILE* file = fopen(name, "rb");

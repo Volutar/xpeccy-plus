@@ -115,7 +115,7 @@ typedef struct {
 		MainWin(QMainWindow*);
 		~MainWin();
 //		Computer* comp;
-		void checkState();
+		void rzxWatch();		// the RZX player told of a recording opened or closed
 		void addSatellite(QWidget*, bool allKeys = false);
 		int hotkeyOf(QKeyEvent*);
 		void hotkeysNote();
@@ -154,7 +154,7 @@ typedef struct {
 
 		void s_step();
 
-		void s_rzx_start();
+		void s_rzx_start();		// a recording opened, the one rzx_playing names
 		void s_rzx_stop();
 		void s_rzx_upd(Computer*);
 		void s_rzx_show();
@@ -207,6 +207,7 @@ typedef struct {
 		long long mouseReadAt = 0;	// when a program last read the mouse, host ns
 		bool relArmed = false;		// both release keys are down, nothing else since
 		xSatFilter* satFilter = nullptr;	// passes the tool windows' hotkeys on to this one
+		unsigned rzxSeen = 0;			// the recording the player was last told of
 		void releaseChord(QKeyEvent*, bool);
 		void fast_key(bool);
 		QPoint warpAt;		// where the last recentering aimed

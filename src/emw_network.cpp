@@ -133,7 +133,9 @@ void MainWin::socketRead() {
 		}
 	} else if (com == "load") {
 		if (prm.size() > 1) {
+			emu_lock();
 			load_file(comp, prm[1].toLocal8Bit().data(), FG_ALL, 0);
+			emu_unlock();
 		}
 	} else if (com == "asm") {
 		// asm ADR instruction: what the listing does with one typed into it

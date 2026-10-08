@@ -121,6 +121,8 @@ before that point is upstream's history and is not repeated here.
 
 - **RZX playback** keeps in step with the recording to its end, plays recordings that carry an
   SZX snapshot or keep it beside them, and two copies of the emulator no longer mix theirs up.
+  A recording opened from the menu plays on the first try, the one that needs another machine
+  too, and opening one after another no longer spoils the next. *(thanks to Volutar)*
 
 - **The AY** answers to registers 0-15 only and reads back its port pins, as the chip does: a
   TurboSound FM tune on a plain AY no longer plays its FM part, and a 128K looks for its keypad.
