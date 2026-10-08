@@ -46,6 +46,23 @@ int szx_ext_can_save(Computer*);		// a machine the spec cannot name, but we can
 void szx_ext_media(Computer*);
 // the id of the running machine, written into the file with it
 void szx_set_machine(const char* id);
+
+// What a snapshot was taken with that the machine it went into lacks or has
+// set otherwise. The load goes on regardless; the gui says so. A joystick, a
+// mouse and a General Sound are only logged: writers put in whatever they
+// were set to, used or not.
+enum {
+	SZN_RELATIVE = 1,	// a model we do not have, loaded on its nearest one
+	SZN_TIMINGS = 2,	// early against late ULA timings
+	SZN_ISSUE = 4,		// issue 2 against issue 3
+	SZN_ULAPLUS = 8,
+	SZN_AY = 16,
+	SZN_BETA = 32,
+	SZN_COVOX = 64,
+	SZN_DEVICE = 128	// one we do not emulate at all, switched on
+};
+int szx_notes(void);		// SZN_* of the last load
+void szx_note(int);
 int szx_libspectrum_swap(const unsigned char* data, size_t len);
 
 typedef struct szxBuf szxBuf;

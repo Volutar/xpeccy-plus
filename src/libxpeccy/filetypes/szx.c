@@ -66,6 +66,9 @@ enum {
 #define SZJ_KEMPSTON	0		// JOY, KEYB
 #define SZJ_NONE	8
 #define SZM_MOUSE_KEMPSTON	2	// AMXM
+#define SZY_128AY	2		// AY
+#define SZI_ENABLED	1		// IF1
+#define SZF_MF_DISABLED	0x10		// MFCE
 
 // --- machine ---
 
@@ -240,6 +243,16 @@ static const char* szx_disk_ext[4] = {"trd", "scl", "fdi", "udi"};
 
 // --- the blocks, read ---
 
+static int szx_noted = 0;
+
+int szx_notes(void) {
+	return szx_noted;
+}
+
+void szx_note(int n) {
+	szx_noted |= n;
+}
+
 typedef struct {
 	int mid;		// machine id from the header
 	int version;		// major << 8 | minor
@@ -329,6 +342,9 @@ static void szx_rd_ay(Computer* comp, szxLoad* ld, const unsigned char* p, size_
 	if (n < 18) return;
 	if (ay->type == SND_NONE) {
 		xlog(XLG_FILE, XLL_INFO, "szx: the snapshot has an AY, this machine has none");
+		// a 48K writes the block for a Fuller box too, which is no AY of ours
+		if (!szx_is48(ld->mid) || (p[0] & SZY_128AY))
+			szx_note(SZN_AY);
 		return;
 	}
 	comp->ts->curChip = ay;
@@ -341,8 +357,10 @@ static void szx_rd_pltt(Computer* comp, szxLoad* ld, const unsigned char* p, siz
 	ulaPlus* ula = comp->vid->ula;
 	if (n < 66) return;
 	if (!ula->enabled) {
-		if (p[0] & 1)
+		if (p[0] & 1) {
 			xlog(XLG_FILE, XLL_WARN, "szx: the snapshot uses ULA+, this machine has it off");
+			szx_note(SZN_ULAPLUS);
+		}
 		return;
 	}
 	ula->active = p[0] & 1;
@@ -358,8 +376,10 @@ static void szx_rd_b128(Computer* comp, szxLoad* ld, const unsigned char* p, siz
 	// libspectrum takes the block whatever it says
 	unsigned flags = rd_dword(p);
 	if (!comp->dif || (comp->dif->type != DIF_BDI)) {
-		if (flags & SZB_CONNECTED)
+		if (flags & SZB_CONNECTED) {
 			xlog(XLG_FILE, XLL_WARN, "szx: the snapshot has a Beta 128, this machine has none");
+			szx_note(SZN_BETA);
+		}
 		return;
 	}
 	if (flags & SZB_CUSTOMROM)
@@ -467,6 +487,7 @@ static void szx_rd_covx(Computer* comp, szxLoad* ld, const unsigned char* p, siz
 	if (n < 1) return;
 	if (!comp->sdrv || (comp->sdrv->type == SDRV_NONE)) {
 		xlog(XLG_FILE, XLL_INFO, "szx: the snapshot has a Covox, this machine has none");
+		szx_note(SZN_COVOX);
 		return;
 	}
 	memset(comp->sdrv->chan, p[0], sizeof(comp->sdrv->chan));
@@ -495,8 +516,34 @@ static void szx_rd_rom(Computer* comp, szxLoad* ld, const unsigned char* p, size
 	xlog(XLG_FILE, XLL_INFO, "szx: custom rom of %u bytes put in", (unsigned)size);
 }
 
-static void szx_rd_ignore(const char* what) {
+// a device we do not have; on means it was switched on, as some writers put
+// the block in for one that is off
+static void szx_rd_ignore(const char* what, int on) {
 	xlog(XLG_FILE, XLL_INFO, "szx: %s not emulated, skipped", what);
+	if (on) szx_note(SZN_DEVICE);
+}
+
+// The input blocks are the user's settings, not the machine's state: they are
+// compared, not taken. A joystick and a mouse are only logged, as most files
+// carry whatever the emulator that wrote them was set to.
+static void szx_rd_keyb(Computer* comp, szxLoad* ld, const unsigned char* p, size_t n) {
+	if ((n < 4) || !szx_is48(ld->mid)) return;
+	if (!!(rd_dword(p) & SZK_ISSUE2) != (comp->earback == EAR_ISSUE2)) {
+		xlog(XLG_FILE, XLL_INFO, "szx: taken on an issue %i board", (rd_dword(p) & SZK_ISSUE2) ? 2 : 3);
+		szx_note(SZN_ISSUE);
+	}
+}
+
+static void szx_rd_joy(Computer* comp, const unsigned char* p, size_t n) {
+	if (n < 6) return;
+	if (((p[4] == SZJ_KEMPSTON) || (p[5] == SZJ_KEMPSTON)) && (comp->joy->type != XJ_KEMPSTON))
+		xlog(XLG_FILE, XLL_INFO, "szx: the snapshot has a Kempston joystick, this machine has none");
+}
+
+static void szx_rd_amxm(Computer* comp, const unsigned char* p, size_t n) {
+	if (n < 1) return;
+	if (p[0] && ((p[0] != SZM_MOUSE_KEMPSTON) || !comp->mouse->enable))
+		xlog(XLG_FILE, XLL_INFO, "szx: the snapshot has a mouse, this machine has none on");
 }
 
 // --- loading ---
@@ -528,6 +575,7 @@ int loadSZX_buf(Computer* comp, const unsigned char* buf, size_t len) {
 	int version;
 	int mid = szx_header(buf, len, &version);
 	szx_media_clear();
+	szx_noted = 0;
 	if (mid < 0) return ERR_SZX_SIGN;
 	int snap = (mid == SZM_XPECCY) ? szx_ext_hardware(buf, len) : szx_snap_of(mid);
 	if (snap == SNAP_HW_UNKNOWN) {
@@ -542,11 +590,15 @@ int loadSZX_buf(Computer* comp, const unsigned char* buf, size_t len) {
 	ld.tick = -1;
 	ld.p7ffd = -1;
 	ld.p1ffd = -1;
-	if ((mid == SZM_NTSC48K) || (mid == SZM_128KE) || (mid == SZM_PLUS3E))
+	if ((mid == SZM_NTSC48K) || (mid == SZM_128KE) || (mid == SZM_PLUS3E)) {
 		xlog(XLG_FILE, XLL_WARN, "szx: machine id %i is loaded on its nearest relative", mid);
-	if (((mid == SZM_16K) || (mid == SZM_48K) || (mid == SZM_128K)) && ((buf[7] & SZF_LATE) == comp->vid->ula->early))
+		szx_note(SZN_RELATIVE);
+	}
+	if (((mid == SZM_16K) || (mid == SZM_48K) || (mid == SZM_128K)) && ((buf[7] & SZF_LATE) == comp->vid->ula->early)) {
 		xlog(XLG_FILE, XLL_INFO, "szx: taken with %s timings, this machine has the other ones",
 			(buf[7] & SZF_LATE) ? "late" : "early");
+		szx_note(SZN_TIMINGS);
+	}
 
 	// a 128K reset, not a 48K one: that locks paging on a +2A, and the
 	// specregs block is still to come
@@ -588,16 +640,16 @@ int loadSZX_buf(Computer* comp, const unsigned char* buf, size_t len) {
 			case BID('G','S',0,0): szx_rd_gs(comp, p, n); break;
 			case BID('G','S','R','P'): szx_rd_gsrp(comp, p, n); break;
 			case BID('+','3',0,0):		// the drives are the machine's: nothing to set
-			case BID('K','E','Y','B'):	// how the host keys are taken: the user's setting
-			case BID('J','O','Y',0):
-			case BID('A','M','X','M'):
 				break;
-			case BID('I','F','1',0): szx_rd_ignore("Interface 1"); break;
-			case BID('M','D','R','V'): szx_rd_ignore("Microdrive"); break;
-			case BID('I','F','2','R'): szx_rd_ignore("Interface 2 cartridge"); break;
+			case BID('K','E','Y','B'): szx_rd_keyb(comp, &ld, p, n); break;
+			case BID('J','O','Y',0): szx_rd_joy(comp, p, n); break;
+			case BID('A','M','X','M'): szx_rd_amxm(comp, p, n); break;
+			case BID('I','F','1',0): szx_rd_ignore("Interface 1", (n >= 2) && (rd_word(p) & SZI_ENABLED)); break;
+			case BID('M','D','R','V'): szx_rd_ignore("Microdrive", 0); break;	// IF1 says
+			case BID('I','F','2','R'): szx_rd_ignore("Interface 2 cartridge", 1); break;
 			case BID('Z','X','P','R'): break;		// the printer: no state worth a word
-			case BID('D','R','U','M'): szx_rd_ignore("SpecDrum"); break;
-			case BID('M','F','C','E'): szx_rd_ignore("Multiface"); break;
+			case BID('D','R','U','M'): szx_rd_ignore("SpecDrum", 1); break;
+			case BID('M','F','C','E'): szx_rd_ignore("Multiface", (n >= 2) && !(p[1] & SZF_MF_DISABLED)); break;
 			default:
 				xlog(XLG_FILE, XLL_INFO, "szx: block %.4s skipped", (const char*)(buf + pos));
 				break;
@@ -742,7 +794,7 @@ static void szx_wr_ay(szxBuf* b, szxBuf* d, Computer* comp, int mid) {
 	aymChip* ay = comp->ts->chipA;
 	int i;
 	sb_byte(d, szx_is48(mid) ? 2 : 0);	// on a 48K it is a Melodik: the 128's ports
-	sb_byte(d, ay->curReg);			// past 15 the chip is not selected, as Fuse keeps it
+	sb_byte(d, ay->curReg);			// past 15 the chip is not selected
 	for (i = 0; i < 16; i++)
 		sb_byte(d, ay->reg[i]);
 	sb_block(b, BID('A','Y',0,0), d);

@@ -603,6 +603,37 @@ static void szx_mount(Computer* comp, const QString& snap) {
 	szx_ext_media(comp);
 }
 
+// What the snapshot was taken with and this machine does not have. Nothing of
+// the machine is changed for it: the user is told, and decides.
+static void szx_warn() {
+	static const struct {
+		int note;
+		const char* text;
+	} tab[] = {
+		{SZN_RELATIVE, "a model this emulator does not have, loaded on its nearest relative"},
+		{SZN_TIMINGS, "the other ULA timings (early/late)"},
+		{SZN_ISSUE, "another board issue (2/3), so the EAR bit reads otherwise"},
+		{SZN_ULAPLUS, "ULA+ in use"},
+		{SZN_AY, "an AY"},
+		{SZN_BETA, "a Beta 128 disk interface"},
+		{SZN_COVOX, "a Covox"},
+		{SZN_DEVICE, "a device not emulated here (Interface 1, Multiface, SpecDrum...)"},
+		{0, NULL}
+	};
+	int notes = szx_notes();
+	if (!notes || !conf.running) return;
+	QString text = QObject::tr("The snapshot was taken with something this machine does not have:");
+	text += "\n";
+	for (int i = 0; tab[i].text; i++) {
+		if (notes & tab[i].note)
+			text += QString("\n- ") + tab[i].text;
+	}
+	text += "\n\n";
+	text += QObject::tr("It may not run as it did. The machine's settings are left as they are.");
+	QMessageBox mbx(QMessageBox::Warning, "SZX snapshot", text, QMessageBox::Ok);
+	mbx.exec();
+}
+
 int load_file(Computer* comp, const char* name, int id, int drv) {
 	last_as_kind = AS_NONE;
 	xspeed_modes_off();
@@ -623,8 +654,10 @@ int load_file(Computer* comp, const char* name, int id, int drv) {
 	} else if (inf && inf->load) {
 		if (!inf->ch || (saveChangedDisk(comp, drv) == ERR_OK)) {
 			err = inf->load(comp, path.toLocal8Bit().data(), drv);
-			if ((err == ERR_OK) && (inf->id == FL_SZX))
+			if ((err == ERR_OK) && (inf->id == FL_SZX)) {
 				szx_mount(comp, path);
+				szx_warn();
+			}
 			disk_boot(comp, drv, inf->id);
 			if (err == ERR_OK) {
 				last_as_kind = as_kind_of(inf->id);

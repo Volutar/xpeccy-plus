@@ -19,7 +19,8 @@ enum {
 	FMN_TRDOS,		// to start a TR-DOS disk
 	FMN_PLUS3DOS,		// to start a +3 disk
 	FMN_SNAPSHOT,		// what the file was taken on, see probe
-	FMN_RZX			// the same, but it has to be that machine exactly
+	FMN_RZX,		// the same, but it has to be that machine exactly
+	FMN_EXACT		// the same, and a machine that is another model's stands in for none
 };
 
 typedef struct {
@@ -28,7 +29,7 @@ typedef struct {
 	const char* name;
 	int need;		// FMN_*
 	const char* target;	// the machine Auto switches to
-	int (*probe)(const char*);	// FMN_SNAPSHOT/FMN_RZX: SNAP_HW_* of the file
+	int (*probe)(const char*);	// FMN_SNAPSHOT/FMN_RZX/FMN_EXACT: SNAP_HW_* of the file
 } xFileMac;
 
 // the rows, ending with a NULL key
