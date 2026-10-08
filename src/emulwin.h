@@ -116,7 +116,7 @@ typedef struct {
 		~MainWin();
 //		Computer* comp;
 		void checkState();
-		void addSatellite(QWidget*);
+		void addSatellite(QWidget*, bool allKeys = false);
 		int hotkeyOf(QKeyEvent*);
 		void hotkeysNote();
 		void loadLabels(const char*);

@@ -693,12 +693,15 @@ class xSatFilter : public QObject {
 	public:
 		xSatFilter(MainWin* m) : QObject(m), mw(m) {}
 		QSet<QWidget*> wins;
+		QSet<QWidget*> allKeys;		// windows with nothing to type into: every hotkey but Esc
 	protected:
 		bool eventFilter(QObject* obj, QEvent* ev) override {
 			if ((ev->type() != QEvent::KeyPress) && (ev->type() != QEvent::KeyRelease)) return false;
 			QWidget* wid = qobject_cast<QWidget*>(obj);
 			QKeyEvent* kev = static_cast<QKeyEvent*>(ev);
-			if (!wid || !sat_passes(kev) || !wins.contains(wid->window())) return false;
+			if (!wid || !wins.contains(wid->window())) return false;
+			bool all = allKeys.contains(wid->window()) && (kev->key() != Qt::Key_Escape);
+			if (!all && !sat_passes(kev)) return false;
 			if (QApplication::activeModalWidget() || (mw->hotkeyOf(kev) < 0)) return false;
 			if (ev->type() == QEvent::KeyPress) {
 				mw->kPress(kev);
@@ -720,12 +723,13 @@ bool MainWin::padLive() {
 	return satFilter->wins.contains(QApplication::activeWindow());
 }
 
-void MainWin::addSatellite(QWidget* win) {
+void MainWin::addSatellite(QWidget* win, bool allKeys) {
 	if (!satFilter) {
 		satFilter = new xSatFilter(this);
 		qApp->installEventFilter(satFilter);
 	}
 	satFilter->wins.insert(win);
+	if (allKeys) satFilter->allKeys.insert(win);
 }
 
 // the hotkey a key press means here, -1 for none
