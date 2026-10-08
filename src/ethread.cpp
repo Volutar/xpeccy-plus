@@ -519,32 +519,33 @@ void xThread::emuCycle(Computer* comp) {
 			sndNsFixed += NS_TO_FIXED(tm);
 			int watch = vrecWatch.load(std::memory_order_relaxed);
 			if (watch) vrec_auto_pc(comp, watch);
-			// tape trap	TODO: rework it as a system breakpoint
-			// this runs on every instruction, and the rom is paged in for most
-			// of them: the pc straight from the Z80, not through the cpu's
-			// register table. None of it while a recording plays: the machine
+			// None of the tape tricks while a recording plays: the machine
 			// takes its input from the recording alone.
-			if (comp->rzx.play) {
-			} else if (zx_rom_active(comp)) {
-				int pc = comp->cpu->regPC;
-				if ((pc == LD_ROM_BASE + LDC_START) || (pc == LD_ROM_BASE + LDC_EDGE1)) {	// load: ix:addr, de:len
-					tap_catch_load(comp, pc == LD_ROM_BASE + LDC_START);
-				} else if (pc == 0x4d0) {				// save: ix:addr, de:len, a:block type(b7), hl:pilot len (1f80/0c98)?
-					tap_catch_save(comp);
+			if (!comp->rzx.play) {
+				// tape trap	TODO: rework it as a system breakpoint
+				// this runs on every instruction, and the rom is paged in for most
+				// of them: the pc straight from the Z80, not through the cpu's
+				// register table.
+				if (zx_rom_active(comp)) {
+					int pc = comp->cpu->regPC;
+					if ((pc == LD_ROM_BASE + LDC_START) || (pc == LD_ROM_BASE + LDC_EDGE1)) {	// load: ix:addr, de:len
+						tap_catch_load(comp, pc == LD_ROM_BASE + LDC_START);
+					} else if (pc == 0x4d0) {				// save: ix:addr, de:len, a:block type(b7), hl:pilot len (1f80/0c98)?
+						tap_catch_save(comp);
+					}
 				}
+				// a copy of LD-BYTES in ram is trapped as the rom's is, once seen
+				if (tape_flash()) {
+					int start;
+					if (ldc_step(comp, &start))
+						tap_catch_load(comp, start, comp->tape->ldBase, comp->tape->ldDir);
+				} else if (comp->tape->ldBase >= 0) {
+					ldc_forget(comp);
+				}
+				// a loader's edge loop, counted instead of run
+				if (fastload_on)
+					sndNsFixed += NS_TO_FIXED(fastload_step(comp));
 			}
-			// a copy of LD-BYTES in ram is trapped as the rom's is, once seen
-			if (comp->rzx.play) {
-			} else if (tape_flash()) {
-				int start;
-				if (ldc_step(comp, &start))
-					tap_catch_load(comp, start, comp->tape->ldBase, comp->tape->ldDir);
-			} else if (comp->tape->ldBase >= 0) {
-				ldc_forget(comp);
-			}
-			// a loader's edge loop, counted instead of run
-			if (fastload_on && !comp->rzx.play)
-				sndNsFixed += NS_TO_FIXED(fastload_step(comp));
 		}
 		// sound buffer update. In fast mode there is nothing to mix - the
 		// only thing sndSync() still does there is run the GS, so a machine
@@ -776,6 +777,7 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 			compExec(comp);
 		fprintf(stdout, "rzx: frame %i, %s\n", comp->rzx.fCurrent, comp->rzx.play ? "playing" : "stopped");
 		fflush(stdout);
+		conf.emu.rewind.on = rwOn;
 		fastload_hold(0);
 		return 0;
 	}

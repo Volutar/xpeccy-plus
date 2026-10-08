@@ -48,9 +48,7 @@ enum {
 #define SZB_CONNECTED	1		// B128
 #define SZB_CUSTOMROM	2
 #define SZB_PAGED	4
-#define SZB_AUTOBOOT	8
 #define SZB_SEEKLOWER	16
-#define SZB_COMPRESSED	32
 
 #define SZD_EMBEDDED	1		// BDSK
 #define SZD_COMPRESSED	2
@@ -211,7 +209,7 @@ static unsigned char* szx_inflate_new(const unsigned char* src, size_t n, size_t
 static szxMedia szx_med[SZX_MEDIA_MAX];
 static int szx_med_count = 0;
 
-static void szx_media_clear(void) {
+void szx_media_clear(void) {
 	int i;
 	for (i = 0; i < szx_med_count; i++)
 		free(szx_med[i].data);
@@ -249,8 +247,30 @@ int szx_notes(void) {
 	return szx_noted;
 }
 
-void szx_note(int n) {
+static void szx_note(int n) {
 	szx_noted |= n;
+}
+
+// libspectrum before 0.5.0 put F before A in the Z80R block where the spec has
+// A first; it signs its files with "libspectrum: x.y.z" in the creator data
+static int szx_libspectrum_swap(const unsigned char* data, size_t len) {
+	static const char sig[] = "libspectrum: ";
+	size_t n = sizeof(sig) - 1;
+	size_t i;
+	int v1, v2, v3;
+	char ver[16];
+	for (i = 0; i + n <= len; i++) {
+		if (memcmp(data + i, sig, n)) continue;
+		size_t k = 0;
+		while ((k < sizeof(ver) - 1) && (i + n + k < len) && data[i + n + k]) {
+			ver[k] = data[i + n + k];
+			k++;
+		}
+		ver[k] = 0;
+		if (sscanf(ver, "%d.%d.%d", &v1, &v2, &v3) != 3) return 0;
+		return (v1 == 0) && ((v2 < 5) || ((v2 == 5) && (v3 == 0)));
+	}
+	return 0;
 }
 
 typedef struct {
@@ -265,20 +285,11 @@ typedef struct {
 	int gotcpu;
 } szxLoad;
 
-static void szx_rd_z80r(Computer* comp, szxLoad* ld, const unsigned char* p, size_t n) {
-	CPU* cpu = comp->cpu;
-	if (n < 37) return;
-	if (ld->swapaf) {
-		cpu->regA = p[0];
-		cpu_set_flag(cpu, p[1]);
-		cpu->regAa = p[8];
-		cpu->regFa = p[9];
-	} else {
-		cpu_set_flag(cpu, p[0]);
-		cpu->regA = p[1];
-		cpu->regFa = p[8];
-		cpu->regAa = p[9];
-	}
+void szx_rd_regs(CPU* cpu, const unsigned char* p, int swapaf) {
+	cpu_set_flag(cpu, p[swapaf ? 1 : 0]);
+	cpu->regA = p[swapaf ? 0 : 1];
+	cpu->regFa = p[swapaf ? 9 : 8];
+	cpu->regAa = p[swapaf ? 8 : 9];
 	cpu->regBC = rd_word(p + 2);
 	cpu->regDE = rd_word(p + 4);
 	cpu->regHL = rd_word(p + 6);
@@ -295,6 +306,34 @@ static void szx_rd_z80r(Computer* comp, szxLoad* ld, const unsigned char* p, siz
 	cpu->flgIFF1 = p[26] ? 1 : 0;
 	cpu->flgIFF2 = p[27] ? 1 : 0;
 	cpu->regIM = p[28] & 3;
+}
+
+void szx_wr_regs(szxBuf* d, CPU* cpu) {
+	sb_byte(d, cpu_get_flag(cpu));
+	sb_byte(d, cpu->regA);
+	sb_word(d, cpu->regBC);
+	sb_word(d, cpu->regDE);
+	sb_word(d, cpu->regHL);
+	sb_byte(d, cpu->regFa);
+	sb_byte(d, cpu->regAa);
+	sb_word(d, cpu->regBCa);
+	sb_word(d, cpu->regDEa);
+	sb_word(d, cpu->regHLa);
+	sb_word(d, cpu->regIX);
+	sb_word(d, cpu->regIY);
+	sb_word(d, cpu->regSP);
+	sb_word(d, cpu->regPC);
+	sb_byte(d, cpu->regI);
+	sb_byte(d, z80_get_r(cpu));
+	sb_byte(d, cpu->flgIFF1 ? 1 : 0);
+	sb_byte(d, cpu->flgIFF2 ? 1 : 0);
+	sb_byte(d, cpu->regIM & 3);
+}
+
+static void szx_rd_z80r(Computer* comp, szxLoad* ld, const unsigned char* p, size_t n) {
+	CPU* cpu = comp->cpu;
+	if (n < 37) return;
+	szx_rd_regs(cpu, p, ld->swapaf);
 	// INT stays enabled from an EI until a DI, while IFF1 drops in a handler:
 	// IFF2 set means an EI came after the last DI, so RETN has interrupts back
 	cpu->inten = Z80_NMI | ((cpu->flgIFF1 || cpu->flgIFF2) ? Z80_INT : 0);
@@ -475,9 +514,14 @@ static void szx_rd_tape(Computer* comp, szxLoad* ld, const unsigned char* p, siz
 		memcpy(m->ext, p + 12, 15);
 		m->ext[15] = 0;
 		if (!strcmp(m->ext, "tapw")) strcpy(m->ext, "tap");	// Warajevo's
-		m->data = (flags & SZT_COMPRESSED) ? szx_inflate_new(p + 28, csize, usize) : (unsigned char*)malloc(csize ? csize : 1);
-		if (m->data && !(flags & SZT_COMPRESSED)) memcpy(m->data, p + 28, csize);
-		m->size = m->data ? ((flags & SZT_COMPRESSED) ? usize : csize) : 0;
+		if (flags & SZT_COMPRESSED) {
+			m->data = szx_inflate_new(p + 28, csize, usize);
+			m->size = m->data ? usize : 0;
+		} else {
+			m->data = (unsigned char*)malloc(csize ? csize : 1);
+			if (m->data) memcpy(m->data, p + 28, csize);
+			m->size = m->data ? csize : 0;
+		}
 	} else {
 		szx_media_name(m, p + 28, csize);
 	}
@@ -500,8 +544,10 @@ static void szx_rd_rom(Computer* comp, szxLoad* ld, const unsigned char* p, size
 		xlog(XLG_FILE, XLL_WARN, "szx: custom rom of %u bytes does not fit, skipped", (unsigned)size);
 		return;
 	}
-	unsigned char* rom = (rd_word(p) & SZR_COMPRESSED) ? szx_inflate_new(p + 6, n - 6, size) : NULL;
-	if (!rom && !(rd_word(p) & SZR_COMPRESSED) && (n - 6 >= size)) {
+	unsigned char* rom = NULL;
+	if (rd_word(p) & SZR_COMPRESSED) {
+		rom = szx_inflate_new(p + 6, n - 6, size);
+	} else if (n - 6 >= size) {
 		rom = (unsigned char*)malloc(size);
 		if (rom) memcpy(rom, p + 6, size);
 	}
@@ -665,8 +711,10 @@ int loadSZX_buf(Computer* comp, const unsigned char* buf, size_t len) {
 	// paging, after the memory is in: a +3 takes 1FFD only while 7FFD is
 	// unlocked, so 1FFD goes first
 	if (comp->hw->id == HW_P1024) {
-		// a Pentagon 512 snapshot pages through 7FFD alone, which is our 1024's mode with EFF7.2 clear
-		comp->hw->out(comp, 0xeff7, (ld.mid == SZM_PENT1024) && (ld.p1ffd >= 0) ? ld.p1ffd : 0x00);
+		// a Pentagon 512 snapshot pages through 7FFD alone, as the reset left it;
+		// EFF7 is only written for a file of its own, as it also sets the turbo
+		if ((ld.mid == SZM_PENT1024) && (ld.p1ffd >= 0))
+			comp->hw->out(comp, 0xeff7, ld.p1ffd);
 	} else if ((ld.p1ffd >= 0) && (snap == SNAP_HW_PLUS2A || snap == SNAP_HW_PLUS3 || snap == SNAP_HW_SCORPION)
 			&& snapHwRuns(snap, comp->hw->id)) {
 		comp->hw->out(comp, 0x1ffd, ld.p1ffd);
@@ -726,25 +774,7 @@ void szx_set_links(const char* tape, const char* const* disks) {
 
 static void szx_wr_z80r(szxBuf* b, szxBuf* d, Computer* comp, int tick) {
 	CPU* cpu = comp->cpu;
-	sb_byte(d, cpu_get_flag(cpu));
-	sb_byte(d, cpu->regA);
-	sb_word(d, cpu->regBC);
-	sb_word(d, cpu->regDE);
-	sb_word(d, cpu->regHL);
-	sb_byte(d, cpu->regFa);
-	sb_byte(d, cpu->regAa);
-	sb_word(d, cpu->regBCa);
-	sb_word(d, cpu->regDEa);
-	sb_word(d, cpu->regHLa);
-	sb_word(d, cpu->regIX);
-	sb_word(d, cpu->regIY);
-	sb_word(d, cpu->regSP);
-	sb_word(d, cpu->regPC);
-	sb_byte(d, cpu->regI);
-	sb_byte(d, z80_get_r(cpu));
-	sb_byte(d, cpu->flgIFF1 ? 1 : 0);
-	sb_byte(d, cpu->flgIFF2 ? 1 : 0);
-	sb_byte(d, cpu->regIM & 3);
+	szx_wr_regs(d, cpu);
 	sb_dword(d, (unsigned)tick);
 	// what is left of the INT pulse, in T: a pulse not yet taken can still be
 	Video* vid = comp->vid;
@@ -781,13 +811,17 @@ static void szx_wr_spcr(szxBuf* b, szxBuf* d, Computer* comp, int mid) {
 	sb_block(b, BID('S','P','C','R'), d);
 }
 
-static void szx_wr_ramp(szxBuf* b, szxBuf* d, Computer* comp, int page) {
-	const unsigned char* src = comp->mem->ramData + ((page << 14) & comp->mem->ramMask);
+// A RAMP or GSRP block. Written raw, so the file is quick to take while the
+// machine is held; szx_write() packs it.
+void szx_wr_page(szxBuf* b, szxBuf* d, unsigned id, int page, const unsigned char* src, size_t n) {
 	sb_word(d, 0);
 	sb_byte(d, page);
-	if (sb_deflate(d, src, MEM_16K))
-		d->data[0] = SZR_COMPRESSED;
-	sb_block(b, BID('R','A','M','P'), d);
+	sb_put(d, src, n);
+	sb_block(b, id, d);
+}
+
+static void szx_wr_ramp(szxBuf* b, szxBuf* d, Computer* comp, int page) {
+	szx_wr_page(b, d, BID('R','A','M','P'), page, comp->mem->ramData + ((page << 14) & comp->mem->ramMask), MEM_16K);
 }
 
 static void szx_wr_ay(szxBuf* b, szxBuf* d, Computer* comp, int mid) {
@@ -837,7 +871,7 @@ static void szx_wr_b128(szxBuf* b, szxBuf* d, Computer* comp) {
 		if (!flp->insert || !path || !*path) continue;
 		const char* ext = strrchr(path, '.');
 		int type = 0;
-		while (ext && (type < 3) && strcasecmp(ext + 1, szx_disk_ext[type])) type++;
+		while (ext && (type < 4) && strcasecmp(ext + 1, szx_disk_ext[type])) type++;
 		if (!ext || (type > 3)) type = 0;
 		sb_dword(d, flp->protect ? SZD_PROTECT : 0);
 		sb_byte(d, i);
@@ -895,8 +929,9 @@ int szxCanSave(Computer* comp) {
 	return (szx_mid_of(comp) >= 0) || szx_ext_can_save(comp);
 }
 
-int saveSZX(Computer* comp, const char* name, int drv) {
+int szx_build(Computer* comp, szxBuf* out) {
 	int mid = szx_mid_of(comp);
+	memset(out, 0, sizeof(szxBuf));
 	if ((mid < 0) && !szx_ext_can_save(comp)) return ERR_SZX_HW;
 	szxBuf b;
 	szxBuf d;
@@ -933,8 +968,7 @@ int saveSZX(Computer* comp, const char* name, int drv) {
 	if (comp->romCustom > 0) {
 		sb_word(&d, 0);
 		sb_dword(&d, (unsigned)comp->romCustom);
-		if (sb_deflate(&d, comp->mem->romData, comp->romCustom))
-			d.data[0] = SZR_COMPRESSED;
+		sb_put(&d, comp->mem->romData, comp->romCustom);
 		sb_block(&b, BID('R','O','M',0), &d);
 	}
 	if (comp->ts->chipA->type != SND_NONE)
@@ -959,13 +993,50 @@ int saveSZX(Computer* comp, const char* name, int drv) {
 		sb_free(&b);
 		return ERR_CANT_OPEN;
 	}
-	FILE* file = fopen(name, "wb");
+	*out = b;
+	return ERR_OK;
+}
+
+// the memory blocks deflated where that gains anything, then the file
+int szx_write(szxBuf* b, const char* name) {
+	szxBuf o;
+	szxBuf d;
+	size_t pos = 8;
+	memset(&o, 0, sizeof(o));
+	memset(&d, 0, sizeof(d));
+	sb_put(&o, b->data, (b->len < 8) ? b->len : 8);
+	while (pos + 8 <= b->len) {
+		unsigned id = rd_dword(b->data + pos);
+		size_t n = rd_dword(b->data + pos + 4);
+		const unsigned char* p = b->data + pos + 8;
+		size_t head = ((id == BID('R','A','M','P')) || (id == BID('G','S','R','P'))) ? 3 : (id == BID('R','O','M',0)) ? 6 : 0;
+		if (head && (n > head)) {
+			sb_put(&d, p, head);
+			if (sb_deflate(&d, p + head, n - head))
+				d.data[0] |= SZR_COMPRESSED;
+			sb_block(&o, id, &d);
+		} else {
+			sb_put(&o, b->data + pos, 8 + n);
+		}
+		pos += 8 + n;
+	}
+	sb_free(&d);
+	sb_free(b);
 	int res = ERR_CANT_OPEN;
+	FILE* file = o.fail ? NULL : fopen(name, "wb");
 	if (file) {
-		if (fwrite(b.data, b.len, 1, file) == 1) res = ERR_OK;
+		if (fwrite(o.data, o.len, 1, file) == 1) res = ERR_OK;
 		fclose(file);
 	}
-	sb_free(&b);
+	sb_free(&o);
+	return res;
+}
+
+int saveSZX(Computer* comp, const char* name, int drv) {
+	szxBuf b;
+	int res = szx_build(comp, &b);
+	if (res == ERR_OK)
+		res = szx_write(&b, name);
 	if (res == ERR_OK)
 		mem_set_path(comp->mem, name);
 	return res;

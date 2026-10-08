@@ -33,6 +33,7 @@ typedef struct {
 } szxMedia;
 
 int szx_media(const szxMedia** list);
+void szx_media_clear(void);
 
 // Our own data, in the creator block (szx_ext.c). find: where it starts in a
 // creator block's own data, NULL when the block is someone else's.
@@ -62,11 +63,21 @@ enum {
 	SZN_DEVICE = 128	// one we do not emulate at all, switched on
 };
 int szx_notes(void);		// SZN_* of the last load
-void szx_note(int);
-int szx_libspectrum_swap(const unsigned char* data, size_t len);
 
 typedef struct szxBuf szxBuf;
 void szx_ext_save(szxBuf*, Computer*);
+
+// the Z80's registers from F to IM, laid out alike in Z80R and GS (szx.c);
+// swapaf: A before F
+void szx_rd_regs(CPU*, const unsigned char*, int swapaf);
+void szx_wr_regs(szxBuf*, CPU*);
+void szx_wr_page(szxBuf*, szxBuf* body, unsigned id, int page, const unsigned char* src, size_t n);
+
+// Saving in two steps: the file built in memory, its pages raw - quick, so it
+// can be done while the machine is held - and then packed and written.
+// szx_write() frees the buffer whatever happens.
+int szx_build(Computer*, szxBuf*);
+int szx_write(szxBuf*, const char* name);
 
 // General Sound (szx_ext.c too)
 void szx_rd_gs(Computer*, const unsigned char*, size_t);

@@ -9,21 +9,7 @@ int ymDACvol[32] = {0x0000,0x0000,0x003B,0x0074,0x00A4,0x00CA,0x00FB,0x0134,
 
 // ym_reset = ay_reset
 
-// the chip select and the ports as ay_rd(); only the unused bits differ
-int ym_rd(aymChip* chip, int adr) {
-	int res = 0xff;
-	ay_flush(chip);
-	if (adr & 1) {
-		if (chip->curReg > 15) {
-			res = -1;
-		} else if (chip->curReg > 13) {
-			res = ay_port_rd(chip, chip->curReg - 14);
-		} else {
-			res = chip->reg[chip->curReg];			// YM:store unused bits
-		}
-	}
-	return res;
-}
+// ym_rd: in ay-3-8910.c, beside ay_rd
 
 // ym_sync = ay_sync (with 5-bit volumes)
 

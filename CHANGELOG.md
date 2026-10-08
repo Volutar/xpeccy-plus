@@ -108,19 +108,13 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
-- **RZX playback** keeps in step with the recording to its end: the interrupt that ends a
-  recorded frame is taken right there or not at all. Recordings with an SZX snapshot play, and
-  one whose snapshot is kept beside it finds it there. Two copies of the emulator opening a
-  recording in the same second no longer play each other's.
+- **RZX playback** keeps in step with the recording to its end, plays recordings that carry an
+  SZX snapshot or keep it beside them, and two copies of the emulator no longer mix theirs up.
 
-- **The AY** answers to registers 0-15 only, as the chip does: a higher number selects nothing
-  instead of landing on one of them, so a TurboSound FM tune on a plain AY no longer plays its FM
-  registers through it. The port registers keep what is written while the port is an input and
-  read back what drives the pins while it is an output - which is how a 128K's ROM looks for
-  the keypad.
+- **The AY** answers to registers 0-15 only and reads back its port pins, as the chip does: a
+  TurboSound FM tune on a plain AY no longer plays its FM part, and a 128K looks for its keypad.
 
-- **.sna snapshots** load IFF2 as saved, which LD A,I reads, and a **.z80** taken inside an NMI
-  handler gets its interrupts back at the RETN.
+- **.sna and .z80 snapshots** keep interrupts as saved, in an NMI handler too.
 
 - **Tool windows** - the tape and RZX players, the disk manager - open over the middle of the
   main window, not a little to its left. A taller tape player gives the room to its block list.

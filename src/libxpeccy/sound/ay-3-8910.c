@@ -22,35 +22,40 @@ void ay_reset(aymChip* chip) {
 	chip->chanN.step = 0xffff;
 }
 
-// Port A (n=0) or B (n=1): the pins, and in output mode the latch driving them
-// wired-AND with whatever pulls them low from outside.
-int ay_port_rd(aymChip* ay, int n) {
-	int res = ay->xrd ? ay->xrd(n, ay->xptr) & 0xff : 0xff;
-	if (ay->reg[7] & (0x40 << n))
-		res &= ay->reg[14 + n];
-	return res;
-}
-
 // The upper four bits of the address latch are a chip select, 0000 on every
 // standard part: any other number leaves the chip off the bus until the next
-// one, so a write goes nowhere and a read is the floating bus (-1).
-int ay_rd(aymChip* ay, int adr) {
+// one, so a write goes nowhere and a read is the floating bus (-1). A port
+// reads its pins, and in output mode the latch driving them wired-AND with
+// whatever pulls them low from outside. The AY reads unused bits as 0, the
+// YM as written.
+static int psg_rd(aymChip* ay, int adr, int masked) {
 	int res = 0xff;
 	ay_flush(ay);
 	if (adr & 1) {
-		if (ay->curReg > 15) {
+		int r = ay->curReg;
+		if (r > 15) {
 			res = -1;
-		} else if (ay->curReg > 13) {
-			res = ay_port_rd(ay, ay->curReg - 14);
+		} else if (r > 13) {
+			res = ay->xrd ? ay->xrd(r - 14, ay->xptr) & 0xff : 0xff;
+			if (ay->reg[7] & (0x40 << (r - 14)))
+				res &= ay->reg[r];
 		} else {
-			res = ay->reg[ay->curReg] & ay_val_mask[ay->curReg];	// AY:reset unused bits
+			res = masked ? (ay->reg[r] & ay_val_mask[r]) : ay->reg[r];
 		}
 	}
 	return res;
 }
 
+int ay_rd(aymChip* ay, int adr) {
+	return psg_rd(ay, adr, 1);
+}
+
+int ym_rd(aymChip* ay, int adr) {
+	return psg_rd(ay, adr, 0);
+}
+
 void ay_set_reg(aymChip* chip, int val) {
-	int tone;
+	int tone, port;
 	if ((chip->curReg != 14) && (chip->curReg != 15))
 		chip->reg[chip->curReg] = val & 0xff;
 	switch (chip->curReg) {
@@ -112,12 +117,10 @@ void ay_set_reg(aymChip* chip, int val) {
 		// the port latch takes the byte whichever way the port is set; it
 		// only reaches the pins while the port is an output
 		case 0x0e:
-			chip->reg[14] = val & 0xff;
-			if ((chip->reg[7] & 0x40) && chip->xwr) chip->xwr(0, val, chip->xptr);
-			break;
 		case 0x0f:
-			chip->reg[15] = val & 0xff;
-			if ((chip->reg[7] & 0x80) && chip->xwr) chip->xwr(1, val, chip->xptr);
+			port = chip->curReg - 14;
+			chip->reg[chip->curReg] = val & 0xff;
+			if ((chip->reg[7] & (0x40 << port)) && chip->xwr) chip->xwr(port, val, chip->xptr);
 			break;
 	}
 }

@@ -247,24 +247,34 @@ DiskIF* difCreate(int type, cbirq cb, void* p) {
 	return dif;
 }
 
-int vg_plan_id(FDC*);
-void vg_plan_set(FDC*, int);
-int u_plan_id(FDC*);
-void u_plan_set(FDC*, int);
+extern fdcCall* const vgPlans[];	// wd1793.c
+extern fdcCall* const uPlans[];		// upd765.c
 
-int dif_plan_id(DiskIF* dif) {
+static fdcCall* const* dif_plans(DiskIF* dif) {
 	switch (dif->type) {
-		case DIF_BDI: return vg_plan_id(dif->fdc);
-		case DIF_P3DOS: return u_plan_id(dif->fdc);
+		case DIF_BDI: return vgPlans;
+		case DIF_P3DOS: return uPlans;
 	}
-	return 0;
+	return NULL;
+}
+
+// The controller's command in progress, as a number a snapshot can keep: 0 is
+// none, n the plan at n - 1 in the controller's table, -1 one not in it
+int dif_plan_id(DiskIF* dif) {
+	fdcCall* const* tab = dif_plans(dif);
+	int i;
+	if (!tab || !dif->fdc->plan) return 0;
+	for (i = 0; tab[i]; i++)
+		if (dif->fdc->plan == tab[i]) return i + 1;
+	return -1;
 }
 
 void dif_plan_set(DiskIF* dif, int id) {
-	switch (dif->type) {
-		case DIF_BDI: vg_plan_set(dif->fdc, id); break;
-		case DIF_P3DOS: u_plan_set(dif->fdc, id); break;
-	}
+	fdcCall* const* tab = dif_plans(dif);
+	int i;
+	if (!tab) return;
+	for (i = 0; tab[i] && (i + 1 < id); i++);
+	dif->fdc->plan = (id > 0) && tab[i] ? tab[i] : NULL;
 }
 
 void difDestroy(DiskIF* dif) {

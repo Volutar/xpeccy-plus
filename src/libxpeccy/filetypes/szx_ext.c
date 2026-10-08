@@ -411,21 +411,17 @@ static const szxField fld_tape[] = {
 static void ext_gs_save(szxBuf*, Computer*);
 static void ext_gs_ram(GSound*, const unsigned char*, size_t);
 
-static aymChip* ext_chip(TSound* ts, int n) {
-	switch (n) {
-		case 0: return ts->chipA;
-		case 1: return ts->chipB;
-		case 2: return ts->chipC;
-		case 3: return ts->chipD;
-	}
-	return NULL;
-}
-
 static int ext_chip_index(TSound* ts, aymChip* chip) {
 	int i;
 	for (i = 0; i < 4; i++)
-		if (ext_chip(ts, i) == chip) return i;
+		if (ts_chip(ts, i) == chip) return i;
 	return 0;
+}
+
+// n of a numbered record (CHP0..3 and the like), -1 when id is not one of base's
+static int xr_slot(unsigned id, unsigned base, int count) {
+	int n = (int)(id >> 24) - '0';
+	return (((id ^ base) & 0x00ffffff) || (n < 0) || (n >= count)) ? -1 : n;
 }
 
 // a machine the spec has no id for: its palette is its own
@@ -491,7 +487,7 @@ void szx_ext_save(szxBuf* b, Computer* comp) {
 	rec_end(b, mark);
 	ts_state_capture(comp->ts);
 	for (i = 0; i < 4; i++) {
-		aymChip* chip = ext_chip(comp->ts, i);
+		aymChip* chip = ts_chip(comp->ts, i);
 		void* fm = NULL;
 		int fmsize;
 		if (!chip || (chip->type == SND_NONE)) continue;
@@ -595,10 +591,9 @@ static void ext_mach(const unsigned char* ext, size_t len, char* core, size_t cs
 int szx_ext_hardware(const unsigned char* file, size_t len) {
 	size_t extlen;
 	char core[64];
-	char mac[256];
 	const unsigned char* ext = ext_of_file(file, len, &extlen);
 	if (!ext) return SNAP_HW_UNKNOWN;
-	ext_mach(ext, extlen, core, sizeof(core), mac, sizeof(mac));
+	ext_mach(ext, extlen, core, sizeof(core), NULL, 0);
 	HardWare* hw = core[0] ? findHardware(core) : NULL;
 	return hw ? SNAP_HW_CORE + hw->id : SNAP_HW_UNKNOWN;
 }
@@ -616,28 +611,6 @@ void szx_machine_of(const char* name, char* id, size_t idsize) {
 	if (ext) ext_mach(ext, extlen, core, sizeof(core), id, idsize);
 }
 
-// libspectrum before 0.5.0 put F before A in the Z80R block where the spec has
-// A first; it signs its files with "libspectrum: x.y.z" in the creator data
-int szx_libspectrum_swap(const unsigned char* data, size_t len) {
-	static const char sig[] = "libspectrum: ";
-	size_t n = sizeof(sig) - 1;
-	size_t i;
-	int v1, v2, v3;
-	char ver[16];
-	for (i = 0; i + n <= len; i++) {
-		if (memcmp(data + i, sig, n)) continue;
-		size_t k = 0;
-		while ((k < sizeof(ver) - 1) && (i + n + k < len) && data[i + n + k]) {
-			ver[k] = data[i + n + k];
-			k++;
-		}
-		ver[k] = 0;
-		if (sscanf(ver, "%d.%d.%d", &v1, &v2, &v3) != 3) return 0;
-		return (v1 == 0) && ((v2 < 5) || ((v2 == 5) && (v3 == 0)));
-	}
-	return 0;
-}
-
 const unsigned char* szx_ext_find(const unsigned char* data, size_t len, size_t* extlen) {
 	if ((len < sizeof(szx_ext_tag)) || memcmp(data, szx_ext_tag, sizeof(szx_ext_tag))) return NULL;
 	if (extlen) *extlen = len - sizeof(szx_ext_tag);
@@ -652,8 +625,8 @@ static size_t ext_held_len = 0;
 // the same as EXT_TAKE below for a struct with megabytes of data after its
 // head: the copy is on the heap and only the head is copied, which is all the
 // table reaches
-static void* ext_take_head(const void* obj, size_t size, size_t head, const szxField* tab, const unsigned char* p, size_t n) {
-	void* tmp = malloc(size);
+static void* ext_take_head(const void* obj, size_t head, const szxField* tab, const unsigned char* p, size_t n) {
+	void* tmp = malloc(head);
 	if (!tmp) return NULL;
 	memcpy(tmp, obj, head);
 	fld_get(tmp, tab, p, n);
@@ -674,10 +647,6 @@ static void ext_cpu_into(CPU* cpu, const unsigned char* p, size_t n) {
 	cpu->intrq = tmp_.intrq;
 	cpu->inten = tmp_.inten;
 	cpu->intvec = tmp_.intvec;
-}
-
-static void ext_cpu(Computer* comp, const unsigned char* p, size_t n) {
-	ext_cpu_into(comp->cpu, p, n);
 }
 
 static void ext_comp(Computer* comp, const unsigned char* p, size_t n) {
@@ -756,7 +725,7 @@ static void ext_vid(Computer* comp, const unsigned char* p, size_t n) {
 }
 
 static void ext_chip_load(Computer* comp, int n, const unsigned char* p, size_t len) {
-	aymChip* chip = ext_chip(comp->ts, n);
+	aymChip* chip = ts_chip(comp->ts, n);
 	int i;
 	if (!chip || (chip->type == SND_NONE)) {
 		xlog(XLG_FILE, XLL_INFO, "szx: the snapshot has a sound chip %i, this machine has none", n + 1);
@@ -802,7 +771,7 @@ static void ext_fm_load(Computer* comp, int n, const unsigned char* p, size_t le
 
 static void ext_fdc(Computer* comp, const unsigned char* p, size_t n) {
 	FDC* fdc = comp->dif->fdc;
-	FDC* t = (FDC*)ext_take_head(fdc, sizeof(FDC), offsetof(FDC, slst), fld_fdc, p, n);
+	FDC* t = (FDC*)ext_take_head(fdc, offsetof(FDC, slst), fld_fdc, p, n);
 	if (!t) return;
 	fdc->irq = t->irq;
 	fdc->drq = t->drq;
@@ -853,7 +822,7 @@ static void ext_fdc(Computer* comp, const unsigned char* p, size_t n) {
 }
 
 static void ext_flp(Floppy* flp, const unsigned char* p, size_t n) {
-	Floppy* t = (Floppy*)ext_take_head(flp, sizeof(Floppy), offsetof(Floppy, path), fld_flp, p, n);
+	Floppy* t = (Floppy*)ext_take_head(flp, offsetof(Floppy, path), fld_flp, p, n);
 	if (!t) return;
 	flp->motor = t->motor;
 	flp->virt = t->virt;
@@ -878,27 +847,6 @@ static void ext_ata(ATADev* ata, const unsigned char* p, size_t n) {
 	ata->lba = tmp_.lba;
 	memcpy(&ata->buf, &tmp_.buf, sizeof(ata->buf));
 	memcpy(&ata->reg, &tmp_.reg, sizeof(ata->reg));
-}
-
-static void ext_sdc(SDCard* sdc, const unsigned char* p, size_t n) {
-	EXT_TAKE(SDCard, sdc, fld_sdc, p, n)
-	sdc->on = tmp_.on;
-	sdc->cs = tmp_.cs;
-	sdc->acmd = tmp_.acmd;
-	sdc->checkCrc = tmp_.checkCrc;
-	sdc->cont = tmp_.cont;
-	sdc->lock = tmp_.lock;
-	sdc->busy = tmp_.busy;
-	sdc->idle = tmp_.idle;
-	sdc->state = tmp_.state;
-	sdc->argCnt = tmp_.argCnt;
-	memcpy(sdc->arg, tmp_.arg, sizeof(sdc->arg));
-	sdc->respCnt = tmp_.respCnt;
-	sdc->respPos = tmp_.respPos;
-	memcpy(sdc->resp, tmp_.resp, sizeof(sdc->resp));
-	sdc->blkSize = tmp_.blkSize;
-	sdc->addr = tmp_.addr;
-	memcpy(&sdc->buf, &tmp_.buf, sizeof(sdc->buf));
 }
 
 static void ext_saa(saaChip* saa, const unsigned char* p, size_t n) {
@@ -951,11 +899,11 @@ int szx_ext_load(Computer* comp, const unsigned char* ext, size_t len) {
 		xlog(XLG_FILE, XLL_INFO, "szx: taken on %s, run on %s: only the sound chips' own state is carried over",
 			core[0] ? core : "?", comp->hw->name);
 	while (ext_next(ext, len, &pos, &id, &p, &n)) {
-		int idx = (id >> 24) - '0';
-		if (!same && ((id & 0x00ffffff) != (XR_CHIP & 0x00ffffff)) && ((id & 0x00ffffff) != (XR_FM & 0x00ffffff)) && (id != XR_TS))
+		int idx;
+		if (!same && (xr_slot(id, XR_CHIP, 4) < 0) && (xr_slot(id, XR_FM, 4) < 0) && (id != XR_TS))
 			continue;
 		switch (id) {
-			case XR_CPU: ext_cpu(comp, p, n); break;
+			case XR_CPU: ext_cpu_into(comp->cpu, p, n); break;
 			case XR_COMP: ext_comp(comp, p, n); break;
 			case XR_VID: ext_vid(comp, p, n); break;
 			case XR_MAP: ext_map(comp, p, n); break;
@@ -966,18 +914,14 @@ int szx_ext_load(Computer* comp, const unsigned char* ext, size_t len) {
 			case XR_TS:
 				if (n > 0) {
 					EXT_TAKE(TSound, comp->ts, fld_ts, p, n - 1)
-					aymChip* cur = ext_chip(comp->ts, p[n - 1]);
+					aymChip* cur = ts_chip(comp->ts, p[n - 1]);
 					comp->ts->mute_l = tmp_.mute_l;
 					comp->ts->mute_r = tmp_.mute_r;
 					comp->ts->r_stat = tmp_.r_stat;
 					if (cur) comp->ts->curChip = cur;
 				}
 				break;
-			case XR_BEEP: {
-				EXT_TAKE(bitChan, comp->beep, fld_beep, p, n)
-				memcpy(comp->beep, &tmp_, sizeof(bitChan));
-				break;
-			}
+			case XR_BEEP: fld_get(comp->beep, fld_beep, p, n); break;
 			case XR_SAA:
 				if (comp->saa && comp->saa->enabled) ext_saa(comp->saa, p, n);
 				break;
@@ -1003,21 +947,13 @@ int szx_ext_load(Computer* comp, const unsigned char* ext, size_t len) {
 				}
 				break;
 			case XR_IDE:
-				if (comp->ide && (comp->ide->type != IDE_NONE)) {
-					EXT_TAKE(IDE, comp->ide, fld_ide, p, n)
-					comp->ide->bus = tmp_.bus;
-					comp->ide->hiTrig = tmp_.hiTrig;
-					comp->ide->smuc.sys = tmp_.smuc.sys;
-					comp->ide->smuc.fdd = tmp_.smuc.fdd;
-					memcpy(comp->ide->flag, tmp_.flag, sizeof(tmp_.flag));
-					memcpy(comp->ide->reg, tmp_.reg, sizeof(tmp_.reg));
-				}
+				if (comp->ide && (comp->ide->type != IDE_NONE)) fld_get(comp->ide, fld_ide, p, n);
 				break;
 			case XR_SMNV:
 				if (comp->ide && comp->ide->smuc.nv) fld_get(comp->ide->smuc.nv, fld_nv, p, n);
 				break;
 			case XR_SDC:
-				if (comp->sdc) ext_sdc(comp->sdc, p, n);
+				if (comp->sdc) fld_get(comp->sdc, fld_sdc, p, n);
 				break;
 			case XR_GS:
 				if (comp->gs && comp->gs->enable) ext_gs(comp->gs, p, n);
@@ -1033,11 +969,11 @@ int szx_ext_load(Computer* comp, const unsigned char* ext, size_t len) {
 			case XR_TAPE:
 				break;		// held until the media are in, below
 			default:
-				if ((id & 0x00ffffff) == (XR_CHIP & 0x00ffffff) && (idx >= 0) && (idx < 4)) {
+				if ((idx = xr_slot(id, XR_CHIP, 4)) >= 0) {
 					ext_chip_load(comp, idx, p, n);
-				} else if ((id & 0x00ffffff) == (XR_FM & 0x00ffffff) && (idx >= 0) && (idx < 4)) {
+				} else if ((idx = xr_slot(id, XR_FM, 4)) >= 0) {
 					ext_fm_load(comp, idx, p, n);
-				} else if ((id & 0x00ffffff) == (XR_ATA & 0x00ffffff) && (idx >= 0) && (idx < 2)) {
+				} else if ((idx = xr_slot(id, XR_ATA, 2)) >= 0) {
 					if (comp->ide && (comp->ide->type != IDE_NONE))
 						ext_ata(idx ? comp->ide->slave : comp->ide->master, p, n);
 				} else if (id != XR_MACH) {
@@ -1070,9 +1006,10 @@ void szx_ext_media(Computer* comp) {
 	unsigned id;
 	const unsigned char* p;
 	size_t n;
+	szx_media_clear();		// the images carried in the file are in by now
 	if (!ext_held) return;
 	while (ext_next(ext_held, ext_held_len, &pos, &id, &p, &n)) {
-		int idx = (id >> 24) - '0';
+		int idx;
 		if ((id == XR_TAPE) && comp->tape->blkCount) {
 			Tape* tape = comp->tape;
 			EXT_TAKE(Tape, tape, fld_tape, p, n)
@@ -1111,7 +1048,7 @@ void szx_ext_media(Computer* comp) {
 			// putting a disk in starts its door closing; the snapshot's had closed
 			EXT_TAKE(DiskIF, comp->dif, fld_dif, p, n)
 			comp->dif->doors = tmp_.doors;
-		} else if (((id & 0x00ffffff) == (XR_FLP & 0x00ffffff)) && (idx >= 0) && (idx < 4)) {
+		} else if ((idx = xr_slot(id, XR_FLP, 4)) >= 0) {
 			if (comp->dif && (comp->dif->type != DIF_NONE))
 				ext_flp(comp->dif->flp[idx], p, n);
 		}
@@ -1153,26 +1090,7 @@ void szx_rd_gs(Computer* comp, const unsigned char* p, size_t n) {
 	gs->ch4 = p[9];
 	cpu->flgNOINT = (p[10] & SZG_EILAST) ? 1 : 0;
 	cpu->flgHALT = (p[10] & SZG_HALTED) ? 1 : 0;
-	cpu_set_flag(cpu, p[11]);
-	cpu->regA = p[12];
-	cpu->regBC = rd_word(p + 13);
-	cpu->regDE = rd_word(p + 15);
-	cpu->regHL = rd_word(p + 17);
-	cpu->regFa = p[19];
-	cpu->regAa = p[20];
-	cpu->regBCa = rd_word(p + 21);
-	cpu->regDEa = rd_word(p + 23);
-	cpu->regHLa = rd_word(p + 25);
-	cpu->regIX = rd_word(p + 27);
-	cpu->regIY = rd_word(p + 29);
-	cpu->regSP = rd_word(p + 31);
-	cpu->regPC = rd_word(p + 33);
-	cpu->regI = p[35];
-	cpu->regR = p[36];
-	cpu->regR7 = p[36] & 0x80;
-	cpu->flgIFF1 = p[37] ? 1 : 0;
-	cpu->flgIFF2 = p[38] ? 1 : 0;
-	cpu->regIM = p[39] & 3;
+	szx_rd_regs(cpu, p + 11, 0);
 	// 40: the GS's own T into its frame, 44: what is left of its INT, 45: the
 	// BIT n,(HL) register - our GS counts its time its own way
 	gsiowr(0, p[1], gs);
@@ -1192,14 +1110,6 @@ void szx_rd_gsrp(Computer* comp, const unsigned char* p, size_t n) {
 	memcpy(gs->mem->ramData + page * MEM_32K, buf, MEM_32K);
 }
 
-static void szx_wr_gsrp(szxBuf* b, szxBuf* d, GSound* gs, int page, unsigned id) {
-	sb_word(d, 0);
-	sb_byte(d, page);
-	if (sb_deflate(d, gs->mem->ramData + page * MEM_32K, MEM_32K))
-		d->data[0] = SZR_COMPRESSED;
-	sb_block(b, id, d);
-}
-
 void szx_wr_gs(szxBuf* b, szxBuf* d, Computer* comp) {
 	GSound* gs = comp->gs;
 	CPU* cpu = gs->cpu;
@@ -1215,31 +1125,13 @@ void szx_wr_gs(szxBuf* b, szxBuf* d, Computer* comp) {
 	sb_byte(d, gs->ch3);
 	sb_byte(d, gs->ch4);
 	sb_byte(d, cpu->flgNOINT ? SZG_EILAST : (cpu->flgHALT ? SZG_HALTED : 0));
-	sb_byte(d, cpu_get_flag(cpu));
-	sb_byte(d, cpu->regA);
-	sb_word(d, cpu->regBC);
-	sb_word(d, cpu->regDE);
-	sb_word(d, cpu->regHL);
-	sb_byte(d, cpu->regFa);
-	sb_byte(d, cpu->regAa);
-	sb_word(d, cpu->regBCa);
-	sb_word(d, cpu->regDEa);
-	sb_word(d, cpu->regHLa);
-	sb_word(d, cpu->regIX);
-	sb_word(d, cpu->regIY);
-	sb_word(d, cpu->regSP);
-	sb_word(d, cpu->regPC);
-	sb_byte(d, cpu->regI);
-	sb_byte(d, z80_get_r(cpu));
-	sb_byte(d, cpu->flgIFF1 ? 1 : 0);
-	sb_byte(d, cpu->flgIFF2 ? 1 : 0);
-	sb_byte(d, cpu->regIM & 3);
+	szx_wr_regs(d, cpu);
 	sb_dword(d, 0);
 	sb_byte(d, 0);
 	sb_byte(d, cpu->regWZh);
 	sb_block(b, BID('G','S',0,0), d);
 	for (i = 0; (i < SZG_PAGES) && ((i + 1) * MEM_32K <= gs->mem->ramSize); i++)
-		szx_wr_gsrp(b, d, gs, i, BID('G','S','R','P'));
+		szx_wr_page(b, d, BID('G','S','R','P'), i, gs->mem->ramData + i * MEM_32K, MEM_32K);
 }
 
 // the GS's own state past the GS block: its cpu exactly, and its ram past 512K

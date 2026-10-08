@@ -951,24 +951,10 @@ void uTCount(FDC* fdc) {
 	fdc->mr = 1;		// acts as Terminal Count: break current read/write operation
 }
 
-// Every plan a command can run, so a snapshot can name the one in progress:
-// 0 is none, n is the plan at n - 1 here
-static fdcCall* const uPlans[] = {utermTab, uSpecify, uDrvStat, uCalib, uSeek, uReadID, uReadD01,
+// Every plan a command can run, so a snapshot can name the one in progress
+// (dif_plan_id())
+fdcCall* const uPlans[] = {utermTab, uSpecify, uDrvStat, uCalib, uSeek, uReadID, uReadD01,
 	uRdData, uRdTrk, uScan, uWrData, uFormat, uInvalid, uSenseInt, NULL};
-
-int u_plan_id(FDC* fdc) {
-	int i;
-	if (!fdc->plan) return 0;
-	for (i = 0; uPlans[i]; i++)
-		if (fdc->plan == uPlans[i]) return i + 1;
-	return -1;
-}
-
-void u_plan_set(FDC* fdc, int id) {
-	int i;
-	for (i = 0; uPlans[i] && (i + 1 < id); i++);
-	fdc->plan = (id > 0) && uPlans[i] ? uPlans[i] : NULL;
-}
 
 void uReset(FDC* fdc) {
 //	fdc->idle = 1;

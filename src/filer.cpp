@@ -58,7 +58,8 @@ static int save_wav(Computer* comp, const char* name, int drv) {
 
 // An .szx links to the tape and the disks it was taken with, by their names on
 // this host, the way Spectaculator writes them.
-static int save_szx(Computer* comp, const char* name, int drv) {
+// the file in memory, with the images the machine has in linked by name
+static int build_szx(Computer* comp, szxBuf* b) {
 	QByteArray tape;
 	QByteArray disk[4];
 	const char* dptr[4];
@@ -72,8 +73,18 @@ static int save_szx(Computer* comp, const char* name, int drv) {
 	}
 	szx_set_links(tape.isEmpty() ? NULL : tape.constData(), dptr);
 	szx_set_machine(conf.macId.c_str());
-	int res = saveSZX(comp, name, drv);
+	int res = szx_build(comp, b);
 	szx_set_links(NULL, NULL);
+	return res;
+}
+
+static int save_szx(Computer* comp, const char* name, int drv) {
+	szxBuf b;
+	int res = build_szx(comp, &b);
+	if (res == ERR_OK)
+		res = szx_write(&b, name);
+	if (res == ERR_OK)
+		mem_set_path(comp->mem, name);
 	return res;
 }
 
@@ -823,16 +834,26 @@ static QString quick_path(const char* ext = ".szx") {
 	return dir + "/" + QString::fromLocal8Bit(conf.macId.c_str()) + ext;
 }
 
+// The file is only built while the machine is held: packing several megabytes
+// of an Evo's memory would hold it for frames.
 int quick_save(Computer* comp) {
+	szxBuf b;
 	emu_lock();
 	if (!quickState) quickState = xstate_create();
 	int res = (quickState && xstate_save(quickState, comp)) ? 1 : 0;
 	quickMac = res ? conf.macId : std::string();
-	if (res && szxCanSave(comp) && (save_szx(comp, quick_path().toLocal8Bit().data(), 0) == ERR_OK)) {
-		res = 2;
-		QFile::remove(quick_path(".z80"));	// what builds before .szx left there
-	}
+	int built = res && szxCanSave(comp) && (build_szx(comp, &b) == ERR_OK);
 	emu_unlock();
+	if (built) {
+		QString path = quick_path();
+		if (szx_write(&b, path.toLocal8Bit().data()) == ERR_OK) {
+			res = 2;
+			QFile::remove(quick_path(".z80"));	// what builds before .szx left there
+			emu_lock();
+			mem_set_path(comp->mem, path.toLocal8Bit().data());
+			emu_unlock();
+		}
+	}
 	return res;
 }
 
