@@ -353,8 +353,9 @@ int main(int ac,char** av) {
 	keyWindow keyw(&mwin);
 	xScrWin scrw(&mwin);
 	xSndWin sndw(&mwin);
-	for (QWidget* win : std::initializer_list<QWidget*>{&tapw, &rzxw, &wutw, &scrw, &sndw})
+	for (QWidget* win : std::initializer_list<QWidget*>{&tapw, &wutw, &scrw, &sndw})
 		mwin.addSatellite(win);
+	mwin.addSatellite(&rzxw, true);		// a recording takes no input: Delete, Home, End go on too
 
 	mwin.onPrfChange();
 	dbgw.onPrfChange();

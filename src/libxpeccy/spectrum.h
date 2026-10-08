@@ -227,6 +227,11 @@ typedef struct Computer {
 		int fCurrent;
 		int fCount;
 		FILE* file;		// converted tmp-file
+		// Where in it the frame after this one starts and where this one's IN
+		// bytes are (a repeat frame's are an earlier frame's): a rollback puts
+		// the file back by them, see rzx_reread()
+		long long next;
+		long long dataAt;
 		struct {
 			int fetches;
 			int size;
@@ -328,6 +333,12 @@ void comp_power_phase(Computer*);	// the frame position a machine is switched on
 int comp_get_frame_tick(Computer*);
 
 void rzxStop(Computer*);
+// After a rollback: the file back where the machine's frame stands, and the
+// frame's IN bytes, which the state snapshot leaves out
+void rzx_reread(Computer*);
+// The recording open for playback, 0 for none. Not in the machine, so a
+// rollback cannot bring back one that has been closed since.
+extern unsigned rzx_playing;
 
 void comp_brk(Computer*, int);
 void comp_brk_newstep(Computer*);

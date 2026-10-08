@@ -40,9 +40,11 @@ size_t rewind_bytes();
 // it; 1 on success
 int rewind_restore(Computer*, int back, long long* phase);
 
-// the same without dropping anything, and the frame a snapshot was taken on
+// the same without dropping anything, and the frame a snapshot was taken on,
+// counted by rewind_clock(): frames emulated, which a reset does not start again
 int rewind_load(Computer*, int back, long long* phase);
 int rewind_frame_of(int back);
+int rewind_clock();
 
 #ifdef XBENCH
 // For the check (--bench-rewind): whether the machine as it stands now is that

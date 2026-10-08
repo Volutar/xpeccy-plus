@@ -552,8 +552,12 @@ void comp_slt_wr(Computer* comp, int adr, int val) {
 
 // rzx
 
+unsigned rzx_playing = 0;
+
 void rzxStop(Computer* zx) {
 	zx->rzx.play = 0;
+	if (x_runahead) return;		// a frame that is thrown away: the file stays for the rest
+	rzx_playing = 0;
 	if (zx->rzx.file) fclose(zx->rzx.file);
 	zx->rzx.file = NULL;
 	zx->rzx.fCount = 0;

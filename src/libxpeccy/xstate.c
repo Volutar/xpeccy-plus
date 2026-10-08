@@ -27,6 +27,7 @@ typedef struct {
 	int count;			// 0 = nothing saved
 	size_t total;			// bytes over all the chunks
 	long ray, line;			// the ray's offsets into the current image buffer
+	unsigned rzx;			// rzx_playing when it was taken
 } xStateMeta;
 
 struct xState {
@@ -65,9 +66,9 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 
 	// The machine itself, around the breakpoint maps: 4.6 MB of debugger
 	// bookkeeping in the middle of the struct that no rollback needs. The rzx
-	// frame buffer is skipped the same way - 64K of the head range, and the
-	// only thing that reads it is a recording being played, which never runs
-	// ahead. See the note beside brkRamMap in spectrum.h.
+	// frame buffer is skipped the same way - 64K of the head range, which
+	// xstate_load() reads back from the recording (rzx_reread). See the note
+	// beside brkRamMap in spectrum.h.
 	ADD(comp, offsetof(Computer, rzx.frm.data));
 	ADD((char*)comp + offsetof(Computer, rzx.frm.pos),
 		offsetof(Computer, brkRamMap) - offsetof(Computer, rzx.frm.pos));
@@ -156,7 +157,6 @@ int xstate_safe(Computer* comp) {
 
 int xstate_safe_tape_aside(Computer* comp) {
 	if (!comp || !comp->hw) return 0;
-	if (comp->rzx.play) return 0;			// a recording is read forwards only
 	if (comp->dif) {
 		if (fdc_running(comp->dif->fdc)) return 0;
 	}
@@ -214,6 +214,7 @@ int xstate_save(xState* st, Computer* comp) {
 	st->m.total = total;
 	st->m.ray = comp->vid->ray.ptr - scrimg;
 	st->m.line = comp->vid->ray.lptr - scrimg;
+	st->m.rzx = rzx_playing;
 	return 1;
 }
 
@@ -237,6 +238,12 @@ int xstate_load(xState* st, Computer* comp) {
 	// nodraw is set from outside the machine (fast loading holds it), so
 	// whoever holds the machine keeps it
 	int nodraw = comp->vid->nodraw;
+	// A snapshot from under another playback, or none: its recording's file
+	// is closed, so the playback is the live one's - which the load ends.
+	size_t rzxLen = offsetof(Computer, rzx.frm.data) - offsetof(Computer, rzx);
+	unsigned char rzxLive[offsetof(Computer, rzx.frm.data) - offsetof(Computer, rzx)];
+	int rzxPos = comp->rzx.frm.pos;
+	memcpy(rzxLive, &comp->rzx, rzxLen);
 	unsigned char* src = st->data;
 	for (i = 0; i < count; i++) {
 		memcpy(st->m.chunk[i].ptr, src, st->m.chunk[i].size);
@@ -249,6 +256,13 @@ int xstate_load(xState* st, Computer* comp) {
 	// current, not by the address it held before.
 	comp->vid->ray.ptr = scrimg + st->m.ray;
 	comp->vid->ray.lptr = scrimg + st->m.line;
+	if (st->m.rzx == rzx_playing) {
+		rzx_reread(comp);
+	} else {
+		memcpy(&comp->rzx, rzxLive, rzxLen);
+		comp->rzx.frm.pos = rzxPos;
+		if (comp->rzx.play) rzxStop(comp);
+	}
 	return 1;
 }
 
