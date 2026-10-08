@@ -707,7 +707,8 @@ void MainWin::updateStatus() {
 			sbTapeIcon->setPixmap(sbPix[st]);
 			sbTapeShown = st;
 		}
-		sbTape->setText(QString("%0/%1").arg(tape->block + 1).arg(tape->blkCount));
+		// a tape played out stands past its last block (tapNextBlock)
+		sbTape->setText(QString("%0/%1").arg(qMin(tape->block + 1, tape->blkCount)).arg(tape->blkCount));
 		QString tip = QString::fromLocal8Bit(tape->path ? tape->path : "");
 		if (sbTapeBox->toolTip() != tip) sbTapeBox->setToolTip(tip);	// a change is an event
 	}
