@@ -22,31 +22,28 @@ void ay_reset(aymChip* chip) {
 	chip->chanN.step = 0xffff;
 }
 
+// Port A (n=0) or B (n=1): the pins, and in output mode the latch driving them
+// wired-AND with whatever pulls them low from outside.
+int ay_port_rd(aymChip* ay, int n) {
+	int res = ay->xrd ? ay->xrd(n, ay->xptr) & 0xff : 0xff;
+	if (ay->reg[7] & (0x40 << n))
+		res &= ay->reg[14 + n];
+	return res;
+}
+
+// The upper four bits of the address latch are a chip select, 0000 on every
+// standard part: any other number leaves the chip off the bus until the next
+// one, so a write goes nowhere and a read is the floating bus (-1).
 int ay_rd(aymChip* ay, int adr) {
-	unsigned char res = 0xff;
+	int res = 0xff;
 	ay_flush(ay);
 	if (adr & 1) {
-		switch(ay->curReg & 0x0f) {					// AY:16 registers + mirrors
-			case 14:
-				if (!(ay->reg[7] & 0x40)) {
-					//res = ay->reg[14];
-					res = ay->xrd ? ay->xrd(0, ay->xptr) : 0xff;
-				} else {
-					res = 0x00;
-				}
-				break;
-			case 15:
-				if (!(ay->reg[7] & 0x80)) {
-					// res = ay->reg[15];
-					res = ay->xrd ? ay->xrd(1, ay->xptr) : 0xff;
-				} else {
-					res = 0x00;
-				}
-				break;
-			default:
-				res = ay->reg[ay->curReg];
-				res &= ay_val_mask[ay->curReg & 0x0f];		// AY:reset unused bits
-				break;
+		if (ay->curReg > 15) {
+			res = -1;
+		} else if (ay->curReg > 13) {
+			res = ay_port_rd(ay, ay->curReg - 14);
+		} else {
+			res = ay->reg[ay->curReg] & ay_val_mask[ay->curReg];	// AY:reset unused bits
 		}
 	}
 	return res;
@@ -120,7 +117,7 @@ void ay_set_reg(aymChip* chip, int val) {
 			break;
 		case 0x0f:
 			chip->reg[15] = val & 0xff;
-			if ((chip->reg[7] & 0x80) && chip->xwr) chip->xwr(0, val, chip->xptr);
+			if ((chip->reg[7] & 0x80) && chip->xwr) chip->xwr(1, val, chip->xptr);
 			break;
 	}
 }
@@ -128,8 +125,8 @@ void ay_set_reg(aymChip* chip, int val) {
 void ay_wr(aymChip* chip, int adr, int val) {
 	ay_flush(chip);
 	if (adr & 1) {								// set current reg
-		chip->curReg = val & 0x0f;					// AY:16 registers + mirrors
-	} else {								// write data
+		chip->curReg = val & 0xff;					// see ay_rd()
+	} else if (chip->curReg < 16) {						// write data
 		ay_set_reg(chip, val);
 	}
 }

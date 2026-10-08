@@ -38,6 +38,7 @@ typedef struct aymChip aymChip;
 // ay-3-8910
 void ay_reset(aymChip*);
 int ay_rd(aymChip*, int);
+int ay_port_rd(aymChip*, int);
 void ay_wr(aymChip*, int, int);
 void ay_sync(aymChip*, int);
 void ay_tick_n(aymChip*, int);		// that many half periods of the chip clock
@@ -48,7 +49,6 @@ sndPair ay_vol(aymChip*);
 // yamaha-2149
 //void ym_reset(aymChip*);
 int ym_rd(aymChip*, int);
-void ym_wr(aymChip*, int, int);
 //void ym_sync(aymChip*, int);
 sndPair ym_vol(aymChip*);
 

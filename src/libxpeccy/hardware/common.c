@@ -476,10 +476,11 @@ int xInFE(Computer* comp, int port) {
 	return res;
 }
 
-// no chip, or a mouse switched off: the port is left to the floating bus
+// no chip, a chip not selected, or a mouse switched off: the port is left
+// to the floating bus
 int xInFFFD(Computer* comp, int port) {
-	if (comp->ts->curChip->type == SND_NONE) return zx_in_float(comp, port);
-	return tsIn(comp->ts, 0xfffd);
+	int res = (comp->ts->curChip->type == SND_NONE) ? -1 : tsIn(comp->ts, 0xfffd);
+	return (res < 0) ? zx_in_float(comp, port) : res;
 }
 
 int xInFADF(Computer* comp, int port) {

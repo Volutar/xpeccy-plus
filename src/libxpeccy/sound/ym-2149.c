@@ -9,44 +9,20 @@ int ymDACvol[32] = {0x0000,0x0000,0x003B,0x0074,0x00A4,0x00CA,0x00FB,0x0134,
 
 // ym_reset = ay_reset
 
-// TODO: external rd/wr for regs E,F
-
+// the chip select and the ports as ay_rd(); only the unused bits differ
 int ym_rd(aymChip* chip, int adr) {
+	int res = 0xff;
 	ay_flush(chip);
-	unsigned char res = 0xff;
 	if (adr & 1) {
-		switch(chip->curReg) {
-			case 14:
-				if (chip->reg[7] & 0x40) {
-					//res = chip->reg[14];
-					res = chip->xrd ? chip->xrd(0, chip->xptr) : 0xff;
-				} else {
-					res = 0x00;
-				}
-				break;
-			case 15:
-				if (chip->reg[7] & 0x80) {
-					//res = chip->reg[15];
-					res = chip->xrd ? chip->xrd(1, chip->xptr) : 0xff;
-				} else {
-					res = 0x00;
-				}
-				break;
-			default:
-				res = chip->reg[chip->curReg];			// YM:store unused bits
-				break;
+		if (chip->curReg > 15) {
+			res = -1;
+		} else if (chip->curReg > 13) {
+			res = ay_port_rd(chip, chip->curReg - 14);
+		} else {
+			res = chip->reg[chip->curReg];			// YM:store unused bits
 		}
 	}
 	return res;
-}
-
-void ym_wr(aymChip* chip, int adr, int val) {
-	ay_flush(chip);
-	if (adr & 1) {								// set current reg
-		chip->curReg = val & 0xff;					// YM:256 registers, no mirrors
-	} else {								// write data
-		ay_set_reg(chip, val);
-	}
 }
 
 // ym_sync = ay_sync (with 5-bit volumes)
