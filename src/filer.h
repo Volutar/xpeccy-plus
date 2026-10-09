@@ -59,7 +59,8 @@ void initFileDialog(QWidget*);
 void fitFileDialog(QWidget*);
 void file_errors(int);
 // the save dialog alone, for a file type the tables do not carry
-QString file_ask_save(const char* title, const char* filter, const char* ext);
+// suggest: a path to start from, folder and name; empty for the last folder
+QString file_ask_save(const char* title, const char* filter, const char* ext, const QString& suggest = QString());
 // the open dialog alone: the path, with id and drv set to what was picked in it
 QString file_ask_open(Computer*, int* id, int* drv);
 int load_file(Computer* comp, const char* name, int id, int drv);

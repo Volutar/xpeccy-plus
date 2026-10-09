@@ -360,6 +360,7 @@ class RZXWin : public QDialog {
 	signals:
 		void stateChanged(int);
 		void seekTo(int);
+		void replay(QString);
 	protected:
 		bool eventFilter(QObject*, QEvent*);
 	private:

@@ -329,10 +329,10 @@ void MainWin::initBars() {
 	add("key.reload", "File", cut("Reload", XCUT_RELOAD, "refresh"), TB_PLAIN);
 	add("key.save", "File", cut("Save...", XCUT_SAVE, "save_all"), TB_PLAIN);
 	add("key.fastsave", "File", cut("Save changed disks", XCUT_FASTSAVE, "floppy"), TB_PLAIN);
-	add("key.scrshot", "File", cut("Screenshot", XCUT_SCRSHOT, "grp-screenshot"), TB_PLAIN);
-	add("key.video.rec", "File", recAct, TB_PLAIN);
-	add("key.rzx.rec", "File", rzxRecAct, TB_PLAIN);
-	add("key.write.wav", "File", wavAct, TB_PLAIN);
+	add("key.scrshot", "Capture", cut("Screenshot", XCUT_SCRSHOT, "grp-screenshot"), TB_PLAIN);
+	add("key.video.rec", "Capture", recAct, TB_PLAIN);
+	add("key.write.wav", "Capture", wavAct, TB_PLAIN);
+	add("key.rzx.rec", "Capture", rzxRecAct, TB_PLAIN);
 	add("key.options", "File", cut("Options...", XCUT_OPTIONS, "other"), TB_PLAIN);
 	add("menu.machine", "Machine", profileMenu->menuAction(), TB_LIST);
 	add("menu.reset", "Machine", resMenu->menuAction(), TB_SPLIT);

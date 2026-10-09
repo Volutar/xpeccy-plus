@@ -901,11 +901,16 @@ int quick_undo(Computer* comp) {
 
 // The save dialog on its own, for an export that is not one of the file types
 // the tables above know. Same dialog as every other open and save in the app.
-QString file_ask_save(const char* title, const char* filter, const char* ext) {
+QString file_ask_save(const char* title, const char* filter, const char* ext, const QString& suggest) {
 	filer->setWindowTitle(title);
 	filer->setNameFilter(filter);
 	filer->setAcceptMode(QFileDialog::AcceptSave);
-	filer->setDirectory(conf.lastDir.c_str());
+	if (suggest.isEmpty()) {
+		filer->setDirectory(conf.lastDir.c_str());
+	} else {
+		filer->setDirectory(QFileInfo(suggest).absolutePath());
+		filer->selectFile(QFileInfo(suggest).fileName());
+	}
 	filer->setHistory(QStringList());
 	if (!filer->exec()) return QString();
 	QString path = filer->selectedFiles().first();

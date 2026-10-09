@@ -9,7 +9,6 @@
 
 #include "xcore.h"
 #include "rzxrecord.h"
-#include "vidrec.h"
 #include "pacing.h"
 #include "../filer.h"
 #include "../libxpeccy/filetypes/filetypes.h"
@@ -84,7 +83,16 @@ static void rr_join_writer() {
 	if (rr_writer.joinable()) rr_writer.join();
 }
 
-int rzxr_start(Computer* comp) {
+QString rzxr_suggest() {
+	QString img = media_current();
+	if (img.isEmpty()) img = media_last_open().path;
+	if (img.isEmpty())
+		return QDir(QString::fromLocal8Bit(conf.lastDir.c_str())).filePath(QString::fromStdString(conf.macId) + ".rzx");
+	QFileInfo fi(img);
+	return fi.dir().filePath(fi.completeBaseName() + ".rzx");
+}
+
+int rzxr_start(Computer* comp, const QString& path) {
 	if (rzxr_on()) return ERR_OK;
 	rr_join_writer();
 	if (comp->rzx.play)			// taken over: the recording goes on from here
@@ -92,9 +100,7 @@ int rzxr_start(Computer* comp) {
 	szx_set_machine(conf.macId.c_str());
 	int err = rzx_rec_start(comp);
 	if (err != ERR_OK) return err;
-	QDir().mkpath(vrec_dir());
-	QString name = vrec_file_name(QString::fromStdString(conf.rec.name), media_image_name(), QDateTime::currentDateTime());
-	rr_path = QDir(vrec_dir()).filePath(name + ".rzx");
+	rr_path = path;
 	rr_rollbacks = 0;
 	rr_slowFrames = 0;
 	rr_lastFrames = 0;

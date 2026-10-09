@@ -244,6 +244,8 @@ MainWin::MainWin(QMainWindow* frm) {
 	osdImg[osd_pause].load(":/images/osd-time-pause.png");
 	osdImg[osd_rec].load(":/images/osd-rec.png");
 	osdImg[osd_rec_off].load(":/images/osd-rec-off.png");
+	osdImg[osd_rzx].load(":/images/osd-rzx.png");
+	osdImg[osd_rzx_off].load(":/images/osd-rzx-off.png");
 	for (int i = 0; i < 3; i++) {
 		osdImg[osd_ffwd2 + i].load(QString(":/images/osd-time-ffwd%0.png").arg(2 << i));
 		osdImg[osd_slow2 + i].load(QString(":/images/osd-time-slow%0.png").arg(2 << i));
@@ -837,6 +839,11 @@ void MainWin::tapStateChanged(int wut, int val) {
 	}
 }
 
+// the rzx player plays the file it shows again
+void MainWin::rzxReplay(QString path) {
+	openMedia(path, FG_RZX, -1, 0, false);
+}
+
 // the rzx player asks for a frame of the recording
 void MainWin::rzxSeek(int frame) {
 	if (rewind_active()) return;		// it stands in for the machine until let go
@@ -1133,15 +1140,25 @@ void MainWin::grabScreen() {
 }
 
 // An RZX recording of the machine from here on, or of the one being played
-// from the frame it has got to; the file is named as a video is.
+// from the frame it has got to, into a file asked for first.
 void MainWin::rzxRec() {
 	Computer* comp = conf.zx;
+	QString path;
+	if (!rzxr_on()) {
+		pause(true, PR_FILE);
+		path = file_ask_save("Record RZX", "RZX recording (*.rzx)", ".rzx", rzxr_suggest());
+		pause(false, PR_FILE);
+		if (path.isEmpty()) {
+			emit s_rzx_rec(false);
+			return;
+		}
+	}
 	emu_lock();
 	int err = ERR_OK;
 	if (rzxr_on()) {
 		rzxr_stop(comp);
 	} else {
-		err = rzxr_start(comp);
+		err = rzxr_start(comp, path);
 	}
 	emu_unlock();
 	if (err != ERR_OK) {
@@ -1226,10 +1243,15 @@ int MainWin::speedOsd() {
 }
 
 // the recording sign now: it blinks, and its dark phase gives way to a speed mode
+// A video says REC, an RZX recording RZX; both at once take turns.
 int MainWin::recOsd() {
-	if ((vrec_state() != VREC_RUN) && !rzxr_on()) return osd_none;
-	if (!((QDateTime::currentMSecsSinceEpoch() / REC_BLINK_MS) & 1)) return osd_rec;
-	return (speedOsd() == osd_none) ? osd_rec_off : osd_none;
+	bool vid = (vrec_state() == VREC_RUN);
+	bool rzx = rzxr_on();
+	if (!vid && !rzx) return osd_none;
+	long long phase = QDateTime::currentMSecsSinceEpoch() / REC_BLINK_MS;
+	bool showRzx = rzx && (!vid || (phase & 2));
+	if (!(phase & 1)) return showRzx ? osd_rzx : osd_rec;
+	return (speedOsd() == osd_none) ? (showRzx ? osd_rzx_off : osd_rec_off) : osd_none;
 }
 
 void MainWin::drawIcons(QPainter& pnt) {
@@ -1882,14 +1904,14 @@ void MainWin::initMenuBar() {
 	cutAction(fileMenu, "Quick save", XCUT_QUICKSAVE);
 	cutAction(fileMenu, "Quick load", XCUT_QUICKLOAD);
 	cutAction(fileMenu, "Undo quick load", XCUT_QUICKUNDO);
-	fileMenu->addSeparator();
-	cutAction(fileMenu, "Screenshot", XCUT_SCRSHOT, "grp-screenshot");
-	cutAction(fileMenu, "Screenshot series", XCUT_COMBOSHOT);
-	recAct = cutAction(fileMenu, "Record video", XCUT_VIDREC, "grp-record");
+	// the Capture menu's, which is made with the machine's menus
+	cutAct("Screenshot", XCUT_SCRSHOT, "grp-screenshot");
+	cutAct("Screenshot series", XCUT_COMBOSHOT);
+	recAct = cutAct("Record video", XCUT_VIDREC, "grp-record");
 	recAct->setCheckable(true);
-	rzxRecAct = cutAction(fileMenu, "Record RZX", XCUT_RZXREC, "grp-record");
+	rzxRecAct = cutAct("Record RZX...", XCUT_RZXREC, "grp-record-rzx");
 	rzxRecAct->setCheckable(true);
-	wavAct = cutAction(fileMenu, "Record sound to WAV...", XCUT_WAV_OUT, "wav");
+	wavAct = cutAct("Record sound to WAV...", XCUT_WAV_OUT, "wav");
 	wavAct->setCheckable(true);
 	fileMenu->addSeparator();
 	cutAction(fileMenu, "Options...", XCUT_OPTIONS, "other");
@@ -2232,6 +2254,15 @@ void MainWin::initMachineMenus() {
 	media->addSeparator();
 	media->addAction(cutById.value(XCUT_RZXWIN));
 
+	// what the machine shows and plays, taken down
+	QMenu* cap = new xMenu("Capture", this);
+	cap->addAction(cutById.value(XCUT_SCRSHOT));
+	cap->addAction(cutById.value(XCUT_COMBOSHOT));
+	cap->addSeparator();
+	cap->addAction(recAct);
+	cap->addAction(wavAct);
+	cap->addAction(rzxRecAct);
+
 	// one list, not the right-click menu's submenu
 	QMenu* dbg = new xMenu("Debug", this);
 	dbg->addAction(cutAct("Debugger", XCUT_DEBUG, "bug"));
@@ -2245,7 +2276,7 @@ void MainWin::initMachineMenus() {
 	connect(mac, &QMenu::aboutToShow, this, &MainWin::fillUserMenu);
 	connect(inp, &QMenu::aboutToShow, this, &MainWin::fillUserMenu);
 	connect(media, &QMenu::aboutToShow, this, &MainWin::fillUserMenu);
-	foreach(QMenu* m, QList<QMenu*>() << mac << inp << media << dbg) {
+	foreach(QMenu* m, QList<QMenu*>() << mac << inp << media << cap << dbg) {
 		frame->menuBar()->insertMenu(helpMenu->menuAction(), m);
 		if (fsBar) fsBar->insertMenu(helpMenu->menuAction(), m);
 		connect(m, &QMenu::aboutToHide, this, &MainWin::menuHide);

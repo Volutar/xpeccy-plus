@@ -404,6 +404,7 @@ int main(int ac,char** av) {
 
 	app.connect(&rzxw, SIGNAL(stateChanged(int)), &mwin, SLOT(rzxStateChanged(int)));
 	app.connect(&rzxw, SIGNAL(seekTo(int)), &mwin, SLOT(rzxSeek(int)));
+	app.connect(&rzxw, SIGNAL(replay(QString)), &mwin, SLOT(rzxReplay(QString)));
 	app.connect(&mwin, SIGNAL(s_rzx_start()), &rzxw, SLOT(startPlay()));
 	app.connect(&mwin, SIGNAL(s_rzx_stop()), &rzxw, SLOT(stop()));
 	app.connect(&mwin, SIGNAL(s_rzx_rec(bool)), &rzxw, SLOT(recState(bool)));

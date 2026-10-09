@@ -10,9 +10,12 @@
 // Start and stop are called with the machine held (emu_lock); tick() takes it.
 
 bool rzxr_on();
-// from the machine as it stands, or a recording being played taken over at
-// the frame it has got to; an ERR_* code
-int rzxr_start(Computer*);
+// into that file, from the machine as it stands or from a recording being
+// played taken over at the frame it has got to; an ERR_* code
+int rzxr_start(Computer*, const QString& path);
+// where a recording of what the machine runs would go: beside the image in
+// use, named after it
+QString rzxr_suggest();
 // ends it and writes the file: its path, empty when nothing was written
 QString rzxr_stop(Computer*);
 // every emulated frame: how long slow motion and rollbacks were in use

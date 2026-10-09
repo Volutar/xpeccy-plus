@@ -80,6 +80,8 @@ enum {
 	osd_slow2 = osd_ffwd2 + 3,	// 1/2, then 1/4 and 1/8
 	osd_rec = osd_slow2 + 3,	// recording, taking turns with the others
 	osd_rec_off,	// its other phase, with no speed mode to take turns with
+	osd_rzx,	// the same for an RZX recording
+	osd_rzx_off,
 	osd_count
 };
 
@@ -191,6 +193,7 @@ typedef struct {
 		void dbgReturn();
 		void rzxStateChanged(int);
 		void rzxSeek(int);
+		void rzxReplay(QString);
 		void profileSelected(QAction*);
 		void shdSelected(QAction*);
 		void keySelected(QAction*);

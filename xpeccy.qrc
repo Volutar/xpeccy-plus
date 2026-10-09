@@ -137,6 +137,7 @@
         <file>images/stop.png</file>
         <file>images/tape-rec.png</file>
         <file>images/tape-play.png</file>
+        <file>images/tape-pause.png</file>
         <file>images/tape-rewind.png</file>
         <file>images/tape-stop.png</file>
         <file>images/tape-eject.png</file>
@@ -172,6 +173,7 @@
         <file>images/grp-antiflicker.png</file>
         <file>images/grp-screenshot.png</file>
         <file>images/grp-record.png</file>
+        <file>images/grp-record-rzx.png</file>
         <file>images/grp-picture-16.png</file>
         <file>images/grp-antiflicker-16.png</file>
         <file>images/grp-screenshot-16.png</file>
@@ -209,6 +211,8 @@
         <file>images/osd-time-slow8.png</file>
         <file>images/osd-rec.png</file>
         <file>images/osd-rec-off.png</file>
+        <file>images/osd-rzx.png</file>
+        <file>images/osd-rzx-off.png</file>
         <file>images/shader.png</file>
         <file>images/filter.png</file>
         <file>images/font.png</file>

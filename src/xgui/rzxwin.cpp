@@ -263,7 +263,7 @@ void RZXWin::startPlay() {
 	fillInfo(rzx_current());
 	ui.ppButton->setEnabled(true);
 	ui.stopButton->setEnabled(true);
-	ui.ppButton->setIcon(QIcon(":/images/pause.png"));
+	ui.ppButton->setIcon(QIcon(":/images/tape-pause.png"));
 	setProgress(0, conf.zx->rzx.fTotal);
 	state = RWS_PLAY;
 }
@@ -292,14 +292,18 @@ void RZXWin::upd(Computer* comp) {
 
 void RZXWin::playPause() {
 	switch(state) {
+		case RWS_STOP:
+			if (!ui.rpath->text().isEmpty())
+				emit replay(ui.rpath->text());
+			break;
 		case RWS_PLAY:
 			state = RWS_PAUSE;
-			ui.ppButton->setIcon(QIcon(":/images/play.png"));
+			ui.ppButton->setIcon(QIcon(":/images/tape-play.png"));
 			emit stateChanged(RWS_PAUSE);
 			break;
 		case RWS_PAUSE:
 			state = RWS_PLAY;
-			ui.ppButton->setIcon(QIcon(":/images/pause.png"));
+			ui.ppButton->setIcon(QIcon(":/images/tape-pause.png"));
 			emit stateChanged(RWS_PLAY);
 			break;
 	}
@@ -307,9 +311,9 @@ void RZXWin::playPause() {
 
 void RZXWin::stop() {
 	state = RWS_STOP;
-	ui.ppButton->setEnabled(false);
+	ui.ppButton->setEnabled(!ui.rpath->text().isEmpty());
 	ui.stopButton->setEnabled(false);
-	ui.ppButton->setIcon(QIcon(":/images/play.png"));
+	ui.ppButton->setIcon(QIcon(":/images/tape-play.png"));
 	setProgress(0, ui.progress->maximum());
 	model->setCurrent(-1);
 }
@@ -335,8 +339,9 @@ void RZXWin::recState(bool on) {
 		ui.progress->setMaximum(1);
 		ui.progress->setValue(0);
 	} else if (!rzxr_path().isEmpty()) {
-		fillInfo(rzxr_path());		// what was written
+		fillInfo(rzxr_path());		// what was written, which Play plays
 		ui.labTime->clear();
+		ui.ppButton->setEnabled(true);
 	}
 }
 
