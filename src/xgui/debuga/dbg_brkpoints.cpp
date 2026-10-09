@@ -489,7 +489,7 @@ void xBrkManager::chaCond(QString str) {
 
 // the text lives in res/help/cond-syntax.html, built into the binary
 void xBrkManager::condHelp() {
-	help_window(this, &helpWin, ":/res/help/cond-syntax.html", "Expression syntax");
+	help_window(this, &helpWin, ":/res/help/cond-syntax.html", "Expression Syntax");
 }
 
 void xBrkManager::edit(xBrkPoint* sbrk) {

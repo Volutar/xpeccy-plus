@@ -75,7 +75,7 @@ void TapeWin::upd(Tape* tape) {
 	}
 	if (tapeChanged != tape->changed) {
 		tapeChanged = tape->changed;
-		setWindowTitle(tape->changed ? "Tape player - modified" : "Tape player");
+		setWindowTitle(tape->changed ? "Tape Player - modified" : "Tape Player");
 	}
 	ui.cbAuto->setChecked(conf.tape.autostart);
 	ui.cbFast->setChecked(conf.tape.fast);
@@ -191,7 +191,7 @@ void TapeWin::doExport() {
 	conf.tape.exp.level = eui.sbLevel->value();
 	conf.tape.exp.lead = eui.sbLead->value();
 	conf.tape.exp.tail = eui.sbTail->value();
-	QString path = file_ask_save("Export tape to WAV", "WAV tape recording (*.wav)", ".wav");
+	QString path = file_ask_save("Export Tape to WAV", "WAV tape recording (*.wav)", ".wav");
 	if (path.isEmpty()) return;
 	conf.emu.pause |= PR_FILE;
 	int err = saveWAVopt(conf.zx, path.toLocal8Bit().data(), &conf.tape.exp);

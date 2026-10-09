@@ -327,7 +327,7 @@ void MainWin::initBars() {
 	add("menu.favorites", "File", favAct, TB_LIST, bookmarkMenu);
 	add("key.reload", "File", cut("Reload", XCUT_RELOAD, "refresh"), TB_PLAIN);
 	add("key.save", "File", cut("Save...", XCUT_SAVE, "save_all"), TB_PLAIN);
-	add("key.fastsave", "File", cut("Save changed disks", XCUT_FASTSAVE, "floppy"), TB_PLAIN);
+	add("key.fastsave", "File", cut("Save Changed Disks", XCUT_FASTSAVE, "floppy"), TB_PLAIN);
 	add("key.scrshot", "File", cut("Screenshot", XCUT_SCRSHOT, "grp-screenshot"), TB_PLAIN);
 	add("key.video.rec", "File", recAct, TB_PLAIN);
 	add("key.write.wav", "File", wavAct, TB_PLAIN);
@@ -339,12 +339,12 @@ void MainWin::initBars() {
 	pauseAct = cut("Pause", XCUT_PAUSE, "time-pause");
 	pauseAct->setCheckable(true);
 	add("key.pause", "Time", pauseAct, TB_PLAIN);
-	fastAct = cut("Fast mode", XCUT_FAST, "time-fast");
+	fastAct = cut("Fast Mode", XCUT_FAST, "time-fast");
 	fastAct->setCheckable(true);
 	add("key.fast", "Time", fastAct, TB_PLAIN);
-	ffAct = speed("Fast forward", XCUT_FFWD, XTM_FFWD, "time-ffwd");
+	ffAct = speed("Fast Forward", XCUT_FFWD, XTM_FFWD, "time-ffwd");
 	add("key.ffwd", "Time", ffAct, TB_PLAIN);
-	slowAct = speed("Slow motion", XCUT_SLOWMO, XTM_SLOW, "time-slow");
+	slowAct = speed("Slow Motion", XCUT_SLOWMO, XTM_SLOW, "time-slow");
 	add("key.slowmo", "Time", slowAct, TB_PLAIN);
 	// held like its key: the button's press and release drive it, see tbBuild
 	rewAct = new QAction(QIcon(":/images/time-rewind.png"), "Rewind", this);
@@ -353,40 +353,40 @@ void MainWin::initBars() {
 	add("key.rewind", "Time", rewAct, TB_PLAIN);
 	// not the key's own action: a tape armed to start by itself counts as playing
 	// there, so a click on a button that shows it stopped would stop it
-	tapeAct = new QAction(QIcon(":/images/tape-play.png"), "Tape play", this);
+	tapeAct = new QAction(QIcon(":/images/tape-play.png"), "Tape Play", this);
 	connect(tapeAct, &QAction::triggered, this, [this]() {
 		tapStateChanged(TW_STATE, conf.zx->tape->on ? TWS_STOP : TWS_PLAY);
 	});
-	cutActs.append({tapeAct, QString("Tape play"), XCUT_TAPLAY});
+	cutActs.append({tapeAct, QString("Tape Play"), XCUT_TAPLAY});
 	tapeAct->setCheckable(true);
 	add("key.tape.play", "Media", tapeAct, TB_PLAIN);
-	tapeRecAct = cut("Tape record", XCUT_TAPREC, "tape-rec");
+	tapeRecAct = cut("Tape Record", XCUT_TAPREC, "tape-rec");
 	tapeRecAct->setCheckable(true);
 	add("key.tape.rec", "Media", tapeRecAct, TB_PLAIN);
-	add("key.tapewin", "Media", cut("Tape player", XCUT_TAPWIN, "tape"), TB_PLAIN);
+	add("key.tapewin", "Media", cut("Tape Player", XCUT_TAPWIN, "tape"), TB_PLAIN);
 	// a button of its own, not the menu's: that one is hidden on a machine with no drives
-	diskAct = new QAction(QIcon(":/images/fdd_disk.png"), "Disk manager", this);
+	diskAct = new QAction(QIcon(":/images/fdd_disk.png"), "Disk Manager", this);
 	connect(diskAct, &QAction::triggered, this, [this]() {diskWin->showWindow();});
 	add("menu.disks", "Media", diskAct, TB_SPLIT, dskMenu);
 	add("menu.cartridge", "Media", cartMenu->menuAction(), TB_LIST);
 	add("menu.sdcard", "Media", sdcMenu->menuAction(), TB_LIST);
 	add("menu.hdd", "Media", hddMenu->menuAction(), TB_LIST);
-	add("key.rzxwin", "Media", cut("RZX player", XCUT_RZXWIN, "video"), TB_PLAIN);
+	add("key.rzxwin", "Media", cut("RZX Player", XCUT_RZXWIN, "video"), TB_PLAIN);
 	add("key.fullscreen", "View", fullAct, TB_PLAIN);
 	add("key.ratio", "View", ratioAct, TB_PLAIN);
 	add("menu.size", "View", sizeMenu->menuAction(), TB_LIST);
 	add("menu.shaders", "View", shdMenu->menuAction(), TB_LIST);
 	add("menu.palette", "View", palMenu->menuAction(), TB_LIST);
-	add("key.keywin", "View", cut("Virtual keyboard", XCUT_KEYBOARD, "keyboardzx"), TB_PLAIN);
+	add("key.keywin", "View", cut("Virtual Keyboard", XCUT_KEYBOARD, "keyboardzx"), TB_PLAIN);
 	add("key.keyboard.grab", "Input", pckAct, TB_PLAIN);
-	mouseAct = cut("Grab mouse", XCUT_MOUSE, "mouse");
+	mouseAct = cut("Grab Mouse", XCUT_MOUSE, "mouse");
 	mouseAct->setCheckable(true);
 	add("key.mouse.grab", "Input", mouseAct, TB_PLAIN);
 	add("menu.keymap", "Input", keyMenu->menuAction(), TB_LIST);
 	add("key.padwin", "Input", cut("Gamepads", XCUT_PADWIN, "gamepad"), TB_SPLIT, padMenu);
 	add("menu.debug", "Debug", dbgMenu->menuAction(), TB_SPLIT);
 	add("key.scrwin", "Debug", cut("Screen", XCUT_SCRWIN, "rulers"), TB_PLAIN);
-	add("key.sndwin", "Debug", cut("Sound chips", XCUT_SNDWIN, "note"), TB_PLAIN);
+	add("key.sndwin", "Debug", cut("Sound Chips", XCUT_SNDWIN, "note"), TB_PLAIN);
 	muteAct = cut("Mute", XCUT_MUTE, "speaker");
 	muteAct->setCheckable(true);
 	{
@@ -549,12 +549,12 @@ void MainWin::tbMenu(const QPoint& pos, int idx) {
 			tbList.removeAt(idx);
 			tbApply();
 		});
-		menu.addAction("Add separator here", this, [this, idx]() {
+		menu.addAction("Add Separator Here", this, [this, idx]() {
 			tbList.insert(idx, TB_SEPARATOR);
 			tbApply();
 		});
 		// the rest of the bar goes to the right edge
-		menu.addAction("Add space here", this, [this, idx]() {
+		menu.addAction("Add Space Here", this, [this, idx]() {
 			tbList.insert(idx, TB_SPACE);
 			tbApply();
 		});
@@ -582,7 +582,7 @@ void MainWin::tbMenu(const QPoint& pos, int idx) {
 			tbApply();
 		});
 	}
-	QMenu* size = menu.addMenu("Icon size");
+	QMenu* size = menu.addMenu("Icon Size");
 	foreach(int px, QList<int>() << 16 << 24) {
 		QAction* act = size->addAction(QString("%0 x %0").arg(px), this, [this, px]() {
 			conf.win.tbIcons = px;
@@ -592,12 +592,12 @@ void MainWin::tbMenu(const QPoint& pos, int idx) {
 		act->setCheckable(true);
 		act->setChecked(conf.win.tbIcons == px);
 	}
-	menu.addAction("Restore default buttons", this, [this]() {
+	menu.addAction("Restore Default Buttons", this, [this]() {
 		tbList = QString(tbDefault).split(',', X_SkipEmptyParts);
 		tbApply();
 	});
 	menu.addSeparator();
-	menu.addAction("Hide toolbar", tbShowAct, &QAction::trigger);
+	menu.addAction("Hide Toolbar", tbShowAct, &QAction::trigger);
 	menu.exec(pos);
 	setFocus();
 }
@@ -678,7 +678,7 @@ void MainWin::tapeMenu(const QPoint& pos) {
 	menu.addAction(tapeRecAct);
 	menu.addAction(QIcon(":/images/tape-rewind.png"), "Rewind", this, [this]() {tapStateChanged(TW_REWIND, 0);});
 	menu.addSeparator();
-	menu.addAction(QIcon(":/images/fileopen.png"), "Open tape...", this, [this]() {openMedia(QString(), FG_TAPE, -1, 0);});
+	menu.addAction(QIcon(":/images/fileopen.png"), "Open Tape...", this, [this]() {openMedia(QString(), FG_TAPE, -1, 0);});
 	QAction* act = menu.addAction(QIcon(":/images/tape-eject.png"), "Eject", this, [this]() {
 		tapEject(conf.zx->tape);
 		emit s_tape_upd(conf.zx->tape);

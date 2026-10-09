@@ -14,7 +14,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Xpeccy+ layout editor</string>
+   <string>Layout Editor</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>

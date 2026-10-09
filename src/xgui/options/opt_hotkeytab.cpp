@@ -465,7 +465,7 @@ void xKeyEditor::edit(int f, int s, const QString& name, const QKeySequence& seq
 	foo = f;
 	slot = s;
 	kseq = seq;
-	setWindowTitle(QString("%0: %1").arg(name).arg(s ? "alternate" : "key"));
+	setWindowTitle(QString("%0: %1").arg(name).arg(s ? "Alternate" : "Key"));
 	lab.setText(kseq.isEmpty() ? "<no key>" : shortcutText(kseq));
 	show();
 	grabKeyboard();

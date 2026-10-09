@@ -47,12 +47,12 @@ void MainWin::fillDrivesMenu() {
 		m->addAction(QIcon(":/images/doc-new.png"), "New", this, [this, i]() {diskOp(DW_NEW, i);});
 		act = m->addAction(QIcon(":/images/save_all.png"), "Save", this, [this, i]() {diskOp(DW_SAVE, i);});
 		act->setEnabled(flp->insert && flp->path && *flp->path);
-		act = m->addAction(QIcon(":/images/floppy.png"), "Save as...", this, [this, i]() {diskOp(DW_SAVE_AS, i);});
+		act = m->addAction(QIcon(":/images/floppy.png"), "Save As...", this, [this, i]() {diskOp(DW_SAVE_AS, i);});
 		act->setEnabled(flp->insert);
 		act = m->addAction(QIcon(":/images/tape-eject.png"), "Eject", this, [this, i]() {diskOp(DW_EJECT, i);});
 		act->setEnabled(flp->insert);
 		m->addSeparator();
-		act = m->addAction("Write protect");
+		act = m->addAction("Write Protect");
 		act->setCheckable(true);
 		act->setChecked(flp->protect);
 		connect(act, &QAction::toggled, this, [i](bool on) {conf.zx->dif->flp[i]->protect = on ? 1 : 0;});
@@ -65,8 +65,8 @@ void MainWin::fillDrivesMenu() {
 			int id = i ? IDE_SLAVE : IDE_MASTER;
 			QMenu* m = hddMenu->addMenu(QIcon(":/images/hdd.png"),
 				QString("%0: %1").arg(i ? "Slave" : "Master").arg(drive_media(dev[i]->image, dev[i]->image != NULL)));
-			m->addAction(QIcon(":/images/hdd.png"), "Open image...", this, [this, id]() {hddOpen(id, false);});
-			m->addAction(QIcon(":/images/fileopen.png"), "Open folder...", this, [this, id]() {hddOpen(id, true);});
+			m->addAction(QIcon(":/images/hdd.png"), "Open Image...", this, [this, id]() {hddOpen(id, false);});
+			m->addAction(QIcon(":/images/fileopen.png"), "Open Folder...", this, [this, id]() {hddOpen(id, true);});
 			act = m->addAction(QIcon(":/images/tape-eject.png"), "Eject", this, [this, id]() {
 				driveOp([id]() {ide_mount(conf.zx->ide, id, QString());});
 			});
@@ -84,15 +84,15 @@ void MainWin::fillDrivesMenu() {
 		act = sdcMenu->addAction(sdc->image ? drive_media(sdc->image, true) : QString("(no card)"));
 		act->setEnabled(false);
 		sdcMenu->addSeparator();
-		sdcMenu->addAction(QIcon(":/images/sdcard.png"), "Open image...", this, [this]() {sdcOpen(false);});
-		sdcMenu->addAction(QIcon(":/images/fileopen.png"), "Open folder...", this, [this]() {sdcOpen(true);});
+		sdcMenu->addAction(QIcon(":/images/sdcard.png"), "Open Image...", this, [this]() {sdcOpen(false);});
+		sdcMenu->addAction(QIcon(":/images/fileopen.png"), "Open Folder...", this, [this]() {sdcOpen(true);});
 		act = sdcMenu->addAction(QIcon(":/images/tape-eject.png"), "Eject", this, [this]() {
 			driveOp([]() {sdc_mount(conf.zx->sdc, QString());});
 		});
 		act->setEnabled(sdc->image != NULL);
 		sdcMenu->addSeparator();
 		// the card's lock switch; a folder is served read only whatever it says
-		act = sdcMenu->addAction("Write protect");
+		act = sdcMenu->addAction("Write Protect");
 		act->setCheckable(true);
 		act->setChecked(sdc->lock || dir);
 		act->setEnabled(!dir);
@@ -209,7 +209,7 @@ void MainWin::hddProps(int id) {
 	if (!dev->image) return;
 	ATAPassport pass = ideGetPassport(ide, id);
 	QDialog dlg(this);
-	dlg.setWindowTitle(QString("Hard disk: %0").arg((id == IDE_SLAVE) ? "slave" : "master"));
+	dlg.setWindowTitle(QString("Hard Disk: %0").arg((id == IDE_SLAVE) ? "Slave" : "Master"));
 	xOptSheet sheet;
 	QLabel* img = new QLabel(QFileInfo(QString::fromLocal8Bit(dev->image)).fileName());
 	img->setToolTip(QString::fromLocal8Bit(dev->image));

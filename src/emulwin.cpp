@@ -1692,17 +1692,17 @@ void MainWin::initUserMenu() {
 	bookmarkMenu = userMenu->addMenu(QIcon(":/images/star.png"),"Favorites");
 	userMenu->addSeparator();
 	profileMenu = userMenu->addMenu(QIcon(":/images/computer.png"),"Machine");
-	turboMenu = userMenu->addMenu(QIcon(":/images/clock.png"),"Turbo mode");
+	turboMenu = userMenu->addMenu(QIcon(":/images/clock.png"),"Turbo Mode");
 	resMenu = userMenu->addMenu(QIcon(":/images/shutdown.png"),"Reset");
 	userMenu->addSeparator();
 	keyMenu = userMenu->addMenu(QIcon(":/images/keyboardzx.png"), "Keymap");
 	shdMenu = userMenu->addMenu(QIcon(":/images/shader.png"), "Shaders");
-	palMenu = userMenu->addMenu(QIcon(":/images/palette.png"), "ZX palette");
+	palMenu = userMenu->addMenu(QIcon(":/images/palette.png"), "ZX Palette");
 
 	userMenu->addSeparator();
-	dskMenu = userMenu->addMenu(QIcon(":/images/fdd_disk.png"), "Disk manager");
+	dskMenu = userMenu->addMenu(QIcon(":/images/fdd_disk.png"), "Disk Manager");
 	cartMenu = userMenu->addMenu(QIcon(":/images/cartrige.png"), "Cartridge");
-	sdcMenu = userMenu->addMenu(QIcon(":/images/sdcard.png"), "SD card");
+	sdcMenu = userMenu->addMenu(QIcon(":/images/sdcard.png"), "SD Card");
 	hddMenu = userMenu->addMenu(QIcon(":/images/hdd.png"), "Drives");
 	diskWin = new xDiskWin(this);
 	addSatellite(diskWin);
@@ -1723,10 +1723,10 @@ void MainWin::initUserMenu() {
 		setMessage(QString(" gamepad off: player %0 ").arg(slot + 1));
 	});
 
-	cutAction(userMenu, "Tape player", XCUT_TAPWIN, "tape");
-	cutAction(userMenu, "RZX player", XCUT_RZXWIN, "video");
+	cutAction(userMenu, "Tape Player", XCUT_TAPWIN, "tape");
+	cutAction(userMenu, "RZX Player", XCUT_RZXWIN, "video");
 	userMenu->addSeparator();
-	pckAct = userMenu->addAction(QIcon(":/images/keyboard.png"),"Grab keyboard");
+	pckAct = userMenu->addAction(QIcon(":/images/keyboard.png"),"Grab Keyboard");
 	pckAct->setCheckable(true);
 	pckAct->setIconVisibleInMenu(false);	// a setting: its tick, which an icon would take the place of
 	// the Profi changes its layout with the grab, so no key may stay down across it
@@ -1735,13 +1735,13 @@ void MainWin::initUserMenu() {
 		setMessage(on ? " grab keyboard, " XREL_KEYS " lets go " : " release keyboard ");
 	});
 	cutActs.append({pckAct, pckAct->text(), XCUT_GRABKBD});	// its key, shown; the action is its own
-	cutAction(userMenu, "Virtual keyboard", XCUT_KEYBOARD, "keyboardzx");
+	cutAction(userMenu, "Virtual Keyboard", XCUT_KEYBOARD, "keyboardzx");
 	padMenu = userMenu->addMenu(QIcon(":/images/gamepad.png"), "Gamepads");
 	// the debugger and its detached panels
 	dbgMenu = userMenu->addMenu(QIcon(":/images/bug.png"), "Debugger");
 	watchAct = dbgMenu->addAction(QIcon(":/images/objective.png"),"Watcher", this, SIGNAL(s_watch_show()));
 	dbgMenu->addAction(QIcon(":/images/rulers.png"),"Screen", this, SIGNAL(s_scr_show()));
-	dbgMenu->addAction(QIcon(":/images/note.png"),"Sound chips", this, SIGNAL(s_snd_show()));
+	dbgMenu->addAction(QIcon(":/images/note.png"),"Sound Chips", this, SIGNAL(s_snd_show()));
 	cutAction(userMenu, "Options...", XCUT_OPTIONS, "other");
 
 	connect(profileMenu,SIGNAL(triggered(QAction*)),this,SLOT(profileSelected(QAction*)));
@@ -1847,16 +1847,16 @@ void MainWin::initMenuBar() {
 	cutAction(fileMenu, "Reload", XCUT_RELOAD, "refresh");
 	fileMenu->addSeparator();
 	cutAction(fileMenu, "Save...", XCUT_SAVE, "save_all");
-	cutAction(fileMenu, "Save changed disks", XCUT_FASTSAVE, "floppy");
-	cutAction(fileMenu, "Quick save", XCUT_QUICKSAVE);
-	cutAction(fileMenu, "Quick load", XCUT_QUICKLOAD);
-	cutAction(fileMenu, "Undo quick load", XCUT_QUICKUNDO);
+	cutAction(fileMenu, "Save Changed Disks", XCUT_FASTSAVE, "floppy");
+	cutAction(fileMenu, "Quick Save", XCUT_QUICKSAVE);
+	cutAction(fileMenu, "Quick Load", XCUT_QUICKLOAD);
+	cutAction(fileMenu, "Undo Quick Load", XCUT_QUICKUNDO);
 	fileMenu->addSeparator();
 	cutAction(fileMenu, "Screenshot", XCUT_SCRSHOT, "grp-screenshot");
-	cutAction(fileMenu, "Screenshot series", XCUT_COMBOSHOT);
-	recAct = cutAction(fileMenu, "Record video", XCUT_VIDREC, "grp-record");
+	cutAction(fileMenu, "Screenshot Series", XCUT_COMBOSHOT);
+	recAct = cutAction(fileMenu, "Record Video", XCUT_VIDREC, "grp-record");
 	recAct->setCheckable(true);
-	wavAct = cutAction(fileMenu, "Record sound to WAV...", XCUT_WAV_OUT, "wav");
+	wavAct = cutAction(fileMenu, "Record Sound to WAV...", XCUT_WAV_OUT, "wav");
 	wavAct->setCheckable(true);
 	fileMenu->addSeparator();
 	cutAction(fileMenu, "Options...", XCUT_OPTIONS, "other");
@@ -1891,7 +1891,7 @@ void MainWin::initMenuBar() {
 	}
 	fullAct = cutAction(viewMenu, "Fullscreen", XCUT_FULLSCR, "grp-picture");
 	fullAct->setCheckable(true);
-	ratioAct = cutAction(viewMenu, "Keep aspect ratio", XCUT_RATIO, "display");
+	ratioAct = cutAction(viewMenu, "Keep Aspect Ratio", XCUT_RATIO, "display");
 	ratioAct->setCheckable(true);
 	ratioAct->setIconVisibleInMenu(false);	// a setting: its tick, which an icon would take the place of
 	viewMenu->addSeparator();
@@ -1904,25 +1904,25 @@ void MainWin::initMenuBar() {
 		saveConfig();
 	});
 	tbShowAct->setCheckable(true);
-	sbShowAct = viewMenu->addAction("Status bar", this, [this](bool on) {
+	sbShowAct = viewMenu->addAction("Status Bar", this, [this](bool on) {
 		conf.win.statusbar = on;
 		updateWindow();
 		saveConfig();
 	});
 	sbShowAct->setCheckable(true);
 	viewMenu->addSeparator();
-	cutAction(viewMenu, "Virtual keyboard", XCUT_KEYBOARD, "keyboardzx");
+	cutAction(viewMenu, "Virtual Keyboard", XCUT_KEYBOARD, "keyboardzx");
 
 	QMenu* help = new xMenu("Help", this);
 	helpMenu = help;
 	bar->addMenu(help);
-	help->addAction("Project page", this, []() {
+	help->addAction("Project Page", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus"));
 	});
-	help->addAction("What's new", this, []() {
+	help->addAction("What's New", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus/blob/main/CHANGELOG.md"));
 	});
-	help->addAction("Report a problem", this, []() {
+	help->addAction("Report a Problem", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus/issues"));
 	});
 	help->addSeparator();
@@ -2163,7 +2163,7 @@ void MainWin::initMachineMenus() {
 	mac->addAction(slowAct);
 	mac->addAction(ffAct);
 	// the rewind itself is a key held down, which a menu cannot do; this is whether it may
-	QAction* rewOnAct = mac->addAction("Allow rewind", this, [this](bool on) {
+	QAction* rewOnAct = mac->addAction("Allow Rewind", this, [this](bool on) {
 		conf.emu.rewind.on = on ? 1 : 0;
 		saveConfig();
 	});
@@ -2184,10 +2184,10 @@ void MainWin::initMachineMenus() {
 	media->addSeparator();
 	media->addAction(diskAct);
 	// its own action: the drives' list is called Disk manager where its root opens the window
-	QAction* drvAct = new QAction(QIcon(":/images/fdd.png"), "Floppy drives", this);
+	QAction* drvAct = new QAction(QIcon(":/images/fdd.png"), "Floppy Drives", this);
 	drvAct->setMenu(dskMenu);
 	media->addAction(drvAct);
-	QAction* fdcFastAct = media->addAction("Fast disk access", this, [this](bool on) {
+	QAction* fdcFastAct = media->addAction("Fast Disk Access", this, [this](bool on) {
 		setFlagBit(on, &fdcFlag, FDC_FAST);
 		saveConfig();
 	});
@@ -2322,7 +2322,7 @@ void MainWin::fillUserMenu() {
 	}
 	// fill shader menu
 	shdMenu->clear();
-	act = shdMenu->addAction("none");
+	act = shdMenu->addAction("None");
 	act->setData("");
 	act->setCheckable(true);
 	if (conf.vid.shader.empty()) act->setChecked(true);

@@ -462,7 +462,7 @@ static bool media_ask_machine(const QString& path, const std::vector<std::string
 	const xMachine* cur = xm_find(conf.macId);
 	QString curName = QString::fromLocal8Bit(cur ? cur->name.c_str() : conf.macId.c_str());
 	QDialog dlg;
-	dlg.setWindowTitle("Choose a machine");
+	dlg.setWindowTitle("Choose a Machine");
 	QVBoxLayout* lay = new QVBoxLayout(&dlg);
 	QLabel* lab = new QLabel(QString("<b>%1</b> does not run on %2.<br>Run it on:")
 		.arg(QFileInfo(path).fileName().toHtmlEscaped(), curName.toHtmlEscaped()));
@@ -543,7 +543,7 @@ QString file_ask_open(Computer* comp, int* id, int* drv) {
 			flt = file_get_type_filter(fid, 0);
 	}
 	if (flt.isEmpty()) return path;
-	filer->setWindowTitle("Open file");
+	filer->setWindowTitle("Open File");
 	filer->setNameFilter(flt);
 	filer->setDirectory(conf.lastDir.c_str());
 	filer->setAcceptMode(QFileDialog::AcceptOpen);
@@ -756,7 +756,7 @@ int save_file(Computer* comp, const char* name, int id, int drv, int live) {
 				flt = file_get_type_filter(id, 1);
 		}
 		if (!flt.isEmpty()) {
-			filer->setWindowTitle("Save file");
+			filer->setWindowTitle("Save File");
 			filer->setNameFilter(flt);
 			filer->setAcceptMode(QFileDialog::AcceptSave);
 			filer->setDirectory(conf.lastDir.c_str());

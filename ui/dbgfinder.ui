@@ -14,7 +14,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Memory finder</string>
+   <string>Memory Finder</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>

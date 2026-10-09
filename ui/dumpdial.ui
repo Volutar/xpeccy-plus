@@ -14,7 +14,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Save RAM dump</string>
+   <string>Save RAM Dump</string>
   </property>
   <property name="windowIcon">
    <iconset>
