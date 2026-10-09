@@ -126,10 +126,27 @@ void rzxr_stop(Computer* comp, bool finalize) {
 	rr_say((err == ERR_OK) ? QString(" RZX saved: %0 ").arg(QFileInfo(rr_path).fileName()) : QString(" RZX not saved "));
 }
 
+// made where the frame under way ends, so a paused machine makes it later
 void rzxr_bookmark() {
 	if (!rzxr_on()) return;
 	rzx_rec_bookmark();
-	rr_say(" RZX bookmark ");
+	rr_say(conf.emu.pause ? " RZX bookmark when it runs on " : " RZX bookmark ");
+}
+
+// what the recording holds so far, for the player to show
+void rzxr_info(Computer* comp, rzxInfo* inf) {
+	rzxBlock cre;
+	memset(&cre, 0, sizeof(cre));
+	cre.id = 0x10;
+	QStringList ver = QString(XVERSION_BASE).split('.');
+	strncpy(cre.text, XPRODUCT, sizeof(cre.text) - 1);
+	cre.major = ver.value(0).toInt();
+	cre.minor = ver.value(1).toInt();
+	QByteArray custom = rr_custom();
+	strncpy(cre.custom, custom.constData(), sizeof(cre.custom) - 1);
+	emu_lock();		// the log grows on the emulation thread
+	rzx_rec_info(comp, inf, &cre);
+	emu_unlock();
 }
 
 // The machine is put back as it was at the bookmark, and the rewind history -

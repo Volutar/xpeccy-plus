@@ -684,3 +684,33 @@ int rzx_rec_image_write(rzxRecImage* img, const char* path, const char* name, in
 	sb_free(&out);
 	return err;
 }
+
+// What the recording holds so far, as rzx_info() lists a file: the creator
+// given, each snapshot and the frames after it. The frame under way is left out.
+int rzx_rec_info(Computer* comp, rzxInfo* inf, const rzxBlock* creator) {
+	memset(inf, 0, sizeof(rzxInfo));
+	if (!comp->rzx.rec.on) return ERR_RZX_REC;
+	rzxBlock* blk = creator ? rzx_info_add(inf) : NULL;
+	if (blk) *blk = *creator;
+	int snaps = comp->rzx.rec.snaps;
+	for (int i = 0; i < snaps; i++) {
+		const rrSnap* s = &rr_snap[i];
+		if (!(blk = rzx_info_add(inf))) break;
+		blk->id = 0x30;
+		blk->frame = s->frame;
+		blk->flags = (s->noint ? RZX_SNAP_NOINT : 0) | (s->mark ? RZX_SNAP_MARK : 0);
+		blk->usl = (int)s->len;
+		memcpy(blk->ext, rr_ext[(s->type >= RR_SNA) && (s->type <= RR_SZX) ? s->type : RR_SZX], 3);
+		blk->hw = rzx_snap_hardware(s->type, (int)s->len, s->data, (int)s->len);
+		inf->snaps++;
+		int to = (i + 1 < snaps) ? rr_snap[i + 1].frame : comp->rzx.rec.frames;
+		if ((to <= s->frame) && (i + 1 < snaps)) continue;
+		if (!(blk = rzx_info_add(inf))) break;
+		blk->id = 0x80;
+		blk->frame = s->frame;
+		blk->frames = to - s->frame;
+		blk->tstart = s->tstart;
+		inf->frames += blk->frames;
+	}
+	return ERR_OK;
+}

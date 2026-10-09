@@ -538,6 +538,14 @@ void disk_boot(Computer* comp, int drv, int id) {
 		loadBoot(comp, conf.path.boot.c_str(), drv);
 }
 
+// The dialog is shared with the saves: the name a save left in it goes, and the
+// mode is set before the filter, which in save mode puts its own suffix on that
+// name - an RZX just recorded came back offered as an .szx.
+static void file_dialog_open_mode() {
+	filer->setAcceptMode(QFileDialog::AcceptOpen);
+	filer->selectFile(QString());
+}
+
 // The open dialog, for the kind of file id asks for. What was picked in it
 // comes back through id and drv: the filter chosen is the group the file is
 // opened as, and a drive of its own when drv did not name one.
@@ -556,9 +564,9 @@ QString file_ask_open(Computer* comp, int* id, int* drv) {
 	}
 	if (flt.isEmpty()) return path;
 	filer->setWindowTitle("Open File");
+	file_dialog_open_mode();
 	filer->setNameFilter(flt);
 	filer->setDirectory(conf.lastDir.c_str());
-	filer->setAcceptMode(QFileDialog::AcceptOpen);
 	filer->setHistory(QStringList());
 	if (filer->exec()) {
 		path = filer->selectedFiles().first();
@@ -676,6 +684,8 @@ int load_file(Computer* comp, const char* name, int id, int drv) {
 		if (!inf->ch || (saveChangedDisk(comp, drv) == ERR_OK)) {
 			if (inf->id == FL_RZX)
 				rzxr_stop(comp);		// playing one ends the one being made
+			else if (comp->rzx.play)
+				rzxStop(comp);			// the recording would go on feeding what was opened
 			err = inf->load(comp, path.toLocal8Bit().data(), drv);
 			if ((err == ERR_OK) && (inf->id == FL_SZX)) {
 				szx_mount(comp, path);
@@ -954,8 +964,8 @@ QString file_ask_save(const char* title, const char* filter, const char* ext, co
 // one file of one kind, to open
 QString file_ask_load(const char* title, const char* filter) {
 	filer->setWindowTitle(title);
+	file_dialog_open_mode();
 	filer->setNameFilter(filter);
-	filer->setAcceptMode(QFileDialog::AcceptOpen);
 	filer->setDirectory(conf.lastDir.c_str());
 	filer->setHistory(QStringList());
 	if (!filer->exec()) return QString();

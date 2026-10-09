@@ -861,10 +861,10 @@ void MainWin::rzxStateChanged(int state) {
 	Computer* comp = conf.zx;
 	switch(state) {
 		case RWS_PLAY:
-			pause(false,PR_RZX);
+			pause(false, PR_PAUSE | PR_RZX);
 			break;
 		case RWS_PAUSE:
-			pause(true,PR_RZX);
+			pause(true, PR_PAUSE);
 			break;
 		case RWS_STOP:
 			if (rzxr_on()) {	// the player's Stop ends a recording too
@@ -878,6 +878,9 @@ void MainWin::rzxStateChanged(int state) {
 			break;
 		case RWS_REC:
 			rzxRec();
+			break;
+		case RWS_MARK:
+			rzxr_bookmark();
 			break;
 		case RWS_OPEN:
 			pause(true,PR_RZX);

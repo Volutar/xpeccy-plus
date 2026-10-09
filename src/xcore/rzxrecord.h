@@ -3,6 +3,7 @@
 #include <QString>
 
 #include "../libxpeccy/spectrum.h"
+#include "../libxpeccy/filetypes/filetypes.h"
 
 // Making an RZX recording, the app's half: when it starts and stops, where the
 // file goes, what the creator block says, and the file written now and then
@@ -29,5 +30,6 @@ void rzxr_frame(Computer*);
 void rzxr_tick(Computer*);
 
 QString rzxr_path();			// the file being recorded into
+void rzxr_info(Computer*, rzxInfo*);	// its blocks so far, as rzx_info() lists a file
 int rzxr_rollbacks();
 QString rzxr_message();			// what the window should say, once
