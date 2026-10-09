@@ -63,6 +63,12 @@ static const asKey as_keyword[] = {
 	{"j", AS_KEY_GAP}, {ZK_QUOTE, AS_KEY_GAP},
 	{ZK_QUOTE, AS_KEY_GAP}, {ZK_ENTER, 0}, {NULL, 0}
 };
+// ... LOAD ""CODE, for a tape with no basic loader: CODE is I in extended mode
+static const asKey as_keyword_code[] = {
+	{"j", AS_KEY_GAP}, {ZK_QUOTE, AS_KEY_GAP},
+	{ZK_QUOTE, AS_KEY_GAP}, {ZK_EXT, AS_KEY_GAP},
+	{"i", AS_KEY_GAP}, {ZK_ENTER, 0}, {NULL, 0}
+};
 // boot menu: the item wanted is the first one
 static const asKey as_menu[] = {
 	{ZK_ENTER, 0}, {NULL, 0}
@@ -123,26 +129,28 @@ typedef struct {
 typedef struct {
 	int hwid;
 	asAct tape;
+	asAct code;		// a tape with no basic loader: LOAD ""CODE in 48 basic, as
+				// 128 basic loads through #5B00, which such tapes overwrite
 	asAct disk;		// tr-dos image
 	asAct disk3;		// +3 disk
 } asMachine;
 
 static const asMachine as_mtab[] = {
-	{HW_ZX48,	{RES_48, as_keyword},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
-	{HW_ZX128,	{RES_128, as_menu},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
-	{HW_PENT,	{RES_128, as_menu},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
-	{HW_P1024,	{RES_128, as_menu},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
-	{HW_PROFI,	{RES_128, as_menu},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
-	{HW_PROFI3,	{RES_128, as_menu},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
-	{HW_PHOENIX,	{RES_128, as_menu2},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
-	{HW_SCORP,	{RES_128, as_scorpion},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
-	{HW_SCORPTP,	{RES_128, as_scorpion},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
-	{HW_PLUS2A,	{RES_128, as_menu},	{AS_NOPE, NULL},		{AS_NOPE, NULL}},
-	{HW_PLUS3,	{RES_128, as_menu},	{AS_NOPE, NULL},		{RES_128, as_menu}},
-	{HW_TSLAB,	{RES_128, as_menu},	{RES_128, as_menu_last_run},	{AS_NOPE, NULL}},
-	{HW_ATM2,	{RES_48, as_keyword, 1},	{RES_48, as_trdos_basic, 1},	{AS_NOPE, NULL}},
-	{HW_PENTEVO,	{RES_128, as_evo_tape},	{RES_128, as_evo_disk},		{AS_NOPE, NULL}},
-	{HW_NULL,	{AS_NOPE, NULL},	{AS_NOPE, NULL},		{AS_NOPE, NULL}}
+	{HW_ZX48,	{RES_48, as_keyword},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
+	{HW_ZX128,	{RES_128, as_menu},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
+	{HW_PENT,	{RES_128, as_menu},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
+	{HW_P1024,	{RES_128, as_menu},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
+	{HW_PROFI,	{RES_128, as_menu},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
+	{HW_PROFI3,	{RES_128, as_menu},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
+	{HW_PHOENIX,	{RES_128, as_menu2},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
+	{HW_SCORP,	{RES_128, as_scorpion},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
+	{HW_SCORPTP,	{RES_128, as_scorpion},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
+	{HW_PLUS2A,	{RES_128, as_menu},	{RES_48, as_keyword_code},	{AS_NOPE, NULL},		{AS_NOPE, NULL}},
+	{HW_PLUS3,	{RES_128, as_menu},	{RES_48, as_keyword_code},	{AS_NOPE, NULL},		{RES_128, as_menu}},
+	{HW_TSLAB,	{RES_128, as_menu},	{AS_NOPE, NULL},	{RES_128, as_menu_last_run},	{AS_NOPE, NULL}},
+	{HW_ATM2,	{RES_48, as_keyword, 1},	{RES_48, as_keyword_code, 1},	{RES_48, as_trdos_basic, 1},	{AS_NOPE, NULL}},
+	{HW_PENTEVO,	{RES_128, as_evo_tape},	{AS_NOPE, NULL},	{RES_128, as_evo_disk},		{AS_NOPE, NULL}},
+	{HW_NULL,	{AS_NOPE, NULL},	{AS_NOPE, NULL},	{AS_NOPE, NULL},		{AS_NOPE, NULL}}
 };
 
 static int as_kind = AS_NONE;	// what is being started: a tape has to be played
@@ -194,10 +202,15 @@ static void autostart_stop() {
 
 // What a machine would do with that media, NULL if it can do nothing: it has
 // no key sequence for it, or no interface to read the image through.
-static const asAct* as_act(int hwid, int dif, int kind) {
+static const asMachine* as_row(int hwid) {
 	const asMachine* mac = as_mtab;
 	while (mac->hwid && (mac->hwid != hwid))
 		mac++;
+	return mac;
+}
+
+static const asAct* as_act(int hwid, int dif, int kind) {
+	const asMachine* mac = as_row(hwid);
 	const asAct* act;
 	switch (kind) {
 		case AS_TAPE: act = &mac->tape; break;
@@ -220,10 +233,24 @@ int autostart_can(int hwid, int dif, int kind) {
 	return as_act(hwid, dif, kind) != NULL;
 }
 
+// The first header the rom will meet is bytes: LOAD "" would skip it, and a
+// tape with no basic loader on it then never loads at all.
+static int as_tape_code(Tape* tap) {
+	for (int i = 0; i < tap->blkCount; i++) {
+		TapeBlockInfo inf = tapGetBlockInfo(tap, (tap->block + i) % tap->blkCount);
+		if (inf.type == TAPE_HEAD)
+			return inf.htype == TAPE_HT_CODE;
+	}
+	return 0;
+}
+
 int autostart_arm(Computer* comp, int kind) {
 	autostart_stop();
 	const asAct* act = as_find(comp, kind);
 	if (!act) return 0;
+	const asAct* code = &as_row(comp->hw->id)->code;
+	if ((kind == AS_TAPE) && code->seq && as_tape_code(comp->tape))
+		act = code;
 	x_user_reset(comp, act->res);
 	if (act->snap) comp_snap_map(comp);
 	comp->keyb->scanmask = 0;
