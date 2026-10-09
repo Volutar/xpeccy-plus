@@ -32,7 +32,7 @@ int drive_count(Computer* comp) {
 void MainWin::fillDrivesMenu() {
 	Computer* comp = conf.zx;
 	QAction* act;
-	QMenu* menus[] = {dskMenu, hddMenu, sdcMenu, cartMenu};
+	QMenu* menus[] = {dskMenu, drvMenu, hddMenu, sdcMenu, cartMenu};
 	for (QMenu* m : menus) m->clear();
 	for (int i = 0; i < 4; i++) flpMenu[i] = nullptr;
 	int drives = drive_count(comp);
@@ -116,6 +116,7 @@ void MainWin::fillDrivesMenu() {
 		});
 		act->setEnabled(slot->data != NULL);
 	}
+	drvMenu->addActions(dskMenu->actions());
 	for (QMenu* m : menus) m->menuAction()->setVisible(!m->isEmpty());
 }
 

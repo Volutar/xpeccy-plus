@@ -301,6 +301,7 @@ typedef struct {
 		QMenu* profileMenu;
 		QMenu* resMenu;
 		QMenu* dskMenu;		// the floppies; its root opens the Disk manager
+		QMenu* drvMenu;		// the same items under Media's Floppy Drives
 		QMenu* cartMenu;
 		QMenu* sdcMenu;
 		QMenu* hddMenu;
