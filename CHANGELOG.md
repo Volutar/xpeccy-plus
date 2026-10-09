@@ -152,6 +152,9 @@ before that point is upstream's history and is not repeated here.
 - **Flash loading** no longer resets the machine at the end of a load whose loader finds a
   block's lead-in itself, such as Jasper's.
 
+- **Starting a tape** with no BASIC loader on it, only code, loads it with LOAD ""CODE
+  instead of searching the tape forever. ZX Evolution and TSConf still cannot start one.
+
 - **Debugger**: a click on the palette shows the color clicked, an instruction's bytes are
   edited without blanks padding the field, a label from the list goes into a watcher once, and
   the CMOS and disk panels show only on machines that have them. *(thanks to Volutar for the
