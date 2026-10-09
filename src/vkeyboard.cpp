@@ -3,6 +3,7 @@
 #include "vkeyboard.h"
 #include "xcore/xcore.h"
 
+#include <QApplication>
 #include <QIcon>
 #include <QPainter>
 #include <QMenu>
@@ -53,9 +54,6 @@ keyWindow::keyWindow(QWidget* p):QDialog(p) {
 	setModal(false);
 	setWindowModality(Qt::NonModal);
 	setSizeGripEnabled(true);
-	// without a cursor of its own the window keeps the sizing arrows the frame
-	// drag left behind
-	setCursor(Qt::ArrowCursor);
 	setMinimumSize(pxm.width() / 2, pxm.height() / 2);
 	setZoom(storedZoom());
 	setWindowIcon(QIcon(":/images/keyboard.png"));
@@ -240,6 +238,14 @@ bool keyWindow::nativeEvent(const QByteArray& type, void* msg, long* res) {
 				}
 				break;
 		}
+		if (res) *res = TRUE;
+		return true;
+	}
+	// the shape fixed above leaves the mouse inside the window, not on the frame,
+	// and Qt's window class has no cursor to put back over the frame's sizing arrows
+	if ((wmsg->message == WM_SETCURSOR) && (LOWORD(wmsg->lParam) == HTCLIENT)
+			&& !QApplication::overrideCursor() && !childAt(mapFromGlobal(QCursor::pos()))) {
+		SetCursor(LoadCursor(NULL, IDC_ARROW));
 		if (res) *res = TRUE;
 		return true;
 	}
