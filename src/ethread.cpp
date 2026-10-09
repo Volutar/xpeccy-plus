@@ -164,12 +164,16 @@ static int tap_ld_ret(Computer* comp, int base) {
 // handed a block and is played to instead. LD-EDGE-2 calls LD-EDGE-1 itself: its
 // caller is a word up. Nor does LD-8-BITS (05CD): a timeout there returns to
 // whoever called LD-BYTES, or to a loader that jumped straight into it for a
-// block with no sync (Tutankhamun).
+// block with no sync (Tutankhamun). Nor LD-SYNC (0594, 059E), which a loader
+// that found the pilot itself jumps into (Jasper): a stopped tape reads as the
+// machine's own #FE, often an edge, and the second call then times out of
+// LD-BYTES instead of going back to LD_START.
 static int tap_rom_caller(Computer* comp, int base) {
 	int ret = tap_caller(comp, (base + LDC_EDGE2_RET) & 0xffff);
-	if (ret == ((base + LDC_BITS_RET) & 0xffff)) return 0;
+	int off = (ret - base) & 0xffff;
+	if ((off == LDC_BITS_RET) || (off == LDC_SYNC1_RET) || (off == LDC_SYNC2_RET)) return 0;
 	if (base == LD_ROM_BASE) return ret < 0x4000;
-	return ((ret - base) & 0xffff) < LDC_LEN;		// a copy is called by itself
+	return off < LDC_LEN;		// a copy is called by itself
 }
 
 // atStart says the rom is at LD_START, the top of LD_BYTES, rather than inside
