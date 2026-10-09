@@ -328,7 +328,7 @@ void MainWin::initBars() {
 	add("menu.favorites", "File", favAct, TB_LIST, bookmarkMenu);
 	add("key.reload", "File", cut("Reload", XCUT_RELOAD, "refresh"), TB_PLAIN);
 	add("key.save", "File", cut("Save...", XCUT_SAVE, "save_all"), TB_PLAIN);
-	add("key.fastsave", "File", cut("Save changed disks", XCUT_FASTSAVE, "floppy"), TB_PLAIN);
+	add("key.fastsave", "File", cut("Save Changed Disks", XCUT_FASTSAVE, "floppy"), TB_PLAIN);
 	add("key.scrshot", "Capture", cut("Screenshot", XCUT_SCRSHOT, "grp-screenshot"), TB_PLAIN);
 	add("key.video.rec", "Capture", recAct, TB_PLAIN);
 	add("key.write.wav", "Capture", wavAct, TB_PLAIN);

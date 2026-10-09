@@ -1944,18 +1944,18 @@ void MainWin::initMenuBar() {
 	cutAction(fileMenu, "Reload", XCUT_RELOAD, "refresh");
 	fileMenu->addSeparator();
 	cutAction(fileMenu, "Save...", XCUT_SAVE, "save_all");
-	cutAction(fileMenu, "Save changed disks", XCUT_FASTSAVE, "floppy");
-	cutAction(fileMenu, "Quick save", XCUT_QUICKSAVE);
-	cutAction(fileMenu, "Quick load", XCUT_QUICKLOAD);
-	cutAction(fileMenu, "Undo quick load", XCUT_QUICKUNDO);
+	cutAction(fileMenu, "Save Changed Disks", XCUT_FASTSAVE, "floppy");
+	cutAction(fileMenu, "Quick Save", XCUT_QUICKSAVE);
+	cutAction(fileMenu, "Quick Load", XCUT_QUICKLOAD);
+	cutAction(fileMenu, "Undo Quick Load", XCUT_QUICKUNDO);
 	// the Capture menu's, which is made with the machine's menus
 	cutAct("Screenshot", XCUT_SCRSHOT, "grp-screenshot");
-	cutAct("Screenshot series", XCUT_COMBOSHOT);
-	recAct = cutAct("Record video", XCUT_VIDREC, "grp-record");
+	cutAct("Screenshot Series", XCUT_COMBOSHOT);
+	recAct = cutAct("Record Video", XCUT_VIDREC, "grp-record");
 	recAct->setCheckable(true);
 	rzxRecAct = cutAct("Record...", XCUT_RZXREC, "grp-record-rzx");
 	rzxRecAct->setCheckable(true);
-	wavAct = cutAct("Record sound to WAV...", XCUT_WAV_OUT, "wav");
+	wavAct = cutAct("Record Sound to WAV...", XCUT_WAV_OUT, "wav");
 	wavAct->setCheckable(true);
 	fileMenu->addSeparator();
 	cutAction(fileMenu, "Options...", XCUT_OPTIONS, "other");
