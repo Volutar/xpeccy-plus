@@ -138,7 +138,6 @@ class SetupWin : public QDialog {
 		xPortWatch* portwid;
 		QLabel* padSum[2];
 		QCheckBox* cbPadFiles;
-		QCheckBox* cbImgLabels;
 
 		QList<QColor> editpal;
 
