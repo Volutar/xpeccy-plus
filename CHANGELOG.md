@@ -126,7 +126,8 @@ before that point is upstream's history and is not repeated here.
   the disk manager too, Run ahead no longer marked experimental, interface styles listed
   without `.qss`, and an About that names the maintainer and the license and no longer
   stops the machine. *(thanks to Volutar)* Menus and window titles are in Title Case, and
-  hotkeys are named as in the menus.
+  hotkeys are named as in the menus. A dot's screen and attribute address is on Alt+click
+  (Option+click on a Mac) instead of Ctrl+click.
 
 ### Fixed
 
