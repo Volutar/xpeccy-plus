@@ -740,22 +740,6 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 // debuga
 	portwid = new xPortWatch;		// the same editor the debugger opens itself
 	ui.layDbgPorts->addWidget(portwid);
-
-	// an image's labels, the way an image's .pad is on the Input page
-	{
-		QGroupBox* grp = new QGroupBox(tr("Labels"));
-		QHBoxLayout* lay = new QHBoxLayout(grp);
-		lay->setSpacing(12);
-		cbImgLabels = new QCheckBox(tr("Image labels"));
-		QLabel* lab = new QLabel(tr("The debugger takes a .labels named after the image, until the next one"));
-		QFont fnt = lab->font();
-		fnt.setItalic(true);
-		lab->setFont(fnt);
-		lab->setWordWrap(true);
-		lay->addWidget(cbImgLabels);
-		lay->addWidget(lab, 1);
-		ui.verticalLayout_46->insertWidget(2, grp);		// under State info, over the spacer
-	}
 	connect(ui.tbDbgFont,SIGNAL(released()),this,SLOT(selectDbgFont()));
 	// the arrows step by 2, a typed-in odd value snaps once the field is left
 	connect(ui.sbDbgStackOfs, &QAbstractSpinBox::editingFinished, this, [this](){
@@ -1129,7 +1113,7 @@ void SetupWin::start() {
 	ui.cbDbgSignals->setChecked(conf.dbg.showsig);
 	ui.cbDbgFrame->setChecked(conf.dbg.showfrm);
 	ui.cbDbgRay->setChecked(conf.dbg.showray);
-	cbImgLabels->setChecked(conf.dbg.imglabels);
+	ui.cbImgLabels->setChecked(conf.dbg.imglabels);
 	portwid->setPorts(getWatchPorts(conf.zx));
 	dbgfnt = conf.dbg.font;
 	ui.leDbgFont->setText(QString("%0, %1 pt").arg(dbgfnt.family()).arg(dbgfnt.pointSize()));
@@ -1381,7 +1365,7 @@ void SetupWin::apply() {
 	conf.dbg.showsig = ui.cbDbgSignals->isChecked() ? 1 : 0;
 	conf.dbg.showfrm = ui.cbDbgFrame->isChecked() ? 1 : 0;
 	conf.dbg.showray = ui.cbDbgRay->isChecked() ? 1 : 0;
-	conf.dbg.imglabels = cbImgLabels->isChecked() ? 1 : 0;
+	conf.dbg.imglabels = ui.cbImgLabels->isChecked() ? 1 : 0;
 	if (!conf.dbg.imglabels) labels_image(QString());	// the set from before is back now
 	setWatchPorts(conf.zx, portwid->getPorts());
 	QString name = getRFSData(ui.cbStyleSheet);
