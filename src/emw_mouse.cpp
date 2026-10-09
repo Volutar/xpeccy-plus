@@ -24,7 +24,7 @@ void MainWin::mousePressEvent(QMouseEvent *ev){
 			case Qt::LeftButton:
 				if (grabMice) {
 					comp->mouse->lmb = 1;
-				} else if (ev->modifiers() & Qt::ControlModifier) {	// print dot address
+				} else if (ev->modifiers() & Qt::AltModifier) {	// print dot address
 					calcCoords(ev);
 				}
 				break;
@@ -52,7 +52,8 @@ void MainWin::mouseReleaseEvent(QMouseEvent *ev) {
 			case Qt::LeftButton:
 				if (grabMice) {
 					comp->mouse->lmb = 0;
-				} else if (comp->mouse->enable && (comp->mouse->used || (paceClockNs() - mouseReadAt < MOUSE_READ_NS))) {
+				} else if (!(ev->modifiers() & Qt::AltModifier) && comp->mouse->enable
+						&& (comp->mouse->used || (paceClockNs() - mouseReadAt < MOUSE_READ_NS))) {
 					mouseGrabOn();		// a click takes it only while a program reads it
 				}
 				break;
