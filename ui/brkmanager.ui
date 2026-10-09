@@ -14,7 +14,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Breakpoint editor</string>
+   <string>Breakpoint Editor</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="5" column="0">

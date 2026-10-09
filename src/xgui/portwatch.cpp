@@ -82,7 +82,7 @@ QStringList xPortWatch::getPorts() {
 }
 
 xPortWatchDialog::xPortWatchDialog(QWidget* p) : QDialog(p) {
-	setWindowTitle("Watched ports");
+	setWindowTitle("Watched Ports");
 	wid = new xPortWatch(this);
 	QDialogButtonBox* bbox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
 	QVBoxLayout* lay = new QVBoxLayout(this);

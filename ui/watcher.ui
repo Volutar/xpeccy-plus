@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Xpeccy+ Watcher</string>
+   <string>Watcher</string>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,10">
    <item>

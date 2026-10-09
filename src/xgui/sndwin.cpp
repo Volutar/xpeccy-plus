@@ -11,7 +11,7 @@
 #include "xgui.h"
 
 xSndWin::xSndWin(QWidget* p):QDialog(p) {
-	setWindowTitle("Sound chips");
+	setWindowTitle("Sound Chips");
 	setWindowIcon(QIcon(":/images/note.png"));
 	setSizeGripEnabled(true);
 	lastfrm = 0;
