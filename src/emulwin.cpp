@@ -2706,7 +2706,7 @@ void MainWin::padGameEdited() {
 	QString name = QFileInfo(c->gameFile).fileName();
 	if (c->gameEdit == GE_ASK) {
 		QMessageBox box(QMessageBox::Question, "Gamepads",
-			QString("Player 1's bindings came with this game, from %0.\nSave your change?").arg(name),
+			QString("You changed player 1's bindings, the ones from %0.\nWhere should the change go?").arg(name),
 			QMessageBox::NoButton, QApplication::activeWindow());
 		box.setInformativeText(QString("Game config: kept in %0.\n"
 			"User config: into your usual bindings.\n"
