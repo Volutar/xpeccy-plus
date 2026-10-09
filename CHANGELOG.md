@@ -86,8 +86,9 @@ before that point is upstream's history and is not repeated here.
 - **Rewind shows how far back it has gone**, in seconds under its sign; signs and messages on
   the picture fade out when they are over (Options, Appearance). *(thanks to Volutar)*
 
-- **Shift held in the open dialog** asks whether to run the file or only put it in, as it does
-  on a drop.
+- **Run, mount or ask** for an opened tape or disk (Options, File types). Ask is the default: the
+  first one opened asks, and the answer can be remembered. Shift held in the open dialog asks
+  for that one file, as it does on a drop.
 
 - **A Gamepads window**, from the toolbar, the new Input menu or Options, Input: for each player
   a device and the joystick it stands for - Kempston, either Sinclair port, Cursor/Protek/AGF,

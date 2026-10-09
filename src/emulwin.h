@@ -408,6 +408,7 @@ typedef struct {
 		void mouseRecenter(int fresh = 0);
 		void dropAsk(QString);
 		int askRun();
+		int askRunKeep(const QString&);
 
 		void xkey_press(int, bool cmd = false);
 		void xkey_release(int);

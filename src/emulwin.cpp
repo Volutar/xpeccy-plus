@@ -6,6 +6,8 @@
 #include <QSet>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QCheckBox>
+#include <QPushButton>
 #include <QPointer>
 #include <QProgressBar>
 #include <QTableWidget>
@@ -1468,23 +1470,45 @@ void MainWin::dropEvent(QDropEvent* ev) {
 #else
 	bool ask = ev->keyboardModifiers() & Qt::ShiftModifier;
 #endif
-	if (ask) {
-		// not from here: the application the file came from is still waiting
-		// for this handler to return, and a menu holds it for as long as it is up
-		QTimer::singleShot(0, this, [this, fpath](){dropAsk(fpath);});
-	} else {
-		openMedia(fpath, FG_ALL, 0, conf.autorun);
-	}
+	// not from here: the application the file came from is still waiting for
+	// this handler to return, and a question or a load holds it for as long
+	QTimer::singleShot(0, this, [this, fpath, ask]() {
+		if (ask)
+			dropAsk(fpath);
+		else
+			openMedia(fpath, FG_ALL, 0, conf.autorun);
+	});
 }
 
 // shift on a drop or in the open dialog: this one file, run or just mounted.
-// 1 run, 0 mount, -1 neither
+// AR_RUN, AR_MOUNT, or -1 for neither
 int MainWin::askRun() {
 	QMenu menu(this);
 	QAction* run = menu.addAction(QIcon(":/images/play.png"), "Run");
 	menu.addAction(QIcon(":/images/cd.png"), "Mount");
 	QAction* act = menu.exec(QCursor::pos());
-	return act ? ((act == run) ? 1 : 0) : -1;
+	return act ? ((act == run) ? AR_RUN : AR_MOUNT) : -1;
+}
+
+// Ask in Options: the same choice, for a tape or a disk, and it can be kept for good
+int MainWin::askRunKeep(const QString& path) {
+	QMessageBox box(QMessageBox::Question, "Open Media",
+		QString("Run <b>%1</b> or just mount it?").arg(QFileInfo(path).fileName().toHtmlEscaped()),
+		QMessageBox::NoButton, this);
+	QPushButton* run = box.addButton("Run", QMessageBox::AcceptRole);
+	QPushButton* mount = box.addButton("Mount", QMessageBox::AcceptRole);
+	box.addButton(QMessageBox::Cancel);
+	box.setDefaultButton(run);
+	QCheckBox* keep = new QCheckBox("Remember my choice");
+	keep->setToolTip("Options > File types can change it");
+	box.setCheckBox(keep);
+	box.exec();
+	int res = (box.clickedButton() == run) ? AR_RUN : (box.clickedButton() == mount) ? AR_MOUNT : -1;
+	if ((res >= 0) && keep->isChecked()) {
+		conf.autorun = res;
+		saveConfig();
+	}
+	return res;
 }
 
 void MainWin::dropAsk(QString path) {
@@ -1503,6 +1527,11 @@ void MainWin::openMedia(const QString& path, int id, int drv, int run, bool pinn
 	// Shift held as the dialog is left asks, as it does on a drop
 	if (path.isEmpty() && !fpath.isEmpty() && (QGuiApplication::queryKeyboardModifiers() & Qt::ShiftModifier)) {
 		run = askRun();
+		if (run < 0) fpath.clear();
+	}
+	if (!fpath.isEmpty() && (run == AR_ASK)) {
+		// a snapshot starts anyway, and a disk in drive B cannot: nothing to ask
+		run = media_runnable(comp, fpath, id, drv) ? askRunKeep(fpath) : AR_MOUNT;
 		if (run < 0) fpath.clear();
 	}
 	std::string mac;

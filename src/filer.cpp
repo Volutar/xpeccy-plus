@@ -423,6 +423,11 @@ static bool as_from_drive(int kind, int drv) {
 	return (kind == AS_TAPE) || (drv <= 0);
 }
 
+// a tape, or a disk going into drive A
+static bool as_runnable(int kind, int drv) {
+	return (kind != AS_NONE) && as_from_drive(kind, drv);
+}
+
 void media_autorun(Computer* comp, int run) {
 	int kind = file_autostart_kind();
 	if (!comp || !run || (kind == AS_NONE)) return;
@@ -511,12 +516,17 @@ bool media_machine(Computer* comp, const QString& path, int id, int drv, int run
 	xFileTypeInfo* inf = file_type_of(comp, id, path);
 	if (!inf) return true;
 	int kind = as_kind_of(inf->id);		// AS_NONE: a snapshot, or nothing that runs
-	if ((kind != AS_NONE) && (!run || !as_from_drive(kind, drv))) return true;
+	if ((kind != AS_NONE) && (!run || !as_runnable(kind, drv))) return true;
 	xFileMacPick pick = fm_pick(inf->id, path.toLocal8Bit().data());
 	if (!pick.ask.empty())
 		return media_ask_machine(path, pick.ask, mac);
 	*mac = pick.target;
 	return true;
+}
+
+bool media_runnable(Computer* comp, const QString& path, int id, int drv) {
+	xFileTypeInfo* inf = file_type_of(comp, id, path);
+	return inf && as_runnable(as_kind_of(inf->id), drv);
 }
 
 void disk_boot(Computer* comp, int drv, int id) {
