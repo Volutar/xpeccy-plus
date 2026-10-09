@@ -282,6 +282,8 @@ void frame_shown_unlock();
 
 // switch to a machine by id, keeping what the user changed on the one we leave
 bool xm_set(std::string);
+// the same, picked by the user: the machine MS_LAST starts
+bool xm_choose(std::string);
 bool xm_set_layout(std::string);
 int xm_set_hardware(std::string);
 
@@ -709,6 +711,7 @@ struct xConfig {
 	// the machine, one per process, and the workspace around it
 	Computer* zx;
 	std::string macId;		// machine definition id
+	std::string macBase;		// the one the user last picked, what MS_LAST starts; may be gone
 	int macStart;			// MS_*
 	std::string macStartId;		// the machine MS_THIS starts
 	std::string layName;		// screen layout

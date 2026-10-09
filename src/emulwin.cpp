@@ -2642,7 +2642,7 @@ void MainWin::onPrfChange() {
 }
 
 void MainWin::profileSelected(QAction* act) {
-	setMachine(QString(act->data().toByteArray()).toStdString());
+	chooseMachine(QString(act->data().toByteArray()).toStdString());
 }
 
 // The title names the image the machine is using. A snapshot is in use the
@@ -2816,6 +2816,11 @@ void MainWin::setMachine(const std::string& id) {
 	emit s_machine();
 }
 
+void MainWin::chooseMachine(const std::string& id) {
+	setMachine(id);
+	if (conf.macId == id) conf.macBase = id;
+}
+
 // A start Options says to ask about, or the first one: which machine, and what
 // the next start does. Before the window shows, so nothing has run on it yet.
 void MainWin::askStartMachine() {
@@ -2825,11 +2830,11 @@ void MainWin::askStartMachine() {
 	fill_machine_list(mac);
 	setRFIndex(mac, QString::fromLocal8Bit(conf.macId.c_str()));
 	QComboBox* next = new QComboBox;
-	next->addItem("Start the last one used", MS_LAST);
+	next->addItem("Start the last one chosen", MS_LAST);
 	next->addItem("Ask again", MS_ASK);
 	next->addItem("Start this one", MS_THIS);
-	setRFIndex(next, conf.macStart);		// unset is the first, the last one used
-	next->setToolTip("Options > Machine can change it");
+	setRFIndex(next, conf.macStart);		// unset is the first, the last one chosen
+	next->setToolTip("Options > Application can change it");
 	QDialogButtonBox* bbox = new QDialogButtonBox;
 	bbox->addButton("Start", QDialogButtonBox::AcceptRole)->setIcon(QIcon(":/images/play.png"));
 	connect(bbox, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
@@ -2846,7 +2851,7 @@ void MainWin::askStartMachine() {
 	conf.macStart = next->currentData().toInt();
 	if (conf.macStart == MS_THIS) conf.macStartId = id;
 	saveConfig();
-	if (id != conf.macId) setMachine(id);
+	if (id != conf.macId) chooseMachine(id);
 }
 
 void MainWin::reset(QAction* act) {

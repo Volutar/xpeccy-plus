@@ -463,7 +463,7 @@ static int as_kind_of(int ftype) {
 	return AS_NONE;
 }
 
-// Ask: the machines that can take the file, the one it names first. false is
+// Ask: the machines that can take the file, Auto's pick first. false is
 // Cancel - the file is not opened at all
 static bool media_ask_machine(const QString& path, const std::vector<std::string>& ids, std::string* mac) {
 	const xMachine* cur = xm_find(conf.macId);
