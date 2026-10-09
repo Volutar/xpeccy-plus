@@ -164,8 +164,9 @@ before that point is upstream's history and is not repeated here.
 - **A click on a title bar** no longer holds the picture for half a second on Windows.
   *(thanks to Volutar for the report)*
 
-- **The docked virtual keyboard** shows over the picture in fullscreen with Low latency on; it
-  took clicks without being seen. *(thanks to Volutar for the report)*
+- **The virtual keyboard**, docked, shows over the picture in fullscreen with Low latency on; it
+  took clicks without being seen. *(thanks to Volutar for the report)* After a resize the
+  mouse pointer over it is no longer left as the sizing arrow.
 
 - **A folder as an SD card or a hard disk** always has the files in its root, takes ten times
   as many files, mounts fast and says what does not fit. *(thanks to nodeus for the report)*
