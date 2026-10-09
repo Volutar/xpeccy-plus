@@ -196,7 +196,7 @@ static int rzx_head_unpack(FILE* file, int insize, unsigned char* dst, int dstsi
 
 static FILE* rzx_open_beside(const char*, const char*);
 
-static int rzx_snap_hardware(int type, int usl, const unsigned char* head, int n) {
+int rzx_snap_hardware(int type, int usl, const unsigned char* head, int n) {
 	if (n <= 0) return SNAP_HW_UNKNOWN;
 	switch (type) {
 		case 0: return sna_hardware_of(usl);		// the size says it
@@ -206,7 +206,7 @@ static int rzx_snap_hardware(int type, int usl, const unsigned char* head, int n
 	return SNAP_HW_UNKNOWN;
 }
 
-static rzxBlock* rzx_info_add(rzxInfo* inf) {
+rzxBlock* rzx_info_add(rzxInfo* inf) {
 	rzxBlock* blk = (rzxBlock*)realloc(inf->blk, (inf->count + 1) * sizeof(rzxBlock));
 	if (!blk) return NULL;
 	inf->blk = blk;

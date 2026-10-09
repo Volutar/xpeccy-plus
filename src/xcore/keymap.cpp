@@ -482,7 +482,7 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_SPEED_DOWN, "key.speed.down", "Speed Down", {}},
 	{SCG_MAIN, XCUT_VIDREC, "key.video.rec", "Record Video", {}},
 	{SCG_MAIN, XCUT_RZXREC, "key.rzx.rec", "RZX: Record", {}},
-	{SCG_MAIN, XCUT_RZXCONT, "key.rzx.continue", "RZX: Continue Recording", {}},
+	{SCG_MAIN, XCUT_RZXCONT, "key.rzx.continue", "RZX: Open and Continue", {}},
 	{SCG_MAIN, XCUT_RZXMARK, "key.rzx.bookmark", "RZX: Add Bookmark", {}},
 	{SCG_MAIN, XCUT_RZXBACK, "key.rzx.rollback", "RZX: Rollback to Bookmark", {}},
 	{SCG_MAIN, XCUT_RZXFINAL, "key.rzx.finalize", "RZX: Stop and Finalize", {}},

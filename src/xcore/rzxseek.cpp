@@ -12,11 +12,11 @@ static void rs_stop(Computer* comp, int there) {
 	rs_target = -1;
 	fast_hold_release(comp);
 	conf.emu.fast = rs_fast;
-	if (there && rs_pause) conf.emu.pause |= PR_RZX;
+	if (there && rs_pause) conf.emu.pause |= PR_PAUSE;
 }
 
 int rzx_seek_start(Computer* comp, int frame) {
-	int paused = (rs_target >= 0) ? rs_pause : !!(conf.emu.pause & PR_RZX);
+	int paused = (rs_target >= 0) ? rs_pause : !!(conf.emu.pause & PR_PAUSE);
 	int at = rzx_seek(comp, frame);
 	// paused, a frame is still run: it is what puts the picture there
 	if ((at >= frame) && paused)
@@ -31,7 +31,7 @@ int rzx_seek_start(Computer* comp, int frame) {
 	}
 	rs_pause = paused;
 	rs_target = frame;
-	conf.emu.pause &= ~PR_RZX;
+	conf.emu.pause &= ~PR_PAUSE;
 	conf.emu.fast = 1;
 	return at;
 }

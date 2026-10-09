@@ -373,7 +373,7 @@ void MainWin::initBars() {
 	add("menu.cartridge", "Media", cartMenu->menuAction(), TB_LIST);
 	add("menu.sdcard", "Media", sdcMenu->menuAction(), TB_LIST);
 	add("menu.hdd", "Media", hddMenu->menuAction(), TB_LIST);
-	add("key.rzxwin", "Media", cut("RZX Player", XCUT_RZXWIN, "video"), TB_PLAIN);
+	add("key.rzxwin", "Capture", cut("RZX Player", XCUT_RZXWIN, "video"), TB_PLAIN);
 	add("key.fullscreen", "View", fullAct, TB_PLAIN);
 	add("key.ratio", "View", ratioAct, TB_PLAIN);
 	add("menu.size", "View", sizeMenu->menuAction(), TB_LIST);

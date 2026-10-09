@@ -54,8 +54,11 @@ before that point is upstream's history and is not repeated here.
   - Rewind and slow motion work while recording, and the file says how much they were used. A
     reset, a snapshot loaded, a POKE or an edit in the debugger is joined on and recording
     goes on.
-  - Record while a recording plays goes on in that file from that point. Bookmarks mark where
-    to roll back to, and are dropped when the recording is finalized.
+  - Record while a recording plays goes on in that file from that point, and Open and Continue
+    from the end of a file. Bookmarks mark where to roll back to, and are dropped when the
+    recording is finalized.
+  - The RZX player has a bookmark button and lists the recording as it is made, bookmarks and
+    joins included. *(thanks to Volutar)*
 
 - **Hotkey layouts**: Modern, the new default, and Classic, the keys as they were. Keys you
   change are kept as Custom, whichever layout is picked.
@@ -139,7 +142,12 @@ before that point is upstream's history and is not repeated here.
 - **RZX playback** keeps in step with the recording to its end, plays recordings that carry an
   SZX snapshot or keep it beside them, and two copies of the emulator no longer mix theirs up.
   A recording opened from the menu plays on the first try, the one that needs another machine
-  too, and opening one after another no longer spoils the next. *(thanks to Volutar)*
+  too, and opening one after another no longer spoils the next. Opening a snapshot or a tape
+  while one plays ends it, instead of a playback error, and the player's Pause is the
+  machine's own, so Play takes off a pause however it was put on. *(thanks to Volutar)*
+
+- **The open dialog** no longer offers the file just saved under another extension. *(thanks to
+  Volutar)*
 
 - **The AY** answers to registers 0-15 only and reads back its port pins, as the chip does: a
   TurboSound FM tune on a plain AY no longer plays its FM part, and a 128K looks for its keypad.

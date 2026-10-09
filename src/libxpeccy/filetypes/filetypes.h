@@ -193,6 +193,8 @@ typedef struct {
 
 int rzx_info(const char*, rzxInfo*, int first);
 void rzx_info_free(rzxInfo*);
+rzxBlock* rzx_info_add(rzxInfo*);
+int rzx_snap_hardware(int type, int usl, const unsigned char* head, int n);	// SNAP_HW_*
 int rzx_seek(Computer*, int frame);
 
 // A snapshot block's flags: b0 external, b1 packed, and two more. b30 is ours:
@@ -208,6 +210,7 @@ int rzx_rec_start(Computer*);
 int rzx_rec_take_over(Computer*);	// a recording being played goes on as this one
 void rzx_rec_bookmark(void);		// one at the next frame's end
 int rzx_rec_rollback(Computer*);	// to the last bookmark: frames back, -1 none
+int rzx_rec_info(Computer*, rzxInfo*, const char* name, int major, int minor, const char* custom);	// the blocks so far, as rzx_info()
 void rzx_rec_pre(Computer*);		// before an exec, when a join or a bookmark is wanted
 extern int rzx_rec_marking;
 void rzx_rec_stop(Computer*);

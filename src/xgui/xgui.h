@@ -314,7 +314,8 @@ enum {
 	RWS_STOP,
 	RWS_PAUSE,
 	RWS_OPEN,
-	RWS_REC			// recording on or off
+	RWS_REC,		// recording on or off
+	RWS_MARK		// a bookmark in the recording
 };
 
 enum {
@@ -373,10 +374,15 @@ class RZXWin : public QDialog {
 		xRzxModel* model;
 		int state;
 		double fps;
+		int recShown[3];	// what the recording's list was made from: snapshots, half seconds, rollbacks
 		void fillInfo(const QString& path);
+		void showInfo(const rzxInfo*);
+		void fillRec(Computer*);
+		void showPause();
 		void setProgress(int,int);
 	private slots:
 		void playPause();
+		void markPressed();
 		void open();
 		void doDClick(QModelIndex);
 		void stopPressed();

@@ -213,6 +213,26 @@
       </widget>
      </item>
      <item>
+      <widget class="QToolButton" name="markButton">
+       <property name="iconSize">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Add a bookmark to roll back to</string>
+       </property>
+       <property name="text">
+        <string>...</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../xpeccy.qrc">
+         <normaloff>:/images/rzx-bookmark.png</normaloff>:/images/rzx-bookmark.png</iconset>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>

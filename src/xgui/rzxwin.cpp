@@ -196,6 +196,7 @@ RZXWin::RZXWin(QWidget *par):QDialog(par) {
 	setProperty("xCenterOnce", true);
 	state = RWS_STOP;
 	fps = 50;
+	memset(recShown, 0xff, sizeof(recShown));
 	model = new xRzxModel(this);
 	ui.blkList->setModel(model);
 	QHeaderView* hdr = ui.blkList->horizontalHeader();
@@ -207,6 +208,8 @@ RZXWin::RZXWin(QWidget *par):QDialog(par) {
 	connect(ui.ppButton,SIGNAL(released()),this,SLOT(playPause()));
 	connect(ui.stopButton,SIGNAL(released()),this,SLOT(stopPressed()));
 	connect(ui.recButton,SIGNAL(clicked()),this,SLOT(recPressed()));
+	connect(ui.markButton,SIGNAL(released()),this,SLOT(markPressed()));
+	ui.markButton->setEnabled(false);
 	connect(ui.openButton,SIGNAL(released()),this,SLOT(open()));
 	connect(ui.blkList,SIGNAL(doubleClicked(QModelIndex)),this,SLOT(doDClick(QModelIndex)));
 	ui.progress->installEventFilter(this);
@@ -248,6 +251,23 @@ void RZXWin::fillInfo(const QString& path) {
 		ui.labSnaps->clear();
 		return;
 	}
+	showInfo(&inf);
+	rzx_info_free(&inf);
+}
+
+// A recording being made, as its file would be listed: what the bookmarks
+// and the joins look like is seen as they are made.
+void RZXWin::fillRec(Computer* comp) {
+	rzxInfo inf;
+	rzxr_info(comp, &inf);
+	showInfo(&inf);
+	rzx_info_free(&inf);
+	if (model->rowCount() > 0)
+		ui.blkList->scrollTo(model->index(model->rowCount() - 1, 0), QAbstractItemView::EnsureVisible);
+}
+
+void RZXWin::showInfo(const rzxInfo* src) {
+	const rzxInfo& inf = *src;
 	model->fill(&inf, fps);
 	QString creator = model->creator.isEmpty() ? QString("unknown") : model->creator;
 	if (inf.flags & 1) creator += ", signed";
@@ -260,7 +280,6 @@ void RZXWin::fillInfo(const QString& path) {
 	if (model->snapMarks) parts << QString("%0 bookmark%1").arg(model->snapMarks).arg((model->snapMarks == 1) ? "" : "s");
 	if (model->snapEnd) parts << "end";
 	ui.labSnaps->setText(inf.snaps ? QString("%0: %1").arg(inf.snaps).arg(parts.join(", ")) : QString("none"));
-	rzx_info_free(&inf);
 }
 
 void RZXWin::startPlay() {
@@ -270,6 +289,7 @@ void RZXWin::startPlay() {
 	ui.ppButton->setIcon(QIcon(":/images/tape-pause.png"));
 	setProgress(0, conf.zx->rzx.fTotal);
 	state = RWS_PLAY;
+	showPause();		// it may start on a paused machine
 }
 
 void RZXWin::setProgress(int val, int max) {
@@ -282,35 +302,43 @@ void RZXWin::setProgress(int val, int max) {
 
 void RZXWin::upd(Computer* comp) {
 	if (comp->rzx.rec.on && isVisible()) {
-		QString txt = QString("REC %0").arg(rzx_time(rzx_rec_frames(comp), comp_fps(comp)));
+		QString txt = QString("REC %0").arg(rzx_time(rzx_rec_frames(comp), fps));
 		if (rzxr_rollbacks() > 0) txt += QString(", %0 back").arg(rzxr_rollbacks());
 		ui.labTime->setText(txt);
+		// the list again when a block came or went, and twice a second for the length
+		int now[3] = {comp->rzx.rec.snaps, (int)(rzx_rec_frames(comp) * 2 / fps), rzxr_rollbacks()};
+		if (memcmp(now, recShown, sizeof(now))) {
+			memcpy(recShown, now, sizeof(now));
+			fillRec(comp);
+		}
 		return;
 	}
 	if (comp->rzx.play && isVisible()) {
+		showPause();
 		setProgress(comp->rzx.fCurrent, comp->rzx.fTotal);
 		if (model->setCurrent(comp->rzx.fCurrent) && (model->markedRow() >= 0))
 			ui.blkList->scrollTo(model->index(model->markedRow(), 0), QAbstractItemView::EnsureVisible);
 	}
 }
 
+// The pause is the machine's own, the one the Pause key and the toolbar set:
+// the button shows it and Play takes it off, whoever put it on.
 void RZXWin::playPause() {
-	switch(state) {
-		case RWS_STOP:
-			if (!ui.rpath->text().isEmpty())
-				emit replay(ui.rpath->text());
-			break;
-		case RWS_PLAY:
-			state = RWS_PAUSE;
-			ui.ppButton->setIcon(QIcon(":/images/tape-play.png"));
-			emit stateChanged(RWS_PAUSE);
-			break;
-		case RWS_PAUSE:
-			state = RWS_PLAY;
-			ui.ppButton->setIcon(QIcon(":/images/tape-pause.png"));
-			emit stateChanged(RWS_PLAY);
-			break;
+	if (state == RWS_STOP) {
+		if (!ui.rpath->text().isEmpty())
+			emit replay(ui.rpath->text());
+		return;
 	}
+	emit stateChanged((conf.emu.pause & PR_PAUSE) ? RWS_PLAY : RWS_PAUSE);
+	showPause();
+}
+
+void RZXWin::showPause() {
+	if (state == RWS_STOP) return;
+	int paused = (conf.emu.pause & PR_PAUSE) ? 1 : 0;
+	if (paused == (state == RWS_PAUSE)) return;
+	state = paused ? RWS_PAUSE : RWS_PLAY;
+	ui.ppButton->setIcon(QIcon(paused ? ":/images/tape-play.png" : ":/images/tape-pause.png"));
 }
 
 void RZXWin::stop() {
@@ -340,8 +368,11 @@ void RZXWin::recPressed() {
 // stopped, it shows the file as it would any other.
 void RZXWin::recState(bool on) {
 	ui.recButton->setChecked(on);
+	ui.markButton->setEnabled(on);
 	if (on) {
 		state = RWS_STOP;
+		fps = comp_fps(conf.zx);
+		memset(recShown, 0xff, sizeof(recShown));
 		ui.rpath->setText(rzxr_path());
 		ui.ppButton->setEnabled(false);
 		ui.stopButton->setEnabled(true);
@@ -353,6 +384,10 @@ void RZXWin::recState(bool on) {
 		ui.ppButton->setEnabled(true);
 		ui.stopButton->setEnabled(false);
 	}
+}
+
+void RZXWin::markPressed() {
+	emit stateChanged(RWS_MARK);
 }
 
 void RZXWin::open() {

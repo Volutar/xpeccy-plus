@@ -573,13 +573,17 @@ rzxRecImage* rzx_rec_image_read(const char* path, int* err) {
 
 static const char* rr_ext[] = {"SNA", "Z80", "SZX"};
 
+static const char* rr_snap_ext(const rrSnap* s) {
+	return rr_ext[(s->type >= RR_SNA) && (s->type <= RR_SZX) ? s->type : RR_SZX];
+}
+
 // zlib's own stream, as the format has it; the bytes raw when packing gains nothing
 static void rr_block_snap(szxBuf* out, const rrSnap* s) {
 	szxBuf body;
 	memset(&body, 0, sizeof(body));
 	int packed = sb_deflate(&body, s->data, s->len);
 	char ext[4] = {0, 0, 0, 0};
-	memcpy(ext, rr_ext[(s->type >= RR_SNA) && (s->type <= RR_SZX) ? s->type : RR_SZX], 3);
+	memcpy(ext, rr_snap_ext(s), 3);
 	sb_byte(out, 0x30);
 	sb_dword(out, (unsigned)(5 + 12 + body.len));
 	sb_dword(out, (packed ? RZX_SNAP_PACKED : 0) | (s->noint ? RZX_SNAP_NOINT : 0) | (s->mark ? RZX_SNAP_MARK : 0));
@@ -683,4 +687,43 @@ int rzx_rec_image_write(rzxRecImage* img, const char* path, const char* name, in
 	}
 	sb_free(&out);
 	return err;
+}
+
+// What the recording holds so far, as rzx_info() lists a file: the creator
+// as rzx_rec_image_write() would write it, each snapshot and the frames after
+// it. The frame under way is left out.
+int rzx_rec_info(Computer* comp, rzxInfo* inf, const char* name, int major, int minor, const char* custom) {
+	memset(inf, 0, sizeof(rzxInfo));
+	if (!comp->rzx.rec.on) return ERR_RZX_REC;
+	rzxBlock* blk = rzx_info_add(inf);
+	if (blk) {
+		blk->id = 0x10;
+		strncpy(blk->text, name, sizeof(blk->text) - 1);
+		blk->major = major;
+		blk->minor = minor;
+		strncpy(blk->custom, custom, sizeof(blk->custom) - 1);
+	}
+	int snaps = comp->rzx.rec.snaps;
+	for (int i = 0; i < snaps; i++) {
+		const rrSnap* s = &rr_snap[i];
+		if (!(blk = rzx_info_add(inf))) break;
+		blk->id = 0x30;
+		blk->frame = s->frame;
+		blk->flags = (s->noint ? RZX_SNAP_NOINT : 0) | (s->mark ? RZX_SNAP_MARK : 0);
+		blk->usl = (int)s->len;
+		memcpy(blk->ext, rr_snap_ext(s), 3);
+		blk->hw = rzx_snap_hardware(s->type, (int)s->len, s->data, (int)s->len);
+		inf->snaps++;
+		int to = (i + 1 < snaps) ? rr_snap[i + 1].frame : comp->rzx.rec.frames;
+		// the last snapshot has its frames even while there are none, which the
+		// file would not: a join just made is not the end of the recording
+		if ((to <= s->frame) && (i + 1 < snaps)) continue;
+		if (!(blk = rzx_info_add(inf))) break;
+		blk->id = 0x80;
+		blk->frame = s->frame;
+		blk->frames = to - s->frame;
+		blk->tstart = s->tstart;
+		inf->frames += blk->frames;
+	}
+	return ERR_OK;
 }
