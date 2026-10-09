@@ -64,6 +64,7 @@ void frame_publish() {
 	memcpy(shownImg.data(), bufimg, bufSize);
 	shownSwaps = bufSwaps;
 	shownNs = paceClockNs();
+	iosd_publish(conf.zx);
 }
 
 // Set from the frame signal until the gui has taken it. A gui held up for a while

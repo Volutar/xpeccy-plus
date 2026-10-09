@@ -23,6 +23,7 @@ class QKeyEvent;
 #include "../libxpeccy/spectrum.h"
 #include "../libxpeccy/xlog.h"
 #include "../libxpeccy/filetypes/filetypes.h"
+#include "../libxpeccy/input/inview.h"
 #include "gamepad.h"
 #include "xexpr.h"
 
@@ -347,6 +348,17 @@ extern std::map<std::string, int> shotFormat;
 // a key that switches a speed mode: a toggle, on while held, or both - a tap
 // switches it and a longer press holds it only for as long as the key is down
 enum {XHOLD_TOGGLE = 0, XHOLD_HOLD, XHOLD_HYBRID};
+
+// the input overlay
+enum {IOSD_SRC_AUTO = 0, IOSD_SRC_READS, IOSD_SRC_HOST};
+enum {IOSD_POS_BOTTOM_LEFT = 0, IOSD_POS_BOTTOM, IOSD_POS_BOTTOM_RIGHT, IOSD_POS_TOP_LEFT, IOSD_POS_TOP, IOSD_POS_TOP_RIGHT};
+#define IOSD_SIZE_MIN	20
+#define IOSD_SIZE_MAX	90
+#define IOSD_OPACITY_MIN	20
+
+void iosd_apply();
+void iosd_publish(Computer*);
+int iosd_shown(InState*);
 
 enum {
 	XCUT_SIZEX1 = 0x10000,
@@ -833,6 +845,16 @@ struct xConfig {
 		unsigned dock:1;	// glued under the emulator window
 		int width;		// window width; the height follows the picture
 	} keywin;
+	struct {
+		unsigned on:1;		// the player's input over the picture
+		unsigned keys:1;
+		unsigned joy:1;
+		unsigned mouse:1;
+		int source;		// IOSD_SRC_*
+		int pos;		// IOSD_POS_*
+		int size;		// the keyboard's width, percent of the picture's
+		int opacity;		// percent
+	} iosd;
 	struct {
 		unsigned mouse:1;
 		unsigned joy:1;
