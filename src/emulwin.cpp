@@ -884,7 +884,7 @@ void MainWin::rzxStateChanged(int state) {
 			break;
 		case RWS_OPEN:
 			pause(true,PR_RZX);
-			openMedia(QString(), FG_RZX, -1, 0, true);
+			openMedia(QString(), FG_RZX, -1, 0, false);	// a recording plays on its own machine
 			pause(false,PR_RZX);
 			break;
 	}
@@ -1188,7 +1188,7 @@ void MainWin::rzxRec(bool finalize) {
 void MainWin::rzxContinue() {
 	if (rzxr_on()) return;
 	unsigned was = rzx_playing;
-	openMedia(QString(), FG_RZX, -1, 0, true);
+	openMedia(QString(), FG_RZX, -1, 0, false);
 	rzxContStage = (rzx_playing && (rzx_playing != was)) ? 1 : 0;
 }
 
