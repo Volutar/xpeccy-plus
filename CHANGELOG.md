@@ -12,72 +12,60 @@ before that point is upstream's history and is not repeated here.
 ### Added
 
 - **A menu bar, a toolbar and a status bar**:
-  - The menus carry every command with its hotkey. File keeps the last ten images opened;
-    Machine, Media and Debug hold what the toolbar's buttons do. A command shows its icon and
-    a setting its tick. *(thanks to Volutar)*
+  - The menus carry every command with its hotkey, a command with its icon and a setting with
+    its tick. File keeps the last ten images opened. *(thanks to Volutar)*
   - The toolbar holds the buttons you choose: right-click it to add or remove one, drag one to
-    move it. It starts with Mute and the virtual keyboard.
-  - The status bar shows the machine, the clock, the tape and each drive; a click opens its
-    window, a right-click its menu. The frame rate leaves the picture while the bar shows it.
+    move it. It starts with the everyday commands, Mute and the time controls.
+  - The status bar shows the machine, the clock, the frame rate, the tape and each drive; a
+    click opens its window, a right-click its menu.
   - In fullscreen they come up when the pointer rests at the top of the screen. With Low
     latency on, the screen flashes as a menu opens there. *(thanks to Volutar)*
 
-- **Mute**: a toolbar button silences the speakers, while recordings keep the sound. The volume
-  is beside it, and Alt+wheel over the picture sets it - the bare wheel no longer does, it was
-  too easily turned. *(thanks to Volutar)*
+- **Mute** on the toolbar silences the speakers, while recordings keep the sound. The volume is
+  beside it, and Alt+wheel over the picture sets it - the bare wheel no longer does.
+  *(thanks to Volutar)*
 
-- **Quick save and quick load** on F5 and F9, and Shift+F9 takes a quick load back: the save
-  outlives the session on every machine. *(thanks to Volutar)*
+- **Quick save and quick load** on F5 and F9, and Shift+F9 takes a quick load back. The save
+  outlives the session, on every machine. *(thanks to Volutar)*
 
-- **SZX snapshots**, the default format now: Save writes one, and so does quick save.
-  - A 48K, 128K, +2, +2A, +3, Pentagon or Scorpion snapshot opens in the other emulators that
-    read the format, and theirs open here.
+- **SZX snapshots**, now the default format for Save and quick save.
+  - A 48K, 128K, +2, +2A, +3, Pentagon or Scorpion snapshot opens in other emulators that read
+    the format, and theirs open here.
   - One saved here puts the machine back exactly: the sound chips, the beam to the dot, a disk
     command or a tape block halfway through.
-  - ZX Evolution, TSConf, ATM, Profi, Phoenix and ALF save as SZX as well, which only Xpeccy+
-    opens.
+  - ZX Evolution, TSConf, ATM, Profi, Phoenix and ALF save as SZX too, which only Xpeccy+ opens.
   - A snapshot opens on the machine it was taken on. What it was taken with and this machine
-    lacks - other ULA timings, ULA+, a Beta 128 - is named in a warning, and the machine's
-    settings are left alone.
-  - The tape and the disks are linked by name, not carried in the file.
-  - What Xpeccy+ keeps in the format, TSConf and TurboSound FM included, is written up in
-    `docs/szx-format.md` for other emulators.
+    lacks - other ULA timings, ULA+, a Beta 128 - is named in a warning.
+  - The tape and the disks are linked by name, not carried in the file. What Xpeccy+ keeps in
+    the format is written up in `docs/szx-format.md`.
 
-- **The RZX player shows what is in a recording**: what made it, the machine, its length and
-  its snapshots, with a list of its blocks. A click on the bar goes to that point of the
-  recording, a double click on a block to where it starts. Fast forward, slow motion and
-  rewind work while it plays, and their keys work from the player's window too.
+- **The RZX player shows what is in a recording** - what made it, the machine, its length, its
+  snapshots and blocks - and goes to any point: a click on the bar, a double click on a block.
+  Fast forward, slow motion and rewind work while it plays.
 
 - **RZX recording** on Shift+F6, in the new Capture menu with the screenshots, video and sound.
   - The file goes beside the image in use and is named after it; Play in the RZX player plays
     it as soon as it is stopped.
   - Rewind and slow motion work while recording, and the file says how much they were used. A
-    reset, a snapshot loaded, a POKE or an edit in the debugger is joined on and recording
-    goes on.
+    reset, a snapshot loaded, a POKE or an edit in the debugger is joined on.
   - Record while a recording plays goes on in that file from that point, and Open and Continue
-    from the end of a file. Bookmarks mark where to roll back to, and are dropped when the
-    recording is finalized.
-  - The RZX player has a bookmark button and lists the recording as it is made, bookmarks and
-    joins included. *(thanks to Volutar)*
+    from the end of a file. Bookmarks mark where to roll back to.
+  - The RZX player has a bookmark button and lists the recording as it is made.
+    *(thanks to Volutar)*
 
 - **Hotkey layouts**: Modern, the new default, and Classic, the keys as they were. Keys you
-  change are kept as Custom, whichever layout is picked.
+  change are kept as Custom over either, and an older config keeps them too.
   - Modern leaves the machine every key it has: Esc is BREAK, F10 opens the debugger,
     Shift+F10 is NMI, Shift+F4 takes the tape to its start, and the Alt+arrows rewind, run
     fast, slow down and run flat out.
-  - Fast forward, slow motion and Fast mode switch on a tap and hold for as long as the key
-    is held; Options, Emulation, has the old toggle and hold too.
+  - Fast forward, slow motion and Fast mode switch on a tap and last while a key is held;
+    Options, Emulation, has the old toggle and hold too.
   - Ctrl+Alt (Ctrl+Cmd on a Mac) lets the mouse and the keyboard go, and a click on the
     picture takes the mouse only while a program reads it.
-  - The Hotkeys page searches by action or by key, says when a key is already taken, and
-    takes a second key for each action. *(thanks to Volutar for the search)*
-  - An older config keeps the keys you changed and takes Modern for the rest.
-  - Hotkeys work in any keyboard layout, and a hotkey's Shift or Ctrl no longer holds Caps or
-    Symbol Shift down on the machine.
-  - Hotkeys work from the tape, RZX, screen, sound and disk windows too, all but the keys
-    those windows use themselves. *(thanks to Volutar)*
-  - The debugger's own keys are on the Hotkeys page as well: the kinds of breakpoint, the
-    bookmarks and Esc to close it. Ctrl+Pause opens it.
+  - The Hotkeys page holds the debugger's keys too, searches by action or by key, says when a
+    key is taken, and gives each action a second key. *(thanks to Volutar for the search)*
+  - Hotkeys work in any keyboard layout and from the tool windows, and their Shift or Ctrl no
+    longer holds Caps or Symbol Shift down on the machine. *(thanks to Volutar)*
 
 - **Labels as you type in the debugger**: label names are offered in the listing, the dump, the
   watcher and breakpoint conditions, and the listing assembles labels in operands, label+2
@@ -89,32 +77,23 @@ before that point is upstream's history and is not repeated here.
 - **Rewind shows how far back it has gone**, in seconds under its sign; signs and messages on
   the picture fade out when they are over (Options, Appearance). *(thanks to Volutar)*
 
-- **Run, mount or ask** for an opened tape or disk (Options, File types). Ask is the default: the
-  first one opened asks, and the answer can be remembered. Shift held in the open dialog asks
-  for that one file, as it does on a drop.
+- **Run, mount or ask** for an opened tape or disk (Options, File types). Ask, the default, asks
+  once and can remember; Shift held in the open dialog asks for that one file, as on a drop.
 
 - **The machine a start takes**: the last one used, one of your choice, or ask each time
   (Options, Machine, beside the model). The first start asks.
 
 - **A Gamepads window**, from the toolbar, the new Input menu or Options, Input: for each player
   a device and the joystick it stands for - Kempston, either Sinclair port, Cursor/Protek/AGF,
-  QAOP or keys of your own. A pad plays at once, nothing to bind. *(thanks to Volutar for the
-  design)*
-  - Its table shows what the Spectrum gets and what presses it. A row can press the player's
-    joystick, whichever is picked, any Spectrum key - True Video, Edit and the like by name -,
-    a Kempston button, the Kempston mouse, which speeds up the longer it moves, or an emulator
-    action, with turbo. Its button is pressed on the pad or picked from a list, and a button given a row of
-    its own stops pressing the one it had by default.
-  - The PC keyboard can be a player too, on the arrows and Ctrl or on WASD and Space, so a game
-    that wants QAOP plays on the arrows.
-  - Bindings save to a .pad file and load back; an older .pad or config is brought across.
-    A .pad named after an image comes with it for player 1, over the player's own bindings
-    and until the next image; Save as offers that name, a change asks where it goes, and
-    Revert goes back to the player's own.
-  - The Input menu and the toolbar button's list switch the first player's joystick mid-game.
-  - Picking Kempston switches it on for the machine, and a pad never plugged in before takes a
-    free player and opens the window. A pad coming or going - plugged in or pulled out, woken up
-    or gone to sleep - says so on the screen.
+  QAOP or keys of your own. A pad plays at once. *(thanks to Volutar for the design)*
+  - A row of its table presses the joystick, any Spectrum key, a Kempston button, the Kempston
+    mouse or an emulator action, with turbo; its button is pressed on the pad or picked.
+  - The PC keyboard can be a player too, on the arrows or on WASD.
+  - Bindings save to a `.pad` file, and one named after an image comes with it for player 1
+    until the next image. An older `.pad` or config is brought across.
+  - The Input menu switches the first player's joystick mid-game.
+  - Picking Kempston switches it on for the machine, a new pad takes a free player and opens
+    the window, and a pad coming or going says so on the screen.
 
 ### Changed
 
@@ -130,21 +109,23 @@ before that point is upstream's history and is not repeated here.
 - **The numpad no longer plays the Kempston** in the stock keyboard layouts: the keyboard as a
   player in the Gamepads window does it, on whichever keys you like.
 
-- **Smaller things**: two floppy drives unless a machine says otherwise, Fast disk access in
-  the disk manager too, Run ahead no longer marked experimental, interface styles listed
-  without `.qss`, and an About that names the maintainer and the license and no longer
-  stops the machine. *(thanks to Volutar)* Menus and window titles are in Title Case, and
-  hotkeys are named as in the menus. A dot's screen and attribute address is on Alt+click
-  (Option+click on a Mac) instead of Ctrl+click.
+- **Two floppy drives** unless a machine says otherwise, and Fast Disk Access in the disk
+  manager too.
+
+- **Names**: menus and window titles in Title Case, hotkeys named as in the menus, styles
+  without `.qss`, and Run ahead no longer marked experimental.
+
+- **About** names the maintainer and the license, and no longer stops the machine.
+  *(thanks to Volutar)*
+
+- **A dot's screen and attribute address** is on Alt+click (Option+click on a Mac) instead of
+  Ctrl+click.
 
 ### Fixed
 
-- **RZX playback** keeps in step with the recording to its end, plays recordings that carry an
-  SZX snapshot or keep it beside them, and two copies of the emulator no longer mix theirs up.
-  A recording opened from the menu plays on the first try, the one that needs another machine
-  too, and opening one after another no longer spoils the next. Opening a snapshot or a tape
-  while one plays ends it, instead of a playback error, and the player's Pause is the
-  machine's own, so Play takes off a pause however it was put on. *(thanks to Volutar)*
+- **RZX playback** keeps in step with the recording to its end, plays files with an SZX snapshot
+  inside or beside them, opens from the menu on the first try and ends cleanly when another
+  file is opened. *(thanks to Volutar)*
 
 - **The open dialog** no longer offers the file just saved under another extension. *(thanks to
   Volutar)*
@@ -152,11 +133,11 @@ before that point is upstream's history and is not repeated here.
 - **The AY** answers to registers 0-15 only and reads back its port pins, as the chip does: a
   TurboSound FM tune on a plain AY no longer plays its FM part, and a 128K looks for its keypad.
 
-- **.sna and .z80 snapshots** keep interrupts as saved, in an NMI handler too, and a +2A or +3
-  one taken in 48 BASIC loads with its ROM.
+- **`.sna` and `.z80` snapshots** keep interrupts as saved, in an NMI handler too, and a +2A or
+  +3 one taken in 48 BASIC loads with its ROM.
 
 - **Tool windows** - the tape and RZX players, the disk manager - open over the middle of the
-  main window, not a little to its left. A taller tape player gives the room to its block list.
+  main window. A taller tape player gives the room to its block list.
 
 - **Rewind at end** works for a program that loads its own parts, such as levels: a tape that
   has run out goes back to the start when the program asks for a block that is on it.
@@ -172,21 +153,21 @@ before that point is upstream's history and is not repeated here.
   the CMOS and disk panels show only on machines that have them. *(thanks to Volutar for the
   report)*
 
-- **Antiflicker** no longer flickers while a window is being dragged, and on Windows a click on
-  a title bar no longer holds the picture for half a second. *(thanks to Volutar for the
-  report)* The adaptive modes leave alone a game that scrolls slower than the frame rate, such
-  as Robocop, where the picture blinked as it moved.
+- **Antiflicker** no longer flickers while a window is being dragged, and its adaptive modes
+  leave alone a game that scrolls slower than the frame rate, such as Robocop.
+  *(thanks to Volutar for the report)*
+
+- **A click on a title bar** no longer holds the picture for half a second on Windows.
+  *(thanks to Volutar for the report)*
 
 - **The docked virtual keyboard** shows over the picture in fullscreen with Low latency on; it
   took clicks without being seen. *(thanks to Volutar for the report)*
 
-- **A folder as an SD card or a hard disk** always has the files in its root, however much its
-  subfolders hold. It takes ten times as many files, mounts thousands of similar long names in
-  seconds and says what does not fit. *(thanks to nodeus for the report)*
+- **A folder as an SD card or a hard disk** always has the files in its root, takes ten times
+  as many files, mounts fast and says what does not fit. *(thanks to nodeus for the report)*
 
-- **Large disk images**: SD cards over 1 GB work - one of 1 to 2 GB hung the emulator, a bigger
-  one read as empty - and so do hard disks over 2 GB on Windows. *(thanks to nodeus for the
-  report)*
+- **Large disk images**: SD cards over 1 GB work, and on Windows hard disks over 2 GB too.
+  *(thanks to nodeus for the report)*
 
 - **Interface styles**: links take a color of the style's own, the selected tab stands out, and
   a checked menu item with an icon is framed. *(thanks to Volutar for the report)*
@@ -197,8 +178,7 @@ before that point is upstream's history and is not repeated here.
 - **128K and +2 paging**: port #3FFD pages memory like #7FFD, as on the real machines, so
   software that tells a 128K from a +3 that way no longer takes it for a +3.
 
-- **Apply in Options** no longer moves the paused machine on by a frame or two; the picture
-  stays as it was.
+- **Apply in Options** no longer moves the paused machine on by a frame or two.
 
 - **The drive menus** no longer take a little more memory every time a menu opens.
 

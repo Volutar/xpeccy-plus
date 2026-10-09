@@ -47,27 +47,32 @@ On top of upstream build `20260807`:
 - **Timing.** Memory contention on the 48K, 128K, +2 and +2A/+3 matches a real machine, the
   floating bus and ULA snow are there, timing tests come out as photographed on real machines,
   and frames are handed over at the machine's real rate rather than on a 20 ms timer.
-- **Input lag** on a par with Spectaculator, measured with a photosensor, and run ahead
-  for less still.
+- **Input lag** measured with a photosensor and kept low, and run ahead for less still.
 - **Ready to use.** Every machine is built in, ROMs and all, so it runs straight out of the
   archive, and what you change is kept for that machine. macOS builds included.
-- **Media that starts itself.** A tape or disk opens and runs, from the menu, a drop or the
-  command line, on a machine that can run it. A Disk manager lists and copies what is on a
-  TR-DOS disk, and a host folder can stand in for an SD card or a hard disk.
+- **A window like any desktop program's.** A menu bar with every command and its key, a
+  toolbar of your choosing and a status bar. Hotkeys come in Modern and Classic layouts that
+  leave the machine its own keys, with your changes kept on top.
+- **Media that starts itself.** A tape or disk opens and runs, or asks first, from the menu, a
+  drop or the command line, on a machine that can run it. A Disk manager lists and copies
+  what is on a TR-DOS disk, and a host folder can stand in for an SD card or a hard disk.
 - **Tapes.** Fast loading that works whatever the loader, every TZX block, a WAV read back
   as the tape it records and a tape written out as one, and a player laid out like a deck.
 - **Speed.** Up to three times faster with nothing emulated differently - fast forward at
   x18 to x30 on most machines - and one slider from slow motion to an overclocked CPU.
 - **Rewind.** Hold a key to go back through the last half minute, picture and sound, and
   keys for slow motion and fast forward.
-- **Video recording** to MP4 or MKV through FFmpeg, which the emulator offers to get.
+- **Gamepads.** A pad plays at once as any joystick interface, its buttons bind to keys,
+  Kempston or emulator actions, and the keyboard can be a player too.
+- **Video recording** to MP4 or MKV through FFmpeg, which the emulator offers to get, and RZX
+  recording with rewind and bookmarks.
 - **A debugger worth using.** Movable panels, conditional breakpoints that can log, a listing
-  that reads like one, a memory heat map, register layouts to choose from, and a screen and a
-  sound chip panel that detach into windows of their own.
+  that reads like one with labels offered as you type, a memory heat map, register layouts to
+  choose from, and a screen and a sound chip panel that detach into windows of their own.
 - **Sound.** The FM half of TurboSound runs on ymfm, latency looks after itself, and the mix
   can be filtered.
-- **Snapshots.** Saved as `.z80` as well as `.sna`; a `.z80` comes back exactly where it was
-  saved.
+- **Snapshots.** SZX by default, on every machine, coming back exactly where it was saved;
+  `.z80` and `.sna` as well, and quick save and load on a key.
 - **Looks.** Eight interface styles, six border sizes, a picture always at whole pixels, and
   an optional antiflicker that leaves moving pictures alone.
 - **Machines built from their own sources.** ZX Evo, BaseConf and TSConf alike, follows its

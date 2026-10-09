@@ -1,7 +1,7 @@
 # Bundled interface styles
 
 Qt style sheets for the emulator's own windows - menus, dialogs and the debugger. Pick one in
-Setup - Xpeccy+ - General - Style, or set `style = <file>` in `config/config.conf`. `System` there,
+Options - Appearance - Style, or set `style = <file>` in `config/config.conf`. `System` there,
 an empty `style =`, means no style sheet at all: every window looks the way the desktop tells
 it to, which on Windows is light and on most Linux desktops follows the system theme.
 
@@ -27,7 +27,7 @@ to another by hand. Each file lists its palette in the header comment.
 
 ## Four rules that look odd out of context
 
-**No font anywhere.** The debugger takes its font from Setup and measures its columns with it;
+**No font anywhere.** The debugger takes its font from Options and measures its columns with it;
 a `font-family` here would win over that setting and the columns would follow the style sheet
 instead of the user.
 
@@ -57,13 +57,13 @@ them. They live in the `[PALETTE]` section of `config/config.conf`, and each sty
 of its own in the `.pal` file next to it: `Dracula.qss` and `Dracula.pal`, same
 `name = #rrggbb` lines, `;` starts a comment.
 
-Picking a style in Setup does two things, once, at the moment the style changes: it puts the
+Picking a style in Options does two things, once, at the moment the style changes: it puts the
 built-in colors back and then reads the `.pal` over them. So every style starts from the same
 place - `System` ends up with the defaults, and a `.pal` naming only a few colors leaves no
 leftovers from the style before.
 
-From there the colors belong to the configuration like any other: change any of them in Setup -
-Xpeccy+ - Debugger - Palette (right click on a swatch puts the built-in default back) and what you set
+From there the colors belong to the configuration like any other: change any of them in Options -
+Debugger - Palette (right click on a swatch puts the built-in default back) and what you set
 stays, both when the emulator is restarted and when the same style is picked again later. Only
 switching to a *different* style starts the two steps over.
 
