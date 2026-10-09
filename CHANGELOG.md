@@ -200,6 +200,8 @@ before that point is upstream's history and is not repeated here.
 - **Apply in Options** no longer moves the paused machine on by a frame or two; the picture
   stays as it was.
 
+- **The drive menus** no longer take a little more memory every time a menu opens.
+
 ## 2026.6.2 - 2026-10-03
 
 ### Fixed

@@ -33,7 +33,12 @@ void MainWin::fillDrivesMenu() {
 	Computer* comp = conf.zx;
 	QAction* act;
 	QMenu* menus[] = {dskMenu, drvMenu, hddMenu, sdcMenu, cartMenu};
-	for (QMenu* m : menus) m->clear();
+	for (QMenu* m : menus) {
+		// a drive's submenu is a child of its menu, which clear() leaves alive
+		for (QAction* a : m->actions())
+			if (a->menu()) a->menu()->deleteLater();
+		m->clear();
+	}
 	for (int i = 0; i < 4; i++) flpMenu[i] = nullptr;
 	int drives = drive_count(comp);
 	for (int i = 0; i < drives; i++) {
