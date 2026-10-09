@@ -126,6 +126,7 @@ typedef struct {
 		void padGame(const QString&);		// an image opened: player 1 takes its .pad, or its own table back
 		void fsOverlay(QWidget*);
 		void setMachine(const std::string&);
+		void chooseMachine(const std::string&);		// the user's pick, see xm_choose
 		void askStartMachine();
 		void resetMachine(int);
 		void resetTo(int);

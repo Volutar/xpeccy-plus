@@ -4,6 +4,7 @@
 #include "../filer.h"
 
 #include <map>
+#include <algorithm>
 
 // Which machine a file is opened on: what each format needs, what the user
 // wants done about it, and the decision the two make together.
@@ -88,12 +89,12 @@ static bool fm_takes(int hwid, int dif, int need, int snap) {
 
 // An SZX stands the machine at a point in its frame, so it is loaded on the
 // model it names: a core shared by several models is not enough, unless the
-// running machine is one of the user's own rather than a model of the table.
-static bool fm_exact_here(int snap, const std::string& target) {
-	if (target.empty() || (target == conf.macId)) return true;
+// machine is one of the user's own rather than a model of the table.
+static bool fm_exact_on(const std::string& id, int snap, const std::string& target) {
+	if (target.empty() || (target == id)) return true;
 	if (snap >= SNAP_HW_CORE) return !xm_find(target);
 	for (int i = 0; fm_snap_tab[i].target; i++) {
-		if (conf.macId == fm_snap_tab[i].target) return false;
+		if (id == fm_snap_tab[i].target) return false;
 	}
 	return true;
 }
@@ -162,16 +163,21 @@ xFileMacPick fm_pick(int ftype, const char* path) {
 		if (pref != conf.macId) pick.target = pref;
 		return pick;
 	}
-	if (fm_runs(conf.macId, row->need, snap) && ((row->need != FMN_EXACT) || fm_exact_here(snap, target)))
-		return pick;
-	// the machine the file names first, then every other one that can take it
+	auto fits = [&](const std::string& id) {
+		return fm_runs(id, row->need, snap) && ((row->need != FMN_EXACT) || fm_exact_on(id, snap, target));
+	};
+	if (fits(conf.macId)) return pick;
+	// the user's own machine first, then the one the file names, then every
+	// other one that can take it
 	std::vector<std::string> can;
-	if (!target.empty() && fm_runs(target, row->need, snap))
-		can.push_back(target);
-	foreach(const xMachine& mac, xm_list()) {
-		if ((mac.id != target) && fm_runs(mac.id, row->need, snap))
-			can.push_back(mac.id);
-	}
+	auto add = [&](const std::string& id) {
+		if (!id.empty() && (std::find(can.begin(), can.end(), id) == can.end()) && fm_runs(id, row->need, snap))
+			can.push_back(id);
+	};
+	if (fits(conf.macBase)) add(conf.macBase);
+	add(target);
+	foreach(const xMachine& mac, xm_list())
+		add(mac.id);
 	if (can.empty()) return pick;
 	if (pref == FM_ASK) {
 		pick.ask = can;

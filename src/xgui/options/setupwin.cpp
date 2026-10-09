@@ -624,7 +624,6 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	connect(ui.tbDelRom,SIGNAL(released()),this,SLOT(delRom()));
 	connect(ui.tbPreset,SIGNAL(released()),this,SLOT(romPreset()));
 	connect(ui.pbResetMachine,SIGNAL(released()),this,SLOT(resetMachine()));
-	connect(ui.pbAdvanced,SIGNAL(released()),this,SLOT(showAdvanced()));
 	connect(ui.pbSaveMachine,SIGNAL(released()),this,SLOT(saveMachine()));
 	connect(ui.pbDelMachine,SIGNAL(released()),this,SLOT(delMachine()));
 	connect(ui.pbCfgExport,SIGNAL(released()),this,SLOT(cfgExport()));
@@ -635,6 +634,13 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	// a window of their own. It is the same widgets, moved out of the page -
 	// so everything that reads and writes them stays as it is.
 	advWin = popOut(ui.advBox, "Machine: Advanced Settings");
+	// opened by the gear beside the model, as on every device row
+	QToolButton* advBtn = new QToolButton;
+	advBtn->setIcon(QIcon(":/images/settings.png"));
+	advBtn->setToolTip(tr("The settings that define this machine rather than how you use it"));
+	connect(advBtn, &QToolButton::released, advWin, [this]() {advWin->show(); advWin->raise();});
+	ui.gridLayout->removeWidget(ui.machbox);
+	ui.gridLayout->addWidget(fieldPair(ui.machbox, advBtn, false), 0, 2, 1, 3);
 
 	// the page keeps one button for the ROM set; the slots and the reset
 	// target are in this window
@@ -899,10 +905,18 @@ void SetupWin::start() {
 // machine
 	int idx;
 	fill_machine_list(ui.machbox);
-	fill_machine_list(cbStartMac);
-	std::string startId = conf.macStartId.empty() ? conf.macId : conf.macStartId;
-	setRFIndex(cbStartMac, QString::fromLocal8Bit(startId.c_str()));
-	grpStart->button((conf.macStart == MS_UNSET) ? MS_LAST : conf.macStart)->setChecked(true);
+	fill_machine_list(cbStart);
+	// the first rows are MS_LAST and MS_ASK, by index; the machines are MS_THIS
+	cbStart->insertItem(MS_LAST, tr("The last one chosen"));
+	cbStart->insertItem(MS_ASK, tr("Ask"));
+	cbStart->setItemData(MS_LAST, tr("The last one you picked. One a file switched to is not kept"), Qt::ToolTipRole);
+	cbStart->insertSeparator(MS_THIS);
+	cbStart->setMaxVisibleItems(cbStart->count());
+	if (conf.macStart == MS_THIS) {
+		setRFIndex(cbStart, QString::fromLocal8Bit(conf.macStartId.c_str()), MS_ASK);	// gone: it asks
+	} else {
+		cbStart->setCurrentIndex((conf.macStart == MS_ASK) ? MS_ASK : MS_LAST);
+	}
 	updateMachineButtons();
 	roms = conf.roms;
 	resTarget = comp->resbank;
@@ -1144,14 +1158,14 @@ void SetupWin::apply() {
 	int rwSecs = conf.emu.rewind.secs;
 // machine
 	// unset shows as Last, and stays unset - the first start still asks - until changed
-	int ms = grpStart->checkedId();
+	int ms = qMin(cbStart->currentIndex(), (int)MS_THIS);
 	if ((conf.macStart != MS_UNSET) || (ms != MS_LAST)) conf.macStart = ms;
-	if (ms == MS_THIS) conf.macStartId = getRFSData(cbStartMac).toLocal8Bit().data();
+	if (ms == MS_THIS) conf.macStartId = getRFSData(cbStart).toLocal8Bit().data();
 	// another machine is not this page with different values in it: it has its
 	// own, so load it and show them rather than writing these over it
 	std::string mid = std::string(getRFSData(ui.machbox).toLocal8Bit().data());
 	if (!mid.empty() && (mid != conf.macId)) {
-		xm_set(mid);
+		xm_choose(mid);
 		start();
 		emit s_prf_changed();
 		return;
@@ -1632,25 +1646,13 @@ static QComboBox* devCombo(QStringList items) {
 	return box;
 }
 
-// Which machine a start takes: a gear beside the model it is about
+// Which machine a start takes is the application's business, not the machine's
 void SetupWin::buildStart() {
-	grpStart = new QButtonGroup(this);
-	QRadioButton* rbLast = new QRadioButton(tr("The last machine used"));
-	QRadioButton* rbAsk = new QRadioButton(tr("Ask"));
-	QRadioButton* rbThis = new QRadioButton(tr("This one"));
-	grpStart->addButton(rbLast, MS_LAST);
-	grpStart->addButton(rbAsk, MS_ASK);
-	grpStart->addButton(rbThis, MS_THIS);
-	cbStartMac = new QComboBox;
-	connect(cbStartMac, QOverload<int>::of(&QComboBox::activated), rbThis, [rbThis]() {rbThis->setChecked(true);});
-	xOptSheet sheet;
-	sheet.wide(rbLast);
-	sheet.wide(rbAsk);
-	sheet.wide(fieldPair(rbThis, cbStartMac, false));
-	QToolButton* btn = sheetButton(sheet.body, "Machine: At Start");
-	btn->setToolTip(tr("Which machine the emulator starts with"));
-	ui.gridLayout->removeWidget(ui.machbox);
-	ui.gridLayout->addWidget(fieldPair(ui.machbox, btn, false), 0, 2, 1, 3);
+	cbStart = new QComboBox;
+	QLabel* lab = new QLabel(tr("Machine at start"));
+	lab->setToolTip(tr("Which machine the emulator starts with"));
+	ui.gridLayout_6->addWidget(lab, 0, 0);
+	ui.gridLayout_6->addWidget(cbStart, 0, 1);
 }
 
 // the gear that pops a sheet out; greyed with nothing to pop
@@ -1966,11 +1968,6 @@ void SetupWin::showDevRows() {
 	fillDevSummary();
 }
 
-void SetupWin::showAdvanced() {
-	advWin->show();
-	advWin->raise();
-}
-
 // THE WHOLE CONFIGURATION, IN AND OUT
 //
 // One text file with the settings, the layouts and the machines of your own.
@@ -2055,7 +2052,7 @@ void SetupWin::saveMachine() {
 		shitHappens("Could not write the machine file");
 		return;
 	}
-	xm_set(id);
+	xm_choose(id);
 	start();
 	emit s_prf_changed();
 }

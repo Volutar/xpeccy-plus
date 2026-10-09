@@ -1091,6 +1091,14 @@ bool xm_set(std::string id) {
 	return true;
 }
 
+// A switch to a file's machine is for that file, so only a pick of the user's
+// moves what the next start takes.
+bool xm_choose(std::string id) {
+	if (!xm_set(id)) return false;
+	conf.macBase = id;
+	return true;
+}
+
 // what to write back: only what differs from the definition, so a machine the
 // user never touched carries nothing and takes every fix an update brings.
 

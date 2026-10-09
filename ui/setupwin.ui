@@ -477,20 +477,6 @@ Past 14 MHz no real machine ran: timing is not guaranteed</string>
                  <number>0</number>
                 </property>
                 <item>
-                 <widget class="xSideButton" name="pbAdvanced">
-                  <property name="icon">
-                   <iconset resource="../xpeccy.qrc">
-                    <normaloff>:/images/settings.png</normaloff>:/images/settings.png</iconset>
-                  </property>
-                  <property name="toolTip">
-                   <string>The settings that define this machine rather than how you use it</string>
-                  </property>
-                  <property name="text">
-                   <string>Advanced settings</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
                  <widget class="xSideButton" name="pbResetMachine">
                   <property name="icon">
                    <iconset resource="../xpeccy.qrc">

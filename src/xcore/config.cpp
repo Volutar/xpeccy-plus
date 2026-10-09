@@ -195,7 +195,7 @@ void saveConfig() {
 
 	fprintf(cfile,"[GENERAL]\n\n");
 	fprintf(cfile, "schema = 4\n");
-	fprintf(cfile, "machine = %s\n", conf.macId.c_str());
+	fprintf(cfile, "machine = %s\n", (xm_find(conf.macBase) ? conf.macBase : conf.macId).c_str());
 	if (conf.macStart != MS_UNSET) fprintf(cfile, "start = %s\n", start_name[conf.macStart]);
 	if (!conf.macStartId.empty()) fprintf(cfile, "start.machine = %s\n", conf.macStartId.c_str());
 	fprintf(cfile, "lastdir = %s\n", conf.lastDir.c_str());
@@ -1248,6 +1248,7 @@ void loadConfig() {
 			throw(0);
 		}
 	}
+	conf.macBase = conf.macId;		// what this start took is the user's pick
 	xm_finish_load();
 	// a config from before the table only names a map file
 	if (!padNew[0] && !conf.jmapNameA.empty()) conf.gpctrl->gpada->importMap(conf.path.confDir + SLASH + conf.jmapNameA);

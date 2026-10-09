@@ -80,8 +80,12 @@ before that point is upstream's history and is not repeated here.
 - **Run, mount or ask** for an opened tape or disk (Options, File types). Ask, the default, asks
   once and can remember; Shift held in the open dialog asks for that one file, as on a drop.
 
-- **The machine a start takes**: the last one used, one of your choice, or ask each time
-  (Options, Machine, beside the model). The first start asks.
+- **The machine a start takes**: the last one you picked, a fixed one, or ask each time
+  (Options, Application). A machine an opened file switched to is not kept for the next start,
+  and a file the running machine cannot take goes to the one you picked when that can. The
+  first start asks.
+
+- **Advanced settings for a machine** is the gear beside the model.
 
 - **A Gamepads window**, from the toolbar, the new Input menu or Options, Input: for each player
   a device and the joystick it stands for - Kempston, either Sinclair port, Cursor/Protek/AGF,
