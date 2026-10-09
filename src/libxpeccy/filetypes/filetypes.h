@@ -198,7 +198,7 @@ int rzx_seek(Computer*, int frame);
 // A snapshot block's flags: b0 external, b1 packed, and two more. b30 is ours:
 // taken between two INTs with interrupts on, so the playback raises none after
 // it. b31 is a bookmark, a point to roll back to - Spectaculator's mark for its
-// rollback points, which finalising drops.
+// rollback points, which finalizing drops.
 #define RZX_SNAP_NOINT	(1u << 30)
 #define RZX_SNAP_MARK	(1u << 31)
 int rzxGetSnapType(char*);
@@ -223,7 +223,7 @@ int rzx_rec_joins(Computer*);
 typedef struct rzxRecImage rzxRecImage;
 rzxRecImage* rzx_rec_take(Computer*);
 int rzx_rec_image_frames(rzxRecImage*);
-int rzx_rec_image_write(rzxRecImage*, const char* path, const char* name, int major, int minor, const char* custom, int finalise);
+int rzx_rec_image_write(rzxRecImage*, const char* path, const char* name, int major, int minor, const char* custom, int finalize);
 rzxRecImage* rzx_rec_image_read(const char* path, int* err);
 void rzx_rec_image_free(rzxRecImage*);
 

@@ -843,11 +843,11 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 		fprintf(stdout, "rzx rec: %i frames, %i joins, %s\n", rzx_rec_image_frames(img), rzx_rec_joins(comp), err ? "failed" : "written");
 		rzx_rec_image_free(img);
 		if (!err && benchRecFinal) {
-			// read back and finalised beside it
+			// read back and finalized beside it
 			std::string fin = std::string(benchRec) + ".fin.rzx";
 			img = rzx_rec_image_read(benchRec, &err);
 			if (img) err = rzx_rec_image_write(img, fin.c_str(), NULL, 0, 0, NULL, 1);
-			fprintf(stdout, "rzx rec: finalised %i frames, %s\n", rzx_rec_image_frames(img), err ? "failed" : "written");
+			fprintf(stdout, "rzx rec: finalized %i frames, %s\n", rzx_rec_image_frames(img), err ? "failed" : "written");
 			rzx_rec_image_free(img);
 		}
 		fflush(stdout);

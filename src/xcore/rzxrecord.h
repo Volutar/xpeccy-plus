@@ -16,14 +16,14 @@ int rzxr_start(Computer*, const QString& path);
 // where a recording of what the machine runs would go: beside the image in
 // use, named after it
 QString rzxr_suggest();
-// ends it and writes the file, without its bookmarks when finalised: its
+// ends it and writes the file, without its bookmarks when finalized: its
 // path, empty when nothing was written
-QString rzxr_stop(Computer*, bool finalise = false);
+QString rzxr_stop(Computer*, bool finalize = false);
 // a bookmark at the next frame's end, and back to the last one (or the start)
 void rzxr_bookmark();
 bool rzxr_rollback(Computer*);
 // a file on disk without its bookmarks; an ERR_* code
-int rzxr_finalise_file(const QString& path);
+int rzxr_finalize_file(const QString& path);
 // every emulated frame: how long slow motion and rollbacks were in use
 void rzxr_frame(Computer*);
 // the gui's timer: the file brought up to date every so often

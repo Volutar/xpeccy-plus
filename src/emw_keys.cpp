@@ -379,7 +379,7 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 				if (rzxr_on()) rzxRec(true);
 				break;
 			case XCUT_RZXFINFILE:
-				rzxFinaliseFile();
+				rzxFinalizeFile();
 				break;
 			case XCUT_SCRSHOT:
 				if (scrCounter == 0) {

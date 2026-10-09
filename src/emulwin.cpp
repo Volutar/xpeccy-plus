@@ -864,6 +864,10 @@ void MainWin::rzxStateChanged(int state) {
 			pause(true,PR_RZX);
 			break;
 		case RWS_STOP:
+			if (rzxr_on()) {	// the player's Stop ends a recording too
+				rzxRec();
+				break;
+			}
 			emu_lock();		// the emulation reads the file
 			rzxStop(comp);
 			emu_unlock();
@@ -1142,7 +1146,7 @@ void MainWin::grabScreen() {
 
 // An RZX recording of the machine from here on, or of the one being played
 // from the frame it has got to, into a file asked for first.
-void MainWin::rzxRec(bool finalise) {
+void MainWin::rzxRec(bool finalize) {
 	Computer* comp = conf.zx;
 	QString path;
 	if (!rzxr_on()) {
@@ -1159,7 +1163,7 @@ void MainWin::rzxRec(bool finalise) {
 	emu_lock();
 	int err = ERR_OK;
 	if (rzxr_on()) {
-		rzxr_stop(comp, finalise);
+		rzxr_stop(comp, finalize);
 	} else {
 		err = rzxr_start(comp, path);
 	}
@@ -1200,13 +1204,13 @@ void MainWin::rzxContStep() {
 }
 
 // A file on disk loses its bookmarks, the snapshots kept to roll back to.
-void MainWin::rzxFinaliseFile() {
+void MainWin::rzxFinalizeFile() {
 	pause(true, PR_FILE);
-	QString path = QFileDialog::getOpenFileName(this, "Finalise RZX", QString::fromLocal8Bit(conf.lastDir.c_str()), "RZX recording (*.rzx)");
+	QString path = QFileDialog::getOpenFileName(this, "Finalize RZX", QString::fromLocal8Bit(conf.lastDir.c_str()), "RZX recording (*.rzx)");
 	if (!path.isEmpty()) {
-		int err = rzxr_finalise_file(path);
+		int err = rzxr_finalize_file(path);
 		if (err == ERR_OK) {
-			setMessage(" RZX finalised ");
+			setMessage(" RZX finalized ");
 		} else {
 			file_errors(err);
 		}
@@ -2310,10 +2314,10 @@ void MainWin::initMachineMenus() {
 	rzxMenu->addAction(cutAct("Continue Recording...", XCUT_RZXCONT));
 	rzxMenu->addSeparator();
 	rzxMenu->addAction(cutAct("Add Bookmark", XCUT_RZXMARK));
-	rzxMenu->addAction(cutAct("Roll Back to Bookmark", XCUT_RZXBACK));
+	rzxMenu->addAction(cutAct("Rollback to Bookmark", XCUT_RZXBACK));
 	rzxMenu->addSeparator();
-	rzxMenu->addAction(cutAct("Stop and Finalise", XCUT_RZXFINAL));
-	rzxMenu->addAction(cutAct("Finalise File...", XCUT_RZXFINFILE));
+	rzxMenu->addAction(cutAct("Stop and Finalize", XCUT_RZXFINAL));
+	rzxMenu->addAction(cutAct("Finalize File...", XCUT_RZXFINFILE));
 	connect(rzxMenu, &QMenu::aboutToShow, this, [this]() {
 		bool on = rzxr_on();
 		rzxRecAct->setChecked(on);

@@ -65,11 +65,11 @@ static QByteArray rr_custom() {
 
 // Written to a file of its own and then put in place, so an autosave cut short
 // leaves the last one whole.
-static int rr_write(rzxRecImage* img, const QString& path, const QByteArray& custom, bool finalise = false) {
+static int rr_write(rzxRecImage* img, const QString& path, const QByteArray& custom, bool finalize = false) {
 	QString part = path + ".part";
 	QStringList ver = QString(XVERSION_BASE).split('.');
 	int err = rzx_rec_image_write(img, part.toLocal8Bit().constData(), XPRODUCT,
-		ver.value(0).toInt(), ver.value(1).toInt(), custom.constData(), finalise ? 1 : 0);
+		ver.value(0).toInt(), ver.value(1).toInt(), custom.constData(), finalize ? 1 : 0);
 	rzx_rec_image_free(img);
 	if (err == ERR_OK) {
 		QFile::remove(path);
@@ -114,13 +114,13 @@ int rzxr_start(Computer* comp, const QString& path) {
 	return ERR_OK;
 }
 
-QString rzxr_stop(Computer* comp, bool finalise) {
+QString rzxr_stop(Computer* comp, bool finalize) {
 	if (!rzxr_on()) return QString();
 	rr_join_writer();
 	rzxRecImage* img = rzx_rec_take(comp);
 	int frames = rzx_rec_image_frames(img);
 	rzx_rec_stop(comp);
-	int err = img ? rr_write(img, rr_path, rr_custom(), finalise) : ERR_RZX_REC;
+	int err = img ? rr_write(img, rr_path, rr_custom(), finalize) : ERR_RZX_REC;
 	xlog(XLG_FILE, (err == ERR_OK) ? XLL_INFO : XLL_WARN, "rzx recording stopped: %i frames, %i rollbacks, %s",
 		frames, rr_rollbacks, (err == ERR_OK) ? "written" : "not written");
 	rr_say((err == ERR_OK) ? QString(" RZX saved: %0 ").arg(QFileInfo(rr_path).fileName()) : QString(" RZX not saved "));
@@ -146,7 +146,7 @@ bool rzxr_rollback(Computer* comp) {
 	return true;
 }
 
-int rzxr_finalise_file(const QString& path) {
+int rzxr_finalize_file(const QString& path) {
 	int err = ERR_OK;
 	rzxRecImage* img = rzx_rec_image_read(path.toLocal8Bit().constData(), &err);
 	if (!img) return err;

@@ -269,10 +269,10 @@ typedef struct {
 		void updateHead();
 		void screenShot();
 		void videoRec();
-		void rzxRec(bool finalise = false);
+		void rzxRec(bool finalize = false);
 		void rzxContinue();
 		void rzxContStep();
-		void rzxFinaliseFile();
+		void rzxFinalizeFile();
 		int rzxContStage = 0;		// Continue Recording: 1 waits for the playback, 2 for the run to its end
 		void grabScreen();
 		void drawPicture();

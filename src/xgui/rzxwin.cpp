@@ -273,7 +273,7 @@ void RZXWin::startPlay() {
 }
 
 void RZXWin::setProgress(int val, int max) {
-	ui.progress->setMaximum(max);
+	ui.progress->setMaximum(qMax(max, 1));		// a range of 0 is Qt's busy bar
 	ui.progress->setValue(val);
 	ui.labTime->setText(QString("%0 / %1").arg(rzx_time(val, fps), rzx_time(max, fps)));
 }
@@ -326,8 +326,13 @@ void RZXWin::stopPressed() {
 	emit stateChanged(RWS_STOP);
 }
 
+// Record starts a recording and Stop ends it, as on the tape player
 void RZXWin::recPressed() {
-	ui.recButton->setChecked(rzxr_on());	// the machine says, once it has tried
+	if (rzxr_on()) {
+		ui.recButton->setChecked(true);
+		return;
+	}
+	ui.recButton->setChecked(false);	// the machine says, once it has tried
 	emit stateChanged(RWS_REC);
 }
 
@@ -339,13 +344,14 @@ void RZXWin::recState(bool on) {
 		state = RWS_STOP;
 		ui.rpath->setText(rzxr_path());
 		ui.ppButton->setEnabled(false);
-		ui.stopButton->setEnabled(false);
+		ui.stopButton->setEnabled(true);
 		ui.progress->setMaximum(1);
 		ui.progress->setValue(0);
 	} else if (!rzxr_path().isEmpty()) {
 		fillInfo(rzxr_path());		// what was written, which Play plays
 		ui.labTime->clear();
 		ui.ppButton->setEnabled(true);
+		ui.stopButton->setEnabled(false);
 	}
 }
 

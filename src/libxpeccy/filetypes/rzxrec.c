@@ -27,7 +27,7 @@ typedef struct {
 	int frame;		// frames logged before it
 	int tstart;		// T into the frame it was taken in
 	int noint;		// taken with interrupts on, between two of them
-	int mark;		// a bookmark: a point to roll back to, which finalising drops
+	int mark;		// a bookmark: a point to roll back to, which finalizing drops
 	int type;		// RR_*
 	unsigned char* data;	// the machine, unpacked
 	size_t len;
@@ -399,7 +399,7 @@ int rzx_rec_image_frames(rzxRecImage* img) {
 	return img ? img->frames : 0;
 }
 
-// reading a file back, to finalise it
+// reading a file back, to finalize it
 
 static unsigned rr_dword(const unsigned char* p) {
 	return p[0] | (p[1] << 8) | (p[2] << 16) | ((unsigned)p[3] << 24);
@@ -647,9 +647,9 @@ static void rr_block_input(szxBuf* out, rzxRecImage* img, int from, int to, int 
 }
 
 // The file: the creator, then each snapshot with the frames that follow it.
-// Finalised, the bookmarks go and so does a snapshot nothing is played after;
+// Finalized, the bookmarks go and so does a snapshot nothing is played after;
 // a join stays, as the machine does not get there by playing.
-int rzx_rec_image_write(rzxRecImage* img, const char* path, const char* name, int major, int minor, const char* custom, int finalise) {
+int rzx_rec_image_write(rzxRecImage* img, const char* path, const char* name, int major, int minor, const char* custom, int finalize) {
 	if (!img || (img->snaps < 1)) return ERR_CANT_OPEN;
 	szxBuf out;
 	memset(&out, 0, sizeof(out));
@@ -674,7 +674,7 @@ int rzx_rec_image_write(rzxRecImage* img, const char* path, const char* name, in
 	int* keep = (int*)malloc(img->snaps * sizeof(int));
 	int kept = 0;
 	for (int s = 0; keep && (s < img->snaps); s++) {
-		if (finalise && (s > 0) && (img->snap[s].mark || (img->snap[s].frame >= img->frames)))
+		if (finalize && (s > 0) && (img->snap[s].mark || (img->snap[s].frame >= img->frames)))
 			continue;
 		keep[kept++] = s;
 	}
