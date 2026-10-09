@@ -385,6 +385,8 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 							fread(&shd, sizeof(rzxSnap), 1, file);
 							shd.flag = swap32(shd.flag);
 							shd.usl = swap32(shd.usl);
+							// the scratch file's type byte carries the two flags its reader needs
+							int kind = rzxGetSnapType(shd.ext) | ((shd.flag & RZX_SNAP_NOINT) ? 0x80 : 0) | ((shd.flag & RZX_SNAP_MARK) ? 0x40 : 0);
 							if (shd.flag & 1) {		// external
 								fgeti(file);	// checksum
 								buf = realloc(buf, len - 20);
@@ -395,7 +397,7 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 									len = fgetSize(sfile);
 									fputc(0x30, comp->rzx.file);
 									fputi(len + 1, comp->rzx.file);
-									fputc(rzxGetSnapType(shd.ext) | ((shd.flag & RZX_SNAP_NOINT) ? 0x80 : 0) | ((shd.flag & RZX_SNAP_MARK) ? 0x40 : 0), comp->rzx.file);
+									fputc(kind, comp->rzx.file);
 									while (len > 0) {
 										fread(obuf, 0x4000, 1, sfile);
 										fwrite(obuf, (len > 0x4000) ? 0x4000 : len, 1, comp->rzx.file);
@@ -408,7 +410,7 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 							} else if (shd.flag & 2) {	// compressed
 								fputc(0x30, comp->rzx.file);
 								fputi(shd.usl + 1, comp->rzx.file);
-								fputc(rzxGetSnapType(shd.ext) | ((shd.flag & RZX_SNAP_NOINT) ? 0x80 : 0) | ((shd.flag & RZX_SNAP_MARK) ? 0x40 : 0), comp->rzx.file);
+								fputc(kind, comp->rzx.file);
 								buf = realloc(buf, len - 17);
 								fread(buf, len - 17, 1, file);
 								err = inflateToFile(buf, len - 17, comp->rzx.file);
@@ -417,7 +419,7 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 								fread(buf, shd.usl, 1, file);
 								fputc(0x30, comp->rzx.file);
 								fputi(shd.usl + 1, comp->rzx.file);
-								fputc(rzxGetSnapType(shd.ext) | ((shd.flag & RZX_SNAP_NOINT) ? 0x80 : 0) | ((shd.flag & RZX_SNAP_MARK) ? 0x40 : 0), comp->rzx.file);
+								fputc(kind, comp->rzx.file);
 								fwrite(buf, shd.usl, 1, comp->rzx.file);
 							}
 							break;

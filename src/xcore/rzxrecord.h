@@ -16,9 +16,8 @@ int rzxr_start(Computer*, const QString& path);
 // where a recording of what the machine runs would go: beside the image in
 // use, named after it
 QString rzxr_suggest();
-// ends it and writes the file, without its bookmarks when finalized: its
-// path, empty when nothing was written
-QString rzxr_stop(Computer*, bool finalize = false);
+// ends it and writes the file, without its bookmarks when finalized
+void rzxr_stop(Computer*, bool finalize = false);
 // a bookmark at the next frame's end, and back to the last one (or the start)
 void rzxr_bookmark();
 bool rzxr_rollback(Computer*);
@@ -31,5 +30,4 @@ void rzxr_tick(Computer*);
 
 QString rzxr_path();			// the file being recorded into
 int rzxr_rollbacks();
-double rzxr_slow_secs();
 QString rzxr_message();			// what the window should say, once

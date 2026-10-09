@@ -87,7 +87,12 @@ static int rr_snap_put(Computer* comp, int type, unsigned char* data, size_t len
 // joins at
 static int rr_snapshot(Computer* comp, int noint, int mark) {
 	szxBuf b;
+	// The NMI key is held for a while, but every NMI taken makes a join of its
+	// own: one left pending in the snapshot would be taken again on playback.
+	int nmi = comp->flgNMIRQ;
+	comp->flgNMIRQ = 0;
 	int err = szx_build(comp, &b);
+	comp->flgNMIRQ = nmi;
 	if (err != ERR_OK) {
 		sb_free(&b);
 		return err;
@@ -110,7 +115,6 @@ static void rr_boundary(Computer* comp) {
 
 static void rr_begin(Computer* comp) {
 	memset(&comp->rzx.rec, 0, sizeof(rzxRecPos));
-	comp->cpu->flgINTOK = 0;
 	rzx_rec_touched = 0;
 	rzx_rec_marking = 0;
 }
@@ -200,11 +204,6 @@ int rzx_rec_take_over(Computer* comp) {
 		if (!found) x_fseek(file, pos + len, SEEK_SET);
 	}
 	x_fseek(file, here, SEEK_SET);
-	if (!found) {
-		comp->rzx.rec.frames = done;
-		comp->rzx.rec.fetch = 0;
-		comp->rzx.rec.ins = 0;
-	}
 	if ((err == ERR_OK) && (comp->rzx.rec.snaps < 1)) err = ERR_RZX_REC;
 	if (err != ERR_OK) {
 		memset(&comp->rzx.rec, 0, sizeof(rzxRecPos));
@@ -247,9 +246,19 @@ static int rr_int_now(CPU* cpu) {
 	return (req & Z80_INT) && !(req & Z80_NMI) && cpu->flgIFF1 && !cpu->flgNOINT && cpu->flgACK;
 }
 
+// The machine was changed from outside - a reset, a snapshot, a poke: the log
+// goes on from a snapshot of it. With interrupts on the playback must not raise
+// the INT it raises after a snapshot block, so the block says so.
+static int rr_join(Computer* comp) {
+	rzx_rec_touched = 0;
+	if (!comp->rzx.rec.on) return ERR_OK;
+	rr_boundary(comp);
+	return rr_snapshot(comp, comp->cpu->flgIFF1 ? 1 : 0, 0);
+}
+
 // Before an exec, when a join or a bookmark is wanted.
 void rzx_rec_pre(Computer* comp) {
-	if (rzx_rec_touched) rzx_rec_join(comp);
+	if (rzx_rec_touched) rr_join(comp);
 	if (rzx_rec_marking && rr_int_now(comp->cpu)) {
 		rzx_rec_marking = 0;
 		rr_boundary(comp);
@@ -262,29 +271,16 @@ void rzx_rec_pre(Computer* comp) {
 // within what other players allow (Fuse's sentinel is at 79000 T).
 void rzx_rec_step(Computer* comp, int t) {
 	CPU* cpu = comp->cpu;
-	if (cpu->flgINTOK) {
-		cpu->flgINTOK = 0;
+	if (cpu->flgINTOK)
 		rr_boundary(comp);
-	}
 	comp->rzx.rec.t += t;
-	if ((comp->rzx.rec.t >= comp_frame_ticks(comp)) && !cpu->flgIFF1 && !cpu->flgNOINT) {
+	if (!cpu->flgIFF1 && !cpu->flgNOINT && (comp->rzx.rec.t >= comp_frame_ticks(comp))) {
 		rr_boundary(comp);
 		if (rzx_rec_marking) {		// interrupts off: the INT the playback raises is not taken
 			rzx_rec_marking = 0;
 			rr_snapshot(comp, 0, 1);
 		}
 	}
-}
-
-// The machine was changed from outside - a reset, a snapshot, a poke: the log
-// goes on from a snapshot of it. With interrupts on the playback must not raise
-// the INT it raises after a snapshot block, so the block says so.
-int rzx_rec_join(Computer* comp) {
-	rzx_rec_touched = 0;
-	if (!comp->rzx.rec.on) return ERR_OK;
-	comp->cpu->flgINTOK = 0;
-	rr_boundary(comp);
-	return rr_snapshot(comp, comp->cpu->flgIFF1 ? 1 : 0, 0);
 }
 
 static int rr_load(Computer* comp, const rrSnap* s) {
@@ -321,7 +317,6 @@ int rzx_rec_rollback(Computer* comp) {
 	pos.ins = 0;
 	pos.t = 0;
 	comp->rzx.rec = pos;
-	comp->cpu->flgINTOK = 0;
 	rzx_rec_touched = 0;
 	rzx_rec_marking = 0;
 	return back;
@@ -331,7 +326,7 @@ int rzx_rec_frames(Computer* comp) {
 	return comp->rzx.rec.frames;
 }
 
-int rzx_rec_marks(Computer* comp) {
+static int rr_marks(Computer* comp) {
 	int n = 0;
 	for (int i = 1; i < comp->rzx.rec.snaps; i++)
 		if (rr_snap[i].mark) n++;
@@ -339,7 +334,7 @@ int rzx_rec_marks(Computer* comp) {
 }
 
 int rzx_rec_joins(Computer* comp) {
-	return comp->rzx.rec.snaps > 0 ? comp->rzx.rec.snaps - 1 - rzx_rec_marks(comp) : 0;
+	return comp->rzx.rec.snaps > 0 ? comp->rzx.rec.snaps - 1 - rr_marks(comp) : 0;
 }
 
 // writing
@@ -401,11 +396,7 @@ int rzx_rec_image_frames(rzxRecImage* img) {
 
 // reading a file back, to finalize it
 
-static unsigned rr_dword(const unsigned char* p) {
-	return p[0] | (p[1] << 8) | (p[2] << 16) | ((unsigned)p[3] << 24);
-}
-
-// a zlib stream of a size not known beforehand
+// an input block's stream, of a size not known beforehand
 static unsigned char* rr_unpack(const unsigned char* src, size_t len, size_t* out) {
 	size_t cap = len * 4 + 1024;
 	unsigned char* dst = (unsigned char*)malloc(cap);
@@ -453,36 +444,47 @@ static int rr_img_snap(rzxRecImage* img, int type, unsigned char* data, size_t l
 	return 1;
 }
 
-static int rr_img_frames(rzxRecImage* img, const unsigned char* p, size_t len, int count) {
-	const unsigned char* end = p + len;
-	const unsigned char* last = NULL;
-	int lastN = 0;
-	for (int i = 0; i < count; i++) {
-		if (p + 4 > end) return 0;
-		int fetch = p[0] | (p[1] << 8);
-		int n = p[2] | (p[3] << 8);
-		p += 4;
-		const unsigned char* bytes;
-		if (n == 0xffff) {
-			n = lastN;
-			bytes = last;
-		} else {
-			if (p + n > end) return 0;
-			bytes = p;
-			last = p;
-			lastN = n;
-			p += n;
+// one walk to check the block and size it, one to take its frames
+static int rr_img_frames(rzxRecImage* img, const unsigned char* data, size_t len, int count) {
+	size_t total = 0;
+	for (int pass = 0; pass < 2; pass++) {
+		const unsigned char* p = data;
+		const unsigned char* end = data + len;
+		const unsigned char* last = NULL;
+		int lastN = 0;
+		if (pass) {
+			rrFrame* f = (rrFrame*)realloc(img->frm, (img->frames + count + 1) * sizeof(rrFrame));
+			if (f) img->frm = f;
+			unsigned char* in = (unsigned char*)realloc(img->in, img->inLen + total + 1);
+			if (in) img->in = in;
+			if (!f || !in) return 0;
 		}
-		rrFrame* f = (rrFrame*)realloc(img->frm, (img->frames + 1) * sizeof(rrFrame));
-		unsigned char* in = (unsigned char*)realloc(img->in, img->inLen + n + 1);
-		if (f) img->frm = f;
-		if (in) img->in = in;
-		if (!f || !in) return 0;
-		img->frm[img->frames].fetches = fetch;
-		img->frm[img->frames].ins = n;
-		if (n) memcpy(img->in + img->inLen, bytes, n);
-		img->inLen += n;
-		img->frames++;
+		for (int i = 0; i < count; i++) {
+			if (p + 4 > end) return 0;
+			int fetch = rd_word(p);
+			int n = rd_word(p + 2);
+			p += 4;
+			const unsigned char* bytes;
+			if (n == 0xffff) {
+				n = lastN;
+				bytes = last;
+			} else {
+				if (p + n > end) return 0;
+				bytes = p;
+				last = p;
+				lastN = n;
+				p += n;
+			}
+			if (!pass) {
+				total += n;
+				continue;
+			}
+			img->frm[img->frames].fetches = fetch;
+			img->frm[img->frames].ins = n;
+			if (n) memcpy(img->in + img->inLen, bytes, n);
+			img->inLen += n;
+			img->frames++;
+		}
 	}
 	return 1;
 }
@@ -507,7 +509,7 @@ rzxRecImage* rzx_rec_image_read(const char* path, int* err) {
 	int tsPending = 0;		// the input block after a snapshot gives it its T
 	while ((*err == ERR_OK) && (at + 5 <= size)) {
 		int id = buf[at];
-		size_t len = rr_dword(buf + at + 1);
+		size_t len = rd_dword(buf + at + 1);
 		if ((len < 5) || (at + len > size)) break;	// what follows is junk
 		const unsigned char* b = buf + at + 5;
 		size_t blen = len - 5;
@@ -518,30 +520,31 @@ rzxRecImage* rzx_rec_image_read(const char* path, int* err) {
 				img->creatorLen = len;
 			}
 		} else if ((id == 0x30) && (blen >= 12)) {
-			unsigned flags = rr_dword(b);
-			size_t usl = rr_dword(b + 8);
+			unsigned flags = rd_dword(b);
+			size_t usl = rd_dword(b + 8);
 			int type = rzxGetSnapType((char*)b + 4);
 			if ((flags & 1) || (type > RR_SZX)) {
 				*err = ERR_RZX_REC;		// a snapshot kept in a file of its own
 				break;
 			}
-			unsigned char* data = NULL;
-			size_t dlen = blen - 12;
-			if (flags & 2) {
-				data = rr_unpack(b + 12, blen - 12, &dlen);
-			} else if ((data = (unsigned char*)malloc(dlen + 1))) {
+			size_t dlen = (flags & 2) ? usl : blen - 12;
+			unsigned char* data = (unsigned char*)malloc(dlen + 1);
+			int ok = (data != NULL);
+			if (ok && (flags & 2)) {
+				ok = szx_inflate(b + 12, blen - 12, data, usl);
+			} else if (ok) {
 				memcpy(data, b + 12, dlen);
 			}
-			if (!data || ((flags & 2) && (dlen != usl)) || !rr_img_snap(img, type, data, dlen, flags)) {
+			if (!ok || !rr_img_snap(img, type, data, dlen, flags)) {
 				free(data);
 				*err = ERR_RZX_UNPACK;
 				break;
 			}
 			tsPending = 1;
 		} else if ((id == 0x80) && (blen >= 13)) {
-			int count = rr_dword(b);
-			int tstart = rr_dword(b + 5);
-			unsigned flags = rr_dword(b + 9);
+			int count = rd_dword(b);
+			int tstart = rd_dword(b + 5);
+			unsigned flags = rd_dword(b + 9);
 			if (flags & 1) {
 				*err = ERR_RZX_CRYPT;
 				break;
@@ -565,47 +568,25 @@ rzxRecImage* rzx_rec_image_read(const char* path, int* err) {
 	return img;
 }
 
-static void rr_put(szxBuf* b, unsigned v, int n) {
-	unsigned char x[4];
-	for (int i = 0; i < n; i++)
-		x[i] = (v >> (i * 8)) & 0xff;
-	sb_put(b, x, n);
-}
-
-// zlib's own stream, as the format has it; the bytes raw when packing gains nothing
-static int rr_pack(const unsigned char* src, size_t len, unsigned char** dst, size_t* dlen) {
-	uLongf n = compressBound(len);
-	*dst = (unsigned char*)malloc(n);
-	if (!*dst) return 0;
-	if ((compress2(*dst, &n, src, len, Z_BEST_COMPRESSION) != Z_OK) || (n >= len)) {
-		free(*dst);
-		*dst = NULL;
-		return 0;
-	}
-	*dlen = n;
-	return 1;
-}
-
 #define RZX_SNAP_PACKED		2
 #define RZX_INPUT_PACKED	2
 
 static const char* rr_ext[] = {"SNA", "Z80", "SZX"};
 
+// zlib's own stream, as the format has it; the bytes raw when packing gains nothing
 static void rr_block_snap(szxBuf* out, const rrSnap* s) {
-	unsigned char* pk = NULL;
-	size_t plen = 0;
-	int packed = rr_pack(s->data, s->len, &pk, &plen);
-	const unsigned char* body = packed ? pk : s->data;
-	size_t blen = packed ? plen : s->len;
+	szxBuf body;
+	memset(&body, 0, sizeof(body));
+	int packed = sb_deflate(&body, s->data, s->len);
 	char ext[4] = {0, 0, 0, 0};
 	memcpy(ext, rr_ext[(s->type >= RR_SNA) && (s->type <= RR_SZX) ? s->type : RR_SZX], 3);
-	rr_put(out, 0x30, 1);
-	rr_put(out, (unsigned)(5 + 12 + blen), 4);
-	rr_put(out, (packed ? RZX_SNAP_PACKED : 0) | (s->noint ? RZX_SNAP_NOINT : 0) | (s->mark ? RZX_SNAP_MARK : 0), 4);
+	sb_byte(out, 0x30);
+	sb_dword(out, (unsigned)(5 + 12 + body.len));
+	sb_dword(out, (packed ? RZX_SNAP_PACKED : 0) | (s->noint ? RZX_SNAP_NOINT : 0) | (s->mark ? RZX_SNAP_MARK : 0));
 	sb_put(out, ext, 4);
-	rr_put(out, (unsigned)s->len, 4);
-	sb_put(out, body, blen);
-	free(pk);
+	sb_dword(out, (unsigned)s->len);
+	sb_put(out, body.data, body.len);
+	sb_free(&body);
 }
 
 // Frames as the format has them: fetches, IN count, the bytes - or a count of
@@ -619,30 +600,28 @@ static void rr_block_input(szxBuf* out, rzxRecImage* img, int from, int to, int 
 	for (int i = from; i < to; i++) {
 		int n = img->frm[i].ins;
 		const unsigned char* p = img->in + inAt;
-		rr_put(&raw, img->frm[i].fetches & 0xffff, 2);
+		sb_word(&raw, img->frm[i].fetches & 0xffff);
 		if ((n > 0) && (n == lastN) && !memcmp(p, last, n)) {
-			rr_put(&raw, 0xffff, 2);
+			sb_word(&raw, 0xffff);
 		} else {
-			rr_put(&raw, n, 2);
+			sb_word(&raw, n);
 			sb_put(&raw, p, n);
 			last = p;
 			lastN = n;
 		}
 		inAt += n;
 	}
-	unsigned char* pk = NULL;
-	size_t plen = 0;
-	int packed = rr_pack(raw.data, raw.len, &pk, &plen);
-	const unsigned char* body = packed ? pk : raw.data;
-	size_t blen = packed ? plen : raw.len;
-	rr_put(out, 0x80, 1);
-	rr_put(out, (unsigned)(5 + 13 + blen), 4);
-	rr_put(out, to - from, 4);
-	rr_put(out, 0, 1);
-	rr_put(out, tstart, 4);
-	rr_put(out, packed ? RZX_INPUT_PACKED : 0, 4);
-	sb_put(out, body, blen);
-	free(pk);
+	szxBuf body;
+	memset(&body, 0, sizeof(body));
+	int packed = sb_deflate(&body, raw.data, raw.len);
+	sb_byte(out, 0x80);
+	sb_dword(out, (unsigned)(5 + 13 + body.len));
+	sb_dword(out, to - from);
+	sb_byte(out, 0);
+	sb_dword(out, tstart);
+	sb_dword(out, packed ? RZX_INPUT_PACKED : 0);
+	sb_put(out, body.data, body.len);
+	sb_free(&body);
 	sb_free(&raw);
 }
 
@@ -654,9 +633,9 @@ int rzx_rec_image_write(rzxRecImage* img, const char* path, const char* name, in
 	szxBuf out;
 	memset(&out, 0, sizeof(out));
 	sb_put(&out, "RZX!", 4);
-	rr_put(&out, 0, 1);
-	rr_put(&out, 12, 1);
-	rr_put(&out, 0, 4);
+	sb_byte(&out, 0);
+	sb_byte(&out, 12);
+	sb_dword(&out, 0);
 	if (img->creator) {
 		sb_put(&out, img->creator, img->creatorLen);
 	} else {
@@ -664,11 +643,11 @@ int rzx_rec_image_write(rzxRecImage* img, const char* path, const char* name, in
 		memset(nam, 0, sizeof(nam));
 		strncpy(nam, name, sizeof(nam) - 1);
 		size_t clen = custom ? strlen(custom) + 1 : 0;
-		rr_put(&out, 0x10, 1);
-		rr_put(&out, (unsigned)(5 + 20 + 4 + clen), 4);
+		sb_byte(&out, 0x10);
+		sb_dword(&out, (unsigned)(5 + 20 + 4 + clen));
 		sb_put(&out, nam, 20);
-		rr_put(&out, major, 2);
-		rr_put(&out, minor, 2);
+		sb_word(&out, major);
+		sb_word(&out, minor);
 		if (clen) sb_put(&out, custom, clen);
 	}
 	int* keep = (int*)malloc(img->snaps * sizeof(int));

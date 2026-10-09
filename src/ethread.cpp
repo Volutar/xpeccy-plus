@@ -114,6 +114,7 @@ xThread::xThread() {
 	benchRecRoll = 0;
 	benchRecTake = 0;
 	benchRecFinal = 0;
+	benchRecNmi = 0;
 	earBlock = -1;
 	conf.emu.fast = 0;
 	finish = 0;
@@ -814,10 +815,17 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 				fprintf(stdout, " by %i to %i\n", n, rzx_rec_frames(comp));
 				benchRecRoll = 0;
 			}
+			if ((benchRecNmi > 0) && (rzx_rec_frames(comp) >= benchRecNmi) && (comp->cpu->regPC > 0x3fff)) {
+				fprintf(stdout, "rzx rec: nmi at frame %i\n", rzx_rec_frames(comp));
+				comp_irq(IRQ_NMI, comp);
+				benchRecNmi = -(rzx_rec_frames(comp) + 1);
+			} else if ((benchRecNmi < 0) && (rzx_rec_frames(comp) >= -benchRecNmi)) {
+				comp->flgNMIRQ = 0;		// let go after a frame, as emuCycle does
+				benchRecNmi = 0;
+			}
 			if ((benchRecJoin > 0) && (rzx_rec_frames(comp) >= benchRecJoin)) {
 				fprintf(stdout, "rzx rec: reset at frame %i\n", rzx_rec_frames(comp));
 				compReset(comp, RES_DEFAULT);
-				rzx_rec_touch();
 				benchRecJoin = 0;
 			} else if ((poke > 500) && !benchRecJoin && (rzx_rec_frames(comp) >= poke) && comp->cpu->flgIFF1) {
 				fprintf(stdout, "rzx rec: poke at frame %i, iff1 %i\n", rzx_rec_frames(comp), comp->cpu->flgIFF1 ? 1 : 0);

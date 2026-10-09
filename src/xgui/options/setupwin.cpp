@@ -1155,9 +1155,6 @@ void SetupWin::apply() {
 	// own, so load it and show them rather than writing these over it
 	std::string mid = std::string(getRFSData(ui.machbox).toLocal8Bit().data());
 	if (!mid.empty() && (mid != conf.macId)) {
-		emu_lock();
-		rzxr_stop(comp);	// a recording is of one machine
-		emu_unlock();
 		xm_set(mid);
 		start();
 		emit s_prf_changed();

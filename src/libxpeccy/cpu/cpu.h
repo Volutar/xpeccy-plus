@@ -137,7 +137,8 @@ enum {
 #define flgRetBRK flags[56]
 #define flgRFSH	flags[55]		// Z80: report M1 T4 (IRQ_CPU_RFSH); the ULA snow effect needs it
 #define flgCONT	flags[54]		// the machine contends the bus: report the start of each cycle
-#define flgINTOK flags[53]		// Z80: the last exec took an INT; whoever asks clears it (the RZX recorder)
+#define flgINTOK flags[53]		// Z80: the last exec took an INT; compExec clears it (the RZX recorder asks)
+#define flgNMIOK flags[52]		// Z80: ...and an NMI, the same way
 
 #define regCallCnt regs[63].ih
 #define regExcCode regs[63].l		// exception code if flgEXC

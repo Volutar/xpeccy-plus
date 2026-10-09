@@ -25,6 +25,7 @@ class xThread : public QThread {
 		int benchRecMark;	// ...a bookmark at this frame, 0: no
 		int benchRecRoll;	// ...back to it at this frame, 0: no
 		int benchRecTake;	// a recording loaded is played to this frame and taken over, 0: no
+		int benchRecNmi;	// ...an NMI at this frame, 0: no
 		int benchRecFinal;	// the file is also read back and written finalized beside it
 		int earBlock;		// the block the rom reads only part of, -1: none
 	public slots:

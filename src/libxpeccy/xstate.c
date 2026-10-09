@@ -266,15 +266,12 @@ int xstate_load(xState* st, Computer* comp) {
 	} else {
 		memcpy(&comp->rzx, rzxLive, rzxLen);
 		comp->rzx.frm.pos = rzxPos;
-		comp->rzx.rec = recState;
 		if (comp->rzx.play) rzxStop(comp);
 	}
 	// The same for a recording: one taken within it takes its log back with
 	// the machine, any other leaves the log where it is and makes a join.
-	if (st->m.rec != rzx_recording) {
-		comp->rzx.rec = recLive;
-		rzx_rec_touch();
-	}
+	comp->rzx.rec = (st->m.rec == rzx_recording) ? recState : recLive;
+	if (st->m.rec != rzx_recording) rzx_rec_touch();
 	return 1;
 }
 

@@ -552,6 +552,8 @@ int main(int ac,char** av) {
 				ethread.benchRecRoll = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-rzx-take")) {
 				ethread.benchRecTake = atoi(av[i++]);
+			} else if (!strcmp(parg,"--bench-rzx-rec-nmi")) {
+				ethread.benchRecNmi = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-rzx-rec-final")) {
 				ethread.benchRecFinal = 1;
 			} else if (!strcmp(parg,"--bench-state")) {

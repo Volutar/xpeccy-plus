@@ -675,6 +675,7 @@ void compReset(Computer* comp,int res) {
 	}
 	if (comp->rzx.play)
 		rzxStop(comp);
+	rzx_rec_touch();		// a recording goes on from the machine as the reset leaves it
 
 	if (res == RES_DEFAULT)
 		res = comp->resbank;
@@ -1022,8 +1023,11 @@ int compExec(Computer* comp) {
 		}
 	} else if (comp->rzx.rec.on) {
 		rzx_rec_step(comp, res2);
+		if (comp->cpu->flgNMIOK)	// no frame of the format holds an NMI: a join after it
+			rzx_rec_touch();
 	}
 	comp->cpu->flgINTOK = 0;		// asked by the recorder alone: no trace of it in a snapshot
+	comp->cpu->flgNMIOK = 0;
 	return comp_step_end(comp, res2 - res4, res2);
 }
 

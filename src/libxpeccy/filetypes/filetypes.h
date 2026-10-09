@@ -208,13 +208,11 @@ int rzx_rec_start(Computer*);
 int rzx_rec_take_over(Computer*);	// a recording being played goes on as this one
 void rzx_rec_bookmark(void);		// one at the next frame's end
 int rzx_rec_rollback(Computer*);	// to the last bookmark: frames back, -1 none
-int rzx_rec_marks(Computer*);
 void rzx_rec_pre(Computer*);		// before an exec, when a join or a bookmark is wanted
 extern int rzx_rec_marking;
 void rzx_rec_stop(Computer*);
 void rzx_rec_in(Computer*, int);
 void rzx_rec_step(Computer*, int t);
-int rzx_rec_join(Computer*);
 void rzx_rec_touch(void);		// the machine changed from outside: a join before the next opcode
 extern int rzx_rec_touched;
 int rzx_rec_frames(Computer*);

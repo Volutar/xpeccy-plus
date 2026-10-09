@@ -10,6 +10,7 @@
 #include <QRegularExpression>
 
 #include "xcore.h"
+#include "rzxrecord.h"
 #include "../filer.h"
 #include "../xgui/xgui.h"
 #include "autostart.h"
@@ -1050,6 +1051,7 @@ bool xm_set(std::string id) {
 	}
 	emu_lock();
 	conf.emu.pause |= PR_EXTRA;
+	rzxr_stop(conf.zx);		// a recording is of one machine
 	rewind_clear();
 	// the start and a machine put back to its defaults are not a change of machine
 	bool another = !conf.macId.empty() && (conf.macId != id);

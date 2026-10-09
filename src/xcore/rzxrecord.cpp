@@ -52,7 +52,7 @@ int rzxr_rollbacks() {
 	return rr_rollbacks;
 }
 
-double rzxr_slow_secs() {
+static double rzxr_slow_secs() {
 	return conf.zx ? rr_slowFrames / comp_fps(conf.zx) : 0;
 }
 
@@ -114,8 +114,8 @@ int rzxr_start(Computer* comp, const QString& path) {
 	return ERR_OK;
 }
 
-QString rzxr_stop(Computer* comp, bool finalize) {
-	if (!rzxr_on()) return QString();
+void rzxr_stop(Computer* comp, bool finalize) {
+	if (!rzxr_on()) return;
 	rr_join_writer();
 	rzxRecImage* img = rzx_rec_take(comp);
 	int frames = rzx_rec_image_frames(img);
@@ -124,7 +124,6 @@ QString rzxr_stop(Computer* comp, bool finalize) {
 	xlog(XLG_FILE, (err == ERR_OK) ? XLL_INFO : XLL_WARN, "rzx recording stopped: %i frames, %i rollbacks, %s",
 		frames, rr_rollbacks, (err == ERR_OK) ? "written" : "not written");
 	rr_say((err == ERR_OK) ? QString(" RZX saved: %0 ").arg(QFileInfo(rr_path).fileName()) : QString(" RZX not saved "));
-	return (err == ERR_OK) ? rr_path : QString();
 }
 
 void rzxr_bookmark() {

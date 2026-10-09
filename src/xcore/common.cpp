@@ -44,7 +44,6 @@ std::atomic<int> xUserResets(0);
 void x_user_reset(Computer* comp, int res) {
 	xUserResets.fetch_add(1);
 	compUserReset(comp, res);
-	rzx_rec_touch();
 }
 
 QString gethexword(int num) {

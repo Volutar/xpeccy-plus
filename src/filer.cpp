@@ -864,18 +864,25 @@ int quick_save(Computer* comp) {
 static xState* undoState = NULL;
 static std::string undoMac;
 
+// A quick save may be from before what a recording has logged since, so the
+// recording joins there instead of going back with the machine.
+static int quick_xstate_load(xState* st, Computer* comp) {
+	rzxRecPos rec = comp->rzx.rec;
+	int res = xstate_load(st, comp);
+	if (res && rec.on) {
+		comp->rzx.rec = rec;
+		rzx_rec_touch();
+	}
+	return res;
+}
+
 int quick_load(Computer* comp) {
 	int res = 0;
 	emu_lock();
 	if (!undoState) undoState = xstate_create();
 	undoMac = (undoState && xstate_save(undoState, comp)) ? conf.macId : std::string();
-	rzxRecPos rec = comp->rzx.rec;
 	if (quickState && (quickMac == conf.macId))
-		res = xstate_load(quickState, comp);
-	if (res && rec.on) {			// a recording joins there: the log may have moved on
-		comp->rzx.rec = rec;
-		rzx_rec_touch();
-	}
+		res = quick_xstate_load(quickState, comp);
 	if (!res) {
 		QString path = quick_path();
 		if (!QFileInfo::exists(path))
@@ -893,12 +900,7 @@ int quick_undo(Computer* comp) {
 	emu_lock();
 	xState* was = xstate_create();
 	bool kept = was && xstate_save(was, comp);
-	rzxRecPos rec = comp->rzx.rec;
-	int res = xstate_load(undoState, comp);
-	if (res && rec.on) {
-		comp->rzx.rec = rec;
-		rzx_rec_touch();
-	}
+	int res = quick_xstate_load(undoState, comp);
 	if (res && kept) {
 		xstate_destroy(undoState);
 		undoState = was;
@@ -935,6 +937,19 @@ QString file_ask_save(const char* title, const char* filter, const char* ext, co
 		if (QMessageBox::warning(filer->parentWidget(), title, q, QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
 			return QString();
 	}
+	conf.lastDir = std::string(QFileInfo(path).dir().absolutePath().toLocal8Bit().data());
+	return path;
+}
+
+// one file of one kind, to open
+QString file_ask_load(const char* title, const char* filter) {
+	filer->setWindowTitle(title);
+	filer->setNameFilter(filter);
+	filer->setAcceptMode(QFileDialog::AcceptOpen);
+	filer->setDirectory(conf.lastDir.c_str());
+	filer->setHistory(QStringList());
+	if (!filer->exec()) return QString();
+	QString path = filer->selectedFiles().first();
 	conf.lastDir = std::string(QFileInfo(path).dir().absolutePath().toLocal8Bit().data());
 	return path;
 }

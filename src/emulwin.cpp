@@ -1206,7 +1206,7 @@ void MainWin::rzxContStep() {
 // A file on disk loses its bookmarks, the snapshots kept to roll back to.
 void MainWin::rzxFinalizeFile() {
 	pause(true, PR_FILE);
-	QString path = QFileDialog::getOpenFileName(this, "Finalize RZX", QString::fromLocal8Bit(conf.lastDir.c_str()), "RZX recording (*.rzx)");
+	QString path = file_ask_load("Finalize RZX", "RZX recording (*.rzx)");
 	if (!path.isEmpty()) {
 		int err = rzxr_finalize_file(path);
 		if (err == ERR_OK) {
@@ -2776,7 +2776,6 @@ void MainWin::watchMedia() {
 
 void MainWin::setMachine(const std::string& id) {
 	emu_lock();		// onPrfChange resets the machine, keep it out of the emulation too
-	rzxr_stop(conf.zx);	// a recording is of one machine
 	xm_set(id);
 	onPrfChange();
 	emu_unlock();
