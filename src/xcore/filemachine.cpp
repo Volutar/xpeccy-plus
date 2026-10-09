@@ -166,15 +166,22 @@ xFileMacPick fm_pick(int ftype, const char* path) {
 	auto fits = [&](const std::string& id) {
 		return fm_runs(id, row->need, snap) && ((row->need != FMN_EXACT) || fm_exact_on(id, snap, target));
 	};
+	// The user's own machine when it can take the file: a machine a file
+	// switched to was for that file. Then the one running, if it can.
+	if (fits(conf.macBase)) {
+		if (conf.macBase != conf.macId) {
+			pick.target = conf.macBase;
+			xlog(XLG_FILE, XLL_INFO, "%s: back from %s to %s", row->key, conf.macId.c_str(), pick.target.c_str());
+		}
+		return pick;
+	}
 	if (fits(conf.macId)) return pick;
-	// the user's own machine first, then the one the file names, then every
-	// other one that can take it
+	// the one the file names, then every other one that can take it
 	std::vector<std::string> can;
 	auto add = [&](const std::string& id) {
 		if (!id.empty() && (std::find(can.begin(), can.end(), id) == can.end()) && fm_runs(id, row->need, snap))
 			can.push_back(id);
 	};
-	if (fits(conf.macBase)) add(conf.macBase);
 	add(target);
 	foreach(const xMachine& mac, xm_list())
 		add(mac.id);

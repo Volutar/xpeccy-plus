@@ -8,7 +8,7 @@
 // the words below or to the id of a machine that always takes it. When this
 // is asked at all is media_machine()'s business, in filer.cpp.
 
-#define FM_AUTO	"auto"		// switch only when the running machine cannot take it
+#define FM_AUTO	"auto"		// switch only when the running machine cannot take it, and back after
 #define FM_ASK	"ask"		// the same, but the user picks the machine
 #define FM_KEEP	"keep"		// never switch
 
