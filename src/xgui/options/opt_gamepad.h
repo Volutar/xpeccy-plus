@@ -103,6 +103,8 @@ class xGamepadWidget : public QWidget {
 		QComboBox* cbDevice;
 		QLabel* labTry;
 		QLabel* labGame;			// player 1 on a game's .pad
+		QPushButton* btnRevert;			// ...and the way off it
+		QPushButton* btnReset;
 		QButtonGroup* grpScheme;
 		QComboBox* cbQaop;
 		QTableView* table;
@@ -123,6 +125,7 @@ class xGamepadWidget : public QWidget {
 		void saveAs();
 		void load();
 		void reset();
+		void revert();
 		void tableChanged();
 		void tell();
 };

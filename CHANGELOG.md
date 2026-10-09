@@ -103,7 +103,8 @@ before that point is upstream's history and is not repeated here.
     that wants QAOP plays on the arrows.
   - Bindings save to a .pad file and load back; an older .pad or config is brought across.
     A .pad named after an image comes with it for player 1, over the player's own bindings
-    and until the next image; Save as offers that name, and a change asks where it goes.
+    and until the next image; Save as offers that name, a change asks where it goes, and
+    Revert goes back to the player's own.
   - The Input menu and the toolbar button's list switch the first player's joystick mid-game.
   - Picking Kempston switches it on for the machine, and a pad never plugged in before takes a
     free player and opens the window. A pad coming or going - plugged in or pulled out, woken up

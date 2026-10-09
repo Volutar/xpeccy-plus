@@ -1897,12 +1897,7 @@ void xGamepadController::rescan() {
 // The player's own table comes back first, whatever the image: a game's
 // lasts until the next one. Only player 1 takes a game's file.
 bool xGamepadController::gameImage(const QString& image) {
-	bool changed = false;
-	if (!gameFile.isEmpty()) {
-		gpada->setConfLines(gameOwn);
-		gameKeep();
-		changed = true;
-	}
+	bool changed = gameRevert();
 	if (!gameOn || image.isEmpty()) return changed;
 	QFileInfo fi(image);
 	QString pad = fi.dir().filePath(fi.completeBaseName() + ".pad");
@@ -1919,6 +1914,13 @@ bool xGamepadController::gameImage(const QString& image) {
 	gameOwn = own;
 	gameFile = pad;
 	gameEdit = GE_ASK;
+	return true;
+}
+
+bool xGamepadController::gameRevert() {
+	if (gameFile.isEmpty()) return false;
+	gpada->setConfLines(gameOwn);
+	gameKeep();
 	return true;
 }
 

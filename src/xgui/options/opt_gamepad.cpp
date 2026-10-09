@@ -619,9 +619,6 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	grpScheme->button(GPS_KEMPSTON)->setToolTip("Switched on by itself when picked.\nFire 2-4 come with an 8-button one");
 	grid->addWidget(new QLabel("Joystick"), row, 0, Qt::AlignTop);
 	grid->addWidget(radios, row++, 1);
-	labGame = padNote(QString());
-	labGame->setVisible(false);
-	grid->addWidget(labGame, row++, 1);
 
 	model = new xPadTableModel(gp, this);
 	table = new QTableView;
@@ -654,8 +651,11 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	QPushButton* btnSave = sideButton("Save as...", ":/images/floppy.png");
 	btnSave->setToolTip("Keep these bindings in a file, for a game or to share");
 	QPushButton* btnLoad = sideButton("Load...", ":/images/fileopen.png");
-	QPushButton* btnReset = sideButton("Reset", ":/images/refresh.png");
+	btnReset = sideButton("Reset", ":/images/refresh.png");
 	btnReset->setToolTip("Back to the joystick's defaults");
+	labGame = padNote(QString());
+	btnRevert = sideButton("Revert", ":/images/cancel.png");
+	btnRevert->setToolTip("Back to your own bindings");
 	QVBoxLayout* bbox = new QVBoxLayout;
 	bbox->addWidget(btnSave);
 	bbox->addWidget(btnLoad);
@@ -688,9 +688,15 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	tcol->addWidget(table, 1);
 	tcol->addLayout(abox);
 	tcol->addLayout(rbox);
-	QHBoxLayout* tbox = new QHBoxLayout;
-	tbox->addLayout(tcol, 1);
-	tbox->addLayout(bbox);
+	// the game's line sits beside Revert, over the table and Save as
+	QGridLayout* tbox = new QGridLayout;
+	tbox->addWidget(labGame, 0, 0, Qt::AlignRight | Qt::AlignVCenter);
+	tbox->addWidget(btnRevert, 0, 1);
+	tbox->addLayout(tcol, 1, 0);
+	tbox->addLayout(bbox, 1, 1);
+	tbox->setColumnStretch(0, 1);
+	labGame->setVisible(false);
+	btnRevert->setVisible(false);
 	grid->addLayout(tbox, row++, 0, 1, 2);
 	grid->setRowStretch(row, 1);
 
@@ -715,6 +721,7 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 	connect(btnSave, &QPushButton::clicked, this, [this]() {saveAs();});
 	connect(btnLoad, &QPushButton::clicked, this, [this]() {load();});
 	connect(btnReset, &QPushButton::clicked, this, [this]() {reset();});
+	connect(btnRevert, &QPushButton::clicked, this, [this]() {revert();});
 	connect(sldTurbo, &QSlider::valueChanged, this, [this](int v) {
 		gpad->setTurboRate(v);
 		labTurbo->setText(QString("%0 Hz").arg(v));
@@ -838,7 +845,10 @@ void xGamepadWidget::refresh() {
 	QString game = (gpad == conf.gpctrl->gpada) ? conf.gpctrl->gameFile : QString();
 	labGame->setText(QString("From %0, until the next image").arg(QFileInfo(game).fileName()));
 	labGame->setToolTip(QDir::toNativeSeparators(game));
-	labGame->setVisible(!game.isEmpty());
+	bool onGame = !game.isEmpty();
+	labGame->setVisible(onGame);
+	btnRevert->setVisible(onGame);
+	btnReset->setEnabled(!onGame);		// it would reset the game's table, not the player's
 	int dz = (gpad->deadZone() * 100 + 16384) / 32768;	// the nearest percent
 	sldDead->blockSignals(true);
 	sldDead->setValue(dz);
@@ -939,6 +949,14 @@ void xGamepadWidget::reset() {
 	if (!areSure("Back to the joystick's defaults? Extra rows go.")) return;
 	gpad->resetRows();
 	tableChanged();
+}
+
+// Nothing to ask: an edit made so far is in the game's file already, or was
+// meant to last only until the next image.
+void xGamepadWidget::revert() {
+	conf.gpctrl->gameRevert();
+	refresh();
+	tell();
 }
 
 void xGamepadWidget::tryShow(const xJoyMapEntry& ev) {

@@ -1288,7 +1288,7 @@ void SetupWin::apply() {
 	conf.kmapName = kmname;
 	loadKeys();
 	conf.gpctrl->gameOn = cbPadFiles->isChecked();
-	if (!conf.gpctrl->gameOn) conf.gpctrl->gameImage(QString());	// own bindings back now
+	if (!conf.gpctrl->gameOn) conf.gpctrl->gameRevert();	// own bindings back now
 // flp
 	difSetHW(comp->dif, getRFIData(diskTypeBox));
 	setFlagBit(bdtbox->isChecked(),&fdcFlag,FDC_FAST);

@@ -289,6 +289,7 @@ class xGamepadController : public QObject {
 		int gameEdit = 0;			// GE_*: where a change to it goes
 		bool gameImage(const QString&);		// an image was opened: true if player 1's table changed
 		void gameKeep();			// the game's table becomes the player's own
+		bool gameRevert();			// the player's own table back, the game's dropped: true if one was on
 		QStringList tableLines(int);		// what config.conf keeps for a player
 		bool gameSave(const QString&);		// player 1's table as a game's file: without the player's own rows
 		QStringList seen;		// guids of the pads met so far, see newPad
