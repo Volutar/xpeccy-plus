@@ -355,14 +355,14 @@ void MainWin::initBars() {
 	add("key.rewind", "Time", rewAct, TB_PLAIN);
 	// not the key's own action: a tape armed to start by itself counts as playing
 	// there, so a click on a button that shows it stopped would stop it
-	tapeAct = new QAction(QIcon(":/images/tape-play.png"), "Tape Play", this);
+	tapeAct = new QAction(QIcon(":/images/tape-play.png"), "Tape Play/Stop", this);
 	connect(tapeAct, &QAction::triggered, this, [this]() {
 		tapStateChanged(TW_STATE, conf.zx->tape->on ? TWS_STOP : TWS_PLAY);
 	});
-	cutActs.append({tapeAct, QString("Tape Play"), XCUT_TAPLAY});
+	cutActs.append({tapeAct, QString("Tape Play/Stop"), XCUT_TAPLAY});
 	tapeAct->setCheckable(true);
 	add("key.tape.play", "Media", tapeAct, TB_PLAIN);
-	tapeRecAct = cut("Tape Record", XCUT_TAPREC, "tape-rec");
+	tapeRecAct = cut("Tape Record/Stop", XCUT_TAPREC, "tape-rec");
 	tapeRecAct->setCheckable(true);
 	add("key.tape.rec", "Media", tapeRecAct, TB_PLAIN);
 	add("key.tapewin", "Media", cut("Tape Player", XCUT_TAPWIN, "tape"), TB_PLAIN);

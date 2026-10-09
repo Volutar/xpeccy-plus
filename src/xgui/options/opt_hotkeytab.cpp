@@ -7,6 +7,7 @@
 #include <QFont>
 #include <QMenu>
 #include <QMessageBox>
+#include <QSet>
 #include <QStyledItemDelegate>
 
 // PortableText, not NativeText: NativeText follows Qt's own Ctrl/Meta convention,
@@ -37,53 +38,68 @@ static QString latinKeys(const QString& txt) {
 
 // model
 
-// The sections are the menus', so a key is found where its command is. The
-// debugger's own keys go by the part of it they work in.
-enum {HK_FILE = 0, HK_MACHINE, HK_TIME, HK_MEDIA, HK_VIEW, HK_INPUT, HK_DEBUG,
+// The sections are mostly the menus', so a key is found where its command is, in
+// the menu's order; the RZX player sits with the RZX recording. The debugger's own
+// keys go by the part of it they work in.
+enum {HK_FILE = 0, HK_MACHINE, HK_TIME, HK_TAPE, HK_CAPTURE, HK_RZX, HK_VIEW, HK_INPUT, HK_DEBUG,
 	HK_DEBUGGER, HK_DISASM, HK_DUMP, HK_OTHER, HK_COUNT};
-static const char* hk_names[HK_COUNT] = {"File", "Machine", "Time", "Media", "View", "Input", "Debug",
+static const char* hk_names[HK_COUNT] = {"File", "Machine", "Time", "Tape", "Capture", "RZX", "View", "Input", "Debug",
 	"Debugger", "Disassembler", "Memory dump", "Other"};
 
+static const struct {int sec; int id;} hk_place[] = {
+	{HK_FILE, XCUT_LOAD}, {HK_FILE, XCUT_RELOAD}, {HK_FILE, XCUT_FAVORITE},
+	{HK_FILE, XCUT_SAVE}, {HK_FILE, XCUT_FASTSAVE},
+	{HK_FILE, XCUT_QUICKSAVE}, {HK_FILE, XCUT_QUICKLOAD}, {HK_FILE, XCUT_QUICKUNDO},
+	{HK_FILE, XCUT_OPTIONS}, {HK_FILE, XCUT_HOTKEYS},
+	{HK_MACHINE, XCUT_RESET}, {HK_MACHINE, XCUT_RES_48}, {HK_MACHINE, XCUT_RES_128}, {HK_MACHINE, XCUT_RES_DOS},
+	{HK_MACHINE, XCUT_RES_SERVICE}, {HK_MACHINE, XCUT_NMI}, {HK_MACHINE, XCUT_TURBO},
+	{HK_MACHINE, XCUT_SPEED_UP}, {HK_MACHINE, XCUT_SPEED_DOWN}, {HK_MACHINE, XCUT_MUTE},
+	{HK_TIME, XCUT_PAUSE}, {HK_TIME, XCUT_FAST}, {HK_TIME, XCUT_SLOWMO}, {HK_TIME, XCUT_FFWD}, {HK_TIME, XCUT_REWIND},
+	{HK_TAPE, XCUT_TAPWIN}, {HK_TAPE, XCUT_TAPLAY}, {HK_TAPE, XCUT_TAPREC}, {HK_TAPE, XCUT_TAPE_START},
+	{HK_CAPTURE, XCUT_SCRSHOT}, {HK_CAPTURE, XCUT_COMBOSHOT}, {HK_CAPTURE, XCUT_VIDREC}, {HK_CAPTURE, XCUT_WAV_OUT},
+	{HK_RZX, XCUT_RZXWIN}, {HK_RZX, XCUT_RZXREC}, {HK_RZX, XCUT_RZXCONT}, {HK_RZX, XCUT_RZXMARK}, {HK_RZX, XCUT_RZXBACK},
+	{HK_RZX, XCUT_RZXFINAL}, {HK_RZX, XCUT_RZXFINFILE},
+	{HK_VIEW, XCUT_SIZEX1}, {HK_VIEW, XCUT_SIZEX2}, {HK_VIEW, XCUT_SIZEX3}, {HK_VIEW, XCUT_SIZEX4},
+	{HK_VIEW, XCUT_SIZEX5}, {HK_VIEW, XCUT_SIZEX6}, {HK_VIEW, XCUT_FULLSCR}, {HK_VIEW, XCUT_RATIO},
+	{HK_VIEW, XCUT_NOFLICK}, {HK_VIEW, XCUT_RELOAD_SHD}, {HK_VIEW, XCUT_KEYBOARD},
+	{HK_INPUT, XCUT_GRABKBD}, {HK_INPUT, XCUT_MOUSE}, {HK_INPUT, XCUT_PADWIN},
+	{HK_DEBUG, XCUT_DEBUG}, {HK_DEBUG, XCUT_SCRWIN}, {HK_DEBUG, XCUT_SNDWIN},
+};
+
+// a key nobody placed yet goes under Other: seen, not lost under View
 static int hk_section(const xShortcut& cut) {
 	if (!(cut.grp & SCG_MAIN)) {
 		if (cut.grp & SCG_DISASM) return HK_DISASM;
 		if (cut.grp & SCG_DUMP) return HK_DUMP;
 		return HK_DEBUGGER;
 	}
-	switch (cut.id) {
-		case XCUT_LOAD: case XCUT_RELOAD: case XCUT_SAVE: case XCUT_FASTSAVE: case XCUT_FAVORITE:
-		case XCUT_SCRSHOT: case XCUT_COMBOSHOT: case XCUT_VIDREC: case XCUT_RZXREC: case XCUT_WAV_OUT:
-		case XCUT_RZXCONT: case XCUT_RZXMARK: case XCUT_RZXBACK: case XCUT_RZXFINAL: case XCUT_RZXFINFILE: case XCUT_OPTIONS:
-		case XCUT_QUICKSAVE: case XCUT_QUICKLOAD: case XCUT_QUICKUNDO: case XCUT_HOTKEYS:
-			return HK_FILE;
-		case XCUT_RESET: case XCUT_RES_48: case XCUT_RES_128: case XCUT_RES_DOS: case XCUT_RES_SERVICE:
-		case XCUT_NMI: case XCUT_TURBO: case XCUT_SPEED_UP: case XCUT_SPEED_DOWN: case XCUT_MUTE:
-			return HK_MACHINE;
-		case XCUT_PAUSE: case XCUT_FAST: case XCUT_REWIND: case XCUT_FFWD: case XCUT_SLOWMO:
-			return HK_TIME;
-		case XCUT_TAPWIN: case XCUT_TAPLAY: case XCUT_TAPREC: case XCUT_TAPE_START: case XCUT_RZXWIN:
-			return HK_MEDIA;
-		case XCUT_MOUSE: case XCUT_GRABKBD: case XCUT_PADWIN:
-			return HK_INPUT;
-		case XCUT_DEBUG: case XCUT_SCRWIN: case XCUT_SNDWIN:
-			return HK_DEBUG;
-		case XCUT_SIZEX1: case XCUT_SIZEX2: case XCUT_SIZEX3: case XCUT_SIZEX4: case XCUT_SIZEX5:
-		case XCUT_SIZEX6: case XCUT_FULLSCR: case XCUT_RATIO: case XCUT_NOFLICK:
-		case XCUT_RELOAD_SHD: case XCUT_KEYBOARD:
-			return HK_VIEW;
-	}
-	return HK_OTHER;		// a key nobody placed yet: seen, not lost under View
+	return HK_OTHER;
 }
 
 xHotkeyModel::xHotkeyModel(const xHotkeySet* s, QObject* p):xTableModel(p) {
 	set = s;
 	QVector<xRow> sec[HK_COUNT];
 	xShortcut* tab = shortcut_tab();
-	for (int i = 0; tab[i].text; i++) {
+	// "Debugger: Step in" under Debugger is "Step in", "RZX: Record" under RZX is "Record"
+	auto row = [tab](int i, int sc) {
 		QString txt(tab[i].text);
-		int col = txt.indexOf(": ");		// "Debugger: Step in" under Debugger is "Step in"
-		if (!(tab[i].grp & SCG_MAIN) && (col > 0)) txt = txt.mid(col + 2);
-		sec[hk_section(tab[i])].append({i, txt});
+		int col = txt.indexOf(": ");
+		if (((sc == HK_RZX) || !(tab[i].grp & SCG_MAIN)) && (col > 0)) txt = txt.mid(col + 2);
+		return xRow{i, txt};
+	};
+	QSet<int> placed;
+	for (const auto& pl : hk_place) {
+		for (int i = 0; tab[i].text; i++) {
+			if ((tab[i].id != pl.id) || !(tab[i].grp & SCG_MAIN)) continue;
+			sec[pl.sec].append(row(i, pl.sec));
+			placed.insert(i);
+			break;
+		}
+	}
+	for (int i = 0; tab[i].text; i++) {
+		if (placed.contains(i)) continue;
+		int sc = hk_section(tab[i]);
+		sec[sc].append(row(i, sc));
 	}
 	for (int s = 0; s < HK_COUNT; s++) {
 		if (sec[s].isEmpty()) continue;
