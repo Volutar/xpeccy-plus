@@ -2468,7 +2468,7 @@ thin, lower it again after a long clean spell</string>
                </font>
               </property>
               <property name="text">
-               <string>Starts a tape or a disk at once; hold Shift as you open one to choose</string>
+               <string>What opening a tape or a disk does; hold Shift as you open one to choose</string>
               </property>
              </widget>
             </item>
@@ -2485,13 +2485,10 @@ thin, lower it again after a long clean spell</string>
              </widget>
             </item>
             <item row="0" column="0">
-             <widget class="QCheckBox" name="cbAutorun">
+             <widget class="QComboBox" name="cbAutorun">
               <property name="toolTip">
-               <string>Opening a tape or a disk resets the machine and starts it,
+               <string>Run resets the machine and starts a tape or a disk,
 the way a snapshot starts itself</string>
-              </property>
-              <property name="text">
-               <string>Auto-run opened media</string>
               </property>
              </widget>
             </item>

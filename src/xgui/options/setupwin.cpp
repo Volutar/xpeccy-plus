@@ -551,6 +551,9 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	diskTypeBox->addItem("None",DIF_NONE);
 	diskTypeBox->addItem("Beta Disk (WD1793)",DIF_BDI);
 	diskTypeBox->addItem("+3 (uPD765)",DIF_P3DOS);
+	ui.cbAutorun->addItem("Run opened media", AR_RUN);
+	ui.cbAutorun->addItem("Mount opened media", AR_MOUNT);
+	ui.cbAutorun->addItem("Ask: run or mount", AR_ASK);
 	// the order flp_format_trk_buf() lays the 16 sectors out in, for each value
 	cbFlpInterleave->addItem("1, 9, 2, 10, 3… (TR-DOS)", 8);
 	cbFlpInterleave->addItem("1, 2, 3, 4, 5… (in a row)", 1);
@@ -1053,7 +1056,7 @@ void SetupWin::start() {
 	diskTypeBox->setCurrentIndex(diskTypeBox->findData(comp->dif->type));
 	bdtbox->setChecked(fdcFlag & FDC_FAST);
 	ui.mempaths->setChecked(conf.storePaths);
-	ui.cbAutorun->setChecked(conf.autorun);
+	setRFIndex(ui.cbAutorun, conf.autorun);
 	ftbox->fill();
 	int fitted = 0;
 	while ((fitted < 4) && comp->dif->flp[fitted]->fitted) fitted++;
@@ -1291,7 +1294,7 @@ void SetupWin::apply() {
 	setFlagBit(bdtbox->isChecked(),&fdcFlag,FDC_FAST);
 	conf.boot = cbAddBoot->isChecked() ? 1 : 0;
 	conf.storePaths = ui.mempaths->isChecked() ? 1 : 0;
-	conf.autorun = ui.cbAutorun->isChecked() ? 1 : 0;
+	conf.autorun = getRFIData(ui.cbAutorun);
 	ftbox->apply();
 	flp_set_interleave(getRFIData(cbFlpInterleave));
 	// a drive taken off the cable takes its disk with it: a changed one is

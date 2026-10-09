@@ -87,6 +87,8 @@ void media_set_current(const QString& path);
 // the machine that file should be opened on, before it is (xcore/filemachine.h):
 // *mac comes back empty to keep the running one, false means do not open it
 bool media_machine(Computer*, const QString& path, int id, int drv, int run, std::string* mac);
+// a tape, or a disk going into drive A: there is a choice between running it and mounting it
+bool media_runnable(Computer*, const QString& path, int id, int drv);
 // AS_* the last loaded file would need to start, see xcore/autostart.h
 int file_autostart_kind();
 // reset the machine and start what was just opened, if run says so

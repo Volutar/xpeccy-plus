@@ -56,6 +56,14 @@ static int rec_id(const char** tab, const std::string& nam, int def) {
 		if (nam == tab[i]) return i;
 	return def;
 }
+
+static const char* autorun_name[] = {"mount", "run", "ask", NULL};	// AR_* order
+
+// before Ask it was yes/no, and yes was the default, always written out: only no was chosen
+static int autorun_of(const std::string& val) {
+	if (val == "no") return AR_MOUNT;
+	return rec_id(autorun_name, val, AR_ASK);
+}
 xConfig conf;
 
 void conf_init(char* wpath, char* confdir) {
@@ -137,7 +145,7 @@ void conf_init(char* wpath, char* confdir) {
 	conf.rec.probeWorks = 0;
 	conf.running = 0;
 	conf.boot = 1;
-	conf.autorun = 1;
+	conf.autorun = AR_ASK;		// asked on the first tape or disk opened
 	conf.tape.rewind = 0;		// a tape that ran out stays there until it is asked for
 	conf.tape.flash = 1;		// both only refine fast loading, which the user switches
 	conf.tape.edge = 1;
@@ -182,7 +190,7 @@ void saveConfig() {
 	fprintf(cfile, "savepaths = %s\n", YESNO(conf.storePaths));
 	fprintf(cfile, "fdcturbo = %s\n", YESNO(fdcFlag & FDC_FAST));
 	fprintf(cfile, "addboot = %s\n", YESNO(conf.boot));
-	fprintf(cfile, "autorun = %s\n", YESNO(conf.autorun));
+	fprintf(cfile, "autorun = %s\n", autorun_name[conf.autorun]);
 	fprintf(cfile, "exit.confirm = %s\n",YESNO(conf.confexit));
 	fprintf(cfile, "pause.inactive = %s\n", YESNO(conf.pauseInactive));
 	fprintf(cfile, "port = %i\n", conf.port);
@@ -1166,7 +1174,7 @@ void loadConfig() {
 					if (pnam == "keywin.dock") conf.keywin.dock = arg.b;
 					if (pnam == "keywin.width") conf.keywin.width = arg.i;
 					if (pnam == "addboot") conf.boot = arg.b;
-					if (pnam == "autorun") conf.autorun = arg.b;
+					if (pnam == "autorun") conf.autorun = autorun_of(pval);
 					if (pnam == "exit.confirm") conf.confexit = arg.b;
 					if (pnam == "pause.inactive") conf.pauseInactive = arg.b;
 					if (pnam == "flpinterleave") flp_set_interleave(arg.i);

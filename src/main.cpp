@@ -447,7 +447,8 @@ int main(int ac,char** av) {
 	int hlp = 0;
 	int drv = 0;
 	int lab = 1;
-	int astart = (cli_astart < 0) ? conf.autorun : cli_astart;
+	// naming a file on the command line is the answer to Ask: --no-autostart is the other one
+	int astart = (cli_astart >= 0) ? cli_astart : (conf.autorun != AR_MOUNT);
 	xAdr xadr;
 	int tmpi;
 	int bnFrames = 0;

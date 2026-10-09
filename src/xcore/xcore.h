@@ -698,6 +698,9 @@ typedef struct {
 	unsigned probeWorks;
 } xRecord;
 
+// conf.autorun, and the run argument of an open: AR_ASK is resolved before the file is read
+enum {AR_MOUNT = 0, AR_RUN, AR_ASK};
+
 struct xConfig {
 	// the machine, one per process, and the workspace around it
 	Computer* zx;
@@ -722,7 +725,7 @@ struct xConfig {
 	unsigned running:1;
 	unsigned storePaths:1;		// store tape/disk paths
 	unsigned boot:1;		// add boot to trdos floppies
-	unsigned autorun:1;		// reset and start media opened from the gui
+	unsigned autorun:2;		// AR_*: what opening a tape or a disk from the gui does
 	unsigned confexit:1;		// confirm on exit
 	unsigned pauseInactive:1;	// pause while another application has the focus
 	int xpos;			// window position
