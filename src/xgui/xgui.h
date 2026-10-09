@@ -33,6 +33,7 @@ int askYNC(const char*);
 void showInfo(const char*);
 
 int getRFIData(QComboBox*);
+QString getRFSData(QComboBox*);
 void setRFIndex(QComboBox*, QVariant, int = 0);
 int comboFitWidth(QComboBox*);
 
@@ -157,6 +158,9 @@ class xOptSheet {
 
 // a control and what goes after it, as one field of a sheet
 QWidget* fieldPair(QWidget*, QWidget*, bool);
+
+// the machines, parted by family (options/setupwin.cpp)
+void fill_machine_list(QComboBox*);
 
 // a window over the middle of another, and the first time a window is shown,
 // over the one it belongs to (see center_over in classes.cpp); a window with

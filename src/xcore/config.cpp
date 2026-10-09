@@ -58,6 +58,7 @@ static int rec_id(const char** tab, const std::string& nam, int def) {
 }
 
 static const char* autorun_name[] = {"mount", "run", "ask", NULL};	// AR_* order
+static const char* start_name[] = {"last", "ask", "this", NULL};	// MS_* order
 
 // before Ask it was yes/no, and yes was the default, always written out: only no was chosen
 static int autorun_of(const std::string& val) {
@@ -176,6 +177,15 @@ static int hold_mode(const std::string& val) {
 	return (val == "yes") ? XHOLD_HOLD : rec_id(holdNames, val, XHOLD_HYBRID);
 }
 
+// Unset, Ask, or a machine of the user's that is gone
+static bool start_this() {
+	return (conf.macStart == MS_THIS) && xm_find(conf.macStartId);
+}
+
+bool start_asks() {
+	return (conf.macStart != MS_LAST) && !start_this();
+}
+
 void saveConfig() {
 	FILE* cfile = fopen(conf.path.confFile.c_str(), "wb");
 	if (!cfile) {
@@ -186,6 +196,8 @@ void saveConfig() {
 	fprintf(cfile,"[GENERAL]\n\n");
 	fprintf(cfile, "schema = 4\n");
 	fprintf(cfile, "machine = %s\n", conf.macId.c_str());
+	if (conf.macStart != MS_UNSET) fprintf(cfile, "start = %s\n", start_name[conf.macStart]);
+	if (!conf.macStartId.empty()) fprintf(cfile, "start.machine = %s\n", conf.macStartId.c_str());
 	fprintf(cfile, "lastdir = %s\n", conf.lastDir.c_str());
 	fprintf(cfile, "savepaths = %s\n", YESNO(conf.storePaths));
 	fprintf(cfile, "fdcturbo = %s\n", YESNO(fdcFlag & FDC_FAST));
@@ -753,6 +765,8 @@ void loadConfig() {
 	hotkeys_load_begin();
 	conf.xpos = -1;
 	conf.ypos = -1;
+	conf.macStart = MS_UNSET;	// asked on the first start
+	conf.macStartId.clear();
 	conf.keywin.dock = 0;
 	conf.keywin.width = 0;
 	conf.vid.border = VID_BRD_FULL;
@@ -1158,6 +1172,8 @@ void loadConfig() {
 				case SECT_GENERAL:
 					if (pnam=="schema") schema = arg.i;
 					if (pnam=="machine") macwant = pval;
+					if (pnam == "start") conf.macStart = rec_id(start_name, pval, MS_UNSET);
+					if (pnam == "start.machine") conf.macStartId = pval;
 					if (pnam=="lastdir") conf.lastDir = pval;
 					if ((pnam == "recent") && (conf.recentList.size() < RECENT_MAX))
 						conf.recentList.append(QString::fromLocal8Bit(pval.c_str()));
@@ -1221,6 +1237,8 @@ void loadConfig() {
 		std::string file = oldprf.count(pnm) ? oldprf[pnm] : "xpeccy.conf";
 		ok = xm_migrate(pnm.empty() ? std::string("default") : pnm, file);
 	} else {
+		// a start takes the one Options names; a config read again keeps its own
+		if (!conf.running && start_this()) macwant = conf.macStartId;
 		ok = xm_set(macwant);
 	}
 	if (!ok) {

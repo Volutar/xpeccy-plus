@@ -6,6 +6,7 @@
 #include <QSet>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QDialogButtonBox>
 #include <QCheckBox>
 #include <QPushButton>
 #include <QPointer>
@@ -2809,6 +2810,39 @@ void MainWin::setMachine(const std::string& id) {
 	onPrfChange();
 	emu_unlock();
 	emit s_machine();
+}
+
+// A start Options says to ask about, or the first one: which machine, and what
+// the next start does. Before the window shows, so nothing has run on it yet.
+void MainWin::askStartMachine() {
+	QDialog dlg;
+	dlg.setWindowTitle("Start Machine");
+	QComboBox* mac = new QComboBox;
+	fill_machine_list(mac);
+	setRFIndex(mac, QString::fromLocal8Bit(conf.macId.c_str()));
+	QComboBox* next = new QComboBox;
+	next->addItem("Start the last one used", MS_LAST);
+	next->addItem("Ask again", MS_ASK);
+	next->addItem("Start this one", MS_THIS);
+	setRFIndex(next, conf.macStart);		// unset is the first, the last one used
+	next->setToolTip("Options > Machine can change it");
+	QDialogButtonBox* bbox = new QDialogButtonBox;
+	bbox->addButton("Start", QDialogButtonBox::AcceptRole)->setIcon(QIcon(":/images/play.png"));
+	connect(bbox, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+	QGridLayout* lay = new QGridLayout(&dlg);
+	lay->addWidget(new QLabel("Which machine to start?"), 0, 0, 1, 2);
+	lay->addWidget(mac, 1, 0, 1, 2);
+	lay->addWidget(new QLabel("Next time"), 2, 0);
+	lay->addWidget(next, 2, 1);
+	lay->addWidget(bbox, 3, 0, 1, 2);
+	lay->setColumnStretch(1, 1);
+	dlg.setMinimumWidth(320);
+	if (dlg.exec() != QDialog::Accepted) return;	// closed: this start takes what is there
+	std::string id = getRFSData(mac).toLocal8Bit().data();
+	conf.macStart = next->currentData().toInt();
+	if (conf.macStart == MS_THIS) conf.macStartId = id;
+	saveConfig();
+	if (id != conf.macId) setMachine(id);
 }
 
 void MainWin::reset(QAction* act) {

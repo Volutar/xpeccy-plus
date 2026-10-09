@@ -46,6 +46,8 @@ class SetupWin : public QDialog {
 		void buildSidebar();
 		void buildDevices();
 		QToolButton* devRow(QGridLayout*, const QString&, QWidget*, QWidget*, const char*);
+		QToolButton* sheetButton(QWidget*, const char*);
+		void buildStart();
 		void fillDevSummary();
 		void showDevRows();
 		void showDriveRows();
@@ -88,6 +90,8 @@ class SetupWin : public QDialog {
 		xRomset roms;			// the set the page edits, until Apply
 		int resTarget;			// where a reset starts, until Apply
 		QButtonGroup* resGroup;
+		QButtonGroup* grpStart;		// MS_*: the machine a start takes
+		QComboBox* cbStartMac;		// ...for MS_THIS
 
 		// the devices' own controls, see makeDevWidgets()
 		QCheckBox *cbTapeAuto, *cbTapeRewind, *cbTapeFast, *cbTapeFlash, *cbTapeEdge, *bdtbox, *cbAddBoot, *a80box, *b80box, *c80box, *d80box, *adsbox, *bdsbox, *cdsbox, *ddsbox, *gsrbox, *ratWheel, *cbSwapButtons;

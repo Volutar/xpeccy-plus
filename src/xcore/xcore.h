@@ -330,6 +330,7 @@ void loadStylePalette(const std::string&);	// debugger colours shipped with a st
 QColor stylePaletteColor(const std::string&, const QString&);	// one colour of that file, invalid if none
 void loadConfig();
 void saveConfig();
+bool start_asks();
 bool reloadConfig();
 
 // the whole configuration as one text file, and back to how it ships
@@ -701,10 +702,15 @@ typedef struct {
 // conf.autorun, and the run argument of an open: AR_ASK is resolved before the file is read
 enum {AR_MOUNT = 0, AR_RUN, AR_ASK};
 
+// conf.macStart: the machine a start takes; unset is asked once
+enum {MS_LAST = 0, MS_ASK, MS_THIS, MS_UNSET};
+
 struct xConfig {
 	// the machine, one per process, and the workspace around it
 	Computer* zx;
 	std::string macId;		// machine definition id
+	int macStart;			// MS_*
+	std::string macStartId;		// the machine MS_THIS starts
 	std::string layName;		// screen layout
 	xRomset roms;			// what it loads: its own, that variant, your files
 	std::string palette;		// colour palette file

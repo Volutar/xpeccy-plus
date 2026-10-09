@@ -649,6 +649,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	pbExpert->setIcon(QIcon(":/images/settings.png"));
 	pbExpert->setToolTip(tr("Where each file starts, how much of it is read, and where it lands"));
 	connect(pbExpert, SIGNAL(released()), this, SLOT(showRomFiles()));
+	buildStart();
 	buildDevices();
 	buildRecording();
 	ui.vidViewGBox->setIcon(":/images/grp-picture.png");
@@ -898,6 +899,10 @@ void SetupWin::start() {
 // machine
 	int idx;
 	fill_machine_list(ui.machbox);
+	fill_machine_list(cbStartMac);
+	std::string startId = conf.macStartId.empty() ? conf.macId : conf.macStartId;
+	setRFIndex(cbStartMac, QString::fromLocal8Bit(startId.c_str()));
+	grpStart->button((conf.macStart == MS_UNSET) ? MS_LAST : conf.macStart)->setChecked(true);
 	updateMachineButtons();
 	roms = conf.roms;
 	resTarget = comp->resbank;
@@ -1138,6 +1143,10 @@ void SetupWin::apply() {
 	int rwStep = conf.emu.rewind.step;
 	int rwSecs = conf.emu.rewind.secs;
 // machine
+	// unset shows as Last, and stays unset - the first start still asks - until changed
+	int ms = grpStart->checkedId();
+	if ((conf.macStart != MS_UNSET) || (ms != MS_LAST)) conf.macStart = ms;
+	if (ms == MS_THIS) conf.macStartId = getRFSData(cbStartMac).toLocal8Bit().data();
 	// another machine is not this page with different values in it: it has its
 	// own, so load it and show them rather than writing these over it
 	std::string mid = std::string(getRFSData(ui.machbox).toLocal8Bit().data());
@@ -1623,9 +1632,29 @@ static QComboBox* devCombo(QStringList items) {
 	return box;
 }
 
-QToolButton* SetupWin::devRow(QGridLayout* grid, const QString& name, QWidget* choice, QWidget* body, const char* title) {
-	int row = grid->rowCount();
-	QLabel* lab = new QLabel(name);
+// Which machine a start takes: a gear beside the model it is about
+void SetupWin::buildStart() {
+	grpStart = new QButtonGroup(this);
+	QRadioButton* rbLast = new QRadioButton(tr("The last machine used"));
+	QRadioButton* rbAsk = new QRadioButton(tr("Ask"));
+	QRadioButton* rbThis = new QRadioButton(tr("This one"));
+	grpStart->addButton(rbLast, MS_LAST);
+	grpStart->addButton(rbAsk, MS_ASK);
+	grpStart->addButton(rbThis, MS_THIS);
+	cbStartMac = new QComboBox;
+	connect(cbStartMac, QOverload<int>::of(&QComboBox::activated), rbThis, [rbThis]() {rbThis->setChecked(true);});
+	xOptSheet sheet;
+	sheet.wide(rbLast);
+	sheet.wide(rbAsk);
+	sheet.wide(fieldPair(rbThis, cbStartMac, false));
+	QToolButton* btn = sheetButton(sheet.body, "Machine: At Start");
+	btn->setToolTip(tr("Which machine the emulator starts with"));
+	ui.gridLayout->removeWidget(ui.machbox);
+	ui.gridLayout->addWidget(fieldPair(ui.machbox, btn, false), 0, 2, 1, 3);
+}
+
+// the gear that pops a sheet out; greyed with nothing to pop
+QToolButton* SetupWin::sheetButton(QWidget* body, const char* title) {
 	QToolButton* btn = new QToolButton;
 	btn->setIcon(QIcon(":/images/settings.png"));
 	if (body) {
@@ -1635,6 +1664,13 @@ QToolButton* SetupWin::devRow(QGridLayout* grid, const QString& name, QWidget* c
 	} else {
 		btn->setEnabled(false);
 	}
+	return btn;
+}
+
+QToolButton* SetupWin::devRow(QGridLayout* grid, const QString& name, QWidget* choice, QWidget* body, const char* title) {
+	int row = grid->rowCount();
+	QLabel* lab = new QLabel(name);
+	QToolButton* btn = sheetButton(body, title);
 	grid->addWidget(lab, row, 0);
 	// the widths it had on its old page mean nothing here
 	choice->setMinimumWidth(0);
