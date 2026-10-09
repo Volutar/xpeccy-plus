@@ -3,7 +3,9 @@
 #include "xgui.h"
 #include "xcore/xcore.h"
 #include "xcore/filemachine.h"
+#include "xcore/rzxrecord.h"
 #include "../filer.h"
+#include "version.h"
 
 // the machine a snapshot in the recording was taken on
 static QString rzx_machine_name(int hw) {
@@ -22,9 +24,24 @@ static QString rzx_time(int frames, double fps) {
 	return QString(getTimeString((int)(frames / fps)).c_str());
 }
 
-// Fuse packs its four version numbers a byte each into the two words
+// Fuse packs its four version numbers a byte each into the two words; ours
+// are the year and the number. What it says of rollbacks and slow motion is
+// in the block's own data, which Xpeccy+ writes as lines of text.
 static QString rzx_creator(const rzxBlock* blk) {
 	QString name = QString::fromLatin1(blk->text).trimmed();
+	if (name.startsWith(XPRODUCT)) {
+		QString res = QString("%0 %1.%2").arg(name).arg(blk->major).arg(blk->minor);
+		QString custom = QString::fromUtf8(blk->custom);
+		static const QRegularExpression back("rollbacks: (\\d+)");
+		static const QRegularExpression slow("slow motion: ([0-9.]+) s");
+		QRegularExpressionMatch m = back.match(custom);
+		if (m.hasMatch() && (m.captured(1).toInt() > 0))
+			res += QString(", %0 rollback%1").arg(m.captured(1), (m.captured(1) == "1") ? "" : "s");
+		m = slow.match(custom);
+		if (m.hasMatch() && (m.captured(1).toDouble() > 0))
+			res += QString(", %0 s of slow motion").arg(m.captured(1));
+		return res;
+	}
 	if (blk->major < 0x100) {
 		QString ver = QString("%0.%1").arg(blk->major).arg(blk->minor);
 		return name.endsWith(ver) ? name : QString("%0 %1").arg(name, ver);	// SPIN names it twice
@@ -186,6 +203,7 @@ RZXWin::RZXWin(QWidget *par):QDialog(par) {
 	ui.stopButton->setEnabled(false);
 	connect(ui.ppButton,SIGNAL(released()),this,SLOT(playPause()));
 	connect(ui.stopButton,SIGNAL(released()),this,SLOT(stopPressed()));
+	connect(ui.recButton,SIGNAL(clicked()),this,SLOT(recPressed()));
 	connect(ui.openButton,SIGNAL(released()),this,SLOT(open()));
 	connect(ui.blkList,SIGNAL(doubleClicked(QModelIndex)),this,SLOT(doDClick(QModelIndex)));
 	ui.progress->installEventFilter(this);
@@ -215,8 +233,7 @@ void RZXWin::doDClick(QModelIndex idx) {
 
 // What the file says about itself. A frame of the recording is an interrupt,
 // so its time is the frame time of the machine it plays on.
-void RZXWin::fillInfo() {
-	QString path = rzx_current();
+void RZXWin::fillInfo(const QString& path) {
 	ui.rpath->setText(path);
 	fps = comp_fps(conf.zx);
 	rzxInfo inf = {};
@@ -243,7 +260,7 @@ void RZXWin::fillInfo() {
 }
 
 void RZXWin::startPlay() {
-	fillInfo();
+	fillInfo(rzx_current());
 	ui.ppButton->setEnabled(true);
 	ui.stopButton->setEnabled(true);
 	ui.ppButton->setIcon(QIcon(":/images/pause.png"));
@@ -260,6 +277,12 @@ void RZXWin::setProgress(int val, int max) {
 // slots
 
 void RZXWin::upd(Computer* comp) {
+	if (comp->rzx.rec.on && isVisible()) {
+		QString txt = QString("REC %0").arg(rzx_time(rzx_rec_frames(comp), comp_fps(comp)));
+		if (rzxr_rollbacks() > 0) txt += QString(", %0 back").arg(rzxr_rollbacks());
+		ui.labTime->setText(txt);
+		return;
+	}
 	if (comp->rzx.play && isVisible()) {
 		setProgress(comp->rzx.fCurrent, comp->rzx.fTotal);
 		if (model->setCurrent(comp->rzx.fCurrent) && (model->markedRow() >= 0))
@@ -293,6 +316,28 @@ void RZXWin::stop() {
 
 void RZXWin::stopPressed() {
 	emit stateChanged(RWS_STOP);
+}
+
+void RZXWin::recPressed() {
+	ui.recButton->setChecked(rzxr_on());	// the machine says, once it has tried
+	emit stateChanged(RWS_REC);
+}
+
+// Recording: the window names the file and stands the player's buttons down;
+// stopped, it shows the file as it would any other.
+void RZXWin::recState(bool on) {
+	ui.recButton->setChecked(on);
+	if (on) {
+		state = RWS_STOP;
+		ui.rpath->setText(rzxr_path());
+		ui.ppButton->setEnabled(false);
+		ui.stopButton->setEnabled(false);
+		ui.progress->setMaximum(1);
+		ui.progress->setValue(0);
+	} else if (!rzxr_path().isEmpty()) {
+		fillInfo(rzxr_path());		// what was written
+		ui.labTime->clear();
+	}
 }
 
 void RZXWin::open() {

@@ -360,6 +360,9 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 			case XCUT_VIDREC:
 				videoRec();
 				break;
+			case XCUT_RZXREC:
+				rzxRec();
+				break;
 			case XCUT_SCRSHOT:
 				if (scrCounter == 0) {
 					scrCounter = 1;

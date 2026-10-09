@@ -18,6 +18,10 @@ class xThread : public QThread {
 		int benchStop;		// the bench ends the cycle at this frame, -1: never
 		int benchRzx;		// the bench stops after the INT that ends this frame of a recording, 0: no
 		int benchRzxSeek;	// ...gets there, goes back to this frame and gets there again, -1: no
+		const char* benchRec;	// the bench records this many frames of RZX into this file
+		int benchRecFrames;
+		int benchRecBack;	// ...and at this frame goes back to the state of half of it, 0: no
+		int benchRecJoin;	// ...or resets the machine at this frame and pokes it 500 later, 0: no
 		int earBlock;		// the block the rom reads only part of, -1: none
 	public slots:
 		void stop();

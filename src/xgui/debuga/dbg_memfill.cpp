@@ -1,5 +1,6 @@
 #include "dbg_memfill.h"
 #include "../../xcore/xcore.h"
+#include "../../libxpeccy/filetypes/filetypes.h"
 
 #include <QDebug>
 
@@ -27,6 +28,7 @@ int xMemFiller::mrd(int adr) {
 }
 
 void xMemFiller::mwr(int adr, int val) {
+	rzx_rec_touch();
 	MemPage* pg = mem_get_page(mem, adr);	// = &mem->map[(adr >> 8) & 0xff];
 	int fadr = mem_get_phys_adr(mem, adr);	// = pg->num << 8) | (adr & 0xff);
 	switch(pg->type) {

@@ -144,6 +144,10 @@ void zx_irq(Computer* comp, int t) {
 				comp->rzx.fCount--;
 				rzxGetFrame(comp);
 			} while (comp->rzx.play && (comp->rzx.frm.fetches == 0));
+			if (comp->rzx.noint) {		// a join made between two INTs
+				comp->rzx.noint = 0;
+				break;
+			}
 			comp->intVector = 0xff;
 			comp->cpu->intrq |= Z80_INT;
 			comp->cpu->flgACK = 1;

@@ -52,7 +52,7 @@ static int hk_section(const xShortcut& cut) {
 	}
 	switch (cut.id) {
 		case XCUT_LOAD: case XCUT_RELOAD: case XCUT_SAVE: case XCUT_FASTSAVE: case XCUT_FAVORITE:
-		case XCUT_SCRSHOT: case XCUT_COMBOSHOT: case XCUT_VIDREC: case XCUT_WAV_OUT: case XCUT_OPTIONS:
+		case XCUT_SCRSHOT: case XCUT_COMBOSHOT: case XCUT_VIDREC: case XCUT_RZXREC: case XCUT_WAV_OUT: case XCUT_OPTIONS:
 		case XCUT_QUICKSAVE: case XCUT_QUICKLOAD: case XCUT_QUICKUNDO: case XCUT_HOTKEYS:
 			return HK_FILE;
 		case XCUT_RESET: case XCUT_RES_48: case XCUT_RES_128: case XCUT_RES_DOS: case XCUT_RES_SERVICE:

@@ -154,6 +154,7 @@ typedef struct {
 
 		void s_step();
 
+		void s_rzx_rec(bool);		// recording started or stopped
 		void s_rzx_start();		// a recording opened, the one rzx_playing names
 		void s_rzx_stop();
 		void s_rzx_upd(Computer*);
@@ -265,6 +266,7 @@ typedef struct {
 		void updateHead();
 		void screenShot();
 		void videoRec();
+		void rzxRec();
 		void grabScreen();
 		void drawPicture();
 		QRect modeSlot();
@@ -310,6 +312,7 @@ typedef struct {
 		QMenu* fileMenu;
 		QMenu* viewMenu;
 		QAction* recAct;
+		QAction* rzxRecAct;
 		QAction* wavAct;
 		QAction* fullAct;
 		QAction* ratioAct;

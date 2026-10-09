@@ -406,6 +406,7 @@ int main(int ac,char** av) {
 	app.connect(&rzxw, SIGNAL(seekTo(int)), &mwin, SLOT(rzxSeek(int)));
 	app.connect(&mwin, SIGNAL(s_rzx_start()), &rzxw, SLOT(startPlay()));
 	app.connect(&mwin, SIGNAL(s_rzx_stop()), &rzxw, SLOT(stop()));
+	app.connect(&mwin, SIGNAL(s_rzx_rec(bool)), &rzxw, SLOT(recState(bool)));
 	app.connect(&mwin, SIGNAL(s_rzx_upd(Computer*)), &rzxw, SLOT(upd(Computer*)));
 	app.connect(&mwin, SIGNAL(s_rzx_show()), &rzxw, SLOT(show()));
 
@@ -537,6 +538,13 @@ int main(int ac,char** av) {
 				ethread.benchRzx = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-rzx-seek")) {
 				ethread.benchRzxSeek = atoi(av[i++]);
+			} else if (!strcmp(parg,"--bench-rzx-rec")) {
+				ethread.benchRec = av[i++];
+				ethread.benchRecFrames = atoi(av[i++]);
+			} else if (!strcmp(parg,"--bench-rzx-rec-back")) {
+				ethread.benchRecBack = atoi(av[i++]);
+			} else if (!strcmp(parg,"--bench-rzx-rec-join")) {
+				ethread.benchRecJoin = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-state")) {
 				bnState = av[i++];
 			} else if (!strcmp(parg,"--bench-loops")) {
@@ -644,9 +652,9 @@ int main(int ac,char** av) {
 		app.setStyle(QStyleFactory::create("Fusion"));
 	}
 #endif
-	if ((bnFrames > 0) || bnSave || bnState || (ethread.benchRzx > 0)) {
+	if ((bnFrames > 0) || bnSave || bnState || (ethread.benchRzx > 0) || ethread.benchRec) {
 #ifdef XBENCH
-		if ((bnFrames > 0) || (bnSkip > 0) || (bnSteps > 0) || (ethread.benchRzx > 0))
+		if ((bnFrames > 0) || (bnSkip > 0) || (bnSteps > 0) || (ethread.benchRzx > 0) || ethread.benchRec)
 			ethread.bench(bnFrames, bnSkip, bnFull, bnHash, bnProf, bnShot, bnNodraw, bnHeat, bnRewind, bnSteps, bnSplit);
 		if (bnSave)
 			save_file(conf.zx, bnSave, FG_ALL, 0);

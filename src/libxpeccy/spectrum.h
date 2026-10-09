@@ -112,6 +112,18 @@ typedef struct {
 // how many turbo steps a board may declare
 #define TURBO_STEP_MAX 8
 
+// How much of the RZX log being recorded counts (rzxrec.c). In the machine, so
+// a rollback of it - rewind, run-ahead, a quick load - takes the log back too.
+typedef struct {
+	unsigned on:1;
+	int fetch;		// fetches in the frame under way
+	int ins;		// its IN bytes
+	int t;			// its T, to end a frame with interrupts off
+	int frames;		// frames before it
+	int inLen;		// their IN bytes
+	int snaps;		// the start and the joins
+} rzxRecPos;
+
 typedef struct Computer {
 	struct HardWare *hw;	// computer core - misc params, callbacks
 
@@ -222,6 +234,8 @@ typedef struct Computer {
 		unsigned start:1;	// opened: the emulation thread starts it (rzx_begin)
 		unsigned play:1;
 		unsigned overio:1;
+		unsigned noint:1;	// the snapshot just played in was taken between two INTs
+		rzxRecPos rec;
 		int fTotal;
 		int fCurrent;
 		int fCount;
@@ -338,6 +352,8 @@ void rzx_reread(Computer*);
 // The recording open for playback, 0 for none. Not in the machine, so a
 // rollback cannot bring back one that has been closed since.
 extern unsigned rzx_playing;
+// The same for the recording being made (rzxrec.c)
+extern unsigned rzx_recording;
 
 void comp_brk(Computer*, int);
 void comp_brk_newstep(Computer*);

@@ -44,6 +44,7 @@
 #include "xcore/rewind.h"
 #include "xcore/fastload.h"
 #include "xcore/rzxseek.h"
+#include "xcore/rzxrecord.h"
 #include "emulwin.h"
 #include "filer.h"
 #include "watcher.h"
@@ -613,6 +614,12 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 		watchPads();
 		QString vmsg = vrec_message();
 		if (!vmsg.isEmpty()) setMessage(vmsg, 4.0);
+		rzxr_tick(comp);
+		QString rmsg = rzxr_message();
+		if (!rmsg.isEmpty()) {
+			setMessage(rmsg, 4.0);
+			emit s_rzx_rec(rzxr_on());
+		}
 		switch (vrec_auto_tick()) {
 			case VREC_AUTO_STOP: vrec_stop(); break;
 			case VREC_AUTO_START: recStart(); break;
@@ -853,6 +860,9 @@ void MainWin::rzxStateChanged(int state) {
 			rzxStop(comp);
 			emu_unlock();
 			rzxWatch();
+			break;
+		case RWS_REC:
+			rzxRec();
 			break;
 		case RWS_OPEN:
 			pause(true,PR_RZX);
@@ -1122,6 +1132,27 @@ void MainWin::grabScreen() {
 #endif
 }
 
+// An RZX recording of the machine from here on, or of the one being played
+// from the frame it has got to; the file is named as a video is.
+void MainWin::rzxRec() {
+	Computer* comp = conf.zx;
+	emu_lock();
+	int err = ERR_OK;
+	if (rzxr_on()) {
+		rzxr_stop(comp);
+	} else {
+		err = rzxr_start(comp);
+	}
+	emu_unlock();
+	if (err != ERR_OK) {
+		setMessage(" this machine cannot be recorded ");
+	} else if (rzxr_on()) {
+		setMessage(" RZX recording ");
+	}
+	rzxWatch();
+	emit s_rzx_rec(rzxr_on());
+}
+
 // A name that says what was on the machine: the image in use, else the machine.
 void MainWin::videoRec() {
 	vrec_manual();		// the hotkey has the last word over auto recording
@@ -1196,7 +1227,7 @@ int MainWin::speedOsd() {
 
 // the recording sign now: it blinks, and its dark phase gives way to a speed mode
 int MainWin::recOsd() {
-	if (vrec_state() != VREC_RUN) return osd_none;
+	if ((vrec_state() != VREC_RUN) && !rzxr_on()) return osd_none;
 	if (!((QDateTime::currentMSecsSinceEpoch() / REC_BLINK_MS) & 1)) return osd_rec;
 	return (speedOsd() == osd_none) ? osd_rec_off : osd_none;
 }
@@ -1856,6 +1887,8 @@ void MainWin::initMenuBar() {
 	cutAction(fileMenu, "Screenshot series", XCUT_COMBOSHOT);
 	recAct = cutAction(fileMenu, "Record video", XCUT_VIDREC, "grp-record");
 	recAct->setCheckable(true);
+	rzxRecAct = cutAction(fileMenu, "Record RZX", XCUT_RZXREC, "grp-record");
+	rzxRecAct->setCheckable(true);
 	wavAct = cutAction(fileMenu, "Record sound to WAV...", XCUT_WAV_OUT, "wav");
 	wavAct->setCheckable(true);
 	fileMenu->addSeparator();
@@ -2648,6 +2681,7 @@ void MainWin::watchMedia() {
 
 void MainWin::setMachine(const std::string& id) {
 	emu_lock();		// onPrfChange resets the machine, keep it out of the emulation too
+	rzxr_stop(conf.zx);	// a recording is of one machine
 	xm_set(id);
 	onPrfChange();
 	emu_unlock();

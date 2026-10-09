@@ -51,6 +51,7 @@
 #include "xcore/rewind.h"
 #include "libxpeccy/filetypes/filetypes.h"
 #include "libxpeccy/input/input.h"
+#include "xcore/rzxrecord.h"
 
 // the turbo step lists the box offers before a machine of its own adds one
 #define CPU_TURBO_ROWS	3
@@ -1154,6 +1155,9 @@ void SetupWin::apply() {
 	// own, so load it and show them rather than writing these over it
 	std::string mid = std::string(getRFSData(ui.machbox).toLocal8Bit().data());
 	if (!mid.empty() && (mid != conf.macId)) {
+		emu_lock();
+		rzxr_stop(comp);	// a recording is of one machine
+		emu_unlock();
 		xm_set(mid);
 		start();
 		emit s_prf_changed();
@@ -1403,6 +1407,13 @@ void SetupWin::apply() {
 	xm_save_over();
 	if ((xm_signature() != macWas) || (conf.emu.rewind.step != rwStep) || (conf.emu.rewind.secs != rwSecs))
 		rewind_clear();
+	// The machine changed under a recording: it ends with the frames before
+	// the change, which is all the log holds of them
+	if (xm_signature() != macWas) {
+		emu_lock();
+		rzxr_stop(comp);
+		emu_unlock();
+	}
 	updateMachineButtons();
 	// the mark on the machine may have just appeared or gone
 	int midx = ui.machbox->findData(QString::fromLocal8Bit(conf.macId.c_str()));

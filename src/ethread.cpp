@@ -12,12 +12,15 @@
 #include "xcore/autostart.h"
 #include "xcore/fastload.h"
 #include "xcore/rzxseek.h"
+#include "xcore/rzxrecord.h"
 #include "xcore/rewind.h"
 #include "xcore/vidrec.h"
 #include "xcore/tapetrap.h"
 #include "xcore/vfilters.h"
 #include "libxpeccy/cpu/Z80/z80.h"
 #include "libxpeccy/xstate.h"
+#include "libxpeccy/filetypes/szx.h"
+#include "version.h"
 
 #if USEMUTEX
 QMutex emutex;
@@ -103,6 +106,10 @@ xThread::xThread() {
 	benchStop = -1;
 	benchRzx = 0;
 	benchRzxSeek = -1;
+	benchRec = NULL;
+	benchRecFrames = 0;
+	benchRecBack = 0;
+	benchRecJoin = 0;
 	earBlock = -1;
 	conf.emu.fast = 0;
 	finish = 0;
@@ -521,9 +528,10 @@ void xThread::emuCycle(Computer* comp) {
 			sndNsFixed += NS_TO_FIXED(tm);
 			int watch = vrecWatch.load(std::memory_order_relaxed);
 			if (watch) vrec_auto_pc(comp, watch);
-			// None of the tape tricks while a recording plays: the machine
-			// takes its input from the recording alone.
-			if (!comp->rzx.play) {
+			// None of the tape tricks while a recording plays or is made: the
+			// machine takes its input from the recording alone, and a recording
+			// holds only what came in through a port.
+			if (!comp->rzx.play && !comp->rzx.rec.on) {
 				// tape trap	TODO: rework it as a system breakpoint
 				// this runs on every instruction, and the rom is paged in for most
 				// of them: the pc straight from the Z80, not through the cpu's
@@ -577,6 +585,7 @@ void xThread::emuCycle(Computer* comp) {
 			autostart_frame(comp);
 			fastload_frame(comp);
 			rzx_seek_frame(comp);
+			rzxr_frame(comp);
 			rewind_frame(comp, &sndNsFixed);
 			rewinding = rewind_active();
 			// before run-ahead: the debugger's screen view wants the machine as
@@ -654,6 +663,7 @@ void xThread::rzx_begin(Computer* comp) {
 		comp->rzx.fCurrent = 0;
 		rewind(comp->rzx.file);
 		rzxGetFrame(comp);
+		comp->rzx.noint = 0;		// it is for a join; the start raises no INT anyway
 	}
 }
 
@@ -769,6 +779,48 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	int rwOn = conf.emu.rewind.on;
 	conf.emu.rewind.on = (rw > 0);
 	rzx_begin(comp);
+	// Recording: N frames into a file, which --bench-rzx N then plays back to
+	// the same state; a rollback on the way, as a rewind makes, if asked for
+	if (benchRec) {
+		szx_set_machine(conf.macId.c_str());
+		int err = rzx_rec_start(comp);
+		xState* back = NULL;
+		int poke = benchRecJoin + 500;
+		while (!err && (rzx_rec_frames(comp) < benchRecFrames)) {
+			compExec(comp);
+			if ((benchRecJoin > 0) && (rzx_rec_frames(comp) >= benchRecJoin)) {
+				fprintf(stdout, "rzx rec: reset at frame %i\n", rzx_rec_frames(comp));
+				compReset(comp, RES_DEFAULT);
+				rzx_rec_touch();
+				benchRecJoin = 0;
+			} else if ((poke > 500) && !benchRecJoin && (rzx_rec_frames(comp) >= poke) && comp->cpu->flgIFF1) {
+				fprintf(stdout, "rzx rec: poke at frame %i, iff1 %i\n", rzx_rec_frames(comp), comp->cpu->flgIFF1 ? 1 : 0);
+				memWr(comp->mem, 0x5800, 0x47);
+				rzx_rec_touch();
+				poke = 0;
+			}
+			if (benchRecBack <= 0) continue;
+			if (!back && (rzx_rec_frames(comp) >= benchRecBack / 2)) {
+				back = xstate_create();
+				xstate_save(back, comp);
+			} else if (back && (rzx_rec_frames(comp) >= benchRecBack)) {
+				fprintf(stdout, "rzx rec: back from frame %i", rzx_rec_frames(comp));
+				xstate_load(back, comp);
+				fprintf(stdout, " to %i\n", rzx_rec_frames(comp));
+				benchRecBack = 0;
+			}
+		}
+		if (back) xstate_destroy(back);
+		rzxRecImage* img = err ? NULL : rzx_rec_take(comp);
+		rzx_rec_stop(comp);
+		if (img) err = rzx_rec_image_write(img, benchRec, XPRODUCT, 0, 0, "bench");
+		fprintf(stdout, "rzx rec: %i frames, %i joins, %s\n", rzx_rec_image_frames(img), rzx_rec_joins(comp), err ? "failed" : "written");
+		rzx_rec_image_free(img);
+		fflush(stdout);
+		conf.emu.rewind.on = rwOn;
+		fastload_hold(0);
+		return 0;
+	}
 	// A recording's frame N, to compare with another player stopped there: the
 	// frames it counts, not the video's, and past the INT that ends it if the
 	// cpu takes one

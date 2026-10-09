@@ -1,5 +1,6 @@
 #include "dbg_dump.h"
 #include "../../xcore/xcore.h"
+#include "../../libxpeccy/filetypes/filetypes.h"
 
 #include <QDebug>
 
@@ -71,6 +72,7 @@ int xDumpModel::mrd(int adr) const {
 
 void xDumpModel::mwr(int adr, unsigned char bt) {
 	Computer* comp = conf.zx;
+	rzx_rec_touch();
 	MemPage* pg;
 	int fadr;
 	switch(mode) {

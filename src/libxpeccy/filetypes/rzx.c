@@ -85,7 +85,8 @@ void rzxGetFrame(Computer* comp) {
 						break;
 					case 0x30:					// TODO: snapshot
 						type = fgetc(comp->rzx.file);
-						switch(type) {
+						comp->rzx.noint = (type & 0x80) ? 1 : 0;
+						switch(type & 0x7f) {
 							case 0x00:
 								loadSNA_f(comp, comp->rzx.file, len - 1);
 								fseek(comp->rzx.file, pos + len, SEEK_SET);
@@ -255,6 +256,10 @@ int rzx_info(const char* name, rzxInfo* inf, int first) {
 					blk->text[20] = 0;
 					blk->major = fgetw(file);
 					blk->minor = fgetw(file);
+					n = (int)len - 29;
+					if (n >= (int)sizeof(blk->custom)) n = sizeof(blk->custom) - 1;
+					if (n > 0) fread(blk->custom, n, 1, file);
+					blk->custom[n > 0 ? n : 0] = 0;
 				}
 				break;
 			case 0x30:
@@ -390,7 +395,7 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 									len = fgetSize(sfile);
 									fputc(0x30, comp->rzx.file);
 									fputi(len + 1, comp->rzx.file);
-									fputc(rzxGetSnapType(shd.ext), comp->rzx.file);
+									fputc(rzxGetSnapType(shd.ext) | ((shd.flag & RZX_SNAP_NOINT) ? 0x80 : 0), comp->rzx.file);
 									while (len > 0) {
 										fread(obuf, 0x4000, 1, sfile);
 										fwrite(obuf, (len > 0x4000) ? 0x4000 : len, 1, comp->rzx.file);
@@ -403,7 +408,7 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 							} else if (shd.flag & 2) {	// compressed
 								fputc(0x30, comp->rzx.file);
 								fputi(shd.usl + 1, comp->rzx.file);
-								fputc(rzxGetSnapType(shd.ext), comp->rzx.file);
+								fputc(rzxGetSnapType(shd.ext) | ((shd.flag & RZX_SNAP_NOINT) ? 0x80 : 0), comp->rzx.file);
 								buf = realloc(buf, len - 17);
 								fread(buf, len - 17, 1, file);
 								err = inflateToFile(buf, len - 17, comp->rzx.file);
@@ -412,7 +417,7 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 								fread(buf, shd.usl, 1, file);
 								fputc(0x30, comp->rzx.file);
 								fputi(shd.usl + 1, comp->rzx.file);
-								fputc(rzxGetSnapType(shd.ext), comp->rzx.file);
+								fputc(rzxGetSnapType(shd.ext) | ((shd.flag & RZX_SNAP_NOINT) ? 0x80 : 0), comp->rzx.file);
 								fwrite(buf, shd.usl, 1, comp->rzx.file);
 							}
 							break;
@@ -513,6 +518,7 @@ int rzx_seek(Computer* comp, int frame) {
 		comp->rzx.fCount = 0;
 		comp->rzx.fCurrent = 0;
 		rzxGetFrame(comp);
+		comp->rzx.noint = 0;
 	} else {				// as the frame before it ends
 		comp->rzx.fCount = 1;
 		comp->rzx.fCurrent = bestFrame - 1;

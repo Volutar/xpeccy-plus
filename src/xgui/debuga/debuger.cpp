@@ -21,6 +21,7 @@
 #include "filer.h"
 #include "../xgui.h"
 #include "../portwatch.h"
+#include "../../libxpeccy/filetypes/filetypes.h"
 
 // debuga.layout format: bump whenever the set of docks changes, so an older
 // file is refused instead of scattering panels it knows nothing about.
@@ -271,6 +272,7 @@ void DebugWin::save_mem_map() {
 
 void DebugWin::rest_mem_map() {
 	Computer* comp = conf.zx;
+	rzx_rec_touch();
 	for (int i = 0; i < 256; i++) {
 		comp->mem->map[i] = mem_map[i];
 	}
@@ -1993,6 +1995,7 @@ void DebugWin::setFlags() {
 			f |= (1 << i);
 	}
 	cpu_set_flag(conf.zx->cpu, f);
+	rzx_rec_touch();
 	fillCPU();
 }
 
@@ -2016,6 +2019,7 @@ void DebugWin::setCPU() {
 		}
 	}
 	cpuSetRegs(cpu, bunch);
+	rzx_rec_touch();
 	fillFlags(NULL);
 	fillStack();
 	fillDisasm();
@@ -2064,6 +2068,7 @@ void DebugWin::mmapEdit(int bank) {
 	int type = getRFIData(mmapType[bank]);
 	int page = mmapPage[bank]->getValue();
 	memSetBank(comp->mem, bank << 6, type, page, MEM_16K, NULL, NULL, NULL);
+	rzx_rec_touch();
 	mmapForced[bank] = (type << 16) | page;
 	wid_dump->draw();
 	ui_asm.dasmTable->updContent();
@@ -2642,6 +2647,7 @@ void DebugWin::doMemView() {
 // open dump
 
 void dbg_mem_wr(Computer* comp, int adr, unsigned char bt) {
+	rzx_rec_touch();
 	MemPage* pg = mem_get_page(comp->mem, adr);	// = &comp->mem->map[(adr >> 8) & 0xff];
 	int fadr = mem_get_phys_adr(comp->mem, adr);	// = pg->num << 8) | (adr & 0xff);
 	switch (pg->type) {

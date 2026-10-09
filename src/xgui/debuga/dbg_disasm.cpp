@@ -3,6 +3,7 @@
 #include "../../xcore/xcore.h"
 #include "../../xcore/xexpr.h"
 #include "../../libxpeccy/cpu/Z80/z80.h"
+#include "../../libxpeccy/filetypes/filetypes.h"
 
 #include <QDebug>
 #include <QFont>
@@ -246,6 +247,7 @@ int dasmrd(int adr, void* ptr) {
 }
 
 void dasmwr(Computer* comp, int adr, int bt) {
+	rzx_rec_touch();
 	adr &= comp->mem->busmask;
 	int fadr;
 	MemPage* pg;
@@ -1285,6 +1287,7 @@ void xDisasmTable::keyPressEvent(QKeyEvent* ev) {
 			if ((i >= 0) && (i <= 0xffff)) {
 				pc = i;
 				cpu_set_pc(comp->cpu, i);
+				rzx_rec_touch();
 				updContent();
 				emit rqRefillAll();
 			}

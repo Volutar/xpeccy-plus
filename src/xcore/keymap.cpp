@@ -481,6 +481,7 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_SPEED_UP, "key.speed.up", "Speed up", {}},
 	{SCG_MAIN, XCUT_SPEED_DOWN, "key.speed.down", "Speed down", {}},
 	{SCG_MAIN, XCUT_VIDREC, "key.video.rec", "Start/stop video recording", {}},
+	{SCG_MAIN, XCUT_RZXREC, "key.rzx.rec", "Start/stop RZX recording", {}},
 	{SCG_MAIN, XCUT_WAV_OUT, "key.write.wav", "Start/stop WAV output", {}},
 	{SCG_MAIN, XCUT_RELOAD_SHD, "key.reload.shader", "Reload shader", {}},
 	{SCG_MAIN, XCUT_RELOAD, "key.reload", "Reload file", {}},
@@ -616,6 +617,7 @@ static const xCutDef cutClassic[] = {
 	{XCUT_SPEED_UP, {QKeySequence(Qt::AltModifier | Qt::KeypadModifier | Qt::Key_Plus)}},
 	{XCUT_SPEED_DOWN, {QKeySequence(Qt::AltModifier | Qt::KeypadModifier | Qt::Key_Minus)}},
 	{XCUT_VIDREC, {QKeySequence(Qt::CTRL | Qt::Key_F7)}},
+	{XCUT_RZXREC, {QKeySequence(Qt::CTRL | Qt::Key_F6)}},
 
 	{XCUT_STEPIN, {QKeySequence(Qt::Key_F7)}},
 	{XCUT_STEPOVER, {QKeySequence(Qt::Key_F8)}},
@@ -656,6 +658,7 @@ static const xCutDef cutModern[] = {
 	{XCUT_TAPWIN, {QKeySequence(Qt::Key_F6)}},
 	{XCUT_SCRSHOT, {QKeySequence(Qt::Key_F7)}},
 	{XCUT_VIDREC, {QKeySequence(Qt::SHIFT | Qt::Key_F7)}},
+	{XCUT_RZXREC, {QKeySequence(Qt::SHIFT | Qt::Key_F6)}},
 	{XCUT_QUICKLOAD, {QKeySequence(Qt::Key_F9)}},
 	{XCUT_QUICKUNDO, {QKeySequence(Qt::SHIFT | Qt::Key_F9)}},
 #ifdef __APPLE__

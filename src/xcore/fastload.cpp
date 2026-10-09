@@ -267,7 +267,7 @@ static long long fl_time_room(Computer* comp, int per) {
 static int fl_quiet(Computer* comp) {
 	if (comp->cpu->flgIFF1 || comp->flgNMIRQ) return 0;
 	if (comp_mem_watched(comp) || comp->flgIBRK) return 0;
-	if (comp->rzx.play) return 0;
+	if (comp->rzx.play || comp->rzx.rec.on) return 0;	// a recording runs every opcode
 	return 1;
 }
 

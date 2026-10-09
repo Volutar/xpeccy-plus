@@ -126,6 +126,7 @@ int z80_int(CPU* cpu) {
 		cpu->intrq &= ~Z80_NMI;
 	} else if (cpu->intrq & Z80_INT) {	// int
 		if (cpu->flgIFF1 && !cpu->flgNOINT && cpu->flgACK) {
+			cpu->flgINTOK = 1;
 			cpu->flgFW = 0;		// ...nor does this one, but an im0
 			cpu->flgIFF1 = 0;	// instruction off the bus still can
 			cpu->flgIFF2 = 0;

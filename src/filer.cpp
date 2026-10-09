@@ -1,4 +1,5 @@
 #include "filer.h"
+#include "xcore/rzxrecord.h"
 #include "xcore/xcore.h"
 #include "xcore/autostart.h"
 #include "xcore/filemachine.h"
@@ -319,6 +320,7 @@ static xFilerError err_tab[] = {
 	{ERR_RZX_SIGN, "Wrong RZX signature"},
 	{ERR_RZX_CRYPT, "Xpeccy cannot into crypted RZX"},
 	{ERR_RZX_UNPACK, "RZX unpack error"},
+	{ERR_RZX_REC, "This machine cannot be recorded"},
 	{ERR_TZX_SIGN, "Wrong TZX signature"},
 	{ERR_TZX_UNKNOWN, "Unknown TZX block"},
 	{ERR_TRD_LEN, "Incorrect TRD size"},
@@ -662,6 +664,8 @@ int load_file(Computer* comp, const char* name, int id, int drv) {
 		err = ERR_NO_DRIVE;
 	} else if (inf && inf->load) {
 		if (!inf->ch || (saveChangedDisk(comp, drv) == ERR_OK)) {
+			if (inf->id == FL_RZX)
+				rzxr_stop(comp);		// playing one ends the one being made
 			err = inf->load(comp, path.toLocal8Bit().data(), drv);
 			if ((err == ERR_OK) && (inf->id == FL_SZX)) {
 				szx_mount(comp, path);
@@ -672,7 +676,11 @@ int load_file(Computer* comp, const char* name, int id, int drv) {
 				last_as_kind = as_kind_of(inf->id);
 				last_as_drv = drv;
 				switch (inf->id) {
-					case FL_SNA: case FL_Z80: case FL_SZX: case FL_SPG: case FL_RZX:
+					case FL_SNA: case FL_Z80: case FL_SZX: case FL_SPG:
+						rzx_rec_touch();
+						last_snapshot = path;
+						break;
+					case FL_RZX:
 						last_snapshot = path;
 						break;
 				}

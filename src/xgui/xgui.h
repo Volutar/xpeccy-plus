@@ -309,7 +309,8 @@ enum {
 	RWS_PLAY = 1,
 	RWS_STOP,
 	RWS_PAUSE,
-	RWS_OPEN
+	RWS_OPEN,
+	RWS_REC			// recording on or off
 };
 
 enum {
@@ -355,6 +356,7 @@ class RZXWin : public QDialog {
 		void startPlay();
 		void stop();
 		void upd(Computer*);
+		void recState(bool);
 	signals:
 		void stateChanged(int);
 		void seekTo(int);
@@ -365,11 +367,12 @@ class RZXWin : public QDialog {
 		xRzxModel* model;
 		int state;
 		double fps;
-		void fillInfo();
+		void fillInfo(const QString& path);
 		void setProgress(int,int);
 	private slots:
 		void playPause();
 		void open();
 		void doDClick(QModelIndex);
 		void stopPressed();
+		void recPressed();
 };

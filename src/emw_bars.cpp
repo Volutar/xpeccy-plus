@@ -20,6 +20,7 @@
 #include <functional>
 
 #include "emulwin.h"
+#include "xcore/rzxrecord.h"
 #include "filer.h"
 #include "xcore/vidrec.h"
 
@@ -330,6 +331,7 @@ void MainWin::initBars() {
 	add("key.fastsave", "File", cut("Save changed disks", XCUT_FASTSAVE, "floppy"), TB_PLAIN);
 	add("key.scrshot", "File", cut("Screenshot", XCUT_SCRSHOT, "grp-screenshot"), TB_PLAIN);
 	add("key.video.rec", "File", recAct, TB_PLAIN);
+	add("key.rzx.rec", "File", rzxRecAct, TB_PLAIN);
 	add("key.write.wav", "File", wavAct, TB_PLAIN);
 	add("key.options", "File", cut("Options...", XCUT_OPTIONS, "other"), TB_PLAIN);
 	add("menu.machine", "Machine", profileMenu->menuAction(), TB_LIST);
@@ -655,6 +657,7 @@ void MainWin::syncActions() {
 	tapeRecAct->setChecked(comp->tape->on && comp->tape->rec);
 	mouseAct->setChecked(grabMice);
 	recAct->setChecked(vrec_state() == VREC_RUN);
+	rzxRecAct->setChecked(rzxr_on());
 	wavAct->setChecked(conf.snd.wavout);
 	muteAct->setChecked(conf.snd.mute);
 	// the button is the volume too: what a click does, then where the volume stands
