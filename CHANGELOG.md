@@ -147,6 +147,9 @@ before that point is upstream's history and is not repeated here.
 - **Rewind at end** works for a program that loads its own parts, such as levels: a tape that
   has run out goes back to the start when the program asks for a block that is on it.
 
+- **Flash loading** no longer resets the machine at the end of a load whose loader finds a
+  block's lead-in itself, such as Jasper's.
+
 - **Debugger**: a click on the palette shows the color clicked, an instruction's bytes are
   edited without blanks padding the field, a label from the list goes into a watcher once, and
   the CMOS and disk panels show only on machines that have them. *(thanks to Volutar for the
