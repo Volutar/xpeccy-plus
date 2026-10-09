@@ -210,7 +210,7 @@ int rzx_rec_start(Computer*);
 int rzx_rec_take_over(Computer*);	// a recording being played goes on as this one
 void rzx_rec_bookmark(void);		// one at the next frame's end
 int rzx_rec_rollback(Computer*);	// to the last bookmark: frames back, -1 none
-int rzx_rec_info(Computer*, rzxInfo*, const rzxBlock* creator);	// the blocks so far, as rzx_info()
+int rzx_rec_info(Computer*, rzxInfo*, const char* name, int major, int minor, const char* custom);	// the blocks so far, as rzx_info()
 void rzx_rec_pre(Computer*);		// before an exec, when a join or a bookmark is wanted
 extern int rzx_rec_marking;
 void rzx_rec_stop(Computer*);

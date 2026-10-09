@@ -861,7 +861,7 @@ void MainWin::rzxStateChanged(int state) {
 	Computer* comp = conf.zx;
 	switch(state) {
 		case RWS_PLAY:
-			pause(false, PR_PAUSE | PR_RZX);
+			pause(false, PR_PAUSE);
 			break;
 		case RWS_PAUSE:
 			pause(true, PR_PAUSE);
@@ -1613,7 +1613,6 @@ void MainWin::closeEvent(QCloseEvent* ev) {
 void MainWin::rzxWatch() {
 	if (rzx_playing == rzxSeen) return;
 	rzxSeen = rzx_playing;
-	pause(false, PR_RZX);		// a pause of the player's outlives what it paused
 	if (rzxSeen) {
 		emit s_rzx_start();
 	} else {
@@ -2335,8 +2334,6 @@ void MainWin::initMachineMenus() {
 	media->addMenu(cartMenu);
 	media->addMenu(sdcMenu);
 	media->addMenu(hddMenu);
-	media->addSeparator();
-	media->addAction(cutById.value(XCUT_RZXWIN));
 
 	// what the machine shows and plays, taken down
 	QMenu* cap = new xMenu("Capture", this);
@@ -2346,6 +2343,8 @@ void MainWin::initMachineMenus() {
 	cap->addAction(recAct);
 	cap->addAction(wavAct);
 	QMenu* rzxMenu = cap->addMenu(QIcon(":/images/grp-record-rzx.png"), "RZX");
+	rzxMenu->addAction(cutById.value(XCUT_RZXWIN));
+	rzxMenu->addSeparator();
 	rzxMenu->addAction(rzxRecAct);
 	rzxMenu->addAction(cutAct("Open and Continue...", XCUT_RZXCONT));
 	rzxMenu->addSeparator();

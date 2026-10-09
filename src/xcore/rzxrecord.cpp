@@ -63,13 +63,17 @@ static QByteArray rr_custom() {
 	return res.toUtf8();
 }
 
+// the version in the creator block: year and number
+static int rr_version(int part) {
+	return QString(XVERSION_BASE).split('.').value(part).toInt();
+}
+
 // Written to a file of its own and then put in place, so an autosave cut short
 // leaves the last one whole.
 static int rr_write(rzxRecImage* img, const QString& path, const QByteArray& custom, bool finalize = false) {
 	QString part = path + ".part";
-	QStringList ver = QString(XVERSION_BASE).split('.');
 	int err = rzx_rec_image_write(img, part.toLocal8Bit().constData(), XPRODUCT,
-		ver.value(0).toInt(), ver.value(1).toInt(), custom.constData(), finalize ? 1 : 0);
+		rr_version(0), rr_version(1), custom.constData(), finalize ? 1 : 0);
 	rzx_rec_image_free(img);
 	if (err == ERR_OK) {
 		QFile::remove(path);
@@ -135,17 +139,9 @@ void rzxr_bookmark() {
 
 // what the recording holds so far, for the player to show
 void rzxr_info(Computer* comp, rzxInfo* inf) {
-	rzxBlock cre;
-	memset(&cre, 0, sizeof(cre));
-	cre.id = 0x10;
-	QStringList ver = QString(XVERSION_BASE).split('.');
-	strncpy(cre.text, XPRODUCT, sizeof(cre.text) - 1);
-	cre.major = ver.value(0).toInt();
-	cre.minor = ver.value(1).toInt();
 	QByteArray custom = rr_custom();
-	strncpy(cre.custom, custom.constData(), sizeof(cre.custom) - 1);
 	emu_lock();		// the log grows on the emulation thread
-	rzx_rec_info(comp, inf, &cre);
+	rzx_rec_info(comp, inf, XPRODUCT, rr_version(0), rr_version(1), custom.constData());
 	emu_unlock();
 }
 

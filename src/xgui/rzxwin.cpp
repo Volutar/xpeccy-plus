@@ -289,6 +289,7 @@ void RZXWin::startPlay() {
 	ui.ppButton->setIcon(QIcon(":/images/tape-pause.png"));
 	setProgress(0, conf.zx->rzx.fTotal);
 	state = RWS_PLAY;
+	showPause();		// it may start on a paused machine
 }
 
 void RZXWin::setProgress(int val, int max) {
@@ -301,7 +302,7 @@ void RZXWin::setProgress(int val, int max) {
 
 void RZXWin::upd(Computer* comp) {
 	if (comp->rzx.rec.on && isVisible()) {
-		QString txt = QString("REC %0").arg(rzx_time(rzx_rec_frames(comp), comp_fps(comp)));
+		QString txt = QString("REC %0").arg(rzx_time(rzx_rec_frames(comp), fps));
 		if (rzxr_rollbacks() > 0) txt += QString(", %0 back").arg(rzxr_rollbacks());
 		ui.labTime->setText(txt);
 		// the list again when a block came or went, and twice a second for the length
