@@ -81,8 +81,8 @@ before that point is upstream's history and is not repeated here.
   once and can remember; Shift held in the open dialog asks for that one file, as on a drop.
 
 - **The machine a start takes**: the last one you picked, a fixed one, or ask each time
-  (Options, Application). A machine an opened file switched to is not kept for the next start,
-  and a file the running machine cannot take goes to the one you picked when that can. The
+  (Options, Application). A machine an opened file switched to is for that file only: the
+  next file your own machine can run goes back to it, and the next start takes yours too. The
   first start asks.
 
 - **Advanced settings for a machine** is the gear beside the model.

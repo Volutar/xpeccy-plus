@@ -45,22 +45,18 @@ static void ft_add(QComboBox* box, const QString& text, const char* val, const c
 	box->setItemData(box->count() - 1, QString(tip), Qt::ToolTipRole);
 }
 
-// A tape runs on anything, so Ask would never ask there and Auto never
-// switches: such a row only keeps the machine, which is what Auto does, or
-// names one. The others offer the machines that can take the format.
+// A tape runs on anything, so Ask would never ask there.
 void xFileTypesBox::fill() {
 	const xFileMac* rows = fm_rows();
 	for (int i = 0; i < table->rowCount(); i++) {
 		table->setItem(i, FTC_FORMAT, new QTableWidgetItem(rows[i].name));
 		table->setItem(i, FTC_NEEDS, new QTableWidgetItem(fm_need_text(rows[i].need)));
 		QComboBox* box = new QComboBox;
-		if (rows[i].need == FMN_ANY) {
-			ft_add(box, "Keep current", FM_AUTO, "Never switch the machine");
-		} else {
-			ft_add(box, "Auto", FM_AUTO, "Switch only when this machine cannot run the file");
+		bool any = (rows[i].need == FMN_ANY);
+		ft_add(box, "Auto", FM_AUTO, any ? "Back to your machine if a file switched" : "Switch only when needed, then back to yours");
+		if (!any)
 			ft_add(box, "Ask", FM_ASK, "When this machine cannot run the file, ask which one to use");
-			ft_add(box, "Keep current", FM_KEEP, "Never switch the machine");
-		}
+		ft_add(box, "Keep current", FM_KEEP, "Never switch the machine");
 		box->insertSeparator(box->count());
 		foreach(const xMachine& mac, xm_list()) {
 			if (fm_runs(mac.id, rows[i].need))

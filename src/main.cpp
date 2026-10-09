@@ -525,7 +525,7 @@ int main(int ac,char** av) {
 				if (mid.empty()) {
 					xlog(XLG_APP, XLL_ERROR, "no such machine: %s", av[i]);
 				} else {
-					mwin.setMachine(mid);	// for this run, not the next
+					mwin.chooseMachine(mid);
 				}
 				i++;
 			} else if (!strcmp(parg,"--bench")) {
