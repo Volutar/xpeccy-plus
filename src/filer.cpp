@@ -1,4 +1,5 @@
 #include "filer.h"
+#include "xcore/rzxrecord.h"
 #include "xcore/xcore.h"
 #include "xcore/autostart.h"
 #include "xcore/filemachine.h"
@@ -319,6 +320,7 @@ static xFilerError err_tab[] = {
 	{ERR_RZX_SIGN, "Wrong RZX signature"},
 	{ERR_RZX_CRYPT, "Xpeccy cannot into crypted RZX"},
 	{ERR_RZX_UNPACK, "RZX unpack error"},
+	{ERR_RZX_REC, "This machine cannot be recorded"},
 	{ERR_TZX_SIGN, "Wrong TZX signature"},
 	{ERR_TZX_UNKNOWN, "Unknown TZX block"},
 	{ERR_TRD_LEN, "Incorrect TRD size"},
@@ -462,7 +464,7 @@ static bool media_ask_machine(const QString& path, const std::vector<std::string
 	const xMachine* cur = xm_find(conf.macId);
 	QString curName = QString::fromLocal8Bit(cur ? cur->name.c_str() : conf.macId.c_str());
 	QDialog dlg;
-	dlg.setWindowTitle("Choose a machine");
+	dlg.setWindowTitle("Choose a Machine");
 	QVBoxLayout* lay = new QVBoxLayout(&dlg);
 	QLabel* lab = new QLabel(QString("<b>%1</b> does not run on %2.<br>Run it on:")
 		.arg(QFileInfo(path).fileName().toHtmlEscaped(), curName.toHtmlEscaped()));
@@ -543,7 +545,7 @@ QString file_ask_open(Computer* comp, int* id, int* drv) {
 			flt = file_get_type_filter(fid, 0);
 	}
 	if (flt.isEmpty()) return path;
-	filer->setWindowTitle("Open file");
+	filer->setWindowTitle("Open File");
 	filer->setNameFilter(flt);
 	filer->setDirectory(conf.lastDir.c_str());
 	filer->setAcceptMode(QFileDialog::AcceptOpen);
@@ -662,6 +664,8 @@ int load_file(Computer* comp, const char* name, int id, int drv) {
 		err = ERR_NO_DRIVE;
 	} else if (inf && inf->load) {
 		if (!inf->ch || (saveChangedDisk(comp, drv) == ERR_OK)) {
+			if (inf->id == FL_RZX)
+				rzxr_stop(comp);		// playing one ends the one being made
 			err = inf->load(comp, path.toLocal8Bit().data(), drv);
 			if ((err == ERR_OK) && (inf->id == FL_SZX)) {
 				szx_mount(comp, path);
@@ -672,7 +676,11 @@ int load_file(Computer* comp, const char* name, int id, int drv) {
 				last_as_kind = as_kind_of(inf->id);
 				last_as_drv = drv;
 				switch (inf->id) {
-					case FL_SNA: case FL_Z80: case FL_SZX: case FL_SPG: case FL_RZX:
+					case FL_SNA: case FL_Z80: case FL_SZX: case FL_SPG:
+						rzx_rec_touch();
+						last_snapshot = path;
+						break;
+					case FL_RZX:
 						last_snapshot = path;
 						break;
 				}
@@ -756,7 +764,7 @@ int save_file(Computer* comp, const char* name, int id, int drv, int live) {
 				flt = file_get_type_filter(id, 1);
 		}
 		if (!flt.isEmpty()) {
-			filer->setWindowTitle("Save file");
+			filer->setWindowTitle("Save File");
 			filer->setNameFilter(flt);
 			filer->setAcceptMode(QFileDialog::AcceptSave);
 			filer->setDirectory(conf.lastDir.c_str());
@@ -856,13 +864,25 @@ int quick_save(Computer* comp) {
 static xState* undoState = NULL;
 static std::string undoMac;
 
+// A quick save may be from before what a recording has logged since, so the
+// recording joins there instead of going back with the machine.
+static int quick_xstate_load(xState* st, Computer* comp) {
+	rzxRecPos rec = comp->rzx.rec;
+	int res = xstate_load(st, comp);
+	if (res && rec.on) {
+		comp->rzx.rec = rec;
+		rzx_rec_touch();
+	}
+	return res;
+}
+
 int quick_load(Computer* comp) {
 	int res = 0;
 	emu_lock();
 	if (!undoState) undoState = xstate_create();
 	undoMac = (undoState && xstate_save(undoState, comp)) ? conf.macId : std::string();
 	if (quickState && (quickMac == conf.macId))
-		res = xstate_load(quickState, comp);
+		res = quick_xstate_load(quickState, comp);
 	if (!res) {
 		QString path = quick_path();
 		if (!QFileInfo::exists(path))
@@ -880,7 +900,7 @@ int quick_undo(Computer* comp) {
 	emu_lock();
 	xState* was = xstate_create();
 	bool kept = was && xstate_save(was, comp);
-	int res = xstate_load(undoState, comp);
+	int res = quick_xstate_load(undoState, comp);
 	if (res && kept) {
 		xstate_destroy(undoState);
 		undoState = was;
@@ -893,16 +913,43 @@ int quick_undo(Computer* comp) {
 
 // The save dialog on its own, for an export that is not one of the file types
 // the tables above know. Same dialog as every other open and save in the app.
-QString file_ask_save(const char* title, const char* filter, const char* ext) {
+// own: a file that is written over without asking - the one a recording goes on in
+QString file_ask_save(const char* title, const char* filter, const char* ext, const QString& suggest, const QString& own) {
 	filer->setWindowTitle(title);
 	filer->setNameFilter(filter);
 	filer->setAcceptMode(QFileDialog::AcceptSave);
+	if (suggest.isEmpty()) {
+		filer->setDirectory(conf.lastDir.c_str());
+	} else {
+		filer->setDirectory(QFileInfo(suggest).absolutePath());
+		filer->selectFile(QFileInfo(suggest).fileName());
+	}
+	filer->setHistory(QStringList());
+	filer->setOption(QFileDialog::DontConfirmOverwrite, !own.isEmpty());
+	int ok = filer->exec();
+	filer->setOption(QFileDialog::DontConfirmOverwrite, false);
+	if (!ok) return QString();
+	QString path = filer->selectedFiles().first();
+	if (!path.endsWith(ext, Qt::CaseInsensitive))
+		path.append(ext);
+	if (!own.isEmpty() && QFileInfo::exists(path) && (QFileInfo(path) != QFileInfo(own))) {
+		QString q = QString("%1 already exists.\nDo you want to replace it?").arg(QFileInfo(path).fileName());
+		if (QMessageBox::warning(filer->parentWidget(), title, q, QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
+			return QString();
+	}
+	conf.lastDir = std::string(QFileInfo(path).dir().absolutePath().toLocal8Bit().data());
+	return path;
+}
+
+// one file of one kind, to open
+QString file_ask_load(const char* title, const char* filter) {
+	filer->setWindowTitle(title);
+	filer->setNameFilter(filter);
+	filer->setAcceptMode(QFileDialog::AcceptOpen);
 	filer->setDirectory(conf.lastDir.c_str());
 	filer->setHistory(QStringList());
 	if (!filer->exec()) return QString();
 	QString path = filer->selectedFiles().first();
-	if (!path.endsWith(ext, Qt::CaseInsensitive))
-		path.append(ext);
 	conf.lastDir = std::string(QFileInfo(path).dir().absolutePath().toLocal8Bit().data());
 	return path;
 }

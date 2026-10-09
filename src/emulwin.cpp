@@ -44,6 +44,7 @@
 #include "xcore/rewind.h"
 #include "xcore/fastload.h"
 #include "xcore/rzxseek.h"
+#include "xcore/rzxrecord.h"
 #include "emulwin.h"
 #include "filer.h"
 #include "watcher.h"
@@ -243,6 +244,8 @@ MainWin::MainWin(QMainWindow* frm) {
 	osdImg[osd_pause].load(":/images/osd-time-pause.png");
 	osdImg[osd_rec].load(":/images/osd-rec.png");
 	osdImg[osd_rec_off].load(":/images/osd-rec-off.png");
+	osdImg[osd_rzx].load(":/images/osd-rzx.png");
+	osdImg[osd_rzx_off].load(":/images/osd-rzx-off.png");
 	for (int i = 0; i < 3; i++) {
 		osdImg[osd_ffwd2 + i].load(QString(":/images/osd-time-ffwd%0.png").arg(2 << i));
 		osdImg[osd_slow2 + i].load(QString(":/images/osd-time-slow%0.png").arg(2 << i));
@@ -613,6 +616,13 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 		watchPads();
 		QString vmsg = vrec_message();
 		if (!vmsg.isEmpty()) setMessage(vmsg, 4.0);
+		rzxr_tick(comp);
+		rzxContStep();
+		QString rmsg = rzxr_message();
+		if (!rmsg.isEmpty()) {
+			setMessage(rmsg, 4.0);
+			emit s_rzx_rec(rzxr_on());
+		}
 		switch (vrec_auto_tick()) {
 			case VREC_AUTO_STOP: vrec_stop(); break;
 			case VREC_AUTO_START: recStart(); break;
@@ -830,6 +840,11 @@ void MainWin::tapStateChanged(int wut, int val) {
 	}
 }
 
+// the rzx player plays the file it shows again
+void MainWin::rzxReplay(QString path) {
+	openMedia(path, FG_RZX, -1, 0, false);
+}
+
 // the rzx player asks for a frame of the recording
 void MainWin::rzxSeek(int frame) {
 	if (rewind_active()) return;		// it stands in for the machine until let go
@@ -849,10 +864,17 @@ void MainWin::rzxStateChanged(int state) {
 			pause(true,PR_RZX);
 			break;
 		case RWS_STOP:
+			if (rzxr_on()) {	// the player's Stop ends a recording too
+				rzxRec();
+				break;
+			}
 			emu_lock();		// the emulation reads the file
 			rzxStop(comp);
 			emu_unlock();
 			rzxWatch();
+			break;
+		case RWS_REC:
+			rzxRec();
 			break;
 		case RWS_OPEN:
 			pause(true,PR_RZX);
@@ -1122,6 +1144,80 @@ void MainWin::grabScreen() {
 #endif
 }
 
+// An RZX recording of the machine from here on, or of the one being played
+// from the frame it has got to, into a file asked for first.
+void MainWin::rzxRec(bool finalize) {
+	Computer* comp = conf.zx;
+	QString path;
+	if (!rzxr_on()) {
+		pause(true, PR_FILE);
+		// over a recording being played, the recording goes on in its own file
+		QString own = comp->rzx.play ? rzx_current() : QString();
+		path = file_ask_save("Record RZX", "RZX recording (*.rzx)", ".rzx", own.isEmpty() ? rzxr_suggest() : own, own);
+		pause(false, PR_FILE);
+		if (path.isEmpty()) {
+			emit s_rzx_rec(false);
+			return;
+		}
+	}
+	emu_lock();
+	int err = ERR_OK;
+	if (rzxr_on()) {
+		rzxr_stop(comp, finalize);
+	} else {
+		err = rzxr_start(comp, path);
+	}
+	emu_unlock();
+	if (err != ERR_OK) {
+		setMessage(" this machine cannot be recorded ");
+	} else if (rzxr_on()) {
+		setMessage(" RZX recording ");
+	}
+	rzxWatch();
+	emit s_rzx_rec(rzxr_on());
+}
+
+// A recording on disk goes on: it is opened, run to its end flat out, and taken
+// over there - rzxContStep() follows it to that point.
+void MainWin::rzxContinue() {
+	if (rzxr_on()) return;
+	unsigned was = rzx_playing;
+	openMedia(QString(), FG_RZX, -1, 0, true);
+	rzxContStage = (rzx_playing && (rzx_playing != was)) ? 1 : 0;
+}
+
+void MainWin::rzxContStep() {
+	Computer* comp = conf.zx;
+	if (!rzxContStage) return;
+	if (!rzx_playing) {				// stopped or closed meanwhile
+		rzxContStage = 0;
+		return;
+	}
+	if (!comp->rzx.play) return;			// not started yet
+	if (rzxContStage == 1) {
+		rzxContStage = 2;
+		rzxSeek(std::max(comp->rzx.fTotal - 1, 0));
+	} else if (!rzx_seeking()) {
+		rzxContStage = 0;
+		rzxRec();
+	}
+}
+
+// A file on disk loses its bookmarks, the snapshots kept to roll back to.
+void MainWin::rzxFinalizeFile() {
+	pause(true, PR_FILE);
+	QString path = file_ask_load("Finalize RZX", "RZX recording (*.rzx)");
+	if (!path.isEmpty()) {
+		int err = rzxr_finalize_file(path);
+		if (err == ERR_OK) {
+			setMessage(" RZX finalized ");
+		} else {
+			file_errors(err);
+		}
+	}
+	pause(false, PR_FILE);
+}
+
 // A name that says what was on the machine: the image in use, else the machine.
 void MainWin::videoRec() {
 	vrec_manual();		// the hotkey has the last word over auto recording
@@ -1195,10 +1291,15 @@ int MainWin::speedOsd() {
 }
 
 // the recording sign now: it blinks, and its dark phase gives way to a speed mode
+// A video says REC, an RZX recording RZX; both at once take turns.
 int MainWin::recOsd() {
-	if (vrec_state() != VREC_RUN) return osd_none;
-	if (!((QDateTime::currentMSecsSinceEpoch() / REC_BLINK_MS) & 1)) return osd_rec;
-	return (speedOsd() == osd_none) ? osd_rec_off : osd_none;
+	bool vid = (vrec_state() == VREC_RUN);
+	bool rzx = rzxr_on();
+	if (!vid && !rzx) return osd_none;
+	long long phase = QDateTime::currentMSecsSinceEpoch() / REC_BLINK_MS;
+	bool showRzx = rzx && (!vid || (phase & 2));
+	if (!(phase & 1)) return showRzx ? osd_rzx : osd_rec;
+	return (speedOsd() == osd_none) ? (showRzx ? osd_rzx_off : osd_rec_off) : osd_none;
 }
 
 void MainWin::drawIcons(QPainter& pnt) {
@@ -1692,17 +1793,17 @@ void MainWin::initUserMenu() {
 	bookmarkMenu = userMenu->addMenu(QIcon(":/images/star.png"),"Favorites");
 	userMenu->addSeparator();
 	profileMenu = userMenu->addMenu(QIcon(":/images/computer.png"),"Machine");
-	turboMenu = userMenu->addMenu(QIcon(":/images/clock.png"),"Turbo mode");
+	turboMenu = userMenu->addMenu(QIcon(":/images/clock.png"),"Turbo Mode");
 	resMenu = userMenu->addMenu(QIcon(":/images/shutdown.png"),"Reset");
 	userMenu->addSeparator();
 	keyMenu = userMenu->addMenu(QIcon(":/images/keyboardzx.png"), "Keymap");
 	shdMenu = userMenu->addMenu(QIcon(":/images/shader.png"), "Shaders");
-	palMenu = userMenu->addMenu(QIcon(":/images/palette.png"), "ZX palette");
+	palMenu = userMenu->addMenu(QIcon(":/images/palette.png"), "ZX Palette");
 
 	userMenu->addSeparator();
-	dskMenu = userMenu->addMenu(QIcon(":/images/fdd_disk.png"), "Disk manager");
+	dskMenu = userMenu->addMenu(QIcon(":/images/fdd_disk.png"), "Disk Manager");
 	cartMenu = userMenu->addMenu(QIcon(":/images/cartrige.png"), "Cartridge");
-	sdcMenu = userMenu->addMenu(QIcon(":/images/sdcard.png"), "SD card");
+	sdcMenu = userMenu->addMenu(QIcon(":/images/sdcard.png"), "SD Card");
 	hddMenu = userMenu->addMenu(QIcon(":/images/hdd.png"), "Drives");
 	diskWin = new xDiskWin(this);
 	addSatellite(diskWin);
@@ -1723,10 +1824,10 @@ void MainWin::initUserMenu() {
 		setMessage(QString(" gamepad off: player %0 ").arg(slot + 1));
 	});
 
-	cutAction(userMenu, "Tape player", XCUT_TAPWIN, "tape");
-	cutAction(userMenu, "RZX player", XCUT_RZXWIN, "video");
+	cutAction(userMenu, "Tape Player", XCUT_TAPWIN, "tape");
+	cutAction(userMenu, "RZX Player", XCUT_RZXWIN, "video");
 	userMenu->addSeparator();
-	pckAct = userMenu->addAction(QIcon(":/images/keyboard.png"),"Grab keyboard");
+	pckAct = userMenu->addAction(QIcon(":/images/keyboard.png"),"Grab Keyboard");
 	pckAct->setCheckable(true);
 	pckAct->setIconVisibleInMenu(false);	// a setting: its tick, which an icon would take the place of
 	// the Profi changes its layout with the grab, so no key may stay down across it
@@ -1735,13 +1836,13 @@ void MainWin::initUserMenu() {
 		setMessage(on ? " grab keyboard, " XREL_KEYS " lets go " : " release keyboard ");
 	});
 	cutActs.append({pckAct, pckAct->text(), XCUT_GRABKBD});	// its key, shown; the action is its own
-	cutAction(userMenu, "Virtual keyboard", XCUT_KEYBOARD, "keyboardzx");
+	cutAction(userMenu, "Virtual Keyboard", XCUT_KEYBOARD, "keyboardzx");
 	padMenu = userMenu->addMenu(QIcon(":/images/gamepad.png"), "Gamepads");
 	// the debugger and its detached panels
 	dbgMenu = userMenu->addMenu(QIcon(":/images/bug.png"), "Debugger");
 	watchAct = dbgMenu->addAction(QIcon(":/images/objective.png"),"Watcher", this, SIGNAL(s_watch_show()));
 	dbgMenu->addAction(QIcon(":/images/rulers.png"),"Screen", this, SIGNAL(s_scr_show()));
-	dbgMenu->addAction(QIcon(":/images/note.png"),"Sound chips", this, SIGNAL(s_snd_show()));
+	dbgMenu->addAction(QIcon(":/images/note.png"),"Sound Chips", this, SIGNAL(s_snd_show()));
 	cutAction(userMenu, "Options...", XCUT_OPTIONS, "other");
 
 	connect(profileMenu,SIGNAL(triggered(QAction*)),this,SLOT(profileSelected(QAction*)));
@@ -1847,16 +1948,18 @@ void MainWin::initMenuBar() {
 	cutAction(fileMenu, "Reload", XCUT_RELOAD, "refresh");
 	fileMenu->addSeparator();
 	cutAction(fileMenu, "Save...", XCUT_SAVE, "save_all");
-	cutAction(fileMenu, "Save changed disks", XCUT_FASTSAVE, "floppy");
-	cutAction(fileMenu, "Quick save", XCUT_QUICKSAVE);
-	cutAction(fileMenu, "Quick load", XCUT_QUICKLOAD);
-	cutAction(fileMenu, "Undo quick load", XCUT_QUICKUNDO);
-	fileMenu->addSeparator();
-	cutAction(fileMenu, "Screenshot", XCUT_SCRSHOT, "grp-screenshot");
-	cutAction(fileMenu, "Screenshot series", XCUT_COMBOSHOT);
-	recAct = cutAction(fileMenu, "Record video", XCUT_VIDREC, "grp-record");
+	cutAction(fileMenu, "Save Changed Disks", XCUT_FASTSAVE, "floppy");
+	cutAction(fileMenu, "Quick Save", XCUT_QUICKSAVE);
+	cutAction(fileMenu, "Quick Load", XCUT_QUICKLOAD);
+	cutAction(fileMenu, "Undo Quick Load", XCUT_QUICKUNDO);
+	// the Capture menu's, which is made with the machine's menus
+	cutAct("Screenshot", XCUT_SCRSHOT, "grp-screenshot");
+	cutAct("Screenshot Series", XCUT_COMBOSHOT);
+	recAct = cutAct("Record Video", XCUT_VIDREC, "grp-record");
 	recAct->setCheckable(true);
-	wavAct = cutAction(fileMenu, "Record sound to WAV...", XCUT_WAV_OUT, "wav");
+	rzxRecAct = cutAct("Record...", XCUT_RZXREC, "grp-record-rzx");
+	rzxRecAct->setCheckable(true);
+	wavAct = cutAct("Record Sound to WAV...", XCUT_WAV_OUT, "wav");
 	wavAct->setCheckable(true);
 	fileMenu->addSeparator();
 	cutAction(fileMenu, "Options...", XCUT_OPTIONS, "other");
@@ -1891,7 +1994,7 @@ void MainWin::initMenuBar() {
 	}
 	fullAct = cutAction(viewMenu, "Fullscreen", XCUT_FULLSCR, "grp-picture");
 	fullAct->setCheckable(true);
-	ratioAct = cutAction(viewMenu, "Keep aspect ratio", XCUT_RATIO, "display");
+	ratioAct = cutAction(viewMenu, "Keep Aspect Ratio", XCUT_RATIO, "display");
 	ratioAct->setCheckable(true);
 	ratioAct->setIconVisibleInMenu(false);	// a setting: its tick, which an icon would take the place of
 	viewMenu->addSeparator();
@@ -1904,25 +2007,25 @@ void MainWin::initMenuBar() {
 		saveConfig();
 	});
 	tbShowAct->setCheckable(true);
-	sbShowAct = viewMenu->addAction("Status bar", this, [this](bool on) {
+	sbShowAct = viewMenu->addAction("Status Bar", this, [this](bool on) {
 		conf.win.statusbar = on;
 		updateWindow();
 		saveConfig();
 	});
 	sbShowAct->setCheckable(true);
 	viewMenu->addSeparator();
-	cutAction(viewMenu, "Virtual keyboard", XCUT_KEYBOARD, "keyboardzx");
+	cutAction(viewMenu, "Virtual Keyboard", XCUT_KEYBOARD, "keyboardzx");
 
 	QMenu* help = new xMenu("Help", this);
 	helpMenu = help;
 	bar->addMenu(help);
-	help->addAction("Project page", this, []() {
+	help->addAction("Project Page", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus"));
 	});
-	help->addAction("What's new", this, []() {
+	help->addAction("What's New", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus/blob/main/CHANGELOG.md"));
 	});
-	help->addAction("Report a problem", this, []() {
+	help->addAction("Report a Problem", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus/issues"));
 	});
 	help->addSeparator();
@@ -2163,7 +2266,7 @@ void MainWin::initMachineMenus() {
 	mac->addAction(slowAct);
 	mac->addAction(ffAct);
 	// the rewind itself is a key held down, which a menu cannot do; this is whether it may
-	QAction* rewOnAct = mac->addAction("Allow rewind", this, [this](bool on) {
+	QAction* rewOnAct = mac->addAction("Allow Rewind", this, [this](bool on) {
 		conf.emu.rewind.on = on ? 1 : 0;
 		saveConfig();
 	});
@@ -2184,10 +2287,10 @@ void MainWin::initMachineMenus() {
 	media->addSeparator();
 	media->addAction(diskAct);
 	// its own action: the drives' list is called Disk manager where its root opens the window
-	QAction* drvAct = new QAction(QIcon(":/images/fdd.png"), "Floppy drives", this);
+	QAction* drvAct = new QAction(QIcon(":/images/fdd.png"), "Floppy Drives", this);
 	drvAct->setMenu(dskMenu);
 	media->addAction(drvAct);
-	QAction* fdcFastAct = media->addAction("Fast disk access", this, [this](bool on) {
+	QAction* fdcFastAct = media->addAction("Fast Disk Access", this, [this](bool on) {
 		setFlagBit(on, &fdcFlag, FDC_FAST);
 		saveConfig();
 	});
@@ -2198,6 +2301,31 @@ void MainWin::initMachineMenus() {
 	media->addMenu(hddMenu);
 	media->addSeparator();
 	media->addAction(cutById.value(XCUT_RZXWIN));
+
+	// what the machine shows and plays, taken down
+	QMenu* cap = new xMenu("Capture", this);
+	cap->addAction(cutById.value(XCUT_SCRSHOT));
+	cap->addAction(cutById.value(XCUT_COMBOSHOT));
+	cap->addSeparator();
+	cap->addAction(recAct);
+	cap->addAction(wavAct);
+	QMenu* rzxMenu = cap->addMenu(QIcon(":/images/grp-record-rzx.png"), "RZX");
+	rzxMenu->addAction(rzxRecAct);
+	rzxMenu->addAction(cutAct("Continue Recording...", XCUT_RZXCONT));
+	rzxMenu->addSeparator();
+	rzxMenu->addAction(cutAct("Add Bookmark", XCUT_RZXMARK));
+	rzxMenu->addAction(cutAct("Rollback to Bookmark", XCUT_RZXBACK));
+	rzxMenu->addSeparator();
+	rzxMenu->addAction(cutAct("Stop and Finalize", XCUT_RZXFINAL));
+	rzxMenu->addAction(cutAct("Finalize File...", XCUT_RZXFINFILE));
+	connect(rzxMenu, &QMenu::aboutToShow, this, [this]() {
+		bool on = rzxr_on();
+		rzxRecAct->setChecked(on);
+		cutById.value(XCUT_RZXCONT)->setEnabled(!on);
+		cutById.value(XCUT_RZXMARK)->setEnabled(on);
+		cutById.value(XCUT_RZXBACK)->setEnabled(on);
+		cutById.value(XCUT_RZXFINAL)->setEnabled(on);
+	});
 
 	// one list, not the right-click menu's submenu
 	QMenu* dbg = new xMenu("Debug", this);
@@ -2212,7 +2340,7 @@ void MainWin::initMachineMenus() {
 	connect(mac, &QMenu::aboutToShow, this, &MainWin::fillUserMenu);
 	connect(inp, &QMenu::aboutToShow, this, &MainWin::fillUserMenu);
 	connect(media, &QMenu::aboutToShow, this, &MainWin::fillUserMenu);
-	foreach(QMenu* m, QList<QMenu*>() << mac << inp << media << dbg) {
+	foreach(QMenu* m, QList<QMenu*>() << mac << inp << media << cap << dbg) {
 		frame->menuBar()->insertMenu(helpMenu->menuAction(), m);
 		if (fsBar) fsBar->insertMenu(helpMenu->menuAction(), m);
 		connect(m, &QMenu::aboutToHide, this, &MainWin::menuHide);
@@ -2322,7 +2450,7 @@ void MainWin::fillUserMenu() {
 	}
 	// fill shader menu
 	shdMenu->clear();
-	act = shdMenu->addAction("none");
+	act = shdMenu->addAction("None");
 	act->setData("");
 	act->setCheckable(true);
 	if (conf.vid.shader.empty()) act->setChecked(true);

@@ -1,5 +1,6 @@
 #include "emulwin.h"
 #include "filer.h"
+#include "libxpeccy/filetypes/filetypes.h"
 
 #include <QApplication>
 #include <QMouseEvent>
@@ -97,6 +98,7 @@ void MainWin::socketRead() {
 			}
 		}
 	} else if (com == "setreg") {
+		rzx_rec_touch();
 		if (prm.size() > 2) {
 			if (!cpu_set_reg(comp->cpu, prm[1].toUpper().toLocal8Bit().data(), str_to_adr(comp, prm[2])))
 				sock->write("Wrong register name\r\n");
@@ -138,6 +140,7 @@ void MainWin::socketRead() {
 			emu_unlock();
 		}
 	} else if (com == "asm") {
+		rzx_rec_touch();
 		// asm ADR instruction: what the listing does with one typed into it
 		if (prm.size() > 2) {
 			adr = str_to_adr(comp, prm[1]);
@@ -150,12 +153,14 @@ void MainWin::socketRead() {
 			sock->write(QString("%0 bytes\r\n").arg(qMax(cnt, 0)).toUtf8());
 		}
 	} else if ((com == "poke") || (com == "memwr")) {
+		rzx_rec_touch();
 		if (prm.size() > 2) {
 			adr = str_to_adr(comp, prm[1]);
 			val = str_to_adr(comp, prm[2]);
 			comp->hw->mwr(comp, adr, val & 0xff);
 		}
 	} else if ((com == "pokew") || (com == "memwrw")) {
+		rzx_rec_touch();
 		if (prm.size() > 2) {
 			adr = str_to_adr(comp, prm[1]);
 			val = str_to_adr(comp, prm[2]);
@@ -163,6 +168,7 @@ void MainWin::socketRead() {
 			comp->hw->mwr(comp, adr+1, (val >> 8) & 0xff);
 		}
 	} else if (com == "memfill") {
+		rzx_rec_touch();
 		if (prm.size() > 3) {
 			adr = str_to_adr(comp, prm[1]);
 			cnt = str_to_adr(comp, prm[2]);
@@ -174,6 +180,7 @@ void MainWin::socketRead() {
 			}
 		}
 	} else if (com == "memcopy") {
+		rzx_rec_touch();
 		if (prm.size() > 3) {
 			adr = str_to_adr(comp, prm[1]);
 			cnt = str_to_adr(comp, prm[2]);

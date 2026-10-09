@@ -59,7 +59,7 @@ keyWindow::keyWindow(QWidget* p):QDialog(p) {
 	setMinimumSize(pxm.width() / 2, pxm.height() / 2);
 	setZoom(storedZoom());
 	setWindowIcon(QIcon(":/images/keyboard.png"));
-	setWindowTitle("Virtual keyboard - ZX Spectrum");
+	setWindowTitle("Virtual Keyboard - ZX Spectrum");
 	if (conf.keywin.dock)
 		setDock(true);
 }

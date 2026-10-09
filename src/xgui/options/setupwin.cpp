@@ -51,6 +51,7 @@
 #include "xcore/rewind.h"
 #include "libxpeccy/filetypes/filetypes.h"
 #include "libxpeccy/input/input.h"
+#include "xcore/rzxrecord.h"
 
 // the turbo step lists the box offers before a machine of its own adds one
 #define CPU_TURBO_ROWS	3
@@ -630,7 +631,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	// The settings that define the machine rather than how it is used live in
 	// a window of their own. It is the same widgets, moved out of the page -
 	// so everything that reads and writes them stays as it is.
-	advWin = popOut(ui.advBox, "Machine: advanced settings");
+	advWin = popOut(ui.advBox, "Machine: Advanced Settings");
 
 	// the page keeps one button for the ROM set; the slots and the reset
 	// target are in this window
@@ -639,7 +640,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 
 	// same for the set file by file: the slots say which file is in which
 	// one, this window has the offsets and sizes behind it
-	romWin = popOut(ui.romAdvBox, "Machine: ROM files");
+	romWin = popOut(ui.romAdvBox, "Machine: ROM Files");
 	romWin->resize(620, 340);
 	QPushButton* pbExpert = romSetWin->findChild<QDialogButtonBox*>()->addButton(tr("Expert settings"), QDialogButtonBox::ActionRole);
 	pbExpert->setIcon(QIcon(":/images/settings.png"));
@@ -1403,6 +1404,13 @@ void SetupWin::apply() {
 	xm_save_over();
 	if ((xm_signature() != macWas) || (conf.emu.rewind.step != rwStep) || (conf.emu.rewind.secs != rwSecs))
 		rewind_clear();
+	// The machine changed under a recording: it ends with the frames before
+	// the change, which is all the log holds of them
+	if (xm_signature() != macWas) {
+		emu_lock();
+		rzxr_stop(comp);
+		emu_unlock();
+	}
 	updateMachineButtons();
 	// the mark on the machine may have just appeared or gone
 	int midx = ui.machbox->findData(QString::fromLocal8Bit(conf.macId.c_str()));
@@ -1678,7 +1686,7 @@ void SetupWin::buildDevices() {
 	tape.check(cbTapeFast, tr("Fast loading"), tr("Full speed, sound off and picture held while a loader reads the tape"), true);
 	tape.check(cbTapeFlash, tr("Flash loading"), tr("With fast loading: ROM blocks go straight to the machine"), true);
 	tape.check(cbTapeEdge, tr("Edge detection"), tr("With fast loading: a loader waiting for a pulse gets it at once. Faster, not exact"), true);
-	devRow(grid, tr("Tape"), tapeSum, tape.body, "Machine: tape");
+	devRow(grid, tr("Tape"), tapeSum, tape.body, "Machine: Tape");
 	foreach(QCheckBox* cb, QList<QCheckBox*>() << cbTapeAuto << cbTapeRewind << cbTapeFast << cbTapeFlash << cbTapeEdge)
 		connect(cb, &QCheckBox::toggled, this, &SetupWin::fillDevSummary);
 
@@ -1742,13 +1750,13 @@ void SetupWin::buildDevices() {
 	}
 	dgrid->setColumnStretch(3, 1);
 	disk.field(tr("Drives"), drvs);
-	devRow(grid, tr("Disk"), diskTypeBox, disk.body, "Machine: disk");
+	devRow(grid, tr("Disk"), diskTypeBox, disk.body, "Machine: Disk");
 
 	// the images and what is in them are the Drives menu's
 	xOptSheet hdd;
 	hdd.field(tr("Master"), hm_type);
 	hdd.field(tr("Slave"), hs_type);
-	devRow(grid, tr("Hard disk"), hiface, hdd.body, "Machine: hard disk");
+	devRow(grid, tr("Hard disk"), hiface, hdd.body, "Machine: Hard Disk");
 
 	sdSum = new QLabel;
 	btn = devRow(grid, tr("SD card"), sdSum, NULL, NULL);
@@ -1768,7 +1776,7 @@ void SetupWin::buildDevices() {
 	mouse.line();
 	mouse.check(ratWheel, tr("Wheel"), tr("The wheel is read too, as on the extended Kempston mouse"));
 	mouse.check(cbSwapButtons, tr("Swap buttons"), tr("The left and right buttons trade places"));
-	devRow(grid, tr("Mouse"), mouseBox, mouse.body, "Machine: mouse");
+	devRow(grid, tr("Mouse"), mouseBox, mouse.body, "Machine: Mouse");
 	btn = devRow(grid, tr("PC keyboard"), cbScanTab, NULL, NULL);
 	kbdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << cbScanTab << btn;
 	left->addStretch(1);
@@ -2739,7 +2747,7 @@ void SetupWin::buildRecording() {
 	// a child of the pop-up, which is modal: one of the setup window would be
 	// shut out until the pop-up closes
 	connect(hlp, &QToolButton::clicked, this, [this, hlp]() {
-		help_window(hlp->window(), &recHelpWin, ":/res/help/rec-cli.html", "Recording: command line");
+		help_window(hlp->window(), &recHelpWin, ":/res/help/rec-cli.html", "Recording: Command Line");
 	});
 	QWidget* autoRow = new QWidget;
 	QHBoxLayout* autoLay = new QHBoxLayout(autoRow);
@@ -2776,7 +2784,7 @@ void SetupWin::buildRecording() {
 	connect(cbRecFps, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::recEnables);
 	connect(leRecName, &QLineEdit::textChanged, this, &SetupWin::showRecCmd);
 	connect(cbRec60, &QCheckBox::toggled, this, &SetupWin::showRecSize);
-	QDialog* win = popOut(adv.body, "Recording: advanced settings");
+	QDialog* win = popOut(adv.body, "Recording: Advanced Settings");
 	xSideButton* adb = new xSideButton;
 	adb->setIcon(QIcon(":/images/settings.png"));
 	adb->setText(tr("Advanced settings"));

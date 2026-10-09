@@ -80,6 +80,8 @@ enum {
 	osd_slow2 = osd_ffwd2 + 3,	// 1/2, then 1/4 and 1/8
 	osd_rec = osd_slow2 + 3,	// recording, taking turns with the others
 	osd_rec_off,	// its other phase, with no speed mode to take turns with
+	osd_rzx,	// the same for an RZX recording
+	osd_rzx_off,
 	osd_count
 };
 
@@ -154,6 +156,7 @@ typedef struct {
 
 		void s_step();
 
+		void s_rzx_rec(bool);		// recording started or stopped
 		void s_rzx_start();		// a recording opened, the one rzx_playing names
 		void s_rzx_stop();
 		void s_rzx_upd(Computer*);
@@ -190,6 +193,7 @@ typedef struct {
 		void dbgReturn();
 		void rzxStateChanged(int);
 		void rzxSeek(int);
+		void rzxReplay(QString);
 		void profileSelected(QAction*);
 		void shdSelected(QAction*);
 		void keySelected(QAction*);
@@ -265,6 +269,11 @@ typedef struct {
 		void updateHead();
 		void screenShot();
 		void videoRec();
+		void rzxRec(bool finalize = false);
+		void rzxContinue();
+		void rzxContStep();
+		void rzxFinalizeFile();
+		int rzxContStage = 0;		// Continue Recording: 1 waits for the playback, 2 for the run to its end
 		void grabScreen();
 		void drawPicture();
 		QRect modeSlot();
@@ -310,6 +319,7 @@ typedef struct {
 		QMenu* fileMenu;
 		QMenu* viewMenu;
 		QAction* recAct;
+		QAction* rzxRecAct;
 		QAction* wavAct;
 		QAction* fullAct;
 		QAction* ratioAct;

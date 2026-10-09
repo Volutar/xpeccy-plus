@@ -26,6 +26,7 @@ enum {
 	ERR_RZX_SIGN,		// rzx signature error
 	ERR_RZX_CRYPT,		// rzx is crypted
 	ERR_RZX_UNPACK,		// rzx unpacking error
+	ERR_RZX_REC,		// rzx recording: the machine cannot be saved, or no memory
 
 	ERR_Z80_HW,		// Z80 hw mode not supported
 
@@ -176,6 +177,7 @@ typedef struct {
 	int minor;
 	char ext[5];		// snapshot: its format, as the file names it
 	char text[256];		// creator: program name; external snapshot: its file name
+	char custom[256];	// creator: what else it says, as text
 } rzxBlock;
 
 typedef struct {
@@ -192,6 +194,36 @@ typedef struct {
 int rzx_info(const char*, rzxInfo*, int first);
 void rzx_info_free(rzxInfo*);
 int rzx_seek(Computer*, int frame);
+
+// A snapshot block's flags: b0 external, b1 packed, and two more. b30 is ours:
+// taken between two INTs with interrupts on, so the playback raises none after
+// it. b31 is a bookmark, a point to roll back to - Spectaculator's mark for its
+// rollback points, which finalizing drops.
+#define RZX_SNAP_NOINT	(1u << 30)
+#define RZX_SNAP_MARK	(1u << 31)
+int rzxGetSnapType(char*);
+
+// recording (rzxrec.c)
+int rzx_rec_start(Computer*);
+int rzx_rec_take_over(Computer*);	// a recording being played goes on as this one
+void rzx_rec_bookmark(void);		// one at the next frame's end
+int rzx_rec_rollback(Computer*);	// to the last bookmark: frames back, -1 none
+void rzx_rec_pre(Computer*);		// before an exec, when a join or a bookmark is wanted
+extern int rzx_rec_marking;
+void rzx_rec_stop(Computer*);
+void rzx_rec_in(Computer*, int);
+void rzx_rec_step(Computer*, int t);
+void rzx_rec_touch(void);		// the machine changed from outside: a join before the next opcode
+extern int rzx_rec_touched;
+int rzx_rec_frames(Computer*);
+int rzx_rec_joins(Computer*);
+// what has been recorded, copied out to be written while the machine runs on
+typedef struct rzxRecImage rzxRecImage;
+rzxRecImage* rzx_rec_take(Computer*);
+int rzx_rec_image_frames(rzxRecImage*);
+int rzx_rec_image_write(rzxRecImage*, const char* path, const char* name, int major, int minor, const char* custom, int finalize);
+rzxRecImage* rzx_rec_image_read(const char* path, int* err);
+void rzx_rec_image_free(rzxRecImage*);
 
 // memory (snapshot)
 

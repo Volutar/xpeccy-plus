@@ -443,7 +443,7 @@ bool xPadRowEdit::edit(xGamepad* gp, int i) {
 	bool joy = (i >= 0) && (i < PR_JOY);
 	bool custom = joy && (gp->scheme() == GPS_CUSTOM);
 	bool own = !joy || custom;
-	setWindowTitle(joy ? QString(pad_role_name(i)) : QString((i < 0) ? "New binding" : "Binding"));
+	setWindowTitle(joy ? QString(pad_role_name(i)) : QString((i < 0) ? "New Binding" : "Binding"));
 	// the left side: the joystick's own and fixed, a key on Custom, anything on an extra row
 	QStringList tnames;
 	foreach(const xJoyMapEntry& t, gp->rowTargets(i)) tnames.append(xGamepad::getTargetName(t));

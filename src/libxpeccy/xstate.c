@@ -3,6 +3,7 @@
 
 #include "xstate.h"
 #include "xlog.h"
+#include "filetypes/filetypes.h"
 
 // The machine is a tree of structs allocated one by one, so a snapshot is a
 // list of ranges rather than one block. The list is rebuilt on every save and
@@ -28,6 +29,7 @@ typedef struct {
 	size_t total;			// bytes over all the chunks
 	long ray, line;			// the ray's offsets into the current image buffer
 	unsigned rzx;			// rzx_playing when it was taken
+	unsigned rec;			// rzx_recording when it was taken
 } xStateMeta;
 
 struct xState {
@@ -215,6 +217,7 @@ int xstate_save(xState* st, Computer* comp) {
 	st->m.ray = comp->vid->ray.ptr - scrimg;
 	st->m.line = comp->vid->ray.lptr - scrimg;
 	st->m.rzx = rzx_playing;
+	st->m.rec = rzx_recording;
 	return 1;
 }
 
@@ -243,6 +246,7 @@ int xstate_load(xState* st, Computer* comp) {
 	size_t rzxLen = offsetof(Computer, rzx.frm.data) - offsetof(Computer, rzx);
 	unsigned char rzxLive[offsetof(Computer, rzx.frm.data) - offsetof(Computer, rzx)];
 	int rzxPos = comp->rzx.frm.pos;
+	rzxRecPos recLive = comp->rzx.rec;
 	memcpy(rzxLive, &comp->rzx, rzxLen);
 	unsigned char* src = st->data;
 	for (i = 0; i < count; i++) {
@@ -256,6 +260,7 @@ int xstate_load(xState* st, Computer* comp) {
 	// current, not by the address it held before.
 	comp->vid->ray.ptr = scrimg + st->m.ray;
 	comp->vid->ray.lptr = scrimg + st->m.line;
+	rzxRecPos recState = comp->rzx.rec;
 	if (st->m.rzx == rzx_playing) {
 		rzx_reread(comp);
 	} else {
@@ -263,6 +268,10 @@ int xstate_load(xState* st, Computer* comp) {
 		comp->rzx.frm.pos = rzxPos;
 		if (comp->rzx.play) rzxStop(comp);
 	}
+	// The same for a recording: one taken within it takes its log back with
+	// the machine, any other leaves the log where it is and makes a join.
+	comp->rzx.rec = (st->m.rec == rzx_recording) ? recState : recLive;
+	if (st->m.rec != rzx_recording) rzx_rec_touch();
 	return 1;
 }
 

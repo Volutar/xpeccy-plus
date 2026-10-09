@@ -43,6 +43,7 @@ static size_t rw_mem = 0;
 static std::atomic<int> rw_clear_req(0);
 static Computer* rw_comp = NULL;	// what the history was taken from
 static unsigned rw_rzx = 0;		// ...and the recording playing then (rzx_playing)
+static unsigned rw_rec = 0;		// ...and the one being made (rzx_recording)
 // The history's own frame count. Not comp->frmCount: a reset or a snapshot -
 // every join in a recording - starts that one again, and the history spans them.
 static int rw_clock = 0;
@@ -302,12 +303,13 @@ void rewind_hold(int on) {
 void rewind_frame(Computer* comp, long long* phase) {
 	rw_clock++;
 	// a recording starting or ending takes the machine over or lets it go
-	if (rw_clear_req.exchange(0) || (comp != rw_comp) || (rzx_playing != rw_rzx)) {
+	if (rw_clear_req.exchange(0) || (comp != rw_comp) || (rzx_playing != rw_rzx) || (rzx_recording != rw_rec)) {
 		rw_drop_all();
 		rw_play_stop();
 		rw_log_forget();
 		rw_comp = comp;
 		rw_rzx = rzx_playing;
+		rw_rec = rzx_recording;
 	}
 	if (!conf.emu.rewind.on) {
 		rw_drop_all();

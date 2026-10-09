@@ -74,7 +74,7 @@ int memrd(int adr, int m1, void* ptr) {
 	// nothing watches the read and nothing spoils it: stdMRd() without the
 	// calls, unless the fetch pages TR-DOS
 	if (!comp_mem_watched(comp) && !comp->snowBad
-			&& !comp->rzx.play
+			&& !comp->rzx.play && !comp->rzx.rec.on
 			) {
 		if (comp->hw->mrd != stdMRd)
 			return comp->hw->mrd(comp, adr, m1);
@@ -90,6 +90,8 @@ static int memrd_watched(Computer* comp, int adr, int m1) {
 	if (m1 && comp->rzx.play && (comp->rzx.frm.fetches > 0)) {
 		comp->rzx.frm.fetches--;
 	}
+	if (m1 && comp->rzx.rec.on)
+		comp->rzx.rec.fetch++;
 	// only the debugger's aids want to know whether this is an instruction byte
 	unsigned isExecByte = 0;
 	if (comp->flgMAP || comp->flgHEAT || comp->flgCOND)
@@ -406,6 +408,7 @@ int iord(int port, void* ptr) {
 		comp->brkev.val = res & 0xff;
 	}
 	if (comp->pwbus) pwatch_hit(comp, port, res);
+	if (comp->rzx.rec.on) rzx_rec_in(comp, res);
 	return res;
 }
 
@@ -672,6 +675,7 @@ void compReset(Computer* comp,int res) {
 	}
 	if (comp->rzx.play)
 		rzxStop(comp);
+	rzx_rec_touch();		// a recording goes on from the machine as the reset leaves it
 
 	if (res == RES_DEFAULT)
 		res = comp->resbank;
@@ -1007,6 +1011,8 @@ int compExec(Computer* comp) {
 	}
 // start
 	res4 = 0;
+	if (comp->rzx.rec.on && (rzx_rec_touched || rzx_rec_marking))
+		rzx_rec_pre(comp);
 // exec cpu opcode OR handle interrupt. get T states back
 	res2 = cpu_exec(comp->cpu);
 	if (comp->rzx.play) {
@@ -1015,7 +1021,13 @@ int compExec(Computer* comp) {
 			if (comp->hw->irq)
 				comp->hw->irq(comp, IRQ_RZX_INT);
 		}
+	} else if (comp->rzx.rec.on) {
+		rzx_rec_step(comp, res2);
+		if (comp->cpu->flgNMIOK)	// no frame of the format holds an NMI: a join after it
+			rzx_rec_touch();
 	}
+	comp->cpu->flgINTOK = 0;		// asked by the recorder alone: no trace of it in a snapshot
+	comp->cpu->flgNMIOK = 0;
 	return comp_step_end(comp, res2 - res4, res2);
 }
 

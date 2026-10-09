@@ -48,6 +48,15 @@ before that point is upstream's history and is not repeated here.
   recording, a double click on a block to where it starts. Fast forward, slow motion and
   rewind work while it plays, and their keys work from the player's window too.
 
+- **RZX recording** on Shift+F6, in the new Capture menu with the screenshots, video and sound.
+  - The file goes beside the image in use and is named after it; Play in the RZX player plays
+    it as soon as it is stopped.
+  - Rewind and slow motion work while recording, and the file says how much they were used. A
+    reset, a snapshot loaded, a POKE or an edit in the debugger is joined on and recording
+    goes on.
+  - Record while a recording plays goes on in that file from that point. Bookmarks mark where
+    to roll back to, and are dropped when the recording is finalized.
+
 - **Hotkey layouts**: Modern, the new default, and Classic, the keys as they were. Keys you
   change are kept as Custom, whichever layout is picked.
   - Modern leaves the machine every key it has: Esc is BREAK, F10 opens the debugger,
@@ -116,7 +125,8 @@ before that point is upstream's history and is not repeated here.
 - **Smaller things**: two floppy drives unless a machine says otherwise, Fast disk access in
   the disk manager too, Run ahead no longer marked experimental, interface styles listed
   without `.qss`, and an About that names the maintainer and the license and no longer
-  stops the machine. *(thanks to Volutar)*
+  stops the machine. *(thanks to Volutar)* Menus and window titles are in Title Case, and
+  hotkeys are named as in the menus.
 
 ### Fixed
 

@@ -3,7 +3,9 @@
 #include "xgui.h"
 #include "xcore/xcore.h"
 #include "xcore/filemachine.h"
+#include "xcore/rzxrecord.h"
 #include "../filer.h"
+#include "version.h"
 
 // the machine a snapshot in the recording was taken on
 static QString rzx_machine_name(int hw) {
@@ -22,9 +24,24 @@ static QString rzx_time(int frames, double fps) {
 	return QString(getTimeString((int)(frames / fps)).c_str());
 }
 
-// Fuse packs its four version numbers a byte each into the two words
+// Fuse packs its four version numbers a byte each into the two words; ours
+// are the year and the number. What it says of rollbacks and slow motion is
+// in the block's own data, which Xpeccy+ writes as lines of text.
 static QString rzx_creator(const rzxBlock* blk) {
 	QString name = QString::fromLatin1(blk->text).trimmed();
+	if (name.startsWith(XPRODUCT)) {
+		QString res = QString("%0 %1.%2").arg(name).arg(blk->major).arg(blk->minor);
+		QString custom = QString::fromUtf8(blk->custom);
+		static const QRegularExpression back("rollbacks: (\\d+)");
+		static const QRegularExpression slow("slow motion: ([0-9.]+) s");
+		QRegularExpressionMatch m = back.match(custom);
+		if (m.hasMatch() && (m.captured(1).toInt() > 0))
+			res += QString(", %0 rollback%1").arg(m.captured(1), (m.captured(1) == "1") ? "" : "s");
+		m = slow.match(custom);
+		if (m.hasMatch() && (m.captured(1).toDouble() > 0))
+			res += QString(", %0 s of slow motion").arg(m.captured(1));
+		return res;
+	}
 	if (blk->major < 0x100) {
 		QString ver = QString("%0.%1").arg(blk->major).arg(blk->minor);
 		return name.endsWith(ver) ? name : QString("%0 %1").arg(name, ver);	// SPIN names it twice
@@ -46,7 +63,7 @@ void xRzxModel::fill(const rzxInfo* inf, double fps) {
 	markRow(-1);
 	creator.clear();
 	machine = "not in the file";
-	snapStart = snapInside = snapEnd = 0;
+	snapStart = snapInside = snapEnd = snapMarks = 0;
 	int lastin = -1;			// a snapshot after it is where the file ends
 	for (int i = 0; i < inf->count; i++)
 		if (inf->blk[i].id == 0x80) lastin = i;
@@ -72,7 +89,10 @@ void xRzxModel::fill(const rzxInfo* inf, double fps) {
 					rzx_machine_name(blk->hw));
 				if (blk->flags & 1)
 					res += QString(", file %0").arg(QString::fromLocal8Bit(blk->text));
-				if (snapStart == 0) {
+				if ((snapStart != 0) && (blk->flags & RZX_SNAP_MARK)) {
+					res = "bookmark: " + res;
+					snapMarks++;
+				} else if (snapStart == 0) {
 					res = "start: " + res;
 					machine = rzx_machine_name(blk->hw);
 					snapStart = 1;
@@ -186,6 +206,7 @@ RZXWin::RZXWin(QWidget *par):QDialog(par) {
 	ui.stopButton->setEnabled(false);
 	connect(ui.ppButton,SIGNAL(released()),this,SLOT(playPause()));
 	connect(ui.stopButton,SIGNAL(released()),this,SLOT(stopPressed()));
+	connect(ui.recButton,SIGNAL(clicked()),this,SLOT(recPressed()));
 	connect(ui.openButton,SIGNAL(released()),this,SLOT(open()));
 	connect(ui.blkList,SIGNAL(doubleClicked(QModelIndex)),this,SLOT(doDClick(QModelIndex)));
 	ui.progress->installEventFilter(this);
@@ -215,8 +236,7 @@ void RZXWin::doDClick(QModelIndex idx) {
 
 // What the file says about itself. A frame of the recording is an interrupt,
 // so its time is the frame time of the machine it plays on.
-void RZXWin::fillInfo() {
-	QString path = rzx_current();
+void RZXWin::fillInfo(const QString& path) {
 	ui.rpath->setText(path);
 	fps = comp_fps(conf.zx);
 	rzxInfo inf = {};
@@ -237,22 +257,23 @@ void RZXWin::fillInfo() {
 	QStringList parts;
 	if (model->snapStart) parts << "start";
 	if (model->snapInside) parts << QString("%0 inside").arg(model->snapInside);
+	if (model->snapMarks) parts << QString("%0 bookmark%1").arg(model->snapMarks).arg((model->snapMarks == 1) ? "" : "s");
 	if (model->snapEnd) parts << "end";
 	ui.labSnaps->setText(inf.snaps ? QString("%0: %1").arg(inf.snaps).arg(parts.join(", ")) : QString("none"));
 	rzx_info_free(&inf);
 }
 
 void RZXWin::startPlay() {
-	fillInfo();
+	fillInfo(rzx_current());
 	ui.ppButton->setEnabled(true);
 	ui.stopButton->setEnabled(true);
-	ui.ppButton->setIcon(QIcon(":/images/pause.png"));
+	ui.ppButton->setIcon(QIcon(":/images/tape-pause.png"));
 	setProgress(0, conf.zx->rzx.fTotal);
 	state = RWS_PLAY;
 }
 
 void RZXWin::setProgress(int val, int max) {
-	ui.progress->setMaximum(max);
+	ui.progress->setMaximum(qMax(max, 1));		// a range of 0 is Qt's busy bar
 	ui.progress->setValue(val);
 	ui.labTime->setText(QString("%0 / %1").arg(rzx_time(val, fps), rzx_time(max, fps)));
 }
@@ -260,6 +281,12 @@ void RZXWin::setProgress(int val, int max) {
 // slots
 
 void RZXWin::upd(Computer* comp) {
+	if (comp->rzx.rec.on && isVisible()) {
+		QString txt = QString("REC %0").arg(rzx_time(rzx_rec_frames(comp), comp_fps(comp)));
+		if (rzxr_rollbacks() > 0) txt += QString(", %0 back").arg(rzxr_rollbacks());
+		ui.labTime->setText(txt);
+		return;
+	}
 	if (comp->rzx.play && isVisible()) {
 		setProgress(comp->rzx.fCurrent, comp->rzx.fTotal);
 		if (model->setCurrent(comp->rzx.fCurrent) && (model->markedRow() >= 0))
@@ -269,14 +296,18 @@ void RZXWin::upd(Computer* comp) {
 
 void RZXWin::playPause() {
 	switch(state) {
+		case RWS_STOP:
+			if (!ui.rpath->text().isEmpty())
+				emit replay(ui.rpath->text());
+			break;
 		case RWS_PLAY:
 			state = RWS_PAUSE;
-			ui.ppButton->setIcon(QIcon(":/images/play.png"));
+			ui.ppButton->setIcon(QIcon(":/images/tape-play.png"));
 			emit stateChanged(RWS_PAUSE);
 			break;
 		case RWS_PAUSE:
 			state = RWS_PLAY;
-			ui.ppButton->setIcon(QIcon(":/images/pause.png"));
+			ui.ppButton->setIcon(QIcon(":/images/tape-pause.png"));
 			emit stateChanged(RWS_PLAY);
 			break;
 	}
@@ -284,15 +315,44 @@ void RZXWin::playPause() {
 
 void RZXWin::stop() {
 	state = RWS_STOP;
-	ui.ppButton->setEnabled(false);
+	ui.ppButton->setEnabled(!ui.rpath->text().isEmpty());
 	ui.stopButton->setEnabled(false);
-	ui.ppButton->setIcon(QIcon(":/images/play.png"));
+	ui.ppButton->setIcon(QIcon(":/images/tape-play.png"));
 	setProgress(0, ui.progress->maximum());
 	model->setCurrent(-1);
 }
 
 void RZXWin::stopPressed() {
 	emit stateChanged(RWS_STOP);
+}
+
+// Record starts a recording and Stop ends it, as on the tape player
+void RZXWin::recPressed() {
+	if (rzxr_on()) {
+		ui.recButton->setChecked(true);
+		return;
+	}
+	ui.recButton->setChecked(false);	// the machine says, once it has tried
+	emit stateChanged(RWS_REC);
+}
+
+// Recording: the window names the file and stands the player's buttons down;
+// stopped, it shows the file as it would any other.
+void RZXWin::recState(bool on) {
+	ui.recButton->setChecked(on);
+	if (on) {
+		state = RWS_STOP;
+		ui.rpath->setText(rzxr_path());
+		ui.ppButton->setEnabled(false);
+		ui.stopButton->setEnabled(true);
+		ui.progress->setMaximum(1);
+		ui.progress->setValue(0);
+	} else if (!rzxr_path().isEmpty()) {
+		fillInfo(rzxr_path());		// what was written, which Play plays
+		ui.labTime->clear();
+		ui.ppButton->setEnabled(true);
+		ui.stopButton->setEnabled(false);
+	}
 }
 
 void RZXWin::open() {

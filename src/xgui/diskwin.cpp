@@ -18,7 +18,7 @@ static QToolButton* diskButton(const char* icon, const char* tip) {
 }
 
 xDiskWin::xDiskWin(QWidget* p):QDialog(p) {
-	setWindowTitle("Disk manager");
+	setWindowTitle("Disk Manager");
 	setProperty("xCenterOnce", true);
 	setWindowIcon(QIcon(":/images/fdd_disk.png"));
 	tabs = new QTabBar;
