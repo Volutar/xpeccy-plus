@@ -6,6 +6,8 @@
 #define LDC_LEN		0xa4	// up to the stripes after an edge, #05FA
 #define LDC_RET_OP	0x09	// the SA/LD-RET it pushes, #055F
 #define LDC_START	0x16	// LD_START, #056C
+#define LDC_SYNC1_RET	0x3e	// after LD-SYNC's first edge call, #0594
+#define LDC_SYNC2_RET	0x48	// after its second, #059E
 #define LDC_INCIX	0x6d	// the second byte of INC IX, #05C3
 #define LDC_BITS_RET	0x77	// after LD-8-BITS' call, #05CD
 #define LDC_TAIL	0x89	// LD A,H / CP 1 / RET, #05DF
