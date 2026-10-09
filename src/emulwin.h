@@ -274,7 +274,7 @@ typedef struct {
 		void rzxContinue();
 		void rzxContStep();
 		void rzxFinalizeFile();
-		int rzxContStage = 0;		// Continue Recording: 1 waits for the playback, 2 for the run to its end
+		int rzxContStage = 0;		// Open and Continue: 1 waits for the playback, 2 for the run to its end
 		void grabScreen();
 		void drawPicture();
 		QRect modeSlot();

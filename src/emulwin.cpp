@@ -2347,7 +2347,7 @@ void MainWin::initMachineMenus() {
 	cap->addAction(wavAct);
 	QMenu* rzxMenu = cap->addMenu(QIcon(":/images/grp-record-rzx.png"), "RZX");
 	rzxMenu->addAction(rzxRecAct);
-	rzxMenu->addAction(cutAct("Continue Recording...", XCUT_RZXCONT));
+	rzxMenu->addAction(cutAct("Open and Continue...", XCUT_RZXCONT));
 	rzxMenu->addSeparator();
 	rzxMenu->addAction(cutAct("Add Bookmark", XCUT_RZXMARK));
 	rzxMenu->addAction(cutAct("Rollback to Bookmark", XCUT_RZXBACK));
