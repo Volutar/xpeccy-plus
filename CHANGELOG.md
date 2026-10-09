@@ -90,6 +90,9 @@ before that point is upstream's history and is not repeated here.
   first one opened asks, and the answer can be remembered. Shift held in the open dialog asks
   for that one file, as it does on a drop.
 
+- **The machine a start takes**: the last one used, one of your choice, or ask each time
+  (Options, Machine, beside the model). The first start asks.
+
 - **A Gamepads window**, from the toolbar, the new Input menu or Options, Input: for each player
   a device and the joystick it stands for - Kempston, either Sinclair port, Cursor/Protek/AGF,
   QAOP or keys of your own. A pad plays at once, nothing to bind. *(thanks to Volutar for the

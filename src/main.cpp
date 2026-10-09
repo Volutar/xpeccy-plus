@@ -154,6 +154,13 @@ bool xApp::eventFilter(QObject* obj, QEvent* ev) {
 }
 
 
+// a document macOS handed over while main() was not ready for it
+static void open_pending(xApp& app, MainWin& mwin) {
+	if (app.pendingFile.isEmpty()) return;
+	mwin.openMedia(app.pendingFile, FG_ALL, 0, conf.autorun);
+	app.pendingFile.clear();
+}
+
 // A file on the command line: the machine it wants first, unless the command
 // line names the machine itself.
 static void open_cli_file(MainWin& mwin, const char* path, int drv, int run, bool pinned) {
@@ -179,7 +186,7 @@ bool xApp::event(QEvent* ev) {
 				path = fev->url().toLocalFile();
 			// a document the os hands over goes the way any other open does,
 			// once there is a window for it; until then main() keeps it
-			if (os_win)
+			if (os_win && !holdFiles)
 				os_win->openMedia(path, FG_ALL, 0, conf.autorun);
 			else
 				pendingFile = path;
@@ -292,6 +299,7 @@ int main(int ac,char** av) {
 	char* confdir = NULL;
 	int cli_astart = -1;		// --autostart / --no-autostart, -1: the option decides
 	bool pinned = false;		// the command line names the machine: files do not pick one
+	bool given = false;		// it hands over something to open: no start question either
 	for (int n = 1; n < ac; ) {
 		const char* earg = av[n++];
 		if (!strcmp(earg, "--confdir")) {
@@ -612,6 +620,7 @@ int main(int ac,char** av) {
 				i++;
 			} else if (!strcmp(parg, "--sdcard")) {
 				sdc_mount(conf.zx->sdc, QString::fromLocal8Bit(av[i]));
+				given = true;
 				i++;
 			} else if (!strcmp(parg, "--disk")) {
 				parg = av[i];
@@ -638,9 +647,11 @@ int main(int ac,char** av) {
 				i++;		// handled before conf_init above
 			} else if (strlen(parg) > 0) {
 				open_cli_file(mwin, parg, drv, astart, pinned);
+				given = true;
 			}
 		} else if (strlen(parg) > 0) {
 			open_cli_file(mwin, parg, drv, astart, pinned);
+			given = true;
 		}
 	}
 	// tape or disk from the command line: mounting is not enough, so press
@@ -652,10 +663,8 @@ int main(int ac,char** av) {
 		setLabelSet(QFileInfo(conf.labpath).fileName());
 
 	// a document macOS handed over before there was a window to open it through
-	if (!app.pendingFile.isEmpty()) {
-		mwin.openMedia(app.pendingFile, FG_ALL, 0, conf.autorun);
-		app.pendingFile.clear();
-	}
+	if (!app.pendingFile.isEmpty()) given = true;
+	open_pending(app, mwin);
 
 	dbgw.move(conf.dbg.pos);
 	dbgw.resize(conf.dbg.siz);
@@ -682,6 +691,13 @@ int main(int ac,char** av) {
 		return 0;
 	}
 	if (!hlp) {
+		// a machine or a file on the command line has decided it already
+		if (!pinned && !given && start_asks()) {
+			app.holdFiles = true;		// one handed over meanwhile opens on the answer
+			mwin.askStartMachine();
+			app.holdFiles = false;
+			open_pending(app, mwin);
+		}
 //		mwin.blockSignals(true);
 		mframe.show();
 		mwin.updateWindow();
