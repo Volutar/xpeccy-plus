@@ -342,6 +342,7 @@ class xRzxModel : public xTableModel {
 		int snapStart;
 		int snapInside;
 		int snapEnd;
+		int snapMarks;		// bookmarks, inside or at the end
 	private:
 		QList<xRzxRow> rows;
 		QVariant data(const QModelIndex&, int) const;

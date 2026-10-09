@@ -110,6 +110,10 @@ xThread::xThread() {
 	benchRecFrames = 0;
 	benchRecBack = 0;
 	benchRecJoin = 0;
+	benchRecMark = 0;
+	benchRecRoll = 0;
+	benchRecTake = 0;
+	benchRecFinal = 0;
 	earBlock = -1;
 	conf.emu.fast = 0;
 	finish = 0;
@@ -783,11 +787,33 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 	// the same state; a rollback on the way, as a rewind makes, if asked for
 	if (benchRec) {
 		szx_set_machine(conf.macId.c_str());
-		int err = rzx_rec_start(comp);
+		int err;
+		if (comp->rzx.play && (benchRecTake > 0)) {
+			// a recording played to frame F and a bit, then taken over there
+			while (comp->rzx.play && (comp->rzx.fCurrent < benchRecTake))
+				compExec(comp);
+			for (int i = 0; (i < 1000) && comp->rzx.play; i++)
+				compExec(comp);
+			err = rzx_rec_take_over(comp);
+			fprintf(stdout, "rzx rec: taken over at frame %i, %i fetches in\n", rzx_rec_frames(comp), comp->rzx.rec.fetch);
+			rzxStop(comp);
+		} else {
+			err = rzx_rec_start(comp);
+		}
 		xState* back = NULL;
 		int poke = benchRecJoin + 500;
 		while (!err && (rzx_rec_frames(comp) < benchRecFrames)) {
 			compExec(comp);
+			if ((benchRecMark > 0) && (rzx_rec_frames(comp) >= benchRecMark)) {
+				fprintf(stdout, "rzx rec: bookmark at frame %i\n", rzx_rec_frames(comp));
+				rzx_rec_bookmark();
+				benchRecMark = 0;
+			} else if ((benchRecRoll > 0) && (rzx_rec_frames(comp) >= benchRecRoll)) {
+				fprintf(stdout, "rzx rec: roll back from frame %i", rzx_rec_frames(comp));
+				int n = rzx_rec_rollback(comp);
+				fprintf(stdout, " by %i to %i\n", n, rzx_rec_frames(comp));
+				benchRecRoll = 0;
+			}
 			if ((benchRecJoin > 0) && (rzx_rec_frames(comp) >= benchRecJoin)) {
 				fprintf(stdout, "rzx rec: reset at frame %i\n", rzx_rec_frames(comp));
 				compReset(comp, RES_DEFAULT);
@@ -813,9 +839,17 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 		if (back) xstate_destroy(back);
 		rzxRecImage* img = err ? NULL : rzx_rec_take(comp);
 		rzx_rec_stop(comp);
-		if (img) err = rzx_rec_image_write(img, benchRec, XPRODUCT, 0, 0, "bench");
+		if (img) err = rzx_rec_image_write(img, benchRec, XPRODUCT, 0, 0, "bench", 0);
 		fprintf(stdout, "rzx rec: %i frames, %i joins, %s\n", rzx_rec_image_frames(img), rzx_rec_joins(comp), err ? "failed" : "written");
 		rzx_rec_image_free(img);
+		if (!err && benchRecFinal) {
+			// read back and finalised beside it
+			std::string fin = std::string(benchRec) + ".fin.rzx";
+			img = rzx_rec_image_read(benchRec, &err);
+			if (img) err = rzx_rec_image_write(img, fin.c_str(), NULL, 0, 0, NULL, 1);
+			fprintf(stdout, "rzx rec: finalised %i frames, %s\n", rzx_rec_image_frames(img), err ? "failed" : "written");
+			rzx_rec_image_free(img);
+		}
 		fflush(stdout);
 		conf.emu.rewind.on = rwOn;
 		fastload_hold(0);

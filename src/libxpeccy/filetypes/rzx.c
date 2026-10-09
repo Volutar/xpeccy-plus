@@ -86,7 +86,7 @@ void rzxGetFrame(Computer* comp) {
 					case 0x30:					// TODO: snapshot
 						type = fgetc(comp->rzx.file);
 						comp->rzx.noint = (type & 0x80) ? 1 : 0;
-						switch(type & 0x7f) {
+						switch(type & 0x3f) {
 							case 0x00:
 								loadSNA_f(comp, comp->rzx.file, len - 1);
 								fseek(comp->rzx.file, pos + len, SEEK_SET);
@@ -395,7 +395,7 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 									len = fgetSize(sfile);
 									fputc(0x30, comp->rzx.file);
 									fputi(len + 1, comp->rzx.file);
-									fputc(rzxGetSnapType(shd.ext) | ((shd.flag & RZX_SNAP_NOINT) ? 0x80 : 0), comp->rzx.file);
+									fputc(rzxGetSnapType(shd.ext) | ((shd.flag & RZX_SNAP_NOINT) ? 0x80 : 0) | ((shd.flag & RZX_SNAP_MARK) ? 0x40 : 0), comp->rzx.file);
 									while (len > 0) {
 										fread(obuf, 0x4000, 1, sfile);
 										fwrite(obuf, (len > 0x4000) ? 0x4000 : len, 1, comp->rzx.file);
@@ -408,7 +408,7 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 							} else if (shd.flag & 2) {	// compressed
 								fputc(0x30, comp->rzx.file);
 								fputi(shd.usl + 1, comp->rzx.file);
-								fputc(rzxGetSnapType(shd.ext) | ((shd.flag & RZX_SNAP_NOINT) ? 0x80 : 0), comp->rzx.file);
+								fputc(rzxGetSnapType(shd.ext) | ((shd.flag & RZX_SNAP_NOINT) ? 0x80 : 0) | ((shd.flag & RZX_SNAP_MARK) ? 0x40 : 0), comp->rzx.file);
 								buf = realloc(buf, len - 17);
 								fread(buf, len - 17, 1, file);
 								err = inflateToFile(buf, len - 17, comp->rzx.file);
@@ -417,7 +417,7 @@ int loadRZX(Computer* comp, const char* name, int drv) {
 								fread(buf, shd.usl, 1, file);
 								fputc(0x30, comp->rzx.file);
 								fputi(shd.usl + 1, comp->rzx.file);
-								fputc(rzxGetSnapType(shd.ext) | ((shd.flag & RZX_SNAP_NOINT) ? 0x80 : 0), comp->rzx.file);
+								fputc(rzxGetSnapType(shd.ext) | ((shd.flag & RZX_SNAP_NOINT) ? 0x80 : 0) | ((shd.flag & RZX_SNAP_MARK) ? 0x40 : 0), comp->rzx.file);
 								fwrite(buf, shd.usl, 1, comp->rzx.file);
 							}
 							break;

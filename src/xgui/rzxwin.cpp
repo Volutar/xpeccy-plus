@@ -63,7 +63,7 @@ void xRzxModel::fill(const rzxInfo* inf, double fps) {
 	markRow(-1);
 	creator.clear();
 	machine = "not in the file";
-	snapStart = snapInside = snapEnd = 0;
+	snapStart = snapInside = snapEnd = snapMarks = 0;
 	int lastin = -1;			// a snapshot after it is where the file ends
 	for (int i = 0; i < inf->count; i++)
 		if (inf->blk[i].id == 0x80) lastin = i;
@@ -89,7 +89,10 @@ void xRzxModel::fill(const rzxInfo* inf, double fps) {
 					rzx_machine_name(blk->hw));
 				if (blk->flags & 1)
 					res += QString(", file %0").arg(QString::fromLocal8Bit(blk->text));
-				if (snapStart == 0) {
+				if ((snapStart != 0) && (blk->flags & RZX_SNAP_MARK)) {
+					res = "bookmark: " + res;
+					snapMarks++;
+				} else if (snapStart == 0) {
 					res = "start: " + res;
 					machine = rzx_machine_name(blk->hw);
 					snapStart = 1;
@@ -254,6 +257,7 @@ void RZXWin::fillInfo(const QString& path) {
 	QStringList parts;
 	if (model->snapStart) parts << "start";
 	if (model->snapInside) parts << QString("%0 inside").arg(model->snapInside);
+	if (model->snapMarks) parts << QString("%0 bookmark%1").arg(model->snapMarks).arg((model->snapMarks == 1) ? "" : "s");
 	if (model->snapEnd) parts << "end";
 	ui.labSnaps->setText(inf.snaps ? QString("%0: %1").arg(inf.snaps).arg(parts.join(", ")) : QString("none"));
 	rzx_info_free(&inf);

@@ -1010,8 +1010,8 @@ int compExec(Computer* comp) {
 	}
 // start
 	res4 = 0;
-	if (comp->rzx.rec.on && rzx_rec_touched)
-		rzx_rec_join(comp);
+	if (comp->rzx.rec.on && (rzx_rec_touched || rzx_rec_marking))
+		rzx_rec_pre(comp);
 // exec cpu opcode OR handle interrupt. get T states back
 	res2 = cpu_exec(comp->cpu);
 	if (comp->rzx.play) {

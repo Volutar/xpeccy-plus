@@ -269,7 +269,11 @@ typedef struct {
 		void updateHead();
 		void screenShot();
 		void videoRec();
-		void rzxRec();
+		void rzxRec(bool finalise = false);
+		void rzxContinue();
+		void rzxContStep();
+		void rzxFinaliseFile();
+		int rzxContStage = 0;		// Continue Recording: 1 waits for the playback, 2 for the run to its end
 		void grabScreen();
 		void drawPicture();
 		QRect modeSlot();

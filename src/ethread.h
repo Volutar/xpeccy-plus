@@ -22,6 +22,10 @@ class xThread : public QThread {
 		int benchRecFrames;
 		int benchRecBack;	// ...and at this frame goes back to the state of half of it, 0: no
 		int benchRecJoin;	// ...or resets the machine at this frame and pokes it 500 later, 0: no
+		int benchRecMark;	// ...a bookmark at this frame, 0: no
+		int benchRecRoll;	// ...back to it at this frame, 0: no
+		int benchRecTake;	// a recording loaded is played to this frame and taken over, 0: no
+		int benchRecFinal;	// the file is also read back and written finalised beside it
 		int earBlock;		// the block the rom reads only part of, -1: none
 	public slots:
 		void stop();

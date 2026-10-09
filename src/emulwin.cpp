@@ -617,6 +617,7 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 		QString vmsg = vrec_message();
 		if (!vmsg.isEmpty()) setMessage(vmsg, 4.0);
 		rzxr_tick(comp);
+		rzxContStep();
 		QString rmsg = rzxr_message();
 		if (!rmsg.isEmpty()) {
 			setMessage(rmsg, 4.0);
@@ -1141,12 +1142,14 @@ void MainWin::grabScreen() {
 
 // An RZX recording of the machine from here on, or of the one being played
 // from the frame it has got to, into a file asked for first.
-void MainWin::rzxRec() {
+void MainWin::rzxRec(bool finalise) {
 	Computer* comp = conf.zx;
 	QString path;
 	if (!rzxr_on()) {
 		pause(true, PR_FILE);
-		path = file_ask_save("Record RZX", "RZX recording (*.rzx)", ".rzx", rzxr_suggest());
+		// over a recording being played, the recording goes on in its own file
+		QString own = comp->rzx.play ? rzx_current() : QString();
+		path = file_ask_save("Record RZX", "RZX recording (*.rzx)", ".rzx", own.isEmpty() ? rzxr_suggest() : own, own);
 		pause(false, PR_FILE);
 		if (path.isEmpty()) {
 			emit s_rzx_rec(false);
@@ -1156,7 +1159,7 @@ void MainWin::rzxRec() {
 	emu_lock();
 	int err = ERR_OK;
 	if (rzxr_on()) {
-		rzxr_stop(comp);
+		rzxr_stop(comp, finalise);
 	} else {
 		err = rzxr_start(comp, path);
 	}
@@ -1168,6 +1171,47 @@ void MainWin::rzxRec() {
 	}
 	rzxWatch();
 	emit s_rzx_rec(rzxr_on());
+}
+
+// A recording on disk goes on: it is opened, run to its end flat out, and taken
+// over there - rzxContStep() follows it to that point.
+void MainWin::rzxContinue() {
+	if (rzxr_on()) return;
+	unsigned was = rzx_playing;
+	openMedia(QString(), FG_RZX, -1, 0, true);
+	rzxContStage = (rzx_playing && (rzx_playing != was)) ? 1 : 0;
+}
+
+void MainWin::rzxContStep() {
+	Computer* comp = conf.zx;
+	if (!rzxContStage) return;
+	if (!rzx_playing) {				// stopped or closed meanwhile
+		rzxContStage = 0;
+		return;
+	}
+	if (!comp->rzx.play) return;			// not started yet
+	if (rzxContStage == 1) {
+		rzxContStage = 2;
+		rzxSeek(std::max(comp->rzx.fTotal - 1, 0));
+	} else if (!rzx_seeking()) {
+		rzxContStage = 0;
+		rzxRec();
+	}
+}
+
+// A file on disk loses its bookmarks, the snapshots kept to roll back to.
+void MainWin::rzxFinaliseFile() {
+	pause(true, PR_FILE);
+	QString path = QFileDialog::getOpenFileName(this, "Finalise RZX", QString::fromLocal8Bit(conf.lastDir.c_str()), "RZX recording (*.rzx)");
+	if (!path.isEmpty()) {
+		int err = rzxr_finalise_file(path);
+		if (err == ERR_OK) {
+			setMessage(" RZX finalised ");
+		} else {
+			file_errors(err);
+		}
+	}
+	pause(false, PR_FILE);
 }
 
 // A name that says what was on the machine: the image in use, else the machine.
@@ -1909,7 +1953,7 @@ void MainWin::initMenuBar() {
 	cutAct("Screenshot series", XCUT_COMBOSHOT);
 	recAct = cutAct("Record video", XCUT_VIDREC, "grp-record");
 	recAct->setCheckable(true);
-	rzxRecAct = cutAct("Record RZX...", XCUT_RZXREC, "grp-record-rzx");
+	rzxRecAct = cutAct("Record...", XCUT_RZXREC, "grp-record-rzx");
 	rzxRecAct->setCheckable(true);
 	wavAct = cutAct("Record sound to WAV...", XCUT_WAV_OUT, "wav");
 	wavAct->setCheckable(true);
@@ -2261,7 +2305,23 @@ void MainWin::initMachineMenus() {
 	cap->addSeparator();
 	cap->addAction(recAct);
 	cap->addAction(wavAct);
-	cap->addAction(rzxRecAct);
+	QMenu* rzxMenu = cap->addMenu(QIcon(":/images/grp-record-rzx.png"), "RZX");
+	rzxMenu->addAction(rzxRecAct);
+	rzxMenu->addAction(cutAct("Continue Recording...", XCUT_RZXCONT));
+	rzxMenu->addSeparator();
+	rzxMenu->addAction(cutAct("Add Bookmark", XCUT_RZXMARK));
+	rzxMenu->addAction(cutAct("Roll Back to Bookmark", XCUT_RZXBACK));
+	rzxMenu->addSeparator();
+	rzxMenu->addAction(cutAct("Stop and Finalise", XCUT_RZXFINAL));
+	rzxMenu->addAction(cutAct("Finalise File...", XCUT_RZXFINFILE));
+	connect(rzxMenu, &QMenu::aboutToShow, this, [this]() {
+		bool on = rzxr_on();
+		rzxRecAct->setChecked(on);
+		cutById.value(XCUT_RZXCONT)->setEnabled(!on);
+		cutById.value(XCUT_RZXMARK)->setEnabled(on);
+		cutById.value(XCUT_RZXBACK)->setEnabled(on);
+		cutById.value(XCUT_RZXFINAL)->setEnabled(on);
+	});
 
 	// one list, not the right-click menu's submenu
 	QMenu* dbg = new xMenu("Debug", this);

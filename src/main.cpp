@@ -546,6 +546,14 @@ int main(int ac,char** av) {
 				ethread.benchRecBack = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-rzx-rec-join")) {
 				ethread.benchRecJoin = atoi(av[i++]);
+			} else if (!strcmp(parg,"--bench-rzx-rec-mark")) {
+				ethread.benchRecMark = atoi(av[i++]);
+			} else if (!strcmp(parg,"--bench-rzx-rec-roll")) {
+				ethread.benchRecRoll = atoi(av[i++]);
+			} else if (!strcmp(parg,"--bench-rzx-take")) {
+				ethread.benchRecTake = atoi(av[i++]);
+			} else if (!strcmp(parg,"--bench-rzx-rec-final")) {
+				ethread.benchRecFinal = 1;
 			} else if (!strcmp(parg,"--bench-state")) {
 				bnState = av[i++];
 			} else if (!strcmp(parg,"--bench-loops")) {

@@ -10,6 +10,7 @@
 #include "xcore.h"
 #include "rzxrecord.h"
 #include "pacing.h"
+#include "rewind.h"
 #include "../filer.h"
 #include "../libxpeccy/filetypes/filetypes.h"
 #include "../libxpeccy/filetypes/szx.h"
@@ -64,11 +65,11 @@ static QByteArray rr_custom() {
 
 // Written to a file of its own and then put in place, so an autosave cut short
 // leaves the last one whole.
-static int rr_write(rzxRecImage* img, const QString& path, const QByteArray& custom) {
+static int rr_write(rzxRecImage* img, const QString& path, const QByteArray& custom, bool finalise = false) {
 	QString part = path + ".part";
 	QStringList ver = QString(XVERSION_BASE).split('.');
 	int err = rzx_rec_image_write(img, part.toLocal8Bit().constData(), XPRODUCT,
-		ver.value(0).toInt(), ver.value(1).toInt(), custom.constData());
+		ver.value(0).toInt(), ver.value(1).toInt(), custom.constData(), finalise ? 1 : 0);
 	rzx_rec_image_free(img);
 	if (err == ERR_OK) {
 		QFile::remove(path);
@@ -95,10 +96,14 @@ QString rzxr_suggest() {
 int rzxr_start(Computer* comp, const QString& path) {
 	if (rzxr_on()) return ERR_OK;
 	rr_join_writer();
-	if (comp->rzx.play)			// taken over: the recording goes on from here
-		rzxStop(comp);
 	szx_set_machine(conf.macId.c_str());
-	int err = rzx_rec_start(comp);
+	int err;
+	if (comp->rzx.play) {			// what was played is kept, and the recording goes on
+		err = rzx_rec_take_over(comp);
+		if (err == ERR_OK) rzxStop(comp);
+	} else {
+		err = rzx_rec_start(comp);
+	}
 	if (err != ERR_OK) return err;
 	rr_path = path;
 	rr_rollbacks = 0;
@@ -109,17 +114,43 @@ int rzxr_start(Computer* comp, const QString& path) {
 	return ERR_OK;
 }
 
-QString rzxr_stop(Computer* comp) {
+QString rzxr_stop(Computer* comp, bool finalise) {
 	if (!rzxr_on()) return QString();
 	rr_join_writer();
 	rzxRecImage* img = rzx_rec_take(comp);
 	int frames = rzx_rec_image_frames(img);
 	rzx_rec_stop(comp);
-	int err = img ? rr_write(img, rr_path, rr_custom()) : ERR_RZX_REC;
+	int err = img ? rr_write(img, rr_path, rr_custom(), finalise) : ERR_RZX_REC;
 	xlog(XLG_FILE, (err == ERR_OK) ? XLL_INFO : XLL_WARN, "rzx recording stopped: %i frames, %i rollbacks, %s",
 		frames, rr_rollbacks, (err == ERR_OK) ? "written" : "not written");
 	rr_say((err == ERR_OK) ? QString(" RZX saved: %0 ").arg(QFileInfo(rr_path).fileName()) : QString(" RZX not saved "));
 	return (err == ERR_OK) ? rr_path : QString();
+}
+
+void rzxr_bookmark() {
+	if (!rzxr_on()) return;
+	rzx_rec_bookmark();
+	rr_say(" RZX bookmark ");
+}
+
+// The machine is put back as it was at the bookmark, and the rewind history -
+// all of it after that - goes.
+bool rzxr_rollback(Computer* comp) {
+	if (!rzxr_on()) return false;
+	int back = rzx_rec_rollback(comp);
+	if (back < 0) return false;
+	rewind_clear();
+	rr_rollbacks++;
+	rr_lastFrames = rzx_rec_frames(comp);
+	rr_say(QString(" RZX back %0 s ").arg(back / comp_fps(comp), 0, 'f', 1));
+	return true;
+}
+
+int rzxr_finalise_file(const QString& path) {
+	int err = ERR_OK;
+	rzxRecImage* img = rzx_rec_image_read(path.toLocal8Bit().constData(), &err);
+	if (!img) return err;
+	return rr_write(img, path, QByteArray(), true);
 }
 
 void rzxr_frame(Computer* comp) {

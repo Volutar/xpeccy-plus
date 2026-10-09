@@ -4,6 +4,7 @@
 #include "xcore/vscalers.h"
 #include "xcore/sound.h"
 #include "xcore/rewind.h"
+#include "xcore/rzxrecord.h"
 
 #include <QMenu>
 #include <QFileDialog>
@@ -362,6 +363,23 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 				break;
 			case XCUT_RZXREC:
 				rzxRec();
+				break;
+			case XCUT_RZXCONT:
+				rzxContinue();
+				break;
+			case XCUT_RZXMARK:
+				rzxr_bookmark();
+				break;
+			case XCUT_RZXBACK:
+				emu_lock();
+				if (!rzxr_rollback(comp)) setMessage(" nothing to roll back to ");
+				emu_unlock();
+				break;
+			case XCUT_RZXFINAL:
+				if (rzxr_on()) rzxRec(true);
+				break;
+			case XCUT_RZXFINFILE:
+				rzxFinaliseFile();
 				break;
 			case XCUT_SCRSHOT:
 				if (scrCounter == 0) {

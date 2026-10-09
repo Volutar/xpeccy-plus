@@ -869,8 +869,13 @@ int quick_load(Computer* comp) {
 	emu_lock();
 	if (!undoState) undoState = xstate_create();
 	undoMac = (undoState && xstate_save(undoState, comp)) ? conf.macId : std::string();
+	rzxRecPos rec = comp->rzx.rec;
 	if (quickState && (quickMac == conf.macId))
 		res = xstate_load(quickState, comp);
+	if (res && rec.on) {			// a recording joins there: the log may have moved on
+		comp->rzx.rec = rec;
+		rzx_rec_touch();
+	}
 	if (!res) {
 		QString path = quick_path();
 		if (!QFileInfo::exists(path))
@@ -888,7 +893,12 @@ int quick_undo(Computer* comp) {
 	emu_lock();
 	xState* was = xstate_create();
 	bool kept = was && xstate_save(was, comp);
+	rzxRecPos rec = comp->rzx.rec;
 	int res = xstate_load(undoState, comp);
+	if (res && rec.on) {
+		comp->rzx.rec = rec;
+		rzx_rec_touch();
+	}
 	if (res && kept) {
 		xstate_destroy(undoState);
 		undoState = was;
@@ -901,7 +911,8 @@ int quick_undo(Computer* comp) {
 
 // The save dialog on its own, for an export that is not one of the file types
 // the tables above know. Same dialog as every other open and save in the app.
-QString file_ask_save(const char* title, const char* filter, const char* ext, const QString& suggest) {
+// own: a file that is written over without asking - the one a recording goes on in
+QString file_ask_save(const char* title, const char* filter, const char* ext, const QString& suggest, const QString& own) {
 	filer->setWindowTitle(title);
 	filer->setNameFilter(filter);
 	filer->setAcceptMode(QFileDialog::AcceptSave);
@@ -912,10 +923,18 @@ QString file_ask_save(const char* title, const char* filter, const char* ext, co
 		filer->selectFile(QFileInfo(suggest).fileName());
 	}
 	filer->setHistory(QStringList());
-	if (!filer->exec()) return QString();
+	filer->setOption(QFileDialog::DontConfirmOverwrite, !own.isEmpty());
+	int ok = filer->exec();
+	filer->setOption(QFileDialog::DontConfirmOverwrite, false);
+	if (!ok) return QString();
 	QString path = filer->selectedFiles().first();
 	if (!path.endsWith(ext, Qt::CaseInsensitive))
 		path.append(ext);
+	if (!own.isEmpty() && QFileInfo::exists(path) && (QFileInfo(path) != QFileInfo(own))) {
+		QString q = QString("%1 already exists.\nDo you want to replace it?").arg(QFileInfo(path).fileName());
+		if (QMessageBox::warning(filer->parentWidget(), title, q, QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
+			return QString();
+	}
 	conf.lastDir = std::string(QFileInfo(path).dir().absolutePath().toLocal8Bit().data());
 	return path;
 }
