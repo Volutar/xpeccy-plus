@@ -2007,7 +2007,11 @@ void MainWin::initMenuBar() {
 	bar->addMenu(fileMenu);
 	// its own action: a menu bar shows the icon the right-click menu has, and not the name
 	QAction* favAct = new QAction("Favorites", this);
+	// setMenu() makes favAct the menu's menuAction(), and the right-click menu then re-pops
+	// it on every mouse move; a menu bar does not mind, so the menu gets its own back
+	QAction* own = bookmarkMenu->menuAction();
 	favAct->setMenu(bookmarkMenu);
+	own->setMenu(bookmarkMenu);
 
 	viewMenu = new xMenu("View", this);
 	bar->addMenu(viewMenu);
@@ -2316,10 +2320,9 @@ void MainWin::initMachineMenus() {
 	media->addAction(tapeRecAct);
 	media->addSeparator();
 	media->addAction(diskAct);
-	// its own action: the drives' list is called Disk manager where its root opens the window
-	QAction* drvAct = new QAction(QIcon(":/images/fdd.png"), "Floppy Drives", this);
-	drvAct->setMenu(dskMenu);
-	media->addAction(drvAct);
+	// a menu of its own, filled with dskMenu's items: one QMenu under two different
+	// items in two menus re-pops on every mouse move under one of them
+	drvMenu = media->addMenu(QIcon(":/images/fdd.png"), "Floppy Drives");
 	QAction* fdcFastAct = media->addAction("Fast Disk Access", this, [this](bool on) {
 		setFlagBit(on, &fdcFlag, FDC_FAST);
 		saveConfig();
@@ -2378,9 +2381,8 @@ void MainWin::initMachineMenus() {
 	}
 	// the switches only these menus have
 	connect(mac, &QMenu::aboutToShow, this, [rewOnAct]() {rewOnAct->setChecked(conf.emu.rewind.on);});
-	connect(media, &QMenu::aboutToShow, this, [this, drvAct, fdcFastAct]() {
+	connect(media, &QMenu::aboutToShow, this, [this, fdcFastAct]() {
 		bool drives = !dskMenu->isEmpty();
-		drvAct->setVisible(drives);
 		fdcFastAct->setVisible(drives);
 		fdcFastAct->setChecked(fdcFlag & FDC_FAST);
 	});
