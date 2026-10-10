@@ -54,6 +54,10 @@ before that point is upstream's history and is not repeated here.
   - The RZX player has a bookmark button and lists the recording as it is made.
     *(thanks to Volutar)*
 
+- **Input overlay** (View, Input Overlay): the ZX keyboard, a Kempston joystick and mouse
+  drawn over the picture, lit as they are used - for streams and videos. In an RZX replay it
+  shows what the player pressed.
+
 - **Hotkey layouts**: Modern, the new default, and Classic, the keys as they were. Keys you
   change are kept as Custom over either, and an older config keeps them too.
   - Modern leaves the machine every key it has: Esc is BREAK, F10 opens the debugger,

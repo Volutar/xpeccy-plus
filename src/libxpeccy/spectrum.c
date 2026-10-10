@@ -7,6 +7,7 @@
 #include "spectrum.h"
 #include "filetypes/filetypes.h"
 #include "cpu/Z80/z80.h"
+#include "input/inview.h"
 
 static int nsTime;
 static int res2;
@@ -383,6 +384,7 @@ int iord(int port, void* ptr) {
 		if (comp->rzx.frm.pos < comp->rzx.frm.size) {
 			res = comp->rzx.frm.data[comp->rzx.frm.pos];
 			comp->rzx.frm.pos++;
+			if (inview.on) iview_in(&inview, comp, port, res);
 			return res;
 		} else {
 			rzxStop(comp);
@@ -409,6 +411,7 @@ int iord(int port, void* ptr) {
 	}
 	if (comp->pwbus) pwatch_hit(comp, port, res);
 	if (comp->rzx.rec.on) rzx_rec_in(comp, res);
+	if (inview.on) iview_in(&inview, comp, port, res);
 	return res;
 }
 

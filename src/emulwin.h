@@ -23,6 +23,7 @@
 #include "libxpeccy/spectrum.h"
 #include "watcher.h"
 #include "vkeyboard.h"
+#include "xgui/inputosd.h"
 #include "ethread.h"
 
 // The two keys that let the mouse and the keyboard go, pressed together and let
@@ -248,6 +249,10 @@ typedef struct {
 		int cmsid;
 		QImage leds[leds_count];
 		QImage osdImg[osd_count];
+		xInputOsd inputOsd;
+		struct xIosdItem {QAction* act; int* field; int val;};	// val < 0: a switch
+		std::vector<xIosdItem> iosdItems;
+		void initIosdMenu(QMenu*);
 
 		QTimer frm_tmr;
 		int frm_ns;
@@ -282,6 +287,7 @@ typedef struct {
 		int speedOsd();
 		int recOsd();
 		void drawIcons(QPainter&);
+		void drawInputOsd(QPainter&);
 		void presentFrame();
 		void uploadFrame();
 		void uploadOffPaint();

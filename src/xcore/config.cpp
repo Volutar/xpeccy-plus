@@ -45,6 +45,8 @@ std::map<std::string, int> shotFormat;
 
 // the recording's choices as the config file spells them, in VREC_* order
 static const char* recSrcName[] = {"picture", "screen", NULL};
+static const char* iosdSrcName[] = {"auto", "reads", "host", NULL};
+static const char* iosdPosName[] = {"bottom-left", "bottom", "bottom-right", "top-left", "top", "top-right", NULL};
 static const char* recFpsName[] = {"machine", "50", NULL};
 static const char* recBoxName[] = {"mp4", "mkv", NULL};
 static const char* recAudioName[] = {"aac", "opus", "auto", NULL};
@@ -228,6 +230,14 @@ void saveConfig() {
 	fprintf(cfile, "scrInterval = %i\n", conf.scrShot.interval);
 	fprintf(cfile, "scrNoLeds = %s\n", YESNO(conf.scrShot.noLeds));
 	fprintf(cfile, "scrNoBord = %s\n", YESNO(conf.scrShot.noBorder));
+	fprintf(cfile, "input.osd = %s\n", YESNO(conf.iosd.on));
+	fprintf(cfile, "input.osd.keys = %s\n", YESNO(conf.iosd.keys));
+	fprintf(cfile, "input.osd.joy = %s\n", YESNO(conf.iosd.joy));
+	fprintf(cfile, "input.osd.mouse = %s\n", YESNO(conf.iosd.mouse));
+	fprintf(cfile, "input.osd.source = %s\n", iosdSrcName[conf.iosd.source]);
+	fprintf(cfile, "input.osd.pos = %s\n", iosdPosName[conf.iosd.pos]);
+	fprintf(cfile, "input.osd.size = %i\n", conf.iosd.size);
+	fprintf(cfile, "input.osd.opacity = %i\n", conf.iosd.opacity);
 	fprintf(cfile, "rec.ffmpeg = %s\n", conf.rec.ffmpeg.c_str());
 	fprintf(cfile, "rec.dir = %s\n", conf.rec.dir.c_str());
 	fprintf(cfile, "rec.source = %s\n", recSrcName[conf.rec.source]);
@@ -769,6 +779,14 @@ void loadConfig() {
 	conf.macStartId.clear();
 	conf.keywin.dock = 0;
 	conf.keywin.width = 0;
+	conf.iosd.on = 0;
+	conf.iosd.keys = 1;
+	conf.iosd.joy = 1;
+	conf.iosd.mouse = 0;
+	conf.iosd.source = IOSD_SRC_AUTO;
+	conf.iosd.pos = IOSD_POS_BOTTOM_RIGHT;
+	conf.iosd.size = 40;
+	conf.iosd.opacity = 85;
 	conf.vid.border = VID_BRD_FULL;
 	conf.vid.scale = 2;		// a config with no scale must not make a zero-size window
 	conf.win.toolbar = 1;
@@ -1007,6 +1025,14 @@ void loadConfig() {
 					if (pnam=="scrInterval") conf.scrShot.interval = arg.i;
 					if (pnam=="scrNoLeds") conf.scrShot.noLeds = arg.b;
 					if (pnam=="scrNoBord") conf.scrShot.noBorder = arg.b;
+					if (pnam=="input.osd") conf.iosd.on = arg.b;
+					if (pnam=="input.osd.keys") conf.iosd.keys = arg.b;
+					if (pnam=="input.osd.joy") conf.iosd.joy = arg.b;
+					if (pnam=="input.osd.mouse") conf.iosd.mouse = arg.b;
+					if (pnam=="input.osd.source") conf.iosd.source = rec_id(iosdSrcName, pval, IOSD_SRC_AUTO);
+					if (pnam=="input.osd.pos") conf.iosd.pos = rec_id(iosdPosName, pval, IOSD_POS_BOTTOM_RIGHT);
+					if (pnam=="input.osd.size") conf.iosd.size = getRanged(arg.s, IOSD_SIZE_MIN, IOSD_SIZE_MAX);
+					if (pnam=="input.osd.opacity") conf.iosd.opacity = getRanged(arg.s, IOSD_OPACITY_MIN, 100);
 					if (pnam=="rec.ffmpeg") conf.rec.ffmpeg = pval;
 					if (pnam=="rec.dir") conf.rec.dir = pval;
 					if (pnam=="rec.source") conf.rec.source = rec_id(recSrcName, pval, VREC_SRC_PICTURE);
@@ -1260,4 +1286,5 @@ void loadConfig() {
 	vid_set_zoom(conf.vid.scale);
 	vid_set_fullscreen(conf.vid.fullScreen);
 	vid_set_ratio(conf.vid.keepRatio);
+	iosd_apply();
 }

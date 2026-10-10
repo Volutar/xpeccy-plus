@@ -248,6 +248,9 @@ void mouseDestroy(Mouse*);
 void mousePress(Mouse*, int, int);
 void mouseRelease(Mouse*, int);
 void mouseReleaseAll(Mouse*);
+int mouseGetX(Mouse*);
+int mouseGetY(Mouse*);
+int mouse_buttons(Mouse*);
 
 Joystick* joyCreate();
 void joyDestroy(Joystick*);

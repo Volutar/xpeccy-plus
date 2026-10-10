@@ -54,3 +54,14 @@ void mouseRelease(Mouse* mou, int wut) {
 
 int mouseGetX(Mouse* mou) {return mou->xpos * mou->sensitivity;}
 int mouseGetY(Mouse* mou) {return mou->ypos * mou->sensitivity;}
+
+// the buttons down, as the port has them: bit 0 is the left one unless swapped
+int mouse_buttons(Mouse* mou) {
+	int res = mou->mmb ? 4 : 0;
+	if (mou->swapButtons) {
+		res |= (mou->rmb ? 1 : 0) | (mou->lmb ? 2 : 0);
+	} else {
+		res |= (mou->lmb ? 1 : 0) | (mou->rmb ? 2 : 0);
+	}
+	return res;
+}
