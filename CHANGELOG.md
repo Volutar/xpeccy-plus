@@ -128,8 +128,8 @@ before that point is upstream's history and is not repeated here.
 ### Fixed
 
 - **RZX playback** keeps in step with the recording to its end, plays files with an SZX snapshot
-  inside or beside them, opens from the menu on the first try and ends cleanly when another
-  file is opened. *(thanks to Volutar)*
+  inside or beside them, opens from the menu on the first try - from the player too, on the
+  machine it was made on - and ends cleanly when another file is opened. *(thanks to Volutar)*
 
 - **The open dialog** no longer offers the file just saved under another extension. *(thanks to
   Volutar)*
