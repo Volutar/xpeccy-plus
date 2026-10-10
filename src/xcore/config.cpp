@@ -784,9 +784,9 @@ void loadConfig() {
 	conf.iosd.joy = 1;
 	conf.iosd.mouse = 0;
 	conf.iosd.source = IOSD_SRC_AUTO;
-	conf.iosd.pos = IOSD_POS_BOTTOM;
+	conf.iosd.pos = IOSD_POS_BOTTOM_RIGHT;
 	conf.iosd.size = 40;
-	conf.iosd.opacity = 100;
+	conf.iosd.opacity = 85;
 	conf.vid.border = VID_BRD_FULL;
 	conf.vid.scale = 2;		// a config with no scale must not make a zero-size window
 	conf.win.toolbar = 1;
@@ -1030,7 +1030,7 @@ void loadConfig() {
 					if (pnam=="input.osd.joy") conf.iosd.joy = arg.b;
 					if (pnam=="input.osd.mouse") conf.iosd.mouse = arg.b;
 					if (pnam=="input.osd.source") conf.iosd.source = rec_id(iosdSrcName, pval, IOSD_SRC_AUTO);
-					if (pnam=="input.osd.pos") conf.iosd.pos = rec_id(iosdPosName, pval, IOSD_POS_BOTTOM);
+					if (pnam=="input.osd.pos") conf.iosd.pos = rec_id(iosdPosName, pval, IOSD_POS_BOTTOM_RIGHT);
 					if (pnam=="input.osd.size") conf.iosd.size = getRanged(arg.s, IOSD_SIZE_MIN, IOSD_SIZE_MAX);
 					if (pnam=="input.osd.opacity") conf.iosd.opacity = getRanged(arg.s, IOSD_OPACITY_MIN, 100);
 					if (pnam=="rec.ffmpeg") conf.rec.ffmpeg = pval;
