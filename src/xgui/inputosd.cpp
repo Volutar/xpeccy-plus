@@ -318,24 +318,41 @@ void xInputOsd::paint(QPainter& pnt, const QRect& pic, const InState& st, bool r
 	} else {
 		y = pic.bottom() + 1 - margin - hig * u;
 	}
-	double op = conf.iosd.opacity / 100.0;
-	pnt.save();
-	pnt.setRenderHint(QPainter::Antialiasing, true);
-	pnt.setOpacity(op);
+	// Drawn into an image first: on the GL window QPainter goes through the
+	// OpenGL engine, which ignores antialiasing on a surface with no multisampling
+	qreal dpr = pnt.device() ? pnt.device()->devicePixelRatioF() : 1.0;
+	double pad = u * 0.2;
+	double x0 = floor(x - pad);
+	double y0 = floor(y - pad);
+	QSize isz(ceil((x + wid * u + pad - x0) * dpr), ceil((y + hig * u + pad - y0) * dpr));
+	if ((osdImg.size() != isz) || (osdImg.devicePixelRatio() != dpr)) {
+		osdImg = QImage(isz, QImage::Format_ARGB32_Premultiplied);
+		osdImg.setDevicePixelRatio(dpr);
+	}
+	osdImg.fill(Qt::transparent);
+	QPainter ip(&osdImg);
+	ip.setRenderHint(QPainter::Antialiasing, true);
+	ip.setRenderHint(QPainter::TextAntialiasing, true);
+	ip.translate(-x0, -y0);
 	QPointF at(x, y);
 	if (keys) {
-		paintKeys(pnt, at, u, st);
+		paintKeys(ip, at, u, st);
 		at.rx() += (KBD_W + BLK_GAP) * u;
 	}
 	// a device the machine lacks, or the program is not reading, is drawn faint
 	if (joy) {
-		pnt.setOpacity(st.joyLive ? op : op * 0.45);
-		paintJoy(pnt, at, u, st, ext);
+		ip.setOpacity(st.joyLive ? 1.0 : 0.45);
+		paintJoy(ip, at, u, st, ext);
 		at.rx() += (joyW + BLK_GAP) * u;
 	}
 	if (mou) {
-		pnt.setOpacity(st.mouseLive ? op : op * 0.45);
-		paintMouse(pnt, at, u, st);
+		ip.setOpacity(st.mouseLive ? 1.0 : 0.45);
+		paintMouse(ip, at, u, st);
 	}
+	ip.end();
+	// the opacity goes on the whole of it, so an outline over its rim does not show both
+	pnt.save();
+	pnt.setOpacity(conf.iosd.opacity / 100.0);
+	pnt.drawImage(QPointF(x0, y0), osdImg);
 	pnt.restore();
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QImage>
 #include <QPainter>
 #include <QRect>
 
@@ -27,6 +28,7 @@ class xInputOsd {
 		unsigned char myWas;
 		int mouseSeen;
 		qint64 now;
+		QImage osdImg;		// drawn here, then put on the window whole
 
 		double glow(qint64 at);
 		void drawKey(QPainter&, const QRectF&, const char*, double lit, double unit);
