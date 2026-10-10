@@ -786,7 +786,7 @@ void loadConfig() {
 	conf.iosd.source = IOSD_SRC_AUTO;
 	conf.iosd.pos = IOSD_POS_BOTTOM;
 	conf.iosd.size = 40;
-	conf.iosd.opacity = 70;
+	conf.iosd.opacity = 100;
 	conf.vid.border = VID_BRD_FULL;
 	conf.vid.scale = 2;		// a config with no scale must not make a zero-size window
 	conf.win.toolbar = 1;

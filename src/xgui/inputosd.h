@@ -30,6 +30,7 @@ class xInputOsd {
 
 		double glow(qint64 at);
 		void drawKey(QPainter&, const QRectF&, const char*, double lit, double unit);
+		void drawButton(QPainter&, const QRectF&, const char*, double lit, double unit);
 		void paintKeys(QPainter&, QPointF org, double u, const InState&);
 		void paintJoy(QPainter&, QPointF org, double u, const InState&, bool ext);
 		void paintMouse(QPainter&, QPointF org, double u, const InState&);

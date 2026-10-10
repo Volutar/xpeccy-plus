@@ -15,34 +15,20 @@
 // all in key pitches
 #define KBD_W		10.75
 #define BLK_H		4.0
-#define JOY_CROSS	4.0
-#define JOY_GAP		0.3
-#define JOY_BTN_EXT	1.9
-#define JOY_BTN		1.4
+#define JOY_CROSS	3.0
+#define JOY_GAP		0.4
+#define JOY_BTN_EXT	3.2		// F1..F3 rising to the right, F4 above them
+#define JOY_BTN		1.2
 #define MOU_W		2.6
 #define BLK_GAP		0.6
-#define PAD		0.3
 
-static const QColor colKey(40, 40, 44);
-static const QColor colEdge(130, 130, 140);
-static const QColor colText(210, 210, 210);
-static const QColor colLit(0, 200, 255);
-static const QColor colLitText(0, 0, 0);
-
-static QColor mix(const QColor& a, const QColor& b, double f) {
-	return QColor::fromRgbF(a.redF() + (b.redF() - a.redF()) * f,
-		a.greenF() + (b.greenF() - a.greenF()) * f,
-		a.blueF() + (b.blueF() - a.blueF()) * f);
-}
-
-// a key up is mostly glass, so the picture shows through it; one down is solid
-#define KEY_GLASS	0.4
-
-static QColor keyFill(double lit, const QColor& up = colKey) {
-	QColor c = mix(up, colLit, lit);
-	c.setAlphaF(KEY_GLASS + (1.0 - KEY_GLASS) * lit);
-	return c;
-}
+// Nothing is shaded but a key that is down: a key up is its outline and its
+// label, so the picture under the overlay stays as it is
+static const QColor colLine(255, 255, 255);
+static const QColor colText(0xea, 0xea, 0xea);
+static const QColor colHalo(0, 0, 0, 110);		// keeps the white readable on a light picture
+static const QColor colLit(0xff, 0xfa, 0x57);
+#define LIT_ALPHA	0.7
 
 xInputOsd::xInputOsd() {
 	memset(keyAt, 0, sizeof(keyAt));
@@ -68,33 +54,73 @@ double xInputOsd::glow(qint64 at) {
 	return (dt >= OSD_FADE_MS) ? 0.0 : 1.0 - double(dt) / OSD_FADE_MS;
 }
 
-static void fitText(QPainter& pnt, const QRectF& rc, const char* txt, double px) {
+static QColor litFill(double lit) {
+	QColor c = colLit;
+	c.setAlphaF(LIT_ALPHA * lit);
+	return c;
+}
+
+// light with a dark rim, the way the label of every key is drawn
+static void drawGlyph(QPainter& pnt, const QPainterPath& path, double u) {
+	pnt.setBrush(Qt::NoBrush);
+	pnt.setPen(QPen(colHalo, qMax(1.5, u * 0.09), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+	pnt.drawPath(path);
+	pnt.setPen(Qt::NoPen);
+	pnt.setBrush(colText);
+	pnt.drawPath(path);
+}
+
+static void drawLabel(QPainter& pnt, const QRectF& rc, const char* txt, double u) {
+	double px = u * 0.42;
 	if (px < 5.0) return;
 	QFont fnt = pnt.font();
 	fnt.setBold(true);
 	fnt.setPixelSize(qRound(px));
-	QFontMetricsF fm(fnt);
-	double w = fm.horizontalAdvance(txt);
-	if (w > rc.width() * 0.86) {
-		px *= rc.width() * 0.86 / w;
-		if (px < 5.0) return;
-		fnt.setPixelSize(qRound(px));
+	QPainterPath path;
+	path.addText(0, 0, fnt, txt);
+	QRectF br = path.boundingRect();
+	double sc = 1.0;
+	if (br.width() > rc.width() * 0.82)
+		sc = rc.width() * 0.82 / br.width();
+	if (px * sc < 5.0) return;
+	QTransform tr;
+	tr.translate(rc.center().x(), rc.center().y());
+	tr.scale(sc, sc);
+	tr.translate(-br.center().x(), -br.center().y());
+	drawGlyph(pnt, tr.map(path), u);
+}
+
+// a white outline with a dark rim outside it
+static void drawOutline(QPainter& pnt, const QPainterPath& shape, double u) {
+	double lw = qMax(1.0, u * 0.045);
+	pnt.setBrush(Qt::NoBrush);
+	pnt.setPen(QPen(colHalo, lw * 3));
+	pnt.drawPath(shape);
+	pnt.setPen(QPen(colLine, lw));
+	pnt.drawPath(shape);
+}
+
+static void drawShape(QPainter& pnt, const QPainterPath& shape, double lit, double u) {
+	if (lit > 0.0) {
+		pnt.setPen(Qt::NoPen);
+		pnt.setBrush(litFill(lit));
+		pnt.drawPath(shape);
 	}
-	pnt.setFont(fnt);
-	pnt.drawText(rc, Qt::AlignCenter, txt);
+	drawOutline(pnt, shape, u);
 }
 
 void xInputOsd::drawKey(QPainter& pnt, const QRectF& rc, const char* txt, double lit, double u) {
-	double base = pnt.opacity();
-	pnt.setOpacity(base + (1.0 - base) * lit);
-	pnt.setPen(QPen(mix(colEdge, colLit.lighter(130), lit), qMax(1.0, u * 0.05)));
-	pnt.setBrush(keyFill(lit));
-	pnt.drawRoundedRect(rc, u * 0.14, u * 0.14);
-	if (txt) {
-		pnt.setPen(mix(colText, colLitText, lit));
-		fitText(pnt, rc, txt, u * 0.36);
-	}
-	pnt.setOpacity(base);
+	QPainterPath shape;
+	shape.addRoundedRect(rc, u * 0.14, u * 0.14);
+	drawShape(pnt, shape, lit, u);
+	if (txt) drawLabel(pnt, rc, txt, u);
+}
+
+void xInputOsd::drawButton(QPainter& pnt, const QRectF& rc, const char* txt, double lit, double u) {
+	QPainterPath shape;
+	shape.addEllipse(rc);
+	drawShape(pnt, shape, lit, u);
+	if (txt) drawLabel(pnt, rc, txt, u);
 }
 
 // Each key is the half-row it answers on (address line A8+n) and its bit. The
@@ -109,8 +135,13 @@ static const char* keyLabel[4][10] = {
 	{"CAPS", "Z", "X", "C", "V", "B", "N", "M", "SYM", "SPACE"}
 };
 
-void xInputOsd::paintKeys(QPainter& pnt, QPointF org, double u, const InState& st) {
+// a key's rectangle, x and y in pitches from the block's corner
+static QRectF keyRect(QPointF org, double x, double y, double w, double u) {
 	double gap = u * 0.08;
+	return QRectF(org.x() + x * u + gap, org.y() + y * u + gap, w * u - gap * 2, u - gap * 2);
+}
+
+void xInputOsd::paintKeys(QPainter& pnt, QPointF org, double u, const InState& st) {
 	for (int r = 0; r < 4; r++) {
 		for (int c = 0; c < 10; c++) {
 			int line = (c < 5) ? rowLeft[r] : rowRight[r];
@@ -127,84 +158,53 @@ void xInputOsd::paintKeys(QPainter& pnt, QPointF org, double u, const InState& s
 					if (c == 9) w = 1.5;
 				}
 			}
-			QRectF rc(org.x() + x * u + gap, org.y() + r * u + gap, w * u - gap * 2, u - gap * 2);
-			drawKey(pnt, rc, keyLabel[r][c], glow(keyAt[line][bit]), u);
+			drawKey(pnt, keyRect(org, x, r, w, u), keyLabel[r][c], glow(keyAt[line][bit]), u);
 		}
 	}
 }
 
 // a triangle in the middle of rc pointing dx,dy
-static void arrow(QPainter& pnt, const QRectF& rc, int dx, int dy, double sz, const QColor& col) {
+static QPainterPath arrow(const QRectF& rc, int dx, int dy, double sz) {
 	QPointF c = rc.center();
-	QPointF tip(c.x() + dx * sz, c.y() + dy * sz);
-	QPointF b1(c.x() - dx * sz * 0.6 + dy * sz, c.y() - dy * sz * 0.6 + dx * sz);
-	QPointF b2(c.x() - dx * sz * 0.6 - dy * sz, c.y() - dy * sz * 0.6 - dx * sz);
-	QPointF pts[3] = {tip, b1, b2};
-	pnt.setPen(Qt::NoPen);
-	pnt.setBrush(col);
-	pnt.drawPolygon(pts, 3);
+	QPainterPath path;
+	path.moveTo(c.x() + dx * sz, c.y() + dy * sz);
+	path.lineTo(c.x() - dx * sz * 0.6 + dy * sz, c.y() - dy * sz * 0.6 + dx * sz);
+	path.lineTo(c.x() - dx * sz * 0.6 - dy * sz, c.y() - dy * sz * 0.6 - dx * sz);
+	path.closeSubpath();
+	return path;
 }
 
+// The cross is four keys of the keyboard's size on its bottom three rows. The
+// buttons are laid out as on a Sega pad: F1..F3 in a row rising to the right,
+// F4 above them where Start is.
 void xInputOsd::paintJoy(QPainter& pnt, QPointF org, double u, const InState& st, bool ext) {
 	for (int i = 0; i < 8; i++) {
 		if (st.joy & (1 << i))
 			joyAt[i] = now;
 	}
-	QPointF c(org.x() + JOY_CROSS * u / 2, org.y() + BLK_H * u / 2);
-	double aw = u * 1.15;		// arm width
-	double in = u * 0.6;		// the hub
-	double out = u * 1.95;
 	// R L D U: kempston bits 0..3
-	struct {int bit; int dx; int dy;} arm[4] = {{0, 1, 0}, {1, -1, 0}, {2, 0, 1}, {3, 0, -1}};
+	struct {int bit; int dx; int dy; double x; double y;} arm[4] = {
+		{0, 1, 0, 2, 2}, {1, -1, 0, 0, 2}, {2, 0, 1, 1, 3}, {3, 0, -1, 1, 1}
+	};
 	for (int i = 0; i < 4; i++) {
-		QRectF rc;
-		if (arm[i].dx) {
-			double x0 = (arm[i].dx > 0) ? c.x() + in : c.x() - out;
-			rc = QRectF(x0, c.y() - aw / 2, out - in, aw);
-		} else {
-			double y0 = (arm[i].dy > 0) ? c.y() + in : c.y() - out;
-			rc = QRectF(c.x() - aw / 2, y0, aw, out - in);
-		}
-		double lit = glow(joyAt[arm[i].bit]);
-		drawKey(pnt, rc, nullptr, lit, u);
-		double base = pnt.opacity();
-		pnt.setOpacity(base + (1.0 - base) * lit);
-		arrow(pnt, rc, arm[i].dx, arm[i].dy, u * 0.28, mix(colText, colLitText, lit));
-		pnt.setOpacity(base);
+		QRectF rc = keyRect(org, arm[i].x, arm[i].y, 1.0, u);
+		drawKey(pnt, rc, nullptr, glow(joyAt[arm[i].bit]), u);
+		drawGlyph(pnt, arrow(rc, arm[i].dx, arm[i].dy, u * 0.2), u);
 	}
-	pnt.setPen(QPen(colEdge, qMax(1.0, u * 0.05)));
-	pnt.setBrush(keyFill(0.0));
-	pnt.drawEllipse(c, u * 0.42, u * 0.42);
-	// the fire buttons, beside the cross
 	double bx = org.x() + (JOY_CROSS + JOY_GAP) * u;
 	if (ext) {
-		static const char* lab[4] = {"F", "2", "3", "4"};
-		double d = u * 0.85;
-		double y0 = c.y() - d - u * 0.1;
+		static const char* lab[4] = {"F1", "F2", "F3", "F4"};
+		// centres, in pitches from the buttons' corner, and diameters
+		static const double pos[4][3] = {{0.5, 3.15, 0.95}, {1.6, 2.85, 0.95}, {2.7, 2.55, 0.95}, {0.9, 1.45, 0.75}};
 		for (int i = 0; i < 4; i++) {
-			QRectF rc(bx + (i & 1) * (d + u * 0.2), y0 + (i >> 1) * (d + u * 0.2), d, d);
-			double lit = glow(joyAt[4 + i]);
-			double base = pnt.opacity();
-			pnt.setOpacity(base + (1.0 - base) * lit);
-			pnt.setPen(QPen(mix(colEdge, colLit.lighter(130), lit), qMax(1.0, u * 0.05)));
-			pnt.setBrush(keyFill(lit));
-			pnt.drawEllipse(rc);
-			pnt.setPen(mix(colText, colLitText, lit));
-			fitText(pnt, rc, lab[i], u * 0.36);
-			pnt.setOpacity(base);
+			double d = pos[i][2] * u;
+			QRectF rc(bx + pos[i][0] * u - d / 2, org.y() + pos[i][1] * u - d / 2, d, d);
+			drawButton(pnt, rc, lab[i], glow(joyAt[4 + i]), u);
 		}
 	} else {
 		double d = u * JOY_BTN;
-		QRectF rc(bx, c.y() - d / 2, d, d);
-		double lit = glow(joyAt[4]);
-		double base = pnt.opacity();
-		pnt.setOpacity(base + (1.0 - base) * lit);
-		pnt.setPen(QPen(mix(colEdge, colLit.lighter(130), lit), qMax(1.0, u * 0.05)));
-		pnt.setBrush(keyFill(lit));
-		pnt.drawEllipse(rc);
-		pnt.setPen(mix(colText, colLitText, lit));
-		fitText(pnt, rc, "FIRE", u * 0.36);
-		pnt.setOpacity(base);
+		QRectF rc(bx, org.y() + 2.5 * u - d / 2, d, d);
+		drawButton(pnt, rc, "FIRE", glow(joyAt[4]), u);
 	}
 }
 
@@ -236,87 +236,77 @@ void xInputOsd::paintMouse(QPainter& pnt, QPointF org, double u, const InState& 
 	mxWas = st.mx;
 	myWas = st.my;
 
-	double lw = qMax(1.0, u * 0.05);
-	QRectF body(org.x(), org.y(), MOU_W * u, BLK_H * u);
+	QRectF body(org.x() + u * 0.08, org.y() + u * 0.08, MOU_W * u - u * 0.16, BLK_H * u - u * 0.16);
 	QPainterPath bp;
 	bp.addRoundedRect(body, u * 1.1, u * 1.1);
-	pnt.setPen(Qt::NoPen);
-	pnt.setBrush(keyFill(0.0));
-	pnt.drawPath(bp);
-	// the two buttons, cut out of the body's top
+	// the two buttons are cut out of the body's top
 	double slot = u * 0.5;
 	double top = u * 1.7;
+	pnt.setPen(Qt::NoPen);
 	for (int i = 0; i < 2; i++) {
+		double lit = glow(btnAt[i]);
+		if (lit <= 0.0) continue;
 		QRectF half = (i == 0) ? QRectF(body.left(), body.top(), body.width() / 2 - slot / 2, top)
 			: QRectF(body.center().x() + slot / 2, body.top(), body.width() / 2 - slot / 2, top);
 		QPainterPath hp;
 		hp.addRect(half);
-		double lit = glow(btnAt[i]);
-		if (lit <= 0.0) continue;		// the body under it is the button up
-		double base = pnt.opacity();
-		pnt.setOpacity(base + (1.0 - base) * lit);
-		pnt.setBrush(keyFill(lit));
+		pnt.setBrush(litFill(lit));
 		pnt.drawPath(bp.intersected(hp));
-		pnt.setOpacity(base);
 	}
-	pnt.setPen(QPen(colEdge, lw));
-	pnt.setBrush(Qt::NoBrush);
-	pnt.drawPath(bp);
-	pnt.drawLine(QPointF(body.left(), body.top() + top), QPointF(body.right(), body.top() + top));
+	QPainterPath lines = bp;
+	lines.moveTo(body.left(), body.top() + top);
+	lines.lineTo(body.right(), body.top() + top);
+	drawOutline(pnt, lines, u);
 	// the wheel, the middle button under it
 	QRectF whl(body.center().x() - slot * 0.42, body.top() + u * 0.3, slot * 0.84, top - u * 0.6);
-	double mlit = glow(btnAt[2]);
-	double base = pnt.opacity();
-	pnt.setOpacity(base + (1.0 - base) * mlit);
-	pnt.setPen(QPen(mix(colEdge, colLit.lighter(130), mlit), lw));
-	pnt.setBrush(keyFill(mlit, colKey.lighter(150)));
-	pnt.drawRoundedRect(whl, whl.width() / 2, whl.width() / 2);
-	pnt.setOpacity(base);
+	QPainterPath wp;
+	wp.addRoundedRect(whl, whl.width() / 2, whl.width() / 2);
+	drawShape(pnt, wp, glow(btnAt[2]), u);
 	double wlit = glow(wheelAt);
 	if (wlit > 0.0) {
-		pnt.setOpacity(base + (1.0 - base) * wlit);
-		QColor col = mix(colText, colLit, wlit);
-		double sz = u * 0.22;
 		QRectF tip = (wheelDir < 0) ? QRectF(whl.left(), whl.top() - u * 0.32, whl.width(), u * 0.25)
 			: QRectF(whl.left(), whl.bottom() + u * 0.07, whl.width(), u * 0.25);
-		arrow(pnt, tip, 0, wheelDir, sz, col);
-		pnt.setOpacity(base);
+		pnt.setPen(Qt::NoPen);
+		pnt.setBrush(litFill(wlit));
+		pnt.drawPath(arrow(tip, 0, wheelDir, u * 0.22));
 	}
 	// which way it moves, a dot off the middle of a ring
-	QPointF mc(body.center().x(), body.top() + u * 2.85);
+	QPointF mc(body.center().x(), body.top() + u * 2.8);
 	double ring = u * 0.62;
+	QPainterPath rp;
+	rp.addEllipse(mc, ring, ring);
+	drawOutline(pnt, rp, u);
 	double mlv = glow(moveAt);
-	pnt.setPen(QPen(colEdge, lw));
-	pnt.setBrush(Qt::NoBrush);
-	pnt.drawEllipse(mc, ring, ring);
 	if (mlv > 0.0) {
-		pnt.setOpacity(base + (1.0 - base) * mlv);
+		QPainterPath dot;
+		dot.addEllipse(QPointF(mc.x() + moveX * ring * 0.62, mc.y() + moveY * ring * 0.62), u * 0.2, u * 0.2);
 		pnt.setPen(Qt::NoPen);
-		pnt.setBrush(colLit);
-		pnt.drawEllipse(QPointF(mc.x() + moveX * ring * 0.62, mc.y() + moveY * ring * 0.62), u * 0.2, u * 0.2);
-		pnt.setOpacity(base);
+		pnt.setBrush(litFill(mlv));
+		pnt.drawPath(dot);
 	}
 }
 
 void xInputOsd::paint(QPainter& pnt, const QRect& pic, const InState& st, bool reads) {
+	Q_UNUSED(reads);
 	now = QDateTime::currentMSecsSinceEpoch();
 	bool keys = conf.iosd.keys;
 	bool joy = conf.iosd.joy;
 	bool mou = conf.iosd.mouse;
 	if (!keys && !joy && !mou) return;
 	bool ext = conf.zx->joy->extbuttons;
+	double joyW = JOY_CROSS + JOY_GAP + (ext ? JOY_BTN_EXT : JOY_BTN);
 	double wid = 0;
 	int blocks = 0;
 	if (keys) {wid += KBD_W; blocks++;}
-	if (joy) {wid += JOY_CROSS + JOY_GAP + (ext ? JOY_BTN_EXT : JOY_BTN); blocks++;}
+	if (joy) {wid += joyW; blocks++;}
 	if (mou) {wid += MOU_W; blocks++;}
-	wid += BLK_GAP * (blocks - 1) + PAD * 2;
-	double hig = BLK_H + PAD * 2;
+	wid += BLK_GAP * (blocks - 1);
+	double hig = BLK_H;
 	// the size is the keyboard's share of the picture, and the whole strip has to fit
 	double u = pic.width() * conf.iosd.size / 100.0 / KBD_W;
 	double room = pic.width() * 0.96;
 	if (wid * u > room) u = room / wid;
-	double margin = pic.height() * 0.02;
+	double margin = pic.height() * 0.025;
 	double x, y;
 	switch (conf.iosd.pos) {
 		case IOSD_POS_BOTTOM_LEFT: case IOSD_POS_TOP_LEFT: x = pic.left() + margin; break;
@@ -331,14 +321,8 @@ void xInputOsd::paint(QPainter& pnt, const QRect& pic, const InState& st, bool r
 	double op = conf.iosd.opacity / 100.0;
 	pnt.save();
 	pnt.setRenderHint(QPainter::Antialiasing, true);
-	pnt.setRenderHint(QPainter::TextAntialiasing, true);
-	// a dark ground under the whole strip, so the keys read over any picture
-	pnt.setOpacity(op * 0.3);
-	pnt.setPen(Qt::NoPen);
-	pnt.setBrush(Qt::black);
-	pnt.drawRoundedRect(QRectF(x, y, wid * u, hig * u), u * 0.35, u * 0.35);
 	pnt.setOpacity(op);
-	QPointF at(x + PAD * u, y + PAD * u);
+	QPointF at(x, y);
 	if (keys) {
 		paintKeys(pnt, at, u, st);
 		at.rx() += (KBD_W + BLK_GAP) * u;
@@ -347,7 +331,7 @@ void xInputOsd::paint(QPainter& pnt, const QRect& pic, const InState& st, bool r
 	if (joy) {
 		pnt.setOpacity(st.joyLive ? op : op * 0.45);
 		paintJoy(pnt, at, u, st, ext);
-		at.rx() += (JOY_CROSS + JOY_GAP + (ext ? JOY_BTN_EXT : JOY_BTN) + BLK_GAP) * u;
+		at.rx() += (joyW + BLK_GAP) * u;
 	}
 	if (mou) {
 		pnt.setOpacity(st.mouseLive ? op : op * 0.45);
