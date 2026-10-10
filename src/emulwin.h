@@ -347,10 +347,17 @@ typedef struct {
 		QWidget* sbDiskBox[4] = {nullptr, nullptr, nullptr, nullptr};
 		QLabel* sbTapeIcon;
 		QWidget* sbTapeBox = nullptr;
-		QPixmap sbPix[7];	// SB_*
+		QLabel* sbJoyIcon;
+		QLabel* sbMouseIcon;
+		QWidget* sbInputBox = nullptr;
+		QPixmap sbPix[11];	// SB_*
 		int sbTapeShown = -1;
 		int sbDiskShown[4] = {-1, -1, -1, -1};
+		int sbJoyShown = -1;
+		int sbMouseShown = -1;
 		int flpSeen[4] = {0, 0, 0, 0};	// bit 0 read, bit 1 written since the status bar last looked
+		bool joySeen = false;		// read since the status bar last looked
+		bool mouseSeen = false;
 		QMenu* flpMenu[4] = {nullptr, nullptr, nullptr, nullptr};	// each drive's own, from the Drives menu
 		void tapeMenu(const QPoint&);
 		QLabel* sbFps;
