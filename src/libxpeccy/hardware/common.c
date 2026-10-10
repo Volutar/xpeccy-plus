@@ -495,15 +495,7 @@ int xInFADF(Computer* comp, int port) {
 		res &= 0x0f;
 		res |= ((comp->mouse->wheel & 0x0f) << 4);
 	}
-	res ^= comp->mouse->mmb ? 4 : 0;
-	if (comp->mouse->swapButtons) {
-		res ^= comp->mouse->rmb ? 1 : 0;
-		res ^= comp->mouse->lmb ? 2 : 0;
-	} else {
-		res ^= comp->mouse->lmb ? 1 : 0;
-		res ^= comp->mouse->rmb ? 2 : 0;
-	}
-	return res;
+	return res ^ mouse_buttons(comp->mouse);
 }
 
 int xInFBDF(Computer* comp, int port) {

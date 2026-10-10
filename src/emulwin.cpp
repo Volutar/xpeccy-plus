@@ -1456,63 +1456,54 @@ void MainWin::drawIcons(QPainter& pnt) {
 
 // the player's input, over the picture and under the indicators
 void MainWin::drawInputOsd(QPainter& pnt) {
-	if (!conf.iosd.on) return;
 	InState st;
-	int reads = iosd_shown(&st);
-	inputOsd.paint(pnt, QRect(drawX, drawY, drawW, drawH), st, reads);
+	if (!conf.iosd.on || !frame_shown_input(&st)) return;
+	inputOsd.paint(pnt, QRect(drawX, drawY, drawW, drawH), st, widgetDpr(this));
 }
 
-// built each time it opens, so it always shows the settings as they are
-void MainWin::fillIosdMenu() {
-	QMenu* mnu = iosdMenu;
-	mnu->clear();
-	auto check = [this, mnu](const char* txt, bool on, std::function<void(bool)> fn) {
-		QAction* act = mnu->addAction(txt);
-		act->setCheckable(true);
-		act->setChecked(on);
-		connect(act, &QAction::triggered, this, [fn](bool v) {
-			fn(v);
-			iosd_apply();
-			saveConfig();
-		});
-	};
-	check("Show", conf.iosd.on, [](bool v) {conf.iosd.on = v;});
-	mnu->addSeparator();
-	check("Keyboard", conf.iosd.keys, [](bool v) {conf.iosd.keys = v;});
-	check("Joystick", conf.iosd.joy, [](bool v) {conf.iosd.joy = v;});
-	check("Mouse", conf.iosd.mouse, [](bool v) {conf.iosd.mouse = v;});
-	mnu->addSeparator();
-	auto radio = [this](QMenu* sub, const char* txt, int* field, int val) {
+// built once; opening it only puts the checks right
+void MainWin::initIosdMenu(QMenu* mnu) {
+	auto add = [this](QMenu* sub, const char* txt, int* field, int val) {
 		QAction* act = sub->addAction(txt);
 		act->setCheckable(true);
-		act->setChecked(*field == val);
+		iosdItems.push_back({act, field, val});
 		connect(act, &QAction::triggered, this, [field, val]() {
-			*field = val;
+			*field = (val < 0) ? !*field : val;
 			iosd_apply();
 			saveConfig();
 		});
 	};
+	add(mnu, "Show", &conf.iosd.on, -1);
+	mnu->addSeparator();
+	add(mnu, "Keyboard", &conf.iosd.keys, -1);
+	add(mnu, "Joystick", &conf.iosd.joy, -1);
+	add(mnu, "Mouse", &conf.iosd.mouse, -1);
+	mnu->addSeparator();
 	QMenu* src = mnu->addMenu("Source");
-	radio(src, "Auto: replay reads, host otherwise", &conf.iosd.source, IOSD_SRC_AUTO);
-	radio(src, "What the program reads", &conf.iosd.source, IOSD_SRC_READS);
-	radio(src, "What is pressed on the host", &conf.iosd.source, IOSD_SRC_HOST);
+	add(src, "Auto: replay reads, host otherwise", &conf.iosd.source, IOSD_SRC_AUTO);
+	add(src, "What the program reads", &conf.iosd.source, IOSD_SRC_READS);
+	add(src, "What is pressed on the host", &conf.iosd.source, IOSD_SRC_HOST);
 	QMenu* pos = mnu->addMenu("Position");
-	radio(pos, "Bottom left", &conf.iosd.pos, IOSD_POS_BOTTOM_LEFT);
-	radio(pos, "Bottom", &conf.iosd.pos, IOSD_POS_BOTTOM);
-	radio(pos, "Bottom right", &conf.iosd.pos, IOSD_POS_BOTTOM_RIGHT);
-	radio(pos, "Top left", &conf.iosd.pos, IOSD_POS_TOP_LEFT);
-	radio(pos, "Top", &conf.iosd.pos, IOSD_POS_TOP);
-	radio(pos, "Top right", &conf.iosd.pos, IOSD_POS_TOP_RIGHT);
+	add(pos, "Bottom left", &conf.iosd.pos, IOSD_POS_BOTTOM_LEFT);
+	add(pos, "Bottom", &conf.iosd.pos, IOSD_POS_BOTTOM);
+	add(pos, "Bottom right", &conf.iosd.pos, IOSD_POS_BOTTOM_RIGHT);
+	add(pos, "Top left", &conf.iosd.pos, IOSD_POS_TOP_LEFT);
+	add(pos, "Top", &conf.iosd.pos, IOSD_POS_TOP);
+	add(pos, "Top right", &conf.iosd.pos, IOSD_POS_TOP_RIGHT);
 	QMenu* sz = mnu->addMenu("Size");
-	radio(sz, "Small", &conf.iosd.size, 28);
-	radio(sz, "Medium", &conf.iosd.size, 40);
-	radio(sz, "Large", &conf.iosd.size, 60);
+	add(sz, "Small", &conf.iosd.size, 28);
+	add(sz, "Medium", &conf.iosd.size, 40);
+	add(sz, "Large", &conf.iosd.size, 60);
 	QMenu* op = mnu->addMenu("Opacity");
-	radio(op, "40%", &conf.iosd.opacity, 40);
-	radio(op, "55%", &conf.iosd.opacity, 55);
-	radio(op, "70%", &conf.iosd.opacity, 70);
-	radio(op, "85%", &conf.iosd.opacity, 85);
-	radio(op, "100%", &conf.iosd.opacity, 100);
+	add(op, "40%", &conf.iosd.opacity, 40);
+	add(op, "55%", &conf.iosd.opacity, 55);
+	add(op, "70%", &conf.iosd.opacity, 70);
+	add(op, "85%", &conf.iosd.opacity, 85);
+	add(op, "100%", &conf.iosd.opacity, 100);
+	connect(mnu, &QMenu::aboutToShow, this, [this]() {
+		for (xIosdItem& it : iosdItems)
+			it.act->setChecked((it.val < 0) ? (*it.field != 0) : (*it.field == it.val));
+	});
 }
 
 
@@ -2115,8 +2106,7 @@ void MainWin::initMenuBar() {
 	sbShowAct->setCheckable(true);
 	viewMenu->addSeparator();
 	cutAction(viewMenu, "Virtual Keyboard", XCUT_KEYBOARD, "keyboardzx");
-	iosdMenu = viewMenu->addMenu("Input Overlay");
-	connect(iosdMenu, &QMenu::aboutToShow, this, &MainWin::fillIosdMenu);
+	initIosdMenu(viewMenu->addMenu("Input Overlay"));
 
 	QMenu* help = new xMenu("Help", this);
 	helpMenu = help;

@@ -278,6 +278,7 @@ void frame_publish();
 void frame_taken();		// the gui has the frame signal: the next one may be sent
 const unsigned char* frame_shown_lock();
 void frame_shown_unlock();
+int frame_shown_input(InState*);	// the input overlay's state for that picture, 0: off
 
 // the running machine
 
@@ -357,8 +358,7 @@ enum {IOSD_POS_BOTTOM_LEFT = 0, IOSD_POS_BOTTOM, IOSD_POS_BOTTOM_RIGHT, IOSD_POS
 #define IOSD_OPACITY_MIN	20
 
 void iosd_apply();
-void iosd_publish(Computer*);
-int iosd_shown(InState*);
+int iosd_state(Computer*, InState*);
 
 enum {
 	XCUT_SIZEX1 = 0x10000,
@@ -846,10 +846,10 @@ struct xConfig {
 		int width;		// window width; the height follows the picture
 	} keywin;
 	struct {
-		unsigned on:1;		// the player's input over the picture
-		unsigned keys:1;
-		unsigned joy:1;
-		unsigned mouse:1;
+		int on;			// the player's input over the picture
+		int keys;
+		int joy;
+		int mouse;
 		int source;		// IOSD_SRC_*
 		int pos;		// IOSD_POS_*
 		int size;		// the keyboard's width, percent of the picture's

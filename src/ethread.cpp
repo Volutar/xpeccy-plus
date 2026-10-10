@@ -54,6 +54,8 @@ static std::vector<unsigned char> shownImg;
 static QMutex shownGuard;
 static int shownSwaps = -1;		// bufSwaps of the copy, -1: none yet
 static long long shownNs = 0;
+static InState shownInput;
+static int shownInputOn = 0;
 
 // fast mode and fast forward make frames far quicker than anyone looks at them
 #define SHOWN_FAST_NS 10000000LL
@@ -64,7 +66,13 @@ void frame_publish() {
 	memcpy(shownImg.data(), bufimg, bufSize);
 	shownSwaps = bufSwaps;
 	shownNs = paceClockNs();
-	iosd_publish(conf.zx);
+	shownInputOn = iosd_state(conf.zx, &shownInput);
+}
+
+int frame_shown_input(InState* st) {
+	QMutexLocker lock(&shownGuard);
+	*st = shownInput;
+	return shownInputOn;
 }
 
 // Set from the frame signal until the gui has taken it. A gui held up for a while

@@ -250,8 +250,9 @@ typedef struct {
 		QImage leds[leds_count];
 		QImage osdImg[osd_count];
 		xInputOsd inputOsd;
-		QMenu* iosdMenu;
-		void fillIosdMenu();
+		struct xIosdItem {QAction* act; int* field; int val;};	// val < 0: a switch
+		std::vector<xIosdItem> iosdItems;
+		void initIosdMenu(QMenu*);
 
 		QTimer frm_tmr;
 		int frm_ns;

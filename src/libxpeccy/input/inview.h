@@ -18,10 +18,10 @@ extern "C" {
 #define IVM_MIDDLE	4
 
 typedef struct {
-	unsigned char keys[8];	// half-rows by address line A8..A15, a set bit is a key down
-	unsigned char known;	// half-rows with a fresh value
-	unsigned joyLive:1;	// the program reads the kempston
+	unsigned char keys[8];	// half-rows in kbd->map order (A15 first), a set bit is a key down
+	unsigned joyLive:1;	// the program reads the kempston (or the machine has one)
 	unsigned mouseLive:1;	// ...and the mouse
+	unsigned ext:1;		// the kempston has eight buttons
 	unsigned char joy;	// kempston bits as read: R L D U F, buttons 2-4 above
 	unsigned char mbtn;	// IVM_*
 	unsigned char mwheel;	// the interface's 4-bit counter
@@ -31,14 +31,9 @@ typedef struct {
 
 typedef struct {
 	unsigned on:1;
-	unsigned char keys[8];
+	InState s;		// as last read; the live flags are worked out from the frames below
 	int keyFrm[8];		// frame each half-row was last known on
-	unsigned char joy;
 	int joyFrm;
-	unsigned char mbtn;
-	unsigned char mwheel;
-	unsigned char mx;
-	unsigned char my;
 	int mouseFrm;
 } InView;
 

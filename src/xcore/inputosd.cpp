@@ -1,13 +1,8 @@
-// the input overlay: which input it shows, handed from the emulation to the gui
+// the input overlay: which input it shows
 
-#include <QMutex>
 #include <string.h>
 
 #include "xcore.h"
-
-static QMutex shownGuard;
-static InState shownState;
-static int shownReads = 0;
 
 // the program's reads are kept only while something may show them
 void iosd_apply() {
@@ -29,10 +24,8 @@ static int iosd_reads(Computer* comp) {
 
 static void iosd_host(Computer* comp, InState* st) {
 	memset(st, 0, sizeof(InState));
-	// kbd->map is by half-row from A15 down, a clear bit is a key down
 	for (int i = 0; i < 8; i++)
-		st->keys[i] = ~comp->keyb->map[7 - i] & 0x1f;
-	st->known = 0xff;
+		st->keys[i] = ~comp->keyb->map[i] & 0x1f;		// a clear bit is a key down
 	Joystick* joy = comp->joy;
 	if (joy->type == XJ_KEMPSTON) {
 		st->joyLive = 1;
@@ -41,31 +34,22 @@ static void iosd_host(Computer* comp, InState* st) {
 	Mouse* mou = comp->mouse;
 	if (mou->enable) {
 		st->mouseLive = 1;
-		st->mbtn = (mou->lmb ? IVM_LEFT : 0) | (mou->rmb ? IVM_RIGHT : 0) | (mou->mmb ? IVM_MIDDLE : 0);
+		st->mbtn = mouse_buttons(mou);
 	}
 	st->mwheel = mou->wheel & 0x0f;
-	st->mx = (unsigned char)(int)(mou->xpos * mou->sensitivity);
-	st->my = (unsigned char)(int)(mou->ypos * mou->sensitivity);
+	st->mx = mouseGetX(mou);
+	st->my = mouseGetY(mou);
 }
 
-// at the frame's end, beside the picture it goes with
-void iosd_publish(Computer* comp) {
-	if (!conf.iosd.on) return;
-	InState st;
-	int reads = iosd_reads(comp);
-	if (reads) {
-		iview_state(&inview, comp->frmCount, &st);
+// What the overlay shows at the frame's end, taken with the picture it goes
+// with. 0: the overlay is off
+int iosd_state(Computer* comp, InState* st) {
+	if (!conf.iosd.on) return 0;
+	if (iosd_reads(comp)) {
+		iview_state(&inview, comp->frmCount, st);
 	} else {
-		iosd_host(comp, &st);
+		iosd_host(comp, st);
 	}
-	QMutexLocker lock(&shownGuard);
-	shownState = st;
-	shownReads = reads;
-}
-
-// 1: what the program read, 0: what the host has down
-int iosd_shown(InState* st) {
-	QMutexLocker lock(&shownGuard);
-	*st = shownState;
-	return shownReads;
+	st->ext = (comp->joy->type == XJ_KEMPSTON) && comp->joy->extbuttons;
+	return 1;
 }
