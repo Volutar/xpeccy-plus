@@ -122,6 +122,9 @@ before that point is upstream's history and is not repeated here.
 
 - **The keyboard and HALT indicators** are off in a new configuration.
 
+- **The sound devices start at 80% each** in a new configuration, so the AY is no longer
+  buried under the beeper.
+
 - **About** names the maintainer and the license, and no longer stops the machine.
   *(thanks to Volutar)*
 

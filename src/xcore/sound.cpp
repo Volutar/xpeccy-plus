@@ -719,10 +719,6 @@ void sndInit() {
 	conf.snd.mute = 0;
 	conf.snd.filter = 1;	// the block average it replaces folds everything above 22 kHz back in
 	sndOutput = NULL;
-	conf.snd.vol.beep = 100;
-	conf.snd.vol.tape = 100;
-	conf.snd.vol.ay = 100;
-	conf.snd.vol.gs = 100;
 	conf.snd.wavout = 0;
 	conf.snd.wavfile = NULL;
 	initNoise();

@@ -814,12 +814,12 @@ void loadConfig() {
 // init volumes
 	conf.snd.vol.dc = 1;		// most devices idle at a level, not at zero
 	conf.snd.vol.master = 100;
-	conf.snd.vol.beep = 100;
-	conf.snd.vol.tape = 100;
-	conf.snd.vol.ay = 100;
-	conf.snd.vol.gs = 100;
-	conf.snd.vol.sdrv = 100;
-	conf.snd.vol.saa = 100;
+	conf.snd.vol.beep = 80;
+	conf.snd.vol.tape = 80;
+	conf.snd.vol.ay = 80;
+	conf.snd.vol.gs = 80;
+	conf.snd.vol.sdrv = 80;
+	conf.snd.vol.saa = 80;
 // init palette
 	dbgPaletteDefaults();
 
