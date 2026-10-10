@@ -1335,19 +1335,21 @@ void MainWin::drawIcons(QPainter& pnt) {
 		if (~comp->keyb->port & 0x10) pnt.fillRect(3 + 12, 10 + 8, 8, 2, Qt::gray);
 	}
 	comp->keyb->port = 0xff;
+	// the status bar has these, when it is there
+	bool osd = !statusBar->isVisible();
 // joystick
-	if (comp->joy->used && conf.led.joy) {
-		pnt.drawImage(3, 30, leds[led_joy]);
+	if (comp->joy->used) {
+		joySeen = true;
+		if (conf.led.joy && osd) pnt.drawImage(3, 30, leds[led_joy]);
 		comp->joy->used = 0;
 	}
 // mouse
 	if (comp->mouse->used) {
 		mouseReadAt = paceClockNs();
-		if (conf.led.mouse) pnt.drawImage(3, 50, leds[led_mouse]);
+		mouseSeen = true;
+		if (conf.led.mouse && osd) pnt.drawImage(3, 50, leds[led_mouse]);
 		comp->mouse->used = 0;
 	}
-	// the status bar has these, when it is there
-	bool osd = !statusBar->isVisible();
 // tape
 	if (comp->tape->on && conf.led.tape && osd) {
 		pnt.drawImage(3, 70, comp->tape->rec ? leds[led_tap_red] : leds[led_tap_yellow]);

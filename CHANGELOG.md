@@ -17,7 +17,8 @@ before that point is upstream's history and is not repeated here.
   - The toolbar holds the buttons you choose: right-click it to add or remove one, drag one to
     move it. It starts with the everyday commands, Mute and the time controls.
   - The status bar shows the machine, the clock, the frame rate, the tape and each drive; a
-    click opens its window, a right-click its menu.
+    click opens its window, a right-click its menu. A Kempston joystick and mouse light up
+    there while a program reads them.
   - In fullscreen they come up when the pointer rests at the top of the screen. With Low
     latency on, the screen flashes as a menu opens there. *(thanks to Volutar)*
 
@@ -118,6 +119,8 @@ before that point is upstream's history and is not repeated here.
 
 - **Names**: menus and window titles in Title Case, hotkeys named as in the menus, styles
   without `.qss`, and Run ahead no longer marked experimental.
+
+- **The keyboard and HALT indicators** are off in a new configuration.
 
 - **About** names the maintainer and the license, and no longer stops the machine.
   *(thanks to Volutar)*

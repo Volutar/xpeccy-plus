@@ -25,20 +25,33 @@
 #include "xcore/vidrec.h"
 
 #define TB_MIME "application/x-xpeccy-toolbar-item"
-enum {SB_TAPE_IDLE = 0, SB_TAPE_PLAY, SB_TAPE_REC, SB_DISK_EMPTY, SB_DISK_IN, SB_DISK_RD, SB_DISK_WR};
+enum {SB_TAPE_IDLE = 0, SB_TAPE_PLAY, SB_TAPE_REC, SB_DISK_EMPTY, SB_DISK_IN, SB_DISK_RD, SB_DISK_WR,
+	SB_JOY_IDLE, SB_JOY_READ, SB_MOUSE_IDLE, SB_MOUSE_READ};		// each READ right after its IDLE
+
+// a status light's picture, every pixel put through f
+static QPixmap sb_map(const QString& path, std::function<QRgb(QRgb)> f) {
+	QImage img = QImage(path).convertToFormat(QImage::Format_ARGB32);
+	for (int y = 0; y < img.height(); y++)
+		for (int x = 0; x < img.width(); x++)
+			img.setPixel(x, y, f(img.pixel(x, y)));
+	return QPixmap::fromImage(img);
+}
 
 // A status light in another state: the same picture tinted, so the set stays one.
 // alpha < 1 is a slot with nothing in it.
 static QPixmap sb_tint(const QString& path, QColor col, double alpha) {
-	QImage img = QImage(path).convertToFormat(QImage::Format_ARGB32);
-	for (int y = 0; y < img.height(); y++) {
-		for (int x = 0; x < img.width(); x++) {
-			QRgb p = img.pixel(x, y);
-			double l = std::min(1.0, qGray(p) / 160.0);
-			img.setPixel(x, y, qRgba(int(col.red() * l), int(col.green() * l), int(col.blue() * l), int(qAlpha(p) * alpha)));
-		}
-	}
-	return QPixmap::fromImage(img);
+	return sb_map(path, [col, alpha](QRgb p) {
+		double l = std::min(1.0, qGray(p) / 160.0);
+		return qRgba(int(col.red() * l), int(col.green() * l), int(col.blue() * l), int(qAlpha(p) * alpha));
+	});
+}
+
+// the same picture, lit up: every channel times gain
+static QPixmap sb_bright(const QString& path, double gain) {
+	return sb_map(path, [gain](QRgb p) {
+		return qRgba(std::min(255, int(qRed(p) * gain)), std::min(255, int(qGreen(p) * gain)),
+			std::min(255, int(qBlue(p) * gain)), qAlpha(p));
+	});
 }
 
 #define TB_SEPARATOR "|"
@@ -435,6 +448,10 @@ void MainWin::initBars() {
 	sbPix[SB_DISK_WR] = QPixmap(":/images/diskRed.png");
 	sbPix[SB_DISK_IN] = sb_tint(":/images/diskGreen.png", QColor(90, 150, 255), 1.0);
 	sbPix[SB_DISK_EMPTY] = sb_tint(":/images/diskGreen.png", QColor(170, 170, 170), 0.45);
+	sbPix[SB_JOY_READ] = QPixmap(":/images/joystick.png");
+	sbPix[SB_JOY_IDLE] = sb_tint(":/images/joystick.png", QColor(150, 150, 150), 0.3);
+	sbPix[SB_MOUSE_READ] = sb_bright(":/images/mouse.png", 1.3);	// gray of its own, so lit up instead of coloured
+	sbPix[SB_MOUSE_IDLE] = sb_tint(":/images/mouse.png", QColor(150, 150, 150), 0.3);
 	// a light and what it is about, side by side; the pair takes the clicks
 	auto pair = [this, sb](QLabel* text, QLabel* icon) {
 		QWidget* box = new QWidget;
@@ -455,6 +472,13 @@ void MainWin::initBars() {
 		sbDiskIcon[i] = new QLabel;
 		sbDiskBox[i] = pair(sbDisk[i], sbDiskIcon[i]);
 	}
+	// lit while the machine reads them, so the slot is kept while they are idle
+	sbJoyIcon = new QLabel;
+	sbJoyIcon->setToolTip("Kempston joystick");
+	sbMouseIcon = new QLabel;
+	sbMouseIcon->setToolTip("Kempston mouse");
+	sbInputBox = pair(sbJoyIcon, sbMouseIcon);
+	sbInputBox->layout()->setSpacing(6);		// two lights, not a light and its text
 	// as wide as the longest they can say, or every change of clock or rate
 	// would shift the lights to their left
 	auto fixed = [sb](QLabel* lab, const char* longest) {
@@ -727,4 +751,19 @@ void MainWin::updateStatus() {
 		QString tip = flp->insert ? QString::fromLocal8Bit(flp->path ? flp->path : "") : QString("empty");
 		if (sbDiskBox[i]->toolTip() != tip) sbDiskBox[i]->setToolTip(tip);
 	}
+	// lit if the machine read it since the last look
+	auto light = [this](QLabel* icon, bool fitted, bool& seen, int& shown, int idle) {
+		icon->setVisible(fitted);
+		int st = seen ? idle + 1 : idle;
+		seen = false;
+		if (st != shown) {
+			icon->setPixmap(sbPix[st]);
+			shown = st;
+		}
+	};
+	bool joy = (comp->joy->type == XJ_KEMPSTON);
+	bool mouse = comp->mouse->enable;
+	light(sbJoyIcon, joy, joySeen, sbJoyShown, SB_JOY_IDLE);
+	light(sbMouseIcon, mouse, mouseSeen, sbMouseShown, SB_MOUSE_IDLE);
+	sbInputBox->setVisible(joy || mouse);
 }
