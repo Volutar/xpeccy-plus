@@ -12,6 +12,7 @@
 #include <QGamepadManager>
 #endif
 
+#include <SDL.h>
 #include <SDL_events.h>
 #include <SDL_joystick.h>
 #include <SDL_version.h>
@@ -40,6 +41,16 @@
  #define HAVE_PAD_PLAYER 1
 #else
  #define HAVE_PAD_PLAYER 0
+#endif
+#if HAVESDL2 && SDL_VERSION_ATLEAST(2,0,6)
+ #define HAVE_PAD_VENDOR 1
+#else
+ #define HAVE_PAD_VENDOR 0
+#endif
+#if HAVESDL2 && SDL_VERSION_ATLEAST(2,0,12)
+ #define HAVE_PAD_CTYPE 1
+#else
+ #define HAVE_PAD_CTYPE 0
 #endif
 
 typedef struct {
@@ -1221,6 +1232,88 @@ void padLoadControllerDb() {
 #endif
 }
 
+// What SDL brings to the pads, once at start: a pad that never turns up
+// leaves nothing else in the log to go by.
+void padLogSdl() {
+#if HAVESDL2
+	SDL_version cv;
+	SDL_version lv;
+	SDL_VERSION(&cv);
+	SDL_GetVersion(&lv);
+	Uint32 on = SDL_WasInit(SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER);
+	xlog(XLG_INPUT, XLL_INFO, "SDL %i.%i.%i (built with %i.%i.%i), joystick %s, game controller %s",
+		lv.major, lv.minor, lv.patch, cv.major, cv.minor, cv.patch,
+		(on & SDL_INIT_JOYSTICK) ? "on" : "OFF",
+		(on & SDL_INIT_GAMECONTROLLER) ? "on" : "off");
+#endif
+}
+
+#if HAVESDL2
+// Which SDL backend found the pad: SDL writes its mark into the guid.
+static const char* padBackend(const SDL_JoystickGUID& g) {
+	switch (g.data[14]) {
+		case 0: return "native";	// IOKit, evdev, DirectInput
+		case 'h': return "HIDAPI";
+		case 'm': return "MFi";
+		case 'x': return "XInput";
+		case 'w': return "WGI";
+		case 'r': return "RawInput";
+		case 'v': return "virtual";
+	}
+	return "other";
+}
+
+static const char* padBus(const SDL_JoystickGUID& g) {
+	switch (g.data[0] | (g.data[1] << 8)) {
+		case 0x00: return "?";
+		case 0x03: return "USB";
+		case 0x05: return "Bluetooth";
+		case 0xFF: return "virtual";
+	}
+	return "other";
+}
+#endif
+
+// The device list as SDL has it, logged when it differs from the last one
+// logged, so a rescan from the options window repeats nothing.
+static void padLogDevices(const QList<xPadDev>& devs) {
+	static QStringList last;
+	static bool logged = false;
+	QStringList lines;
+	for (int i = 0; i < devs.size(); i++) {
+		const xPadDev& dev = devs.at(i);
+		QString ln = QString("#%0 '%1' guid %2").arg(dev.index).arg(dev.id.name).arg(dev.id.guid);
+#if HAVESDL2
+		SDL_JoystickGUID g = SDL_JoystickGetDeviceGUID(dev.index);
+		ln += QString(", %0 on %1").arg(padBackend(g)).arg(padBus(g));
+#endif
+#if HAVE_PAD_VENDOR
+		ln += QString(", %0:%1 type %2")
+			.arg(SDL_JoystickGetDeviceVendor(dev.index), 4, 16, QChar('0'))
+			.arg(SDL_JoystickGetDeviceProduct(dev.index), 4, 16, QChar('0'))
+			.arg((int)SDL_JoystickGetDeviceType(dev.index));
+#endif
+#if HAVESDL2
+		if (dev.ctrl) {
+			const char* mn = SDL_GameControllerNameForIndex(dev.index);
+			ln += QString(", controller '%0'").arg(mn ? mn : "");
+ #if HAVE_PAD_CTYPE
+			ln += QString(" kind %0").arg((int)SDL_GameControllerTypeForIndex(dev.index));
+ #endif
+		} else {
+			ln += ", no controller mapping";
+		}
+#endif
+		lines.append(ln);
+	}
+	if (logged && (lines == last)) return;
+	logged = true;
+	last = lines;
+	xlog(XLG_INPUT, XLL_INFO, "%i pad device(s)", (int)devs.size());
+	foreach(QString ln, lines)
+		xlog(XLG_INPUT, XLL_INFO, "  %s", ln.toUtf8().data());
+}
+
 // xPadId
 
 bool xPadId::isEmpty() const {
@@ -1403,7 +1496,12 @@ void xGamepad::openDev(const xPadDev& dev) {
 #if HAVESDL2
 	if (dev.ctrl) {
 		scptr = SDL_GameControllerOpen(dev.index);
-		if (scptr) sjptr = SDL_GameControllerGetJoystick(scptr);
+		if (scptr) {
+			sjptr = SDL_GameControllerGetJoystick(scptr);
+		} else {
+			xlog(XLG_INPUT, XLL_INFO, "pad '%s' won't open as a controller, trying raw: %s",
+				dev.id.name.toUtf8().data(), SDL_GetError());
+		}
 	}
 #endif
 	if (!sjptr) sjptr = SDL_JoystickOpen(dev.index);
@@ -1841,6 +1939,7 @@ static int padMatch(const xPadId& want, const xPadDev& dev) {
 // unplugged grab its twin, out from under the slot that twin belongs to.
 void xGamepadController::rescan() {
 	QList<xPadDev> devs = xGamepad::devList();
+	padLogDevices(devs);
 	xGamepad* slot[2] = {gpada, gpadb};
 	int pick[2] = {-1, -1};
 	bool done[2] = {gpada->isKeyboard(), gpadb->isKeyboard()};	// on the keyboard: no pad
@@ -2035,11 +2134,13 @@ void xGamepadController::timerEvent(QTimerEvent* e) {
 	while (SDL_PollEvent(&ev)) {
 		switch (ev.type) {
 			case SDL_JOYDEVICEREMOVED:
+				xlog(XLG_INPUT, XLL_INFO, "pad removed: instance %i", (int)ev.jdevice.which);
 				if ((ev.jdevice.which == gpada->getId()) && gpada->isOpened()) gpada->close();
 				if ((ev.jdevice.which == gpadb->getId()) && gpadb->isOpened()) gpadb->close();
 				changed = true;
 				break;
 			case SDL_JOYDEVICEADDED:
+				xlog(XLG_INPUT, XLL_INFO, "pad added: device %i", (int)ev.jdevice.which);
 				changed = true;
 				break;
 		}

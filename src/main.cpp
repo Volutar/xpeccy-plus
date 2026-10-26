@@ -380,7 +380,8 @@ int main(int ac,char** av) {
 #if !defined(__APPLE__) || !defined(HAVESDL2)
 	sdlFlags |= SDL_INIT_VIDEO;
 #endif
-	SDL_Init(sdlFlags);
+	if (SDL_Init(sdlFlags) < 0)		// the subsystems that did start stay up
+		xlog(XLG_APP, XLL_WARN, "SDL_Init: %s", SDL_GetError());
 	atexit(SDL_Quit);
 
 	// fallback icon for every window that doesn't set its own (options, tape,
