@@ -22,7 +22,7 @@ before that point is upstream's history and is not repeated here.
 ### Changed
 
 - **With no shader, a fitted picture stays sharp**: in fullscreen or a maximized window
-  every dot keeps one width, only the seams between dots are softened.
+  every dot keeps one width, only the seams between dots are softened. *(thanks to Volutar)*
 
 - **Fullscreen shows the border up to full**, not into the overscan, unless overscan is
   the size chosen.
