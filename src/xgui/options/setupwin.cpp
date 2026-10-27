@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <QThread>
 #include <QTimer>
 #include <QStandardItemModel>
@@ -3262,40 +3261,54 @@ void SetupWin::buildRecording() {
 	grid->addWidget(adbox, 0, 4);
 }
 
+// The side fill's settings, in the order of the pop-up's rows
+static int* fill_val(int i) {
+	int* vals[5] = {&conf.vid.fillBlur, &conf.vid.fillDim, &conf.vid.fillFade, &conf.vid.fillEdge, &conf.vid.fillStretch};
+	return vals[i];
+}
+
 // The side fill's strength: a name and a slider each, the ranges being short and
 // fixed. Every move goes to conf and the window at once, so it can be judged.
 void SetupWin::makeFillPopup() {
-	static const struct {const char* name; const char* tip; int min; int max; int step;} rows[4] = {
-		{"Blur", "How soft the fill is, from crisp to a wide glow", SFILL_BLUR_MIN, SFILL_BLUR_MAX, 1},
-		{"Brightness", "How bright the fill is beside the picture", SFILL_DIM_MIN, 100, 5},
-		{"Fade", "How much darker it gets towards the screen's edge", 0, 100, 5},
-		{"Edge", "How gently the picture runs into the fill", 0, SFILL_EDGE_MAX, 1},
+	static const struct {const char* name; const char* tip; int min; int max; int step; int tick; int def;} rows[5] = {
+		{"Blur", "How soft the fill is, from crisp to a wide glow", SFILL_BLUR_MIN, SFILL_BLUR_MAX, 1, 1, SFILL_BLUR_DEF},
+		{"Brightness", "How bright the fill is beside the picture", SFILL_DIM_MIN, 100, 5, 10, SFILL_DIM_DEF},
+		{"Fade", "How much darker it gets towards the screen's edge", 0, 100, 5, 10, SFILL_FADE_DEF},
+		{"Edge", "How gently the picture runs into the fill", 0, SFILL_EDGE_MAX, 1, 4, SFILL_EDGE_DEF},
+		{"Stretch", "Mirror: how much the reflection stretches outwards", 0, 100, 5, 10, SFILL_STRETCH_DEF},
 	};
 	fillPop = new QFrame(this, Qt::Popup);
 	fillPop->setFrameShape(QFrame::StyledPanel);
 	fillPop->setAutoFillBackground(true);
 	QGridLayout* lay = new QGridLayout(fillPop);
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < 5; i++) {
 		QLabel* lab = new QLabel(tr(rows[i].name));
 		lab->setToolTip(tr(rows[i].tip));
 		xSlider* sld = new xSlider;
 		sld->setOrientation(Qt::Horizontal);
 		sld->setRange(rows[i].min, rows[i].max);
 		sld->setSingleStep(rows[i].step);
-		sld->setPageStep(rows[i].step * 2);
+		sld->setPageStep(rows[i].tick);
+		sld->setTickPosition(QSlider::TicksBelow);
+		sld->setTickInterval(rows[i].tick);
 		sld->setMinimumWidth(200);
 		sld->setToolTip(lab->toolTip());
 		lay->addWidget(lab, i, 0);
 		lay->addWidget(sld, i, 1);
 		sldFill[i] = sld;
-		connect(sld, &QSlider::valueChanged, this, [this]() {
-			conf.vid.fillBlur = sldFill[0]->value();
-			conf.vid.fillDim = sldFill[1]->value();
-			conf.vid.fillFade = sldFill[2]->value();
-			conf.vid.fillEdge = sldFill[3]->value();
+		connect(sld, &QSlider::valueChanged, this, [this, i](int val) {
+			*fill_val(i) = val;
 			emit s_fill();
 		});
 	}
+	QPushButton* def = new QPushButton(tr("Defaults"));
+	def->setObjectName("fillDefaults");
+	def->setToolTip(tr("Every slider back to where it starts"));
+	lay->addWidget(def, 5, 1, Qt::AlignRight);
+	connect(def, &QPushButton::released, this, [this]() {
+		for (int i = 0; i < 5; i++)
+			sldFill[i]->setValue(rows[i].def);
+	});
 	connect(ui.tbSideFill, &QToolButton::released, this, [this]() {
 		fillPop->adjustSize();
 		fillPop->move(ui.tbSideFill->mapToGlobal(QPoint(0, ui.tbSideFill->height())));
@@ -3305,6 +3318,7 @@ void SetupWin::makeFillPopup() {
 		if (!conf.vid.gl) return;
 		conf.vid.sideFill = getRFIData(ui.cbSideFill);
 		ui.tbSideFill->setEnabled(conf.vid.sideFill != SFILL_BLACK);
+		sldFill[4]->setEnabled(conf.vid.sideFill == SFILL_MIRROR);
 		emit s_fill();
 	});
 }
@@ -3316,30 +3330,28 @@ void SetupWin::fillToUi() {
 	ui.cbSideFill->blockSignals(false);
 	ui.cbSideFill->setEnabled(conf.vid.gl);
 	ui.tbSideFill->setEnabled(conf.vid.gl && (conf.vid.sideFill != SFILL_BLACK));
-	const int val[4] = {conf.vid.fillBlur, conf.vid.fillDim, conf.vid.fillFade, conf.vid.fillEdge};
-	for (int i = 0; i < 4; i++) {
+	sldFill[4]->setEnabled(conf.vid.sideFill == SFILL_MIRROR);
+	for (int i = 0; i < 5; i++) {
 		sldFill[i]->blockSignals(true);
-		sldFill[i]->setValue(val[i]);
+		sldFill[i]->setValue(*fill_val(i));
 		sldFill[i]->blockSignals(false);
 	}
 }
 
 void SetupWin::fillTake() {
 	fillWas[0] = conf.vid.sideFill;
-	fillWas[1] = conf.vid.fillBlur;
-	fillWas[2] = conf.vid.fillDim;
-	fillWas[3] = conf.vid.fillFade;
-	fillWas[4] = conf.vid.fillEdge;
+	for (int i = 0; i < 5; i++)
+		fillWas[i + 1] = *fill_val(i);
 }
 
 void SetupWin::fillPut() {
-	const int now[5] = {conf.vid.sideFill, conf.vid.fillBlur, conf.vid.fillDim, conf.vid.fillFade, conf.vid.fillEdge};
-	if (std::equal(now, now + 5, fillWas)) return;
+	bool same = (conf.vid.sideFill == fillWas[0]);
+	for (int i = 0; i < 5; i++)
+		same = same && (*fill_val(i) == fillWas[i + 1]);
+	if (same) return;
 	conf.vid.sideFill = fillWas[0];
-	conf.vid.fillBlur = fillWas[1];
-	conf.vid.fillDim = fillWas[2];
-	conf.vid.fillFade = fillWas[3];
-	conf.vid.fillEdge = fillWas[4];
+	for (int i = 0; i < 5; i++)
+		*fill_val(i) = fillWas[i + 1];
 	emit s_fill();
 }
 

@@ -890,6 +890,7 @@ struct xConfig {
 		int fillDim;		// its brightness, % of the picture's
 		int fillFade;		// how much darker it gets by the screen's edge, %
 		int fillEdge;		// dots from the picture's edge to the full dimming
+		int fillStretch;	// Mirror: how much the reflection stretches towards the screen's edge, %
 		int scale;		// x1..x4
 		int fcount;		// frames counter (for fps showing) (= fcnt ???)
 		long long fctime;	// time of that frame, ns (see paceClockNs)

@@ -19,11 +19,16 @@ enum {
 };
 const char* sfill_name(int);
 int sfill_id(const char*);
-// the ranges of conf.vid.fill*
+// the ranges of conf.vid.fill*, and what they start at
 #define SFILL_BLUR_MIN	1
 #define SFILL_BLUR_MAX	16
 #define SFILL_DIM_MIN	10
 #define SFILL_EDGE_MAX	32
+#define SFILL_BLUR_DEF	2
+#define SFILL_DIM_DEF	75
+#define SFILL_FADE_DEF	50
+#define SFILL_EDGE_DEF	12
+#define SFILL_STRETCH_DEF	30
 
 // Where the frame goes inside the window, in window pixels. The picture is
 // always drawn at a whole multiple of the dot, so this is the window itself in

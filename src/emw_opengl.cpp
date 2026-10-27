@@ -149,7 +149,9 @@ const char* fillBlurShaderBody() {
 }
 
 // u_pic: the picture in framebuffer pixels from the bottom left, as drawPicture's viewport;
-// u_ramp: framebuffer pixels from the picture's edge, at full brightness, to the full dimming
+// u_ramp: framebuffer pixels from the picture's edge, at full brightness, to the full dimming;
+// u_stretch: k of ln(1 + k*t) / ln(1 + k), t going 0..1 across the bar - the bar shows as
+// much of the picture as without it, squeezed by the picture and stretched by the screen's edge
 const char* fillDrawShaderBody() {
 	return
 		"uniform sampler2D u_src;\n"
@@ -158,9 +160,19 @@ const char* fillDrawShaderBody() {
 		"uniform float u_dim;\n"
 		"uniform float u_fade;\n"
 		"uniform float u_ramp;\n"
+		"uniform float u_stretch;\n"
 		"out vec4 fragColor;\n"
 		"void main() {\n"
 		"    vec2 p = (gl_FragCoord.xy - u_pic.xy) / u_pic.zw;\n"
+		"    if (u_stretch > 0.0) {\n"
+		"        vec2 blo = max(u_pic.xy / u_pic.zw, vec2(0.0001));\n"			// the bars, in picture sizes
+		"        vec2 bhi = max((u_view - u_pic.xy - u_pic.zw) / u_pic.zw, vec2(0.0001));\n"
+		"        vec2 lo = max(-p, vec2(0.0));\n"
+		"        vec2 hi = max(p - 1.0, vec2(0.0));\n"
+		"        float n = log(1.0 + u_stretch);\n"
+		"        p += lo - blo * log(1.0 + u_stretch * lo / blo) / n;\n"
+		"        p -= hi - bhi * log(1.0 + u_stretch * hi / bhi) / n;\n"
+		"    }\n"
 		"    vec3 c = texture(u_src, vec2(p.x, 1.0 - p.y)).rgb;\n"
 		"    vec2 lo = max(u_pic.xy, vec2(1.0));\n"
 		"    vec2 hi = max(u_view - u_pic.xy - u_pic.zw, vec2(1.0));\n"
@@ -530,6 +542,9 @@ void MainWin::drawFill() {
 	fillDraw.setUniformValue("u_fade", GLfloat(conf.vid.fillFade / 100.0));
 	// a dot is drawW / vsze.x pixels across, and as many down
 	fillDraw.setUniformValue("u_ramp", GLfloat(conf.vid.fillEdge * drawW * r / conf.zx->vid->vsze.x));
+	// 100 %: k = 40, squeezed 11 times by the picture, stretched 4 times by the screen's edge
+	const bool mirror = (conf.vid.sideFill == SFILL_MIRROR);
+	fillDraw.setUniformValue("u_stretch", GLfloat(mirror ? conf.vid.fillStretch * 0.4 : 0.0));
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, fillTex[0]);
 	vao.bind();
