@@ -182,7 +182,10 @@ void xEspSock::connectTo() {
 		} else if (lport && lan) {
 			la.sin_port = htons((unsigned short)lport);
 		}
-		::bind(s, (sockaddr*)&la, sizeof(la));
+		if (::bind(s, (sockaddr*)&la, sizeof(la))) {	// the port is taken on the host: any other
+			la.sin_port = 0;
+			::bind(s, (sockaddr*)&la, sizeof(la));
+		}
 		fd = (long long)s;
 		st = S_OPEN;
 		return;
