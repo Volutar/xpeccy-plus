@@ -10,7 +10,7 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"	// CVDisplayLink: macOS 15 says use NSView's
 
-static CVDisplayLinkRef link = NULL;
+static CVDisplayLinkRef dlink = NULL;
 static std::atomic<void (*)(long long)> linkCb{nullptr};
 
 bool dsmac_probe(void* v, double* hz, bool* vrr, unsigned* display) {
@@ -45,32 +45,32 @@ static CVReturn link_cb(CVDisplayLinkRef, const CVTimeStamp*, const CVTimeStamp*
 
 bool dsmac_start(unsigned display, void (*cb)(long long)) {
 	linkCb = cb;
-	if (link) return true;
+	if (dlink) return true;
 	if (display) {
-		if (CVDisplayLinkCreateWithCGDisplay(display, &link) != kCVReturnSuccess) link = NULL;
-	} else if (CVDisplayLinkCreateWithActiveCGDisplays(&link) != kCVReturnSuccess) {
-		link = NULL;
+		if (CVDisplayLinkCreateWithCGDisplay(display, &dlink) != kCVReturnSuccess) dlink = NULL;
+	} else if (CVDisplayLinkCreateWithActiveCGDisplays(&dlink) != kCVReturnSuccess) {
+		dlink = NULL;
 	}
-	if (!link) return false;
-	CVDisplayLinkSetOutputCallback(link, link_cb, NULL);
-	if (CVDisplayLinkStart(link) != kCVReturnSuccess) {
-		CVDisplayLinkRelease(link);
-		link = NULL;
+	if (!dlink) return false;
+	CVDisplayLinkSetOutputCallback(dlink, link_cb, NULL);
+	if (CVDisplayLinkStart(dlink) != kCVReturnSuccess) {
+		CVDisplayLinkRelease(dlink);
+		dlink = NULL;
 		return false;
 	}
 	return true;
 }
 
 void dsmac_display(unsigned display) {
-	if (link && display) CVDisplayLinkSetCurrentCGDisplay(link, display);
+	if (dlink && display) CVDisplayLinkSetCurrentCGDisplay(dlink, display);
 }
 
 void dsmac_stop() {
 	linkCb = nullptr;
-	if (!link) return;
-	CVDisplayLinkStop(link);
-	CVDisplayLinkRelease(link);
-	link = NULL;
+	if (!dlink) return;
+	CVDisplayLinkStop(dlink);
+	CVDisplayLinkRelease(dlink);
+	dlink = NULL;
 }
 
 #pragma clang diagnostic pop
