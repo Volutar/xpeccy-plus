@@ -35,7 +35,7 @@ every slider back where it starts, and **Cancel** puts back what was there.
 - **Edge** - how gently the picture runs into the fill;
 - **Stretch** - **Mirror** only: the reflection drawn out like pulled rubber - as it is by
   the picture, wider and wider towards the screen's edge, its far part going off the
-  screen; at the left end, the default, it is a plain one.
+  screen; at the left end it is a plain one.
 
 The button is grayed out with **Black**, and the whole setting without OpenGL.
 
