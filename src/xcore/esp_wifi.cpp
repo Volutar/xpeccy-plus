@@ -50,7 +50,6 @@ static struct {
 	bool jcmd = false;		// CWJAP's: it ends in OK or FAIL
 	long long jt0 = 0, jConn = 0, jIp = 0, jOk = 0, jDisc = 0, jFail = 0;
 	bool jDiscDue = false;
-	int japTo = 14;
 	// a scan
 	bool scanning = false;
 	long long scanAt = 0;
@@ -346,11 +345,11 @@ static void jap_setx(espCmdCall& c, bool def) {
 	W.jcmd = true;
 	W.jt0 = now;
 	if (!bssid.empty() && (bssid != AP_BSSID)) {
-		// asked for an AP that is not there: it tries till CWJAPTO runs out
+		// asked for an AP that is not there: it tries for 14 s
 		W.jph = J_FAIL;
 		W.jDiscDue = true;
 		W.jDisc = now + esp_ms(c.comp, 2000);
-		W.jFail = now + esp_ms(c.comp, 1000.0 * W.japTo);
+		W.jFail = now + esp_ms(c.comp, 14000);
 		return;
 	}
 	W.jph = J_CONN;
@@ -360,19 +359,6 @@ static void jap_setx(espCmdCall& c, bool def) {
 
 static void jap_set(espCmdCall& c) {jap_setx(c, false);}
 static void jap_set_def(espCmdCall& c) {jap_setx(c, true);}
-
-static void japto_query(espCmdCall& c) {
-	esp_put(c.name + ":" + std::to_string(W.japTo) + "\r\n");
-	esp_ok();
-}
-
-static void japto_set(espCmdCall& c) {
-	espArgs a(c);
-	long n;
-	if (!a.num(&n) || (n < 1) || !a.end()) {esp_err(); return;}
-	W.japTo = (int)n;
-	esp_ok();
-}
 
 // == CWLAPOPT, CWLAP ==
 
@@ -965,7 +951,6 @@ const espCmd esp_wifi_cmds[] = {
 	{"+CWMODE_DEF", mode_test, mode_query_def, mode_set_def, NULL},
 	{"+CWMODE_CUR", mode_test, mode_query, mode_set, NULL},
 	{"+CWJAP", NULL, jap_query, jap_set_def, NULL},
-	{"+CWJAPTO", NULL, japto_query, japto_set, NULL},
 	{"+CWJAP_DEF", NULL, jap_query_def, jap_set_def, NULL},
 	{"+CWJAP_CUR", NULL, jap_query, jap_set, NULL},
 	{"+CWLAP", NULL, NULL, lap_set, lap_exec},
@@ -1034,7 +1019,6 @@ void esp_wifi_boot(Computer* comp) {
 	W.hostname = h;
 	W.jph = J_NONE;
 	W.jDiscDue = false;
-	W.japTo = 14;
 	W.scanning = false;
 	W.lapSort = 0;
 	W.lapMask = 0x7ff;

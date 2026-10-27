@@ -4,7 +4,6 @@
 
 #include <cstdio>
 #include <cstring>
-#include <deque>
 #include <string>
 #include <thread>
 #include <vector>
@@ -20,8 +19,6 @@
 #define TCP_RX_MAX	65536		// read ahead of the line (active receive)
 #define TCP_HOLD_MAX	2920		// passive receive: the module's buffer, then TCP waits
 #define TCP_PASS_MAX	2920		// passthrough: a packet goes when its buffer is full
-#define TCP_SND_BUF	2920		// CIPSENDBUF: room in the TCP send buffer
-#define TCP_SND_QUEUE	8		// CIPSENDBUF: segments it can queue
 #define TCP_CONNECT_MS	10000		// a connect gives up
 #define DNS_DEFAULT	"208.67.222.222"
 
@@ -48,12 +45,7 @@ struct tcpLink {
 	bool peerGone = false;
 	std::string tx;			// to the socket
 	int sendOk = 0;			// a CIPSEND of this many bytes waits for its SEND OK
-	int mode8 = 0;			// what is sending: 0 none, 1 CIPSEND, 2 CIPSENDEX, 3 CIPSENDBUF
-	std::deque<std::pair<unsigned, int> > segs;	// CIPSENDBUF segments not out yet: id, bytes left
-	unsigned segLast = 0;		// the last segment id handed out
-	unsigned segTried = 0;		// segments that went (or failed)
-	unsigned segOk = 0;		// the last that went
-	std::deque<unsigned> okIds;	// the last 32 that went, for CIPCHECKSEQ
+	int mode8 = 0;			// what is sending: 0 none, 1 CIPSEND, 2 CIPSENDEX
 	long long lastAct = 0;		// for CIPSTO
 	long long deadline = 0;
 	long long retryAt = 0;
@@ -80,8 +72,6 @@ static struct {
 	int pendLink = 0;
 	xEspResolve res;
 	xEspPing ping;
-	xEspResolve upd;		// CIUPDATE's lookup (the module does not stay busy for it)
-	bool updating = false;
 	// CIPSEND's payload
 	int sendLink = 0;
 	int sendKind = 0;
@@ -216,15 +206,8 @@ static void out_put(const std::string& s) {esp_put(s);}
 static void out_now(const std::string& s) {esp_put_now(s);}
 typedef void (*tcpOut)(const std::string&);
 
-// CONNECT, or SYSMSG bit1's +LINK_CONN line
+// CONNECT, or CONNECT FAIL
 static std::string conn_msg(int id, bool fail) {
-	tcpLink& l = T.link[id];
-	if (esp_sysmsg() & 2) {
-		char b[128];
-		snprintf(b, sizeof(b), "+LINK_CONN:%i,%i,\"%s\",%i,\"%s\",%i,%i\r\n", fail ? 1 : 0, id, kind_name(l.kind),
-			l.server ? 1 : 0, peer_ip(l).c_str(), l.sock.peerPort(), l.sock.localPort());
-		return b;
-	}
 	return lid(id) + (fail ? "CONNECT FAIL\r\n" : "CONNECT\r\n");
 }
 
@@ -256,9 +239,6 @@ static void link_reset(tcpLink& l, bool keepRx) {
 	l.tx.clear();
 	l.sendOk = 0;
 	l.mode8 = 0;
-	l.segs.clear();
-	l.segLast = l.segTried = l.segOk = 0;
-	l.okIds.clear();
 	l.keep = 0;
 	l.udpMode = 0;
 	l.lport = 0;
@@ -320,7 +300,7 @@ static void udp_follow(tcpLink& l) {
 	if (l.udpMode == 1) l.udpMode = 0;
 }
 
-// passthrough's link is kept up: at boot (SAVETRANSLINK) and after the far end went
+// passthrough's link is kept up after the far end went
 static void pass_reconnect(Computer* comp, int id, long long now) {
 	tcpLink& l = T.link[id];
 	l.sock.close();
@@ -598,23 +578,14 @@ static void send_done(Computer* comp, long long end) {
 	int n = (int)T.sendBuf.size();
 	esp_put("\r\nRecv " + std::to_string(n) + " bytes\r\n");
 	if (!l.used || (l.sock.state() != xEspSock::S_OPEN)) {
-		if (T.sendKind == 3) {
-			l.segTried++;
-			esp_put("\r\n" + lid(T.sendLink) + std::to_string(l.segTried) + ",SEND FAIL\r\n");
-		} else {
-			esp_put("SEND FAIL\r\n");
-			l.mode8 = 0;
-		}
+		esp_put("SEND FAIL\r\n");
+		l.mode8 = 0;
 		T.sendBuf.clear();
 		return;
 	}
 	l.tx += T.sendBuf;
 	l.lastAct = end;
 	T.sendBuf.clear();
-	if (T.sendKind == 3) {			// the send buffer: back to commands at once
-		l.segs.push_back(std::make_pair(l.segLast, n));
-		return;
-	}
 	// a datagram is out as soon as the socket takes it: SEND OK at once, as the module's sent
 	// callback (TCP's waits for the far end, which the frame stands for)
 	if ((l.kind == K_UDP) && (l.sock.state() == xEspSock::S_OPEN)) {
@@ -672,12 +643,7 @@ static void wait_hook(Computer* comp, int c, long long end) {
 	T.waitLast = end;
 }
 
-// room in the TCP send buffer: what is not yet out takes it
-static unsigned sendbuf_room(tcpLink& l) {
-	return (l.tx.size() >= TCP_SND_BUF) ? 0 : (unsigned)(TCP_SND_BUF - l.tx.size());
-}
-
-// CIPSEND=, CIPSENDEX=, CIPSENDBUF=: one handler, as in the firmware (kind 0, 2, 3)
+// CIPSEND=, CIPSENDEX=: one handler, as in the firmware (kind 0, 2)
 static void send_set(espCmdCall& c, int kind) {
 	if (T.cipmode) {esp_put("IPMODE=1\r\n"); esp_err(); return;}
 	if (c.p.empty() || (c.p[0] != '=')) {esp_err(); return;}
@@ -707,23 +673,12 @@ static void send_set(espCmdCall& c, int kind) {
 		target = true;
 	}
 	if (!a.end()) {esp_put("no tail\r\n"); esp_err(); return;}
-	if (kind == 3) {
-		if (l.kind == K_UDP) {esp_err(); return;}
-		if (l.kind == K_SSL) {esp_put("ssl not supported\r\n"); esp_err(); return;}
-		if (sendbuf_room(l) < (unsigned)n) {esp_put("BUFFER FULL\r\n"); esp_err(); return;}
-		if (l.segs.size() >= TCP_SND_QUEUE) {esp_put("QUEUE FULL\r\n"); esp_err(); return;}
-	}
 	if (n < 1) {esp_err(); return;}
 	T.sendLink = id;
 	T.sendKind = kind;
 	T.sendLen = (size_t)n;
 	T.sendBuf.clear();
 	T.sendEsc = false;
-	if (kind == 3) {
-		l.segLast++;
-		if (!l.segLast) l.segLast = 1;
-		esp_put(std::to_string(l.segLast) + "," + std::to_string(l.segTried) + "\r\n");
-	}
 	l.mode8 = kind ? kind : 1;
 	// a datagram elsewhere: the link's peer becomes that one, for later sends too; a name is
 	// looked up first, and the prompt comes when it is found
@@ -741,7 +696,6 @@ static void send_set(espCmdCall& c, int kind) {
 
 static void cipsend_set(espCmdCall& c) {send_set(c, 0);}
 static void cipsendex_set(espCmdCall& c) {send_set(c, 2);}
-static void cipsendbuf_set(espCmdCall& c) {send_set(c, 3);}
 
 // == passthrough ==
 
@@ -788,7 +742,6 @@ static void pass_frame(Computer* comp, long long now) {
 		T.plus = 0;
 		T.inPass = false;
 		esp_release_input();
-		if (esp_sysmsg() & 1) esp_put_now("+QUITT\r\n");
 		xlog(XLG_NET, XLL_DEBUG, "esp: passthrough ends");
 	} else if (T.plus && quiet) {
 		T.passTx.append(T.plus, '+');
@@ -988,46 +941,7 @@ static void server_frame(Computer* comp, long long now) {
 	(void)comp;
 }
 
-// == SAVETRANSLINK ==
-
-static void savetranslink_set(espCmdCall& c) {
-	espArg a(c.p);
-	long long mode;
-	if (!a.num(&mode) || (mode > 1)) {esp_err(); return;}
-	if (mode == 0) {
-		if (!a.end()) {esp_err(); return;}
-		esp_fl_set_num("tl_mode", 0);
-		esp_fl_set("tl_host", "");
-		esp_ok();
-		return;
-	}
-	std::string host, type;
-	if (!a.eat(',') || (a.str(&host, 63) < 1)) {esp_err(); return;}
-	if (ip_numeric(host) && !ip_val(host)) {esp_err(); return;}
-	long long port, extra = 0;
-	if (!a.eat(',') || !a.num(&port) || (port < 1) || (port > 65535)) {esp_err(); return;}
-	int kind = K_TCP;
-	if (a.eat(',')) {
-		int n = a.str(&type, 4);
-		if (n < 0) {esp_err(); return;}
-		if (type == "UDP") kind = K_UDP;
-		else if (type == "SSL") kind = K_SSL;
-		else if (n && (type != "TCP")) {esp_err(); return;}
-		if (a.eat(',')) {
-			if (!a.num(&extra)) {esp_err(); return;}
-			if ((kind == K_UDP) ? ((extra < 1) || (extra > 65535)) : (extra > 7200)) {esp_err(); return;}
-		}
-	}
-	if (!a.end()) {esp_err(); return;}
-	esp_fl_set("tl_host", host);
-	esp_fl_set_num("tl_port", port);
-	esp_fl_set("tl_type", kind_name(kind));
-	esp_fl_set_num("tl_extra", extra);
-	esp_fl_set_num("tl_mode", 1);
-	esp_ok();
-}
-
-// == PING, CIUPDATE ==
+// == PING ==
 
 static void ping_set(espCmdCall& c) {
 	espArg a(c.p);
@@ -1037,13 +951,6 @@ static void ping_set(espCmdCall& c) {
 	T.res.start(h);
 	T.pend = P_PING_LOOK;
 	esp_hold();
-}
-
-static void ciupdate_exec(espCmdCall& c) {
-	(void)c;
-	if (!esp_wifi_joined() || T.updating) {esp_err(); return;}
-	T.upd.start("iot.espressif.cn");
-	T.updating = true;
 }
 
 // == CIPDINFO, passive receive ==
@@ -1106,104 +1013,6 @@ static void recvlen_query(espCmdCall& c) {
 		r += std::to_string(n);
 	}
 	esp_put(r + "\r\n");
-	esp_ok();
-}
-
-// == the send buffer ==
-
-static bool buf_link(espArg& a, int* id) {
-	long long v;
-	*id = 0;
-	if (T.mux) {
-		if (!a.num(&v) || (v >= TCP_LINKS)) return false;
-		*id = (int)v;
-	}
-	return true;
-}
-
-static bool not_ssl(int id) {
-	if (T.link[id].kind != K_SSL) return true;
-	esp_put("ssl not supported\r\n");
-	return false;
-}
-
-static void bufreset_do(espCmdCall& c, bool set) {
-	if (T.cipmode) {esp_put("IPMODE=1\r\n"); esp_err(); return;}
-	if (set != (T.mux == 1)) {esp_err(); return;}
-	espArg a(c.p);
-	int id = 0;
-	if (set && (!buf_link(a, &id) || !a.end())) {esp_err(); return;}
-	tcpLink& l = T.link[id];
-	if (!not_ssl(id)) {esp_err(); return;}
-	if (!l.used) {esp_put("link is not valid\r\n"); esp_err(); return;}
-	if ((l.kind != K_TCP) || (l.segTried != l.segLast)) {esp_err(); return;}
-	l.segLast = l.segTried = l.segOk = 0;
-	l.okIds.clear();
-	esp_ok();
-}
-
-static void bufreset_exec(espCmdCall& c) {bufreset_do(c, false);}
-static void bufreset_set(espCmdCall& c) {bufreset_do(c, true);}
-
-static void bufstatus_do(espCmdCall& c, bool set) {
-	if (T.cipmode) {esp_put("IPMODE=1\r\n"); esp_err(); return;}
-	if (set != (T.mux == 1)) {esp_err(); return;}
-	espArg a(c.p);
-	int id = 0;
-	if (set && (!buf_link(a, &id) || !a.end())) {esp_err(); return;}
-	tcpLink& l = T.link[id];
-	if (!not_ssl(id)) {esp_err(); return;}
-	unsigned room = 0, queue = 0;
-	if (l.used) {
-		if (l.kind != K_TCP) {esp_err(); return;}
-		room = sendbuf_room(l);
-		queue = TCP_SND_QUEUE - (unsigned)l.segs.size();
-	}
-	unsigned next = l.segLast + 1;
-	if (!next) next = 1;
-	char b[80];
-	snprintf(b, sizeof(b), "%u,%u,%u,%u,%u\r\n", next, l.segTried, l.segOk, room, queue);
-	esp_put(b);
-	esp_ok();
-}
-
-static void bufstatus_exec(espCmdCall& c) {bufstatus_do(c, false);}
-static void bufstatus_set(espCmdCall& c) {bufstatus_do(c, true);}
-
-// CIPCHECKSEQ, and CIPCHECKQUEUE: the same handler in the firmware
-static void checkseq_set(espCmdCall& c) {
-	if (T.cipmode) {esp_put("IPMODE=1\r\n"); esp_err(); return;}
-	espArg a(c.p);
-	int id = 0;
-	long long seg;
-	if (T.mux && (!buf_link(a, &id) || !a.eat(','))) {esp_err(); return;}
-	if (!a.num(&seg) || !a.end()) {esp_err(); return;}
-	tcpLink& l = T.link[id];
-	if (l.used && (l.kind == K_UDP)) {esp_err(); return;}
-	if (!not_ssl(id)) {esp_err(); return;}
-	if (!seg || (seg > l.segLast) || (l.segLast - seg >= 32)) {esp_err(); return;}
-	bool ok = false;
-	for (unsigned s : l.okIds) ok |= (s == (unsigned)seg);
-	char b[48];
-	if (T.mux) snprintf(b, sizeof(b), "%i,%u,%s\r\n", id, (unsigned)seg, ok ? "TRUE" : "FALSE");
-	else snprintf(b, sizeof(b), "%u,%s\r\n", (unsigned)seg, ok ? "TRUE" : "FALSE");
-	esp_put(b);
-	esp_ok();
-}
-
-// == CIPALIVE (in the binary, not in the document) ==
-
-static void cipalive_query(espCmdCall& c) {
-	bool any = false;
-	std::string r;
-	for (int i = 0; i < TCP_LINKS; i++) {
-		tcpLink& l = T.link[i];
-		if (!l.used || (l.kind == K_UDP) || !l.keep) continue;
-		r += c.name + ":id " + std::to_string(i) + "," + std::to_string(l.keep) + "\r\n";
-		any = true;
-	}
-	if (!any) r = "Not set TCP keep alive\r\n";
-	esp_put(r);
 	esp_ok();
 }
 
@@ -1445,15 +1254,6 @@ static void pend_frame() {
 		T.pend = P_NONE;
 		esp_done();
 	}
-	if (T.updating) {
-		int r = T.upd.poll();
-		if (r) {
-			T.updating = false;
-			// found: the update cloud is asked, and it does not answer
-			if (r > 0) esp_put_now("+CIPUPDATE:1\r\n");
-			esp_put_now("\r\nERROR\r\n");
-		}
-	}
 }
 
 static void link_frame(Computer* comp, int i, long long now) {
@@ -1472,21 +1272,6 @@ static void link_frame(Computer* comp, int i, long long now) {
 		if (n > 0) {
 			l.tx.erase(0, n);
 			l.lastAct = now;
-			// the send buffer: a segment out is its SEND OK
-			while ((n > 0) && !l.segs.empty()) {
-				int k = (n < l.segs.front().second) ? n : l.segs.front().second;
-				l.segs.front().second -= k;
-				n -= k;
-				if (!l.segs.front().second) {
-					l.segTried++;
-					l.segOk = l.segTried;
-					l.okIds.push_back(l.segs.front().first);
-					if (l.okIds.size() > 32) l.okIds.pop_front();
-					l.segs.pop_front();
-					esp_put_now("\r\n" + lid(i) + std::to_string(l.segTried) + ",SEND OK\r\n");
-					if (l.segTried == l.segLast) l.mode8 = 0;
-				}
-			}
 		}
 		if (n < 0) l.tx.clear();
 	}
@@ -1577,7 +1362,6 @@ void esp_tcp_down() {
 	T.ntpSock.close();
 	T.ntpBusy = false;
 	T.pend = P_NONE;
-	T.updating = false;
 	T.inPass = false;
 	T.passTx.clear();
 	T.plus = 0;
@@ -1613,30 +1397,6 @@ void esp_tcp_boot(Computer* comp) {
 		T.dns[0] = DNS_DEFAULT;
 		T.dns[1].clear();
 	}
-}
-
-// a link saved by SAVETRANSLINK: the module calls it and goes into passthrough on its own
-void esp_tcp_ready(Computer* comp, long long now) {
-	if (esp_fl_num("tl_mode", 0) != 1) return;
-	std::string host = esp_fl_get("tl_host");
-	if (host.empty()) return;
-	tcpLink& l = T.link[0];
-	link_reset(l, false);
-	std::string type = esp_fl_get("tl_type", "TCP");
-	l.kind = (type == "UDP") ? K_UDP : (type == "SSL") ? K_SSL : K_TCP;
-	l.host = host;
-	l.port = (int)esp_fl_num("tl_port", 0);
-	long extra = esp_fl_num("tl_extra", 0);
-	if (l.kind == K_UDP) l.lport = (int)extra;
-	else l.keep = (int)extra;
-	T.mux = 0;
-	T.cipmode = 1;
-	l.starting = true;
-	l.silent = true;
-	l.retryAt = now;
-	pass_enter();
-	xlog(XLG_NET, XLL_INFO, "esp: saved link %s %s:%i, passthrough", kind_name(l.kind), host.c_str(), l.port);
-	(void)comp;
 }
 
 // the station left its AP: every link ends with its CLOSED, a connect under way fails
@@ -1677,19 +1437,11 @@ const espCmd esp_tcp_cmds[] = {
 	{"+CIPRECVDATA", nullptr, nullptr, recvdata_set, nullptr},
 	{"+CIPRECVLEN", nullptr, recvlen_query, nullptr, nullptr},
 	{"+CIPSTO", nullptr, cipsto_query, cipsto_set, nullptr},
-	{"+CIPALIVE", nullptr, cipalive_query, nullptr, nullptr},
-	{"+CIPBUFRESET", nullptr, nullptr, bufreset_set, bufreset_exec},
-	{"+CIPSENDBUF", nullptr, nullptr, cipsendbuf_set, nullptr},
-	{"+CIPCHECKSEQ", nullptr, nullptr, checkseq_set, nullptr},
-	{"+CIPCHECKQUEUE", nullptr, nullptr, checkseq_set, nullptr},
-	{"+CIPBUFSTATUS", nullptr, nullptr, bufstatus_set, bufstatus_exec},
 	{"+CIPDOMAIN", nullptr, nullptr, cipdomain_set, nullptr},
 	{"+CIPSNTPCFG", nullptr, sntpcfg_query, sntpcfg_set, nullptr},
 	{"+CIPSNTPTIME", nullptr, sntptime_query, nullptr, nullptr},
 	{"+PING", nullptr, nullptr, ping_set, nullptr},
 	{"+CIPDNS_CUR", nullptr, dnscur_query, dnscur_set, nullptr},
 	{"+CIPDNS_DEF", nullptr, dnsdef_query, dnsdef_set, nullptr},
-	{"+SAVETRANSLINK", nullptr, nullptr, savetranslink_set, nullptr},
-	{"+CIUPDATE", nullptr, nullptr, nullptr, ciupdate_exec},
 	{nullptr, nullptr, nullptr, nullptr, nullptr}
 };
