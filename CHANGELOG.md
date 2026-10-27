@@ -9,6 +9,8 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
+## 2026.8.2 - 2026-10-27
+
 ### Changed
 
 - **Downloads need no curl**: the Next's card and FFmpeg download on Windows 8.1 too,
