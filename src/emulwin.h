@@ -597,7 +597,7 @@ class MainWin : public QWidget {
 		void initFill();
 		bool fillWanted();
 		void prepareFill();
-		void drawFill();
+		void drawFill(const QRect* clip = nullptr);
 #endif
 #endif
 };

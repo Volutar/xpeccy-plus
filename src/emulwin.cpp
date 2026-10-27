@@ -1375,12 +1375,13 @@ void MainWin::paintGLView() {
 			QRect slot = modeSlot();
 			QPainter top(glw);
 			top.beginNativePainting();
-			glEnable(GL_SCISSOR_TEST);
-			glScissor(int(slot.x() * r), int((height() - slot.bottom() - 1) * r),
+			const QRect cut(int(slot.x() * r), int((height() - slot.bottom() - 1) * r),
 				int(slot.width() * r + 1), int(slot.height() * r + 1));
+			glEnable(GL_SCISSOR_TEST);
+			glScissor(cut.x(), cut.y(), cut.width(), cut.height());
 			glClearColor(0, 0, 0, 1);
 			glClear(GL_COLOR_BUFFER_BIT);
-			if (fillOn) drawFill();		// the slot is in the room beside the picture
+			if (fillOn) drawFill(&cut);		// the slot is in the room beside the picture
 			drawPicture();
 			glDisable(GL_SCISSOR_TEST);
 			glFlush();

@@ -525,16 +525,28 @@ void MainWin::prepareFill() {
 	glBindFramebuffer(GL_FRAMEBUFFER, glw->defaultFramebufferObject());
 }
 
-// fillTex[0] over the whole view, dimmed; the picture then covers the middle
-void MainWin::drawFill() {
+// fillTex[0], dimmed, into the room beside the picture only: the bars at the sides,
+// corners and all, and the strips above and below it. clip: the framebuffer
+// rectangle the caller has scissored to, which the bars are cut to as well.
+void MainWin::drawFill(const QRect* clip) {
 	const qreal r = widgetDpr(this);
 	const int vw = int(width() * r + 0.5);
 	const int vh = int(height() * r + 0.5);
+	// the picture as drawPicture's viewport has it, from the bottom left
+	const int px = int(drawX * r + 0.5);
+	const int py = int(drawY * r + 0.5);
+	const int pw = int(drawW * r + 0.5);
+	const int ph = int(drawH * r + 0.5);
+	const QRect bars[4] = {
+		QRect(0, 0, px, vh),
+		QRect(px + pw, 0, vw - px - pw, vh),
+		QRect(px, 0, pw, py),
+		QRect(px, py + ph, pw, vh - py - ph)
+	};
 	glViewport(0, 0, vw, vh);
 	fillDraw.bind();
 	fillDraw.setUniformValue("u_src", 0);
-	fillDraw.setUniformValue("u_pic", GLfloat(int(drawX * r + 0.5)), GLfloat(int(drawY * r + 0.5)),
-		GLfloat(int(drawW * r + 0.5)), GLfloat(int(drawH * r + 0.5)));
+	fillDraw.setUniformValue("u_pic", GLfloat(px), GLfloat(py), GLfloat(pw), GLfloat(ph));
 	fillDraw.setUniformValue("u_view", GLfloat(vw), GLfloat(vh));
 	fillDraw.setUniformValue("u_dim", GLfloat(conf.vid.fillDim / 100.0));
 	fillDraw.setUniformValue("u_fade", GLfloat(conf.vid.fillFade / 100.0));
@@ -546,7 +558,18 @@ void MainWin::drawFill() {
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, fillTex[0]);
 	vao.bind();
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glEnable(GL_SCISSOR_TEST);
+	for (const QRect& bar : bars) {
+		const QRect cut = clip ? (bar & *clip) : bar;
+		if (cut.isEmpty()) continue;
+		glScissor(cut.x(), cut.y(), cut.width(), cut.height());
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	}
+	if (clip) {
+		glScissor(clip->x(), clip->y(), clip->width(), clip->height());
+	} else {
+		glDisable(GL_SCISSOR_TEST);
+	}
 	vao.release();
 	fillDraw.release();
 }
