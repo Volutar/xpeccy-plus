@@ -470,7 +470,7 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_SIZEX5, "key.size.x5", "Size x5", {}},
 	{SCG_MAIN, XCUT_SIZEX6, "key.size.x6", "Size x6", {}},
 	{SCG_MAIN, XCUT_FULLSCR, "key.fullscreen", "Fullscreen", {}},
-	{SCG_MAIN, XCUT_RATIO, "key.ratio", "Keep Aspect Ratio in Fullscreen", {}},
+	{SCG_MAIN, XCUT_RATIO, "key.ratio", "Keep Aspect Ratio", {}},
 	{SCG_MAIN, XCUT_NOFLICK, "key.noflick", "Anti-flicker", {}},
 	{SCG_MAIN, XCUT_NMI, "key.nmi", "NMI", {}},
 	{SCG_MAIN | SCG_DEBUGA, XCUT_RESET, "key.reset", "Reset", {}},

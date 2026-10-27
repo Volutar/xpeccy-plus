@@ -9,6 +9,12 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
+### Added
+
+- **The window can be maximized and resized**: at any size other than its scale's, the picture
+  is fitted as in fullscreen, with more border at the sides; a window closed maximized starts
+  maximized.
+
 ## 2026.8.2 - 2026-10-27
 
 ### Changed

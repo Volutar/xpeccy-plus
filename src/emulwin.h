@@ -497,6 +497,13 @@ class MainWin : public QWidget {
 		QTimer fsShow;
 		int fsY;		// where the pointer was last seen over the picture
 		unsigned fsTall:1;	// a line taller than the screen, while a menu is up
+		unsigned winFit:1;	// the window is not the zoom's size: the picture is fitted to it
+		unsigned winFree:1;	// given another size by the user or the system, not maximized
+		unsigned stateMoving:1;	// maximized or restored: laid out once its size has come
+		QSize wszAsked;		// the zoom's size, the picture's area the window was last given
+		QSize frameSeen;	// the frame's size at the last look: did it change, or only the bars
+		bool maxWanted();
+		void fitWindow();
 		bool fsCompose(bool);
 		bool fpsOsd();
 		bool fsHeld();

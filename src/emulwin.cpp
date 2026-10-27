@@ -124,14 +124,27 @@ void MainWin::updateWindow() {
 	QSize wsz;
 	Computer* comp = conf.zx;
 	const QSize screenSize = SCREENSIZE;
+	vid_set_fit(QSize());
 	vid_upd_scale(screenSize);		// the picture and window use the same monitor
-	// a size change can switch the shader off or bring it back (wantedShader)
-	if (conf.vid.shd_support && (wantedShader() != shdLoaded))
-		loadShader();
+	const QSize zoomSize(drawW, drawH);	// windowed: the zoom's size
 	// on the way out, asked before the bars come back: the resize they make takes the
 	// window out of the state, and Qt puts it where it was when the state came - which,
 	// for a start in fullscreen, is before it was ever shown, at 0,0
 	bool back = !conf.vid.fullScreen && fsCovers();
+	// out of fullscreen into the maximized window it came from: fullscreen's own
+	// resizes take the state, if not at once, so it is asked for again below
+	bool backMax = back && conf.vid.maximized;
+	bool maxed = maxWanted() || backMax;
+	// A window of another size has the picture fitted into what the bars leave
+	// of it. The size read here can be the one from before the layout gave it
+	// out: resizeEvent fits it again once it has (fitWindow).
+	winFit = !conf.vid.fullScreen && (maxed || winFree);
+	// a window not shown yet has no state of its own: the config's stands
+	if (!conf.vid.fullScreen && frame->isVisible()) conf.vid.maximized = maxed;
+	if (winFit) vid_set_fit(size());
+	// a size change can switch the shader off or bring it back (wantedShader)
+	if (conf.vid.shd_support && (wantedShader() != shdLoaded))
+		loadShader();
 	blockSignals(true);
 	showBars();
 	if (conf.vid.fullScreen) {
@@ -164,10 +177,14 @@ void MainWin::updateWindow() {
 #endif
 		}
 	} else {
-		// the picture: a whole number of pixels per dot, or it would be
-		// resampled and some columns come out a pixel wider than others
-		wsz = QSize(drawW, drawH);
-		tbSize(toolBar, wsz.width());		// Auto: as the new width allows
+		if (winFit) {
+			tbSize(toolBar, width());
+		} else {
+			// the picture: a whole number of pixels per dot, or it would be
+			// resampled and some columns come out a pixel wider than others
+			wsz = zoomSize;
+			tbSize(toolBar, wsz.width());		// Auto: as the new width allows
+		}
 		// Qt 5 forgets a widget is fullscreen once it has been resized - the layout
 		// does that - while its window stays so, and leaving would then do nothing,
 		// title bar never coming back: the widget is told fullscreen again first.
@@ -175,16 +192,47 @@ void MainWin::updateWindow() {
 		if (win && (win->windowStates() & Qt::WindowFullScreen))
 			frame->setWindowState(frame->windowState() | Qt::WindowFullScreen);
 		frame->setWindowState(frame->windowState() & ~Qt::WindowFullScreen);
-		// back on the screen with its title bar, once it has its size
-		if (back) QTimer::singleShot(0, this, &MainWin::placeWindow);
+		// back on the screen with its title bar, once it has its size; a
+		// maximized one is the system's to place
+		if (backMax) {
+			QTimer::singleShot(0, this, [this]() {
+				// Qt may still say maximized, and would then do nothing
+				Qt::WindowStates st = frame->windowState() & ~Qt::WindowFullScreen;
+				if (st & Qt::WindowMaximized)
+					frame->setWindowState(st & ~Qt::WindowMaximized);
+				frame->setWindowState(st | Qt::WindowMaximized);
+			});
+		} else if (back) {
+			QTimer::singleShot(0, this, &MainWin::placeWindow);
+		}
 	}
-	setFixedSize(wsz);
+	if (conf.vid.fullScreen) {
+		frame->layout()->setSizeConstraint(QLayout::SetFixedSize);
+		setFixedSize(wsz);
+	} else {
+		if (!winFit) {
+			// the frame is made to fit the zoom's size at once, bars and all...
+			frame->layout()->setSizeConstraint(QLayout::SetFixedSize);
+			setFixedSize(wsz);
+			frame->layout()->activate();
+			wszAsked = wsz;
+		}
+		// ...and then left to be resized: maximized, snapped, dragged (fitWindow)
+		frame->layout()->setSizeConstraint(QLayout::SetDefaultConstraint);
+		frame->setMinimumSize(0, 0);
+		frame->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+		setMinimumSize(zoomSize / std::max(conf.vid.scale, 1));	// the picture at x1
+		setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+		frame->layout()->activate();		// bars shown or hidden: the area they leave, now
+	}
+	frameSeen = frame->size();
 	blockSignals(false);
 	// the buffer holds the whole raster, whatever part of it is shown
 	bytesPerLine = comp->vid->full.x * 8;
 	bufSize = bytesPerLine * comp->vid->full.y * (comp->vid->linedbl ? 2 : 1);
 	updateHead();
 	block = 0;
+	if (winFit && !backMax) fitWindow();		// the area as the bars leave it
 	emit s_keywin_snap();		// a docked keyboard follows the new size
 }
 
@@ -262,6 +310,9 @@ MainWin::MainWin(QMainWindow* frm) {
 	hasPicture = 0;
 	upSwaps = -1;
 	refit = 0;
+	winFit = 0;
+	winFree = 0;
+	stateMoving = 0;
 	mediaSrc = MEDIA_SNAP;
 	mediaSeen = 0;
 	cardReads[0] = cardReads[1] = 0;
@@ -814,9 +865,21 @@ bool MainWin::eventFilter(QObject* obj, QEvent* ev) {
 					updateScreen(win->screen());
 				}
 				break;
+			case QEvent::WindowStateChange:
+				// Maximize or Restore from the system: the button, a double click
+				// on the title, Win+Up / Win+Down. Laid out once the size of the new
+				// state has come too, or a restore would read as a resize (fitWindow).
+				if (!block && !conf.vid.fullScreen && !stateMoving) {
+					stateMoving = 1;
+					QTimer::singleShot(0, this, [this]() {
+						stateMoving = 0;
+						updateWindow();
+					});
+				}
+				break;
 			case QEvent::Move:
-				// where the window goes back to: fullscreen moves it too
-				if (!conf.vid.fullScreen && !frame->isFullScreen()) {
+				// where the window goes back to: fullscreen and maximize move it too
+				if (!conf.vid.fullScreen && !frame->isFullScreen() && !frame->isMaximized()) {
 					conf.xpos = frame->pos().x();
 					conf.ypos = frame->pos().y();
 				}
@@ -1153,6 +1216,37 @@ void MainWin::resizeEvent(QResizeEvent*) {
 #if defined(USEOPENGL) && !BLOCKGL
 	if (glw) glw->setGeometry(rect());
 #endif
+	fitWindow();
+}
+
+// a maximized window, as the system has it; fullscreen comes first
+bool MainWin::maxWanted() {
+	return !conf.vid.fullScreen && (frame->windowState() & Qt::WindowMaximized);
+}
+
+// The window resized from outside - maximized, snapped, dragged - or only its
+// bars changed. Another size than the zoom's has the picture fitted to it; the
+// zoom's own, or bars that changed under a window of the zoom's size, are
+// updateWindow's to lay out.
+void MainWin::fitWindow() {
+	if (block || stateMoving || conf.vid.fullScreen || frame->isFullScreen() || size().isEmpty()) return;
+	bool maxed = maxWanted();
+	if (!maxed && (frame->size() != frameSeen))
+		winFree = (size() != wszAsked);
+	if (size() == wszAsked) winFree = 0;		// back at the zoom's size: whole pixels again
+	frameSeen = frame->size();
+	if (!maxed && !winFree) {
+		if (winFit || (size() != wszAsked))
+			QTimer::singleShot(0, this, &MainWin::updateWindow);
+		return;
+	}
+	winFit = 1;
+	vid_set_fit(size());
+	refit = 1;
+	if (conf.vid.shd_support && (wantedShader() != shdLoaded))
+		loadShader();
+	tbSize(toolBar, width());
+	emit s_keywin_snap();
 }
 
 #if defined(USEOPENGL) && !BLOCKGL
@@ -2323,7 +2417,7 @@ void MainWin::initMenuBar() {
 	connect(viewMenu, &QMenu::aboutToShow, this, &MainWin::fillBorderMenu);	// the submenu itself may be off
 	fullAct = cutAction(viewMenu, "Fullscreen", XCUT_FULLSCR, "fullscreen");
 	fullAct->setCheckable(true);
-	ratioAct = cutAction(viewMenu, "Keep Aspect Ratio in Fullscreen", XCUT_RATIO, "display");
+	ratioAct = cutAction(viewMenu, "Keep Aspect Ratio", XCUT_RATIO, "display");
 	ratioAct->setCheckable(true);
 	ratioAct->setIconVisibleInMenu(false);	// a setting: its tick, which an icon would take the place of
 	viewMenu->addSeparator();

@@ -46,7 +46,7 @@ in groups. Each one is the command of the same name in a menu, described there:
 | [Machine menu](machines.md) | **Model**, **Reset**, **NMI**, **Turbo Mode** |
 | [Speed and time](time.md) | **Pause**, **Fast Mode**, **Fast Forward**, **Slow Motion**, **Rewind** |
 | [Media menu](media.md) | **Tape Play/Stop**, **Tape Record/Stop**, **Tape Player**, **Disk Manager**, **Cartridge**, **divMMC**, **SD Card**, **Drives** |
-| [View menu](view.md) | **Fullscreen**, **Keep Aspect Ratio in Fullscreen**, **Size**, **Shaders**, **ZX Palette**, **Virtual Keyboard** |
+| [View menu](view.md) | **Fullscreen**, **Keep Aspect Ratio**, **Size**, **Shaders**, **ZX Palette**, **Virtual Keyboard** |
 | [Input menu](input.md) | **Grab Keyboard**, **Grab Mouse**, **Keymap**, **Gamepads** |
 | [Tools menu](tools.md) | **Cheats...**, **Debugger**, **Screen**, **Sound Chips** |
 | [Mute](machines.md#mute) | **Mute** |

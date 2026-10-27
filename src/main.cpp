@@ -894,6 +894,13 @@ int main(int ac,char** av) {
 			open_pending(app, mwin);
 		}
 //		mwin.blockSignals(true);
+		// left maximized: so on the screen it was on (winpos), under fullscreen too,
+		// which leaves to it; laid out for it first, or the system maximizes a
+		// window of the fixed size
+		if (conf.vid.maximized) {
+			mframe.setWindowState(mframe.windowState() | Qt::WindowMaximized);
+			mwin.updateWindow();
+		}
 		mframe.show();
 		mwin.updateWindow();
 		mwin.rzxWatch();

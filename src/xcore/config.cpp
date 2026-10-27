@@ -296,6 +296,7 @@ void saveConfig() {
 	}
 	fprintf(cfile, "rec.probe.codecs = %s\n", works.c_str());
 	fprintf(cfile, "fullscreen = %s\n", YESNO(conf.vid.fullScreen));
+	fprintf(cfile, "maximized = %s\n", YESNO(conf.vid.maximized));
 	fprintf(cfile, "keepratio = %s\n", YESNO(conf.vid.keepRatio));
 	fprintf(cfile, "toolbar = %s\n", YESNO(conf.win.toolbar));
 	if (conf.win.tbIcons) {
@@ -1171,6 +1172,7 @@ void loadConfig() {
 						}
 					}
 					if (pnam=="fullscreen") conf.vid.fullScreen = arg.b;
+					if (pnam=="maximized") conf.vid.maximized = arg.b;
 					if (pnam=="keepratio") conf.vid.keepRatio = arg.b;
 					if (pnam=="toolbar") conf.win.toolbar = arg.b;
 					if (pnam=="toolbar.icons") conf.win.tbIcons = ((arg.i == 16) || (arg.i == 24)) ? arg.i : 0;
