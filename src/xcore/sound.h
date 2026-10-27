@@ -70,6 +70,11 @@ extern OutSys* sndOutput;
 
 extern long long nsPerSampleFixed;
 void sndUpdateSpeed(void);
+// VSync's share of the speed: the machine run at the display's rate, and the
+// small steer that holds the ring (pacing.cpp). 1.0: none.
+void sndSetLockScale(double);
+// emulated ns one output sample stands for
+double sndNsPerOutSample();
 
 // The scope's own capture, at the sub-sample rate - 32 of these go into one sample
 // of what reaches the speakers. The output ring cannot serve the scope on its own:

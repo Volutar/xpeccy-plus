@@ -11,6 +11,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **VSync** in Options > Video: no tearing, and a machine close to the screen's rate runs
+  at it, so motion is even - a Next at 58.15 Hz scrolls smoothly on a 60 Hz screen, a
+  Pentagon on a 50 or 100 Hz one. Off by default. *(thanks to Volutar)*
+
 - **SjASMPlus `CSPECTMAP` files load as labels**, alongside `LABELSLIST`: each label is
   placed by its physical address, so it lands on the right page on any machine.
 

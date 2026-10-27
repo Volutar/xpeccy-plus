@@ -75,10 +75,24 @@ long long nsPerSampleFixed = ns_per_sample_fixed(44100);
 // from the pacer: the machine then advances slower while the card still gets all
 // the samples it asks for, so the ring keeps up and the sound drops in pitch the
 // way a tape slowed down does. Starving the ring instead only made it crackle.
+// VSync's scale goes the same way: a machine pulled up to the display's rate
+// spans more emulated time per sample, and its sound rises by as much.
+static std::atomic<double> sndLockScale{1.0};
+
 void sndUpdateSpeed(void) {
 	double s = (conf.emu.speed > 0.0) ? conf.emu.speed : 1.0;
+	s *= sndLockScale.load();
 	nsPerSampleFixed = (long long)(ns_per_sample_fixed(conf.snd.rate) * s);
 	ay_set_speed(s);
+}
+
+void sndSetLockScale(double x) {
+	sndLockScale = (x > 0.0) ? x : 1.0;
+	sndUpdateSpeed();
+}
+
+double sndNsPerOutSample() {
+	return (double)nsPerSampleFixed * DISCRATE / NS_FIXED_ONE;
 }
 
 static int wavRate = 0;			// rate the open recording's header says

@@ -97,6 +97,15 @@ static int emGen = 0;
 static std::vector<sndPair> emSnd;
 static double emSlots = 0;
 static long long emHost = 0;
+// VSync's speed when the recording started: a frame of the file lasts what a
+// frame lasted then - 1/60 s for a Next pulled up to 60 Hz, its own 1/58.15
+// without the lock. A lock coming or going later is counted like slow motion.
+static double emLock = 1.0;
+
+// how long a frame of the file lasts, ns
+static double em_frame_ns(const Video* vid) {
+	return vid->nsPerFrame / emLock;
+}
 static int emSwaps = 0;
 
 static void vr_say(const QString& str) {
@@ -751,7 +760,8 @@ bool vrec_start(Computer* comp, const QString& image, int scrW, int scrH, QStrin
 		if (ext == "mp4") rec.container = VREC_MP4;
 		name = QFileInfo(file).completeBaseName();
 	}
-	vrecCmd cmd = vrec_command(rec, w, h, vid->nsPerFrame, conf.snd.rate, QDir(dir).filePath(name));
+	emLock = pacing_lock_speed();
+	vrecCmd cmd = vrec_command(rec, w, h, (int)llround(em_frame_ns(vid)), conf.snd.rate, QDir(dir).filePath(name));
 	vrWriter* wr = new vrWriter;
 	wr->prog = prog;
 	wr->cmd = cmd;
@@ -895,10 +905,10 @@ void vrec_frame(Computer* comp) {
 	long long now = paceClockNs();
 	double span;
 	if (conf.emu.fast || rewind_active()) {
-		span = double(now - emHost) / vid->nsPerFrame;
+		span = double(now - emHost) / em_frame_ns(vid);
 		if (span > VR_GAP_MAX) span = VR_GAP_MAX;
 	} else {
-		span = frames / conf.emu.speed;
+		span = frames / conf.emu.speed * emLock / pacing_lock_speed();
 	}
 	emHost = now;
 	emSlots += span;
@@ -907,7 +917,7 @@ void vrec_frame(Computer* comp) {
 	emSlots -= copies;
 	vrJob* job = new vrJob;
 	job->copies = copies;
-	job->smp = copies * (double)conf.snd.rate * vid->nsPerFrame / 1e9;
+	job->smp = copies * (double)conf.snd.rate * em_frame_ns(vid) / 1e9;
 	job->snd.swap(emSnd);
 	emSnd.reserve(job->snd.size());		// the next frame takes about as many
 	if (vrSrc == VREC_SRC_PICTURE)

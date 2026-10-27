@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cstring>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -26,7 +27,7 @@
 // the measured rate wins over the system's when they are this far apart
 #define DS_TRUST_PPM	2000
 
-static double sysRate = 0;		// what the system says, Hz
+static std::atomic<double> sysRate{0};	// what the system says, Hz
 static std::atomic<bool> adaptive{false};
 static QString screenName;
 static bool probed = false;		// the log has had a first answer
@@ -39,7 +40,16 @@ static long long measCount = 0;		// vblank periods in the window
 static double measHz = 0;		// last settled figure
 static bool measTold = false;		// the log has the settled figure
 
-static dsyncTick tickCb = nullptr;
+static std::atomic<dsyncTick> tickCb{nullptr};
+static bool swapWait = false;
+
+void dsync_swap_wait(bool on) {
+	swapWait = on;
+}
+
+bool dsync_swaps_wait() {
+	return swapWait;
+}
 
 static void meas_reset() {
 	std::lock_guard<std::mutex> lock(measGuard);
@@ -62,7 +72,7 @@ static bool meas_vblank(long long ns) {
 		return true;
 	}
 	long long dt = ns - measLast;
-	double est = (measHz > 0) ? measHz : sysRate;
+	double est = (measHz > 0) ? measHz : sysRate.load();
 	long long n = 1;
 	if (est > 0) {
 		n = llround(dt * est / 1e9);
@@ -84,12 +94,58 @@ static bool meas_vblank(long long ns) {
 	}
 	}
 	if (tell > 0)
-		xlog(XLG_VIDEO, XLL_INFO, "vsync: measured %.4f Hz over the vblanks, system says %.4f", tell, sysRate);
+		xlog(XLG_VIDEO, XLL_INFO, "vsync: measured %.4f Hz over the vblanks, system says %.4f", tell, sysRate.load());
 	return true;
+}
+
+// The frame-time log (video at debug): how many vblanks each frame drawn stayed
+// up for. Locked, every frame stays n; a Next at 58.15 Hz on a 60 Hz screen
+// shows two now and then - the jerk. Two frames inside one vblank: one of them
+// was never seen.
+#define FT_LOG_NS	10000000000LL
+#define FT_RUNS		8
+static std::atomic<int> ftDrawn{0};
+static long long ftSince = -1;
+static int ftRun = 0;			// vblanks the frame up now has stayed
+static int ftHist[FT_RUNS];		// frames by how long they stayed, the last: that or longer
+static int ftLost = 0;
+static int ftVbl = 0;
+
+void dsync_frame_drawn() {
+	ftDrawn.fetch_add(1, std::memory_order_relaxed);
+}
+
+static void ft_vblank(long long ns) {
+	if (!xlog_on(XLG_VIDEO, XLL_DEBUG)) return;
+	int k = ftDrawn.exchange(0);
+	if (ftSince < 0) {
+		ftSince = ns;
+		ftRun = 0;
+		ftLost = ftVbl = 0;
+		memset(ftHist, 0, sizeof(ftHist));
+	}
+	ftVbl++;
+	if (k > 0) {
+		if (ftRun > 0) ftHist[std::min(ftRun, FT_RUNS) - 1]++;
+		ftLost += k - 1;
+		ftRun = 1;
+	} else if (ftRun > 0) {
+		ftRun++;
+	}
+	if (ns - ftSince >= FT_LOG_NS) {
+		char buf[160];
+		int pos = 0;
+		for (int i = 0; i < FT_RUNS; i++)
+			if (ftHist[i]) pos += snprintf(buf + pos, sizeof(buf) - pos, " %s%i:%i", (i == FT_RUNS - 1) ? ">=" : "", i + 1, ftHist[i]);
+		xlog(XLG_VIDEO, XLL_DEBUG, "vsync: frames by vblanks shown over %i vblanks:%s, unseen %i",
+			ftVbl, pos ? buf : " none", ftLost);
+		ftSince = -1;
+	}
 }
 
 static void ds_tick(long long ns) {
 	if (!meas_vblank(ns)) return;
+	ft_vblank(ns);
 	dsyncTick cb = tickCb;
 	if (cb) cb(ns);
 }
@@ -105,9 +161,10 @@ double dsync_measured() {
 
 double dsync_lock_rate() {
 	double m = dsync_measured();
-	if (m <= 0) return sysRate;
-	if (sysRate <= 0) return m;
-	return (std::fabs(m / sysRate - 1.0) * 1e6 > DS_TRUST_PPM) ? m : sysRate;
+	double s = sysRate;
+	if (m <= 0) return s;
+	if (s <= 0) return m;
+	return (std::fabs(m / s - 1.0) * 1e6 > DS_TRUST_PPM) ? m : s;
 }
 
 bool dsync_adaptive() {
@@ -331,6 +388,7 @@ void dsync_probe(QWindow* win) {
 }
 
 bool dsync_start(dsyncTick cb) {
+	if (!swapWait) return false;	// swaps that do not wait are no tick
 	tickCb = cb;
 	if (!tickRun) meas_reset();
 	tickRun = true;

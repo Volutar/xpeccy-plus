@@ -476,6 +476,17 @@ int main(int ac,char** av) {
 #else
 	conf.vid.gl = 0;
 #endif
+#if defined(USEOPENGL) && !BLOCKGL && !defined(__WIN32) && !defined(__APPLE__)
+	// Windows and macOS compose every window and never tear. Here a swap waits
+	// for the vblank only if the context is made so, and the swaps are VSync's
+	// tick (dispsync.h): it takes a restart to change
+	if (conf.vid.gl && conf.vid.vsync && !bench) {
+		QSurfaceFormat fmt = QSurfaceFormat::defaultFormat();
+		fmt.setSwapInterval(1);
+		QSurfaceFormat::setDefaultFormat(fmt);
+		dsync_swap_wait(true);
+	}
+#endif
 	if (conf.vid.gl) {
 		xlog(XLG_GL, XLL_INFO, "picture: OpenGL");
 	} else if (noGl) {

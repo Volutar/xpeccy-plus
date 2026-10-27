@@ -1,6 +1,8 @@
 #include <SDL.h>
 #include <QElapsedTimer>
 
+#include <atomic>
+
 #include "pacing.h"
 #include "sound.h"
 #include "xcore.h"
@@ -33,6 +35,26 @@ static_assert(SND_LATENCY_MAX + PACE_MAX_BACKLOG_MS < SND_RING_SIZE * 250 / SND_
 // card's own, and is far too little to hear or to move the frame rate
 #define PACE_TRIM_PPM 1000
 
+// VSync: no vblank for this long and the clock takes over again, ns
+#define LOCK_STALL_NS	100000000LL
+// the most a stall leaves owed when the vblanks come back, in frames
+#define LOCK_MAX_FRAMES	2
+// how far the lock steers the sound's speed to hold the ring at its target:
+// 0.5 % one target away, a pitch change nobody hears. It only has to take up
+// what the display's clock and the sound card's disagree by, and what the rate
+// asked of the system is off by.
+#define LOCK_TRIM_PPM	5000
+// the ring's fill is smoothed over about this many vblanks before it steers:
+// the card takes it out a block at a time, and steering on every block jitters
+#define LOCK_TRIM_AVG	64
+
+static std::atomic<int> lockN{0};
+static std::atomic<double> lockSpeed{1.0};
+static std::atomic<long long> lockLastNs{-1};	// the last vblank
+static double lockOwedNs = 0;		// emulated time handed out, not yet a sample; vblank thread
+static double lockErr = 0;		// the ring's smoothed shortfall, bytes; vblank thread
+static std::atomic<int> lockReset{0};	// the vblank thread starts its sums again
+
 static SDL_TimerID paceTimerId = 0;
 static QElapsedTimer paceClock;
 static qint64 paceLastNs = 0;
@@ -52,12 +74,28 @@ static qint64 pace_trim(qint64 dtNs) {
 	return dtNs + dtNs * ppm / 1000000;
 }
 
+static void pace_wake() {
+#if USEMUTEX
+	qwc.wakeAll();
+#else
+	sleepy = 0;
+#endif
+}
+
+bool pacing_lock_stalled() {
+	long long last = lockLastNs;
+	return (last < 0) || (paceClock.nsecsElapsed() - last > LOCK_STALL_NS);
+}
+
 static Uint32 pace_tick(Uint32 interval, void*) {
 	qint64 nowNs = paceClock.nsecsElapsed();
 	qint64 dtNs = nowNs - paceLastNs + paceRemainderNs;
 	paceLastNs = nowNs;
 
-	if (!conf.emu.fast && !conf.emu.pause) {
+	if (lockN && !pacing_lock_stalled()) {
+		// the vblanks hand the time out (pacing_vblank)
+		paceRemainderNs = 0;
+	} else if (!conf.emu.fast && !conf.emu.pause) {
 		dtNs = pace_trim(dtNs);
 		// samples for the elapsed time; keep the remainder to avoid drift
 		qint64 samples = (dtNs * conf.snd.rate) / 1000000000LL;
@@ -77,13 +115,78 @@ static Uint32 pace_tick(Uint32 interval, void*) {
 		paceRemainderNs = 0;
 	}
 	sndAutoTick(nowNs);
-
-#if USEMUTEX
-	qwc.wakeAll();
-#else
-	sleepy = 0;
-#endif
+	pace_wake();
 	return interval;
+}
+
+void pacing_lock(int n, double speed) {
+	if (n < 0) n = 0;
+	if ((n == lockN) && (speed == lockSpeed)) return;
+	if (n != lockN) lockReset = 1;
+	lockSpeed = speed;
+	lockN = n;
+	// at once, not on the next vblank: the frame made meanwhile is at the new speed
+	sndSetLockScale(n ? speed : 1.0);
+}
+
+int pacing_locked() {
+	return lockN;
+}
+
+double pacing_lock_speed() {
+	return lockN ? lockSpeed.load() : 1.0;
+}
+
+// One vblank: 1/n of a frame of emulated time, as samples to make. The time is
+// kept in emulated ns, not samples: the steer below changes how much one sample
+// stands for, and the frame's end has to stay where it is against the vblank.
+void pacing_vblank(long long ns) {
+	int n = lockN;
+	if (!n) return;
+	long long before = lockLastNs.exchange(ns);
+	// back from a stall the clock has paid for the time meanwhile
+	if (lockReset.exchange(0) || (before < 0) || (ns - before > LOCK_STALL_NS)) {
+		lockOwedNs = 0;
+		lockErr = 0;
+	}
+	Computer* comp = conf.zx;
+	if (!comp || conf.emu.fast || conf.emu.pause) {
+		lockOwedNs = 0;
+		return;
+	}
+	double speed = lockSpeed;
+	if (sndPlaybackActive()) {
+		int target = sndGetRingTargetBytes();
+		if (target > 0) {
+			lockErr += ((target - sndGetRingDistance()) - lockErr) / LOCK_TRIM_AVG;
+			double e = lockErr / target;
+			if (e > 1.0) e = 1.0;
+			if (e < -1.0) e = -1.0;
+			double trim = e * LOCK_TRIM_PPM / 1e6;
+			static long long told = -1;
+			if (xlog_on(XLG_SOUND, XLL_DEBUG) && ((told < 0) || (ns - told >= 10000000000LL))) {
+				told = ns;
+				xlog(XLG_SOUND, XLL_DEBUG, "vsync: the ring at %i of %i bytes, sound steered %+.0f ppm",
+					sndGetRingDistance(), target, -trim * 1e6);
+			}
+			// running dry: each sample spans less emulated time, so more of them
+			// are made for the same frame
+			sndSetLockScale(speed * (1.0 - trim));
+			// let go meanwhile (pacing_lock): its 1.0 is not to be lost under ours
+			if (!lockN) sndSetLockScale(1.0);
+		}
+	}
+	lockOwedNs += (double)comp->vid->nsPerFrame / n;
+	double per = sndNsPerOutSample();
+	if (per <= 0) return;
+	int samples = (int)(lockOwedNs / per);
+	lockOwedNs -= samples * per;
+	// nothing plays what is made past the high water: no more of it
+	if (sndPlaybackActive() && (sndGetRingDistance() >= SND_RING_HIGH_WATER)) return;
+	int maxNeed = (int)(LOCK_MAX_FRAMES * comp->vid->nsPerFrame / per);
+	conf.snd.need += samples;
+	if (conf.snd.need > maxNeed) conf.snd.need = maxNeed;
+	pace_wake();
 }
 
 long long paceClockNs() {

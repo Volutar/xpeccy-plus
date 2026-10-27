@@ -34,3 +34,8 @@ void dsync_stop();
 bool dsync_running();
 // a buffer swap with swap interval 1 has returned: Linux's vblank tick
 void dsync_swapped();
+// a new frame went into the window: the frame-time log counts them per vblank
+void dsync_frame_drawn();
+// the GL context was made with swap interval 1 (Linux, set at start)
+void dsync_swap_wait(bool on);
+bool dsync_swaps_wait();

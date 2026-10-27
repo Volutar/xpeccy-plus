@@ -245,6 +245,7 @@ class MainWin : public QWidget {
 	private slots:
 		void updateScreen(QScreen*);
 		void vsyncProbe();
+		void vsyncUpdate();
 		void updateSatellites();
 		void menuHide();
 		void optResize();
@@ -271,6 +272,7 @@ class MainWin : public QWidget {
 		bool relArmed = false;		// both release keys are down, nothing else since
 		QMetaObject::Connection screenGeometryConnection;
 		QMetaObject::Connection screenRateConnection;
+		int vsyncShown = 0;		// the rate x100 the VSync note last gave
 		QPoint fsHome;		// where the window goes back to from fullscreen, taken on the way in
 		xSatFilter* satFilter = nullptr;	// passes the tool windows' hotkeys on to this one
 		unsigned rzxSeen = 0;			// the recording the player was last told of

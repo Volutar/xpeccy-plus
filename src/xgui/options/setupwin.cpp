@@ -1036,6 +1036,12 @@ void SetupWin::start() {
 	ui.cbFullscreen->setChecked(conf.vid.fullScreen);
 	fullscreenTip(ui.cbFullscreen);
 	ui.cbKeepRatio->setChecked(conf.vid.keepRatio);
+	ui.cbVSync->setChecked(conf.vid.vsync);
+#if !defined(__WIN32) && !defined(__APPLE__)
+	// the swaps are the tick here, and only a GL context made with them waiting has them
+	ui.cbVSync->setEnabled(conf.vid.gl);
+	ui.cbVSync->setToolTip(conf.vid.gl ? "No tearing, steady motion; takes a restart" : "Needs OpenGL");
+#endif
 	setRFIndex(ui.cbScale, conf.vid.scale, 1);	// x2 if the file says something odd
 	ui.sldNoflic->setValue(noflic); chaflc();
 	ui.cbNoflicMode->setCurrentIndex(noflicMode);
@@ -1401,6 +1407,7 @@ void SetupWin::applyGlobal() {
 // video
 	conf.vid.fullScreen = ui.cbFullscreen->isChecked() ? 1 : 0;
 	conf.vid.keepRatio = ui.cbKeepRatio->isChecked() ? 1 : 0;
+	conf.vid.vsync = ui.cbVSync->isChecked() ? 1 : 0;
 	conf.vid.scale = getRFIData(ui.cbScale);
 	noflic = ui.sldNoflic->value();
 	noflicMode = ui.cbNoflicMode->currentIndex();

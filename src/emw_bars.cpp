@@ -24,6 +24,7 @@
 #include "xcore/rzxrecord.h"
 #include "filer.h"
 #include "xcore/vidrec.h"
+#include "xcore/pacing.h"
 #include "xcore/vscalers.h"
 
 #define TB_MIME "application/x-xpeccy-toolbar-item"
@@ -928,7 +929,9 @@ void MainWin::updateStatus() {
 	const xMachine* mac = xm_find(conf.macId);
 	sbMachine->setText(mac ? QString::fromLocal8Bit(mac->name.c_str()) : QString());
 	sbClock->setText(QString(" %0 MHz ").arg(xspeed_clock(), 0, 'g', 4));
-	sbFps->setText(conf.emu.pause ? QString(" paused ") : QString(" %0 fps ").arg(conf.vid.curfps, 0, 'f', 1));
+	// VSync said while it holds the machine to the display's rate
+	sbFps->setText(conf.emu.pause ? QString(" paused ") : QString(" %0 fps%1 ").arg(conf.vid.curfps, 0, 'f', 1)
+		.arg(pacing_locked() ? ", VSync" : ""));
 	// the light stays with no tape in: a click on it is the way to one
 	Tape* tape = comp->tape;
 	if (tapeLight != sbTapeShown) {
