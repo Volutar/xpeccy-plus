@@ -28,7 +28,7 @@ int sfill_id(const char*);
 #define SFILL_DIM_DEF	75
 #define SFILL_FADE_DEF	50
 #define SFILL_EDGE_DEF	12
-#define SFILL_STRETCH_DEF	0
+#define SFILL_STRETCH_DEF	50
 
 // Where the frame goes inside the window, in window pixels. The picture is
 // always drawn at a whole multiple of the dot, so this is the window itself in
