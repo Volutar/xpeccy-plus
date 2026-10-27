@@ -173,8 +173,12 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 			case XCUT_SIZEX1: case XCUT_SIZEX2: case XCUT_SIZEX3:
 			case XCUT_SIZEX4: case XCUT_SIZEX5: case XCUT_SIZEX6:
 				x = xkey - XCUT_SIZEX1 + 1;
-				if (x == conf.vid.scale) break;		// the size it already is
+				if ((x == conf.vid.scale) && !winFit) break;		// the size it already is
 				vid_set_zoom(x);
+				// a size is a window's: one maximized or resized is given it back
+				winFree = 0;
+				if (!conf.vid.fullScreen && frame->isMaximized())
+					frame->setWindowState(frame->windowState() & ~Qt::WindowMaximized);
 				updateWindow();
 				saveConfig();
 				setMessage(QString(" size x%0 ").arg(x));
@@ -295,7 +299,7 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 			case XCUT_RATIO:
 				vid_set_ratio(!conf.vid.keepRatio);
 				updateWindow();
-				setMessage(conf.vid.keepRatio ? " fullscreen: keep aspect " : " fullscreen: stretch ");
+				setMessage(conf.vid.keepRatio ? " keep aspect ratio " : " stretch to fill ");
 				saveConfig();
 				break;
 			case XCUT_MOUSE:

@@ -11,6 +11,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **The window can be maximized and resized**: at any size other than its scale's, the picture
+  is fitted as in fullscreen, with more border at the sides; a window closed maximized starts
+  maximized.
+
 - **SjASMPlus `CSPECTMAP` files load as labels**, alongside `LABELSLIST`: each label is
   placed by its physical address, so it lands on the right page on any machine.
 

@@ -48,9 +48,18 @@ int brd_mode_pcnt(int pcnt) {
 	return VID_BRD_OVERSCAN;
 }
 
+// the picture area of a window that is not the zoom's size, empty when it is
+static QSize fitArea;
+
+void vid_set_fit(const QSize& area) {
+	fitArea = area;
+	vid_upd_scale();
+}
+
 // Where the frame lands inside the window. In a window that is a whole number
-// of pixels per dot, so a dot is never split. Fullscreen fits the picture to
-// the screen instead, keeping its shape: at a screen's resolution, and through
+// of pixels per dot, so a dot is never split. Fullscreen, and a window of
+// another size - maximized, snapped, dragged - fit the picture to the room
+// there is instead, keeping its shape: at a screen's resolution, and through
 // a shader, a whole zoom is not worth the black bars it leaves. 'ignore aspect
 // ratio' stretches it to fill.
 void vid_upd_scale(const QSize& screenSize) {
@@ -61,17 +70,18 @@ void vid_upd_scale(const QSize& screenSize) {
 	int dwid;
 	int dhei;
 	vid_upd_crop(vid);					// the frame the border size asks for
-	if (conf.vid.fullScreen) {
+	if (conf.vid.fullScreen || !fitArea.isEmpty()) {
 		// Before the main window is shown, configuration has no monitor yet.
-		if (!fullscreenSize.isValid()) {
+		if (conf.vid.fullScreen && !fullscreenSize.isValid()) {
 #if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
 			fullscreenSize = QGuiApplication::primaryScreen()->size();
 #else
 			fullscreenSize = QApplication::desktop()->screenGeometry().size();
 #endif
 		}
-		dwid = fullscreenSize.width();
-		dhei = fullscreenSize.height();
+		const QSize& area = conf.vid.fullScreen ? fullscreenSize : fitArea;
+		dwid = area.width();
+		dhei = area.height();
 		if (conf.vid.keepRatio) {
 			// The height sets the scale on a screen wider than the picture.
 			// Rather than leave black beside it, show more border there, as

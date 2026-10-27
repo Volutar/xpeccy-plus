@@ -881,7 +881,8 @@ struct xConfig {
 	} next;
 	struct {
 		unsigned fullScreen:1;	// use fullscreen
-		unsigned keepRatio:1;	// keep ratio in fullscreen (add black borders)
+		unsigned maximized:1;	// the window was left maximized: it starts so
+		unsigned keepRatio:1;	// fullscreen, a maximized or resized window: keep the shape, else stretch
 		unsigned lowLatency:1;	// show each frame at once (low input lag), else buffer for smooth motion
 		int border;		// VID_BRD_* : how much border to show
 		int scale;		// x1..x4

@@ -1562,7 +1562,7 @@ Integer scaling, so every pixel is the same size</string>
                     <item>
                      <widget class="QCheckBox" name="cbKeepRatio">
                       <property name="toolTip">
-                       <string>Fullscreen: keep the shape, do not stretch</string>
+                       <string>Fullscreen, or a maximized or resized window: keep the shape, do not stretch</string>
                       </property>
                       <property name="text">
                        <string>Keep ratio</string>
