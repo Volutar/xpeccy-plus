@@ -21,10 +21,16 @@ before that point is upstream's history and is not repeated here.
   is fitted as in fullscreen, with more border at the sides; a window closed maximized starts
   maximized.
 
+- **The mellow palette**: softer colors, each kept near the classic one, easier on the eyes.
+  Pick it in View > ZX Palette. *(thanks to Volutar)*
+
 ### Fixed
 
 - **A Next program's UDP link no longer brings up the firewall prompt**: the link's own port
   opens to the network only with Server on the network.
+
+- **View > ZX Palette and Shaders show one tick**: a pick from the right-click menu no longer
+  leaves the old one ticked in the View menu. *(thanks to Volutar)*
 
 ## 2026.8.2 - 2026-10-27
 
