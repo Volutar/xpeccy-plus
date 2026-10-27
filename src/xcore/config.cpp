@@ -229,6 +229,7 @@ void saveConfig() {
 	fprintf(cfile, "pause.inactive = %s\n", YESNO(conf.pauseInactive));
 	fprintf(cfile, "port = %i\n", conf.port);
 	fprintf(cfile, "winpos = %i,%i\n",conf.xpos,conf.ypos);
+	fprintf(cfile, "winsize = %i,%i\n", conf.wsizeX, conf.wsizeY);
 	fprintf(cfile, "keywin.dock = %s\n", YESNO(conf.keywin.dock));
 	fprintf(cfile, "keywin.width = %i\n", conf.keywin.width);
 	if (conf.keywin.haspos)
@@ -832,6 +833,8 @@ void loadConfig() {
 	hotkeys_load_begin();
 	conf.xpos = -1;
 	conf.ypos = -1;
+	conf.wsizeX = 0;
+	conf.wsizeY = 0;
 	conf.macStart = MS_UNSET;	// asked on the first start
 	conf.macStartId.clear();
 	conf.keywin.dock = 0;
@@ -1342,6 +1345,13 @@ void loadConfig() {
 						if (vect.size() > 1) {
 							conf.xpos = strtol(vect[0].c_str(), NULL, 10);
 							conf.ypos = strtol(vect[1].c_str(), NULL, 10);
+						}
+					}
+					if (pnam == "winsize") {
+						vect = splitstr(pval, ",");
+						if (vect.size() > 1) {
+							conf.wsizeX = getRanged(vect[0].c_str(), 0, 32767);
+							conf.wsizeY = getRanged(vect[1].c_str(), 0, 32767);
 						}
 					}
 					if (pnam == "keywin.dock") conf.keywin.dock = arg.b;

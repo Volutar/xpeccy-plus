@@ -243,6 +243,8 @@ class MainWin : public QWidget {
 		void loadShader();
 		bool reloadMedia();
 		void fillPreview() { presentFrame(); }	// Options moved a side fill setting
+		void startSize();
+		void keepSize();
 	private slots:
 		void updateScreen(QScreen*);
 		void updateSatellites();
@@ -505,6 +507,8 @@ class MainWin : public QWidget {
 		unsigned winFree:1;	// given another size by the user or the system, not maximized
 		unsigned stateMoving:1;	// maximized or restored: laid out once its size has come
 		QSize wszAsked;		// the zoom's size, the picture's area the window was last given
+		QSize frameAsked;	// ...and the frame's around it, bars and all
+		QSize restoreFree;	// started maximized: the size the first Restore gives (startSize)
 		QSize frameSeen;	// the frame's size at the last look: did it change, or only the bars
 		bool maxWanted();
 		void fitWindow();

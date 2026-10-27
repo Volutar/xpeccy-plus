@@ -227,6 +227,7 @@ void MainWin::updateWindow() {
 			setFixedSize(wsz);
 			frame->layout()->activate();
 			wszAsked = wsz;
+			frameAsked = frame->size();
 		}
 		// ...and then left to be resized: maximized, snapped, dragged (fitWindow)
 		frame->layout()->setSizeConstraint(QLayout::SetDefaultConstraint);
@@ -243,6 +244,18 @@ void MainWin::updateWindow() {
 	bufSize = bytesPerLine * comp->vid->full.y * (comp->vid->linedbl ? 2 : 1);
 	updateHead();
 	block = 0;
+	// started maximized: the first Restore gets the size the window had by hand
+	if (restoreFree.isValid() && !maxed && !conf.vid.fullScreen && frame->isVisible()) {
+		const QSize sz = restoreFree;
+		restoreFree = QSize();
+		QTimer::singleShot(0, this, [this, sz]() {
+			frame->resize(sz);
+			const QRect avail = frame->screen()->availableGeometry();
+			const QRect fg = frame->frameGeometry();
+			frame->move(std::max(avail.left(), std::min(fg.x(), avail.right() + 1 - fg.width())),
+				std::max(avail.top(), std::min(fg.y(), avail.bottom() + 1 - fg.height())));
+		});
+	}
 	if (winFit && !backMax) fitWindow();		// the area as the bars leave it
 	emit s_keywin_snap();		// a docked keyboard follows the new size
 }
@@ -1230,6 +1243,41 @@ void MainWin::resizeEvent(QResizeEvent*) {
 	fitWindow();
 }
 
+// The size the window was left at by hand, given back at the start, as far as
+// the screen holds it. Under fullscreen it is the size the way out goes back to.
+void MainWin::startSize() {
+	QSize sz(conf.wsizeX, conf.wsizeY);
+	if (sz.isEmpty()) return;
+	if (QScreen* scr = frame->screen()) {
+		const QSize deco = frame->frameGeometry().size() - frame->size();
+		sz = sz.boundedTo(scr->availableGeometry().size() - deco);
+	}
+	if (conf.vid.maximized) {
+		restoreFree = sz;		// the system knows only the zoom's size to restore to
+	} else if (conf.vid.fullScreen) {
+		winFree = 1;
+		fsFree = sz;
+	} else {
+		frame->resize(sz);
+	}
+}
+
+// The size for the next start: the one the window has, or goes back to from
+// maximized or fullscreen - none when that is the zoom's own. Taken on the way
+// out, when it is settled: during a maximize the resize comes before the state.
+void MainWin::keepSize() {
+	QSize sz;
+	if (conf.vid.fullScreen) {
+		sz = conf.vid.maximized ? fsNormal.size() : (winFree ? fsFree : QSize());
+	} else {
+		sz = frame->isMaximized() ? frame->normalGeometry().size() : frame->size();
+	}
+	if (conf.vid.maximized && restoreFree.isValid()) sz = restoreFree;	// not restored yet
+	if (!sz.isValid() || (sz == frameAsked)) sz = QSize(0, 0);
+	conf.wsizeX = sz.width();
+	conf.wsizeY = sz.height();
+}
+
 // a maximized window, as the system has it; fullscreen comes first
 bool MainWin::maxWanted() {
 	return !conf.vid.fullScreen && (frame->windowState() & Qt::WindowMaximized);
@@ -1946,6 +1994,7 @@ void MainWin::closeEvent(QCloseEvent* ev) {
 		layouts_save();		// their own files, not the settings one
 		xm_save_nvram();
 		xm_save_over();		// ...and what the user changed on the machine
+		keepSize();
 		saveConfig();
 #ifdef USENETWORK
 		closeServer();

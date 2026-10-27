@@ -832,6 +832,8 @@ struct xConfig {
 	unsigned pauseInactive:1;	// pause while another application has the focus
 	int xpos;			// window position
 	int ypos;
+	int wsizeX;			// window size, when resized by hand (the frame's inside); 0: the zoom's
+	int wsizeY;
 	QList<xRomset> rsList;
 	QList<xLayout> layList;
 	QList<xBookmark> bookmarkList;

@@ -904,6 +904,7 @@ int main(int ac,char** av) {
 		}
 		mframe.show();
 		mwin.updateWindow();
+		mwin.startSize();
 		mwin.rzxWatch();
 		conf.running = 1;
 		// Nothing paints the window until a frame arrives, so the event loop
