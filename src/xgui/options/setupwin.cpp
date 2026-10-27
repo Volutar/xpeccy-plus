@@ -495,6 +495,10 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.cbEarBack->addItem("Issue 3", EAR_ISSUE3);
 	ui.cbEarBack->addItem("Issue 2", EAR_ISSUE2);
 	ui.cbEarBack->addItem("Nothing", EAR_NONE);
+	ui.cbSideFill->addItem("Black", SFILL_BLACK);
+	ui.cbSideFill->addItem("Stretched edges", SFILL_EDGES);
+	ui.cbSideFill->addItem("Mirror", SFILL_MIRROR);
+	makeFillPopup();
 	ui.bszsld->setMaximum(VID_BRD_OVERSCAN);	// one tick per border size
 	ui.sldSpeed->setMaximum(XSPD_MAX);		// one tick per step of the speed scale
 	ui.cbCpuFrq->addItem("3.5 MHz");
@@ -1036,6 +1040,8 @@ void SetupWin::start() {
 	ui.cbFullscreen->setChecked(conf.vid.fullScreen);
 	fullscreenTip(ui.cbFullscreen);
 	ui.cbKeepRatio->setChecked(conf.vid.keepRatio);
+	fillToUi();
+	fillTake();
 	setRFIndex(ui.cbScale, conf.vid.scale, 1);	// x2 if the file says something odd
 	ui.sldNoflic->setValue(noflic); chaflc();
 	ui.cbNoflicMode->setCurrentIndex(noflicMode);
@@ -1403,6 +1409,8 @@ void SetupWin::applyGlobal() {
 // video
 	conf.vid.fullScreen = ui.cbFullscreen->isChecked() ? 1 : 0;
 	conf.vid.keepRatio = ui.cbKeepRatio->isChecked() ? 1 : 0;
+	if (conf.vid.gl) conf.vid.sideFill = getRFIData(ui.cbSideFill);
+	fillTake();		// the pop-up's values are in conf already: now they stay
 	conf.vid.scale = getRFIData(ui.cbScale);
 	noflic = ui.sldNoflic->value();
 	noflicMode = ui.cbNoflicMode->currentIndex();
@@ -1603,6 +1611,7 @@ void SetupWin::openLogDir() {
 }
 
 void SetupWin::reject() {
+	fillPut();		// shown while it was set, and not applied
 	hide();
 	emit closed();
 }
@@ -3257,9 +3266,103 @@ void SetupWin::buildRecording() {
 	grid->addWidget(adbox, 0, 4);
 }
 
+// The side fill's settings, in the order of the pop-up's rows
+static int* fill_val(int i) {
+	int* vals[5] = {&conf.vid.fillBlur, &conf.vid.fillDim, &conf.vid.fillFade, &conf.vid.fillEdge, &conf.vid.fillStretch};
+	return vals[i];
+}
+
+// The side fill's strength: a name and a slider each, the ranges being short and
+// fixed. Every move goes to conf and the window at once, so it can be judged.
+void SetupWin::makeFillPopup() {
+	static const struct {const char* name; const char* tip; int min; int max; int step; int tick; int def;} rows[5] = {
+		{"Blur", "How soft the fill is, from crisp to a wide glow", SFILL_BLUR_MIN, SFILL_BLUR_MAX, 1, 1, SFILL_BLUR_DEF},
+		{"Brightness", "How bright the fill is beside the picture", SFILL_DIM_MIN, 100, 5, 10, SFILL_DIM_DEF},
+		{"Fade", "How much darker it gets towards the screen's edge", 0, 100, 5, 10, SFILL_FADE_DEF},
+		{"Edge", "How gently the picture runs into the fill", 0, SFILL_EDGE_MAX, 1, 4, SFILL_EDGE_DEF},
+		{"Stretch", "Mirror: the reflection drawn out towards the screen's edge", 0, 100, 5, 10, SFILL_STRETCH_DEF},
+	};
+	fillPop = new QFrame(this, Qt::Popup);
+	fillPop->setFrameShape(QFrame::StyledPanel);
+	fillPop->setAutoFillBackground(true);
+	QGridLayout* lay = new QGridLayout(fillPop);
+	for (int i = 0; i < 5; i++) {
+		QLabel* lab = new QLabel(tr(rows[i].name));
+		lab->setToolTip(tr(rows[i].tip));
+		xSlider* sld = new xSlider;
+		sld->setOrientation(Qt::Horizontal);
+		sld->setRange(rows[i].min, rows[i].max);
+		sld->setSingleStep(rows[i].step);
+		sld->setPageStep(rows[i].tick);
+		sld->setTickPosition(QSlider::TicksBelow);
+		sld->setTickInterval(rows[i].tick);
+		sld->setMinimumWidth(200);
+		sld->setToolTip(lab->toolTip());
+		lay->addWidget(lab, i, 0);
+		lay->addWidget(sld, i, 1);
+		sldFill[i] = sld;
+		connect(sld, &QSlider::valueChanged, this, [this, i](int val) {
+			*fill_val(i) = val;
+			emit s_fill();
+		});
+	}
+	QPushButton* def = new QPushButton(tr("Defaults"));
+	def->setObjectName("fillDefaults");
+	def->setToolTip(tr("Every slider back to where it starts"));
+	lay->addWidget(def, 5, 1, Qt::AlignRight);
+	connect(def, &QPushButton::released, this, [this]() {
+		for (int i = 0; i < 5; i++)
+			sldFill[i]->setValue(rows[i].def);
+	});
+	connect(ui.tbSideFill, &QToolButton::released, this, [this]() {
+		fillPop->adjustSize();
+		fillPop->move(ui.tbSideFill->mapToGlobal(QPoint(0, ui.tbSideFill->height())));
+		fillPop->show();
+	});
+	connect(ui.cbSideFill, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
+		if (!conf.vid.gl) return;
+		conf.vid.sideFill = getRFIData(ui.cbSideFill);
+		ui.tbSideFill->setEnabled(conf.vid.sideFill != SFILL_BLACK);
+		sldFill[4]->setEnabled(conf.vid.sideFill == SFILL_MIRROR);
+		emit s_fill();
+	});
+}
+
+// The plain picture has black only; the setting stays for a run with OpenGL.
+void SetupWin::fillToUi() {
+	ui.cbSideFill->blockSignals(true);
+	setRFIndex(ui.cbSideFill, conf.vid.gl ? conf.vid.sideFill : SFILL_BLACK);
+	ui.cbSideFill->blockSignals(false);
+	ui.cbSideFill->setEnabled(conf.vid.gl);
+	ui.tbSideFill->setEnabled(conf.vid.gl && (conf.vid.sideFill != SFILL_BLACK));
+	sldFill[4]->setEnabled(conf.vid.sideFill == SFILL_MIRROR);
+	for (int i = 0; i < 5; i++) {
+		sldFill[i]->blockSignals(true);
+		sldFill[i]->setValue(*fill_val(i));
+		sldFill[i]->blockSignals(false);
+	}
+}
+
+void SetupWin::fillTake() {
+	fillWas[0] = conf.vid.sideFill;
+	for (int i = 0; i < 5; i++)
+		fillWas[i + 1] = *fill_val(i);
+}
+
+void SetupWin::fillPut() {
+	bool same = (conf.vid.sideFill == fillWas[0]);
+	for (int i = 0; i < 5; i++)
+		same = same && (*fill_val(i) == fillWas[i + 1]);
+	if (same) return;
+	conf.vid.sideFill = fillWas[0];
+	for (int i = 0; i < 5; i++)
+		*fill_val(i) = fillWas[i + 1];
+	emit s_fill();
+}
+
 // the first column of the Video page's groups, one width for all of them
 void SetupWin::alignVideoLabels() {
-	QList<QLabel*> col = QList<QLabel*>() << ui.label_3 << ui.labPalPreset << ui.labShader
+	QList<QLabel*> col = QList<QLabel*>() << ui.label_3 << ui.labPalPreset << ui.labShader << ui.labSideFill
 		<< ui.label_12 << ui.antiflickerModeLabel << ui.label_13 << ui.label_5
 		<< labRecSrc << labRecOut << labRecFfm;
 	// Picture sets its column in the .ui, a label may be wider in a bigger font

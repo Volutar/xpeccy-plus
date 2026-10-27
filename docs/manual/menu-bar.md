@@ -6,7 +6,7 @@
 | Menu | What is in it |
 |---|---|
 | **File** | open and save files, recent files, quick save and load, **Options** |
-| **View** | window size, border, fullscreen, shaders and palette, toolbar and status bar, virtual keyboard, input overlay |
+| **View** | window size, border, fullscreen, side fill, shaders and palette, toolbar and status bar, virtual keyboard, input overlay |
 | **Favorites** | files you keep at hand |
 | **Machine** | which machine runs, reset, turbo, pause, fast mode, slow motion, fast forward, rewind |
 | **Input** | keyboard and mouse grab, keymaps, gamepads |

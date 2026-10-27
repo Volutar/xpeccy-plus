@@ -48,6 +48,21 @@ int brd_mode_pcnt(int pcnt) {
 	return VID_BRD_OVERSCAN;
 }
 
+static const char* sfillTab[] = {"black", "edges", "mirror", NULL};
+
+const char* sfill_name(int mode) {
+	if ((mode < SFILL_BLACK) || (mode > SFILL_MIRROR)) mode = SFILL_BLACK;
+	return sfillTab[mode];
+}
+
+int sfill_id(const char* nam) {
+	for (int i = 0; sfillTab[i]; i++) {
+		if (!strcmp(sfillTab[i], nam))
+			return i;
+	}
+	return SFILL_BLACK;
+}
+
 // the picture area of a window that is not the zoom's size, empty when it is
 static QSize fitArea;
 

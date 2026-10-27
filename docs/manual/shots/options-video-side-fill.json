@@ -1,0 +1,20 @@
+{
+  "config": {
+    "GENERAL": {
+      "machine": "zx128"
+    },
+    "VIDEO": {
+      "sidefill": "mirror"
+    }
+  },
+  "steps": [
+    ["wait", 3000],
+    ["run", "run-action key.options"],
+    ["wait", 1200],
+    ["click", "pageList", 60, 48],
+    ["wait", 800],
+    ["click", "tbSideFill", 8, 8],
+    ["wait", 800]
+  ],
+  "frames": []
+}

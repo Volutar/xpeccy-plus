@@ -242,6 +242,9 @@ class MainWin : public QWidget {
 		void kRelease(QKeyEvent*);
 		void loadShader();
 		bool reloadMedia();
+		void fillPreview() { presentFrame(); }	// Options moved a side fill setting
+		void startSize();
+		void keepSize();
 	private slots:
 		void updateScreen(QScreen*);
 		void updateSatellites();
@@ -270,6 +273,8 @@ class MainWin : public QWidget {
 		bool relArmed = false;		// both release keys are down, nothing else since
 		QMetaObject::Connection screenGeometryConnection;
 		QPoint fsHome;		// where the window goes back to from fullscreen, taken on the way in
+		QSize fsFree;		// and the size it goes back to, if it had one of its own (winFree)
+		QRect fsNormal;		// a maximized one: what Restore gives back afterwards
 		xSatFilter* satFilter = nullptr;	// passes the tool windows' hotkeys on to this one
 		unsigned rzxSeen = 0;			// the recording the player was last told of
 		void releaseChord(QKeyEvent*, bool);
@@ -405,6 +410,7 @@ class MainWin : public QWidget {
 		QMenu* sizeMenu;
 		QMenu* brdMenu;
 		void fillBorderMenu();
+		QMenu* fillMenu;
 		QMenu* recentMenu;
 		void fillRecent();
 		// the toolbar and the status bar (emw_bars.cpp)
@@ -501,6 +507,8 @@ class MainWin : public QWidget {
 		unsigned winFree:1;	// given another size by the user or the system, not maximized
 		unsigned stateMoving:1;	// maximized or restored: laid out once its size has come
 		QSize wszAsked;		// the zoom's size, the picture's area the window was last given
+		QSize frameAsked;	// ...and the frame's around it, bars and all
+		QSize restoreFree;	// started maximized: the size the first Restore gives (startSize)
 		QSize frameSeen;	// the frame's size at the last look: did it change, or only the bars
 		bool maxWanted();
 		void fitWindow();
@@ -578,6 +586,20 @@ class MainWin : public QWidget {
 		QOpenGLShader* frg_shd;
 		QOpenGLVertexArrayObject vao;
 		QOpenGLBuffer vbo;
+		// the side fill (emw_opengl.cpp): the frame shrunk and blurred in fillTex[0]
+		QOpenGLShaderProgram fillDown;
+		QOpenGLShaderProgram fillBlur;
+		QOpenGLShaderProgram fillDraw;
+		GLuint fillTex[2] = {0, 0};
+		GLuint fillFbo[2] = {0, 0};
+		QSize fillSize;
+		GLuint fillPic = 0;		// Mirror: the picture as shown, read back from the framebuffer
+		QSize fillPicSize;
+		bool fillOn = false;		// this paint has drawn it
+		void initFill();
+		bool fillWanted();
+		void prepareFill();
+		void drawFill(const QRect* clip = nullptr);
 #endif
 #endif
 };

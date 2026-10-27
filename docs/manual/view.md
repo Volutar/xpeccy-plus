@@ -26,14 +26,14 @@ of them changes.
 
 The window can also be maximized, or resized by dragging its edges or snapping it to
 half of the screen. At any size other than its scale's, the picture is fitted to the
-window as in fullscreen: as big as fits, with black bars where it does not fill, and
-more border at the sides as far as the machine's frame goes (see
-[Fullscreen](#fullscreen)). A size picked in **View > Size**, or a maximized window
-restored, brings back the scale's size with its whole pixels. On macOS the green
+window as in fullscreen: as big as fits, with black bars where it does not fill (or a
+side fill, see [Fullscreen](#fullscreen)), and more border at the sides up to the full
+border. A size picked in **View > Size** brings back the scale's size with its whole
+pixels; a maximized window restored gets the size it had before. On macOS the green
 button is fullscreen; Option-click on it maximizes the window.
 
-A maximized window is remembered: if the program is closed maximized, it starts
-maximized next time, on the same screen.
+The window's size is remembered: if the program is closed maximized, it starts maximized
+next time, on the same screen; closed at a size of its own, it starts at that size.
 
 ## Border
 
@@ -74,9 +74,27 @@ from there is in [Fullscreen](main-window.md#fullscreen).
 resized:
 
 - ticked - the picture keeps its shape. On a screen or window wider than the picture,
-  more border is shown at the sides instead of black bars, as far as the machine's
-  frame goes;
+  more border is shown at the sides instead of black bars, up to the **full** border
+  (with **overscan** chosen, as far as the machine's frame goes);
 - not ticked - the picture is stretched to fill the whole screen or window.
+
+```{index} Side Fill
+```
+
+**View > Side Fill** sets what fills the room the picture leaves free: at the sides of a
+wide screen once the machine's frame runs out, above and below it in a tall window.
+
+- **Black** - nothing, the default;
+- **Stretched Edges** - the picture's outer rows and columns carried outwards, blurred and
+  dimmed, like a glow of the border;
+- **Mirror** - the picture as it is shown, through the shader and with a curved screen's
+  black corners too, reflected at its edge, blurred and dimmed.
+
+![Mirror in fullscreen](images/view-side-fill.png)
+
+It is the same setting as **Side fill** on the **Video** page of **Options**, where its
+blur and brightness are set too (see [Side fill](options-video.md#side-fill)). Without
+OpenGL the menu is grayed out and the room stays black.
 
 Fullscreen is remembered: if the program is closed in fullscreen, it starts in
 fullscreen next time.
@@ -94,7 +112,10 @@ CRT tube, a curved screen, the blur of a TV signal. Pick one in **View > Shaders
 the **Shader** list of **Options > Video**; **None** turns it off. The program comes with
 twenty shaders built in, and one of them is on by default.
 
-The shader is not used at **x1**, where there is no room for its effect. When the
+The shader is not used at **x1**, where there is no room for its effect. With **None**,
+a picture that is not a whole number of screen pixels per dot - in fullscreen, in a
+maximized window - has only the seams between dots softened, so every dot keeps the same
+width and the picture stays sharp. When the
 computer's graphics cannot run shaders, the list holds **None** only. With no usable OpenGL at
 all, on an old graphics chip, the picture is drawn without it, and the window says so at
 the start; `--no-gl` does the same on purpose.

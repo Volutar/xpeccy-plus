@@ -8,6 +8,7 @@
 #include <QOpenGLContext>
 #endif
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 #if defined(USEOPENGL) && !BLOCKGL
@@ -47,19 +48,162 @@ const char* defaultVertexShaderBody() {
 		"}\n";
 }
 
+// No shader chosen. At a whole zoom each texel is a block of whole pixels and is
+// taken as it is. At any other scale (u_smooth) the texel's middle stays flat and
+// only the one pixel where two texels meet is mixed of both, so the dots keep one
+// width and the picture stays sharp. The mix is done here, from the NEAREST texture.
 const char* defaultFragmentShaderBody() {
 	return
 		"in vec2 v_uv;\n"
 		"out vec4 fragColor;\n"
 		"uniform sampler2D u_tex;\n"
+		"uniform int u_smooth;\n"
+		"uniform vec2 rubyTextureSize;\n"
+		"uniform vec2 rubyOutputSize;\n"
 		"void main() {\n"
-		"    fragColor = texture(u_tex, v_uv);\n"
+		"    if (u_smooth == 0) {\n"
+		"        fragColor = texture(u_tex, v_uv);\n"
+		"        return;\n"
+		"    }\n"
+		"    vec2 scale = rubyOutputSize / rubyTextureSize;\n"
+		"    vec2 texel = v_uv * rubyTextureSize;\n"
+		"    vec2 cell = floor(texel);\n"
+		"    vec2 off = texel - cell - 0.5;\n"
+		"    vec2 flat_half = max(0.5 - 0.5 / scale, vec2(0.0));\n"
+		"    vec2 p = cell + (off - clamp(off, -flat_half, flat_half)) * scale;\n"
+		"    ivec2 i0 = ivec2(floor(p));\n"
+		"    vec2 w = p - floor(p);\n"
+		"    ivec2 hi = ivec2(rubyTextureSize) - 1;\n"
+		"    vec4 a = texelFetch(u_tex, clamp(i0, ivec2(0), hi), 0);\n"
+		"    vec4 b = texelFetch(u_tex, clamp(i0 + ivec2(1, 0), ivec2(0), hi), 0);\n"
+		"    vec4 c = texelFetch(u_tex, clamp(i0 + ivec2(0, 1), ivec2(0), hi), 0);\n"
+		"    vec4 d = texelFetch(u_tex, clamp(i0 + ivec2(1, 1), ivec2(0), hi), 0);\n"
+		// mixed as light, gamma 2.2: a mix of the stored values is darker than
+		// either side's light, and the seams would show as a moire
+		"    const vec3 g = vec3(2.2);\n"
+		"    vec3 m = mix(mix(pow(a.rgb, g), pow(b.rgb, g), w.x), mix(pow(c.rgb, g), pow(d.rgb, g), w.x), w.y);\n"
+		"    fragColor = vec4(pow(m, 1.0 / g), 1.0);\n"
 		"}\n";
 }
 
 QString composeShader(const char* body) {
 	return QString::fromLatin1(glslVersionPrefix(currentContextIsGLES()))
 	     + QString::fromLatin1(body);
+}
+
+// -----------------------------------------------------------------------------
+// Side fill: the room beside a fitted picture. The frame is shrunk to a few
+// dozen texels a side, blurred there, and drawn over the whole view with the
+// small texture's own wrap mode (clamp or mirror) carrying it past the edge.
+// The picture is drawn over the middle afterwards.
+// -----------------------------------------------------------------------------
+
+// every pass covers its whole target; the fragment's position is all it needs
+const char* fillVertexShaderBody() {
+	return
+		"layout(location=0) in vec2 a_pos;\n"
+		"void main() {\n"
+		"    gl_Position = vec4(a_pos * 2.0 - 1.0, 0.0, 1.0);\n"
+		"}\n";
+}
+
+// one texel = the average of a block of source texels: read one by one from the
+// frame (NEAREST, no mipmaps), or one sample of the mipmap level that size
+// (u_lod, the shown picture - a block there is a thousand pixels and more).
+// u_blk: source texels per texel here, fractional for the shown picture;
+// u_flip: the source's rows go bottom up, as a framebuffer's do
+const char* fillDownShaderBody() {
+	return
+		"uniform sampler2D u_src;\n"
+		"uniform vec2 u_blk;\n"
+		"uniform int u_flip;\n"
+		"uniform float u_lod;\n"
+		"out vec4 fragColor;\n"
+		"void main() {\n"
+		"    ivec2 sz = textureSize(u_src, 0);\n"
+		"    if (u_lod >= 0.0) {\n"
+		"        vec2 uv = (floor(gl_FragCoord.xy) + 0.5) * u_blk / vec2(sz);\n"
+		"        if (u_flip != 0) uv.y = 1.0 - uv.y;\n"
+		"        fragColor = vec4(textureLod(u_src, uv, u_lod).rgb, 1.0);\n"
+		"        return;\n"
+		"    }\n"
+		"    ivec2 org = ivec2(floor(gl_FragCoord.xy) * u_blk);\n"
+		"    ivec2 end = min(ivec2(ceil((floor(gl_FragCoord.xy) + 1.0) * u_blk)), sz);\n"
+		"    vec3 sum = vec3(0.0);\n"
+		"    float n = 0.0;\n"
+		"    for (int y = org.y; y < end.y; y++) {\n"
+		"        for (int x = org.x; x < end.x; x++) {\n"
+		"            sum += texelFetch(u_src, ivec2(x, (u_flip != 0) ? sz.y - 1 - y : y), 0).rgb;\n"
+		"            n += 1.0;\n"
+		"        }\n"
+		"    }\n"
+		"    fragColor = vec4(sum / max(n, 1.0), 1.0);\n"
+		"}\n";
+}
+
+// 9-tap gaussian, sigma 2 texels, along u_dir (one texel in uv)
+const char* fillBlurShaderBody() {
+	return
+		"uniform sampler2D u_src;\n"
+		"uniform vec2 u_dir;\n"
+		"out vec4 fragColor;\n"
+		"const float w[5] = float[5](0.2042, 0.1802, 0.1238, 0.0663, 0.0276);\n"
+		"void main() {\n"
+		"    vec2 uv = gl_FragCoord.xy / vec2(textureSize(u_src, 0));\n"
+		"    vec3 c = texture(u_src, uv).rgb * w[0];\n"
+		"    for (int i = 1; i < 5; i++) {\n"
+		"        c += texture(u_src, uv + u_dir * float(i)).rgb * w[i];\n"
+		"        c += texture(u_src, uv - u_dir * float(i)).rgb * w[i];\n"
+		"    }\n"
+		"    fragColor = vec4(c, 1.0);\n"
+		"}\n";
+}
+
+// u_pic: the picture in framebuffer pixels from the bottom left, as drawPicture's viewport;
+// u_ramp: framebuffer pixels from the picture's edge, at full brightness, to the full dimming;
+// u_stretch: k of ln(1 + k*d) / k, d picture sizes out from the edge - the reflection drawn
+// out like pulled rubber: as it is by the picture, 1 + k*d times wider further out, and its
+// far part off the screen
+const char* fillDrawShaderBody() {
+	return
+		"uniform sampler2D u_src;\n"
+		"uniform vec4 u_pic;\n"
+		"uniform vec2 u_view;\n"
+		"uniform float u_dim;\n"
+		"uniform float u_fade;\n"
+		"uniform float u_ramp;\n"
+		"uniform float u_stretch;\n"
+		"out vec4 fragColor;\n"
+		"void main() {\n"
+		"    vec2 p = (gl_FragCoord.xy - u_pic.xy) / u_pic.zw;\n"
+		"    if (u_stretch > 0.0) {\n"
+		"        vec2 lo = max(-p, vec2(0.0));\n"
+		"        vec2 hi = max(p - 1.0, vec2(0.0));\n"
+		"        p += lo - log(1.0 + u_stretch * lo) / u_stretch;\n"
+		"        p -= hi - log(1.0 + u_stretch * hi) / u_stretch;\n"
+		"    }\n"
+		"    vec3 c = texture(u_src, vec2(p.x, 1.0 - p.y)).rgb;\n"
+		"    vec2 lo = max(u_pic.xy, vec2(1.0));\n"
+		"    vec2 hi = max(u_view - u_pic.xy - u_pic.zw, vec2(1.0));\n"
+		"    vec2 out_lo = (u_pic.xy - gl_FragCoord.xy) / lo;\n"
+		"    vec2 out_hi = (gl_FragCoord.xy - u_pic.xy - u_pic.zw) / hi;\n"
+		"    vec2 d = max(max(out_lo, out_hi), vec2(0.0));\n"
+		"    float f = clamp(max(d.x, d.y), 0.0, 1.0);\n"
+		"    vec2 px = max(max(u_pic.xy - gl_FragCoord.xy, gl_FragCoord.xy - u_pic.xy - u_pic.zw), vec2(0.0));\n"
+		"    float k = mix(1.0, u_dim, smoothstep(0.0, max(u_ramp, 1.0), max(px.x, px.y)));\n"
+		"    fragColor = vec4(c * k * (1.0 - u_fade * f), 1.0);\n"
+		"}\n";
+}
+
+bool linkFill(QOpenGLShaderProgram& prg, const char* frag) {
+	prg.removeAllShaders();
+	if (prg.addShaderFromSourceCode(QOpenGLShader::Vertex, composeShader(fillVertexShaderBody()))
+	    && prg.addShaderFromSourceCode(QOpenGLShader::Fragment, composeShader(frag))
+	    && prg.link())
+		return true;
+	xlog(XLG_GL, XLL_WARN, "side fill: %s", prg.log().toLocal8Bit().data());
+	prg.removeAllShaders();
+	return false;
 }
 
 // -----------------------------------------------------------------------------
@@ -294,6 +438,7 @@ void MainWin::initializeGL() {
 	                      reinterpret_cast<void *>(2 * sizeof(GLfloat)));
 	vbo.release();
 	vao.release();
+	initFill();
 #endif
 
 	loadShader();
@@ -309,9 +454,172 @@ void MainWin::cleanupGL() {
 	if (vbo.isCreated()) vbo.destroy();
 	prg.removeAllShaders();
 	glDeleteTextures(4, texids);
+	fillDown.removeAllShaders();
+	fillBlur.removeAllShaders();
+	fillDraw.removeAllShaders();
+	glDeleteFramebuffers(2, fillFbo);
+	glDeleteTextures(2, fillTex);
+	glDeleteTextures(1, &fillPic);
 	glw->doneCurrent();
 #endif
 }
+
+#if !ISLEGACYGL
+// The side fill's programs and its two small render targets. If any of it
+// fails the fill is not drawn - black, as with no fill.
+void MainWin::initFill() {
+	glGenTextures(2, fillTex);
+	glGenFramebuffers(2, fillFbo);
+	fillSize = QSize(1, 1);
+	glGenTextures(1, &fillPic);
+	glBindTexture(GL_TEXTURE_2D, fillPic);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);	// with mipmaps when they are made
+	fillPicSize = QSize();
+	bool ok = true;
+	for (int i = 0; i < 2; i++) {
+		glBindTexture(GL_TEXTURE_2D, fillTex[i]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+		glBindFramebuffer(GL_FRAMEBUFFER, fillFbo[i]);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fillTex[i], 0);
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) ok = false;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, glw->defaultFramebufferObject());
+	glBindTexture(GL_TEXTURE_2D, 0);
+	if (!ok) xlog(XLG_GL, XLL_WARN, "side fill: framebuffer incomplete");
+	if (!ok || !linkFill(fillDown, fillDownShaderBody()) || !linkFill(fillBlur, fillBlurShaderBody())
+	    || !linkFill(fillDraw, fillDrawShaderBody()))
+		fillDraw.removeAllShaders();		// fillWanted() looks at this one
+}
+
+// a fill is chosen, there is a frame, and the picture leaves room beside it
+bool MainWin::fillWanted() {
+	if ((conf.vid.sideFill == SFILL_BLACK) || !curtxid || !fillDraw.isLinked()) return false;
+	return (drawX > 0) || (drawY > 0) || (drawX + drawW < width()) || (drawY + drawH < height());
+}
+
+// The picture shrunk into fillTex[0] and blurred there, across and down. Mirror
+// reflects the picture as it is shown - through the shader, a curved screen and
+// its black corners too - so it is read back from the framebuffer, drawn already;
+// Stretched edges carries the frame's own edge out, which a curved screen leaves
+// black. The wrap mode is set before the blur, so the blur at the edge already
+// sees what is drawn past it.
+void MainWin::prepareFill() {
+	Video* vid = conf.zx->vid;
+	const bool mirror = (conf.vid.sideFill == SFILL_MIRROR);
+	const int blk = qBound(SFILL_BLUR_MIN, conf.vid.fillBlur, SFILL_BLUR_MAX);	// the blur is 2 texels: 2 * blk dots
+	QSize sz((vid->vsze.x + blk - 1) / blk, (vid->vsze.y + blk - 1) / blk);
+	GLuint src = curtxid;
+	QSize srcSize(vid->vsze.x * 2, vid->vsze.y);		// two frame texels per dot across
+	if (mirror) {
+		const qreal r = widgetDpr(this);
+		srcSize = QSize(int(drawW * r + 0.5), int(drawH * r + 0.5));
+		glBindTexture(GL_TEXTURE_2D, fillPic);
+		if (srcSize != fillPicSize) {
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, srcSize.width(), srcSize.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+			fillPicSize = srcSize;
+		}
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, int(drawX * r + 0.5), int(drawY * r + 0.5),
+			srcSize.width(), srcSize.height());
+		src = fillPic;
+	}
+	const GLfloat bx = GLfloat(srcSize.width()) / sz.width();
+	const GLfloat by = GLfloat(srcSize.height()) / sz.height();
+	// A strong blur leaves few texels here, each a long loop over the picture's
+	// pixels: then the mipmaps are cheaper (measured: 0.08 ms against 0.20 at
+	// Blur 8 on an RTX 4070), and dearer at Blur 2, where the loops are short.
+	const bool useMip = mirror && (sz.width() * sz.height() < 8000);
+	if (mirror) {
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, useMip ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+		if (useMip) glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	const GLint wrap = mirror ? GL_MIRRORED_REPEAT : GL_CLAMP_TO_EDGE;
+	for (int i = 0; i < 2; i++) {
+		glBindTexture(GL_TEXTURE_2D, fillTex[i]);
+		if (sz != fillSize)
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, sz.width(), sz.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+	}
+	fillSize = sz;
+	glDisable(GL_BLEND);
+	glViewport(0, 0, sz.width(), sz.height());
+	glActiveTexture(GL_TEXTURE0);
+	vao.bind();
+	glBindFramebuffer(GL_FRAMEBUFFER, fillFbo[0]);
+	fillDown.bind();
+	fillDown.setUniformValue("u_src", 0);
+	fillDown.setUniformValue("u_blk", bx, by);
+	fillDown.setUniformValue("u_flip", GLint(mirror ? 1 : 0));
+	fillDown.setUniformValue("u_lod", GLfloat(useMip ? std::log2(std::max(bx, by)) : -1.0));
+	glBindTexture(GL_TEXTURE_2D, src);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	fillBlur.bind();
+	fillBlur.setUniformValue("u_src", 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, fillFbo[1]);
+	fillBlur.setUniformValue("u_dir", GLfloat(1.0 / sz.width()), GLfloat(0));
+	glBindTexture(GL_TEXTURE_2D, fillTex[0]);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindFramebuffer(GL_FRAMEBUFFER, fillFbo[0]);
+	fillBlur.setUniformValue("u_dir", GLfloat(0), GLfloat(1.0 / sz.height()));
+	glBindTexture(GL_TEXTURE_2D, fillTex[1]);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	fillBlur.release();
+	vao.release();
+	glBindFramebuffer(GL_FRAMEBUFFER, glw->defaultFramebufferObject());
+}
+
+// fillTex[0], dimmed, into the room beside the picture only: the bars at the sides,
+// corners and all, and the strips above and below it. clip: the framebuffer
+// rectangle the caller has scissored to, which the bars are cut to as well.
+void MainWin::drawFill(const QRect* clip) {
+	const qreal r = widgetDpr(this);
+	const int vw = int(width() * r + 0.5);
+	const int vh = int(height() * r + 0.5);
+	// the picture as drawPicture's viewport has it, from the bottom left
+	const int px = int(drawX * r + 0.5);
+	const int py = int(drawY * r + 0.5);
+	const int pw = int(drawW * r + 0.5);
+	const int ph = int(drawH * r + 0.5);
+	const QRect bars[4] = {
+		QRect(0, 0, px, vh),
+		QRect(px + pw, 0, vw - px - pw, vh),
+		QRect(px, 0, pw, py),
+		QRect(px, py + ph, pw, vh - py - ph)
+	};
+	glViewport(0, 0, vw, vh);
+	fillDraw.bind();
+	fillDraw.setUniformValue("u_src", 0);
+	fillDraw.setUniformValue("u_pic", GLfloat(px), GLfloat(py), GLfloat(pw), GLfloat(ph));
+	fillDraw.setUniformValue("u_view", GLfloat(vw), GLfloat(vh));
+	fillDraw.setUniformValue("u_dim", GLfloat(conf.vid.fillDim / 100.0));
+	fillDraw.setUniformValue("u_fade", GLfloat(conf.vid.fillFade / 100.0));
+	// a dot is drawW / vsze.x pixels across, and as many down
+	fillDraw.setUniformValue("u_ramp", GLfloat(conf.vid.fillEdge * drawW * r / conf.zx->vid->vsze.x));
+	// 100 %: k = 10, the far edge of a bar a third of the picture wide drawn out 4 times
+	const bool mirror = (conf.vid.sideFill == SFILL_MIRROR);
+	fillDraw.setUniformValue("u_stretch", GLfloat(mirror ? conf.vid.fillStretch * 0.1 : 0.0));
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, fillTex[0]);
+	vao.bind();
+	glEnable(GL_SCISSOR_TEST);
+	for (const QRect& bar : bars) {
+		const QRect cut = clip ? (bar & *clip) : bar;
+		if (cut.isEmpty()) continue;
+		glScissor(cut.x(), cut.y(), cut.width(), cut.height());
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	}
+	if (clip) {
+		glScissor(clip->x(), clip->y(), clip->width(), clip->height());
+	} else {
+		glDisable(GL_SCISSOR_TEST);
+	}
+	vao.release();
+	fillDraw.release();
+}
+#endif
 
 void MainWin::resizeGL(int w, int h) {
 	const qreal r = widgetDpr(this);

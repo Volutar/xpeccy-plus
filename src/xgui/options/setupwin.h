@@ -6,6 +6,7 @@
 #include <QComboBox>
 #include <QButtonGroup>
 #include <QGridLayout>
+#include <QFrame>
 #include <QToolButton>
 #include <QLabel>
 #include <QModelIndex>
@@ -84,6 +85,15 @@ class SetupWin : public QDialog {
 		void recSizes(QSize*, QSize*);
 		void alignVideoLabels();
 		xRecord recFromUi();
+		// the side fill's strength, in a pop-up under the gear beside its list; the
+		// window shows each move at once, and Cancel puts back what was there
+		QFrame* fillPop;
+		xSlider* sldFill[5];		// blur, brightness, fade, edge, stretch
+		int fillWas[6];			// sideFill, then the five, as applied
+		void makeFillPopup();
+		void fillToUi();
+		void fillTake();
+		void fillPut();
 
 		Ui::SetupWin ui;
 		Ui::LayEditor layUi;
@@ -182,6 +192,7 @@ class SetupWin : public QDialog {
 		void s_apply();
 		void s_prf_changed();
 		void s_padwin();		// open the gamepads window
+		void s_fill();			// a side fill setting moved: the window shows it
 	private slots:
 		void reject();
 		void apply();

@@ -1,0 +1,33 @@
+{
+  "config": {
+    "VIDEO": {
+      "sidefill": "mirror"
+    }
+  },
+  "files": {
+    "EXOLON.TAP": {
+      "url": "https://spectrumcomputing.co.uk/pub/sinclair/games/e/Exolon.tap.zip",
+      "sha256": "e07e09ba7b401e9b5b296930496cdc2020d761157a4284b250bf2ba117ca2214"
+    }
+  },
+  "prepare": [
+    "-m",
+    "zx48",
+    "{media}/EXOLON.TAP",
+    "--bench",
+    "2400",
+    "--bench-keys",
+    "1600:_/10,2000:1/30",
+    "--bench-save",
+    "{media}/exolon.sna"
+  ],
+  "args": [
+    "{media}/exolon.sna"
+  ],
+  "steps": [
+    ["wait", 3000],
+    ["run", "run-action key.fullscreen"],
+    ["wait", 2000]
+  ],
+  "frames": []
+}

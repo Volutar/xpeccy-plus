@@ -835,6 +835,8 @@ struct xConfig {
 	unsigned pauseInactive:1;	// pause while another application has the focus
 	int xpos;			// window position
 	int ypos;
+	int wsizeX;			// window size, when resized by hand (the frame's inside); 0: the zoom's
+	int wsizeY;
 	QList<xRomset> rsList;
 	QList<xLayout> layList;
 	QList<xBookmark> bookmarkList;
@@ -894,6 +896,12 @@ struct xConfig {
 		unsigned keepRatio:1;	// fullscreen, a maximized or resized window: keep the shape, else stretch
 		unsigned lowLatency:1;	// show each frame at once (low input lag), else buffer for smooth motion
 		int border;		// VID_BRD_* : how much border to show
+		int sideFill;		// SFILL_* : what fills the room beside a fitted picture
+		int fillBlur;		// dots per texel of the shrunk frame, SFILL_BLUR_MIN..MAX
+		int fillDim;		// its brightness, % of the picture's
+		int fillFade;		// how much darker it gets by the screen's edge, %
+		int fillEdge;		// dots from the picture's edge to the full dimming
+		int fillStretch;	// Mirror: how much the reflection is drawn out towards the screen's edge, %; 0: a plain one
 		int scale;		// x1..x4
 		int fcount;		// frames counter (for fps showing) (= fcnt ???)
 		long long fctime;	// time of that frame, ns (see paceClockNs)

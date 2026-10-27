@@ -1381,13 +1381,53 @@ none - nothing comes back (+2A, +3)</string>
                 </widget>
                </item>
                <item row="1" column="0">
+                <widget class="QLabel" name="labSideFill">
+                 <property name="text">
+                  <string>Side fill</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QComboBox" name="cbSideFill">
+                 <property name="minimumSize">
+                  <size>
+                   <width>200</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>200</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="toolTip">
+                  <string>What fills the room beside a fitted picture</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="2">
+                <widget class="QToolButton" name="tbSideFill">
+                 <property name="toolTip">
+                  <string>How soft and bright the side fill is</string>
+                 </property>
+                 <property name="text">
+                  <string>...</string>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../xpeccy.qrc">
+                   <normaloff>:/images/settings.png</normaloff>:/images/settings.png</iconset>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
                 <widget class="QLabel" name="labPalPreset">
                  <property name="text">
                   <string>Palette</string>
                  </property>
                 </widget>
                </item>
-               <item row="1" column="1">
+               <item row="2" column="1">
                 <widget class="QComboBox" name="cbPalPreset">
                  <property name="minimumSize">
                   <size>
@@ -1418,7 +1458,7 @@ none - nothing comes back (+2A, +3)</string>
                  </property>
                 </widget>
                </item>
-               <item row="1" column="2">
+               <item row="2" column="2">
                 <layout class="QHBoxLayout" name="horizontalLayout_40">
                  <item>
                   <widget class="QToolButton" name="tbPalEdit">
@@ -1463,14 +1503,14 @@ none - nothing comes back (+2A, +3)</string>
                  </item>
                 </layout>
                </item>
-               <item row="2" column="0">
+               <item row="3" column="0">
                 <widget class="QLabel" name="labShader">
                  <property name="text">
                   <string>Shader</string>
                  </property>
                 </widget>
                </item>
-               <item row="2" column="1">
+               <item row="3" column="1">
                 <widget class="QComboBox" name="cbShader">
                  <property name="minimumSize">
                   <size>

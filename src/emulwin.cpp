@@ -1,3 +1,4 @@
+#include <cmath>
 #include <QMatrix4x4>
 #include <QCursor>
 #include <QTimer>
@@ -160,6 +161,8 @@ void MainWin::updateWindow() {
 		// it still takes every key and click.
 		if (!fsCovers()) {
 			fsHome = QPoint(conf.xpos, conf.ypos);
+			fsFree = (winFree && !conf.vid.maximized) ? frame->size() : QSize();
+			fsNormal = conf.vid.maximized ? frame->normalGeometry() : QRect();
 #if defined(__WIN32)
 			// Qt keeps the window's style here, to put it back once the state goes
 			// (the first resize sees to that, after this returns). With a modal
@@ -195,15 +198,23 @@ void MainWin::updateWindow() {
 		// back on the screen with its title bar, once it has its size; a
 		// maximized one is the system's to place
 		if (backMax) {
-			QTimer::singleShot(0, this, [this]() {
+			const QRect normal = fsNormal;
+			QTimer::singleShot(0, this, [this, normal]() {
 				// Qt may still say maximized, and would then do nothing
 				Qt::WindowStates st = frame->windowState() & ~Qt::WindowFullScreen;
 				if (st & Qt::WindowMaximized)
 					frame->setWindowState(st & ~Qt::WindowMaximized);
+				// what Restore gives back: the size from before fullscreen, not the screen's
+				if (normal.isValid()) frame->setGeometry(normal);
 				frame->setWindowState(st | Qt::WindowMaximized);
 			});
 		} else if (back) {
-			QTimer::singleShot(0, this, &MainWin::placeWindow);
+			// a window resized by hand gets that size back, not the screen's
+			const QSize free = winFree ? fsFree : QSize();
+			QTimer::singleShot(0, this, [this, free]() {
+				if (free.isValid()) frame->resize(free);
+				placeWindow();
+			});
 		}
 	}
 	if (conf.vid.fullScreen) {
@@ -216,6 +227,7 @@ void MainWin::updateWindow() {
 			setFixedSize(wsz);
 			frame->layout()->activate();
 			wszAsked = wsz;
+			frameAsked = frame->size();
 		}
 		// ...and then left to be resized: maximized, snapped, dragged (fitWindow)
 		frame->layout()->setSizeConstraint(QLayout::SetDefaultConstraint);
@@ -232,6 +244,18 @@ void MainWin::updateWindow() {
 	bufSize = bytesPerLine * comp->vid->full.y * (comp->vid->linedbl ? 2 : 1);
 	updateHead();
 	block = 0;
+	// started maximized: the first Restore gets the size the window had by hand
+	if (restoreFree.isValid() && !maxed && !conf.vid.fullScreen && frame->isVisible()) {
+		const QSize sz = restoreFree;
+		restoreFree = QSize();
+		QTimer::singleShot(0, this, [this, sz]() {
+			frame->resize(sz);
+			const QRect avail = frame->screen()->availableGeometry();
+			const QRect fg = frame->frameGeometry();
+			frame->move(std::max(avail.left(), std::min(fg.x(), avail.right() + 1 - fg.width())),
+				std::max(avail.top(), std::min(fg.y(), avail.bottom() + 1 - fg.height())));
+		});
+	}
 	if (winFit && !backMax) fitWindow();		// the area as the bars leave it
 	emit s_keywin_snap();		// a docked keyboard follows the new size
 }
@@ -1219,6 +1243,41 @@ void MainWin::resizeEvent(QResizeEvent*) {
 	fitWindow();
 }
 
+// The size the window was left at by hand, given back at the start, as far as
+// the screen holds it. Under fullscreen it is the size the way out goes back to.
+void MainWin::startSize() {
+	QSize sz(conf.wsizeX, conf.wsizeY);
+	if (sz.isEmpty()) return;
+	if (QScreen* scr = frame->screen()) {
+		const QSize deco = frame->frameGeometry().size() - frame->size();
+		sz = sz.boundedTo(scr->availableGeometry().size() - deco);
+	}
+	if (conf.vid.maximized) {
+		restoreFree = sz;		// the system knows only the zoom's size to restore to
+	} else if (conf.vid.fullScreen) {
+		winFree = 1;
+		fsFree = sz;
+	} else {
+		frame->resize(sz);
+	}
+}
+
+// The size for the next start: the one the window has, or goes back to from
+// maximized or fullscreen - none when that is the zoom's own. Taken on the way
+// out, when it is settled: during a maximize the resize comes before the state.
+void MainWin::keepSize() {
+	QSize sz;
+	if (conf.vid.fullScreen) {
+		sz = conf.vid.maximized ? fsNormal.size() : (winFree ? fsFree : QSize());
+	} else {
+		sz = frame->isMaximized() ? frame->normalGeometry().size() : frame->size();
+	}
+	if (conf.vid.maximized && restoreFree.isValid()) sz = restoreFree;	// not restored yet
+	if (!sz.isValid() || (sz == frameAsked)) sz = QSize(0, 0);
+	conf.wsizeX = sz.width();
+	conf.wsizeY = sz.height();
+}
+
 // a maximized window, as the system has it; fullscreen comes first
 bool MainWin::maxWanted() {
 	return !conf.vid.fullScreen && (frame->windowState() & Qt::WindowMaximized);
@@ -1294,6 +1353,15 @@ void MainWin::paintGLView() {
 	// that was never generated is undefined - macOS says so out loud, other
 	// drivers quietly sample black.
 	drawPicture();
+#if !ISLEGACYGL
+	// after the picture: Mirror reads it back as it is shown, and the fill only
+	// goes beside it
+	fillOn = fillWanted();
+	if (fillOn) {
+		prepareFill();
+		drawFill();
+	}
+#endif
 	glFlush();
 	pnt.endNativePainting();
 	drawInputOsd(pnt);
@@ -1309,11 +1377,13 @@ void MainWin::paintGLView() {
 			QRect slot = modeSlot();
 			QPainter top(glw);
 			top.beginNativePainting();
-			glEnable(GL_SCISSOR_TEST);
-			glScissor(int(slot.x() * r), int((height() - slot.bottom() - 1) * r),
+			const QRect cut(int(slot.x() * r), int((height() - slot.bottom() - 1) * r),
 				int(slot.width() * r + 1), int(slot.height() * r + 1));
+			glEnable(GL_SCISSOR_TEST);
+			glScissor(cut.x(), cut.y(), cut.width(), cut.height());
 			glClearColor(0, 0, 0, 1);
 			glClear(GL_COLOR_BUFFER_BIT);
+			if (fillOn) drawFill(&cut);		// the slot is in the room beside the picture
 			drawPicture();
 			glDisable(GL_SCISSOR_TEST);
 			glFlush();
@@ -1351,6 +1421,11 @@ void MainWin::drawPicture() {
 		prg.setUniformValue("rubyInputSize",   tex_w, tex_h);
 		prg.setUniformValue("rubyTextureSize", tex_w, tex_h);
 		prg.setUniformValue("rubyOutputSize",  GLfloat(drawW * r), GLfloat(drawH * r));
+		// the built-in one: smooth when a dot is not a whole number of pixels either way
+		const double ppx = int(drawW * r + 0.5) / double(comp->vid->vsze.x);
+		const double ppy = int(drawH * r + 0.5) / double(comp->vid->vsze.y);
+		const bool whole = (std::fabs(ppx - std::floor(ppx + 0.5)) < 0.001) && (std::fabs(ppy - std::floor(ppy + 0.5)) < 0.001);
+		prg.setUniformValue("u_smooth", GLint(whole ? 0 : 1));
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, curtxid);
@@ -1922,6 +1997,7 @@ void MainWin::closeEvent(QCloseEvent* ev) {
 		layouts_save();		// their own files, not the settings one
 		xm_save_nvram();
 		xm_save_over();		// ...and what the user changed on the machine
+		keepSize();
 		saveConfig();
 #ifdef USENETWORK
 		closeServer();
@@ -2415,6 +2491,27 @@ void MainWin::initMenuBar() {
 		});
 	}
 	connect(viewMenu, &QMenu::aboutToShow, this, &MainWin::fillBorderMenu);	// the submenu itself may be off
+	// what fills the room beside a fitted picture; the plain picture has black only
+	fillMenu = new xMenu("Side Fill", this);
+	viewMenu->addMenu(fillMenu);
+	QActionGroup* fgrp = new QActionGroup(fillMenu);
+	static const char* fillNames[] = {"Black", "Stretched Edges", "Mirror"};
+	for (int i = SFILL_BLACK; i <= SFILL_MIRROR; i++) {
+		act = fillMenu->addAction(fillNames[i]);
+		act->setCheckable(true);
+		act->setData(i);
+		fgrp->addAction(act);
+		connect(act, &QAction::triggered, this, [this, i]() {
+			conf.vid.sideFill = i;
+			presentFrame();
+			saveConfig();
+		});
+	}
+	connect(viewMenu, &QMenu::aboutToShow, this, [this]() {
+		fillMenu->setEnabled(conf.vid.gl);
+		foreach(QAction* act, fillMenu->actions())
+			act->setChecked(act->data().toInt() == (conf.vid.gl ? conf.vid.sideFill : SFILL_BLACK));
+	});
 	fullAct = cutAction(viewMenu, "Fullscreen", XCUT_FULLSCR, "fullscreen");
 	fullAct->setCheckable(true);
 	ratioAct = cutAction(viewMenu, "Keep Aspect Ratio", XCUT_RATIO, "display");

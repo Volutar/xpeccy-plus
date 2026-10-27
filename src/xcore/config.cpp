@@ -235,6 +235,7 @@ void saveConfig() {
 	if (conf.upd.channel >= 0) fprintf(cfile, "update.channel = %s\n", upd_channel_name[conf.upd.channel]);
 	fprintf(cfile, "update.last = %lld\n", (long long)conf.upd.last);
 	fprintf(cfile, "winpos = %i,%i\n",conf.xpos,conf.ypos);
+	fprintf(cfile, "winsize = %i,%i\n", conf.wsizeX, conf.wsizeY);
 	fprintf(cfile, "keywin.dock = %s\n", YESNO(conf.keywin.dock));
 	fprintf(cfile, "keywin.width = %i\n", conf.keywin.width);
 	if (conf.keywin.haspos)
@@ -304,6 +305,12 @@ void saveConfig() {
 	fprintf(cfile, "fullscreen = %s\n", YESNO(conf.vid.fullScreen));
 	fprintf(cfile, "maximized = %s\n", YESNO(conf.vid.maximized));
 	fprintf(cfile, "keepratio = %s\n", YESNO(conf.vid.keepRatio));
+	fprintf(cfile, "sidefill = %s\n", sfill_name(conf.vid.sideFill));
+	fprintf(cfile, "sidefill.blur = %i\n", conf.vid.fillBlur);
+	fprintf(cfile, "sidefill.brightness = %i\n", conf.vid.fillDim);
+	fprintf(cfile, "sidefill.fade = %i\n", conf.vid.fillFade);
+	fprintf(cfile, "sidefill.edge = %i\n", conf.vid.fillEdge);
+	fprintf(cfile, "sidefill.stretch = %i\n", conf.vid.fillStretch);
 	fprintf(cfile, "toolbar = %s\n", YESNO(conf.win.toolbar));
 	if (conf.win.tbIcons) {
 		fprintf(cfile, "toolbar.icons = %i\n", conf.win.tbIcons);
@@ -832,6 +839,8 @@ void loadConfig() {
 	hotkeys_load_begin();
 	conf.xpos = -1;
 	conf.ypos = -1;
+	conf.wsizeX = 0;
+	conf.wsizeY = 0;
 	conf.macStart = MS_UNSET;	// asked on the first start
 	conf.macStartId.clear();
 	conf.upd.check = UPC_UNSET;
@@ -855,6 +864,12 @@ void loadConfig() {
 	conf.iosd.size = 40;
 	conf.iosd.opacity = 85;
 	conf.vid.border = VID_BRD_FULL;
+	conf.vid.sideFill = SFILL_BLACK;
+	conf.vid.fillBlur = SFILL_BLUR_DEF;
+	conf.vid.fillDim = SFILL_DIM_DEF;
+	conf.vid.fillFade = SFILL_FADE_DEF;
+	conf.vid.fillEdge = SFILL_EDGE_DEF;
+	conf.vid.fillStretch = SFILL_STRETCH_DEF;
 	conf.vid.scale = 2;		// a config with no scale must not make a zero-size window
 	conf.win.toolbar = 1;
 	conf.win.statusbar = 1;
@@ -1183,6 +1198,12 @@ void loadConfig() {
 					if (pnam=="fullscreen") conf.vid.fullScreen = arg.b;
 					if (pnam=="maximized") conf.vid.maximized = arg.b;
 					if (pnam=="keepratio") conf.vid.keepRatio = arg.b;
+					if (pnam=="sidefill") conf.vid.sideFill = sfill_id(arg.s);
+					if (pnam=="sidefill.blur") conf.vid.fillBlur = getRanged(arg.s, SFILL_BLUR_MIN, SFILL_BLUR_MAX);
+					if (pnam=="sidefill.brightness") conf.vid.fillDim = getRanged(arg.s, SFILL_DIM_MIN, 100);
+					if (pnam=="sidefill.fade") conf.vid.fillFade = getRanged(arg.s, 0, 100);
+					if (pnam=="sidefill.edge") conf.vid.fillEdge = getRanged(arg.s, 0, SFILL_EDGE_MAX);
+					if (pnam=="sidefill.stretch") conf.vid.fillStretch = getRanged(arg.s, 0, 100);
 					if (pnam=="toolbar") conf.win.toolbar = arg.b;
 					if (pnam=="toolbar.icons") conf.win.tbIcons = ((arg.i == 16) || (arg.i == 24)) ? arg.i : 0;
 					if (pnam=="toolbar.items") conf.win.tbItems = pval;
@@ -1336,6 +1357,13 @@ void loadConfig() {
 						if (vect.size() > 1) {
 							conf.xpos = strtol(vect[0].c_str(), NULL, 10);
 							conf.ypos = strtol(vect[1].c_str(), NULL, 10);
+						}
+					}
+					if (pnam == "winsize") {
+						vect = splitstr(pval, ",");
+						if (vect.size() > 1) {
+							conf.wsizeX = getRanged(vect[0].c_str(), 0, 32767);
+							conf.wsizeY = getRanged(vect[1].c_str(), 0, 32767);
 						}
 					}
 					if (pnam == "keywin.dock") conf.keywin.dock = arg.b;

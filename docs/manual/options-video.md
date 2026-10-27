@@ -7,14 +7,37 @@
 
 The page has four groups:
 
-- **Picture** - **Border**, **Palette** with the {icon}`edit` button for the
-  **Palette Editor**, **Shader**, and on the right the window scale (**Scale x1** to
-  **Scale x6**), **Fullscreen**, **Keep ratio** and **Gray scale**. The scale,
-  **Fullscreen**, **Keep ratio**, the palette and the shader are the same settings as in
-  the **View** menu; see [View menu](view.md).
+- **Picture** - **Border**, **Side fill**, **Palette** with the {icon}`edit` button for
+  the **Palette Editor**, **Shader**, and on the right the window scale
+  (**Scale x1** to **Scale x6**), **Fullscreen**, **Keep ratio** and **Gray scale**. The
+  scale, **Fullscreen**, **Keep ratio**, **Side fill**, the palette and the shader are the
+  same settings as in the **View** menu; see [View menu](view.md).
 - **Anti-flicker** - see [Anti-flicker](#anti-flicker).
 - **Screenshots** - see [Screenshots](#screenshots).
 - **Recording** - video recording through FFmpeg. See [Recording](#recording).
+
+## Side fill
+
+```{index} Side fill, Side Fill
+```
+
+**Side fill** is what fills the room the picture leaves free in fullscreen or in a
+maximized window: **Black**, **Stretched edges** or **Mirror**, the same choice as
+**View > Side Fill** (see [Fullscreen](view.md#fullscreen)). The {icon}`settings` button
+beside it opens five sliders. The window shows every move at once, **Defaults** puts
+every slider back where it starts, and **Cancel** puts back what was there.
+
+![The side fill settings](images/options-video-side-fill.png)
+
+- **Blur** - how soft the fill is, from crisp to a wide glow;
+- **Brightness** - how bright it is beside the picture;
+- **Fade** - how much darker it gets towards the screen's edge;
+- **Edge** - how gently the picture runs into the fill;
+- **Stretch** - **Mirror** only: the reflection drawn out like pulled rubber - as it is by
+  the picture, wider and wider towards the screen's edge, its far part going off the
+  screen; at the left end it is a plain one.
+
+The button is grayed out with **Black**, and the whole setting without OpenGL.
 
 ## Anti-flicker
 
