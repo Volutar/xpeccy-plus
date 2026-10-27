@@ -78,6 +78,16 @@ ctest --test-dir build/out/tests-qt --output-on-failure
 Use the same compiler and zlib options as the core tests. Qt's DLLs must be on PATH when
 running the test on Windows. The ordinary quick tier does not need Qt.
 
+The update check's logic (`src/xcore/update.cpp`) has a Qt Core test of its own, over
+GitHub's answers saved in `tests/update/data`: each package's file on both channels,
+which build is newer, and the changelog entries a build lacks:
+
+```
+cmake -S tests/update -B build/out/tests-update -DQTVERSION=6 -DCMAKE_PREFIX_PATH=<Qt prefix>
+cmake --build build/out/tests-update
+ctest --test-dir build/out/tests-update --output-on-failure
+```
+
 ```
 python tests/regress.py quick                 # build, run every bench, PASS/FAIL per case
 python tests/regress.py quick tsconf -k 't1*'
