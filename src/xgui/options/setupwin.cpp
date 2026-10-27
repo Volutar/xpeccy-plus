@@ -3275,7 +3275,7 @@ void SetupWin::makeFillPopup() {
 		{"Brightness", "How bright the fill is beside the picture", SFILL_DIM_MIN, 100, 5, 10, SFILL_DIM_DEF},
 		{"Fade", "How much darker it gets towards the screen's edge", 0, 100, 5, 10, SFILL_FADE_DEF},
 		{"Edge", "How gently the picture runs into the fill", 0, SFILL_EDGE_MAX, 1, 4, SFILL_EDGE_DEF},
-		{"Stretch", "Mirror: how much the reflection stretches outwards", 0, 100, 5, 10, SFILL_STRETCH_DEF},
+		{"Stretch", "Mirror: the reflection drawn out towards the screen's edge", 0, 100, 5, 10, SFILL_STRETCH_DEF},
 	};
 	fillPop = new QFrame(this, Qt::Popup);
 	fillPop->setFrameShape(QFrame::StyledPanel);
