@@ -115,12 +115,13 @@ xEspSock::~xEspSock() {
 	close();
 }
 
-void xEspSock::open(bool u, const std::string& host, int p, int localPort) {
+void xEspSock::open(bool u, const std::string& host, int p, int localPort, bool onLan) {
 	close();
 	esp_net_init();
 	udp = u;
 	port = p;
 	lport = localPort;
+	lan = onLan;
 	ip.clear();
 	why = F_NONE;
 	look = std::make_shared<xEspLookup>();
@@ -169,11 +170,22 @@ void xEspSock::connectTo() {
 		int one = 1;
 		setsockopt(s, IPPROTO_TCP, TCP_NODELAY, (const char*)&one, sizeof(one));
 	} else {			// not connected: it sends to the peer set and hears anyone
+		// a fixed port on a network address is what makes Windows' firewall ask (measured;
+		// an ephemeral one never does)
 		sockaddr_in la;
 		memset(&la, 0, sizeof(la));
 		la.sin_family = AF_INET;
-		la.sin_port = htons((unsigned short)lport);
-		::bind(s, (sockaddr*)&la, sizeof(la));
+		bool local = (((const unsigned char*)&sa.sin_addr)[0] == 127);
+		if (lport && local) {
+			la.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+			la.sin_port = htons((unsigned short)lport);
+		} else if (lport && lan) {
+			la.sin_port = htons((unsigned short)lport);
+		}
+		if (::bind(s, (sockaddr*)&la, sizeof(la))) {	// the port is taken on the host: any other
+			la.sin_port = 0;
+			::bind(s, (sockaddr*)&la, sizeof(la));
+		}
 		fd = (long long)s;
 		st = S_OPEN;
 		return;
@@ -230,7 +242,7 @@ int xEspSock::poll() {
 }
 
 int xEspSock::localPort() const {
-	if (fd < 0) return lport;
+	if ((fd < 0) || (udp && lport)) return lport;
 	sockaddr_in sa;
 	socklen_t len = sizeof(sa);
 	if (getsockname((sock_t)fd, (sockaddr*)&sa, &len)) return lport;

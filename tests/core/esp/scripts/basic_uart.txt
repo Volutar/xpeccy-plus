@@ -1,4 +1,4 @@
-# chapter 3: UART_CUR, UART_DEF, UART, IPR; presc N follows the rate (28000000 / baud)
+# chapter 3: UART_CUR, UART_DEF, UART (IPR is ERROR); presc N follows the rate (28000000 / baud)
 mask ^.*\\x[89A-F][0-9A-F].* <garbage>
 wait WIFI GOT IP\r\n 5000
 send AT+UART_CUR?
@@ -19,12 +19,6 @@ quiet 300
 send AT+UART_DEF
 quiet 300
 send AT+UART_DEF=?
-quiet 300
-send AT+IPR
-quiet 300
-send AT+IPR?
-quiet 300
-send AT+IPR=?
 quiet 300
 print -- bad arguments
 send AT+UART_CUR=115200, 8,1,0,0
@@ -54,14 +48,6 @@ quiet 300
 send AT+UART_CUR=115200;8;1;0;0
 quiet 300
 send AT+UART_CUR=,8,1,0,0
-quiet 300
-send AT+IPR=0
-quiet 300
-send AT+IPR=5000001
-quiet 300
-send AT+IPR=115200,1
-quiet 300
-send AT+IPR=abc
 quiet 300
 print -- flow and stop bits as set
 send AT+UART_CUR=115200,8,1,0,3
@@ -111,8 +97,10 @@ send AT+RST
 wait WIFI GOT IP\r\n 5000
 send AT
 quiet 300
-print -- IPR: the OK goes at the new rate, which the Next at the old one does not take
+print -- IPR: not emulated; UART_DEF back to 115200, its OK at the new rate
 send AT+IPR=115200
+quiet 300
+send AT+UART_DEF=115200,8,1,0,1
 quiet 300
 presc 243
 send AT

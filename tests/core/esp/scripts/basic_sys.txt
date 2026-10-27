@@ -1,4 +1,4 @@
-# chapter 3: SLEEP, RFPOWER, RFVDD, RFAUTOTRACE, SYSRAM, SYSADC, SYSMSG, +TEST
+# chapter 3: SLEEP, RFPOWER, RFVDD, RFAUTOTRACE, SYSRAM, SYSADC; SYSMSG and +TEST are ERROR
 mask ^.*\\x[89A-F][0-9A-F].* <garbage>
 wait WIFI GOT IP\r\n 5000
 print -- SLEEP
@@ -78,59 +78,14 @@ send AT+SYSADC=1
 quiet 300
 send AT+SYSADC=?
 quiet 300
-print -- SYSMSG
-send AT+SYSMSG_CUR?
-quiet 300
+print -- SYSMSG_CUR/_DEF and +TEST: not emulated
 send AT+SYSMSG_CUR=3
-quiet 300
-send AT+SYSMSG_CUR?
-quiet 300
-send AT+SYSMSG_CUR=0xFF
-quiet 300
-send AT+SYSMSG_CUR?
-quiet 300
-send AT+SYSMSG_CUR=4294967296
-quiet 300
-send AT+SYSMSG_CUR=0x1G
-quiet 300
-send AT+SYSMSG_CUR=x
-quiet 300
-send AT+SYSMSG_CUR
-quiet 300
-send AT+SYSMSG_CUR=?
-quiet 300
-send AT+SYSMSG_DEF
-quiet 300
-send AT+SYSMSG_DEF=?
-quiet 300
-send AT+SYSMSG_DEF?
 quiet 300
 send AT+SYSMSG_DEF=2
 quiet 300
-send AT+SYSMSG_DEF?
-quiet 300
-send AT+SYSMSG_CUR?
-quiet 300
-send AT+SYSMSG_CUR=1
-quiet 300
 send AT+RST
 wait WIFI GOT IP\r\n 5000
-send AT+SYSMSG_CUR?
-quiet 300
 send AT+SLEEP?
 quiet 300
-print -- TEST
-send AT+TEST=?
-quiet 300
-send AT+TEST?
-quiet 300
 send AT+TEST
-quiet 300
-send AT+TEST=1,"ab\\"c",3
-quiet 300
-send AT+TEST=1,"abcdefghij"
-quiet 300
-send AT+TEST=5,x
-quiet 300
-send AT+TEST=7
 quiet 300

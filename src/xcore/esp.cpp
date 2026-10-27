@@ -55,7 +55,6 @@ static struct {
 	size_t rstAt = 0;		// how much of AT+RST\r\n the line has matched (while busy)
 	bool held = false;
 	void (*hook)(Computer*, int, long long) = nullptr;
-	long long lastIn = 0;
 	// out
 	std::deque<espMsg> out;
 	size_t outBytes = 0;
@@ -279,11 +278,9 @@ void esp_done() {
 	E.held = false;
 	if (E.rx == RX_BUSY) E.rx = RX_IDLE;
 }
-bool esp_held() {return E.held;}
 
 void esp_take_input(void (*hook)(Computer*, int, long long)) {E.hook = hook;}
 void esp_release_input() {E.hook = nullptr;}
-long long esp_last_input() {return E.lastIn;}
 
 // a sample of the ROM's and the second loader's lines (the AT154 document's); no program reads them
 static const char* esp_rom_log =
@@ -348,7 +345,6 @@ static void esp_boot_step(Computer* comp, long long now) {
 			esp_put_now("\r\nready\r\n");
 			E.st = ESP_READY;
 			esp_wifi_ready(comp, now);
-			esp_tcp_ready(comp, now);
 		}
 	}
 }
@@ -402,7 +398,6 @@ static void esp_dispatch(Computer* comp, const std::string& line, long long end)
 // == the receiver ==
 
 static void esp_input(Computer* comp, int c, long long end) {
-	E.lastIn = end;
 	if (E.st != ESP_READY) return;			// booting, held, asleep or in its loader: lost
 	E.replyAt = end;
 	if (E.hook) {
@@ -468,7 +463,6 @@ void esp_attach(Computer* comp) {
 	E.outBytes = 0;
 	E.farBaud = 0;
 	E.farFrame = -1;
-	E.lastIn = 0;
 	E.rst0 = false;
 	long long now = nx_uart_sync(comp);
 	esp_boot(comp, now);
@@ -531,7 +525,6 @@ void esp_frame(Computer* comp) {
 	esp_boot_step(comp, now);
 	if (E.st == ESP_READY) {
 		E.replyAt = 0;
-		esp_basic_frame(comp, now);
 		esp_wifi_frame(comp, now);
 		esp_tcp_frame(comp, now);
 	}

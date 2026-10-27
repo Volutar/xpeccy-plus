@@ -1,5 +1,5 @@
 # chapter 5: the ESP's server - CIPSERVER, CIPSERVERMAXCONN, CIPSTO (idle close), clients joining
-# and leaving, SYSMSG bit1's +LINK_CONN, a client over the limit
+# and leaving, a client over the limit
 mask .*\\x[0-9A-F][0-9A-F].* <romlog>
 wait WIFI GOT IP\r\n 5000
 send ATE0
@@ -64,13 +64,9 @@ dial 23456
 wait 0,CONNECT\r\n
 peerclose
 wait 0,CLOSED\r\n
-# +LINK_CONN, then one over the limit: dropped, nothing said
-send AT+SYSMSG_CUR=2
-wait \r\nOK\r\n
+# a client, then one over the limit: dropped, nothing said
 dial 23456
-wait 23456\r\n
-send AT+SYSMSG_CUR=0
-wait \r\nOK\r\n
+wait 0,CONNECT\r\n
 dial 23456
 quiet 500
 send AT+CIPSERVER=0

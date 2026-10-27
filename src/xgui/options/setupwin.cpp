@@ -2086,7 +2086,7 @@ void SetupWin::buildDevices() {
 	cbEspLan = new QCheckBox;
 	xOptSheet esp;
 	esp.check(cbEspLan, tr("Server on the network"),
-		tr("The emulated module's server (AT+CIPSERVER) takes clients from other computers too. Off: only from this one, at 127.0.0.1"), true);
+		tr("The emulated module's server (AT+CIPSERVER) and a UDP link's own port take clients from other computers too. Off: the server only from this one, at 127.0.0.1; a UDP link hears only whom it sent to"), true);
 	for (int i = 0; i < 2; i++) {
 		uartBox[i] = new QComboBox;
 		uartBox[i]->setObjectName(i ? "uartPi" : "uartEsp");

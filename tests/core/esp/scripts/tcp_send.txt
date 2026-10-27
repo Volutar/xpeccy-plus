@@ -68,9 +68,9 @@ wait CLOSED\r\n
 send AT+CIPSEND=1
 wait \r\nERROR\r\n
 # UDP: nobody hears it, but it goes
-send AT+CIPSTART="UDP","127.0.0.1",<port>,5001,3
+send AT+CIPSTART="UDP","127.0.0.1",<port>,5101,3
 wait \r\nERROR\r\n
-send AT+CIPSTART="UDP","127.0.0.1",<port>,5000,0
+send AT+CIPSTART="UDP","127.0.0.1",<port>,5100,0
 wait \r\nOK\r\n
 send AT+CIPSTATUS
 wait \r\nOK\r\n

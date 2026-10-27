@@ -57,13 +57,11 @@ long long esp_host_ms();				// the host's clock (SNTP, ping)
 // lines meanwhile get busy p...; esp_done() lets it go
 void esp_hold();
 void esp_done();
-bool esp_held();
 
 // Bytes the guest sends go to a part instead of the command line (CIPSEND's payload,
 // passthrough) while a hook is set; the hook gets each byte and the edge its stop bit ended on
 void esp_take_input(void (*hook)(Computer*, int, long long));
 void esp_release_input();
-long long esp_last_input();				// the edge the last byte from the guest ended on
 
 // == the module ==
 
@@ -101,20 +99,17 @@ int esp_gpio_level(Computer* comp, int pin);		// what is on the pin now (the Nex
 // == the parts ==
 
 // boot: after RST, RESTORE, a reset from the Next or power: the part's run-time state back to
-// what flash says; ready: the module has printed "ready" (auto-connect, the saved passthrough
-// link); frame: each frame end while ready; down: the module stops (no output from here on)
+// what flash says; ready: the module has printed "ready" (auto-connect); frame: each frame end
+// while ready; down: the module stops (no output from here on)
 void esp_basic_boot(Computer* comp);
 void esp_wifi_boot(Computer* comp);
 void esp_tcp_boot(Computer* comp);
 void esp_wifi_ready(Computer* comp, long long now);
-void esp_tcp_ready(Computer* comp, long long now);
-void esp_basic_frame(Computer* comp, long long now);
 void esp_wifi_frame(Computer* comp, long long now);
 void esp_tcp_frame(Computer* comp, long long now);
 void esp_tcp_down();					// sockets closed, no CLOSED printed
 
 // what the parts ask of each other
-int esp_sysmsg();					// SYSMSG_CUR bits: b0 +QUITT, b1 +LINK_CONN
 bool esp_wifi_joined();					// the station has an IP
 int esp_wifi_mode();					// CWMODE_CUR 1..3
 std::string esp_wifi_sta_ip();

@@ -12,7 +12,6 @@
 
 #define IO_PINS		16
 #define BAUD_MAX	5000000
-#define LS_IDLE_MS	100		// quiet this long and joined, light sleep sets in (about a DTIM beacon)
 
 // fixed values a real ESP-01 would measure: plausible, not taken from a module
 #define FREE_HEAP	51336		// free RAM after boot
@@ -21,7 +20,6 @@
 
 static struct {
 	int sleepType = 2;		// modem sleep
-	uint32_t sysmsg = 0;		// SYSMSG_CUR
 	int stop = 1;			// UART_CUR as set: 1, 2 (1.5 bits) or 3 (2 bits)
 	int flow = 0;
 	// the pins: IO_MUX function and pull-up, GPIO output enable and latch
@@ -29,14 +27,6 @@ static struct {
 	bool pull[IO_PINS];
 	uint32_t gpioOut = 0;
 	uint32_t gpioLatch = 0;
-	// light sleep and its wake-up pin (pins -1 when not set)
-	bool wake = false;
-	int wakePin = -1;
-	int wakeActive = 0;		// the level that wakes
-	int awakePin = -1;
-	int awakeLevel = 0;		// what the awake pin shows while awake
-	bool asleep = false;
-	long long wokeAt = 0;
 } B;
 
 // == reading arguments ==
@@ -80,42 +70,6 @@ static bool rd_int(espCur& p, long& val, int& err) {
 	if (neg && (i == 2)) {err = 3; return false;}
 	val = neg ? -(long)(int32_t)acc : (long)(int32_t)acc;
 	return (p.c() != 0) && (p.c() != '\r');
-}
-
-// SYSMSG's reader: unsigned, decimal or 0x hex, 32 bits; stops at the first non-digit
-static bool rd_uint(espCur& p, uint32_t& val) {
-	int ch = p.c();
-	if ((ch < '0') || (ch > '9')) return false;
-	uint32_t base = 10;
-	if (ch == '0') {
-		if ((p.at(1) & ~0x20) == 'X') {
-			p.i += 2;
-			base = 16;
-		} else {
-			p.i++;
-		}
-	}
-	uint32_t acc = 0, cut = 0xffffffffu / base, lim = 0xffffffffu % base;
-	for (;;) {
-		ch = p.c();
-		uint32_t d;
-		if ((ch >= '0') && (ch <= '9')) d = (uint32_t)(ch - '0');
-		else if ((base == 16) && ((uint32_t)((ch & ~0x20) - 'A') < 6)) d = (uint32_t)((ch & ~0x20) - 'A' + 10);
-		else break;
-		if ((acc > cut) || ((acc == cut) && (d > lim))) return false;
-		acc = acc * base + d;
-		p.i++;
-	}
-	val = acc;
-	return true;
-}
-
-static uint32_t fl_uint(const char* key, uint32_t def) {
-	std::string v = esp_fl_get(key);
-	if (v.empty()) return def;
-	char* e = nullptr;
-	unsigned long n = strtoul(v.c_str(), &e, 10);
-	return (e && !*e) ? (uint32_t)n : def;
 }
 
 static void put_line(const std::string& name, const char* fmt, long v) {
@@ -278,17 +232,6 @@ static void uart_apply(espCmdCall& c, bool save) {
 static void uart_cur_set(espCmdCall& c) {uart_apply(c, false);}
 static void uart_def_set(espCmdCall& c) {uart_apply(c, true);}
 
-// the rate alone, kept as the default; the OK already at the new rate
-static void ipr_set(espCmdCall& c) {
-	espCur p{c.p, 1};
-	long b;
-	int err;
-	if (rd_int(p, b, err) || (b > BAUD_MAX) || (b == 0)) {esp_err(); return;}
-	esp_set_uart(b, esp_frame_bits());
-	esp_fl_set_num("baud", b);
-	esp_ok();
-}
-
 // == sleep and RF ==
 
 static void sleep_query(espCmdCall& c) {
@@ -302,50 +245,6 @@ static void sleep_set(espCmdCall& c) {
 	int err;
 	if (rd_int(p, v, err) || (u32(v) >= 3)) {esp_err(); return;}
 	B.sleepType = (int)v;
-	esp_ok();
-}
-
-// <enable>,<trigger_GPIO>,<trigger_level>[,<awake_GPIO>,<awake_level>]
-static void wakeupgpio_set(espCmdCall& c) {
-	espCur p{c.p, 1};
-	long en, trig = -1, lvl = -1, awake = -1, alvl = -1;
-	int err;
-	rd_int(p, en, err);
-	if (err) {esp_err(); return;}
-	if (en == 1) {
-		if (p.next() != ',') {esp_err(); return;}
-		rd_int(p, trig, err);
-		if (err || (u32(trig) > 15) || (p.next() != ',')) {esp_err(); return;}
-		rd_int(p, lvl, err);
-		if (err || ((lvl != 0) && (lvl != 1))) {esp_err(); return;}
-		if (p.c() == ',') {
-			p.i++;
-			rd_int(p, awake, err);
-			// the firmware compares the awake pin with its level code (4 low, 5 high), not
-			// with the trigger pin
-			if (err || (u32(awake) > 15) || (awake == lvl + 4) || (p.next() != ',')) {esp_err(); return;}
-			rd_int(p, alvl, err);
-			if (err || (u32(alvl) >= 2)) {esp_err(); return;}
-		}
-	} else if (en != 0) {
-		esp_err();
-		return;
-	}
-	if (p.c() != '\r') {esp_err(); return;}
-	B.wake = (en == 1);
-	B.wakePin = (int)trig;
-	B.wakeActive = (int)lvl;
-	B.awakePin = (int)awake;
-	B.awakeLevel = (int)alvl;
-	B.asleep = false;
-	if (B.wake) {
-		B.func[trig] = gpio_func((int)trig);
-		pin_sync((int)trig);
-		if (awake >= 0) {
-			B.func[awake] = gpio_func((int)awake);
-			pin_output((int)awake, (int)alvl);
-		}
-	}
 	esp_ok();
 }
 
@@ -484,122 +383,11 @@ static void sysgpioread_set(espCmdCall& c) {
 	esp_ok();
 }
 
-// == system messages ==
-
-static void sysmsg_put(const std::string& name, uint32_t v) {
-	char s[64];
-	snprintf(s, sizeof(s), "%s:0x%lx\r\n", name.c_str(), (unsigned long)v);
-	esp_put(s);
-	esp_ok();
-}
-
-static void sysmsg_cur_query(espCmdCall& c) {sysmsg_put(c.name, B.sysmsg);}
-static void sysmsg_def_query(espCmdCall& c) {sysmsg_put(c.name, fl_uint("sysmsg", 0));}
-
-// any 32-bit value is taken: only bits 0 and 1 mean something
-static void sysmsg_apply(espCmdCall& c, bool save) {
-	espCur p{c.p, 1};
-	uint32_t v;
-	if (!rd_uint(p, v) || (p.c() != '\r')) {esp_err(); return;}
-	B.sysmsg = v;
-	if (save) esp_fl_set("sysmsg", std::to_string((unsigned long)v));
-	esp_ok();
-}
-
-static void sysmsg_cur_set(espCmdCall& c) {sysmsg_apply(c, false);}
-static void sysmsg_def_set(espCmdCall& c) {sysmsg_apply(c, true);}
-
-int esp_sysmsg() {
-	return (int)(B.sysmsg & 3);
-}
-
-// == +TEST: the SDK's example command, left in the image ==
-
-static void test_test(espCmdCall& c) {(void)c; esp_put("at_testCmdTest\r\n"); esp_ok();}
-static void test_query(espCmdCall& c) {(void)c; esp_put("at_queryCmdTest\r\n"); esp_ok();}
-static void test_exec(espCmdCall& c) {(void)c; esp_put("at_exeCmdTest\r\n"); esp_ok();}
-
-// The string goes over the buffer the first line was printed in, NUL-ended only when its
-// closing quote comes within 10 characters: what is left of that line shows after it.
-static std::string test_string(espCur& p, std::string buf) {
-	int ch = p.c();
-	if ((ch == ',') || (ch == '\r')) return "";
-	if (ch != '"') return buf;
-	buf.resize(32, '\0');
-	size_t q = p.i + 1, n = 0;
-	bool esc = false;
-	for (;;) {
-		if (n >= 10) {
-			if (p.at(q - p.i) == '"') p.i = q + 1;
-			break;
-		}
-		ch = p.at(q - p.i);
-		if (ch == '\r') {p.i = q; break;}
-		if (!esc && (ch == '\\')) {
-			esc = true;
-		} else if (!esc && (ch == '"')) {
-			buf[n] = '\0';
-			p.i = q + 1;
-			break;
-		} else {
-			buf[n++] = (char)ch;
-			esc = false;
-		}
-		q++;
-	}
-	return std::string(buf.c_str());
-}
-
-static void test_set(espCmdCall& c) {
-	espCur p{c.p, 1};
-	long v;
-	int err;
-	if (!rd_int(p, v, err) || (p.next() != ',')) {esp_err(); return;}
-	char s[64];
-	snprintf(s, sizeof(s), "the first parameter:%li\r\n", v);
-	esp_put(s);
-	esp_put("the second parameter:" + test_string(p, s) + "\r\n");
-	if (p.c() == ',') {
-		p.i++;
-		rd_int(p, v, err);
-		snprintf(s, sizeof(s), "the third parameter:%li\r\n", v);
-		esp_put(s);
-	}
-	if (p.c() == '\r') esp_ok();
-	else esp_err();
-}
-
-// == light sleep ==
-
-// Light sleep sets in when the station is joined and the module is idle. Before it sleeps the
-// firmware looks at the trigger pin: still at its waking level, it stays awake. The awake pin
-// shows its level while awake and the other one while asleep. The UART is left as it is.
-static void light_sleep(Computer* comp, long long now) {
-	bool idle = (B.sleepType == 1) && esp_wifi_joined() && !esp_held() && !esp_out_queued()
-		&& (now - esp_last_input() >= esp_ms(comp, LS_IDLE_MS)) && (now - B.wokeAt >= esp_ms(comp, LS_IDLE_MS));
-	bool trig = B.wake && (pin_in(comp, B.wakePin) == B.wakeActive);
-	if (B.asleep) {
-		if (idle && !trig) return;
-		B.asleep = false;
-		B.wokeAt = now;
-		if (B.wake && (B.awakePin >= 0)) pin_output(B.awakePin, B.awakeLevel);
-		return;
-	}
-	if (!idle) return;
-	if (trig) {
-		if (B.awakePin >= 0) pin_output(B.awakePin, B.awakeLevel);
-		return;
-	}
-	B.asleep = true;
-	if (B.wake && (B.awakePin >= 0)) pin_output(B.awakePin, !B.awakeLevel);
-}
-
 // == the hooks ==
 
 void esp_basic_boot(Computer* comp) {
 	(void)comp;
 	B.sleepType = 2;
-	B.sysmsg = fl_uint("sysmsg", 0);
 	long b = esp_fl_num("baud", -1);
 	bool rec = (b >= 1) && (b <= BAUD_MAX);
 	long fr = esp_fl_num("frame", 0x18);
@@ -614,16 +402,8 @@ void esp_basic_boot(Computer* comp) {
 	B.func[2] = 2;			// GPIO2 is UART1's TX, where the firmware's debug lines go
 	B.gpioOut = 0;
 	B.gpioLatch = 0;
-	B.wake = false;
-	B.wakePin = B.awakePin = -1;
-	B.asleep = false;
-	B.wokeAt = 0;
 	pin_sync(0);
 	pin_sync(2);
-}
-
-void esp_basic_frame(Computer* comp, long long now) {
-	light_sleep(comp, now);
 }
 
 // == the table, in the firmware's order ==
@@ -634,7 +414,6 @@ const espCmd esp_basic_cmds[] = {
 	{"+GMR", nullptr, nullptr, nullptr, gmr_exec},
 	{"+GSLP", nullptr, nullptr, gslp_set, nullptr},
 	{"+SLEEP", nullptr, sleep_query, sleep_set, nullptr},
-	{"+IPR", nullptr, nullptr, ipr_set, nullptr},
 	{"+RESTORE", nullptr, nullptr, nullptr, restore_exec},
 	{"+RFPOWER", nullptr, nullptr, rfpower_set, nullptr},
 	{"+RFVDD", nullptr, rfvdd_query, rfvdd_set, rfvdd_exec},
@@ -642,7 +421,6 @@ const espCmd esp_basic_cmds[] = {
 	{"+UART", nullptr, uart_cur_query, uart_def_set, nullptr},
 	{"+UART_DEF", nullptr, uart_def_query, uart_def_set, nullptr},
 	{"+UART_CUR", nullptr, uart_cur_query, uart_cur_set, nullptr},
-	{"+WAKEUPGPIO", nullptr, nullptr, wakeupgpio_set, nullptr},
 	{"+SYSRAM", nullptr, sysram_query, nullptr, nullptr},
 	{"+SYSIOSETCFG", nullptr, nullptr, sysiosetcfg_set, nullptr},
 	{"+SYSIOGETCFG", nullptr, nullptr, sysiogetcfg_set, nullptr},
@@ -650,8 +428,5 @@ const espCmd esp_basic_cmds[] = {
 	{"+SYSGPIOWRITE", nullptr, nullptr, sysgpiowrite_set, nullptr},
 	{"+SYSGPIOREAD", nullptr, nullptr, sysgpioread_set, nullptr},
 	{"+SYSADC", nullptr, sysadc_query, nullptr, nullptr},
-	{"+SYSMSG_CUR", nullptr, sysmsg_cur_query, sysmsg_cur_set, nullptr},
-	{"+SYSMSG_DEF", nullptr, sysmsg_def_query, sysmsg_def_set, nullptr},
-	{"+TEST", test_test, test_query, test_set, test_exec},
 	{nullptr, nullptr, nullptr, nullptr, nullptr}
 };
