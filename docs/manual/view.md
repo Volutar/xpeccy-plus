@@ -26,9 +26,9 @@ of them changes.
 
 The window can also be maximized, or resized by dragging its edges or snapping it to
 half of the screen. At any size other than its scale's, the picture is fitted to the
-window as in fullscreen: as big as fits, with black bars where it does not fill (or a
-side fill, see [Fullscreen](#fullscreen)), and more border at the sides up to the full
-border. A size picked in **View > Size** brings back the scale's size with its whole
+window as in fullscreen: as big as fits, with more border in the room it leaves, up to
+the full border, and black or a side fill past that (see [Fullscreen](#fullscreen)). A
+size picked in **View > Size** brings back the scale's size with its whole
 pixels; a maximized window restored gets the size it had before. On macOS the green
 button is fullscreen; Option-click on it maximizes the window.
 
@@ -73,28 +73,38 @@ from there is in [Fullscreen](main-window.md#fullscreen).
 **View > Keep Aspect Ratio** matters in fullscreen and in a window that is maximized or
 resized:
 
-- ticked - the picture keeps its shape. On a screen or window wider than the picture,
-  more border is shown at the sides instead of black bars, up to the **full** border
-  (with **overscan** chosen, as far as the machine's frame goes);
+- ticked - the picture keeps its shape, and the room it leaves - at the sides of a wide
+  screen, above and below it in a tall window - is filled as **View > Side Fill** says;
 - not ticked - the picture is stretched to fill the whole screen or window.
 
 ```{index} Side Fill
 ```
 
-**View > Side Fill** sets what fills the room the picture leaves free: at the sides of a
-wide screen once the machine's frame runs out, above and below it in a tall window.
+**View > Side Fill** sets what fills the room the picture leaves free. The first three
+show more border there first, up to the **full** border (with **overscan** chosen, as far
+as the machine's frame goes), so a border that flashes is seen big; the fill takes the
+room past it:
 
-- **Black** - nothing, the default;
+- **Border + Black** - black past the border, the default;
+- **Border + Stretched Edges**, **Border + Mirror** - the fill past the border, as below.
+
+The other three keep the border at the size the **Border** slider sets, and the fill
+starts at its edge; with **no** border, at the edge of the screen itself:
+
+- **Black** - black bars;
 - **Stretched Edges** - the picture's outer rows and columns carried outwards, blurred and
-  dimmed, like a glow of the border;
+  dimmed, like a glow;
 - **Mirror** - the picture as it is shown, through the shader and with a curved screen's
   black corners too, reflected at its edge, blurred and dimmed.
+
+While the window is resized, the border grows with it smoothly, its edge cut at the
+window's edge rather than a whole dot at a time.
 
 ![Mirror in fullscreen](images/view-side-fill.png)
 
 It is the same setting as **Side fill** on the **Video** page of **Options**, where its
 blur and brightness are set too (see [Side fill](options-video.md#side-fill)). Without
-OpenGL the menu is grayed out and the room stays black.
+OpenGL only **Border + Black** and **Black** can be picked.
 
 Fullscreen is remembered: if the program is closed in fullscreen, it starts in
 fullscreen next time.

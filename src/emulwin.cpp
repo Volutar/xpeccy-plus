@@ -1766,7 +1766,8 @@ void MainWin::drawIcons(QPainter& pnt) {
 void MainWin::drawInputOsd(QPainter& pnt) {
 	InState st;
 	if (!conf.iosd.on || !frame_shown_input(&st)) return;
-	inputOsd.paint(pnt, QRect(drawX, drawY, drawW, drawH), st, widgetDpr(this));
+	// the picture may run a dot past the window's edge, see vid_upd_scale
+	inputOsd.paint(pnt, QRect(drawX, drawY, drawW, drawH) & rect(), st, widgetDpr(this));
 }
 
 // built once; opening it only puts the checks right
@@ -2491,26 +2492,40 @@ void MainWin::initMenuBar() {
 		});
 	}
 	connect(viewMenu, &QMenu::aboutToShow, this, &MainWin::fillBorderMenu);	// the submenu itself may be off
-	// what fills the room beside a fitted picture; the plain picture has black only
+	// what fills the room beside a fitted picture: border first or not, then the
+	// fill; the plain picture has black only
 	fillMenu = new xMenu("Side Fill", this);
 	viewMenu->addMenu(fillMenu);
 	QActionGroup* fgrp = new QActionGroup(fillMenu);
 	static const char* fillNames[] = {"Black", "Stretched Edges", "Mirror"};
-	for (int i = SFILL_BLACK; i <= SFILL_MIRROR; i++) {
-		act = fillMenu->addAction(fillNames[i]);
+	for (int i = 0; i < SFILL_ITEMS; i++) {
+		const int item = sfillItems[i];
+		const int fill = item & ~SFILL_BORDER;
+		if ((i > 0) && !(item & SFILL_BORDER) && (sfillItems[i - 1] & SFILL_BORDER))
+			fillMenu->addSeparator();
+		act = fillMenu->addAction((item & SFILL_BORDER) ? QString("Border + %0").arg(fillNames[fill]) : QString(fillNames[fill]));
 		act->setCheckable(true);
-		act->setData(i);
+		act->setData(item);
 		fgrp->addAction(act);
-		connect(act, &QAction::triggered, this, [this, i]() {
-			conf.vid.sideFill = i;
-			presentFrame();
+		connect(act, &QAction::triggered, this, [this, item]() {
+			const bool brd = (conf.vid.fillBorder != 0) != ((item & SFILL_BORDER) != 0);
+			sfill_set(item);
+			if (brd) {
+				optResize();		// the frame's size follows
+			} else {
+				presentFrame();
+			}
 			saveConfig();
 		});
 	}
 	connect(viewMenu, &QMenu::aboutToShow, this, [this]() {
-		fillMenu->setEnabled(conf.vid.gl);
-		foreach(QAction* act, fillMenu->actions())
-			act->setChecked(act->data().toInt() == (conf.vid.gl ? conf.vid.sideFill : SFILL_BLACK));
+		const int cur = conf.vid.gl ? sfill_item() : (sfill_item() & SFILL_BORDER);
+		foreach(QAction* act, fillMenu->actions()) {
+			if (act->isSeparator()) continue;
+			const int item = act->data().toInt();
+			act->setEnabled(conf.vid.gl || ((item & ~SFILL_BORDER) == SFILL_BLACK));
+			act->setChecked(item == cur);
+		}
 	});
 	fullAct = cutAction(viewMenu, "Fullscreen", XCUT_FULLSCR, "fullscreen");
 	fullAct->setCheckable(true);
@@ -3083,6 +3098,18 @@ void MainWin::fillBorderMenu() {
 		}
 		act->setText(name);
 		act->setChecked(mode == shown);
+	}
+}
+
+// The border first or not changes the frame's size; a slider only how it looks.
+void MainWin::fillPreview() {
+	Video* vid = conf.zx->vid;
+	const vCoord was = vid->vsze;
+	vid_upd_scale();
+	if ((vid->vsze.x != was.x) || (vid->vsze.y != was.y)) {
+		optResize();
+	} else {
+		presentFrame();
 	}
 }
 

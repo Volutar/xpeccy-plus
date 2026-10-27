@@ -22,8 +22,8 @@ before that point is upstream's history and is not repeated here.
   closed, maximized or at its own size.
 
 - **Side fill**: the room beside a fitted picture can show its edges or its reflection,
-  blurred and dimmed, instead of black (View > Side Fill); how soft and bright, in
-  Options > Video.
+  blurred and dimmed, instead of black - past the border, or from the border size chosen
+  (View > Side Fill); how soft and bright, in Options > Video.
 
 - **The mellow palette**: softer colors, each kept near the classic one, easier on the eyes.
   Pick it in View > ZX Palette. *(thanks to Volutar)*
@@ -33,8 +33,9 @@ before that point is upstream's history and is not repeated here.
 - **With no shader, a fitted picture stays sharp**: in fullscreen or a maximized window
   every dot keeps one width, only the seams between dots are softened. *(thanks to Volutar)*
 
-- **Fullscreen shows the border up to full**, not into the overscan, unless overscan is
-  the size chosen.
+- **A fitted picture shows the border up to full**, above and below in a tall window too,
+  and not into the overscan unless overscan is the size chosen; a resized window's edge
+  moves smoothly. *(reported by Volutar)*
 
 ### Fixed
 

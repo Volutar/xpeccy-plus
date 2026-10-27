@@ -1,4 +1,4 @@
-// #include <math.h>
+#include <cmath>
 #include <string.h>
 
 #include "xcore.h"
@@ -63,6 +63,20 @@ int sfill_id(const char* nam) {
 	return SFILL_BLACK;
 }
 
+const int sfillItems[SFILL_ITEMS] = {
+	SFILL_BORDER | SFILL_BLACK, SFILL_BORDER | SFILL_EDGES, SFILL_BORDER | SFILL_MIRROR,
+	SFILL_BLACK, SFILL_EDGES, SFILL_MIRROR
+};
+
+int sfill_item() {
+	return conf.vid.sideFill | (conf.vid.fillBorder ? SFILL_BORDER : 0);
+}
+
+void sfill_set(int item) {
+	conf.vid.sideFill = item & ~SFILL_BORDER;
+	conf.vid.fillBorder = (item & SFILL_BORDER) ? 1 : 0;
+}
+
 // the picture area of a window that is not the zoom's size, empty when it is
 static QSize fitArea;
 
@@ -98,14 +112,23 @@ void vid_upd_scale(const QSize& screenSize) {
 		dwid = area.width();
 		dhei = area.height();
 		if (conf.vid.keepRatio) {
-			// The height sets the scale on a screen wider than the picture.
-			// Rather than leave black beside it, show more border there, as
-			// far as the raster goes.
-			vid_widen_crop(vid, (int)(dwid * vid->vsze.y / (dhei * xscale)));
+			// The height sets the scale in a room wider than the picture, the
+			// width in a taller one. With the border first, the free room shows
+			// more border, as far as the raster goes: the frame takes a dot
+			// more than fits and is cut at the room's edge, so the edge follows
+			// the room smoothly instead of jumping a dot at a time.
 			double picw = vid->vsze.x * xscale;
-			double fit = dwid / picw;
-			if (dhei / (double)vid->vsze.y < fit)
+			double fit;
+			if (dwid * (double)vid->vsze.y >= dhei * picw) {
 				fit = dhei / (double)vid->vsze.y;
+				if (conf.vid.fillBorder)
+					vid_widen_crop(vid, (int)std::ceil(dwid / (fit * xscale) - 1e-6), 0);
+			} else {
+				fit = dwid / picw;
+				if (conf.vid.fillBorder)
+					vid_widen_crop(vid, 0, (int)std::ceil(dhei / fit - 1e-6));
+			}
+			picw = vid->vsze.x * xscale;
 			drawW = (int)(picw * fit + 0.5);
 			drawH = (int)(vid->vsze.y * fit + 0.5);
 			drawZoom = (fit == 1.0) ? 1 : 0;
