@@ -1380,6 +1380,7 @@ void loadConfig() {
 		}
 	}
 	hotkeys_load_end();
+	padLogSdl();
 	padLoadControllerDb();		// before the pads open, it decides their layout
 	conf.gpctrl->rescan();
 	foreach(xRomset rs, rsListist) addRomset(rs);

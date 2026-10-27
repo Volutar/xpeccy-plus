@@ -327,6 +327,7 @@ void pad_mouse_frame(int ns, int* dx, int* dy);
 
 // gamecontrollerdb.txt, if the user dropped one in the config dir
 void padLoadControllerDb();
+void padLogSdl();
 
 // the key a key event is about, as the keymap counts keys (XKEY_*)
 class QKeyEvent;
