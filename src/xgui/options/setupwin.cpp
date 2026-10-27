@@ -495,9 +495,21 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.cbEarBack->addItem("Issue 3", EAR_ISSUE3);
 	ui.cbEarBack->addItem("Issue 2", EAR_ISSUE2);
 	ui.cbEarBack->addItem("Nothing", EAR_NONE);
-	ui.cbSideFill->addItem("Black", SFILL_BLACK);
-	ui.cbSideFill->addItem("Stretched edges", SFILL_EDGES);
-	ui.cbSideFill->addItem("Mirror", SFILL_MIRROR);
+	{
+		static const char* names[] = {"black", "stretched edges", "mirror"};
+		for (int i = 0; i < SFILL_ITEMS; i++) {
+			const int item = sfillItems[i];
+			QString nam = names[item & ~SFILL_BORDER];
+			if ((i > 0) && !(item & SFILL_BORDER) && (sfillItems[i - 1] & SFILL_BORDER))
+				ui.cbSideFill->insertSeparator(ui.cbSideFill->count());
+			if (item & SFILL_BORDER) {
+				nam.prepend("Border + ");
+			} else {
+				nam[0] = nam[0].toUpper();
+			}
+			ui.cbSideFill->addItem(nam, item);
+		}
+	}
 	makeFillPopup();
 	ui.bszsld->setMaximum(VID_BRD_OVERSCAN);	// one tick per border size
 	ui.sldSpeed->setMaximum(XSPD_MAX);		// one tick per step of the speed scale
@@ -1409,7 +1421,7 @@ void SetupWin::applyGlobal() {
 // video
 	conf.vid.fullScreen = ui.cbFullscreen->isChecked() ? 1 : 0;
 	conf.vid.keepRatio = ui.cbKeepRatio->isChecked() ? 1 : 0;
-	if (conf.vid.gl) conf.vid.sideFill = getRFIData(ui.cbSideFill);
+	fillSet(getRFIData(ui.cbSideFill));
 	fillTake();		// the pop-up's values are in conf already: now they stay
 	conf.vid.scale = getRFIData(ui.cbScale);
 	noflic = ui.sldNoflic->value();
@@ -3320,20 +3332,33 @@ void SetupWin::makeFillPopup() {
 		fillPop->show();
 	});
 	connect(ui.cbSideFill, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
-		if (!conf.vid.gl) return;
-		conf.vid.sideFill = getRFIData(ui.cbSideFill);
-		ui.tbSideFill->setEnabled(conf.vid.sideFill != SFILL_BLACK);
+		fillSet(getRFIData(ui.cbSideFill));
+		ui.tbSideFill->setEnabled(conf.vid.gl && (conf.vid.sideFill != SFILL_BLACK));
 		sldFill[4]->setEnabled(conf.vid.sideFill == SFILL_MIRROR);
 		emit s_fill();
 	});
 }
 
-// The plain picture has black only; the setting stays for a run with OpenGL.
+// The plain picture has black only: the border first or not is taken, the fill
+// stays for a run with OpenGL.
+void SetupWin::fillSet(int item) {
+	if (conf.vid.gl) {
+		sfill_set(item);
+	} else {
+		conf.vid.fillBorder = (item & SFILL_BORDER) ? 1 : 0;
+	}
+}
+
 void SetupWin::fillToUi() {
+	QStandardItemModel* mdl = qobject_cast<QStandardItemModel*>(ui.cbSideFill->model());
+	for (int i = 0; mdl && (i < ui.cbSideFill->count()); i++) {
+		QVariant dat = ui.cbSideFill->itemData(i);
+		if (dat.isValid() && ((dat.toInt() & ~SFILL_BORDER) != SFILL_BLACK))
+			mdl->item(i)->setEnabled(conf.vid.gl);
+	}
 	ui.cbSideFill->blockSignals(true);
-	setRFIndex(ui.cbSideFill, conf.vid.gl ? conf.vid.sideFill : SFILL_BLACK);
+	setRFIndex(ui.cbSideFill, conf.vid.gl ? sfill_item() : (sfill_item() & SFILL_BORDER));
 	ui.cbSideFill->blockSignals(false);
-	ui.cbSideFill->setEnabled(conf.vid.gl);
 	ui.tbSideFill->setEnabled(conf.vid.gl && (conf.vid.sideFill != SFILL_BLACK));
 	sldFill[4]->setEnabled(conf.vid.sideFill == SFILL_MIRROR);
 	for (int i = 0; i < 5; i++) {
@@ -3347,14 +3372,16 @@ void SetupWin::fillTake() {
 	fillWas[0] = conf.vid.sideFill;
 	for (int i = 0; i < 5; i++)
 		fillWas[i + 1] = *fill_val(i);
+	fillWas[6] = conf.vid.fillBorder;
 }
 
 void SetupWin::fillPut() {
-	bool same = (conf.vid.sideFill == fillWas[0]);
+	bool same = (conf.vid.sideFill == fillWas[0]) && (conf.vid.fillBorder == unsigned(fillWas[6]));
 	for (int i = 0; i < 5; i++)
 		same = same && (*fill_val(i) == fillWas[i + 1]);
 	if (same) return;
 	conf.vid.sideFill = fillWas[0];
+	conf.vid.fillBorder = fillWas[6] ? 1 : 0;
 	for (int i = 0; i < 5; i++)
 		*fill_val(i) = fillWas[i + 1];
 	emit s_fill();

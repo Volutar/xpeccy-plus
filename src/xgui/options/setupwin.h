@@ -89,9 +89,10 @@ class SetupWin : public QDialog {
 		// window shows each move at once, and Cancel puts back what was there
 		QFrame* fillPop;
 		xSlider* sldFill[5];		// blur, brightness, fade, edge, stretch
-		int fillWas[6];			// sideFill, then the five, as applied
+		int fillWas[7];			// sideFill, the five, fillBorder, as applied
 		void makeFillPopup();
 		void fillToUi();
+		void fillSet(int item);		// a Side fill item into conf
 		void fillTake();
 		void fillPut();
 

@@ -242,7 +242,7 @@ class MainWin : public QWidget {
 		void kRelease(QKeyEvent*);
 		void loadShader();
 		bool reloadMedia();
-		void fillPreview() { presentFrame(); }	// Options moved a side fill setting
+		void fillPreview();	// Options moved a side fill setting
 		void startSize();
 		void keepSize();
 	private slots:

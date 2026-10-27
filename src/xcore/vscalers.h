@@ -19,6 +19,14 @@ enum {
 };
 const char* sfill_name(int);
 int sfill_id(const char*);
+// The Side Fill list, in the menu and in Options: the border widened into the
+// room first and the fill past it, or the fill from the border size's edge. An
+// item is a fill, | SFILL_BORDER for the border first (conf.vid.fillBorder).
+#define SFILL_BORDER	0x10
+#define SFILL_ITEMS	6
+extern const int sfillItems[SFILL_ITEMS];
+int sfill_item();		// the one conf has
+void sfill_set(int item);
 // the ranges of conf.vid.fill*, and what they start at
 #define SFILL_BLUR_MIN	1
 #define SFILL_BLUR_MAX	16
