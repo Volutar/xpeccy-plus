@@ -2922,6 +2922,14 @@ void MainWin::initMachineMenus() {
 	});
 }
 
+// One tick in a list whichever menu picked from it: the same submenu sits in View and in
+// the right-click menu, so its items go into one exclusive group, kept by the menu
+static void menu_one_tick(QMenu* menu) {
+	QActionGroup* grp = menu->findChild<QActionGroup*>(QString(), Qt::FindDirectChildrenOnly);
+	if (!grp) grp = new QActionGroup(menu);
+	foreach(QAction* act, menu->actions()) grp->addAction(act);
+}
+
 void MainWin::fillUserMenu() {
 	// fill favorites menu: the image in use first, to add it or to take it out
 	bookmarkMenu->clear();
@@ -3044,6 +3052,9 @@ void MainWin::fillUserMenu() {
 		act->setCheckable(true);
 		act->setChecked(nam == conf.palette.c_str());
 	}
+	menu_one_tick(keyMenu);
+	menu_one_tick(shdMenu);
+	menu_one_tick(palMenu);
 }
 
 // SLOTS
