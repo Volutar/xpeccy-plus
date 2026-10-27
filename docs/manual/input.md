@@ -234,6 +234,9 @@ Under it, a line shows what the last button or key pressed does, so you can try 
 there. A gamepad plugged in for the first time is given to a player that has no device, and
 the window opens by itself to show it (not in fullscreen).
 
+On macOS a gamepad with an XInput / DInput switch is not seen at all in XInput mode: switch it
+to DInput.
+
 **Joystick** - which joystick the Spectrum sees for this player:
 
 | Joystick | Up, down, left, right, fire |
