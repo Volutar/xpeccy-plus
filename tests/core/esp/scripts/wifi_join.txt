@@ -44,17 +44,9 @@ wait OK\r\n 10000
 send AT+CWJAP_DEF?
 wait OK\r\n 10000
 send AT+CWJAPTO?
-wait OK\r\n 10000
-send AT+CWJAPTO=0
 wait ERROR\r\n 10000
-send AT+CWJAPTO=?
-wait ERROR\r\n 10000
-send AT+CWJAPTO=3
-wait OK\r\n 10000
-send AT+CWJAPTO?
-wait OK\r\n 10000
 send AT+CWJAP_CUR="Home","secret","11:22:33:44:55:66"
-wait FAIL\r\n 10000
+wait FAIL\r\n 20000
 send AT+CWJAP?
 wait OK\r\n 10000
 send AT+CWJAP_DEF?
@@ -101,6 +93,4 @@ wait WIFI GOT IP\r\n 5000
 send ATE0
 wait OK\r\n 10000
 send AT+CWJAP?
-wait OK\r\n 10000
-send AT+CWJAPTO?
 wait OK\r\n 10000

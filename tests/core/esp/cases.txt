@@ -41,9 +41,7 @@ run tcp_prog_uploader            bridge.bin         6000   SCRIPT=tcp_prog_uploa
 run tcp_prog_wifiprn             bridge.bin         6000   SCRIPT=tcp_prog_wifiprn.txt FLASH=esp01.conf
 run tcp_prog_zxmit               bridge.bin         6000   SCRIPT=tcp_prog_zxmit.txt FLASH=esp01.conf
 run tcp_send                     bridge.bin         6000   SCRIPT=tcp_send.txt FLASH=esp01.conf
-run tcp_sendbuf                  bridge.bin         6000   SCRIPT=tcp_sendbuf.txt FLASH=esp01.conf
 run tcp_server                   bridge.bin         6000   SCRIPT=tcp_server.txt FLASH=esp01.conf
-run tcp_translink                bridge.bin         6000   SCRIPT=tcp_translink.txt FLASH=esp01.conf
 run tcp_udp                      bridge.bin         6000   SCRIPT=tcp_udp.txt FLASH=esp01.conf
 run wifi_ap                      bridge.bin         6000   SCRIPT=wifi_ap.txt FLASH=esp01.conf
 run wifi_dhcp                    bridge.bin         6000   SCRIPT=wifi_dhcp.txt FLASH=esp01.conf

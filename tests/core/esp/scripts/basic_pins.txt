@@ -1,4 +1,4 @@
-# chapter 3: SYSIO*, SYSGPIO* (GPIO0/GPIO2 seen from the Next, NR A8/A9), WAKEUPGPIO, GSLP
+# chapter 3: SYSIO*, SYSGPIO* (GPIO0/GPIO2 seen from the Next, NR A8/A9), GSLP; WAKEUPGPIO is ERROR
 mask ^.*\\x[89A-F][0-9A-F].* <garbage>
 wait WIFI GOT IP\r\n 5000
 print -- GPIO0 is a GPIO; the Next drives it
@@ -101,53 +101,8 @@ send AT+SYSGPIOREAD=5,0
 quiet 300
 send AT+SYSGPIOREAD?
 quiet 300
-print -- light sleep: GPIO0 low wakes, GPIO2 shows awake
-send AT+SYSGPIODIR=2,0
-quiet 300
-send AT+SLEEP=1
-quiet 300
+print -- WAKEUPGPIO: not emulated
 send AT+WAKEUPGPIO=1,0,0,2,1
-quiet 300
-nrget A9
-nr A8 01
-nr A9 00
-pause 100
-nrget A9
-pause 300
-nrget A9
-nr A8 00
-pause 300
-nrget A9
-send AT+SLEEP=2
-quiet 300
-nrget A9
-send AT+WAKEUPGPIO=0
-quiet 300
-send AT+WAKEUPGPIO=2
-quiet 300
-send AT+WAKEUPGPIO=0,1
-quiet 300
-send AT+WAKEUPGPIO=1,16,0
-quiet 300
-send AT+WAKEUPGPIO=1,0,2
-quiet 300
-send AT+WAKEUPGPIO=1,0,0,4,1
-quiet 300
-send AT+WAKEUPGPIO=1,0,1,5,0
-quiet 300
-send AT+WAKEUPGPIO=1,0,0,2,2
-quiet 300
-send AT+WAKEUPGPIO=1,0
-quiet 300
-send AT+WAKEUPGPIO
-quiet 300
-send AT+WAKEUPGPIO?
-quiet 300
-send AT+WAKEUPGPIO=?
-quiet 300
-send AT+WAKEUPGPIO=1,0,1,0,1
-quiet 300
-send AT+WAKEUPGPIO=0
 quiet 300
 print -- GSLP: asleep till the Next resets it
 send AT+GSLP

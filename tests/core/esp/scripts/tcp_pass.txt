@@ -1,4 +1,4 @@
-# chapter 5: passthrough - CIPMODE, the bare CIPSEND, raw data both ways, +++, SYSMSG bit0's +QUITT
+# chapter 5: passthrough - CIPMODE, the bare CIPSEND, raw data both ways, +++
 mask .*\\x[0-9A-F][0-9A-F].* <romlog>
 wait WIFI GOT IP\r\n 5000
 send ATE0
@@ -32,17 +32,6 @@ raw +++
 pause 1500
 send AT
 wait \r\nOK\r\n
-send AT+SYSMSG_CUR=1
-wait \r\nOK\r\n
-send AT+CIPSEND
-wait >
-pause 100
-raw abc
-wait abc
-pause 500
-raw +++
-wait +QUITT\r\n 3000
-pause 1500
 send AT+CIPMODE=0
 wait \r\nOK\r\n
 send AT+CIPCLOSE

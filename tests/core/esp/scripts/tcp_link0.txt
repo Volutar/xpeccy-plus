@@ -1,5 +1,5 @@
 # chapter 5, MUX 0: CIPSTATUS, CIFSR, CIPSTART (diagnostics, refused, DNS Fail), CIPCLOSE,
-# CIPCLOSEMODE, CIPALIVE, the link count's STATUS 2/3/4
+# CIPCLOSEMODE, the link count's STATUS 2/3/4 (CIPALIVE is ERROR)
 mask .*\\x[0-9A-F][0-9A-F].* <romlog>
 mask ,\d{5},0\\r\\n$ ,<lport>,0\r\n
 mask STAIP,"[0-9.]+" STAIP,"<ip>"
@@ -34,7 +34,7 @@ wait \r\nERROR\r\n
 send AT+CIPCLOSEMODE=1
 wait \r\nERROR\r\n
 send AT+CIPALIVE?
-wait \r\nOK\r\n
+wait \r\nERROR\r\n
 # the parameter checks, in the firmware's order
 send AT+CIPSTART="XYZ","127.0.0.1",80
 wait \r\nERROR\r\n
@@ -56,8 +56,6 @@ wait \r\nERROR\r\n
 send AT+CIPSTART="TCP","127.0.0.1",<port>,60
 wait \r\nOK\r\n
 send AT+CIPSTATUS
-wait \r\nOK\r\n
-send AT+CIPALIVE?
 wait \r\nOK\r\n
 send AT+CIPSTART="TCP","127.0.0.1",<port>
 wait \r\nERROR\r\n

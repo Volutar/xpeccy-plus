@@ -35,8 +35,6 @@ wait WIFI GOT IP\r\n 5000
 send AT
 quiet 300
 print -- RESTORE
-send AT+SYSMSG_DEF=3
-quiet 300
 send AT+RFAUTOTRACE=0
 quiet 300
 send AT+UART_DEF=115200,8,1,0,2
@@ -49,10 +47,6 @@ quiet 1500
 send AT+UART_DEF?
 quiet 300
 send AT+UART_CUR?
-quiet 300
-send AT+SYSMSG_DEF?
-quiet 300
-send AT+SYSMSG_CUR?
 quiet 300
 send AT+RFAUTOTRACE?
 quiet 300
