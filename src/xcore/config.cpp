@@ -298,6 +298,11 @@ void saveConfig() {
 	fprintf(cfile, "fullscreen = %s\n", YESNO(conf.vid.fullScreen));
 	fprintf(cfile, "maximized = %s\n", YESNO(conf.vid.maximized));
 	fprintf(cfile, "keepratio = %s\n", YESNO(conf.vid.keepRatio));
+	fprintf(cfile, "sidefill = %s\n", sfill_name(conf.vid.sideFill));
+	fprintf(cfile, "sidefill.blur = %i\n", conf.vid.fillBlur);
+	fprintf(cfile, "sidefill.brightness = %i\n", conf.vid.fillDim);
+	fprintf(cfile, "sidefill.fade = %i\n", conf.vid.fillFade);
+	fprintf(cfile, "sidefill.edge = %i\n", conf.vid.fillEdge);
 	fprintf(cfile, "toolbar = %s\n", YESNO(conf.win.toolbar));
 	if (conf.win.tbIcons) {
 		fprintf(cfile, "toolbar.icons = %i\n", conf.win.tbIcons);
@@ -846,6 +851,11 @@ void loadConfig() {
 	conf.iosd.size = 40;
 	conf.iosd.opacity = 85;
 	conf.vid.border = VID_BRD_FULL;
+	conf.vid.sideFill = SFILL_BLACK;
+	conf.vid.fillBlur = 2;
+	conf.vid.fillDim = 75;
+	conf.vid.fillFade = 50;
+	conf.vid.fillEdge = 12;
 	conf.vid.scale = 2;		// a config with no scale must not make a zero-size window
 	conf.win.toolbar = 1;
 	conf.win.statusbar = 1;
@@ -1174,6 +1184,11 @@ void loadConfig() {
 					if (pnam=="fullscreen") conf.vid.fullScreen = arg.b;
 					if (pnam=="maximized") conf.vid.maximized = arg.b;
 					if (pnam=="keepratio") conf.vid.keepRatio = arg.b;
+					if (pnam=="sidefill") conf.vid.sideFill = sfill_id(arg.s);
+					if (pnam=="sidefill.blur") conf.vid.fillBlur = getRanged(arg.s, SFILL_BLUR_MIN, SFILL_BLUR_MAX);
+					if (pnam=="sidefill.brightness") conf.vid.fillDim = getRanged(arg.s, SFILL_DIM_MIN, 100);
+					if (pnam=="sidefill.fade") conf.vid.fillFade = getRanged(arg.s, 0, 100);
+					if (pnam=="sidefill.edge") conf.vid.fillEdge = getRanged(arg.s, 0, SFILL_EDGE_MAX);
 					if (pnam=="toolbar") conf.win.toolbar = arg.b;
 					if (pnam=="toolbar.icons") conf.win.tbIcons = ((arg.i == 16) || (arg.i == 24)) ? arg.i : 0;
 					if (pnam=="toolbar.items") conf.win.tbItems = pval;

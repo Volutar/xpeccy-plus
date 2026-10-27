@@ -1293,6 +1293,13 @@ void MainWin::paintGLView() {
 	// and the window is painted before that happens. Binding a texture name
 	// that was never generated is undefined - macOS says so out loud, other
 	// drivers quietly sample black.
+#if !ISLEGACYGL
+	fillOn = fillWanted();
+	if (fillOn) {
+		prepareFill();
+		drawFill();
+	}
+#endif
 	drawPicture();
 	glFlush();
 	pnt.endNativePainting();
@@ -1314,6 +1321,7 @@ void MainWin::paintGLView() {
 				int(slot.width() * r + 1), int(slot.height() * r + 1));
 			glClearColor(0, 0, 0, 1);
 			glClear(GL_COLOR_BUFFER_BIT);
+			if (fillOn) drawFill();		// the slot is in the room beside the picture
 			drawPicture();
 			glDisable(GL_SCISSOR_TEST);
 			glFlush();
@@ -2415,6 +2423,27 @@ void MainWin::initMenuBar() {
 		});
 	}
 	connect(viewMenu, &QMenu::aboutToShow, this, &MainWin::fillBorderMenu);	// the submenu itself may be off
+	// what fills the room beside a fitted picture; the plain picture has black only
+	fillMenu = new xMenu("Side Fill", this);
+	viewMenu->addMenu(fillMenu);
+	QActionGroup* fgrp = new QActionGroup(fillMenu);
+	static const char* fillNames[] = {"Black", "Stretched Edges", "Mirror"};
+	for (int i = SFILL_BLACK; i <= SFILL_MIRROR; i++) {
+		act = fillMenu->addAction(fillNames[i]);
+		act->setCheckable(true);
+		act->setData(i);
+		fgrp->addAction(act);
+		connect(act, &QAction::triggered, this, [this, i]() {
+			conf.vid.sideFill = i;
+			presentFrame();
+			saveConfig();
+		});
+	}
+	connect(viewMenu, &QMenu::aboutToShow, this, [this]() {
+		fillMenu->setEnabled(conf.vid.gl);
+		foreach(QAction* act, fillMenu->actions())
+			act->setChecked(act->data().toInt() == (conf.vid.gl ? conf.vid.sideFill : SFILL_BLACK));
+	});
 	fullAct = cutAction(viewMenu, "Fullscreen", XCUT_FULLSCR, "fullscreen");
 	fullAct->setCheckable(true);
 	ratioAct = cutAction(viewMenu, "Keep Aspect Ratio", XCUT_RATIO, "display");

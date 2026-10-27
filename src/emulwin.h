@@ -242,6 +242,7 @@ class MainWin : public QWidget {
 		void kRelease(QKeyEvent*);
 		void loadShader();
 		bool reloadMedia();
+		void fillPreview() { presentFrame(); }	// Options moved a side fill setting
 	private slots:
 		void updateScreen(QScreen*);
 		void updateSatellites();
@@ -405,6 +406,7 @@ class MainWin : public QWidget {
 		QMenu* sizeMenu;
 		QMenu* brdMenu;
 		void fillBorderMenu();
+		QMenu* fillMenu;
 		QMenu* recentMenu;
 		void fillRecent();
 		// the toolbar and the status bar (emw_bars.cpp)
@@ -578,6 +580,18 @@ class MainWin : public QWidget {
 		QOpenGLShader* frg_shd;
 		QOpenGLVertexArrayObject vao;
 		QOpenGLBuffer vbo;
+		// the side fill (emw_opengl.cpp): the frame shrunk and blurred in fillTex[0]
+		QOpenGLShaderProgram fillDown;
+		QOpenGLShaderProgram fillBlur;
+		QOpenGLShaderProgram fillDraw;
+		GLuint fillTex[2] = {0, 0};
+		GLuint fillFbo[2] = {0, 0};
+		QSize fillSize;
+		bool fillOn = false;		// this paint has drawn it
+		void initFill();
+		bool fillWanted();
+		void prepareFill();
+		void drawFill();
 #endif
 #endif
 };

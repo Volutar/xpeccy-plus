@@ -15,6 +15,10 @@ before that point is upstream's history and is not repeated here.
   is fitted as in fullscreen, with more border at the sides; a window closed maximized starts
   maximized.
 
+- **Side fill**: the room beside a fitted picture can show its edges or its reflection,
+  blurred and dimmed, instead of black (View > Side Fill); how soft and bright, in
+  Options > Video.
+
 ## 2026.8.2 - 2026-10-27
 
 ### Changed

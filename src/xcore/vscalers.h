@@ -11,6 +11,20 @@ const char* brd_mode_name(int);
 int brd_mode_id(const char*);
 int brd_mode_pcnt(int);
 
+// What fills the room beside a fitted picture (conf.vid.sideFill)
+enum {
+	SFILL_BLACK = 0,
+	SFILL_EDGES,		// the edge rows and columns carried outwards, blurred and dimmed
+	SFILL_MIRROR		// the picture reflected at its edge, blurred and dimmed
+};
+const char* sfill_name(int);
+int sfill_id(const char*);
+// the ranges of conf.vid.fill*
+#define SFILL_BLUR_MIN	1
+#define SFILL_BLUR_MAX	16
+#define SFILL_DIM_MIN	10
+#define SFILL_EDGE_MAX	32
+
 // Where the frame goes inside the window, in window pixels. The picture is
 // always drawn at a whole multiple of the dot, so this is the window itself in
 // windowed mode and a centered rectangle with black around it in fullscreen

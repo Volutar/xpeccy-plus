@@ -536,6 +536,7 @@ int main(int ac,char** av) {
 	app.connect(&mwin, SIGNAL(s_hotkeys()), &optw, SLOT(startHotkeys()));
 	app.connect(&optw, SIGNAL(closed()), &mwin, SLOT(optApply()));
 	app.connect(&optw, SIGNAL(s_apply()), &mwin, SLOT(optResize()));
+	app.connect(&optw, &SetupWin::s_fill, &mwin, &MainWin::fillPreview);
 	app.connect(&optw, SIGNAL(s_apply()), &app, SLOT(d_style()));
 	app.connect(&optw, SIGNAL(s_apply()), &dbgw, SLOT(updateStyle()));	// after d_style: the style sheet resets fonts
 	app.connect(&optw, SIGNAL(s_apply()), &wutw, SLOT(updateStyle()));
