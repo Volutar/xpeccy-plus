@@ -36,6 +36,9 @@ bool dsync_running();
 void dsync_swapped();
 // a new frame went into the window: the frame-time log counts them per vblank
 void dsync_frame_drawn();
+// the window has been flushed since: the frame is with the compositor. The tick
+// is held after the vblank by how long that takes (Windows)
+void dsync_frame_presented();
 // the GL context was made with swap interval 1 (Linux, set at start)
 void dsync_swap_wait(bool on);
 bool dsync_swaps_wait();

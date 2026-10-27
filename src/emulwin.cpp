@@ -427,6 +427,8 @@ MainWin::MainWin(QMainWindow* frm) {
 	if (conf.vid.gl) {
 		glw = new xGLView(this);
 		glw->lower();
+		// VSync holds its tick by when the frames reach the window (dispsync.h)
+		connect(glw, &QOpenGLWidget::frameSwapped, this, []() { dsync_frame_presented(); });
 	}
 #endif
 	// the picture covers it all, or the view does: no background under them
@@ -1110,9 +1112,11 @@ void MainWin::presentFrame() {
 		glw->repaint();
 	} else {
 		repaint();
+		dsync_frame_presented();
 	}
 #else
 	repaint();
+	dsync_frame_presented();
 #endif
 	blockSignals(false);
 }

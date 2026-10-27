@@ -105,6 +105,7 @@ static bool meas_vblank(long long ns) {
 #define FT_LOG_NS	10000000000LL
 #define FT_RUNS		8
 static std::atomic<int> ftDrawn{0};
+static std::atomic<bool> ftPending{false};
 static long long ftSince = -1;
 static int ftRun = 0;			// vblanks the frame up now has stayed
 static int ftHist[FT_RUNS];		// frames by how long they stayed, the last: that or longer
@@ -113,6 +114,57 @@ static int ftVbl = 0;
 
 void dsync_frame_drawn() {
 	ftDrawn.fetch_add(1, std::memory_order_relaxed);
+	ftPending = true;
+}
+
+// The tick's hold. A frame made at the vblank is ready in a couple of
+// milliseconds and then waits most of the period for the next vblank, its input
+// read that much too early. So the tick is held back until the frame it makes
+// reaches the window late in the period, still short of the next vblank: it is
+// shown at the same vblank, with its input read some 5 ms later at 100 Hz.
+// Filmed at 240 fps (Windows 11, 100 Hz, VRR off), frames held and not held
+// both stayed 2 vblanks each. The slowest frame of 2 s is the one aimed, so a
+// slow frame still makes the vblank.
+#define HOLD_AT		0.85		// the slowest frame of 2 s lands here, of a period
+#define HOLD_WIN_NS	1000000000LL
+#define PH_BINS		10
+static std::atomic<long long> holdNs{0};
+static std::atomic<long long> cbAt{-1};		// the tick last ran its callback
+static long long workMax = 0;			// the tick to the frame in the window, the slowest
+static long long workMaxPrev = 0;		// of this second, of the one before
+static long long workSince = -1;
+static std::atomic<long long> phVbl{-1};
+static std::atomic<int> phHist[PH_BINS];	// for the log: when frames reach the window
+
+void dsync_frame_presented() {
+	if (!ftPending.exchange(false)) return;
+	long long now = paceClockNs();
+	double hz = sysRate;
+	if (hz <= 0) return;
+	long long v = phVbl;
+	if (v >= 0) {
+		int b = (int)((now - v) * hz / 1e9 * PH_BINS);
+		phHist[std::max(0, std::min(b, PH_BINS - 1))].fetch_add(1, std::memory_order_relaxed);
+	}
+	// unlocked, the tick makes no frame: nothing to hold for
+	long long c = cbAt;
+	if (!pacing_locked() || (c < 0)) {
+		holdNs = 0;
+		workMax = workMaxPrev = 0;
+		workSince = -1;
+		return;
+	}
+	workMax = std::max(workMax, now - c);
+	if (workSince < 0) workSince = now;
+	if (now - workSince < HOLD_WIN_NS) return;
+	// a frame that took past the next tick reads short here, so the slowest of
+	// two seconds stands for them
+	long long slow = std::max(workMax, workMaxPrev);
+	workMaxPrev = workMax;
+	workMax = 0;
+	workSince = now;
+	long long at = (long long)(HOLD_AT * 1e9 / hz);
+	holdNs = std::max(0LL, at - slow);
 }
 
 static void ft_vblank(long long ns) {
@@ -139,16 +191,34 @@ static void ft_vblank(long long ns) {
 			if (ftHist[i]) pos += snprintf(buf + pos, sizeof(buf) - pos, " %s%i:%i", (i == FT_RUNS - 1) ? ">=" : "", i + 1, ftHist[i]);
 		xlog(XLG_VIDEO, XLL_DEBUG, "vsync: frames by vblanks shown over %i vblanks:%s, unseen %i",
 			ftVbl, pos ? buf : " none", ftLost);
+		pos = 0;
+		for (int i = 0; i < PH_BINS; i++)
+			pos += snprintf(buf + pos, sizeof(buf) - pos, " %i", phHist[i].exchange(0));
+		xlog(XLG_VIDEO, XLL_DEBUG, "vsync: frames into the window by tenths of a period after the vblank:%s; the tick held %.2f ms",
+			buf, holdNs / 1e6);
 		ftSince = -1;
 	}
 }
 
-static void ds_tick(long long ns) {
-	if (!meas_vblank(ns)) return;
+static bool ds_vblank(long long ns) {
+	if (!meas_vblank(ns)) return false;
+	phVbl = ns;
 	ft_vblank(ns);
+	return true;
+}
+
+static void ds_call() {
 	dsyncTick cb = tickCb;
+	long long ns = paceClockNs();
+	cbAt = ns;
 	if (cb) cb(ns);
 }
+
+#if !defined(__WIN32)
+static void ds_tick(long long ns) {
+	if (ds_vblank(ns)) ds_call();
+}
+#endif
 
 double dsync_rate() {
 	return sysRate;
@@ -229,6 +299,22 @@ static IDXGIOutput* win_output(IDXGIFactory1* fac, HMONITOR mon) {
 	return nullptr;
 }
 
+#ifndef CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
+#define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION 0x00000002
+#endif
+
+// the tick's hold, to well under a millisecond where Windows has the timer for it
+static void win_hold(HANDLE tmr, long long until) {
+	long long left = until - paceClockNs();
+	if (left <= 0) return;
+	LARGE_INTEGER due;
+	due.QuadPart = -(left / 100);		// relative, in 100 ns
+	if (tmr && SetWaitableTimer(tmr, &due, 0, nullptr, nullptr, FALSE))
+		WaitForSingleObject(tmr, (DWORD)(left / 1000000) + 50);
+	else
+		Sleep((DWORD)(left / 1000000));
+}
+
 // WaitForVBlank needs no device and no swap chain: it is the output's own
 // vblank, whatever the compositor does with the window.
 static void win_tick_loop() {
@@ -238,6 +324,8 @@ static void win_tick_loop() {
 		tickRun = false;
 		return;
 	}
+	HANDLE tmr = CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+	if (!tmr) tmr = CreateWaitableTimerExW(nullptr, nullptr, 0, TIMER_ALL_ACCESS);
 	HMONITOR have = nullptr;
 	IDXGIOutput* out = nullptr;
 	int quick = 0;
@@ -267,8 +355,12 @@ static void win_tick_loop() {
 			Sleep(1);
 			continue;
 		}
-		ds_tick(ns);
+		if (!ds_vblank(ns)) continue;
+		long long h = holdNs;
+		if (h > 0) win_hold(tmr, ns + h);
+		ds_call();
 	}
+	if (tmr) CloseHandle(tmr);
 	if (out) out->Release();
 	fac->Release();
 }
