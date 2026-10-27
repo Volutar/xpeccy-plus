@@ -18,8 +18,22 @@ and hides the toolbar, the status bar, the virtual keyboard and the input overla
 picture is the same size and nothing is blurred. At **x1** the picture is drawn
 as it is, without a shader.
 
-The window cannot be resized by dragging its edges. Its size follows from the scale and
-the border size, and changes when either of them changes.
+The window's size follows from the scale and the border size, and changes when either
+of them changes.
+
+```{index} window; maximize, maximize
+```
+
+The window can also be maximized, or resized by dragging its edges or snapping it to
+half of the screen. At any size other than its scale's, the picture is fitted to the
+window as in fullscreen: as big as fits, with black bars where it does not fill, and
+more border at the sides as far as the machine's frame goes (see
+[Fullscreen](#fullscreen)). A size picked in **View > Size**, or a maximized window
+restored, brings back the scale's size with its whole pixels. On macOS the green
+button is fullscreen; Option-click on it maximizes the window.
+
+A maximized window is remembered: if the program is closed maximized, it starts
+maximized next time, on the same screen.
 
 ## Border
 
@@ -49,18 +63,20 @@ grays out the sizes smaller than the machine shows.
 
 ## Fullscreen
 
-```{index} Fullscreen, Keep Aspect Ratio in Fullscreen, aspect ratio
+```{index} Fullscreen, Keep Aspect Ratio, aspect ratio
 ```
 
 **View > Fullscreen** fills the whole screen with the picture. In fullscreen the
 picture is fitted to the screen rather than kept to whole pixels. How to reach the menu
 from there is in [Fullscreen](main-window.md#fullscreen).
 
-**View > Keep Aspect Ratio in Fullscreen** matters only in fullscreen:
+**View > Keep Aspect Ratio** matters in fullscreen and in a window that is maximized or
+resized:
 
-- ticked - the picture keeps its shape. On a screen wider than the picture, more border
-  is shown at the sides instead of black bars, as far as the machine's frame goes;
-- not ticked - the picture is stretched to fill the whole screen.
+- ticked - the picture keeps its shape. On a screen or window wider than the picture,
+  more border is shown at the sides instead of black bars, as far as the machine's
+  frame goes;
+- not ticked - the picture is stretched to fill the whole screen or window.
 
 Fullscreen is remembered: if the program is closed in fullscreen, it starts in
 fullscreen next time.

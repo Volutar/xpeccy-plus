@@ -240,7 +240,7 @@ on the numeric keypad: Alt+Num++ is Alt with the keypad plus.
 | Size x5 | Alt+5 | Alt+5 |
 | Size x6 | Alt+6 | Alt+6 |
 | Fullscreen | Alt+Return, F11 | Alt+Return |
-| Keep Aspect Ratio in Fullscreen | - | Alt+R |
+| Keep Aspect Ratio | - | Alt+R |
 | Anti-flicker | Alt+N | Alt+N |
 | Reload Shader | - | - |
 | Virtual Keyboard | Alt+K | Alt+K |
