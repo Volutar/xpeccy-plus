@@ -22,8 +22,9 @@ The page has four groups:
 ```
 
 **Side fill** is what fills the room the picture leaves free in fullscreen or in a
-maximized window: **Black**, **Stretched edges** or **Mirror**, the same choice as
-**View > Side Fill** (see [Fullscreen](view.md#fullscreen)). The {icon}`settings` button
+maximized window: **Border + black**, **Border + stretched edges**, **Border + mirror**,
+**Black**, **Stretched edges** or **Mirror**, the same choice as **View > Side Fill**
+(see [Fullscreen](view.md#fullscreen)). The {icon}`settings` button
 beside it opens five sliders. The window shows every move at once, **Defaults** puts
 every slider back where it starts, and **Cancel** puts back what was there.
 
@@ -37,7 +38,8 @@ every slider back where it starts, and **Cancel** puts back what was there.
   the picture, wider and wider towards the screen's edge, its far part going off the
   screen; at the left end it is a plain one.
 
-The button is grayed out with **Black**, and the whole setting without OpenGL.
+The button is grayed out with **Black** and **Border + black**. Without OpenGL only these
+two can be picked.
 
 ## Anti-flicker
 
