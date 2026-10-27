@@ -298,15 +298,19 @@ vCoord vid_crop_size(Video* vid, int mode) {
 
 // A fullscreen picture rarely fills a 16:9 screen: the scale comes out of the
 // height and there is room to spare on the sides. Show border there instead of
-// black, as far as the raster goes - the screen stays in the middle and a dot
-// keeps its shape, there is simply more border on show. Never narrower than
-// the border size asks for.
+// black, up to the full border - the screen stays in the middle and a dot
+// keeps its shape, there is simply more border on show. Past the full border
+// (the overscan, where border effects end ragged) only when overscan is the
+// size asked for, or the least the machine shows. Never narrower than the
+// border size asks for.
 void vid_widen_crop(Video* vid, int wid) {
 	vCoord mrg;
 	int mx;
+	int cap;
 	mrg = brd_margin(vid, vid->brdmode);
+	cap = brd_margin(vid, (vid->brdmode > VID_BRD_FULL) ? vid->brdmode : VID_BRD_FULL).x;
 	mx = (wid - vid->scrn.x) / 2;
-	if (mx > brd_max_x(vid)) mx = brd_max_x(vid);
+	if (mx > cap) mx = cap;
 	if (mx <= mrg.x) return;
 	mrg.x = mx;
 	vid_crop_margin(vid, mrg);
