@@ -101,6 +101,30 @@ On Windows the settings are in the program's folder, so the program can be moved
 copied together with its settings. To run with a
 different settings folder, start the program with `--confdir <folder>`.
 
+## Updates
+
+```{index} updates, Check for Updates, Update channel, nightly build, What's New
+```
+
+Once a day Xpeccy+ asks GitHub whether a newer version is out. When one is, a window says
+so and shows what is new since your version, with **Download** to get it and **Later** to
+close the window until the next check. The window has two settings, saved at once:
+
+- **Check for updates** - **Every day**, **Every week** or **Never**.
+- **Update channel** - **Releases**: new versions only. **Nightly**: the nightly build too,
+  made each night from the newest code; a release newer than the last nightly build is
+  offered as well. A release starts on **Releases**, a nightly build on **Nightly**.
+
+Both are also on the [Application page](options-application.md).
+**Help > Check for Updates...** asks at once.
+
+The first start does not check, and `--no-update-check` skips the check for one run. The
+check sends a request to `api.github.com` and, for the list of changes, one to
+`raw.githubusercontent.com`; the program's version is in them, nothing else is.
+
+A program you built yourself, or one from a distribution's package, checks only when you
+turn the check on, and then offers the release page instead of a file.
+
 ## This manual
 
 ```{index} Manual

@@ -2,7 +2,8 @@
   "config": {
     "GENERAL": {
       "machine": "zx128",
-      "port": "30000"
+      "port": "30000",
+      "update.channel": "releases"
     }
   },
   "steps": [
