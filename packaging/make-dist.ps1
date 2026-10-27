@@ -208,6 +208,14 @@ if (Test-Path $distDir) { Remove-Item $distDir -Recurse -Force }
 & cmake --install $buildDir --prefix $distDir
 if ($LASTEXITCODE -ne 0) { throw 'install failed' }
 
+# The sha256 of every file shipped, as sha256sum prints them: an update tells a config
+# file the user left as shipped from one they changed by it (src/xcore/update_apply.cpp)
+$manifest = Get-ChildItem $distDir -Recurse -File | Sort-Object FullName | ForEach-Object {
+	$rel = $_.FullName.Substring($distDir.Length + 1) -replace '\\', '/'
+	'{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLower(), $rel
+}
+[IO.File]::WriteAllText((Join-Path $distDir 'manifest.sha256'), ($manifest -join "`n") + "`n")
+
 if ($Zip) {
 	$zipPath = Join-Path $buildRoot "dist\$distName.zip"
 	if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
