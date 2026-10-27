@@ -305,7 +305,7 @@ static void link_close(int id, bool print, tcpOut out) {
 // == CIPSTART and the connect ==
 
 static void start_open(tcpLink& l) {
-	l.sock.open(l.kind == K_UDP, l.host, l.port, (l.kind == K_UDP) ? l.lport : 0);
+	l.sock.open(l.kind == K_UDP, l.host, l.port, (l.kind == K_UDP) ? l.lport : 0, esp_lan());
 }
 
 // a dotted address needs no lookup: espnet opens the socket at once, so it is there before the reply

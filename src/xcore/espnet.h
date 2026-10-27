@@ -15,15 +15,17 @@ class xEspSock {
 		enum {S_NONE = 0, S_RESOLVING, S_CONNECTING, S_OPEN, S_FAILED, S_CLOSED};
 		enum {F_NONE = 0, F_DNS, F_REFUSED};
 		~xEspSock();
-		// localPort: UDP only, the port to send from and hear on (0 any)
-		void open(bool udp, const std::string& host, int port, int localPort = 0);
+		// localPort: UDP only, the port to send from and hear on (0 any). A fixed port is taken
+		// on 127.0.0.1 for a far end there, on every interface only when lan (Windows' firewall
+		// asks about that), else an ephemeral one: the far end's replies come all the same
+		void open(bool udp, const std::string& host, int port, int localPort = 0, bool lan = false);
 		void adopt(long long fd, const std::string& ip, int port);	// a connection a listener took
 		int poll();			// moves the state on; returns it
 		int state() const {return st;}
 		int failure() const {return why;}
 		std::string peerIp() const {return ip;}		// the far end, once it is looked up
 		int peerPort() const {return port;}
-		int localPort() const;
+		int localPort() const;		// UDP: the port asked for, whichever the host gave
 		int send(const unsigned char* b, int n);	// bytes taken, -1 the link is gone
 		int recv(unsigned char* b, int n);		// bytes read, 0 none yet, -1 closed
 		void close(bool abort = false);			// abort: a reset, not a FIN
@@ -38,6 +40,7 @@ class xEspSock {
 		long long fd = -1;
 		int port = 0;
 		int lport = 0;
+		bool lan = false;
 		std::string ip;
 		std::string fip;
 		int fport = 0;
