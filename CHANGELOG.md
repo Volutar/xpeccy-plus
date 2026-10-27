@@ -9,62 +9,42 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
-### Added
-
-- **SjASMPlus `CSPECTMAP` files load as labels**, alongside `LABELSLIST`: each label is
-  placed by its physical address, so it lands on the right page on any machine.
-
-- **The dump shows divMMC's RAM**: its DIV view goes through the board's banks 8K at a time,
-  the Next's included. *(reported by AlexZor)*
+## 2026.8.2 - 2026-10-27
 
 ### Changed
 
+- **Downloads need no curl**: the Next's card and FFmpeg download on Windows 8.1 too,
+  and a cancelled FFmpeg download continues where it stopped. *(reported by DruzhininPavel)*
+
 - **The System/Next Card window reads the path**: a card with System/Next on it is used,
-  a new or empty folder or a new `.img` becomes a new card, and when it opens by itself it
-  says what is wrong with the Next's card. *(thanks to Volutar)*
+  a new folder or `.img` becomes a new card. *(thanks to Volutar)*
+
+- **SjASMPlus `CSPECTMAP` files load as labels**, alongside `LABELSLIST`.
+
+- **The dump shows divMMC's RAM** in a DIV view, 8K at a time. *(reported by AlexZor)*
 
 ### Fixed
 
-- **The Next's card and FFmpeg download on Windows 8.1** and wherever curl is missing;
-  a cancelled FFmpeg download continues where it stopped. *(reported by DruzhininPavel)*
+- **The program starts on graphics with no usable OpenGL**, such as 2010 Intel HD laptops,
+  instead of closing; `--no-gl` does the same on purpose. *(reported by Lis)*
 
-- **The program starts on graphics with no usable OpenGL**, such as the Intel HD Graphics of
-  2010 laptops, instead of closing a second after its window shows: the picture is drawn
-  without OpenGL and with no shader, and `--no-gl` does the same on purpose. *(reported by Lis)*
+- **Fullscreen**: on a second monitor the picture fits that monitor; leaving a fullscreen
+  start puts the window back with its title bar on the screen.
+  *(second monitor reported by Sergio Neznany)*
 
-- **Leaving fullscreen after starting in it** puts the window back where it was, with
-  its title bar on the screen, instead of in the corner with the title bar above it.
+- **SjASMPlus labels land on their pages**, and saved labels keep the ones in ROM and
+  divMMC. *(thanks to Serdjuk)*
 
-- **Fullscreen on a second monitor** fits the picture to that monitor, including when
-  its resolution differs from the main display.
+- **The Next debugger counts in 8K pages**: breakpoints, watches and the listing use
+  MEMMAP's pages; ROMs and divMMC go by name (`ROM0`, `DIV3`).
 
-- **SjASMPlus labels** land on their pages: page numbers are read in decimal, as SjASMPlus
-  writes them, and the Next uses its 8K pages in the listing, named breakpoints and watches.
-  CPU watches follow the MMU; RAM and ROM watches read physical memory, even when it is not
-  paged in. *(thanks to Serdjuk)*
+- **The debugger follows divMMC**: breakpoints in its memory fire, and the listing, dump
+  and MEMMAP show it paged in after an entry point; on the Next also after the Multiface
+  NMI. *(reported by janko-jj and AlexZor)*
 
-- **Saved labels keep the ones in ROM and divMMC**: they are written by name (`ROM0:0038`,
-  `DIV3:0010`) and load back where they were.
+- **Debugger edits change the byte that is shown**; ROM only with "Allow ROM wr" on.
 
-- **The Next debugger counts in 8K pages**: a breakpoint's RAM cell is page:offset in the
-  pages MEMMAP shows, its ROMs and divMMC go by name (`ROM0`, `DIV3`), and the MEMMAP tooltip
-  says what the CPU sees in each slot.
-
-- **Breakpoints in divMMC memory fire**: a byte of its EEPROM or RAM takes a breakpoint of its
-  own, "divMMC cell", set from the listing, the dump or the breakpoint editor.
-  *(reported by AlexZor)*
-
-- **Debugger edits change the byte that is shown** wherever the machine can write it; ROM,
-  divMMC's ROM and its bank 3 under MAPRAM take an edit only with "Allow ROM wr" on.
-
-- **The debugger follows paging during an instruction**: once a divMMC entry point has run,
-  on any machine, the listing, dump and MEMMAP show the board paged in, and the PC row and
-  fetch breakpoints see what the Next's Multiface NMI pages in; the Next's heat map counts
-  operands in the right page, and write breakpoints catch attempts to write to ROM or an
-  unmapped window.
-
-- **A damaged ZIP for the Next's card** is refused as soon as a file in it grows past its
-  stated size, instead of after writing all of it to disk.
+- **A damaged ZIP for the Next's card** is refused as soon as a file outgrows its size.
 
 ## 2026.8.1 - 2026-10-25
 
@@ -79,10 +59,10 @@ before that point is upstream's history and is not repeated here.
   same checks on where a file may land - so making a card needs no `tar`, `unzip` or
   PowerShell on the machine. Windows 8.1, where the report came from, has none of them:
   with an archive beside the program it makes a card now. The download itself still uses
-  the system's `curl`. *(thanks to janko-jj)*
+  the system's `curl`. *(thanks to janko-jj; code by DruzhininPavel)*
 - **macOS windows close on the first click**: SDL no longer starts a second native video
   event pump just to read gamepads. Qt alone handles the title-bar mouse events; gamepad
-  input and hotplug continue to work.
+  input and hotplug continue to work. *(by DruzhininPavel)*
 
 ## 2026.8 - 2026-10-24
 
