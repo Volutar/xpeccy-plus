@@ -1,3 +1,9 @@
+// QueryDisplayConfig is Windows 7's; a 32-bit MinGW defaults below it (Qt 5 needs Windows 7)
+#if defined(_WIN32) && (!defined(_WIN32_WINNT) || (_WIN32_WINNT < 0x0601))
+#undef _WIN32_WINNT
+#define _WIN32_WINNT 0x0601
+#endif
+
 #include "dispsync.h"
 
 #include <algorithm>
