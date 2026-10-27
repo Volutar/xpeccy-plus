@@ -26,14 +26,14 @@ of them changes.
 
 The window can also be maximized, or resized by dragging its edges or snapping it to
 half of the screen. At any size other than its scale's, the picture is fitted to the
-window as in fullscreen: as big as fits, with black bars where it does not fill, and
-more border at the sides as far as the machine's frame goes (see
-[Fullscreen](#fullscreen)). A size picked in **View > Size**, or a maximized window
-restored, brings back the scale's size with its whole pixels. On macOS the green
+window as in fullscreen: as big as fits, with black bars where it does not fill (or a
+side fill, see [Fullscreen](#fullscreen)), and more border at the sides up to the full
+border. A size picked in **View > Size** brings back the scale's size with its whole
+pixels; a maximized window restored gets the size it had before. On macOS the green
 button is fullscreen; Option-click on it maximizes the window.
 
-A maximized window is remembered: if the program is closed maximized, it starts
-maximized next time, on the same screen.
+The window's size is remembered: if the program is closed maximized, it starts maximized
+next time, on the same screen; closed at a size of its own, it starts at that size.
 
 ## Border
 

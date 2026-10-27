@@ -24,15 +24,17 @@ The page has four groups:
 **Side fill** is what fills the room the picture leaves free in fullscreen or in a
 maximized window: **Black**, **Stretched edges** or **Mirror**, the same choice as
 **View > Side Fill** (see [Fullscreen](view.md#fullscreen)). The {icon}`settings` button
-beside it opens four sliders. The window shows every move at once, and **Cancel** puts
-back what was there.
+beside it opens five sliders. The window shows every move at once, **Defaults** puts
+every slider back where it starts, and **Cancel** puts back what was there.
 
 ![The side fill settings](images/options-video-side-fill.png)
 
 - **Blur** - how soft the fill is, from crisp to a wide glow;
 - **Brightness** - how bright it is beside the picture;
 - **Fade** - how much darker it gets towards the screen's edge;
-- **Edge** - how gently the picture runs into the fill.
+- **Edge** - how gently the picture runs into the fill;
+- **Stretch** - **Mirror** only: the reflection squeezed by the picture and stretched
+  towards the screen's edge, like a curved mirror; at the left end it is a plain one.
 
 The button is grayed out with **Black**, and the whole setting without OpenGL.
 
