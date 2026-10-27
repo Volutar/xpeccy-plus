@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(QTVERSION 6 CACHE STRING "Qt major version")
 find_package(Qt${QTVERSION} REQUIRED COMPONENTS Core)
 
-add_executable(update-check main.cpp ../../src/xcore/update.cpp)
+add_executable(update-check main.cpp ../../src/xcore/update.cpp ../../src/xcore/update_apply.cpp)
 target_include_directories(update-check PRIVATE ../../src/xcore)
 target_link_libraries(update-check PRIVATE Qt${QTVERSION}::Core)
 if(MINGW)

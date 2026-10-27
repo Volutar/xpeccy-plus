@@ -1,8 +1,12 @@
 // The update check's logic over saved GitHub answers (data/, fetched 2026-10-27) and
 // changelogs: update-check <data dir> <CHANGELOG.md>
 
+#include <QCryptographicHash>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
+#include <QTemporaryDir>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <cstdio>
@@ -202,6 +206,163 @@ static void test_whats_new(const QString& changelog) {
 	CHECK(up_whats_new(crlf, "", rel("2026.8.1")) == out);
 }
 
+// --- putting a new build in place ---
+
+static void put(const QString& path, const QByteArray& data) {
+	QDir().mkpath(QFileInfo(path).path());
+	QFile file(path);
+	if (file.open(QFile::WriteOnly | QFile::Truncate)) file.write(data);
+}
+
+static QByteArray get(const QString& path) {
+	QFile file(path);
+	return file.open(QFile::ReadOnly) ? file.readAll() : QByteArray("<none>");
+}
+
+static QString sha(const QByteArray& data) {
+	return QString::fromLatin1(QCryptographicHash::hash(data, QCryptographicHash::Sha256).toHex());
+}
+
+#define STAGE "update.new/xpeccy-plus-2.0-win-x64"
+
+// an install of 1.0 with the user's own files, and 2.0 unpacked beside it
+static void make_trees(const QString& app, bool manifest) {
+	QDir(app).removeRecursively();
+	put(app + "/xpeccy-plus.exe", "exe 1");
+	put(app + "/Qt.dll", "qt 1");
+	put(app + "/gone.dll", "gone 1");			// 2.0 has it no more
+	put(app + "/mine.dll", "mine");				// no release's
+	put(app + "/config/keymaps/a.map", "a 1");		// as shipped
+	put(app + "/config/keymaps/b.map", "b user");		// shipped as "b 1", changed
+	put(app + "/config/styles/c.qss", "c 1");		// the same in 2.0
+	put(app + "/config/styles/d.qss", "d user");		// shipped as "d 1", changed; 2.0 has "d 1"
+	put(app + "/config/config.conf", "settings");
+	put(app + "/config/nvram/x.cmos", "cmos");
+	if (manifest) {
+		QByteArray man;
+		const char* rows[][2] = {{"xpeccy-plus.exe", "exe 1"}, {"Qt.dll", "qt 1"}, {"gone.dll", "gone 1"},
+			{"config/keymaps/a.map", "a 1"}, {"config/keymaps/b.map", "b 1"}, {"config/styles/c.qss", "c 1"},
+			{"config/styles/d.qss", "d 1"}};
+		for (auto& row : rows) man += sha(row[1]).toLatin1() + "  " + row[0] + "\n";
+		put(app + "/manifest.sha256", man);
+	}
+	QString st = app + "/" STAGE;
+	put(st + "/xpeccy-plus.exe", "exe 2");
+	put(st + "/Qt.dll", "qt 2");
+	put(st + "/config/keymaps/a.map", "a 2");
+	put(st + "/config/keymaps/b.map", "b 2");
+	put(st + "/config/styles/c.qss", "c 1");
+	put(st + "/config/styles/d.qss", "d 1");
+	put(st + "/config/roms/new.rom", "rom");
+	put(st + "/manifest.sha256", "the new one");
+}
+
+static QString plan_text(const QList<upStep>& plan) {
+	static const char* kind[] = {"add", "replace", "keep", "drop"};
+	QStringList out;
+	foreach(const upStep& st, plan) out.append(QString("%0 %1").arg(kind[st.kind], st.rel));
+	return out.join(", ");
+}
+
+// the 1.0 install as it was
+static bool tree_is_old(const QString& app) {
+	return (get(app + "/xpeccy-plus.exe") == "exe 1") && (get(app + "/Qt.dll") == "qt 1")
+		&& (get(app + "/gone.dll") == "gone 1") && (get(app + "/config/keymaps/a.map") == "a 1")
+		&& (get(app + "/config/keymaps/b.map") == "b user") && !QFileInfo::exists(app + "/config/roms/new.rom")
+		&& !QFileInfo::exists(app + "/xpeccy-plus.exe.old") && !QFileInfo::exists(app + "/config/update-2.0/keymaps/b.map");
+}
+
+static void test_apply() {
+	QTemporaryDir tmp;
+	QString app = tmp.path() + "/Xpeccy";
+
+	make_trees(app, true);
+	QList<upStep> plan = up_plan(app, app + "/" STAGE);
+	CHECK(plan_text(plan) == "replace Qt.dll, replace config/keymaps/a.map, keep config/keymaps/b.map, "
+		"add config/roms/new.rom, replace manifest.sha256, replace xpeccy-plus.exe, drop gone.dll");
+	QString err;
+	CHECK(up_apply(app, app + "/" STAGE, "2.0", plan, &err));
+	CHECK(get(app + "/xpeccy-plus.exe") == "exe 2");
+	CHECK(get(app + "/xpeccy-plus.exe.old") == "exe 1");
+	CHECK(get(app + "/Qt.dll") == "qt 2");
+	CHECK(get(app + "/config/keymaps/a.map") == "a 2");
+	CHECK(get(app + "/config/keymaps/b.map") == "b user");
+	CHECK(get(app + "/config/update-2.0/keymaps/b.map") == "b 2");
+	CHECK(get(app + "/config/styles/c.qss") == "c 1");
+	CHECK(get(app + "/config/styles/d.qss") == "d user");	// the release has nothing new for it
+	CHECK(!QFileInfo::exists(app + "/config/update-2.0/styles/d.qss"));
+	CHECK(get(app + "/config/roms/new.rom") == "rom");
+	CHECK(get(app + "/config/config.conf") == "settings");
+	CHECK(get(app + "/config/nvram/x.cmos") == "cmos");
+	CHECK(get(app + "/mine.dll") == "mine");
+	CHECK(!QFileInfo::exists(app + "/gone.dll"));
+	CHECK(get(app + "/manifest.sha256") == "the new one");
+	CHECK(QFileInfo::exists(app + "/" UP_JOURNAL));
+	upResume res = up_resume(app);
+	CHECK(res.state == UPR_DONE);
+	CHECK(res.version == "2.0");
+	CHECK(res.kept == QStringList() << "config/keymaps/b.map");
+	CHECK(res.failed.isEmpty());
+	CHECK(!QFileInfo::exists(app + "/xpeccy-plus.exe.old") && !QFileInfo::exists(app + "/gone.dll.old"));
+	CHECK(!QFileInfo::exists(app + "/" UP_JOURNAL) && !QFileInfo::exists(app + "/" UP_STAGE));
+	CHECK(up_resume(app).state == UPR_NONE);
+	CHECK(QFileInfo(app).isDir() && QFileInfo(app).fileName() == "Xpeccy");
+
+	// no manifest (an install from before them): every changed config file is the user's
+	make_trees(app, false);
+	plan = up_plan(app, app + "/" STAGE);
+	CHECK(plan_text(plan) == "replace Qt.dll, keep config/keymaps/a.map, keep config/keymaps/b.map, "
+		"add config/roms/new.rom, keep config/styles/d.qss, add manifest.sha256, replace xpeccy-plus.exe");
+
+	// the unpacked build gone, or no program in it: nothing to do, nothing dropped
+	make_trees(app, true);
+	QDir(app + "/" STAGE).removeRecursively();
+	CHECK(up_plan(app, app + "/" STAGE).isEmpty());
+	put(app + "/" STAGE "/config/roms/new.rom", "rom");
+	CHECK(up_plan(app, app + "/" STAGE).isEmpty());
+
+	// a power cut after three renames: the next start puts everything back
+	make_trees(app, true);
+	plan = up_plan(app, app + "/" STAGE);
+	CHECK(!up_apply(app, app + "/" STAGE, "2.0", plan, &err, 3));
+	CHECK(err == "stopped");
+	CHECK(QFileInfo::exists(app + "/" UP_JOURNAL));
+	CHECK(!tree_is_old(app));
+	res = up_resume(app);
+	CHECK(res.state == UPR_UNDONE);
+	CHECK(res.moved.size() == 3);
+	CHECK(res.failed.isEmpty());
+	CHECK(tree_is_old(app));
+	CHECK(!QFileInfo::exists(app + "/" UP_JOURNAL) && !QFileInfo::exists(app + "/" UP_STAGE));
+
+	// a rename that fails part way (a file stands where a folder must go): undone at once
+	make_trees(app, true);
+	put(app + "/sub", "a file");
+	put(app + "/" STAGE "/sub/x.dll", "x");
+	plan = up_plan(app, app + "/" STAGE);
+	CHECK(!up_apply(app, app + "/" STAGE, "2.0", plan, &err));
+	CHECK(err.startsWith("Cannot move"));
+	CHECK(tree_is_old(app));
+	CHECK(get(app + "/" STAGE "/xpeccy-plus.exe") == "exe 2");
+	CHECK(!QFileInfo::exists(app + "/" UP_JOURNAL));
+
+	// a .old file still held: left for the next start
+	make_trees(app, true);
+	plan = up_plan(app, app + "/" STAGE);
+	CHECK(up_apply(app, app + "/" STAGE, "2.0", plan, &err));
+	{
+		QFile held(app + "/Qt.dll.old");
+		held.open(QFile::ReadOnly);
+		res = up_resume(app);
+#ifdef _WIN32
+		CHECK(res.failed == QStringList() << "Qt.dll.old");
+		CHECK(QFileInfo::exists(app + "/" UP_LEFT));
+#endif
+	}
+	CHECK(up_resume(app).state == UPR_NONE);
+	CHECK(!QFileInfo::exists(app + "/Qt.dll.old") && !QFileInfo::exists(app + "/" UP_LEFT));
+}
+
 int main(int argc, char** argv) {
 	if (argc < 3) {
 		printf("usage: update-check <data dir> <CHANGELOG.md>\n");
@@ -211,6 +372,7 @@ int main(int argc, char** argv) {
 	test_compare();
 	test_pick();
 	test_whats_new(argv[2]);
+	test_apply();
 	printf("%d checks, %d failed\n", checks, fails);
 	return fails ? 1 : 0;
 }
