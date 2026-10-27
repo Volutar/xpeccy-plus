@@ -1,12 +1,14 @@
 # Application page
 
-```{index} Application page, Listen port, Confirm exit, Export settings, Import settings, Reset to defaults, log, log file
+```{index} Application page, Listen port, Check for updates, Update channel, Confirm exit, Export settings, Import settings, Reset to defaults, log, log file
 ```
 
 ![The Application page](images/options-application.png)
 
 - **Machine at start** - see [Machine at start](#machine-at-start).
 - **Listen port** - the network port the program listens on, for tools that control it.
+- **Check for updates**, **Update channel** - how often to look for a newer version, and
+  whether nightly builds count; see [Updates](getting-started.md#updates).
 - **Confirm exit** - ask before closing.
 - **Pause when inactive** - pause the machine while the window is in the background. See
   [Pause](time.md#pause).

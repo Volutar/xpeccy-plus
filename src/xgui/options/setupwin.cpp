@@ -1179,6 +1179,8 @@ void SetupWin::start() {
 	showDevRows();
 // tools
 	ui.sbPort->setValue(conf.port);
+	ui.cbUpdCheck->setCurrentIndex(upd_period());
+	ui.cbUpdChannel->setCurrentIndex(upd_channel());
 	ui.cbConfexit->setChecked(conf.confexit);
 	ui.cbPauseInactive->setChecked(conf.pauseInactive);
 // leds
@@ -1518,6 +1520,9 @@ void SetupWin::applyGlobal() {
 	tape_apply_options(comp->tape);
 // tools
 	conf.port = ui.sbPort->value() & 0xffff;
+	// a build's default stays unset until changed, so a later build may change it
+	if (ui.cbUpdCheck->currentIndex() != upd_period()) conf.upd.check = ui.cbUpdCheck->currentIndex();
+	if (ui.cbUpdChannel->currentIndex() != upd_channel()) conf.upd.channel = ui.cbUpdChannel->currentIndex();
 	conf.confexit = ui.cbConfexit->isChecked() ? 1 : 0;
 	conf.pauseInactive = ui.cbPauseInactive->isChecked() ? 1 : 0;
 // leds

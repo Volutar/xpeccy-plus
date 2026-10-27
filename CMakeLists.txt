@@ -19,6 +19,11 @@ project(${PROJECT_NAME} VERSION ${XVER})
 # clean version w/o "-dev" and build date, for release builds
 option(XRELEASE "build as a release version" OFF)
 
+# the release asset this build is, its file name less version and extension
+# (win-x64-qt6, linux-x86_64...): set by the packaging scripts, empty for any
+# other build, which then offers no update of its own (src/xcore/update.cpp)
+set(XPACKAGE "" CACHE STRING "release asset suffix of this build, set by packaging/")
+
 # Windows: drop the Qt plugins windeployqt copies but this app never loads
 # (see cmake/windeploy.cmake.in for the list and why each one goes)
 option(TRIMDEPLOY "trim unused Qt plugins from the installed folder" ON)
@@ -176,18 +181,25 @@ set(INCLUDIRS
 	./src
 )
 
-# version.h is generated (not stored in the sources) before every build
+# version.h and buildid.h are generated (not stored in the sources) before every
+# build; buildid.h has the commit, so it is kept apart from the many files that
+# include version.h
 
 set(VERSION_HEADER ${CMAKE_BINARY_DIR}/version.h)
+set(BUILDID_HEADER ${CMAKE_BINARY_DIR}/buildid.h)
 
 add_custom_target(version_header ALL
 	COMMAND ${CMAKE_COMMAND}
 		-DIN_FILE=${CMAKE_SOURCE_DIR}/cmake/version.h.in
 		-DOUT_FILE=${VERSION_HEADER}
+		-DID_IN_FILE=${CMAKE_SOURCE_DIR}/cmake/buildid.h.in
+		-DID_OUT_FILE=${BUILDID_HEADER}
+		-DSRC_DIR=${CMAKE_SOURCE_DIR}
 		-DXVERSION_BASE=${XVER}
 		-DXRELEASE=${XRELEASE}
+		-DXPACKAGE=${XPACKAGE}
 		-P ${CMAKE_SOURCE_DIR}/cmake/genversion.cmake
-	BYPRODUCTS ${VERSION_HEADER}
+	BYPRODUCTS ${VERSION_HEADER} ${BUILDID_HEADER}
 	COMMENT "Generating version.h"
 )
 

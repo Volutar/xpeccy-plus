@@ -1894,7 +1894,7 @@ bool MainWin::reloadMedia() {
 void MainWin::closeEvent(QCloseEvent* ev) {
 	pause(true,PR_EXIT);
 	Computer* comp = conf.zx;
-	if (conf.confexit) {
+	if (conf.confexit && !upd_restarting()) {
 		if (!areSure("Quit?")) {
 			ev->ignore();
 			pause(false, PR_EXIT);
@@ -2454,6 +2454,7 @@ void MainWin::initMenuBar() {
 	help->addAction("Report a Problem", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus/issues"));
 	});
+	help->addAction("Check for Updates...", this, [this]() {upd_check(this);});
 	help->addSeparator();
 	act = help->addAction("About " XPRODUCT, this, &MainWin::showAbout);
 	act->setMenuRole(QAction::AboutRole);

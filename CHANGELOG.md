@@ -11,6 +11,12 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Update check**: once a day the program looks for a newer version, on the releases or
+  the nightly channel, and shows what is new since yours. Help > Check for Updates asks at
+  once; how often, and which channel, is set in the same window or in Options. On Windows
+  and with the AppImage, **Update** puts the new version in place of the old one; settings,
+  machines and the files you changed are kept.
+
 - **The window can be maximized and resized**: at any size other than its scale's, the picture
   is fitted as in fullscreen, with more border at the sides; a window closed maximized starts
   maximized.

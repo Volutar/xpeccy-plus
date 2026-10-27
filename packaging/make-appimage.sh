@@ -58,6 +58,7 @@ cmake -S "$SRC_DIR" -B "$BUILD_DIR" \
 	-DUSEOPENGL=1 \
 	-DUSEQTNETWORK=1 \
 	-DSDL1BUILD=0 \
+	-DXPACKAGE=linux-x86_64 \
 	-DCMAKE_INSTALL_PREFIX=/usr
 
 cmake --build "$BUILD_DIR" -j "$JOBS"

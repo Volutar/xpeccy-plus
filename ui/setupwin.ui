@@ -4036,7 +4036,66 @@ Right click: back to the style color</string>
                     </property>
                    </widget>
                   </item>
-                  <item row="2" column="0" colspan="2">
+                  <item row="2" column="0">
+                   <widget class="QLabel" name="labUpdCheck">
+                    <property name="toolTip">
+                     <string>How often to look for a newer version</string>
+                    </property>
+                    <property name="text">
+                     <string>Check for updates</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="1">
+                   <widget class="QComboBox" name="cbUpdCheck">
+                    <property name="toolTip">
+                     <string>How often to look for a newer version</string>
+                    </property>
+                    <item>
+                     <property name="text">
+                      <string>Every day</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>Every week</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>Never</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item row="3" column="0">
+                   <widget class="QLabel" name="labUpdChannel">
+                    <property name="toolTip">
+                     <string>Releases only, or nightly builds too</string>
+                    </property>
+                    <property name="text">
+                     <string>Update channel</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="1">
+                   <widget class="QComboBox" name="cbUpdChannel">
+                    <property name="toolTip">
+                     <string>Releases only, or nightly builds too</string>
+                    </property>
+                    <item>
+                     <property name="text">
+                      <string>Releases</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>Nightly</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item row="4" column="0" colspan="2">
                    <widget class="QCheckBox" name="cbConfexit">
                     <property name="toolTip">
                      <string>Ask before closing the emulator</string>
@@ -4046,7 +4105,7 @@ Right click: back to the style color</string>
                     </property>
                    </widget>
                   </item>
-                  <item row="3" column="0" colspan="2">
+                  <item row="5" column="0" colspan="2">
                    <widget class="QCheckBox" name="cbPauseInactive">
                     <property name="toolTip">
                      <string>Pause while another application has the focus</string>
@@ -4056,7 +4115,7 @@ Right click: back to the style color</string>
                     </property>
                    </widget>
                   </item>
-                  <item row="4" column="0" colspan="2">
+                  <item row="6" column="0" colspan="2">
                    <spacer name="verticalSpacer_appgrid">
                     <property name="orientation">
                      <enum>Qt::Vertical</enum>

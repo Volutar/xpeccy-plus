@@ -101,6 +101,46 @@ On Windows the settings are in the program's folder, so the program can be moved
 copied together with its settings. To run with a
 different settings folder, start the program with `--confdir <folder>`.
 
+## Updates
+
+```{index} updates, Check for Updates, Update channel, nightly build, What's New, Restart Now
+```
+
+Once a day Xpeccy+ asks GitHub whether a newer version is out. When one is, a window says
+so and shows what is new since your version, with **Download** to get it (or **Update**,
+see below) and **Later** to close the window until the next check. The window has two settings, saved at once:
+
+- **Check for updates** - **Every day**, **Every week** or **Never**.
+- **Update channel** - **Releases**: new versions only. **Nightly**: the nightly build too,
+  made each night from the newest code; a release newer than the last nightly build is
+  offered as well. A release starts on **Releases**, a nightly build on **Nightly**.
+
+Both are also on the [Application page](options-application.md).
+**Help > Check for Updates...** asks at once.
+
+On Windows, and with the Linux AppImage, the window has **Update** instead of **Download**:
+the program downloads the new version, checks it and gets it ready. **Restart Now** closes
+the program the usual way (the machine is saved, a disk with unsaved changes is asked
+about) and starts the new version; with **Later**, the new version takes the place of the
+old one when you quit.
+
+- On Windows only the program's own files change: the folder keeps its name and place.
+  In `config`, your settings, machines, NVRAM, cards and the files you added are never
+  touched. A file that came with the program and that you changed, such as a ROM image
+  you replaced, is kept; if the new version has a new one, it goes to
+  `config\update-<version>` and the program tells you so.
+- An update cut short, by a power cut say, is undone at the next start.
+- When the program's folder cannot be written to (`Program Files`), **Download** is offered
+  instead.
+- The AppImage is replaced by the new one.
+
+The first start does not check, and `--no-update-check` skips the check for one run. The
+check sends a request to `api.github.com` and, for the list of changes, one to
+`raw.githubusercontent.com`; the program's version is in them, nothing else is.
+
+A program you built yourself, or one from a distribution's package, checks only when you
+turn the check on, and then offers the release page instead of a file.
+
 ## This manual
 
 ```{index} Manual
