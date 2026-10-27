@@ -161,6 +161,8 @@ void MainWin::updateWindow() {
 		// it still takes every key and click.
 		if (!fsCovers()) {
 			fsHome = QPoint(conf.xpos, conf.ypos);
+			fsFree = (winFree && !conf.vid.maximized) ? frame->size() : QSize();
+			fsNormal = conf.vid.maximized ? frame->normalGeometry() : QRect();
 #if defined(__WIN32)
 			// Qt keeps the window's style here, to put it back once the state goes
 			// (the first resize sees to that, after this returns). With a modal
@@ -196,15 +198,23 @@ void MainWin::updateWindow() {
 		// back on the screen with its title bar, once it has its size; a
 		// maximized one is the system's to place
 		if (backMax) {
-			QTimer::singleShot(0, this, [this]() {
+			const QRect normal = fsNormal;
+			QTimer::singleShot(0, this, [this, normal]() {
 				// Qt may still say maximized, and would then do nothing
 				Qt::WindowStates st = frame->windowState() & ~Qt::WindowFullScreen;
 				if (st & Qt::WindowMaximized)
 					frame->setWindowState(st & ~Qt::WindowMaximized);
+				// what Restore gives back: the size from before fullscreen, not the screen's
+				if (normal.isValid()) frame->setGeometry(normal);
 				frame->setWindowState(st | Qt::WindowMaximized);
 			});
 		} else if (back) {
-			QTimer::singleShot(0, this, &MainWin::placeWindow);
+			// a window resized by hand gets that size back, not the screen's
+			const QSize free = winFree ? fsFree : QSize();
+			QTimer::singleShot(0, this, [this, free]() {
+				if (free.isValid()) frame->resize(free);
+				placeWindow();
+			});
 		}
 	}
 	if (conf.vid.fullScreen) {

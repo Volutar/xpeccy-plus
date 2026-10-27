@@ -271,6 +271,8 @@ class MainWin : public QWidget {
 		bool relArmed = false;		// both release keys are down, nothing else since
 		QMetaObject::Connection screenGeometryConnection;
 		QPoint fsHome;		// where the window goes back to from fullscreen, taken on the way in
+		QSize fsFree;		// and the size it goes back to, if it had one of its own (winFree)
+		QRect fsNormal;		// a maximized one: what Restore gives back afterwards
 		xSatFilter* satFilter = nullptr;	// passes the tool windows' hotkeys on to this one
 		unsigned rzxSeen = 0;			// the recording the player was last told of
 		void releaseChord(QKeyEvent*, bool);
