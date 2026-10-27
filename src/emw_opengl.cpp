@@ -8,6 +8,7 @@
 #include <QOpenGLContext>
 #endif
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 #if defined(USEOPENGL) && !BLOCKGL
@@ -106,24 +107,34 @@ const char* fillVertexShaderBody() {
 		"}\n";
 }
 
-// one texel = the average of a block of frame texels (the frame is NEAREST)
+// one texel = the average of a block of source texels: read one by one from the
+// frame (NEAREST, no mipmaps), or one sample of the mipmap level that size
+// (u_lod, the shown picture - a block there is a thousand pixels and more).
+// u_blk: source texels per texel here, fractional for the shown picture;
+// u_flip: the source's rows go bottom up, as a framebuffer's do
 const char* fillDownShaderBody() {
 	return
 		"uniform sampler2D u_src;\n"
-		"uniform ivec2 u_blk;\n"
+		"uniform vec2 u_blk;\n"
+		"uniform int u_flip;\n"
+		"uniform float u_lod;\n"
 		"out vec4 fragColor;\n"
 		"void main() {\n"
 		"    ivec2 sz = textureSize(u_src, 0);\n"
-		"    ivec2 org = ivec2(gl_FragCoord.xy) * u_blk;\n"
+		"    if (u_lod >= 0.0) {\n"
+		"        vec2 uv = (floor(gl_FragCoord.xy) + 0.5) * u_blk / vec2(sz);\n"
+		"        if (u_flip != 0) uv.y = 1.0 - uv.y;\n"
+		"        fragColor = vec4(textureLod(u_src, uv, u_lod).rgb, 1.0);\n"
+		"        return;\n"
+		"    }\n"
+		"    ivec2 org = ivec2(floor(gl_FragCoord.xy) * u_blk);\n"
+		"    ivec2 end = min(ivec2(ceil((floor(gl_FragCoord.xy) + 1.0) * u_blk)), sz);\n"
 		"    vec3 sum = vec3(0.0);\n"
 		"    float n = 0.0;\n"
-		"    for (int y = 0; y < u_blk.y; y++) {\n"
-		"        for (int x = 0; x < u_blk.x; x++) {\n"
-		"            ivec2 p = org + ivec2(x, y);\n"
-		"            if (p.x < sz.x && p.y < sz.y) {\n"
-		"                sum += texelFetch(u_src, p, 0).rgb;\n"
-		"                n += 1.0;\n"
-		"            }\n"
+		"    for (int y = org.y; y < end.y; y++) {\n"
+		"        for (int x = org.x; x < end.x; x++) {\n"
+		"            sum += texelFetch(u_src, ivec2(x, (u_flip != 0) ? sz.y - 1 - y : y), 0).rgb;\n"
+		"            n += 1.0;\n"
 		"        }\n"
 		"    }\n"
 		"    fragColor = vec4(sum / max(n, 1.0), 1.0);\n"
@@ -448,6 +459,7 @@ void MainWin::cleanupGL() {
 	fillDraw.removeAllShaders();
 	glDeleteFramebuffers(2, fillFbo);
 	glDeleteTextures(2, fillTex);
+	glDeleteTextures(1, &fillPic);
 	glw->doneCurrent();
 #endif
 }
@@ -459,6 +471,11 @@ void MainWin::initFill() {
 	glGenTextures(2, fillTex);
 	glGenFramebuffers(2, fillFbo);
 	fillSize = QSize(1, 1);
+	glGenTextures(1, &fillPic);
+	glBindTexture(GL_TEXTURE_2D, fillPic);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);	// with mipmaps when they are made
+	fillPicSize = QSize();
 	bool ok = true;
 	for (int i = 0; i < 2; i++) {
 		glBindTexture(GL_TEXTURE_2D, fillTex[i]);
@@ -483,14 +500,42 @@ bool MainWin::fillWanted() {
 	return (drawX > 0) || (drawY > 0) || (drawX + drawW < width()) || (drawY + drawH < height());
 }
 
-// The current frame shrunk into fillTex[0] and blurred there, across and down.
-// The wrap mode is set before the blur, so the blur at the edge already sees
-// what is drawn past it.
+// The picture shrunk into fillTex[0] and blurred there, across and down. Mirror
+// reflects the picture as it is shown - through the shader, a curved screen and
+// its black corners too - so it is read back from the framebuffer, drawn already;
+// Stretched edges carries the frame's own edge out, which a curved screen leaves
+// black. The wrap mode is set before the blur, so the blur at the edge already
+// sees what is drawn past it.
 void MainWin::prepareFill() {
 	Video* vid = conf.zx->vid;
+	const bool mirror = (conf.vid.sideFill == SFILL_MIRROR);
 	const int blk = qBound(SFILL_BLUR_MIN, conf.vid.fillBlur, SFILL_BLUR_MAX);	// the blur is 2 texels: 2 * blk dots
 	QSize sz((vid->vsze.x + blk - 1) / blk, (vid->vsze.y + blk - 1) / blk);
-	const GLint wrap = (conf.vid.sideFill == SFILL_MIRROR) ? GL_MIRRORED_REPEAT : GL_CLAMP_TO_EDGE;
+	GLuint src = curtxid;
+	QSize srcSize(vid->vsze.x * 2, vid->vsze.y);		// two frame texels per dot across
+	if (mirror) {
+		const qreal r = widgetDpr(this);
+		srcSize = QSize(int(drawW * r + 0.5), int(drawH * r + 0.5));
+		glBindTexture(GL_TEXTURE_2D, fillPic);
+		if (srcSize != fillPicSize) {
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, srcSize.width(), srcSize.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+			fillPicSize = srcSize;
+		}
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, int(drawX * r + 0.5), int(drawY * r + 0.5),
+			srcSize.width(), srcSize.height());
+		src = fillPic;
+	}
+	const GLfloat bx = GLfloat(srcSize.width()) / sz.width();
+	const GLfloat by = GLfloat(srcSize.height()) / sz.height();
+	// A strong blur leaves few texels here, each a long loop over the picture's
+	// pixels: then the mipmaps are cheaper (measured: 0.08 ms against 0.20 at
+	// Blur 8 on an RTX 4070), and dearer at Blur 2, where the loops are short.
+	const bool useMip = mirror && (sz.width() * sz.height() < 8000);
+	if (mirror) {
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, useMip ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+		if (useMip) glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	const GLint wrap = mirror ? GL_MIRRORED_REPEAT : GL_CLAMP_TO_EDGE;
 	for (int i = 0; i < 2; i++) {
 		glBindTexture(GL_TEXTURE_2D, fillTex[i]);
 		if (sz != fillSize)
@@ -503,12 +548,13 @@ void MainWin::prepareFill() {
 	glViewport(0, 0, sz.width(), sz.height());
 	glActiveTexture(GL_TEXTURE0);
 	vao.bind();
-	// two frame texels per dot across
 	glBindFramebuffer(GL_FRAMEBUFFER, fillFbo[0]);
 	fillDown.bind();
 	fillDown.setUniformValue("u_src", 0);
-	glUniform2i(fillDown.uniformLocation("u_blk"), blk * 2, blk);
-	glBindTexture(GL_TEXTURE_2D, curtxid);
+	fillDown.setUniformValue("u_blk", bx, by);
+	fillDown.setUniformValue("u_flip", GLint(mirror ? 1 : 0));
+	fillDown.setUniformValue("u_lod", GLfloat(useMip ? std::log2(std::max(bx, by)) : -1.0));
+	glBindTexture(GL_TEXTURE_2D, src);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	fillBlur.bind();
 	fillBlur.setUniformValue("u_src", 0);

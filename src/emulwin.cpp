@@ -1352,14 +1352,16 @@ void MainWin::paintGLView() {
 	// and the window is painted before that happens. Binding a texture name
 	// that was never generated is undefined - macOS says so out loud, other
 	// drivers quietly sample black.
+	drawPicture();
 #if !ISLEGACYGL
+	// after the picture: Mirror reads it back as it is shown, and the fill only
+	// goes beside it
 	fillOn = fillWanted();
 	if (fillOn) {
 		prepareFill();
 		drawFill();
 	}
 #endif
-	drawPicture();
 	glFlush();
 	pnt.endNativePainting();
 	drawInputOsd(pnt);

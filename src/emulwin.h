@@ -593,6 +593,8 @@ class MainWin : public QWidget {
 		GLuint fillTex[2] = {0, 0};
 		GLuint fillFbo[2] = {0, 0};
 		QSize fillSize;
+		GLuint fillPic = 0;		// Mirror: the picture as shown, read back from the framebuffer
+		QSize fillPicSize;
 		bool fillOn = false;		// this paint has drawn it
 		void initFill();
 		bool fillWanted();
