@@ -87,7 +87,8 @@ wide screen once the machine's frame runs out, above and below it in a tall wind
 - **Black** - nothing, the default;
 - **Stretched Edges** - the picture's outer rows and columns carried outwards, blurred and
   dimmed, like a glow of the border;
-- **Mirror** - the picture reflected at its edge, blurred and dimmed.
+- **Mirror** - the picture as it is shown, through the shader and with a curved screen's
+  black corners too, reflected at its edge, blurred and dimmed.
 
 ![Mirror in fullscreen](images/view-side-fill.png)
 
