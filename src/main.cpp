@@ -17,6 +17,7 @@
 #include "xcore/log.h"
 #include "xcore/sound.h"
 #include "xcore/pacing.h"
+#include "xgui/dispsync.h"
 #include "xcore/autostart.h"
 #include "xcore/fastload.h"
 #include "xcore/vfat_scan.h"
@@ -922,6 +923,7 @@ int main(int ac,char** av) {
 		optw.stopProbe();
 		ethread.stop();
 		ethread.wait();
+		dsync_stop();
 	}
 	conf.running = 0;
 	pacingClose();

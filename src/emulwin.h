@@ -244,6 +244,7 @@ class MainWin : public QWidget {
 		bool reloadMedia();
 	private slots:
 		void updateScreen(QScreen*);
+		void vsyncProbe();
 		void updateSatellites();
 		void menuHide();
 		void optResize();
@@ -269,6 +270,7 @@ class MainWin : public QWidget {
 		long long mouseReadAt = 0;	// when a program last read the mouse, host ns
 		bool relArmed = false;		// both release keys are down, nothing else since
 		QMetaObject::Connection screenGeometryConnection;
+		QMetaObject::Connection screenRateConnection;
 		QPoint fsHome;		// where the window goes back to from fullscreen, taken on the way in
 		xSatFilter* satFilter = nullptr;	// passes the tool windows' hotkeys on to this one
 		unsigned rzxSeen = 0;			// the recording the player was last told of

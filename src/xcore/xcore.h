@@ -883,6 +883,7 @@ struct xConfig {
 		unsigned fullScreen:1;	// use fullscreen
 		unsigned keepRatio:1;	// keep ratio in fullscreen (add black borders)
 		unsigned lowLatency:1;	// show each frame at once (low input lag), else buffer for smooth motion
+		unsigned vsync:1;	// wait for the display's vblank, and run at its rate when close (xgui/dispsync)
 		int border;		// VID_BRD_* : how much border to show
 		int scale;		// x1..x4
 		int fcount;		// frames counter (for fps showing) (= fcnt ???)

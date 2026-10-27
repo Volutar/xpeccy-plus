@@ -56,6 +56,7 @@
 #include "xgui/favorites.h"
 #include "xgui/xgui.h"
 #include "xcore/pacing.h"
+#include "xgui/dispsync.h"
 
 #include "xcore/vfilters.h"
 #include "xcore/vscalers.h"
@@ -108,12 +109,26 @@ void MainWin::updateHead() {
 // Screen changes can arrive during a fullscreen transition; refit after Qt settles.
 void MainWin::updateScreen(QScreen* scr) {
 	disconnect(screenGeometryConnection);
+	disconnect(screenRateConnection);
 	if (scr) {
 		screenGeometryConnection = connect(scr, &QScreen::geometryChanged, this, [this]() {
 			if (conf.vid.fullScreen) updateWindow();
 		}, Qt::QueuedConnection);
+		// a new mode on the same screen: the rate VSync locks to is asked again
+		screenRateConnection = connect(scr, &QScreen::refreshRateChanged, this, &MainWin::vsyncProbe, Qt::QueuedConnection);
 	}
+	vsyncProbe();
 	if (conf.vid.fullScreen) QTimer::singleShot(0, this, &MainWin::updateWindow);
+}
+
+// The display the window is on, asked again; the vblank tick runs while VSync is on.
+void MainWin::vsyncProbe() {
+	dsync_probe(frame->windowHandle());
+	if (conf.vid.vsync) {
+		if (!dsync_running()) dsync_start(nullptr);
+	} else if (dsync_running()) {
+		dsync_stop();
+	}
 }
 
 void MainWin::updateWindow() {
