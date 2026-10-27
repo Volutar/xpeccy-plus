@@ -1,0 +1,18 @@
+﻿; Mellow: softer colors by Volutar, each tuned by hand to stay near the classic one
+
+#000000	; Black
+#2838A0	; Blue
+#AA4424	; Red
+#A838C4	; Magenta
+#60AC20	; Green
+#30B0C4	; Cyan
+#CCBB20	; Yellow
+#CCCCCC	; White
+#000000	; Bright Black
+#3850DD	; Bright Blue
+#D8602C	; Bright Red
+#D850EE	; Bright Magenta
+#74D030	; Bright Green
+#38D0EE	; Bright Cyan
+#EEDD40	; Bright Yellow
+#F8F8F8	; Bright White

@@ -5,6 +5,7 @@
         <file>config/roms/128-1.rom</file>
         <file>res/palettes/atm.txt</file>
         <file>res/palettes/hardware.txt</file>
+        <file>res/palettes/mellow.txt</file>
         <file>res/palettes/next.txt</file>
         <file>res/palettes/pulsar.txt</file>
         <file>res/palettes/schafft.txt</file>
