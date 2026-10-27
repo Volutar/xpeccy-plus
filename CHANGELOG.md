@@ -15,6 +15,11 @@ before that point is upstream's history and is not repeated here.
   is fitted as in fullscreen, with more border at the sides; a window closed maximized starts
   maximized.
 
+### Fixed
+
+- **A Next program's UDP link no longer brings up the firewall prompt**: the link's own port
+  opens to the network only with Server on the network.
+
 ## 2026.8.2 - 2026-10-27
 
 ### Changed
