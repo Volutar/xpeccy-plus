@@ -9,9 +9,10 @@ The page has four groups:
 
 - **Picture** - **Border**, **Side fill**, **Palette** with the {icon}`edit` button for
   the **Palette Editor**, **Shader**, and on the right the window scale
-  (**Scale x1** to **Scale x6**), **Fullscreen**, **Keep ratio** and **Gray scale**. The
-  scale, **Fullscreen**, **Keep ratio**, **Side fill**, the palette and the shader are the
-  same settings as in the **View** menu; see [View menu](view.md).
+  (**Scale x1** to **Scale x6**), **Fullscreen**, **Keep ratio**, **VSync** and **Gray scale**.
+  The scale, **Fullscreen**, **Keep ratio**, **Side fill**, the palette and the shader are
+  the same settings as in the **View** menu; see [View menu](view.md). For **VSync** see
+  [VSync](#vsync).
 - **Anti-flicker** - see [Anti-flicker](#anti-flicker).
 - **Screenshots** - see [Screenshots](#screenshots).
 - **Recording** - video recording through FFmpeg. See [Recording](#recording).
@@ -40,6 +41,45 @@ every slider back where it starts, and **Cancel** puts back what was there.
 
 The button is grayed out with **Black** and **Border + black**. Without OpenGL only these
 two can be picked.
+
+## VSync
+
+```{index} VSync, tearing, refresh rate
+```
+
+**VSync** in the **Picture** group waits for the screen's refresh, so the picture never
+tears. It is off by default.
+
+When the machine's frame rate is close to the screen's - within 4.5 % of it, or of a half or
+a third of it - the machine runs at the screen's rate, and every frame stays on the screen
+for the same number of refreshes. Motion is then even: a ZX Spectrum Next at 58.15 Hz on a
+60 Hz screen scrolls without the jerk it otherwise shows once or twice a second. The
+machine runs a few percent faster or slower than the real one, and its sound is as much
+higher or lower. While this is so, the status bar says **VSync** beside the frame rate, and
+a note on the picture gives the rate when it starts.
+
+| Screen | Pentagon, 48.83 Hz | 48K, 50.08 Hz | Next in 60 Hz mode, 58.15 Hz |
+|---|---|---|---|
+| 50 Hz | 50 Hz, +2.4 % | 50 Hz, -0.2 % | own rate |
+| 60 Hz | own rate | own rate | 60 Hz, +3.2 % |
+| 100 Hz | 50 Hz, each frame twice | 50 Hz, each frame twice | own rate |
+| 120 Hz | own rate | own rate | 60 Hz, each frame twice |
+| 144 Hz | 48 Hz, each frame three times, -1.7 % | 48 Hz, each frame three times, -4.2 % | own rate |
+
+At its own rate a machine is shown as without **VSync**, only without tearing: a 50 Hz
+machine on a 60 Hz screen moves as unevenly as it would on a 60 Hz television.
+
+- Fast forward, slow motion and rewind run at their own speed; the screen's rate comes back
+  after them.
+- A video recording is what you see: the Next above is recorded at 60 frames a second, at
+  the sound's new pitch. Without **VSync** it is recorded at 58.15.
+- On Windows, fullscreen with **VSync** goes through the desktop's compositor, which adds
+  the frame of delay that **Low latency** saves otherwise (see
+  [Input lag](options-emulation.md#input-lag)).
+- A screen with a variable refresh rate (G-Sync, FreeSync, Adaptive-Sync, ProMotion) shows
+  each frame when it is ready, so **VSync** has nothing to add there; leave it off. On macOS
+  the machine keeps its own rate on such a screen.
+- On Linux **VSync** needs OpenGL and takes effect after a restart.
 
 ## Anti-flicker
 

@@ -17,6 +17,10 @@ before that point is upstream's history and is not repeated here.
   and with the AppImage, **Update** puts the new version in place of the old one; settings,
   machines and the files you changed are kept.
 
+- **VSync** in Options > Video: no tearing, and a machine close to the screen's rate runs
+  at it, so motion is even - a Next at 58.15 Hz scrolls smoothly on a 60 Hz screen, a
+  Pentagon on a 50 or 100 Hz one. Off by default. *(thanks to Volutar)*
+
 - **The window can be maximized and resized**: at any size other than its scale's, the picture
   is fitted as in fullscreen, with more border at the sides; the window starts as it was
   closed, maximized or at its own size.

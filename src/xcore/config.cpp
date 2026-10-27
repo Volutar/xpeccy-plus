@@ -322,6 +322,7 @@ void saveConfig() {
 	fprintf(cfile, "toolbar.locked = %s\n", YESNO(conf.win.tbLocked));
 	fprintf(cfile, "statusbar = %s\n", YESNO(conf.win.statusbar));
 	fprintf(cfile, "lowlatency = %s\n", YESNO(conf.vid.lowLatency));
+	fprintf(cfile, "vsync = %s\n", YESNO(conf.vid.vsync));
 	// kept beside lowlatency: the two are one page in the options, and moving
 	// a key between sections later would orphan everyone's setting
 	fprintf(cfile, "runahead = %i\n", conf.emu.runahead);
@@ -1213,6 +1214,7 @@ void loadConfig() {
 					if (pnam=="toolbar.locked") conf.win.tbLocked = arg.b;
 					if (pnam=="statusbar") conf.win.statusbar = arg.b;
 					if (pnam=="lowlatency") conf.vid.lowLatency = arg.b;
+					if (pnam=="vsync") conf.vid.vsync = arg.b;
 					if (pnam=="runahead") conf.emu.runahead = getRanged(arg.s, 0, 2);
 					if (pnam=="slowmo") conf.emu.slowDiv = toPower(getRanged(arg.s, 2, 8));
 					if (pnam=="ffwd") conf.emu.ffMul = toPower(getRanged(arg.s, 2, 8));

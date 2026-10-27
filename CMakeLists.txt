@@ -125,9 +125,10 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	# OpenGL is deprecated on macOS since 10.14 and says so on every include
 	add_definitions(-DGL_SILENCE_DEPRECATION)
 
-	# for vkeyboard_mac.mm
+	# for vkeyboard_mac.mm and dispsync_mac.mm
 	find_library(APPKIT_LIBRARY AppKit)
-	set(LIBRARIES ${LIBRARIES} ${APPKIT_LIBRARY})
+	find_library(COREVIDEO_LIBRARY CoreVideo)
+	set(LIBRARIES ${LIBRARIES} ${APPKIT_LIBRARY} ${COREVIDEO_LIBRARY})
 
 	if(CMAKE_OSX_ARCHITECTURES)
 		string(REPLACE ";" "-" XARCH "${CMAKE_OSX_ARCHITECTURES}")
@@ -157,7 +158,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
 	set(CPACK_GENERATOR "ZIP")
-	set(LIBRARIES ${LIBRARIES} winmm.dll dwmapi.dll ws2_32 iphlpapi)
+	set(LIBRARIES ${LIBRARIES} winmm.dll dwmapi.dll dxgi ws2_32 iphlpapi)
 	set(INC_PATHS $ENV{INCLUDE} $ENV{PATH})
 	set(LIB_PATHS $ENV{LIBPATH} $ENV{PATH})
 
@@ -216,7 +217,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	if(NOT CMAKE_VERSION VERSION_LESS 3.16)
 		enable_language(OBJCXX)
 	endif()
-	set(SOURCES ${SOURCES} ./src/vkeyboard_mac.mm)
+	set(SOURCES ${SOURCES} ./src/vkeyboard_mac.mm ./src/xgui/dispsync_mac.mm)
 endif()
 
 # headers

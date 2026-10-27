@@ -896,6 +896,7 @@ struct xConfig {
 		unsigned keepRatio:1;	// fullscreen, a maximized or resized window: keep the shape, else stretch
 		unsigned fillBorder:1;	// the free room beside a fitted picture shows border first, the side fill past it
 		unsigned lowLatency:1;	// show each frame at once (low input lag), else buffer for smooth motion
+		unsigned vsync:1;	// wait for the display's vblank, and run at its rate when close (xgui/dispsync)
 		int border;		// VID_BRD_* : how much border to show
 		int sideFill;		// SFILL_* : what fills the room beside a fitted picture
 		int fillBlur;		// dots per texel of the shrunk frame, SFILL_BLUR_MIN..MAX

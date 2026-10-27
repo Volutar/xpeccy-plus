@@ -247,6 +247,8 @@ class MainWin : public QWidget {
 		void keepSize();
 	private slots:
 		void updateScreen(QScreen*);
+		void vsyncProbe();
+		void vsyncUpdate();
 		void updateSatellites();
 		void menuHide();
 		void optResize();
@@ -272,6 +274,8 @@ class MainWin : public QWidget {
 		long long mouseReadAt = 0;	// when a program last read the mouse, host ns
 		bool relArmed = false;		// both release keys are down, nothing else since
 		QMetaObject::Connection screenGeometryConnection;
+		QMetaObject::Connection screenRateConnection;
+		int vsyncShown = 0;		// the rate x100 the VSync note last gave
 		QPoint fsHome;		// where the window goes back to from fullscreen, taken on the way in
 		QSize fsFree;		// and the size it goes back to, if it had one of its own (winFree)
 		QRect fsNormal;		// a maximized one: what Restore gives back afterwards

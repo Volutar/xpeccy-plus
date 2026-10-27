@@ -57,6 +57,7 @@
 #include "xgui/favorites.h"
 #include "xgui/xgui.h"
 #include "xcore/pacing.h"
+#include "xgui/dispsync.h"
 
 #include "xcore/vfilters.h"
 #include "xcore/vscalers.h"
@@ -83,9 +84,11 @@
 
 #if defined(__WIN32)
 // Fullscreen is a line taller than the screen to be composed: for good without
-// Low latency, else only while a menu is up (see fsCompose)
+// Low latency or with VSync, else only while a menu is up (see fsCompose). The
+// compositor never tears, so composed is what VSync's "no tearing" is made of
+// on Windows: the swap interval is fixed when the context is made.
 static bool fsWantTall(bool menuUp) {
-	return menuUp || !conf.vid.lowLatency;
+	return menuUp || !conf.vid.lowLatency || conf.vid.vsync;
 }
 #endif
 
@@ -109,12 +112,77 @@ void MainWin::updateHead() {
 // Screen changes can arrive during a fullscreen transition; refit after Qt settles.
 void MainWin::updateScreen(QScreen* scr) {
 	disconnect(screenGeometryConnection);
+	disconnect(screenRateConnection);
 	if (scr) {
 		screenGeometryConnection = connect(scr, &QScreen::geometryChanged, this, [this]() {
 			if (conf.vid.fullScreen) updateWindow();
 		}, Qt::QueuedConnection);
+		// a new mode on the same screen: the rate VSync locks to is asked again
+		screenRateConnection = connect(scr, &QScreen::refreshRateChanged, this, &MainWin::vsyncProbe, Qt::QueuedConnection);
 	}
+	vsyncProbe();
 	if (conf.vid.fullScreen) QTimer::singleShot(0, this, &MainWin::updateWindow);
+}
+
+// The display the window is on, asked again; the vblank tick runs while VSync is on.
+void MainWin::vsyncProbe() {
+	dsync_probe(frame->windowHandle());
+	if (conf.vid.vsync) {
+		if (!dsync_running() && dsync_start(pacing_vblank)) {
+#if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
+			// no vblank thread here: the view repaints on every swap, and each
+			// swap that waited for the vblank is the tick
+			if (glw && dsync_swaps_wait()) {
+				connect(glw, &QOpenGLWidget::frameSwapped, this, [this]() {
+					dsync_swapped();
+					if (dsync_running()) glw->update();
+				}, Qt::UniqueConnection);
+				glw->update();
+			}
+#endif
+		}
+	} else if (dsync_running()) {
+		dsync_stop();
+	}
+	vsyncUpdate();
+}
+
+// how far a machine's rate may be from the display's (or from a whole fraction
+// of it) and still be run at it
+#define VSYNC_TOLERANCE 0.045
+
+// Lock the machine to the display or let it go. Asked on every fps tick: fast
+// forward, slow motion and the rewind going back hand the time to the clock,
+// and the lock comes back once they are over. A pause keeps it: nothing runs.
+void MainWin::vsyncUpdate() {
+	Computer* comp = conf.zx;
+	int n = 0;
+	double speed = 1.0;
+	double rate = dsync_lock_rate();
+	if (conf.vid.vsync && dsync_running() && !dsync_adaptive() && (rate > 0) && comp
+			&& (comp->vid->nsPerFrame > 0) && !conf.emu.fast && (conf.emu.speed == 1.0)
+			&& !rewind_active()) {
+		double own = 1e9 / comp->vid->nsPerFrame;
+		int k = (int)lround(rate / own);
+		if (k >= 1) {
+			double s = rate / (k * own);
+			if (fabs(s - 1.0) <= VSYNC_TOLERANCE) {
+				n = k;
+				speed = s;
+			}
+		}
+	}
+	if (n && ((n != pacing_locked()) || (speed != pacing_lock_speed())))
+		xlog(XLG_VIDEO, XLL_INFO, "vsync: locked, %i vblank(s) a frame, speed %.5f (display %.4f Hz)", n, speed, rate);
+	else if (!n && pacing_locked())
+		xlog(XLG_VIDEO, XLL_INFO, "vsync: unlocked");
+	pacing_lock(n, speed);
+	// said once for a rate, not on every way back from fast forward
+	int shown = n ? (int)lround(rate * 100 / n) : 0;
+	if (n && (shown != vsyncShown))
+		setMessage(QString(" VSync: %0 Hz (%1%2 %) ").arg(rate / n, 0, 'f', 2)
+			.arg((speed >= 1.0) ? "+" : "").arg((speed - 1.0) * 100, 0, 'f', 1), 2.0);
+	if (n) vsyncShown = shown;
 }
 
 void MainWin::updateWindow() {
@@ -434,6 +502,8 @@ MainWin::MainWin(QMainWindow* frm) {
 	if (conf.vid.gl) {
 		glw = new xGLView(this);
 		glw->lower();
+		// VSync holds its tick by when the frames reach the window (dispsync.h)
+		connect(glw, &QOpenGLWidget::frameSwapped, this, []() { dsync_frame_presented(); });
 	}
 #endif
 	// the picture covers it all, or the view does: no background under them
@@ -696,6 +766,7 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 			comp->vid->upd = 0;
 			updateWindow();
 		}
+		vsyncUpdate();
 		lightLook();
 		updateStatus();
 		syncActions();
@@ -1128,9 +1199,11 @@ void MainWin::presentFrame() {
 		glw->repaint();
 	} else {
 		repaint();
+		dsync_frame_presented();
 	}
 #else
 	repaint();
+	dsync_frame_presented();
 #endif
 	blockSignals(false);
 }
@@ -1158,7 +1231,9 @@ void MainWin::frame_timer() {
 	// with frame making and cause a slow frame slip). The timer paints for
 	// fast-forward and pause (no frames at 50Hz), and in buffered mode, where
 	// a steady timer rate looks smoother.
-	if (conf.vid.lowLatency && !conf.emu.fast && !conf.emu.pause) return;
+	// Locked to the display, a frame comes in step with the vblanks: shown as it
+	// comes (d_frame), as a timer of its own would beat with them.
+	if ((conf.vid.lowLatency || pacing_locked()) && !conf.emu.fast && !conf.emu.pause) return;
 #if defined(USEOPENGL) && !BLOCKGL
 	if (glw && (conf.emu.fast || conf.emu.pause)) {
 		// fast loading finishes a picture 30 times a second at most, and one
@@ -1192,8 +1267,9 @@ void MainWin::d_frame() {
 		curtex++;
 	}
 #endif
-	// Low latency: show the frame now. Buffered: let the timer show it.
-	if (conf.vid.lowLatency)
+	// Low latency: show the frame now. Buffered: let the timer show it - unless
+	// VSync paces the frames, see frame_timer()
+	if (conf.vid.lowLatency || pacing_locked())
 		presentFrame();
 }
 
@@ -1334,6 +1410,7 @@ void MainWin::paintGLView() {
 		} else {
 			curtxid = queue.takeFirst();
 		}
+		dsync_frame_drawn();
 	}
 
 	// The window (or the border) has just changed. Read the frame out of the
@@ -3120,6 +3197,7 @@ void MainWin::fillPreview() {
 void MainWin::optResize() {
 	int bplWas = bytesPerLine;
 	int sizeWas = bufSize;
+	vsyncProbe();		// before updateWindow: VSync keeps fullscreen composed
 	updateWindow();
 	// bufimg holds the last whole frame until a new layout; a redraw steps the machine on
 	if (hasPicture && ((bytesPerLine != bplWas) || (bufSize != sizeWas)))

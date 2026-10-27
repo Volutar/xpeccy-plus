@@ -1054,6 +1054,12 @@ void SetupWin::start() {
 	ui.cbKeepRatio->setChecked(conf.vid.keepRatio);
 	fillToUi();
 	fillTake();
+	ui.cbVSync->setChecked(conf.vid.vsync);
+#if !defined(__WIN32) && !defined(__APPLE__)
+	// the swaps are the tick here, and only a GL context made with them waiting has them
+	ui.cbVSync->setEnabled(conf.vid.gl);
+	ui.cbVSync->setToolTip(conf.vid.gl ? "No tearing, steady motion; takes a restart" : "Needs OpenGL");
+#endif
 	setRFIndex(ui.cbScale, conf.vid.scale, 1);	// x2 if the file says something odd
 	ui.sldNoflic->setValue(noflic); chaflc();
 	ui.cbNoflicMode->setCurrentIndex(noflicMode);
@@ -1423,6 +1429,7 @@ void SetupWin::applyGlobal() {
 	conf.vid.keepRatio = ui.cbKeepRatio->isChecked() ? 1 : 0;
 	fillSet(getRFIData(ui.cbSideFill));
 	fillTake();		// the pop-up's values are in conf already: now they stay
+	conf.vid.vsync = ui.cbVSync->isChecked() ? 1 : 0;
 	conf.vid.scale = getRFIData(ui.cbScale);
 	noflic = ui.sldNoflic->value();
 	noflicMode = ui.cbNoflicMode->currentIndex();

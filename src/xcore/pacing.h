@@ -27,3 +27,15 @@ long long paceClockNs();
 
 void pacingInit();
 void pacingClose();
+
+// VSync (xgui/dispsync.h). While locked the display's vblanks hand out the time
+// instead of the clock: one machine frame for every n of them, the machine run
+// at speed (the display's rate over n times its own) and the sound with it.
+// n = 0 lets go.
+void pacing_lock(int n, double speed);
+int pacing_locked();		// n, 0 when not locked
+double pacing_lock_speed();	// the speed the lock runs the machine at, 1.0 when not locked
+void pacing_vblank(long long ns);	// on the vblank thread
+// the lock holds but its vblanks stopped coming (a window drag, a screen asleep):
+// the clock stands in until they are back
+bool pacing_lock_stalled();

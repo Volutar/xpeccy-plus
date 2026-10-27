@@ -1610,6 +1610,16 @@ Integer scaling, so every pixel is the same size</string>
                      </widget>
                     </item>
                     <item>
+                     <widget class="QCheckBox" name="cbVSync">
+                      <property name="toolTip">
+                       <string>No tearing; a machine near the screen's rate runs at it</string>
+                      </property>
+                      <property name="text">
+                       <string>VSync</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
                      <widget class="QCheckBox" name="grayscale">
                       <property name="toolTip">
                        <string>Draw the picture in shades of gray</string>

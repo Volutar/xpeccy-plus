@@ -17,6 +17,7 @@
 #include "xcore/log.h"
 #include "xcore/sound.h"
 #include "xcore/pacing.h"
+#include "xgui/dispsync.h"
 #include "xcore/autostart.h"
 #include "xcore/fastload.h"
 #include "xcore/vfat_scan.h"
@@ -490,6 +491,17 @@ int main(int ac,char** av) {
 #else
 	conf.vid.gl = 0;
 #endif
+#if defined(USEOPENGL) && !BLOCKGL && !defined(__WIN32) && !defined(__APPLE__)
+	// Windows and macOS compose every window and never tear. Here a swap waits
+	// for the vblank only if the context is made so, and the swaps are VSync's
+	// tick (dispsync.h): it takes a restart to change
+	if (conf.vid.gl && conf.vid.vsync && !bench) {
+		QSurfaceFormat fmt = QSurfaceFormat::defaultFormat();
+		fmt.setSwapInterval(1);
+		QSurfaceFormat::setDefaultFormat(fmt);
+		dsync_swap_wait(true);
+	}
+#endif
 	if (conf.vid.gl) {
 		xlog(XLG_GL, XLL_INFO, "picture: OpenGL");
 	} else if (noGl) {
@@ -953,6 +965,7 @@ int main(int ac,char** av) {
 		optw.stopProbe();
 		ethread.stop();
 		ethread.wait();
+		dsync_stop();
 		upd_after_exit();		// the files the update changes are let go of by now
 	}
 	conf.running = 0;
