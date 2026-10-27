@@ -180,6 +180,13 @@ int upd_period();		// UPC_*
 int upd_channel();		// UP_RELEASES, UP_NIGHTLY
 void upd_auto(QWidget* main);
 void upd_check(QWidget* main);
+// an update before the start (finished, or undone when cut short) and after the end (put in
+// place, the new build started); true from upd_startup: it started another, this one ends
+bool upd_startup();
+void upd_report(QWidget* main);		// what the start found, once the window is up
+bool upd_restarting();			// closing for Restart Now: no Quit? question
+void upd_after_exit();
+void upd_from_file(QWidget* main, const QString& zip);	// --update-from, for tests
 
 // offers to get FFmpeg and does: true when there is one to use afterwards
 bool ffmpeg_get(QWidget* parent);

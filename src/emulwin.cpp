@@ -1894,7 +1894,7 @@ bool MainWin::reloadMedia() {
 void MainWin::closeEvent(QCloseEvent* ev) {
 	pause(true,PR_EXIT);
 	Computer* comp = conf.zx;
-	if (conf.confexit) {
+	if (conf.confexit && !upd_restarting()) {
 		if (!areSure("Quit?")) {
 			ev->ignore();
 			pause(false, PR_EXIT);

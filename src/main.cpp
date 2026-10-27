@@ -415,6 +415,7 @@ int main(int ac,char** av) {
 	bool given = false;		// it hands over something to open: no start question either
 	bool noGl = false;		// --no-gl: the picture without OpenGL
 	bool noUpd = false;		// --no-update-check
+	QString updFrom;		// --update-from ZIP: an update from that file, for tests
 	bool bench = false;		// --bench...: no window, nothing to probe GL for
 	for (int n = 1; n < ac; ) {
 		const char* earg = av[n++];
@@ -428,6 +429,8 @@ int main(int ac,char** av) {
 			noGl = true;
 		} else if (!strcmp(earg, "--no-update-check")) {
 			noUpd = true;
+		} else if (!strcmp(earg, "--update-from")) {
+			if (n < ac) updFrom = QString::fromLocal8Bit(av[n++]);
 		} else if (!strncmp(earg, "--bench", 7)) {
 			xhost_time_fixed = 1790000000;	// the machines are built below: freeze their clock first
 			bench = true;
@@ -458,6 +461,13 @@ int main(int ac,char** av) {
 		break;
 	}
 #endif
+
+	// an update finished or cut short, before any file of the install is read; when it
+	// was undone under the new program, the one put back runs instead
+	if (!bench && upd_startup()) {
+		log_done();
+		return 0;
+	}
 
 	// before loadConfig: the debugger takes conf.dbg.font while it is built,
 	// so the family has to be known by then
@@ -699,8 +709,9 @@ int main(int ac,char** av) {
 #endif
 		} else if (i < ac) {
 			if (!strcmp(parg,"-m") || !strcmp(parg,"--machine")
-				|| !strcmp(parg,"-p") || !strcmp(parg,"--profile")) {
-				i++;		// chosen above
+				|| !strcmp(parg,"-p") || !strcmp(parg,"--profile")
+				|| !strcmp(parg,"--update-from")) {
+				i++;		// taken above
 			} else if (!strcmp(parg,"--bench")) {
 				bnFrames = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-rewind")) {
@@ -931,11 +942,16 @@ int main(int ac,char** av) {
 		QTimer::singleShot(5000, &optw, &SetupWin::prewarmFfmpeg);
 		// once the start has settled; only when due, never on a first start
 		if (!noUpd) QTimer::singleShot(6000, &mwin, [&mwin]() {upd_auto(&mwin);});
+		QTimer::singleShot(500, &mwin, [&mwin, updFrom]() {
+			upd_report(&mwin);
+			if (!updFrom.isEmpty()) upd_from_file(&mwin, updFrom);
+		});
 //		mwin.blockSignals(false);
 		app.exec();
 		optw.stopProbe();
 		ethread.stop();
 		ethread.wait();
+		upd_after_exit();		// the files the update changes are let go of by now
 	}
 	conf.running = 0;
 	pacingClose();
