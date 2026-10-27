@@ -47,13 +47,41 @@ const char* defaultVertexShaderBody() {
 		"}\n";
 }
 
+// No shader chosen. At a whole zoom each texel is a block of whole pixels and is
+// taken as it is. At any other scale (u_smooth) the texel's middle stays flat and
+// only the one pixel where two texels meet is mixed of both, so the dots keep one
+// width and the picture stays sharp. The mix is done here, from the NEAREST texture.
 const char* defaultFragmentShaderBody() {
 	return
 		"in vec2 v_uv;\n"
 		"out vec4 fragColor;\n"
 		"uniform sampler2D u_tex;\n"
+		"uniform int u_smooth;\n"
+		"uniform vec2 rubyTextureSize;\n"
+		"uniform vec2 rubyOutputSize;\n"
 		"void main() {\n"
-		"    fragColor = texture(u_tex, v_uv);\n"
+		"    if (u_smooth == 0) {\n"
+		"        fragColor = texture(u_tex, v_uv);\n"
+		"        return;\n"
+		"    }\n"
+		"    vec2 scale = rubyOutputSize / rubyTextureSize;\n"
+		"    vec2 texel = v_uv * rubyTextureSize;\n"
+		"    vec2 cell = floor(texel);\n"
+		"    vec2 off = texel - cell - 0.5;\n"
+		"    vec2 flat_half = max(0.5 - 0.5 / scale, vec2(0.0));\n"
+		"    vec2 p = cell + (off - clamp(off, -flat_half, flat_half)) * scale;\n"
+		"    ivec2 i0 = ivec2(floor(p));\n"
+		"    vec2 w = p - floor(p);\n"
+		"    ivec2 hi = ivec2(rubyTextureSize) - 1;\n"
+		"    vec4 a = texelFetch(u_tex, clamp(i0, ivec2(0), hi), 0);\n"
+		"    vec4 b = texelFetch(u_tex, clamp(i0 + ivec2(1, 0), ivec2(0), hi), 0);\n"
+		"    vec4 c = texelFetch(u_tex, clamp(i0 + ivec2(0, 1), ivec2(0), hi), 0);\n"
+		"    vec4 d = texelFetch(u_tex, clamp(i0 + ivec2(1, 1), ivec2(0), hi), 0);\n"
+		// mixed as light, gamma 2.2: a mix of the stored values is darker than
+		// either side's light, and the seams would show as a moire
+		"    const vec3 g = vec3(2.2);\n"
+		"    vec3 m = mix(mix(pow(a.rgb, g), pow(b.rgb, g), w.x), mix(pow(c.rgb, g), pow(d.rgb, g), w.x), w.y);\n"
+		"    fragColor = vec4(pow(m, 1.0 / g), 1.0);\n"
 		"}\n";
 }
 

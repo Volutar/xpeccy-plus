@@ -19,6 +19,11 @@ before that point is upstream's history and is not repeated here.
   blurred and dimmed, instead of black (View > Side Fill); how soft and bright, in
   Options > Video.
 
+### Changed
+
+- **With no shader, a fitted picture stays sharp**: in fullscreen or a maximized window
+  every dot keeps one width, only the seams between dots are softened.
+
 ## 2026.8.2 - 2026-10-27
 
 ### Changed

@@ -1,3 +1,4 @@
+#include <cmath>
 #include <QMatrix4x4>
 #include <QCursor>
 #include <QTimer>
@@ -1359,6 +1360,11 @@ void MainWin::drawPicture() {
 		prg.setUniformValue("rubyInputSize",   tex_w, tex_h);
 		prg.setUniformValue("rubyTextureSize", tex_w, tex_h);
 		prg.setUniformValue("rubyOutputSize",  GLfloat(drawW * r), GLfloat(drawH * r));
+		// the built-in one: smooth when a dot is not a whole number of pixels either way
+		const double ppx = int(drawW * r + 0.5) / double(comp->vid->vsze.x);
+		const double ppy = int(drawH * r + 0.5) / double(comp->vid->vsze.y);
+		const bool whole = (std::fabs(ppx - std::floor(ppx + 0.5)) < 0.001) && (std::fabs(ppy - std::floor(ppy + 0.5)) < 0.001);
+		prg.setUniformValue("u_smooth", GLint(whole ? 0 : 1));
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, curtxid);
