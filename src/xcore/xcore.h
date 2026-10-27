@@ -800,6 +800,9 @@ enum {AR_MOUNT = 0, AR_RUN, AR_ASK};
 // conf.macStart: the machine a start takes; unset is asked once
 enum {MS_LAST = 0, MS_ASK, MS_THIS, MS_UNSET};
 
+// conf.upd.check; unset takes the build's default (src/xgui/updatewin.cpp)
+enum {UPC_DAY = 0, UPC_WEEK, UPC_NEVER, UPC_UNSET};
+
 struct xConfig {
 	// the machine, one per process, and the workspace around it
 	Computer* zx;
@@ -840,6 +843,12 @@ struct xConfig {
 	QString labpath;
 	std::string style;
 	unsigned short port;		// port to listen
+	struct {
+		int check;		// UPC_*: how often to ask GitHub for a newer build
+		int channel;		// UP_RELEASES, UP_NIGHTLY (xcore/update.h); -1: the build's default
+		qint64 last;		// unix time of the last check; 0: none yet, the clock starts now
+		unsigned off:1;		// --no-update-check: none this run
+	} upd;
 	struct {
 		unsigned fast:1;
 		int pause;

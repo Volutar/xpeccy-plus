@@ -174,6 +174,13 @@ void help_window(QWidget* parent, QDialog** win, const QString& res, const QStri
 void label_complete(QLineEdit*);
 bool lab_char(QChar);
 
+// the update check (updatewin.cpp): the settings as they apply to this build, the
+// check a start makes when it is due, and Help > Check for Updates
+int upd_period();		// UPC_*
+int upd_channel();		// UP_RELEASES, UP_NIGHTLY
+void upd_auto(QWidget* main);
+void upd_check(QWidget* main);
+
 // offers to get FFmpeg and does: true when there is one to use afterwards
 bool ffmpeg_get(QWidget* parent);
 // the Next's own SD card, made from a System/Next release or picked; own: made here

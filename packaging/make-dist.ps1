@@ -156,6 +156,8 @@ $cmakeArgs = @(
 	"-DZLIB_LIBRARY=$mingwFwd/$($tc.Triple)/lib/libz.a"
 	"-DZLIB_INCLUDE_DIR=$mingwFwd/$($tc.Triple)/include"
 	"-DCURL_DIR=$($curlDir -replace '\\', '/')/lib/cmake/CURL"
+	# the asset this is, for the update check: the zip's name less its version
+	"-DXPACKAGE=win-$($tc.Arch)$($tc.Tag)"
 	'-S', $srcRoot
 	'-B', $buildDir
 )

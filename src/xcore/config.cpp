@@ -62,6 +62,8 @@ static int rec_id(const char** tab, const std::string& nam, int def) {
 
 static const char* autorun_name[] = {"mount", "run", "ask", NULL};	// AR_* order
 static const char* start_name[] = {"last", "ask", "this", NULL};	// MS_* order
+static const char* upd_check_name[] = {"day", "week", "never", NULL};	// UPC_* order
+static const char* upd_channel_name[] = {"releases", "nightly", NULL};	// UP_RELEASES, UP_NIGHTLY
 
 // before Ask it was yes/no, and yes was the default, always written out: only no was chosen
 static int autorun_of(const std::string& val) {
@@ -228,6 +230,10 @@ void saveConfig() {
 	fprintf(cfile, "exit.confirm = %s\n",YESNO(conf.confexit));
 	fprintf(cfile, "pause.inactive = %s\n", YESNO(conf.pauseInactive));
 	fprintf(cfile, "port = %i\n", conf.port);
+	// unset: the build's default, which a later build may change
+	if (conf.upd.check != UPC_UNSET) fprintf(cfile, "update.check = %s\n", upd_check_name[conf.upd.check]);
+	if (conf.upd.channel >= 0) fprintf(cfile, "update.channel = %s\n", upd_channel_name[conf.upd.channel]);
+	fprintf(cfile, "update.last = %lld\n", (long long)conf.upd.last);
 	fprintf(cfile, "winpos = %i,%i\n",conf.xpos,conf.ypos);
 	fprintf(cfile, "keywin.dock = %s\n", YESNO(conf.keywin.dock));
 	fprintf(cfile, "keywin.width = %i\n", conf.keywin.width);
@@ -828,6 +834,9 @@ void loadConfig() {
 	conf.ypos = -1;
 	conf.macStart = MS_UNSET;	// asked on the first start
 	conf.macStartId.clear();
+	conf.upd.check = UPC_UNSET;
+	conf.upd.channel = -1;
+	conf.upd.last = 0;		// none in the file: a first start, or one from before the check
 	conf.keywin.dock = 0;
 	conf.keywin.width = 0;
 	conf.keywin.haspos = 0;
@@ -1319,6 +1328,9 @@ void loadConfig() {
 					if (pnam == "folder.trash") conf.fold.trash = arg.b;
 					if (pnam == "folder.asked") conf.fold.asked = arg.b;
 					if (pnam == "port") conf.port = arg.i & 0xffff;
+					if (pnam == "update.check") conf.upd.check = rec_id(upd_check_name, pval, UPC_UNSET);
+					if (pnam == "update.channel") conf.upd.channel = rec_id(upd_channel_name, pval, -1);
+					if (pnam == "update.last") conf.upd.last = strtoll(pval.c_str(), NULL, 10);
 					if (pnam == "winpos") {
 						vect = splitstr(pval, ",");
 						if (vect.size() > 1) {

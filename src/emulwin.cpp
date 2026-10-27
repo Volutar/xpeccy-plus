@@ -2454,6 +2454,7 @@ void MainWin::initMenuBar() {
 	help->addAction("Report a Problem", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus/issues"));
 	});
+	help->addAction("Check for Updates...", this, [this]() {upd_check(this);});
 	help->addSeparator();
 	act = help->addAction("About " XPRODUCT, this, &MainWin::showAbout);
 	act->setMenuRole(QAction::AboutRole);
