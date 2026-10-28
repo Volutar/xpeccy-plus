@@ -16,6 +16,7 @@ extern "C" {
 // ticks in one ns, rounded: a constant, so tapSync multiplies by no variable
 #define TAPE_TICKS_PER_NS (((1LL << TAPE_RATE_BITS) * TAPTPS + 500000000) / 1000000000)
 #define TAPE_GONE_TICKS	69888		// a frame of the port read, and never as a loader: it has gone
+#define TAPE_LOOSE_READS 64		// loose reads in a frame that show a loader still there
 
 // ZX spectrum signal timings, T
 #define	PILOTLEN	2168
@@ -121,6 +122,7 @@ typedef struct {
 	int detectLastPc;
 	unsigned char detectRegs[7];	// A B C D E H L at the last read
 	int detectReads;	// reads in a row like a loader's, on a stopped tape
+	int looseReads;		// on a playing tape: reads the loose test passed since detectAlien
 	int detectAlien;	// on a playing tape: tick of the first read unlike a loader's since its last
 	unsigned alien:1;	// ...and there has been one
 	// where the last stop left the tape, for a play that finds it there

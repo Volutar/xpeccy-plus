@@ -546,7 +546,12 @@ static int tap_pulse_ahead(Tape* tap) {
 // that scans the keys halfway through a load (Joe Blade 2), or a loader whose B
 // jumps between its ear tests (Speedlock), would otherwise stop the tape in the
 // middle of a pulse. The test for a loader's read is looser here than for a
-// start: a wrong stop costs a load, a wrong start only a play. A loader busy
+// start: a wrong stop costs a load, a wrong start only a play. But once a read
+// unlike a loader's has come, the loose test has to be met as a loader polls -
+// dozens of times in the frame, not a few: a game that reads its keys from a
+// table (Shadow Warriors) reads two of one half-row a few hundred T apart, the
+// table's byte counting down in D, and held the tape to the end of its last
+// pause, 48 s in fast mode. A loader busy
 // between blocks, or unpacking what it has read (DeciLoad with ZX0), reads
 // nothing, and is waited for. Basic between two LOADs does stop it, as in Fuse:
 // the pilot is kept for a loader that sits out the rom's second of LD-WAIT
@@ -566,13 +571,17 @@ void tapDetectLoader(Tape* tap, int tick, int pc, const unsigned char* regs, int
 		moved += (regs[i] != tap->detectRegs[i]);
 	int turn = (pc == tap->detectLastPc) && (moved == 1);
 	int idle = (pc == tap->detectLastPc) && !memcmp(regs + 1, tap->detectRegs + 1, 6);
+	int loose = (kind != TAPE_RD_KEYS) && (tickDiff <= 1000) && (step || !bDiff) && !idle;
 	tap->detectLastTick = tick;
 	tap->detectLastPc = pc;
 	memcpy(tap->detectRegs, regs, 7);
 	if (tap->rec) return;
 	if (tap->on) {
-		int loader = (kind == TAPE_RD_EDGE) || (kind == TAPE_RD_EAR)
-			|| ((kind != TAPE_RD_KEYS) && (tickDiff <= 1000) && (step || !bDiff) && !idle);
+		// once a read unlike a loader's has come, the loose test answers for
+		// the loader only when it is met as often as a loader polls
+		if (loose && tap->alien && (++tap->looseReads < TAPE_LOOSE_READS))
+			loose = 0;
+		int loader = (kind == TAPE_RD_EDGE) || (kind == TAPE_RD_EAR) || loose;
 		if (loader) {
 			tap->alien = 0;
 			tap->loaderReads++;		// fast loading's too: where the loader left
@@ -583,6 +592,7 @@ void tapDetectLoader(Tape* tap, int tick, int pc, const unsigned char* regs, int
 		} else if (!tap->alien) {
 			tap->alien = 1;
 			tap->detectAlien = tick;
+			tap->looseReads = 0;
 		} else if (tick - tap->detectAlien > TAPE_GONE_TICKS) {
 			xlog(XLG_TAPE, XLL_INFO, "auto stop: the tape port is read as no loader reads it");
 			tapStop(tap);
