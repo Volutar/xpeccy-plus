@@ -6,7 +6,8 @@
 How big the picture is, how much border it shows, and how it is drawn: the colors, a
 shader, anti-flicker. The quick switches are in the **View** menu; all the settings are on
 the **Video** page of **Options** (see [Video page](options-video.md)). The menu also shows
-and hides the toolbar, the status bar, the virtual keyboard and the input overlay.
+and hides the menu bar, the toolbar, the status bar, the virtual keyboard and the input
+overlay.
 
 ## Size
 
@@ -196,14 +197,27 @@ A machine with ULA+ can show 64 colors when a program asks for them. ULA+ is swi
 with **ULA plus** in the machine's advanced settings (see
 [Advanced settings](options-machine.md#advanced-settings)).
 
-## Toolbar and Status Bar
+## Menu Bar, Toolbar and Status Bar
 
-```{index} Toolbar; showing, Status Bar; showing
+```{index} Menu Bar; hiding, Toolbar; showing, Status Bar; showing
 ```
 
-**View > Toolbar** and **View > Status Bar** show and hide the [toolbar](toolbar.md) and the
-[status bar](main-window.md#status-bar). With the status bar hidden, its lights can be shown
-over the picture instead: see [Indicators on the picture](options-appearance.md#indicators-on-the-picture).
+**View > Menu Bar**, **View > Toolbar** and **View > Status Bar** show and hide the
+[menu bar](menu-bar.md), the [toolbar](toolbar.md) and the
+[status bar](main-window.md#status-bar). The window shrinks by the bar's height, and the
+picture keeps its size.
+
+The menu bar hidden takes the toolbar with it, as in fullscreen, and both are still at
+hand. Hold the pointer at the top edge of the window: the menu bar comes down over the
+picture, with the toolbar under it, and both go away a moment after the pointer leaves
+them. A right-click on the picture has **Show Menu Bar** at the end of its menu. The
+**Menu Bar** hotkey can be set on the **Hotkeys** page of **Options**; it has no key by
+default.
+
+On macOS the menu is in the system menu bar, and **View > Menu Bar** is not there.
+
+With the status bar hidden, its lights can be shown over the picture instead: see
+[Indicators on the picture](options-appearance.md#indicators-on-the-picture).
 
 ## Virtual Keyboard
 

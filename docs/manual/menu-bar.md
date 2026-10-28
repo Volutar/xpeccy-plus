@@ -6,7 +6,7 @@
 | Menu | What is in it |
 |---|---|
 | **File** | open and save files, recent files, quick save and load, **Options** |
-| **View** | window size, border, fullscreen, side fill, shaders and palette, toolbar and status bar, virtual keyboard, input overlay |
+| **View** | window size, border, fullscreen, side fill, shaders and palette, menu bar, toolbar and status bar, virtual keyboard, input overlay |
 | **Favorites** | files you keep at hand |
 | **Machine** | which machine runs, reset, turbo, pause, fast mode, slow motion, fast forward, rewind |
 | **Input** | keyboard and mouse grab, keymaps, gamepads |
@@ -17,7 +17,9 @@
 
 A command that has a key shows it in the menu. The keys are set on the **Hotkeys** page of
 **Options**. In fullscreen the menu bar is hidden until the pointer stays at the top edge
-of the screen (see [Fullscreen](main-window.md#fullscreen)).
+of the screen (see [Fullscreen](main-window.md#fullscreen)). In a window it can be hidden
+too, with **View > Menu Bar**, and comes back the same way at the top edge of the window
+(see [Menu Bar, Toolbar and Status Bar](view.md#menu-bar-toolbar-and-status-bar)).
 
 Each menu has a page of its own, in the order of the menu bar:
 

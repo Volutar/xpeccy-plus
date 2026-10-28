@@ -30,4 +30,6 @@ Each item is the command of the same name in a menu of the menu bar, described t
 | {icon}`other` **Options...** | [Options](options.md) |
 
 A menu that has nothing for the running machine is not shown: **Disk Manager** needs
-floppy drives, **Cartridge** a cartridge slot, **SD Card** an SD card slot.
+floppy drives, **Cartridge** a cartridge slot, **SD Card** an SD card slot. **Show Menu Bar**
+is there only while the menu bar is hidden (see
+[Menu Bar, Toolbar and Status Bar](view.md#menu-bar-toolbar-and-status-bar)).
