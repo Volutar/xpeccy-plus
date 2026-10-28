@@ -41,6 +41,11 @@ before that point is upstream's history and is not repeated here.
   and not into the overscan unless overscan is the size chosen; a resized window's edge
   moves smoothly. *(reported by Volutar)*
 
+- **The virtual keyboard lights the 128's Delete, cursor and punctuation keys** for
+  Backspace, the arrows and . , ; " on the PC; the two keys they press light dimly and show
+  on a quick tap too. One Caps Shift lights, not both: the right one for the right Shift.
+  *(thanks to Volutar)*
+
 ### Fixed
 
 - **A Next program's UDP link no longer brings up the firewall prompt**: the link's own port
