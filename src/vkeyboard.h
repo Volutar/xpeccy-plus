@@ -12,6 +12,7 @@
 #include <QMoveEvent>
 
 #include <QTimer>
+#include <QElapsedTimer>
 #include <QFileSystemWatcher>
 
 #include "libxpeccy/input/input.h"
@@ -36,13 +37,22 @@ class keyWindow : public QDialog {
 		void upd(Keyboard*);
 		void watch(Keyboard*);	// repaint if the matrix moved with no event to say so
 		void rall(Keyboard*);
+		void hostKey(QByteArray, bool, bool);	// a PC key pressed or let go, as the Spectrum keys it presses; on the right side
 		void snap();		// sit under the emulator window
 		void fillMenu(QMenu*);	// its settings, added to that menu
 	private slots:
 		void redraw();		// the picture at the window's size, now
 		void loadSkin();
 		void pollHover();	// the key under the pointer, by where the pointer is
+		void follow();		// a PC key's keys going down or up in the matrix, closely
 	private:
+		// a PC key held, or let go of while its keys are still in the matrix
+		struct HostKey {
+			QByteArray zx;		// sorted, so CS+0 and 0+CS are one
+			bool down;
+			bool right;		// right Shift, Ctrl, Alt: the right copy of a shift lights
+			qint64 upAt;		// ms of followClock when let go of
+		};
 		Keyboard* kb;
 		keyEntry xent;
 		VkSkin skin;
@@ -59,11 +69,19 @@ class keyWindow : public QDialog {
 		int hover;		// the key under the pointer, -1 for none
 		int held;		// the key the left button holds down, -1 for none
 		QByteArray heldZx;	// what it pressed, to let go of the same
-		QVector<bool> latched;	// combination keys the right button put down
+		QVector<bool> latched;	// keys a click put down for good
+		QVector<int> firstCopy;	// of a key the skin has twice (the shifts), the left one
+		QVector<int> lastCopy;	// and the right one
 		QByteArray shownSig;	// matrixSig() of the last paint
+		QList<HostKey> host;	// the PC keys that went to the machine and are not all up yet
+		QTimer followTimer;	// a short close look at the matrix after a PC key
+		QElapsedTimer followClock;
+		qint64 followEnd;	// ms of followClock to look until
 		int keyAt(QPointF);
 		QByteArray keysDown();
 		QByteArray matrixSig();
+		void hostTidy(const QByteArray&);
+		QVector<double> lights(const QByteArray&);
 		void pressKeys(const QByteArray&, bool);
 		void latchKey(int, const QByteArray&);
 		void placeUndocked();

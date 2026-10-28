@@ -223,6 +223,7 @@ class MainWin : public QWidget {
 		void s_keywin_rall(Keyboard*);
 		void s_keywin_upd(Keyboard*);
 		void s_keywin_watch(Keyboard*);		// the 50 Hz tick: repaint if the keys moved
+		void s_keywin_host(QByteArray, bool, bool);	// a PC key to the machine: the Spectrum keys it presses, down, right side
 		void s_keywin_shide();
 		void s_keywin_close();
 		void s_keywin_snap();		// the window moved or changed size

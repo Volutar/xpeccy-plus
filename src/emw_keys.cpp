@@ -137,12 +137,41 @@ void MainWin::keyPressEvent(QKeyEvent *ev) {
 
 #endif
 
+// The Spectrum keys a host key presses, for the virtual keyboard's lights. The Next
+// takes the ps/2 code through a keymap of its own (zxnext_inp.c): of that, only the
+// shifts are told - its extended keys light by themselves
+static QByteArray host_zx(Computer* comp, keyEntry* kent) {
+	if ((comp->hw->id != HW_ZXNEXT) || !comp->next)
+		return QByteArray((const char*)kent->zxKey, strnlen((const char*)kent->zxKey, KEYSEQ_MAXLEN));
+	QByteArray zx;
+	int ext = 0;
+	for (int seq = kent->atCode; seq; seq >>= 8) {
+		int b = seq & 0xff;
+		if (b == 0xe0) {
+			ext = 1;
+			continue;
+		}
+		int d = comp->next->inp.keymap[((ext << 8) | b) & 0x1ff];
+		ext = 0;
+		if ((d & 0xc0) == 0xc0) continue;
+		if ((d & 0x40) && !zx.contains('C')) zx.append('C');
+		if ((d & 0x80) && !zx.contains('S')) zx.append('S');
+	}
+	return zx;
+}
+
 // the grab under the same lock as the key: the profi's press reads it
 void MainWin::machineKey(Computer* comp, keyEntry* kent, bool down) {
 	emu_lock();
 	comp->keyb->grab = pckAct->isChecked();
 	x_key(comp, kent, down);
 	emu_unlock();
+	// the virtual keyboard lights a combination's own key from it; a grabbed Profi
+	// presses its own xt layout instead
+	bool profi = comp->keyb->grab && comp->keyb->core && (comp->keyb->core->id == KBD_PROFI);
+	bool right = (kent->key == XKEY_RSHIFT) || (kent->key == XKEY_RCTRL) || (kent->key == XKEY_RALT);
+	if (!profi)
+		emit s_keywin_host(host_zx(comp, kent), down, right);
 }
 
 // cmd: a hotkey asked for from a menu, which a grabbed keyboard does not take

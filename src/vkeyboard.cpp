@@ -4,6 +4,8 @@
 #include "xcore/xcore.h"
 #include "xgui/xgui.h"
 
+#include <algorithm>
+
 #include <QActionGroup>
 #include <QApplication>
 #include <QFile>
@@ -69,6 +71,37 @@ static bool allIn(const QByteArray& keys, const QByteArray& down) {
 	return !keys.isEmpty();
 }
 
+// a key's string with its keys in one order, so CS+0 and 0+CS compare equal
+static QByteArray zxSorted(QByteArray zx) {
+	std::sort(zx.begin(), zx.end());
+	return zx;
+}
+
+// A PC key's keys are in the matrix from the moment it is pressed: a combination's
+// shift at once, its key after (kbd_seq_press). When its shift is gone it was let go of
+// some other way - a release of all keys - and the key is not held any more.
+static bool hostHolding(const QByteArray& zx, const QByteArray& down) {
+	QByteArray shifts;
+	for (char c : zx) {
+		if ((c == 'C') || (c == 'S')) shifts.append(c);
+	}
+	return allIn(shifts.isEmpty() ? zx : shifts, down);
+}
+
+static bool isNext() {
+	return conf.zx && conf.zx->hw && (conf.zx->hw->id == HW_ZXNEXT);
+}
+
+// how long a let-go PC key may still claim its keys as a combination's: they go up
+// within a scan or two of the machine's time
+#define VK_HOST_FADE_MS	200
+// how long the matrix is watched closely after a PC key, and how often
+#define VK_FOLLOW_MS	100
+#define VK_FOLLOW_STEP	2
+// the light of a key held as part of a combination lit as a key of its own, and of
+// the key under the pointer
+#define VK_DIM		0.45
+
 // Up to this size subpixel text is worth it; above it the triads are too small
 // against the letters to see, and only fringe the colours
 #define VK_LCD_MAX	1.5
@@ -107,6 +140,11 @@ keyWindow::keyWindow(QWidget* p):QDialog(p) {
 	connect(&drawTimer, SIGNAL(timeout()), this, SLOT(redraw()));
 	hoverTimer.setInterval(40);
 	connect(&hoverTimer, SIGNAL(timeout()), this, SLOT(pollHover()));
+	followClock.start();
+	followEnd = 0;
+	followTimer.setTimerType(Qt::PreciseTimer);
+	followTimer.setInterval(VK_FOLLOW_STEP);
+	connect(&followTimer, SIGNAL(timeout()), this, SLOT(follow()));
 	connect(&watcher, SIGNAL(fileChanged(QString)), this, SLOT(loadSkin()));
 	connect(&watcher, SIGNAL(directoryChanged(QString)), this, SLOT(loadSkin()));
 	loadSkin();
@@ -162,7 +200,22 @@ void keyWindow::loadSkin() {
 	cnv = skin.canvas();
 	hover = -1;
 	held = -1;		// heldZx stays: the button's release lets go of it
-	latched = QVector<bool>(skin.keys().size(), false);
+	const QVector<VkKey>& keys = skin.keys();
+	latched = QVector<bool>(keys.size(), false);
+	firstCopy = QVector<int>(keys.size(), -1);
+	lastCopy = QVector<int>(keys.size(), -1);
+	for (int n = 0; n < keys.size(); n++) {
+		if (!keys[n].ch) continue;
+		int f = n;
+		int l = n;
+		for (int m = 0; m < keys.size(); m++) {
+			if (keys[m].ch != keys[n].ch) continue;
+			if (keys[m].box.left() < keys[f].box.left()) f = m;
+			if (keys[m].box.left() > keys[l].box.left()) l = m;
+		}
+		firstCopy[n] = f;
+		lastCopy[n] = l;
+	}
 	picScale = 0;
 	pic = QPixmap();
 	litPic = QPixmap();
@@ -515,8 +568,59 @@ QByteArray keyWindow::matrixSig() {
 // From the main window's 50 Hz tick
 void keyWindow::watch(Keyboard* k) {
 	if ((k != kb) || !isVisible()) return;
-	if (matrixSig() != shownSig)
+	int had = host.size();
+	hostTidy(keysDown());
+	if ((matrixSig() != shownSig) || (host.size() != had))
 		update();
+}
+
+// From the main window, as a PC key goes to the machine - before its repaint. A
+// combination's shift goes down at once and its key a little later, up to 22 ms on the
+// Evo, so the matrix is watched closely for a while instead of at the 50 Hz tick
+void keyWindow::hostKey(QByteArray zx, bool down, bool right) {
+	if (!isVisible()) {		// nothing tidies them while hidden; a key held as it opens lights as pressed
+		host.clear();
+		return;
+	}
+	if (zx.isEmpty()) return;
+	zx = zxSorted(zx);
+	hostTidy(keysDown());
+	if (down) {
+		host.append({zx, true, right, 0});
+	} else {
+		for (HostKey& h : host) {
+			if (h.down && (h.zx == zx) && (h.right == right)) {
+				h.down = false;
+				h.upAt = followClock.elapsed();
+				break;
+			}
+		}
+	}
+	followEnd = followClock.elapsed() + VK_FOLLOW_MS;
+	if (!followTimer.isActive())
+		followTimer.start();
+}
+
+void keyWindow::follow() {
+	if (!isVisible() || (followClock.elapsed() > followEnd)) {
+		followTimer.stop();
+		if (!isVisible()) return;
+	}
+	int had = host.size();
+	hostTidy(keysDown());
+	if ((matrixSig() != shownSig) || (host.size() != had))
+		update();
+}
+
+// PC keys let go of some other way go, and let-go ones once their keys are up
+void keyWindow::hostTidy(const QByteArray& down) {
+	qint64 now = followClock.elapsed();
+	for (int i = host.size() - 1; i >= 0; i--) {
+		const HostKey& h = host[i];
+		bool gone = h.down ? !hostHolding(h.zx, down)
+			: ((now - h.upAt > VK_HOST_FADE_MS) || !std::any_of(h.zx.begin(), h.zx.end(), [&](char c) {return down.contains(c);}));
+		if (gone) host.removeAt(i);
+	}
 }
 
 void keyWindow::rall(Keyboard* k) {
@@ -575,6 +679,73 @@ QByteArray keyWindow::keysDown() {
 	return res;
 }
 
+// How bright each key is: 1 pressed, VK_DIM held as part of a combination that is lit as
+// a key of its own, 0 up.
+// - A key that is one Spectrum key is lit by the matrix, wherever the press came from;
+//   of a key the skin has twice (the shifts), the copy clicked, else the one on the
+//   side of the PC key that holds it, else the left one.
+// - A combination - EDIT is CAPS SHIFT and 1 - is lit while a PC key that is that
+//   combination is held, or this window holds it: the matrix cannot tell it from its
+//   keys pressed one by one, which light fully. Its keys light dimly then, unless one is
+//   pressed by itself too. A skin with no key for it lights its keys fully, as pressed.
+// - The Next's own keys light from wherever they were pressed.
+QVector<double> keyWindow::lights(const QByteArray& down) {
+	const QVector<VkKey>& keys = skin.keys();
+	QVector<double> lv(keys.size(), 0);
+	bool next = isNext();
+	QByteArray parts;	// keys in the matrix for a combination lit here
+	QByteArray alone;	// keys pressed by themselves
+	QByteArray clicked;	// one-key keys this window holds: that copy lights
+	QByteArray byLeft;	// one-key keys a PC key holds, on its left side or the right
+	QByteArray byRight;
+	for (const HostKey& h : host) {		// the Next too: its own keymap's shifts
+		if (!h.down || (h.zx.size() != 1)) continue;
+		alone.append(h.zx);
+		(h.right ? byRight : byLeft).append(h.zx);
+	}
+	for (int n = 0; n < keys.size(); n++) {
+		const VkKey& key = keys[n];
+		bool mine = (n == held) || ((n < latched.size()) && latched[n]);
+		int bit;
+		if (unsigned char* ext = nextExtKey(kb, key.zx, &bit)) {
+			lv[n] = (*ext & bit) ? 1 : 0;
+		} else if (key.ch) {
+			if (mine && down.contains((char)key.ch)) {	// a latch let go of elsewhere is none
+				alone.append((char)key.ch);
+				clicked.append((char)key.ch);
+			}
+		} else if (!key.zx.isEmpty()) {
+			bool on = (n == held) || (mine && allIn(key.zx, down));
+			bool claim = on;
+			if (!next) {
+				QByteArray zx = zxSorted(key.zx);
+				for (const HostKey& h : host) {
+					if (h.zx != zx) continue;
+					claim = true;			// a let-go one too, while its keys go up
+					on |= h.down;
+				}
+			}
+			if (on) lv[n] = 1;
+			if (claim) parts.append(key.zx);
+		}
+	}
+	for (int n = 0; n < keys.size(); n++) {
+		char ch = (char)keys[n].ch;
+		if (!ch || !down.contains(ch)) continue;
+		bool mine = (n == held) || ((n < latched.size()) && latched[n]);
+		double level = (parts.contains(ch) && !alone.contains(ch)) ? VK_DIM : 1;
+		if (clicked.contains(ch)) {
+			if (mine) lv[n] = level;
+			continue;
+		}
+		// the copy on the PC key's side; one held some other way, the left one
+		bool r = byRight.contains(ch);
+		if ((r && (lastCopy.value(n, n) == n)) || ((!r || byLeft.contains(ch)) && (firstCopy.value(n, n) == n)))
+			lv[n] = level;
+	}
+	return lv;
+}
+
 // a key's string pressed or let go of all at once, as one entry
 void keyWindow::pressKeys(const QByteArray& zx, bool down) {
 	if (!kb || zx.isEmpty()) return;
@@ -624,36 +795,21 @@ void keyWindow::paintEvent(QPaintEvent*) {
 	} else {
 		pnt.scale(sd / dpr, sd / dpr);
 	}
-	// A key that is one Spectrum key is lit by the matrix, wherever the press
-	// came from, and every copy of it (the two CAPS SHIFTs). A combination - EDIT
-	// is CAPS SHIFT and 1 - is lit only while this window holds it down: the
-	// machine cannot tell it from its keys pressed one by one, which light anyway.
 	// The signature first: a change between the two is caught by the next watch()
 	shownSig = matrixSig();
 	QByteArray down = keysDown();
-	QVector<bool> lit(keys.size(), false);
-	for (int n = 0; n < keys.size(); n++) {
-		int bit;
-		unsigned char* ext = nextExtKey(kb, keys[n].zx, &bit);
-		if (ext) {
-			lit[n] = (*ext & bit) != 0;		// the Next's own key, from wherever it was pressed
-		} else if (keys[n].ch) {
-			lit[n] = down.contains((char)keys[n].ch);
-		} else if (!keys[n].zx.isEmpty()) {
-			lit[n] = (n == held) || ((n < latched.size()) && latched[n] && allIn(keys[n].zx, down));
-		}
-	}
-	// the key under the pointer, only one that is up: the same light, dimmer
-	QVector<bool> hov(keys.size(), false);
-	if (conf.keywin.hover && (hover >= 0) && (hover < keys.size()) && !lit[hover])
-		hov[hover] = true;
+	hostTidy(down);
+	QVector<double> lv = lights(down);
+	// the key under the pointer, only one that is up: the dim light
+	if (conf.keywin.hover && (hover >= 0) && (hover < keys.size()) && (lv[hover] <= 0))
+		lv[hover] = VK_DIM;
 	// a contour light is the lit color under the picture; a pad light is the lit
 	// picture over the plain one, on that key alone - the two differ only on the
 	// caps
 	bool pad = !litPic.isNull();
 	for (int n = 0; (n < keys.size()) && !pad; n++) {
-		if (!lit[n] && !hov[n]) continue;
-		pnt.setOpacity(lit[n] ? 1.0 : 0.45);
+		if (lv[n] <= 0) continue;
+		pnt.setOpacity(lv[n]);
 		pnt.fillPath(exact ? skin.fillAt(n, sd) : keys[n].fill, skin.litColor());
 	}
 	pnt.setOpacity(1.0);
@@ -669,11 +825,11 @@ void keyWindow::paintEvent(QPaintEvent*) {
 	};
 	drawPic(pic);
 	for (int n = 0; (n < keys.size()) && pad; n++) {
-		if (!lit[n] && !hov[n]) continue;
+		if (lv[n] <= 0) continue;
 		pnt.save();
 		pnt.setTransform(onPic);
 		pnt.setClipPath(exact ? skin.fillAt(n, sd) : keys[n].fill);
-		pnt.setOpacity(lit[n] ? 1.0 : 0.45);
+		pnt.setOpacity(lv[n]);
 		drawPic(litPic);
 		pnt.restore();
 	}
@@ -773,7 +929,7 @@ void keyWindow::latchKey(int n, const QByteArray& zx) {
 	unsigned char* ext = nextExtKey(kb, zx, &bit);
 	bool all = ext ? ((*ext & bit) != 0) : allIn(zx, keysDown());
 	pressKeys(zx, !all);
-	if (n < latched.size()) latched[n] = !all && (zx.size() > 1);
+	if (n < latched.size()) latched[n] = !all;
 	update();
 }
 
