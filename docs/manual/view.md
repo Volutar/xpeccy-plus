@@ -250,6 +250,14 @@ On the 128 keyboard the extra keys (True Video, Edit, Delete, the cursor keys an
 rest) press Caps Shift or Symbol Shift together with a key, as on the real one; a right
 click locks such a key whole.
 
+Such a key lights up while it is held here, or while the PC key that makes it is held -
+Backspace for Delete, the arrows for the cursor keys, and so on. The two keys it presses
+light up dimly. Pressed one by one, they light up fully and the extra key stays dark. On the
+48K keyboard, which has no such keys, the two keys light up fully. Of the two Caps Shifts
+and the two Symbol Shifts only one lights up: the one you clicked, otherwise the one on the
+side of the PC key that holds it (the right Shift lights the right one), otherwise the left
+one.
+
 For layout authors: a file `zx-black.json`, `zx-white.json`, `zx-128.json`,
 `zx-128-white.json`, `zx-next.json`, `zx-next-white.json` or `zx-next-magenta.json` in the `vkbd` folder of the settings folder (see
 [Where the settings are](getting-started.md#where-the-settings-are)) is drawn instead of the
