@@ -400,10 +400,13 @@ xUpdateWin::xUpdateWin(QWidget* p, const upRelease& r, const QString& news):QDia
 	bool own = upd_can_update(rel);
 	if (own) {
 		btnGet = box->addButton(tr("Update"), QDialogButtonBox::AcceptRole);
-	} else if (rel.asset.url.isEmpty()) {
-		btnGet = box->addButton(tr("Open Release Page"), QDialogButtonBox::AcceptRole);
 	} else {
-		btnGet = box->addButton(tr("Download"), QDialogButtonBox::AcceptRole);
+		// both go to the browser, and say so
+		xSideButton* web = new xSideButton;
+		web->setText(rel.asset.url.isEmpty() ? tr("Open Release Page") : tr("Download"));
+		web->setWebMark(true);
+		box->addButton(web, QDialogButtonBox::AcceptRole);
+		btnGet = web;
 	}
 	box->addButton(tr("Later"), QDialogButtonBox::RejectRole);
 	btnGet->setObjectName("updGo");

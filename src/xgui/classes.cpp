@@ -440,6 +440,21 @@ void xSlider::paintEvent(QPaintEvent* ev) {
 
 // xSideButton
 
+// as lines on a 9 x 9 grid, through the pixel centres: crisp at 100 %, scaled
+// with the painter at any other size
+void xWebMark(QPainter* pnt, const QPoint& at, const QColor& col) {
+	static const int lines[][4] = {
+		{0, 2, 0, 8}, {0, 8, 6, 8}, {6, 8, 6, 5}, {0, 2, 3, 2},		// the box, open at the corner
+		{3, 5, 8, 0}, {5, 0, 8, 0}, {8, 0, 8, 3}			// the arrow out of it
+	};
+	pnt->save();
+	pnt->setRenderHint(QPainter::Antialiasing, pnt->device()->devicePixelRatioF() != 1.0);
+	pnt->setPen(QPen(col, 1, Qt::SolidLine, Qt::SquareCap));
+	for (const auto& l : lines)
+		pnt->drawLine(QPointF(at.x() + l[0] + 0.5, at.y() + l[1] + 0.5), QPointF(at.x() + l[2] + 0.5, at.y() + l[3] + 0.5));
+	pnt->restore();
+}
+
 xSideButton::xSideButton(QWidget* p):QPushButton(p) {}
 
 #define SIDE_GAP	6	// between the text and the icon at the edge
@@ -448,12 +463,12 @@ xSideButton::xSideButton(QWidget* p):QPushButton(p) {}
 // style for its padding: the style's own hint has the icon beside the text.
 QSize xSideButton::sizeHint() const {
 	QSize sz = QPushButton::sizeHint();
-	if (icon().isNull()) return sz;
+	if (icon().isNull() && !web) return sz;
 	QStyleOptionButton opt;
 	initStyleOption(&opt);
 	opt.text.clear();
 	opt.icon = QIcon();
-	QSize cont(fontMetrics().horizontalAdvance(text()) + SIDE_GAP / 2 + SIDE_GAP + iconSize().width(),
+	QSize cont(fontMetrics().horizontalAdvance(text()) + SIDE_GAP / 2 + SIDE_GAP + (web ? WEBMARK : iconSize().width()),
 		fontMetrics().height());
 	int w = style()->sizeFromContents(QStyle::CT_PushButton, &opt, cont, this).width();
 	return QSize(qMax(sz.width(), w), sz.height());
@@ -470,7 +485,11 @@ void xSideButton::paintEvent(QPaintEvent*) {
 	pnt.drawControl(QStyle::CE_PushButton, opt);
 	QRect box = style()->subElementRect(QStyle::SE_PushButtonContents, &opt, this);
 	int gap = SIDE_GAP;
-	if (!ico.isNull()) {
+	if (web) {
+		QPoint at(box.right() - WEBMARK + 1, box.top() + (box.height() - WEBMARK) / 2);
+		xWebMark(&pnt, at, palette().color(isEnabled() ? QPalette::Active : QPalette::Disabled, QPalette::ButtonText));
+		box.setRight(at.x() - gap);
+	} else if (!ico.isNull()) {
 		QSize isz = iconSize();
 		QRect irc(box.right() - isz.width() + 1, box.top() + (box.height() - isz.height()) / 2, isz.width(), isz.height());
 		ico.paint(&pnt, irc, Qt::AlignCenter, isEnabled() ? QIcon::Normal : QIcon::Disabled);

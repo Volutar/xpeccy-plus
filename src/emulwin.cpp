@@ -2236,11 +2236,14 @@ void MainWin::updateSatellites() {
 // A key ends at the right edge of the menu. The style starts it at the left
 // of a column as wide as the widest key, so each item is given a column as
 // wide as its own. Qt 5 cannot be told: there the keys stay in one column.
+// An item marked by webAction() gets the web mark at the right end, where a key
+// would end.
 class xMenu : public QMenu {
 	public:
 		xMenu(QWidget* p = nullptr) : QMenu(p) {}
 		xMenu(const QString& title, QWidget* p = nullptr) : QMenu(title, p) {}
 	protected:
+		void paintEvent(QPaintEvent*) override;
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
 		void initStyleOption(QStyleOptionMenuItem* opt, const QAction* act) const override {
 			QMenu::initStyleOption(opt, act);
@@ -2250,6 +2253,69 @@ class xMenu : public QMenu {
 		}
 #endif
 };
+
+static QUrl manual_url();
+
+// An item that opens a web page carries the mark: its text gets a key column of
+// its own, the way Qt makes room for a key, and xMenu draws the mark there.
+static void webAction(QAction* act, bool on) {
+#ifndef __APPLE__	// the menu bar there is the system's: nothing is drawn in it
+	QString name = act->text().section('\t', 0, 0);
+	act->setText(on ? name + "\t" + QChar(0x2003) : name);	// an em space: blank, wider than the mark
+	act->setProperty("xWeb", on);
+#else
+	Q_UNUSED(act);
+	Q_UNUSED(on);
+#endif
+}
+
+// Where the style ends a key, and in what colour, is the style's own: the item is
+// drawn off screen with a key and without, and the columns that differ are the
+// key's. The colour follows the item's state (selected, disabled) as the text's does.
+void xMenu::paintEvent(QPaintEvent* ev) {
+	QMenu::paintEvent(ev);
+	QPainter pnt(this);
+	foreach(QAction* act, actions()) {
+		if (!act->isVisible() || !act->property("xWeb").toBool()) continue;
+		QRect rc = actionGeometry(act);
+		if (rc.isEmpty() || !ev->rect().intersects(rc)) continue;
+		QStyleOptionMenuItem opt;
+		initStyleOption(&opt, act);
+		opt.rect = QRect(QPoint(0, 0), rc.size());
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+		opt.reservedShortcutWidth = opt.fontMetrics.horizontalAdvance("M");
+#else
+		opt.tabWidth = opt.fontMetrics.horizontalAdvance("M");
+#endif
+		QString name = opt.text.section('\t', 0, 0);
+		QImage img[2];
+		for (int i = 0; i < 2; i++) {
+			img[i] = QImage(rc.size(), QImage::Format_RGB32);
+			img[i].fill(palette().color(QPalette::Window));
+			opt.text = name + (i ? "\tM" : "\t");
+			QPainter ip(&img[i]);
+			style()->drawControl(QStyle::CE_MenuItem, &opt, &ip, this);
+		}
+		int right = -1;
+		int most = 0;
+		QColor col;
+		for (int y = 0; y < rc.height(); y++) {
+			const QRgb* a = reinterpret_cast<const QRgb*>(img[0].constScanLine(y));
+			const QRgb* b = reinterpret_cast<const QRgb*>(img[1].constScanLine(y));
+			for (int x = 0; x < rc.width(); x++) {
+				int d = qAbs(qRed(a[x]) - qRed(b[x])) + qAbs(qGreen(a[x]) - qGreen(b[x])) + qAbs(qBlue(a[x]) - qBlue(b[x]));
+				if (!d) continue;
+				right = qMax(right, x);
+				if (d > most) {
+					most = d;
+					col = QColor(b[x]);
+				}
+			}
+		}
+		if (right < 0) continue;
+		xWebMark(&pnt, QPoint(rc.left() + right - WEBMARK + 1, rc.top() + (rc.height() - WEBMARK) / 2), col);
+	}
+}
 
 class xRootMenu : public xMenu {
 	public:
@@ -2668,17 +2734,19 @@ void MainWin::initMenuBar() {
 	QMenu* help = new xMenu("Help", this);
 	helpMenu = help;
 	bar->addMenu(help);
-	help->addAction(QIcon(":/images/book-question.png"), "Manual", this, &MainWin::openManual);
+	QAction* manAct = help->addAction(QIcon(":/images/book-question.png"), "Manual", this, &MainWin::openManual);
+	// the mark only when the manual is not in the package and the web copy opens
+	connect(help, &QMenu::aboutToShow, this, [manAct]() {webAction(manAct, !manual_url().isLocalFile());});
 	help->addSeparator();
-	help->addAction(QIcon(":/images/github.png"), "Project Page", this, []() {
+	webAction(help->addAction(QIcon(":/images/github.png"), "Project Page", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus"));
-	});
-	help->addAction(QIcon(":/images/document-text.png"), "What's New", this, []() {
+	}), true);
+	webAction(help->addAction(QIcon(":/images/document-text.png"), "What's New", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus/blob/main/CHANGELOG.md"));
-	});
-	help->addAction(QIcon(":/images/exclamation.png"), "Report a Problem", this, []() {
+	}), true);
+	webAction(help->addAction(QIcon(":/images/exclamation.png"), "Report a Problem", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus/issues"));
-	});
+	}), true);
 	help->addAction(QIcon(":/images/arrow-circle-double.png"), "Check for Updates...", this, [this]() {upd_check(this);});
 	help->addSeparator();
 	act = help->addAction(QGuiApplication::windowIcon(), "About " XPRODUCT, this, &MainWin::showAbout);
@@ -2909,9 +2977,13 @@ void MainWin::fillRecent() {
 	}
 }
 
+void MainWin::openManual() {
+	QDesktopServices::openUrl(manual_url());
+}
+
 // The manual the package carries, in the system's language when it has that
 // one; a build without it (a plain dev build) opens the copy on the web.
-void MainWin::openManual() {
+static QUrl manual_url() {
 #if defined(__APPLE__)
 	QString dir = QCoreApplication::applicationDirPath() + "/../Resources/doc/manual";
 #elif defined(__linux) || defined(__BSD)
@@ -2923,9 +2995,9 @@ void MainWin::openManual() {
 	if (!QFileInfo::exists(QString("%0/%1/index.html").arg(dir, lang)))
 		lang = "en";
 	QString page = QString("%0/%1/index.html").arg(dir, lang);
-	QDesktopServices::openUrl(QFileInfo::exists(page)
+	return QFileInfo::exists(page)
 		? QUrl::fromLocalFile(QFileInfo(page).absoluteFilePath())
-		: QUrl("https://dotkoval.github.io/xpeccy-plus/" + lang + "/"));
+		: QUrl("https://dotkoval.github.io/xpeccy-plus/" + lang + "/");
 }
 
 // not modal: the machine goes on, and a second ask brings the open one forward

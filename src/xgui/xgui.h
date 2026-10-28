@@ -107,14 +107,23 @@ class xSlider : public QSlider {
 		void paintEvent(QPaintEvent*);
 };
 
+// The mark of an item that opens a web page: a box with an arrow out of its
+// corner, WEBMARK px square, drawn in the given colour
+#define WEBMARK	9
+void xWebMark(QPainter*, const QPoint& topLeft, const QColor&);
+
 // A push button with its icon at the right edge and its text from the left,
-// cut short to fit; Qt only centers the two together.
+// cut short to fit; Qt only centers the two together. The web mark can stand in
+// for the icon.
 class xSideButton : public QPushButton {
 	public:
 		xSideButton(QWidget* p = NULL);
 		QSize sizeHint() const;
+		void setWebMark(bool on) {web = on; updateGeometry(); update();}
 	protected:
 		void paintEvent(QPaintEvent*);
+	private:
+		bool web = false;
 };
 
 // A group box with an icon in front of its title. The title is padded with
