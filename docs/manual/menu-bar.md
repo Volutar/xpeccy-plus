@@ -16,7 +16,9 @@
 | **Help** | this manual, the project page, what is new, reporting a problem |
 
 A command that has a key shows it in the menu. The keys are set on the **Hotkeys** page of
-**Options**. In fullscreen the menu bar is hidden until the pointer stays at the top edge
+**Options**. A setting that is on or off has a tick; in a list where one is picked - the
+window size, the border, the shaders - the picked one has a dot. An item with a box and an
+arrow at its right end opens a page in your browser. In fullscreen the menu bar is hidden until the pointer stays at the top edge
 of the screen (see [Fullscreen](main-window.md#fullscreen)). In a window it can be hidden
 too, with **View > Menu Bar**, and comes back the same way at the top edge of the window
 (see [Menu Bar, Toolbar and Status Bar](view.md#menu-bar-toolbar-and-status-bar)).
