@@ -240,7 +240,8 @@ QCheckBox::indicator, QGroupBox::indicator, QMenu::indicator {
 	background-color: #1e1e21;
 }
 
-QRadioButton::indicator {
+/* a menu's pick-one items are round like radio buttons, as the System style marks them apart */
+QRadioButton::indicator, QMenu::indicator:exclusive {
 	width: 12px;
 	height: 12px;
 	border: 1px solid #5f5f66;
@@ -258,8 +259,9 @@ QCheckBox::indicator:checked, QGroupBox::indicator:checked, QMenu::indicator:che
 	image: url(:/images/styles/check-light.png);
 }
 
-QRadioButton::indicator:checked {
+QRadioButton::indicator:checked, QMenu::indicator:exclusive:checked {
 	/* 8 + 2*3 = 12 + 2*1: the dot must not change the box size */
+	image: none;
 	width: 8px;
 	height: 8px;
 	background-color: #3d7dc9;
@@ -530,9 +532,21 @@ QMenu {
 	padding: 2px;
 }
 
+/* Qt starts the text after the padding and a column of its own: 20 px in a menu with
+ * icons, the tick's 17 in one with only ticks, none in one with neither. The program marks
+ * each menu with what it holds (xcol), so the text starts 35 px from the menu's edge (frame 4)
+ * in every menu, as the System style puts it; keys end 20 px from the right edge. */
 QMenu::item {
-	padding: 3px 22px 3px 22px;
+	padding: 3px 14px 3px 11px;
 	border: 1px solid transparent;
+}
+
+QMenu[xcol="checks"]::item {
+	padding-left: 14px;
+}
+
+QMenu[xcol="plain"]::item {
+	padding-left: 31px;
 }
 
 QMenu::item:selected {
@@ -557,8 +571,17 @@ QMenu::icon:checked {
 	border-radius: 2px;
 }
 
+/* icon and tick on one centre, 13.5 px in, as the System style has them */
+QMenu::icon {
+	left: 2px;
+}
+
 QMenu::indicator {
-	margin-left: 4px;
+	margin-left: 3px;
+}
+
+QMenu::right-arrow {
+	right: 7px;
 }
 
 /* ---- tool bars, docks, status bar ---------------------------------- */

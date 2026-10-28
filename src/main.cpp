@@ -7,6 +7,7 @@
 #include <QStyleFactory>
 #include <QUrl>
 #include <QFileInfo>
+#include <QMenu>
 #include <QtPlugin>
 
 #include <locale.h>
@@ -192,12 +193,44 @@ void xApp::d_style() {
 		if (w->internalWinId()) applyTitleBarStyle(w);
 }
 
+// Under a style sheet Qt starts a menu's text after a column that depends on what
+// the menu holds: icons, only ticks, or neither. The sheets set the padding for
+// each by this property, so the text starts at one place in every menu. The rule
+// is Qt's own (QMenuPrivate::updateActionRects).
+static void menu_column(QMenu* menu) {
+	const char* col = "plain";
+	foreach(QAction* act, menu->actions()) {
+		if (act->isSeparator() || !act->isVisible()) continue;
+		if (!act->icon().isNull()) {
+			col = "icons";
+			break;
+		}
+		if (act->isCheckable()) col = "checks";
+	}
+	if (menu->property("xcol").toString() == col) return;
+	menu->setProperty("xcol", col);
+	if (qApp->styleSheet().isEmpty()) return;	// a later sheet polishes with it anyway
+	menu->style()->unpolish(menu);
+	menu->style()->polish(menu);
+	QEvent ev(QEvent::StyleChange);			// the menu lays itself out again
+	QCoreApplication::sendEvent(menu, &ev);
+}
+
 static MainWin* os_win = NULL;		// the window every open goes through, once there is one
 
 // catches every top-level window's first Show, so a titlebar gets its colour
 // (and a file dialog its columns) without touching each of the dozen
 // QDialog/QMainWindow classes individually
 bool xApp::eventFilter(QObject* obj, QEvent* ev) {
+	// every menu, once: aboutToShow comes after the menu's own fillers and before
+	// it is laid out
+	if (ev->type() == QEvent::Polish) {
+		QMenu* menu = qobject_cast<QMenu*>(obj);
+		if (menu && !menu->property("xcolHooked").toBool()) {
+			menu->setProperty("xcolHooked", true);
+			connect(menu, &QMenu::aboutToShow, menu, [menu]() {menu_column(menu);});
+		}
+	}
 	if (ev->type() == QEvent::Show) {
 		QWidget* w = qobject_cast<QWidget*>(obj);
 		if (w && w->isWindow()) {

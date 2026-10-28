@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 
+#include <QActionGroup>
 #include <QIcon>
 #include <QDebug>
 #include <QBuffer>
@@ -609,10 +610,12 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 	regMenu = new QMenu(this);
 	regMenu->addAction("Registers layout")->setEnabled(false);
 	regMenu->addSeparator();
+	QActionGroup* layGrp = new QActionGroup(regMenu);
 	for (i = 0; regLayTab[i].name; i++) {
 		QAction* act = regMenu->addAction(regLayTab[i].name);
 		act->setCheckable(true);
 		act->setData(regLayTab[i].lay);
+		layGrp->addAction(act);
 	}
 	regMenu->addSeparator();
 	regSplitAct = regMenu->addAction("Split pairs");
