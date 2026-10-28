@@ -11,6 +11,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **The menu bar can be hidden**: View > Menu Bar. The toolbar hides with it, as in
+  fullscreen. Hold the pointer at the top edge of the window and both come down over the
+  picture; the right-click menu can bring the menu bar back too. Here and in fullscreen
+  the bars stay a moment after the pointer leaves them. *(thanks to lovebeam)*
+
 - **Update check**: once a day the program looks for a newer version, on the releases or
   the nightly channel, and shows what is new since yours. Help > Check for Updates asks at
   once; how often, and which channel, is set in the same window or in Options. On Windows
