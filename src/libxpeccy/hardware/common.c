@@ -344,15 +344,34 @@ int zx_ear(Computer* comp) {
 	return ear;
 }
 
+static int zx_peek_word(Computer* comp, int adr) {
+	return (memRd(comp->mem, adr & 0xffff) & 0xff) | ((memRd(comp->mem, (adr + 1) & 0xffff) & 0xff) << 8);
+}
+
+// The rom's edge routine was entered for a loader of its own: where it returns
+// to (a word deeper under LD-EDGE-2's own call) is not rom, nor the copy of
+// LD-BYTES flash loading answers for. St. Dragon's copy jumps into LD-SAMPLE
+// (#05EC) for every edge and never comes back to LD_START for the trap.
+static int zx_edge_borrowed(Computer* comp) {
+	int sp = comp->cpu->regSP;
+	int ret = zx_peek_word(comp, sp);
+	if (ret == LD_ROM_BASE + LDC_EDGE2_RET)
+		ret = zx_peek_word(comp, sp + 2);
+	if (zx_rom_code(comp, ret)) return 0;
+	int base = comp->tape->ldBase;
+	return (base < 0) || (((ret - base) & 0xffff) >= LDC_LEN);
+}
+
 // The rom's own loader polls #FE in exactly the pattern tapDetectLoader looks
 // for, and the tape trap serves the rom - so the detector must not answer for
 // it, or a flash load gets a tape playing under it and the two fall out of step.
 // LD-EDGE-1/2 (#05E3..#05F9) is the only rom code that reads the port this way,
 // and the same holds for a copy of LD-BYTES in ram that flash loading answers for.
 // The address goes first: one field read, and false on every keyboard poll.
+// 1: the trap's, 2: the rom's edge routine run for a loader of its own.
 static int zx_ld_edge(Computer* comp) {
 	int pc = comp->cpu->regPC;
-	if (ld_edge(pc, LD_ROM_BASE) && zx_rom_active(comp)) return 1;
+	if (ld_edge(pc, LD_ROM_BASE) && zx_rom_active(comp)) return zx_edge_borrowed(comp) ? 2 : 1;
 	return (comp->tape->ldBase >= 0) && ld_edge(pc, comp->tape->ldBase);
 }
 
@@ -420,7 +439,11 @@ void zx_tape_detect(Computer* comp) {
 	Tape* tap = comp->tape;
 	int kind = TAPE_RD_EDGE;
 	int ram = 0;
-	if (!zx_ld_edge(comp)) {
+	int edge = zx_ld_edge(comp);
+	if (edge == 2) {
+		kind = TAPE_RD_EAR;		// the loader's own read of the ear bit, done by rom code
+		ram = 1;
+	} else if (!edge) {
 		// A loader reads from one IN over and over, so what it is is asked
 		// once a frame
 		int pc = comp->cpu->regPC;
