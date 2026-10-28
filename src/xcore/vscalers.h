@@ -49,8 +49,6 @@ extern int drawH;
 // window pixels per dot, or 0 when the picture is stretched to the screen
 extern int drawZoom;
 
-#define VID_ZOOM_MAX	6
-
 void vid_set_zoom(int);
 void vid_set_fullscreen(int);
 void vid_set_ratio(int);
@@ -58,15 +56,5 @@ void vid_set_border_mode(int);
 // the picture area of a window that is not the zoom's size, fitted as fullscreen
 // is; empty: the window is the zoom's size
 void vid_set_fit(const QSize& area);
-// Snap to steps (conf.vid.snap): the zoom when a window's picture area is a step,
-// a whole zoom of the frame at a border between the one asked for and the
-// widest the fit shows, else 0; the step nearest to an area, no larger than
-// room (empty: any), invalid when there is none; the window at a zoom.
-int vid_step_of(const QSize& area);
-QSize vid_step_near(const QSize& area, const QSize& room);
-// each axis on its own: the step width and height nearest to the area's, over
-// every zoom; 0 on an axis with none
-QSize vid_step_axes(const QSize& area, const QSize& room);
-QSize vid_zoom_size(int zoom);
 // The GUI supplies the current monitor size in logical pixels; setters reuse it.
 void vid_upd_scale(const QSize& screenSize = QSize());

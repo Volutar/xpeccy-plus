@@ -855,8 +855,6 @@ void MainWin::syncActions() {
 	if (muteAct->toolTip() != tip) muteAct->setToolTip(tip);	// a change repaints the button
 	fullAct->setChecked(conf.vid.fullScreen);
 	ratioAct->setChecked(conf.vid.keepRatio);
-	snapAct->setChecked(conf.vid.snap);
-	snapGrp->setEnabled(conf.vid.snap);
 	for (int i = 0; i < sizeActs.size(); i++)
 		sizeActs[i]->setChecked(conf.vid.scale == i + 1);
 }
