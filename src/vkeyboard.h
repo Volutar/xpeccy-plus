@@ -37,7 +37,7 @@ class keyWindow : public QDialog {
 		void upd(Keyboard*);
 		void watch(Keyboard*);	// repaint if the matrix moved with no event to say so
 		void rall(Keyboard*);
-		void hostKey(QByteArray, bool);	// a PC key pressed or let go, as the Spectrum keys it presses
+		void hostKey(QByteArray, bool, bool);	// a PC key pressed or let go, as the Spectrum keys it presses; on the right side
 		void snap();		// sit under the emulator window
 		void fillMenu(QMenu*);	// its settings, added to that menu
 	private slots:
@@ -50,6 +50,7 @@ class keyWindow : public QDialog {
 		struct HostKey {
 			QByteArray zx;		// sorted, so CS+0 and 0+CS are one
 			bool down;
+			bool right;		// right Shift, Ctrl, Alt: the right copy of a shift lights
 			qint64 upAt;		// ms of followClock when let go of
 		};
 		Keyboard* kb;
@@ -70,6 +71,7 @@ class keyWindow : public QDialog {
 		QByteArray heldZx;	// what it pressed, to let go of the same
 		QVector<bool> latched;	// keys a click put down for good
 		QVector<int> firstCopy;	// of a key the skin has twice (the shifts), the left one
+		QVector<int> lastCopy;	// and the right one
 		QByteArray shownSig;	// matrixSig() of the last paint
 		QList<HostKey> host;	// the PC keys that went to the machine and are not all up yet
 		QTimer followTimer;	// a short close look at the matrix after a PC key

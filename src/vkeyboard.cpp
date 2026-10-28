@@ -203,13 +203,18 @@ void keyWindow::loadSkin() {
 	const QVector<VkKey>& keys = skin.keys();
 	latched = QVector<bool>(keys.size(), false);
 	firstCopy = QVector<int>(keys.size(), -1);
+	lastCopy = QVector<int>(keys.size(), -1);
 	for (int n = 0; n < keys.size(); n++) {
 		if (!keys[n].ch) continue;
 		int f = n;
+		int l = n;
 		for (int m = 0; m < keys.size(); m++) {
-			if ((keys[m].ch == keys[n].ch) && (keys[m].box.left() < keys[f].box.left())) f = m;
+			if (keys[m].ch != keys[n].ch) continue;
+			if (keys[m].box.left() < keys[f].box.left()) f = m;
+			if (keys[m].box.left() > keys[l].box.left()) l = m;
 		}
 		firstCopy[n] = f;
+		lastCopy[n] = l;
 	}
 	picScale = 0;
 	pic = QPixmap();
@@ -572,7 +577,7 @@ void keyWindow::watch(Keyboard* k) {
 // From the main window, as a PC key goes to the machine - before its repaint. A
 // combination's shift goes down at once and its key a little later, up to 22 ms on the
 // Evo, so the matrix is watched closely for a while instead of at the 50 Hz tick
-void keyWindow::hostKey(QByteArray zx, bool down) {
+void keyWindow::hostKey(QByteArray zx, bool down, bool right) {
 	if (!isVisible()) {		// nothing tidies them while hidden; a key held as it opens lights as pressed
 		host.clear();
 		return;
@@ -581,10 +586,10 @@ void keyWindow::hostKey(QByteArray zx, bool down) {
 	zx = zxSorted(zx);
 	hostTidy(keysDown());
 	if (down) {
-		host.append({zx, true, 0});
+		host.append({zx, true, right, 0});
 	} else {
 		for (HostKey& h : host) {
-			if (h.down && (h.zx == zx)) {
+			if (h.down && (h.zx == zx) && (h.right == right)) {
 				h.down = false;
 				h.upAt = followClock.elapsed();
 				break;
@@ -677,7 +682,8 @@ QByteArray keyWindow::keysDown() {
 // How bright each key is: 1 pressed, VK_DIM held as part of a combination that is lit as
 // a key of its own, 0 up.
 // - A key that is one Spectrum key is lit by the matrix, wherever the press came from;
-//   of a key the skin has twice (the shifts), the copy clicked, else the left one.
+//   of a key the skin has twice (the shifts), the copy clicked, else the one on the
+//   side of the PC key that holds it, else the left one.
 // - A combination - EDIT is CAPS SHIFT and 1 - is lit while a PC key that is that
 //   combination is held, or this window holds it: the matrix cannot tell it from its
 //   keys pressed one by one, which light fully. Its keys light dimly then, unless one is
@@ -690,10 +696,12 @@ QVector<double> keyWindow::lights(const QByteArray& down) {
 	QByteArray parts;	// keys in the matrix for a combination lit here
 	QByteArray alone;	// keys pressed by themselves
 	QByteArray clicked;	// one-key keys this window holds: that copy lights
-	if (!next) {
-		for (const HostKey& h : host) {
-			if (h.down && (h.zx.size() == 1)) alone.append(h.zx);
-		}
+	QByteArray byLeft;	// one-key keys a PC key holds, on its left side or the right
+	QByteArray byRight;
+	for (const HostKey& h : host) {		// the Next too: its own keymap's shifts
+		if (!h.down || (h.zx.size() != 1)) continue;
+		alone.append(h.zx);
+		(h.right ? byRight : byLeft).append(h.zx);
 	}
 	for (int n = 0; n < keys.size(); n++) {
 		const VkKey& key = keys[n];
@@ -725,8 +733,15 @@ QVector<double> keyWindow::lights(const QByteArray& down) {
 		char ch = (char)keys[n].ch;
 		if (!ch || !down.contains(ch)) continue;
 		bool mine = (n == held) || ((n < latched.size()) && latched[n]);
-		if (clicked.contains(ch) ? !mine : (firstCopy.value(n, n) != n)) continue;
-		lv[n] = (parts.contains(ch) && !alone.contains(ch)) ? VK_DIM : 1;
+		double level = (parts.contains(ch) && !alone.contains(ch)) ? VK_DIM : 1;
+		if (clicked.contains(ch)) {
+			if (mine) lv[n] = level;
+			continue;
+		}
+		// the copy on the PC key's side; one held some other way, the left one
+		bool r = byRight.contains(ch);
+		if ((r && (lastCopy.value(n, n) == n)) || ((!r || byLeft.contains(ch)) && (firstCopy.value(n, n) == n)))
+			lv[n] = level;
 	}
 	return lv;
 }
