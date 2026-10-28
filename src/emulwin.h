@@ -45,6 +45,7 @@
 #endif
 
 class xSatFilter;
+class xBarFilter;
 
 #if USE_QT_GAMEPAD
 #include <QGamepad>
@@ -282,6 +283,7 @@ class MainWin : public QWidget {
 		QSize fsFree;		// and the size it goes back to, if it had one of its own (winFree)
 		QRect fsNormal;		// a maximized one: what Restore gives back afterwards
 		xSatFilter* satFilter = nullptr;	// passes the tool windows' hotkeys on to this one
+		friend class xBarFilter;
 		unsigned rzxSeen = 0;			// the recording the player was last told of
 		void releaseChord(QKeyEvent*, bool);
 		void fast_key(bool);
@@ -458,6 +460,8 @@ class MainWin : public QWidget {
 		QMenu* flpMenu[4] = {nullptr, nullptr, nullptr, nullptr};	// each drive's own, from the Drives menu
 		void tapeMenu(const QPoint&);
 		QLabel* sbFps;
+		QAction* mbShowAct = nullptr;	// none on a mac: the menu bar is the system's
+		QAction* mbBackAct = nullptr;	// the right-click menu's way back to a hidden one
 		QAction* tbShowAct;
 		QAction* sbShowAct;
 		QAction* pauseAct;
@@ -507,7 +511,7 @@ class MainWin : public QWidget {
 		// the menu over the picture in fullscreen, while the pointer is at the top
 		QMenuBar* fsBar;
 		QTimer fsShow;
-		int fsY;		// where the pointer was last seen over the picture
+		int fsY;		// where the pointer was last seen over the window, -1 for gone
 		unsigned fsTall:1;	// a line taller than the screen, while a menu is up
 		unsigned winFit:1;	// the window is not the zoom's size: the picture is fitted to it
 		unsigned winFree:1;	// given another size by the user or the system, not maximized
@@ -524,8 +528,12 @@ class MainWin : public QWidget {
 		bool fsCovers();
 		void popupUserMenu(const QPoint&);
 		void placeWindow();
+		QTimer fsLinger;	// the bars over the top, the pointer gone from them
 		void fsReveal(int y);
+		bool fsGone(int y);
 		void fsHide();
+		bool mbHidden();
+		void mbSet(bool);
 		void showAbout();
 		void openManual();
 		void favManage();

@@ -77,5 +77,5 @@ status bar hidden, tick **FPS** in the **Indicators** group on the **Appearance*
 
 **View > Fullscreen** hides the menu bar, the toolbar and the status bar. Push the pointer
 to the top edge of the screen and hold it there: the menu bar comes down, with the toolbar
-if it is shown. They go away again when the pointer leaves them. On macOS the menu is in
-the system menu bar, as usual.
+if it is shown. They go away again a moment after the pointer leaves them. On macOS the menu
+is in the system menu bar, as usual.

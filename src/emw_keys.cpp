@@ -325,6 +325,9 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 					addFavorite(path);
 				}
 				break;
+			case XCUT_MENUBAR:
+				mbSet(!conf.win.menubar);
+				break;
 			case XCUT_RATIO:
 				vid_set_ratio(!conf.vid.keepRatio);
 				updateWindow();

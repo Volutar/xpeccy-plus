@@ -759,10 +759,17 @@ void MainWin::tbMenu(const QPoint& pos, int idx) {
 void MainWin::showBars() {
 	bool full = conf.vid.fullScreen;
 	// hidden, not just covered: a widget off screen costs the frame nothing
-	if (!frame->menuBar()->isNativeMenuBar())
-		frame->menuBar()->setVisible(!full);
-	if (full || !conf.win.toolbar) tbLetGo();	// hidden, its button lets go of the mode
-	toolBar->setVisible(conf.win.toolbar && !full);
+	bool native = frame->menuBar()->isNativeMenuBar();
+	if (!native)
+		frame->menuBar()->setVisible(conf.win.menubar && !full);
+	if (mbShowAct) {
+		mbShowAct->setVisible(!native);
+		mbShowAct->setChecked(conf.win.menubar);
+	}
+	if (mbBackAct) mbBackAct->setVisible(mbHidden());
+	bool tb = conf.win.toolbar && !full && !mbHidden();	// a hidden menu bar takes it along
+	if (!tb) tbLetGo();		// hidden, its button lets go of the mode
+	toolBar->setVisible(tb);
 	statusBar->setVisible(conf.win.statusbar && !full);
 	if (!full) fsHide();
 	tbShowAct->setChecked(conf.win.toolbar);

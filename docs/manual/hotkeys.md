@@ -243,6 +243,7 @@ on the numeric keypad: Alt+Num++ is Alt with the keypad plus.
 | Keep Aspect Ratio | - | Alt+R |
 | Anti-flicker | Alt+N | Alt+N |
 | Reload Shader | - | - |
+| Menu Bar | - | - |
 | Virtual Keyboard | Alt+K | Alt+K |
 
 ### Input

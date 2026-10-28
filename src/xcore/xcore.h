@@ -442,6 +442,7 @@ enum {
 	XCUT_SIZEX6,
 	XCUT_FULLSCR,
 	XCUT_RATIO,
+	XCUT_MENUBAR,
 	XCUT_SCRSHOT,
 	XCUT_COMBOSHOT,
 	XCUT_RES_DOS,
@@ -913,7 +914,8 @@ struct xConfig {
 		int gl;			// the picture goes through OpenGL: decided at start, see gl_probe
 	} vid;
 	struct {
-		unsigned toolbar:1;	// the bars of the main window, off in fullscreen anyway
+		unsigned menubar:1;	// the bars of the main window, off in fullscreen anyway
+		unsigned toolbar:1;
 		unsigned statusbar:1;
 		unsigned tbLocked:1;	// the toolbar's buttons are not dragged around
 		int tbIcons;		// 16 or 24; 0 for what the window's width allows

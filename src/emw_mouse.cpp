@@ -149,7 +149,6 @@ void MainWin::mouseRecenter(int fresh) {
 
 void MainWin::mouseMoveEvent(QMouseEvent *ev) {
 	Computer* comp = conf.zx;
-	fsReveal(ev->xEventY);
 	if (!grabMice || conf.emu.pause) {
 		if (ev->buttons() & Qt::LeftButton) {
 			calcCoords(ev);
