@@ -34,6 +34,7 @@ class keyWindow : public QDialog {
 	public slots:
 		void switcher();
 		void upd(Keyboard*);
+		void watch(Keyboard*);	// repaint if the matrix moved with no event to say so
 		void rall(Keyboard*);
 		void snap();		// sit under the emulator window
 		void fillMenu(QMenu*);	// its settings, added to that menu
@@ -59,8 +60,10 @@ class keyWindow : public QDialog {
 		int held;		// the key the left button holds down, -1 for none
 		QByteArray heldZx;	// what it pressed, to let go of the same
 		QVector<bool> latched;	// combination keys the right button put down
+		QByteArray shownSig;	// matrixSig() of the last paint
 		int keyAt(QPointF);
 		QByteArray keysDown();
+		QByteArray matrixSig();
 		void pressKeys(const QByteArray&, bool);
 		void latchKey(int, const QByteArray&);
 		void placeUndocked();

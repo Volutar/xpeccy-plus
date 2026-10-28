@@ -499,6 +499,26 @@ void keyWindow::upd(Keyboard* k) {
 		repaint();
 }
 
+// What the lights are read from (keysDown() and the Next's own keys), as bytes to
+// compare: a combination from the PC keyboard lets its shift go after its key, and
+// autostart or a gamepad press keys with no event here
+QByteArray keyWindow::matrixSig() {
+	QByteArray sig;
+	if (!kb) return sig;
+	sig.append((const char*)kb->map, sizeof(kb->map));
+	sig.append((const char*)kb->nxKeys, sizeof(kb->nxKeys));
+	sig.append((char)kb->nxCaps);
+	sig.append((char)kb->nxSym);
+	return sig;
+}
+
+// From the main window's 50 Hz tick
+void keyWindow::watch(Keyboard* k) {
+	if ((k != kb) || !isVisible()) return;
+	if (matrixSig() != shownSig)
+		update();
+}
+
 void keyWindow::rall(Keyboard* k) {
 	if (!isVisible()) {
 		x_kbd_release_all(k);
@@ -608,6 +628,8 @@ void keyWindow::paintEvent(QPaintEvent*) {
 	// came from, and every copy of it (the two CAPS SHIFTs). A combination - EDIT
 	// is CAPS SHIFT and 1 - is lit only while this window holds it down: the
 	// machine cannot tell it from its keys pressed one by one, which light anyway.
+	// The signature first: a change between the two is caught by the next watch()
+	shownSig = matrixSig();
 	QByteArray down = keysDown();
 	QVector<bool> lit(keys.size(), false);
 	for (int n = 0; n < keys.size(); n++) {
