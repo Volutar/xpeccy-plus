@@ -1,3 +1,4 @@
+#include <climits>
 #include <cmath>
 #include <string.h>
 
@@ -80,6 +81,89 @@ void sfill_set(int item) {
 // the picture area of a window that is not the zoom's size, empty when it is
 static QSize fitArea;
 
+// Snap to steps. A step is a picture area that is a whole zoom of the frame at
+// some border between the one asked for and the widest the fit shows: whole
+// pixels per dot, no bars. Within a zoom the border grows a dot each side at a
+// time; past the widest the next zoom starts again from the border asked for.
+// Only with the shape kept and square dots. lo, hi: the frame in dots.
+static bool step_range(vCoord& lo, vCoord& hi) {
+	if (!conf.vid.snap || !conf.vid.keepRatio || (conf.zx->hw->xscale != 1.0)) return false;
+	vid_crop_range(conf.zx->vid, &lo, &hi);
+	if (!conf.vid.fillBorder) hi = lo;		// the border as asked: the zooms' own sizes only
+	return true;
+}
+
+// Where two zooms both give the area (an overscan wider than half again the
+// screen), the larger one.
+int vid_step_of(const QSize& area) {
+	vCoord lo, hi;
+	if (area.isEmpty() || !step_range(lo, hi)) return 0;
+	for (int z = VID_ZOOM_MAX; z > 0; z--) {
+		if ((area.width() % z) || (area.height() % z)) continue;
+		const int w = area.width() / z;
+		const int h = area.height() / z;
+		if ((w < lo.x) || (w > hi.x) || (h < lo.y) || (h > hi.y)) continue;
+		if ((w - lo.x) & 1) continue;		// the screen stays in the middle
+		if ((h - lo.y) & 1) continue;
+		return z;
+	}
+	return 0;
+}
+
+// one axis at zoom z: the size nearest to want, room at most; 0 when none fits
+static int step_axis(int want, int z, int lo, int hi, int room) {
+	const int top = std::min(hi * z, room);
+	if (lo * z > top) return 0;
+	const int pitch = 2 * z;			// a dot more border each side
+	const int last = (top - lo * z) / pitch;
+	int k = (want > lo * z) ? (want - lo * z + z) / pitch : 0;
+	if (k > last) k = last;
+	return lo * z + k * pitch;
+}
+
+QSize vid_step_near(const QSize& area, const QSize& room) {
+	vCoord lo, hi;
+	QSize best;
+	if (!step_range(lo, hi)) return best;
+	const int rw = room.isEmpty() ? INT_MAX : room.width();
+	const int rh = room.isEmpty() ? INT_MAX : room.height();
+	long long dist = -1;
+	for (int z = 1; z <= VID_ZOOM_MAX; z++) {
+		const int w = step_axis(area.width(), z, lo.x, hi.x, rw);
+		const int h = step_axis(area.height(), z, lo.y, hi.y, rh);
+		if (!w || !h) continue;
+		const long long dw = w - area.width();
+		const long long dh = h - area.height();
+		if ((dist < 0) || (dw * dw + dh * dh < dist)) {
+			dist = dw * dw + dh * dh;
+			best = QSize(w, h);
+		}
+	}
+	return best;
+}
+
+QSize vid_step_axes(const QSize& area, const QSize& room) {
+	vCoord lo, hi;
+	if (!step_range(lo, hi)) return QSize();
+	const int rw = room.isEmpty() ? INT_MAX : room.width();
+	const int rh = room.isEmpty() ? INT_MAX : room.height();
+	int bw = 0;
+	int bh = 0;
+	for (int z = 1; z <= VID_ZOOM_MAX; z++) {
+		const int w = step_axis(area.width(), z, lo.x, hi.x, rw);
+		const int h = step_axis(area.height(), z, lo.y, hi.y, rh);
+		if (w && (!bw || (std::abs(w - area.width()) < std::abs(bw - area.width())))) bw = w;
+		if (h && (!bh || (std::abs(h - area.height()) < std::abs(bh - area.height())))) bh = h;
+	}
+	return QSize(bw, bh);
+}
+
+QSize vid_zoom_size(int zoom) {
+	Video* vid = conf.zx->vid;
+	const vCoord sze = vid_crop_size(vid, vid->brdmode);
+	return QSize((int)(sze.x * conf.zx->hw->xscale * zoom), sze.y * zoom);
+}
+
 void vid_set_fit(const QSize& area) {
 	fitArea = area;
 	vid_upd_scale();
@@ -111,7 +195,14 @@ void vid_upd_scale(const QSize& screenSize) {
 		const QSize& area = conf.vid.fullScreen ? fullscreenSize : fitArea;
 		dwid = area.width();
 		dhei = area.height();
-		if (conf.vid.keepRatio) {
+		const int step = conf.vid.fullScreen ? 0 : vid_step_of(area);
+		if (step) {
+			// a step: the frame fills it whole
+			vid_widen_crop(vid, dwid / step, dhei / step);
+			drawW = dwid;
+			drawH = dhei;
+			drawZoom = step;
+		} else if (conf.vid.keepRatio) {
 			// The height sets the scale in a room wider than the picture, the
 			// width in a taller one. With the border first, the free room shows
 			// more border, as far as the raster goes: the frame takes a dot
@@ -150,7 +241,7 @@ void vid_upd_scale(const QSize& screenSize) {
 
 void vid_set_zoom(int zoom) {
 	if (zoom < 1) return;
-	if (zoom > 6) return;
+	if (zoom > VID_ZOOM_MAX) return;
 	conf.vid.scale = zoom;
 	vid_upd_scale();
 }
