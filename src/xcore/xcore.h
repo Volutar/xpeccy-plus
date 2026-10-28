@@ -895,8 +895,6 @@ struct xConfig {
 		unsigned maximized:1;	// the window was left maximized: it starts so
 		unsigned keepRatio:1;	// fullscreen, a maximized or resized window: keep the shape, else stretch
 		unsigned fillBorder:1;	// the free room beside a fitted picture shows border first, the side fill past it
-		unsigned snap:1;	// a window let go after a resize settles on a step: whole pixels, no bars
-		unsigned snapAxes:1;	// Snap: Each Side - a dragged window's sides cling each on its own, its shape free
 		unsigned lowLatency:1;	// show each frame at once (low input lag), else buffer for smooth motion
 		unsigned vsync:1;	// wait for the display's vblank, and run at its rate when close (xgui/dispsync)
 		int border;		// VID_BRD_* : how much border to show

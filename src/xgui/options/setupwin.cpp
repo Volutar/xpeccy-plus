@@ -1052,7 +1052,6 @@ void SetupWin::start() {
 	ui.cbFullscreen->setChecked(conf.vid.fullScreen);
 	fullscreenTip(ui.cbFullscreen);
 	ui.cbKeepRatio->setChecked(conf.vid.keepRatio);
-	ui.cbSnap->setChecked(conf.vid.snap);
 	fillToUi();
 	fillTake();
 	ui.cbVSync->setChecked(conf.vid.vsync);
@@ -1428,7 +1427,6 @@ void SetupWin::applyGlobal() {
 // video
 	conf.vid.fullScreen = ui.cbFullscreen->isChecked() ? 1 : 0;
 	conf.vid.keepRatio = ui.cbKeepRatio->isChecked() ? 1 : 0;
-	conf.vid.snap = ui.cbSnap->isChecked() ? 1 : 0;
 	fillSet(getRFIData(ui.cbSideFill));
 	fillTake();		// the pop-up's values are in conf already: now they stay
 	conf.vid.vsync = ui.cbVSync->isChecked() ? 1 : 0;

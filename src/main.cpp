@@ -510,9 +510,8 @@ int main(int ac,char** av) {
 		xlog(XLG_GL, XLL_WARN, "picture: plain, no shaders - %s", glWhy.toUtf8().constData());
 	}
 
-	xFrame mframe;		// before the picture in it, so it goes after it
+	QMainWindow mframe;		// before the picture in it, so it goes after it
 	MainWin mwin(&mframe);
-	mframe.win = &mwin;
 	os_win = &mwin;
 	xThread ethread;
 	DebugWin dbgw(&mwin);

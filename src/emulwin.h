@@ -120,21 +120,6 @@ typedef struct {
 
 class MainWin;
 
-// The main window's frame. On Windows it hands its own messages to the picture
-// (MainWin::frameNative): the size a dragged corner may take is the picture's.
-class xFrame : public QMainWindow {
-	public:
-		MainWin* win = nullptr;
-#if defined(__WIN32)
-	protected:
-#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
-		bool nativeEvent(const QByteArray&, void*, qintptr*) override;
-#else
-		bool nativeEvent(const QByteArray&, void*, long*) override;
-#endif
-#endif
-};
-
 #if defined(USEOPENGL) && !BLOCKGL
 // Whether the picture can go through OpenGL here; why not, when it cannot
 bool gl_probe(QString* why);
@@ -251,7 +236,6 @@ class MainWin : public QWidget {
 		void cheatWinShow();
 		void doDebug();
 		void updateWindow();
-		void snapWindow(Qt::Edges moved = Qt::Edges());
 		void pause(bool, int);
 		void tapStateChanged(int,int);
 		void onPrfChange();
@@ -422,8 +406,6 @@ class MainWin : public QWidget {
 		QAction* fullAct;
 		QAction* ratioAct;
 		QList<QAction*> sizeActs;
-		QAction* snapAct;
-		QActionGroup* snapGrp;	// Snap: Keep Shape, Snap: Each Side
 		typedef struct {QAction* act; QString name; int id;} xCutAct;
 		QList<xCutAct> cutActs;		// menu items that are hotkeys, to show the key
 		QHash<int, QAction*> cutById;
@@ -533,19 +515,6 @@ class MainWin : public QWidget {
 		QSize frameAsked;	// ...and the frame's around it, bars and all
 		QSize restoreFree;	// started maximized: the size the first Restore gives (startSize)
 		QSize frameSeen;	// the frame's size at the last look: did it change, or only the bars
-		QTimer snapTimer;	// no end-of-resize message (not Windows): the resize ends when it pauses
-		QSize snapBack;		// the frame's size before the last snap: a window manager putting it back
-		void snapLater();
-		QSize snapRoom(Qt::Edges moved, QSize bars);
-#if defined(__WIN32)
-	public:
-		bool frameNative(void* msg);	// true: the message is answered (xFrame)
-	private:
-		QRect loopWas;		// the frame when a drag of it began, real pixels
-		QSize loopBars;		// and the bars around the picture then
-		QSize loopArea;		// and the picture area
-		int loopFree = 0;	// the drag out of its reach: 1 in width, 2 in height
-#endif
 		bool maxWanted();
 		void fitWindow();
 		bool fsCompose(bool);

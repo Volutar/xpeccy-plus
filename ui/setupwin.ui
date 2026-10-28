@@ -1610,16 +1610,6 @@ Integer scaling, so every pixel is the same size</string>
                      </widget>
                     </item>
                     <item>
-                     <widget class="QCheckBox" name="cbSnap">
-                      <property name="toolTip">
-                       <string>A resized window clings to sizes with whole pixels and no bars</string>
-                      </property>
-                      <property name="text">
-                       <string>Snap to steps</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
                      <widget class="QCheckBox" name="cbVSync">
                       <property name="toolTip">
                        <string>No tearing; a machine near the screen's rate runs at it</string>

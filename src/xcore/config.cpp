@@ -305,8 +305,6 @@ void saveConfig() {
 	fprintf(cfile, "fullscreen = %s\n", YESNO(conf.vid.fullScreen));
 	fprintf(cfile, "maximized = %s\n", YESNO(conf.vid.maximized));
 	fprintf(cfile, "keepratio = %s\n", YESNO(conf.vid.keepRatio));
-	fprintf(cfile, "snap = %s\n", YESNO(conf.vid.snap));
-	fprintf(cfile, "snap.axes = %s\n", YESNO(conf.vid.snapAxes));
 	fprintf(cfile, "sidefill = %s\n", sfill_name(conf.vid.sideFill));
 	fprintf(cfile, "sidefill.border = %s\n", YESNO(conf.vid.fillBorder));
 	fprintf(cfile, "sidefill.blur = %i\n", conf.vid.fillBlur);
@@ -870,8 +868,6 @@ void loadConfig() {
 	conf.vid.border = VID_BRD_FULL;
 	conf.vid.sideFill = SFILL_BLACK;
 	conf.vid.fillBorder = 1;
-	conf.vid.snap = 1;
-	conf.vid.snapAxes = 0;
 	conf.vid.fillBlur = SFILL_BLUR_DEF;
 	conf.vid.fillDim = SFILL_DIM_DEF;
 	conf.vid.fillFade = SFILL_FADE_DEF;
@@ -1205,8 +1201,6 @@ void loadConfig() {
 					if (pnam=="fullscreen") conf.vid.fullScreen = arg.b;
 					if (pnam=="maximized") conf.vid.maximized = arg.b;
 					if (pnam=="keepratio") conf.vid.keepRatio = arg.b;
-					if (pnam=="snap") conf.vid.snap = arg.b;
-					if (pnam=="snap.axes") conf.vid.snapAxes = arg.b;
 					if (pnam=="sidefill") conf.vid.sideFill = sfill_id(arg.s);
 					if (pnam=="sidefill.border") conf.vid.fillBorder = arg.b;
 					if (pnam=="sidefill.blur") conf.vid.fillBlur = getRanged(arg.s, SFILL_BLUR_MIN, SFILL_BLUR_MAX);

@@ -319,19 +319,6 @@ void vid_widen_crop(Video* vid, int wid, int hei) {
 	vid_crop_margin(vid, mrg);
 }
 
-// The frames a fitted picture can show, in dots: lo the border asked for,
-// hi the widest vid_widen_crop goes to.
-void vid_crop_range(Video* vid, vCoord* lo, vCoord* hi) {
-	vCoord mrg = brd_margin(vid, vid->brdmode);
-	vCoord cap = brd_margin(vid, (vid->brdmode > VID_BRD_FULL) ? vid->brdmode : VID_BRD_FULL);
-	if (cap.x < mrg.x) cap.x = mrg.x;
-	if (cap.y < mrg.y) cap.y = mrg.y;
-	lo->x = vid->scrn.x + 2 * mrg.x;
-	lo->y = vid->scrn.y + 2 * mrg.y;
-	hi->x = vid->scrn.x + 2 * cap.x;
-	hi->y = vid->scrn.y + 2 * cap.y;
-}
-
 void vid_upd_crop(Video* vid) {
 	vid_crop_margin(vid, brd_margin(vid, vid->brdmode));
 }
