@@ -51,6 +51,10 @@ before that point is upstream's history and is not repeated here.
   on a quick tap too. One Caps Shift lights, not both: the right one for the right Shift.
   *(thanks to Volutar)*
 
+- **Tidier menus**: under every style the text starts where the System style puts it, and a
+  list where one is picked has round marks. Help has icons, and an item or button that opens
+  a page in your browser carries a box with an arrow.
+
 ### Fixed
 
 - **A Next program's UDP link no longer brings up the firewall prompt**: the link's own port
