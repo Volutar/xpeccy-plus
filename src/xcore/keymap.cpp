@@ -471,6 +471,9 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_SIZEX6, "key.size.x6", "Size x6", {}},
 	{SCG_MAIN, XCUT_FULLSCR, "key.fullscreen", "Fullscreen", {}},
 	{SCG_MAIN, XCUT_RATIO, "key.ratio", "Keep Aspect Ratio", {}},
+#ifndef __APPLE__	// the menu bar is the system's there
+	{SCG_MAIN, XCUT_MENUBAR, "key.menubar", "Menu Bar", {}},
+#endif
 	{SCG_MAIN, XCUT_NOFLICK, "key.noflick", "Anti-flicker", {}},
 	{SCG_MAIN, XCUT_NMI, "key.nmi", "NMI", {}},
 	{SCG_MAIN | SCG_DEBUGA, XCUT_RESET, "key.reset", "Reset", {}},

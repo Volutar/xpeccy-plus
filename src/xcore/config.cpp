@@ -312,6 +312,7 @@ void saveConfig() {
 	fprintf(cfile, "sidefill.fade = %i\n", conf.vid.fillFade);
 	fprintf(cfile, "sidefill.edge = %i\n", conf.vid.fillEdge);
 	fprintf(cfile, "sidefill.stretch = %i\n", conf.vid.fillStretch);
+	fprintf(cfile, "menubar = %s\n", YESNO(conf.win.menubar));
 	fprintf(cfile, "toolbar = %s\n", YESNO(conf.win.toolbar));
 	if (conf.win.tbIcons) {
 		fprintf(cfile, "toolbar.icons = %i\n", conf.win.tbIcons);
@@ -874,6 +875,7 @@ void loadConfig() {
 	conf.vid.fillEdge = SFILL_EDGE_DEF;
 	conf.vid.fillStretch = SFILL_STRETCH_DEF;
 	conf.vid.scale = 2;		// a config with no scale must not make a zero-size window
+	conf.win.menubar = 1;
 	conf.win.toolbar = 1;
 	conf.win.statusbar = 1;
 	conf.win.tbIcons = 0;		// as the window's width allows
@@ -1208,6 +1210,7 @@ void loadConfig() {
 					if (pnam=="sidefill.fade") conf.vid.fillFade = getRanged(arg.s, 0, 100);
 					if (pnam=="sidefill.edge") conf.vid.fillEdge = getRanged(arg.s, 0, SFILL_EDGE_MAX);
 					if (pnam=="sidefill.stretch") conf.vid.fillStretch = getRanged(arg.s, 0, 100);
+					if (pnam=="menubar") conf.win.menubar = arg.b;
 					if (pnam=="toolbar") conf.win.toolbar = arg.b;
 					if (pnam=="toolbar.icons") conf.win.tbIcons = ((arg.i == 16) || (arg.i == 24)) ? arg.i : 0;
 					if (pnam=="toolbar.items") conf.win.tbItems = pval;
