@@ -23,7 +23,7 @@ on:
       release:
         type: boolean
         default: false
-  # Qt and SDL come from Homebrew, which rolls forward on its own, so this can
+  # SDL comes from Homebrew, which rolls forward on its own, so this can
   # break with nobody having touched the repository - that is how the whole
   # sdl2-compat business started. Once a week is enough to notice.
   schedule:
@@ -50,12 +50,28 @@ jobs:
       BUILD_DIR: build
       DIST_DIR: dist
       APP: dist/xpeccy-plus.app
+      # Qt's own build: Homebrew bottles nothing past 6.11.1 for macOS 14, and
+      # 6.11.1 crashes at start on macOS 27.2
+      QT_VERSION: 6.11.3
 
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install dependencies
-        run: brew install qt sdl2
+      - name: Install Qt
+        run: |
+          python3 -m venv "$RUNNER_TEMP/aqt"
+          "$RUNNER_TEMP/aqt/bin/python3" -m pip install --disable-pip-version-check aqtinstall
+          # the mirrors hand out a corrupt archive now and then
+          for i in 1 2 3; do
+            "$RUNNER_TEMP/aqt/bin/aqt" install-qt mac desktop "$QT_VERSION" clang_64 -m qt5compat -O "$RUNNER_TEMP/Qt" && break
+            [ $i = 3 ] && exit 1
+            echo "::warning::aqt failed (attempt $i of 3), retrying"
+            sleep 15
+          done
+          echo "QT_DIR=$RUNNER_TEMP/Qt/$QT_VERSION/macos" >> "$GITHUB_ENV"
+
+      - name: Install SDL2
+        run: brew install sdl2
 
       # a venv: Homebrew's python refuses a plain pip install
       - name: Build the manual
@@ -70,7 +86,7 @@ jobs:
             -DMANUAL_DIR="$PWD/build/manual" \
             -DCMAKE_BUILD_TYPE=Release \
             -DXRELEASE=${{ inputs.release && 'ON' || 'OFF' }} \
-            -DCMAKE_PREFIX_PATH="$(brew --prefix qt)" \
+            -DCMAKE_PREFIX_PATH="$QT_DIR" \
             -DQTVERSION=6 \
             -DUSEOPENGL=1 \
             -DUSEQTNETWORK=1 \
@@ -92,8 +108,8 @@ jobs:
       - name: Check the bundle is self-contained
         run: |
           otool -L "$APP/Contents/MacOS/xpeccy-plus"
-          if otool -L "$APP/Contents/MacOS/xpeccy-plus" | grep -q "$(brew --prefix)/"; then
-            echo "the binary still links against Homebrew paths"
+          if otool -L "$APP/Contents/MacOS/xpeccy-plus" | grep -q -e "$(brew --prefix)/" -e "$QT_DIR/"; then
+            echo "the binary still links against Homebrew or Qt build paths"
             exit 1
           fi
           codesign --verify --deep --strict --verbose=2 "$APP"
@@ -132,7 +148,7 @@ jobs:
             echo "| | |"
             echo "|---|---|"
             echo "| macOS | $(sw_vers -productVersion) ($(uname -m)) |"
-            echo "| Qt | $(brew list --versions qt | cut -d' ' -f2) |"
+            echo "| Qt | $QT_VERSION (qt.io) |"
             echo "| SDL | $(brew list --versions sdl2 | cut -d' ' -f2) (sdl2-compat) |"
             echo "| dmg | $DMG_NAME.dmg, $(du -h "$DMG" | cut -f1) |"
           } >> "$GITHUB_STEP_SUMMARY"
