@@ -452,6 +452,7 @@ void vid_set_resolution(Video*, int, int);
 void vid_set_border(Video*, int);
 void vid_upd_crop(Video*);
 void vid_widen_crop(Video*, int, int);
+void vid_crop_range(Video*, vCoord*, vCoord*);
 vCoord vid_crop_size(Video*, int);
 void vid_upd_layout(Video*);
 void vid_upd_timings(Video*, double);

@@ -32,6 +32,37 @@ size picked in **View > Size** brings back the scale's size with its whole
 pixels; a maximized window restored gets the size it had before. On macOS the green
 button is fullscreen; Option-click on it maximizes the window.
 
+```{index} Snap to Steps
+```
+
+**View > Size > Snap to Steps**, ticked by default, helps a resized window stay sharp:
+drag its edge or corner, and the window follows the mouse, but clings to a *step* when
+the mouse comes within 24 pixels of one - a size where the picture fills the window with
+whole pixels and no bars. Out of that reach the window takes any size again. The size the
+drag began with does not hold the window: it clings there only once the mouse has left it
+and come back. Two items below it choose how:
+
+- **Snap: Keep Shape**, the default - the window keeps the picture's shape while it is
+  dragged: the width follows the mouse and the height goes with it, or the other way
+  round when the top or the bottom edge is dragged. Width and height come to a step
+  together.
+- **Snap: Each Side** - the window takes any shape, and its width and its height each
+  cling to a step's on their own. With one of them on a step, the picture has whole
+  pixels when that side is the one it fills.
+
+Within a scale the border grows first, a machine pixel on each side at a time, from the
+size the **Border** setting chooses up to **full**; past that the next scale starts, from
+the chosen border again. With **Black**, **Stretched Edges** or **Mirror** in **View >
+Side Fill** (the border as chosen) the steps are the scales' own sizes. A window let go
+on a step has the scale in **View > Size** follow it; the **Border** setting stays as it
+is.
+
+A window near a step also clings to it when the border or the bars change under it. A
+maximized window, one snapped to half of the screen, fullscreen, and **Keep Aspect
+Ratio** unticked are left as they are. On Linux and macOS the window follows the mouse
+freely, whichever of the two is chosen, and clings to a step within reach a moment after
+it stops changing size.
+
 The window's size is remembered: if the program is closed maximized, it starts maximized
 next time, on the same screen; closed at a size of its own, it starts at that size.
 

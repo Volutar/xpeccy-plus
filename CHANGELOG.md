@@ -25,6 +25,11 @@ before that point is upstream's history and is not repeated here.
   is fitted as in fullscreen, with more border at the sides; the window starts as it was
   closed, maximized or at its own size.
 
+- **Snap to Steps** (View > Size, on by default): a window being resized clings to sizes
+  where the picture has whole pixels and no bars when the mouse comes near one, keeping
+  the picture's shape or, with **Snap: Each Side**, by width and height on their own.
+  *(thanks to Volutar)*
+
 - **Side fill**: the room beside a fitted picture can show its edges or its reflection,
   blurred and dimmed, instead of black - past the border, or from the border size chosen
   (View > Side Fill); how soft and bright, in Options > Video.

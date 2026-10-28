@@ -75,9 +75,132 @@
 #define	MEDIA_SRCS	7
 #define	MEDIA_SNAP	-1
 
+// Snap to Steps: how near a step the picture area has to come, either way, for
+// the window to cling to it (Qt's pixels)
+#define	SNAP_REACH	24
+
+static bool snapNear(const QSize& a, const QSize& b) {
+	return (qAbs(a.width() - b.width()) <= SNAP_REACH) && (qAbs(a.height() - b.height()) <= SNAP_REACH);
+}
+
 #if defined(__WIN32)
 #include <windows.h>
 #include <winuser.h>
+
+// A window the system has arranged - snapped to a side, stretched to the
+// screen's height: its size is the arrangement's. Where the system has it.
+static bool winArranged(QWidget* w) {
+	typedef BOOL (WINAPI *arrangedFn)(HWND);
+	static arrangedFn fn = reinterpret_cast<arrangedFn>(reinterpret_cast<void (*)()>(
+		GetProcAddress(GetModuleHandleW(L"user32.dll"), "IsWindowArranged")));
+	return fn && fn(reinterpret_cast<HWND>(w->winId()));
+}
+
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+bool xFrame::nativeEvent(const QByteArray& type, void* msg, qintptr* res) {
+#else
+bool xFrame::nativeEvent(const QByteArray& type, void* msg, long* res) {
+#endif
+	if (win && win->frameNative(msg)) {
+		if (res) *res = TRUE;
+		return true;
+	}
+	return QMainWindow::nativeEvent(type, msg, res);
+}
+
+// The frame's own messages. Windows brackets a drag of the frame with
+// WM_ENTERSIZEMOVE and WM_EXITSIZEMOVE, and while an edge or a corner is
+// dragged it asks in WM_SIZING what size the window may take. The window keeps
+// the picture's shape, the width leading (the height on a top or bottom drag),
+// and clings to a step within reach of the mouse; or, with snapAxes (Snap: Each Side),
+// takes any shape and each side clings to a step's on its own. The size the
+// drag began with holds nothing until the mouse has gone out of its reach. The
+// rectangle is in real pixels, Qt's sizes are not: the frame is measured off
+// the window.
+bool MainWin::frameNative(void* message) {
+	MSG* msg = static_cast<MSG*>(message);
+	RECT wrc;
+	switch (msg->message) {
+		case WM_ENTERSIZEMOVE:
+			GetWindowRect(msg->hwnd, &wrc);
+			loopWas = QRect(wrc.left, wrc.top, wrc.right - wrc.left, wrc.bottom - wrc.top);
+			loopBars = frame->size() - size();
+			loopArea = size();
+			loopFree = 0;
+			break;
+		case WM_SIZING: {
+			if (!conf.vid.snap || block || conf.vid.fullScreen || size().isEmpty() || winArranged(frame))
+				return false;
+			RECT* r = reinterpret_cast<RECT*>(msg->lParam);
+			RECT crc;
+			GetWindowRect(msg->hwnd, &wrc);
+			GetClientRect(msg->hwnd, &crc);
+			const int decoW = (wrc.right - wrc.left) - crc.right;	// the system's frame, title and all
+			const int decoH = (wrc.bottom - wrc.top) - crc.bottom;
+			const qreal dpr = frame->devicePixelRatioF();
+			const QSize bars = loopBars.isValid() ? loopBars : frame->size() - size();
+			const QSize asked(qRound((r->right - r->left - decoW) / dpr) - bars.width(),
+				qRound((r->bottom - r->top - decoH) / dpr) - bars.height());
+			const WPARAM e = msg->wParam;
+			const bool left = (e == WMSZ_LEFT) || (e == WMSZ_TOPLEFT) || (e == WMSZ_BOTTOMLEFT);
+			const bool top = (e == WMSZ_TOP) || (e == WMSZ_TOPLEFT) || (e == WMSZ_TOPRIGHT);
+			QSize area = asked;
+			const QSize one = vid_zoom_size(1);
+			if (!conf.vid.snapAxes && conf.vid.keepRatio && !one.isEmpty()) {
+				if ((e == WMSZ_TOP) || (e == WMSZ_BOTTOM))
+					area.setWidth(qRound(area.height() * one.width() / double(one.height())));
+				else
+					area.setHeight(qRound(area.width() * one.height() / double(one.width())));
+			}
+			// the first size's reach left, each way on its own
+			if (qAbs(area.width() - loopArea.width()) > SNAP_REACH) loopFree |= 1;
+			if (qAbs(area.height() - loopArea.height()) > SNAP_REACH) loopFree |= 2;
+			Qt::Edges moved;
+			if (left) moved |= Qt::LeftEdge;
+			if (top) moved |= Qt::TopEdge;
+			const QSize room = snapRoom(moved, bars);
+			if (conf.vid.snapAxes) {
+				const QSize axes = vid_step_axes(area, room);
+				if ((loopFree & 1) && axes.width() && (qAbs(axes.width() - area.width()) <= SNAP_REACH))
+					area.setWidth(axes.width());
+				if ((loopFree & 2) && axes.height() && (qAbs(axes.height() - area.height()) <= SNAP_REACH))
+					area.setHeight(axes.height());
+			} else if (loopFree) {
+				const QSize step = vid_step_near(area, room);
+				if (step.isValid() && snapNear(area, step)) area = step;
+			}
+			if (area == asked) return false;
+			const int w = qRound((area.width() + bars.width()) * dpr) + decoW;
+			const int h = qRound((area.height() + bars.height()) * dpr) + decoH;
+			if (left) r->left = r->right - w; else r->right = r->left + w;
+			if (top) r->top = r->bottom - h; else r->bottom = r->top + h;
+			return true;
+		}
+		case WM_EXITSIZEMOVE: {
+			GetWindowRect(msg->hwnd, &wrc);
+			const QRect now(wrc.left, wrc.top, wrc.right - wrc.left, wrc.bottom - wrc.top);
+			const QRect was = loopWas;
+			loopBars = QSize();
+			loopArea = QSize();
+			xlog(XLG_GUI, XLL_INFO, "snap: size loop over, %ix%i -> %ix%i",
+				was.width(), was.height(), now.width(), now.height());
+			// a resize is a drag that left the window another size; a drag by the
+			// title keeps it, Aero snap aside (arranged). The edges dragged: those
+			// that moved while the ones across stayed. A window let go on a step
+			// has the zoom follow it, and the bars may want another pass.
+			if (now.size() != was.size()) {
+				Qt::Edges moved;
+				if ((now.width() != was.width()) && (now.left() != was.left()) && (now.right() == was.right()))
+					moved |= Qt::LeftEdge;
+				if ((now.height() != was.height()) && (now.top() != was.top()) && (now.bottom() == was.bottom()))
+					moved |= Qt::TopEdge;
+				QTimer::singleShot(0, this, [this, moved]() {snapWindow(moved);});
+			}
+			break;
+		}
+	}
+	return false;
+}
 #endif
 
 // mainwin
@@ -325,6 +448,7 @@ void MainWin::updateWindow() {
 		});
 	}
 	if (winFit && !backMax) fitWindow();		// the area as the bars leave it
+	snapLater();
 	emit s_keywin_snap();		// a docked keyboard follows the new size
 }
 
@@ -529,6 +653,7 @@ MainWin::MainWin(QMainWindow* frm) {
 }
 
 MainWin::~MainWin() {
+	if (xFrame* f = dynamic_cast<xFrame*>(frame)) f->win = nullptr;	// the frame outlives the picture
 #if defined(USEOPENGL) && !BLOCKGL
 	cleanupGL();
 	delete(vtx_shd);
@@ -1335,6 +1460,7 @@ void MainWin::startSize() {
 		fsFree = sz;
 	} else {
 		frame->resize(sz);
+		QTimer::singleShot(0, this, [this]() {snapWindow();});	// kept with Snap to Steps off
 	}
 }
 
@@ -1366,8 +1492,12 @@ bool MainWin::maxWanted() {
 void MainWin::fitWindow() {
 	if (block || stateMoving || conf.vid.fullScreen || frame->isFullScreen() || size().isEmpty()) return;
 	bool maxed = maxWanted();
-	if (!maxed && (frame->size() != frameSeen))
+	if (!maxed && (frame->size() != frameSeen)) {
 		winFree = (size() != wszAsked);
+#if !defined(__WIN32)
+		if (conf.vid.snap) snapTimer.start();
+#endif
+	}
 	if (size() == wszAsked) winFree = 0;		// back at the zoom's size: whole pixels again
 	frameSeen = frame->size();
 	if (!maxed && !winFree) {
@@ -1382,6 +1512,92 @@ void MainWin::fitWindow() {
 		loadShader();
 	tbSize(toolBar, width());
 	emit s_keywin_snap();
+}
+
+// Snap to steps: once a resize is over, a window within reach of a step
+// (vid_step_near, SNAP_REACH) settles on it and the zoom follows; at the zoom's
+// own size it is laid out as the Size menu lays it out. Farther from any step it
+// keeps its own size. The Border stays as chosen.
+// moved: the edges the resize was dragged by; the ones across stay where they
+// are, and the step goes no further than the screen from there.
+void MainWin::snapWindow(Qt::Edges moved) {
+	if (!conf.vid.snap || block || stateMoving || conf.vid.fullScreen || !frame->isVisible()
+			|| (frame->windowState() & (Qt::WindowMaximized | Qt::WindowFullScreen | Qt::WindowMinimized))
+			|| size().isEmpty()) {
+		xlog(XLG_GUI, XLL_INFO, "snap: skipped, switch %i block %i moving %i state %i",
+			conf.vid.snap, block, stateMoving, int(frame->windowState()));
+		return;
+	}
+#if defined(__WIN32)
+	if (winArranged(frame)) {
+		xlog(XLG_GUI, XLL_INFO, "snap: skipped, arranged by the system");
+		return;
+	}
+#endif
+	const QSize bars = frame->size() - size();
+	const QRect was = frame->frameGeometry();
+	const QSize room = snapRoom(moved, bars);
+	const QSize step = vid_step_near(size(), room);
+	xlog(XLG_GUI, XLL_INFO, "snap: area %ix%i room %ix%i -> step %ix%i",
+		size().width(), size().height(), room.width(), room.height(), step.width(), step.height());
+	if (!step.isValid() || !snapNear(size(), step)) return;
+	const int zoom = vid_step_of(step);
+	if (zoom != conf.vid.scale) {
+		vid_set_zoom(zoom);
+		saveConfig();
+	}
+	// the edges across from the dragged ones stay put
+	auto keep = [this, moved, was]() {
+		const QRect now = frame->frameGeometry();
+		QPoint pos = now.topLeft();
+		if (moved & Qt::LeftEdge) pos.setX(was.right() + 1 - now.width());
+		if (moved & Qt::TopEdge) pos.setY(was.bottom() + 1 - now.height());
+		if (pos != now.topLeft()) frame->move(pos);
+	};
+	const QSize own = vid_zoom_size(zoom);
+	if (step == own) {
+		if (winFree || (size() != wszAsked)) {
+			winFree = 0;
+			updateWindow();
+			keep();
+		}
+		return;
+	}
+	// what Restore, the Size menu and the next start take for the zoom's size
+	wszAsked = own;
+	frameAsked = own + bars;
+	if (step == size()) return;
+	snapBack = frame->size();
+	const QSize want = frame->size() + step - size();
+	frame->resize(want);
+	keep();
+	// the Auto toolbar may take other icons at the new width, the bars another height
+	QTimer::singleShot(0, this, [this, want, step, keep]() {
+		if (block || (frame->size() != want) || (size() == step)) return;
+		frame->resize(want + step - size());
+		keep();
+	});
+}
+
+// The picture area the screen has room for, from the frame's edges that stay
+// (the ones across from moved); a window already past the edge is not shrunk for it.
+QSize MainWin::snapRoom(Qt::Edges moved, QSize bars) {
+	QScreen* scr = frame->screen();
+	if (!scr) return QSize();
+	const QRect was = frame->frameGeometry();
+	const QRect avail = scr->availableGeometry();
+	const QSize deco = was.size() - frame->size();
+	QSize room(((moved & Qt::LeftEdge) ? was.right() + 1 - avail.left() : avail.right() + 1 - was.left())
+			- deco.width() - bars.width(),
+		((moved & Qt::TopEdge) ? was.bottom() + 1 - avail.top() : avail.bottom() + 1 - was.top())
+			- deco.height() - bars.height());
+	return room.expandedTo(size());
+}
+
+// a free window whose picture area changed under it: a border, the bars
+void MainWin::snapLater() {
+	if (conf.vid.snap && winFree && !conf.vid.fullScreen && !maxWanted())
+		QTimer::singleShot(0, this, [this]() {snapWindow();});
 }
 
 #if defined(USEOPENGL) && !BLOCKGL
@@ -2553,6 +2769,32 @@ void MainWin::initMenuBar() {
 		grp->addAction(act);
 		sizeActs.append(act);
 	}
+	sizeMenu->addSeparator();
+	snapAct = sizeMenu->addAction("Snap to Steps");
+	snapAct->setCheckable(true);
+	snapAct->setToolTip("A resized window clings to sizes\nwith whole pixels and no bars");
+	sizeMenu->setToolTipsVisible(true);
+	connect(snapAct, &QAction::triggered, this, [this](bool on) {
+		conf.vid.snap = on ? 1 : 0;
+		snapGrp->setEnabled(on);
+		updateWindow();		// the picture refitted, and the window snapped
+		saveConfig();
+	});
+	// how a dragged window comes to a step (Windows; elsewhere it settles after)
+	snapGrp = new QActionGroup(sizeMenu);
+	for (int i = 0; i < 2; i++) {
+		act = sizeMenu->addAction(i ? "Snap: Each Side" : "Snap: Keep Shape");
+		act->setCheckable(true);
+		act->setChecked(conf.vid.snapAxes == i);
+		act->setToolTip(i ? "Width and height cling to a step's each on its own"
+			: "The window keeps the picture's shape and clings to a step");
+		snapGrp->addAction(act);
+		connect(act, &QAction::triggered, this, [i]() {
+			conf.vid.snapAxes = i;
+			saveConfig();
+		});
+	}
+	snapGrp->setEnabled(conf.vid.snap);
 	// the border sizes Options has, taken at once as its Apply takes them
 	brdMenu = new xMenu("Border", this);
 	viewMenu->addMenu(brdMenu);
@@ -2670,6 +2912,15 @@ void MainWin::initMenuBar() {
 #endif
 	fsY = -1;
 	fsTall = 0;
+	snapTimer.setSingleShot(true);
+	snapTimer.setInterval(400);
+	connect(&snapTimer, &QTimer::timeout, this, [this]() {
+		if (frame->size() == snapBack) {	// the window manager would not have the step
+			snapBack = QSize();
+			return;
+		}
+		snapWindow();
+	});
 	fsShow.setSingleShot(true);
 	connect(&fsShow, &QTimer::timeout, this, [this]() {
 		if (!conf.vid.fullScreen || grabMice || (fsY > FS_EDGE)) return;	// only passing by
