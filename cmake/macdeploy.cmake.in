@@ -16,7 +16,9 @@ set(FRAMEWORKS "${BUNDLE}/Contents/Frameworks")
 # macdeployqt itself invalidated by rewriting install names. The bundle is
 # signed again at the end.
 message(STATUS "macdeployqt: ${BUNDLE}")
-execute_process(COMMAND "@MACDEPLOYQT@" "${BUNDLE}" -always-overwrite COMMAND_ERROR_IS_FATAL ANY)
+# -libpath: an @rpath name is resolved there, the bundle's own rpath being empty yet
+execute_process(COMMAND "@MACDEPLOYQT@" "${BUNDLE}" -always-overwrite "-libpath=@QT_LIB_DIR@"
+	COMMAND_ERROR_IS_FATAL ANY)
 
 # What Homebrew calls "sdl2" is sdl2-compat: a shim that dlopens SDL3 while it
 # is being loaded itself. macdeployqt only follows what the linker recorded, so

@@ -491,8 +491,10 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "/BSD$/")
 	add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS} ${UIHEADERS} ${RESOURCES} ${MOCHEADERS})
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${SOURCES} ${HEADERS} ${UIHEADERS} ${RESOURCES} ${MOCHEADERS} ${BUNDLE_ICON_PATH})
+	# qt.io's Qt names its frameworks by @rpath, which macdeployqt copies here
 	set_target_properties(${PROJECT_NAME} PROPERTIES
 		MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/Info.plist
+		INSTALL_RPATH "@executable_path/../Frameworks"
 	)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	# icon + VERSIONINFO (product name and version in the exe properties)
@@ -556,6 +558,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	# (see cmake/macdeploy.cmake.in).
 	get_filename_component(QT_BIN_DIR "${QMAKE_EXE}" DIRECTORY)
 	find_program(MACDEPLOYQT macdeployqt HINTS ${QT_BIN_DIR})
+	get_filename_component(QT_LIB_DIR "${QT_BIN_DIR}/../lib" ABSOLUTE)
 	# SDL2 from Homebrew is the sdl2-compat shim and loads this one at runtime
 	find_library(SDL3_LIBRARY NAMES SDL3
 		HINTS ${SDL2_INCLUDE_DIR}/../..
