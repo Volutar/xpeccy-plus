@@ -35,6 +35,9 @@ if(SDL2_IS_SHIM)
 	endif()
 	message(STATUS "sdl2-compat: adding @SDL3_LIBRARY@")
 	file(COPY_FILE "@SDL3_LIBRARY@" "${FRAMEWORKS}/libSDL3.dylib")
+	# COPY_FILE copies the permissions too, and a Homebrew keg file is read-only:
+	# xattr -cr below would then fail on it and take the install with it.
+	execute_process(COMMAND chmod u+w "${FRAMEWORKS}/libSDL3.dylib" COMMAND_ERROR_IS_FATAL ANY)
 endif()
 
 # macdeployqt copies a fixed set of plugins regardless of what the binary uses,

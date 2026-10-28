@@ -46,6 +46,10 @@ before that point is upstream's history and is not repeated here.
 - **A Next program's UDP link no longer brings up the firewall prompt**: the link's own port
   opens to the network only with Server on the network.
 
+- **Building for macOS**: configuring with Qt 6.11.0 or 6.11.1, which crash at start on macOS
+  27.2, prints a warning; the bundle installs with a read-only SDL3 from Homebrew.
+  *(thanks to DruzhininPavel)*
+
 - **View > ZX Palette and Shaders show one tick**: a pick from the right-click menu no longer
   leaves the old one ticked in the View menu. *(thanks to Volutar)*
 

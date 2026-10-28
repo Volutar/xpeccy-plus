@@ -349,6 +349,15 @@ elseif(${QTVERSION} EQUAL 6)
 	set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 	find_package(Qt6 COMPONENTS Core Gui Widgets Core5Compat REQUIRED)
+	# 6.11.1 traps at startup on macOS 27.2 inside QImage::toCGImage(); 6.11.2
+	# and 6.11.3 start. The 6.11 series only: older Qt 6 was not tried.
+	if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND Qt6_VERSION
+			AND Qt6_VERSION VERSION_GREATER_EQUAL 6.11.0
+			AND Qt6_VERSION VERSION_LESS 6.11.2)
+		message(WARNING
+			"Qt ${Qt6_VERSION} traps at startup on macOS 27.2 while the menu bar is built; "
+			"6.11.2 and 6.11.3 start. Prefer Qt 6.11.2 or newer for a macOS build.")
+	endif()
 	set(LIBRARIES ${LIBRARIES} Qt6::Widgets Qt6::Core Qt6::Gui Qt6::Core5Compat)
 	qt6_add_resources(RESOURCES ${QRCFILES})
 	qt6_wrap_ui(UIHEADERS ${UIFILES})
