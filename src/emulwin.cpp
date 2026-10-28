@@ -2439,6 +2439,7 @@ void MainWin::updateSatellites() {
 	}
 // update watcher
 	emit s_watch_upd(comp);
+	emit s_keywin_watch(comp->keyb);
 	cheatWin->upd();
 }
 
