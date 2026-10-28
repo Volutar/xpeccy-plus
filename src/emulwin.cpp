@@ -2668,20 +2668,20 @@ void MainWin::initMenuBar() {
 	QMenu* help = new xMenu("Help", this);
 	helpMenu = help;
 	bar->addMenu(help);
-	help->addAction("Manual", this, &MainWin::openManual);
+	help->addAction(QIcon(":/images/book-question.png"), "Manual", this, &MainWin::openManual);
 	help->addSeparator();
-	help->addAction("Project Page", this, []() {
+	help->addAction(QIcon(":/images/github.png"), "Project Page", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus"));
 	});
-	help->addAction("What's New", this, []() {
+	help->addAction(QIcon(":/images/document-text.png"), "What's New", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus/blob/main/CHANGELOG.md"));
 	});
-	help->addAction("Report a Problem", this, []() {
+	help->addAction(QIcon(":/images/exclamation.png"), "Report a Problem", this, []() {
 		QDesktopServices::openUrl(QUrl("https://github.com/dotkoval/xpeccy-plus/issues"));
 	});
-	help->addAction("Check for Updates...", this, [this]() {upd_check(this);});
+	help->addAction(QIcon(":/images/arrow-circle-double.png"), "Check for Updates...", this, [this]() {upd_check(this);});
 	help->addSeparator();
-	act = help->addAction("About " XPRODUCT, this, &MainWin::showAbout);
+	act = help->addAction(QGuiApplication::windowIcon(), "About " XPRODUCT, this, &MainWin::showAbout);
 	act->setMenuRole(QAction::AboutRole);
 
 	foreach(QMenu* menu, QList<QMenu*>() << fileMenu << bookmarkMenu << viewMenu << help)

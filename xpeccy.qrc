@@ -259,6 +259,18 @@
         <file>images/font-dark.png</file>
         <file>images/target.png</file>
         <file>images/target-dark.png</file>
+        <file>images/book-question.png</file>
+        <file>images/book-question-16.png</file>
+        <file>images/github.png</file>
+        <file>images/github-16.png</file>
+        <file>images/github-dark.png</file>
+        <file>images/github-dark-16.png</file>
+        <file>images/document-text.png</file>
+        <file>images/document-text-16.png</file>
+        <file>images/exclamation.png</file>
+        <file>images/exclamation-16.png</file>
+        <file>images/arrow-circle-double.png</file>
+        <file>images/arrow-circle-double-16.png</file>
         <file>res/vkbd/zx-black.json</file>
         <file>res/vkbd/zx-white.json</file>
         <file>res/vkbd/zx-128.json</file>
