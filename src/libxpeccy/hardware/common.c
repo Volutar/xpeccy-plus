@@ -385,7 +385,8 @@ int zx_rom_code(Computer* comp, int pc) {
 
 // What the code right after an IN from #FE looks at: the ear bit (AND #40,
 // BIT 6,A, RRA and AND #20, maybe XOR C between), which is a loader, else the
-// key bits alone (AND with bits 0-4, BIT 0-4,A, OR #E0, AND (HL) with a mask
+// key bits alone (AND with bits 0-4, or any mask without bit 6 before a rotate
+// has moved it, BIT 0-4,A, OR #E0, AND (HL) with a mask
 // from a table, RRA and a jump on the carry), which is a keyboard scan. The ear
 // wins: a loader may test for BREAK first (BIT 0,A, AND #40, the edge loop's
 // RRA / RET NC before its XOR C / AND #20). A CALL, JP or JR right after the IN
@@ -421,10 +422,15 @@ int zx_in_use(Computer* comp, int pc) {
 				|| ((y == 0xa9) && (b[i + 2] == 0xe6) && (b[i + 3] == 0x20))))
 			return ZX_IN_EAR;
 	}
+	int rotated = 0;	// a rotate or shift came between the IN and here
 	for (int i = 0; i < 6; i++) {
 		unsigned char x = b[i];
 		unsigned char y = b[i + 1];
 		if ((x == 0xe6) && y && !(y & 0xe0)) return ZX_IN_KEYS;
+		// a mask that leaves the ear bit out where it still is (St. Dragon's
+		// AND #3F / CP #3F per half-row): bit 5 is the ear only after an RRA
+		if ((x == 0xe6) && (y & 0x1f) && !(y & 0x40) && !rotated) return ZX_IN_KEYS;
+		rotated |= (x == 0x1f) || (x == 0x0f) || (x == 0x17) || (x == 0x07) || (x == 0xcb);
 		if ((x == 0xcb) && ((y & 0xc7) == 0x47) && (y < 0x68)) return ZX_IN_KEYS;
 		if ((x == 0xf6) && (y == 0xe0)) return ZX_IN_KEYS;
 		if (x == 0xa6) return ZX_IN_KEYS;
