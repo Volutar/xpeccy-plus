@@ -242,7 +242,8 @@ QCheckBox::indicator, QGroupBox::indicator, QMenu::indicator {
 	background-color: #1e1f1c;
 }
 
-QRadioButton::indicator {
+/* a menu's pick-one items are round like radio buttons, as the System style marks them apart */
+QRadioButton::indicator, QMenu::indicator:exclusive {
 	width: 12px;
 	height: 12px;
 	border: 1px solid #75715e;
@@ -260,8 +261,9 @@ QCheckBox::indicator:checked, QGroupBox::indicator:checked, QMenu::indicator:che
 	image: url(:/images/styles/check-light.png);
 }
 
-QRadioButton::indicator:checked {
+QRadioButton::indicator:checked, QMenu::indicator:exclusive:checked {
 	/* 8 + 2*3 = 12 + 2*1: the dot must not change the box size */
+	image: none;
 	width: 8px;
 	height: 8px;
 	background-color: #49483e;

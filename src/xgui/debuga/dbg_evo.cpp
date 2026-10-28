@@ -1,3 +1,4 @@
+#include <QActionGroup>
 #include <QCursor>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -122,6 +123,9 @@ static void evo_style_menu(const std::function<void()>& done) {
 	QAction* names = mnu.addAction("Field names");
 	words->setCheckable(true);
 	names->setCheckable(true);
+	QActionGroup* grp = new QActionGroup(&mnu);
+	grp->addAction(words);
+	grp->addAction(names);
 	words->setChecked(!conf.dbg.evonames);
 	names->setChecked(conf.dbg.evonames);
 	QAction* got = mnu.exec(QCursor::pos());

@@ -1848,6 +1848,15 @@ void MainWin::drawInputOsd(QPainter& pnt) {
 	inputOsd.paint(pnt, QRect(drawX, drawY, drawW, drawH) & rect(), st, widgetDpr(this));
 }
 
+// A list where one is picked: its items go into one exclusive group kept by the menu,
+// so the tick is one whichever menu picked (the same submenu sits in the menu bar and
+// in the right-click menu) and the styles draw the round mark of a pick-one list
+static void menu_one_tick(QMenu* menu) {
+	QActionGroup* grp = xMenuGroup(menu, "pick");
+	foreach(QAction* act, menu->actions())
+		if (act->isCheckable()) grp->addAction(act);
+}
+
 // built once; opening it only puts the checks right
 void MainWin::initIosdMenu(QMenu* mnu) {
 	auto add = [this](QMenu* sub, const char* txt, int* field, int val) {
@@ -1889,6 +1898,7 @@ void MainWin::initIosdMenu(QMenu* mnu) {
 	add(op, "70%", &conf.iosd.opacity, 70);
 	add(op, "85%", &conf.iosd.opacity, 85);
 	add(op, "100%", &conf.iosd.opacity, 100);
+	foreach(QMenu* m, QList<QMenu*>() << src << pos << sz << op) menu_one_tick(m);
 	connect(mnu, &QMenu::aboutToShow, this, [this]() {
 		for (xIosdItem& it : iosdItems)
 			it.act->setChecked((it.val < 0) ? (*it.field != 0) : (*it.field == it.val));
@@ -3160,14 +3170,6 @@ void MainWin::initMachineMenus() {
 	});
 }
 
-// One tick in a list whichever menu picked from it: the same submenu sits in View and in
-// the right-click menu, so its items go into one exclusive group, kept by the menu
-static void menu_one_tick(QMenu* menu) {
-	QActionGroup* grp = menu->findChild<QActionGroup*>(QString(), Qt::FindDirectChildrenOnly);
-	if (!grp) grp = new QActionGroup(menu);
-	foreach(QAction* act, menu->actions()) grp->addAction(act);
-}
-
 void MainWin::fillUserMenu() {
 	// fill favorites menu: the image in use first, to add it or to take it out
 	bookmarkMenu->clear();
@@ -3290,6 +3292,8 @@ void MainWin::fillUserMenu() {
 		act->setCheckable(true);
 		act->setChecked(nam == conf.palette.c_str());
 	}
+	menu_one_tick(profileMenu);
+	menu_one_tick(turboMenu);
 	menu_one_tick(keyMenu);
 	menu_one_tick(shdMenu);
 	menu_one_tick(palMenu);
@@ -3610,6 +3614,7 @@ void MainWin::fillPadMenu() {
 		});
 		act->setCheckable(true);
 		act->setChecked(gp->scheme() == s);
+		xMenuGroup(padMenu, "schemes")->addAction(act);
 	}
 	// the presets, for the same player, switched as quickly
 	QStringList lst = conf.gpctrl->presetList();

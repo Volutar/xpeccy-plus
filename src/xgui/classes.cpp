@@ -22,6 +22,8 @@
 #include <QCompleter>
 #include <QStringListModel>
 #include <QAbstractItemView>
+#include <QActionGroup>
+#include <QMenu>
 
 QString gethexword(int);
 QString gethexbyte(uchar);
@@ -439,6 +441,15 @@ void xSlider::paintEvent(QPaintEvent* ev) {
 }
 
 // xSideButton
+
+QActionGroup* xMenuGroup(QMenu* menu, const char* name) {
+	QActionGroup* grp = menu->findChild<QActionGroup*>(name, Qt::FindDirectChildrenOnly);
+	if (!grp) {
+		grp = new QActionGroup(menu);
+		grp->setObjectName(name);
+	}
+	return grp;
+}
 
 // as lines on a 9 x 9 grid, through the pixel centres: crisp at 100 %, scaled
 // with the painter at any other size

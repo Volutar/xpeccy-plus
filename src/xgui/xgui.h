@@ -107,6 +107,13 @@ class xSlider : public QSlider {
 		void paintEvent(QPaintEvent*);
 };
 
+// A menu's list where one is picked: its exclusive group, found by name, made
+// the first time. It is the menu's, so it outlives clear() and takes the items
+// of the next fill; a menu may hold several, by different names.
+class QActionGroup;
+class QMenu;
+QActionGroup* xMenuGroup(QMenu*, const char* name);
+
 // The mark of an item that opens a web page: a box with an arrow out of its
 // corner, WEBMARK px square, drawn in the given colour
 #define WEBMARK	9

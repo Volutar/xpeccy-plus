@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cctype>
 #include <QAbstractItemView>
+#include <QActionGroup>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFileInfo>
@@ -944,6 +945,7 @@ void xGamepadWidget::presetItems(QMenu* menu, xGamepad* gp, const QStringList& l
 		act->setToolTip(QDir::toNativeSeparators(path));
 		act->setCheckable(true);
 		act->setChecked(conf.gpctrl->presetIs(cur, path));
+		xMenuGroup(menu, "presets")->addAction(act);	// the one the bindings match
 	}
 }
 

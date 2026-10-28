@@ -729,6 +729,7 @@ void MainWin::tbMenu(const QPoint& pos, int idx) {
 	}
 	// Auto: as big as the window's width allows
 	QMenu* size = menu.addMenu("Icon Size");
+	QActionGroup* pick = new QActionGroup(size);
 	foreach(int px, QList<int>() << 0 << 16 << 24) {
 		QAction* act = size->addAction(px ? QString("%0 x %0").arg(px) : QString("Auto"), this, [this, px]() {
 			conf.win.tbIcons = px;
@@ -736,6 +737,7 @@ void MainWin::tbMenu(const QPoint& pos, int idx) {
 		});
 		act->setCheckable(true);
 		act->setChecked(conf.win.tbIcons == px);
+		pick->addAction(act);
 	}
 	menu.addAction("Restore Default Buttons", this, [this]() {
 		tbList = QString(tbDefault).split(',', X_SkipEmptyParts);
