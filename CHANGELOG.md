@@ -49,6 +49,9 @@ before that point is upstream's history and is not repeated here.
 - **View > ZX Palette and Shaders show one tick**: a pick from the right-click menu no longer
   leaves the old one ticked in the View menu. *(thanks to Volutar)*
 
+- **The virtual keyboard no longer leaves Caps Shift or Symbol Shift lit** after Backspace,
+  an arrow or a punctuation key on the PC keyboard.
+
 ## 2026.8.2 - 2026-10-27
 
 ### Changed
