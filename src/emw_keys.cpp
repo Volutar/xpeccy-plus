@@ -143,6 +143,11 @@ void MainWin::machineKey(Computer* comp, keyEntry* kent, bool down) {
 	comp->keyb->grab = pckAct->isChecked();
 	x_key(comp, kent, down);
 	emu_unlock();
+	// the virtual keyboard lights a combination's own key from it; a grabbed Profi
+	// presses its own xt layout instead
+	bool profi = comp->keyb->grab && comp->keyb->core && (comp->keyb->core->id == KBD_PROFI);
+	if (!profi)
+		emit s_keywin_host(QByteArray((const char*)kent->zxKey, strnlen((const char*)kent->zxKey, KEYSEQ_MAXLEN)), down);
 }
 
 // cmd: a hotkey asked for from a menu, which a grabbed keyboard does not take
