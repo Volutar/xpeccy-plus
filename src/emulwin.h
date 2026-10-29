@@ -94,6 +94,7 @@ enum {
 	osd_rec_off,	// its other phase, with no speed mode to take turns with
 	osd_rzx,	// the same for an RZX recording
 	osd_rzx_off,
+	osd_rzx_play,	// an RZX playing, when the slot has nothing else
 	osd_count
 };
 
@@ -321,6 +322,7 @@ class MainWin : public QWidget {
 		int cmsid;
 		QImage leds[leds_count];
 		QImage osdImg[osd_count];
+		int ownSign = osd_none;	// recording or playing: kept out of a video of the window
 		xInputOsd inputOsd;
 		struct xIosdItem {QAction* act; int* field; int val;};	// val < 0: a switch
 		std::vector<xIosdItem> iosdItems;

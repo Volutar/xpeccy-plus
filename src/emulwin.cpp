@@ -433,6 +433,7 @@ MainWin::MainWin(QMainWindow* frm) {
 	osdImg[osd_rec_off].load(":/images/osd-rec-off.png");
 	osdImg[osd_rzx].load(":/images/osd-rzx.png");
 	osdImg[osd_rzx_off].load(":/images/osd-rzx-off.png");
+	osdImg[osd_rzx_play].load(":/images/osd-rzx-play.png");
 	for (int i = 0; i < 3; i++) {
 		osdImg[osd_ffwd2 + i].load(QString(":/images/osd-time-ffwd%0.png").arg(2 << i));
 		osdImg[osd_slow2 + i].load(QString(":/images/osd-time-slow%0.png").arg(2 << i));
@@ -1449,7 +1450,7 @@ void MainWin::paintGLView() {
 	if (vrec_wants_screen()) {
 		grabScreen();
 		// the sign is the user's alone: the picture under it is drawn again
-		int rec = recOsd();
+		int rec = ownSign;		// as drawIcons() just chose it
 		if (rec != osd_none) {
 			const qreal r = widgetDpr(this);
 			QRect slot = modeSlot();
@@ -1784,11 +1785,14 @@ void MainWin::drawIcons(QPainter& pnt) {
 			signGone = osd_none;
 		}
 	}
-	// recording blinks, taking turns with the speed mode. Recording the window,
-	// it is put on after the picture has been read (see paintEvent)
-	int rec = recOsd();
-	if ((rec != osd_none) && !vrec_wants_screen()) {
-		mode = rec;
+	// recording blinks, taking turns with the speed mode; a playing RZX blinks too,
+	// when nothing else has the slot. Recording the window, either is put on after
+	// the picture has been read (see paintEvent)
+	ownSign = recOsd();
+	if ((ownSign == osd_none) && (mode == osd_none) && comp->rzx.play)
+		ownSign = ((now / REC_BLINK_MS) & 1) ? osd_rzx_off : osd_rzx_play;
+	if ((ownSign != osd_none) && !vrec_wants_screen()) {
+		mode = ownSign;
 		fade = 1.0;
 	}
 	pnt.setOpacity(fade);
