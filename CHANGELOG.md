@@ -11,6 +11,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Klava** in the Virtual Keyboard: the 58-key keyboard of many Spectrum clones (Delta-S,
+  Profi, Scorpion and others), worn, with crooked, yellowed caps, or clean as Klava
+  (Washed). By machine shows it on the clones. Skins of your own in the `vkbd` folder of
+  the settings are in the Skin menu too. *(thanks to Volutar)*
+
 - **The menu bar can be hidden**: View > Menu Bar. The toolbar hides with it, as in
   fullscreen. Hold the pointer at the top edge of the window and both come down over the
   picture; the right-click menu can bring the menu bar back too. Here and in fullscreen

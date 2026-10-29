@@ -244,10 +244,14 @@ is easier with the 128K's close-set keys:
 - **Zoom x1**, **Zoom x1.5**, **Zoom x2**, **Zoom x3** - the size of the window. You can
   also drag its edge; the picture keeps its shape and is drawn sharp at any size.
 - **Skin** - **48K (Classic)**, **48K (White)**, **128K (Classic)**, **128K (White)**,
-  **Next (Black)**, **Next (White)** or **Next (Magenta)**; one picked here stays whatever
-  the machine. **By machine**, on by default, shows the Next keyboard on the ZX Spectrum
-  Next, the 128K one on a 128K, +2, +2A or +3 and the 48K one on every other machine, in
-  the tone picked last; only the Next has a Magenta one, the others show their classic one.
+  **Next (Black)**, **Next (White)**, **Next (Magenta)**, **Klava** or **Klava (Washed)**;
+  one picked here stays whatever the machine. Klava is the 58-key keyboard of many clones
+  of the early 1990s, worn, with some caps crooked and the cream ones yellowed; Klava
+  (Washed) is it clean. **By machine**, on by default, shows the Next keyboard on the ZX
+  Spectrum Next, the 128K one on a 128K, +2, +2A or +3, the 48K one on a 48K and Klava on
+  the clones (Pentagon, Scorpion, Profi, ATM, ZX Evolution and the rest), in the tone
+  picked last: Klava (Washed) if it was picked; only the Next has a Magenta one, the others
+  show their classic one.
 - **Dock under the emulator** - the keyboard loses its frame and sits under the main window,
   as wide as the main window, and moves with it. In fullscreen, or when there is no room
   below, it lies over the bottom of the picture.
@@ -273,9 +277,12 @@ side of the PC key that holds it (the right Shift lights the right one), otherwi
 one.
 
 For layout authors: a file `zx-black.json`, `zx-white.json`, `zx-128.json`,
-`zx-128-white.json`, `zx-next.json`, `zx-next-white.json` or `zx-next-magenta.json` in the `vkbd` folder of the settings folder (see
+`zx-128-white.json`, `zx-next.json`, `zx-next-white.json`, `zx-next-magenta.json`,
+`zx-kopir.json` or `zx-kopir-worn.json` in the `vkbd` folder of the settings folder (see
 [Where the settings are](getting-started.md#where-the-settings-are)) is drawn instead of the
-built-in skin of that name, and drawn again each time the file is saved.
+built-in skin of that name, and drawn again each time the file is saved. A file of any
+other name there, `zx-<name>.json`, is a skin of its own: it is in the **Skin** menu under
+that name, after the built-in ones.
 
 ## Input Overlay
 
