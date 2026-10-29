@@ -774,6 +774,7 @@ void MainWin::showBars() {
 	toolBar->setVisible(tb);
 	statusBar->setVisible(conf.win.statusbar && !full);
 	if (!full) fsHide();
+	mbHintShow(false);
 	tbShowAct->setChecked(conf.win.toolbar);
 	sbShowAct->setChecked(conf.win.statusbar);
 }

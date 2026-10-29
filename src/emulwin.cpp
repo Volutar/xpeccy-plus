@@ -2485,11 +2485,39 @@ void MainWin::initUserMenu() {
 // MENU BAR
 
 #define FS_EDGE 1	// px from the top of the screen that bring up the menu in fullscreen
-#define FS_DELAY 150	// ms the pointer has to stay there
+#define FS_DELAY 100	// ms the pointer has to stay there, in fullscreen and in a window
 #define FS_SETTLE 60	// ms a menu waits for the window to be composed again
 #define MB_EDGE 7	// px from the top of a window with its menu bar hidden that bring it up:
 			// no screen edge stops the pointer there, so more of them
 #define FS_LINGER 500	// ms the bars stay once the pointer has gone: a slip does not take them away
+#define MB_HINT 4	// px, the strip
+#define MB_HINT_ALPHA 128	// of 255: the picture shows through it
+
+// The strip a window shows at its top edge, at once, while the pointer is in
+// the band that brings the hidden menu bar: in the menu bar's colour.
+class xBarHint : public QWidget {
+	public:
+		xBarHint(QWidget* p) : QWidget(p) {
+			setAttribute(Qt::WA_TransparentForMouseEvents);
+			setFocusPolicy(Qt::NoFocus);
+			setStyleSheet("background: transparent;");	// a style's QWidget background would fill it under the colour
+		}
+		QColor col;
+	protected:
+		void paintEvent(QPaintEvent*) override {
+			QPainter pnt(this);
+			QColor c = col;
+			c.setAlpha(MB_HINT_ALPHA);
+			pnt.fillRect(rect(), c);
+		}
+};
+
+// The background the style gives the menu bar: its empty right end, drawn off screen
+static QColor mb_color(QMenuBar* bar, int w) {
+	bar->resize(w, bar->sizeHint().height());	// hidden: the size it is shown at
+	QImage img = bar->grab(QRect(w - 2, 0, 1, bar->height())).toImage();
+	return img.pixelColor(0, img.height() / 2);
+}
 
 // Every move over the window, whatever widget of it is under the pointer: the
 // toolbar's buttons track none of their own, yet the filters see them all.
@@ -2779,6 +2807,8 @@ void MainWin::initMenuBar() {
 	fsBar->addAction(favAct);
 	fsBar->addMenu(help);
 	fsBar->hide();
+	mbHint = new xBarHint(frame);
+	mbHint->hide();
 	qApp->installEventFilter(new xBarFilter(this));
 #else
 	fsBar = nullptr;
@@ -2790,6 +2820,7 @@ void MainWin::initMenuBar() {
 		const bool full = conf.vid.fullScreen;
 		if (!(full || mbHidden()) || grabMice) return;
 		if ((fsY > (full ? FS_EDGE : MB_EDGE)) || (fsY < 0)) return;	// only passing by
+		mbHintShow(false);
 		fsCompose(true);	// before its menus are opened, which they then show over
 		fsBar->setGeometry(0, 0, frame->width(), fsBar->sizeHint().height());
 		fsBar->raise();
@@ -2820,6 +2851,8 @@ void MainWin::fsReveal(int y) {
 	const bool full = conf.vid.fullScreen;
 	if (!fsBar || !(full || mbHidden())) return;
 	fsY = y;
+	const bool band = (y >= 0) && (y <= (full ? FS_EDGE : MB_EDGE));
+	mbHintShow(band && !full && !grabMice && !fsBar->isVisible());
 	if (grabMice) return;
 	if (fsBar->isVisible()) {
 		if (fsGone(y) && !QApplication::activePopupWidget()) {
@@ -2827,9 +2860,24 @@ void MainWin::fsReveal(int y) {
 		} else {
 			fsLinger.stop();
 		}
-	} else if ((y >= 0) && (y <= (full ? FS_EDGE : MB_EDGE)) && !fsShow.isActive()) {
+	} else if (band && !fsShow.isActive()) {
 		fsShow.start(FS_DELAY);
 	}
+}
+
+// the strip at the top of a window, across it, in the colour of the menu bar it brings
+void MainWin::mbHintShow(bool on) {
+	if (!mbHint) return;
+	if (!on) {
+		mbHint->hide();
+		return;
+	}
+	if (!mbHint->isVisible()) {		// the style, or the system's theme, may have changed meanwhile
+		static_cast<xBarHint*>(mbHint)->col = mb_color(fsBar, frame->width());
+		mbHint->raise();
+	}
+	mbHint->setGeometry(0, 0, frame->width(), MB_HINT);	// and the window's width
+	mbHint->show();
 }
 
 // y is off the bars, and off the few lines under them that still keep them
@@ -2841,6 +2889,7 @@ bool MainWin::fsGone(int y) {
 void MainWin::fsHide() {
 	fsShow.stop();
 	fsLinger.stop();
+	mbHintShow(false);
 	if (fsBar && fsBar->isVisible()) {
 		tbLetGo();		// hidden, its button lets go of the mode
 		fsBar->hide();
