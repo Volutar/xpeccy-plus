@@ -208,9 +208,10 @@ with **ULA plus** in the machine's advanced settings (see
 picture keeps its size.
 
 The menu bar hidden takes the toolbar with it, as in fullscreen, and both are still at
-hand. Hold the pointer at the top edge of the window: the menu bar comes down over the
-picture, with the toolbar under it, and both go away a moment after the pointer leaves
-them. A right-click on the picture has **Show Menu Bar** at the end of its menu. The
+hand. Hold the pointer at the top edge of the window: a thin see-through strip in the
+menu bar's colour shows at once that the pointer is in the right place, and a moment
+later the menu bar comes down over the picture, with the toolbar under it. Both go away
+a moment after the pointer leaves them. A right-click on the picture has **Show Menu Bar** at the end of its menu. The
 **Menu Bar** hotkey can be set on the **Hotkeys** page of **Options**; it has no key by
 default.
 
