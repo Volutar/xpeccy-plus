@@ -278,6 +278,8 @@
         <file>res/vkbd/zx-next.json</file>
         <file>res/vkbd/zx-next-white.json</file>
         <file>res/vkbd/zx-next-magenta.json</file>
+        <file>res/vkbd/zx-kopir.json</file>
+        <file>res/vkbd/zx-kopir-worn.json</file>
         <file>res/vkbd/keys-font.ttf</file>
     </qresource>
 </RCC>

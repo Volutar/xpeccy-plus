@@ -8,6 +8,7 @@
 
 #include <QActionGroup>
 #include <QApplication>
+#include <QDir>
 #include <QFile>
 #include <QGuiApplication>
 #include <QIcon>
@@ -32,11 +33,14 @@ static const struct {
 	const char* name;
 	const char* title;
 } vkSkins[] = {{"black", "48K (Classic)"}, {"white", "48K (White)"}, {"128", "128K (Classic)"}, {"128-white", "128K (White)"},
-	{"next", "Next (Black)"}, {"next-white", "Next (White)"}, {"next-magenta", "Next (Magenta)"}};
+	{"next", "Next (Black)"}, {"next-white", "Next (White)"}, {"next-magenta", "Next (Magenta)"},
+	{"kopir-worn", "Klava"}, {"kopir", "Klava (Washed)"}};
 
-// a skin's tone: white, magenta (the Next's), or black for the classic ones
+// a skin's tone: white, magenta (the Next's), washed (the Kopir's clean one), or black
+// for the classic ones
 static std::string skinTone(const std::string& name) {
 	if (name.find("white") != std::string::npos) return "white";
+	if (name == "kopir") return "washed";
 	return (name.find("magenta") != std::string::npos) ? "magenta" : "black";
 }
 
@@ -51,15 +55,18 @@ static bool skinThere(const QString& name) {
 }
 
 // The skin to show: the one picked by hand, or by the machine - the Next's on the
-// Next, the 128's on a Sinclair 128K, +2, +2A or +3, the 48K's on the rest, in the
-// tone picked last (magenta only the Next has: black elsewhere)
+// Next, the 128's on a Sinclair 128K, +2, +2A or +3, the 48K's on a Sinclair 48K,
+// the Kopir's on the clones - worn, unless the clean one was picked - in the tone
+// picked last (magenta only the Next has: black elsewhere)
 static QString wantedSkin() {
 	if (!conf.keywin.bymac) return QString::fromStdString(conf.keywin.skin);
 	int hw = (conf.zx && conf.zx->hw) ? conf.zx->hw->id : HW_NULL;
 	bool is128 = (hw == HW_ZX128) || (hw == HW_PLUS2A) || (hw == HW_PLUS3);
+	bool clone = (hw != HW_NULL) && (hw != HW_DUMMY) && (hw != HW_ZX48) && !is128 && (hw != HW_ZXNEXT);
 	bool white = (conf.keywin.plain == "white");
 	if (hw == HW_ZXNEXT) return white ? QString("next-white") : (conf.keywin.plain == "magenta") ? QString("next-magenta") : QString("next");
 	if (is128) return white ? QString("128-white") : QString("128");
+	if (clone) return (conf.keywin.plain == "washed") ? QString("kopir") : QString("kopir-worn");
 	return white ? QString("white") : QString("black");
 }
 
@@ -165,11 +172,9 @@ keyWindow::keyWindow(QWidget* p):QDialog(p) {
 void keyWindow::loadSkin() {
 	QString name = wantedSkin();
 	skinWant = name;
-	bool known = false;
-	for (const auto& sk : vkSkins)
-		known |= (name == sk.name);
-	// one that is not there (a 128 with no layout yet): the plain one, or the first
-	if (!known || !skinThere(name)) {
+	// one that is not there (a 128 with no layout yet, a file of the user's taken
+	// away): the plain one, or the first
+	if (!skinThere(name)) {
 		name = QString::fromStdString(conf.keywin.plain);
 		if (((name != "black") && (name != "white")) || !skinThere(name)) name = vkSkins[0].name;
 	}
@@ -181,17 +186,27 @@ void keyWindow::loadSkin() {
 	if (QFile::exists(dir)) watcher.addPath(dir);	// a file put there later
 	VkSkin sk;
 	QString err;
+	// a layout another one is built on: the user's own, watched as this one is, or the built-in one
+	auto base = [&](const QString& bn) {
+		QFile bf(dir + "/zx-" + bn + ".json");
+		if (bf.exists()) {
+			watcher.addPath(bf.fileName());
+		} else {
+			bf.setFileName(":/res/vkbd/zx-" + bn + ".json");
+		}
+		return bf.open(QIODevice::ReadOnly) ? bf.readAll() : QByteArray();
+	};
 	QFile file(own);
 	if (file.exists()) {
 		watcher.addPath(own);
-		if (!file.open(QIODevice::ReadOnly) || !sk.load(file.readAll(), &err)) {
+		if (!file.open(QIODevice::ReadOnly) || !sk.load(file.readAll(), &err, base)) {
 			qWarning("vkbd: %s: %s", own.toLocal8Bit().constData(), err.toLocal8Bit().constData());
 			sk = VkSkin();
 		}
 	}
 	if (sk.isNull()) {
 		QFile res(":/res/vkbd/zx-" + name + ".json");
-		if (res.open(QIODevice::ReadOnly) && !sk.load(res.readAll(), &err))
+		if (res.open(QIODevice::ReadOnly) && !sk.load(res.readAll(), &err, base))
 			qWarning("vkbd: built-in %s: %s", name.toLocal8Bit().constData(), err.toLocal8Bit().constData());
 	}
 	if (sk.isNull() && skin.isNull()) return;	// nothing to show at all
@@ -398,19 +413,32 @@ void keyWindow::fillMenu(QMenu* mnu) {
 	act->setChecked(conf.keywin.bymac);
 	skm->addSeparator();
 	QActionGroup* skg = new QActionGroup(skm);
-	for (const auto& sk : vkSkins) {
-		if (!skinThere(sk.name)) continue;
-		std::string name = sk.name;
-		act = skm->addAction(sk.title, this, [this, name]() {
+	auto addSkin = [&](const QString& name, const QString& title) {
+		std::string nm = name.toStdString();
+		QAction* sa = skm->addAction(title, this, [this, nm]() {
 			// a skin picked by hand stays, whatever the machine
-			conf.keywin.skin = name;
-			conf.keywin.plain = skinTone(name);
+			conf.keywin.skin = nm;
+			conf.keywin.plain = skinTone(nm);
 			conf.keywin.bymac = 0;
 			loadSkin();
 		});
-		act->setCheckable(true);
-		act->setChecked(skinShown == sk.name);
-		act->setActionGroup(skg);
+		sa->setCheckable(true);
+		sa->setChecked(skinShown == name);
+		sa->setActionGroup(skg);
+	};
+	QStringList builtIn;
+	for (const auto& sk : vkSkins) {
+		builtIn.append(sk.name);
+		if (skinThere(sk.name)) addSkin(sk.name, sk.title);
+	}
+	// the user's own layouts of other names, under their names
+	bool first = true;
+	foreach(QString fn, QDir(ownSkinDir()).entryList(QStringList("zx-*.json"), QDir::Files, QDir::Name)) {
+		QString name = fn.mid(3, fn.size() - 8);
+		if (name.isEmpty() || builtIn.contains(name)) continue;
+		if (first) skm->addSeparator();
+		first = false;
+		addSkin(name, name);
 	}
 	act = mnu->addAction("Dock under the emulator", this, [this]() {setDock(!dock);});
 	act->setCheckable(true);

@@ -1,0 +1,23 @@
+// Klava in the menu: the Kopir keyboard worn, some caps sitting crooked, the cream ones yellowed.
+// Drawn by Volutar; the rest is zx-kopir.json.
+{
+  "base":     "kopir",
+  "wobble":   {"tilt": 1.6, "shift": 0.8, "share": 0.45, "seed": 7},
+  "gradient": {"angle": 5, "stops": [[0, "#e3d9c3"], [0.7, "#cfc4a9"], [0.8, "#cfc4a9"], [1, "#eee3c7"]]},
+  "dome":     {
+    "inset": [5, 3, 5, 13],
+    "corner": 4,
+    "gradient": {
+      "angle": 30,
+      "stops": [[0.1, "#c3baa4"], [0.5, "#f2e8cd"], [1, "#f2e8cd"]]
+      },
+    "edge": "#ddd4bc", "ew": 1.25},
+  "styles":   {
+    "grey": {
+      "gradient": {"angle": 5, "stops": [[0, "#878580"], [0.7, "#7b766c"], [0.8, "#88837a"], [1, "#7c7b77"]]},
+      "dome": {"gradient": {"angle": 30, "stops": [[0.1, "#84807b"], [0.5, "#8e8c87"], [1, "#93918b"]]}, "edge": "#8e8c87"}},
+    "red": {
+      "gradient": {"angle": 10, "stops": [[0, "#c43a30"], [0.7, "#a43a30"], [0.8, "#b43a30"], [1, "#d02e26"]]},
+      "dome": {"gradient": {"angle": 30, "stops": [[0.1, "#ba3220"], [0.5, "#e05548"], [1, "#e65a4c"]]}, "edge": "#d4523a"}}
+    }
+}
