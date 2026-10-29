@@ -8,6 +8,7 @@
 #include <QUrl>
 #include <QFileInfo>
 #include <QMenu>
+#include <QWidgetAction>
 #include <QtPlugin>
 
 #include <locale.h>
@@ -193,6 +194,45 @@ void xApp::d_style() {
 		if (w->internalWinId()) applyTitleBarStyle(w);
 }
 
+static void menu_relayout(QMenu* menu) {
+	QEvent ev(QEvent::StyleChange);
+	QCoreApplication::sendEvent(menu, &ev);
+}
+
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+// Under a style sheet Qt 5 draws every item's text after the icon column, but an
+// item with no icon or tick is measured without it (Qt 6 counts it), so the widest
+// such item was cut at the right. The menu is widened by what that item lacks.
+static void menu_qt5_width(QMenu* menu, bool icons) {
+	if (menu->minimumWidth()) {
+		menu->setMinimumWidth(0);
+		menu_relayout(menu);
+	}
+	if (!icons || qApp->styleSheet().isEmpty()) return;
+	int col = menu->style()->pixelMetric(QStyle::PM_SmallIconSize, nullptr, menu) + 4;
+	int wide = 0;		// the widest item as Qt measures it
+	int bare = 0;		// the widest with no icon or tick
+	foreach(QAction* act, menu->actions()) {
+		if (act->isSeparator() || !act->isVisible() || qobject_cast<QWidgetAction*>(act)) continue;
+		QString txt = act->text();
+		int tab = txt.indexOf('\t');
+		QFontMetrics fm(act->font().resolve(menu->font()));
+		int wid = fm.boundingRect(QRect(), Qt::TextSingleLine | Qt::TextShowMnemonic, tab < 0 ? txt : txt.left(tab)).width();
+		if (tab >= 0) wid += 12;		// as QStyleSheetStyle adds it
+		if (act->icon().isNull() && !act->isCheckable()) {
+			bare = qMax(bare, wid);
+			wide = qMax(wide, wid);
+		} else {
+			wide = qMax(wide, wid + col);
+		}
+	}
+	int lack = qMin(col, bare + col - wide);
+	if (lack <= 0) return;
+	menu->setMinimumWidth(menu->sizeHint().width() + lack);
+	menu_relayout(menu);
+}
+#endif
+
 // Under a style sheet Qt starts a menu's text after a column that depends on what
 // the menu holds: icons, only ticks, or neither. The sheets set the padding for
 // each by this property, so the text starts at one place in every menu. The rule
@@ -207,13 +247,17 @@ static void menu_column(QMenu* menu) {
 		}
 		if (act->isCheckable()) col = "checks";
 	}
-	if (menu->property("xcol").toString() == col) return;
-	menu->setProperty("xcol", col);
-	if (qApp->styleSheet().isEmpty()) return;	// a later sheet polishes with it anyway
-	menu->style()->unpolish(menu);
-	menu->style()->polish(menu);
-	QEvent ev(QEvent::StyleChange);			// the menu lays itself out again
-	QCoreApplication::sendEvent(menu, &ev);
+	if (menu->property("xcol").toString() != col) {
+		menu->setProperty("xcol", col);
+		if (!qApp->styleSheet().isEmpty()) {	// else a later sheet polishes with it anyway
+			menu->style()->unpolish(menu);
+			menu->style()->polish(menu);
+			menu_relayout(menu);
+		}
+	}
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+	menu_qt5_width(menu, !strcmp(col, "icons"));
+#endif
 }
 
 static MainWin* os_win = NULL;		// the window every open goes through, once there is one
