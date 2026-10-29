@@ -20,6 +20,7 @@
 
 #if defined(_WIN32)
 #include <windows.h>
+#include <dwmapi.h>
 #ifndef SPI_GETFONTSMOOTHINGORIENTATION
 #define SPI_GETFONTSMOOTHINGORIENTATION 0x2012
 #endif
@@ -341,6 +342,9 @@ void keyWindow::snap() {
 	// then put the keyboard off the screen entirely. Whatever is missed here
 	// comes back from showEvent and from every move of the emulator window.
 	if (!par || !par->isVisible()) return;
+#if defined(_WIN32)
+	if (snapNative(par)) return;
+#endif
 	QRect rc = par->frameGeometry();
 	int wid = rc.width();
 	int hig = higFor(wid);
@@ -352,6 +356,52 @@ void keyWindow::snap() {
 	if (geometry() != want)
 		setGeometry(want);
 }
+
+#if defined(_WIN32)
+// On Windows 10 and later most of a window's frame is an invisible sizing margin,
+// and Qt's frameGeometry() is not the frame as it is seen: the keyboard came out
+// narrower than the window. DWM knows the visible frame, and the keyboard is put
+// to it in the screen's own pixels, so it is exactly as wide at any scale
+bool keyWindow::snapNative(QWidget* par) {
+	HWND ph = (HWND)par->winId();
+	RECT vr;
+	if (DwmGetWindowAttribute(ph, DWMWA_EXTENDED_FRAME_BOUNDS, &vr, sizeof(vr)) != S_OK)
+		return false;
+	int wid = vr.right - vr.left;
+	int hig = qRound(wid * cnv.height() / cnv.width());
+	int y = vr.bottom;
+	MONITORINFO mi;
+	mi.cbSize = sizeof(mi);
+	bool low = GetMonitorInfo(MonitorFromWindow(ph, MONITOR_DEFAULTTONEAREST), &mi)
+		&& (y + hig > mi.rcMonitor.bottom);
+	if (par->isFullScreen() || low)
+		y = vr.bottom - hig;
+	HWND kh = (HWND)winId();
+	RECT kr;
+	GetWindowRect(kh, &kr);
+	if ((kr.left != vr.left) || (kr.top != y) || (kr.right - kr.left != wid) || (kr.bottom - kr.top != hig))
+		SetWindowPos(kh, NULL, vr.left, y, wid, hig, SWP_NOZORDER | SWP_NOACTIVATE);
+	return true;
+}
+
+// A frameless window gets no shadow from DWM; one with a caption does. The
+// caption style is given back with no frame drawn (WM_NCCALCSIZE in nativeEvent
+// keeps the whole window client), and the frame put a pixel into the client is
+// what makes DWM draw the shadow
+void keyWindow::dockShadow() {
+	HWND kh = (HWND)winId();
+	LONG st = GetWindowLong(kh, GWL_STYLE);
+	if (!(st & WS_CAPTION)) {
+		SetWindowLong(kh, GWL_STYLE, st | WS_CAPTION);
+		SetWindowPos(kh, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+	}
+	MARGINS mg = {0, 0, 0, 1};
+	DwmExtendFrameIntoClientArea(kh, &mg);
+	// Windows 11 rounds a window with a caption; this one stays square, as it was
+	DWORD corner = 1;	// DWMWCP_DONOTROUND
+	DwmSetWindowAttribute(kh, 33, &corner, sizeof(corner));	// DWMWA_WINDOW_CORNER_PREFERENCE
+}
+#endif
 
 // A window manager puts the window where it wants when it maps it, and that
 // happens after show() has returned - so while docked, every move it makes is
@@ -481,6 +531,9 @@ void keyWindow::showEvent(QShowEvent* ev) {
 	// whenever the flags change, so it is set every time it comes up
 	vkbd_set_aspect(this, qRound(cnv.width()), qRound(cnv.height()));
 #endif
+#if defined(_WIN32)
+	if (dock) dockShadow();
+#endif
 	snap();
 	// see moveEvent: a window manager can also map the window in its own place
 	// without a move worth reporting, so the geometry is put back a few times
@@ -505,6 +558,12 @@ bool keyWindow::nativeEvent(const QByteArray& type, void* msg, qintptr* res) {
 bool keyWindow::nativeEvent(const QByteArray& type, void* msg, long* res) {
 #endif
 	MSG* wmsg = (MSG*)msg;
+	// docked: the caption style is there for the shadow only (dockShadow), the
+	// whole window stays client
+	if (dock && (wmsg->message == WM_NCCALCSIZE)) {
+		if (res) *res = 0;
+		return true;
+	}
 	if (wmsg->message == WM_SIZING) {
 		RECT* rct = (RECT*)wmsg->lParam;
 		RECT wrc, crc;
