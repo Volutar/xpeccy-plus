@@ -292,6 +292,8 @@ void MainWin::socketRead() {
 #endif
 			if (fsBar && fsBar->isVisible())		// it is over the picture
 				fsBar->render(&pnt, fsBar->pos());
+			if (mbHint && mbHint->isVisible())
+				mbHint->render(&pnt, mbHint->pos(), QRegion(), QWidget::DrawChildren);	// see-through: no background
 			if (fsTool && fsTool->isVisible())
 				fsTool->render(&pnt, fsTool->pos());
 			// the window's own, laid out over the picture when its arrow is open

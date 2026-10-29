@@ -119,6 +119,7 @@ void MainWin::winCursorTo(QPoint pos) {
 // and the state mouseMoveEvent keeps has to start over on every new grab
 void MainWin::mouseGrabOn() {
 	grabMice = 1;
+	mbHintShow(false);
 	grabMouse(QCursor(Qt::BlankCursor));
 	setMessage(" grab mouse, " XREL_KEYS " lets go ");
 	mouseRecenter(1);

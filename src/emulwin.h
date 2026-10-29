@@ -510,6 +510,8 @@ class MainWin : public QWidget {
 		void initMenuBar();
 		// the menu over the picture in fullscreen, while the pointer is at the top
 		QMenuBar* fsBar;
+		QWidget* mbHint = nullptr;	// the strip at the top while the pointer is in a window's band
+		void mbHintShow(bool);
 		QTimer fsShow;
 		int fsY;		// where the pointer was last seen over the window, -1 for gone
 		unsigned fsTall:1;	// a line taller than the screen, while a menu is up
