@@ -62,6 +62,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The docked virtual keyboard is as wide as the window** and casts a shadow, as other
+  windows do (Windows). *(reported by Volutar)*
+
 - **A Next program's UDP link no longer brings up the firewall prompt**: the link's own port
   opens to the network only with Server on the network.
 
