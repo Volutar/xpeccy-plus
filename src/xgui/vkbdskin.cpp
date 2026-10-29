@@ -140,10 +140,10 @@ static int sgn(double v) {
 	return (v > 0) - (v < 0);
 }
 
-// A polygon of right angles pushed out by dx across its upright edges and dy
-// across its level ones (in, for negative values): every edge moves along its
+// A polygon of right angles pushed out by l, t, r, b across its edges that face
+// left, up, right and down (in, for negative values): every edge moves along its
 // own outward normal, and every vertex is where its two edges meet again
-static QVector<QPointF> offsetPoly(const QVector<QPointF>& p, double dx, double dy) {
+static QVector<QPointF> offsetPoly4(const QVector<QPointF>& p, double l, double t, double r, double b) {
 	int n = p.size();
 	int way = (polyArea(p) > 0) ? 1 : -1;
 	QVector<double> at(n);		// edge i, p[i] to p[i + 1]: its x if upright, its y if level
@@ -152,9 +152,11 @@ static QVector<QPointF> offsetPoly(const QVector<QPointF>& p, double dx, double 
 		QPointF d = p[(i + 1) % n] - p[i];
 		upright[i] = (d.x() == 0);
 		if (upright[i]) {
-			at[i] = p[i].x() + way * sgn(d.y()) * dx;
+			int out = way * sgn(d.y());		// 1: it faces right
+			at[i] = p[i].x() + out * ((out > 0) ? r : l);
 		} else {
-			at[i] = p[i].y() - way * sgn(d.x()) * dy;
+			int out = -way * sgn(d.x());		// 1: it faces down
+			at[i] = p[i].y() + out * ((out > 0) ? b : t);
 		}
 	}
 	QVector<QPointF> res(n);
@@ -163,6 +165,19 @@ static QVector<QPointF> offsetPoly(const QVector<QPointF>& p, double dx, double 
 		res[i] = upright[i] ? QPointF(at[i], at[e]) : QPointF(at[e], at[i]);
 	}
 	return res;
+}
+
+// the same by dx across the upright edges and dy across the level ones
+static QVector<QPointF> offsetPoly(const QVector<QPointF>& p, double dx, double dy) {
+	return offsetPoly4(p, dx, dy, dx, dy);
+}
+
+// which way edge i of a polygon of right angles faces: 0 left, 1 up, 2 right, 3 down
+static int edgeFaces(const QVector<QPointF>& p, int i) {
+	int way = (polyArea(p) > 0) ? 1 : -1;
+	QPointF d = p[(i + 1) % p.size()] - p[i];
+	if (d.x() == 0) return (way * sgn(d.y()) > 0) ? 2 : 0;
+	return (-way * sgn(d.x()) > 0) ? 3 : 1;
 }
 
 // Each vertex of a polygon rounded with its own radius, cut down to half the
@@ -243,14 +258,64 @@ static FT_Face keysFace() {
 
 // ---------------------------------------------------------------- loading
 
-bool VkSkin::load(const QByteArray& json, QString* err) {
+// A number from 0 to 1 that a seed and a key's place always give the same
+static double unitHash(unsigned seed, int row, int col, int what) {
+	unsigned x = seed * 0x9e3779b1u ^ (unsigned)row * 0x85ebca77u ^ (unsigned)col * 0xc2b2ae3du ^ (unsigned)what * 0x27d4eb2fu;
+	x ^= x >> 16;
+	x *= 0x7feb352du;
+	x ^= x >> 15;
+	x *= 0x846ca68bu;
+	x ^= x >> 16;
+	return x / 4294967296.0;
+}
+
+// A layout without its comments: // to the end of the line, /* to */, outside the
+// strings. They become spaces, the line breaks stay, so an error's place is the same.
+static QByteArray uncommented(QByteArray t) {
+	bool str = false;
+	for (int i = 0; i < t.size(); i++) {
+		char c = t[i];
+		if (str) {
+			if (c == '\\') i++;
+			else if (c == '"') str = false;
+		} else if (c == '"') {
+			str = true;
+		} else if ((c == '/') && (i + 1 < t.size()) && (t[i + 1] == '/')) {
+			while ((i < t.size()) && (t[i] != '\n') && (t[i] != '\r'))
+				t[i++] = ' ';
+		} else if ((c == '/') && (i + 1 < t.size()) && (t[i + 1] == '*')) {
+			int e = t.indexOf("*/", i + 2);
+			e = (e < 0) ? t.size() : e + 2;
+			for (; i < e; i++) {
+				if ((t[i] != '\n') && (t[i] != '\r')) t[i] = ' ';
+			}
+			i--;
+		}
+	}
+	return t;
+}
+
+bool VkSkin::load(const QByteArray& json, QString* err, BaseFile base) {
 	QJsonParseError perr;
-	QJsonDocument doc = QJsonDocument::fromJson(json, &perr);
+	QJsonDocument doc = QJsonDocument::fromJson(uncommented(json), &perr);
 	if (!doc.isObject()) {
 		if (err) *err = perr.errorString();
 		return false;
 	}
 	QJsonObject cfg = doc.object();
+	// another layout under this one: its fields, this one's over them
+	for (int depth = 0; cfg.contains("base"); depth++) {
+		QString name = cfg.value("base").toString();
+		QJsonObject under = QJsonDocument::fromJson(uncommented(base ? base(name) : QByteArray()), &perr).object();
+		if ((depth > 4) || under.isEmpty()) {
+			if (err) *err = QString("no layout to build on: %0").arg(name);
+			return false;
+		}
+		cfg.remove("base");
+		foreach(QString k, cfg.keys())
+			under[k] = cfg.value(k);
+		cfg = under;
+	}
 	QJsonObject canv = cfg.value("canvas").toObject();
 	cw = field(canv, "w", "width").toDouble(530);
 	ch = field(canv, "h", "height").toDouble(248);
@@ -310,6 +375,18 @@ bool VkSkin::load(const QByteArray& json, QString* err) {
 	dome = Dome();
 	if (cfg.value("dome").isObject())
 		readDome(cfg.value("dome").toObject(), dome);
+	side = Side();
+	if (cfg.contains("side")) readSide(cfg.value("side"), side);
+	styles.clear();
+	QJsonObject sts = cfg.value("styles").toObject();
+	foreach(QString k, sts.keys())
+		styles[k] = sts.value(k).toObject();
+	// some keys turned and moved a little, the same ones every time
+	QJsonObject wob = cfg.value("wobble").toObject();
+	double wobTilt = num(wob, "tilt", 0);
+	double wobShift = num(wob, "shift", 0);
+	double wobShare = num(wob, "share", 1);
+	unsigned wobSeed = (unsigned)num(wob, "seed", 1);
 	icons.clear();
 	QJsonObject ics = cfg.value("icons").toObject();
 	foreach(QString k, ics.keys()) {
@@ -388,30 +465,76 @@ bool VkSkin::load(const QByteArray& json, QString* err) {
 				key.w = br.width();
 				key.h = br.height();
 			}
-			// its own corners: one radius, or [tl, tr, br, bl]
-			if (ko.contains("corner")) {
-				QJsonValue cv = ko.value("corner");
-				QJsonArray ca = cv.toArray();
-				if (cv.isDouble()) {
-					for (int i = 0; i < 4; i++)
-						key.corner[i] = cv.toDouble();
-				} else if (isRect(ca)) {
-					for (int i = 0; i < 4; i++)
-						key.corner[i] = ca.at(i).toDouble();
-				} else {
-					return fail("its corner is a number or four of them");
-				}
-				key.hasCorner = true;
-			}
-			// its own gradient, and its own dome or none ("dome": false)
+			// the cap: the layout's, its style's over it, its own over both
 			key.grad = grad;
-			if (ko.contains("gradient")) readGrad(ko.value("gradient"), key.grad);
 			key.dome = dome;
-			if (ko.contains("dome")) {
-				if (ko.value("dome").isObject()) {
-					readDome(ko.value("dome").toObject(), key.dome);
-				} else {
-					key.dome.on = false;
+			key.side = side;
+			QString why;
+			if (ko.contains("style")) {
+				QString st = ko.value("style").toString();
+				if (!styles.contains(st))
+					return fail(QString("no style is called \"%0\"").arg(st));
+				if (!readCap(styles[st], key, why))
+					return fail(QString("style %0: %1").arg(st, why));
+			}
+			if (!readCap(ko, key, why))
+				return fail(why);
+			// caps of the same key: the key's cap, a style's over it, their own over both
+			foreach(QJsonValue pv, ko.value("parts").toArray()) {
+				QJsonObject po = pv.toObject();
+				QString pw = QString("part %0: ").arg(key.parts.size());
+				Key part = key;
+				part.outline.clear();
+				part.x = num(po, "x", key.x);
+				part.w = num(po, "w", key.w);
+				part.y = num(po, "y", key.y);
+				part.h = num(po, "h", key.h);
+				if (po.contains("outline")) {
+					part.outline = cleanPoly(points(po.value("outline")));
+					if (!isRectilinear(part.outline))
+						return fail(pw + "its outline is not a polygon of right angles");
+					QRectF br = QPolygonF(part.outline).boundingRect();
+					part.x = br.x();
+					part.y = br.y();
+					part.w = br.width();
+					part.h = br.height();
+				}
+				if (po.contains("style")) {
+					QString st = po.value("style").toString();
+					if (!styles.contains(st))
+						return fail(pw + QString("no style is called \"%0\"").arg(st));
+					if (!readCap(styles[st], part, why))
+						return fail(pw + QString("style %0: %1").arg(st, why));
+				}
+				if (!readCap(po, part, why))
+					return fail(pw + why);
+				part.over = po.value("over").toBool();
+				part.unlit = (po.value("light") == QJsonValue(false));
+				key.parts.push_back(part);
+			}
+			// turned and moved: by the wobble, or by its own values
+			double dx = 0, dy = 0;
+			if ((preset(key.shape)->fill == FILL_CAP) && (unitHash(wobSeed, rows.size(), row.keys.size(), 0) < wobShare)) {
+				key.tilt = (unitHash(wobSeed, rows.size(), row.keys.size(), 1) * 2 - 1) * wobTilt;
+				dx = (unitHash(wobSeed, rows.size(), row.keys.size(), 2) * 2 - 1) * wobShift;
+				dy = (unitHash(wobSeed, rows.size(), row.keys.size(), 3) * 2 - 1) * wobShift;
+			}
+			key.tilt = num(ko, "tilt", key.tilt);
+			if (ko.value("shift").isArray()) {
+				QPointF sh = point(ko.value("shift"));
+				dx = sh.x();
+				dy = sh.y();
+			}
+			if ((dx != 0) || (dy != 0)) {
+				key.x += dx;
+				key.y += dy;
+				for (QPointF& v : key.outline)
+					v += QPointF(dx, dy);
+				for (Key& part : key.parts) {
+					part.x += dx;
+					part.y += dy;
+					for (QPointF& v : part.outline)
+						v += QPointF(dx, dy);
 				}
 			}
 			foreach(QJsonValue lv, ko.value("labels").toArray()) {
@@ -518,8 +641,82 @@ void VkSkin::readDome(const QJsonObject& o, Dome& d) const {
 	}
 	if (o.contains("gradient")) readGrad(o.value("gradient"), d.grad);
 	if (o.contains("fill")) d.fill = color(o.value("fill").toString());
-	if (o.contains("edge")) d.edge = color(o.value("edge").toString());
+	// the edge: a color, or a gradient (lit on one side, dark on the other)
+	if (o.contains("edge")) {
+		QJsonValue ev = o.value("edge");
+		if (ev.isString()) {
+			d.edge = color(ev.toString());
+			d.edgeGrad = Grad();
+		} else {
+			d.edge = QColor();
+			readGrad(ev, d.edgeGrad);
+		}
+	}
 	d.ew = num(o, "ew", d.ew);
+}
+
+// the sides, over what they had: "w", "shade" and "fill" one value for all four or
+// [left, top, right, bottom]; false for none
+void VkSkin::readSide(const QJsonValue& v, Side& sd) const {
+	if (!v.isObject()) {
+		sd.on = false;
+		return;
+	}
+	QJsonObject o = v.toObject();
+	auto four = [](const QJsonValue& f, int i) {
+		return f.isArray() ? f.toArray().at(i) : f;
+	};
+	for (int i = 0; i < 4; i++) {
+		if (o.contains("w")) sd.w[i] = four(o.value("w"), i).toDouble();
+		if (o.contains("shade")) sd.shade[i] = std::max(-1.0, std::min(1.0, four(o.value("shade"), i).toDouble()));
+		if (o.contains("fill")) sd.fill[i] = color(four(o.value("fill"), i).toString());
+	}
+	sd.on = true;
+}
+
+// What a key or a style says about its cap, over what it has: its corners (one
+// radius, or [tl, tr, br, bl]), its gradient, its dome or none ("dome": false), its sides
+bool VkSkin::readCap(const QJsonObject& o, Key& key, QString& why) const {
+	if (o.contains("corner")) {
+		QJsonValue cv = o.value("corner");
+		QJsonArray ca = cv.toArray();
+		if (cv.isDouble()) {
+			for (int i = 0; i < 4; i++)
+				key.corner[i] = cv.toDouble();
+		} else if (isRect(ca)) {
+			for (int i = 0; i < 4; i++)
+				key.corner[i] = ca.at(i).toDouble();
+		} else {
+			why = "its corner is a number or four of them";
+			return false;
+		}
+		key.hasCorner = true;
+	}
+	if (o.contains("gradient")) readGrad(o.value("gradient"), key.grad);
+	if (o.contains("dome")) {
+		if (o.value("dome").isObject()) {
+			readDome(o.value("dome").toObject(), key.dome);
+		} else {
+			key.dome.on = false;
+		}
+	}
+	if (o.contains("side")) readSide(o.value("side"), key.side);
+	return true;
+}
+
+// a turned key: about its middle, given in the same units as what is turned
+QTransform VkSkin::tiltAt(const Key& key, const QPointF& mid) {
+	QTransform tr;
+	if (key.tilt == 0) return tr;
+	tr.translate(mid.x(), mid.y());
+	tr.rotate(key.tilt);
+	tr.translate(-mid.x(), -mid.y());
+	return tr;
+}
+
+// the same in the picture's pixels, about the middle of its box at that size
+QTransform VkSkin::tiltPx(const Key& key, double s) const {
+	return tiltAt(key, QRectF(keyBox(key, s)).center());
 }
 
 // Which Spectrum key each one is comes from its "zx", or failing that from its
@@ -576,6 +773,27 @@ bool VkSkin::makeKeys(QString* err) {
 	static const char* zxNames[] = {"ENTER", "CAPS", "SYMBOL", "BREAK"};
 	static const char zxNamed[] = "ECS ";
 	keytab.clear();
+	// a key with parts: a click and the light take them all, turned with it;
+	// hp is what a click takes of the key itself, vk.fill not turned yet
+	auto withParts = [&](VkKey& vk, const Key& key, QPainterPath hp, const QTransform& tr) {
+		for (const Key& part : key.parts) {
+			QPainterPath ph, pf;
+			if (part.outline.isEmpty()) {
+				QRectF pb(part.x, part.y, part.w, part.h);
+				ph.addRect(pb);
+				pf.addRect(pb.adjusted(-outLR - 0.5, -outTB - 0.5, outLR + 0.5, outTB + 0.5));
+			} else {
+				ph.addPolygon(QPolygonF(part.outline));
+				ph.closeSubpath();
+				pf.addPolygon(QPolygonF(offsetPoly(part.outline, outLR + 0.5, outTB + 0.5)));
+				pf.closeSubpath();
+			}
+			hp = hp.united(ph);
+			if (!part.unlit) vk.fill = vk.fill.united(pf);
+		}
+		vk.hitPoly = tr.map(hp.simplified()).toFillPolygon();
+		vk.hit = vk.hitPoly.boundingRect();
+	};
 	for (int r = 0; r < rows.size(); r++) {
 		const Row& row = rows[r];
 		double top = (r == 0) ? 0 : (rows[r - 1].y + rows[r - 1].h + row.y) / 2.0;
@@ -595,13 +813,21 @@ bool VkSkin::makeKeys(QString* err) {
 			}
 			vk.ch = (vk.zx.size() == 1) ? (unsigned char)vk.zx[0] : 0;
 			vk.box = QRectF(key.x, key.y, key.w, key.h);
+			QTransform tr = tiltAt(key, vk.box.center());
 			if (!key.outline.isEmpty()) {
 				// the outline itself, as a box key takes its box: where keys touch,
 				// the contour around it is half the neighbour's
-				vk.hitPoly = QPolygonF(key.outline);
+				vk.hitPoly = tr.map(QPolygonF(key.outline));
 				vk.hit = vk.hitPoly.boundingRect();
 				vk.fill.addPolygon(QPolygonF(offsetPoly(key.outline, outLR + 0.5, outTB + 0.5)));
 				vk.fill.closeSubpath();
+				if (!key.parts.empty()) {
+					QPainterPath hp;
+					hp.addPolygon(QPolygonF(key.outline));
+					hp.closeSubpath();
+					withParts(vk, key, hp, tr);
+				}
+				vk.fill = tr.map(vk.fill);
 				keytab.append(vk);
 				continue;
 			}
@@ -622,6 +848,17 @@ bool VkSkin::makeKeys(QString* err) {
 			ht = std::max(ht, std::min(top, key.y));
 			hb = std::min(hb, std::max(bot, key.y + key.h));
 			vk.hit = QRectF(key.x, ht, key.w, hb - ht);
+			if (!key.parts.empty()) {
+				QPainterPath hp;
+				hp.addRect(vk.hit);
+				withParts(vk, key, hp, tr);
+				vk.fill = tr.map(vk.fill);
+			} else if (key.tilt != 0) {
+				// turned: its words with it
+				vk.hitPoly = tr.map(QPolygonF(vk.hit));
+				vk.hit = vk.hitPoly.boundingRect();
+				vk.fill = tr.map(vk.fill);
+			}
 			foreach(const Label& lab, key.labels) {
 				if (key.hasZx) break;		// the layout says what it is
 				if (lab.text.isEmpty()) continue;
@@ -807,14 +1044,29 @@ QPainterPath VkSkin::keyPath(const Key& key, double s, int dx, int dy, double ba
 	return roundPoly(offsetPoly(pts, dx, dy), rad);
 }
 
-// a key's contour as render() cuts it out, in the picture's pixels
-QPainterPath VkSkin::contourAt(const Key& key, double s) const {
+// one cap's contour in the picture's pixels, not turned
+QPainterPath VkSkin::contourOf(const Key& key, double s) const {
 	int olr = pxWidth(outLR, s);
 	int otb = pxWidth(outTB, s);
 	if (!key.outline.isEmpty() || key.hasCorner)
 		return keyPath(key, s, olr, otb, corner, std::max(outTB, outLR) * s);
 	QRect kb = keyBox(key, s);
 	return rrect(kb.x() - olr, kb.y() - otb, kb.width() + 2 * olr, kb.height() + 2 * otb, (corner + std::max(outTB, outLR)) * s);
+}
+
+// a key's contour as render() cuts it out, in the picture's pixels: its own and
+// its parts', each apart - QPainterPath's union drops slivers where edges meet
+QVector<QPainterPath> VkSkin::contoursAt(const Key& key, double s) const {
+	QVector<QPainterPath> res;
+	res.append(contourOf(key, s));
+	for (const Key& part : key.parts)
+		res.append(contourOf(part, s));
+	if (key.tilt != 0) {
+		QTransform tr = tiltPx(key, s);
+		for (QPainterPath& path : res)
+			path = tr.map(path);
+	}
+	return res;
 }
 
 // One shape of a dome in the picture's pixels: its box or outline, corners
@@ -861,24 +1113,41 @@ QPainterPath VkSkin::fillAt(int n, double s) const {
 	const Key& key = rows[keytab[n].row].keys[keytab[n].col];
 	int olr = pxWidth(outLR, s) + 1;
 	int otb = pxWidth(outTB, s) + 1;
-	if (!key.outline.isEmpty()) {
-		path = keyPath(key, s, olr, otb, corner, std::max(outTB, outLR) * s + 1);
-	} else {
-		path.addRect(QRectF(keyBox(key, s).adjusted(-olr, -otb, olr, otb)));
-	}
-	// The cutting is done on whole pixels: QPainterPath's own boolean ops lose the
-	// lot now and then where curved edges nearly meet, and the light went out at
-	// some window sizes. The window fills it without antialiasing anyway.
+	auto own = [&](const Key& k) {
+		if (!k.outline.isEmpty())
+			return keyPath(k, s, olr, otb, corner, std::max(outTB, outLR) * s + 1);
+		QPainterPath r;
+		r.addRect(QRectF(keyBox(k, s).adjusted(-olr, -otb, olr, otb)));
+		return r;
+	};
+	// The joining and cutting are done on whole pixels: QPainterPath's own boolean
+	// ops lose the lot now and then where curved edges nearly meet, and the light
+	// went out at some window sizes. The window fills it without antialiasing anyway.
+	path = own(key);
+	if (key.tilt != 0) path = tiltPx(key, s).map(path);
 	QRegion reg;
 	bool cut = false;
+	for (const Key& part : key.parts) {
+		if (part.unlit) continue;
+		QPainterPath pp = own(part);
+		if (key.tilt != 0) pp = tiltPx(key, s).map(pp);
+		if (!cut) reg = QRegion(path.toFillPolygon().toPolygon());
+		cut = true;
+		reg += QRegion(pp.toFillPolygon().toPolygon());
+	}
+	if (cut) {
+		path = QPainterPath();
+		path.addRegion(reg);
+	}
 	for (int i = 0; i < keytab.size(); i++) {
 		const Key& other = rows[keytab[i].row].keys[keytab[i].col];
 		if ((i == n) || !preset(other.shape)->contour) continue;
-		QPainterPath them = contourAt(other, s);
-		if (!path.intersects(them)) continue;
-		if (!cut) reg = QRegion(path.toFillPolygon().toPolygon());
-		cut = true;
-		reg -= QRegion(them.toFillPolygon().toPolygon());
+		foreach(const QPainterPath& them, contoursAt(other, s)) {
+			if (!path.intersects(them)) continue;
+			if (!cut) reg = QRegion(path.toFillPolygon().toPolygon());
+			cut = true;
+			reg -= QRegion(them.toFillPolygon().toPolygon());
+		}
 	}
 	if (!cut) return path;
 	QPainterPath out;
@@ -922,70 +1191,127 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 	p.setBrush(Qt::black);
 	foreach(const Row& row, rows) {
 		foreach(const Key& key, row.keys) {
-			if (preset(key.shape)->contour)
-				p.drawPath(contourAt(key, s));
+			if (preset(key.shape)->contour) {
+				foreach(const QPainterPath& path, contoursAt(key, s))
+					p.drawPath(path);
+			}
 		}
 	}
 	// the caps over them: the edge pixel is the cap's colour with what is left of
 	// its alpha, so a pressed key shows through exactly where the contour is
 	p.setCompositionMode(QPainter::CompositionMode_SourceOver);
-	foreach(const Row& row, rows) {
-		foreach(const Key& key, row.keys) {
-			const Preset* pr = preset(key.shape);
-			if (pr->fill == FILL_NONE) continue;
-			QRect kb = keyBox(key, s);
-			int ins = px(pr->inset);
-			QRectF body(kb.x() + ins, kb.y() + ins, kb.width() - 2 * ins, kb.height() - 2 * ins);
-			QPainterPath path;
-			if (shaped(key)) {
-				path = keyPath(key, s, -ins, -ins, pr->corner, -pr->inset * s);
-				body = path.boundingRect();
+	// one cap: its body, its sides, its dome
+	auto cap = [&](const Key& key) {
+		// lit, unless a part that stays as it is
+		bool klit = lit && !key.unlit;
+		const Preset* pr = preset(key.shape);
+		QRect kb = keyBox(key, s);
+		int ins = px(pr->inset);
+		QRectF body(kb.x() + ins, kb.y() + ins, kb.width() - 2 * ins, kb.height() - 2 * ins);
+		QPainterPath path;
+		if (shaped(key)) {
+			path = keyPath(key, s, -ins, -ins, pr->corner, -pr->inset * s);
+			body = path.boundingRect();
+		} else {
+			path = rrect(body.x(), body.y(), body.width(), body.height(), std::max(0.0, pr->corner - pr->inset) * s);
+		}
+		if (pr->fill == FILL_CAP) {
+			p.setBrush(gradAt(key.grad, body, s));
+		} else {
+			p.setBrush(Qt::white);
+		}
+		p.drawPath(path);
+		// the sides: a band inside the body's edge, a trapezoid along each edge
+		const Side& sd = key.side;
+		if (sd.on && (pr->fill == FILL_CAP)) {
+			QVector<QPointF> out;
+			if (key.outline.isEmpty()) {
+				out << body.topLeft() << body.topRight() << body.bottomRight() << body.bottomLeft();
 			} else {
-				path = rrect(body.x(), body.y(), body.width(), body.height(), std::max(0.0, pr->corner - pr->inset) * s);
+				out = offsetPoly(snapPoly(key.outline, s), -ins, -ins);
 			}
-			if (pr->fill == FILL_CAP) {
-				p.setBrush(gradAt(key.grad, body, s));
-			} else {
-				p.setBrush(Qt::white);
-			}
-			p.drawPath(path);
-			// the dome: its shapes, each cut flat at its top, joined, never off the cap
-			const Dome& dm = key.dome;
-			if (!dm.on || (pr->fill != FILL_CAP) || (!dm.fill.isValid() && dm.grad.stops.isEmpty())) {
-				// lit, a cap with no pad lights inside its own edge
-				if (lit && pr->contour) {
-					p.save();
-					p.setClipPath(path);
-					p.setBrush(Qt::NoBrush);
-					p.setPen(QPen(litCol, 2 * litW * s));
-					p.drawPath(path);
-					p.restore();
-				}
-				continue;
-			}
-			QPainterPath joined = domePart(key, dm.shape, s);
-			foreach(const DomePart& part, dm.more)
-				joined = joined.united(domePart(key, part, s));
-			QPainterPath dp = joined.intersected(path);
-			if (dp.isEmpty()) continue;
-			if (dm.fill.isValid()) {
-				p.setBrush(dm.fill);
-			} else {
-				p.setBrush(gradAt(dm.grad, joined.boundingRect(), s));
-			}
-			p.drawPath(dp);
-			// its edge: inside its rim and its cuts, where these are on the cap;
-			// lit, the light in its place
-			QColor ec = lit ? litCol : dm.edge;
-			double ew = lit ? litW : dm.ew;
-			if (ec.isValid() && (ew > 0)) {
+			if (isRectilinear(out)) {
+				QVector<QPointF> in = offsetPoly4(out, -fr(sd.w[0] * s), -fr(sd.w[1] * s), -fr(sd.w[2] * s), -fr(sd.w[3] * s));
 				p.save();
-				p.setClipPath(dp);
-				p.setBrush(Qt::NoBrush);
-				p.setPen(QPen(ec, 2 * ew * s));
-				p.drawPath(joined);
+				p.setClipPath(path);
+				for (int i = 0; i < out.size(); i++) {
+					int j = (i + 1) % out.size();
+					int f = edgeFaces(out, i);
+					QColor c = sd.fill[f];
+					if (!c.isValid() && (sd.shade[f] != 0))
+						c = (sd.shade[f] > 0) ? QColor(0, 0, 0, fr(sd.shade[f] * 255)) : QColor(255, 255, 255, fr(-sd.shade[f] * 255));
+					if (!c.isValid() || !c.alpha()) continue;
+					QPolygonF q;
+					q << out[i] << out[j] << in[j] << in[i];
+					p.setBrush(c);
+					p.drawPolygon(q);
+				}
 				p.restore();
 			}
+		}
+		// the dome: its shapes, each cut flat at its top, joined, never off the cap
+		const Dome& dm = key.dome;
+		if (!dm.on || (pr->fill != FILL_CAP) || (!dm.fill.isValid() && dm.grad.stops.isEmpty())) {
+			// lit, a cap with no pad lights inside its own edge
+			if (klit && pr->contour) {
+				p.save();
+				p.setClipPath(path);
+				p.setBrush(Qt::NoBrush);
+				p.setPen(QPen(litCol, 2 * litW * s));
+				p.drawPath(path);
+				p.restore();
+			}
+			return;
+		}
+		QPainterPath joined = domePart(key, dm.shape, s);
+		foreach(const DomePart& part, dm.more)
+			joined = joined.united(domePart(key, part, s));
+		QPainterPath dp = joined.intersected(path);
+		if (dp.isEmpty()) return;
+		if (dm.fill.isValid()) {
+			p.setBrush(dm.fill);
+		} else {
+			p.setBrush(gradAt(dm.grad, joined.boundingRect(), s));
+		}
+		p.drawPath(dp);
+		// its edge: inside its rim and its cuts, where these are on the cap;
+		// lit, the light in its place
+		QColor ec = klit ? litCol : dm.edge;
+		double ew = klit ? litW : dm.ew;
+		bool shaded = !klit &&!ec.isValid() && !dm.edgeGrad.stops.isEmpty();
+		if ((ec.isValid() || shaded) && (ew > 0)) {
+			p.save();
+			p.setClipPath(dp);
+			p.setBrush(Qt::NoBrush);
+			if (shaded) {
+				p.setPen(QPen(QBrush(gradAt(dm.edgeGrad, joined.boundingRect(), s)), 2 * ew * s));
+			} else {
+				p.setPen(QPen(ec, 2 * ew * s));
+			}
+			p.drawPath(joined);
+			p.restore();
+		}
+	};
+	// a key's cap and its parts' under it and over it
+	auto caps = [&](const Key& key) {
+		for (const Key& part : key.parts)
+			if (!part.over) cap(part);
+		cap(key);
+		for (const Key& part : key.parts)
+			if (part.over) cap(part);
+	};
+	foreach(const Row& row, rows) {
+		foreach(const Key& key, row.keys) {
+			if (preset(key.shape)->fill == FILL_NONE) continue;
+			if (key.tilt == 0) {
+				caps(key);
+				continue;
+			}
+			// a turned one: drawn as it is, the picture turned under it
+			p.save();
+			p.setTransform(tiltPx(key, s));
+			caps(key);
+			p.restore();
 		}
 	}
 	p.end();
@@ -993,6 +1319,16 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 	FT_Face face = keysFace();
 	foreach(const Row& row, rows) {
 		foreach(const Key& key, row.keys) {
+			// a turned key's words and icons drawn turned, each glyph by FreeType's own
+			// transform - a turned bitmap of them came out soft
+			bool klcd = lcd;
+			bool turned = (key.tilt != 0);
+			QTransform kt = turned ? tiltPx(key, s) : QTransform();
+			auto put = [&](const Mask& m, const QColor& col) {composite(img, m, col);};
+			auto place = [&](const QPainterPath& pp) {return turned ? kt.map(pp) : pp;};
+			// the same turn for FreeType, its y up
+			FT_Matrix ftm = {(FT_Fixed)std::lround(kt.m11() * 65536), (FT_Fixed)std::lround(-kt.m21() * 65536),
+			                 (FT_Fixed)std::lround(-kt.m12() * 65536), (FT_Fixed)std::lround(kt.m22() * 65536)};
 			QRect kb = keyBox(key, s);
 			QString kmode = key.sn.isEmpty() ? sn : key.sn;
 			double rx = snapTo((kb.left() + kb.left() + kb.width()) / 2.0 + key.ax * s, kmode);
@@ -1011,21 +1347,21 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 					if (ic.isLine) {
 						path.moveTo(ic.p1);
 						path.lineTo(ic.p2);
-						composite(img, iconMask(tr.map(path), (ic.sw > 0 ? ic.sw : 1) * s, true, true), lab.col);
+						put(iconMask(place(tr.map(path)), (ic.sw > 0 ? ic.sw : 1) * s, true, true), lab.col);
 					} else if (ic.isBox) {
 						path.addRect(ic.box);
 						foreach(QRectF c, ic.cuts)
 							path.addRect(c);
 						foreach(const QVector<QPointF>& c, ic.cutPolys)
 							path.addPolygon(QPolygonF(c)), path.closeSubpath();
-						composite(img, iconMask(tr.map(path), 0, false, false), lab.col);
+						put(iconMask(place(tr.map(path)), 0, false, false), lab.col);
 					} else {
 						foreach(const QVector<QPointF>& c, ic.polys) {
 							QPainterPath pp;
 							pp.setFillRule(Qt::OddEvenFill);
 							pp.addPolygon(QPolygonF(c));
 							pp.closeSubpath();
-							composite(img, iconMask(tr.map(pp), ic.sw * s, ic.sw > 0, false), lab.col);
+							put(iconMask(place(tr.map(pp)), ic.sw * s, ic.sw > 0, false), lab.col);
 						}
 					}
 					continue;
@@ -1065,27 +1401,34 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 				QVector<Glyph> gl;
 				for (int i = 0; i < gid.size(); i++) {
 					double gx = x + pos[i] * ppx / upem;
+					double gy = base;
+					if (turned) {
+						QPointF q = kt.map(QPointF(gx, gy));
+						gx = q.x();
+						gy = q.y();
+					}
 					int ix = (int)std::floor(gx);
-					FT_Vector delta = {(FT_Pos)std::lround((gx - ix) * 64), 0};
-					FT_Set_Transform(face, nullptr, &delta);
+					int iy = (int)std::floor(gy);
+					FT_Vector delta = {(FT_Pos)std::lround((gx - ix) * 64), (FT_Pos)std::lround(-(gy - iy) * 64)};
+					FT_Set_Transform(face, turned ? &ftm : nullptr, &delta);
 					// the font's own hinting on both paths; LIGHT would hand the glyph to the auto-hinter
-					if (FT_Load_Glyph(face, gid[i], (lcd ? FT_LOAD_TARGET_LCD : FT_LOAD_TARGET_NORMAL) | FT_LOAD_NO_AUTOHINT)) continue;
+					if (FT_Load_Glyph(face, gid[i], (klcd ? FT_LOAD_TARGET_LCD : FT_LOAD_TARGET_NORMAL) | FT_LOAD_NO_AUTOHINT)) continue;
 					if ((lab.ebx != 0) || (lab.eby != 0))
 						FT_Outline_EmboldenXY(&face->glyph->outline, std::lround(lab.ebx * s * 64), std::lround(lab.eby * s * 64));
-					if (FT_Render_Glyph(face->glyph, lcd ? FT_RENDER_MODE_LCD : FT_RENDER_MODE_NORMAL)) continue;
+					if (FT_Render_Glyph(face->glyph, klcd ? FT_RENDER_MODE_LCD : FT_RENDER_MODE_NORMAL)) continue;
 					const FT_Bitmap& bm = face->glyph->bitmap;
 					if (!bm.width || !bm.rows) continue;
 					Glyph g;
-					g.w = lcd ? bm.width / 3 : bm.width;
+					g.w = klcd ? bm.width / 3 : bm.width;
 					g.h = bm.rows;
 					g.x = ix + face->glyph->bitmap_left;
-					g.y = base - face->glyph->bitmap_top;
+					g.y = iy - face->glyph->bitmap_top;
 					g.c.resize(g.w * g.h * 3);
 					for (int yy = 0; yy < g.h; yy++) {
 						const uchar* s = bm.buffer + yy * bm.pitch;
 						uchar* d = g.c.data() + yy * g.w * 3;
 						for (int xx = 0; xx < g.w; xx++, d += 3) {
-							if (lcd) {
+							if (klcd) {
 								d[0] = s[xx * 3];
 								d[1] = s[xx * 3 + 1];
 								d[2] = s[xx * 3 + 2];
@@ -1115,7 +1458,7 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 							d[k] = 255 - (255 - d[k]) * (255 - s[k]) / 255;
 					}
 				}
-				composite(img, m, lab.col);
+				put(m, lab.col);
 			}
 		}
 	}

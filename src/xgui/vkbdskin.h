@@ -16,7 +16,11 @@
 #include <QRectF>
 #include <QSizeF>
 #include <QString>
+#include <QTransform>
 #include <QVector>
+
+#include <functional>
+#include <vector>
 
 struct VkKey {
 	QByteArray zx;		// the Spectrum keys it presses, as keyEntry::zxKey takes them; none for lettering
@@ -24,13 +28,16 @@ struct VkKey {
 	QRectF box;		// the key as drawn (an outline's bounds), in canvas units
 	QPainterPath fill;	// where its light goes on a stretched picture, in canvas units
 	QRectF hit;		// what a click on it takes: the key and its words
-	QPolygonF hitPoly;	// an outline key's contour: a click takes this, not hit
+	QPolygonF hitPoly;	// an outline or turned key's contour: a click takes this, not hit
 	int row, col;		// where it is in the layout
 };
 
 class VkSkin {
 	public:
-		bool load(const QByteArray& json, QString* err = nullptr);
+		// a layout with "base" is another one with its own fields over it: base
+		// gives that one's file by its name, empty for none
+		typedef std::function<QByteArray(const QString&)> BaseFile;
+		bool load(const QByteArray& json, QString* err = nullptr, BaseFile base = nullptr);
 		bool isNull() const {return rows.isEmpty();}
 		QSizeF canvas() const {return QSizeF(cw, ch);}
 		// what the window puts under the picture, so what the contours show
@@ -84,8 +91,18 @@ class VkSkin {
 			QVector<DomePart> more;		// shapes joined to it
 			Grad grad;			// its own gradient...
 			QColor fill;			// ...or one color
-			QColor edge;			// a line inside its rim, ew wide
+			QColor edge;			// a line inside its rim, ew wide...
+			Grad edgeGrad;			// ...or shaded along a gradient of its own
 			double ew = 0;
+		};
+		// the cap's sloped sides seen from above: a band inside its edge, w wide on
+		// each side, cut into four by the corners' diagonals, each darker or lighter
+		// than the cap, or of a color of its own
+		struct Side {
+			bool on = false;
+			double w[4] = {0, 0, 0, 0};	// left, top, right, bottom
+			double shade[4] = {0, 0, 0, 0};	// > 0 darker, < 0 lighter, 1 at most
+			QColor fill[4];			// over the shade when given
 		};
 		struct Key {
 			double x, y, w, h, ax, ay;	// an outline key: its bounds
@@ -97,7 +114,13 @@ class VkSkin {
 			bool hasCorner = false;		// ...or the preset's
 			Grad grad;			// the layout's, or its own
 			Dome dome;			// the layout's, or its own, or none
+			Side side;			// the layout's, its style's or its own
+			double tilt = 0;		// turned that many degrees clockwise about its middle
 			QVector<Label> labels;
+			// caps of the same key, under it or over it: a flat step, a strip glued on
+			std::vector<Key> parts;
+			bool over = false;		// a part: drawn over the key's own cap
+			bool unlit = false;		// a part: drawn the same when the key is lit
 		};
 		struct Band {
 			QColor col;
@@ -131,6 +154,8 @@ class VkSkin {
 		QString anchor, sn;
 		Grad grad;		// the caps'
 		Dome dome;		// on every cap, unless a key says otherwise
+		Side side;		// on every cap, unless a key says otherwise
+		QMap<QString, QJsonObject> styles;	// a key's cap fields by a name
 		double inset = 1, outLR = 0, outTB = 1, corner = 3;
 		double rbW = 11, rbSlope = -0.45, rbY0 = 0, rbY1 = 0;
 		QVector<Band> bands;
@@ -146,8 +171,13 @@ class VkSkin {
 		static QLinearGradient gradAt(const Grad& g, const QRectF& box, double s);
 		void readDome(const QJsonObject& o, Dome& d) const;
 		static void readDomePart(const QJsonObject& o, DomePart& p);
+		void readSide(const QJsonValue& v, Side& sd) const;
+		bool readCap(const QJsonObject& o, Key& key, QString& why) const;
+		static QTransform tiltAt(const Key& key, const QPointF& mid);
+		QTransform tiltPx(const Key& key, double s) const;
 		QPainterPath domePart(const Key& key, const DomePart& p, double s) const;
 		QRect keyBox(const Key& key, double s) const;
 		QPainterPath keyPath(const Key& key, double s, int dx, int dy, double base, double grow) const;
-		QPainterPath contourAt(const Key& key, double s) const;
+		QPainterPath contourOf(const Key& key, double s) const;
+		QVector<QPainterPath> contoursAt(const Key& key, double s) const;
 };
