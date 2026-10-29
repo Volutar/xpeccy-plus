@@ -11,6 +11,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **RZX playback sign**: while an RZX plays, a green triangle blinks next to RZX in the corner of the
+  picture. The Record Video and RZX Record buttons are drawn for the 24 px toolbar.
+
 - **Klava** in the Virtual Keyboard: the 58-key keyboard of many Spectrum clones (Delta-S,
   Profi, Scorpion and others), worn, with crooked, yellowed caps, or clean as Klava
   (Washed). By machine shows it on the clones. Skins of your own in the `vkbd` folder of
