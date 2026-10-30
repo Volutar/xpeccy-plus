@@ -1467,7 +1467,7 @@ void MainWin::paintGLView() {
 			glDisable(GL_SCISSOR_TEST);
 			glFlush();
 			top.endNativePainting();
-			top.drawImage(slot.topLeft(), osdImg[rec]);
+			drawSign(top, rec);
 			top.end();
 		}
 	}
@@ -1665,6 +1665,15 @@ QRect MainWin::modeSlot() {
 		MODE_ICON_W, MODE_ICON_W * 3 / 5);
 }
 
+// A sign is drawn at half its pixels on a 100 % screen. Unsmoothed, that took every
+// other pixel: slanted edges went ragged and a 1 px line came and went.
+void MainWin::drawSign(QPainter& pnt, int sign) {
+	pnt.save();
+	pnt.setRenderHint(QPainter::SmoothPixmapTransform, true);
+	pnt.drawImage(modeSlot().topLeft(), osdImg[sign]);
+	pnt.restore();
+}
+
 // the speed mode, VCR style
 int MainWin::speedOsd() {
 	if (conf.emu.pause)		// the one place a pause shows
@@ -1797,7 +1806,7 @@ void MainWin::drawIcons(QPainter& pnt) {
 	}
 	pnt.setOpacity(fade);
 	if (mode != osd_none)
-		pnt.drawImage(modeSlot().topLeft(), osdImg[mode]);
+		drawSign(pnt, mode);
 	// how far back a rewind has gone, under its sign, to the right like it and the
 	// same gap below it as to the edge
 	if (mode == osd_rewind) {

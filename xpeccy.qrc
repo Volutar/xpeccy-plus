@@ -228,6 +228,9 @@
         <file>images/time-ffwd8.png</file>
         <file>images/time-ffwd8-16.png</file>
         <file>images/time-ffwd8-24.png</file>
+        <file>images/time-ffwd16.png</file>
+        <file>images/time-ffwd16-16.png</file>
+        <file>images/time-ffwd16-24.png</file>
         <file>images/time-pause.png</file>
         <file>images/time-pause-16.png</file>
         <file>images/time-pause-24.png</file>
@@ -247,7 +250,11 @@
         <file>images/osd-time-pause.png</file>
         <file>images/osd-time-ffwd2.png</file>
         <file>images/osd-time-ffwd4.png</file>
+        <file>images/osd-time-ffwd6.png</file>
         <file>images/osd-time-ffwd8.png</file>
+        <file>images/osd-time-ffwd10.png</file>
+        <file>images/osd-time-ffwd12.png</file>
+        <file>images/osd-time-ffwd16.png</file>
         <file>images/osd-time-slow2.png</file>
         <file>images/osd-time-slow4.png</file>
         <file>images/osd-time-slow8.png</file>

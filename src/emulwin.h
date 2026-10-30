@@ -360,6 +360,7 @@ class MainWin : public QWidget {
 		void grabScreen();
 		void drawPicture();
 		QRect modeSlot();
+		void drawSign(QPainter&, int);
 		int speedOsd();
 		int recOsd();
 		void drawIcons(QPainter&);
