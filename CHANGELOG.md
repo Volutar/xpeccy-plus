@@ -82,6 +82,22 @@ before that point is upstream's history and is not repeated here.
 - **The virtual keyboard no longer leaves Caps Shift or Symbol Shift lit** after Backspace,
   an arrow or a punctuation key on the PC keyboard.
 
+- **A multi-load game finds its next part on a tape that has run out**: with Rewind at end,
+  a load through the ROM goes back to the block the game asks for, not to the start.
+  *(reported by Volutar)*
+
+- **A loader that borrows the ROM's edge routine loads with Auto play**: the tape no longer
+  stops halfway, and after the load it stays at the next level's block. *(reported by
+  Volutar)*
+
+- **Fast loading ends with the load**: a game that reads its keys from a table no longer keeps
+  the tape and fast mode running through a long last pause. *(reported by Volutar)*
+
+- **A snapshot taken with the tape run out opens with it run out**, instead of at the start.
+
+- **A two-sided game in one tape file finds side B**: a load through the ROM winds the tape on
+  past a block that cannot be the one it asks for. *(reported by Volutar)*
+
 ## 2026.8.2 - 2026-10-27
 
 ### Changed
