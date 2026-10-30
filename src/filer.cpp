@@ -807,8 +807,14 @@ static void szx_mount(Computer* comp, const QString& snap) {
 				if (replace_ok(comp, inf, 0) != ERR_OK) continue;
 				if (inf->load(comp, path.toLocal8Bit().data(), 0) != ERR_OK) continue;
 			}
-			if (m->block < comp->tape->blkCount)
+			if (m->block < comp->tape->blkCount) {
 				tapRewind(comp->tape, m->block);
+			} else if ((m->block == comp->tape->blkCount) && (m->block > 0)) {
+				// taken with the tape run out: it stays run out, for
+				// "Rewind at end" to wind back to the block a load asks for
+				tapRewind(comp->tape, m->block - 1);
+				tapNextBlock(comp->tape);
+			}
 		} else {
 			int drv = m->drive & 3;
 			Floppy* flp = comp->dif->flp[drv];

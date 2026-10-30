@@ -470,31 +470,70 @@ int tapPlay(Tape* tap) {
 	return tap_play(tap, 1);
 }
 
-// "Rewind at end": a tape read to its end goes back to the start the next time it
-// is asked for - under the Play button, and at the rom's load trap. Not at the end
-// itself, where autoplay would start it over for ever.
+// "Rewind at end": a tape read to its end goes back the next time it is asked
+// for - under the Play button and at the rom's load trap. Not at the end
+// itself, where autoplay would start it over for ever, and not for a loader the
+// detector hears: what it wants may be on the other side (Echelon's "rewind to
+// start of side 2" waits with its loader running).
+static int tap_at_end(Tape* tap) {
+	return tap->autorew && !tap->on && (tap->blkCount > 0) && (tap->block >= tap->blkCount);
+}
+
 int tap_rewind_at_end(Tape* tap) {
-	if (!tap->autorew || tap->on) return 0;
-	if ((tap->blkCount < 1) || (tap->block < tap->blkCount)) return 0;
+	if (!tap_at_end(tap)) return 0;
 	tapRewind(tap, 0);
 	return 1;
 }
 
-// A block with this flag byte and this many bytes of data is on the tape
-static int tap_holds_block(Tape* tap, int flag, int len) {
-	for (int i = 0; i < tap->blkCount; i++) {
-		TapeBlock* blk = &tap->blkData[i];
-		if (blk->hasBytes && (tapGetBlockSize(blk) == len) && (tapGetBlockByte(blk, 0) == flag))
-			return 1;
-	}
-	return 0;
+// A block with this flag byte and this many bytes of data
+static int tap_block_fits(TapeBlock* blk, int flag, int len) {
+	return blk->hasBytes && (tapGetBlockSize(blk) == len) && (tapGetBlockByte(blk, 0) == flag);
 }
 
-// "Rewind at end" for a load: only when the block it asks for is on the tape.
-// Basic's LOAD always finds one; a program's part on another tape (Saigon's) does not.
+// The first such block from this one on, -1: none
+static int tap_find_block(Tape* tap, int from, int flag, int len) {
+	for (int i = from; i < tap->blkCount; i++) {
+		if (tap_block_fits(&tap->blkData[i], flag, len))
+			return i;
+	}
+	return -1;
+}
+
+// "Rewind at end" for a load: back to the first block it can take, its flag and
+// its length - the block a rewound tape gives a loader that passes the others
+// by. Not to the start: a program's loader may fail on the first block with its
+// flag and reset (Narco Police asks for side B's level so, with block 0 a
+// header). Nothing when the block is not on the tape: a program's part on
+// another tape (Saigon's). Basic's LOAD always finds one, the first header.
 int tap_rewind_for(Tape* tap, int flag, int len) {
-	if ((tap->block < tap->blkCount) || !tap_holds_block(tap, flag, len)) return 0;
-	return tap_rewind_at_end(tap);
+	if (!tap_at_end(tap)) return 0;
+	int blk = tap_find_block(tap, 0, flag, len);
+	if (blk < 0) return 0;
+	tapRewind(tap, blk);
+	return 1;
+}
+
+// A load through the rom on a stopped tape whose next block cannot be the one it
+// asks for - another flag, or fewer bytes than asked - while one that is comes
+// further on: the tape is wound on to it, as a person winds a deck on to side B.
+// Narco Police's TAP holds both sides: "SIDE B" finds side A's shorter level 1
+// next and resets on it. A longer block stays: a loader may have the rom read
+// only its first bytes and read the rest itself (Chuckie Egg asks for 2 of 82,
+// with a block of 2 later on). Nothing when no block further on fits: the rom
+// reads on as it would.
+int tap_wind_on_for(Tape* tap, int flag, int len) {
+	if (tap->on) return 0;
+	int blk = tap->block;
+	while ((blk < tap->blkCount) && !tap->blkData[blk].hasBytes)
+		blk++;
+	if (blk >= tap->blkCount) return 0;
+	TapeBlock* cur = &tap->blkData[blk];
+	if ((tapGetBlockByte(cur, 0) == flag) && (tapGetBlockSize(cur) >= len)) return 0;
+	int to = tap_find_block(tap, blk + 1, flag, len);
+	if (to < 0) return 0;
+	xlog(XLG_TAPE, XLL_INFO, "wind on: a load asks for block %i, not %i", to, blk);
+	tapRewind(tap, to);
+	return 1;
 }
 
 // Play, as a person pressing the button: a tape sitting at its end starts over,
@@ -546,7 +585,12 @@ static int tap_pulse_ahead(Tape* tap) {
 // that scans the keys halfway through a load (Joe Blade 2), or a loader whose B
 // jumps between its ear tests (Speedlock), would otherwise stop the tape in the
 // middle of a pulse. The test for a loader's read is looser here than for a
-// start: a wrong stop costs a load, a wrong start only a play. A loader busy
+// start: a wrong stop costs a load, a wrong start only a play. But once a read
+// unlike a loader's has come, the loose test has to be met as a loader polls -
+// dozens of times in the frame, not a few: a game that reads its keys from a
+// table (Shadow Warriors) reads two of one half-row a few hundred T apart, the
+// table's byte counting down in D, and held the tape to the end of its last
+// pause, 48 s in fast mode. A loader busy
 // between blocks, or unpacking what it has read (DeciLoad with ZX0), reads
 // nothing, and is waited for. Basic between two LOADs does stop it, as in Fuse:
 // the pilot is kept for a loader that sits out the rom's second of LD-WAIT
@@ -566,13 +610,17 @@ void tapDetectLoader(Tape* tap, int tick, int pc, const unsigned char* regs, int
 		moved += (regs[i] != tap->detectRegs[i]);
 	int turn = (pc == tap->detectLastPc) && (moved == 1);
 	int idle = (pc == tap->detectLastPc) && !memcmp(regs + 1, tap->detectRegs + 1, 6);
+	int loose = (kind != TAPE_RD_KEYS) && (tickDiff <= 1000) && (step || !bDiff) && !idle;
 	tap->detectLastTick = tick;
 	tap->detectLastPc = pc;
 	memcpy(tap->detectRegs, regs, 7);
 	if (tap->rec) return;
 	if (tap->on) {
-		int loader = (kind == TAPE_RD_EDGE) || (kind == TAPE_RD_EAR)
-			|| ((kind != TAPE_RD_KEYS) && (tickDiff <= 1000) && (step || !bDiff) && !idle);
+		// once a read unlike a loader's has come, the loose test answers for
+		// the loader only when it is met as often as a loader polls
+		if (loose && tap->alien && (++tap->looseReads < TAPE_LOOSE_READS))
+			loose = 0;
+		int loader = (kind == TAPE_RD_EDGE) || (kind == TAPE_RD_EAR) || loose;
 		if (loader) {
 			tap->alien = 0;
 			tap->loaderReads++;		// fast loading's too: where the loader left
@@ -583,6 +631,7 @@ void tapDetectLoader(Tape* tap, int tick, int pc, const unsigned char* regs, int
 		} else if (!tap->alien) {
 			tap->alien = 1;
 			tap->detectAlien = tick;
+			tap->looseReads = 0;
 		} else if (tick - tap->detectAlien > TAPE_GONE_TICKS) {
 			xlog(XLG_TAPE, XLL_INFO, "auto stop: the tape port is read as no loader reads it");
 			tapStop(tap);

@@ -97,12 +97,23 @@ between blocks and at the end. A program that only reads the keyboard never star
 game that has loaded and waits for a key stops the tape too, even when the tape still has a
 long pause to play.
 
+When a program loads through the ROM's loading routine and the next block cannot be the one
+it asks for, the tape winds on to the block that is, as you would wind a deck on to side B.
+This needs **Auto play / stop** or **Flash loading** on.
+
 When you press **Stop**, it overrides **Auto play / stop**: the tape stays stopped until
 you press **Play**, rewind it, or put another tape in.
 
-**Rewind at end**: a tape that has played to its end starts again from the beginning on
-the next **Play**, or the next time a program loads. With this switch off, the tape stays
-at its end until you rewind it. It is on by default.
+**Rewind at end**: a tape that has played to its end goes back when it is needed again:
+
+- on the next **Play**, to the beginning;
+- when a program loads through the ROM's loading routine, to the first block that fits
+  what it loads - a multi-load game that asks for side B gets side B's block.
+
+A program's own loader does not wind the tape back: what it asks for may be on the other
+side.
+
+With this switch off, the tape stays at its end until you rewind it. It is on by default.
 
 The **Tape Rewind to Start** hotkey winds the tape back without opening the window:
 Shift+F4 (Modern).
