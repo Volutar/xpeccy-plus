@@ -20,6 +20,8 @@ Nothing else has to be installed. Machines, ROM images and settings come with th
 program, so it runs right away.
 
 **Windows.** Unpack the archive anywhere you can write to, and run `xpeccy-plus.exe`.
+Folder and file names may have any letters (Cyrillic, Greek, Chinese...) on Windows 10
+(version 1903 or later) and 11; on older Windows, the letters of the system's language.
 
 **Linux.** Allow the file to run (`chmod +x`, or the file's properties), then run it. It
 needs a distribution no older than Ubuntu 22.04 (glibc 2.35).
