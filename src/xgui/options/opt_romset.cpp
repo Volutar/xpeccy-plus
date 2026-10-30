@@ -9,14 +9,14 @@ std::string getRFText(QComboBox*);
 
 xRomsetEditor::xRomsetEditor(QWidget* par):QDialog(par) {
 	ui.setupUi(this);
-	ui.cbFile->setDir(conf.path.romDir.c_str());
+	ui.cbFile->setDir(QString::fromLocal8Bit(conf.path.romDir.c_str()));
 	connect(ui.rse_apply, SIGNAL(clicked()), this, SLOT(store()));
 	connect(ui.rse_cancel, SIGNAL(clicked()), this, SLOT(hide()));
 }
 
 void xRomsetEditor::edit(xRomFile f) {
 	xrf = f;
-	ui.cbFile->setCurrentFile(f.name.c_str());
+	ui.cbFile->setCurrentFile(QString::fromUtf8(f.name.c_str()));
 	ui.cbFoffset->setValue(f.foffset);
 	ui.cbFsize->setValue(f.fsize);
 	ui.cbRoffset->setValue(f.roffset);
@@ -24,7 +24,7 @@ void xRomsetEditor::edit(xRomFile f) {
 }
 
 void xRomsetEditor::store() {
-	xrf.name = std::string(ui.cbFile->currentFile().toLocal8Bit().data());
+	xrf.name = std::string(ui.cbFile->currentFile().toUtf8().data());
 	if (xrf.name.empty()) return;
 	xrf.foffset = ui.cbFoffset->value();
 	xrf.fsize = ui.cbFsize->value();
@@ -96,11 +96,11 @@ QVariant xRomsetModel::data(const QModelIndex& idx, int role) const {
 					break;
 				case 1:
 					if (row < rlsz) {
-						res = QString(rset->roms[row].name.c_str());
+						res = QString::fromUtf8(rset->roms[row].name.c_str());
 					} else if (row == rlsz) {
-						res = QString(rset->gsFile.c_str());
+						res = QString::fromUtf8(rset->gsFile.c_str());
 					} else if (row == rlsz+1) {
-						res = QString(rset->fntFile.c_str());
+						res = QString::fromUtf8(rset->fntFile.c_str());
 					}
 					break;
 				case 2:
@@ -113,7 +113,7 @@ QVariant xRomsetModel::data(const QModelIndex& idx, int role) const {
 						res = rset->roms[row].fsize;
 					} else {
 						buf = xm_rom_path(rset->roms[row].name);
-						inf.setFile(tr(buf.c_str()));
+						inf.setFile(QString::fromUtf8(buf.c_str()));
 						res = QString("( %0 )").arg(inf.size() >> 10);
 					}
 					break;

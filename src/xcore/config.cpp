@@ -832,8 +832,8 @@ void loadConfig() {
 	std::vector<xRomset> rsListist;
 	xRomset newrs;
 	xRomFile rfile;
-	size_t pos;
-	std::string tms,fnam;
+	std::string fnam;
+	std::vector<int> rnum;
 	int fprt;
 	newrs.fntFile.clear();
 	newrs.gsFile.clear();
@@ -1251,33 +1251,21 @@ void loadConfig() {
 					if (pnam=="shader") conf.vid.shader = pval;
 					break;
 				case SECT_ROMSETS:
-					pos = pval.find_last_of(":");
-					vect = splitstr(pval, ":");
-					if (pos != std::string::npos) {
-						fnam = std::string(pval,0,pos);
-						tms = std::string(pval,pos+1);
-						if (tms=="") {
-							fprt = 0;
-						} else {
-							fprt = atoi(tms.c_str());
-						}
-					} else {
-						fnam = pval;
-						fprt = 0;
-					}
+					// file:part, the numbers read from the end so a drive letter's
+					// colon stays in the name; rom names are kept in UTF-8
+					fnam = QString::fromLocal8Bit(split_tail_nums(pval, 1, rnum).c_str()).toUtf8().data();
+					fprt = rnum.empty() ? 0 : rnum[0];
 					if (pnam=="name") {
 						newrs.name = pval;
 						rsListist.push_back(newrs);
 					}
 					if (rsListist.size() != 0) {
-						if ((pnam == "rom") && (vect.size() > 0)) {
-							while (vect.size() < 4) {
-								vect.push_back("0");
-							}
-							rfile.name = vect[0];
-							rfile.foffset = atoi(vect[1].c_str());
-							rfile.fsize = atoi(vect[2].c_str());
-							rfile.roffset = atoi(vect[3].c_str());
+						if (pnam == "rom") {		// file:foffset:fsize:roffset
+							rfile.name = QString::fromLocal8Bit(split_tail_nums(pval, 3, rnum).c_str()).toUtf8().data();
+							while (rnum.size() < 3) rnum.push_back(0);
+							rfile.foffset = rnum[0];
+							rfile.fsize = rnum[1];
+							rfile.roffset = rnum[2];
 							rsListist.back().roms.push_back(rfile);
 						} else if (pnam=="file") {
 							rfile.name = fnam;

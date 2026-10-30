@@ -2622,7 +2622,7 @@ QString SetupWin::romSlotFileName(int slot) {
 			if (rf.roffset == slot * 16) res = rf.name;
 		}
 	}
-	return QString::fromLocal8Bit(res.c_str());
+	return QString::fromUtf8(res.c_str());		// rom names are UTF-8
 }
 
 void SetupWin::addRomSlot(int row, QString name, int slot, const QStringList& files, bool has, int from) {
@@ -2662,6 +2662,13 @@ void SetupWin::romSlotFile(QComboBox* box, int slot) {
 	QString file = QFileDialog::getOpenFileName(this, tr("ROM file"), dir,
 		tr("ROM images (*.rom *.bin);;All files (*)"));
 	if (file.isEmpty()) return;
+	QFile test(file);
+	if (!test.open(QFile::ReadOnly)) {
+		shitHappens(QString("Can't read that file:<br>%0")
+			.arg(QDir::toNativeSeparators(file).toHtmlEscaped()).toUtf8().constData());
+		return;
+	}
+	test.close();
 	QString rel = QDir(dir).relativeFilePath(file);
 	if (!rel.startsWith("..")) file = rel;	// under the rom directory
 	if (box->findData(file) < 0) box->insertItem(1, file, file);
@@ -2670,7 +2677,7 @@ void SetupWin::romSlotFile(QComboBox* box, int slot) {
 }
 
 void SetupWin::romSlotPick(int slot, const QString& file) {
-	std::string name = std::string(file.toLocal8Bit().data());
+	std::string name = std::string(file.toUtf8().data());
 	if (slot == RSLOT_GS) {
 		roms.gsFile = name;
 	} else if (slot == RSLOT_FONT) {
