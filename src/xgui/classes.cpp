@@ -451,19 +451,33 @@ QActionGroup* xMenuGroup(QMenu* menu, const char* name) {
 	return grp;
 }
 
-// as lines on a 9 x 9 grid, through the pixel centres: crisp at 100 %, scaled
-// with the painter at any other size
+// A picture for each scale, its pixels the screen's: images/web-mark-<px>.png,
+// white with the shape in alpha. A scale with none takes the next bigger one
+// scaled down.
 void xWebMark(QPainter* pnt, const QPoint& at, const QColor& col) {
-	static const int lines[][4] = {
-		{0, 2, 0, 8}, {0, 8, 6, 8}, {6, 8, 6, 5}, {0, 2, 3, 2},		// the box, open at the corner
-		{3, 5, 8, 0}, {5, 0, 8, 0}, {8, 0, 8, 3}			// the arrow out of it
-	};
-	pnt->save();
-	pnt->setRenderHint(QPainter::Antialiasing, pnt->device()->devicePixelRatioF() != 1.0);
-	pnt->setPen(QPen(col, 1, Qt::SolidLine, Qt::SquareCap));
-	for (const auto& l : lines)
-		pnt->drawLine(QPointF(at.x() + l[0] + 0.5, at.y() + l[1] + 0.5), QPointF(at.x() + l[2] + 0.5, at.y() + l[3] + 0.5));
-	pnt->restore();
+	static const int sizes[] = {10, 13, 15, 18, 20, 23, 25, 30};
+	qreal dpr = pnt->device()->devicePixelRatioF();
+	int px = qRound(WEBMARK * dpr);
+	int src = sizes[sizeof(sizes) / sizeof(sizes[0]) - 1];
+	for (int s : sizes) {
+		if (s >= px) {
+			src = s;
+			break;
+		}
+	}
+	QImage mask(QString(":/images/web-mark-%0.png").arg(src));
+	if (mask.isNull()) return;
+	if (src != px)
+		mask = mask.scaled(px, px, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+	QImage img(px, px, QImage::Format_ARGB32_Premultiplied);
+	img.fill(col);
+	QPainter ip(&img);
+	ip.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+	ip.drawImage(0, 0, mask);
+	ip.end();
+	img.setDevicePixelRatio(dpr);
+	// on whole pixels of the screen, at 125 or 150 % too
+	pnt->drawImage(QPointF(qRound(at.x() * dpr) / dpr, qRound(at.y() * dpr) / dpr), img);
 }
 
 xSideButton::xSideButton(QWidget* p):QPushButton(p) {}
