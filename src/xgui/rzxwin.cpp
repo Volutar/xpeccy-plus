@@ -88,7 +88,7 @@ void xRzxModel::fill(const rzxInfo* inf, double fps) {
 				QString res = QString("%0, %1").arg(QString::fromLatin1(blk->ext).trimmed().toUpper(),
 					rzx_machine_name(blk->hw));
 				if (blk->flags & 1)
-					res += QString(", file %0").arg(QString::fromLocal8Bit(blk->text));
+					res += QString(", file %0").arg(sys_8bit(blk->text));	// as the file holds it
 				if ((snapStart != 0) && (blk->flags & RZX_SNAP_MARK)) {
 					res = "bookmark: " + res;
 					snapMarks++;

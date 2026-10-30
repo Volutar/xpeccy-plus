@@ -89,7 +89,7 @@ QString xTapeCatModel::blockInfo(int row) const {
 		}
 	}
 	if (res.isEmpty())
-		res = QString::fromLocal8Bit(inf[row].text);
+		res = sys_8bit(inf[row].text);		// the image's own text, as it always looked
 	// the image stops the tape here itself, always or on a 48K
 	QString stop = inf[row].stopMark ? "stop the tape" : inf[row].stop48 ? "stop the tape on a 48K" : "";
 	if (!stop.isEmpty())

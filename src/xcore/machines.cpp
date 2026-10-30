@@ -157,12 +157,11 @@ static QList<xMacLine> mac_read(const QString& path) {
 		xlog(XLG_CONF, XLL_ERROR, "can't read machine %s", path.toLocal8Bit().data());
 		return res;
 	}
-	// UTF-8; a file an earlier build wrote is in the local code page, which a
+	// UTF-8; a file an earlier build wrote is in the system's code page, which a
 	// Qt 6 stream would read as UTF-8 and lose every letter outside ASCII
 	QByteArray raw = file.readAll();
 	if (raw.startsWith("\xEF\xBB\xBF")) raw.remove(0, 3);
-	QString txt = QString::fromUtf8(raw);
-	if (txt.toUtf8() != raw) txt = QString::fromLocal8Bit(raw);
+	QString txt = text_8bit(raw);
 	std::string sect;
 	xMacLine ln;
 	foreach(QString line, txt.split('\n')) {

@@ -251,6 +251,9 @@ static void write_header() {
 	put(QString("started %1").arg(QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss")));
 	put(QString("command line: %1").arg(QCoreApplication::arguments().join(' ')));
 	put(QString("host: %1").arg(host_line()));
+#ifdef _WIN32
+	put(QString("code page: %1 (system %2)").arg(GetACP()).arg(sys_codepage()));
+#endif
 	put(QString("qt: build %1, run %2").arg(QT_VERSION_STR).arg(qVersion()));
 	put(QString("sdl: %1").arg(sdl_line()));
 	put(QString("zlib: build %1").arg(ZLIB_VERSION));

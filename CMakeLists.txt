@@ -497,8 +497,9 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 		INSTALL_RPATH "@executable_path/../Frameworks"
 	)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	# icon + VERSIONINFO (product name and version in the exe properties)
+	# icon + VERSIONINFO (product name and version in the exe properties) + manifest
 	configure_file(${CMAKE_SOURCE_DIR}/xpeccy.rc.in ${CMAKE_BINARY_DIR}/xpeccy.rc @ONLY)
+	set_source_files_properties(${CMAKE_BINARY_DIR}/xpeccy.rc PROPERTIES OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/xpeccy.manifest)
 	add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${HEADERS} ${UIHEADERS} ${RESOURCES} ${MOCHEADERS} ${CMAKE_BINARY_DIR}/xpeccy.rc)
 endif()
 

@@ -15,6 +15,10 @@
 #include "fastload.h"
 #include "cheats.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 static const char* hexhalf = "0123456789ABCDEF";
 // static char hexbuf[5] = {'0','0','0','0',0x00};
 
@@ -247,6 +251,45 @@ std::string split_tail_nums(const std::string& val, int most, std::vector<int>& 
 		name.erase(pos);
 	}
 	return name;
+}
+
+// The code page Windows itself uses for 8-bit text. Under the UTF-8 manifest GetACP() is
+// 65001, but the system's own one is still what older builds and media wrote.
+#ifdef _WIN32
+unsigned int sys_codepage() {
+	static unsigned int cp = 0;
+	if (!cp) {
+		DWORD num = 0;
+		cp = GetLocaleInfoW(LOCALE_SYSTEM_DEFAULT, LOCALE_IDEFAULTANSICODEPAGE | LOCALE_RETURN_NUMBER,
+			(LPWSTR)&num, sizeof(num) / sizeof(WCHAR)) ? num : CP_ACP;
+	}
+	return cp;
+}
+#endif
+
+QString sys_8bit(const QByteArray& raw) {
+#ifdef _WIN32
+	if (raw.isEmpty()) return QString();
+	int len = MultiByteToWideChar(sys_codepage(), 0, raw.constData(), raw.size(), NULL, 0);
+	std::wstring wide(len, 0);
+	MultiByteToWideChar(sys_codepage(), 0, raw.constData(), raw.size(), &wide[0], len);
+	return QString::fromStdWString(wide);
+#else
+	return QString::fromLocal8Bit(raw);
+#endif
+}
+
+QString text_8bit(const QByteArray& raw) {
+	QString txt = QString::fromUtf8(raw);
+	return (txt.toUtf8() == raw) ? txt : sys_8bit(raw);
+}
+
+std::string local_8bit(const std::string& raw) {
+#ifdef _WIN32
+	if (GetACP() != sys_codepage())		// UTF-8 by the manifest: the two may differ
+		return text_8bit(QByteArray::fromStdString(raw)).toLocal8Bit().constData();
+#endif
+	return raw;
 }
 
 void ltrim(std::string& str) {
