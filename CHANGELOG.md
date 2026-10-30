@@ -78,6 +78,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **A Next card given with `--sdcard` is used**: with System/Next on it, the Next starts
+  from it and the SD card window no longer opens. A card without System/Next opens the window
+  on that card, saying why.
+
 - **The Debugger's dump shows the Next's own pages**: on the ZX Spectrum Next the RAM and
   ROM views show its 8K RAM pages and four ROMs, numbered as in MEMMAP; an edit or a
   breakpoint there lands on that byte. On every machine the page number stops at the last
