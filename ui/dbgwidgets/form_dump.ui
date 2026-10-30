@@ -79,9 +79,6 @@
           </property>
          </widget>
         </item>
-        <item>
-         <widget class="QComboBox" name="cbDumpPageSize"/>
-        </item>
        </layout>
       </widget>
      </item>

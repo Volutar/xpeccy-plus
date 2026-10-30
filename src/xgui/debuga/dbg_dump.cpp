@@ -37,46 +37,53 @@ QString getDumpString(QByteArray bts, int cp) {
 	return res;
 }
 
-// a byte of divMMC's RAM bank page: on its own board, or in the Next's RAM
-static unsigned char* dump_div_cell(Computer* comp, int page, int ofs, unsigned char** flag) {
-	int type, abs;
-	if (!comp_cell_xadr(comp, CELL_DIV, page, ofs & 0x1fff, &type, &abs)) return NULL;
-	if (type == MEM_DIV) {
-		if (!comp->div) return NULL;
-		*flag = comp->div->brkMap + abs;
-		return comp->div->data + abs;
+// the area a page view shows: its pages are the ones MEMMAP, labels and
+// breakpoints name (8K RAM pages on the Next), CELL_NONE for the CPU view
+static int dump_view_area(int mode) {
+	switch (mode) {
+		case XVIEW_RAM: return CELL_RAM;
+		case XVIEW_ROM: return CELL_ROM;
+		case XVIEW_DIV: return CELL_DIV;
 	}
-	if (type != MEM_RAM) return NULL;
-	*flag = comp->brkRamMap + (abs & comp->mem->ramMask);
-	return comp->mem->ramData + (abs & comp->mem->ramMask);
+	return CELL_NONE;
+}
+
+// the offset in a page of a view's address
+static int dump_page_ofs(Computer* comp, int area, int adr) {
+	return adr & (comp_cell_unit(comp, area) - 1);
+}
+
+// a byte of a page and its breakpoint flags, NULL: no such page
+static unsigned char* dump_cell(Computer* comp, int area, int page, int adr, unsigned char** flag) {
+	int type, abs;
+	if (!comp_cell_xadr(comp, area, page, dump_page_ofs(comp, area, adr), &type, &abs)) return NULL;
+	switch (type) {
+		case MEM_RAM:
+			abs &= comp->mem->ramMask;
+			*flag = comp->brkRamMap + abs;
+			return comp->mem->ramData + abs;
+		case MEM_ROM:
+			abs &= comp->mem->romMask;
+			*flag = comp->brkRomMap + abs;
+			return comp->mem->romData + abs;
+		case MEM_DIV:
+			if (!comp->div) return NULL;
+			*flag = comp->div->brkMap + abs;
+			return comp->div->data + abs;
+	}
+	return NULL;
 }
 
 int xDumpModel::mrd(int adr) const {
 	Computer* comp = conf.zx;
 	int res = 0xff;
-	switch(mode) {
-		case XVIEW_CPU:
-			res = comp_peek(comp, adr % maxadr, MEM_VIEW_READ, NULL);
-			res |= getBrk(comp, adr % maxadr) << 8;
-			break;
-		case XVIEW_RAM:
-			adr &= 0x3fff;
-			adr |= (page << 14);
-			res = comp->mem->ramData[adr & 0x3fffff];
-			res |= comp->brkRamMap[adr & 0x3fffff] << 8;
-			break;
-		case XVIEW_ROM:
-			adr &= 0x3fff;
-			adr |= (page << 14);
-			res = comp->mem->romData[adr & 0x7ffff];
-			res |= comp->brkRomMap[adr & 0x7ffff] << 8;
-			break;
-		case XVIEW_DIV: {
-			unsigned char* flag;
-			unsigned char* cell = dump_div_cell(comp, page, adr, &flag);
-			if (cell) res = *cell | (*flag << 8);
-			break;
-		}
+	if (mode == XVIEW_CPU) {
+		res = comp_peek(comp, adr % maxadr, MEM_VIEW_READ, NULL);
+		res |= getBrk(comp, adr % maxadr) << 8;
+	} else {
+		unsigned char* flag;
+		unsigned char* cell = dump_cell(comp, dump_view_area(mode), page, adr, &flag);
+		if (cell) res = *cell | (*flag << 8);
 	}
 	return res;
 }
@@ -84,25 +91,11 @@ int xDumpModel::mrd(int adr) const {
 void xDumpModel::mwr(int adr, unsigned char bt) {
 	Computer* comp = conf.zx;
 	rzx_rec_touch();
-	switch(mode) {
-		case XVIEW_CPU:
-			comp_poke(comp, adr, bt, conf.dbg.romwr);
-			break;
-		case XVIEW_RAM:
-			adr &= 0x3fff;
-			adr |= (page << 14);
-			comp->mem->ramData[adr & comp->mem->ramMask] = bt;
-			break;
-		case XVIEW_ROM:
-			if (conf.dbg.romwr)
-				comp->mem->romData[((adr & 0x3fff) | (page << 14)) & comp->mem->romMask] = bt;
-			break;
-		case XVIEW_DIV: {
-			unsigned char* flag;
-			unsigned char* cell = dump_div_cell(comp, page, adr, &flag);
-			if (cell) *cell = bt;
-			break;
-		}
+	if (mode == XVIEW_CPU) {
+		comp_poke(comp, adr, bt, conf.dbg.romwr);
+	} else {
+		int area = dump_view_area(mode);
+		comp_cell_poke(comp, area, page, dump_page_ofs(comp, area, adr), bt, conf.dbg.romwr);	// ROM: with Allow ROM wr only
 	}
 }
 
@@ -212,10 +205,8 @@ QVariant xDumpModel::data(const QModelIndex& idx, int role) const {
 			break;
 		case Qt::EditRole:
 			if (col == 0) {
-				if ((mode == XVIEW_RAM) || (mode == XVIEW_ROM))
-					adr &= 0x3fff;
-				else if (mode == XVIEW_DIV)
-					adr %= pgsize;
+				if (mode != XVIEW_CPU)
+					adr = dump_page_ofs(conf.zx, dump_view_area(mode), adr);
 				res = QString::number(adr, 16).toUpper();
 			} else if (col == 17) {
 				// no edit
@@ -624,19 +615,9 @@ xDumpWidget::xDumpWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
 	ui.cbDumpView->addItem("ROM", XVIEW_ROM);
 	ui.cbDumpView->addItem("DIV", XVIEW_DIV);
 	ui.cbDumpView->setItemData(3, "divMMC's RAM by 8K bank", Qt::ToolTipRole);
-	pageMax = ui.sbDumpPage->maximum();
 
 	ui.leDumpPageBase->setMin(0);
 	ui.leDumpPageBase->setMax(0xffff);
-	ui.cbDumpPageSize->addItem("256", MEM_256);
-	ui.cbDumpPageSize->addItem("512", MEM_512);
-	ui.cbDumpPageSize->addItem("1KB", MEM_1K);
-	ui.cbDumpPageSize->addItem("2KB", MEM_2K);
-	ui.cbDumpPageSize->addItem("4KB", MEM_4K);
-	ui.cbDumpPageSize->addItem("8KB", MEM_8K);
-	ui.cbDumpPageSize->addItem("16KB", MEM_16K);
-	ui.cbDumpPageSize->addItem("32KB", MEM_32K);
-	ui.cbDumpPageSize->addItem("64KB", MEM_64K);
 
 	cellMenu = new QMenu;
 	cellMenu->addAction(ui.actFetch);
@@ -650,7 +631,6 @@ xDumpWidget::xDumpWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
 	ui.dumpTable->setItemDelegate(xid_byte);
 	ui.dumpTable->setItemDelegateForColumn(0, xid_addr);
 	ui.dumpTable->setItemDelegateForColumn(17, xid_none);
-	ui.cbDumpPageSize->setCurrentIndex(6);	// 16K
 
 	connect(ui.dumpTable, &xDumpTable::customContextMenuRequested, this, &xDumpWidget::customMenu);
 	connect(cellMenu, &QMenu::triggered, this, &xDumpWidget::customMenuAction);
@@ -668,7 +648,6 @@ xDumpWidget::xDumpWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
 	connect(ui.cbDumpView, SIGNAL(currentIndexChanged(int)), this, SLOT(modeChanged()));
 	connect(ui.sbDumpPage, SIGNAL(valueChanged(int)), this, SLOT(refill()));
 	connect(ui.leDumpPageBase, &xHexSpin::valueChanged, this, &xDumpWidget::refill);
-	connect(ui.cbDumpPageSize, SIGNAL(currentIndexChanged(int)), this, SLOT(refill()));
 
 	ui.cbDumpView->setCurrentIndex(0);
 
@@ -689,22 +668,21 @@ void xDumpWidget::setLimit(int lim) {
 	ui.dumpScroll->setMaximum(lim - 1);
 }
 
-// On the Next the RAM and ROM views are 16K slices of its SRAM image, not its
-// pages: they name no area
 int xDumpWidget::viewArea(int* page) {
-	int next = conf.zx && (conf.zx->hw->id == HW_ZXNEXT);
 	*page = ui.sbDumpPage->value();
-	switch (getRFIData(ui.cbDumpView)) {
-		case XVIEW_RAM: return next ? CELL_NONE : CELL_RAM;
-		case XVIEW_ROM: return next ? CELL_NONE : CELL_ROM;
-		case XVIEW_DIV: return CELL_DIV;
-	}
-	return CELL_NONE;
+	return dump_view_area(getRFIData(ui.cbDumpView));
 }
 
 void xDumpWidget::customMenu() {
 	int adr = ui.dumpTable->getCurrentAdr();
-	unsigned char flag = getBrk(conf.zx, adr);
+	int mode = getRFIData(ui.cbDumpView);
+	unsigned char flag = 0;
+	if (mode == XVIEW_CPU) {
+		flag = getBrk(conf.zx, adr);
+	} else {
+		unsigned char* fp;		// the byte's own flags, not the CPU address's
+		if (dump_cell(conf.zx, dump_view_area(mode), ui.sbDumpPage->value(), adr, &fp)) flag = *fp;
+	}
 	ui.actFetch->setChecked(flag & MEM_BRK_FETCH);
 	ui.actRead->setChecked(flag & MEM_BRK_RD);
 	ui.actWrite->setChecked(flag & MEM_BRK_WR);
@@ -719,33 +697,25 @@ void xDumpWidget::customMenuAction(QAction* act) {
 	if (ui.actFetch->isChecked()) bt |= MEM_BRK_FETCH;
 	if (ui.actRead->isChecked()) bt |= MEM_BRK_RD;
 	if (ui.actWrite->isChecked()) bt |= MEM_BRK_WR;
-	switch (getRFIData(ui.cbDumpView)) {
-		case XVIEW_CPU:
-			{
-				int access = (bt & MEM_BRK_FETCH) ? MEM_VIEW_FETCH
-					: ((bt & MEM_BRK_WR) ? MEM_VIEW_WRITE : MEM_VIEW_READ);
-				xadr = comp_get_xadr(conf.zx, adr, access);
-			}
-			switch(xadr.type) {
-				case MEM_RAM: emit s_brkrq(BRK_MEMRAM, bt, xadr.abs); break;
-				case MEM_ROM: emit s_brkrq(BRK_MEMROM, bt, xadr.abs); break;
-				case MEM_DIV: emit s_brkrq(BRK_MEMDIV, bt, xadr.abs % (DIV_EE_SIZE + DIV_RAM_MAX)); break;
-				case MEM_EXT: emit s_brkrq(BRK_MEMEXT, bt, xadr.abs); break;
-			}
-			break;
-		case XVIEW_ROM: emit s_brkrq(BRK_MEMROM, bt, (adr & 0x3fff) | (ui.sbDumpPage->value() << 14)); break;
-		case XVIEW_RAM: emit s_brkrq(BRK_MEMRAM, bt, (adr & 0x3fff) | (ui.sbDumpPage->value() << 14)); break;
-		case XVIEW_DIV: {
-			int type, abs;
-			if (!comp_cell_xadr(conf.zx, CELL_DIV, ui.sbDumpPage->value(), adr & 0x1fff, &type, &abs)) break;
-			emit s_brkrq((type == MEM_DIV) ? BRK_MEMDIV : BRK_MEMRAM, bt, abs);
-			break;
-		}
+	int mode = getRFIData(ui.cbDumpView);
+	if (mode == XVIEW_CPU) {
+		int access = (bt & MEM_BRK_FETCH) ? MEM_VIEW_FETCH
+			: ((bt & MEM_BRK_WR) ? MEM_VIEW_WRITE : MEM_VIEW_READ);
+		xadr = comp_get_xadr(conf.zx, adr, access);
+	} else {
+		// the cell the page names: on the Next a ROM page is in its SRAM too
+		int area = dump_view_area(mode);
+		if (!comp_cell_xadr(conf.zx, area, ui.sbDumpPage->value(), dump_page_ofs(conf.zx, area, adr), &xadr.type, &xadr.abs)) return;
+	}
+	switch(xadr.type) {
+		case MEM_RAM: emit s_brkrq(BRK_MEMRAM, bt, xadr.abs); break;
+		case MEM_ROM: emit s_brkrq(BRK_MEMROM, bt, xadr.abs); break;
+		case MEM_DIV: emit s_brkrq(BRK_MEMDIV, bt, xadr.abs % (DIV_EE_SIZE + DIV_RAM_MAX)); break;
+		case MEM_EXT: emit s_brkrq(BRK_MEMEXT, bt, xadr.abs); break;
 	}
 }
 
-void xDumpWidget::draw() {
-	ui.dumpTable->update();
+void xDumpWidget::draw() {	ui.dumpTable->update();
 	refill();
 }
 
@@ -766,9 +736,6 @@ void xDumpWidget::bytes_changed() {
 
 void xDumpWidget::modeChanged() {
 	int mode = getRFIData(ui.cbDumpView);
-	// DIV counts the banks the board has; the others keep the spinner's own limit
-	int pages = comp_cell_pages(conf.zx, CELL_DIV);
-	ui.sbDumpPage->setMaximum(((mode == XVIEW_DIV) && (pages > 0)) ? (pages - 1) : pageMax);
 	switch(mode) {
 		case XVIEW_CPU: refill(); break;
 		case XVIEW_ROM:
@@ -785,18 +752,18 @@ void xDumpWidget::modeChanged() {
 
 void xDumpWidget::refill() {
 	int mode = getRFIData(ui.cbDumpView);
+	int area = dump_view_area(mode);
+	if (area != CELL_NONE) {
+		// as many pages as the machine has now, which a machine change may have changed
+		int pages = comp_cell_pages(conf.zx, area);
+		QSignalBlocker block(ui.sbDumpPage);
+		ui.sbDumpPage->setMaximum((pages > 0) ? (pages - 1) : 0);
+	}
 	int page = ui.sbDumpPage->value();
 	int pbase = ui.leDumpPageBase->getValue();
-	int psize;
-	if (mode == XVIEW_CPU) {
-		psize = MEM_64K;
-	} else if (mode == XVIEW_DIV) {
-		psize = MEM_8K;		// its banks are 8K, whatever the size box says
-	} else {
-		psize = getRFIData(ui.cbDumpPageSize);
-	}
+	// a page view is as long as its page: 16K, 8K for the Next's RAM and divMMC's
+	int psize = (area == CELL_NONE) ? MEM_64K : comp_cell_unit(conf.zx, area);
 	ui.widDumpPage->setDisabled(mode == XVIEW_CPU);
-	ui.cbDumpPageSize->setDisabled(mode == XVIEW_DIV);
 	ui.dumpTable->setMode(mode, page, pbase, psize);
 	ui.dumpScroll->setMaximum(psize-1);
 	ui.dumpTable->setLimit(psize);
