@@ -74,6 +74,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **A ROM file picked from any folder loads**: a path with a drive letter, or with Cyrillic
+  or other letters, is kept whole and survives a restart, and a ROM file that cannot be read
+  is reported instead of leaving its bank silently empty. *(reported by AlexZor)*
+
 - **The signs in the corner of the picture are smooth** on a 100 % screen: their slanted
   edges and letters are no longer ragged. *(reported by Volutar)*
 

@@ -231,6 +231,24 @@ std::vector<std::string> splitstr(std::string str,const char* spl) {
 
 }
 
+// "name:12:34" -> the name, and at most `most` numbers from its end. Only fields
+// that are all digits count, so the colon of a drive letter, or one inside a
+// file name, stays in the name. An empty field counts as 0, as it always did.
+
+std::string split_tail_nums(const std::string& val, int most, std::vector<int>& nums) {
+	std::string name = val;
+	nums.clear();
+	while ((int)nums.size() < most) {
+		size_t pos = name.rfind(':');
+		if (pos == std::string::npos) break;
+		std::string fld = name.substr(pos + 1);
+		if (fld.find_first_not_of("0123456789") != std::string::npos) break;
+		nums.insert(nums.begin(), atoi(fld.c_str()));
+		name.erase(pos);
+	}
+	return name;
+}
+
 void ltrim(std::string& str) {
 	size_t pos;
 	pos = str.find_first_not_of(' ');

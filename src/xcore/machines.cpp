@@ -6,7 +6,8 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QFile>
-#include <QTextStream>
+#include <QTimer>
+#include <QCoreApplication>
 #include <QRegularExpression>
 
 #include "xcore.h"
@@ -53,6 +54,10 @@ static QString xm_user_path(const std::string& id) {
 
 // one key of one file, kept as read so inherit can be resolved before any of
 // it is applied
+
+// a value is in the local code page, as the rest of the program has it, but in
+// [rom] it is UTF-8: a ROM is opened by its UTF-8 name (rom_open), so a path
+// with letters the code page has not still reaches the file
 
 typedef struct {
 	std::string sect;
@@ -152,18 +157,23 @@ static QList<xMacLine> mac_read(const QString& path) {
 		xlog(XLG_CONF, XLL_ERROR, "can't read machine %s", path.toLocal8Bit().data());
 		return res;
 	}
-	QTextStream stream(&file);
+	// UTF-8; a file an earlier build wrote is in the local code page, which a
+	// Qt 6 stream would read as UTF-8 and lose every letter outside ASCII
+	QByteArray raw = file.readAll();
+	if (raw.startsWith("\xEF\xBB\xBF")) raw.remove(0, 3);
+	QString txt = QString::fromUtf8(raw);
+	if (txt.toUtf8() != raw) txt = QString::fromLocal8Bit(raw);
 	std::string sect;
 	xMacLine ln;
-	while (!stream.atEnd()) {
-		QString line = stream.readLine().section('#', 0, 0).section(';', 0, 0).trimmed();
+	foreach(QString line, txt.split('\n')) {
+		line = line.section('#', 0, 0).section(';', 0, 0).trimmed();
 		if (line.isEmpty()) continue;
 		if (line.startsWith('[')) {
 			sect = line.mid(1, line.indexOf(']') - 1).trimmed().toLower().toLocal8Bit().data();
 			continue;
 		}
 		if (!line.contains('=')) continue;
-		std::pair<std::string,std::string> spl = splitline(line.toLocal8Bit().data());
+		std::pair<std::string,std::string> spl = splitline((sect == "rom") ? line.toUtf8().data() : line.toLocal8Bit().data());
 		ln.sect = sect;
 		ln.name = spl.first;
 		ln.val = spl.second;
@@ -174,14 +184,11 @@ static QList<xMacLine> mac_read(const QString& path) {
 
 // rom
 
-// file[:foffset[:fsize]], both in KB, 0 size = as far as the file reaches
-
 // an empty file name empties the bank, which is how a child or the user says
 // "there is nothing here" over a set that has something
 
-static void mac_rom_add(QList<xRomFile>& roms, const std::string& val, int bank) {
-	std::vector<std::string> part = splitstr(val, ":");
-	if (part.empty() || part[0].empty()) {
+static void mac_rom_put(QList<xRomFile>& roms, const std::string& name, int foff, int fsize, int bank) {
+	if (name.empty()) {
 		for (int i = 0; i < roms.size(); i++) {
 			if (roms[i].roffset == bank * 16) {
 				roms.removeAt(i);
@@ -191,9 +198,9 @@ static void mac_rom_add(QList<xRomFile>& roms, const std::string& val, int bank)
 		return;
 	}
 	xRomFile rom;
-	rom.name = part[0];
-	rom.foffset = (part.size() > 1) ? atoi(part[1].c_str()) : 0;
-	rom.fsize = (part.size() > 2) ? atoi(part[2].c_str()) : 0;
+	rom.name = name;
+	rom.foffset = foff;
+	rom.fsize = fsize;
 	rom.roffset = bank * 16;
 	for (int i = 0; i < roms.size(); i++) {
 		if (roms[i].roffset == rom.roffset) {
@@ -202,6 +209,16 @@ static void mac_rom_add(QList<xRomFile>& roms, const std::string& val, int bank)
 		}
 	}
 	roms << rom;
+}
+
+// file[:foffset[:fsize]], both in KB, 0 size = as far as the file reaches. The
+// numbers are read from the end, so a path with colons in it (C:/roms/x.rom) is
+// a name.
+
+static void mac_rom_add(QList<xRomFile>& roms, const std::string& val, int bank) {
+	std::vector<int> num;
+	std::string name = split_tail_nums(val, 2, num);
+	mac_rom_put(roms, name, (num.size() > 0) ? num[0] : 0, (num.size() > 1) ? num[1] : 0, bank);
 }
 
 // where a key of the flat block goes in a definition file: its section,
@@ -753,12 +770,37 @@ void xm_save_nvram() {
 // romset
 
 // a rom the user picked can be anywhere; the ones a machine names are
-// relative to the rom directory
+// relative to the rom directory. Names and the path are UTF-8.
 
 std::string xm_rom_path(const std::string& name) {
 	if (name.empty()) return name;
-	if (QDir::isAbsolutePath(QString::fromLocal8Bit(name.c_str()))) return name;
-	return conf.path.romDir + SLASH + name;
+	if (QDir::isAbsolutePath(QString::fromUtf8(name.c_str()))) return name;
+	return std::string(QString::fromLocal8Bit(conf.path.romDir.c_str()).toUtf8().data()) + SLASH + name;
+}
+
+static FILE* rom_open(const std::string& path) {
+#ifdef _WIN32
+	return _wfopen(QString::fromUtf8(path.c_str()).toStdWString().c_str(), L"rb");
+#else
+	return fopen(QFile::encodeName(QString::fromUtf8(path.c_str())).constData(), "rb");
+#endif
+}
+
+// the files the last load could not open, as "ROM 0: path" - said to the user
+// once the event loop has them, so never under the emulation lock
+
+static QStringList romMissing;
+
+static void mac_rom_missing(const QString& slot, const std::string& path) {
+	romMissing << QString("%0: %1").arg(slot, QDir::toNativeSeparators(QString::fromUtf8(path.c_str())));
+}
+
+static void mac_rom_warn() {
+	if (romMissing.isEmpty()) return;
+	QString msg = "These ROM files could not be read, the machine runs without them:";
+	foreach(QString ln, romMissing) msg += "<br>" + ln.toHtmlEscaped();
+	romMissing.clear();
+	shitHappens(msg.toUtf8().constData());
 }
 
 static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std::string& gsf, const std::string& fntf, bool withfnt) {
@@ -768,13 +810,15 @@ static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std:
 	FILE* file;
 	memset(comp->mem->romData, 0xff, MEM_512K);
 	comp->romCustom = 0;
+	romMissing.clear();
 	foreach(xRomFile xrf, roms) {
 		int foff = xrf.foffset * 1024;
 		int roff = xrf.roffset * 1024;
 		fpath = xm_rom_path(xrf.name);
-		file = fopen(fpath.c_str(), "rb");
+		file = rom_open(fpath);
 		if (!file) {
 			xlog(XLG_CONF, XLL_ERROR, "can't load ROM file '%s'", fpath.c_str());
+			mac_rom_missing(QString("ROM %0").arg(xrf.roffset / 16), fpath);
 			continue;
 		}
 		if (xrf.fsize <= 0) {			// no size given: as far as the file reaches
@@ -804,13 +848,14 @@ static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std:
 		memset((char*)comp->gs->mem->romData, 0xff, MEM_32K);
 	} else {
 		fpath = xm_rom_path(gsf);
-		file = fopen(fpath.c_str(), "rb");
+		file = rom_open(fpath);
 		if (file) {
 			if (fread(comp->gs->mem->romData, MEM_32K, 1, file) != 1)
 				xlog(XLG_CONF, XLL_WARN, "short read from '%s'", fpath.c_str());
 			fclose(file);
 		} else {
 			xlog(XLG_CONF, XLL_ERROR, "can't load GS ROM '%s'", fpath.c_str());
+			mac_rom_missing("General Sound", fpath);
 			memset((char*)comp->gs->mem->romData, 0xff, MEM_32K);
 		}
 	}
@@ -819,7 +864,18 @@ static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std:
 			vid_fnt_del(comp->vid);
 		} else {
 			fpath = xm_rom_path(fntf);
-			vid_fnt_load(comp->vid, fpath.c_str());
+			file = rom_open(fpath);
+			if (file) {			// vid_fnt_load, by the UTF-8 name
+				fseek(file, 0, SEEK_END);
+				comp->vid->font.size = ftell(file);
+				fseek(file, 0, SEEK_SET);
+				comp->vid->font.data = (unsigned char*)realloc(comp->vid->font.data, comp->vid->font.size);
+				comp->vid->font.size = (int)fread(comp->vid->font.data, 1, comp->vid->font.size, file);
+				fclose(file);
+			} else {
+				xlog(XLG_CONF, XLL_ERROR, "can't load font '%s'", fpath.c_str());
+				mac_rom_missing("Font", fpath);
+			}
 		}
 	}
 }
@@ -827,7 +883,7 @@ static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std:
 // one bank of a set, by the same rule the definitions use: no name empties it
 
 void xm_rom_set_file(xRomset& rs, int bank, const std::string& name) {
-	mac_rom_add(rs.roms, name, bank);
+	mac_rom_put(rs.roms, name, 0, 0, bank);		// a file name, not file:offset:size
 }
 
 // how far a rom file reaches, in 16K banks
@@ -835,7 +891,7 @@ void xm_rom_set_file(xRomset& rs, int bank, const std::string& name) {
 static int rom_file_banks(const xRomFile& rf) {
 	int size = rf.fsize * 1024;
 	if (size <= 0) {
-		QFileInfo inf(QString::fromLocal8Bit(xm_rom_path(rf.name).c_str()));
+		QFileInfo inf(QString::fromUtf8(xm_rom_path(rf.name).c_str()));
 		size = inf.size() - rf.foffset * 1024;
 	}
 	return (size + MEM_16K - 1) / MEM_16K;
@@ -902,6 +958,8 @@ void xm_set_roms(const xRomset& rs, bool poweron) {
 	Computer* comp = conf.zx;
 	mac_load_rom(comp, rs.roms, rs.gsFile, rs.fntFile, withfnt);
 	emu_unlock();
+	if (!romMissing.isEmpty())
+		QTimer::singleShot(0, QCoreApplication::instance(), mac_rom_warn);
 }
 
 // What differs from the machine as it ships, as the lines of its file. The key
@@ -935,11 +993,13 @@ static void mac_put_roms(QList<xMacLine>& out, const xMachine* base) {
 		bool same = (i < def.roms.size()) && (def.roms[i].name == rf.name)
 			&& (def.roms[i].foffset == rf.foffset) && (def.roms[i].fsize == rf.fsize);
 		if (same) continue;
-		QString val = QString::fromLocal8Bit(rf.name.c_str());
-		if (rf.foffset || rf.fsize)
+		QString val = QString::fromUtf8(rf.name.c_str());
+		// a name with a colon of its own gets both numbers, so that one ending in
+		// :digits is never read back as an offset
+		if (rf.foffset || rf.fsize || val.contains(':'))
 			val += QString(":%1:%2").arg(rf.foffset).arg(rf.fsize);
 		out << mac_line_of_key(QString("rom%1").arg(rf.roffset / 16),
-			std::string(val.toLocal8Bit().data()));
+			std::string(val.toUtf8().data()));
 	}
 	foreach(xRomFile rf, def.roms) {		// a bank the user emptied
 		int i = 0;
@@ -1392,7 +1452,7 @@ static int mac_write(const std::string& id, const QList<xMacLine>& lines) {
 	foreach(const xMacLine& ln, lines) {
 		part[QString::fromLocal8Bit(ln.sect.c_str())] << QString("%1 = %2")
 			.arg(QString::fromLocal8Bit(ln.name.c_str()))
-			.arg(QString::fromLocal8Bit(ln.val.c_str()));
+			.arg((ln.sect == "rom") ? QString::fromUtf8(ln.val.c_str()) : QString::fromLocal8Bit(ln.val.c_str()));
 	}
 	const char* sect[] = {"machine", "video", "sound", "storage", "input", "rom", NULL};
 	for (int i = 0; sect[i]; i++) {
@@ -1402,7 +1462,7 @@ static int mac_write(const std::string& id, const QList<xMacLine>& lines) {
 		out << part.value(sect[i]);
 	}
 	out << "";
-	QByteArray txt = out.join("\n").toLocal8Bit();
+	QByteArray txt = out.join("\n").toUtf8();
 	QFile file(xm_user_path(id));
 	if (file.open(QFile::ReadOnly) && (file.readAll() == txt)) return MACW_SAME;
 	file.close();
@@ -1510,8 +1570,11 @@ void xm_over_migrate() {
 			continue;
 		}
 		QList<xMacLine> lines = macUsr.value(qid).lines;
-		foreach(const xMacOver::value_type& kv, ov)
-			mac_line_set(lines, mac_line_of_key(QString::fromLocal8Bit(kv.first.c_str()), kv.second));
+		foreach(const xMacOver::value_type& kv, ov) {
+			xMacLine ln = mac_line_of_key(QString::fromLocal8Bit(kv.first.c_str()), kv.second);
+			if (ln.sect == "rom") ln.val = QString::fromLocal8Bit(kv.second.c_str()).toUtf8().data();
+			mac_line_set(lines, ln);
+		}
 		if (mac_write(id, lines) == MACW_WROTE) done++;
 	}
 	macOver.clear();

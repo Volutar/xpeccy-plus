@@ -100,6 +100,7 @@ int getRanged(const char*, int, int);
 void setFlagBit(bool, int*, int);
 bool str2bool(std::string);
 std::vector<std::string> splitstr(std::string,const char*);
+std::string split_tail_nums(const std::string&, int, std::vector<int>&);
 std::pair<std::string,std::string> splitline(std::string, char = '=');
 void copyFile(const char*, const char*);
 
