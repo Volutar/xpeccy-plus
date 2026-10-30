@@ -52,8 +52,10 @@ program makes a card from the official release when the Next needs one.
 ![The ZX Spectrum Next SD Card window](images/next-sd-card.png)
 
 The **ZX Spectrum Next SD Card** window opens by itself when the Next has no card to start
-from: the first time, or when its card was moved, deleted or has no System/Next on it. Its
-first line then says which. **Media > SD Card > System/Next Card...** opens it at any time.
+from: the first time, or when its card was moved, deleted or has no System/Next on it. A
+card of yours in the slot without System/Next, with no card of the Next's own, opens it on
+your card. Its first line then says which. **Media > SD Card > System/Next Card...** opens
+it at any time.
 
 | Field | What it sets |
 |---|---|
