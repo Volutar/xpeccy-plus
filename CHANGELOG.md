@@ -74,6 +74,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **Files and folders with any letters in their names** (Cyrillic, Greek, Chinese...) open
+  and save on Windows 10 and 11, from the menus, the command line and a double-click, and
+  the program runs from such a folder. Older Windows: the letters of the system's language,
+  as before.
+
 - **A ROM file picked from any folder loads**: a path with a drive letter, or with Cyrillic
   or other letters, is kept whole and survives a restart, and a ROM file that cannot be read
   is reported instead of leaving its bank silently empty. *(reported by AlexZor)*
