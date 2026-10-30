@@ -26,3 +26,4 @@ cells by area and page: ok
 divMMC cell breakpoint: ok
 divMMC entry point on the PC row: ok
 long prefix chain: ok
+dump by area and page: ok

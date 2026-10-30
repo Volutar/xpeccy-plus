@@ -11,6 +11,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Dumps of any memory page**: the Debugger's Save dump and Load dump take a source - the
+  CPU's 64K as before, or a RAM, ROM, divMMC or Multiface page, paged in or not, and the
+  pages after it. *(requested by AlexZor)*
+
 - **Faster and Slower**: Shift+Num++ and Shift+Num+- step the whole machine through 1/8, 1/4,
   1/2, normal speed, x2, x4, x8 and x16, with its sign in the corner. Fast Forward goes up to
   x16. The Overclock slider and its keys, Overclock Up and Overclock Down (Alt+Num++ and

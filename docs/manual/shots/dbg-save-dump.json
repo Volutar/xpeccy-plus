@@ -1,4 +1,8 @@
 {
+  "args": [
+    "-m",
+    "zx128"
+  ],
   "steps": [
     [
       "wait",
@@ -27,6 +31,22 @@
     [
       "wait",
       1200
+    ],
+    [
+      "run",
+      "set-value cbSource RAM"
+    ],
+    [
+      "wait",
+      300
+    ],
+    [
+      "run",
+      "set-value sbPage 7"
+    ],
+    [
+      "wait",
+      500
     ]
   ]
 }

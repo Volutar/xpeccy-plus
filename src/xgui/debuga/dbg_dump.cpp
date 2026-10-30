@@ -689,6 +689,19 @@ void xDumpWidget::setLimit(int lim) {
 	ui.dumpScroll->setMaximum(lim - 1);
 }
 
+// On the Next the RAM and ROM views are 16K slices of its SRAM image, not its
+// pages: they name no area
+int xDumpWidget::viewArea(int* page) {
+	int next = conf.zx && (conf.zx->hw->id == HW_ZXNEXT);
+	*page = ui.sbDumpPage->value();
+	switch (getRFIData(ui.cbDumpView)) {
+		case XVIEW_RAM: return next ? CELL_NONE : CELL_RAM;
+		case XVIEW_ROM: return next ? CELL_NONE : CELL_ROM;
+		case XVIEW_DIV: return CELL_DIV;
+	}
+	return CELL_NONE;
+}
+
 void xDumpWidget::customMenu() {
 	int adr = ui.dumpTable->getCurrentAdr();
 	unsigned char flag = getBrk(conf.zx, adr);

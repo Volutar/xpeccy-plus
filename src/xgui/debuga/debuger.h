@@ -162,6 +162,11 @@ class DebugWin : public QMainWindow {
 		QDialog* openDumpDialog;
 		Ui::oDumpDial oui;
 		QString dumpPath;
+		int dumpSize = 0;
+		int dmpLast = -1;		// the source the range was set for
+		bool dmpBusy = false;		// setting the fields: their signals are ours
+		void dmpRange(bool);
+		void dmpFileName(QString*, int*);
 
 		xMemFiller* memFiller;
 		xMemFinder* memFinder;
@@ -266,7 +271,10 @@ class DebugWin : public QMainWindow {
 		void stopTrace();
 
 		void doOpenDump();
-//		void doSaveDump();
+		void doSaveDump();
+		void dmpSourceChanged();
+		void dmpPageChanged();
+		void odmpSourceChanged();
 		void loadDump();
 		void chDumpFile();
 		void dmpStartOpen();
