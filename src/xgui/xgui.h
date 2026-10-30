@@ -116,7 +116,7 @@ QActionGroup* xMenuGroup(QMenu*, const char* name);
 
 // The mark of an item that opens a web page: a box with an arrow out of its
 // corner, WEBMARK px square, drawn in the given colour
-#define WEBMARK	9
+#define WEBMARK	10
 void xWebMark(QPainter*, const QPoint& topLeft, const QColor&);
 
 // A push button with its icon at the right edge and its text from the left,
