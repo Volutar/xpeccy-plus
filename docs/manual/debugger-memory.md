@@ -16,8 +16,8 @@ save it to a file and load it back. Which memory pages the CPU sees is in the
 
 ![The DUMP panel](images/dbg-dump.png)
 
-1. **View** - **CPU**, **RAM**, **ROM** or **DIV**, and for the last three the page, its
-   address and how much of it to show.
+1. **View** - **CPU**, **RAM**, **ROM** or **DIV**, and for the last three the page and its
+   address.
 2. **Bytes per row** - **Auto**, **8/row**, **12/row** or **16/row**.
 3. **Code page** - **WIN1251**, **CP866** or **KOI8R**: how bytes from 128 to 255 show as
    letters in the text column.
@@ -83,18 +83,19 @@ cartridge is never written.
 ```
 
 **CPU** shows the 64K the CPU sees now, with whatever pages are in it. **RAM** and **ROM**
-show one 16K page, whether the CPU sees it or not:
+show one whole 16K page, whether the CPU sees it or not. On the ZX Spectrum Next a RAM page
+is 8K and **ROM** has its four ROMs, numbered as in the [MEMMAP panel](debugger-memmap.md)
+and in labels.
 
-- **Pg** - the number of the page;
+- **Pg** - the number of the page, up to the last one the machine has;
 - the address field - the address the first byte of the page is shown at. Switching the
-  view sets it to C000 for RAM and 0000 for ROM;
-- the size - how much of the page the dump shows, from 256 bytes to the whole 16KB.
+  view sets it to C000 for RAM and 0000 for ROM.
 
 The rows then show the page and the address, as `07:C000`.
 
 **DIV** shows one 8K page of a [divMMC](divmmc.md)'s RAM, whether it is paged in or
 not; on a Next, the divMMC RAM it has inside. **Pg** counts the board's pages, the address
-starts at 2000, where the board pages them in, and the size is always 8KB.
+starts at 2000, where the board pages them in.
 
 ### Selecting and breakpoints
 
