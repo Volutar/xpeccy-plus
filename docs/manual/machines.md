@@ -141,8 +141,8 @@ while an RZX recording plays. The **Switch Turbo** hotkey steps through the list
 A board that has a turbo usually lets programs switch the turbo too. Then a program can
 change the step you picked, and Xpeccy+ shows the new clock over the picture.
 
-The **Speed** slider of the **Machine** page of **Options** changes the speed of the whole
-emulation; see [Speed](options-machine.md#speed).
+The **Overclock** slider of the **Machine** page of **Options** runs the CPU faster still,
+on any machine; see [Overclock](options-machine.md#overclock).
 
 ## Pause, Fast Mode, Slow Motion, Fast Forward, Allow Rewind
 

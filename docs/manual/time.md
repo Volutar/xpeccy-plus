@@ -34,14 +34,9 @@ when you come back to the window.
 it to get through a long wait - a slow loader, a long calculation. The title bar says
 **fast** while it is on, and anti-flicker is not applied.
 
-The **Fast Mode render** row of the **Emulation** page sets what Fast Mode shows. The number
-at its start is how many frames a second are shown, from 1 to 100 (30 by default); the
-frames between are not drawn. Fast loading of a tape shows the same number of frames a
-second. The list after the number says how a frame is drawn:
-
-- **Raster** - the normal picture: line by line as the machine runs, as at normal speed;
-- **Memory dump** - a simplified picture: the video memory as it is at the end of the
-  frame, all at once. A multicolor picture does not show as it should.
+The number in the **Fast Mode render** row of the **Emulation** page is how many frames a
+second Fast Mode shows, from 1 to 100 (30 by default); the frames between are not drawn.
+Fast loading of a tape shows the same number of frames a second.
 
 Any pause ends Fast Mode; **Machine > Pause** first lets the machine finish the frame, so
 the picture is whole. Fast Mode cannot be started while the machine is paused.
@@ -53,12 +48,24 @@ the picture is whole. Fast Mode cannot be started while the machine is paused.
 
 **Machine > Slow Motion** runs the whole machine slower, picture and sound alike:
 **1/2**, **1/4** (the default) or **1/8** of the normal speed. **Machine > Fast Forward**
-runs it faster, **x2**, **x4** (the default) or **x8**, and the sound plays sped up. The
-speeds are set in the **Slow Motion** and **Fast Forward** rows of the **Emulation**
-page of **Options**.
+runs it faster, **x2**, **x4** (the default), **x8** or **x16**, and the sound plays sped
+up. The speeds are set in the **Slow Motion** and **Fast Forward** rows of the
+**Emulation** page of **Options**.
+
+```{index} Faster, Slower
+```
+
+The **Faster** and **Slower** hotkeys, Shift+Num++ and Shift+Num+- in both presets, step
+through all of these: 1/8, 1/4, 1/2, normal speed, x2, x4, x8, x16. Hold one down and it
+keeps stepping. The speed a step reaches becomes the one set for Slow Motion or Fast
+Forward, so their keys and buttons go back to it later.
+
+How fast x8 and x16 really run depends on the computer: when it cannot keep up, the machine
+runs as fast as it can. The ZX Evolution in TSConf mode and the ZX Spectrum Next need the
+most from it.
 
 Both always start from normal speed: switching one on switches the other off, and
-moving the **Speed** slider ends either of them. Opening a file or switching to another
+moving the **Overclock** slider ends either of them. Opening a file or switching to another
 machine brings the speed back to normal too.
 
 A sign in the top right corner of the picture shows which mode is on.
@@ -118,21 +125,21 @@ The history starts over when:
 While a tape is being recorded, no history is kept and rewind does not start. Fast loading
 of a tape is not kept either: when you rewind, the picture jumps over it.
 
-## The Speed slider and Turbo Mode
+## Overclock and Turbo Mode
 
-```{index} Speed slider, Overclock, Turbo Mode; and Fast Forward
+```{index} Overclock slider, Overclock, Turbo Mode; and Fast Forward
 ```
 
-Two more controls change how fast the machine runs, and both are described in
-[Turbo Mode](machines.md#turbo-mode) and [Speed](options-machine.md#speed):
+Two more controls change how fast the CPU runs, and both are described in
+[Turbo Mode](machines.md#turbo-mode) and [Overclock](options-machine.md#overclock):
 
 - **Machine > Turbo Mode** is the board's own turbo, a part of the machine like on the
   real one. A program can switch it by itself.
-- The **Speed** slider on the **Machine** page of **Options** belongs to the emulator.
-  Its left half slows the whole machine down, like **Slow Motion**. Its right half,
-  **Overclock**, makes only the CPU faster: the frame rate, the music and everything
-  timed by the frame stay at normal speed, while a program that is slow because of the
-  CPU - a 3D game, say - runs faster.
+- The **Overclock** slider on the **Machine** page of **Options** belongs to the emulator.
+  It makes only the CPU faster: the frame rate, the music and everything timed by the
+  frame stay at normal speed, while a program that is slow because of the CPU - a 3D
+  game, say - runs faster. The **Overclock Up** and **Overclock Down** hotkeys move the
+  slider.
 
 **Fast Forward** is different from both: it speeds up the whole machine, frames and
 sound included, as if time ran faster.
