@@ -1568,10 +1568,7 @@ void DebugWin::reFormCPU(xRegBunch* b) {
 			case REG_32: mx = 0xffffffff; break;
 			default: mx = 0xffff; break;
 		}
-		// setMax resets the input mask and the text with it, so don't
-		// touch it on a simple reflow: it would drop the 'changed' color
-		if (dbgRegEdit[cnt]->getMax() != mx)
-			dbgRegEdit[cnt]->setMax(mx);
+		dbgRegEdit[cnt]->setMax(mx);
 		if (dbgRegLabs[cnt]->sizeHint().width() > labw) labw = dbgRegLabs[cnt]->sizeHint().width();
 		if (dbgRegEdit[cnt]->minimumWidth() > fldw) fldw = dbgRegEdit[cnt]->minimumWidth();
 		cnt++;
@@ -2741,13 +2738,6 @@ static int dump_room(QComboBox* box, QSpinBox* page) {
 	return comp_cell_size(conf.zx, area) - page->value() * comp_cell_unit(conf.zx, area);
 }
 
-// a field's new limit: a mask with fewer digits cuts the text (4000 shows as
-// 0400) while the value stays, so the text is drawn again from the value
-static void dump_set_max(xHexSpin* field, int max) {
-	field->setMax(max);
-	field->setBase(16);
-}
-
 // it opens on what the DUMP panel shows
 void DebugWin::doSaveDump() {
 	int page;
@@ -2773,9 +2763,9 @@ void DebugWin::dmpRange(bool reset) {
 	int area = getRFIData(dui.cbSource);
 	int room = dump_room(dui.cbSource, dui.sbPage);
 	dmpBusy = true;
-	dump_set_max(dui.leStart, room - 1);
-	dump_set_max(dui.leEnd, room - 1);
-	dump_set_max(dui.leLen, room);
+	dui.leStart->setMax(room - 1);
+	dui.leEnd->setMax(room - 1);
+	dui.leLen->setMax(room);
 	if (reset && (area != CELL_NONE)) {
 		dui.leStart->setValue(0);
 		dui.leLen->setValue(qMin(comp_cell_unit(conf.zx, area), room));
@@ -2992,7 +2982,7 @@ void DebugWin::chDumpFile() {
 // the CPU's memory takes a file at C000, an area at its page's start
 void DebugWin::odmpSourceChanged() {
 	dump_set_pages(oui.cbSource, oui.sbPage);
-	dump_set_max(oui.leStart, dump_room(oui.cbSource, oui.sbPage) - 1);
+	oui.leStart->setMax(dump_room(oui.cbSource, oui.sbPage) - 1);
 	oui.leStart->setValue((getRFIData(oui.cbSource) == CELL_NONE) ? 0xc000 : 0);
 	dmpStartOpen();
 }
@@ -3002,8 +2992,8 @@ void DebugWin::dmpStartOpen() {
 	if (dmpBusy) return;
 	int room = dump_room(oui.cbSource, oui.sbPage);
 	dmpBusy = true;
-	dump_set_max(oui.leStart, room - 1);
-	dump_set_max(oui.leEnd, room - 1);
+	oui.leStart->setMax(room - 1);
+	oui.leEnd->setMax(room - 1);
 	int start = oui.leStart->getValue();
 	if ((dumpSize > 0) && (dumpSize <= room) && (start + dumpSize > room))
 		start = room - dumpSize;
