@@ -908,6 +908,7 @@ int main(int ac,char** av) {
 				serial_cli(parg[7] == 'p', (nam == "-") ? QString() : nam);
 			} else if (!strcmp(parg, "--sdcard")) {
 				sdc_mount(conf.zx->sdc, QString::fromLocal8Bit(av[i]));
+				xm_next_card();		// the Next starts from it, or takes its own, or asks
 				given = true;
 				i++;
 			} else if (!strcmp(parg, "--disk")) {

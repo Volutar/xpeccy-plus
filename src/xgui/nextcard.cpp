@@ -108,8 +108,13 @@ xNextCard::xNextCard(QWidget* p, bool asked):QDialog(p) {
 	// the card in the config, shown as it is; opened on its own, the window says what is wrong with it
 	QString card = QString::fromLocal8Bit(conf.next.card.c_str());
 	QString start = card;
+	// asked with a card in the slot, that card is the user's (the Next's own is unusable): it goes first
+	QString slot = conf.zx->sdc->image ? QString::fromLocal8Bit(conf.zx->sdc->image) : QString();
 	if (asked) {
-		QString why = card.isEmpty() ? QString("The Next has no card to start from yet.")
+		if (!slot.isEmpty()) start = slot;
+		QString why = !slot.isEmpty() ? QString("There is no System/Next on the card in the slot, %0, so the Next cannot start from it. Pick another card, or make one.")
+				.arg(QDir::toNativeSeparators(slot).toHtmlEscaped())
+			: card.isEmpty() ? QString("The Next has no card to start from yet.")
 			: !QFileInfo::exists(card) ? QString("The Next's card is not at %0 any more. Pick it where it is now, or make another.")
 				.arg(QDir::toNativeSeparators(card).toHtmlEscaped())
 			: QString("There is no System/Next on the Next's card, %0, so the Next cannot start from it. Pick another card, or make one.")
