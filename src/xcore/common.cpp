@@ -329,8 +329,7 @@ int xtime_fit(const int* list, int f) {
 }
 
 // The Faster/Slower keys: one place along 1/8 .. x1 .. x16 from where emulated time
-// stands. The place reached is slow motion's or fast forward's factor from then on,
-// so their own keys resume it.
+// stands. The factors set for slow motion and fast forward stay as the user set them.
 int xtime_step(int dir) {
 	std::vector<double> scale;
 	for (int i = 0; xtime_slow_steps[i]; i++)
@@ -351,13 +350,10 @@ int xtime_step(int dir) {
 	}
 	if (f == 0.0) return 0;
 	xspeed_set(XSPD_NORMAL);	// overclock and either mode off: one speed at a time
-	if (f > 1.0) {
-		conf.emu.ffMul = (int)(f + 0.5);
+	if (f > 1.0)
 		conf.emu.tmode = XTM_FFWD;
-	} else if (f < 1.0) {
-		conf.emu.slowDiv = (int)(1.0 / f + 0.5);
+	else if (f < 1.0)
 		conf.emu.tmode = XTM_SLOW;
-	}
 	conf.emu.speed = f;
 	sndUpdateSpeed();
 	return 1;
