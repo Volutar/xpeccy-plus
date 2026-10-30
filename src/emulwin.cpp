@@ -3797,7 +3797,7 @@ void MainWin::askStartMachine() {
 	setRFIndex(next, conf.macStart);		// unset is the first, the last one chosen
 	next->setToolTip("Options > Application can change it");
 	QDialogButtonBox* bbox = new QDialogButtonBox;
-	bbox->addButton("Start", QDialogButtonBox::AcceptRole)->setIcon(QIcon(":/images/play.png"));
+	bbox->addButton("Start", QDialogButtonBox::AcceptRole)->setIcon(QIcon(":/images/play-green.png"));
 	connect(bbox, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
 	QGridLayout* lay = new QGridLayout(&dlg);
 	lay->addWidget(new QLabel("Which machine to start?"), 0, 0, 1, 2);
