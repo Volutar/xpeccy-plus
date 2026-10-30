@@ -220,33 +220,52 @@ The scanner window hides when you close the Debugger, and opens again with the D
 
 ## Saving and loading memory
 
-```{index} Save dump, Load dump, Save RAM Dump, Open RAM Dump, Hobeta
+```{index} Save dump, Load dump, Save Memory Dump, Open Memory Dump, Hobeta, memory page; saving
 ```
 
 **Save dump** and **Load dump** are in the {icon}`floppy` floppy disk menu at the right of
 the **Disasm** toolbar. Each has a key of its own: see
 [Debugger keys](hotkeys.md#debugger-keys).
 
-![The Save RAM Dump window](images/dbg-save-dump.png)
+![The Save Memory Dump window](images/dbg-save-dump.png)
 
-**Save RAM Dump** saves a part of the memory the CPU sees. Fill in **Start** and **End**,
-or **Start** and **Length**, in hex: the third field is filled in by itself. Then pick from
-{icon}`save_all` **Save as...**:
+**Save Memory Dump** saves a part of memory to a file. **Source** says which memory:
+
+- **CPU** - the 64K the CPU sees now, with whatever pages are in it;
+- the memory the machine has, whether the CPU sees it now or not: **RAM**, **ROM**, and
+  where the machine has them **Alt ROM**, **divMMC ROM**, **divMMC RAM**,
+  **Multiface ROM**, **Multiface RAM** and **Cartridge**. **Page** picks the page; the
+  list's tooltip says how big the pages are and how many there are. On a Next, RAM is
+  counted in its own 8K pages.
+
+The window opens on what the **DUMP** panel shows: **CPU**, or the RAM, ROM or DIV page
+it is on.
+
+Fill in **Start** and **End**, or **Start** and **Length**, in hex: the third field is
+filled in by itself. With **CPU** they are addresses. With any other source they count
+from the start of the page, and may run on into the pages after it, up to the end of that
+memory. Picking another source sets them to one whole page; **Page** 0 with
+**Length** 20000 saves all the RAM of a 128K. Then pick from {icon}`save_all` **Save as...**:
 
 - **...as bin** - the bytes as they are, into a file you name;
-- **...as Hobeta** - a `.$C` file: a TR-DOS code file named after the start address,
-  that loads back to the same address;
-- **...to disk A** to **...to disk D** - a code file on the TR-DOS disk in that drive.
-  A drive with no disk gets a new, formatted one. A file saved this way can be up to FF00
-  bytes long.
+- **...as Hobeta** - a `.$C` file: a TR-DOS code file. From **CPU** it is named after the
+  start address and loads back to it. From a page it is named after the page - `RAM7`,
+  `ROM1`, `DIV3`, with the start after a `+` if it is not 0 and the name has room - and
+  loads where the CPU sees that page: C000 for RAM, 0000 for ROM, 2000 for divMMC RAM;
+- **...to disk A** to **...to disk D** - a code file on the TR-DOS disk in that drive,
+  named and placed the same way. A drive with no disk gets a new, formatted one. A file
+  saved this way can be up to FF00 bytes long.
 
-![The Open RAM Dump window](images/dbg-open-dump.png)
+![The Open Memory Dump window](images/dbg-open-dump.png)
 
-**Open RAM Dump** loads a file into memory. The {icon}`fileopen` button beside **File**
-picks the file; a file can be up to FF00 bytes long. **Start** is the address the file is
-loaded at, C000 at first, and **Length** and **End** show how far the file reaches. A file
-that would run past FFFF is moved down to end there. {icon}`ok-apply` **OK** writes the file
-into the memory the CPU sees, ROM only with **Allow ROM wr** ticked.
+**Open Memory Dump** loads a file into memory. The {icon}`fileopen` button beside **File**
+picks the file. **Source** and **Page** say which memory it goes into, as when saving.
+**Start** is where the file is loaded - C000 at first for **CPU**, the start of the page
+for the rest - and **Length** and **End** show how far the file reaches. A file that would
+run past the end of the memory is moved down to end there; one too long for it at all is
+not loaded. Into **CPU** a file can be up to FF00 bytes long. {icon}`ok-apply` **OK**
+writes the file; ROM, divMMC ROM, Alt ROM, Multiface ROM and a cartridge only with
+**Allow ROM wr** ticked.
 
 ## Example: find where the score is kept
 
@@ -268,12 +287,13 @@ low byte first. To find the code that adds the points, put a **Write break** on 
 
 1. Open the Debugger: **Tools > Debugger**.
 2. In the {icon}`floppy` floppy disk menu of the **Disasm** toolbar, choose **Save dump**.
-3. Type `4000` in **Start** and `1B00` in **Length**. **End** shows `5AFF`.
+3. Pick **CPU** in **Source**. Type `4000` in **Start** and `1B00` in **Length**. **End**
+   shows `5AFF`.
 4. Click {icon}`save_all` **Save as...** and choose **...as bin**. Name the file, such as
    `picture.scr`.
 
 The file holds the 6912 bytes of the screen, the picture and then its colors, in the same
 layout as a `.scr` screenshot (see [Capture menu](capture.md)).
 
-The second screen of a 128K is in RAM page 7. To save it, put page 7 in the C000 window in
-**MEMMAP** and save from C000 instead; **Restore mapping** puts the memory back.
+The second screen of a 128K is in RAM page 7. To save it, pick **RAM** in **Source** and 7
+in **Page**, then type `0000` in **Start** and `1B00` in **Length**.
