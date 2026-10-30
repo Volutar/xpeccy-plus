@@ -2925,7 +2925,7 @@ Tap or hold: a tap switches it, a longer press holds it</string>
                      </font>
                     </property>
                     <property name="text">
-                     <string>Frames a second, and how they are drawn</string>
+                     <string>Frames a second</string>
                     </property>
                    </widget>
                   </item>

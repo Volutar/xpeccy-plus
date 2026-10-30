@@ -553,6 +553,9 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.cbFastPic->setItemData(0, "The normal picture: drawn line by line,\nas at normal speed", Qt::ToolTipRole);
 	ui.cbFastPic->addItem("Memory dump", FPIC_WHOLE);
 	ui.cbFastPic->setItemData(1, "A simplified picture: video memory\nat a frame end, no multicolor", Qt::ToolTipRole);
+	// A few percent of speed is not worth a choice nobody can make: the list is hidden,
+	// fast.picture in the config still sets it and Apply keeps what it holds
+	ui.cbFastPic->setVisible(false);
 	for (QComboBox* box : {ui.cbSlowmoKey, ui.cbFfwdKey, ui.cbFastKey}) {
 		box->addItem("Toggle", XHOLD_TOGGLE);
 		box->addItem("Hold", XHOLD_HOLD);
