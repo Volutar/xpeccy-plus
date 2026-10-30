@@ -3,7 +3,7 @@
 ```{index} toolbar, toolbar; customizing, Restore Default Buttons, Icon Size, Lock Toolbar
 ```
 
-By default the toolbar has {icon}`fileopen` **Open**, {icon}`save_all` **Save**,
+By default the toolbar has {icon}`fileopen` **Open**, {icon}`floppy` **Save**,
 {icon}`shutdown` **Reset**, {icon}`model-zx48` **Model**, {icon}`tape` **Tape Player**,
 {icon}`fdd_disk` **Disk Manager**, {icon}`fullscreen-16` **Fullscreen**,
 {icon}`vkeys` **Virtual Keyboard**, {icon}`gamepad` **Gamepads**, {icon}`bug` **Debugger**,

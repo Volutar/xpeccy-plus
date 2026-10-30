@@ -122,8 +122,9 @@ the picture drive A holds Fire 'n Ice (n-Discovery, 2003).
 - **Tabs** - one for each drive, named after the disk's own TR-DOS label or the file name.
   **Fast disk access** beside them is the same switch as in the **Media** menu.
 - **The line under the tabs** - the file in the drive, then buttons to {icon}`fileopen` open
-  a disk image, {icon}`doc-new` insert a new disk, {icon}`save_all` save to the file it came
-  from, {icon}`floppy` save as, and {icon}`tape-eject` eject, and the **Write protect** box.
+  a disk image, {icon}`doc-new` insert a new disk, {icon}`floppy` save the changes to the
+  disk's own file, {icon}`save-as` save the disk to a new file, and {icon}`tape-eject` eject,
+  and the **Write protect** box.
   They do what the **Floppy Drives** menu does.
 - **The catalog** - the files on a TR-DOS disk: **Name**, **Ext**, **Start**, **Length**,
   **SecLen** (length in sectors), **Trk** and **Sec** (where the file begins). A +3DOS disk

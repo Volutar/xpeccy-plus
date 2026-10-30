@@ -13,7 +13,7 @@
 - **Pause when inactive** - pause the machine while the window is in the background. See
   [Pause](time.md#pause).
 - {icon}`star` **Manage favorites...** - see [Favorites menu](favorites.md).
-- {icon}`save_all` **Export settings...**, {icon}`fileopen` **Import settings...** - keep all
+- {icon}`save-as` **Export settings...**, {icon}`fileopen` **Import settings...** - keep all
   your settings, your own machines included, in one file, and bring them back.
 - {icon}`refresh` **Reset to defaults** - puts every setting back to its default value. Your
   own machines stay.

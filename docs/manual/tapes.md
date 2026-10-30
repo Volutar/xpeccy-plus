@@ -33,7 +33,7 @@ At the top:
 
 - the name of the tape file;
 - {icon}`fileopen` **Open a tape image** - puts a tape in, mounted;
-- {icon}`save_all` **Save the tape to a file** - see [Saving a tape](#saving-a-tape);
+- {icon}`floppy` **Save the tape to a file** - see [Saving a tape](#saving-a-tape);
 - {icon}`wav` **Export the tape as a WAV recording** - see [Export to WAV](#export-to-wav);
 - **Playback speed** - how fast the tape plays, from 95% to 105% of normal. A few tapes
   made on machines with an unusual clock load only when the speed is moved a step up or
@@ -78,7 +78,7 @@ mark such stops themselves; the **Info** column then says **stop the tape**, or
 
 The buttons beside the list work on the selected block:
 
-- {icon}`floppy` **Copy the block to a disk as a TR-DOS file** - opens a menu of the
+- {icon}`fdd_disk` **Copy the block to a disk as a TR-DOS file** - opens a menu of the
   drives, see [Copying a block to a disk](#copying-a-block-to-a-disk);
 - {icon}`arrow-up` **Move the block up**, {icon}`arrow-down` **Move the block down**;
 - {icon}`cancel` **Delete the block**.
@@ -160,7 +160,7 @@ its blocks go onto the tape at once.
 ```{index} tape; saving
 ```
 
-{icon}`save_all` **Save the tape to a file** in the **Tape Player** writes the tape over
+{icon}`floppy` **Save the tape to a file** in the **Tape Player** writes the tape over
 its own file. For a tape that has no file yet, such as one just recorded, you are asked for
 a file name.
 
@@ -206,7 +206,7 @@ export** in **File > Save...** uses them too.
 ```{index} tape; copying to a disk
 ```
 
-{icon}`floppy` **Copy the block to a disk as a TR-DOS file** opens a menu of drives,
+{icon}`fdd_disk` **Copy the block to a disk as a TR-DOS file** opens a menu of drives,
 **Drive A** to **Drive D**. The selected block goes to that drive's disk as a TR-DOS file:
 
 - a header and the data block after it become a program (`B`) or code (`C`) file named as
