@@ -84,7 +84,8 @@ class xHexSpin : public QLineEdit {
 		int len;
 		QString vtxt;
 		QRegExpValidator vldtr;
-		void updateMask();
+		bool updateMask();
+		void redraw();
 		void unblank();
 		void startEdit();
 		int splitBytes();

@@ -82,7 +82,9 @@ int xHexSpin::getValue() {
 	return value;
 }
 
-void xHexSpin::updateMask() {
+// true when the number of digits moved: the text then needs redraw()
+bool xHexSpin::updateMask() {
+	int was = len;
 	unsigned mx;
 	QString rxp;
 	switch(base) {
@@ -105,11 +107,26 @@ void xHexSpin::updateMask() {
 		len++;
 	}
 	rxp.append(QString("{%0}").arg(len));	// 'len' times this char
-	// the mask is what puts the cursor in overwrite mode; the part after the
-	// semicolon is what an empty position shows, for a field that may be empty
-	setInputMask((hsflag & XHS_BLANK) ? (QString(len, 'h') + ";-") : QString(len, 'h'));
 	setRegExp(vldtr, rxp);
+	// the mask is what puts the cursor in overwrite mode; the part after the
+	// semicolon is what an empty position shows, for a field that may be empty.
+	// Qt cuts or pads the text to the new mask and reports it as textChanged:
+	// that text is not a value, so nobody hears it
+	bool blk = blockSignals(true);
+	setInputMask((hsflag & XHS_BLANK) ? (QString(len, 'h') + ";-") : QString(len, 'h'));
+	blockSignals(blk);
 	refitWidth();
+	return len != was;
+}
+
+// The text again from the value, after the mask or the base moved under it.
+// Not a new value: no valueChanged, and the changed bytes stay lit.
+void xHexSpin::redraw() {
+	if (isblank) return;
+	hsflag |= XHS_UPD;
+	onChange(value);
+	updatePal();		// whole field or byte by byte depends on the width
+	update();
 }
 
 // XHS_AUTOW: 'len' digits + a bit for the frame and cursor.
@@ -121,16 +138,14 @@ void xHexSpin::refitWidth() {
 }
 
 void xHexSpin::setBase(int b) {
-	int tmp = value;
 	base = b;
 	updateMask();
-	hsflag |= XHS_UPD;			// update even if value doesn't changed
-	setValue(tmp);
+	redraw();			// other digits even at the same width
 }
 
 void xHexSpin::setXFlag(int xf) {
 	hsflag = xf;
-	updateMask();			// XHS_BLANK decides what an empty position shows
+	if (updateMask()) redraw();	// XHS_BLANK decides what an empty position shows
 }
 
 // A field that may hold nothing shows the mask's blank character until it is
@@ -226,10 +241,12 @@ void xHexSpin::setMin(int v) {
 	if (value < min) setValue(min);
 }
 
+// a value that no longer fits moves first, at the old width, so it is drawn
+// and announced the way any new value is
 void xHexSpin::setMax(int v) {
 	max = v;
-	updateMask();
 	if (value > max) setValue(max);
+	if (updateMask()) redraw();
 }
 
 int xHexSpin::getMax() {
