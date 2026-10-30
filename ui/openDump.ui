@@ -139,7 +139,7 @@
   <action name="aSaveToA">
    <property name="icon">
     <iconset resource="../xpeccy.qrc">
-     <normaloff>:/images/floppy.png</normaloff>:/images/floppy.png</iconset>
+     <normaloff>:/images/fdd_disk_A.png</normaloff>:/images/fdd_disk_A.png</iconset>
    </property>
    <property name="text">
     <string>...to disk A</string>
@@ -148,7 +148,7 @@
   <action name="aSaveToB">
    <property name="icon">
     <iconset resource="../xpeccy.qrc">
-     <normaloff>:/images/floppy.png</normaloff>:/images/floppy.png</iconset>
+     <normaloff>:/images/fdd_disk_B.png</normaloff>:/images/fdd_disk_B.png</iconset>
    </property>
    <property name="text">
     <string>...to disk B</string>
@@ -157,7 +157,7 @@
   <action name="aSaveToC">
    <property name="icon">
     <iconset resource="../xpeccy.qrc">
-     <normaloff>:/images/floppy.png</normaloff>:/images/floppy.png</iconset>
+     <normaloff>:/images/fdd_disk_C.png</normaloff>:/images/fdd_disk_C.png</iconset>
    </property>
    <property name="text">
     <string>...to disk C</string>
@@ -166,7 +166,7 @@
   <action name="aSaveToD">
    <property name="icon">
     <iconset resource="../xpeccy.qrc">
-     <normaloff>:/images/floppy.png</normaloff>:/images/floppy.png</iconset>
+     <normaloff>:/images/fdd_disk_D.png</normaloff>:/images/fdd_disk_D.png</iconset>
    </property>
    <property name="text">
     <string>...to disk D</string>

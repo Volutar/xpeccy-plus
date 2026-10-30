@@ -117,7 +117,7 @@
        </property>
        <property name="icon">
         <iconset resource="../../xpeccy.qrc">
-         <normaloff>:/images/save_all.png</normaloff>:/images/save_all.png</iconset>
+         <normaloff>:/images/save-as.png</normaloff>:/images/save-as.png</iconset>
        </property>
       </widget>
      </item>

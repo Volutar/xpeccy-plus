@@ -649,7 +649,7 @@ xGamepadWidget::xGamepadWidget(xGamepad* gp, QWidget* p):QWidget(p) {
 		btn->setAutoDefault(false);		// none of them is what Enter should press
 		return btn;
 	};
-	QPushButton* btnSave = sideButton("Save as...", ":/images/floppy.png");
+	QPushButton* btnSave = sideButton("Save as...", ":/images/save-as.png");
 	btnSave->setToolTip("Keep these bindings in a file, for a game or to share");
 	btnLoad = sideButton("Load...", ":/images/fileopen.png");
 	btnLoad->setToolTip("A preset used before, or a file");

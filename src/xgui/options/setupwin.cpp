@@ -1952,7 +1952,7 @@ void SetupWin::buildDevices() {
 	cols->addLayout(right, 1);
 	QToolButton* btn;
 
-	QGridLayout* grid = devGroup(left, ":/images/floppy.png", tr("Storage"));
+	QGridLayout* grid = devGroup(left, ":/images/fdd_disk.png", tr("Storage"));
 	tapeSum = new QLabel;
 	xOptSheet tape;
 	tape.field(tr("Playback speed"), fieldPair(sldTapeSpeed, labTapeSpeedVal, true),

@@ -97,12 +97,15 @@
      </item>
      <item>
       <widget class="QToolButton" name="tbBrkSave">
+       <property name="toolTip">
+        <string>Save the breakpoints to a file</string>
+       </property>
        <property name="text">
         <string>...</string>
        </property>
        <property name="icon">
         <iconset resource="../../xpeccy.qrc">
-         <normaloff>:/images/floppy.png</normaloff>:/images/floppy.png</iconset>
+         <normaloff>:/images/save-as.png</normaloff>:/images/save-as.png</iconset>
        </property>
       </widget>
      </item>

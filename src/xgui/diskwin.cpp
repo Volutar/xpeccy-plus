@@ -38,8 +38,8 @@ xDiskWin::xDiskWin(QWidget* p):QDialog(p) {
 	path->setReadOnly(true);
 	btnOpen = diskButton(":/images/fileopen.png", "Open a disk image");
 	btnNew = diskButton(":/images/doc-new.png", "Insert a new disk");
-	btnSave = diskButton(":/images/save_all.png", "Save to the file it came from");
-	btnSaveAs = diskButton(":/images/floppy.png", "Save as...");
+	btnSave = diskButton(":/images/floppy.png", "Save the changes to the disk's own file");
+	btnSaveAs = diskButton(":/images/save-as.png", "Save the disk to a new file");
 	btnEject = diskButton(":/images/tape-eject.png", "Eject");
 	protect = new QCheckBox("Write protect");
 	QHBoxLayout* top = new QHBoxLayout;

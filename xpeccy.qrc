@@ -90,6 +90,8 @@
         <file>images/speaker.png</file>
         <file>images/tape.png</file>
         <file>images/floppy.png</file>
+        <file>images/save-as.png</file>
+        <file>images/save-as-16.png</file>
         <file>images/fdd.png</file>
         <file>images/fdd_disk.png</file>
         <file>images/fdd_disk_A.png</file>
@@ -148,7 +150,6 @@
         <file>images/tape-stop.png</file>
         <file>images/rzx-bookmark.png</file>
         <file>images/tape-eject.png</file>
-        <file>images/floppyRed.png</file>
         <file>images/label.png</file>
         <file>images/bars.png</file>
         <file>images/arrGreen.png</file>

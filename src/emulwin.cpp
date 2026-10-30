@@ -2657,8 +2657,8 @@ void MainWin::initMenuBar() {
 	fileMenu->addMenu(recentMenu);
 	cutAction(fileMenu, "Reload", XCUT_RELOAD, "refresh");
 	fileMenu->addSeparator();
-	cutAction(fileMenu, "Save...", XCUT_SAVE, "save_all");
-	cutAction(fileMenu, "Save Changed Disks", XCUT_FASTSAVE, "floppy");
+	cutAction(fileMenu, "Save...", XCUT_SAVE, "floppy");
+	cutAction(fileMenu, "Save Changed Disks", XCUT_FASTSAVE, "save_all");
 	cutAction(fileMenu, "Quick Save", XCUT_QUICKSAVE);
 	cutAction(fileMenu, "Quick Load", XCUT_QUICKLOAD);
 	cutAction(fileMenu, "Undo Quick Load", XCUT_QUICKUNDO);

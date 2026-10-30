@@ -58,7 +58,7 @@
            </property>
            <property name="icon">
             <iconset resource="../xpeccy.qrc">
-             <normaloff>:/images/save_all.png</normaloff>:/images/save_all.png</iconset>
+             <normaloff>:/images/floppy.png</normaloff>:/images/floppy.png</iconset>
            </property>
           </widget>
          </item>
@@ -278,7 +278,7 @@ Off: the tape stops at the end</string>
          </property>
          <property name="icon">
           <iconset resource="../xpeccy.qrc">
-           <normaloff>:/images/floppy.png</normaloff>:/images/floppy.png</iconset>
+           <normaloff>:/images/fdd_disk.png</normaloff>:/images/fdd_disk.png</iconset>
          </property>
          <property name="popupMode">
           <enum>QToolButton::InstantPopup</enum>
