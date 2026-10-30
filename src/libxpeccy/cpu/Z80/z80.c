@@ -582,8 +582,8 @@ xRegDsc z80RegTab[] = {
 	{REG_EMPTY, "R", REG_BYTE, 0, z80_get_r, z80_set_r},
 	{REG_EMPTY, "A", REG_BYTE, 0, z80_get_a, z80_set_a},
 	{REG_EMPTY, "A'", REG_BYTE, 0, z80_get_aa, z80_set_aa},
-	{REG_EMPTY, "F", REG_32, REG_FLG, z80_get_flag, z80_set_flag},
-	{REG_EMPTY, "F'", REG_32, 0, z80_get_fa, z80_set_fa},
+	{REG_EMPTY, "F", REG_BYTE, REG_FLG, z80_get_flag, z80_set_flag},
+	{REG_EMPTY, "F'", REG_BYTE, 0, z80_get_fa, z80_set_fa},
 	// single registers: not shown in deBUGa, but usable in expressions
 	{REG_EMPTY, "B", REG_BYTE, 0, z80_get_b, z80_set_b},
 	{REG_EMPTY, "C", REG_BYTE, 0, z80_get_c, z80_set_c},

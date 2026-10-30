@@ -98,8 +98,7 @@ bool xHexSpin::updateMask() {
 			//setStyleSheet("border:1px solid green;");
 			break;
 	}
-	// REG_32 gives max = 0xffffffff, which is -1 as int. count digits on the
-	// unsigned value and divide, so it neither stops at once nor overflows
+	// count digits by dividing, so a max near the top of int does not overflow
 	len = 1;
 	mx = (unsigned)max / base;
 	while (mx) {
