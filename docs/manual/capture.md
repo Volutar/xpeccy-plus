@@ -99,6 +99,10 @@ long game played to the end, or how a hard part of a game is done.
 
 Open an `.rzx` file with **File > Open...**, or with the {icon}`fileopen` button in the
 **RZX Player** (**Capture > RZX > RZX Player**). It plays on the machine it was recorded on.
+While it plays, a sign in the top right corner of the picture says so: a green triangle blinking
+next to **RZX**. A pause or a speed sign takes its place while it is on, and a video of the window
+leaves it out, as it does the recording sign.
+
 The **RZX Player** shows:
 
 - **Recorded with**, **Machine**, **Length** and **Snapshots** - what the file says about
