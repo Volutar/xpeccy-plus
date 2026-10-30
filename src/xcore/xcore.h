@@ -113,9 +113,9 @@ QStringList xres_list(const char*, const QStringList&);
 int toPower(int);
 int toLimits(int, int, int);
 
-// the speed scale: 1/8 1/4 1/2 x1 x2 x4 x8, x1 in the middle
-#define XSPD_CENTER	3
-#define XSPD_MAX	6
+// the overclock scale: x1 x2 x4 x8
+#define XSPD_NORMAL	0
+#define XSPD_MAX	3
 // ...and the ceiling on base x turbo x overclock, whoever asks for it
 #define XSPD_CLOCK_MAX	16
 // slow motion and fast forward: switched on and off by a key each, at the

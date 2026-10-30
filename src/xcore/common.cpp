@@ -282,32 +282,28 @@ QString xres_dir(const char* kind) {
 	return QString::fromLocal8Bit(conf.path.confDir.c_str()) + SLASH + kind;
 }
 
-// The speed scale. One control for two different things: below x1 the host
-// runs emulated time slower, so the frame keeps its length in T and the rate
-// drops; above it the cpu gets a multiplier and the frame rate does not move.
-// Crossing x1 puts the other one back, or the two would multiply.
+// The overclock scale: the cpu gets a multiplier and the frame rate does not move.
+// Setting it puts emulated time back to normal, or the two would multiply.
 
 double xspeed_mult(int pos) {
-	pos = toLimits(pos, 0, XSPD_MAX);
-	return (pos < XSPD_CENTER) ? 1.0 / (1 << (XSPD_CENTER - pos))
-				  : (double)(1 << (pos - XSPD_CENTER));
+	return (double)(1 << toLimits(pos, 0, XSPD_MAX));
 }
 
 void xspeed_set(int pos) {
 	pos = toLimits(pos, 0, xspeed_max());
 	conf.emu.tmode = XTM_NONE;
-	conf.emu.speed = (pos < XSPD_CENTER) ? xspeed_mult(pos) : 1.0;
+	conf.emu.speed = 1.0;
 	sndUpdateSpeed();
 	if (conf.zx)
-		compSetTurbo(conf.zx, (pos > XSPD_CENTER) ? xspeed_mult(pos) : 1.0);
+		compSetTurbo(conf.zx, xspeed_mult(pos));
 }
 
 // Slow motion and fast forward are emulated time run slower or faster than the
-// host's, the way the slider's slow half is, but they start from normal speed:
-// the slider goes back to x1 first, and moving it again ends them.
+// host's. They start from normal speed: the overclock goes back to x1 first, and
+// moving it again ends them.
 void xspeed_toggle(int mode) {
 	int was = conf.emu.tmode;
-	xspeed_set(XSPD_CENTER);
+	xspeed_set(XSPD_NORMAL);
 	if (was == mode) return;
 	conf.emu.tmode = mode;
 	conf.emu.speed = (mode == XTM_SLOW) ? 1.0 / conf.emu.slowDiv : (double)conf.emu.ffMul;
@@ -333,8 +329,8 @@ int xtime_fit(const int* list, int f) {
 }
 
 // The Faster/Slower keys: one place along 1/8 .. x1 .. x16 from where emulated time
-// stands, whoever set it - the slider's slow half included. The place reached is
-// slow motion's or fast forward's factor from then on, so their own keys resume it.
+// stands. The place reached is slow motion's or fast forward's factor from then on,
+// so their own keys resume it.
 int xtime_step(int dir) {
 	std::vector<double> scale;
 	for (int i = 0; xtime_slow_steps[i]; i++)
@@ -354,7 +350,7 @@ int xtime_step(int dir) {
 		}
 	}
 	if (f == 0.0) return 0;
-	xspeed_set(XSPD_CENTER);	// overclock and either mode off: one speed at a time
+	xspeed_set(XSPD_NORMAL);	// overclock and either mode off: one speed at a time
 	if (f > 1.0) {
 		conf.emu.ffMul = (int)(f + 0.5);
 		conf.emu.tmode = XTM_FFWD;
@@ -396,30 +392,26 @@ void xspeed_key(int mode, int down) {
 
 // Another tape, disk or machine is another game: it starts at normal speed.
 void xspeed_modes_off() {
-	if (conf.emu.tmode) xspeed_set(XSPD_CENTER);
+	if (conf.emu.tmode) xspeed_set(XSPD_NORMAL);
 }
 
 int xspeed_get(void) {
-	// the slider does not show slow motion or fast forward, which are not on it
-	double m = (!conf.emu.tmode && (conf.emu.speed < 1.0)) ? conf.emu.speed
-		 : (conf.zx ? conf.zx->frqMul : 1.0);
+	double m = conf.zx ? conf.zx->frqMul : 1.0;
 	for (int i = 0; i <= XSPD_MAX; i++) {
 		if (fabs(m - xspeed_mult(i)) < 1e-6) return i;
 	}
-	return XSPD_CENTER;
+	return XSPD_NORMAL;
 }
 
 // What the slider is doing, for the options label and for the message on the
 // screen. The screen font has no multiplication sign, so that one asks for ascii.
 QString xspeed_name(int pos, bool ascii) {
 	pos = toLimits(pos, 0, XSPD_MAX);
-	if (pos < XSPD_CENTER)
-		return QString("Slow Motion 1/%0").arg(1 << (XSPD_CENTER - pos));
-	if (pos > XSPD_CENTER)
-		return QString("Overclock %0%1")
-			.arg(ascii ? QString("x") : QString::fromUtf8("×"))
-			.arg(1 << (pos - XSPD_CENTER));
-	return QString("Normal speed");
+	if (pos == XSPD_NORMAL)
+		return QString("No overclock");
+	return QString("Overclock %0%1")
+		.arg(ascii ? QString("x") : QString::fromUtf8("×"))
+		.arg(1 << pos);
 }
 
 // How far the slider goes on this machine. The board's own turbo counts towards
@@ -430,7 +422,7 @@ QString xspeed_name(int pos, bool ascii) {
 int xspeed_max(void) {
 	double hw = (conf.zx && (conf.zx->hwMul > 0.0)) ? conf.zx->hwMul : 1.0;
 	int pos = XSPD_MAX;
-	while ((pos > XSPD_CENTER) && (xspeed_mult(pos) * hw > XSPD_CLOCK_MAX + 1e-6))
+	while ((pos > XSPD_NORMAL) && (xspeed_mult(pos) * hw > XSPD_CLOCK_MAX + 1e-6))
 		pos--;
 	return pos;
 }

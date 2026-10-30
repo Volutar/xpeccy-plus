@@ -512,7 +512,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	}
 	makeFillPopup();
 	ui.bszsld->setMaximum(VID_BRD_OVERSCAN);	// one tick per border size
-	ui.sldSpeed->setMaximum(XSPD_MAX);		// one tick per step of the speed scale
+	ui.sldSpeed->setMaximum(XSPD_MAX);		// one tick per step of the overclock scale
 	ui.cbCpuFrq->addItem("3.5 MHz");
 	ui.cbCpuFrq->addItem("3.5469 MHz");
 	cbCpuTurbo->addItem(QString::fromUtf8("×1 (no turbo)"), "1");
@@ -2801,18 +2801,12 @@ void SetupWin::chabsz() {
 	ui.bszlab->setText(QString("%0 (%1×%2)").arg(brd_mode_name(mode)).arg(sze.x).arg(sze.y));
 }
 
-// the label beside the speed slider says which of the two things it is doing
-// and what the cpu ends up on - the board's own turbo is not in this number,
-// the clock indicator is where the whole truth is
+// the label beside the overclock slider says what the cpu ends up on - the board's
+// own turbo is not in this number, the clock indicator is where the whole truth is
 void SetupWin::chaspd() {
 	Computer* comp = conf.zx;
 	int pos = ui.sldSpeed->value();
-	QString txt = xspeed_name(pos);
-	if (pos >= XSPD_CENTER)
-		txt += QString(" (%0 MHz)").arg(comp->cpuFrq * xspeed_mult(pos), 0, 'g', 6);
-	else
-		txt += QString(" (%0 fps)").arg(1e9 / comp->vid->nsPerFrame * xspeed_mult(pos), 0, 'f', 1);
-	ui.labSpeed->setText(txt);
+	ui.labSpeed->setText(xspeed_name(pos) + QString(" (%0 MHz)").arg(comp->cpuFrq * xspeed_mult(pos), 0, 'g', 6));
 }
 
 void SetupWin::chaflc() {
