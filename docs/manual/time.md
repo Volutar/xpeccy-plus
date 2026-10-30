@@ -57,8 +57,8 @@ up. The speeds are set in the **Slow Motion** and **Fast Forward** rows of the
 
 The **Faster** and **Slower** hotkeys, Shift+Num++ and Shift+Num+- in both presets, step
 through all of these: 1/8, 1/4, 1/2, normal speed, x2, x4, x8, x16. Hold one down and it
-keeps stepping. The speed a step reaches becomes the one set for Slow Motion or Fast
-Forward, so their keys and buttons go back to it later.
+keeps stepping. The speeds set for Slow Motion and Fast Forward stay as they are: their
+keys and buttons always run at those.
 
 How fast x8 and x16 really run depends on the computer: when it cannot keep up, the machine
 runs as fast as it can. The ZX Evolution in TSConf mode and the ZX Spectrum Next need the
