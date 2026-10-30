@@ -289,3 +289,6 @@ standard ROMs again. Adding or editing opens the **Romset Editor** with **File**
 **File offset**, **Size** (0 reads to the end of the file) and **ROM pos**, all in KB.
 
 The new ROM is in place when you press **Apply**. Reset the machine to start from it.
+
+If a ROM file cannot be read - moved, deleted or on a disk that is not there - Xpeccy+ says
+which, and the machine runs with that bank empty.
