@@ -11,6 +11,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Faster and Slower**: Shift+Num++ and Shift+Num+- step the whole machine through 1/8, 1/4,
+  1/2, normal speed, x2, x4, x8 and x16, with its sign in the corner. Fast Forward goes up to
+  x16. The Overclock slider and its keys, Overclock Up and Overclock Down (Alt+Num++ and
+  Alt+Num+-), only speed the CPU up now. *(requested by ZXJaggedGaming, thanks to Volutar)*
+
 - **RZX playback sign**: while an RZX plays, a green triangle blinks next to RZX in the corner of the
   picture. The Record Video and RZX Record buttons are drawn for the 24 px toolbar.
 
@@ -60,11 +65,17 @@ before that point is upstream's history and is not repeated here.
   on a quick tap too. One Caps Shift lights, not both: the right one for the right Shift.
   *(thanks to Volutar)*
 
+- **Fast Mode render** in Options > Emulation is only the frames a second: the choice of how
+  a frame is drawn is no longer offered. *(thanks to Volutar)*
+
 - **Tidier menus**: under every style the text starts where the System style puts it, and a
   list where one is picked has round marks. Help has icons, and an item or button that opens
   a page in your browser carries a box with an arrow.
 
 ### Fixed
+
+- **The signs in the corner of the picture are smooth** on a 100 % screen: their slanted
+  edges and letters are no longer ragged. *(reported by Volutar)*
 
 - **The docked virtual keyboard is as wide as the window** and casts a shadow, as other
   windows do (Windows). *(reported by Volutar)*
