@@ -78,6 +78,12 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The Debugger's dump shows the Next's own pages**: on the ZX Spectrum Next the RAM and
+  ROM views show its 8K RAM pages and four ROMs, numbered as in MEMMAP; an edit or a
+  breakpoint there lands on that byte. On every machine the page number stops at the last
+  page, a page view shows the whole page (the size box is gone), and the right-click menu
+  ticks the breakpoints of the byte under it.
+
 - **Files and folders with any letters in their names** (Cyrillic, Greek, Chinese...) open
   and save on Windows 10 and 11, from the menus, the command line and a double-click, and
   the program runs from such a folder. Older Windows: the letters of the system's language,
