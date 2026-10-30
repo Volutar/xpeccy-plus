@@ -405,10 +405,6 @@ void DebugWin::onPrfChange() {
 	wid_dump->setLimit(lim);
 	ui_asm.dasmScroll->setMaximum(lim - 1);
 
-	dui.leStart->setMax(lim - 1);
-	//dui.leEnd->setMax(lim - 1);		// TODO:why segfault
-	dui.leLen->setMax(lim);
-
 	// ui.tabDiskDump->setDrive(ui.cbDrive->currentIndex());
 	wid_disk_dump->draw();
 
@@ -757,7 +753,7 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 	connect(ui_asm.tbTrace, SIGNAL(triggered(QAction*)),this,SLOT(doTrace(QAction*)));
 
 	connect(ui_asm.actLoadDump, SIGNAL(triggered(bool)),this,SLOT(doOpenDump()));
-	connect(ui_asm.actSaveDump, SIGNAL(triggered(bool)),dumpwin,SLOT(show()));
+	connect(ui_asm.actSaveDump, SIGNAL(triggered(bool)),this,SLOT(doSaveDump()));
 	connect(ui_asm.actLoadLabels, SIGNAL(triggered(bool)),this,SLOT(dbgLLab()));
 	connect(ui_asm.actSaveLabels, SIGNAL(triggered(bool)),this,SLOT(dbgSLab()));
 	connect(ui_asm.actLoadMap, SIGNAL(triggered(bool)),this,SLOT(loadMap()));
@@ -797,11 +793,16 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 	connect(dui.leStart,SIGNAL(valueChanged(int)),this,SLOT(dmpLimChanged()));
 	connect(dui.leEnd,SIGNAL(valueChanged(int)),this,SLOT(dmpLimChanged()));
 	connect(dui.leLen,SIGNAL(valueChanged(int)),this,SLOT(dmpLenChanged()));
+	connect(dui.cbSource,SIGNAL(currentIndexChanged(int)),this,SLOT(dmpSourceChanged()));
+	connect(dui.sbPage,SIGNAL(valueChanged(int)),this,SLOT(dmpPageChanged()));
 
 	openDumpDialog = new QDialog(this);
 	oui.setupUi(openDumpDialog);
 	connect(oui.tbFile,SIGNAL(clicked()),this,SLOT(chDumpFile()));
 	connect(oui.leStart,SIGNAL(textChanged(QString)),this,SLOT(dmpStartOpen()));
+	connect(oui.cbSource,SIGNAL(currentIndexChanged(int)),this,SLOT(odmpSourceChanged()));
+	connect(oui.sbPage,SIGNAL(valueChanged(int)),this,SLOT(dmpStartOpen()));
+	oui.leLen->setMax(MEM_4M);
 	connect(oui.butOk,SIGNAL(clicked()), this, SLOT(loadDump()));
 
 	memViewer = new MemViewer(this);
@@ -1143,8 +1144,7 @@ void DebugWin::keyPressEvent(QKeyEvent* ev) {
 			doOpenDump();
 			break;
 		case XCUT_SAVE_DUMP:
-			//doSaveDump();
-			dumpwin->show();
+			doSaveDump();
 			break;
 		case XCUT_OPEN_XMAP:
 			loadMap();
@@ -2683,50 +2683,167 @@ void DebugWin::chaCellProperty(QAction* act) {
 
 // memDump
 
-//void DebugWin::doSaveDump() {
-//	dumpwin->show();
-//}
+// A dump's source: the CPU's 64K as mapped now (CELL_NONE), or one of the
+// machine's memory areas, counted from the start of a page. base is the CPU
+// address the area's pages are seen at: where a TR-DOS file of one loads
+static const struct {int area; const char* name; int base;} dump_areas[] = {
+	{CELL_RAM, "RAM", 0xc000}, {CELL_ROM, "ROM", 0x0000}, {CELL_ALTROM, "Alt ROM", 0x0000},
+	{CELL_DIVROM, "divMMC ROM", 0x0000}, {CELL_DIV, "divMMC RAM", 0x2000},
+	{CELL_MFROM, "Multiface ROM", 0x0000}, {CELL_MFRAM, "Multiface RAM", 0x2000},
+	{CELL_SLT, "Cartridge", 0x0000}
+};
+
+static int dump_base(int area) {
+	for (auto& a : dump_areas) {
+		if (a.area == area) return a.base;
+	}
+	return 0;
+}
+
+// the page spinner for the source picked: off where there is no page to pick
+static void dump_set_pages(QComboBox* box, QSpinBox* page) {
+	int area = getRFIData(box);
+	int pages = (area == CELL_NONE) ? 1 : comp_cell_pages(conf.zx, area);
+	page->blockSignals(true);
+	page->setMaximum((pages > 1) ? (pages - 1) : 0);
+	page->blockSignals(false);
+	page->setEnabled(pages > 1);
+}
+
+// the sources the machine has now, the one asked for picked if it is there
+static void dump_fill_sources(QComboBox* box, QSpinBox* page, int area, int pg) {
+	Computer* comp = conf.zx;
+	box->blockSignals(true);
+	box->clear();
+	box->addItem("CPU", CELL_NONE);
+	box->setItemData(0, "The 64K the CPU sees, as the memory is mapped now", Qt::ToolTipRole);
+	for (auto& a : dump_areas) {
+		int pages = comp_cell_pages(comp, a.area);
+		if (pages < 1) continue;
+		int unit = comp_cell_unit(comp, a.area) >> 10;
+		box->addItem(a.name, a.area);
+		box->setItemData(box->count() - 1, (pages > 1) ? QString("%0K pages, 0-%1").arg(unit).arg(pages - 1)
+			: QString("%0K").arg(unit), Qt::ToolTipRole);
+	}
+	int idx = box->findData(area);
+	box->setCurrentIndex((idx < 0) ? 0 : idx);
+	box->blockSignals(false);
+	dump_set_pages(box, page);
+	page->blockSignals(true);
+	page->setValue(pg);
+	page->blockSignals(false);
+}
+
+// bytes from the start of the page picked to the end of the area
+static int dump_room(QComboBox* box, QSpinBox* page) {
+	int area = getRFIData(box);
+	if (area == CELL_NONE) return MEM_64K;
+	return comp_cell_size(conf.zx, area) - page->value() * comp_cell_unit(conf.zx, area);
+}
+
+// a field's new limit: a mask with fewer digits cuts the text (4000 shows as
+// 0400) while the value stays, so the text is drawn again from the value
+static void dump_set_max(xHexSpin* field, int max) {
+	field->setMax(max);
+	field->setBase(16);
+}
+
+// it opens on what the DUMP panel shows
+void DebugWin::doSaveDump() {
+	int page;
+	int area = wid_dump->viewArea(&page);
+	dump_fill_sources(dui.cbSource, dui.sbPage, area, page);
+	dmpSourceChanged();
+	dumpwin->show();
+}
+
+// a new source starts at its page's start, one page long; the same one keeps its range
+void DebugWin::dmpSourceChanged() {
+	int area = getRFIData(dui.cbSource);
+	dump_set_pages(dui.cbSource, dui.sbPage);
+	dmpRange(area != dmpLast);
+	dmpLast = area;
+}
+
+void DebugWin::dmpPageChanged() {
+	dmpRange(false);
+}
+
+void DebugWin::dmpRange(bool reset) {
+	int area = getRFIData(dui.cbSource);
+	int room = dump_room(dui.cbSource, dui.sbPage);
+	dmpBusy = true;
+	dump_set_max(dui.leStart, room - 1);
+	dump_set_max(dui.leEnd, room - 1);
+	dump_set_max(dui.leLen, room);
+	if (reset && (area != CELL_NONE)) {
+		dui.leStart->setValue(0);
+		dui.leLen->setValue(qMin(comp_cell_unit(conf.zx, area), room));
+	}
+	dmpBusy = false;
+	dmpLenChanged();
+}
 
 void DebugWin::dmpLimChanged() {
+	if (dmpBusy) return;
 	int start = dui.leStart->getValue();
 	int end = dui.leEnd->getValue();
 	if (end < start) end = start;
 	int len = end - start + 1;
-	start = dui.leEnd->cursorPosition();
+	dmpBusy = true;
+	int pos = dui.leEnd->cursorPosition();
 	dui.leEnd->setValue(end);
 	dui.leLen->setValue(len);
-	dui.leEnd->setCursorPosition(start);
+	dui.leEnd->setCursorPosition(pos);
+	dmpBusy = false;
 }
 
 void DebugWin::dmpLenChanged() {
+	if (dmpBusy) return;
 	int start = dui.leStart->getValue();
 	int len = dui.leLen->getValue();
-	int end = dui.leEnd->getMax();
-	if (start + len >= end) {
-		len = end - start;
-		dui.leLen->setValue(len);
-	}
-	end = start + len - 1;
-	start = dui.leLen->cursorPosition();
-	dui.leEnd->setValue(end);
-	dui.leLen->setCursorPosition(start);
+	int room = dui.leLen->getMax();
+	if (start + len > room) len = room - start;
+	dmpBusy = true;
+	int pos = dui.leLen->cursorPosition();
+	dui.leLen->setValue(len);
+	dui.leEnd->setValue(start + len - 1);
+	dui.leLen->setCursorPosition(pos);
+	dmpBusy = false;
 }
 
 QByteArray DebugWin::getDumpData() {
-	//int bank = dui.leBank->text().toInt(NULL,16);
+	int area = getRFIData(dui.cbSource);
+	int page = dui.sbPage->value();
 	int adr = dui.leStart->getValue();
 	int len = dui.leLen->getValue();
 	QByteArray res;
-	while (len > 0) {
-		//if (adr < 0xc000) {
-		res.append(rdbyte(adr, conf.zx));
-		//} else {
-		//	res.append(comp->mem->ramData[(bank << 14) | (adr & 0x3fff)]);
-		//}
-		adr++;
-		len--;
+	res.reserve(len);
+	for (; len > 0; adr++, len--) {
+		int bt = (area == CELL_NONE) ? rdbyte(adr, conf.zx) : comp_cell_peek(conf.zx, area, page, adr);
+		if (bt < 0) break;		// past the area's end
+		res.append((char)bt);
 	}
 	return res;
+}
+
+// A TR-DOS file of the dump: from the CPU's memory it is named after its address
+// and loads there; from a page it is named after the page (RAM7, DIV3, +offset if
+// it fits) and loads where the page is seen
+void DebugWin::dmpFileName(QString* name, int* start) {
+	int area = getRFIData(dui.cbSource);
+	int ofs = dui.leStart->getValue();
+	if (area == CELL_NONE) {
+		*name = dui.leStart->text();
+		*start = ofs;
+		return;
+	}
+	char buf[16];
+	xCell cell = {area, dui.sbPage->value(), 0, 0};
+	QString tok = (area == CELL_RAM) ? QString("RAM%0").arg(cell.page) : QString(cell_token(cell, buf));
+	QString hex = QString::number(ofs, 16).toUpper();
+	*name = (ofs && (tok.size() + 1 + hex.size() <= 8)) ? QString("%0+%1").arg(tok, hex) : tok;
+	*start = (dump_base(area) + ofs) & 0xffff;
 }
 
 void DebugWin::saveDumpBin() {
@@ -2745,13 +2862,13 @@ void DebugWin::saveDumpHobeta() {
 	QString path = QFileDialog::getSaveFileName(this,"Save memory dump as Hobeta","","Hobeta files (*.$C)",nullptr,QFileDialog::DontUseNativeDialog);
 	if (path.isEmpty()) return;
 	TRFile dsc;
-	QString name = dui.leStart->text();
-	// name.append(".").append(dui.leBank->text());
+	QString name;
+	int start;
+	dmpFileName(&name, &start);
 	std::string nms = name.toStdString();
 	nms.resize(8,' ');
 	memcpy(dsc.name,nms.c_str(),8);
 	dsc.ext = 'C';
-	int start = dui.leStart->getValue();
 	int len = data.size();
 	if (len > 0xff00) {		// 255 sectors: all a TR-DOS file can say it holds
 		shitHappens("Too long for a Hobeta file (255 sectors at most)");
@@ -2777,16 +2894,15 @@ void DebugWin::saveDumpToDisk(int idx) {
 	QByteArray data = getDumpData();
 	if (data.size() == 0) return;
 	if (data.size() > 0xff00) return;
-	int start = dui.leStart->getValue();
-	int len = dui.leLen->getValue();
-	QString name = dui.leStart->text();
-	// name.append(".").append(dui.leBank->text());
+	QString name;
+	int start;
+	dmpFileName(&name, &start);
 	Floppy* flp = conf.zx->dif->flp[idx & 3];
 	if (!flp->insert) {
 		flp_insert(flp, NULL);
 		trd_format(flp);
 	}
-	TRFile dsc = diskMakeDescriptor(name.toStdString().c_str(), 'C', start, len);
+	TRFile dsc = diskMakeDescriptor(name.toStdString().c_str(), 'C', start, data.size());
 	if (diskCreateFile(flp, dsc, (unsigned char*)data.data(), data.size()) == ERR_OK)
 		dumpwin->hide();
 
@@ -2847,10 +2963,15 @@ int loadDUMP(Computer* comp, const char* name, int adr) {
 	return ERR_OK;
 }
 
+// it opens on what the DUMP panel shows
 void DebugWin::doOpenDump() {
+	int page;
+	int area = wid_dump->viewArea(&page);
 	dumpPath.clear();
+	dumpSize = 0;
 	oui.laPath->clear();
-	oui.leStart->setText("C000");
+	dump_fill_sources(oui.cbSource, oui.sbPage, area, page);
+	odmpSourceChanged();
 	openDumpDialog->show();
 }
 
@@ -2858,40 +2979,80 @@ void DebugWin::chDumpFile() {
 	QString path = QFileDialog::getOpenFileName(this,"Open dump",QString(),QString(),nullptr,QFileDialog::DontUseNativeDialog);
 	if (path.isEmpty()) return;
 	QFileInfo inf(path);
-	if ((inf.size() == 0) || (inf.size() > 0xff00)) {
+	if ((inf.size() == 0) || (inf.size() > MEM_4M)) {
 		shitHappens("File is too long");
 	} else {
 		dumpPath = path;
+		dumpSize = (int)inf.size();
 		oui.laPath->setText(path);
-		oui.leLen->setValue(inf.size() & 0xffff);
 		dmpStartOpen();
 	}
 }
 
+// the CPU's memory takes a file at C000, an area at its page's start
+void DebugWin::odmpSourceChanged() {
+	dump_set_pages(oui.cbSource, oui.sbPage);
+	dump_set_max(oui.leStart, dump_room(oui.cbSource, oui.sbPage) - 1);
+	oui.leStart->setValue((getRFIData(oui.cbSource) == CELL_NONE) ? 0xc000 : 0);
+	dmpStartOpen();
+}
+
+// a file that would run past the end is moved down to end there
 void DebugWin::dmpStartOpen() {
+	if (dmpBusy) return;
+	int room = dump_room(oui.cbSource, oui.sbPage);
+	dmpBusy = true;
+	dump_set_max(oui.leStart, room - 1);
+	dump_set_max(oui.leEnd, room - 1);
 	int start = oui.leStart->getValue();
-	int len = oui.leLen->getValue();
+	if ((dumpSize > 0) && (dumpSize <= room) && (start + dumpSize > room))
+		start = room - dumpSize;
 	int pos = oui.leStart->cursorPosition();
-	int end = oui.leEnd->getMax();
-	if (start + len > end) {
-		start = end - len + 1;
-	} else {
-		end = start + len - 1;
-	}
 	oui.leStart->setValue(start);
-	oui.leEnd->setValue(end);
 	oui.leStart->setCursorPosition(pos);
+	oui.leLen->setValue(dumpSize);
+	oui.leEnd->setValue(start + qMax(dumpSize, 1) - 1);
+	dmpBusy = false;
 }
 
 void DebugWin::loadDump() {
 	if (dumpPath.isEmpty()) return;
-	int res = loadDUMP(conf.zx, dumpPath.toLocal8Bit().data(),oui.leStart->text().toInt(NULL,16));
-	fillAll();
-	if (res == ERR_OK) {
-		openDumpDialog->hide();
-	} else {
-		shitHappens("Can't open file");
+	int area = getRFIData(oui.cbSource);
+	int page = oui.sbPage->value();
+	int start = oui.leStart->getValue();
+	if (area == CELL_NONE) {
+		if (dumpSize > 0xff00) {
+			shitHappens("File is too long");
+			return;
+		}
+		int res = loadDUMP(conf.zx, dumpPath.toLocal8Bit().data(), start);
+		fillAll();
+		if (res == ERR_OK) {
+			openDumpDialog->hide();
+		} else {
+			shitHappens("Can't open file");
+		}
+		return;
 	}
+	if (start + dumpSize > dump_room(oui.cbSource, oui.sbPage)) {
+		shitHappens("The file runs past the end of the memory");
+		return;
+	}
+	if (comp_cell_rom(area) && !conf.dbg.romwr) {
+		shitHappens("This is ROM: tick Allow ROM wr to write it");
+		return;
+	}
+	QFile file(dumpPath);
+	if (!file.open(QFile::ReadOnly)) {
+		shitHappens("Can't open file");
+		return;
+	}
+	QByteArray data = file.read(dumpSize);
+	rzx_rec_touch();
+	for (int i = 0; i < data.size(); i++)
+		comp_cell_poke(conf.zx, area, page, start + i, data.at(i), conf.dbg.romwr);
+	fillAll();
+	openDumpDialog->hide();
 }
 
 // ps/2 widget (tmp here)

@@ -782,6 +782,10 @@ xCell comp_cell(Computer*, int type, int abs);			// a cell (MEM_* and abs) by it
 int comp_cell_xadr(Computer*, int area, int page, int ofs, int* type, int* abs);	// ...and back, 0: no such cell
 int comp_cell_unit(Computer*, int area);			// the page size of an area
 int comp_cell_pages(Computer*, int area);			// how many pages it has, 1: no number
+int comp_cell_size(Computer*, int area);			// all its pages, in bytes
+int comp_cell_peek(Computer*, int area, int page, int ofs);	// a cell's byte, -1: none. ofs may run into the next pages
+int comp_cell_rom(int area);				// ROM, alt ROM, divMMC's EEPROM, Multiface ROM, the slot
+int comp_cell_poke(Computer*, int area, int page, int ofs, int val, int romWrite);	// ...a write: ROM areas with romWrite only, 0: not written
 const char* cell_token(xCell, char* buf);	// a named area's page as text: ROM0, DIV3, DIVROM; "" for RAM
 int cell_token_parse(const char*, int* area, int* page);	// ...and back, 0: not a named area
 // Preview one instruction and up to size raw bytes without changing the machine.

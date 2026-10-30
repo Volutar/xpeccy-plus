@@ -200,6 +200,44 @@ int comp_cell_xadr(Computer* comp, int area, int page, int ofs, int* type, int* 
 	return 0;
 }
 
+// The byte behind a cell: a page's offset may run past its end into the next
+// pages. NULL: no such cell.
+static unsigned char* comp_cell_ptr(Computer* comp, int area, int page, int ofs) {
+	int unit = comp_cell_unit(comp, area);
+	int type, abs;
+	if (!unit || (ofs < 0)) return NULL;
+	if (!comp_cell_xadr(comp, area, page + ofs / unit, ofs % unit, &type, &abs)) return NULL;
+	switch (type) {
+		case MEM_RAM: return comp->mem->ramData + (abs & comp->mem->ramMask);
+		case MEM_ROM: return comp->mem->romData + (abs & comp->mem->romMask);
+		case MEM_SLOT: return (comp->slot && comp->slot->data) ? comp->slot->data + (abs & comp->slot->memMask) : NULL;
+		case MEM_DIV: return comp->div ? comp->div->data + abs : NULL;
+	}
+	return NULL;
+}
+
+int comp_cell_size(Computer* comp, int area) {
+	return comp_cell_unit(comp, area) * comp_cell_pages(comp, area);
+}
+
+int comp_cell_peek(Computer* comp, int area, int page, int ofs) {
+	unsigned char* ptr = comp_cell_ptr(comp, area, page, ofs);
+	return ptr ? *ptr : -1;
+}
+
+int comp_cell_rom(int area) {
+	return (area != CELL_RAM) && (area != CELL_DIV) && (area != CELL_MFRAM);
+}
+
+int comp_cell_poke(Computer* comp, int area, int page, int ofs, int val, int romWrite) {
+	if (comp_cell_rom(area) && !romWrite) return 0;
+	unsigned char* ptr = comp_cell_ptr(comp, area, page, ofs);
+	if (!ptr) return 0;
+	*ptr = val & 0xff;
+	if ((area == CELL_DIVROM) && comp->div && !comp_is_next(comp)) comp->div->eeDirty = 1;
+	return 1;
+}
+
 static const struct {int area; const char* name;} cell_names[] = {
 	{CELL_ALTROM, "ALTROM"}, {CELL_DIVROM, "DIVROM"},	// before the names they start with
 	{CELL_ROM, "ROM"}, {CELL_DIV, "DIV"}, {CELL_MFROM, "MFROM"}, {CELL_MFRAM, "MFRAM"},

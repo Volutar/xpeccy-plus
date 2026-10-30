@@ -112,6 +112,7 @@ class xDumpWidget : public xDockWidget {
 	public:
 		xDumpWidget(QString, QString, QWidget* = nullptr);
 		void setLimit(int);
+		int viewArea(int* page);	// the area (CELL_*) and page on show, CELL_NONE: the CPU's
 	signals:
 		void s_adrch(int);
 		void s_curadrch(int);

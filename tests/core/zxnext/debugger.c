@@ -359,5 +359,61 @@ int debugger_check(void) {
 	memcpy(comp->mem->ramData + 0x48000, longCode, sizeof(longCode));
 	check("long prefix chain", preview(comp, 0x8000, longCode, sizeof(longCode), "ld ix,#3412"));
 	compDestroy(comp);
+
+	// a dump by area: every cell is the byte the core holds, a range runs on into the
+	// next pages, and stops at the area's end
+	comp = machine();
+	{
+		static const struct {int area, page, ofs, abs;} cells[] = {
+			{CELL_ROM, 0, 0, 0}, {CELL_ROM, 3, 0x3fff, 0xffff},
+			{CELL_DIVROM, 0, 0x1fff, 0x11fff}, {CELL_MFROM, 0, 5, 0x14005}, {CELL_MFRAM, 0, 0x1fff, 0x17fff},
+			{CELL_ALTROM, 1, 0x10, 0x1c010}, {CELL_DIV, 15, 0x1fff, 0x3ffff},
+			{CELL_RAM, 0, 0, 0x40000}, {CELL_RAM, 0xdf, 0x1fff, 0x1fffff},
+			{CELL_RAM, 5, 0x2000, 0x40000 + 6 * 0x2000}	// past page 5: page 6
+		};
+		ok = 1;
+		for (unsigned i = 0; i < sizeof(cells) / sizeof(cells[0]); i++) {
+			comp->mem->ramData[cells[i].abs] = 0x40 + i;
+			ok &= comp_cell_peek(comp, cells[i].area, cells[i].page, cells[i].ofs) == (int)(0x40 + i);
+			if (!ok) fprintf(stderr, "dump cell %i\n", i);
+		}
+		ok &= comp_cell_peek(comp, CELL_RAM, 0xdf, 0x2000) < 0 && comp_cell_peek(comp, CELL_DIV, 0, 0x20000) < 0;
+		ok &= comp_cell_size(comp, CELL_RAM) == 0xe0 * 0x2000 && comp_cell_size(comp, CELL_ROM) == 0x10000;
+		ok &= comp_cell_size(comp, CELL_SLT) == 0;
+		// ROM areas take a write only with ROM writes allowed
+		ok &= !comp_cell_poke(comp, CELL_ROM, 1, 0, 0x99, 0) && comp->mem->ramData[0x4000] != 0x99;
+		ok &= comp_cell_poke(comp, CELL_ROM, 1, 0, 0x99, 1) && comp->mem->ramData[0x4000] == 0x99;
+		ok &= comp_cell_poke(comp, CELL_RAM, 0x0a, 0x2001, 0x77, 0) && comp->mem->ramData[0x40000 + 0x0b * 0x2000 + 1] == 0x77;
+	}
+	compDestroy(comp);
+	comp = compCreate();
+	compSetHardware(comp, "ZX128");
+	memSetSize(comp->mem, MEM_128K, MEM_32K);	// as the machine's config sets it
+	div_set_model(comp->div, DIV_MMC, 16);
+	{
+		comp->mem->ramData[7 * 0x4000 + 0x3fff] = 0x17;
+		comp->mem->romData[0x4000] = 0x21;
+		comp->div->data[DIV_EE_SIZE + 3 * 0x2000 + 0x10] = 0x33;
+		comp->div->data[0x123] = 0x44;
+		ok &= comp_cell_peek(comp, CELL_RAM, 0, 7 * 0x4000 + 0x3fff) == 0x17 && comp_cell_peek(comp, CELL_RAM, 7, 0x3fff) == 0x17;
+		ok &= comp_cell_peek(comp, CELL_RAM, 7, 0x4000) < 0 && comp_cell_size(comp, CELL_RAM) == 0x20000;
+		ok &= comp_cell_peek(comp, CELL_ROM, 0, 0x4000) == 0x21 && comp_cell_size(comp, CELL_ROM) == 0x8000;
+		ok &= comp_cell_peek(comp, CELL_DIV, 2, 0x2010) == 0x33 && comp_cell_peek(comp, CELL_DIVROM, 0, 0x123) == 0x44;
+		ok &= comp_cell_size(comp, CELL_DIV) == 16 * 0x2000 && comp_cell_size(comp, CELL_ALTROM) == 0;
+		comp->div->eeDirty = 0;
+		ok &= comp_cell_poke(comp, CELL_DIVROM, 0, 0x124, 0x55, 1) && comp->div->data[0x124] == 0x55 && comp->div->eeDirty;
+		ok &= comp_cell_poke(comp, CELL_DIV, 3, 0, 0x66, 0) && comp->div->data[DIV_EE_SIZE + 3 * 0x2000] == 0x66;
+	}
+	compDestroy(comp);
+	comp = compCreate();
+	compSetHardware(comp, "TSConf");
+	memSetSize(comp->mem, MEM_4M, MEM_512K);
+	{
+		comp->mem->ramData[0x3fffff] = 0x5a;
+		ok &= comp_cell_size(comp, CELL_RAM) == 0x400000 && comp_cell_peek(comp, CELL_RAM, 0, 0x3fffff) == 0x5a;
+		ok &= comp_cell_peek(comp, CELL_RAM, 0xff, 0x3fff) == 0x5a && comp_cell_peek(comp, CELL_RAM, 0, 0x400000) < 0;
+	}
+	check("dump by area and page", ok);
+	compDestroy(comp);
 	return failures ? 1 : 0;
 }
