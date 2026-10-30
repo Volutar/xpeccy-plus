@@ -3,7 +3,6 @@
 #include <algorithm>
 
 #include <QFile>
-#include <QTextStream>
 
 #include "xcore.h"
 
@@ -99,9 +98,9 @@ std::string layoutString(const xLayout& lay) {
 static void lay_read(const QString& path) {
 	QFile file(path);		// QFile, not ifstream: the shipped one is a resource
 	if (!file.open(QFile::ReadOnly | QFile::Text)) return;
-	QTextStream stream(&file);
-	while (!stream.atEnd()) {
-		QString line = stream.readLine().section('#', 0, 0).section(';', 0, 0).trimmed();
+	// not a stream: Qt 5's follows the code page, and an older build wrote the system's
+	foreach(QString line, text_8bit(file.readAll()).split('\n')) {
+		line = line.section('#', 0, 0).section(';', 0, 0).trimmed();
 		if (line.isEmpty() || !line.contains('=')) continue;
 		std::pair<std::string,std::string> spl = splitline(line.toLocal8Bit().data());
 		if (spl.first == "layout")

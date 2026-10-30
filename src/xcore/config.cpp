@@ -944,7 +944,7 @@ void loadConfig() {
 
 	while (!file.eof()) {
 		file.getline(buf,2048);
-		line = std::string(buf);
+		line = local_8bit(buf);		// an older build wrote the system's code page
 		spl = splitline(line);
 		pnam = spl.first;
 		pval = spl.second;

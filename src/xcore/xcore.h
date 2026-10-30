@@ -101,6 +101,16 @@ void setFlagBit(bool, int*, int);
 bool str2bool(std::string);
 std::vector<std::string> splitstr(std::string,const char*);
 std::string split_tail_nums(const std::string&, int, std::vector<int>&);
+// 8-bit text from a file: UTF-8 when it is valid UTF-8, else the system's code page (what an
+// older build wrote). sys_8bit is always the system's code page - text from inside media,
+// shown as it always was. Both differ from fromLocal8Bit once the process runs in UTF-8.
+QString text_8bit(const QByteArray&);
+QString sys_8bit(const QByteArray&);
+// a line an older build wrote, in the code page the program runs in now
+std::string local_8bit(const std::string&);
+#ifdef _WIN32
+unsigned int sys_codepage();	// the system's own, whatever the process runs in
+#endif
 std::pair<std::string,std::string> splitline(std::string, char = '=');
 void copyFile(const char*, const char*);
 

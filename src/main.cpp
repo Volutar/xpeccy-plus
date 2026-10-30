@@ -333,6 +333,13 @@ static QStringList cliWarns;
 
 #ifdef __WIN32
 static bool ownConsole = false;		// -c opened a console window of its own
+static UINT conCP = 0;			// the console's own output code page, put back at exit
+
+// the parent's console keeps its code page after the program is gone
+static void console_cp_back() {
+	if (conCP) SetConsoleOutputCP(conCP);
+	conCP = 0;
+}
 #endif
 
 // a console window of its own closes with the emulator: hold it until it is read.
@@ -536,6 +543,12 @@ int main(int ac,char** av) {
 		}
 		if ((tout != FILE_TYPE_DISK) && (tout != FILE_TYPE_PIPE)) freopen("CONOUT$", "w", stdout);
 		if ((terr != FILE_TYPE_DISK) && (terr != FILE_TYPE_PIPE)) freopen("CONOUT$", "w", stderr);
+		// the text goes out in UTF-8 (the manifest): a path prints with its own letters
+		if ((GetACP() == CP_UTF8) && (GetConsoleOutputCP() != CP_UTF8)) {
+			conCP = GetConsoleOutputCP();
+			SetConsoleOutputCP(CP_UTF8);
+			atexit(console_cp_back);	// the early returns
+		}
 		break;
 	}
 #endif
@@ -1060,6 +1073,7 @@ int main(int ac,char** av) {
 #if defined(__WIN32)
 	timeEndPeriod(1);
 	console_hold();
+	console_cp_back();
 	FreeConsole();
 #endif
 	return 0;
