@@ -434,10 +434,10 @@ MainWin::MainWin(QMainWindow* frm) {
 	osdImg[osd_rzx].load(":/images/osd-rzx.png");
 	osdImg[osd_rzx_off].load(":/images/osd-rzx-off.png");
 	osdImg[osd_rzx_play].load(":/images/osd-rzx-play.png");
-	for (int i = 0; i < 3; i++) {
-		osdImg[osd_ffwd2 + i].load(QString(":/images/osd-time-ffwd%0.png").arg(2 << i));
-		osdImg[osd_slow2 + i].load(QString(":/images/osd-time-slow%0.png").arg(2 << i));
-	}
+	for (int i = 0; xtime_ffwd_signs[i]; i++)
+		osdImg[osd_ffwd + i].load(QString(":/images/osd-time-ffwd%0.png").arg(xtime_ffwd_signs[i]));
+	for (int i = 0; xtime_slow_signs[i]; i++)
+		osdImg[osd_slow + i].load(QString(":/images/osd-time-slow%0.png").arg(xtime_slow_signs[i]));
 	for (QImage& img : osdImg)
 		img.setDevicePixelRatio(2);	// drawn at half its size, sharp on a HiDPI screen
 
@@ -1682,9 +1682,13 @@ int MainWin::speedOsd() {
 		return osd_rewind;
 	if (conf.emu.fast)
 		return osd_fast;
-	if (conf.emu.speed != 1.0) {
-		int e = ilogb(conf.emu.speed);		// x2 x4 x8 are 1..3, 1/2 1/4 1/8 are -1..-3
-		return (e > 0) ? osd_ffwd2 + e - 1 : osd_slow2 - e - 1;
+	if (conf.emu.speed > 1.0) {
+		int i = xtime_index(xtime_ffwd_signs, (int)(conf.emu.speed + 0.5));
+		return (i < 0) ? osd_none : osd_ffwd + i;
+	}
+	if (conf.emu.speed < 1.0) {
+		int i = xtime_index(xtime_slow_signs, (int)(1.0 / conf.emu.speed + 0.5));
+		return (i < 0) ? osd_none : osd_slow + i;
 	}
 	return osd_none;
 }

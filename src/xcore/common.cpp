@@ -314,6 +314,59 @@ void xspeed_toggle(int mode) {
 	sndUpdateSpeed();
 }
 
+const int xtime_slow_steps[] = {2, 4, 8, 0};
+const int xtime_ffwd_steps[] = {2, 4, 8, 16, 0};
+
+int xtime_index(const int* list, int f) {
+	for (int i = 0; list[i]; i++) {
+		if (list[i] == f) return i;
+	}
+	return -1;
+}
+
+int xtime_fit(const int* list, int f) {
+	int best = list[0];
+	for (int i = 0; list[i]; i++) {
+		if (abs(list[i] - f) < abs(best - f)) best = list[i];
+	}
+	return best;
+}
+
+// The Faster/Slower keys: one place along 1/8 .. x1 .. x16 from where emulated time
+// stands, whoever set it - the slider's slow half included. The place reached is
+// slow motion's or fast forward's factor from then on, so their own keys resume it.
+int xtime_step(int dir) {
+	std::vector<double> scale;
+	for (int i = 0; xtime_slow_steps[i]; i++)
+		scale.insert(scale.begin(), 1.0 / xtime_slow_steps[i]);
+	scale.push_back(1.0);
+	for (int i = 0; xtime_ffwd_steps[i]; i++)
+		scale.push_back(xtime_ffwd_steps[i]);
+	double now = conf.emu.speed;
+	double f = 0.0;
+	if (dir > 0) {
+		for (double s : scale) {
+			if (s > now + 1e-6) { f = s; break; }
+		}
+	} else {
+		for (double s : scale) {
+			if (s < now - 1e-6) f = s;
+		}
+	}
+	if (f == 0.0) return 0;
+	xspeed_set(XSPD_CENTER);	// overclock and either mode off: one speed at a time
+	if (f > 1.0) {
+		conf.emu.ffMul = (int)(f + 0.5);
+		conf.emu.tmode = XTM_FFWD;
+	} else if (f < 1.0) {
+		conf.emu.slowDiv = (int)(1.0 / f + 0.5);
+		conf.emu.tmode = XTM_SLOW;
+	}
+	conf.emu.speed = f;
+	sndUpdateSpeed();
+	return 1;
+}
+
 // A tap shorter than this switches a hybrid key's mode; a longer press only holds it.
 #define XHOLD_TAP_NS	300000000LL
 

@@ -37,7 +37,8 @@ static int xcut_tmode(int keyid) {
 // A held key repeats a shortcut only when the shortcut is a step: every other
 // one switches, opens or fires something, and a repeat undoes it or fires it again.
 static bool xcut_repeats(int keyid) {
-	return (keyid == XCUT_SPEED_UP) || (keyid == XCUT_SPEED_DOWN);
+	return (keyid == XCUT_SPEED_UP) || (keyid == XCUT_SPEED_DOWN)
+		|| (keyid == XCUT_TIME_FASTER) || (keyid == XCUT_TIME_SLOWER);
 }
 
 void MainWin::releaseChord(QKeyEvent* ev, bool down) {
@@ -265,6 +266,15 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 			case XCUT_FFWD:
 			case XCUT_SLOWMO:
 				xspeed_key(xcut_tmode(xkey), 1);
+				break;
+			case XCUT_TIME_FASTER:
+			case XCUT_TIME_SLOWER:
+				// the corner's sign says where it went; the factor is a setting
+				if (xtime_step((xkey == XCUT_TIME_FASTER) ? 1 : -1)) {
+					saveConfig();
+				} else {
+					setMessage(" limit reached ");
+				}
 				break;
 			case XCUT_SPEED_UP:
 			case XCUT_SPEED_DOWN:

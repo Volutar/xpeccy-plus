@@ -446,6 +446,8 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_REWIND, "key.rewind", "Rewind (Hold)", {}},
 	{SCG_MAIN, XCUT_FFWD, "key.ffwd", "Fast Forward", {}},
 	{SCG_MAIN, XCUT_SLOWMO, "key.slowmo", "Slow Motion", {}},
+	{SCG_MAIN, XCUT_TIME_FASTER, "key.time.faster", "Faster", {}},
+	{SCG_MAIN, XCUT_TIME_SLOWER, "key.time.slower", "Slower", {}},
 	{SCG_MAIN | SCG_DEBUGA, XCUT_SAVE, "key.save", "Save", {}},
 	{SCG_MAIN | SCG_DEBUGA, XCUT_LOAD, "key.load", "Open", {}},
 	{SCG_MAIN, XCUT_FASTSAVE, "key.fastsave", "Save Changed Disks", {}},
@@ -627,6 +629,8 @@ static const xCutDef cutClassic[] = {
 	{XCUT_TURBO, {QKeySequence(Qt::ALT | Qt::Key_T)}},
 	{XCUT_SPEED_UP, {QKeySequence(Qt::AltModifier | Qt::KeypadModifier | Qt::Key_Plus)}},
 	{XCUT_SPEED_DOWN, {QKeySequence(Qt::AltModifier | Qt::KeypadModifier | Qt::Key_Minus)}},
+	{XCUT_TIME_FASTER, {QKeySequence(Qt::ShiftModifier | Qt::KeypadModifier | Qt::Key_Plus)}},
+	{XCUT_TIME_SLOWER, {QKeySequence(Qt::ShiftModifier | Qt::KeypadModifier | Qt::Key_Minus)}},
 	{XCUT_VIDREC, {QKeySequence(Qt::CTRL | Qt::Key_F7)}},
 	{XCUT_RZXREC, {QKeySequence(Qt::CTRL | Qt::Key_F6)}},
 
@@ -693,6 +697,8 @@ static const xCutDef cutModern[] = {
 	{XCUT_FAST, {QKeySequence(Qt::Key_Insert), QKeySequence(HK_MOD | Qt::Key_Up)}},
 	{XCUT_SPEED_UP, {QKeySequence(HK_MODM | Qt::KeypadModifier | Qt::Key_Plus), QKeySequence(HK_MOD | Qt::Key_Equal)}},
 	{XCUT_SPEED_DOWN, {QKeySequence(HK_MODM | Qt::KeypadModifier | Qt::Key_Minus), QKeySequence(HK_MOD | Qt::Key_Minus)}},
+	{XCUT_TIME_FASTER, {QKeySequence(Qt::ShiftModifier | Qt::KeypadModifier | Qt::Key_Plus)}},
+	{XCUT_TIME_SLOWER, {QKeySequence(Qt::ShiftModifier | Qt::KeypadModifier | Qt::Key_Minus)}},
 	{XCUT_TURBO, {QKeySequence(HK_MOD | Qt::Key_T)}},
 	{XCUT_MUTE, {QKeySequence(HK_MOD | Qt::Key_U)}},
 

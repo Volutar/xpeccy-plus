@@ -541,10 +541,10 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.cbRunAhead->addItem("Off", 0);
 	ui.cbRunAhead->addItem("1", 1);
 	ui.cbRunAhead->addItem("2", 2);
-	for (int f = 2; f <= 8; f <<= 1) {
-		ui.cbSlowmo->addItem(QString("1/%0").arg(f), f);
-		ui.cbFfwd->addItem(QString::fromUtf8("\u00d7%0").arg(f), f);
-	}
+	for (int i = 0; xtime_slow_steps[i]; i++)
+		ui.cbSlowmo->addItem(QString("1/%0").arg(xtime_slow_steps[i]), xtime_slow_steps[i]);
+	for (int i = 0; xtime_ffwd_steps[i]; i++)
+		ui.cbFfwd->addItem(QString::fromUtf8("\u00d7%0").arg(xtime_ffwd_steps[i]), xtime_ffwd_steps[i]);
 	for (int f : {15, 30, 50, 60})
 		ui.cbFastFps->addItem(QString::number(f), f);
 	ui.cbFastFps->setValidator(new QIntValidator(1, 100, ui.cbFastFps));

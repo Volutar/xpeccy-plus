@@ -88,9 +88,9 @@ enum {
 	osd_fast,
 	osd_rewind,
 	osd_pause,
-	osd_ffwd2,	// x2, then x4 and x8 after it
-	osd_slow2 = osd_ffwd2 + 3,	// 1/2, then 1/4 and 1/8
-	osd_rec = osd_slow2 + 3,	// recording, taking turns with the others
+	osd_ffwd,	// one per factor of xtime_ffwd_signs, in its order
+	osd_slow = osd_ffwd + XTIME_SIGNS(xtime_ffwd_signs),	// the same for xtime_slow_signs
+	osd_rec = osd_slow + XTIME_SIGNS(xtime_slow_signs),	// recording, taking turns with the others
 	osd_rec_off,	// its other phase, with no speed mode to take turns with
 	osd_rzx,	// the same for an RZX recording
 	osd_rzx_off,
