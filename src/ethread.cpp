@@ -212,10 +212,10 @@ void xThread::tap_catch_load(Computer* comp, int atStart, int base, int dir) {
 	// included, which moves it on without ever playing it. Play, a rewind or
 	// another tape hands it back.
 	if (tap->userStop) return;
-	// A load asks for a tape that has run out: "Rewind at end" puts it back to
-	// the start here too, not only under the Play button - for the block asked
-	// for, its flag (A') and its length. Nothing to rewind for if neither of the
-	// automatics is on - Play does it.
+	// A load asks for a tape that has run out: "Rewind at end" winds it back here
+	// too, not only under the Play button - to the block asked for, its flag (A')
+	// and its length. Nothing to rewind for if neither of the automatics is on -
+	// Play does it.
 	if (atStart && (tape_flash() || conf.tape.autostart))
 		tap_rewind_for(tap, comp->cpu->regAa & 0xff, comp->cpu->regDE);
 	// A tape stopped past its block's pilot holds no pilot the rom can find
@@ -224,6 +224,11 @@ void xThread::tap_catch_load(Computer* comp, int atStart, int base, int dir) {
 	if (atStart && !tap->on && (tap->block < tap->blkCount) && (tap->pos > 0)
 			&& (tap_block_done(tap) || tap_past_pilot(tap)))
 		tapNextBlock(tap);
+	// The block it comes to cannot be the one asked for, and that one is further
+	// on: wound on to it. The rom's own LD-BYTES only - a copy may not take its
+	// flag and length as the rom does.
+	if (atStart && (base == LD_ROM_BASE) && (tape_flash() || conf.tape.autostart))
+		tap_wind_on_for(tap, comp->cpu->regAa & 0xff, comp->cpu->regDE);
 	int blk = tap->block;
 	if (blk >= tap->blkCount) return;
 	// A loader that has the rom read only the first part of a block and reads

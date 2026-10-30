@@ -188,6 +188,7 @@ void tapUserStop(Tape*);
 void tapRewind(Tape*,int);
 int tap_rewind_at_end(Tape*);
 int tap_rewind_for(Tape*, int, int);
+int tap_wind_on_for(Tape*, int, int);
 
 void tap_sync_slow(Tape*,int);
 // Time for the tape. Up to the end of the pulse it stands in, nothing but a
