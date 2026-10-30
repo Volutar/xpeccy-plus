@@ -21,7 +21,9 @@ The two are read apart and combined per id:
 - a user file with an id of **its own** is a machine of its own. It names `inherit`.
 
 The user's files are written by the emulator itself (Options -> Machine), holding only what
-differs from the machine as it ships. They are ordinary text and can be edited by hand.
+differs from the machine as it ships. They are ordinary text in UTF-8 and can be edited by
+hand; a file that is not valid UTF-8, as earlier builds wrote them, is read in the system's
+code page.
 
 ## Inheritance
 
@@ -118,6 +120,11 @@ is skipped without a word.
 
 A file name with no path is looked for in the ROM directory. A child's `[rom]` block names only
 the banks it changes, on top of the set it inherits.
+
+Offset and size are read from the end: only trailing `:` fields that are all digits are
+numbers, so a path with colons of its own is a name - `C:/roms/x.rom`, `C:/roms/x.rom:16:16`.
+The emulator writes both numbers whenever the name has a colon (`x:16` -> `x:16:0:0`), so a
+name ending in `:digits` is never read as an offset.
 
 ## Two things that bite
 
