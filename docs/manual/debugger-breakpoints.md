@@ -97,7 +97,7 @@ to the line under the cursor, without a breakpoint in the list (see
 
 1. The list of breakpoints.
 2. The buttons: {icon}`add` add, {icon}`edit` edit, {icon}`fileopen` open a list,
-   {icon}`floppy` save the list, and {icon}`cancel` delete at the bottom.
+   {icon}`save-as` save the list, and {icon}`cancel` delete at the bottom.
 
 The **Breakpoints** panel is the tab with the stop sign under the memory dump. Each row is
 one breakpoint:
@@ -133,7 +133,7 @@ The buttons at the right:
 - {icon}`edit` edit (the pencil) - opens the selected one in the **Breakpoint Editor**;
 - {icon}`fileopen` open (the folder) - loads a list from a `.xbrk` file, in place of the one
   you have;
-- {icon}`floppy` save (the floppy disk) - writes the list to a `.xbrk` file;
+- {icon}`save-as` save (the floppy with a pencil) - writes the list to a `.xbrk` file;
 - {icon}`cancel` delete (the red cross, at the bottom) - removes the selected breakpoints.
 
 The right-click menu of the list has:
@@ -534,7 +534,7 @@ An expression that cannot be worked out at that moment is written as `?`.
 ```{index} .xbrk, breakpoint; file
 ```
 
-{icon}`floppy` **Save** in the **Breakpoints** panel writes the list to a text file,
+{icon}`save-as` **Save** in the **Breakpoints** panel writes the list to a text file,
 `.xbrk`; {icon}`fileopen` **Open** loads one, in place of the list you have. A file can be
 written by hand too: one breakpoint a line, its fields split by colons. Lines starting with
 `;` are skipped.

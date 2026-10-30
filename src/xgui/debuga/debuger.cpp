@@ -480,7 +480,7 @@ DebugWin::DebugWin(QWidget* par):QMainWindow(par) {
 	wid_ay = new xSndWidget(":/images/note.png","Sound Chip");
 	connect(wid_ay, &xSndWidget::s_detach, this, &DebugWin::sndSetDetached);
 	wid_tape = new xTapeWidget(":/images/tape.png","Tape");
-	wid_fdd = new xFDDWidget(":/images/floppy.png","FDC");
+	wid_fdd = new xFDDWidget(":/images/fdd_disk.png","FDC");
 	wid_brk = new xBreakWidget(":/images/stop.png","Breakpoints");
 	wid_heat = new xHeatWidget(":/images/memory.png","Heat map");
 	wid_pal = new xPalWidget(":/images/palette.png", "Palette");

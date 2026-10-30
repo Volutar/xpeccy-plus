@@ -159,6 +159,9 @@
      </item>
      <item>
       <widget class="QToolButton" name="tbSaveDasm">
+       <property name="toolTip">
+        <string>Files</string>
+       </property>
        <property name="text">
         <string>...</string>
        </property>
@@ -347,7 +350,7 @@
   <action name="actSaveLabels">
    <property name="icon">
     <iconset resource="../../xpeccy.qrc">
-     <normaloff>:/images/floppy.png</normaloff>:/images/floppy.png</iconset>
+     <normaloff>:/images/save-as.png</normaloff>:/images/save-as.png</iconset>
    </property>
    <property name="text">
     <string>Save labels</string>
@@ -394,7 +397,7 @@
   <action name="actSaveMap">
    <property name="icon">
     <iconset resource="../../xpeccy.qrc">
-     <normaloff>:/images/floppy.png</normaloff>:/images/floppy.png</iconset>
+     <normaloff>:/images/save-as.png</normaloff>:/images/save-as.png</iconset>
    </property>
    <property name="text">
     <string>Save map</string>
@@ -412,7 +415,7 @@
   <action name="actDisasm">
    <property name="icon">
     <iconset resource="../../xpeccy.qrc">
-     <normaloff>:/images/floppyRed.png</normaloff>:/images/floppyRed.png</iconset>
+     <normaloff>:/images/save-as.png</normaloff>:/images/save-as.png</iconset>
    </property>
    <property name="text">
     <string>Disasm to file</string>
@@ -465,7 +468,7 @@
   <action name="actSaveDump">
    <property name="icon">
     <iconset resource="../../xpeccy.qrc">
-     <normaloff>:/images/floppy.png</normaloff>:/images/floppy.png</iconset>
+     <normaloff>:/images/save-as.png</normaloff>:/images/save-as.png</iconset>
    </property>
    <property name="text">
     <string>Save dump</string>

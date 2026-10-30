@@ -14,7 +14,8 @@ TapeWin::TapeWin(QWidget *par):QDialog(par) {
 	// the answer from, so the button asks
 	QMenu* menu = new QMenu(this);
 	for (int i = 0; i < 4; i++)
-		menu->addAction(QString("Drive %0").arg(QChar('A' + i)))->setData(i);
+		menu->addAction(QIcon(QString(":/images/fdd_disk_%0.png").arg(QChar('A' + i))),
+			QString("Drive %0").arg(QChar('A' + i)))->setData(i);
 	ui.tbToDisk->setMenu(menu);
 	connect(menu, SIGNAL(triggered(QAction*)), this, SLOT(doToDisk(QAction*)));
 	connect(ui.playBut,SIGNAL(released()),this,SLOT(doPlay()));

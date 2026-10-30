@@ -253,7 +253,7 @@ changes.
 ```{index} PAD, gamepad; saving bindings, gamepad; presets
 ```
 
-{icon}`floppy` **Save as...** writes the player's table to a `.pad` file; {icon}`fileopen`
+{icon}`save-as` **Save as...** writes the player's table to a `.pad` file; {icon}`fileopen`
 **Load...** reads one back. Its menu lists the last eight files loaded or saved, by name,
 with a check by the one the table matches, and **Browse...** below them for any other file;
 when there are no such files yet, **Load...** opens the file dialog at once.

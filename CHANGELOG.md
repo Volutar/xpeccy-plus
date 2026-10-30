@@ -57,6 +57,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **Save icons say what they do**: a floppy saves, a floppy with a pencil is Save As or
+  Export to a new file, two floppies save all changed disks. Storage, the Debugger's FDC
+  panel and Copy to disk show a drive.
+
 - **With no shader, a fitted picture stays sharp**: in fullscreen or a maximized window
   every dot keeps one width, only the seams between dots are softened. *(thanks to Volutar)*
 

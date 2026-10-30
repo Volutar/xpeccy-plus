@@ -8,7 +8,7 @@
 1. What the picture covers - **CPU**, **RAM** or **ROM** - and the page for the last two.
 2. The counter shown - **All**, **Read**, **Write** or **Exec**.
 3. **Collect**, and the buttons that {icon}`refresh` reset the counters and
-   {icon}`save_all` export them.
+   {icon}`save-as` export them.
 4. The picture.
 5. The address under the mouse, and the legend with its counts.
 
@@ -37,7 +37,7 @@ counts: **Read:**, **Write:**, **Exec:**. Double-click a cell and the listing go
 if the CPU can see that memory now.
 
 The {icon}`refresh` button with the circular arrows resets all counters, after asking.
-Loading a snapshot resets them too. The {icon}`save_all` button beside it saves all counters
+Loading a snapshot resets them too. The {icon}`save-as` button beside it saves all counters
 to a CSV file: one line per byte of RAM and then of ROM, with the columns
 `type,page,offset,read,write,exec`, untouched bytes included, for a spreadsheet or a script
 of your own.

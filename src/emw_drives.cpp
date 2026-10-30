@@ -105,9 +105,9 @@ void MainWin::fillDrivesMenu() {
 		flpMenu[i] = m;
 		m->addAction(QIcon(":/images/fileopen.png"), "Open...", this, [this, i]() {diskOp(DW_OPEN, i);});
 		m->addAction(QIcon(":/images/doc-new.png"), "New", this, [this, i]() {diskOp(DW_NEW, i);});
-		act = m->addAction(QIcon(":/images/save_all.png"), "Save", this, [this, i]() {diskOp(DW_SAVE, i);});
+		act = m->addAction(QIcon(":/images/floppy.png"), "Save", this, [this, i]() {diskOp(DW_SAVE, i);});
 		act->setEnabled(flp->insert && flp->path && *flp->path);
-		act = m->addAction(QIcon(":/images/floppy.png"), "Save As...", this, [this, i]() {diskOp(DW_SAVE_AS, i);});
+		act = m->addAction(QIcon(":/images/save-as.png"), "Save As...", this, [this, i]() {diskOp(DW_SAVE_AS, i);});
 		act->setEnabled(flp->insert);
 		act = m->addAction(QIcon(":/images/tape-eject.png"), "Eject", this, [this, i]() {diskOp(DW_EJECT, i);});
 		act->setEnabled(flp->insert);

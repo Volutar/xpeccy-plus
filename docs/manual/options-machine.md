@@ -9,7 +9,7 @@ This page sets up the running machine: **Model**, **Memory**, **ROM** and the **
 slider at the top, then its devices in four groups - **Storage**, **Input**, **Sound** and
 **Board**. The {icon}`settings` gear beside a device opens the rest of its settings.
 
-What you change here is kept for this machine only. {icon}`save_all` **Save machine...**,
+What you change here is kept for this machine only. {icon}`save-as` **Save machine...**,
 {icon}`refresh` **Restore machine** and {icon}`cancel` **Delete this machine** are explained
 in [Your own machines](#your-own-machines).
 
@@ -23,7 +23,7 @@ in [Your own machines](#your-own-machines).
 - **Memory** - how much RAM the machine has.
 - **ROM** - the ROM files in use; the {icon}`settings` button opens **Machine: ROM**.
 - **Overclock** - the slider described in [Overclock](#overclock).
-- {icon}`refresh` **Restore machine**, {icon}`save_all` **Save machine...**,
+- {icon}`refresh` **Restore machine**, {icon}`save-as` **Save machine...**,
   {icon}`cancel` **Delete this machine** - see [Your own machines](#your-own-machines).
 
 ```{index} machine; devices, Covox, Soundrive, General Sound, SAA1099
@@ -235,7 +235,7 @@ fixes that a new version of Xpeccy+ brings, in every setting you did not change.
 
 The three buttons on the **Machine** page:
 
-- {icon}`save_all` **Save machine...** saves the current settings as a new machine under a
+- {icon}`save-as` **Save machine...** saves the current settings as a new machine under a
   name you give (Xpeccy+ suggests the machine's name with `(mine)` after it). The new
   machine appears in the machine list and runs at once. It is based on the machine it was
   made from, so it too gets that machine's fixes in every setting you did not change. The
@@ -251,7 +251,7 @@ Each machine you have changed or made is a small text file in the `machines` fol
 settings folder (see [Where the settings are](getting-started.md#where-the-settings-are)).
 It holds only what differs from the machine it is based on. Deleting the file of a built-in
 machine, with Xpeccy+ closed, does the same as **Restore machine**.
-{icon}`save_all` **Export settings...** on the **Application** page exports your own
+{icon}`save-as` **Export settings...** on the **Application** page exports your own
 machines together with the settings.
 
 ## ROM images

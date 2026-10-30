@@ -214,7 +214,7 @@ the memory that follows them in more columns side by side.
   **Addr**.
 
 The scrollbar at the right and the mouse wheel move the address by one row of 8 lines.
-The {icon}`floppy` button with the floppy disk saves the bytes shown - **Width** x
+The {icon}`save-as` button with the floppy and pencil saves the bytes shown - **Width** x
 **Height** x 8 of them, or 6144 with **ZX screen** - to a file, as they are in memory.
 
 The scanner window hides when you close the Debugger, and opens again with the Debugger.
@@ -246,7 +246,7 @@ Fill in **Start** and **End**, or **Start** and **Length**, in hex: the third fi
 filled in by itself. With **CPU** they are addresses. With any other source they count
 from the start of the page, and may run on into the pages after it, up to the end of that
 memory. Picking another source sets them to one whole page; **Page** 0 with
-**Length** 20000 saves all the RAM of a 128K. Then pick from {icon}`save_all` **Save as...**:
+**Length** 20000 saves all the RAM of a 128K. Then pick from {icon}`save-as` **Save as...**:
 
 - **...as bin** - the bytes as they are, into a file you name;
 - **...as Hobeta** - a `.$C` file: a TR-DOS code file. From **CPU** it is named after the
@@ -290,7 +290,7 @@ low byte first. To find the code that adds the points, put a **Write break** on 
 2. In the {icon}`floppy` floppy disk menu of the **Disasm** toolbar, choose **Save dump**.
 3. Pick **CPU** in **Source**. Type `4000` in **Start** and `1B00` in **Length**. **End**
    shows `5AFF`.
-4. Click {icon}`save_all` **Save as...** and choose **...as bin**. Name the file, such as
+4. Click {icon}`save-as` **Save as...** and choose **...as bin**. Name the file, such as
    `picture.scr`.
 
 The file holds the 6912 bytes of the screen, the picture and then its colors, in the same
