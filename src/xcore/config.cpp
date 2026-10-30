@@ -1219,8 +1219,8 @@ void loadConfig() {
 					if (pnam=="lowlatency") conf.vid.lowLatency = arg.b;
 					if (pnam=="vsync") conf.vid.vsync = arg.b;
 					if (pnam=="runahead") conf.emu.runahead = getRanged(arg.s, 0, 2);
-					if (pnam=="slowmo") conf.emu.slowDiv = toPower(getRanged(arg.s, 2, 8));
-					if (pnam=="ffwd") conf.emu.ffMul = toPower(getRanged(arg.s, 2, 8));
+					if (pnam=="slowmo") conf.emu.slowDiv = xtime_fit(xtime_slow_steps, atoi(arg.s));
+					if (pnam=="ffwd") conf.emu.ffMul = xtime_fit(xtime_ffwd_steps, atoi(arg.s));
 					if (pnam=="slowmo.hold") conf.emu.slowHold = hold_mode(pval);
 					if (pnam=="ffwd.hold") conf.emu.ffHold = hold_mode(pval);
 					if (pnam=="fast.hold") conf.emu.fastHold = hold_mode(pval);

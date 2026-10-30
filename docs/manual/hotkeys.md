@@ -113,8 +113,8 @@ together and released with no other key between also releases the keyboard. See
 **Menus.** A command picked from a menu or from the toolbar always works, grabbed keyboard
 or not.
 
-**Holding a key.** A held hotkey does not repeat, except **Speed Up** and **Speed Down**,
-which keep changing the speed while you hold them. **Rewind (Hold)** goes back in time for
+**Holding a key.** A held hotkey does not repeat, except **Faster**, **Slower**,
+**Overclock Up** and **Overclock Down**, which keep changing the speed while you hold them. **Rewind (Hold)** goes back in time for
 as long as you hold its key. **Fast Mode**, **Slow Motion** and **Fast Forward** each work
 in one of three ways, set on the **Emulation** page of **Options**: **Toggle**, **Hold**,
 or **Tap or hold** (the default): a short tap switches the mode on or off, a longer press
@@ -185,8 +185,8 @@ on the numeric keypad: Alt+Num++ is Alt with the keypad plus.
 | divMMC On/Off | - | - |
 | NMI | Shift+F10 | F10 |
 | Switch Turbo | Alt+T | Alt+T |
-| Speed Up | Alt+Num++, Alt+= | Alt+Num++ |
-| Speed Down | Alt+Num+-, Alt+- | Alt+Num+- |
+| Overclock Up | Alt+Num++, Alt+= | Alt+Num++ |
+| Overclock Down | Alt+Num+-, Alt+- | Alt+Num+- |
 | Mute | Alt+U | - |
 
 ### Time
@@ -197,6 +197,8 @@ on the numeric keypad: Alt+Num++ is Alt with the keypad plus.
 | Fast Mode | Ins, Alt+Up | Ins |
 | Slow Motion | End, Alt+Down | End |
 | Fast Forward | Home, Alt+Right | Home |
+| Slower | Shift+Num+- | Shift+Num+- |
+| Faster | Shift+Num++ | Shift+Num++ |
 | Rewind (Hold) | Del, Alt+Left | Del |
 
 ### Tape

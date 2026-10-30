@@ -512,7 +512,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	}
 	makeFillPopup();
 	ui.bszsld->setMaximum(VID_BRD_OVERSCAN);	// one tick per border size
-	ui.sldSpeed->setMaximum(XSPD_MAX);		// one tick per step of the speed scale
+	ui.sldSpeed->setMaximum(XSPD_MAX);		// one tick per step of the overclock scale
 	ui.cbCpuFrq->addItem("3.5 MHz");
 	ui.cbCpuFrq->addItem("3.5469 MHz");
 	cbCpuTurbo->addItem(QString::fromUtf8("×1 (no turbo)"), "1");
@@ -541,10 +541,10 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.cbRunAhead->addItem("Off", 0);
 	ui.cbRunAhead->addItem("1", 1);
 	ui.cbRunAhead->addItem("2", 2);
-	for (int f = 2; f <= 8; f <<= 1) {
-		ui.cbSlowmo->addItem(QString("1/%0").arg(f), f);
-		ui.cbFfwd->addItem(QString::fromUtf8("\u00d7%0").arg(f), f);
-	}
+	for (int i = 0; xtime_slow_steps[i]; i++)
+		ui.cbSlowmo->addItem(QString("1/%0").arg(xtime_slow_steps[i]), xtime_slow_steps[i]);
+	for (int i = 0; xtime_ffwd_steps[i]; i++)
+		ui.cbFfwd->addItem(QString::fromUtf8("\u00d7%0").arg(xtime_ffwd_steps[i]), xtime_ffwd_steps[i]);
 	for (int f : {15, 30, 50, 60})
 		ui.cbFastFps->addItem(QString::number(f), f);
 	ui.cbFastFps->setValidator(new QIntValidator(1, 100, ui.cbFastFps));
@@ -553,6 +553,9 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.cbFastPic->setItemData(0, "The normal picture: drawn line by line,\nas at normal speed", Qt::ToolTipRole);
 	ui.cbFastPic->addItem("Memory dump", FPIC_WHOLE);
 	ui.cbFastPic->setItemData(1, "A simplified picture: video memory\nat a frame end, no multicolor", Qt::ToolTipRole);
+	// A few percent of speed is not worth a choice nobody can make: the list is hidden,
+	// fast.picture in the config still sets it and Apply keeps what it holds
+	ui.cbFastPic->setVisible(false);
 	for (QComboBox* box : {ui.cbSlowmoKey, ui.cbFfwdKey, ui.cbFastKey}) {
 		box->addItem("Toggle", XHOLD_TOGGLE);
 		box->addItem("Hold", XHOLD_HOLD);
@@ -2801,18 +2804,12 @@ void SetupWin::chabsz() {
 	ui.bszlab->setText(QString("%0 (%1×%2)").arg(brd_mode_name(mode)).arg(sze.x).arg(sze.y));
 }
 
-// the label beside the speed slider says which of the two things it is doing
-// and what the cpu ends up on - the board's own turbo is not in this number,
-// the clock indicator is where the whole truth is
+// the label beside the overclock slider says what the cpu ends up on - the board's
+// own turbo is not in this number, the clock indicator is where the whole truth is
 void SetupWin::chaspd() {
 	Computer* comp = conf.zx;
 	int pos = ui.sldSpeed->value();
-	QString txt = xspeed_name(pos);
-	if (pos >= XSPD_CENTER)
-		txt += QString(" (%0 MHz)").arg(comp->cpuFrq * xspeed_mult(pos), 0, 'g', 6);
-	else
-		txt += QString(" (%0 fps)").arg(1e9 / comp->vid->nsPerFrame * xspeed_mult(pos), 0, 'f', 1);
-	ui.labSpeed->setText(txt);
+	ui.labSpeed->setText(xspeed_name(pos) + QString(" (%0 MHz)").arg(comp->cpuFrq * xspeed_mult(pos), 0, 'g', 6));
 }
 
 void SetupWin::chaflc() {

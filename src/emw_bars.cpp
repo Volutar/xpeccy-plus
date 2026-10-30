@@ -806,7 +806,7 @@ void MainWin::volumeChanged() {
 	volTimer.start();	// and the file is written once the wheel stops
 }
 
-// Slow Motion's and Fast Forward's icons show their speeds, 1/2 1/4 1/8 and x2 x4 x8;
+// Slow Motion's and Fast Forward's icons show their speeds, 1/2 1/4 1/8 and x2 x4 x8 x16;
 // time-slow and time-ffwd are the defaults', 1/4 and x4
 void MainWin::speedIcons() {
 	auto set = [](QAction* act, const char* name, int n, int& shown) {

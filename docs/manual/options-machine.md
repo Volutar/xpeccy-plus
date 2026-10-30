@@ -5,7 +5,7 @@
 
 ![The Machine page](images/options-machine.png)
 
-This page sets up the running machine: **Model**, **Memory**, **ROM** and the **Speed**
+This page sets up the running machine: **Model**, **Memory**, **ROM** and the **Overclock**
 slider at the top, then its devices in four groups - **Storage**, **Input**, **Sound** and
 **Board**. The {icon}`settings` gear beside a device opens the rest of its settings.
 
@@ -22,7 +22,7 @@ in [Your own machines](#your-own-machines).
   **Machine: Advanced Settings**.
 - **Memory** - how much RAM the machine has.
 - **ROM** - the ROM files in use; the {icon}`settings` button opens **Machine: ROM**.
-- **Speed** - the slider described in [Speed](#speed).
+- **Overclock** - the slider described in [Overclock](#overclock).
 - {icon}`refresh` **Restore machine**, {icon}`save_all` **Save machine...**,
   {icon}`cancel` **Delete this machine** - see [Your own machines](#your-own-machines).
 
@@ -56,23 +56,19 @@ Esc) puts back what it showed when it opened.
 
 Changes take effect when you press **Apply** or {icon}`ok-apply` **OK**.
 
-## Speed
+## Overclock
 
-```{index} Speed slider, Overclock, Speed Up, Speed Down
+```{index} Overclock slider, Overclock, Overclock Up, Overclock Down
 ```
 
-**Speed** on the **Machine** page of **Options** is a slider for the whole emulation:
-
-- left of the middle, **Slow Motion 1/2**, **1/4** and **1/8** slow everything down, and the
-  frame rate drops with it;
-- the middle is **Normal speed**;
-- right of the middle, **Overclock x2**, **x4** and **x8** speed the CPU up and keep the
-  frame rate.
+**Overclock** on the **Machine** page of **Options** is a slider for the CPU's clock:
+**No overclock**, then **Overclock x2**, **x4** and **x8**. The CPU runs faster, while the
+frame rate stays where it was. To slow the whole machine down or speed it up, frames and
+sound included, use **Slow Motion** and **Fast Forward** (see [Speed and time](time.md)).
 
 No real machine ran faster than 14 MHz, so past that the timing of a program is not
-guaranteed. The slider is not saved: the next start is at
-normal speed. The **Speed Up** and **Speed Down** hotkeys move it too. See also
-[Speed and time](time.md).
+guaranteed. The slider is not saved: the next start is without overclock. The
+**Overclock Up** and **Overclock Down** hotkeys move it too.
 
 ## Advanced settings
 

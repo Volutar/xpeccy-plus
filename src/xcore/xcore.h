@@ -113,9 +113,9 @@ QStringList xres_list(const char*, const QStringList&);
 int toPower(int);
 int toLimits(int, int, int);
 
-// the speed scale: 1/8 1/4 1/2 x1 x2 x4 x8, x1 in the middle
-#define XSPD_CENTER	3
-#define XSPD_MAX	6
+// the overclock scale: x1 x2 x4 x8
+#define XSPD_NORMAL	0
+#define XSPD_MAX	3
 // ...and the ceiling on base x turbo x overclock, whoever asks for it
 #define XSPD_CLOCK_MAX	16
 // slow motion and fast forward: switched on and off by a key each, at the
@@ -127,6 +127,17 @@ enum {
 };
 void xspeed_toggle(int);
 void xspeed_key(int mode, int down);	// its key, as Toggle or Hold says
+// The emulated-time scale the Faster/Slower keys walk, and the factors the options
+// offer: slow motion's divisors and fast forward's multipliers, in order, 0 at the end
+extern const int xtime_slow_steps[];
+extern const int xtime_ffwd_steps[];
+// ...and the ones the corner has a sign for, a longer scale's included
+constexpr int xtime_slow_signs[] = {2, 4, 8, 0};
+constexpr int xtime_ffwd_signs[] = {2, 4, 6, 8, 10, 12, 16, 0};
+#define XTIME_SIGNS(list)	((int)(sizeof(list) / sizeof(list[0])) - 1)
+int xtime_index(const int* list, int f);	// its place in a list, -1 if not there
+int xtime_fit(const int* list, int f);		// the nearest factor in a list
+int xtime_step(int dir);			// one step faster (+1) or slower (-1); 0 at an end
 
 // a key that switches a mode, as XHOLD_* says: true when this press or release switches it
 typedef struct {
@@ -496,6 +507,8 @@ enum {
 	XCUT_RZXFINAL,
 	XCUT_RZXFINFILE,
 	XCUT_DIVMMC,
+	XCUT_TIME_FASTER,
+	XCUT_TIME_SLOWER,
 
 	XCUT_STEPIN,
 	XCUT_STEPOVER,
@@ -860,8 +873,8 @@ struct xConfig {
 		// the machine's own reaction time. 0 = off (see ethread.cpp)
 		int runahead;
 		int tmode;		// XTM_*, never saved
-		int slowDiv;		// slow motion runs at 1/slowDiv: 2, 4, 8
-		int ffMul;		// fast forward at ffMul: 2, 4, 8
+		int slowDiv;		// slow motion runs at 1/slowDiv: one of xtime_slow_steps
+		int ffMul;		// fast forward at ffMul: one of xtime_ffwd_steps
 		int slowHold;		// XHOLD_*: how the key works
 		int ffHold;
 		int fastHold;		// Fast mode's key
