@@ -23,9 +23,9 @@ on:
       release:
         type: boolean
         default: false
-  # SDL comes from Homebrew, which rolls forward on its own, so this can
-  # break with nobody having touched the repository - that is how the whole
-  # sdl2-compat business started. Once a week is enough to notice.
+  # Qt and SDL are pinned, but the runner image and its Xcode roll forward on
+  # their own, so this can break with nobody having touched the repository.
+  # Once a week is enough to notice.
   schedule:
     - cron: '0 6 * * 1'
 
@@ -37,10 +37,10 @@ concurrency:
 
 jobs:
   build:
-    name: arm64, Qt6, macOS 15+
-    # Pinned, not macos-latest: Homebrew's arm64 bottles are tagged to the OS
-    # they were built on, so this is what actually sets the app's minimum
-    # macOS. macos-14 runners are gone (2026-11).
+    name: arm64, Qt6, macOS 13+
+    # The runner does not set the oldest macOS the app runs on: MACOS_FLOOR
+    # does, for our build and SDL's, and a step below checks every binary in
+    # the bundle against it. Pinned anyway, so a new image arrives on purpose.
     runs-on: macos-15
     timeout-minutes: 40
 
@@ -51,6 +51,8 @@ jobs:
       # Qt's own build: Homebrew bottles nothing past 6.11.1 for macOS 14, and
       # 6.11.1 crashes at start on macOS 27.2
       QT_VERSION: 6.11.3
+      # Qt 6.11's own minimum; CMakeLists.txt defaults to the same for local builds
+      MACOS_FLOOR: '13.0'
 
     steps:
       - uses: actions/checkout@v7
@@ -68,8 +70,40 @@ jobs:
           done
           echo "QT_DIR=$RUNNER_TEMP/Qt/$QT_VERSION/macos" >> "$GITHUB_ENV"
 
-      - name: Install SDL2
-        run: brew install sdl2
+      # Not Homebrew's: its bottles need the macOS they were built on, and its
+      # sdl2 is a shim over SDL3. The version is the one Windows ships.
+      - name: SDL2 version
+        run: |
+          echo "SDL2_VERSION=$(jq -r .sdl2.version packaging/deps.json)" >> "$GITHUB_ENV"
+          echo "SDL2_SHA256=$(jq -r .sdl2.source_sha256 packaging/deps.json | tr A-F a-f)" >> "$GITHUB_ENV"
+          echo "SDL2DIR=$RUNNER_TEMP/sdl2" >> "$GITHUB_ENV"
+
+      - name: Cache SDL2
+        id: sdl2-cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/sdl2
+          # the workflow's hash: a change to the build step below rebuilds it
+          key: sdl2-${{ env.SDL2_VERSION }}-macos${{ env.MACOS_FLOOR }}-arm64-${{ hashFiles('.github/workflows/macos.yml') }}
+
+      - name: Build SDL2
+        if: steps.sdl2-cache.outputs.cache-hit != 'true'
+        run: |
+          tgz="$RUNNER_TEMP/SDL2-$SDL2_VERSION.tar.gz"
+          curl -fsSL --retry 3 -o "$tgz" "https://github.com/libsdl-org/SDL/releases/download/release-$SDL2_VERSION/SDL2-$SDL2_VERSION.tar.gz"
+          echo "$SDL2_SHA256  $tgz" | shasum -a 256 -c -
+          tar -xzf "$tgz" -C "$RUNNER_TEMP"
+          cmake -S "$RUNNER_TEMP/SDL2-$SDL2_VERSION" -B "$RUNNER_TEMP/sdl2-build" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_FLOOR" \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_INSTALL_PREFIX="$SDL2DIR" \
+            -DSDL_SHARED=ON \
+            -DSDL_STATIC=OFF \
+            -DSDL_TEST=OFF \
+            -DSDL_TESTS=OFF
+          cmake --build "$RUNNER_TEMP/sdl2-build" -j "$(sysctl -n hw.ncpu)"
+          cmake --install "$RUNNER_TEMP/sdl2-build"
 
       # a venv: Homebrew's python refuses a plain pip install
       - name: Build the manual
@@ -85,6 +119,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DXRELEASE=${{ inputs.release && 'ON' || 'OFF' }} \
             -DCMAKE_PREFIX_PATH="$QT_DIR" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_FLOOR" \
             -DQTVERSION=6 \
             -DUSEOPENGL=1 \
             -DUSEQTNETWORK=1 \
@@ -96,6 +131,34 @@ jobs:
 
       - name: Install
         run: cmake --install "$BUILD_DIR" --prefix "$DIST_DIR"
+
+      # CI cannot start the app on anything older than the runner, so this is
+      # the proof the floor holds: one library built for a newer macOS and dyld
+      # refuses the whole app there
+      - name: Check the oldest macOS
+        run: |
+          plist=$(plutil -extract LSMinimumSystemVersion raw "$APP/Contents/Info.plist")
+          echo "Info.plist: LSMinimumSystemVersion $plist"
+          if [ "$plist" != "$MACOS_FLOOR" ]; then
+            echo "::error::Info.plist says $plist, the floor is $MACOS_FLOOR"
+            exit 1
+          fi
+          n=0; bad=0
+          while IFS= read -r -d '' f; do
+            file -b "$f" | grep -q Mach-O || continue
+            n=$((n + 1))
+            # one value per architecture. An old LC_VERSION_MIN_MACOSX says
+            # "version"; so does every build tool listed under LC_BUILD_VERSION
+            for v in $(vtool -show-build "$f" | awk '$1 == "cmd" { c = $2 } $1 == "minos" || ($1 == "version" && c == "LC_VERSION_MIN_MACOSX") { print $2 }'); do
+              echo "$v  ${f#"$APP"/}"
+              if awk -v a="$v" -v b="$MACOS_FLOOR" 'BEGIN { split(a, x, "."); split(b, y, "."); exit !(x[1] * 100 + x[2] > y[1] * 100 + y[2]) }'; then
+                echo "::error::${f#"$APP"/} needs macOS $v, the floor is $MACOS_FLOOR"
+                bad=1
+              fi
+            done
+          done < <(find "$APP" -type f -print0)
+          echo "$n Mach-O files"
+          [ "$n" -gt 0 ] && [ "$bad" = 0 ]
 
       - name: Smoke test
         timeout-minutes: 5
@@ -145,9 +208,9 @@ jobs:
           {
             echo "| | |"
             echo "|---|---|"
-            echo "| macOS | $(sw_vers -productVersion) ($(uname -m)) |"
+            echo "| macOS | built on $(sw_vers -productVersion) ($(uname -m)), runs on $MACOS_FLOOR+ |"
             echo "| Qt | $QT_VERSION (qt.io) |"
-            echo "| SDL | $(brew list --versions sdl2 | cut -d' ' -f2) (sdl2-compat) |"
+            echo "| SDL | $SDL2_VERSION (built here) |"
             echo "| dmg | $DMG_NAME.dmg, $(du -h "$DMG" | cut -f1) |"
           } >> "$GITHUB_STEP_SUMMARY"
 

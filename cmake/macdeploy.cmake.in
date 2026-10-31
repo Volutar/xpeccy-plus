@@ -11,6 +11,25 @@ cmake_minimum_required(VERSION 3.21)
 set(BUNDLE "${CMAKE_INSTALL_PREFIX}/@PROJECT_NAME@.app")
 set(FRAMEWORKS "${BUNDLE}/Contents/Frameworks")
 
+# SDL2 built from source (macos.yml) names itself @rpath/libSDL2-2.0.0.dylib.
+# macdeployqt looks for such a name only in the bundle's own rpath, Frameworks,
+# and -libpath does not help it there, so the library goes in first. Homebrew's
+# SDL2 has an absolute name, and macdeployqt copies that one itself.
+execute_process(COMMAND otool -L "${BUNDLE}/Contents/MacOS/@PROJECT_NAME@"
+	OUTPUT_VARIABLE LINKED COMMAND_ERROR_IS_FATAL ANY)
+string(REGEX MATCH "@rpath/(libSDL2[^ ]*\\.dylib)" SDL2_RPATH_NAME "${LINKED}")
+set(SDL2_DYLIB "${CMAKE_MATCH_1}")
+if(SDL2_RPATH_NAME)
+	set(SDL2_DYLIB_SRC "@SDL2_LIB_DIR@/${SDL2_DYLIB}")
+	if(NOT EXISTS "${SDL2_DYLIB_SRC}")
+		message(FATAL_ERROR "the binary needs ${SDL2_RPATH_NAME}, but ${SDL2_DYLIB_SRC} is not there")
+	endif()
+	message(STATUS "SDL2: adding ${SDL2_DYLIB_SRC}")
+	file(MAKE_DIRECTORY "${FRAMEWORKS}")
+	file(COPY_FILE "${SDL2_DYLIB_SRC}" "${FRAMEWORKS}/${SDL2_DYLIB}")
+	execute_process(COMMAND chmod u+w "${FRAMEWORKS}/${SDL2_DYLIB}" COMMAND_ERROR_IS_FATAL ANY)
+endif()
+
 # Two kinds of noise from this are expected and harmless: "Cannot resolve rpath"
 # for the plugins dropped below, and a codesign complaint about the signature
 # macdeployqt itself invalidated by rewriting install names. The bundle is
