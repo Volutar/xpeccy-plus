@@ -1565,7 +1565,7 @@ void DebugWin::reFormCPU(xRegBunch* b) {
 			case REG_2: mx = 2; break;
 			case REG_BYTE: mx = 0xff; break;
 			case REG_24: mx = 0xffffff; break;
-			case REG_32: mx = 0xffffffff; break;
+			case REG_32: mx = 0x7fffffff; break;	// the field and the register value are int
 			default: mx = 0xffff; break;
 		}
 		dbgRegEdit[cnt]->setMax(mx);

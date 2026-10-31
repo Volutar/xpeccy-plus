@@ -82,6 +82,8 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The breakpoint log writes F and F' as two digits**, as it writes A, not four.
+
 - **A Next card given with `--sdcard` is used**: with System/Next on it, the Next starts
   from it and the SD card window no longer opens. A card without System/Next opens the window
   on that card, saying why.
