@@ -12,6 +12,11 @@ cmake_minimum_required(VERSION 3.5...4.1)
 
 set(PROJECT_NAME "xpeccy-plus")
 
+# The oldest macOS the bundle runs on, Qt 6.11's own. Has to be set before project().
+# Without it clang takes the build machine's version. Info.plist reads it from here;
+# macos.yml passes the same value to this build and to SDL's, and checks the bundle.
+set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "Oldest macOS the build runs on")
+
 # base version, without the "-dev" tail (see cmake/genversion.cmake)
 file(STRINGS "VERSION" XVER)
 project(${PROJECT_NAME} VERSION ${XVER})
@@ -560,6 +565,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	get_filename_component(QT_BIN_DIR "${QMAKE_EXE}" DIRECTORY)
 	find_program(MACDEPLOYQT macdeployqt HINTS ${QT_BIN_DIR})
 	get_filename_component(QT_LIB_DIR "${QT_BIN_DIR}/../lib" ABSOLUTE)
+	# SDL2 built from source (macos.yml) names itself by @rpath, like qt.io's Qt
+	get_filename_component(SDL2_LIB_DIR "${SDL2_INCLUDE_DIR}/../../lib" ABSOLUTE)
 	# SDL2 from Homebrew is the sdl2-compat shim and loads this one at runtime
 	find_library(SDL3_LIBRARY NAMES SDL3
 		HINTS ${SDL2_INCLUDE_DIR}/../..

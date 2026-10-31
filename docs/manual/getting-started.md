@@ -26,8 +26,9 @@ Folder and file names may have any letters (Cyrillic, Greek, Chinese...) on Wind
 **Linux.** Allow the file to run (`chmod +x`, or the file's properties), then run it. It
 needs a distribution no older than Ubuntu 22.04 (glibc 2.35).
 
-**macOS.** Open the disk image and drag **xpeccy-plus** into Applications. The program is not
-signed by a registered developer, so macOS refuses to start it the first time: open
+**macOS.** It needs macOS 13 or later on a Mac with Apple silicon. Open the disk image and
+drag **xpeccy-plus** into Applications. The program is not signed by a registered
+developer, so macOS refuses to start it the first time: open
 **System Settings > Privacy & Security**, find the message about Xpeccy+ and click
 **Open Anyway**.
 

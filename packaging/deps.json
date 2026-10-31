@@ -2,7 +2,8 @@
 	"sdl2": {
 		"version": "2.32.10",
 		"sha256": "F15CFF5FCA62EC9381A016EF1D42A95C638CD72D2F226BA5781C76FE43DBD1AC",
-		"source": "SDL2-devel-<version>-mingw.zip from https://github.com/libsdl-org/SDL/releases"
+		"source_sha256": "5F5993C530F084535C65A6879E9B26AD441169B3E25D789D83287040A9CA5165",
+		"source": "SDL2-devel-<version>-mingw.zip from https://github.com/libsdl-org/SDL/releases; source_sha256 is SDL2-<version>.tar.gz from the same release, built by macos.yml"
 	},
 	"curl": {
 		"version": "8.23.0",

@@ -33,10 +33,12 @@ function Get-Pin {
 }
 
 function Set-Pin {
-	param([string]$Version, [string]$Sha256, [string]$Name = 'sdl2')
-	# patch the two values of that one entry in place so the file keeps its formatting
+	param([string]$Version, [string]$Sha256, [string]$Name = 'sdl2', [string]$SourceSha256)
+	# patch the values of that one entry in place so the file keeps its formatting
 	$text = Get-Content $manifest -Raw
-	foreach ($kv in @(@('version', $Version), @('sha256', $Sha256))) {
+	$pairs = @(@('version', $Version), @('sha256', $Sha256))
+	if ($SourceSha256) { $pairs += ,@('source_sha256', $SourceSha256) }
+	foreach ($kv in $pairs) {
 		$text = $text -replace "(`"$Name`"\s*:\s*\{[^}]*?`"$($kv[0])`"\s*:\s*`")[^`"]*(`")", "`${1}$($kv[1])`${2}"
 	}
 	Set-Content $manifest $text -NoNewline
@@ -66,7 +68,10 @@ if ($Update) {
 	} else {
 		$old = (Get-Pin).version
 		$zip = Get-Zip $newVer
-		Set-Pin $newVer (Get-FileHash $zip -Algorithm SHA256).Hash
+		# the source tarball is what the macOS build compiles (macos.yml)
+		$tgz = Join-Path $depsDir "SDL2-$newVer.tar.gz"
+		Invoke-WebRequest "https://github.com/libsdl-org/SDL/releases/download/release-$newVer/SDL2-$newVer.tar.gz" -OutFile $tgz -TimeoutSec 600
+		Set-Pin $newVer (Get-FileHash $zip -Algorithm SHA256).Hash -SourceSha256 (Get-FileHash $tgz -Algorithm SHA256).Hash
 		Write-Host "SDL2 pin: $old -> $newVer (commit packaging\deps.json)" -ForegroundColor Yellow
 	}
 }
