@@ -439,9 +439,10 @@ opens the **Labels List**.
 
 Many commands work on a block of memory rather than one row:
 
+- a click puts the cursor on a row and clears the selection;
 - drag over the rows with the left button;
-- Ctrl+click sets the start of the block, Shift+click its end. Set the start first: a
-  Shift+click alone selects everything from 0000;
+- Shift+click selects from where the selection started, or from the cursor row, to the row
+  clicked;
 - a click with the middle button clears the selection.
 
 A block takes in the rows from the first byte of the first row to the first byte of the
