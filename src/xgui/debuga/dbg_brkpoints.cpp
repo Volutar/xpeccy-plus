@@ -1,6 +1,8 @@
 #include <QApplication>
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QFile>
+#include <QRegularExpression>
 #include <QStyleOptionButton>
 #include <QUrl>
 
@@ -874,6 +876,20 @@ void xBreakWidget::openBrk() {
 	// a bpx.ini is read too: its lines are breakpoints as well
 	QString path = QFileDialog::getOpenFileName(this, "Open breakpoints list", "", "Breakpoints (*.xbrk *.ini);;All files (*)",nullptr,QFileDialog::DontUseNativeDialog);
 	if (path.isEmpty()) return;
+	// any .ini is offered: one with no breakpoint line keeps the list as it is
+	if (path.endsWith(".ini", Qt::CaseInsensitive)) {
+		QFile file(path);
+		bool any = false;
+		QRegularExpression bpx("^\\s*[xrwXRW]\\d?\\s*=");
+		if (file.open(QFile::ReadOnly)) {
+			while (!any && !file.atEnd())
+				any = bpx.match(QString::fromLocal8Bit(file.readLine())).hasMatch();
+		}
+		if (!any) {
+			shitHappens("No breakpoints in this file");
+			return;
+		}
+	}
 	if (brk_load_list(path.toLocal8Bit().data())) {
 		ui.bpList->update();
 		emit updated();
