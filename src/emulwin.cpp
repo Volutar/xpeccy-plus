@@ -2487,16 +2487,25 @@ class xMenu : public QMenu {
 		void initStyleOption(QStyleOptionMenuItem* opt, const QAction* act) const override {
 			QMenu::initStyleOption(opt, act);
 			int tab = opt->text.indexOf('\t');
-			if (tab >= 0) {
+			if (tab >= 0)
 				opt->reservedShortcutWidth = opt->fontMetrics.horizontalAdvance(opt->text.mid(tab + 1));
-				// a submenu's arrow is drawn over the key's end: the key moves left of it
-				if (act->menu()) opt->reservedShortcutWidth += opt->fontMetrics.height();
-			}
 		}
 #endif
 };
 
 static QUrl manual_url();
+
+// an item of a refilled menu that does what a hotkey does: the key after a tab, as
+// cutTexts() gives the others
+static QString key_text(const QString& name, int id) {
+#ifndef __APPLE__	// Cocoa would make a key equivalent of it, and take the key
+	QString key = shortcut_key(id);
+	if (!key.isEmpty()) return name + "	" + key;
+#else
+	(void)id;
+#endif
+	return name;
+}
 
 // An item that opens a web page carries the mark: its text gets a key column of
 // its own, the way Qt makes room for a key, and xMenu draws the mark there.
@@ -2770,9 +2779,6 @@ void MainWin::initUserMenu() {
 	setRoot(padMenu, &MainWin::padWinShow);
 	resMenu->menuAction()->setData(RES_DEFAULT);
 	setRoot(resMenu, [this](){reset(resMenu->menuAction());});
-	// a root shows the key that does the same
-	cutActs.append({resMenu->menuAction(), resMenu->title(), XCUT_RESET});
-	cutActs.append({padMenu->menuAction(), padMenu->title(), XCUT_PADWIN});
 }
 
 // MENU BAR
@@ -3652,6 +3658,7 @@ void MainWin::fillUserMenu() {
 		act = resMenu->addAction(xm_reset_name(res));
 		act->setData(res);
 		if (comp && (res == comp->resbank)) {
+			act->setText(key_text(act->text(), XCUT_RESET));	// the plain reset, as a click on Reset
 			QFont fnt = act->font();
 			fnt.setBold(true);
 			act->setFont(fnt);
@@ -3659,7 +3666,7 @@ void MainWin::fillUserMenu() {
 	}
 	// a machine that starts its own firmware has no ROM to pick: the plain reset only
 	if (starts.isEmpty()) {
-		act = resMenu->addAction("Soft Reset");
+		act = resMenu->addAction(key_text("Soft Reset", XCUT_RESET));
 		act->setData(RES_DEFAULT);
 	}
 	resMenu->addSeparator();
@@ -4017,7 +4024,7 @@ bool MainWin::padGameEdited() {
 // A second player is rare enough to be set up in the window.
 void MainWin::fillPadMenu() {
 	padMenu->clear();
-	padMenu->addAction(QIcon(":/images/gamepad.png"), "Manage...", this, &MainWin::padWinShow);
+	padMenu->addAction(QIcon(":/images/gamepad.png"), key_text("Manage...", XCUT_PADWIN), this, &MainWin::padWinShow);
 	xGamepad* gp = conf.gpctrl->gpada;
 	// what the list is for: the first player's device
 	QString dev = gp->isKeyboard() ? QString(pad_kbd_name(gp->keyboard()))
