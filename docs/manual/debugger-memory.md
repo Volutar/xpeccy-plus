@@ -112,7 +112,8 @@ starts at 2000, where the board pages them in.
 
 Bytes are selected the way text is in an editor, in the bytes and in the text column alike:
 
-- a click puts the cursor on a byte and clears the selection;
+- a click puts the cursor on a byte and clears the selection; on an address it puts the
+  cursor there, for Enter to type another address;
 - drag from a byte to select up to the byte under the mouse; past the top or the bottom of
   the panel the dump scrolls on;
 - Shift+click selects from where the selection started, or from the cursor, to the byte
