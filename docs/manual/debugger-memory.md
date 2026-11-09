@@ -107,7 +107,7 @@ starts at 2000, where the board pages them in.
 
 ### Selecting and breakpoints
 
-```{index} Fetch break, Read break, Write break, Copy hex string, Copy raw bytes, Save as binary file, block; selecting in the dump
+```{index} Fetch break, Read break, Write break, Copy as hex, Copy as DB, Copy as text, Save as binary file, block; selecting in the dump
 ```
 
 Bytes are selected the way text is in an editor, in the bytes and in the text column alike:
@@ -131,10 +131,14 @@ selection of the view on show.
 A right-click opens a menu. A click inside the selection keeps it; elsewhere it moves the
 cursor there and clears the selection.
 
-- **Copy hex string** (Ctrl+C) - the selected bytes as text, `3E 01 D3 FE`, in hex whatever
+- **Copy as hex** (Ctrl+C) - the selected bytes in one line, `3E 01 D3 FE`, in hex whatever
   the Debugger shows. A hex editor pastes it as bytes.
-- **Copy raw bytes** - the bytes themselves, for a program that takes binary data from the
-  clipboard. A text editor gets nothing from it.
+- **Copy as DB** - the bytes as assembler source, a `DB` line for each row of the dump the
+  selection covers, the numbers written as the Debugger writes them: `DB #3E,#01`,
+  `DB 0FEh`, `DB 254`.
+- **Copy as text** - the bytes as the text column shows them, in the code page it names, as
+  **Copy as text (CP866)**; a control code is a dot. For a message in a program, to read it
+  or look it up.
 - **Save as binary file...** - writes the selected bytes to a file. Its name is made of the
   image in use, the page and the addresses, as `exolon_C000-C3FF.bin` or
   `exolon_RAM5_C000-C3FF.bin`; the folder is the one the last file went to, at first the
