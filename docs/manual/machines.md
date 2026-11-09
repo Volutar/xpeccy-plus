@@ -90,8 +90,9 @@ Opening a file can switch the machine too, when the current one cannot run it. S
 
 A click on **Machine > Reset** resets the machine. Its menu lists where a reset can take
 the machine: the ROMs it can start from, such as **Basic 128**, **Basic 48**, **Service**
-and **TR-DOS**. The one in bold is the ROM a plain reset starts from. **TR-DOS** is there
-only when the machine has a Beta Disk interface.
+and **TR-DOS**. The one in bold is the ROM a plain reset starts from, with the reset key
+beside it. **TR-DOS** is there only when the machine has a Beta Disk interface. On macOS a
+click on **Reset** only opens the menu: the bold item is the plain reset there.
 
 ![Machine > Reset on a Pentagon](images/menu-reset.png)
 
