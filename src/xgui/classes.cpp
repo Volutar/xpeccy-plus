@@ -1642,9 +1642,19 @@ bool lab_char(QChar chr) {
 	return chr.isLetterOrNumber() || (chr == QChar('_')) || (chr == QChar('.'));
 }
 
+// the operands an instruction names that a label's name could start with: no
+// label is offered for them, typing on brings the labels back
+static bool asm_operand_word(const QString& word) {
+	static const QStringList words = {"AF", "BC", "DE", "HL", "SP", "IX", "IY", "IXH", "IXL",
+		"IYH", "IYL", "HX", "LX", "HY", "LY", "XH", "XL", "YH", "YL", "NZ", "NC", "PO", "PE"};
+	return words.contains(word.toUpper());
+}
+
 // The labels are offered as a name is typed. It is the word under the caret that
 // is completed, not the field, so it works inside an instruction or an expression.
-void label_complete(QLineEdit* edt) {
+// An instruction (asm) gets them in its operands only: not for its first word, a
+// command (RET is not RETURN), nor for a register or a condition (HL, NZ)
+void label_complete(QLineEdit* edt, bool asm_line) {
 	QCompleter* cmp = new QCompleter(edt);
 	QStringListModel* mod = new QStringListModel(cmp);
 	cmp->setModel(mod);
@@ -1652,7 +1662,7 @@ void label_complete(QLineEdit* edt) {
 	cmp->setCaseSensitivity(Qt::CaseInsensitive);
 	cmp->setFilterMode(Qt::MatchContains);	// a big set from an assembler is searched, not browsed
 	// the word around the caret, and what of it is before the caret
-	auto word = [edt](int* from, int* to) {
+	auto word = [edt, asm_line](int* from, int* to) {
 		QString txt = edt->text();
 		int pos = edt->cursorPosition();
 		int s = pos;
@@ -1664,6 +1674,12 @@ void label_complete(QLineEdit* edt) {
 		// a number is not a name: #C000, 0x1F, 12
 		if ((s > 0) && (txt.at(s - 1) == QChar('#'))) return QString();
 		if ((s < pos) && txt.at(s).isDigit()) return QString();
+		if (asm_line) {
+			int first = 0;
+			while ((first < txt.size()) && txt.at(first).isSpace()) first++;
+			if (s <= first) return QString();
+			if (asm_operand_word(txt.mid(s, pos - s))) return QString();
+		}
 		return txt.mid(s, pos - s);
 	};
 	QObject::connect(edt, &QLineEdit::textEdited, cmp, [cmp, mod, word]() {

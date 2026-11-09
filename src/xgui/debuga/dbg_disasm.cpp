@@ -1101,7 +1101,7 @@ static bool is_number_word(const QString& tok) {
 QWidget* xDasmSyntax::createEditor(QWidget* par, const QStyleOptionViewItem& opt, const QModelIndex& idx) const {
 	QWidget* wid = QStyledItemDelegate::createEditor(par, opt, idx);
 	if (QLineEdit* edt = qobject_cast<QLineEdit*>(wid))
-		label_complete(edt);
+		label_complete(edt, true);
 	return wid;
 }
 
