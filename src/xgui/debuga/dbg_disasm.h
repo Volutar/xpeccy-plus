@@ -99,7 +99,6 @@ class xDisasmTable : public QTableView {
 	private slots:
 		void updColors();
 	private:
-		int markAdr;			// where a selection starts from (the anchor), -1: the cursor
 		bool dragging;
 		void blockSet(int, int);
 		xDisasmModel* model;

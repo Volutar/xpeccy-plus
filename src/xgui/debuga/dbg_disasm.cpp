@@ -19,6 +19,7 @@
 
 extern int blockStart;
 extern int blockEnd;
+extern int blockAnchor;
 
 static int mode = XVIEW_CPU;
 static int page = 0;
@@ -1286,7 +1287,6 @@ xDisasmTable::xDisasmTable(QWidget* p):QTableView(p) {
 	for (int i = 0; i < 5; i++) {
 		storedAddress[i] = -1;
 	}
-	markAdr = -1;
 	dragging = false;
 	model = new xDisasmModel(this);
 	setModel(model);
@@ -1714,19 +1714,22 @@ void xDisasmTable::mousePressEvent(QMouseEvent* ev) {
 		case Qt::MiddleButton:
 			blockStart = -1;
 			blockEnd = -1;
-			markAdr = -1;
+			blockAnchor = -1;
 			updContent();
 			emit rqRefill();
 			ev->ignore();
 			break;
 		case Qt::LeftButton:
 			QTableView::mousePressEvent(ev);
+			// Ctrl is a plain click: Qt would take the cursor's cell off instead
+			if ((ev->modifiers() & Qt::ControlModifier) && indexAt(ev->pos()).isValid())
+				selectionModel()->setCurrentIndex(indexAt(ev->pos()), QItemSelectionModel::ClearAndSelect);
 			if (mode != XVIEW_CPU) break;
 			if (ev->modifiers() & Qt::ShiftModifier) {
-				if ((blockStart < 0) || (markAdr < 0)) markAdr = was;
-				blockSet(markAdr, adr);
+				if ((blockStart < 0) || (blockAnchor < 0)) blockAnchor = was;
+				blockSet(blockAnchor, adr);
 			} else {			// Ctrl too: one way to start a block
-				markAdr = adr;
+				blockAnchor = adr;
 				if (blockStart >= 0) {
 					blockStart = -1;
 					blockEnd = -1;
@@ -1779,11 +1782,11 @@ void xDisasmTable::mouseMoveEvent(QMouseEvent* ev) {
 	int row = rowAt(ev->pos().y());
 	if ((row < 0) || (row >= model->rowCount())) return;
 	int adr = model->data(model->index(row, 0), Qt::UserRole).toInt();	// item(row,0)->data(Qt::UserRole).toInt();
-	if (dragging && (ev->buttons() & Qt::LeftButton) && (markAdr >= 0)) {
+	if (dragging && (ev->buttons() & Qt::LeftButton) && (blockAnchor >= 0)) {
 		// still on the row pressed with nothing selected: a click
-		bool same = (blockStart < 0) ? (adr == markAdr)
-			: ((blockStart == ((adr < markAdr) ? adr : markAdr)) && (blockEnd == ((adr < markAdr) ? markAdr : adr)));
-		if (!same) blockSet(markAdr, adr);
+		bool same = (blockStart < 0) ? (adr == blockAnchor)
+			: ((blockStart == ((adr < blockAnchor) ? adr : blockAnchor)) && (blockEnd == ((adr < blockAnchor) ? blockAnchor : adr)));
+		if (!same) blockSet(blockAnchor, adr);
 	}
 	QTableView::mouseMoveEvent(ev);
 }

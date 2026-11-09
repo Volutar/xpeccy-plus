@@ -39,6 +39,8 @@ enum {
 QString getDumpString(QByteArray bts, int cp);
 // the code pages, as a dump's list offers them
 void dump_codepage_items(QComboBox* box);
+// a page as a file name says it: RAM5, ROM2, DIV3, DIVROM
+QString dump_page_token(int area, int page);
 
 enum {
 	XVIEW_NONE = 0,
@@ -138,11 +140,14 @@ class xDumpTable:public QTableView {
 		void gotoReg(const char*);
 		xDumpModel* model;
 		xDumpText* text;
-		int anchor;			// where a selection starts from, -1: the caret
+		int anchor;			// a page view's selection starts here (the CPU view's: blockAnchor), -1: the caret
 		bool dragging;
 		QPoint dragPos;
 		int dragDir;			// past the top -1, the bottom 1
 		QTimer* dragTimer;
+		int& anchorRef();
+		void dragStop();
+		void hideEvent(QHideEvent*) override;
 		int byteAt(const QPoint&);
 		void putCaret(int);
 		void selSet(int, int);

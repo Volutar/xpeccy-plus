@@ -18,6 +18,7 @@
 
 extern int blockStart;
 extern int blockEnd;
+extern int blockAnchor;
 
 // #define SECTSIZE 25
 
@@ -76,6 +77,12 @@ QString getDumpString(QByteArray bts, int cp) {
 	QByteArray arr = res.toLatin1();
 	res = codec->toUnicode(arr);
 	return res;
+}
+
+QString dump_page_token(int area, int page) {
+	char buf[16];
+	xCell cell = {area, page, 0, 0};
+	return (area == CELL_RAM) ? QString("RAM%0").arg(page) : QString(cell_token(cell, buf));
 }
 
 // the area a page view shows: its pages are the ones MEMMAP, labels and
@@ -632,6 +639,7 @@ void xDumpTable::keyPressEvent(QKeyEvent* ev) {
 			nav = true;
 			break;
 	}
+	int navKey = key;
 	if (nav && shift && ((key == Qt::Key_Left) || (key == Qt::Key_Right))) {
 		// byte by byte across the rows, never onto the address or the text
 		putCaret((was + ((key == Qt::Key_Left) ? -1 : 1) + model->maxadr) % model->maxadr);
@@ -692,14 +700,25 @@ void xDumpTable::keyPressEvent(QKeyEvent* ev) {
 	}
 	if (nav) {
 		int s, e;
+		int& anc = anchorRef();
 		bool has = model->selRange(&s, &e);
 		if (shift) {
-			if (!has || (anchor < 0)) anchor = was;
-			selSet(anchor, getCurrentAdr());
+			if (!has || (anc < 0)) anc = was;
+			// the caret went round past an end: the selection stops there
+			int now = getCurrentAdr();
+			bool back = (navKey == Qt::Key_Left) || (navKey == Qt::Key_Up) || (navKey == Qt::Key_PageUp);
+			if (back && (now > was)) now = 0;
+			if (!back && (now < was)) now = model->maxadr - 1;
+			selSet(anc, now);
 		} else if (has) {
 			selClear();
 		}
 	}
+}
+
+// the CPU view starts its selection where the listing does: one selection, one anchor
+int& xDumpTable::anchorRef() {
+	return (mode == XVIEW_CPU) ? blockAnchor : anchor;
 }
 
 // SELECTION
@@ -797,17 +816,21 @@ void xDumpTable::dropSelection() {
 void xDumpTable::mousePressEvent(QMouseEvent* ev) {
 	int was = getCurrentAdr();
 	QTableView::mousePressEvent(ev);
+	// Ctrl is a plain click: Qt would take the cursor's cell off instead
+	if ((ev->modifiers() & Qt::ControlModifier) && indexAt(ev->pos()).isValid())
+		selectionModel()->setCurrentIndex(indexAt(ev->pos()), QItemSelectionModel::ClearAndSelect);
 	int adr = byteAt(ev->pos());
 	if (adr < 0) return;
 	int s, e;
+	int& anc = anchorRef();
 	switch(ev->button()) {
 		case Qt::LeftButton:
 			if (ev->modifiers() & Qt::ShiftModifier) {
-				if (!model->selRange(&s, &e) || (anchor < 0)) anchor = was;
-				selSet(anchor, adr);
-			} else {			// Ctrl too: one way to start a block
+				if (!model->selRange(&s, &e) || (anc < 0)) anc = was;
+				selSet(anc, adr);
+			} else {
 				selClear();
-				anchor = adr;
+				anc = adr;
 			}
 			dragging = true;
 			dragPos = ev->pos();
@@ -817,13 +840,13 @@ void xDumpTable::mousePressEvent(QMouseEvent* ev) {
 			break;
 		case X_MidButton:
 			selClear();
-			anchor = -1;
+			anc = -1;
 			break;
 		case Qt::RightButton:
 			// the menu is for the selection when the click is in it
 			if (!model->selRange(&s, &e) || (adr < s) || (adr > e)) {
 				selClear();
-				anchor = adr;
+				anc = adr;
 			}
 			putCaret(adr);
 			break;
@@ -834,10 +857,13 @@ void xDumpTable::mousePressEvent(QMouseEvent* ev) {
 
 void xDumpTable::mouseReleaseEvent(QMouseEvent* ev) {
 	QTableView::mouseReleaseEvent(ev);
-	if (ev->button() == Qt::LeftButton) {
-		dragging = false;
-		dragTimer->stop();
-	}
+	if (ev->button() == Qt::LeftButton)
+		dragStop();
+}
+
+void xDumpTable::hideEvent(QHideEvent* ev) {
+	dragStop();
+	QTableView::hideEvent(ev);
 }
 
 void xDumpTable::mouseMoveEvent(QMouseEvent* ev) {
@@ -859,18 +885,27 @@ void xDumpTable::mouseMoveEvent(QMouseEvent* ev) {
 // the selection from the anchor to the byte under the pointer
 void xDumpTable::dragTo() {
 	int adr = byteAt(dragPos);
+	int anc = anchorRef();
 	int s, e;
-	if (adr < 0) return;
-	if ((adr == anchor) && !model->selRange(&s, &e)) return;	// still the byte pressed: a click
-	selSet(anchor, adr);
+	if ((adr < 0) || (anc < 0)) return;
+	bool has = model->selRange(&s, &e);
+	if ((adr == anc) && !has) return;			// still the byte pressed: a click
+	if (has && (s == qMin(anc, adr)) && (e == qMax(anc, adr))) return;	// the same byte: nothing to redo
+	selSet(anc, adr);
 	putCaret(adr);
+}
+
+void xDumpTable::dragStop() {
+	dragging = false;
+	dragTimer->stop();
 }
 
 // the pointer is past the top or the bottom: a row more, up to the start or the end
 void xDumpTable::dragStep() {
 	int n = model->dmpsize;
-	if (!dragging || !dragDir) {
-		dragTimer->stop();
+	// a release that went elsewhere (a window over this one) ends the drag too
+	if (!dragging || !dragDir || !(QApplication::mouseButtons() & Qt::LeftButton)) {
+		dragStop();
 		return;
 	}
 	if (dragDir < 0) {
@@ -940,6 +975,8 @@ xDumpWidget::xDumpWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
 	connect(actCopyHex, &QAction::triggered, this, &xDumpWidget::copyHex);
 	connect(actCopyRaw, &QAction::triggered, this, &xDumpWidget::copyRaw);
 	connect(actSaveBin, &QAction::triggered, this, &xDumpWidget::saveBin);
+	// the menu greys Copy with nothing selected; Ctrl+C is the same action, so back on
+	connect(cellMenu, &QMenu::aboutToHide, this, [this]() {actCopyHex->setEnabled(true);});
 	connect(ui.actFetch, &QAction::triggered, this, &xDumpWidget::brkAction);
 	connect(ui.actRead, &QAction::triggered, this, &xDumpWidget::brkAction);
 	connect(ui.actWrite, &QAction::triggered, this, &xDumpWidget::brkAction);
@@ -1047,14 +1084,9 @@ QString xDumpWidget::binName(int start, int end) {
 	if (!name.isEmpty()) name.append("_");
 	int page;
 	int area = viewArea(&page);
-	if (area != CELL_NONE) {
-		char buf[16];
-		xCell cell = {area, page, 0, 0};
-		name.append((area == CELL_RAM) ? QString("RAM%0").arg(page) : QString(cell_token(cell, buf)));
-		name.append("_");
-	}
-	auto hex = [](int adr) {return QString::number(adr, 16).toUpper().rightJustified(4, '0');};
-	name.append(QString("%0-%1.bin").arg(hex(ui.dumpTable->shownAdr(start)), hex(ui.dumpTable->shownAdr(end))));
+	if (area != CELL_NONE)
+		name.append(dump_page_token(area, page)).append("_");
+	name.append(QString("%0-%1.bin").arg(gethexword(ui.dumpTable->shownAdr(start)), gethexword(ui.dumpTable->shownAdr(end))));
 	return name;
 }
 
