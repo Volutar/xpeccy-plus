@@ -2487,8 +2487,11 @@ class xMenu : public QMenu {
 		void initStyleOption(QStyleOptionMenuItem* opt, const QAction* act) const override {
 			QMenu::initStyleOption(opt, act);
 			int tab = opt->text.indexOf('\t');
-			if (tab >= 0)
+			if (tab >= 0) {
 				opt->reservedShortcutWidth = opt->fontMetrics.horizontalAdvance(opt->text.mid(tab + 1));
+				// a submenu's arrow is drawn over the key's end: the key moves left of it
+				if (act->menu()) opt->reservedShortcutWidth += opt->fontMetrics.height();
+			}
 		}
 #endif
 };
@@ -2767,6 +2770,9 @@ void MainWin::initUserMenu() {
 	setRoot(padMenu, &MainWin::padWinShow);
 	resMenu->menuAction()->setData(RES_DEFAULT);
 	setRoot(resMenu, [this](){reset(resMenu->menuAction());});
+	// a root shows the key that does the same
+	cutActs.append({resMenu->menuAction(), resMenu->title(), XCUT_RESET});
+	cutActs.append({padMenu->menuAction(), padMenu->title(), XCUT_PADWIN});
 }
 
 // MENU BAR
@@ -3458,7 +3464,9 @@ void MainWin::favManage() {
 // Machine, Media and Tools on the menu bar: what the buttons do, for a window
 // with no toolbar, put between Favorites and Help
 void MainWin::initMachineMenus() {
-	QMenu* mac = new xMenu("Machine", this);
+	// Reset and Gamepads act on a click here too, as in the right-click menu
+	xRootMenu* mac = new xRootMenu("Machine", this, false);
+	mac->addRoot(resMenu);
 	mac->addMenu(profileMenu);
 	mac->addMenu(resMenu);
 	mac->addAction(cutById.value(XCUT_NMI));
@@ -3479,7 +3487,8 @@ void MainWin::initMachineMenus() {
 	mac->addSeparator();
 	mac->addAction(muteAct);
 
-	QMenu* inp = new xMenu("Input", this);
+	xRootMenu* inp = new xRootMenu("Input", this, false);
+	inp->addRoot(padMenu);
 	inp->addAction(pckAct);
 	inp->addAction(mouseAct);
 	inp->addMenu(keyMenu);
@@ -3648,9 +3657,10 @@ void MainWin::fillUserMenu() {
 			act->setFont(fnt);
 		}
 	}
+	// a machine that starts its own firmware has no ROM to pick: the plain reset only
 	if (starts.isEmpty()) {
-		act = resMenu->addAction("Boots its own firmware");
-		act->setEnabled(false);
+		act = resMenu->addAction("Soft Reset");
+		act->setData(RES_DEFAULT);
 	}
 	resMenu->addSeparator();
 	act = resMenu->addAction("Hard Reset");
