@@ -2500,7 +2500,7 @@ static QUrl manual_url();
 static QString key_text(const QString& name, int id) {
 #ifndef __APPLE__	// Cocoa would make a key equivalent of it, and take the key
 	QString key = shortcut_key(id);
-	if (!key.isEmpty()) return name + "	" + key;
+	if (!key.isEmpty()) return name + "\t" + key;
 #else
 	(void)id;
 #endif
