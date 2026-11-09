@@ -184,6 +184,8 @@ before that point is upstream's history and is not repeated here.
   no longer offered after such a wait. *(reported by Volutar)*
 - **Submenu arrows no longer run into the names** under a style (Gruvbox and the others), as
   in the toolbar's Buttons menu.
+- **Key 8's graphic on the black and magenta Next skins** of the virtual keyboard is a solid
+  block, as on the black 128K one, not an empty square. *(thanks to Volutar for the fix)*
 
 ## 2026.9 - 2026-11-02
 
