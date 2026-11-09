@@ -384,8 +384,6 @@ bool xDumpModel::setData(const QModelIndex& idx, const QVariant& val, int role) 
 	return true;
 }
 
-// TABLE
-
 // TEXT COLUMN
 
 void xDumpText::paint(QPainter* pnt, const QStyleOptionViewItem& opt, const QModelIndex& idx) const {
@@ -513,6 +511,7 @@ int xDumpTable::getCurrentAdr() {
 	int col;
 	QModelIndex idx;
 	idx = currentIndex();
+	if (!idx.isValid()) return model->dmpadr % model->maxadr;	// no cursor yet: the top
 	col = idx.column();
 	adr = model->dmpadr + (idx.row() * model->dmpsize);
 	if ((col > 0) && (col <= model->dmpsize)) {
@@ -812,7 +811,9 @@ void xDumpTable::mousePressEvent(QMouseEvent* ev) {
 			}
 			dragging = true;
 			dragPos = ev->pos();
-			putCaret(adr);
+			// a click on an address keeps the cursor there, for Enter to type another
+			if ((columnAt(ev->pos().x()) != 0) || (ev->modifiers() & Qt::ShiftModifier))
+				putCaret(adr);
 			break;
 		case X_MidButton:
 			selClear();
