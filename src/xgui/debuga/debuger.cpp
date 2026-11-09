@@ -329,6 +329,7 @@ void DebugWin::start() {
 	}
 	blockStart = -1;
 	blockEnd = -1;
+	wid_dump->dropSelection();
 	save_mem_map();
 	Computer* comp = conf.zx;
 	// the pause is set, but the emulation's thread may still be inside a step: these
@@ -2952,6 +2953,12 @@ void DebugWin::doSaveDump() {
 	int area = wid_dump->viewArea(&page);
 	dump_fill_sources(dui.cbSource, dui.sbPage, area, page);
 	dmpSourceChanged();
+	int start, end;
+	if (wid_dump->selection(&start, &end)) {	// the DUMP's selection, on the view it is on
+		dui.leStart->setValue(start);
+		dui.leEnd->setValue(end);
+		dmpLimits(true);
+	}
 	dumpwin->show();
 }
 

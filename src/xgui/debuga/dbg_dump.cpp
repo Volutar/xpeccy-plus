@@ -6,6 +6,15 @@
 
 #include <QTextCodec>
 #include <QColor>
+#include <QApplication>
+#include <QClipboard>
+#include <QMimeData>
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QPainter>
+#include <utility>
+
+#include "filer.h"
 
 extern int blockStart;
 extern int blockEnd;
@@ -152,7 +161,42 @@ void xDumpModel::mwr(int adr, unsigned char bt) {
 	}
 }
 
+// the selection the view on show has: the CPU view's is the listing's too
+bool xDumpModel::selRange(int* start, int* end) const {
+	if (mode == XVIEW_CPU) {
+		if (blockStart < 0) return false;
+		*start = blockStart;
+		*end = blockEnd;
+		return true;
+	}
+	if ((selStart < 0) || (selMode != mode) || (selPage != page)) return false;
+	*start = selStart;
+	*end = selEnd;
+	return true;
+}
+
+bool xDumpModel::isSel(int adr) const {
+	int s, e;
+	return selRange(&s, &e) && (adr >= s) && (adr <= e);
+}
+
+QByteArray xDumpModel::bytes(int start, int end) const {
+	QByteArray res;
+	for (int adr = start; adr <= end; adr++)
+		res.append((char)(mrd(adr) & 0xff));
+	return res;
+}
+
+int xDumpModel::shownAdr(int adr) const {
+	if (mode == XVIEW_CPU) return adr;
+	return (adr % pgsize) + pgbase;
+}
+
 xDumpModel::xDumpModel(QObject* par):xTableModel(par) {
+	selMode = XVIEW_NONE;
+	selPage = 0;
+	selStart = -1;
+	selEnd = -1;
 	codePage = XCP_437;
 	mode = XVIEW_CPU;
 	page = 0;
@@ -206,7 +250,7 @@ QVariant xDumpModel::data(const QModelIndex& idx, int role) const {
 		case Qt::BackgroundRole:
 #endif
 			if ((col > 0) && (col < 17)) {
-				if ((cadr >= blockStart) && (cadr <= blockEnd) && (mode == XVIEW_CPU)) {	// selection
+				if (isSel(cadr)) {
 					clr = conf.pal["dbg.sel.bg"];
 				} else if (fm != TS_FM_NONE) {
 					clr = conf.pal["dbg.fmaps.bg"];
@@ -223,7 +267,7 @@ QVariant xDumpModel::data(const QModelIndex& idx, int role) const {
 			if ((col > 0) && (col < 17)) {
 				if (flg & 0x0f) {								// breakpoint
 					clr = conf.pal["dbg.brk.txt"];
-				} else if ((cadr >= blockStart) && (cadr <= blockEnd) && (mode == XVIEW_CPU)) {	// selection
+				} else if (isSel(cadr)) {
 					clr = conf.pal["dbg.sel.txt"];
 				} else if (fm != TS_FM_NONE) {
 					clr = conf.pal["dbg.fmaps.txt"];
@@ -246,6 +290,14 @@ QVariant xDumpModel::data(const QModelIndex& idx, int role) const {
 				res = cellTip(cadr, str);
 			} else if (!str.isEmpty()) {
 				res = str;
+			}
+			break;
+		case DUMP_SEL_ROLE:
+			if (col == DUMP_TEXTCOL) {
+				int bits = 0;
+				for (int i = 0; i < dmpsize; i++)
+					if (isSel((adr + i) % maxadr)) bits |= 1 << i;
+				res = bits;
 			}
 			break;
 		case Qt::TextAlignmentRole:
@@ -334,12 +386,69 @@ bool xDumpModel::setData(const QModelIndex& idx, const QVariant& val, int role) 
 
 // TABLE
 
+// TEXT COLUMN
+
+void xDumpText::paint(QPainter* pnt, const QStyleOptionViewItem& opt, const QModelIndex& idx) const {
+	drawBackground(pnt, opt, idx);
+	QString txt = idx.data(Qt::DisplayRole).toString();
+	int sel = idx.data(DUMP_SEL_ROLE).toInt();
+	QFontMetrics fm(opt.font);
+#if (QT_VERSION >= QT_VERSION_CHECK(5,11,0))
+	cw = fm.horizontalAdvance("0");
+#else
+	cw = fm.width("0");
+#endif
+	// where the plain delegate put the text, aligned right
+	QStyle* st = opt.widget ? opt.widget->style() : QApplication::style();
+	margin = st->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, opt.widget) + 1;
+	QPalette::ColorGroup cg = !(opt.state & QStyle::State_Enabled) ? QPalette::Disabled
+		: ((opt.state & QStyle::State_Active) ? QPalette::Normal : QPalette::Inactive);
+	QColor txc = opt.palette.color(cg, (opt.state & QStyle::State_Selected) ? QPalette::HighlightedText : QPalette::Text);
+	int n = txt.size();
+	int x = opt.rect.right() + 1 - margin - n * cw;
+	pnt->save();
+	pnt->setClipRect(opt.rect);
+	pnt->setFont(opt.font);
+	for (int i = 0; i < n; i++, x += cw) {
+		QRect rc(x, opt.rect.top(), cw, opt.rect.height());
+		if (sel & (1 << i)) {
+			pnt->fillRect(rc, conf.pal["dbg.sel.bg"]);
+			pnt->setPen(conf.pal["dbg.sel.txt"]);
+		} else {
+			pnt->setPen(txc);
+		}
+		pnt->drawText(rc, Qt::AlignCenter, QString(txt.at(i)));
+	}
+	pnt->restore();
+}
+
+// the character under x, of count in the cell as painted; past the ends the nearest
+int xDumpText::charAt(const QRect& cell, int x, int count) const {
+	int w = (cw > 0) ? cw : 8;
+	int left = cell.right() + 1 - margin - count * w;
+	if (x < left) return 0;
+	int i = (x - left) / w;
+	return (i < count) ? i : (count - 1);
+}
+
+// TABLE
+
 xDumpTable::xDumpTable(QWidget* p):QTableView(p) {
-	markAdr = -1;
+	anchor = -1;
+	dragging = false;
+	dragDir = 0;
+	pagenum = 0;
+	pagesize = MEM_64K;
 	mode = XVIEW_CPU;
 	rowBytes = 0;			// auto
 	model = new xDumpModel();
 	setModel(model);
+	text = new xDumpText(this);
+	setItemDelegateForColumn(DUMP_TEXTCOL, text);
+	// a drag past the top or the bottom scrolls a row a tick
+	dragTimer = new QTimer(this);
+	dragTimer->setInterval(60);
+	connect(dragTimer, &QTimer::timeout, this, &xDumpTable::dragStep);
 	dbg_cell_tips(this);		// a byte's tip over the byte, as the listing has it over a number
 	// no stretching: the columns are sized in layoutColumns and stay put
 	horizontalHeader()->setStretchLastSection(false);
@@ -352,6 +461,7 @@ xDumpTable::xDumpTable(QWidget* p):QTableView(p) {
 }
 
 void xDumpTable::setMode(int md, int pgn, int pgb, int pgs) {
+	if ((md != mode) || (pgn != pagenum)) anchor = -1;	// another view's byte
 	mode = md;
 	pagenum = pgn;
 	pagesize = pgs;
@@ -510,7 +620,27 @@ void xDumpTable::keyPressEvent(QKeyEvent* ev) {
 	}
 	if (key < 0)
 		key = ev->key();
+	int was = getCurrentAdr();
+	bool shift = (ev->modifiers() & Qt::ShiftModifier);
+	bool nav = false;		// the caret moves: Shift takes the selection along
 	switch(key) {
+		case Qt::Key_Up:
+		case Qt::Key_Down:
+		case Qt::Key_Left:
+		case Qt::Key_Right:
+		case Qt::Key_PageUp:
+		case Qt::Key_PageDown:
+			nav = true;
+			break;
+	}
+	if (nav && shift && ((key == Qt::Key_Left) || (key == Qt::Key_Right))) {
+		// byte by byte across the rows, never onto the address or the text
+		putCaret((was + ((key == Qt::Key_Left) ? -1 : 1) + model->maxadr) % model->maxadr);
+		key = 0;
+	}
+	switch(key) {
+		case 0:
+			break;
 		case Qt::Key_Up:
 			if (idx.row() > 0) {
 				QTableView::keyPressEvent(ev);
@@ -561,43 +691,140 @@ void xDumpTable::keyPressEvent(QKeyEvent* ev) {
 			QTableView::keyPressEvent(ev);
 			break;
 	}
+	if (nav) {
+		int s, e;
+		bool has = model->selRange(&s, &e);
+		if (shift) {
+			if (!has || (anchor < 0)) anchor = was;
+			selSet(anchor, getCurrentAdr());
+		} else if (has) {
+			selClear();
+		}
+	}
+}
+
+// SELECTION
+// As in a text editor: a click puts the caret and drops the selection, a drag
+// selects from the byte pressed, Shift+click from there (or the caret) to the
+// byte clicked. The CPU view's selection is the listing's: blockStart/blockEnd.
+
+// the byte under a point of the viewport; past an edge the nearest. The address
+// column is its row's first byte, the text a byte a character
+int xDumpTable::byteAt(const QPoint& pos) {
+	int rows = model->rowCount();
+	int n = model->dmpsize;
+	if ((rows < 1) || (n < 1)) return -1;
+	int row = rowAt(pos.y());
+	if (row < 0) row = (pos.y() < 0) ? 0 : (rows - 1);
+	int col = columnAt(pos.x());
+	int ofs;
+	if (col < 0) {
+		ofs = (pos.x() < 0) ? 0 : (n - 1);
+	} else if (col == 0) {
+		ofs = 0;
+	} else if (col <= n) {
+		ofs = col - 1;
+	} else {
+		ofs = text->charAt(visualRect(model->index(row, DUMP_TEXTCOL)), pos.x(), n);
+	}
+	return (model->dmpadr + row * n + ofs) % model->maxadr;
+}
+
+// the caret on a byte's cell, the dump scrolled a row when it is just off it
+void xDumpTable::putCaret(int adr) {
+	int n = model->dmpsize;
+	int rel = (adr - (int)model->dmpadr + model->maxadr) % model->maxadr;
+	int row = rel / n;
+	if (row >= model->rowCount()) {
+		if (rel >= (int)model->maxadr - n) {		// the row above the top
+			setAdr(model->dmpadr - n);
+		} else {
+			setAdr(model->dmpadr + n);
+		}
+		rel = (adr - (int)model->dmpadr + model->maxadr) % model->maxadr;
+		row = rel / n;
+		if (row >= model->rowCount()) return;
+	}
+	setCurrentIndex(model->index(row, (rel % n) + 1));
+}
+
+void xDumpTable::selSet(int a, int b) {
+	if (a > b) std::swap(a, b);
+	if (mode == XVIEW_CPU) {
+		blockStart = a;
+		blockEnd = b;
+		emit s_blockch();
+	} else {
+		model->selMode = mode;
+		model->selPage = pagenum;
+		model->selStart = a;
+		model->selEnd = b;
+	}
+	update();
+}
+
+void xDumpTable::selClear() {
+	int s, e;
+	if (!model->selRange(&s, &e)) return;
+	if (mode == XVIEW_CPU) {
+		blockStart = -1;
+		blockEnd = -1;
+		emit s_blockch();
+	} else {
+		model->selStart = -1;
+	}
+	update();
+}
+
+bool xDumpTable::selection(int* start, int* end) {
+	return model->selRange(start, end);
+}
+
+QByteArray xDumpTable::selBytes() {
+	int s, e;
+	if (!model->selRange(&s, &e)) return QByteArray();
+	return model->bytes(s, e);
+}
+
+int xDumpTable::shownAdr(int adr) {
+	return model->shownAdr(adr);
+}
+
+void xDumpTable::dropSelection() {
+	model->selStart = -1;
+	anchor = -1;
 }
 
 void xDumpTable::mousePressEvent(QMouseEvent* ev) {
+	int was = getCurrentAdr();
 	QTableView::mousePressEvent(ev);
-	QModelIndex idx = indexAt(ev->pos());
-	int row = idx.row();
-	int col = idx.column();
-	if ((row < 0) || (row >= model->rowCount())) return;
-	if ((col < 0) || (col >= model->columnCount())) return;
-	// the address and the bytes of a row; the text column is no one byte
-	if ((col > model->dmpsize) && (ev->button() != X_MidButton)) return;
-	int adr = model->dmpadr + (row * model->dmpsize);
-	if (col != 0)
-		adr += col - 1;
-	adr %= model->maxadr;
+	int adr = byteAt(ev->pos());
+	if (adr < 0) return;
+	int s, e;
 	switch(ev->button()) {
 		case Qt::LeftButton:
-			if (ev->modifiers() & Qt::ControlModifier) {
-				blockStart = adr;
-				if (blockEnd < blockStart) blockEnd = blockStart;
-				emit s_blockch();
-			} else if (ev->modifiers() & Qt::ShiftModifier) {
-				blockEnd = adr;
-				if (blockStart > blockEnd) blockStart = blockEnd;
-				if (blockStart < 0) blockStart = 0;
-				emit s_blockch();
-			} else {
-				markAdr = adr;
+			if (ev->modifiers() & Qt::ShiftModifier) {
+				if (!model->selRange(&s, &e) || (anchor < 0)) anchor = was;
+				selSet(anchor, adr);
+			} else {			// Ctrl too: one way to start a block
+				selClear();
+				anchor = adr;
 			}
-			update();
+			dragging = true;
+			dragPos = ev->pos();
+			putCaret(adr);
 			break;
 		case X_MidButton:
-			blockStart = -1;
-			blockEnd = -1;
-			markAdr = -1;
-			emit s_blockch();
-			update();
+			selClear();
+			anchor = -1;
+			break;
+		case Qt::RightButton:
+			// the menu is for the selection when the click is in it
+			if (!model->selRange(&s, &e) || (adr < s) || (adr > e)) {
+				selClear();
+				anchor = adr;
+			}
+			putCaret(adr);
 			break;
 		default:
 			break;
@@ -606,38 +833,53 @@ void xDumpTable::mousePressEvent(QMouseEvent* ev) {
 
 void xDumpTable::mouseReleaseEvent(QMouseEvent* ev) {
 	QTableView::mouseReleaseEvent(ev);
-	if (ev->button() == Qt::LeftButton)
-		markAdr = -1;
+	if (ev->button() == Qt::LeftButton) {
+		dragging = false;
+		dragTimer->stop();
+	}
 }
 
 void xDumpTable::mouseMoveEvent(QMouseEvent* ev) {
-	QTableView::mouseMoveEvent(ev);
-	if (mode != XVIEW_CPU) return;
-	QModelIndex idx = indexAt(ev->pos());
-	int row = idx.row();
-	int col = idx.column();
-	if ((row < 0) || (row >= model->rowCount())) return;
-	if ((col < 0) || (col >= model->columnCount())) return;
-	int adr;
-	adr = model->dmpadr + (row * model->dmpsize);
-	if ((col > 0) && (col <= model->dmpsize)) {
-		adr += col - 1;
+	if (!dragging || !(ev->buttons() & Qt::LeftButton)) {
+		QTableView::mouseMoveEvent(ev);
+		return;
 	}
-	adr %= model->maxadr;
-	if ((ev->modifiers() == Qt::NoModifier) && (ev->buttons() & Qt::LeftButton) && (adr != blockStart) && (adr != blockEnd) && (adr != markAdr)) {
-		if ((col == 0) || (col > model->dmpsize))
-			adr += model->dmpsize;
-		if (adr < blockStart) {
-			blockStart = adr;
-			blockEnd = markAdr;
-		} else {
-			blockStart = markAdr;
-			blockEnd = adr;
-		}
-		emit s_blockch();
-		update();
+	dragPos = ev->pos();
+	dragDir = (dragPos.y() < 0) ? -1 : ((dragPos.y() >= viewport()->height()) ? 1 : 0);
+	if (!dragDir) {
+		dragTimer->stop();
+	} else if (!dragTimer->isActive()) {
+		dragTimer->start();
 	}
+	dragTo();
 	ev->accept();
+}
+
+// the selection from the anchor to the byte under the pointer
+void xDumpTable::dragTo() {
+	int adr = byteAt(dragPos);
+	int s, e;
+	if (adr < 0) return;
+	if ((adr == anchor) && !model->selRange(&s, &e)) return;	// still the byte pressed: a click
+	selSet(anchor, adr);
+	putCaret(adr);
+}
+
+// the pointer is past the top or the bottom: a row more, up to the start or the end
+void xDumpTable::dragStep() {
+	int n = model->dmpsize;
+	if (!dragging || !dragDir) {
+		dragTimer->stop();
+		return;
+	}
+	if (dragDir < 0) {
+		if (model->dmpadr == 0) return;
+		setAdr((model->dmpadr < (unsigned)n) ? 0 : (model->dmpadr - n));
+	} else {
+		if (model->dmpadr + model->rowCount() * n >= model->maxadr) return;
+		setAdr(model->dmpadr + n);
+	}
+	dragTo();
 }
 
 void xDumpTable::wheelEvent(QWheelEvent* ev) {
@@ -678,21 +920,36 @@ xDumpWidget::xDumpWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
 	ui.leDumpPageBase->setMin(0);
 	ui.leDumpPageBase->setMax(0xffff);
 
-	cellMenu = new QMenu;
+	// One menu: the selection's commands, then the byte's breakpoints. More
+	// sections go in here, not in a menu of their own
+	actCopyHex = new QAction("Copy hex string", this);
+	actCopyHex->setShortcut(QKeySequence::Copy);
+	actCopyHex->setShortcutContext(Qt::WidgetShortcut);
+	ui.dumpTable->addAction(actCopyHex);		// Ctrl+C while the dump has the focus
+	actCopyRaw = new QAction("Copy raw bytes", this);
+	actSaveBin = new QAction("Save as binary file...", this);
+	cellMenu = new QMenu(this);
+	cellMenu->addAction(actCopyHex);
+	cellMenu->addAction(actCopyRaw);
+	cellMenu->addAction(actSaveBin);
+	cellMenu->addSeparator();
 	cellMenu->addAction(ui.actFetch);
 	cellMenu->addAction(ui.actRead);
 	cellMenu->addAction(ui.actWrite);
+	connect(actCopyHex, &QAction::triggered, this, &xDumpWidget::copyHex);
+	connect(actCopyRaw, &QAction::triggered, this, &xDumpWidget::copyRaw);
+	connect(actSaveBin, &QAction::triggered, this, &xDumpWidget::saveBin);
+	connect(ui.actFetch, &QAction::triggered, this, &xDumpWidget::brkAction);
+	connect(ui.actRead, &QAction::triggered, this, &xDumpWidget::brkAction);
+	connect(ui.actWrite, &QAction::triggered, this, &xDumpWidget::brkAction);
 
 	xid_addr = new xItemDelegate(XTYPE_LABEL);
 	xid_byte = new xItemDelegate(XTYPE_BYTE);
-	xid_none = new xItemDelegate(XTYPE_NONE);
 
 	ui.dumpTable->setItemDelegate(xid_byte);
-	ui.dumpTable->setItemDelegateForColumn(0, xid_addr);
-	ui.dumpTable->setItemDelegateForColumn(17, xid_none);
+	ui.dumpTable->setItemDelegateForColumn(0, xid_addr);	// the text column has its own, the table's
 
 	connect(ui.dumpTable, &xDumpTable::customContextMenuRequested, this, &xDumpWidget::customMenu);
-	connect(cellMenu, &QMenu::triggered, this, &xDumpWidget::customMenuAction);
 
 	connect(ui.dumpTable, &xDumpTable::s_adrch, ui.dumpScroll, &QScrollBar::setValue);
 	connect(ui.dumpScroll, &QScrollBar::valueChanged, ui.dumpTable, &xDumpTable::setAdr);
@@ -732,7 +989,20 @@ int xDumpWidget::viewArea(int* page) {
 	return dump_view_area(getRFIData(ui.cbDumpView));
 }
 
-void xDumpWidget::customMenu() {
+bool xDumpWidget::selection(int* start, int* end) {
+	return ui.dumpTable->selection(start, end);
+}
+
+void xDumpWidget::dropSelection() {
+	ui.dumpTable->dropSelection();
+}
+
+void xDumpWidget::customMenu(const QPoint& pos) {
+	int s, e;
+	bool sel = ui.dumpTable->selection(&s, &e);
+	actCopyHex->setEnabled(sel);
+	actCopyRaw->setEnabled(sel);
+	actSaveBin->setEnabled(sel);
 	int adr = ui.dumpTable->getCurrentAdr();
 	int mode = getRFIData(ui.cbDumpView);
 	unsigned char flag = 0;
@@ -745,11 +1015,66 @@ void xDumpWidget::customMenu() {
 	ui.actFetch->setChecked(flag & MEM_BRK_FETCH);
 	ui.actRead->setChecked(flag & MEM_BRK_RD);
 	ui.actWrite->setChecked(flag & MEM_BRK_WR);
-	cellMenu->move(cursor().pos());
-	cellMenu->show();
+	cellMenu->popup(ui.dumpTable->viewport()->mapToGlobal(pos));
 }
 
-void xDumpWidget::customMenuAction(QAction* act) {
+// the selection as text a hex editor pastes: "3E 01 D3 FE", hex whatever the
+// Debugger shows
+void xDumpWidget::copyHex() {
+	QByteArray data = ui.dumpTable->selBytes();
+	if (data.isEmpty()) return;
+	QStringList list;
+	for (int i = 0; i < data.size(); i++)
+		list.append(gethexbyte((unsigned char)data.at(i)));
+	QApplication::clipboard()->setText(list.join(" "));
+}
+
+// the bytes themselves, for a program that takes them: there is no format all
+// hex editors read, octet-stream is the one Qt programs and some editors know
+void xDumpWidget::copyRaw() {
+	QByteArray data = ui.dumpTable->selBytes();
+	if (data.isEmpty()) return;
+	QMimeData* mime = new QMimeData;
+	mime->setData("application/octet-stream", data);
+	QApplication::clipboard()->setMimeData(mime);
+}
+
+// image_C000-C3FF.bin; in a page view image_RAM5_C000-C3FF.bin, the addresses
+// the address column writes
+QString xDumpWidget::binName(int start, int end) {
+	QString name = media_image_name();
+	if (!name.isEmpty()) name.append("_");
+	int page;
+	int area = viewArea(&page);
+	if (area != CELL_NONE) {
+		char buf[16];
+		xCell cell = {area, page, 0, 0};
+		name.append((area == CELL_RAM) ? QString("RAM%0").arg(page) : QString(cell_token(cell, buf)));
+		name.append("_");
+	}
+	auto hex = [](int adr) {return QString::number(adr, 16).toUpper().rightJustified(4, '0');};
+	name.append(QString("%0-%1.bin").arg(hex(ui.dumpTable->shownAdr(start)), hex(ui.dumpTable->shownAdr(end))));
+	return name;
+}
+
+void xDumpWidget::saveBin() {
+	static QString dir;		// the last one's, the image's before that
+	int s, e;
+	if (!ui.dumpTable->selection(&s, &e)) return;
+	QByteArray data = ui.dumpTable->selBytes();
+	if (dir.isEmpty() && !media_current().isEmpty())
+		dir = QFileInfo(media_current()).absolutePath();
+	QString path = binName(s, e);
+	if (!dir.isEmpty()) path.prepend(dir + "/");
+	path = QFileDialog::getSaveFileName(this, "Save as binary file", path, "Binary files (*.bin);;All files (*)", nullptr, QFileDialog::DontUseNativeDialog);
+	if (path.isEmpty()) return;
+	dir = QFileInfo(path).absolutePath();
+	QFile file(path);
+	if (!file.open(QFile::WriteOnly) || (file.write(data) != data.size()))
+		shitHappens("Can't write the file");
+}
+
+void xDumpWidget::brkAction() {
 	int bt = 0;
 	xAdr xadr;
 	int adr = ui.dumpTable->getCurrentAdr();
