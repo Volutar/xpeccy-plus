@@ -109,7 +109,11 @@ class xDisasmTable : public QTableView {
 		int storedAddress[5];
 
 		void scrolUp(Qt::KeyboardModifiers = Qt::NoModifier);
-		void scrolDn(Qt::KeyboardModifiers = Qt::NoModifier);
+		int scrolDn(Qt::KeyboardModifiers = Qt::NoModifier);
+		bool rowEnabled(int);
+		void putCursor(int, int);
+		void cursorDown();
+		void cursorUp();
 
 		void copyToCbrd();
 		void jumpMarked(int, bool);

@@ -1398,17 +1398,71 @@ void xDisasmTable::t_update(int oadr, int nadr) {
 
 void xDisasmTable::rowDown() {
 	updContent();
-	QModelIndex idx = currentIndex();
-	int row = idx.row();
-	int col = idx.column();
-	if (row < model->rowCount() - 1) {
-		idx = model->index(row + 1, col);
-		setCurrentIndex(idx);
-		selectionModel()->select(idx, QItemSelectionModel::ClearAndSelect);
-	} else {
-		scrolDn();
-	}
+	cursorDown();
+	selectionModel()->select(currentIndex(), QItemSelectionModel::ClearAndSelect);
 	emit rqRefill();
+}
+
+// a row the cursor can stand on: a block separator is not one
+bool xDisasmTable::rowEnabled(int row) {
+	if ((row < 0) || (row >= model->rowCount())) return false;
+	return model->flags(model->index(row, 0)) & Qt::ItemIsEnabled;
+}
+
+// the cursor on a row, in the cell a span shows of that column
+void xDisasmTable::putCursor(int row, int col) {
+	if (row < model->dasm.size()) {
+		if (model->dasm[row].islab) {
+			col = 0;
+		} else if (model->dasm[row].isequ) {
+			col = (col < 2) ? 0 : 2;
+		} else if ((col > 2) && model->dasm[row].icon.isEmpty() && model->dasm[row].info.isEmpty()) {
+			col = 2;
+		}
+	}
+	setCurrentIndex(model->index(row, col));
+}
+
+// Down: the next row the cursor can stand on, the listing scrolled when there is
+// none below - a block separator on the last row is not the end of the listing
+void xDisasmTable::cursorDown() {
+	QModelIndex idx = currentIndex();
+	int row = idx.isValid() ? idx.row() : 0;
+	int col = idx.isValid() ? idx.column() : 0;
+	for (int i = 0; i < 8; i++) {
+		int r = row + 1;
+		while ((r < model->rowCount()) && !rowEnabled(r))
+			r++;
+		if (r < model->rowCount()) {
+			putCursor(r, col);
+			return;
+		}
+		int was = model->asmadr;
+		row -= scrolDn();		// the rows the top command took are gone
+		if (model->asmadr == was) return;
+	}
+}
+
+// Up: the same the other way, a separator on the first row included
+void xDisasmTable::cursorUp() {
+	QModelIndex idx = currentIndex();
+	int row = idx.isValid() ? idx.row() : 0;
+	int col = idx.isValid() ? idx.column() : 0;
+	for (int i = 0; i < 8; i++) {
+		int r = row - 1;
+		while ((r >= 0) && !rowEnabled(r))
+			r--;
+		if (r >= 0) {
+			putCursor(r, col);
+			return;
+		}
+		int was = model->asmadr;
+		scrolUp();
+		if (model->asmadr == was) return;
+		// the old top row is where the new command's rows end
+		int top = rowForAdr(was);
+		row = (top < 0) ? 1 : (row + top);
+	}
 }
 
 void xDisasmTable::copyToCbrd() {
@@ -1502,17 +1556,17 @@ void xDisasmTable::keyPressEvent(QKeyEvent* ev) {
 	int pc = cpu_get_pc(comp->cpu);
 	switch (key) {
 		case Qt::Key_Up:
-			if ((mod & Qt::ControlModifier) || (idx.row() == 0)) {
+			if (mod & Qt::ControlModifier) {
 				scrolUp(mod);
 			} else {
-				QTableView::keyPressEvent(ev);
+				cursorUp();
 			}
 			break;
 		case Qt::Key_Down:
-			if ((mod & Qt::ControlModifier) || (idx.row() == model->rowCount() - 1)) {
+			if (mod & Qt::ControlModifier) {
 				scrolDn(mod);
 			} else {
-				QTableView::keyPressEvent(ev);
+				cursorDown();
 			}
 			break;
 		case Qt::Key_PageUp:
@@ -1727,27 +1781,34 @@ void xDisasmTable::mouseMoveEvent(QMouseEvent* ev) {
 	QTableView::mouseMoveEvent(ev);
 }
 
-void xDisasmTable::scrolDn(Qt::KeyboardModifiers mod) {
+// the rows the top went up by: those before the new top's own (a separator too);
+// Ctrl moves a byte, not a row: 0
+int xDisasmTable::scrolDn(Qt::KeyboardModifiers mod) {
 	int i = 1;
 	int topadr = model->dasm[0].adr;
 	int adr;
+	int gone = 0;
 	dasmData d;
 	if (mod & Qt::ControlModifier) {
 		adr = model->asmadr + 1;
 	} else {
 		// TODO: comparing disasmAdr (16 bit) with dasm[i].adr (24 bit)
-		while ((topadr == model->dasm[i].adr) && (i < model->dasm.size()))
+		while ((i < model->dasm.size()) && (topadr == model->dasm[i].adr))
 			i++;
 		if (i < model->dasm.size()) {
 			adr = model->dasm[i].adr;
+			gone = rowForAdr(adr);
+			if (gone < 0) gone = i;
 		} else {
 			adr = model->asmadr + dasmSome(conf.zx, model->asmadr, d);
+			gone = model->dasm.size();
 			// model->asmadr++;
 		}
 	}
 	setAdr(adr, 0);
 //	updContent();
 //	emit s_adrch(model->asmadr);
+	return gone;
 }
 
 void xDisasmTable::scrolUp(Qt::KeyboardModifiers mod) {
