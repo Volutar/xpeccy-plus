@@ -1642,8 +1642,7 @@ bool lab_char(QChar chr) {
 	return chr.isLetterOrNumber() || (chr == QChar('_')) || (chr == QChar('.'));
 }
 
-// the operands an instruction names that a label's name could start with: no
-// label is offered for them, typing on brings the labels back
+// registers and conditions: no labels offered for them
 static bool asm_operand_word(const QString& word) {
 	static const QStringList words = {"AF", "BC", "DE", "HL", "SP", "IX", "IY", "IXH", "IXL",
 		"IYH", "IYL", "HX", "LX", "HY", "LY", "XH", "XL", "YH", "YL", "NZ", "NC", "PO", "PE"};
@@ -1652,8 +1651,7 @@ static bool asm_operand_word(const QString& word) {
 
 // The labels are offered as a name is typed. It is the word under the caret that
 // is completed, not the field, so it works inside an instruction or an expression.
-// An instruction (asm) gets them in its operands only: not for its first word, a
-// command (RET is not RETURN), nor for a register or a condition (HL, NZ)
+// asm_line: in the operands only, not for the command (RET is not RETURN)
 void label_complete(QLineEdit* edt, bool asm_line) {
 	QCompleter* cmp = new QCompleter(edt);
 	QStringListModel* mod = new QStringListModel(cmp);
@@ -1671,8 +1669,8 @@ void label_complete(QLineEdit* edt, bool asm_line) {
 		while ((e < txt.size()) && lab_char(txt.at(e))) e++;
 		*from = s;
 		*to = e;
-		// a number is not a name: #C000, 0x1F, 12
-		if ((s > 0) && (txt.at(s - 1) == QChar('#'))) return QString();
+		// a number is not a name: #C000, $C000, 0x1F, 12
+		if ((s > 0) && ((txt.at(s - 1) == QChar('#')) || (txt.at(s - 1) == QChar('$')))) return QString();
 		if ((s < pos) && txt.at(s).isDigit()) return QString();
 		if (asm_line) {
 			int first = 0;

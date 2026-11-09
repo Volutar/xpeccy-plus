@@ -61,8 +61,7 @@ class xDumpModel : public xTableModel {
 		unsigned int dmpadr;
 		unsigned int maxadr;
 		int dmpsize;
-		// a page view's own selection, in the page's offsets; the CPU view's is
-		// blockStart/blockEnd, the listing's too
+		// a page view's own selection (the CPU view's: blockStart/blockEnd)
 		int selMode;
 		int selPage;
 		int selStart;			// -1: none
@@ -90,8 +89,7 @@ class xDumpModel : public xTableModel {
 		bool isSel(int adr) const;
 };
 
-// the text column: a character a byte, each in a cell of its own width, so the
-// selection marks characters and a click finds its byte
+// the text column, a character a cell: the selection and a click find their byte
 class xDumpText : public QItemDelegate {
 	public:
 		xDumpText(QObject* par = nullptr) : QItemDelegate(par) {}
@@ -150,6 +148,8 @@ class xDumpTable:public QTableView {
 		void dragStop();
 		void hideEvent(QHideEvent*) override;
 		int byteAt(const QPoint&);
+		int selTo(int pos, int anc);
+		void focusOutEvent(QFocusEvent*) override;
 		void putCaret(int);
 		void selSet(int, int);
 		void selClear();

@@ -14,6 +14,7 @@
 #include <utility>
 
 #include "filer.h"
+#include "xcore/arcpath.h"
 
 extern int blockStart;
 extern int blockEnd;
@@ -145,7 +146,7 @@ QString xDumpModel::cellTip(int adr, const QString& note) const {
 	QString lab;
 	int area = dump_view_area(mode);
 	int ofs = dump_page_ofs(comp, area, adr);
-	int shown = (adr % pgsize) + pgbase;	// the address column's
+	int shown = shownAdr(adr);
 	xAdr xa;
 	xa.bank = -1;
 	xa.adr = shown;		// find_label takes a CPU address label only if this cell is there now
@@ -720,13 +721,9 @@ int& xDumpTable::anchorRef() {
 	return (mode == XVIEW_CPU) ? blockAnchor : anchor;
 }
 
-// SELECTION
-// As in a text editor: a click puts the caret and drops the selection, a drag
-// selects from the byte pressed, Shift+click from there (or the caret) to the
-// byte clicked. The CPU view's selection is the listing's: blockStart/blockEnd.
+// SELECTION, as in a text editor. The CPU view's is the listing's: blockStart/blockEnd
 
-// the byte under a point of the viewport; past an edge the nearest. The address
-// column is its row's first byte, the text a byte a character
+// the byte under a point, the nearest past an edge; past the end of memory it counts on
 int xDumpTable::byteAt(const QPoint& pos) {
 	int rows = model->rowCount();
 	int n = model->dmpsize;
@@ -744,7 +741,16 @@ int xDumpTable::byteAt(const QPoint& pos) {
 	} else {
 		ofs = text->charAt(visualRect(model->index(row, DUMP_TEXTCOL)), pos.x(), n);
 	}
-	return (model->dmpadr + row * n + ofs) % model->maxadr;
+	return model->dmpadr + row * n + ofs;
+}
+
+// the selection's other end: on the anchor's side of the end of memory
+int xDumpTable::selTo(int pos, int anc) {
+	int m = model->maxadr;
+	int last = model->dmpadr + model->rowCount() * model->dmpsize;
+	bool ancPast = (last > m) && (anc < last - m) && (anc < (int)model->dmpadr);	// in the rows past the end
+	if (pos >= m) return ancPast ? (pos - m) : (m - 1);
+	return ancPast ? 0 : pos;
 }
 
 // the caret on a byte's cell, the dump scrolled a row when it is just off it
@@ -838,14 +844,16 @@ void xDumpTable::mousePressEvent(QMouseEvent* ev) {
 	// Ctrl is a plain click: Qt would take the cursor's cell off instead
 	if ((ev->modifiers() & Qt::ControlModifier) && indexAt(ev->pos()).isValid())
 		selectionModel()->setCurrentIndex(indexAt(ev->pos()), QItemSelectionModel::ClearAndSelect);
-	int adr = byteAt(ev->pos());
-	if (adr < 0) return;
+	int pos = byteAt(ev->pos());
+	if (pos < 0) return;
+	int adr = pos % model->maxadr;
 	int s, e;
 	int& anc = anchorRef();
 	switch(ev->button()) {
 		case Qt::LeftButton:
 			if (ev->modifiers() & Qt::ShiftModifier) {
 				if (!model->selRange(&s, &e) || (anc < 0)) anc = was;
+				adr = selTo(pos, anc);
 				selSet(anc, adr);
 			} else {
 				selClear();
@@ -885,6 +893,11 @@ void xDumpTable::hideEvent(QHideEvent* ev) {
 	QTableView::hideEvent(ev);
 }
 
+void xDumpTable::focusOutEvent(QFocusEvent* ev) {
+	dragStop();		// Alt+Tab in a drag: no autoscroll left running
+	QTableView::focusOutEvent(ev);
+}
+
 void xDumpTable::mouseMoveEvent(QMouseEvent* ev) {
 	if (!dragging || !(ev->buttons() & Qt::LeftButton)) {
 		QTableView::mouseMoveEvent(ev);
@@ -903,10 +916,11 @@ void xDumpTable::mouseMoveEvent(QMouseEvent* ev) {
 
 // the selection from the anchor to the byte under the pointer
 void xDumpTable::dragTo() {
-	int adr = byteAt(dragPos);
+	int pos = byteAt(dragPos);
 	int anc = anchorRef();
 	int s, e;
-	if ((adr < 0) || (anc < 0)) return;
+	if ((pos < 0) || (anc < 0)) return;
+	int adr = selTo(pos, anc);
 	bool has = model->selRange(&s, &e);
 	if ((adr == anc) && !has) return;			// still the byte pressed: a click
 	if (has && (s == qMin(anc, adr)) && (e == qMax(anc, adr))) return;	// the same byte: nothing to redo
@@ -975,8 +989,7 @@ xDumpWidget::xDumpWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
 	ui.leDumpPageBase->setMin(0);
 	ui.leDumpPageBase->setMax(0xffff);
 
-	// One menu: the selection's commands, then the byte's breakpoints. More
-	// sections go in here, not in a menu of their own
+	// one menu: the selection's commands, then the breakpoints; more go in here
 	actCopyHex = new QAction("Copy as hex", this);
 	actCopyHex->setShortcut(QKeySequence::Copy);
 	actCopyHex->setShortcutContext(Qt::WidgetShortcut);
@@ -997,7 +1010,7 @@ xDumpWidget::xDumpWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
 	connect(actCopyDB, &QAction::triggered, this, &xDumpWidget::copyDB);
 	connect(actCopyText, &QAction::triggered, this, &xDumpWidget::copyText);
 	connect(actSaveBin, &QAction::triggered, this, &xDumpWidget::saveBin);
-	// the menu greys Copy with nothing selected; Ctrl+C is the same action, so back on
+	// Ctrl+C is this action too: not left greyed by the menu
 	connect(cellMenu, &QMenu::aboutToHide, this, [this]() {actCopyHex->setEnabled(true);});
 	connect(ui.actFetch, &QAction::triggered, this, &xDumpWidget::brkAction);
 	connect(ui.actRead, &QAction::triggered, this, &xDumpWidget::brkAction);
@@ -1026,11 +1039,6 @@ xDumpWidget::xDumpWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
 	connect(ui.leDumpPageBase, &xHexSpin::valueChanged, this, &xDumpWidget::refill);
 
 	ui.cbDumpView->setCurrentIndex(0);
-
-//	cellMenu = new QMenu;
-//	cellMenu->addAction(ui.actFetch);
-//	cellMenu->addAction(ui.actRead);
-//	cellMenu->addAction(ui.actWrite);
 
 	connect(this, &QDockWidget::visibilityChanged, this, &xDumpWidget::draw);
 }
@@ -1080,8 +1088,7 @@ void xDumpWidget::customMenu(const QPoint& pos) {
 	cellMenu->popup(ui.dumpTable->viewport()->mapToGlobal(pos));
 }
 
-// the selection as text a hex editor pastes: "3E 01 D3 FE", hex whatever the
-// Debugger shows
+// "3E 01 D3 FE", as a hex editor pastes it
 void xDumpWidget::copyHex() {
 	QByteArray data = ui.dumpTable->selBytes();
 	if (data.isEmpty()) return;
@@ -1098,7 +1105,7 @@ static QString dump_db_byte(int val) {
 	return num;
 }
 
-// the selection as source lines, a DB a row of the dump as it is selected
+// a DB line a dump row
 void xDumpWidget::copyDB() {
 	QList<QByteArray> rows = ui.dumpTable->selRows();
 	if (rows.isEmpty()) return;
@@ -1112,16 +1119,14 @@ void xDumpWidget::copyDB() {
 	QApplication::clipboard()->setText(txt);
 }
 
-// the selection as the text column shows it, in its code page: a string to read
-// or to look up, a control code a dot
+// as the text column shows it, in its code page
 void xDumpWidget::copyText() {
 	QByteArray data = ui.dumpTable->selBytes();
 	if (data.isEmpty()) return;
 	QApplication::clipboard()->setText(getDumpString(data, getRFIData(ui.cbCodePage)));
 }
 
-// image_C000-C3FF.bin; in a page view image_RAM5_C000-C3FF.bin, the addresses
-// the address column writes
+// image_C000-C3FF.bin, image_RAM5_C000-C3FF.bin
 QString xDumpWidget::binName(int start, int end) {
 	QString name = media_image_name();
 	if (!name.isEmpty()) name.append("_");
@@ -1139,7 +1144,7 @@ void xDumpWidget::saveBin() {
 	if (!ui.dumpTable->selection(&s, &e)) return;
 	QByteArray data = ui.dumpTable->selBytes();
 	if (dir.isEmpty() && !media_current().isEmpty())
-		dir = QFileInfo(media_current()).absolutePath();
+		dir = QFileInfo(arc_beside(media_current(), QString())).absolutePath();	// an archive's own folder
 	QString path = binName(s, e);
 	if (!dir.isEmpty()) path.prepend(dir + "/");
 	path = QFileDialog::getSaveFileName(this, "Save as binary file", path, "Binary files (*.bin);;All files (*)", nullptr, QFileDialog::DontUseNativeDialog);

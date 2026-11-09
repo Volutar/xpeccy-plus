@@ -1425,8 +1425,7 @@ void xDisasmTable::putCursor(int row, int col) {
 	setCurrentIndex(model->index(row, col));
 }
 
-// Down: the next row the cursor can stand on, the listing scrolled when there is
-// none below - a block separator on the last row is not the end of the listing
+// Down: the next row the cursor can stand on, scrolling past a separator at the bottom
 void xDisasmTable::cursorDown() {
 	QModelIndex idx = currentIndex();
 	int row = idx.isValid() ? idx.row() : 0;
@@ -1693,8 +1692,7 @@ void xDisasmTable::keyPressEvent(QKeyEvent* ev) {
 	}
 }
 
-// the selection over rows, from the first byte of the first to the first byte of
-// the last; the DUMP's CPU view shows and sets the same one
+// rows, the first byte of the first to the first byte of the last; the DUMP's too
 void xDisasmTable::blockSet(int a, int b) {
 	blockStart = (a < b) ? a : b;
 	blockEnd = (a < b) ? b : a;
@@ -1702,8 +1700,7 @@ void xDisasmTable::blockSet(int a, int b) {
 	emit rqRefill();
 }
 
-// As the DUMP: a click puts the cursor and drops the selection, a drag selects
-// from the row pressed, Shift+click from there (or the cursor) to the row clicked
+// selected as in the DUMP
 void xDisasmTable::mousePressEvent(QMouseEvent* ev) {
 	int row = rowAt(ev->pos().y());
 	if ((row < 0) || (row >= model->rowCount())) return;
@@ -1791,8 +1788,7 @@ void xDisasmTable::mouseMoveEvent(QMouseEvent* ev) {
 	QTableView::mouseMoveEvent(ev);
 }
 
-// the rows the top went up by: those before the new top's own (a separator too);
-// Ctrl moves a byte, not a row: 0
+// the rows the top went up by; Ctrl (a byte): 0
 int xDisasmTable::scrolDn(Qt::KeyboardModifiers mod) {
 	int i = 1;
 	int topadr = model->dasm[0].adr;

@@ -880,7 +880,7 @@ void xBreakWidget::openBrk() {
 	if (path.endsWith(".ini", Qt::CaseInsensitive)) {
 		QFile file(path);
 		bool any = false;
-		QRegularExpression bpx("^\\s*[xrwXRW]\\d?\\s*=");
+		QRegularExpression bpx("^\\s*[xrw]0=", QRegularExpression::CaseInsensitiveOption);	// as bpx.ini writes it
 		if (file.open(QFile::ReadOnly)) {
 			while (!any && !file.atEnd())
 				any = bpx.match(QString::fromLocal8Bit(file.readLine())).hasMatch();
