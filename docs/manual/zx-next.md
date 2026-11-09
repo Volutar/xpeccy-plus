@@ -32,9 +32,9 @@ shows at least the **full** border (see [View menu](view.md)).
 
 The Next has three buttons on its side, RESET, DRIVE and NMI:
 
-- **RESET**: **Machine > Reset** presses it. That is a soft reset, which keeps the memory
-  and the card. In the **Reset** menu, the note **Boots its own firmware** stands in place
-  of the other machines' choices. **Hard Reset** switches the Next off and on: the firmware
+- **RESET**: a click on **Machine > Reset**, or F12, presses it. That is a soft reset,
+  which keeps the memory and the card; **Soft Reset** in the **Reset** menu is the same, in
+  place of the other machines' choices. **Hard Reset** switches the Next off and on: the firmware
   starts again and loads everything from the card. On the Next itself, holding RESET for a
   second is a hard reset.
 - **NMI**: **Machine > NMI** presses it. NextZXOS stops the program and shows its NMI menu:

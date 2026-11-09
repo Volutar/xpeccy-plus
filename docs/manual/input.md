@@ -170,7 +170,8 @@ joystick, and W, A, S, D with left Shift or left Ctrl are the second.
 
 ![The Gamepads window](images/gamepads.png)
 
-**Input > Gamepads > Manage...** opens the **Gamepads** window. It has a tab for each of two
+A click on **Input > Gamepads**, or **Input > Gamepads > Manage...**, opens the **Gamepads**
+window (on macOS, **Manage...** only). It has a tab for each of two
 players, **Player 1** and **Player 2**. A change takes effect at once; there is nothing to
 apply.
 
