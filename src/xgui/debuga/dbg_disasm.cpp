@@ -19,6 +19,7 @@
 
 extern int blockStart;
 extern int blockEnd;
+extern int blockAnchor;
 
 static int mode = XVIEW_CPU;
 static int page = 0;
@@ -1100,7 +1101,7 @@ static bool is_number_word(const QString& tok) {
 QWidget* xDasmSyntax::createEditor(QWidget* par, const QStyleOptionViewItem& opt, const QModelIndex& idx) const {
 	QWidget* wid = QStyledItemDelegate::createEditor(par, opt, idx);
 	if (QLineEdit* edt = qobject_cast<QLineEdit*>(wid))
-		label_complete(edt);
+		label_complete(edt, true);
 	return wid;
 }
 
@@ -1286,6 +1287,7 @@ xDisasmTable::xDisasmTable(QWidget* p):QTableView(p) {
 	for (int i = 0; i < 5; i++) {
 		storedAddress[i] = -1;
 	}
+	dragging = false;
 	model = new xDisasmModel(this);
 	setModel(model);
 	connect(model, SIGNAL(s_comenter()), this, SLOT(rowDown()));
@@ -1398,17 +1400,70 @@ void xDisasmTable::t_update(int oadr, int nadr) {
 
 void xDisasmTable::rowDown() {
 	updContent();
-	QModelIndex idx = currentIndex();
-	int row = idx.row();
-	int col = idx.column();
-	if (row < model->rowCount() - 1) {
-		idx = model->index(row + 1, col);
-		setCurrentIndex(idx);
-		selectionModel()->select(idx, QItemSelectionModel::ClearAndSelect);
-	} else {
-		scrolDn();
-	}
+	cursorDown();
+	selectionModel()->select(currentIndex(), QItemSelectionModel::ClearAndSelect);
 	emit rqRefill();
+}
+
+// a row the cursor can stand on: a block separator is not one
+bool xDisasmTable::rowEnabled(int row) {
+	if ((row < 0) || (row >= model->rowCount())) return false;
+	return model->flags(model->index(row, 0)) & Qt::ItemIsEnabled;
+}
+
+// the cursor on a row, in the cell a span shows of that column
+void xDisasmTable::putCursor(int row, int col) {
+	if (row < model->dasm.size()) {
+		if (model->dasm[row].islab) {
+			col = 0;
+		} else if (model->dasm[row].isequ) {
+			col = (col < 2) ? 0 : 2;
+		} else if ((col > 2) && model->dasm[row].icon.isEmpty() && model->dasm[row].info.isEmpty()) {
+			col = 2;
+		}
+	}
+	setCurrentIndex(model->index(row, col));
+}
+
+// Down: the next row the cursor can stand on, scrolling past a separator at the bottom
+void xDisasmTable::cursorDown() {
+	QModelIndex idx = currentIndex();
+	int row = idx.isValid() ? idx.row() : 0;
+	int col = idx.isValid() ? idx.column() : 0;
+	for (int i = 0; i < 8; i++) {
+		int r = row + 1;
+		while ((r < model->rowCount()) && !rowEnabled(r))
+			r++;
+		if (r < model->rowCount()) {
+			putCursor(r, col);
+			return;
+		}
+		int was = model->asmadr;
+		row -= scrolDn();		// the rows the top command took are gone
+		if (model->asmadr == was) return;
+	}
+}
+
+// Up: the same the other way, a separator on the first row included
+void xDisasmTable::cursorUp() {
+	QModelIndex idx = currentIndex();
+	int row = idx.isValid() ? idx.row() : 0;
+	int col = idx.isValid() ? idx.column() : 0;
+	for (int i = 0; i < 8; i++) {
+		int r = row - 1;
+		while ((r >= 0) && !rowEnabled(r))
+			r--;
+		if (r >= 0) {
+			putCursor(r, col);
+			return;
+		}
+		int was = model->asmadr;
+		scrolUp();
+		if (model->asmadr == was) return;
+		// the old top row is where the new command's rows end
+		int top = rowForAdr(was);
+		row = (top < 0) ? 1 : (row + top);
+	}
 }
 
 void xDisasmTable::copyToCbrd() {
@@ -1502,17 +1557,17 @@ void xDisasmTable::keyPressEvent(QKeyEvent* ev) {
 	int pc = cpu_get_pc(comp->cpu);
 	switch (key) {
 		case Qt::Key_Up:
-			if ((mod & Qt::ControlModifier) || (idx.row() == 0)) {
+			if (mod & Qt::ControlModifier) {
 				scrolUp(mod);
 			} else {
-				QTableView::keyPressEvent(ev);
+				cursorUp();
 			}
 			break;
 		case Qt::Key_Down:
-			if ((mod & Qt::ControlModifier) || (idx.row() == model->rowCount() - 1)) {
+			if (mod & Qt::ControlModifier) {
 				scrolDn(mod);
 			} else {
-				QTableView::keyPressEvent(ev);
+				cursorDown();
 			}
 			break;
 		case Qt::Key_PageUp:
@@ -1637,38 +1692,49 @@ void xDisasmTable::keyPressEvent(QKeyEvent* ev) {
 	}
 }
 
+// rows, the first byte of the first to the first byte of the last; the DUMP's too
+void xDisasmTable::blockSet(int a, int b) {
+	blockStart = (a < b) ? a : b;
+	blockEnd = (a < b) ? b : a;
+	updContent();
+	emit rqRefill();
+}
+
+// selected as in the DUMP
 void xDisasmTable::mousePressEvent(QMouseEvent* ev) {
 	int row = rowAt(ev->pos().y());
 	if ((row < 0) || (row >= model->rowCount())) return;
 	int adr = getData(row, 0, Qt::UserRole).toInt();
+	QModelIndex cur = currentIndex();
+	int was = cur.isValid() ? getData(cur.row(), 0, Qt::UserRole).toInt() : adr;
 	switch (ev->button()) {
 		case Qt::MiddleButton:
 			blockStart = -1;
 			blockEnd = -1;
+			blockAnchor = -1;
 			updContent();
 			emit rqRefill();
 			ev->ignore();
 			break;
 		case Qt::LeftButton:
-			if (mode != XVIEW_CPU) {
-				QTableView::mousePressEvent(ev);
-			} else if (ev->modifiers() & Qt::ControlModifier) {
-				blockStart = adr;
-				if (blockEnd < blockStart) blockEnd = blockStart;
-				updContent();
-				emit rqRefill();
-				ev->ignore();
-			} else if (ev->modifiers() & Qt::ShiftModifier) {
-				blockEnd = adr;
-				if (blockStart > blockEnd) blockStart = blockEnd;
-				if (blockStart < 0) blockStart = 0;
-				updContent();
-				emit rqRefill();
-				ev->ignore();
-			} else {
-				markAdr = adr;
-				QTableView::mousePressEvent(ev);
+			QTableView::mousePressEvent(ev);
+			// Ctrl is a plain click: Qt would take the cursor's cell off instead
+			if ((ev->modifiers() & Qt::ControlModifier) && indexAt(ev->pos()).isValid())
+				selectionModel()->setCurrentIndex(indexAt(ev->pos()), QItemSelectionModel::ClearAndSelect);
+			if (mode != XVIEW_CPU) break;
+			if (ev->modifiers() & Qt::ShiftModifier) {
+				if ((blockStart < 0) || (blockAnchor < 0)) blockAnchor = was;
+				blockSet(blockAnchor, adr);
+			} else {			// Ctrl too: one way to start a block
+				blockAnchor = adr;
+				if (blockStart >= 0) {
+					blockStart = -1;
+					blockEnd = -1;
+					updContent();
+					emit rqRefill();
+				}
 			}
+			dragging = true;
 			break;
 		default:
 			QTableView::mousePressEvent(ev);
@@ -1678,7 +1744,7 @@ void xDisasmTable::mousePressEvent(QMouseEvent* ev) {
 
 void xDisasmTable::mouseReleaseEvent(QMouseEvent* ev) {
 	if (ev->button() == Qt::LeftButton)
-		markAdr = -1;
+		dragging = false;
 }
 
 // Qt keeps the current cell selected (and thus filled with the native
@@ -1713,41 +1779,42 @@ void xDisasmTable::mouseMoveEvent(QMouseEvent* ev) {
 	int row = rowAt(ev->pos().y());
 	if ((row < 0) || (row >= model->rowCount())) return;
 	int adr = model->data(model->index(row, 0), Qt::UserRole).toInt();	// item(row,0)->data(Qt::UserRole).toInt();
-	if ((ev->modifiers() == Qt::NoModifier) && (ev->buttons() & Qt::LeftButton) && (adr != blockStart) && (adr != blockEnd) && (markAdr >= 0)) {
-		if (adr < blockStart) {
-			blockStart = adr;
-			blockEnd = markAdr;
-		} else {
-			blockStart = markAdr;
-			blockEnd = adr;
-		}
-		updContent();
-		emit rqRefill();
+	if (dragging && (ev->buttons() & Qt::LeftButton) && (blockAnchor >= 0)) {
+		// still on the row pressed with nothing selected: a click
+		bool same = (blockStart < 0) ? (adr == blockAnchor)
+			: ((blockStart == ((adr < blockAnchor) ? adr : blockAnchor)) && (blockEnd == ((adr < blockAnchor) ? blockAnchor : adr)));
+		if (!same) blockSet(blockAnchor, adr);
 	}
 	QTableView::mouseMoveEvent(ev);
 }
 
-void xDisasmTable::scrolDn(Qt::KeyboardModifiers mod) {
+// the rows the top went up by; Ctrl (a byte): 0
+int xDisasmTable::scrolDn(Qt::KeyboardModifiers mod) {
 	int i = 1;
 	int topadr = model->dasm[0].adr;
 	int adr;
+	int gone = 0;
 	dasmData d;
 	if (mod & Qt::ControlModifier) {
 		adr = model->asmadr + 1;
 	} else {
 		// TODO: comparing disasmAdr (16 bit) with dasm[i].adr (24 bit)
-		while ((topadr == model->dasm[i].adr) && (i < model->dasm.size()))
+		while ((i < model->dasm.size()) && (topadr == model->dasm[i].adr))
 			i++;
 		if (i < model->dasm.size()) {
 			adr = model->dasm[i].adr;
+			gone = rowForAdr(adr);
+			if (gone < 0) gone = i;
 		} else {
 			adr = model->asmadr + dasmSome(conf.zx, model->asmadr, d);
+			gone = model->dasm.size();
 			// model->asmadr++;
 		}
 	}
 	setAdr(adr, 0);
 //	updContent();
 //	emit s_adrch(model->asmadr);
+	return gone;
 }
 
 void xDisasmTable::scrolUp(Qt::KeyboardModifiers mod) {

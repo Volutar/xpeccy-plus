@@ -113,8 +113,8 @@ to the line under the cursor, without a breakpoint in the list (see
 ![The Breakpoints panel](images/dbg-brk-panel.png)
 
 1. The list of breakpoints.
-2. The buttons: {icon}`add` add, {icon}`edit` edit, {icon}`fileopen` open a list,
-   {icon}`save-as` save the list, and {icon}`cancel` delete at the bottom.
+2. The buttons: {icon}`add` add, {icon}`edit` edit, {icon}`cancel` delete,
+   {icon}`fileopen` open a list and {icon}`save-as` save the list.
 
 The **Breakpoints** panel is the tab with the stop sign under the memory dump. Each row is
 one breakpoint:
@@ -148,17 +148,19 @@ The buttons at the right:
 
 - {icon}`add` add (the plus sign) - opens the **Breakpoint Editor** for a new breakpoint;
 - {icon}`edit` edit (the pencil) - opens the selected one in the **Breakpoint Editor**;
-- {icon}`fileopen` open (the folder) - loads a list from a `.xbrk` file, in place of the one
-  you have;
-- {icon}`save-as` save (the floppy with a pencil) - writes the list to a `.xbrk` file;
-- {icon}`cancel` delete (the red cross, at the bottom) - removes the selected breakpoints;
-  **Del** in the list does the same.
+- {icon}`cancel` delete (the red cross) - removes the selected breakpoints; **Del** in the
+  list does the same;
+- {icon}`fileopen` open (the folder) - loads a list from a `.xbrk` file or a `bpx.ini`, in
+  place of the one you have;
+- {icon}`save-as` save (the floppy with a pencil) - writes the list to a `.xbrk` file.
 
 The right-click menu of the list has:
 
-- **Reset counter** - sets **Cnt** of the selected breakpoints back to 0, and also clears
-  the hit count that `HITS` reads and what their spans measured;
-- **Delete breakpoint** - removes the selected breakpoints, as the delete button does;
+- {icon}`add` **Add breakpoint** and {icon}`edit` **Edit breakpoint** - as the buttons;
+- {icon}`cancel` **Delete breakpoint** - removes the selected breakpoints, as the delete
+  button does;
+- {icon}`refresh` **Reset counter** - sets **Cnt** of the selected breakpoints back to 0,
+  and also clears the hit count that `HITS` reads and what their spans measured;
 - **Open breakpoint log** - opens the [breakpoint log](#the-breakpoint-log) in the
   program your system opens `.log` files with. It is grayed out until something is written
   to the log.
@@ -568,7 +570,8 @@ An expression that cannot be worked out at that moment is written as `?`.
 {icon}`save-as` **Save** in the **Breakpoints** panel writes the list to a text file,
 `.xbrk`; {icon}`fileopen` **Open** loads one, in place of the list you have. A file can be
 written by hand too: one breakpoint a line, its fields split by colons. Lines starting with
-`;` are skipped.
+`;` are skipped. **Open** takes a `bpx.ini` too: its lines `x0=0x8000`, `r0=...` and
+`w0=...`, an address or a range, become address breakpoints on fetch, read and write.
 
 ```
 ; Xpeccy+ Debugger breakpoints list

@@ -99,7 +99,8 @@ class xDisasmTable : public QTableView {
 	private slots:
 		void updColors();
 	private:
-		int markAdr;
+		bool dragging;
+		void blockSet(int, int);
 		xDisasmModel* model;
 		// one entry per undoable jump: the viewport anchor (asmadr) to
 		// restore the scroll position, and the cursor's own row address -
@@ -109,7 +110,11 @@ class xDisasmTable : public QTableView {
 		int storedAddress[5];
 
 		void scrolUp(Qt::KeyboardModifiers = Qt::NoModifier);
-		void scrolDn(Qt::KeyboardModifiers = Qt::NoModifier);
+		int scrolDn(Qt::KeyboardModifiers = Qt::NoModifier);
+		bool rowEnabled(int);
+		void putCursor(int, int);
+		void cursorDown();
+		void cursorUp();
 
 		void copyToCbrd();
 		void jumpMarked(int, bool);

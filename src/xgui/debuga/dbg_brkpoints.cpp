@@ -1,6 +1,8 @@
 #include <QApplication>
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QFile>
+#include <QRegularExpression>
 #include <QStyleOptionButton>
 #include <QUrl>
 
@@ -777,13 +779,23 @@ xBreakWidget::xBreakWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) 
 	setObjectName("BRKWIDGET");
 
 	ui.bpList->setContextMenuPolicy(Qt::ActionsContextMenu);
-	ui.bpList->addAction(ui.brkActReset);
-	// the panel's delete button, in the menu and on the key while the list has the focus
-	actDel = new QAction(QIcon(":/images/cancel.png"), "Delete breakpoint", this);
+	// the panel's buttons first, as they stand, with their icons
+	QAction* actAdd = new QAction(ui.tbAddBrk->icon(), "Add breakpoint", this);
+	ui.bpList->addAction(actAdd);
+	connect(actAdd, &QAction::triggered, this, &xBreakWidget::addBrk);
+	QAction* actEdit = new QAction(ui.tbEditBrk->icon(), "Edit breakpoint", this);
+	ui.bpList->addAction(actEdit);
+	connect(actEdit, &QAction::triggered, this, &xBreakWidget::editBrk);
+	// the delete button, in the menu and on the key while the list has the focus
+	actDel = new QAction(ui.tbDelBrk->icon(), "Delete breakpoint", this);
 	actDel->setShortcut(QKeySequence(Qt::Key_Delete));
 	actDel->setShortcutContext(Qt::WidgetShortcut);
 	ui.bpList->addAction(actDel);
 	ui.tbDelBrk->setToolTip("Delete the selected breakpoints (Del)");
+	QAction* sep = new QAction(this);
+	sep->setSeparator(true);
+	ui.bpList->addAction(sep);
+	ui.bpList->addAction(ui.brkActReset);
 	actLog = new QAction("Open breakpoint log", this);
 	ui.bpList->addAction(actLog);
 	connect(actLog, &QAction::triggered, this, &xBreakWidget::openLog);
@@ -861,8 +873,23 @@ void xBreakWidget::resetBrk() {
 }
 
 void xBreakWidget::openBrk() {
-	QString path = QFileDialog::getOpenFileName(this, "Open breakpoints list", "", "Debugger breakpoints (*.xbrk)",nullptr,QFileDialog::DontUseNativeDialog);
+	// a bpx.ini is read too: its lines are breakpoints as well
+	QString path = QFileDialog::getOpenFileName(this, "Open breakpoints list", "", "Breakpoints (*.xbrk *.ini);;All files (*)",nullptr,QFileDialog::DontUseNativeDialog);
 	if (path.isEmpty()) return;
+	// any .ini is offered: one with no breakpoint line keeps the list as it is
+	if (path.endsWith(".ini", Qt::CaseInsensitive)) {
+		QFile file(path);
+		bool any = false;
+		QRegularExpression bpx("^\\s*[xrw]0=", QRegularExpression::CaseInsensitiveOption);	// as bpx.ini writes it
+		if (file.open(QFile::ReadOnly)) {
+			while (!any && !file.atEnd())
+				any = bpx.match(QString::fromLocal8Bit(file.readLine())).hasMatch();
+		}
+		if (!any) {
+			shitHappens("No breakpoints in this file");
+			return;
+		}
+	}
 	if (brk_load_list(path.toLocal8Bit().data())) {
 		ui.bpList->update();
 		emit updated();

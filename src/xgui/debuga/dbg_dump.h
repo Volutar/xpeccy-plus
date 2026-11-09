@@ -9,6 +9,8 @@
 #include <QDockWidget>
 #include <QMenu>
 #include <QComboBox>
+#include <QTimer>
+#include <QItemDelegate>
 
 #include "../../xcore/xcore.h"
 #include "../../xgui/xgui.h"
@@ -37,6 +39,8 @@ enum {
 QString getDumpString(QByteArray bts, int cp);
 // the code pages, as a dump's list offers them
 void dump_codepage_items(QComboBox* box);
+// a page as a file name says it: RAM5, ROM2, DIV3, DIVROM
+QString dump_page_token(int area, int page);
 
 enum {
 	XVIEW_NONE = 0,
@@ -46,6 +50,9 @@ enum {
 	XVIEW_DIV,	// divMMC's RAM, by 8K bank (the dump only)
 };
 
+// the text column's selected characters, a bit each from the row's first byte
+#define DUMP_SEL_ROLE	(Qt::UserRole + 1)
+
 class xDumpModel : public xTableModel {
 	Q_OBJECT
 	public:
@@ -54,6 +61,14 @@ class xDumpModel : public xTableModel {
 		unsigned int dmpadr;
 		unsigned int maxadr;
 		int dmpsize;
+		// a page view's own selection (the CPU view's: blockStart/blockEnd)
+		int selMode;
+		int selPage;
+		int selStart;			// -1: none
+		int selEnd;
+		bool selRange(int* start, int* end) const;	// the selection of the view on show
+		QByteArray bytes(int start, int end) const;
+		int shownAdr(int adr) const;	// as the address column writes it
 		void setMode(int, int, int, int);
 		int rowCount(const QModelIndex& = QModelIndex()) const;
 		int columnCount(const QModelIndex& = QModelIndex()) const;
@@ -71,6 +86,20 @@ class xDumpModel : public xTableModel {
 		int mrd(int) const;
 		void mwr(int, unsigned char);
 		QString cellTip(int adr, const QString& note) const;
+		bool isSel(int adr) const;
+};
+
+// the text column, a character a cell: the selection and a click find their byte
+class xDumpText : public QItemDelegate {
+	public:
+		xDumpText(QObject* par = nullptr) : QItemDelegate(par) {}
+		int charAt(const QRect& cell, int x, int count) const;
+		QWidget* createEditor(QWidget*, const QStyleOptionViewItem&, const QModelIndex&) const override {return nullptr;}
+	protected:
+		void paint(QPainter*, const QStyleOptionViewItem&, const QModelIndex&) const override;
+	private:
+		mutable int cw = 0;		// as last painted
+		mutable int margin = 3;
 };
 
 class xDumpTable:public QTableView {
@@ -85,12 +114,18 @@ class xDumpTable:public QTableView {
 		unsigned int limit();
 		void setRowBytes(int);		// 0 = as many groups as fit, else a fixed count
 		int mode;
+		bool selection(int* start, int* end);
+		QByteArray selBytes();
+		QList<QByteArray> selRows();
+		int shownAdr(int adr);
+		void dropSelection();		// a page view's too, no signal
 	public slots:
 		void setAdr(int);
 		int getCurrentAdr();
 		void setLimit(unsigned int);
 	private slots:
 		void curAdrChanged();
+		void dragStep();
 	signals:
 		void s_datach();
 		void s_blockch();
@@ -103,7 +138,22 @@ class xDumpTable:public QTableView {
 		void layoutColumns();
 		void gotoReg(const char*);
 		xDumpModel* model;
-		int markAdr;
+		xDumpText* text;
+		int anchor;			// a page view's selection starts here (the CPU view's: blockAnchor), -1: the caret
+		bool dragging;
+		QPoint dragPos;
+		int dragDir;			// past the top -1, the bottom 1
+		QTimer* dragTimer;
+		int& anchorRef();
+		void dragStop();
+		void hideEvent(QHideEvent*) override;
+		int byteAt(const QPoint&);
+		int selTo(int pos, int anc);
+		void focusOutEvent(QFocusEvent*) override;
+		void putCaret(int);
+		void selSet(int, int);
+		void selClear();
+		void dragTo();
 		int row_count;
 		void keyPressEvent(QKeyEvent*);
 		void mousePressEvent(QMouseEvent*);
@@ -121,6 +171,8 @@ class xDumpWidget : public xDockWidget {
 		xDumpWidget(QString, QString, QWidget* = nullptr);
 		void setLimit(int);
 		int viewArea(int* page);	// the area (CELL_*) and page on show, CELL_NONE: the CPU's
+		bool selection(int* start, int* end);	// on the view on show, as the Save dump dialog counts
+		void dropSelection();
 	signals:
 		void s_adrch(int);
 		void s_curadrch(int);
@@ -133,17 +185,25 @@ class xDumpWidget : public xDockWidget {
 	private:
 		Ui::MemDump ui;
 		QMenu* cellMenu;
+		QAction* actCopyHex;
+		QAction* actCopyDB;
+		QAction* actCopyText;
+		QAction* actSaveBin;
+		QString binName(int start, int end);
 		int ramBase;
 		int romBase;
 		QItemDelegate* xid_addr;
 		QItemDelegate* xid_byte;
-		QItemDelegate* xid_none;
 	private slots:
 		void adr_changed(int);
 		void modeChanged();
 		void cp_changed();
 		void bytes_changed();
 		void refill();
-		void customMenu();
-		void customMenuAction(QAction*);
+		void customMenu(const QPoint&);
+		void brkAction();
+		void copyHex();
+		void copyDB();
+		void copyText();
+		void saveBin();
 };

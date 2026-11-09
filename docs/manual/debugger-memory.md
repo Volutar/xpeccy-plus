@@ -107,19 +107,46 @@ starts at 2000, where the board pages them in.
 
 ### Selecting and breakpoints
 
-```{index} Fetch break, Read break, Write break
+```{index} Fetch break, Read break, Write break, Copy as hex, Copy as DB, Copy as text, Save as binary file, block; selecting in the dump
 ```
 
-Drag over the bytes to select a block, or Ctrl+click its first byte and Shift+click its
-last; a click with the middle button clears the selection. The **DUMP** and the **Disasm**
-listing share one selection, so a block selected here is ready for **View**, **Fill...** and
-the other block commands of the listing (see
-[Selecting a block](debugger-code.md#selecting-a-block)). The selection shows in the
-**CPU** view only.
+Bytes are selected the way text is in an editor, in the bytes and in the text column alike:
 
-A right-click on a byte opens a menu of **Fetch break**, **Read break** and **Write break**:
-tick one to stop the machine when the CPU runs, reads or writes that byte. See
-[Breakpoints panel](debugger-breakpoints.md).
+- a click puts the cursor on a byte and clears the selection; on an address it puts the
+  cursor there, for Enter to type another address;
+- drag from a byte to select up to the byte under the mouse; past the top or the bottom of
+  the panel the dump scrolls on;
+- Shift+click selects from where the selection started, or from the cursor, to the byte
+  clicked; Shift with the arrow keys, Page Up and Page Down does the same from the
+  keyboard;
+- a click with the middle button clears the selection.
+
+In the **CPU** view the **DUMP** and the **Disasm** listing share one selection, so a block
+selected here is ready for **View**, **Fill...** and the other block commands of the
+listing (see [Selecting a block](debugger-code.md#selecting-a-block)). A **RAM**, **ROM** or
+**DIV** view keeps a selection of its own, shown on that page. **Save dump** opens on the
+selection of the view on show.
+
+![The menu of a selection](images/dbg-dump-select.png)
+
+A right-click opens a menu. A click inside the selection keeps it; elsewhere it moves the
+cursor there and clears the selection.
+
+- **Copy as hex** (Ctrl+C) - the selected bytes in one line, `3E 01 D3 FE`, in hex whatever
+  the Debugger shows. A hex editor pastes it as bytes.
+- **Copy as DB** - the bytes as assembler source, a `DB` line for each row of the dump the
+  selection covers, the numbers written as the Debugger writes them: `DB #3E,#01`,
+  `DB 0FEh`, `DB 254`.
+- **Copy as text** - the bytes as the text column shows them, in the code page it names, as
+  **Copy as text (CP866)**; a control code is a dot. For a message in a program, to read it
+  or look it up.
+- **Save as binary file...** - writes the selected bytes to a file. Its name is made of the
+  image in use, the page and the addresses, as `exolon_C000-C3FF.bin` or
+  `exolon_RAM5_C000-C3FF.bin`; the folder is the one the last file went to, at first the
+  image's.
+- **Fetch break**, **Read break** and **Write break** - tick one to stop the machine when
+  the CPU runs, reads or writes the byte under the cursor. See
+  [Breakpoints panel](debugger-breakpoints.md).
 
 ### The FMAPS window on TSConf
 

@@ -290,7 +290,9 @@ The {icon}`label` Labels menu of the toolbar has:
 ```
 
 When you type a name in the address or command column, after the second letter a list of
-the labels that contain those letters drops down. Enter picks the label you typed in full,
+the labels that contain those letters drops down. In the command column it comes in the
+operands only: not for the command itself (`RET` is not taken for `RETURN`), nor for a
+register or a condition (`HL`, `NZ`); type on and it comes back. Enter picks the label you typed in full,
 else the first one that starts with your letters, else the first one; pick another with the
 arrow keys or the mouse. The same list appears in the
 [The Breakpoint Editor](debugger-breakpoints.md#the-breakpoint-editor).
@@ -439,9 +441,10 @@ opens the **Labels List**.
 
 Many commands work on a block of memory rather than one row:
 
+- a click puts the cursor on a row and clears the selection;
 - drag over the rows with the left button;
-- Ctrl+click sets the start of the block, Shift+click its end. Set the start first: a
-  Shift+click alone selects everything from 0000;
+- Shift+click selects from where the selection started, or from the cursor row, to the row
+  clicked;
 - a click with the middle button clears the selection.
 
 A block takes in the rows from the first byte of the first row to the first byte of the

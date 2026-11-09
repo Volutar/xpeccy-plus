@@ -51,6 +51,7 @@ static QDockWidget* make_edge_anchor(const char*);
 
 int blockStart = -1;
 int blockEnd = -1;
+int blockAnchor = -1;		// where the CPU selection was started from, the DUMP's and the listing's
 
 int tmpcnt = 0;
 
@@ -329,6 +330,8 @@ void DebugWin::start() {
 	}
 	blockStart = -1;
 	blockEnd = -1;
+	blockAnchor = -1;
+	wid_dump->dropSelection();
 	save_mem_map();
 	Computer* comp = conf.zx;
 	// the pause is set, but the emulation's thread may still be inside a step: these
@@ -2955,6 +2958,12 @@ void DebugWin::doSaveDump() {
 	int area = wid_dump->viewArea(&page);
 	dump_fill_sources(dui.cbSource, dui.sbPage, area, page);
 	dmpSourceChanged();
+	int start, end;
+	if (wid_dump->selection(&start, &end)) {	// the DUMP's selection, on the view it is on
+		dui.leStart->setValue(start);
+		dui.leEnd->setValue(end);
+		dmpLimits(true);
+	}
 	dumpwin->show();
 }
 
@@ -3049,9 +3058,7 @@ void DebugWin::dmpFileName(QString* name, int* start) {
 		*start = ofs;
 		return;
 	}
-	char buf[16];
-	xCell cell = {area, dui.sbPage->value(), 0, 0};
-	QString tok = (area == CELL_RAM) ? QString("RAM%0").arg(cell.page) : QString(cell_token(cell, buf));
+	QString tok = dump_page_token(area, dui.sbPage->value());
 	QString hex = QString::number(ofs, 16).toUpper();
 	*name = (ofs && (tok.size() + 1 + hex.size() <= 8)) ? QString("%0+%1").arg(tok, hex) : tok;
 	*start = (dump_base(area) + ofs) & 0xffff;

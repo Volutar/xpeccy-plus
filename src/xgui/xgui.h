@@ -217,7 +217,7 @@ void center_over(QWidget*, QWidget*);
 void center_once(QWidget*);
 
 void help_window(QWidget* parent, QDialog** win, const QString& res, const QString& title);
-void label_complete(QLineEdit*);
+void label_complete(QLineEdit*, bool asm_line = false);	// asm_line: an instruction, labels in its operands only
 bool lab_char(QChar);
 
 // An address field of the debugger. In a hex form its number carries the sign,
