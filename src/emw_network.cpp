@@ -525,8 +525,9 @@ void MainWin::socketRead() {
 			sock->write("\r\n");
 		}
 	} else if (com == "click-widget") {
-		// click-widget NAME DX DY [right]: at that point of a widget, by object name or
-		// else class name - the one in the window in front first - wherever the window is
+		// click-widget NAME DX DY [right|shift]: at that point of a widget, by object name or
+		// else class name - the one in the window in front first - wherever the window is;
+		// shift: a left click with Shift held
 		QWidget* hit = NULL;
 		if (prm.size() > 3) {
 			foreach(QWidget* w, QApplication::allWidgets()) {
@@ -544,11 +545,12 @@ void MainWin::socketRead() {
 				hit = in;
 			}
 			Qt::MouseButton btn = ((prm.size() > 4) && (prm[4] == "right")) ? Qt::RightButton : Qt::LeftButton;
+			Qt::KeyboardModifiers mod = ((prm.size() > 4) && (prm[4] == "shift")) ? Qt::ShiftModifier : Qt::NoModifier;
 			sock->write(QString("%0\r\n").arg(hit->metaObject()->className()).toUtf8());
 			sock->flush();		// a menu or a dialog the click opens holds the rest
-			QMouseEvent prs(QEvent::MouseButtonPress, pos, gp, btn, btn, Qt::NoModifier);
+			QMouseEvent prs(QEvent::MouseButtonPress, pos, gp, btn, btn, mod);
 			QApplication::sendEvent(hit, &prs);
-			QMouseEvent rls(QEvent::MouseButtonRelease, pos, gp, btn, Qt::NoButton, Qt::NoModifier);
+			QMouseEvent rls(QEvent::MouseButtonRelease, pos, gp, btn, Qt::NoButton, mod);
 			QApplication::sendEvent(hit, &rls);
 			if (btn == Qt::RightButton) {
 				QContextMenuEvent cme(QContextMenuEvent::Mouse, pos, gp);
