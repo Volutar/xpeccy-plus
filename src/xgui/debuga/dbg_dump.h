@@ -118,6 +118,7 @@ class xDumpTable:public QTableView {
 		int mode;
 		bool selection(int* start, int* end);
 		QByteArray selBytes();
+		QList<QByteArray> selRows();
 		int shownAdr(int adr);
 		void dropSelection();		// a page view's too, no signal
 	public slots:
@@ -185,7 +186,8 @@ class xDumpWidget : public xDockWidget {
 		Ui::MemDump ui;
 		QMenu* cellMenu;
 		QAction* actCopyHex;
-		QAction* actCopyRaw;
+		QAction* actCopyDB;
+		QAction* actCopyText;
 		QAction* actSaveBin;
 		QString binName(int start, int end);
 		int ramBase;
@@ -201,6 +203,7 @@ class xDumpWidget : public xDockWidget {
 		void customMenu(const QPoint&);
 		void brkAction();
 		void copyHex();
-		void copyRaw();
+		void copyDB();
+		void copyText();
 		void saveBin();
 };

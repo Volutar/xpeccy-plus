@@ -8,7 +8,6 @@
 #include <QColor>
 #include <QApplication>
 #include <QClipboard>
-#include <QMimeData>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QPainter>
@@ -798,6 +797,26 @@ bool xDumpTable::selection(int* start, int* end) {
 	return model->selRange(start, end);
 }
 
+// the selection cut where the dump's rows are cut
+QList<QByteArray> xDumpTable::selRows() {
+	QList<QByteArray> res;
+	int s, e;
+	if (!model->selRange(&s, &e)) return res;
+	QByteArray all = model->bytes(s, e);
+	int n = model->dmpsize;
+	QByteArray row;
+	for (int i = 0; i < all.size(); i++) {
+		int rel = (s + i - (int)model->dmpadr + model->maxadr) % model->maxadr;
+		if ((i > 0) && ((rel % n) == 0)) {
+			res.append(row);
+			row.clear();
+		}
+		row.append(all.at(i));
+	}
+	res.append(row);
+	return res;
+}
+
 QByteArray xDumpTable::selBytes() {
 	int s, e;
 	if (!model->selRange(&s, &e)) return QByteArray();
@@ -958,22 +977,25 @@ xDumpWidget::xDumpWidget(QString i, QString t, QWidget* p):xDockWidget(i,t,p) {
 
 	// One menu: the selection's commands, then the byte's breakpoints. More
 	// sections go in here, not in a menu of their own
-	actCopyHex = new QAction("Copy hex string", this);
+	actCopyHex = new QAction("Copy as hex", this);
 	actCopyHex->setShortcut(QKeySequence::Copy);
 	actCopyHex->setShortcutContext(Qt::WidgetShortcut);
 	ui.dumpTable->addAction(actCopyHex);		// Ctrl+C while the dump has the focus
-	actCopyRaw = new QAction("Copy raw bytes", this);
+	actCopyDB = new QAction("Copy as DB", this);
+	actCopyText = new QAction("Copy as text", this);	// the code page goes in when the menu opens
 	actSaveBin = new QAction("Save as binary file...", this);
 	cellMenu = new QMenu(this);
 	cellMenu->addAction(actCopyHex);
-	cellMenu->addAction(actCopyRaw);
+	cellMenu->addAction(actCopyDB);
+	cellMenu->addAction(actCopyText);
 	cellMenu->addAction(actSaveBin);
 	cellMenu->addSeparator();
 	cellMenu->addAction(ui.actFetch);
 	cellMenu->addAction(ui.actRead);
 	cellMenu->addAction(ui.actWrite);
 	connect(actCopyHex, &QAction::triggered, this, &xDumpWidget::copyHex);
-	connect(actCopyRaw, &QAction::triggered, this, &xDumpWidget::copyRaw);
+	connect(actCopyDB, &QAction::triggered, this, &xDumpWidget::copyDB);
+	connect(actCopyText, &QAction::triggered, this, &xDumpWidget::copyText);
 	connect(actSaveBin, &QAction::triggered, this, &xDumpWidget::saveBin);
 	// the menu greys Copy with nothing selected; Ctrl+C is the same action, so back on
 	connect(cellMenu, &QMenu::aboutToHide, this, [this]() {actCopyHex->setEnabled(true);});
@@ -1039,7 +1061,9 @@ void xDumpWidget::customMenu(const QPoint& pos) {
 	int s, e;
 	bool sel = ui.dumpTable->selection(&s, &e);
 	actCopyHex->setEnabled(sel);
-	actCopyRaw->setEnabled(sel);
+	actCopyDB->setEnabled(sel);
+	actCopyText->setEnabled(sel);
+	actCopyText->setText(QString("Copy as text (%0)").arg(ui.cbCodePage->currentText()));
 	actSaveBin->setEnabled(sel);
 	int adr = ui.dumpTable->getCurrentAdr();
 	int mode = getRFIData(ui.cbDumpView);
@@ -1067,14 +1091,33 @@ void xDumpWidget::copyHex() {
 	QApplication::clipboard()->setText(list.join(" "));
 }
 
-// the bytes themselves, for a program that takes them: there is no format all
-// hex editors read, octet-stream is the one Qt programs and some editors know
-void xDumpWidget::copyRaw() {
+// a byte as an assembler takes it, in the Debugger's form: #3E, $3E, 0FEh, 254
+static QString dump_db_byte(int val) {
+	QString num = dbg_num_in(val & 0xff, 2, conf.dbg.numfmt);
+	if (num.at(0).isLetter()) num.prepend("0");	// FEh would be a name
+	return num;
+}
+
+// the selection as source lines, a DB a row of the dump as it is selected
+void xDumpWidget::copyDB() {
+	QList<QByteArray> rows = ui.dumpTable->selRows();
+	if (rows.isEmpty()) return;
+	QString txt;
+	foreach(QByteArray row, rows) {
+		QStringList list;
+		for (int i = 0; i < row.size(); i++)
+			list.append(dump_db_byte((unsigned char)row.at(i)));
+		txt.append("\tDB ").append(list.join(",")).append("\n");
+	}
+	QApplication::clipboard()->setText(txt);
+}
+
+// the selection as the text column shows it, in its code page: a string to read
+// or to look up, a control code a dot
+void xDumpWidget::copyText() {
 	QByteArray data = ui.dumpTable->selBytes();
 	if (data.isEmpty()) return;
-	QMimeData* mime = new QMimeData;
-	mime->setData("application/octet-stream", data);
-	QApplication::clipboard()->setMimeData(mime);
+	QApplication::clipboard()->setText(getDumpString(data, getRFIData(ui.cbCodePage)));
 }
 
 // image_C000-C3FF.bin; in a page view image_RAM5_C000-C3FF.bin, the addresses
