@@ -88,15 +88,15 @@ Opening a file can switch the machine too, when the current one cannot run it. S
 ```{index} Reset, Reset; ROM to start from
 ```
 
-**Machine > Reset** lists where a reset can take the machine: the ROMs it can start from,
-such as **Basic 128**, **Basic 48**, **Service** and **TR-DOS**. The one in bold is the ROM
-a plain reset starts from. **TR-DOS** is there only when the machine has a Beta Disk
-interface.
+A click on **Machine > Reset** resets the machine. Its menu lists where a reset can take
+the machine: the ROMs it can start from, such as **Basic 128**, **Basic 48**, **Service**
+and **TR-DOS**. The one in bold is the ROM a plain reset starts from. **TR-DOS** is there
+only when the machine has a Beta Disk interface.
 
 ![Machine > Reset on a Pentagon](images/menu-reset.png)
 
-On the ATM Turbo 2+, the ZX Evolution and the ALF consoles the list holds only **Boots its
-own firmware**, grayed out: these machines start their own firmware on every reset.
+On the ATM Turbo 2+, the ZX Evolution, the ZX Spectrum Next and the ALF consoles the list
+holds only **Soft Reset**: these machines start their own firmware on every reset.
 
 The {icon}`shutdown` **Reset** button on the toolbar resets the machine when clicked; the
 arrow beside it opens the list. **Reset** in the right-click menu works the same way. F12
