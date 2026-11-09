@@ -1286,6 +1286,8 @@ xDisasmTable::xDisasmTable(QWidget* p):QTableView(p) {
 	for (int i = 0; i < 5; i++) {
 		storedAddress[i] = -1;
 	}
+	markAdr = -1;
+	dragging = false;
 	model = new xDisasmModel(this);
 	setModel(model);
 	connect(model, SIGNAL(s_comenter()), this, SLOT(rowDown()));
@@ -1691,38 +1693,48 @@ void xDisasmTable::keyPressEvent(QKeyEvent* ev) {
 	}
 }
 
+// the selection over rows, from the first byte of the first to the first byte of
+// the last; the DUMP's CPU view shows and sets the same one
+void xDisasmTable::blockSet(int a, int b) {
+	blockStart = (a < b) ? a : b;
+	blockEnd = (a < b) ? b : a;
+	updContent();
+	emit rqRefill();
+}
+
+// As the DUMP: a click puts the cursor and drops the selection, a drag selects
+// from the row pressed, Shift+click from there (or the cursor) to the row clicked
 void xDisasmTable::mousePressEvent(QMouseEvent* ev) {
 	int row = rowAt(ev->pos().y());
 	if ((row < 0) || (row >= model->rowCount())) return;
 	int adr = getData(row, 0, Qt::UserRole).toInt();
+	QModelIndex cur = currentIndex();
+	int was = cur.isValid() ? getData(cur.row(), 0, Qt::UserRole).toInt() : adr;
 	switch (ev->button()) {
 		case Qt::MiddleButton:
 			blockStart = -1;
 			blockEnd = -1;
+			markAdr = -1;
 			updContent();
 			emit rqRefill();
 			ev->ignore();
 			break;
 		case Qt::LeftButton:
-			if (mode != XVIEW_CPU) {
-				QTableView::mousePressEvent(ev);
-			} else if (ev->modifiers() & Qt::ControlModifier) {
-				blockStart = adr;
-				if (blockEnd < blockStart) blockEnd = blockStart;
-				updContent();
-				emit rqRefill();
-				ev->ignore();
-			} else if (ev->modifiers() & Qt::ShiftModifier) {
-				blockEnd = adr;
-				if (blockStart > blockEnd) blockStart = blockEnd;
-				if (blockStart < 0) blockStart = 0;
-				updContent();
-				emit rqRefill();
-				ev->ignore();
-			} else {
+			QTableView::mousePressEvent(ev);
+			if (mode != XVIEW_CPU) break;
+			if (ev->modifiers() & Qt::ShiftModifier) {
+				if ((blockStart < 0) || (markAdr < 0)) markAdr = was;
+				blockSet(markAdr, adr);
+			} else {			// Ctrl too: one way to start a block
 				markAdr = adr;
-				QTableView::mousePressEvent(ev);
+				if (blockStart >= 0) {
+					blockStart = -1;
+					blockEnd = -1;
+					updContent();
+					emit rqRefill();
+				}
 			}
+			dragging = true;
 			break;
 		default:
 			QTableView::mousePressEvent(ev);
@@ -1732,7 +1744,7 @@ void xDisasmTable::mousePressEvent(QMouseEvent* ev) {
 
 void xDisasmTable::mouseReleaseEvent(QMouseEvent* ev) {
 	if (ev->button() == Qt::LeftButton)
-		markAdr = -1;
+		dragging = false;
 }
 
 // Qt keeps the current cell selected (and thus filled with the native
@@ -1767,16 +1779,11 @@ void xDisasmTable::mouseMoveEvent(QMouseEvent* ev) {
 	int row = rowAt(ev->pos().y());
 	if ((row < 0) || (row >= model->rowCount())) return;
 	int adr = model->data(model->index(row, 0), Qt::UserRole).toInt();	// item(row,0)->data(Qt::UserRole).toInt();
-	if ((ev->modifiers() == Qt::NoModifier) && (ev->buttons() & Qt::LeftButton) && (adr != blockStart) && (adr != blockEnd) && (markAdr >= 0)) {
-		if (adr < blockStart) {
-			blockStart = adr;
-			blockEnd = markAdr;
-		} else {
-			blockStart = markAdr;
-			blockEnd = adr;
-		}
-		updContent();
-		emit rqRefill();
+	if (dragging && (ev->buttons() & Qt::LeftButton) && (markAdr >= 0)) {
+		// still on the row pressed with nothing selected: a click
+		bool same = (blockStart < 0) ? (adr == markAdr)
+			: ((blockStart == ((adr < markAdr) ? adr : markAdr)) && (blockEnd == ((adr < markAdr) ? markAdr : adr)));
+		if (!same) blockSet(markAdr, adr);
 	}
 	QTableView::mouseMoveEvent(ev);
 }

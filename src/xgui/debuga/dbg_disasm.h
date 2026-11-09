@@ -99,7 +99,9 @@ class xDisasmTable : public QTableView {
 	private slots:
 		void updColors();
 	private:
-		int markAdr;
+		int markAdr;			// where a selection starts from (the anchor), -1: the cursor
+		bool dragging;
+		void blockSet(int, int);
 		xDisasmModel* model;
 		// one entry per undoable jump: the viewport anchor (asmadr) to
 		// restore the scroll position, and the cursor's own row address -
