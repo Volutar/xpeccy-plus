@@ -2318,11 +2318,11 @@ void SetupWin::buildDevices() {
 	head->addWidget(whose);
 	head->addWidget(rule, 1);
 	nv->addLayout(head);
-	QHBoxLayout* ncols = new QHBoxLayout;
+	// the groups are made in two columns (alignLabels), then put in a grid: Storage and
+	// Sound in one row, as tall as each other
+	QGridLayout* ncols = new QGridLayout;
 	QVBoxLayout* nl = new QVBoxLayout;
 	QVBoxLayout* nr = new QVBoxLayout;
-	ncols->addLayout(nl, 1);
-	ncols->addLayout(nr, 1);
 	nv->addLayout(ncols);
 	// NextZXOS's values grayed: a field (as wide as its column's widest, lineUp) or a check box
 	auto field = [this](const char* name, const QStringList& vals, const QString& tip) {
@@ -2419,7 +2419,6 @@ void SetupWin::buildDevices() {
 	line(grid, tr("Keyboard"), QList<QWidget*>() << field("Keyboard", QStringList() << tr("Issue 3"),
 		tr("Issue 3 or Issue 2: what bit 6 of #FE\nreads with no tape playing")), NULL, false);
 	lineUp(grid);
-	nl->addStretch(1);
 
 	// by device: the PSG, its chips' mono, the DACs, the beeper
 	grid = nxGroup(nr, ":/images/speaker.png", tr("Sound"));
@@ -2460,8 +2459,21 @@ void SetupWin::buildDevices() {
 		line(grid, i ? tr("Pi UART") : tr("ESP UART"), QList<QWidget*>() << uartBox[i],
 			i ? sheetButton(NULL, NULL) : sheetButton(esp.body, "Machine: ESP UART"), true);
 	}
-	nr->addStretch(1);
 	alignLabels(QList<QVBoxLayout*>() << nl << nr);
+	QVBoxLayout* made[2] = {nl, nr};
+	for (int c = 0; c < 2; c++) {
+		QWidget* top = made[c]->itemAt(0)->widget();
+		QWidget* low = made[c]->itemAt(1)->widget();
+		made[c]->removeWidget(top);
+		made[c]->removeWidget(low);
+		QGridLayout* g = qobject_cast<QGridLayout*>(top->layout());
+		g->setRowStretch(g->rowCount(), 1);		// its rows at the top
+		ncols->addWidget(top, 0, c);
+		ncols->addWidget(low, 1, c, Qt::AlignTop);
+		ncols->setColumnStretch(c, 1);
+		delete made[c];
+	}
+	ncols->setRowStretch(2, 1);
 	QWidget* page = new QWidget;
 	QVBoxLayout* pv = new QVBoxLayout(page);
 	pv->setContentsMargins(0, 0, 0, 0);
