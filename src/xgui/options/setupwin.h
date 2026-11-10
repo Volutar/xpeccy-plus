@@ -178,8 +178,10 @@ class SetupWin : public QDialog {
 		QCheckBox* cbEspLan;		// the emulated ESP's server reachable from the network
 		QWidget* devArea;		// the device groups of every machine but the Next
 		QWidget* nxArea;		// the Next's own: what NextZXOS set, and this computer's for it
-		QMap<QString, QLabel*> nxVal;	// NextZXOS's settings, by the menu's name
-		QLabel* nxSdSum;
+		QMap<QString, QLineEdit*> nxText;	// NextZXOS's settings, by the menu's name: a value
+		QMap<QString, QCheckBox*> nxFlag;	// and on or off
+		xElideLabel* nxSdSum;		// the card's whole path, shortened in the middle
+		QLabel* nxCore;			// the core's version, in the heading
 		QLabel* nxTapeSum;
 		QLabel* advNote;		// Advanced Settings: says why it is all greyed on the Next
 		QList<QWidget*> drvRow[4];

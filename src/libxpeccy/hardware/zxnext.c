@@ -1556,6 +1556,28 @@ int next_nr_peek(Computer* comp, int r) {
 	return nx_nr_read(comp, r);
 }
 
+// NextZXOS's version as its ROM gives it - "... Garry Lancaster v2.09", the last
+// character with bit 7 set - in the SRAM the firmware loaded the ROM to
+void next_os_version(Computer* comp, char* buf, int len) {
+	static const char key[] = "Lancaster v";
+	const int kl = sizeof(key) - 1;
+	unsigned char* sram = comp->mem->ramData;
+	buf[0] = 0;
+	for (int i = 0; i + kl < 0x10000; i++) {
+		if (memcmp(sram + i, key, kl)) continue;
+		int n = 0;
+		buf[n++] = 'v';
+		for (int j = i + kl; (j < 0x10000) && (n < len - 1); j++) {
+			int c = sram[j] & 0x7f;
+			if ((c < 0x20) || (c > 0x7e)) break;
+			buf[n++] = c;
+			if (sram[j] & 0x80) break;
+		}
+		buf[n] = 0;
+		return;
+	}
+}
+
 // a byte of 8K RAM page pg as the cpu reads it
 int next_ram(Computer* comp, int pg, int ofs) {
 	if ((pg < 0) || (pg >= 0xe0)) return 0xff;

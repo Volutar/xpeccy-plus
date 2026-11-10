@@ -1356,7 +1356,10 @@ void SetupWin::apply() {
 	}
 	applyGlobal();
 	if (another) {
+		// the window as it was, or as big as the new machine's page needs
+		QSize was = size();
 		fillPages();		// the new machine's own values on the pages
+		QTimer::singleShot(0, this, [this, was]() {resize(was.expandedTo(minimumSizeHint()));});
 		emit s_prf_changed();
 	} else {
 		// the machine carries what the page put in it: into its own file, so it is
@@ -2300,11 +2303,16 @@ void SetupWin::buildDevices() {
 	QFont tf = title->font();
 	tf.setBold(true);
 	title->setFont(tf);
+	nxCore = new QLabel;
+	QLabel* whose = new QLabel(tr("(the grey ones are set by NextZXOS)"));
+	whose->setToolTip(tr("NextZXOS sets these itself: in its NMI menu,\nSettings. What is changed there takes\neffect when the menu closes"));
 	QFrame* rule = new QFrame;
 	rule->setFrameShape(QFrame::HLine);
 	rule->setFrameShadow(QFrame::Sunken);
 	head->addWidget(logo);
 	head->addWidget(title);
+	head->addWidget(nxCore);
+	head->addWidget(whose);
 	head->addWidget(rule, 1);
 	nv->addLayout(head);
 	QHBoxLayout* ncols = new QHBoxLayout;
@@ -2313,57 +2321,123 @@ void SetupWin::buildDevices() {
 	ncols->addLayout(nl, 1);
 	ncols->addLayout(nr, 1);
 	nv->addLayout(ncols);
-	// a value of NextZXOS's: its name and the value, no gear; as tall as a row
-	// with a choice, so the groups keep the usual rhythm
-	int rowH = QComboBox().sizeHint().height();
-	auto val = [this, rowH](QGridLayout* g, const char* name) {
+	// What NextZXOS set, greyed as a choice made elsewhere is: a value in a field,
+	// on and off as a check box; the tip has what else it could be. A field is as
+	// wide as its widest value, then as the widest of its column (lineUp)
+	auto field = [this](const char* name, const QStringList& vals, const QString& tip) {
+		QLineEdit* f = new QLineEdit;
+		f->setEnabled(false);
+		f->setFocusPolicy(Qt::NoFocus);
+		int w = 0;
+		foreach(const QString& v, vals) w = qMax(w, f->fontMetrics().horizontalAdvance(v));
+		f->setFixedWidth(w + 12);		// the frame and the text margins
+		f->setToolTip(tip);
+		nxText[name] = f;
+		return f;
+	};
+	auto lineUp = [](QGridLayout* g) {
+		for (int c = 1; c < 4; c++) {
+			QList<QLineEdit*> fs;
+			for (int r = 0; r < g->rowCount(); r++) {
+				QLayoutItem* itm = g->itemAtPosition(r, c);
+				QLineEdit* f = itm ? qobject_cast<QLineEdit*>(itm->widget()) : NULL;
+				if (f) fs << f;
+			}
+			int w = 0;
+			foreach(QLineEdit* f, fs) w = qMax(w, f->minimumWidth());
+			foreach(QLineEdit* f, fs) f->setFixedWidth(w);
+		}
+	};
+	// a few check boxes in one cell
+	auto pack = [](const QList<QWidget*>& ws) {
+		QWidget* box = new QWidget;
+		QHBoxLayout* hl = new QHBoxLayout(box);
+		hl->setContentsMargins(0, 0, 0, 0);
+		foreach(QWidget* w, ws) hl->addWidget(w);
+		hl->addStretch(1);
+		return box;
+	};
+	auto flag = [this](const char* name, const QString& text, const QString& tip) {
+		QCheckBox* c = new QCheckBox(text);
+		c->setEnabled(false);
+		c->setToolTip(tip);
+		nxFlag[name] = c;
+		return c;
+	};
+	// a group's grid: the name, up to three values, room, a gear
+	auto nxGroup = [](QVBoxLayout* col, const char* icon, const QString& title) {
+		QGridLayout* g = devGroup(col, icon, title);
+		g->setColumnStretch(1, 0);
+		g->setColumnStretch(4, 1);
+		g->setHorizontalSpacing(4);		// pairs of values in a row: a little closer
+		return g;
+	};
+	// a row of such a grid; `span`: the last widget takes the room too; with no
+	// name the row starts in the name's column
+	auto line = [](QGridLayout* g, const QString& name, const QList<QWidget*>& ws, QToolButton* gearBtn, bool span) {
 		int row = g->rowCount();
-		QLabel* v = new QLabel;
-		v->setMinimumHeight(rowH);
-		g->addWidget(new QLabel(tr(name)), row, 0);
-		g->addWidget(v, row, 1, 1, 2);
-		nxVal[name] = v;
+		int col = name.isEmpty() ? 0 : 1;
+		if (col) g->addWidget(new QLabel(name), row, 0);
+		for (int i = 0; i < ws.size(); i++) {
+			bool last = (i == ws.size() - 1);
+			g->addWidget(ws[i], row, col + i, 1, (last && span) ? 5 - col - i : 1);
+		}
+		if (gearBtn) g->addWidget(gearBtn, row, 5);
 	};
 	// a gear that opens a sheet of the usual groups
-	auto gear = [](QToolButton* btn, QToolButton* sheet) {
+	auto gear = [this](QToolButton* sheet) {
+		QToolButton* btn = sheetButton(NULL, NULL);
 		btn->setEnabled(true);
 		btn->setToolTip(tr("More settings"));
 		connect(btn, &QToolButton::released, sheet, &QToolButton::click);
+		return btn;
 	};
+	QString joyTip = tr("Sinclair 2, Kempston 1, Cursor, Sinclair 1,\nKempston 2, MD 1, MD 2 or Keyjoy");
+	QStringList joys = QStringList() << tr("L: Kempston 2") << tr("R: Kempston 2");
 
-	grid = devGroup(nl, ":/images/fdd_disk.png", tr("Storage"));
-	nxSdSum = new QLabel;
-	devRow(grid, tr("SD card"), nxSdSum, NULL, NULL);
+	grid = nxGroup(nl, ":/images/fdd_disk.png", tr("Storage"));
+	nxSdSum = new xElideLabel;
+	line(grid, tr("SD card"), QList<QWidget*>() << nxSdSum, sheetButton(NULL, NULL), true);
+	line(grid, "NextZXOS", QList<QWidget*>() << field("NextZXOS", QStringList() << "v2.09" << tr("not started"),
+		tr("The NextZXOS the machine runs, from its card")), NULL, false);
 	nxTapeSum = new QLabel;
-	gear(devRow(grid, tr("Tape"), nxTapeSum, NULL, NULL), tapeGear);
+	line(grid, tr("Tape"), QList<QWidget*>() << nxTapeSum, gear(tapeGear), true);
 
-	grid = devGroup(nl, ":/images/joystick.png", tr("Input"));
-	val(grid, QT_TR_NOOP("Joystick L"));
-	val(grid, QT_TR_NOOP("Joystick R"));
-	val(grid, QT_TR_NOOP("Keyboard"));
-	QLabel* dpi = new QLabel;
-	nxVal["Mouse DPI"] = dpi;
-	gear(devRow(grid, tr("Mouse DPI"), dpi, NULL, NULL), mouseGear);
-	val(grid, QT_TR_NOOP("Mouse Btn"));
+	grid = nxGroup(nl, ":/images/joystick.png", tr("Input"));
+	line(grid, tr("Joystick"), QList<QWidget*>() << field("Joystick L", joys, tr("The left joystick:\n") + joyTip)
+		<< field("Joystick R", joys, tr("The right joystick:\n") + joyTip), NULL, false);
+	line(grid, tr("Mouse"), QList<QWidget*>() << field("Mouse DPI", QStringList() << tr("Standard DPI") << tr("Medium DPI"),
+			tr("Low, Standard, Medium or High DPI"))
+		<< field("Mouse Btn", QStringList() << tr("Right/Left"), tr("The buttons: Left/Right, or swapped,\nRight/Left")), gear(mouseGear), false);
+	line(grid, tr("Keyboard"), QList<QWidget*>() << field("Keyboard", QStringList() << tr("Issue 3"),
+		tr("Issue 3 or Issue 2: what bit 6 of #FE\nreads with no tape playing")), NULL, false);
+	lineUp(grid);
 	nl->addStretch(1);
 
-	// in the order of NextZXOS's Sound page
-	grid = devGroup(nr, ":/images/speaker.png", tr("Sound"));
-	val(grid, QT_TR_NOOP("Stereo"));
-	val(grid, QT_TR_NOOP("Int. speaker"));
-	val(grid, QT_TR_NOOP("BEEPer"));
-	val(grid, QT_TR_NOOP("TurboSound"));
-	val(grid, QT_TR_NOOP("Covox"));
-	val(grid, QT_TR_NOOP("Audiochip"));
-	val(grid, QT_TR_NOOP("AY 0/1/2 mono"));
+	// by device: the PSG, its chips' mono, the DACs, the beeper
+	grid = nxGroup(nr, ":/images/speaker.png", tr("Sound"));
+	line(grid, tr("PSG"), QList<QWidget*>()
+		<< field("Audiochip", QStringList() << QString::fromUtf8("×3 ZXN-8950"),
+			tr("YM, AY, ZXN-8950 or Off. x3: TurboSound,\nall three play; x1: the one selected only"))
+		<< field("Stereo", QStringList() << "ACB", tr("ABC or ACB: the voices from left to right")), NULL, false);
+	QString monoTip = tr("The chip's three voices on both sides");
+	line(grid, tr("AY mono"), QList<QWidget*>() << pack(QList<QWidget*>() << flag("AY0 Mono", "0", monoTip)
+		<< flag("AY1 Mono", "1", monoTip) << flag("AY2 Mono", "2", monoTip)), NULL, true);
+	line(grid, tr("DAC"), QList<QWidget*>() << flag("Covox", tr("Covox"), tr("The DACs: Covox, Soundrive and SpecDrum\nports")), NULL, true);
+	line(grid, tr("Beeper"), QList<QWidget*>()
+		<< field("BEEPer", QStringList() << tr("Speaker only") << tr("All outputs"), tr("All outputs, or the internal speaker only"))
+		<< flag("Int. speaker", tr("Int. speaker"), tr("The board's own speaker")), NULL, false);
+	lineUp(grid);
 
-	grid = devGroup(nr, ":/images/grp-board.png", tr("Board"));
-	val(grid, QT_TR_NOOP("CPU speed"));
-	val(grid, QT_TR_NOOP("Frequency"));
-	val(grid, QT_TR_NOOP("Timings"));
-	val(grid, QT_TR_NOOP("Contention"));
-	val(grid, QT_TR_NOOP("Timex RD"));
-	val(grid, QT_TR_NOOP("ULAplus"));
+	grid = nxGroup(nr, ":/images/grp-board.png", tr("Board"));
+	line(grid, tr("Timing"), QList<QWidget*>()
+		<< field("CPU speed", QStringList() << "3.5 MHz" << "28 MHz", tr("CPU speed: 3.5, 7, 14 or 28 MHz,\nas programs ask"))
+		<< field("Frequency", QStringList() << "50 Hz", tr("Frames: 50 or 60 Hz"))
+		<< field("Timings", QStringList() << "Next (+3)" << "Pentagon", tr("48K, 128K, Next (+3) or Pentagon: that\nmachine's frame and contention")), NULL, false);
+	line(grid, QString(), QList<QWidget*>() << pack(QList<QWidget*>()
+		<< flag("Contention", tr("Contention"), tr("The ULA holds the CPU off the screen\nbanks, at 3.5 MHz"))
+		<< flag("Timex RD", tr("Timex RD"), tr("Port #FF reads back the Timex screen\nmode"))
+		<< flag("ULAplus", tr("ULAplus"), tr("64 colors, when the program asks for them"))), NULL, true);
 	cbEspLan = new QCheckBox;
 	xOptSheet esp;
 	esp.check(cbEspLan, tr("Server on the network"),
@@ -2375,16 +2449,12 @@ void SetupWin::buildDevices() {
 		uartBox[i]->setInsertPolicy(QComboBox::NoInsert);
 		uartBox[i]->setToolTip(i ? tr("The serial port of this computer the Pi UART is wired to")
 			: tr("The Wi-Fi module: emulated, or a real one on a serial port of this computer"));
-		btn = devRow(grid, i ? tr("Pi UART") : tr("ESP UART"), uartBox[i], i ? NULL : esp.body, i ? NULL : "Machine: ESP UART");
+		uartBox[i]->setMinimumWidth(0);
+		line(grid, i ? tr("Pi UART") : tr("ESP UART"), QList<QWidget*>() << uartBox[i],
+			i ? sheetButton(NULL, NULL) : sheetButton(esp.body, "Machine: ESP UART"), true);
 	}
 	nr->addStretch(1);
 	alignLabels(QList<QVBoxLayout*>() << nl << nr);
-	QLabel* how = new QLabel(tr("NextZXOS sets these itself: in its NMI menu, Settings. What is changed there takes effect when the menu closes"));
-	QFont hf = how->font();
-	hf.setItalic(true);
-	how->setFont(hf);
-	how->setWordWrap(true);
-	nv->addWidget(how);
 	QWidget* page = new QWidget;
 	QVBoxLayout* pv = new QVBoxLayout(page);
 	pv->setContentsMargins(0, 0, 0, 0);
@@ -2401,7 +2471,6 @@ void SetupWin::fillNextGroup() {
 	Computer* comp = conf.zx;
 	if (comp->hw->id != HW_ZXNEXT) return;
 	auto rd = [comp](int r) {return next_nr_peek(comp, r);};
-	auto onoff = [](int v) {return v ? tr("On") : tr("Off");};
 	// the menu calls the +3 timing the Next's own
 	static const char* const tim[4] = {"48K", "128K", "Next (+3)", "Pentagon"};
 	static const char* const dpi[4] = {QT_TR_NOOP("Low"), QT_TR_NOOP("Standard"), QT_TR_NOOP("Medium"), QT_TR_NOOP("High")};
@@ -2411,25 +2480,33 @@ void SetupWin::fillNextGroup() {
 	static const char* const mhz[4] = {"3.5", "7", "14", "28"};
 	int r05 = rd(0x05), r06 = rd(0x06), r08 = rd(0x08), r09 = rd(0x09), r0a = rd(0x0a);
 	QMap<QString, QString> v;
-	v["Joystick L"] = tr(joy[(((r05 >> 3) & 1) << 2) | ((r05 >> 6) & 3)]);
-	v["Joystick R"] = tr(joy[(((r05 >> 1) & 1) << 2) | ((r05 >> 4) & 3)]);
+	QMap<QString, bool> f;
+	v["Joystick L"] = tr("L: ") + tr(joy[(((r05 >> 3) & 1) << 2) | ((r05 >> 6) & 3)]);
+	v["Joystick R"] = tr("R: ") + tr(joy[(((r05 >> 1) & 1) << 2) | ((r05 >> 4) & 3)]);
 	v["Keyboard"] = (r08 & 0x01) ? tr("Issue 2") : tr("Issue 3");
-	v["Mouse DPI"] = tr(dpi[r0a & 3]);
+	v["Mouse DPI"] = tr("%0 DPI").arg(tr(dpi[r0a & 3]));
 	v["Mouse Btn"] = (r0a & 0x08) ? tr("Right/Left") : tr("Left/Right");
 	v["Stereo"] = (r08 & 0x20) ? "ACB" : "ABC";
-	v["Int. speaker"] = onoff(r08 & 0x10);
-	v["BEEPer"] = (r06 & 0x40) ? tr("Int. speaker only") : tr("All");
-	v["TurboSound"] = onoff(r08 & 0x02);
-	v["Covox"] = onoff(r08 & 0x08);
-	v["Audiochip"] = tr(chip[r06 & 3]);
-	v["AY 0/1/2 mono"] = QString("%0 %1 %2").arg(onoff(r09 & 0x20), onoff(r09 & 0x40), onoff(r09 & 0x80));
+	v["BEEPer"] = (r06 & 0x40) ? tr("Speaker only") : tr("All outputs");
+	v["Audiochip"] = QString::fromUtf8((r08 & 0x02) ? "×3 " : "×1 ") + tr(chip[r06 & 3]);
 	v["CPU speed"] = QString("%0 MHz").arg(mhz[(rd(0x07) >> 4) & 3]);
 	v["Frequency"] = (r05 & 0x04) ? "60 Hz" : "50 Hz";		// the one in use: a read merges it in
 	v["Timings"] = tim[comp->next->timing & 3];
-	v["Contention"] = onoff(!(r08 & 0x40));
-	v["Timex RD"] = onoff(r08 & 0x04);
-	v["ULAplus"] = onoff(rd(0x85) & 0x01);
-	for (auto it = nxVal.begin(); it != nxVal.end(); ++it) it.value()->setText(v.value(it.key()));
+	char os[16];
+	next_os_version(comp, os, sizeof(os));
+	v["NextZXOS"] = os[0] ? QString(os) : tr("not started");
+	int core = rd(0x01);
+	nxCore->setText(tr("core %0.%1.%2").arg(core >> 4).arg(core & 15, 2, 10, QChar('0')).arg(rd(0x0e), 2, 10, QChar('0')));
+	f["Int. speaker"] = r08 & 0x10;
+	f["Covox"] = r08 & 0x08;
+	f["AY0 Mono"] = r09 & 0x20;
+	f["AY1 Mono"] = r09 & 0x40;
+	f["AY2 Mono"] = r09 & 0x80;
+	f["Contention"] = !(r08 & 0x40);
+	f["Timex RD"] = r08 & 0x04;
+	f["ULAplus"] = rd(0x85) & 0x01;
+	for (auto it = nxText.begin(); it != nxText.end(); ++it) it.value()->setText(v.value(it.key()));
+	for (auto it = nxFlag.begin(); it != nxFlag.end(); ++it) it.value()->setChecked(f.value(it.key()));
 }
 
 // The volumes, named the way the devices are, with the master set apart.
@@ -2500,7 +2577,7 @@ void SetupWin::fillDevSummary() {
 	QString sd = comp->sdc->image ? QString::fromLocal8Bit(comp->sdc->image) : QString();
 	QString slot = comp->slot->path ? QString::fromLocal8Bit(comp->slot->path) : QString();
 	sdSum->setText(sd.isEmpty() ? tr("(no card)") : QFileInfo(sd).fileName());
-	nxSdSum->setText(sdSum->text());
+	nxSdSum->setFull(sd.isEmpty() ? tr("(no card)") : QDir::toNativeSeparators(sd));
 	slotSum->setText(slot.isEmpty() ? tr("(empty)") : QFileInfo(slot).fileName());
 }
 
@@ -2618,8 +2695,9 @@ void SetupWin::showDevRows() {
 	showBoardStorage();
 	// the Next sets itself up, by its nextregs: its own groups in place of the usual
 	bool next = (hw == HW_ZXNEXT);
-	devArea->setVisible(!next);
-	nxArea->setVisible(next);
+	// the one going away first: both shown for a moment would stretch the window
+	(next ? devArea : nxArea)->hide();
+	(next ? nxArea : devArea)->show();
 	ratWheel->setEnabled(!next);		// always read on the Next
 	ui.gbCpu->setEnabled(!next);
 	ui.gbUla->setEnabled(!next);
