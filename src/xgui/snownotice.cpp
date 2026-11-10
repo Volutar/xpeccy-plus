@@ -264,6 +264,9 @@ QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<vo
 	flake.addFile(":/images/snowflake-44.png", QSize(44, 44));
 	btGo->setIcon(flake);
 	btGo->setIconSize(QSize(22, 22));		// the OSD sign's flake: at 16 px its branches run together
+	btGo->ensurePolished();
+	btOff->ensurePolished();
+	btOff->setMinimumHeight(btGo->sizeHint().height());		// the icon makes it taller: both one height
 	box->setDefaultButton(btGo);
 	box->setEscapeButton(btGo);
 	QObject::connect(box, &QMessageBox::buttonClicked, box, [btOff, off](QAbstractButton* bt) {
