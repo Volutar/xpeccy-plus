@@ -25,9 +25,7 @@ if(NOT res EQUAL 0)
 	message(FATAL_ERROR "windeployqt failed (${res})")
 endif()
 
-if(NOT @TRIMDEPLOY@)
-	return()
-endif()
+if(@TRIMDEPLOY@)
 
 # windeployqt deploys a fixed set regardless of what the binary imports.
 # Everything dropped below was verified unused by running the trimmed build:
@@ -62,5 +60,39 @@ foreach(f ${imgplugins})
 	get_filename_component(n "${f}" NAME)
 	if(NOT n IN_LIST KEEP_IMAGEFORMATS)
 		file(REMOVE "${f}")
+	endif()
+endforeach()
+
+endif()
+
+# What windeployqt leaves out: the DLLs the program, Qt and its plugins import that are
+# neither Qt's nor the system's. With the Qt installer's MinGW there are none left; with
+# MSYS2's Qt (win-arm64) they are libc++, ICU, harfbuzz, freetype and the rest. Each is
+# taken from beside Qt or the compiler; one found nowhere stops the install here rather
+# than on a user's machine.
+set(CMAKE_GET_RUNTIME_DEPENDENCIES_PLATFORM "windows+pe")
+set(CMAKE_GET_RUNTIME_DEPENDENCIES_TOOL "objdump")
+set(CMAKE_GET_RUNTIME_DEPENDENCIES_COMMAND "@CMAKE_OBJDUMP@")
+file(GLOB_RECURSE dlls "${CMAKE_INSTALL_PREFIX}/*.dll")
+file(GET_RUNTIME_DEPENDENCIES
+	EXECUTABLES "${APP}"
+	LIBRARIES ${dlls}
+	DIRECTORIES "${CMAKE_INSTALL_PREFIX}" "@QT_BIN_DIR@" "@CXX_BIN_DIR@" "$ENV{SystemRoot}/System32"
+	PRE_EXCLUDE_REGEXES "^api-ms-" "^ext-ms-"
+	POST_EXCLUDE_REGEXES "[/\\\\][Ss]ystem32[/\\\\]"
+	RESOLVED_DEPENDENCIES_VAR found
+	UNRESOLVED_DEPENDENCIES_VAR missing
+)
+if(missing)
+	message(FATAL_ERROR "DLLs found nowhere: ${missing}")
+endif()
+file(TO_CMAKE_PATH "${CMAKE_INSTALL_PREFIX}/" prefix)	# --prefix may come with backslashes
+string(TOLOWER "${prefix}" prefix)
+foreach(f ${found})
+	string(TOLOWER "${f}" lf)
+	string(FIND "${lf}" "${prefix}" at)
+	if(NOT at EQUAL 0)
+		message(STATUS "Bundling ${f}")
+		file(COPY "${f}" DESTINATION "${CMAKE_INSTALL_PREFIX}")
 	endif()
 endforeach()
