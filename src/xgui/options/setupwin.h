@@ -63,6 +63,7 @@ class SetupWin : public QDialog {
 		bool applyDivFirmware();
 		void showDevRows();
 		void showBoardStorage();
+		void fillNextGroup();
 		void showDriveRows();
 		void tidySoundPage();
 		void fillGsRom(const QStringList&);
@@ -175,6 +176,10 @@ class SetupWin : public QDialog {
 		QComboBox* uartBox[2];		// the Next's UARTs: a serial port of the host each
 		QCheckBox* cbEspLan;		// the emulated ESP's server reachable from the network
 		QList<QWidget*> uartRow;
+		QList<QWidget*> nextOwnRow;	// what the Next sets itself, by NextZXOS's settings: greyed on it
+		QWidget* nxBox;			// those settings as the machine has them
+		QList<QLabel*> nxVal;
+		QLabel* advNote;		// Advanced Settings: says why it is all greyed on the Next
 		QList<QWidget*> drvRow[4];
 		QComboBox* drvCountBox;
 		// video recording

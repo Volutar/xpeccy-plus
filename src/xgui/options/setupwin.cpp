@@ -670,6 +670,9 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	// The settings that define the machine rather than how it is used live in
 	// a window of their own. It is the same widgets, moved out of the page -
 	// so everything that reads and writes them stays as it is.
+	advNote = new QLabel(tr("The ZX Spectrum Next sets these itself, by its NextZXOS settings: they are on the Machine page"));
+	advNote->setWordWrap(true);
+	ui.verticalLayout_adv->insertWidget(0, advNote);
 	advWin = popOut(ui.advBox, "Machine: Advanced Settings");
 	// opened by the gear beside the model, as on every device row
 	QToolButton* advBtn = new QToolButton;
@@ -1389,106 +1392,116 @@ void SetupWin::apply() {
 // layout and the sound chips are set only when the page has them otherwise.
 void SetupWin::applyMachine() {
 	Computer* comp = conf.zx;
+	// the Next sets the greyed ones itself: what they show is not put back on it
+	bool own = (comp->hw->id == HW_ZXNEXT);
 // machine
 	emu_lock();		// roms and memory size are rebuilt below
 	xm_set_roms(roms);
 	comp->resbank = resTarget;
 	int msz = getRFIData(ui.mszbox);
-	double frq = xcpu_frq_parse(ui.cbCpuFrq->currentText(), comp->cpuFrq);
+	double frq = own ? comp->cpuFrq : xcpu_frq_parse(ui.cbCpuFrq->currentText(), comp->cpuFrq);
 	if (msz != shown.mem) xm_set_ram(msz);
 	if ((msz != shown.mem) || (frq != shown.cpu)) compSetBaseFrq(comp, frq);
-	xm_turbo_set(comp, getRFSData(cbCpuTurbo).toStdString());
+	if (!own) xm_turbo_set(comp, getRFSData(cbCpuTurbo).toStdString());
 	if (ui.sldSpeed->value() != xspeed_get())
 		xspeed_set(ui.sldSpeed->value());
-	comp->flgEM1 = ui.scrpwait->isChecked();
+	if (!own) comp->flgEM1 = ui.scrpwait->isChecked();
 	if (comp->hw->id == HW_ZX48) comp->mem->ramMask = MEM_128K - 1;		// TODO: find a better way
 	// NextZXOS finds the memory at power-on, by a test of its own: off and on again
-	if ((msz != shown.mem) && (comp->hw->id == HW_ZXNEXT)) xm_power_cycle();
+	if ((msz != shown.mem) && own) xm_power_cycle();
 	emu_unlock();
 // video
-	comp->vid->brdstep = ui.border4T->isChecked() ? 7 : 1;
-	comp_set_cont(comp, ui.contMem->isChecked());
-	comp->flgCNTI = ui.contIO->isChecked() ? 1 : 0;
-	comp_set_cont_pattern(comp, getRFIData(ui.cbContPattern));
-	comp->earback = getRFIData(ui.cbEarBack);
-	comp->fbus = getRFIData(ui.cbFloatBus);
-	comp->vid->ula->early = ui.cbEarlyTiming->isChecked();
-	comp_set_snow(comp, ui.cbSnow->isChecked() ? 1 : 0);
-	comp->flgSNOWX = ui.cbSnowCrash->isChecked() ? 1 : 0;
-	// the MIC level in the beeper or out of it, at once; left alone, the levels stay
-	// as the machine set them (the Next sets its own, nx_snd_fe)
-	int mic = ui.cbBeepMic->isChecked() ? 1 : 0;
-	if (comp->beep->mic != mic) {
-		comp->beep->mic = mic;
-		bc_out(comp->beep, comp->beep->lev, comp->tape->levRec);
+	if (!own) {
+		comp->vid->brdstep = ui.border4T->isChecked() ? 7 : 1;
+		comp_set_cont(comp, ui.contMem->isChecked());
+		comp->flgCNTI = ui.contIO->isChecked() ? 1 : 0;
+		comp_set_cont_pattern(comp, getRFIData(ui.cbContPattern));
+		comp->earback = getRFIData(ui.cbEarBack);
+		comp->fbus = getRFIData(ui.cbFloatBus);
+		comp->vid->ula->early = ui.cbEarlyTiming->isChecked();
+		comp_set_snow(comp, ui.cbSnow->isChecked() ? 1 : 0);
+		comp->flgSNOWX = ui.cbSnowCrash->isChecked() ? 1 : 0;
+		// the MIC level in the beeper or out of it, at once; left alone, the levels stay
+		// as the machine set them
+		int mic = ui.cbBeepMic->isChecked() ? 1 : 0;
+		if (comp->beep->mic != mic) {
+			comp->beep->mic = mic;
+			bc_out(comp->beep, comp->beep->lev, comp->tape->levRec);
+		}
+		// The ula type also picks the screen drawer. The reset above ran before this
+		// line and saw the old type, so it has to be redone here - but only while a
+		// plain zx screen is up: a machine sitting in one of its own modes keeps it
+		// and gets the drawer at its next reset.
+		if ((comp->vid->vmode == VID_NORMAL) || (comp->vid->vmode == VID_ULA_SCR))
+			zx_set_vmode(comp);
+		comp->vid->ula->enabled = ui.ulaPlus->isChecked() ? 1 : 0;
+		comp->flgDDP = ui.cbDDp->isChecked() ? 1 : 0;
+		// another layout than the machine has, or this one edited - in the editor at
+		// any time, Cancel or not (the border size goes on top of it in applyGlobal())
+		std::string lay = getRFText(ui.geombox);
+		xLayout* nlay = findLayout(lay);
+		if (nlay && ((lay != conf.layName) || memcmp(&nlay->lay, &conf.layGeom, sizeof(vLayout))))
+			xm_set_layout(lay);
 	}
-	// The ula type also picks the screen drawer. The reset above ran before this
-	// line and saw the old type, so it has to be redone here - but only while a
-	// plain zx screen is up: a machine sitting in one of its own modes keeps it
-	// and gets the drawer at its next reset.
-	if ((comp->vid->vmode == VID_NORMAL) || (comp->vid->vmode == VID_ULA_SCR))
-		zx_set_vmode(comp);
-	comp->vid->ula->enabled = ui.ulaPlus->isChecked() ? 1 : 0;
-	comp->flgDDP = ui.cbDDp->isChecked() ? 1 : 0;
-	// another layout than the machine has, or this one edited - in the editor at
-	// any time, Cancel or not (the border size goes on top of it in applyGlobal())
-	std::string lay = getRFText(ui.geombox);
-	xLayout* nlay = findLayout(lay);
-	if (nlay && ((lay != conf.layName) || memcmp(&nlay->lay, &conf.layGeom, sizeof(vLayout))))
-		xm_set_layout(lay);
 // sound
-	int psg = getRFIData(cbPsgCount);
-	int chips = (psg == PSG_NEXT) ? 3 : ((psg == PSG_TS) || (psg == PSG_TSFM)) ? 2 : (psg == PSG_ONE) ? 1 : 0;
-	int chtype = (psg == PSG_TSFM) ? SND_YM2203 : getRFIData(cbPsgType);
-	if ((psg != PSG_TSFM) && (chtype == SND_YM2203)) chtype = SND_YM;
-	int chstereo = getRFIData(cbPsgStereo);
-	double psgFrq = opt_get_psg_frq(cbPsgFrq) / psgFrqMul;	// 0: Auto
-	int tsType = (chips > 2) ? TS_ZXNEXT : (chips > 1) ? TS_NEDOPC : TS_NONE;
-	bool chipsNew = (comp->ts->type != tsType);
-	bool stereoNew = false;		// the chips' tick goes on: only the sound thread's copy is told
-	aymChip* chip[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
-	for (int i = 0; i < 3; i++) {			// one setting for all the chips
-		int type = (i < chips) ? chtype : SND_NONE;
-		if (chip[i]->type != type) {
-			chip_set_type(chip[i], type);
-			chipsNew = true;
+	if (!own) {
+		int psg = getRFIData(cbPsgCount);
+		int chips = (psg == PSG_NEXT) ? 3 : ((psg == PSG_TS) || (psg == PSG_TSFM)) ? 2 : (psg == PSG_ONE) ? 1 : 0;
+		int chtype = (psg == PSG_TSFM) ? SND_YM2203 : getRFIData(cbPsgType);
+		if ((psg != PSG_TSFM) && (chtype == SND_YM2203)) chtype = SND_YM;
+		int chstereo = getRFIData(cbPsgStereo);
+		double psgFrq = opt_get_psg_frq(cbPsgFrq) / psgFrqMul;	// 0: Auto
+		int tsType = (chips > 2) ? TS_ZXNEXT : (chips > 1) ? TS_NEDOPC : TS_NONE;
+		bool chipsNew = (comp->ts->type != tsType);
+		bool stereoNew = false;		// the chips' tick goes on: only the sound thread's copy is told
+		aymChip* chip[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
+		for (int i = 0; i < 3; i++) {			// one setting for all the chips
+			int type = (i < chips) ? chtype : SND_NONE;
+			if (chip[i]->type != type) {
+				chip_set_type(chip[i], type);
+				chipsNew = true;
+			}
+			if (chip[i]->stereo != chstereo) {
+				chip[i]->stereo = chstereo;
+				stereoNew = true;
+			}
 		}
-		if (chip[i]->stereo != chstereo) {
-			chip[i]->stereo = chstereo;
-			stereoNew = true;
+		// a chip of another type takes its clock here too (a YM2203 runs at twice the AY's)
+		if (chipsNew || (psgFrq != shown.psg)) {
+			ts_set_frq(comp->ts, psgFrq, comp->cpuFrq);
+			comp->ts->type = tsType;
+			comp->sndSeed = 1;		// the chips the sound thread mixes take all of it
+		} else if (stereoNew) {
+			comp->sndSeed = 1;
 		}
+		comp->gs->enable = gsBox->currentIndex();
+		comp->sdrv->type = getRFIData(sdrvBox);
+		comp->saa->enabled = saaBox->currentIndex() ? 1 : 0;
 	}
-	// a chip of another type takes its clock here too (a YM2203 runs at twice the AY's)
-	if (chipsNew || (psgFrq != shown.psg)) {
-		ts_set_frq(comp->ts, psgFrq, comp->cpuFrq);
-		comp->ts->type = tsType;
-		comp->sndSeed = 1;		// the chips the sound thread mixes take all of it
-	} else if (stereoNew) {
-		comp->sndSeed = 1;
-	}
-	comp->gs->enable = gsBox->currentIndex();
-	comp->sdrv->type = getRFIData(sdrvBox);
-	comp->saa->enabled = saaBox->currentIndex() ? 1 : 0;
 // input
 	comp->keyb->pcmode = getRFIData(cbScanTab);
-	comp->mouse->enable = mouseBox->currentIndex();
-	comp->mouse->hasWheel = ratWheel->isChecked() ? 1 : 0;
-	comp->joy->type = joyBox->currentIndex() ? XJ_KEMPSTON : XJ_NONE;
-	comp->joy->extbuttons = (joyBox->currentIndex() == 2) ? 1 : 0;
-// flp
-	difSetHW(comp->dif, getRFIData(diskTypeBox));
-	// a drive taken off the cable takes its disk with it: a changed one is
-	// saved first, or the drive stays
-	int fit = getRFIData(drvCountBox);
-	if (getRFIData(diskTypeBox) == DIF_P3DOS) fit = qMin(fit, 2);
-	for (int i = 3; i >= fit; i--) {
-		Floppy* dflp = comp->dif->flp[i];
-		if (dflp->fitted && dflp->insert && dflp->changed && (saveChangedDisk(comp, i) != ERR_OK))
-			fit = i + 1;
+	if (!own) {
+		comp->mouse->enable = mouseBox->currentIndex();
+		comp->mouse->hasWheel = ratWheel->isChecked() ? 1 : 0;
+		comp->joy->type = joyBox->currentIndex() ? XJ_KEMPSTON : XJ_NONE;
+		comp->joy->extbuttons = (joyBox->currentIndex() == 2) ? 1 : 0;
 	}
-	difSetDrives(comp->dif, fit);
+// flp
+	if (!own) {
+		difSetHW(comp->dif, getRFIData(diskTypeBox));
+		// a drive taken off the cable takes its disk with it: a changed one is
+		// saved first, or the drive stays
+		int fit = getRFIData(drvCountBox);
+		if (getRFIData(diskTypeBox) == DIF_P3DOS) fit = qMin(fit, 2);
+		for (int i = 3; i >= fit; i--) {
+			Floppy* dflp = comp->dif->flp[i];
+			if (dflp->fitted && dflp->insert && dflp->changed && (saveChangedDisk(comp, i) != ERR_OK))
+				fit = i + 1;
+		}
+		difSetDrives(comp->dif, fit);
+	}
 // hdd
-	ide_set_type(comp->ide, getRFIData(hiface));
+	if (!own) ide_set_type(comp->ide, getRFIData(hiface));
 	// what is mounted is the Drives menu's, a folder read again only with the power off
 // divmmc: a board put on, off or given other RAM powers the machine off and on
 	int divModel = (divBox->currentIndex() && hw_takes_divmmc(comp->hw)) ? DIV_MMC : DIV_NONE;
@@ -2205,9 +2218,14 @@ void SetupWin::buildDevices() {
 	btn = devRow(grid, tr("Cartridge"), slotSum, NULL, NULL);
 	slotRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << slotSum << btn;
 
+	// a row's name, choice and gear
+	auto rowOf = [](QGridLayout* g, QWidget* choice, QToolButton* gear) {
+		return QList<QWidget*>() << g->itemAtPosition(g->rowCount() - 1, 0)->widget() << choice << gear;
+	};
 	grid = devGroup(left, ":/images/joystick.png", tr("Input"));
 	joyBox = devCombo(QStringList() << tr("None") << tr("Kempston 5-bit") << tr("Kempston 8-bit"));
-	devRow(grid, tr("Joystick"), joyBox, NULL, NULL);
+	btn = devRow(grid, tr("Joystick"), joyBox, NULL, NULL);
+	nextOwnRow << rowOf(grid, joyBox, btn);
 	mouseBox = devCombo(QStringList() << tr("None") << tr("Kempston mouse"));
 	xOptSheet mouse;
 	mouse.field(tr("Sensitivity"), fieldPair(sldSensitivity, NULL, true),
@@ -2215,7 +2233,8 @@ void SetupWin::buildDevices() {
 	mouse.line();
 	mouse.check(ratWheel, tr("Wheel"), tr("The wheel is read too, as on the extended Kempston mouse"));
 	mouse.check(cbSwapButtons, tr("Swap buttons"), tr("The left and right buttons trade places"));
-	devRow(grid, tr("Mouse"), mouseBox, mouse.body, "Machine: Mouse");
+	btn = devRow(grid, tr("Mouse"), mouseBox, mouse.body, "Machine: Mouse");
+	nextOwnRow << rowOf(grid, mouseBox, btn).mid(0, 2);	// sensitivity and buttons are this computer's
 	btn = devRow(grid, tr("PC keyboard"), cbScanTab, NULL, NULL);
 	kbdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << cbScanTab << btn;
 	left->addStretch(1);
@@ -2228,8 +2247,10 @@ void SetupWin::buildDevices() {
 	psg.field(tr("Stereo"), cbPsgStereo);
 	psg.field(tr("Separation"), fieldPair(sldPsgSep, labPsgSep, true),
 		tr("100%: the channels kept apart, 0%: mono"));
-	devRow(grid, tr("PSG"), cbPsgCount, psg.body, "Machine: PSG");
-	devRow(grid, tr("DAC"), sdrvBox, NULL, NULL);
+	btn = devRow(grid, tr("PSG"), cbPsgCount, psg.body, "Machine: PSG");
+	nextOwnRow << rowOf(grid, cbPsgCount, btn);
+	btn = devRow(grid, tr("DAC"), sdrvBox, NULL, NULL);
+	nextOwnRow << rowOf(grid, sdrvBox, btn);
 	gsBox = devCombo(QStringList() << tr("Off") << tr("On"));
 	xOptSheet gs;
 	gsRomBox = new QComboBox;
@@ -2243,12 +2264,15 @@ void SetupWin::buildDevices() {
 	gs.field(tr("ROM"), fieldPair(gsRomBox, gsRomBtn, false));
 	gs.line();
 	gs.check(gsrbox, tr("Reset"), tr("The card is reset with the machine"));
-	devRow(grid, tr("General Sound"), gsBox, gs.body, "Machine: General Sound");
+	btn = devRow(grid, tr("General Sound"), gsBox, gs.body, "Machine: General Sound");
+	nextOwnRow << rowOf(grid, gsBox, btn);
 	saaBox = devCombo(QStringList() << tr("Off") << tr("On"));
-	devRow(grid, tr("SAA1099"), saaBox, NULL, NULL);
+	btn = devRow(grid, tr("SAA1099"), saaBox, NULL, NULL);
+	nextOwnRow << rowOf(grid, saaBox, btn);
 
 	grid = devGroup(right, ":/images/grp-board.png", tr("Board"));
-	devRow(grid, tr("Turbo"), cbCpuTurbo, NULL, NULL);
+	btn = devRow(grid, tr("Turbo"), cbCpuTurbo, NULL, NULL);
+	nextOwnRow << rowOf(grid, cbCpuTurbo, btn);
 	cbEspLan = new QCheckBox;
 	xOptSheet esp;
 	esp.check(cbEspLan, tr("Server on the network"),
@@ -2282,8 +2306,89 @@ void SetupWin::buildDevices() {
 		foreach(QLabel* lab, labs) wid = qMax(wid, lab->sizeHint().width());
 		foreach(QLabel* lab, labs) lab->setMinimumWidth(wid);
 	}
-	ui.verticalLayout_39->insertWidget(1, area);
+	// the Next's own settings, as NextZXOS's NMI menu shows them: two columns,
+	// General and Sound, then what has no line there
+	xIconGroup* nx = new xIconGroup(":/images/grp-nmi.png", tr("NextZXOS settings"));
+	nxBox = nx;
+	QGridLayout* ng = new QGridLayout(nx);
+	ng->setColumnMinimumWidth(2, 24);
+	ng->setColumnStretch(1, 1);
+	ng->setColumnStretch(4, 1);
+	static const char* const gen[] = {QT_TR_NOOP("Frequency"), QT_TR_NOOP("Timings"), QT_TR_NOOP("Contention"),
+		QT_TR_NOOP("Timex RD"), QT_TR_NOOP("ULAplus"), QT_TR_NOOP("Keyboard"), QT_TR_NOOP("Mouse DPI"), QT_TR_NOOP("Mouse Btn")};
+	static const char* const snd[] = {QT_TR_NOOP("Stereo"), QT_TR_NOOP("Int. speaker"), QT_TR_NOOP("BEEPer"),
+		QT_TR_NOOP("TurboSound"), QT_TR_NOOP("Covox"), QT_TR_NOOP("Audiochip"), QT_TR_NOOP("AY 0/1/2 mono")};
+	QLabel* head[2] = {new QLabel(tr("General")), new QLabel(tr("Sound"))};
+	for (int c = 0; c < 2; c++) {
+		QFont f = head[c]->font();
+		f.setBold(true);
+		head[c]->setFont(f);
+		ng->addWidget(head[c], 0, c * 3, 1, 2);
+	}
+	auto put = [this, ng](const char* name, int row, int col, int span) {
+		QLabel* val = new QLabel;
+		ng->addWidget(new QLabel(tr(name)), row, col);
+		ng->addWidget(val, row, col + 1, 1, span);
+		nxVal << val;
+	};
+	for (int i = 0; i < 8; i++) put(gen[i], i + 1, 0, 1);
+	for (int i = 0; i < 7; i++) put(snd[i], i + 1, 3, 1);
+	put(QT_TR_NOOP("Joysticks"), 9, 0, 4);
+	put(QT_TR_NOOP("CPU speed"), 10, 0, 4);
+	QLabel* how = new QLabel(tr("Set by the machine itself: NextZXOS, NMI menu > Settings"));
+	QFont hf = how->font();
+	hf.setItalic(true);
+	how->setFont(hf);
+	how->setWordWrap(true);
+	ng->addWidget(how, 11, 0, 1, 5);
+
+	QWidget* page = new QWidget;
+	QVBoxLayout* pv = new QVBoxLayout(page);
+	pv->setContentsMargins(0, 0, 0, 0);
+	pv->addWidget(area);
+	pv->addWidget(nx);
+	ui.verticalLayout_39->insertWidget(1, page);
 	tidySoundPage();
+}
+
+// What the Next has set, in NextZXOS's words, as the machine has it now.
+void SetupWin::fillNextGroup() {
+	Computer* comp = conf.zx;
+	bool next = (comp->hw->id == HW_ZXNEXT);
+	nxBox->setVisible(next);
+	if (!next) return;
+	auto rd = [comp](int r) {return next_nr_peek(comp, r);};
+	auto onoff = [](int v) {return v ? tr("On") : tr("Off");};
+	// the menu calls the +3 timing the Next's own
+	static const char* const tim[4] = {"48K", "128K", "Next (+3)", "Pentagon"};
+	static const char* const dpi[4] = {QT_TR_NOOP("Low"), QT_TR_NOOP("Standard"), QT_TR_NOOP("Medium"), QT_TR_NOOP("High")};
+	static const char* const chip[4] = {"YM", "AY", "ZXN-8950", QT_TR_NOOP("Off")};
+	static const char* const joy[8] = {"Sinclair 2", "Kempston 1", "Cursor", "Sinclair 1", "Kempston 2", "MD 1", "MD 2",
+		QT_TR_NOOP("user keys")};
+	static const char* const mhz[4] = {"3.5", "7", "14", "28"};
+	int r05 = rd(0x05), r06 = rd(0x06), r08 = rd(0x08), r09 = rd(0x09), r0a = rd(0x0a);
+	QStringList v;
+	// General
+	v << ((r05 & 0x04) ? "60 Hz" : "50 Hz");		// the one in use: a read merges it in
+	v << tim[comp->next->timing & 3];
+	v << onoff(!(r08 & 0x40));
+	v << onoff(r08 & 0x04);
+	v << onoff(rd(0x85) & 0x01);
+	v << ((r08 & 0x01) ? tr("Issue 2") : tr("Issue 3"));
+	v << tr(dpi[r0a & 3]);
+	v << ((r0a & 0x08) ? tr("Right/Left") : tr("Left/Right"));
+	// Sound
+	v << ((r08 & 0x20) ? "ACB" : "ABC");
+	v << onoff(r08 & 0x10);
+	v << ((r06 & 0x40) ? tr("Int. speaker only") : tr("All"));
+	v << onoff(r08 & 0x02);
+	v << onoff(r08 & 0x08);
+	v << tr(chip[r06 & 3]);
+	v << QString("%0 %1 %2").arg(onoff(r09 & 0x20), onoff(r09 & 0x40), onoff(r09 & 0x80));
+	// no line in the menu
+	v << tr("Left %0, right %1").arg(tr(joy[(((r05 >> 3) & 1) << 2) | ((r05 >> 6) & 3)]), tr(joy[(((r05 >> 1) & 1) << 2) | ((r05 >> 4) & 3)]));
+	v << QString("%0 MHz").arg(mhz[(rd(0x07) >> 4) & 3]);
+	for (int i = 0; i < nxVal.size(); i++) nxVal[i]->setText(v.value(i));
 }
 
 // The volumes, named the way the devices are, with the master set apart.
@@ -2469,10 +2574,23 @@ void SetupWin::showDevRows() {
 	foreach(QWidget* w, uartRow) w->setVisible(hw == HW_ZXNEXT);
 	showDriveRows();
 	showBoardStorage();
+	// the Next sets these itself, by its nextregs: shown below, in NextZXOS's words
+	bool next = (hw == HW_ZXNEXT);
+	QString own = next ? tr("Set by the Next itself: see NextZXOS settings below") : QString();
+	foreach(QWidget* w, nextOwnRow) {
+		w->setEnabled(!next);
+		if (qobject_cast<QComboBox*>(w)) w->setToolTip(own);
+	}
+	ratWheel->setEnabled(!next);		// always read on the Next
+	ui.gbCpu->setEnabled(!next);
+	ui.gbUla->setEnabled(!next);
+	ui.gbBoard->setEnabled(!next);
+	advNote->setVisible(next);
+	fillNextGroup();
 	QString fixed = tr("Built into this board");
 	// ALF reads its two joysticks its own way, on #1F and #FE
-	joyBox->setEnabled(hw != HW_ALF);
-	joyBox->setToolTip((hw == HW_ALF) ? fixed : QString());
+	joyBox->setEnabled((hw != HW_ALF) && !next);
+	if (hw == HW_ALF) joyBox->setToolTip(fixed);
 	// the +2A and +3 never page TR-DOS in
 	QStandardItemModel* difs = qobject_cast<QStandardItemModel*>(diskTypeBox->model());
 	int bdi = diskTypeBox->findData(DIF_BDI);
@@ -2487,16 +2605,17 @@ void SetupWin::showDevRows() {
 void SetupWin::showBoardStorage() {
 	const xMachine* mac = xm_find(conf.macId);
 	int bi = mac ? mac->builtin : 0;
-	bool board = divBox->currentIndex() && hw_takes_divmmc(conf.zx->hw);
+	bool next = (conf.zx->hw->id == HW_ZXNEXT);
+	bool board = (divBox->currentIndex() && hw_takes_divmmc(conf.zx->hw)) || next;
 	QString fixed = tr("Built into this board");
-	QString out = tr("Off while the divMMC is on");
+	QString out = next ? tr("The ZX Spectrum Next has no such device") : tr("Off while the divMMC is on");
 	foreach(QWidget* w, diskRow) w->setEnabled(!board);
 	foreach(QWidget* w, hddRow) w->setEnabled(!board);
 	diskTypeBox->setEnabled(!board && !(bi & MAC_BI_DISK));
 	diskTypeBox->setToolTip(board ? out : (bi & MAC_BI_DISK) ? fixed : QString());
 	hiface->setEnabled(!board && !(bi & MAC_BI_IDE));
 	hiface->setToolTip(board ? out : (bi & MAC_BI_IDE) ? fixed : QString());
-	divNote->setVisible(board);
+	divNote->setVisible(board && !next);
 }
 
 // THE WHOLE CONFIGURATION, IN AND OUT
@@ -2974,8 +3093,8 @@ void SetupWin::chapsg() {
 	if (types && (fmrow >= 0)) types->item(fmrow)->setEnabled(fm);
 	if (fm) setRFIndex(cbPsgType, SND_YM2203);
 	else if (getRFIData(cbPsgType) == SND_YM2203) setRFIndex(cbPsgType, SND_YM);
-	cbPsgType->setEnabled(on && !fm);
-	cbPsgFrq->setEnabled(on);
+	cbPsgType->setEnabled(on && !fm && !own);
+	cbPsgFrq->setEnabled(on && !own);
 	cbPsgStereo->setEnabled(on && !own);
 	cbPsgStereo->setToolTip(own ? tr("Set by the machine itself") : QString());
 	// the clock is shown as the chip's own, and set as an AY's
