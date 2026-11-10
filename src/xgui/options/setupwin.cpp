@@ -678,7 +678,12 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	QToolButton* advBtn = new QToolButton;
 	advBtn->setIcon(QIcon(":/images/settings.png"));
 	advBtn->setToolTip(tr("The settings that define this machine rather than how you use it"));
-	connect(advBtn, &QToolButton::released, advWin, [this]() {advWin->show(); advWin->raise();});
+	// sized to what it shows: the Next's note comes and goes with the machine
+	connect(advBtn, &QToolButton::released, advWin, [this]() {
+		advWin->show();
+		advWin->raise();
+		QTimer::singleShot(0, advWin, [this]() {advWin->adjustSize();});	// once its layout has the note's state
+	});
 	ui.gridLayout->removeWidget(ui.machbox);
 	ui.gridLayout->addWidget(fieldPair(ui.machbox, advBtn, false), 0, 2, 1, 3);
 
@@ -1204,6 +1209,7 @@ void SetupWin::fillPages() {
 	if (idx < 1) idx = 0;
 	ui.keyMapBox->setCurrentIndex(idx);
 	mouseBox->setCurrentIndex(comp->mouse->enable ? 1 : 0);
+	nxMouseOn->setChecked(comp->mouse->enable);
 	ratWheel->setChecked(comp->mouse->hasWheel);
 	cbSwapButtons->setChecked(comp->mouse->swapButtons);
 	sldSensitivity->setValue(comp->mouse->sensitivity * 1000.0f);
@@ -1395,7 +1401,7 @@ void SetupWin::apply() {
 // layout and the sound chips are set only when the page has them otherwise.
 void SetupWin::applyMachine() {
 	Computer* comp = conf.zx;
-	// the Next sets the greyed ones itself: what they show is not put back on it
+	// the Next sets these itself: what the hidden rows show is not put back on it
 	bool own = (comp->hw->id == HW_ZXNEXT);
 // machine
 	emu_lock();		// roms and memory size are rebuilt below
@@ -1483,8 +1489,8 @@ void SetupWin::applyMachine() {
 	}
 // input
 	comp->keyb->pcmode = getRFIData(cbScanTab);
+	comp->mouse->enable = own ? (nxMouseOn->isChecked() ? 1 : 0) : mouseBox->currentIndex();
 	if (!own) {
-		comp->mouse->enable = mouseBox->currentIndex();
 		comp->mouse->hasWheel = ratWheel->isChecked() ? 1 : 0;
 		comp->joy->type = joyBox->currentIndex() ? XJ_KEMPSTON : XJ_NONE;
 		comp->joy->extbuttons = (joyBox->currentIndex() == 2) ? 1 : 0;
@@ -2091,20 +2097,20 @@ static QGridLayout* devGroup(QVBoxLayout* col, const char* icon, const QString& 
 // one label width per column, so the choices line up from group to group
 static void alignLabels(const QList<QVBoxLayout*>& cols) {
 	foreach(QVBoxLayout* col, cols) {
-		QList<QLabel*> labs;
+		QList<QWidget*> labs;		// a label, or a check box as the Next's Mouse
 		for (int i = 0; i < col->count(); i++) {
 			QWidget* box = col->itemAt(i)->widget();
 			if (!box) continue;
 			QGridLayout* g = qobject_cast<QGridLayout*>(box->layout());
 			for (int row = 0; g && (row < g->rowCount()); row++) {
 				QLayoutItem* itm = g->itemAtPosition(row, 0);
-				QLabel* lab = itm ? qobject_cast<QLabel*>(itm->widget()) : NULL;
-				if (lab) labs << lab;
+				QWidget* w = itm ? itm->widget() : NULL;
+				if (qobject_cast<QLabel*>(w) || qobject_cast<QCheckBox*>(w)) labs << w;
 			}
 		}
 		int wid = 0;
-		foreach(QLabel* lab, labs) wid = qMax(wid, lab->sizeHint().width());
-		foreach(QLabel* lab, labs) lab->setMinimumWidth(wid);
+		foreach(QWidget* lab, labs) wid = qMax(wid, lab->sizeHint().width());
+		foreach(QWidget* lab, labs) lab->setMinimumWidth(wid);
 	}
 }
 
@@ -2289,10 +2295,7 @@ void SetupWin::buildDevices() {
 	right->addStretch(1);
 	alignLabels(QList<QVBoxLayout*>() << left << right);
 
-	// THE NEXT'S OWN
-	// NextZXOS sets the Next up itself: its settings are shown here in its menu's
-	// words, grouped as the usual devices are, with this computer's settings for
-	// the Next (card, tape, mouse, UARTs) among them
+	// THE NEXT'S OWN: NextZXOS's settings in its menu's words, this computer's for the Next among them
 	nxArea = new QWidget;
 	QVBoxLayout* nv = new QVBoxLayout(nxArea);
 	nv->setContentsMargins(0, 0, 0, 0);
@@ -2304,7 +2307,7 @@ void SetupWin::buildDevices() {
 	tf.setBold(true);
 	title->setFont(tf);
 	nxCore = new QLabel;
-	QLabel* whose = new QLabel(tr("(the grey ones are set by NextZXOS)"));
+	QLabel* whose = new QLabel(tr("(the gray ones are set by NextZXOS)"));
 	whose->setToolTip(tr("NextZXOS sets these itself: in its NMI menu,\nSettings. What is changed there takes\neffect when the menu closes"));
 	QFrame* rule = new QFrame;
 	rule->setFrameShape(QFrame::HLine);
@@ -2321,9 +2324,7 @@ void SetupWin::buildDevices() {
 	ncols->addLayout(nl, 1);
 	ncols->addLayout(nr, 1);
 	nv->addLayout(ncols);
-	// What NextZXOS set, greyed as a choice made elsewhere is: a value in a field,
-	// on and off as a check box; the tip has what else it could be. A field is as
-	// wide as its widest value, then as the widest of its column (lineUp)
+	// NextZXOS's values grayed: a field (as wide as its column's widest, lineUp) or a check box
 	auto field = [this](const char* name, const QStringList& vals, const QString& tip) {
 		QLineEdit* f = new QLineEdit;
 		f->setEnabled(false);
@@ -2409,6 +2410,12 @@ void SetupWin::buildDevices() {
 	line(grid, tr("Mouse"), QList<QWidget*>() << field("Mouse DPI", QStringList() << tr("Standard DPI") << tr("Medium DPI"),
 			tr("Low, Standard, Medium or High DPI"))
 		<< field("Mouse Btn", QStringList() << tr("Right/Left"), tr("The buttons: Left/Right, or swapped,\nRight/Left")), gear(mouseGear), false);
+	// the row's name is this computer's switch: the mouse in use, DPI and buttons NextZXOS's
+	nxMouseOn = new QCheckBox(tr("Mouse"));
+	nxMouseOn->setToolTip(tr("This computer's mouse as the Next's: a click\nin the window takes the pointer"));
+	QLayoutItem* mlab = grid->itemAtPosition(grid->rowCount() - 1, 0);
+	delete mlab->widget();
+	grid->addWidget(nxMouseOn, grid->rowCount() - 1, 0);
 	line(grid, tr("Keyboard"), QList<QWidget*>() << field("Keyboard", QStringList() << tr("Issue 3"),
 		tr("Issue 3 or Issue 2: what bit 6 of #FE\nreads with no tape playing")), NULL, false);
 	lineUp(grid);
@@ -2470,6 +2477,7 @@ void SetupWin::buildDevices() {
 void SetupWin::fillNextGroup() {
 	Computer* comp = conf.zx;
 	if (comp->hw->id != HW_ZXNEXT) return;
+	emu_lock();		// Options pauses the machine, but does not wait for it
 	auto rd = [comp](int r) {return next_nr_peek(comp, r);};
 	// the menu calls the +3 timing the Next's own
 	static const char* const tim[4] = {"48K", "128K", "Next (+3)", "Pentagon"};
@@ -2505,6 +2513,7 @@ void SetupWin::fillNextGroup() {
 	f["Contention"] = !(r08 & 0x40);
 	f["Timex RD"] = r08 & 0x04;
 	f["ULAplus"] = rd(0x85) & 0x01;
+	emu_unlock();
 	for (auto it = nxText.begin(); it != nxText.end(); ++it) it.value()->setText(v.value(it.key()));
 	for (auto it = nxFlag.begin(); it != nxFlag.end(); ++it) it.value()->setChecked(f.value(it.key()));
 }
@@ -3199,9 +3208,7 @@ void SetupWin::chapsg() {
 	int psg = getRFIData(cbPsgCount);
 	int on = (psg != PSG_NONE);
 	int fm = (psg == PSG_TSFM);
-	// the Next mixes its chips itself, by its nextregs 08 and 09
-	bool own = (conf.zx->hw->id == HW_ZXNEXT);
-	int split = on && !own && (getRFIData(cbPsgStereo) != AY_MONO);
+	int split = on && (getRFIData(cbPsgStereo) != AY_MONO);
 	labPsgSep->setText(QString("%0%").arg(sldPsgSep->value()));
 	// TurboSound FM is two YM2203 and nothing else; the others never are
 	QStandardItemModel* types = qobject_cast<QStandardItemModel*>(cbPsgType->model());
@@ -3211,8 +3218,7 @@ void SetupWin::chapsg() {
 	else if (getRFIData(cbPsgType) == SND_YM2203) setRFIndex(cbPsgType, SND_YM);
 	cbPsgType->setEnabled(on && !fm);
 	cbPsgFrq->setEnabled(on);
-	cbPsgStereo->setEnabled(on && !own);
-	cbPsgStereo->setToolTip(own ? tr("Set by the machine itself") : QString());
+	cbPsgStereo->setEnabled(on);
 	// the clock is shown as the chip's own, and set as an AY's
 	int mul = chip_frq_mul(getRFIData(cbPsgType));
 	double ay = opt_get_psg_frq(cbPsgFrq) / psgFrqMul;	// 0: Auto

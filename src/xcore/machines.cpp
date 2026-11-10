@@ -484,14 +484,12 @@ static bool mac_known(const QString& id) {
 // it is written out against the stock parent, carrying what the parent was
 // patched with as its own, and stays put when that patch changes later.
 
-// The Next sets these itself, by its nextregs (NextZXOS's settings), or has no
-// such device: Options greys them, and a user's file keeps none of them - an
-// old one's are dropped, so the machine stays as it ships.
+// What the Next sets itself, or has no such device: not in a user's file, an old one's dropped
 static const char* const nextOwnKeys[] = {
 	"cpu.frq", "cpu.turbo", "contio", "contmem", "issue", "scrp.wait",
 	"geometry", "contPattern", "earlyTiming", "4t-border", "snow", "snow.crash", "floatbus", "ULAplus", "DDpal",
 	"psg.count", "psg.type", "psg.frq", "psg.stereo", "gs", "saa", "soundrive", "beeper.mic",
-	"disk", "drives", "ide", "mouse", "mouse.wheel", "joy", "joy.buttons", NULL
+	"disk", "drives", "ide", "mouse.wheel", "joy", "joy.buttons", NULL
 };
 
 static bool mac_next_owns_key(const std::string& name) {

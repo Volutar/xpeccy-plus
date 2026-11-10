@@ -1556,12 +1556,12 @@ int next_nr_peek(Computer* comp, int r) {
 	return nx_nr_read(comp, r);
 }
 
-// NextZXOS's version as its ROM gives it - "... Garry Lancaster v2.09", the last
-// character with bit 7 set - in the SRAM the firmware loaded the ROM to
+// "... Garry Lancaster v2.09" in NextZXOS's ROM, its last character with bit 7 set
 void next_os_version(Computer* comp, char* buf, int len) {
 	static const char key[] = "Lancaster v";
 	const int kl = sizeof(key) - 1;
 	unsigned char* sram = comp->mem->ramData;
+	if (len < 2) return;
 	buf[0] = 0;
 	for (int i = 0; i + kl < 0x10000; i++) {
 		if (memcmp(sram + i, key, kl)) continue;
