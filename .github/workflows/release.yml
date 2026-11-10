@@ -53,6 +53,7 @@ jobs:
     secrets: inherit
     with:
       release: true
+      arm64: true
 
   publish:
     name: draft the release

@@ -9,8 +9,8 @@ name: Windows
 # one. The weekly run is there to notice a runner-image change that nobody in
 # this repository caused.
 #
-# win-arm64 is built only when asked ("arm64"), and by the weekly run: it waits
-# for a check on a real ARM64 machine before nightly and release take it.
+# win-arm64 is built when asked ("arm64"): nightly and release ask, and so does
+# the weekly run, MSYS2 being a rolling release that can change under it.
 
 on:
   workflow_dispatch:

@@ -60,6 +60,8 @@ jobs:
     uses: ./.github/workflows/windows.yml
     # PGO_SSH_KEY: the private training set
     secrets: inherit
+    with:
+      arm64: true
 
   # all three or none: a dev build missing a platform looks like the platform
   # was dropped rather than broken

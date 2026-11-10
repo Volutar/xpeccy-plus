@@ -11,6 +11,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **A build for Windows 11 on ARM** (`win-arm64`), for computers with Snapdragon and other
+  ARM64 chips: it runs natively, about 1.7 times as fast as the x64 build does there.
+  *(thanks to Loccy for the way to build it, a fix and the test on his Surface)*
 - **Debugging from VS Code with DeZog**: set breakpoints on the lines of your source, step,
   and see the registers, memory and banks in VS Code while the program runs in Xpeccy+. Turn
   it on with DeZog port in Options > Application, or `--dezog`.
