@@ -94,9 +94,14 @@ jobs:
           for ch in win-x64.zip win-x86-legacy.zip linux-x86_64.AppImage macos-arm64.dmg; do
             gh release download "$TAG" -p "*-$ch" -D "push/${ch%.*}"
           done
-          # win-arm64 since 2026.10: a release before it has none
-          gh release download "$TAG" -p "*-win-arm64.zip" -D push/win-arm64 \
-            || { echo "no win-arm64 in $TAG"; rm -rf push/win-arm64; }
+          # win-arm64 since 2026.10: a release before it has none. Asked first, so a
+          # failed download of one that is there still stops here
+          names=$(gh release view "$TAG" --json assets -q '.assets[].name')
+          if grep -q -- '-win-arm64\.zip$' <<< "$names"; then
+            gh release download "$TAG" -p "*-win-arm64.zip" -D push/win-arm64
+          else
+            echo "no win-arm64 in $TAG"
+          fi
           # the version as the asset names give it: 2026.9, or 2026.10-dev+20261101
           ver=$(basename push/win-x64/*.zip)
           ver=${ver#xpeccy-plus-}
