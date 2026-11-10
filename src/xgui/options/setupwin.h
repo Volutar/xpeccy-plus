@@ -186,6 +186,9 @@ class SetupWin : public QDialog {
 		QCheckBox* nxMouseOn;		// the Next's mouse row: this computer's mouse in use, or not
 		QList<QWidget*> drvRow[4];
 		QComboBox* drvCountBox;
+		// screenshots
+		QComboBox* cbShotScale;
+		QLineEdit* leShotName;
 		// video recording
 		QLineEdit *leRecFfmpeg, *leRecDir, *leRecExtra, *leRecVOver, *leRecSOver;
 		QComboBox *cbRecSrc, *cbRecScale, *cbRecFps, *cbRecBox, *cbRecCodec, *cbRecPreset, *cbRecAcodec, *cbRecAbr, *cbRecChroma;

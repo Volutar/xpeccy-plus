@@ -117,7 +117,10 @@ void copyFile(const char*, const char*);
 // a file that ships inside the binary, replaceable by one of the user's own
 QString xres_dir(const char*);
 QString xres_root(const char*);
+#define SHOT_SCALE_MAX	4
+#define SHOT_NAME_DEF	"xpeccy-plus_%d_%t_%image_%n"
 QString shot_dir();		// where screenshots go: the folder set, or home if it is not there
+QString shot_path(const QString& ext);	// a new file there, named by the template
 QString xres_path(const char*, const QString&);
 QStringList xres_list(const char*, const QStringList&);
 
@@ -564,6 +567,7 @@ enum {
 	XCUT_MENUBAR,
 	XCUT_SCRSHOT,
 	XCUT_COMBOSHOT,
+	XCUT_SCRCOPY,
 	XCUT_RES_DOS,
 	XCUT_RES_48,
 	XCUT_RES_128,
@@ -1115,8 +1119,10 @@ struct xConfig {
 		unsigned noBorder:1;
 		int count;
 		int interval;
+		int scale;		// 1..SHOT_SCALE_MAX of the machine's dots, 0 the window's
 		std::string format;
 		std::string dir;
+		std::string name;	// the file name's template, see shot_path()
 	} scrShot;
 	xRecord rec;
 	struct {

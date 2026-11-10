@@ -488,6 +488,22 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 		QString key = QString::fromStdString(it->first);
 		ui.ssfbox->addItem((key == "hobeta") ? QString("Hobeta") : key.toUpper(), key);
 	}
+	// the size, after the format; the window's zoom last, as it always was
+	cbShotScale = new QComboBox;
+	for (int n = 1; n <= SHOT_SCALE_MAX; n++)
+		cbShotScale->addItem(QString("Scale x%0").arg(n), n);
+	cbShotScale->addItem(tr("Window size"), 0);
+	cbShotScale->setToolTip(tr("x1: a pixel for each dot of the machine;\n"
+		"a hi-res mode keeps all its dots, lines doubled\nWindow size: as big as in the window"));
+	ui.horizontalLayout_3->insertWidget(1, cbShotScale);
+	leShotName = new QLineEdit;
+	leShotName->setPlaceholderText(SHOT_NAME_DEF);
+	// rich text, a list as Recording's template has it
+	leShotName->setToolTip(tr("<nobr><b>%d</b> date, 20260929</nobr><br><nobr><b>%t</b> time, 153012</nobr><br>"
+		"<nobr><b>%image</b> the image in use, else the machine</nobr><br><nobr><b>%machine</b> the machine</nobr><br>"
+		"<nobr><b>%n</b> number, 001 on</nobr>"));
+	ui.gridLayout_3->addWidget(new QLabel(tr("Name")), 2, 0);
+	ui.gridLayout_3->addWidget(leShotName, 2, 1);
 	ui.cbContPattern->addItem("No contention", CONT_NONE);
 	ui.cbContPattern->addItem("Ferranti (48K, 128K, +2)", CONT_PATA);
 	ui.cbContPattern->addItem("Amstrad (+2A, +3)", CONT_PATB);
@@ -1146,6 +1162,8 @@ void SetupWin::fillPages() {
 	ui.scntbox->setValue(conf.scrShot.count);
 	ui.sintbox->setValue(conf.scrShot.interval);
 	ui.ssNoBord->setChecked(conf.scrShot.noBorder);
+	setRFIndex(cbShotScale, conf.scrShot.scale);
+	leShotName->setText(QString::fromStdString(conf.scrShot.name));
 	fillRecording();
 	ui.geombox->clear();
 	foreach(xLayout lay, conf.layList) {
@@ -1579,6 +1597,8 @@ void SetupWin::applyGlobal() {
 	conf.scrShot.count = ui.scntbox->value();
 	conf.scrShot.interval = ui.sintbox->value();
 	conf.scrShot.noBorder = ui.ssNoBord->isChecked() ? 1 : 0;
+	conf.scrShot.scale = getRFIData(cbShotScale);
+	conf.scrShot.name = leShotName->text().trimmed().toStdString();
 	applyRecording();
 	vid_set_border_mode(ui.bszsld->value());
 	// with no shaders the list holds None only: the chosen one stays for a run that has them
