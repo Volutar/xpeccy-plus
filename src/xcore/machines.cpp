@@ -749,6 +749,28 @@ std::string div_esx_card_release(const std::string& folder) {
 	return std::string();
 }
 
+// TS-BIOS (2024) keeps its setup in cells B0..E7: CRC16 (poly 1021, start FFFF) of B1..E5
+// in E6 (low) and E7. Without it the BIOS loads its defaults and opens the setup.
+static bool ts_nv_crc_ok(const unsigned char* nv) {
+	unsigned int crc = 0xffff;
+	for (int i = 0xb1; i < 0xe6; i++) {
+		crc ^= nv[i] << 8;
+		for (int b = 0; b < 8; b++)
+			crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1;
+		crc &= 0xffff;
+	}
+	return (nv[0xe6] == (crc & 0xff)) && (nv[0xe7] == (crc >> 8));
+}
+
+// the setup cells of the 2012 TS-BIOS (B0..BA) as the bundled seed had them: 128 menu
+static bool ts_nv_old_seed(const unsigned char* nv) {
+	for (int i = 0xb0; i <= 0xba; i++) {
+		int def = ((i == 0xb5) || (i == 0xb7)) ? 2 : 0;
+		if (nv[i] != def) return false;
+	}
+	return true;
+}
+
 static void xm_load_nvram() {
 	std::string seed = std::string(":/res/nvram/") + conf.macId + ".cmos";
 	bool have = QFile::exists(QString::fromLocal8Bit(seed.c_str()));
@@ -761,6 +783,16 @@ static void xm_load_nvram() {
 		int i = 0x80;
 		while ((i < 0x100) && !nv[i]) i++;
 		if (i == 0x100) memcpy(nv + 0x80, nv, 0x80);
+	}
+	// a file the 2012 TS-BIOS left with its setup untouched takes the 2024 seed's setup
+	// cells, so the machine boots as before instead of opening the new setup once
+	if ((id == HW_TSLAB) && have && !ts_nv_crc_ok(conf.zx->cmos.data) && ts_nv_old_seed(conf.zx->cmos.data)) {
+		QFile file(QString::fromLocal8Bit(seed.c_str()));
+		if (file.open(QFile::ReadOnly)) {
+			QByteArray img = file.read(256);
+			if (img.size() == 256 && ts_nv_crc_ok((const unsigned char*)img.constData()))
+				memcpy(conf.zx->cmos.data + 0xb0, img.constData() + 0xb0, 0x38);
+		}
 	}
 	mac_nv_read(mac_nv_path(".nvram"), conf.zx->ide->smuc.nv->mem, NV_SIZE, NULL);
 	// the Next's clock: what it was set to and its RAM; without a file it keeps the host's time
