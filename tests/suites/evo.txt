@@ -8,6 +8,7 @@ demo16c         evo-baseconf  open  50    100     snap/demo16c.sna
 demohwmc        evo-baseconf  open  50    100     snap/demohwmc.sna
 dwot_evo        evo-baseconf  auto  4000  300     disk/dwot.trd
 boot_tsbios     evo-tsconf    boot  0     400
+boot_tsbios_nv12 evo-tsconf   boot  0     400                                nvram:nvram/evo-tsconf-2012-seed.cmos
 spg_0x7e1       evo-tsconf    open  300   300     evo/0x7e1.spg
 spg_invitro     evo-tsconf    open  300   300     evo/3BM_2014_invitro.spg
 synchro_ts      evo-tsconf    auto  3000  300     disk/SYNCHRO.TRD
