@@ -4080,23 +4080,30 @@ void SetupWin::showShotSize() {
 		qreal r = devicePixelRatioF();
 		double kx = getRFIData(ui.cbScale);
 		double ky = kx;
-		QSize scr = QGuiApplication::primaryScreen()->size();
 		int fill = getRFIData(ui.cbSideFill);
-		bool full = ui.cbFullscreen->isChecked();
-		if (full) {
-			kx = scr.width() / (double)sze.x;
-			ky = scr.height() / (double)sze.y;
+		// the room the picture is fitted into, as vid_upd_scale() has it: the
+		// screen, or a window not of the zoom's size (maximized, dragged)
+		QSize room = ui.cbFullscreen->isChecked() ? QGuiApplication::primaryScreen()->size() : vid_fit_area();
+		bool wide = false;
+		if (!room.isEmpty()) {
+			kx = room.width() / (double)sze.x;
+			ky = room.height() / (double)sze.y;
+			wide = (kx > ky);
 			if (ui.cbKeepRatio->isChecked()) kx = ky = qMin(kx, ky);
 		}
 		out = QSize(int(pic.width() * kx * r + 0.5), int(pic.height() * ky * r + 0.5));
-		if (full && !nob) {
-			QSize room(int(scr.width() * r + 0.5), int(scr.height() * r + 0.5));
+		if (!room.isEmpty() && !nob) {
+			QSize px(int(room.width() * r + 0.5), int(room.height() * r + 0.5));
 			if (conf.vid.gl && ((fill & ~SFILL_BORDER) != SFILL_BLACK)) {
-				out = room;		// the fill beside the picture is in the shot
+				out = px;		// the fill beside the picture is in the shot
 			} else if (fill & SFILL_BORDER) {
-				// more border in the room, up to the full border
+				// more border on the side with room to spare, up to the full border
 				vCoord most = vid_crop_size(vid, qMax(ui.bszsld->value(), (int)VID_BRD_FULL));
-				out = QSize(qMin(room.width(), int(most.x * kx * r + 0.5)), qMin(room.height(), int(most.y * ky * r + 0.5)));
+				if (wide) {
+					out.setWidth(qMin(px.width(), qMax(out.width(), int(most.x * kx * r + 0.5))));
+				} else {
+					out.setHeight(qMin(px.height(), qMax(out.height(), int(most.y * ky * r + 0.5))));
+				}
 			}
 		}
 		labShotSize->setToolTip(tr("As big as the picture in the window,\nwith the side fill beside it"));

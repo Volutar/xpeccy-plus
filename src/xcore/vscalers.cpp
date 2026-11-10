@@ -85,6 +85,10 @@ void vid_set_fit(const QSize& area) {
 	vid_upd_scale();
 }
 
+QSize vid_fit_area() {
+	return fitArea;
+}
+
 // Where the frame lands inside the window. In a window that is a whole number
 // of pixels per dot, so a dot is never split. Fullscreen, and a window of
 // another size - maximized, snapped, dragged - fit the picture to the room
