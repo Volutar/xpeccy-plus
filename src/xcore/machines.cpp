@@ -484,6 +484,30 @@ static bool mac_known(const QString& id) {
 // it is written out against the stock parent, carrying what the parent was
 // patched with as its own, and stays put when that patch changes later.
 
+// The Next sets these itself, by its nextregs (NextZXOS's settings), or has no
+// such device: Options greys them, and a user's file keeps none of them - an
+// old one's are dropped, so the machine stays as it ships.
+static const char* const nextOwnKeys[] = {
+	"cpu.frq", "cpu.turbo", "contio", "contmem", "issue", "scrp.wait",
+	"geometry", "contPattern", "earlyTiming", "4t-border", "snow", "snow.crash", "floatbus", "ULAplus", "DDpal",
+	"psg.count", "psg.type", "psg.frq", "psg.stereo", "gs", "saa", "soundrive", "beeper.mic",
+	"disk", "drives", "ide", "mouse", "mouse.wheel", "joy", "joy.buttons", NULL
+};
+
+static bool mac_next_owns(const xMacLine& ln) {
+	if (ln.sect == "rom") return false;		// "gs" there is the GS ROM's file
+	for (int i = 0; nextOwnKeys[i]; i++)
+		if (ln.name == nextOwnKeys[i]) return true;
+	return false;
+}
+
+static QList<xMacLine> mac_next_drop(const QList<xMacLine>& lines) {
+	QList<xMacLine> res;
+	foreach(const xMacLine& ln, lines)
+		if (!mac_next_owns(ln)) res << ln;
+	return res;
+}
+
 static xMachine mac_build(const QString& id, int depth, bool withUser) {
 	xMachine mac;
 	const QList<xMacLine>& lines = macSrc.value(id).lines;
@@ -509,7 +533,11 @@ static xMachine mac_build(const QString& id, int depth, bool withUser) {
 	mac.id = id.toLocal8Bit().data();
 	mac.parent = parent.toLocal8Bit().data();
 	mac_apply(mac, lines);
-	if (withUser) mac_apply(mac, mine);
+	if (withUser) {
+		xMachine probe = mac;
+		mac_apply(probe, mine);
+		mac_apply(mac, (probe.hw == "ZXNext") ? mac_next_drop(mine) : mine);
+	}
 	if (mac.name.empty()) mac.name = mac.id;
 	return mac;
 }
@@ -1479,6 +1507,7 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	int joy = (comp->joy->type != XJ_KEMPSTON) ? MAC_JOY_NONE : comp->joy->extbuttons ? MAC_JOY_KEMPSTON8 : MAC_JOY_KEMPSTON;
 	mac_put(out, "joy", mac_word_name(joyTab, joy), mac_word_name(joyTab, mac->joy));
 	mac_put(out, "kbd.scantab", mac_word_name(scanTab, comp->keyb->pcmode), mac_word_name(scanTab, mac->scantab));
+	if (comp->hw->id == HW_ZXNEXT) out = mac_next_drop(out);
 	mac_put_roms(out, mac);
 }
 
