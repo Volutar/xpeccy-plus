@@ -11,7 +11,7 @@
 
 // Over the picture while the snow notice is up: the picture shaded, snow
 // falling on it, a snowflake sign blinking in the corner. It ticks at the
-// screen's rate only while shown; hidden, it costs nothing.
+// screen's rate (60 Hz at most) only while shown; hidden, it costs nothing.
 class xSnowFall : public QWidget {
 	public:
 		xSnowFall(QWidget* parent);

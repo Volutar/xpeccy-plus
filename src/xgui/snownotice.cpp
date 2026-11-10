@@ -14,7 +14,8 @@
 #define SNOW_FADE_IN	0.3		// s
 #define SNOW_PX_PER_FLAKE	1700	// picture area, logical px^2
 #define SNOW_MIN	80
-#define SNOW_MAX	600
+#define SNOW_MAX	1400
+#define SNOW_HZ_MAX	60		// a tick redraws the whole window in software: no need for more
 #define SNOW_BLINK_MS	500		// as the recording sign
 #define SNOW_SIGN_X	32		// right of the LED column
 #define SNOW_SIGN_Y	10
@@ -48,8 +49,8 @@ xSnowFall::xSnowFall(QWidget* parent) : QWidget(parent) {
 	parent->installEventFilter(this);
 }
 
-// The tick follows the screen, not the machine: the snow moves as smoothly as
-// the host can show it, whatever the emulation does meanwhile.
+// The tick follows the screen, up to 60 Hz, not the machine: the snow moves
+// at the host's pace, whatever the emulation does meanwhile.
 void xSnowFall::start() {
 	setGeometry(parentWidget()->rect());
 	makeSprites();
@@ -63,6 +64,7 @@ void xSnowFall::start() {
 		QScreen* scr = screen();
 		double hz = scr ? scr->refreshRate() : 60.0;
 		if (hz < 30) hz = 60;
+		if (hz > SNOW_HZ_MAX) hz = SNOW_HZ_MAX;
 		tid = startTimer(qMax(4, (int)(1000.0 / hz)), Qt::PreciseTimer);
 	}
 }
