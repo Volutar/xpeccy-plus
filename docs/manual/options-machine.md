@@ -64,19 +64,22 @@ Changes take effect when you press **Apply** or {icon}`ok-apply` **OK**.
 ![The Machine page on the ZX Spectrum Next](images/options-machine-next.png)
 
 The ZX Spectrum Next sets up most of its hardware itself: NextZXOS sets it at start, from
-its own settings, and a program may change it as it runs. So on the Next the rows it sets,
-**Joystick**, **Mouse**, **PSG**, **DAC** and **Turbo**, are grayed out, and so are the
-devices it does not have: **Disk**, **Hard disk**, **General Sound** and **SAA1099**. All of
-**Machine: Advanced Settings** is grayed out too. **Memory**, **ROM**, **Overclock**,
-**Tape**, **SD card**, **ESP UART** and **Pi UART** work as on the other machines, and so do
-the mouse's **Sensitivity** and **Swap buttons**.
+its own settings, and a program may change it as it runs. So on the Next the page shows,
+under a **ZX Spectrum Next** heading, groups of its own in place of the usual ones:
 
-**NextZXOS settings**, under the devices, shows what the machine has set now, named as in
-NextZXOS's own menu (NMI, then **Settings**): **General** on the left, **Sound** on the
-right, then the two joysticks and the CPU speed. Change them in that menu. **Next (+3)** in
-**Timings** is the timing NextZXOS calls **Next**, that of the +3. **Scanlines** and
-**HDMI Sound** are not listed: they are for a monitor, not emulated. While the NMI menu is
-open, NextZXOS keeps TurboSound off, and the list shows it off.
+| Group | What it shows |
+|---|---|
+| **Storage** | **SD card**, and **Tape** with its settings (see [Machine: Tape](#machine-tape)) |
+| **Input** | **Joystick L** and **Joystick R**, **Keyboard** (issue 2 or 3), **Mouse DPI** and **Mouse Btn**; the {icon}`settings` gear by **Mouse DPI** opens the mouse's **Sensitivity** and **Swap buttons** |
+| **Sound** | **Stereo**, **Int. speaker**, **BEEPer**, **TurboSound**, **Covox**, **Audiochip** and **AY 0/1/2 mono** |
+| **Board** | **CPU speed**, **Frequency**, **Timings**, **Contention**, **Timex RD** and **ULAplus**; **ESP UART** and **Pi UART** |
+
+The values are what the machine has set now, named as in NextZXOS's own menu: press NMI,
+then **Settings**, to change them. A change made there takes effect when the menu closes.
+**Next (+3)** in **Timings** is the timing NextZXOS calls **Next**, that of the +3.
+**Scanlines** and **HDMI Sound** are not listed: they are for a monitor, not emulated.
+**SD card**, **Tape**, the mouse's settings and the two UARTs are this computer's, set here as
+on the other machines. **Machine: Advanced Settings** is all grayed out on the Next.
 
 ## Overclock
 

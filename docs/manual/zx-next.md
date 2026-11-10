@@ -23,9 +23,8 @@ It stands in a group of its own, after the Sinclair and Amstrad models. On the c
 line it is `-m zxnext`.
 
 The Next sets its own CPU speed, 3.5, 7, 14 or 28 MHz, as programs ask, and its sound
-chips, joysticks, contention and the rest from NextZXOS's settings. So on the **Machine**
-page of **Options** those rows are grayed out, and **NextZXOS settings** there shows what
-the machine has set (see [On the ZX Spectrum Next](options-machine.md#on-the-zx-spectrum-next)). The picture always
+chips, joysticks, contention and the rest from NextZXOS's settings. So the **Machine**
+page of **Options** shows what the machine has set, in groups of the Next's own (see [On the ZX Spectrum Next](options-machine.md#on-the-zx-spectrum-next)). The picture always
 shows at least the **full** border (see [View menu](view.md)).
 
 ```{index} ZX Spectrum Next; reset, Hard Reset; ZX Spectrum Next, NMI; ZX Spectrum Next, buttons; ZX Spectrum Next, DRIVE button
