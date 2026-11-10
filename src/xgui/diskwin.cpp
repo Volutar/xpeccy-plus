@@ -409,7 +409,7 @@ void xDiskWin::fill() {
 	unsigned char buf[256];
 	DiskIF* dif = conf.zx->dif;
 	if (!flp && dif->out && (dif->cfg != DIF_NONE)) {
-		txt.append("The drives are off while the divMMC is on");
+		txt.append("The drives are unavailable while divMMC is enabled");
 	} else if (!flp || !flp->insert) {
 		txt.append("No disk in the drive");
 	} else if (trd_sys(flp, buf)) {

@@ -1006,7 +1006,7 @@ void MainWin::updateStatus() {
 			sbDiskIcon[i]->setPixmap(sbPix[st]);
 			sbDiskShown[i] = st;
 		}
-		QString tip = out ? QString("Off while the divMMC is on")
+		QString tip = out ? QString("Unavailable while divMMC is enabled")
 			: flp->insert ? QString::fromLocal8Bit(flp->path ? flp->path : "") : QString("empty");
 		if (sbDiskBox[i]->toolTip() != tip) sbDiskBox[i]->setToolTip(tip);
 	}

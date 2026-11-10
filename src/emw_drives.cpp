@@ -264,7 +264,7 @@ void MainWin::fillDrivesMenu() {
 	// out under the divMMC: the drives the machine is set to have, grayed, under a
 	// line that says why
 	auto outLine = [](QMenu* m) {
-		m->addAction("Off while the divMMC is on")->setEnabled(false);
+		m->addAction("Unavailable while divMMC is enabled")->setEnabled(false);
 		m->addSeparator();
 	};
 	bool flpOut = comp->dif->out;

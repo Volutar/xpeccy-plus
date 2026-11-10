@@ -844,7 +844,7 @@ static void as_board_refused() {
 	if (as_headless) return;		// the log has the refusal
 	pause_add(PR_EXTRA);
 	QMessageBox::information(nullptr, "Cannot start the disk",
-		"The floppy drives are off while the divMMC is on: the disk is in its drive, "
+		"The floppy drives are unavailable while divMMC is enabled: the disk is in its drive, "
 		"but cannot be started.\n\n"
 		"Switch the divMMC off with Media > divMMC, or start a disk image from the "
 		"card in the esxDOS browser (Machine > NMI).");
