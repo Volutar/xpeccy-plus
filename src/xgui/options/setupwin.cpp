@@ -430,6 +430,46 @@ void SetupWin::makeDevWidgets() {
 	labPsgSep->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 }
 
+// Source, Screenshots' and Recording's: the machine's frame or the window's picture
+static QComboBox* src_box(const QString& tip) {
+	QComboBox* box = new QComboBox;
+	box->addItem(SetupWin::tr("RAW frame"), VREC_SRC_PICTURE);
+	box->addItem(SetupWin::tr("Screen"), VREC_SRC_SCREEN);
+	box->setToolTip(tip);
+	// no GL view: nothing to read the window back from
+	if (!conf.vid.gl) box->setItemData(1, 0, Qt::UserRole - 1);
+	return box;
+}
+
+static QComboBox* scale_box(int most, const QString& tip) {
+	QComboBox* box = new QComboBox;
+	for (int n = 1; n <= most; n++)
+		box->addItem(QString("Scale x%0").arg(n), n);
+	box->setToolTip(tip);
+	return box;
+}
+
+// A file name template's keys, a rich tooltip that is a list. nobr: Qt wraps a
+// rich tooltip at its own width, and a key is one line.
+static QString name_tip(const QString& more) {
+	return SetupWin::tr("<nobr><b>%d</b> date, 20260929</nobr><br><nobr><b>%t</b> time, 153012</nobr><br>"
+		"<nobr><b>%image</b> the image in use, else the machine</nobr><br><nobr><b>%machine</b> the machine</nobr>") + more;
+}
+
+// the main window's, where the shots and the video are taken
+static qreal main_dpr(QWidget* dlg) {
+	QWidget* w = dlg->parentWidget() ? dlg->parentWidget()->window() : dlg;
+	return w->devicePixelRatioF();
+}
+
+// how many of the window's pixels from pos, len long, are inside a room of size,
+// at r pixels a point, rounded as the picture is drawn there
+static int shown_span(int pos, int len, int size, qreal r) {
+	int a = int(pos * r + 0.5);
+	int b = a + int(len * r + 0.5);
+	return qMin(b, int(size * r + 0.5)) - qMax(a, 0);
+}
+
 SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	setModal(true);
 	ui.setupUi(this);
@@ -488,6 +528,29 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 		QString key = QString::fromStdString(it->first);
 		ui.ssfbox->addItem((key == "hobeta") ? QString("Hobeta") : key.toUpper(), key);
 	}
+	cbShotSrc = src_box(tr("RAW frame: the machine's picture, no shader\nScreen: the picture as the window shows it, shader and all"));
+	cbShotScale = scale_box(SHOT_SCALE_MAX, tr("x1: a pixel for each dot of the machine;\n"
+		"a hi-res mode keeps all its dots, lines doubled"));
+	ui.horizontalLayout_3->insertWidget(0, cbShotSrc);
+	ui.horizontalLayout_3->insertWidget(1, cbShotScale);
+	labShotSize = new QLabel;
+	labShotSize->setAlignment(Qt::AlignCenter);
+	ui.ssColumn->insertWidget(1, labShotSize);
+	// rows spread over a taller group would leave the column's behind
+	ui.horizontalLayout_22->setAlignment(ui.gridLayout_3, Qt::AlignTop);
+	foreach(QComboBox* box, QList<QComboBox*>() << cbShotSrc << cbShotScale << ui.ssfbox)
+		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showShotSize);
+	connect(ui.ssNoBord, &QCheckBox::toggled, this, &SetupWin::showShotSize);
+	connect(ui.bszsld, &QSlider::valueChanged, this, &SetupWin::showShotSize);
+	connect(ui.cbScale, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showShotSize);
+	connect(ui.cbFullscreen, &QCheckBox::toggled, this, &SetupWin::showShotSize);
+	connect(ui.cbKeepRatio, &QCheckBox::toggled, this, &SetupWin::showShotSize);
+	connect(ui.cbSideFill, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showShotSize);
+	leShotName = new QLineEdit;
+	leShotName->setPlaceholderText(SHOT_NAME_DEF);
+	leShotName->setToolTip(name_tip(tr("<br><nobr><b>%n</b> number, 001 on</nobr>")));
+	ui.gridLayout_3->addWidget(new QLabel(tr("Name")), 2, 0);
+	ui.gridLayout_3->addWidget(leShotName, 2, 1);
 	ui.cbContPattern->addItem("No contention", CONT_NONE);
 	ui.cbContPattern->addItem("Ferranti (48K, 128K, +2)", CONT_PATA);
 	ui.cbContPattern->addItem("Amstrad (+2A, +3)", CONT_PATB);
@@ -1146,6 +1209,10 @@ void SetupWin::fillPages() {
 	ui.scntbox->setValue(conf.scrShot.count);
 	ui.sintbox->setValue(conf.scrShot.interval);
 	ui.ssNoBord->setChecked(conf.scrShot.noBorder);
+	setRFIndex(cbShotSrc, conf.vid.gl ? conf.scrShot.source : VREC_SRC_PICTURE);
+	setRFIndex(cbShotScale, conf.scrShot.scale);
+	showShotSize();
+	leShotName->setText(QString::fromStdString(conf.scrShot.name));
 	fillRecording();
 	ui.geombox->clear();
 	foreach(xLayout lay, conf.layList) {
@@ -1317,6 +1384,15 @@ void SetupWin::fitWidths() {
 		wid = qMax(wid, btn->sizeHint().width());
 	for (QWidget* col : {ui.machButtons, ui.picRight, ui.afRight, ui.ssRight, boxRecAdv})
 		col->setFixedWidth(wid);
+	// Screenshots' column is a layout of its own: rows as high and as far apart as
+	// the grid's keep it level with the grid
+	int rowH = 0;
+	for (QWidget* w : {(QWidget*)ui.ssfbox, (QWidget*)ui.pathle, (QWidget*)ui.pathtb, (QWidget*)cbShotSrc, (QWidget*)ui.scntbox})
+		rowH = qMax(rowH, w->sizeHint().height());
+	ui.ssNoBord->setFixedHeight(rowH);
+	labShotSize->setFixedHeight(rowH);
+	int gap = ui.gridLayout_3->verticalSpacing();
+	ui.ssColumn->setSpacing((gap < 0) ? ui.gridLayout_3->spacing() : gap);
 	wid = appColMin;
 	for (xSideButton* btn : {ui.pbFavorites, ui.pbCfgExport, ui.pbCfgImport, ui.pbCfgReset})
 		wid = qMax(wid, btn->sizeHint().width());
@@ -1574,11 +1650,18 @@ void SetupWin::applyGlobal() {
 	noflicGamma = ui.sbNoflicGamma->value();
 	vid_set_grey(ui.grayscale->isChecked() ? 1 : 0);
 //	scanlines = ui.cbScanlines->isChecked() ? 1 : 0;
+	// a screen dump breakpoint names its file from the emulation thread
+	emu_lock();
 	conf.scrShot.dir = ui.pathle->text().toStdString();		// UTF-8, as shot_dir() reads it
 	conf.scrShot.format = getRFSData(ui.ssfbox).toStdString();
 	conf.scrShot.count = ui.scntbox->value();
 	conf.scrShot.interval = ui.sintbox->value();
 	conf.scrShot.noBorder = ui.ssNoBord->isChecked() ? 1 : 0;
+	// greyed with no GL view, Screen is kept for a run that has one
+	if (conf.vid.gl) conf.scrShot.source = getRFIData(cbShotSrc);
+	conf.scrShot.scale = getRFIData(cbShotScale);
+	conf.scrShot.name = leShotName->text().trimmed().toStdString();
+	emu_unlock();
 	applyRecording();
 	vid_set_border_mode(ui.bszsld->value());
 	// with no shaders the list holds None only: the chosen one stays for a run that has them
@@ -3592,16 +3675,8 @@ void SetupWin::buildRecording() {
 	ui.verticalLayout_rec->addLayout(grid);
 
 	// the picture: three lists and the button after them
-	cbRecSrc = new QComboBox;
-	cbRecSrc->addItem(tr("RAW frame"), VREC_SRC_PICTURE);
-	cbRecSrc->addItem(tr("Screen"), VREC_SRC_SCREEN);
-	cbRecSrc->setToolTip(tr("RAW frame: the machine's picture, no shader or indicators\nScreen: the window as shown"));
-	// no GL view: nothing to read the window back from
-	if (!conf.vid.gl) cbRecSrc->setItemData(1, 0, Qt::UserRole - 1);
-	cbRecScale = new QComboBox;
-	for (int n = 1; n <= VREC_SCALE_MAX; n++)
-		cbRecScale->addItem(QString("Scale x%0").arg(n), n);
-	cbRecScale->setToolTip("-vf scale=W:H:flags=neighbor");
+	cbRecSrc = src_box(tr("RAW frame: the machine's picture, no shader or indicators\nScreen: the window as shown"));
+	cbRecScale = scale_box(VREC_SCALE_MAX, "-vf scale=W:H:flags=neighbor");
 	cbRecFps = new QComboBox;
 	cbRecFps->addItem(tr("Real FPS"), VREC_FPS_MACHINE);
 	cbRecFps->addItem(tr("50 FPS"), VREC_FPS_50);
@@ -3714,10 +3789,7 @@ void SetupWin::buildRecording() {
 	cbRecPitch = new QCheckBox;
 	leRecName = new QLineEdit;
 	leRecName->setPlaceholderText(VREC_NAME_DEF);
-	// rich text, the one tooltip here that is a list
-	// nobr: Qt wraps a rich tooltip at its own width, and a key is one line
-	leRecName->setToolTip(tr("<nobr><b>%d</b> date, 20260929</nobr><br><nobr><b>%t</b> time, 153012</nobr><br>"
-		"<nobr><b>%image</b> the image in use, else the machine</nobr><br><nobr><b>%machine</b> the machine</nobr>"));
+	leRecName->setToolTip(name_tip(QString()));
 	teRecCmd = new QTextEdit;
 	teRecCmd->setAcceptRichText(false);
 	teRecCmd->setReadOnly(true);
@@ -3971,14 +4043,20 @@ void SetupWin::alignVideoLabels() {
 		lab->setMinimumWidth(wid);
 }
 
+// where the picture goes in the main window with this page's settings
+vidFit SetupWin::pageFit() {
+	int fill = getRFIData(ui.cbSideFill);
+	return vid_fit(conf.zx->vid, ui.bszsld->value(), vid_room(ui.cbFullscreen->isChecked()), getRFIData(ui.cbScale),
+		ui.cbKeepRatio->isChecked(), (fill & SFILL_BORDER) ? 1 : 0, conf.zx->hw->xscale);
+}
+
 // the pictures handed to FFmpeg and the video made of them, as the page is set now
 void SetupWin::recSizes(QSize* in, QSize* out) {
 	vCoord sze = vid_crop_size(conf.zx->vid, ui.bszsld->value());
 	if (getRFIData(cbRecSrc) == VREC_SRC_SCREEN) {
-		qreal r = devicePixelRatioF();
-		QSize win = ui.cbFullscreen->isChecked() ? QGuiApplication::primaryScreen()->size()
-			: QSize(sze.x * getRFIData(ui.cbScale), sze.y * getRFIData(ui.cbScale));
-		*in = QSize(int(win.width() * r + 0.5) & ~1, int(win.height() * r + 0.5) & ~1);
+		vidFit f = pageFit();
+		qreal r = main_dpr(this);
+		*in = QSize(int(f.roomW * r + 0.5) & ~1, int(f.roomH * r + 0.5) & ~1);
 		*out = *in;
 	} else {
 		int n = getRFIData(cbRecScale);
@@ -3999,6 +4077,50 @@ void SetupWin::showRecSize() {
 	}
 	labRecSize->setText(QString("%0%1%2 @ %3 fps").arg(out.width()).arg(QChar(0xd7)).arg(out.height()).arg(fps));
 	showRecCmd();
+}
+
+// What a screenshot comes out as with this page's settings. SCR and Hobeta are
+// the screen's memory, and the rest of the line has nothing to say about them.
+void SetupWin::showShotSize() {
+	QString fmt = getRFSData(ui.ssfbox);
+	bool mem = (fmt == "scr") || (fmt == "hobeta");
+	bool screen = (getRFIData(cbShotSrc) == VREC_SRC_SCREEN);
+	cbShotSrc->setEnabled(!mem);
+	cbShotScale->setEnabled(!mem && !screen);
+	ui.ssNoBord->setEnabled(!mem);
+	if (mem) {
+		labShotSize->setText(QString("%0, %1 bytes").arg(ui.ssfbox->currentText()).arg(SCR_SIZE + ((fmt == "scr") ? 0 : HOB_HEAD_SIZE)));
+		labShotSize->setToolTip(tr("The screen's memory"));
+		return;
+	}
+	Video* vid = conf.zx->vid;
+	bool nob = ui.ssNoBord->isChecked();
+	QSize out;
+	if (!screen) {
+		vCoord sze = vid_crop_size(vid, ui.bszsld->value());
+		QSize pic(nob ? vid->scrn.x : sze.x, nob ? vid->scrn.y : sze.y);
+		out = pic * getRFIData(cbShotScale);
+		labShotSize->setToolTip(tr("A hi-res picture comes out twice as big,\nwith all its dots"));
+	} else {
+		// as MainWin::grabPicture() reads it
+		vidFit f = pageFit();
+		qreal r = main_dpr(this);
+		int fill = getRFIData(ui.cbSideFill);
+		// a fill drawn beside the picture, as MainWin::fillWanted() has it
+		bool beside = conf.vid.gl && ((fill & ~SFILL_BORDER) != SFILL_BLACK)
+			&& ((f.x > 0) || (f.y > 0) || (f.x + f.w < f.roomW) || (f.y + f.h < f.roomH));
+		if (nob) {
+			double pw = int(f.w * r + 0.5);
+			double ph = int(f.h * r + 0.5);
+			out = QSize(int(vid->scrn.x * pw / f.crop.x + 0.5), int(vid->scrn.y * ph / f.crop.y + 0.5));
+		} else if (beside) {
+			out = QSize(int(f.roomW * r + 0.5), int(f.roomH * r + 0.5));
+		} else {
+			out = QSize(shown_span(f.x, f.w, f.roomW, r), shown_span(f.y, f.h, f.roomH, r));
+		}
+		labShotSize->setToolTip(tr("As big as the picture in the window,\nwith the side fill beside it"));
+	}
+	labShotSize->setText(QString("%0, %1%2%3").arg(ui.ssfbox->currentText()).arg(out.width()).arg(QChar(0xd7)).arg(out.height()));
 }
 
 // a control is live only while it changes what is recorded: an override stands

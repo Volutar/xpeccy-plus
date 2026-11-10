@@ -142,26 +142,44 @@ Anti-flicker is not applied in fast mode. What the modes look for, and where ant
 
 ## Screenshots
 
-```{index} Screenshot; format, Screenshot; folder, No border, SCR, Hobeta, PNG
+```{index} Screenshot; format, Screenshot; folder, Screenshot; size, Screenshot; file name, No border, SCR, Hobeta, PNG
 ```
 
 The **Screenshots** group on the **Video** page of **Options**:
 
-- **Output** - the folder for the files; the {icon}`fileopen` button beside it picks one.
-  Your home folder by default.
-- **Format** - the kind of file, see below.
+- **Source** - **RAW frame** takes the machine's picture alone, with no shader. **Screen**
+  takes the picture as the window shows it, shader and all, as big as it is there, with the
+  **Side fill** beside it when there is one (black around the picture is left out); the
+  indicators and messages over it are left out too. **Screen** needs the OpenGL view.
+  **RAW frame** by default.
+- **Scale x1** ... **Scale x4** - the size of a **RAW frame** picture. **Scale x1** gives
+  one pixel for each dot of the machine: 256×192 for the screen alone, more with as much
+  border as the **Border** slider shows. A picture in a high-resolution mode (Profi, ATM and ZX Evo text and hi-res
+  modes, the ZX Spectrum Next's 640-dot Layer 2) keeps all its dots, with every line twice so
+  that it is not squashed: 512×384 for a 512-dot screen. **Scale x1** by default.
 - **Combo** ... **each** ... **frames** - how many pictures **Screenshot Series** takes, and
-  how many frames apart.
+  how many of the machine's frames apart.
+- **Output** - the kind of file (see below) and the folder for the files; the
+  {icon}`fileopen` button picks the folder. Your home folder by default.
+- **Name** - the file name template, the same as the video's
+  ([File name template](#recording)) with one more key, `%n`: a number, `001`, `002` and so
+  on, the first one not taken in the folder. Empty, it is
+  `xpeccy-plus_%d_%t_%image_%n`. With `%image %n` the shots of a game are numbered after
+  it: `Tetris GB 001.png`, `Tetris GB 002.png`.
 - **No border** - the screen only, without the border around it.
+
+Under **No border** are the format and the size a picture comes out at with the settings
+on the page, such as **PNG, 352×288**; a high-resolution picture comes out twice as big.
 
 | Format | What is saved |
 |---|---|
-| **PNG**, **BMP**, **JPG** | the machine's picture at the window's size, without the shader |
+| **PNG**, **BMP**, **JPG** | the picture, as **Source** and the size say |
 | **SCR** | the 6912 bytes of the machine's screen memory, to load back on a Spectrum |
 | **Hobeta** | the same screen memory as a Hobeta file (`.$C`), which goes onto a TR-DOS disk as `screen` |
 
-**SCR** and **Hobeta** hold only the standard Spectrum screen: a picture made in another
-video mode does not fit in them.
+**SCR** and **Hobeta** hold only the standard Spectrum screen. In another video mode (Profi,
+ATM, ZX Evo and TSConf modes of their own, the ZX Spectrum Next) no file is saved and the
+message says **not the ZX screen: no SCR**.
 
 ## Recording
 

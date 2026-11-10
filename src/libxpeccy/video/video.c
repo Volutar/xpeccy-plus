@@ -304,19 +304,32 @@ vCoord vid_crop_size(Video* vid, int mode) {
 // the size asked for, or the least the machine shows. Never smaller than the
 // border size asks for. wid, hei: the frame wanted, in dots (0: as it is); an
 // odd one is rounded up, the caller cuts the picture at the room's edge.
-void vid_widen_crop(Video* vid, int wid, int hei) {
+static vCoord brd_widen_margin(Video* vid, int mode, int wid, int hei) {
 	vCoord mrg;
 	vCoord cap;
 	int m;
-	mrg = brd_margin(vid, vid->brdmode);
-	cap = brd_margin(vid, (vid->brdmode > VID_BRD_FULL) ? vid->brdmode : VID_BRD_FULL);
+	mrg = brd_margin(vid, mode);
+	cap = brd_margin(vid, (mode > VID_BRD_FULL) ? mode : VID_BRD_FULL);
 	m = (wid - vid->scrn.x + 1) / 2;
 	if (m > cap.x) m = cap.x;
 	if (m > mrg.x) mrg.x = m;
 	m = (hei - vid->scrn.y + 1) / 2;
 	if (m > cap.y) m = cap.y;
 	if (m > mrg.y) mrg.y = m;
-	vid_crop_margin(vid, mrg);
+	return mrg;
+}
+
+void vid_widen_crop(Video* vid, int wid, int hei) {
+	vid_crop_margin(vid, brd_widen_margin(vid, vid->brdmode, wid, hei));
+}
+
+// the frame vid_widen_crop() would give with a border mode, changing nothing
+vCoord vid_widen_size(Video* vid, int mode, int wid, int hei) {
+	vCoord sze, mrg;
+	mrg = brd_widen_margin(vid, mode, wid, hei);
+	sze.x = vid->scrn.x + 2 * mrg.x;
+	sze.y = vid->scrn.y + 2 * mrg.y;
+	return sze;
 }
 
 void vid_upd_crop(Video* vid) {

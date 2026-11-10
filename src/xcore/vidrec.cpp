@@ -525,10 +525,11 @@ QString vrec_command_line(const QStringList& args, bool lines) {
 
 // The file name, extension aside: %d the date, %t the time, %image the image
 // in use (the machine when there is none), %machine the machine. One pass, so
-// a key that turns up in an image's name is left as it is.
-QString vrec_file_name(const QString& tpl, const QString& image, const QDateTime& when) {
+// a key that turns up in an image's name is left as it is. %n is a screenshot's
+// number, 001 on; with num 0 it is left as typed.
+QString vrec_file_name(const QString& tpl, const QString& image, const QDateTime& when, int num) {
 	QString src = tpl.trimmed().isEmpty() ? QString(VREC_NAME_DEF) : tpl.trimmed();
-	static const QRegularExpression key("%(image|machine|d|t)");
+	static const QRegularExpression key("%(image|machine|d|t|n)");
 	QString res;
 	int pos = 0;
 	QRegularExpressionMatchIterator it = key.globalMatch(src);
@@ -538,6 +539,7 @@ QString vrec_file_name(const QString& tpl, const QString& image, const QDateTime
 		QString k = m.captured(1);
 		if (k == "d") res += when.toString("yyyyMMdd");
 		else if (k == "t") res += when.toString("HHmmss");
+		else if (k == "n") res += (num > 0) ? QString("%1").arg(num, 3, 10, QChar('0')) : m.captured(0);
 		else if (k == "image") res += image.isEmpty() ? QString::fromStdString(conf.macId) : image;
 		else res += QString::fromStdString(conf.macId);
 		pos = m.capturedEnd();

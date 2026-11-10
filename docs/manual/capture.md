@@ -9,24 +9,31 @@ set in the **Screenshots** and **Recording** groups of the [Video page](options-
 
 ## Screenshots
 
-```{index} Screenshot, Screenshot Series
+```{index} Screenshot, Screenshot to Clipboard, Screenshot Series, clipboard; screenshot
 ```
 
 ```{index} see: screen capture; Screenshot
 ```
 
 **Capture > Screenshot** (F7 in both hotkey presets) saves the picture as a file. The message
-**screenshot saved** appears in the corner of the picture, or **can't save screenshot** when
-the file cannot be written.
+in the corner of the picture names the file, such as
+**screenshot: xpeccy-plus_20261110_153012_Tetris GB_001.png**, or says
+**can't save screenshot** when the file cannot be written.
 
-**Capture > Screenshot Series** takes several screenshots in a row, a set number of frames
-apart. Use
-**Capture > Screenshot** while a series runs to stop it.
+**Capture > Screenshot to Clipboard** (Ctrl+F7 in Modern, Shift+F7 in Classic) puts the same
+picture into the clipboard instead, to paste into an image editor or a chat. The message
+says **screenshot copied**. It is always a picture, whatever the format.
 
-The files go into the screenshots folder, named after the time they were taken:
-`xpeccy_153012_250.png` is 15:30:12 and 250 ms. The folder, the format and the number of
-pictures in a series are set in [Screenshots](options-video.md#screenshots) on the
-**Video** page.
+**Capture > Screenshot Series** takes several screenshots in a row, a set number of the
+machine's frames apart. Use **Capture > Screenshot** while a series runs to stop it.
+
+The files go into the screenshots folder. Their names are made from a template, by default
+the date, the time, the file in use (a snapshot, tape, disk or divMMC card; the machine's
+name when there is none) and a number: `xpeccy-plus_20261110_153012_Tetris GB_001.png`. A
+shot never writes over another file. The picture is the machine's own, with no shader, or
+the window's, shader and all. That, the folder, the format, the size, the name and the
+number of pictures in a series are set in [Screenshots](options-video.md#screenshots) on
+the **Video** page.
 
 ## Record Video
 

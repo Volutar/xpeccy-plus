@@ -117,7 +117,12 @@ void copyFile(const char*, const char*);
 // a file that ships inside the binary, replaceable by one of the user's own
 QString xres_dir(const char*);
 QString xres_root(const char*);
+#define SHOT_SCALE_MAX	4
+#define SHOT_NAME_DEF	"xpeccy-plus_%d_%t_%image_%n"
+#define SCR_SIZE	0x1b00	// a ZX screen: pixels and attributes
+#define HOB_HEAD_SIZE	17	// a Hobeta file's header
 QString shot_dir();		// where screenshots go: the folder set, or home if it is not there
+QString shot_path(const QString& ext);	// a new file there, named by the template
 QString xres_path(const char*, const QString&);
 QStringList xres_list(const char*, const QStringList&);
 
@@ -564,6 +569,7 @@ enum {
 	XCUT_MENUBAR,
 	XCUT_SCRSHOT,
 	XCUT_COMBOSHOT,
+	XCUT_SCRCOPY,
 	XCUT_RES_DOS,
 	XCUT_RES_48,
 	XCUT_RES_128,
@@ -1115,8 +1121,11 @@ struct xConfig {
 		unsigned noBorder:1;
 		int count;
 		int interval;
+		int source;		// VREC_SRC_*: the machine's frame, or the picture the window shows
+		int scale;		// 1..SHOT_SCALE_MAX pixels a dot, for the machine's frame
 		std::string format;
 		std::string dir;
+		std::string name;	// the file name's template, see shot_path()
 	} scrShot;
 	xRecord rec;
 	struct {

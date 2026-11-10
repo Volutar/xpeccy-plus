@@ -396,7 +396,15 @@ class MainWin : public QWidget {
 		int frm_ns;
 
 		int scrCounter;
-		int scrInterval;
+		int scrInterval;	// frames to the next shot of a series
+		int scrFrame = 0;	// the machine's frame it was last counted at
+		bool shotDue = false;	// a shot to save in this paint
+		bool shotClip = false;	// one to copy, asked for since the last paint
+		QImage shotGrab;	// the picture as this paint showed it, for Source: Screen
+		void shotTick();
+		void shotTake();
+		void grabPicture();
+		QImage readBack(const QRect&);
 
 		QImage alphabet;
 		void drawText(QPainter*, int, int, const char*);
@@ -414,7 +422,7 @@ class MainWin : public QWidget {
 
 		bool saveChanged(bool tape);
 		void updateHead();
-		void screenShot();
+		void screenShot(bool clip = false);
 		void videoRec();
 		void rzxRec(bool finalize = false);
 		void rzxContinue();

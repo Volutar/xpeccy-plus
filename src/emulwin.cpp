@@ -20,6 +20,7 @@
 #include <QPainter>
 #include <QFileDialog>
 #include <QGuiApplication>
+#include <QClipboard>
 #include <QDesktopServices>
 #include <QActionGroup>
 #include <QLayout>
@@ -1400,6 +1401,7 @@ void MainWin::paintEvent(QPaintEvent*) {
 #if defined(USEOPENGL) && !BLOCKGL
 	if (glw) return;		// under the view, nothing of this widget shows
 #endif
+	shotTick();
 	QPainter pnt(this);
 	paintPlain(pnt);
 	drawInputOsd(pnt);
@@ -1507,6 +1509,7 @@ void MainWin::paintGLView() {
 	// it would show black until the next frame comes.
 	if (!paintOwed) return;
 	paintOwed = 0;
+	shotTick();
 	QPainter pnt(glw);
 	pnt.beginNativePainting();
 	glClearColor(0, 0, 0, 1);
@@ -1549,6 +1552,9 @@ void MainWin::paintGLView() {
 		prepareFill();
 		drawFill();
 	}
+	// before the indicators go on
+	if ((shotDue || shotClip) && (conf.scrShot.source == VREC_SRC_SCREEN))
+		grabPicture();
 #endif
 	glFlush();
 	pnt.endNativePainting();
@@ -1635,11 +1641,52 @@ void MainWin::grabScreen() {
 	const qreal r = widgetDpr(this);
 	int fw = int(width() * r + 0.5);
 	int fh = int(height() * r + 0.5);
-	QImage img(fw & ~1, fh & ~1, QImage::Format_RGBA8888);
+	vrec_screen(readBack(QRect(0, fh & 1, fw & ~1, fh & ~1)));
+#endif
+}
+
+// Pixels of the framebuffer just painted, in GL's terms: from the bottom left,
+// the bottom row first.
+QImage MainWin::readBack(const QRect& rc) {
+	QImage img(rc.width(), rc.height(), QImage::Format_RGBA8888);
+#if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
 	glBindFramebuffer(GL_FRAMEBUFFER, glw->defaultFramebufferObject());
 	glPixelStorei(GL_PACK_ALIGNMENT, 4);
-	glReadPixels(0, fh - img.height(), img.width(), img.height(), GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
-	vrec_screen(img);
+	glReadPixels(rc.x(), rc.y(), rc.width(), rc.height(), GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
+#endif
+	return img;
+}
+
+// The picture as just drawn through the shader, at the window's pixels: with a
+// side fill beside it the whole window, as it shows; with No border, the screen
+// part of the picture alone. A picture wider than the window is cut at its edge.
+void MainWin::grabPicture() {
+#if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
+	const qreal r = widgetDpr(this);
+	QRect win(0, 0, int(width() * r + 0.5), int(height() * r + 0.5));
+	// drawPicture()'s viewport, from the bottom left
+	QRect pic(int(drawX * r + 0.5), int(drawY * r + 0.5), int(drawW * r + 0.5), int(drawH * r + 0.5));
+	Video* vid = conf.zx->vid;
+	QRect rc = pic;
+	if (fillOn) rc = win;
+	if (conf.scrShot.noBorder && (vid->vsze.x > 0) && (vid->vsze.y > 0)) {
+		// the screen's part of the whole picture, cut or not; GL counts from the
+		// bottom, so the gap under it is the frame's bottom border
+		double kx = pic.width() / (double)vid->vsze.x;
+		double ky = pic.height() / (double)vid->vsze.y;
+		int below = vid->rcut.y - vid->send.y;
+		rc = QRect(pic.x() + int((vid->bord.x - vid->lcut.x) * kx + 0.5), pic.y() + int(below * ky + 0.5),
+			int(vid->scrn.x * kx + 0.5), int(vid->scrn.y * ky + 0.5));
+	}
+	rc &= win;
+	if (rc.isEmpty()) return;
+	QImage img = readBack(rc);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+	img = img.flipped(Qt::Vertical);
+#else
+	img = img.mirrored();
+#endif
+	shotGrab = img.convertToFormat(QImage::Format_RGB32);
 #endif
 }
 
@@ -1814,18 +1861,40 @@ int MainWin::recOsd() {
 	return (speedOsd() == osd_none) ? (showRzx ? osd_rzx_off : osd_rec_off) : osd_none;
 }
 
+// At a paint's start: is a shot of a series due in it. A series counts the
+// machine's frames, not the window's paints, and a paint that covers more than
+// one keeps the frames over for the next shot; a rewind going back is no frame.
+void MainWin::shotTick() {
+	shotDue = false;
+	if (scrCounter <= 0) return;
+	int frm = conf.zx->vid->fcnt;
+	scrInterval -= qMax(0, frm - scrFrame);
+	scrFrame = frm;
+	if (scrInterval <= 0) {
+		// one shot a paint at most, so it is never owed more than the next frame
+		int each = conf.scrShot.interval;
+		scrInterval = (each > 0) ? qMax(1, scrInterval + each) : 0;
+		scrCounter--;
+		shotDue = true;
+	}
+}
+
+// the shots this paint owes, from its picture when it was read
+void MainWin::shotTake() {
+	if (shotClip) {
+		shotClip = false;
+		screenShot(true);
+	}
+	if (shotDue) {
+		shotDue = false;
+		screenShot();
+	}
+	shotGrab = QImage();
+}
+
 void MainWin::drawIcons(QPainter& pnt) {
 	Computer* comp = conf.zx;
-// screenshot
-	if (scrCounter > 0) {
-		if (scrInterval > 0) {
-			scrInterval--;
-		} else {
-			scrInterval = conf.scrShot.interval;
-			scrCounter--;
-			screenShot();
-		}
-	}
+	shotTake();
 // put leds
 // keyboard
 	// ALF is a ZX with no keyboard at all, so the test is keyp
@@ -2342,12 +2411,59 @@ void MainWin::rzxWatch() {
 
 // ...
 
-uchar hobHead[] = {'s','c','r','e','e','n',' ',' ','C',0,0,0,0x1b,0,0x1b,0xe7,0x81};	// last 2 bytes is crc
+uchar hobHead[HOB_HEAD_SIZE] = {'s','c','r','e','e','n',' ',' ','C',0,0,0,0x1b,0,0x1b,0xe7,0x81};	// last 2 bytes is crc
 
-void MainWin::screenShot() {
+// A frame holds two pixels a dot; one whose pairs differ somewhere has dots of
+// half the width: Profi, the ATM's and the Evo's hi-res, the Next's 640 layer 2
+static bool shot_hires(const QImage& img) {
+	for (int y = 0; y < img.height(); y++) {
+		const QRgb* p = (const QRgb*)img.constScanLine(y);
+		for (int x = 0; x + 1 < img.width(); x += 2)
+			if (p[x] != p[x + 1]) return true;
+	}
+	return false;
+}
+
+// The shown frame at the size set. xN is N pixels a dot; a hi-res frame keeps
+// all its dots and doubles its lines, so its shape stays.
+static QImage shot_picture(Computer* comp) {
+	Video* vid = comp->vid;
+	// the border size's frame, around the screen in its middle; not the window's
+	// crop, which a fitted window widens with its side fill
+	vCoord sze = conf.scrShot.noBorder ? vid->scrn : vid_crop_size(vid, vid->brdmode);
+	int x = vid->bord.x - (sze.x - vid->scrn.x) / 2;
+	int y = vid->bord.y - (sze.y - vid->scrn.y) / 2;
+	QImage img(frame_shown_lock(), vid->full.x * 2, bufSize / bytesPerLine, bytesPerLine, QImage::Format_RGBA8888);
+	img = img.copy(x * 2, y, sze.x * 2, sze.y);
+	frame_shown_unlock();
+	if (img.isNull()) return img;
+	img = img.convertToFormat(QImage::Format_RGB32);	// no alpha for a viewer to find
+	int n = qMax(1, conf.scrShot.scale);
+	if (shot_hires(img))
+		return img.scaled(img.width() * n, img.height() * 2 * n);
+	return img.scaled(img.width() / 2 * n, img.height() * n);
+}
+
+// SCR and Hobeta are the ZX screen's memory: a mode that draws from anything
+// else would give bytes that are not the picture
+static bool shot_zx_screen(Computer* comp) {
+	int m = comp->vid->vmode;
+	return (m == VID_NORMAL) || (m == VID_ULA_SCR) || (m == VID_TSL_NORMAL);
+}
+
+// clip: to the clipboard, as a picture whatever the format. The picture is the
+// one this paint read for Source: Screen, else the machine's frame - also when
+// there is no GL view to read it from.
+void MainWin::screenShot(bool clip) {
 	Computer* comp = conf.zx;
+	if (clip) {
+		QImage img = shotGrab.isNull() ? shot_picture(comp) : shotGrab;
+		if (!img.isNull()) QGuiApplication::clipboard()->setImage(img);
+		setMessage(img.isNull() ? " can't copy screenshot " : " screenshot copied ");
+		return;
+	}
 	int frm = shotFormat[conf.scrShot.format];
-	std::string fext;
+	const char* fext = "png";
 	switch (frm) {
 		case SCR_BMP: fext = "bmp"; break;
 		case SCR_PNG: fext = "png"; break;
@@ -2355,42 +2471,34 @@ void MainWin::screenShot() {
 		case SCR_SCR: fext = "scr"; break;
 		case SCR_HOB: fext = "$C"; break;
 	}
-	QString fnams = shot_dir().append(SLASH);
-	fnams.append(QString("xpeccy_%0.%1").arg(QTime::currentTime().toString("HHmmss_zzz")).arg(fext.c_str()));
+	if (((frm == SCR_SCR) || (frm == SCR_HOB)) && !shot_zx_screen(comp)) {
+		scrCounter = 0;		// a series would only say it again
+		setMessage(" not the ZX screen: no SCR ");
+		return;
+	}
+	QString fnams = shot_path(fext);
 	QFile file(fnams);
 	bool saved = false;
-	Video* vid = comp->vid;
-	// the shown frame, taken out of the whole raster. The screen sits in the
-	// middle of it, so there is no lopsided border left to trim.
-	QImage img(frame_shown_lock(), vid->full.x * 2, bufSize / bytesPerLine, bytesPerLine, QImage::Format_RGBA8888);
-	img = img.copy(vid->lcut.x * 2, vid->lcut.y, vid->vsze.x * 2, vid->vsze.y);
-	frame_shown_unlock();
 	char* sptr = (char*)(comp->mem->ramData + (comp->vid->vidPage << 14));
 	switch (frm) {
 		case SCR_HOB:
 			if (!file.open(QFile::WriteOnly)) break;
-			saved = (file.write((char*)hobHead, 17) == 17) && (file.write(sptr, 0x1b00) == 0x1b00);
+			saved = (file.write((char*)hobHead, HOB_HEAD_SIZE) == HOB_HEAD_SIZE) && (file.write(sptr, SCR_SIZE) == SCR_SIZE);
 			file.close();
 			break;
 		case SCR_SCR:
 			if (!file.open(QFile::WriteOnly)) break;
-			saved = (file.write(sptr, 0x1b00) == 0x1b00);
+			saved = (file.write(sptr, SCR_SIZE) == SCR_SIZE);
 			file.close();
 			break;
-		case SCR_BMP:
-		case SCR_JPG:
-		case SCR_PNG:
-			if (img.isNull()) break;
-			if (conf.scrShot.noBorder)
-				img = img.copy((vid->bord.x - vid->lcut.x) * 2, vid->bord.y - vid->lcut.y,
-					vid->scrn.x * 2, vid->scrn.y);
-			img = img.scaled(img.width() / 2 * conf.vid.scale * comp->hw->xscale,
-					img.height() * conf.vid.scale);
-			saved = img.save(fnams, fext.c_str());
+		default: {
+			QImage img = shotGrab.isNull() ? shot_picture(comp) : shotGrab;
+			saved = !img.isNull() && img.save(fnams, fext);
 			break;
+		}
 	}
 	if (!saved) xlog(XLG_APP, XLL_WARN, "can't save screenshot %s", fnams.toLocal8Bit().data());
-	setMessage(saved ? " screenshot saved " : " can't save screenshot ");
+	setMessage(saved ? QString(" screenshot: %0 ").arg(QFileInfo(fnams).fileName()) : QString(" can't save screenshot "));
 }
 
 // video drawing
@@ -2952,6 +3060,7 @@ void MainWin::initMenuBar() {
 	resumeAct = cutAction(fileMenu, "Resume Last Session", XCUT_RESUME);
 	// the Capture menu's, which is made with the machine's menus
 	cutAct("Screenshot", XCUT_SCRSHOT, "grp-screenshot");
+	cutAct("Screenshot to Clipboard", XCUT_SCRCOPY, "screenshot-copy");
 	cutAct("Screenshot Series", XCUT_COMBOSHOT);
 	recAct = cutAct("Record Video", XCUT_VIDREC, "grp-record");
 	recAct->setCheckable(true);
@@ -3527,6 +3636,7 @@ void MainWin::initMachineMenus() {
 	// what the machine shows and plays, taken down
 	QMenu* cap = new xMenu("Capture", this);
 	cap->addAction(cutById.value(XCUT_SCRSHOT));
+	cap->addAction(cutById.value(XCUT_SCRCOPY));
 	cap->addAction(cutById.value(XCUT_COMBOSHOT));
 	cap->addSeparator();
 	cap->addAction(recAct);

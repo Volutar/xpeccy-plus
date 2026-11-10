@@ -4,6 +4,8 @@
 
 #include "../libxpeccy/video/vidcommon.h"
 
+typedef struct Video Video;
+
 // One name per VID_BRD_* mode, in enum order, closed with a NULL
 extern const char* brdModeTab[];
 
@@ -56,5 +58,21 @@ void vid_set_border_mode(int);
 // the picture area of a window that is not the zoom's size, fitted as fullscreen
 // is; empty: the window is the zoom's size
 void vid_set_fit(const QSize& area);
+// what vid_upd_scale() fits the picture into: the screen in fullscreen, a window
+// not of the zoom's size; empty: the window is the zoom's size
+QSize vid_room(int fullscreen);
+
+// Where the picture goes, from the settings given, changing nothing:
+// vid_upd_scale() lays the window out by it, Options shows sizes by it.
+typedef struct {
+	vCoord crop;		// the frame shown, in dots: the border mode's, widened into spare room
+	int x, y, w, h;		// the picture in the room, in window pixels; x or y < 0: cut at the edge
+	int roomW, roomH;	// the room it is in
+	double kx, ky;		// window pixels per dot
+	int zoom;		// whole pixels per dot, 0: fitted
+	int widen;		// the crop is widened by vid_widen_crop(wideW, wideH)
+	int wideW, wideH;
+} vidFit;
+vidFit vid_fit(Video* vid, int mode, const QSize& room, int zoom, int keepRatio, int fillBorder, double xscale);
 // The GUI supplies the current monitor size in logical pixels; setters reuse it.
 void vid_upd_scale(const QSize& screenSize = QSize());

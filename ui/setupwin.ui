@@ -1842,15 +1842,22 @@ Integer scaling, so every pixel is the same size</string>
              <layout class="QHBoxLayout" name="horizontalLayout_22">
               <item>
                <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,1">
-                <item row="0" column="0">
+                <item row="1" column="0">
                  <widget class="QLabel" name="label_13">
                   <property name="text">
                    <string>Output</string>
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="1">
+                <item row="1" column="1">
                  <layout class="QHBoxLayout" name="horizontalLayout_24">
+                  <item>
+                   <widget class="QComboBox" name="ssfbox">
+                    <property name="toolTip">
+                     <string>File format screenshots are saved in</string>
+                    </property>
+                   </widget>
+                  </item>
                   <item>
                    <widget class="QLineEdit" name="pathle">
                     <property name="toolTip">
@@ -1874,22 +1881,15 @@ Integer scaling, so every pixel is the same size</string>
                   </item>
                  </layout>
                 </item>
-                <item row="1" column="0">
+                <item row="0" column="0">
                  <widget class="QLabel" name="label_5">
                   <property name="text">
-                   <string>Format</string>
+                   <string>Source</string>
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="1">
+                <item row="0" column="1">
                  <layout class="QHBoxLayout" name="horizontalLayout_3">
-                  <item>
-                   <widget class="QComboBox" name="ssfbox">
-                    <property name="toolTip">
-                     <string>File format screenshots are saved in</string>
-                    </property>
-                   </widget>
-                  </item>
                   <item>
                    <spacer name="ssFmtSpacer">
                     <property name="orientation">

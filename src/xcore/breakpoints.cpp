@@ -987,17 +987,11 @@ void brk_log_hit(xBrkPoint* brk, Computer* comp) {
 
 // ------------------------------------------------------------ handling
 
-// the screen as it is, into a file of its own in the screenshot folder
+// the screen memory shown, into a file of its own in the screenshot folder,
+// named as a screenshot is
 static void brk_dump_screen(Computer* comp) {
-	QString fnams = shot_dir().append(SLASH);
-	fnams.append(QString("xpeccy_%0").arg(QTime::currentTime().toString("HHmmss_zzz")));
-	QFile file;
-	int idx = 0;
-	do {
-		file.setFileName(QString("%0_%1.scr").arg(fnams).arg(idx));
-		idx++;
-	} while (file.exists());
-	if (!file.open(QFile::WriteOnly) || (file.write((char*)(comp->mem->ramData + (5 << 14)), 0x1b00) != 0x1b00))
+	QFile file(shot_path("scr"));
+	if (!file.open(QFile::WriteOnly) || (file.write((char*)(comp->mem->ramData + (comp->vid->vidPage << 14)), 0x1b00) != 0x1b00))
 		xlog(XLG_APP, XLL_WARN, "can't save screenshot %s", file.fileName().toLocal8Bit().data());
 	file.close();
 }

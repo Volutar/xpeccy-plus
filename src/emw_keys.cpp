@@ -232,6 +232,7 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 			case XCUT_COMBOSHOT:
 				scrCounter = conf.scrShot.count;
 				scrInterval = 0;
+				scrFrame = conf.zx->vid->fcnt;		// counted from here
 				break;
 			case XCUT_RES_DOS:
 				resetTo(RES_DOS);
@@ -449,10 +450,14 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 			case XCUT_RZXFINFILE:
 				rzxFinalizeFile();
 				break;
+			case XCUT_SCRCOPY:
+				shotClip = true;	// the next paint takes it, as it takes a shot
+				break;
 			case XCUT_SCRSHOT:
 				if (scrCounter == 0) {
 					scrCounter = 1;
 					scrInterval = 0;
+					scrFrame = conf.zx->vid->fcnt;
 				} else {
 					scrCounter = 0;
 				}

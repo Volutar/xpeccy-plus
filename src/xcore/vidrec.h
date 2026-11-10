@@ -69,7 +69,7 @@ typedef struct {
 vrecCmd vrec_command(const xRecord&, int w, int h, int ns, int rate, const QString& path, bool quiet = true);
 QString vrec_command_line(const QStringList&, bool lines = false);
 QString vrec_args_line(const QStringList&);
-QString vrec_file_name(const QString& tpl, const QString& image, const QDateTime& when);
+QString vrec_file_name(const QString& tpl, const QString& image, const QDateTime& when, int num = 0);
 
 bool vrec_start(Computer*, const QString& image, int scrW, int scrH, QString* err, const QString& file = QString());
 void vrec_stop();

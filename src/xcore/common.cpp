@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QFile>
 #include <QMutex>
+#include <QDateTime>
 
 #include "xcore.h"
 #include "sound.h"
@@ -14,6 +15,8 @@
 #include "autostart.h"
 #include "fastload.h"
 #include "cheats.h"
+#include "vidrec.h"
+#include "../filer.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -357,6 +360,39 @@ QString shot_dir() {
 		xlog(XLG_APP, XLL_WARN, "no screenshot folder '%s', saving to home", conf.scrShot.dir.c_str());
 	}
 	return QDir::homePath();
+}
+
+// A new file in the screenshot folder, named by the template as a video is.
+// %n is the first number free for that name; a name with no %n that is taken
+// gets " 2", " 3"..., so a shot never writes over another.
+QString shot_path(const QString& ext) {
+	QDir dir(shot_dir());
+	QString tpl = QString::fromStdString(conf.scrShot.name).trimmed();
+	if (tpl.isEmpty()) tpl = SHOT_NAME_DEF;
+	QString image = media_image_name();
+	QDateTime when = QDateTime::currentDateTime();
+	QString dot = "." + ext;
+	if (!tpl.contains("%n")) {
+		QString name = vrec_file_name(tpl, image, when);
+		QString path = dir.filePath(name + dot);
+		for (int i = 2; QFile::exists(path); i++)
+			path = dir.filePath(QString("%0 %1%2").arg(name).arg(i).arg(dot));
+		return path;
+	}
+	// counted on from the last number the name had: a breakpoint that shoots
+	// every frame is not a walk from 001 over all the files each time
+	static QMutex mx;
+	static QString lastKey;
+	static int lastNum = 0;
+	QMutexLocker lock(&mx);
+	QString key = dir.filePath(vrec_file_name(tpl, image, when, 1)) + dot;
+	int n = (key == lastKey) ? lastNum + 1 : 1;
+	QString path;
+	while (QFile::exists(path = dir.filePath(vrec_file_name(tpl, image, when, n) + dot)))
+		n++;
+	lastKey = key;
+	lastNum = n;
+	return path;
 }
 
 // a number typed by the user, by the debugger's one rule

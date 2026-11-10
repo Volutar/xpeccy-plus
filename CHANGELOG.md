@@ -14,6 +14,16 @@ before that point is upstream's history and is not repeated here.
 - **A build for Windows 11 on ARM** (`win-arm64`), for computers with Snapdragon and other
   ARM64 chips: it runs natively, about 1.7 times as fast as the x64 build does there.
   *(thanks to Loccy for the way to build it, a fix and the test on his Surface)*
+- **Screenshots at the machine's own size**: Scale x1, now the default, saves 256×192 for the
+  screen, or with as much border as the Border slider shows, however big the window is. Scale
+  x2-x4 are in Options > Video too, and Source: Screen takes the picture as the window shows
+  it, through the shader; hi-res modes keep all their dots. The page shows the size a shot
+  comes out at. *(requested by Michael Sudakov)*
+- **Screenshots named after the game**: a name template like the video's, with `%n` for a
+  number, so `%image %n` saves `Tetris GB 001.png`, `Tetris GB 002.png`. The message says
+  the file's name. *(requested by Michael Sudakov)*
+- **Screenshot to Clipboard** (Ctrl+F7, Shift+F7 in Classic) puts the picture into the
+  clipboard. *(requested by Demonyx)*
 - **Debugging from VS Code with DeZog**: set breakpoints on the lines of your source, step,
   and see the registers, memory and banks in VS Code while the program runs in Xpeccy+. Turn
   it on with DeZog port in Options > Application, or `--dezog`.
@@ -116,6 +126,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **Screenshot Series counts the machine's frames**, so "each 50 frames" is a second
+  whatever the monitor's rate.
+- **SCR and Hobeta screenshots are not saved in modes that are not the ZX screen** (Profi,
+  ATM, ZX Evo, the Next), where they held bytes that were not the picture.
+- **A breakpoint's screen dump saves the screen shown**, the second one too.
 - **The Custom palette of the TSConf setup no longer gives a black screen.**
 - **Opening a game from a big folder on the ZX Spectrum Next no longer stalls**: a `.sna` or
   `.z80`, or a program in a folder of over 2000 files, goes onto the SD card alone instead of

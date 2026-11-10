@@ -144,6 +144,9 @@ void conf_init(char* confdir) {
 #endif
 	conf.path.sysnextDir = sysNextDir().toLocal8Bit().constData();
 	conf.scrShot.format = "png";
+	conf.scrShot.source = VREC_SRC_PICTURE;
+	conf.scrShot.scale = 1;
+	conf.scrShot.name = SHOT_NAME_DEF;
 	conf.rec.source = VREC_SRC_PICTURE;
 	conf.rec.scale = 4;
 	conf.rec.fps = VREC_FPS_50;
@@ -292,6 +295,9 @@ void saveConfig() {
 	fprintf(cfile, "scrCount = %i\n", conf.scrShot.count);
 	fprintf(cfile, "scrInterval = %i\n", conf.scrShot.interval);
 	fprintf(cfile, "scrNoBord = %s\n", YESNO(conf.scrShot.noBorder));
+	fprintf(cfile, "scrSource = %s\n", recSrcName[conf.scrShot.source]);
+	fprintf(cfile, "scrScale = %i\n", conf.scrShot.scale);
+	fprintf(cfile, "scrName = %s\n", conf.scrShot.name.c_str());
 	fprintf(cfile, "input.osd = %s\n", YESNO(conf.iosd.on));
 	fprintf(cfile, "input.osd.keys = %s\n", YESNO(conf.iosd.keys));
 	fprintf(cfile, "input.osd.joy = %s\n", YESNO(conf.iosd.joy));
@@ -1261,6 +1267,9 @@ void loadConfig() {
 					if (pnam=="scrCount") conf.scrShot.count = arg.i;
 					if (pnam=="scrInterval") conf.scrShot.interval = arg.i;
 					if (pnam=="scrNoBord") conf.scrShot.noBorder = arg.b;
+					if (pnam=="scrSource") conf.scrShot.source = rec_id(recSrcName, pval, VREC_SRC_PICTURE);
+					if (pnam=="scrScale") conf.scrShot.scale = qBound(1, arg.i, SHOT_SCALE_MAX);
+					if (pnam=="scrName") conf.scrShot.name = pval;
 					if (pnam=="input.osd") conf.iosd.on = arg.b;
 					if (pnam=="input.osd.keys") conf.iosd.keys = arg.b;
 					if (pnam=="input.osd.joy") conf.iosd.joy = arg.b;

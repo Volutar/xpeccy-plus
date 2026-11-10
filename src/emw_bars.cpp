@@ -400,6 +400,7 @@ void MainWin::initBars() {
 	add("key.save", "File", cut("Save...", XCUT_SAVE, "floppy"), TB_PLAIN);
 	add("key.fastsave", "File", cut("Save Changed Disks", XCUT_FASTSAVE, "save_all"), TB_PLAIN);
 	add("key.scrshot", "Capture", cut("Screenshot", XCUT_SCRSHOT, "grp-screenshot"), TB_PLAIN);
+	add("key.scrshot.copy", "Capture", cut("Screenshot to Clipboard", XCUT_SCRCOPY, "screenshot-copy"), TB_PLAIN);
 	add("key.video.rec", "Capture", recAct, TB_PLAIN);
 	add("key.write.wav", "Capture", wavAct, TB_PLAIN);
 	add("key.rzx.rec", "Capture", rzxRecAct, TB_PLAIN);

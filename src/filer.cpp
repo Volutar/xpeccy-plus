@@ -801,10 +801,13 @@ QString file_take_snapshot() {
 	return res;
 }
 
-// the image named in the window title, which is what Favorites take
+// the image named in the window title, which is what Favorites take. A
+// screenshot breakpoint reads it from the emulation thread.
 static QString media_now;
+static QMutex media_mx;
 
 QString media_current() {
+	QMutexLocker lock(&media_mx);
 	return media_now;
 }
 
@@ -813,10 +816,11 @@ QString media_current() {
 // the image in use, as the title has it, without its folder and extension;
 // empty when nothing is: an image left mounted is not what the machine runs
 QString media_image_name() {
-	return QFileInfo(media_now).completeBaseName();
+	return QFileInfo(media_current()).completeBaseName();
 }
 
 void media_set_current(const QString& path) {
+	QMutexLocker lock(&media_mx);
 	media_now = path;
 }
 

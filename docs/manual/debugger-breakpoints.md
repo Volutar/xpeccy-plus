@@ -461,11 +461,11 @@ own action.
 |---|---|
 | **Debugger** | the machine stops and the Debugger opens |
 | **Counter** | the machine keeps running; only **Cnt** in the list grows |
-| **Screen dump** | the machine keeps running; the 6912 bytes of the main screen (RAM page 5) are saved as an `.scr` file |
+| **Screen dump** | the machine keeps running; the 6912 bytes of the screen shown (RAM page 5, or 7 for the second screen) are saved as an `.scr` file |
 
 A screen dump goes into the screenshots folder (the **Output** of the **Screenshots** group
-on the **Video** page of **Options**, see [Screenshots](capture.md#screenshots)), named
-after the time, such as `xpeccy_153012_250_0.scr`.
+on the **Video** page of **Options**, see [Screenshots](capture.md#screenshots)), named as
+a screenshot is, such as `xpeccy-plus_20261110_153012_Tetris GB_001.scr`.
 
 ## Spans
 
