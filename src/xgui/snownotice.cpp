@@ -253,15 +253,17 @@ QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<vo
 	box->setText(QString("This game causes <b>ULA snow</b>: random dots and lines on the screen.<br><br>"
 		"Real ZX Spectrum 48K, 128K and +2 computers show it too. It is a problem in the game "
 		"itself, so you may want to tell its author.<br><br>"
-		"To turn it off, choose a machine without snow, or turn off ULA snow in "
-		"<b>Machine: Advanced Settings</b>. <a href=\"%0\">More about ULA snow</a>").arg(more.toString()));
+		"To turn it off, choose a machine without snow, or turn off ULA snow in:<br>"
+		"<b>Options &gt; Machine &gt; Advanced settings</b><br><br>"
+		"<a href=\"%0\">More about ULA snow</a>").arg(more.toString()));
 	// one role for both, so they stand in the order given on every platform
 	QPushButton* btOff = box->addButton("Turn Off for This Game", QMessageBox::AcceptRole);
 	QPushButton* btGo = box->addButton("Continue", QMessageBox::AcceptRole);
 	QIcon flake;
-	flake.addFile(":/images/snowflake-16.png", QSize(16, 16));
-	flake.addFile(":/images/snowflake-32.png", QSize(32, 32));
+	flake.addFile(":/images/snowflake-22.png", QSize(22, 22));
+	flake.addFile(":/images/snowflake-44.png", QSize(44, 44));
 	btGo->setIcon(flake);
+	btGo->setIconSize(QSize(22, 22));		// the OSD sign's flake: at 16 px its branches run together
 	box->setDefaultButton(btGo);
 	box->setEscapeButton(btGo);
 	QObject::connect(box, &QMessageBox::buttonClicked, box, [btOff, off](QAbstractButton* bt) {
