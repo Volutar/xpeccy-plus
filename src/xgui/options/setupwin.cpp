@@ -1592,6 +1592,8 @@ void SetupWin::applyGlobal() {
 	noflicGamma = ui.sbNoflicGamma->value();
 	vid_set_grey(ui.grayscale->isChecked() ? 1 : 0);
 //	scanlines = ui.cbScanlines->isChecked() ? 1 : 0;
+	// a screen dump breakpoint names its file from the emulation thread
+	emu_lock();
 	conf.scrShot.dir = ui.pathle->text().toStdString();		// UTF-8, as shot_dir() reads it
 	conf.scrShot.format = getRFSData(ui.ssfbox).toStdString();
 	conf.scrShot.count = ui.scntbox->value();
@@ -1599,6 +1601,7 @@ void SetupWin::applyGlobal() {
 	conf.scrShot.noBorder = ui.ssNoBord->isChecked() ? 1 : 0;
 	conf.scrShot.scale = getRFIData(cbShotScale);
 	conf.scrShot.name = leShotName->text().trimmed().toStdString();
+	emu_unlock();
 	applyRecording();
 	vid_set_border_mode(ui.bszsld->value());
 	// with no shaders the list holds None only: the chosen one stays for a run that has them

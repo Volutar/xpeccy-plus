@@ -1818,10 +1818,11 @@ int MainWin::recOsd() {
 void MainWin::drawIcons(QPainter& pnt) {
 	Computer* comp = conf.zx;
 // screenshot: a series counts the machine's frames, not the window's paints;
-// a rewind going back is no frame
+// a rewind going back is no frame, nor is another machine's count
 	if (scrCounter > 0) {
 		int frm = comp->vid->fcnt;
-		scrInterval -= qMax(0, frm - scrFrame);
+		if (comp == scrComp) scrInterval -= qMax(0, frm - scrFrame);
+		scrComp = comp;
 		scrFrame = frm;
 		if (scrInterval <= 0) {
 			scrInterval = conf.scrShot.interval;

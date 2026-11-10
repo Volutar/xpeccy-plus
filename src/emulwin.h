@@ -398,6 +398,7 @@ class MainWin : public QWidget {
 		int scrCounter;
 		int scrInterval;	// frames to the next shot of a series
 		int scrFrame = 0;	// the machine's frame it was last counted at
+		Computer* scrComp = nullptr;	// ...and the machine
 
 		QImage alphabet;
 		void drawText(QPainter*, int, int, const char*);
