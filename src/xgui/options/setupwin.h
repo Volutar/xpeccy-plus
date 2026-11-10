@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QMap>
 #include <QDialog>
 #include <QKeyEvent>
 #include <QShortcut>
@@ -176,9 +177,11 @@ class SetupWin : public QDialog {
 		QComboBox* uartBox[2];		// the Next's UARTs: a serial port of the host each
 		QCheckBox* cbEspLan;		// the emulated ESP's server reachable from the network
 		QList<QWidget*> uartRow;
-		QList<QWidget*> nextOwnRow;	// what the Next sets itself, by NextZXOS's settings: greyed on it
-		QWidget* nxBox;			// those settings as the machine has them
-		QList<QLabel*> nxVal;
+		QWidget* devArea;		// the device groups of every machine but the Next
+		QWidget* nxArea;		// the Next's own: what NextZXOS set, and this computer's for it
+		QMap<QString, QLabel*> nxVal;	// NextZXOS's settings, by the menu's name
+		QLabel* nxSdSum;
+		QLabel* nxTapeSum;
 		QLabel* advNote;		// Advanced Settings: says why it is all greyed on the Next
 		QList<QWidget*> drvRow[4];
 		QComboBox* drvCountBox;
