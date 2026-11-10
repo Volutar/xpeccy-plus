@@ -2114,14 +2114,31 @@ static void alignLabels(const QList<QVBoxLayout*>& cols) {
 	}
 }
 
+// The groups made in two columns (alignLabels) put in a grid: the top two in one
+// row, as tall as each other with their rows at the top, the other two under them
+static void pairGroups(QGridLayout* grid, QVBoxLayout* left, QVBoxLayout* right) {
+	QVBoxLayout* made[2] = {left, right};
+	for (int c = 0; c < 2; c++) {
+		QWidget* top = made[c]->itemAt(0)->widget();
+		QWidget* low = made[c]->itemAt(1)->widget();
+		made[c]->removeWidget(top);
+		made[c]->removeWidget(low);
+		QGridLayout* g = qobject_cast<QGridLayout*>(top->layout());
+		g->setRowStretch(g->rowCount(), 1);
+		grid->addWidget(top, 0, c);
+		grid->addWidget(low, 1, c, Qt::AlignTop);
+		grid->setColumnStretch(c, 1);
+		delete made[c];
+	}
+	grid->setRowStretch(2, 1);
+}
+
 void SetupWin::buildDevices() {
 	QWidget* area = new QWidget;
-	QHBoxLayout* cols = new QHBoxLayout(area);
+	QGridLayout* cols = new QGridLayout(area);	// Storage | Sound over Input | Board (pairGroups)
 	cols->setContentsMargins(0, 0, 0, 0);
 	QVBoxLayout* left = new QVBoxLayout;
 	QVBoxLayout* right = new QVBoxLayout;
-	cols->addLayout(left, 1);
-	cols->addLayout(right, 1);
 	QToolButton* btn;
 
 	QGridLayout* grid = devGroup(left, ":/images/fdd_disk.png", tr("Storage"));
@@ -2261,7 +2278,6 @@ void SetupWin::buildDevices() {
 	QToolButton* mouseGear = devRow(grid, tr("Mouse"), mouseBox, mouse.body, "Machine: Mouse");
 	btn = devRow(grid, tr("PC keyboard"), cbScanTab, NULL, NULL);
 	kbdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << cbScanTab << btn;
-	left->addStretch(1);
 
 	grid = devGroup(right, ":/images/speaker.png", tr("Sound"));
 	xOptSheet psg;
@@ -2292,8 +2308,8 @@ void SetupWin::buildDevices() {
 
 	grid = devGroup(right, ":/images/grp-board.png", tr("Board"));
 	devRow(grid, tr("Turbo"), cbCpuTurbo, NULL, NULL);
-	right->addStretch(1);
 	alignLabels(QList<QVBoxLayout*>() << left << right);
+	pairGroups(cols, left, right);
 
 	// THE NEXT'S OWN: NextZXOS's settings in its menu's words, this computer's for the Next among them
 	nxArea = new QWidget;
@@ -2318,9 +2334,7 @@ void SetupWin::buildDevices() {
 	head->addWidget(whose);
 	head->addWidget(rule, 1);
 	nv->addLayout(head);
-	// the groups are made in two columns (alignLabels), then put in a grid: Storage and
-	// Sound in one row, as tall as each other
-	QGridLayout* ncols = new QGridLayout;
+	QGridLayout* ncols = new QGridLayout;		// as the usual groups (pairGroups)
 	QVBoxLayout* nl = new QVBoxLayout;
 	QVBoxLayout* nr = new QVBoxLayout;
 	nv->addLayout(ncols);
@@ -2460,20 +2474,7 @@ void SetupWin::buildDevices() {
 			i ? sheetButton(NULL, NULL) : sheetButton(esp.body, "Machine: ESP UART"), true);
 	}
 	alignLabels(QList<QVBoxLayout*>() << nl << nr);
-	QVBoxLayout* made[2] = {nl, nr};
-	for (int c = 0; c < 2; c++) {
-		QWidget* top = made[c]->itemAt(0)->widget();
-		QWidget* low = made[c]->itemAt(1)->widget();
-		made[c]->removeWidget(top);
-		made[c]->removeWidget(low);
-		QGridLayout* g = qobject_cast<QGridLayout*>(top->layout());
-		g->setRowStretch(g->rowCount(), 1);		// its rows at the top
-		ncols->addWidget(top, 0, c);
-		ncols->addWidget(low, 1, c, Qt::AlignTop);
-		ncols->setColumnStretch(c, 1);
-		delete made[c];
-	}
-	ncols->setRowStretch(2, 1);
+	pairGroups(ncols, nl, nr);
 	QWidget* page = new QWidget;
 	QVBoxLayout* pv = new QVBoxLayout(page);
 	pv->setContentsMargins(0, 0, 0, 0);
