@@ -42,7 +42,7 @@ in groups. Each one is the command of the same name in a menu, described there:
 | Described in | Buttons |
 |---|---|
 | [File menu](files.md), [Favorites menu](favorites.md) | **Open...**, **Favorites**, **Reload**, **Save...**, **Save Changed Disks** |
-| [Capture menu](capture.md) | **Screenshot**, **Copy Screenshot**, **Record Video**, **Record Sound to WAV...**, **Record...** (RZX), **RZX Player** |
+| [Capture menu](capture.md) | **Screenshot**, **Screenshot to Clipboard**, **Record Video**, **Record Sound to WAV...**, **Record...** (RZX), **RZX Player** |
 | [Machine menu](machines.md) | **Model**, **Reset**, **NMI**, **Turbo Mode** |
 | [Speed and time](time.md) | **Pause**, **Fast Mode**, **Fast Forward**, **Slow Motion**, **Rewind** |
 | [Media menu](media.md) | **Tape Play/Stop**, **Tape Record/Stop**, **Tape Player**, **Disk Manager**, **Cartridge**, **divMMC**, **SD Card**, **Drives** |

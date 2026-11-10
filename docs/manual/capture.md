@@ -9,7 +9,7 @@ set in the **Screenshots** and **Recording** groups of the [Video page](options-
 
 ## Screenshots
 
-```{index} Screenshot, Screenshot Series, Copy Screenshot, clipboard; screenshot
+```{index} Screenshot, Screenshot to Clipboard, Screenshot Series, clipboard; screenshot
 ```
 
 ```{index} see: screen capture; Screenshot
@@ -20,7 +20,7 @@ in the corner of the picture names the file, such as
 **screenshot: xpeccy-plus_20261110_153012_Tetris GB_001.png**, or says
 **can't save screenshot** when the file cannot be written.
 
-**Capture > Copy Screenshot** (Ctrl+F7 in Modern, Shift+F7 in Classic) puts the same
+**Capture > Screenshot to Clipboard** (Ctrl+F7 in Modern, Shift+F7 in Classic) puts the same
 picture into the clipboard instead, to paste into an image editor or a chat. The message
 says **screenshot copied**. It is always a picture, whatever the format.
 
