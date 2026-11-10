@@ -625,10 +625,14 @@ int main(int ac,char** av) {
 
 #if defined(_WIN32) && (QT_VERSION >= QT_VERSION_CHECK(6,7,0))
 	// a style asked for by Qt's own -style or QT_STYLE_OVERRIDE stays (QApplication takes
-	// -style out of the arguments, so this looks before)
-	bool qtStyle = qEnvironmentVariableIsSet("QT_STYLE_OVERRIDE");
-	for (int i = 1; i < ac; i++)
-		if (!strncmp(av[i], "-style", 6)) qtStyle = true;
+	// -style out of the arguments, so this looks before). Read as Qt reads it: -style x,
+	// -style=x, and either with "--"
+	bool qtStyle = !qEnvironmentVariableIsEmpty("QT_STYLE_OVERRIDE");
+	for (int i = 1; i < ac; i++) {
+		const char* arg = av[i];
+		if (!strncmp(arg, "--", 2)) arg++;
+		if (!strcmp(arg, "-style") || !strncmp(arg, "-style=", 7)) qtStyle = true;
+	}
 #endif
 	xApp app(ac,av,true);
 #if defined(_WIN32) && (QT_VERSION >= QT_VERSION_CHECK(6,7,0))
