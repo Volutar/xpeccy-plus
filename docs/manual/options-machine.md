@@ -56,6 +56,28 @@ Esc) puts back what it showed when it opened.
 
 Changes take effect when you press **Apply** or {icon}`ok-apply` **OK**.
 
+## On the ZX Spectrum Next
+
+```{index} ZX Spectrum Next; Options, NextZXOS settings
+```
+
+![The Machine page on the ZX Spectrum Next](images/options-machine-next.png)
+
+The ZX Spectrum Next sets up most of its hardware itself: NextZXOS sets it at start, from
+its own settings, and a program may change it as it runs. So on the Next the rows it sets,
+**Joystick**, **Mouse**, **PSG**, **DAC** and **Turbo**, are grayed out, and so are the
+devices it does not have: **Disk**, **Hard disk**, **General Sound** and **SAA1099**. All of
+**Machine: Advanced Settings** is grayed out too. **Memory**, **ROM**, **Overclock**,
+**Tape**, **SD card**, **ESP UART** and **Pi UART** work as on the other machines, and so do
+the mouse's **Sensitivity** and **Swap buttons**.
+
+**NextZXOS settings**, under the devices, shows what the machine has set now, named as in
+NextZXOS's own menu (NMI, then **Settings**): **General** on the left, **Sound** on the
+right, then the two joysticks and the CPU speed. Change them in that menu. **Next (+3)** in
+**Timings** is the timing NextZXOS calls **Next**, that of the +3. **Scanlines** and
+**HDMI Sound** are not listed: they are for a monitor, not emulated. While the NMI menu is
+open, NextZXOS keeps TurboSound off, and the list shows it off.
+
 ## Overclock
 
 ```{index} Overclock slider, Overclock, Overclock Up, Overclock Down
@@ -86,7 +108,9 @@ it. Leave them alone unless you know the hardware.
   **...and it crashes**, **MIC in the beeper** and **ULA plus**.
 - **Board** - **Even M1** (Scorpion ZS 256) and **DD palette** (Profi).
 
-Each one is explained beside it, or in a tooltip when you hold the mouse over it. What contention, snow and the floating bus are, and how they are emulated, is in
+Each one is explained beside it, or in a tooltip when you hold the mouse over it. On the
+ZX Spectrum Next they are all grayed out: the Next sets them itself (see
+[On the ZX Spectrum Next](#on-the-zx-spectrum-next)). What contention, snow and the floating bus are, and how they are emulated, is in
 [Contention, snow and the floating bus](ula-snow-floating-bus.md).
 
 ## Machine: Tape

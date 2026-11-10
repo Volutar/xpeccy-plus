@@ -1,0 +1,11 @@
+{
+  "config": {"GENERAL": {"machine": "zxnext", "start.machine": "zxnext", "folder.write": "no"}},
+  "steps": [
+    ["wait", 15000],
+    ["run", "run-action key.options"],
+    ["wait", 1200],
+    ["click", "pageList", 60, 16],
+    ["wait", 800]
+  ],
+  "frames": []
+}
