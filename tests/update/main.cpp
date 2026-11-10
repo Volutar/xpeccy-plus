@@ -170,6 +170,8 @@ static void test_renamed(const QString& dir) {
 		{"win-x64-qt6", qt6, "-win-x64-qt6.zip"},
 		{"win-x86", qt5x86, "-win-x86.zip"},
 		{"macos-arm64-qt6", NULL, NULL},
+		// an ARM64 build takes no x64 file from a nightly with none of its own
+		{"win-arm64", NULL, NULL},
 	};
 	for (const auto& row : tab) {
 		upRelease n = up_parse(nightly, row.pkg);
