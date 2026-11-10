@@ -466,7 +466,7 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_TAPREC, "key.tape.rec", "Tape Record/Stop", {}},
 	{SCG_MAIN, XCUT_SCRSHOT, "key.scrshot", "Screenshot", {}},
 	{SCG_MAIN, XCUT_COMBOSHOT, "key.scrshot.combo", "Screenshot Series", {}},
-	{SCG_MAIN, XCUT_SCRCOPY, "key.scrshot.copy", "Copy Screenshot", {}},
+	{SCG_MAIN, XCUT_SCRCOPY, "key.scrshot.copy", "Screenshot to Clipboard", {}},
 	{SCG_MAIN, XCUT_SIZEX1, "key.size.x1", "Size x1", {}},
 	{SCG_MAIN, XCUT_SIZEX2, "key.size.x2", "Size x2", {}},
 	{SCG_MAIN, XCUT_SIZEX3, "key.size.x3", "Size x3", {}},

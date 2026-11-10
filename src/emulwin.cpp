@@ -3060,8 +3060,8 @@ void MainWin::initMenuBar() {
 	resumeAct = cutAction(fileMenu, "Resume Last Session", XCUT_RESUME);
 	// the Capture menu's, which is made with the machine's menus
 	cutAct("Screenshot", XCUT_SCRSHOT, "grp-screenshot");
+	cutAct("Screenshot to Clipboard", XCUT_SCRCOPY, "screenshot-copy");
 	cutAct("Screenshot Series", XCUT_COMBOSHOT);
-	cutAct("Copy Screenshot", XCUT_SCRCOPY, "screenshot-copy");
 	recAct = cutAct("Record Video", XCUT_VIDREC, "grp-record");
 	recAct->setCheckable(true);
 	rzxRecAct = cutAct("Record...", XCUT_RZXREC, "grp-record-rzx");
@@ -3636,8 +3636,8 @@ void MainWin::initMachineMenus() {
 	// what the machine shows and plays, taken down
 	QMenu* cap = new xMenu("Capture", this);
 	cap->addAction(cutById.value(XCUT_SCRSHOT));
-	cap->addAction(cutById.value(XCUT_COMBOSHOT));
 	cap->addAction(cutById.value(XCUT_SCRCOPY));
+	cap->addAction(cutById.value(XCUT_COMBOSHOT));
 	cap->addSeparator();
 	cap->addAction(recAct);
 	cap->addAction(wavAct);
