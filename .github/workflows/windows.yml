@@ -1,8 +1,9 @@
 name: Windows
 
-# Builds the three archives that ship, through the same packaging/ scripts as a
+# Builds the four archives that ship, through the same packaging/ scripts as a
 # local build. Qt and MinGW come from aqtinstall rather than from the runner
-# image, so the compiler this is built with is the one named here.
+# image, so the compiler this is built with is the one named here (win-arm64's
+# come from MSYS2, below).
 #
 # Started by hand, from the Actions tab or "gh workflow run windows.yml --ref
 # <branch>"; tick "release" for a clean version string instead of the dated dev
@@ -306,14 +307,20 @@ jobs:
         shell: pwsh
 
     steps:
+      # no token left behind: this job runs the binaries it downloads
       - uses: actions/checkout@v7
         with:
           sparse-checkout: packaging
+          persist-credentials: false
 
       # the official System/Next, the Next's card for its cases. Not the PGO set: on
-      # this image OpenSSH refuses checkout's key file ("permissions too open")
+      # this image OpenSSH refuses checkout's key file ("permissions too open").
+      # From GitLab: when it is down, or the tag moved, the machines are still
+      # compared, the Next on its own ROM - a nightly is not held up by it
       - name: Fetch System/Next
-        run: packaging\fetch-deps.ps1 -SysNext
+        id: card
+        continue-on-error: true
+        run: packaging\fetch-deps.ps1 -SysNextOnly
 
       - uses: actions/download-artifact@v8
         with:
@@ -337,9 +344,16 @@ jobs:
           "ARM=$((Get-Item stage\*-win-arm64).FullName)" >> $env:GITHUB_ENV
 
       - name: Compare
+        env:
+          CARD: ${{ steps.card.outcome }}
         run: |
           $opts = @{ A = $env:X64; B = $env:ARM }
-          $opts.Card = (Get-Item build\deps\sysnext-*).FullName
+          if ($env:CARD -eq 'success') {
+            $opts.Card = (Get-Item build\deps\sysnext-* -Exclude *.tmp).FullName
+          } else {
+            "::warning::No System/Next: the Next is compared without its card"
+            "System/Next could not be fetched: the Next was compared without its card and programs." >> $env:GITHUB_STEP_SUMMARY
+          }
           packaging\win-parity.ps1 @opts
 
       # how each looks, the Qt of win-arm64 not being win-x64's: for a person to compare.

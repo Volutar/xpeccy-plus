@@ -6,7 +6,8 @@
 #   .\win-parity.ps1 -A <win-x64 folder> -B <win-arm64 folder> [-Card <Next card>]
 #
 # Every built-in machine boots its own ROM; with -Card the Next boots NextZXOS from it
-# and runs the programs pgo-train.ps1 trains on, the ones the card has. Sound is mixed
+# and runs the programs pgo-train.ps1 trains on, the ones the card has (without one,
+# the Next runs its boot ROM only). Sound is mixed
 # as in real time (--bench-full), so the filters run too.
 
 param(
@@ -32,6 +33,9 @@ if ($Card) {
 			$cases.Add(@{ name = Split-Path $p -Leaf; args = @('-m', 'zxnext', '--bench-skip', '1500'); next = $p })
 		}
 	}
+} else {
+	# no card: its boot ROM alone, which stops at the card it cannot find
+	$cases.Add(@{ name = 'zxnext'; args = @('-m', 'zxnext', '--bench-skip', '300') })
 }
 
 $work = Join-Path ([IO.Path]::GetTempPath()) "xpeccy-parity-$PID"
