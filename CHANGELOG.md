@@ -59,6 +59,8 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **TSConf runs the TS-BIOS of 2024**, with the CPU cache, the 1024K mode and the INT offset
+  in its setup.
 - **Options > Machine: the Disk row is now Floppy disk.** With the divMMC on, the divMMC row
   reads divMMC (!), and a tip says the disk controllers are unavailable.
 - **Options on the ZX Spectrum Next show what NextZXOS has set**: its joysticks, mouse, sound,
@@ -111,6 +113,7 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The Custom palette of the TSConf setup no longer gives a black screen.**
 - **Opening a game from a big folder on the ZX Spectrum Next no longer stalls**: a `.sna` or
   `.z80`, or a program in a folder of over 2000 files, goes onto the SD card alone instead of
   with its whole folder, and its SZX saves open and close fast. *(thanks to Volutar for

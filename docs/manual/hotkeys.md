@@ -125,7 +125,7 @@ or Symbol Shift: Shift+F9 in Modern does not leave Caps Shift pressed. When Shif
 is held with a key and the combination is not a hotkey, the key works as it does alone,
 and Shift or Ctrl stays pressed for the machine. So on the ZX Evolution (TSConf), Ctrl+F12
 resets into the TS-BIOS setup, and Shift+F12 resets with Caps Shift held, so TS-BIOS starts
-the boot its setup names for Caps Shift.
+the boot its setup names for Caps Shift: by default, `boot.$c` from the SD card.
 
 **Other windows.** In the **Tape Player**, the **Disk Manager**, **Gamepads** and the other
 tool windows, the hotkeys on the F-keys, Pause and Scroll Lock, and those with Alt or Ctrl,

@@ -63,7 +63,7 @@ and with every emulator of them for decades.
 | `profi-bios20.rom` | Profi v5 | Micco Software / Kondor | grey | ROM Bios 2.0 of 17.04.94, TR-DOS 5.04T, CRC32 36F5F7BD, `02877e403f22d10d12ef0296ccb96f60` |
 | `atm2.rom` | ATM Turbo 2+ | MicroART | grey | `28ce89a88089417db4d3057de942a1bb` |
 | `zxevo-fe.rom` | ZX Evo (BaseConf) | NedoPC group | grey | EVO Reset Service 0.61 FE, `4d440af2f2d746094527aa6789390705` |
-| `tsconf.rom` | ZX Evo (TSConf) | TS-Labs | grey | TS-BIOS, shipped elsewhere as `ts-bios.rom`, `d5f199df3832dc749fe0d12f1ce8f26f` |
+| `tsconf.rom` | ZX Evo (TSConf) | TS-Labs | grey | TS-BIOS build 2024-07-28, `pentevo/rom/bin/ts-bios.rom` of the zx-evo repository (9ce7544), `9a0a7f6c10ffa0a556748c4b40088554` |
 | `phoenix.rom` | ZXM-Phoenix | ZXM-Phoenix authors | grey | BIOS 5.03, `892a393093f373ad3b4c9453f529b523` |
 | `alf.rom` | ALF TV Game | SKB Zapad, Brest | grey | 32K: games menu in bank 0, 48 BASIC in bank 1, `f879e22ae833687ccdfc4745aa56b804` |
 
