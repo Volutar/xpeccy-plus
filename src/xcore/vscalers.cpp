@@ -79,14 +79,25 @@ void sfill_set(int item) {
 
 // the picture area of a window that is not the zoom's size, empty when it is
 static QSize fitArea;
+// the monitor the window is on, for fullscreen
+static QSize fullscreenSize;
 
 void vid_set_fit(const QSize& area) {
 	fitArea = area;
 	vid_upd_scale();
 }
 
-QSize vid_fit_area() {
-	return fitArea;
+QSize vid_room(int fullscreen) {
+	if (!fullscreen) return fitArea;
+	// Before the main window is shown, configuration has no monitor yet.
+	if (!fullscreenSize.isValid()) {
+#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
+		fullscreenSize = QGuiApplication::primaryScreen()->size();
+#else
+		fullscreenSize = QApplication::desktop()->screenGeometry().size();
+#endif
+	}
+	return fullscreenSize;
 }
 
 // Where the frame lands inside the window. In a window that is a whole number
@@ -95,61 +106,72 @@ QSize vid_fit_area() {
 // there is instead, keeping its shape: at a screen's resolution, and through
 // a shader, a whole zoom is not worth the black bars it leaves. 'ignore aspect
 // ratio' stretches it to fill.
-void vid_upd_scale(const QSize& screenSize) {
-	static QSize fullscreenSize;
-	if (!screenSize.isEmpty()) fullscreenSize = screenSize;
-	Video* vid = conf.zx->vid;
-	double xscale = conf.zx->hw->xscale;		// pixel aspect, 1.0 on every zx
-	int dwid;
-	int dhei;
-	vid_upd_crop(vid);					// the frame the border size asks for
-	if (conf.vid.fullScreen || !fitArea.isEmpty()) {
-		// Before the main window is shown, configuration has no monitor yet.
-		if (conf.vid.fullScreen && !fullscreenSize.isValid()) {
-#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
-			fullscreenSize = QGuiApplication::primaryScreen()->size();
-#else
-			fullscreenSize = QApplication::desktop()->screenGeometry().size();
-#endif
-		}
-		const QSize& area = conf.vid.fullScreen ? fullscreenSize : fitArea;
-		dwid = area.width();
-		dhei = area.height();
-		if (conf.vid.keepRatio) {
+vidFit vid_fit(Video* vid, int mode, const QSize& room, int zoom, int keepRatio, int fillBorder, double xscale) {
+	vidFit f;
+	f.crop = vid_crop_size(vid, mode);		// the frame the border size asks for
+	f.widen = 0;
+	f.wideW = 0;
+	f.wideH = 0;
+	if (room.isEmpty()) {
+		f.kx = xscale * zoom;
+		f.ky = zoom;
+		f.w = (int)(f.crop.x * f.kx);
+		f.h = f.crop.y * zoom;
+		f.roomW = f.w;
+		f.roomH = f.h;
+		f.zoom = zoom;
+	} else {
+		f.roomW = room.width();
+		f.roomH = room.height();
+		if (keepRatio) {
 			// The height sets the scale in a room wider than the picture, the
 			// width in a taller one. With the border first, the free room shows
 			// more border, as far as the raster goes: the frame takes a dot
 			// more than fits and is cut at the room's edge, so the edge follows
 			// the room smoothly instead of jumping a dot at a time.
-			double picw = vid->vsze.x * xscale;
+			double picw = f.crop.x * xscale;
 			double fit;
-			if (dwid * (double)vid->vsze.y >= dhei * picw) {
-				fit = dhei / (double)vid->vsze.y;
-				if (conf.vid.fillBorder)
-					vid_widen_crop(vid, (int)std::ceil(dwid / (fit * xscale) - 1e-6), 0);
+			if (f.roomW * (double)f.crop.y >= f.roomH * picw) {
+				fit = f.roomH / (double)f.crop.y;
+				f.wideW = (int)std::ceil(f.roomW / (fit * xscale) - 1e-6);
 			} else {
-				fit = dwid / picw;
-				if (conf.vid.fillBorder)
-					vid_widen_crop(vid, 0, (int)std::ceil(dhei / fit - 1e-6));
+				fit = f.roomW / picw;
+				f.wideH = (int)std::ceil(f.roomH / fit - 1e-6);
 			}
-			picw = vid->vsze.x * xscale;
-			drawW = (int)(picw * fit + 0.5);
-			drawH = (int)(vid->vsze.y * fit + 0.5);
-			drawZoom = (fit == 1.0) ? 1 : 0;
+			if (fillBorder) {
+				f.widen = 1;
+				f.crop = vid_widen_size(vid, mode, f.wideW, f.wideH);
+			}
+			f.kx = fit * xscale;
+			f.ky = fit;
+			f.w = (int)(f.crop.x * f.kx + 0.5);
+			f.h = (int)(f.crop.y * fit + 0.5);
+			f.zoom = (fit == 1.0) ? 1 : 0;
 		} else {
-			drawW = dwid;
-			drawH = dhei;
-			drawZoom = 0;				// stretched: no whole zoom
+			f.w = f.roomW;
+			f.h = f.roomH;
+			f.kx = f.w / (double)f.crop.x;
+			f.ky = f.h / (double)f.crop.y;
+			f.zoom = 0;				// stretched: no whole zoom
 		}
-	} else {
-		drawW = (int)(vid->vsze.x * xscale * conf.vid.scale);
-		drawH = vid->vsze.y * conf.vid.scale;
-		dwid = drawW;
-		dhei = drawH;
-		drawZoom = conf.vid.scale;
 	}
-	drawX = (dwid - drawW) / 2;
-	drawY = (dhei - drawH) / 2;
+	f.x = (f.roomW - f.w) / 2;
+	f.y = (f.roomH - f.h) / 2;
+	return f;
+}
+
+void vid_upd_scale(const QSize& screenSize) {
+	if (!screenSize.isEmpty()) fullscreenSize = screenSize;
+	Video* vid = conf.zx->vid;
+	vidFit f = vid_fit(vid, vid->brdmode, vid_room(conf.vid.fullScreen), conf.vid.scale,
+		conf.vid.keepRatio, conf.vid.fillBorder, conf.zx->hw->xscale);	// pixel aspect, 1.0 on every zx
+	vid_upd_crop(vid);
+	if (f.widen) vid_widen_crop(vid, f.wideW, f.wideH);
+	drawX = f.x;
+	drawY = f.y;
+	drawW = f.w;
+	drawH = f.h;
+	drawZoom = f.zoom;
 }
 
 void vid_set_zoom(int zoom) {

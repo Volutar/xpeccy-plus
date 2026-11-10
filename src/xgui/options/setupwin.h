@@ -15,6 +15,7 @@
 
 #include "../../xcore/xcore.h"
 #include "../../xcore/vidrec.h"
+#include "../../xcore/vscalers.h"
 #include "../portwatch.h"
 #include "opt_romset.h"
 #include "opt_diskcat.h"
@@ -98,6 +99,7 @@ class SetupWin : public QDialog {
 		void showRecSize();
 		void recSizes(QSize*, QSize*);
 		void showShotSize();
+		vidFit pageFit();
 		void alignVideoLabels();
 		xRecord recFromUi();
 		// the side fill's strength, in a pop-up under the gear beside its list; the

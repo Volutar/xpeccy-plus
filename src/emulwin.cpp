@@ -1641,45 +1641,51 @@ void MainWin::grabScreen() {
 	const qreal r = widgetDpr(this);
 	int fw = int(width() * r + 0.5);
 	int fh = int(height() * r + 0.5);
-	QImage img(fw & ~1, fh & ~1, QImage::Format_RGBA8888);
+	vrec_screen(readBack(QRect(0, fh & 1, fw & ~1, fh & ~1)));
+#endif
+}
+
+// Pixels of the framebuffer just painted, in GL's terms: from the bottom left,
+// the bottom row first.
+QImage MainWin::readBack(const QRect& rc) {
+	QImage img(rc.width(), rc.height(), QImage::Format_RGBA8888);
+#if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
 	glBindFramebuffer(GL_FRAMEBUFFER, glw->defaultFramebufferObject());
 	glPixelStorei(GL_PACK_ALIGNMENT, 4);
-	glReadPixels(0, fh - img.height(), img.width(), img.height(), GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
-	vrec_screen(img);
+	glReadPixels(rc.x(), rc.y(), rc.width(), rc.height(), GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
 #endif
+	return img;
 }
 
 // The picture as just drawn through the shader, at the window's pixels: with a
 // side fill beside it the whole window, as it shows; with No border, the screen
-// part of the picture alone.
+// part of the picture alone. A picture wider than the window is cut at its edge.
 void MainWin::grabPicture() {
 #if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
 	const qreal r = widgetDpr(this);
 	QRect win(0, 0, int(width() * r + 0.5), int(height() * r + 0.5));
-	// where drawPicture() put it; it sits in the middle, so its bottom gap is
-	// its top one
+	// drawPicture()'s viewport, from the bottom left
 	QRect pic(int(drawX * r + 0.5), int(drawY * r + 0.5), int(drawW * r + 0.5), int(drawH * r + 0.5));
-	bool nob = conf.scrShot.noBorder;
-	if (fillOn && !nob) pic = win;
-	pic &= win;
-	if (pic.isEmpty()) return;
-	QImage img(pic.width(), pic.height(), QImage::Format_RGBA8888);
-	glBindFramebuffer(GL_FRAMEBUFFER, glw->defaultFramebufferObject());
-	glPixelStorei(GL_PACK_ALIGNMENT, 4);
-	glReadPixels(pic.x(), pic.y(), pic.width(), pic.height(), GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
+	Video* vid = conf.zx->vid;
+	QRect rc = pic;
+	if (fillOn) rc = win;
+	if (conf.scrShot.noBorder && (vid->vsze.x > 0) && (vid->vsze.y > 0)) {
+		// the screen's part of the whole picture, cut or not; GL counts from the
+		// bottom, so the gap under it is the frame's bottom border
+		double kx = pic.width() / (double)vid->vsze.x;
+		double ky = pic.height() / (double)vid->vsze.y;
+		int below = vid->rcut.y - vid->send.y;
+		rc = QRect(pic.x() + int((vid->bord.x - vid->lcut.x) * kx + 0.5), pic.y() + int(below * ky + 0.5),
+			int(vid->scrn.x * kx + 0.5), int(vid->scrn.y * ky + 0.5));
+	}
+	rc &= win;
+	if (rc.isEmpty()) return;
+	QImage img = readBack(rc);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
 	img = img.flipped(Qt::Vertical);
 #else
 	img = img.mirrored();
 #endif
-	Video* vid = conf.zx->vid;
-	if (nob && (vid->vsze.x > 0) && (vid->vsze.y > 0)) {
-		double kx = img.width() / (double)vid->vsze.x;
-		double ky = img.height() / (double)vid->vsze.y;
-		QRect scr(int((vid->bord.x - vid->lcut.x) * kx + 0.5), int((vid->bord.y - vid->lcut.y) * ky + 0.5),
-			int(vid->scrn.x * kx + 0.5), int(vid->scrn.y * ky + 0.5));
-		img = img.copy(scr & img.rect());
-	}
 	shotGrab = img.convertToFormat(QImage::Format_RGB32);
 #endif
 }
@@ -1856,19 +1862,18 @@ int MainWin::recOsd() {
 }
 
 // At a paint's start: is a shot of a series due in it. A series counts the
-// machine's frames, not the window's paints; a rewind going back is no frame,
-// nor is another machine's count.
+// machine's frames, not the window's paints, and a paint that covers more than
+// one keeps the frames over for the next shot; a rewind going back is no frame.
 void MainWin::shotTick() {
 	shotDue = false;
-	shotGrab = QImage();
 	if (scrCounter <= 0) return;
-	Computer* comp = conf.zx;
-	int frm = comp->vid->fcnt;
-	if (comp == scrComp) scrInterval -= qMax(0, frm - scrFrame);
-	scrComp = comp;
+	int frm = conf.zx->vid->fcnt;
+	scrInterval -= qMax(0, frm - scrFrame);
 	scrFrame = frm;
 	if (scrInterval <= 0) {
-		scrInterval = conf.scrShot.interval;
+		// one shot a paint at most, so it is never owed more than the next frame
+		int each = conf.scrShot.interval;
+		scrInterval = (each > 0) ? qMax(1, scrInterval + each) : 0;
 		scrCounter--;
 		shotDue = true;
 	}
@@ -2406,7 +2411,7 @@ void MainWin::rzxWatch() {
 
 // ...
 
-uchar hobHead[] = {'s','c','r','e','e','n',' ',' ','C',0,0,0,0x1b,0,0x1b,0xe7,0x81};	// last 2 bytes is crc
+uchar hobHead[HOB_HEAD_SIZE] = {'s','c','r','e','e','n',' ',' ','C',0,0,0,0x1b,0,0x1b,0xe7,0x81};	// last 2 bytes is crc
 
 // A frame holds two pixels a dot; one whose pairs differ somewhere has dots of
 // half the width: Profi, the ATM's and the Evo's hi-res, the Next's 640 layer 2
@@ -2423,13 +2428,13 @@ static bool shot_hires(const QImage& img) {
 // all its dots and doubles its lines, so its shape stays.
 static QImage shot_picture(Computer* comp) {
 	Video* vid = comp->vid;
-	// the screen sits in the middle of the shown part, so there is no lopsided
-	// border left to trim
+	// the border size's frame, around the screen in its middle; not the window's
+	// crop, which a fitted window widens with its side fill
+	vCoord sze = conf.scrShot.noBorder ? vid->scrn : vid_crop_size(vid, vid->brdmode);
+	int x = vid->bord.x - (sze.x - vid->scrn.x) / 2;
+	int y = vid->bord.y - (sze.y - vid->scrn.y) / 2;
 	QImage img(frame_shown_lock(), vid->full.x * 2, bufSize / bytesPerLine, bytesPerLine, QImage::Format_RGBA8888);
-	if (conf.scrShot.noBorder)
-		img = img.copy(vid->bord.x * 2, vid->bord.y, vid->scrn.x * 2, vid->scrn.y);
-	else
-		img = img.copy(vid->lcut.x * 2, vid->lcut.y, vid->vsze.x * 2, vid->vsze.y);
+	img = img.copy(x * 2, y, sze.x * 2, sze.y);
 	frame_shown_unlock();
 	if (img.isNull()) return img;
 	img = img.convertToFormat(QImage::Format_RGB32);	// no alpha for a viewer to find
@@ -2478,12 +2483,12 @@ void MainWin::screenShot(bool clip) {
 	switch (frm) {
 		case SCR_HOB:
 			if (!file.open(QFile::WriteOnly)) break;
-			saved = (file.write((char*)hobHead, 17) == 17) && (file.write(sptr, 0x1b00) == 0x1b00);
+			saved = (file.write((char*)hobHead, HOB_HEAD_SIZE) == HOB_HEAD_SIZE) && (file.write(sptr, SCR_SIZE) == SCR_SIZE);
 			file.close();
 			break;
 		case SCR_SCR:
 			if (!file.open(QFile::WriteOnly)) break;
-			saved = (file.write(sptr, 0x1b00) == 0x1b00);
+			saved = (file.write(sptr, SCR_SIZE) == SCR_SIZE);
 			file.close();
 			break;
 		default: {

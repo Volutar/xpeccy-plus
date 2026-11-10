@@ -506,6 +506,7 @@ void vid_set_border(Video*, int);
 void vid_upd_crop(Video*);
 void vid_widen_crop(Video*, int, int);
 vCoord vid_crop_size(Video*, int);
+vCoord vid_widen_size(Video*, int, int, int);
 void vid_upd_layout(Video*);
 void vid_upd_timings(Video*, double);
 

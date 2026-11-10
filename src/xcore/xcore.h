@@ -119,6 +119,8 @@ QString xres_dir(const char*);
 QString xres_root(const char*);
 #define SHOT_SCALE_MAX	4
 #define SHOT_NAME_DEF	"xpeccy-plus_%d_%t_%image_%n"
+#define SCR_SIZE	0x1b00	// a ZX screen: pixels and attributes
+#define HOB_HEAD_SIZE	17	// a Hobeta file's header
 QString shot_dir();		// where screenshots go: the folder set, or home if it is not there
 QString shot_path(const QString& ext);	// a new file there, named by the template
 QString xres_path(const char*, const QString&);
