@@ -148,8 +148,9 @@ Anti-flicker is not applied in fast mode. What the modes look for, and where ant
 The **Screenshots** group on the **Video** page of **Options**:
 
 - **Source** - **RAW frame** takes the machine's picture alone, with no shader. **Screen**
-  takes the picture as the window shows it, shader and all, as big as it is there; the
-  indicators and messages over it are left out. **Screen** needs the OpenGL view.
+  takes the picture as the window shows it, shader and all, as big as it is there, with the
+  **Side fill** beside it when there is one (black around the picture is left out); the
+  indicators and messages over it are left out too. **Screen** needs the OpenGL view.
   **RAW frame** by default.
 - **Scale x1** ... **Scale x4** - the size of a **RAW frame** picture. **Scale x1** gives
   one pixel for each dot of the machine: 256×192 for the screen alone, more with as much
@@ -167,8 +168,8 @@ The **Screenshots** group on the **Video** page of **Options**:
   it: `Tetris GB 001.png`, `Tetris GB 002.png`.
 - **No border** - the screen only, without the border around it.
 
-Under **No border** is the size a picture comes out at with the settings on the page; a
-high-resolution picture comes out twice as big.
+Under **No border** are the format and the size a picture comes out at with the settings
+on the page, such as **PNG, 352×288**; a high-resolution picture comes out twice as big.
 
 | Format | What is saved |
 |---|---|
