@@ -2217,7 +2217,7 @@ void SetupWin::buildDevices() {
 	}
 	dgrid->setColumnStretch(3, 1);
 	disk.field(tr("Drives"), drvs);
-	btn = devRow(grid, tr("Disk"), diskTypeBox, disk.body, "Machine: Disk");
+	btn = devRow(grid, tr("Floppy disk"), diskTypeBox, disk.body, "Machine: Floppy Disk");
 	diskRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << diskTypeBox << btn;
 
 	// the images and what is in them are the Drives menu's
@@ -2252,13 +2252,6 @@ void SetupWin::buildDevices() {
 	btn = devRow(grid, tr("divMMC"), divBox, dv.body, "Machine: divMMC");
 	btn->setObjectName("divGear");
 	divRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << divBox << btn;
-	// with the board on, the disk systems are out of the machine (comp_board_storage)
-	divNote = new QLabel(tr("Disk and Hard disk are off while the divMMC is on"));
-	QFont nfnt = divNote->font();
-	nfnt.setItalic(true);
-	divNote->setFont(nfnt);
-	divNote->setWordWrap(true);
-	grid->addWidget(divNote, grid->rowCount(), 1, 1, 2);
 	connect(divBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {showBoardStorage();});
 
 	slotSum = new QLabel;
@@ -2738,7 +2731,7 @@ void SetupWin::showDevRows() {
 	fillDevSummary();
 }
 
-// The Disk and Hard disk rows: a controller on the board is not swapped out, and
+// The Floppy disk and Hard disk rows: a controller on the board is not swapped out, and
 // with the divMMC set on both are out of the machine - they keep what they say,
 // for when it goes. Follows the divMMC row before Apply.
 void SetupWin::showBoardStorage() {
@@ -2753,7 +2746,13 @@ void SetupWin::showBoardStorage() {
 	diskTypeBox->setToolTip(board ? out : (bi & MAC_BI_DISK) ? fixed : QString());
 	hiface->setEnabled(!board && !(bi & MAC_BI_IDE));
 	hiface->setToolTip(board ? out : (bi & MAC_BI_IDE) ? fixed : QString());
-	divNote->setVisible(board);
+	// with the board on, the disk controllers are out of the machine (comp_board_storage):
+	// its row's name says so, with a tip
+	QLabel* divName = qobject_cast<QLabel*>(divRow.value(0));
+	if (divName) {
+		divName->setText(board ? tr("divMMC (!)") : tr("divMMC"));
+		divName->setToolTip(board ? tr("While it is on, the floppy and hard disk\ncontrollers are out of the machine") : QString());
+	}
 }
 
 // THE WHOLE CONFIGURATION, IN AND OUT
