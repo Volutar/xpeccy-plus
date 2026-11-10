@@ -450,7 +450,7 @@ void MainWin::xkey_press(int xkey, bool cmd) {
 				rzxFinalizeFile();
 				break;
 			case XCUT_SCRCOPY:
-				screenShot(true);
+				shotClip = true;	// the next paint takes it, as it takes a shot
 				break;
 			case XCUT_SCRSHOT:
 				if (scrCounter == 0) {

@@ -1119,7 +1119,8 @@ struct xConfig {
 		unsigned noBorder:1;
 		int count;
 		int interval;
-		int scale;		// 1..SHOT_SCALE_MAX of the machine's dots, 0 the window's
+		int source;		// VREC_SRC_*: the machine's frame, or the picture the window shows
+		int scale;		// 1..SHOT_SCALE_MAX pixels a dot, for the machine's frame
 		std::string format;
 		std::string dir;
 		std::string name;	// the file name's template, see shot_path()

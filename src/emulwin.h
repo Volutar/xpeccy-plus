@@ -399,6 +399,12 @@ class MainWin : public QWidget {
 		int scrInterval;	// frames to the next shot of a series
 		int scrFrame = 0;	// the machine's frame it was last counted at
 		Computer* scrComp = nullptr;	// ...and the machine
+		bool shotDue = false;	// a shot to save in this paint
+		bool shotClip = false;	// one to copy, asked for since the last paint
+		QImage shotGrab;	// the picture as this paint showed it, for Source: Screen
+		void shotTick();
+		void shotTake();
+		void grabPicture();
 
 		QImage alphabet;
 		void drawText(QPainter*, int, int, const char*);

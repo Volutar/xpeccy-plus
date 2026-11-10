@@ -488,14 +488,30 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 		QString key = QString::fromStdString(it->first);
 		ui.ssfbox->addItem((key == "hobeta") ? QString("Hobeta") : key.toUpper(), key);
 	}
-	// the size, after the format; the window's zoom last, as it always was
+	// laid out as Recording: what is taken and its size, then the format and where to
+	cbShotSrc = new QComboBox;
+	cbShotSrc->addItem(tr("RAW frame"), VREC_SRC_PICTURE);
+	cbShotSrc->addItem(tr("Screen"), VREC_SRC_SCREEN);
+	cbShotSrc->setToolTip(tr("RAW frame: the machine's picture, no shader\nScreen: the picture as the window shows it, shader and all"));
+	// no GL view: nothing to read the window back from
+	if (!conf.vid.gl) cbShotSrc->setItemData(1, 0, Qt::UserRole - 1);
 	cbShotScale = new QComboBox;
 	for (int n = 1; n <= SHOT_SCALE_MAX; n++)
 		cbShotScale->addItem(QString("Scale x%0").arg(n), n);
-	cbShotScale->addItem(tr("Window size"), 0);
 	cbShotScale->setToolTip(tr("x1: a pixel for each dot of the machine;\n"
-		"a hi-res mode keeps all its dots, lines doubled\nWindow size: as big as in the window"));
+		"a hi-res mode keeps all its dots, lines doubled"));
+	ui.horizontalLayout_3->insertWidget(0, cbShotSrc);
 	ui.horizontalLayout_3->insertWidget(1, cbShotScale);
+	labShotSize = new QLabel;
+	labShotSize->setAlignment(Qt::AlignCenter);
+	ui.ssColumn->insertWidget(1, labShotSize);
+	foreach(QComboBox* box, QList<QComboBox*>() << cbShotSrc << cbShotScale << ui.ssfbox)
+		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showShotSize);
+	connect(ui.ssNoBord, &QCheckBox::toggled, this, &SetupWin::showShotSize);
+	connect(ui.bszsld, &QSlider::valueChanged, this, &SetupWin::showShotSize);
+	connect(ui.cbScale, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showShotSize);
+	connect(ui.cbFullscreen, &QCheckBox::toggled, this, &SetupWin::showShotSize);
+	connect(ui.cbKeepRatio, &QCheckBox::toggled, this, &SetupWin::showShotSize);
 	leShotName = new QLineEdit;
 	leShotName->setPlaceholderText(SHOT_NAME_DEF);
 	// rich text, a list as Recording's template has it
@@ -1162,7 +1178,9 @@ void SetupWin::fillPages() {
 	ui.scntbox->setValue(conf.scrShot.count);
 	ui.sintbox->setValue(conf.scrShot.interval);
 	ui.ssNoBord->setChecked(conf.scrShot.noBorder);
+	setRFIndex(cbShotSrc, conf.vid.gl ? conf.scrShot.source : VREC_SRC_PICTURE);
 	setRFIndex(cbShotScale, conf.scrShot.scale);
+	showShotSize();
 	leShotName->setText(QString::fromStdString(conf.scrShot.name));
 	fillRecording();
 	ui.geombox->clear();
@@ -1599,6 +1617,7 @@ void SetupWin::applyGlobal() {
 	conf.scrShot.count = ui.scntbox->value();
 	conf.scrShot.interval = ui.sintbox->value();
 	conf.scrShot.noBorder = ui.ssNoBord->isChecked() ? 1 : 0;
+	conf.scrShot.source = getRFIData(cbShotSrc);
 	conf.scrShot.scale = getRFIData(cbShotScale);
 	conf.scrShot.name = leShotName->text().trimmed().toStdString();
 	emu_unlock();
@@ -4022,6 +4041,45 @@ void SetupWin::showRecSize() {
 	}
 	labRecSize->setText(QString("%0%1%2 @ %3 fps").arg(out.width()).arg(QChar(0xd7)).arg(out.height()).arg(fps));
 	showRecCmd();
+}
+
+// What a screenshot comes out as with this page's settings. SCR and Hobeta are
+// the screen's memory, and the rest of the line has nothing to say about them.
+void SetupWin::showShotSize() {
+	QString fmt = getRFSData(ui.ssfbox);
+	bool mem = (fmt == "scr") || (fmt == "hobeta");
+	bool screen = (getRFIData(cbShotSrc) == VREC_SRC_SCREEN);
+	cbShotSrc->setEnabled(!mem);
+	cbShotScale->setEnabled(!mem && !screen);
+	ui.ssNoBord->setEnabled(!mem);
+	if (mem) {
+		labShotSize->setText(QString("%0 bytes").arg((fmt == "scr") ? 6912 : 6929));
+		labShotSize->setToolTip(QString());
+		return;
+	}
+	Video* vid = conf.zx->vid;
+	vCoord sze = vid_crop_size(vid, ui.bszsld->value());
+	bool nob = ui.ssNoBord->isChecked();
+	QSize pic(nob ? vid->scrn.x : sze.x, nob ? vid->scrn.y : sze.y);
+	QSize out;
+	if (!screen) {
+		int n = getRFIData(cbShotScale);
+		out = pic * n;
+		labShotSize->setToolTip(tr("A hi-res picture comes out twice as big,\nwith all its dots"));
+	} else {
+		qreal r = devicePixelRatioF();
+		double kx = getRFIData(ui.cbScale);
+		double ky = kx;
+		if (ui.cbFullscreen->isChecked()) {
+			QSize scr = QGuiApplication::primaryScreen()->size();
+			kx = scr.width() / (double)sze.x;
+			ky = scr.height() / (double)sze.y;
+			if (ui.cbKeepRatio->isChecked()) kx = ky = qMin(kx, ky);
+		}
+		out = QSize(int(pic.width() * kx * r + 0.5), int(pic.height() * ky * r + 0.5));
+		labShotSize->setToolTip(tr("As big as the picture in the window"));
+	}
+	labShotSize->setText(QString("%0%1%2").arg(out.width()).arg(QChar(0xd7)).arg(out.height()));
 }
 
 // a control is live only while it changes what is recorded: an override stands

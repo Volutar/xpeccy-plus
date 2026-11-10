@@ -97,6 +97,7 @@ class SetupWin : public QDialog {
 		QWidget* recCondBox(QCheckBox*, QComboBox*, QLineEdit*, const QString&);
 		void showRecSize();
 		void recSizes(QSize*, QSize*);
+		void showShotSize();
 		void alignVideoLabels();
 		xRecord recFromUi();
 		// the side fill's strength, in a pop-up under the gear beside its list; the
@@ -187,8 +188,10 @@ class SetupWin : public QDialog {
 		QList<QWidget*> drvRow[4];
 		QComboBox* drvCountBox;
 		// screenshots
+		QComboBox* cbShotSrc;
 		QComboBox* cbShotScale;
 		QLineEdit* leShotName;
+		QLabel* labShotSize;
 		// video recording
 		QLineEdit *leRecFfmpeg, *leRecDir, *leRecExtra, *leRecVOver, *leRecSOver;
 		QComboBox *cbRecSrc, *cbRecScale, *cbRecFps, *cbRecBox, *cbRecCodec, *cbRecPreset, *cbRecAcodec, *cbRecAbr, *cbRecChroma;
