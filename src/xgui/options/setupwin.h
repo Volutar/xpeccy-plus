@@ -176,7 +176,6 @@ class SetupWin : public QDialog {
 		QList<QWidget*> kbdRow;
 		QComboBox* uartBox[2];		// the Next's UARTs: a serial port of the host each
 		QCheckBox* cbEspLan;		// the emulated ESP's server reachable from the network
-		QList<QWidget*> uartRow;
 		QWidget* devArea;		// the device groups of every machine but the Next
 		QWidget* nxArea;		// the Next's own: what NextZXOS set, and this computer's for it
 		QMap<QString, QLabel*> nxVal;	// NextZXOS's settings, by the menu's name

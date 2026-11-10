@@ -1711,6 +1711,9 @@ void xm_defer(const std::string& nam, const std::string& val) {
 
 static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	Computer* comp = conf.zx;
+	// an old config's: the Next sets these itself (nextOwnKeys)
+	if ((comp->hw->id == HW_ZXNEXT) && ((nam == "psg.frq") || (nam == "psg.stereo") || (nam == "mouse.wheel")))
+		return;
 	xArg arg;
 	arg.s = val.c_str();
 	arg.b = str2bool(val) ? 1 : 0;

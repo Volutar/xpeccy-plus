@@ -1522,6 +1522,7 @@ void SetupWin::applyMachine() {
 		xm_power_cycle();
 		emu_unlock();
 	}
+	fillNextGroup();	// a power cycle above set the nextregs back
 	noteShown();		// for the next Apply with the window still open
 }
 
@@ -2375,7 +2376,6 @@ void SetupWin::buildDevices() {
 		uartBox[i]->setToolTip(i ? tr("The serial port of this computer the Pi UART is wired to")
 			: tr("The Wi-Fi module: emulated, or a real one on a serial port of this computer"));
 		btn = devRow(grid, i ? tr("Pi UART") : tr("ESP UART"), uartBox[i], i ? NULL : esp.body, i ? NULL : "Machine: ESP UART");
-		uartRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << uartBox[i] << btn;
 	}
 	nr->addStretch(1);
 	alignLabels(QList<QVBoxLayout*>() << nl << nr);
@@ -2614,7 +2614,6 @@ void SetupWin::showDevRows() {
 	foreach(QWidget* w, divRow) w->setVisible(hw_takes_divmmc(conf.zx->hw));
 	foreach(QWidget* w, slotRow) w->setVisible(slot);
 	foreach(QWidget* w, kbdRow) w->setVisible(kbd);
-	foreach(QWidget* w, uartRow) w->setVisible(hw == HW_ZXNEXT);
 	showDriveRows();
 	showBoardStorage();
 	// the Next sets itself up, by its nextregs: its own groups in place of the usual
