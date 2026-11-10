@@ -1,0 +1,53 @@
+#pragma once
+
+#include <QWidget>
+#include <QImage>
+#include <QPixmap>
+#include <QElapsedTimer>
+#include <QPointer>
+#include <QMessageBox>
+#include <functional>
+#include <vector>
+
+// Over the picture while the snow notice is up: the picture shaded, snow
+// falling on it, a snowflake sign blinking in the corner. It ticks at the
+// screen's rate only while shown; hidden, it costs nothing.
+class xSnowFall : public QWidget {
+	public:
+		xSnowFall(QWidget* parent);
+		void start();
+		void stop();
+	protected:
+		void paintEvent(QPaintEvent*) override;
+		void timerEvent(QTimerEvent*) override;
+		bool eventFilter(QObject*, QEvent*) override;
+	private:
+		struct Flake {
+			float x, y;		// logical pixels
+			float vy;		// fall, px/s
+			float amp, freq, phase;	// its own sway
+			float drift;		// how much of the wind it takes
+			int layer;		// 0 far .. 2 near
+			int kind;		// sprite of that layer
+			float rot, spin;	// a crystal's turn, degrees
+		};
+		std::vector<Flake> flakes;
+		std::vector<QPixmap> sprites[3];
+		QImage sign[2];
+		qreal spriteDpr;
+		int tid;
+		QElapsedTimer clock;
+		qint64 lastNs;
+		double t;
+		void seed();
+		void spawn(Flake&, bool top);
+		void makeSprites();
+		void step(double dt);
+		double wind() const;
+};
+
+// The notice itself: a message and the choice, not modal - the game runs on
+// under it. off() is called for "Switch Off for This Game", done() however
+// it closes.
+QMessageBox* snow_notice_box(QWidget* parent, std::function<void()> off, std::function<void()> done,
+	std::function<void()> help);

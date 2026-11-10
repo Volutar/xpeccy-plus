@@ -30,6 +30,7 @@ struct xMount;
 #include "watcher.h"
 #include "vkeyboard.h"
 #include "xgui/inputosd.h"
+#include "xgui/snownotice.h"
 #include "ethread.h"
 
 // the Reset menu's power cycle, beside the RES_* starts
@@ -388,6 +389,14 @@ class MainWin : public QWidget {
 		QImage osdImg[osd_count];
 		int ownSign = osd_none;	// recording or playing: kept out of a video of the window
 		xInputOsd inputOsd;
+		// the snow notice: once per image, over the shaded picture
+		xSnowFall* snowFall;
+		QPointer<QMessageBox> snowBox;
+		QString snowImage;		// the image it goes by, the one the title names
+		bool snowNoted = false;	// ...and it was shown for it
+		QImage plainKept;		// no GL: the picture under the snow, drawn once a frame
+		void snowNotice();
+		void snowImageIs(const QString&);
 		struct xIosdItem {QAction* act; int* field; int val;};	// val < 0: a switch
 		std::vector<xIosdItem> iosdItems;
 		void initIosdMenu(QMenu*);
