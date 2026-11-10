@@ -78,8 +78,9 @@ The values are what the machine has set now, named as in NextZXOS's own menu: pr
 then **Settings**, to change them. A change made there takes effect when the menu closes.
 **Next (+3)** in **Timings** is the timing NextZXOS calls **Next**, that of the +3.
 **Scanlines** and **HDMI Sound** are not listed: they are for a monitor, not emulated.
-**SD card**, **Tape**, the mouse's settings and the two UARTs are this computer's, set here as
-on the other machines. **Machine: Advanced Settings** is all grayed out on the Next.
+**Tape**, the mouse's settings and the two UARTs are this computer's, set here as on the
+other machines; the card is put in from the **Media** menu (see
+[The SD card](zx-next.md#the-sd-card)). **Machine: Advanced Settings** is all grayed out on the Next.
 
 ## Overclock
 
