@@ -22,8 +22,8 @@ before that point is upstream's history and is not repeated here.
 - **Screenshots named after the game**: a name template like the video's, with `%n` for a
   number, so `%image %n` saves `Tetris GB 001.png`, `Tetris GB 002.png`. The message says
   the file's name. *(requested by Michael Sudakov)*
-- **Copy Screenshot** (Ctrl+F7, Shift+F7 in Classic) puts the picture into the clipboard.
-  *(requested by Demonyx)*
+- **Screenshot to Clipboard** (Ctrl+F7, Shift+F7 in Classic) puts the picture into the
+  clipboard. *(requested by Demonyx)*
 - **Debugging from VS Code with DeZog**: set breakpoints on the lines of your source, step,
   and see the registers, memory and banks in VS Code while the program runs in Xpeccy+. Turn
   it on with DeZog port in Options > Application, or `--dezog`.
