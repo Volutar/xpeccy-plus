@@ -5,6 +5,7 @@
 #
 #   .\fetch-deps.ps1            # get what deps.json pins, skip what is already there
 #   .\fetch-deps.ps1 -SysNext   # System/Next too, for make-dist.ps1 -SysNext
+#   .\fetch-deps.ps1 -SysNextOnly   # System/Next and nothing else (CI's parity job)
 #   .\fetch-deps.ps1 -Force     # re-download and re-extract
 #   .\fetch-deps.ps1 -Update    # move the pins to the newest upstream releases
 #
@@ -15,7 +16,8 @@
 param(
 	[switch]$Update,
 	[switch]$Force,
-	[switch]$SysNext
+	[switch]$SysNext,
+	[switch]$SysNextOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -101,7 +103,8 @@ function Get-SysNext {
 	Write-Host "System/Next $($sn.release): ready in build\deps" -ForegroundColor Green
 }
 
-if ($SysNext) { Get-SysNext }
+if ($SysNext -or $SysNextOnly) { Get-SysNext }
+if ($SysNextOnly) { return }
 
 # curl's source, checked against its pin; make-dist.ps1 builds it with each preset's
 # MinGW into build\deps\curl-<version>-<preset>

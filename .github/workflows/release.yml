@@ -1,7 +1,7 @@
 name: Release
 
 # Builds every platform from a version tag and leaves a draft release with the
-# five archives attached and the list of which file is for which system, so the
+# six archives attached and the list of which file is for which system, so the
 # notes can be written above it after seeing what was actually built.
 # Publishing stays a manual click.
 #
@@ -53,6 +53,7 @@ jobs:
     secrets: inherit
     with:
       release: true
+      arm64: true
 
   publish:
     name: draft the release

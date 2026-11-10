@@ -283,7 +283,7 @@ void xUpdateRun::got(const QString& file) {
 	if (zip.isEmpty()) {
 		updPend.version = upd_rel_name(rel);
 	} else {
-		// xpeccy-plus-<version>-win-x64[-legacy]
+		// xpeccy-plus-<version>-win-<arch>[-legacy]
 		static const QRegularExpression rx("^" XPKGNAME "-(.+)-win-");
 		QRegularExpressionMatch m = rx.match(QFileInfo(root).fileName());
 		updPend.version = m.hasMatch() ? m.captured(1) : QString("new");

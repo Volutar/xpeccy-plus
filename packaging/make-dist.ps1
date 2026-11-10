@@ -2,6 +2,7 @@
 #
 #   .\make-dist.ps1                     # qt6-x64 (win-x64), incremental
 #   .\make-dist.ps1 -Preset qt5-x86     # Qt5 32-bit (win-x86-legacy) in its own folder
+#   .\make-dist.ps1 -Preset qt6-arm64   # ARM64 (win-arm64), on an ARM64 machine with MSYS2
 #   .\make-dist.ps1 -Clean -Zip         # from scratch + archive
 #   .\make-dist.ps1 -Manual             # with the user manual (docs/manual/README.md)
 #   .\make-dist.ps1 -SysNext            # with System/Next beside the program, for tests
@@ -14,10 +15,12 @@
 # Build artifacts and the staged folders stay under the gitignored build/ dir.
 #
 # SDL2 and curl's source come from build\deps - run packaging\fetch-deps.ps1 once to get
-# them; libcurl is built from it here, once per preset.
+# them; libcurl is built from it here, once per preset. qt6-arm64 takes clang, Qt, SDL2 and
+# zlib from MSYS2's CLANGARM64 environment instead (installed by pacman, see windows.yml):
+# qt.io has no MinGW Qt for ARM64, and SDL's own MinGW package no ARM64 build.
 
 param(
-	[ValidateSet('qt5-x64', 'qt6-x64', 'qt5-x86')]
+	[ValidateSet('qt5-x64', 'qt6-x64', 'qt5-x86', 'qt6-arm64')]
 	[string]$Preset = 'qt6-x64',
 	[switch]$Clean,
 	[switch]$Zip,
@@ -70,12 +73,32 @@ $toolchains = @{
 		Triple = 'x86_64-w64-mingw32'
 		Package = 'win-x64'
 	}
+	# Qt is whatever version MSYS2 has (windows.yml prints it); one prefix holds it all
+	'qt6-arm64' = @{
+		QtVer = 6
+		QtDir = 'C:\msys64\clangarm64'
+		MinGW = 'C:\msys64\clangarm64'
+		Triple = 'aarch64-w64-mingw32'
+		Package = 'win-arm64'
+		Msys = $true
+	}
 }
 
 $tc = $toolchains[$Preset]
 if ($QtDir) { $tc.QtDir = $QtDir }
 if ($MinGW) { $tc.MinGW = $MinGW }
-$sdlPrefix = Join-Path $depsSDL $tc.Triple
+if ($tc.Msys) {
+	# clang and ninja there, gcc and mingw32-make in the Qt installer's MinGW
+	$sdlPrefix = $tc.MinGW
+	$libPrefix = $tc.MinGW
+	$generator = @('-G', 'Ninja', '-DCMAKE_C_COMPILER=clang', '-DCMAKE_CXX_COMPILER=clang++')
+	if ($Pgo) { throw "pgo: gcc's profile flow only, and $Preset is built by clang" }
+	if (-not (Test-Path "$($tc.MinGW)\bin\clang.exe")) { throw "No MSYS2 CLANGARM64 at $($tc.MinGW): its packages are listed in .github\workflows\windows.yml" }
+} else {
+	$sdlPrefix = Join-Path $depsSDL $tc.Triple
+	$libPrefix = Join-Path $tc.MinGW $tc.Triple
+	$generator = @('-G', 'MinGW Makefiles')
+}
 
 if (-not (Test-Path $sdlPrefix)) {
 	throw "SDL2 $sdlVer is missing, run packaging\fetch-deps.ps1 first"
@@ -94,6 +117,8 @@ $buildDir = Join-Path $buildRoot "out\$Preset$(if ($Pgo) { '-pgo' })"
 $distName = "xpeccy-plus-$version-$($tc.Package)"
 $distDir = Join-Path $buildRoot "dist\$distName"
 
+# the manual's python is the one found before MSYS2's own goes first in PATH
+$python = (Get-Command python -ErrorAction SilentlyContinue).Source
 $env:PATH = "$($tc.MinGW)\bin;$($tc.QtDir)\bin;$env:PATH"
 if (Test-Path $cmakeBin) { $env:PATH = "$cmakeBin;$env:PATH" }
 $env:SDL2DIR = $sdlPrefix
@@ -103,7 +128,7 @@ Write-Host "=== $Preset -> $distName ===" -ForegroundColor Cyan
 if ($Clean -and (Test-Path $buildDir)) { Remove-Item $buildDir -Recurse -Force }
 
 # cmake eats backslashes in -D values, so every path passed below must be forward-slashed
-$mingwFwd = $tc.MinGW -replace '\\', '/'
+$libFwd = $libPrefix -replace '\\', '/'
 $qtFwd = $tc.QtDir -replace '\\', '/'
 
 # --- libcurl, for the program's downloads (src/xcore/download.cpp) ---
@@ -122,8 +147,7 @@ if (-not (Test-Path "$curlDir\lib\libcurl.a")) {
 	}
 	$curlBuild = Join-Path $buildRoot "out\curl-$curlVer-$Preset"
 	if (Test-Path $curlBuild) { Remove-Item $curlBuild -Recurse -Force }
-	$curlArgs = @(
-		'-G', 'MinGW Makefiles'
+	$curlArgs = $generator + @(
 		'-DCMAKE_BUILD_TYPE=Release'
 		"-DCMAKE_INSTALL_PREFIX=$($curlDir -replace '\\', '/')"
 		'-DCURL_TARGET_WINDOWS_VERSION=0x0600'
@@ -151,8 +175,7 @@ if (-not (Test-Path "$curlDir\lib\libcurl.a")) {
 
 # --- configure + build ---
 
-$cmakeArgs = @(
-	'-G', 'MinGW Makefiles'
+$cmakeArgs = $generator + @(
 	"-DQTVERSION=$($tc.QtVer)"
 	'-DCMAKE_BUILD_TYPE=Release'
 	"-DXRELEASE=$(if ($Release) { 'ON' } else { 'OFF' })"
@@ -160,8 +183,8 @@ $cmakeArgs = @(
 	'-DUSEQTNETWORK=1'
 	'-DSDL1BUILD=0'
 	"-DTRIMDEPLOY=$(if ($Full) { 'OFF' } else { 'ON' })"
-	"-DZLIB_LIBRARY=$mingwFwd/$($tc.Triple)/lib/libz.a"
-	"-DZLIB_INCLUDE_DIR=$mingwFwd/$($tc.Triple)/include"
+	"-DZLIB_LIBRARY=$libFwd/lib/libz.a"
+	"-DZLIB_INCLUDE_DIR=$libFwd/include"
 	"-DCURL_DIR=$($curlDir -replace '\\', '/')/lib/cmake/CURL"
 	# the asset this is, for the update check: the zip's name less its version
 	"-DXPACKAGE=$($tc.Package)"
@@ -177,7 +200,8 @@ if ($tc.QtVer -eq 5) {
 # always said, so a build without -Manual does not install one a previous run built
 $manualDir = ''
 if ($Manual) {
-	& python (Join-Path $srcRoot 'tools\manual.py') html
+	if (-not $python) { throw 'manual: no python' }
+	& $python (Join-Path $srcRoot 'tools\manual.py') html
 	if ($LASTEXITCODE -ne 0) { throw 'manual: html failed' }
 	$manualDir = (Join-Path $buildRoot 'manual') -replace '\\', '/'
 }

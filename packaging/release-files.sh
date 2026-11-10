@@ -20,6 +20,7 @@ link() {
 echo "**Which file to download**"
 echo
 echo "- Windows 10 and 11: $(link -win-x64.zip)"
+echo "- Windows 11 on ARM: $(link -win-arm64.zip)"
 echo "- Windows 7 and 8.1: $(link -win-x64-legacy.zip) (64-bit) or $(link -win-x86-legacy.zip) (32-bit)"
 echo "- Linux: $(link -linux-x86_64.AppImage)"
 echo "- macOS (Apple silicon): $(link -macos-arm64.dmg)"

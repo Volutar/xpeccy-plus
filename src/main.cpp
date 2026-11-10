@@ -623,7 +623,24 @@ int main(int ac,char** av) {
 	}
 #endif
 
+#if defined(_WIN32) && (QT_VERSION >= QT_VERSION_CHECK(6,7,0))
+	// a style asked for by Qt's own -style or QT_STYLE_OVERRIDE stays (QApplication takes
+	// -style out of the arguments, so this looks before). Read as Qt reads it: -style x,
+	// -style=x, and either with "--"
+	bool qtStyle = !qEnvironmentVariableIsEmpty("QT_STYLE_OVERRIDE");
+	for (int i = 1; i < ac; i++) {
+		const char* arg = av[i];
+		if (!strncmp(arg, "--", 2)) arg++;
+		if (!strcmp(arg, "-style") || !strncmp(arg, "-style=", 7)) qtStyle = true;
+	}
+#endif
 	xApp app(ac,av,true);
+#if defined(_WIN32) && (QT_VERSION >= QT_VERSION_CHECK(6,7,0))
+	// Qt 6.7 made windows11 the default style on Windows 11. The bundled style sheets are
+	// drawn against windowsvista, Qt 6.6's default, which win-x64 is built with
+	if (!qtStyle && !app.setStyle("windowsvista"))
+		xlog(XLG_APP, XLL_WARN, "no windowsvista style: %s", qPrintable(QStyleFactory::keys().join(", ")));
+#endif
 	app.installEventFilter(&app);	// colours each window's titlebar on its first Show
 	installTitleBarClickFix();
 

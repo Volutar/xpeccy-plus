@@ -11,8 +11,8 @@ name: itch
 #   gh workflow run itch.yml -R dotkoval/xpeccy-plus -f tag=v2026.9    # again
 #   gh workflow run itch.yml -R dotkoval/xpeccy-plus -f tag=nightly    # a nightly
 #
-# A release goes to the channels win-x64, win-x86-legacy, linux-x86_64 and
-# macos-arm64 - the tails of the asset names, all but win-x64-legacy; butler
+# A release goes to the channels win-x64, win-arm64, win-x86-legacy, linux-x86_64
+# and macos-arm64 - the tails of the asset names, all but win-x64-legacy; butler
 # tags the platform by "win", "linux" and "mac" in them. A nightly goes to the
 # same names plus -nightly, hidden when first made: players cannot download a
 # hidden upload. A push replaces the channel's file; it does not add one.
@@ -94,6 +94,14 @@ jobs:
           for ch in win-x64.zip win-x86-legacy.zip linux-x86_64.AppImage macos-arm64.dmg; do
             gh release download "$TAG" -p "*-$ch" -D "push/${ch%.*}"
           done
+          # win-arm64 since 2026.10: a release before it has none. Asked first, so a
+          # failed download of one that is there still stops here
+          names=$(gh release view "$TAG" --json assets -q '.assets[].name')
+          if grep -q -- '-win-arm64\.zip$' <<< "$names"; then
+            gh release download "$TAG" -p "*-win-arm64.zip" -D push/win-arm64
+          else
+            echo "no win-arm64 in $TAG"
+          fi
           # the version as the asset names give it: 2026.9, or 2026.10-dev+20261101
           ver=$(basename push/win-x64/*.zip)
           ver=${ver#xpeccy-plus-}

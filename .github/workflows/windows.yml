@@ -1,13 +1,17 @@
 name: Windows
 
-# Builds the three archives that ship, through the same packaging/ scripts as a
+# Builds the four archives that ship, through the same packaging/ scripts as a
 # local build. Qt and MinGW come from aqtinstall rather than from the runner
-# image, so the compiler this is built with is the one named here.
+# image, so the compiler this is built with is the one named here (win-arm64's
+# come from MSYS2, below).
 #
 # Started by hand, from the Actions tab or "gh workflow run windows.yml --ref
 # <branch>"; tick "release" for a clean version string instead of the dated dev
 # one. The weekly run is there to notice a runner-image change that nobody in
 # this repository caused.
+#
+# win-arm64 is built when asked ("arm64"): nightly and release ask, and so does
+# the weekly run, MSYS2 being a rolling release that can change under it.
 
 on:
   workflow_dispatch:
@@ -16,10 +20,17 @@ on:
         description: 'Release version string, no -dev+DATE suffix'
         type: boolean
         default: false
+      arm64:
+        description: 'Also win-arm64, checked against win-x64'
+        type: boolean
+        default: false
   # nightly.yml and release.yml build through this one
   workflow_call:
     inputs:
       release:
+        type: boolean
+        default: false
+      arm64:
         type: boolean
         default: false
   schedule:
@@ -189,3 +200,174 @@ jobs:
           archive: false
           retention-days: 30
           if-no-files-found: error
+
+  # win-arm64, built on GitHub's ARM64 machine with MSYS2's clang, Qt and SDL2:
+  # qt.io has no MinGW Qt for ARM64. MSYS2 moves on its own, so the versions it
+  # gave are in the run's summary. No PGO yet: that is gcc's flow, this is clang
+  arm64:
+    name: qt6-arm64
+    # github.workflow is the caller's name when called, so a scheduled nightly is
+    # not taken for this workflow's own weekly run
+    if: inputs.arm64 || (github.event_name == 'schedule' && github.workflow == 'Windows')
+    runs-on: windows-11-arm
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        shell: pwsh
+
+    env:
+      RELEASE: ${{ inputs.release && '1' || '' }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # into the image's own C:\msys64, where make-dist.ps1's qt6-arm64 looks
+      - name: Install clang, Qt and SDL2 (MSYS2)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANGARM64
+          release: false
+          update: true
+          install: >-
+            mingw-w64-clang-aarch64-toolchain
+            mingw-w64-clang-aarch64-cmake
+            mingw-w64-clang-aarch64-ninja
+            mingw-w64-clang-aarch64-qt6-base
+            mingw-w64-clang-aarch64-qt6-5compat
+            mingw-w64-clang-aarch64-SDL2
+            mingw-w64-clang-aarch64-zlib
+
+      # curl's source only: SDL2 is MSYS2's here
+      - name: Fetch curl
+        run: packaging\fetch-deps.ps1
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install the manual's tools
+        run: |
+          python -m venv "$env:RUNNER_TEMP\docs"
+          & "$env:RUNNER_TEMP\docs\Scripts\python.exe" -m pip install --disable-pip-version-check -r docs\manual\requirements.txt
+          if ($LASTEXITCODE -ne 0) { throw 'pip install failed' }
+          "$env:RUNNER_TEMP\docs\Scripts" >> $env:GITHUB_PATH
+
+      - name: Build and stage
+        run: |
+          $opts = @{
+            Preset = 'qt6-arm64'
+            Zip = $true
+            Manual = $true
+            Jobs = $env:NUMBER_OF_PROCESSORS
+          }
+          if ($env:RELEASE) { $opts.Release = $true }
+          packaging\make-dist.ps1 @opts
+          $zip = Get-ChildItem build\dist\*.zip | Select-Object -First 1
+          "ZIP=$($zip.FullName)" >> $env:GITHUB_ENV
+          "ZIP_NAME=$($zip.BaseName)" >> $env:GITHUB_ENV
+
+      - name: Smoke test
+        timeout-minutes: 5
+        run: |
+          $stage = Join-Path $env:RUNNER_TEMP 'zip'
+          Expand-Archive $env:ZIP -DestinationPath $stage
+          packaging\win-smoke.ps1 -Dist (Join-Path $stage $env:ZIP_NAME)
+
+      - name: Summary
+        run: |
+          $size = '{0:N0} MB' -f ((Get-Item $env:ZIP).Length / 1MB)
+          $pkgs = & C:\msys64\usr\bin\pacman.exe -Q mingw-w64-clang-aarch64-qt6-base mingw-w64-clang-aarch64-clang mingw-w64-clang-aarch64-SDL2
+          @(
+            "| | |"
+            "|---|---|"
+            "| MSYS2 | $($pkgs -join ', ') |"
+            "| libcurl | $((Get-Content packaging\deps.json -Raw | ConvertFrom-Json).curl.version) (static, Schannel) |"
+            "| archive | $env:ZIP_NAME.zip, $size |"
+          ) >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload the archive
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ env.ZIP }}
+          archive: false
+          retention-days: 30
+          if-no-files-found: error
+
+  # The ARM64 build and the x64 one of the same commit, side by side on the ARM64
+  # machine (x64 under Windows' emulation), must run every machine identically
+  parity:
+    name: arm64 = x64
+    needs: [build, arm64]
+    runs-on: windows-11-arm
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      # no token left behind: this job runs the binaries it downloads
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: packaging
+          persist-credentials: false
+
+      # the official System/Next, the Next's card for its cases. Not the PGO set: on
+      # this image OpenSSH refuses checkout's key file ("permissions too open").
+      # From GitLab: when it is down, or the tag moved, the machines are still
+      # compared, the Next on its own ROM - a nightly is not held up by it
+      - name: Fetch System/Next
+        id: card
+        continue-on-error: true
+        run: packaging\fetch-deps.ps1 -SysNextOnly
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: '*-win-x64.zip'
+          path: dist
+          merge-multiple: true
+          skip-decompress: true
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: '*-win-arm64.zip'
+          path: dist
+          merge-multiple: true
+          skip-decompress: true
+
+      - name: Unpack
+        id: unpack
+        run: |
+          foreach ($z in Get-Item dist\*.zip) { Expand-Archive $z -DestinationPath stage }
+          "X64=$((Get-Item stage\*-win-x64).FullName)" >> $env:GITHUB_ENV
+          "ARM=$((Get-Item stage\*-win-arm64).FullName)" >> $env:GITHUB_ENV
+
+      - name: Compare
+        env:
+          CARD: ${{ steps.card.outcome }}
+        run: |
+          $opts = @{ A = $env:X64; B = $env:ARM }
+          if ($env:CARD -eq 'success') {
+            $opts.Card = (Get-Item build\deps\sysnext-* -Exclude *.tmp).FullName
+          } else {
+            "::warning::No System/Next: the Next is compared without its card"
+            "System/Next could not be fetched: the Next was compared without its card and programs." >> $env:GITHUB_STEP_SUMMARY
+          }
+          packaging\win-parity.ps1 @opts
+
+      # how each looks, the Qt of win-arm64 not being win-x64's: for a person to compare.
+      # Not when called: nightly and release publish every artifact of the run
+      - name: Window shots
+        if: ${{ !cancelled() && steps.unpack.outcome == 'success' && github.workflow == 'Windows' }}
+        run: |
+          packaging\win-shots.ps1 -App $env:X64 -Out shots\x64
+          packaging\win-shots.ps1 -App $env:ARM -Out shots\arm64
+
+      - name: Upload the shots
+        if: ${{ !cancelled() && steps.unpack.outcome == 'success' && github.workflow == 'Windows' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: win-arm64-shots
+          path: shots
+          retention-days: 30

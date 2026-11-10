@@ -70,10 +70,20 @@ set(CMAKE_CXX_FLAGS "-std=c++14 -Wall -O2 ${CMAKE_CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG ${CMAKE_CXX_FLAGS_RELEASE}")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -DISDEBUG ${CMAKE_CXX_FLAGS_DEBUG}")
 
+include(CheckSymbolExists)
+check_symbol_exists(__aarch64__ "" XAARCH64)
+
 # Functions and loops start on cache lines: the emulation's speed then holds from
-# build to build, where a change anywhere else could move it by up to 5 %
+# build to build, where a change anywhere else could move it by up to 5 %.
+# Not on Windows ARM64: clang stops there with "Failed to evaluate function length
+# in SEH unwind info" (seen with clang 23)
+if(WIN32 AND XAARCH64)
+	set(XALIGN "")
+else()
+	set(XALIGN -falign-functions=64 -falign-loops=32 -falign-jumps=32)
+endif()
 include(CheckCCompilerFlag)
-foreach(flag -falign-functions=64 -falign-loops=32 -falign-jumps=32)
+foreach(flag ${XALIGN})
 	string(MAKE_C_IDENTIFIER "HAVE${flag}" var)
 	check_c_compiler_flag(${flag} ${var})
 	if (${var})
@@ -181,7 +191,9 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
 	# CMAKE_SYSTEM_PROCESSOR reports the *host* arch on Windows, so a 32-bit
 	# MinGW build would otherwise be labelled AMD64. Ask the compiler instead.
-	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+	if(XAARCH64)
+		set(XARCH "arm64")
+	elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
 		set(XARCH "x64")
 	else()
 		set(XARCH "x86")
@@ -685,6 +697,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	# Runs against the staged folder, not the build dir - windeployqt scans
 	# whatever directory the binary it is given lives in.
 	get_filename_component(QT_BIN_DIR "${QMAKE_EXE}" DIRECTORY)
+	get_filename_component(CXX_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
 	find_program(WINDEPLOYQT windeployqt HINTS ${QT_BIN_DIR})
 	if(WINDEPLOYQT)
 		configure_file(

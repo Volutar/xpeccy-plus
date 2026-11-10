@@ -11,6 +11,7 @@ Pick the file for your system:
 | System | File | |
 |---|---|---|
 | Windows 10 or 11 | `xpeccy-plus-<version>-win-x64.zip` | |
+| Windows 11 on ARM | `xpeccy-plus-<version>-win-arm64.zip` | Snapdragon and other ARM64 chips |
 | Windows 7 or 8.1 | `xpeccy-plus-<version>-win-x64-legacy.zip` | 64-bit |
 | | `xpeccy-plus-<version>-win-x86-legacy.zip` | 32-bit |
 | Linux | `xpeccy-plus-<version>-linux-x86_64.AppImage` | |
@@ -139,8 +140,8 @@ old one when you quit.
   you replaced, is kept; if the new version has a new one, it goes to
   `config\update-<version>` and the program tells you so.
 - An update cut short, by a power cut say, is undone at the next start.
-- A `legacy` build is never updated to the Windows 10 and 11 one, nor that one to a
-  `legacy` build: to change, download the other file. When a new version has no file named
+- A build is updated only to one of its own kind: x64 to x64, `arm64` to `arm64`, and
+  each `legacy` file to itself. To change, download the other file. When a new version has no file named
   like yours, the window says so and offers the release page.
 - When the program's folder cannot be written to (`Program Files`), **Download** is offered
   instead.
