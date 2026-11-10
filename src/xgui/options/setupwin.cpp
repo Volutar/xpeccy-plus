@@ -2218,9 +2218,12 @@ void SetupWin::buildDevices() {
 	btn = devRow(grid, tr("Cartridge"), slotSum, NULL, NULL);
 	slotRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << slotSum << btn;
 
-	// a row's name, choice and gear
+	// a row's name, choice and gear - a gear with no sheet stays grey anyway
 	auto rowOf = [](QGridLayout* g, QWidget* choice, QToolButton* gear) {
-		return QList<QWidget*>() << g->itemAtPosition(g->rowCount() - 1, 0)->widget() << choice << gear;
+		QList<QWidget*> row;
+		row << g->itemAtPosition(g->rowCount() - 1, 0)->widget() << choice;
+		if (gear && gear->isEnabled()) row << gear;
+		return row;
 	};
 	grid = devGroup(left, ":/images/joystick.png", tr("Input"));
 	joyBox = devCombo(QStringList() << tr("None") << tr("Kempston 5-bit") << tr("Kempston 8-bit"));
@@ -2234,7 +2237,7 @@ void SetupWin::buildDevices() {
 	mouse.check(ratWheel, tr("Wheel"), tr("The wheel is read too, as on the extended Kempston mouse"));
 	mouse.check(cbSwapButtons, tr("Swap buttons"), tr("The left and right buttons trade places"));
 	btn = devRow(grid, tr("Mouse"), mouseBox, mouse.body, "Machine: Mouse");
-	nextOwnRow << rowOf(grid, mouseBox, btn).mid(0, 2);	// sensitivity and buttons are this computer's
+	nextOwnRow << rowOf(grid, mouseBox, NULL);	// its gear stays: sensitivity and buttons are this computer's
 	btn = devRow(grid, tr("PC keyboard"), cbScanTab, NULL, NULL);
 	kbdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << cbScanTab << btn;
 	left->addStretch(1);
@@ -3093,8 +3096,8 @@ void SetupWin::chapsg() {
 	if (types && (fmrow >= 0)) types->item(fmrow)->setEnabled(fm);
 	if (fm) setRFIndex(cbPsgType, SND_YM2203);
 	else if (getRFIData(cbPsgType) == SND_YM2203) setRFIndex(cbPsgType, SND_YM);
-	cbPsgType->setEnabled(on && !fm && !own);
-	cbPsgFrq->setEnabled(on && !own);
+	cbPsgType->setEnabled(on && !fm);
+	cbPsgFrq->setEnabled(on);
 	cbPsgStereo->setEnabled(on && !own);
 	cbPsgStereo->setToolTip(own ? tr("Set by the machine itself") : QString());
 	// the clock is shown as the chip's own, and set as an AY's

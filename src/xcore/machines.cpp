@@ -534,9 +534,11 @@ static xMachine mac_build(const QString& id, int depth, bool withUser) {
 	mac.parent = parent.toLocal8Bit().data();
 	mac_apply(mac, lines);
 	if (withUser) {
-		xMachine probe = mac;
-		mac_apply(probe, mine);
-		mac_apply(mac, (probe.hw == "ZXNext") ? mac_next_drop(mine) : mine);
+		std::string hw = mac.hw;
+		foreach(const xMacLine& ln, mine)
+			if ((ln.sect == "machine") && (ln.name == "hw")) hw = ln.val;
+		HardWare* core = findHardware(hw.c_str());
+		mac_apply(mac, (core && (core->id == HW_ZXNEXT)) ? mac_next_drop(mine) : mine);
 	}
 	if (mac.name.empty()) mac.name = mac.id;
 	return mac;
