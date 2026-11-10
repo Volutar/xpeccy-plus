@@ -15,16 +15,15 @@ before that point is upstream's history and is not repeated here.
   ARM64 chips: it runs natively, about 1.7 times as fast as the x64 build does there.
   *(thanks to Loccy for the way to build it, a fix and the test on his Surface)*
 - **Screenshots at the machine's own size**: Scale x1, now the default, saves 256×192 for the
-  screen, or with as much border as the window shows, however big the window is. Scale x2-x4
-  are in Options > Video too, and Source: Screen takes the picture as the window shows it,
-  through the shader; hi-res modes keep all their dots. The page shows the size a shot comes
-  out at. *(requested by Michael Sudakov)*
+  screen, or with as much border as the Border slider shows, however big the window is. Scale
+  x2-x4 are in Options > Video too, and Source: Screen takes the picture as the window shows
+  it, through the shader; hi-res modes keep all their dots. The page shows the size a shot
+  comes out at. *(requested by Michael Sudakov)*
 - **Screenshots named after the game**: a name template like the video's, with `%n` for a
   number, so `%image %n` saves `Tetris GB 001.png`, `Tetris GB 002.png`. The message says
   the file's name. *(requested by Michael Sudakov)*
 - **Copy Screenshot** (Ctrl+F7, Shift+F7 in Classic) puts the picture into the clipboard.
   *(requested by Demonyx)*
-
 - **Debugging from VS Code with DeZog**: set breakpoints on the lines of your source, step,
   and see the registers, memory and banks in VS Code while the program runs in Xpeccy+. Turn
   it on with DeZog port in Options > Application, or `--dezog`.
