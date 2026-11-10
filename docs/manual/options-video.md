@@ -147,17 +147,19 @@ Anti-flicker is not applied in fast mode. What the modes look for, and where ant
 
 The **Screenshots** group on the **Video** page of **Options**:
 
-- **Output** - the folder for the files; the {icon}`fileopen` button beside it picks one.
-  Your home folder by default.
-- **Format** - the kind of file, see below.
-- **Scale x1** ... **Scale x4**, **Window size** - the size of the picture. **Scale x1** gives
+- **Source** - **RAW frame** takes the machine's picture alone, with no shader. **Screen**
+  takes the picture as the window shows it, shader and all, as big as it is there; the
+  indicators and messages over it are left out. **Screen** needs the OpenGL view.
+  **RAW frame** by default.
+- **Scale x1** ... **Scale x4** - the size of a **RAW frame** picture. **Scale x1** gives
   one pixel for each dot of the machine: 256×192 for the screen alone, more with as much
   border as the **Border** slider shows. A picture in a high-resolution mode (Profi, ATM and ZX Evo text and hi-res
   modes, the ZX Spectrum Next's 640-dot Layer 2) keeps all its dots, with every line twice so
-  that it is not squashed: 512×384 for a 512-dot screen. **Window size** saves the picture as
-  big as it is in the window. **Scale x1** by default.
+  that it is not squashed: 512×384 for a 512-dot screen. **Scale x1** by default.
 - **Combo** ... **each** ... **frames** - how many pictures **Screenshot Series** takes, and
   how many of the machine's frames apart.
+- **Output** - the kind of file (see below) and the folder for the files; the
+  {icon}`fileopen` button picks the folder. Your home folder by default.
 - **Name** - the file name template, the same as the video's
   ([File name template](#recording)) with one more key, `%n`: a number, `001`, `002` and so
   on, the first one not taken in the folder. Empty, it is
@@ -165,9 +167,12 @@ The **Screenshots** group on the **Video** page of **Options**:
   it: `Tetris GB 001.png`, `Tetris GB 002.png`.
 - **No border** - the screen only, without the border around it.
 
+Under **No border** is the size a picture comes out at with the settings on the page; a
+high-resolution picture comes out twice as big.
+
 | Format | What is saved |
 |---|---|
-| **PNG**, **BMP**, **JPG** | the machine's picture at the size set, without the shader |
+| **PNG**, **BMP**, **JPG** | the picture, as **Source** and the size say |
 | **SCR** | the 6912 bytes of the machine's screen memory, to load back on a Spectrum |
 | **Hobeta** | the same screen memory as a Hobeta file (`.$C`), which goes onto a TR-DOS disk as `screen` |
 

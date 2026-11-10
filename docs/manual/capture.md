@@ -30,7 +30,8 @@ machine's frames apart. Use **Capture > Screenshot** while a series runs to stop
 The files go into the screenshots folder. Their names are made from a template, by default
 the date, the time, the file in use (a snapshot, tape, disk or divMMC card; the machine's
 name when there is none) and a number: `xpeccy-plus_20261110_153012_Tetris GB_001.png`. A
-shot never writes over another file. The folder, the format, the size, the name and the
+shot never writes over another file. The picture is the machine's own, with no shader, or
+the window's, shader and all. That, the folder, the format, the size, the name and the
 number of pictures in a series are set in [Screenshots](options-video.md#screenshots) on
 the **Video** page.
 
