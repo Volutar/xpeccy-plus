@@ -484,6 +484,31 @@ static bool mac_known(const QString& id) {
 // it is written out against the stock parent, carrying what the parent was
 // patched with as its own, and stays put when that patch changes later.
 
+// What the Next sets itself, or has no such device: not in a user's file, an old one's dropped
+static const char* const nextOwnKeys[] = {
+	"cpu.frq", "cpu.turbo", "contio", "contmem", "issue", "scrp.wait",
+	"geometry", "contPattern", "earlyTiming", "4t-border", "snow", "snow.crash", "floatbus", "ULAplus", "DDpal",
+	"psg.count", "psg.type", "psg.frq", "psg.stereo", "gs", "saa", "soundrive", "beeper.mic",
+	"disk", "drives", "ide", "mouse.wheel", "joy", "joy.buttons", NULL
+};
+
+static bool mac_next_owns_key(const std::string& name) {
+	for (int i = 0; nextOwnKeys[i]; i++)
+		if (name == nextOwnKeys[i]) return true;
+	return false;
+}
+
+static bool mac_next_owns(const xMacLine& ln) {
+	return (ln.sect != "rom") && mac_next_owns_key(ln.name);	// "gs" in [rom] is the GS ROM's file
+}
+
+static QList<xMacLine> mac_next_drop(const QList<xMacLine>& lines) {
+	QList<xMacLine> res;
+	foreach(const xMacLine& ln, lines)
+		if (!mac_next_owns(ln)) res << ln;
+	return res;
+}
+
 static xMachine mac_build(const QString& id, int depth, bool withUser) {
 	xMachine mac;
 	const QList<xMacLine>& lines = macSrc.value(id).lines;
@@ -509,7 +534,13 @@ static xMachine mac_build(const QString& id, int depth, bool withUser) {
 	mac.id = id.toLocal8Bit().data();
 	mac.parent = parent.toLocal8Bit().data();
 	mac_apply(mac, lines);
-	if (withUser) mac_apply(mac, mine);
+	if (withUser) {
+		std::string hw = mac.hw;
+		foreach(const xMacLine& ln, mine)
+			if ((ln.sect == "machine") && (ln.name == "hw")) hw = ln.val;
+		HardWare* core = findHardware(hw.c_str());
+		mac_apply(mac, (core && (core->id == HW_ZXNEXT)) ? mac_next_drop(mine) : mine);
+	}
 	if (mac.name.empty()) mac.name = mac.id;
 	return mac;
 }
@@ -1479,6 +1510,7 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	int joy = (comp->joy->type != XJ_KEMPSTON) ? MAC_JOY_NONE : comp->joy->extbuttons ? MAC_JOY_KEMPSTON8 : MAC_JOY_KEMPSTON;
 	mac_put(out, "joy", mac_word_name(joyTab, joy), mac_word_name(joyTab, mac->joy));
 	mac_put(out, "kbd.scantab", mac_word_name(scanTab, comp->keyb->pcmode), mac_word_name(scanTab, mac->scantab));
+	if (comp->hw->id == HW_ZXNEXT) out = mac_next_drop(out);
 	mac_put_roms(out, mac);
 }
 
@@ -1680,6 +1712,9 @@ void xm_defer(const std::string& nam, const std::string& val) {
 
 static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	Computer* comp = conf.zx;
+	// an old config's: the Next sets these itself
+	if ((comp->hw->id == HW_ZXNEXT) && mac_next_owns_key(nam))
+		return;
 	xArg arg;
 	arg.s = val.c_str();
 	arg.b = str2bool(val) ? 1 : 0;

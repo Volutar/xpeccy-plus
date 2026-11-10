@@ -670,12 +670,20 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	// The settings that define the machine rather than how it is used live in
 	// a window of their own. It is the same widgets, moved out of the page -
 	// so everything that reads and writes them stays as it is.
+	advNote = new QLabel(tr("The ZX Spectrum Next sets these itself, by its NextZXOS settings: they are on the Machine page"));
+	advNote->setWordWrap(true);
+	ui.verticalLayout_adv->insertWidget(0, advNote);
 	advWin = popOut(ui.advBox, "Machine: Advanced Settings");
 	// opened by the gear beside the model, as on every device row
 	QToolButton* advBtn = new QToolButton;
 	advBtn->setIcon(QIcon(":/images/settings.png"));
 	advBtn->setToolTip(tr("The settings that define this machine rather than how you use it"));
-	connect(advBtn, &QToolButton::released, advWin, [this]() {advWin->show(); advWin->raise();});
+	// sized to what it shows: the Next's note comes and goes with the machine
+	connect(advBtn, &QToolButton::released, advWin, [this]() {
+		advWin->show();
+		advWin->raise();
+		QTimer::singleShot(0, advWin, [this]() {advWin->adjustSize();});	// once its layout has the note's state
+	});
 	ui.gridLayout->removeWidget(ui.machbox);
 	ui.gridLayout->addWidget(fieldPair(ui.machbox, advBtn, false), 0, 2, 1, 3);
 
@@ -1201,6 +1209,7 @@ void SetupWin::fillPages() {
 	if (idx < 1) idx = 0;
 	ui.keyMapBox->setCurrentIndex(idx);
 	mouseBox->setCurrentIndex(comp->mouse->enable ? 1 : 0);
+	nxMouseOn->setChecked(comp->mouse->enable);
 	ratWheel->setChecked(comp->mouse->hasWheel);
 	cbSwapButtons->setChecked(comp->mouse->swapButtons);
 	sldSensitivity->setValue(comp->mouse->sensitivity * 1000.0f);
@@ -1353,7 +1362,10 @@ void SetupWin::apply() {
 	}
 	applyGlobal();
 	if (another) {
+		// the window as it was, or as big as the new machine's page needs
+		QSize was = size();
 		fillPages();		// the new machine's own values on the pages
+		QTimer::singleShot(0, this, [this, was]() {resize(was.expandedTo(minimumSizeHint()));});
 		emit s_prf_changed();
 	} else {
 		// the machine carries what the page put in it: into its own file, so it is
@@ -1389,106 +1401,116 @@ void SetupWin::apply() {
 // layout and the sound chips are set only when the page has them otherwise.
 void SetupWin::applyMachine() {
 	Computer* comp = conf.zx;
+	// the Next sets these itself: what the hidden rows show is not put back on it
+	bool own = (comp->hw->id == HW_ZXNEXT);
 // machine
 	emu_lock();		// roms and memory size are rebuilt below
 	xm_set_roms(roms);
 	comp->resbank = resTarget;
 	int msz = getRFIData(ui.mszbox);
-	double frq = xcpu_frq_parse(ui.cbCpuFrq->currentText(), comp->cpuFrq);
+	double frq = own ? comp->cpuFrq : xcpu_frq_parse(ui.cbCpuFrq->currentText(), comp->cpuFrq);
 	if (msz != shown.mem) xm_set_ram(msz);
 	if ((msz != shown.mem) || (frq != shown.cpu)) compSetBaseFrq(comp, frq);
-	xm_turbo_set(comp, getRFSData(cbCpuTurbo).toStdString());
+	if (!own) xm_turbo_set(comp, getRFSData(cbCpuTurbo).toStdString());
 	if (ui.sldSpeed->value() != xspeed_get())
 		xspeed_set(ui.sldSpeed->value());
-	comp->flgEM1 = ui.scrpwait->isChecked();
+	if (!own) comp->flgEM1 = ui.scrpwait->isChecked();
 	if (comp->hw->id == HW_ZX48) comp->mem->ramMask = MEM_128K - 1;		// TODO: find a better way
 	// NextZXOS finds the memory at power-on, by a test of its own: off and on again
-	if ((msz != shown.mem) && (comp->hw->id == HW_ZXNEXT)) xm_power_cycle();
+	if ((msz != shown.mem) && own) xm_power_cycle();
 	emu_unlock();
 // video
-	comp->vid->brdstep = ui.border4T->isChecked() ? 7 : 1;
-	comp_set_cont(comp, ui.contMem->isChecked());
-	comp->flgCNTI = ui.contIO->isChecked() ? 1 : 0;
-	comp_set_cont_pattern(comp, getRFIData(ui.cbContPattern));
-	comp->earback = getRFIData(ui.cbEarBack);
-	comp->fbus = getRFIData(ui.cbFloatBus);
-	comp->vid->ula->early = ui.cbEarlyTiming->isChecked();
-	comp_set_snow(comp, ui.cbSnow->isChecked() ? 1 : 0);
-	comp->flgSNOWX = ui.cbSnowCrash->isChecked() ? 1 : 0;
-	// the MIC level in the beeper or out of it, at once; left alone, the levels stay
-	// as the machine set them (the Next sets its own, nx_snd_fe)
-	int mic = ui.cbBeepMic->isChecked() ? 1 : 0;
-	if (comp->beep->mic != mic) {
-		comp->beep->mic = mic;
-		bc_out(comp->beep, comp->beep->lev, comp->tape->levRec);
+	if (!own) {
+		comp->vid->brdstep = ui.border4T->isChecked() ? 7 : 1;
+		comp_set_cont(comp, ui.contMem->isChecked());
+		comp->flgCNTI = ui.contIO->isChecked() ? 1 : 0;
+		comp_set_cont_pattern(comp, getRFIData(ui.cbContPattern));
+		comp->earback = getRFIData(ui.cbEarBack);
+		comp->fbus = getRFIData(ui.cbFloatBus);
+		comp->vid->ula->early = ui.cbEarlyTiming->isChecked();
+		comp_set_snow(comp, ui.cbSnow->isChecked() ? 1 : 0);
+		comp->flgSNOWX = ui.cbSnowCrash->isChecked() ? 1 : 0;
+		// the MIC level in the beeper or out of it, at once; left alone, the levels stay
+		// as the machine set them
+		int mic = ui.cbBeepMic->isChecked() ? 1 : 0;
+		if (comp->beep->mic != mic) {
+			comp->beep->mic = mic;
+			bc_out(comp->beep, comp->beep->lev, comp->tape->levRec);
+		}
+		// The ula type also picks the screen drawer. The reset above ran before this
+		// line and saw the old type, so it has to be redone here - but only while a
+		// plain zx screen is up: a machine sitting in one of its own modes keeps it
+		// and gets the drawer at its next reset.
+		if ((comp->vid->vmode == VID_NORMAL) || (comp->vid->vmode == VID_ULA_SCR))
+			zx_set_vmode(comp);
+		comp->vid->ula->enabled = ui.ulaPlus->isChecked() ? 1 : 0;
+		comp->flgDDP = ui.cbDDp->isChecked() ? 1 : 0;
+		// another layout than the machine has, or this one edited - in the editor at
+		// any time, Cancel or not (the border size goes on top of it in applyGlobal())
+		std::string lay = getRFText(ui.geombox);
+		xLayout* nlay = findLayout(lay);
+		if (nlay && ((lay != conf.layName) || memcmp(&nlay->lay, &conf.layGeom, sizeof(vLayout))))
+			xm_set_layout(lay);
 	}
-	// The ula type also picks the screen drawer. The reset above ran before this
-	// line and saw the old type, so it has to be redone here - but only while a
-	// plain zx screen is up: a machine sitting in one of its own modes keeps it
-	// and gets the drawer at its next reset.
-	if ((comp->vid->vmode == VID_NORMAL) || (comp->vid->vmode == VID_ULA_SCR))
-		zx_set_vmode(comp);
-	comp->vid->ula->enabled = ui.ulaPlus->isChecked() ? 1 : 0;
-	comp->flgDDP = ui.cbDDp->isChecked() ? 1 : 0;
-	// another layout than the machine has, or this one edited - in the editor at
-	// any time, Cancel or not (the border size goes on top of it in applyGlobal())
-	std::string lay = getRFText(ui.geombox);
-	xLayout* nlay = findLayout(lay);
-	if (nlay && ((lay != conf.layName) || memcmp(&nlay->lay, &conf.layGeom, sizeof(vLayout))))
-		xm_set_layout(lay);
 // sound
-	int psg = getRFIData(cbPsgCount);
-	int chips = (psg == PSG_NEXT) ? 3 : ((psg == PSG_TS) || (psg == PSG_TSFM)) ? 2 : (psg == PSG_ONE) ? 1 : 0;
-	int chtype = (psg == PSG_TSFM) ? SND_YM2203 : getRFIData(cbPsgType);
-	if ((psg != PSG_TSFM) && (chtype == SND_YM2203)) chtype = SND_YM;
-	int chstereo = getRFIData(cbPsgStereo);
-	double psgFrq = opt_get_psg_frq(cbPsgFrq) / psgFrqMul;	// 0: Auto
-	int tsType = (chips > 2) ? TS_ZXNEXT : (chips > 1) ? TS_NEDOPC : TS_NONE;
-	bool chipsNew = (comp->ts->type != tsType);
-	bool stereoNew = false;		// the chips' tick goes on: only the sound thread's copy is told
-	aymChip* chip[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
-	for (int i = 0; i < 3; i++) {			// one setting for all the chips
-		int type = (i < chips) ? chtype : SND_NONE;
-		if (chip[i]->type != type) {
-			chip_set_type(chip[i], type);
-			chipsNew = true;
+	if (!own) {
+		int psg = getRFIData(cbPsgCount);
+		int chips = (psg == PSG_NEXT) ? 3 : ((psg == PSG_TS) || (psg == PSG_TSFM)) ? 2 : (psg == PSG_ONE) ? 1 : 0;
+		int chtype = (psg == PSG_TSFM) ? SND_YM2203 : getRFIData(cbPsgType);
+		if ((psg != PSG_TSFM) && (chtype == SND_YM2203)) chtype = SND_YM;
+		int chstereo = getRFIData(cbPsgStereo);
+		double psgFrq = opt_get_psg_frq(cbPsgFrq) / psgFrqMul;	// 0: Auto
+		int tsType = (chips > 2) ? TS_ZXNEXT : (chips > 1) ? TS_NEDOPC : TS_NONE;
+		bool chipsNew = (comp->ts->type != tsType);
+		bool stereoNew = false;		// the chips' tick goes on: only the sound thread's copy is told
+		aymChip* chip[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
+		for (int i = 0; i < 3; i++) {			// one setting for all the chips
+			int type = (i < chips) ? chtype : SND_NONE;
+			if (chip[i]->type != type) {
+				chip_set_type(chip[i], type);
+				chipsNew = true;
+			}
+			if (chip[i]->stereo != chstereo) {
+				chip[i]->stereo = chstereo;
+				stereoNew = true;
+			}
 		}
-		if (chip[i]->stereo != chstereo) {
-			chip[i]->stereo = chstereo;
-			stereoNew = true;
+		// a chip of another type takes its clock here too (a YM2203 runs at twice the AY's)
+		if (chipsNew || (psgFrq != shown.psg)) {
+			ts_set_frq(comp->ts, psgFrq, comp->cpuFrq);
+			comp->ts->type = tsType;
+			comp->sndSeed = 1;		// the chips the sound thread mixes take all of it
+		} else if (stereoNew) {
+			comp->sndSeed = 1;
 		}
+		comp->gs->enable = gsBox->currentIndex();
+		comp->sdrv->type = getRFIData(sdrvBox);
+		comp->saa->enabled = saaBox->currentIndex() ? 1 : 0;
 	}
-	// a chip of another type takes its clock here too (a YM2203 runs at twice the AY's)
-	if (chipsNew || (psgFrq != shown.psg)) {
-		ts_set_frq(comp->ts, psgFrq, comp->cpuFrq);
-		comp->ts->type = tsType;
-		comp->sndSeed = 1;		// the chips the sound thread mixes take all of it
-	} else if (stereoNew) {
-		comp->sndSeed = 1;
-	}
-	comp->gs->enable = gsBox->currentIndex();
-	comp->sdrv->type = getRFIData(sdrvBox);
-	comp->saa->enabled = saaBox->currentIndex() ? 1 : 0;
 // input
 	comp->keyb->pcmode = getRFIData(cbScanTab);
-	comp->mouse->enable = mouseBox->currentIndex();
-	comp->mouse->hasWheel = ratWheel->isChecked() ? 1 : 0;
-	comp->joy->type = joyBox->currentIndex() ? XJ_KEMPSTON : XJ_NONE;
-	comp->joy->extbuttons = (joyBox->currentIndex() == 2) ? 1 : 0;
-// flp
-	difSetHW(comp->dif, getRFIData(diskTypeBox));
-	// a drive taken off the cable takes its disk with it: a changed one is
-	// saved first, or the drive stays
-	int fit = getRFIData(drvCountBox);
-	if (getRFIData(diskTypeBox) == DIF_P3DOS) fit = qMin(fit, 2);
-	for (int i = 3; i >= fit; i--) {
-		Floppy* dflp = comp->dif->flp[i];
-		if (dflp->fitted && dflp->insert && dflp->changed && (saveChangedDisk(comp, i) != ERR_OK))
-			fit = i + 1;
+	comp->mouse->enable = own ? (nxMouseOn->isChecked() ? 1 : 0) : mouseBox->currentIndex();
+	if (!own) {
+		comp->mouse->hasWheel = ratWheel->isChecked() ? 1 : 0;
+		comp->joy->type = joyBox->currentIndex() ? XJ_KEMPSTON : XJ_NONE;
+		comp->joy->extbuttons = (joyBox->currentIndex() == 2) ? 1 : 0;
 	}
-	difSetDrives(comp->dif, fit);
+// flp
+	if (!own) {
+		difSetHW(comp->dif, getRFIData(diskTypeBox));
+		// a drive taken off the cable takes its disk with it: a changed one is
+		// saved first, or the drive stays
+		int fit = getRFIData(drvCountBox);
+		if (getRFIData(diskTypeBox) == DIF_P3DOS) fit = qMin(fit, 2);
+		for (int i = 3; i >= fit; i--) {
+			Floppy* dflp = comp->dif->flp[i];
+			if (dflp->fitted && dflp->insert && dflp->changed && (saveChangedDisk(comp, i) != ERR_OK))
+				fit = i + 1;
+		}
+		difSetDrives(comp->dif, fit);
+	}
 // hdd
-	ide_set_type(comp->ide, getRFIData(hiface));
+	if (!own) ide_set_type(comp->ide, getRFIData(hiface));
 	// what is mounted is the Drives menu's, a folder read again only with the power off
 // divmmc: a board put on, off or given other RAM powers the machine off and on
 	int divModel = (divBox->currentIndex() && hw_takes_divmmc(comp->hw)) ? DIV_MMC : DIV_NONE;
@@ -1509,6 +1531,7 @@ void SetupWin::applyMachine() {
 		xm_power_cycle();
 		emu_unlock();
 	}
+	fillNextGroup();	// a power cycle above set the nextregs back
 	noteShown();		// for the next Apply with the window still open
 }
 
@@ -2071,6 +2094,26 @@ static QGridLayout* devGroup(QVBoxLayout* col, const char* icon, const QString& 
 	return grid;
 }
 
+// one label width per column, so the choices line up from group to group
+static void alignLabels(const QList<QVBoxLayout*>& cols) {
+	foreach(QVBoxLayout* col, cols) {
+		QList<QWidget*> labs;		// a label, or a check box as the Next's Mouse
+		for (int i = 0; i < col->count(); i++) {
+			QWidget* box = col->itemAt(i)->widget();
+			if (!box) continue;
+			QGridLayout* g = qobject_cast<QGridLayout*>(box->layout());
+			for (int row = 0; g && (row < g->rowCount()); row++) {
+				QLayoutItem* itm = g->itemAtPosition(row, 0);
+				QWidget* w = itm ? itm->widget() : NULL;
+				if (qobject_cast<QLabel*>(w) || qobject_cast<QCheckBox*>(w)) labs << w;
+			}
+		}
+		int wid = 0;
+		foreach(QWidget* lab, labs) wid = qMax(wid, lab->sizeHint().width());
+		foreach(QWidget* lab, labs) lab->setMinimumWidth(wid);
+	}
+}
+
 void SetupWin::buildDevices() {
 	QWidget* area = new QWidget;
 	QHBoxLayout* cols = new QHBoxLayout(area);
@@ -2093,7 +2136,7 @@ void SetupWin::buildDevices() {
 	tape.check(cbTapeFast, tr("Fast loading"), tr("Full speed, sound off and picture held while a loader reads the tape"), true);
 	tape.check(cbTapeFlash, tr("Flash loading"), tr("With fast loading: ROM blocks go straight to the machine"), true);
 	tape.check(cbTapeEdge, tr("Edge detection"), tr("With fast loading: a loader waiting for a pulse gets it at once. Faster, not exact"), true);
-	devRow(grid, tr("Tape"), tapeSum, tape.body, "Machine: Tape");
+	QToolButton* tapeGear = devRow(grid, tr("Tape"), tapeSum, tape.body, "Machine: Tape");
 	foreach(QCheckBox* cb, QList<QCheckBox*>() << cbTapeAuto << cbTapeRewind << cbTapeFast << cbTapeFlash << cbTapeEdge)
 		connect(cb, &QCheckBox::toggled, this, &SetupWin::fillDevSummary);
 
@@ -2215,7 +2258,7 @@ void SetupWin::buildDevices() {
 	mouse.line();
 	mouse.check(ratWheel, tr("Wheel"), tr("The wheel is read too, as on the extended Kempston mouse"));
 	mouse.check(cbSwapButtons, tr("Swap buttons"), tr("The left and right buttons trade places"));
-	devRow(grid, tr("Mouse"), mouseBox, mouse.body, "Machine: Mouse");
+	QToolButton* mouseGear = devRow(grid, tr("Mouse"), mouseBox, mouse.body, "Machine: Mouse");
 	btn = devRow(grid, tr("PC keyboard"), cbScanTab, NULL, NULL);
 	kbdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << cbScanTab << btn;
 	left->addStretch(1);
@@ -2249,6 +2292,159 @@ void SetupWin::buildDevices() {
 
 	grid = devGroup(right, ":/images/grp-board.png", tr("Board"));
 	devRow(grid, tr("Turbo"), cbCpuTurbo, NULL, NULL);
+	right->addStretch(1);
+	alignLabels(QList<QVBoxLayout*>() << left << right);
+
+	// THE NEXT'S OWN: NextZXOS's settings in its menu's words, this computer's for the Next among them
+	nxArea = new QWidget;
+	QVBoxLayout* nv = new QVBoxLayout(nxArea);
+	nv->setContentsMargins(0, 0, 0, 0);
+	QHBoxLayout* head = new QHBoxLayout;
+	QLabel* logo = new QLabel;
+	logo->setPixmap(QIcon(":/images/next.png").pixmap(24, 24));
+	QLabel* title = new QLabel(tr("ZX Spectrum Next"));
+	QFont tf = title->font();
+	tf.setBold(true);
+	title->setFont(tf);
+	nxCore = new QLabel;
+	QLabel* whose = new QLabel(tr("(the gray ones are set by NextZXOS)"));
+	whose->setToolTip(tr("NextZXOS sets these itself: in its NMI menu,\nSettings. What is changed there takes\neffect when the menu closes"));
+	QFrame* rule = new QFrame;
+	rule->setFrameShape(QFrame::HLine);
+	rule->setFrameShadow(QFrame::Sunken);
+	head->addWidget(logo);
+	head->addWidget(title);
+	head->addWidget(nxCore);
+	head->addWidget(whose);
+	head->addWidget(rule, 1);
+	nv->addLayout(head);
+	QHBoxLayout* ncols = new QHBoxLayout;
+	QVBoxLayout* nl = new QVBoxLayout;
+	QVBoxLayout* nr = new QVBoxLayout;
+	ncols->addLayout(nl, 1);
+	ncols->addLayout(nr, 1);
+	nv->addLayout(ncols);
+	// NextZXOS's values grayed: a field (as wide as its column's widest, lineUp) or a check box
+	auto field = [this](const char* name, const QStringList& vals, const QString& tip) {
+		QLineEdit* f = new QLineEdit;
+		f->setEnabled(false);
+		f->setFocusPolicy(Qt::NoFocus);
+		int w = 0;
+		foreach(const QString& v, vals) w = qMax(w, f->fontMetrics().horizontalAdvance(v));
+		f->setFixedWidth(w + 12);		// the frame and the text margins
+		f->setToolTip(tip);
+		nxText[name] = f;
+		return f;
+	};
+	auto lineUp = [](QGridLayout* g) {
+		for (int c = 1; c < 4; c++) {
+			QList<QLineEdit*> fs;
+			for (int r = 0; r < g->rowCount(); r++) {
+				QLayoutItem* itm = g->itemAtPosition(r, c);
+				QLineEdit* f = itm ? qobject_cast<QLineEdit*>(itm->widget()) : NULL;
+				if (f) fs << f;
+			}
+			int w = 0;
+			foreach(QLineEdit* f, fs) w = qMax(w, f->minimumWidth());
+			foreach(QLineEdit* f, fs) f->setFixedWidth(w);
+		}
+	};
+	// a few check boxes in one cell
+	auto pack = [](const QList<QWidget*>& ws) {
+		QWidget* box = new QWidget;
+		QHBoxLayout* hl = new QHBoxLayout(box);
+		hl->setContentsMargins(0, 0, 0, 0);
+		foreach(QWidget* w, ws) hl->addWidget(w);
+		hl->addStretch(1);
+		return box;
+	};
+	auto flag = [this](const char* name, const QString& text, const QString& tip) {
+		QCheckBox* c = new QCheckBox(text);
+		c->setEnabled(false);
+		c->setToolTip(tip);
+		nxFlag[name] = c;
+		return c;
+	};
+	// a group's grid: the name, up to three values, room, a gear
+	auto nxGroup = [](QVBoxLayout* col, const char* icon, const QString& title) {
+		QGridLayout* g = devGroup(col, icon, title);
+		g->setColumnStretch(1, 0);
+		g->setColumnStretch(4, 1);
+		g->setHorizontalSpacing(4);		// pairs of values in a row: a little closer
+		return g;
+	};
+	// a row of such a grid; `span`: the last widget takes the room too; with no
+	// name the row starts in the name's column
+	auto line = [](QGridLayout* g, const QString& name, const QList<QWidget*>& ws, QToolButton* gearBtn, bool span) {
+		int row = g->rowCount();
+		int col = name.isEmpty() ? 0 : 1;
+		if (col) g->addWidget(new QLabel(name), row, 0);
+		for (int i = 0; i < ws.size(); i++) {
+			bool last = (i == ws.size() - 1);
+			g->addWidget(ws[i], row, col + i, 1, (last && span) ? 5 - col - i : 1);
+		}
+		if (gearBtn) g->addWidget(gearBtn, row, 5);
+	};
+	// a gear that opens a sheet of the usual groups
+	auto gear = [this](QToolButton* sheet) {
+		QToolButton* btn = sheetButton(NULL, NULL);
+		btn->setEnabled(true);
+		btn->setToolTip(tr("More settings"));
+		connect(btn, &QToolButton::released, sheet, &QToolButton::click);
+		return btn;
+	};
+	QString joyTip = tr("Sinclair 2, Kempston 1, Cursor, Sinclair 1,\nKempston 2, MD 1, MD 2 or Keyjoy");
+	QStringList joys = QStringList() << tr("L: Kempston 2") << tr("R: Kempston 2");
+
+	grid = nxGroup(nl, ":/images/fdd_disk.png", tr("Storage"));
+	nxSdSum = new xElideLabel;
+	line(grid, tr("SD card"), QList<QWidget*>() << nxSdSum, sheetButton(NULL, NULL), true);
+	line(grid, "NextZXOS", QList<QWidget*>() << field("NextZXOS", QStringList() << "v2.09.99" << tr("not started"),
+		tr("The NextZXOS the machine runs, from its card")), NULL, false);
+	nxTapeSum = new QLabel;
+	line(grid, tr("Tape"), QList<QWidget*>() << nxTapeSum, gear(tapeGear), true);
+
+	grid = nxGroup(nl, ":/images/joystick.png", tr("Input"));
+	line(grid, tr("Joystick"), QList<QWidget*>() << field("Joystick L", joys, tr("The left joystick:\n") + joyTip)
+		<< field("Joystick R", joys, tr("The right joystick:\n") + joyTip), NULL, false);
+	line(grid, tr("Mouse"), QList<QWidget*>() << field("Mouse DPI", QStringList() << tr("Standard DPI") << tr("Medium DPI"),
+			tr("Low, Standard, Medium or High DPI"))
+		<< field("Mouse Btn", QStringList() << tr("Right/Left"), tr("The buttons: Left/Right, or swapped,\nRight/Left")), gear(mouseGear), false);
+	// the row's name is this computer's switch: the mouse in use, DPI and buttons NextZXOS's
+	nxMouseOn = new QCheckBox(tr("Mouse"));
+	nxMouseOn->setToolTip(tr("This computer's mouse as the Next's: a click\nin the window takes the pointer"));
+	QLayoutItem* mlab = grid->itemAtPosition(grid->rowCount() - 1, 0);
+	delete mlab->widget();
+	grid->addWidget(nxMouseOn, grid->rowCount() - 1, 0);
+	line(grid, tr("Keyboard"), QList<QWidget*>() << field("Keyboard", QStringList() << tr("Issue 3"),
+		tr("Issue 3 or Issue 2: what bit 6 of #FE\nreads with no tape playing")), NULL, false);
+	lineUp(grid);
+	nl->addStretch(1);
+
+	// by device: the PSG, its chips' mono, the DACs, the beeper
+	grid = nxGroup(nr, ":/images/speaker.png", tr("Sound"));
+	line(grid, tr("PSG"), QList<QWidget*>()
+		<< field("Audiochip", QStringList() << QString::fromUtf8("×3 ZXN-8950"),
+			tr("YM, AY, ZXN-8950 or Off. x3: TurboSound,\nall three play; x1: the one selected only"))
+		<< field("Stereo", QStringList() << "ACB", tr("ABC or ACB: the voices from left to right")), NULL, false);
+	QString monoTip = tr("The chip's three voices on both sides");
+	line(grid, tr("AY mono"), QList<QWidget*>() << pack(QList<QWidget*>() << flag("AY0 Mono", "0", monoTip)
+		<< flag("AY1 Mono", "1", monoTip) << flag("AY2 Mono", "2", monoTip)), NULL, true);
+	line(grid, tr("DAC"), QList<QWidget*>() << flag("Covox", tr("Covox"), tr("The DACs: Covox, Soundrive and SpecDrum\nports")), NULL, true);
+	line(grid, tr("Beeper"), QList<QWidget*>()
+		<< field("BEEPer", QStringList() << tr("Speaker only") << tr("All outputs"), tr("All outputs, or the internal speaker only"))
+		<< flag("Int. speaker", tr("Int. speaker"), tr("The board's own speaker")), NULL, false);
+	lineUp(grid);
+
+	grid = nxGroup(nr, ":/images/grp-board.png", tr("Board"));
+	line(grid, tr("Timing"), QList<QWidget*>()
+		<< field("CPU speed", QStringList() << "3.5 MHz" << "28 MHz", tr("CPU speed: 3.5, 7, 14 or 28 MHz,\nas programs ask"))
+		<< field("Frequency", QStringList() << "50 Hz", tr("Frames: 50 or 60 Hz"))
+		<< field("Timings", QStringList() << "Next (+3)" << "Pentagon", tr("48K, 128K, Next (+3) or Pentagon: that\nmachine's frame and contention")), NULL, false);
+	line(grid, QString(), QList<QWidget*>() << pack(QList<QWidget*>()
+		<< flag("Contention", tr("Contention"), tr("The ULA holds the CPU off the screen\nbanks, at 3.5 MHz"))
+		<< flag("Timex RD", tr("Timex RD"), tr("Port #FF reads back the Timex screen\nmode"))
+		<< flag("ULAplus", tr("ULAplus"), tr("64 colors, when the program asks for them"))), NULL, true);
 	cbEspLan = new QCheckBox;
 	xOptSheet esp;
 	esp.check(cbEspLan, tr("Server on the network"),
@@ -2260,30 +2456,66 @@ void SetupWin::buildDevices() {
 		uartBox[i]->setInsertPolicy(QComboBox::NoInsert);
 		uartBox[i]->setToolTip(i ? tr("The serial port of this computer the Pi UART is wired to")
 			: tr("The Wi-Fi module: emulated, or a real one on a serial port of this computer"));
-		btn = devRow(grid, i ? tr("Pi UART") : tr("ESP UART"), uartBox[i], i ? NULL : esp.body, i ? NULL : "Machine: ESP UART");
-		uartRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << uartBox[i] << btn;
+		uartBox[i]->setMinimumWidth(0);
+		line(grid, i ? tr("Pi UART") : tr("ESP UART"), QList<QWidget*>() << uartBox[i],
+			i ? sheetButton(NULL, NULL) : sheetButton(esp.body, "Machine: ESP UART"), true);
 	}
-	right->addStretch(1);
-
-	// one label width per column, so the choices line up from group to group
-	foreach(QVBoxLayout* col, QList<QVBoxLayout*>() << left << right) {
-		QList<QLabel*> labs;
-		for (int i = 0; i < col->count(); i++) {
-			QWidget* box = col->itemAt(i)->widget();
-			if (!box) continue;
-			QGridLayout* g = qobject_cast<QGridLayout*>(box->layout());
-			for (int row = 0; g && (row < g->rowCount()); row++) {
-				QLayoutItem* itm = g->itemAtPosition(row, 0);
-				QLabel* lab = itm ? qobject_cast<QLabel*>(itm->widget()) : NULL;
-				if (lab) labs << lab;
-			}
-		}
-		int wid = 0;
-		foreach(QLabel* lab, labs) wid = qMax(wid, lab->sizeHint().width());
-		foreach(QLabel* lab, labs) lab->setMinimumWidth(wid);
-	}
-	ui.verticalLayout_39->insertWidget(1, area);
+	nr->addStretch(1);
+	alignLabels(QList<QVBoxLayout*>() << nl << nr);
+	QWidget* page = new QWidget;
+	QVBoxLayout* pv = new QVBoxLayout(page);
+	pv->setContentsMargins(0, 0, 0, 0);
+	pv->addWidget(area);
+	pv->addWidget(nxArea);
+	devArea = area;
+	ui.verticalLayout_39->insertWidget(1, page);
 	tidySoundPage();
+}
+
+// What the Next has set, in NextZXOS's words, as the machine has it now (Options
+// stops the machine while it is open).
+void SetupWin::fillNextGroup() {
+	Computer* comp = conf.zx;
+	if (comp->hw->id != HW_ZXNEXT) return;
+	emu_lock();		// Options pauses the machine, but does not wait for it
+	auto rd = [comp](int r) {return next_nr_peek(comp, r);};
+	// the menu calls the +3 timing the Next's own
+	static const char* const tim[4] = {"48K", "128K", "Next (+3)", "Pentagon"};
+	static const char* const dpi[4] = {QT_TR_NOOP("Low"), QT_TR_NOOP("Standard"), QT_TR_NOOP("Medium"), QT_TR_NOOP("High")};
+	static const char* const chip[4] = {"YM", "AY", "ZXN-8950", QT_TR_NOOP("Off")};
+	static const char* const joy[8] = {"Sinclair 2", "Kempston 1", "Cursor", "Sinclair 1", "Kempston 2", "MD 1", "MD 2",
+		QT_TR_NOOP("Keyjoy")};
+	static const char* const mhz[4] = {"3.5", "7", "14", "28"};
+	int r05 = rd(0x05), r06 = rd(0x06), r08 = rd(0x08), r09 = rd(0x09), r0a = rd(0x0a);
+	QMap<QString, QString> v;
+	QMap<QString, bool> f;
+	v["Joystick L"] = tr("L: ") + tr(joy[(((r05 >> 3) & 1) << 2) | ((r05 >> 6) & 3)]);
+	v["Joystick R"] = tr("R: ") + tr(joy[(((r05 >> 1) & 1) << 2) | ((r05 >> 4) & 3)]);
+	v["Keyboard"] = (r08 & 0x01) ? tr("Issue 2") : tr("Issue 3");
+	v["Mouse DPI"] = tr("%0 DPI").arg(tr(dpi[r0a & 3]));
+	v["Mouse Btn"] = (r0a & 0x08) ? tr("Right/Left") : tr("Left/Right");
+	v["Stereo"] = (r08 & 0x20) ? "ACB" : "ABC";
+	v["BEEPer"] = (r06 & 0x40) ? tr("Speaker only") : tr("All outputs");
+	v["Audiochip"] = QString::fromUtf8((r08 & 0x02) ? "×3 " : "×1 ") + tr(chip[r06 & 3]);
+	v["CPU speed"] = QString("%0 MHz").arg(mhz[(rd(0x07) >> 4) & 3]);
+	v["Frequency"] = (r05 & 0x04) ? "60 Hz" : "50 Hz";		// the one in use: a read merges it in
+	v["Timings"] = tim[comp->next->timing & 3];
+	char os[16];
+	next_os_version(comp, os, sizeof(os));
+	v["NextZXOS"] = os[0] ? QString(os) : tr("not started");
+	int core = rd(0x01);
+	nxCore->setText(tr("core %0.%1.%2").arg(core >> 4).arg(core & 15, 2, 10, QChar('0')).arg(rd(0x0e), 2, 10, QChar('0')));
+	f["Int. speaker"] = r08 & 0x10;
+	f["Covox"] = r08 & 0x08;
+	f["AY0 Mono"] = r09 & 0x20;
+	f["AY1 Mono"] = r09 & 0x40;
+	f["AY2 Mono"] = r09 & 0x80;
+	f["Contention"] = !(r08 & 0x40);
+	f["Timex RD"] = r08 & 0x04;
+	f["ULAplus"] = rd(0x85) & 0x01;
+	emu_unlock();
+	for (auto it = nxText.begin(); it != nxText.end(); ++it) it.value()->setText(v.value(it.key()));
+	for (auto it = nxFlag.begin(); it != nxFlag.end(); ++it) it.value()->setChecked(f.value(it.key()));
 }
 
 // The volumes, named the way the devices are, with the master set apart.
@@ -2349,10 +2581,12 @@ void SetupWin::fillDevSummary() {
 	}
 	if (cbTapeAuto->isChecked()) tape << tr("auto");
 	tapeSum->setText(tape.isEmpty() ? tr("plain") : tape.join(", "));
+	nxTapeSum->setText(tapeSum->text());
 	Computer* comp = conf.zx;
 	QString sd = comp->sdc->image ? QString::fromLocal8Bit(comp->sdc->image) : QString();
 	QString slot = comp->slot->path ? QString::fromLocal8Bit(comp->slot->path) : QString();
 	sdSum->setText(sd.isEmpty() ? tr("(no card)") : QFileInfo(sd).fileName());
+	nxSdSum->setFull(sd.isEmpty() ? tr("(no card)") : QDir::toNativeSeparators(sd));
 	slotSum->setText(slot.isEmpty() ? tr("(empty)") : QFileInfo(slot).fileName());
 }
 
@@ -2466,9 +2700,19 @@ void SetupWin::showDevRows() {
 	foreach(QWidget* w, divRow) w->setVisible(hw_takes_divmmc(conf.zx->hw));
 	foreach(QWidget* w, slotRow) w->setVisible(slot);
 	foreach(QWidget* w, kbdRow) w->setVisible(kbd);
-	foreach(QWidget* w, uartRow) w->setVisible(hw == HW_ZXNEXT);
 	showDriveRows();
 	showBoardStorage();
+	// the Next sets itself up, by its nextregs: its own groups in place of the usual
+	bool next = (hw == HW_ZXNEXT);
+	// the one going away first: both shown for a moment would stretch the window
+	(next ? devArea : nxArea)->hide();
+	(next ? nxArea : devArea)->show();
+	ratWheel->setEnabled(!next);		// always read on the Next
+	ui.gbCpu->setEnabled(!next);
+	ui.gbUla->setEnabled(!next);
+	ui.gbBoard->setEnabled(!next);
+	advNote->setVisible(next);
+	fillNextGroup();
 	QString fixed = tr("Built into this board");
 	// ALF reads its two joysticks its own way, on #1F and #FE
 	joyBox->setEnabled(hw != HW_ALF);
@@ -2964,9 +3208,7 @@ void SetupWin::chapsg() {
 	int psg = getRFIData(cbPsgCount);
 	int on = (psg != PSG_NONE);
 	int fm = (psg == PSG_TSFM);
-	// the Next mixes its chips itself, by its nextregs 08 and 09
-	bool own = (conf.zx->hw->id == HW_ZXNEXT);
-	int split = on && !own && (getRFIData(cbPsgStereo) != AY_MONO);
+	int split = on && (getRFIData(cbPsgStereo) != AY_MONO);
 	labPsgSep->setText(QString("%0%").arg(sldPsgSep->value()));
 	// TurboSound FM is two YM2203 and nothing else; the others never are
 	QStandardItemModel* types = qobject_cast<QStandardItemModel*>(cbPsgType->model());
@@ -2976,8 +3218,7 @@ void SetupWin::chapsg() {
 	else if (getRFIData(cbPsgType) == SND_YM2203) setRFIndex(cbPsgType, SND_YM);
 	cbPsgType->setEnabled(on && !fm);
 	cbPsgFrq->setEnabled(on);
-	cbPsgStereo->setEnabled(on && !own);
-	cbPsgStereo->setToolTip(own ? tr("Set by the machine itself") : QString());
+	cbPsgStereo->setEnabled(on);
 	// the clock is shown as the chip's own, and set as an AY's
 	int mul = chip_frq_mul(getRFIData(cbPsgType));
 	double ay = opt_get_psg_frq(cbPsgFrq) / psgFrqMul;	// 0: Auto

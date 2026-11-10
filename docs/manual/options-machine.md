@@ -56,6 +56,32 @@ Esc) puts back what it showed when it opened.
 
 Changes take effect when you press **Apply** or {icon}`ok-apply` **OK**.
 
+## On the ZX Spectrum Next
+
+```{index} ZX Spectrum Next; Options, NextZXOS settings
+```
+
+![The Machine page on the ZX Spectrum Next](images/options-machine-next.png)
+
+The ZX Spectrum Next sets up most of its hardware itself: NextZXOS sets it at start, from
+its own settings, and a program may change it as it runs. So on the Next the page shows,
+under a **ZX Spectrum Next** heading with the version of its core, groups of its own in
+place of the usual ones. What NextZXOS has set is grayed out; the rest is set here, as on the
+other machines.
+
+| Group | What it shows |
+|---|---|
+| **Storage** | **SD card**, the card's path (it is put in from the **Media** menu, see [The SD card](zx-next.md#the-sd-card)); **NextZXOS**, the version the machine runs; **Tape** with its settings (see [Machine: Tape](#machine-tape)) |
+| **Input** | **Joystick**, the left and the right one; **Mouse**, its DPI and buttons, with a {icon}`settings` gear for the mouse's **Sensitivity** and **Swap buttons** - its check box is this computer's mouse in use, a click in the window then takes the pointer; **Keyboard**, issue 2 or 3 |
+| **Sound** | **PSG**: the chip, **x3** with TurboSound on (all three play) or **x1**, and the stereo; **AY mono** for each chip; **DAC**: Covox; **Beeper**: where BEEP goes, and the internal speaker |
+| **Board** | **Timing**: the CPU speed, 50 or 60 Hz, and the timings; **Contention**, **Timex RD** and **ULAplus**; **ESP UART** and **Pi UART** |
+
+The values are what the machine has set now; hold the mouse over one to see what else it can
+be. To change them, press NMI, then **Settings**, in NextZXOS: a change made there takes
+effect when the menu closes. **Next (+3)** in **Timings** is the timing NextZXOS calls
+**Next**, that of the +3. **Scanlines** and **HDMI Sound** are not listed: they are for a
+monitor, not emulated. **Machine: Advanced Settings** is all grayed out on the Next.
+
 ## Overclock
 
 ```{index} Overclock slider, Overclock, Overclock Up, Overclock Down
@@ -86,7 +112,9 @@ it. Leave them alone unless you know the hardware.
   **...and it crashes**, **MIC in the beeper** and **ULA plus**.
 - **Board** - **Even M1** (Scorpion ZS 256) and **DD palette** (Profi).
 
-Each one is explained beside it, or in a tooltip when you hold the mouse over it. What contention, snow and the floating bus are, and how they are emulated, is in
+Each one is explained beside it, or in a tooltip when you hold the mouse over it. On the
+ZX Spectrum Next they are all grayed out: the Next sets them itself (see
+[On the ZX Spectrum Next](#on-the-zx-spectrum-next)). What contention, snow and the floating bus are, and how they are emulated, is in
 [Contention, snow and the floating bus](ula-snow-floating-bus.md).
 
 ## Machine: Tape

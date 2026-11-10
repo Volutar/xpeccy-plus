@@ -59,6 +59,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **Options on the ZX Spectrum Next show what NextZXOS has set**: its joysticks, mouse, sound,
+  timing, contention and the rest, as in its own Settings menu, beside the card, the tape and
+  the UARTs. Settings the Next sets itself are no longer offered, and ones saved for it
+  before (turbo steps, contended I/O, the PSG clock) no longer change it.
 - **File > Resume Last Session shows the save it will load**: its picture, the game and the
   time, with the pointer on it.
 - **A TOSEC image finds its game's cheat file** by the name without its `[tags]`, or cut
