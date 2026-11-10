@@ -219,6 +219,7 @@ on the numeric keypad: Alt+Num++ is Alt with the keypad plus.
 |---|---|---|
 | Screenshot | F7 | F7 |
 | Screenshot Series | - | Alt+F7 |
+| Copy Screenshot | Ctrl+F7 | Shift+F7 |
 | Record Video | Shift+F7 | Ctrl+F7 |
 | Record Sound to WAV | - | - |
 
