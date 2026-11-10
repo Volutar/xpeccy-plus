@@ -494,11 +494,14 @@ static const char* const nextOwnKeys[] = {
 	"disk", "drives", "ide", "mouse", "mouse.wheel", "joy", "joy.buttons", NULL
 };
 
-static bool mac_next_owns(const xMacLine& ln) {
-	if (ln.sect == "rom") return false;		// "gs" there is the GS ROM's file
+static bool mac_next_owns_key(const std::string& name) {
 	for (int i = 0; nextOwnKeys[i]; i++)
-		if (ln.name == nextOwnKeys[i]) return true;
+		if (name == nextOwnKeys[i]) return true;
 	return false;
+}
+
+static bool mac_next_owns(const xMacLine& ln) {
+	return (ln.sect != "rom") && mac_next_owns_key(ln.name);	// "gs" in [rom] is the GS ROM's file
 }
 
 static QList<xMacLine> mac_next_drop(const QList<xMacLine>& lines) {
@@ -1711,8 +1714,8 @@ void xm_defer(const std::string& nam, const std::string& val) {
 
 static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	Computer* comp = conf.zx;
-	// an old config's: the Next sets these itself (nextOwnKeys)
-	if ((comp->hw->id == HW_ZXNEXT) && ((nam == "psg.frq") || (nam == "psg.stereo") || (nam == "mouse.wheel")))
+	// an old config's: the Next sets these itself
+	if ((comp->hw->id == HW_ZXNEXT) && mac_next_owns_key(nam))
 		return;
 	xArg arg;
 	arg.s = val.c_str();

@@ -234,8 +234,8 @@ int next_cell(int abs, int* page, int* ofs);		// an SRAM image cell's area (CELL
 int next_cell_abs(int area, int page, int ofs);		// ...and back, -1: no such cell
 int next_shadow_sram(int abs);		// the SRAM image place of a layer 2 byte behind a BRAM page, -1: none
 // the Next for a viewer (the debugger's panel): nothing here moves the machine
-int next_nr_peek(Computer*, int reg);
-void next_os_version(Computer*, char* buf, int len);	// "v2.09": NextZXOS's, from its ROM in SRAM; "" with none		// a nextreg as a read gives it, nothing run up to now first
+int next_nr_peek(Computer*, int reg);		// a nextreg as a read gives it, nothing run up to now first
+void next_os_version(Computer*, char* buf, int len);	// "v2.09": NextZXOS's, from its ROM in SRAM; "" with none
 void next_nr_poke(Computer*, int reg, int val);	// ...and written at once, for a debugger
 int next_ram(Computer*, int page, int ofs);	// a byte of 8K RAM page as the cpu reads it
 int next_l2ram(Computer*, int page, int ofs);	// ...as layer 2 reads it: the SRAM behind the BRAM pages

@@ -2398,7 +2398,7 @@ void SetupWin::buildDevices() {
 	grid = nxGroup(nl, ":/images/fdd_disk.png", tr("Storage"));
 	nxSdSum = new xElideLabel;
 	line(grid, tr("SD card"), QList<QWidget*>() << nxSdSum, sheetButton(NULL, NULL), true);
-	line(grid, "NextZXOS", QList<QWidget*>() << field("NextZXOS", QStringList() << "v2.09" << tr("not started"),
+	line(grid, "NextZXOS", QList<QWidget*>() << field("NextZXOS", QStringList() << "v2.09.99" << tr("not started"),
 		tr("The NextZXOS the machine runs, from its card")), NULL, false);
 	nxTapeSum = new QLabel;
 	line(grid, tr("Tape"), QList<QWidget*>() << nxTapeSum, gear(tapeGear), true);
