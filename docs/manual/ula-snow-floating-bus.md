@@ -61,7 +61,7 @@ model of the right shape, not of a known mechanism, and is off on every machine.
 
 ### When a game snows
 
-```{index} ULA snow; notice, Switch Off for This Game
+```{index} ULA snow; notice, Turn Off for This Game
 ```
 
 Snow is on for the 48K, the 128K and the +2, as on the real machines, so that a program that
@@ -71,10 +71,10 @@ message tells what it is. The game runs on meanwhile. The message comes once for
 a tape, a side of it, the disk in drive A, a snapshot - and again when another one is
 opened.
 
+- **Turn Off for This Game** - no snow until another image is opened. Nothing is saved:
+  the machine keeps its setting.
 - **Continue** (or Esc) - the snow stays. The real machine shows it too: the game's author
   may want to know.
-- **Switch Off for This Game** - no snow until another image is opened. Nothing is saved:
-  the machine keeps its setting.
 
 To be rid of the snow for good, choose a machine that does not snow, or switch
 **ULA snow...** off in **Machine: Advanced Settings** (see
