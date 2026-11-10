@@ -185,7 +185,6 @@ class SetupWin : public QDialog {
 		xElideLabel* nxSdSum;		// the card's whole path, shortened in the middle
 		QLabel* nxCore;			// the core's version, in the heading
 		QLabel* nxTapeSum;
-		QLabel* advNote;		// Advanced Settings: says why it is all grayed on the Next
 		QCheckBox* nxMouseOn;		// the Next's mouse row: this computer's mouse in use, or not
 		QList<QWidget*> drvRow[4];
 		QComboBox* drvCountBox;
