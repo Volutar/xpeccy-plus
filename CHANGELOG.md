@@ -35,10 +35,10 @@ before that point is upstream's history and is not repeated here.
   programs that start Xpeccy+ with a game and its pokes: `--poke "Lives=35899,0"`. An
   address can be a label, looked up when the cheat is ticked, so it follows a rebuilt program.
 - **ROM labels in the Debugger**: the 48K BASIC (from Richard Dymond's Complete Spectrum ROM
-  Disassembly, after Logan and O'Hara's book), the 128K editor, the +2 and all four +2A/+3 ROMs (from Klive IDE
-  by Istvan Novak), the +3DOS calls and TR-DOS with its variables (from Marcos Cruz's TR-DOS
-  Disassembled) are named with no file loaded, on the clones' ROMs too. Your own labels win;
-  Options > Debugger turns them off.
+  Disassembly, after Logan and O'Hara's book), the 128K editor, the +2 and all four +2A/+3
+  ROMs (from Klive IDE by Istvan Novak), the +3DOS calls and TR-DOS with its variables (from
+  Marcos Cruz's TR-DOS Disassembled) are named with no file loaded, on the clones' ROMs too.
+  Your own labels win; Options > Debugger turns them off.
 - **Each ROM name has its system's prefix**, `BASIC48.LD_BYTES`; `LD_BYTES` alone works too:
   of several systems that have it, the one whose ROM is paged in now.
 - **ROM data is shown as data**: the font as `DB`, keyword and message tables as `DC "..."`,
