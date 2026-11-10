@@ -140,8 +140,8 @@ old one when you quit.
   you replaced, is kept; if the new version has a new one, it goes to
   `config\update-<version>` and the program tells you so.
 - An update cut short, by a power cut say, is undone at the next start.
-- A build is updated only to one of its own kind: `legacy` to `legacy`, x64 to x64,
-  `arm64` to `arm64`. To change, download the other file. When a new version has no file named
+- A build is updated only to one of its own kind: x64 to x64, `arm64` to `arm64`, and
+  each `legacy` file to itself. To change, download the other file. When a new version has no file named
   like yours, the window says so and offers the release page.
 - When the program's folder cannot be written to (`Program Files`), **Download** is offered
   instead.
