@@ -1185,7 +1185,7 @@ void SetupWin::fillPages() {
 	setRFIndex(ui.cbEarBack, comp->earback);
 	setRFIndex(ui.cbFloatBus, comp->fbus);
 	ui.cbEarlyTiming->setChecked(comp->vid->ula->early);
-	ui.cbSnow->setChecked(comp->flgSNOW);
+	ui.cbSnow->setChecked(xm_snow_user());
 	ui.cbSnowCrash->setChecked(comp->flgSNOWX);
 	ui.cbBeepMic->setChecked(comp->beep->mic);
 	chasnow();
@@ -1494,7 +1494,7 @@ void SetupWin::applyMachine() {
 		comp->earback = getRFIData(ui.cbEarBack);
 		comp->fbus = getRFIData(ui.cbFloatBus);
 		comp->vid->ula->early = ui.cbEarlyTiming->isChecked();
-		comp_set_snow(comp, ui.cbSnow->isChecked() ? 1 : 0);
+		xm_snow_set(comp, ui.cbSnow->isChecked() ? 1 : 0);
 		comp->flgSNOWX = ui.cbSnowCrash->isChecked() ? 1 : 0;
 		// the MIC level in the beeper or out of it, at once; left alone, the levels stay
 		// as the machine set them

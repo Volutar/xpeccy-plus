@@ -96,6 +96,39 @@ void frame_taken() {
 	frameOwed = 0;
 }
 
+// ULA snow: a game with I in slow memory - zx_snow()'s own test - snows on the
+// real machine. Mostly that is an IM 2 table put there, but not only: Black
+// Raven runs IM 1 with I at #41. Half a second of it in real play, not a
+// loader passing through, is worth telling the user.
+#define SNOW_FRAMES	25
+static std::atomic<int> snowSeen{0};
+static std::atomic<int> snowRun{0};		// frames in a row; the gui starts it over
+
+int snow_seen() {
+	return snowSeen.exchange(0);
+}
+
+void snow_watch_reset() {
+	snowRun = 0;
+}
+
+static void snow_frame(Computer* comp) {
+	xm_snow_keep(comp);		// rewind and run-ahead load states that carry their own
+	if (!comp->flgSNOW || (comp->vid->ula->conttype != CONT_PATA)
+			|| conf.emu.fast || (conf.emu.speed > 1.0) || conf.emu.pause || comp->flgDBG
+			|| autostart_busy() || fastload_busy() || rewind_active() || rzx_seeking()
+			|| comp->rzx.play || rzxr_on() || !conf.running) {
+		snowRun = 0;
+		return;
+	}
+	if (!mem_bank_slow(zx_bank_of(comp, comp->cpu->regI << 8))) {
+		snowRun = 0;
+		return;
+	}
+	if (++snowRun == SNOW_FRAMES)
+		snowSeen = 1;
+}
+
 // 1 when the gui is to be told: it shows the newest copy whenever it gets there
 static int frame_hand_over() {
 	bool quick = conf.emu.fast || (conf.emu.speed > 1.0);
@@ -924,6 +957,7 @@ void xThread::emuCycle(Computer* comp) {
 			// before run-ahead: the debugger's screen view wants the machine as
 			// it really stands, not the frame it is about to guess at
 			vid_scr_snap(comp->vid);
+			snow_frame(comp);
 			// the frame just made is not the one to show: run on to the one
 			// the player's last key press is already in
 			int shown;
