@@ -5,6 +5,11 @@
 # An install(SCRIPT) runs with no policy settings of its own, so without this
 # CMP0012 stays OLD and if(NOT ON) reads ON as an undefined variable name.
 cmake_minimum_required(VERSION 3.5)
+# paths normalized before the exclude patterns below; without it CMake 4.2 and later
+# warn once for every DLL looked at
+if(POLICY CMP0207)
+	cmake_policy(SET CMP0207 NEW)
+endif()
 
 set(APP "${CMAKE_INSTALL_PREFIX}/@PROJECT_NAME@.exe")
 
@@ -157,6 +162,15 @@ if(EXISTS "${pacdb}")
 			string(REGEX REPLACE "/.*" "" top "${rel}")
 			list(APPEND dirs "${top}")
 		endforeach()
+		if(NOT texts)
+			# a package that keeps its text elsewhere (ICU: share/icu/<version>/LICENSE)
+			file(STRINGS "${p}/files" texts REGEX "^${env_name}/.*/(LICEN[CS]E|COPYING|NOTICE)[^/]*$")
+			string(REGEX REPLACE "^mingw-w64-(clang-aarch64|clang-x86_64|ucrt-x86_64|x86_64|i686)-" "" short "${d_NAME}")
+			foreach(t ${texts})
+				file(COPY "${msys_root}/${t}" DESTINATION "${lic}/${short}")
+				list(APPEND dirs "${short}")
+			endforeach()
+		endif()
 		list(REMOVE_DUPLICATES dirs)
 		string(REPLACE ";" " AND " d_LICENSE "${d_LICENSE}")
 		string(REPLACE ";" ", " dirs "${dirs}")
