@@ -59,6 +59,8 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **TSConf runs the TS-BIOS of 2024**, with the CPU cache, the 1024K mode and the INT offset
+  in its setup. The setup's Custom palette no longer gives a black screen.
 - **Options > Machine: the Disk row is now Floppy disk.** With the divMMC on, the divMMC row
   reads divMMC (!), and a tip says the disk controllers are unavailable.
 - **Options on the ZX Spectrum Next show what NextZXOS has set**: its joysticks, mouse, sound,
