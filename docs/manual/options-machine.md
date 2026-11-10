@@ -31,17 +31,17 @@ in [Your own machines](#your-own-machines).
 
 Below them are the machine's devices, in four groups. Each row has a choice and a
 {icon}`settings` gear button; the gear opens the rest of that device's settings, in a window
-named after it, such as **Machine: Disk**. A gray gear means the device has nothing more to
+named after it, such as **Machine: Floppy Disk**. A gray gear means the device has nothing more to
 set. **OK** closes such a window and keeps what you set in it for **Apply**; **Cancel** (or
 Esc) puts back what it showed when it opened.
 
 | Group | Row | What it sets |
 |---|---|---|
 | **Storage** | **Tape** | loading settings; the row shows which are on (see [Tapes](tapes.md)) |
-| | **Disk** | **None**, **Beta Disk (WD1793)** or **+3 (uPD765)**; drives and the TR-DOS ROM in its window (see [Floppy disks](disks.md)) |
+| | **Floppy disk** | the controller: **None**, **Beta Disk (WD1793)** or **+3 (uPD765)**; drives and the TR-DOS ROM in its window (see [Floppy disks](disks.md)) |
 | | **Hard disk** | the IDE interface; **Master** and **Slave** in its window (see [Hard disks](sd-hdd.md#hard-disks)) |
 | | **SD card** | ZX Evolution and ZX Spectrum Next only: the card in use (for the Next, see [The SD card](zx-next.md#the-sd-card)) |
-| | **divMMC** | 48K, 128K, +2, +2A, +3 and the Pentagons: **None** or **divMMC**; RAM, EEPROM jumper and the firmware in its window (see [divMMC](divmmc.md)) |
+| | **divMMC** | 48K, 128K, +2, +2A, +3 and the Pentagons: **None** or **divMMC**; RAM, EEPROM jumper and the firmware in its window (see [divMMC](divmmc.md)); while it is on, the row reads **divMMC (!)** and the floppy and hard disk controllers are out of the machine |
 | | **Cartridge** | 48K and ALF only: the cartridge in use |
 | **Input** | **Joystick** | **None**, **Kempston 5-bit**, **Kempston 8-bit** |
 | | **Mouse** | **None** or **Kempston mouse**; sensitivity and wheel in its window (see [Mouse](input.md#mouse)) |
@@ -140,13 +140,13 @@ row opens the **Machine: Tape** sheet:
 The tape's loudness is **Tape** in the **Volumes** group of the **Sound** page (see
 [Sound page](options-sound.md)).
 
-## Machine: Disk
+## Machine: Floppy Disk
 
-```{index} Machine: Disk, Interleave, Number of drives, TR-DOS ROM
+```{index} Machine: Floppy Disk, Interleave, Number of drives, TR-DOS ROM
 ```
 
-The {icon}`settings` gear in the **Disk** row of the **Machine** page opens
-**Machine: Disk**:
+The {icon}`settings` gear in the **Floppy disk** row of the **Machine** page opens
+**Machine: Floppy Disk**:
 
 - **Fast disk access** - no waiting for the head to move or the disk to turn; see
   [Fast Disk Access](disks.md#fast-disk-access).
@@ -307,7 +307,7 @@ what is in each, such as **ROM 0 (Basic 128)**:
 - mark the bank a plain reset starts from (**Boots from the marked ROM**).
 
 **Font** is the text-mode font, for the machines that have one. The General Sound ROM is in
-the **Machine: General Sound** window, and the TR-DOS ROM in **Machine: Disk**.
+the **Machine: General Sound** window, and the TR-DOS ROM in **Machine: Floppy Disk**.
 
 ```{index} Expert settings, Machine: ROM Files, Romset Editor
 ```

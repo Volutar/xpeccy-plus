@@ -75,8 +75,8 @@ The board's RAM, its jumper and its EEPROM stay as they were.
 While the board is on, the floppy drives and the hard disk are out of the machine: the
 board takes the TR-DOS entry, so on a real machine the drives would sit there unused. Their
 lights in the status bar are dim and struck through, the **Disk Manager** and **Drives**
-menus show the drives grayed under a line that says why, and **Options** shows **Disk** and
-**Hard disk** dimmed.
+menus show the drives grayed under a line that says why, and **Options** shows **Floppy disk** and
+**Hard disk** dimmed, and the board's row as **divMMC (!)**, with a tip that says why.
 Nothing is ejected: switch the board off, and the drives come back with their disks.
 Opening a disk while the board is on asks to switch it off first.
 

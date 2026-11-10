@@ -7,7 +7,7 @@ The floppy drives are in the **Media** menu: **Floppy Drives** has the commands 
 drive, **Disk Manager** shows the files on the disks, **Fast Disk Access** skips the
 waits of a real drive. Which machine has which drives is in
 [Which machine has what](media.md#which-machine-has-what); the drives themselves are set up
-in [Machine: Disk](options-machine.md#machine-disk).
+in [Machine: Floppy Disk](options-machine.md#machine-floppy-disk).
 
 ## Putting a disk in
 
@@ -77,7 +77,7 @@ so the disk starts by itself and shows a menu of its files. Adding this file doe
 as a change to the disk, and the image file is not touched unless you save the disk.
 
 To stop this, open the **Machine** page of **Options**, click the {icon}`settings` gear in
-the **Disk** row and clear **Add boot loader**. The file added is `boot.$B` in the
+the **Floppy disk** row and clear **Add boot loader**. The file added is `boot.$B` in the
 [settings folder](getting-started.md#where-the-settings-are); put another Hobeta file there
 under the same name to use your own.
 
@@ -88,7 +88,7 @@ under the same name to use your own.
 
 Real drives spend time moving the head and waiting for the sector to come around.
 **Media > Fast Disk Access** skips those waits, so disks load much faster. The same switch
-is in the **Disk Manager** and in **Machine: Disk**.
+is in the **Disk Manager** and in **Machine: Floppy Disk**.
 
 On the +3 it speeds up what +3DOS reads and writes. A program that drives the disk with a
 loader of its own - most copy-protected games do - gets the drive's real timing even with

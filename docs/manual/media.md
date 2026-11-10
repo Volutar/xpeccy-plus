@@ -41,7 +41,7 @@ the hardware it copies. A divMMC can be added to the Sinclair models and the Pen
 interface has two drives, A and B, and runs +3DOS.
 
 A machine with no disk interface of its own can be given one. Open the
-[Machine page](options-machine.md) of **Options** and pick it in the **Disk** row: **None**, **Beta Disk (WD1793)** or
+[Machine page](options-machine.md) of **Options** and pick it in the **Floppy disk** row: **None**, **Beta Disk (WD1793)** or
 **+3 (uPD765)**. The **Hard disk** row does the same for an IDE interface: **NemoIDE**,
 **NemoIDE A8**, **NemoIDE (ZX Evo)**, **SMUC**, **ATM Turbo** or **Profi**. An interface that
 is part of the machine's board cannot be changed: the list is grayed out, and its tooltip
