@@ -34,19 +34,20 @@ one keeps the terms of its own source, listed below.
 
 `text` ends at a character with bit 7 set when there is one, shown as `DC "..."`.
 
-## 48K BASIC - SkoolKit, GNU GPL v3 or later
+## 48K BASIC - Richard Dymond, CC BY-SA 3.0
 
-`48.labels` in this folder: 1099 names and 142 data ranges from SkoolKit's
-`examples/48.rom.ctl` (commit 30de485a, 2015, <https://github.com/skoolkid/skoolkit>), Copyright
-2011-2015 Richard Dymond, part of SkoolKit and so under the **GNU General Public License,
-version 3 or later** - the text is in `GPL-3.0.txt` here. Its routine titles are "taken from
-'The Complete Spectrum ROM Disassembly' by Dr Ian Logan and Dr Frank O'Hara, published by
-Melbourne House". It is a separate data file, read by the program at run time and not built
-into it, so the program itself stays under the MIT license. Changed for Xpeccy+ on
-2026-11-07: `C_ARC_GE1` moved from #2347 to #235A, where the ROM's own `JR NC` at #2350 goes;
-`SV_SLICE?` renamed `SV_SLICE_Q` and `val` renamed `val_fn`, since a name in the Debugger's
-expressions cannot hold a `?` and `VAL` is one of their pseudo-variables. 2026-11-08: the data
-ranges of its `b`, `t` and `w` blocks and `B`, `T` and `W` sub-blocks added.
+`48.labels` in this folder: 1097 names and 234 data ranges from "The Complete Spectrum ROM
+Disassembly" by Richard Dymond (<https://github.com/skoolkid/rom>, `sources/rom.skool`, commit
+efb80489, 2026-11-06), (c) 2026 Richard Dymond, whose routine names follow the book of that
+name by Dr Ian Logan and Dr Frank O'Hara (Melbourne House, 1983). Used under the **Creative
+Commons Attribution-ShareAlike 3.0 Unported License**
+(<https://creativecommons.org/licenses/by-sa/3.0/>), as he allowed for his part of it (e-mail
+of 2026-11-10); his comments, which hold the book's annotations, are not taken. It is a
+separate data file, read by the program at run time and not built into it, so the program
+itself stays under the MIT license. Changed for Xpeccy+ on 2026-11-10: `val` renamed
+`val_fn`, since `VAL` is one of the pseudo-variables of the Debugger's expressions; data
+ranges from his `DEFB`, `DEFS` (both shown as bytes), `DEFM` (text) and `DEFW` (addresses)
+lines; the system variables left out (`sysvars-basic48.labels` has them, from the manual).
 
 ## 128K, +2A/+3 - Klive IDE, MIT
 
