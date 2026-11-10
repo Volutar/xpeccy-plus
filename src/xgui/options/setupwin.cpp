@@ -2114,8 +2114,7 @@ static void alignLabels(const QList<QVBoxLayout*>& cols) {
 	}
 }
 
-// The groups made in two columns (alignLabels) put in a grid: the top two in one
-// row, as tall as each other with their rows at the top, the other two under them
+// two columns of groups into a grid: the top two as tall, their rows at the top
 static void pairGroups(QGridLayout* grid, QVBoxLayout* left, QVBoxLayout* right) {
 	QVBoxLayout* made[2] = {left, right};
 	for (int c = 0; c < 2; c++) {
@@ -2252,6 +2251,10 @@ void SetupWin::buildDevices() {
 	btn = devRow(grid, tr("divMMC"), divBox, dv.body, "Machine: divMMC");
 	btn->setObjectName("divGear");
 	divRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << divBox << btn;
+	QString divTip = tr("Floppy and hard disk controllers are\nunavailable while divMMC is enabled");
+	divRow[0]->setToolTip(divTip);
+	divBox->setToolTip(divTip);
+	qobject_cast<QLabel*>(divRow[0])->setText(tr("divMMC (!)"));	// measured so (alignLabels)
 	connect(divBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {showBoardStorage();});
 
 	slotSum = new QLabel;
@@ -2302,6 +2305,7 @@ void SetupWin::buildDevices() {
 	grid = devGroup(right, ":/images/grp-board.png", tr("Board"));
 	devRow(grid, tr("Turbo"), cbCpuTurbo, NULL, NULL);
 	alignLabels(QList<QVBoxLayout*>() << left << right);
+	qobject_cast<QLabel*>(divRow[0])->setText(tr("divMMC"));
 	pairGroups(cols, left, right);
 
 	// THE NEXT'S OWN: NextZXOS's settings in its menu's words, this computer's for the Next among them
@@ -2746,15 +2750,9 @@ void SetupWin::showBoardStorage() {
 	diskTypeBox->setToolTip(board ? out : (bi & MAC_BI_DISK) ? fixed : QString());
 	hiface->setEnabled(!board && !(bi & MAC_BI_IDE));
 	hiface->setToolTip(board ? out : (bi & MAC_BI_IDE) ? fixed : QString());
-	// the board takes the disk controllers out (comp_board_storage): its row's name
-	// marks it while it is on, the tip says so always
-	QString tip = tr("Floppy and hard disk controllers are\nunavailable while divMMC is enabled");
+	// the board on takes the disk controllers out (comp_board_storage): its name marks it
 	QLabel* divName = qobject_cast<QLabel*>(divRow.value(0));
-	if (divName) {
-		divName->setText(board ? tr("divMMC (!)") : tr("divMMC"));
-		divName->setToolTip(tip);
-	}
-	divBox->setToolTip(tip);
+	if (divName) divName->setText(board ? tr("divMMC (!)") : tr("divMMC"));
 }
 
 // THE WHOLE CONFIGURATION, IN AND OUT
