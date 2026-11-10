@@ -16,8 +16,9 @@ before that point is upstream's history and is not repeated here.
   *(thanks to Loccy for the way to build it, a fix and the test on his Surface)*
 - **Screenshots at the machine's own size**: Scale x1, now the default, saves 256×192 for the
   screen, or with as much border as the window shows, however big the window is. Scale x2-x4
-  and Window size are in Options > Video too; hi-res modes keep all their dots.
-  *(requested by Michael Sudakov)*
+  are in Options > Video too, and Source: Screen takes the picture as the window shows it,
+  through the shader; hi-res modes keep all their dots. The page shows the size a shot comes
+  out at. *(requested by Michael Sudakov)*
 - **Screenshots named after the game**: a name template like the video's, with `%n` for a
   number, so `%image %n` saves `Tetris GB 001.png`, `Tetris GB 002.png`. The message says
   the file's name. *(requested by Michael Sudakov)*
