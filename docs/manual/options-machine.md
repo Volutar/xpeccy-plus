@@ -72,7 +72,7 @@ other machines.
 | Group | What it shows |
 |---|---|
 | **Storage** | **SD card**, the card's path (it is put in from the **Media** menu, see [The SD card](zx-next.md#the-sd-card)); **NextZXOS**, the version the machine runs; **Tape** with its settings (see [Machine: Tape](#machine-tape)) |
-| **Input** | **Joystick**, the left and the right one; **Mouse**, its DPI and buttons, with a {icon}`settings` gear for the mouse's **Sensitivity** and **Swap buttons**; **Keyboard**, issue 2 or 3 |
+| **Input** | **Joystick**, the left and the right one; **Mouse**, its DPI and buttons, with a {icon}`settings` gear for the mouse's **Sensitivity** and **Swap buttons** - its check box is this computer's mouse in use, a click in the window then takes the pointer; **Keyboard**, issue 2 or 3 |
 | **Sound** | **PSG**: the chip, **x3** with TurboSound on (all three play) or **x1**, and the stereo; **AY mono** for each chip; **DAC**: Covox; **Beeper**: where BEEP goes, and the internal speaker |
 | **Board** | **Timing**: the CPU speed, 50 or 60 Hz, and the timings; **Contention**, **Timex RD** and **ULAplus**; **ESP UART** and **Pi UART** |
 
