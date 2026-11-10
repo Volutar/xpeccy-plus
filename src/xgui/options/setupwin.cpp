@@ -512,6 +512,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	connect(ui.cbScale, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showShotSize);
 	connect(ui.cbFullscreen, &QCheckBox::toggled, this, &SetupWin::showShotSize);
 	connect(ui.cbKeepRatio, &QCheckBox::toggled, this, &SetupWin::showShotSize);
+	connect(ui.cbSideFill, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showShotSize);
 	leShotName = new QLineEdit;
 	leShotName->setPlaceholderText(SHOT_NAME_DEF);
 	// rich text, a list as Recording's template has it
@@ -1353,6 +1354,15 @@ void SetupWin::fitWidths() {
 		wid = qMax(wid, btn->sizeHint().width());
 	for (QWidget* col : {ui.machButtons, ui.picRight, ui.afRight, ui.ssRight, boxRecAdv})
 		col->setFixedWidth(wid);
+	// Screenshots' column keeps to the rows beside it: No border on Source's, the
+	// size in the middle, on Output's
+	int rowH = 0;
+	for (QWidget* w : {(QWidget*)ui.ssfbox, (QWidget*)ui.pathle, (QWidget*)ui.pathtb, (QWidget*)cbShotSrc, (QWidget*)ui.scntbox})
+		rowH = qMax(rowH, w->sizeHint().height());
+	ui.ssNoBord->setFixedHeight(rowH);
+	labShotSize->setFixedHeight(rowH);
+	int gap = ui.gridLayout_3->verticalSpacing();
+	ui.ssColumn->setSpacing((gap < 0) ? ui.gridLayout_3->spacing() : gap);
 	wid = appColMin;
 	for (xSideButton* btn : {ui.pbFavorites, ui.pbCfgExport, ui.pbCfgImport, ui.pbCfgReset})
 		wid = qMax(wid, btn->sizeHint().width());
@@ -4053,8 +4063,8 @@ void SetupWin::showShotSize() {
 	cbShotScale->setEnabled(!mem && !screen);
 	ui.ssNoBord->setEnabled(!mem);
 	if (mem) {
-		labShotSize->setText(QString("%0 bytes").arg((fmt == "scr") ? 6912 : 6929));
-		labShotSize->setToolTip(QString());
+		labShotSize->setText(QString("%0, %1 bytes").arg(ui.ssfbox->currentText()).arg((fmt == "scr") ? 6912 : 6929));
+		labShotSize->setToolTip(tr("The screen's memory"));
 		return;
 	}
 	Video* vid = conf.zx->vid;
@@ -4070,16 +4080,28 @@ void SetupWin::showShotSize() {
 		qreal r = devicePixelRatioF();
 		double kx = getRFIData(ui.cbScale);
 		double ky = kx;
-		if (ui.cbFullscreen->isChecked()) {
-			QSize scr = QGuiApplication::primaryScreen()->size();
+		QSize scr = QGuiApplication::primaryScreen()->size();
+		int fill = getRFIData(ui.cbSideFill);
+		bool full = ui.cbFullscreen->isChecked();
+		if (full) {
 			kx = scr.width() / (double)sze.x;
 			ky = scr.height() / (double)sze.y;
 			if (ui.cbKeepRatio->isChecked()) kx = ky = qMin(kx, ky);
 		}
 		out = QSize(int(pic.width() * kx * r + 0.5), int(pic.height() * ky * r + 0.5));
-		labShotSize->setToolTip(tr("As big as the picture in the window"));
+		if (full && !nob) {
+			QSize room(int(scr.width() * r + 0.5), int(scr.height() * r + 0.5));
+			if (conf.vid.gl && ((fill & ~SFILL_BORDER) != SFILL_BLACK)) {
+				out = room;		// the fill beside the picture is in the shot
+			} else if (fill & SFILL_BORDER) {
+				// more border in the room, up to the full border
+				vCoord most = vid_crop_size(vid, qMax(ui.bszsld->value(), (int)VID_BRD_FULL));
+				out = QSize(qMin(room.width(), int(most.x * kx * r + 0.5)), qMin(room.height(), int(most.y * ky * r + 0.5)));
+			}
+		}
+		labShotSize->setToolTip(tr("As big as the picture in the window,\nwith the side fill beside it"));
 	}
-	labShotSize->setText(QString("%0%1%2").arg(out.width()).arg(QChar(0xd7)).arg(out.height()));
+	labShotSize->setText(QString("%0, %1%2%3").arg(ui.ssfbox->currentText()).arg(out.width()).arg(QChar(0xd7)).arg(out.height()));
 }
 
 // a control is live only while it changes what is recorded: an override stands

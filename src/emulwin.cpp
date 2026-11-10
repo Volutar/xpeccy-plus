@@ -1545,9 +1545,6 @@ void MainWin::paintGLView() {
 	// drivers quietly sample black.
 	drawPicture();
 #if !ISLEGACYGL
-	// the picture alone, before the fill and the indicators go on
-	if ((shotDue || shotClip) && (conf.scrShot.source == VREC_SRC_SCREEN))
-		grabPicture();
 	// after the picture: Mirror reads it back as it is shown, and the fill only
 	// goes beside it
 	fillOn = fillWanted();
@@ -1555,6 +1552,9 @@ void MainWin::paintGLView() {
 		prepareFill();
 		drawFill();
 	}
+	// before the indicators go on
+	if ((shotDue || shotClip) && (conf.scrShot.source == VREC_SRC_SCREEN))
+		grabPicture();
 #endif
 	glFlush();
 	pnt.endNativePainting();
@@ -1649,15 +1649,19 @@ void MainWin::grabScreen() {
 #endif
 }
 
-// The picture as just drawn through the shader, at the window's pixels; with
-// No border, its screen part.
+// The picture as just drawn through the shader, at the window's pixels: with a
+// side fill beside it the whole window, as it shows; with No border, the screen
+// part of the picture alone.
 void MainWin::grabPicture() {
 #if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
 	const qreal r = widgetDpr(this);
+	QRect win(0, 0, int(width() * r + 0.5), int(height() * r + 0.5));
 	// where drawPicture() put it; it sits in the middle, so its bottom gap is
 	// its top one
 	QRect pic(int(drawX * r + 0.5), int(drawY * r + 0.5), int(drawW * r + 0.5), int(drawH * r + 0.5));
-	pic &= QRect(0, 0, int(width() * r + 0.5), int(height() * r + 0.5));
+	bool nob = conf.scrShot.noBorder;
+	if (fillOn && !nob) pic = win;
+	pic &= win;
 	if (pic.isEmpty()) return;
 	QImage img(pic.width(), pic.height(), QImage::Format_RGBA8888);
 	glBindFramebuffer(GL_FRAMEBUFFER, glw->defaultFramebufferObject());
@@ -1669,7 +1673,7 @@ void MainWin::grabPicture() {
 	img = img.mirrored();
 #endif
 	Video* vid = conf.zx->vid;
-	if (conf.scrShot.noBorder && (vid->vsze.x > 0) && (vid->vsze.y > 0)) {
+	if (nob && (vid->vsze.x > 0) && (vid->vsze.y > 0)) {
 		double kx = img.width() / (double)vid->vsze.x;
 		double ky = img.height() / (double)vid->vsze.y;
 		QRect scr(int((vid->bord.x - vid->lcut.x) * kx + 0.5), int((vid->bord.y - vid->lcut.y) * ky + 0.5),
