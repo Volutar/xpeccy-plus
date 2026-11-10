@@ -2086,27 +2086,34 @@ QToolButton* SetupWin::devRow(QGridLayout* grid, const QString& name, QWidget* c
 	return btn;
 }
 
-static QGridLayout* devGroup(QVBoxLayout* col, const char* icon, const QString& title) {
+// a group in the page's grid: Storage and Sound in row 0, as tall as each other,
+// Input and Board in row 1, at the top
+static QGridLayout* devGroup(QGridLayout* page, int row, int col, const char* icon, const QString& title) {
 	xIconGroup* box = new xIconGroup(icon, title);
 	QGridLayout* grid = new QGridLayout(box);
 	grid->setColumnStretch(1, 1);
-	col->addWidget(box);
+	if (row) page->addWidget(box, row, col, Qt::AlignTop);
+	else page->addWidget(box, row, col);
+	page->setColumnStretch(col, 1);
+	page->setRowStretch(2, 1);
 	return grid;
 }
 
-// one label width per column, so the choices line up from group to group
-static void alignLabels(const QList<QVBoxLayout*>& cols) {
-	foreach(QVBoxLayout* col, cols) {
+// once the rows are in: one name width a column, so the choices line up from group
+// to group; the row 0 groups' rows at their top
+static void finishGroups(QGridLayout* page) {
+	for (int c = 0; c < 2; c++) {
 		QList<QWidget*> labs;		// a label, or a check box as the Next's Mouse
-		for (int i = 0; i < col->count(); i++) {
-			QWidget* box = col->itemAt(i)->widget();
-			if (!box) continue;
-			QGridLayout* g = qobject_cast<QGridLayout*>(box->layout());
-			for (int row = 0; g && (row < g->rowCount()); row++) {
+		for (int r = 0; r < 2; r++) {
+			QLayoutItem* box = page->itemAtPosition(r, c);
+			QGridLayout* g = (box && box->widget()) ? qobject_cast<QGridLayout*>(box->widget()->layout()) : NULL;
+			if (!g) continue;
+			for (int row = 0; row < g->rowCount(); row++) {
 				QLayoutItem* itm = g->itemAtPosition(row, 0);
 				QWidget* w = itm ? itm->widget() : NULL;
 				if (qobject_cast<QLabel*>(w) || qobject_cast<QCheckBox*>(w)) labs << w;
 			}
+			if (r == 0) g->setRowStretch(g->rowCount(), 1);
 		}
 		int wid = 0;
 		foreach(QWidget* lab, labs) wid = qMax(wid, lab->sizeHint().width());
@@ -2114,33 +2121,13 @@ static void alignLabels(const QList<QVBoxLayout*>& cols) {
 	}
 }
 
-// two columns of groups into a grid: the top two as tall, their rows at the top
-static void pairGroups(QGridLayout* grid, QVBoxLayout* left, QVBoxLayout* right) {
-	QVBoxLayout* made[2] = {left, right};
-	for (int c = 0; c < 2; c++) {
-		QWidget* top = made[c]->itemAt(0)->widget();
-		QWidget* low = made[c]->itemAt(1)->widget();
-		made[c]->removeWidget(top);
-		made[c]->removeWidget(low);
-		QGridLayout* g = qobject_cast<QGridLayout*>(top->layout());
-		g->setRowStretch(g->rowCount(), 1);
-		grid->addWidget(top, 0, c);
-		grid->addWidget(low, 1, c, Qt::AlignTop);
-		grid->setColumnStretch(c, 1);
-		delete made[c];
-	}
-	grid->setRowStretch(2, 1);
-}
-
 void SetupWin::buildDevices() {
 	QWidget* area = new QWidget;
-	QGridLayout* cols = new QGridLayout(area);	// Storage | Sound over Input | Board (pairGroups)
+	QGridLayout* cols = new QGridLayout(area);	// Storage | Sound over Input | Board (devGroup)
 	cols->setContentsMargins(0, 0, 0, 0);
-	QVBoxLayout* left = new QVBoxLayout;
-	QVBoxLayout* right = new QVBoxLayout;
 	QToolButton* btn;
 
-	QGridLayout* grid = devGroup(left, ":/images/fdd_disk.png", tr("Storage"));
+	QGridLayout* grid = devGroup(cols, 0, 0, ":/images/fdd_disk.png", tr("Storage"));
 	tapeSum = new QLabel;
 	xOptSheet tape;
 	tape.field(tr("Playback speed"), fieldPair(sldTapeSpeed, labTapeSpeedVal, true),
@@ -2254,14 +2241,14 @@ void SetupWin::buildDevices() {
 	QString divTip = tr("Floppy and hard disk controllers are\nunavailable while divMMC is enabled");
 	divRow[0]->setToolTip(divTip);
 	divBox->setToolTip(divTip);
-	qobject_cast<QLabel*>(divRow[0])->setText(tr("divMMC (!)"));	// measured so (alignLabels)
+	qobject_cast<QLabel*>(divRow[0])->setText(tr("divMMC (!)"));	// measured so (finishGroups)
 	connect(divBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {showBoardStorage();});
 
 	slotSum = new QLabel;
 	btn = devRow(grid, tr("Cartridge"), slotSum, NULL, NULL);
 	slotRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << slotSum << btn;
 
-	grid = devGroup(left, ":/images/joystick.png", tr("Input"));
+	grid = devGroup(cols, 1, 0, ":/images/joystick.png", tr("Input"));
 	joyBox = devCombo(QStringList() << tr("None") << tr("Kempston 5-bit") << tr("Kempston 8-bit"));
 	devRow(grid, tr("Joystick"), joyBox, NULL, NULL);
 	mouseBox = devCombo(QStringList() << tr("None") << tr("Kempston mouse"));
@@ -2275,7 +2262,7 @@ void SetupWin::buildDevices() {
 	btn = devRow(grid, tr("PC keyboard"), cbScanTab, NULL, NULL);
 	kbdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << cbScanTab << btn;
 
-	grid = devGroup(right, ":/images/speaker.png", tr("Sound"));
+	grid = devGroup(cols, 0, 1, ":/images/speaker.png", tr("Sound"));
 	xOptSheet psg;
 	psg.field(tr("Chip"), cbPsgType);
 	psg.field(tr("Clock"), fieldPair(cbPsgFrq, labPsgMhz, false),
@@ -2302,11 +2289,10 @@ void SetupWin::buildDevices() {
 	saaBox = devCombo(QStringList() << tr("Off") << tr("On"));
 	devRow(grid, tr("SAA1099"), saaBox, NULL, NULL);
 
-	grid = devGroup(right, ":/images/grp-board.png", tr("Board"));
+	grid = devGroup(cols, 1, 1, ":/images/grp-board.png", tr("Board"));
 	devRow(grid, tr("Turbo"), cbCpuTurbo, NULL, NULL);
-	alignLabels(QList<QVBoxLayout*>() << left << right);
+	finishGroups(cols);
 	qobject_cast<QLabel*>(divRow[0])->setText(tr("divMMC"));
-	pairGroups(cols, left, right);
 
 	// THE NEXT'S OWN: NextZXOS's settings in its menu's words, this computer's for the Next among them
 	nxArea = new QWidget;
@@ -2331,9 +2317,7 @@ void SetupWin::buildDevices() {
 	head->addWidget(whose);
 	head->addWidget(rule, 1);
 	nv->addLayout(head);
-	QGridLayout* ncols = new QGridLayout;		// as the usual groups (pairGroups)
-	QVBoxLayout* nl = new QVBoxLayout;
-	QVBoxLayout* nr = new QVBoxLayout;
+	QGridLayout* ncols = new QGridLayout;		// as the usual groups (devGroup)
 	nv->addLayout(ncols);
 	// NextZXOS's values grayed: a field (as wide as its column's widest, lineUp) or a check box
 	auto field = [this](const char* name, const QStringList& vals, const QString& tip) {
@@ -2377,8 +2361,8 @@ void SetupWin::buildDevices() {
 		return c;
 	};
 	// a group's grid: the name, up to three values, room, a gear
-	auto nxGroup = [](QVBoxLayout* col, const char* icon, const QString& title) {
-		QGridLayout* g = devGroup(col, icon, title);
+	auto nxGroup = [ncols](int row, int col, const char* icon, const QString& title) {
+		QGridLayout* g = devGroup(ncols, row, col, icon, title);
 		g->setColumnStretch(1, 0);
 		g->setColumnStretch(4, 1);
 		g->setHorizontalSpacing(4);		// pairs of values in a row: a little closer
@@ -2407,7 +2391,7 @@ void SetupWin::buildDevices() {
 	QString joyTip = tr("Sinclair 2, Kempston 1, Cursor, Sinclair 1,\nKempston 2, MD 1, MD 2 or Keyjoy");
 	QStringList joys = QStringList() << tr("L: Kempston 2") << tr("R: Kempston 2");
 
-	grid = nxGroup(nl, ":/images/fdd_disk.png", tr("Storage"));
+	grid = nxGroup(0, 0, ":/images/fdd_disk.png", tr("Storage"));
 	nxSdSum = new xElideLabel;
 	line(grid, tr("SD card"), QList<QWidget*>() << nxSdSum, sheetButton(NULL, NULL), true);
 	line(grid, "NextZXOS", QList<QWidget*>() << field("NextZXOS", QStringList() << "v2.09.99" << tr("not started"),
@@ -2415,7 +2399,7 @@ void SetupWin::buildDevices() {
 	nxTapeSum = new QLabel;
 	line(grid, tr("Tape"), QList<QWidget*>() << nxTapeSum, gear(tapeGear), true);
 
-	grid = nxGroup(nl, ":/images/joystick.png", tr("Input"));
+	grid = nxGroup(1, 0, ":/images/joystick.png", tr("Input"));
 	line(grid, tr("Joystick"), QList<QWidget*>() << field("Joystick L", joys, tr("The left joystick:\n") + joyTip)
 		<< field("Joystick R", joys, tr("The right joystick:\n") + joyTip), NULL, false);
 	line(grid, tr("Mouse"), QList<QWidget*>() << field("Mouse DPI", QStringList() << tr("Standard DPI") << tr("Medium DPI"),
@@ -2432,7 +2416,7 @@ void SetupWin::buildDevices() {
 	lineUp(grid);
 
 	// by device: the PSG, its chips' mono, the DACs, the beeper
-	grid = nxGroup(nr, ":/images/speaker.png", tr("Sound"));
+	grid = nxGroup(0, 1, ":/images/speaker.png", tr("Sound"));
 	line(grid, tr("PSG"), QList<QWidget*>()
 		<< field("Audiochip", QStringList() << QString::fromUtf8("×3 ZXN-8950"),
 			tr("YM, AY, ZXN-8950 or Off. x3: TurboSound,\nall three play; x1: the one selected only"))
@@ -2446,7 +2430,7 @@ void SetupWin::buildDevices() {
 		<< flag("Int. speaker", tr("Int. speaker"), tr("The board's own speaker")), NULL, false);
 	lineUp(grid);
 
-	grid = nxGroup(nr, ":/images/grp-board.png", tr("Board"));
+	grid = nxGroup(1, 1, ":/images/grp-board.png", tr("Board"));
 	line(grid, tr("Timing"), QList<QWidget*>()
 		<< field("CPU speed", QStringList() << "3.5 MHz" << "28 MHz", tr("CPU speed: 3.5, 7, 14 or 28 MHz,\nas programs ask"))
 		<< field("Frequency", QStringList() << "50 Hz", tr("Frames: 50 or 60 Hz"))
@@ -2470,8 +2454,7 @@ void SetupWin::buildDevices() {
 		line(grid, i ? tr("Pi UART") : tr("ESP UART"), QList<QWidget*>() << uartBox[i],
 			i ? sheetButton(NULL, NULL) : sheetButton(esp.body, "Machine: ESP UART"), true);
 	}
-	alignLabels(QList<QVBoxLayout*>() << nl << nr);
-	pairGroups(ncols, nl, nr);
+	finishGroups(ncols);
 	QWidget* page = new QWidget;
 	QVBoxLayout* pv = new QVBoxLayout(page);
 	pv->setContentsMargins(0, 0, 0, 0);
