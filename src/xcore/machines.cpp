@@ -751,24 +751,34 @@ std::string div_esx_card_release(const std::string& folder) {
 
 // TS-BIOS (2024) keeps its setup in cells B0..E7: CRC16 (poly 1021, start FFFF) of B1..E5
 // in E6 (low) and E7. Without it the BIOS loads its defaults and opens the setup.
+#define TS_NV_FIRST	0xb0
+#define TS_NV_CRC	0xe6
+#define TS_NV_SIZE	(TS_NV_CRC + 2 - TS_NV_FIRST)
+
 static bool ts_nv_crc_ok(const unsigned char* nv) {
 	unsigned int crc = 0xffff;
-	for (int i = 0xb1; i < 0xe6; i++) {
+	for (int i = TS_NV_FIRST + 1; i < TS_NV_CRC; i++) {		// FDDVirt (B0) is not in it
 		crc ^= nv[i] << 8;
 		for (int b = 0; b < 8; b++)
 			crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1;
 		crc &= 0xffff;
 	}
-	return (nv[0xe6] == (crc & 0xff)) && (nv[0xe7] == (crc >> 8));
+	return (nv[TS_NV_CRC] == (crc & 0xff)) && (nv[TS_NV_CRC + 1] == (crc >> 8));
 }
 
 // the setup cells of the 2012 TS-BIOS (B0..BA) as the bundled seed had them: 128 menu
 static bool ts_nv_old_seed(const unsigned char* nv) {
-	for (int i = 0xb0; i <= 0xba; i++) {
+	for (int i = TS_NV_FIRST; i <= 0xba; i++) {
 		int def = ((i == 0xb5) || (i == 0xb7)) ? 2 : 0;
 		if (nv[i] != def) return false;
 	}
 	return true;
+}
+
+// the BIOS in ROM bank 0 keeps that layout: its setup has the CPU cache item (the 2012 one
+// had the AY clock there and no CRC)
+static bool ts_bios_has_crc(const unsigned char* rom) {
+	return QByteArray::fromRawData((const char*)rom, MEM_16K).contains("CPU Cache:");
 }
 
 static void xm_load_nvram() {
@@ -785,14 +795,13 @@ static void xm_load_nvram() {
 		if (i == 0x100) memcpy(nv + 0x80, nv, 0x80);
 	}
 	// a file the 2012 TS-BIOS left with its setup untouched takes the 2024 seed's setup
-	// cells, so the machine boots as before instead of opening the new setup once
-	if ((id == HW_TSLAB) && have && !ts_nv_crc_ok(conf.zx->cmos.data) && ts_nv_old_seed(conf.zx->cmos.data)) {
-		QFile file(QString::fromLocal8Bit(seed.c_str()));
-		if (file.open(QFile::ReadOnly)) {
-			QByteArray img = file.read(256);
-			if (img.size() == 256 && ts_nv_crc_ok((const unsigned char*)img.constData()))
-				memcpy(conf.zx->cmos.data + 0xb0, img.constData() + 0xb0, 0x38);
-		}
+	// cells, so the machine boots as before instead of opening the new setup once; not
+	// under a BIOS of the old layout (the user's own ROM), which reads them otherwise
+	unsigned char* nv = conf.zx->cmos.data;
+	if ((id == HW_TSLAB) && have && ts_bios_has_crc(conf.zx->mem->romData) && !ts_nv_crc_ok(nv) && ts_nv_old_seed(nv)) {
+		QByteArray img = esx_file(seed, 256);
+		if ((img.size() == 256) && ts_nv_crc_ok((const unsigned char*)img.constData()))
+			memcpy(nv + TS_NV_FIRST, img.constData() + TS_NV_FIRST, TS_NV_SIZE);
 	}
 	mac_nv_read(mac_nv_path(".nvram"), conf.zx->ide->smuc.nv->mem, NV_SIZE, NULL);
 	// the Next's clock: what it was set to and its RAM; without a file it keeps the host's time
