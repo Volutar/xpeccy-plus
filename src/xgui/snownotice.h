@@ -48,5 +48,5 @@ class xSnowFall : public QWidget {
 };
 
 // The notice itself: a message and the choice, not modal - the game runs on
-// under it. off() is called for "Switch Off for This Game"; more is the manual.
+// under it. off() is called for "Turn Off for This Game"; more is the manual.
 QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<void()> off);

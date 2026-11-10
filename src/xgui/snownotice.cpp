@@ -10,7 +10,7 @@
 #include <QRandomGenerator>
 #include <QtMath>
 
-#define SNOW_SHADE	115		// alpha of the shade, of 255
+#define SNOW_SHADE	60		// alpha of the shade, of 255: the game still plain under it
 #define SNOW_FADE_IN	0.3		// s
 #define SNOW_PX_PER_FLAKE	1700	// picture area, logical px^2
 #define SNOW_MIN	80
@@ -249,12 +249,19 @@ QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<vo
 	box->setWindowTitle("ULA snow");
 	box->setTextFormat(Qt::RichText);
 	box->setTextInteractionFlags(Qt::TextBrowserInteraction);	// the link opens the manual
-	box->setText(QString("This game makes ULA snow: specks of rubbish on the picture.<br><br>"
-		"A real Spectrum 48K, 128K or +2 shows them too, so the game's author may want to know.<br><br>"
-		"To be rid of them, choose a machine without snow, or switch ULA snow off in "
-		"Machine: Advanced Settings. <a href=\"%0\">More about ULA snow</a>").arg(more.toString()));
-	QPushButton* btOff = box->addButton("Switch Off for This Game", QMessageBox::ActionRole);
+	// plain words: read by people of every language, in English
+	box->setText(QString("This game causes <b>ULA snow</b>: random dots and lines on the screen.<br><br>"
+		"Real ZX Spectrum 48K, 128K and +2 computers show it too. It is a problem in the game "
+		"itself, so you may want to tell its author.<br><br>"
+		"To turn it off, choose a machine without snow, or turn off ULA snow in "
+		"<b>Machine: Advanced Settings</b>. <a href=\"%0\">More about ULA snow</a>").arg(more.toString()));
+	// one role for both, so they stand in the order given on every platform
+	QPushButton* btOff = box->addButton("Turn Off for This Game", QMessageBox::AcceptRole);
 	QPushButton* btGo = box->addButton("Continue", QMessageBox::AcceptRole);
+	QIcon flake;
+	flake.addFile(":/images/snowflake-16.png", QSize(16, 16));
+	flake.addFile(":/images/snowflake-32.png", QSize(32, 32));
+	btGo->setIcon(flake);
 	box->setDefaultButton(btGo);
 	box->setEscapeButton(btGo);
 	QObject::connect(box, &QMessageBox::buttonClicked, box, [btOff, off](QAbstractButton* bt) {
