@@ -2739,20 +2739,22 @@ void SetupWin::showBoardStorage() {
 	int bi = mac ? mac->builtin : 0;
 	bool board = divBox->currentIndex() && hw_takes_divmmc(conf.zx->hw);
 	QString fixed = tr("Built into this board");
-	QString out = tr("Off while the divMMC is on");
+	QString out = tr("Unavailable while divMMC is enabled");
 	foreach(QWidget* w, diskRow) w->setEnabled(!board);
 	foreach(QWidget* w, hddRow) w->setEnabled(!board);
 	diskTypeBox->setEnabled(!board && !(bi & MAC_BI_DISK));
 	diskTypeBox->setToolTip(board ? out : (bi & MAC_BI_DISK) ? fixed : QString());
 	hiface->setEnabled(!board && !(bi & MAC_BI_IDE));
 	hiface->setToolTip(board ? out : (bi & MAC_BI_IDE) ? fixed : QString());
-	// with the board on, the disk controllers are out of the machine (comp_board_storage):
-	// its row's name says so, with a tip
+	// the board takes the disk controllers out (comp_board_storage): its row's name
+	// marks it while it is on, the tip says so always
+	QString tip = tr("Floppy and hard disk controllers are\nunavailable while divMMC is enabled");
 	QLabel* divName = qobject_cast<QLabel*>(divRow.value(0));
 	if (divName) {
 		divName->setText(board ? tr("divMMC (!)") : tr("divMMC"));
-		divName->setToolTip(board ? tr("While it is on, the floppy and hard disk\ncontrollers are out of the machine") : QString());
+		divName->setToolTip(tip);
 	}
+	divBox->setToolTip(tip);
 }
 
 // THE WHOLE CONFIGURATION, IN AND OUT
