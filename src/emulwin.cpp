@@ -2257,8 +2257,8 @@ void MainWin::mountMedia(const QString& path, int id, int drv, bool pinned, cons
 bool MainWin::drivesBack() {
 	DiskIF* dif = conf.zx->dif;
 	if (!dif->out || (dif->cfg == DIF_NONE)) return true;
-	QMessageBox box(QMessageBox::Question, "Floppy drives are off",
-		"The floppy drives are off while the divMMC is on.\n"
+	QMessageBox box(QMessageBox::Question, "Floppy drives are unavailable",
+		"The floppy drives are unavailable while divMMC is enabled.\n"
 		"Switching it off performs a Hard Reset.", QMessageBox::NoButton, this);
 	QPushButton* off = box.addButton("Switch divMMC Off", QMessageBox::AcceptRole);
 	box.addButton(QMessageBox::Cancel);
