@@ -11,7 +11,7 @@ boot_tsbios     evo-tsconf    boot  0     400
 spg_0x7e1       evo-tsconf    open  300   300     evo/0x7e1.spg
 spg_invitro     evo-tsconf    open  300   300     evo/3BM_2014_invitro.spg
 synchro_ts      evo-tsconf    auto  3000  300     disk/SYNCHRO.TRD
-wc_sd           evo-tsconf    boot  1500  300                                nvram:nvram/evo-tsconf-wc.cmos sd:evo/tsconf-mnt
+wc_sd           evo-tsconf    boot  1500  300                                nvram:nvram/evo-tsconf-2024-wc.cmos sd:evo/tsconf-mnt
 tsfm_ts         evo-tsconf    open  300   300     evo/tsfm_volume_test.spg   --bench-full
 badtruck_ts     evo-tsconf    open  1500  300     evo/badtruck.spg
 cpir_ts         evo-tsconf    open  600   300     evo/cpir.spg
