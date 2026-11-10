@@ -70,7 +70,7 @@ before that point is upstream's history and is not repeated here.
   IR shows the handler in the listing, a right-click the IM 2 table in the dump. A waiting
   NMI lights a signal of its own, NMI, beside INT.
 - **A game that snows says so**: on the 48K, 128K and +2 the picture dims under falling snow
-  and a message tells what ULA snow is, as the real machine shows it too. **Switch Off for
+  and a message tells what ULA snow is, as the real machine shows it too. **Turn Off for
   This Game** takes the snow away until another image is opened.
 
 ### Changed
