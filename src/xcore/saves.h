@@ -42,6 +42,7 @@ void game_set(const QString& image);
 void game_hash_ahead(const QString& image);
 // the tape or drive A started with this image: the game, unless it is already
 void game_follow(const QString& image);
+bool same_image(const QString&, const QString&);	// one file, however its path was written
 // the game of a save, as its folder's json has it (or the json beside it):
 // that save is going in
 void game_set_save(const QString& save);

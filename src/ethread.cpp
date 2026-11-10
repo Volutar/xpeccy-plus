@@ -110,6 +110,7 @@ int snow_seen() {
 
 void snow_watch_reset() {
 	snowRun = 0;
+	snowSeen = 0;		// the last image's, not this one's
 }
 
 static void snow_frame(Computer* comp) {

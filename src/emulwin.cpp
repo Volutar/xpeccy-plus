@@ -542,6 +542,7 @@ MainWin::MainWin(QMainWindow* frm) {
 }
 
 MainWin::~MainWin() {
+	delete snowBox;		// its end stops the snow: while this window is whole
 #if defined(USEOPENGL) && !BLOCKGL
 	cleanupGL();
 	delete(vtx_shd);
@@ -1410,9 +1411,12 @@ void MainWin::paintEvent(QPaintEvent*) {
 	if (snowFall->isVisible()) {
 		qreal dpr = widgetDpr(this);
 		QSize px = (QSizeF(size()) * dpr).toSize();
-		if (owed || (plainKept.size() != px)) {
+		bool fresh = (plainKept.size() != px) || (plainKept.devicePixelRatio() != dpr);
+		if (fresh) {
 			plainKept = QImage(px, QImage::Format_ARGB32_Premultiplied);
 			plainKept.setDevicePixelRatio(dpr);
+		}
+		if (owed || fresh) {		// paintPlain covers it all: drawn over in place
 			shotTick();
 			QPainter img(&plainKept);
 			paintPlain(img);
@@ -3551,25 +3555,18 @@ static QUrl manual_url(const QString& page, const QString& part) {
 	return url;
 }
 
-// One image when one file: the title's paths as they came, so only spelling
-// differences are left to fold
-static bool same_image_path(const QString& a, const QString& b) {
-#if defined(_WIN32)
-	return QDir::cleanPath(a).compare(QDir::cleanPath(b), Qt::CaseInsensitive) == 0;
-#else
-	return QDir::cleanPath(a) == QDir::cleanPath(b);
-#endif
-}
-
 // The image in use changed (the title names another): the snow notice watches
 // it from the start, and a switch-off "for this game" ends with the old one.
-// An empty title - a reset, an eject, a side being swapped - changes nothing.
-void MainWin::snowImageIs(const QString& path) {
-	if (path.isEmpty() || same_image_path(path, snowImage)) return;
+// An empty title - a reset, an eject, a side being swapped - changes nothing;
+// nor does a disk in B or a card, as with the quick saves: the game is the
+// tape, drive A or the snapshot.
+void MainWin::snowImageIs(const QString& path, int src) {
+	if ((src != MEDIA_SNAP) && (src != MEDIA_TAPE) && (src != 0)) return;
+	if (path.isEmpty() || same_image(path, snowImage)) return;
 	snowImage = path;
 	snowNoted = false;
 	snow_watch_reset();
-	if (snowBox) snowBox->close();		// it spoke of the other game
+	delete snowBox;		// it spoke of the other game
 	if (xm_snow_held()) {
 		EmuLock lock;
 		xm_snow_hold(conf.zx, 0);
@@ -3583,17 +3580,17 @@ void MainWin::snowNotice() {
 	if (snowNoted || snowBox) return;
 	snowNoted = true;
 	snowFall->start();
-	snowBox = snow_notice_box(this,
-		[]() {
-			EmuLock lock;
-			xm_snow_hold(conf.zx, 1);
-			x_input_bump();
-		},
-		[this]() {
-			snowFall->stop();
-			setFocus();
-		},
-		[]() {QDesktopServices::openUrl(manual_url("ula-snow-floating-bus.html", "when-a-game-snows"));});
+	snowBox = snow_notice_box(this, manual_url("ula-snow-floating-bus.html", "when-a-game-snows"), []() {
+		EmuLock lock;
+		xm_snow_hold(conf.zx, 1);
+		x_input_bump();
+	});
+	// however it goes: the snow with it. The window going away first takes the
+	// connection with it (~MainWin deletes the box itself, while it still stands)
+	connect(snowBox, &QObject::destroyed, snowFall, [this]() {
+		snowFall->stop();
+		setFocus();
+	});
 	snowBox->show();
 }
 
@@ -4100,7 +4097,7 @@ void MainWin::profileSelected(QAction* act) {
 void MainWin::showMedia(const QString& path, int src) {
 	mediaSrc = src;
 	sideSrc = ((src >= 0) && (src <= MEDIA_TAPE)) ? src : -1;
-	snowImageIs(path);
+	snowImageIs(path, src);
 	if (path == media_current()) return;
 	media_set_current(path);
 	vrec_note_image(media_image_name());	// a recording is named after it

@@ -6,6 +6,7 @@
 #include <QElapsedTimer>
 #include <QPointer>
 #include <QMessageBox>
+#include <QUrl>
 #include <functional>
 #include <vector>
 
@@ -47,7 +48,5 @@ class xSnowFall : public QWidget {
 };
 
 // The notice itself: a message and the choice, not modal - the game runs on
-// under it. off() is called for "Switch Off for This Game", done() however
-// it closes.
-QMessageBox* snow_notice_box(QWidget* parent, std::function<void()> off, std::function<void()> done,
-	std::function<void()> help);
+// under it. off() is called for "Switch Off for This Game"; more is the manual.
+QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<void()> off);

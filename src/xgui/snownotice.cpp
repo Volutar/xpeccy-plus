@@ -215,6 +215,7 @@ void xSnowFall::timerEvent(QTimerEvent* ev) {
 }
 
 void xSnowFall::paintEvent(QPaintEvent*) {
+	if (devicePixelRatioF() != spriteDpr) makeSprites();	// moved to a screen of another scale
 	QPainter p(this);
 	p.setRenderHint(QPainter::SmoothPixmapTransform, true);		// turned crystals, the 2x sign
 	double in = qMin(1.0, clock.nsecsElapsed() / 1e9 / SNOW_FADE_IN);
@@ -240,28 +241,24 @@ void xSnowFall::paintEvent(QPaintEvent*) {
 	p.drawImage(QPointF(SNOW_SIGN_X, SNOW_SIGN_Y), sign[on ? 0 : 1]);
 }
 
-QMessageBox* snow_notice_box(QWidget* parent, std::function<void()> off, std::function<void()> done,
-		std::function<void()> help) {
+QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<void()> off) {
 	QMessageBox* box = new QMessageBox(parent);
 	box->setAttribute(Qt::WA_DeleteOnClose);
 	box->setModal(false);
 	box->setIcon(QMessageBox::Information);
 	box->setWindowTitle("ULA snow");
-	box->setText("This game makes ULA snow: specks of rubbish on the picture.\n\n"
-		"A real Spectrum 48K, 128K or +2 shows them too, so the game's author may want to know.\n\n"
+	box->setTextFormat(Qt::RichText);
+	box->setTextInteractionFlags(Qt::TextBrowserInteraction);	// the link opens the manual
+	box->setText(QString("This game makes ULA snow: specks of rubbish on the picture.<br><br>"
+		"A real Spectrum 48K, 128K or +2 shows them too, so the game's author may want to know.<br><br>"
 		"To be rid of them, choose a machine without snow, or switch ULA snow off in "
-		"Machine: Advanced Settings.");
+		"Machine: Advanced Settings. <a href=\"%0\">More about ULA snow</a>").arg(more.toString()));
 	QPushButton* btOff = box->addButton("Switch Off for This Game", QMessageBox::ActionRole);
 	QPushButton* btGo = box->addButton("Continue", QMessageBox::AcceptRole);
-	QPushButton* btHelp = box->addButton(QMessageBox::Help);
 	box->setDefaultButton(btGo);
 	box->setEscapeButton(btGo);
-	// Help opens the manual and leaves the notice where it is
-	btHelp->disconnect();
-	QObject::connect(btHelp, &QPushButton::clicked, box, [help]() {help();});
 	QObject::connect(box, &QMessageBox::buttonClicked, box, [btOff, off](QAbstractButton* bt) {
 		if (bt == btOff) off();
 	});
-	QObject::connect(box, &QObject::destroyed, parent, [done]() {done();});
 	return box;
 }

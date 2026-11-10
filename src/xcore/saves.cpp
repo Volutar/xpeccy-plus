@@ -158,7 +158,7 @@ void game_set(const QString& image) {
 }
 
 // one file, however its path was written; a path no longer there by its text
-static bool same_image(const QString& a, const QString& b) {
+bool same_image(const QString& a, const QString& b) {
 	QString ca = arc_canonical(a);
 	QString cb = arc_canonical(b);
 	if (ca.isEmpty() || cb.isEmpty()) {
