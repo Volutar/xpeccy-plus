@@ -166,3 +166,15 @@ fbdf 12
 ffdf 34
 7b5f FF
 f8df FF
+== ts-mouse
+fadf FE
+fbdf 12
+ffdf 34
+7b5f FF
+f8df FF
+== ts-mouse-swap
+fadf FD
+fbdf 12
+ffdf 34
+7b5f FF
+f8df FF
