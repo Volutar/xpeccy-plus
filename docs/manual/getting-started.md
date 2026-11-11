@@ -147,8 +147,8 @@ old one when you quit.
   native `arm64` build instead: it runs 1.5 to 2 times as fast there. When there is no new
   version, the check offers the `arm64` build of the version you have, once; **Help > Check
   for Updates...** offers it every time. **Switch** puts it in place as an update does.
-  **Don't Ask Again** keeps your build: its updates stay of its kind, and only **Help >
-  Check for Updates...** offers the switch.
+  **Don't Ask Again**, in the switch's window or an update's, keeps your build: its updates stay
+  of its kind, and only **Help > Check for Updates...** offers the switch.
 - When the program's folder cannot be written to (`Program Files`), **Download** is offered
   instead.
 - The AppImage is replaced by the new one.
