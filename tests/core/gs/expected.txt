@@ -35,6 +35,7 @@ MPAG 5: RAM pages 10 and 11: ok
 MPAGEX does nothing without EXPAG: ok
 24 MHz: ok
 EXPAG: MPAG #85 is page 11, MPAGEX #03 page 6: ok
+4M: MPAG #C0 is page 129, not page 1 again: ok
 20 MHz: ok
 RAMRO: page 0 keeps, page 3 takes: ok
 RAMRO without NOROM: flash at #0000: ok

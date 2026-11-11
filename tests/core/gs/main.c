@@ -108,7 +108,7 @@ static void neogs_mix(GSound* gs) {
 // a byte at the start of every 16K page says which page it is
 static void mark_pages(GSound* gs) {
 	for (int p = 0; p < 32; p++) gs->romNGS[p << 14] = 0x80 | p;
-	for (int p = 0; p < 128; p++) gs->mem->ramData[p << 14] = p;
+	for (int p = 0; p < 256; p++) gs->mem->ramData[p << 14] = p;
 }
 
 static void neogs_map(GSound* gs) {
@@ -134,6 +134,8 @@ static void neogs_map(GSound* gs) {
 	gsiowr(0x00, 0x85, gs);
 	gsiowr(0x10, 0x03, gs);
 	check("EXPAG: MPAG #85 is page 11, MPAGEX #03 page 6", (gsmemrd(0x8000, 0, gs) == 11) && (gsmemrd(0xc000, 0, gs) == 6));
+	gsiowr(0x00, 0xc0, gs);
+	check("4M: MPAG #C0 is page 129, not page 1 again", gsmemrd(0x8000, 0, gs) == 129);
 	gsiowr(0x0f, NGS_NOROM | NGS_RAMRO | 0x20, gs);
 	check("20 MHz", gs->tickUnits == 6000);
 	gsmemwr(0x0001, 0x55, gs);
