@@ -1,12 +1,4 @@
-== neogs
-mid, vol 0: 0 0
-mid, vol 63: 0 0
-a volume change on #80 moves nothing: ok
-all #FF, vol 63: 8001 8001
-ch1 #FF alone: 4000 0
-ch1 left only: ok
-mono, ch1 #FF alone: 2000 2000
-== original
+== classic
 mid, vol 0: 0 0
 mid, vol 63: 8064 8064
 a volume change on #80 moves the level: ok
@@ -16,3 +8,45 @@ ch1 #FF alone: 5463 2568
 the right side has 0.47 of the left: ok
 mono, ch1 #FF alone: 4016 4016
 mono has no cross-mix: ok
+== neogs-mix
+mid, vol 0: 0 0
+mid, vol 63: 0 0
+a volume change on #80 moves nothing: ok
+4 channels, ch1 #FF alone: 4000 0
+ch1 left only, counted twice: ok
+4 channels, all #FF: 8001 8001
+mono, ch1 #FF alone: 2000 2000
+8 channels, ch5 #FF: 2000 0
+8 channels, ch7 #FF: 0 2000
+ch5 left, ch7 right, once each: ok
+panned 4 channels, ch1 #FF, vol1 63, vol3 21: 2000 666
+ch1 on both sides by vol1 and vol3: ok
+INV7B, ch1 #7F: 4000 0
+#7F is +127 with INV7B: ok
+== neogs-map
+reset: GSCFG0 #30: ok
+reset: 10 MHz: ok
+reset: flash page 0 at #0000: ok
+reset: RAM page 3 at #4000: ok
+flash pages 4 and 5 at #8000 and #C000: ok
+NOROM: RAM page 0 at #0000: ok
+12 MHz: ok
+MPAG 5: RAM pages 10 and 11: ok
+MPAGEX does nothing without EXPAG: ok
+24 MHz: ok
+EXPAG: MPAG #85 is page 11, MPAGEX #03 page 6: ok
+20 MHz: ok
+RAMRO: page 0 keeps, page 3 takes: ok
+RAMRO without NOROM: flash at #0000: ok
+== neogs-ports
+SSTAT: no card, MP3 control idle: ok
+SD read: #FF: ok
+a port past #3F is not the card's: ok
+SCTRL: set #05, clear #01: ok
+DAMNPORT2: the command bit from VOL4 bit 5: ok
+DAMNPORT1: the data bit from page bit 0: ok
+8 channels: #65xx latches ch6: ok
+4 channels: #64xx latches ch1 and its copy in ch5: ok
+GSCTR #40: an NMI: ok
+GSCTR #80: the card reset, GSCFG0 #30: ok
+the classic card leaves #33 alone: ok
