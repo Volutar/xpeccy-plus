@@ -1303,7 +1303,7 @@ void SetupWin::fillPages() {
 	ratWheel->setChecked(comp->mouse->hasWheel);
 	cbSwapButtons->setChecked(comp->mouse->swapButtons);
 	sldSensitivity->setValue(comp->mouse->sensitivity * 1000.0f);
-	joyBox->setCurrentIndex((comp->joy->type != XJ_KEMPSTON) ? 0 : comp->joy->extbuttons ? 2 : 1);
+	joyBox->setCurrentIndex((comp->joy->type != XJ_KEMPSTON) ? MAC_JOY_NONE : comp->joy->extbuttons ? MAC_JOY_KEMPSTON8 : MAC_JOY_KEMPSTON);
 	padSummary();
 	cbPadFiles->setChecked(conf.gpctrl->gameOn);
 // flp
@@ -1592,8 +1592,8 @@ void SetupWin::applyMachine() {
 	comp->mouse->enable = own ? (nxMouseOn->isChecked() ? 1 : 0) : mouseBox->currentIndex();
 	if (!own) {
 		comp->mouse->hasWheel = ratWheel->isChecked() ? 1 : 0;
-		comp->joy->type = joyBox->currentIndex() ? XJ_KEMPSTON : XJ_NONE;
-		comp->joy->extbuttons = ((joyBox->currentIndex() == 2) && hw_kempston8(comp->hw)) ? 1 : 0;
+		comp->joy->type = (joyBox->currentIndex() != MAC_JOY_NONE) ? XJ_KEMPSTON : XJ_NONE;
+		comp->joy->extbuttons = ((joyBox->currentIndex() == MAC_JOY_KEMPSTON8) && hw_kempston8(comp->hw)) ? 1 : 0;
 	}
 // flp
 	if (!own) {
@@ -2822,8 +2822,8 @@ void SetupWin::showDevRows() {
 	QStandardItemModel* joys = qobject_cast<QStandardItemModel*>(joyBox->model());
 	if (joys) {
 		bool k8 = hw_kempston8(conf.zx->hw);
-		joys->item(2)->setEnabled(k8);
-		joys->item(2)->setToolTip(k8 ? QString() : tr("This board's joystick port has five lines"));
+		joys->item(MAC_JOY_KEMPSTON8)->setEnabled(k8);
+		joys->item(MAC_JOY_KEMPSTON8)->setToolTip(k8 ? QString() : tr("This board's joystick port has no Fire 2 to Fire 4"));
 	}
 	// the +2A and +3 never page TR-DOS in
 	QStandardItemModel* difs = qobject_cast<QStandardItemModel*>(diskTypeBox->model());

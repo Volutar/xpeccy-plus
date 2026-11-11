@@ -159,10 +159,8 @@ int vgGetByte(FDC* fdc) {
 
 void vgstp00(FDC* fdc) {
 //	printf("stop\n");
-	// A command's end raises INTRQ. A Force Interrupt does only by its I0-I3
-	// conditions: #D0 ends without one, its write having reset INTRQ. I0-I2
-	// are not modelled and give it at once, as I3 does.
-	fdc->irq = ((fdc->com & 0xf0) != 0xd0) || (fdc->com & 0x0f);
+	// a command's end raises INTRQ; a Force Interrupt's was set by vgExec
+	if ((fdc->com & 0xf0) != 0xd0) fdc->irq = 1;
 	fdc->idle = 1;
 	if (!fdc->flp->motor || !(fdc->flp->insert && fdc->flp->door)) {
 		fdc->plan = NULL;
@@ -602,7 +600,7 @@ void vgExec(FDC* fdc, unsigned char com) {
 		// printf("INT:%.2X\n",com);
 		fdc->wait = 0;
 		fdc->com = com;		// vgRead: I3 holds INTRQ past a status read
-		fdc->irq = (com & 0x0f) ? 1 : 0;	// the write resets it, a condition raises it
+		fdc->irq = (com & 0x0f) ? 1 : 0;	// the write resets INTRQ, a condition raises it (I0-I2 not modelled: at once, as I3)
 		vgstp(fdc);
 	} else if (fdc->idle) {		// if FDC is idle
 		fdc->com = com;

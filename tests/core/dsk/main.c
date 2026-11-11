@@ -467,6 +467,13 @@ static void format(const char* name, int cyl, int n, int sc, int fill, int fits)
 	}
 }
 
+// a Beta disk machine with fast access on, drive A out of reset, side 0
+static void beta_on(void) {
+	difSetHW(dif, DIF_BDI);
+	fdcFlag = FDC_FAST;
+	difOut(dif, 0xff, 0x3c, 1);
+}
+
 // back to the +3, reset as a machine switch resets it
 static void back_to_p3(void) {
 	fdcFlag = 0;
@@ -491,9 +498,7 @@ static void beta_after_p3(void) {
 	send_dos = 0;
 	take(data, 512, 10000);
 	result(res);
-	difSetHW(dif, DIF_BDI);
-	fdcFlag = FDC_FAST;
-	difOut(dif, 0xff, 0x3c, 1);		// drive A, out of reset, side 0
+	beta_on();
 	difOut(dif, 0x7f, 40, 1);		// the track to seek to
 	difOut(dif, 0x1f, 0x10, 1);		// seek, 6 ms a step
 	long ns = 0;
@@ -507,11 +512,7 @@ static void beta_after_p3(void) {
 	back_to_p3();
 }
 
-// The WD1793's INTRQ, read on #FF d7 as TR-DOS waits for it: a command's end
-// raises it, a status read or a command write resets it; a Force Interrupt
-// raises it only by its conditions - none for #D0, at once and held for #D8.
-// After #D8 then #D0 the datasheet and the chip's die read differently (up
-// until a status read, or reset by the write), so only after the read is checked.
+// INTRQ on #FF d7, as TR-DOS waits for it
 static int beta_irq(void) {
 	int v = 0xff;
 	difIn(dif, 0xff, &v, 1);
@@ -527,12 +528,12 @@ static void beta_com(int com) {
 		run(9999);
 }
 
+// INTRQ: none after #D0, held by #D8; #D8 then #D0 is checked only after a status
+// read (the datasheet holds it until then, the die resets it with the write)
 static void beta_intrq(void) {
 	int st;
 	printf("== beta-intrq\n");
-	difSetHW(dif, DIF_BDI);
-	fdcFlag = FDC_FAST;
-	difOut(dif, 0xff, 0x3c, 1);		// drive A, out of reset, side 0
+	beta_on();
 	beta_com(0x00);				// restore: the track register known
 	difOut(dif, 0x7f, 2, 1);
 	beta_com(0x10);				// seek

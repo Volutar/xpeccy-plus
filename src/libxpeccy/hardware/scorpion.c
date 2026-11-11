@@ -115,10 +115,8 @@ void scoTpSync(Computer* comp, int ns) {
 // in
 
 // The Kempston port is on the board: with no joystick its lines are pulled to
-// 0, not left floating; d5 is grounded and d6-d7 are the VG93's DRQ and INTRQ.
-// It is the #FE muxes' other half (two 74LS257, SE = A0: DD36/DD37 on the
-// Turbo+, D37/D36 on the yellow board); the connector has J0-J4 only, so there
-// is no 8-bit Kempston here (hw_kempston8)
+// 0, not left floating; d5 is grounded and d6-d7 are the VG93's DRQ and INTRQ
+// (docs/machines-reference.md)
 int scrpIn1F(Computer* comp, int port) {
 	int res = (comp->joy->type == XJ_KEMPSTON) ? (joyInput(comp->joy) & 0x1f) : 0;
 	if (comp->dif->type == DIF_BDI)

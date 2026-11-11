@@ -1329,7 +1329,6 @@ static void mac_from_def(const xMachine* mac) {
 	comp->mouse->enable = mac->mouse;
 	comp->mouse->hasWheel = mac->mouseWheel;
 	comp->joy->type = (mac->joy == MAC_JOY_NONE) ? XJ_NONE : XJ_KEMPSTON;
-	// a board with no lines for Fire 2..4 (the Scorpions) takes it as the 5-bit one
 	comp->joy->extbuttons = ((mac->joy == MAC_JOY_KEMPSTON8) && hw_kempston8(comp->hw)) ? 1 : 0;
 	comp->keyb->pcmode = mac->scantab;
 	conf.layName = mac->geometry;
