@@ -116,13 +116,16 @@ try {
 	$path = (Get-Process -Id $next).Path
 	Write-Host "after Restart Now: $path"
 	for ($i = 0; ($i -lt 30) -and -not (Log-Lines 'update: now'); $i++) { Start-Sleep -Milliseconds 500 }
-	Start-Sleep -Seconds 16	# the files the old one still held: removed 15 s after the start
+	# the files the old one still held are removed 15 s after the start: then none of the
+	# x64 build's may be left (checked below)
+	Start-Sleep -Seconds 16
 	Stop-Mine $next
 	Log-Lines 'update' | ForEach-Object { Write-Host "  $_" }
 	if ($path -ne $exe) { Write-Host "::error::not the program of the folder that started: $path"; $ok = $false }
 	if (-not (Log-Lines 'update: now')) { Write-Host '::error::the program after Restart Now did not report the update'; $ok = $false }
 
-	# the program is ARM64 now (PE header: machine 0xAA64), the files the zip's
+	# the program is ARM64 now (PE header: machine 0xAA64), the files the zip's and no others:
+	# an x64 DLL or plugin left beside the ARM64 ones is what this script is for
 	$fs = [IO.File]::OpenRead($exe)
 	try {
 		$h = [byte[]]::new(4096); $null = $fs.Read($h, 0, $h.Length)
@@ -134,10 +137,11 @@ try {
 	$man = Get-Content (Join-Path $inst 'manifest.sha256') | ForEach-Object { $_.Substring(66) }
 	$have = Get-ChildItem $inst -Recurse -File | ForEach-Object { $_.FullName.Substring($inst.Length + 1) -replace '\\', '/' }
 	$missing = @($man | Where-Object { $have -notcontains $_ })
-	$extra = @($have | Where-Object { ($man -notcontains $_) -and ($_ -ne 'manifest.sha256') })
+	$extra = @($have | Where-Object { ($man -notcontains $_) -and ($_ -ne 'manifest.sha256') -and
+		($_ -notlike 'config/*') -and ($_ -notlike '*.log') })
 	Write-Host "files: $($have.Count), the zip's: $($man.Count), missing $($missing.Count), others $($extra.Count)"
-	$extra | Select-Object -First 20 | ForEach-Object { Write-Host "  other: $_" }
-	if ($missing) { $missing | ForEach-Object { Write-Host "  missing: $_" }; $ok = $false }
+	if ($extra) { $extra | Select-Object -First 20 | ForEach-Object { Write-Host "  other: $_" }; Write-Host '::error::files of the x64 build left'; $ok = $false }
+	if ($missing) { $missing | ForEach-Object { Write-Host "  missing: $_" }; Write-Host '::error::files of the zip missing'; $ok = $false }
 	& (Join-Path $PSScriptRoot 'win-smoke.ps1') -Dist $inst
 	if (-not $ok) { throw 'the switch failed' }
 	Write-Host 'switch: x64 -> ARM64 done' -ForegroundColor Green

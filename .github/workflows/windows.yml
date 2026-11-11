@@ -230,7 +230,6 @@ jobs:
         run: |
           tzutil /s "UTC"
           if ($LASTEXITCODE -ne 0) { throw 'tzutil failed' }
-          pwsh -NoProfile -Command "Get-Date -Format o"
 
       # the training set, as the job above fetches it - but not by checkout's ssh-key:
       # on this image the key file it writes is readable by every user, and OpenSSH
@@ -414,7 +413,13 @@ jobs:
           Remove-Item Env:GH_TOKEN
           $m = $rel.assets.name | Select-String '^xpeccy-plus-(.+-dev\+\d{8})-' | Select-Object -First 1
           $opts = @{ App = $env:X64; Zip = (Get-Item dist\*-win-arm64.zip).FullName }
-          if ($m) { $opts.Self = "$($m.Matches[0].Groups[1].Value)@$($rel.targetCommitish)" }
+          # the offer is checked against the published nightly, so only when it has an arm64
+          # file (its ARM job may have failed); the machine and the switch are checked anyway
+          if (-not ($rel.assets.name -like '*-win-arm64.zip')) {
+            Write-Host '::warning::the published nightly has no win-arm64 file: the offer is not checked'
+          } elseif ($m) {
+            $opts.Self = "$($m.Matches[0].Groups[1].Value)@$($rel.targetCommitish)"
+          }
           packaging\win-switch.ps1 @opts
 
       # how each looks, the Qt of win-arm64 not being win-x64's: for a person to compare.
