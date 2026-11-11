@@ -130,7 +130,7 @@ static void snow_frame(Computer* comp) {
 	int hits = comp->snowHits;
 	comp->snowHits = 0;
 	if (snowAgain.exchange(0)) snow_watch_clear();
-	if (!comp->flgSNOW || (comp->vid->ula->conttype != CONT_PATA)
+	if (!conf.led.snowNotice || !comp->flgSNOW || (comp->vid->ula->conttype != CONT_PATA)
 			|| conf.emu.fast || (conf.emu.speed > 1.0) || conf.emu.pause || comp->flgDBG
 			|| autostart_busy() || fastload_busy() || rewind_active() || rzx_seeking()
 			|| comp->rzx.play || rzxr_on() || !conf.running) {

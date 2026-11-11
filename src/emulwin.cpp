@@ -3575,15 +3575,20 @@ void MainWin::snowImageIs(const QString& path, int src) {
 }
 
 // A game snows: said once per image, over the shaded picture, while the game
-// runs on. "For this game" is a switch-off of the session, written nowhere.
+// runs on. "For this game" is a switch-off of the session, written nowhere;
+// "Don't show this again" ends the notice for good (Options > Appearance),
+// the snow itself untouched.
 void MainWin::snowNotice() {
-	if (snowNoted || snowBox) return;
+	if (!conf.led.snowNotice || snowNoted || snowBox) return;
 	snowNoted = true;
 	snowFall->start();
 	snowBox = snow_notice_box(this, manual_url("ula-snow-floating-bus.html", "when-a-game-snows"), []() {
 		EmuLock lock;
 		xm_snow_hold(conf.zx, 1);
 		x_input_bump();
+	}, []() {
+		conf.led.snowNotice = 0;
+		saveConfig();
 	});
 	// however it goes: the snow with it. The window going away first takes the
 	// connection with it (~MainWin deletes the box itself, while it still stands)

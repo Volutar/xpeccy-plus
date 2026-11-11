@@ -214,6 +214,7 @@ void conf_init(char* confdir) {
 	conf.emu.rewind.secs = 30;
 	conf.led.clock = 0;		// the status bar has it, and a machine that switches its clock flashes it
 	conf.led.fade = 1;
+	conf.led.snowNotice = 1;
 	conf.gpctrl = new xGamepadController;
 }
 
@@ -475,6 +476,7 @@ void saveConfig() {
 	fprintf(cfile, "halt = %s\n", YESNO(conf.led.halt));
 	fprintf(cfile, "clock = %s\n", YESNO(conf.led.clock));
 	fprintf(cfile, "fade = %s\n", YESNO(conf.led.fade));
+	fprintf(cfile, "snownotice = %s\n", YESNO(conf.led.snowNotice));
 
 	fprintf(cfile, "\n[DEBUGA]\n\n");
 	fprintf(cfile, "dbsize = %i\n", conf.dbg.dbsize);
@@ -1556,6 +1558,7 @@ void loadConfig() {
 					if (pnam=="halt") conf.led.halt = arg.b;
 					if (pnam=="clock") conf.led.clock = arg.b;
 					if (pnam=="fade") conf.led.fade = arg.b;
+					if (pnam=="snownotice") conf.led.snowNotice = arg.b;
 					break;
 			}
 		}

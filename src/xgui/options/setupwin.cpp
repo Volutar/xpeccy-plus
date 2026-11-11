@@ -492,7 +492,17 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	spaceLedIcon(ui.cbHaltLed);
 	spaceLedIcon(ui.cbClockLed);
 	spaceLedIcon(ui.cbMessage);
+	{
+		QIcon flake;
+		flake.addFile(":/images/snowflake-16.png", QSize(16, 16));
+		flake.addFile(":/images/snowflake-32.png", QSize(32, 32));
+		ui.cbSnowNote->setIcon(flake);
+	}
+	spaceLedIcon(ui.cbSnowNote);
 	spaceLedIcon(ui.cbFadeLed);
+	// the notice is the window's, for every machine: one place for it
+	for (QWidget* w : {(QWidget*)ui.cbSnow, (QWidget*)ui.nam_cbSnow, (QWidget*)ui.lab_cbSnow})
+		w->setToolTip("The notice when a game snows:\nOptions > Appearance > Indicators");
 
 	rseditor = new xRomsetEditor(this);
 	rseditor->setModal(true);
@@ -1332,6 +1342,7 @@ void SetupWin::fillPages() {
 	ui.cbTapeLed->setChecked(conf.led.tape);
 	ui.cbDiskLed->setChecked(conf.led.disk);
 	ui.cbMessage->setChecked(conf.led.message);
+	ui.cbSnowNote->setChecked(conf.led.snowNotice);
 	ui.cbFadeLed->setChecked(conf.led.fade);
 	ui.cbFpsLed->setChecked(conf.led.fps);
 	ui.cbHaltLed->setChecked(conf.led.halt);
@@ -1777,6 +1788,7 @@ void SetupWin::applyGlobal() {
 	conf.led.tape = ui.cbTapeLed->isChecked() ? 1 : 0;
 	conf.led.disk = ui.cbDiskLed->isChecked() ? 1 : 0;
 	conf.led.message = ui.cbMessage->isChecked() ? 1 : 0;
+	conf.led.snowNotice = ui.cbSnowNote->isChecked() ? 1 : 0;
 	conf.led.fade = ui.cbFadeLed->isChecked() ? 1 : 0;
 	conf.led.fps = ui.cbFpsLed->isChecked() ? 1 : 0;
 	conf.led.halt = ui.cbHaltLed->isChecked() ? 1 : 0;

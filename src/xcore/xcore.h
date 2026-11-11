@@ -1174,6 +1174,7 @@ struct xConfig {
 		unsigned halt:1;
 		unsigned clock:1;	// cpu clock, shown only when it is not the machine's own
 		unsigned fade:1;	// signs and messages fade away instead of vanishing
+		unsigned snowNotice:1;	// a game that snows says so (the shade, the snow, the dialog)
 	} led;
 	struct {
 		unsigned enabled:1;	// write the log file

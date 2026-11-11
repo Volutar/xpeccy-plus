@@ -4,6 +4,7 @@
 #include <QPainterPath>
 #include <QRadialGradient>
 #include <QPushButton>
+#include <QCheckBox>
 #include <QResizeEvent>
 #include <QScreen>
 #include <QDateTime>
@@ -241,7 +242,7 @@ void xSnowFall::paintEvent(QPaintEvent*) {
 	p.drawImage(QPointF(SNOW_SIGN_X, SNOW_SIGN_Y), sign[on ? 0 : 1]);
 }
 
-QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<void()> off) {
+QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<void()> off, std::function<void()> never) {
 	QMessageBox* box = new QMessageBox(parent);
 	box->setAttribute(Qt::WA_DeleteOnClose);
 	box->setModal(false);
@@ -269,8 +270,16 @@ QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<vo
 	btOff->setMinimumHeight(btGo->sizeHint().height());		// the icon makes it taller: both one height
 	box->setDefaultButton(btGo);
 	box->setEscapeButton(btGo);
+	// the notice only, not the snow: unticked by default
+	QCheckBox* quiet = new QCheckBox("Don't show this again");
+	quiet->setToolTip("Options > Appearance can turn it back on");
+	box->setCheckBox(quiet);
 	QObject::connect(box, &QMessageBox::buttonClicked, box, [btOff, off](QAbstractButton* bt) {
 		if (bt == btOff) off();
+	});
+	// both buttons, Esc and the title bar's close all finish the dialog
+	QObject::connect(box, &QDialog::finished, box, [quiet, never]() {
+		if (quiet->isChecked()) never();
 	});
 	return box;
 }
