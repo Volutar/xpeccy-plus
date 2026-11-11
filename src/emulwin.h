@@ -395,11 +395,13 @@ class MainWin : public QWidget {
 		QPointer<QMessageBox> snowBox;
 		QString snowImage;		// the image it goes by, the one the title names
 		bool snowNoted = false;	// ...and it was shown for it
+		int snowResets = 0;		// xUserResets it last saw: a reset starts the game again
 		QImage plainKept;		// no GL: the picture under the snow, drawn once a frame
 		void snowNotice();
 		void snowBoxEnd();
 		QPoint snowSignAt();
 		void snowImageIs(const QString&, int src);
+		void snowRestart();
 		struct xIosdItem {QAction* act; int* field; int val;};	// val < 0: a switch
 		std::vector<xIosdItem> iosdItems;
 		void initIosdMenu(QMenu*);

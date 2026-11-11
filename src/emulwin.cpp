@@ -892,6 +892,10 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 			comp->msg = NULL;
 		}
 		watchMedia();
+		if (snowResets != xUserResets.load()) {
+			snowResets = xUserResets.load();
+			snowRestart();
+		}
 		if (snow_seen()) snowNotice();
 		folderAsk();
 		folderNews();
@@ -3560,16 +3564,20 @@ static QUrl manual_url(const QString& page, const QString& part) {
 
 // The image in use changed (the title names another): the snow notice watches
 // it from the start, and a switch-off "for this game" ends with the old one.
-// An empty title - a reset, an eject, a side being swapped - changes nothing;
-// nor does a disk in B or a card, as with the quick saves: the game is the
-// tape, drive A or the snapshot.
+// An empty title - an eject, a side being swapped - changes nothing; nor does
+// a disk in B or a card, as with the quick saves: the game is the tape, drive A
+// or the snapshot. A user reset starts the game again (snowRestart()).
 void MainWin::snowImageIs(const QString& path, int src) {
 	if ((src != MEDIA_SNAP) && (src != MEDIA_TAPE) && (src != 0)) return;
 	if (path.isEmpty() || same_image(path, snowImage)) return;
 	snowImage = path;
+	snowRestart();
+}
+
+void MainWin::snowRestart() {
 	snowNoted = false;
 	snow_watch_reset();
-	snowBoxEnd();		// it spoke of the other game
+	snowBoxEnd();		// it spoke of the run before
 	if (xm_snow_held()) {
 		EmuLock lock;
 		xm_snow_hold(conf.zx, 0);

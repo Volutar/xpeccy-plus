@@ -74,7 +74,7 @@ before that point is upstream's history and is not repeated here.
   NMI lights a signal of its own, NMI, beside INT.
 - **A game that snows says so**: on the 48K, 128K and +2 the picture dims under falling snow
   and a message tells what ULA snow is, as the real machine shows it too. **Turn Off for
-  This Game** takes the snow away until another image is opened. **Don't show this again**
+  This Game** takes the snow away until a reset or another image. **Don't show this again**
   ends the message for good; **Snow notice** in Options > Appearance brings it back.
 
 ### Changed
