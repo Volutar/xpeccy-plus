@@ -92,7 +92,6 @@ if ($tc.Msys) {
 	$sdlPrefix = $tc.MinGW
 	$libPrefix = $tc.MinGW
 	$generator = @('-G', 'Ninja', '-DCMAKE_C_COMPILER=clang', '-DCMAKE_CXX_COMPILER=clang++')
-	if ($Pgo) { throw "pgo: gcc's profile flow only, and $Preset is built by clang" }
 	if (-not (Test-Path "$($tc.MinGW)\bin\clang.exe")) { throw "No MSYS2 CLANGARM64 at $($tc.MinGW): its packages are listed in .github\workflows\windows.yml" }
 } else {
 	$sdlPrefix = Join-Path $depsSDL $tc.Triple
@@ -221,17 +220,29 @@ if ($SysNext -and (Test-Path $sysnextDir)) {
 }
 
 # --- profile-guided: an instrumented build trained first ---
-# It writes its counts (.gcda) beside its objects in $buildDir; the build after reads
+# gcc writes its counts (.gcda) beside its objects in $buildDir; the build after reads
 # them there. Code the training never ran is optimized as usual, not for size, where
 # gcc can (10 and later): a machine left out of the training loses nothing.
+# clang (qt6-arm64) writes raw counts into a folder of their own, every run of the
+# program adding into one file at its exit; llvm-profdata then makes the profile of
+# them that the build after reads. IR-level instrumentation, the kind made for speed.
 if ($Pgo) {
 	if (-not $PgoCard) { $PgoCard = $sysnextDir }
 	if (-not (Test-Path $PgoCard)) { throw "pgo: no card at $PgoCard (packaging\fetch-deps.ps1 -SysNext)" }
-	$gen = '-fprofile-generate'
-	$use = '-fprofile-use -fprofile-correction -Wno-missing-profile'
-	$gcc = (& (Join-Path $tc.MinGW 'bin\gcc.exe') -dumpversion).Trim()
-	if ([int]$gcc.Split('.')[0] -ge 10) { $use += ' -fprofile-partial-training' }
-	if (Test-Path $buildDir) { Get-ChildItem $buildDir -Recurse -File -Filter '*.gcda' | Remove-Item -Force }
+	if ($tc.Msys) {
+		$rawDir = Join-Path $buildDir 'profraw'
+		$profData = Join-Path $buildDir 'xpeccy.profdata'
+		$gen = "-fprofile-generate=$($rawDir -replace '\\', '/')"
+		# no counts for a file, or counts of another source: said once, not per function
+		$use = "-fprofile-use=$($profData -replace '\\', '/') -Wno-profile-instr-unprofiled -Wno-profile-instr-out-of-date -Wno-backend-plugin"
+		if (Test-Path $rawDir) { Remove-Item $rawDir -Recurse -Force }
+	} else {
+		$gen = '-fprofile-generate'
+		$use = '-fprofile-use -fprofile-correction -Wno-missing-profile'
+		$gcc = (& (Join-Path $tc.MinGW 'bin\gcc.exe') -dumpversion).Trim()
+		if ([int]$gcc.Split('.')[0] -ge 10) { $use += ' -fprofile-partial-training' }
+		if (Test-Path $buildDir) { Get-ChildItem $buildDir -Recurse -File -Filter '*.gcda' | Remove-Item -Force }
+	}
 	Write-Host '--- pgo: instrumented build ---' -ForegroundColor Cyan
 	& cmake @cmakeArgs "-DCMAKE_C_FLAGS=$gen" "-DCMAKE_CXX_FLAGS=$gen"
 	if ($LASTEXITCODE -ne 0) { throw 'pgo: configure failed' }
@@ -244,6 +255,13 @@ if ($Pgo) {
 	Write-Host '--- pgo: training ---' -ForegroundColor Cyan
 	& (Join-Path $PSScriptRoot 'pgo-train.ps1') -App $trainDir -SysNext $PgoCard -Extra $PgoExtra
 	Remove-Item $trainDir -Recurse -Force
+	if ($tc.Msys) {
+		# a training that wrote nothing must not give a build called profile-guided
+		$raw = @(Get-ChildItem $rawDir -File -Filter '*.profraw' -ErrorAction SilentlyContinue)
+		if (-not $raw) { throw "pgo: the training wrote no counts into $rawDir" }
+		& (Join-Path $tc.MinGW 'bin\llvm-profdata.exe') merge -o $profData @($raw.FullName)
+		if ($LASTEXITCODE -ne 0) { throw 'pgo: llvm-profdata failed' }
+	}
 	Write-Host '--- pgo: the build by the profile ---' -ForegroundColor Cyan
 	$cmakeArgs += "-DCMAKE_C_FLAGS=$use", "-DCMAKE_CXX_FLAGS=$use"
 }

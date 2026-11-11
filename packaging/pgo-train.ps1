@@ -1,6 +1,7 @@
 # The training runs of a profile-guided build (make-dist.ps1 -Pgo): an instrumented
 # program is run, headless, over what users run, and writes how often each branch and
-# function ran next to its objects; the final build is laid out by those counts.
+# function ran (gcc: beside its objects, clang: where make-dist told it); the final build
+# is laid out by those counts.
 #
 #   .\pgo-train.ps1 -App <staged folder> [-SysNext <card>] [-Extra <folder>,...]
 #
@@ -9,7 +10,7 @@
 # adds every .nex found under the folders given (programs of one's own, run on the same
 # card with the folder of each put onto it, so the files beside a program are where it
 # looks). The card is copied first: a run may write to it. The runs go one after
-# another: the counts of each are added to the files at its exit.
+# another: the counts of each are added to the same files at its exit.
 
 param(
 	[Parameter(Mandatory)] [string]$App,

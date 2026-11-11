@@ -203,7 +203,7 @@ jobs:
 
   # win-arm64, built on GitHub's ARM64 machine with MSYS2's clang, Qt and SDL2:
   # qt.io has no MinGW Qt for ARM64. MSYS2 moves on its own, so the versions it
-  # gave are in the run's summary. No PGO yet: that is gcc's flow, this is clang
+  # gave are in the run's summary. Profile-guided as win-x64, by clang's flow
   arm64:
     name: qt6-arm64
     # github.workflow is the caller's name when called, so a scheduled nightly is
@@ -218,9 +218,35 @@ jobs:
 
     env:
       RELEASE: ${{ inputs.release && '1' || '' }}
+      HAS_PGO_SET: ${{ secrets.PGO_SSH_KEY != '' }}
 
     steps:
       - uses: actions/checkout@v7
+
+      # the training set, as the job above fetches it - but not by checkout's ssh-key:
+      # on this image the key file it writes is readable by every user, and OpenSSH
+      # refuses it ("UNPROTECTED PRIVATE KEY FILE"). Here only this user may read it,
+      # and github.com's host key is the one GitHub publishes, not whatever answers
+      - name: Fetch the training set
+        if: env.HAS_PGO_SET == 'true'
+        env:
+          PGO_KEY: ${{ secrets.PGO_SSH_KEY }}
+        run: |
+          $key = Join-Path $env:RUNNER_TEMP 'pgo-key'
+          $hosts = Join-Path $env:RUNNER_TEMP 'pgo-hosts'
+          [IO.File]::WriteAllText($key, ($env:PGO_KEY -replace "`r", '').Trim() + "`n")
+          [IO.File]::WriteAllText($hosts, "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl`n")
+          try {
+            icacls $key /inheritance:r /grant:r "$($env:USERNAME):R" | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'icacls failed' }
+            $k = $key -replace '\\', '/'
+            $h = $hosts -replace '\\', '/'
+            $env:GIT_SSH_COMMAND = "ssh -i `"$k`" -o IdentitiesOnly=yes -o UserKnownHostsFile=`"$h`" -o StrictHostKeyChecking=yes"
+            git clone --depth 1 --quiet git@github.com:dotkoval/xpeccy-pgo.git build/pgo-set
+            if ($LASTEXITCODE -ne 0) { throw 'the training set: clone failed' }
+          } finally {
+            Remove-Item $key, $hosts -Force -ErrorAction SilentlyContinue
+          }
 
       # into the image's own C:\msys64, where make-dist.ps1's qt6-arm64 looks
       - name: Install clang, Qt and SDL2 (MSYS2)
@@ -262,6 +288,15 @@ jobs:
             Jobs = $env:NUMBER_OF_PROCESSORS
           }
           if ($env:RELEASE) { $opts.Release = $true }
+          if (Test-Path build\pgo-set\sysnext) {
+            $opts.Pgo = $true
+            $opts.PgoCard = (Resolve-Path build\pgo-set\sysnext).Path
+            $opts.PgoExtra = @((Resolve-Path build\pgo-set\next).Path)
+            "PGO=yes" >> $env:GITHUB_ENV
+          } else {
+            Write-Host '::warning::no training set (no PGO_SSH_KEY): a build without PGO'
+            "PGO=no (no training set)" >> $env:GITHUB_ENV
+          }
           packaging\make-dist.ps1 @opts
           $zip = Get-ChildItem build\dist\*.zip | Select-Object -First 1
           "ZIP=$($zip.FullName)" >> $env:GITHUB_ENV
@@ -282,6 +317,7 @@ jobs:
             "| | |"
             "|---|---|"
             "| MSYS2 | $($pkgs -join ', ') |"
+            "| PGO | $env:PGO |"
             "| libcurl | $((Get-Content packaging\deps.json -Raw | ConvertFrom-Json).curl.version) (static, Schannel) |"
             "| archive | $env:ZIP_NAME.zip, $size |"
           ) >> $env:GITHUB_STEP_SUMMARY
