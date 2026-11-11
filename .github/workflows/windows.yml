@@ -223,6 +223,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # this image's clock is not on UTC, the x64 ones' is: the date in the version
+      # (make-dist's file names, genversion.cmake) must be one day for every file of a
+      # nightly, or the update check finds no win-arm64 file in it
+      - name: Clock on UTC
+        run: |
+          tzutil /s "UTC"
+          if ($LASTEXITCODE -ne 0) { throw 'tzutil failed' }
+          pwsh -NoProfile -Command "Get-Date -Format o"
+
       # the training set, as the job above fetches it - but not by checkout's ssh-key:
       # on this image the key file it writes is readable by every user, and OpenSSH
       # refuses it ("UNPROTECTED PRIVATE KEY FILE"). Here only this user may read it,
