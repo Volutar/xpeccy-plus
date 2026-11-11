@@ -239,15 +239,15 @@ samples for the programs written for it. The row puts one in the machine:
 
 - **Original** - the card as X-Trade made it. A change of a channel's volume clicks, as
   on the card, and each side carries some of the other;
-- **NeoGS** - the card NedoPC makes today: up to 8 channels, 2 MB of memory, no clicks,
+- **NeoGS** - the card NedoPC makes today: up to 8 channels, 4 MB of memory, no clicks,
   and its own firmware. Programs written for the NeoGS find it. Its SD card slot and MP3
   chip are not there yet.
 
 The {icon}`settings` gear opens **Machine: General Sound**:
 
 - **ROM** - the card's own: the Original's ROM of this machine, or the NeoGS flash image,
-  which every machine shares. Picked from the list or from a file with the
-  {icon}`fileopen` folder button;
+  which every machine shares; another NeoGS image starts the card afresh. Picked from
+  the list or from a file with the {icon}`fileopen` folder button;
 - **Reset** - the card is reset together with the machine.
 
 ### SAA1099
