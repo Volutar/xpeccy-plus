@@ -5,8 +5,6 @@
 #include <QRadialGradient>
 #include <QPushButton>
 #include <QCheckBox>
-#include <QGridLayout>
-#include <QDialogButtonBox>
 #include <QLabel>
 #include <QResizeEvent>
 #include <QScreen>
@@ -245,33 +243,45 @@ void xSnowFall::paintEvent(QPaintEvent*) {
 }
 
 // The check box on the buttons' row, under the text's left edge, rather than on
-// a row of its own as setCheckBox() puts it. A style change lays the box out
-// anew without it: it is put back then.
+// a row of its own as setCheckBox() puts it. Out of the layout: placed by hand,
+// its middle on the button's, whenever the button, its bar or the text moves.
 class xSnowBox : public QMessageBox {
 	public:
 		xSnowBox(QWidget* parent) : QMessageBox(parent) {}
-		QCheckBox* quiet = nullptr;
-		void placeQuiet() {
-			QGridLayout* grid = qobject_cast<QGridLayout*>(layout());
-			QDialogButtonBox* bar = findChild<QDialogButtonBox*>();
-			QLabel* text = findChild<QLabel*>("qt_msgbox_label");
-			int bi = grid && bar ? grid->indexOf(bar) : -1;
-			int ti = grid && text ? grid->indexOf(text) : -1;
-			if ((bi < 0) || (ti < 0)) {
-				setCheckBox(quiet);		// not the layout known: its own row, as Qt does it
+		void setQuiet(QCheckBox* box, QAbstractButton* beside) {
+			quiet = box;
+			level = beside;
+			text = findChild<QLabel*>("qt_msgbox_label");
+			QWidget* bar = level->parentWidget();
+			if (!text || !bar || !isAncestorOf(bar)) {
+				setCheckBox(quiet);		// not the box known: its own row, as Qt does it
+				quiet = nullptr;
 				return;
 			}
-			int br, bc, brs, bcs, tr, tc, trs, tcs;
-			grid->getItemPosition(bi, &br, &bc, &brs, &bcs);
-			grid->getItemPosition(ti, &tr, &tc, &trs, &tcs);
-			grid->addWidget(quiet, br, tc, 1, 1, Qt::AlignLeft | Qt::AlignVCenter);
-			quiet->show();
+			for (QObject* o : {(QObject*)level, (QObject*)bar, (QObject*)text})
+				o->installEventFilter(this);
+			placeQuiet();
 		}
 	protected:
-		void changeEvent(QEvent* ev) override {
-			QMessageBox::changeEvent(ev);
-			if (quiet && (ev->type() == QEvent::StyleChange) && layout() && (layout()->indexOf(quiet) < 0))
-				placeQuiet();
+		bool eventFilter(QObject* obj, QEvent* ev) override {
+			QEvent::Type t = ev->type();
+			if ((t == QEvent::Move) || (t == QEvent::Resize) || (t == QEvent::Show)) placeQuiet();
+			return QMessageBox::eventFilter(obj, ev);
+		}
+		void resizeEvent(QResizeEvent* ev) override {
+			QMessageBox::resizeEvent(ev);
+			placeQuiet();
+		}
+	private:
+		QCheckBox* quiet = nullptr;
+		QAbstractButton* level = nullptr;
+		QLabel* text = nullptr;
+		void placeQuiet() {
+			if (!quiet) return;
+			QSize sz = quiet->sizeHint();
+			int y = level->mapTo(this, QPoint(0, 0)).y() + (level->height() - sz.height()) / 2;
+			quiet->setGeometry(text->mapTo(this, QPoint(0, 0)).x(), y, sz.width(), sz.height());
+			quiet->raise();
 		}
 };
 
@@ -306,8 +316,7 @@ QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<vo
 	// the notice only, not the snow: unticked by default
 	QCheckBox* quiet = new QCheckBox("Don't show this again", box);
 	quiet->setToolTip("Options > Appearance can turn it back on");
-	box->quiet = quiet;
-	box->placeQuiet();
+	box->setQuiet(quiet, btOff);
 	QObject::connect(box, &QMessageBox::buttonClicked, box, [btOff, off](QAbstractButton* bt) {
 		if (bt == btOff) off();
 	});
