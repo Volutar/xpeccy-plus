@@ -2395,7 +2395,7 @@ void SetupWin::buildDevices() {
 	gsBoardBox = new QComboBox;
 	gsBoardBox->addItem(tr("NeoGS"), GS_BOARD_NEOGS);
 	gsBoardBox->addItem(tr("Original"), GS_BOARD_ORIGINAL);
-	gs.field(tr("Card"), gsBoardBox, tr("NeoGS does not click on a volume change, the original does"));
+	gs.field(tr("Card"), gsBoardBox, tr("NeoGS: no click when a volume changes"));
 	gs.line();
 	gs.check(gsrbox, tr("Reset"), tr("The card is reset with the machine"));
 	devRow(grid, tr("General Sound"), gsBox, gs.body, "Machine: General Sound");
