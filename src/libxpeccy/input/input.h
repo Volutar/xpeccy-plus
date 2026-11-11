@@ -88,6 +88,7 @@ typedef struct {
 	unsigned enable:1;
 	unsigned hasWheel:1;
 	unsigned swapButtons:1;
+	unsigned leftD0:1;	// the left button on D0, as the ZX Evo's AVR has it; else D1, as the interface
 	double sensitivity;
 
 	unsigned lmb:1;
@@ -241,6 +242,7 @@ void mouseReleaseAll(Mouse*);
 int mouseGetX(Mouse*);
 int mouseGetY(Mouse*);
 int mouse_buttons(Mouse*);
+int mouse_lrm(Mouse*, int);
 
 Joystick* joyCreate();
 void joyDestroy(Joystick*);

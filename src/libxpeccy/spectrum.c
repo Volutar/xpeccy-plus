@@ -1484,6 +1484,8 @@ int compSetHardware(Computer* comp, const char* name) {
 		kbd_set_combo(comp->keyb, KBD_EVO_LEAD, 0);
 	else
 		kbd_set_combo(comp->keyb, KBD_SCAN_NS, 2 * KBD_SCAN_NS);
+	// the Evo's AVR puts the mouse's left button on D0, the Kempston interface on D1
+	comp->mouse->leftD0 = (hw->id == HW_PENTEVO) || (hw->id == HW_TSLAB);
 //	comp->cpu->nod = 0;
 	comp->vid->mrd = vid_mrd_cb;
 	comp->tape->xen = 0;

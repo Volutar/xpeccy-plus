@@ -57,13 +57,18 @@ void mouseRelease(Mouse* mou, int wut) {
 int mouseGetX(Mouse* mou) {return mou->xpos * mou->sensitivity;}
 int mouseGetY(Mouse* mou) {return mou->ypos * mou->sensitivity;}
 
-// the buttons down, as the port has them: bit 0 is the left one unless swapped
+// the buttons down, as the port has them (a set bit is down): the Kempston mouse
+// interface has the right one on D0 and the left on D1, the ZX Evo's AVR the other
+// way round; D2 is the middle one. Swap trades the host's two
 int mouse_buttons(Mouse* mou) {
+	int l = mou->swapButtons ? mou->rmb : mou->lmb;
+	int r = mou->swapButtons ? mou->lmb : mou->rmb;
 	int res = mou->mmb ? 4 : 0;
-	if (mou->swapButtons) {
-		res |= (mou->rmb ? 1 : 0) | (mou->lmb ? 2 : 0);
-	} else {
-		res |= (mou->lmb ? 1 : 0) | (mou->rmb ? 2 : 0);
-	}
-	return res;
+	return res | (mou->leftD0 ? (l | (r << 1)) : (r | (l << 1)));
+}
+
+// the port's bits as left 1, right 2, middle 4: the buttons the program got
+int mouse_lrm(Mouse* mou, int bits) {
+	if (mou->leftD0) return bits & 7;
+	return (bits & 4) | ((bits & 1) << 1) | ((bits >> 1) & 1);
 }

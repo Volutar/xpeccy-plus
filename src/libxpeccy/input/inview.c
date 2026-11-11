@@ -46,7 +46,7 @@ void iview_in(InView* iv, Computer* comp, int port, int val) {
 		iv->s.joy = val;
 		iv->joyFrm = frm;
 	} else if ((port & 0x05a3) == 0x0083) {		// #FADF, the decode a kempston mouse has
-		iv->s.mbtn = ~val & 7;
+		iv->s.mbtn = mouse_lrm(comp->mouse, ~val & 7);
 		iv->s.mwheel = (val >> 4) & 0x0f;
 		iv->mouseFrm = frm;
 	} else if ((port & 0x05a3) == 0x0183) {		// #FBDF

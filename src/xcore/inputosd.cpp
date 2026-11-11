@@ -34,7 +34,7 @@ static void iosd_host(Computer* comp, InState* st) {
 	Mouse* mou = comp->mouse;
 	if (mou->enable) {
 		st->mouseLive = 1;
-		st->mbtn = mouse_buttons(mou);
+		st->mbtn = mouse_lrm(mou, mouse_buttons(mou));
 	}
 	st->mwheel = mou->wheel & 0x0f;
 	st->mx = mouseGetX(mou);
