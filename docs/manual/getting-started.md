@@ -144,7 +144,7 @@ old one when you quit.
   each `legacy` file to itself. To change, download the other file. When a new version has no file named
   like yours, the window says so and offers the release page.
 - On Windows on ARM, an x64 or `legacy` build runs under emulation, and updates to the
-  native `arm64` build instead: it runs about 1.7 times as fast there. When there is no new
+  native `arm64` build instead: it runs 1.5 to 2 times as fast there. When there is no new
   version, the check offers the `arm64` build of the version you have, once; **Help > Check
   for Updates...** offers it every time. **Switch** puts it in place as an update does,
   **Don't Ask Again** keeps your build and its kind for the checks the program makes by itself.
