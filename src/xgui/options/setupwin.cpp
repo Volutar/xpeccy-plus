@@ -82,6 +82,12 @@ QString getRFSData(QComboBox* box) {
 	return box->itemData(box->currentIndex()).toString();
 }
 
+// a ROM list on its file: one missing, or of the user's own from elsewhere, goes in
+static void rom_box_pick(QComboBox* box, const QString& cur) {
+	if (!cur.isEmpty() && (box->findData(cur) < 0)) box->insertItem(1, cur, cur);
+	box->setCurrentIndex(qMax(0, box->findData(cur)));
+}
+
 std::string getRFText(QComboBox* box) {
 	QString res = "";
 	if (box->currentIndex() >= 0) res = box->currentText();
@@ -1254,8 +1260,7 @@ void SetupWin::fillPages() {
 	gsrbox->setChecked(comp->gs->reset);
 	setRFIndex(gsCardBox, comp->gs->model, 0);
 	ngsPick = QString::fromUtf8(conf.ngsFile.c_str());
-	if (!ngsPick.isEmpty() && (ngsRomBox->findData(ngsPick) < 0)) ngsRomBox->insertItem(1, ngsPick, ngsPick);
-	ngsRomBox->setCurrentIndex(qMax(0, ngsRomBox->findData(ngsPick)));
+	rom_box_pick(ngsRomBox, ngsPick);
 	gsRomStack->setCurrentIndex((comp->gs->model == GS_NEOGS) ? 1 : 0);
 	divBox->setCurrentIndex(comp->div->model ? 1 : 0);
 	divRamBox->setCurrentIndex((comp->div->pages > 16) ? 1 : 0);
@@ -2158,6 +2163,7 @@ QDialog* SetupWin::popOut(QWidget* box, const char* title) {
 #define	RSLOT_GS	-1
 #define	RSLOT_FONT	-2
 #define	RSLOT_NGS	-3	// the NeoGS flash: not the romset's, every machine's
+
 #define	TRDOS_ROM	"trdos504t.rom"		// what a Beta Disk gets when its slot is empty
 
 
@@ -3113,20 +3119,16 @@ void SetupWin::fillDosRom() {
 	dosRomBtn->setEnabled(bdi && (bank >= 0));
 }
 
-// the General Sound's ROM, which its own window picks
+// the General Sound's ROM and the NeoGS flash, which its own window picks
 
 void SetupWin::fillGsRom(const QStringList& files) {
-	gsRomBox->clear();
-	gsRomBox->addItem(tr("(empty)"), QString());
-	foreach(QString f, files) gsRomBox->addItem(f, f);
-	QString cur = romSlotFileName(RSLOT_GS);
-	if (!cur.isEmpty() && (gsRomBox->findData(cur) < 0)) gsRomBox->insertItem(1, cur, cur);
-	gsRomBox->setCurrentIndex(qMax(0, gsRomBox->findData(cur)));
-	ngsRomBox->clear();
-	ngsRomBox->addItem(tr("(empty)"), QString());
-	foreach(QString f, files) ngsRomBox->addItem(f, f);
-	if (!ngsPick.isEmpty() && (ngsRomBox->findData(ngsPick) < 0)) ngsRomBox->insertItem(1, ngsPick, ngsPick);
-	ngsRomBox->setCurrentIndex(qMax(0, ngsRomBox->findData(ngsPick)));
+	foreach(QComboBox* box, QList<QComboBox*>() << gsRomBox << ngsRomBox) {
+		box->clear();
+		box->addItem(tr("(empty)"), QString());
+		foreach(QString f, files) box->addItem(f, f);
+	}
+	rom_box_pick(gsRomBox, romSlotFileName(RSLOT_GS));
+	rom_box_pick(ngsRomBox, ngsPick);
 }
 
 // the file in a slot, or an empty string when there is none

@@ -897,7 +897,6 @@ void xm_set_ngs_rom(const std::string& name) {
 	if (!conf.zx) return;
 	emu_lock();
 	conf.ngsFile = name;
-	romMissing.clear();
 	mac_load_ngs(conf.zx, name);
 	gs_rom_refresh(conf.zx->gs);
 	emu_unlock();
@@ -959,8 +958,7 @@ static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std:
 			mac_rom_missing("General Sound", fpath);
 		}
 	}
-	mac_load_ngs(comp, conf.ngsFile);
-	gs_rom_refresh(comp->gs);
+	gs_rom_refresh(comp->gs);		// the NeoGS image stays as xm_set_ngs_rom read it
 	if (withfnt) {				// else leave the font the machine put there
 		if (fntf.empty()) {
 			vid_fnt_del(comp->vid);
@@ -1860,9 +1858,8 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	else if (nam == "gs.card") {
 		int model = (val == "neogs") ? GS_NEOGS : GS_CLASSIC;
 		if (model != comp->gs->model) gs_set_model(comp->gs, model);
-		if (model == GS_NEOGS) xm_set_ngs_rom(conf.ngsFile);	// so a missing one is told
+		if (model == GS_NEOGS) xm_set_ngs_rom(conf.ngsFile);	// read only for the NeoGS
 	}
-	else if (nam == "gs.neogs.rom") { if (val != conf.ngsFile) xm_set_ngs_rom(val); }
 	else if (nam == "mouse.wheel") comp->mouse->hasWheel = arg.b;
 	else if (nam == "mouse.swapButtons") comp->mouse->swapButtons = arg.b;
 	else if (nam == "mouse.sensitivity") comp->mouse->sensitivity = arg.d;

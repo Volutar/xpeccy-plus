@@ -1250,8 +1250,15 @@ static void ext_saa(saaChip* saa, const unsigned char* p, size_t n) {
 	memcpy(saa->env, tmp_.env, sizeof(saa->env));
 }
 
+// set when the card in the file is the other model: its CPU and RAM are not taken
+static int gsOther = 0;
+
 static void ext_gs(GSound* gs, const unsigned char* p, size_t n) {
-	EXT_TAKE(GSound, gs, fld_gs, p, n)
+	GSound tmp_;
+	memcpy(&tmp_, gs, sizeof(GSound));
+	tmp_.model = GS_CLASSIC;		// a file from before the NeoGS has the classic card
+	fld_get(&tmp_, fld_gs, p, n);
+	gsOther = (tmp_.model != gs->model);
 	gs->reset = tmp_.reset;
 	gs->pb3_gs = tmp_.pb3_gs;
 	gs->pb3_zx = tmp_.pb3_zx;
@@ -1266,7 +1273,7 @@ static void ext_gs(GSound* gs, const unsigned char* p, size_t n) {
 	gs->ch3 = tmp_.ch3;
 	gs->ch4 = tmp_.ch4;
 	// the card is the setting's: a snapshot of the other one starts it afresh
-	if (tmp_.model != gs->model) {
+	if (gsOther) {
 		xlog(XLG_FILE, XLL_INFO, "szx: the General Sound in the snapshot is another model, the card is reset");
 		gs_set_model(gs, gs->model);
 		return;
@@ -1411,10 +1418,10 @@ int szx_ext_load(Computer* comp, const unsigned char* ext, size_t len) {
 				if (comp->gs && comp->gs->enable) ext_gs(comp->gs, p, n);
 				break;
 			case XR_GSCPU:
-				if (comp->gs && comp->gs->enable) ext_cpu_into(comp->gs->cpu, p, n);
+				if (comp->gs && comp->gs->enable && !gsOther) ext_cpu_into(comp->gs->cpu, p, n);
 				break;
 			case XR_GSRAM:
-				if (comp->gs && comp->gs->enable) ext_gs_ram(comp->gs, p, n);
+				if (comp->gs && comp->gs->enable && !gsOther) ext_gs_ram(comp->gs, p, n);
 				break;
 			case XR_FDCI:
 				if (comp->dif && (comp->dif->type == DIF_P3DOS)) {
@@ -1553,6 +1560,12 @@ void szx_rd_gs(Computer* comp, const unsigned char* p, size_t n) {
 		return;
 	}
 	CPU* cpu = gs->cpu;
+	// the block is a classic card's: a NeoGS starts afresh, and our own record,
+	// if the file has it, then puts its state back
+	if (gs->model == GS_NEOGS) {
+		gs_set_model(gs, GS_NEOGS);
+		return;
+	}
 	if (p[10] & SZG_CUSTOMROM)
 		xlog(XLG_FILE, XLL_INFO, "szx: custom GS rom not taken, the machine's own is used");
 	gs->vol1 = p[2] & 0x3f;

@@ -1447,11 +1447,11 @@ void loadConfig() {
 					if (pnam=="volume.gs") conf.snd.vol.gs = getRanged(arg.s, 0, 100);
 					if (pnam=="volume.sdrv") conf.snd.vol.sdrv = getRanged(arg.s, 0, 100);
 					if (pnam=="volume.saa") conf.snd.vol.saa = getRanged(arg.s, 0, 100);
+					if (pnam=="gs.neogs.rom") conf.ngsFile = pval;	// every machine's, read before one is built
 					// psg.frq and psg.stereo are read no more: an old global value
 					// would land on whatever machine is up and stay there as its own
 					if ((pnam=="psg.separation")
-						|| (pnam=="gs.reset") || (pnam=="gs.stereo") || (pnam=="gs.card")
-						|| (pnam=="gs.neogs.rom")) xm_defer(pnam, pval);
+						|| (pnam=="gs.reset") || (pnam=="gs.stereo") || (pnam=="gs.card")) xm_defer(pnam, pval);
 					break;
 				case SECT_TOOLS:
 					break;
