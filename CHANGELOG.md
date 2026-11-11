@@ -145,6 +145,8 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The Kempston mouse works on the +2A and +3.** *(thanks to Alexey Boldyrev for finding
+  it)*
 - **The = key types = on the ZX Spectrum Next**, not o, and reaches ZX Evolution programs that
   read the PC keyboard as =.
 - **Screenshot Series counts the machine's frames**, so "each 50 frames" is a second
