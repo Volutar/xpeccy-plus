@@ -424,7 +424,16 @@ void SetupWin::makeDevWidgets() {
 	sldSensitivity->setPageStep(100);
 	sldSensitivity->setValue(1000);
 	sldSensitivity->setTickInterval(100);
-	foreach(QSlider* sld, QList<QSlider*>() << sldTapeSpeed << sldPsgSep << sldSensitivity) {
+	sldGsSep = new xSlider;
+	sldGsSep->setRange(0, 100);
+	sldGsSep->setPageStep(5);
+	sldGsSep->setTickInterval(25);
+	sldGsSep->setMinimumWidth(45);
+	labGsSep = new QLabel("75%");
+	labGsSep->setMinimumWidth(32);
+	labGsSep->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+	connect(sldGsSep, &QSlider::valueChanged, this, [this](int v) {labGsSep->setText(QString("%0%").arg(v));});
+	foreach(QSlider* sld, QList<QSlider*>() << sldTapeSpeed << sldPsgSep << sldSensitivity << sldGsSep) {
 		sld->setOrientation(Qt::Horizontal);
 		sld->setTickPosition(QSlider::TicksBelow);
 	}
@@ -1258,6 +1267,8 @@ void SetupWin::fillPages() {
 // sound
 	gsBox->setCurrentIndex(xm_gs_of(comp));
 	gsrbox->setChecked(comp->gs->reset);
+	sldGsSep->setValue(comp->gs->sep);
+	labGsSep->setText(QString("%0%").arg(comp->gs->sep));
 	ngsPick = QString::fromUtf8(conf.ngsFile.c_str());
 	rom_box_pick(ngsRomBox, ngsPick);
 	gsRomStack->setCurrentIndex((xm_gs_of(comp) == MAC_GS_NEOGS) ? 1 : 0);
@@ -1759,6 +1770,7 @@ void SetupWin::applyGlobal() {
 		comp->sndSeed = 1;
 	}
 	comp->gs->reset = gsrbox->isChecked() ? 1 : 0;
+	comp->gs->sep = sldGsSep->value();
 // input
 	comp->mouse->swapButtons = cbSwapButtons->isChecked() ? 1 : 0;
 	comp->mouse->sensitivity = sldSensitivity->value() * 0.001f;
@@ -2419,6 +2431,8 @@ void SetupWin::buildDevices() {
 		gsRomStack->setCurrentIndex((idx == MAC_GS_NEOGS) ? 1 : 0);
 	});
 	gs.field(tr("ROM"), gsRomStack);
+	gs.field(tr("Separation"), fieldPair(sldGsSep, labGsSep, true),
+		tr("100%: the sides as the card has them, 0%: mono"));
 	gs.line();
 	gs.check(gsrbox, tr("Reset"), tr("The card is reset with the machine"));
 	devRow(grid, tr("General Sound"), gsBox, gs.body, "Machine: General Sound");

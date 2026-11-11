@@ -274,6 +274,7 @@ GSound* gsCreate() {
 	memSetBank(res->mem, 0xc0, MEM_RAM, 1, MEM_16K, NULL, NULL, NULL);
 	res->pstate = 0x7e;
 	res->stereo = GS_12_34;
+	res->sep = 75;		// the PSG's default
 	res->pg3 = 1;
 	res->ch1 = 0xff;
 	res->ch2 = 0xff;
@@ -433,10 +434,17 @@ static sndPair gs_mix_neogs(GSound* gs) {
 	return res;
 }
 
+// What reaches the ears is a listener's choice as the PSG's is: each side
+// takes some of the other, the sum kept. 100 leaves the card's own output.
 sndPair gsVolume(GSound* gs) {
-	if (!gs->enable) {
-		sndPair res = {0, 0};
-		return res;
+	sndPair res = {0, 0};
+	if (!gs->enable) return res;
+	res = (gs->model == GS_NEOGS) ? gs_mix_neogs(gs) : gs_mix_classic(gs);
+	int sep = (gs->sep < 0) ? 0 : (gs->sep > 100) ? 100 : gs->sep;
+	if ((sep < 100) && (gs->stereo != GS_MONO)) {
+		int l = res.left;
+		res.left = (l * (100 + sep) + res.right * (100 - sep)) / 200;
+		res.right = (res.right * (100 + sep) + l * (100 - sep)) / 200;
 	}
-	return (gs->model == GS_NEOGS) ? gs_mix_neogs(gs) : gs_mix_classic(gs);
+	return res;
 }

@@ -153,8 +153,8 @@ class SetupWin : public QDialog {
 		// the devices' own controls, see makeDevWidgets()
 		QCheckBox *cbTapeAuto, *cbTapeRewind, *cbTapeSet, *cbTapeFast, *cbTapeFlash, *cbTapeEdge, *bdtbox, *cbAddBoot, *a80box, *b80box, *c80box, *d80box, *adsbox, *bdsbox, *cdsbox, *ddsbox, *gsrbox, *ratWheel, *cbSwapButtons;
 		QComboBox *diskTypeBox, *cbFlpInterleave, *hiface, *hm_type, *hs_type, *sdrvBox, *cbScanTab, *cbCpuTurbo, *cbPsgCount, *cbPsgType, *cbPsgFrq, *cbPsgStereo;
-		xSlider *sldTapeSpeed, *sldPsgSep, *sldSensitivity;
-		QLabel *labTapeSpeedVal, *labPsgMhz, *labPsgSep;
+		xSlider *sldTapeSpeed, *sldPsgSep, *sldSensitivity, *sldGsSep;
+		QLabel *labTapeSpeedVal, *labPsgMhz, *labPsgSep, *labGsSep;
 		int psgFrqMul = 1;	// the chip's clock against the AY's the setting holds
 		// the machine's devices, on the Machine page
 		QComboBox* gsBox;

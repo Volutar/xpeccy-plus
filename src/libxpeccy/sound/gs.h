@@ -59,6 +59,7 @@ typedef struct {
 	int vol5,vol6,vol7,vol8;	// NeoGS
 	int ch5,ch6,ch7,ch8;
 	int stereo;
+	int sep;		// stereo separation, as the PSG's: 100 apart, 0 mono
 	int model;		// GS_CLASSIC, GS_NEOGS
 	// NeoGS
 	unsigned char cfg0;	// GSCFG0
