@@ -147,6 +147,10 @@ before that point is upstream's history and is not repeated here.
 ### Fixed
 
 - **The Kempston mouse works on the +2A and +3.** *(reported by Alexey Boldyrev)*
+- **The Kempston joystick on the Scorpion ZS 256 reads nothing pressed after a disk access**:
+  reading the disk controller's status clears its interrupt, as on the chip, and the joystick
+  port shares that line. Kempston 8-bit is not offered there, the board's port has no Fire 2
+  to Fire 4. *(reported by Alexey Boldyrev)*
 - **The Kempston mouse's left and right buttons are the right way round**: they were swapped
   on every machine but the ZX Evolution and the Next. If you ticked Swap buttons for that,
   untick it. The input overlay shows them as the program gets them.
