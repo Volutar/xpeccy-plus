@@ -38,7 +38,7 @@ target_include_directories(xpeccycore PUBLIC ${XLIB} ${ZLIB_INCLUDE_DIR})
 target_compile_definitions(xpeccycore PUBLIC ${XENDIAN})
 target_link_libraries(xpeccycore PUBLIC ${ZLIB_LIBRARY} Threads::Threads)
 
-set(BENCHES tsconf baseconf divmmc tape pok zxnext kbd brk dsk)
+set(BENCHES tsconf baseconf divmmc tape pok zxnext kbd brk dsk gs)
 foreach(BENCH ${BENCHES})
 	add_executable(${BENCH}-bench core/${BENCH}/main.c)
 	target_link_libraries(${BENCH}-bench xpeccycore)

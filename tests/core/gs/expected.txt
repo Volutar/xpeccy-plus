@@ -1,0 +1,18 @@
+== neogs
+mid, vol 0: 0 0
+mid, vol 63: 0 0
+a volume change on #80 moves nothing: ok
+all #FF, vol 63: 8001 8001
+ch1 #FF alone: 4000 0
+ch1 left only: ok
+mono, ch1 #FF alone: 2000 2000
+== original
+mid, vol 0: 0 0
+mid, vol 63: 8064 8064
+a volume change on #80 moves the level: ok
+all #FF, vol 63: 16065 16065
+the peak is the uncrossed one: ok
+ch1 #FF alone: 5463 2568
+the right side has 0.47 of the left: ok
+mono, ch1 #FF alone: 4016 4016
+mono has no cross-mix: ok
