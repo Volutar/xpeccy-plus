@@ -12,12 +12,25 @@ machine's joystick and mouse interfaces on its [Machine page](options-machine.md
 ```
 
 The Spectrum keys are where they are on the PC: letters, digits, Space and Enter. The two
-shift keys of the Spectrum are on the left of the PC keyboard:
+shift keys of the Spectrum are the PC's:
 
 | PC key | Spectrum key |
 |---|---|
-| Left Shift | Caps Shift |
-| Left Ctrl | Symbol Shift |
+| Shift | Caps Shift |
+| Ctrl | Symbol Shift |
+
+A symbol key types the symbol printed on it, with Shift too: `;` gives `;`, Shift+`;` gives
+`:`, Shift+`2` gives `@`, Shift+`/` gives `?`. The machine gets the Spectrum's own way of
+typing it, Symbol Shift and a key. Letters and digits go by their place, so Shift+A is a
+capital A and games read the keys as they always have. A symbol the Spectrum has no key for
+(`[`, `\`, `` ` `` and the like) works as in the table below.
+
+```{index} typing, keyboard; typing characters
+```
+
+To have the keys as the Spectrum has them instead, with Shift as Caps Shift on every key,
+turn off **Input > Keymap > Type Characters**, or pick **Key Positions** in the **Typing**
+list on the **Input** page of **Options**.
 
 Other PC keys press two Spectrum keys together:
 
@@ -30,10 +43,16 @@ Other PC keys press two Spectrum keys together:
 | Page Up | Caps Shift + 3 | TRUE VIDEO |
 | Page Down | Caps Shift + 4 | INV. VIDEO |
 | Delete | Caps Shift + 9 | GRAPHICS |
-| `` ` `` and `\` | Caps Shift + Symbol Shift | extended mode |
+| `` ` `` | Caps Shift + 1 | EDIT |
+| `\` | Caps Shift + Symbol Shift | extended mode |
 | Home | Symbol Shift + Q | <= |
 | End | Symbol Shift + E | >= |
 | `[` and `]` | Symbol Shift + 8, 9 | ( and ) |
+
+With **Key Positions**, the symbol keys are fixed too:
+
+| PC key | Spectrum keys | Gives |
+|---|---|---|
 | `;` | Symbol Shift + O | ; |
 | `'` | Symbol Shift + P | " |
 | `-` | Symbol Shift + J | - |
@@ -41,20 +60,23 @@ Other PC keys press two Spectrum keys together:
 | `,` and `.` | Symbol Shift + N, M | , and . |
 | `/` | Symbol Shift + C | ? |
 
-The F-keys, Alt, Insert, the right Shift and Ctrl and the numeric keypad do nothing on the
-machine.
+The F-keys, Alt, Insert and the numeric keypad do nothing on the machine.
 
-A key that is a hotkey runs its command instead of reaching the machine. Which keys those are
-depends on the set of hotkeys you use: in Modern, Delete, Home, End and Insert are hotkeys,
-while Esc is left to the machine as BREAK. See [Hotkeys page](hotkeys.md). To give the machine
-every key, grab the keyboard.
+A key that is a hotkey runs its command instead of reaching the machine. No hotkey is Ctrl
+with a Spectrum key, so Ctrl is always Symbol Shift. Which other keys are hotkeys depends on
+the set of hotkeys you use: in Modern, Delete, Home, End and Insert are hotkeys, while Esc is
+left to the machine as BREAK. See [Hotkeys page](hotkeys.md). To give the machine every key,
+grab the keyboard.
 
 ```{index} keyboard; system layout
 ```
 
-On Windows and Linux a key is recognized by its place on the keyboard, not by the letter the
-system layout puts on it, so a Cyrillic or another layout switched on in the system changes
-nothing.
+A letter is recognized by its place on the keyboard, not by what the system layout puts on
+it, so a Cyrillic or another layout changes nothing there. A symbol or a digit is the one the
+layout types: with a Russian layout, Shift+`6` gives `:`, with a French one Shift+`&` gives `1`.
+
+The ZX Spectrum Next takes the keys as its own PS/2 keyboard does, Shift as Caps Shift (see
+[ZX Spectrum Next](zx-next.md)). The Profi with a grabbed keyboard has a layout of its own.
 
 ## Keymaps
 
@@ -64,17 +86,15 @@ nothing.
 A keymap says which PC key presses which Spectrum key. Pick one in **Input > Keymap**, or in
 the **Keymap** list on the **Input** page of **Options**:
 
-- **Default** - the keys described above;
+- **ZX Spectrum 128K** - the keys described above;
 - **ZX Spectrum 48K.map** - Caps Shift on both left Shift and left Ctrl, Symbol Shift on both
-  right Shift and right Ctrl, as the two keys are placed on a 48K. The `` ` `` key is EDIT
-  (Caps Shift + 1) and `\` is GRAPHICS (Caps Shift + 9);
-- **ZX Spectrum 128K.map** - Caps Shift on both Shift keys, Symbol Shift on both Ctrl keys.
-  The `` ` `` key is EDIT.
+  right Shift and right Ctrl, as the two keys are placed on a 48K. The `\` key is GRAPHICS
+  (Caps Shift + 9).
 
-A keymap changes only the keys it names; all the others stay as in Default.
+A keymap changes only the keys it names; all the others stay as in ZX Spectrum 128K.
 
 On macOS the program cannot tell the left Shift from the right one, nor the left Ctrl from
-the right one. The 48K keymap then has no Symbol Shift: use Default or the 128K one there.
+the right one. The 48K keymap then has no Symbol Shift: use ZX Spectrum 128K there.
 
 ### Your own keymap
 
@@ -84,7 +104,8 @@ the right one. The 48K keymap then has no Symbol Shift: use Default or the 128K 
 A keymap is a text file with the extension `.map`, put in the `keymaps` folder of the settings
 folder (see [Where the settings are](getting-started.md#where-the-settings-are)). It shows in
 the **Keymap** menu the next time the menu is opened. A file with the name of a built-in
-keymap is used instead of that one.
+keymap is used instead of that one. A file named `ZX Spectrum 128K.map` is not used: that
+keymap is built in.
 
 Each line is one PC key, then the Spectrum keys it presses, all separated by tabs:
 
@@ -95,7 +116,8 @@ RS	S
 ```
 
 The first line makes the `` ` `` key press Caps Shift and 1 together, which is EDIT. A line with a
-PC key alone makes that key press nothing.
+PC key alone makes that key press nothing. A key your keymap changes presses what the keymap
+says, with **Type Characters** on too.
 
 PC keys are named `1` to `0`, `A` to `Z`, `ENT`, `SPC`, `LS` and `RS` (left and right Shift),
 `LC` and `RC` (Ctrl), `LA` and `RA` (Alt), `TAB`, `CAPS`, `BSP`, `ESC`, `F1` to `F11`, `UP`,

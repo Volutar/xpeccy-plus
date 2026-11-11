@@ -37,9 +37,8 @@ Two sets of keys come with the program. Pick one in the **Preset** list at the t
   **Custom (from Modern)** or **Custom (from Classic)** once you have changed something.
 
 A Spectrum program needs every key the machine has, so Modern keeps to the F-keys, the block
-above the arrows and Alt, which is no Spectrum key. Ctrl is Symbol Shift on the machine, so in
-Modern only commands that open a window or a file use it: Ctrl+, for **Options**, Ctrl+S,
-Ctrl+O.
+above the arrows and Alt, which is no Spectrum key. Ctrl is Symbol Shift on the machine, so
+no hotkey is Ctrl with a Spectrum key: Ctrl+O on the machine is `;`. **Options** is Alt+,.
 
 Picking Modern or Classic does not delete your Custom keys: pick Custom again and your keys
 are back. The
@@ -137,9 +136,9 @@ Esc closes the window. In the **RZX Player** every hotkey works except Esc.
 ```{index} macOS; hotkeys, Cmd key
 ```
 
-On a Mac, Cmd takes the place of Alt in the Modern set, and of Ctrl in the keys that open a
-window or a file: Cmd+, for **Options**, Cmd+S, Cmd+O, Cmd+R for **Reset**, Cmd+1 to Cmd+6
-for the window size. A few keys stay on Alt (Option): **Grab Mouse** is Alt+M, since Cmd+M
+On a Mac, Cmd takes the place of Alt in the Modern set: Cmd+, for **Options**, Cmd+R for
+**Reset**, Cmd+1 to Cmd+6 for the window size. **Open** and **Save** also have the Mac's own
+Cmd+O and Cmd+S. A few keys stay on Alt (Option): **Grab Mouse** is Alt+M, since Cmd+M
 minimizes a window. **Fullscreen** is Cmd+Ctrl+F or Cmd+Return, and in Modern the
 **Debugger** has F10 only. Classic keeps its Alt keys; only **Options** moves from F1 to
 Cmd+,.
@@ -161,13 +160,13 @@ on the numeric keypad: Alt+Num++ is Alt with the keypad plus.
 
 | Action | Modern | Classic |
 |---|---|---|
-| Open | F3, Ctrl+O | F3 |
+| Open | F3 | F3 |
 | Recent Files | - | - |
 | Reload | - | - |
 | Next Side | Shift+F3 | Shift+F3 |
 | Previous Side | - | - |
 | Add to Favorites | - | - |
-| Save | F2, Ctrl+S | F2 |
+| Save | F2 | F2 |
 | Save Changed Disks | - | F9 |
 | Quick Save | F5 | - |
 | Quick Load | F9 | - |
@@ -269,7 +268,7 @@ on the numeric keypad: Alt+Num++ is Alt with the keypad plus.
 | Screen | - | Alt+S |
 | Sound Chips | - | Alt+A |
 | Heat Map | - | - |
-| Options | Ctrl+, | F1 |
+| Options | Alt+, | F1 |
 | Hotkey List | - | - |
 
 ### Debugger keys
