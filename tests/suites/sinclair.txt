@@ -14,6 +14,7 @@ influence_full  zx128     auto  1500  300     tape/INFLUENC.TAP                 
 robocop         zx128     open  50    300     snap/robocop.z80
 overlander_fuel zx128     open  50    300     snap/overlander_fuel.szx              mac:input.joy=kempston --bench-full
 aytest_full     zx128     auto  3600  300     tape/AYtest_v0.2.tap                  keys:3000:E,3200:E,3400:1 --bench-full
+kmouse_128      zx128     auto  1500  100     tape/PD_v3.2.tap                      cfg:TAPE.fast=yes mac:input.mouse=yes
 ula128_p2       zxplus2   auto  2500  200     ULA/ula128.tap
 snow_p2         zxplus2   open  50    300     snap/basic_snow_+2.sna
 kremash_p2      zxplus2   auto  2500  300     tape/kremash.tap                      cfg:TAPE.fast=yes
@@ -26,6 +27,7 @@ hikaru_2a       zxplus2a  auto  3200  300     "zx-tests/+2A-+3 Floating Bus Test
 ed48run_2a      zxplus2a  open  50    300     snap/ed48run.z80                      keys:10:E
 usr0run_2a      zxplus2a  open  50    300     snap/usr0run.sna                      keys:10:E
 menu_2a         zxplus2a  open  50    300     snap/menu_2a.sna
+kmouse_2a       zxplus2a  auto  1500  100     tape/PD_v3.2.tap                      cfg:TAPE.fast=yes mac:input.mouse=yes
 melange_p3      zxplus3   auto  3000  300     disk/melange.DSK
 gauntlet_p3     zxplus3   auto  3000  300     "disk/Gauntlet (1986)(U.S. Gold)(+3).dsk"
 chasehq_p3      zxplus3   auto  6000  300     "disk/plus3/Chase HQ.dsk"
@@ -37,3 +39,4 @@ actionforce_p3  zxplus3   auto  6000  300     "disk/plus3/Action Force.dsk"
 batman_p3       zxplus3   auto  6000  300     "disk/plus3/Batman The Caped Crusader.dsk"
 turboout_p3     zxplus3   auto  6000  300     "disk/plus3/Turbo Outrun - Side A.dsk"
 rodland_p3      zxplus3   auto  2000  300     "tape/Rod-Land - Re-Imagined (2012)(Miazga, Rafal)(128K)(PL)(en)[h Miazga, Rafal, 2012-08][Colour mod].tap" cfg:TAPE.fast=yes
+kmouse_p3       zxplus3   auto  1500  100     tape/PD_v3.2.tap                      cfg:TAPE.fast=yes mac:input.mouse=yes
