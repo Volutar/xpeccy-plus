@@ -36,7 +36,7 @@ static xPort z128PortMap[] = {
 	{0xc002,0xbffd,2,2,2,NULL,	xOutBFFD},
 	{0xc002,0xfffd,2,2,2,xInFFFD,	xOutFFFD},
 	{0x00ff,0x001f,0,2,2,xIn1F,	NULL},		// joystick
-	{0x0320,0xfadf,0,2,2,xInFADF,	NULL},		// Kempston mouse: A5, A8, A9, A10, as on the 48K
+	{0x0320,0xfadf,0,2,2,xInFADF,	NULL},		// Kempston mouse: A5, A8-A10
 	{0x0720,0xfbdf,0,2,2,xInFBDF,	NULL},
 	{0x0720,0xffdf,0,2,2,xInFFDF,	NULL},
 	{0x0000,0x0000,2,2,2,zx_in_float,	NULL}
