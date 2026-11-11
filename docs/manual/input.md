@@ -19,18 +19,19 @@ shift keys of the Spectrum are the PC's:
 | Shift | Caps Shift |
 | Ctrl | Symbol Shift |
 
-A symbol key types the symbol printed on it, with Shift too: `;` gives `;`, Shift+`;` gives
-`:`, Shift+`2` gives `@`, Shift+`/` gives `?`. The machine gets the Spectrum's own way of
-typing it, Symbol Shift and a key. Letters and digits go by their place, so Shift+A is a
-capital A and games read the keys as they always have. A symbol the Spectrum has no key for
-(`[`, `\`, `` ` `` and the like) works as in the table below.
+The symbol keys `;` `'` `,` `.` `/` `-` `=` type what is printed on them, with Shift too:
+Shift+`;` gives `:`, Shift+`'` gives `"`, Shift+`/` gives `?`. The machine gets the
+Spectrum's own way of typing it, Symbol Shift and a key. Letters and digits are the
+Spectrum's, so Shift+A is a capital A, Shift+`0` is DELETE and Shift+`9` GRAPHICS, and games
+read the keys as they always have. Symbols on the digits are typed as on the Spectrum, with
+Ctrl: Ctrl+`2` gives `@`.
 
-```{index} typing, keyboard; typing characters
+```{index} typing, keyboard; typing PC symbols
 ```
 
-To have the keys as the Spectrum has them instead, with Shift as Caps Shift on every key,
-turn off **Input > Keymap > Type Characters**, or pick **Key Positions** in the **Typing**
-list on the **Input** page of **Options**.
+To have the symbol keys as fixed Spectrum keys instead, with Shift as Caps Shift, turn off
+**Input > Keymap > Type PC Symbols**, or pick **Key Positions** in the **Typing** list on the
+**Input** page of **Options**.
 
 Other PC keys press two Spectrum keys together:
 
@@ -71,9 +72,10 @@ grab the keyboard.
 ```{index} keyboard; system layout
 ```
 
-A letter is recognized by its place on the keyboard, not by what the system layout puts on
-it, so a Cyrillic or another layout changes nothing there. A symbol or a digit is the one the
-layout types: with a Russian layout, Shift+`6` gives `:`, with a French one Shift+`&` gives `1`.
+A key is recognized by its place on the keyboard, not by what the system layout puts on it,
+so a Cyrillic or another layout changes nothing, and switching layouts does not either. A
+symbol key types the symbol of the US layout, the Latin one printed on it: with a Russian
+keyboard, Shift+`Ж` gives `:`.
 
 The ZX Spectrum Next takes the keys as its own PS/2 keyboard does, Shift as Caps Shift (see
 [ZX Spectrum Next](zx-next.md)). The Profi with a grabbed keyboard has a layout of its own.
@@ -86,8 +88,9 @@ The ZX Spectrum Next takes the keys as its own PS/2 keyboard does, Shift as Caps
 A keymap says which PC key presses which Spectrum key. Pick one in **Input > Keymap**, or in
 the **Keymap** list on the **Input** page of **Options**:
 
-- **ZX Spectrum 128K** - the keys described above;
-- **ZX Spectrum 48K.map** - Caps Shift on both left Shift and left Ctrl, Symbol Shift on both
+- **ZX Spectrum 128K** - the keys described above: both Shift keys are Caps Shift and both
+  Ctrl keys Symbol Shift, as on a PC keyboard;
+- **ZX Spectrum 48K** - Caps Shift on both left Shift and left Ctrl, Symbol Shift on both
   right Shift and right Ctrl, as the two keys are placed on a 48K. The `\` key is GRAPHICS
   (Caps Shift + 9).
 
@@ -103,9 +106,9 @@ the right one. The 48K keymap then has no Symbol Shift: use ZX Spectrum 128K the
 
 A keymap is a text file with the extension `.map`, put in the `keymaps` folder of the settings
 folder (see [Where the settings are](getting-started.md#where-the-settings-are)). It shows in
-the **Keymap** menu the next time the menu is opened. A file with the name of a built-in
-keymap is used instead of that one. A file named `ZX Spectrum 128K.map` is not used: that
-keymap is built in.
+the **Keymap** menu by its name without `.map` the next time the menu is opened. A file with
+the name of a built-in keymap is used instead of that one. A file named
+`ZX Spectrum 128K.map` is not used: that keymap is built in.
 
 Each line is one PC key, then the Spectrum keys it presses, all separated by tabs:
 
@@ -117,7 +120,7 @@ RS	S
 
 The first line makes the `` ` `` key press Caps Shift and 1 together, which is EDIT. A line with a
 PC key alone makes that key press nothing. A key your keymap changes presses what the keymap
-says, with **Type Characters** on too.
+says, with **Type PC Symbols** on too.
 
 PC keys are named `1` to `0`, `A` to `Z`, `ENT`, `SPC`, `LS` and `RS` (left and right Shift),
 `LC` and `RC` (Ctrl), `LA` and `RA` (Alt), `TAB`, `CAPS`, `BSP`, `ESC`, `F1` to `F11`, `UP`,

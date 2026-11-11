@@ -211,7 +211,7 @@ Next.
 | `;` `'` `,` `.` | the Next's `;` `"` `,` `.` keys |
 | `/` `-` `=` | SYMBOL SHIFT with V, J and L |
 
-**Type Characters** of other machines does not apply here: Shift is CAPS SHIFT with every
+**Type PC Symbols** of other machines does not apply here: Shift is CAPS SHIFT with every
 key, as on the Next's own PS/2 keyboard.
 
 Some hotkeys of Xpeccy+ use Alt too: change them on the **Hotkeys** page of **Options**
