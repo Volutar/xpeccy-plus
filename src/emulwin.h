@@ -296,6 +296,7 @@ class MainWin : public QWidget {
 		void menuShow();
 		void menuHide();
 		void optResize();
+		void optApplied();
 		void optApply();
 		void dbgReturn();
 		void rzxStateChanged(int);

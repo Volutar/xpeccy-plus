@@ -3965,8 +3965,13 @@ void MainWin::fillPreview() {
 // have changed, and the window has to follow it at once - the frame is re-cut
 // out of the whole raster, so the picture stays right even though the machine
 // is paused and no new frame is coming.
+// Options applied: the snow notice is done, its tick not taken over them
+void MainWin::optApplied() {
+	delete snowBox;
+	optResize();
+}
+
 void MainWin::optResize() {
-	delete snowBox;		// Options applied: the notice is done, its tick not taken over them
 	int bplWas = bytesPerLine;
 	int sizeWas = bufSize;
 	vsyncProbe();		// before updateWindow: VSync keeps fullscreen composed
