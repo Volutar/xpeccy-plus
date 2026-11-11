@@ -392,6 +392,22 @@ jobs:
           }
           packaging\win-parity.ps1 @opts
 
+      # the x64 build here finds an ARM64 machine, is offered the native file, and puts it
+      # in its own place. The check asks GitHub as a user's would; it is shown the nightly
+      # as its own version, so that what it is offered is a switch of that nightly.
+      # Not when called: a nightly is not held up by the network
+      - name: x64 -> ARM64
+        if: ${{ !cancelled() && steps.unpack.outcome == 'success' && github.workflow == 'Windows' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $rel = gh release view nightly --repo ${{ github.repository }} --json targetCommitish,assets | ConvertFrom-Json
+          Remove-Item Env:GH_TOKEN
+          $m = $rel.assets.name | Select-String '^xpeccy-plus-(.+-dev\+\d{8})-' | Select-Object -First 1
+          $opts = @{ App = $env:X64; Zip = (Get-Item dist\*-win-arm64.zip).FullName }
+          if ($m) { $opts.Self = "$($m.Matches[0].Groups[1].Value)@$($rel.targetCommitish)" }
+          packaging\win-switch.ps1 @opts
+
       # how each looks, the Qt of win-arm64 not being win-x64's: for a person to compare.
       # Not when called: nightly and release publish every artifact of the run
       - name: Window shots
