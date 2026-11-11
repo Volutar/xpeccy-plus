@@ -2,8 +2,9 @@
 
 Every `*.map` file here is one keyboard layout. The emulator lists them by file
 name (Options / Input, and the Keymap menu); `ZX Spectrum 128K` means "no file",
-i.e. the built-in table in `src/xcore/keymap.cpp`. A file of that name
-(`ZX Spectrum 128K.map`) is not listed or read: that layout is built in.
+i.e. the built-in table in `src/xcore/keymap.cpp`. A `ZX Spectrum 128K.map` as
+earlier versions shipped it is not listed (that layout is built in now); an edited
+one is listed under its full file name.
 
 A layout only overrides the host keys it mentions; everything else keeps its
 built-in mapping. An override replaces a key's whole sequence, it does not

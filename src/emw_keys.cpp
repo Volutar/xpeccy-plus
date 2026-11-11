@@ -22,15 +22,10 @@ void MainWin::kRelease(QKeyEvent* ev) {
 static QMap<qint32, int> key_press_map;
 #endif
 #ifdef __APPLE__
-// a Mac names a key by what it typed, Shift or not: its release goes by the key it is
-static QHash<quint32, int> mac_key_down;
+static QHash<quint32, int> mac_key_down;	// a key's id by its native code: its release may be named otherwise
 #endif
 
-// Typing PC symbols (conf.kbdTyping): a symbol key presses the Spectrum keys of what
-// it prints in the US layout (keyTyped, into kent->chKey), with Shift or without; not
-// with Ctrl, which is Symbol Shift, nor Alt. Letters, digits and the other keys stay
-// the Spectrum's, Shift as Caps Shift; so does a key the user's layout gives something
-// of its own, and one that types what its place presses anyway goes as it is.
+// Typing PC symbols: a symbol key with Shift or nothing types its US symbol (keyTyped), unless the keymap rebinds it
 static void key_typed(QKeyEvent* ev, keyEntry* kent) {
 	if (!conf.kbdTyping || !ev || (kent->key <= 0) || (kent->key >= 0x10000)) return;
 	Qt::KeyboardModifiers mod = xNativeMods(ev->modifiers()) & ~Qt::KeypadModifier;	// a Mac's arrows
@@ -98,12 +93,13 @@ int ev_to_keyid(QKeyEvent* ev, bool kgrab, bool* fallback = nullptr) {
 			} else {
 				keyid = 0;
 			}
-#else
-			keyid = qKey2id(ev->key(), ev->modifiers());
-#ifdef __APPLE__
+#elif defined(__APPLE__)
+			keyid = macKeyId(ev->nativeVirtualKey());	// the digits and symbols by their place
+			if (!keyid) keyid = qKey2id(ev->key(), ev->modifiers());
 			if ((keyid > 0) && !ev->isAutoRepeat() && ev->nativeVirtualKey())
 				mac_key_down.insert(ev->nativeVirtualKey(), keyid);
-#endif
+#else
+			keyid = qKey2id(ev->key(), ev->modifiers());
 #endif
 	}
 	return keyid;
@@ -224,7 +220,6 @@ void MainWin::machineKey(Computer* comp, keyEntry* kent, bool down) {
 void MainWin::xkey_press(int xkey, bool cmd, QKeyEvent* ev) {
 	keyEntry kent = getKeyEntry(xkey);
 	key_typed(ev, &kent);
-//	printf("xkey_press %s\n", kent.name);
 	int x;
 	int err;
 	QString path;
@@ -586,7 +581,8 @@ void MainWin::keyReleaseEvent(QKeyEvent *ev) {
 					key_press_map[keyid] = 0;
 				}
 #elif defined(__APPLE__)
-				keyid = mac_key_down.contains(ev->nativeVirtualKey()) ? mac_key_down.take(ev->nativeVirtualKey()) : qKey2id(ev->key());
+				keyid = mac_key_down.take(ev->nativeVirtualKey());
+				if (!keyid) keyid = qKey2id(ev->key());
 #else
 				keyid = qKey2id(ev->key());
 #endif
@@ -622,11 +618,16 @@ void MainWin::xcut_release(int keyid) {
 void MainWin::xkey_release(int keyid) {
 	Computer* comp = conf.zx;
 	keyEntry kent = getKeyEntry(keyid);
-	// a key that went down typed goes up as it went: the lights are told what that was
-	emu_lock();
-	for (int i = 0; keyid && (i < 8); i++)
-		if (comp->keyb->tyKey[i].key == keyid) memcpy(kent.chKey, comp->keyb->tyKey[i].zx, KEYSEQ_MAXLEN);
-	emu_unlock();
+	// a symbol key that went down typed (the option on or not now): the lights are told what it pressed
+	if (keyid && keyTyped(keyid, false, nullptr)) {
+		emu_lock();
+		for (int i = 0; i < KBD_TY_KEYS; i++) {
+			if (comp->keyb->tyKey[i].key != keyid) continue;
+			memcpy(kent.chKey, comp->keyb->tyKey[i].zx, KEYSEQ_MAXLEN);
+			break;
+		}
+		emu_unlock();
+	}
 	machineKey(comp, &kent, false);
 	if (kent.joyMask) {
 		if (kent.joyMask & XJ_JOYB) {

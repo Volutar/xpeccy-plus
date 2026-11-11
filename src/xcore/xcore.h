@@ -695,7 +695,9 @@ int qKey2id(int, Qt::KeyboardModifiers = Qt::NoModifier);
 int key2qid(int);
 // the built-in layout's name, and the layouts there are besides it
 #define KMAP_BUILTIN "ZX Spectrum 128K"
-QStringList keymap_files();
+#define KMAP_48K "ZX Spectrum 48K.map"
+QList<QPair<QString, QString>> keymap_list();
+int macKeyId(unsigned);
 std::string keymap_name(const std::string&);
 bool keyRemapped(int);
 int keyTyped(int, bool, unsigned char*);

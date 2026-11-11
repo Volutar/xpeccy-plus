@@ -726,7 +726,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 		connect(ui.keyMapBox, QOverload<int>::of(&QComboBox::currentIndexChanged), kmNote, [this, kmNote]() {
 			QString nam = ui.keyMapBox->currentData().toString();
 			kmNote->setText(nam.isEmpty() ? tr("Both Shifts are Caps Shift, both Ctrls Symbol Shift")
-				: (nam == "ZX Spectrum 48K.map") ? tr("Caps Shift on the left, Symbol Shift on the right")
+				: (nam == KMAP_48K) ? tr("Caps Shift on the left, Symbol Shift on the right")
 				: tr("Your own keymap"));
 		});
 		connect(ui.typingBox, QOverload<int>::of(&QComboBox::currentIndexChanged), tyNote, [this, tyNote]() {
@@ -3226,9 +3226,8 @@ void SetupWin::setRom(xRomFile f) {
 
 void SetupWin::buildkeylist() {
 	ui.keyMapBox->clear();
-	ui.keyMapBox->addItem(KMAP_BUILTIN);
-	foreach(QString nam, keymap_files())
-		ui.keyMapBox->addItem(QFileInfo(nam).completeBaseName(), nam);
+	for (const auto& km : keymap_list())
+		ui.keyMapBox->addItem(km.first, km.second);
 	setRFIndex(ui.keyMapBox, QString::fromUtf8(conf.kmapName.c_str()), 0);
 }
 

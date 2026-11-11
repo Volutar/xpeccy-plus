@@ -3852,17 +3852,11 @@ void MainWin::fillUserMenu() {
 	act->setData(RES_POWER);
 	// fill keymaps menu
 	keyMenu->clear();
-	act = keyMenu->addAction(KMAP_BUILTIN);
-	act->setData("");
-	act->setCheckable(true);
-	if (conf.zx) {
-		if (conf.kmapName.empty()) act->setChecked(true);
-		foreach(QString str, keymap_files()) {
-			act = keyMenu->addAction(QFileInfo(str).completeBaseName());
-			act->setData(str);
-			act->setCheckable(true);
-			act->setChecked(conf.kmapName == std::string(str.toUtf8().data()));
-		}
+	for (const auto& km : keymap_list()) {
+		act = keyMenu->addAction(km.first);
+		act->setData(km.second);
+		act->setCheckable(true);
+		act->setChecked(conf.kmapName == km.second.toUtf8().constData());
 	}
 	// fill shader menu
 	shdMenu->clear();

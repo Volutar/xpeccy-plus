@@ -1,6 +1,7 @@
 #include <fstream>
 
 #include <QFile>
+#include <QFileInfo>
 #include <QKeyEvent>
 
 #include <string.h>
@@ -12,8 +13,7 @@
 
 static keyEntry keyMap[256];			// current keymap (init at start from keyMapInit[]
 
-// The built-in layout is the 128K's (KMAP_BUILTIN): Caps Shift on both Shift keys,
-// Symbol Shift on both Ctrl keys, ` is EDIT and \ EXTEND.
+// The built-in layout is the 128K's (KMAP_BUILTIN): both Shifts CS, both Ctrls SS, ` EDIT, \ EXTEND
 
 // profiextkeys: the Profi xt keyboard, used instead of zxkeys when the host keyboard is grabbed;
 // a letter with bit 7 set is that letter plus EXT (F1-F10, Home, End, PgUp, PgDn, Ins, Del)
@@ -232,18 +232,31 @@ static void keys_joy_only() {
 	setKey("LS", "JF*");	setKey("LC", "JF*");
 }
 
-// The layout files to pick from beside the built-in one. The 128K file of before
-// is the built-in layout now: a copy of it left in the settings folder is not listed.
-QStringList keymap_files() {
-	QStringList res = xres_list("keymaps", QStringList() << "*.map");
-	res.removeAll(KMAP_BUILTIN ".map");
+// the 128K file shipped before, now built in: none in the settings folder, or one as it was shipped
+static bool kmap_old_128k(const QString& name) {
+	if (name != KMAP_BUILTIN ".map") return false;
+	QFile file(xres_dir("keymaps") + "/" + name);
+	if (!file.open(QFile::ReadOnly)) return true;
+	QString txt = QString::fromUtf8(file.readAll()).remove('\r').trimmed();
+	QString shipped = "`\tC\t1\n\\\tC\tS\nLS\tC\nRS\tC\nLC\tS\nRC\tS";
+	return (txt == shipped) || (txt == shipped + "\nN4\tJL\nN6\tJR\nN8\tJU\nN5\tJD\nN0\tJF");	// with the keypad's Kempston, before 2026.10
+}
+
+// the layouts to pick from: what a list shows, and the file (none for the built-in one)
+QList<QPair<QString, QString>> keymap_list() {
+	QList<QPair<QString, QString>> res;
+	res.append({KMAP_BUILTIN, QString()});
+	foreach(QString nam, xres_list("keymaps", QStringList() << "*.map")) {
+		if (kmap_old_128k(nam)) continue;
+		QString title = QFileInfo(nam).completeBaseName();
+		res.append({(title == KMAP_BUILTIN) ? nam : title, nam});	// an edited 128K file keeps its .map
+	}
 	return res;
 }
 
-// a layout's name as a config or a machine file gives it (UTF-8): Default and the 128K
-// file of before are the built-in one, empty
+// a layout's name as a config or a machine file gives it (UTF-8): Default and the old 128K file are ""
 std::string keymap_name(const std::string& name) {
-	return ((name == "default") || (name == KMAP_BUILTIN ".map")) ? std::string() : name;
+	return ((name == "default") || kmap_old_128k(QString::fromUtf8(name.c_str()))) ? std::string() : name;
 }
 
 // the layout gives the key something of its own: a key that is the user's to say
@@ -255,7 +268,7 @@ bool keyRemapped(int id) {
 }
 
 static void load_key_file() {
-	if (keymap_name(conf.kmapName).empty()) return;
+	if (conf.kmapName.empty()) return;
 	QFile file(xres_path("keymaps", QString::fromUtf8(conf.kmapName.c_str())));
 	if (!file.open(QFile::ReadOnly)) {
 		xlog(XLG_INPUT, XLL_WARN, "can't open the keyboard layout, using the default one");
@@ -318,7 +331,6 @@ static keyTrans ktTab[] = {
 	{Qt::Key_QuoteLeft, 1025, XKEY_TILDA},		// Ё
 
 	{Qt::Key_Exclam, Qt::Key_Exclam, XKEY_1},		// !
-	{Qt::Key_QuoteDbl, Qt::Key_QuoteDbl, XKEY_APOS},	// " on a Mac: the US Shift+', before Russian's Shift+2
 	{Qt::Key_At, Qt::Key_QuoteDbl, XKEY_2},			// @ (")
 	{Qt::Key_NumberSign, 8470, XKEY_3},			// # (№)
 	{Qt::Key_Dollar, Qt::Key_Dollar, XKEY_4},		// $
@@ -412,18 +424,6 @@ static keyTrans ktTab[] = {
 	{Qt::Key_ScrollLock, Qt::Key_ScrollLock, XKEY_SCRLCK},
 	{Qt::Key_NumLock, Qt::Key_NumLock, XKEY_NUMLCK},
 
-	// a Mac names a key by what it typed: the US layout's shifted symbols, on their keys
-	{Qt::Key_Colon, Qt::Key_Colon, XKEY_DOTCOM},
-	{Qt::Key_Less, Qt::Key_Less, XKEY_COMMA},
-	{Qt::Key_Greater, Qt::Key_Greater, XKEY_PERIOD},
-	{Qt::Key_Question, Qt::Key_Question, XKEY_BSLASH},
-	{Qt::Key_Underscore, Qt::Key_Underscore, XKEY_MINUS},
-	{Qt::Key_BraceLeft, Qt::Key_BraceLeft, XKEY_LBRACK},
-	{Qt::Key_BraceRight, Qt::Key_BraceRight, XKEY_RBRACK},
-	{Qt::Key_Bar, Qt::Key_Bar, XKEY_SLASH},
-	{Qt::Key_AsciiTilde, Qt::Key_AsciiTilde, XKEY_TILDA},
-	{Qt::Key_sterling, Qt::Key_sterling, XKEY_3},
-
 	// TODO: complete this table
 	{Qt::Key_unknown, Qt::Key_unknown, ENDKEY}
 };
@@ -472,34 +472,49 @@ int key2qid(int key) {
 	return ktTab[idx].keyLat;
 }
 
-// Typing PC symbols: the PC's symbol keys, by their place, and the Spectrum keys of the
-// symbol each prints in the US layout - the Latin one a keyboard of any country has on
-// it - without Shift and with it. The system's layout is not asked: switching it changes
-// nothing. The rest of the PC's symbols the Spectrum has no key for.
+// A Mac's key by its place (kVK_ANSI_*), for the digits and symbols: Qt names them by what the layout typed
 static const struct {
-	const char* name;	// keyMapInit's
+	unsigned vk;
+	int id;
+} macTab[] = {
+	{0x12, XKEY_1}, {0x13, XKEY_2}, {0x14, XKEY_3}, {0x15, XKEY_4}, {0x17, XKEY_5},
+	{0x16, XKEY_6}, {0x1a, XKEY_7}, {0x1c, XKEY_8}, {0x19, XKEY_9}, {0x1d, XKEY_0},
+	{0x1b, XKEY_MINUS}, {0x18, XKEY_EQUAL}, {0x21, XKEY_LBRACK}, {0x1e, XKEY_RBRACK},
+	{0x2a, XKEY_SLASH}, {0x29, XKEY_DOTCOM}, {0x27, XKEY_APOS}, {0x2b, XKEY_COMMA},
+	{0x2f, XKEY_PERIOD}, {0x2c, XKEY_BSLASH}, {0x32, XKEY_TILDA}
+};
+
+// a Mac's native key code as a key id, 0 for a key Qt's own name tells (qKey2id)
+int macKeyId(unsigned vk) {
+	for (const auto& m : macTab)
+		if (m.vk == vk) return m.id;
+	return 0;
+}
+
+// Typing PC symbols: the symbol keys by their place, the Spectrum keys of their US symbol (Shift: the upper one)
+static const struct {
+	int id;
 	char key;		// with Symbol Shift: the symbol unshifted...
 	char sh;		// ...and with Shift
 } typeTab[] = {
-	{";", 'o', 'z'},	// ; :
-	{"\"", '7', 'p'},	// ' "
-	{",", 'n', 'r'},	// , <
-	{".", 'm', 't'},	// . >
-	{"/", 'v', 'c'},	// / ?
-	{"-", 'j', '0'},	// - _
-	{"+", 'l', 'k'},	// = +
-	{NULL, 0, 0}
+	{XKEY_DOTCOM, 'o', 'z'},	// ; :
+	{XKEY_APOS, '7', 'p'},		// ' "
+	{XKEY_COMMA, 'n', 'r'},		// , <
+	{XKEY_PERIOD, 'm', 't'},	// . >
+	{XKEY_BSLASH, 'v', 'c'},	// / ?
+	{XKEY_MINUS, 'j', '0'},		// - _
+	{XKEY_EQUAL, 'l', 'k'}		// = +
 };
 
-// The Spectrum keys of the symbol a PC key prints, into out (KEYSEQ_MAXLEN); 0 for a
-// key that is not a symbol key, or whose symbol the Spectrum lacks
+// the Spectrum keys of the symbol a PC key prints into out (if given); 0 for a key that is no symbol key
 int keyTyped(int id, bool shift, unsigned char* out) {
-	memset(out, 0, KEYSEQ_MAXLEN);
-	const char* name = getKeyNameById(id);
-	for (int i = 0; typeTab[i].name; i++) {
-		if (strcmp(typeTab[i].name, name)) continue;
-		out[0] = 'S';
-		out[1] = shift ? typeTab[i].sh : typeTab[i].key;
+	for (const auto& t : typeTab) {
+		if (t.id != id) continue;
+		if (out) {
+			memset(out, 0, KEYSEQ_MAXLEN);
+			out[0] = 'S';
+			out[1] = shift ? t.sh : t.key;
+		}
 		return 1;
 	}
 	return 0;
