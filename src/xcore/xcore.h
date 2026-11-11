@@ -447,7 +447,7 @@ void frame_taken();		// the gui has the frame signal: the next one may be sent
 const unsigned char* frame_shown_lock();
 void frame_shown_unlock();
 int frame_shown_input(InState*);	// the input overlay's state for that picture, 0: off
-int snow_now();			// the game snows: on at the notice's mark, out after 2 s of none; held while not watched
+int snow_now();			// the game snows; out after 2 s of none, held while not watched
 void snow_watch_reset();		// a new image: watch from the start
 
 // the running machine

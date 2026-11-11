@@ -118,8 +118,9 @@ static bool snow_possible(Computer* comp) {
 	return conf.led.snowNotice && comp->flgSNOW && (comp->vid->ula->conttype == CONT_PATA);
 }
 
+// the gui's own state only: the frames put it out when the machine cannot snow
 int snow_now() {
-	return (snowNow == snowGen + 1) && snow_possible(conf.zx);
+	return (snowNow == snowGen + 1) && conf.led.snowNotice && !xm_snow_held();
 }
 
 void snow_watch_reset() {

@@ -893,8 +893,9 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 		}
 		watchMedia();
 		int resets = xUserResets.load();
-		if (resets != snowResets) {
+		if ((resets != snowResets) || (conf.macId != snowMac)) {
 			snowResets = resets;
+			snowMac = conf.macId;
 			snowRestart();
 		}
 		if (snow_now()) snowNotice();
@@ -1596,12 +1597,14 @@ void MainWin::paintGLView() {
 #if !ISLEGACYGL
 	if (vrec_wants_screen()) {
 		grabScreen();
-		// the sign is the user's alone: the picture under it is drawn again
+		// the signs are the user's alone: the picture under REC is drawn again
 		int rec = ownSign;		// as drawIcons() just chose it
+		bool snow = snowSignOn();
+		QPainter top;
+		if ((rec != osd_none) || snow) top.begin(glw);
 		if (rec != osd_none) {
 			const qreal r = widgetDpr(this);
 			QRect slot = modeSlot();
-			QPainter top(glw);
 			top.beginNativePainting();
 			const QRect cut(int(slot.x() * r), int((height() - slot.bottom() - 1) * r),
 				int(slot.width() * r + 1), int(slot.height() * r + 1));
@@ -1615,12 +1618,8 @@ void MainWin::paintGLView() {
 			glFlush();
 			top.endNativePainting();
 			drawSign(top, rec);
-			top.end();
 		}
-	}
-	if (snowOwed) {
-		QPainter top(glw);
-		snowFall->drawSign(top, snowSignAt());
+		if (snow) snowFall->drawSign(top, snowSignAt());
 	}
 #endif
 }
@@ -1987,9 +1986,7 @@ void MainWin::drawIcons(QPainter& pnt) {
 		pnt.drawImage(3, 110, leds[led_wav]);
 	}
 // the snowflake: the game snows on after its notice
-	bool snow = snowSignOn();
-	snowOwed = snow && vrec_wants_screen();
-	if (snow && !snowOwed)
+	if (snowSignOn() && !vrec_wants_screen())
 		snowFall->drawSign(pnt, snowSignAt());
 // put the speed mode, VCR style, clear of the fps readout
 	int mode = speedOsd();
@@ -3576,7 +3573,7 @@ static QUrl manual_url(const QString& page, const QString& part) {
 // it from the start, and a switch-off "for this game" ends with the old one.
 // An empty title - an eject, a side being swapped - changes nothing; nor does
 // a disk in B or a card, as with the quick saves: the game is the tape, drive A
-// or the snapshot. A user reset starts the game again (snowRestart()).
+// or the snapshot.
 void MainWin::snowImageIs(const QString& path, int src) {
 	if ((src != MEDIA_SNAP) && (src != MEDIA_TAPE) && (src != 0)) return;
 	if (path.isEmpty() || same_image(path, snowImage)) return;
@@ -3584,6 +3581,7 @@ void MainWin::snowImageIs(const QString& path, int src) {
 	snowRestart();
 }
 
+// a user reset, another machine or another image: the game starts again
 void MainWin::snowRestart() {
 	snowNoted = false;
 	snow_watch_reset();
@@ -3604,7 +3602,7 @@ QPoint MainWin::snowSignAt() {
 	return QPoint(leds ? SNOW_SIGN_BESIDE_LEDS : MODE_ICON_RIGHT, modeSlot().top());
 }
 
-// After the notice, while the game snows; while the notice is up, the snow over the picture has it.
+// after the notice, while it snows; the snowfall draws it while up
 bool MainWin::snowSignOn() {
 	return snowNoted && !snowFall->isVisible() && snow_now();
 }

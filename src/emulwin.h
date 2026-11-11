@@ -389,7 +389,6 @@ class MainWin : public QWidget {
 		QImage leds[leds_count];
 		QImage osdImg[osd_count];
 		int ownSign = osd_none;	// recording or playing: kept out of a video of the window
-		bool snowOwed = false;	// the snow sign, left by drawIcons() for after a video's grab
 		xInputOsd inputOsd;
 		// the snow notice: once per image, over the shaded picture
 		xSnowFall* snowFall;
@@ -397,6 +396,7 @@ class MainWin : public QWidget {
 		QString snowImage;		// the image it goes by, the one the title names
 		bool snowNoted = false;	// ...and it was shown for it
 		int snowResets = 0;		// xUserResets it last saw: a reset starts the game again
+		std::string snowMac;		// ...and the machine: another one is another run
 		QImage plainKept;		// no GL: the picture under the snow, drawn once a frame
 		void snowNotice();
 		void snowBoxEnd();
