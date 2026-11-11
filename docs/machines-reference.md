@@ -99,6 +99,11 @@ the layout keeps 40 T so the frame is 352 wide like every other machine, and the
 board blanks are drawn in the border color. Blank plus left border is 136 dots either way, so
 no timing moves.
 
+Both boards read #1F through the other half of the #FE muxes (two 74LS257 with SE = A0: DD36/DD37
+on the Turbo+, D37/D36 on the yellow board): J0-J4 on d0-d4, pulled down by 560 ohm, d5 tied to
+ground, d6/d7 the VG93's DRQ and INTRQ. The joystick connector has no more lines, so there is no
+8-bit Kempston on them.
+
 Also still open from that work: ATM Turbo 2+ is 11 T out, with no official figure behind it.
 
 ALF TV Game runs on the 48K's layout with no contention. Its ports and joysticks come from

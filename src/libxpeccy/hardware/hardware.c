@@ -188,6 +188,12 @@ int hw_has_sd(const HardWare* hw) {
 	return (hw->id == HW_PENTEVO) || (hw->id == HW_TSLAB) || (hw->id == HW_ZXNEXT);
 }
 
+// no Fire 2..4 on the Scorpions' #1F (scrpIn1F)
+int hw_kempston8(const HardWare* hw) {
+	if (!hw) return 1;
+	return (hw->id != HW_SCORP) && (hw->id != HW_SCORPTP);
+}
+
 int hw_takes_divmmc(const HardWare* hw) {
 	if (!hw) return 0;
 	switch (hw->id) {

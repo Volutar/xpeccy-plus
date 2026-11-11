@@ -467,6 +467,25 @@ static void format(const char* name, int cyl, int n, int sc, int fill, int fits)
 	}
 }
 
+// a Beta disk machine with fast access on, drive A out of reset, side 0
+static void beta_on(void) {
+	difSetHW(dif, DIF_BDI);
+	fdcFlag = FDC_FAST;
+	difOut(dif, 0xff, 0x3c, 1);
+}
+
+// back to the +3, reset as a machine switch resets it
+static void back_to_p3(void) {
+	fdcFlag = 0;
+	difSetHW(dif, DIF_P3DOS);
+	difReset(dif);
+	unsigned char spec[] = {0x03, 0xaf, 0x03};
+	unsigned char cal[] = {0x07, 0x00};
+	send(spec, 3);
+	send(cal, 2);
+	run(200000000);
+}
+
 // A +3 game's own loader reads in real time; the machine then turns into a Beta
 // disk one with fast access on: its WD1793 seeks fast, not as the +3 left it
 static void beta_after_p3(void) {
@@ -479,9 +498,7 @@ static void beta_after_p3(void) {
 	send_dos = 0;
 	take(data, 512, 10000);
 	result(res);
-	difSetHW(dif, DIF_BDI);
-	fdcFlag = FDC_FAST;
-	difOut(dif, 0xff, 0x3c, 1);		// drive A, out of reset, side 0
+	beta_on();
 	difOut(dif, 0x7f, 40, 1);		// the track to seek to
 	difOut(dif, 0x1f, 0x10, 1);		// seek, 6 ms a step
 	long ns = 0;
@@ -492,14 +509,58 @@ static void beta_after_p3(void) {
 		difIn(dif, 0x1f, &st, 1);
 	}
 	printf("  seek to 40: %ld ms, fast: %s\n", ns / 1000000, (ns < 50000000L) ? "yes" : "no");
-	fdcFlag = 0;
-	difSetHW(dif, DIF_P3DOS);	// back to the +3, reset as a machine switch resets it
-	difReset(dif);
-	unsigned char spec[] = {0x03, 0xaf, 0x03};
-	unsigned char cal[] = {0x07, 0x00};
-	send(spec, 3);
-	send(cal, 2);
-	run(200000000);
+	back_to_p3();
+}
+
+// INTRQ on #FF d7, as TR-DOS waits for it
+static int beta_irq(void) {
+	int v = 0xff;
+	difIn(dif, 0xff, &v, 1);
+	return (v & 0x80) ? 1 : 0;
+}
+
+// a command, and for one that is not a Force Interrupt its end awaited on #FF
+static void beta_com(int com) {
+	difOut(dif, 0x1f, com, 1);
+	run(1000000);
+	if ((com & 0xf0) == 0xd0) return;
+	for (long ns = 0; (ns < 2000000000L) && !beta_irq(); ns += 9999)
+		run(9999);
+}
+
+// INTRQ: none after #D0, held by #D8; #D8 then #D0 is checked only after a status
+// read (the datasheet holds it until then, the die resets it with the write)
+static void beta_intrq(void) {
+	int st;
+	printf("== beta-intrq\n");
+	beta_on();
+	beta_com(0x00);				// restore: the track register known
+	difOut(dif, 0x7f, 2, 1);
+	beta_com(0x10);				// seek
+	printf("  seek done: %d\n", beta_irq());
+	difIn(dif, 0x1f, &st, 1);
+	printf("  status read: %d\n", beta_irq());
+	difOut(dif, 0x7f, 4, 1);
+	beta_com(0x10);
+	beta_com(0xd0);
+	printf("  #D0 after a seek: %d\n", beta_irq());
+	fdcFlag = 0;				// a seek of 36 steps, 6 ms each
+	difOut(dif, 0x7f, 40, 1);
+	difOut(dif, 0x1f, 0x10, 1);
+	run(10000000);
+	difIn(dif, 0x1f, &st, 1);
+	printf("  seek running: busy %d\n", st & 1);
+	beta_com(0xd0);
+	difIn(dif, 0x1f, &st, 1);
+	printf("  #D0 during it: %d, busy %d\n", beta_irq(), st & 1);
+	beta_com(0xd8);
+	printf("  #D8: %d\n", beta_irq());
+	difIn(dif, 0x1f, &st, 1);
+	printf("  #D8, status read: %d\n", beta_irq());
+	beta_com(0xd0);
+	difIn(dif, 0x1f, &st, 1);
+	printf("  #D8, #D0, status read: %d\n", beta_irq());
+	back_to_p3();
 }
 
 static void start(const char* path, const char* path_b) {
@@ -560,6 +621,7 @@ static int cases(const char* tmp) {
 	cmd("turbo-overrun", 0x46, 0, 0, 0, 1, 2, 9, 0xff, 100);
 	fdcFlag = 0;
 	beta_after_p3();
+	beta_intrq();
 	format("sc11", 3, 2, 11, 0x5a, 10);
 	format("sc255", 3, 0, 255, 0xa5, 29);
 	format("n-ff", 3, 0xff, 64, 0x33, 0);	// N past 23 counts as 0 bytes, yet 1K each is written

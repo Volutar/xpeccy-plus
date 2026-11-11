@@ -44,7 +44,7 @@ Esc) puts back what it showed when it opened.
 | | **SD card** | ZX Evolution and ZX Spectrum Next only: the card in use (for the Next, see [The SD card](zx-next.md#the-sd-card)) |
 | | **divMMC** | 48K, 128K, +2, +2A, +3 and the Pentagons: **None** or **divMMC**; RAM, EEPROM jumper and the firmware in its window (see [divMMC](divmmc.md)); while it is on, the row reads **divMMC (!)** and the floppy and hard disk controllers are out of the machine |
 | | **Cartridge** | 48K and ALF only: the cartridge in use |
-| **Input** | **Joystick** | **None**, **Kempston 5-bit**, **Kempston 8-bit** |
+| **Input** | **Joystick** | **None**, **Kempston 5-bit**, **Kempston 8-bit**; not 8-bit on the Scorpion ZS 256 and Turbo+ (see [Joysticks](input.md#joysticks)) |
 | | **Mouse** | **None** or **Kempston mouse**; sensitivity and wheel in its window (see [Mouse](input.md#mouse)) |
 | | **PC keyboard** | ATM Turbo 2+ and ZX Evolution only: which scan codes the machine gets (see [Machines with a keyboard of their own](input.md#machines-with-a-keyboard-of-their-own)) |
 | **Sound** | **PSG** | the AY/YM chips, from **None** to **x3 - ZX Next**; chip, clock and stereo in its window (see [PSG](#psg)) |
