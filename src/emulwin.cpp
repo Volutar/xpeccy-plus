@@ -892,8 +892,9 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 			comp->msg = NULL;
 		}
 		watchMedia();
-		if (snowResets != xUserResets.load()) {
-			snowResets = xUserResets.load();
+		int resets = xUserResets.load();
+		if (resets != snowResets) {
+			snowResets = resets;
 			snowRestart();
 		}
 		if (snow_seen()) snowNotice();
