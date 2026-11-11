@@ -144,7 +144,7 @@ before that point is upstream's history and is not repeated here.
 - **The Debugger's Stack panel is narrower**: less room between the offsets and the words.
   *(requested by Volutar)*
 - **General Sound plays like a NeoGS by default**: a channel's volume change no longer
-  clicks, so modules sound cleaner. **Board: Original** in Machine: General Sound gives the
+  clicks, so modules sound cleaner. **Card: Original** in Machine: General Sound gives the
   card as first made, now with each side carrying some of the other, as on its circuit.
   *(reported by ZXLion)*
 
