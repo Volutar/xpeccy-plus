@@ -495,7 +495,8 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	spaceLedIcon(ui.cbSnowNote);
 	spaceLedIcon(ui.cbFadeLed);
 	// the notice is the window's, for every machine: one place for it
-	for (QWidget* w : {(QWidget*)ui.cbSnow, (QWidget*)ui.nam_cbSnow, (QWidget*)ui.lab_cbSnow})
+	QWidget* snowRow[] = {ui.cbSnow, ui.nam_cbSnow, ui.lab_cbSnow};
+	for (QWidget* w : snowRow)
 		w->setToolTip("The notice when a game snows:\nOptions > Appearance > Indicators");
 
 	rseditor = new xRomsetEditor(this);

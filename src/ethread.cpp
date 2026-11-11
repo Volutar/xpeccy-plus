@@ -105,10 +105,7 @@ void frame_taken() {
 #define SNOW_HITS	32
 #define SNOW_FRAMES	10
 #define SNOW_WINDOW	100
-// Each image the gui names is a generation; a sighting carries the one it was
-// counted in, so one that crosses a change of image is dropped, not shown for
-// the new game.
-static std::atomic<int> snowGen{0};
+static std::atomic<int> snowGen{0};		// bumped per image: a sighting of an older one is dropped
 static std::atomic<int> snowSeen{0};		// generation + 1, 0 none
 static int snowWatched = 0;		// the generation the ring counts for
 static unsigned char snowRing[SNOW_WINDOW];
@@ -116,8 +113,7 @@ static int snowPos = 0;
 static int snowCount = 0;
 
 int snow_seen() {
-	int seen = snowSeen.exchange(0);
-	return seen && (seen == snowGen + 1);
+	return snowSeen.exchange(0) == snowGen + 1;
 }
 
 void snow_watch_reset() {

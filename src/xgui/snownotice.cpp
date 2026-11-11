@@ -45,7 +45,6 @@ xSnowFall::xSnowFall(QWidget* parent) : QWidget(parent) {
 	t = 0;
 	sign[0] = QImage(":/images/osd-snow.png");
 	sign[1] = QImage(":/images/osd-snow-off.png");		// the frame alone
-	signAt = QPoint(5, 5);
 	for (QImage& img : sign) img.setDevicePixelRatio(2);
 	hide();
 	parent->installEventFilter(this);
@@ -240,7 +239,7 @@ void xSnowFall::paintEvent(QPaintEvent*) {
 	p.setOpacity(1.0);
 	// the sign blinks by the wall clock, as the recording sign does
 	int on = (QDateTime::currentMSecsSinceEpoch() / SNOW_BLINK_MS) & 1;
-	p.drawImage(signAt, sign[on ? 0 : 1]);
+	if (signAt) p.drawImage(signAt(), sign[on ? 0 : 1]);
 }
 
 #define QUIET_GAP	12		// px at least between the check box and the first button

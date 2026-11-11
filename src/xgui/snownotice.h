@@ -18,7 +18,7 @@ class xSnowFall : public QWidget {
 		xSnowFall(QWidget* parent);
 		void start();
 		void stop();
-		void setSignAt(QPoint at) {signAt = at;}	// the sign's top left
+		std::function<QPoint()> signAt;	// the sign's top left, asked at every paint
 	protected:
 		void paintEvent(QPaintEvent*) override;
 		void timerEvent(QTimerEvent*) override;
@@ -36,7 +36,6 @@ class xSnowFall : public QWidget {
 		std::vector<Flake> flakes;
 		std::vector<QPixmap> sprites[3];
 		QImage sign[2];
-		QPoint signAt;
 		qreal spriteDpr;
 		int tid;
 		QElapsedTimer clock;

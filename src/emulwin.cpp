@@ -404,6 +404,7 @@ MainWin::MainWin(QMainWindow* frm) {
 	// setAutoFillBackground(false);
 	paintOwed = 0;
 	snowFall = new xSnowFall(this);
+	snowFall->signAt = [this]() {return snowSignAt();};
 	conf.emu.pause = 0;
 	scrCounter = 0;
 	scrInterval = 0;
@@ -892,7 +893,6 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 		}
 		watchMedia();
 		if (snow_seen()) snowNotice();
-		if (snowFall->isVisible()) snowFall->setSignAt(snowSignAt());
 		folderAsk();
 		folderNews();
 		watchClock();
@@ -1831,6 +1831,7 @@ bool MainWin::recStart(const QString& file) {
 #define MODE_ICON_TOP	22	// below the fps readout
 #define MODE_ICON_TOP_NOFPS	5	// with no fps readout to clear
 #define MODE_ICON_RIGHT	5
+#define SNOW_SIGN_BESIDE_LEDS	32	// the snow sign, clear of the LED column
 #define RW_SECS_LINGER	1500	// ms the rewind's seconds stay up after it
 #define SIGN_FADE_MS	500	// and any other sign
 #define SIGN_FADE_FROM	0.6	// how pale a sign turns as soon as it is over
@@ -3576,10 +3577,7 @@ void MainWin::snowImageIs(const QString& path, int src) {
 	}
 }
 
-// The snow sign mirrors the speed and recording signs: their height, as far
-// from the left edge as they are from the right - or right of the LED column
-// while that has anything to show, so the two never cover each other.
-#define SNOW_SIGN_BESIDE_LEDS	32
+// Mirrors the speed sign, or beside the LED column while the settings let it show anything.
 QPoint MainWin::snowSignAt() {
 	Computer* comp = conf.zx;
 	bool osd = !statusBar->isVisible();
@@ -3588,22 +3586,17 @@ QPoint MainWin::snowSignAt() {
 	return QPoint(leds ? SNOW_SIGN_BESIDE_LEDS : MODE_ICON_RIGHT, modeSlot().top());
 }
 
-// The notice gone without a button: finished all the same, so a tick in
-// "Don't show this again" is taken
+// The notice gone without a button: finished, so its tick counts.
 void MainWin::snowBoxEnd() {
 	if (!snowBox) return;
 	snowBox->done(QDialog::Rejected);
 	delete snowBox;
 }
 
-// A game snows: said once per image, over the shaded picture, while the game
-// runs on. "For this game" is a switch-off of the session, written nowhere;
-// "Don't show this again" ends the notice for good (Options > Appearance),
-// the snow itself untouched.
+// Once per image, over the shaded picture; "for this game" is never written, "don't show" is.
 void MainWin::snowNotice() {
 	if (!conf.led.snowNotice || snowNoted || snowBox) return;
 	snowNoted = true;
-	snowFall->setSignAt(snowSignAt());
 	snowFall->start();
 	snowBox = snow_notice_box(this, manual_url("ula-snow-floating-bus.html", "when-a-game-snows"), []() {
 		EmuLock lock;
@@ -3973,6 +3966,7 @@ void MainWin::fillPreview() {
 // out of the whole raster, so the picture stays right even though the machine
 // is paused and no new frame is coming.
 void MainWin::optResize() {
+	delete snowBox;		// Options applied: the notice is done, its tick not taken over them
 	int bplWas = bytesPerLine;
 	int sizeWas = bufSize;
 	vsyncProbe();		// before updateWindow: VSync keeps fullscreen composed
