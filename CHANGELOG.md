@@ -144,6 +144,8 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The = key types = on the ZX Spectrum Next**, not o, and reaches ZX Evolution programs that
+  read the PC keyboard as =.
 - **Screenshot Series counts the machine's frames**, so "each 50 frames" is a second
   whatever the monitor's rate.
 - **SCR and Hobeta screenshots are not saved in modes that are not the ZX screen** (Profi,
