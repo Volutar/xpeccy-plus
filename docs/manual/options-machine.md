@@ -240,6 +240,9 @@ samples for the programs written for it. **On** puts it in the machine. The
 
 - **ROM** - the card's own ROM, picked from the list or from a file with the
   {icon}`fileopen` folder button;
+- **Board** - how the card mixes its four channels. **Original** is the card as first made:
+  a change of a channel's volume clicks, and each side carries some of the other. **NeoGS**
+  is the card NedoPC makes today: no clicks, and the sides kept apart;
 - **Reset** - the card is reset together with the machine.
 
 ### SAA1099
