@@ -19,7 +19,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$work = Join-Path ([IO.Path]::GetTempPath()) "xpeccy-switch-$PID"
+# a runner's TEMP is a short 8.3 name, the program's own path a long one: RUNNER_TEMP has none
+$tmp = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [IO.Path]::GetTempPath() }
+$work = Join-Path $tmp "xpeccy-switch-$PID"
 $inst = Join-Path $work (Split-Path $App -Leaf)
 $cfg = Join-Path $work 'config'
 $logs = Join-Path $work 'log'
@@ -73,8 +75,8 @@ try {
 	"[GENERAL]`nport = $Port`nupdate.last = 1`n" | Set-Content (Join-Path $cfg 'config.conf')
 	if ($Self) { $env:XPECCY_UPDATE_SELF = $Self }
 	$p = Start-Process $exe -ArgumentList $base -PassThru
-	$null = Wait-Port 30
 	$mine.Add($p.Id)
+	$null = Wait-Port 30
 	# the first line says what is asked, the next what came of it
 	for ($i = 0; ($i -lt 60) -and -not (@(Log-Lines 'update check') | Where-Object { $_ -notmatch ' channel' }); $i++) { Start-Sleep -Milliseconds 500 }
 	Stop-Mine $p.Id
