@@ -178,14 +178,36 @@ static void neogs_ports(GSound* gs) {
 	check("the classic card leaves #33 alone", !gsWrite(gs, 0x33, 0x80));
 }
 
+// the listener's separation, over the card's own output
+static void separation(GSound* gs) {
+	sndPair a;
+	printf("== separation\n");
+	GSound* fresh = gsCreate();
+	check("75% by default", fresh->sep == 75);
+	gsDestroy(fresh);
+	gs_set_model(gs, GS_NEOGS);
+	gs->cfg0 = 0;
+	gs->sep = 75;
+	a = mix(gs, GS_12_34, ch1top, ch1only);
+	show("75%, ch1 #FF alone", a);
+	check("7/8 on its side, 1/8 on the other", (a.left == 4000 * 175 / 200) && (a.right == 4000 * 25 / 200));
+	gs->sep = 0;
+	a = mix(gs, GS_12_34, ch1top, ch1only);
+	show("0%, ch1 #FF alone", a);
+	check("0% is mono", (a.left == a.right) && (a.left == 2000));
+	gs->sep = 100;
+}
+
 int main(void) {
 	GSound* gs = gsCreate();
 	gs->enable = 1;
+	gs->sep = 100;			// the cards' own outputs
 	classic_mix(gs);
 	gs_set_model(gs, GS_NEOGS);
 	neogs_mix(gs);
 	neogs_map(gs);
 	neogs_ports(gs);
+	separation(gs);
 	gsDestroy(gs);
 	return failures ? 1 : 0;
 }
