@@ -1593,7 +1593,7 @@ void SetupWin::applyMachine() {
 	if (!own) {
 		comp->mouse->hasWheel = ratWheel->isChecked() ? 1 : 0;
 		comp->joy->type = joyBox->currentIndex() ? XJ_KEMPSTON : XJ_NONE;
-		comp->joy->extbuttons = (joyBox->currentIndex() == 2) ? 1 : 0;
+		comp->joy->extbuttons = ((joyBox->currentIndex() == 2) && hw_kempston8(comp->hw)) ? 1 : 0;
 	}
 // flp
 	if (!own) {

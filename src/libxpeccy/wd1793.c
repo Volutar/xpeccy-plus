@@ -598,6 +598,7 @@ void vgExec(FDC* fdc, unsigned char com) {
 	if ((com & 0xf0) == 0xd0) {	// interrupt (doesn't mind about FDC is idle)
 		// printf("INT:%.2X\n",com);
 		fdc->wait = 0;
+		fdc->com = com;		// vgRead: I3 holds INTRQ past a status read
 		vgstp(fdc);
 	} else if (fdc->idle) {		// if FDC is idle
 		fdc->com = com;
@@ -656,7 +657,9 @@ unsigned char vgRead(FDC* fdc, int adr) {
 				if (fdc->drq) fdc->state |= 0x02;
 			}
 			res = fdc->state;
-			fdc->irq = 0;		// a status read resets INTRQ (179x datasheet)
+			// a status read resets INTRQ (179x datasheet), but not the one an
+			// immediate Force Interrupt (I3) holds
+			if ((fdc->com & 0xf8) != 0xd8) fdc->irq = 0;
 //			printf("in 1F = %.2X\n",res);
 			break;
 		case FDC_TRK:
