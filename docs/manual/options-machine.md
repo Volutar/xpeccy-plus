@@ -241,13 +241,15 @@ samples for the programs written for it. The row puts one in the machine:
   on the card, and each side carries some of the other;
 - **NeoGS** - the card NedoPC makes today: up to 8 channels, 4 MB of memory, no clicks,
   and its own firmware. Programs written for the NeoGS find it. Its SD card slot and MP3
-  chip are not there yet.
+  chip are not there yet. The ZX Evolution machines come with one.
 
 The {icon}`settings` gear opens **Machine: General Sound**:
 
 - **ROM** - the card's own: the Original's ROM of this machine, or the NeoGS flash image,
   which every machine shares; another NeoGS image starts the card afresh. Picked from
   the list or from a file with the {icon}`fileopen` folder button;
+- **Separation** - how far apart the two sides are, as for the PSG: at 100% each card
+  sounds as its own circuit mixes it, at 0% it is mono. 75% at first;
 - **Reset** - the card is reset together with the machine.
 
 ### SAA1099
