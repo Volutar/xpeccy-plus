@@ -1,8 +1,9 @@
-// The update check's logic over saved GitHub answers (data/, fetched 2026-10-27) and
-// changelogs: update-check <data dir> <CHANGELOG.md>
+// The update check's logic over saved GitHub answers (data/: fetched 2026-10-27,
+// nightly-20261110.json 2026-11-11) and changelogs: update-check <data dir> <CHANGELOG.md>
 
 #include <QCryptographicHash>
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -438,6 +439,125 @@ static void test_apply() {
 	CHECK(!QFileInfo::exists(app + "/Qt.dll.old") && !QFileInfo::exists(app + "/" UP_LEFT));
 }
 
+// --- an x64 build on an ARM64 machine: the native build wanted ---
+
+#define NIGHTLY_1110_SHA "0d02dcdb4f21831890fa018dfdfe9f55ed975de3"
+
+static void test_native(const QString& dir) {
+	CHECK(up_native_package("win-x64", true) == "win-arm64");
+	CHECK(up_native_package("win-x64-legacy", true) == "win-arm64");
+	CHECK(up_native_package("win-x86-legacy", true) == "win-arm64");
+	CHECK(up_native_package("win-arm64", true) == "win-arm64");
+	CHECK(up_native_package("win-x64", false) == "win-x64");
+	CHECK(up_native_package("win-x86-legacy", false) == "win-x86-legacy");
+	CHECK(up_native_package("macos-arm64", true) == "macos-arm64");
+	CHECK(up_native_package("linux-x86_64", true) == "linux-x86_64");
+	CHECK(up_native_package("", true).isEmpty());
+
+	// the nightly of 2026-11-10 has win-arm64; 2026.8.2 is from before it
+	QByteArray nightly = load(dir + "/nightly-20261110.json");
+	QByteArray latest = load(dir + "/latest-2026.8.2.json");
+	upRelease n = up_parse_native(nightly, "win-x64", "win-arm64");
+	CHECK(n.ok && n.native && n.nightly);
+	CHECK(n.asset.name == "xpeccy-plus-2026.10-dev+20261110-win-arm64.zip");
+	CHECK(n.asset.sha256.size() == 64);
+	upRelease o = up_parse_native(nightly, "win-x64", "win-x64");
+	CHECK(o.ok && !o.native && (o.asset.name == "xpeccy-plus-2026.10-dev+20261110-win-x64.zip"));
+	upRelease x86 = up_parse_native(nightly, "win-x86-legacy", "win-arm64");
+	CHECK(x86.ok && x86.native && (x86.asset.name == n.asset.name));
+	// no native file in it: the build's own, as before
+	upRelease l = up_parse_native(latest, "win-x64", "win-arm64");
+	CHECK(l.ok && !l.native && l.asset.name.endsWith("-win-x64.zip"));
+	CHECK(!up_parse_native("", "win-x64", "win-arm64").ok);
+	CHECK(!up_parse_native("{\"message\":\"API rate limit exceeded\"}", "win-x64", "win-arm64").native);
+
+	// this very nightly as the native build: a switch, no update
+	upBuild self = dev("2026.10", 20261110, NIGHTLY_1110_SHA);
+	QList<upRelease> list = QList<upRelease>() << l << n;
+	CHECK(up_pick(list, self) == -1);
+	CHECK(up_pick_same(list, self) == 1);
+	// its own file only: nothing to switch to
+	CHECK(up_pick_same(QList<upRelease>() << l << o, self) == -1);
+	// the same day from another commit, maybe an earlier one: no switch
+	CHECK(up_pick_same(list, dev("2026.10", 20261110, OTHER_SHA)) == -1);
+	// an older build: an update (which brings the native file), not a switch
+	upBuild older = dev("2026.10", 20261101, OTHER_SHA);
+	CHECK(up_pick(list, older) == 1);
+	CHECK(up_pick_same(list, older) == -1);
+	// a release, the same as this one
+	upRelease r = answer(rel("2026.10"));
+	r.native = true;
+	r.asset.url = "https://example.invalid/x.zip";
+	CHECK(up_pick_same(QList<upRelease>() << r, rel("2026.10")) == 0);
+	CHECK(up_pick_same(QList<upRelease>() << r, rel("2026.10.1")) == -1);
+	CHECK(up_pick_same(QList<upRelease>() << r, dev("2026.10", 20261110)) == -1);
+	r.asset.url.clear();
+	CHECK(up_pick_same(QList<upRelease>() << r, rel("2026.10")) == -1);
+}
+
+#define ARM_STAGE "update.new/xpeccy-plus-2.0-win-arm64"
+
+// an x64 install of 2.0, and the arm64 build of 2.0 unpacked beside it: other runtime
+// DLLs, other plugins, licenses
+static void make_native_trees(const QString& app) {
+	QDir(app).removeRecursively();
+	const char* rows[][2] = {{"xpeccy-plus.exe", "exe x64"}, {"Qt6Core.dll", "qt x64"},
+		{"libstdc++-6.dll", "stdc++"}, {"libgcc_s_seh-1.dll", "gcc"}, {"styles/qwindowsvistastyle.dll", "vista"},
+		{"config/keymaps/a.map", "a 1"}, {"config/keymaps/b.map", "b 1"}};
+	QByteArray man;
+	for (auto& row : rows) {
+		put(app + "/" + row[0], row[1]);
+		man += sha(row[1]).toLatin1() + "  " + row[0] + "\n";
+	}
+	put(app + "/manifest.sha256", man);
+	put(app + "/config/keymaps/b.map", "b user");
+	put(app + "/config/config.conf", "settings");
+	QString st = app + "/" ARM_STAGE;
+	put(st + "/xpeccy-plus.exe", "exe arm64");
+	put(st + "/Qt6Core.dll", "qt arm64");
+	put(st + "/libc++.dll", "c++");
+	put(st + "/styles/qmodernwindowsstyle.dll", "modern");
+	put(st + "/licenses/packages.txt", "list");
+	put(st + "/config/keymaps/a.map", "a 1");
+	put(st + "/config/keymaps/b.map", "b 1");
+	put(st + "/manifest.sha256", "arm64's");
+}
+
+static void test_apply_native() {
+	QTemporaryDir tmp;
+	QString app = tmp.path() + "/Xpeccy";
+	make_native_trees(app);
+	QList<upStep> plan = up_plan(app, app + "/" ARM_STAGE);
+	CHECK(plan_text(plan) == "replace Qt6Core.dll, add libc++.dll, add licenses/packages.txt, replace manifest.sha256, "
+		"add styles/qmodernwindowsstyle.dll, replace xpeccy-plus.exe, drop libgcc_s_seh-1.dll, drop libstdc++-6.dll, "
+		"drop styles/qwindowsvistastyle.dll");
+	QString err;
+	CHECK(up_apply(app, app + "/" ARM_STAGE, "2.0", plan, &err));
+	CHECK(up_resume(app).state == UPR_DONE);
+	QStringList files;
+	QDirIterator it(app, QDir::Files, QDirIterator::Subdirectories);
+	while (it.hasNext()) files.append(QDir(app).relativeFilePath(it.next()));
+	files.sort();
+	CHECK(files.join(", ") == "Qt6Core.dll, config/config.conf, config/keymaps/a.map, config/keymaps/b.map, "
+		"libc++.dll, licenses/packages.txt, manifest.sha256, styles/qmodernwindowsstyle.dll, xpeccy-plus.exe");
+	CHECK(get(app + "/xpeccy-plus.exe") == "exe arm64");
+	CHECK(get(app + "/config/keymaps/b.map") == "b user");
+	CHECK(get(app + "/config/config.conf") == "settings");
+
+	// cut short half way: the x64 install back as it was. For a switch this tests up_resume()
+	// alone: an x64 exe beside ARM64 Qt DLLs fails to load (0xC000007B) before main(), so the
+	// rollback never runs there - the window is milliseconds. A same-kind update cut short
+	// is rolled back by this same code
+	make_native_trees(app);
+	plan = up_plan(app, app + "/" ARM_STAGE);
+	CHECK(!up_apply(app, app + "/" ARM_STAGE, "2.0", plan, &err, 6));
+	upResume res = up_resume(app);
+	CHECK(res.state == UPR_UNDONE && res.failed.isEmpty());
+	CHECK(get(app + "/xpeccy-plus.exe") == "exe x64" && get(app + "/libstdc++-6.dll") == "stdc++");
+	CHECK(get(app + "/styles/qwindowsvistastyle.dll") == "vista" && !QFileInfo::exists(app + "/libc++.dll"));
+	CHECK(!QFileInfo::exists(app + "/licenses/packages.txt"));
+}
+
 int main(int argc, char** argv) {
 	if (argc < 3) {
 		printf("usage: update-check <data dir> <CHANGELOG.md>\n");
@@ -449,6 +569,8 @@ int main(int argc, char** argv) {
 	test_pick();
 	test_whats_new(argv[2]);
 	test_apply();
+	test_native(argv[1]);
+	test_apply_native();
 	printf("%d checks, %d failed\n", checks, fails);
 	return fails ? 1 : 0;
 }

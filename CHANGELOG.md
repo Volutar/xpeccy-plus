@@ -12,8 +12,11 @@ before that point is upstream's history and is not repeated here.
 ### Added
 
 - **A build for Windows 11 on ARM** (`win-arm64`), for computers with Snapdragon and other
-  ARM64 chips: it runs natively, about 1.7 times as fast as the x64 build does there.
+  ARM64 chips: it runs natively, 1.5 to 2 times as fast as the x64 build does there.
   *(thanks to Loccy for the way to build it, a fix and the test on his Surface)*
+- **An x64 build on Windows 11 on ARM moves to the native one**: its update brings the
+  `win-arm64` build, and with no new version the check offers that build of yours once
+  (Help > Check for Updates every time).
 - **Screenshots at the machine's own size**: Scale x1, now the default, saves 256×192 for the
   screen, or with as much border as the Border slider shows, however big the window is. Scale
   x2-x4 are in Options > Video too, and Source: Screen takes the picture as the window shows

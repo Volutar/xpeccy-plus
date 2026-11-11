@@ -41,6 +41,7 @@ struct upRelease {
 	QString body;		// Markdown
 	QString page;		// the release's page
 	upAsset asset;		// this build's package; url empty when it has none
+	bool native = false;	// the asset is the native package (up_native_package), not this one's
 };
 
 // "2026.9" against "2026.10": <0, 0, >0
@@ -59,8 +60,19 @@ bool up_compare_ahead(const QByteArray& json);
 // a releases/latest or releases/tags/nightly answer; package is this build's (XPACKAGE),
 // empty for none
 upRelease up_parse(const QByteArray& json, const QString& package);
+// The package a Windows build under emulation on an ARM64 host is better off with:
+// win-arm64 for the x64 and the legacy ones there (the caller asks it on Windows 11 only,
+// so Qt 6 starts),
+// the build's own package anywhere else
+QString up_native_package(const QString& package, bool arm64Host);
+// up_parse for the native package where the release has its file (native set), else for
+// this build's own
+upRelease up_parse_native(const QByteArray& json, const QString& own, const QString& native);
 // of the answers, the newest that is newer than self; -1 for none
 int up_pick(const QList<upRelease>& list, const upBuild& self);
+// of the answers, one that is this very build, with the native file: a switch to the
+// native package at the same version; -1 for none
+int up_pick_same(const QList<upRelease>& list, const upBuild& self);
 // the default channel of a build
 int up_default_channel(const upBuild& self);
 

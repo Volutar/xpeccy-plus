@@ -122,6 +122,32 @@ upRelease up_parse(const QByteArray& json, const QString& package) {
 	return rel;
 }
 
+QString up_native_package(const QString& package, bool arm64Host) {
+	if (arm64Host && ((package == "win-x64") || (package == "win-x64-legacy") || (package == "win-x86-legacy")))
+		return "win-arm64";
+	return package;
+}
+
+upRelease up_parse_native(const QByteArray& json, const QString& own, const QString& native) {
+	if (native != own) {
+		upRelease rel = up_parse(json, native);
+		if (!rel.ok || !rel.asset.url.isEmpty()) {
+			rel.native = rel.ok;
+			return rel;
+		}
+	}
+	return up_parse(json, own);
+}
+
+int up_pick_same(const QList<upRelease>& list, const upBuild& self) {
+	for (int i = 0; i < list.size(); i++) {
+		const upRelease& rel = list[i];
+		if (rel.ok && rel.native && !rel.asset.url.isEmpty() && (up_build_cmp(rel.build, self) == 0) && !up_newer(rel.build, self))
+			return i;
+	}
+	return -1;
+}
+
 int up_pick(const QList<upRelease>& list, const upBuild& self) {
 	int best = -1;
 	for (int i = 0; i < list.size(); i++) {

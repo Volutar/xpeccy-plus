@@ -143,6 +143,12 @@ old one when you quit.
 - A build is updated only to one of its own kind: x64 to x64, `arm64` to `arm64`, and
   each `legacy` file to itself. To change, download the other file. When a new version has no file named
   like yours, the window says so and offers the release page.
+- On Windows 11 on ARM, an x64 or `legacy` build runs under emulation, and updates to the
+  native `arm64` build instead: it runs 1.5 to 2 times as fast there. When there is no new
+  version, the check offers the `arm64` build of the version you have, once; **Help > Check
+  for Updates...** offers it every time. **Switch** puts it in place as an update does.
+  **Don't Ask Again**, in the switch's window or an update's, keeps your build: its updates stay
+  of its kind, and only **Help > Check for Updates...** offers the switch.
 - When the program's folder cannot be written to (`Program Files`), **Download** is offered
   instead.
 - The AppImage is replaced by the new one.
