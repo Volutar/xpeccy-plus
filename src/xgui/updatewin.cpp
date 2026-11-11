@@ -13,6 +13,7 @@
 #include <QGridLayout>
 #include <QLabel>
 #include <QMessageBox>
+#include <QOperatingSystemVersion>
 #include <QPointer>
 #include <QProcess>
 #include <QProgressBar>
@@ -70,8 +71,9 @@ static QString upd_name() {
 	return self.release ? self.base : QString("%0-dev+%1").arg(self.base).arg(self.date);
 }
 
-// Windows on an ARM64 machine, where an x64 or x86 build runs under emulation - and is
-// told by GetNativeSystemInfo (and QSysInfo) that the machine is its own kind
+// Windows 11 on an ARM64 machine, where an x64 or x86 build runs under emulation - and is
+// told by GetNativeSystemInfo (and QSysInfo) that the machine is its own kind. Windows 10
+// on ARM is left alone: it runs x86 builds, and win-arm64 is made for 11
 static bool upd_arm64_host() {
 	static int host = -1;
 	if (host < 0) {
@@ -86,18 +88,21 @@ static bool upd_arm64_host() {
 			wowFn fn = reinterpret_cast<wowFn>(reinterpret_cast<void*>(GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "IsWow64Process2")));
 			USHORT proc = 0, native = 0;
 			if (fn && fn(GetCurrentProcess(), &proc, &native)) host = (native == 0xAA64);	// IMAGE_FILE_MACHINE_ARM64
+			if (QOperatingSystemVersion::current().microVersion() < 22000) host = 0;		// Windows 11's first build
 #endif
 		}
 	}
 	return host;
 }
 
-// the file a check looks for: the native build's where this one is emulated, unless the
-// user keeps this kind - which a check asked for from the menu does not hold to
-static QString upd_package(bool manual) {
-	QString own = XPACKAGE;
-	if (!manual && (conf.upd.native == UPN_NO)) return own;
-	return up_native_package(own, upd_arm64_host());
+// the native build's package where this one is emulated, else this one's
+static QString upd_native() {
+	return up_native_package(XPACKAGE, upd_arm64_host());
+}
+
+// the file an update brings: the native build's, unless the user keeps this kind
+static QString upd_package() {
+	return (conf.upd.native == UPN_NO) ? QString(XPACKAGE) : upd_native();
 }
 
 // "x64", "x86": the machine this build is made for, as its package names it
@@ -306,13 +311,13 @@ void xUpdateRun::got(const QString& file) {
 	}
 	// a Qt 5 build is the one for Windows 7 and 8.1, where Qt 6 does not start: an update
 	// never moves an install from one Qt to the other, whatever the file was called - but
-	// for the native build on an ARM64 machine, Windows 10 or 11 there
+	// for the native build offered on an ARM64 machine, Windows 11 there
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
 	static const int qtOwn = 6, qtOther = 5;
 #else
 	static const int qtOwn = 5, qtOther = 6;
 #endif
-	bool native = upd_arm64_host() && QFileInfo(root).fileName().endsWith("-win-arm64");
+	bool native = (rel.native || !zip.isEmpty()) && upd_arm64_host() && QFileInfo(root).fileName().endsWith("-win-arm64");
 	if (ok && !native && QFileInfo::exists(QString("%0/Qt%1Core.dll").arg(root).arg(qtOther))) {
 		ok = false;
 		err = tr("the archive is a Qt %0 build and this one is Qt %1 - download the file for your system from the release page").arg(qtOther).arg(qtOwn);
@@ -485,7 +490,7 @@ xUpdateWin::xUpdateWin(QWidget* p, const upRelease& r, const QString& news, bool
 		btnGet = web;
 	}
 	box->addButton(tr("Later"), QDialogButtonBox::RejectRole);
-	// the user keeps this kind: no start's check offers the native build again
+	// the user keeps this kind: updates are of it, and no start's check offers the switch again
 	if (same) {
 		QPushButton* btnNo = box->addButton(tr("Don't Ask Again"), QDialogButtonBox::ActionRole);
 		connect(btnNo, &QPushButton::clicked, this, [this]() {
@@ -519,6 +524,7 @@ struct updCheck {
 	QList<upRelease> answers;
 	upRelease pick;
 	bool same = false;			// pick is this build as the native one
+	QList<upRelease> natives;		// the answers for the native package, where it is not this one's
 	std::unique_ptr<xDownload> cmp;		// compare/<this>...<picked>, for a nightly of this build's day
 	std::unique_ptr<xDownload> log;		// the picked build's CHANGELOG.md
 };
@@ -560,7 +566,8 @@ static void upd_news();
 static void upd_answered() {
 	updCheck* chk = updNow;
 	QString own = XPACKAGE;
-	QString package = upd_package(chk->manual);
+	QString package = upd_package();
+	QString native = upd_native();
 	QString error;
 	bool any = false;
 	for (int i = 0; i < 2; i++) {
@@ -574,6 +581,7 @@ static void upd_answered() {
 			error = rel.error;
 		}
 		chk->answers.append(rel);
+		if ((native != own) && (st.state == DL_DONE)) chk->natives.append(up_parse_native(chk->dl[i]->data(), own, native));
 	}
 	// nothing learnt: a later start tries again
 	if (!any) {
@@ -609,10 +617,10 @@ static void upd_answered() {
 static void upd_newest() {
 	updCheck* chk = updNow;
 	// this very build as the native one: offered once by a start's check, always when asked
-	int idx = up_pick_same(chk->answers, upd_self());
-	if ((idx >= 0) && (chk->manual || (conf.upd.native == UPN_ASK))) {
+	int idx = up_pick_same(chk->natives, upd_self());
+	if ((idx >= 0) && chk->main && (chk->manual || (conf.upd.native == UPN_ASK))) {
 		if (!chk->manual) conf.upd.native = UPN_ASKED;
-		chk->pick = chk->answers[idx];
+		chk->pick = chk->natives[idx];
 		chk->same = true;
 		upd_show(QString());
 		return;
@@ -651,7 +659,7 @@ static void upd_start(QWidget* main, bool manual) {
 	updNow->channel = upd_channel();
 	QString what[2] = {UP_API "latest", UP_API "tags/nightly"};
 	int count = (updNow->channel == UP_DEV) ? 2 : 1;
-	QString pkg = upd_package(manual);
+	QString pkg = upd_native();
 	xlog(XLG_NET, XLL_INFO, "update check: %s, %s channel%s%s", qPrintable(upd_name()),
 		(updNow->channel == UP_DEV) ? "development" : "releases", manual ? ", asked" : "",
 		(pkg != XPACKAGE) ? qPrintable(QString(", ARM64 machine: %0 wanted").arg(pkg)) : "");

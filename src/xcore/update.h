@@ -61,7 +61,8 @@ bool up_compare_ahead(const QByteArray& json);
 // empty for none
 upRelease up_parse(const QByteArray& json, const QString& package);
 // The package a Windows build under emulation on an ARM64 host is better off with:
-// win-arm64 for the x64 and the legacy ones there (Windows 10 or 11, so Qt 6 starts),
+// win-arm64 for the x64 and the legacy ones there (the caller asks it on Windows 11 only,
+// so Qt 6 starts),
 // the build's own package anywhere else
 QString up_native_package(const QString& package, bool arm64Host);
 // up_parse for the native package where the release has its file (native set), else for
