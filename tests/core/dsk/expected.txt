@@ -110,9 +110,11 @@
   seek done: 1
   status read: 0
   #D0 after a seek: 0
+  seek running: busy 1
+  #D0 during it: 0, busy 0
   #D8: 1
   #D8, status read: 1
-  #D0 after #D8: 0
+  #D8, #D0, status read: 0
 == format/sc11
   IDs taken 11 of 11, result 00 00 00
   Read ID: 00 00 00 - 03 00 01 02

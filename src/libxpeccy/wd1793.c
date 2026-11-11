@@ -602,6 +602,7 @@ void vgExec(FDC* fdc, unsigned char com) {
 		// printf("INT:%.2X\n",com);
 		fdc->wait = 0;
 		fdc->com = com;		// vgRead: I3 holds INTRQ past a status read
+		fdc->irq = (com & 0x0f) ? 1 : 0;	// the write resets it, a condition raises it
 		vgstp(fdc);
 	} else if (fdc->idle) {		// if FDC is idle
 		fdc->com = com;
