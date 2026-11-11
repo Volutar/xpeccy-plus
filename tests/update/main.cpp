@@ -1,5 +1,5 @@
-// The update check's logic over saved GitHub answers (data/, fetched 2026-10-27; the 2026-11-10 nightly 2026-11-11) and
-// changelogs: update-check <data dir> <CHANGELOG.md>
+// The update check's logic over saved GitHub answers (data/: fetched 2026-10-27,
+// nightly-20261110.json 2026-11-11) and changelogs: update-check <data dir> <CHANGELOG.md>
 
 #include <QCryptographicHash>
 #include <QDir>
@@ -544,7 +544,10 @@ static void test_apply_native() {
 	CHECK(get(app + "/config/keymaps/b.map") == "b user");
 	CHECK(get(app + "/config/config.conf") == "settings");
 
-	// cut short half way: the x64 install back as it was
+	// cut short half way: the x64 install back as it was. For a switch this tests up_resume()
+	// alone: an x64 exe beside ARM64 Qt DLLs fails to load (0xC000007B) before main(), so the
+	// rollback never runs there - the window is milliseconds. A same-kind update cut short
+	// is rolled back by this same code
 	make_native_trees(app);
 	plan = up_plan(app, app + "/" ARM_STAGE);
 	CHECK(!up_apply(app, app + "/" ARM_STAGE, "2.0", plan, &err, 6));

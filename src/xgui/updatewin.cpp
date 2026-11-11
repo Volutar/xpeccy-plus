@@ -83,12 +83,13 @@ static bool upd_arm64_host() {
 			host = (test == "arm64");
 		} else {
 #ifdef _WIN32
-			// Windows 10 and later; Windows 7 has none, nor an ARM64 machine
-			typedef BOOL (WINAPI *wowFn)(HANDLE, USHORT*, USHORT*);
-			wowFn fn = reinterpret_cast<wowFn>(reinterpret_cast<void*>(GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "IsWow64Process2")));
-			USHORT proc = 0, native = 0;
-			if (fn && fn(GetCurrentProcess(), &proc, &native)) host = (native == 0xAA64);	// IMAGE_FILE_MACHINE_ARM64
-			if (QOperatingSystemVersion::current().microVersion() < 22000) host = 0;		// Windows 11's first build
+			// IsWow64Process2: Windows 10 and later; 22000 is Windows 11's first build
+			if (QOperatingSystemVersion::current().microVersion() >= 22000) {
+				typedef BOOL (WINAPI *wowFn)(HANDLE, USHORT*, USHORT*);
+				wowFn fn = reinterpret_cast<wowFn>(reinterpret_cast<void*>(GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "IsWow64Process2")));
+				USHORT proc = 0, native = 0;
+				if (fn && fn(GetCurrentProcess(), &proc, &native)) host = (native == 0xAA64);	// IMAGE_FILE_MACHINE_ARM64
+			}
 #endif
 		}
 	}
@@ -490,12 +491,16 @@ xUpdateWin::xUpdateWin(QWidget* p, const upRelease& r, const QString& news, bool
 		btnGet = web;
 	}
 	box->addButton(tr("Later"), QDialogButtonBox::RejectRole);
-	// the user keeps this kind: updates are of it, and no start's check offers the switch again
-	if (same) {
+	// the user keeps this kind: updates are of it, and no start's check offers the switch again;
+	// an update that brought the native build is looked for again as this build's own kind
+	if (same || rel.native) {
 		QPushButton* btnNo = box->addButton(tr("Don't Ask Again"), QDialogButtonBox::ActionRole);
-		connect(btnNo, &QPushButton::clicked, this, [this]() {
+		btnNo->setObjectName("updNo");
+		connect(btnNo, &QPushButton::clicked, this, [this, same]() {
 			conf.upd.native = UPN_NO;
+			QWidget* main = parentWidget();
 			close();
+			if (!same) upd_check(main);
 		});
 	}
 	btnGet->setObjectName("updGo");
@@ -581,7 +586,9 @@ static void upd_answered() {
 			error = rel.error;
 		}
 		chk->answers.append(rel);
-		if ((native != own) && (st.state == DL_DONE)) chk->natives.append(up_parse_native(chk->dl[i]->data(), own, native));
+		// the same answer unless the user keeps this kind
+		if ((native != own) && (st.state == DL_DONE))
+			chk->natives.append((package == native) ? rel : up_parse_native(chk->dl[i]->data(), own, native));
 	}
 	// nothing learnt: a later start tries again
 	if (!any) {
@@ -660,9 +667,11 @@ static void upd_start(QWidget* main, bool manual) {
 	QString what[2] = {UP_API "latest", UP_API "tags/nightly"};
 	int count = (updNow->channel == UP_DEV) ? 2 : 1;
 	QString pkg = upd_native();
+	QString host;
+	if (pkg != XPACKAGE) host = (conf.upd.native == UPN_NO)
+		? QString(", ARM64 machine: %0 kept").arg(XPACKAGE) : QString(", ARM64 machine: %0 wanted").arg(pkg);
 	xlog(XLG_NET, XLL_INFO, "update check: %s, %s channel%s%s", qPrintable(upd_name()),
-		(updNow->channel == UP_DEV) ? "development" : "releases", manual ? ", asked" : "",
-		(pkg != XPACKAGE) ? qPrintable(QString(", ARM64 machine: %0 wanted").arg(pkg)) : "");
+		(updNow->channel == UP_DEV) ? "development" : "releases", manual ? ", asked" : "", qPrintable(host));
 	updNow->waiting = count;
 	for (int i = 0; i < count; i++) {
 		updNow->dl[i].reset(new xDownload);

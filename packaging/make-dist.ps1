@@ -225,7 +225,7 @@ if ($SysNext -and (Test-Path $sysnextDir)) {
 # gcc can (10 and later): a machine left out of the training loses nothing.
 # clang (qt6-arm64) writes raw counts into a folder of their own, every run of the
 # program adding into one file at its exit; llvm-profdata then makes the profile of
-# them that the build after reads. IR-level instrumentation, the kind made for speed.
+# them that the build after reads.
 if ($Pgo) {
 	if (-not $PgoCard) { $PgoCard = $sysnextDir }
 	if (-not (Test-Path $PgoCard)) { throw "pgo: no card at $PgoCard (packaging\fetch-deps.ps1 -SysNext)" }

@@ -946,8 +946,10 @@ enum {MS_LAST = 0, MS_ASK, MS_THIS, MS_UNSET, MS_RESUME};	// RESUME: the last on
 
 // conf.upd.check; unset takes the build's default (src/xgui/updatewin.cpp)
 enum {UPC_DAY = 0, UPC_WEEK, UPC_NEVER, UPC_UNSET};
-// a build under emulation on an ARM64 host, offered the native one: not yet, once by a
-// start's check, never again (its updates keep its own kind)
+// conf.upd.native, for a build under emulation on an ARM64 host:
+// ASK - a start's check offers the native build of this version;
+// ASKED - offered once; updates still come as the native build;
+// NO - updates keep this build's kind; only the menu's check offers the switch
 enum {UPN_ASK = 0, UPN_ASKED, UPN_NO};
 
 struct xConfig {
