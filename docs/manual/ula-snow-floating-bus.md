@@ -74,7 +74,8 @@ opened or the machine is reset.
 - **Turn Off for This Game** - no snow until a reset or another image. Nothing is saved:
   the machine keeps its setting.
 - **Continue** (or Esc) - the snow stays. The real machine shows it too: the game's author
-  may want to know.
+  may want to know. The snowflake stays too, blinking while the game snows, and goes out
+  when it stops - in a menu without snow, say - to come back with the snow.
 
 Tick **Don't show this again** before either button to have no more of these messages, for
 any game: the snow is shown as before, without a word. **Snow notice** in
