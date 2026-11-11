@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QWidget>
+#include <QPainter>
 #include <QImage>
 #include <QPixmap>
 #include <QElapsedTimer>
@@ -13,12 +14,14 @@
 // Over the picture while the snow notice is up: the picture shaded, snow
 // falling on it, a snowflake sign blinking in the corner. It ticks at the
 // screen's rate (60 Hz at most) only while shown; hidden, it costs nothing.
+// After the notice the window draws the sign alone, with drawSign().
 class xSnowFall : public QWidget {
 	public:
 		xSnowFall(QWidget* parent);
 		void start();
 		void stop();
 		std::function<QPoint()> signAt;	// the sign's top left, asked at every paint
+		void drawSign(QPainter&, QPoint at);	// blinking by the wall clock
 	protected:
 		void paintEvent(QPaintEvent*) override;
 		void timerEvent(QTimerEvent*) override;

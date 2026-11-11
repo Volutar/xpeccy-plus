@@ -106,14 +106,15 @@ void frame_taken() {
 #define SNOW_FRAMES	10
 #define SNOW_WINDOW	100
 static std::atomic<int> snowGen{0};		// bumped per image: a sighting of an older one is dropped
-static std::atomic<int> snowSeen{0};		// generation + 1, 0 none
+static std::atomic<int> snowNow{0};		// generation + 1 while it snows, 0 not
 static int snowWatched = 0;		// the generation the ring counts for
 static unsigned char snowRing[SNOW_WINDOW];
 static int snowPos = 0;
 static int snowCount = 0;
+static int snowFill = 0;		// frames in the ring since it was cleared
 
-int snow_seen() {
-	return snowSeen.exchange(0) == snowGen + 1;
+int snow_now() {
+	return snowNow == snowGen + 1;
 }
 
 void snow_watch_reset() {
@@ -123,6 +124,7 @@ void snow_watch_reset() {
 static void snow_watch_clear() {
 	memset(snowRing, 0, sizeof(snowRing));
 	snowCount = 0;
+	snowFill = 0;
 }
 
 static void snow_frame(Computer* comp) {
@@ -134,19 +136,29 @@ static void snow_frame(Computer* comp) {
 		snowWatched = gen;
 		snow_watch_clear();
 	}
-	if (!conf.led.snowNotice || !comp->flgSNOW || (comp->vid->ula->conttype != CONT_PATA)
-			|| conf.emu.fast || (conf.emu.speed > 1.0) || conf.emu.pause || comp->flgDBG
+	// no snow to see: it does not snow
+	if (!conf.led.snowNotice || !comp->flgSNOW || (comp->vid->ula->conttype != CONT_PATA)) {
+		if (snowFill) snow_watch_clear();
+		snowNow = 0;
+		return;
+	}
+	// not looking: it snows or not as it last did, and is counted afresh after
+	if (conf.emu.fast || (conf.emu.speed > 1.0) || conf.emu.pause || comp->flgDBG
 			|| autostart_busy() || fastload_busy() || rewind_active() || rzx_seeking()
 			|| comp->rzx.play || rzxr_on() || !conf.running) {
-		if (snowCount) snow_watch_clear();
+		if (snowFill) snow_watch_clear();
 		return;
 	}
 	int on = (hits >= SNOW_HITS) ? 1 : 0;
 	snowCount += on - snowRing[snowPos];
 	snowRing[snowPos] = on;
 	snowPos = (snowPos + 1) % SNOW_WINDOW;
-	if (snowCount >= SNOW_FRAMES)
-		snowSeen = gen + 1;
+	if (snowFill < SNOW_WINDOW) snowFill++;
+	if (snowCount >= SNOW_FRAMES) {
+		snowNow = gen + 1;
+	} else if (snowFill == SNOW_WINDOW) {
+		snowNow = 0;		// a whole window with too little
+	}
 }
 
 // 1 when the gui is to be told: it shows the newest copy whenever it gets there

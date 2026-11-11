@@ -389,6 +389,7 @@ class MainWin : public QWidget {
 		QImage leds[leds_count];
 		QImage osdImg[osd_count];
 		int ownSign = osd_none;	// recording or playing: kept out of a video of the window
+		bool snowOwn = false;	// the snow sign, as drawIcons() chose it: kept out too
 		xInputOsd inputOsd;
 		// the snow notice: once per image, over the shaded picture
 		xSnowFall* snowFall;
@@ -400,6 +401,7 @@ class MainWin : public QWidget {
 		void snowNotice();
 		void snowBoxEnd();
 		QPoint snowSignAt();
+		bool snowSignOn();
 		void snowImageIs(const QString&, int src);
 		void snowRestart();
 		struct xIosdItem {QAction* act; int* field; int val;};	// val < 0: a switch

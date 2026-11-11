@@ -218,7 +218,7 @@ void xSnowFall::timerEvent(QTimerEvent* ev) {
 void xSnowFall::paintEvent(QPaintEvent*) {
 	if (devicePixelRatioF() != spriteDpr) makeSprites();	// moved to a screen of another scale
 	QPainter p(this);
-	p.setRenderHint(QPainter::SmoothPixmapTransform, true);		// turned crystals, the 2x sign
+	p.setRenderHint(QPainter::SmoothPixmapTransform, true);		// turned crystals
 	double in = qMin(1.0, clock.nsecsElapsed() / 1e9 / SNOW_FADE_IN);
 	p.fillRect(rect(), QColor(0, 0, 0, (int)(SNOW_SHADE * in)));
 	p.setOpacity(in);
@@ -237,9 +237,16 @@ void xSnowFall::paintEvent(QPaintEvent*) {
 		}
 	}
 	p.setOpacity(1.0);
-	// the sign blinks by the wall clock, as the recording sign does
+	if (signAt) drawSign(p, signAt());
+}
+
+// as the recording sign blinks
+void xSnowFall::drawSign(QPainter& p, QPoint at) {
 	int on = (QDateTime::currentMSecsSinceEpoch() / SNOW_BLINK_MS) & 1;
-	if (signAt) p.drawImage(signAt(), sign[on ? 0 : 1]);
+	p.save();
+	p.setRenderHint(QPainter::SmoothPixmapTransform, true);		// the 2x picture
+	p.drawImage(at, sign[on ? 0 : 1]);
+	p.restore();
 }
 
 #define QUIET_GAP	12		// px at least between the check box and the first button
