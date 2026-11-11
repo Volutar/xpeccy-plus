@@ -18,6 +18,7 @@ class xSnowFall : public QWidget {
 		xSnowFall(QWidget* parent);
 		void start();
 		void stop();
+		std::function<QPoint()> signAt;	// the sign's top left, asked at every paint
 	protected:
 		void paintEvent(QPaintEvent*) override;
 		void timerEvent(QTimerEvent*) override;
@@ -48,5 +49,6 @@ class xSnowFall : public QWidget {
 };
 
 // The notice itself: a message and the choice, not modal - the game runs on
-// under it. off() is called for "Turn Off for This Game"; more is the manual.
-QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<void()> off);
+// under it. off() is called for "Turn Off for This Game"; never() when it ends
+// with "Don't show this again" ticked, however it ends; more is the manual.
+QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<void()> off, std::function<void()> never);

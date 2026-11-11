@@ -4,6 +4,9 @@
 #include <QPainterPath>
 #include <QRadialGradient>
 #include <QPushButton>
+#include <QCheckBox>
+#include <QLabel>
+#include <QTimer>
 #include <QResizeEvent>
 #include <QScreen>
 #include <QDateTime>
@@ -17,8 +20,6 @@
 #define SNOW_MAX	1400
 #define SNOW_HZ_MAX	60		// a tick redraws the whole window in software: no need for more
 #define SNOW_BLINK_MS	500		// as the recording sign
-#define SNOW_SIGN_X	32		// right of the LED column
-#define SNOW_SIGN_Y	10
 
 // per layer, far to near: size, fall speed (px/s), how much wind it takes,
 // how bright, its share of the flakes
@@ -238,12 +239,73 @@ void xSnowFall::paintEvent(QPaintEvent*) {
 	p.setOpacity(1.0);
 	// the sign blinks by the wall clock, as the recording sign does
 	int on = (QDateTime::currentMSecsSinceEpoch() / SNOW_BLINK_MS) & 1;
-	p.drawImage(QPointF(SNOW_SIGN_X, SNOW_SIGN_Y), sign[on ? 0 : 1]);
+	if (signAt) p.drawImage(signAt(), sign[on ? 0 : 1]);
 }
 
-QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<void()> off) {
-	QMessageBox* box = new QMessageBox(parent);
+#define QUIET_GAP	12		// px at least between the check box and the first button
+
+// The check box placed by hand on the buttons' row, at the text's left edge; its own row if it would touch a button.
+class xSnowBox : public QMessageBox {
+	public:
+		xSnowBox(QWidget* parent) : QMessageBox(parent) {}
+		void setQuiet(QCheckBox* box, QAbstractButton* beside) {
+			quiet = box;
+			level = beside;
+			text = findChild<QLabel*>("qt_msgbox_label");
+			QWidget* bar = level->parentWidget();
+			if (!text || !bar || !isAncestorOf(bar)) {
+				setCheckBox(quiet);		// not the box known: its own row, as Qt does it
+				quiet = nullptr;
+				return;
+			}
+			for (QObject* o : {(QObject*)level, (QObject*)bar, (QObject*)text})
+				o->installEventFilter(this);
+			placeQuiet();
+		}
+	protected:
+		bool eventFilter(QObject* obj, QEvent* ev) override {
+			QEvent::Type t = ev->type();
+			if ((t == QEvent::Move) || (t == QEvent::Resize) || (t == QEvent::Show)) placeQuiet();
+			return QMessageBox::eventFilter(obj, ev);
+		}
+	private:
+		QCheckBox* quiet = nullptr;
+		QAbstractButton* level = nullptr;
+		QLabel* text = nullptr;
+		bool judging = false;
+		void placeQuiet() {
+			if (!quiet) return;
+			QSize sz = quiet->sizeHint();
+			int x = text->mapTo(this, QPoint(0, 0)).x();
+			int y = level->mapTo(this, QPoint(0, 0)).y() + (level->height() - sz.height()) / 2;
+			quiet->setGeometry(x, y, sz.width(), sz.height());
+			quiet->raise();
+			// judged once the layout settles (showing resizes the box after its children
+			// moved), and out of the filter, as setCheckBox() lays the box out anew
+			if (isVisible() && !judging) {
+				judging = true;
+				QTimer::singleShot(0, this, [this]() {judging = false; judgeQuiet();});
+			}
+		}
+		void judgeQuiet() {
+			if (!quiet) return;
+			int right = quiet->geometry().right() + QUIET_GAP;
+			for (QAbstractButton* bt : level->parentWidget()->findChildren<QAbstractButton*>(QString(), Qt::FindDirectChildrenOnly)) {
+				if (bt->isHidden() || (right < bt->mapTo(this, QPoint(0, 0)).x())) continue;
+				QCheckBox* cb = quiet;
+				quiet = nullptr;
+				setCheckBox(cb);
+				return;
+			}
+		}
+};
+
+QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<void()> off, std::function<void()> never) {
+	xSnowBox* box = new xSnowBox(parent);
 	box->setAttribute(Qt::WA_DeleteOnClose);
+#if QT_VERSION >= QT_VERSION_CHECK(6,6,0)
+	box->setOption(QMessageBox::Option::DontUseNativeDialog);	// a native one (macOS) would drop the check box
+#endif
 	box->setModal(false);
 	box->setIcon(QMessageBox::Information);
 	box->setWindowTitle("ULA snow");
@@ -269,8 +331,16 @@ QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<vo
 	btOff->setMinimumHeight(btGo->sizeHint().height());		// the icon makes it taller: both one height
 	box->setDefaultButton(btGo);
 	box->setEscapeButton(btGo);
+	// the notice only, not the snow: unticked by default
+	QCheckBox* quiet = new QCheckBox("Don't show this again", box);
+	quiet->setToolTip("Options > Appearance can turn it back on");
+	box->setQuiet(quiet, btOff);
 	QObject::connect(box, &QMessageBox::buttonClicked, box, [btOff, off](QAbstractButton* bt) {
 		if (bt == btOff) off();
+	});
+	// both buttons, Esc and the title bar's close all finish it
+	QObject::connect(box, &QDialog::finished, box, [quiet, never]() {
+		if (quiet->isChecked()) never();
 	});
 	return box;
 }

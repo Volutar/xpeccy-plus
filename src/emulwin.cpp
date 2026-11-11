@@ -404,6 +404,7 @@ MainWin::MainWin(QMainWindow* frm) {
 	// setAutoFillBackground(false);
 	paintOwed = 0;
 	snowFall = new xSnowFall(this);
+	snowFall->signAt = [this]() {return snowSignAt();};
 	conf.emu.pause = 0;
 	scrCounter = 0;
 	scrInterval = 0;
@@ -1830,6 +1831,7 @@ bool MainWin::recStart(const QString& file) {
 #define MODE_ICON_TOP	22	// below the fps readout
 #define MODE_ICON_TOP_NOFPS	5	// with no fps readout to clear
 #define MODE_ICON_RIGHT	5
+#define SNOW_SIGN_BESIDE_LEDS	32	// the snow sign, clear of the LED column
 #define RW_SECS_LINGER	1500	// ms the rewind's seconds stay up after it
 #define SIGN_FADE_MS	500	// and any other sign
 #define SIGN_FADE_FROM	0.6	// how pale a sign turns as soon as it is over
@@ -2410,6 +2412,7 @@ void MainWin::closeEvent(QCloseEvent* ev) {
 		xm_save_nvram();
 		xm_save_over();		// ...and what the user changed on the machine
 		keepSize();
+		snowBoxEnd();		// a tick in it counts
 		saveConfig();
 #ifdef USENETWORK
 		closeServer();
@@ -3566,7 +3569,7 @@ void MainWin::snowImageIs(const QString& path, int src) {
 	snowImage = path;
 	snowNoted = false;
 	snow_watch_reset();
-	delete snowBox;		// it spoke of the other game
+	snowBoxEnd();		// it spoke of the other game
 	if (xm_snow_held()) {
 		EmuLock lock;
 		xm_snow_hold(conf.zx, 0);
@@ -3574,16 +3577,34 @@ void MainWin::snowImageIs(const QString& path, int src) {
 	}
 }
 
-// A game snows: said once per image, over the shaded picture, while the game
-// runs on. "For this game" is a switch-off of the session, written nowhere.
+// Mirrors the speed sign, or beside the LED column while the settings let it show anything.
+QPoint MainWin::snowSignAt() {
+	Computer* comp = conf.zx;
+	bool osd = !statusBar->isVisible();
+	bool leds = (conf.led.keys && comp && comp->hw->keyp)
+		|| (osd && (conf.led.joy || conf.led.mouse || conf.led.tape || conf.led.disk));
+	return QPoint(leds ? SNOW_SIGN_BESIDE_LEDS : MODE_ICON_RIGHT, modeSlot().top());
+}
+
+// The notice gone without a button: finished, so its tick counts.
+void MainWin::snowBoxEnd() {
+	if (!snowBox) return;
+	snowBox->done(QDialog::Rejected);
+	delete snowBox;
+}
+
+// Once per image, over the shaded picture; "for this game" is never written, "don't show" is.
 void MainWin::snowNotice() {
-	if (snowNoted || snowBox) return;
+	if (!conf.led.snowNotice || snowNoted || snowBox) return;
 	snowNoted = true;
 	snowFall->start();
 	snowBox = snow_notice_box(this, manual_url("ula-snow-floating-bus.html", "when-a-game-snows"), []() {
 		EmuLock lock;
 		xm_snow_hold(conf.zx, 1);
 		x_input_bump();
+	}, []() {
+		conf.led.snowNotice = 0;
+		saveConfig();
 	});
 	// however it goes: the snow with it. The window going away first takes the
 	// connection with it (~MainWin deletes the box itself, while it still stands)
@@ -3938,6 +3959,12 @@ void MainWin::fillPreview() {
 	} else {
 		presentFrame();
 	}
+}
+
+// Options applied: the snow notice is done, its tick not taken over them
+void MainWin::optApplied() {
+	delete snowBox;
+	optResize();
 }
 
 // Apply in the options dialog, with the dialog still open. The border size may

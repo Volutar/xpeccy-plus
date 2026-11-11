@@ -105,19 +105,19 @@ void frame_taken() {
 #define SNOW_HITS	32
 #define SNOW_FRAMES	10
 #define SNOW_WINDOW	100
-static std::atomic<int> snowSeen{0};
-static std::atomic<int> snowAgain{0};		// the gui has a new image: start over
+static std::atomic<int> snowGen{0};		// bumped per image: a sighting of an older one is dropped
+static std::atomic<int> snowSeen{0};		// generation + 1, 0 none
+static int snowWatched = 0;		// the generation the ring counts for
 static unsigned char snowRing[SNOW_WINDOW];
 static int snowPos = 0;
 static int snowCount = 0;
 
 int snow_seen() {
-	return snowSeen.exchange(0);
+	return snowSeen.exchange(0) == snowGen + 1;
 }
 
 void snow_watch_reset() {
-	snowAgain = 1;
-	snowSeen = 0;		// the last image's, not this one's
+	snowGen++;
 }
 
 static void snow_watch_clear() {
@@ -129,8 +129,12 @@ static void snow_frame(Computer* comp) {
 	xm_snow_keep(comp);		// rewind and run-ahead load states that carry their own
 	int hits = comp->snowHits;
 	comp->snowHits = 0;
-	if (snowAgain.exchange(0)) snow_watch_clear();
-	if (!comp->flgSNOW || (comp->vid->ula->conttype != CONT_PATA)
+	int gen = snowGen;
+	if (gen != snowWatched) {
+		snowWatched = gen;
+		snow_watch_clear();
+	}
+	if (!conf.led.snowNotice || !comp->flgSNOW || (comp->vid->ula->conttype != CONT_PATA)
 			|| conf.emu.fast || (conf.emu.speed > 1.0) || conf.emu.pause || comp->flgDBG
 			|| autostart_busy() || fastload_busy() || rewind_active() || rzx_seeking()
 			|| comp->rzx.play || rzxr_on() || !conf.running) {
@@ -142,7 +146,7 @@ static void snow_frame(Computer* comp) {
 	snowRing[snowPos] = on;
 	snowPos = (snowPos + 1) % SNOW_WINDOW;
 	if (snowCount >= SNOW_FRAMES)
-		snowSeen = 1;
+		snowSeen = gen + 1;
 }
 
 // 1 when the gui is to be told: it shows the newest copy whenever it gets there
