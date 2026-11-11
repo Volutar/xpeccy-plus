@@ -1,8 +1,10 @@
 # Keyboard layouts
 
 Every `*.map` file here is one keyboard layout. The emulator lists them by file
-name (Options / Input, and the Keymap menu); `Default` means "no file",
-i.e. the built-in table in `src/xcore/keymap.cpp`.
+name (Options / Input, and the Keymap menu); `ZX Spectrum 128K` means "no file",
+i.e. the built-in table in `src/xcore/keymap.cpp`. A `ZX Spectrum 128K.map` as
+earlier versions shipped it is not listed (that layout is built in now); an edited
+one is listed under its full file name.
 
 A layout only overrides the host keys it mentions; everything else keeps its
 built-in mapping. An override replaces a key's whole sequence, it does not
@@ -39,5 +41,5 @@ extra buttons. Append `*` (`JF*`) to bind the second joystick.
 `LS`/`RS` and `LC`/`RC` are only told apart on Windows and Linux. On macOS both
 Shifts collapse to `LS` and both Ctrl and Cmd collapse to `LC`, so a layout that
 puts Symbol Shift only on the right-hand keys leaves Symbol Shift unreachable
-there. This is why `Default` is what the emulator starts with: it keeps Symbol
-Shift on `LC`.
+there. This is why the built-in `ZX Spectrum 128K` is what the emulator starts
+with: it keeps Symbol Shift on `LC`.

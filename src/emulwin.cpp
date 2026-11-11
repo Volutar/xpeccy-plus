@@ -3873,17 +3873,11 @@ void MainWin::fillUserMenu() {
 	act->setData(RES_POWER);
 	// fill keymaps menu
 	keyMenu->clear();
-	act = keyMenu->addAction("Default");
-	act->setData("");
-	act->setCheckable(true);
-	if (conf.zx) {
-		if (conf.kmapName.empty()) act->setChecked(true);
-		foreach(QString str, xres_list("keymaps", QStringList() << "*.map")) {
-			act = keyMenu->addAction(str);
-			act->setData(str);
-			act->setCheckable(true);
-			act->setChecked(conf.kmapName == std::string(str.toUtf8().data()));
-		}
+	for (const auto& km : keymap_list()) {
+		act = keyMenu->addAction(km.first);
+		act->setData(km.second);
+		act->setCheckable(true);
+		act->setChecked(conf.kmapName == km.second.toUtf8().constData());
 	}
 	// fill shader menu
 	shdMenu->clear();
@@ -3918,6 +3912,12 @@ void MainWin::fillUserMenu() {
 	menu_one_tick(keyMenu);
 	menu_one_tick(shdMenu);
 	menu_one_tick(palMenu);
+	// a switch of its own, out of the layouts' one tick
+	keyMenu->addSeparator();
+	act = keyMenu->addAction("Type PC Symbols");
+	act->setObjectName("typing");
+	act->setCheckable(true);
+	act->setChecked(conf.kbdTyping);
 }
 
 // SLOTS
@@ -4567,6 +4567,11 @@ void MainWin::setTurbo(int idx) {
 
 
 void MainWin::keySelected(QAction* act) {
+	if (act->objectName() == "typing") {
+		conf.kbdTyping = act->isChecked() ? 1 : 0;
+		saveConfig();
+		return;
+	}
 	QString str = act->data().toString();
 	if (str.isEmpty()) {
 		conf.kmapName.clear();

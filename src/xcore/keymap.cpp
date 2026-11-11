@@ -1,6 +1,7 @@
 #include <fstream>
 
 #include <QFile>
+#include <QFileInfo>
 #include <QKeyEvent>
 
 #include <string.h>
@@ -11,6 +12,8 @@
 // KEYMAPS
 
 static keyEntry keyMap[256];			// current keymap (init at start from keyMapInit[]
+
+// The built-in layout is the 128K's (KMAP_BUILTIN): both Shifts CS, both Ctrls SS, ` EDIT, \ EXTEND
 
 // profiextkeys: the Profi xt keyboard, used instead of zxkeys when the host keyboard is grabbed;
 // a letter with bit 7 set is that letter plus EXT (F1-F10, Home, End, PgUp, PgDn, Ins, Del)
@@ -57,8 +60,8 @@ static keyEntry keyMapInit[] = {
 	{"LC",XKEY_LCTRL,{'S',0},{'C',0},{0,0x80},0x11,0x14,0x1d,0},		// TODO
 	{"SPC",XKEY_SPACE,{' ',0},{0,0},{0x20,0x71},0x29,0x29,0x39,0},
 
-	{"RS",XKEY_RSHIFT,{0,0},{'S',0},{0,0},0x59,0x59,0x36,0},
-	{"RC",XKEY_RCTRL,{0,0},{'C',0},{0,0},0x58,0x14e0,0x1de0,0},
+	{"RS",XKEY_RSHIFT,{'C',0},{'S',0},{0,0},0x59,0x59,0x36,0},
+	{"RC",XKEY_RCTRL,{'S',0},{'C',0},{0,0},0x58,0x14e0,0x1de0,0},
 
 	{"LEFT",XKEY_LEFT,{'C','5'},{'C','5'},{0x72,0x3d},0x61,0x6be0,0x4be0,0},
 	{"RIGHT",XKEY_RIGHT,{'C','8'},{'C','8'},{0x73,0x4b},0x6a,0x74e0,0x4de0,0},
@@ -70,7 +73,7 @@ static keyEntry keyMapInit[] = {
 	{"TAB",XKEY_TAB,{'C',' '},{'C','i'},{0x09,0x3b},0x0d,0x0d,0x0f,0},
 	{"[",XKEY_LBRACK,{'S','8'},{'S','y'},{'[',0xd5},0x54,0x54,0x1a,0},
 	{"]",XKEY_RBRACK,{'S','9'},{'S','u'},{']',0xd4},0x5b,0x5b,0x1b,0},
-	{"`",XKEY_TILDA,{'C','S'},{'S','x'},{0x60,0x91},0x0e,0x0e,0x29,0},
+	{"`",XKEY_TILDA,{'C','1'},{'S','x'},{0x60,0x91},0x0e,0x0e,0x29,0},
 	{"\\",XKEY_SLASH,{'S','C'},{'S','d'},{0x2f,0x92},0x5c,0x5d,0x2b,0},		// TODO
 
 	{"PGUP",XKEY_PGUP,{'C','3'},{'m'|0x80,0},{0x75,0x49},0x6f,0x7de0,0x49e0,0},
@@ -84,7 +87,7 @@ static keyEntry keyMapInit[] = {
 	{";",XKEY_DOTCOM,{'S','o'},{'S','o'},{0x3b,0xd2},0x4c,0x4c,0x27,0,{'S','z'}},
 	{"\"",XKEY_APOS,{'S','p'},{'S','7'},{0x27,0xd1},0x52,0x52,0x28,0,{'S','p'}},		// '
 	{"-",XKEY_MINUS,{'S','j'},{'S','j'},{0x2d,0xe4},0x4e,0x4e,0x0c,0,{'S','0'}},
-	{"+",XKEY_EQUAL,{'S','k'},{'S','l'},{0x3d,0xe2},0x44,0x44,0x0d,0,{'S','k'}},		// NOTE
+	{"+",XKEY_EQUAL,{'S','k'},{'S','l'},{0x3d,0xe2},0x55,0x55,0x0d,0,{'S','k'}},		// the = key
 	{",",XKEY_COMMA,{'S','n'},{'S','n'},{0x2c,0xf4},0x41,0x41,0x33,0,{'S','r'}},
 	{".",XKEY_PERIOD,{'S','m'},{'S','m'},{0x2e,0xf3},0x49,0x49,0x34,0,{'S','t'}},
 	{"/",XKEY_BSLASH,{'S','c'},{'S','v'},{0x5c,0x85},0x4a,0x4a,0x35,0,{'S','c'}},
@@ -229,9 +232,44 @@ static void keys_joy_only() {
 	setKey("LS", "JF*");	setKey("LC", "JF*");
 }
 
+// the 128K file shipped before, now built in: none in the settings folder, or one as it was shipped
+static bool kmap_old_128k(const QString& name) {
+	if (name != KMAP_BUILTIN ".map") return false;
+	QFile file(xres_dir("keymaps") + "/" + name);
+	if (!file.open(QFile::ReadOnly)) return true;
+	QString txt = QString::fromUtf8(file.readAll()).remove('\r').trimmed();
+	QString shipped = "`\tC\t1\n\\\tC\tS\nLS\tC\nRS\tC\nLC\tS\nRC\tS";
+	return (txt == shipped) || (txt == shipped + "\nN4\tJL\nN6\tJR\nN8\tJU\nN5\tJD\nN0\tJF");	// with the keypad's Kempston, before 2026.10
+}
+
+// the layouts to pick from: what a list shows, and the file (none for the built-in one)
+QList<QPair<QString, QString>> keymap_list() {
+	QList<QPair<QString, QString>> res;
+	res.append({KMAP_BUILTIN, QString()});
+	foreach(QString nam, xres_list("keymaps", QStringList() << "*.map")) {
+		if (kmap_old_128k(nam)) continue;
+		QString title = QFileInfo(nam).completeBaseName();
+		res.append({(title == KMAP_BUILTIN) ? nam : title, nam});	// an edited 128K file keeps its .map
+	}
+	return res;
+}
+
+// a layout's name as a config or a machine file gives it (UTF-8): Default and the old 128K file are ""
+std::string keymap_name(const std::string& name) {
+	return ((name == "default") || kmap_old_128k(QString::fromUtf8(name.c_str()))) ? std::string() : name;
+}
+
+// the layout gives the key something of its own: a key that is the user's to say
+bool keyRemapped(int id) {
+	keyEntry now = getKeyEntry(id);
+	int i;
+	for (i = 0; (keyMapInit[i].key != ENDKEY) && (keyMapInit[i].key != id); i++);
+	return now.joyMask || memcmp(now.zxKey, keyMapInit[i].zxKey, KEYSEQ_MAXLEN);
+}
+
 static void load_key_file() {
-	if (conf.kmapName.empty() || (conf.kmapName == "default")) return;
-	QFile file(xres_path("keymaps", QString::fromLocal8Bit(conf.kmapName.c_str())));
+	if (conf.kmapName.empty()) return;
+	QFile file(xres_path("keymaps", QString::fromUtf8(conf.kmapName.c_str())));
 	if (!file.open(QFile::ReadOnly)) {
 		xlog(XLG_INPUT, XLL_WARN, "can't open the keyboard layout, using the default one");
 		return;
@@ -434,6 +472,54 @@ int key2qid(int key) {
 	return ktTab[idx].keyLat;
 }
 
+// A Mac's key by its place (kVK_ANSI_*), for the digits and symbols: Qt names them by what the layout typed
+static const struct {
+	unsigned vk;
+	int id;
+} macTab[] = {
+	{0x12, XKEY_1}, {0x13, XKEY_2}, {0x14, XKEY_3}, {0x15, XKEY_4}, {0x17, XKEY_5},
+	{0x16, XKEY_6}, {0x1a, XKEY_7}, {0x1c, XKEY_8}, {0x19, XKEY_9}, {0x1d, XKEY_0},
+	{0x1b, XKEY_MINUS}, {0x18, XKEY_EQUAL}, {0x21, XKEY_LBRACK}, {0x1e, XKEY_RBRACK},
+	{0x2a, XKEY_SLASH}, {0x29, XKEY_DOTCOM}, {0x27, XKEY_APOS}, {0x2b, XKEY_COMMA},
+	{0x2f, XKEY_PERIOD}, {0x2c, XKEY_BSLASH}, {0x32, XKEY_TILDA}
+};
+
+// a Mac's native key code as a key id, 0 for a key Qt's own name tells (qKey2id)
+int macKeyId(unsigned vk) {
+	for (const auto& m : macTab)
+		if (m.vk == vk) return m.id;
+	return 0;
+}
+
+// Typing PC symbols: the symbol keys by their place, the Spectrum keys of their US symbol (Shift: the upper one)
+static const struct {
+	int id;
+	char key;		// with Symbol Shift: the symbol unshifted...
+	char sh;		// ...and with Shift
+} typeTab[] = {
+	{XKEY_DOTCOM, 'o', 'z'},	// ; :
+	{XKEY_APOS, '7', 'p'},		// ' "
+	{XKEY_COMMA, 'n', 'r'},		// , <
+	{XKEY_PERIOD, 'm', 't'},	// . >
+	{XKEY_BSLASH, 'v', 'c'},	// / ?
+	{XKEY_MINUS, 'j', '0'},		// - _
+	{XKEY_EQUAL, 'l', 'k'}		// = +
+};
+
+// the Spectrum keys of the symbol a PC key prints into out (if given); 0 for a key that is no symbol key
+int keyTyped(int id, bool shift, unsigned char* out) {
+	for (const auto& t : typeTab) {
+		if (t.id != id) continue;
+		if (out) {
+			memset(out, 0, KEYSEQ_MAXLEN);
+			out[0] = 'S';
+			out[1] = shift ? t.sh : t.key;
+		}
+		return 1;
+	}
+	return 0;
+}
+
 // shortcuts
 
 // what each action is; its keys come from the preset or Custom (hotkeys_set)
@@ -572,7 +658,7 @@ typedef struct {
 
 // The machine keeps every key it has; the emulator takes the F-keys, the block
 // over the arrows and one modifier that is no ZX key: Alt here, Cmd on a Mac.
-// Ctrl is Symbol Shift, so only what opens a dialog sits on it.
+// Ctrl is Symbol Shift: no key of the emulator's is Ctrl with a Spectrum key.
 #ifdef __APPLE__
 #define HK_MOD Qt::META
 #define HK_MODM Qt::MetaModifier
@@ -675,9 +761,14 @@ static const xCutDef cutClassic[] = {
 };
 
 static const xCutDef cutModern[] = {
-	{XCUT_OPTIONS, {QKeySequence(HK_APP | Qt::Key_Comma)}},
+	{XCUT_OPTIONS, {QKeySequence(HK_MOD | Qt::Key_Comma)}},
+#ifdef __APPLE__
 	{XCUT_SAVE, {QKeySequence(Qt::Key_F2), QKeySequence(HK_APP | Qt::Key_S)}},
 	{XCUT_LOAD, {QKeySequence(Qt::Key_F3), QKeySequence(HK_APP | Qt::Key_O)}},
+#else
+	{XCUT_SAVE, {QKeySequence(Qt::Key_F2)}},
+	{XCUT_LOAD, {QKeySequence(Qt::Key_F3)}},
+#endif
 	{XCUT_SIDE_NEXT, {QKeySequence(Qt::SHIFT | Qt::Key_F3)}},
 	{XCUT_TAPLAY, {QKeySequence(Qt::Key_F4)}},
 	{XCUT_TAPE_START, {QKeySequence(Qt::SHIFT | Qt::Key_F4)}},

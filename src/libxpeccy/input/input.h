@@ -124,7 +124,12 @@ typedef struct {
 	int xtCode;		// set 1
 	int joyMask;
 	unsigned char extShKey[KEYSEQ_MAXLEN];	// profi xt keyboard with Shift held, if it differs
+	unsigned char chKey[KEYSEQ_MAXLEN];	// the symbol the host key typed, if it types one (kbd_ty_press)
+	int chHeld;		// typed with Shift: a Shift reported after it is the same press
 } keyEntry;
+
+#define KBD_TY_MODS	4	// the host's Shift and Ctrl keys
+#define KBD_TY_KEYS	8	// typed keys down at once
 
 typedef struct Keyboard Keyboard;
 
@@ -176,6 +181,10 @@ struct Keyboard {
 	int cbWait;			// ns left before cbKeys go, 0: nothing waits
 	int cbRel;			// cbKeys go up (the shift), else down (the key)
 	unsigned char cbKeys[KEYSEQ_MAXLEN];
+	unsigned char cbThen[KEYSEQ_MAXLEN];	// pressed when cbKeys go up: the host shifts a typed key hid
+	// typing by character: the host's Shift/Ctrl held, and the typed keys down (kbd_ty_*)
+	struct {int key; int hid; unsigned char zx[KEYSEQ_MAXLEN];} tyMod[KBD_TY_MODS];
+	struct {int key; int held; unsigned char zx[KEYSEQ_MAXLEN];} tyKey[KBD_TY_KEYS];
 	// pc keyboard
 	unsigned lock:1;	// ps/2 keyboard disabled
 	int pcmode;		// xt/at/ps2 (self)

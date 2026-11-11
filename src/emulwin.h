@@ -644,7 +644,7 @@ class MainWin : public QWidget {
 		int askRun();
 		int askRunKeep(const QString&);
 
-		void xkey_press(int, bool cmd = false);
+		void xkey_press(int, bool cmd = false, QKeyEvent* ev = nullptr);
 		void xkey_release(int);
 		void xcut_release(int);
 		int mapHotkey(const QKeySequence&, int, Qt::Key*, Qt::KeyboardModifier*);

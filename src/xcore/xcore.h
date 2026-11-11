@@ -693,6 +693,14 @@ int getKeyIdByName(const char*);
 const char* getKeyNameById(int);
 int qKey2id(int, Qt::KeyboardModifiers = Qt::NoModifier);
 int key2qid(int);
+// the built-in layout's name, and the layouts there are besides it
+#define KMAP_BUILTIN "ZX Spectrum 128K"
+#define KMAP_48K "ZX Spectrum 48K.map"
+QList<QPair<QString, QString>> keymap_list();
+int macKeyId(unsigned);
+std::string keymap_name(const std::string&);
+bool keyRemapped(int);
+int keyTyped(int, bool, unsigned char*);
 
 typedef struct {
 	int grp;
@@ -963,7 +971,8 @@ struct xConfig {
 	vLayout layGeom;		// the geometry xm_set_layout() last put on the machine
 	xRomset roms;			// what it loads: its own, that variant, your files
 	std::string palette;		// colour palette file
-	std::string kmapName;		// keyboard layout
+	std::string kmapName;		// keyboard layout, empty for the built-in one (KMAP_BUILTIN)
+	unsigned kbdTyping:1;		// a key types the symbol it prints (keyTyped), else goes by position
 	std::string jmapNameA;		// the .pad an old config names, brought into the table once
 	std::string jmapNameB;
 	std::string lastDir;

@@ -48,7 +48,6 @@
         <file>res/styles/Sublime.qss</file>
         <file>res/styles/ZX Spectrum.pal</file>
         <file>res/styles/ZX Spectrum.qss</file>
-        <file>res/keymaps/ZX Spectrum 128K.map</file>
         <file>res/keymaps/ZX Spectrum 48K.map</file>
         <file>res/help/cond-syntax.html</file>
         <file>res/help/rec-cli.html</file>

@@ -1,5 +1,6 @@
 # Keyboard bench cases: a host key that is a Spectrum combination (. = SS+M, Delete =
-# CS+0) has its shift down before the key and up after it; ours go whole.
+# CS+0) has its shift down before the key and up after it; ours go whole. Typed (Shift+;
+# as :): the host's Shift is hidden while the symbol is down, in any order of the two.
 #
 #   bin  <file in bin/>  <source in asm/>         how mkbins.py assembles it
 #   run  <case>  <file in bin/>  <presses>  [ENV=value ...]
@@ -10,3 +11,15 @@ run  48k-host   poll.bin  20  MACHINE=ZX48 KEYS=host
 run  48k-ours   poll.bin  20  MACHINE=ZX48 KEYS=ours
 run  pent-host  poll.bin  20  MACHINE=Pentagon KEYS=host
 run  next-host  poll.bin  20  MACHINE=ZXNext KEYS=host
+run  48k-typed-first    poll.bin  10  MACHINE=ZX48 KEYS=typed ORDER=first
+run  48k-typed-late     poll.bin  10  MACHINE=ZX48 KEYS=typed ORDER=late
+run  48k-typed-upfirst  poll.bin  10  MACHINE=ZX48 KEYS=typed ORDER=upfirst
+run  48k-typed-held     poll.bin  10  MACHINE=ZX48 KEYS=typed ORDER=held
+run  pent-typed-held    poll.bin  10  MACHINE=Pentagon KEYS=typed ORDER=held
+run  profi-typed-held   poll.bin  10  MACHINE=Profi KEYS=typed ORDER=held
+run  evo-typed-held     poll.bin  10  MACHINE=Baseconf KEYS=typed ORDER=held
+run  evo-typed-late     poll.bin  10  MACHINE=Baseconf KEYS=typed ORDER=late
+run  48k-pos-first      poll.bin  10  MACHINE=ZX48 KEYS=typed ORDER=first CHAR=0
+run  48k-typed-plain    poll.bin  10  MACHINE=ZX48 KEYS=typed ORDER=plain
+run  next-ps2-equal    poll.bin  1   MACHINE=ZXNext KEYS=ps2 ATCODE=0x55
+run  next-ps2-o        poll.bin  1   MACHINE=ZXNext KEYS=ps2 ATCODE=0x44

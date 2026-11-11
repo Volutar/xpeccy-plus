@@ -186,6 +186,7 @@ void conf_init(char* confdir) {
 	conf.fdlg.desc = 0;
 	conf.fdlg.list = 0;
 	conf.vid.skipHint = 1;
+	conf.kbdTyping = 1;
 	conf.saves.perGame = 1;
 	conf.saves.carry = 1;
 	conf.saves.snapMedia = SNAP_MEDIA_ASK;
@@ -449,6 +450,7 @@ void saveConfig() {
 	fprintf(cfile, "mouse.swapButtons = %s\n", YESNO(conf.zx->mouse->swapButtons));
 	fprintf(cfile, "mouse.sensitivity = %f\n", conf.zx->mouse->sensitivity);
 	fprintf(cfile, "keymap = %s\n", conf.kmapName.c_str());
+	fprintf(cfile, "keyboard.typing = %s\n", YESNO(conf.kbdTyping));
 	fprintf(cfile, "gamepad.seen = %s\n", conf.gpctrl->seen.join(",").toUtf8().data());
 	// What each slot remembers, whether or not that pad is plugged in now.
 	// A sleeping wireless pad must read the same here as an awake one.
@@ -1230,7 +1232,8 @@ void loadConfig() {
 					else xm_defer(pnam, pval);
 					break;
 				case SECT_INPUT:
-					if (pnam=="keymap") conf.kmapName = pval;
+					if (pnam=="keymap") conf.kmapName = keymap_name(pval);
+					if (pnam=="keyboard.typing") conf.kbdTyping = arg.b;
 					// gamepad.map is from before the table; the rest is the table
 					if (pnam=="gamepad.map") {
 						conf.jmapNameA = pval;

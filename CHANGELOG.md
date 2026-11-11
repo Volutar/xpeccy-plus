@@ -77,7 +77,17 @@ before that point is upstream's history and is not repeated here.
   This Game** takes the snow away until another image is opened. **Don't show this again**
   ends the message for good; **Snow notice** in Options > Appearance brings it back.
 
+- **Symbol keys type what is printed on them**: Shift+`;` gives `:`, Shift+`/` gives `?`, as
+  the Latin labels say, whatever the system's layout. Letters and digits stay the Spectrum's,
+  so games read them as before. Typing: Key Positions in Options > Input turns it off.
+
 ### Changed
+
+- **Ctrl is always Symbol Shift**: Modern has no Ctrl+O and Ctrl+S (F3 and F2 open and save),
+  and Options is on Alt+,.
+
+- **Two keymaps, ZX Spectrum 128K by default and ZX Spectrum 48K**: the right Shift and Ctrl
+  are Caps Shift and Symbol Shift too, and `` ` `` is EDIT.
 
 - **Options > Machine: Advanced settings is a button again**, first in the right-hand column.
 
@@ -135,6 +145,8 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The = key types = on the ZX Spectrum Next**, not o, and reaches ZX Evolution programs that
+  read the PC keyboard as =.
 - **Screenshot Series counts the machine's frames**, so "each 50 frames" is a second
   whatever the monitor's rate.
 - **SCR and Hobeta screenshots are not saved in modes that are not the ZX screen** (Profi,

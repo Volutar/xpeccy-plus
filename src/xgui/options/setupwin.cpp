@@ -711,6 +711,36 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 		ui.verticalLayout_2->addWidget(grp);
 		ui.verticalLayout_2->addStretch(1);
 	}
+	// Keymap and Typing: short lists, and what the pick does beside each
+	// (connected before they are filled, so the first fill writes the notes too)
+	{
+		QLabel* kmNote = new QLabel;
+		QLabel* tyNote = new QLabel;
+		for (QLabel* lab : {kmNote, tyNote}) {
+			QFont fnt = lab->font();
+			fnt.setItalic(true);
+			lab->setFont(fnt);
+		}
+		ui.gridLayout_21->addWidget(kmNote, 1, 2);
+		ui.gridLayout_21->addWidget(tyNote, 2, 2);
+		ui.gridLayout_21->setColumnStretch(1, 0);
+		ui.gridLayout_21->setColumnStretch(2, 1);
+		ui.gridLayout_21->setHorizontalSpacing(12);
+		ui.keyMapBox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+		ui.typingBox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+		connect(ui.keyMapBox, QOverload<int>::of(&QComboBox::currentIndexChanged), kmNote, [this, kmNote]() {
+			QString nam = ui.keyMapBox->currentData().toString();
+			kmNote->setText(nam.isEmpty() ? tr("Both Shifts are Caps Shift, both Ctrls Symbol Shift")
+				: (nam == KMAP_48K) ? tr("Caps Shift on the left, Symbol Shift on the right")
+				: tr("Your own keymap"));
+		});
+		connect(ui.typingBox, QOverload<int>::of(&QComboBox::currentIndexChanged), tyNote, [this, tyNote]() {
+			tyNote->setText(getRFIData(ui.typingBox) ? tr("Symbol keys as on the PC: Shift+; is :, Shift+/ is ?")
+				: tr("Shift is Caps Shift with every key, as on the Spectrum"));
+		});
+		ui.typingBox->addItem("PC Symbols", 1);
+		ui.typingBox->addItem("Key Positions", 0);
+	}
 	cbScanTab->addItem("As the machine has it", 0);
 	cbScanTab->addItem("Scanset 1 (XT)", KBD_XT);
 	cbScanTab->addItem("Scanset 2 (AT)", KBD_AT);
@@ -1267,9 +1297,7 @@ void SetupWin::fillPages() {
 // input
 	buildkeylist();
 	setRFIndex(cbScanTab, comp->keyb->pcmode);
-	idx = ui.keyMapBox->findText(QString(conf.kmapName.c_str()));
-	if (idx < 1) idx = 0;
-	ui.keyMapBox->setCurrentIndex(idx);
+	setRFIndex(ui.typingBox, conf.kbdTyping ? 1 : 0);
 	mouseBox->setCurrentIndex(comp->mouse->enable ? 1 : 0);
 	nxMouseOn->setChecked(comp->mouse->enable);
 	ratWheel->setChecked(comp->mouse->hasWheel);
@@ -1723,9 +1751,8 @@ void SetupWin::applyGlobal() {
 // input
 	comp->mouse->swapButtons = cbSwapButtons->isChecked() ? 1 : 0;
 	comp->mouse->sensitivity = sldSensitivity->value() * 0.001f;
-	std::string kmname = getRFText(ui.keyMapBox);
-	if (kmname == "Default") kmname = "default";	// the built-in one, as the menu names it
-	conf.kmapName = kmname;
+	conf.kmapName = ui.keyMapBox->currentData().toString().toUtf8().constData();	// none: the built-in one
+	conf.kbdTyping = getRFIData(ui.typingBox) ? 1 : 0;
 	loadKeys();
 	conf.gpctrl->gameOn = cbPadFiles->isChecked();
 	if (!conf.gpctrl->gameOn) conf.gpctrl->gameRevert();	// own bindings back now
@@ -3205,8 +3232,10 @@ void SetupWin::setRom(xRomFile f) {
 // lists
 
 void SetupWin::buildkeylist() {
-	fillComboBox(ui.keyMapBox, "keymaps", QStringList() << "*.map", "Default",
-		QString::fromLocal8Bit(conf.kmapName.c_str()));
+	ui.keyMapBox->clear();
+	for (const auto& km : keymap_list())
+		ui.keyMapBox->addItem(km.first, km.second);
+	setRFIndex(ui.keyMapBox, QString::fromUtf8(conf.kmapName.c_str()), 0);
 }
 
 // the core's mask bit, and the size it stands for (768K has no bit of its own)
