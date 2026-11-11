@@ -44,6 +44,9 @@ static xPort p3PortMap[] = {
 	{0xe002,0x2ffd,2,2,2,p3_dos_rd,	p3_dos_wr},	// 2ffd/3ffd
 	{0xf002,0x1ffd,2,2,2,NULL,	p3Out1FFD},
 	{0x0003,0x00fe,2,2,2,xInFE,	xOutFE},
+	{0x0320,0xfadf,2,2,2,xInFADF,	NULL},		// Kempston mouse: A5, A8, A9, A10, as on the 48K
+	{0x0720,0xfbdf,2,2,2,xInFBDF,	NULL},
+	{0x0720,0xffdf,2,2,2,xInFFDF,	NULL},
 	{0x0000,0x0000,2,2,2,zx_in_float,	NULL}
 };
 
