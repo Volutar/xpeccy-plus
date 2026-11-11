@@ -160,7 +160,6 @@ class SetupWin : public QDialog {
 		QComboBox* gsBox;
 		QComboBox* saaBox;
 		QComboBox* gsRomBox;
-		QComboBox* gsCardBox;
 		QComboBox* ngsRomBox;		// the NeoGS flash, in the ROM row while the card is one
 		QStackedWidget* gsRomStack;
 		QString ngsPick;		// the flash file picked, put on the card by Apply

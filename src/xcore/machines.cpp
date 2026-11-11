@@ -92,6 +92,16 @@ static xMacWord stereoTab[] = {
 	{"bca", AY_BCA}, {"cab", AY_CAB}, {"cba", AY_CBA}, {NULL, 0}
 };
 
+// the old yes and no still read: yes is the card there always was
+static xMacWord gsTab[] = {
+	{"no", MAC_GS_NONE}, {"yes", MAC_GS_ORIGINAL}, {"neogs", MAC_GS_NEOGS}, {NULL, 0}
+};
+
+static int mac_gs_word(const std::string& val) {
+	if (val == "neogs") return MAC_GS_NEOGS;
+	return str2bool(val) ? MAC_GS_ORIGINAL : MAC_GS_NONE;
+}
+
 static xMacWord sdrvTab[] = {
 	{"none", SDRV_NONE}, {"covox", SDRV_COVOX},
 	{"soundrive1", SDRV_105_1}, {"soundrive2", SDRV_105_2}, {NULL, 0}
@@ -439,7 +449,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "psg.frq") mac.psgFrq = arg.d;
 			else if (nam == "psg.stereo") mac.psgStereo = mac_word(stereoTab, val, AY_MONO, id);
 			else if (nam == "soundrive") mac.soundrive = mac_word(sdrvTab, val, SDRV_NONE, id);
-			else if (nam == "gs") mac.gs = arg.b;
+			else if (nam == "gs") mac.gs = mac_gs_word(val);
 			else if (nam == "saa") mac.saa = arg.b;
 			else if (nam == "beeper.mic") mac.beepmic = arg.b;
 		} else if (ln.sect == "storage") {
@@ -893,15 +903,36 @@ static void mac_load_ngs(Computer* comp, const std::string& name) {
 	fclose(file);
 }
 
+// the file the NeoGS image was read from: it is read when a NeoGS needs it
+static std::string ngsLoaded;
+static bool ngsRead = false;
+
 void xm_set_ngs_rom(const std::string& name) {
 	if (!conf.zx) return;
 	emu_lock();
 	conf.ngsFile = name;
+	ngsLoaded = name;
+	ngsRead = true;
 	mac_load_ngs(conf.zx, name);
 	gs_rom_refresh(conf.zx->gs);
 	emu_unlock();
 	if (!romMissing.isEmpty())
 		QTimer::singleShot(0, QCoreApplication::instance(), mac_rom_warn);
+}
+
+void xm_set_gs(Computer* comp, int card) {
+	GSound* gs = comp->gs;
+	gs->enable = (card != MAC_GS_NONE) ? 1 : 0;
+	if (card == MAC_GS_NONE) return;		// the model stays for when it is back
+	int model = (card == MAC_GS_NEOGS) ? GS_NEOGS : GS_CLASSIC;
+	if (model != gs->model) gs_set_model(gs, model);
+	if ((model == GS_NEOGS) && (!ngsRead || (ngsLoaded != conf.ngsFile)))
+		xm_set_ngs_rom(conf.ngsFile);
+}
+
+int xm_gs_of(Computer* comp) {
+	if (!comp->gs->enable) return MAC_GS_NONE;
+	return (comp->gs->model == GS_NEOGS) ? MAC_GS_NEOGS : MAC_GS_ORIGINAL;
 }
 
 static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std::string& gsf, const std::string& fntf, bool withfnt) {
@@ -1343,7 +1374,7 @@ static void mac_from_def(const xMachine* mac) {
 	xm_snow_set(comp, mac->snow);
 	comp->flgSNOWX = mac->snowcrash;
 	mac_set_psg(comp, mac->psgCount, mac->psgType, mac->psgFrq, mac->psgStereo);
-	comp->gs->enable = mac->gs;
+	xm_set_gs(comp, mac->gs);
 	comp->saa->enabled = mac->saa;
 	comp->beep->mic = mac->beepmic;
 	bc_out(comp->beep, comp->beep->lev, comp->tape->levRec);
@@ -1583,7 +1614,7 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 		mac_put(out, "psg.stereo", mac_word_name(stereoTab, comp->ts->chipA->stereo),
 			mac_word_name(stereoTab, mac->psgStereo));
 	}
-	mac_put_yn(out, "gs", comp->gs->enable, mac->gs);
+	mac_put(out, "gs", std::string(mac_word_name(gsTab, xm_gs_of(comp))), std::string(mac_word_name(gsTab, mac->gs)));
 	mac_put_yn(out, "saa", comp->saa->enabled, mac->saa);
 	mac_put_yn(out, "beeper.mic", comp->beep->mic, mac->beepmic);
 	mac_put(out, "soundrive", mac_word_name(sdrvTab, comp->sdrv->type), mac_word_name(sdrvTab, mac->soundrive));
@@ -1855,11 +1886,6 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	}
 	else if (nam == "gs.reset") comp->gs->reset = arg.b;
 	else if (nam == "gs.stereo") comp->gs->stereo = arg.b ? GS_12_34 : GS_MONO;
-	else if (nam == "gs.card") {
-		int model = (val == "neogs") ? GS_NEOGS : GS_CLASSIC;
-		if (model != comp->gs->model) gs_set_model(comp->gs, model);
-		if (model == GS_NEOGS) xm_set_ngs_rom(conf.ngsFile);	// read only for the NeoGS
-	}
 	else if (nam == "mouse.wheel") comp->mouse->hasWheel = arg.b;
 	else if (nam == "mouse.swapButtons") comp->mouse->swapButtons = arg.b;
 	else if (nam == "mouse.sensitivity") comp->mouse->sensitivity = arg.d;
@@ -2071,7 +2097,7 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 					comp->ts->frq, comp->ts->chipA->stereo);
 			else if ((nam == "psg.frq") || (nam == "psg.stereo") || (nam == "psg.separation")
 				|| (nam == "gs.reset") || (nam == "gs.stereo")) xm_defer(nam, val);
-			else if (nam == "gs") comp->gs->enable = arg.b;
+			else if (nam == "gs") xm_set_gs(comp, mac_gs_word(val));
 			else if (nam == "soundrive_type") comp->sdrv->type = arg.i;
 			else if (nam == "saa") comp->saa->enabled = arg.b;
 			break;

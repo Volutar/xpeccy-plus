@@ -788,6 +788,10 @@ std::string xm_rom_path(const std::string&);
 // what the machine loads, and putting a changed set back as the user's own
 void xm_set_roms(const xRomset&, bool poweron = false);
 void xm_set_ngs_rom(const std::string&);	// the NeoGS flash image, into the card
+// the machine's General Sound: none, the original card or the NeoGS
+enum {MAC_GS_NONE = 0, MAC_GS_ORIGINAL, MAC_GS_NEOGS};
+void xm_set_gs(Computer*, int);
+int xm_gs_of(Computer*);
 void xm_rom_set_file(xRomset&, int, const std::string&);
 QVector<int> xm_rom_cover(const xRomset&, int);	// per bank: the slot covering it, -1
 QList<int> xm_reset_targets();		// RES_* the running machine can reset to
@@ -856,7 +860,7 @@ typedef struct {
 	unsigned mouseWheel:1;
 	int joy;			// JOY_*
 	int scantab;			// KBD_*, 0 = the keyboard core's own type
-	unsigned gs:1;			// General Sound
+	int gs;				// MAC_GS_*: none, the General Sound, the NeoGS
 	unsigned saa:1;
 	unsigned ulaplus:1;
 	unsigned ddpal:1;		// Profi's dd palette

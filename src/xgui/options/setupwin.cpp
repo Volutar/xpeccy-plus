@@ -1256,12 +1256,11 @@ void SetupWin::fillPages() {
 	palPending.clear();		// what a Cancel left behind
 	fillPalettes();
 // sound
-	gsBox->setCurrentIndex(comp->gs->enable ? 1 : 0);
+	gsBox->setCurrentIndex(xm_gs_of(comp));
 	gsrbox->setChecked(comp->gs->reset);
-	setRFIndex(gsCardBox, comp->gs->model, 0);
 	ngsPick = QString::fromUtf8(conf.ngsFile.c_str());
 	rom_box_pick(ngsRomBox, ngsPick);
-	gsRomStack->setCurrentIndex((comp->gs->model == GS_NEOGS) ? 1 : 0);
+	gsRomStack->setCurrentIndex((xm_gs_of(comp) == MAC_GS_NEOGS) ? 1 : 0);
 	divBox->setCurrentIndex(comp->div->model ? 1 : 0);
 	divRamBox->setCurrentIndex((comp->div->pages > 16) ? 1 : 0);
 	divWrBox->setChecked(comp->div->eeWrite);
@@ -1593,7 +1592,9 @@ void SetupWin::applyMachine() {
 		} else if (stereoNew) {
 			comp->sndSeed = 1;
 		}
-		comp->gs->enable = gsBox->currentIndex();
+		// the NeoGS reads its flash when it is the card and the file is new to it
+		conf.ngsFile = std::string(ngsPick.toUtf8().data());
+		xm_set_gs(comp, gsBox->currentIndex());
 		comp->sdrv->type = getRFIData(sdrvBox);
 		comp->saa->enabled = saaBox->currentIndex() ? 1 : 0;
 	}
@@ -1758,16 +1759,6 @@ void SetupWin::applyGlobal() {
 		comp->sndSeed = 1;
 	}
 	comp->gs->reset = gsrbox->isChecked() ? 1 : 0;
-	int card = getRFIData(gsCardBox);
-	bool toNeo = (card == GS_NEOGS) && (card != comp->gs->model);
-	if (card != comp->gs->model) {
-		emu_lock();
-		gs_set_model(comp->gs, card);
-		emu_unlock();
-	}
-	std::string ngs = std::string(ngsPick.toUtf8().data());
-	if ((ngs != conf.ngsFile) || toNeo)
-		xm_set_ngs_rom(ngs);		// a switch to it says if the file is missing
 // input
 	comp->mouse->swapButtons = cbSwapButtons->isChecked() ? 1 : 0;
 	comp->mouse->sensitivity = sldSensitivity->value() * 0.001f;
@@ -2401,7 +2392,7 @@ void SetupWin::buildDevices() {
 		tr("100%: the channels kept apart, 0%: mono"));
 	devRow(grid, tr("PSG"), cbPsgCount, psg.body, "Machine: PSG");
 	devRow(grid, tr("DAC"), sdrvBox, NULL, NULL);
-	gsBox = devCombo(QStringList() << tr("Off") << tr("On"));
+	gsBox = devCombo(QStringList() << tr("None") << tr("Original") << tr("NeoGS"));	// MAC_GS_*
 	xOptSheet gs;
 	gsRomBox = new QComboBox;
 	QToolButton* gsRomBtn = new QToolButton;
@@ -2424,13 +2415,9 @@ void SetupWin::buildDevices() {
 	gsRomStack = new QStackedWidget;
 	gsRomStack->addWidget(fieldPair(gsRomBox, gsRomBtn, false));
 	gsRomStack->addWidget(fieldPair(ngsRomBox, ngsRomBtn, false));
-	gsCardBox = new QComboBox;
-	gsCardBox->addItem(tr("General Sound"), GS_CLASSIC);
-	gsCardBox->addItem(tr("NeoGS"), GS_NEOGS);
-	connect(gsCardBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
-		gsRomStack->setCurrentIndex((getRFIData(gsCardBox) == GS_NEOGS) ? 1 : 0);
+	connect(gsBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
+		gsRomStack->setCurrentIndex((idx == MAC_GS_NEOGS) ? 1 : 0);
 	});
-	gs.field(tr("Card"), gsCardBox, tr("NeoGS: 8 channels, no click when a volume changes"));
 	gs.field(tr("ROM"), gsRomStack);
 	gs.line();
 	gs.check(gsrbox, tr("Reset"), tr("The card is reset with the machine"));
