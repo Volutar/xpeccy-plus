@@ -431,7 +431,7 @@ void SetupWin::makeDevWidgets() {
 	sldGsSep->setMinimumWidth(45);
 	labGsSep = new QLabel("75%");
 	labGsSep->setMinimumWidth(32);
-	labGsSep->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+	labGsSep->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 	connect(sldGsSep, &QSlider::valueChanged, this, [this](int v) {labGsSep->setText(QString("%0%").arg(v));});
 	foreach(QSlider* sld, QList<QSlider*>() << sldTapeSpeed << sldPsgSep << sldSensitivity << sldGsSep) {
 		sld->setOrientation(Qt::Horizontal);
@@ -442,7 +442,7 @@ void SetupWin::makeDevWidgets() {
 	labPsgMhz = new QLabel("MHz");
 	labPsgSep = new QLabel("75%");
 	labPsgSep->setMinimumWidth(32);
-	labPsgSep->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+	labPsgSep->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 }
 
 // Source, Screenshots' and Recording's: the machine's frame or the window's picture
@@ -2400,7 +2400,7 @@ void SetupWin::buildDevices() {
 	psg.field(tr("Clock"), fieldPair(cbPsgFrq, labPsgMhz, false),
 		tr("Auto: follows the CPU clock"));
 	psg.field(tr("Stereo"), cbPsgStereo);
-	psg.field(tr("Separation"), fieldPair(sldPsgSep, labPsgSep, true),
+	psg.field(tr("Separation"), fieldPair(sldPsgSep, labPsgSep, false),
 		tr("100%: the channels kept apart, 0%: mono"));
 	devRow(grid, tr("PSG"), cbPsgCount, psg.body, "Machine: PSG");
 	devRow(grid, tr("DAC"), sdrvBox, NULL, NULL);
@@ -2431,7 +2431,7 @@ void SetupWin::buildDevices() {
 		gsRomStack->setCurrentIndex((idx == MAC_GS_NEOGS) ? 1 : 0);
 	});
 	gs.field(tr("ROM"), gsRomStack);
-	gs.field(tr("Separation"), fieldPair(sldGsSep, labGsSep, true),
+	gs.field(tr("Separation"), fieldPair(sldGsSep, labGsSep, false),
 		tr("100%: the sides as the card has them, 0%: mono"));
 	gs.line();
 	gs.check(gsrbox, tr("Reset"), tr("The card is reset with the machine"));
