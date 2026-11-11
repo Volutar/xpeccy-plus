@@ -174,7 +174,7 @@ int main(int argc, char** argv) {
 		comp->mouse->ypos = 0x34;
 		comp->mouse->lmb = 1;
 		comp->mouse->swapButtons = getenv("SWAP") && atoi(getenv("SWAP"));
-		for (int i = 0; i < 5; i++)
+		for (int i = 0; i < (int)(sizeof(port) / sizeof(port[0])); i++)
 			printf("%04x %02X\n", port[i], comp->hw->in(comp, port[i]) & 0xff);
 		compDestroy(comp);
 		return 0;
