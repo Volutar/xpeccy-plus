@@ -18,8 +18,6 @@
 #define SNOW_MAX	1400
 #define SNOW_HZ_MAX	60		// a tick redraws the whole window in software: no need for more
 #define SNOW_BLINK_MS	500		// as the recording sign
-#define SNOW_SIGN_X	32		// right of the LED column
-#define SNOW_SIGN_Y	10
 
 // per layer, far to near: size, fall speed (px/s), how much wind it takes,
 // how bright, its share of the flakes
@@ -45,6 +43,7 @@ xSnowFall::xSnowFall(QWidget* parent) : QWidget(parent) {
 	t = 0;
 	sign[0] = QImage(":/images/osd-snow.png");
 	sign[1] = QImage(":/images/osd-snow-off.png");		// the frame alone
+	signAt = QPoint(5, 5);
 	for (QImage& img : sign) img.setDevicePixelRatio(2);
 	hide();
 	parent->installEventFilter(this);
@@ -239,7 +238,7 @@ void xSnowFall::paintEvent(QPaintEvent*) {
 	p.setOpacity(1.0);
 	// the sign blinks by the wall clock, as the recording sign does
 	int on = (QDateTime::currentMSecsSinceEpoch() / SNOW_BLINK_MS) & 1;
-	p.drawImage(QPointF(SNOW_SIGN_X, SNOW_SIGN_Y), sign[on ? 0 : 1]);
+	p.drawImage(signAt, sign[on ? 0 : 1]);
 }
 
 QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<void()> off, std::function<void()> never) {

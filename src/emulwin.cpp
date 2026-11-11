@@ -892,6 +892,7 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 		}
 		watchMedia();
 		if (snow_seen()) snowNotice();
+		if (snowFall->isVisible()) snowFall->setSignAt(snowSignAt());
 		folderAsk();
 		folderNews();
 		watchClock();
@@ -3575,6 +3576,18 @@ void MainWin::snowImageIs(const QString& path, int src) {
 	}
 }
 
+// The snow sign mirrors the speed and recording signs: their height, as far
+// from the left edge as they are from the right - or right of the LED column
+// while that has anything to show, so the two never cover each other.
+#define SNOW_SIGN_BESIDE_LEDS	32
+QPoint MainWin::snowSignAt() {
+	Computer* comp = conf.zx;
+	bool osd = !statusBar->isVisible();
+	bool leds = (conf.led.keys && comp && comp->hw->keyp)
+		|| (osd && (conf.led.joy || conf.led.mouse || conf.led.tape || conf.led.disk));
+	return QPoint(leds ? SNOW_SIGN_BESIDE_LEDS : MODE_ICON_RIGHT, modeSlot().top());
+}
+
 // The notice gone without a button: finished all the same, so a tick in
 // "Don't show this again" is taken
 void MainWin::snowBoxEnd() {
@@ -3590,6 +3603,7 @@ void MainWin::snowBoxEnd() {
 void MainWin::snowNotice() {
 	if (!conf.led.snowNotice || snowNoted || snowBox) return;
 	snowNoted = true;
+	snowFall->setSignAt(snowSignAt());
 	snowFall->start();
 	snowBox = snow_notice_box(this, manual_url("ula-snow-floating-bus.html", "when-a-game-snows"), []() {
 		EmuLock lock;
