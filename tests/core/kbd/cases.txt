@@ -29,3 +29,5 @@ run  128k-mouse         poll.bin  0   MACHINE=ZX128 KEYS=mouse
 run  2a-mouse           poll.bin  0   MACHINE=Plus2A KEYS=mouse
 run  p3-mouse           poll.bin  0   MACHINE=Plus3 KEYS=mouse
 run  p3-mouse-off       poll.bin  0   MACHINE=Plus3 KEYS=mouse MOUSE=0
+run  2a-mouse-off       poll.bin  0   MACHINE=Plus2A KEYS=mouse MOUSE=0
+run  128k-mouse-off     poll.bin  0   MACHINE=ZX128 KEYS=mouse MOUSE=0

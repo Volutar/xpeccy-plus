@@ -142,3 +142,15 @@ fbdf FF
 ffdf FF
 7b5f FF
 f8df FF
+== 2a-mouse-off
+fadf FF
+fbdf FF
+ffdf FF
+7b5f FF
+f8df FF
+== 128k-mouse-off
+fadf FF
+fbdf FF
+ffdf FF
+7b5f FF
+f8df FF
