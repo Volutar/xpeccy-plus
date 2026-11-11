@@ -4090,7 +4090,7 @@ Right click: back to the style color</string>
                   </property>
                   <property name="icon">
                    <iconset resource="../xpeccy.qrc">
-                    <normaloff>:/images/snowflake-16.png</normaloff>:/images/snowflake-16.png</iconset>
+                    <normaloff>:/images/snowflake.png</normaloff>:/images/snowflake.png</iconset>
                   </property>
                   <property name="iconSize">
                    <size>

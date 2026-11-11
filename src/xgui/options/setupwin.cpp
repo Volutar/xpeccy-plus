@@ -492,12 +492,6 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	spaceLedIcon(ui.cbHaltLed);
 	spaceLedIcon(ui.cbClockLed);
 	spaceLedIcon(ui.cbMessage);
-	{
-		QIcon flake;
-		flake.addFile(":/images/snowflake-16.png", QSize(16, 16));
-		flake.addFile(":/images/snowflake-32.png", QSize(32, 32));
-		ui.cbSnowNote->setIcon(flake);
-	}
 	spaceLedIcon(ui.cbSnowNote);
 	spaceLedIcon(ui.cbFadeLed);
 	// the notice is the window's, for every machine: one place for it
