@@ -22,7 +22,9 @@ enum {
 };
 
 #define GS_ROM_SIZE	MEM_32K		// the classic card's ROM
+#define GS_RAM_SIZE	MEM_2M		// what ours has had
 #define NGS_ROM_SIZE	MEM_512K	// the NeoGS flash
+#define NGS_RAM_SIZE	MEM_4M		// today's NeoGS: four 1M chips
 
 // Time is counted in 1/120 of a nanosecond: a tick of every clock the cards
 // run at (24, 20, 12, 10 MHz) and their INT period are whole numbers of it.

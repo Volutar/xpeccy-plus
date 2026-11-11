@@ -1028,7 +1028,7 @@ void loadConfig() {
 	conf.snd.vol.tape = 80;
 	conf.snd.vol.ay = 80;
 	conf.snd.vol.gs = 80;
-	conf.ngsFile = "bootgs.rom";
+	conf.ngsFile = "neogs111.rom";
 	conf.snd.vol.sdrv = 80;
 	conf.snd.vol.saa = 80;
 // init palette

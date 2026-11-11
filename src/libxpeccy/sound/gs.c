@@ -29,8 +29,8 @@ static void gs_map_classic(GSound* gs) {
 static void gs_ro_wr(int adr, int val, void* data) {}
 
 // NeoGS, as memmap.v: four 16K windows, each an 8-bit page. With NOROM clear
-// the flash is everywhere but #4000-#7FFF (page bits 4:0); else RAM (bits
-// 6:0, 2M), and RAMRO keeps RAM pages 0 and 1 from writes.
+// the flash is everywhere but #4000-#7FFF (page bits 4:0); else RAM (all 8
+// bits, 4M), and RAMRO keeps the pages with bits 6:1 clear from writes.
 static void gs_map_neogs(GSound* gs) {
 	const unsigned char pg[4] = {0, 3, gs->pg2, gs->pg3};
 	int norom = gs->cfg0 & NGS_NOROM;
@@ -40,9 +40,9 @@ static void gs_map_neogs(GSound* gs) {
 		if (!norom && (w != 1)) {
 			memSetBank(gs->mem, w << 6, MEM_ROM, h & 0x1f, MEM_16K, NULL, NULL, NULL);
 		} else if (ro && !(h & 0x7e)) {
-			memSetBank(gs->mem, w << 6, MEM_RAM, h & 0x7f, MEM_16K, memStdRd, gs_ro_wr, NULL);
+			memSetBank(gs->mem, w << 6, MEM_RAM, h, MEM_16K, memStdRd, gs_ro_wr, NULL);
 		} else {
-			memSetBank(gs->mem, w << 6, MEM_RAM, h & 0x7f, MEM_16K, NULL, NULL, NULL);
+			memSetBank(gs->mem, w << 6, MEM_RAM, h, MEM_16K, NULL, NULL, NULL);
 		}
 	}
 }
@@ -235,10 +235,10 @@ static void gs_reset_hw(GSound* gs) {
 void gs_rom_refresh(GSound* gs) {
 	if (gs->model == GS_NEOGS) {
 		memcpy(gs->mem->romData, gs->romNGS, NGS_ROM_SIZE);
-		memSetSize(gs->mem, -1, NGS_ROM_SIZE);
+		memSetSize(gs->mem, NGS_RAM_SIZE, NGS_ROM_SIZE);
 	} else {
 		memcpy(gs->mem->romData, gs->romGS, GS_ROM_SIZE);
-		memSetSize(gs->mem, -1, GS_ROM_SIZE);
+		memSetSize(gs->mem, GS_RAM_SIZE, GS_ROM_SIZE);
 	}
 	gs_remap(gs);
 }
@@ -264,7 +264,7 @@ GSound* gsCreate() {
 	res->romNGS = (unsigned char*)malloc(NGS_ROM_SIZE);
 	memset(res->romGS, 0xff, GS_ROM_SIZE);
 	memset(res->romNGS, 0xff, NGS_ROM_SIZE);
-	memSetSize(res->mem, MEM_2M, GS_ROM_SIZE);
+	memSetSize(res->mem, GS_RAM_SIZE, GS_ROM_SIZE);
 	res->model = GS_CLASSIC;
 	res->tickUnits = GS_UNITS_TICK(12);
 	res->intDue = GS_INT_UNITS;

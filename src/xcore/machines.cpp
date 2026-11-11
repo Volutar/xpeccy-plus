@@ -914,7 +914,10 @@ void xm_set_ngs_rom(const std::string& name) {
 	ngsLoaded = name;
 	ngsRead = true;
 	mac_load_ngs(conf.zx, name);
-	gs_rom_refresh(conf.zx->gs);
+	// a NeoGS starts on the new flash as it would after the power, else its CPU
+	// goes on in RAM with the firmware the old one put there
+	if (conf.zx->gs->model == GS_NEOGS) gs_set_model(conf.zx->gs, GS_NEOGS);
+	else gs_rom_refresh(conf.zx->gs);
 	emu_unlock();
 	if (!romMissing.isEmpty())
 		QTimer::singleShot(0, QCoreApplication::instance(), mac_rom_warn);
