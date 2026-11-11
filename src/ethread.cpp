@@ -96,37 +96,52 @@ void frame_taken() {
 	frameOwed = 0;
 }
 
-// ULA snow: a game with I in slow memory - zx_snow()'s own test - snows on the
-// real machine. Mostly that is an IM 2 table put there, but not only: Black
-// Raven runs IM 1 with I at #41. Half a second of it in real play, not a
-// loader passing through, is worth telling the user.
-#define SNOW_FRAMES	25
+// ULA snow: zx_snow() counts the refresh cycles that took the ULA's in a frame
+// (I in slow memory - mostly an IM 2 table there, but Black Raven runs IM 1 with
+// I at #41, and Dizzy 3 on a 128K has its table's slow bank paged in for part
+// of the time only: a frame in four, ~80 hits each). A frame with SNOW_HITS of
+// them snows; SNOW_FRAMES such frames in the last SNOW_WINDOW - real play, not a
+// loader passing through - are worth telling the user about.
+#define SNOW_HITS	32
+#define SNOW_FRAMES	10
+#define SNOW_WINDOW	100
 static std::atomic<int> snowSeen{0};
-static std::atomic<int> snowRun{0};		// frames in a row; the gui starts it over
+static std::atomic<int> snowAgain{0};		// the gui has a new image: start over
+static unsigned char snowRing[SNOW_WINDOW];
+static int snowPos = 0;
+static int snowCount = 0;
 
 int snow_seen() {
 	return snowSeen.exchange(0);
 }
 
 void snow_watch_reset() {
-	snowRun = 0;
+	snowAgain = 1;
 	snowSeen = 0;		// the last image's, not this one's
+}
+
+static void snow_watch_clear() {
+	memset(snowRing, 0, sizeof(snowRing));
+	snowCount = 0;
 }
 
 static void snow_frame(Computer* comp) {
 	xm_snow_keep(comp);		// rewind and run-ahead load states that carry their own
+	int hits = comp->snowHits;
+	comp->snowHits = 0;
+	if (snowAgain.exchange(0)) snow_watch_clear();
 	if (!comp->flgSNOW || (comp->vid->ula->conttype != CONT_PATA)
 			|| conf.emu.fast || (conf.emu.speed > 1.0) || conf.emu.pause || comp->flgDBG
 			|| autostart_busy() || fastload_busy() || rewind_active() || rzx_seeking()
 			|| comp->rzx.play || rzxr_on() || !conf.running) {
-		snowRun = 0;
+		if (snowCount) snow_watch_clear();
 		return;
 	}
-	if (!mem_bank_slow(zx_bank_of(comp, comp->cpu->regI << 8))) {
-		snowRun = 0;
-		return;
-	}
-	if (++snowRun == SNOW_FRAMES)
+	int on = (hits >= SNOW_HITS) ? 1 : 0;
+	snowCount += on - snowRing[snowPos];
+	snowRing[snowPos] = on;
+	snowPos = (snowPos + 1) % SNOW_WINDOW;
+	if (snowCount >= SNOW_FRAMES)
 		snowSeen = 1;
 }
 
