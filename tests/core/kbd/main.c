@@ -136,6 +136,30 @@ int main(int argc, char** argv) {
 	comp->cpu->regPC = 0x8000;
 	comp->cpu->flgIFF1 = comp->cpu->flgIFF2 = 0;
 
+	// KEYS=ps2 ATCODE=n: a PC key of that set 2 code held, the half-rows #BFFE and #7FFE
+	// as a program reads them meanwhile, the five keys' bits (0 pressed)
+	if (getenv("KEYS") && !strcmp(getenv("KEYS"), "ps2")) {
+		static const unsigned char rd[] = {
+			0x01, 0xfe, 0xbf, 0xed, 0x78, 0x32, 0x00, 0x90,	// ld bc,#bffe: in a,(c): ld (#9000),a
+			0x06, 0x7f, 0xed, 0x78, 0x32, 0x01, 0x90,		// ld b,#7f: in a,(c): ld (#9001),a
+			0x18, 0xef						// jr #8000
+		};
+		for (int i = 0; i < (int)sizeof(rd); i++)
+			comp->hw->mwr(comp, 0x8000 + i, rd[i]);
+		comp->cpu->regPC = 0x8000;
+		keyEntry key;
+		memset(&key, 0, sizeof(key));
+		key.atCode = (int)strtol(getenv("ATCODE") ? getenv("ATCODE") : "0", NULL, 0);
+		comp->hw->keyp(comp, &key);
+		long long t = 0;
+		while (t < 100000000LL)		// 100 ms held
+			t += compExec(comp);
+		printf("bffe %02X\n7ffe %02X\n", comp->hw->mrd(comp, 0x9000, 0) & 0x1f, comp->hw->mrd(comp, 0x9001, 0) & 0x1f);
+		comp->hw->keyr(comp, &key);
+		compDestroy(comp);
+		return 0;
+	}
+
 	if (getenv("KEYS") && !strcmp(getenv("KEYS"), "typed")) {
 		int rc = typed(comp, presses);
 		compDestroy(comp);

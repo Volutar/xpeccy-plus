@@ -21,3 +21,5 @@ run  evo-typed-held     poll.bin  10  MACHINE=Baseconf KEYS=typed ORDER=held
 run  evo-typed-late     poll.bin  10  MACHINE=Baseconf KEYS=typed ORDER=late
 run  48k-pos-first      poll.bin  10  MACHINE=ZX48 KEYS=typed ORDER=first CHAR=0
 run  48k-typed-plain    poll.bin  10  MACHINE=ZX48 KEYS=typed ORDER=plain
+run  next-ps2-equal    poll.bin  1   MACHINE=ZXNext KEYS=ps2 ATCODE=0x55
+run  next-ps2-o        poll.bin  1   MACHINE=ZXNext KEYS=ps2 ATCODE=0x44

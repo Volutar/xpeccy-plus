@@ -106,3 +106,9 @@ z_down 10
 cs_down 10
 o_down 0
 left 0
+== next-ps2-equal
+bffe 1D
+7ffe 1D
+== next-ps2-o
+bffe 1F
+7ffe 1F
