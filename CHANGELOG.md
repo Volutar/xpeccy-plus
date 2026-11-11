@@ -82,9 +82,8 @@ before that point is upstream's history and is not repeated here.
   the Latin labels say, whatever the system's layout. Letters and digits stay the Spectrum's,
   so games read them as before. Typing: Key Positions in Options > Input turns it off.
 
-- **NeoGS**: Card in Machine: General Sound picks NedoPC's card instead of the original
-  General Sound - 8 channels, 2 MB, its own firmware, and no click when a channel's volume
-  changes. Programs written for the NeoGS find it. Its SD card and MP3 chip are not there
+- **NeoGS**: the General Sound row in Options > Machine is None, Original or NeoGS, NedoPC's
+  card - 8 channels, 2 MB, its own firmware, and no click when a channel's volume changes. Programs written for the NeoGS find it. Its SD card and MP3 chip are not there
   yet. *(reported by ZXLion)*
 
 ### Changed
