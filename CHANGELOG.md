@@ -14,7 +14,7 @@ before that point is upstream's history and is not repeated here.
 - **A build for Windows 11 on ARM** (`win-arm64`), for computers with Snapdragon and other
   ARM64 chips: it runs natively, 1.5 to 2 times as fast as the x64 build does there.
   *(thanks to Loccy for the way to build it, a fix and the test on his Surface)*
-- **An x64 build on Windows on ARM moves to the native one**: its update brings the
+- **An x64 build on Windows 11 on ARM moves to the native one**: its update brings the
   `win-arm64` build, and with no new version the check offers that build of yours once
   (Help > Check for Updates every time).
 - **Screenshots at the machine's own size**: Scale x1, now the default, saves 256×192 for the
