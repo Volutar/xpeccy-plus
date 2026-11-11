@@ -16,6 +16,12 @@
 // by position, as with typing off: Shift is CAPS SHIFT there, and the ROM gets EXTEND.
 // ORDER=plain types the key with no Shift and then presses one: that Shift is the
 // player's own and reaches the machine (CAPS SHIFT with the symbol's SYMBOL SHIFT).
+//
+//	kbd-bench <poll.bin> 0	MACHINE=... KEYS=mouse [MOUSE=0]
+//
+// The Kempston mouse at X #12, Y #34 with the left button down, and what the machine's
+// ports answer: #FADF, #FBDF, #FFDF, #7B5F (X too: the interface decodes A5, A8, A9 and
+// A10 only) and #F8DF (A9 low, not the mouse). MOUSE=0 has the mouse off.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -156,6 +162,18 @@ int main(int argc, char** argv) {
 			t += compExec(comp);
 		printf("bffe %02X\n7ffe %02X\n", comp->hw->mrd(comp, 0x9000, 0) & 0x1f, comp->hw->mrd(comp, 0x9001, 0) & 0x1f);
 		comp->hw->keyr(comp, &key);
+		compDestroy(comp);
+		return 0;
+	}
+
+	if (getenv("KEYS") && !strcmp(getenv("KEYS"), "mouse")) {
+		static const int port[] = {0xfadf, 0xfbdf, 0xffdf, 0x7b5f, 0xf8df};
+		comp->mouse->enable = !getenv("MOUSE") || atoi(getenv("MOUSE"));
+		comp->mouse->xpos = 0x12;
+		comp->mouse->ypos = 0x34;
+		comp->mouse->lmb = 1;
+		for (int i = 0; i < 5; i++)
+			printf("%04x %02X\n", port[i], comp->hw->in(comp, port[i]) & 0xff);
 		compDestroy(comp);
 		return 0;
 	}

@@ -23,3 +23,9 @@ run  48k-pos-first      poll.bin  10  MACHINE=ZX48 KEYS=typed ORDER=first CHAR=0
 run  48k-typed-plain    poll.bin  10  MACHINE=ZX48 KEYS=typed ORDER=plain
 run  next-ps2-equal    poll.bin  1   MACHINE=ZXNext KEYS=ps2 ATCODE=0x55
 run  next-ps2-o        poll.bin  1   MACHINE=ZXNext KEYS=ps2 ATCODE=0x44
+# The Kempston mouse's ports: decoded on A5, A8, A9 and A10, as the interface's schematic
+run  48k-mouse          poll.bin  0   MACHINE=ZX48 KEYS=mouse
+run  128k-mouse         poll.bin  0   MACHINE=ZX128 KEYS=mouse
+run  2a-mouse           poll.bin  0   MACHINE=Plus2A KEYS=mouse
+run  p3-mouse           poll.bin  0   MACHINE=Plus3 KEYS=mouse
+run  p3-mouse-off       poll.bin  0   MACHINE=Plus3 KEYS=mouse MOUSE=0
