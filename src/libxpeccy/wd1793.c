@@ -656,6 +656,7 @@ unsigned char vgRead(FDC* fdc, int adr) {
 				if (fdc->drq) fdc->state |= 0x02;
 			}
 			res = fdc->state;
+			fdc->irq = 0;		// a status read resets INTRQ (179x datasheet)
 //			printf("in 1F = %.2X\n",res);
 			break;
 		case FDC_TRK:
