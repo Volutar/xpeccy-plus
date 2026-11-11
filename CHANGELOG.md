@@ -147,8 +147,8 @@ before that point is upstream's history and is not repeated here.
 
 - **The Kempston mouse works on the +2A and +3.** *(reported by Alexey Boldyrev)*
 - **The Kempston mouse's left and right buttons are the right way round**: they were swapped
-  on every machine but the ZX Evolution and the Next. The input overlay shows them as the
-  program gets them.
+  on every machine but the ZX Evolution and the Next. If you ticked Swap buttons for that,
+  untick it. The input overlay shows them as the program gets them.
 - **The = key types = on the ZX Spectrum Next**, not o, and reaches ZX Evolution programs that
   read the PC keyboard as =.
 - **Screenshot Series counts the machine's frames**, so "each 50 frames" is a second
