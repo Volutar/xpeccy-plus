@@ -2410,6 +2410,7 @@ void MainWin::closeEvent(QCloseEvent* ev) {
 		xm_save_nvram();
 		xm_save_over();		// ...and what the user changed on the machine
 		keepSize();
+		snowBoxEnd();		// a tick in it counts
 		saveConfig();
 #ifdef USENETWORK
 		closeServer();
@@ -3566,12 +3567,20 @@ void MainWin::snowImageIs(const QString& path, int src) {
 	snowImage = path;
 	snowNoted = false;
 	snow_watch_reset();
-	delete snowBox;		// it spoke of the other game
+	snowBoxEnd();		// it spoke of the other game
 	if (xm_snow_held()) {
 		EmuLock lock;
 		xm_snow_hold(conf.zx, 0);
 		x_input_bump();
 	}
+}
+
+// The notice gone without a button: finished all the same, so a tick in
+// "Don't show this again" is taken
+void MainWin::snowBoxEnd() {
+	if (!snowBox) return;
+	snowBox->done(QDialog::Rejected);
+	delete snowBox;
 }
 
 // A game snows: said once per image, over the shaded picture, while the game

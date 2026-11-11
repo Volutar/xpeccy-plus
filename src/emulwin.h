@@ -396,6 +396,7 @@ class MainWin : public QWidget {
 		bool snowNoted = false;	// ...and it was shown for it
 		QImage plainKept;		// no GL: the picture under the snow, drawn once a frame
 		void snowNotice();
+		void snowBoxEnd();
 		void snowImageIs(const QString&, int src);
 		struct xIosdItem {QAction* act; int* field; int val;};	// val < 0: a switch
 		std::vector<xIosdItem> iosdItems;
