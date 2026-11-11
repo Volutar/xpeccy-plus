@@ -1252,6 +1252,7 @@ void SetupWin::fillPages() {
 // sound
 	gsBox->setCurrentIndex(comp->gs->enable ? 1 : 0);
 	gsrbox->setChecked(comp->gs->reset);
+	setRFIndex(gsBoardBox, comp->gs->board, 0);
 	divBox->setCurrentIndex(comp->div->model ? 1 : 0);
 	divRamBox->setCurrentIndex((comp->div->pages > 16) ? 1 : 0);
 	divWrBox->setChecked(comp->div->eeWrite);
@@ -1748,6 +1749,7 @@ void SetupWin::applyGlobal() {
 		comp->sndSeed = 1;
 	}
 	comp->gs->reset = gsrbox->isChecked() ? 1 : 0;
+	comp->gs->board = getRFIData(gsBoardBox);
 // input
 	comp->mouse->swapButtons = cbSwapButtons->isChecked() ? 1 : 0;
 	comp->mouse->sensitivity = sldSensitivity->value() * 0.001f;
@@ -2390,6 +2392,10 @@ void SetupWin::buildDevices() {
 	});
 	connect(gsRomBtn, &QToolButton::released, this, [this]() {romSlotFile(gsRomBox, RSLOT_GS);});
 	gs.field(tr("ROM"), fieldPair(gsRomBox, gsRomBtn, false));
+	gsBoardBox = new QComboBox;
+	gsBoardBox->addItem(tr("Original"), GS_BOARD_ORIGINAL);
+	gsBoardBox->addItem(tr("NeoGS"), GS_BOARD_NEOGS);
+	gs.field(tr("Board"), gsBoardBox, tr("The original clicks on a volume change, NeoGS does not"));
 	gs.line();
 	gs.check(gsrbox, tr("Reset"), tr("The card is reset with the machine"));
 	devRow(grid, tr("General Sound"), gsBox, gs.body, "Machine: General Sound");

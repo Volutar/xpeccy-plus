@@ -411,6 +411,7 @@ void saveConfig() {
 	fprintf(cfile, "psg.separation = %i\n", conf.zx->ts->chipA->sep);
 	fprintf(cfile, "gs.reset = %s\n", YESNO(conf.zx->gs->reset));
 	fprintf(cfile, "gs.stereo = %i\n", conf.zx->gs->stereo);
+	fprintf(cfile, "gs.board = %s\n", (conf.zx->gs->board == GS_BOARD_ORIGINAL) ? "original" : "neogs");
 
 	fprintf(cfile, "\n[TAPE]\n\n");
 	fprintf(cfile, "speed = %i\n", conf.zx->tape->speed);
@@ -1447,7 +1448,7 @@ void loadConfig() {
 					// psg.frq and psg.stereo are read no more: an old global value
 					// would land on whatever machine is up and stay there as its own
 					if ((pnam=="psg.separation")
-						|| (pnam=="gs.reset") || (pnam=="gs.stereo")) xm_defer(pnam, pval);
+						|| (pnam=="gs.reset") || (pnam=="gs.stereo") || (pnam=="gs.board")) xm_defer(pnam, pval);
 					break;
 				case SECT_TOOLS:
 					break;

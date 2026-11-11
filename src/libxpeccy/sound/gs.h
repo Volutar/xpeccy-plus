@@ -15,6 +15,12 @@ enum {
 	GS_12_34
 };
 
+// how the card's DACs mix: the original board's, or NeoGS's
+enum {
+	GS_BOARD_NEOGS = 0,
+	GS_BOARD_ORIGINAL
+};
+
 enum {
 	GS_ARG_ENABLE = 0,
 	GS_ARG_RESET,
@@ -42,6 +48,7 @@ typedef struct {
 	int ch1,ch2,ch3,ch4;
 	int cnt;
 	int stereo;
+	int board;		// GS_BOARD_*
 	int time;
 	int ns_per_tick;
 	long counter;

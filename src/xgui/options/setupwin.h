@@ -159,6 +159,7 @@ class SetupWin : public QDialog {
 		QComboBox* gsBox;
 		QComboBox* saaBox;
 		QComboBox* gsRomBox;
+		QComboBox* gsBoardBox;
 		QComboBox* dosRomBox;
 		QToolButton* dosRomBtn;
 		QComboBox* joyBox;

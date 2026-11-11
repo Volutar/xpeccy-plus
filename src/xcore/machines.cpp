@@ -1827,6 +1827,7 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	}
 	else if (nam == "gs.reset") comp->gs->reset = arg.b;
 	else if (nam == "gs.stereo") comp->gs->stereo = arg.b ? GS_12_34 : GS_MONO;
+	else if (nam == "gs.board") comp->gs->board = (val == "original") ? GS_BOARD_ORIGINAL : GS_BOARD_NEOGS;
 	else if (nam == "mouse.wheel") comp->mouse->hasWheel = arg.b;
 	else if (nam == "mouse.swapButtons") comp->mouse->swapButtons = arg.b;
 	else if (nam == "mouse.sensitivity") comp->mouse->sensitivity = arg.d;

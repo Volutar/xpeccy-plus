@@ -121,6 +121,7 @@ GSound* gsCreate() {
 	memSetBank(res->mem, 0xc0, MEM_RAM, 1, MEM_16K, NULL, NULL, NULL);
 	res->pstate = 0x7e;
 	res->stereo = GS_12_34;
+	res->board = GS_BOARD_NEOGS;
 	res->ch1 = 0xff;
 	res->ch2 = 0xff;
 	res->ch3 = 0xff;
@@ -190,26 +191,39 @@ int gsRead(GSound* gs, int adr, int* dptr) {
 	return 1;
 }
 
-// max 1ch = 256 * 64 = 16384 = 2^14
-// 4ch = 2^14 * 4 = 2^16 = 65536
-// 2ch = 2^15
+// One channel: the sample DAC's reference is the volume DAC's output.
+// Original board: both against GND, so the level is code * vol and a volume
+// change moves the mid level too. NeoGS: the sample is signed around #80.
+static int gs_chan(GSound* gs, int ch, int vol) {
+	if (gs->board == GS_BOARD_NEOGS) ch -= 0x80;
+	return ch * vol;
+}
 
+// 1+2 left, 3+4 right. The original board feeds each side's output into the
+// other side's mixer (22K into a 6K8 divider): ~0.47 of it, scaled back so
+// all four at full peak where they did without it. NeoGS has no cross-mix.
 sndPair gsVolume(GSound* gs) {
 	sndPair res;
 	res.left = 0;
 	res.right = 0;
 	if (!gs->enable) return res;
+	int c1 = gs_chan(gs, gs->ch1, gs->vol1);
+	int c2 = gs_chan(gs, gs->ch2, gs->vol2);
+	int c3 = gs_chan(gs, gs->ch3, gs->vol3);
+	int c4 = gs_chan(gs, gs->ch4, gs->vol4);
 	switch (gs->stereo) {
 		case GS_MONO:
-			res.left = ((gs->ch1 * gs->vol1 + \
-				gs->ch2 * gs->vol2 + \
-				gs->ch3 * gs->vol3 + \
-				gs->ch4 * gs->vol4) >> 2);
+			res.left = (c1 + c2 + c3 + c4) / 4;
 			res.right = res.left;
 			break;
 		case GS_12_34:
-			res.left = ((gs->ch1 * gs->vol1 + gs->ch2 * gs->vol2) >> 1);
-			res.right = ((gs->ch3 * gs->vol3 + gs->ch4 * gs->vol4) >> 1);
+			res.left = (c1 + c2) / 2;
+			res.right = (c3 + c4) / 2;
+			if (gs->board == GS_BOARD_ORIGINAL) {
+				int l = res.left;
+				res.left = (l * 100 + res.right * 47) / 147;
+				res.right = (res.right * 100 + l * 47) / 147;
+			}
 			break;
 	}
 	return res;
