@@ -875,6 +875,36 @@ static void mac_rom_warn() {
 	shitHappens(msg.toUtf8().constData());
 }
 
+// The NeoGS flash: a missing file is told about only while the card is a NeoGS,
+// as nothing else reads it
+static void mac_load_ngs(Computer* comp, const std::string& name) {
+	GSound* gs = comp->gs;
+	memset(gs->romNGS, 0xff, NGS_ROM_SIZE);
+	if (name.empty()) return;
+	std::string fpath = xm_rom_path(name);
+	FILE* file = rom_open(fpath);
+	if (!file) {
+		xlog(XLG_CONF, XLL_ERROR, "can't load NeoGS ROM '%s'", fpath.c_str());
+		if (gs->model == GS_NEOGS) mac_rom_missing("NeoGS", fpath);
+		return;
+	}
+	if (fread(gs->romNGS, 1, NGS_ROM_SIZE, file) < NGS_ROM_SIZE)
+		xlog(XLG_CONF, XLL_WARN, "short read from '%s'", fpath.c_str());
+	fclose(file);
+}
+
+void xm_set_ngs_rom(const std::string& name) {
+	if (!conf.zx) return;
+	emu_lock();
+	conf.ngsFile = name;
+	romMissing.clear();
+	mac_load_ngs(conf.zx, name);
+	gs_rom_refresh(conf.zx->gs);
+	emu_unlock();
+	if (!romMissing.isEmpty())
+		QTimer::singleShot(0, QCoreApplication::instance(), mac_rom_warn);
+}
+
 static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std::string& gsf, const std::string& fntf, bool withfnt) {
 	std::string fpath;
 	int romsz = MEM_256;
@@ -916,21 +946,21 @@ static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std:
 	if (romsz < MEM_16K) romsz = MEM_16K;
 	memSetSize(comp->mem, -1, romsz);
 	comp_heat_sync(comp);
-	if (gsf.empty()) {
-		memset((char*)comp->gs->mem->romData, 0xff, MEM_32K);
-	} else {
+	memset(comp->gs->romGS, 0xff, GS_ROM_SIZE);
+	if (!gsf.empty()) {
 		fpath = xm_rom_path(gsf);
 		file = rom_open(fpath);
 		if (file) {
-			if (fread(comp->gs->mem->romData, MEM_32K, 1, file) != 1)
+			if (fread(comp->gs->romGS, GS_ROM_SIZE, 1, file) != 1)
 				xlog(XLG_CONF, XLL_WARN, "short read from '%s'", fpath.c_str());
 			fclose(file);
 		} else {
 			xlog(XLG_CONF, XLL_ERROR, "can't load GS ROM '%s'", fpath.c_str());
 			mac_rom_missing("General Sound", fpath);
-			memset((char*)comp->gs->mem->romData, 0xff, MEM_32K);
 		}
 	}
+	mac_load_ngs(comp, conf.ngsFile);
+	gs_rom_refresh(comp->gs);
 	if (withfnt) {				// else leave the font the machine put there
 		if (fntf.empty()) {
 			vid_fnt_del(comp->vid);
@@ -1827,7 +1857,12 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 	}
 	else if (nam == "gs.reset") comp->gs->reset = arg.b;
 	else if (nam == "gs.stereo") comp->gs->stereo = arg.b ? GS_12_34 : GS_MONO;
-	else if (nam == "gs.board") comp->gs->board = (val == "original") ? GS_BOARD_ORIGINAL : GS_BOARD_NEOGS;
+	else if (nam == "gs.card") {
+		int model = (val == "neogs") ? GS_NEOGS : GS_CLASSIC;
+		if (model != comp->gs->model) gs_set_model(comp->gs, model);
+		if (model == GS_NEOGS) xm_set_ngs_rom(conf.ngsFile);	// so a missing one is told
+	}
+	else if (nam == "gs.neogs.rom") { if (val != conf.ngsFile) xm_set_ngs_rom(val); }
 	else if (nam == "mouse.wheel") comp->mouse->hasWheel = arg.b;
 	else if (nam == "mouse.swapButtons") comp->mouse->swapButtons = arg.b;
 	else if (nam == "mouse.sensitivity") comp->mouse->sensitivity = arg.d;

@@ -1252,7 +1252,11 @@ void SetupWin::fillPages() {
 // sound
 	gsBox->setCurrentIndex(comp->gs->enable ? 1 : 0);
 	gsrbox->setChecked(comp->gs->reset);
-	setRFIndex(gsBoardBox, comp->gs->board, 0);
+	setRFIndex(gsCardBox, comp->gs->model, 0);
+	ngsPick = QString::fromUtf8(conf.ngsFile.c_str());
+	if (!ngsPick.isEmpty() && (ngsRomBox->findData(ngsPick) < 0)) ngsRomBox->insertItem(1, ngsPick, ngsPick);
+	ngsRomBox->setCurrentIndex(qMax(0, ngsRomBox->findData(ngsPick)));
+	gsRomStack->setCurrentIndex((comp->gs->model == GS_NEOGS) ? 1 : 0);
 	divBox->setCurrentIndex(comp->div->model ? 1 : 0);
 	divRamBox->setCurrentIndex((comp->div->pages > 16) ? 1 : 0);
 	divWrBox->setChecked(comp->div->eeWrite);
@@ -1749,7 +1753,16 @@ void SetupWin::applyGlobal() {
 		comp->sndSeed = 1;
 	}
 	comp->gs->reset = gsrbox->isChecked() ? 1 : 0;
-	comp->gs->board = getRFIData(gsBoardBox);
+	int card = getRFIData(gsCardBox);
+	bool toNeo = (card == GS_NEOGS) && (card != comp->gs->model);
+	if (card != comp->gs->model) {
+		emu_lock();
+		gs_set_model(comp->gs, card);
+		emu_unlock();
+	}
+	std::string ngs = std::string(ngsPick.toUtf8().data());
+	if ((ngs != conf.ngsFile) || toNeo)
+		xm_set_ngs_rom(ngs);		// a switch to it says if the file is missing
 // input
 	comp->mouse->swapButtons = cbSwapButtons->isChecked() ? 1 : 0;
 	comp->mouse->sensitivity = sldSensitivity->value() * 0.001f;
@@ -2144,6 +2157,7 @@ QDialog* SetupWin::popOut(QWidget* box, const char* title) {
 
 #define	RSLOT_GS	-1
 #define	RSLOT_FONT	-2
+#define	RSLOT_NGS	-3	// the NeoGS flash: not the romset's, every machine's
 #define	TRDOS_ROM	"trdos504t.rom"		// what a Beta Disk gets when its slot is empty
 
 
@@ -2391,11 +2405,27 @@ void SetupWin::buildDevices() {
 		romSlotPick(RSLOT_GS, gsRomBox->itemData(idx).toString());
 	});
 	connect(gsRomBtn, &QToolButton::released, this, [this]() {romSlotFile(gsRomBox, RSLOT_GS);});
-	gs.field(tr("ROM"), fieldPair(gsRomBox, gsRomBtn, false));
-	gsBoardBox = new QComboBox;
-	gsBoardBox->addItem(tr("NeoGS"), GS_BOARD_NEOGS);
-	gsBoardBox->addItem(tr("Original"), GS_BOARD_ORIGINAL);
-	gs.field(tr("Card"), gsBoardBox, tr("NeoGS: no click when a volume changes"));
+	// the ROM row holds the card's own file: the classic one's in the romset,
+	// the NeoGS flash one for every machine
+	ngsRomBox = new QComboBox;
+	QToolButton* ngsRomBtn = new QToolButton;
+	ngsRomBtn->setIcon(QIcon(":/images/fileopen.png"));
+	ngsRomBtn->setToolTip(tr("Pick a ROM file"));
+	connect(ngsRomBox, QOverload<int>::of(&QComboBox::activated), this, [this](int idx) {
+		romSlotPick(RSLOT_NGS, ngsRomBox->itemData(idx).toString());
+	});
+	connect(ngsRomBtn, &QToolButton::released, this, [this]() {romSlotFile(ngsRomBox, RSLOT_NGS);});
+	gsRomStack = new QStackedWidget;
+	gsRomStack->addWidget(fieldPair(gsRomBox, gsRomBtn, false));
+	gsRomStack->addWidget(fieldPair(ngsRomBox, ngsRomBtn, false));
+	gsCardBox = new QComboBox;
+	gsCardBox->addItem(tr("General Sound"), GS_CLASSIC);
+	gsCardBox->addItem(tr("NeoGS"), GS_NEOGS);
+	connect(gsCardBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
+		gsRomStack->setCurrentIndex((getRFIData(gsCardBox) == GS_NEOGS) ? 1 : 0);
+	});
+	gs.field(tr("Card"), gsCardBox, tr("NeoGS: 8 channels, no click when a volume changes"));
+	gs.field(tr("ROM"), gsRomStack);
 	gs.line();
 	gs.check(gsrbox, tr("Reset"), tr("The card is reset with the machine"));
 	devRow(grid, tr("General Sound"), gsBox, gs.body, "Machine: General Sound");
@@ -3092,6 +3122,11 @@ void SetupWin::fillGsRom(const QStringList& files) {
 	QString cur = romSlotFileName(RSLOT_GS);
 	if (!cur.isEmpty() && (gsRomBox->findData(cur) < 0)) gsRomBox->insertItem(1, cur, cur);
 	gsRomBox->setCurrentIndex(qMax(0, gsRomBox->findData(cur)));
+	ngsRomBox->clear();
+	ngsRomBox->addItem(tr("(empty)"), QString());
+	foreach(QString f, files) ngsRomBox->addItem(f, f);
+	if (!ngsPick.isEmpty() && (ngsRomBox->findData(ngsPick) < 0)) ngsRomBox->insertItem(1, ngsPick, ngsPick);
+	ngsRomBox->setCurrentIndex(qMax(0, ngsRomBox->findData(ngsPick)));
 }
 
 // the file in a slot, or an empty string when there is none
@@ -3100,6 +3135,8 @@ QString SetupWin::romSlotFileName(int slot) {
 	std::string res;
 	if (slot == RSLOT_GS) {
 		res = roms.gsFile;
+	} else if (slot == RSLOT_NGS) {
+		return ngsPick;
 	} else if (slot == RSLOT_FONT) {
 		res = roms.fntFile;
 	} else {
@@ -3165,6 +3202,9 @@ void SetupWin::romSlotPick(int slot, const QString& file) {
 	std::string name = std::string(file.toUtf8().data());
 	if (slot == RSLOT_GS) {
 		roms.gsFile = name;
+	} else if (slot == RSLOT_NGS) {
+		ngsPick = file;
+		return;			// not the romset's
 	} else if (slot == RSLOT_FONT) {
 		roms.fntFile = name;
 	} else {
