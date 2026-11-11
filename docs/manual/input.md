@@ -107,8 +107,9 @@ the right one. The 48K keymap then has no Symbol Shift: use ZX Spectrum 128K the
 A keymap is a text file with the extension `.map`, put in the `keymaps` folder of the settings
 folder (see [Where the settings are](getting-started.md#where-the-settings-are)). It shows in
 the **Keymap** menu by its name without `.map` the next time the menu is opened. A file with
-the name of a built-in keymap is used instead of that one. A file named
-`ZX Spectrum 128K.map` is not used: that keymap is built in.
+the name of a built-in keymap is used instead of that one. A `ZX Spectrum 128K.map` left from
+an earlier version is not listed, that keymap is built in now; one you changed is listed as
+**ZX Spectrum 128K.map**.
 
 Each line is one PC key, then the Spectrum keys it presses, all separated by tabs:
 
