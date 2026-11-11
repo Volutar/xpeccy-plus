@@ -2393,9 +2393,9 @@ void SetupWin::buildDevices() {
 	connect(gsRomBtn, &QToolButton::released, this, [this]() {romSlotFile(gsRomBox, RSLOT_GS);});
 	gs.field(tr("ROM"), fieldPair(gsRomBox, gsRomBtn, false));
 	gsBoardBox = new QComboBox;
-	gsBoardBox->addItem(tr("Original"), GS_BOARD_ORIGINAL);
 	gsBoardBox->addItem(tr("NeoGS"), GS_BOARD_NEOGS);
-	gs.field(tr("Board"), gsBoardBox, tr("The original clicks on a volume change, NeoGS does not"));
+	gsBoardBox->addItem(tr("Original"), GS_BOARD_ORIGINAL);
+	gs.field(tr("Card"), gsBoardBox, tr("NeoGS does not click on a volume change, the original does"));
 	gs.line();
 	gs.check(gsrbox, tr("Reset"), tr("The card is reset with the machine"));
 	devRow(grid, tr("General Sound"), gsBox, gs.body, "Machine: General Sound");

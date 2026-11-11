@@ -199,9 +199,10 @@ static int gs_chan(GSound* gs, int ch, int vol) {
 	return ch * vol;
 }
 
-// 1+2 left, 3+4 right. The original board feeds each side's output into the
-// other side's mixer (22K into a 6K8 divider): ~0.47 of it, scaled back so
-// all four at full peak where they did without it. NeoGS has no cross-mix.
+// 1+2 left, 3+4 right. On the original board each side's output reaches the
+// other mixer's + input (22K against 6K8 to VIRTGND, that input's gain 2):
+// solved for both sides, ~0.47 of the other side against 1 of its own. Scaled
+// back so all four at full peak where they did without it. NeoGS has none.
 sndPair gsVolume(GSound* gs) {
 	sndPair res;
 	res.left = 0;
