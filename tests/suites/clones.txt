@@ -7,7 +7,7 @@ chordout_pent   pent      auto  3000  300     disk/CHORDOUT.trd
 tsfm_pent       pent      open  50    300     snap/tsfm_volume_test_pentagon128.sna mac:sound.psg.count=2 mac:sound.psg.type=ym2203 --bench-full
 saa_pent        pent      auto  2500  300     tape/testsaa.tap                      mac:sound.saa=yes --bench-full
 gs_pent         pent      auto  3000  300     disk/ATWP2_GS.TRD                     mac:sound.gs=yes --bench-full
-neogs_pent      pent      auto  3000  300     disk/ATWP2_GS.TRD                     mac:sound.gs=yes cfg:SOUND.gs.card=neogs --bench-full
+neogs_pent      pent      auto  3000  300     disk/ATWP2_GS.TRD                     mac:sound.gs=neogs --bench-full
 vocoders_pent   pent      auto  3000  300     disk/thevocoders.scl                  --bench-full
 boot_p1024      pent1024  boot  0     400
 powerup_p1024   pent1024  auto  8000  300     disk/powerup2.trd
