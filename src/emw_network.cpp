@@ -253,8 +253,9 @@ void MainWin::socketRead() {
 				sock->write("\r\n");
 			}
 		}
-	} else if ((com == "winshot") || (com == "winshot-menus")) {
+	} else if ((com == "winshot") || (com == "winshot-menus") || (com == "winshot-main")) {
 		// winshot FILE: the window as painted, or the menu or dialog open over it.
+		// winshot-main FILE: the window as painted, whatever is open over it.
 		// winshot-menus FILE: the window with every menu open over it, where it
 		// stands, and a tip up over them; the answer adds a "menu x y w h" line
 		// for each menu. A path may have spaces
@@ -297,6 +298,8 @@ void MainWin::socketRead() {
 				fsBar->render(&pnt, fsBar->pos());
 			if (mbHint && mbHint->isVisible())
 				mbHint->render(&pnt, mbHint->pos(), QRegion(), QWidget::DrawChildren);	// see-through: no background
+			if (snowFall->isVisible())
+				snowFall->render(&pnt, scr.topLeft() + snowFall->pos(), QRegion(), QWidget::DrawChildren);
 			if (fsTool && fsTool->isVisible())
 				fsTool->render(&pnt, fsTool->pos());
 			// the window's own, laid out over the picture when its arrow is open

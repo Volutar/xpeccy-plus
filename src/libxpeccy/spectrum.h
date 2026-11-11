@@ -566,6 +566,8 @@ typedef struct Computer {
 
 	int snowBad;		// the ULA took a refresh cycle: the next opcode out of
 				// slow memory comes back wrong (flgSNOWX)
+	int snowHits;		// refresh cycles that took the ULA's this frame: the gui's
+				// snow notice reads and clears it at the frame's end
 
 	int frmCount;		// frames since reset (for breakpoint conditions)
 	int tickCount;		// accumulate T

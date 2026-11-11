@@ -733,22 +733,12 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	// The settings that define the machine rather than how it is used live in
 	// a window of their own. It is the same widgets, moved out of the page -
 	// so everything that reads and writes them stays as it is.
-	advNote = new QLabel(tr("The ZX Spectrum Next sets these itself, by its NextZXOS settings: they are on the Machine page"));
-	advNote->setWordWrap(true);
-	ui.verticalLayout_adv->insertWidget(0, advNote);
 	advWin = popOut(ui.advBox, "Machine: Advanced Settings");
-	// opened by the gear beside the model, as on every device row
-	QToolButton* advBtn = new QToolButton;
-	advBtn->setIcon(QIcon(":/images/settings.png"));
-	advBtn->setToolTip(tr("The settings that define this machine rather than how you use it"));
-	// sized to what it shows: the Next's note comes and goes with the machine
-	connect(advBtn, &QToolButton::released, advWin, [this]() {
+	connect(ui.pbAdvMachine, &QPushButton::released, advWin, [this]() {
+		advWin->adjustSize();
 		advWin->show();
 		advWin->raise();
-		QTimer::singleShot(0, advWin, [this]() {advWin->adjustSize();});	// once its layout has the note's state
 	});
-	ui.gridLayout->removeWidget(ui.machbox);
-	ui.gridLayout->addWidget(fieldPair(ui.machbox, advBtn, false), 0, 2, 1, 3);
 
 	// the page keeps one button for the ROM set; the slots and the reset
 	// target are in this window
@@ -1195,7 +1185,7 @@ void SetupWin::fillPages() {
 	setRFIndex(ui.cbEarBack, comp->earback);
 	setRFIndex(ui.cbFloatBus, comp->fbus);
 	ui.cbEarlyTiming->setChecked(comp->vid->ula->early);
-	ui.cbSnow->setChecked(comp->flgSNOW);
+	ui.cbSnow->setChecked(xm_snow_user());
 	ui.cbSnowCrash->setChecked(comp->flgSNOWX);
 	ui.cbBeepMic->setChecked(comp->beep->mic);
 	chasnow();
@@ -1380,7 +1370,7 @@ void SetupWin::noteShown() {
 // widths that follow the font and style: on fill and after a style is applied
 void SetupWin::fitWidths() {
 	int wid = machColMin;
-	for (xSideButton* btn : {ui.pbResetMachine, ui.pbSaveMachine, ui.pbDelMachine, btnRecAdv})
+	for (xSideButton* btn : {ui.pbAdvMachine, ui.pbResetMachine, ui.pbSaveMachine, ui.pbDelMachine, btnRecAdv})
 		wid = qMax(wid, btn->sizeHint().width());
 	for (QWidget* col : {ui.machButtons, ui.picRight, ui.afRight, ui.ssRight, boxRecAdv})
 		col->setFixedWidth(wid);
@@ -1504,7 +1494,7 @@ void SetupWin::applyMachine() {
 		comp->earback = getRFIData(ui.cbEarBack);
 		comp->fbus = getRFIData(ui.cbFloatBus);
 		comp->vid->ula->early = ui.cbEarlyTiming->isChecked();
-		comp_set_snow(comp, ui.cbSnow->isChecked() ? 1 : 0);
+		xm_snow_set(comp, ui.cbSnow->isChecked() ? 1 : 0);
 		comp->flgSNOWX = ui.cbSnowCrash->isChecked() ? 1 : 0;
 		// the MIC level in the beeper or out of it, at once; left alone, the levels stay
 		// as the machine set them
@@ -2787,7 +2777,9 @@ void SetupWin::showDevRows() {
 	ui.gbCpu->setEnabled(!next);
 	ui.gbUla->setEnabled(!next);
 	ui.gbBoard->setEnabled(!next);
-	advNote->setVisible(next);
+	// the Next sets these itself, by its NextZXOS settings
+	ui.pbAdvMachine->setEnabled(!next);
+	if (next) advWin->hide();
 	fillNextGroup();
 	QString fixed = tr("Built into this board");
 	// ALF reads its two joysticks its own way, on #1F and #FE

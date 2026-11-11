@@ -18,11 +18,12 @@ in [Your own machines](#your-own-machines).
 
 **Tools > Options...** opens **Options**; **Machine** is its first page. At the top:
 
-- **Model** - the machine. The {icon}`settings` gear beside it opens
-  **Machine: Advanced Settings**.
+- **Model** - the machine.
 - **Memory** - how much RAM the machine has.
 - **ROM** - the ROM files in use; the {icon}`settings` button opens **Machine: ROM**.
 - **Overclock** - the slider described in [Overclock](#overclock).
+- {icon}`settings` **Advanced settings** - opens **Machine: Advanced Settings** (see
+  [Advanced settings](#advanced-settings)).
 - {icon}`refresh` **Restore machine**, {icon}`save-as` **Save machine...**,
   {icon}`cancel` **Delete this machine** - see [Your own machines](#your-own-machines).
 
@@ -80,7 +81,7 @@ The values are what the machine has set now; hold the mouse over one to see what
 be. To change them, press NMI, then **Settings**, in NextZXOS: a change made there takes
 effect when the menu closes. **Next (+3)** in **Timings** is the timing NextZXOS calls
 **Next**, that of the +3. **Scanlines** and **HDMI Sound** are not listed: they are for a
-monitor, not emulated. **Machine: Advanced Settings** is all grayed out on the Next.
+monitor, not emulated. **Advanced settings** is grayed out on the Next.
 
 ## Overclock
 
@@ -101,8 +102,9 @@ guaranteed. The slider is not saved: the next start is without overclock. The
 ```{index} Machine: Advanced Settings, Base clock, Raster layout, Floating bus, Contended memory, contention, ULA snow, ULA plus
 ```
 
-**Machine: Advanced Settings** holds the settings of the hardware itself, not of how you use
-it. Leave them alone unless you know the hardware.
+{icon}`settings` **Advanced settings**, the first button in the right-hand column of the
+page, opens **Machine: Advanced Settings**. It holds the settings of the hardware itself, not
+of how you use it. Leave them alone unless you know the hardware.
 
 - **CPU** - **Base clock**, the frequency of the crystal the board runs on. The frame rate
   is derived from it too.
@@ -113,7 +115,7 @@ it. Leave them alone unless you know the hardware.
 - **Board** - **Even M1** (Scorpion ZS 256) and **DD palette** (Profi).
 
 Each one is explained beside it, or in a tooltip when you hold the mouse over it. On the
-ZX Spectrum Next they are all grayed out: the Next sets them itself (see
+ZX Spectrum Next the button is grayed out: the Next sets them itself (see
 [On the ZX Spectrum Next](#on-the-zx-spectrum-next)). What contention, snow and the floating bus are, and how they are emulated, is in
 [Contention, snow and the floating bus](ula-snow-floating-bus.md).
 

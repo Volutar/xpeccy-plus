@@ -1264,6 +1264,30 @@ void xm_power_cycle() {
 	comp_power_phase(comp);
 }
 
+// The machine snows as the user set it unless the snow notice switched it off
+// for the image in use. Only the user's setting is written back (mac_put_all),
+// and Options shows it.
+static int snowUser = 0;
+static int snowHeld = 0;
+
+void xm_snow_set(Computer* comp, int on) {
+	snowUser = on ? 1 : 0;
+	comp_set_snow(comp, snowUser && !snowHeld);
+}
+
+int xm_snow_user() {return snowUser;}
+int xm_snow_held() {return snowHeld;}
+
+void xm_snow_hold(Computer* comp, int off) {
+	snowHeld = off ? 1 : 0;
+	comp_set_snow(comp, snowUser && !snowHeld);
+}
+
+void xm_snow_keep(Computer* comp) {
+	if (comp->flgSNOW != (snowUser && !snowHeld))
+		comp_set_snow(comp, snowUser && !snowHeld);
+}
+
 static void mac_from_def(const xMachine* mac) {
 	Computer* comp = conf.zx;
 	xm_set_hardware(mac->hw);
@@ -1288,7 +1312,7 @@ static void mac_from_def(const xMachine* mac) {
 	comp->vid->ula->enabled = mac->ulaplus;
 	comp->vid->brdstep = mac->brd4t ? 7 : 1;
 	comp->vid->brdmin = mac->brdmin;
-	comp_set_snow(comp, mac->snow);
+	xm_snow_set(comp, mac->snow);
 	comp->flgSNOWX = mac->snowcrash;
 	mac_set_psg(comp, mac->psgCount, mac->psgType, mac->psgFrq, mac->psgStereo);
 	comp->gs->enable = mac->gs;
@@ -1518,7 +1542,7 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put(out, "contPattern", comp->vid->ula->conttype, mac->contPattern);
 	mac_put_yn(out, "earlyTiming", comp->vid->ula->early, mac->early);
 	mac_put_yn(out, "4t-border", comp->vid->brdstep & 0x06, mac->brd4t);
-	mac_put_yn(out, "snow", comp->flgSNOW, mac->snow);
+	mac_put_yn(out, "snow", snowUser, mac->snow);
 	mac_put_yn(out, "snow.crash", comp->flgSNOWX, mac->snowcrash);
 	mac_put(out, "floatbus", mac_word_name(fbusTab, comp->fbus), mac_word_name(fbusTab, mac->floatbus));
 	mac_put_yn(out, "ULAplus", comp->vid->ula->enabled, mac->ulaplus);
@@ -1999,7 +2023,7 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 		case PS_VIDEO:
 			if (nam == "geometry") conf.layName = val;
 			else if (nam == "4t-border") comp->vid->brdstep = arg.b ? 7 : 1;
-			else if (nam == "snow") comp_set_snow(comp, arg.b);
+			else if (nam == "snow") xm_snow_set(comp, arg.b);
 			else if (nam == "snow.crash") comp->flgSNOWX = arg.b;
 			else if (nam == "ULAplus") comp->vid->ula->enabled = arg.b;
 			else if (nam == "contPattern") comp_set_cont_pattern(comp, arg.i);

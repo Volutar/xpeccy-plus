@@ -68,6 +68,7 @@ void zx_snow(Computer* comp) {
 	if (!mem_bank_slow(bank)) return;		// not a contended bank
 	if (!vid_snow(comp->vid, z80_get_r(comp->cpu),
 			(bank & 4) | (comp->vid->vidPage & 2) | 1)) return;
+	comp->snowHits++;
 	// Some 128K machines hang or reset under snow and others take it without a
 	// murmur. Nobody has published the mechanism; what SpecEmu says about its
 	// own switch is that such a machine goes unstable while it runs code out of

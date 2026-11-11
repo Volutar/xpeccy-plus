@@ -447,6 +447,8 @@ void frame_taken();		// the gui has the frame signal: the next one may be sent
 const unsigned char* frame_shown_lock();
 void frame_shown_unlock();
 int frame_shown_input(InState*);	// the input overlay's state for that picture, 0: off
+int snow_seen();			// a game was seen to snow (once per run of it): taken by the gui
+void snow_watch_reset();		// a new image: watch from the start
 
 // the running machine
 
@@ -484,6 +486,13 @@ void xm_power_cycle();		// off and on again: the caller holds emu_lock
 void xm_set_ram(int size);		// the RAM the machine file gives (a snapshot's own lasts the session)
 int xm_own_ram();			// ...and what that is now
 int xm_power_count();		// power cycles so far: something to notice one by
+// ULA snow as the user set it (machine file, Options), and a switch-off for the
+// image in use that is never written anywhere: the snow notice's "for this game"
+void xm_snow_set(Computer*, int on);
+int xm_snow_user();
+void xm_snow_hold(Computer*, int off);
+int xm_snow_held();
+void xm_snow_keep(Computer*);		// a state loaded back carries its own flag: put the session's back
 // The bundled esxDOS releases, newest first, each in conf.path.esxDir/<version>/
 // with the divMMC's EEPROM image and the folders a card needs. A fresh EEPROM
 // is seeded from the first.

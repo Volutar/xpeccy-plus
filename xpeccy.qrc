@@ -270,6 +270,10 @@
         <file>images/osd-time-slow8.png</file>
         <file>images/osd-rec.png</file>
         <file>images/osd-rec-off.png</file>
+        <file>images/osd-snow.png</file>
+        <file>images/osd-snow-off.png</file>
+        <file>images/snowflake-22.png</file>
+        <file>images/snowflake-44.png</file>
         <file>images/osd-rzx.png</file>
         <file>images/osd-rzx-off.png</file>
         <file>images/osd-rzx-play.png</file>

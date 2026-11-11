@@ -59,6 +59,28 @@ as a real +2 does in its photo.
 Some 128K machines hang or reset under snow. How is not known, so **...and it crashes** is a
 model of the right shape, not of a known mechanism, and is off on every machine.
 
+### When a game snows
+
+```{index} ULA snow; notice, Turn Off for This Game
+```
+
+Snow is on for the 48K, the 128K and the +2, as on the real machines, so that a program that
+snows shows it. When a game snows in ten frames of any two seconds, even lightly, as Dizzy 3
+on a 128K does in one frame of four, Xpeccy+ says so: the picture is dimmed, snow falls over
+it, a snowflake blinks in the top left corner, and a message tells what it is. The game runs on meanwhile. The message comes once for each image -
+a tape, a side of it, the disk in drive A, a snapshot - and again when another one is
+opened.
+
+- **Turn Off for This Game** - no snow until another image is opened. Nothing is saved:
+  the machine keeps its setting.
+- **Continue** (or Esc) - the snow stays. The real machine shows it too: the game's author
+  may want to know.
+
+To be rid of the snow for good, choose a machine that does not snow, or switch
+**ULA snow...** off in **Machine: Advanced Settings** (see
+[Advanced settings](options-machine.md#advanced-settings)). Fast loading, fast forward,
+rewind, an RZX recording or playback and the Debugger do not raise the message.
+
 ## The floating bus
 
 ```{index} Floating bus; how it works, port #FF

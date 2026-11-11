@@ -403,6 +403,7 @@ MainWin::MainWin(QMainWindow* frm) {
 	setAcceptDrops(true);
 	// setAutoFillBackground(false);
 	paintOwed = 0;
+	snowFall = new xSnowFall(this);
 	conf.emu.pause = 0;
 	scrCounter = 0;
 	scrInterval = 0;
@@ -541,6 +542,7 @@ MainWin::MainWin(QMainWindow* frm) {
 }
 
 MainWin::~MainWin() {
+	delete snowBox;		// its end stops the snow: while this window is whole
 #if defined(USEOPENGL) && !BLOCKGL
 	cleanupGL();
 	delete(vtx_shd);
@@ -889,6 +891,7 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 			comp->msg = NULL;
 		}
 		watchMedia();
+		if (snow_seen()) snowNotice();
 		folderAsk();
 		folderNews();
 		watchClock();
@@ -1401,6 +1404,29 @@ void MainWin::paintEvent(QPaintEvent*) {
 #if defined(USEOPENGL) && !BLOCKGL
 	if (glw) return;		// under the view, nothing of this widget shows
 #endif
+	int owed = paintOwed;
+	paintOwed = 0;
+	// The snow over the picture repaints it at the screen's rate: it gets the
+	// last picture drawn, so the LEDs, messages and shots keep to the frames.
+	if (snowFall->isVisible()) {
+		qreal dpr = widgetDpr(this);
+		QSize px = (QSizeF(size()) * dpr).toSize();
+		bool fresh = (plainKept.size() != px) || (plainKept.devicePixelRatio() != dpr);
+		if (fresh) {
+			plainKept = QImage(px, QImage::Format_ARGB32_Premultiplied);
+			plainKept.setDevicePixelRatio(dpr);
+		}
+		if (owed || fresh) {		// paintPlain covers it all: drawn over in place
+			shotTick();
+			QPainter img(&plainKept);
+			paintPlain(img);
+			drawInputOsd(img);
+			drawIcons(img);
+		}
+		QPainter(this).drawImage(0, 0, plainKept);
+		return;
+	}
+	plainKept = QImage();
 	shotTick();
 	QPainter pnt(this);
 	paintPlain(pnt);
@@ -2601,7 +2627,7 @@ class xMenu : public QMenu {
 #endif
 };
 
-static QUrl manual_url();
+static QUrl manual_url(const QString& page = QString(), const QString& part = QString());
 
 // an item of a refilled menu that does what a hotkey does: the key after a tab, as
 // cutTexts() gives the others
@@ -3509,7 +3535,8 @@ void MainWin::openManual() {
 
 // The manual the package carries, in the system's language when it has that
 // one; a build without it (a plain dev build) opens the copy on the web.
-static QUrl manual_url() {
+// A page and a part of it, or the contents.
+static QUrl manual_url(const QString& page, const QString& part) {
 #if defined(__APPLE__)
 	QString dir = QCoreApplication::applicationDirPath() + "/../Resources/doc/manual";
 #elif defined(__linux) || defined(__BSD)
@@ -3520,10 +3547,51 @@ static QUrl manual_url() {
 	QString lang = QLocale::system().uiLanguages().value(0).left(2).toLower();
 	if (!QFileInfo::exists(QString("%0/%1/index.html").arg(dir, lang)))
 		lang = "en";
-	QString page = QString("%0/%1/index.html").arg(dir, lang);
-	return QFileInfo::exists(page)
-		? QUrl::fromLocalFile(QFileInfo(page).absoluteFilePath())
-		: QUrl("https://dotkoval.github.io/xpeccy-plus/" + lang + "/");
+	QString file = QString("%0/%1/%2").arg(dir, lang, page.isEmpty() ? QString("index.html") : page);
+	QUrl url = QFileInfo::exists(file)
+		? QUrl::fromLocalFile(QFileInfo(file).absoluteFilePath())
+		: QUrl("https://dotkoval.github.io/xpeccy-plus/" + lang + "/" + page);
+	if (!part.isEmpty()) url.setFragment(part);
+	return url;
+}
+
+// The image in use changed (the title names another): the snow notice watches
+// it from the start, and a switch-off "for this game" ends with the old one.
+// An empty title - a reset, an eject, a side being swapped - changes nothing;
+// nor does a disk in B or a card, as with the quick saves: the game is the
+// tape, drive A or the snapshot.
+void MainWin::snowImageIs(const QString& path, int src) {
+	if ((src != MEDIA_SNAP) && (src != MEDIA_TAPE) && (src != 0)) return;
+	if (path.isEmpty() || same_image(path, snowImage)) return;
+	snowImage = path;
+	snowNoted = false;
+	snow_watch_reset();
+	delete snowBox;		// it spoke of the other game
+	if (xm_snow_held()) {
+		EmuLock lock;
+		xm_snow_hold(conf.zx, 0);
+		x_input_bump();
+	}
+}
+
+// A game snows: said once per image, over the shaded picture, while the game
+// runs on. "For this game" is a switch-off of the session, written nowhere.
+void MainWin::snowNotice() {
+	if (snowNoted || snowBox) return;
+	snowNoted = true;
+	snowFall->start();
+	snowBox = snow_notice_box(this, manual_url("ula-snow-floating-bus.html", "when-a-game-snows"), []() {
+		EmuLock lock;
+		xm_snow_hold(conf.zx, 1);
+		x_input_bump();
+	});
+	// however it goes: the snow with it. The window going away first takes the
+	// connection with it (~MainWin deletes the box itself, while it still stands)
+	connect(snowBox, &QObject::destroyed, snowFall, [this]() {
+		snowFall->stop();
+		setFocus();
+	});
+	snowBox->show();
 }
 
 // not modal: the machine goes on, and a second ask brings the open one forward
@@ -4029,6 +4097,7 @@ void MainWin::profileSelected(QAction* act) {
 void MainWin::showMedia(const QString& path, int src) {
 	mediaSrc = src;
 	sideSrc = ((src >= 0) && (src <= MEDIA_TAPE)) ? src : -1;
+	snowImageIs(path, src);
 	if (path == media_current()) return;
 	media_set_current(path);
 	vrec_note_image(media_image_name());	// a recording is named after it

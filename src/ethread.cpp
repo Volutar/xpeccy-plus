@@ -96,6 +96,55 @@ void frame_taken() {
 	frameOwed = 0;
 }
 
+// ULA snow: zx_snow() counts the refresh cycles that took the ULA's in a frame
+// (I in slow memory - mostly an IM 2 table there, but Black Raven runs IM 1 with
+// I at #41, and Dizzy 3 on a 128K has its table's slow bank paged in for part
+// of the time only: a frame in four, ~80 hits each). A frame with SNOW_HITS of
+// them snows; SNOW_FRAMES such frames in the last SNOW_WINDOW - real play, not a
+// loader passing through - are worth telling the user about.
+#define SNOW_HITS	32
+#define SNOW_FRAMES	10
+#define SNOW_WINDOW	100
+static std::atomic<int> snowSeen{0};
+static std::atomic<int> snowAgain{0};		// the gui has a new image: start over
+static unsigned char snowRing[SNOW_WINDOW];
+static int snowPos = 0;
+static int snowCount = 0;
+
+int snow_seen() {
+	return snowSeen.exchange(0);
+}
+
+void snow_watch_reset() {
+	snowAgain = 1;
+	snowSeen = 0;		// the last image's, not this one's
+}
+
+static void snow_watch_clear() {
+	memset(snowRing, 0, sizeof(snowRing));
+	snowCount = 0;
+}
+
+static void snow_frame(Computer* comp) {
+	xm_snow_keep(comp);		// rewind and run-ahead load states that carry their own
+	int hits = comp->snowHits;
+	comp->snowHits = 0;
+	if (snowAgain.exchange(0)) snow_watch_clear();
+	if (!comp->flgSNOW || (comp->vid->ula->conttype != CONT_PATA)
+			|| conf.emu.fast || (conf.emu.speed > 1.0) || conf.emu.pause || comp->flgDBG
+			|| autostart_busy() || fastload_busy() || rewind_active() || rzx_seeking()
+			|| comp->rzx.play || rzxr_on() || !conf.running) {
+		if (snowCount) snow_watch_clear();
+		return;
+	}
+	int on = (hits >= SNOW_HITS) ? 1 : 0;
+	snowCount += on - snowRing[snowPos];
+	snowRing[snowPos] = on;
+	snowPos = (snowPos + 1) % SNOW_WINDOW;
+	if (snowCount >= SNOW_FRAMES)
+		snowSeen = 1;
+}
+
 // 1 when the gui is to be told: it shows the newest copy whenever it gets there
 static int frame_hand_over() {
 	bool quick = conf.emu.fast || (conf.emu.speed > 1.0);
@@ -924,6 +973,7 @@ void xThread::emuCycle(Computer* comp) {
 			// before run-ahead: the debugger's screen view wants the machine as
 			// it really stands, not the frame it is about to guess at
 			vid_scr_snap(comp->vid);
+			snow_frame(comp);
 			// the frame just made is not the one to show: run on to the one
 			// the player's last key press is already in
 			int shown;
