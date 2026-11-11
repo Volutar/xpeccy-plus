@@ -502,6 +502,54 @@ static void beta_after_p3(void) {
 	run(200000000);
 }
 
+// The WD1793's INTRQ, read on #FF d7 as TR-DOS waits for it: a command's end
+// raises it, a status read or a command write resets it; a Force Interrupt
+// raises it only by its conditions - none for #D0, at once and held for #D8
+static int beta_irq(void) {
+	int v = 0xff;
+	difIn(dif, 0xff, &v, 1);
+	return (v & 0x80) ? 1 : 0;
+}
+
+// a command, and for one that is not a Force Interrupt its end awaited on #FF
+static void beta_com(int com) {
+	difOut(dif, 0x1f, com, 1);
+	run(1000000);
+	for (long ns = 0; (ns < 2000000000L) && !beta_irq() && (com < 0xd0); ns += 9999)
+		run(9999);
+}
+
+static void beta_intrq(void) {
+	int st;
+	printf("== beta-intrq\n");
+	difSetHW(dif, DIF_BDI);
+	fdcFlag = FDC_FAST;
+	difOut(dif, 0xff, 0x3c, 1);		// drive A, out of reset, side 0
+	difOut(dif, 0x7f, 2, 1);
+	beta_com(0x10);				// seek
+	printf("  seek done: %d\n", beta_irq());
+	difIn(dif, 0x1f, &st, 1);
+	printf("  status read: %d\n", beta_irq());
+	difOut(dif, 0x7f, 4, 1);
+	beta_com(0x10);
+	beta_com(0xd0);
+	printf("  #D0 after a seek: %d\n", beta_irq());
+	beta_com(0xd8);
+	printf("  #D8: %d\n", beta_irq());
+	difIn(dif, 0x1f, &st, 1);
+	printf("  #D8, status read: %d\n", beta_irq());
+	beta_com(0xd0);
+	printf("  #D0 after #D8: %d\n", beta_irq());
+	fdcFlag = 0;
+	difSetHW(dif, DIF_P3DOS);
+	difReset(dif);
+	unsigned char spec[] = {0x03, 0xaf, 0x03};
+	unsigned char cal[] = {0x07, 0x00};
+	send(spec, 3);
+	send(cal, 2);
+	run(200000000);
+}
+
 static void start(const char* path, const char* path_b) {
 	fdcFlag = 0;
 	dif = difCreate(DIF_P3DOS, dummy_irq, NULL);
@@ -560,6 +608,7 @@ static int cases(const char* tmp) {
 	cmd("turbo-overrun", 0x46, 0, 0, 0, 1, 2, 9, 0xff, 100);
 	fdcFlag = 0;
 	beta_after_p3();
+	beta_intrq();
 	format("sc11", 3, 2, 11, 0x5a, 10);
 	format("sc255", 3, 0, 255, 0xa5, 29);
 	format("n-ff", 3, 0xff, 64, 0x33, 0);	// N past 23 counts as 0 bytes, yet 1K each is written

@@ -159,7 +159,10 @@ int vgGetByte(FDC* fdc) {
 
 void vgstp00(FDC* fdc) {
 //	printf("stop\n");
-	fdc->irq = 1;
+	// A command's end raises INTRQ. A Force Interrupt does only by its I0-I3
+	// conditions: #D0 ends without one, its write having reset INTRQ. I0-I2
+	// are not modelled and give it at once, as I3 does.
+	fdc->irq = ((fdc->com & 0xf0) != 0xd0) || (fdc->com & 0x0f);
 	fdc->idle = 1;
 	if (!fdc->flp->motor || !(fdc->flp->insert && fdc->flp->door)) {
 		fdc->plan = NULL;
