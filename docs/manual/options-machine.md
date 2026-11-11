@@ -49,7 +49,7 @@ Esc) puts back what it showed when it opened.
 | | **PC keyboard** | ATM Turbo 2+ and ZX Evolution only: which scan codes the machine gets (see [Machines with a keyboard of their own](input.md#machines-with-a-keyboard-of-their-own)) |
 | **Sound** | **PSG** | the AY/YM chips, from **None** to **x3 - ZX Next**; chip, clock and stereo in its window (see [PSG](#psg)) |
 | | **DAC** | **None**, **Covox only**, **Soundrive 1.05 mode 1** or **mode 2** |
-| | **General Sound** | **Off** or **On**; its ROM in its window |
+| | **General Sound** | **None**, **Original** or **NeoGS** (see [General Sound](#general-sound)); its ROM in its window |
 | | **SAA1099** | **Off** or **On** |
 | **Board** | **Turbo** | the turbo steps: **x1 (no turbo)**, **x1, x2** or **x1, x2, x4** |
 | | **ESP UART** | ZX Spectrum Next only: **Not connected**, **ESP-01 (emulated)** - the Wi-Fi module with Espressif's AT firmware 1.7.6, on this computer's network - or a serial port of this computer with a real module on it. In its window, **Server on the network** lets other computers reach a server the module opens, and a UDP link's own port; off, only this computer reaches the server, at 127.0.0.1, and a UDP link hears only whom it sent to. On, Windows asks once whether to let Xpeccy+ through its firewall |
@@ -235,17 +235,18 @@ Pick the one the program is written for.
 ```
 
 A sound card with a processor and memory of its own, which plays music modules and
-samples for the programs written for it. **On** puts it in the machine. The
-{icon}`settings` gear opens **Machine: General Sound**:
+samples for the programs written for it. The row puts one in the machine:
 
-- **Card** - which card it is, the same for every machine:
-  - **General Sound**, the card as X-Trade made it. A change of a channel's volume
-    clicks, as on the card, and each side carries some of the other;
-  - **NeoGS**, the card NedoPC makes today: up to 8 channels, 2 MB of memory, no clicks,
-    and its own firmware. Programs written for the NeoGS find it. Its SD card slot and
-    MP3 chip are not there yet;
-- **ROM** - the card's own: the General Sound's ROM of this machine, or the NeoGS flash
-  image, which every machine shares. Picked from the list or from a file with the
+- **Original** - the card as X-Trade made it. A change of a channel's volume clicks, as
+  on the card, and each side carries some of the other;
+- **NeoGS** - the card NedoPC makes today: up to 8 channels, 2 MB of memory, no clicks,
+  and its own firmware. Programs written for the NeoGS find it. Its SD card slot and MP3
+  chip are not there yet.
+
+The {icon}`settings` gear opens **Machine: General Sound**:
+
+- **ROM** - the card's own: the Original's ROM of this machine, or the NeoGS flash image,
+  which every machine shares. Picked from the list or from a file with the
   {icon}`fileopen` folder button;
 - **Reset** - the card is reset together with the machine.
 
