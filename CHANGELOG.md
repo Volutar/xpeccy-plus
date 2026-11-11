@@ -83,8 +83,9 @@ before that point is upstream's history and is not repeated here.
   so games read them as before. Typing: Key Positions in Options > Input turns it off.
 
 - **NeoGS**: the General Sound row in Options > Machine is None, Original or NeoGS, NedoPC's
-  card - 8 channels, 2 MB, its own firmware, and no click when a channel's volume changes. Programs written for the NeoGS find it. Its SD card and MP3 chip are not there
-  yet. *(reported by ZXLion)*
+  card - 8 channels, 4 MB, its firmware 1.11, and no click when a channel's volume changes.
+  Programs written for the NeoGS find it. Its SD card and MP3 chip are not there yet.
+  *(reported by ZXLion)*
 
 ### Changed
 
