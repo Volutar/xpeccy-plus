@@ -946,6 +946,9 @@ enum {MS_LAST = 0, MS_ASK, MS_THIS, MS_UNSET, MS_RESUME};	// RESUME: the last on
 
 // conf.upd.check; unset takes the build's default (src/xgui/updatewin.cpp)
 enum {UPC_DAY = 0, UPC_WEEK, UPC_NEVER, UPC_UNSET};
+// a build under emulation on an ARM64 host, offered the native one: not yet, once by a
+// start's check, never again (its updates keep its own kind)
+enum {UPN_ASK = 0, UPN_ASKED, UPN_NO};
 
 struct xConfig {
 	// the machine, one per process, and the workspace around it
@@ -1003,6 +1006,7 @@ struct xConfig {
 		int check;		// UPC_*: how often to ask GitHub for a newer build
 		int channel;		// UP_RELEASES, UP_DEV (xcore/update.h); -1: the build's default
 		qint64 last;		// unix time of the last check; 0: none yet, the clock starts now
+		int native;		// UPN_*
 		unsigned off:1;		// --no-update-check: none this run
 	} upd;
 	struct {

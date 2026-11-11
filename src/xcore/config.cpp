@@ -67,6 +67,7 @@ static const char* start_name[] = {"last", "ask", "this", "unset", "resume", NUL
 static const char* fdlg_sort_name[] = {"name", "size", "type", "date", NULL};	// conf.fdlg.sort
 static const char* upd_check_name[] = {"day", "week", "never", NULL};	// UPC_* order
 static const char* upd_channel_name[] = {"releases", "development", NULL};	// UP_RELEASES, UP_DEV
+static const char* upd_native_name[] = {"ask", "asked", "no", NULL};	// UPN_* order
 
 // before Ask it was yes/no, and yes was the default, always written out: only no was chosen
 static int autorun_of(const std::string& val) {
@@ -267,6 +268,7 @@ void saveConfig() {
 	if (conf.upd.check != UPC_UNSET) fprintf(cfile, "update.check = %s\n", upd_check_name[conf.upd.check]);
 	if (conf.upd.channel >= 0) fprintf(cfile, "update.channel = %s\n", upd_channel_name[conf.upd.channel]);
 	fprintf(cfile, "update.last = %lld\n", (long long)conf.upd.last);
+	if (conf.upd.native != UPN_ASK) fprintf(cfile, "update.native = %s\n", upd_native_name[conf.upd.native]);
 	fprintf(cfile, "winpos = %i,%i\n",conf.xpos,conf.ypos);
 	fprintf(cfile, "winsize = %i,%i\n", conf.wsizeX, conf.wsizeY);
 	fprintf(cfile, "keywin.dock = %s\n", YESNO(conf.keywin.dock));
@@ -926,6 +928,7 @@ void loadConfig() {
 	conf.upd.check = UPC_UNSET;
 	conf.upd.channel = -1;
 	conf.upd.last = 0;		// none in the file: a first start, or one from before the check
+	conf.upd.native = UPN_ASK;
 	conf.keywin.dock = 0;
 	conf.keywin.width = 0;
 	conf.keywin.haspos = 0;
@@ -1468,6 +1471,7 @@ void loadConfig() {
 					if (pnam == "update.check") conf.upd.check = rec_id(upd_check_name, pval, UPC_UNSET);
 					if (pnam == "update.channel") conf.upd.channel = (pval == "nightly") ? UP_DEV : rec_id(upd_channel_name, pval, -1);	// nightly: before 2026.9
 					if (pnam == "update.last") conf.upd.last = strtoll(pval.c_str(), NULL, 10);
+					if (pnam == "update.native") conf.upd.native = rec_id(upd_native_name, pval, UPN_ASK);
 					if (pnam == "winpos") {
 						vect = splitstr(pval, ",");
 						if (vect.size() > 1) {
