@@ -178,9 +178,9 @@ group of the **Machine** page of **Options** sets the scan codes the machine get
 
 The joystick interface of the machine is set on the **Machine** page of **Options**, in the
 **Input** group: **Joystick** is **None**, **Kempston 5-bit** or **Kempston 8-bit**. The 8-bit
-one has three more fire buttons, **Fire 2** to **Fire 4**. The Scorpion ZS 256 has only the
-5-bit one: its joystick port is on the board, and the board puts the disk controller on the
-three upper bits.
+one has three more fire buttons, **Fire 2** to **Fire 4**. Both Scorpion ZS 256 machines
+(the Turbo+ too) have only the 5-bit one: the joystick port is on the board, which ties the
+sixth bit to ground and puts the disk controller on the two upper ones.
 
 Sinclair, cursor and QAOP joysticks are keys on the Spectrum keyboard, so they need no
 interface: a player set up in the **Gamepads** window presses those keys for you.
