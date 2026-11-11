@@ -698,7 +698,7 @@ int key2qid(int);
 QStringList keymap_files();
 std::string keymap_name(const std::string&);
 bool keyRemapped(int);
-int keyTyped(uint, unsigned char*);
+int keyTyped(int, bool, unsigned char*);
 
 typedef struct {
 	int grp;

@@ -3858,7 +3858,7 @@ void MainWin::fillUserMenu() {
 	if (conf.zx) {
 		if (conf.kmapName.empty()) act->setChecked(true);
 		foreach(QString str, keymap_files()) {
-			act = keyMenu->addAction(str);
+			act = keyMenu->addAction(QFileInfo(str).completeBaseName());
 			act->setData(str);
 			act->setCheckable(true);
 			act->setChecked(conf.kmapName == std::string(str.toUtf8().data()));
@@ -3899,7 +3899,7 @@ void MainWin::fillUserMenu() {
 	menu_one_tick(palMenu);
 	// a switch of its own, out of the layouts' one tick
 	keyMenu->addSeparator();
-	act = keyMenu->addAction("Type Characters");
+	act = keyMenu->addAction("Type PC Symbols");
 	act->setObjectName("typing");
 	act->setCheckable(true);
 	act->setChecked(conf.kbdTyping);

@@ -318,6 +318,7 @@ static keyTrans ktTab[] = {
 	{Qt::Key_QuoteLeft, 1025, XKEY_TILDA},		// Ё
 
 	{Qt::Key_Exclam, Qt::Key_Exclam, XKEY_1},		// !
+	{Qt::Key_QuoteDbl, Qt::Key_QuoteDbl, XKEY_APOS},	// " on a Mac: the US Shift+', before Russian's Shift+2
 	{Qt::Key_At, Qt::Key_QuoteDbl, XKEY_2},			// @ (")
 	{Qt::Key_NumberSign, 8470, XKEY_3},			// # (№)
 	{Qt::Key_Dollar, Qt::Key_Dollar, XKEY_4},		// $
@@ -471,32 +472,34 @@ int key2qid(int key) {
 	return ktTab[idx].keyLat;
 }
 
-// typing by character: the symbols the Spectrum types with Symbol Shift, and its key
+// Typing PC symbols: the PC's symbol keys, by their place, and the Spectrum keys of the
+// symbol each prints in the US layout - the Latin one a keyboard of any country has on
+// it - without Shift and with it. The system's layout is not asked: switching it changes
+// nothing. The rest of the PC's symbols the Spectrum has no key for.
 static const struct {
-	uint ch;
-	char key;
+	const char* name;	// keyMapInit's
+	char key;		// with Symbol Shift: the symbol unshifted...
+	char sh;		// ...and with Shift
 } typeTab[] = {
-	{'!', '1'}, {'@', '2'}, {'#', '3'}, {'$', '4'}, {'%', '5'},
-	{'&', '6'}, {'\'', '7'}, {'(', '8'}, {')', '9'}, {'_', '0'},
-	{'<', 'r'}, {'>', 't'}, {';', 'o'}, {'"', 'p'},
-	{'^', 'h'}, {'-', 'j'}, {'+', 'k'}, {'=', 'l'},
-	{':', 'z'}, {0xa3, 'x'}, {'?', 'c'}, {'/', 'v'}, {'*', 'b'}, {',', 'n'}, {'.', 'm'},	// 0xa3 is the pound
-	{0, 0}
+	{";", 'o', 'z'},	// ; :
+	{"\"", '7', 'p'},	// ' "
+	{",", 'n', 'r'},	// , <
+	{".", 'm', 't'},	// . >
+	{"/", 'v', 'c'},	// / ?
+	{"-", 'j', '0'},	// - _
+	{"+", 'l', 'k'},	// = +
+	{NULL, 0, 0}
 };
 
-// The Spectrum keys of a character a host key typed, into out (KEYSEQ_MAXLEN): a
-// symbol's, or a digit's own key (AZERTY types digits with Shift); 0 for a letter, or
-// for what the Spectrum has no key for
-int keyTyped(uint ch, unsigned char* out) {
+// The Spectrum keys of the symbol a PC key prints, into out (KEYSEQ_MAXLEN); 0 for a
+// key that is not a symbol key, or whose symbol the Spectrum lacks
+int keyTyped(int id, bool shift, unsigned char* out) {
 	memset(out, 0, KEYSEQ_MAXLEN);
-	if ((ch >= '0') && (ch <= '9')) {
-		out[0] = (unsigned char)ch;
-		return 1;
-	}
-	for (int i = 0; typeTab[i].ch; i++) {
-		if (typeTab[i].ch != ch) continue;
+	const char* name = getKeyNameById(id);
+	for (int i = 0; typeTab[i].name; i++) {
+		if (strcmp(typeTab[i].name, name)) continue;
 		out[0] = 'S';
-		out[1] = typeTab[i].key;
+		out[1] = shift ? typeTab[i].sh : typeTab[i].key;
 		return 1;
 	}
 	return 0;

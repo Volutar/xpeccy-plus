@@ -706,10 +706,36 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 		ui.verticalLayout_2->addWidget(grp);
 		ui.verticalLayout_2->addStretch(1);
 	}
-	ui.typingBox->addItem("Characters", 1);
-	ui.typingBox->setItemData(0, "Shift+; types :, as on the PC", Qt::ToolTipRole);
-	ui.typingBox->addItem("Key Positions", 0);
-	ui.typingBox->setItemData(1, "Shift is Caps Shift, as on the Spectrum", Qt::ToolTipRole);
+	// Keymap and Typing: short lists, and what the pick does beside each
+	// (connected before they are filled, so the first fill writes the notes too)
+	{
+		QLabel* kmNote = new QLabel;
+		QLabel* tyNote = new QLabel;
+		for (QLabel* lab : {kmNote, tyNote}) {
+			QFont fnt = lab->font();
+			fnt.setItalic(true);
+			lab->setFont(fnt);
+		}
+		ui.gridLayout_21->addWidget(kmNote, 1, 2);
+		ui.gridLayout_21->addWidget(tyNote, 2, 2);
+		ui.gridLayout_21->setColumnStretch(1, 0);
+		ui.gridLayout_21->setColumnStretch(2, 1);
+		ui.gridLayout_21->setHorizontalSpacing(12);
+		ui.keyMapBox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+		ui.typingBox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+		connect(ui.keyMapBox, QOverload<int>::of(&QComboBox::currentIndexChanged), kmNote, [this, kmNote]() {
+			QString nam = ui.keyMapBox->currentData().toString();
+			kmNote->setText(nam.isEmpty() ? tr("Both Shifts are Caps Shift, both Ctrls Symbol Shift")
+				: (nam == "ZX Spectrum 48K.map") ? tr("Caps Shift on the left, Symbol Shift on the right")
+				: tr("Your own keymap"));
+		});
+		connect(ui.typingBox, QOverload<int>::of(&QComboBox::currentIndexChanged), tyNote, [this, tyNote]() {
+			tyNote->setText(getRFIData(ui.typingBox) ? tr("Symbol keys as on the PC: Shift+; is :, Shift+/ is ?")
+				: tr("Shift is Caps Shift with every key, as on the Spectrum"));
+		});
+		ui.typingBox->addItem("PC Symbols", 1);
+		ui.typingBox->addItem("Key Positions", 0);
+	}
 	cbScanTab->addItem("As the machine has it", 0);
 	cbScanTab->addItem("Scanset 1 (XT)", KBD_XT);
 	cbScanTab->addItem("Scanset 2 (AT)", KBD_AT);
@@ -3202,7 +3228,7 @@ void SetupWin::buildkeylist() {
 	ui.keyMapBox->clear();
 	ui.keyMapBox->addItem(KMAP_BUILTIN);
 	foreach(QString nam, keymap_files())
-		ui.keyMapBox->addItem(nam, nam);
+		ui.keyMapBox->addItem(QFileInfo(nam).completeBaseName(), nam);
 	setRFIndex(ui.keyMapBox, QString::fromUtf8(conf.kmapName.c_str()), 0);
 }
 

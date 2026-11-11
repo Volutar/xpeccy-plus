@@ -26,25 +26,19 @@ static QMap<qint32, int> key_press_map;
 static QHash<quint32, int> mac_key_down;
 #endif
 
-// Typing by character (conf.kbdTyping): a key that typed a symbol the Spectrum has, or
-// a digit, presses that (keyTyped, into kent->chKey) - with Shift or with nothing, or
-// AltGr (Ctrl+Alt on Windows); not with Ctrl, which is Symbol Shift, nor off the keypad,
-// no Spectrum key. A letter's place is a letter whatever it types (AZERTY's M types ,),
-// a key the user's layout gives something else is the layout's, and one that types what
-// its place presses anyway goes as it is. The rest goes by position, as ever.
+// Typing PC symbols (conf.kbdTyping): a symbol key presses the Spectrum keys of what
+// it prints in the US layout (keyTyped, into kent->chKey), with Shift or without; not
+// with Ctrl, which is Symbol Shift, nor Alt. Letters, digits and the other keys stay
+// the Spectrum's, Shift as Caps Shift; so does a key the user's layout gives something
+// of its own, and one that types what its place presses anyway goes as it is.
 static void key_typed(QKeyEvent* ev, keyEntry* kent) {
 	if (!conf.kbdTyping || !ev || (kent->key <= 0) || (kent->key >= 0x10000)) return;
-	Qt::KeyboardModifiers mod = xNativeMods(ev->modifiers());
-	if (mod & (Qt::KeypadModifier | Qt::MetaModifier)) return;
-	Qt::KeyboardModifiers ca = mod & (Qt::ControlModifier | Qt::AltModifier);
-	if (ca && (ca != (Qt::ControlModifier | Qt::AltModifier))) return;
-	const char* name = kent->name;
-	if (name && (name[0] >= 'A') && (name[0] <= 'Z') && !name[1]) return;
+	Qt::KeyboardModifiers mod = xNativeMods(ev->modifiers()) & ~Qt::KeypadModifier;	// a Mac's arrows
+	if (mod & ~Qt::ShiftModifier) return;
 	if (keyRemapped(kent->key)) return;
-	QString txt = ev->text();
+	bool held = (mod & Qt::ShiftModifier);
 	unsigned char ch[KEYSEQ_MAXLEN];
-	if ((txt.size() != 1) || !keyTyped(txt.at(0).unicode(), ch)) return;
-	bool held = (mod & (Qt::ShiftModifier | Qt::ControlModifier));
+	if (!keyTyped(kent->key, held, ch)) return;
 	if (!held && !memcmp(ch, kent->zxKey, KEYSEQ_MAXLEN)) return;
 	memcpy(kent->chKey, ch, KEYSEQ_MAXLEN);
 	kent->chHeld = held ? 1 : 0;
