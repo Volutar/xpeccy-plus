@@ -117,8 +117,13 @@ static int kbd_combo_split(const unsigned char* xk, unsigned char* sh, unsigned 
 
 static void kbd_combo_go(Keyboard* kbd) {
 	kbd->cbWait = 0;
-	if (kbd->cbRel) key_release_seq(kbd, keyTab, kbd->map, kbd->cbKeys);
-	else key_press_seq(kbd, keyTab, kbd->map, kbd->cbKeys);
+	if (kbd->cbRel) {
+		key_release_seq(kbd, keyTab, kbd->map, kbd->cbKeys);
+		key_press_seq(kbd, keyTab, kbd->map, kbd->cbThen);
+	} else {
+		key_press_seq(kbd, keyTab, kbd->map, kbd->cbKeys);
+	}
+	kbd->cbThen[0] = 0;
 }
 
 // what still waits goes before any other key, so the order holds
@@ -143,6 +148,7 @@ static void kbd_seq_press(Keyboard* kbd, keyEntry* ent, unsigned char* xk) {
 	if (ent->atCode && (kbd->cbLead > 0) && kbd_combo_split(xk, sh, rest)) {
 		key_press_seq(kbd, keyTab, kbd->map, sh);
 		memcpy(kbd->cbKeys, rest, sizeof(kbd->cbKeys));
+		kbd->cbThen[0] = 0;
 		kbd->cbRel = 0;
 		kbd->cbWait = kbd->cbLead;
 	} else {
@@ -155,11 +161,113 @@ static void kbd_seq_release(Keyboard* kbd, keyEntry* ent, unsigned char* xk) {
 	if (ent->atCode && (kbd->cbLag > 0) && kbd_combo_split(xk, sh, rest)) {
 		key_release_seq(kbd, keyTab, kbd->map, rest);
 		memcpy(kbd->cbKeys, sh, sizeof(kbd->cbKeys));
+		kbd->cbThen[0] = 0;
 		kbd->cbRel = 1;
 		kbd->cbWait = kbd->cbLag;
 	} else {
 		key_release_seq(kbd, keyTab, kbd->map, xk);
 	}
+}
+
+// Typing by character: a host key that types a symbol the Spectrum has (Shift+; is :)
+// comes with that symbol's keys in chKey. While one is down, what the host's Shift and
+// Ctrl press is hidden: the Shift that typed : is no CAPS SHIFT, and CAPS and SYMBOL
+// SHIFT down together are EXTEND to the ROM. They go up before the symbol's shift goes
+// down and come back after it is up (kbd_seq_press/release keep the key inside its
+// shift). A Shift the host reports after a key typed with it (the Windows poll) is
+// hidden as it comes; one pressed after a key typed without it is a Shift of its own.
+// A typed key goes up by its host key, as what it pressed, whatever is held.
+// The ZX matrix only, and the Profi's while it is one: elsewhere chKey is not read.
+
+static int kbd_ty_on(Keyboard* kbd) {
+	return (kbd->core->id == KBD_SPECTRUM) || ((kbd->core->id == KBD_PROFI) && !kbd->grab);
+}
+
+static int kbd_is_mod(int key) {
+	return (key == XKEY_LSHIFT) || (key == XKEY_RSHIFT) || (key == XKEY_LCTRL) || (key == XKEY_RCTRL);
+}
+
+static void kbd_ty_hide(Keyboard* kbd) {
+	for (int i = 0; i < 4; i++) {
+		if (!kbd->tyMod[i].key || kbd->tyMod[i].hid) continue;
+		key_release_seq(kbd, keyTab, kbd->map, kbd->tyMod[i].zx);
+		kbd->tyMod[i].hid = 1;
+	}
+}
+
+// the hidden host shifts still held, into seq, to be pressed again
+static void kbd_ty_shown(Keyboard* kbd, unsigned char* seq) {
+	int n = (int)strlen((char*)seq);
+	for (int i = 0; i < 4; i++) {
+		if (!kbd->tyMod[i].key || !kbd->tyMod[i].hid) continue;
+		for (unsigned char* z = kbd->tyMod[i].zx; *z && (n < KEYSEQ_MAXLEN - 1); z++)
+			seq[n++] = *z;
+		kbd->tyMod[i].hid = 0;
+	}
+	seq[n] = 0;
+}
+
+// a host Shift/Ctrl going down: 1 when it is hidden, and so not pressed
+static int kbd_ty_mod_press(Keyboard* kbd, keyEntry* ent) {
+	if (!kbd_is_mod(ent->key)) return 0;
+	int i, slot = -1;
+	for (i = 0; i < 4; i++) {
+		if (kbd->tyMod[i].key == ent->key) return 0;		// twice: as it always went
+		if (!kbd->tyMod[i].key && (slot < 0)) slot = i;
+	}
+	if (slot < 0) return 0;
+	kbd->tyMod[slot].key = ent->key;
+	kbd->tyMod[slot].hid = (kbd->tyHeld > 0);
+	memcpy(kbd->tyMod[slot].zx, ent->zxKey, KEYSEQ_MAXLEN);
+	return kbd->tyMod[slot].hid;
+}
+
+// ...and up: 1 when it was hidden, and so is not in the matrix
+static int kbd_ty_mod_release(Keyboard* kbd, keyEntry* ent) {
+	if (!kbd_is_mod(ent->key)) return 0;
+	for (int i = 0; i < 4; i++) {
+		if (kbd->tyMod[i].key != ent->key) continue;
+		kbd->tyMod[i].key = 0;
+		return kbd->tyMod[i].hid;
+	}
+	return 0;
+}
+
+static void kbd_ty_press(Keyboard* kbd, keyEntry* ent) {
+	int i, slot = -1;
+	for (i = 0; i < 8; i++) {
+		if (kbd->tyKey[i].key == ent->key) return;	// down already
+		if (!kbd->tyKey[i].key && (slot < 0)) slot = i;
+	}
+	if (slot < 0) return;
+	kbd->tyKey[slot].key = ent->key;
+	kbd->tyKey[slot].held = ent->chHeld;
+	memcpy(kbd->tyKey[slot].zx, ent->chKey, KEYSEQ_MAXLEN);
+	kbd->tyDown++;
+	if (ent->chHeld) kbd->tyHeld++;
+	kbd_ty_hide(kbd);		// a Shift pressed since another typed key went down too
+	kbd_seq_press(kbd, ent, ent->chKey);
+}
+
+// 1 when the key went down typed
+static int kbd_ty_release(Keyboard* kbd, keyEntry* ent) {
+	int i;
+	if (!ent->key) return 0;		// ENDKEY: one of ours, never typed
+	for (i = 0; (i < 8) && (kbd->tyKey[i].key != ent->key); i++);
+	if (i == 8) return 0;
+	kbd->tyKey[i].key = 0;
+	kbd_seq_release(kbd, ent, kbd->tyKey[i].zx);
+	if (kbd->tyKey[i].held && (kbd->tyHeld > 0)) kbd->tyHeld--;
+	if (kbd->tyDown > 0) kbd->tyDown--;
+	if (kbd->tyDown) return 1;
+	if (kbd->cbWait && kbd->cbRel) {		// after the symbol's shift is up
+		kbd_ty_shown(kbd, kbd->cbThen);
+	} else {
+		unsigned char back[KEYSEQ_MAXLEN] = {0};
+		kbd_ty_shown(kbd, back);
+		key_press_seq(kbd, keyTab, kbd->map, back);
+	}
+	return 1;
 }
 
 void kbd_zx_press(Keyboard* kbd, keyEntry* ent) {
@@ -376,21 +484,26 @@ unsigned int x_input_gen = 0;
 void kbd_press(Keyboard* kbd, keyEntry* ent) {
 	x_input_bump();
 	kbd_combo_flush(kbd);
-	if (kbd->core) {
-		if (kbd->core->press) {
-			kbd->core->press(kbd, ent);
+	if (!kbd->core) return;
+	if (kbd_ty_on(kbd)) {
+		if (ent->chKey[0]) {
+			kbd_ty_press(kbd, ent);
+			return;
 		}
+		if (kbd_ty_mod_press(kbd, ent)) return;
 	}
+	if (kbd->core->press)
+		kbd->core->press(kbd, ent);
 }
 
 void kbd_release(Keyboard* kbd, keyEntry* ent) {
 	x_input_bump();
 	kbd_combo_flush(kbd);
-	if (kbd->core) {
-		if (kbd->core->release) {
-			kbd->core->release(kbd, ent);
-		}
-	}
+	if (!kbd->core) return;
+	if (kbd_ty_release(kbd, ent)) return;
+	if (kbd_ty_mod_release(kbd, ent)) return;
+	if (kbd->core->release)
+		kbd->core->release(kbd, ent);
 }
 
 void kbdReleaseAll(Keyboard* kbd) {
@@ -413,6 +526,11 @@ void kbdReleaseAll(Keyboard* kbd) {
 	kbd->nxScan = 0;
 	kbd->nxNmiDown = 0;
 	kbd->cbWait = 0;
+	kbd->cbThen[0] = 0;
+	memset(kbd->tyMod, 0, sizeof(kbd->tyMod));
+	memset(kbd->tyKey, 0, sizeof(kbd->tyKey));
+	kbd->tyDown = 0;
+	kbd->tyHeld = 0;
 	kbd->keycode = 0;
 	kbd->lastkey = 0;
 	if (kbd->per > 0) {

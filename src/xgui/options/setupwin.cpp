@@ -706,6 +706,10 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 		ui.verticalLayout_2->addWidget(grp);
 		ui.verticalLayout_2->addStretch(1);
 	}
+	ui.typingBox->addItem("Characters", 1);
+	ui.typingBox->setItemData(0, "Shift+; types :, as on the PC", Qt::ToolTipRole);
+	ui.typingBox->addItem("Key Positions", 0);
+	ui.typingBox->setItemData(1, "Shift is Caps Shift, as on the Spectrum", Qt::ToolTipRole);
 	cbScanTab->addItem("As the machine has it", 0);
 	cbScanTab->addItem("Scanset 1 (XT)", KBD_XT);
 	cbScanTab->addItem("Scanset 2 (AT)", KBD_AT);
@@ -1262,9 +1266,7 @@ void SetupWin::fillPages() {
 // input
 	buildkeylist();
 	setRFIndex(cbScanTab, comp->keyb->pcmode);
-	idx = ui.keyMapBox->findText(QString(conf.kmapName.c_str()));
-	if (idx < 1) idx = 0;
-	ui.keyMapBox->setCurrentIndex(idx);
+	setRFIndex(ui.typingBox, conf.kbdTyping ? 1 : 0);
 	mouseBox->setCurrentIndex(comp->mouse->enable ? 1 : 0);
 	nxMouseOn->setChecked(comp->mouse->enable);
 	ratWheel->setChecked(comp->mouse->hasWheel);
@@ -1717,9 +1719,8 @@ void SetupWin::applyGlobal() {
 // input
 	comp->mouse->swapButtons = cbSwapButtons->isChecked() ? 1 : 0;
 	comp->mouse->sensitivity = sldSensitivity->value() * 0.001f;
-	std::string kmname = getRFText(ui.keyMapBox);
-	if (kmname == "Default") kmname = "default";	// the built-in one, as the menu names it
-	conf.kmapName = kmname;
+	conf.kmapName = ui.keyMapBox->currentData().toString().toUtf8().constData();	// none: the built-in one
+	conf.kbdTyping = getRFIData(ui.typingBox) ? 1 : 0;
 	loadKeys();
 	conf.gpctrl->gameOn = cbPadFiles->isChecked();
 	if (!conf.gpctrl->gameOn) conf.gpctrl->gameRevert();	// own bindings back now
@@ -3198,8 +3199,11 @@ void SetupWin::setRom(xRomFile f) {
 // lists
 
 void SetupWin::buildkeylist() {
-	fillComboBox(ui.keyMapBox, "keymaps", QStringList() << "*.map", "Default",
-		QString::fromLocal8Bit(conf.kmapName.c_str()));
+	ui.keyMapBox->clear();
+	ui.keyMapBox->addItem(KMAP_BUILTIN);
+	foreach(QString nam, keymap_files())
+		ui.keyMapBox->addItem(nam, nam);
+	setRFIndex(ui.keyMapBox, QString::fromUtf8(conf.kmapName.c_str()), 0);
 }
 
 // the core's mask bit, and the size it stands for (768K has no bit of its own)

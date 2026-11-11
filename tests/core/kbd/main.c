@@ -6,6 +6,16 @@
 //
 // Keys change at 20 ms ticks, as the host's come at frame ends: down for 3, up for 3,
 // <presses> times . and then as many Delete.
+//
+//	kbd-bench <poll.bin> <presses>	MACHINE=... KEYS=typed ORDER=first|late|upfirst|held|plain [CHAR=0]
+//
+// Typing by character: the host's Left Shift and its ; key typing : (SS+Z), <presses>
+// times in the ORDER given, and the matrix looked at after every step of the CPU: CAPS
+// and SYMBOL SHIFT never down together (EXTEND to the ROM), Z never without SYMBOL SHIFT
+// or with CAPS SHIFT, O never down, nothing left down at the end. CHAR=0 sends the ; key
+// by position, as with typing off: Shift is CAPS SHIFT there, and the ROM gets EXTEND.
+// ORDER=plain types the key with no Shift and then presses one: that Shift is the
+// player's own and reaches the machine (CAPS SHIFT with the symbol's SYMBOL SHIFT).
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,6 +25,86 @@
 #include "cpu/Z80/z80.h"		// the register names
 
 static const char* cntName[6] = {"sep_m", "sep_0", "edge_m", "bare_m", "edge_0", "bare_0"};
+
+// the order of the host's Shift (S) and ; (K) going down (+) and up (-), a tick each
+// ('.' waits one), from the moment the poll is running
+static const struct {const char* name; const char* steps;} tyOrders[] = {
+	{"first", "S+.K+..K-.S-...."},	// Shift, then the key: what a typist does
+	{"late", "K+S+..K-.S-....."},	// the key before its Shift: the Windows poll is late
+	{"upfirst", "S+.K+.S-.K-....."},	// Shift let go first
+	{"held", "S+.K+.K-.K+.K-.S-...."},	// :: with Shift held
+	{"plain", "K+.S+..S-.K-...."},	// a key typed with no Shift, then a Shift of its own
+	{NULL, NULL}
+};
+
+// row 7 (#FEFE): CAPS SHIFT b0, Z b1; row 0 (#7FFE): SYMBOL SHIFT b1; row 2 (#DFFE): O b1
+#define TY_CS(m)	(!((m)[7] & 1))
+#define TY_Z(m)		(!((m)[7] & 2))
+#define TY_SS(m)	(!((m)[0] & 2))
+#define TY_O(m)		(!((m)[2] & 2))
+
+static int typed(Computer* comp, int presses) {
+	const char* ord = getenv("ORDER") ? getenv("ORDER") : "first";
+	const char* steps = NULL;
+	for (int i = 0; tyOrders[i].name; i++)
+		if (!strcmp(ord, tyOrders[i].name)) steps = tyOrders[i].steps;
+	if (!steps) {
+		fprintf(stderr, "no ORDER %s\n", ord);
+		return 1;
+	}
+	keyEntry sh, semi;
+	memset(&sh, 0, sizeof(sh));
+	memset(&semi, 0, sizeof(semi));
+	sh.key = XKEY_LSHIFT;		// as keymap.cpp has them
+	strcpy((char*)sh.zxKey, "C");
+	sh.atCode = 0x12;
+	semi.key = XKEY_DOTCOM;
+	strcpy((char*)semi.zxKey, "So");
+	if (!getenv("CHAR") || strcmp(getenv("CHAR"), "0"))
+		strcpy((char*)semi.chKey, "Sz");	// typed: Shift+; is :, else by position as before
+	semi.chHeld = strcmp(ord, "plain");	// typed with the Shift: a late one is that Shift
+	semi.atCode = 0x4c;
+	int ext = 0, bare_z = 0, cap_z = 0, z_down = 0, cs_down = 0, o_down = 0;
+	int pz = 0, pcs = 0, po = 0;
+	const long long tick = 20000000;
+	long long t = 0;
+	int k = 0;
+	int* m = comp->keyb->map;
+	for (int n = -10; n < presses * (int)strlen(steps); k++) {
+		if (n >= 0) {
+			const char* st = steps + (n % strlen(steps));
+			if ((st[0] == 'S') || (st[0] == 'K')) {
+				keyEntry* e = (st[0] == 'S') ? &sh : &semi;
+				if (st[1] == '+') comp->hw->keyp(comp, e);
+				else comp->hw->keyr(comp, e);
+				n += 2;
+			} else {
+				n++;
+			}
+		} else {
+			n++;
+		}
+		while (t < (k + 1) * tick) {
+			t += compExec(comp);
+			int cs = TY_CS(m), ss = TY_SS(m), z = TY_Z(m), o = TY_O(m);
+			if (cs && ss) ext++;
+			if (z && !ss) bare_z++;
+			if (z && cs) cap_z++;
+			if (z && !pz) z_down++;
+			if (cs && !pcs) cs_down++;
+			if (o && !po) o_down++;
+			pz = z;
+			pcs = cs;
+			po = o;
+		}
+	}
+	int left = 0;
+	for (int r = 0; r < 8; r++)
+		if ((m[r] & 0x1f) != 0x1f) left |= 1 << r;
+	printf("ext %d\nbare_z %d\ncap_z %d\nz_down %d\ncs_down %d\no_down %d\nleft %d\n",
+		ext, bare_z, cap_z, z_down, cs_down, o_down, left);
+	return 0;
+}
 
 int main(int argc, char** argv) {
 	if (argc < 3) {
@@ -45,6 +135,12 @@ int main(int argc, char** argv) {
 	fclose(f);
 	comp->cpu->regPC = 0x8000;
 	comp->cpu->flgIFF1 = comp->cpu->flgIFF2 = 0;
+
+	if (getenv("KEYS") && !strcmp(getenv("KEYS"), "typed")) {
+		int rc = typed(comp, presses);
+		compDestroy(comp);
+		return rc;
+	}
 
 	keyEntry dot, del;
 	memset(&dot, 0, sizeof(dot));

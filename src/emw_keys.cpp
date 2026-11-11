@@ -21,6 +21,34 @@ void MainWin::kRelease(QKeyEvent* ev) {
 #ifdef __WIN32
 static QMap<qint32, int> key_press_map;
 #endif
+#ifdef __APPLE__
+// a Mac names a key by what it typed, Shift or not: its release goes by the key it is
+static QHash<quint32, int> mac_key_down;
+#endif
+
+// Typing by character (conf.kbdTyping): a key that typed a symbol the Spectrum has, or
+// a digit, presses that (keyTyped, into kent->chKey) - with Shift or with nothing, or
+// AltGr (Ctrl+Alt on Windows); not with Ctrl, which is Symbol Shift, nor off the keypad,
+// no Spectrum key. A letter's place is a letter whatever it types (AZERTY's M types ,),
+// a key the user's layout gives something else is the layout's, and one that types what
+// its place presses anyway goes as it is. The rest goes by position, as ever.
+static void key_typed(QKeyEvent* ev, keyEntry* kent) {
+	if (!conf.kbdTyping || !ev || (kent->key <= 0) || (kent->key >= 0x10000)) return;
+	Qt::KeyboardModifiers mod = xNativeMods(ev->modifiers());
+	if (mod & (Qt::KeypadModifier | Qt::MetaModifier)) return;
+	Qt::KeyboardModifiers ca = mod & (Qt::ControlModifier | Qt::AltModifier);
+	if (ca && (ca != (Qt::ControlModifier | Qt::AltModifier))) return;
+	const char* name = kent->name;
+	if (name && (name[0] >= 'A') && (name[0] <= 'Z') && !name[1]) return;
+	if (keyRemapped(kent->key)) return;
+	QString txt = ev->text();
+	unsigned char ch[KEYSEQ_MAXLEN];
+	if ((txt.size() != 1) || !keyTyped(txt.at(0).unicode(), ch)) return;
+	bool held = (mod & (Qt::ShiftModifier | Qt::ControlModifier));
+	if (!held && !memcmp(ch, kent->zxKey, KEYSEQ_MAXLEN)) return;
+	memcpy(kent->chKey, ch, KEYSEQ_MAXLEN);
+	kent->chHeld = held ? 1 : 0;
+}
 
 // TODO: realtime autorepeat on xt keyboard (no runtime emulation)
 // debug: no reaction
@@ -78,6 +106,10 @@ int ev_to_keyid(QKeyEvent* ev, bool kgrab, bool* fallback = nullptr) {
 			}
 #else
 			keyid = qKey2id(ev->key(), ev->modifiers());
+#ifdef __APPLE__
+			if ((keyid > 0) && !ev->isAutoRepeat() && ev->nativeVirtualKey())
+				mac_key_down.insert(ev->nativeVirtualKey(), keyid);
+#endif
 #endif
 	}
 	return keyid;
@@ -111,7 +143,7 @@ void MainWin::keyPressEvent(QKeyEvent* ev) {
 		keyid = ev_to_keyid(ev, true);
 		kent = getKeyEntry(keyid);
 		if (!ev->isAutoRepeat()) {
-			xkey_press(keyid);
+			xkey_press(keyid, false, ev);
 			// the key is in the machine's matrix already: it sees it once it runs
 			if ((keyid > 0) && (keyid != XCUT_GRABKBD) && !key_lone(ev)) inputResume();
 		}
@@ -132,7 +164,7 @@ void MainWin::keyPressEvent(QKeyEvent* ev) {
 				static const int mods[] = {XKEY_LSHIFT, XKEY_RSHIFT, XKEY_LCTRL, XKEY_RCTRL};
 				for (int m : mods) xkey_release(m);
 			}
-			xkey_press(keyid);
+			xkey_press(keyid, false, ev);
 			if ((keyid > 0) && (keyid < 0x10000) && !key_lone(ev)) inputResume();	// hotkeys act paused
 		}
 	}
@@ -154,12 +186,14 @@ void MainWin::keyPressEvent(QKeyEvent *ev) {
 
 #endif
 
-// The Spectrum keys a host key presses, for the virtual keyboard's lights. The Next
-// takes the ps/2 code through a keymap of its own (zxnext_inp.c): of that, only the
-// shifts are told - its extended keys light by themselves
+// The Spectrum keys a host key presses, for the virtual keyboard's lights: a typed
+// symbol's own. The Next takes the ps/2 code through a keymap of its own
+// (zxnext_inp.c): of that, only the shifts are told - its extended keys light by themselves
 static QByteArray host_zx(Computer* comp, keyEntry* kent) {
-	if ((comp->hw->id != HW_ZXNEXT) || !comp->next)
-		return QByteArray((const char*)kent->zxKey, strnlen((const char*)kent->zxKey, KEYSEQ_MAXLEN));
+	if ((comp->hw->id != HW_ZXNEXT) || !comp->next) {
+		const unsigned char* zx = kent->chKey[0] ? kent->chKey : kent->zxKey;
+		return QByteArray((const char*)zx, strnlen((const char*)zx, KEYSEQ_MAXLEN));
+	}
 	QByteArray zx;
 	int ext = 0;
 	for (int seq = kent->atCode; seq; seq >>= 8) {
@@ -191,9 +225,11 @@ void MainWin::machineKey(Computer* comp, keyEntry* kent, bool down) {
 		emit s_keywin_host(host_zx(comp, kent), down, right);
 }
 
-// cmd: a hotkey asked for from a menu, which a grabbed keyboard does not take
-void MainWin::xkey_press(int xkey, bool cmd) {
+// cmd: a hotkey asked for from a menu, which a grabbed keyboard does not take;
+// ev: the key's own event, for what it typed (key_typed)
+void MainWin::xkey_press(int xkey, bool cmd, QKeyEvent* ev) {
 	keyEntry kent = getKeyEntry(xkey);
+	key_typed(ev, &kent);
 //	printf("xkey_press %s\n", kent.name);
 	int x;
 	int err;
@@ -555,6 +591,8 @@ void MainWin::keyReleaseEvent(QKeyEvent *ev) {
 				} else {
 					key_press_map[keyid] = 0;
 				}
+#elif defined(__APPLE__)
+				keyid = mac_key_down.contains(ev->nativeVirtualKey()) ? mac_key_down.take(ev->nativeVirtualKey()) : qKey2id(ev->key());
 #else
 				keyid = qKey2id(ev->key());
 #endif
@@ -590,6 +628,11 @@ void MainWin::xcut_release(int keyid) {
 void MainWin::xkey_release(int keyid) {
 	Computer* comp = conf.zx;
 	keyEntry kent = getKeyEntry(keyid);
+	// a key that went down typed goes up as it went: the lights are told what that was
+	emu_lock();
+	for (int i = 0; keyid && (i < 8); i++)
+		if (comp->keyb->tyKey[i].key == keyid) memcpy(kent.chKey, comp->keyb->tyKey[i].zx, KEYSEQ_MAXLEN);
+	emu_unlock();
 	machineKey(comp, &kent, false);
 	if (kent.joyMask) {
 		if (kent.joyMask & XJ_JOYB) {
