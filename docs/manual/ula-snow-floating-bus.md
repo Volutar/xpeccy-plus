@@ -69,12 +69,13 @@ snows shows it. When a game snows in ten frames of any two seconds, even lightly
 on a 128K does in one frame of four, Xpeccy+ says so: the picture is dimmed, snow falls over
 it, a snowflake blinks in the top left corner, and a message tells what it is. The game runs on meanwhile. The message comes once for each image -
 a tape, a side of it, the disk in drive A, a snapshot - and again when another one is
-opened.
+opened or the machine is reset.
 
-- **Turn Off for This Game** - no snow until another image is opened. Nothing is saved:
+- **Turn Off for This Game** - no snow until a reset or another image. Nothing is saved:
   the machine keeps its setting.
 - **Continue** (or Esc) - the snow stays. The real machine shows it too: the game's author
-  may want to know.
+  may want to know. The snowflake stays too, blinking while the game snows, and goes out
+  when it stops - in a menu without snow, say - to come back with the snow.
 
 Tick **Don't show this again** before either button to have no more of these messages, for
 any game: the snow is shown as before, without a word. **Snow notice** in

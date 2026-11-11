@@ -1126,7 +1126,7 @@ none - nothing comes back (+2A, +3)</string>
                   </font>
                  </property>
                  <property name="text">
-                  <string>Rubbish when the interrupt vector points at a screen bank</string>
+                  <string>Rubbish when register I points at shared memory</string>
                  </property>
                 </widget>
                </item>
