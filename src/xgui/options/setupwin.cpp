@@ -2819,6 +2819,12 @@ void SetupWin::showDevRows() {
 	// ALF reads its two joysticks its own way, on #1F and #FE
 	joyBox->setEnabled(hw != HW_ALF);
 	joyBox->setToolTip((hw == HW_ALF) ? fixed : QString());
+	QStandardItemModel* joys = qobject_cast<QStandardItemModel*>(joyBox->model());
+	if (joys) {
+		bool k8 = hw_kempston8(conf.zx->hw);
+		joys->item(2)->setEnabled(k8);
+		joys->item(2)->setToolTip(k8 ? QString() : tr("This board's joystick port has five lines"));
+	}
 	// the +2A and +3 never page TR-DOS in
 	QStandardItemModel* difs = qobject_cast<QStandardItemModel*>(diskTypeBox->model());
 	int bdi = diskTypeBox->findData(DIF_BDI);

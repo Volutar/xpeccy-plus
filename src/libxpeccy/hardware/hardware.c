@@ -188,6 +188,13 @@ int hw_has_sd(const HardWare* hw) {
 	return (hw->id == HW_PENTEVO) || (hw->id == HW_TSLAB) || (hw->id == HW_ZXNEXT);
 }
 
+// The Scorpions read #1F through the #FE muxes: J0-J4 on d0-d4, d5 tied to GND,
+// d6/d7 the VG93's DRQ/INTRQ; the joystick connector has no more lines
+int hw_kempston8(const HardWare* hw) {
+	if (!hw) return 1;
+	return (hw->id != HW_SCORP) && (hw->id != HW_SCORPTP);
+}
+
 int hw_takes_divmmc(const HardWare* hw) {
 	if (!hw) return 0;
 	switch (hw->id) {

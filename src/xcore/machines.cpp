@@ -1329,7 +1329,8 @@ static void mac_from_def(const xMachine* mac) {
 	comp->mouse->enable = mac->mouse;
 	comp->mouse->hasWheel = mac->mouseWheel;
 	comp->joy->type = (mac->joy == MAC_JOY_NONE) ? XJ_NONE : XJ_KEMPSTON;
-	comp->joy->extbuttons = (mac->joy == MAC_JOY_KEMPSTON8) ? 1 : 0;
+	// a board with no lines for Fire 2..4 (the Scorpions) takes it as the 5-bit one
+	comp->joy->extbuttons = ((mac->joy == MAC_JOY_KEMPSTON8) && hw_kempston8(comp->hw)) ? 1 : 0;
 	comp->keyb->pcmode = mac->scantab;
 	conf.layName = mac->geometry;
 }
@@ -2064,7 +2065,7 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 			if (nam == "mouse") comp->mouse->enable = arg.b;
 			else if ((nam == "mouse.wheel") || (nam == "mouse.swapButtons")
 				|| (nam == "mouse.sensitivity") || (nam == "kbd.scantab")) xm_defer(nam, val);
-			else if (nam == "joy.extbuttons") comp->joy->extbuttons = arg.b;
+			else if (nam == "joy.extbuttons") comp->joy->extbuttons = (arg.b && hw_kempston8(comp->hw)) ? 1 : 0;
 			else if (nam == "keymap") conf.kmapName = keymap_name(val);
 			else if (nam == "gamepad.map") conf.jmapNameA = val;
 			else if (nam == "gamepad2.map") conf.jmapNameB = val;
