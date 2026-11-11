@@ -17,11 +17,12 @@
 // ORDER=plain types the key with no Shift and then presses one: that Shift is the
 // player's own and reaches the machine (CAPS SHIFT with the symbol's SYMBOL SHIFT).
 //
-//	kbd-bench <poll.bin> 0	MACHINE=... KEYS=mouse [MOUSE=0]
+//	kbd-bench <poll.bin> 0	MACHINE=... KEYS=mouse [MOUSE=0] [SWAP=1]
 //
-// The Kempston mouse at X #12, Y #34 with the left button down, and what the machine's
-// ports answer: #FADF, #FBDF, #FFDF, #7B5F (X too: the interface decodes A5, A8, A9 and
-// A10 only) and #F8DF (A9 low, not the mouse). MOUSE=0 has the mouse off.
+// The Kempston mouse at X #12, Y #34 with the host's left button down, and what the
+// machine's ports answer: #FADF, #FBDF, #FFDF, #7B5F (X too: the interface decodes A5, A8,
+// A9 and A10 only) and #F8DF (A9 low, not the mouse). MOUSE=0 has the mouse off, SWAP=1
+// its buttons swapped.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -172,6 +173,7 @@ int main(int argc, char** argv) {
 		comp->mouse->xpos = 0x12;
 		comp->mouse->ypos = 0x34;
 		comp->mouse->lmb = 1;
+		comp->mouse->swapButtons = getenv("SWAP") && atoi(getenv("SWAP"));
 		for (int i = 0; i < 5; i++)
 			printf("%04x %02X\n", port[i], comp->hw->in(comp, port[i]) & 0xff);
 		compDestroy(comp);
