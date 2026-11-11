@@ -12,7 +12,7 @@
 
 ## Indicators on the picture
 
-```{index} Indicators, CPU clock, HALT indicator, Fade out
+```{index} Indicators, CPU clock, HALT indicator, Fade out, Snow notice
 ```
 
 The **Indicators** group on the **Appearance** page of **Options** sets what is drawn
@@ -29,6 +29,7 @@ over the picture. Tick the ones you want:
 | **HALT** | the T-states up to the HALT and in the whole frame, bottom right |
 | **CPU clock** | the clock in MHz, bottom right, while the CPU is not on its base clock - turbo or overclock |
 | **Messages** | what Xpeccy+ has just done, bottom left: "size x3", "quick save" and so on |
+| **Snow notice** | the message, falling snow and blinking snowflake when a game causes ULA snow (see [When a game snows](ula-snow-floating-bus.md#when-a-game-snows)); the snow itself stays |
 | **Fade out** | signs and messages fade away instead of vanishing at once |
 
 **Joystick**, **Mouse**, **Tape**, **Disk**, **FPS** and **CPU clock** are drawn on the

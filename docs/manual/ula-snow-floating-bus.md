@@ -61,7 +61,7 @@ model of the right shape, not of a known mechanism, and is off on every machine.
 
 ### When a game snows
 
-```{index} ULA snow; notice, Turn Off for This Game
+```{index} ULA snow; notice, Turn Off for This Game, Don't show this again
 ```
 
 Snow is on for the 48K, the 128K and the +2, as on the real machines, so that a program that
@@ -75,6 +75,11 @@ opened.
   the machine keeps its setting.
 - **Continue** (or Esc) - the snow stays. The real machine shows it too: the game's author
   may want to know.
+
+Tick **Don't show this again** before either button to have no more of these messages, for
+any game: the snow is shown as before, without a word. **Snow notice** in
+**Options > Appearance**, **Indicators**, brings the message back (see
+[Indicators on the picture](options-appearance.md#indicators-on-the-picture)).
 
 To be rid of the snow for good, choose a machine that does not snow, or switch
 **ULA snow...** off in **Machine: Advanced Settings** (see
