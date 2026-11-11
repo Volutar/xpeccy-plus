@@ -76,7 +76,17 @@ before that point is upstream's history and is not repeated here.
   and a message tells what ULA snow is, as the real machine shows it too. **Turn Off for
   This Game** takes the snow away until another image is opened.
 
+- **Symbol keys type what is printed on them**: Shift+`;` gives `:`, Shift+`2` gives `@`, in
+  the system's keyboard layout, as on the PC. Letters and digits stay where they are, so games
+  read them as before. Typing: Key Positions in Options > Input keeps Shift as Caps Shift.
+
 ### Changed
+
+- **Ctrl is always Symbol Shift**: Modern has no Ctrl+O and Ctrl+S (F3 and F2 open and save),
+  and Options is on Alt+,.
+
+- **Two keymaps, ZX Spectrum 128K by default and ZX Spectrum 48K**: the right Shift and Ctrl
+  are Caps Shift and Symbol Shift too, and `` ` `` is EDIT.
 
 - **Options > Machine: Advanced settings is a button again**, first in the right-hand column.
 
