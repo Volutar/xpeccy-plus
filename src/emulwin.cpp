@@ -1617,10 +1617,10 @@ void MainWin::paintGLView() {
 			drawSign(top, rec);
 			top.end();
 		}
-		if (snowOwn) {
-			QPainter top(glw);
-			snowFall->drawSign(top, snowSignAt());
-		}
+	}
+	if (snowOwed) {
+		QPainter top(glw);
+		snowFall->drawSign(top, snowSignAt());
 	}
 #endif
 }
@@ -1987,8 +1987,9 @@ void MainWin::drawIcons(QPainter& pnt) {
 		pnt.drawImage(3, 110, leds[led_wav]);
 	}
 // the snowflake: the game snows on after its notice
-	snowOwn = snowSignOn();
-	if (snowOwn && !vrec_wants_screen())
+	bool snow = snowSignOn();
+	snowOwed = snow && vrec_wants_screen();
+	if (snow && !snowOwed)
 		snowFall->drawSign(pnt, snowSignAt());
 // put the speed mode, VCR style, clear of the fps readout
 	int mode = speedOsd();
@@ -3603,11 +3604,9 @@ QPoint MainWin::snowSignAt() {
 	return QPoint(leds ? SNOW_SIGN_BESIDE_LEDS : MODE_ICON_RIGHT, modeSlot().top());
 }
 
-// After the notice, while the game snows and nothing has turned the snow or the notice off.
-// While the notice is up, the snow over the picture has the sign.
+// After the notice, while the game snows; while the notice is up, the snow over the picture has it.
 bool MainWin::snowSignOn() {
-	return snowNoted && !snowFall->isVisible() && conf.led.snowNotice && conf.zx->flgSNOW
-		&& !xm_snow_held() && snow_now();
+	return snowNoted && !snowFall->isVisible() && snow_now();
 }
 
 // The notice gone without a button: finished, so its tick counts.

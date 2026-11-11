@@ -389,7 +389,7 @@ class MainWin : public QWidget {
 		QImage leds[leds_count];
 		QImage osdImg[osd_count];
 		int ownSign = osd_none;	// recording or playing: kept out of a video of the window
-		bool snowOwn = false;	// the snow sign, as drawIcons() chose it: kept out too
+		bool snowOwed = false;	// the snow sign, left by drawIcons() for after a video's grab
 		xInputOsd inputOsd;
 		// the snow notice: once per image, over the shaded picture
 		xSnowFall* snowFall;

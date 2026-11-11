@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QWidget>
-#include <QPainter>
 #include <QImage>
 #include <QPixmap>
 #include <QElapsedTimer>
@@ -10,6 +9,8 @@
 #include <QUrl>
 #include <functional>
 #include <vector>
+
+class QPainter;
 
 // Over the picture while the snow notice is up: the picture shaded, snow
 // falling on it, a snowflake sign blinking in the corner. It ticks at the

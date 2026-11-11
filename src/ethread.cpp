@@ -113,8 +113,13 @@ static int snowPos = 0;
 static int snowCount = 0;
 static int snowFill = 0;		// frames in the ring since it was cleared
 
+// the notice on, the snow on and not held, a ULA that snows
+static bool snow_possible(Computer* comp) {
+	return conf.led.snowNotice && comp->flgSNOW && (comp->vid->ula->conttype == CONT_PATA);
+}
+
 int snow_now() {
-	return snowNow == snowGen + 1;
+	return (snowNow == snowGen + 1) && snow_possible(conf.zx);
 }
 
 void snow_watch_reset() {
@@ -137,7 +142,7 @@ static void snow_frame(Computer* comp) {
 		snow_watch_clear();
 	}
 	// no snow to see: it does not snow
-	if (!conf.led.snowNotice || !comp->flgSNOW || (comp->vid->ula->conttype != CONT_PATA)) {
+	if (!snow_possible(comp)) {
 		if (snowFill) snow_watch_clear();
 		snowNow = 0;
 		return;
@@ -154,10 +159,12 @@ static void snow_frame(Computer* comp) {
 	snowRing[snowPos] = on;
 	snowPos = (snowPos + 1) % SNOW_WINDOW;
 	if (snowFill < SNOW_WINDOW) snowFill++;
+	// on as the notice comes, out after a whole window with none: a game near
+	// the mark does not make it flicker
 	if (snowCount >= SNOW_FRAMES) {
 		snowNow = gen + 1;
-	} else if (snowFill == SNOW_WINDOW) {
-		snowNow = 0;		// a whole window with too little
+	} else if (!snowCount && (snowFill == SNOW_WINDOW)) {
+		snowNow = 0;
 	}
 }
 
