@@ -76,9 +76,9 @@ before that point is upstream's history and is not repeated here.
   and a message tells what ULA snow is, as the real machine shows it too. **Turn Off for
   This Game** takes the snow away until another image is opened.
 
-- **Symbol keys type what is printed on them**: Shift+`;` gives `:`, Shift+`2` gives `@`, in
-  the system's keyboard layout, as on the PC. Letters and digits stay where they are, so games
-  read them as before. Typing: Key Positions in Options > Input keeps Shift as Caps Shift.
+- **Symbol keys type what is printed on them**: Shift+`;` gives `:`, Shift+`/` gives `?`, as
+  the Latin labels say, whatever the system's layout. Letters and digits stay the Spectrum's,
+  so games read them as before. Typing: Key Positions in Options > Input turns it off.
 
 ### Changed
 
