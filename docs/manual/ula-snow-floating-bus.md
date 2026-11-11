@@ -79,7 +79,8 @@ opened.
 Tick **Don't show this again** before either button to have no more of these messages, for
 any game: the snow is shown as before, without a word. **Snow notice** in
 **Options > Appearance**, **Indicators**, brings the message back (see
-[Indicators on the picture](options-appearance.md#indicators-on-the-picture)).
+[Indicators on the picture](options-appearance.md#indicators-on-the-picture)). Settings
+applied in **Options** while the message is up close it, and a tick in it is not kept.
 
 To be rid of the snow for good, choose a machine that does not snow, or switch
 **ULA snow...** off in **Machine: Advanced Settings** (see
