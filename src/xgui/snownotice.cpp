@@ -5,6 +5,9 @@
 #include <QRadialGradient>
 #include <QPushButton>
 #include <QCheckBox>
+#include <QGridLayout>
+#include <QDialogButtonBox>
+#include <QLabel>
 #include <QResizeEvent>
 #include <QScreen>
 #include <QDateTime>
@@ -241,8 +244,39 @@ void xSnowFall::paintEvent(QPaintEvent*) {
 	p.drawImage(signAt, sign[on ? 0 : 1]);
 }
 
+// The check box on the buttons' row, under the text's left edge, rather than on
+// a row of its own as setCheckBox() puts it. A style change lays the box out
+// anew without it: it is put back then.
+class xSnowBox : public QMessageBox {
+	public:
+		xSnowBox(QWidget* parent) : QMessageBox(parent) {}
+		QCheckBox* quiet = nullptr;
+		void placeQuiet() {
+			QGridLayout* grid = qobject_cast<QGridLayout*>(layout());
+			QDialogButtonBox* bar = findChild<QDialogButtonBox*>();
+			QLabel* text = findChild<QLabel*>("qt_msgbox_label");
+			int bi = grid && bar ? grid->indexOf(bar) : -1;
+			int ti = grid && text ? grid->indexOf(text) : -1;
+			if ((bi < 0) || (ti < 0)) {
+				setCheckBox(quiet);		// not the layout known: its own row, as Qt does it
+				return;
+			}
+			int br, bc, brs, bcs, tr, tc, trs, tcs;
+			grid->getItemPosition(bi, &br, &bc, &brs, &bcs);
+			grid->getItemPosition(ti, &tr, &tc, &trs, &tcs);
+			grid->addWidget(quiet, br, tc, 1, 1, Qt::AlignLeft | Qt::AlignVCenter);
+			quiet->show();
+		}
+	protected:
+		void changeEvent(QEvent* ev) override {
+			QMessageBox::changeEvent(ev);
+			if (quiet && (ev->type() == QEvent::StyleChange) && layout() && (layout()->indexOf(quiet) < 0))
+				placeQuiet();
+		}
+};
+
 QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<void()> off, std::function<void()> never) {
-	QMessageBox* box = new QMessageBox(parent);
+	xSnowBox* box = new xSnowBox(parent);
 	box->setAttribute(Qt::WA_DeleteOnClose);
 	box->setModal(false);
 	box->setIcon(QMessageBox::Information);
@@ -270,9 +304,10 @@ QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<vo
 	box->setDefaultButton(btGo);
 	box->setEscapeButton(btGo);
 	// the notice only, not the snow: unticked by default
-	QCheckBox* quiet = new QCheckBox("Don't show this again");
+	QCheckBox* quiet = new QCheckBox("Don't show this again", box);
 	quiet->setToolTip("Options > Appearance can turn it back on");
-	box->setCheckBox(quiet);
+	box->quiet = quiet;
+	box->placeQuiet();
 	QObject::connect(box, &QMessageBox::buttonClicked, box, [btOff, off](QAbstractButton* bt) {
 		if (bt == btOff) off();
 	});
