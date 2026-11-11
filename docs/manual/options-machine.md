@@ -231,18 +231,22 @@ Pick the one the program is written for.
 
 ### General Sound
 
-```{index} General Sound
+```{index} General Sound, NeoGS
 ```
 
 A sound card with a processor and memory of its own, which plays music modules and
 samples for the programs written for it. **On** puts it in the machine. The
 {icon}`settings` gear opens **Machine: General Sound**:
 
-- **ROM** - the card's own ROM, picked from the list or from a file with the
+- **Card** - which card it is, the same for every machine:
+  - **General Sound**, the card as X-Trade made it. A change of a channel's volume
+    clicks, as on the card, and each side carries some of the other;
+  - **NeoGS**, the card NedoPC makes today: up to 8 channels, 2 MB of memory, no clicks,
+    and its own firmware. Programs written for the NeoGS find it. Its SD card slot and
+    MP3 chip are not there yet;
+- **ROM** - the card's own: the General Sound's ROM of this machine, or the NeoGS flash
+  image, which every machine shares. Picked from the list or from a file with the
   {icon}`fileopen` folder button;
-- **Card** - how the card mixes its four channels. **NeoGS** is the card NedoPC makes
-  today: no clicks, and the sides kept apart. **Original** is the card as first made: a
-  change of a channel's volume clicks, and each side carries some of the other;
 - **Reset** - the card is reset together with the machine.
 
 ### SAA1099
