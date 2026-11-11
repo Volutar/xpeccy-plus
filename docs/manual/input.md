@@ -326,7 +326,8 @@ its settings:
 - **Sensitivity** - how fast the pointer moves. In the middle position the Spectrum pointer
   moves as fast as the PC pointer.
 - **Wheel** - the wheel is read too, as on the extended Kempston mouse.
-- **Swap buttons** - the left and right buttons trade places.
+- **Swap buttons** - the left and right buttons trade places, for a program that takes them
+  the other way round.
 
 The machine gets the mouse only while the mouse is grabbed. Grab it in one of these ways:
 

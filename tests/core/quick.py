@@ -11,7 +11,8 @@ text cut into `== <case>` sections, and a case passes when its section is the sa
   pok       pok-bench: the .pok reader over core/pok/files, pokes in and out of 16/48/128K
   vfat      vfat-bench: a folder volume taking writes, FatFs as the guest, on a scratch folder
   zxnext    zxnext-bench: debugger memory views, and a Next then a 48K with the Next's hooks gone
-  kbd       kbd-bench over core/kbd/bin (cases.txt): host keys that are combinations, shift first
+  kbd       kbd-bench over core/kbd/bin (cases.txt): host keys that are combinations, shift first;
+            the Kempston mouse's ports
   esp       esp-bench over core/esp/bin (cases.txt): the emulated ESP-01 on the Next's UART, a
             server on 127.0.0.1
   siblings  siblings-bench over core/siblings/folders.txt: which file names are sides of a set

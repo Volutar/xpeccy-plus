@@ -57,13 +57,21 @@ void mouseRelease(Mouse* mou, int wut) {
 int mouseGetX(Mouse* mou) {return mou->xpos * mou->sensitivity;}
 int mouseGetY(Mouse* mou) {return mou->ypos * mou->sensitivity;}
 
-// the buttons down, as the port has them: bit 0 is the left one unless swapped
-int mouse_buttons(Mouse* mou) {
-	int res = mou->mmb ? 4 : 0;
-	if (mou->swapButtons) {
-		res |= (mou->rmb ? 1 : 0) | (mou->lmb ? 2 : 0);
-	} else {
-		res |= (mou->lmb ? 1 : 0) | (mou->rmb ? 2 : 0);
-	}
-	return res;
+// the host's buttons down after Swap: left 1, right 2, middle 4
+int mouse_host_lrm(Mouse* mou) {
+	int l = mou->swapButtons ? mou->rmb : mou->lmb;
+	int r = mou->swapButtons ? mou->lmb : mou->rmb;
+	return (l ? 1 : 0) | (r ? 2 : 0) | (mou->mmb ? 4 : 0);
 }
+
+// left 1, right 2, middle 4 to the port's bits or back: the left on D1, or D0 on the Evo
+static int mouse_d0d1(Mouse* mou, int bits) {
+	if (mou->leftD0) return bits & 7;
+	return (bits & 4) | ((bits & 1) << 1) | ((bits >> 1) & 1);
+}
+
+// the buttons down as the port has them, a set bit down
+int mouse_buttons(Mouse* mou) {return mouse_d0d1(mou, mouse_host_lrm(mou));}
+
+// the port's bits as left 1, right 2, middle 4: the buttons the program got
+int mouse_lrm(Mouse* mou, int bits) {return mouse_d0d1(mou, bits);}

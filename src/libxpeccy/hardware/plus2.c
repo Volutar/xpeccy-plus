@@ -77,6 +77,9 @@ static xPort p2PortMap[] = {
 	{0xe002,0x2ffd,2,2,2,p2_dos_rd,	p2_dos_wr},	// 2ffd/3ffd
 	{0xc002,0xbffd,2,2,2,NULL,	xOutBFFD},
 	{0xc002,0xfffd,2,2,2,xInFFFD,	xOutFFFD},
+	{0x0320,0xfadf,2,2,2,xInFADF,	NULL},		// Kempston mouse: A5, A8-A10
+	{0x0720,0xfbdf,2,2,2,xInFBDF,	NULL},
+	{0x0720,0xffdf,2,2,2,xInFFDF,	NULL},
 	{0x0000,0x0000,2,2,2,zx_in_float,	NULL}
 };
 

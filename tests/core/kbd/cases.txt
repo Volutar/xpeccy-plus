@@ -23,3 +23,16 @@ run  48k-pos-first      poll.bin  10  MACHINE=ZX48 KEYS=typed ORDER=first CHAR=0
 run  48k-typed-plain    poll.bin  10  MACHINE=ZX48 KEYS=typed ORDER=plain
 run  next-ps2-equal    poll.bin  1   MACHINE=ZXNext KEYS=ps2 ATCODE=0x55
 run  next-ps2-o        poll.bin  1   MACHINE=ZXNext KEYS=ps2 ATCODE=0x44
+# The Kempston mouse's ports: decoded on A5, A8, A9 and A10, as the interface's schematic;
+# the left button on D1 there, on D0 on the Evo (its AVR)
+run  48k-mouse          poll.bin  0   MACHINE=ZX48 KEYS=mouse
+run  128k-mouse         poll.bin  0   MACHINE=ZX128 KEYS=mouse
+run  2a-mouse           poll.bin  0   MACHINE=Plus2A KEYS=mouse
+run  p3-mouse           poll.bin  0   MACHINE=Plus3 KEYS=mouse
+run  p3-mouse-off       poll.bin  0   MACHINE=Plus3 KEYS=mouse MOUSE=0
+run  2a-mouse-off       poll.bin  0   MACHINE=Plus2A KEYS=mouse MOUSE=0
+run  128k-mouse-off     poll.bin  0   MACHINE=ZX128 KEYS=mouse MOUSE=0
+run  p3-mouse-swap      poll.bin  0   MACHINE=Plus3 KEYS=mouse SWAP=1
+run  evo-mouse          poll.bin  0   MACHINE=Baseconf KEYS=mouse
+run  ts-mouse           poll.bin  0   MACHINE=TSConf KEYS=mouse
+run  ts-mouse-swap      poll.bin  0   MACHINE=TSConf KEYS=mouse SWAP=1
