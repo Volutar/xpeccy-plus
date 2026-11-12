@@ -251,6 +251,9 @@ void gs_rom_refresh(GSound* gs) {
 	gs_loop_forget(gs);
 }
 
+// Another card, or a new flash in it, comes up as from the power: the time the
+// old one was owed (a parked card's may be long) is not the new one's, and its
+// INT divider starts at 0
 void gs_set_model(GSound* gs, int model) {
 	gs->model = (model == GS_NEOGS) ? GS_NEOGS : GS_ORIGINAL;
 	gs->pg2 = 0;
@@ -258,6 +261,8 @@ void gs_set_model(GSound* gs, int model) {
 	gs->rp0 = 0;
 	gs_rom_refresh(gs);
 	gs_reset_hw(gs);
+	gs->due = 0;
+	gs->intDue = GS_INT_UNITS;
 }
 
 GSound* gsCreate() {
@@ -445,7 +450,8 @@ static void gs_run(GSound* gs, int park) {
 		gs->lpPark = 0;
 		gs_loop_skip(gs);
 	}
-	const opCode* ldar = &cpu->tabs->ed[0x5f];	// LD A,R: a turn that reads R
+	const opCode* ldar = &cpu->tabs->ed[0x5f];	// LD A,R and LD R,A: a turn that
+	const opCode* ldra = &cpu->tabs->ed[0x4f];	// reads R, or sets it
 	while (gs->due > 0) {
 		gs_halt_skip(gs);
 		if (cpu_int_ready(cpu)) gs->lpDirty = 1;
@@ -456,7 +462,7 @@ static void gs_run(GSound* gs, int park) {
 		gs->due -= u;
 		gs->intDue -= u;
 		gs->lpT += t;
-		if (cpu->op == ldar) gs->lpDirty = 1;
+		if ((cpu->op == ldar) || (cpu->op == ldra)) gs->lpDirty = 1;
 		while (gs->intDue <= 0) {
 			gs->intDue += GS_INT_UNITS;
 			cpu->intrq |= Z80_INT;
