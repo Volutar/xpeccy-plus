@@ -66,7 +66,7 @@ To change a key:
 1. Double-click the **Key** or the **Alternate** cell of the action, or select it and press
    Enter.
 2. Press the new key with its modifiers - Alt, Ctrl, Shift. A modifier alone is not a key;
-   any other is, Tab, Enter and Esc too.
+   Tab, Enter and Esc are.
 3. Click {icon}`ok-apply` **Confirm**. {icon}`cancel` **Clear** leaves the action without
    that key.
 
