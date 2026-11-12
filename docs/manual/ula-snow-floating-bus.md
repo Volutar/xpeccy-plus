@@ -67,9 +67,9 @@ model of the right shape, not of a known mechanism, and is off on every machine.
 Snow is on for the 48K, the 128K and the +2, as on the real machines, so that a program that
 snows shows it. When a game snows in ten frames of any two seconds, even lightly, as Dizzy 3
 on a 128K does in one frame of four, Xpeccy+ says so: the picture is dimmed, snow falls over
-it, a snowflake blinks in the top left corner, and a message tells what it is. The game runs on meanwhile. The message comes once for each image -
-a tape, a side of it, the disk in drive A, a snapshot - and again when another one is
-opened or the machine is reset.
+it, a snowflake blinks in the top left corner, and a message tells what it is. The game
+runs on meanwhile. The message comes once for each image - a tape, a side of it, the disk
+in drive A, a snapshot - and again when another one is opened or the machine is reset.
 
 - **Turn Off for This Game** - no snow until a reset or another image. Nothing is saved:
   the machine keeps its setting.

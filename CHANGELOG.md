@@ -11,262 +11,168 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
-- **A build for Windows 11 on ARM** (`win-arm64`), for computers with Snapdragon and other
-  ARM64 chips: it runs natively, 1.5 to 2 times as fast as the x64 build does there.
-  *(thanks to Loccy for the way to build it, a fix and the test on his Surface)*
-- **An x64 build on Windows 11 on ARM moves to the native one**: its update brings the
-  `win-arm64` build, and with no new version the check offers that build of yours once
-  (Help > Check for Updates every time).
-- **Screenshots at the machine's own size**: Scale x1, now the default, saves 256×192 for the
-  screen, or with as much border as the Border slider shows, however big the window is. Scale
-  x2-x4 are in Options > Video too, and Source: Screen takes the picture as the window shows
-  it, through the shader; hi-res modes keep all their dots. The page shows the size a shot
-  comes out at. *(requested by Michael Sudakov)*
-- **Screenshots named after the game**: a name template like the video's, with `%n` for a
-  number, so `%image %n` saves `Tetris GB 001.png`, `Tetris GB 002.png`. The message says
-  the file's name. *(requested by Michael Sudakov)*
-- **Screenshot to Clipboard** (Ctrl+F7, Shift+F7 in Classic) puts the picture into the
-  clipboard. *(requested by Demonyx)*
-- **Debugging from VS Code with DeZog**: set breakpoints on the lines of your source, step,
-  and see the registers, memory and banks in VS Code while the program runs in Xpeccy+. Turn
-  it on with DeZog port in Options > Application, or `--dezog`.
-- **The ZX Spectrum Next's F-keys** work as on its PS/2 keyboard: F3 switches 50 and 60 Hz,
-  F4 resets, F8 steps the CPU speed, F9 and F10 press its NMI and DRIVE buttons. Keys that
-  are hotkeys reach the Next with Grab Keyboard on.
+- **A build for Windows 11 on ARM** (`win-arm64`), for Snapdragon and other ARM64 computers: it
+  runs natively, 1.5 to 2 times as fast as the x64 build there, and an x64 or legacy copy on
+  such a computer offers to switch to it. *(thanks to Loccy for the way to build it, a fix and
+  the test on his Surface)*
+
+- **A game that snows says so**: on the 48K, 128K and +2 the picture dims under falling snow and
+  a message tells what ULA snow is. **Turn Off for This Game** takes the snow away; while it
+  snows, a snowflake blinks in the corner. Snow notice in Options > Appearance.
+
+- **Screenshots**:
+  - At the machine's own size by default: Scale x1 saves 256×192 with as much border as the
+    Border slider shows; x2-x4, or Source: Screen through the shader, in Options > Video.
+  - Named after the game: `%image %n` saves `Tetris GB 001.png`, `Tetris GB 002.png`.
+  - Screenshot to Clipboard: Ctrl+F7 (Shift+F7 in Classic).
+  - Screenshot Series counts the machine's frames, and SCR and Hobeta are saved only where
+    the screen is the ZX one.
+
 - **Frame skip** (Options > Video): on a computer too slow for the machine a frame is left
-  undrawn now and then, so the machine and its sound keep their speed. When the machine falls
-  behind for a few seconds, Xpeccy+ offers to turn it on.
-- **Next Side (Shift+F3) and Previous Side** put the next or previous side of the tape or
-  disk in use in, side B after side A. They are in the Media menu, with buttons in the Tape
-  Player and in each drive of the Disk Manager.
-- **Next tape of a set can be turned off** (Options, or Autoreverse in the Tape Player): the
-  tape then starts over at its end, for a game that loads its levels from side B again and again.
-- **Decimal numbers in the Debugger**: a toolbar button and Ctrl+Shift+H switch hex and
-  decimal, the hex form is picked in Options > Debugger, and a tip shows a number in hex,
-  decimal and binary - over a byte of the dumps with its address, label and the word read
-  from it. Number tips in Options > Debugger turns the tips off.
-- **The Debugger's FDD panel has a code page for its text column**, as DUMP has, and says
-  when the drive is empty instead of showing a track of FF.
-- **`--poke` on the command line** fills the Cheats window as a `.pok` file would, for
-  programs that start Xpeccy+ with a game and its pokes: `--poke "Lives=35899,0"`. An
-  address can be a label, looked up when the cheat is ticked, so it follows a rebuilt program.
-- **ROM labels in the Debugger**: the 48K BASIC (from Richard Dymond's Complete Spectrum ROM
-  Disassembly, after Logan and O'Hara's book), the 128K editor, the +2 and all four +2A/+3
-  ROMs (from Klive IDE by Istvan Novak), the +3DOS calls and TR-DOS with its variables (from
-  Marcos Cruz's TR-DOS Disassembled) are named with no file loaded, on the clones' ROMs too.
-  Your own labels win; Options > Debugger turns them off.
-- **Each ROM name has its system's prefix**, `BASIC48.LD_BYTES`; `LD_BYTES` alone works too:
-  of several systems that have it, the one whose ROM is paged in now.
-- **ROM data is shown as data**: the font as `DB`, keyword and message tables as `DC "..."`,
-  the bytes after an error call as `DB`, so the code after them lines up.
-- **System variables are named in the Debugger's instructions**: `LD HL,(CH_ADD)` - for 48
-  BASIC, the 128K, the +2A/+3 and TR-DOS. Options > Debugger > System variables.
-- **A local label's global part is paler in the Debugger**: `draw` of `draw.loop`.
-- **Delete breakpoint in the right-click menu of the Breakpoints list**, and Del in the list
-  does the same. *(requested by Volutar)*
-- **The SD card in the status bar** on the ZX Evolution and the ZX Spectrum Next: a light
-  that shows the card being read and written, a tip with its image or folder, and a click
-  with either button opens the SD Card menu.
-- **Refresh for a folder card or disk** (Media > SD Card, the divMMC's cards, Media > Drives):
-  files added, changed or deleted in the folder reach the running machine without a Hard
-  Reset; a file it has open, or a disk image it has mounted, reads on as before. The SD Card:
-  Refresh and SD Card: Eject hotkeys have no key until you give them one.
+  undrawn now and then, so the game and its sound keep their speed. Xpeccy+ offers it when
+  the machine falls behind.
 
-- **The Debugger shows where an INT goes**: the handler in the tips of INT and IM, with a `*`
-  when nothing drives the bus and the IM 2 table is not one byte throughout. A click on IM or
-  IR shows the handler in the listing, a right-click the IM 2 table in the dump. A waiting
-  NMI lights a signal of its own, NMI, beside INT.
-- **A game that snows says so**: on the 48K, 128K and +2 the picture dims under falling snow
-  and a message tells what ULA snow is, as the real machine shows it too. After **Continue** a
-  snowflake blinks in the corner while the game snows. **Turn Off for This Game** takes the
-  snow away until a reset or another image. **Don't show this again** ends the message for
-  good; **Snow notice** in Options > Appearance brings it back.
+- **Next Side (Shift+F3) and Previous Side** put in the other side of the tape or disk in use,
+  from the Media menu, the Tape Player or the Disk Manager. The next tape of a set can be
+  turned off (Autoreverse), for a game that loads its levels from side B again and again.
 
-- **Symbol keys type what is printed on them**: Shift+`;` gives `:`, Shift+`/` gives `?`, as
-  the Latin labels say, whatever the system's layout. Letters and digits stay the Spectrum's,
-  so games read them as before. Typing: Key Positions in Options > Input turns it off.
+- **NeoGS**, NedoPC's General Sound card: the General Sound row in Options > Machine is None,
+  Original or NeoGS, and the ZX Evolution machines come with one. *(reported by ZXLion)* Its
+  SD card and MP3 chip are not emulated yet. The General Sound mixes its sides as the card
+  does, with a Separation setting, 75% at first.
 
-- **NeoGS**: the General Sound row in Options > Machine is None, Original or NeoGS, NedoPC's
-  card - 8 channels, 4 MB, its firmware 1.11, and no click when a channel's volume changes.
-  Programs written for the NeoGS find it, and the ZX Evolution machines come with one. Its SD
-  card and MP3 chip are not there yet. *(reported by ZXLion)*
-- **General Sound: Separation**, like the PSG's, 75% at first: each side takes a little of
-  the other, 100% leaves the card's own stereo.
+- **Folder cards and disks**:
+  - Refresh (Media > SD Card, the divMMC's cards, Media > Drives) puts files added, changed
+    or deleted in the folder into the running machine, with no Hard Reset.
+  - A light for the SD card in the status bar on the ZX Evolution and the Next; a click
+    opens the SD Card menu.
+  - A folder SD card is read only by the machines with the slot, so switching to another
+    machine no longer waits for a big folder. *(reported by Volutar)*
+
+- **Debugging from VS Code with DeZog**: breakpoints on the lines of your source, stepping,
+  registers, memory and banks, while the program runs in Xpeccy+. DeZog port in Options >
+  Application, or `--dezog`.
+
+- **ROM labels in the Debugger**, with no file loaded and on the clones' ROMs too: the 48K
+  BASIC (from Richard Dymond's Complete Spectrum ROM Disassembly, after Logan and O'Hara's
+  book), the 128K editor, the +2 and all four +2A/+3 ROMs (from Klive IDE by Istvan Novak),
+  the +3DOS calls and TR-DOS (from Marcos Cruz's TR-DOS Disassembled).
+  - System variables are named too: `LD HL,(CH_ADD)` (Options > Debugger > System
+    variables).
+  - The ROMs' data shows as data: the font as `DB`, keyword and message tables as `DC`.
+  - A name can carry its system, `BASIC48.LD_BYTES`. Your own labels win, and Options >
+    Debugger turns these off.
 
 ### Changed
 
-- **Options: a click on a check box's name or its hint toggles it**; a name beside a list or a
-  field puts the cursor there.
-- **General Sound costs far less time**: Fast Mode on the ZX Evolution runs as fast as
-  without its NeoGS, on a 128K with a card 2-3 times faster; tapes load faster with one
-  fitted.
-- **Ctrl is always Symbol Shift**: Modern has no Ctrl+O and Ctrl+S (F3 and F2 open and save),
-  and Options is on Alt+,.
+- **Faster on the same computer**:
+  - Sound is made on a CPU core of its own: up to a quarter faster with two cores or more, a
+    third to a half with TurboSound FM, the SAA or General Sound, with the same sound.
+  - The Windows builds are laid out by a profile of real programs: 6-14% faster, the Next
+    up to 1.7 times.
+  - The General Sound costs far less: Fast Mode on the ZX Evolution runs as fast as without
+    its NeoGS, a 128K with the card 2-3 times faster.
 
-- **Two keymaps, ZX Spectrum 128K by default and ZX Spectrum 48K**: the right Shift and Ctrl
-  are Caps Shift and Symbol Shift too, and `` ` `` is EDIT.
+- **The keyboard types what is printed on the keys**: Shift+`;` gives `:`, Shift+`/` gives
+  `?`, whatever the system's layout; letters and digits stay the Spectrum's for games.
+  Typing: Key Positions in Options > Input turns it off.
+  - In Modern, Ctrl with a letter is always Symbol Shift: F3 and F2 open and save, Options
+    is on Alt+,.
+  - Two keymaps, ZX Spectrum 128K (the default) and ZX Spectrum 48K; the right Shift and
+    Ctrl are Caps Shift and Symbol Shift too, and `` ` `` is EDIT.
 
-- **Options > Machine: Advanced settings is a button again**, first in the right-hand column.
+- **File > Resume Last Session shows the save it will load**: its picture, the game and the
+  time. **File > Recent** opens a file with one click or its number key; a game's saves are
+  under its arrow, and a Recent Files hotkey (no key at first) opens the list over the
+  picture.
+
+- **A snapshot opens on the machine it was made for**: a `.z80` on the model it names, a
+  snapshot taken in the 128K menu on a machine with that ROM, a `.sna` on a +2, +2A or +3
+  when it tells which. Ask in Options > File types asks whenever there is a choice.
+  *(reported by ZXLion, who also tested it)*
+
+- **The ZX Spectrum Next**:
+  - Games and demos 20-50% faster, and idle in NextZXOS it takes about a third of the host
+    CPU it took, with the same picture and sound.
+  - Options show what NextZXOS has set (joysticks, mouse, sound, timing...), as its own
+    Settings menu does; settings the Next sets itself are no longer offered.
+  - Its F-keys work as on its PS/2 keyboard: F3 50/60 Hz, F4 reset, F8 CPU speed, F9 and
+    F10 its NMI and DRIVE buttons; keys that are hotkeys reach it with Grab Keyboard on.
+  - Memory can be 1 MB or 2 MB.
+
+- **The file dialog** keeps its sort and view between runs, has one Disk type (a disk opened
+  there goes into drive A), and lists a folder of tens of thousands of files in seconds.
+
+- **Options and menus**: a click on a check box's name or hint toggles it; Advanced settings
+  is a button again; the Disk row is now Floppy disk; Machine > Reset and Input > Gamepads
+  act on a click in the menu bar (not on macOS).
+
+- **Cheats**: a TOSEC image finds its game's `.pok` by the name without its `[tags]`, an image
+  in a folder of thousands opens without a pause, and `--poke "Lives=35899,0"` fills the
+  Cheats window from the command line. *(thanks to Volutar for finding the pause)*
 
 - **TSConf runs the TS-BIOS of 2024**, with the CPU cache, the 1024K mode and the INT offset
   in its setup.
-- **Options > Machine: the Disk row is now Floppy disk.** With the divMMC on, the divMMC row
-  reads divMMC (!), and a tip says the disk controllers are unavailable.
-- **Options on the ZX Spectrum Next show what NextZXOS has set**: its joysticks, mouse, sound,
-  timing, contention and the rest, as in its own Settings menu, beside the card, the tape and
-  the UARTs. Settings the Next sets itself are no longer offered, and ones saved for it
-  before (turbo steps, contended I/O, the PSG clock) no longer change it.
-- **File > Resume Last Session shows the save it will load**: its picture, the game and the
-  time, with the pointer on it.
-- **A TOSEC image finds its game's cheat file** by the name without its `[tags]`, or cut
-  down to the game and its publisher, as TOSEC sets name their `.pok` files.
-- **The Debugger's addresses carry their hex sign, `#8000`**, and a number typed into an
-  address field is decimal unless it has one (`#`, `$`, `0x` or `h`). The fields open with
-  the sign, so typing over the digits stays hex. In conditions a leading 0 is no longer octal.
-- **The DUMP panel's text column shows CP437 by default**, the IBM PC's code page; CP1251,
-  CP866 and KOI8-R are still in its list.
-- **The Watcher uses the Debugger's font and shows 16 bytes a watch**; its registers look
-  as in the Debugger.
-- **The Debugger's CPU panel fills its column**: the registers centered, the flags spread
-  over the row. With the Auto layout it no longer squeezes the stack under it.
-- **The ZX Spectrum Next runs much faster, with the same picture and sound**: games and demos
-  20-50 % faster, and up to 1.7 times in the Windows builds, which are now laid out by a
-  profile of real programs - the other machines gain 6-14 % there too.
 
-- **File > Recent opens a file with one click or its number key**, a game with saves too
-  (its saves are under the arrow). A new **Recent Files** hotkey, unset at first, opens the
-  list over the picture.
-- **The ZX Spectrum Next takes much less of the host CPU**: idle in NextBASIC or the
-  NextZXOS menu about a third of what it took, and games and demos up to 11 % less, with the
-  same picture and sound. A frame in which nothing on screen changes is not drawn again.
-- **Sound is made on a core of its own**: the sound chips, the mixing and the filter run
-  beside the emulation, not in it - up to a quarter faster on a computer with two cores or
-  more, a third to a half with TurboSound FM, the SAA or General Sound fitted, and with
-  TurboSound FM also a fifth to a third in fast forward and Fast Mode; the sound is the
-  same to the bit. With **Sound > Enabled** off no sound is worked out at all.
-- **The file dialog keeps its sort and view (List or Detail) between runs**: sorted by
-  **Date Modified** once, a Downloads folder opens with the newest file at the top.
-- **File > Open has one Disk type instead of Disk A to Disk D**: a disk opened there goes
-  into drive A; a drive's own **Open...** puts it into that drive.
-- **Ask in Options > File types asks every time there is a choice**, with the model named in
-  the file at the top. It does not ask on that very model, or when only one machine can run
-  the file. *(reported by ZXLion)*
-- **Auto opens a `.z80` snapshot on the model it names**, as it does an SZX: a 128K demo timed
-  to the screen no longer stays on a Pentagon, nor a 48K game on a 128K or the Next.
-  *(thanks to ZXLion for the test)*
-- **A folder SD card is read only by the machines with the SD slot** (the ZX Evo and the
-  Next): switching to and from the others no longer waits for a big folder, and a read that
-  takes over a second says so in the status bar. *(reported by Volutar)*
-- **The Debugger's Stack panel is narrower**: less room between the offsets and the words.
-  *(requested by Volutar)*
-- **The General Sound mixes as the card does**: its sides bleed into each other as on the
-  board, and it runs at exactly 12 MHz.
+- **The Debugger**:
+  - Decimal numbers: a toolbar button and Ctrl+Shift+H switch hex and decimal, and a tip
+    shows a number in hex, decimal and binary (Number tips in Options > Debugger).
+  - Addresses carry their hex sign, `#8000`; a number typed without one is decimal, and in
+    a condition a leading 0 is no longer octal.
+  - The tips of INT and IM show where an interrupt goes; NMI has a signal of its own.
+  - DUMP selects as a text editor does, copies as hex, `DB` lines or text, and saves the
+    selection; its text column is CP437 by default.
+  - Delete breakpoint in the Breakpoints list's menu, and Del there.
+  - The FDD panel has a code page, the CPU panel fills its column, the Stack panel is
+    narrower, and the Watcher shows 16 bytes a watch in the Debugger's font.
 
 ### Fixed
 
-- **Tab can be bound in the Gamepads window** and set as a hotkey: pressing it moved to the
-  next button instead.
-- **Shift or Ctrl bound to a keyboard player no longer presses Caps Shift or Symbol Shift
-  too** (Windows).
-- **The Kempston mouse works on the +2A and +3.** *(reported by Alexey Boldyrev)*
-- **The Kempston joystick on the Scorpion ZS 256 reads nothing pressed after a disk access**:
-  reading the disk controller's status clears its interrupt, as on the chip, and the joystick
-  port shares that line. Kempston 8-bit is not offered there, the board's port has no Fire 2
-  to Fire 4. *(reported by Alexey Boldyrev)*
-- **The Kempston mouse's left and right buttons are the right way round**: they were swapped
-  on every machine but the ZX Evolution and the Next. If you ticked Swap buttons for that,
-  untick it. The input overlay shows them as the program gets them.
-- **The = key types = on the ZX Spectrum Next**, not o, and reaches ZX Evolution programs that
-  read the PC keyboard as =.
-- **Screenshot Series counts the machine's frames**, so "each 50 frames" is a second
-  whatever the monitor's rate.
-- **SCR and Hobeta screenshots are not saved in modes that are not the ZX screen** (Profi,
-  ATM, ZX Evo, the Next), where they held bytes that were not the picture.
-- **A breakpoint's screen dump saves the screen shown**, the second one too.
-- **The Custom palette of the TSConf setup no longer gives a black screen.**
-- **Opening a game from a big folder on the ZX Spectrum Next no longer stalls**: a `.sna` or
-  `.z80`, or a program in a folder of over 2000 files, goes onto the SD card alone instead of
-  with its whole folder, and its SZX saves open and close fast. *(thanks to Volutar for
-  finding it)*
-- **Opening an image in a folder of thousands of files no longer pauses**: the `.pok` beside
-  it is asked for by name, not looked for by listing the folder. *(thanks to Volutar for
-  finding it)*
-- **Auto play no longer starts and stops the tape every frame** in a game that reads its
-  keys in a loop like a loader's: Overlander's fuel screen with a Kempston joystick.
-  *(reported by Volutar)*
-- **A reset the ZX Spectrum Next makes itself** (a program, or the firmware after a hard
-  reset) now returns the CPU to 3.5 MHz and resets the UART and the sound, as its reset
-  button does.
-- **A snapshot taken in the 128K menu or BASIC editor opens on a machine with that ROM**: a
-  128K one stayed on a +2 or +2A, where the RUN waiting in it was lost or the machine reset.
-  A `.sna`, which names no model, goes to a +2, +2A or +3 when the snapshot tells it, and
-  Auto asks when it cannot be told. *(reported by ZXLion)*
-- **48K and 128K snapshots run on the +2A and +3**: a 48K `.z80` or a 128K `.sna` in
-  48 BASIC reset the machine there.
-- **A middle click clears DUMP's selection on any byte**, not only on the first eight of a
-  row; Ctrl and Shift clicks mark the block there too.
-- **The Watcher's memory rows change while the machine runs**, as its registers do.
-- **A `.pok` named on the command line before the image is kept**: the image's own cheat
-  file took its place.
-- **Unticking a cheat no longer writes old bytes into a game loaded again**: a byte the game
-  changed stays, and opening the game's tape or disk again (File > Reload, Recent) turns the
-  cheats off first.
-- **The Tape Player lists the tape that went in while the machine ran**: a side picked from
-  the tape menu, the next tape of a set or a tape opened without starting it left the old
-  tape's blocks on the list.
-- **The Debugger's dumps (disk, CMOS, registers) paint every line after a panel grows
-  taller**: lines below its old height stayed blank while scrolling.
-- **The file dialog in a folder of tens of thousands of files** (a full TOSEC set): it lists
-  the folder in seconds instead of minutes, opens it again at once, and no longer sticks on a
-  click or on End - on Linux and the Windows legacy build too, where it froze for seconds at
-  a time. The **Type** column now shows the file's extension.
-- **Fullscreen on Linux with two screens at one place** (a docked Steam Deck with its own
-  screen on): the picture fits the window again instead of showing an enlarged corner of it.
-- **No text cut in Options on Linux**: the buttons of the Machine and Application pages, the
-  border size beside its slider, and with a style the OK, Apply and Cancel buttons, which are
-  now as tall as the font needs (on Windows two pixels taller).
-- **Hotkeys with the System style on a dark desktop theme**: the section rows take the
-  theme's colors instead of a bright blue.
+- **The Kempston mouse**: it works on the +2A and +3, and its left and right buttons are the
+  right way round on every machine (untick Swap buttons if you ticked it for that).
+  *(reported by Alexey Boldyrev)*
+
+- **The Scorpion ZS 256's Kempston joystick** reads nothing pressed after a disk access, and
+  Kempston 8-bit is not offered there: the board's port has no Fire 2 to Fire 4.
+  *(reported by Alexey Boldyrev)*
+
 - **Copy-protected +3 disks**: Chase H.Q. and the other protected +3 games in `.dsk` images
-  load and run, Fast Disk Access on or off, and such a disk saves back as it was. The Disk
-  Manager says when a disk boots its own loader and has no +3DOS catalog.
-  *(reported by theretroman82)*
+  load and run, and such a disk saves back as it was. *(reported by theretroman82)*
 
-- **Formatting a +3 disk track with more sectors than it holds** lays down the ones that fit
-  and ends there.
+- **48K and 128K snapshots run on the +2A and +3** instead of resetting the machine.
 
-- **Breakpoints follow the CPU's bus cycles**: Read no longer stops on an opcode fetch;
-  Fetch also stops on the opcode after a prefix, on a HALT once, and not where an interrupt
-  comes instead; Interrupt stops only on an interrupt the CPU takes, and so do Trace and
-  stop on INT and the INT signal. Step Out counts an IM 1 interrupt once.
-- **Overlapping breakpoints** each get their hits: a switched-off one no longer
-  stops the machine or hides the others, Read and Write on one port in two lines both work,
-  a range and a single address at one start are two breakpoints, and any Interrupt
-  breakpoint that is on arms it. `HITS` of a global condition counts this firing too, as on
-  an address.
-- **No breakpoint hit is lost**: one instruction hits every breakpoint it touches, both
-  bytes of a `PUSH`, a CPU address and a cell on one byte, and global conditions beside
-  them; the log line names its own access. Step Out with PC on a RET stops, and so do reads
-  and writes of the first instruction after the Debugger closes. A quick load or a rewind
-  keeps the breakpoints of now. RZX playback and the loader loop skip see port breakpoints.
-- **`.lnk` files on a folder disk** (Windows): a link NextZXOS makes (Extend+L in the
-  Browser) now reaches the folder instead of a "Writing to a folder" warning, and `.lnk`
-  files in a folder, Windows shortcuts too, are on the disk as files. A link a previous
-  version could not place comes back as `name (recovered).lnk`.
-- **Read-only in "Writing to a folder" now covers every folder in use**: another folder card
-  or disk no longer takes the machine's writes.
-- **Ok or Apply in Options leaves the running program as it is**: a Next program opened from
-  outside the SD card no longer stops later on, TSConf keeps its own interrupt line, and
-  closing Options keeps a palette the machine set (BaseConf).
-- **A snapshot opened on the Next no longer hangs on the SD card or warns of it every
-  time**: a snapshot with no card of its own (another program's, an older one, another
-  machine's) leaves the card as it is, a card moved or copied with the emulator is the same
-  card, and a card that did change is said in a line on the screen, not a box. Frame skip is
-  no longer offered after such a wait. *(reported by Volutar)*
-- **Submenu arrows no longer run into the names** under a style (Gruvbox and the others), as
-  in the toolbar's Buttons menu.
-- **Key 8's graphic on the black and magenta Next skins** of the virtual keyboard is a solid
-  block, as on the black 128K one, not an empty square. *(thanks to Volutar for the fix)*
+- **Tapes**: the Tape Player lists the tape that went in while the machine ran, and Auto play
+  no longer starts and stops the tape every frame in a game that reads its keys like a
+  loader (Overlander). *(reported by Volutar)*
+
+- **The ZX Spectrum Next**: a big folder or a snapshot no longer stalls on the SD card, a
+  reset it makes itself returns to 3.5 MHz as its button does, and = types =.
+  *(thanks to Volutar for finding the stalls)*
+
+- **Gamepads**: Tab can be bound, and Shift or Ctrl bound to a keyboard player no longer
+  presses Caps Shift or Symbol Shift too (Windows).
+
+- **Folder disks**: Read-only now covers every folder in use, and `.lnk` files, NextZXOS's
+  links too, are on the disk as files (Windows).
+
+- **OK or Apply in Options leaves the running program as it is**, and the Custom palette of
+  the TSConf setup no longer gives a black screen.
+
+- **Linux and the styles**: fullscreen with two screens at one place (a docked Steam Deck),
+  no text cut in Options, no bright blue in Hotkeys on a dark desktop theme, and no submenu
+  arrow running into its name.
+
+- **Cheats**: unticking one no longer writes old bytes into a game loaded again, and a `.pok`
+  named on the command line is kept.
+
+- **Breakpoints follow the CPU's bus cycles and lose no hit**: Read no longer stops on an
+  opcode fetch, Interrupt stops only on an interrupt the CPU takes, overlapping breakpoints
+  each get theirs, and Step Out on a RET stops.
+
+- **Smaller fixes**: key 8 on the dark Next skins of the virtual keyboard is a solid block
+  *(thanks to Volutar for the fix)*; in the Debugger a breakpoint's screen dump saves the
+  screen shown, the Watcher's memory rows change while the machine runs, and the dumps paint
+  every line after a panel grows.
 
 ## 2026.9 - 2026-11-02
 
