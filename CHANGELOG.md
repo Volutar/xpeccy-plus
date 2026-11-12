@@ -251,8 +251,8 @@ before that point is upstream's history and is not repeated here.
   Browser) now reaches the folder instead of a "Writing to a folder" warning, and `.lnk`
   files in a folder, Windows shortcuts too, are on the disk as files. A link a previous
   version could not place comes back as `name (recovered).lnk`.
-- **Read-only in "Writing to a folder" keeps every folder in use unchanged**, not only the
-  one being written to: another folder card or disk no longer takes the machine's writes.
+- **Read-only in "Writing to a folder" now covers every folder in use**: another folder card
+  or disk no longer takes the machine's writes.
 - **Ok or Apply in Options leaves the running program as it is**: a Next program opened from
   outside the SD card no longer stops later on, TSConf keeps its own interrupt line, and
   closing Options keeps a palette the machine set (BaseConf).
