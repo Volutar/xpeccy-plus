@@ -463,8 +463,9 @@ int fastload_step(Computer* comp) {
 	long long room = (fl_tape_room(comp) - 1) / per;
 	if (!edge) {
 		// a device that runs on its own would have to be stepped the way the
-		// opcodes step it
-		if ((comp->hw->sync != zx_sync) || comp->gs->enable || comp->saa->enabled
+		// opcodes step it. The GS takes its time in one piece as well, but in
+		// real time the mix would hear the skipped turns' time at once
+		if ((comp->hw->sync != zx_sync) || (comp->gs->enable && !conf.emu.fast) || comp->saa->enabled
 				|| !dif_quiet(comp->dif)
 				|| comp->keyb->per)
 			return 0;
