@@ -734,10 +734,10 @@ msgid ""
 "find it. Its SD card slot and MP3 chip are not there yet. The ZX "
 "Evolution machines come with one."
 msgstr ""
-"**NeoGS** — карта, яку сьогодні випускає NedoPC: до 8 каналів, 4 МБ "
+"**NeoGS** — плата, яку сьогодні випускає NedoPC: до 8 каналів, 4 МБ "
 "пам'яті, без клацань і з власною прошивкою. Програми, написані для NeoGS,"
-" її знаходять. Гнізда SD-картки й мікросхеми MP3 у неї поки немає. Машини"
-" ZX Evolution мають її з коробки."
+" її знаходять. Гніздо SD-картки й мікросхема MP3 поки не емулюються. "
+"Машини ZX Evolution мають її з коробки."
 
 #, python-brace-format
 msgid "The {icon}`settings` gear opens **Machine: General Sound**:"

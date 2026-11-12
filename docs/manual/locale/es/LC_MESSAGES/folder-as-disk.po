@@ -158,7 +158,7 @@ msgstr ""
 "ventana espera mientras tanto: cuando una lectura dura más de un segundo,"
 " la barra de estado dice **Reading the folder ...**. La ranura de tarjeta"
 " SD del ZX Evo y del Next solo se lee en esas máquinas: en otra, la "
-"tarjeta sigue anotada y su carpeta se lee cuando se vuelve a elegir una "
+"tarjeta sigue asignada y su carpeta se lee cuando se vuelve a elegir una "
 "máquina con esa ranura."
 
 msgid "Writing back"

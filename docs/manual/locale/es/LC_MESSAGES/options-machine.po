@@ -749,7 +749,7 @@ msgstr ""
 "**NeoGS** — la tarjeta que fabrica hoy NedoPC: hasta 8 canales, 4 MB de "
 "memoria, sin chasquidos y con su propio firmware. Los programas escritos "
 "para la NeoGS la encuentran. Su ranura de tarjeta SD y su chip de MP3 "
-"todavía no están. Las máquinas ZX Evolution traen una."
+"todavía no se emulan. Las máquinas ZX Evolution traen una."
 
 #, python-brace-format
 msgid "The {icon}`settings` gear opens **Machine: General Sound**:"
