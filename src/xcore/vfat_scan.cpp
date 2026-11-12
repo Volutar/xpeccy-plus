@@ -547,7 +547,7 @@ QString fold_reload(vFat* vf, vfReload* r) {
 		case VFR_OK:
 			return QString();
 		case VFR_WRITES:
-			return QString("Not all of what the machine wrote has reached the folder yet; reloading would lose it.");
+			return QString("Not all of what the machine wrote has reached the folder yet; refreshing would lose it.");
 		case VFR_DETACHED:
 			return QString("The folder no longer follows the machine: Eject it and open it again.");
 		case VFR_FULL:
@@ -556,7 +556,7 @@ QString fold_reload(vFat* vf, vfReload* r) {
 			return QString("%0 of the folder's changes could not be put on the disk: Eject it and open it again "
 				"to see them all.").arg(r->left);
 	}
-	return QString("There is no memory left to reload the folder.");
+	return QString("There is no memory left to refresh the folder.");
 }
 
 QString sdc_reload(SDCard* sdc, vfReload* r) {

@@ -377,6 +377,12 @@ void MainWin::xkey_press(int xkey, bool cmd, QKeyEvent* ev) {
 			case XCUT_SAVEHIST:
 				saveHistory();
 				break;
+			case XCUT_CARD_EJECT:
+				cardEjectKey();
+				break;
+			case XCUT_CARD_REFRESH:
+				folderRefreshAll();
+				break;
 			case XCUT_TAPE_START:
 				tapStateChanged(TW_REWIND, 0);
 				setMessage(" tape to start ");
