@@ -84,8 +84,8 @@ before that point is upstream's history and is not repeated here.
 
 - **NeoGS**: the General Sound row in Options > Machine is None, Original or NeoGS, NedoPC's
   card - 8 channels, 4 MB, its firmware 1.11, and no click when a channel's volume changes.
-  Programs written for the NeoGS find it, and the ZX Evolution machines come with one. Its SD
-  card and MP3 chip are not there yet. *(reported by ZXLion)*
+  Programs written for the NeoGS find it. Its SD card and MP3 chip are not there yet.
+  *(reported by ZXLion)*
 - **General Sound: Separation**, like the PSG's, 75% at first: each side takes a little of
   the other, 100% leaves the card's own stereo.
 
