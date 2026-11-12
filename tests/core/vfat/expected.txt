@@ -26,7 +26,9 @@ parked: ok
 cap: ok
 outside: ok
 sameslot: ok
-reload: ok
-reload_grow: ok
-reload_refuse: ok
-reload_hold: ok
+refresh: ok
+refresh_grow: ok
+refresh_refuse: ok
+refresh_hold: ok
+refresh_names: ok
+refresh_hidden: ok
