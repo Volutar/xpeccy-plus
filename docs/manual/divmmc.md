@@ -35,7 +35,7 @@ in the board's EEPROM from the start.
    machine off and on. With no bundled release in the EEPROM it asks which one to copy. esxDOS starts
    from the card; put your programs into the folder.
 3. Or use a card of your own. Each slot's menu also has **Open Image...**, **Open
-   Folder...**, **Eject**, **Reload** and **Write Protect**, as the ZX Evolution's card has.
+   Folder...**, **Eject**, **Refresh** and **Write Protect**, as the ZX Evolution's card has.
    esxDOS needs an image with an MBR and one FAT16 or FAT32 partition, or a folder, holding
    the `SYS`, `BIN` and `TMP` folders of the same esxDOS release as the EEPROM. When a
    folder in slot 1 holds another bundled release than the EEPROM, Xpeccy+ says so in a

@@ -31,12 +31,12 @@ The folder is read anew with the power off: at a **Hard Reset** or a change of m
 real card is taken out, has files copied onto it and goes back in. **Apply** in Options does
 not read it again: the program running keeps the disk it knows.
 
-## Reload
+## Refresh
 
-```{index} Reload; how it works
+```{index} Refresh; how it works
 ```
 
-**Reload** brings the folder's changes in while the machine runs, and does not lay the disk
+**Refresh** brings the folder's changes in while the machine runs, and does not lay the disk
 out anew. What the machine wrote is carried to the folder first; then the folder is read and
 compared with the disk, and only the difference is written into the disk, as a DOS would
 write it: a new file gets free clusters near the end of the disk and an entry in a free slot
@@ -45,11 +45,11 @@ marked deleted and its clusters freed; a changed one gets its new size and as ma
 as that needs. Everything else stays where it was.
 
 That matters because a DOS keeps some of the disk in memory between calls. esxDOS, run here
-through a reload, reads directories and the file table again each time, but keeps the
+through a refresh, reads directories and the file table again each time, but keeps the
 cluster of the directory it is in, the clusters of a file it has open - a mounted disk image
 or tape too - and the free cluster count it read when it started. Laid out anew, the disk
 would put other files under all of these. Kept in place, they read on as before. The free
-count a DOS writes back from memory can be wrong after a reload; it is only a hint, and
+count a DOS writes back from memory can be wrong after a refresh; it is only a hint, and
 nothing is lost by it.
 
 A folder of many thousands of files takes seconds to read, and the window waits meanwhile:
