@@ -22,9 +22,9 @@ void ide_remount(IDE*);
 
 // a folder changed on the host goes into the volume serving it, the machine running on: empty
 // when done (*r says what changed), else why not, for the user
-QString fold_reload(vFat*, vfReload* r = NULL);
-QString sdc_reload(SDCard*, vfReload* r = NULL);
-QString ide_reload(IDE*, int dev, vfReload* r = NULL);
+QString fold_refresh(vFat*, vfRefresh* r);
+QString sdc_refresh(SDCard*, vfRefresh* r);
+QString ide_refresh(IDE*, int dev, vfRefresh* r);
 
 vFat* fold_waiting(Computer*);			// a volume on hold the guest has written to, NULL if none
 void fold_release(Computer*, bool allow);	// the user's word on every volume on hold

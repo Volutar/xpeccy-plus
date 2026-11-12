@@ -431,14 +431,6 @@ static void sname_decode(const unsigned char* e, char* dst) {
 	*dst = 0;
 }
 
-static unsigned char sum83(const unsigned char* s) {
-	unsigned char sum = 0;
-	int i;
-	for (i = 0; i < 11; i++)
-		sum = ((sum & 1) << 7) + (sum >> 1) + s[i];
-	return sum;
-}
-
 // ASCII letters alike in either case: what a FAT name is the same as
 static int name_eq(const char* a, const char* b) {
 	unsigned char x, y;
@@ -574,7 +566,7 @@ static int scan_dir(vFat* vf, vfScan* sc, int d) {
 				}
 				if (e[11] & 0x08) { lfnOk = 0; continue; }	// the label
 				if ((e[0] == '.') && ((e[1] == ' ') || ((e[1] == '.') && (e[2] == ' ')))) { lfnOk = 0; continue; }
-				if (lfnOk && !lfnNext && (sum83(e) == lfnSum)) {
+				if (lfnOk && !lfnNext && (vf_sname_sum((const char*)e) == lfnSum)) {
 					int len = 0;
 					while ((len < lfnLen) && lname[len] && (lname[len] != 0xffff)) len++;
 					utf16_to8(lname, len, name);
@@ -1588,23 +1580,18 @@ out:
 	return res;
 }
 
-// == the folder changed on the host: Reload ==
-//
-// The volume stays as the guest knows it; what the folder changed is put in as a guest
-// would write it. Files and folders still there keep their clusters and entries (a guest's
-// open file, mounted image or current directory reads on as before); a new one takes
-// clusters from the top of the volume, away from where a guest's own next-free hint points,
-// and a free slot of its folder; a gone one is marked deleted and its clusters freed - and
-// not handed out again by the same reload, so a guest's handle on it finds nobody's data.
-// The nodes follow, so the next sync finds nothing to carry over. Its own index of names:
-// vFat.stab is the build's and does not follow the guest's renames.
+// == the folder changed on the host: Refresh ==
+// Only the difference goes in, as a guest would write it: what stayed keeps its clusters and
+// entries, so a guest's open file and current directory read on.
 
 typedef struct {
 	vFat* vf;
+	const vFat* fresh;
 	int* tab;		// live nodes by parent and 8.3 name, -1 free
 	int* htab;		// ...and by parent and host name
 	unsigned int cap;	// both tables' size, a power of two
-	int parent;		// whose children rl_taken asks about
+	int parent;		// whose children rf_taken asks about
+	unsigned int per;	// entries in a directory's cluster
 	unsigned char* busy;	// per cluster: not to be handed out (data the guest wrote ahead of its FAT, freed now)
 	unsigned int hi;	// the lowest cluster a run was taken at: the next run is looked for below it
 	unsigned int lo;	// where the look for single free clusters goes on, from the top down
@@ -1612,59 +1599,59 @@ typedef struct {
 	unsigned int* lhint;	// per node: the slot of its directory a free run is looked for from
 	unsigned int* fhint;	// ...and an entry, wrapping round
 	int ncap;		// nodes the hints hold
-} vfRl;
+	int* fmap;		// per fresh node: the volume's node it is, -1 new, -2 left out
+	int* rmap;		// per node: the fresh node it is, -1 none
+	int* fents;		// per fresh folder new to the volume: the entries it gets
+	int* vents;		// per node: the entries it gets
+	int* gone;		// nodes to go, each the top of what goes
+	int ngone;
+	int news, changes;
+	unsigned int need;	// clusters the changes take at most
+} vfRf;
 
-static unsigned int rl_nclu(vFat* vf, unsigned int size) {
+static unsigned int rf_nclu(vFat* vf, unsigned int size) {
 	unsigned long long cbytes = (unsigned long long)vf->spc * VF_SECSIZE;
 	return (unsigned int)(((unsigned long long)size + cbytes - 1) / cbytes);
 }
 
-static unsigned int rl_shash(int parent, const char* sname) {
-	unsigned int res = (unsigned int)parent;
-	int i;
-	for (i = 0; i < 11; i++)
-		res = res * 31 + (unsigned char)sname[i];
-	return res * 0x9e3779b1u;
-}
-
-static unsigned int rl_hhash(int parent, const char* s) {
+static unsigned int rf_hhash(int parent, const char* s) {
 	unsigned int res = 0x811c9dc5 ^ (unsigned int)parent;
 	for (; *s; s++)
 		res = (res ^ (unsigned char)*s) * 0x01000193;
 	return res * 0x9e3779b1u;
 }
 
-static void rl_index(vfRl* rl, int idx) {
-	vfNode* nd = rl->vf->node + idx;
-	unsigned int m = rl->cap - 1;
+static void rf_index(vfRf* rf, int idx) {
+	vfNode* nd = rf->vf->node + idx;
+	unsigned int m = rf->cap - 1;
 	unsigned int pos;
-	for (pos = rl_shash(nd->parent, nd->sname) & m; rl->tab[pos] >= 0; pos = (pos + 1) & m);
-	rl->tab[pos] = idx;
+	for (pos = vf_sname_hash(nd->parent, nd->sname) & m; rf->tab[pos] >= 0; pos = (pos + 1) & m);
+	rf->tab[pos] = idx;
 	if (!nd->hname) return;
-	for (pos = rl_hhash(nd->parent, nd->hname) & m; rl->htab[pos] >= 0; pos = (pos + 1) & m);
-	rl->htab[pos] = idx;
+	for (pos = rf_hhash(nd->parent, nd->hname) & m; rf->htab[pos] >= 0; pos = (pos + 1) & m);
+	rf->htab[pos] = idx;
 }
 
-static int rl_taken(void* ctx, const char* sname) {
-	vfRl* rl = (vfRl*)ctx;
-	vFat* vf = rl->vf;
-	unsigned int m = rl->cap - 1;
+static int rf_taken(void* ctx, const char* sname) {
+	vfRf* rf = (vfRf*)ctx;
+	vFat* vf = rf->vf;
+	unsigned int m = rf->cap - 1;
 	unsigned int pos;
 	int i;
-	for (pos = rl_shash(rl->parent, sname) & m; (i = rl->tab[pos]) >= 0; pos = (pos + 1) & m) {
-		if (!vf->node[i].dead && (vf->node[i].parent == rl->parent) && !memcmp(vf->node[i].sname, sname, 11))
+	for (pos = vf_sname_hash(rf->parent, sname) & m; (i = rf->tab[pos]) >= 0; pos = (pos + 1) & m) {
+		if (!vf->node[i].dead && (vf->node[i].parent == rf->parent) && !memcmp(vf->node[i].sname, sname, 11))
 			return 1;
 	}
 	return 0;
 }
 
 // a live child of parent by its host name, -1 none
-static int rl_child(vfRl* rl, int parent, const char* hname) {
-	vFat* vf = rl->vf;
-	unsigned int m = rl->cap - 1;
+static int rf_child(vfRf* rf, int parent, const char* hname) {
+	vFat* vf = rf->vf;
+	unsigned int m = rf->cap - 1;
 	unsigned int pos;
 	int i;
-	for (pos = rl_hhash(parent, hname) & m; (i = rl->htab[pos]) >= 0; pos = (pos + 1) & m) {
+	for (pos = rf_hhash(parent, hname) & m; (i = rf->htab[pos]) >= 0; pos = (pos + 1) & m) {
 		if (!vf->node[i].dead && (vf->node[i].parent == parent) && vf->node[i].hname && !strcmp(vf->node[i].hname, hname))
 			return i;
 	}
@@ -1672,28 +1659,28 @@ static int rl_child(vfRl* rl, int parent, const char* hname) {
 }
 
 // a pinned folder of the root the guest knows by this name (pins live in the root only)
-static int rl_pin_named(vFat* vf, const char* name) {
+static int rf_pin_named(vFat* vf, const char* name) {
 	int i;
 	for (i = vf->node[0].child; i >= 0; i = vf->node[i].next)
 		if (vf->node[i].pinned && name_eq(vf->node[i].name, name)) return 1;
 	return 0;
 }
 
-static int rl_free_clu(vfRl* rl, unsigned int c) {
-	vfWr* w = rl->vf->wr;
-	return !(w->fat[0][c] & 0x0fffffff) && !(w->fat[1][c] & 0x0fffffff) && !rl->busy[c];
+static int rf_free_clu(vfRf* rf, unsigned int c) {
+	vfWr* w = rf->vf->wr;
+	return !(w->fat[0][c] & 0x0fffffff) && !(w->fat[1][c] & 0x0fffffff) && !rf->busy[c];
 }
 
-// clusters the reload may hand out
-static unsigned int rl_count_free(vfRl* rl) {
+// clusters the refresh may hand out
+static unsigned int rf_count_free(vfRf* rf) {
 	unsigned int c, n = 0;
-	for (c = 2; c < rl->vf->clusters + 2; c++)
-		if (rl_free_clu(rl, c)) n++;
+	for (c = 2; c < rf->vf->clusters + 2; c++)
+		if (rf_free_clu(rf, c)) n++;
 	return n;
 }
 
 // clusters the FAT has free, for FSInfo
-static unsigned int rl_fat_free(vFat* vf) {
+static unsigned int rf_fat_free(vFat* vf) {
 	unsigned int c, n = 0;
 	for (c = 2; c < vf->clusters + 2; c++)
 		if (!(vf->wr->fat[0][c] & 0x0fffffff)) n++;
@@ -1702,71 +1689,71 @@ static unsigned int rl_fat_free(vFat* vf) {
 
 // a sector into memory; with no memory for it the volume stops following the folder, as a
 // guest's write does then
-static void rl_ovl(vFat* vf, unsigned int lba, const unsigned char* sec) {
-	if (!ovl_put(vf->wr, lba, sec, 0)) vfw_detach(vf, "there was no memory left to reload it", 0);
+static void rf_ovl(vFat* vf, unsigned int lba, const unsigned char* sec) {
+	if (!ovl_put(vf->wr, lba, sec, 0)) vfw_detach(vf, "there was no memory left to refresh it", 0);
 }
 
-static void rl_drop_clu(vFat* vf, unsigned int c) {
+static void rf_drop_clu(vFat* vf, unsigned int c) {
 	unsigned int s;
 	int i;
 	for (s = 0; s < vf->spc; s++)
 		if ((i = ovl_find(vf->wr, clu_lba(vf, c, s))) >= 0) ovl_drop(vf->wr, i);
 }
 
-static void rl_set(vFat* vf, unsigned int c, unsigned int v) {
+static void rf_set(vFat* vf, unsigned int c, unsigned int v) {
 	vf->wr->fat[0][c] = (vf->wr->fat[0][c] & 0xf0000000) | v;
 	vf->wr->fat[1][c] = (vf->wr->fat[1][c] & 0xf0000000) | v;
 }
 
-// a cluster freed by this reload: out of the FAT and the map, and kept from new files
-static void rl_free(vfRl* rl, unsigned int c) {
-	rl_set(rl->vf, c, 0);
-	rl->vf->wr->own[c] = VFW_FREE;
-	rl->vf->wr->freed[c] = rl->vf->wr->wgen;
-	rl->busy[c] = 1;
+// a cluster freed by this refresh: out of the FAT and the map, and kept from new files
+static void rf_free(vfRf* rf, unsigned int c) {
+	rf_set(rf->vf, c, 0);
+	rf->vf->wr->own[c] = VFW_FREE;
+	rf->vf->wr->freed[c] = rf->vf->wr->wgen;
+	rf->busy[c] = 1;
 }
 
 // n free clusters, ascending, into out: a run below the last one taken if there is one,
 // else single ones from the top down; 0 when there are not that many
-static int rl_alloc(vfRl* rl, unsigned int n, unsigned int* out) {
+static int rf_alloc(vfRf* rf, unsigned int n, unsigned int* out) {
 	unsigned int c, run = 0, k;
 	if (!n) return 1;
-	if (n < rl->norun) {
-		for (c = rl->hi; c-- > 2;) {
-			if (!rl_free_clu(rl, c)) {
+	if (n < rf->norun) {
+		for (c = rf->hi; c-- > 2;) {
+			if (!rf_free_clu(rf, c)) {
 				run = 0;
 				continue;
 			}
 			if (++run < n) continue;
 			for (k = 0; k < n; k++) out[k] = c + k;
-			rl->hi = c;
+			rf->hi = c;
 			return 1;
 		}
-		rl->norun = n;
+		rf->norun = n;
 	}
 	k = n;
-	for (c = rl->lo; (c-- > 2) && k;) {
-		if (rl_free_clu(rl, c)) out[--k] = c;
-		rl->lo = c;
+	for (c = rf->lo; (c-- > 2) && k;) {
+		if (rf_free_clu(rf, c)) out[--k] = c;
+		rf->lo = c;
 	}
 	if (k) return 0;
-	if (out[0] < rl->hi) rl->hi = out[0];
+	if (out[0] < rf->hi) rf->hi = out[0];
 	return 1;
 }
 
 // clusters linked in order, the last one ending the chain; each is the node's, from its
 // k-th cluster on
-static void rl_link(vFat* vf, const unsigned int* cl, unsigned int n, int node, unsigned int k) {
+static void rf_link(vFat* vf, const unsigned int* cl, unsigned int n, int node, unsigned int k) {
 	unsigned int i;
 	for (i = 0; i < n; i++) {
-		rl_set(vf, cl[i], (i + 1 < n) ? cl[i + 1] : VF_EOC);
+		rf_set(vf, cl[i], (i + 1 < n) ? cl[i + 1] : VF_EOC);
 		vf->wr->own[cl[i]] = node;
 		vf->wr->oidx[cl[i]] = k + i;
 	}
 }
 
 // the chain from first (malloc'd, *n its length); NULL when there is no memory
-static unsigned int* rl_chain(vFat* vf, unsigned int first, unsigned int* n) {
+static unsigned int* rf_chain(vFat* vf, unsigned int first, unsigned int* n) {
 	unsigned int cap = 16, c = first, v;
 	unsigned int* ch = (unsigned int*)malloc(cap * sizeof(unsigned int));
 	*n = 0;
@@ -1788,12 +1775,11 @@ static unsigned int* rl_chain(vFat* vf, unsigned int first, unsigned int* n) {
 }
 
 // a slot of a directory: its sector's LBA and the entry's offset in it; 0 past its chain
-static int rl_slot(vFat* vf, const unsigned int* ch, unsigned int n, unsigned int slot, unsigned int* lba, int* off) {
-	unsigned int per = vf->spc * (VF_SECSIZE / 32);
+static int rf_slot(vfRf* rf, const unsigned int* ch, unsigned int n, unsigned int slot, unsigned int* lba, int* off) {
 	*lba = 0;
 	*off = 0;
-	if (slot / per >= n) return 0;
-	*lba = clu_lba(vf, ch[slot / per], (slot % per) / (VF_SECSIZE / 32));
+	if (slot / rf->per >= n) return 0;
+	*lba = clu_lba(rf->vf, ch[slot / rf->per], (slot % rf->per) / (VF_SECSIZE / 32));
 	*off = (slot % (VF_SECSIZE / 32)) * 32;
 	return 1;
 }
@@ -1801,12 +1787,11 @@ static int rl_slot(vFat* vf, const unsigned int* ch, unsigned int n, unsigned in
 // the slot of a node's 8.3 entry (by its name and first cluster clu) in its parent, and the
 // first of the long name entries before it; looked for from the parent's hint on, then from
 // the start up to it. 0 if not found.
-static int rl_find(vfRl* rl, const unsigned int* ch, unsigned int n, int idx, unsigned int clu, unsigned int* at, unsigned int* from) {
-	vFat* vf = rl->vf;
+static int rf_find(vfRf* rf, const unsigned int* ch, unsigned int n, int idx, unsigned int clu, unsigned int* at, unsigned int* from) {
+	vFat* vf = rf->vf;
 	unsigned char sec[VF_SECSIZE];
-	unsigned int per = vf->spc * (VF_SECSIZE / 32);
-	unsigned int all = n * per;
-	unsigned int s0 = rl->fhint[vf->node[idx].parent];
+	unsigned int all = n * rf->per;
+	unsigned int s0 = rf->fhint[vf->node[idx].parent];
 	unsigned int slot, end, lba, cur, lfn;
 	int off, pass;
 	vfNode* nd = vf->node + idx;
@@ -1816,7 +1801,7 @@ static int rl_find(vfRl* rl, const unsigned int* ch, unsigned int n, int idx, un
 		end = pass ? s0 : all;
 		cur = lfn = 0xffffffff;
 		for (; slot < end; slot++) {
-			rl_slot(vf, ch, n, slot, &lba, &off);
+			rf_slot(rf, ch, n, slot, &lba, &off);
 			if (lba != cur) {
 				vfw_read(vf, lba, sec);
 				cur = lba;
@@ -1831,7 +1816,7 @@ static int rl_find(vfRl* rl, const unsigned int* ch, unsigned int n, int idx, un
 					&& (((vf_rd16(sec + off + 20) << 16) | vf_rd16(sec + off + 26)) == clu)) {
 				*at = slot;
 				*from = (lfn == 0xffffffff) ? slot : lfn;
-				rl->fhint[nd->parent] = slot + 1;
+				rf->fhint[nd->parent] = slot + 1;
 				return 1;
 			}
 			lfn = 0xffffffff;
@@ -1841,66 +1826,45 @@ static int rl_find(vfRl* rl, const unsigned int* ch, unsigned int n, int idx, un
 }
 
 // one 32-byte entry written into a directory's slot
-static void rl_put_slot(vFat* vf, const unsigned int* ch, unsigned int n, unsigned int slot, const unsigned char* ent) {
+static void rf_put_slot(vfRf* rf, const unsigned int* ch, unsigned int n, unsigned int slot, const unsigned char* ent) {
 	unsigned char sec[VF_SECSIZE];
 	unsigned int lba;
 	int off;
-	if (!rl_slot(vf, ch, n, slot, &lba, &off)) return;
-	vfw_read(vf, lba, sec);
+	if (!rf_slot(rf, ch, n, slot, &lba, &off)) return;
+	vfw_read(rf->vf, lba, sec);
 	memcpy(sec + off, ent, 32);
-	rl_ovl(vf, lba, sec);
+	rf_ovl(rf->vf, lba, sec);
 }
 
-// a node's entries in its parent marked deleted
-static void rl_unlist(vfRl* rl, int idx) {
-	vFat* vf = rl->vf;
+// a node's entries in its parent marked deleted; 0 when they are not where the node says
+static int rf_unlist(vfRf* rf, int idx) {
+	vFat* vf = rf->vf;
 	unsigned char sec[VF_SECSIZE];
 	unsigned int n, at, from, s, lba;
-	int off;
-	unsigned int* ch = rl_chain(vf, vf->node[vf->node[idx].parent].clust, &n);
-	if (!ch) return;
-	if (rl_find(rl, ch, n, idx, vf->node[idx].clust, &at, &from)) {
+	int off, found;
+	unsigned int* ch = rf_chain(vf, vf->node[vf->node[idx].parent].clust, &n);
+	if (!ch) return 0;
+	found = rf_find(rf, ch, n, idx, vf->node[idx].clust, &at, &from);
+	if (found) {
 		for (s = from; s <= at; s++) {
-			rl_slot(vf, ch, n, s, &lba, &off);
+			rf_slot(rf, ch, n, s, &lba, &off);
 			vfw_read(vf, lba, sec);
 			sec[off] = 0xe5;
-			rl_ovl(vf, lba, sec);
+			rf_ovl(vf, lba, sec);
 		}
 	}
 	free(ch);
-}
-
-// a node's 8.3 entry, found by the first cluster it had (was), as the node now has it
-static void rl_relist(vfRl* rl, int idx, unsigned int was) {
-	vFat* vf = rl->vf;
-	unsigned char sec[VF_SECSIZE];
-	unsigned int n, at, from, lba;
-	int off;
-	vfNode* nd = vf->node + idx;
-	unsigned int* ch = rl_chain(vf, vf->node[nd->parent].clust, &n);
-	if (!ch) return;
-	if (rl_find(rl, ch, n, idx, was, &at, &from)) {
-		rl_slot(vf, ch, n, at, &lba, &off);
-		vfw_read(vf, lba, sec);
-		vf_wr16(sec + off + 20, (nd->clust >> 16) & 0xffff);
-		vf_wr16(sec + off + 26, nd->clust & 0xffff);
-		vf_wr32(sec + off + 28, nd->size);
-		vf_wr16(sec + off + 22, nd->time);
-		vf_wr16(sec + off + 24, nd->date);
-		rl_ovl(vf, lba, sec);
-	}
-	free(ch);
+	return found;
 }
 
 // a node's entries put into a free run of its parent's slots, looked for from the parent's
 // hint on; the parent grows by a cluster when it has none. 0 when it cannot.
-static int rl_list(vfRl* rl, int idx) {
-	vFat* vf = rl->vf;
+static int rf_list(vfRf* rf, int idx) {
+	vFat* vf = rf->vf;
 	unsigned char ents[21 * 32];
 	unsigned char zero[32];
 	unsigned char sec[VF_SECSIZE];
 	unsigned short name[VF_MAXNAME + 1];
-	unsigned int per = vf->spc * (VF_SECSIZE / 32);
 	unsigned int n, slot, run, start, lba, cur, cl;
 	int cnt = 0, len, parts, i, p, grown, off, atend;
 	unsigned int* ch;
@@ -1916,13 +1880,13 @@ static int rl_list(vfRl* rl, int idx) {
 	}
 	vf_entry(ents + 32 * cnt++, nd->sname, nd->isdir ? 0x10 : (vf->writable ? 0x20 : 0x21), nd->clust, nd->size, nd->date, nd->time);
 	for (grown = 0; grown < 2; grown++) {
-		ch = rl_chain(vf, vf->node[p].clust, &n);
+		ch = rf_chain(vf, vf->node[p].clust, &n);
 		if (!ch) return 0;
 		run = start = 0;
 		cur = 0xffffffff;
 		atend = 0;
-		for (slot = rl->lhint[p]; slot < n * per; slot++) {
-			rl_slot(vf, ch, n, slot, &lba, &off);
+		for (slot = rf->lhint[p]; slot < n * rf->per; slot++) {
+			rf_slot(rf, ch, n, slot, &lba, &off);
 			if (lba != cur) {
 				vfw_read(vf, lba, sec);
 				cur = lba;
@@ -1935,20 +1899,20 @@ static int rl_list(vfRl* rl, int idx) {
 			if (!run) start = slot;
 			if (++run < (unsigned int)cnt) continue;
 			for (i = 0; i < cnt; i++)
-				rl_put_slot(vf, ch, n, start + i, ents + 32 * i);
+				rf_put_slot(rf, ch, n, start + i, ents + 32 * i);
 			if (atend)		// the end moves past the run; whatever lay there is not entries
-				rl_put_slot(vf, ch, n, start + cnt, zero);
-			rl->lhint[p] = start + cnt;
+				rf_put_slot(rf, ch, n, start + cnt, zero);
+			rf->lhint[p] = start + cnt;
 			free(ch);
 			return 1;
 		}
 		// no room: one more cluster, zero, at the end of its chain
-		if ((n * per >= VF_MAXDENTS) || !rl_alloc(rl, 1, &cl)) {
+		if ((n * rf->per >= VF_MAXDENTS) || !rf_alloc(rf, 1, &cl)) {
 			free(ch);
 			return 0;
 		}
-		rl_set(vf, ch[n - 1], cl);
-		rl_link(vf, &cl, 1, p, n);
+		rf_set(vf, ch[n - 1], cl);
+		rf_link(vf, &cl, 1, p, n);
 		vf->node[p].nclust = n + 1;
 		free(ch);
 	}
@@ -1956,77 +1920,92 @@ static int rl_list(vfRl* rl, int idx) {
 }
 
 // a node and everything in it gone from the volume: clusters freed, nodes dead; how many
-static int rl_drop(vfRl* rl, int idx) {
-	vFat* vf = rl->vf;
+static int rf_drop(vfRf* rf, int idx) {
+	vFat* vf = rf->vf;
 	unsigned int n, k;
 	unsigned int* ch;
 	int c, cnt = 1;
-	if (vf->node[idx].clust && (ch = rl_chain(vf, vf->node[idx].clust, &n))) {
+	if (vf->node[idx].clust && (ch = rf_chain(vf, vf->node[idx].clust, &n))) {
 		for (k = 0; k < n; k++) {
-			rl_free(rl, ch[k]);
-			rl_drop_clu(vf, ch[k]);
+			rf_free(rf, ch[k]);
+			rf_drop_clu(vf, ch[k]);
 		}
 		free(ch);
 	}
 	for (c = vf->node[idx].child; c >= 0; c = vf->node[c].next)
-		cnt += rl_drop(rl, c);
+		cnt += rf_drop(rf, c);
 	vf->node[idx].dead = 1;
 	return cnt;
 }
 
 // a file the host changed: its chain fitted to the new size, its entry made new, its old
-// content gone from memory - the host's wins. 0 when there is no room.
-static int rl_change(vfRl* rl, int idx, unsigned int size, unsigned int mtime) {
-	vFat* vf = rl->vf;
-	unsigned int n0 = 0, n1 = rl_nclu(vf, size);
-	unsigned int was = vf->node[idx].clust;
-	unsigned int k, extra, last;
+// content gone from memory - the host's wins. 0 when there is no room, or its entry is not
+// where the node says (then nothing changes).
+static int rf_change(vfRf* rf, int idx, unsigned int size, unsigned int mtime) {
+	vFat* vf = rf->vf;
+	vfNode* nd = vf->node + idx;
+	unsigned char sec[VF_SECSIZE];
+	unsigned int n0 = 0, n1 = rf_nclu(vf, size);
+	unsigned int was = nd->clust;
+	unsigned int k, extra, last, pn, at, from, lba;
+	unsigned int* pch;
 	unsigned int* ch = NULL;
 	unsigned int* cl;
-	if (was && !(ch = rl_chain(vf, was, &n0))) return 0;
+	int off, ok = 0;
+	if (!(pch = rf_chain(vf, vf->node[nd->parent].clust, &pn))) return 0;
+	if (!rf_find(rf, pch, pn, idx, was, &at, &from)) goto out;
+	if (was && !(ch = rf_chain(vf, was, &n0))) goto out;
 	if (n1 > n0) {
 		extra = n1 - n0;
-		cl = (unsigned int*)malloc(extra * sizeof(unsigned int));
-		if (!cl) { free(ch); return 0; }
+		if (!(cl = (unsigned int*)malloc(extra * sizeof(unsigned int)))) goto out;
 		last = n0 ? ch[n0 - 1] : 0;
-		for (k = 0; last && (k < extra) && (last + 1 + k < vf->clusters + 2) && rl_free_clu(rl, last + 1 + k); k++)
+		for (k = 0; last && (k < extra) && (last + 1 + k < vf->clusters + 2) && rf_free_clu(rf, last + 1 + k); k++)
 			cl[k] = last + 1 + k;		// on from its end if that is free
-		if ((k < extra) && !rl_alloc(rl, extra, cl)) {
+		if ((k < extra) && !rf_alloc(rf, extra, cl)) {
 			free(cl);
-			free(ch);
-			return 0;
+			goto out;
 		}
-		rl_link(vf, cl, extra, idx, n0);
-		if (n0) rl_set(vf, ch[n0 - 1], cl[0]);
-		else vf->node[idx].clust = cl[0];
+		rf_link(vf, cl, extra, idx, n0);
+		if (n0) rf_set(vf, ch[n0 - 1], cl[0]);
+		else nd->clust = cl[0];
 		free(cl);
 	} else if (n1 < n0) {
-		for (k = n1; k < n0; k++) rl_free(rl, ch[k]);
-		if (n1) rl_set(vf, ch[n1 - 1], VF_EOC);
-		else vf->node[idx].clust = 0;
+		for (k = n1; k < n0; k++) rf_free(rf, ch[k]);
+		if (n1) rf_set(vf, ch[n1 - 1], VF_EOC);
+		else nd->clust = 0;
 	}
-	for (k = 0; k < n0; k++) rl_drop_clu(vf, ch[k]);
+	for (k = 0; k < n0; k++) rf_drop_clu(vf, ch[k]);
+	nd->nclust = n1;
+	nd->size = nd->hsize = size;
+	nd->hmtime = mtime;
+	vf_fat_stamp(mtime, &nd->date, &nd->time);
+	rf_slot(rf, pch, pn, at, &lba, &off);
+	vfw_read(vf, lba, sec);
+	vf_wr16(sec + off + 20, (nd->clust >> 16) & 0xffff);
+	vf_wr16(sec + off + 26, nd->clust & 0xffff);
+	vf_wr32(sec + off + 28, nd->size);
+	vf_wr16(sec + off + 22, nd->time);
+	vf_wr16(sec + off + 24, nd->date);
+	rf_ovl(vf, lba, sec);
+	ok = 1;
+out:
 	free(ch);
-	vf->node[idx].nclust = n1;
-	vf->node[idx].size = vf->node[idx].hsize = size;
-	vf->node[idx].hmtime = mtime;
-	vf_fat_stamp(mtime, &vf->node[idx].date, &vf->node[idx].time);
-	rl_relist(rl, idx, was);
-	return 1;
+	free(pch);
+	return ok;
 }
 
 // a node new to the volume, in parent: clusters, its own dot entries if a folder, its
 // entries in the parent; -1 when there is no room
-static int rl_add(vfRl* rl, int parent, const vfNode* fn) {
-	vFat* vf = rl->vf;
-	unsigned int n = fn->isdir ? 1 : rl_nclu(vf, fn->size);
+static int rf_add(vfRf* rf, int parent, const vfNode* fn) {
+	vFat* vf = rf->vf;
+	unsigned int n = fn->isdir ? 1 : rf_nclu(vf, fn->size);
 	unsigned char sec[VF_SECSIZE];
-	char sname[12], dots[12];
+	char sname[12], base[12];
 	unsigned int* cl = NULL;
-	int idx, lfn, ulen;
+	int idx, ulen;
 	vfNode* nd;
-	if (vf->nodes >= rl->ncap) return -1;
-	if (n && (!(cl = (unsigned int*)malloc(n * sizeof(unsigned int))) || !rl_alloc(rl, n, cl))) {
+	if (vf->nodes >= rf->ncap) return -1;
+	if (n && (!(cl = (unsigned int*)malloc(n * sizeof(unsigned int))) || !rf_alloc(rf, n, cl))) {
 		free(cl);
 		return -1;
 	}
@@ -2037,199 +2016,254 @@ static int rl_add(vfRl* rl, int parent, const vfNode* fn) {
 	}
 	node_append(vf, parent, idx);
 	nd = vf->node + idx;
-	lfn = vf_sname_make(fn->name, sname, &ulen);
-	rl->parent = parent;
-	vf_sname_uniq(sname, fn->name, rl_taken, rl);
+	vf_sname_make(fn->name, base, &ulen);
+	memcpy(sname, base, 12);
+	rf->parent = parent;
+	vf_sname_uniq(sname, fn->name, rf_taken, rf);
 	memcpy(nd->sname, sname, 12);
-	nd->lfn = lfn ? 1 : 0;
-	nd->ecnt = lfn ? ((ulen + 12) / 13 + 1) : 1;
+	// a name made unique here needs its long name as much as one the 8.3 form loses
+	nd->lfn = (fn->lfn || memcmp(sname, base, 11)) ? 1 : 0;
+	nd->ecnt = nd->lfn ? ((ulen + 12) / 13 + 1) : 1;
 	nd->size = nd->hsize = fn->isdir ? 0 : fn->size;
 	nd->hmtime = fn->hmtime;
 	nd->date = fn->date;
 	nd->time = fn->time;
 	if (n) {
-		rl_link(vf, cl, n, idx, 0);
+		rf_link(vf, cl, n, idx, 0);
 		nd->clust = cl[0];
 		nd->nclust = n;
 	}
 	free(cl);
-	if (fn->isdir) {
+	if (fn->isdir) {		// its dot and dotdot
 		memset(sec, 0x00, VF_SECSIZE);
-		memset(dots, ' ', 11);
-		dots[11] = 0;
-		dots[0] = '.';
-		vf_entry(sec, dots, 0x10, nd->clust, 0, nd->date, nd->time);
-		dots[1] = '.';
-		vf_entry(sec + 32, dots, 0x10, parent ? vf->node[parent].clust : 0, 0, nd->date, nd->time);
-		rl_ovl(vf, clu_lba(vf, nd->clust, 0), sec);
+		vf_gen_dir(vf, idx, 0, sec);
+		rf_ovl(vf, clu_lba(vf, nd->clust, 0), sec);
 	}
-	rl_index(rl, idx);
-	if (!rl_list(rl, idx)) {
-		rl_drop(rl, idx);
+	rf_index(rf, idx);
+	if (!rf_list(rf, idx)) {
+		rf_drop(rf, idx);
 		node_unlink(vf, idx);
 		return -1;
 	}
 	return idx;
 }
 
-int vfat_reload(vFat* vf, const vFat* fresh, int maxdepth, vfReload* out) {
-	vfRl rl;
-	vfWr* w;
-	unsigned char sec[VF_SECSIZE];
-	unsigned int per, need = 0, have, k, c, i;
-	int* fmap = NULL;		// per fresh node: the volume's node it is, -1 new, -2 left out
-	int* fents = NULL;		// per fresh folder new to the volume: the entries it gets
-	int* vents = NULL;		// per node: the entries it gets
-	unsigned char* seen = NULL;
-	int j, v, res = VFR_MEMORY, failed = 0;
-	vfReload cnt;
-	memset(&cnt, 0x00, sizeof(cnt));
-	memset(&rl, 0x00, sizeof(rl));
-	if (out) *out = cnt;
-	if (!vf || !fresh || (fresh->nodes < 1)) return VFR_MEMORY;
-	if (vf->wr) {
-		if (vf->wr->detached) return VFR_DETACHED;
-		if ((vf->wr->wgen != vf->wr->sgen) || vf->wr->pending) return VFR_WRITES;
-	} else if (!vfw_live(vf)) {
-		return VFR_MEMORY;
-	}
-	w = vf->wr;
-	vf_close_cached(vf);
-	per = vf->spc * (VF_SECSIZE / 32);
-	for (rl.cap = 1024; rl.cap < 2u * (unsigned int)(vf->nodes + fresh->nodes); rl.cap <<= 1);
-	rl.vf = vf;
-	rl.hi = rl.lo = vf->clusters + 2;
-	rl.norun = 0xffffffff;
-	rl.ncap = vf->nodes + fresh->nodes;
-	rl.tab = (int*)malloc(rl.cap * sizeof(int));
-	rl.htab = (int*)malloc(rl.cap * sizeof(int));
-	rl.busy = (unsigned char*)calloc(vf->clusters + 2, 1);
-	rl.lhint = (unsigned int*)calloc(rl.ncap, sizeof(unsigned int));
-	rl.fhint = (unsigned int*)calloc(rl.ncap, sizeof(unsigned int));
-	fmap = (int*)malloc(fresh->nodes * sizeof(int));
-	fents = (int*)calloc(fresh->nodes, sizeof(int));
-	vents = (int*)calloc(vf->nodes, sizeof(int));
-	seen = (unsigned char*)calloc(vf->nodes, 1);
-	if (!rl.tab || !rl.htab || !rl.busy || !rl.lhint || !rl.fhint || !fmap || !fents || !vents || !seen) goto out;
-	memset(rl.tab, 0xff, rl.cap * sizeof(int));
-	memset(rl.htab, 0xff, rl.cap * sizeof(int));
+static void rf_close(vfRf* rf) {
+	free(rf->tab);
+	free(rf->htab);
+	free(rf->busy);
+	free(rf->lhint);
+	free(rf->fhint);
+	free(rf->fmap);
+	free(rf->rmap);
+	free(rf->fents);
+	free(rf->vents);
+	free(rf->gone);
+}
+
+// the tables, and the volume's nodes indexed; 0 when there is no memory
+static int rf_open(vfRf* rf, vFat* vf, const vFat* fresh) {
+	int v;
+	memset(rf, 0x00, sizeof(vfRf));
+	rf->vf = vf;
+	rf->fresh = fresh;
+	rf->per = vf->spc * (VF_SECSIZE / 32);
+	for (rf->cap = 1024; rf->cap < 2u * (unsigned int)(vf->nodes + fresh->nodes); rf->cap <<= 1);
+	rf->hi = rf->lo = vf->clusters + 2;
+	rf->norun = 0xffffffff;
+	rf->ncap = vf->nodes + fresh->nodes;
+	rf->tab = (int*)malloc(rf->cap * sizeof(int));
+	rf->htab = (int*)malloc(rf->cap * sizeof(int));
+	rf->busy = (unsigned char*)calloc(vf->clusters + 2, 1);
+	rf->lhint = (unsigned int*)calloc(rf->ncap, sizeof(unsigned int));
+	rf->fhint = (unsigned int*)calloc(rf->ncap, sizeof(unsigned int));
+	rf->fmap = (int*)malloc(fresh->nodes * sizeof(int));
+	rf->rmap = (int*)malloc(vf->nodes * sizeof(int));
+	rf->fents = (int*)calloc(fresh->nodes, sizeof(int));
+	rf->vents = (int*)calloc(vf->nodes, sizeof(int));
+	rf->gone = (int*)malloc(vf->nodes * sizeof(int));
+	if (!rf->tab || !rf->htab || !rf->busy || !rf->lhint || !rf->fhint || !rf->fmap || !rf->rmap || !rf->fents
+			|| !rf->vents || !rf->gone) return 0;
+	memset(rf->tab, 0xff, rf->cap * sizeof(int));
+	memset(rf->htab, 0xff, rf->cap * sizeof(int));
+	memset(rf->rmap, 0xff, vf->nodes * sizeof(int));
 	for (v = 1; v < vf->nodes; v++)
-		if (!vf->node[v].dead && (vf->node[v].parent >= 0)) rl_index(&rl, v);
-	// a cluster holding data the guest wrote ahead of the FAT that will claim it is not free
-	for (i = 0; i < (unsigned int)w->capsec; i++) {
-		unsigned int lba = w->sec[i].lba;
-		if ((lba == 0xffffffff) || (lba < vf->partStart + vf->dataStart)) continue;
-		c = (lba - vf->partStart - vf->dataStart) / vf->spc + 2;
-		if (c < vf->clusters + 2) rl.busy[c] = 1;
-	}
-	// == what is what: the tree from the root down, by host names within each folder
-	fmap[0] = 0;
-	seen[0] = 1;
+		if (!vf->node[v].dead && (vf->node[v].parent >= 0)) rf_index(rf, v);
+	return 1;
+}
+
+// what is what: the fresh tree from the root down, by host names within each folder; what
+// is new and changed counted, and the clusters they take at most
+static void rf_match(vfRf* rf) {
+	vFat* vf = rf->vf;
+	const vFat* fresh = rf->fresh;
+	int j, v, fp;
+	rf->fmap[0] = 0;
+	rf->rmap[0] = 0;
 	for (j = 1; j < fresh->nodes; j++) {
 		const vfNode* fn = fresh->node + j;
-		int fp = fmap[fn->parent];
-		fmap[j] = -1;
+		fp = rf->fmap[fn->parent];
+		rf->fmap[j] = -1;
 		if (fp == -2) {
-			fmap[j] = -2;
+			rf->fmap[j] = -2;
 			continue;
 		}
 		if (fp >= 0) {
-			v = rl_child(&rl, fp, fn->hname);
+			v = rf_child(rf, fp, fn->hname);
 			if ((v >= 0) && !node_pinned(vf, v) && (vf->node[v].isdir == fn->isdir)) {
-				fmap[j] = v;
-				seen[v] = 1;
+				rf->fmap[j] = v;
+				rf->rmap[v] = j;
 				if (!fn->isdir && ((fn->size != vf->node[v].hsize) || (fn->hmtime != vf->node[v].hmtime))) {
-					unsigned int n1 = rl_nclu(vf, fn->size);
-					if (n1 > vf->node[v].nclust) need += n1 - vf->node[v].nclust;
+					unsigned int n1 = rf_nclu(vf, fn->size);
+					if (n1 > vf->node[v].nclust) rf->need += n1 - vf->node[v].nclust;
+					rf->changes++;
 				}
 				continue;
 			}
-			if (!fp && rl_pin_named(vf, fn->name)) {	// the Next's program folder has that name
-				fmap[j] = -2;
+			if (!fp && rf_pin_named(vf, fn->name)) {	// the Next's program folder has that name
+				rf->fmap[j] = -2;
 				continue;
 			}
-			vents[fp] += fn->ecnt;
+			rf->vents[fp] += fn->ecnt;
 		} else {
-			fents[fn->parent] += fn->ecnt;
+			rf->fents[fn->parent] += fn->ecnt;
 		}
-		need += fn->isdir ? 0 : rl_nclu(vf, fn->size);
+		rf->need += fn->isdir ? 0 : rf_nclu(vf, fn->size);
+		rf->news++;
 	}
 	// a folder's growth, at most: its new entries and an end marker, cluster by cluster
 	for (j = 1; j < fresh->nodes; j++)
-		if ((fmap[j] == -1) && fresh->node[j].isdir) need += (fents[j] + 2 + 1 + per - 1) / per;
+		if ((rf->fmap[j] == -1) && fresh->node[j].isdir) rf->need += (rf->fents[j] + 2 + 1 + rf->per - 1) / rf->per;
 	for (v = 0; v < vf->nodes; v++)
-		if (vents[v]) need += (vents[v] + 1 + per - 1) / per;
-	have = rl_count_free(&rl);
-	if (need > have) {
+		if (rf->vents[v]) rf->need += (rf->vents[v] + 1 + rf->per - 1) / rf->per;
+}
+
+// what went from the folder, each from the top of what goes. Left be: what lies deeper than
+// the scan looks, and what the host still has though the scan did not list it (a hidden name,
+// a link) - unless the folder lists it in another case, which a case-blind host gives for it.
+static void rf_gone(vfRf* rf, int maxdepth) {
+	vFat* vf = rf->vf;
+	const vFat* fresh = rf->fresh;
+	char path[2048];
+	int v, a, c, d, top, other;
+	for (v = 1; v < vf->nodes; v++) {
+		vfNode* nd = vf->node + v;
+		if (nd->dead || (nd->parent < 0) || (rf->rmap[v] >= 0) || node_pinned(vf, v)) continue;
+		d = depth_of(vf, v);
+		if ((d > maxdepth + 1) || (nd->isdir && (d > maxdepth))) continue;
+		top = 1;
+		for (a = nd->parent; a > 0; a = vf->node[a].parent)
+			if ((rf->rmap[a] < 0) && !vf->node[a].dead) { top = 0; break; }
+		if (!top) continue;
+		if (nd->hname && vf_path(vf, v, path, sizeof(path)) && host_kind(vf, path)) {
+			other = 0;
+			for (c = fresh->node[rf->rmap[nd->parent]].child; (c >= 0) && !other; c = fresh->node[c].next)
+				other = fresh->node[c].hname && name_eq(fresh->node[c].hname, nd->hname);
+			if (!other) continue;
+		}
+		rf->gone[rf->ngone++] = v;
+	}
+}
+
+// a cluster holding data the guest wrote ahead of the FAT that will claim it is not free
+static void rf_busy(vfRf* rf) {
+	vFat* vf = rf->vf;
+	vfWr* w = vf->wr;
+	unsigned int i, c, lba;
+	for (i = 0; i < (unsigned int)w->capsec; i++) {
+		lba = w->sec[i].lba;
+		if ((lba == 0xffffffff) || (lba < vf->partStart + vf->dataStart)) continue;
+		c = (lba - vf->partStart - vf->dataStart) / vf->spc + 2;
+		if (c < vf->clusters + 2) rf->busy[c] = 1;
+	}
+}
+
+// FSInfo and its copy tell the truth; a guest that read it before keeps its own count
+static void rf_fsinfo(vFat* vf) {
+	static const unsigned int at[2] = {1, 7};
+	unsigned char sec[VF_SECSIZE];
+	unsigned int have = rf_fat_free(vf);
+	int k;
+	vf->used = vf->clusters - have;
+	for (k = 0; k < 2; k++) {
+		vfw_read(vf, vf->partStart + at[k], sec);
+		vf_wr32(sec + 488, have);
+		rf_ovl(vf, vf->partStart + at[k], sec);
+	}
+}
+
+int vfat_refresh_ready(vFat* vf) {
+	if (!vf || !vf->wr) return VFR_OK;
+	if (vf->wr->detached) return VFR_DETACHED;
+	if (vf->wr->wgen != vf->wr->sgen) return VFR_WRITES;
+	if (vf->wr->pending) return VFR_STUCK;
+	return VFR_OK;
+}
+
+const char* vfat_stuck(vFat* vf) {
+	return (vf && vf->wr) ? vf->wr->fnames : "";
+}
+
+int vfat_refresh(vFat* vf, const vFat* fresh, int maxdepth, vfRefresh* out) {
+	vfRf rf;
+	vfRefresh cnt;
+	int i, j, v, res, failed = 0;
+	memset(&cnt, 0x00, sizeof(cnt));
+	if (out) *out = cnt;
+	if (!vf || !fresh || (fresh->nodes < 1)) return VFR_MEMORY;
+	if ((res = vfat_refresh_ready(vf)) != VFR_OK) return res;
+	res = VFR_MEMORY;
+	if (!rf_open(&rf, vf, fresh)) goto out;
+	rf_match(&rf);
+	rf_gone(&rf, maxdepth);
+	if (!rf.news && !rf.changes && !rf.ngone) {	// the volume need not go live for nothing
+		res = VFR_OK;
+		goto out;
+	}
+	if (!vf->wr && !vfw_live(vf)) goto out;
+	vf_close_cached(vf);
+	rf_busy(&rf);
+	if (rf.need > rf_count_free(&rf)) {
 		res = VFR_FULL;
 		goto out;
 	}
-	// == gone: each from the top of what goes. What lies deeper than the scan looks is
-	// not taken for gone: the guest may have made it, and the host keeps it.
-	for (v = 1; v < (int)vf->nodes; v++) {
-		int a, top = 1, d = depth_of(vf, v);
-		if (vf->node[v].dead || seen[v] || node_pinned(vf, v)) continue;
-		if ((d > maxdepth + 1) || (vf->node[v].isdir && (d > maxdepth))) continue;
-		for (a = vf->node[v].parent; a > 0; a = vf->node[a].parent)
-			if (!seen[a] && !vf->node[a].dead) { top = 0; break; }
-		if (!top) continue;
-		rl_unlist(&rl, v);
-		cnt.removed += rl_drop(&rl, v);
+	for (i = 0; i < rf.ngone; i++) {
+		v = rf.gone[i];
+		if (!rf_unlist(&rf, v)) {		// its entry is not where the node says: left be
+			failed++;
+			continue;
+		}
+		cnt.removed += rf_drop(&rf, v);
 		node_unlink(vf, v);
 	}
-	// == changed
 	for (j = 1; j < fresh->nodes; j++) {
 		const vfNode* fn = fresh->node + j;
-		v = fmap[j];
+		v = rf.fmap[j];
 		if ((v <= 0) || fn->isdir) continue;
 		if ((fn->size == vf->node[v].hsize) && (fn->hmtime == vf->node[v].hmtime)) continue;
-		if (rl_change(&rl, v, fn->size, fn->hmtime)) cnt.changed++;
+		if (rf_change(&rf, v, fn->size, fn->hmtime)) cnt.changed++;
 		else failed++;
 	}
-	// == new, parents first: the scan put them in that order
+	// new ones, parents first: the scan put them in that order
 	for (j = 1; j < fresh->nodes; j++) {
-		int p;
-		if (fmap[j] != -1) continue;
-		p = fresh->node[j].parent;
-		if (fmap[p] < 0) {			// its folder could not be put on
-			fmap[j] = -2;
+		if (rf.fmap[j] != -1) continue;
+		v = (rf.fmap[fresh->node[j].parent] < 0) ? -1 : rf_add(&rf, rf.fmap[fresh->node[j].parent], fresh->node + j);
+		if (v < 0) {			// no room, or its folder could not be put on
+			rf.fmap[j] = -2;
 			failed++;
 			continue;
 		}
-		v = rl_add(&rl, fmap[p], fresh->node + j);
-		if (v < 0) {
-			fmap[j] = -2;
-			failed++;
-			continue;
-		}
-		fmap[j] = v;
+		rf.fmap[j] = v;
 		cnt.added++;
 	}
-	// == FSInfo tells the truth; a guest that read it before keeps its own count
-	if (cnt.added || cnt.removed || cnt.changed) {
-		have = rl_fat_free(vf);
-		vf->used = vf->clusters - have;
-		for (k = 1; k <= 7; k += 6) {
-			vfw_read(vf, vf->partStart + k, sec);
-			vf_wr32(sec + 488, have);
-			rl_ovl(vf, vf->partStart + k, sec);
-		}
-	}
+	if (cnt.added || cnt.removed || cnt.changed) rf_fsinfo(vf);
 	vf_close_cached(vf);
 	cnt.left = failed;
-	xlog(XLG_DISK, XLL_INFO, "folder %s: reloaded, %i new, %i gone, %i changed, %i left out", vf->root ? vf->root : "?",
+	xlog(XLG_DISK, XLL_INFO, "folder %s: refreshed, %i new, %i gone, %i changed, %i left out", vf->root ? vf->root : "?",
 		cnt.added, cnt.removed, cnt.changed, failed);
-	res = w->detached ? VFR_MEMORY : failed ? VFR_PART : VFR_OK;
+	res = vf->wr->detached ? VFR_MEMORY : failed ? VFR_PART : VFR_OK;
 	if (out) *out = cnt;
 out:
-	free(rl.tab);
-	free(rl.htab);
-	free(rl.busy);
-	free(rl.lhint);
-	free(rl.fhint);
-	free(fmap);
-	free(fents);
-	free(vents);
-	free(seen);
+	rf_close(&rf);
 	return res;
 }

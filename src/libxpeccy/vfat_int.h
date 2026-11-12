@@ -36,6 +36,7 @@ int vf_clust_node(vFat*, unsigned int clu);
 // directory entries as the build makes them
 int vf_sname_make(const char* name, char* dst, int* ulen);	// 1 when a long name is needed
 unsigned char vf_sname_sum(const char* sname);
+unsigned int vf_sname_hash(int parent, const char* sname);
 // sname made unique: taken says whether a name is in use among its siblings
 void vf_sname_uniq(char* sname, const char* name, int (*taken)(void* ctx, const char* sname), void* ctx);
 void vf_fat_stamp(unsigned int mtime, unsigned short* date, unsigned short* tim);

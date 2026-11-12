@@ -148,7 +148,7 @@ unsigned char vf_sname_sum(const char* sname) {
 }
 
 // the key of an 8.3 name in the table: siblings share a parent
-static unsigned int sname_hash(int parent, const char* sname) {
+unsigned int vf_sname_hash(int parent, const char* sname) {
 	unsigned int res = (unsigned int)parent;
 	int i;
 	for (i = 0; i < 11; i++)
@@ -161,7 +161,7 @@ static unsigned int stab_pos(vFat* vf, unsigned int hash) {
 }
 
 static int sname_taken(vFat* vf, int parent, const char* sname) {
-	unsigned int hash = sname_hash(parent, sname);
+	unsigned int hash = vf_sname_hash(parent, sname);
 	unsigned int pos;
 	int idx;
 	for (pos = stab_pos(vf, hash); (idx = vf->stab[pos]) >= 0; pos = (pos + 1) & (vf->scap - 1)) {
@@ -376,14 +376,19 @@ void vf_fat_stamp(unsigned int mtime, unsigned short* date, unsigned short* tim)
 int vfat_add(vFat* vf, int parent, const char* name, unsigned int size, unsigned int mtime, int isdir) {
 	vfNode* nod;
 	vfSib sib;
-	char sname[12];
+	char sname[12], base[12];
 	int idx, prev, lfn, ecnt, ulen;
 	if (!vf) return -1;
 	if (!name) name = "";
-	lfn = vf_sname_make(name, sname, &ulen);
+	lfn = vf_sname_make(name, base, &ulen);
+	if (!stab_room(vf)) return -1;
+	memcpy(sname, base, 12);
+	sib.vf = vf;
+	sib.parent = parent;
+	vf_sname_uniq(sname, name, sib_taken, &sib);
+	if (memcmp(sname, base, 11)) lfn = 1;		// a name made unique needs its long name too
 	ecnt = lfn ? (divup(ulen, 13) + 1) : 1;		// the 8.3 entry and 13 characters per long one
 	if ((parent >= 0) && (vf->node[parent].dents + ecnt > VF_MAXDENTS)) return VF_FULL;
-	if (!stab_room(vf)) return -1;
 	if (vf->nodes >= vf->cap) {
 		vf->cap = vf->cap ? (vf->cap * 2) : 64;
 		vf->node = (vfNode*)realloc(vf->node, vf->cap * sizeof(vfNode));
@@ -406,10 +411,7 @@ int vfat_add(vFat* vf, int parent, const char* name, unsigned int size, unsigned
 	nod->ecnt = ecnt;
 	nod->dents = (parent < 0) ? 2 : 3;		// the label or dot and dotdot, and the end marker
 	memcpy(nod->sname, sname, 12);
-	sib.vf = vf;
-	sib.parent = parent;
-	vf_sname_uniq(nod->sname, name, sib_taken, &sib);
-	nod->shash = sname_hash(parent, nod->sname);
+	nod->shash = vf_sname_hash(parent, nod->sname);
 	stab_put(vf, idx);
 	vf_fat_stamp(mtime, &nod->date, &nod->time);
 	if (parent >= 0) {				// append, keeping the order the scanner used

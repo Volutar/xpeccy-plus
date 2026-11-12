@@ -593,7 +593,7 @@ void MainWin::cardEjectKey() {
 }
 
 // what a refresh brought in, or why some of it was not done
-void MainWin::folderSaid(const vfReload& r, const QString& why) {
+void MainWin::folderSaid(const vfRefresh& r, const QString& why) {
 	if (!why.isEmpty()) {
 		pause(true, PR_EXTRA);
 		QMessageBox::warning(this, "Refresh", why);
@@ -605,14 +605,12 @@ void MainWin::folderSaid(const vfReload& r, const QString& why) {
 		setMessage(" refreshed: no changes ");
 }
 
-// What the folder changed goes into the card or disk the machine has, without the machine
-// noticing - a real card taken out and put back is dead to it until it mounts the card anew
-// (N-Go: NextZXOS "Not ready", esxDOS error 19); what it wrote there first goes to the folder
+// the folder's changes into the card or disk, the machine running on (a real card put back is dead to it)
 void MainWin::folderRefresh(bool ide, int which) {
-	vfReload r;
+	vfRefresh r;
 	QString why;
 	driveOp([&]() {
-		why = ide ? ide_reload(conf.zx->ide, which, &r) : sdc_reload(sd_card(conf.zx, which), &r);
+		why = ide ? ide_refresh(conf.zx->ide, which, &r) : sdc_refresh(sd_card(conf.zx, which), &r);
 	});
 	folderSaid(r, why);
 }
@@ -633,12 +631,12 @@ void MainWin::folderRefreshAll() {
 		setMessage(" no folder card ");
 		return;
 	}
-	vfReload sum = {0, 0, 0, 0};
+	vfRefresh sum = {0, 0, 0, 0};
 	QStringList whys;
 	driveOp([&]() {
 		for (int i = 0; i < n; i++) {
-			vfReload r;
-			QString why = fold_reload(fold[i].vf, &r);
+			vfRefresh r;
+			QString why = fold_refresh(fold[i].vf, &r);
 			sum.added += r.added;
 			sum.removed += r.removed;
 			sum.changed += r.changed;
