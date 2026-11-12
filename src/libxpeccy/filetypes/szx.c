@@ -835,7 +835,6 @@ int loadSZX_buf(Computer* comp, const unsigned char* buf, size_t len) {
 
 	if (!ext || !szx_ext_load(comp, ext, extlen))
 		comp_set_frame_tick(comp, ld.tick);
-	if (comp->gs) gs_loop_forget(comp->gs);
 	return ERR_OK;
 }
 

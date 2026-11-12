@@ -141,10 +141,7 @@ static void gs_port_wr(GSound* gs, int port, int val) {
 	}
 }
 
-// The ports a loop may read and still change nothing (gs_loop_at): the host's
-// command and the state, and the NeoGS's settings. Any other one counts as a
-// side effect, the ones that have none here as well - the SD and MP3 ports would
-// have one on the card.
+// a read a loop may make and still change nothing (gs_loop_at): ZXCMD, ZXSTAT, the NeoGS's settings
 static int gs_port_clean(GSound* gs, int port) {
 	if (gs->model != GS_NEOGS) port &= 0x0f;
 	else if (port & 0xc0) return 0;
@@ -336,7 +333,7 @@ static void gs_halt_skip(GSound* gs) {
 	if (ni < n) n = ni;
 	if (n < 2) return;
 	n--;
-	gs->lpDirty = 1;
+	gs->lpDirty = 1;		// a HALT is the halt skip's, not the loop skip's
 	cpu->regR += (unsigned char)n;
 	gs->due -= n * h;
 	gs->intDue -= n * h;
@@ -349,23 +346,13 @@ void gs_loop_forget(GSound* gs) {
 	gs->lpBack = 0;
 }
 
-// An INT the loop's turns could take: IFF1 set at an instruction's start
-// anywhere in a turn - an EI ... DI inside it as well (inten follows IFF1 here,
-// so it says nothing past the head)
-static int gs_int_on(GSound* gs) {
-	return gs->lpEi;
-}
-
-// Turns of the loop the CPU stands at the head of, counted at once: R by the
-// turns' step and the time they take - with DI, the INTs their time holds
-// are requested as they would have been, with EI they stop short of the next
-// one. At least part of a turn is left to run as ever, so the CPU ends where
-// the turns one by one would leave it.
+// Whole turns from the head counted at once, short of the next INT the turns
+// could take; part of a turn is always left to run as ever.
 static void gs_loop_skip(GSound* gs) {
 	CPU* cpu = gs->cpu;
 	long long turn = (long long)gs->lpLen * gs->tickUnits;
 	long long lim = gs->due;
-	if (gs_int_on(gs) && (gs->intDue < lim)) lim = gs->intDue;
+	if (gs->lpEi && (gs->intDue < lim)) lim = gs->intDue;
 	if ((turn <= 0) || (lim <= turn)) return;
 	long long k = (lim - 1) / turn;
 	cpu->regR += (unsigned char)(k * gs->lpStep);
@@ -378,31 +365,34 @@ static void gs_loop_skip(GSound* gs) {
 	}
 }
 
+_Static_assert(sizeof(((GSound*)0)->lpRegs) == sizeof(((CPU*)0)->regs), "lpRegs: the CPU's regs");
+_Static_assert(sizeof(((GSound*)0)->lpFlags) == sizeof(((CPU*)0)->flags), "lpFlags: the CPU's flags");
+
 // every register and flag as at the head, R aside
 static int gs_loop_same(GSound* gs) {
 	CPU* cpu = gs->cpu;
+	size_t rOfs = (unsigned char*)&cpu->regR - (unsigned char*)cpu->regs;	// R's byte in regs
 	unsigned char r = cpu->regR;
-	cpu->regR = ((unsigned char*)gs->lpRegs)[(unsigned char*)&cpu->regR - (unsigned char*)cpu->regs];
+	cpu->regR = ((unsigned char*)gs->lpRegs)[rOfs];
 	int same = !memcmp(cpu->regs, gs->lpRegs, sizeof(gs->lpRegs))
 		&& !memcmp(cpu->flags, gs->lpFlags, sizeof(gs->lpFlags));
 	cpu->regR = r;
 	return same;
 }
 
-// A jump back, or to itself: the CPU is at a loop's head. Reached the turn before
-// as well, with no side effect between (lpDirty: a write, an OUT, a port read
-// with an effect, a DAC read, LD A,R, an interrupt) and every register but R as
-// it was there, the turn changed nothing, and every next one does the same as
-// long as nothing outside changes: the host's accesses run the CPU out first and
-// forget the loop. A head that fails is looked at less often after, up to every
-// 32nd. park: stop at the head (1 back) rather than count the turns, unless an
-// INT the turns would take falls in the time given.
+// the mix's flush may leave the CPU at the head: no INT the turns take falls in the time given
+static int gs_park_ok(GSound* gs) {
+	return !(gs->lpEi && (gs->due >= gs->intDue));
+}
+
+// A jump back or to itself: a loop's head. A clean turn (lpDirty) that brings back
+// every register but R makes it a loop to count (state.md of gs-perf has the why).
+// park: stop at the head (1 back) instead.
 static int gs_loop_at(GSound* gs, int park) {
 	CPU* cpu = gs->cpu;
 	int pc = cpu->regPC;
 	int found = 0;
-	// turns with EI somewhere in them take an INT already asked for, DI at the head
-	// or not
+	// a turn with EI anywhere takes an INT already asked for, DI at the head or not
 	int ei = gs->lpIff || cpu->flgIFF1;
 	int asked = (cpu->intrq & Z80_INT) && ei;
 	if (gs->lpWait > 0) {
@@ -415,13 +405,13 @@ static int gs_loop_at(GSound* gs, int park) {
 		gs->lpBack = 0;
 		found = 1;
 	} else {
+		// a head that fails is looked at less often after, up to every 32nd
 		if (gs->lpHead >= 0) {
 			gs->lpWait = gs->lpBack;
 			gs->lpBack = gs->lpBack ? ((gs->lpBack < 16) ? gs->lpBack * 2 : 32) : 1;
 		}
-		if (gs->lpWait > 0) {
-			gs->lpHead = -1;
-		} else {
+		gs->lpHead = -1;
+		if (!gs->lpWait) {
 			gs->lpHead = pc;
 			memcpy(gs->lpRegs, cpu->regs, sizeof(gs->lpRegs));
 			memcpy(gs->lpFlags, cpu->flags, sizeof(gs->lpFlags));
@@ -432,7 +422,7 @@ static int gs_loop_at(GSound* gs, int park) {
 	gs->lpDirty = 0;
 	gs->lpIff = 0;
 	if (!found) return 0;
-	if (park && !(gs_int_on(gs) && (gs->due >= gs->intDue))) {
+	if (park && gs_park_ok(gs)) {
 		gs->lpPark = 1;
 		return 1;
 	}
@@ -441,12 +431,11 @@ static int gs_loop_at(GSound* gs, int park) {
 }
 
 // INT comes from the card's own divider at 37.5 kHz, whatever the CPU runs at.
-// park: the mix's flush, which only needs the DAC levels - a loop that changes
-// nothing leaves them as they are, so the CPU waits at its head
+// park: the mix's flush, which needs only the DAC levels a clean loop leaves alone
 static void gs_run(GSound* gs, int park) {
 	CPU* cpu = gs->cpu;
 	if (gs->lpPark) {
-		if (park && !(gs_int_on(gs) && (gs->due >= gs->intDue))) return;
+		if (park && gs_park_ok(gs)) return;
 		gs->lpPark = 0;
 		gs_loop_skip(gs);
 	}
@@ -504,9 +493,11 @@ static int gs_ctr(GSound* gs, int adr, int data) {
 		gs_reset_hw(gs);
 		gs->intDue = GS_INT_UNITS;
 	}
-	if (data & 0x40) gs->cpu->intrq |= Z80_NMI;
+	if (data & 0x40) {
+		gs->cpu->intrq |= Z80_NMI;
+		gs_loop_forget(gs);
+	}
 	if (data & 0x20) gs->led ^= 1;
-	gs_loop_forget(gs);
 	return 1;
 }
 

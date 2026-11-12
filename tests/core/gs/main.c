@@ -9,7 +9,7 @@
 #include <string.h>
 
 #include "sound/gs.h"
-#include "cpu/Z80/z80.h"
+#include "cpu/Z80/z80.h"		// regPC: the card set at a wait of the bench's own
 
 int gsmemrd(int, int, void*);		// sound/gs.c: the card's CPU's own bus
 void gsmemwr(int, int, void*);
@@ -213,6 +213,9 @@ static void separation(GSound* gs) {
 #define LS_FRAME	28209		// steps in 20 ms
 #define LS_STEPS	(LS_FRAME * 400)	// 8 s: the boot and RAM test, the idle loop, a command
 
+#define FNV_SEED	0xcbf29ce484222325ULL	// FNV-1a, 64 bits
+#define FNV_PRIME	0x100000001b3ULL
+
 static int read_file(const char* path, unsigned char* buf, int size) {
 	FILE* f = fopen(path, "rb");
 	if (!f) return 0;
@@ -223,12 +226,12 @@ static int read_file(const char* path, unsigned char* buf, int size) {
 
 static unsigned long long fold(unsigned long long h, const void* p, size_t n) {
 	const unsigned char* b = (const unsigned char*)p;
-	for (size_t i = 0; i < n; i++) h = (h ^ b[i]) * 0x100000001b3ULL;
+	for (size_t i = 0; i < n; i++) h = (h ^ b[i]) * FNV_PRIME;
 	return h;
 }
 
 static unsigned long long card_hash(GSound* gs) {
-	unsigned long long h = 0xcbf29ce484222325ULL;
+	unsigned long long h = FNV_SEED;
 	h = fold(h, gs->cpu->regs, sizeof(gs->cpu->regs));
 	h = fold(h, gs->cpu->flags, sizeof(gs->cpu->flags));
 	h = fold(h, gs->mem->ramData, gs->mem->ramSize);
@@ -304,7 +307,7 @@ static GSound* ls_card(int model, const unsigned char* rom) {
 static lsRes ls_run(int model, const unsigned char* rom, int how, int burst) {
 	lsRes r = {0};
 	GSound* gs = ls_card(model, rom);
-	unsigned long long h = 0xcbf29ce484222325ULL;
+	unsigned long long h = FNV_SEED;
 	for (int i = 0; i < LS_STEPS; i++) {
 		if (!(i % burst)) gsSync(gs, LS_STEP_NS * ((LS_STEPS - i < burst) ? LS_STEPS - i : burst));
 		ls_host(gs, i);
