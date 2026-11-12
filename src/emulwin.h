@@ -207,6 +207,7 @@ class MainWin : public QWidget {
 		void fillDrivesMenu();
 		void otherImages(QMenu*, int id, int drv, QAction* before = nullptr, int inlineMax = 8);
 		void driveOp(std::function<void()>);
+		void folderReload(bool ide, int which);	// a folder card (-1 the slot's, 0/1 divMMC's) or IDE device read again, running
 		void diskOp(int, int);
 		void diskNew(int);
 		void diskSave(int, bool);

@@ -240,6 +240,8 @@ void MainWin::fillCardMenu(QMenu* m, int card) {
 		});
 	});
 	act->setEnabled(sdc->image != NULL);
+	act = m->addAction(QIcon(":/images/refresh.png"), "Reload", this, [this, card]() {folderReload(false, card);});
+	act->setEnabled(sdc->vfat != NULL);
 	m->addSeparator();
 	// the card's lock switch; a folder is read only whatever it says unless Options lets
 	// folders take writes
@@ -323,6 +325,8 @@ void MainWin::fillDrivesMenu() {
 				driveOp([id]() {ide_mount(conf.zx->ide, id, QString());});
 			});
 			act->setEnabled(dev[i]->image != NULL);
+			act = m->addAction(QIcon(":/images/refresh.png"), "Reload", this, [this, id]() {folderReload(true, id);});
+			act->setEnabled(dev[i]->vfat != NULL);
 			m->addSeparator();
 			act = m->addAction("Properties...", this, [this, id]() {hddProps(id);});
 			act->setEnabled(dev[i]->image != NULL);
@@ -565,6 +569,27 @@ void MainWin::driveOp(std::function<void()> fn) {
 	emu_unlock();
 	pause(false, PR_FILE);
 	if (diskWin->isVisible()) diskWin->refresh();
+}
+
+// What the folder changed goes into the card or disk the machine has, as a real card taken out
+// and put back with the files changed, without the machine noticing; what it wrote there first
+// goes to the folder
+void MainWin::folderReload(bool ide, int which) {
+	vfReload r;
+	QString why;
+	driveOp([&]() {
+		why = ide ? ide_reload(conf.zx->ide, which, &r) : sdc_reload(sd_card(conf.zx, which), &r);
+	});
+	if (!why.isEmpty()) {
+		pause(true, PR_EXTRA);
+		QMessageBox::warning(this, "Reload", why);
+		pause(false, PR_EXTRA);
+		return;
+	}
+	if (!r.added && !r.removed && !r.changed)
+		setMessage(" reloaded: no changes ");
+	else
+		setMessage(QString(" reloaded: %0 new, %1 gone, %2 changed ").arg(r.added).arg(r.removed).arg(r.changed));
 }
 
 void MainWin::diskNew(int drv) {

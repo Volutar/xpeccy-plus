@@ -157,6 +157,23 @@ void vfat_release(vFat*, int allow);
 // writes stays in memory as with a Read-only answer, so its DOS goes on as it was
 void vfat_read_only(vFat*);
 
+// what vfat_reload did, or why it did nothing
+enum {
+	VFR_OK = 0,
+	VFR_WRITES,		// the guest's writes have not reached the folder (on hold, or a sync left some)
+	VFR_DETACHED,		// the folder no longer follows the machine
+	VFR_FULL,		// the folder's changes do not fit on the volume
+	VFR_MEMORY
+};
+typedef struct {
+	int added, removed, changed;
+} vfReload;
+// The folder changed on the host: fresh is a tree scanned from it again (vfat_add, no build).
+// Only the difference goes into the volume, as a guest would write it - what is still there
+// keeps its clusters and entries, so a guest's open file and current directory stay right.
+// The Next's pinned folders are left be. On failure nothing changes.
+int vfat_reload(vFat*, const vFat* fresh, vfReload* out);
+
 #ifdef __cplusplus
 }
 #endif

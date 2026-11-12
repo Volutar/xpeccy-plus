@@ -101,7 +101,7 @@ static int sname_char(unsigned int chr, int* lossy) {
 
 // build a space padded 8.3 name; returns 1 if it doesn't match the real name,
 // *ulen is the length of the real one in UTF-16
-static int sname_make(const char* name, char* dst, int* ulen) {
+int vf_sname_make(const char* name, char* dst, int* ulen) {
 	unsigned short buf[VF_MAXNAME + 1];
 	int len = vf_utf16(name, buf, VF_MAXNAME);
 	int lossy = 0;
@@ -139,7 +139,7 @@ static int sname_make(const char* name, char* dst, int* ulen) {
 	return lossy;
 }
 
-static unsigned char sname_sum(const char* sname) {
+unsigned char vf_sname_sum(const char* sname) {
 	unsigned char sum = 0;
 	int i;
 	for (i = 0; i < 11; i++)
@@ -199,7 +199,7 @@ static int stab_room(vFat* vf) {
 // make the 8.3 name unique among the siblings of parent: BASE~1..~4 first,
 // then two letters, a hash of the long name and ~1..~9, as Windows does - a
 // folder of names alike would otherwise try every number for every name
-static void sname_uniq(vFat* vf, int parent, char* sname, const char* name) {
+void vf_sname_uniq(char* sname, const char* name, int (*taken)(void* ctx, const char* sname), void* ctx) {
 	const unsigned char* s;
 	char base[12];
 	char tail[16];
@@ -209,7 +209,7 @@ static void sname_uniq(vFat* vf, int parent, char* sname, const char* name) {
 		lhash = (lhash ^ *s) * 0x01000193;
 	memcpy(base, sname, 12);
 	for (n = 0; n < 1000000; n++) {
-		if (!sname_taken(vf, parent, sname)) return;
+		if (!taken(ctx, sname)) return;
 		memcpy(sname, base, 11);
 		if (n < 4)
 			sprintf(tail, "~%i", n + 1);
@@ -351,15 +351,36 @@ void vf_close_cached(vFat* vf) {
 	vf->cnode = -1;
 }
 
+typedef struct {
+	vFat* vf;
+	int parent;
+} vfSib;
+
+static int sib_taken(void* ctx, const char* sname) {
+	vfSib* s = (vfSib*)ctx;
+	return sname_taken(s->vf, s->parent, sname);
+}
+
+void vf_fat_stamp(unsigned int mtime, unsigned short* date, unsigned short* tim) {
+	time_t t = (time_t)mtime;
+	struct tm* tms = localtime(&t);
+	if (tms && (tms->tm_year >= 80)) {
+		*date = ((tms->tm_year - 80) << 9) | ((tms->tm_mon + 1) << 5) | tms->tm_mday;
+		*tim = (tms->tm_hour << 11) | (tms->tm_min << 5) | (tms->tm_sec >> 1);
+	} else {
+		*date = (1 << 5) | 1;		// 1980-01-01
+		*tim = 0;
+	}
+}
+
 int vfat_add(vFat* vf, int parent, const char* name, unsigned int size, unsigned int mtime, int isdir) {
 	vfNode* nod;
+	vfSib sib;
 	char sname[12];
 	int idx, prev, lfn, ecnt, ulen;
-	time_t tim;
-	struct tm* tms;
 	if (!vf) return -1;
 	if (!name) name = "";
-	lfn = sname_make(name, sname, &ulen);
+	lfn = vf_sname_make(name, sname, &ulen);
 	ecnt = lfn ? (divup(ulen, 13) + 1) : 1;		// the 8.3 entry and 13 characters per long one
 	if ((parent >= 0) && (vf->node[parent].dents + ecnt > VF_MAXDENTS)) return VF_FULL;
 	if (!stab_room(vf)) return -1;
@@ -385,18 +406,12 @@ int vfat_add(vFat* vf, int parent, const char* name, unsigned int size, unsigned
 	nod->ecnt = ecnt;
 	nod->dents = (parent < 0) ? 2 : 3;		// the label or dot and dotdot, and the end marker
 	memcpy(nod->sname, sname, 12);
-	sname_uniq(vf, parent, nod->sname, name);
+	sib.vf = vf;
+	sib.parent = parent;
+	vf_sname_uniq(nod->sname, name, sib_taken, &sib);
 	nod->shash = sname_hash(parent, nod->sname);
 	stab_put(vf, idx);
-	tim = (time_t)mtime;
-	tms = localtime(&tim);
-	if (tms && (tms->tm_year >= 80)) {
-		nod->date = ((tms->tm_year - 80) << 9) | ((tms->tm_mon + 1) << 5) | tms->tm_mday;
-		nod->time = (tms->tm_hour << 11) | (tms->tm_min << 5) | (tms->tm_sec >> 1);
-	} else {
-		nod->date = (1 << 5) | 1;		// 1980-01-01
-		nod->time = 0;
-	}
+	vf_fat_stamp(mtime, &nod->date, &nod->time);
 	if (parent >= 0) {				// append, keeping the order the scanner used
 		vf->node[parent].dents += ecnt;
 		prev = vf->node[parent].last;
@@ -602,7 +617,7 @@ void vf_gen_fat(vFat* vf, unsigned int sec, unsigned char* dst) {
 }
 
 // one 32-byte 8.3 entry
-static void vfat_entry(unsigned char* dst, const char* sname, int attr, unsigned int clust, unsigned int size, unsigned short date, unsigned short tim) {
+void vf_entry(unsigned char* dst, const char* sname, int attr, unsigned int clust, unsigned int size, unsigned short date, unsigned short tim) {
 	memcpy(dst, sname, 11);
 	dst[11] = attr;
 	wr16(dst + 14, tim);
@@ -616,7 +631,7 @@ static void vfat_entry(unsigned char* dst, const char* sname, int attr, unsigned
 }
 
 // one long name entry: part is 1..n, last marks the one holding the tail
-static void vfat_lfn(unsigned char* dst, unsigned short* name, int len, int part, int last, unsigned char sum) {
+void vf_lfn(unsigned char* dst, unsigned short* name, int len, int part, int last, unsigned char sum) {
 	static const int pos[13] = {1,3,5,7,9,14,16,18,20,22,24,28,30};
 	int i, chr;
 	int base = (part - 1) * 13;
@@ -642,18 +657,18 @@ void vf_gen_dir(vFat* vf, int idx, unsigned int sec, unsigned char* dst) {
 
 	if (idx == 0) {					// the label lives in the root directory too
 		if ((ent >= first) && (ent < first + 16))
-			vfat_entry(dst + (ent - first) * 32, VF_LABEL, 0x08, 0, 0, 0, 0);
+			vf_entry(dst + (ent - first) * 32, VF_LABEL, 0x08, 0, 0, 0, 0);
 		ent++;
 	} else {					// dot and dotdot for a non-root directory
 		nod = vf->node + idx;
 		memset(dots, ' ', 11); dots[11] = 0; dots[0] = '.';
 		if ((ent >= first) && (ent < first + 16))
-			vfat_entry(dst + (ent - first) * 32, dots, 0x10, nod->clust, 0, nod->date, nod->time);
+			vf_entry(dst + (ent - first) * 32, dots, 0x10, nod->clust, 0, nod->date, nod->time);
 		ent++;
 		dots[1] = '.';
 		if ((ent >= first) && (ent < first + 16)) {
 			i = nod->parent;
-			vfat_entry(dst + (ent - first) * 32, dots, 0x10, (i > 0) ? vf->node[i].clust : 0, 0, nod->date, nod->time);
+			vf_entry(dst + (ent - first) * 32, dots, 0x10, (i > 0) ? vf->node[i].clust : 0, 0, nod->date, nod->time);
 		}
 		ent++;
 	}
@@ -667,12 +682,12 @@ void vf_gen_dir(vFat* vf, int idx, unsigned int sec, unsigned char* dst) {
 				for (i = 0; i < parts; i++) {
 					part = parts - i;	// long name entries come tail first
 					if ((ent >= first) && (ent < first + 16))
-						vfat_lfn(dst + (ent - first) * 32, name, len, part, (i == 0), sname_sum(nod->sname));
+						vf_lfn(dst + (ent - first) * 32, name, len, part, (i == 0), vf_sname_sum(nod->sname));
 					ent++;
 				}
 			}
 			if ((ent >= first) && (ent < first + 16))
-				vfat_entry(dst + (ent - first) * 32, nod->sname, nod->isdir ? 0x10 : (vf->writable ? 0x20 : 0x21), nod->clust, nod->size, nod->date, nod->time);
+				vf_entry(dst + (ent - first) * 32, nod->sname, nod->isdir ? 0x10 : (vf->writable ? 0x20 : 0x21), nod->clust, nod->size, nod->date, nod->time);
 			ent++;
 		} else {
 			ent += nod->ecnt;

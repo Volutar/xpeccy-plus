@@ -340,8 +340,10 @@ static void vfat_scan_tree(vFat* vf, const QString& root, const QString& sub, co
 
 // sub: one more folder, put in the root as subName (a name the root does not have), with
 // only that file of it if only is given (none if it is empty); sectors: the volume's size,
-// 0 for what it holds plus room to write in when writable
-static vFat* vfat_scan_in(const QString& path, bool writable, const QString& sub, const QString& subName, const QString* only, unsigned int sectors) {
+// 0 for what it holds plus room to write in when writable. build false: the tree alone, and
+// *cut says whether the entries' limit cut it short
+static vFat* vfat_scan_in(const QString& path, bool writable, const QString& sub, const QString& subName, const QString* only, unsigned int sectors,
+		bool build = true, bool* cut = NULL) {
 	QFileInfo inf(path);
 	if (!inf.isDir() || !inf.isReadable()) return NULL;
 	vFat* vf = vfat_create();
@@ -370,7 +372,11 @@ static vFat* vfat_scan_in(const QString& path, bool writable, const QString& sub
 	if (drop.big) why << QString("%0 files of 4G and over").arg(drop.big);
 	if (!why.isEmpty()) {
 		xlog(XLG_DISK, XLL_WARN, "folder %s: %i entries taken, left out %s", lpath.constData(), vf->nodes - 1, qPrintable(why.join(", ")));
-		if (conf.zx) conf.zx->msg = (char*)" folder: not all of it fits ";
+		if (conf.zx && build) conf.zx->msg = (char*)" folder: not all of it fits ";
+	}
+	if (!build) {
+		if (cut) *cut = drop.count;
+		return vf;
 	}
 	// room to write in: as much again as it holds, and VFS_ROOM at least
 	unsigned long long minsec = sectors;
@@ -516,6 +522,48 @@ void ide_mount(IDE* ide, int dev, const QString& path) {
 	} else {
 		ideSetImage(ide, dev, path.toLocal8Bit().constData());
 	}
+}
+
+// The folder a volume serves changed on the host, the machine running: what the guest wrote
+// goes to the folder first, then only what the folder changed goes into the volume (vfat_reload)
+QString fold_reload(vFat* vf, vfReload* r) {
+	vfReload none;
+	if (!r) r = &none;
+	memset(r, 0x00, sizeof(vfReload));
+	if (!vf || !vf->root) return QString();
+	vfat_flush(vf);
+	QString path = QString::fromUtf8(vf->root);
+	bool cut = false;
+	vFat* fresh = vfat_scan_in(path, vf->writable, QString(), QString(), NULL, 0, false, &cut);
+	if (!fresh) return QString("The folder\n%0\ncannot be read.").arg(QDir::toNativeSeparators(path));
+	if (cut) {
+		vfat_free(fresh);
+		return QString("The folder holds more than %0 entries: Eject it and open it again.").arg(VFS_MAXNODES);
+	}
+	int res = vfat_reload(vf, fresh, r);
+	vfat_free(fresh);
+	switch (res) {
+		case VFR_OK:
+			x_media_writes++;		// rewind cannot go back past it
+			return QString();
+		case VFR_WRITES:
+			return QString("Not all of what the machine wrote has reached the folder yet; reloading would lose it.");
+		case VFR_DETACHED:
+			return QString("The folder no longer follows the machine: Eject it and open it again.");
+		case VFR_FULL:
+			x_media_writes++;		// some of it may have gone in
+			return QString("Not all of the folder's changes fit on the volume: Eject it and open it again.");
+	}
+	return QString("There is no memory left to reload the folder.");
+}
+
+QString sdc_reload(SDCard* sdc, vfReload* r) {
+	return fold_reload(sdc ? sdc->vfat : NULL, r);
+}
+
+QString ide_reload(IDE* ide, int dev, vfReload* r) {
+	if (!ide) return QString();
+	return fold_reload((dev == IDE_MASTER) ? ide->master->vfat : ide->slave->vfat, r);
 }
 
 void ide_remount(IDE* ide) {

@@ -26,3 +26,6 @@ parked: ok
 cap: ok
 outside: ok
 sameslot: ok
+reload: ok
+reload_grow: ok
+reload_refuse: ok
