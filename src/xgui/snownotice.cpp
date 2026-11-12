@@ -326,7 +326,7 @@ QMessageBox* snow_notice_box(QWidget* parent, const QUrl& more, std::function<vo
 		"<b>Options &gt; Machine &gt; Advanced settings</b><br><br>"
 		"<a href=\"%0\">More about ULA snow</a>").arg(more.toString()));
 	// one role for both, so they stand in the order given on every platform
-	QPushButton* btOff = box->addButton("Turn Off for This Game", QMessageBox::AcceptRole);
+	QPushButton* btOff = box->addButton("Turn Off for Now", QMessageBox::AcceptRole);
 	QPushButton* btGo = box->addButton("Continue", QMessageBox::AcceptRole);
 	QIcon flake;
 	flake.addFile(":/images/snowflake-22.png", QSize(22, 22));

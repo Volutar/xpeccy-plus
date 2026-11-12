@@ -3581,7 +3581,7 @@ static QUrl manual_url(const QString& page, const QString& part) {
 }
 
 // The image in use changed (the title names another): the snow notice watches
-// it from the start, and a switch-off "for this game" ends with the old one.
+// it from the start, and a switch-off "for now" ends with the old one.
 // An empty title - an eject, a side being swapped - changes nothing; nor does
 // a disk in B or a card, as with the quick saves: the game is the tape, drive A
 // or the snapshot.
@@ -3625,7 +3625,7 @@ void MainWin::snowBoxEnd() {
 	delete snowBox;
 }
 
-// Once per image, over the shaded picture; "for this game" is never written, "don't show" is.
+// Once per image, over the shaded picture; "for now" is never written, "don't show" is.
 void MainWin::snowNotice() {
 	if (!conf.led.snowNotice || snowNoted || snowBox) return;
 	snowNoted = true;

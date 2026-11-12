@@ -487,7 +487,7 @@ void xm_set_ram(int size);		// the RAM the machine file gives (a snapshot's own 
 int xm_own_ram();			// ...and what that is now
 int xm_power_count();		// power cycles so far: something to notice one by
 // ULA snow as the user set it (machine file, Options), and a switch-off for the
-// image in use that is never written anywhere: the snow notice's "for this game"
+// image in use that is never written anywhere: the snow notice's "for now"
 void xm_snow_set(Computer*, int on);
 int xm_snow_user();
 void xm_snow_hold(Computer*, int off);

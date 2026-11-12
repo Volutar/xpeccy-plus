@@ -17,7 +17,7 @@ before that point is upstream's history and is not repeated here.
   the test on his Surface)*
 
 - **A game that snows says so**: on the 48K, 128K and +2 the picture dims under falling snow and
-  a message tells what ULA snow is. **Turn Off for This Game** takes the snow away; while it
+  a message tells what ULA snow is. **Turn Off for Now** takes the snow away; while it
   snows, a snowflake blinks in the corner. Snow notice in Options > Appearance.
 
 - **Screenshots**:
