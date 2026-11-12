@@ -257,8 +257,9 @@ each row. On a gamepad the directions are the D-pad and the left stick, shown as
 
 The window that **Change...** opens has two sides. The right side, **Gamepad** or **PC
 Keyboard**, lists the buttons or keys that work the row: press the buttons on the pad, or
-click in the box and press the keys. The first one replaces what the row had, the next ones
-are added. {icon}`add` **Add from list** picks a pad input by name, with no pad needed.
+click in the box and press the keys. The box takes every key, Tab and Enter too; Esc closes
+the window without changes. The first button or key replaces what the row had, the next
+ones are added. {icon}`add` **Add from list** picks a pad input by name, with no pad needed.
 **Clear** empties the list, **Defaults** puts back the joystick row's own buttons.
 
 The left side, **Spectrum**, says what the row does on the Spectrum. On a joystick row that
