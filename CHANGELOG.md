@@ -95,11 +95,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
-- **A General Sound waiting for the program takes almost no time**: the ZX Evolution with
-  its NeoGS runs Fast Mode as fast as without it, 13 times as fast as before, and a 128K
-  with a card 2-3 times; a tape loads faster with one fitted. The sound is the same to the
-  bit.
-
+- **General Sound costs far less time**: Fast Mode on the ZX Evolution runs as fast as
+  without its NeoGS, on a 128K with a card 2-3 times faster; tapes load faster with one
+  fitted.
 - **Ctrl is always Symbol Shift**: Modern has no Ctrl+O and Ctrl+S (F3 and F2 open and save),
   and Options is on Alt+,.
 
