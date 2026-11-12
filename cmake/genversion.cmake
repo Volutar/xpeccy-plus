@@ -3,7 +3,8 @@
 #	cmake -DIN_FILE=... -DOUT_FILE=... -DID_IN_FILE=... -DID_OUT_FILE=... -DSRC_DIR=...
 #		-DXVERSION_BASE=... -DXRELEASE=... -DXPACKAGE=... -DXDATE=... -P genversion.cmake
 
-if (XDATE MATCHES "^[0-9]{8}$")
+# CMake's regex has no {8}
+if (XDATE MATCHES "^[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]$")
 	set(XBUILD_YMD "${XDATE}")
 else()
 	string(TIMESTAMP XBUILD_YMD "%Y%m%d")
