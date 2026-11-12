@@ -29,10 +29,6 @@ option(XRELEASE "build as a release version" OFF)
 # other build, which then offers no update of its own (src/xcore/update.cpp)
 set(XPACKAGE "" CACHE STRING "release asset suffix of this build, set by packaging/")
 
-# the date a dev build carries, YYYYMMDD; empty: the day it is built. The Nix
-# flake gives the commit's date: its sandbox clock says 1980
-set(XDATE "" CACHE STRING "build date of a dev build, YYYYMMDD; empty: today")
-
 # Windows: drop the Qt plugins windeployqt copies but this app never loads
 # (see cmake/windeploy.cmake.in for the list and why each one goes)
 option(TRIMDEPLOY "trim unused Qt plugins from the installed folder" ON)
@@ -232,7 +228,6 @@ add_custom_target(version_header ALL
 		-DXVERSION_BASE=${XVER}
 		-DXRELEASE=${XRELEASE}
 		-DXPACKAGE=${XPACKAGE}
-		-DXDATE=${XDATE}
 		-P ${CMAKE_SOURCE_DIR}/cmake/genversion.cmake
 	BYPRODUCTS ${VERSION_HEADER} ${BUILDID_HEADER}
 	COMMENT "Generating version.h"
@@ -330,7 +325,8 @@ find_package(OpenGL REQUIRED)
 
 if(${QTVERSION} EQUAL 5)
 
-	find_package(Qt5 COMPONENTS Core Gui Widgets Network OpenGL REQUIRED)
+	# 5.10: DeZog's server (dezog.cpp) is stubbed out below it
+	find_package(Qt5 5.10 COMPONENTS Core Gui Widgets Network OpenGL REQUIRED)
 	set(LIBRARIES ${LIBRARIES} Qt5::Widgets Qt5::Network Qt5::OpenGL ${OPENGL_LIBRARIES})
 	qt5_add_resources(RESOURCES ${QRCFILES})
 	qt5_wrap_ui(UIHEADERS ${UIFILES})
@@ -360,8 +356,8 @@ elseif(${QTVERSION} EQUAL 6)
 	qt6_add_resources(RESOURCES ${QRCFILES})
 	qt6_wrap_ui(UIHEADERS ${UIFILES})
 	qt6_wrap_cpp(MOCHEADERS ${MOCFILES})
-	set(CPACK_RPM_PACKAGE_REQUIRES "libQt6Gui6 >= 6.1, libQt6Widgets6 >= 6.1, libQt6Core5Compat6 >= 6.1, libQt6Network6 >= 6.1, libQt6OpenGL6 >= 6.1")
-	set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6gui6 (>=6.1), libqt6widgets6 (>=6.1), libqt6core5compat6 >= 6.1, libqt6network6 (>=6.1), libqt6opengl6 (>=6.1)")
+	set(CPACK_RPM_PACKAGE_REQUIRES "libQt6Gui6 >= 6.1, libQt6Widgets6 >= 6.1, libQt6Core5Compat6 >= 6.1, libQt6Network6 >= 6.1, libQt6OpenGL6 >= 6.1, libQt6OpenGLWidgets6 >= 6.1")
+	set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6gui6 (>=6.1), libqt6widgets6 (>=6.1), libqt6core5compat6 (>=6.1), libqt6network6 (>=6.1), libqt6opengl6 (>=6.1), libqt6openglwidgets6 (>=6.1)")
 	set(QT_VER ${Qt6Widgets_VERSION})
 	get_target_property(QMAKE_EXE Qt6::qmake IMPORTED_LOCATION)
 else()

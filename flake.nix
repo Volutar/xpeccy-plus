@@ -46,18 +46,26 @@
             pkgs.curl
           ];
 
-          # the manual is built before CMake, which installs it from MANUAL_DIR
+          # the version's date: the commit's, not the 1980 stdenv sets for every build
+          env = nixpkgs.lib.optionalAttrs (self ? lastModified) {
+            SOURCE_DATE_EPOCH = toString self.lastModified;
+          };
+
+          # the manual is built before CMake, which installs it from MANUAL_DIR; nixpkgs'
+          # Sphinx is not the one docs/manual/requirements.txt pins, so a new warning there
+          # leaves the manual out instead of failing the build
           preConfigure = ''
-            python3 tools/manual.py html
-            cmakeFlagsArray+=("-DMANUAL_DIR=$PWD/build/manual")
+            if python3 tools/manual.py html; then
+              cmakeFlagsArray+=("-DMANUAL_DIR=$PWD/build/manual")
+            else
+              echo "the manual did not build: left out"
+            fi
           '';
 
           cmakeFlags = [
             "-DQTVERSION=6"
             # linked, not loaded at run time: the store has no global libcurl.so.4
             "-DCURL_DLOPEN=OFF"
-            # the commit's date: the sandbox's clock says 1980
-            "-DXDATE=${builtins.substring 0 8 (self.lastModifiedDate or "")}"
           ];
 
           installPhase = ''
