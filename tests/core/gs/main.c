@@ -1,13 +1,15 @@
 // Headless General Sound bench: the classic card's mix, from its schematic, and
 // the NeoGS from its FPGA sources - the mix (sound_main.v, sound_mulacc.v), the
-// memory map (memmap.v) and the ports (ports.v).
+// memory map (memmap.v) and the ports (ports.v). Given the firmwares, their idle
+// loop skipped against not (loop_skip).
 //
-//	gs-bench
+//	gs-bench [GS.ROM NEOGS.ROM]
 
 #include <stdio.h>
 #include <string.h>
 
 #include "sound/gs.h"
+#include "cpu/Z80/z80.h"		// regPC: the card set at a wait of the bench's own
 
 int gsmemrd(int, int, void*);		// sound/gs.c: the card's CPU's own bus
 void gsmemwr(int, int, void*);
@@ -201,7 +203,193 @@ static void separation(GSound* gs) {
 	gs->sep = 100;
 }
 
-int main(void) {
+// The firmware's own idle loop, skipped (gs_loop_at) and not: three cards on one
+// timeline of sub-samples (709 ns, the mix's at 1.41 MHz) with the host's
+// accesses at the same steps - one flushed only at a frame's end, so the skip
+// counts the turns; one at every step, so it never can; one at every step for
+// the mix, so it parks. Their CPUs, memory and DAC levels must not part.
+
+#define LS_STEP_NS	709
+#define LS_FRAME	28209		// steps in 20 ms
+#define LS_STEPS	(LS_FRAME * 400)	// 8 s: the boot and RAM test, the idle loop, a command
+
+#define FNV_SEED	0xcbf29ce484222325ULL	// FNV-1a, 64 bits
+#define FNV_PRIME	0x100000001b3ULL
+
+static int read_file(const char* path, unsigned char* buf, int size) {
+	FILE* f = fopen(path, "rb");
+	if (!f) return 0;
+	int n = (int)fread(buf, 1, size, f);
+	fclose(f);
+	return n == size;
+}
+
+static unsigned long long fold(unsigned long long h, const void* p, size_t n) {
+	const unsigned char* b = (const unsigned char*)p;
+	for (size_t i = 0; i < n; i++) h = (h ^ b[i]) * FNV_PRIME;
+	return h;
+}
+
+static unsigned long long card_hash(GSound* gs) {
+	unsigned long long h = FNV_SEED;
+	h = fold(h, gs->cpu->regs, sizeof(gs->cpu->regs));
+	h = fold(h, gs->cpu->flags, sizeof(gs->cpu->flags));
+	h = fold(h, gs->mem->ramData, gs->mem->ramSize);
+	int v[16] = {gs->ch1, gs->ch2, gs->ch3, gs->ch4, gs->ch5, gs->ch6, gs->ch7, gs->ch8,
+		gs->vol1, gs->vol2, gs->vol3, gs->vol4, gs->vol5, gs->vol6, gs->vol7, gs->vol8};
+	h = fold(h, v, sizeof(v));
+	h = fold(h, &gs->pstate, 1);
+	h = fold(h, &gs->pb3_gs, 1);
+	h = fold(h, &gs->due, sizeof(gs->due));
+	h = fold(h, &gs->intDue, sizeof(gs->intDue));
+	return h;
+}
+
+// A wait for the data bit with an EI ... DI window in each turn - DI at its head,
+// the firmware's INT handler at #0038 taken in the window - then back to the
+// idle loop
+#define LS_EI_AT	0x5000
+#define LS_EI_HEAD	0x5002
+static const unsigned char lsEiLoop[] = {
+	0xed, 0x56,		// im 1
+	0xfb,			// ei
+	0x00,			// nop: an INT comes in here
+	0xf3,			// di
+	0xdb, 0x04,		// in a,(#04)
+	0xe6, 0x80,		// and #80
+	0x28, 0xf7,		// jr z,#5002
+	0xc3, 0x6e, 0x02	// jp #026E
+};
+
+// what the host does at step i: a byte to #B3 at 6 s, a command to #BB at
+// 6.4 s, its state polled every 10 us for a frame after and the data read
+// back; at 6.6 s the card is set waiting with EI (as a debugger would), and a
+// byte to #B3 at 7.2 s ends the wait
+static void ls_host(GSound* gs, int i) {
+	int d;
+	if (i == LS_FRAME * 300) gsWrite(gs, 0xb3, 0x55);
+	if (i == LS_FRAME * 320) gsWrite(gs, 0xbb, 0x20);
+	if ((i > LS_FRAME * 320) && (i < LS_FRAME * 321) && !(i % 14)) gsRead(gs, 0xbb, &d);
+	if (i == LS_FRAME * 321) gsRead(gs, 0xb3, &d);
+	if (i == LS_FRAME * 330) {
+		gsRead(gs, 0xb3, &d);		// the data bit down, whatever the command left
+		gsFlush(gs);
+		for (int k = 0; k < (int)sizeof(lsEiLoop); k++)
+			gsmemwr(LS_EI_AT + k, lsEiLoop[k], gs);
+		gs->cpu->regPC = LS_EI_AT;
+		gs_loop_forget(gs);
+	}
+	if (i == LS_FRAME * 360) gsWrite(gs, 0xb3, 0xaa);
+}
+
+enum {LS_FRAMES = 0, LS_STEPS_ALL, LS_PARKED};
+
+typedef struct {
+	unsigned long long card;	// the card at the end
+	unsigned long long heard;	// the DAC levels at every step
+	int head, len;			// the idle loop, before the host comes
+	int parked;			// steps parked
+	int eiParked;			// ...in the wait with EI, its turns taking INTs
+} lsRes;
+
+static GSound* ls_card(int model, const unsigned char* rom) {
+	GSound* gs = gsCreate();
+	gs->enable = 1;
+	if (model == GS_NEOGS) memcpy(gs->romNGS, rom, NGS_ROM_SIZE);
+	else memcpy(gs->romGS, rom, GS_ROM_SIZE);
+	gs_set_model(gs, model);
+	return gs;
+}
+
+// The card run one way: the host's time given every burst steps at once (a
+// Z80 instruction of the host's spans several sub-samples), a flush at each step
+// (how: all, for the mix) or at a frame's end
+static lsRes ls_run(int model, const unsigned char* rom, int how, int burst) {
+	lsRes r = {0};
+	GSound* gs = ls_card(model, rom);
+	unsigned long long h = FNV_SEED;
+	for (int i = 0; i < LS_STEPS; i++) {
+		if (!(i % burst)) gsSync(gs, LS_STEP_NS * ((LS_STEPS - i < burst) ? LS_STEPS - i : burst));
+		ls_host(gs, i);
+		if (how == LS_STEPS_ALL) gsFlush(gs);
+		else if (how == LS_PARKED) gsFlushMix(gs);
+		else if (!((i + 1) % LS_FRAME)) gsFlush(gs);
+		if (gs->lpPark) r.parked++;
+		if (how != LS_FRAMES) {
+			sndPair p = gsVolume(gs);
+			h = fold(h, &p, sizeof(p));
+		}
+		if (i == LS_FRAME * 300 - 1) {
+			r.head = gs->lpHead;
+			r.len = gs->lpLen;
+		}
+		if (gs->lpPark && (gs->lpHead == LS_EI_HEAD) && gs->lpEi) r.eiParked++;
+	}
+	gsFlush(gs);
+	r.heard = h;
+	r.card = card_hash(gs);
+	gsDestroy(gs);
+	return r;
+}
+
+static void loop_skip(const char* name, int model, const char* path, int size) {
+	static unsigned char rom[NGS_ROM_SIZE];
+	printf("== loop-skip %s\n", name);
+	if (!read_file(path, rom, size)) {
+		check("the firmware read", 0);
+		return;
+	}
+	lsRes a = ls_run(model, rom, LS_FRAMES, 1);
+	lsRes b = ls_run(model, rom, LS_STEPS_ALL, 1);
+	lsRes c = ls_run(model, rom, LS_PARKED, 1);
+	printf("idle in the loop at #%04X, %d T a turn\n", a.head, a.len);
+	check("found at #026E, 51 T, by each", (a.head == 0x026e) && (a.len == 51) && (c.head == a.head) && (c.len == a.len));
+	check("frame flushes: the card as at every step", a.card == b.card);
+	check("parked: the card as at every step", c.card == b.card);
+	check("parked: the DAC levels as at every step", c.heard == b.heard);
+	check("parked a good part of the time", c.parked > LS_STEPS / 4);
+	check("parked in the wait with EI as well, short of each INT", c.eiParked > 0);
+	// the host's time 9 sub-samples at a time, an INT among them
+	lsRes b9 = ls_run(model, rom, LS_STEPS_ALL, 9);
+	lsRes c9 = ls_run(model, rom, LS_PARKED, 9);
+	check("time 9 sub-samples at once, parked: the card as at every step", c9.card == b9.card);
+	check("time 9 sub-samples at once, parked: the DAC levels as at every step", c9.heard == b9.heard);
+}
+
+// The other model after the card parked for a long time: the new one comes up as
+// from the power, at its first instruction, owing nothing, its INT divider at 0 -
+// as a fresh card of that model does
+static void model_change(const char* gsPath, const char* ngsPath) {
+	static unsigned char rom[GS_ROM_SIZE], ngs[NGS_ROM_SIZE];
+	printf("== model-change\n");
+	if (!read_file(gsPath, rom, GS_ROM_SIZE) || !read_file(ngsPath, ngs, NGS_ROM_SIZE)) {
+		check("the firmwares read", 0);
+		return;
+	}
+	GSound* gs = ls_card(GS_ORIGINAL, rom);
+	memcpy(gs->romNGS, ngs, NGS_ROM_SIZE);
+	for (int i = 0; i < LS_FRAME * 300; i++) {
+		gsSync(gs, LS_STEP_NS);
+		gsFlushMix(gs);
+	}
+	check("parked, owed over a second", gs->lpPark && (gs->due > 1000000000LL * GS_UNITS_NS));
+	gs_set_model(gs, GS_NEOGS);
+	GSound* fresh = ls_card(GS_NEOGS, ngs);
+	check("a NeoGS from the power: at #0000, owing nothing, the INT divider at 0, not parked",
+		(gs->cpu->regPC == 0) && (gs->due == 0) && (gs->intDue == GS_INT_UNITS) && !gs->lpPark);
+	for (int i = 0; i < LS_FRAME; i++) {
+		gsSync(gs, LS_STEP_NS);
+		gsFlushMix(gs);
+		gsSync(fresh, LS_STEP_NS);
+		gsFlushMix(fresh);
+	}
+	check("a frame on: its CPU as a fresh card's", !memcmp(gs->cpu->regs, fresh->cpu->regs, sizeof(gs->cpu->regs))
+		&& (gs->due == fresh->due) && (gs->intDue == fresh->intDue));
+	gsDestroy(fresh);
+	gsDestroy(gs);
+}
+
+int main(int argc, char** argv) {
 	GSound* gs = gsCreate();
 	gs->enable = 1;
 	gs->sep = 100;			// the cards' own outputs
@@ -212,5 +400,11 @@ int main(void) {
 	neogs_ports(gs);
 	separation(gs);
 	gsDestroy(gs);
+	// the firmwares: gs-bench GS.ROM NEOGS.ROM
+	if (argc > 2) {
+		loop_skip("original", GS_ORIGINAL, argv[1], GS_ROM_SIZE);
+		loop_skip("neogs", GS_NEOGS, argv[2], NGS_ROM_SIZE);
+		model_change(argv[1], argv[2]);
+	}
 	return failures ? 1 : 0;
 }

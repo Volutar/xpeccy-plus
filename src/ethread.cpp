@@ -869,7 +869,7 @@ void xThread::emuCycle(Computer* comp) {
 				tm = compExec(comp);
 				comp->flgDBG = brkskip;
 				brkskip = 0;
-			} else if (fast && !comp->gs->enable && !brk_cond_n && comp_unwatched(comp)
+			} else if (fast && !brk_cond_n && comp_unwatched(comp)
 					&& !vrecWatch.load(std::memory_order_relaxed)) {
 				// Fast mode with nothing to look at between the steps: run them on
 				// until one ends a frame, breaks, or leaves the cpu where a tape hook
@@ -953,11 +953,11 @@ void xThread::emuCycle(Computer* comp) {
 					sndNsFixed += NS_TO_FIXED(fastload_step(comp));
 			}
 		}
-		// sound buffer update. In fast mode there is nothing to mix - the
-		// only thing sndSync() still does there is run the GS, so a machine
-		// without one skips the call and keeps the count. What is queued to play
-		// is then from before the time that went by unheard.
-		if (fast && !comp->gs->enable) {
+		// sound buffer update. In fast mode there is nothing to mix, so the
+		// call is skipped and the count kept; the GS's CPU runs at the host's
+		// accesses and once a frame below. What is queued to play is then from
+		// before the time that went by unheard.
+		if (fast) {
 			while (sndNsFixed > nsPerSampleFixed)
 				sndNsFixed -= nsPerSampleFixed;
 			snd_drop();
@@ -973,6 +973,7 @@ void xThread::emuCycle(Computer* comp) {
 		if (comp->flgFRM) {
 			comp->flgFRM = 0;
 			if (conf.emu.fast) conf.snd.fill = 0;	// see sndSync()
+			if (fast) gsFlush(comp->gs);		// its time, unheard, kept from piling up
 			if ((benchStop >= 0) && (conf.vid.fcount + 1 >= benchStop))
 				conf.snd.fill = 0;		// the bench stops on a frame, not on a sample
 			conf.vid.fctime = paceClockNs();	// for the fps readout

@@ -1110,7 +1110,7 @@ long long snd_need_room(long long acc) {
 // NOTE: need sync|flush devices if debug
 int sndSync(Computer* comp) {
 	if (!conf.emu.pause || comp->flgDBG) {
-		if (comp->gs->enable) gsFlush(comp->gs);
+		if (comp->gs->enable) gsFlushMix(comp->gs);
 //		saaFlush(comp->saa);
 		if (!conf.emu.fast && !conf.emu.pause) {
 			// the time this sub-sample stands for, for rewind: it moves with

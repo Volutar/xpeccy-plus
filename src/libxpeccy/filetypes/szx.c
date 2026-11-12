@@ -802,6 +802,7 @@ int loadSZX_buf(Computer* comp, const unsigned char* buf, size_t len) {
 		}
 		pos += 8 + n;
 	}
+	if (comp->gs) gs_loop_forget(comp->gs);		// its CPU and memory are the file's
 	if (!ld.gotcpu || !ld.gotram) {
 		xlog(XLG_FILE, XLL_WARN, "szx: no %s in the file", ld.gotcpu ? "memory" : "cpu state");
 		compReset(comp, RES_DEFAULT);
@@ -1078,6 +1079,7 @@ int szx_build(Computer* comp, szxBuf* out) {
 	int mid = szx_mid_of(comp);
 	memset(out, 0, sizeof(szxBuf));
 	if ((mid < 0) && !szx_ext_can_save(comp)) return ERR_SZX_HW;
+	if (comp->gs) gsSettle(comp->gs);
 	szxBuf b;
 	szxBuf d;
 	int i;

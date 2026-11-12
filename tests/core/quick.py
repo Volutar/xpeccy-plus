@@ -18,7 +18,8 @@ text cut into `== <case>` sections, and a case passes when its section is the sa
   siblings  siblings-bench over core/siblings/folders.txt: which file names are sides of a set
   brk       brk-bench: breakpoints against the Z80's bus cycles (Read, Fetch, Interrupt) on a 48K
   dsk       dsk-bench: EXTENDED DSK images the bench writes, read by the uPD765 through the +3's ports
-  gs        gs-bench: the General Sound mix, original board and NeoGS, on fixed samples and volumes
+  gs        gs-bench: the General Sound mix, original board and NeoGS, on fixed samples and volumes;
+            the firmwares in config/roms: their idle loop skipped, the card as when it is not
 
 The programs are committed assembled; core/mkbins.py rebuilds them with sjasmplus.
 """
@@ -176,7 +177,8 @@ def bench_dsk():
 
 
 def bench_gs():
-    return run_sections("gs", [], rc=False)
+    roms = ROOT / "config" / "roms"
+    return run_sections("gs", [str(roms / "gs105b.rom"), str(roms / "neogs111.rom")], rc=False)
 
 
 def bench_vfat():
