@@ -516,7 +516,8 @@ int pad_key_id(QKeyEvent* ev) {
 #if defined(__linux) || defined(__BSD) || defined(__WIN32)
 	return ev->nativeScanCode();		// the keymap counts keys by scan code here
 #else
-	return qKey2id(ev->key(), ev->modifiers());		// as the layout takes it
+	// as the layout takes it; Shift+Tab is Tab too
+	return qKey2id((ev->key() == Qt::Key_Backtab) ? Qt::Key_Tab : ev->key(), ev->modifiers());
 #endif
 }
 

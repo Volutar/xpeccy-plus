@@ -673,6 +673,17 @@ bool MainWin::padKey(QKeyEvent* ev, bool down) {
 	if (pckAct->isChecked() || conf.zx->flgDBG) return false;
 	int id = pad_key_id(ev);
 	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
+#if defined(__WIN32) && STICKY_KEY
+	// the modifier poll's echo (timerEvent) of a player's Shift/Ctrl/Alt: swallowed, release too
+	static QSet<int> echoes;
+	if (!id && ev->nativeVirtualKey() && ((ev->key() == Qt::Key_Shift) || (ev->key() == Qt::Key_Control) || (ev->key() == Qt::Key_Alt))) {
+		id = ev->nativeVirtualKey();
+		if (!down) return echoes.remove(id);
+		bool bound = pads[0]->bindsKey(id) || pads[1]->bindsKey(id);
+		if (bound) echoes.insert(id); else echoes.remove(id);
+		return bound;
+	}
+#endif
 	bool took = false;
 	for (xGamepad* gp : pads) {
 		if (!gp->bindsKey(id)) continue;

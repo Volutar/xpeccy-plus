@@ -36,7 +36,9 @@ class xInputBox : public QLabel {
 	public:
 		xInputBox(QWidget* = nullptr);
 		std::function<void(int)> onKey;		// XKEY_*
+		bool bindsKeys = false;		// a keyboard player's row: Tab is bound, not a focus move
 	protected:
+		bool focusNextPrevChild(bool) override;
 		void keyPressEvent(QKeyEvent*);
 		void mousePressEvent(QMouseEvent*);
 };
