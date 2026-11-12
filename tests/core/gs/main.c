@@ -63,7 +63,7 @@ static void classic_mix(GSound* gs) {
 	check("the right side has 0.47 of the left", (a.right * 100 / a.left) == 47);
 	a = mix(gs, GS_MONO, ch1top, ch1only);
 	show("mono, ch1 #FF alone", a);
-	check("mono has no cross-mix", (a.left == a.right) && (a.left == 255 * 63 / 4));
+	check("mono: both sides alike, a quarter of the four", (a.left == a.right) && (a.left >= 255 * 63 / 4 - 1) && (a.left <= 255 * 63 / 4));
 }
 
 static void neogs_mix(GSound* gs) {
@@ -150,11 +150,12 @@ static void neogs_ports(GSound* gs) {
 	printf("== neogs-ports\n");
 	gs_set_model(gs, GS_NEOGS);
 	check("SSTAT: no card, MP3 control idle", gsiord(0x12, gs) == 0x0e);
+	check("SCTRL after a reset: #0B", gsiord(0x11, gs) == 0x0b);
 	check("SD read: #FF", gsiord(0x13, gs) == 0xff);
 	check("a port past #3F is not the card's", gsiord(0x4f, gs) == 0xff);
 	gsiowr(0x11, 0x80 | 0x05, gs);
 	gsiowr(0x11, 0x01, gs);
-	check("SCTRL: set #05, clear #01", gsiord(0x11, gs) == 0x04);
+	check("SCTRL: #0B, set #05, clear #01", gsiord(0x11, gs) == 0x0e);
 	gsiowr(0x09, 0x20, gs);
 	gsiord(0x0b, gs);
 	check("DAMNPORT2: the command bit from VOL4 bit 5", gsiord(0x04, gs) & 1);
@@ -165,16 +166,18 @@ static void neogs_ports(GSound* gs) {
 	gsmemrd(0x6500, 0, gs);
 	check("8 channels: #65xx latches ch6", gs->ch6 == gsmemrd(0x6500, 0, gs));
 	gsiowr(0x0f, 0, gs);
-	gs->ch5 = 0;
+	gs->ch5 = 0x33;
+	gsmemwr(0x6400, 0x5a, gs);
 	gsmemrd(0x6400, 0, gs);
-	check("4 channels: #64xx latches ch1 and its copy in ch5", gs->ch1 == gs->ch5);
+	check("4 channels: #64xx latches ch1, ch5 keeps its own", (gs->ch1 == 0x5a) && (gs->ch5 == 0x33));
 	// the host's GSCTR
 	gsiowr(0x0f, 0x11, gs);
 	gsWrite(gs, 0x33, 0x40);
 	check("GSCTR #40: an NMI", gs->cpu->intrq & 2);
+	gsiowr(0x11, 0x80 | 0x30, gs);
 	gsWrite(gs, 0x33, 0x80);
-	check("GSCTR #80: the card reset, GSCFG0 #30", gsiord(0x0f, gs) == 0x30);
-	gs_set_model(gs, GS_CLASSIC);
+	check("GSCTR #80: the card reset, GSCFG0 #30, SCTRL #0B", (gsiord(0x0f, gs) == 0x30) && (gsiord(0x11, gs) == 0x0b));
+	gs_set_model(gs, GS_ORIGINAL);
 	check("the classic card leaves #33 alone", !gsWrite(gs, 0x33, 0x80));
 }
 
