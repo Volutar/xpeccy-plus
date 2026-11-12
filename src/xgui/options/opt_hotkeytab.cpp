@@ -455,18 +455,6 @@ xKeyEditor::xKeyEditor(QWidget* p):QDialog(p) {
 	connect(&but, SIGNAL(released()), this, SLOT(okay()));
 }
 
-// Tab is a key to assign here, not the way to the next button
-bool xKeyEditor::event(QEvent* ev) {
-	if (ev->type() == QEvent::KeyPress) {
-		QKeyEvent* kev = (QKeyEvent*)ev;
-		if ((kev->key() == Qt::Key_Tab) || (kev->key() == Qt::Key_Backtab)) {
-			keyPressEvent(kev);
-			return true;
-		}
-	}
-	return QDialog::event(ev);
-}
-
 void xKeyEditor::keyPressEvent(QKeyEvent* ev) {
 	QString str;
 	Qt::KeyboardModifiers mods = xNativeMods(ev->modifiers());

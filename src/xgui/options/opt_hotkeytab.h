@@ -27,7 +27,7 @@ class xKeyEditor : public QDialog {
 		QPushButton but;
 		QPushButton clr;
 		QKeySequence kseq;
-		bool event(QEvent*);
+		bool focusNextPrevChild(bool) override {return false;}	// Tab is a key to assign here
 		void keyPressEvent(QKeyEvent*);
 		void keyReleaseEvent(QKeyEvent*);
 	private slots:

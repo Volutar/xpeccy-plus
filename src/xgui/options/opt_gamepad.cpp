@@ -133,16 +133,9 @@ xInputBox::xInputBox(QWidget* p):QLabel(p) {
 	setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 }
 
-// Tab is a key to bind here, not the way to the next control
-bool xInputBox::event(QEvent* ev) {
-	if (ev->type() == QEvent::KeyPress) {
-		QKeyEvent* kev = (QKeyEvent*)ev;
-		if ((kev->key() == Qt::Key_Tab) || (kev->key() == Qt::Key_Backtab)) {
-			keyPressEvent(kev);
-			return true;
-		}
-	}
-	return QLabel::event(ev);
+// Tab is a key to bind while the box binds keys, else the way to the next control
+bool xInputBox::focusNextPrevChild(bool next) {
+	return bindsKeys ? false : QLabel::focusNextPrevChild(next);
 }
 
 // every key but Escape, which closes the dialog
@@ -540,6 +533,7 @@ bool xPadRowEdit::edit(xGamepad* gp, int i) {
 	syncTarget();
 	// the right side: the device in use
 	bool keys = gp->isKeyboard();
+	inBox->bindsKeys = keys;
 	findChild<QGroupBox*>("inputs")->setTitle(keys ? "PC Keyboard" : "Gamepad");
 	btnPick->setVisible(!keys);
 	pickMenu->clear();

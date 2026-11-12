@@ -674,15 +674,14 @@ bool MainWin::padKey(QKeyEvent* ev, bool down) {
 	int id = pad_key_id(ev);
 	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
 #if defined(__WIN32) && STICKY_KEY
-	// Shift, Ctrl and Alt come twice: Qt's own event presses the player's key, and the
-	// modifier poll's (timerEvent) is for the layout. A player's is swallowed, or Ctrl
-	// as fire would be Symbol Shift too; its release goes where the press went
+	// the modifier poll's echo (timerEvent) of a player's Shift/Ctrl/Alt: swallowed, release too
 	static QSet<int> echoes;
 	if (!id && ev->nativeVirtualKey() && ((ev->key() == Qt::Key_Shift) || (ev->key() == Qt::Key_Control) || (ev->key() == Qt::Key_Alt))) {
 		id = ev->nativeVirtualKey();
 		if (!down) return echoes.remove(id);
-		if (pads[0]->bindsKey(id) || pads[1]->bindsKey(id)) echoes.insert(id);
-		return echoes.contains(id);
+		bool bound = pads[0]->bindsKey(id) || pads[1]->bindsKey(id);
+		if (bound) echoes.insert(id); else echoes.remove(id);
+		return bound;
 	}
 #endif
 	bool took = false;
