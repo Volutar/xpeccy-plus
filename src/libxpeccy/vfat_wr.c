@@ -256,7 +256,7 @@ int vfat_write(vFat* vf, unsigned int lba, const unsigned char* src) {
 	unsigned int rel, copy, s, k;
 	if (!vf || !src || !vf->writable || (lba >= vf->volume)) return 0;
 	if (!vf->wr && !vfw_live(vf)) return 0;
-	if (vf->frozen) vfw_detach(vf, "made read-only in Options", 1);
+	if (vf->frozen) vfw_detach(vf, "it was made read-only", 1);
 	w = vf->wr;
 	w->wgen++;
 	rel = lba - vf->partStart;
@@ -340,7 +340,9 @@ int vfat_waiting(vFat* vf) {
 void vfat_release(vFat* vf, int allow) {
 	if (!vf || !vf->hold) return;
 	vf->hold = 0;
-	if (!allow && vf->wr) vfw_detach(vf, "writing to it was not allowed", 1);
+	if (allow) return;
+	vf->frozen = 1;		// one the guest has not written to yet: its writes stay in memory too
+	if (vf->wr) vfw_detach(vf, "writing to it was not allowed", 1);
 }
 
 void vfat_read_only(vFat* vf) {

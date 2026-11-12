@@ -1445,14 +1445,28 @@ static void sc_retype(void) {
 
 // on hold: the guest's writes stay in memory until the user's word. Allowed, the
 // folder follows; refused, it never does; unmounted first, it keeps what it had.
+// Refused before the guest wrote anything (another volume asked), it never does either.
 static void sc_hold(void) {
 	char held[1200], readme[1200];
 	int pass, t, bad = 0;
 	snprintf(held, sizeof(held), "%s/held.bin", sroot);
 	snprintf(readme, sizeof(readme), "%s/README.TXT", sroot);
-	for (pass = 0; pass < 3; pass++) {
+	for (pass = 0; pass < 4; pass++) {
 		s_begin(113 + pass, 1);
 		gvf->hold = 1;
+		if (pass == 3) {
+			vfat_release(gvf, 0);
+			s_write("held.bin", 5000);
+			s_del("README.TXT");
+			for (t = 0; t < 100; t++) vfat_tick(gvf);
+			vfat_sync(gvf, 0);
+			if (!vfat_detached(gvf)) fail("hold: a no before any write did not detach");
+			if (h_kind(NULL, held) || (h_kind(NULL, readme) != 1)) fail("hold: the folder changed after a no before any write");
+			check_guest("hold refused unwritten");
+			s_end();
+			bad += fails;
+			continue;
+		}
 		s_write("held.bin", 5000);
 		s_del("README.TXT");
 		for (t = 0; t < 100; t++) vfat_tick(gvf);

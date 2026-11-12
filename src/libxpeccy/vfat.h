@@ -102,7 +102,7 @@ typedef struct {
 
 	int writable;			// the guest's writes are taken
 	int hold;			// and kept in memory: the folder waits for the user's word before it changes
-	int frozen;			// the folder takes no more of them: they stay in memory (vfat_read_only)
+	int frozen;			// the folder takes no more of them: they stay in memory (vfat_read_only, vfat_release refused)
 	vfWr* wr;			// what they did, from the first one on
 } vFat;
 
