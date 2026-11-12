@@ -573,16 +573,23 @@ void MainWin::cardEject(int card) {
 	});
 }
 
-// the SD Card: Eject key's card: the slot's on a machine with one, else the divMMC's first
+// the SD Card: Eject key's card: the slot's on a machine with one, else the first of the
+// divMMC's that holds one
 void MainWin::cardEjectKey() {
 	Computer* comp = conf.zx;
-	int card = hw_has_sd(comp->hw) ? -1 : comp->div->model ? 0 : -2;
+	int card = -2;
+	if (hw_has_sd(comp->hw)) {
+		card = -1;
+	} else if (comp->div->model) {
+		card = comp->div->card[0]->image ? 0 : 1;
+	}
 	if ((card < -1) || !sd_card(comp, card)->image) {
 		setMessage(" no card ");
 		return;
 	}
 	cardEject(card);
-	setMessage(" card ejected ");
+	// the Next's own card goes back in
+	setMessage(sd_card(comp, card)->image ? " own card back in " : " card ejected ");
 }
 
 // what a refresh brought in, or why some of it was not done
@@ -610,11 +617,11 @@ void MainWin::folderRefresh(bool ide, int which) {
 	folderSaid(r, why);
 }
 
-// The SD Card: Refresh key: every folder card and disk the machine has in use - one with no
-// change writes nothing, so which one was meant needs no asking
+// The SD Card: Refresh key: every folder card the machine has in use - one with no change
+// writes nothing, so which one was meant needs no asking
 void MainWin::folderRefreshAll() {
 	Computer* comp = conf.zx;
-	struct {vFat* vf; const char* name;} fold[5];
+	struct {vFat* vf; const char* name;} fold[3];
 	int n = 0;
 	if (hw_has_sd(comp->hw) && comp->sdc->vfat)
 		fold[n++] = {comp->sdc->vfat, "SD card"};
@@ -622,14 +629,8 @@ void MainWin::folderRefreshAll() {
 		if (comp->div->card[0]->vfat) fold[n++] = {comp->div->card[0]->vfat, "divMMC card 1"};
 		if (comp->div->card[1]->vfat) fold[n++] = {comp->div->card[1]->vfat, "divMMC card 2"};
 	}
-	if ((comp->ide->cfg != IDE_NONE) && !comp->ide->out) {
-		if ((comp->ide->master->type != IDE_NONE) && comp->ide->master->vfat)
-			fold[n++] = {comp->ide->master->vfat, "Master"};
-		if ((comp->ide->slave->type != IDE_NONE) && comp->ide->slave->vfat)
-			fold[n++] = {comp->ide->slave->vfat, "Slave"};
-	}
 	if (!n) {
-		setMessage(" no folder to refresh ");
+		setMessage(" no folder card ");
 		return;
 	}
 	vfReload sum = {0, 0, 0, 0};

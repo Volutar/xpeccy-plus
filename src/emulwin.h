@@ -208,7 +208,7 @@ class MainWin : public QWidget {
 		void otherImages(QMenu*, int id, int drv, QAction* before = nullptr, int inlineMax = 8);
 		void driveOp(std::function<void()>);
 		void folderRefresh(bool ide, int which);	// a folder card (-1 the slot's, 0/1 divMMC's) or IDE device read again, running
-		void folderRefreshAll();		// every folder card and disk in use
+		void folderRefreshAll();		// every folder card in use
 		void folderSaid(const vfReload&, const QString& why);
 		void cardEject(int card);
 		void cardEjectKey();
