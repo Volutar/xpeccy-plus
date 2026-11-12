@@ -9,6 +9,11 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
+### Fixed
+
+- **A build from the Nix flake, or from a plain `cmake ..`, has DeZog and OpenGL** (shaders,
+  the side fill) like the downloads, and takes Qt 6 when it is there. *(reported by nihirash)*
+
 ## 2026.10 - 2026-11-12
 
 ### Added

@@ -99,7 +99,8 @@ See [CHANGELOG.md](CHANGELOG.md) for the full list.
 
 ## Build
 
-Requirements: CMake, a C/C++ compiler, Qt (5 or 6), SDL (1.2 or 2), and zlib.
+Requirements: CMake, a C/C++ compiler, Qt 5.15 or Qt 6 (with QtNetwork and OpenGL), SDL2,
+zlib and libcurl.
 
 ```
 mkdir build && cd build
@@ -111,13 +112,11 @@ Options:
 
 | Option | Values | Meaning |
 | --- | --- | --- |
-| `-DQTVERSION=` | `5` (default) or `6` | Qt version |
-| `-DSDL1BUILD=` | `0` (default) or `1` | use SDL 1.2 instead of SDL2 |
-| `-DUSEOPENGL=` | `1` (default) or `0` | draw through a QtOpenGL widget |
-| `-DUSEQTNETWORK=` | `0` (default) or `1` | QtNetwork support, experimental |
+| `-DQTVERSION=` | `5` or `6` | Qt version; by default Qt 6 when it is installed, Qt 5 otherwise |
 | `-DXRELEASE=` | `0` (default) or `1` | release version string, without `-dev` and build date |
 | `-DTRIMDEPLOY=` | `ON` (default) or `OFF` | Windows: drop the Qt plugins the emulator never loads |
 | `-DXLOGHOT=` | `OFF` (default) or `ON` | build the log calls on the hot paths - per opcode or dot |
+| `-DCURL_DLOPEN=` | `ON` (default) or `OFF` | Linux: load the system's libcurl when a download starts, instead of linking it |
 
 The result is the `xpeccy-plus` executable. On Linux you can also build a package with
 `make package`, or install with `make install`.
@@ -145,6 +144,15 @@ a Windows filesystem mounted into WSL cannot do. The sources themselves may live
 
 An AppImage carries Qt and SDL but not the C library, so it needs a distribution at least
 as new as the one it was built on - built on Ubuntu 22.04 it wants glibc 2.35 or newer.
+
+### Nix
+
+`flake.nix` builds the program and its manual against Qt 6 from nixpkgs:
+
+```
+nix build github:dotkoval/xpeccy-plus
+nix run github:dotkoval/xpeccy-plus
+```
 
 ### Windows
 
