@@ -233,13 +233,10 @@ void MainWin::fillCardMenu(QMenu* m, int card) {
 		m->addAction(QIcon(":/images/doc-new.png"), "New esxDOS Folder...", this, [this, card]() {sdcNewEsx(card);});
 	else if (conf.zx->hw && (conf.zx->hw->id == HW_ZXNEXT))
 		m->addAction(QIcon(":/images/doc-new.png"), "System/Next Card...", this, [this]() {nextCard();});
-	act = m->addAction(QIcon(":/images/tape-eject.png"), "Eject", this, [this, card]() {
-		driveOp([card]() {
-			sdc_mount(sd_card(conf.zx, card), QString());
-			xm_next_card();		// the Next takes its own card back
-		});
-	});
+	act = m->addAction(QIcon(":/images/tape-eject.png"), "Eject", this, [this, card]() {cardEject(card);});
 	act->setEnabled(sdc->image != NULL);
+	act = m->addAction(QIcon(":/images/refresh.png"), "Refresh", this, [this, card]() {folderRefresh(false, card);});
+	act->setEnabled(sdc->vfat != NULL);
 	m->addSeparator();
 	// the card's lock switch; a folder is read only whatever it says unless Options lets
 	// folders take writes
@@ -323,6 +320,8 @@ void MainWin::fillDrivesMenu() {
 				driveOp([id]() {ide_mount(conf.zx->ide, id, QString());});
 			});
 			act->setEnabled(dev[i]->image != NULL);
+			act = m->addAction(QIcon(":/images/refresh.png"), "Refresh", this, [this, id]() {folderRefresh(true, id);});
+			act->setEnabled(dev[i]->vfat != NULL);
 			m->addSeparator();
 			act = m->addAction("Properties...", this, [this, id]() {hddProps(id);});
 			act->setEnabled(dev[i]->image != NULL);
@@ -565,6 +564,86 @@ void MainWin::driveOp(std::function<void()> fn) {
 	emu_unlock();
 	pause(false, PR_FILE);
 	if (diskWin->isVisible()) diskWin->refresh();
+}
+
+void MainWin::cardEject(int card) {
+	driveOp([card]() {
+		sdc_mount(sd_card(conf.zx, card), QString());
+		xm_next_card();		// the Next takes its own card back
+	});
+}
+
+// the SD Card: Eject key's card: the slot's on a machine with one, else the first of the
+// divMMC's that holds one
+void MainWin::cardEjectKey() {
+	Computer* comp = conf.zx;
+	int card = -2;
+	if (hw_has_sd(comp->hw)) {
+		card = -1;
+	} else if (comp->div->model) {
+		card = comp->div->card[0]->image ? 0 : 1;
+	}
+	if ((card < -1) || !sd_card(comp, card)->image) {
+		setMessage(" no card ");
+		return;
+	}
+	cardEject(card);
+	// the Next's own card goes back in
+	setMessage(sd_card(comp, card)->image ? " own card back in " : " card ejected ");
+}
+
+// what a refresh brought in, or why some of it was not done
+void MainWin::folderSaid(const vfRefresh& r, const QString& why) {
+	if (!why.isEmpty()) {
+		pause(true, PR_EXTRA);
+		QMessageBox::warning(this, "Refresh", why);
+		pause(false, PR_EXTRA);
+	}
+	if (r.added || r.removed || r.changed)
+		setMessage(QString(" refreshed: %0 new, %1 gone, %2 changed ").arg(r.added).arg(r.removed).arg(r.changed));
+	else if (why.isEmpty())
+		setMessage(" refreshed: no changes ");
+}
+
+// the folder's changes into the card or disk, the machine running on (a real card put back is dead to it)
+void MainWin::folderRefresh(bool ide, int which) {
+	vfRefresh r;
+	QString why;
+	driveOp([&]() {
+		why = ide ? ide_refresh(conf.zx->ide, which, &r) : sdc_refresh(sd_card(conf.zx, which), &r);
+	});
+	folderSaid(r, why);
+}
+
+// The SD Card: Refresh key: every folder card the machine has in use - one with no change
+// writes nothing, so which one was meant needs no asking
+void MainWin::folderRefreshAll() {
+	Computer* comp = conf.zx;
+	struct {vFat* vf; const char* name;} fold[3];
+	int n = 0;
+	if (hw_has_sd(comp->hw) && comp->sdc->vfat)
+		fold[n++] = {comp->sdc->vfat, "SD card"};
+	if (comp->div->model) {
+		if (comp->div->card[0]->vfat) fold[n++] = {comp->div->card[0]->vfat, "divMMC card 1"};
+		if (comp->div->card[1]->vfat) fold[n++] = {comp->div->card[1]->vfat, "divMMC card 2"};
+	}
+	if (!n) {
+		setMessage(" no folder card ");
+		return;
+	}
+	vfRefresh sum = {0, 0, 0, 0};
+	QStringList whys;
+	driveOp([&]() {
+		for (int i = 0; i < n; i++) {
+			vfRefresh r;
+			QString why = fold_refresh(fold[i].vf, &r);
+			sum.added += r.added;
+			sum.removed += r.removed;
+			sum.changed += r.changed;
+			if (!why.isEmpty()) whys << ((n > 1) ? QString("%0: %1").arg(fold[i].name).arg(why) : why);
+		}
+	});
+	folderSaid(sum, whys.join("\n\n"));
 }
 
 void MainWin::diskNew(int drv) {

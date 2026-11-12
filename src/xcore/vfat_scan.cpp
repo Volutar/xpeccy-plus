@@ -174,8 +174,26 @@ static int vfh_stat(void*, const char* path, long long* size, long long* mtime) 
 	return 0;
 }
 
+// a case-blind disk answers for another case of a name too, and Windows for an 8.3 alias:
+// the name as the host keeps it must be this one
+static int vfh_exact(void* ctx, const char* path) {
+	if (!vfh_kind(ctx, path)) return 0;
+	QString p = vfh_str(path);
+	QString name = QFileInfo(p).fileName();
+#ifdef _WIN32
+	WIN32_FIND_DATAW fd;
+	HANDLE h = FindFirstFileW(vfh_wide(p).c_str(), &fd);
+	if (h == INVALID_HANDLE_VALUE) return 0;
+	FindClose(h);
+	return (QString::fromWCharArray(fd.cFileName) == name) ? 1 : 0;
+#else
+	return QDir(QFileInfo(p).path()).entryList(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System).contains(name) ? 1 : 0;
+#endif
+}
+
 static const vfHost vfs_host = {
-	NULL, vfh_open, vfh_mkdir, vfh_rename, vfh_replace, vfh_remove, vfh_truncate, vfh_kind, vfh_empty, vfh_settime, vfh_stat
+	NULL, vfh_open, vfh_mkdir, vfh_rename, vfh_replace, vfh_remove, vfh_truncate, vfh_kind, vfh_empty, vfh_settime, vfh_stat,
+	vfh_exact
 };
 
 // == the scan ==
@@ -249,7 +267,7 @@ static QString real_dir(const QString& path) {
 // the loader in the root. A folder reached a second time - a junction back up the tree,
 // two to one place - is taken once, and a junction into the tree itself not at all:
 // deleting one copy would take the file from the other.
-static void vfat_scan_tree(vFat* vf, const QString& root, const QString& sub, const QString& subName, const QString* only, bool writable, vfsDrop& drop) {
+static void vfat_scan_tree(vFat* vf, const QString& root, const QString& sub, const QString& subName, const QString* only, bool writable, bool restore, vfsDrop& drop) {
 	QList<vfsDir> queue;
 	QSet<QString> seen;
 	QString top = real_dir(root);
@@ -288,7 +306,7 @@ static void vfat_scan_tree(vFat* vf, const QString& root, const QString& sub, co
 				return;
 			}
 			if (inf.fileName().startsWith(VF_TMPMARK)) {		// left by an interrupted sync
-				char* back = (writable && !cur.idx) ? vfat_tmp_restore(vf, inf.fileName().toUtf8().constData()) : NULL;
+				char* back = (restore && writable && !cur.idx) ? vfat_tmp_restore(vf, inf.fileName().toUtf8().constData()) : NULL;
 				if (!back) continue;
 				inf = QFileInfo(QDir(cur.path).filePath(QString::fromUtf8(back)));
 				free(back);
@@ -340,8 +358,10 @@ static void vfat_scan_tree(vFat* vf, const QString& root, const QString& sub, co
 
 // sub: one more folder, put in the root as subName (a name the root does not have), with
 // only that file of it if only is given (none if it is empty); sectors: the volume's size,
-// 0 for what it holds plus room to write in when writable
-static vFat* vfat_scan_in(const QString& path, bool writable, const QString& sub, const QString& subName, const QString* only, unsigned int sectors) {
+// 0 for what it holds plus room to write in when writable. build false: the tree alone, and
+// *cut says whether the entries' limit cut it short
+static vFat* vfat_scan_in(const QString& path, bool writable, const QString& sub, const QString& subName, const QString* only, unsigned int sectors,
+		bool build = true, bool* cut = NULL) {
 	QFileInfo inf(path);
 	if (!inf.isDir() || !inf.isReadable()) return NULL;
 	vFat* vf = vfat_create();
@@ -356,7 +376,7 @@ static vFat* vfat_scan_in(const QString& path, bool writable, const QString& sub
 		drop.slow = vfsSlowRoots.contains(path);
 	}
 	vfat_add(vf, -1, "", 0, mtime, 1);		// root
-	vfat_scan_tree(vf, path, sub, subName, only, writable, drop);
+	vfat_scan_tree(vf, path, sub, subName, only, writable, build, drop);
 	{
 		QMutexLocker lock(&vfsSlowLock);
 		if (paceClockNs() - drop.start > VFS_SLOW_NS) vfsSlowRoots.insert(path);
@@ -370,7 +390,11 @@ static vFat* vfat_scan_in(const QString& path, bool writable, const QString& sub
 	if (drop.big) why << QString("%0 files of 4G and over").arg(drop.big);
 	if (!why.isEmpty()) {
 		xlog(XLG_DISK, XLL_WARN, "folder %s: %i entries taken, left out %s", lpath.constData(), vf->nodes - 1, qPrintable(why.join(", ")));
-		if (conf.zx) conf.zx->msg = (char*)" folder: not all of it fits ";
+		if (conf.zx && build) conf.zx->msg = (char*)" folder: not all of it fits ";
+	}
+	if (!build) {
+		if (cut) *cut = drop.count;
+		return vf;
 	}
 	// room to write in: as much again as it holds, and VFS_ROOM at least
 	unsigned long long minsec = sectors;
@@ -516,6 +540,59 @@ void ide_mount(IDE* ide, int dev, const QString& path) {
 	} else {
 		ideSetImage(ide, dev, path.toLocal8Bit().constData());
 	}
+}
+
+// The folder a volume serves changed on the host, the machine running: what the guest wrote
+// goes to the folder first, then only what the folder changed goes into the volume
+QString fold_refresh(vFat* vf, vfRefresh* r) {
+	memset(r, 0x00, sizeof(vfRefresh));
+	if (!vf || !vf->root) return QString();
+	vfat_flush(vf);
+	int res = vfat_refresh_ready(vf);		// before the scan: a refused one reads nothing
+	if (res == VFR_STUCK) {		// once more: a guest mid-save, or what the user has cleared since
+		vfat_sync(vf, 1);
+		res = vfat_refresh_ready(vf);
+	}
+	if (res == VFR_OK) {
+		QString path = QString::fromUtf8(vf->root);
+		bool cut = false;
+		vFat* fresh = vfat_scan_in(path, vf->writable, QString(), QString(), NULL, 0, false, &cut);
+		if (!fresh) return QString("The folder\n%0\ncannot be read.").arg(QDir::toNativeSeparators(path));
+		if (cut) {
+			vfat_free(fresh);
+			return QString("The folder holds more than %0 entries: Eject it and open it again.").arg(VFS_MAXNODES);
+		}
+		res = vfat_refresh(vf, fresh, VFS_MAXDEPTH, r);
+		vfat_free(fresh);
+		if (r->added || r->removed || r->changed) x_media_writes++;	// rewind cannot go back past it
+	}
+	switch (res) {
+		case VFR_OK:
+			return QString();
+		case VFR_WRITES:
+			return QString("Not all of what the machine wrote has reached the folder yet; refreshing would lose it.");
+		case VFR_STUCK: {
+			QString what = QString::fromUtf8(vfat_stuck(vf));
+			return QString("Some of what the machine wrote could not be put into the folder%0: Eject it and open it again.")
+				.arg(what.isEmpty() ? QString() : QString(" (%0)").arg(what));
+		}
+		case VFR_DETACHED:
+			return QString("The folder no longer follows the machine: Eject it and open it again.");
+		case VFR_FULL:
+			return QString("The folder's changes do not fit on the disk: Eject it and open it again.");
+		case VFR_PART:
+			return QString("%0 of the folder's changes could not be put on the disk: Eject it and open it again "
+				"to see them all.").arg(r->left);
+	}
+	return QString("There is no memory left to refresh the folder.");
+}
+
+QString sdc_refresh(SDCard* sdc, vfRefresh* r) {
+	return fold_refresh(sdc ? sdc->vfat : NULL, r);
+}
+
+QString ide_refresh(IDE* ide, int dev, vfRefresh* r) {
+	return fold_refresh(ide ? ((dev == IDE_MASTER) ? ide->master->vfat : ide->slave->vfat) : NULL, r);
 }
 
 void ide_remount(IDE* ide) {

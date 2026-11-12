@@ -33,6 +33,16 @@ void vf_gen_file(vFat*, int idx, unsigned int sec, unsigned char* dst);
 void vf_gen_reserved(vFat*, unsigned int lba, unsigned char* dst);	// MBR, gap, boot, FSInfo
 int vf_clust_node(vFat*, unsigned int clu);
 
+// directory entries as the build makes them
+int vf_sname_make(const char* name, char* dst, int* ulen);	// 1 when a long name is needed
+unsigned char vf_sname_sum(const char* sname);
+unsigned int vf_sname_hash(int parent, const char* sname);
+// sname made unique: taken says whether a name is in use among its siblings
+void vf_sname_uniq(char* sname, const char* name, int (*taken)(void* ctx, const char* sname), void* ctx);
+void vf_fat_stamp(unsigned int mtime, unsigned short* date, unsigned short* tim);
+void vf_entry(unsigned char* dst, const char* sname, int attr, unsigned int clust, unsigned int size, unsigned short date, unsigned short tim);
+void vf_lfn(unsigned char* dst, unsigned short* name, int len, int part, int last, unsigned char sum);
+
 // a node's host path into buf (UTF-8); 0 if it does not fit
 int vf_path(vFat*, int idx, char* buf, int max);
 FILE* vf_open(vFat*, const char* path, const char* mode);

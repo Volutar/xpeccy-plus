@@ -18,6 +18,8 @@ the slot, or **(no card)**, and has:
 - **Open Folder...** - use a folder on your computer as the card. See
   [A folder as a disk](#a-folder-as-a-disk).
 - **Eject** - take the card out.
+- **Refresh** - a folder card only: files added, changed or deleted in the folder reach the
+  machine while it runs. See [Refresh](#refresh).
 - **Write Protect** - the card's lock switch: the machine cannot write to the card. On a
   folder card it makes that one folder read only.
 
@@ -45,6 +47,7 @@ of **Options**, click the {icon}`settings` gear in the **Hard disk** row and set
 - **Open Folder...** - use a folder on your computer as the disk. See
   [A folder as a disk](#a-folder-as-a-disk).
 - **Eject** - take the image out.
+- **Refresh** - a folder disk only, as on an SD card: see [Refresh](#refresh).
 - **Properties...** - the window **Hard Disk: Master** (or **Slave**): the image, its
   cylinders, heads and sectors (**C / H / S**), its **Capacity**, and the **LBA** box. LBA
   lets the system address the disk by sector number; clear it for an old system that only
@@ -64,9 +67,10 @@ no image to make: copy programs into the folder and open it. The window that pic
 folder is **Folder to serve as the card** or **Folder to serve as the disk**. How the disk is made and
 written back is in [A folder as a disk](folder-as-disk.md) of Under the Hood.
 
-- The folder is read when it is opened, and again at **Machine > Reset > Hard Reset**,
-  when you switch machines or click **Apply** in **Options**. Files added later show up
-  only then.
+- The folder is read when it is opened, and again at **Machine > Reset > Hard Reset** and
+  when you switch machines; **Apply** in **Options** does not read it again. To bring in
+  files added, changed or deleted since without a reset, use **Refresh** (see
+  [Refresh](#refresh)).
 - The disk is made big enough for the folder, from 512 MB up to 32 GB. A folder that takes
   writes gets as much free room again as its files take, and 256 MB more. A larger folder
   is not opened, and the message **folder too big for a disk** says so.
@@ -126,3 +130,29 @@ as **name (2)**, and the machine deleting it leaves it where it is.
 Keep a copy of anything you cannot afford to lose. Formatting the card or disk, or
 deleting most of the folder at once, does not reach your files: the folder is left alone
 from then on, what the machine writes stays in memory, and a message says so.
+
+### Refresh
+
+```{index} folder as a disk; Refresh, Refresh; a folder card
+```
+
+**Refresh** in a folder card's or folder disk's menu brings in what you changed in the folder
+since it was read: new files and folders, changed files, deleted ones. The machine keeps
+running and needs no remount, as a real card put back would. What the machine wrote there
+first goes to the folder. The message **refreshed: 2 new, 1 gone, 0 changed** says what
+changed.
+
+The machine sees the change the next time it reads the folder: esxDOS at its next listing,
+the NextZXOS Browser when it shows the folder again (leave it and come back). Files that
+stayed keep their place on the disk, so a file the machine has open, a disk image it has
+mounted and the folder it is in read on as before.
+
+**Refresh** is refused, with a message, when what the machine wrote has not all reached the
+folder, when the folder no longer follows the machine, or when the changes do not fit on
+the disk; **Eject** and **Open Folder...** then read the folder anew. An image file has no
+**Refresh**. A changed `ZXLDR` boots only after a **Hard Reset**.
+
+Two [hotkeys](hotkeys.md), with no key until you give them one, work on SD cards from the
+keyboard: **SD Card: Refresh** refreshes every folder card the machine uses, and **SD Card:
+Eject** takes out the machine's card - the slot's on the ZX Evolution and the Next (where
+the Next's own card goes back in), the divMMC's first card that holds one on the others.

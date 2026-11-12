@@ -588,6 +588,8 @@ static xShortcut short_tab[] = {
 	{SCG_MAIN, XCUT_RELOAD, "key.reload", "Reload", {}},
 	{SCG_MAIN, XCUT_SIDE_NEXT, "key.side.next", "Next Side", {}},
 	{SCG_MAIN, XCUT_SIDE_PREV, "key.side.prev", "Previous Side", {}},
+	{SCG_MAIN, XCUT_CARD_EJECT, "key.card.eject", "SD Card: Eject", {}},
+	{SCG_MAIN, XCUT_CARD_REFRESH, "key.card.refresh", "SD Card: Refresh", {}},
 	{SCG_MAIN, XCUT_RECENT, "key.recent", "Recent Files", {}},
 	{SCG_MAIN, XCUT_FAVORITE, "key.favorite.add", "Add to Favorites", {}},
 	{SCG_MAIN, XCUT_QUICKSAVE, "key.quick.save", "Quick Save", {}},

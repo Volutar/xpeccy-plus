@@ -20,6 +20,12 @@ bool sdc_mount_over(SDCard*, const QString& sub, const QString& subName, const Q
 void ide_mount(IDE*, int, const QString&);	// same for one IDE device (IDE_MASTER / IDE_SLAVE)
 void ide_remount(IDE*);
 
+// a folder changed on the host goes into the volume serving it, the machine running on: empty
+// when done (*r says what changed), else why not, for the user
+QString fold_refresh(vFat*, vfRefresh* r);
+QString sdc_refresh(SDCard*, vfRefresh* r);
+QString ide_refresh(IDE*, int dev, vfRefresh* r);
+
 vFat* fold_waiting(Computer*);			// a volume on hold the guest has written to, NULL if none
 void fold_release(Computer*, bool allow);	// the user's word on every volume on hold
 void fold_read_only(Computer*);		// Folders set to R/O: every volume in use but the Next's own card

@@ -274,7 +274,23 @@ static int h_stat(void* ctx, const char* path, long long* size, long long* mtime
 	return 0;
 }
 
-static const vfHost host = {NULL, h_open, h_mkdir, h_rename, h_replace, h_remove, h_truncate, h_kind, h_empty, h_settime, h_stat};
+// the name as its folder lists it
+static int h_exact(void* ctx, const char* path) {
+	char dir[1200];
+	const char* name = strrchr(path, '/');
+	hList l;
+	int i, res = 0;
+	if (!name || !h_kind(ctx, path) || (name - path >= (int)sizeof(dir))) return 0;
+	memcpy(dir, path, name - path);
+	dir[name - path] = 0;
+	hl_list(dir, &l);
+	for (i = 0; i < l.n; i++)
+		if (!strcmp(l.name[i], name + 1)) res = 1;
+	hl_free(&l);
+	return res;
+}
+
+static const vfHost host = {NULL, h_open, h_mkdir, h_rename, h_replace, h_remove, h_truncate, h_kind, h_empty, h_settime, h_stat, h_exact};
 
 // remove a host tree for good
 static void rm_tree(const char* path) {
@@ -301,15 +317,22 @@ static int cmp_name(const void* a, const void* b) {
 
 // == a volume from a host folder, as the app's scan makes it ==
 
-static vFat* mount_folder(const char* root, int writable) {
+static int scan_depth = 1000;		// folders this deep and deeper have their folders left out, as the app's scan
+static int scan_hide = 0;		// names starting with a dot left out, as the app's scan off Windows
+
+// the tree alone, as vfat_refresh takes it; restore: an interrupted sync's files given their
+// names back, as at a mount; *bytes what the files take
+static vFat* scan_folder(const char* root, int restore, unsigned long long* bytes) {
 	vFat* vf = vfat_create();
 	int queue[4096];
 	char* qpath[4096];
+	int qdepth[4096];
 	int qn = 0, q, i;
-	unsigned long long bytes = 0;
+	if (bytes) *bytes = 0;
 	vfat_set_root(vf, root, &host);
 	vfat_add(vf, -1, "", 0, 0, 1);
 	queue[qn] = 0;
+	qdepth[qn] = 0;
 	qpath[qn++] = strdup(root);
 	for (q = 0; q < qn; q++) {
 		hList l;
@@ -321,23 +344,25 @@ static vFat* mount_folder(const char* root, int writable) {
 		int nd = 0, nf = 0;
 		for (i = 0; i < l.n; i++) {
 			if (!strncmp(l.name[i], VF_TMPMARK, strlen(VF_TMPMARK))) {	// as the app's scan: made visible again
-				char* back = (writable && !q) ? vfat_tmp_restore(vf, l.name[i]) : NULL;
+				char* back = (restore && !q) ? vfat_tmp_restore(vf, l.name[i]) : NULL;
 				if (!back) continue;
 				free(l.name[i]);
 				l.name[i] = back;
 				snprintf(full, sizeof(full), "%s/%s", qpath[q], back);
 				l.isdir[i] = (h_kind(NULL, full) == 2);
 			}
+			if (scan_hide && (l.name[i][0] == '.')) continue;
 			if (l.isdir[i]) dirs[nd++] = l.name[i]; else files[nf++] = l.name[i];
 		}
 		qsort(dirs, nd, sizeof(char*), cmp_name);
 		qsort(files, nf, sizeof(char*), cmp_name);
-		for (i = 0; i < nd; i++) {
+		for (i = 0; (i < nd) && (qdepth[q] < scan_depth); i++) {
 			long long sz, mt = 1600000000;
 			snprintf(full, sizeof(full), "%s/%s", qpath[q], dirs[i]);
 			h_stat(NULL, full, &sz, &mt);
 			int idx = vfat_add(vf, queue[q], dirs[i], 0, (unsigned int)mt, 1);
 			queue[qn] = idx;
+			qdepth[qn] = qdepth[q] + 1;
 			qpath[qn++] = strdup(full);
 		}
 		for (i = 0; i < nf; i++) {
@@ -345,13 +370,19 @@ static vFat* mount_folder(const char* root, int writable) {
 			snprintf(full, sizeof(full), "%s/%s", qpath[q], files[i]);
 			h_stat(NULL, full, &sz, &mt);		// 64 bits: a file can be just under 4G
 			vfat_add(vf, queue[q], files[i], (unsigned int)sz, (unsigned int)mt, 0);
-			bytes += sz;
+			if (bytes) *bytes += sz;
 		}
 		free(dirs);
 		free(files);
 		hl_free(&l);
 	}
 	for (q = 0; q < qn; q++) free(qpath[q]);
+	return vf;
+}
+
+static vFat* mount_folder(const char* root, int writable) {
+	unsigned long long bytes;
+	vFat* vf = scan_folder(root, writable, &bytes);
 	vfat_build(vf, writable ? (unsigned int)((bytes / 512) * 2 + 128 * 2048) : 0);
 	vf->writable = writable;
 	return vf;
@@ -941,11 +972,11 @@ static int run_random(const char* root, unsigned int seed, int ops) {
 
 static char sroot[1024];
 
-static void s_begin(unsigned int seed) {
+// a scenario's volume; a second one in the same scenario keeps what the first part failed
+static void s_begin(unsigned int seed, int writable) {
 	rng = seed;
-	fails = 0;
 	build_tree(sroot);
-	gvf = mount_folder(sroot, 1);
+	gvf = mount_folder(sroot, writable);
 	if (f_mount(&fs, "", 1) != FR_OK) fail("mount");
 }
 
@@ -1029,7 +1060,7 @@ static int file_eq(const char* path, const unsigned char* data, unsigned int siz
 }
 
 static void sc_swap(void) {
-	s_begin(101);
+	s_begin(101, 1);
 	s_ren("games/manic.tap", "games/t.tmp");
 	s_ren("games/boot.sna", "games/manic.tap");
 	s_ren("games/t.tmp", "games/boot.sna");
@@ -1039,7 +1070,7 @@ static void sc_swap(void) {
 }
 
 static void sc_replace(void) {
-	s_begin(102);
+	s_begin(102, 1);
 	s_del("README.TXT");
 	s_ren("zero.bin", "README.TXT");
 	s_write("docs/new.txt", 5000);
@@ -1054,7 +1085,7 @@ static void sc_replace(void) {
 static void sc_fragment(void) {
 	char p[64];
 	int i;
-	s_begin(103);
+	s_begin(103, 1);
 	s_mkdir("frag");
 	for (i = 0; i < 60; i++) {
 		snprintf(p, sizeof(p), "frag/f%02i.bin", i);
@@ -1107,7 +1138,7 @@ static void sc_fragment(void) {
 static void sc_bigdir(void) {
 	char p[128];
 	int i;
-	s_begin(104);
+	s_begin(104, 1);
 	s_mkdir("many");
 	for (i = 0; i < 400; i++) {
 		snprintf(p, sizeof(p), "many/a rather long file name number %03i.dat", i);
@@ -1125,7 +1156,7 @@ static void sc_bigdir(void) {
 
 // nested: a folder moves while files inside it are renamed, in one sync
 static void sc_nested(void) {
-	s_begin(105);
+	s_begin(105, 1);
 	s_ren("games/arcade/Jet Set Willy.tap", "games/arcade/JSW.tap");
 	s_ren("games/arcade", "docs/arcade games");
 	s_ren("games", "old games");
@@ -1139,7 +1170,7 @@ static void sc_nested(void) {
 static void sc_format(void) {
 	static BYTE work[4096];
 	MKFS_PARM opt = {FM_FAT32, 1, 0, 0, 0};
-	s_begin(106);
+	s_begin(106, 1);
 	f_unmount("");
 	if (f_mkfs("", &opt, work, sizeof(work)) != FR_OK) fail("mkfs");
 	if (!vfat_detached(gvf)) fail("format: not detached");
@@ -1171,7 +1202,7 @@ static void sc_open(void) {
 	FIL f;
 	UINT w;
 	int m;
-	s_begin(107);
+	s_begin(107, 1);
 	m = m_add("open.bin", 0);
 	model[m].data = (unsigned char*)malloc(100001);
 	model[m].size = 0;
@@ -1208,7 +1239,7 @@ static void sc_open(void) {
 // names Windows refuses get a '_' on the host; the guest keeps its own until a remount
 static void sc_names(void) {
 	char full[1200];
-	s_begin(108);
+	s_begin(108, 1);
 	s_write("CON.txt", 100);
 	s_write("lpt1", 50);
 	s_write("Aux.Bin", 10);
@@ -1229,7 +1260,7 @@ static void sc_trash(void) {
 	int m, n0 = trash_n;
 	unsigned char* keep;
 	unsigned int size;
-	s_begin(109);
+	s_begin(109, 1);
 	m = m_find("games/arcade/Jet Set Willy.tap");
 	size = model[m].size;
 	keep = (unsigned char*)malloc(size + 1);
@@ -1246,7 +1277,7 @@ static void sc_trash(void) {
 static void sc_unknown(void) {
 	char full[1200];
 	FILE* f;
-	s_begin(110);
+	s_begin(110, 1);
 	snprintf(full, sizeof(full), "%s/empty/late.txt", sroot);
 	f = h_open(NULL, full, "wb");
 	fputs("added on the host after the mount", f);
@@ -1267,11 +1298,7 @@ static void sc_unknown(void) {
 static void sc_readonly(void) {
 	char fp[1100];
 	FIL f;
-	rng = 111;
-	fails = 0;
-	build_tree(sroot);
-	gvf = mount_folder(sroot, 0);
-	f_mount(&fs, "", 1);
+	s_begin(111, 0);
 	fpath(fp, sizeof(fp), "new.txt");
 	// FatFs writes the entry lazily: the refusal comes with the close
 	if ((f_open(&f, fp, FA_CREATE_NEW | FA_WRITE) == FR_OK) && (f_close(&f) == FR_OK)) fail("readonly: created");
@@ -1286,7 +1313,7 @@ static void sc_hostfail(void) {
 	FIL f;
 	UINT w;
 	int m;
-	s_begin(112);
+	s_begin(112, 1);
 	m = m_find("games/manic.tap");
 	if (model[m].size < 2100) {		// the patch grows it
 		model[m].data = (unsigned char*)realloc(model[m].data, 2101);
@@ -1353,7 +1380,7 @@ static void sc_halfmove(void) {
 	unsigned char keep;
 	int pos;
 	unsigned int lba;
-	s_begin(113);
+	s_begin(113, 1);
 	s_write("docs/touch.txt", 10);		// the volume takes writes from here on
 	vfat_sync(gvf, 0);
 	f_unmount("");
@@ -1385,7 +1412,7 @@ static void sc_retype(void) {
 	unsigned char sec[512];
 	int pos, m;
 	unsigned int lba;
-	s_begin(114);
+	s_begin(114, 1);
 	m = m_add("RETYPE.BIN", 0);
 	model[m].size = 4096;
 	model[m].data = (unsigned char*)malloc(4097);
@@ -1424,7 +1451,7 @@ static void sc_hold(void) {
 	snprintf(held, sizeof(held), "%s/held.bin", sroot);
 	snprintf(readme, sizeof(readme), "%s/README.TXT", sroot);
 	for (pass = 0; pass < 3; pass++) {
-		s_begin(113 + pass);
+		s_begin(113 + pass, 1);
 		gvf->hold = 1;
 		s_write("held.bin", 5000);
 		s_del("README.TXT");
@@ -1462,7 +1489,7 @@ static void sc_pin(void) {
 	int pass, i, t, gi, bad = 0;
 	snprintf(games, sizeof(games), "%s/games", sroot);
 	for (pass = 0; pass < 2; pass++) {
-		s_begin(116 + pass);
+		s_begin(116 + pass, 1);
 		gi = -1;
 		for (i = 1; i < gvf->nodes; i++)
 			if ((gvf->node[i].parent == 0) && !strcmp(gvf->node[i].name, "games")) gi = i;
@@ -1534,7 +1561,7 @@ static void sc_newdir(void) {
 	char p[64], q[64];
 	int i;
 	unsigned int clu;
-	s_begin(115);
+	s_begin(115, 1);
 	trash_on = 0;
 	s_mkdir("box");
 	s_ren("games/manic.tap", "box/manic.tap");
@@ -1584,7 +1611,7 @@ static void sc_newdir(void) {
 // what the guest wrote reaches the folder before a remount reads it, as the app does it
 static void sc_flush(void) {
 	vFat* nv;
-	s_begin(116);
+	s_begin(116, 1);
 	s_write("late.bin", 7000);
 	s_ren("games/boot.sna", "games/later.sna");
 	f_unmount("");
@@ -1655,7 +1682,7 @@ static void sc_parked(void) {
 	};
 	char full[1200];
 	unsigned int i;
-	s_begin(118);
+	s_begin(118, 1);
 	s_ren("games/manic.tap", "docs/manic.tap");
 	fail_pat = "docs/manic";
 	vfat_sync(gvf, 0);
@@ -1710,7 +1737,7 @@ static void sc_outside(void) {
 	int m, n0;
 	unsigned int osize;
 	unsigned char* outside;
-	s_begin(119);
+	s_begin(119, 1);
 	s_write("docs/touch.txt", 10);
 	s_sync("outside live");
 	m = m_find("games/manic.tap");
@@ -1766,7 +1793,7 @@ static void sc_sameslot(void) {
 	unsigned char* keep;
 	unsigned int clu, size = 9000;
 	int n0;
-	s_begin(120);
+	s_begin(120, 1);
 	s_write("old.bin", size);
 	s_sync("sameslot old");
 	keep = (unsigned char*)malloc(size);
@@ -1785,6 +1812,419 @@ static void sc_sameslot(void) {
 	s_end();
 }
 
+// == Refresh: the folder changed on the host while the guest has the volume mounted ==
+
+// the volume as fsck sees it: both FATs alike, every chain whole and nobody else's, a
+// file's chain as long as its size, no cluster in use that no entry reaches; with fsinfo,
+// FSInfo's free count true
+static unsigned int *vc_fat, *vc_mark;
+
+static unsigned int le32(const unsigned char* p) {
+	return p[0] | (p[1] << 8) | (p[2] << 16) | ((unsigned int)p[3] << 24);
+}
+
+static void vc_dir(unsigned int clu, int depth, const char* when) {
+	unsigned char sec[512];
+	unsigned int c, s, i, n;
+	unsigned int chain[4096];
+	unsigned int nc = 0;
+	if (depth > 32) { fail("%s: volume too deep", when); return; }
+	for (c = clu; (c >= 2) && (c < gvf->clusters + 2); c = vc_fat[c]) {
+		if (vc_mark[c]) { fail("%s: volume, directory cluster %u crossed", when, c); return; }
+		vc_mark[c] = 1;
+		if (nc < 4096) chain[nc++] = c;
+		if (vc_fat[c] >= 0x0ffffff8) break;
+	}
+	for (n = 0; n < nc; n++) {
+		for (s = 0; s < gvf->spc; s++) {
+			vfat_read(gvf, gvf->partStart + gvf->dataStart + (chain[n] - 2) * gvf->spc + s, sec);
+			for (i = 0; i < 512; i += 32) {
+				unsigned char* e = sec + i;
+				unsigned int fc, size, len = 0;
+				if (e[0] == 0x00) return;
+				if ((e[0] == 0xe5) || (e[11] == 0x0f) || (e[11] & 0x08) || (e[0] == '.')) continue;
+				fc = (e[20] | (e[21] << 8)) << 16 | e[26] | (e[27] << 8);
+				size = le32(e + 28);
+				if (e[11] & 0x10) {
+					vc_dir(fc, depth + 1, when);
+					continue;
+				}
+				for (c = fc; (c >= 2) && (c < gvf->clusters + 2); c = vc_fat[c]) {
+					if (vc_mark[c]) { fail("%s: volume, cluster %u crossed (%.11s)", when, c, e); return; }
+					vc_mark[c] = 1;
+					len++;
+					if (vc_fat[c] >= 0x0ffffff8) break;
+				}
+				if ((unsigned long long)len * gvf->spc * 512 < size || (len && ((unsigned long long)(len - 1) * gvf->spc * 512 >= size)))
+					fail("%s: volume, %.11s holds %u clusters for %u bytes", when, e, len, size);
+			}
+		}
+	}
+}
+
+static void vol_check(const char* when, int fsinfo) {
+	unsigned char sec[512], sec1[512];
+	unsigned int s, k, c, fre = 0;
+	unsigned int n = gvf->clusters + 2;
+	vc_fat = (unsigned int*)calloc(gvf->fatSize * 128, sizeof(unsigned int));
+	vc_mark = (unsigned int*)calloc(n, sizeof(unsigned int));
+	for (s = 0; s < gvf->fatSize; s++) {
+		vfat_read(gvf, gvf->partStart + gvf->reserved + s, sec);
+		vfat_read(gvf, gvf->partStart + gvf->reserved + gvf->fatSize + s, sec1);
+		for (k = 0; k < 128; k++) {
+			unsigned int v = le32(sec + k * 4) & 0x0fffffff;
+			unsigned int v1 = le32(sec1 + k * 4) & 0x0fffffff;
+			if (v != v1) fail("%s: volume, FAT copies differ at %u", when, s * 128 + k);
+			vc_fat[s * 128 + k] = v;
+		}
+	}
+	vc_dir(2, 0, when);
+	for (c = 2; c < n; c++) {
+		if (!vc_fat[c]) fre++;
+		else if (!vc_mark[c]) { fail("%s: volume, cluster %u in use by nothing", when, c); break; }
+	}
+	if (fsinfo) {
+		vfat_read(gvf, gvf->partStart + 1, sec);
+		k = le32(sec + 488);
+		if (k != fre) fail("%s: volume, FSInfo says %u free, %u are", when, k, fre);
+	}
+	free(vc_fat);
+	free(vc_mark);
+}
+
+// a host file of size bytes, into the model too (a changed one keeps its place there)
+static void h_put(const char* path, unsigned int size, unsigned int mtime) {
+	char full[1200];
+	FILE* f;
+	int i = m_find(path);
+	if (i < 0) i = m_add(path, 0);
+	free(model[i].data);
+	model[i].data = (unsigned char*)malloc(size + 1);
+	model[i].size = size;
+	fill_rand(model[i].data, size);
+	snprintf(full, sizeof(full), "%s/%s", sroot, path);
+	f = h_open(NULL, full, "wb");
+	fwrite(model[i].data, 1, size, f);
+	fclose(f);
+	h_settime(NULL, full, mtime);
+}
+
+static void h_dir(const char* path) {
+	char full[1200];
+	snprintf(full, sizeof(full), "%s/%s", sroot, path);
+	h_mkdir(NULL, full);
+	m_add(path, 1);
+}
+
+// a host file or folder gone, with all in it
+static void h_gone(const char* path) {
+	char full[1200];
+	size_t l = strlen(path);
+	int i;
+	snprintf(full, sizeof(full), "%s/%s", sroot, path);
+	rm_tree(full);
+	for (i = mn - 1; i >= 0; i--)
+		if (!strcmp(model[i].path, path) || (!strncmp(model[i].path, path, l) && (model[i].path[l] == '/'))) m_del(i);
+}
+
+// Refresh as the app does it: what the guest wrote first, then the fresh scan put in
+static int s_refresh(const char* when, int expect, vfRefresh* r) {
+	vFat* fresh;
+	int res;
+	vfat_flush(gvf);
+	if (vfat_refresh_ready(gvf) == VFR_STUCK) vfat_sync(gvf, 1);	// once more, as the app does
+	fresh = scan_folder(sroot, 0, NULL);
+	res = vfat_refresh(gvf, fresh, scan_depth, r);
+	vfat_free(fresh);
+	if (res != expect) fail("%s: refresh gave %i, not %i", when, res, expect);
+	fs.winsect = (LBA_t)0 - 1;		// a guest that reads its sectors again, as esxDOS does
+	return res;
+}
+
+// the folder changed every way while a file and a directory are open in the guest; the
+// guest reads on, sees the change, writes, and the folder follows
+static void sc_refresh(void) {
+	char fp[1100];
+	unsigned char buf[3000];
+	unsigned int before[3], k;
+	FIL f;
+	FF_DIR d;
+	FILINFO fi;
+	UINT got;
+	vfRefresh r;
+	int m, seen = 0;
+	s_begin(121, 1);
+	s_write("games/guest.bin", 7000);
+	s_sync("refresh live");
+	before[0] = first_cluster("games/manic.tap");
+	before[1] = first_cluster("games/arcade/Jet Set Willy.tap");
+	before[2] = first_cluster("games/guest.bin");
+	// a file and a folder half read
+	m = m_find("games/arcade/Jet Set Willy.tap");
+	fpath(fp, sizeof(fp), "games/arcade/Jet Set Willy.tap");
+	if (f_open(&f, fp, FA_READ) != FR_OK) fail("refresh: open");
+	f_read(&f, buf, 1000, &got);
+	if (f_opendir(&d, "/games") != FR_OK) fail("refresh: opendir");
+	f_readdir(&d, &fi);
+	// the host: new files and folders, a long cyrillic name, a file changed, one cut, gone ones
+	h_put("new.txt", 5000, 1700000000);
+	h_put("games/new2.tap", 12000, 1700000000);
+	h_dir("newdir");
+	h_put("newdir/a.bin", 70000, 1700000000);
+	h_dir("newdir/deeper");
+	h_put("newdir/deeper/b.bin", 300, 1700000000);
+	h_put("\xd0\x9d\xd0\xbe\xd0\xb2\xd0\xb0\xd1\x8f \xd0\xb8\xd0\xb3\xd1\x80\xd0\xb0 with a long name.tap", 9000, 1700000000);
+	h_put("README.TXT", 20000, 1700000100);
+	h_put("docs/manual of everything.txt", 100, 1700000100);
+	h_gone("games/boot.sna");
+	h_gone("empty");
+	s_refresh("refresh", VFR_OK, &r);
+	if ((r.added != 7) || (r.removed != 2) || (r.changed != 2)) fail("refresh: %i new, %i gone, %i changed", r.added, r.removed, r.changed);
+	vol_check("refresh", 1);
+	// the open ones read on as before
+	f_read(&f, buf + 1000, sizeof(buf) - 1000, &got);
+	if ((got != sizeof(buf) - 1000) || memcmp(buf, model[m].data, sizeof(buf))) fail("refresh: the open file reads other data");
+	f_close(&f);
+	while ((f_readdir(&d, &fi) == FR_OK) && fi.fname[0]) {
+		if (!strcmp(fi.fname, "new2.tap")) seen = 1;
+		if (!strcmp(fi.fname, "boot.sna")) fail("refresh: the open folder still lists a gone file");
+	}
+	f_closedir(&d);
+	if (!seen) fail("refresh: the open folder does not list the new file");
+	if ((first_cluster("games/manic.tap") != before[0]) || (first_cluster("games/arcade/Jet Set Willy.tap") != before[1])
+			|| (first_cluster("games/guest.bin") != before[2])) fail("refresh: a file that stayed moved");
+	check_guest("refresh");
+	// the next sync has nothing to do but what the guest writes now
+	k = host_ops;
+	s_sync("refresh, no writes");
+	if (host_ops != k) fail("refresh: a sync after it did %i host operations", host_ops - k);
+	s_write("after.bin", 30000);
+	s_write("newdir/a.bin", 1000);
+	s_del("new.txt");
+	s_ren("newdir/deeper/b.bin", "games/b.bin");
+	s_sync("refresh, guest after");
+	vol_check("refresh, guest after", 0);
+	s_remount("refresh remount");
+	s_end();
+}
+
+// a second refresh with nothing changed does nothing; one of a file grown in place and of a
+// folder that outgrows its cluster
+static void sc_refresh_grow(void) {
+	char p[64];
+	unsigned long long h;
+	vfRefresh r;
+	int i;
+	s_begin(122, 1);
+	s_refresh("grow none", VFR_OK, &r);
+	if (gvf->wr) fail("grow: a refresh with nothing to do made the volume live");
+	h = view_hash();
+	s_refresh("grow none again", VFR_OK, &r);
+	if (r.added || r.removed || r.changed || (view_hash() != h)) fail("grow: a refresh with nothing to do changed something");
+	for (i = 0; i < 300; i++) {
+		snprintf(p, sizeof(p), "file number %03i of many.bin", i);
+		h_put(p, 10 + i, 1700000000);
+	}
+	h_put("games/manic.tap", 200000, 1700000200);
+	s_refresh("grow", VFR_OK, &r);
+	if ((r.added != 300) || (r.changed != 1)) fail("grow: %i new, %i changed", r.added, r.changed);
+	s_refresh("grow again", VFR_OK, &r);
+	if (r.added || r.removed || r.changed) fail("grow again: %i new, %i gone, %i changed", r.added, r.removed, r.changed);
+	vol_check("grow", 1);
+	check_guest("grow");
+	for (i = 0; i < 300; i += 2) {
+		snprintf(p, sizeof(p), "file number %03i of many.bin", i);
+		h_gone(p);
+	}
+	s_refresh("grow thinned", VFR_OK, &r);
+	vol_check("grow thinned", 1);
+	check_guest("grow thinned");
+	s_write("guest wrote.bin", 4000);
+	s_sync("grow guest");
+	s_remount("grow remount");
+	s_end();
+}
+
+// no room: nothing changes; the guest's writes not yet carried: refused; a read-only volume
+// takes it too
+static void sc_refresh_refuse(void) {
+	unsigned long long h;
+	vfRefresh r;
+	s_begin(123, 1);
+	s_write("held.bin", 3000);
+	gvf->hold = 1;
+	vfat_tick(gvf);
+	h = view_hash();
+	if (vfat_refresh(gvf, gvf, 1000, &r) != VFR_WRITES) fail("refuse: a refresh over writes on hold");
+	if (view_hash() != h) fail("refuse: a refused refresh changed the volume");
+	gvf->hold = 0;
+	s_sync("refuse released");
+	h = view_hash();
+	{
+		char full[1200];
+		FILE* f;
+		snprintf(full, sizeof(full), "%s/huge.bin", sroot);
+		f = h_open(NULL, full, "wb");
+		fclose(f);
+		h_truncate(NULL, full, (long long)gvf->clusters * gvf->spc * 512 - 4096);	// no room for it, written or not
+	}
+	s_refresh("refuse full", VFR_FULL, &r);
+	if (view_hash() != h) fail("refuse: a refresh with no room changed the volume");
+	h_gone("huge.bin");
+	// a sync the host refuses part of: refused, and told what
+	s_write("lockme.bin", 3000);
+	fail_pat = "lockme";
+	s_refresh("refuse stuck", VFR_STUCK, &r);
+	if (!strstr(vfat_stuck(gvf), "lockme")) fail("refuse: the stuck file is not named (%s)", vfat_stuck(gvf));
+	fail_pat = NULL;		// the cause cleared, nothing written since: the refresh's own retry heals it
+	s_refresh("refuse unstuck", VFR_OK, &r);
+	s_sync("refuse unstuck");
+	s_end();
+	// read only: the volume goes live for the refresh, the guest only reads
+	s_begin(124, 0);
+	h_put("ro new.txt", 777, 1700000000);
+	h_gone("games/manic.tap");
+	s_refresh("refuse read only", VFR_OK, &r);
+	vol_check("refuse read only", 1);
+	check_guest("refuse read only");
+	s_end();
+}
+
+// on hold with nothing written, a refresh asks nothing; what the guest made deeper than the
+// scan looks stays
+static void sc_refresh_hold(void) {
+	vfRefresh r;
+	s_begin(125, 1);
+	gvf->hold = 1;
+	h_put("new on hold.txt", 100, 1700000000);
+	s_refresh("hold", VFR_OK, &r);
+	if (vfat_waiting(gvf)) fail("hold: a refresh with nothing written asks about writing");
+	vol_check("hold first", 1);
+	gvf->hold = 0;
+	s_mkdir("games/arcade/deep");
+	s_mkdir("games/arcade/deep/deeper");
+	s_write("games/arcade/deep/deeper/f.bin", 3000);
+	s_write("games/arcade/deep/g.bin", 2000);
+	s_sync("hold deep");
+	scan_depth = 2;			// games 1, arcade 2: deep is past what the scan reads
+	s_refresh("hold deep refresh", VFR_OK, &r);
+	scan_depth = 1000;
+	if (r.removed) fail("hold: a refresh took %i deep entries for gone", r.removed);
+	check_guest("hold deep");
+	vol_check("hold deep", 0);		// FSInfo: the guest's count, which FatFs here does not keep
+	s_end();
+}
+
+// a file of that name and size in the guest's listing of dir
+static int dir_has(const char* dir, const char* name, unsigned int size) {
+	FF_DIR d;
+	FILINFO fi;
+	int ok = 0;
+	if (f_opendir(&d, dir) != FR_OK) return 0;
+	while ((f_readdir(&d, &fi) == FR_OK) && fi.fname[0])
+		if (!strcmp(fi.fname, name) && (fi.fsize == size)) ok = 1;
+	f_closedir(&d);
+	return ok;
+}
+
+// the names and a sync that has nothing to do; by listing, as a lookup of AGAME.TAP is
+// the 8.3 name of "A game.tap" first
+static void names_check(const char* when) {
+	int k;
+	if (!dir_has("/", "AGAME.TAP", 2000) || !dir_has("/", "A game.tap", 1000)) fail("%s: the guest does not list both", when);
+	k = host_ops;
+	sync_checked(0);		// 0 after a mount: nothing written, nothing live
+	if (host_ops != k) fail("%s: the sync after did %i host operations", when, host_ops - k);
+	check_host(sroot, when);
+}
+
+// a name whose 8.3 form another file has already takes ~1 and keeps its long name: at a
+// refresh and at a mount, and the sync after takes it for no rename
+static void sc_refresh_names(void) {
+	vfRefresh r;
+	s_begin(126, 1);
+	h_put("A game.tap", 1000, 1700000000);		// AGAME.TAP is its 8.3 name
+	h_put("a cart.tap", 3000, 1700000000);		// ACART.TAP
+	s_refresh("names first", VFR_OK, &r);
+	// no long name of their own: ~1 needs one. The fresh scan lists ACART.TAP before
+	// "a cart.tap", so only the volume finds its 8.3 name taken.
+	h_put("AGAME.TAP", 2000, 1700000000);
+	h_put("ACART.TAP", 4000, 1700000000);
+	s_refresh("names second", VFR_OK, &r);
+	if (r.added != 2) fail("names: %i new", r.added);
+	if (!dir_has("/", "ACART.TAP", 4000) || !dir_has("/", "a cart.tap", 3000)) fail("names: the guest does not list both carts");
+	names_check("names");
+	f_unmount("");
+	vfat_free(gvf);
+	gvf = mount_folder(sroot, 1);		// the mount makes the same names
+	if (f_mount(&fs, "", 1) != FR_OK) fail("names: remount");
+	names_check("names remount");
+	s_end();
+}
+
+// a host rename, of the case alone too
+static void host_mv(const char* from, const char* to) {
+#ifdef _WIN32
+	wchar_t* a = wide(from);
+	wchar_t* b = wide(to);
+	MoveFileW(a, b);
+	free(a);
+	free(b);
+#else
+	rename(from, to);
+#endif
+}
+
+// what the scan does not list but the host has (a hidden name) stays; gone from the host, it
+// goes. A name the host has in another case now is the new one.
+static void sc_refresh_hidden(void) {
+	char a[1200], b[1200];
+	vfRefresh r;
+	FILINFO fi;
+	int m;
+	s_begin(127, 1);
+	s_write(".hidden.txt", 1500);
+	s_mkdir(".cfg");
+	s_write(".cfg/a.bin", 800);
+	s_sync("hidden made");
+	scan_hide = 1;
+	h_put("seen.txt", 100, 1700000000);
+	s_refresh("hidden", VFR_OK, &r);
+	if (r.removed || (r.added != 1)) fail("hidden: %i gone, %i new", r.removed, r.added);
+	check_guest("hidden");
+	h_gone(".hidden.txt");
+	s_refresh("hidden gone", VFR_OK, &r);
+	if (r.removed != 1) fail("hidden gone: %i gone", r.removed);
+	if (f_stat("/.hidden.txt", &fi) == FR_OK) fail("hidden gone: the guest still has it");
+	scan_hide = 0;
+	snprintf(a, sizeof(a), "%s/games/manic.tap", sroot);
+	snprintf(b, sizeof(b), "%s/games/MANIC.TAP", sroot);
+	host_mv(a, b);
+	m = m_find("games/manic.tap");
+	free(model[m].path);
+	model[m].path = strdup("games/MANIC.TAP");
+	s_refresh("hidden case", VFR_OK, &r);
+	if ((r.removed != 1) || (r.added != 1)) fail("hidden case: %i gone, %i new", r.removed, r.added);
+	check_guest("hidden case");
+	// a case only a Unicode fold sees: one entry for the one host file, not two
+	h_put("\xd0\x98\xd0\xb3\xd1\x80\xd0\xb0.tap", 2500, 1700000000);		// Igra.tap in Cyrillic
+	s_refresh("hidden cyrillic", VFR_OK, &r);
+	snprintf(a, sizeof(a), "%s/\xd0\x98\xd0\xb3\xd1\x80\xd0\xb0.tap", sroot);
+	snprintf(b, sizeof(b), "%s/\xd0\x98\xd0\x93\xd0\xa0\xd0\x90.tap", sroot);
+	host_mv(a, b);
+	m = m_find("\xd0\x98\xd0\xb3\xd1\x80\xd0\xb0.tap");
+	free(model[m].path);
+	model[m].path = strdup("\xd0\x98\xd0\x93\xd0\xa0\xd0\x90.tap");
+	s_refresh("hidden cyrillic case", VFR_OK, &r);
+	if ((r.removed != 1) || (r.added != 1)) fail("hidden cyrillic case: %i gone, %i new", r.removed, r.added);
+	if (!dir_has("/", "\xd0\x98\xd0\x93\xd0\xa0\xd0\x90.tap", 2500) || dir_has("/", "\xd0\x98\xd0\xb3\xd1\x80\xd0\xb0.tap", 2500))
+		fail("hidden cyrillic case: the guest lists the old spelling");
+	check_guest("hidden cyrillic case");
+	s_sync("hidden sync");
+	s_remount("hidden remount");
+	s_end();
+}
+
 static int run_scenarios(const char* root) {
 	static const struct { const char* name; void (*fn)(void); } list[] = {
 		{"swap", sc_swap}, {"replace", sc_replace}, {"fragment", sc_fragment}, {"bigdir", sc_bigdir},
@@ -1792,13 +2232,16 @@ static int run_scenarios(const char* root) {
 		{"trash", sc_trash}, {"unknown", sc_unknown}, {"readonly", sc_readonly}, {"hostfail", sc_hostfail},
 		{"halfmove", sc_halfmove}, {"retype", sc_retype}, {"hold", sc_hold}, {"pin", sc_pin}, {"newdir", sc_newdir},
 		{"flush", sc_flush}, {"bigfile", sc_bigfile}, {"parked", sc_parked}, {"cap", sc_cap},
-		{"outside", sc_outside}, {"sameslot", sc_sameslot}
+		{"outside", sc_outside}, {"sameslot", sc_sameslot}, {"refresh", sc_refresh}, {"refresh_grow", sc_refresh_grow},
+		{"refresh_refuse", sc_refresh_refuse}, {"refresh_hold", sc_refresh_hold}, {"refresh_names", sc_refresh_names},
+		{"refresh_hidden", sc_refresh_hidden}
 	};
 	unsigned int i;
 	int bad = 0;
 	snprintf(sroot, sizeof(sroot), "%s", root);
 	printf("== scenarios\n");
 	for (i = 0; i < sizeof(list) / sizeof(list[0]); i++) {
+		fails = 0;
 		list[i].fn();
 		if (gvf) s_end();
 		printf("%s: %s%s\n", list[i].name, fails ? "FAIL " : "ok", fails ? failmsg : "");

@@ -26,3 +26,9 @@ parked: ok
 cap: ok
 outside: ok
 sameslot: ok
+refresh: ok
+refresh_grow: ok
+refresh_refuse: ok
+refresh_hold: ok
+refresh_names: ok
+refresh_hidden: ok

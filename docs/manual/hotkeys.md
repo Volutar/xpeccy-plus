@@ -166,6 +166,8 @@ on the numeric keypad: Alt+Num++ is Alt with the keypad plus.
 | Reload | - | - |
 | Next Side | Shift+F3 | Shift+F3 |
 | Previous Side | - | - |
+| SD Card: Eject | - | - |
+| SD Card: Refresh | - | - |
 | Add to Favorites | - | - |
 | Save | F2 | F2 |
 | Save Changed Disks | - | F9 |

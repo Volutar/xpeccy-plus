@@ -40,6 +40,7 @@ typedef struct {
 	int (*empty)(void* ctx, const char* path);			// 1 when a folder holds nothing
 	void (*settime)(void* ctx, const char* path, unsigned int mtime);	// unix time, local
 	int (*stat)(void* ctx, const char* path, long long* size, long long* mtime);	// unix time; 0 when it is there
+	int (*exact)(void* ctx, const char* path);			// 1 when it is there spelled just so, case and all
 } vfHost;
 
 typedef struct {
@@ -156,6 +157,28 @@ void vfat_release(vFat*, int allow);
 // read-only from now on, the volume in use: the folder stays as it is, and what the guest
 // writes stays in memory as with a Read-only answer, so its DOS goes on as it was
 void vfat_read_only(vFat*);
+
+// what vfat_refresh did, or why it did nothing
+enum {
+	VFR_OK = 0,
+	VFR_WRITES,		// the guest's writes have not reached the folder yet (on hold)
+	VFR_STUCK,		// a sync could not carry some of them (vfat_stuck says what)
+	VFR_DETACHED,		// the folder no longer follows the machine
+	VFR_FULL,		// the folder's changes do not fit on the volume
+	VFR_PART,		// done, but some of the changes could not be put in (out->left)
+	VFR_MEMORY		// no memory: if it ran out midway, the volume no longer follows the folder
+};
+typedef struct {
+	int added, removed, changed;	// entries, what is in a folder counted too
+	int left;			// changes left out
+} vfRefresh;
+// VFR_OK, or why a refresh is refused now: VFR_WRITES, VFR_STUCK, VFR_DETACHED
+int vfat_refresh_ready(vFat*);
+// the host names the last sync could not do, for the user ("" if none)
+const char* vfat_stuck(vFat*);
+// the folder changed on the host: what fresh (the tree scanned again, maxdepth deep) differs
+// by goes into the volume; a refusal and VFR_FULL change nothing
+int vfat_refresh(vFat*, const vFat* fresh, int maxdepth, vfRefresh* out);
 
 #ifdef __cplusplus
 }
