@@ -1271,8 +1271,29 @@ static void label_grid(QGridLayout* grid) {
 	}
 }
 
+// a row of its own (a box with its text and a line beside it): its labels to its one control
+static void label_line(QBoxLayout* box) {
+	if ((box->direction() != QBoxLayout::LeftToRight) && (box->direction() != QBoxLayout::RightToLeft)) return;
+	QList<QLabel*> labs;
+	QList<QWidget*> ctls;
+	for (int i = 0; i < box->count(); i++) {
+		QWidget* wid = box->itemAt(i)->widget();
+		if (!wid) continue;
+		if (QLabel* lab = qobject_cast<QLabel*>(wid)) {
+			labs.append(lab);
+		} else if (label_target(wid)) {
+			ctls.append(wid);
+		}
+	}
+	if (ctls.size() != 1) return;
+	foreach(QLabel* lab, labs) {
+		if (label_free(lab) && !lab->buddy()) new xLabelFor(lab, ctls.first());
+	}
+}
+
 void label_rows(QWidget* root) {
 	foreach(QGridLayout* grid, root->findChildren<QGridLayout*>()) label_grid(grid);
+	foreach(QBoxLayout* box, root->findChildren<QBoxLayout*>()) label_line(box);
 	foreach(QLabel* lab, root->findChildren<QLabel*>()) {
 		if (lab->buddy() && label_free(lab) && label_target(lab->buddy())) new xLabelFor(lab, lab->buddy());
 	}

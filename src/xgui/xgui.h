@@ -209,8 +209,8 @@ class xOptSheet {
 // mouse is over the label; any other control gets the focus. Tied again, it
 // takes the new one
 void label_for(QLabel*, QWidget*);
-// each label in a window's grids tied to its buddy, else to its row's one
-// control, and each label with a buddy anywhere in it; a label tied already
+// each label in a window's grids and rows tied to its buddy, else to its row's
+// one control, and each label with a buddy anywhere in it; a label tied already
 // stays as it is
 void label_rows(QWidget*);
 
