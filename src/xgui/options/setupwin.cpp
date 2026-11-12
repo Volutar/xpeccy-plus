@@ -939,6 +939,8 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 // profiles manager
 	buildSidebar();
 	ui.verticalLayout_40->insertWidget(0, ui.tvHotkeys->controls());
+	// a row's name and what it says go to its control: a click on them toggles a box
+	label_rows(this);
 }
 
 // The page in front, as tables show a selection, with a bar in the style's link color.
@@ -2209,6 +2211,7 @@ QToolButton* SetupWin::sheetButton(QWidget* body, const char* title) {
 QToolButton* SetupWin::devRow(QGridLayout* grid, const QString& name, QWidget* choice, QWidget* body, const char* title) {
 	int row = grid->rowCount();
 	QLabel* lab = new QLabel(name);
+	label_for(lab, choice);
 	QToolButton* btn = sheetButton(body, title);
 	grid->addWidget(lab, row, 0);
 	// the widths it had on its old page mean nothing here
@@ -3073,6 +3076,8 @@ void SetupWin::fillRomSlots() {
 			rb->setChecked(role.res == resTarget);
 			resGroup->addButton(rb, role.res);
 			ui.gridRomSlots->addWidget(rb, row, 0);
+			// the slot's name picks the ROM to boot from
+			label_for(qobject_cast<QLabel*>(ui.gridRomSlots->itemAtPosition(row, 1)->widget()), rb);
 			resets = true;
 		}
 		row++;
@@ -3179,6 +3184,7 @@ void SetupWin::addRomSlot(int row, QString name, int slot, const QStringList& fi
 	btn->setToolTip(tr("Pick a ROM file"));
 	btn->setEnabled(has);
 	connect(btn, &QToolButton::released, this, [=](){ romSlotFile(box, slot); });
+	label_for(lab, box);
 	ui.gridRomSlots->addWidget(lab, row, 1);
 	ui.gridRomSlots->addWidget(box, row, 2);
 	ui.gridRomSlots->addWidget(btn, row, 3);
@@ -3548,6 +3554,7 @@ void SetupWin::buildFolders() {
 	auto label = [](QComboBox* cb, const QString& name, const QString& tip) {
 		QLabel* lab = new QLabel(name);
 		lab->setBuddy(cb);
+		label_for(lab, cb);
 		cb->setToolTip(tip);
 		lab->setToolTip(tip);
 		return lab;
@@ -3560,6 +3567,7 @@ void SetupWin::buildFolders() {
 	gridFolders->addWidget(label(cbFolderWrite, tr("Folders"),
 		tr("R/O: read-only, the folder stays as it is,\nfrom Apply on\nR/W: read/write, the folder's files follow\nwhat the machine writes, from the next Hard Reset")), 0, 1);
 	gridFolders->addWidget(note, 0, 2);
+	label_for(note, cbFolderWrite);
 	gridFolders->addWidget(label(cbFolderTrash, tr("Deleted files"),
 		tr("Where a file the machine deletes in such\na folder goes. A file the trash will not\ntake stays in the folder")), 1, 1);
 	gridFolders->addWidget(cbFolderTrash, 1, 2, Qt::AlignLeft);
@@ -3588,6 +3596,8 @@ void SetupWin::buildPause() {
 		gridPause->addWidget(cb, r, 0);
 		gridPause->addWidget(lab, r, 1);
 		gridPause->addWidget(what, r++, 2);
+		label_for(lab, cb);
+		label_for(what, cb);
 		return cb;
 	};
 	cbPauseInactive = row(tr("Pause when inactive"), tr("While another program has the focus"),
@@ -3629,7 +3639,11 @@ static void savesRow(QGridLayout* grid, QWidget* ctl, const QString& name, const
 	lab->setToolTip(tip);
 	grid->addWidget(ctl, row, 0);
 	grid->addWidget(lab, row, 1);
-	if (!hint.isEmpty()) grid->addWidget(savesHint(hint), row, 2);
+	label_for(lab, ctl);
+	if (hint.isEmpty()) return;
+	QLabel* what = savesHint(hint);
+	grid->addWidget(what, row, 2);
+	label_for(what, ctl);
 }
 
 void SetupWin::buildSaves() {
@@ -3692,6 +3706,7 @@ void SetupWin::buildSaves() {
 		int row = grid->rowCount();
 		QLabel* lab = new QLabel(tr("Saves folder"));
 		lab->setBuddy(leSaveDir);
+		label_for(lab, leSaveDir);
 		lab->setToolTip(tr("Where the saves go. Empty: the config folder"));
 		QHBoxLayout* dirRow = new QHBoxLayout;
 		dirRow->addWidget(leSaveDir, 1);
