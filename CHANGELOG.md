@@ -86,7 +86,7 @@ before that point is upstream's history and is not repeated here.
   card - 8 channels, 4 MB, its firmware 1.11, and no click when a channel's volume changes.
   Programs written for the NeoGS find it, and the ZX Evolution machines come with one. Its SD
   card and MP3 chip are not there yet. *(reported by ZXLion)*
-- **General Sound: Separation**, as the PSG has, 75% at first: each side takes a little of
+- **General Sound: Separation**, like the PSG's, 75% at first: each side takes a little of
   the other, 100% leaves the card's own stereo.
 
 ### Changed
@@ -150,8 +150,8 @@ before that point is upstream's history and is not repeated here.
   takes over a second says so in the status bar. *(reported by Volutar)*
 - **The Debugger's Stack panel is narrower**: less room between the offsets and the words.
   *(requested by Volutar)*
-- **The General Sound mixes as its circuit does**: each side carries some of the other,
-  and the card runs at its own 12 MHz, a little slower than before.
+- **The General Sound mixes as the card does**: its sides bleed into each other as on the
+  board, and it runs at exactly 12 MHz.
 
 ### Fixed
 
