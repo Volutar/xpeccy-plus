@@ -148,7 +148,8 @@ before that point is upstream's history and is not repeated here.
 
 - **Tab can be bound in the Gamepads window** and set as a hotkey: pressing it moved to the
   next button instead.
-- **Fire on Ctrl of "Keyboard: arrows + Ctrl" no longer presses Symbol Shift too** (Windows).
+- **Shift or Ctrl bound to a keyboard player no longer presses Caps Shift or Symbol Shift
+  too** (Windows).
 - **The Kempston mouse works on the +2A and +3.** *(reported by Alexey Boldyrev)*
 - **The Kempston joystick on the Scorpion ZS 256 reads nothing pressed after a disk access**:
   reading the disk controller's status clears its interrupt, as on the chip, and the joystick
