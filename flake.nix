@@ -29,20 +29,35 @@
             pkgs.cmake
             pkgs.pkg-config
             pkgs.qt6.wrapQtAppsHook
+            # the user manual (tools/manual.py, docs/manual/requirements.txt)
+            (pkgs.python3.withPackages (ps: [
+              ps.sphinx
+              ps.myst-parser
+              ps.furo
+            ]))
           ];
 
           buildInputs = [
             pkgs.qt6.qtbase
             pkgs.qt6.qt5compat
+            pkgs.libGL
             pkgs.SDL2
             pkgs.zlib
             pkgs.curl
           ];
 
+          # the manual is built before CMake, which installs it from MANUAL_DIR
+          preConfigure = ''
+            python3 tools/manual.py html
+            cmakeFlagsArray+=("-DMANUAL_DIR=$PWD/build/manual")
+          '';
+
           cmakeFlags = [
             "-DQTVERSION=6"
-            "-DSDL1BUILD=0"
+            # linked, not loaded at run time: the store has no global libcurl.so.4
             "-DCURL_DLOPEN=OFF"
+            # the commit's date: the sandbox's clock says 1980
+            "-DXDATE=${builtins.substring 0 8 (self.lastModifiedDate or "")}"
           ];
 
           installPhase = ''
@@ -54,7 +69,7 @@
           meta = {
             description = "ZX Spectrum emulator";
             homepage = "https://github.com/dotkoval/xpeccy-plus";
-            license = pkgs.lib.licenses.gpl3;
+            license = pkgs.lib.licenses.mit;
             mainProgram = "xpeccy-plus";
           };
         };
