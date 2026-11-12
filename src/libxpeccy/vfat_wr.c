@@ -1129,6 +1129,7 @@ static void del_dirs(vFat* vf, unsigned char* gone, int oldNodes, int* failed) {
 			if (!vf_path(vf, i, path, sizeof(path))) continue;
 			if (!vf->host.empty(vf->host.ctx, path) || vf->host.remove(vf->host.ctx, path, 1)) {
 				xlog(XLG_DISK, XLL_WARN, "folder: left %s, not empty or not removable", path);
+				vfw_fail(vf, vf->node[i].name);
 				gone[i] = 0;
 				(*failed)++;
 				continue;
@@ -2124,7 +2125,7 @@ static void rf_match(vfRf* rf) {
 				rf->fmap[j] = -2;
 				continue;
 			}
-			rf->vents[fp] += fn->ecnt;
+			rf->vents[fp] += fn->lfn ? fn->ecnt : 2;	// the volume may find its 8.3 name taken
 		} else {
 			rf->fents[fn->parent] += fn->ecnt;
 		}
@@ -2139,13 +2140,13 @@ static void rf_match(vfRf* rf) {
 }
 
 // what went from the folder, each from the top of what goes. Left be: what lies deeper than
-// the scan looks, and what the host still has though the scan did not list it (a hidden name,
-// a link) - unless the folder lists it in another case, which a case-blind host gives for it.
+// the scan looks, and what the host still has spelled just so though the scan did not list it
+// (a hidden name, a link) - another case of it, or an 8.3 alias, a case-blind host also
+// answers for is gone.
 static void rf_gone(vfRf* rf, int maxdepth) {
 	vFat* vf = rf->vf;
-	const vFat* fresh = rf->fresh;
 	char path[2048];
-	int v, a, c, d, top, other;
+	int v, a, d, top;
 	for (v = 1; v < vf->nodes; v++) {
 		vfNode* nd = vf->node + v;
 		if (nd->dead || (nd->parent < 0) || (rf->rmap[v] >= 0) || node_pinned(vf, v)) continue;
@@ -2155,12 +2156,7 @@ static void rf_gone(vfRf* rf, int maxdepth) {
 		for (a = nd->parent; a > 0; a = vf->node[a].parent)
 			if ((rf->rmap[a] < 0) && !vf->node[a].dead) { top = 0; break; }
 		if (!top) continue;
-		if (nd->hname && vf_path(vf, v, path, sizeof(path)) && host_kind(vf, path)) {
-			other = 0;
-			for (c = fresh->node[rf->rmap[nd->parent]].child; (c >= 0) && !other; c = fresh->node[c].next)
-				other = fresh->node[c].hname && name_eq(fresh->node[c].hname, nd->hname);
-			if (!other) continue;
-		}
+		if (nd->hname && vf->host.exact && vf_path(vf, v, path, sizeof(path)) && vf->host.exact(vf->host.ctx, path)) continue;
 		rf->gone[rf->ngone++] = v;
 	}
 }

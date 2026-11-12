@@ -40,6 +40,7 @@ typedef struct {
 	int (*empty)(void* ctx, const char* path);			// 1 when a folder holds nothing
 	void (*settime)(void* ctx, const char* path, unsigned int mtime);	// unix time, local
 	int (*stat)(void* ctx, const char* path, long long* size, long long* mtime);	// unix time; 0 when it is there
+	int (*exact)(void* ctx, const char* path);			// 1 when it is there spelled just so, case and all
 } vfHost;
 
 typedef struct {

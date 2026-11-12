@@ -174,8 +174,26 @@ static int vfh_stat(void*, const char* path, long long* size, long long* mtime) 
 	return 0;
 }
 
+// a case-blind disk answers for another case of a name too, and Windows for an 8.3 alias:
+// the name as the host keeps it must be this one
+static int vfh_exact(void* ctx, const char* path) {
+	if (!vfh_kind(ctx, path)) return 0;
+	QString p = vfh_str(path);
+	QString name = QFileInfo(p).fileName();
+#ifdef _WIN32
+	WIN32_FIND_DATAW fd;
+	HANDLE h = FindFirstFileW(vfh_wide(p).c_str(), &fd);
+	if (h == INVALID_HANDLE_VALUE) return 0;
+	FindClose(h);
+	return (QString::fromWCharArray(fd.cFileName) == name) ? 1 : 0;
+#else
+	return QDir(QFileInfo(p).path()).entryList(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System).contains(name) ? 1 : 0;
+#endif
+}
+
 static const vfHost vfs_host = {
-	NULL, vfh_open, vfh_mkdir, vfh_rename, vfh_replace, vfh_remove, vfh_truncate, vfh_kind, vfh_empty, vfh_settime, vfh_stat
+	NULL, vfh_open, vfh_mkdir, vfh_rename, vfh_replace, vfh_remove, vfh_truncate, vfh_kind, vfh_empty, vfh_settime, vfh_stat,
+	vfh_exact
 };
 
 // == the scan ==
@@ -531,6 +549,10 @@ QString fold_refresh(vFat* vf, vfRefresh* r) {
 	if (!vf || !vf->root) return QString();
 	vfat_flush(vf);
 	int res = vfat_refresh_ready(vf);		// before the scan: a refused one reads nothing
+	if (res == VFR_STUCK) {		// once more: a guest mid-save, or what the user has cleared since
+		vfat_sync(vf, 1);
+		res = vfat_refresh_ready(vf);
+	}
 	if (res == VFR_OK) {
 		QString path = QString::fromUtf8(vf->root);
 		bool cut = false;
