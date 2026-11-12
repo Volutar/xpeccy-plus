@@ -29,6 +29,10 @@ option(XRELEASE "build as a release version" OFF)
 # other build, which then offers no update of its own (src/xcore/update.cpp)
 set(XPACKAGE "" CACHE STRING "release asset suffix of this build, set by packaging/")
 
+# the date a dev build carries, YYYYMMDD; empty: the day it is built. The Nix
+# flake gives the commit's date: its sandbox clock says 1980
+set(XDATE "" CACHE STRING "build date of a dev build, YYYYMMDD; empty: today")
+
 # Windows: drop the Qt plugins windeployqt copies but this app never loads
 # (see cmake/windeploy.cmake.in for the list and why each one goes)
 option(TRIMDEPLOY "trim unused Qt plugins from the installed folder" ON)
@@ -228,6 +232,7 @@ add_custom_target(version_header ALL
 		-DXVERSION_BASE=${XVER}
 		-DXRELEASE=${XRELEASE}
 		-DXPACKAGE=${XPACKAGE}
+		-DXDATE=${XDATE}
 		-P ${CMAKE_SOURCE_DIR}/cmake/genversion.cmake
 	BYPRODUCTS ${VERSION_HEADER} ${BUILDID_HEADER}
 	COMMENT "Generating version.h"
@@ -304,81 +309,43 @@ set(MOCFILES
 	./src/xgui/labelist.h
 )
 
-# Qt5 / Qt6
+# Qt 5 or 6. -DQTVERSION=5 or 6 picks one; without it Qt 6 is taken when all of it
+# that we need is there, Qt 5 otherwise. QtNetwork (DeZog, the control port) and
+# OpenGL are always in: a machine with no GL falls back to QPainter at run time.
 
-if (DEFINED QT6BUILD)
-	if (${QT6BUILD})
+set(QT6_PARTS Core Gui Widgets Core5Compat Network OpenGLWidgets)
+if(NOT QTVERSION)
+	find_package(Qt6 QUIET COMPONENTS ${QT6_PARTS})
+	if(Qt6_FOUND)
 		set(QTVERSION 6)
-	else(${QT6BUILD})
+	else()
+		string(REPLACE ";" ", " QT6_LIST "${QT6_PARTS}")
+		message(STATUS "Qt 6 (${QT6_LIST}) not found, trying Qt 5")
 		set(QTVERSION 5)
-	endif(${QT6BUILD})
-elseif(NOT DEFINED QTVERSION)
-	set(QTVERSION 5)
+	endif()
 endif()
+set(QTVERSION ${QTVERSION} CACHE STRING "Qt major version: 5 or 6")
 
-if(${QTVERSION} EQUAL 4)
-	find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
-	include(${QT_USE_FILE})
-	qt4_add_resources(RESOURCES ${QRCFILES})
-	qt4_wrap_ui(UIHEADERS ${UIFILES})
-	set(CPACK_RPM_PACKAGE_REQUIRES "libqt4 >= 4.6, libqt4-x11 >= 4.6")
-	set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqtcore4 (>=4.6), libqtgui4 (>=4.6)")
+find_package(OpenGL REQUIRED)
 
-	if(${USEQTNETWORK})
-		find_package(Qt4 COMPONENTS QtNetwork REQUIRED)
-		set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, libqt4-network >= 4.6")
-		set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libqt4-network (>=4.6)")
-		add_definitions("-DUSENETWORK")
-	endif()
-	if(${USEOPENGL})
-		find_package(Qt4 COMPONENTS QtOpenGL REQUIRED)
-		set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, libqt4-opengl >= 4.6")
-		set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libqt4-opengl (>=4.6)")
-		add_definitions("-DUSEOPENGL")
-	endif()
+if(${QTVERSION} EQUAL 5)
 
-	# after the options: moc has to see USEOPENGL, or MainWin gets QWidget as its base
-	qt4_wrap_cpp(MOCHEADERS ${MOCFILES})
-	set(LIBRARIES ${LIBRARIES} ${QT_LIBRARIES})
-	set(QT_VER ${QT_VERSION_MAJOR}.${QT_VERSION_MINOR}.${QT_VERSION_PATCH})
-
-elseif(${QTVERSION} EQUAL 5)
-
-	find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
-	set(LIBRARIES ${LIBRARIES} Qt5::Widgets)
+	find_package(Qt5 COMPONENTS Core Gui Widgets Network OpenGL REQUIRED)
+	set(LIBRARIES ${LIBRARIES} Qt5::Widgets Qt5::Network Qt5::OpenGL ${OPENGL_LIBRARIES})
 	qt5_add_resources(RESOURCES ${QRCFILES})
 	qt5_wrap_ui(UIHEADERS ${UIFILES})
-	set(CPACK_RPM_PACKAGE_REQUIRES "libQt5Gui5 >= 5.3, libQt5Widgets5 >= 5.3")
-	set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt5gui5 (>=5.3), libqt5widgets5 (>=5.3)")
-
-	if(${USEQTNETWORK})
-		find_package(Qt5 COMPONENTS Network REQUIRED)
-		set(LIBRARIES ${LIBRARIES} Qt5::Network)
-		set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libqt5network5 (>=5.3)")
-		set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, libQt5Network5 >= 5.3")
-		add_definitions("-DUSENETWORK")
-	endif()
-	if (${USEOPENGL})
-		find_package(OpenGL REQUIRED)
-		find_package(Qt5 COMPONENTS OpenGL REQUIRED)
-		set(LIBRARIES ${LIBRARIES} Qt5::OpenGL ${OPENGL_LIBRARIES})
-		set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, libQt5OpenGL5 >= 5.3")
-		set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libqt5opengl5 (>=5.3)")
-		add_definitions("-DUSEOPENGL")
-	endif()
-
-	# after the options: moc has to see USEOPENGL, or MainWin gets QWidget as its base
 	qt5_wrap_cpp(MOCHEADERS ${MOCFILES})
+	set(CPACK_RPM_PACKAGE_REQUIRES "libQt5Gui5 >= 5.3, libQt5Widgets5 >= 5.3, libQt5Network5 >= 5.3, libQt5OpenGL5 >= 5.3")
+	set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt5gui5 (>=5.3), libqt5widgets5 (>=5.3), libqt5network5 (>=5.3), libqt5opengl5 (>=5.3)")
 	set(QT_VER ${Qt5Widgets_VERSION})
 	get_target_property(QMAKE_EXE Qt5::qmake IMPORTED_LOCATION)
 
 elseif(${QTVERSION} EQUAL 6)
-#	message(FATAL_ERROR "Qt6 usage is not implemented yet")
 # Qt6 requires c++17
 	set(CMAKE_CXX_STANDARD 17)
 	set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-	find_package(Qt6 COMPONENTS Core Gui Widgets Core5Compat REQUIRED)
+	find_package(Qt6 COMPONENTS ${QT6_PARTS} REQUIRED)
 	# 6.11.1 traps at startup on macOS 27.2 inside QImage::toCGImage(); 6.11.2
 	# and 6.11.3 start. The 6.11 series only: older Qt 6 was not tried.
 	if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND Qt6_VERSION
@@ -388,63 +355,29 @@ elseif(${QTVERSION} EQUAL 6)
 			"Qt ${Qt6_VERSION} traps at startup on macOS 27.2 while the menu bar is built; "
 			"6.11.2 and 6.11.3 start. Prefer Qt 6.11.2 or newer for a macOS build.")
 	endif()
-	set(LIBRARIES ${LIBRARIES} Qt6::Widgets Qt6::Core Qt6::Gui Qt6::Core5Compat)
+	set(LIBRARIES ${LIBRARIES} Qt6::Widgets Qt6::Core Qt6::Gui Qt6::Core5Compat
+		Qt6::Network Qt6::OpenGLWidgets ${OPENGL_LIBRARIES})
 	qt6_add_resources(RESOURCES ${QRCFILES})
 	qt6_wrap_ui(UIHEADERS ${UIFILES})
-	set(CPACK_RPM_PACKAGE_REQUIRES "libQt6Gui6 >= 6.1, libQt6Widgets6 >= 6.1, libQt6Core5Compat6 >= 6.1")
-	set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6gui6 (>=6.1), libqt6widgets6 (>=6.1), libqt6core5compat6 >= 6.1")
-	if(${USEQTNETWORK})
-		find_package(Qt6 COMPONENTS Network REQUIRED)
-		set(LIBRARIES ${LIBRARIES} Qt6::Network)
-		set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libqt6network6 (>=6.1)")
-		set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, libQt6Network6 >= 6.1")
-		add_definitions("-DUSENETWORK")
-	endif()
-	if (${USEOPENGL})
-		find_package(OpenGL REQUIRED)
-		find_package(Qt6 COMPONENTS OpenGLWidgets REQUIRED)
-		set(LIBRARIES ${LIBRARIES} Qt6::OpenGLWidgets ${OPENGL_LIBRARIES})
-		set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, libQt6OpenGL6 >= 6.1")
-		set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libqt6opengl6 (>=6.1)")
-		add_definitions("-DUSEOPENGL")
-	endif()
-
-	# after the options: moc has to see USEOPENGL, or MainWin gets QWidget as its base
 	qt6_wrap_cpp(MOCHEADERS ${MOCFILES})
+	set(CPACK_RPM_PACKAGE_REQUIRES "libQt6Gui6 >= 6.1, libQt6Widgets6 >= 6.1, libQt6Core5Compat6 >= 6.1, libQt6Network6 >= 6.1, libQt6OpenGL6 >= 6.1")
+	set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6gui6 (>=6.1), libqt6widgets6 (>=6.1), libqt6core5compat6 >= 6.1, libqt6network6 (>=6.1), libqt6opengl6 (>=6.1)")
 	set(QT_VER ${Qt6Widgets_VERSION})
 	get_target_property(QMAKE_EXE Qt6::qmake IMPORTED_LOCATION)
 else()
-	message(FATAL_ERROR "Not supported Qt version defined")
+	message(FATAL_ERROR "QTVERSION=${QTVERSION}: only 5 and 6 are supported")
 endif()
 
-# SDL
+# SDL2
 
-if(${SDL1BUILD})
-	find_package(SDL REQUIRED)
-	if(${SDL_FOUND})
-		add_definitions(-DHAVESDL1)
-		include_directories(${SDL_INCLUDE_DIR})
-		set(LIBRARIES ${LIBRARIES} ${SDL_LIBRARY})
-		set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libSDL1.2debian (>=1.2)")
-		set(CPACK_RPM_PACKAGE_DEPENDS "${CPACK_RPM_PACKAGE_DEPENDS}, SDL >= 1.2")
-		set(SDL_VER ${SDL_VERSION_STRING})
-		set(SDL_NAME "SDL")
-	endif(${SDL_FOUND})
-else(${SDL1BUILD})
-	find_package(SDL2 REQUIRED)
-	if (${SDL2_FOUND})
-		add_definitions(-DHAVESDL2)
-		# main.cpp keeps its own main(): no SDL_main rename (it clashed with Qt6's qMain)
-		add_definitions(-DSDL_MAIN_HANDLED)
-		include_directories(${SDL2_INCLUDE_DIR})
-		set(LIBRARIES ${LIBRARIES} ${SDL2_LIBRARY})
-		set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libsdl2-2.0-0 (>=2.0) | libSDL2 (>=2.0)")
-		set(CPACK_RPM_PACKAGE_DEPENDS "${CPACK_RPM_PACKAGE_DEPENDS}, SDL2 >= 2.0")
-		set(SDL_VER "2.x")
-		set(SDL_NAME "SDL2")
-		message(STATUS "SDL2_INCLUDE_DIR = " ${SDL2_INCLUDE_DIR})
-	endif(${SDL2_FOUND})
-endif(${SDL1BUILD})
+find_package(SDL2 REQUIRED)
+# main.cpp keeps its own main(): no SDL_main rename (it clashed with Qt6's qMain)
+add_definitions(-DSDL_MAIN_HANDLED)
+include_directories(${SDL2_INCLUDE_DIR})
+set(LIBRARIES ${LIBRARIES} ${SDL2_LIBRARY})
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libsdl2-2.0-0 (>=2.0) | libSDL2 (>=2.0)")
+set(CPACK_RPM_PACKAGE_DEPENDS "${CPACK_RPM_PACKAGE_DEPENDS}, SDL2 >= 2.0")
+message(STATUS "SDL2_INCLUDE_DIR = " ${SDL2_INCLUDE_DIR})
 
 # zlib: rzx and compressed tzx blocks
 
@@ -738,19 +671,7 @@ message(STATUS "Build type : ${CMAKE_BUILD_TYPE}")
 message(STATUS "Xpeccy+ version : ${XVER}")
 message(STATUS "OS : ${CMAKE_SYSTEM_NAME}")
 message(STATUS "Qt version : ${QT_VER}")
-message(STATUS "SDL version : ${SDL_VER}")
-
-if (${USEQTNETWORK})
-	message(STATUS "Network: yes")
-else()
-	message(STATUS "Network: no")
-endif()
-
-if (${USEOPENGL})
-	message(STATUS "OpenGL: yes")
-else()
-	message(STATUS "OpenGL: no")
-endif()
+message(STATUS "SDL version : 2.x")
 
 if (BIG_ENDIAN)
 	message(STATUS "Endianness: BE")

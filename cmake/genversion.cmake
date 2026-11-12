@@ -1,9 +1,13 @@
 # Generates version.h and buildid.h before every build, so a dev build always carries the
 # current date. Called from CMakeLists.txt as:
 #	cmake -DIN_FILE=... -DOUT_FILE=... -DID_IN_FILE=... -DID_OUT_FILE=... -DSRC_DIR=...
-#		-DXVERSION_BASE=... -DXRELEASE=... -DXPACKAGE=... -P genversion.cmake
+#		-DXVERSION_BASE=... -DXRELEASE=... -DXPACKAGE=... -DXDATE=... -P genversion.cmake
 
-string(TIMESTAMP XBUILD_YMD "%Y%m%d")
+if (XDATE MATCHES "^[0-9]{8}$")
+	set(XBUILD_YMD "${XDATE}")
+else()
+	string(TIMESTAMP XBUILD_YMD "%Y%m%d")
+endif()
 if (XRELEASE)
 	set(XBUILD_DATE "")
 	set(XVERSION "${XVERSION_BASE}")
