@@ -7,9 +7,10 @@ emulation code comes from that project. This fork does not claim authorship of i
 
 Current version: **2026.9**. Forked from upstream build `20260807`.
 
-Windows, Linux and macOS are built by CI on every nightly and off every release tag. The
-macOS build is arm64 only, runs on macOS 13 and later and carries no developer signature, so
-a downloaded DMG has to be allowed through Gatekeeper by hand.
+Windows (x64, and ARM64 for Windows 11 on ARM), Linux and macOS are built by CI on every
+nightly and off every release tag. The macOS build is arm64 only, runs on macOS 13 and later
+and carries no developer signature, so a downloaded DMG has to be allowed through Gatekeeper
+by hand.
 
 ## Why a fork
 
@@ -45,8 +46,9 @@ the emulation core - but where the core itself was wrong, it was fixed.
 On top of upstream build `20260807`:
 
 - **Timing.** Memory contention on the 48K, 128K, +2 and +2A/+3 matches a real machine, the
-  floating bus and ULA snow are there, timing tests come out as photographed on real machines,
-  and frames are handed over at the machine's real rate rather than on a 20 ms timer.
+  floating bus and ULA snow are there (a game that snows says so), timing tests come out as
+  photographed on real machines, and frames are handed over at the machine's real rate rather
+  than on a 20 ms timer.
 - **The ZX Spectrum Next** from its FPGA core: NextZXOS on a card of its own, Wi-Fi
   included. And divMMC with esxDOS on the 48K to the +3 and the Pentagons.
 - **Input lag** measured with a photosensor and kept low, and run ahead for less still.
@@ -55,7 +57,8 @@ On top of upstream build `20260807`:
   version is announced, and on Windows and with the AppImage it puts itself in place.
 - **A window like any desktop program's.** A menu bar with every command and its key, a
   toolbar of your choosing and a status bar. Hotkeys come in Modern and Classic layouts that
-  leave the machine its own keys, with your changes kept on top.
+  leave the machine its own keys, with your changes kept on top, and symbol keys type what is
+  printed on them.
 - **Media that starts itself.** A tape or disk opens and runs, or asks first, from the menu, a
   drop or the command line, on a machine that can run it, straight from a zip, gz or 7z;
   the other sides of a set are found by their names. A Disk manager lists and copies
@@ -70,14 +73,17 @@ On top of upstream build `20260807`:
   keys for slow motion and fast forward.
 - **Gamepads.** A pad plays at once as any joystick interface, its buttons bind to keys,
   Kempston or emulator actions, and the keyboard can be a player too.
-- **Video recording** to MP4 or MKV through FFmpeg, which the emulator offers to get, and RZX
-  recording with rewind and bookmarks.
+- **Video recording** to MP4 or MKV through FFmpeg, which the emulator offers to get, RZX
+  recording with rewind and bookmarks, and screenshots at the machine's own size, named after
+  the game or put into the clipboard.
 - **A debugger worth using.** Movable panels, conditional breakpoints that can log, a listing
-  that reads like one with labels offered as you type, a memory heat map, register layouts to
-  choose from, ZX Evo and Next panels, and a screen and a sound chip panel that detach into
-  windows of their own.
-- **Sound.** The FM half of TurboSound runs on ymfm, latency looks after itself, and the mix
-  can be filtered.
+  that reads like one, with the ROMs and system variables named and labels offered as you
+  type, a memory heat map, register layouts to choose from, ZX Evo and Next panels, a screen
+  and a sound chip panel that detach into windows of their own, and debugging from VS Code
+  with DeZog.
+- **Sound.** Made on a core of its own; the FM half of TurboSound runs on ymfm, the General
+  Sound comes as the original card or the NeoGS, latency looks after itself, and the mix can
+  be filtered.
 - **Snapshots.** SZX by default, on every machine, the Next included, coming back exactly
   where it was saved, with the tape and disks inside if you like; `.z80` and `.sna` as well.
   Quick saves are kept for each game, twenty deep, and Resume Last Session picks up where
