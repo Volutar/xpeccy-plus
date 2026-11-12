@@ -987,7 +987,10 @@ void xOptSheet::field(const QString& name, QWidget* wid, const QString& desc) {
 	grid->addWidget(wid, row, 2, al);
 	wid->setToolTip(QString());
 	label_for(nam, wid);
-	if (!desc.isEmpty()) grid->addWidget(text(desc), row + 1, 2, Qt::AlignTop);
+	if (desc.isEmpty()) return;
+	QLabel* dsc = text(desc);
+	grid->addWidget(dsc, row + 1, 2, Qt::AlignTop);
+	label_for(dsc, wid);
 }
 
 void xOptSheet::line() {
@@ -1121,15 +1124,17 @@ void xLabel::mousePressEvent(QMouseEvent* ev) {
 
 // label_for: the filter is the label's child, gone with it. A button goes down
 // on the press and is clicked on a release over the label, as on itself
-#define LABEL_FOR "xLabelFor"
-
 class xLabelFor : public QObject {
 	public:
 		QPointer<QWidget> target;
 		xLabelFor(QLabel* lab, QWidget* tgt) : QObject(lab) {
-			setObjectName(LABEL_FOR);
 			target = tgt;
 			lab->installEventFilter(this);
+		}
+		// a label going while the mouse is on it leaves its box as it found it
+		~xLabelFor() {
+			hover(false);
+			drop();
 		}
 		void retarget(QWidget* tgt) {
 			hover(false);
@@ -1200,8 +1205,15 @@ class xLabelFor : public QObject {
 		}
 };
 
+static xLabelFor* label_tie(QLabel* lab) {
+	foreach(QObject* obj, lab->children()) {
+		if (xLabelFor* tie = dynamic_cast<xLabelFor*>(obj)) return tie;
+	}
+	return NULL;
+}
+
 void label_for(QLabel* lab, QWidget* tgt) {
-	xLabelFor* tie = lab->findChild<xLabelFor*>(LABEL_FOR, Qt::FindDirectChildrenOnly);
+	xLabelFor* tie = label_tie(lab);
 	if (tie) {
 		tie->retarget(tgt);
 	} else {
@@ -1209,21 +1221,20 @@ void label_for(QLabel* lab, QWidget* tgt) {
 	}
 }
 
-// what a label in a row can stand for: no push or tool button, a click there is its own
+// what a label in a row can stand for: no push or tool button, a click there is its own,
+// and nothing hidden for good
 static bool label_target(QWidget* wid) {
+	if (wid->isHidden()) return false;
 	if (qobject_cast<QAbstractButton*>(wid))
 		return qobject_cast<QCheckBox*>(wid) || qobject_cast<QRadioButton*>(wid);
 	return qobject_cast<QComboBox*>(wid) || qobject_cast<QAbstractSpinBox*>(wid)
 		|| qobject_cast<QLineEdit*>(wid) || qobject_cast<QAbstractSlider*>(wid);
 }
 
-static bool label_tied(QLabel* lab) {
-	return lab->findChild<xLabelFor*>(LABEL_FOR, Qt::FindDirectChildrenOnly) != NULL;
-}
-
-// text the mouse selects or a link it follows keeps its clicks
+// text the mouse selects, a link it follows or a label class of its own keeps its clicks
 static bool label_free(QLabel* lab) {
-	return !label_tied(lab) && !lab->openExternalLinks() && !(lab->textInteractionFlags() & Qt::TextSelectableByMouse);
+	return !label_tie(lab) && (lab->metaObject() == &QLabel::staticMetaObject)
+		&& !lab->openExternalLinks() && !(lab->textInteractionFlags() & Qt::TextSelectableByMouse);
 }
 
 // the controls of a cell, in a layout of its own too (a list with its buttons)
@@ -1263,7 +1274,7 @@ static void label_grid(QGridLayout* grid) {
 void label_rows(QWidget* root) {
 	foreach(QGridLayout* grid, root->findChildren<QGridLayout*>()) label_grid(grid);
 	foreach(QLabel* lab, root->findChildren<QLabel*>()) {
-		if (lab->buddy() && label_free(lab)) new xLabelFor(lab, lab->buddy());
+		if (lab->buddy() && label_free(lab) && label_target(lab->buddy())) new xLabelFor(lab, lab->buddy());
 	}
 }
 

@@ -71,7 +71,7 @@ class SetupWin : public QDialog {
 		void tidySoundPage();
 		void fillGsRom(const QStringList&);
 		void fillDosRom();
-		void addRomSlot(int, QString, int, const QStringList&, bool, int);
+		QLabel* addRomSlot(int, QString, int, const QStringList&, bool, int);
 		QString romSlotFileName(int);
 		void romSlotPick(int, const QString&);
 		void romSlotFile(QComboBox*, int);
