@@ -672,22 +672,24 @@ void MainWin::mapPress(Computer* comp, xJoyMapEntry ent) {
 bool MainWin::padKey(QKeyEvent* ev, bool down) {
 	if (pckAct->isChecked() || conf.zx->flgDBG) return false;
 	int id = pad_key_id(ev);
-	bool echo = false;
+	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
 #if defined(__WIN32) && STICKY_KEY
 	// Shift, Ctrl and Alt come twice: Qt's own event presses the player's key, and the
 	// modifier poll's (timerEvent) is for the layout. A player's is swallowed, or Ctrl
-	// as fire would be Symbol Shift too
+	// as fire would be Symbol Shift too; its release goes where the press went
+	static QSet<int> echoes;
 	if (!id && ev->nativeVirtualKey() && ((ev->key() == Qt::Key_Shift) || (ev->key() == Qt::Key_Control) || (ev->key() == Qt::Key_Alt))) {
 		id = ev->nativeVirtualKey();
-		echo = true;
+		if (!down) return echoes.remove(id);
+		if (pads[0]->bindsKey(id) || pads[1]->bindsKey(id)) echoes.insert(id);
+		return echoes.contains(id);
 	}
 #endif
-	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
 	bool took = false;
 	for (xGamepad* gp : pads) {
 		if (!gp->bindsKey(id)) continue;
 		took = true;
-		if (!echo && !ev->isAutoRepeat()) mapJoystick(gp, conf.zx, JOY_KEY, id, down ? 1 : 0);
+		if (!ev->isAutoRepeat()) mapJoystick(gp, conf.zx, JOY_KEY, id, down ? 1 : 0);
 	}
 	return took;
 }
