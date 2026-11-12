@@ -65,6 +65,9 @@ frame flushes: the card as at every step: ok
 parked: the card as at every step: ok
 parked: the DAC levels as at every step: ok
 parked a good part of the time: ok
+parked in the wait with EI as well, short of each INT: ok
+time 9 sub-samples at once, parked: the card as at every step: ok
+time 9 sub-samples at once, parked: the DAC levels as at every step: ok
 == loop-skip neogs
 idle in the loop at #026E, 51 T a turn
 found at #026E, 51 T, by each: ok
@@ -72,3 +75,6 @@ frame flushes: the card as at every step: ok
 parked: the card as at every step: ok
 parked: the DAC levels as at every step: ok
 parked a good part of the time: ok
+parked in the wait with EI as well, short of each INT: ok
+time 9 sub-samples at once, parked: the card as at every step: ok
+time 9 sub-samples at once, parked: the DAC levels as at every step: ok

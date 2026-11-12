@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "sound/gs.h"
+#include "cpu/Z80/z80.h"
 
 int gsmemrd(int, int, void*);		// sound/gs.c: the card's CPU's own bus
 void gsmemwr(int, int, void*);
@@ -241,17 +242,52 @@ static unsigned long long card_hash(GSound* gs) {
 	return h;
 }
 
+// A wait for the data bit with an EI ... DI window in each turn - DI at its head,
+// the firmware's INT handler at #0038 taken in the window - then back to the
+// idle loop
+#define LS_EI_AT	0x5000
+#define LS_EI_HEAD	0x5002
+static const unsigned char lsEiLoop[] = {
+	0xed, 0x56,		// im 1
+	0xfb,			// ei
+	0x00,			// nop: an INT comes in here
+	0xf3,			// di
+	0xdb, 0x04,		// in a,(#04)
+	0xe6, 0x80,		// and #80
+	0x28, 0xf7,		// jr z,#5002
+	0xc3, 0x6e, 0x02	// jp #026E
+};
+
 // what the host does at step i: a byte to #B3 at 6 s, a command to #BB at
-// 6.4 s, its state polled every 10 us for a frame after and the data read back
+// 6.4 s, its state polled every 10 us for a frame after and the data read
+// back; at 6.6 s the card is set waiting with EI (as a debugger would), and a
+// byte to #B3 at 7.2 s ends the wait
 static void ls_host(GSound* gs, int i) {
 	int d;
 	if (i == LS_FRAME * 300) gsWrite(gs, 0xb3, 0x55);
 	if (i == LS_FRAME * 320) gsWrite(gs, 0xbb, 0x20);
 	if ((i > LS_FRAME * 320) && (i < LS_FRAME * 321) && !(i % 14)) gsRead(gs, 0xbb, &d);
 	if (i == LS_FRAME * 321) gsRead(gs, 0xb3, &d);
+	if (i == LS_FRAME * 330) {
+		gsRead(gs, 0xb3, &d);		// the data bit down, whatever the command left
+		gsFlush(gs);
+		for (int k = 0; k < (int)sizeof(lsEiLoop); k++)
+			gsmemwr(LS_EI_AT + k, lsEiLoop[k], gs);
+		gs->cpu->regPC = LS_EI_AT;
+		gs_loop_forget(gs);
+	}
+	if (i == LS_FRAME * 360) gsWrite(gs, 0xb3, 0xaa);
 }
 
 enum {LS_FRAMES = 0, LS_STEPS_ALL, LS_PARKED};
+
+typedef struct {
+	unsigned long long card;	// the card at the end
+	unsigned long long heard;	// the DAC levels at every step
+	int head, len;			// the idle loop, before the host comes
+	int parked;			// steps parked
+	int eiParked;			// ...in the wait with EI, its turns taking INTs
+} lsRes;
 
 static GSound* ls_card(int model, const unsigned char* rom) {
 	GSound* gs = gsCreate();
@@ -262,33 +298,35 @@ static GSound* ls_card(int model, const unsigned char* rom) {
 	return gs;
 }
 
-// the card run three ways; *heard: the DAC levels at every step, folded;
-// *head, *len: the loop it idles in before the host comes
-static unsigned long long ls_run(int model, const unsigned char* rom, int how, unsigned long long* heard, int* head, int* len, int* parked) {
+// The card run one way: the host's time given every burst steps at once (a
+// Z80 instruction of the host's spans several sub-samples), a flush at each step
+// (how: all, for the mix) or at a frame's end
+static lsRes ls_run(int model, const unsigned char* rom, int how, int burst) {
+	lsRes r = {0};
 	GSound* gs = ls_card(model, rom);
 	unsigned long long h = 0xcbf29ce484222325ULL;
-	*parked = 0;
 	for (int i = 0; i < LS_STEPS; i++) {
-		gsSync(gs, LS_STEP_NS);
+		if (!(i % burst)) gsSync(gs, LS_STEP_NS * ((LS_STEPS - i < burst) ? LS_STEPS - i : burst));
 		ls_host(gs, i);
 		if (how == LS_STEPS_ALL) gsFlush(gs);
 		else if (how == LS_PARKED) gsFlushMix(gs);
 		else if (!((i + 1) % LS_FRAME)) gsFlush(gs);
-		if (gs->lpPark) (*parked)++;
+		if (gs->lpPark) r.parked++;
 		if (how != LS_FRAMES) {
 			sndPair p = gsVolume(gs);
 			h = fold(h, &p, sizeof(p));
 		}
 		if (i == LS_FRAME * 300 - 1) {
-			*head = gs->lpHead;
-			*len = gs->lpLen;
+			r.head = gs->lpHead;
+			r.len = gs->lpLen;
 		}
+		if (gs->lpPark && (gs->lpHead == LS_EI_HEAD) && gs->lpEi) r.eiParked++;
 	}
 	gsFlush(gs);
-	*heard = h;
-	unsigned long long res = card_hash(gs);
+	r.heard = h;
+	r.card = card_hash(gs);
 	gsDestroy(gs);
-	return res;
+	return r;
 }
 
 static void loop_skip(const char* name, int model, const char* path, int size) {
@@ -298,17 +336,21 @@ static void loop_skip(const char* name, int model, const char* path, int size) {
 		check("the firmware read", 0);
 		return;
 	}
-	unsigned long long hf, hs, hp;
-	int head, len, parked, h2, l2, p2;
-	unsigned long long a = ls_run(model, rom, LS_FRAMES, &hf, &head, &len, &parked);
-	unsigned long long b = ls_run(model, rom, LS_STEPS_ALL, &hs, &h2, &l2, &p2);
-	unsigned long long c = ls_run(model, rom, LS_PARKED, &hp, &h2, &l2, &p2);
-	printf("idle in the loop at #%04X, %d T a turn\n", head, len);
-	check("found at #026E, 51 T, by each", (head == 0x026e) && (len == 51) && (h2 == head) && (l2 == len));
-	check("frame flushes: the card as at every step", a == b);
-	check("parked: the card as at every step", c == b);
-	check("parked: the DAC levels as at every step", hp == hs);
-	check("parked a good part of the time", p2 > LS_STEPS / 4);
+	lsRes a = ls_run(model, rom, LS_FRAMES, 1);
+	lsRes b = ls_run(model, rom, LS_STEPS_ALL, 1);
+	lsRes c = ls_run(model, rom, LS_PARKED, 1);
+	printf("idle in the loop at #%04X, %d T a turn\n", a.head, a.len);
+	check("found at #026E, 51 T, by each", (a.head == 0x026e) && (a.len == 51) && (c.head == a.head) && (c.len == a.len));
+	check("frame flushes: the card as at every step", a.card == b.card);
+	check("parked: the card as at every step", c.card == b.card);
+	check("parked: the DAC levels as at every step", c.heard == b.heard);
+	check("parked a good part of the time", c.parked > LS_STEPS / 4);
+	check("parked in the wait with EI as well, short of each INT", c.eiParked > 0);
+	// the host's time 9 sub-samples at a time, an INT among them
+	lsRes b9 = ls_run(model, rom, LS_STEPS_ALL, 9);
+	lsRes c9 = ls_run(model, rom, LS_PARKED, 9);
+	check("time 9 sub-samples at once, parked: the card as at every step", c9.card == b9.card);
+	check("time 9 sub-samples at once, parked: the DAC levels as at every step", c9.heard == b9.heard);
 }
 
 int main(int argc, char** argv) {
