@@ -302,17 +302,20 @@ static int cmp_name(const void* a, const void* b) {
 // == a volume from a host folder, as the app's scan makes it ==
 
 static unsigned long long scan_bytes;
+static int scan_depth = 1000;		// folders this deep and deeper have their folders left out, as the app's scan
 
 // the tree alone, as vfat_reload takes it
 static vFat* scan_folder(const char* root, int writable) {
 	vFat* vf = vfat_create();
 	int queue[4096];
 	char* qpath[4096];
+	int qdepth[4096];
 	int qn = 0, q, i;
 	unsigned long long bytes = 0;
 	vfat_set_root(vf, root, &host);
 	vfat_add(vf, -1, "", 0, 0, 1);
 	queue[qn] = 0;
+	qdepth[qn] = 0;
 	qpath[qn++] = strdup(root);
 	for (q = 0; q < qn; q++) {
 		hList l;
@@ -335,12 +338,13 @@ static vFat* scan_folder(const char* root, int writable) {
 		}
 		qsort(dirs, nd, sizeof(char*), cmp_name);
 		qsort(files, nf, sizeof(char*), cmp_name);
-		for (i = 0; i < nd; i++) {
+		for (i = 0; (i < nd) && (qdepth[q] < scan_depth); i++) {
 			long long sz, mt = 1600000000;
 			snprintf(full, sizeof(full), "%s/%s", qpath[q], dirs[i]);
 			h_stat(NULL, full, &sz, &mt);
 			int idx = vfat_add(vf, queue[q], dirs[i], 0, (unsigned int)mt, 1);
 			queue[qn] = idx;
+			qdepth[qn] = qdepth[q] + 1;
 			qpath[qn++] = strdup(full);
 		}
 		for (i = 0; i < nf; i++) {
@@ -1912,7 +1916,7 @@ static int s_reload(const char* when, int expect, vfReload* r) {
 	int res;
 	vfat_flush(gvf);
 	fresh = scan_folder(sroot, gvf->writable);
-	res = vfat_reload(gvf, fresh, r ? r : &dummy);
+	res = vfat_reload(gvf, fresh, scan_depth, r ? r : &dummy);
 	vfat_free(fresh);
 	if (res != expect) fail("%s: reload gave %i, not %i", when, res, expect);
 	fs.winsect = (LBA_t)0 - 1;		// a guest that reads its sectors again, as esxDOS does
@@ -2030,7 +2034,7 @@ static void sc_reload_refuse(void) {
 	gvf->hold = 1;
 	vfat_tick(gvf);
 	h = view_hash();
-	if (vfat_reload(gvf, gvf, &r) != VFR_WRITES) fail("refuse: a reload over writes on hold");
+	if (vfat_reload(gvf, gvf, 1000, &r) != VFR_WRITES) fail("refuse: a reload over writes on hold");
 	gvf->hold = 0;
 	s_sync("refuse released");
 	h = view_hash();
@@ -2060,6 +2064,31 @@ static void sc_reload_refuse(void) {
 	s_end();
 }
 
+// on hold with nothing written, a reload asks nothing; what the guest made deeper than the
+// scan looks stays
+static void sc_reload_hold(void) {
+	vfReload r;
+	s_begin(125);
+	gvf->hold = 1;
+	h_put("new on hold.txt", 100, 1700000000);
+	s_reload("hold", VFR_OK, &r);
+	if (vfat_waiting(gvf)) fail("hold: a reload with nothing written asks about writing");
+	vol_check("hold first", 1);
+	gvf->hold = 0;
+	s_mkdir("games/arcade/deep");
+	s_mkdir("games/arcade/deep/deeper");
+	s_write("games/arcade/deep/deeper/f.bin", 3000);
+	s_write("games/arcade/deep/g.bin", 2000);
+	s_sync("hold deep");
+	scan_depth = 2;			// games 1, arcade 2: deep is past what the scan reads
+	s_reload("hold deep reload", VFR_OK, &r);
+	scan_depth = 1000;
+	if (r.removed) fail("hold: a reload took %i deep entries for gone", r.removed);
+	check_guest("hold deep");
+	vol_check("hold deep", 0);		// FSInfo: the guest's count, which FatFs here does not keep
+	s_end();
+}
+
 static int run_scenarios(const char* root) {
 	static const struct { const char* name; void (*fn)(void); } list[] = {
 		{"swap", sc_swap}, {"replace", sc_replace}, {"fragment", sc_fragment}, {"bigdir", sc_bigdir},
@@ -2068,7 +2097,7 @@ static int run_scenarios(const char* root) {
 		{"halfmove", sc_halfmove}, {"retype", sc_retype}, {"hold", sc_hold}, {"pin", sc_pin}, {"newdir", sc_newdir},
 		{"flush", sc_flush}, {"bigfile", sc_bigfile}, {"parked", sc_parked}, {"cap", sc_cap},
 		{"outside", sc_outside}, {"sameslot", sc_sameslot}, {"reload", sc_reload}, {"reload_grow", sc_reload_grow},
-		{"reload_refuse", sc_reload_refuse}
+		{"reload_refuse", sc_reload_refuse}, {"reload_hold", sc_reload_hold}
 	};
 	unsigned int i;
 	int bad = 0;

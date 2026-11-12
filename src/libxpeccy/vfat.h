@@ -163,16 +163,19 @@ enum {
 	VFR_WRITES,		// the guest's writes have not reached the folder (on hold, or a sync left some)
 	VFR_DETACHED,		// the folder no longer follows the machine
 	VFR_FULL,		// the folder's changes do not fit on the volume
-	VFR_MEMORY
+	VFR_PART,		// done, but some of the changes could not be put in (out->left)
+	VFR_MEMORY		// no memory: if it ran out midway, the volume no longer follows the folder
 };
 typedef struct {
-	int added, removed, changed;
+	int added, removed, changed;	// entries, what is in a folder counted too
+	int left;			// changes left out
 } vfReload;
-// The folder changed on the host: fresh is a tree scanned from it again (vfat_add, no build).
+// The folder changed on the host: fresh is a tree scanned from it again (vfat_add, no build),
+// down to maxdepth folders deep - what lies deeper in the volume is not taken for gone.
 // Only the difference goes into the volume, as a guest would write it - what is still there
 // keeps its clusters and entries, so a guest's open file and current directory stay right.
-// The Next's pinned folders are left be. On failure nothing changes.
-int vfat_reload(vFat*, const vFat* fresh, vfReload* out);
+// The Next's pinned folders are left be. VFR_WRITES, VFR_DETACHED and VFR_FULL change nothing.
+int vfat_reload(vFat*, const vFat* fresh, int maxdepth, vfReload* out);
 
 #ifdef __cplusplus
 }

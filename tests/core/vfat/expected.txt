@@ -29,3 +29,4 @@ sameslot: ok
 reload: ok
 reload_grow: ok
 reload_refuse: ok
+reload_hold: ok

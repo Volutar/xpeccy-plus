@@ -540,19 +540,21 @@ QString fold_reload(vFat* vf, vfReload* r) {
 		vfat_free(fresh);
 		return QString("The folder holds more than %0 entries: Eject it and open it again.").arg(VFS_MAXNODES);
 	}
-	int res = vfat_reload(vf, fresh, r);
+	int res = vfat_reload(vf, fresh, VFS_MAXDEPTH, r);
 	vfat_free(fresh);
+	if (r->added || r->removed || r->changed) x_media_writes++;	// rewind cannot go back past it
 	switch (res) {
 		case VFR_OK:
-			x_media_writes++;		// rewind cannot go back past it
 			return QString();
 		case VFR_WRITES:
 			return QString("Not all of what the machine wrote has reached the folder yet; reloading would lose it.");
 		case VFR_DETACHED:
 			return QString("The folder no longer follows the machine: Eject it and open it again.");
 		case VFR_FULL:
-			x_media_writes++;		// some of it may have gone in
-			return QString("Not all of the folder's changes fit on the volume: Eject it and open it again.");
+			return QString("The folder's changes do not fit on the disk: Eject it and open it again.");
+		case VFR_PART:
+			return QString("%0 of the folder's changes could not be put on the disk: Eject it and open it again "
+				"to see them all.").arg(r->left);
 	}
 	return QString("There is no memory left to reload the folder.");
 }
