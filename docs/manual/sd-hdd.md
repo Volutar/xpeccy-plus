@@ -137,8 +137,10 @@ from then on, what the machine writes stays in memory, and a message says so.
 
 **Refresh** in a folder card's or folder disk's menu brings in what you changed in the folder
 since it was read: new files and folders, changed files, deleted ones. The machine keeps
-running, as a real card taken out and put back with files copied onto it, but without a
-reset. What the machine wrote there first goes to the folder. The message
+running and needs nothing done - unlike a real card taken out and put back, which the
+system does not read again until it mounts it anew: **M** in the NextZXOS Browser, or a
+reset with BREAK held in esxDOS. What the machine wrote there first goes to the folder. The
+message
 **refreshed: 2 new, 1 gone, 0 changed** says what changed.
 
 The machine sees the change the next time it reads the folder: esxDOS at its next listing,
