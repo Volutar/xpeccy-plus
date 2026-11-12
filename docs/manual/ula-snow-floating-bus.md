@@ -61,7 +61,7 @@ model of the right shape, not of a known mechanism, and is off on every machine.
 
 ### When a game snows
 
-```{index} ULA snow; notice, Turn Off for This Game, Don't show this again
+```{index} ULA snow; notice, Turn Off for Now, Don't show this again
 ```
 
 Snow is on for the 48K, the 128K and the +2, as on the real machines, so that a program that
@@ -71,7 +71,7 @@ it, a snowflake blinks in the top left corner, and a message tells what it is. T
 runs on meanwhile. The message comes once for each image - a tape, a side of it, the disk
 in drive A, a snapshot - and again when another one is opened or the machine is reset.
 
-- **Turn Off for This Game** - no snow until a reset or another image. Nothing is saved:
+- **Turn Off for Now** - no snow until a reset or another image. Nothing is saved:
   the machine keeps its setting.
 - **Continue** (or Esc) - the snow stays. The real machine shows it too: the game's author
   may want to know. The snowflake stays too, blinking while the game snows, and goes out
