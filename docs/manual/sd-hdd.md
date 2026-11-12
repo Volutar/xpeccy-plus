@@ -151,7 +151,7 @@ folder, when the folder no longer follows the machine, or when the changes do no
 the disk; **Eject** and **Open Folder...** then read the folder anew. An image file has no
 **Refresh**.
 
-Two [hotkeys](hotkeys.md), with no key until you give them one, do this from the keyboard:
-**SD Card: Refresh** refreshes every folder card and disk the machine uses, and **SD Card:
-Eject** takes out the machine's card - the slot's on the ZX Evolution and the Next, the
-divMMC's first card on the others.
+Two [hotkeys](hotkeys.md), with no key until you give them one, work on SD cards from the
+keyboard: **SD Card: Refresh** refreshes every folder card the machine uses, and **SD Card:
+Eject** takes out the machine's card - the slot's on the ZX Evolution and the Next (where
+the Next's own card goes back in), the divMMC's first card that holds one on the others.
