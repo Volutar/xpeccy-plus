@@ -27,6 +27,7 @@ class xKeyEditor : public QDialog {
 		QPushButton but;
 		QPushButton clr;
 		QKeySequence kseq;
+		bool event(QEvent*);
 		void keyPressEvent(QKeyEvent*);
 		void keyReleaseEvent(QKeyEvent*);
 	private slots:

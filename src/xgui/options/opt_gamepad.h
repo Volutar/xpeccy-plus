@@ -37,6 +37,7 @@ class xInputBox : public QLabel {
 		xInputBox(QWidget* = nullptr);
 		std::function<void(int)> onKey;		// XKEY_*
 	protected:
+		bool event(QEvent*);
 		void keyPressEvent(QKeyEvent*);
 		void mousePressEvent(QMouseEvent*);
 };

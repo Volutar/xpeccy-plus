@@ -1045,6 +1045,7 @@ static int shortcut_check(int grp, QKeySequence seq) {
 // layout; anything Qt names in Latin-1 or as a special key is left as it is.
 int hotkey_key(QKeyEvent* ev) {
 	int key = ev->key();
+	if (key == Qt::Key_Backtab) return Qt::Key_Tab;		// Shift+Tab is Shift and Tab
 #ifdef _WIN32
 	// Windows makes both Ctrl+Pause and Ctrl+Scroll Lock VK_CANCEL; the scan code tells them apart
 	if (key == Qt::Key_Cancel)

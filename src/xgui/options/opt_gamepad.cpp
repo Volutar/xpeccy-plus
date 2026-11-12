@@ -133,9 +133,21 @@ xInputBox::xInputBox(QWidget* p):QLabel(p) {
 	setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 }
 
-// every key but the two a dialog cannot do without
+// Tab is a key to bind here, not the way to the next control
+bool xInputBox::event(QEvent* ev) {
+	if (ev->type() == QEvent::KeyPress) {
+		QKeyEvent* kev = (QKeyEvent*)ev;
+		if ((kev->key() == Qt::Key_Tab) || (kev->key() == Qt::Key_Backtab)) {
+			keyPressEvent(kev);
+			return true;
+		}
+	}
+	return QLabel::event(ev);
+}
+
+// every key but Escape, which closes the dialog
 void xInputBox::keyPressEvent(QKeyEvent* ev) {
-	if ((ev->key() == Qt::Key_Escape) || (ev->key() == Qt::Key_Tab) || (ev->key() == Qt::Key_Backtab)) {
+	if (ev->key() == Qt::Key_Escape) {
 		QLabel::keyPressEvent(ev);
 		return;
 	}
