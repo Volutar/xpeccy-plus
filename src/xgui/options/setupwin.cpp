@@ -3067,18 +3067,17 @@ void SetupWin::fillRomSlots() {
 		xRomRole role = hw_rom_role(hw, i);
 		QString name = QString("ROM %0").arg(i);
 		if (role.name) name += QString(" (%0)").arg(role.name);
-		QLabel* lab = addRomSlot(row, name, i, files, true, from[i]);
+		QRadioButton* rb = NULL;
 		if (role.res >= 0) {
-			QRadioButton* rb = new QRadioButton;
+			rb = new QRadioButton;
 			rb->setToolTip(tr("Boot from this ROM"));
 			rb->setEnabled(!romSlotFileName(i).isEmpty() || (from[i] >= 0));
 			rb->setChecked(role.res == resTarget);
 			resGroup->addButton(rb, role.res);
 			ui.gridRomSlots->addWidget(rb, row, 0);
-			// the slot's name picks the ROM to boot from; with nothing to boot it stays its list's
-			if (rb->isEnabled()) label_for(lab, rb);
 			resets = true;
 		}
+		addRomSlot(row, name, i, files, true, from[i], rb);
 		row++;
 	}
 	// only a machine with a text mode draws from a font rom
@@ -3158,7 +3157,8 @@ QString SetupWin::romSlotFileName(int slot) {
 	return QString::fromUtf8(res.c_str());		// rom names are UTF-8
 }
 
-QLabel* SetupWin::addRomSlot(int row, QString name, int slot, const QStringList& files, bool has, int from) {
+// boot: the slot's radio, which its name picks while it can be picked; else the name is its list's
+void SetupWin::addRomSlot(int row, QString name, int slot, const QStringList& files, bool has, int from, QRadioButton* boot) {
 	QLabel* lab = new QLabel(name);
 	lab->setEnabled(has);
 	QComboBox* box = new QComboBox;
@@ -3183,11 +3183,10 @@ QLabel* SetupWin::addRomSlot(int row, QString name, int slot, const QStringList&
 	btn->setToolTip(tr("Pick a ROM file"));
 	btn->setEnabled(has);
 	connect(btn, &QToolButton::released, this, [=](){ romSlotFile(box, slot); });
-	label_for(lab, box);
+	label_for(lab, (boot && boot->isEnabled()) ? (QWidget*)boot : (QWidget*)box);
 	ui.gridRomSlots->addWidget(lab, row, 1);
 	ui.gridRomSlots->addWidget(box, row, 2);
 	ui.gridRomSlots->addWidget(btn, row, 3);
-	return lab;
 }
 
 // a file from anywhere, which is kept as the path it is

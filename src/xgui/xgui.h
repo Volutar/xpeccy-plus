@@ -204,14 +204,9 @@ class xOptSheet {
 		QLabel* text(const QString&);
 };
 
-// A label standing for a control beside it, as in an Options row: a click on it
-// is a click on a check box or a radio button, which looks hovered while the
-// mouse is over the label; any other control gets the focus. Tied again, it
-// takes the new one
+// a label clicks the check box or radio button it stands for (hovered with it), or focuses its control
 void label_for(QLabel*, QWidget*);
-// each label in a window's grids and rows tied to its buddy, else to its row's
-// one control, and each label with a buddy anywhere in it; a label tied already
-// stays as it is
+// a window's untied labels to their buddy, else to their grid or box row's one control
 void label_rows(QWidget*);
 
 // a control and what goes after it, as one field of a sheet

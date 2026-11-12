@@ -29,6 +29,7 @@
 #include "ui_setupwin.h"
 #include "ui_layedit.h"
 
+class QRadioButton;
 class QTextEdit;
 class QThread;
 
@@ -71,7 +72,7 @@ class SetupWin : public QDialog {
 		void tidySoundPage();
 		void fillGsRom(const QStringList&);
 		void fillDosRom();
-		QLabel* addRomSlot(int, QString, int, const QStringList&, bool, int);
+		void addRomSlot(int, QString, int, const QStringList&, bool, int, QRadioButton* = NULL);
 		QString romSlotFileName(int);
 		void romSlotPick(int, const QString&);
 		void romSlotFile(QComboBox*, int);
