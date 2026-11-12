@@ -293,10 +293,30 @@ void gsSync(GSound* gs, int ns) {
 	gs->due += (long long)ns * GS_UNITS_NS;
 }
 
+// The card's firmware waits in HALT. Halted with nothing it would take, the
+// Z80 repeats one M1 cycle of 4 T - a read at PC+1, R counting, no other
+// work - so all but the last of the cycles up to the next INT, or to the end
+// of the time given, are counted at once; the last runs as ever, and leaves
+// everything as the cycles one by one would.
+static void gs_halt_skip(GSound* gs) {
+	CPU* cpu = gs->cpu;
+	if (!cpu->flgHALT || cpu_int_ready(cpu)) return;
+	long long h = 4LL * gs->tickUnits;
+	long long n = (gs->due + h - 1) / h;		// the cycles the time given holds
+	long long ni = (gs->intDue + h - 1) / h;	// the cycles to the next INT
+	if (ni < n) n = ni;
+	if (n < 2) return;
+	n--;
+	cpu->regR += (unsigned char)n;
+	gs->due -= n * h;
+	gs->intDue -= n * h;
+}
+
 // INT comes from the card's own divider at 37.5 kHz, whatever the CPU runs at
 void gsFlush(GSound* gs) {
 	if (!gs->enable) return;
 	while (gs->due > 0) {
+		gs_halt_skip(gs);
 		long long u = (long long)cpu_exec(gs->cpu) * gs->tickUnits;
 		gs->due -= u;
 		gs->intDue -= u;
