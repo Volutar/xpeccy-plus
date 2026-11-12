@@ -115,9 +115,9 @@ instead. A card without System/Next is put aside while the Next runs, the messag
 **no System/Next: the Next's card in** appears, and the card comes back for the next
 machine. **Media > SD Card > Eject** on the Next puts its own card back.
 
-The **SD Card** menu has the same items as on the ZX Evolution: **Open Image...**,
-**Open Folder...**, **Eject** and **Write Protect** (see [SD card](sd-hdd.md#sd-card)). The
-`--sdcard` option of the command line sets the card too.
+The **SD Card** menu has the same items as on the ZX Evolution: **Open Image...**, **Open
+Folder...**, **Eject**, **Reload** and **Write Protect** (see [SD card](sd-hdd.md#sd-card)).
+The `--sdcard` option of the command line sets the card too.
 
 **Writing.** A card made here takes what NextZXOS writes, with no question. A folder of
 your own follows the **Folder as a disk** settings and asks the first time (see
