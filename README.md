@@ -154,6 +154,10 @@ nix build github:dotkoval/xpeccy-plus
 nix run github:dotkoval/xpeccy-plus
 ```
 
+Outside NixOS a program from nixpkgs does not find the system's OpenGL driver: Xpeccy+
+then draws without shaders. Started through [nixGL](https://github.com/nix-community/nixGL)
+it has them.
+
 ### Windows
 
 Windows is built and tested here daily. What has to be installed:
