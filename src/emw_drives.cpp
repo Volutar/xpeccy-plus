@@ -484,7 +484,10 @@ void MainWin::folderAsk() {
 	box.exec();
 	bool yes = (box.clickedButton() == allow);
 	emu_lock();
-	fold_release(conf.zx, yes);
+	if (yes)
+		fold_release(conf.zx);
+	else
+		fold_read_only(conf.zx, "writing to it was not allowed");	// every folder in use, as Options' R/O
 	emu_unlock();
 	conf.fold.asked = 1;
 	if (!yes) conf.fold.rw = 0;

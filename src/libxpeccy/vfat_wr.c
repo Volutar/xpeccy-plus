@@ -256,7 +256,7 @@ int vfat_write(vFat* vf, unsigned int lba, const unsigned char* src) {
 	unsigned int rel, copy, s, k;
 	if (!vf || !src || !vf->writable || (lba >= vf->volume)) return 0;
 	if (!vf->wr && !vfw_live(vf)) return 0;
-	if (vf->frozen) vfw_detach(vf, "it was made read-only", 1);
+	if (vf->frozen) vfw_detach(vf, vf->frozenWhy, 1);
 	w = vf->wr;
 	w->wgen++;
 	rel = lba - vf->partStart;
@@ -337,20 +337,17 @@ int vfat_waiting(vFat* vf) {
 	return (vf && vf->hold && vf->wr && !vf->wr->detached && (vf->wr->wgen != vf->wr->sgen)) ? 1 : 0;
 }
 
-void vfat_release(vFat* vf, int allow) {
-	if (!vf || !vf->hold) return;
-	vf->hold = 0;
-	if (allow) return;
-	vf->frozen = 1;		// one the guest has not written to yet: its writes stay in memory too
-	if (vf->wr) vfw_detach(vf, "writing to it was not allowed", 1);
+void vfat_release(vFat* vf) {
+	if (vf) vf->hold = 0;
 }
 
-void vfat_read_only(vFat* vf) {
+void vfat_read_only(vFat* vf, const char* why) {
 	if (!vf || !vf->writable) return;
-	vfat_flush(vf);		// what was written under R/W reaches the folder first
+	vfat_flush(vf);		// what was written under R/W reaches the folder first; on hold, nothing does
 	vf->hold = 0;
-	vf->frozen = 1;
-	if (vf->wr) vfw_detach(vf, "made read-only in Options", 1);
+	vf->frozen = 1;		// written to or not yet: the guest's writes stay in memory
+	vf->frozenWhy = why;
+	if (vf->wr) vfw_detach(vf, why, 1);
 }
 
 void vfw_free(vFat* vf) {

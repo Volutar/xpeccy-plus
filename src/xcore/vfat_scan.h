@@ -27,6 +27,6 @@ QString sdc_refresh(SDCard*, vfRefresh* r);
 QString ide_refresh(IDE*, int dev, vfRefresh* r);
 
 vFat* fold_waiting(Computer*);			// a volume on hold the guest has written to, NULL if none
-void fold_release(Computer*, bool allow);	// the user's word on every volume on hold
-void fold_read_only(Computer*);		// Folders set to R/O: every volume in use but the Next's own card
+void fold_release(Computer*);			// the user's yes on every volume on hold
+void fold_read_only(Computer*, const char* why);	// R/O (Options, or the no): every volume in use but the Next's own card
 QString fold_news(Computer*);			// what a volume has to tell the user, once; empty when nothing new

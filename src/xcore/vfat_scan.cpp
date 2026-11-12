@@ -467,19 +467,19 @@ QString fold_news(Computer* comp) {
 	return QString();
 }
 
-void fold_release(Computer* comp, bool allow) {
+void fold_release(Computer* comp) {
 	vFat* vf[5];
 	fold_volumes(comp, vf);
 	for (int i = 0; i < 5; i++)
-		vfat_release(vf[i], allow ? 1 : 0);
+		vfat_release(vf[i]);
 }
 
-void fold_read_only(Computer* comp) {
+void fold_read_only(Computer* comp, const char* why) {
 	vFat* vf[5];
 	fold_volumes(comp, vf);
 	for (int i = 0; i < 5; i++) {
 		if (vf[i] && !vfs_own(QString::fromUtf8(vf[i]->root ? vf[i]->root : "")))
-			vfat_read_only(vf[i]);
+			vfat_read_only(vf[i], why);
 	}
 }
 
@@ -526,6 +526,7 @@ bool sdc_mount_over(SDCard* sdc, const QString& sub, const QString& subName, con
 	if (entries) *entries = vfat_pin_entries(vf, vfat_pin_node(vf, subName.toUtf8().constData()));
 	vf->hold = sdc->vfat->hold;		// read again, not mounted anew: asked or not, as it was
 	vf->frozen = sdc->vfat->frozen;		// and made read-only or not
+	vf->frozenWhy = sdc->vfat->frozenWhy;
 	sdcSetFolder(sdc, path.toLocal8Bit().constData(), vf);
 	return true;
 }

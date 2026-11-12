@@ -1455,11 +1455,12 @@ static void sc_hold(void) {
 		s_begin(113 + pass, 1);
 		gvf->hold = 1;
 		if (pass == 3) {
-			vfat_release(gvf, 0);
+			vfat_read_only(gvf, "refused");
 			s_write("held.bin", 5000);
 			s_del("README.TXT");
 			for (t = 0; t < 100; t++) vfat_tick(gvf);
 			vfat_sync(gvf, 0);
+			if (vfat_waiting(gvf)) fail("hold: a no before any write asks again");
 			if (!vfat_detached(gvf)) fail("hold: a no before any write did not detach");
 			if (h_kind(NULL, held) || (h_kind(NULL, readme) != 1)) fail("hold: the folder changed after a no before any write");
 			check_guest("hold refused unwritten");
@@ -1474,12 +1475,12 @@ static void sc_hold(void) {
 		if (h_kind(NULL, held) || (h_kind(NULL, readme) != 1)) fail("hold: the folder changed before the word");
 		check_guest("hold");
 		if (pass == 0) {
-			vfat_release(gvf, 1);
+			vfat_release(gvf);
 			for (t = 0; t < 100; t++) vfat_tick(gvf);
 			if (vfat_waiting(gvf) || vfat_pending(gvf)) fail("hold: still waiting after a yes");
 			check_host(sroot, "hold allowed");
 		} else if (pass == 1) {
-			vfat_release(gvf, 0);
+			vfat_read_only(gvf, "refused");
 			s_write("later.bin", 3000);
 			for (t = 0; t < 100; t++) vfat_tick(gvf);
 			vfat_sync(gvf, 0);
