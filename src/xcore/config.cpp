@@ -411,6 +411,8 @@ void saveConfig() {
 	fprintf(cfile, "psg.separation = %i\n", conf.zx->ts->chipA->sep);
 	fprintf(cfile, "gs.reset = %s\n", YESNO(conf.zx->gs->reset));
 	fprintf(cfile, "gs.stereo = %i\n", conf.zx->gs->stereo);
+	fprintf(cfile, "gs.separation = %i\n", conf.zx->gs->sep);
+	fprintf(cfile, "gs.neogs.rom = %s\n", conf.ngsFile.c_str());
 
 	fprintf(cfile, "\n[TAPE]\n\n");
 	fprintf(cfile, "speed = %i\n", conf.zx->tape->speed);
@@ -1029,6 +1031,7 @@ void loadConfig() {
 	conf.snd.vol.gs = 80;
 	conf.snd.vol.sdrv = 80;
 	conf.snd.vol.saa = 80;
+	conf.ngsFile = "neogs111.rom";		// the NeoGS flash, every machine's
 // init palette
 	dbgPaletteDefaults();
 
@@ -1444,10 +1447,11 @@ void loadConfig() {
 					if (pnam=="volume.gs") conf.snd.vol.gs = getRanged(arg.s, 0, 100);
 					if (pnam=="volume.sdrv") conf.snd.vol.sdrv = getRanged(arg.s, 0, 100);
 					if (pnam=="volume.saa") conf.snd.vol.saa = getRanged(arg.s, 0, 100);
+					if (pnam=="gs.neogs.rom") conf.ngsFile = pval;	// every machine's, read before one is built
 					// psg.frq and psg.stereo are read no more: an old global value
 					// would land on whatever machine is up and stay there as its own
 					if ((pnam=="psg.separation")
-						|| (pnam=="gs.reset") || (pnam=="gs.stereo")) xm_defer(pnam, pval);
+						|| (pnam=="gs.reset") || (pnam=="gs.stereo") || (pnam=="gs.separation")) xm_defer(pnam, pval);
 					break;
 				case SECT_TOOLS:
 					break;

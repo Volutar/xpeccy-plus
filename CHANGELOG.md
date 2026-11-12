@@ -82,6 +82,13 @@ before that point is upstream's history and is not repeated here.
   the Latin labels say, whatever the system's layout. Letters and digits stay the Spectrum's,
   so games read them as before. Typing: Key Positions in Options > Input turns it off.
 
+- **NeoGS**: the General Sound row in Options > Machine is None, Original or NeoGS, NedoPC's
+  card - 8 channels, 4 MB, its firmware 1.11, and no click when a channel's volume changes.
+  Programs written for the NeoGS find it. Its SD card and MP3 chip are not there yet.
+  *(reported by ZXLion)*
+- **General Sound: Separation**, like the PSG's, 75% at first: each side takes a little of
+  the other, 100% leaves the card's own stereo.
+
 ### Changed
 
 - **Ctrl is always Symbol Shift**: Modern has no Ctrl+O and Ctrl+S (F3 and F2 open and save),
@@ -143,6 +150,8 @@ before that point is upstream's history and is not repeated here.
   takes over a second says so in the status bar. *(reported by Volutar)*
 - **The Debugger's Stack panel is narrower**: less room between the offsets and the words.
   *(requested by Volutar)*
+- **The General Sound mixes as the card does**: its sides bleed into each other as on the
+  board, and it runs at exactly 12 MHz.
 
 ### Fixed
 

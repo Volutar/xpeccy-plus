@@ -1027,7 +1027,8 @@ QWidget* fieldPair(QWidget* main, QWidget* tail, bool wide) {
 	QWidget* wid = new QWidget;
 	QHBoxLayout* box = new QHBoxLayout(wid);
 	box->setContentsMargins(0, 0, 0, 0);
-	if (!wide && qobject_cast<QComboBox*>(main)) main->setMinimumWidth(200);
+	// a list or a slider as wide as the lists above it, what follows in one column
+	if (!wide && (qobject_cast<QComboBox*>(main) || qobject_cast<QSlider*>(main))) main->setMinimumWidth(200);
 	box->addWidget(main, wide ? 1 : 0);
 	if (tail) box->addWidget(tail);
 	if (!wide) box->addStretch(1);

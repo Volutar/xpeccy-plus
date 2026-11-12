@@ -9,6 +9,7 @@
 #include <QGridLayout>
 #include <QFrame>
 #include <QToolButton>
+#include <QStackedWidget>
 #include <QLabel>
 #include <QModelIndex>
 #include <QKeySequence>
@@ -152,13 +153,16 @@ class SetupWin : public QDialog {
 		// the devices' own controls, see makeDevWidgets()
 		QCheckBox *cbTapeAuto, *cbTapeRewind, *cbTapeSet, *cbTapeFast, *cbTapeFlash, *cbTapeEdge, *bdtbox, *cbAddBoot, *a80box, *b80box, *c80box, *d80box, *adsbox, *bdsbox, *cdsbox, *ddsbox, *gsrbox, *ratWheel, *cbSwapButtons;
 		QComboBox *diskTypeBox, *cbFlpInterleave, *hiface, *hm_type, *hs_type, *sdrvBox, *cbScanTab, *cbCpuTurbo, *cbPsgCount, *cbPsgType, *cbPsgFrq, *cbPsgStereo;
-		xSlider *sldTapeSpeed, *sldPsgSep, *sldSensitivity;
-		QLabel *labTapeSpeedVal, *labPsgMhz, *labPsgSep;
+		xSlider *sldTapeSpeed, *sldPsgSep, *sldSensitivity, *sldGsSep;
+		QLabel *labTapeSpeedVal, *labPsgMhz, *labPsgSep, *labGsSep;
 		int psgFrqMul = 1;	// the chip's clock against the AY's the setting holds
 		// the machine's devices, on the Machine page
 		QComboBox* gsBox;
 		QComboBox* saaBox;
 		QComboBox* gsRomBox;
+		QComboBox* ngsRomBox;		// the NeoGS flash, in the ROM row while the card is one
+		QStackedWidget* gsRomStack;
+		QString ngsPick;		// the flash file picked, put on the card by Apply
 		QComboBox* dosRomBox;
 		QToolButton* dosRomBtn;
 		QComboBox* joyBox;

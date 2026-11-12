@@ -371,9 +371,23 @@ static const szxField fld_gs[] = {
 	FLD(GSound, ch2),
 	FLD(GSound, ch3),
 	FLD(GSound, ch4),
-	FLD(GSound, cnt),
-	FLD(GSound, time),
-	FLD(GSound, counter),
+	FLD(GSound, model),
+	FLD(GSound, cfg0),
+	FLD(GSound, pg2),
+	FLD(GSound, pg3),
+	FLD(GSound, vol4b5),
+	FLD(GSound, sctrl),
+	FLD(GSound, led),
+	FLD(GSound, vol5),
+	FLD(GSound, vol6),
+	FLD(GSound, vol7),
+	FLD(GSound, vol8),
+	FLD(GSound, ch5),
+	FLD(GSound, ch6),
+	FLD(GSound, ch7),
+	FLD(GSound, ch8),
+	FLD(GSound, due),
+	FLD(GSound, intDue),
 	FLDEND
 };
 
@@ -1236,8 +1250,21 @@ static void ext_saa(saaChip* saa, const unsigned char* p, size_t n) {
 	memcpy(saa->env, tmp_.env, sizeof(saa->env));
 }
 
+// set when the card in the file is the other model: its CPU and RAM are not taken
+static int gsOther = 0;
+
 static void ext_gs(GSound* gs, const unsigned char* p, size_t n) {
-	EXT_TAKE(GSound, gs, fld_gs, p, n)
+	GSound tmp_;
+	memcpy(&tmp_, gs, sizeof(GSound));
+	tmp_.model = GS_ORIGINAL;		// a file from before the NeoGS has the original card
+	fld_get(&tmp_, fld_gs, p, n);
+	// the card is the setting's: a snapshot of the other one starts it afresh
+	gsOther = (tmp_.model != gs->model);
+	if (gsOther) {
+		xlog(XLG_FILE, XLL_INFO, "szx: the General Sound in the snapshot is another model, the card is reset");
+		gs_set_model(gs, gs->model);
+		return;
+	}
 	gs->reset = tmp_.reset;
 	gs->pb3_gs = tmp_.pb3_gs;
 	gs->pb3_zx = tmp_.pb3_zx;
@@ -1251,10 +1278,25 @@ static void ext_gs(GSound* gs, const unsigned char* p, size_t n) {
 	gs->ch2 = tmp_.ch2;
 	gs->ch3 = tmp_.ch3;
 	gs->ch4 = tmp_.ch4;
-	gs->cnt = tmp_.cnt;
-	gs->time = tmp_.time;
-	gs->counter = tmp_.counter;
-	gsiowr(0, tmp_.rp0, gs);		// the page register, which maps #8000 as it says
+	gs->cfg0 = tmp_.cfg0;
+	gs->pg2 = tmp_.pg2;
+	gs->pg3 = tmp_.pg3;
+	gs->vol4b5 = tmp_.vol4b5;
+	gs->sctrl = tmp_.sctrl;
+	gs->led = tmp_.led;
+	gs->vol5 = tmp_.vol5;
+	gs->vol6 = tmp_.vol6;
+	gs->vol7 = tmp_.vol7;
+	gs->vol8 = tmp_.vol8;
+	gs->ch5 = tmp_.ch5;
+	gs->ch6 = tmp_.ch6;
+	gs->ch7 = tmp_.ch7;
+	gs->ch8 = tmp_.ch8;
+	// time owed is a fraction of an INT period either way; a file with more is not ours
+	gs->due = ((tmp_.due > -GS_INT_UNITS) && (tmp_.due < GS_INT_UNITS)) ? tmp_.due : 0;
+	gs->intDue = ((tmp_.intDue > 0) && (tmp_.intDue <= GS_INT_UNITS)) ? tmp_.intDue : GS_INT_UNITS;
+	gs->rp0 = tmp_.rp0;
+	gs_remap(gs);			// the page registers, which map memory as they say
 }
 
 // What the last file left for after its load - its card, its media's state - goes
@@ -1377,10 +1419,10 @@ int szx_ext_load(Computer* comp, const unsigned char* ext, size_t len) {
 				if (comp->gs && comp->gs->enable) ext_gs(comp->gs, p, n);
 				break;
 			case XR_GSCPU:
-				if (comp->gs && comp->gs->enable) ext_cpu_into(comp->gs->cpu, p, n);
+				if (comp->gs && comp->gs->enable && !gsOther) ext_cpu_into(comp->gs->cpu, p, n);
 				break;
 			case XR_GSRAM:
-				if (comp->gs && comp->gs->enable) ext_gs_ram(comp->gs, p, n);
+				if (comp->gs && comp->gs->enable && !gsOther) ext_gs_ram(comp->gs, p, n);
 				break;
 			case XR_FDCI:
 				if (comp->dif && (comp->dif->type == DIF_P3DOS)) {
@@ -1519,6 +1561,12 @@ void szx_rd_gs(Computer* comp, const unsigned char* p, size_t n) {
 		return;
 	}
 	CPU* cpu = gs->cpu;
+	// the block is a classic card's: a NeoGS starts afresh, and our own record,
+	// if the file has it, then puts its state back
+	if (gs->model == GS_NEOGS) {
+		gs_set_model(gs, GS_NEOGS);
+		return;
+	}
 	if (p[10] & SZG_CUSTOMROM)
 		xlog(XLG_FILE, XLL_INFO, "szx: custom GS rom not taken, the machine's own is used");
 	gs->vol1 = p[2] & 0x3f;

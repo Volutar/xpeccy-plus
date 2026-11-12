@@ -59,8 +59,8 @@ static inline void atm2_step_in(Computer* comp) {
 // Nothing but an i/o access changes that (comp_run_io ends a run, or checks again).
 static inline int comp_devs_summable(Computer* comp) {
 	if (!dif_quiet(comp->dif)) return 0;			// difSync: a command reads its own time
-	if (comp->gs->enable) return 0;				// gsSync: its own cpu steps by it
-	// saaSync, tsSync: they count the time, linearly
+	// saaSync, tsSync, gsSync: they count the time, linearly - the GS's own cpu
+	// runs it at its next flush, an access to its ports or a sub-sample
 	// tapSync: at the normal speed; any other rounds per call
 	if (comp->tape->on && (comp->tape->speed != 100)) return 0;
 	// bcSync: settled where the port put it and no wave made; a transient rounds per call

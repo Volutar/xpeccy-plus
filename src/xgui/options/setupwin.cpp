@@ -82,6 +82,28 @@ QString getRFSData(QComboBox* box) {
 	return box->itemData(box->currentIndex()).toString();
 }
 
+// a stereo separation slider, 0-100, and its label kept in step with it
+static xSlider* sep_slider(QLabel** lab) {
+	xSlider* sld = new xSlider;
+	sld->setRange(0, 100);
+	sld->setPageStep(5);
+	sld->setTickInterval(25);
+	sld->setOrientation(Qt::Horizontal);
+	sld->setTickPosition(QSlider::TicksBelow);
+	QLabel* l = new QLabel(QString("%0%").arg(sld->value()));
+	l->setMinimumWidth(32);
+	l->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+	QObject::connect(sld, &QSlider::valueChanged, l, [l](int v) {l->setText(QString("%0%").arg(v));});
+	*lab = l;
+	return sld;
+}
+
+// a ROM list on its file: one missing, or of the user's own from elsewhere, goes in
+static void rom_box_pick(QComboBox* box, const QString& cur) {
+	if (!cur.isEmpty() && (box->findData(cur) < 0)) box->insertItem(1, cur, cur);
+	box->setCurrentIndex(qMax(0, box->findData(cur)));
+}
+
 std::string getRFText(QComboBox* box) {
 	QString res = "";
 	if (box->currentIndex() >= 0) res = box->currentText();
@@ -407,27 +429,21 @@ void SetupWin::makeDevWidgets() {
 	sldTapeSpeed->setPageStep(1);
 	sldTapeSpeed->setValue(100);
 	sldTapeSpeed->setTickInterval(1);
-	sldPsgSep = new xSlider;
-	sldPsgSep->setRange(0, 100);
-	sldPsgSep->setPageStep(5);
-	sldPsgSep->setTickInterval(25);
-	sldPsgSep->setMinimumWidth(45);
+	sldPsgSep = sep_slider(&labPsgSep);
 	sldSensitivity = new xSlider;
 	sldSensitivity->setRange(100, 1900);
 	sldSensitivity->setSingleStep(10);
 	sldSensitivity->setPageStep(100);
 	sldSensitivity->setValue(1000);
 	sldSensitivity->setTickInterval(100);
-	foreach(QSlider* sld, QList<QSlider*>() << sldTapeSpeed << sldPsgSep << sldSensitivity) {
+	sldGsSep = sep_slider(&labGsSep);
+	foreach(QSlider* sld, QList<QSlider*>() << sldTapeSpeed << sldSensitivity) {
 		sld->setOrientation(Qt::Horizontal);
 		sld->setTickPosition(QSlider::TicksBelow);
 	}
 	labTapeSpeedVal = new QLabel("100%");
 	labTapeSpeedVal->setMinimumWidth(34);
 	labPsgMhz = new QLabel("MHz");
-	labPsgSep = new QLabel("75%");
-	labPsgSep->setMinimumWidth(32);
-	labPsgSep->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 }
 
 // Source, Screenshots' and Recording's: the machine's frame or the window's picture
@@ -1250,8 +1266,12 @@ void SetupWin::fillPages() {
 	palPending.clear();		// what a Cancel left behind
 	fillPalettes();
 // sound
-	gsBox->setCurrentIndex(comp->gs->enable ? 1 : 0);
+	gsBox->setCurrentIndex(xm_gs_of(comp));
 	gsrbox->setChecked(comp->gs->reset);
+	sldGsSep->setValue(comp->gs->sep);
+	ngsPick = QString::fromUtf8(conf.ngsFile.c_str());
+	rom_box_pick(ngsRomBox, ngsPick);
+	gsRomStack->setCurrentIndex((xm_gs_of(comp) == MAC_GS_NEOGS) ? 1 : 0);
 	divBox->setCurrentIndex(comp->div->model ? 1 : 0);
 	divRamBox->setCurrentIndex((comp->div->pages > 16) ? 1 : 0);
 	divWrBox->setChecked(comp->div->eeWrite);
@@ -1455,6 +1475,9 @@ void SetupWin::apply() {
 	// pages hold for the emulator itself still goes in, onto the new machine.
 	std::string mid = std::string(getRFSData(ui.machbox).toLocal8Bit().data());
 	bool another = !mid.empty() && (mid != conf.macId);
+	// the NeoGS flash is every machine's, so it goes in before a switch builds the
+	// new machine; a NeoGS reads it when it is the card and the file is new to it
+	conf.ngsFile = std::string(ngsPick.toUtf8().data());
 	if (another) {
 		xm_choose(mid);
 	} else {
@@ -1583,7 +1606,7 @@ void SetupWin::applyMachine() {
 		} else if (stereoNew) {
 			comp->sndSeed = 1;
 		}
-		comp->gs->enable = gsBox->currentIndex();
+		xm_set_gs(comp, gsBox->currentIndex());
 		comp->sdrv->type = getRFIData(sdrvBox);
 		comp->saa->enabled = saaBox->currentIndex() ? 1 : 0;
 	}
@@ -1748,6 +1771,7 @@ void SetupWin::applyGlobal() {
 		comp->sndSeed = 1;
 	}
 	comp->gs->reset = gsrbox->isChecked() ? 1 : 0;
+	comp->gs->sep = sldGsSep->value();
 // input
 	comp->mouse->swapButtons = cbSwapButtons->isChecked() ? 1 : 0;
 	comp->mouse->sensitivity = sldSensitivity->value() * 0.001f;
@@ -2142,6 +2166,8 @@ QDialog* SetupWin::popOut(QWidget* box, const char* title) {
 
 #define	RSLOT_GS	-1
 #define	RSLOT_FONT	-2
+#define	RSLOT_NGS	-3	// the NeoGS flash: not the romset's, every machine's
+
 #define	TRDOS_ROM	"trdos504t.rom"		// what a Beta Disk gets when its slot is empty
 
 
@@ -2375,21 +2401,36 @@ void SetupWin::buildDevices() {
 	psg.field(tr("Clock"), fieldPair(cbPsgFrq, labPsgMhz, false),
 		tr("Auto: follows the CPU clock"));
 	psg.field(tr("Stereo"), cbPsgStereo);
-	psg.field(tr("Separation"), fieldPair(sldPsgSep, labPsgSep, true),
+	psg.field(tr("Separation"), fieldPair(sldPsgSep, labPsgSep, false),
 		tr("100%: the channels kept apart, 0%: mono"));
 	devRow(grid, tr("PSG"), cbPsgCount, psg.body, "Machine: PSG");
 	devRow(grid, tr("DAC"), sdrvBox, NULL, NULL);
-	gsBox = devCombo(QStringList() << tr("Off") << tr("On"));
+	gsBox = devCombo(QStringList() << tr("None") << tr("Original") << tr("NeoGS"));	// MAC_GS_*
 	xOptSheet gs;
-	gsRomBox = new QComboBox;
-	QToolButton* gsRomBtn = new QToolButton;
-	gsRomBtn->setIcon(QIcon(":/images/fileopen.png"));
-	gsRomBtn->setToolTip(tr("Pick a ROM file"));
-	connect(gsRomBox, QOverload<int>::of(&QComboBox::activated), this, [this](int idx) {
-		romSlotPick(RSLOT_GS, gsRomBox->itemData(idx).toString());
+	// a card's ROM: the list and the folder button, a pick going to its slot
+	auto romPair = [this](QComboBox*& box, int slot) -> QWidget* {
+		box = new QComboBox;
+		QToolButton* btn = new QToolButton;
+		btn->setIcon(QIcon(":/images/fileopen.png"));
+		btn->setToolTip(tr("Pick a ROM file"));
+		QComboBox* b = box;
+		connect(b, QOverload<int>::of(&QComboBox::activated), this, [this, b, slot](int idx) {
+			romSlotPick(slot, b->itemData(idx).toString());
+		});
+		connect(btn, &QToolButton::released, this, [this, b, slot]() {romSlotFile(b, slot);});
+		return fieldPair(b, btn, false);
+	};
+	// the ROM row holds the card's own file: the original one's in the romset,
+	// the NeoGS flash one for every machine
+	gsRomStack = new QStackedWidget;
+	gsRomStack->addWidget(romPair(gsRomBox, RSLOT_GS));
+	gsRomStack->addWidget(romPair(ngsRomBox, RSLOT_NGS));
+	connect(gsBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
+		gsRomStack->setCurrentIndex((idx == MAC_GS_NEOGS) ? 1 : 0);
 	});
-	connect(gsRomBtn, &QToolButton::released, this, [this]() {romSlotFile(gsRomBox, RSLOT_GS);});
-	gs.field(tr("ROM"), fieldPair(gsRomBox, gsRomBtn, false));
+	gs.field(tr("ROM"), gsRomStack);
+	gs.field(tr("Separation"), fieldPair(sldGsSep, labGsSep, false),
+		tr("100%: the sides as the card has them, 0%: mono"));
 	gs.line();
 	gs.check(gsrbox, tr("Reset"), tr("The card is reset with the machine"));
 	devRow(grid, tr("General Sound"), gsBox, gs.body, "Machine: General Sound");
@@ -3083,15 +3124,16 @@ void SetupWin::fillDosRom() {
 	dosRomBtn->setEnabled(bdi && (bank >= 0));
 }
 
-// the General Sound's ROM, which its own window picks
+// the General Sound's ROM and the NeoGS flash, which its own window picks
 
 void SetupWin::fillGsRom(const QStringList& files) {
-	gsRomBox->clear();
-	gsRomBox->addItem(tr("(empty)"), QString());
-	foreach(QString f, files) gsRomBox->addItem(f, f);
-	QString cur = romSlotFileName(RSLOT_GS);
-	if (!cur.isEmpty() && (gsRomBox->findData(cur) < 0)) gsRomBox->insertItem(1, cur, cur);
-	gsRomBox->setCurrentIndex(qMax(0, gsRomBox->findData(cur)));
+	foreach(QComboBox* box, QList<QComboBox*>() << gsRomBox << ngsRomBox) {
+		box->clear();
+		box->addItem(tr("(empty)"), QString());
+		foreach(QString f, files) box->addItem(f, f);
+	}
+	rom_box_pick(gsRomBox, romSlotFileName(RSLOT_GS));
+	rom_box_pick(ngsRomBox, ngsPick);
 }
 
 // the file in a slot, or an empty string when there is none
@@ -3100,6 +3142,8 @@ QString SetupWin::romSlotFileName(int slot) {
 	std::string res;
 	if (slot == RSLOT_GS) {
 		res = roms.gsFile;
+	} else if (slot == RSLOT_NGS) {
+		return ngsPick;
 	} else if (slot == RSLOT_FONT) {
 		res = roms.fntFile;
 	} else {
@@ -3165,6 +3209,9 @@ void SetupWin::romSlotPick(int slot, const QString& file) {
 	std::string name = std::string(file.toUtf8().data());
 	if (slot == RSLOT_GS) {
 		roms.gsFile = name;
+	} else if (slot == RSLOT_NGS) {
+		ngsPick = file;
+		return;			// not the romset's
 	} else if (slot == RSLOT_FONT) {
 		roms.fntFile = name;
 	} else {
@@ -3321,7 +3368,6 @@ void SetupWin::chapsg() {
 	int on = (psg != PSG_NONE);
 	int fm = (psg == PSG_TSFM);
 	int split = on && (getRFIData(cbPsgStereo) != AY_MONO);
-	labPsgSep->setText(QString("%0%").arg(sldPsgSep->value()));
 	// TurboSound FM is two YM2203 and nothing else; the others never are
 	QStandardItemModel* types = qobject_cast<QStandardItemModel*>(cbPsgType->model());
 	int fmrow = cbPsgType->findData(SND_YM2203);

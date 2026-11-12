@@ -97,6 +97,7 @@ emulator passes that check - which makes it a better image to ship and a useful 
 | `gs105b.rom` | General Sound 1.05b | General Sound authors | unknown | latest release, used by the bundled romsets, `c6244f36ce2e782d4a4be9d72b0b4dd4` |
 | `gs105a.txt` | - | General Sound authors | unknown | release notes shipped with the firmware |
 | `gs105b.txt` | - | General Sound authors | unknown | release notes shipped with the firmware |
+| `neogs111.rom` | NeoGS | NedoPC (loader by savelij, firmware fixes by psb and Evgeny Muchkin on the General Sound ROM) | unknown, published with the card's sources | 512K flash image: loader 0.21 at #00000, firmware 1.11 of 07.02.2026 at #10000; `z80/create_update/full_ngs.rom` of NedoPC's NeoGS SVN (svn.nedopc.com/ngs), CRC32 9E14798B, `0e65e0182bf568348ba5276d9ba2088f` |
 
 The General Sound firmware sources are published at
 <https://github.com/psbhlw/gs-firmware> (sources only, no built images); the binaries
