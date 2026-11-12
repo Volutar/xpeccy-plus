@@ -353,6 +353,39 @@ static void loop_skip(const char* name, int model, const char* path, int size) {
 	check("time 9 sub-samples at once, parked: the DAC levels as at every step", c9.heard == b9.heard);
 }
 
+// The other model after the card parked for a long time: the new one comes up as
+// from the power, at its first instruction, owing nothing, its INT divider at 0 -
+// as a fresh card of that model does
+static void model_change(const char* gsPath, const char* ngsPath) {
+	static unsigned char rom[GS_ROM_SIZE], ngs[NGS_ROM_SIZE];
+	printf("== model-change\n");
+	if (!read_file(gsPath, rom, GS_ROM_SIZE) || !read_file(ngsPath, ngs, NGS_ROM_SIZE)) {
+		check("the firmwares read", 0);
+		return;
+	}
+	GSound* gs = ls_card(GS_ORIGINAL, rom);
+	memcpy(gs->romNGS, ngs, NGS_ROM_SIZE);
+	for (int i = 0; i < LS_FRAME * 300; i++) {
+		gsSync(gs, LS_STEP_NS);
+		gsFlushMix(gs);
+	}
+	check("parked, owed over a second", gs->lpPark && (gs->due > 1000000000LL * GS_UNITS_NS));
+	gs_set_model(gs, GS_NEOGS);
+	GSound* fresh = ls_card(GS_NEOGS, ngs);
+	check("a NeoGS from the power: at #0000, owing nothing, the INT divider at 0, not parked",
+		(gs->cpu->regPC == 0) && (gs->due == 0) && (gs->intDue == GS_INT_UNITS) && !gs->lpPark);
+	for (int i = 0; i < LS_FRAME; i++) {
+		gsSync(gs, LS_STEP_NS);
+		gsFlushMix(gs);
+		gsSync(fresh, LS_STEP_NS);
+		gsFlushMix(fresh);
+	}
+	check("a frame on: its CPU as a fresh card's", !memcmp(gs->cpu->regs, fresh->cpu->regs, sizeof(gs->cpu->regs))
+		&& (gs->due == fresh->due) && (gs->intDue == fresh->intDue));
+	gsDestroy(fresh);
+	gsDestroy(gs);
+}
+
 int main(int argc, char** argv) {
 	GSound* gs = gsCreate();
 	gs->enable = 1;
@@ -368,6 +401,7 @@ int main(int argc, char** argv) {
 	if (argc > 2) {
 		loop_skip("original", GS_ORIGINAL, argv[1], GS_ROM_SIZE);
 		loop_skip("neogs", GS_NEOGS, argv[2], NGS_ROM_SIZE);
+		model_change(argv[1], argv[2]);
 	}
 	return failures ? 1 : 0;
 }
