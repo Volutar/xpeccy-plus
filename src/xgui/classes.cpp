@@ -34,6 +34,7 @@
 #include <QActionGroup>
 #include <QMenu>
 #include <climits>
+#include <typeinfo>
 
 QString gethexword(int);
 QString gethexbyte(uchar);
@@ -1157,6 +1158,11 @@ class xLabelFor : public QObject {
 					return true;
 				case QEvent::MouseMove:
 					if (!down) break;
+					// a release that went elsewhere
+					if (!(mev->buttons() & Qt::LeftButton)) {
+						drop();
+						break;
+					}
 					if (btn) btn->setDown(lab->rect().contains(mev->pos()));
 					return true;
 				case QEvent::MouseButtonRelease:
@@ -1244,7 +1250,7 @@ static bool label_target(QWidget* wid) {
 
 // text the mouse selects, a link it follows or a label class of its own keeps its clicks
 static bool label_free(QLabel* lab) {
-	return !label_tie(lab) && (lab->metaObject() == &QLabel::staticMetaObject)
+	return !label_tie(lab) && (typeid(*lab) == typeid(QLabel))
 		&& !lab->openExternalLinks() && !(lab->textInteractionFlags() & Qt::TextSelectableByMouse);
 }
 
