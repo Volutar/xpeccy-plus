@@ -24,8 +24,6 @@
 
 // socket
 
-#ifdef USENETWORK
-
 void MainWin::openServer() {
 	int i = 0;
 	while (!srv.listen(QHostAddress::LocalHost, (conf.port + i) & 0xffff) && (i < 0x10000)) {
@@ -267,7 +265,6 @@ void MainWin::socketRead() {
 				w = QApplication::activeWindow();		// a tool window
 		}
 		QPixmap pic = w ? w->grab() : QPixmap();
-#if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
 		// The picture is read from the framebuffer, where the last frame left
 		// it, and the window rendered around it: rendering the picture widget
 		// itself would clear its framebuffer.
@@ -306,7 +303,6 @@ void MainWin::socketRead() {
 			if (toolBar->isVisible() && toolBar->geometry().intersects(scr))
 				toolBar->render(&pnt, toolBar->pos());
 		}
-#endif
 		if (pic.isNull()) pic = frame->grab();
 		QString menus;
 		if (com == "winshot-menus") {
@@ -729,10 +725,3 @@ void MainWin::socketRead() {
 		sock->write("> ");
 }
 
-#else
-
-void MainWin::connected() {}
-void MainWin::disconnected() {}
-void MainWin::socketRead() {}
-
-#endif

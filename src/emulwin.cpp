@@ -131,7 +131,6 @@ void MainWin::vsyncProbe() {
 	dsync_probe(frame->windowHandle());
 	if (conf.vid.vsync) {
 		if (!dsync_running() && dsync_start(pacing_vblank)) {
-#if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
 			// no vblank thread here: the view repaints on every swap, and each
 			// swap that waited for the vblank is the tick
 			if (glw && dsync_swaps_wait()) {
@@ -141,7 +140,6 @@ void MainWin::vsyncProbe() {
 				}, Qt::UniqueConnection);
 				glw->update();
 			}
-#endif
 		}
 	} else if (dsync_running()) {
 		dsync_stop();
@@ -471,9 +469,7 @@ MainWin::MainWin(QMainWindow* frm) {
 	cmsid = startTimer(1000);	// 1 sec
 
 	connect(&frm_tmr, SIGNAL(timeout()), this, SLOT(frame_timer()));
-#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
 	frm_tmr.setTimerType(Qt::PreciseTimer);
-#endif
 	frm_tmr.start(20);
 
 	menuWatch(userMenu);
@@ -502,12 +498,9 @@ MainWin::MainWin(QMainWindow* frm) {
 	connect(quitAct, &QAction::triggered, this, &QWidget::close);
 #endif
 
-#ifdef USENETWORK
 	openServer();
 	connect(&srv, SIGNAL(newConnection()),this, SLOT(connected()));
-#endif
 
-#if defined(USEOPENGL) && !BLOCKGL
 	// initializeGL creates the shaders, and it only runs when the window is
 	// first shown. Exiting before that - "xpeccy-plus --help" does - would
 	// otherwise leave the destructor deleting an uninitialized pointer.
@@ -519,36 +512,17 @@ MainWin::MainWin(QMainWindow* frm) {
 		// VSync holds its tick by when the frames reach the window (dispsync.h)
 		connect(glw, &QOpenGLWidget::frameSwapped, this, []() { dsync_frame_presented(); });
 	}
-#endif
 	// the picture covers it all, or the view does: no background under them
 	setAttribute(Qt::WA_OpaquePaintEvent);
-
-// a legacygl code must be here, else the main process doesn't finish properly (???)
-#if USELEGACYGL
-	QGLFormat frmt;
-	frmt.setDoubleBuffer(false);
-	cont = new QGLContext(frmt);
-	setContext(cont);
-	setAutoBufferSwap(true);
-	makeCurrent();
-	curtex = 0;
-	shd_support = QGLShader::hasOpenGLShaders(QGLShader::Vertex) && QGLShader::hasOpenGLShaders(QGLShader::Fragment);
-	qDebug() << "vtx_shd";
-	vtx_shd = new QGLShader(QGLShader::Vertex, cont);
-	qDebug() << "frg_shd";
-	frg_shd = new QGLShader(QGLShader::Fragment, cont);
-#endif
 
 	qDebug() << "end:constructor";
 }
 
 MainWin::~MainWin() {
 	delete snowBox;		// its end stops the snow: while this window is whole
-#if defined(USEOPENGL) && !BLOCKGL
 	cleanupGL();
 	delete(vtx_shd);
 	delete(frg_shd);
-#endif
 }
 
 // gamepad mapper
@@ -1290,7 +1264,6 @@ void MainWin::rzxStateChanged(int state) {
 // read out again with new bounds - that is what makes a border change take
 // effect at once, even while the machine is paused.
 void MainWin::uploadFrame() {
-#if defined(USEOPENGL) && !BLOCKGL
 	if (!glw) return;
 	Computer* comp = conf.zx;
 	Video* vid = comp->vid;
@@ -1307,37 +1280,29 @@ void MainWin::uploadFrame() {
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 	glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
 	glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-#endif
 }
 
 // Same upload, but from a timer or the emulation thread's frame signal rather
 // than from paintEvent, so the context has to be taken first - calling GL
 // without it is undefined and crashes some drivers.
 void MainWin::uploadOffPaint() {
-#if defined(USEOPENGL) && !BLOCKGL
 	if (!glw) return;
 	glw->makeCurrent();
 	glBindTexture(GL_TEXTURE_2D, texids[curtex]);
 	uploadFrame();
 	glw->doneCurrent();
-#endif
 }
 
 // Redraw now: the one place the picture is drawn (see paintEvent).
 void MainWin::presentFrame() {
 	blockSignals(true);
 	paintOwed = 1;
-#if defined(USEOPENGL) && !BLOCKGL
 	if (glw) {
 		glw->repaint();
 	} else {
 		repaint();
 		dsync_frame_presented();
 	}
-#else
-	repaint();
-	dsync_frame_presented();
-#endif
 	blockSignals(false);
 }
 
@@ -1367,7 +1332,6 @@ void MainWin::frame_timer() {
 	// Locked to the display, a frame comes in step with the vblanks: shown as it
 	// comes (d_frame), as a timer of its own would beat with them.
 	if ((conf.vid.lowLatency || pacing_locked()) && !conf.emu.fast && !conf.emu.pause) return;
-#if defined(USEOPENGL) && !BLOCKGL
 	if (glw && (conf.emu.fast || conf.emu.pause)) {
 		// fast loading finishes a picture 30 times a second at most, and one
 		// upload of it is enough however often the window is painted
@@ -1378,7 +1342,6 @@ void MainWin::frame_timer() {
 		queue.clear();
 		queue.append(texids[curtex]);
 	}
-#endif
 	presentFrame();
 }
 
@@ -1389,7 +1352,6 @@ void MainWin::d_frame() {
 	hasPicture = 1;
 	if (conf.emu.fast) return;
 	upSwaps = -1;		// the texture the timer shows next is not this one
-#if defined(USEOPENGL) && !BLOCKGL
 	if (glw) {
 		queue.append(texids[curtex]);
 		// Low latency keeps only the newest frame; buffered keeps a couple to
@@ -1399,7 +1361,6 @@ void MainWin::d_frame() {
 		uploadOffPaint();
 		curtex++;
 	}
-#endif
 	// Low latency: show the frame now. Buffered: let the timer show it - unless
 	// VSync paces the frames, see frame_timer()
 	if (conf.vid.lowLatency || pacing_locked())
@@ -1419,9 +1380,7 @@ void MainWin::drawText(QPainter* pnt, int x, int y, const char* buf) {
 // No GL view: the picture is drawn here. Every paint draws it whole, from the
 // frame buffer - an expose, a menu closing as well as a new frame.
 void MainWin::paintEvent(QPaintEvent*) {
-#if defined(USEOPENGL) && !BLOCKGL
 	if (glw) return;		// under the view, nothing of this widget shows
-#endif
 	int owed = paintOwed;
 	paintOwed = 0;
 	// The snow over the picture repaints it at the screen's rate: it gets the
@@ -1470,9 +1429,7 @@ void MainWin::paintPlain(QPainter& pnt) {
 
 // The view keeps the picture in its framebuffer and follows MainWin's size.
 void MainWin::resizeEvent(QResizeEvent*) {
-#if defined(USEOPENGL) && !BLOCKGL
 	if (glw) glw->setGeometry(rect());
-#endif
 	fitWindow();
 }
 
@@ -1541,7 +1498,6 @@ void MainWin::fitWindow() {
 	emit s_keywin_snap();
 }
 
-#if defined(USEOPENGL) && !BLOCKGL
 // The GL view's paint: the frame through the shader, then the indicators.
 void MainWin::paintGLView() {
 	// Qt paints the window on its own too - an expose, a menu closing. The
@@ -1588,7 +1544,6 @@ void MainWin::paintGLView() {
 	// that was never generated is undefined - macOS says so out loud, other
 	// drivers quietly sample black.
 	drawPicture();
-#if !ISLEGACYGL
 	// after the picture: Mirror reads it back as it is shown, and the fill only
 	// goes beside it
 	fillOn = fillWanted();
@@ -1599,13 +1554,11 @@ void MainWin::paintGLView() {
 	// before the indicators go on
 	if ((shotDue || shotClip) && (conf.scrShot.source == VREC_SRC_SCREEN))
 		grabPicture();
-#endif
 	glFlush();
 	pnt.endNativePainting();
 	drawInputOsd(pnt);
 	drawIcons(pnt);
 	pnt.end();
-#if !ISLEGACYGL
 	if (vrec_wants_screen()) {
 		grabScreen();
 		// the signs are the user's alone: the picture under REC is drawn again
@@ -1632,13 +1585,10 @@ void MainWin::paintGLView() {
 		}
 		if (snow) snowFall->drawSign(top, snowSignAt());
 	}
-#endif
 }
-#endif
 
 // the frame, through the shader, where drawX/Y/W/H say
 void MainWin::drawPicture() {
-#if defined(USEOPENGL) && !BLOCKGL
 	if (prg.isLinked() && curtxid) {
 		const qreal r = widgetDpr(this);
 		Computer* comp = conf.zx;
@@ -1676,30 +1626,25 @@ void MainWin::drawPicture() {
 
 		prg.release();
 	}
-#endif
 }
 
 // The window as it was just painted, shader and indicators and all. Read
 // straight after the paint, while the context is current and the widget's
 // framebuffer holds it.
 void MainWin::grabScreen() {
-#if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
 	const qreal r = widgetDpr(this);
 	int fw = int(width() * r + 0.5);
 	int fh = int(height() * r + 0.5);
 	vrec_screen(readBack(QRect(0, fh & 1, fw & ~1, fh & ~1)));
-#endif
 }
 
 // Pixels of the framebuffer just painted, in GL's terms: from the bottom left,
 // the bottom row first.
 QImage MainWin::readBack(const QRect& rc) {
 	QImage img(rc.width(), rc.height(), QImage::Format_RGBA8888);
-#if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
 	glBindFramebuffer(GL_FRAMEBUFFER, glw->defaultFramebufferObject());
 	glPixelStorei(GL_PACK_ALIGNMENT, 4);
 	glReadPixels(rc.x(), rc.y(), rc.width(), rc.height(), GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
-#endif
 	return img;
 }
 
@@ -1707,7 +1652,6 @@ QImage MainWin::readBack(const QRect& rc) {
 // side fill beside it the whole window, as it shows; with No border, the screen
 // part of the picture alone. A picture wider than the window is cut at its edge.
 void MainWin::grabPicture() {
-#if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
 	const qreal r = widgetDpr(this);
 	QRect win(0, 0, int(width() * r + 0.5), int(height() * r + 0.5));
 	// drawPicture()'s viewport, from the bottom left
@@ -1733,7 +1677,6 @@ void MainWin::grabPicture() {
 	img = img.mirrored();
 #endif
 	shotGrab = img.convertToFormat(QImage::Format_RGB32);
-#endif
 }
 
 // An RZX recording of the machine from here on, or of the one being played
@@ -1831,13 +1774,11 @@ bool MainWin::recStart(const QString& file) {
 	Computer* comp = conf.zx;
 	int sw = 0;
 	int sh = 0;
-#if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
 	if (glw && (conf.rec.source == VREC_SRC_SCREEN)) {
 		const qreal r = widgetDpr(this);
 		sw = int(width() * r + 0.5);
 		sh = int(height() * r + 0.5);
 	}
-#endif
 	QString err;
 	// started, the blinking sign says so: a message would be in the video
 	if (vrec_start(comp, media_image_name(), sw, sh, &err, file)) return true;
@@ -2436,9 +2377,7 @@ void MainWin::closeEvent(QCloseEvent* ev) {
 		keepSize();
 		snowBoxEnd();		// a tick in it counts
 		saveConfig();
-#ifdef USENETWORK
 		closeServer();
-#endif
 		emit s_emulwin_close();
 		ev->accept();
 	} else {
@@ -3917,7 +3856,6 @@ void MainWin::fillUserMenu() {
 	act->setData("");
 	act->setCheckable(true);
 	if (conf.vid.shader.empty() || !conf.vid.shd_support) act->setChecked(true);	// none is what runs
-#if defined(USEOPENGL) && !BLOCKGL
 	if (conf.vid.shd_support) {
 		foreach(QString nam, xres_list("shaders", QStringList() << "*.txt")) {
 			act = shdMenu->addAction(nam);
@@ -3926,7 +3864,6 @@ void MainWin::fillUserMenu() {
 			act->setChecked(nam == conf.vid.shader.c_str());
 		}
 	}
-#endif
 	// fill palette menu
 	palMenu->clear();
 	act = palMenu->addAction(PAL_DEFAULT_NAME);
@@ -4021,13 +3958,11 @@ void MainWin::optApply() {
 	fillUserMenu();
 	cutTexts();		// Options may have moved a hotkey
 	updateWindow();		// no palette here: Apply loads a new one, and one the machine set stays
-#ifdef USENETWORK
 	if (srv.serverPort() != conf.port) {
 		closeServer();
 		openServer();
 
 	}
-#endif
 	dezog_apply();
 	emit s_tape_upd(comp->tape);
 	pause(false, PR_OPTS);

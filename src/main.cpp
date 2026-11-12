@@ -596,7 +596,6 @@ int main(int ac,char** av) {
 	QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 #endif
 
-#ifdef USEOPENGL
 	// NVIDIA+Wayland defaults to a GL ES context, which makes paintEvent's fixed-function calls no-op.
 	{
 		QSurfaceFormat fmt;
@@ -621,7 +620,6 @@ int main(int ac,char** av) {
 		fmt.setSwapInterval(0);
 		QSurfaceFormat::setDefaultFormat(fmt);
 	}
-#endif
 
 #if defined(_WIN32) && (QT_VERSION >= QT_VERSION_CHECK(6,7,0))
 	// a style asked for by Qt's own -style or QT_STYLE_OVERRIDE stays (QApplication takes
@@ -648,7 +646,7 @@ int main(int ac,char** av) {
 	// from the gamepad timer's SDL_PollEvent(), including title-bar mouse events.
 	// SDL2 joystick events work without video; keep other backends as before.
 	Uint32 sdlFlags = SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_TIMER;
-#if !defined(__APPLE__) || !defined(HAVESDL2)
+#if !defined(__APPLE__)
 	sdlFlags |= SDL_INIT_VIDEO;
 #endif
 	if (SDL_Init(sdlFlags) < 0)		// the subsystems that did start stay up
@@ -767,12 +765,8 @@ int main(int ac,char** av) {
 
 	// before the window: it is made with the GL view or without it
 	QString glWhy;
-#if defined(USEOPENGL) && !BLOCKGL
 	conf.vid.gl = !noGl && !bench && gl_probe(&glWhy);
-#else
-	conf.vid.gl = 0;
-#endif
-#if defined(USEOPENGL) && !BLOCKGL && !defined(__WIN32) && !defined(__APPLE__)
+#if !defined(__WIN32) && !defined(__APPLE__)
 	// Windows and macOS compose every window and never tear. Here a swap waits
 	// for the vblank only if the context is made so, and the swaps are VSync's
 	// tick (dispsync.h): it takes a restart to change

@@ -3,15 +3,11 @@
 #include "xcore/log.h"
 
 #include <QRegularExpression>
-#if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
 #include <QOffscreenSurface>
 #include <QOpenGLContext>
-#endif
 #include <algorithm>
 #include <cmath>
 #include <vector>
-
-#if defined(USEOPENGL) && !BLOCKGL
 
 namespace {
 
@@ -327,10 +323,6 @@ QString shimLegacyShader(QString src,
 // turns the desktop GL of some GPUs off (Arrandale's HD Graphics among them),
 // and the fallbacks it would take instead are not shipped.
 bool gl_probe(QString* why) {
-#if ISLEGACYGL
-	(void)why;
-	return true;
-#else
 	QOffscreenSurface surf;
 	surf.create();
 	QOpenGLContext ctx;
@@ -354,7 +346,6 @@ bool gl_probe(QString* why) {
 	}
 	ctx.doneCurrent();
 	return ok;
-#endif
 }
 
 xGLView::xGLView(MainWin* p) : mw(p) {
@@ -370,7 +361,6 @@ void xGLView::paintEvent(QPaintEvent*) { mw->paintGLView(); }
 
 void MainWin::initializeGL() {
 	qDebug() << __FUNCTION__;
-#if !ISLEGACYGL
 	initializeOpenGLFunctions();
 	// what the driver actually gave us, not what was asked for: the shaders are
 	// written against #version 330, and a context older than that explains a
@@ -399,20 +389,6 @@ void MainWin::initializeGL() {
 	vtx_shd = new QOpenGLShader(QOpenGLShader::Vertex);
 	qDebug() << "frg_shd";
 	frg_shd = new QOpenGLShader(QOpenGLShader::Fragment);
-#else
-//	QGLFormat frmt;
-//	frmt.setDoubleBuffer(false);
-//	cont = new QGLContext(frmt);
-//	setContext(cont);
-//	setAutoBufferSwap(true);
-//	makeCurrent();
-//	curtex = 0;
-//	conf.vid.shd_support = QGLShader::hasOpenGLShaders(QGLShader::Vertex) && QGLShader::hasOpenGLShaders(QGLShader::Fragment);
-//	qDebug() << "vtx_shd";
-//	vtx_shd = new QGLShader(QGLShader::Vertex, cont);
-//	qDebug() << "frg_shd";
-//	frg_shd = new QGLShader(QGLShader::Fragment, cont);
-#endif
 	glGenTextures(4, texids);
 	glEnable(GL_MULTISAMPLE);
 	for (int i = 0; i < 4; i++) {
@@ -423,7 +399,6 @@ void MainWin::initializeGL() {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	}
 
-#if !ISLEGACYGL
 	vao.create();
 	vao.bind();
 	vbo.create();
@@ -439,7 +414,6 @@ void MainWin::initializeGL() {
 	vbo.release();
 	vao.release();
 	initFill();
-#endif
 
 	loadShader();
 	if (!conf.vid.shd_support) xlog(XLG_GL, XLL_WARN, "shaders are not supported");
@@ -447,7 +421,6 @@ void MainWin::initializeGL() {
 }
 
 void MainWin::cleanupGL() {
-#if !ISLEGACYGL
 	if (!glw || (!vao.isCreated() && !vbo.isCreated())) return;
 	glw->makeCurrent();
 	if (vao.isCreated()) vao.destroy();
@@ -461,10 +434,8 @@ void MainWin::cleanupGL() {
 	glDeleteTextures(2, fillTex);
 	glDeleteTextures(1, &fillPic);
 	glw->doneCurrent();
-#endif
 }
 
-#if !ISLEGACYGL
 // The side fill's programs and its two small render targets. If any of it
 // fails the fill is not drawn - black, as with no fill.
 void MainWin::initFill() {
@@ -619,7 +590,6 @@ void MainWin::drawFill(const QRect* clip) {
 	vao.release();
 	fillDraw.release();
 }
-#endif
 
 void MainWin::resizeGL(int w, int h) {
 	const qreal r = widgetDpr(this);
@@ -630,8 +600,6 @@ void MainWin::resizeGL(int w, int h) {
 	qDebug() << "resizeGL logical" << w << h << "dpr" << r << "viewport" << vw << vh;
 }
 
-#endif
-
 // The shader filters a picture that has been scaled up; at 1:1 there is nothing
 // for it to work on, so the chosen one is ignored. It stays in the config, and
 // comes back as soon as the size does.
@@ -640,7 +608,6 @@ std::string MainWin::wantedShader() {
 	return conf.vid.shader;
 }
 
-#if defined(USEOPENGL) && !BLOCKGL
 // Holds the widget's context current while it is in scope, and only takes it
 // when it is not current already: initializeGL() and paintEvent() are handed
 // it by Qt, and releasing it under them would leave Qt drawing into nothing.
@@ -649,17 +616,12 @@ namespace {
 		xGLView* win;
 		bool taken;
 		glHold(xGLView* w) : win(w) {
-#if !ISLEGACYGL
 			taken = (QOpenGLContext::currentContext() != w->context());
-#else
-			taken = (QGLContext::currentContext() != w->context());
-#endif
 			if (taken) win->makeCurrent();
 		}
 		~glHold() { if (taken) win->doneCurrent(); }
 	};
 }
-#endif
 
 // Compiling and linking needs the context current on this thread, and the
 // options dialog, the shader menu and the reload hotkey all get here from
@@ -667,7 +629,6 @@ namespace {
 // the Intel Gen9.5 driver crashes on it from its shader compiler thread a
 // couple of seconds later.
 void MainWin::loadShader() {
-#if defined(USEOPENGL) && !BLOCKGL
 	if (!glw || !conf.vid.shd_support) return;
 	glHold hold(glw);
 	shdLoaded = wantedShader();
@@ -732,7 +693,6 @@ void MainWin::loadShader() {
 	} else {
 		xlog(XLG_GL, XLL_ERROR, "the default shader failed to compile or link");
 	}
-#endif
 }
 
 void MainWin::shdSelected(QAction* act) {

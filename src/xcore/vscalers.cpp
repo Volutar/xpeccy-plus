@@ -91,11 +91,7 @@ QSize vid_room(int fullscreen) {
 	if (!fullscreen) return fitArea;
 	// Before the main window is shown, configuration has no monitor yet.
 	if (!fullscreenSize.isValid()) {
-#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
 		fullscreenSize = QGuiApplication::primaryScreen()->size();
-#else
-		fullscreenSize = QApplication::desktop()->screenGeometry().size();
-#endif
 	}
 	return fullscreenSize;
 }

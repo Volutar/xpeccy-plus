@@ -213,9 +213,7 @@ static std::condition_variable sndWake;
 // falls back to NULL through itself.
 static std::recursive_mutex sndWork;
 
-#if defined(HAVESDL2)
 static SDL_AudioDeviceID sdldevid;
-#endif
 
 // output
 
@@ -1505,7 +1503,7 @@ int sndRateSupported(int rate) {
 // the ones that don't: they simply keep the rate they were given.
 static void snd_pick_auto_rate() {
 	if (!conf.snd.rateauto) return;
-#if defined(HAVESDL2) && SDL_VERSION_ATLEAST(2, 24, 0)
+#if SDL_VERSION_ATLEAST(2, 24, 0)
 	SDL_AudioSpec dev;
 	memset(&dev, 0, sizeof(dev));
 	if (SDL_GetDefaultAudioInfo(NULL, &dev, 0) < 0) {
@@ -1533,17 +1531,12 @@ int sdlopen() {
 	asp.callback = &sdlPlayAudio;
 	asp.userdata = NULL;
 	conf.snd.need = 0;
-#if defined(HAVESDL2)
 	// Nothing is allowed to change: a rate granted behind our back could be one
 	// the ring is not sized for, and it would be written to the config as if
 	// the user had picked it. snd_pick_auto_rate() above is the one place the
 	// rate is chosen.
 	sdldevid = SDL_OpenAudioDevice(NULL, 0, &asp, &dsp, 0);
 	if (sdldevid == 0) {
-#else
-	res = SDL_OpenAudio(&asp, &dsp);
-	if (res != 0) {
-#endif
 		xlog(XLG_SOUND, XLL_ERROR, "SDL audio device failed to open: %s", SDL_GetError());
 		res = 0;
 	} else {
@@ -1563,28 +1556,18 @@ int sdlopen() {
 }
 
 void sdlplay() {
-#if defined(HAVESDL2)
 	SDL_PauseAudioDevice(sdldevid, 0);
-#else
-	SDL_PauseAudio(0);
-#endif
 }
 
 void sdlclose() {
-#if defined(HAVESDL2)
 	SDL_CloseAudioDevice(sdldevid);
-#else
-	SDL_CloseAudio();
-#endif
 }
 
 // init
 
 OutSys sndTab[] = {
 	{xOutputNone,"NULL",&null_open,NULL,&null_close},
-#if defined(HAVESDL1) || defined(HAVESDL2)
 	{xOutputSDL,"SDL",&sdlopen,&sdlplay,&sdlclose},
-#endif
 	{0,NULL,NULL,NULL,NULL}
 };
 

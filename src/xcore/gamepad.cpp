@@ -28,27 +28,27 @@
 // SDL_JoystickGetSerial arrived in 2.0.14, SDL_JoystickPathForIndex in 2.24.
 // Linux is built against the distro's SDL, which is often older than the one
 // pinned for Windows, so both are optional and the code falls back a step.
-#if HAVESDL2 && SDL_VERSION_ATLEAST(2,0,14)
+#if SDL_VERSION_ATLEAST(2,0,14)
  #define HAVE_PAD_SERIAL 1
 #else
  #define HAVE_PAD_SERIAL 0
 #endif
-#if HAVESDL2 && SDL_VERSION_ATLEAST(2,24,0)
+#if SDL_VERSION_ATLEAST(2,24,0)
  #define HAVE_PAD_PATH 1
 #else
  #define HAVE_PAD_PATH 0
 #endif
-#if HAVESDL2 && SDL_VERSION_ATLEAST(2,0,9)
+#if SDL_VERSION_ATLEAST(2,0,9)
  #define HAVE_PAD_PLAYER 1
 #else
  #define HAVE_PAD_PLAYER 0
 #endif
-#if HAVESDL2 && SDL_VERSION_ATLEAST(2,0,6)
+#if SDL_VERSION_ATLEAST(2,0,6)
  #define HAVE_PAD_VENDOR 1
 #else
  #define HAVE_PAD_VENDOR 0
 #endif
-#if HAVESDL2 && SDL_VERSION_ATLEAST(2,0,12)
+#if SDL_VERSION_ATLEAST(2,0,12)
  #define HAVE_PAD_CTYPE 1
 #else
  #define HAVE_PAD_CTYPE 0
@@ -166,16 +166,12 @@ static int padParseSource(const char* str, xJoyMapEntry* jent) {
 			while (str[idx] && (str[idx] != '+') && (str[idx] != '-') && (len < (int)sizeof(nam) - 1))
 				nam[len++] = str[idx++];
 			nam[len] = 0;
-#if HAVESDL2
 			if (jent->type == JOY_CBUTTON) {
 				jent->num = SDL_GameControllerGetButtonFromString(nam);
 			} else {
 				jent->num = SDL_GameControllerGetAxisFromString(nam);
 				jent->state = (str[idx] == '-') ? -1 : +1;
 			}
-#else
-			jent->num = -1;
-#endif
 			if (jent->num < 0) return 0;
 			break;
 		case JOY_AXIS:		// A0+ A0-
@@ -208,13 +204,11 @@ static int padParseSource(const char* str, xJoyMapEntry* jent) {
 // The pad half the other way round, as config.conf keeps it
 static QString padSourceStr(const xJoyMapEntry& jent) {
 	switch (jent.type) {
-#if HAVESDL2
 		case JOY_CBUTTON:
 			return QString("C%0").arg(SDL_GameControllerGetStringForButton((SDL_GameControllerButton)jent.num));
 		case JOY_CAXIS:
 			return QString("X%0%1").arg(SDL_GameControllerGetStringForAxis((SDL_GameControllerAxis)jent.num))
 				.arg(QChar((jent.state < 0) ? '-' : '+'));
-#endif
 		case JOY_AXIS:
 			return QString("A%0%1").arg(jent.num).arg(QChar((jent.state < 0) ? '-' : '+'));
 		case JOY_HAT:
@@ -614,15 +608,11 @@ bool xGamepad::inUse() {
 // knows the model - the table should not change its words when it turns up.
 // Worked out where the pad changes and kept: the table asks it all the time.
 static bool padIsCtrl(const xPadId& pid) {
-#if HAVESDL2
 	if (pid.guid.isEmpty()) return false;
 	char* mp = SDL_GameControllerMappingForGUID(SDL_JoystickGetGUIDFromString(pid.guid.toUtf8().data()));
 	if (!mp) return false;
 	SDL_free(mp);
 	return true;
-#else
-	return false;
-#endif
 }
 
 bool xGamepad::asController() {
@@ -1220,7 +1210,6 @@ void xGamepad::importMap(const QString& path) {
 // for the pads it does not know yet, or knows wrong. Optional - most setups
 // never need one.
 void padLoadControllerDb() {
-#if HAVESDL2
 	std::string path = conf.path.confDir + SLASH + "gamecontrollerdb.txt";
 	FILE* file = fopen(path.c_str(), "rb");
 	if (!file) return;
@@ -1231,13 +1220,11 @@ void padLoadControllerDb() {
 	} else {
 		xlog(XLG_INPUT, XLL_INFO, "gamecontrollerdb.txt: %i mappings", n);
 	}
-#endif
 }
 
 // What SDL brings to the pads, once at start: a pad that never turns up
 // leaves nothing else in the log to go by.
 void padLogSdl() {
-#if HAVESDL2
 	SDL_version cv;
 	SDL_version lv;
 	SDL_VERSION(&cv);
@@ -1247,10 +1234,8 @@ void padLogSdl() {
 		lv.major, lv.minor, lv.patch, cv.major, cv.minor, cv.patch,
 		(on & SDL_INIT_JOYSTICK) ? "on" : "OFF",
 		(on & SDL_INIT_GAMECONTROLLER) ? "on" : "off");
-#endif
 }
 
-#if HAVESDL2
 // Which SDL backend found the pad: SDL writes its mark into the guid.
 static const char* padBackend(const SDL_JoystickGUID& g) {
 	switch (g.data[14]) {
@@ -1274,7 +1259,6 @@ static const char* padBus(const SDL_JoystickGUID& g) {
 	}
 	return "other";
 }
-#endif
 
 // The device list as SDL has it, logged when it differs from the last one
 // logged, so a rescan from the options window repeats nothing.
@@ -1285,17 +1269,14 @@ static void padLogDevices(const QList<xPadDev>& devs) {
 	for (int i = 0; i < devs.size(); i++) {
 		const xPadDev& dev = devs.at(i);
 		QString ln = QString("#%0 '%1' guid %2").arg(dev.index).arg(dev.id.name).arg(dev.id.guid);
-#if HAVESDL2
 		SDL_JoystickGUID g = SDL_JoystickGetDeviceGUID(dev.index);
 		ln += QString(", %0 on %1").arg(padBackend(g)).arg(padBus(g));
-#endif
 #if HAVE_PAD_VENDOR
 		ln += QString(", %0:%1 type %2")
 			.arg(SDL_JoystickGetDeviceVendor(dev.index), 4, 16, QChar('0'))
 			.arg(SDL_JoystickGetDeviceProduct(dev.index), 4, 16, QChar('0'))
 			.arg((int)SDL_JoystickGetDeviceType(dev.index));
 #endif
-#if HAVESDL2
 		if (dev.ctrl) {
 			const char* mn = SDL_GameControllerNameForIndex(dev.index);
 			ln += QString(", controller '%0'").arg(mn ? mn : "");
@@ -1305,7 +1286,6 @@ static void padLogDevices(const QList<xPadDev>& devs) {
 		} else {
 			ln += ", no controller mapping";
 		}
-#endif
 		lines.append(ln);
 	}
 	if (logged && (lines == last)) return;
@@ -1402,9 +1382,7 @@ xGamepad::xGamepad(QObject* p):QObject(p) {
 	trate = 10;
 	scm = GPS_KEMPSTON;
 	sjptr = NULL;
-#if HAVESDL2
 	scptr = NULL;
-#endif
 	resetRows();
 }
 
@@ -1420,15 +1398,11 @@ QList<xPadDev> xGamepad::devList() {
 	for (i = 0; i < cnt; i++) {
 		xPadDev dev;
 		dev.index = i;
-#if HAVESDL2
 		char gstr[64];
 		SDL_JoystickGetGUIDString(SDL_JoystickGetDeviceGUID(i), gstr, sizeof(gstr));
 		dev.id.guid = QString(gstr);
 		const char* nm = SDL_JoystickNameForIndex(i);
 		dev.ctrl = SDL_IsGameController(i) ? true : false;
-#else
-		const char* nm = SDL_JoystickName(i);
-#endif
 		dev.id.name = (nm && nm[0]) ? QString(nm) : QString("Gamepad %0").arg(i + 1);
 #if HAVE_PAD_PLAYER
 		dev.player = SDL_JoystickGetDevicePlayerIndex(i);
@@ -1495,7 +1469,6 @@ QList<xPadDev> xGamepad::devList() {
 void xGamepad::openDev(const xPadDev& dev) {
 	close();
 	if (dev.index < 0) return;
-#if HAVESDL2
 	if (dev.ctrl) {
 		scptr = SDL_GameControllerOpen(dev.index);
 		if (scptr) {
@@ -1505,7 +1478,6 @@ void xGamepad::openDev(const xPadDev& dev) {
 				dev.id.name.toUtf8().data(), SDL_GetError());
 		}
 	}
-#endif
 	if (!sjptr) sjptr = SDL_JoystickOpen(dev.index);
 	if (!sjptr) {
 		xlog(XLG_INPUT, XLL_WARN, "can't open pad '%s': %s",
@@ -1523,13 +1495,11 @@ void xGamepad::openDev(const xPadDev& dev) {
 
 void xGamepad::close() {
 	if (id < 0) return;
-#if HAVESDL2
 	if (scptr) {
 		SDL_GameControllerClose(scptr);		// takes the joystick with it
 		scptr = NULL;
 		sjptr = NULL;
 	}
-#endif
 	if (sjptr) SDL_JoystickClose(sjptr);
 	sjptr = NULL;
 	id = -1;
@@ -1547,11 +1517,7 @@ int xGamepad::getId() {
 }
 
 int xGamepad::isController() {
-#if HAVESDL2
 	return scptr ? 1 : 0;
-#else
-	return 0;
-#endif
 }
 
 QString xGamepad::name() {
@@ -1645,9 +1611,7 @@ QList<xJoyMapEntry> xGamepad::repTick(int ms) {
 double xGamepad::axisLevel(const xJoyMapEntry& e) {
 	int v = 32767;
 	if ((e.type == JOY_AXIS) && sjptr) v = SDL_JoystickGetAxis(sjptr, e.num);
-#if HAVESDL2
 	if ((e.type == JOY_CAXIS) && scptr) v = SDL_GameControllerGetAxis(scptr, (SDL_GameControllerAxis)e.num);
-#endif
 	if ((e.type != JOY_AXIS) && (e.type != JOY_CAXIS)) return 1.0;	// a button is all the way
 	v = abs(v);
 	if (v <= dead) return 0.0;
@@ -1730,7 +1694,6 @@ void xGamepad::emitChanged(int type, int num, int state) {
 void xGamepad::update() {
 	int n, state;
 	if (id < 0) return;
-#if HAVESDL2
 	if (scptr) {
 		for (n = 0; n < SDL_CONTROLLER_BUTTON_MAX; n++)
 			emitChanged(JOY_CBUTTON, n, SDL_GameControllerGetButton(scptr, (SDL_GameControllerButton)n));
@@ -1740,7 +1703,6 @@ void xGamepad::update() {
 			emitChanged(JOY_CAXIS, n, sign(state));
 		}
 	}
-#endif
 	int h = SDL_JoystickNumHats(sjptr);
 	n = SDL_JoystickNumButtons(sjptr);
 	// clamp if HAT is present: skip virtual D-Pad buttons (>=VIRTKEYBASE)
@@ -1785,8 +1747,6 @@ QString xGamepad::getButtonName(int n) {
 	n -= VIRTKEYBASE;
 	return QString("Hat %0 %1").arg(n >> 2).arg(dirName[n & 3]);
 }
-
-#if HAVESDL2
 
 // SDL's own names are config keys ("righttrigger"); these are what the gui says.
 // Looked up by that key, so a button an older SDL lacks costs nothing.
@@ -1834,18 +1794,14 @@ static QString padNiceName(const char* sdl, int state) {
 	return QString(sdl);
 }
 
-#endif
-
 // How a binding reads in the gui - the map table and the bind dialog both
 // say it this way.
 QString xGamepad::getEntryName(const xJoyMapEntry& jent) {
 	switch (jent.type) {
-#if HAVESDL2
 		case JOY_CBUTTON:
 			return padNiceName(SDL_GameControllerGetStringForButton((SDL_GameControllerButton)jent.num), 1);
 		case JOY_CAXIS:
 			return padNiceName(SDL_GameControllerGetStringForAxis((SDL_GameControllerAxis)jent.num), jent.state);
-#endif
 		case JOY_BUTTON:
 			return getButtonName(jent.num);
 		case JOY_KEY:
@@ -2123,7 +2079,6 @@ void xGamepadController::meetNew(const QList<xPadDev>& devs, const int* pick) {
 }
 
 void xGamepadController::timerEvent(QTimerEvent* e) {
-#ifdef HAVESDL2
 	// Pump the events first: SDL fills the pad state from the pump, so reading
 	// it before would hand out the values of the previous tick.
 	SDL_Event ev;
@@ -2156,7 +2111,6 @@ void xGamepadController::timerEvent(QTimerEvent* e) {
 		if (had[0] && !gpada->isOpened()) emit padOff(0);
 		if (had[1] && !gpadb->isOpened()) emit padOff(1);
 	}
-#endif
 	gpada->update();
 	gpadb->update();
 }

@@ -3,11 +3,9 @@
 #include "xcore/pacing.h"
 
 #include <QMenu>
-#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
 #include <QGuiApplication>
 #include <QScreen>
 #include <QWindow>
-#endif
 
 // how long after the last read of the mouse a click still takes it
 #define MOUSE_READ_NS	1000000000LL

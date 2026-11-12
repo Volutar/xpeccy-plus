@@ -29,7 +29,7 @@ void dezog_cli(int port) {
 	cliPort = port;
 }
 
-#if defined(USENETWORK) && (QT_VERSION >= QT_VERSION_CHECK(5, 10, 0))
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
 
 #include <QThread>
 #include <QTcpServer>
