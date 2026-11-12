@@ -1,8 +1,9 @@
 // Headless General Sound bench: the classic card's mix, from its schematic, and
 // the NeoGS from its FPGA sources - the mix (sound_main.v, sound_mulacc.v), the
-// memory map (memmap.v) and the ports (ports.v).
+// memory map (memmap.v) and the ports (ports.v). Given the firmwares, their idle
+// loop skipped against not (loop_skip).
 //
-//	gs-bench
+//	gs-bench [GS.ROM NEOGS.ROM]
 
 #include <stdio.h>
 #include <string.h>
@@ -201,7 +202,116 @@ static void separation(GSound* gs) {
 	gs->sep = 100;
 }
 
-int main(void) {
+// The firmware's own idle loop, skipped (gs_loop_at) and not: three cards on one
+// timeline of sub-samples (709 ns, the mix's at 1.41 MHz) with the host's
+// accesses at the same steps - one flushed only at a frame's end, so the skip
+// counts the turns; one at every step, so it never can; one at every step for
+// the mix, so it parks. Their CPUs, memory and DAC levels must not part.
+
+#define LS_STEP_NS	709
+#define LS_FRAME	28209		// steps in 20 ms
+#define LS_STEPS	(LS_FRAME * 400)	// 8 s: the boot and RAM test, the idle loop, a command
+
+static int read_file(const char* path, unsigned char* buf, int size) {
+	FILE* f = fopen(path, "rb");
+	if (!f) return 0;
+	int n = (int)fread(buf, 1, size, f);
+	fclose(f);
+	return n == size;
+}
+
+static unsigned long long fold(unsigned long long h, const void* p, size_t n) {
+	const unsigned char* b = (const unsigned char*)p;
+	for (size_t i = 0; i < n; i++) h = (h ^ b[i]) * 0x100000001b3ULL;
+	return h;
+}
+
+static unsigned long long card_hash(GSound* gs) {
+	unsigned long long h = 0xcbf29ce484222325ULL;
+	h = fold(h, gs->cpu->regs, sizeof(gs->cpu->regs));
+	h = fold(h, gs->cpu->flags, sizeof(gs->cpu->flags));
+	h = fold(h, gs->mem->ramData, gs->mem->ramSize);
+	int v[16] = {gs->ch1, gs->ch2, gs->ch3, gs->ch4, gs->ch5, gs->ch6, gs->ch7, gs->ch8,
+		gs->vol1, gs->vol2, gs->vol3, gs->vol4, gs->vol5, gs->vol6, gs->vol7, gs->vol8};
+	h = fold(h, v, sizeof(v));
+	h = fold(h, &gs->pstate, 1);
+	h = fold(h, &gs->pb3_gs, 1);
+	h = fold(h, &gs->due, sizeof(gs->due));
+	h = fold(h, &gs->intDue, sizeof(gs->intDue));
+	return h;
+}
+
+// what the host does at step i: a byte to #B3 at 6 s, a command to #BB at
+// 6.4 s, its state polled every 10 us for a frame after and the data read back
+static void ls_host(GSound* gs, int i) {
+	int d;
+	if (i == LS_FRAME * 300) gsWrite(gs, 0xb3, 0x55);
+	if (i == LS_FRAME * 320) gsWrite(gs, 0xbb, 0x20);
+	if ((i > LS_FRAME * 320) && (i < LS_FRAME * 321) && !(i % 14)) gsRead(gs, 0xbb, &d);
+	if (i == LS_FRAME * 321) gsRead(gs, 0xb3, &d);
+}
+
+enum {LS_FRAMES = 0, LS_STEPS_ALL, LS_PARKED};
+
+static GSound* ls_card(int model, const unsigned char* rom) {
+	GSound* gs = gsCreate();
+	gs->enable = 1;
+	if (model == GS_NEOGS) memcpy(gs->romNGS, rom, NGS_ROM_SIZE);
+	else memcpy(gs->romGS, rom, GS_ROM_SIZE);
+	gs_set_model(gs, model);
+	return gs;
+}
+
+// the card run three ways; *heard: the DAC levels at every step, folded;
+// *head, *len: the loop it idles in before the host comes
+static unsigned long long ls_run(int model, const unsigned char* rom, int how, unsigned long long* heard, int* head, int* len, int* parked) {
+	GSound* gs = ls_card(model, rom);
+	unsigned long long h = 0xcbf29ce484222325ULL;
+	*parked = 0;
+	for (int i = 0; i < LS_STEPS; i++) {
+		gsSync(gs, LS_STEP_NS);
+		ls_host(gs, i);
+		if (how == LS_STEPS_ALL) gsFlush(gs);
+		else if (how == LS_PARKED) gsFlushMix(gs);
+		else if (!((i + 1) % LS_FRAME)) gsFlush(gs);
+		if (gs->lpPark) (*parked)++;
+		if (how != LS_FRAMES) {
+			sndPair p = gsVolume(gs);
+			h = fold(h, &p, sizeof(p));
+		}
+		if (i == LS_FRAME * 300 - 1) {
+			*head = gs->lpHead;
+			*len = gs->lpLen;
+		}
+	}
+	gsFlush(gs);
+	*heard = h;
+	unsigned long long res = card_hash(gs);
+	gsDestroy(gs);
+	return res;
+}
+
+static void loop_skip(const char* name, int model, const char* path, int size) {
+	static unsigned char rom[NGS_ROM_SIZE];
+	printf("== loop-skip %s\n", name);
+	if (!read_file(path, rom, size)) {
+		check("the firmware read", 0);
+		return;
+	}
+	unsigned long long hf, hs, hp;
+	int head, len, parked, h2, l2, p2;
+	unsigned long long a = ls_run(model, rom, LS_FRAMES, &hf, &head, &len, &parked);
+	unsigned long long b = ls_run(model, rom, LS_STEPS_ALL, &hs, &h2, &l2, &p2);
+	unsigned long long c = ls_run(model, rom, LS_PARKED, &hp, &h2, &l2, &p2);
+	printf("idle in the loop at #%04X, %d T a turn\n", head, len);
+	check("found at #026E, 51 T, by each", (head == 0x026e) && (len == 51) && (h2 == head) && (l2 == len));
+	check("frame flushes: the card as at every step", a == b);
+	check("parked: the card as at every step", c == b);
+	check("parked: the DAC levels as at every step", hp == hs);
+	check("parked a good part of the time", p2 > LS_STEPS / 4);
+}
+
+int main(int argc, char** argv) {
 	GSound* gs = gsCreate();
 	gs->enable = 1;
 	gs->sep = 100;			// the cards' own outputs
@@ -212,5 +322,10 @@ int main(void) {
 	neogs_ports(gs);
 	separation(gs);
 	gsDestroy(gs);
+	// the firmwares: gs-bench GS.ROM NEOGS.ROM
+	if (argc > 2) {
+		loop_skip("original", GS_ORIGINAL, argv[1], GS_ROM_SIZE);
+		loop_skip("neogs", GS_NEOGS, argv[2], NGS_ROM_SIZE);
+	}
 	return failures ? 1 : 0;
 }
