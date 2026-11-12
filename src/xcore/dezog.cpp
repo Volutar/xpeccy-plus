@@ -29,8 +29,6 @@ void dezog_cli(int port) {
 	cliPort = port;
 }
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
-
 #include <QThread>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -965,14 +963,3 @@ int dezog_stop(Computer* comp) {
 	QMetaObject::invokeMethod(dzCtx, [ntf]() { dz_send(ntf); }, Qt::QueuedConnection);
 	return 1;
 }
-
-#else
-
-// no network in this build: never on
-void dezog_apply() {}
-void dezog_close() {}
-void dezog_end() {}
-void dezog_keep_tmp(Computer*) {}
-int dezog_stop(Computer*) {return 0;}
-
-#endif

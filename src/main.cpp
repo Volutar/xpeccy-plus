@@ -591,7 +591,7 @@ int main(int ac,char** av) {
 	// (the default step is ~15ms, which makes usleep and timers coarse)
 	timeBeginPeriod(1);
 #endif
-#if (QT_VERSION >= QT_VERSION_CHECK(5,6,0)) && (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
 	QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 	QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 #endif
@@ -644,7 +644,7 @@ int main(int ac,char** av) {
 
 	// On macOS Qt owns the native event queue. SDL video would also drain it
 	// from the gamepad timer's SDL_PollEvent(), including title-bar mouse events.
-	// SDL2 joystick events work without video; keep other backends as before.
+	// SDL2 joystick events work without video.
 	Uint32 sdlFlags = SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_TIMER;
 #if !defined(__APPLE__)
 	sdlFlags |= SDL_INIT_VIDEO;

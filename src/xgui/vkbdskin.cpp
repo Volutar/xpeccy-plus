@@ -20,6 +20,7 @@
 #include <QPainterPath>
 #include <QPolygonF>
 #include <QRegion>
+#include <QVariant>
 
 #include <cmath>
 #include <cstring>

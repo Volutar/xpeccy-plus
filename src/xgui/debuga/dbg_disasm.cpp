@@ -35,11 +35,7 @@ static xAdr dasm_xadr(Computer* comp, int adr, int access = MEM_VIEW_PC) {
 }
 
 static int text_width(const QFontMetrics& fm, const QString& str) {
-#if QT_VERSION >= QT_VERSION_CHECK(5,11,0)
 	return fm.horizontalAdvance(str);
-#else
-	return fm.width(str);
-#endif
 }
 
 // a return or a jump ends a logical block, conditional ones too. The list

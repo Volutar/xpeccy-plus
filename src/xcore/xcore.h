@@ -53,26 +53,15 @@ class QKeyEvent;
 	#define xGlobalY globalY()
 #endif
 
-#if QT_VERSION >= QT_VERSION_CHECK(5,14,0)
-	#define	X_SkipEmptyParts Qt::SkipEmptyParts
-	#define X_KeepEmptyParts Qt::KeepEmptyParts
-	#include <QScreen>
-	#define SCREENSIZE screen()->size()
-#else
-	#define X_SkipEmptyParts QString::SkipEmptyParts
-	#define X_KeepEmptyParts QString::KeepEmptyParts
-	#include <QDesktopWidget>
-	#define SCREENSIZE QApplication::desktop()->screenGeometry().size()
-#endif
+#define	X_SkipEmptyParts Qt::SkipEmptyParts
+#define X_KeepEmptyParts Qt::KeepEmptyParts
+#include <QScreen>
+#define SCREENSIZE screen()->size()
 
 // The screen a widget is on, in widget context. QCursor::pos and setPos go by
 // the primary screen when not given one, which is the wrong scale factor on a
 // second monitor
-#if QT_VERSION >= QT_VERSION_CHECK(5,14,0)
-	#define WIDGET_SCREEN screen()
-#else
-	#define WIDGET_SCREEN (windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen())
-#endif
+#define WIDGET_SCREEN screen()
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
 	#include <QtCore5Compat>

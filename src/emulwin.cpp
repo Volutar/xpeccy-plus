@@ -36,11 +36,6 @@
 
 #include <QDebug>
 
-// QDesktopWidget removed in Qt6
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-	#include <QDesktopWidget>
-#endif
-
 #include <fstream>
 #include <memory>
 #include <thread>
@@ -3352,11 +3347,7 @@ bool MainWin::fsCompose(bool on) {
 // fullscreen as it is once it has been resized there, whatever state Qt keeps.
 bool MainWin::fsCovers() {
 	if (frame->isFullScreen()) return true;
-#if QT_VERSION >= QT_VERSION_CHECK(5,14,0)
 	QRect scr = screen()->geometry();
-#else
-	QRect scr = QApplication::desktop()->screenGeometry();
-#endif
 	QRect fg = frame->geometry();
 	return (fg.topLeft() == scr.topLeft()) && (fg.width() == scr.width()) && (fg.height() >= scr.height());
 }

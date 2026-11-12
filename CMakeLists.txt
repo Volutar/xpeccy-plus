@@ -325,14 +325,14 @@ find_package(OpenGL REQUIRED)
 
 if(${QTVERSION} EQUAL 5)
 
-	# 5.10: DeZog's server (dezog.cpp) is stubbed out below it
-	find_package(Qt5 5.10 COMPONENTS Core Gui Widgets Network OpenGL REQUIRED)
+	# 5.14: QWidget::screen(), QRecursiveMutex, setMarkdown; built on 5.14.2, not on 5.12.7
+	find_package(Qt5 5.14 COMPONENTS Core Gui Widgets Network OpenGL REQUIRED)
 	set(LIBRARIES ${LIBRARIES} Qt5::Widgets Qt5::Network Qt5::OpenGL ${OPENGL_LIBRARIES})
 	qt5_add_resources(RESOURCES ${QRCFILES})
 	qt5_wrap_ui(UIHEADERS ${UIFILES})
 	qt5_wrap_cpp(MOCHEADERS ${MOCFILES})
-	set(CPACK_RPM_PACKAGE_REQUIRES "libQt5Gui5 >= 5.3, libQt5Widgets5 >= 5.3, libQt5Network5 >= 5.3, libQt5OpenGL5 >= 5.3")
-	set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt5gui5 (>=5.3), libqt5widgets5 (>=5.3), libqt5network5 (>=5.3), libqt5opengl5 (>=5.3)")
+	set(CPACK_RPM_PACKAGE_REQUIRES "libQt5Gui5 >= 5.14, libQt5Widgets5 >= 5.14, libQt5Network5 >= 5.14, libQt5OpenGL5 >= 5.14")
+	set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt5gui5 (>=5.14), libqt5widgets5 (>=5.14), libqt5network5 (>=5.14), libqt5opengl5 (>=5.14)")
 	set(QT_VER ${Qt5Widgets_VERSION})
 	get_target_property(QMAKE_EXE Qt5::qmake IMPORTED_LOCATION)
 
@@ -372,8 +372,7 @@ add_definitions(-DSDL_MAIN_HANDLED)
 include_directories(${SDL2_INCLUDE_DIR})
 set(LIBRARIES ${LIBRARIES} ${SDL2_LIBRARY})
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libsdl2-2.0-0 (>=2.0) | libSDL2 (>=2.0)")
-set(CPACK_RPM_PACKAGE_DEPENDS "${CPACK_RPM_PACKAGE_DEPENDS}, SDL2 >= 2.0")
-message(STATUS "SDL2_INCLUDE_DIR = " ${SDL2_INCLUDE_DIR})
+set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, SDL2 >= 2.0")
 
 # zlib: rzx and compressed tzx blocks
 
@@ -381,7 +380,7 @@ find_package(ZLIB REQUIRED)
 set(INCLUDIRS ${INCLUDIRS} ${ZLIB_INCLUDE_DIR})
 set(LIBRARIES ${LIBRARIES} ${ZLIB_LIBRARY})
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, zlib1g (>=1.2)")
-set(CPACK_RPM_PACKAGE_DEPENDS "${CPACK_RPM_PACKAGE_DEPENDS}, zlib >= 1.2")
+set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, zlib >= 1.2")
 
 # libcurl: the program's downloads (src/xcore/download.cpp). Windows links the static
 # Schannel build make-dist.ps1 makes, macOS the SDK's. Linux loads the system's
@@ -413,7 +412,7 @@ else()
 		set(LIBRARIES ${LIBRARIES} ${CURL_LIBRARIES})
 	endif()
 	set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libcurl4 | libcurl4t64")
-	set(CPACK_RPM_PACKAGE_DEPENDS "${CPACK_RPM_PACKAGE_DEPENDS}, libcurl")
+	set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, libcurl")
 endif()
 
 # FreeType: the on-screen keyboard's lettering. Our own copy on every platform, so
@@ -667,7 +666,7 @@ message(STATUS "Build type : ${CMAKE_BUILD_TYPE}")
 message(STATUS "Xpeccy+ version : ${XVER}")
 message(STATUS "OS : ${CMAKE_SYSTEM_NAME}")
 message(STATUS "Qt version : ${QT_VER}")
-message(STATUS "SDL version : 2.x")
+message(STATUS "SDL : SDL2 from ${SDL2_INCLUDE_DIR}")
 
 if (BIG_ENDIAN)
 	message(STATUS "Endianness: BE")

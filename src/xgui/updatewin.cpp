@@ -428,11 +428,7 @@ xUpdateWin::xUpdateWin(QWidget* p, const upRelease& r, const QString& news, bool
 	if (!text.isEmpty()) {
 		QTextBrowser* notes = new QTextBrowser;
 		notes->setOpenExternalLinks(true);
-#if QT_VERSION >= QT_VERSION_CHECK(5,14,0)
 		notes->setMarkdown(text);
-#else
-		notes->setPlainText(text);
-#endif
 		notes->setMinimumSize(480, 260);
 		lay->addWidget(notes, 1);
 	}

@@ -14,11 +14,7 @@
 #include <QToolButton>
 #include <functional>
 #include <QTableWidget>
-#if QT_VERSION >= QT_VERSION_CHECK(5,4,0)
 #include <QRegularExpressionValidator>
-#else
-#include <QRegExpValidator>
-#endif
 
 #include "../labelist.h"
 #include "libxpeccy/spectrum.h"

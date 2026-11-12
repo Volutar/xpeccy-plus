@@ -398,11 +398,7 @@ void xDumpText::paint(QPainter* pnt, const QStyleOptionViewItem& opt, const QMod
 	QString txt = idx.data(Qt::DisplayRole).toString();
 	int sel = idx.data(DUMP_SEL_ROLE).toInt();
 	QFontMetrics fm(opt.font);
-#if (QT_VERSION >= QT_VERSION_CHECK(5,11,0))
 	cw = fm.horizontalAdvance("0");
-#else
-	cw = fm.width("0");
-#endif
 	// where the plain delegate put the text, aligned right
 	QStyle* st = opt.widget ? opt.widget->style() : QApplication::style();
 	margin = st->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, opt.widget) + 1;
@@ -530,11 +526,7 @@ int xDumpTable::getCurrentAdr() {
 
 int dump_cell_width(const QFontMetrics& fm) {
 // horizontalAdvance() since 5.11, before - width()
-#if (QT_VERSION >= QT_VERSION_CHECK(5,11,0))
 	return fm.horizontalAdvance("00") + 8;
-#else
-	return fm.width("00") + 8;
-#endif
 }
 
 // Auto adds bytes a whole group at a time - 4, 8, 12, 16 - never a half group.
@@ -546,13 +538,8 @@ void xDumpTable::layoutColumns() {
 	int w0;			// address column
 	int cw = dump_cell_width(fm);
 	int tw;			// one character of the text column
-#if (QT_VERSION >= QT_VERSION_CHECK(5,11,0))
 	w0 = fm.horizontalAdvance("0000:0000") + 10;
 	tw = fm.horizontalAdvance("0");
-#else
-	w0 = fm.width("0000:0000") + 10;
-	tw = fm.width("0");
-#endif
 	// same reason as the disk dump: the form's minimum would override our width
 	horizontalHeader()->setMinimumSectionSize(4);
 

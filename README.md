@@ -99,8 +99,8 @@ See [CHANGELOG.md](CHANGELOG.md) for the full list.
 
 ## Build
 
-Requirements: CMake, a C/C++ compiler, Qt 5.15 or Qt 6 (with QtNetwork and OpenGL), SDL2,
-zlib and libcurl.
+Requirements: CMake, a C/C++ compiler, Qt 5 (5.14 or newer) or Qt 6, with QtNetwork
+and OpenGL, SDL2, zlib and libcurl.
 
 ```
 mkdir build && cd build
@@ -112,7 +112,7 @@ Options:
 
 | Option | Values | Meaning |
 | --- | --- | --- |
-| `-DQTVERSION=` | `5` or `6` | Qt version; by default Qt 6 when it is installed, Qt 5 otherwise |
+| `-DQTVERSION=` | `5` or `6` | Qt version; by default Qt 6 when it is installed, Qt 5 (5.14+) otherwise |
 | `-DXRELEASE=` | `0` (default) or `1` | release version string, without `-dev` and build date |
 | `-DTRIMDEPLOY=` | `ON` (default) or `OFF` | Windows: drop the Qt plugins the emulator never loads |
 | `-DXLOGHOT=` | `OFF` (default) or `ON` | build the log calls on the hot paths - per opcode or dot |

@@ -59,11 +59,7 @@ class xBarFilter;
 #define STICKY_KEY 1
 
 inline qreal widgetDpr(const QWidget* w) {
-#if QT_VERSION >= QT_VERSION_CHECK(5,6,0)
 	return w->devicePixelRatioF();
-#else
-	return w->devicePixelRatio();
-#endif
 }
 
 enum {
