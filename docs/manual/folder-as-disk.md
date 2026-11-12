@@ -44,13 +44,13 @@ of its directory, which grows by a cluster when it is full; a deleted one has it
 marked deleted and its clusters freed; a changed one gets its new size and as many clusters
 as that needs. Everything else stays where it was.
 
-That matters because a DOS keeps some of the disk in memory between calls. esxDOS, run here
-through a refresh, reads directories and the file table again each time, but keeps the
-cluster of the directory it is in, the clusters of a file it has open - a mounted disk image
-or tape too - and the free cluster count it read when it started. Laid out anew, the disk
-would put other files under all of these. Kept in place, they read on as before. The free
-count a DOS writes back from memory can be wrong after a refresh; it is only a hint, and
-nothing is lost by it.
+That matters because a DOS keeps some of the disk in memory between calls: the cluster of the
+directory it is in, the clusters of a file it has open - a mounted disk image or tape too -
+and the free cluster count it read when it started. Laid out anew, the disk would put other
+files under all of these. Kept in place, they read on as before. The free count a DOS writes
+back from memory can be wrong after a refresh; it is only a hint, and nothing is lost by it.
+A DOS that writes back a directory sector it read before the refresh drops the new entries
+in it; esxDOS reads directories again each time.
 
 A folder of many thousands of files takes seconds to read, and the window waits meanwhile:
 when a read goes on for over a second, the status bar says **Reading the folder ...**. The

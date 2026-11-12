@@ -67,9 +67,10 @@ no image to make: copy programs into the folder and open it. The window that pic
 folder is **Folder to serve as the card** or **Folder to serve as the disk**. How the disk is made and
 written back is in [A folder as a disk](folder-as-disk.md) of Under the Hood.
 
-- The folder is read when it is opened, and again at **Machine > Reset > Hard Reset**,
-  when you switch machines or click **Apply** in **Options**. To bring in files added,
-  changed or deleted since without a reset, use **Refresh** (see [Refresh](#refresh)).
+- The folder is read when it is opened, and again at **Machine > Reset > Hard Reset** and
+  when you switch machines; **Apply** in **Options** does not read it again. To bring in
+  files added, changed or deleted since without a reset, use **Refresh** (see
+  [Refresh](#refresh)).
 - The disk is made big enough for the folder, from 512 MB up to 32 GB. A folder that takes
   writes gets as much free room again as its files take, and 256 MB more. A larger folder
   is not opened, and the message **folder too big for a disk** says so.
@@ -137,11 +138,9 @@ from then on, what the machine writes stays in memory, and a message says so.
 
 **Refresh** in a folder card's or folder disk's menu brings in what you changed in the folder
 since it was read: new files and folders, changed files, deleted ones. The machine keeps
-running and needs nothing done - unlike a real card taken out and put back, which the
-system does not read again until it mounts it anew: **M** in the NextZXOS Browser, or a
-reset with BREAK held in esxDOS. What the machine wrote there first goes to the folder. The
-message
-**refreshed: 2 new, 1 gone, 0 changed** says what changed.
+running and needs no remount, as a real card put back would. What the machine wrote there
+first goes to the folder. The message **refreshed: 2 new, 1 gone, 0 changed** says what
+changed.
 
 The machine sees the change the next time it reads the folder: esxDOS at its next listing,
 the NextZXOS Browser when it shows the folder again (leave it and come back). Files that
@@ -151,7 +150,7 @@ mounted and the folder it is in read on as before.
 **Refresh** is refused, with a message, when what the machine wrote has not all reached the
 folder, when the folder no longer follows the machine, or when the changes do not fit on
 the disk; **Eject** and **Open Folder...** then read the folder anew. An image file has no
-**Refresh**.
+**Refresh**. A changed `ZXLDR` boots only after a **Hard Reset**.
 
 Two [hotkeys](hotkeys.md), with no key until you give them one, work on SD cards from the
 keyboard: **SD Card: Refresh** refreshes every folder card the machine uses, and **SD Card:
