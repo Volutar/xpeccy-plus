@@ -81,6 +81,8 @@ typedef struct {
 	unsigned char lpDirty;	// a side effect since the head
 	unsigned char lpPark;
 	unsigned char lpStep;	// R of a turn
+	unsigned char lpIff;	// IFF1 set at an instruction since the head
+	unsigned char lpEi;	// ...in the loop's turn: they may take an INT
 	int lpLen;		// T of a turn
 	int lpWait;		// heads let go by, after a failed test
 	int lpBack;		// the next wait

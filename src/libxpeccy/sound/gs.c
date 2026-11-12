@@ -304,8 +304,11 @@ void gsDestroy(GSound* gs) {
 	free(gs);
 }
 
+// the time before the reset is the old program's: a parked card, or one run only
+// once a frame in fast mode, may owe a lot of it
 void gsReset(GSound* gs) {
 	if (!gs->reset) return;
+	gsFlush(gs);
 	gs_reset_hw(gs);
 }
 
@@ -337,11 +340,15 @@ static void gs_halt_skip(GSound* gs) {
 void gs_loop_forget(GSound* gs) {
 	gs->lpHead = -1;
 	gs->lpPark = 0;
+	gs->lpWait = 0;
+	gs->lpBack = 0;
 }
 
-// The INT a CPU would take, past the time it is given
-static int gs_int_on(CPU* cpu) {
-	return cpu->flgIFF1 && (cpu->inten & Z80_INT);
+// An INT the loop's turns could take: IFF1 set at an instruction's start
+// anywhere in a turn - an EI ... DI inside it as well (inten follows IFF1 here,
+// so it says nothing past the head)
+static int gs_int_on(GSound* gs) {
+	return gs->lpEi;
 }
 
 // Turns of the loop the CPU stands at the head of, counted at once: R by the
@@ -353,7 +360,7 @@ static void gs_loop_skip(GSound* gs) {
 	CPU* cpu = gs->cpu;
 	long long turn = (long long)gs->lpLen * gs->tickUnits;
 	long long lim = gs->due;
-	if (gs_int_on(cpu) && (gs->intDue < lim)) lim = gs->intDue;
+	if (gs_int_on(gs) && (gs->intDue < lim)) lim = gs->intDue;
 	if ((turn <= 0) || (lim <= turn)) return;
 	long long k = (lim - 1) / turn;
 	cpu->regR += (unsigned char)(k * gs->lpStep);
@@ -377,23 +384,29 @@ static int gs_loop_same(GSound* gs) {
 	return same;
 }
 
-// A jump back: the CPU is at a loop's head. Reached the turn before as well, with
-// no side effect between (lpDirty: a write, an OUT, a port read with an effect,
-// a DAC read, an interrupt) and every register but R as it was there, the turn
-// changed nothing, and every next one does the same as long as nothing outside
-// changes: the host's accesses run the CPU out first and forget the loop.
-// A head that fails is looked at less often after, up to every 32nd.
-// park: stop at the head (1 back) rather than count the turns.
+// A jump back, or to itself: the CPU is at a loop's head. Reached the turn before
+// as well, with no side effect between (lpDirty: a write, an OUT, a port read
+// with an effect, a DAC read, LD A,R, an interrupt) and every register but R as
+// it was there, the turn changed nothing, and every next one does the same as
+// long as nothing outside changes: the host's accesses run the CPU out first and
+// forget the loop. A head that fails is looked at less often after, up to every
+// 32nd. park: stop at the head (1 back) rather than count the turns, unless an
+// INT the turns would take falls in the time given.
 static int gs_loop_at(GSound* gs, int park) {
 	CPU* cpu = gs->cpu;
 	int pc = cpu->regPC;
 	int found = 0;
+	// turns with EI somewhere in them take an INT already asked for, DI at the head
+	// or not
+	int ei = gs->lpIff || cpu->flgIFF1;
+	int asked = (cpu->intrq & Z80_INT) && ei;
 	if (gs->lpWait > 0) {
 		gs->lpWait--;
 		gs->lpHead = -1;
-	} else if ((pc == gs->lpHead) && !gs->lpDirty && !cpu_int_ready(cpu) && gs_loop_same(gs)) {
+	} else if ((pc == gs->lpHead) && !gs->lpDirty && !asked && !cpu_int_ready(cpu) && gs_loop_same(gs)) {
 		gs->lpLen = gs->lpT;
 		gs->lpStep = cpu->regR - gs->lpR;
+		gs->lpEi = ei;
 		gs->lpBack = 0;
 		found = 1;
 	} else {
@@ -412,8 +425,9 @@ static int gs_loop_at(GSound* gs, int park) {
 	gs->lpT = 0;
 	gs->lpR = cpu->regR;
 	gs->lpDirty = 0;
+	gs->lpIff = 0;
 	if (!found) return 0;
-	if (park) {
+	if (park && !(gs_int_on(gs) && (gs->due >= gs->intDue))) {
 		gs->lpPark = 1;
 		return 1;
 	}
@@ -427,24 +441,27 @@ static int gs_loop_at(GSound* gs, int park) {
 static void gs_run(GSound* gs, int park) {
 	CPU* cpu = gs->cpu;
 	if (gs->lpPark) {
-		if (park && !(gs_int_on(cpu) && (gs->due >= gs->intDue))) return;
+		if (park && !(gs_int_on(gs) && (gs->due >= gs->intDue))) return;
 		gs->lpPark = 0;
 		gs_loop_skip(gs);
 	}
+	const opCode* ldar = &cpu->tabs->ed[0x5f];	// LD A,R: a turn that reads R
 	while (gs->due > 0) {
 		gs_halt_skip(gs);
 		if (cpu_int_ready(cpu)) gs->lpDirty = 1;
+		if (cpu->flgIFF1) gs->lpIff = 1;
 		int pc = cpu->regPC;
 		int t = cpu_exec(cpu);
 		long long u = (long long)t * gs->tickUnits;
 		gs->due -= u;
 		gs->intDue -= u;
 		gs->lpT += t;
+		if (cpu->op == ldar) gs->lpDirty = 1;
 		while (gs->intDue <= 0) {
 			gs->intDue += GS_INT_UNITS;
 			cpu->intrq |= Z80_INT;
 		}
-		if ((cpu->regPC < pc) && gs_loop_at(gs, park)) return;
+		if ((cpu->regPC <= pc) && gs_loop_at(gs, park)) return;
 	}
 }
 
