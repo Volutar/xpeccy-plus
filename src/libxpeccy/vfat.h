@@ -102,7 +102,7 @@ typedef struct {
 
 	int writable;			// the guest's writes are taken
 	int hold;			// and kept in memory: the folder waits for the user's word before it changes
-	int frozen;			// the folder takes no more of them: they stay in memory (vfat_read_only)
+	const char* frozen;		// non-NULL: the folder takes no more of them, they stay in memory; why (vfat_read_only)
 	vfWr* wr;			// what they did, from the first one on
 } vFat;
 
@@ -152,11 +152,11 @@ int vfat_news(vFat*, const char** why, int* errors);
 char* vfat_tmp_restore(vFat*, const char* name);
 // 1 while the guest has written to a volume on hold
 int vfat_waiting(vFat*);
-// the user's word on a volume on hold: allow lets the folder follow, else it never will
-void vfat_release(vFat*, int allow);
+// the user's yes on a volume on hold: the folder follows (a no is vfat_read_only)
+void vfat_release(vFat*);
 // read-only from now on, the volume in use: the folder stays as it is, and what the guest
-// writes stays in memory as with a Read-only answer, so its DOS goes on as it was
-void vfat_read_only(vFat*);
+// writes stays in memory, so its DOS goes on as it was. why: for the log
+void vfat_read_only(vFat*, const char* why);
 
 // what vfat_refresh did, or why it did nothing
 enum {

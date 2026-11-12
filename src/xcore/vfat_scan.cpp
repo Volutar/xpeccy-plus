@@ -467,19 +467,22 @@ QString fold_news(Computer* comp) {
 	return QString();
 }
 
-void fold_release(Computer* comp, bool allow) {
+void fold_release(Computer* comp) {
 	vFat* vf[5];
 	fold_volumes(comp, vf);
 	for (int i = 0; i < 5; i++)
-		vfat_release(vf[i], allow ? 1 : 0);
+		vfat_release(vf[i]);
 }
 
-void fold_read_only(Computer* comp) {
+void fold_read_only(Computer* comp, const char* why) {
 	vFat* vf[5];
 	fold_volumes(comp, vf);
 	for (int i = 0; i < 5; i++) {
-		if (vf[i] && !vfs_own(QString::fromUtf8(vf[i]->root ? vf[i]->root : "")))
-			vfat_read_only(vf[i]);
+		if (!vf[i]) continue;
+		if (vfs_own(QString::fromUtf8(vf[i]->root ? vf[i]->root : "")))
+			vfat_release(vf[i]);	// never on hold today; were it, a No must not leave it asking
+		else
+			vfat_read_only(vf[i], why);
 	}
 }
 

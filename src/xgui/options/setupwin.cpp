@@ -1459,7 +1459,7 @@ void SetupWin::apply() {
 	int foldRw = getRFIData(cbFolderWrite) ? 1 : 0;
 	if (conf.fold.rw && !foldRw) {
 		emu_lock();
-		fold_read_only(conf.zx);
+		fold_read_only(conf.zx, "made read-only in Options");
 		emu_unlock();
 	}
 	conf.fold.rw = foldRw;
