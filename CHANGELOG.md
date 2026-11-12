@@ -95,6 +95,8 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **Options: a click on a check box's name or its hint toggles it**; a name beside a list or a
+  field puts the cursor there.
 - **General Sound costs far less time**: Fast Mode on the ZX Evolution runs as fast as
   without its NeoGS, on a 128K with a card 2-3 times faster; tapes load faster with one
   fitted.

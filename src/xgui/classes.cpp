@@ -28,9 +28,13 @@
 #include <QAbstractItemView>
 #include <QHelpEvent>
 #include <QPointer>
+#include <QRadioButton>
+#include <QAbstractSpinBox>
+#include <QMouseEvent>
 #include <QActionGroup>
 #include <QMenu>
 #include <climits>
+#include <typeinfo>
 
 QString gethexword(int);
 QString gethexbyte(uchar);
@@ -955,6 +959,7 @@ void xOptSheet::row(const QString& name, QWidget* wid) {
 		wid->setMinimumWidth(SHEET_CTRL);
 	}
 	new xFollowEnabled(wid, QList<QWidget*>() << nam);
+	label_for(nam, wid);
 }
 
 // across the whole frame, under the rows
@@ -982,7 +987,11 @@ void xOptSheet::field(const QString& name, QWidget* wid, const QString& desc) {
 	}
 	grid->addWidget(wid, row, 2, al);
 	wid->setToolTip(QString());
-	if (!desc.isEmpty()) grid->addWidget(text(desc), row + 1, 2, Qt::AlignTop);
+	label_for(nam, wid);
+	if (desc.isEmpty()) return;
+	QLabel* dsc = text(desc);
+	grid->addWidget(dsc, row + 1, 2, Qt::AlignTop);
+	label_for(dsc, wid);
 }
 
 void xOptSheet::line() {
@@ -997,11 +1006,11 @@ void xOptSheet::check(QCheckBox* cb, const QString& name, const QString& desc, b
 	int row = grid->rowCount();
 	cb->setText(QString());
 	cb->setToolTip(QString());
-	xLabel* nam = new xLabel;
-	nam->setText(name);
+	QLabel* nam = new QLabel(name);
 	if (global) nam->setToolTip(QObject::tr("Applies to all machines"));
-	QObject::connect(nam, &xLabel::clicked, cb, [cb]() {if (cb->isEnabled()) cb->click();});
 	QLabel* dsc = text(desc);
+	label_for(nam, cb);
+	label_for(dsc, cb);
 	nam->setContentsMargins(0, 0, SHEET_GAP, 0);
 	// a description of two lines hangs from the top, next to its name
 	grid->addWidget(cb, row, 0, Qt::AlignTop);
@@ -1112,6 +1121,198 @@ xLabel::xLabel(QWidget* p):QLabel(p) {}
 
 void xLabel::mousePressEvent(QMouseEvent* ev) {
 	emit clicked(ev);
+}
+
+// label_for: the label's child filter; a box goes down on the press and is clicked on a release over the label
+class xLabelFor : public QObject {
+	public:
+		QPointer<QWidget> target;
+		xLabelFor(QLabel* lab, QWidget* tgt) : QObject(lab) {
+			target = tgt;
+			lab->installEventFilter(this);
+		}
+		// a label going while the mouse is on it leaves its box as it found it
+		~xLabelFor() {
+			hover(false);
+			drop();
+		}
+		// what takes a click's focus: the control, else its first widget that does (a slider and its
+		// figure); live: one shown and enabled now
+		static QWidget* focusOf(QWidget* wid, bool live) {
+			if (wid->focusPolicy() & Qt::ClickFocus) return wid;
+			foreach(QWidget* sub, wid->findChildren<QWidget*>()) {
+				if (!(sub->focusPolicy() & Qt::ClickFocus)) continue;
+				if (!live || (sub->isVisibleTo(wid) && sub->isEnabled())) return sub;
+			}
+			return NULL;
+		}
+	protected:
+		bool eventFilter(QObject* obj, QEvent* ev) {
+			QLabel* lab = static_cast<QLabel*>(obj);
+			QAbstractButton* btn = qobject_cast<QAbstractButton*>(target);
+			switch (ev->type()) {
+				case QEvent::MouseButtonPress:
+				case QEvent::MouseButtonDblClick: {		// a quick second click, as a box takes it
+					QMouseEvent* mev = static_cast<QMouseEvent*>(ev);
+					if ((mev->button() != Qt::LeftButton) || !target || !target->isEnabled()) break;
+					if (QWidget* fw = focusOf(target, true)) fw->setFocus(Qt::MouseFocusReason);
+					if (!btn) break;
+					down = true;
+					btn->setDown(true);
+					return true;
+				}
+				case QEvent::MouseMove: {
+					QMouseEvent* mev = static_cast<QMouseEvent*>(ev);
+					if (!down) break;
+					// a release that went elsewhere
+					if (!(mev->buttons() & Qt::LeftButton)) {
+						drop();
+						break;
+					}
+					if (btn) btn->setDown(lab->rect().contains(mev->pos()));
+					return true;
+				}
+				case QEvent::MouseButtonRelease: {
+					QMouseEvent* mev = static_cast<QMouseEvent*>(ev);
+					if (!down || (mev->button() != Qt::LeftButton)) break;
+					drop();
+					if (btn && lab->rect().contains(mev->pos())) btn->click();
+					return true;
+				}
+				case QEvent::Enter:
+					hover(true);
+					break;
+				case QEvent::Leave:
+				case QEvent::Hide:
+					hover(false);
+					drop();
+					break;
+				default:
+					break;
+			}
+			return false;
+		}
+	private:
+		bool down = false;
+		bool lit = false;
+		void drop() {
+			QAbstractButton* btn = qobject_cast<QAbstractButton*>(target);
+			if (down && btn) btn->setDown(false);
+			down = false;
+		}
+		// hovered as the style draws it: under the mouse, its last move over its check (Qt keeps that to itself)
+		void hover(bool on) {
+			QAbstractButton* btn = qobject_cast<QAbstractButton*>(target);
+			if (!btn || (on == lit)) return;
+			if (on && !btn->isEnabled()) return;
+			lit = on;
+			btn->setAttribute(Qt::WA_UnderMouse, on);
+			if (on) {
+				QStyleOptionButton opt;
+				opt.initFrom(btn);
+				bool radio = qobject_cast<QRadioButton*>(btn) != NULL;
+				QRect chk = btn->style()->subElementRect(radio ? QStyle::SE_RadioButtonIndicator : QStyle::SE_CheckBoxIndicator, &opt, btn);
+				QPoint at = chk.isValid() ? chk.center() : btn->rect().center();
+				QMouseEvent mev(QEvent::MouseMove, at, btn->mapToGlobal(at), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+				QApplication::sendEvent(btn, &mev);
+			}
+			btn->update();
+		}
+};
+
+// a check box or a radio button, or a control that takes the focus - never a label
+static bool label_takes(QWidget* wid) {
+	if (qobject_cast<QCheckBox*>(wid) || qobject_cast<QRadioButton*>(wid)) return true;
+	return !qobject_cast<QLabel*>(wid) && xLabelFor::focusOf(wid, false);
+}
+
+void label_for(QLabel* lab, QWidget* tgt) {
+	if (label_takes(tgt)) new xLabelFor(lab, tgt);
+}
+
+static bool label_tied(QLabel* lab) {
+	foreach(QObject* obj, lab->children()) {
+		if (dynamic_cast<xLabelFor*>(obj)) return true;
+	}
+	return false;
+}
+
+// what a label in a row can stand for: no push or tool button, a click there is its own,
+// and nothing hidden for good
+static bool label_target(QWidget* wid) {
+	if (wid->isHidden()) return false;
+	if (qobject_cast<QAbstractButton*>(wid))
+		return qobject_cast<QCheckBox*>(wid) || qobject_cast<QRadioButton*>(wid);
+	return qobject_cast<QComboBox*>(wid) || qobject_cast<QAbstractSpinBox*>(wid)
+		|| qobject_cast<QLineEdit*>(wid) || qobject_cast<QAbstractSlider*>(wid);
+}
+
+// text the mouse selects, a link it follows or a label class of its own keeps its clicks
+static bool label_free(QLabel* lab) {
+	return !label_tied(lab) && (typeid(*lab) == typeid(QLabel))
+		&& !lab->openExternalLinks() && !(lab->textInteractionFlags() & Qt::TextSelectableByMouse);
+}
+
+// a row's labels to its one control; one with a buddy waits for label_rows' last loop
+static void label_tie_row(const QList<QLabel*>& labs, const QList<QWidget*>& ctls) {
+	if (ctls.size() != 1) return;
+	foreach(QLabel* lab, labs) {
+		if (label_free(lab) && !lab->buddy()) label_for(lab, ctls.first());
+	}
+}
+
+// the controls of a cell, in a layout of its own too (a list with its buttons)
+static void label_cell(QLayoutItem* item, QList<QLabel*>& labs, QList<QWidget*>& ctls, bool top) {
+	if (QLayout* lay = item->layout()) {
+		for (int i = 0; i < lay->count(); i++) label_cell(lay->itemAt(i), labs, ctls, false);
+		return;
+	}
+	QWidget* wid = item->widget();
+	if (!wid) return;
+	QLabel* lab = qobject_cast<QLabel*>(wid);
+	if (lab) {
+		// a label inside a cell's layout is that control's own figure or unit
+		if (top && !labs.contains(lab)) labs.append(lab);
+	} else if (label_target(wid) && !ctls.contains(wid)) {
+		ctls.append(wid);
+	}
+}
+
+static void label_grid(QGridLayout* grid) {
+	for (int r = 0; r < grid->rowCount(); r++) {
+		QList<QLabel*> labs;
+		QList<QWidget*> ctls;
+		for (int c = 0; c < grid->columnCount(); c++) {
+			QLayoutItem* item = grid->itemAtPosition(r, c);
+			if (item) label_cell(item, labs, ctls, true);
+		}
+		label_tie_row(labs, ctls);
+	}
+}
+
+// a row of its own (a box with its text and a line beside it)
+static void label_line(QBoxLayout* box) {
+	if ((box->direction() != QBoxLayout::LeftToRight) && (box->direction() != QBoxLayout::RightToLeft)) return;
+	QList<QLabel*> labs;
+	QList<QWidget*> ctls;
+	for (int i = 0; i < box->count(); i++) {
+		QWidget* wid = box->itemAt(i)->widget();
+		if (!wid) continue;
+		if (QLabel* lab = qobject_cast<QLabel*>(wid)) {
+			labs.append(lab);
+		} else if (label_target(wid)) {
+			ctls.append(wid);
+		}
+	}
+	label_tie_row(labs, ctls);
+}
+
+void label_rows(QWidget* root) {
+	foreach(QGridLayout* grid, root->findChildren<QGridLayout*>()) label_grid(grid);
+	foreach(QBoxLayout* box, root->findChildren<QBoxLayout*>()) label_line(box);
+	foreach(QLabel* lab, root->findChildren<QLabel*>()) {
+		if (lab->buddy() && label_free(lab) && label_target(lab->buddy())) label_for(lab, lab->buddy());
+	}
 }
 
 // xTreeBox

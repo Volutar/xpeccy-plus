@@ -939,6 +939,8 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 // profiles manager
 	buildSidebar();
 	ui.verticalLayout_40->insertWidget(0, ui.tvHotkeys->controls());
+	// a row's name and what it says go to its control: a click on them toggles a box
+	label_rows(this);
 }
 
 // The page in front, as tables show a selection, with a bar in the style's link color.
@@ -3065,9 +3067,9 @@ void SetupWin::fillRomSlots() {
 		xRomRole role = hw_rom_role(hw, i);
 		QString name = QString("ROM %0").arg(i);
 		if (role.name) name += QString(" (%0)").arg(role.name);
-		addRomSlot(row, name, i, files, true, from[i]);
+		QRadioButton* rb = NULL;
 		if (role.res >= 0) {
-			QRadioButton* rb = new QRadioButton;
+			rb = new QRadioButton;
 			rb->setToolTip(tr("Boot from this ROM"));
 			rb->setEnabled(!romSlotFileName(i).isEmpty() || (from[i] >= 0));
 			rb->setChecked(role.res == resTarget);
@@ -3075,6 +3077,7 @@ void SetupWin::fillRomSlots() {
 			ui.gridRomSlots->addWidget(rb, row, 0);
 			resets = true;
 		}
+		addRomSlot(row, name, i, files, true, from[i], rb);
 		row++;
 	}
 	// only a machine with a text mode draws from a font rom
@@ -3154,7 +3157,8 @@ QString SetupWin::romSlotFileName(int slot) {
 	return QString::fromUtf8(res.c_str());		// rom names are UTF-8
 }
 
-void SetupWin::addRomSlot(int row, QString name, int slot, const QStringList& files, bool has, int from) {
+// boot: the slot's radio, which its name picks while it can be picked; else the name is its list's
+void SetupWin::addRomSlot(int row, QString name, int slot, const QStringList& files, bool has, int from, QRadioButton* boot) {
 	QLabel* lab = new QLabel(name);
 	lab->setEnabled(has);
 	QComboBox* box = new QComboBox;
@@ -3179,6 +3183,7 @@ void SetupWin::addRomSlot(int row, QString name, int slot, const QStringList& fi
 	btn->setToolTip(tr("Pick a ROM file"));
 	btn->setEnabled(has);
 	connect(btn, &QToolButton::released, this, [=](){ romSlotFile(box, slot); });
+	label_for(lab, (boot && boot->isEnabled()) ? (QWidget*)boot : (QWidget*)box);
 	ui.gridRomSlots->addWidget(lab, row, 1);
 	ui.gridRomSlots->addWidget(box, row, 2);
 	ui.gridRomSlots->addWidget(btn, row, 3);
