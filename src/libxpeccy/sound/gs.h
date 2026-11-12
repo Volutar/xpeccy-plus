@@ -72,13 +72,30 @@ typedef struct {
 	long long due;		// units owed to the CPU
 	long long intDue;	// units to the next INT
 	int tickUnits;		// units in a CPU tick
+	// A loop the CPU turns in that changes nothing (gs_loop_at): its head, what the
+	// CPU held there, and what was done since. Parked, the CPU waits at the head
+	// while its time piles up in due (gsFlushMix).
+	int lpHead;		// -1: none
+	int lpT;		// T since the head
+	unsigned char lpR;	// R at the head, the last time
+	unsigned char lpDirty;	// a side effect since the head
+	unsigned char lpPark;
+	unsigned char lpStep;	// R of a turn
+	int lpLen;		// T of a turn
+	int lpWait;		// heads let go by, after a failed test
+	int lpBack;		// the next wait
+	xreg32 lpRegs[64];	// the registers and flags at the head
+	bool lpFlags[64];
 } GSound;
 
 GSound* gsCreate();
 void gsDestroy(GSound*);
 void gsReset(GSound*);
 void gsSync(GSound*, int);
-void gsFlush(GSound*);
+void gsFlush(GSound*);		// the CPU run up to the time given
+void gsFlushMix(GSound*);	// the same for the mix: a CPU parked in a loop stays parked
+void gsSettle(GSound*);		// for a snapshot: time owed under an INT period
+void gs_loop_forget(GSound*);	// the CPU or its memory was put somewhere new
 sndPair gsVolume(GSound*);
 int gsWrite(GSound*, int, int);
 int gsRead(GSound*, int, int*);

@@ -85,6 +85,7 @@ int gsmemrd(int adr, int m1, void* ptr) {
 	if ((adr & 0xe000) == 0x6000) {
 		int eight = (gs->model == GS_NEOGS) && (gs->cfg0 & NGS_8CHANS);
 		*gs_ch(gs, (adr >> 8) & (eight ? 7 : 3)) = res;
+		gs->lpDirty = 1;
 	}
 	return res;
 }
@@ -93,6 +94,7 @@ void gsmemwr(int adr, int val, void* ptr) {
 	GSound* gs = (GSound*)ptr;
 	adr &= 0xffff;
 	mem_wr_fast(gs->mem, adr, val & 0xff);
+	gs->lpDirty = 1;
 }
 
 // internal IORQ
@@ -139,9 +141,24 @@ static void gs_port_wr(GSound* gs, int port, int val) {
 	}
 }
 
+// The ports a loop may read and still change nothing (gs_loop_at): the host's
+// command and the state, and the NeoGS's settings. Any other one counts as a
+// side effect, the ones that have none here as well - the SD and MP3 ports would
+// have one on the card.
+static int gs_port_clean(GSound* gs, int port) {
+	if (gs->model != GS_NEOGS) port &= 0x0f;
+	else if (port & 0xc0) return 0;
+	switch (port & 0x3f) {
+		case 0x01: case 0x04: return 1;
+		case 0x0f: case 0x11: case 0x12: case 0x1b: return gs->model == GS_NEOGS;
+	}
+	return 0;
+}
+
 // The original card decodes A3:A0; the NeoGS #00-#3F (ports.v)
 int gsiord(int port, void* ptr) {
 	GSound* gs = (GSound*)ptr;
+	if (!gs_port_clean(gs, port)) gs->lpDirty = 1;
 	if (gs->model != GS_NEOGS) return gs_port_rd(gs, port & 0x0f);
 	if (port & 0xc0) return 0xff;
 	port &= 0x3f;
@@ -159,6 +176,7 @@ int gsiord(int port, void* ptr) {
 
 void gsiowr(int port, int val, void* ptr) {
 	GSound* gs = (GSound*)ptr;
+	gs->lpDirty = 1;
 	val &= 0xff;
 	if (gs->model != GS_NEOGS) {
 		port &= 0x0f;
@@ -212,6 +230,7 @@ int gsintrq(void* ptr) {
 // MP3 control at its first speed) - the pages at #8000 keep what they had.
 static void gs_reset_hw(GSound* gs) {
 	cpu_reset(gs->cpu);
+	gs_loop_forget(gs);
 	if (gs->model == GS_NEOGS) {
 		gs->cfg0 = NGS_CFG0_RESET;
 		gs->sctrl = NGS_SCTRL_RESET;
@@ -229,6 +248,7 @@ void gs_rom_refresh(GSound* gs) {
 		memSetSize(gs->mem, GS_RAM_SIZE, GS_ROM_SIZE);
 	}
 	gs_remap(gs);
+	gs_loop_forget(gs);
 }
 
 void gs_set_model(GSound* gs, int model) {
@@ -255,6 +275,7 @@ GSound* gsCreate() {
 	res->model = GS_ORIGINAL;
 	res->tickUnits = GS_UNITS_TICK(12);
 	res->intDue = GS_INT_UNITS;
+	res->lpHead = -1;
 	memSetBank(res->mem, 0x00, MEM_ROM, 0, MEM_16K, NULL, NULL, NULL);
 	memSetBank(res->mem, 0x40, MEM_RAM, 0, MEM_16K, NULL, NULL, NULL);
 	memSetBank(res->mem, 0x80, MEM_RAM, 0, MEM_16K, NULL, NULL, NULL);
@@ -307,24 +328,141 @@ static void gs_halt_skip(GSound* gs) {
 	if (ni < n) n = ni;
 	if (n < 2) return;
 	n--;
+	gs->lpDirty = 1;
 	cpu->regR += (unsigned char)n;
 	gs->due -= n * h;
 	gs->intDue -= n * h;
 }
 
-// INT comes from the card's own divider at 37.5 kHz, whatever the CPU runs at
-void gsFlush(GSound* gs) {
-	if (!gs->enable) return;
-	while (gs->due > 0) {
-		gs_halt_skip(gs);
-		long long u = (long long)cpu_exec(gs->cpu) * gs->tickUnits;
-		gs->due -= u;
-		gs->intDue -= u;
-		while (gs->intDue <= 0) {
-			gs->intDue += GS_INT_UNITS;
-			gs->cpu->intrq |= Z80_INT;
+void gs_loop_forget(GSound* gs) {
+	gs->lpHead = -1;
+	gs->lpPark = 0;
+}
+
+// The INT a CPU would take, past the time it is given
+static int gs_int_on(CPU* cpu) {
+	return cpu->flgIFF1 && (cpu->inten & Z80_INT);
+}
+
+// Turns of the loop the CPU stands at the head of, counted at once: R by the
+// turns' step and the time they take - with DI, the INTs their time holds
+// are requested as they would have been, with EI they stop short of the next
+// one. At least part of a turn is left to run as ever, so the CPU ends where
+// the turns one by one would leave it.
+static void gs_loop_skip(GSound* gs) {
+	CPU* cpu = gs->cpu;
+	long long turn = (long long)gs->lpLen * gs->tickUnits;
+	long long lim = gs->due;
+	if (gs_int_on(cpu) && (gs->intDue < lim)) lim = gs->intDue;
+	if ((turn <= 0) || (lim <= turn)) return;
+	long long k = (lim - 1) / turn;
+	cpu->regR += (unsigned char)(k * gs->lpStep);
+	gs->lpR = cpu->regR;			// the head's R, for the next turn's step
+	gs->due -= k * turn;
+	gs->intDue -= k * turn;
+	if (gs->intDue <= 0) {
+		gs->intDue += (-gs->intDue / GS_INT_UNITS + 1) * GS_INT_UNITS;
+		cpu->intrq |= Z80_INT;
+	}
+}
+
+// every register and flag as at the head, R aside
+static int gs_loop_same(GSound* gs) {
+	CPU* cpu = gs->cpu;
+	unsigned char r = cpu->regR;
+	cpu->regR = ((unsigned char*)gs->lpRegs)[(unsigned char*)&cpu->regR - (unsigned char*)cpu->regs];
+	int same = !memcmp(cpu->regs, gs->lpRegs, sizeof(gs->lpRegs))
+		&& !memcmp(cpu->flags, gs->lpFlags, sizeof(gs->lpFlags));
+	cpu->regR = r;
+	return same;
+}
+
+// A jump back: the CPU is at a loop's head. Reached the turn before as well, with
+// no side effect between (lpDirty: a write, an OUT, a port read with an effect,
+// a DAC read, an interrupt) and every register but R as it was there, the turn
+// changed nothing, and every next one does the same as long as nothing outside
+// changes: the host's accesses run the CPU out first and forget the loop.
+// A head that fails is looked at less often after, up to every 32nd.
+// park: stop at the head (1 back) rather than count the turns.
+static int gs_loop_at(GSound* gs, int park) {
+	CPU* cpu = gs->cpu;
+	int pc = cpu->regPC;
+	int found = 0;
+	if (gs->lpWait > 0) {
+		gs->lpWait--;
+		gs->lpHead = -1;
+	} else if ((pc == gs->lpHead) && !gs->lpDirty && !cpu_int_ready(cpu) && gs_loop_same(gs)) {
+		gs->lpLen = gs->lpT;
+		gs->lpStep = cpu->regR - gs->lpR;
+		gs->lpBack = 0;
+		found = 1;
+	} else {
+		if (gs->lpHead >= 0) {
+			gs->lpWait = gs->lpBack;
+			gs->lpBack = gs->lpBack ? ((gs->lpBack < 16) ? gs->lpBack * 2 : 32) : 1;
+		}
+		if (gs->lpWait > 0) {
+			gs->lpHead = -1;
+		} else {
+			gs->lpHead = pc;
+			memcpy(gs->lpRegs, cpu->regs, sizeof(gs->lpRegs));
+			memcpy(gs->lpFlags, cpu->flags, sizeof(gs->lpFlags));
 		}
 	}
+	gs->lpT = 0;
+	gs->lpR = cpu->regR;
+	gs->lpDirty = 0;
+	if (!found) return 0;
+	if (park) {
+		gs->lpPark = 1;
+		return 1;
+	}
+	gs_loop_skip(gs);
+	return 0;
+}
+
+// INT comes from the card's own divider at 37.5 kHz, whatever the CPU runs at.
+// park: the mix's flush, which only needs the DAC levels - a loop that changes
+// nothing leaves them as they are, so the CPU waits at its head
+static void gs_run(GSound* gs, int park) {
+	CPU* cpu = gs->cpu;
+	if (gs->lpPark) {
+		if (park && !(gs_int_on(cpu) && (gs->due >= gs->intDue))) return;
+		gs->lpPark = 0;
+		gs_loop_skip(gs);
+	}
+	while (gs->due > 0) {
+		gs_halt_skip(gs);
+		if (cpu_int_ready(cpu)) gs->lpDirty = 1;
+		int pc = cpu->regPC;
+		int t = cpu_exec(cpu);
+		long long u = (long long)t * gs->tickUnits;
+		gs->due -= u;
+		gs->intDue -= u;
+		gs->lpT += t;
+		while (gs->intDue <= 0) {
+			gs->intDue += GS_INT_UNITS;
+			cpu->intrq |= Z80_INT;
+		}
+		if ((cpu->regPC < pc) && gs_loop_at(gs, park)) return;
+	}
+}
+
+void gsFlush(GSound* gs) {
+	if (!gs->enable) return;
+	gs_run(gs, 0);
+}
+
+void gsFlushMix(GSound* gs) {
+	if (!gs->enable) return;
+	gs_run(gs, 1);
+}
+
+// A snapshot keeps less than an INT period of the time owed (szx_ext.c): a parked
+// CPU's pile is run out first. Run out, it is where it would have been anyway.
+void gsSettle(GSound* gs) {
+	if (!gs->enable) return;
+	if (gs->lpPark || (gs->due >= GS_INT_UNITS)) gs_run(gs, 0);
 }
 
 // the host's side: #B3 data, #BB command and state; the NeoGS adds #33,
@@ -345,6 +483,7 @@ static int gs_ctr(GSound* gs, int adr, int data) {
 	}
 	if (data & 0x40) gs->cpu->intrq |= Z80_NMI;
 	if (data & 0x20) gs->led ^= 1;
+	gs_loop_forget(gs);
 	return 1;
 }
 
@@ -359,6 +498,7 @@ int gsWrite(GSound* gs, int adr, int data) {
 		gs->pb3_zx = data & 0xff;
 		gs->pstate |= 0x80;		// set b7,state
 	}
+	gs_loop_forget(gs);		// what the CPU reads has changed
 	return 1;
 }
 
@@ -370,6 +510,7 @@ int gsRead(GSound* gs, int adr, int* dptr) {
 	} else {
 		*dptr = gs->pb3_gs;
 		gs->pstate &= 0x7f;
+		gs_loop_forget(gs);
 	}
 	return 1;
 }
