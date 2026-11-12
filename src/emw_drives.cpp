@@ -605,9 +605,9 @@ void MainWin::folderSaid(const vfReload& r, const QString& why) {
 		setMessage(" refreshed: no changes ");
 }
 
-// What the folder changed goes into the card or disk the machine has, as a real card taken out
-// and put back with the files changed, without the machine noticing; what it wrote there first
-// goes to the folder
+// What the folder changed goes into the card or disk the machine has, without the machine
+// noticing - a real card taken out and put back is dead to it until it mounts the card anew
+// (N-Go: NextZXOS "Not ready", esxDOS error 19); what it wrote there first goes to the folder
 void MainWin::folderRefresh(bool ide, int which) {
 	vfReload r;
 	QString why;
