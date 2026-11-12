@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Xpeccy+ 2026.9\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-27 00:41+0100\n"
+"POT-Creation-Date: 2026-11-12 17:25+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ru\n"
@@ -121,6 +121,18 @@ msgstr ""
 "что Xpeccy+ только что сделал, внизу слева: «size x3», «quick save» и так"
 " далее"
 
+msgid "**Snow notice**"
+msgstr "**Snow notice**"
+
+msgid ""
+"the message, falling snow and blinking snowflake when a game causes ULA "
+"snow, and the snowflake while it snows on (see [When a game snows](ula-"
+"snow-floating-bus.md#when-a-game-snows)); the snow itself stays"
+msgstr ""
+"сообщение, падающий снег и мигающая снежинка, когда игра вызывает снег "
+"ULA, и снежинка, пока снег идёт (см. [Когда в игре идёт снег](ula-snow-"
+"floating-bus.md#when-a-game-snows)); сам снег остаётся"
+
 msgid "**Fade out**"
 msgstr "**Fade out**"
 
@@ -164,4 +176,7 @@ msgstr "индикатор HALT"
 
 msgid "Fade out"
 msgstr "Fade out"
+
+msgid "Snow notice"
+msgstr "Snow notice"
 
