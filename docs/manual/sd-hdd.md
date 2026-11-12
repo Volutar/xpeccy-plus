@@ -138,7 +138,7 @@ from then on, what the machine writes stays in memory, and a message says so.
 
 **Refresh** in a folder card's or folder disk's menu brings in what you changed in the folder
 since it was read: new files and folders, changed files, deleted ones. The machine keeps
-running and needs no remount, as a real card put back would. What the machine wrote there
+running and needs no remount, unlike a real card put back. What the machine wrote there
 first goes to the folder. The message **refreshed: 2 new, 1 gone, 0 changed** says what
 changed.
 
@@ -155,4 +155,4 @@ the disk; **Eject** and **Open Folder...** then read the folder anew. An image f
 Two [hotkeys](hotkeys.md), with no key until you give them one, work on SD cards from the
 keyboard: **SD Card: Refresh** refreshes every folder card the machine uses, and **SD Card:
 Eject** takes out the machine's card - the slot's on the ZX Evolution and the Next (where
-the Next's own card goes back in), the divMMC's first card that holds one on the others.
+the Next's own card goes back in), the card in the divMMC's first filled slot on the others.
