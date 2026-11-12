@@ -67,6 +67,9 @@ before that point is upstream's history and is not repeated here.
 - **The SD card in the status bar** on the ZX Evolution and the ZX Spectrum Next: a light
   that shows the card being read and written, a tip with its image or folder, and a click
   with either button opens the SD Card menu.
+- **Reload for a folder card or disk** (Media > SD Card, the divMMC's cards, Media > Drives):
+  files added, changed or deleted in the folder reach the running machine without a Hard
+  Reset; a file it has open, or a disk image it has mounted, reads on as before.
 
 - **The Debugger shows where an INT goes**: the handler in the tips of INT and IM, with a `*`
   when nothing drives the bus and the IM 2 table is not one byte throughout. A click on IM or
