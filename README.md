@@ -7,10 +7,10 @@ emulation code comes from that project. This fork does not claim authorship of i
 
 Current version: **2026.9**. Forked from upstream build `20260807`.
 
-Windows (x64, and ARM64 for Windows 11 on ARM), Linux and macOS are built by CI on every
-nightly and off every release tag. The macOS build is arm64 only, runs on macOS 13 and later
-and carries no developer signature, so a downloaded DMG has to be allowed through Gatekeeper
-by hand.
+Windows (x64, ARM64 for Windows 11 on ARM, and legacy x64 and x86 builds for Windows 7 and
+8.1), Linux and macOS are built by CI on every nightly and off every release tag. The macOS
+build is arm64 only, runs on macOS 13 and later and carries no developer signature, so a
+downloaded DMG has to be allowed through Gatekeeper by hand.
 
 ## Why a fork
 
@@ -81,9 +81,9 @@ On top of upstream build `20260807`:
   type, a memory heat map, register layouts to choose from, ZX Evo and Next panels, a screen
   and a sound chip panel that detach into windows of their own, and debugging from VS Code
   with DeZog.
-- **Sound.** Made on a core of its own; the FM half of TurboSound runs on ymfm, the General
-  Sound comes as the original card or the NeoGS, latency looks after itself, and the mix can
-  be filtered.
+- **Sound.** Made on a CPU core of its own; the FM half of TurboSound runs on ymfm, the
+  General Sound comes as the original card or the NeoGS, latency looks after itself, and the
+  mix can be filtered.
 - **Snapshots.** SZX by default, on every machine, the Next included, coming back exactly
   where it was saved, with the tape and disks inside if you like; `.z80` and `.sna` as well.
   Quick saves are kept for each game, twenty deep, and Resume Last Session picks up where

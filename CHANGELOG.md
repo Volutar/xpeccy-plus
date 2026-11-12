@@ -12,9 +12,9 @@ before that point is upstream's history and is not repeated here.
 ### Added
 
 - **A build for Windows 11 on ARM** (`win-arm64`), for Snapdragon and other ARM64 computers: it
-  runs natively, 1.5 to 2 times as fast as the x64 build there, and an x64 copy on such a
-  computer moves to it with its next update. *(thanks to Loccy for the way to build it, a fix
-  and the test on his Surface)*
+  runs natively, 1.5 to 2 times as fast as the x64 build there, and an x64 or legacy copy on
+  such a computer offers to switch to it. *(thanks to Loccy for the way to build it, a fix and
+  the test on his Surface)*
 
 - **A game that snows says so**: on the 48K, 128K and +2 the picture dims under falling snow and
   a message tells what ULA snow is. **Turn Off for This Game** takes the snow away; while it
@@ -23,10 +23,8 @@ before that point is upstream's history and is not repeated here.
 - **Screenshots**:
   - At the machine's own size by default: Scale x1 saves 256×192 with as much border as the
     Border slider shows; x2-x4, or Source: Screen through the shader, in Options > Video.
-    *(requested by Michael Sudakov)*
   - Named after the game: `%image %n` saves `Tetris GB 001.png`, `Tetris GB 002.png`.
-    *(requested by Michael Sudakov)*
-  - Screenshot to Clipboard: Ctrl+F7 (Shift+F7 in Classic). *(requested by Demonyx)*
+  - Screenshot to Clipboard: Ctrl+F7 (Shift+F7 in Classic).
   - Screenshot Series counts the machine's frames, and SCR and Hobeta are saved only where
     the screen is the ZX one.
 
@@ -39,9 +37,9 @@ before that point is upstream's history and is not repeated here.
   turned off (Autoreverse), for a game that loads its levels from side B again and again.
 
 - **NeoGS**, NedoPC's General Sound card: the General Sound row in Options > Machine is None,
-  Original or NeoGS, and the ZX Evolution machines come with one. Its SD card and MP3 chip
-  are not there yet. The General Sound mixes its sides as the card does, with a Separation
-  setting, 75% at first. *(reported by ZXLion)*
+  Original or NeoGS, and the ZX Evolution machines come with one. *(reported by ZXLion)* Its
+  SD card and MP3 chip are not emulated yet. The General Sound mixes its sides as the card
+  does, with a Separation setting, 75% at first.
 
 - **Folder cards and disks**:
   - Refresh (Media > SD Card, the divMMC's cards, Media > Drives) puts files added, changed
@@ -59,7 +57,8 @@ before that point is upstream's history and is not repeated here.
   BASIC (from Richard Dymond's Complete Spectrum ROM Disassembly, after Logan and O'Hara's
   book), the 128K editor, the +2 and all four +2A/+3 ROMs (from Klive IDE by Istvan Novak),
   the +3DOS calls and TR-DOS (from Marcos Cruz's TR-DOS Disassembled).
-  - System variables are named too: `LD HL,(CH_ADD)`.
+  - System variables are named too: `LD HL,(CH_ADD)` (Options > Debugger > System
+    variables).
   - The ROMs' data shows as data: the font as `DB`, keyword and message tables as `DC`.
   - A name can carry its system, `BASIC48.LD_BYTES`. Your own labels win, and Options >
     Debugger turns these off.
@@ -67,16 +66,18 @@ before that point is upstream's history and is not repeated here.
 ### Changed
 
 - **Faster on the same computer**:
-  - Sound is made on a core of its own: up to a quarter faster with two cores or more, a
+  - Sound is made on a CPU core of its own: up to a quarter faster with two cores or more, a
     third to a half with TurboSound FM, the SAA or General Sound, with the same sound.
-  - The Windows builds are laid out by a profile of real programs: 6-14 % faster, the Next
+  - The Windows builds are laid out by a profile of real programs: 6-14% faster, the Next
     up to 1.7 times.
   - The General Sound costs far less: Fast Mode on the ZX Evolution runs as fast as without
     its NeoGS, a 128K with the card 2-3 times faster.
 
 - **The keyboard types what is printed on the keys**: Shift+`;` gives `:`, Shift+`/` gives
   `?`, whatever the system's layout; letters and digits stay the Spectrum's for games.
-  - Ctrl is always Symbol Shift: F3 and F2 open and save, Options is on Alt+,.
+  Typing: Key Positions in Options > Input turns it off.
+  - In Modern, Ctrl with a letter is always Symbol Shift: F3 and F2 open and save, Options
+    is on Alt+,.
   - Two keymaps, ZX Spectrum 128K (the default) and ZX Spectrum 48K; the right Shift and
     Ctrl are Caps Shift and Symbol Shift too, and `` ` `` is EDIT.
 
@@ -91,12 +92,12 @@ before that point is upstream's history and is not repeated here.
   *(reported by ZXLion, who also tested it)*
 
 - **The ZX Spectrum Next**:
-  - Games and demos 20-50 % faster, and about a third of the host CPU when idle in NextZXOS,
-    with the same picture and sound.
+  - Games and demos 20-50% faster, and idle in NextZXOS it takes about a third of the host
+    CPU it took, with the same picture and sound.
   - Options show what NextZXOS has set (joysticks, mouse, sound, timing...), as its own
     Settings menu does; settings the Next sets itself are no longer offered.
   - Its F-keys work as on its PS/2 keyboard: F3 50/60 Hz, F4 reset, F8 CPU speed, F9 and
-    F10 its NMI and DRIVE buttons.
+    F10 its NMI and DRIVE buttons; keys that are hotkeys reach it with Grab Keyboard on.
   - Memory can be 1 MB or 2 MB.
 
 - **The file dialog** keeps its sort and view between runs, has one Disk type (a disk opened
@@ -104,7 +105,7 @@ before that point is upstream's history and is not repeated here.
 
 - **Options and menus**: a click on a check box's name or hint toggles it; Advanced settings
   is a button again; the Disk row is now Floppy disk; Machine > Reset and Input > Gamepads
-  act on a click in the menu bar.
+  act on a click in the menu bar (not on macOS).
 
 - **Cheats**: a TOSEC image finds its game's `.pok` by the name without its `[tags]`, an image
   in a folder of thousands opens without a pause, and `--poke "Lives=35899,0"` fills the
@@ -115,15 +116,15 @@ before that point is upstream's history and is not repeated here.
 
 - **The Debugger**:
   - Decimal numbers: a toolbar button and Ctrl+Shift+H switch hex and decimal, and a tip
-    shows a number in hex, decimal and binary.
-  - Addresses carry their hex sign, `#8000`; a number typed without one is decimal.
+    shows a number in hex, decimal and binary (Number tips in Options > Debugger).
+  - Addresses carry their hex sign, `#8000`; a number typed without one is decimal, and in
+    a condition a leading 0 is no longer octal.
   - The tips of INT and IM show where an interrupt goes; NMI has a signal of its own.
   - DUMP selects as a text editor does, copies as hex, `DB` lines or text, and saves the
     selection; its text column is CP437 by default.
-  - Delete breakpoint in the Breakpoints list's menu, and Del there. *(requested by Volutar)*
+  - Delete breakpoint in the Breakpoints list's menu, and Del there.
   - The FDD panel has a code page, the CPU panel fills its column, the Stack panel is
-    narrower *(requested by Volutar)*, and the Watcher shows 16 bytes a watch in the
-    Debugger's font.
+    narrower, and the Watcher shows 16 bytes a watch in the Debugger's font.
 
 ### Fixed
 
@@ -131,7 +132,8 @@ before that point is upstream's history and is not repeated here.
   right way round on every machine (untick Swap buttons if you ticked it for that).
   *(reported by Alexey Boldyrev)*
 
-- **The Scorpion ZS 256's Kempston joystick** reads nothing pressed after a disk access.
+- **The Scorpion ZS 256's Kempston joystick** reads nothing pressed after a disk access, and
+  Kempston 8-bit is not offered there: the board's port has no Fire 2 to Fire 4.
   *(reported by Alexey Boldyrev)*
 
 - **Copy-protected +3 disks**: Chase H.Q. and the other protected +3 games in `.dsk` images
@@ -153,7 +155,7 @@ before that point is upstream's history and is not repeated here.
 - **Folder disks**: Read-only now covers every folder in use, and `.lnk` files, NextZXOS's
   links too, are on the disk as files (Windows).
 
-- **Ok or Apply in Options leaves the running program as it is**, and the Custom palette of
+- **OK or Apply in Options leaves the running program as it is**, and the Custom palette of
   the TSConf setup no longer gives a black screen.
 
 - **Linux and the styles**: fullscreen with two screens at one place (a docked Steam Deck),
