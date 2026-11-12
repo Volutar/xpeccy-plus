@@ -274,7 +274,23 @@ static int h_stat(void* ctx, const char* path, long long* size, long long* mtime
 	return 0;
 }
 
-static const vfHost host = {NULL, h_open, h_mkdir, h_rename, h_replace, h_remove, h_truncate, h_kind, h_empty, h_settime, h_stat};
+// the name as its folder lists it
+static int h_exact(void* ctx, const char* path) {
+	char dir[1200];
+	const char* name = strrchr(path, '/');
+	hList l;
+	int i, res = 0;
+	if (!name || !h_kind(ctx, path) || (name - path >= (int)sizeof(dir))) return 0;
+	memcpy(dir, path, name - path);
+	dir[name - path] = 0;
+	hl_list(dir, &l);
+	for (i = 0; i < l.n; i++)
+		if (!strcmp(l.name[i], name + 1)) res = 1;
+	hl_free(&l);
+	return res;
+}
+
+static const vfHost host = {NULL, h_open, h_mkdir, h_rename, h_replace, h_remove, h_truncate, h_kind, h_empty, h_settime, h_stat, h_exact};
 
 // remove a host tree for good
 static void rm_tree(const char* path) {
@@ -1916,6 +1932,7 @@ static int s_refresh(const char* when, int expect, vfRefresh* r) {
 	vFat* fresh;
 	int res;
 	vfat_flush(gvf);
+	if (vfat_refresh_ready(gvf) == VFR_STUCK) vfat_sync(gvf, 1);	// once more, as the app does
 	fresh = scan_folder(sroot, 0, NULL);
 	res = vfat_refresh(gvf, fresh, scan_depth, r);
 	vfat_free(fresh);
@@ -2059,9 +2076,9 @@ static void sc_refresh_refuse(void) {
 	fail_pat = "lockme";
 	s_refresh("refuse stuck", VFR_STUCK, &r);
 	if (!strstr(vfat_stuck(gvf), "lockme")) fail("refuse: the stuck file is not named (%s)", vfat_stuck(gvf));
-	fail_pat = NULL;
-	s_sync("refuse unstuck");
+	fail_pat = NULL;		// the cause cleared, nothing written since: the refresh's own retry heals it
 	s_refresh("refuse unstuck", VFR_OK, &r);
+	s_sync("refuse unstuck");
 	s_end();
 	// read only: the volume goes live for the refresh, the guest only reads
 	s_begin(124, 0);
@@ -2189,6 +2206,20 @@ static void sc_refresh_hidden(void) {
 	s_refresh("hidden case", VFR_OK, &r);
 	if ((r.removed != 1) || (r.added != 1)) fail("hidden case: %i gone, %i new", r.removed, r.added);
 	check_guest("hidden case");
+	// a case only a Unicode fold sees: one entry for the one host file, not two
+	h_put("\xd0\x98\xd0\xb3\xd1\x80\xd0\xb0.tap", 2500, 1700000000);		// Igra.tap in Cyrillic
+	s_refresh("hidden cyrillic", VFR_OK, &r);
+	snprintf(a, sizeof(a), "%s/\xd0\x98\xd0\xb3\xd1\x80\xd0\xb0.tap", sroot);
+	snprintf(b, sizeof(b), "%s/\xd0\x98\xd0\x93\xd0\xa0\xd0\x90.tap", sroot);
+	host_mv(a, b);
+	m = m_find("\xd0\x98\xd0\xb3\xd1\x80\xd0\xb0.tap");
+	free(model[m].path);
+	model[m].path = strdup("\xd0\x98\xd0\x93\xd0\xa0\xd0\x90.tap");
+	s_refresh("hidden cyrillic case", VFR_OK, &r);
+	if ((r.removed != 1) || (r.added != 1)) fail("hidden cyrillic case: %i gone, %i new", r.removed, r.added);
+	if (!dir_has("/", "\xd0\x98\xd0\x93\xd0\xa0\xd0\x90.tap", 2500) || dir_has("/", "\xd0\x98\xd0\xb3\xd1\x80\xd0\xb0.tap", 2500))
+		fail("hidden cyrillic case: the guest lists the old spelling");
+	check_guest("hidden cyrillic case");
 	s_sync("hidden sync");
 	s_remount("hidden remount");
 	s_end();
