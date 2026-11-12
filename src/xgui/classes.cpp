@@ -1194,13 +1194,24 @@ class xLabelFor : public QObject {
 			down = false;
 		}
 		// the style draws a box hovered while it is under the mouse (System and
-		// qss alike): so it is, while the mouse is over its label
+		// qss alike): so it is, while the mouse is over its label. A check box or
+		// a radio button also wants the mouse's last move over it to have been
+		// over its check (Qt keeps that to itself), so it gets one there
 		void hover(bool on) {
 			QAbstractButton* btn = qobject_cast<QAbstractButton*>(target);
 			if (!btn || (on == lit)) return;
 			if (on && !btn->isEnabled()) return;
 			lit = on;
 			btn->setAttribute(Qt::WA_UnderMouse, on);
+			if (on) {
+				QStyleOptionButton opt;
+				opt.initFrom(btn);
+				bool radio = qobject_cast<QRadioButton*>(btn) != NULL;
+				QRect chk = btn->style()->subElementRect(radio ? QStyle::SE_RadioButtonIndicator : QStyle::SE_CheckBoxIndicator, &opt, btn);
+				QPoint at = chk.isValid() ? chk.center() : btn->rect().center();
+				QMouseEvent mev(QEvent::MouseMove, at, btn->mapToGlobal(at), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+				QApplication::sendEvent(btn, &mev);
+			}
 			btn->update();
 		}
 };
