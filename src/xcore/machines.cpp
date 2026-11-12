@@ -92,15 +92,13 @@ static xMacWord stereoTab[] = {
 	{"bca", AY_BCA}, {"cab", AY_CAB}, {"cba", AY_CBA}, {NULL, 0}
 };
 
-// the old yes and no still read: yes is the card there always was
+// the old yes/no, and its other spellings, still read: yes is the card there
+// always was. A value is written as the first name it has here
 static xMacWord gsTab[] = {
-	{"no", MAC_GS_NONE}, {"yes", MAC_GS_ORIGINAL}, {"neogs", MAC_GS_NEOGS}, {NULL, 0}
+	{"no", MAC_GS_NONE}, {"yes", MAC_GS_ORIGINAL}, {"neogs", MAC_GS_NEOGS},
+	{"off", MAC_GS_NONE}, {"on", MAC_GS_ORIGINAL}, {"false", MAC_GS_NONE}, {"true", MAC_GS_ORIGINAL},
+	{"0", MAC_GS_NONE}, {"1", MAC_GS_ORIGINAL}, {NULL, 0}
 };
-
-static int mac_gs_word(const std::string& val) {
-	if (val == "neogs") return MAC_GS_NEOGS;
-	return str2bool(val) ? MAC_GS_ORIGINAL : MAC_GS_NONE;
-}
 
 static xMacWord sdrvTab[] = {
 	{"none", SDRV_NONE}, {"covox", SDRV_COVOX},
@@ -449,7 +447,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "psg.frq") mac.psgFrq = arg.d;
 			else if (nam == "psg.stereo") mac.psgStereo = mac_word(stereoTab, val, AY_MONO, id);
 			else if (nam == "soundrive") mac.soundrive = mac_word(sdrvTab, val, SDRV_NONE, id);
-			else if (nam == "gs") mac.gs = mac_gs_word(val);
+			else if (nam == "gs") mac.gs = mac_word(gsTab, val, MAC_GS_NONE, id);
 			else if (nam == "saa") mac.saa = arg.b;
 			else if (nam == "beeper.mic") mac.beepmic = arg.b;
 		} else if (ln.sect == "storage") {
@@ -885,22 +883,30 @@ static void mac_rom_warn() {
 	shitHappens(msg.toUtf8().constData());
 }
 
-// The NeoGS flash: a missing file is told about only while the card is a NeoGS,
-// as nothing else reads it
-static void mac_load_ngs(Computer* comp, const std::string& name) {
-	GSound* gs = comp->gs;
-	memset(gs->romNGS, 0xff, NGS_ROM_SIZE);
-	if (name.empty()) return;
+// A card's ROM image into buf, #FF where the file does not reach; the path of a
+// file that is not there, empty when it was read or none was named
+static std::string mac_read_card_rom(const std::string& name, unsigned char* buf, size_t size) {
+	memset(buf, 0xff, size);
+	if (name.empty()) return std::string();
 	std::string fpath = xm_rom_path(name);
 	FILE* file = rom_open(fpath);
 	if (!file) {
-		xlog(XLG_CONF, XLL_ERROR, "can't load NeoGS ROM '%s'", fpath.c_str());
-		if (gs->model == GS_NEOGS) mac_rom_missing("NeoGS", fpath);
-		return;
+		xlog(XLG_CONF, XLL_ERROR, "can't load ROM file '%s'", fpath.c_str());
+		return fpath;
 	}
-	if (fread(gs->romNGS, 1, NGS_ROM_SIZE, file) < NGS_ROM_SIZE)
+	if (fread(buf, 1, size, file) < size)
 		xlog(XLG_CONF, XLL_WARN, "short read from '%s'", fpath.c_str());
 	fclose(file);
+	return std::string();
+}
+
+// the NeoGS flash that could not be read: told while the card is a NeoGS, as
+// nothing else reads it - and by every ROM load too, which starts the list afresh
+static std::string ngsMissing;
+
+static void mac_tell_ngs(Computer* comp) {
+	if (!ngsMissing.empty() && comp->gs->enable && (comp->gs->model == GS_NEOGS))
+		mac_rom_missing("NeoGS", ngsMissing);
 }
 
 // the file the NeoGS image was read from: it is read when a NeoGS needs it
@@ -913,11 +919,12 @@ void xm_set_ngs_rom(const std::string& name) {
 	conf.ngsFile = name;
 	ngsLoaded = name;
 	ngsRead = true;
-	mac_load_ngs(conf.zx, name);
+	ngsMissing = mac_read_card_rom(name, conf.zx->gs->romNGS, NGS_ROM_SIZE);
 	// a NeoGS starts on the new flash as it would after the power, else its CPU
 	// goes on in RAM with the firmware the old one put there
 	if (conf.zx->gs->model == GS_NEOGS) gs_set_model(conf.zx->gs, GS_NEOGS);
 	else gs_rom_refresh(conf.zx->gs);
+	mac_tell_ngs(conf.zx);
 	emu_unlock();
 	if (!romMissing.isEmpty())
 		QTimer::singleShot(0, QCoreApplication::instance(), mac_rom_warn);
@@ -927,7 +934,7 @@ void xm_set_gs(Computer* comp, int card) {
 	GSound* gs = comp->gs;
 	gs->enable = (card != MAC_GS_NONE) ? 1 : 0;
 	if (card == MAC_GS_NONE) return;		// the model stays for when it is back
-	int model = (card == MAC_GS_NEOGS) ? GS_NEOGS : GS_CLASSIC;
+	int model = (card == MAC_GS_NEOGS) ? GS_NEOGS : GS_ORIGINAL;
 	if (model != gs->model) gs_set_model(gs, model);
 	if ((model == GS_NEOGS) && (!ngsRead || (ngsLoaded != conf.ngsFile)))
 		xm_set_ngs_rom(conf.ngsFile);
@@ -979,20 +986,10 @@ static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std:
 	if (romsz < MEM_16K) romsz = MEM_16K;
 	memSetSize(comp->mem, -1, romsz);
 	comp_heat_sync(comp);
-	memset(comp->gs->romGS, 0xff, GS_ROM_SIZE);
-	if (!gsf.empty()) {
-		fpath = xm_rom_path(gsf);
-		file = rom_open(fpath);
-		if (file) {
-			if (fread(comp->gs->romGS, GS_ROM_SIZE, 1, file) != 1)
-				xlog(XLG_CONF, XLL_WARN, "short read from '%s'", fpath.c_str());
-			fclose(file);
-		} else {
-			xlog(XLG_CONF, XLL_ERROR, "can't load GS ROM '%s'", fpath.c_str());
-			mac_rom_missing("General Sound", fpath);
-		}
-	}
+	fpath = mac_read_card_rom(gsf, comp->gs->romGS, GS_ROM_SIZE);
+	if (!fpath.empty()) mac_rom_missing("General Sound", fpath);
 	gs_rom_refresh(comp->gs);		// the NeoGS image stays as xm_set_ngs_rom read it
+	mac_tell_ngs(comp);
 	if (withfnt) {				// else leave the font the machine put there
 		if (fntf.empty()) {
 			vid_fnt_del(comp->vid);
@@ -2101,7 +2098,7 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 					comp->ts->frq, comp->ts->chipA->stereo);
 			else if ((nam == "psg.frq") || (nam == "psg.stereo") || (nam == "psg.separation")
 				|| (nam == "gs.reset") || (nam == "gs.stereo")) xm_defer(nam, val);
-			else if (nam == "gs") xm_set_gs(comp, mac_gs_word(val));
+			else if (nam == "gs") xm_set_gs(comp, mac_word(gsTab, val, MAC_GS_NONE, "profile"));
 			else if (nam == "soundrive_type") comp->sdrv->type = arg.i;
 			else if (nam == "saa") comp->saa->enabled = arg.b;
 			break;

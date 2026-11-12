@@ -17,12 +17,12 @@ enum {
 
 // the card: X-Trade's General Sound, or NedoPC's NeoGS
 enum {
-	GS_CLASSIC = 0,
+	GS_ORIGINAL = 0,
 	GS_NEOGS
 };
 
-#define GS_ROM_SIZE	MEM_32K		// the classic card's ROM
-#define GS_RAM_SIZE	MEM_2M		// what ours has had
+#define GS_ROM_SIZE	MEM_32K		// the original card's ROM
+#define GS_RAM_SIZE	MEM_2M		// the original card's 2M
 #define NGS_ROM_SIZE	MEM_512K	// the NeoGS flash
 #define NGS_RAM_SIZE	MEM_4M		// today's NeoGS: four 1M chips
 
@@ -40,6 +40,7 @@ enum {
 #define NGS_PAN4CH	0x40
 #define NGS_INV7B	0x80
 #define NGS_CFG0_RESET	0x30
+#define NGS_SCTRL_RESET	0x0b		// SCTRL (#11) after a reset
 
 typedef struct {
 	unsigned enable:1;
@@ -60,7 +61,7 @@ typedef struct {
 	int ch5,ch6,ch7,ch8;
 	int stereo;
 	int sep;		// stereo separation, as the PSG's: 100 apart, 0 mono
-	int model;		// GS_CLASSIC, GS_NEOGS
+	int model;		// GS_ORIGINAL, GS_NEOGS
 	// NeoGS
 	unsigned char cfg0;	// GSCFG0
 	unsigned char pg2, pg3;	// the pages at #8000 and #C000, as memmap.v takes them

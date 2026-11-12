@@ -82,6 +82,22 @@ QString getRFSData(QComboBox* box) {
 	return box->itemData(box->currentIndex()).toString();
 }
 
+// a stereo separation slider, 0-100, and its label kept in step with it
+static xSlider* sep_slider(QLabel** lab) {
+	xSlider* sld = new xSlider;
+	sld->setRange(0, 100);
+	sld->setPageStep(5);
+	sld->setTickInterval(25);
+	sld->setOrientation(Qt::Horizontal);
+	sld->setTickPosition(QSlider::TicksBelow);
+	QLabel* l = new QLabel(QString("%0%").arg(sld->value()));
+	l->setMinimumWidth(32);
+	l->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+	QObject::connect(sld, &QSlider::valueChanged, l, [l](int v) {l->setText(QString("%0%").arg(v));});
+	*lab = l;
+	return sld;
+}
+
 // a ROM list on its file: one missing, or of the user's own from elsewhere, goes in
 static void rom_box_pick(QComboBox* box, const QString& cur) {
 	if (!cur.isEmpty() && (box->findData(cur) < 0)) box->insertItem(1, cur, cur);
@@ -413,36 +429,21 @@ void SetupWin::makeDevWidgets() {
 	sldTapeSpeed->setPageStep(1);
 	sldTapeSpeed->setValue(100);
 	sldTapeSpeed->setTickInterval(1);
-	sldPsgSep = new xSlider;
-	sldPsgSep->setRange(0, 100);
-	sldPsgSep->setPageStep(5);
-	sldPsgSep->setTickInterval(25);
-	sldPsgSep->setMinimumWidth(45);
+	sldPsgSep = sep_slider(&labPsgSep);
 	sldSensitivity = new xSlider;
 	sldSensitivity->setRange(100, 1900);
 	sldSensitivity->setSingleStep(10);
 	sldSensitivity->setPageStep(100);
 	sldSensitivity->setValue(1000);
 	sldSensitivity->setTickInterval(100);
-	sldGsSep = new xSlider;
-	sldGsSep->setRange(0, 100);
-	sldGsSep->setPageStep(5);
-	sldGsSep->setTickInterval(25);
-	sldGsSep->setMinimumWidth(45);
-	labGsSep = new QLabel("75%");
-	labGsSep->setMinimumWidth(32);
-	labGsSep->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-	connect(sldGsSep, &QSlider::valueChanged, this, [this](int v) {labGsSep->setText(QString("%0%").arg(v));});
-	foreach(QSlider* sld, QList<QSlider*>() << sldTapeSpeed << sldPsgSep << sldSensitivity << sldGsSep) {
+	sldGsSep = sep_slider(&labGsSep);
+	foreach(QSlider* sld, QList<QSlider*>() << sldTapeSpeed << sldSensitivity) {
 		sld->setOrientation(Qt::Horizontal);
 		sld->setTickPosition(QSlider::TicksBelow);
 	}
 	labTapeSpeedVal = new QLabel("100%");
 	labTapeSpeedVal->setMinimumWidth(34);
 	labPsgMhz = new QLabel("MHz");
-	labPsgSep = new QLabel("75%");
-	labPsgSep->setMinimumWidth(32);
-	labPsgSep->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 }
 
 // Source, Screenshots' and Recording's: the machine's frame or the window's picture
@@ -1268,7 +1269,6 @@ void SetupWin::fillPages() {
 	gsBox->setCurrentIndex(xm_gs_of(comp));
 	gsrbox->setChecked(comp->gs->reset);
 	sldGsSep->setValue(comp->gs->sep);
-	labGsSep->setText(QString("%0%").arg(comp->gs->sep));
 	ngsPick = QString::fromUtf8(conf.ngsFile.c_str());
 	rom_box_pick(ngsRomBox, ngsPick);
 	gsRomStack->setCurrentIndex((xm_gs_of(comp) == MAC_GS_NEOGS) ? 1 : 0);
@@ -1475,6 +1475,9 @@ void SetupWin::apply() {
 	// pages hold for the emulator itself still goes in, onto the new machine.
 	std::string mid = std::string(getRFSData(ui.machbox).toLocal8Bit().data());
 	bool another = !mid.empty() && (mid != conf.macId);
+	// the NeoGS flash is every machine's, so it goes in before a switch builds the
+	// new machine; a NeoGS reads it when it is the card and the file is new to it
+	conf.ngsFile = std::string(ngsPick.toUtf8().data());
 	if (another) {
 		xm_choose(mid);
 	} else {
@@ -1603,8 +1606,6 @@ void SetupWin::applyMachine() {
 		} else if (stereoNew) {
 			comp->sndSeed = 1;
 		}
-		// the NeoGS reads its flash when it is the card and the file is new to it
-		conf.ngsFile = std::string(ngsPick.toUtf8().data());
 		xm_set_gs(comp, gsBox->currentIndex());
 		comp->sdrv->type = getRFIData(sdrvBox);
 		comp->saa->enabled = saaBox->currentIndex() ? 1 : 0;
@@ -2406,27 +2407,24 @@ void SetupWin::buildDevices() {
 	devRow(grid, tr("DAC"), sdrvBox, NULL, NULL);
 	gsBox = devCombo(QStringList() << tr("None") << tr("Original") << tr("NeoGS"));	// MAC_GS_*
 	xOptSheet gs;
-	gsRomBox = new QComboBox;
-	QToolButton* gsRomBtn = new QToolButton;
-	gsRomBtn->setIcon(QIcon(":/images/fileopen.png"));
-	gsRomBtn->setToolTip(tr("Pick a ROM file"));
-	connect(gsRomBox, QOverload<int>::of(&QComboBox::activated), this, [this](int idx) {
-		romSlotPick(RSLOT_GS, gsRomBox->itemData(idx).toString());
-	});
-	connect(gsRomBtn, &QToolButton::released, this, [this]() {romSlotFile(gsRomBox, RSLOT_GS);});
-	// the ROM row holds the card's own file: the classic one's in the romset,
+	// a card's ROM: the list and the folder button, a pick going to its slot
+	auto romPair = [this](QComboBox*& box, int slot) -> QWidget* {
+		box = new QComboBox;
+		QToolButton* btn = new QToolButton;
+		btn->setIcon(QIcon(":/images/fileopen.png"));
+		btn->setToolTip(tr("Pick a ROM file"));
+		QComboBox* b = box;
+		connect(b, QOverload<int>::of(&QComboBox::activated), this, [this, b, slot](int idx) {
+			romSlotPick(slot, b->itemData(idx).toString());
+		});
+		connect(btn, &QToolButton::released, this, [this, b, slot]() {romSlotFile(b, slot);});
+		return fieldPair(b, btn, false);
+	};
+	// the ROM row holds the card's own file: the original one's in the romset,
 	// the NeoGS flash one for every machine
-	ngsRomBox = new QComboBox;
-	QToolButton* ngsRomBtn = new QToolButton;
-	ngsRomBtn->setIcon(QIcon(":/images/fileopen.png"));
-	ngsRomBtn->setToolTip(tr("Pick a ROM file"));
-	connect(ngsRomBox, QOverload<int>::of(&QComboBox::activated), this, [this](int idx) {
-		romSlotPick(RSLOT_NGS, ngsRomBox->itemData(idx).toString());
-	});
-	connect(ngsRomBtn, &QToolButton::released, this, [this]() {romSlotFile(ngsRomBox, RSLOT_NGS);});
 	gsRomStack = new QStackedWidget;
-	gsRomStack->addWidget(fieldPair(gsRomBox, gsRomBtn, false));
-	gsRomStack->addWidget(fieldPair(ngsRomBox, ngsRomBtn, false));
+	gsRomStack->addWidget(romPair(gsRomBox, RSLOT_GS));
+	gsRomStack->addWidget(romPair(ngsRomBox, RSLOT_NGS));
 	connect(gsBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
 		gsRomStack->setCurrentIndex((idx == MAC_GS_NEOGS) ? 1 : 0);
 	});
@@ -3364,7 +3362,6 @@ void SetupWin::chapsg() {
 	int on = (psg != PSG_NONE);
 	int fm = (psg == PSG_TSFM);
 	int split = on && (getRFIData(cbPsgStereo) != AY_MONO);
-	labPsgSep->setText(QString("%0%").arg(sldPsgSep->value()));
 	// TurboSound FM is two YM2203 and nothing else; the others never are
 	QStandardItemModel* types = qobject_cast<QStandardItemModel*>(cbPsgType->model());
 	int fmrow = cbPsgType->findData(SND_YM2203);

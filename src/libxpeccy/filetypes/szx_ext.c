@@ -1256,9 +1256,15 @@ static int gsOther = 0;
 static void ext_gs(GSound* gs, const unsigned char* p, size_t n) {
 	GSound tmp_;
 	memcpy(&tmp_, gs, sizeof(GSound));
-	tmp_.model = GS_CLASSIC;		// a file from before the NeoGS has the classic card
+	tmp_.model = GS_ORIGINAL;		// a file from before the NeoGS has the original card
 	fld_get(&tmp_, fld_gs, p, n);
+	// the card is the setting's: a snapshot of the other one starts it afresh
 	gsOther = (tmp_.model != gs->model);
+	if (gsOther) {
+		xlog(XLG_FILE, XLL_INFO, "szx: the General Sound in the snapshot is another model, the card is reset");
+		gs_set_model(gs, gs->model);
+		return;
+	}
 	gs->reset = tmp_.reset;
 	gs->pb3_gs = tmp_.pb3_gs;
 	gs->pb3_zx = tmp_.pb3_zx;
@@ -1272,12 +1278,6 @@ static void ext_gs(GSound* gs, const unsigned char* p, size_t n) {
 	gs->ch2 = tmp_.ch2;
 	gs->ch3 = tmp_.ch3;
 	gs->ch4 = tmp_.ch4;
-	// the card is the setting's: a snapshot of the other one starts it afresh
-	if (gsOther) {
-		xlog(XLG_FILE, XLL_INFO, "szx: the General Sound in the snapshot is another model, the card is reset");
-		gs_set_model(gs, gs->model);
-		return;
-	}
 	gs->cfg0 = tmp_.cfg0;
 	gs->pg2 = tmp_.pg2;
 	gs->pg3 = tmp_.pg3;
@@ -1292,7 +1292,8 @@ static void ext_gs(GSound* gs, const unsigned char* p, size_t n) {
 	gs->ch6 = tmp_.ch6;
 	gs->ch7 = tmp_.ch7;
 	gs->ch8 = tmp_.ch8;
-	gs->due = tmp_.due;
+	// time owed is a fraction of an INT period either way; a file with more is not ours
+	gs->due = ((tmp_.due > -GS_INT_UNITS) && (tmp_.due < GS_INT_UNITS)) ? tmp_.due : 0;
 	gs->intDue = ((tmp_.intDue > 0) && (tmp_.intDue <= GS_INT_UNITS)) ? tmp_.intDue : GS_INT_UNITS;
 	gs->rp0 = tmp_.rp0;
 	gs_remap(gs);			// the page registers, which map memory as they say

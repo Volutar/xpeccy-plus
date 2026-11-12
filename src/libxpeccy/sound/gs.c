@@ -12,9 +12,9 @@ static const int ngsMHz[4] = {24, 12, 20, 10};
 
 // memory map
 
-// the classic card: ROM at #0000, RAM page 0 at #4000, and #8000-#FFFF from
+// the original card: ROM at #0000, RAM page 0 at #4000, and #8000-#FFFF from
 // the page register - the ROM for 0, a 32K RAM page from 1 on
-static void gs_map_classic(GSound* gs) {
+static void gs_map_original(GSound* gs) {
 	int val = gs->rp0 & 0x1f;
 	if (val == 0) {
 		memSetBank(gs->mem, 0x80, MEM_ROM, 0, MEM_16K, NULL, NULL, NULL);
@@ -28,9 +28,12 @@ static void gs_map_classic(GSound* gs) {
 
 static void gs_ro_wr(int adr, int val, void* data) {}
 
-// NeoGS, as memmap.v: four 16K windows, each an 8-bit page. With NOROM clear
-// the flash is everywhere but #4000-#7FFF (page bits 4:0); else RAM (all 8
-// bits, 4M), and RAMRO keeps the pages with bits 6:1 clear from writes.
+// NeoGS, as memmap.v: four 16K windows - page 0 at #0000, page 3 at #4000,
+// #8000 and #C000 from MPAG and MPAGEX. With NOROM clear the flash is
+// everywhere but #4000-#7FFF (page bits 4:0); else RAM (all 8 bits, 4M), and
+// RAMRO keeps the pages with bits 6:1 clear from writes. Not modelled: the
+// 2013 ports PG0-PG3 (#20-#23) and the timer with its INT ports (#0C-#0E),
+// which no firmware of the card uses.
 static void gs_map_neogs(GSound* gs) {
 	const unsigned char pg[4] = {0, 3, gs->pg2, gs->pg3};
 	int norom = gs->cfg0 & NGS_NOROM;
@@ -55,8 +58,21 @@ void gs_remap(GSound* gs) {
 		gs->tickUnits = GS_UNITS_TICK(12);
 		memSetBank(gs->mem, 0x00, MEM_ROM, 0, MEM_16K, NULL, NULL, NULL);
 		memSetBank(gs->mem, 0x40, MEM_RAM, 0, MEM_16K, NULL, NULL, NULL);
-		gs_map_classic(gs);
+		gs_map_original(gs);
 	}
+}
+
+static int* gs_ch(GSound* gs, int n) {
+	switch (n & 7) {
+		case 0: return &gs->ch1;
+		case 1: return &gs->ch2;
+		case 2: return &gs->ch3;
+		case 3: return &gs->ch4;
+		case 4: return &gs->ch5;
+		case 5: return &gs->ch6;
+		case 6: return &gs->ch7;
+	}
+	return &gs->ch8;
 }
 
 // internal MEMRQ
@@ -64,24 +80,11 @@ int gsmemrd(int adr, int m1, void* ptr) {
 	GSound* gs = (GSound*)ptr;
 	adr &= 0xffff;
 	unsigned char res = mem_rd_fast(gs->mem, adr) & 0xff;
-	if ((adr & 0xe000) != 0x6000) return res;
-	// a read at #6000-#7FFF latches the byte into a channel's DAC
-	if (gs->model == GS_NEOGS) {
-		// 4 channels: A9:A8, and 5-8 take a copy; 8 channels: A10:A8
-		int* ch[8] = {&gs->ch1, &gs->ch2, &gs->ch3, &gs->ch4, &gs->ch5, &gs->ch6, &gs->ch7, &gs->ch8};
-		if (gs->cfg0 & NGS_8CHANS) {
-			*ch[(adr >> 8) & 7] = res;
-		} else {
-			*ch[(adr >> 8) & 3] = res;
-			*ch[((adr >> 8) & 3) + 4] = res;
-		}
-		return res;
-	}
-	switch (adr & 0x0300) {
-		case 0x0000: gs->ch1 = res; break;
-		case 0x0100: gs->ch2 = res; break;
-		case 0x0200: gs->ch3 = res; break;
-		case 0x0300: gs->ch4 = res; break;
+	// a read at #6000-#7FFF latches the byte into a channel's DAC: A9:A8,
+	// A10:A8 on a NeoGS in 8 channels (ports.v snd_addr)
+	if ((adr & 0xe000) == 0x6000) {
+		int eight = (gs->model == GS_NEOGS) && (gs->cfg0 & NGS_8CHANS);
+		*gs_ch(gs, (adr >> 8) & (eight ? 7 : 3)) = res;
 	}
 	return res;
 }
@@ -92,125 +95,108 @@ void gsmemwr(int adr, int val, void* ptr) {
 	mem_wr_fast(gs->mem, adr, val & 0xff);
 }
 
-// internal IORQ, NeoGS: ports.v, $00-$3F decoded
+// internal IORQ
 
-static int ngs_iord(GSound* gs, int port) {
-	if (port & 0xc0) return 0xff;
-	switch (port & 0x3f) {
-		case 0x01: return gs->pbb_zx;				// ZXCMD
-		case 0x02: gs->pstate &= 0x7f; return gs->pb3_zx;	// ZXDATRD
-		case 0x04: return gs->pstate;				// ZXSTAT
-		case 0x05: gs->pstate &= 0xfe; break;			// CLRCBIT
-		case 0x0a: if (gs->pg2 & 1) gs->pstate &= 0x7f; else gs->pstate |= 0x80; break;
-		case 0x0b: if (gs->vol4b5) gs->pstate |= 1; else gs->pstate &= 0xfe; break;
-		case 0x0f: return gs->cfg0;				// GSCFG0
-		case 0x11: return gs->sctrl;				// SCTRL
-		// SSTAT: no card (detect and protect pulled up), the MP3 control SPI
-		// idle, no data request from an MP3 chip
-		case 0x12: return 0x0e;
-		case 0x1b: return 0x00;					// DMA_MOD: none
+// DAMNPORT1 (#0A) and 2 (#0B), on a read and on a write: the data bit from
+// bit 0 of the page at #8000, the command bit from bit 5 of a volume
+static void gs_damn(GSound* gs, int port) {
+	int bit;
+	if (port == 0x0a) {
+		bit = ((gs->model == GS_NEOGS) ? gs->pg2 : gs->rp0) & 1;
+		if (bit) gs->pstate &= 0x7f; else gs->pstate |= 0x80;
+	} else {
+		bit = (gs->model == GS_NEOGS) ? gs->vol4b5 : ((gs->vol1 >> 5) & 1);
+		if (bit) gs->pstate |= 1; else gs->pstate &= 0xfe;
 	}
-	return 0xff;	// SD and MP3 SPI read #FF: nothing drives MISO
 }
 
-static void ngs_iowr(GSound* gs, int port, int val) {
-	if (port & 0xc0) return;
-	val &= 0xff;
-	switch (port & 0x3f) {
-		case 0x00:						// MPAG
-			gs->pg2 = (gs->cfg0 & NGS_EXPAG) ? ((val << 1) | (val >> 7)) : (val << 1);
-			if (!(gs->cfg0 & NGS_EXPAG)) gs->pg3 = (val << 1) | 1;
-			gs_map_neogs(gs);
-			break;
-		case 0x10:						// MPAGEX
-			if (!(gs->cfg0 & NGS_EXPAG)) break;
-			gs->pg3 = (val << 1) | (val >> 7);
-			gs_map_neogs(gs);
-			break;
-		case 0x01: gs->led = (val & 1) ? 0 : 1; break;		// LEDCTR
-		case 0x03: gs->pstate |= 0x80; gs->pb3_gs = val; break;	// ZXDATWR
-		case 0x05: gs->pstate &= 0xfe; break;			// CLRCBIT
+// the ports both cards have, #01-#0B
+static int gs_port_rd(GSound* gs, int port) {
+	switch (port) {
+		case 0x01: return gs->pbb_zx;					// ZXCMD
+		case 0x02: gs->pstate &= 0x7f; return gs->pb3_zx;		// ZXDATRD
+		case 0x03: if (gs->model != GS_NEOGS) gs->pstate |= 0x80; break;
+		case 0x04: return gs->pstate;					// ZXSTAT
+		case 0x05: gs->pstate &= 0xfe; break;				// CLRCBIT
+		case 0x0a:
+		case 0x0b: gs_damn(gs, port); break;
+	}
+	return 0xff;
+}
+
+static void gs_port_wr(GSound* gs, int port, int val) {
+	switch (port) {
+		case 0x01: if (gs->model == GS_NEOGS) gs->led = (val & 1) ? 0 : 1; break;	// LEDCTR
+		case 0x02: if (gs->model != GS_NEOGS) gs->pstate &= 0x7f; break;
+		case 0x03: gs->pstate |= 0x80; gs->pb3_gs = val; break;		// ZXDATWR
+		case 0x05: gs->pstate &= 0xfe; break;				// CLRCBIT
 		case 0x06: gs->vol1 = val & 0x3f; break;
 		case 0x07: gs->vol2 = val & 0x3f; break;
 		case 0x08: gs->vol3 = val & 0x3f; break;
 		case 0x09: gs->vol4 = val & 0x3f; gs->vol4b5 = (val >> 5) & 1; break;
-		case 0x16: gs->vol5 = val & 0x3f; break;
-		case 0x17: gs->vol6 = val & 0x3f; break;
-		case 0x18: gs->vol7 = val & 0x3f; break;
-		case 0x19: gs->vol8 = val & 0x3f; break;
-		case 0x0a: if (gs->pg2 & 1) gs->pstate &= 0x7f; else gs->pstate |= 0x80; break;
-		case 0x0b: if (gs->vol4b5) gs->pstate |= 1; else gs->pstate &= 0xfe; break;
-		case 0x0f:						// GSCFG0
-			gs->cfg0 = val;
-			gs_remap(gs);
-			break;
-		case 0x11:						// SCTRL: bit 7 sets or clears the rest
-			if (val & 0x80) gs->sctrl |= val & 0x3f;
-			else gs->sctrl &= ~val & 0x3f;
-			break;
+		case 0x0a:
+		case 0x0b: gs_damn(gs, port); break;
 	}
 }
 
-// internal IORQ
-int gsiord(int port,void* ptr) {
+// The original card decodes A3:A0; the NeoGS #00-#3F (ports.v)
+int gsiord(int port, void* ptr) {
 	GSound* gs = (GSound*)ptr;
-	if (gs->model == GS_NEOGS) return ngs_iord(gs, port & 0xff);
-	int res = 0xff;
-	port &= 0x0f;
+	if (gs->model != GS_NEOGS) return gs_port_rd(gs, port & 0x0f);
+	if (port & 0xc0) return 0xff;
+	port &= 0x3f;
 	switch (port) {
-		case 0: break;
-		case 1: res = gs->pbb_zx; break;
-		case 2: gs->pstate &= 0x7f; res = gs->pb3_zx; break;
-		case 3: gs->pstate |= 0x80; break;
-		case 4: res = gs->pstate; break;
-		case 5: gs->pstate &= 0xfe; break;
-		case 6: break;
-		case 7: break;
-		case 8: break;
-		case 9: break;
-		case 10: if (gs->rp0 & 0x01) gs->pstate &= 0x7f; else gs->pstate |= 0x80; break;
-		case 11: if (gs->vol1 & 0x20) gs->pstate |= 1; else gs->pstate &= 0xfe; break;
+		case 0x0f: return gs->cfg0;					// GSCFG0
+		case 0x11: return gs->sctrl;					// SCTRL
+		// SSTAT: no card (detect and protect pulled up), the MP3 control SPI
+		// idle, no data request from an MP3 chip
+		case 0x12: return 0x0e;
+		case 0x1b: return 0x00;						// DMA_MOD: none
 	}
-	return res;
+	// SD and MP3 SPI read #FF: nothing drives MISO
+	return (port <= 0x0b) ? gs_port_rd(gs, port) : 0xff;
 }
 
 void gsiowr(int port, int val, void* ptr) {
 	GSound* gs = (GSound*)ptr;
-	if (gs->model == GS_NEOGS) {
-		ngs_iowr(gs, port & 0xff, val);
+	val &= 0xff;
+	if (gs->model != GS_NEOGS) {
+		port &= 0x0f;
+		if (port == 0) {
+			gs->rp0 = val;
+			gs_map_original(gs);
+		} else {
+			gs_port_wr(gs, port, val);
+		}
 		return;
 	}
-	port &= 0x0f;
+	if (port & 0xc0) return;
+	port &= 0x3f;
 	switch (port) {
-		case 0: gs->rp0 = val & 0xff;
-			gs_map_classic(gs);
+		case 0x00:							// MPAG
+			gs->pg2 = (gs->cfg0 & NGS_EXPAG) ? ((val << 1) | (val >> 7)) : (val << 1);
+			if (!(gs->cfg0 & NGS_EXPAG)) gs->pg3 = (val << 1) | 1;
+			gs_map_neogs(gs);
 			break;
-		case 1: break;
-		case 2: gs->pstate &= 0x7f;
+		case 0x10:							// MPAGEX
+			if (!(gs->cfg0 & NGS_EXPAG)) break;
+			gs->pg3 = (val << 1) | (val >> 7);
+			gs_map_neogs(gs);
 			break;
-		case 3: gs->pstate |= 0x80;
-			gs->pb3_gs = val & 0xff;
+		case 0x16: gs->vol5 = val & 0x3f; break;
+		case 0x17: gs->vol6 = val & 0x3f; break;
+		case 0x18: gs->vol7 = val & 0x3f; break;
+		case 0x19: gs->vol8 = val & 0x3f; break;
+		case 0x0f:							// GSCFG0
+			gs->cfg0 = val;
+			gs_remap(gs);
 			break;
-		case 4: break;
-		case 5: gs->pstate &= 0xfe;
+		case 0x11:							// SCTRL: bit 7 sets or clears the rest
+			if (val & 0x80) gs->sctrl |= val & 0x3f;
+			else gs->sctrl &= ~val & 0x3f;
 			break;
-		case 6: gs->vol1 = val & 0x3f;
-			break;
-		case 7: gs->vol2 = val & 0x3f;
-			break;
-		case 8: gs->vol3 = val & 0x3f;
-			break;
-		case 9: gs->vol4 = val & 0x3f;
-			break;
-		case 10: if (gs->rp0 & 0x01)
-				gs->pstate &= 0x7f;
-			else
-				gs->pstate |= 0x80;
-			break;
-		case 11: if (gs->vol1 & 0x20)
-				gs->pstate |= 1;
-			else
-				gs->pstate &= 0xfe;
+		default:
+			if (port <= 0x0b) gs_port_wr(gs, port, val);
 			break;
 	}
 }
@@ -221,12 +207,14 @@ int gsintrq(void* ptr) {
 
 // EXTERNAL
 
-// What a reset line sets: the CPU, and on the NeoGS GSCFG0 (#30: the flash
-// mapped, 10 MHz) - the page registers at #8000 keep what they had.
+// What a reset line sets (ports.v rst_n): the CPU, and on the NeoGS GSCFG0
+// (#30: the flash mapped, 10 MHz) and SCTRL (#0B: both chip selects up, the
+// MP3 control at its first speed) - the pages at #8000 keep what they had.
 static void gs_reset_hw(GSound* gs) {
 	cpu_reset(gs->cpu);
 	if (gs->model == GS_NEOGS) {
 		gs->cfg0 = NGS_CFG0_RESET;
+		gs->sctrl = NGS_SCTRL_RESET;
 		gs->led = 1;
 	}
 	gs_remap(gs);
@@ -244,11 +232,10 @@ void gs_rom_refresh(GSound* gs) {
 }
 
 void gs_set_model(GSound* gs, int model) {
-	gs->model = (model == GS_NEOGS) ? GS_NEOGS : GS_CLASSIC;
+	gs->model = (model == GS_NEOGS) ? GS_NEOGS : GS_ORIGINAL;
 	gs->pg2 = 0;
 	gs->pg3 = 1;
 	gs->rp0 = 0;
-	gs->sctrl = 0;
 	gs_rom_refresh(gs);
 	gs_reset_hw(gs);
 }
@@ -265,7 +252,7 @@ GSound* gsCreate() {
 	memset(res->romGS, 0xff, GS_ROM_SIZE);
 	memset(res->romNGS, 0xff, NGS_ROM_SIZE);
 	memSetSize(res->mem, GS_RAM_SIZE, GS_ROM_SIZE);
-	res->model = GS_CLASSIC;
+	res->model = GS_ORIGINAL;
 	res->tickUnits = GS_UNITS_TICK(12);
 	res->intDue = GS_INT_UNITS;
 	memSetBank(res->mem, 0x00, MEM_ROM, 0, MEM_16K, NULL, NULL, NULL);
@@ -275,6 +262,7 @@ GSound* gsCreate() {
 	res->pstate = 0x7e;
 	res->stereo = GS_12_34;
 	res->sep = 75;		// the PSG's default
+	res->sctrl = NGS_SCTRL_RESET;
 	res->pg3 = 1;
 	res->ch1 = 0xff;
 	res->ch2 = 0xff;
@@ -368,10 +356,10 @@ int gsRead(GSound* gs, int adr, int* dptr) {
 
 // mix
 
-// One channel of the classic card: the sample DAC's reference is the
+// One channel of the original card: the sample DAC's reference is the
 // volume DAC's output, both against GND, so the level is code * vol and a
 // volume change moves the mid level too.
-static int gs_chan_classic(int ch, int vol) {
+static int gs_chan_original(int ch, int vol) {
 	return ch * vol;
 }
 
@@ -382,32 +370,25 @@ static int gs_chan_neogs(GSound* gs, int ch, int vol) {
 	return s * vol;
 }
 
-// The classic card: 1+2 left, 3+4 right, and each side's output reaches the
+// The original card: 1+2 left, 3+4 right, and each side's output reaches the
 // other mixer's + input (22K against 6K8 to VIRTGND, that input's gain 2):
-// solved for both sides, ~0.47 of the other side against 1 of its own.
-// Scaled back so all four at full peak where they did without it.
-static sndPair gs_mix_classic(GSound* gs) {
+// solved for both sides, ~0.47 of the other side against 1 of its own. The
+// sum is divided by 1.47, so all four at full are no louder than they were
+// without the bleed.
+static sndPair gs_mix_original(GSound* gs) {
 	sndPair res;
-	int c1 = gs_chan_classic(gs->ch1, gs->vol1);
-	int c2 = gs_chan_classic(gs->ch2, gs->vol2);
-	int c3 = gs_chan_classic(gs->ch3, gs->vol3);
-	int c4 = gs_chan_classic(gs->ch4, gs->vol4);
-	if (gs->stereo == GS_MONO) {
-		res.left = (c1 + c2 + c3 + c4) / 4;
-		res.right = res.left;
-		return res;
-	}
-	int l = (c1 + c2) / 2;
-	int r = (c3 + c4) / 2;
+	int l = (gs_chan_original(gs->ch1, gs->vol1) + gs_chan_original(gs->ch2, gs->vol2)) / 2;
+	int r = (gs_chan_original(gs->ch3, gs->vol3) + gs_chan_original(gs->ch4, gs->vol4)) / 2;
 	res.left = (l * 100 + r * 47) / 147;
 	res.right = (r * 100 + l * 47) / 147;
 	return res;
 }
 
-// NeoGS, sound_main.v: 8 channels 1,2,5,6 left and 3,4,7,8 right; panning
-// 4 channels, data 1-4 with volumes 1,2,5,6 left and 3,4,7,8 right; plain 4
-// channels, 1,2 left and 3,4 right, each summed twice. A quarter of the
-// 16-bit sum, so 4 channels peak where the classic card's do.
+// NeoGS, sound_main.v: 8 channels 1,2,5,6 left and 3,4,7,8 right; panning 4
+// channels, samples 1-4 with volumes 1,2,5,6 left and 3,4,7,8 right (the
+// volume read at {chanptr[1], lrptr, chanptr[0]}); plain 4 channels, 1,2
+// left and 3,4 right, each summed twice. A quarter of the 16-bit sum, so 4
+// channels peak where the original card's do.
 static sndPair gs_mix_neogs(GSound* gs) {
 	sndPair res;
 	int l, r;
@@ -425,23 +406,20 @@ static sndPair gs_mix_neogs(GSound* gs) {
 		l = 2 * (gs_chan_neogs(gs, gs->ch1, gs->vol1) + gs_chan_neogs(gs, gs->ch2, gs->vol2));
 		r = 2 * (gs_chan_neogs(gs, gs->ch3, gs->vol3) + gs_chan_neogs(gs, gs->ch4, gs->vol4));
 	}
-	if (gs->stereo == GS_MONO) {
-		l = (l + r) / 2;
-		r = l;
-	}
 	res.left = l / 4;
 	res.right = r / 4;
 	return res;
 }
 
 // What reaches the ears is a listener's choice as the PSG's is: each side
-// takes some of the other, the sum kept. 100 leaves the card's own output.
+// takes some of the other, the sum kept. 100 leaves the card's own output,
+// mono is 0.
 sndPair gsVolume(GSound* gs) {
 	sndPair res = {0, 0};
 	if (!gs->enable) return res;
-	res = (gs->model == GS_NEOGS) ? gs_mix_neogs(gs) : gs_mix_classic(gs);
-	int sep = (gs->sep < 0) ? 0 : (gs->sep > 100) ? 100 : gs->sep;
-	if ((sep < 100) && (gs->stereo != GS_MONO)) {
+	res = (gs->model == GS_NEOGS) ? gs_mix_neogs(gs) : gs_mix_original(gs);
+	int sep = (gs->stereo == GS_MONO) ? 0 : (gs->sep < 0) ? 0 : (gs->sep > 100) ? 100 : gs->sep;
+	if (sep < 100) {
 		int l = res.left;
 		res.left = (l * (100 + sep) + res.right * (100 - sep)) / 200;
 		res.right = (res.right * (100 + sep) + l * (100 - sep)) / 200;
