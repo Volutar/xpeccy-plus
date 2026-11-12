@@ -241,7 +241,7 @@ samples for the programs written for it. The row puts one in the machine:
   on the card, and each side carries some of the other;
 - **NeoGS** - the card NedoPC makes today: up to 8 channels, 4 MB of memory, no clicks,
   and its own firmware. Programs written for the NeoGS find it. Its SD card slot and MP3
-  chip are not there yet. The ZX Evolution machines come with one.
+  chip are not there yet.
 
 The {icon}`settings` gear opens **Machine: General Sound**:
 
