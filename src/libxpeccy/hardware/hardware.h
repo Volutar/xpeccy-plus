@@ -277,13 +277,12 @@ int zx_ack(Computer*);
 int zx_ear(Computer*);
 // the 48 basic rom itself is running: paged in at #0000, with neither TR-DOS nor
 // an extension holding the window. The tape trap asks the same question.
-// A Scorpion's ProfROM keeps the 48 basic in plane 0 only (prt2, scoMapMem): in
-// planes 1-3 the same page holds the firmware's own code, which runs through
-// #04D0 (ProfROM 4.44's shadow monitor does) and must not be trapped.
+// A Scorpion's ProfROM has the 48 basic in plane 0 only: the plane the ROM's size leaves (scoMapMem).
 static inline int zx_rom_active(Computer* comp) {
 	return comp->flgROM && !comp->flgDOS && !comp->flgEXT
 		&& (comp->mem->map[0].type == MEM_ROM)
-		&& !((comp->prt2 & 3) && ((comp->hw->id == HW_SCORP) || (comp->hw->id == HW_SCORPTP)));
+		&& !((((comp->prt2 & 3) << 16) & comp->mem->romMask)
+			&& ((comp->hw->id == HW_SCORP) || (comp->hw->id == HW_SCORPTP)));
 }
 void zx_tape_detect(Computer*);
 enum {ZX_IN_EAR = 1, ZX_IN_KEYS};
