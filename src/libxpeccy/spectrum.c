@@ -1120,6 +1120,16 @@ void compUserReset(Computer* comp, int res) {
 	comp->tape->userStop = 0;
 }
 
+// Where a plain reset lands. A service ROM (Gluk) runs code at #0008 and #0038,
+// where a divMMC maps esxDOS in on any fetch: with the board on, such a reset
+// goes to Basic 128 instead, which esxDOS is made for. Picked by name it still
+// goes where it says.
+int comp_reset_bank(Computer* comp) {
+	if ((comp->resbank == RES_SHADOW) && (comp->div->model != DIV_NONE))
+		return RES_128;
+	return comp->resbank;
+}
+
 void compReset(Computer* comp,int res) {
 	int i;
 	comp->frmCount = 0;
@@ -1132,7 +1142,7 @@ void compReset(Computer* comp,int res) {
 	rzx_rec_touch();		// a recording goes on from the machine as the reset leaves it
 
 	if (res == RES_DEFAULT)
-		res = comp->resbank;
+		res = comp_reset_bank(comp);
 	xlog(XLG_CORE, XLL_INFO, "reset %s, bank %i", comp->hw->name, res);
 	comp->p7FFD = ((res == RES_DOS) || (res == RES_48)) ? 0x10 : 0x00;
 	comp->flgDOS = ((res == RES_DOS) || (res == RES_SHADOW)) ? 1 : 0;

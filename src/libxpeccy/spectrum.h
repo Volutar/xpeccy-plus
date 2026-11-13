@@ -820,6 +820,7 @@ Computer* compCreate();
 void comp_set_identity(Computer*, const char*, int, int);
 void compDestroy(Computer*);
 void compReset(Computer*,int);
+int comp_reset_bank(Computer*);		// the RES_* a plain reset lands in
 void compUserReset(Computer*,int);
 int compExec(Computer*);
 int comp_peek(Computer*, int, int, xAdr*);
