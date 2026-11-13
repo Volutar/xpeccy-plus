@@ -58,7 +58,7 @@ and with every emulator of them for decades.
 | `scorpion295.rom` | Scorpion ZS 256 | Scorpion / MOA | grey, given away by the maker | ROM 2.95 of 26.11.1994, 64K, CRC32 99F57CE1 (the image others call 2.94), `23add41c9c4a3f7cca845d3d5cf51367` |
 | `prof39f.rom` | Scorpion ZS 256 | ProfROM authors | grey | ProfROM 3.9f, 128K, `dcb8ebbe2d2f4c4afa58c43507987b9c` |
 | `prof401.rom` | Scorpion ZS 256 Turbo+ | MOA (Andrew Larchenko) / Scorpion | grey | ProfROM 4.01 of 13.07.1997, 256K, ROM disk "FirmWare BonusPak", CRC32 847A66E4, the Turbo+'s until 2026.11; it stays for a config that names it, `b124c52cd462ce36d79086747115896f` |
-| `prof444.rom` | Scorpion ZS 256 Turbo+ | MOA (Andrew Larchenko), PLM (LW) | grey, given away by its author | ProfROM 4.44, LW's continuation of 4.01, build v4s (SMUC), 256K, CRC32 B1D7E4F7, `5153e80c2b0eb5fb5e96d0173e8dd060` |
+| `prof444.rom` | Scorpion ZS 256 Turbo+ | MOA (Andrew Larchenko), PLM (LW) | grey | ProfROM 4.44, LW's continuation of 4.01, build v4s (SMUC), 256K, CRC32 B1D7E4F7, `5153e80c2b0eb5fb5e96d0173e8dd060` |
 | `profi-kramis02.rom` | Profi v3 | JV "Kramis" / Kondor | grey | the v3 boards' own: BIOS JV "KRAMIS" V.02 of 10.1990 with TR-DOS 5.03, CRC32 77327F52, `720f23bec22581f37fb55bd7a928fde2` |
 | `profi-bios10.rom` | Profi v5 | Micco Software / Kondor | grey | ROM Bios 1.0 of 21.09.93, read off a Kondor 5.04 board; TR-DOS 5.04T, CRC32 10DA289A, `f4ab0dd91cd7d207879767d4fe5bf30e` |
 | `profi-bios20.rom` | Profi v5 | Micco Software / Kondor | grey | ROM Bios 2.0 of 17.04.94, TR-DOS 5.04T, CRC32 36F5F7BD, `02877e403f22d10d12ef0296ccb96f60` |
