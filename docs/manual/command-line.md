@@ -64,8 +64,8 @@ skips the **Start Machine** question (see [Machine at start](options-application
   **Machine** menu.
 - `--disk X` - the floppy drive for the disks named after it: `0` to `3`, `a` to `d` or
   `A` to `D`. Without it a disk goes into drive A.
-- `--sdcard PATH` - the SD card of the ZX Evolution or the ZX Spectrum Next: an image, or a
-  folder served as a card.
+- `--sdcard PATH` - the SD card of the ZX Evolution, the ZX Spectrum Next or a
+  Z-Controller: an image, or a folder served as a card.
 - `--uart-esp PORT`, `--uart-pi PORT` - for this run only, what is on the ZX Spectrum
   Next's ESP UART or Pi UART: a serial port of this computer (`COM3`, `/dev/ttyUSB0`,
   `\\.\pipe\NAME` on Windows), `esp` for the emulated ESP-01, `-` for nothing (see

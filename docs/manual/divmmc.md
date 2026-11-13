@@ -18,7 +18,7 @@ in the board's EEPROM from the start.
 ## Setting it up
 
 1. Switch the board on with **Media > divMMC**, or on the **Machine** page of **Options**
-   set the **divMMC** row to **divMMC**. The {icon}`settings` gear opens **Machine: divMMC**:
+   set the **SD card** row to **divMMC**. The {icon}`settings` gear opens **Machine: divMMC**:
    - **RAM** - **128K** or **512K**.
    - **EEPROM writable** - the board's EEPROM jumper. Leave it off. When it is on, the
      Spectrum can write new firmware into the EEPROM, and the firmware does not start at a
@@ -52,7 +52,7 @@ firmware.
 ![Machine: divMMC](images/options-divmmc.png)
 
 A real board is fitted and removed with the power off, and so is this one: **Apply**
-after a change in the **divMMC** row, in **RAM** or in **Firmware** powers the machine off
+after a change in the **SD card** row, in **RAM** or in **Firmware** powers the machine off
 and on. There is one board, as if the same one
 went from machine to machine: the RAM size and the EEPROM jumper are set for each machine,
 but the EEPROM is the same on all of them, and is kept for the next start of the emulator.
@@ -68,16 +68,17 @@ then the firmware skips the search and keeps what it found before.
 **Media > divMMC** switches the board on and off in one go. It is in the right-click menu
 too, it can be a toolbar button - a click switches, its arrow lists the cards - or have a
 hotkey (**divMMC On/Off**). While the board is on, **divMMC** is a menu: the same item,
-ticked, to switch it off, then **Card 1** and **Card 2**. It works as the **divMMC** row of
+ticked, to switch it off, then **Card 1** and **Card 2**. It works as the **SD card** row of
 **Options** does: the machine is powered off and on, and the setting is the machine's, kept
-for the next start. Since what is in the machine's memory is lost, a window asks first.
+for the next start. A [Z-Controller](sd-hdd.md#z-controller) on a Pentagon comes out when the
+divMMC goes in: one SD card board at a time. Since what is in the machine's memory is lost, a window asks first.
 The board's RAM, its jumper and its EEPROM stay as they were.
 
 While the board is on, the floppy drives and the hard disk are out of the machine: the
 board takes the TR-DOS entry, so on a real machine the drives would sit there unused. Their
 lights in the status bar are dim and struck through, the **Disk Manager** and **Drives**
 menus show the drives grayed under a line that says why, and **Options** shows **Floppy
-disk** and **Hard disk** dimmed, the board's row as **divMMC (!)**, with a tip that says why.
+disk** and **Hard disk** dimmed, the board's row as **SD card (!)**, with a tip that says why.
 Nothing is ejected: switch the board off, and the drives come back with their disks.
 Opening a disk while the board is on asks to switch it off first.
 
