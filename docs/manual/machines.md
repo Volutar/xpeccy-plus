@@ -154,10 +154,11 @@ while an RZX recording plays. The **Switch Turbo** hotkey steps through the list
 A board that has a turbo usually lets programs switch the turbo too. Then a program can
 change the step you picked, and Xpeccy+ shows the new clock over the picture.
 
-On the Pentagon 1024 SL, Gluk Reset Service turns the turbo on and sets it again every time
-it reads its clock, so while its menu is on the screen the board stays at 7 MHz. **W** in
-Gluk switches its turbo between **Fast** and **Slow**; Gluk keeps the choice in the clock
-chip, for every reset after.
+On the Pentagon 1024 SL, Gluk Reset Service runs its own menu at 7 MHz and sets the turbo
+again every time it reads its clock, so the turbo cannot be switched while the menu is on the
+screen. The programs it starts run at the speed its **W** key picks: **Fast** (7 MHz) or
+**Slow** (3.5 MHz), shown at the top of its menu. Gluk keeps the choice in the clock chip; a
+new machine starts with **Slow**.
 
 The **Overclock** slider of the **Machine** page of **Options** runs the CPU faster still,
 on any machine; see [Overclock](options-machine.md#overclock).

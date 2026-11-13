@@ -52,7 +52,7 @@ Esc) puts back what it showed when it opened.
 | | **General Sound** | **None**, **Original** or **NeoGS** (see [General Sound](#general-sound)); its ROM in its window |
 | | **SAA1099** | **Off** or **On** |
 | **Board** | **Turbo** | the turbo steps: **x1 (no turbo)**, **x1, x2** or **x1, x2, x4** |
-| | **Clock** | Pentagon and Pentagon 1024 SL only: **None** or **Gluk**, the clock chip Gluk Reset Service shows and sets (see [The Gluk clock](#the-gluk-clock)); on the Pentagon 1024 SL it is part of the board |
+| | **Clock** | Pentagon and Pentagon 1024 SL only: **None** or **Gluk**, the clock chip Gluk Reset Service shows (see [The Gluk clock](#the-gluk-clock)); on the Pentagon 1024 SL it is part of the board |
 | | **ESP UART** | ZX Spectrum Next only: **Not connected**, **ESP-01 (emulated)** - the Wi-Fi module with Espressif's AT firmware 1.7.6, on this computer's network - or a serial port of this computer with a real module on it. In its window, **Server on the network** lets other computers reach a server the module opens, and a UDP link's own port; off, only this computer reaches the server, at 127.0.0.1, and a UDP link hears only whom it sent to. On, Windows asks once whether to let Xpeccy+ through its firewall |
 | | **Pi UART** | ZX Spectrum Next only: a serial port of this computer for the Pi's UART |
 
