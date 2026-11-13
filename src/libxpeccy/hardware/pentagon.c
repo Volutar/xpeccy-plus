@@ -4,10 +4,7 @@ void penMapMem(Computer* comp) {
 	zx128_map_mem(comp, 0xc0);	// bits 6,7 of 0x7FFD extend the bank field
 }
 
-// The Gluk clock, Mr Gluk's add-on: a 512VI1 (MC146818) on the bus only while
-// bit 7 of its #EFF7 latch is up, #DFF7 its address and #BFF7 its data. The
-// latch keeps bits 1 and 7 (1 is spare) and is cleared by reset; without the
-// add-on these ports are nobody's.
+// the Gluk clock: on the bus while bit 7 of its #EFF7 latch is up
 
 static int pen_gluk_on(Computer* comp) {
 	return comp->flgGLUK && (comp->pEFF7 & 0x80);
@@ -49,13 +46,15 @@ static xPort penPortMap[] = {
 	{0x8002,0x7ffd,2,2,2,NULL,	penOut7FFD},
 	{0xc002,0xbffd,2,2,2,NULL,	xOutBFFD},
 	{0xc002,0xfffd,2,2,2,xInFFFD,	xOutFFFD},
-	{0xf008,0xeff7,2,2,2,NULL,	penOutEFF7},	// the Gluk clock, decoded on A15..A12 and A3
-	{0xf008,0xdff7,2,2,2,NULL,	penOutDFF7},
-	{0xf008,0xbff7,2,2,2,penInBFF7,	penOutBFF7},
 	{0x00ff,0x001f,0,2,2,xIn1F,	NULL},		// joystick
 	{0x05a3,0xfadf,0,2,2,xInFADF,	NULL},		// mouse
 	{0x05a3,0xfbdf,0,2,2,xInFBDF,	NULL},
 	{0x05a3,0xffdf,0,2,2,xInFFDF,	NULL},
+	// the Gluk clock, decoded on A15..A12 and A3: after the mouse, which
+	// shares some of those ports and was there first
+	{0xf008,0xeff7,2,2,2,NULL,	penOutEFF7},
+	{0xf008,0xdff7,2,2,2,NULL,	penOutDFF7},
+	{0xf008,0xbff7,2,2,2,penInBFF7,	penOutBFF7},
 	{0x0000,0x0000,2,2,2,zx_in_float,	NULL}
 };
 
@@ -76,6 +75,7 @@ int penIn(Computer* comp, int port) {
 // pent
 xPortDsc zx_port_tab_a[] = {
 	{0x7ffd, REG_BYTE, offsetof(Computer, p7FFD)},
+	{0xeff7, REG_BYTE, offsetof(Computer, pEFF7)},	// the Gluk clock's latch
 	{-1, 0, 0}
 };
 
