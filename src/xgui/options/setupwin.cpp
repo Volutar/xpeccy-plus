@@ -1641,9 +1641,11 @@ void SetupWin::applyMachine() {
 	if (boardPower)
 		div_set_model(comp->div, divModel, divPages);
 	int zcOn = (board == SD_BOARD_ZC) ? 1 : 0;
-	bool zcSwap = (zcOn != comp->zc->on);
-	if (zcSwap) boardPower = true;		// done with the power off, below
+	if (zcOn != comp->zc->on) boardPower = true;	// its card is read by the power cycle below
+	emu_lock();
+	comp->zc->on = zcOn;
 	comp_board_storage(comp);
+	emu_unlock();
 	comp->div->eeWrite = divWrBox->isChecked() ? 1 : 0;
 	div_map(comp->div);
 	// a chip written outside the machine goes back in with the power off too
@@ -1653,12 +1655,6 @@ void SetupWin::applyMachine() {
 	setWatchPorts(comp, portwid->getPorts());
 	if (boardPower) {
 		emu_lock();
-		if (zcSwap) {
-			comp->zc->on = zcOn;
-			// the slot's card goes in with it: one named while no slot was there is read
-			// now, a folder read before is read again by the power cycle
-			if (zcOn && sdc_unread(comp->sdc)) sdc_remount(comp->sdc);
-		}
 		xm_power_cycle();
 		emu_unlock();
 	}

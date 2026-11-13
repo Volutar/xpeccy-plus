@@ -1307,11 +1307,12 @@ void xm_sd_mount(const QString& path) {
 }
 
 // A folder served as a card or a disk is read again: with the power off is when a
-// card comes out, gets files copied onto it and goes back in.
+// card comes out, gets files copied onto it and goes back in. One named while the
+// machine had no slot (a Z-Controller just put in) is read now, once.
 static void mac_reread_folders(Computer* comp) {
 	SDCard* cards[3] = {comp->sdc, comp->div->card[0], comp->div->card[1]};
 	for (int i = 0; i < 3; i++) {
-		if (cards[i]->vfat && (i || comp_has_sd(comp))) sdc_remount(cards[i]);
+		if ((cards[i]->vfat || sdc_unread(cards[i])) && (i || comp_has_sd(comp))) sdc_remount(cards[i]);
 	}
 	if (comp->ide->master->vfat) ide_mount(comp->ide, IDE_MASTER, QString::fromLocal8Bit(comp->ide->master->image));
 	if (comp->ide->slave->vfat) ide_mount(comp->ide, IDE_SLAVE, QString::fromLocal8Bit(comp->ide->slave->image));
