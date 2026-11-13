@@ -9,6 +9,13 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
+### Added
+
+- **Z-Controller SD card** on the Pentagons and the Scorpions: Options > Machine, SD card row.
+  The Scorpion's ProfROM 4.xx.38 and later finds the card and reads it in its navigator,
+  FATALL copies files to and from it. *(thanks to Alexey Boldyrev for the ProfROM to test
+  with)*
+
 ## 2026.10.1 - 2026-11-13
 
 ### Added
