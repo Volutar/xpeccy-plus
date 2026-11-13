@@ -881,6 +881,7 @@ std::string xm_turbo_str(Computer*);
 void xm_turbo_set(Computer*, std::string);
 int xm_turbo_index(Computer*);
 void xm_turbo_step(Computer*, int);
+bool xm_gluk_fitted(Computer*, const xMachine*, int);	// the Gluk clock in, for a MAC_CLOCK_* choice
 const xMachine* xm_find(std::string);		// as the user has it
 const xMachine* xm_stock(std::string);		// as it ships
 const xMachine* xm_find_by_core(std::string);

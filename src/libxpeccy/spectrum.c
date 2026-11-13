@@ -1120,10 +1120,7 @@ void compUserReset(Computer* comp, int res) {
 	comp->tape->userStop = 0;
 }
 
-// Where a plain reset lands. A service ROM (Gluk) runs code at #0008 and #0038,
-// where a divMMC maps esxDOS in on any fetch: with the board on, such a reset
-// goes to Basic 128 instead, which esxDOS is made for. Picked by name it still
-// goes where it says.
+// esxDOS maps in at #0008/#0038, which a service ROM runs: with a divMMC, Service goes to Basic 128
 int comp_reset_bank(Computer* comp) {
 	if ((comp->resbank == RES_SHADOW) && (comp->div->model != DIV_NONE))
 		return RES_128;

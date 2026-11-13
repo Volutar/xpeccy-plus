@@ -346,6 +346,12 @@ void xm_turbo_step(Computer* comp, int idx) {
 	compSetHwTurbo(comp, comp->turboStep);
 }
 
+// a board that takes it, picked or on the board
+bool xm_gluk_fitted(Computer* comp, const xMachine* mac, int clock) {
+	bool board = mac && (mac->builtin & MAC_BI_CLOCK);
+	return hw_takes_gluk(comp->hw) && ((clock == MAC_CLOCK_GLUK) || board);
+}
+
 void xm_turbo_set(Computer* comp, std::string src) {
 	if (!comp) return;
 	comp->turboCount = mac_turbo_tab(src, comp->turboTab);
@@ -1366,7 +1372,7 @@ static void mac_from_def(const xMachine* mac) {
 	xm_set_ram(mac_ram_size(mac->memory, comp->hw->mask));
 	mac_cold_ram(comp, mac->ramCold, mac->ramNoise);
 	comp->resbank = mac->resbank;
-	comp->flgGLUK = hw_takes_gluk(comp->hw) && ((mac->clock == MAC_CLOCK_GLUK) || (mac->builtin & MAC_BI_CLOCK));
+	comp->flgGLUK = xm_gluk_fitted(comp, mac, mac->clock);
 	comp->snapModel = mac->snapModel;
 	comp->earback = mac->earback;
 	comp->earRC = mac->earrc;

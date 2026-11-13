@@ -1528,7 +1528,7 @@ void SetupWin::applyMachine() {
 	if (msz != shown.mem) xm_set_ram(msz);
 	if ((msz != shown.mem) || (frq != shown.cpu)) compSetBaseFrq(comp, frq);
 	if (!own) xm_turbo_set(comp, getRFSData(cbCpuTurbo).toStdString());
-	comp->flgGLUK = hw_takes_gluk(comp->hw) && (clockBox->currentIndex() == MAC_CLOCK_GLUK);
+	comp->flgGLUK = xm_gluk_fitted(comp, xm_find(conf.macId), clockBox->currentIndex());
 	if (ui.sldSpeed->value() != xspeed_get())
 		xspeed_set(ui.sldSpeed->value());
 	if (!own) comp->flgEM1 = ui.scrpwait->isChecked();
@@ -2436,7 +2436,7 @@ void SetupWin::buildDevices() {
 	clockBox = devCombo(QStringList() << tr("None") << tr("Gluk"));	// MAC_CLOCK_*
 	btn = devRow(grid, tr("Clock"), clockBox, NULL, NULL);
 	clockRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << clockBox << btn;
-	clockRow[0]->setToolTip(tr("Mr Gluk's clock on ports #EFF7, #DFF7, #BFF7.\nIt tells your computer's time; Gluk Reset\nService shows it and keeps its settings in it"));
+	clockRow[0]->setToolTip(tr("Mr Gluk's clock on ports #EFF7, #DFF7, #BFF7. It tells your computer's time"));
 	finishGroups(cols);
 	qobject_cast<QLabel*>(divRow[0])->setText(tr("divMMC"));
 
