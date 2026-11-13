@@ -1090,7 +1090,7 @@ bool MainWin::eventFilter(QObject* obj, QEvent* ev) {
 		if (!left && (ev->type() != QEvent::ContextMenu))
 			return QObject::eventFilter(obj, ev);
 		QMenu menu(this);
-		if (hw_has_sd(conf.zx->hw)) {
+		if (comp_has_sd(conf.zx)) {
 			fillCardMenu(&menu, -1);
 		} else {
 			addDivCards(&menu);

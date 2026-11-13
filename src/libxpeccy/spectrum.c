@@ -1057,6 +1057,7 @@ Computer* compCreate() {
 	comp->sdc->spec = 1;
 	comp->slot = sltCreate();
 	comp->div = div_create(comp->mem, comp, comp_div_ns);
+	comp->zc = zc_create(comp->sdc, comp, comp_div_ns);
 	comp->cpu->xm1x = comp_m1x;
 // sound
 	comp->ts = tsCreate(TS_NONE,SND_AY,SND_NONE);
@@ -1099,6 +1100,7 @@ void compDestroy(Computer* comp) {
 	ideDestroy(comp->ide);
 	sdcDestroy(comp->sdc);
 	div_destroy(comp->div);
+	zc_destroy(comp->zc);
 	tsDestroy(comp->ts);
 	gsDestroy(comp->gs);
 	sdrvDestroy(comp->sdrv);
@@ -1162,6 +1164,7 @@ void compReset(Computer* comp,int res) {
 	saaReset(comp->saa);
 	sdcReset(comp->sdc);
 	div_reset(comp->div);		// what it holds and shows stays: /RESET reaches only its SPI side
+	zc_reset(comp->zc);		// the bus RESET clears #77: the card's supply goes off
 	comp->hwMul = comp->turboStep;		// a port turbo sets its own again, a switch does not
 	comp_update_timings(comp);
 	if (comp->hw->reset)

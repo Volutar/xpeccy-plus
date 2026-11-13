@@ -15,6 +15,7 @@ extern "C" {
 #include "hdd.h"
 #include "sdcard.h"
 #include "divmmc.h"
+#include "zcontroller.h"
 #include "cartridge.h"
 #include "ds1307.h"
 
@@ -632,6 +633,7 @@ typedef struct Computer {
 	SDCard* sdc;
 	xCartridge* slot;		// cartridge slot (Interface II, ALF)
 	DivMMC* div;			// divMMC on the edge connector
+	ZCtrl* zc;			// Z-Controller on ZX-BUS, its card the slot's (sdc)
 // sound
 	bitChan* beep;
 	TSound* ts;

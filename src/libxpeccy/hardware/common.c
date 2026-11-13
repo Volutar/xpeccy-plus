@@ -234,6 +234,9 @@ void zx_set_pal(Computer* comp) {
 // in
 
 int zx_dev_wr(Computer* comp, int adr, int val) {
+	// the Z-Controller's IORQGE shuts out the board's own ports, not another card
+	// on the bus: a write goes on to them
+	zc_out(comp->zc, adr, val, comp->flgDOS);
 	if (div_out(comp->div, adr, val)) return 1;
 	if (gsWrite(comp->gs, adr, val)) return 1;
 	if (!comp->flgBDI && saaWrite(comp->saa, adr, val)) return 1;
@@ -244,6 +247,7 @@ int zx_dev_wr(Computer* comp, int adr, int val) {
 }
 
 int zx_dev_rd(Computer* comp, int adr, int* ptr) {
+	if (zc_in(comp->zc, adr, ptr, comp->flgDOS)) return 1;
 	if (div_in(comp->div, adr, ptr)) return 1;
 	if (gsRead(comp->gs, adr, ptr)) return 1;
 	if (ideIn(comp->ide, adr, ptr, comp->flgBDI)) return 1;

@@ -161,6 +161,9 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 			ADD((char*)div->card[i] + offsetof(SDCard, buf), sizeof(SDCard) - offsetof(SDCard, buf));
 		}
 	}
+	// a Z-Controller: its port, up to the card (the slot's, above)
+	if (comp->zc && comp->zc->on)
+		ADD(comp->zc, offsetof(ZCtrl, card));
 
 	return n;
 }

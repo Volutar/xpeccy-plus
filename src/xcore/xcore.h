@@ -851,6 +851,7 @@ typedef struct {
 	int divmmc;			// DIV_*: a divMMC on the edge connector
 	int divmmcRam;			// its SRAM, KB: 128 or 512
 	unsigned divmmcWr:1;		// its EEPROM jumper open: the EEPROM takes writes
+	unsigned zc:1;			// a Z-Controller on ZX-BUS (not with a divMMC)
 	unsigned mouse:1;
 	unsigned mouseWheel:1;
 	int joy;			// JOY_*

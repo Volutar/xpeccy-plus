@@ -174,7 +174,8 @@ class SetupWin : public QDialog {
 		QLabel* sdSum;
 		QLabel* slotSum;
 		QList<QWidget*> sdRow;
-		QComboBox* divBox;		// a divMMC: the board, its RAM, its jumper
+		QComboBox* divBox;		// the SD card board (SD_BOARD_*); a divMMC's RAM, jumper below
+		int sdBoard();			// what divBox says, of what the machine takes
 		QComboBox* divRamBox;
 		QCheckBox* divWrBox;
 		QComboBox* divFwBox;		// what its EEPROM holds, and what Apply writes there

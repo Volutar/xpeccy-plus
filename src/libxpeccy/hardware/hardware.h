@@ -266,6 +266,10 @@ int hw_takes_divmmc(const HardWare*);
 int hw_takes_gluk(const HardWare*);
 int hw_kempston8(const HardWare*);	// a Kempston with Fire 2..4 on d5..d7 can be fitted
 int hw_has_sd(const HardWare*);		// the SD slot (comp->sdc): ZX Evo, TSConf, the Next
+// a Z-Controller can sit on this machine's ZX-BUS (the Pentagons, the Scorpions)
+int hw_takes_zc(const HardWare*);
+// comp->sdc is in the machine: the board's own slot, or a Z-Controller's
+int comp_has_sd(const Computer*);
 void zx_snow(Computer*);
 void zx_contend_adr(Computer*, int, int);	// address already past vid_cont_hit, video at cpu->t
 int zx_bank_of(Computer*, int);
