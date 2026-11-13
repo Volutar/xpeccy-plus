@@ -187,6 +187,7 @@ taken when the file's core is the running core; on another core only the sound c
 | `IDE `, `ATA0`, `ATA1` | the IDE interface and its two devices |
 | `SMNV` | SMUC's NVRAM |
 | `SDC ` | the SD card |
+| `ZC  ` | a Z-Controller's SD port: `#77` as written, the byte last written to `#57`, the byte the last exchange got, the byte an `IN` reads, when the exchange going on ends |
 | `GSX `, `GSCP`, `GSRX` | General Sound beyond `GS`/`GSRP`: its ports, its CPU's hidden state, RAM past the spec's pages |
 | `TAPE` | the tape's position inside the block, the level, the pause |
 | `LINK` | a carried image's old name: `byte kind` (1 tape, 2 Beta disk, 3 +3 disk), `byte drive`, the name to the end |
