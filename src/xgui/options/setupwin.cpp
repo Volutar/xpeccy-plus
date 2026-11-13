@@ -1098,7 +1098,6 @@ void SetupWin::fillPages() {
 	cbEspLan->setChecked(conf.next.espLan);
 	ui.tvHotkeys->load();
 // machine
-	int idx;
 	fill_machine_list(ui.machbox);
 	fill_machine_list(cbStart);
 	// the first rows: the last one, Ask, the last session; then the machines (MS_THIS)
