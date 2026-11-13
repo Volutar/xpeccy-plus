@@ -796,7 +796,14 @@ enum {
 // devices the board has on it, in a definition's builtin line
 enum {
 	MAC_BI_DISK = 1,
-	MAC_BI_IDE = 2
+	MAC_BI_IDE = 2,
+	MAC_BI_CLOCK = 4
+};
+
+// a clock the board can take (hw_takes_gluk)
+enum {
+	MAC_CLOCK_NONE = 0,
+	MAC_CLOCK_GLUK		// Mr Gluk's: #EFF7 bit 7, #DFF7, #BFF7
 };
 
 // What a machine is: read-only, from the binary's own resources, with a file of
@@ -817,6 +824,7 @@ typedef struct {
 	std::string turboSteps;		// turbo steps this board has, "1" = none
 	int builtin;			// MAC_BI_*: devices on the board, which the user cannot swap
 	int resbank;			// RES_*
+	int clock;			// MAC_CLOCK_*
 	int earback;			// EAR_*
 	unsigned earrc:1;
 	unsigned beepmic:1;

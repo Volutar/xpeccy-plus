@@ -430,10 +430,10 @@ void DebugWin::resetTCount() {
 // the panels only some machines have
 void DebugWin::machinePanels() {
 	if (!conf.zx) return;
-	// the clock chip is there on these boards and behind a SMUC, and nowhere else
+	// the clock chip is there on these boards, as the Gluk clock and behind a SMUC, and nowhere else
 	int hw = conf.zx->hw->id;
 	wid_cmos_dump->setVisible((hw == HW_P1024) || (hw == HW_PENTEVO) || (hw == HW_TSLAB) || (hw == HW_PROFI)
-		|| (conf.zx->ide->type == IDE_SMUC));
+		|| ((hw == HW_PENT) && conf.zx->flgGLUK) || (conf.zx->ide->type == IDE_SMUC));
 	// and the disk panels only with a disk interface
 	bool disk = (conf.zx->dif->type != DIF_NONE);
 	wid_disk_dump->setVisible(disk);

@@ -160,6 +160,8 @@ class SetupWin : public QDialog {
 		// the machine's devices, on the Machine page
 		QComboBox* gsBox;
 		QComboBox* saaBox;
+		QComboBox* clockBox;		// the Gluk clock (MAC_CLOCK_*), where the board takes one
+		QList<QWidget*> clockRow;
 		QComboBox* gsRomBox;
 		QComboBox* ngsRomBox;		// the NeoGS flash, in the ROM row while the card is one
 		QStackedWidget* gsRomStack;

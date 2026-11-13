@@ -61,7 +61,8 @@ is skipped without a word.
 | `contio` | yes/no | contended i/o |
 | `contmem` | yes/no | contended memory |
 | `scrp.wait` | yes/no | Scorpion ZS 256: an opcode fetch from RAM starts on an even T-state |
-| `builtin` | `disk` `ide` | controllers on the board itself: the options lock them. Read from the definition, never written back |
+| `builtin` | `disk` `ide` `clock` | controllers on the board itself: the options lock them. Read from the definition, never written back |
+| `clock` | `none` `gluk` | a clock chip: Mr Gluk's, on `#EFF7` bit 7, `#DFF7` (address) and `#BFF7` (data); the Pentagon and Pentagon 1024 SL cores only. `builtin = clock` fits it whatever this says |
 | `snapshot` | `core` `plus2` | what a snapshot names the machine as where its core does not say: a +2 runs on the 128K's core |
 
 ### `[video]`

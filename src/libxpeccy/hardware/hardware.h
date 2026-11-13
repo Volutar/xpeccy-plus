@@ -263,6 +263,7 @@ int zx_dev_rd(Computer*, int, int*);
 void zx_irq(Computer*, int);
 // a divMMC can sit on this machine's edge connector (the Sinclair models)
 int hw_takes_divmmc(const HardWare*);
+int hw_takes_gluk(const HardWare*);
 int hw_kempston8(const HardWare*);	// a Kempston with Fire 2..4 on d5..d7 can be fitted
 int hw_has_sd(const HardWare*);		// the SD slot (comp->sdc): ZX Evo, TSConf, the Next
 void zx_snow(Computer*);

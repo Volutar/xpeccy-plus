@@ -194,6 +194,11 @@ int hw_kempston8(const HardWare* hw) {
 	return (hw->id != HW_SCORP) && (hw->id != HW_SCORPTP);
 }
 
+// the Gluk clock: an add-on made for the Pentagon, on the P1024's own board
+int hw_takes_gluk(const HardWare* hw) {
+	return hw && ((hw->id == HW_PENT) || (hw->id == HW_P1024));
+}
+
 int hw_takes_divmmc(const HardWare* hw) {
 	if (!hw) return 0;
 	switch (hw->id) {

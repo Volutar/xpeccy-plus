@@ -128,6 +128,7 @@ typedef struct {
 #define flgBRKMEM sysflag[21]		// a memory breakpoint may be set: 0 lets the core skip the maps
 #define flgBOOT	sysflag[22]		// hw->boot is due before the next instruction
 #define flgBRKIO sysflag[23]		// a port breakpoint is set
+#define flgGLUK	sysflag[24]		// the Gluk clock is fitted (Pentagon; the P1024 has it on board)
 
 #define PWATCH_MAX	16		// ports the debugger can watch at once
 
