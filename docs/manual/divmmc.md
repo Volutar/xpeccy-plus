@@ -116,6 +116,9 @@ Each release's own `README.TXT` is in `config/esxdos/<version>/`.
   a copy in the board's RAM until that reset.
 - **Machine > Reset > Hard Reset** is the power switch: the board's RAM goes with the
   machine's, and esxDOS starts cold, with its logo and the card read again.
+- On a Pentagon whose plain reset starts Gluk Reset Service, as the Pentagon 1024 SL's
+  does, the plain reset starts **Basic 128** while the board is on: Gluk and the divMMC do
+  not work together (see [Reset](machines.md#reset)).
 - A tape or disk opened to be run ([Run a program](getting-started.md#run-a-program))
   starts from a Hard Reset while the board is on, so that a tape attached in esxDOS does
   not take the `LOAD ""` instead; the keys go into the 48K BASIC the firmware leaves the

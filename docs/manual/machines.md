@@ -31,7 +31,7 @@ The machine list shows them in this order, in five groups.
 | **ZX Spectrum +3** | 128 KB | +3, two drives | the +2A with a 3-inch disk drive; AY |
 | **ZX Spectrum Next** | 1024 or 2048 KB | - | a group of its own: Z80N up to 28 MHz, three AYs and DACs, divMMC and SD card, Wi-Fi; see [ZX Spectrum Next](zx-next.md) |
 | **Pentagon** | 128 KB | Beta Disk | YM, Covox; Kempston mouse and joystick |
-| **Pentagon 1024 SL** | 1024 KB | Beta Disk | as the Pentagon; turbo x2 |
+| **Pentagon 1024 SL** | 1024 KB | Beta Disk | as the Pentagon; turbo x2, Gluk clock; starts Gluk Reset Service |
 | **Scorpion ZS 256** | 256 KB | Beta Disk | AY, Covox; Kempston mouse and joystick |
 | **Scorpion ZS 256 Turbo+** | 256 KB | Beta Disk | the Scorpion with the Turbo+ board: SMUC hard disk, turbo x2 |
 | **ATM Turbo 2+** | 1024 KB | Beta Disk | YM, Covox; ATM hard disk, Kempston mouse and joystick, turbo x2 |
@@ -99,6 +99,16 @@ click on **Reset** only opens the menu: the bold item is the plain reset there.
 On the ATM Turbo 2+, the ZX Evolution, the ZX Spectrum Next and the ALF consoles the list
 holds only **Soft Reset**: these machines start their own firmware on every reset.
 
+The Pentagon 1024 SL starts from **Service**, Gluk Reset Service, as the board does. Gluk
+looks at the keys held down as it starts: hold **S** and reset for its CMOS Setup, **F** for
+its help. On the Pentagon set the plain reset to **Service** for the same.
+
+With the [divMMC](divmmc.md) on, a plain reset starts **Basic 128** instead, on both. Gluk and
+the divMMC cannot work together: the divMMC switches its own memory in whenever the
+processor runs code at certain addresses at the start of the ROM, and Gluk runs code at two
+of them (#0008 and #0038) as it starts. esxDOS then takes over in the middle of Gluk, and the
+machine hangs. **Service** in the list still starts Gluk, with this result.
+
 The {icon}`shutdown` **Reset** button on the toolbar resets the machine when clicked; the
 arrow beside it opens the list. **Reset** in the right-click menu works the same way. F12
 resets in both hotkey presets.
@@ -143,6 +153,11 @@ while an RZX recording plays. The **Switch Turbo** hotkey steps through the list
 
 A board that has a turbo usually lets programs switch the turbo too. Then a program can
 change the step you picked, and Xpeccy+ shows the new clock over the picture.
+
+On the Pentagon 1024 SL, Gluk Reset Service turns the turbo on and sets it again every time
+it reads its clock, so while its menu is on the screen the board stays at 7 MHz. **W** in
+Gluk switches its turbo between **Fast** and **Slow**; Gluk keeps the choice in the clock
+chip, for every reset after.
 
 The **Overclock** slider of the **Machine** page of **Options** runs the CPU faster still,
 on any machine; see [Overclock](options-machine.md#overclock).
