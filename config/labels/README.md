@@ -12,7 +12,7 @@ also fits the patched copies of its ROM in the clones (the 48 BASIC of the 128K,
 Pentagon, Scorpion, Profi, ATM and ZX Evo; the 128 editor of the Pentagon, Scorpion and the
 others), whose code sits at the same places; a name or a data range whose bytes were changed on
 such a ROM is left out there. The +2 ROM 0 has a list of its own: the 128K ROM 0's names moved
-to where the +2 has the same code.
+to the same code of the +2, found by Paul Farrow's disassemblies of the two.
 
 Every name is in the namespace of its system - `BASIC48`, `BASIC128`, `P3ROM0`, `P3ROM1`,
 `P3DOS`, `TRDOS` - as `BASIC48.LD_BYTES`; the short name works too where no other system in
@@ -51,11 +51,12 @@ lines; the system variables left out (`sysvars-basic48.labels` has them, from th
 
 ## 128K, +2A/+3 - Klive IDE, MIT
 
-`basic128.labels` (128K ROM 0, 1085 names), `basic128-plus2.labels` (+2 ROM 0, 757 of
-them carried over), `p3rom0-40/41`, `p3rom1-40/41` (+2A/+3 ROM 0 and ROM 1, v4.0 and v4.1),
-`p3dos-40/41` (ROM 2, with the jump table below), and `basic48-sp128-1`, `basic48-spp3-40-3`,
-`basic48-spp3-41-3` (the 48 BASIC of these machines where it differs from the 48K's). Names and
-data ranges from the ROM annotations of Klive IDE by Istvan Novak
+The names of `basic128.labels` (128K ROM 0, 1085 names) and `basic128-plus2.labels` (+2 ROM
+0, 1070 of them, placed by Paul Farrow's disassemblies, below); the names and data ranges of
+`p3rom0-40/41`, `p3rom1-40/41` (+2A/+3 ROM 0 and ROM 1, v4.0 and v4.1), `p3dos-40/41` (ROM 2,
+with the jump table below), and `basic48-spp3-40-3`, `basic48-spp3-41-3` (the 48 BASIC of the
++2A/+3 where it differs from the 48K's); the names of `basic48-sp128-1` (the 128K's) that Paul
+Farrow's file does not give. From the ROM annotations of Klive IDE by Istvan Novak
 (<https://github.com/Dotneteer/kliveide>, `src/public/roms`, commit e227b87c, 2026-11-06),
 written from the ROM bytes and the manuals, under the **MIT license**:
 
@@ -85,6 +86,24 @@ SOFTWARE.
 
 Added for Xpeccy+: the bytes after `RST #28` (an address in the other ROM) and after a call of
 the error routine (a report code) marked as data, where the ROM's own code reads them.
+
+## 128K and +2 - Paul Farrow, by his permission
+
+The data ranges of `basic128.labels` (455) and `basic128-plus2.labels` (457), and where each
+name of the 128K ROM 0 goes on the +2 ROM 0, from the ROM disassemblies of Paul Farrow
+(<http://www.fruitcake.plus.com/Sinclair/Spectrum128/ROMDisassembly/>): "Spectrum 128 ROM 0
+Disassembly" and "Spectrum +2 ROM 0 Disassembly", released 4 February 2019, which name as
+contributors Matthew Wilson, who began the 128K ROM 0 one, Andrew Owen, Geoff Wearmouth, Rui
+Tunes and Paul Farrow. In `basic48-sp128-1.labels`, the names and data ranges of the code the
+128K added to its 48 BASIC (the keypad, the patches, the TV tuner test) from "Spectrum 128 ROM 1
+Disassembly" (13 December 2011) by Geoff Wearmouth and Paul Farrow. Used with his permission:
+"Sure, feel free. If it helps the debugger in your emulator then great!" (e-mail of
+2026-11-13). His comments are not taken. Changed for Xpeccy+ on 2026-11-13: data ranges from
+his `DEFB`, `DEFS` (bytes), `DEFW` (addresses) and `DEFM` (text) lines, a message's last
+character (`'x'+$80`) and the (c) sign before one as part of its text; a hyphen in a ROM 1 name
+written as an underscore. A name of the 128K goes to the line of his +2 disassembly that
+matches the line of his 128K one it is on, or, for the few that match no line, where the +2
+has the same bytes.
 
 ## +3DOS jump table - Xpeccy+
 
