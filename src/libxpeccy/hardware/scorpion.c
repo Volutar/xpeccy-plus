@@ -54,6 +54,8 @@ static int sco_rom_page(Computer* comp) {
 
 void scoMapMem(Computer* comp) {
 	int rp;
+	// not the 48 basic for the tape traps: the service ROM, or a ProfROM plane past 0 the ROM's size leaves
+	comp->flgEXT = ((comp->p1FFD & 2) || (((comp->prt2 & 3) << 16) & comp->mem->romMask)) ? 1 : 0;
 	if (comp->p1FFD & 0x01) {
 		memSetBank(comp->mem,0x00,MEM_RAM,0, MEM_16K, NULL, NULL, NULL);
 	} else {
@@ -176,7 +178,6 @@ void scrpOut7FFD(Computer* comp, int port, int val) {
 
 void scrpOut1FFD(Computer* comp, int port, int val) {
 	comp->p1FFD = val;
-	comp->flgEXT = (val & 2) ? 1 : 0;
 	scoMapMem(comp);
 }
 
