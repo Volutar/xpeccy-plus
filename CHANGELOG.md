@@ -9,6 +9,17 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
+### Added
+
+- **The Gluk clock on the Pentagon** (Options > Machine > Clock): Gluk Reset Service shows the
+  time and date, and Reset+S opens its CMOS Setup. The Pentagon 1024 SL has it on the board.
+
+### Changed
+
+- **The Pentagon 1024 SL starts Gluk Reset Service on reset**, as the board does, so Reset+S
+  and the other Gluk keys work there; a new machine's clock shows in Gluk at once.
+  *(reported by Lis)*
+
 ### Fixed
 
 - **A build from the Nix flake, or from a plain `cmake ..`, has DeZog and OpenGL** (shaders,
