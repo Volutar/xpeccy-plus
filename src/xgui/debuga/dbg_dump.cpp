@@ -525,7 +525,6 @@ int xDumpTable::getCurrentAdr() {
 }
 
 int dump_cell_width(const QFontMetrics& fm) {
-// horizontalAdvance() since 5.11, before - width()
 	return fm.horizontalAdvance("00") + 8;
 }
 
