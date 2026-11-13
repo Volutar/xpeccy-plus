@@ -36,6 +36,7 @@
 #include <QSharedPointer>
 #include <QShowEvent>
 #include <QSpinBox>
+#include <QListView>
 #include <QDoubleSpinBox>
 #include <QAbstractSlider>
 #include <QDebug>
@@ -65,6 +66,9 @@
 
 // the turbo step lists the box offers before a machine of its own adds one
 #define CPU_TURBO_ROWS	3
+
+// the SD card row's items
+enum {SD_BOARD_NONE = 0, SD_BOARD_DIVMMC, SD_BOARD_ZC};
 
 void setRFIndex(QComboBox* box, QVariant data, int defidx) {
 	int idx = box->findData(data);
@@ -1264,7 +1268,7 @@ void SetupWin::fillPages() {
 	ngsPick = QString::fromUtf8(conf.ngsFile.c_str());
 	rom_box_pick(ngsRomBox, ngsPick);
 	gsRomStack->setCurrentIndex((xm_gs_of(comp) == MAC_GS_NEOGS) ? 1 : 0);
-	divBox->setCurrentIndex(comp->div->model ? 1 : 0);
+	divBox->setCurrentIndex(comp->div->model ? SD_BOARD_DIVMMC : comp->zc->on ? SD_BOARD_ZC : SD_BOARD_NONE);
 	divRamBox->setCurrentIndex((comp->div->pages > 16) ? 1 : 0);
 	divWrBox->setChecked(comp->div->eeWrite);
 	fillDivFirmware();
@@ -1629,21 +1633,27 @@ void SetupWin::applyMachine() {
 // hdd
 	if (!own) ide_set_type(comp->ide, getRFIData(hiface));
 	// what is mounted is the Drives menu's, a folder read again only with the power off
-// divmmc: a board put on, off or given other RAM powers the machine off and on
-	int divModel = (divBox->currentIndex() && hw_takes_divmmc(comp->hw)) ? DIV_MMC : DIV_NONE;
+// sd card board: one put on, off or given other RAM powers the machine off and on
+	int board = sdBoard();
+	int divModel = (board == SD_BOARD_DIVMMC) ? DIV_MMC : DIV_NONE;
 	int divPages = divRamBox->currentIndex() ? DIV_PAGES_MAX : 16;
-	bool divPower = (divModel != comp->div->model) || (divModel && (divPages != comp->div->pages));
-	if (divPower)
+	bool boardPower = (divModel != comp->div->model) || (divModel && (divPages != comp->div->pages));
+	if (boardPower)
 		div_set_model(comp->div, divModel, divPages);
+	int zcOn = (board == SD_BOARD_ZC) ? 1 : 0;
+	if (zcOn != comp->zc->on) boardPower = true;	// its card is read by the power cycle below
+	emu_lock();
+	comp->zc->on = zcOn;
 	comp_board_storage(comp);
+	emu_unlock();
 	comp->div->eeWrite = divWrBox->isChecked() ? 1 : 0;
 	div_map(comp->div);
 	// a chip written outside the machine goes back in with the power off too
-	if (applyDivFirmware() && divModel) divPower = true;
+	if (applyDivFirmware() && divModel) boardPower = true;
 	fillDivFirmware();
 // debuga
 	setWatchPorts(comp, portwid->getPorts());
-	if (divPower) {
+	if (boardPower) {
 		emu_lock();
 		xm_power_cycle();
 		emu_unlock();
@@ -2344,8 +2354,10 @@ void SetupWin::buildDevices() {
 	btn = devRow(grid, tr("SD card"), sdSum, NULL, NULL);
 	sdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << sdSum << btn;
 
-	// a divMMC on the edge connector; its cards are the Drives menu's
-	divBox = devCombo(QStringList() << tr("None") << tr("divMMC"));
+	// an SD card board, one at a time: a divMMC on the edge connector, or a Z-Controller
+	// on ZX-BUS (its card is the SD Card menu's); the items are SD_BOARD_*, the ones
+	// the machine cannot take are hidden (showDevRows)
+	divBox = devCombo(QStringList() << tr("None") << tr("divMMC") << tr("Z-Controller"));
 	divBox->setObjectName("divBox");
 	xOptSheet dv;
 	divRamBox = devCombo(QStringList() << tr("128K") << tr("512K"));
@@ -2362,13 +2374,10 @@ void SetupWin::buildDevices() {
 	fwBtn->setToolTip(tr("Pick a firmware file"));
 	connect(fwBtn, &QToolButton::released, this, &SetupWin::divFirmwareFile);
 	dv.field(tr("Firmware"), fieldPair(divFwBox, fwBtn, false), tr("What the EEPROM holds. Apply writes it"));
-	btn = devRow(grid, tr("divMMC"), divBox, dv.body, "Machine: divMMC");
+	btn = devRow(grid, tr("SD card"), divBox, dv.body, "Machine: divMMC");
 	btn->setObjectName("divGear");
 	divRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << divBox << btn;
-	QString divTip = tr("Floppy and hard disk controllers are\nunavailable while divMMC is enabled");
-	divRow[0]->setToolTip(divTip);
-	divBox->setToolTip(divTip);
-	qobject_cast<QLabel*>(divRow[0])->setText(tr("divMMC (!)"));	// measured so (finishGroups)
+	qobject_cast<QLabel*>(divRow[0])->setText(tr("SD card (!)"));	// measured so (finishGroups)
 	connect(divBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {showBoardStorage();});
 
 	slotSum = new QLabel;
@@ -2438,7 +2447,7 @@ void SetupWin::buildDevices() {
 	clockRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << clockBox << btn;
 	clockRow[0]->setToolTip(tr("Mr Gluk's clock on ports #EFF7, #DFF7, #BFF7. It tells your computer's time"));
 	finishGroups(cols);
-	qobject_cast<QLabel*>(divRow[0])->setText(tr("divMMC"));
+	qobject_cast<QLabel*>(divRow[0])->setText(tr("SD card"));
 
 	// THE NEXT'S OWN: NextZXOS's settings in its menu's words, this computer's for the Next among them
 	nxArea = new QWidget;
@@ -2836,7 +2845,23 @@ void SetupWin::showDevRows() {
 	// only these read PC scancodes
 	bool kbd = (hw == HW_ATM2) || (hw == HW_PENTEVO) || (hw == HW_TSLAB);
 	foreach(QWidget* w, sdRow) w->setVisible(sd);
-	foreach(QWidget* w, divRow) w->setVisible(hw_takes_divmmc(conf.zx->hw));
+	bool takesDiv = hw_takes_divmmc(conf.zx->hw);
+	bool takesZc = hw_takes_zc(conf.zx->hw);
+	foreach(QWidget* w, divRow) w->setVisible(takesDiv || takesZc);
+	// hidden from the list, and off, so the wheel and the keys pass them by too
+	QListView* boards = qobject_cast<QListView*>(divBox->view());
+	if (boards) {
+		boards->setRowHidden(SD_BOARD_DIVMMC, !takesDiv);
+		boards->setRowHidden(SD_BOARD_ZC, !takesZc);
+	}
+	QStandardItemModel* boardItems = qobject_cast<QStandardItemModel*>(divBox->model());
+	if (boardItems) {
+		boardItems->item(SD_BOARD_DIVMMC)->setEnabled(takesDiv);
+		boardItems->item(SD_BOARD_ZC)->setEnabled(takesZc);
+	}
+	QString divTip = takesDiv ? tr("Floppy and hard disk controllers are\nunavailable while divMMC is enabled") : QString();
+	divRow[0]->setToolTip(divTip);
+	divBox->setToolTip(divTip);
 	foreach(QWidget* w, slotRow) w->setVisible(slot);
 	foreach(QWidget* w, kbdRow) w->setVisible(kbd);
 	foreach(QWidget* w, clockRow) w->setVisible(hw_takes_gluk(conf.zx->hw));
@@ -2875,11 +2900,14 @@ void SetupWin::showDevRows() {
 
 // The Floppy disk and Hard disk rows: a controller on the board is not swapped out, and
 // with the divMMC set on both are out of the machine - they keep what they say,
-// for when it goes. Follows the divMMC row before Apply.
+// for when it goes. Follows the SD card row before Apply.
 void SetupWin::showBoardStorage() {
 	const xMachine* mac = xm_find(conf.macId);
 	int bi = mac ? mac->builtin : 0;
-	bool board = divBox->currentIndex() && hw_takes_divmmc(conf.zx->hw);
+	int sd = sdBoard();
+	bool board = (sd == SD_BOARD_DIVMMC);
+	// the gear's sheet is the divMMC's: nothing to set up for a Z-Controller
+	divRow[2]->setEnabled(hw_takes_divmmc(conf.zx->hw) && (sd != SD_BOARD_ZC));
 	QString fixed = tr("Built into this board");
 	QString out = tr("Unavailable while divMMC is enabled");
 	foreach(QWidget* w, diskRow) w->setEnabled(!board);
@@ -2892,7 +2920,15 @@ void SetupWin::showBoardStorage() {
 	clockBox->setToolTip((bi & MAC_BI_CLOCK) ? fixed : QString());
 	// the board on takes the disk controllers out (comp_board_storage): its name marks it
 	QLabel* divName = qobject_cast<QLabel*>(divRow.value(0));
-	if (divName) divName->setText(board ? tr("divMMC (!)") : tr("divMMC"));
+	if (divName) divName->setText(board ? tr("SD card (!)") : tr("SD card"));
+}
+
+// the SD card row's choice, of the boards this machine takes
+int SetupWin::sdBoard() {
+	int idx = divBox->currentIndex();
+	if ((idx == SD_BOARD_DIVMMC) && hw_takes_divmmc(conf.zx->hw)) return SD_BOARD_DIVMMC;
+	if ((idx == SD_BOARD_ZC) && hw_takes_zc(conf.zx->hw)) return SD_BOARD_ZC;
+	return SD_BOARD_NONE;
 }
 
 // THE WHOLE CONFIGURATION, IN AND OUT

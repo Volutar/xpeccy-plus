@@ -1,0 +1,17 @@
+# Z-Controller's SD card (corpus zc/: ProfROM 4.44 for the ZS-256 with SMUC, FATALL 0.25,
+# a card folder; sdimg makes a FAT16 image of it, sd serves the folder as a FAT32 card).
+#
+# name            machine   how   skip  frames  file           options
+# ProfROM's power-on test finds the card: "SD Card: 512 Mb", its name, serial and revision
+# read from its CID. (Its navigator lists the card too, entered by the NMI button during
+# that test, but where an NMI lands decides what ProfROM 4.44 does with it - not a case.)
+zc_prof_boot      scorp     boot  410   10      mac:storage.zcontroller=yes mac:storage.ide=smuc romfile:zc/ProfRomZS256_v4s.rom mac:rom.rom0=ProfRomZS256_v4s.rom sd:zc/card
+# no card in the slot: nothing said of an SD card
+zc_prof_nocard    scorp     boot  410   10      mac:storage.zcontroller=yes mac:storage.ide=smuc romfile:zc/ProfRomZS256_v4s.rom mac:rom.rom0=ProfRomZS256_v4s.rom
+# FATALL's right panel: E:ZC SDC, FAT32 of the folder or FAT16 of the image, and the files
+zc_fatall_pent    pent      auto  1300  20      zc/fatall.scl  mac:storage.zcontroller=yes sd:zc/card
+zc_fatall_img     pent      auto  1300  20      zc/fatall.scl  mac:storage.zcontroller=yes sdimg:zc/card
+zc_fatall_p1024   pent1024  auto  1300  20      zc/fatall.scl  mac:storage.zcontroller=yes sd:zc/card
+zc_fatall_scorp   scorp     auto  1300  20      zc/fatall.scl  mac:storage.zcontroller=yes sd:zc/card
+# the board not fitted: FATALL finds no FAT
+zc_fatall_off     pent      auto  1300  20      zc/fatall.scl  sd:zc/card

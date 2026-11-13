@@ -329,7 +329,7 @@ void MainWin::fillDrivesMenu() {
 	}
 
 	int hw = comp->hw->id;
-	if (hw_has_sd(comp->hw))
+	if (comp_has_sd(comp))
 		fillCardMenu(sdcMenu, -1);
 	fillDivMenu();
 
@@ -403,6 +403,8 @@ void MainWin::divToggle(bool ask) {
 		QString text = "Performs a Hard Reset. Memory contents are lost.";
 		if (on && ((comp->dif->cfg != DIF_NONE) || (comp->ide->cfg != IDE_NONE)))
 			text += "\nFloppy drives and hard disk are disabled while divMMC is on.";
+		if (on && comp->zc->on)
+			text += "\nThe Z-Controller is removed: one SD card board at a time.";
 		QMessageBox box(QMessageBox::Question, on ? "Switch divMMC on" : "Switch divMMC off",
 			text, QMessageBox::NoButton, this);
 		QPushButton* go = box.addButton(on ? "Switch On" : "Switch Off", QMessageBox::AcceptRole);
@@ -581,7 +583,7 @@ void MainWin::cardEject(int card) {
 void MainWin::cardEjectKey() {
 	Computer* comp = conf.zx;
 	int card = -2;
-	if (hw_has_sd(comp->hw)) {
+	if (comp_has_sd(comp)) {
 		card = -1;
 	} else if (comp->div->model) {
 		card = comp->div->card[0]->image ? 0 : 1;
@@ -624,7 +626,7 @@ void MainWin::folderRefreshAll() {
 	Computer* comp = conf.zx;
 	struct {vFat* vf; const char* name;} fold[3];
 	int n = 0;
-	if (hw_has_sd(comp->hw) && comp->sdc->vfat)
+	if (comp_has_sd(comp) && comp->sdc->vfat)
 		fold[n++] = {comp->sdc->vfat, "SD card"};
 	if (comp->div->model) {
 		if (comp->div->card[0]->vfat) fold[n++] = {comp->div->card[0]->vfat, "divMMC card 1"};

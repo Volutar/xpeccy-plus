@@ -9,7 +9,8 @@ of your computer. The divMMC's cards are in [divMMC](divmmc.md).
 ```{index} SD card, --sdcard
 ```
 
-The two ZX Evolution machines and the ZX Spectrum Next have an SD card slot. The Next
+The two ZX Evolution machines and the ZX Spectrum Next have an SD card slot, and the
+Pentagons and the Scorpions have one with a [Z-Controller](#z-controller) fitted. The Next
 starts from a card with System/Next on it, and its menu has **System/Next Card...** too:
 see [The SD card](zx-next.md#the-sd-card). **Media > SD Card** shows the card in
 the slot, or **(no card)**, and has:
@@ -25,6 +26,23 @@ the slot, or **(no card)**, and has:
 
 What the machine writes to a card image goes into the image file at once. To start with a
 card, use `--sdcard <file or folder>` on the [command line](command-line.md).
+
+### Z-Controller
+
+```{index} Z-Controller, ProfROM, FATALL
+```
+
+The Z-Controller is a ZX-BUS card by Alexey Zhabin (KOE) with an SD card slot on ports
+`#57` and `#77`; the emulated one is its SD part, as the card's own logic has it. The
+Pentagon, the Pentagon 1024 SL and both Scorpions take it: on the **Machine** page of
+**Options**, set the **SD card** row to **Z-Controller**. **Apply** powers the machine off and
+on, as a card fitted with the power off. Its card is the one in **Media > SD Card**, the
+status bar's **SD** light is its light, and the setting is the machine's. A Pentagon takes a
+divMMC or a Z-Controller, not both.
+
+The ProfROM of the Scorpion, from version 4.xx.38 on, finds the card at power-on and reads
+it in its navigator: a FAT32 card, or a folder. FATALL by savelij copies files between the
+card and TR-DOS disks on any of these machines, from FAT16 or FAT32.
 
 ## Hard disks
 

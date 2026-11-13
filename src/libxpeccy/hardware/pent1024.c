@@ -67,9 +67,10 @@ static xPort p1mPortMap[] = {
 };
 
 void p1mOut(Computer* comp, int port, int val) {
+	int zc = zc_out(comp->zc, port, val, comp->flgDOS);	// #EFF7, #BFF7, #DFF7 would take #xx57 and #xx77 too
 	zx_dev_wr(comp, port, val);
 	difOut(comp->dif, port, val, comp->flgBDI);
-	hwOut(p1mPortMap, comp, port, val, 1);
+	if (!zc) hwOut(p1mPortMap, comp, port, val, 1);
 }
 
 int p1mIn(Computer* comp, int port) {

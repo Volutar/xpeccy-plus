@@ -41,8 +41,7 @@ Esc) puts back what it showed when it opened.
 | **Storage** | **Tape** | loading settings; the row shows which are on (see [Tapes](tapes.md)) |
 | | **Floppy disk** | the controller: **None**, **Beta Disk (WD1793)** or **+3 (uPD765)**; drives and the TR-DOS ROM in its window (see [Floppy disks](disks.md)) |
 | | **Hard disk** | the IDE interface; **Master** and **Slave** in its window (see [Hard disks](sd-hdd.md#hard-disks)) |
-| | **SD card** | ZX Evolution and ZX Spectrum Next only: the card in use (for the Next, see [The SD card](zx-next.md#the-sd-card)) |
-| | **divMMC** | 48K, 128K, +2, +2A, +3 and the Pentagons: **None** or **divMMC**; RAM, EEPROM jumper and the firmware in its window (see [divMMC](divmmc.md)); while it is on, the row reads **divMMC (!)** and the floppy and hard disk controllers are out of the machine |
+| | **SD card** | ZX Evolution and ZX Spectrum Next: the card in use (for the Next, see [The SD card](zx-next.md#the-sd-card)). The other machines that take an SD card board: the board, one at a time - **None**, **divMMC** (48K, 128K, +2, +2A, +3, the Pentagons) or **Z-Controller** (the Pentagons and the Scorpions, see [Z-Controller](sd-hdd.md#z-controller)). The divMMC's RAM, EEPROM jumper and firmware are in its window (see [divMMC](divmmc.md)); while it is on, the row reads **SD card (!)** and the floppy and hard disk controllers are out of the machine |
 | | **Cartridge** | 48K and ALF only: the cartridge in use |
 | **Input** | **Joystick** | **None**, **Kempston 5-bit**, **Kempston 8-bit**; not 8-bit on the Scorpion ZS 256 and Turbo+ (see [Joysticks](input.md#joysticks)) |
 | | **Mouse** | **None** or **Kempston mouse**; sensitivity and wheel in its window (see [Mouse](input.md#mouse)) |

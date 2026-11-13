@@ -509,8 +509,8 @@ static void comp_m1x(void* ptr, int adr) {
 	if (comp->hw->id == HW_ZXNEXT) next_nmi_m1(comp, adr);
 }
 
-// the board's time: its oscillators run whatever the CPU does
-static long long comp_div_ns(void* ptr) {
+// a board's time: its oscillators run whatever the CPU does
+static long long comp_board_ns(void* ptr) {
 	return comp_ns((Computer*)ptr);
 }
 
@@ -1056,7 +1056,8 @@ Computer* compCreate() {
 	// or its 32-bit byte addresses stop at 4 GB; the Z-controller's path reads neither flag
 	comp->sdc->spec = 1;
 	comp->slot = sltCreate();
-	comp->div = div_create(comp->mem, comp, comp_div_ns);
+	comp->div = div_create(comp->mem, comp, comp_board_ns);
+	comp->zc = zc_create(comp->sdc, comp, comp_board_ns);
 	comp->cpu->xm1x = comp_m1x;
 // sound
 	comp->ts = tsCreate(TS_NONE,SND_AY,SND_NONE);
@@ -1099,6 +1100,7 @@ void compDestroy(Computer* comp) {
 	ideDestroy(comp->ide);
 	sdcDestroy(comp->sdc);
 	div_destroy(comp->div);
+	zc_destroy(comp->zc);
 	tsDestroy(comp->ts);
 	gsDestroy(comp->gs);
 	sdrvDestroy(comp->sdrv);
@@ -1162,6 +1164,7 @@ void compReset(Computer* comp,int res) {
 	saaReset(comp->saa);
 	sdcReset(comp->sdc);
 	div_reset(comp->div);		// what it holds and shows stays: /RESET reaches only its SPI side
+	zc_reset(comp->zc);		// the bus RESET clears #77: the card's supply goes off
 	comp->hwMul = comp->turboStep;		// a port turbo sets its own again, a switch does not
 	comp_update_timings(comp);
 	if (comp->hw->reset)
@@ -1277,6 +1280,7 @@ void comp_power_phase(Computer* comp) {
 // work beside it, but the rule is one for all.
 void comp_board_storage(Computer* comp) {
 	int out = (comp->div->model != DIV_NONE);
+	if (out) comp->zc->on = 0;		// one SD board at a time
 	dif_set_out(comp->dif, out);
 	ide_set_out(comp->ide, out);
 }

@@ -589,6 +589,7 @@ static const szxField fld_rtc[] = {
 #define XR_SDC	BID('S','D','C',' ')
 #define XR_DIV	BID('D','I','V',' ')
 #define XR_DCD	BID('D','C','D','0')	// 1, a divMMC's cards
+#define XR_ZC	BID('Z','C',' ',' ')	// a Z-Controller's SD port
 #define XR_GS	BID('G','S','X',' ')
 #define XR_TAPE	BID('T','A','P','E')
 #define XR_GSCPU	BID('G','S','C','P')
@@ -618,6 +619,28 @@ static void ext_div_get(extDiv* r, const DivMMC* div) {
 	r->nmiLine = div->nmiLine;
 	r->eeWrite = div->eeWrite;
 	r->ee = div->ee;
+}
+
+// a Z-Controller's SD port; its card is the slot's (SDC). spiEnd as an offset from
+// the moment of the file, as the divMMC's
+static const szxField fld_zc[] = {
+	FLD(ZCtrl, cfg),
+	FLD(ZCtrl, tx),
+	FLD(ZCtrl, rx),
+	FLD(ZCtrl, lat),
+	FLD(ZCtrl, spiEnd),
+	FLDEND
+};
+
+static void ext_zc(Computer* comp, const unsigned char* p, size_t n) {
+	ZCtrl* zc = comp->zc;
+	if (!zc->on) {
+		szx_note(SZN_ZC);
+		return;
+	}
+	zc->spiEnd -= comp_ns(comp);
+	fld_get(zc, fld_zc, p, n);
+	zc->spiEnd += comp_ns(comp);
 }
 
 // the times moved by d: the file holds them as offsets from its own moment
@@ -901,6 +924,11 @@ void szx_ext_save(szxBuf* b, Computer* comp) {
 		rec_fields(b, XR_DIV, &r, fld_div);
 		for (i = 0; i < 2; i++)
 			rec_fields(b, XR_DCD + ((unsigned)i << 24), comp->div->card[i], fld_sdc);
+	}
+	if (comp->zc->on) {
+		ZCtrl zc = *comp->zc;
+		zc.spiEnd -= comp_ns(comp);
+		rec_fields(b, XR_ZC, &zc, fld_zc);
 	}
 	if (comp->gs && comp->gs->enable)
 		ext_gs_save(b, comp);
@@ -1415,6 +1443,7 @@ int szx_ext_load(Computer* comp, const unsigned char* ext, size_t len) {
 				if (comp->sdc) fld_get(comp->sdc, fld_sdc, p, n);
 				break;
 			case XR_DIV: ext_div(comp, p, n); break;
+			case XR_ZC: ext_zc(comp, p, n); break;
 			case XR_GS:
 				if (comp->gs && comp->gs->enable) ext_gs(comp->gs, p, n);
 				break;

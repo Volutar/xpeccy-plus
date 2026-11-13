@@ -39,7 +39,8 @@ HASH_RE = re.compile(r"^hash: frames (\w+) sound (\w+) ram (\w+) cpu (\w+) pc (\
 
 
 HOWS = ("auto", "open", "boot")
-OPTS = ("cfg", "mac", "nvram", "sd", "hdd", "put", "keys", "eeprom", "card1", "card2", "cardimg1", "cardimg2")
+OPTS = ("cfg", "mac", "nvram", "sd", "hdd", "put", "keys", "eeprom", "card1", "card2", "cardimg1", "cardimg2",
+        "romfile", "sdimg")
 PINNED = 946684800  # 2000-01-01: a folder card's FAT carries the host mtimes
 
 
@@ -111,6 +112,12 @@ def set_up(case, corpus, cfg, tmp):
             shutil.copy(corpus / src, cards[-1] / path)
         elif k == "keys":
             args += ["--bench-keys", v]
+        elif k == "romfile":		# a ROM the bundle has not, among the config's: mac:rom.rom0=<its name>
+            shutil.copy(corpus / v, cfg / "roms" / Path(v).name)
+        elif k == "sdimg":		# the slot's card: a FAT16 image made of a folder (mksd.py)
+            dst = (tmp / f"sd-{Path(v).name}").with_suffix(".img")
+            subprocess.run([sys.executable, str(ROOT / "tests" / "core" / "divmmc" / "mksd.py"), str(dst), str(corpus / v)], check=True)
+            args += ["--sdcard", str(dst)]
         elif k == "eeprom":		# what the divMMC's EEPROM holds, kept for all machines
             (cfg / "nvram").mkdir(exist_ok=True)
             shutil.copy(corpus / v, cfg / "nvram" / "divmmc.eeprom")

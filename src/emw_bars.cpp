@@ -949,7 +949,7 @@ void MainWin::lightLook() {
 	// after a block went either way
 	int card = 0;
 	bool any = false;
-	bool slot = hw_has_sd(comp->hw);
+	bool slot = comp_has_sd(comp);
 	SDCard* cards[3] = {comp->div->card[0], comp->div->card[1], comp->sdc};
 	for (int i = 0; i < 3; i++) {
 		SDCard* sdc = cards[i];
@@ -1011,7 +1011,7 @@ void MainWin::updateStatus() {
 			: flp->insert ? QString::fromLocal8Bit(flp->path ? flp->path : "") : QString("empty");
 		if (sbDiskBox[i]->toolTip() != tip) sbDiskBox[i]->setToolTip(tip);
 	}
-	bool slot = hw_has_sd(comp->hw);
+	bool slot = comp_has_sd(comp);
 	sbCardBox->setVisible(slot || comp->div->model);
 	if (slot || comp->div->model) {
 		if (cardLight != sbCardShown) {

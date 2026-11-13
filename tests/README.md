@@ -31,6 +31,9 @@ python tests/regress.py list
     copied first, and a folder's files get one fixed mtime: the FAT served for a folder
     carries the host's dates, which a fresh checkout would change.
   - `put:PATH=FILE` - lays a file over the card copied just before (`put:bin/autoexec.bat=...`)
+  - `sdimg:FOLDER` - the SD card as a FAT16 image made of a folder (`tests/core/divmmc/mksd.py`)
+  - `romfile:FILE` - a ROM the bundle has not, copied among the case's `roms/`; name it with
+    `mac:rom.rom0=<its file name>`
   - `keys:F:KEYS,...` - `--bench-keys`: keys pressed at frame F counted from the start, held
     4 frames (`/N` for N). Keys are matrix names as autostart types them (`E` Enter, `C`
     Caps, `S` Symbol, `_` Space, `C6` down); `joy:fire+up` and `joyb:...` are the two

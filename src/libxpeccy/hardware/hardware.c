@@ -199,6 +199,22 @@ int hw_takes_gluk(const HardWare* hw) {
 	return hw && ((hw->id == HW_PENT) || (hw->id == HW_P1024));
 }
 
+// KOE names KAY, Scorpion and Pentagon-1024SL for its slot (ZC.pdf); a Pentagon 128
+// has the same bus
+int hw_takes_zc(const HardWare* hw) {
+	if (!hw) return 0;
+	switch (hw->id) {
+		case HW_PENT: case HW_P1024: case HW_SCORP: case HW_SCORPTP:
+			return 1;
+	}
+	return 0;
+}
+
+int comp_has_sd(const Computer* comp) {
+	if (!comp) return 0;
+	return hw_has_sd(comp->hw) || comp->zc->on;
+}
+
 int hw_takes_divmmc(const HardWare* hw) {
 	if (!hw) return 0;
 	switch (hw->id) {

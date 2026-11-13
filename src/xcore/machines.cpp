@@ -253,6 +253,7 @@ static const struct {
 	{"saa", "sound"}, {"soundrive", "sound"}, {"beeper.mic", "sound"},
 	{"disk", "storage"}, {"ide", "storage"}, {"drives", "storage"},
 	{"divmmc", "storage"}, {"divmmc.ram", "storage"}, {"divmmc.eeprom", "storage"},
+	{"zcontroller", "storage"},
 	{"mouse", "input"}, {"mouse.wheel", "input"}, {"joy", "input"}, {"joy.buttons", "input"},
 	{"kbd.scantab", "input"},
 	{NULL, NULL}
@@ -393,6 +394,7 @@ static void mac_defaults(xMachine& mac) {
 	mac.divmmc = DIV_NONE;
 	mac.divmmcRam = 128;
 	mac.divmmcWr = 0;
+	mac.zc = 0;
 	mac.mouse = 0;
 	mac.mouseWheel = 0;
 	mac.joy = MAC_JOY_KEMPSTON;
@@ -471,6 +473,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "divmmc") mac.divmmc = mac_word(divTab, val, DIV_NONE, id);
 			else if (nam == "divmmc.ram") mac.divmmcRam = (arg.i > 128) ? 512 : 128;
 			else if (nam == "divmmc.eeprom") mac.divmmcWr = (val == "writable") ? 1 : 0;
+			else if (nam == "zcontroller") mac.zc = arg.b;
 		} else if (ln.sect == "input") {
 			if (nam == "mouse") mac.mouse = arg.b;
 			else if (nam == "mouse.wheel") mac.mouseWheel = arg.b;
@@ -1299,16 +1302,17 @@ static void mac_cold_ram(Computer* comp, const std::string& pat, int noise) {
 // A card into the slot: a folder is read only on a machine that has one
 void xm_sd_mount(const QString& path) {
 	Computer* comp = conf.zx;
-	if (hw_has_sd(comp->hw)) sdc_mount(comp->sdc, path);
+	if (comp_has_sd(comp)) sdc_mount(comp->sdc, path);
 	else sdc_mount_later(comp->sdc, path);
 }
 
 // A folder served as a card or a disk is read again: with the power off is when a
-// card comes out, gets files copied onto it and goes back in.
+// card comes out, gets files copied onto it and goes back in. One named while the
+// machine had no slot (a Z-Controller just put in) is read now, once.
 static void mac_reread_folders(Computer* comp) {
 	SDCard* cards[3] = {comp->sdc, comp->div->card[0], comp->div->card[1]};
 	for (int i = 0; i < 3; i++) {
-		if (cards[i]->vfat && (i || hw_has_sd(comp->hw))) sdc_remount(cards[i]);
+		if ((cards[i]->vfat || sdc_unread(cards[i])) && (i || comp_has_sd(comp))) sdc_remount(cards[i]);
 	}
 	if (comp->ide->master->vfat) ide_mount(comp->ide, IDE_MASTER, QString::fromLocal8Bit(comp->ide->master->image));
 	if (comp->ide->slave->vfat) ide_mount(comp->ide, IDE_SLAVE, QString::fromLocal8Bit(comp->ide->slave->image));
@@ -1398,7 +1402,8 @@ static void mac_from_def(const xMachine* mac) {
 	difSetDrives(comp->dif, mac->drives);
 	ide_set_type(comp->ide, mac->ide);
 	div_set_model(comp->div, hw_takes_divmmc(comp->hw) ? mac->divmmc : DIV_NONE, mac->divmmcRam >> 3);
-	comp_board_storage(comp);
+	comp->zc->on = (hw_takes_zc(comp->hw) && mac->zc) ? 1 : 0;
+	comp_board_storage(comp);		// a file that names both boards has the divMMC
 	comp->div->eeWrite = mac->divmmcWr;
 	comp->mouse->enable = mac->mouse;
 	comp->mouse->hasWheel = mac->mouseWheel;
@@ -1547,7 +1552,7 @@ bool xm_set(std::string id) {
 	// emulator, not of the machine, and it stays mounted across a switch. A
 	// folder served as a disk is re-read here, which is the other half of it.
 	ide_remount(conf.zx->ide);
-	if (hw_has_sd(conf.zx->hw)) sdc_remount(conf.zx->sdc);	// the others leave it as it is
+	if (comp_has_sd(conf.zx)) sdc_remount(conf.zx->sdc);	// the others leave it as it is
 	sdc_remount(conf.zx->div->card[0]);
 	sdc_remount(conf.zx->div->card[1]);
 	xm_next_card();
@@ -1647,6 +1652,8 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 		mac_put(out, "divmmc.eeprom", std::string(comp->div->eeWrite ? "writable" : "protected"),
 			std::string(mac->divmmcWr ? "writable" : "protected"));
 	}
+	if (hw_takes_zc(comp->hw))
+		mac_put_yn(out, "zcontroller", comp->zc->on, mac->zc);
 	mac_put_yn(out, "mouse", comp->mouse->enable, mac->mouse);
 	mac_put_yn(out, "mouse.wheel", comp->mouse->hasWheel, mac->mouseWheel);
 	int joy = (comp->joy->type != XJ_KEMPSTON) ? MAC_JOY_NONE : comp->joy->extbuttons ? MAC_JOY_KEMPSTON8 : MAC_JOY_KEMPSTON;

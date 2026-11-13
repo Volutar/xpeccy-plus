@@ -27,9 +27,9 @@ the hardware it copies. A divMMC can be added to the Sinclair models and the Pen
 | ZX Spectrum 128K, +2, +2A | - | - | divMMC |
 | ZX Spectrum +3 | +3 drives | - | divMMC |
 | ZX Spectrum Next | - | - | SD card, divMMC built in |
-| Pentagon, Pentagon 1024 SL | Beta Disk | - | divMMC |
-| Scorpion ZS 256 | Beta Disk | - | |
-| Scorpion ZS 256 Turbo+ | Beta Disk | SMUC | |
+| Pentagon, Pentagon 1024 SL | Beta Disk | - | divMMC or Z-Controller |
+| Scorpion ZS 256 | Beta Disk | - | Z-Controller |
+| Scorpion ZS 256 Turbo+ | Beta Disk | SMUC | Z-Controller |
 | ATM Turbo 2+ | Beta Disk | ATM Turbo | |
 | Profi v3 | Beta Disk | - | |
 | Profi v5 | Beta Disk | Profi | |
