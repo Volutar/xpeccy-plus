@@ -15,6 +15,13 @@ before that point is upstream's history and is not repeated here.
   The Scorpion's ProfROM 4.xx.38 and later finds the card and reads it in its navigator,
   FATALL copies files to and from it.
 
+### Changed
+
+- **ROM labels of the 128K and +2**: the +2 editor ROM has nearly every name of the 128K's
+  (1070, was 757), the address tables of both show as `DW` with names, and the 128K's keypad
+  and TV tuner code is named as in the disassembly. *(thanks to Paul Farrow for his Spectrum
+  128 ROM disassemblies)*
+
 ## 2026.10.1 - 2026-11-13
 
 ### Added

@@ -233,8 +233,10 @@ files the emulator reads when it starts, not built into it, each under the terms
 source. `48.labels`, the 48K BASIC's, comes from [The Complete Spectrum ROM
 Disassembly](https://github.com/skoolkid/rom) by Richard Dymond, under CC BY-SA 3.0. The
 names and data ranges of the 128K and +2A/+3 ROMs come from the ROM annotations of
-[Klive IDE](https://github.com/Dotneteer/kliveide) by Istvan Novak, under the MIT license.
-TR-DOS's come from [TR-DOS Disassembled](https://github.com/programandala-net/tr-dos) by
+[Klive IDE](https://github.com/Dotneteer/kliveide) by Istvan Novak, under the MIT license;
+the data ranges of the 128K and +2, the +2's names and the 128K's keypad and TV tuner code
+from the [Spectrum 128 ROM disassemblies](http://www.fruitcake.plus.com/Sinclair/Spectrum128/ROMDisassembly/)
+by Paul Farrow, used with his permission. TR-DOS's come from [TR-DOS Disassembled](https://github.com/programandala-net/tr-dos) by
 Marcos Cruz, used with his permission. Sources and terms of every list:
 [`config/labels/README.md`](config/labels/README.md).
 
