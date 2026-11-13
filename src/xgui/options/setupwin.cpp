@@ -1272,6 +1272,7 @@ void SetupWin::fillPages() {
 	sdrvBox->setCurrentIndex(sdrvBox->findData(comp->sdrv->type));
 
 	saaBox->setCurrentIndex(comp->saa->enabled ? 1 : 0);
+	clockBox->setCurrentIndex(comp->flgGLUK ? MAC_CLOCK_GLUK : MAC_CLOCK_NONE);
 
 	ui.senbox->setChecked(conf.snd.enabled);
 	ui.dcbox->setChecked(conf.snd.vol.dc);
@@ -1527,6 +1528,7 @@ void SetupWin::applyMachine() {
 	if (msz != shown.mem) xm_set_ram(msz);
 	if ((msz != shown.mem) || (frq != shown.cpu)) compSetBaseFrq(comp, frq);
 	if (!own) xm_turbo_set(comp, getRFSData(cbCpuTurbo).toStdString());
+	comp->flgGLUK = xm_gluk_fitted(comp, xm_find(conf.macId), clockBox->currentIndex());
 	if (ui.sldSpeed->value() != xspeed_get())
 		xspeed_set(ui.sldSpeed->value());
 	if (!own) comp->flgEM1 = ui.scrpwait->isChecked();
@@ -2431,6 +2433,10 @@ void SetupWin::buildDevices() {
 
 	grid = devGroup(cols, 1, 1, ":/images/grp-board.png", tr("Board"));
 	devRow(grid, tr("Turbo"), cbCpuTurbo, NULL, NULL);
+	clockBox = devCombo(QStringList() << tr("None") << tr("Gluk"));	// MAC_CLOCK_*
+	btn = devRow(grid, tr("Clock"), clockBox, NULL, NULL);
+	clockRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << clockBox << btn;
+	clockRow[0]->setToolTip(tr("Mr Gluk's clock on ports #EFF7, #DFF7, #BFF7. It tells your computer's time"));
 	finishGroups(cols);
 	qobject_cast<QLabel*>(divRow[0])->setText(tr("divMMC"));
 
@@ -2833,6 +2839,7 @@ void SetupWin::showDevRows() {
 	foreach(QWidget* w, divRow) w->setVisible(hw_takes_divmmc(conf.zx->hw));
 	foreach(QWidget* w, slotRow) w->setVisible(slot);
 	foreach(QWidget* w, kbdRow) w->setVisible(kbd);
+	foreach(QWidget* w, clockRow) w->setVisible(hw_takes_gluk(conf.zx->hw));
 	showDriveRows();
 	showBoardStorage();
 	// the Next sets itself up, by its nextregs: its own groups in place of the usual
@@ -2881,6 +2888,8 @@ void SetupWin::showBoardStorage() {
 	diskTypeBox->setToolTip(board ? out : (bi & MAC_BI_DISK) ? fixed : QString());
 	hiface->setEnabled(!board && !(bi & MAC_BI_IDE));
 	hiface->setToolTip(board ? out : (bi & MAC_BI_IDE) ? fixed : QString());
+	clockBox->setEnabled(!(bi & MAC_BI_CLOCK));
+	clockBox->setToolTip((bi & MAC_BI_CLOCK) ? fixed : QString());
 	// the board on takes the disk controllers out (comp_board_storage): its name marks it
 	QLabel* divName = qobject_cast<QLabel*>(divRow.value(0));
 	if (divName) divName->setText(board ? tr("divMMC (!)") : tr("divMMC"));

@@ -88,8 +88,8 @@ class DebugWin : public QMainWindow {
 		void heatToggle();
 		void updateStyle();
 		void showNumFmt();
-	private:
 		void machinePanels();
+	private:
 		void toggleNumFmt();
 		unsigned block:1;
 		cpuCore* curCpuCore;

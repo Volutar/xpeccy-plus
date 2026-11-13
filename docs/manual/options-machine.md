@@ -52,6 +52,7 @@ Esc) puts back what it showed when it opened.
 | | **General Sound** | **None**, **Original** or **NeoGS** (see [General Sound](#general-sound)); its ROM in its window |
 | | **SAA1099** | **Off** or **On** |
 | **Board** | **Turbo** | the turbo steps: **x1 (no turbo)**, **x1, x2** or **x1, x2, x4** |
+| | **Clock** | Pentagon and Pentagon 1024 SL only: **None** or **Gluk**, the clock chip Gluk Reset Service shows (see [The Gluk clock](#the-gluk-clock)); on the Pentagon 1024 SL it is part of the board |
 | | **ESP UART** | ZX Spectrum Next only: **Not connected**, **ESP-01 (emulated)** - the Wi-Fi module with Espressif's AT firmware 1.7.6, on this computer's network - or a serial port of this computer with a real module on it. In its window, **Server on the network** lets other computers reach a server the module opens, and a UDP link's own port; off, only this computer reaches the server, at 127.0.0.1, and a UDP link hears only whom it sent to. On, Windows asks once whether to let Xpeccy+ through its firewall |
 | | **Pi UART** | ZX Spectrum Next only: a serial port of this computer for the Pi's UART |
 
@@ -260,6 +261,18 @@ The {icon}`settings` gear opens **Machine: General Sound**:
 A sound chip with six voices, found on some sound cards for the Spectrum. **On** puts it
 in the machine.
 
+## The Gluk clock
+
+```{index} Gluk clock, clock chip; Gluk, Gluk Reset Service; clock
+```
+
+A clock chip that Pentagon owners added to their boards, made for Gluk Reset Service, the
+service ROM of the Pentagons. The Pentagon 1024 SL has it on the board; on the Pentagon set
+**Clock** to **Gluk** to fit it. Gluk then shows the time and date in its menu, and a reset
+to **Service** with **S** held down opens its CMOS Setup. The time is your computer's.
+Gluk keeps its own settings in the chip, such as the drive and the turbo (see
+[Turbo Mode](machines.md#turbo-mode)).
+
 ## Your own machines
 
 ```{index} machine; your own, Save machine, Restore machine, Delete this machine, machines folder
@@ -269,8 +282,8 @@ A change you make to a machine stays with that machine. It is saved when you app
 when you switch to another machine, so when you come back to that machine, you find it as
 you left it. Each machine keeps its own: memory, the ROM set and the marked ROM, base clock,
 turbo steps, the **Advanced settings**, and its devices - disk interface and number of
-drives, hard disk interface, PSG, DAC, General Sound, SAA1099, joystick, mouse and PC
-keyboard. The other settings on the page, such as the tape settings, are the same for every
+drives, hard disk interface, PSG, DAC, General Sound, SAA1099, clock, joystick, mouse and
+PC keyboard. The other settings on the page, such as the tape settings, are the same for every
 machine.
 
 A built-in machine you have changed gets an asterisk after its name. It still gets the

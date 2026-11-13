@@ -90,7 +90,8 @@ emulator passes that check - which makes it a better image to ship and a useful 
 | --- | --- | --- | --- | --- |
 | `trdos.rom` | Beta Disk / TR-DOS 5.03 | Technology Research Ltd (UK) | proprietary, holder long gone | last official release, used by the Sinclair profiles; shipped by Fuse and ZEsarUX as well, `0da70a5d2a0e733398e005b96b7e4ba6` |
 | `trdos504t.rom` | Beta Disk / TR-DOS 5.04T | Technology Research Ltd + unknown patch authors | as above | the version the clones actually shipped with, used by the Pentagon profiles, `b4c9634312b796063015450daef13dfa` |
-| `gluck.rom` | Pentagon service ROM | Gluck service ROM authors | unknown | `d5869034604dbfd2c1d54170e874fd0a` |
+| `gluck.rom` | Pentagon service ROM | Gluck service ROM authors | unknown | Mr Gluk Reset Service 6.3R, the Pentagons' until 2026.11; it stays for a config that names it, `d5869034604dbfd2c1d54170e874fd0a` |
+| `gluk661.rom` | Pentagon service ROM | Mr Gluk Reset Service 6.61 (10 Jan 2010): Renat Mamedov (Mr Gluk), Roman Gavrilov (Reanimator), Dmitry Bystrov (Alone Coder) | unknown, published with its sources | `glukpen.rom` of Alone Coder's `GLUK661.rar` (alonecoder.nedopc.com/zx), the same file as UnrealSpeccy's `glukpen.rom`; used by the Pentagon profiles, `412f3f3a655334ca2777709a168051f6` |
 | `sgen.rom` | ATM Turbo 2+, ZX Evo | ATM / General Sound authors | unknown | 2K character generator for the text mode, `bd4e0f6f9177f38a71f081882ba3c454` |
 | `gs104.rom` | General Sound 1.04 | General Sound authors | unknown | `6cb34f369d32b2788bd631937b1cf3eb` |
 | `gs105a.rom` | General Sound 1.05a | General Sound authors | unknown | `1801e94780ad2a914b070b7128d86c39` |

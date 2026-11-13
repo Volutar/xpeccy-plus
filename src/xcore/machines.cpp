@@ -128,6 +128,10 @@ static xMacWord scanTab[] = {
 	{"none", 0}, {"xt", KBD_XT}, {"at", KBD_AT}, {"ps2", KBD_PS2}, {NULL, 0}
 };
 
+static xMacWord clockTab[] = {
+	{"none", MAC_CLOCK_NONE}, {"gluk", MAC_CLOCK_GLUK}, {NULL, 0}
+};
+
 static xMacWord resetTab[] = {
 	{"basic128", RES_128}, {"basic48", RES_48},
 	{"dos", RES_DOS}, {"shadow", RES_SHADOW}, {NULL, 0}
@@ -240,6 +244,7 @@ static const struct {
 	{"memory", "machine"}, {"ram.cold", "machine"}, {"ram.noise", "machine"},
 	{"reset", "machine"}, {"contio", "machine"}, {"issue", "machine"}, {"ear.rc", "machine"},
 	{"contmem", "machine"}, {"scrp.wait", "machine"}, {"builtin", "machine"}, {"snapshot", "machine"},
+	{"clock", "machine"},
 	{"geometry", "video"}, {"contPattern", "video"}, {"earlyTiming", "video"},
 	{"4t-border", "video"}, {"ULAplus", "video"}, {"DDpal", "video"},
 	{"snow", "video"}, {"snow.crash", "video"}, {"floatbus", "video"}, {"border.min", "video"},
@@ -341,6 +346,12 @@ void xm_turbo_step(Computer* comp, int idx) {
 	compSetHwTurbo(comp, comp->turboStep);
 }
 
+// a board that takes it, picked or on the board
+bool xm_gluk_fitted(Computer* comp, const xMachine* mac, int clock) {
+	bool board = mac && (mac->builtin & MAC_BI_CLOCK);
+	return hw_takes_gluk(comp->hw) && ((clock == MAC_CLOCK_GLUK) || board);
+}
+
 void xm_turbo_set(Computer* comp, std::string src) {
 	if (!comp) return;
 	comp->turboCount = mac_turbo_tab(src, comp->turboTab);
@@ -355,6 +366,7 @@ static void mac_defaults(xMachine& mac) {
 	mac.turboSteps = "1";
 	mac.builtin = 0;
 	mac.resbank = RES_128;
+	mac.clock = MAC_CLOCK_NONE;
 	mac.earback = EAR_ISSUE3;
 	mac.earrc = 0;
 	mac.contio = 0;
@@ -418,10 +430,12 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 				foreach(QString w, QString::fromStdString(val).split(QRegularExpression("[ ,]+"), X_SkipEmptyParts)) {
 					if (w == "disk") mac.builtin |= MAC_BI_DISK;
 					else if (w == "ide") mac.builtin |= MAC_BI_IDE;
+					else if (w == "clock") mac.builtin |= MAC_BI_CLOCK;
 					else xlog(XLG_CONF, XLL_WARN, "machine %s: unknown builtin '%s'", id, w.toLocal8Bit().data());
 				}
 			}
 			else if (nam == "reset") mac.resbank = mac_word(resetTab, val, RES_128, id);
+			else if (nam == "clock") mac.clock = mac_word(clockTab, val, MAC_CLOCK_NONE, id);
 			else if (nam == "issue") mac.earback = mac_word(earTab, val, EAR_ISSUE3, id);
 			else if (nam == "ear.rc") mac.earrc = arg.b;
 			else if (nam == "contio") mac.contio = arg.b;
@@ -1358,6 +1372,7 @@ static void mac_from_def(const xMachine* mac) {
 	xm_set_ram(mac_ram_size(mac->memory, comp->hw->mask));
 	mac_cold_ram(comp, mac->ramCold, mac->ramNoise);
 	comp->resbank = mac->resbank;
+	comp->flgGLUK = xm_gluk_fitted(comp, mac, mac->clock);
 	comp->snapModel = mac->snapModel;
 	comp->earback = mac->earback;
 	comp->earRC = mac->earrc;
@@ -1592,6 +1607,9 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put(out, "cpu.turbo", mac_turbo_str(comp->turboTab, comp->turboCount), mac->turboSteps);
 	mac_put(out, "memory", mac_ram_kb(macRam ? macRam : comp->mem->ramSize, comp->hw->mask), mac->memory);
 	mac_put(out, "reset", mac_word_name(resetTab, comp->resbank), mac_word_name(resetTab, mac->resbank));
+	if (hw_takes_gluk(comp->hw) && !(mac->builtin & MAC_BI_CLOCK))	// one on the board is no choice
+		mac_put(out, "clock", mac_word_name(clockTab, comp->flgGLUK ? MAC_CLOCK_GLUK : MAC_CLOCK_NONE),
+			mac_word_name(clockTab, mac->clock));
 	mac_put(out, "issue", mac_word_name(earTab, comp->earback), mac_word_name(earTab, mac->earback));
 	mac_put_yn(out, "ear.rc", comp->earRC, mac->earrc);
 	mac_put_yn(out, "contio", comp->flgCNTI, mac->contio);

@@ -128,6 +128,7 @@ typedef struct {
 #define flgBRKMEM sysflag[21]		// a memory breakpoint may be set: 0 lets the core skip the maps
 #define flgBOOT	sysflag[22]		// hw->boot is due before the next instruction
 #define flgBRKIO sysflag[23]		// a port breakpoint is set
+#define flgGLUK	sysflag[24]		// the Gluk clock is fitted (Pentagon; the P1024 has it on board)
 
 #define PWATCH_MAX	16		// ports the debugger can watch at once
 
@@ -819,6 +820,7 @@ Computer* compCreate();
 void comp_set_identity(Computer*, const char*, int, int);
 void compDestroy(Computer*);
 void compReset(Computer*,int);
+int comp_reset_bank(Computer*);		// the RES_* a plain reset lands in
 void compUserReset(Computer*,int);
 int compExec(Computer*);
 int comp_peek(Computer*, int, int, xAdr*);

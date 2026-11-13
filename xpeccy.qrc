@@ -72,6 +72,8 @@
         <file>res/machines/zxplus3.conf</file>
         <file>res/machines/zxnext.conf</file>
         <file>res/nvram/evo-tsconf.cmos</file>
+        <file>res/nvram/pent.cmos</file>
+        <file>res/nvram/pent1024.cmos</file>
         <file>images/cd.png</file>
         <file>images/clock.png</file>
         <file>images/hdd.png</file>

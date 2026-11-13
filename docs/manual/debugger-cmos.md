@@ -13,7 +13,8 @@ number at the start of a row is the address of its first byte. It is on a tab be
 **DUMP**, and only on a machine that has a clock chip:
 
 - **ZX Evolution (BaseConf)** and **ZX Evolution (TSConf)**;
-- **Pentagon 1024 SL**;
+- **Pentagon 1024 SL**, and the **Pentagon** with the Gluk clock fitted (see
+  [The Gluk clock](options-machine.md#the-gluk-clock));
 - **Profi v5**;
 - any machine with the **SMUC** hard disk interface, such as the
   **Scorpion ZS 256 Turbo+**.

@@ -844,6 +844,7 @@ int main(int ac,char** av) {
 	app.connect(&optw, SIGNAL(s_apply()), &app, SLOT(d_style()));
 	app.connect(&optw, SIGNAL(s_apply()), &dbgw, SLOT(updateStyle()));	// after d_style: the style sheet resets fonts
 	app.connect(&optw, SIGNAL(s_apply()), &dbgw, SLOT(showNumFmt()));
+	app.connect(&optw, SIGNAL(s_apply()), &dbgw, SLOT(machinePanels()));	// a clock or a SMUC put in or taken out
 	app.connect(&optw, SIGNAL(s_apply()), &wutw, SLOT(updateStyle()));
 	app.connect(&optw, SIGNAL(s_prf_changed()), &mwin, SLOT(onPrfChange()));
 	app.connect(&optw, SIGNAL(s_prf_changed()), &dbgw, SLOT(onPrfChange()));

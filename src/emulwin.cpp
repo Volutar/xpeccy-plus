@@ -3818,7 +3818,7 @@ void MainWin::fillUserMenu() {
 	foreach(int res, starts) {
 		act = resMenu->addAction(xm_reset_name(res));
 		act->setData(res);
-		if (comp && (res == comp->resbank)) {
+		if (comp && (res == comp_reset_bank(comp))) {
 			act->setText(key_text(act->text(), XCUT_RESET));	// the plain reset, as a click on Reset
 			QFont fnt = act->font();
 			fnt.setBold(true);
