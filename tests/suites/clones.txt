@@ -36,7 +36,7 @@ smuc_scorptp    scorptp   boot  600   300                                       
 smuchdd_scorptp scorptp   boot  800   300                                           keys:300:nmi,450:h
 # ProfROM 4.44: 128 BASIC, the NMI button, the monitor's main menu, S its Set Up (the tape
 # trap must not take #04D0 of ROM plane 1, where the monitor runs)
-prof444_scorptp scorptp   boot  1350  100                                           romfile:zc/ProfRomZS256_v4s.rom mac:rom.rom0=ProfRomZS256_v4s.rom keys:880:C6,900:E,1300:nmi,1400:s
+prof444_scorptp scorptp   boot  1350  100                                           keys:880:C6,900:E,1300:nmi,1400:s
 boot_atm        atm2      boot  0     400
 dwot_atm        atm2      auto  3000  300     disk/dwot.trd
 stag_atm        atm2      auto  3000  300     disk/zxstgdak.trd
