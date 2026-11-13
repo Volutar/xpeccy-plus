@@ -9,6 +9,8 @@ before that point is upstream's history and is not repeated here.
 
 ## Unreleased
 
+## 2026.10.1 - 2026-11-13
+
 ### Added
 
 - **The Gluk clock on the Pentagon** (Options > Machine > Clock): Gluk Reset Service shows the
