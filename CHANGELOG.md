@@ -22,6 +22,14 @@ before that point is upstream's history and is not repeated here.
   and TV tuner code is named as in the disassembly. *(thanks to Paul Farrow for his Spectrum
   128 ROM disassemblies)*
 
+- **The Scorpion ZS 256 Turbo+ comes with ProfROM 4.44** (LW's, the SMUC build), with its
+  navigator, FAT32 and SD card support. ProfROM 4.01 stays in the ROM folder.
+
+### Fixed
+
+- **ProfROM 4.44's shadow monitor opens on the NMI button** instead of starting over and over
+  with fast tape loading on.
+
 ## 2026.10.1 - 2026-11-13
 
 ### Added
