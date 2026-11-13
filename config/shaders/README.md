@@ -1,6 +1,7 @@
 # Bundled shaders
 
-GLSL post-processing filters for the OpenGL build. Pick one in Options - Video, or set
+GLSL post-processing filters, drawn through OpenGL: none with `--no-gl` or without an
+OpenGL 3.3 driver (OpenGL ES 3.0). Pick one in Options - Video, or set
 `shader = <file>` in `config/config.conf`. The bundled default is `tvline-nocurve-light.txt`.
 An empty `shader =` turns filtering off.
 

@@ -121,9 +121,6 @@ jobs:
             -DCMAKE_PREFIX_PATH="$QT_DIR" \
             -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_FLOOR" \
             -DQTVERSION=6 \
-            -DUSEOPENGL=1 \
-            -DUSEQTNETWORK=1 \
-            -DSDL1BUILD=0 \
             -DXPACKAGE=macos-arm64
 
       - name: Build

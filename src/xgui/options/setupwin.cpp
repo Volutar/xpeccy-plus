@@ -138,7 +138,6 @@ void fill_shader_list(QComboBox* box) {
 	QStringList lst = xres_list("shaders", QStringList() << "*.txt");
 	box->clear();
 	box->addItem("None", 0);
-#if defined(USEOPENGL)
 	if (conf.vid.shd_support) {
 		foreach(QString nam, lst) {
 			box->addItem(nam, 1);
@@ -147,9 +146,6 @@ void fill_shader_list(QComboBox* box) {
 		if (box->currentIndex() < 0)
 			box->setCurrentIndex(0);
 	}
-#else
-	box->setCurrentIndex(0);
-#endif
 }
 
 /*
@@ -606,13 +602,8 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	cbCpuTurbo->addItem(QString::fromUtf8("×1, ×2"), "1,2");
 	cbCpuTurbo->addItem(QString::fromUtf8("×1, ×2, ×4"), "1,2,4");
 
-#if defined(USEOPENGL)
 //	ui.cbScanlines->setVisible(false);
 	fill_shader_list(ui.cbShader);
-#else
-	ui.labShader->setVisible(false);
-	ui.cbShader->setVisible(false);
-#endif
 	fillPalettes();
 	paleditor = new xPalEditor(this);
 	paleditor->setModal(true);

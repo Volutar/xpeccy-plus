@@ -55,9 +55,6 @@ cmake -S "$SRC_DIR" -B "$BUILD_DIR" \
 	-DCMAKE_BUILD_TYPE=Release \
 	-DXRELEASE="$([ -n "$RELEASE" ] && echo ON || echo OFF)" \
 	-DQTVERSION=5 \
-	-DUSEOPENGL=1 \
-	-DUSEQTNETWORK=1 \
-	-DSDL1BUILD=0 \
 	-DXPACKAGE=linux-x86_64 \
 	-DCMAKE_INSTALL_PREFIX=/usr
 

@@ -14,10 +14,8 @@
 
 struct xMount;
 
-#ifdef USENETWORK
 #include <QTcpServer>
 #include <QTcpSocket>
-#endif
 
 #include <SDL.h>
 
@@ -61,13 +59,7 @@ class xBarFilter;
 #define STICKY_KEY 1
 
 inline qreal widgetDpr(const QWidget* w) {
-#if QT_VERSION >= QT_VERSION_CHECK(5,6,0)
 	return w->devicePixelRatioF();
-#elif QT_VERSION >= QT_VERSION_CHECK(5,0,0)
-	return w->devicePixelRatio();
-#else
-	return 1.0;
-#endif
 }
 
 enum {
@@ -110,20 +102,10 @@ typedef struct {
 	QString imgName;
 } xLed;
 
-// QOpenGLWidget since Qt5.4
-
-#define BLOCKGL 0
-#define USELEGACYGL 0
-#define ISLEGACYGL ((QT_VERSION < QT_VERSION_CHECK(5,4,0)) || (USELEGACYGL && (QT_VERSION < QT_VERSION_CHECK(6,0,0))))
-
-#ifdef USEOPENGL
-	#include <QtOpenGL>
-	#if !ISLEGACYGL
-		#include <QOpenGLWidget>
-		#include <QOpenGLBuffer>
-		#include <QOpenGLVertexArrayObject>
-	#endif
-#endif
+#include <QtOpenGL>
+#include <QOpenGLWidget>
+#include <QOpenGLBuffer>
+#include <QOpenGLVertexArrayObject>
 
 // where the image named in the title is (drives are 0..3, the divMMC's cards 5..6)
 #define	MEDIA_TAPE	4
@@ -133,18 +115,13 @@ typedef struct {
 
 class MainWin;
 
-#if defined(USEOPENGL) && !BLOCKGL
 // Whether the picture can go through OpenGL here; why not, when it cannot
 bool gl_probe(QString* why);
 
 // The picture through OpenGL: a child that covers MainWin and only draws.
 // Keys and the mouse go past it to MainWin. Made only when gl_probe() says
 // yes - with no context a GL widget takes the whole window down.
-#if ISLEGACYGL
-class xGLView : public QGLWidget {
-#else
 class xGLView : public QOpenGLWidget {
-#endif
 	public:
 		xGLView(MainWin*);
 	protected:
@@ -155,13 +132,8 @@ class xGLView : public QOpenGLWidget {
 	private:
 		MainWin* mw;
 };
-#endif
 
-#if defined(USEOPENGL) && !BLOCKGL && !ISLEGACYGL
 class MainWin : public QWidget, protected QOpenGLFunctions {
-#else
-class MainWin : public QWidget {
-#endif
 	Q_OBJECT
 	friend class xGLView;
 	public:
@@ -430,10 +402,8 @@ class MainWin : public QWidget {
 		QImage alphabet;
 		void drawText(QPainter*, int, int, const char*);
 
-#ifdef USENETWORK
 		QTcpServer srv;
 		QList<QTcpSocket*> clients;
-#endif
 
 		int msgTimer;
 		QString msg;
@@ -469,10 +439,8 @@ class MainWin : public QWidget {
 		void mapJoystick(xGamepad*, Computer*, int, int, int);
 		void mapPress(Computer*, xJoyMapEntry);
 		void mapRelease(Computer*, xJoyMapEntry);
-#ifdef USENETWORK
 		void openServer();
 		void closeServer();
-#endif
 		QMenu* userMenu;
 		QMenu* bookmarkMenu;
 		QMenu* profileMenu;
@@ -685,7 +653,6 @@ class MainWin : public QWidget {
 		void timerEvent(QTimerEvent*) override;
 		void resizeEvent(QResizeEvent*) override;
 		void paintPlain(QPainter&);
-#if defined(USEOPENGL) && !BLOCKGL
 		xGLView* glw = nullptr;		// the picture through OpenGL; none: drawn here, plain
 		unsigned curtex:2;
 		GLuint texids[4];
@@ -695,12 +662,6 @@ class MainWin : public QWidget {
 		void resizeGL(int,int);
 		void paintGLView();
 		void cleanupGL();
-#if ISLEGACYGL
-		QGLContext* cont;
-		QGLShaderProgram prg;
-		QGLShader* vtx_shd;
-		QGLShader* frg_shd;
-#else
 		QOpenGLShaderProgram prg;
 		QOpenGLShader* vtx_shd;
 		QOpenGLShader* frg_shd;
@@ -720,6 +681,4 @@ class MainWin : public QWidget {
 		bool fillWanted();
 		void prepareFill();
 		void drawFill(const QRect* clip = nullptr);
-#endif
-#endif
 };

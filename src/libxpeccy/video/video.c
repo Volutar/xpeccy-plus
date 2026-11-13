@@ -7,11 +7,7 @@
 
 #include "video.h"
 
-#if defined(USEOPENGL)
 #define SCRBUF_SIZE	2048*768*4
-#else
-#define SCRBUF_SIZE	3700*2050*4
-#endif
 
 int bytesPerLine = 768;
 int greyScale = 0;

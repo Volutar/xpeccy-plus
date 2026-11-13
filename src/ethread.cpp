@@ -38,11 +38,7 @@ int sleepy = 1;
 // switches profile, hardware or romset: those rebuild the machine (and even
 // create it, profiles are initialized on first use), so the emulation must not
 // run at the same time. Recursive: the profile calls nest into each other.
-#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
 static QRecursiveMutex emuGuard;
-#else
-static QMutex emuGuard(QMutex::Recursive);
-#endif
 
 // Threads waiting for the lock. The emulation thread takes it back the moment it
 // lets go, and in fast mode it never sleeps in between, so a waiter it does not

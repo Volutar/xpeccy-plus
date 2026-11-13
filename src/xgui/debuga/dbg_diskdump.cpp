@@ -53,13 +53,8 @@ void xDiskDump::layoutColumns() {
 	int cw = dump_cell_width(fm);
 	int tw;
 // horizontalAdvance() since 5.11, before - width()
-#if (QT_VERSION >= QT_VERSION_CHECK(5,11,0))
 	w0 = fm.horizontalAdvance("00:00000") + 12;	// see the DisplayRole format: 02:#0040
 	tw = fm.horizontalAdvance("0");
-#else
-	w0 = fm.width("00:00000") + 12;
-	tw = fm.width("0");
-#endif
 	// the form asks for a wide minimum section, which would override the cell
 	// width the dumps agree on. setupUi applies it after the constructor, so
 	// it has to be lowered here

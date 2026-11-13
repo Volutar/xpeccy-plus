@@ -209,12 +209,8 @@ static QString host_line() {
 static QString sdl_line() {
 	SDL_version bld;
 	SDL_VERSION(&bld);
-#if SDL_MAJOR_VERSION >= 2
 	SDL_version run;
 	SDL_GetVersion(&run);
-#else
-	const SDL_version run = *SDL_Linked_Version();
-#endif
 	return QString("build %1.%2.%3, run %4.%5.%6")
 		.arg(bld.major).arg(bld.minor).arg(bld.patch)
 		.arg(run.major).arg(run.minor).arg(run.patch);

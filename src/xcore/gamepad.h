@@ -7,9 +7,7 @@
 #include <QKeySequence>
 #include <QStringList>
 #include <SDL_joystick.h>
-#if HAVESDL2
 #include <SDL_gamecontroller.h>
-#endif
 
 // joystick
 
@@ -270,9 +268,7 @@ class xGamepad : public QObject {
 		int mouseMs = 0;			// how long the mouse has been moving, for its speed
 		double axisLevel(const xJoyMapEntry&);	// how far an input is pushed, 0..1
 		SDL_Joystick* sjptr;
-#if HAVESDL2
 		SDL_GameController* scptr;
-#endif
 		void emitChanged(int, int, int);
 		bool rowOnDefaults(int);
 		QList<xJoyMapEntry> flatInputs(const QList<xJoyMapEntry>&);	// aliases opened up

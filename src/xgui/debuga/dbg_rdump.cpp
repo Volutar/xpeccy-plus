@@ -43,11 +43,7 @@ void xRDumpTable::resizeEvent(QResizeEvent* e) {
 	horizontalHeader()->setStretchLastSection(false);
 	// the name column carries "BC' (0000):", and the default section size above
 	// is far too narrow for that
-#if (QT_VERSION >= QT_VERSION_CHECK(5,11,0))
 	int w0 = fm.horizontalAdvance("BC' (00000):") + 12;	// five for the address in any form
-#else
-	int w0 = fm.width("BC' (0000):") + 12;
-#endif
 	setColumnWidth(0, w0);
 	int w = width();
 	if (w >= w0) {
