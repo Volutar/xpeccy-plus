@@ -204,8 +204,8 @@ so bank 0 is the 128 editor, 1 the 48 BASIC, and 2/3 the interface ROM.
 | ZX Spectrum +2 (ROM set of the 128K) | plus2-0.rom | plus2-1.rom | - | - |
 | ZX Spectrum +2A / +3 (v4.0) | plus3-0.rom | plus3-1.rom | plus3-2.rom | plus3-3.rom |
 | ZX Spectrum +3 (v4.1) | plus3-41.rom, 64K combined | | | |
-| Pentagon 128 | 128p-0.rom | 128p-1.rom | gluck.rom | trdos504t.rom |
-| Pentagon 128 (TR-DOS 5.03) | 128p-0.rom | 128p-1.rom | gluck.rom | trdos.rom |
+| Pentagon 128 | 128p-0.rom | 128p-1.rom | gluk661.rom | trdos504t.rom |
+| Pentagon 128 (TR-DOS 5.03) | 128p-0.rom | 128p-1.rom | gluk661.rom | trdos.rom |
 | Scorpion ZS 256 | scorpion295.rom (ROM 2.95), 64K combined | | | |
 | Scorpion ZS 256 Turbo+ | prof401.rom (ProfROM 4.01), 256K combined | | | |
 | Profi v3 | profi-kramis02.rom (JV "KRAMIS" V.02, TR-DOS 5.03), 64K combined | | | |
