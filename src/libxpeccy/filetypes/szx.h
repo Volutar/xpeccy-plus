@@ -96,9 +96,11 @@ enum {
 	SZN_AY = 16,
 	SZN_BETA = 32,
 	SZN_COVOX = 64,
-	SZN_DEVICE = 128	// one we do not emulate at all, switched on
+	SZN_DEVICE = 128,	// one we do not emulate at all, switched on
+	SZN_ZC = 256		// a Z-Controller (szx_ext.c's record ZC)
 };
 int szx_notes(void);		// SZN_* of the last load
+void szx_note(int);		// ...one more of them, as the load goes
 
 typedef struct szxBuf szxBuf;
 void szx_ext_save(szxBuf*, Computer*);

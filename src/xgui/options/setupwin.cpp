@@ -1641,11 +1641,8 @@ void SetupWin::applyMachine() {
 	if (divPower)
 		div_set_model(comp->div, divModel, divPages);
 	int zcOn = (board == SD_BOARD_ZC) ? 1 : 0;
-	if (zcOn != comp->zc->on) {
-		comp->zc->on = zcOn;
-		if (zcOn) sdc_remount(comp->sdc);	// the slot's card goes in with it
-		divPower = true;
-	}
+	bool zcSwap = (zcOn != comp->zc->on);	// done with the power off, below
+	if (zcSwap) divPower = true;
 	comp_board_storage(comp);
 	comp->div->eeWrite = divWrBox->isChecked() ? 1 : 0;
 	div_map(comp->div);
@@ -1656,6 +1653,12 @@ void SetupWin::applyMachine() {
 	setWatchPorts(comp, portwid->getPorts());
 	if (divPower) {
 		emu_lock();
+		if (zcSwap) {
+			comp->zc->on = zcOn;
+			// the slot's card goes in with it: one named while no slot was there is read
+			// now, a folder read before is read again by the power cycle
+			if (zcOn && sdc_unread(comp->sdc)) sdc_remount(comp->sdc);
+		}
 		xm_power_cycle();
 		emu_unlock();
 	}
@@ -2849,10 +2852,16 @@ void SetupWin::showDevRows() {
 	bool takesDiv = hw_takes_divmmc(conf.zx->hw);
 	bool takesZc = hw_takes_zc(conf.zx->hw);
 	foreach(QWidget* w, divRow) w->setVisible(takesDiv || takesZc);
+	// hidden from the list, and off, so the wheel and the keys pass them by too
 	QListView* boards = qobject_cast<QListView*>(divBox->view());
 	if (boards) {
 		boards->setRowHidden(SD_BOARD_DIVMMC, !takesDiv);
 		boards->setRowHidden(SD_BOARD_ZC, !takesZc);
+	}
+	QStandardItemModel* boardItems = qobject_cast<QStandardItemModel*>(divBox->model());
+	if (boardItems) {
+		boardItems->item(SD_BOARD_DIVMMC)->setEnabled(takesDiv);
+		boardItems->item(SD_BOARD_ZC)->setEnabled(takesZc);
 	}
 	QString divTip = takesDiv ? tr("Floppy and hard disk controllers are\nunavailable while divMMC is enabled") : QString();
 	divRow[0]->setToolTip(divTip);

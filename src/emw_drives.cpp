@@ -403,6 +403,8 @@ void MainWin::divToggle(bool ask) {
 		QString text = "Performs a Hard Reset. Memory contents are lost.";
 		if (on && ((comp->dif->cfg != DIF_NONE) || (comp->ide->cfg != IDE_NONE)))
 			text += "\nFloppy drives and hard disk are disabled while divMMC is on.";
+		if (on && comp->zc->on)
+			text += "\nThe Z-Controller is removed: one SD card board at a time.";
 		QMessageBox box(QMessageBox::Question, on ? "Switch divMMC on" : "Switch divMMC off",
 			text, QMessageBox::NoButton, this);
 		QPushButton* go = box.addButton(on ? "Switch On" : "Switch Off", QMessageBox::AcceptRole);

@@ -25,6 +25,7 @@ void zc_reset(ZCtrl* zc) {
 	zc->cfg = 0;
 	zc->tx = 0;
 	zc->rx = 0xff;
+	zc->lat = 0xff;
 	zc->spiEnd = 0;
 	if (zc->on) zc->card->cs = 0;
 }
@@ -49,12 +50,12 @@ static int zc_card_xfer(ZCtrl* zc, int mosi) {
 // the divMMC, an OUT then is lost and an IN reads the old byte and starts nothing.
 static int zc_spi(ZCtrl* zc, int out, int val) {
 	long long now = zc->ns(zc->host);
-	int res = zc->rx;
-	if (now < zc->spiEnd) return res;
+	if (now < zc->spiEnd) return zc->lat;
 	if (out) zc->tx = val & 0xff;
+	else zc->lat = zc->rx;
 	zc->rx = zc_card_xfer(zc, out ? zc->tx : ((zc->tx & 1) ? 0xff : 0x00)) & 0xff;
 	zc->spiEnd = now + ZC_SPI_NS;
-	return res;
+	return zc->lat;
 }
 
 int zc_out(ZCtrl* zc, int port, int val, int dos) {

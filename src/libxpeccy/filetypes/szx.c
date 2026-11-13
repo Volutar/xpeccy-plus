@@ -257,7 +257,7 @@ int szx_notes(void) {
 	return szx_noted;
 }
 
-static void szx_note(int n) {
+void szx_note(int n) {
 	szx_noted |= n;
 }
 

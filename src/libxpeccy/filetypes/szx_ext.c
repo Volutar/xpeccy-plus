@@ -627,13 +627,17 @@ static const szxField fld_zc[] = {
 	FLD(ZCtrl, cfg),
 	FLD(ZCtrl, tx),
 	FLD(ZCtrl, rx),
+	FLD(ZCtrl, lat),
 	FLD(ZCtrl, spiEnd),
 	FLDEND
 };
 
 static void ext_zc(Computer* comp, const unsigned char* p, size_t n) {
 	ZCtrl* zc = comp->zc;
-	if (!zc->on) return;
+	if (!zc->on) {
+		szx_note(SZN_ZC);
+		return;
+	}
 	zc->spiEnd -= comp_ns(comp);
 	fld_get(zc, fld_zc, p, n);
 	zc->spiEnd += comp_ns(comp);

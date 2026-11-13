@@ -1284,6 +1284,7 @@ static void szx_warn() {
 		{SZN_BETA, "a Beta 128 disk interface"},
 		{SZN_COVOX, "a Covox"},
 		{SZN_DEVICE, "a device not emulated here (Interface 1, Multiface, SpecDrum...)"},
+		{SZN_ZC, "a Z-Controller (Options > Machine, SD card)"},
 		{0, NULL}
 	};
 	int notes = szx_notes();

@@ -29,6 +29,7 @@ typedef struct {
 	int cfg;		// #77 as written (b1..b0), cleared by the bus RESET
 	int tx;			// the transmit register: the last byte written to #57
 	int rx;			// what the last exchange got from the card
+	int lat;		// what an IN reads: taken from rx by the IN that started one
 	long long spiEnd;	// the exchange going on ends (ns)
 	SDCard* card;		// the slot's card (the machine's comp->sdc)
 	void* host;
