@@ -40,9 +40,10 @@ on, as a card fitted with the power off. Its card is the one in **Media > SD Car
 status bar's **SD** light is its light, and the setting is the machine's. A Pentagon takes a
 divMMC or a Z-Controller, not both.
 
-The ProfROM of the Scorpion, from version 4.xx.38 on, finds the card at power-on and reads
-it in its navigator: a FAT32 card, or a folder. FATALL by savelij copies files between the
-card and TR-DOS disks on any of these machines, from FAT16 or FAT32.
+The ProfROM of the Scorpion, from version 4.xx.38 on (the Turbo+ comes with 4.44), finds
+the card at power-on and reads it in its navigator: a FAT32 card, or a folder. FATALL by
+savelij copies files between the card and TR-DOS disks on any of these machines, from FAT16
+or FAT32.
 
 ## Hard disks
 

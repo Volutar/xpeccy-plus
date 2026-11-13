@@ -33,7 +33,7 @@ The machine list shows them in this order, in five groups.
 | **Pentagon** | 128 KB | Beta Disk | YM, Covox; Kempston mouse and joystick |
 | **Pentagon 1024 SL** | 1024 KB | Beta Disk | as the Pentagon; turbo x2, Gluk clock; starts Gluk Reset Service |
 | **Scorpion ZS 256** | 256 KB | Beta Disk | AY, Covox; Kempston mouse and joystick |
-| **Scorpion ZS 256 Turbo+** | 256 KB | Beta Disk | the Scorpion with the Turbo+ board: SMUC hard disk, turbo x2 |
+| **Scorpion ZS 256 Turbo+** | 256 KB | Beta Disk | the Scorpion with the Turbo+ board: SMUC hard disk, turbo x2, ProfROM 4.44 |
 | **ATM Turbo 2+** | 1024 KB | Beta Disk | YM, Covox; ATM hard disk, Kempston mouse and joystick, turbo x2 |
 | **Profi v3** | 512 KB | Beta Disk | version 3 board; AY, Covox; Kempston mouse and joystick, turbo x2 |
 | **Profi v5** | 1024 KB | Beta Disk | version 5 board; YM, Covox; Profi hard disk, DD palette, Kempston mouse and joystick, turbo x2 |

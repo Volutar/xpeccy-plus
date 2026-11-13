@@ -57,7 +57,8 @@ and with every emulator of them for decades.
 | `256s-3.rom` | Scorpion ZS 256 | Technology Research Ltd | grey | TR-DOS page of the set, `ce0723f9bc02f4948c15d3b3230ae831` |
 | `scorpion295.rom` | Scorpion ZS 256 | Scorpion / MOA | grey, given away by the maker | ROM 2.95 of 26.11.1994, 64K, CRC32 99F57CE1 (the image others call 2.94), `23add41c9c4a3f7cca845d3d5cf51367` |
 | `prof39f.rom` | Scorpion ZS 256 | ProfROM authors | grey | ProfROM 3.9f, 128K, `dcb8ebbe2d2f4c4afa58c43507987b9c` |
-| `prof401.rom` | Scorpion ZS 256 Turbo+ | MOA (Andrew Larchenko) / Scorpion | grey | ProfROM 4.01 of 13.07.1997, 256K, ROM disk "FirmWare BonusPak", CRC32 847A66E4, `b124c52cd462ce36d79086747115896f` |
+| `prof401.rom` | Scorpion ZS 256 Turbo+ | MOA (Andrew Larchenko) / Scorpion | grey | ProfROM 4.01 of 13.07.1997, 256K, ROM disk "FirmWare BonusPak", CRC32 847A66E4, the Turbo+'s ROM before 4.44, `b124c52cd462ce36d79086747115896f` |
+| `prof444.rom` | Scorpion ZS 256 Turbo+ | MOA (Andrew Larchenko), PLM (LW) | grey | ProfROM 4.44, LW's continuation of 4.01, build v4s (SMUC), 256K, CRC32 B1D7E4F7, `5153e80c2b0eb5fb5e96d0173e8dd060` |
 | `profi-kramis02.rom` | Profi v3 | JV "Kramis" / Kondor | grey | the v3 boards' own: BIOS JV "KRAMIS" V.02 of 10.1990 with TR-DOS 5.03, CRC32 77327F52, `720f23bec22581f37fb55bd7a928fde2` |
 | `profi-bios10.rom` | Profi v5 | Micco Software / Kondor | grey | ROM Bios 1.0 of 21.09.93, read off a Kondor 5.04 board; TR-DOS 5.04T, CRC32 10DA289A, `f4ab0dd91cd7d207879767d4fe5bf30e` |
 | `profi-bios20.rom` | Profi v5 | Micco Software / Kondor | grey | ROM Bios 2.0 of 17.04.94, TR-DOS 5.04T, CRC32 36F5F7BD, `02877e403f22d10d12ef0296ccb96f60` |
@@ -77,7 +78,11 @@ there by CRC). The `profi.rom` shipped before was V.02's BIOS page with someone'
 in place of the 5.03 the board came with.
 `prof401.rom` from <https://speccy4ever.speccy.org/_SC.htm>, the CRC MAME's `scorpiontb` lists;
 it is the last ProfROM MOA built for the real board (4.02 runs only in MOA's own emulator, and
-the 4.xx.0NN builds are a later community fork). The rest from the images that have circulated
+the 4.xx.0NN builds are a later community fork). `prof444.rom` is `ProfRomZS256_v4s.rom` of
+that fork's release 4.44 (`ProfRom_full.44.9643`); its author LW writes about it on zx-pk.ru
+(thread 34789) and in the ZS Scorpion chat. The release carries no licence text; the Turbo+
+board's own repository (github.com/romychs/Scorpion256TPlus, `ROM/LW`) ships the fork's
+earlier builds. The rest from the images that have circulated
 with these machines and with Xpeccy itself.
 
 `alf.rom` is the original firmware, not the patched one that also circulates: it checks

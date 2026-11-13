@@ -32,8 +32,10 @@ monitor_scorp   scorp     boot  800   300                                       
 boot_scorptp    scorptp   boot  0     400
 dwot_scorptp    scorptp   auto  3000  300     disk/dwot.trd
 stag_scorptp    scorptp   auto  3000  300     disk/zxstgdak.trd
-smuc_scorptp    scorptp   boot  600   300                                           keys:300:nmi
-smuchdd_scorptp scorptp   boot  800   300                                           keys:300:nmi,450:h
+# ProfROM 4.44: 128 BASIC, the NMI button, the monitor's main menu (the tape trap must not
+# take #04D0 of ROM plane 1, where the monitor runs), H its hard disk utility
+smuc_scorptp    scorptp   boot  1350  100                                           keys:880:C6,900:E,1300:nmi
+smuchdd_scorptp scorptp   boot  1450  100                                           keys:880:C6,900:E,1300:nmi,1400:h
 boot_atm        atm2      boot  0     400
 dwot_atm        atm2      auto  3000  300     disk/dwot.trd
 stag_atm        atm2      auto  3000  300     disk/zxstgdak.trd

@@ -207,7 +207,7 @@ so bank 0 is the 128 editor, 1 the 48 BASIC, and 2/3 the interface ROM.
 | Pentagon 128 | 128p-0.rom | 128p-1.rom | gluk661.rom | trdos504t.rom |
 | Pentagon 128 (TR-DOS 5.03) | 128p-0.rom | 128p-1.rom | gluk661.rom | trdos.rom |
 | Scorpion ZS 256 | scorpion295.rom (ROM 2.95), 64K combined | | | |
-| Scorpion ZS 256 Turbo+ | prof401.rom (ProfROM 4.01), 256K combined | | | |
+| Scorpion ZS 256 Turbo+ | prof444.rom (ProfROM 4.44, SMUC build), 256K combined | | | |
 | Profi v3 | profi-kramis02.rom (JV "KRAMIS" V.02, TR-DOS 5.03), 64K combined | | | |
 | Profi v5 | profi-bios20.rom (Micco ROM Bios 2.0), or profi-bios10.rom (1.0), 64K combined | | | |
 | ATM Turbo 2+ | atm2.rom, 64K combined | | | |
