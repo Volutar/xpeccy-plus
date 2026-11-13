@@ -162,7 +162,7 @@ static int xst_build(Computer* comp, xStateChunk* list) {
 		}
 	}
 	// a Z-Controller: its port, up to the card (the slot's, above)
-	if (comp->zc && comp->zc->on)
+	if (comp->zc->on)
 		ADD(comp->zc, offsetof(ZCtrl, card));
 
 	return n;

@@ -878,7 +878,7 @@ int comp_frame_ticks(Computer*);
 double comp_fps(Computer*);		// frames a second of emulated time
 void comp_set_frame_tick(Computer*, int);
 void comp_power_phase(Computer*);	// the frame position a machine is switched on at
-void comp_board_storage(Computer*);	// disks and hard disks out while a divMMC is on
+void comp_board_storage(Computer*);	// disks, hard disks and a Z-Controller out while a divMMC is on
 void comp_power_on(Computer*);		// the power comes on: before the reset that follows
 int comp_get_frame_tick(Computer*);
 

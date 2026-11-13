@@ -243,10 +243,6 @@ int zx_dev_wr(Computer* comp, int adr, int val) {
 	return 0;
 }
 
-int zx_zc_wr(Computer* comp, int adr, int val) {
-	return zc_out(comp->zc, adr, val, comp->flgDOS);
-}
-
 int zx_dev_rd(Computer* comp, int adr, int* ptr) {
 	if (zc_in(comp->zc, adr, ptr, comp->flgDOS)) return 1;
 	if (div_in(comp->div, adr, ptr)) return 1;

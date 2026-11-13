@@ -208,7 +208,7 @@ static xPort scrptpPortMap[] = {
 };
 
 static void sco_out(Computer* comp, int port, int val, xPort* map) {
-	int zc = zx_zc_wr(comp, port, val);
+	int zc = zc_out(comp->zc, port, val, comp->flgDOS);
 	difOut(comp->dif, port, val, comp->flgBDI);
 	zx_dev_wr(comp, port, val);
 	if (!zc) hwOut(map, comp, port, val, 1);

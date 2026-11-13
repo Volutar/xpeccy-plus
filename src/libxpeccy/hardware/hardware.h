@@ -259,9 +259,6 @@ void next_sprites(Computer*, nxSpriteView* out);	// all 128, as the sprite pass 
 // common IO
 
 int zx_dev_wr(Computer*, int, int);
-// a write a Z-Controller takes: 1 when its IORQGE keeps it from the board's own ports
-// (another card on the bus still sees it)
-int zx_zc_wr(Computer*, int, int);
 int zx_dev_rd(Computer*, int, int*);
 void zx_irq(Computer*, int);
 // a divMMC can sit on this machine's edge connector (the Sinclair models)

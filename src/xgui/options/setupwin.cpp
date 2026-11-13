@@ -1637,21 +1637,21 @@ void SetupWin::applyMachine() {
 	int board = sdBoard();
 	int divModel = (board == SD_BOARD_DIVMMC) ? DIV_MMC : DIV_NONE;
 	int divPages = divRamBox->currentIndex() ? DIV_PAGES_MAX : 16;
-	bool divPower = (divModel != comp->div->model) || (divModel && (divPages != comp->div->pages));
-	if (divPower)
+	bool boardPower = (divModel != comp->div->model) || (divModel && (divPages != comp->div->pages));
+	if (boardPower)
 		div_set_model(comp->div, divModel, divPages);
 	int zcOn = (board == SD_BOARD_ZC) ? 1 : 0;
-	bool zcSwap = (zcOn != comp->zc->on);	// done with the power off, below
-	if (zcSwap) divPower = true;
+	bool zcSwap = (zcOn != comp->zc->on);
+	if (zcSwap) boardPower = true;		// done with the power off, below
 	comp_board_storage(comp);
 	comp->div->eeWrite = divWrBox->isChecked() ? 1 : 0;
 	div_map(comp->div);
 	// a chip written outside the machine goes back in with the power off too
-	if (applyDivFirmware() && divModel) divPower = true;
+	if (applyDivFirmware() && divModel) boardPower = true;
 	fillDivFirmware();
 // debuga
 	setWatchPorts(comp, portwid->getPorts());
-	if (divPower) {
+	if (boardPower) {
 		emu_lock();
 		if (zcSwap) {
 			comp->zc->on = zcOn;
@@ -2911,7 +2911,7 @@ void SetupWin::showBoardStorage() {
 	int sd = sdBoard();
 	bool board = (sd == SD_BOARD_DIVMMC);
 	// the gear's sheet is the divMMC's: nothing to set up for a Z-Controller
-	if (divRow.size() > 2) divRow[2]->setEnabled(hw_takes_divmmc(conf.zx->hw) && (sd != SD_BOARD_ZC));
+	divRow[2]->setEnabled(hw_takes_divmmc(conf.zx->hw) && (sd != SD_BOARD_ZC));
 	QString fixed = tr("Built into this board");
 	QString out = tr("Unavailable while divMMC is enabled");
 	foreach(QWidget* w, diskRow) w->setEnabled(!board);

@@ -59,7 +59,7 @@ static xPort penPortMap[] = {
 };
 
 void penOut(Computer* comp, int port, int val) {
-	int zc = zx_zc_wr(comp, port, val);
+	int zc = zc_out(comp->zc, port, val, comp->flgDOS);	// the Gluk clock's #xFF7 would take #xx57 and #xx77 too
 	difOut(comp->dif, port, val, comp->flgBDI);
 	zx_dev_wr(comp, port, val);
 	if (!zc) hwOut(penPortMap, comp, port, val, 1);

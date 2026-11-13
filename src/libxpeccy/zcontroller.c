@@ -1,5 +1,4 @@
-// Z-Controller's SD port, after KOE's CPLD source (zcont.tdf) and its fitter
-// report (zcont.rpt); the names in the comments are the source's.
+// Z-Controller's SD port; names in the comments are zcont.tdf's
 
 #include "zcontroller.h"
 
@@ -41,13 +40,7 @@ static int zc_card_xfer(ZCtrl* zc, int mosi) {
 	return sdc_xfer(zc->card, mosi);
 }
 
-// An exchange starts as the I/O cycle ends and runs on the card's own clock; no
-// WAIT holds the CPU. An OUT loads sddatawr and sends it. An IN puts sddatard (what
-// the exchange before it got) on the bus and starts one with sddatawr as it was
-// left: bit 0 is never shifted, so 8 copies of the last written byte's bit 0 go
-// out (#FF after the odd byte every driver writes before it reads). What an access
-// that comes before the exchange has ended does is not designed for: here, as on
-// the divMMC, an OUT then is lost and an IN reads the old byte and starts nothing.
+// IN reads the last exchange and sends 8 x tx bit 0; before an exchange ends OUT is lost, IN reads the old byte
 static int zc_spi(ZCtrl* zc, int out, int val) {
 	long long now = zc->ns(zc->host);
 	if (now < zc->spiEnd) return zc->lat;
@@ -59,7 +52,7 @@ static int zc_spi(ZCtrl* zc, int out, int val) {
 }
 
 int zc_out(ZCtrl* zc, int port, int val, int dos) {
-	if (!zc || !zc->on) return 0;
+	if (!zc->on) return 0;
 	switch (zc_port(port, dos)) {
 		case 0x77: {
 			int was = zc->cfg;
@@ -77,13 +70,13 @@ int zc_out(ZCtrl* zc, int port, int val, int dos) {
 }
 
 int zc_in(ZCtrl* zc, int port, int* val, int dos) {
-	if (!zc || !zc->on) return 0;
+	if (!zc->on) return 0;
 	switch (zc_port(port, dos)) {
 		case 0x77: {
 			// b0 sdabsent and b1 readonly, the socket's switches; b7..b2 read 0
 			SDCard* sdc = zc->card;
 			int res = 0;
-			if (!sdc->image || sdc_unread(sdc)) res |= 1;
+			if (!sdc->file && !sdc->vfat) res |= 1;
 			if (sdc_protected(sdc)) res |= 2;
 			*val = res;
 			return 1;

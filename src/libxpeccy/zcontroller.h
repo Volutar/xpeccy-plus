@@ -1,14 +1,6 @@
 #pragma once
 
-// Z-Controller (Alexey Zhabin, KOE, 2007): a ZX-BUS card with a PS/2 keyboard and
-// mouse, a Nemo IDE port and an SD card slot. Only the SD part is here, after the
-// card's own CPLD source (zcont.tdf, "SPI Interface for ZX-Spectrum ver. 1.0 by
-// KOE") and its fitter report, from github.com/koe1234/Z-controller.
-//
-// Two ports, decoded by A7..A5, A1 and A0 alone: #77 the control (and any port
-// 011xxx11), #57 the data (010xxx11). They are on only while the bus's DOS/ is
-// high - with TR-DOS paged in they would be Beta Disk's #7F and #5F - and the card
-// holds IORQGE on them, which shuts the machine's own port decoders out.
+// Z-Controller's SD port: #77 control, #57 data; its IORQGE shuts the machine's own decoders out
 
 #ifdef __cplusplus
 extern "C" {

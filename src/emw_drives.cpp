@@ -418,7 +418,6 @@ void MainWin::divToggle(bool ask) {
 	}
 	emu_lock();
 	div_set_model(comp->div, on ? DIV_MMC : DIV_NONE, comp->div->pages);
-	if (on) comp->zc->on = 0;		// one SD board at a time
 	comp_board_storage(comp);
 	xm_power_cycle();
 	emu_unlock();

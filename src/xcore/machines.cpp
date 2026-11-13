@@ -1401,9 +1401,8 @@ static void mac_from_def(const xMachine* mac) {
 	difSetDrives(comp->dif, mac->drives);
 	ide_set_type(comp->ide, mac->ide);
 	div_set_model(comp->div, hw_takes_divmmc(comp->hw) ? mac->divmmc : DIV_NONE, mac->divmmcRam >> 3);
-	// one SD board at a time: a file that names both has the divMMC
-	comp->zc->on = (hw_takes_zc(comp->hw) && mac->zc && !comp->div->model) ? 1 : 0;
-	comp_board_storage(comp);
+	comp->zc->on = (hw_takes_zc(comp->hw) && mac->zc) ? 1 : 0;
+	comp_board_storage(comp);		// a file that names both boards has the divMMC
 	comp->div->eeWrite = mac->divmmcWr;
 	comp->mouse->enable = mac->mouse;
 	comp->mouse->hasWheel = mac->mouseWheel;

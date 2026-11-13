@@ -212,7 +212,7 @@ int hw_takes_zc(const HardWare* hw) {
 
 int comp_has_sd(const Computer* comp) {
 	if (!comp) return 0;
-	return hw_has_sd(comp->hw) || (comp->zc && comp->zc->on);
+	return hw_has_sd(comp->hw) || comp->zc->on;
 }
 
 int hw_takes_divmmc(const HardWare* hw) {
