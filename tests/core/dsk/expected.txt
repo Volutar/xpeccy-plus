@@ -154,3 +154,14 @@
   seek to 120: track register 120, head at 86
   seek to 60: track register 60, head at 43
   1 MB, not TR-DOS, saved: err 0, 1048576 bytes, as read: yes
+== trd-128/cut
+  C0000 TR-DOS: err 0, 128 cylinders, side-track 192 after the file blank: yes
+  seek to 120: track register 120, head at 120
+  write C120 H0 R1: status 00, 256 bytes
+  saved: err 0, 1048576 bytes, the file then zeros: yes
+  B0100: err 0, 89 cylinders, side-track 177 after the file blank: yes
+  saved: err 0, 729088 bytes, the file then zeros: yes
+  B1000: err 0, 89 cylinders, side-track 177 after the file blank: yes
+  saved: err 0, 729088 bytes, the file then zeros: yes
+  FF000: err 0, 128 cylinders, side-track 255 after the file blank: yes
+  saved: err 0, 1048576 bytes, the file then zeros: yes

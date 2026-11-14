@@ -615,12 +615,13 @@ static int write_file(const char* path, const unsigned char* d, size_t len) {
 	return n == len;
 }
 
-static size_t read_file(const char* path, unsigned char* d, size_t max) {
-	FILE* f = fopen(path, "rb");
-	if (!f) return 0;
-	size_t n = fread(d, 1, max, f);
-	fclose(f);
-	return n;
+// a saved file: its length, and whether it is d's first len bytes then zeros
+static int saved_as(const char* path, const unsigned char* d, long len, long* flen) {
+	unsigned char* b = read_all(path, flen);
+	int same = b && (*flen >= len) && !memcmp(b, d, len);
+	for (long i = len; same && (i < *flen); i++) same = !b[i];
+	free(b);
+	return same;
 }
 
 // the door closed on the disk, the head at 0
@@ -679,9 +680,9 @@ static void trd_wide(const char* tmp) {
 	snprintf(back, sizeof(back), "%s.back.trd", tmp);
 	snprintf(udi, sizeof(udi), "%s.udi", tmp);
 	unsigned char* img = malloc(0x100000);
-	unsigned char* got = malloc(0x100000);
 	unsigned char buf[256];
 	size_t len;
+	long flen;
 	int n;
 
 	printf("== trd-128\n");
@@ -699,9 +700,8 @@ static void trd_wide(const char* tmp) {
 	st = beta_sector(0xa0, 1, 16, buf, &n);
 	printf("  write C127 H1 R16: status %.2X, %d bytes\n", st, n);
 	err = trd_write(flp, back);
-	len = read_file(back, got, 0x100000);
-	printf("  saved as TRD: err %d, %d bytes, as written: %s\n", err, (int)len,
-	       ((len == 0x100000) && !memcmp(got, img, len)) ? "yes" : "no");
+	n = saved_as(back, img, 0x100000, &flen);
+	printf("  saved as TRD: err %d, %ld bytes, as written: %s\n", err, flen, n ? "yes" : "no");
 	unsigned char* u = udi_build(flp, &len);
 	printf("  UDI: last cylinder %d\n", u ? u[9] : -1);
 	if (u) write_file(udi, u, len);
@@ -766,6 +766,9 @@ static void trd_wide(const char* tmp) {
 	// a 640K TRD read into the same drive after a 1 MB one, as an open does
 	trd_read(flp, trd);
 	trd_wide_image(img, 160);
+	img[8 * 256 + 0xe2] = 100;
+	img[8 * 256 + 0xe5] = (2560 - 1600) & 0xff;
+	img[8 * 256 + 0xe6] = (2560 - 1600) >> 8;
 	write_file(trd, img, 0xa0000);
 	err = trd_read(flp, trd);
 	printf("  640K after 1 MB: err %d, %d cylinders, side-track 200 holds a sector: %s\n", err, flp->cyls,
@@ -785,16 +788,48 @@ static void trd_wide(const char* tmp) {
 	flp = beta_drive();
 	trd_read(flp, trd);
 	err = trd_write(flp, back);
-	len = read_file(back, got, 0x100000);
-	printf("  1 MB, not TR-DOS, saved: err %d, %d bytes, as read: %s\n", err, (int)len,
-	       ((len == 0x100000) && !memcmp(got, img, len)) ? "yes" : "no");
+	n = saved_as(back, img, 0x100000, &flen);
+	printf("  1 MB, not TR-DOS, saved: err %d, %ld bytes, as read: %s\n", err, flen, n ? "yes" : "no");
 	difDestroy(dif);
+
+	// files cut short: the disk is as wide as the file or its system sector, in whole
+	// cylinders, and what the file lacks is zeros - never a copy of its last track
+	printf("== trd-128/cut\n");
+	static const struct {long len; int trdos;} cut[] = {
+		{0xc0000, 1},		// a 1 MB TR-DOS disk trimmed to its used sectors
+		{0xb0100, 0},		// ends inside an even side-track past cylinder 87
+		{0xb1000, 0},		// an odd count of side-tracks
+		{0xff000, 0},
+	};
+	for (int c = 0; c < 4; c++) {
+		trd_wide_image(img, 256);
+		if (!cut[c].trdos) img[8 * 256 + 0xe7] = 0;
+		memset(img + cut[c].len, 0, 0x100000 - cut[c].len);
+		write_file(trd, img, cut[c].len);
+		flp = beta_drive();
+		err = trd_read(flp, trd);
+		int last = (int)((cut[c].len - 1) >> 12);	// the file's last side-track
+		int zero = diskGetSectorData(flp, last + 1, 1, buf, 256);
+		for (int k = 0; zero && (k < 256); k++) zero = !buf[k];
+		printf("  %lX%s: err %d, %d cylinders, side-track %d after the file blank: %s\n", cut[c].len,
+		       cut[c].trdos ? " TR-DOS" : "", err, flp->cyls, last + 1, zero ? "yes" : "no");
+		if (cut[c].trdos) {
+			beta_disk();
+			beta_seek(120);
+			for (int k = 0; k < 256; k++) img[120 * 0x2000 + k] = buf[k] = k ^ 0x5a;
+			st = beta_sector(0xa0, 0, 1, buf, &n);
+			printf("  write C120 H0 R1: status %.2X, %d bytes\n", st, n);
+		}
+		err = trd_write(flp, back);
+		n = saved_as(back, img, cut[c].trdos ? 0x100000 : cut[c].len, &flen);
+		printf("  saved: err %d, %ld bytes, the file then zeros: %s\n", err, flen, n ? "yes" : "no");
+		difDestroy(dif);
+	}
 
 	remove(trd);
 	remove(back);
 	remove(udi);
 	free(img);
-	free(got);
 }
 
 static int cases(const char* tmp) {
