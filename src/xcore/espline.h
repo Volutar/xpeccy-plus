@@ -29,4 +29,5 @@ class xEspLine {
 		long long hunt = 0;		// look for a start bit from here
 		int levelAt(double t) const;
 		long long fallAfter(long long t) const;
+		void drop_behind();
 };

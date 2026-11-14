@@ -93,6 +93,7 @@ void xEspLine::take(long long now, std::vector<int>& out, std::vector<long long>
 		if (levelAt(t0 + 0.5 * bit)) {		// a glitch, not a start bit
 			inFrame = false;
 			hunt = (long long)t0 + 1;
+			drop_behind();			// bits too short for its rate: nothing may ever decode
 			continue;
 		}
 		int v = 0;
@@ -102,7 +103,11 @@ void xEspLine::take(long long now, std::vector<int>& out, std::vector<long long>
 		if (ends) ends->push_back((long long)(t0 + nb * bit));
 		inFrame = false;
 		hunt = (long long)last + 1;
-		// what lies wholly behind the receiver is not needed again
-		while ((tr.size() > 1) && (tr[1].t <= hunt)) tr.pop_front();
+		drop_behind();
 	}
+}
+
+// what lies wholly behind the receiver is not needed again: every look is at hunt or after
+void xEspLine::drop_behind() {
+	while ((tr.size() > 1) && (tr[1].t <= hunt)) tr.pop_front();
 }
