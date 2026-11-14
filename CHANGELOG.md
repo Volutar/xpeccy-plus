@@ -32,6 +32,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **TR-DOS disks of up to 1 MB** (128 cylinders) open, and TR-DOS reads and writes every
+  cylinder; they were refused past 127, and nothing past cylinder 86 could be read. They save
+  whole as TRD, SCL and UDI. *(reported by Alexey Boldyrev)*
+
 - **Checked menu items on Windows 10** show the tick or the dot alone, without the blue square
   behind it, as on Windows 11. *(reported by Volutar)*
 
