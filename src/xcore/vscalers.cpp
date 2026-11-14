@@ -197,8 +197,9 @@ vidFit vid_fit(Video* vid, int mode, const QSize& room, int zoom, int keepRatio,
 		}
 	}
 	if (exact) {
+		// py counts from the bottom, as GL does; y from the top
 		f.x = (int)std::floor(f.px / dpr + 0.5);
-		f.y = (int)std::floor(f.py / dpr + 0.5);
+		f.y = (int)std::floor((int(f.roomH * dpr + 0.5) - f.py - f.ph) / dpr + 0.5);
 	} else {
 		f.x = (f.roomW - f.w) / 2;
 		f.y = (f.roomH - f.h) / 2;

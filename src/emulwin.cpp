@@ -127,6 +127,8 @@ void MainWin::updateScreen(QScreen* scr) {
 			vid_set_dpr(widgetDpr(this));
 			vid_upd_scale();
 			refit = 1;
+			if (conf.vid.shd_support && (wantedShader() != shdLoaded))
+				loadShader();
 		});
 	}
 }
@@ -1609,7 +1611,6 @@ void MainWin::paintGLView() {
 // the frame, through the shader, where drawX/Y/W/H say
 void MainWin::drawPicture() {
 	if (prg.isLinked() && curtxid) {
-		const qreal r = widgetDpr(this);
 		Computer* comp = conf.zx;
 		const GLfloat tex_w = GLfloat(comp->vid->vsze.x * 2);
 		const GLfloat tex_h = GLfloat(comp->vid->vsze.y);
@@ -1629,7 +1630,7 @@ void MainWin::drawPicture() {
 		prg.setUniformValue("u_mvp_", legacyMvp);
 		prg.setUniformValue("rubyInputSize",   tex_w, tex_h);
 		prg.setUniformValue("rubyTextureSize", tex_w, tex_h);
-		prg.setUniformValue("rubyOutputSize",  GLfloat(drawW * r), GLfloat(drawH * r));
+		prg.setUniformValue("rubyOutputSize",  GLfloat(pic.width()), GLfloat(pic.height()));
 		// the built-in one: smooth when a dot is not a whole number of pixels either way
 		const double ppx = pic.width() / double(comp->vid->vsze.x);
 		const double ppy = pic.height() / double(comp->vid->vsze.y);

@@ -567,8 +567,8 @@ void MainWin::drawFill(const QRect* clip) {
 	fillDraw.setUniformValue("u_view", GLfloat(vw), GLfloat(vh));
 	fillDraw.setUniformValue("u_dim", GLfloat(conf.vid.fillDim / 100.0));
 	fillDraw.setUniformValue("u_fade", GLfloat(conf.vid.fillFade / 100.0));
-	// a dot is drawW / vsze.x pixels across, and as many down
-	fillDraw.setUniformValue("u_ramp", GLfloat(conf.vid.fillEdge * drawW * r / conf.zx->vid->vsze.x));
+	// a dot is pw / vsze.x pixels across, and as many down
+	fillDraw.setUniformValue("u_ramp", GLfloat(conf.vid.fillEdge * pw / (double)conf.zx->vid->vsze.x));
 	// 100 %: k = 10, the far edge of a bar a third of the picture wide drawn out 4 times
 	const bool mirror = (conf.vid.sideFill == SFILL_MIRROR);
 	fillDraw.setUniformValue("u_stretch", GLfloat(mirror ? conf.vid.fillStretch * 0.1 : 0.0));
