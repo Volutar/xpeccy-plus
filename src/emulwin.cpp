@@ -3120,6 +3120,9 @@ void MainWin::initMenuBar() {
 		grp->addAction(act);
 		sizeActs.append(act);
 	}
+	// the window's size first, then the picture in it
+	fullAct = cutAction(viewMenu, "Fullscreen", XCUT_FULLSCR, "fullscreen");
+	fullAct->setCheckable(true);
 	// the border sizes Options has, taken at once as its Apply takes them
 	brdMenu = new xMenu("Border", this);
 	viewMenu->addMenu(brdMenu);
@@ -3171,9 +3174,7 @@ void MainWin::initMenuBar() {
 			act->setChecked(item == cur);
 		}
 	});
-	fullAct = cutAction(viewMenu, "Fullscreen", XCUT_FULLSCR, "fullscreen");
-	fullAct->setCheckable(true);
-	ratioAct = cutAction(viewMenu, "Keep Aspect Ratio", XCUT_RATIO, "display");
+	ratioAct =cutAction(viewMenu, "Keep Aspect Ratio", XCUT_RATIO, "display");
 	ratioAct->setCheckable(true);
 	ratioAct->setIconVisibleInMenu(false);	// a setting: its tick, which an icon would take the place of
 	intAct = cutAction(viewMenu, "Integer Scale", XCUT_INTSCALE);
