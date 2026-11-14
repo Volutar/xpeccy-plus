@@ -46,7 +46,8 @@ Esc) puts back what it showed when it opened.
 | **Input** | **Joystick** | **None**, **Kempston 5-bit**, **Kempston 8-bit**; not 8-bit on the Scorpion ZS 256 and Turbo+ (see [Joysticks](input.md#joysticks)) |
 | | **Mouse** | **None** or **Kempston mouse**; sensitivity and wheel in its window (see [Mouse](input.md#mouse)) |
 | | **PC keyboard** | ATM Turbo 2+ and ZX Evolution only: which scan codes the machine gets (see [Machines with a keyboard of their own](input.md#machines-with-a-keyboard-of-their-own)) |
-| **Sound** | **PSG** | the AY/YM chips, from **None** to **x3 - ZX Next**; chip, clock and stereo in its window (see [PSG](#psg)) |
+| **Sound** | **Beeper** | what the beeper sounds through, from **Line out** to **Piezo** (see [Beeper](#beeper)) |
+| | **PSG** | the AY/YM chips, from **None** to **x3 - ZX Next**; chip, clock and stereo in its window (see [PSG](#psg)) |
 | | **DAC** | **None**, **Covox only**, **Soundrive 1.05 mode 1** or **mode 2** |
 | | **General Sound** | **None**, **Original** or **NeoGS** (see [General Sound](#general-sound)); its ROM in its window |
 | | **SAA1099** | **Off** or **On** |
@@ -170,6 +171,26 @@ the running machine. Each machine keeps its own devices: a change here applies t
 machine only. The button with the {icon}`settings` gear at the end of a row opens the
 device's further settings. How loud each device plays is set on the
 [Sound page](options-sound.md).
+
+### Beeper
+
+```{index} Beeper, beeper; speaker, beeper; filter, piezo
+```
+
+The beeper is a single bit of a port, but what you heard from it depended on the board: a
+48K's own small speaker, a TV, an amplifier behind a coupling capacitor, a piezo sounder.
+The **Beeper** row picks which of them the beeper, and a tape you hear loading, sound
+through. The AY and the other sound devices are not changed.
+
+| Choice | What it does | The machines it comes with |
+|---|---|---|
+| **Line out** | nothing: the beeper as the port sets it | Pentagon, Pentagon 1024 SL, Profi, Phoenix, ALF |
+| **48K speaker** | softens the highs, the falling edge more than the rising one, as the 48K's ULA drives its speaker | 48K |
+| **TV (RF)** | cuts the highs from 3.2 kHz, as a TV does with sound on its aerial input | 128K, +2, +2A, +3 |
+| **ZX Evolution** | cuts the highs from 8.6 kHz, the board's own filter | ZX Evolution |
+| **Scorpion** | cuts the lows below 530 Hz, the board's coupling capacitor | Scorpion ZS 256 and Turbo+ |
+| **ATM Turbo** | cuts the lows below 80 Hz, the board's coupling capacitor | ATM Turbo 2+ |
+| **Piezo** | little bass and a ring at 4.1 kHz: a piezo sounder of the ZP-3 kind, as some clones had | - |
 
 ### PSG
 
