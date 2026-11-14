@@ -32,6 +32,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **Checked menu items on Windows 10** show the tick or the dot alone, without the blue square
+  behind it, as on Windows 11. *(reported by Volutar)*
+
 - **ProfROM 4.44's shadow monitor opens on the NMI button** instead of starting over and over
   with fast tape loading on.
 
