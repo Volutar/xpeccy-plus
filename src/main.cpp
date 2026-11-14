@@ -333,6 +333,7 @@ bool xApp::eventFilter(QObject* obj, QEvent* ev) {
 	if (ev->type() == QEvent::Show) {
 		QWidget* w = qobject_cast<QWidget*>(obj);
 		if (w && w->isWindow()) {
+			menuShowing(w);
 			applyTitleBarStyle(w);
 			fitFileDialog(w);
 			// a tool window asks for it: once it has a frame to measure
