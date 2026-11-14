@@ -737,6 +737,7 @@ static xFilerError err_tab[] = {
 	{ERR_SCL_MANY, "Too many files in SCL"},
 	{ERR_RAW_LONG, "File is too big"},
 	{ERR_DSK_SIGN, "Wrong DSK signature"},
+	{ERR_DSK_WIDE, "DSK holds 86 cylinders, this disk has more: save it as TRD or UDI"},
 	{ERR_TD0_SIGN, "Wrong TD0 signature"},
 	{ERR_TD0_TYPE, "Unsupported TD0"},
 	{ERR_TD0_VERSION, "Unsupported TD0 version"},

@@ -72,6 +72,9 @@ int scl_read(Floppy* flp, const char* name) {
 			flp_format_trk(flp, i, 16, 256, (char*)buf);
 			i++;
 		}
+		// to the end of the cylinder its files end in, as the free count above has it
+		flp->cyls = (scnt + 31) / 32;
+		if (flp->cyls > 128) flp->cyls = 128;
 		flp_insert(flp, name);
 	}
 	fclose(file);

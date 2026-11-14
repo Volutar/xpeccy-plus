@@ -177,6 +177,7 @@ void doTD0(Floppy* flp, size_t(*getBytes)(void*, size_t,void*), void* dptr, int 
 		}
 		if (bad) break;
 		diskFormTrack(flp, (thd.trk << 1) + thd.head, sec, idx);
+		if ((thd.trk < 128) && (thd.trk >= flp->cyls)) flp->cyls = thd.trk + 1;
 	}
 }
 
@@ -197,6 +198,7 @@ int td0_read(Floppy* flp, const char* name) {
 	} else if (hd.ver < 0x14) {
 		err = ERR_TD0_VERSION;
 	} else {
+		flp->cyls = 0;			// doTD0 widens it track by track
 		if (strncmp(hd.sign,"TD",2)) {	// 1 on td (packed)
 			LHADecoderType* decType;
 			LHADecoder* dec = NULL;

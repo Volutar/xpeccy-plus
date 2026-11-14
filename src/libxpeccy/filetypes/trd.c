@@ -1,11 +1,14 @@
 #include "filetypes.h"
 
+#define TRD_MAX 0x100000
+
 int trd_read(Floppy* flp, const char* name) {
 	FILE* file = fopen(name, "rb");
 	if (!file) return ERR_CANT_OPEN;
 	int err = ERR_OK;
 	size_t len = fgetSize(file);
-	if (((len & 0xff) != 0) || (len == 0) || (len > 0xfe000)) { // 127 tracks
+	// 1 MB is 128 cylinders: TR-DOS keeps a side-track in a byte
+	if (((len & 0xff) != 0) || (len == 0) || (len > TRD_MAX)) {
 		err = ERR_TRD_LEN;
 	} else {
 //		diskFormat(flp);
@@ -25,6 +28,7 @@ int trd_read(Floppy* flp, const char* name) {
 			trk++;
 		}
 
+		flp->cyls = (int)((len + 0x1fff) / 0x2000);
 		flp_insert(flp, name);
 	}
 	fclose(file);
@@ -35,8 +39,7 @@ int loadTRD(Computer* comp, const char* name, int drv) {
 	return trd_read(comp->dif->flp[drv & 3], name);
 }
 
-int saveTRD(Computer* comp, const char* name, int drv) {
-	Floppy* flp = comp->dif->flp[drv & 3];
+int trd_write(Floppy* flp, const char* name) {
 	unsigned char syssec[0x100];
 	diskGetSectorData(flp, 0, 9, syssec, 256);
 	int disksize;
@@ -45,11 +48,11 @@ int saveTRD(Computer* comp, const char* name, int drv) {
 	else
 		disksize = 0;
 	if (disksize < 2560) disksize = 2560;		// 80*2*16
-	if (disksize > 0xfe000 / 0x100) disksize = 0xfe000 / 0x100;	// what loadTRD takes back
+	if (disksize > TRD_MAX / 0x100) disksize = TRD_MAX / 0x100;	// what loadTRD takes back
 	int tracks = (disksize + 15) / 16;
 
 	// whole tracks are read, so the buffer holds tracks, not disksize. too big
-	// for the stack: 127 tracks is a megabyte
+	// for the stack: 128 cylinders is a megabyte
 	unsigned char* img = malloc(tracks * 16 * 0x100);
 	unsigned char* dptr = img;
 	for (int i = 0; i < tracks; i++) {
@@ -74,4 +77,8 @@ int saveTRD(Computer* comp, const char* name, int drv) {
 	flp_set_path(flp, name);
 	flp->changed = 0;
 	return ERR_OK;
+}
+
+int saveTRD(Computer* comp, const char* name, int drv) {
+	return trd_write(comp->dif->flp[drv & 3], name);
 }

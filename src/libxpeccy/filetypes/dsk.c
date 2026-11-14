@@ -546,6 +546,7 @@ unsigned char* dsk_build(Floppy* flp, size_t* len) {
 
 int saveDSK(Computer* comp, const char* name, int drv) {
 	Floppy* flp = comp->dif->flp[drv & 3];
+	if (flp->cyls > 86) return ERR_DSK_WIDE;	// dsk_build writes 86: refused, not cut
 	size_t len = 0;
 	unsigned char* img = dsk_build(flp, &len);
 	if (!img) return ERR_CANT_OPEN;
