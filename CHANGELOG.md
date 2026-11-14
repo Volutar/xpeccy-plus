@@ -65,6 +65,10 @@ before that point is upstream's history and is not repeated here.
 - **ProfROM 4.44's shadow monitor opens on the NMI button** instead of starting over and over
   with fast tape loading on.
 
+- **Frame skip is no longer offered on a fast computer** after a snapshot's notice was left
+  open: the time the notice held the machine counted as the computer falling behind.
+  *(reported by Volutar)*
+
 ## 2026.10.1 - 2026-11-13
 
 ### Added

@@ -1304,8 +1304,12 @@ static void szx_warn() {
 	}
 	text += "\n\n";
 	text += QObject::tr("It may not run as it did. The machine's settings are left as they are.");
+	// paused while up: a save loads under emu_lock with no pause, read as a slow host (Frame skip)
+	int held = pause_has(PR_FILE);
+	pause_add(PR_FILE);
 	QMessageBox mbx(QMessageBox::Warning, "SZX snapshot", text, QMessageBox::Ok);
 	mbx.exec();
+	if (!held) pause_del(PR_FILE);
 }
 
 /* Images in archives

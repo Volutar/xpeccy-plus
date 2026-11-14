@@ -808,6 +808,7 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 		if (conf.emu.fast != fpsFast) {
 			fpsFast = conf.emu.fast;
 			fpsmem.clear();
+			fpsFromNs = now;		// nor a frame of the other mode
 			updateHead();		// the thread ends it too: a pause asked for in it
 		}
 		if (!conf.emu.pause && conf.vid.fctime && (conf.vid.fctime > fpsFromNs)) {	// a frame from before the hold is not one
@@ -820,12 +821,10 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 			while (fpsmem.size() > FPS_WINDOW)
 				fpsmem.removeFirst();
 		} else {
-			// no frames are made while paused (emuCycle() itself checks
-			// conf.emu.pause), so a stale pre-pause sample would otherwise sit
-			// at fpsmem.first() and drag the average down across the whole
-			// pause - drop the window instead of letting it slide out one
-			// entry at a time after resuming.
+			// paused: the first frame after would be one from before the pause, and the
+			// first second would read low - the window starts with a frame made after now
 			fpsmem.clear();
+			fpsFromNs = now;
 		}
 		if (comp->vid->upd) {
 			comp->vid->upd = 0;
