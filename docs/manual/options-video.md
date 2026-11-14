@@ -38,7 +38,8 @@ every slider back where it starts, and **Cancel** puts back what was there.
 - **Brightness** - how bright it is beside the picture;
 - **Fade** - how much darker it gets towards the screen's edge;
 - **Edge** - how gently the picture runs into the fill; with **Letterbox**, also how wide
-  the edges carried out run into the blown-up screen;
+  the edges carried out run into the blown-up screen
+  (at 0 the two meet in a hard line);
 - **Stretch** - **Mirror** only: the reflection drawn out like pulled rubber - as it is by
   the picture, wider and wider towards the screen's edge, its far part going off the
   screen; at the left end it is a plain one.
