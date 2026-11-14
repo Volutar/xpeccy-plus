@@ -17,8 +17,8 @@ before that point is upstream's history and is not repeated here.
 
 - **Beeper type**: Options > Machine, Beeper row - what the beeper sounds through, by the
   machine's board: the 48K's speaker, a TV, the ZX Evolution's filter, the Scorpion's and
-  the ATM's coupling capacitors, a piezo sounder, or line out as before. Each machine comes
-  with its own; the clones without a filter stay as they were. The filter follows Slow
+  the ATM's coupling capacitors, a piezo sounder, or line out. Every machine comes with
+  line out, so the sound is as it was until you pick another. The filter follows Slow
   Motion and Fast Forward, so a tone it cuts stays cut as it drops in pitch.
 
 - **Integer Scale**: View > Integer Scale and Options > Video. In fullscreen and in a maximized
