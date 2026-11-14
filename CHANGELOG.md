@@ -20,6 +20,10 @@ before that point is upstream's history and is not repeated here.
   the ATM's coupling capacitors, a piezo sounder, or line out as before. Each machine comes
   with its own; the clones without a filter stay as they were.
 
+- **Integer Scale**: View > Integer Scale and Options > Video. In fullscreen and in a maximized
+  or resized window the picture keeps a whole number of pixels per dot, the largest that fits,
+  and the side fill takes the room around it. *(requested by formicant)*
+
 ### Changed
 
 - **ROM labels of the 128K and +2**: the +2 editor ROM has nearly every name of the 128K's
