@@ -638,6 +638,7 @@ int main(int ac,char** av) {
 #if defined(_WIN32)
 	// Qt 6.7 made windows11 the default style on Windows 11. The bundled style sheets are
 	// drawn against windowsvista, Qt 6.6's default, which win-x64 is built with
+	// It is set on every Qt, wrapped so the menu tick has no Windows 10 square behind it
 	if (!qtStyle) {
 		QStyle* vista = QStyleFactory::create("windowsvista");
 		if (vista) {

@@ -2,7 +2,7 @@
 
 class QStyle;
 
-// base (windowsvista) without Windows 10's square behind a menu tick; takes base over
+// base (windowsvista, not null) without Windows 10's square behind a menu tick; takes base over
 QStyle* menuCheckStyle(QStyle* base);
 
 class QWidget;

@@ -89,8 +89,10 @@ static xGlyph render_glyph(HWND hwnd, int state) {
 	return g;
 }
 
+// by DPI and state; dropped when the theme or high contrast changes
+static QHash<qint64, xGlyph> cache;
+
 static const xGlyph& menu_glyph(const QWidget* w, int state) {
-	static QHash<qint64, xGlyph> cache;
 	const QWidget* win = w ? w->window() : nullptr;
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
 	const int dpi = screen_dpi(QGuiApplication::primaryScreen());
@@ -123,7 +125,7 @@ class xMenuCheckStyle : public QProxyStyle {
 // with an icon the square stays: it is the item's only sign of the state
 void xMenuCheckStyle::drawControl(ControlElement el, const QStyleOption* opt, QPainter* p, const QWidget* w) const {
 	const QStyleOptionMenuItem* mi = (el == CE_MenuItem) ? qstyleoption_cast<const QStyleOptionMenuItem*>(opt) : nullptr;
-	if (!mi || (mi->menuItemType == QStyleOptionMenuItem::Separator) || (mi->checkType == QStyleOptionMenuItem::NotCheckable)
+	if (!mi || (mi->checkType == QStyleOptionMenuItem::NotCheckable)
 			|| !mi->checked || !mi->icon.isNull() || !IsThemeActive() || !IsAppThemed()) {
 		QProxyStyle::drawControl(el, opt, p, w);
 		return;
@@ -154,8 +156,11 @@ void xMenuCheckStyle::drawControl(ControlElement el, const QStyleOption* opt, QP
 	p->drawImage(QRectF(at.topLeft(), size), glyph.img);
 }
 
+static void install_filter();
+
 QStyle* menuCheckStyle(QStyle* base) {
-	return base ? new xMenuCheckStyle(base) : base;
+	install_filter();
+	return new xMenuCheckStyle(base);
 }
 
 static void cloak(HWND h, BOOL on) {
@@ -185,8 +190,7 @@ static void CALLBACK shadow_shown(HWINEVENTHOOK, DWORD, HWND h, LONG obj, LONG, 
 	}
 }
 
-// ...and hidden after the menu: DWM may compose between the two
-class xMenuHiding : public QAbstractNativeEventFilter {
+class xMenuNative : public QAbstractNativeEventFilter {
 	public:
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
 		bool nativeEventFilter(const QByteArray&, void* message, qintptr*) override {
@@ -194,6 +198,9 @@ class xMenuHiding : public QAbstractNativeEventFilter {
 		bool nativeEventFilter(const QByteArray&, void* message, long*) override {
 #endif
 			const MSG* msg = static_cast<const MSG*>(message);
+			if ((msg->message == WM_THEMECHANGED) || (msg->message == WM_SETTINGCHANGE) || (msg->message == WM_SYSCOLORCHANGE))
+				cache.clear();
+			// the shadow is hidden after the menu: DWM may compose between the two
 			if ((msg->message == WM_WINDOWPOSCHANGING) && (reinterpret_cast<const WINDOWPOS*>(msg->lParam)->flags & SWP_HIDEWINDOW)) {
 				auto it = menus.constFind(msg->hwnd);
 				if (it != menus.constEnd())
@@ -204,6 +211,14 @@ class xMenuHiding : public QAbstractNativeEventFilter {
 			return false;
 		}
 };
+
+static void install_filter() {
+	static xMenuNative filter;
+	static bool installed = false;
+	if (installed) return;
+	installed = true;
+	QCoreApplication::instance()->installNativeEventFilter(&filter);
+}
 
 static void uncloak(HWND menu, bool painted, unsigned showing) {
 	auto it = menus.find(menu);
@@ -224,6 +239,7 @@ static void uncloak(HWND menu, bool painted, unsigned showing) {
 class xMenuWatch : public QObject {
 	protected:
 		bool eventFilter(QObject* obj, QEvent* ev) override {
+			if ((ev->type() != QEvent::Paint) && (ev->type() != QEvent::Hide)) return false;
 			HWND h = reinterpret_cast<HWND>(static_cast<QWidget*>(obj)->internalWinId());
 			if (ev->type() == QEvent::Paint) {
 				auto it = menus.constFind(h);
@@ -243,7 +259,6 @@ class xMenuWatch : public QObject {
 
 void menuShowing(QWidget* w) {
 	static xMenuWatch watch;
-	static xMenuHiding hiding;
 	static bool hooked = false;
 	if (!qobject_cast<QMenu*>(w) || !w->internalWinId()) return;
 	HWND h = reinterpret_cast<HWND>(w->internalWinId());
@@ -254,7 +269,7 @@ void menuShowing(QWidget* w) {
 		// in context: called inside ShowWindow, before DWM can compose the shadow
 		SetWinEventHook(EVENT_OBJECT_SHOW, EVENT_OBJECT_SHOW, GetModuleHandleW(nullptr), shadow_shown,
 				GetCurrentProcessId(), GetCurrentThreadId(), WINEVENT_INCONTEXT);
-		QCoreApplication::instance()->installNativeEventFilter(&hiding);
+		install_filter();
 	}
 	// menus destroyed or re-created without a Hide
 	for (auto it = menus.begin(); it != menus.end();)
