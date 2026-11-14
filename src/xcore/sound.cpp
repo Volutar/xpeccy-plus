@@ -76,7 +76,7 @@ static long long ns_per_sample_fixed(int rate) {
 
 long long nsPerSampleFixed = ns_per_sample_fixed(44100);
 
-// sub-samples a second of output: the scope's rate and the beeper filter's
+// sub-samples a second of output: the scope's rate, and the beeper filter's at 1x
 static int snd_sub_rate() {
 	return conf.snd.rate * DISCRATE;
 }
@@ -89,16 +89,19 @@ static int snd_sub_rate() {
 // spans more emulated time per sample, and its sound rises by as much.
 static std::atomic<double> sndLockScale{1.0};
 
-void sndUpdateSpeed(void) {
-	double s = (conf.emu.speed > 0.0) ? conf.emu.speed : 1.0;
-	s *= sndLockScale.load();
+static double snd_speed() {
+	return (conf.emu.speed > 0.0) ? conf.emu.speed : 1.0;
+}
+
+static void snd_pace(void) {
+	double s = snd_speed() * sndLockScale.load();
 	nsPerSampleFixed = (long long)(ns_per_sample_fixed(conf.snd.rate) * s);
 	ay_set_speed(s);
 }
 
 void sndSetLockScale(double x) {
 	sndLockScale = (x > 0.0) ? x : 1.0;
-	sndUpdateSpeed();
+	snd_pace();
 }
 
 double sndNsPerOutSample() {
@@ -430,6 +433,22 @@ static struct alignas(64) {
 	sndPair (*mix)(sndMix*, sndVolume*);
 	long long advDone;	// the devices' time worked through, sndAdvDone when published
 } sm;
+
+// machine-time sub-sample rate: the cut-offs follow the speed, not VSync's lock
+static int snd_beep_rate() {
+	return (int)llround(snd_sub_rate() / snd_speed());
+}
+
+static std::atomic<int> sndBeepRate{0};	// what sm.m.rate was last given
+
+// sndWork only when the rate moves (the sound thread holds it over a drain), worked out again under it
+void sndUpdateSpeed(void) {
+	snd_pace();
+	if (snd_beep_rate() == sndBeepRate) return;
+	std::lock_guard<std::recursive_mutex> lk(sndWork);
+	sndBeepRate = snd_beep_rate();
+	sm.m.rate = sndBeepRate;
+}
 
 // Can the sound thread mix this machine itself. The SAA's and the GS's levels go
 // over when they move (sndMixIn); the GS's own cpu runs here, at the sample
@@ -1182,8 +1201,7 @@ void setOutput(const char* name) {
 		setOutput("NULL");
 	}
 	sndHeld = sndPlaybackActive();
-	sndUpdateSpeed();
-	sm.m.rate = snd_sub_rate();	// every rate change comes through here, under sndWork
+	sndUpdateSpeed();		// every rate change comes through here, and the filter's with it
 	// a recording's rate is in its header and cannot change, so it ends here
 	// rather than play back at the wrong speed from this point on
 	if (conf.snd.wavfile && (conf.snd.rate != wavRate)) {

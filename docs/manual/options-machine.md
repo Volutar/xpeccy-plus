@@ -180,11 +180,13 @@ device's further settings. How loud each device plays is set on the
 The beeper is a single bit of a port, but what you heard from it depended on the board: a
 48K's own small speaker, a TV, an amplifier behind a coupling capacitor, a piezo sounder.
 The **Beeper** row picks which of them the beeper, and a tape you hear loading, sound
-through. The AY and the other sound devices are not changed.
+through. The AY and the other sound devices are not changed. Every machine comes with
+**Line out**; the others are there to pick. The filter is the machine's, so it slows down
+and speeds up with it: in **Slow Motion** a high tone it cuts stays cut as it drops in pitch.
 
-| Choice | What it does | The machines it comes with |
+| Choice | What it does | The board it is from |
 |---|---|---|
-| **Line out** | nothing: the beeper as the port sets it | Pentagon, Pentagon 1024 SL, Profi, Phoenix, ALF |
+| **Line out** | nothing: the beeper as the port sets it | boards with no filter |
 | **48K speaker** | softens the highs, the falling edge more than the rising one, as the 48K's ULA drives its speaker | 48K |
 | **TV (RF)** | cuts the highs from 3.2 kHz, as a TV does with sound on its aerial input | 128K, +2, +2A, +3 |
 | **ZX Evolution** | cuts the highs from 8.6 kHz, the board's own filter | ZX Evolution |

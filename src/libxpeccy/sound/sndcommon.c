@@ -38,8 +38,8 @@ static long long bf_pole(double hz, int rate) {
 	return llround(-expm1(-2 * BF_PI * hz / rate) * BF_ONE);
 }
 
-// work the coefficients out for a type at a rate, and settle where the level is now
-static void bf_setup(sndBeepFlt* st, int lev, int type, int rate) {
+// work the coefficients out for a type at a rate; the state stays as it is
+static void bf_coefs(sndBeepFlt* st, int type, int rate) {
 	st->type = type;
 	st->rate = rate;
 	st->kUp = bf_pole(beepFltTab[type].up, rate);
@@ -51,6 +51,11 @@ static void bf_setup(sndBeepFlt* st, int lev, int type, int rate) {
 		st->kF = llround(2 * sin(BF_PI * beepFltTab[type].res / rate) * BF_ONE);
 		st->kQ = llround(BF_ONE / beepFltTab[type].q);
 	}
+}
+
+// a type taken anew: its coefficients, and settled where the level is now
+static void bf_setup(sndBeepFlt* st, int lev, int type, int rate) {
+	bf_coefs(st, type, rate);
 	// settled: the low-passes on the level, a high-pass has taken it all away
 	st->lp = lev * 65536LL;		// a level can be under 0: no shift of it
 	st->hp = st->lp;
@@ -60,7 +65,11 @@ static void bf_setup(sndBeepFlt* st, int lev, int type, int rate) {
 
 // the filtering types only: snd_beep_flt() lets line out through
 int snd_beep_run(sndBeepFlt* st, int lev, int type, int rate) {
-	if ((type != st->type) || (rate != st->rate)) bf_setup(st, lev, type, rate);
+	// a speed change keeps the state: each stage's output is in it
+	if (type != st->type)
+		bf_setup(st, lev, type, rate);
+	else if (rate != st->rate)
+		bf_coefs(st, type, rate);
 	long long x = lev * 65536LL;
 	if (st->kUp) {
 		long long k = (x > st->lp) ? st->kUp : st->kDn;
