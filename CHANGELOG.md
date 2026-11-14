@@ -45,6 +45,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The ZX Spectrum Next no longer slows to a crawl** when a program sends to the Wi-Fi
+  module much faster than the module listens.
+
 - **TR-DOS disks of up to 1 MB** (128 cylinders) open, and TR-DOS reads and writes every
   cylinder; they were refused past 127, and nothing past cylinder 86 could be read. They save
   whole as TRD, SCL and UDI. *(reported by Alexey Boldyrev)*
