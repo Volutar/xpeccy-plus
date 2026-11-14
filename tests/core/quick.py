@@ -17,7 +17,8 @@ text cut into `== <case>` sections, and a case passes when its section is the sa
             server on 127.0.0.1
   siblings  siblings-bench over core/siblings/folders.txt: which file names are sides of a set
   brk       brk-bench: breakpoints against the Z80's bus cycles (Read, Fetch, Interrupt) on a 48K
-  dsk       dsk-bench: EXTENDED DSK images the bench writes, read by the uPD765 through the +3's ports
+  dsk       dsk-bench: EXTENDED DSK images the bench writes, read by the uPD765 through the +3's ports;
+            a 1 MB TRD through the Beta disk's WD1793
   gs        gs-bench: the General Sound mix, original board and NeoGS, on fixed samples and volumes;
             the firmwares in config/roms: their idle loop skipped, the card as when it is not
   beeper    beeper-bench: the beeper's filter by type - time constants, -3 dB points, the piezo's ring
