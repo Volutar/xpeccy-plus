@@ -50,10 +50,21 @@ extern int drawW;
 extern int drawH;
 // window pixels per dot, or 0 when the picture is stretched to the screen
 extern int drawZoom;
+// The same rectangle in device pixels, as GL draws it, and the screen scale it
+// was laid out at. A whole scale is taken in device pixels, which rounding the
+// logical one back would put a pixel out at 125 or 150 percent.
+extern int drawPX;
+extern int drawPY;
+extern int drawPW;
+extern int drawPH;
+extern double drawDpr;
 
 void vid_set_zoom(int);
 void vid_set_fullscreen(int);
 void vid_set_ratio(int);
+void vid_set_int_scale(int);
+// the window's device pixels per logical one, for the fits that follow
+void vid_set_dpr(double);
 void vid_set_border_mode(int);
 // the picture area of a window that is not the zoom's size, fitted as fullscreen
 // is; empty: the window is the zoom's size
@@ -72,7 +83,10 @@ typedef struct {
 	int zoom;		// whole pixels per dot, 0: fitted
 	int widen;		// the crop is widened by vid_widen_crop(wideW, wideH)
 	int wideW, wideH;
+	int px, py, pw, ph;	// the picture in device pixels, at dpr
 } vidFit;
-vidFit vid_fit(Video* vid, int mode, const QSize& room, int zoom, int keepRatio, int fillBorder, double xscale);
+// intScale: a whole number of device pixels per dot, as many as fit (keepRatio only)
+vidFit vid_fit(Video* vid, int mode, const QSize& room, int zoom, int keepRatio, int intScale, int fillBorder,
+	double xscale, double dpr);
 // The GUI supplies the current monitor size in logical pixels; setters reuse it.
 void vid_upd_scale(const QSize& screenSize = QSize());

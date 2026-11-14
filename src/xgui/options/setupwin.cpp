@@ -478,12 +478,10 @@ static qreal main_dpr(QWidget* dlg) {
 	return w->devicePixelRatioF();
 }
 
-// how many of the window's pixels from pos, len long, are inside a room of size,
-// at r pixels a point, rounded as the picture is drawn there
-static int shown_span(int pos, int len, int size, qreal r) {
-	int a = int(pos * r + 0.5);
-	int b = a + int(len * r + 0.5);
-	return qMin(b, int(size * r + 0.5)) - qMax(a, 0);
+// how many of the window's device pixels from pos, len long, are inside a room
+// of size, all in device pixels as the picture is drawn there (vidFit's px..ph)
+static int shown_span(int pos, int len, int size) {
+	return qMin(pos + len, size) - qMax(pos, 0);
 }
 
 SetupWin::SetupWin(QWidget* par):QDialog(par) {
@@ -566,6 +564,9 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	connect(ui.cbScale, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showShotSize);
 	connect(ui.cbFullscreen, &QCheckBox::toggled, this, &SetupWin::showShotSize);
 	connect(ui.cbKeepRatio, &QCheckBox::toggled, this, &SetupWin::showShotSize);
+	connect(ui.cbIntScale, &QCheckBox::toggled, this, &SetupWin::showShotSize);
+	// a stretched picture has no scale to keep whole
+	connect(ui.cbKeepRatio, &QCheckBox::toggled, ui.cbIntScale, &QWidget::setEnabled);
 	connect(ui.cbSideFill, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showShotSize);
 	leShotName = new QLineEdit;
 	leShotName->setPlaceholderText(SHOT_NAME_DEF);
@@ -1204,6 +1205,8 @@ void SetupWin::fillPages() {
 	ui.cbFullscreen->setChecked(conf.vid.fullScreen);
 	fullscreenTip(ui.cbFullscreen);
 	ui.cbKeepRatio->setChecked(conf.vid.keepRatio);
+	ui.cbIntScale->setChecked(conf.vid.intScale);
+	ui.cbIntScale->setEnabled(conf.vid.keepRatio);
 	fillToUi();
 	fillTake();
 	ui.cbVSync->setChecked(conf.vid.vsync);
@@ -1692,6 +1695,7 @@ void SetupWin::applyGlobal() {
 // video
 	conf.vid.fullScreen = ui.cbFullscreen->isChecked() ? 1 : 0;
 	conf.vid.keepRatio = ui.cbKeepRatio->isChecked() ? 1 : 0;
+	conf.vid.intScale = ui.cbIntScale->isChecked() ? 1 : 0;
 	fillSet(getRFIData(ui.cbSideFill));
 	fillTake();		// the pop-up's values are in conf already: now they stay
 	conf.vid.vsync = ui.cbVSync->isChecked() ? 1 : 0;
@@ -4179,7 +4183,8 @@ void SetupWin::alignVideoLabels() {
 vidFit SetupWin::pageFit() {
 	int fill = getRFIData(ui.cbSideFill);
 	return vid_fit(conf.zx->vid, ui.bszsld->value(), vid_room(ui.cbFullscreen->isChecked()), getRFIData(ui.cbScale),
-		ui.cbKeepRatio->isChecked(), (fill & SFILL_BORDER) ? 1 : 0, conf.zx->hw->xscale);
+		ui.cbKeepRatio->isChecked(), ui.cbIntScale->isChecked(), (fill & SFILL_BORDER) ? 1 : 0, conf.zx->hw->xscale,
+		main_dpr(this));
 }
 
 // the pictures handed to FFmpeg and the video made of them, as the page is set now
@@ -4242,13 +4247,13 @@ void SetupWin::showShotSize() {
 		bool beside = conf.vid.gl && ((fill & ~SFILL_BORDER) != SFILL_BLACK)
 			&& ((f.x > 0) || (f.y > 0) || (f.x + f.w < f.roomW) || (f.y + f.h < f.roomH));
 		if (nob) {
-			double pw = int(f.w * r + 0.5);
-			double ph = int(f.h * r + 0.5);
+			double pw = f.pw;
+			double ph = f.ph;
 			out = QSize(int(vid->scrn.x * pw / f.crop.x + 0.5), int(vid->scrn.y * ph / f.crop.y + 0.5));
 		} else if (beside) {
 			out = QSize(int(f.roomW * r + 0.5), int(f.roomH * r + 0.5));
 		} else {
-			out = QSize(shown_span(f.x, f.w, f.roomW, r), shown_span(f.y, f.h, f.roomH, r));
+			out = QSize(shown_span(f.px, f.pw, int(f.roomW * r + 0.5)), shown_span(f.py, f.ph, int(f.roomH * r + 0.5)));
 		}
 		labShotSize->setToolTip(tr("As big as the picture in the window,\nwith the side fill beside it"));
 	}

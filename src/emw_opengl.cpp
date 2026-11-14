@@ -485,15 +485,14 @@ void MainWin::prepareFill() {
 	GLuint src = curtxid;
 	QSize srcSize(vid->vsze.x * 2, vid->vsze.y);		// two frame texels per dot across
 	if (mirror) {
-		const qreal r = widgetDpr(this);
-		srcSize = QSize(int(drawW * r + 0.5), int(drawH * r + 0.5));
+		const QRect pic = picRect();
+		srcSize = pic.size();
 		glBindTexture(GL_TEXTURE_2D, fillPic);
 		if (srcSize != fillPicSize) {
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, srcSize.width(), srcSize.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 			fillPicSize = srcSize;
 		}
-		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, int(drawX * r + 0.5), int(drawY * r + 0.5),
-			srcSize.width(), srcSize.height());
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pic.x(), pic.y(), srcSize.width(), srcSize.height());
 		src = fillPic;
 	}
 	const GLfloat bx = GLfloat(srcSize.width()) / sz.width();
@@ -550,10 +549,11 @@ void MainWin::drawFill(const QRect* clip) {
 	const int vw = int(width() * r + 0.5);
 	const int vh = int(height() * r + 0.5);
 	// the picture as drawPicture's viewport has it, from the bottom left
-	const int px = int(drawX * r + 0.5);
-	const int py = int(drawY * r + 0.5);
-	const int pw = int(drawW * r + 0.5);
-	const int ph = int(drawH * r + 0.5);
+	const QRect pic = picRect();
+	const int px = pic.x();
+	const int py = pic.y();
+	const int pw = pic.width();
+	const int ph = pic.height();
 	const QRect bars[4] = {
 		QRect(0, 0, px, vh),
 		QRect(px + pw, 0, vw - px - pw, vh),

@@ -625,6 +625,7 @@ enum {
 	XCUT_SIDE_PREV,
 	XCUT_CARD_EJECT,
 	XCUT_CARD_REFRESH,
+	XCUT_INTSCALE,
 
 	XCUT_STEPIN,
 	XCUT_STEPOVER,
@@ -1085,6 +1086,7 @@ struct xConfig {
 		unsigned fullScreen:1;	// use fullscreen
 		unsigned maximized:1;	// the window was left maximized: it starts so
 		unsigned keepRatio:1;	// fullscreen, a maximized or resized window: keep the shape, else stretch
+		unsigned intScale:1;	// and keep it to whole pixels per dot, the largest that fit (vid_fit)
 		unsigned fillBorder:1;	// the free room beside a fitted picture shows border first, the side fill past it
 		unsigned lowLatency:1;	// show each frame at once (low input lag), else buffer for smooth motion
 		unsigned vsync:1;	// wait for the display's vblank, and run at its rate when close (xgui/dispsync)

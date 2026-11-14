@@ -118,7 +118,17 @@ void MainWin::updateScreen(QScreen* scr) {
 		screenRateConnection = connect(scr, &QScreen::refreshRateChanged, this, &MainWin::vsyncProbe, Qt::QueuedConnection);
 	}
 	vsyncProbe();
-	if (conf.vid.fullScreen) QTimer::singleShot(0, this, &MainWin::updateWindow);
+	if (conf.vid.fullScreen) {
+		QTimer::singleShot(0, this, &MainWin::updateWindow);
+	} else if (winFit) {
+		// a screen of another scale: a whole scale is taken in its pixels
+		QTimer::singleShot(0, this, [this]() {
+			if (!winFit || conf.vid.fullScreen) return;
+			vid_set_dpr(widgetDpr(this));
+			vid_upd_scale();
+			refit = 1;
+		});
+	}
 }
 
 // The display the window is on, asked again; the vblank tick runs while VSync is on.
@@ -188,6 +198,7 @@ void MainWin::updateWindow() {
 	QSize wsz;
 	Computer* comp = conf.zx;
 	const QSize screenSize = fsRoom();
+	vid_set_dpr(widgetDpr(this));
 	vid_set_fit(QSize());
 	vid_upd_scale(screenSize);		// the picture and window use the same monitor
 	const QSize zoomSize(drawW, drawH);	// windowed: the zoom's size
@@ -1409,9 +1420,20 @@ void MainWin::paintEvent(QPaintEvent*) {
 // The same buffer as the GL path, scaled here instead. No smooth transform, so
 // a dot stays a block of whole pixels. Black around it, as GL clears it.
 void MainWin::paintPlain(QPainter& pnt) {
-	const QRect pic(drawX, drawY, drawW, drawH);
-	for (const QRect& r : QRegion(rect()).subtracted(pic))
-		pnt.fillRect(r, Qt::black);
+	QRect pic(drawX, drawY, drawW, drawH);
+	QRect area = rect();
+	const qreal r = widgetDpr(this);
+	pnt.save();
+	if (conf.vid.intScale && (std::fabs(r - std::floor(r + 0.5)) > 1e-6)) {
+		// whole device pixels per dot, which a logical rectangle rounds off;
+		// picRect() counts from the bottom, as GL does
+		pnt.scale(1.0 / r, 1.0 / r);
+		area = QRect(0, 0, int(width() * r + 0.5), int(height() * r + 0.5));
+		const QRect dev = picRect();
+		pic = QRect(dev.x(), area.height() - dev.y() - dev.height(), dev.width(), dev.height());
+	}
+	for (const QRect& rc : QRegion(area).subtracted(pic))
+		pnt.fillRect(rc, Qt::black);
 	Computer* comp = conf.zx;
 	Video* vid = comp->vid;
 	// cut out under the lock and scaled after it: the emulation waits on it
@@ -1420,6 +1442,7 @@ void MainWin::paintPlain(QPainter& pnt) {
 		.copy(vid->lcut.x * 2, vid->lcut.y, vid->vsze.x * 2, vid->vsze.y);
 	frame_shown_unlock();
 	pnt.drawImage(pic, img);
+	pnt.restore();
 }
 
 // The view keeps the picture in its framebuffer and follows MainWin's size.
@@ -1485,6 +1508,7 @@ void MainWin::fitWindow() {
 		return;
 	}
 	winFit = 1;
+	vid_set_dpr(widgetDpr(this));
 	vid_set_fit(size());
 	refit = 1;
 	if (conf.vid.shd_support && (wantedShader() != shdLoaded))
@@ -1592,8 +1616,8 @@ void MainWin::drawPicture() {
 		// the quad covers the viewport, and the viewport is the picture: in
 		// fullscreen it is a whole-zoom rectangle in the middle of the screen,
 		// with the cleared black around it
-		glViewport(int(drawX * r + 0.5), int(drawY * r + 0.5),
-			int(drawW * r + 0.5), int(drawH * r + 0.5));
+		const QRect pic = picRect();
+		glViewport(pic.x(), pic.y(), pic.width(), pic.height());
 		static const QMatrix4x4 legacyMvp = []{
 			QMatrix4x4 m;
 			m.ortho(0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f);
@@ -1607,8 +1631,8 @@ void MainWin::drawPicture() {
 		prg.setUniformValue("rubyTextureSize", tex_w, tex_h);
 		prg.setUniformValue("rubyOutputSize",  GLfloat(drawW * r), GLfloat(drawH * r));
 		// the built-in one: smooth when a dot is not a whole number of pixels either way
-		const double ppx = int(drawW * r + 0.5) / double(comp->vid->vsze.x);
-		const double ppy = int(drawH * r + 0.5) / double(comp->vid->vsze.y);
+		const double ppx = pic.width() / double(comp->vid->vsze.x);
+		const double ppy = pic.height() / double(comp->vid->vsze.y);
 		const bool whole = (std::fabs(ppx - std::floor(ppx + 0.5)) < 0.001) && (std::fabs(ppy - std::floor(ppy + 0.5)) < 0.001);
 		prg.setUniformValue("u_smooth", GLint(whole ? 0 : 1));
 
@@ -1643,6 +1667,15 @@ QImage MainWin::readBack(const QRect& rc) {
 	return img;
 }
 
+// drawPicture()'s viewport, from the bottom left: the device pixels the fit
+// gave, or the logical rectangle scaled when the window has gone to a screen of
+// another scale since
+QRect MainWin::picRect() {
+	const qreal r = widgetDpr(this);
+	if (std::fabs(r - drawDpr) < 1e-9) return QRect(drawPX, drawPY, drawPW, drawPH);
+	return QRect(int(drawX * r + 0.5), int(drawY * r + 0.5), int(drawW * r + 0.5), int(drawH * r + 0.5));
+}
+
 // The picture as just drawn through the shader, at the window's pixels: with a
 // side fill beside it the whole window, as it shows; with No border, the screen
 // part of the picture alone. A picture wider than the window is cut at its edge.
@@ -1650,7 +1683,7 @@ void MainWin::grabPicture() {
 	const qreal r = widgetDpr(this);
 	QRect win(0, 0, int(width() * r + 0.5), int(height() * r + 0.5));
 	// drawPicture()'s viewport, from the bottom left
-	QRect pic(int(drawX * r + 0.5), int(drawY * r + 0.5), int(drawW * r + 0.5), int(drawH * r + 0.5));
+	QRect pic = picRect();
 	Video* vid = conf.zx->vid;
 	QRect rc = pic;
 	if (fillOn) rc = win;
@@ -3142,6 +3175,8 @@ void MainWin::initMenuBar() {
 	ratioAct = cutAction(viewMenu, "Keep Aspect Ratio", XCUT_RATIO, "display");
 	ratioAct->setCheckable(true);
 	ratioAct->setIconVisibleInMenu(false);	// a setting: its tick, which an icon would take the place of
+	intAct = cutAction(viewMenu, "Integer Scale", XCUT_INTSCALE);
+	intAct->setCheckable(true);
 	viewMenu->addSeparator();
 	viewMenu->addMenu(shdMenu);
 	viewMenu->addMenu(palMenu);

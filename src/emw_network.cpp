@@ -709,6 +709,8 @@ void MainWin::socketRead() {
 			.arg(vid->vsze.x).arg(vid->vsze.y).arg(vid->lcut.x).arg(vid->lcut.y)
 			.arg(vid->rcut.x).arg(vid->rcut.y).arg(vid->full.x).arg(vid->full.y).arg(vid->brdmode);
 		out += QString("draw: %0,%1 %2x%3 zoom %4\r\n").arg(drawX).arg(drawY).arg(drawW).arg(drawH).arg(drawZoom);
+		out += QString("drawdev: %0,%1 %2x%3 dpr %4 intScale %5\r\n").arg(drawPX).arg(drawPY).arg(drawPW).arg(drawPH)
+			.arg(drawDpr).arg(conf.vid.intScale);
 		out += QString("fsbar: %0 fstool: %1\r\n").arg(fsBar && fsBar->isVisible() ? 1 : 0).arg(fsTool && fsTool->isVisible() ? 1 : 0);
 		// the size the icons are drawn at, and the one set (0 = Auto)
 		out += QString("toolbar: icons %0 set %1 fstool %2\r\n").arg(toolBar->iconSize().width()).arg(conf.win.tbIcons)
