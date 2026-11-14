@@ -91,6 +91,7 @@ is skipped without a word.
 | `soundrive` | `none` `covox` `soundrive1` `soundrive2` | |
 | `gs` | yes/no | General Sound |
 | `saa` | yes/no | SAA1099 |
+| `beeper` | `line` `speaker` `tv` `evo` `scorpion` `atm` `piezo` | what the beeper and the tape sound through (`BEEP_*`, `snd_beep_flt`); absent is `line`, no filter |
 | `beeper.mic` | yes/no | bit 3 (MIC) is heard with the beeper, at a tenth of bit 4, as on a ULA |
 
 ### `[storage]`

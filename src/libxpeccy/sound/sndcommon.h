@@ -63,7 +63,8 @@ static inline void bcSync(bitChan* ch, int ns) {
 sndPair mixer(sndPair, sndPair);
 
 // What the beeper is on its way out of the board: the filter between the port bit
-// and the sound (snd_beep_flt). One per machine, from its file ("beeper" in [sound]).
+// and the sound (snd_beep_flt, in zx_mix and alf_mix). One per machine, from its file
+// ("beeper" in [sound]).
 enum {
 	BEEP_LINE = 0,		// straight out: no filter
 	BEEP_SPEAKER,		// the 48K's ULA pin and its speaker

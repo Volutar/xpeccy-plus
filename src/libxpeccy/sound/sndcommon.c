@@ -56,7 +56,7 @@ static void bf_setup(sndBeepFlt* st, int lev, int type, int rate) {
 		st->kQ = llround(BF_ONE / beepFltTab[type].q);
 	}
 	// settled: the low-passes on the level, a high-pass has taken it all away
-	st->lp = (long long)lev << 16;
+	st->lp = lev * 65536LL;		// a level can be under 0: no shift of it
 	st->hp = st->lp;
 	st->low = st->lp;
 	st->band = 0;
@@ -65,9 +65,12 @@ static void bf_setup(sndBeepFlt* st, int lev, int type, int rate) {
 // One sub-sample of the beeper's level through its type's filter. A rate of 0 (no
 // sound thread behind the mix) or a type out of range is let through as it is.
 int snd_beep_flt(sndBeepFlt* st, int lev, int type, int rate) {
-	if ((type <= BEEP_LINE) || (type >= BEEP_TYPES) || (rate <= 0)) return lev;
+	if ((type <= BEEP_LINE) || (type >= BEEP_TYPES) || (rate <= 0)) {
+		st->type = BEEP_LINE;	// a filter taken again settles where the level is then
+		return lev;
+	}
 	if ((type != st->type) || (rate != st->rate)) bf_setup(st, lev, type, rate);
-	long long x = (long long)lev << 16;
+	long long x = lev * 65536LL;
 	if (st->kUp) {
 		long long k = (x > st->lp) ? st->kUp : st->kDn;
 		st->lp += ((x - st->lp) * k + (BF_ONE >> 1)) >> 24;

@@ -165,6 +165,12 @@ int main(void) {
 	}
 	check("line out lets the level through", same);
 	check("no rate: let through", snd_beep_flt(&st, 1234, BEEP_TV, 0) == 1234);
+	// a high-pass that held a level, line out for a while, then the same type again:
+	// it starts from where the level is now, not from what it held
+	settle(&st, BEEP_SCORPION, 48000 * 32, 0);
+	for (int n = 0; n < 48000 * 32 / 10; n++) snd_beep_flt(&st, LEV, BEEP_SCORPION, 48000 * 32);
+	for (int n = 0; n < 1000; n++) snd_beep_flt(&st, 0, BEEP_LINE, 48000 * 32);
+	check("a type taken again settles anew", snd_beep_flt(&st, 0, BEEP_SCORPION, 48000 * 32) == 0);
 	lowpass("speaker", BEEP_SPEAKER, 4356, 2311);
 	lowpass("tv", BEEP_TV, 3183, 3183);
 	lowpass("evo", BEEP_EVO, 8600, 8600);

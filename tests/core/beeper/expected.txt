@@ -1,6 +1,7 @@
 == line
 line out lets the level through: ok
 no rate: let through: ok
+a type taken again settles anew: ok
 == speaker
 44100: rise 4356 Hz, fall 2311 Hz
 rise as built: ok
