@@ -986,8 +986,8 @@ long long nx_int_quiet_until(Computer* comp) {
 	}
 	long long c = nx_ctc_quiet_until(comp);	// run up to now + 1: an edge at c is in once now reaches it
 	if (c < u) u = c;
-	c = nx_uart_quiet_until(comp, 1);	// a status bit is enough: NR CA clears it
-	if ((c != LLONG_MAX) && (c + 1 < u)) u = c + 1;	// LLONG_MAX: both UARTs quiet
+	c = nx_uart_quiet_until(comp, 1);	// as the CTC's; a status bit is enough: NR CA clears it
+	if (c < u) u = c;
 	return u;
 }
 
