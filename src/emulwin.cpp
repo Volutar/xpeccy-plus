@@ -120,15 +120,10 @@ void MainWin::updateScreen(QScreen* scr) {
 	vsyncProbe();
 	if (conf.vid.fullScreen) {
 		QTimer::singleShot(0, this, &MainWin::updateWindow);
-	} else if (winFit) {
+	} else if (winFit && conf.vid.intScale) {
 		// a screen of another scale: a whole scale is taken in its pixels
 		QTimer::singleShot(0, this, [this]() {
-			if (!winFit || conf.vid.fullScreen) return;
-			vid_set_dpr(widgetDpr(this));
-			vid_upd_scale();
-			refit = 1;
-			if (conf.vid.shd_support && (wantedShader() != shdLoaded))
-				loadShader();
+			if (winFit && !conf.vid.fullScreen) refitPicture();
 		});
 	}
 }
@@ -1427,10 +1422,9 @@ void MainWin::paintPlain(QPainter& pnt) {
 	const qreal r = widgetDpr(this);
 	pnt.save();
 	if (conf.vid.intScale && (std::fabs(r - std::floor(r + 0.5)) > 1e-6)) {
-		// whole device pixels per dot, which a logical rectangle rounds off;
-		// picRect() counts from the bottom, as GL does
+		// whole device pixels a dot; picRect() counts from the bottom, as GL does
 		pnt.scale(1.0 / r, 1.0 / r);
-		area = QRect(0, 0, int(width() * r + 0.5), int(height() * r + 0.5));
+		area = QRect(QPoint(0, 0), devSize());
 		const QRect dev = picRect();
 		pic = QRect(dev.x(), area.height() - dev.y() - dev.height(), dev.width(), dev.height());
 	}
@@ -1510,13 +1504,18 @@ void MainWin::fitWindow() {
 		return;
 	}
 	winFit = 1;
+	refitPicture();
+	tbSize(toolBar, width());
+	emit s_keywin_snap();
+}
+
+// the picture fitted again to the window as it is, at its screen's scale now
+void MainWin::refitPicture() {
 	vid_set_dpr(widgetDpr(this));
 	vid_set_fit(size());
 	refit = 1;
 	if (conf.vid.shd_support && (wantedShader() != shdLoaded))
 		loadShader();
-	tbSize(toolBar, width());
-	emit s_keywin_snap();
 }
 
 // The GL view's paint: the frame through the shader, then the indicators.
@@ -1652,9 +1651,9 @@ void MainWin::drawPicture() {
 // straight after the paint, while the context is current and the widget's
 // framebuffer holds it.
 void MainWin::grabScreen() {
-	const qreal r = widgetDpr(this);
-	int fw = int(width() * r + 0.5);
-	int fh = int(height() * r + 0.5);
+	const QSize dev = devSize();
+	int fw = dev.width();
+	int fh = dev.height();
 	vrec_screen(readBack(QRect(0, fh & 1, fw & ~1, fh & ~1)));
 }
 
@@ -1668,21 +1667,24 @@ QImage MainWin::readBack(const QRect& rc) {
 	return img;
 }
 
-// drawPicture()'s viewport, from the bottom left: the device pixels the fit
-// gave, or the logical rectangle scaled when the window has gone to a screen of
-// another scale since
+// drawPicture()'s viewport from the bottom left, logical if the screen's scale changed since
 QRect MainWin::picRect() {
 	const qreal r = widgetDpr(this);
 	if (std::fabs(r - drawDpr) < 1e-9) return QRect(drawPX, drawPY, drawPW, drawPH);
 	return QRect(int(drawX * r + 0.5), int(drawY * r + 0.5), int(drawW * r + 0.5), int(drawH * r + 0.5));
 }
 
+// the window in device pixels, as its framebuffer is
+QSize MainWin::devSize() {
+	const qreal r = widgetDpr(this);
+	return QSize(int(width() * r + 0.5), int(height() * r + 0.5));
+}
+
 // The picture as just drawn through the shader, at the window's pixels: with a
 // side fill beside it the whole window, as it shows; with No border, the screen
 // part of the picture alone. A picture wider than the window is cut at its edge.
 void MainWin::grabPicture() {
-	const qreal r = widgetDpr(this);
-	QRect win(0, 0, int(width() * r + 0.5), int(height() * r + 0.5));
+	QRect win(QPoint(0, 0), devSize());
 	// drawPicture()'s viewport, from the bottom left
 	QRect pic = picRect();
 	Video* vid = conf.zx->vid;
@@ -1804,9 +1806,9 @@ bool MainWin::recStart(const QString& file) {
 	int sw = 0;
 	int sh = 0;
 	if (glw && (conf.rec.source == VREC_SRC_SCREEN)) {
-		const qreal r = widgetDpr(this);
-		sw = int(width() * r + 0.5);
-		sh = int(height() * r + 0.5);
+		const QSize dev = devSize();
+		sw = dev.width();
+		sh = dev.height();
 	}
 	QString err;
 	// started, the blinking sign says so: a message would be in the video
@@ -3174,7 +3176,7 @@ void MainWin::initMenuBar() {
 			act->setChecked(item == cur);
 		}
 	});
-	ratioAct =cutAction(viewMenu, "Keep Aspect Ratio", XCUT_RATIO, "display");
+	ratioAct = cutAction(viewMenu, "Keep Aspect Ratio", XCUT_RATIO, "display");
 	ratioAct->setCheckable(true);
 	ratioAct->setIconVisibleInMenu(false);	// a setting: its tick, which an icon would take the place of
 	intAct = cutAction(viewMenu, "Integer Scale", XCUT_INTSCALE);

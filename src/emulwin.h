@@ -398,6 +398,8 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void shotTake();
 		void grabPicture();
 		QRect picRect();
+		QSize devSize();
+		void refitPicture();
 		QImage readBack(const QRect&);
 
 		QImage alphabet;

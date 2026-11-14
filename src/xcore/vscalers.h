@@ -50,9 +50,7 @@ extern int drawW;
 extern int drawH;
 // window pixels per dot, or 0 when the picture is stretched to the screen
 extern int drawZoom;
-// The same rectangle in device pixels, as GL draws it, and the screen scale it
-// was laid out at. A whole scale is taken in device pixels, which rounding the
-// logical one back would put a pixel out at 125 or 150 percent.
+// the same in device pixels, as GL draws it, and the screen scale it was laid out at
 extern int drawPX;
 extern int drawPY;
 extern int drawPW;
@@ -83,7 +81,8 @@ typedef struct {
 	int zoom;		// whole pixels per dot, 0: fitted
 	int widen;		// the crop is widened by vid_widen_crop(wideW, wideH)
 	int wideW, wideH;
-	int px, py, pw, ph;	// the picture in device pixels, at dpr
+	int px, py, pw, ph;	// the picture in device pixels, at dpr; py from the bottom
+	int devW, devH;		// the room in device pixels
 } vidFit;
 // intScale: a whole number of device pixels per dot, as many as fit (keepRatio only)
 vidFit vid_fit(Video* vid, int mode, const QSize& room, int zoom, int keepRatio, int intScale, int fillBorder,

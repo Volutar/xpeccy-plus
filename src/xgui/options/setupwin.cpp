@@ -478,8 +478,7 @@ static qreal main_dpr(QWidget* dlg) {
 	return w->devicePixelRatioF();
 }
 
-// how many of the window's device pixels from pos, len long, are inside a room
-// of size, all in device pixels as the picture is drawn there (vidFit's px..ph)
+// device pixels of a span (vidFit's px..ph) inside a room of size
 static int shown_span(int pos, int len, int size) {
 	return qMin(pos + len, size) - qMax(pos, 0);
 }
@@ -4241,19 +4240,18 @@ void SetupWin::showShotSize() {
 	} else {
 		// as MainWin::grabPicture() reads it
 		vidFit f = pageFit();
-		qreal r = main_dpr(this);
 		int fill = getRFIData(ui.cbSideFill);
 		// a fill drawn beside the picture, as MainWin::fillWanted() has it
-		bool beside = conf.vid.gl && ((fill & ~SFILL_BORDER) != SFILL_BLACK)
-			&& ((f.x > 0) || (f.y > 0) || (f.x + f.w < f.roomW) || (f.y + f.h < f.roomH));
+		bool room = (f.x > 0) || (f.y > 0) || (f.x + f.w < f.roomW) || (f.y + f.h < f.roomH);
+		if (ui.cbIntScale->isChecked())
+			room = (f.px > 0) || (f.py > 0) || (f.px + f.pw < f.devW) || (f.py + f.ph < f.devH);
+		bool beside = conf.vid.gl && ((fill & ~SFILL_BORDER) != SFILL_BLACK) && room;
 		if (nob) {
-			double pw = f.pw;
-			double ph = f.ph;
-			out = QSize(int(vid->scrn.x * pw / f.crop.x + 0.5), int(vid->scrn.y * ph / f.crop.y + 0.5));
+			out = QSize(int(vid->scrn.x * (double)f.pw / f.crop.x + 0.5), int(vid->scrn.y * (double)f.ph / f.crop.y + 0.5));
 		} else if (beside) {
-			out = QSize(int(f.roomW * r + 0.5), int(f.roomH * r + 0.5));
+			out = QSize(f.devW, f.devH);
 		} else {
-			out = QSize(shown_span(f.px, f.pw, int(f.roomW * r + 0.5)), shown_span(f.py, f.ph, int(f.roomH * r + 0.5)));
+			out = QSize(shown_span(f.px, f.pw, f.devW), shown_span(f.py, f.ph, f.devH));
 		}
 		labShotSize->setToolTip(tr("As big as the picture in the window,\nwith the side fill beside it"));
 	}

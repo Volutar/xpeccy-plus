@@ -133,29 +133,24 @@ vidFit vid_fit(Video* vid, int mode, const QSize& room, int zoom, int keepRatio,
 	} else {
 		f.roomW = room.width();
 		f.roomH = room.height();
-		// The largest whole number of device pixels per dot at which the frame
-		// the border size asks for fits. In a room smaller than that frame at
-		// 1:1 there is none, and the picture is fitted as without the option.
-		const int devW = int(f.roomW * dpr + 0.5);
-		const int devH = int(f.roomH * dpr + 0.5);
+		// the most whole device pixels a dot the border size's frame fits at; 0 below 1:1, fitted as without
+		f.devW = int(f.roomW * dpr + 0.5);
+		f.devH = int(f.roomH * dpr + 0.5);
 		int k = 0;
 		if (keepRatio && intScale)
-			k = (int)std::floor(std::min(devH / (double)f.crop.y, devW / (f.crop.x * xscale)) + 1e-6);
+			k = (int)std::floor(std::min(f.devH / (double)f.crop.y, f.devW / (f.crop.x * xscale)) + 1e-6);
 		if (k > 0) {
-			// The room left over is on both sides now. With the border first it
-			// shows border both ways, cut at the room's edge as below: the
-			// picture grows in border, then steps up a scale and the border
-			// goes back.
+			// room on both sides: the border first grows both ways, then the scale steps up
 			if (fillBorder) {
 				f.widen = 1;
-				f.wideW = (int)std::ceil(devW / (k * xscale) - 1e-6);
-				f.wideH = (int)std::ceil(devH / (double)k - 1e-6);
+				f.wideW = (int)std::ceil(f.devW / (k * xscale) - 1e-6);
+				f.wideH = (int)std::ceil(f.devH / (double)k - 1e-6);
 				f.crop = vid_widen_size(vid, mode, f.wideW, f.wideH);
 			}
 			f.pw = (int)(f.crop.x * k * xscale + 0.5);
 			f.ph = f.crop.y * k;
-			f.px = (devW - f.pw) / 2;
-			f.py = (devH - f.ph) / 2;
+			f.px = (f.devW - f.pw) / 2;
+			f.py = (f.devH - f.ph) / 2;
 			exact = 1;
 			f.kx = k * xscale / dpr;
 			f.ky = k / dpr;
@@ -199,7 +194,7 @@ vidFit vid_fit(Video* vid, int mode, const QSize& room, int zoom, int keepRatio,
 	if (exact) {
 		// py counts from the bottom, as GL does; y from the top
 		f.x = (int)std::floor(f.px / dpr + 0.5);
-		f.y = (int)std::floor((int(f.roomH * dpr + 0.5) - f.py - f.ph) / dpr + 0.5);
+		f.y = (int)std::floor((f.devH - f.py - f.ph) / dpr + 0.5);
 	} else {
 		f.x = (f.roomW - f.w) / 2;
 		f.y = (f.roomH - f.h) / 2;
@@ -207,6 +202,8 @@ vidFit vid_fit(Video* vid, int mode, const QSize& room, int zoom, int keepRatio,
 		f.py = int(f.y * dpr + 0.5);
 		f.pw = int(f.w * dpr + 0.5);
 		f.ph = int(f.h * dpr + 0.5);
+		f.devW = int(f.roomW * dpr + 0.5);
+		f.devH = int(f.roomH * dpr + 0.5);
 	}
 	return f;
 }

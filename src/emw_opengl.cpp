@@ -468,6 +468,12 @@ void MainWin::initFill() {
 // a fill is chosen, there is a frame, and the picture leaves room beside it
 bool MainWin::fillWanted() {
 	if ((conf.vid.sideFill == SFILL_BLACK) || !curtxid || !fillDraw.isLinked()) return false;
+	if (conf.vid.intScale) {
+		// placed in device pixels: a gap of one would round away in logical ones
+		const QRect pic = picRect();
+		const QSize dev = devSize();
+		return (pic.x() > 0) || (pic.y() > 0) || (pic.right() + 1 < dev.width()) || (pic.bottom() + 1 < dev.height());
+	}
 	return (drawX > 0) || (drawY > 0) || (drawX + drawW < width()) || (drawY + drawH < height());
 }
 
@@ -545,9 +551,9 @@ void MainWin::prepareFill() {
 // corners and all, and the strips above and below it. clip: the framebuffer
 // rectangle the caller has scissored to, which the bars are cut to as well.
 void MainWin::drawFill(const QRect* clip) {
-	const qreal r = widgetDpr(this);
-	const int vw = int(width() * r + 0.5);
-	const int vh = int(height() * r + 0.5);
+	const QSize dev = devSize();
+	const int vw = dev.width();
+	const int vh = dev.height();
 	// the picture as drawPicture's viewport has it, from the bottom left
 	const QRect pic = picRect();
 	const int px = pic.x();

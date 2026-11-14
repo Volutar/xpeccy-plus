@@ -270,7 +270,7 @@ void MainWin::socketRead() {
 		// itself would clear its framebuffer.
 		if (!w && glw) {
 			const qreal r = widgetDpr(this);
-			QImage img(int(width() * r + 0.5), int(height() * r + 0.5), QImage::Format_RGBA8888);
+			QImage img(devSize(), QImage::Format_RGBA8888);
 			glw->makeCurrent();
 			glBindFramebuffer(GL_FRAMEBUFFER, glw->defaultFramebufferObject());
 			glPixelStorei(GL_PACK_ALIGNMENT, 4);
