@@ -15,6 +15,7 @@
 #include "xgui/xgui.h"
 
 #include <QAbstractItemDelegate>
+#include <QCompleter>
 #include <QDebug>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -27,6 +28,7 @@
 #include <QHeaderView>
 #include <QIcon>
 #include <QLabel>
+#include <QLineEdit>
 #include <QListView>
 #include <QListWidget>
 #include <QMessageBox>
@@ -149,6 +151,10 @@ static void file_dialog_tune(QFileDialog* dlg) {
 		dlg->setProxyModel(sf);		// first: the views get it as their model
 		sf->take();
 		QObject::connect(dlg, &QFileDialog::filterSelected, sf, &xSuffixFilter::take);	// after Qt sets the user's pick
+		// the completer given a proxy matches on the display name, "Local Disk (C:)" for C:, so no path completes
+		QLineEdit* name = dlg->findChild<QLineEdit*>("fileNameEdit");
+		if (name && name->completer())
+			name->completer()->setCompletionRole(QFileSystemModel::FileNameRole);
 	}
 #endif
 	static xFileTypes* types = new xFileTypes;	// never freed: a dialog may outlive any owner at exit
