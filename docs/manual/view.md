@@ -64,12 +64,13 @@ grays out the sizes smaller than the machine shows.
 
 ## Fullscreen
 
-```{index} Fullscreen, Keep Aspect Ratio, aspect ratio
+```{index} Fullscreen, Keep Aspect Ratio, aspect ratio, Integer Scale
 ```
 
 **View > Fullscreen** fills the whole screen with the picture. In fullscreen the
-picture is fitted to the screen rather than kept to whole pixels. How to reach the menu
-from there is in [Fullscreen](main-window.md#fullscreen).
+picture is fitted to the screen rather than kept to whole pixels, unless
+**View > Integer Scale** is ticked. How to reach the menu from there is in
+[Fullscreen](main-window.md#fullscreen).
 
 **View > Keep Aspect Ratio** matters in fullscreen and in a window that is maximized or
 resized:
@@ -77,6 +78,11 @@ resized:
 - ticked - the picture keeps its shape, and the room it leaves - at the sides of a wide
   screen, above and below it in a tall window - is filled as **View > Side Fill** says;
 - not ticked - the picture is stretched to fill the whole screen or window.
+
+**View > Integer Scale**, under it, keeps that picture to whole pixels: every dot is the
+same number of screen pixels, as many as fit with the border the **Border** size sets.
+The room left around the picture is filled as **View > Side Fill** says. It is off by
+default, and grayed out while **Keep Aspect Ratio** is not ticked.
 
 ```{index} Side Fill
 ```
