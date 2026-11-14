@@ -62,9 +62,7 @@ static inline void bcSync(bitChan* ch, int ns) {
 
 sndPair mixer(sndPair, sndPair);
 
-// What the beeper is on its way out of the board: the filter between the port bit
-// and the sound (snd_beep_flt, in zx_mix and alf_mix). One per machine, from its file
-// ("beeper" in [sound]).
+// What the beeper sounds through on the board: machine key "beeper" in [sound]
 enum {
 	BEEP_LINE = 0,		// straight out: no filter
 	BEEP_SPEAKER,		// the 48K's ULA pin and its speaker
@@ -76,8 +74,7 @@ enum {
 	BEEP_TYPES
 };
 
-// The filter's state, kept by the mix. Fixed point, so a sound hash is the same
-// on every compiler: coefficients Q24, levels Q16 in 64 bits.
+// Fixed point (coefficients Q24, levels Q16) so sound hashes match across compilers
 typedef struct {
 	int type;		// what the coefficients were worked out for
 	int rate;
@@ -88,7 +85,16 @@ typedef struct {
 	long long low, band;	// resonator's state
 } sndBeepFlt;
 
-int snd_beep_flt(sndBeepFlt* st, int lev, int type, int rate);
+int snd_beep_run(sndBeepFlt* st, int lev, int type, int rate);
+
+// Every sub-sample: line out costs a branch, and marks a type taken again to resettle
+static inline int snd_beep_flt(sndBeepFlt* st, int lev, int type, int rate) {
+	if ((type <= BEEP_LINE) || (type >= BEEP_TYPES) || (rate <= 0)) {
+		st->type = BEEP_LINE;
+		return lev;
+	}
+	return snd_beep_run(st, lev, type, rate);
+}
 
 // A dc blocker, one per device, kept by whoever mixes them. None of the chips swing
 // about zero - an AY sits between silence and full - and that offset is not sound:

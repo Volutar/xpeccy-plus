@@ -15,23 +15,19 @@ sndPair mixer(sndPair vol1, sndPair vol2) {
 	return vol1;
 }
 
-// The beeper's way out, by type (sources: the lab's specs/beeper-lpf/sources.md).
-// Cut-offs in Hz, 0 where a stage is not there.
+// Cut-offs in Hz by beeper type, 0: no such stage
 static const struct {
 	double up, dn;		// one-pole low-pass, rising and falling edges
 	double hp;		// one-pole high-pass
 	double res, q;		// resonant high-pass: the piezo
 } beepFltTab[BEEP_TYPES] = {
 	{0, 0, 0, 0, 0},		// BEEP_LINE
-	// ULA pin 28 rises faster than it falls (FE-Delay); the size is a fit to
-	// recordings of real machines (tau 36.5 / 68.9 us), none of ours
-	{4356, 2311, 0, 0, 0},		// BEEP_SPEAKER
+	{4356, 2311, 0, 0, 0},		// BEEP_SPEAKER: ULA pin 28 rises faster than it falls
 	{3183, 3183, 0, 0, 0},		// BEEP_TV: 50 us
 	{8600, 8600, 0, 0, 0},		// BEEP_EVO: 2K2 + 10 nF into 12K
 	{0, 0, 530, 0, 0},		// BEEP_SCORPION: 0.1 uF into ~3K
 	{0, 0, 80, 0, 0},		// BEEP_ATM: 0.1 uF into 20K
-	// ZP-3: 4.1 kHz; its Q is not in the datasheet
-	{0, 0, 0, 4100, 3},		// BEEP_PIEZO
+	{0, 0, 0, 4100, 3},		// BEEP_PIEZO: ZP-3; Q not in the datasheet
 };
 
 #define BF_ONE	(1LL << 24)
@@ -62,13 +58,8 @@ static void bf_setup(sndBeepFlt* st, int lev, int type, int rate) {
 	st->band = 0;
 }
 
-// One sub-sample of the beeper's level through its type's filter. A rate of 0 (no
-// sound thread behind the mix) or a type out of range is let through as it is.
-int snd_beep_flt(sndBeepFlt* st, int lev, int type, int rate) {
-	if ((type <= BEEP_LINE) || (type >= BEEP_TYPES) || (rate <= 0)) {
-		st->type = BEEP_LINE;	// a filter taken again settles where the level is then
-		return lev;
-	}
+// the filtering types only: snd_beep_flt() lets line out through
+int snd_beep_run(sndBeepFlt* st, int lev, int type, int rate) {
 	if ((type != st->type) || (rate != st->rate)) bf_setup(st, lev, type, rate);
 	long long x = lev * 65536LL;
 	if (st->kUp) {
@@ -81,11 +72,7 @@ int snd_beep_flt(sndBeepFlt* st, int lev, int type, int rate) {
 		x -= st->hp;
 	}
 	if (st->kF) {
-		// Chamberlin's state-variable filter, its high-pass out: the sounder
-		// barely moves below its resonance, rings at it and passes what is
-		// above. What is above comes out at the level it went in, and the
-		// resonance Q times over it: a sounder is loudest there, which is what
-		// it is made for
+		// Chamberlin SVF, high-pass out: unity above, Q times at the resonance
 		st->low += (st->band * st->kF) >> 24;
 		long long high = x - st->low - ((st->band * st->kQ) >> 24);
 		st->band += (high * st->kF) >> 24;

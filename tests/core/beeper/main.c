@@ -154,8 +154,22 @@ static void piezo(void) {
 	}
 }
 
+// the Q24 coefficients at both offered rates: libm-made, so pinned here per platform
+static void coefficients(void) {
+	static const int rates[2] = {44100 * 32, 48000 * 32};
+	printf("== coefficients\n");
+	for (int i = 0; i < 2; i++) {
+		for (int t = BEEP_LINE + 1; t < BEEP_TYPES; t++) {
+			sndBeepFlt st;
+			settle(&st, t, rates[i], 0);
+			printf("%d %d: %lld %lld %lld %lld %lld\n", rates[i] / 32, t, st.kUp, st.kDn, st.kHp, st.kF, st.kQ);
+		}
+	}
+}
+
 int main(void) {
 	sndBeepFlt st;
+	coefficients();
 	printf("== line\n");
 	settle(&st, BEEP_LINE, 48000 * 32, 0);
 	int same = 1;
