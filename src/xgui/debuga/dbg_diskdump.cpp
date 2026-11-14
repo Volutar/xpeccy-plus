@@ -5,12 +5,12 @@
 #include <QPainter>
 
 // dump index is a physical track: (cylinder << 1) | side, the same slot flpNext
-// addresses. how far the head steps is the drive's property, not the disk's -
-// same limit flpStep uses. note the number is a slot, not a count: a
-// single-sided drive tops out at 172, which is cylinder 86 with no side bit,
-// and it gets there in steps of two
+// addresses. how far the head steps is the limit flpStep uses: the drive's,
+// or a wider image's. note the number is a slot, not a count: a single-sided
+// drive tops out at 172, which is cylinder 86 with no side bit, and it gets
+// there in steps of two
 int flp_max_track(Floppy* flp) {
-	return ((flp->trk80 ? 86 : 43) << 1) | (flp->doubleSide ? 1 : 0);
+	return (flp_last_cyl(flp) << 1) | (flp->doubleSide ? 1 : 0);
 }
 
 xDiskDump::xDiskDump(QWidget*) {

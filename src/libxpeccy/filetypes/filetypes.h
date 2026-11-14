@@ -76,7 +76,8 @@ enum {
 	ERR_NEX_HW,		// a .nex on a machine that is not a ZX Spectrum Next
 	ERR_NEX_CARD,		// a .nex with no folder in the SD card slot to boot NextZXOS from
 	ERR_NEX_NAME,		// a .nex whose name cannot be typed
-	ERR_SNAP_NEXT		// a snapshot of the Next in .sna or .z80: only .szx keeps its state
+	ERR_SNAP_NEXT,		// a snapshot of the Next in .sna or .z80: only .szx keeps its state
+	ERR_DSK_WIDE		// a disk of more cylinders than a .dsk is written with
 };
 
 // spg
@@ -396,6 +397,7 @@ int saveSCL(Computer*,const char*,int);
 
 int loadTRD(Computer*,const char*,int);
 int trd_read(Floppy*, const char*);
+int trd_write(Floppy*, const char*);
 int saveTRD(Computer*,const char*,int);
 
 int loadUDI(Computer*,const char*,int);

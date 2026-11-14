@@ -92,6 +92,7 @@ int fdi_read(Floppy* flp, const char* name) {
 			}
 		}
 		flp->protect = hd.wp ? 1 : 0;
+		flp->cyls = hd.cyls;
 		flp_insert(flp, name);
 	}
 	//for (i = 0; i < 256; i++) if (trkImg[i].data) free(trkImg[i].data);

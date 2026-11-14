@@ -1247,7 +1247,7 @@ static void ext_flp(Floppy* flp, const unsigned char* p, size_t n, int carried) 
 	flp->door = t->door;
 	flp->index = t->index;
 	flp->dwait = t->dwait;
-	flp->trk = t->trk;
+	flp->trk = (t->trk > 127) ? 127 : t->trk;	// 256 tracks: a damaged file stays in them
 	flp->field = t->field;
 	flp->pos = t->pos;
 	flp->revs = t->revs;

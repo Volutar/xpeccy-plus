@@ -59,6 +59,11 @@ A right-click on a drive's {icon}`diskGreen` light in the status bar opens the s
 | `.ima`, `.img` | yes | - | 1.44 MB PC floppy |
 | `.$B`, `.$C`... | yes | - | Hobeta: one TR-DOS file |
 
+A TR-DOS disk can be up to 1 MB: 128 cylinders, the most TR-DOS can count. A real drive
+stops at about 86 cylinders; with a larger image in it, the drive goes as far as the image
+does. Such a disk saves whole as `.trd`, `.scl` or `.udi`; `.dsk` holds 86 cylinders and
+refuses it.
+
 A **Hobeta** file is not a disk but a single TR-DOS file. Opening it into a drive adds the
 file to the disk that is there; an empty drive gets a new TR-DOS disk with the file on it.
 

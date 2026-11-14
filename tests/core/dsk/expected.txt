@@ -130,3 +130,38 @@
 == format/n-ff
   IDs taken 64 of 64, result 00 00 00
   Read ID: 00 00 00 - 03 00 01 FF
+== trd-128
+  read: err 0, 128 cylinders
+  seek to 127: track register 127, head at 127
+  read C127 H1 R16: status 00, 256 bytes, as the file: yes
+  write C127 H1 R16: status 00, 256 bytes
+  saved as TRD: err 0, 1048576 bytes, as written: yes
+  UDI: last cylinder 127
+  TRD back: err 0, 128 cylinders, every sector as written: yes
+  seek to 127: track register 127, head at 127
+  read C127 H1 R16: status 00, as written: yes
+  UDI back: err 0, 128 cylinders, every sector as written: yes
+  seek to 127: track register 127, head at 127
+  read C127 H1 R16: status 00, as written: yes
+  1 MB and a byte: err 14
+== trd-128/640k
+  read: err 0, 80 cylinders
+  seek to 100: track register 100, head at 86
+  UDI: 1125620 bytes, last cylinder 79, sum 6C4A8C27
+  blank after 1 MB: 0 cylinders, side-track 200 holds a sector: no
+  seek to 120: track register 120, head at 86
+  640K after 1 MB: err 0, 80 cylinders, side-track 200 holds a sector: no
+  seek to 120: track register 120, head at 86
+  seek to 60: track register 60, head at 43
+  1 MB, not TR-DOS, saved: err 0, 1048576 bytes, as read: yes
+== trd-128/cut
+  C0000 TR-DOS: err 0, 128 cylinders, side-track 192 after the file blank: yes
+  seek to 120: track register 120, head at 120
+  write C120 H0 R1: status 00, 256 bytes
+  saved: err 0, 1048576 bytes, the file then zeros: yes
+  B0100: err 0, 89 cylinders, side-track 177 after the file blank: yes
+  saved: err 0, 729088 bytes, the file then zeros: yes
+  B1000: err 0, 89 cylinders, side-track 177 after the file blank: yes
+  saved: err 0, 729088 bytes, the file then zeros: yes
+  FF000: err 0, 128 cylinders, side-track 255 after the file blank: yes
+  saved: err 0, 1048576 bytes, the file then zeros: yes

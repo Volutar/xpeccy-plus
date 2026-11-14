@@ -5,6 +5,8 @@
 //	read/<case>	a command, its result bytes, and which sector each block of
 //			data the CPU took came from
 //	roundtrip	the image saved back, compared with the file it was read from
+//	trd-128		a 1 MB TRD through the Beta disk's WD1793: its last cylinder
+//			read and written, saved as TRD and UDI and read back
 //
 //	dsk-bench			the cases, on an image the bench writes
 //	dsk-bench -sweep file.dsk...	load + save for each file, one line a file
@@ -581,6 +583,255 @@ static void start(const char* path, const char* path_b) {
 	seek(0);
 }
 
+// ---- a TRD of 128 cylinders, 1 MB: the Beta disk's WD1793 reads and writes its
+// last cylinder, and it saves back whole as TRD and UDI
+
+static unsigned char trd_byte(int t, int s, int k) {
+	return (t * 13 + s * 7 + k * 3 + (k >> 8)) & 0xff;
+}
+
+// side-tracks 0..tracks-1 of a TR-DOS disk whose files end on side-track 200:
+// 4096 sectors in all, as the system sector counts them
+static void trd_wide_image(unsigned char* img, int tracks) {
+	for (int t = 0; t < tracks; t++)
+		for (int s = 0; s < 16; s++)
+			for (int k = 0; k < 256; k++)
+				img[(t * 16 + s) * 256 + k] = trd_byte(t, s, k);
+	unsigned char* sys = img + 8 * 256;
+	sys[0xe1] = 0;			// first free sector
+	sys[0xe2] = 200;		// first free side-track
+	sys[0xe3] = 0x16;		// 80 DS
+	sys[0xe4] = 0;
+	sys[0xe5] = (4096 - 3200) & 0xff;	// free sectors
+	sys[0xe6] = (4096 - 3200) >> 8;
+	sys[0xe7] = 0x10;		// TR-DOS
+}
+
+static int write_file(const char* path, const unsigned char* d, size_t len) {
+	FILE* f = fopen(path, "wb");
+	if (!f) return 0;
+	size_t n = fwrite(d, 1, len, f);
+	fclose(f);
+	return n == len;
+}
+
+// a saved file: its length, and whether it is d's first len bytes then zeros
+static int saved_as(const char* path, const unsigned char* d, long len, long* flen) {
+	unsigned char* b = read_all(path, flen);
+	int same = b && (*flen >= len) && !memcmp(b, d, len);
+	for (long i = len; same && (i < *flen); i++) same = !b[i];
+	free(b);
+	return same;
+}
+
+// the door closed on the disk, the head at 0
+static void beta_disk(void) {
+	run(600000000);
+	beta_on();
+	beta_com(0x08);			// restore
+}
+
+static void beta_seek(int cyl) {
+	difOut(dif, 0x7f, cyl, 1);
+	beta_com(0x18);
+	int tr = 0xff;
+	difIn(dif, 0x3f, &tr, 1);
+	printf("  seek to %d: track register %d, head at %d\n", cyl, tr & 0xff, dif->flp[0]->trk);
+}
+
+// a sector read (0x80) or written (0xA0), each byte on DRQ; the status at the end
+static int beta_sector(int com, int side, int sec, unsigned char* buf, int* moved) {
+	difOut(dif, 0xff, side ? 0x2c : 0x3c, 1);	// #FF b4 low: side 1
+	difOut(dif, 0x5f, sec, 1);
+	difOut(dif, 0x1f, com, 1);
+	int n = 0;
+	for (long ns = 0; ns < 2000000000L; ns += 999) {
+		int st = 0xff;
+		difIn(dif, 0xff, &st, 1);
+		if (st & 0x40) {
+			if (com & 0x20) {
+				difOut(dif, 0x7f, (n < 256) ? buf[n] : 0, 1);
+			} else {
+				int v = 0xff;
+				difIn(dif, 0x7f, &v, 1);
+				if (n < 256) buf[n] = v & 0xff;
+			}
+			n++;
+		}
+		if (st & 0x80) break;
+		run(999);
+	}
+	*moved = n;
+	int st = 0xff;
+	difIn(dif, 0x1f, &st, 1);
+	return st & 0xff;
+}
+
+static Floppy* beta_drive(void) {
+	dif = difCreate(DIF_BDI, dummy_irq, NULL);
+	difReset(dif);
+	dif->flp[0]->motor = 1;
+	return dif->flp[0];
+}
+
+static void trd_wide(const char* tmp) {
+	char trd[1100], back[1100], udi[1100];
+	snprintf(trd, sizeof(trd), "%s.trd", tmp);
+	snprintf(back, sizeof(back), "%s.back.trd", tmp);
+	snprintf(udi, sizeof(udi), "%s.udi", tmp);
+	unsigned char* img = malloc(0x100000);
+	unsigned char buf[256];
+	size_t len;
+	long flen;
+	int n;
+
+	printf("== trd-128\n");
+	trd_wide_image(img, 256);
+	write_file(trd, img, 0x100000);
+	Floppy* flp = beta_drive();
+	int err = trd_read(flp, trd);
+	printf("  read: err %d, %d cylinders\n", err, flp->cyls);
+	beta_disk();
+	beta_seek(127);
+	int st = beta_sector(0x80, 1, 16, buf, &n);
+	printf("  read C127 H1 R16: status %.2X, %d bytes, as the file: %s\n", st, n,
+	       ((n == 256) && !memcmp(buf, img + 0xfff00, 256)) ? "yes" : "no");
+	for (int k = 0; k < 256; k++) img[0xfff00 + k] = buf[k] = 255 - k;
+	st = beta_sector(0xa0, 1, 16, buf, &n);
+	printf("  write C127 H1 R16: status %.2X, %d bytes\n", st, n);
+	err = trd_write(flp, back);
+	n = saved_as(back, img, 0x100000, &flen);
+	printf("  saved as TRD: err %d, %ld bytes, as written: %s\n", err, flen, n ? "yes" : "no");
+	unsigned char* u = udi_build(flp, &len);
+	printf("  UDI: last cylinder %d\n", u ? u[9] : -1);
+	if (u) write_file(udi, u, len);
+	free(u);
+	difDestroy(dif);
+
+	// both files back, each into a drive of its own
+	for (int f = 0; f < 2; f++) {
+		flp = beta_drive();
+		err = f ? udi_read(flp, udi) : trd_read(flp, back);
+		int same = 1;
+		for (int t = 0; (t < 256) && same; t++)
+			for (int s = 0; (s < 16) && same; s++)
+				same = diskGetSectorData(flp, t, s + 1, buf, 256) && !memcmp(buf, img + (t * 16 + s) * 256, 256);
+		printf("  %s back: err %d, %d cylinders, every sector as written: %s\n", f ? "UDI" : "TRD", err, flp->cyls, same ? "yes" : "no");
+		beta_disk();
+		beta_seek(127);
+		st = beta_sector(0x80, 1, 16, buf, &n);
+		printf("  read C127 H1 R16: status %.2X, as written: %s\n", st,
+		       ((n == 256) && !memcmp(buf, img + 0xfff00, 256)) ? "yes" : "no");
+		difDestroy(dif);
+	}
+
+	// past 1 MB: refused
+	FILE* fl = fopen(back, "ab");
+	if (fl) {
+		fputc(0, fl);
+		fclose(fl);
+	}
+	flp = beta_drive();
+	printf("  1 MB and a byte: err %d\n", trd_read(flp, back));
+	difDestroy(dif);
+
+	// a 640K disk: the head stops at 86 as always, and its UDI is the one it always was
+	printf("== trd-128/640k\n");
+	trd_wide_image(img, 160);
+	img[8 * 256 + 0xe2] = 100;
+	img[8 * 256 + 0xe5] = (2560 - 1600) & 0xff;
+	img[8 * 256 + 0xe6] = (2560 - 1600) >> 8;
+	write_file(trd, img, 0xa0000);
+	flp = beta_drive();
+	err = trd_read(flp, trd);
+	printf("  read: err %d, %d cylinders\n", err, flp->cyls);
+	beta_disk();
+	beta_seek(100);
+	u = udi_build(flp, &len);
+	unsigned int sum = 0;
+	for (size_t i = 0; u && (i < len); i++) sum = sum * 31 + u[i];
+	printf("  UDI: %d bytes, last cylinder %d, sum %.8X\n", (int)len, u ? u[9] : -1, sum);
+	free(u);
+	// a new blank disk after a wide one: nothing of it left past cylinder 80
+	difDestroy(dif);
+	flp = beta_drive();
+	trd_wide_image(img, 256);
+	write_file(trd, img, 0x100000);
+	trd_read(flp, trd);
+	flp_insert(flp, NULL);
+	printf("  blank after 1 MB: %d cylinders, side-track 200 holds a sector: %s\n", flp->cyls,
+	       diskGetSectorData(flp, 200, 1, buf, 256) ? "yes" : "no");
+	beta_disk();
+	beta_seek(120);
+	// a 640K TRD read into the same drive after a 1 MB one, as an open does
+	trd_read(flp, trd);
+	trd_wide_image(img, 160);
+	img[8 * 256 + 0xe2] = 100;
+	img[8 * 256 + 0xe5] = (2560 - 1600) & 0xff;
+	img[8 * 256 + 0xe6] = (2560 - 1600) >> 8;
+	write_file(trd, img, 0xa0000);
+	err = trd_read(flp, trd);
+	printf("  640K after 1 MB: err %d, %d cylinders, side-track 200 holds a sector: %s\n", err, flp->cyls,
+	       diskGetSectorData(flp, 200, 1, buf, 256) ? "yes" : "no");
+	beta_disk();
+	beta_seek(120);
+	// a 40-track drive stops at 43 with it, as always
+	flp->trk80 = 0;
+	beta_com(0x08);
+	beta_seek(60);
+	difDestroy(dif);
+
+	// 1 MB with no TR-DOS system sector: saved whole all the same
+	trd_wide_image(img, 256);
+	img[8 * 256 + 0xe7] = 0;
+	write_file(trd, img, 0x100000);
+	flp = beta_drive();
+	trd_read(flp, trd);
+	err = trd_write(flp, back);
+	n = saved_as(back, img, 0x100000, &flen);
+	printf("  1 MB, not TR-DOS, saved: err %d, %ld bytes, as read: %s\n", err, flen, n ? "yes" : "no");
+	difDestroy(dif);
+
+	// files cut short: the disk is as wide as the file or its system sector, in whole
+	// cylinders, and what the file lacks is zeros - never a copy of its last track
+	printf("== trd-128/cut\n");
+	static const struct {long len; int trdos;} cut[] = {
+		{0xc0000, 1},		// a 1 MB TR-DOS disk trimmed to its used sectors
+		{0xb0100, 0},		// ends inside an even side-track past cylinder 87
+		{0xb1000, 0},		// an odd count of side-tracks
+		{0xff000, 0},
+	};
+	for (int c = 0; c < 4; c++) {
+		trd_wide_image(img, 256);
+		if (!cut[c].trdos) img[8 * 256 + 0xe7] = 0;
+		memset(img + cut[c].len, 0, 0x100000 - cut[c].len);
+		write_file(trd, img, cut[c].len);
+		flp = beta_drive();
+		err = trd_read(flp, trd);
+		int last = (int)((cut[c].len - 1) >> 12);	// the file's last side-track
+		int zero = diskGetSectorData(flp, last + 1, 1, buf, 256);
+		for (int k = 0; zero && (k < 256); k++) zero = !buf[k];
+		printf("  %lX%s: err %d, %d cylinders, side-track %d after the file blank: %s\n", cut[c].len,
+		       cut[c].trdos ? " TR-DOS" : "", err, flp->cyls, last + 1, zero ? "yes" : "no");
+		if (cut[c].trdos) {
+			beta_disk();
+			beta_seek(120);
+			for (int k = 0; k < 256; k++) img[120 * 0x2000 + k] = buf[k] = k ^ 0x5a;
+			st = beta_sector(0xa0, 0, 1, buf, &n);
+			printf("  write C120 H0 R1: status %.2X, %d bytes\n", st, n);
+		}
+		err = trd_write(flp, back);
+		n = saved_as(back, img, cut[c].trdos ? 0x100000 : cut[c].len, &flen);
+		printf("  saved: err %d, %ld bytes, the file then zeros: %s\n", err, flen, n ? "yes" : "no");
+		difDestroy(dif);
+	}
+
+	remove(trd);
+	remove(back);
+	remove(udi);
+	free(img);
+}
+
 static int cases(const char* tmp) {
 	char tmp_b[1100];
 	snprintf(tmp_b, sizeof(tmp_b), "%s.b.dsk", tmp);
@@ -628,6 +879,7 @@ static int cases(const char* tmp) {
 	difDestroy(dif);
 	cleared(tmp);
 	roundtrip(tmp, "bench");
+	trd_wide(tmp);
 	remove(tmp);
 	remove(tmp_b);
 	return 0;

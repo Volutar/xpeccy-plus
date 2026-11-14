@@ -227,6 +227,7 @@ void diskClear(Floppy* flp) {
 		memset(flp->data[i].byte, 0, flp->trklen);
 		flpFillFields(flp, i, 0);
 	}
+	flp->cyls = 0;
 }
 
 // trdos

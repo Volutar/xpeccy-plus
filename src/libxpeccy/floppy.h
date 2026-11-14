@@ -82,6 +82,7 @@ typedef struct {
 	int revs;		// revolutions seen: which read of a weak sector is under the head
 	int trklen;		// 12500 HD, 6250 DD
 	char* path;
+	int cyls;		// cylinders the inserted image holds, 0 when blank or unknown
 	// 256 tracks in an allocation of their own, past what xstate keeps of the
 	// drive: a disk read elsewhere goes in by this pointer
 	flpTrack* data;
@@ -104,6 +105,8 @@ void flpWr(Floppy*, int, unsigned char);
 int flpNext(Floppy*,int);		// return 1 if index strobe
 void flpPrev(Floppy*,int);
 void flpStep(Floppy*,int);
+int flp_last_cyl(Floppy*);		// the last cylinder the head reaches
+int flp_wide(Floppy*);			// cylinders of an image past 86, else 0
 
 int flp_format_trk(Floppy* flp, int trk, int spt, int slen, char* data);
 void flp_set_interleave(int);

@@ -143,10 +143,22 @@ void flp_sync(Floppy* flp, int ns) {
 	}
 }
 
+// cylinders of an image past any drive's 86 (esxDOS-style mounts, up to 128), else 0
+int flp_wide(Floppy* flp) {
+	if (flp->cyls <= 87) return 0;
+	return (flp->cyls > 128) ? 128 : flp->cyls;
+}
+
+// A drive stops at 86 (43 on a 40-track one); a wide image takes it to its last
+int flp_last_cyl(Floppy* flp) {
+	int wide = flp_wide(flp);
+	return wide ? (wide - 1) : (flp->trk80 ? 86 : 43);
+}
+
 void flpStep(Floppy* flp, int dir) {
 	switch (dir) {
 		case FLP_FORWARD:
-			if (flp->trk < (flp->trk80 ? 86 : 43)) flp->trk++;
+			if (flp->trk < flp_last_cyl(flp)) flp->trk++;
 			break;
 		case FLP_BACK:
 			if (flp->trk > 0) flp->trk--;
@@ -298,11 +310,13 @@ void flpClearTrack(Floppy* flp,int tr) {
 	flp_track_written(flp, tr);
 	memset(flp->data[tr].byte, 0, TRKLEN_HD);
 	memset(flp->data[tr].field, 0, TRKLEN_HD);
+	memset(flp->data[tr].map, 0, sizeof(flp->data[tr].map));	// no sector found there either
 }
 
 void flpClearDisk(Floppy* flp) {
 	int i;
-	for (i = 0; i < 160; i++) flpClearTrack(flp,i);
+	for (i = 0; i < 256; i++) flpClearTrack(flp,i);	// all: a disk of 128 cylinders was there
+	flp->cyls = 0;
 }
 
 void flpFillFields(Floppy* flp,int tr, int flag) {
@@ -413,6 +427,9 @@ void flp_take_disk(Floppy* flp, Floppy* disk) {
 	flp->path = disk->path;
 	disk->data = data;
 	disk->path = path;
+	int cyls = flp->cyls;
+	flp->cyls = disk->cyls;
+	disk->cyls = cyls;
 	flp->trklen = disk->trklen;
 	flp->protect = disk->protect;
 	flp->xirq(IRQ_FDD_RDY, flp->xptr);	// rdy 1->0
@@ -430,6 +447,7 @@ int flp_trk0(Floppy* flp) {
 
 void flp_eject(Floppy* flp) {
 	flp_set_path(flp, NULL);
+	flp->cyls = 0;
 	flp->xirq(IRQ_FDD_RDY, flp->xptr);	// rdy 1->0
 	flp->door = 0;
 	flp->insert = 0;

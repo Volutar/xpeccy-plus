@@ -104,6 +104,7 @@ int udi_read(Floppy* flp, const char* name) {
 			loadUDITrack(flp, file, i, 0);
 			if (dbSide) loadUDITrack(flp, file, i, 1);
 		}
+		flp->cyls = tmp + 1;
 		flp_insert(flp, name);
 	}
 	fclose(file);
@@ -119,9 +120,10 @@ int loadUDI(Computer* comp, const char* name, int drv) {
 unsigned char* udi_build(Floppy* flp, size_t* len) {
 	const char sign[] = "UDI!";
 	int bits = (flp->trklen + 7) >> 3;	// the sync mark bit field: 782 for a DD track
-	// header, 160 tracks of type + length + bytes + bits, crc; an HD track is
-	// near three times a DD one, so the buffer is sized for this floppy
-	unsigned char* img = (unsigned char*)malloc(16 + 160 * (3 + flp->trklen + bits) + 4);
+	int cyls = flp_wide(flp);		// all of an image past 86, else the drive's 80 (40)
+	if (!cyls) cyls = flp->trk80 ? 80 : 40;
+	// header, tracks of type + length + bytes + bits (HD ones near 3x DD), crc
+	unsigned char* img = (unsigned char*)malloc(16 + cyls * 2 * (3 + flp->trklen + bits) + 4);
 	unsigned char* dptr = img;
 	unsigned char* bptr;
 	int i,j;
@@ -131,14 +133,14 @@ unsigned char* udi_build(Floppy* flp, size_t* len) {
 	bptr = img + 4;
 	dptr += 8;
 	*(dptr++) = 0x00;			// version
-	*(dptr++) = flp->trk80 ? 79 : 39;		// maximun track number
+	*(dptr++) = cyls - 1;			// maximum track number
 	*(dptr++) = flp->doubleSide ? 1 : 0;		// double side (due to floppy property)
 	*(dptr++) = 0x00;
 	*(dptr++) = 0x00;
 	*(dptr++) = 0x00;
 	*(dptr++) = 0x00;
 	*(dptr++) = 0x00;
-	for (i = 0; i < (flp->trk80 ? 160 : 80); i++) {
+	for (i = 0; i < cyls * 2; i++) {
 		*(dptr++) = 0x00;		// MFM
 		*(dptr++) = (flp->trklen & 0xff);	// track len
 		*(dptr++) = ((flp->trklen & 0xff00) >> 8);
