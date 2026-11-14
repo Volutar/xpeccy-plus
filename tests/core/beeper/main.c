@@ -1,6 +1,6 @@
-// Headless beeper filter bench: snd_beep_flt() for every beeper type at the sound
-// thread's sub-sample rates (44100 and 48000 Hz, 32 sub-samples each), against the
-// cut-offs it is built from (sound/sndcommon.c, beepFltTab).
+// Headless beeper filter bench: snd_beep_flt() and snd_mix_flt() for every beeper type
+// at the sound thread's sub-sample rates (44100 and 48000 Hz, 32 sub-samples each),
+// against the cut-offs they are built from (sound/sndcommon.c, beepFltTab).
 //
 //	beeper-bench
 //
@@ -30,10 +30,16 @@ static int near(double got, double want, double tol) {
 	return fabs(got - want) <= want * tol;
 }
 
+static int chain = BF_BEEP;	// which of a type's chains the helpers below run
+
+static int flt(sndBeepFlt* st, int x, int type, int rate) {
+	return (chain == BF_MIX) ? snd_beep_run(st, x, type, rate, BF_MIX) : snd_beep_flt(st, x, type, rate);
+}
+
 // a fresh filter, settled on a level
 static void settle(sndBeepFlt* st, int type, int rate, int lev) {
 	st->type = -1;
-	snd_beep_flt(st, lev, type, rate);
+	flt(st, lev, type, rate);
 }
 
 // sub-samples a step from 'from' to 'to' takes to go 63.2 % of the way, as Hz
@@ -43,7 +49,7 @@ static double step_fc(int type, int rate, int from, int to) {
 	double mark = from + (to - from) * (1 - exp(-1));
 	double was = from;
 	for (int n = 1; n < rate; n++) {
-		double y = snd_beep_flt(&st, to, type, rate);
+		double y = flt(&st, to, type, rate);
 		// a fast one is a few dozen sub-samples long: the crossing between two
 		if ((to > from) ? (y >= mark) : (y <= mark))
 			return rate / (2 * PI * (n - 1 + (mark - was) / (y - was)));
@@ -59,7 +65,7 @@ static double hp_fc(int type, int rate) {
 	double mark = LEV * exp(-1);
 	double was = LEV;
 	for (int n = 1; n < rate; n++) {
-		double y = snd_beep_flt(&st, LEV, type, rate);
+		double y = flt(&st, LEV, type, rate);
 		if (y <= mark)
 			return rate / (2 * PI * (n - 1 + (mark - was) / (y - was)));
 		was = y;
@@ -73,6 +79,15 @@ static double res_hp(double hz, double f0, double q) {
 	return r * r / sqrt((1 - r * r) * (1 - r * r) + (r / q) * (r / q));
 }
 
+// one-poles' gains
+static double lp1(double hz, double fc) {
+	return 1 / sqrt(1 + (hz / fc) * (hz / fc));
+}
+
+static double hp1(double hz, double fc) {
+	return (hz / fc) * lp1(hz, fc);
+}
+
 // gain at a frequency: a sine's peak after it has settled, over its own
 static double gain(int type, int rate, double hz) {
 	sndBeepFlt st;
@@ -82,7 +97,7 @@ static double gain(int type, int rate, double hz) {
 	int peak = 0;
 	for (int n = 0; n < skip + span; n++) {
 		int x = (int)lround(LEV * sin(2 * PI * hz * n / rate));
-		int y = snd_beep_flt(&st, x, type, rate);
+		int y = flt(&st, x, type, rate);
 		if ((n >= skip) && (abs(y) > peak)) peak = abs(y);
 	}
 	return (double)peak / LEV;
@@ -94,7 +109,7 @@ static int held(int type, int rate, int lev) {
 	settle(&st, type, rate, 0);
 	int y = 0;
 	for (int n = 0; n < rate; n++)
-		y = snd_beep_flt(&st, lev, type, rate);
+		y = flt(&st, lev, type, rate);
 	return y;
 }
 
@@ -129,6 +144,81 @@ static void highpass(const char* name, int type, double hp) {
 	}
 }
 
+// a low-pass from 'lp' Hz and a high-pass from 'hp' Hz in one chain: the gain where it
+// matters against the two one-poles', and a held level gone
+static void band(const char* name, int type, double lp, double hp) {
+	static const double at[5] = {0.5, 1, 3, 1, 4};	// * hp, * hp, * hp, * lp, * lp
+	printf("== %s\n", name);
+	for (int i = 0; i < 2; i++) {
+		int rate = outRates[i];
+		int ok = 1;
+		printf("%d:", rate / 32);
+		for (int k = 0; k < 5; k++) {
+			double hz = at[k] * ((k < 3) ? hp : lp);
+			double g = gain(type, rate, hz);
+			printf(" %.0f Hz %.3f", hz, g);
+			ok &= near(g, lp1(hz, lp) * hp1(hz, hp), 0.02);
+		}
+		printf("\n");
+		check("the gains as built", ok);
+		check("a held level dies away to nothing", held(type, rate, LEV) == 0);
+	}
+}
+
+// the 48K: the pin's edges, slower falling, then the speaker's guessed low end
+static void speaker(void) {
+	printf("== speaker\n");
+	for (int i = 0; i < 2; i++) {
+		int rate = outRates[i];
+		sndBeepFlt st;
+		settle(&st, BEEP_SPEAKER, rate, 0);
+		check("pin edges as built", (st.kUp == llround(-expm1(-2 * PI * 4356 / rate) * (1 << 24)))
+			&& (st.kDn == llround(-expm1(-2 * PI * 2311 / rate) * (1 << 24))));
+		double g100 = gain(BEEP_SPEAKER, rate, 100);
+		double g500 = gain(BEEP_SPEAKER, rate, 500);
+		double g2k = gain(BEEP_SPEAKER, rate, 2000);
+		printf("%d: 100 Hz %.3f, 500 Hz %.3f, 2 kHz %.3f\n", rate / 32, g100, g500, g2k);
+		check("the bass thinned, 2nd order", near(g100, res_hp(100, 500, sqrt(0.5)), 0.05));
+		// the uneven edges shift a sine's peak a little: within 2 %, as the other -3 dB checks
+		check("-3 dB at 500 Hz", near(g500, sqrt(0.5), 0.02));
+		check("the middle through the edges", (g2k < lp1(2000, 4356) * 1.01) && (g2k > lp1(2000, 2311) * 0.99));
+		check("a held level dies away to nothing", held(BEEP_SPEAKER, rate, LEV) == 0);
+	}
+}
+
+// the PSG: only TV and +2A/+3 filter it, each channel on its own
+static void mix(void) {
+	printf("== mix\n");
+	int rate = 48000 * 32;
+	sndBeepFlt st[2], a;
+	sndPair in = {1234, -567};
+	st[0].type = st[1].type = BEEP_TV;
+	int ok = 1;
+	for (int t = BEEP_LINE; t < BEEP_TYPES; t++) {
+		if (snd_beep_mixes(t)) continue;
+		sndPair out = snd_mix_flt(st, in, t, rate);
+		ok &= (out.left == in.left) && (out.right == in.right) && (st[0].type == BEEP_LINE) && (st[1].type == BEEP_LINE);
+	}
+	check("the other types let the PSG through", ok);
+	// TV: the mix chain is the beeper's, a channel each
+	st[0].type = st[1].type = a.type = -1;
+	unsigned s = 1;
+	ok = 1;
+	for (int n = 0; n < rate / 10; n++) {
+		s = s * 1103515245u + 12345u;
+		int x = (int)((s >> 16) & 0x3fff) - 0x2000;
+		sndPair p = {x, -x / 2};
+		sndPair y = snd_mix_flt(st, p, BEEP_TV, rate);
+		int b = snd_beep_flt(&a, x, BEEP_TV, rate);
+		ok &= (y.left == b) && (abs(y.right + b / 2) <= 1);
+	}
+	check("TV: the PSG through the beeper's filter, left and right apart", ok);
+	chain = BF_MIX;
+	lowpass("mix tv", BEEP_TV, 3183, 3183);
+	band("mix plus3", BEEP_PLUS3, 2500, 150);
+	chain = BF_BEEP;
+}
+
 static void piezo(void) {
 	printf("== piezo\n");
 	for (int i = 0; i < 2; i++) {
@@ -161,6 +251,10 @@ static void coefficients(void) {
 			sndBeepFlt st;
 			settle(&st, t, outRates[i], 0);
 			printf("%d %d: %lld %lld %lld %lld %lld\n", outRates[i] / 32, t, st.kUp, st.kDn, st.kHp, st.kF, st.kQ);
+			if (!snd_beep_mixes(t)) continue;
+			st.type = -1;
+			snd_beep_run(&st, 0, t, outRates[i], BF_MIX);
+			printf("%d %d mix: %lld %lld %lld %lld %lld\n", outRates[i] / 32, t, st.kUp, st.kDn, st.kHp, st.kF, st.kQ);
 		}
 	}
 }
@@ -185,6 +279,11 @@ static void coefficients_by_speed(void) {
 				settle(&st, t, speed_rate(outRates[i], s), 0);
 				printf("%d %d/%d %d: %lld %lld %lld %lld %lld\n", outRates[i] / 32, speeds[s].num, speeds[s].den,
 					t, st.kUp, st.kDn, st.kHp, st.kF, st.kQ);
+				if (!snd_beep_mixes(t)) continue;
+				st.type = -1;
+				snd_beep_run(&st, 0, t, speed_rate(outRates[i], s), BF_MIX);
+				printf("%d %d/%d %d mix: %lld %lld %lld %lld %lld\n", outRates[i] / 32, speeds[s].num, speeds[s].den,
+					t, st.kUp, st.kDn, st.kHp, st.kF, st.kQ);
 			}
 		}
 	}
@@ -196,7 +295,7 @@ static double pole_fc(int type, int rate, int from, int to, int hp) {
 	settle(&st, type, rate, from);
 	double was = 0;
 	for (int n = 1; n < rate; n++) {
-		double y = snd_beep_flt(&st, to, type, rate);
+		double y = flt(&st, to, type, rate);
 		double left = hp ? y / to : (to - y) / (double)(to - from);
 		if (left <= 0) return 0;
 		double l = log(left);
@@ -213,20 +312,23 @@ static void by_speed(void) {
 	for (int s = 0; s < 7; s++) {
 		for (int i = 0; i < 2; i++) {
 			int rate = speed_rate(outRates[i], s);
-			double su = pole_fc(BEEP_SPEAKER, rate, 0, LEV, 0), sd = pole_fc(BEEP_SPEAKER, rate, LEV, 0, 0);
+			double sp = gain(BEEP_SPEAKER, rate, 100), p3 = gain(BEEP_PLUS3, rate, 1000);
 			double tv = pole_fc(BEEP_TV, rate, 0, LEV, 0), evo = pole_fc(BEEP_EVO, rate, 0, LEV, 0);
 			double sc = pole_fc(BEEP_SCORPION, rate, 0, LEV, 1), atm = pole_fc(BEEP_ATM, rate, 0, LEV, 1);
 			double pz = gain(BEEP_PIEZO, rate, 4100);
-			printf("%d/%d %d: speaker %.0f/%.0f, tv %.0f, evo %.0f, scorpion %.0f, atm %.0f, piezo at f0 %.3f\n",
-				speeds[s].num, speeds[s].den, outRates[i] / 32, su, sd, tv, evo, sc, atm, pz);
-			check("cut-offs as built", near(su, 4356, 0.01) && near(sd, 2311, 0.01) && near(tv, 3183, 0.01)
+			printf("%d/%d %d: speaker at 100 Hz %.3f, plus3 at 1 kHz %.3f, tv %.0f, evo %.0f, scorpion %.0f, atm %.0f, piezo at f0 %.3f\n",
+				speeds[s].num, speeds[s].den, outRates[i] / 32, sp, p3, tv, evo, sc, atm, pz);
+			check("cut-offs as built", near(sp, res_hp(100, 500, sqrt(0.5)), 0.05)
+				&& near(p3, lp1(1000, 2500) * hp1(1000, 340), 0.02) && near(tv, 3183, 0.01)
 				&& near(evo, 8600, 0.01) && near(sc, 530, 0.01) && near(atm, 80, 0.01)
 				&& near(pz, res_hp(4100, 4100, 3), 0.05));
 			int lp = 1, hp = 1;
-			for (int t = BEEP_SPEAKER; t <= BEEP_EVO; t++)
-				lp &= (held(t, rate, LEV) == LEV) && (held(t, rate, -LEV) == -LEV);
-			for (int t = BEEP_SCORPION; t <= BEEP_PIEZO; t++)
-				hp &= (held(t, rate, LEV) == 0);
+			for (int t = BEEP_SPEAKER; t <= BEEP_PIEZO; t++) {
+				if ((t == BEEP_TV) || (t == BEEP_EVO))
+					lp &= (held(t, rate, LEV) == LEV) && (held(t, rate, -LEV) == -LEV);
+				else
+					hp &= (held(t, rate, LEV) == 0);
+			}
 			check("held levels: through the low-passes, gone from the high-passes", lp && hp);
 		}
 	}
@@ -298,12 +400,14 @@ int main(void) {
 	for (int n = 0; n < 48000 * 32 / 10; n++) snd_beep_flt(&st, LEV, BEEP_SCORPION, 48000 * 32);
 	for (int n = 0; n < 1000; n++) snd_beep_flt(&st, 0, BEEP_LINE, 48000 * 32);
 	check("a type taken again settles anew", snd_beep_flt(&st, 0, BEEP_SCORPION, 48000 * 32) == 0);
-	lowpass("speaker", BEEP_SPEAKER, 4356, 2311);
+	speaker();
 	lowpass("tv", BEEP_TV, 3183, 3183);
+	band("plus3", BEEP_PLUS3, 2500, 340);
 	lowpass("evo", BEEP_EVO, 8600, 8600);
 	highpass("scorpion", BEEP_SCORPION, 530);
 	highpass("atm", BEEP_ATM, 80);
 	piezo();
+	mix();
 	by_speed();
 	speed_change();
 	return failures ? 1 : 0;

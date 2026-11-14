@@ -16,18 +16,27 @@ sndPair mixer(sndPair vol1, sndPair vol2) {
 }
 
 // Cut-offs in Hz by beeper type, 0: no such stage
-static const struct {
+typedef struct {
 	double up, dn;		// one-pole low-pass, rising and falling edges
 	double hp;		// one-pole high-pass
-	double res, q;		// resonant high-pass: the piezo
+	double res, q;		// resonant high-pass (Chamberlin)
+} bfChain;
+
+static const struct {
+	bfChain beep;		// the beeper and the tape
+	bfChain mix;		// the PSG, where it is mixed in before the filter (snd_beep_mixes)
 } beepFltTab[BEEP_TYPES] = {
-	{0, 0, 0, 0, 0},		// BEEP_LINE
-	{4356, 2311, 0, 0, 0},		// BEEP_SPEAKER: ULA pin 28 rises faster than it falls
-	{3183, 3183, 0, 0, 0},		// BEEP_TV: 50 us
-	{8600, 8600, 0, 0, 0},		// BEEP_EVO: 2K2 + 10 nF into 12K
-	{0, 0, 530, 0, 0},		// BEEP_SCORPION: 0.1 uF into ~3K
-	{0, 0, 80, 0, 0},		// BEEP_ATM: 0.1 uF into 20K
-	{0, 0, 0, 4100, 3},		// BEEP_PIEZO: ZP-3; Q not in the datasheet
+	{{0, 0, 0, 0, 0}, {0}},			// BEEP_LINE
+	// ULA pin 28 rises faster than it falls; the speaker's own low end is a guess (no data)
+	{{4356, 2311, 0, 500, 0.7071067811865476}, {0}},	// BEEP_SPEAKER
+	{{3183, 3183, 0, 0, 0}, {3183, 3183, 0, 0, 0}},	// BEEP_TV: 50 us, all the modulator gets
+	// C39/C40 100 nF + 4K7 into TR5's base; C37 100 nF on its collector, ~2.5 kHz worked out
+	// from the parts, not measured; the PSG's C38 1 uF corner hangs on the AY's own output: a guess
+	{{2500, 2500, 340, 0, 0}, {2500, 2500, 150, 0, 0}},	// BEEP_PLUS3
+	{{8600, 8600, 0, 0, 0}, {0}},		// BEEP_EVO: 2K2 + 10 nF into 12K
+	{{0, 0, 530, 0, 0}, {0}},		// BEEP_SCORPION: 0.1 uF into ~3K
+	{{0, 0, 80, 0, 0}, {0}},		// BEEP_ATM: 0.1 uF into 20K
+	{{0, 0, 0, 4100, 3}, {0}},		// BEEP_PIEZO: ZP-3; Q not in the datasheet
 };
 
 #define BF_ONE	(1LL << 24)
@@ -39,23 +48,24 @@ static long long bf_pole(double hz, int rate) {
 }
 
 // work the coefficients out for a type at a rate; the state stays as it is
-static void bf_coefs(sndBeepFlt* st, int type, int rate) {
+static void bf_coefs(sndBeepFlt* st, int type, int rate, int chain) {
+	const bfChain* c = chain ? &beepFltTab[type].mix : &beepFltTab[type].beep;
 	st->type = type;
 	st->rate = rate;
-	st->kUp = bf_pole(beepFltTab[type].up, rate);
-	st->kDn = bf_pole(beepFltTab[type].dn, rate);
-	st->kHp = bf_pole(beepFltTab[type].hp, rate);
+	st->kUp = bf_pole(c->up, rate);
+	st->kDn = bf_pole(c->dn, rate);
+	st->kHp = bf_pole(c->hp, rate);
 	st->kF = 0;
 	st->kQ = 0;
-	if (beepFltTab[type].res > 0) {
-		st->kF = llround(2 * sin(BF_PI * beepFltTab[type].res / rate) * BF_ONE);
-		st->kQ = llround(BF_ONE / beepFltTab[type].q);
+	if (c->res > 0) {
+		st->kF = llround(2 * sin(BF_PI * c->res / rate) * BF_ONE);
+		st->kQ = llround(BF_ONE / c->q);
 	}
 }
 
 // a type taken anew: its coefficients, and settled where the level is now
-static void bf_setup(sndBeepFlt* st, int lev, int type, int rate) {
-	bf_coefs(st, type, rate);
+static void bf_setup(sndBeepFlt* st, int lev, int type, int rate, int chain) {
+	bf_coefs(st, type, rate, chain);
 	// settled: the low-passes on the level, a high-pass has taken it all away
 	st->lp = lev * 65536LL;		// a level can be under 0: no shift of it
 	st->hp = st->lp;
@@ -63,13 +73,14 @@ static void bf_setup(sndBeepFlt* st, int lev, int type, int rate) {
 	st->band = 0;
 }
 
-// the filtering types only: snd_beep_flt() lets line out through
-int snd_beep_run(sndBeepFlt* st, int lev, int type, int rate) {
+// the filtering types only: snd_beep_flt() and snd_mix_flt() let the rest through.
+// A state serves one chain, so its type alone says when to settle anew
+int snd_beep_run(sndBeepFlt* st, int lev, int type, int rate, int chain) {
 	// a speed change keeps the state: each stage's output is in it
 	if (type != st->type)
-		bf_setup(st, lev, type, rate);
+		bf_setup(st, lev, type, rate, chain);
 	else if (rate != st->rate)
-		bf_coefs(st, type, rate);
+		bf_coefs(st, type, rate, chain);
 	long long x = lev * 65536LL;
 	if (st->kUp) {
 		long long k = (x > st->lp) ? st->kUp : st->kDn;

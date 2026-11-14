@@ -67,6 +67,7 @@ class SetupWin : public QDialog {
 		bool applyDivFirmware();
 		void showDevRows();
 		void showBoardStorage();
+		void showBoardFilter();
 		void fillNextGroup();
 		void showDriveRows();
 		void tidySoundPage();
@@ -163,6 +164,7 @@ class SetupWin : public QDialog {
 		QComboBox* gsBox;
 		QComboBox* saaBox;
 		QComboBox* beepBox;
+		QLabel* beepName;		// its row's name: "(off)" while Board filters are off
 		QComboBox* clockBox;		// the Gluk clock (MAC_CLOCK_*), where the board takes one
 		QList<QWidget*> clockRow;
 		QComboBox* gsRomBox;

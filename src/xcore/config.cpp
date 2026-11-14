@@ -392,6 +392,7 @@ void saveConfig() {
 	fprintf(cfile, "\n[SOUND]\n\n");
 	fprintf(cfile, "enabled = %s\n", YESNO(conf.snd.enabled));
 	fprintf(cfile, "dc.filter = %s\n", YESNO(conf.snd.vol.dc));
+	fprintf(cfile, "board.filter = %s\n", YESNO(conf.snd.vol.board));
 	fprintf(cfile, "soundsys = %s\n", sndOutput->name);
 	fprintf(cfile, "rate = %i\n", conf.snd.rate);
 	fprintf(cfile, "rate_auto = %s\n", YESNO(conf.snd.rateauto));
@@ -1026,6 +1027,7 @@ void loadConfig() {
 	conf.dbg.font = QFont("DejaVu Sans Mono", 9);		// default, shipped in the resources
 // init volumes
 	conf.snd.vol.dc = 1;		// most devices idle at a level, not at zero
+	conf.snd.vol.board = 0;		// the machines' beeper types: there to turn on, not forced on
 	conf.snd.vol.master = 100;
 	conf.snd.vol.beep = 80;
 	conf.snd.vol.tape = 80;
@@ -1431,6 +1433,7 @@ void loadConfig() {
 				case SECT_SOUND:
 					if (pnam=="enabled") conf.snd.enabled = arg.b;
 					if (pnam=="dc.filter") conf.snd.vol.dc = arg.b;
+					if (pnam=="board.filter") conf.snd.vol.board = arg.b;
 					if (pnam=="soundsys") soutnam = pval;
 					// a config written by an older build can name a rate this
 					// one no longer offers; sndInit's default stands instead

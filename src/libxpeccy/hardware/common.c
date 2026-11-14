@@ -175,6 +175,7 @@ sndPair zx_mix(sndMix* m, sndVolume* sv) {
 	sndPair vol;
 	sndPair svol;
 	int dc = sv->dc;		// read once, so every device in one sample agrees
+	int type = sv->board ? m->in.beepType : BEEP_LINE;	// Board filters off: line out
 	// 1:tape sound. volPlay is a level around 0x80, not a level above zero -
 	// bit 7 of it is the EAR bit the ULA reads - so it is centred here. Read as
 	// 0..255 it put half of the tape volume into the mix as a constant, which is
@@ -184,12 +185,12 @@ sndPair zx_mix(sndMix* m, sndVolume* sv) {
 	// with it here, so the two share a blocker as well
 	lev += bc_level_of(m->in.beep, sv->beep);
 	// ...and leaves the board through what the machine's beeper type says
-	lev = snd_beep_flt(&m->bflt, lev, m->in.beepType, m->rate);
+	lev = snd_beep_flt(&m->bflt, lev, type, m->rate);
 	svol.left = lev;
 	svol.right = lev;
 	vol = snd_dc(&m->dc[0], svol, dc);
-	// 3:turbo sound
-	svol = snd_dc(&m->dc[1], tsGetVolume(m->ts), dc);
+	// 3:turbo sound, through the type's filter where the board mixes it in before it
+	svol = snd_dc(&m->dc[1], snd_mix_flt(m->pflt, tsGetVolume(m->ts), type, m->rate), dc);
 	vol.left += svol.left * sv->ay / 100;
 	vol.right += svol.right * sv->ay / 100;
 	// 4:general sound
