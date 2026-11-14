@@ -27,6 +27,9 @@ int trd_read(Floppy* flp, const char* name) {
 			flp_format_trk(flp, trk, 16, 256, buf);
 			trk++;
 		}
+		// a disk read into the drive itself: nothing of a wider one left past it
+		while (trk < 256)
+			flpClearTrack(flp, trk++);
 
 		flp->cyls = (int)((len + 0x1fff) / 0x2000);
 		flp_insert(flp, name);
@@ -48,6 +51,9 @@ int trd_write(Floppy* flp, const char* name) {
 	else
 		disksize = 0;
 	if (disksize < 2560) disksize = 2560;		// 80*2*16
+	// an image past 86 cylinders whole, whatever its system sector says (another
+	// DOS's, or a full disk's first free track wrapped to 0)
+	if (disksize < flp_wide(flp) * 32) disksize = flp_wide(flp) * 32;
 	if (disksize > TRD_MAX / 0x100) disksize = TRD_MAX / 0x100;	// what loadTRD takes back
 	int tracks = (disksize + 15) / 16;
 

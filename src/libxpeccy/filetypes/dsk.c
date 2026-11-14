@@ -493,6 +493,7 @@ static size_t dsk_save_track(Floppy* flp, int trk, int side, dskBuf* b) {
 static const char sign[] = "EXTENDED CPC DSK File\r\nDisk-Info\r\nXpeccy        ";
 
 unsigned char* dsk_build(Floppy* flp, size_t* len) {
+	if (flp_wide(flp)) return NULL;		// 86 cylinders are written: none, not a cut one
 	dskBuf b;
 	unsigned char buf[256];
 	memset(&b, 0, sizeof(b));
@@ -546,7 +547,7 @@ unsigned char* dsk_build(Floppy* flp, size_t* len) {
 
 int saveDSK(Computer* comp, const char* name, int drv) {
 	Floppy* flp = comp->dif->flp[drv & 3];
-	if (flp->cyls > 86) return ERR_DSK_WIDE;	// dsk_build writes 86: refused, not cut
+	if (flp_wide(flp)) return ERR_DSK_WIDE;	// dsk_build writes 86: refused, not cut
 	size_t len = 0;
 	unsigned char* img = dsk_build(flp, &len);
 	if (!img) return ERR_CANT_OPEN;

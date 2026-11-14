@@ -143,13 +143,18 @@ void flp_sync(Floppy* flp, int ns) {
 	}
 }
 
-// A drive stops at 86 (43 on a 40-track one). An image of more cylinders,
-// up to the 128 of a 1 MB TRD, widens it to its own last one: such images
-// exist for esxDOS-style mounts, not for real drives
+// An image wider than any drive goes (past cylinder 86), up to the 128 of a
+// 1 MB TRD: its cylinders, else 0. Such images exist for esxDOS-style mounts,
+// not for real drives; anything narrower is taken as it always was
+int flp_wide(Floppy* flp) {
+	if (flp->cyls <= 87) return 0;
+	return (flp->cyls > 128) ? 128 : flp->cyls;
+}
+
+// A drive stops at 86 (43 on a 40-track one); a wide image takes it to its last
 int flp_last_cyl(Floppy* flp) {
-	int last = flp->trk80 ? 86 : 43;
-	int cyls = (flp->cyls > 128) ? 128 : flp->cyls;
-	return (cyls - 1 > last) ? (cyls - 1) : last;
+	int wide = flp_wide(flp);
+	return wide ? (wide - 1) : (flp->trk80 ? 86 : 43);
 }
 
 void flpStep(Floppy* flp, int dir) {

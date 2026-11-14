@@ -120,10 +120,9 @@ int loadUDI(Computer* comp, const char* name, int drv) {
 unsigned char* udi_build(Floppy* flp, size_t* len) {
 	const char sign[] = "UDI!";
 	int bits = (flp->trklen + 7) >> 3;	// the sync mark bit field: 782 for a DD track
-	// the drive's 80 or 40 cylinders, or all of a wider image: a disk of up to
-	// 80 is saved as it always was
-	int cyls = flp->trk80 ? 80 : 40;
-	if (flp->cyls > cyls) cyls = (flp->cyls > 128) ? 128 : flp->cyls;
+	// the drive's 80 or 40 cylinders, as always, or all of an image past 86
+	int cyls = flp_wide(flp);
+	if (!cyls) cyls = flp->trk80 ? 80 : 40;
 	// header, two tracks a cylinder of type + length + bytes + bits, crc; an HD
 	// track is near three times a DD one, so the buffer is sized for this floppy
 	unsigned char* img = (unsigned char*)malloc(16 + cyls * 2 * (3 + flp->trklen + bits) + 4);

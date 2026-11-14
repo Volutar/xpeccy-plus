@@ -106,6 +106,7 @@ int flpNext(Floppy*,int);		// return 1 if index strobe
 void flpPrev(Floppy*,int);
 void flpStep(Floppy*,int);
 int flp_last_cyl(Floppy*);		// the last cylinder the head reaches
+int flp_wide(Floppy*);			// cylinders of an image past 86, else 0
 
 int flp_format_trk(Floppy* flp, int trk, int spt, int slen, char* data);
 void flp_set_interleave(int);
