@@ -2956,9 +2956,9 @@ void SetupWin::showBoardStorage() {
 // Board filters off: the Beeper row still picks, its name and tip say it is not heard
 void SetupWin::showBoardFilter() {
 	bool on = ui.chkBoardFilter->isChecked();
-	if (beepName) beepName->setText(on ? tr("Beeper") : tr("Beeper (off)"));
+	beepName->setText(on ? tr("Beeper") : tr("Beeper (off)"));
 	QString tip = on ? QString() : tr("Board filters are off on the Sound page:\nthe sound goes out as Line out");
-	if (beepName) beepName->setToolTip(tip);
+	beepName->setToolTip(tip);
 	beepBox->setToolTip(tip);
 }
 

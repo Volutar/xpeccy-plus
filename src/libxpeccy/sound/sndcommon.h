@@ -101,6 +101,11 @@ static inline int snd_beep_flt(sndBeepFlt* st, int lev, int type, int rate) {
 	return snd_beep_run(st, lev, type, rate, BF_BEEP);
 }
 
+// the type a mix hears: the machine's with Board filters on, line out with them off
+static inline int snd_board_type(int type, const sndVolume* sv) {
+	return sv->board ? type : BEEP_LINE;
+}
+
 // the types whose board or TV has the PSG mixed in before its filter
 static inline int snd_beep_mixes(int type) {
 	return (type == BEEP_TV) || (type == BEEP_PLUS3);

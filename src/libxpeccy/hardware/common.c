@@ -175,7 +175,7 @@ sndPair zx_mix(sndMix* m, sndVolume* sv) {
 	sndPair vol;
 	sndPair svol;
 	int dc = sv->dc;		// read once, so every device in one sample agrees
-	int type = sv->board ? m->in.beepType : BEEP_LINE;	// Board filters off: line out
+	int type = snd_board_type(m->in.beepType, sv);
 	// 1:tape sound. volPlay is a level around 0x80, not a level above zero -
 	// bit 7 of it is the EAR bit the ULA reads - so it is centred here. Read as
 	// 0..255 it put half of the tape volume into the mix as a constant, which is

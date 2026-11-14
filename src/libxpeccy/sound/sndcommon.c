@@ -27,12 +27,9 @@ static const struct {
 	bfChain mix;		// the PSG, where it is mixed in before the filter (snd_beep_mixes)
 } beepFltTab[BEEP_TYPES] = {
 	{{0, 0, 0, 0, 0}, {0}},			// BEEP_LINE
-	// ULA pin 28 rises faster than it falls; the speaker's own low end is a guess (no data)
-	{{4356, 2311, 0, 500, 0.7071067811865476}, {0}},	// BEEP_SPEAKER
+	{{4356, 2311, 0, 500, 0.7071067811865476}, {0}},	// BEEP_SPEAKER: pin 28's edges; 500 Hz a guess
 	{{3183, 3183, 0, 0, 0}, {3183, 3183, 0, 0, 0}},	// BEEP_TV: 50 us, all the modulator gets
-	// C39/C40 100 nF + 4K7 into TR5's base; C37 100 nF on its collector, ~2.5 kHz worked out
-	// from the parts, not measured; the PSG's C38 1 uF corner hangs on the AY's own output: a guess
-	{{2500, 2500, 340, 0, 0}, {2500, 2500, 150, 0, 0}},	// BEEP_PLUS3
+	{{2500, 2500, 340, 0, 0}, {2500, 2500, 150, 0, 0}},	// BEEP_PLUS3: C37 on TR5; PSG's 150 Hz a guess
 	{{8600, 8600, 0, 0, 0}, {0}},		// BEEP_EVO: 2K2 + 10 nF into 12K
 	{{0, 0, 530, 0, 0}, {0}},		// BEEP_SCORPION: 0.1 uF into ~3K
 	{{0, 0, 80, 0, 0}, {0}},		// BEEP_ATM: 0.1 uF into 20K

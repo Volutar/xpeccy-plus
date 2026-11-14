@@ -134,7 +134,7 @@ static const hwQuiet alf_quiet = {HWQ_ACK_ZX, NULL, NULL, alf_devs_sync, NULL, 0
 sndPair alf_mix(sndMix* m, sndVolume* sv) {
 	sndPair p;
 	sndPair v;
-	int type = sv->board ? m->in.beepType : BEEP_LINE;
+	int type = snd_board_type(m->in.beepType, sv);
 	v.left = snd_beep_flt(&m->bflt, bc_level_of(m->in.beep, sv->beep), type, m->rate);
 	v.right = v.left;
 	p = snd_dc(&m->dc[0], v, sv->dc);
