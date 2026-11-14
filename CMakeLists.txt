@@ -185,7 +185,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
 	set(CPACK_GENERATOR "ZIP")
-	set(LIBRARIES ${LIBRARIES} winmm.dll dwmapi.dll dxgi ws2_32 iphlpapi)
+	set(LIBRARIES ${LIBRARIES} winmm.dll dwmapi.dll uxtheme dxgi ws2_32 iphlpapi)
 	set(INC_PATHS $ENV{INCLUDE} $ENV{PATH})
 	set(LIB_PATHS $ENV{LIBPATH} $ENV{PATH})
 
