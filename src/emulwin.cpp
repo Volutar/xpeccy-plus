@@ -727,6 +727,7 @@ static int fpsFast = 0;				// the window was taken in fast mode
 static qint64 fpsTickNs = 0;			// when the last tick came
 static qint64 fpsFromNs = 0;			// ...and when the window was last started over by it
 #define FPS_LATE_NS	1000000000LL		// a tick this late: the window was held (a file read, a switch)
+#define FPS_HELD_NS	1000000000LL		// no frame for this long: the machine is held, not slow (a starved host makes them in bursts)
 
 #if defined(__WIN32) && STICKY_KEY
 
@@ -810,7 +811,9 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 			fpsmem.clear();
 			updateHead();		// the thread ends it too: a pause asked for in it
 		}
-		if (!conf.emu.pause && conf.vid.fctime && (conf.vid.fctime > fpsFromNs)) {	// a frame from before the hold is not one
+		// held with no pause bit too: a save loads under emu_lock, its notice up in there
+		bool held = conf.emu.pause || (now - conf.vid.fctime > FPS_HELD_NS);
+		if (!held && conf.vid.fctime && (conf.vid.fctime > fpsFromNs)) {	// a frame from before the hold is not one
 			FpsSample cur = {conf.vid.fcount, conf.vid.fctime};
 			fpsmem.append(cur);
 			qint64 dtNs = cur.ns - fpsmem.first().ns;
@@ -820,12 +823,10 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 			while (fpsmem.size() > FPS_WINDOW)
 				fpsmem.removeFirst();
 		} else {
-			// no frames are made while paused (emuCycle() itself checks
-			// conf.emu.pause), so a stale pre-pause sample would otherwise sit
-			// at fpsmem.first() and drag the average down across the whole
-			// pause - drop the window instead of letting it slide out one
-			// entry at a time after resuming.
+			// held: the window would keep its last rate, and its first frame after would
+			// be one from before - it starts over with the first frame made after now
 			fpsmem.clear();
+			fpsFromNs = now;
 		}
 		if (comp->vid->upd) {
 			comp->vid->upd = 0;
