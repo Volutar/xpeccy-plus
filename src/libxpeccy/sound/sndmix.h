@@ -21,6 +21,7 @@ typedef struct {
 	int tapeLevRec;
 	int tapeMute;		// ...or playing, unless muted, at this level
 	int tapeVolPlay;
+	int beepType;		// BEEP_*: the filter the two of them go out through
 	sndPair gs;		// zx_mix's other devices, as their own volume functions give them
 	sndPair sdrv;
 	sndPair saa;
@@ -35,7 +36,9 @@ typedef struct {
 	sndMixIn in;
 	TSound* ts;		// the PSGs
 	int late;		// the Next: ns before the chips' time the sample is due
+	int rate;		// sub-samples a second; 0: none (the beeper's filter steps aside)
 	// kept by the mix
+	sndBeepFlt bflt;
 	sndDC dc[5];
 	int bVal, bVol, bLev;	// the beeper's share, for the val and volume it was worked out for
 	unsigned int dOut;	// the DACs' share, likewise

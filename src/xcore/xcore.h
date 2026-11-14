@@ -826,6 +826,7 @@ typedef struct {
 	int resbank;			// RES_*
 	int clock;			// MAC_CLOCK_*
 	int earback;			// EAR_*
+	int beepType;			// BEEP_*: what the beeper goes out through
 	unsigned earrc:1;
 	unsigned beepmic:1;
 	unsigned contio:1;

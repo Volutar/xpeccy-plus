@@ -134,7 +134,7 @@ static const hwQuiet alf_quiet = {HWQ_ACK_ZX, NULL, NULL, alf_devs_sync, NULL, 0
 sndPair alf_mix(sndMix* m, sndVolume* sv) {
 	sndPair p;
 	sndPair v;
-	v.left = bc_level_of(m->in.beep, sv->beep);
+	v.left = snd_beep_flt(&m->bflt, bc_level_of(m->in.beep, sv->beep), m->in.beepType, m->rate);
 	v.right = v.left;
 	p = snd_dc(&m->dc[0], v, sv->dc);
 	v = snd_dc(&m->dc[1], tsGetVolume(m->ts), sv->dc);
@@ -145,6 +145,7 @@ sndPair alf_mix(sndMix* m, sndVolume* sv) {
 
 void alf_snd_take(Computer* comp, sndMix* m) {
 	m->in.beep = comp->beep->val;
+	m->in.beepType = comp->beepType;
 	m->ts = comp->ts;
 }
 

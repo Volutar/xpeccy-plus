@@ -1,0 +1,83 @@
+== line
+line out lets the level through: ok
+no rate: let through: ok
+a type taken again settles anew: ok
+== speaker
+44100: rise 4356 Hz, fall 2311 Hz
+rise as built: ok
+fall as built: ok
+a held level comes out as it went in: ok
+48000: rise 4356 Hz, fall 2311 Hz
+rise as built: ok
+fall as built: ok
+a held level comes out as it went in: ok
+== tv
+44100: rise 3183 Hz, fall 3183 Hz
+rise as built: ok
+fall as built: ok
+44100: gain at 3183 Hz 0.707
+-3 dB there: ok
+a held level comes out as it went in: ok
+48000: rise 3183 Hz, fall 3183 Hz
+rise as built: ok
+fall as built: ok
+48000: gain at 3183 Hz 0.707
+-3 dB there: ok
+a held level comes out as it went in: ok
+== evo
+44100: rise 8600 Hz, fall 8600 Hz
+rise as built: ok
+fall as built: ok
+44100: gain at 8600 Hz 0.707
+-3 dB there: ok
+a held level comes out as it went in: ok
+48000: rise 8599 Hz, fall 8599 Hz
+rise as built: ok
+fall as built: ok
+48000: gain at 8600 Hz 0.707
+-3 dB there: ok
+a held level comes out as it went in: ok
+== scorpion
+44100: 530 Hz, gain there 0.706
+cut-off as built: ok
+-3 dB there: ok
+a held level dies away to nothing: ok
+48000: 530 Hz, gain there 0.706
+cut-off as built: ok
+-3 dB there: ok
+a held level dies away to nothing: ok
+== atm
+44100: 80 Hz, gain there 0.707
+cut-off as built: ok
+-3 dB there: ok
+a held level dies away to nothing: ok
+48000: 80 Hz, gain there 0.707
+cut-off as built: ok
+-3 dB there: ok
+a held level dies away to nothing: ok
+== piezo
+44100: peak 3.046 at 4250 Hz, 1 kHz 0.063, 12 kHz 1.127
+rings at 4.1 kHz: ok
+Q times the level at the peak: ok
+little bass: ok
+the highs on their way to the level: ok
+a held level dies away to nothing: ok
+48000: peak 3.045 at 4250 Hz, 1 kHz 0.063, 12 kHz 1.126
+rings at 4.1 kHz: ok
+Q times the level at the peak: ok
+little bass: ok
+the highs on their way to the level: ok
+a held level dies away to nothing: ok
+== coefficients
+44100 1: 322251 171743 0 0 0
+44100 2: 236088 236088 0 0 0
+44100 3: 630263 630263 0 0 0
+44100 4: 0 0 39543 0 0
+44100 5: 0 0 5975 0 0
+44100 6: 0 0 0 306259 5592405
+48000 1: 296301 157855 0 0 0
+48000 2: 217031 217031 0 0 0
+48000 3: 579950 579950 0 0 0
+48000 4: 0 0 36334 0 0
+48000 5: 0 0 5489 0 0
+48000 6: 0 0 0 281376 5592405

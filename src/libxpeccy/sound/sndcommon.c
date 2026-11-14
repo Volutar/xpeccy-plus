@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 // A soft clip for two levels in 0..XMAXVOL. Only for those: a signed level
 // would drop the divisor instead of raising it, and go loud rather than clip.
@@ -12,6 +13,72 @@ sndPair mixer(sndPair vol1, sndPair vol2) {
 	div = XMAXVOL + (vol1.right * vol2.right) / XMAXVOL;
 	vol1.right = (vol1.right + vol2.right) * XMAXVOL / div;
 	return vol1;
+}
+
+// Cut-offs in Hz by beeper type, 0: no such stage
+static const struct {
+	double up, dn;		// one-pole low-pass, rising and falling edges
+	double hp;		// one-pole high-pass
+	double res, q;		// resonant high-pass: the piezo
+} beepFltTab[BEEP_TYPES] = {
+	{0, 0, 0, 0, 0},		// BEEP_LINE
+	{4356, 2311, 0, 0, 0},		// BEEP_SPEAKER: ULA pin 28 rises faster than it falls
+	{3183, 3183, 0, 0, 0},		// BEEP_TV: 50 us
+	{8600, 8600, 0, 0, 0},		// BEEP_EVO: 2K2 + 10 nF into 12K
+	{0, 0, 530, 0, 0},		// BEEP_SCORPION: 0.1 uF into ~3K
+	{0, 0, 80, 0, 0},		// BEEP_ATM: 0.1 uF into 20K
+	{0, 0, 0, 4100, 3},		// BEEP_PIEZO: ZP-3; Q not in the datasheet
+};
+
+#define BF_ONE	(1LL << 24)
+#define BF_PI	3.14159265358979323846
+
+static long long bf_pole(double hz, int rate) {
+	if (hz <= 0) return 0;
+	return llround(-expm1(-2 * BF_PI * hz / rate) * BF_ONE);
+}
+
+// work the coefficients out for a type at a rate, and settle where the level is now
+static void bf_setup(sndBeepFlt* st, int lev, int type, int rate) {
+	st->type = type;
+	st->rate = rate;
+	st->kUp = bf_pole(beepFltTab[type].up, rate);
+	st->kDn = bf_pole(beepFltTab[type].dn, rate);
+	st->kHp = bf_pole(beepFltTab[type].hp, rate);
+	st->kF = 0;
+	st->kQ = 0;
+	if (beepFltTab[type].res > 0) {
+		st->kF = llround(2 * sin(BF_PI * beepFltTab[type].res / rate) * BF_ONE);
+		st->kQ = llround(BF_ONE / beepFltTab[type].q);
+	}
+	// settled: the low-passes on the level, a high-pass has taken it all away
+	st->lp = lev * 65536LL;		// a level can be under 0: no shift of it
+	st->hp = st->lp;
+	st->low = st->lp;
+	st->band = 0;
+}
+
+// the filtering types only: snd_beep_flt() lets line out through
+int snd_beep_run(sndBeepFlt* st, int lev, int type, int rate) {
+	if ((type != st->type) || (rate != st->rate)) bf_setup(st, lev, type, rate);
+	long long x = lev * 65536LL;
+	if (st->kUp) {
+		long long k = (x > st->lp) ? st->kUp : st->kDn;
+		st->lp += ((x - st->lp) * k + (BF_ONE >> 1)) >> 24;
+		x = st->lp;
+	}
+	if (st->kHp) {
+		st->hp += ((x - st->hp) * st->kHp + (BF_ONE >> 1)) >> 24;
+		x -= st->hp;
+	}
+	if (st->kF) {
+		// Chamberlin SVF, high-pass out: unity above, Q times at the resonance
+		st->low += (st->band * st->kF) >> 24;
+		long long high = x - st->low - ((st->band * st->kQ) >> 24);
+		st->band += (high * st->kF) >> 24;
+		x = high;
+	}
+	return (int)((x + (1 << 15)) >> 16);
 }
 
 // 1-bit channel with transient response

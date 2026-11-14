@@ -76,6 +76,11 @@ static long long ns_per_sample_fixed(int rate) {
 
 long long nsPerSampleFixed = ns_per_sample_fixed(44100);
 
+// sub-samples a second of output: the scope's rate and the beeper filter's
+static int snd_sub_rate() {
+	return conf.snd.rate * DISCRATE;
+}
+
 // Slow motion is a shorter sample period in emulated time, not a smaller budget
 // from the pacer: the machine then advances slower while the card still gets all
 // the samples it asks for, so the ring keeps up and the sound drops in pitch the
@@ -1178,6 +1183,7 @@ void setOutput(const char* name) {
 	}
 	sndHeld = sndPlaybackActive();
 	sndUpdateSpeed();
+	sm.m.rate = snd_sub_rate();	// every rate change comes through here, under sndWork
 	// a recording's rate is in its header and cannot change, so it ends here
 	// rather than play back at the wrong speed from this point on
 	if (conf.snd.wavfile && (conf.snd.rate != wavRate)) {
@@ -1337,7 +1343,7 @@ int snd_ring_byte(int pos) {
 }
 
 double snd_scope_rate() {
-	return (double)conf.snd.rate * DISCRATE;
+	return snd_sub_rate();
 }
 
 // the mixer's history, back to what a start leaves it at: here, and in order with

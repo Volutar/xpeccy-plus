@@ -1274,6 +1274,7 @@ void SetupWin::fillPages() {
 	fillDivFirmware();
 
 	sdrvBox->setCurrentIndex(sdrvBox->findData(comp->sdrv->type));
+	beepBox->setCurrentIndex(comp->beepType);
 
 	saaBox->setCurrentIndex(comp->saa->enabled ? 1 : 0);
 	clockBox->setCurrentIndex(comp->flgGLUK ? MAC_CLOCK_GLUK : MAC_CLOCK_NONE);
@@ -1606,6 +1607,7 @@ void SetupWin::applyMachine() {
 		}
 		xm_set_gs(comp, gsBox->currentIndex());
 		comp->sdrv->type = getRFIData(sdrvBox);
+		comp->beepType = beepBox->currentIndex();
 		comp->saa->enabled = saaBox->currentIndex() ? 1 : 0;
 	}
 // input
@@ -2399,6 +2401,16 @@ void SetupWin::buildDevices() {
 	kbdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << cbScanTab << btn;
 
 	grid = devGroup(cols, 0, 1, ":/images/speaker.png", tr("Sound"));
+	beepBox = devCombo(QStringList() << tr("Line out") << tr("48K speaker") << tr("TV (RF)")	// BEEP_*
+		<< tr("ZX Evolution") << tr("Scorpion") << tr("ATM Turbo") << tr("Piezo"));
+	beepBox->setItemData(BEEP_LINE, tr("Straight out, nothing filtered"), Qt::ToolTipRole);
+	beepBox->setItemData(BEEP_SPEAKER, tr("The 48K's ULA pin and speaker:\nthe highs softened"), Qt::ToolTipRole);
+	beepBox->setItemData(BEEP_TV, tr("A TV's aerial input: highs cut\nfrom 3.2 kHz"), Qt::ToolTipRole);
+	beepBox->setItemData(BEEP_EVO, tr("The Evo's RC: highs cut from 8.6 kHz"), Qt::ToolTipRole);
+	beepBox->setItemData(BEEP_SCORPION, tr("The Scorpion's coupling capacitor:\nlows cut below 530 Hz"), Qt::ToolTipRole);
+	beepBox->setItemData(BEEP_ATM, tr("The ATM's coupling capacitor:\nlows cut below 80 Hz"), Qt::ToolTipRole);
+	beepBox->setItemData(BEEP_PIEZO, tr("A piezo sounder: little bass,\nrings at 4.1 kHz"), Qt::ToolTipRole);
+	devRow(grid, tr("Beeper"), beepBox, NULL, NULL);
 	xOptSheet psg;
 	psg.field(tr("Chip"), cbPsgType);
 	psg.field(tr("Clock"), fieldPair(cbPsgFrq, labPsgMhz, false),
