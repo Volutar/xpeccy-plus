@@ -15,6 +15,11 @@ before that point is upstream's history and is not repeated here.
   The Scorpion's ProfROM 4.xx.38 and later finds the card and reads it in its navigator,
   FATALL copies files to and from it.
 
+- **Beeper type**: Options > Machine, Beeper row - what the beeper sounds through, by the
+  machine's board: the 48K's speaker, a TV, the ZX Evolution's filter, the Scorpion's and
+  the ATM's coupling capacitors, a piezo sounder, or line out as before. Each machine comes
+  with its own; the clones without a filter stay as they were.
+
 ### Changed
 
 - **ROM labels of the 128K and +2**: the +2 editor ROM has nearly every name of the 128K's
