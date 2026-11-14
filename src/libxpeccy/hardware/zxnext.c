@@ -986,8 +986,8 @@ long long nx_int_quiet_until(Computer* comp) {
 	}
 	long long c = nx_ctc_quiet_until(comp);	// run up to now + 1: an edge at c is in once now reaches it
 	if (c < u) u = c;
-	c = nx_uart_quiet_until(comp);
-	if (c + 1 < u) u = c + 1;
+	c = nx_uart_quiet_until(comp, 1);	// as the CTC's; a status bit is enough: NR CA clears it
+	if (c < u) u = c;
 	return u;
 }
 
@@ -1027,7 +1027,7 @@ static long long nx_irq_quiet_until(Computer* comp, long long s) {
 	if (cop && (NX.copWake < until)) until = NX.copWake;		// a copper write may touch anything
 	long long c = nx_ctc_quiet_until(comp);
 	if (c < until) until = c;
-	c = nx_uart_quiet_until(comp);
+	c = nx_uart_quiet_until(comp, 0);
 	if (c < until) until = c;
 	if (chain < until) until = chain;
 	return until;

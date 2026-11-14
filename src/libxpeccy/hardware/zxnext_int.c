@@ -492,18 +492,25 @@ static int nx_dma_int(Computer* comp) {
 	if ((IRQ.nmiMf || IRQ.nmiDiv) && (nr[0xcc] & 0x80)) return 1;	// nmi_activated and NR CC b7
 	if (!(nr[0xc0] & 1)) return 0;		// pulse mode: the devices are held in reset
 	if (!(nr[0xcc] & 3) && !nr[0xcd] && !(nr[0xce] & 0x77)) return 0;
-	// the DMA asks on every clock edge while it waits: no catching up while nothing can
-	// have fired since the last answer (dmaIntDead)
-	if (nx_now(comp) < NX.dmaIntDead) return 0;
+	// the DMA asks on every clock edge while it waits. Its last answer stands, with no
+	// catching up, until the first edge a source could fire on (dmaIntDead: positive the
+	// answer was no, negative yes - a device it waits for is in service): a catch-up
+	// before it would find nothing. Every change of the devices' state, the enables or a
+	// source's schedule clears dmaIntDead.
+	long long t = nx_now(comp);
+	if ((NX.dmaIntDead > 0) && (t < NX.dmaIntDead)) return 0;
+	if ((NX.dmaIntDead < 0) && (t < -NX.dmaIntDead)) return 1;
 	nx_int_catch_up(comp);
 	int en = ((nr[0xcc] & 2) ? 1 : 0) | ((nr[0xcc] & 1) << 11) | ((nr[0xcd] & 0x0f) << 3)
 		| ((nr[0xce] & 0x40) ? 1 << 13 : 0) | ((nr[0xce] & 0x04) ? 1 << 12 : 0)
 		| ((nr[0xce] & 0x30) ? 1 << 2 : 0) | ((nr[0xce] & 0x03) ? 1 << 1 : 0);
-	long long t = nx_now(comp);
-	long long dead = nx_int_quiet_until(comp);	// the line compare, the CTC, the frame end
+	long long dead = nx_int_quiet_until(comp);	// the line compare, the CTC, the UARTs, the frame end
 	for (int i = 0; i < NX_IRQ_DEVS; i++) {
 		if (!((en >> i) & 1)) continue;
-		if (IRQ.st[i] != DEV_0) return 1;
+		if (IRQ.st[i] != DEV_0) {
+			NX.dmaIntDead = -dead;
+			return 1;
+		}
 		if ((IRQ.pend >> i) & 1) {
 			if (IRQ.pendT[i] < t) return 1;	// S_REQ by the next edge (M1 is high under the DMA)
 			if (IRQ.pendT[i] + 1 < dead) dead = IRQ.pendT[i] + 1;

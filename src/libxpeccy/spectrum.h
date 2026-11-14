@@ -413,7 +413,7 @@ typedef struct {
 	long long frameBase;		// dots before the current video frame (an absolute time base)
 	long long pulseE;		// INT pulse: where it started (clk28 units), -1 none
 	long long irqDead;		// INT stays off until this T (tickTotal + cpu->t): 0 look every time
-	long long dmaIntDead;		// nx_dma_int() finds nothing before this CLK_28 edge: 0 look every time
+	long long dmaIntDead;		// nx_dma_int() keeps its answer up to this CLK_28 edge, negated when it was yes (a device in service): 0 look every time
 	long long refT, refC;		// a T (tickTotal + cpu->t) and its CLK_28 edge: the clock at another T (-1: none)
 	long long copWake;		// the copper does nothing before this CLK_28 edge (0: may at once)
 	// the copper (device/copper.vhd)

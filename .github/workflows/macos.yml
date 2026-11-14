@@ -23,6 +23,10 @@ on:
       release:
         type: boolean
         default: false
+    secrets:
+      # the private training set; without it a plain build
+      PGO_SSH_KEY:
+        required: false
   # Qt and SDL are pinned, but the runner image and its Xcode roll forward on
   # their own, so this can break with nobody having touched the repository.
   # Once a week is enough to notice.
@@ -42,7 +46,8 @@ jobs:
     # does, for our build and SDL's, and a step below checks every binary in
     # the bundle against it. Pinned anyway, so a new image arrives on purpose.
     runs-on: macos-15
-    timeout-minutes: 40
+    # two builds and the training between them when profile-guided
+    timeout-minutes: 60
 
     env:
       BUILD_DIR: build
@@ -53,9 +58,21 @@ jobs:
       QT_VERSION: 6.11.3
       # Qt 6.11's own minimum; CMakeLists.txt defaults to the same for local builds
       MACOS_FLOOR: '13.0'
+      # whether the private training set can be fetched (not in a fork)
+      HAS_PGO_SET: ${{ secrets.PGO_SSH_KEY != '' }}
 
     steps:
       - uses: actions/checkout@v7
+
+      # the profile-guided build's training set; without the secret a plain build
+      - name: Fetch the training set
+        if: env.HAS_PGO_SET == 'true'
+        uses: actions/checkout@v7
+        with:
+          repository: dotkoval/xpeccy-pgo
+          ssh-key: ${{ secrets.PGO_SSH_KEY }}
+          path: build/pgo-set
+          persist-credentials: false
 
       - name: Install Qt
         run: |
@@ -112,6 +129,35 @@ jobs:
           "$RUNNER_TEMP/docs/bin/python3" -m pip install --disable-pip-version-check -r docs/manual/requirements.txt
           "$RUNNER_TEMP/docs/bin/python3" tools/manual.py html
 
+      # an instrumented build of its own (clang keys counts by function), trained, merged
+      - name: Train the profile-guided build
+        run: |
+          if [ ! -d build/pgo-set/sysnext ]; then
+            echo "::warning::no training set (no PGO_SSH_KEY): a build without PGO"
+            echo "PGO=no (no training set)" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          T="$RUNNER_TEMP/pgo"
+          gen="-fprofile-generate=$T/raw"
+          cmake -S . -B "$T/build" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$QT_DIR" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_FLOOR" \
+            -DQTVERSION=6 \
+            -DXPACKAGE=macos-arm64 \
+            -DCMAKE_C_FLAGS="$gen" \
+            -DCMAKE_CXX_FLAGS="$gen"
+          cmake --build "$T/build" -j "$(sysctl -n hw.ncpu)"
+          cmake --install "$T/build" --prefix "$T/app"
+          pwsh -NoProfile -File packaging/pgo-train.ps1 -App "$T/app" \
+            -SysNext build/pgo-set/sysnext -Extra build/pgo-set/next -TsConf build/pgo-set/tsconf
+          # a training that wrote nothing must not give a build called profile-guided
+          ls "$T"/raw/*.profraw > /dev/null
+          xcrun llvm-profdata merge -o "$T/xpeccy.profdata" "$T"/raw/*.profraw
+          # no counts for a file, or counts of another source: said once, not per function
+          echo "PGO_FLAGS=-fprofile-use=$T/xpeccy.profdata -Wno-profile-instr-unprofiled -Wno-profile-instr-out-of-date -Wno-backend-plugin" >> "$GITHUB_ENV"
+          echo "PGO=yes" >> "$GITHUB_ENV"
+
       - name: Configure
         run: |
           cmake -S . -B "$BUILD_DIR" \
@@ -121,7 +167,9 @@ jobs:
             -DCMAKE_PREFIX_PATH="$QT_DIR" \
             -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_FLOOR" \
             -DQTVERSION=6 \
-            -DXPACKAGE=macos-arm64
+            -DXPACKAGE=macos-arm64 \
+            -DCMAKE_C_FLAGS="$PGO_FLAGS" \
+            -DCMAKE_CXX_FLAGS="$PGO_FLAGS"
 
       - name: Build
         run: cmake --build "$BUILD_DIR" -j "$(sysctl -n hw.ncpu)"
@@ -207,6 +255,7 @@ jobs:
             echo "|---|---|"
             echo "| macOS | built on $(sw_vers -productVersion) ($(uname -m)), runs on $MACOS_FLOOR+ |"
             echo "| Qt | $QT_VERSION (qt.io) |"
+            echo "| PGO | $PGO |"
             echo "| SDL | $SDL2_VERSION (built here) |"
             echo "| dmg | $DMG_NAME.dmg, $(du -h "$DMG" | cut -f1) |"
           } >> "$GITHUB_STEP_SUMMARY"

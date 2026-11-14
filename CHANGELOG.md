@@ -30,6 +30,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **The ZX Spectrum Next runs faster on weak computers**: the heaviest parts of DMA-driven
+  demos such as Forever 35 run about half as fast again, and on a Steam Deck keep full speed.
+  The Linux and macOS builds are now profile-guided, as the Windows ones are. *(thanks to
+  nodeus for the report and the measurements)*
+
 - **ROM labels of the 128K and +2**: the +2 editor ROM has nearly every name of the 128K's
   (1070, was 757), the address tables of both show as `DW` with names, and the 128K's keypad
   and TV tuner code is named as in the disassembly. *(thanks to Paul Farrow for his Spectrum

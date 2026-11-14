@@ -9,6 +9,7 @@
 #   .\make-dist.ps1 -Pgo                # profile-guided: built, trained, built again
 #   .\make-dist.ps1 -Pgo -PgoExtra D:\nex   # ...the .nex programs under D:\nex trained on too
 #   .\make-dist.ps1 -Pgo -PgoCard D:\card   # ...on that card, not the System/Next of build\deps
+#   .\make-dist.ps1 -Pgo -PgoTsConf D:\ts   # ...the .spg/.trd under D:\ts on the TSConf too
 #
 # What goes into the folder is defined by the install() rules in CMakeLists.txt and
 # cmake/windeploy.cmake.in; this script only picks a toolchain and drives cmake.
@@ -30,6 +31,7 @@ param(
 	[switch]$SysNext,	# put System/Next beside the program: the Next's card with none made
 	[switch]$Pgo,		# profile-guided (pgo-train.ps1): needs a card, System/Next by default
 	[string[]]$PgoExtra = @(),	# folders whose .nex programs the training runs too
+	[string[]]$PgoTsConf = @(),	# folders whose .spg/.trd the training runs on the TSConf
 	[string]$PgoCard,	# the card the training boots the Next from (default: System/Next of build\deps)
 	[int]$Jobs = 16,
 	# a build agent installs Qt and MinGW wherever it likes, and has cmake in
@@ -250,7 +252,7 @@ if ($Pgo) {
 	& cmake --install $buildDir --prefix $trainDir
 	if ($LASTEXITCODE -ne 0) { throw 'pgo: install failed' }
 	Write-Host '--- pgo: training ---' -ForegroundColor Cyan
-	& (Join-Path $PSScriptRoot 'pgo-train.ps1') -App $trainDir -SysNext $PgoCard -Extra $PgoExtra
+	& (Join-Path $PSScriptRoot 'pgo-train.ps1') -App $trainDir -SysNext $PgoCard -Extra $PgoExtra -TsConf $PgoTsConf
 	Remove-Item $trainDir -Recurse -Force
 	if ($tc.Msys) {
 		# a training that wrote nothing must not give a build called profile-guided

@@ -149,7 +149,7 @@ long long nx_ctc_quiet_until(Computer*);
 void nx_uart_power(Computer*);
 void nx_uart_reset(Computer*);
 void nx_uart_run(Computer*, long long);
-long long nx_uart_quiet_until(Computer*);
+long long nx_uart_quiet_until(Computer*, int);
 void nx_uart_out(Computer*, int, int, long long);
 int nx_uart_in(Computer*, int, long long);
 int nx_dma_bus_rd(Computer*, int, int);

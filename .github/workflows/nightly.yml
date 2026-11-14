@@ -48,18 +48,25 @@ jobs:
     needs: check
     if: needs.check.outputs.build == 'true'
     uses: ./.github/workflows/linux.yml
+    # the private training set
+    secrets:
+      PGO_SSH_KEY: ${{ secrets.PGO_SSH_KEY }}
 
   macos:
     needs: check
     if: needs.check.outputs.build == 'true'
     uses: ./.github/workflows/macos.yml
+    # the private training set
+    secrets:
+      PGO_SSH_KEY: ${{ secrets.PGO_SSH_KEY }}
 
   windows:
     needs: check
     if: needs.check.outputs.build == 'true'
     uses: ./.github/workflows/windows.yml
-    # PGO_SSH_KEY: the private training set
-    secrets: inherit
+    # the private training set
+    secrets:
+      PGO_SSH_KEY: ${{ secrets.PGO_SSH_KEY }}
     with:
       arm64: true
 

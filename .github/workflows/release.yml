@@ -37,20 +37,27 @@ jobs:
   linux:
     needs: check
     uses: ./.github/workflows/linux.yml
+    # the private training set
+    secrets:
+      PGO_SSH_KEY: ${{ secrets.PGO_SSH_KEY }}
     with:
       release: true
 
   macos:
     needs: check
     uses: ./.github/workflows/macos.yml
+    # the private training set
+    secrets:
+      PGO_SSH_KEY: ${{ secrets.PGO_SSH_KEY }}
     with:
       release: true
 
   windows:
     needs: check
     uses: ./.github/workflows/windows.yml
-    # PGO_SSH_KEY: the private training set
-    secrets: inherit
+    # the private training set
+    secrets:
+      PGO_SSH_KEY: ${{ secrets.PGO_SSH_KEY }}
     with:
       release: true
       arm64: true

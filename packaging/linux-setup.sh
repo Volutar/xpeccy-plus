@@ -11,11 +11,12 @@ set -e
 
 TOOLS_DIR="${TOOLS_DIR:-$HOME/.cache/xpeccy-plus-tools}"
 
-PACKAGES="build-essential cmake pkg-config file ca-certificates wget
+PACKAGES="build-essential gcc-12 g++-12 cmake pkg-config file ca-certificates wget
 	qtbase5-dev qtbase5-dev-tools libqt5opengl5-dev
 	libsdl2-dev zlib1g-dev libgl1-mesa-dev libcurl4-openssl-dev
 	desktop-file-utils libfuse2"
 
+# gcc-12: what make-appimage.sh builds with; PGO_SET also needs pwsh, not installed here.
 # libfuse2: Ubuntu 22.04 ships fuse3 only, and an AppImage mounts itself
 # through fuse2. Needed to run one, not to build one.
 

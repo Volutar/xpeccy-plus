@@ -21,6 +21,10 @@ on:
       release:
         type: boolean
         default: false
+    secrets:
+      # the private training set; without it a plain build
+      PGO_SSH_KEY:
+        required: false
   schedule:
     - cron: '0 6 * * 1'
 
@@ -37,13 +41,26 @@ jobs:
     # built against, and 22.04 keeps that floor at 2.35 - old enough for the
     # distributions this is released for. It is what the local build uses too.
     runs-on: ubuntu-22.04
-    timeout-minutes: 40
+    # two builds and the training between them when profile-guided
+    timeout-minutes: 60
 
     env:
       RELEASE: ${{ inputs.release && '1' || '' }}
+      # whether the private training set can be fetched (not in a fork)
+      HAS_PGO_SET: ${{ secrets.PGO_SSH_KEY != '' }}
 
     steps:
       - uses: actions/checkout@v7
+
+      # the profile-guided build's training set; without the secret a plain build
+      - name: Fetch the training set
+        if: env.HAS_PGO_SET == 'true'
+        uses: actions/checkout@v7
+        with:
+          repository: dotkoval/xpeccy-pgo
+          ssh-key: ${{ secrets.PGO_SSH_KEY }}
+          path: build/pgo-set
+          persist-credentials: false
 
       - name: Install dependencies
         run: |
@@ -62,6 +79,13 @@ jobs:
           BUILD_DIR: ${{ runner.temp }}/build
           MANUAL: 1
         run: |
+          if [ -d build/pgo-set/sysnext ]; then
+            export PGO_SET="$PWD/build/pgo-set"
+            echo "PGO=yes" >> "$GITHUB_ENV"
+          else
+            echo "::warning::no training set (no PGO_SSH_KEY): a build without PGO"
+            echo "PGO=no (no training set)" >> "$GITHUB_ENV"
+          fi
           packaging/make-appimage.sh
           img=$(ls "$BUILD_DIR"/*.AppImage)
           # the artifact is named after the image, so the two cannot drift apart
@@ -78,13 +102,28 @@ jobs:
         run: |
           glibc=$(objdump -T "$APPDIR/usr/bin/xpeccy-plus" \
             | sed -n 's/.*GLIBC_\([0-9.]*\).*/\1/p' | sort -V | tail -n 1)
+          # the system's libstdc++ is taken, not one in the AppImage, and no newer than 22.04's
+          glibcxx=$(objdump -T "$APPDIR/usr/bin/xpeccy-plus" \
+            | sed -n 's/.*GLIBCXX_\([0-9.]*\).*/\1/p' | sort -V | tail -n 1)
+          floor=3.4.30
+          if [ "$(printf '%s\n' "$floor" "$glibcxx" | sort -V | tail -n 1)" != "$floor" ]; then
+            echo "::error::the AppImage needs GLIBCXX_$glibcxx, above GLIBCXX_$floor"
+            exit 1
+          fi
+          if find "$APPDIR" -name 'libstdc++.so*' | grep -q .; then
+            echo "::error::the AppImage carries a libstdc++"
+            exit 1
+          fi
           {
             echo "| | |"
             echo "|---|---|"
             echo "| built on | $(lsb_release -ds) |"
+            echo "| compiler | $(gcc-12 --version | head -n 1) |"
+            echo "| PGO | $PGO |"
             echo "| Qt | $(dpkg-query -f '${Version}' -W qtbase5-dev) |"
             echo "| SDL | $(dpkg-query -f '${Version}' -W libsdl2-dev) |"
             echo "| needs glibc | $glibc or newer |"
+            echo "| needs libstdc++ | GLIBCXX_$glibcxx or newer |"
             echo "| AppImage | $APPIMAGE_NAME.AppImage, $(du -h "$APPIMAGE" | cut -f1) |"
           } >> "$GITHUB_STEP_SUMMARY"
 

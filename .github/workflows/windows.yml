@@ -33,6 +33,10 @@ on:
       arm64:
         type: boolean
         default: false
+    secrets:
+      # the private training set; without it a plain build
+      PGO_SSH_KEY:
+        required: false
   schedule:
     - cron: '0 6 * * 1'
 
@@ -160,6 +164,7 @@ jobs:
             $opts.Pgo = $true
             $opts.PgoCard = (Resolve-Path build\pgo-set\sysnext).Path
             $opts.PgoExtra = @((Resolve-Path build\pgo-set\next).Path)
+            if (Test-Path build\pgo-set\tsconf) { $opts.PgoTsConf = @((Resolve-Path build\pgo-set\tsconf).Path) }
           } else {
             Write-Host '::warning::no training set (no PGO_SSH_KEY): a build without PGO'
           }
@@ -300,6 +305,7 @@ jobs:
             $opts.Pgo = $true
             $opts.PgoCard = (Resolve-Path build\pgo-set\sysnext).Path
             $opts.PgoExtra = @((Resolve-Path build\pgo-set\next).Path)
+            if (Test-Path build\pgo-set\tsconf) { $opts.PgoTsConf = @((Resolve-Path build\pgo-set\tsconf).Path) }
             "PGO=yes" >> $env:GITHUB_ENV
           } else {
             Write-Host '::warning::no training set (no PGO_SSH_KEY): a build without PGO'
