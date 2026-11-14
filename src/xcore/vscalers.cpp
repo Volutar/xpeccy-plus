@@ -53,10 +53,10 @@ int brd_mode_pcnt(int pcnt) {
 	return VID_BRD_OVERSCAN;
 }
 
-static const char* sfillTab[] = {"black", "edges", "mirror", NULL};
+static const char* sfillTab[] = {"black", "edges", "mirror", "letterbox", NULL};
 
 const char* sfill_name(int mode) {
-	if ((mode < SFILL_BLACK) || (mode > SFILL_MIRROR)) mode = SFILL_BLACK;
+	if ((mode < SFILL_BLACK) || (mode > SFILL_LETTERBOX)) mode = SFILL_BLACK;
 	return sfillTab[mode];
 }
 
@@ -69,8 +69,8 @@ int sfill_id(const char* nam) {
 }
 
 const int sfillItems[SFILL_ITEMS] = {
-	SFILL_BORDER | SFILL_BLACK, SFILL_BORDER | SFILL_EDGES, SFILL_BORDER | SFILL_MIRROR,
-	SFILL_BLACK, SFILL_EDGES, SFILL_MIRROR
+	SFILL_BORDER | SFILL_BLACK, SFILL_BORDER | SFILL_EDGES, SFILL_BORDER | SFILL_MIRROR, SFILL_BORDER | SFILL_LETTERBOX,
+	SFILL_BLACK, SFILL_EDGES, SFILL_MIRROR, SFILL_LETTERBOX
 };
 
 int sfill_item() {

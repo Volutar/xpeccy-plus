@@ -17,7 +17,9 @@ int brd_mode_pcnt(int);
 enum {
 	SFILL_BLACK = 0,
 	SFILL_EDGES,		// the edge rows and columns carried outwards, blurred and dimmed
-	SFILL_MIRROR		// the picture reflected at its edge, blurred and dimmed
+	SFILL_MIRROR,		// the picture reflected at its edge, blurred and dimmed
+	SFILL_LETTERBOX		// the screen area scaled up to cover the room, blurred and dimmed,
+				// run into from the edges carried outwards
 };
 const char* sfill_name(int);
 int sfill_id(const char*);
@@ -25,7 +27,7 @@ int sfill_id(const char*);
 // room first and the fill past it, or the fill from the border size's edge. An
 // item is a fill, | SFILL_BORDER for the border first (conf.vid.fillBorder).
 #define SFILL_BORDER	0x10
-#define SFILL_ITEMS	6
+#define SFILL_ITEMS	8
 extern const int sfillItems[SFILL_ITEMS];
 int sfill_item();		// the one conf has
 void sfill_set(int item);

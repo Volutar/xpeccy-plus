@@ -3146,7 +3146,7 @@ void MainWin::initMenuBar() {
 	fillMenu = new xMenu("Side Fill", this);
 	viewMenu->addMenu(fillMenu);
 	QActionGroup* fgrp = new QActionGroup(fillMenu);
-	static const char* fillNames[] = {"Black", "Stretched Edges", "Mirror"};
+	static const char* fillNames[] = {"Black", "Stretched Edges", "Mirror", "Letterbox"};
 	for (int i = 0; i < SFILL_ITEMS; i++) {
 		const int item = sfillItems[i];
 		const int fill = item & ~SFILL_BORDER;

@@ -159,7 +159,10 @@ const char* fillBlurShaderBody() {
 // u_ramp: framebuffer pixels from the picture's edge, at full brightness, to the full dimming;
 // u_stretch: k of ln(1 + k*d) / k, d picture sizes out from the edge - the reflection drawn
 // out like pulled rubber: as it is by the picture, 1 + k*d times wider further out, and its
-// far part off the screen
+// far part off the screen;
+// u_cover (Letterbox, z > 0): the screen area scaled up to cover the view, in framebuffer
+// pixels from the bottom left; u_paper: that area in the texture, uv from the top left.
+// Over u_ramp the edges carried out run into it, so the picture has no seam.
 const char* fillDrawShaderBody() {
 	return
 		"uniform sampler2D u_src;\n"
@@ -169,6 +172,8 @@ const char* fillDrawShaderBody() {
 		"uniform float u_fade;\n"
 		"uniform float u_ramp;\n"
 		"uniform float u_stretch;\n"
+		"uniform vec4 u_cover;\n"
+		"uniform vec4 u_paper;\n"
 		"out vec4 fragColor;\n"
 		"void main() {\n"
 		"    vec2 p = (gl_FragCoord.xy - u_pic.xy) / u_pic.zw;\n"
@@ -186,7 +191,13 @@ const char* fillDrawShaderBody() {
 		"    vec2 d = max(max(out_lo, out_hi), vec2(0.0));\n"
 		"    float f = clamp(max(d.x, d.y), 0.0, 1.0);\n"
 		"    vec2 px = max(max(u_pic.xy - gl_FragCoord.xy, gl_FragCoord.xy - u_pic.xy - u_pic.zw), vec2(0.0));\n"
-		"    float k = mix(1.0, u_dim, smoothstep(0.0, max(u_ramp, 1.0), max(px.x, px.y)));\n"
+		"    float t = smoothstep(0.0, max(u_ramp, 1.0), max(px.x, px.y));\n"
+		"    if (u_cover.z > 0.0) {\n"
+		"        vec2 q = (gl_FragCoord.xy - u_cover.xy) / u_cover.zw;\n"
+		"        vec3 b = texture(u_src, u_paper.xy + vec2(q.x, 1.0 - q.y) * u_paper.zw).rgb;\n"
+		"        c = mix(c, b, t);\n"
+		"    }\n"
+		"    float k = mix(1.0, u_dim, t);\n"
 		"    fragColor = vec4(c * k * (1.0 - u_fade * f), 1.0);\n"
 		"}\n";
 }
@@ -481,7 +492,8 @@ bool MainWin::fillWanted() {
 // reflects the picture as it is shown - through the shader, a curved screen and
 // its black corners too - so it is read back from the framebuffer, drawn already;
 // Stretched edges carries the frame's own edge out, which a curved screen leaves
-// black. The wrap mode is set before the blur, so the blur at the edge already
+// black; Letterbox reads the frame as Edges does, its screen area and its edge
+// both from the same texture. The wrap mode is set before the blur, so the blur at the edge already
 // sees what is drawn past it.
 void MainWin::prepareFill() {
 	Video* vid = conf.zx->vid;
@@ -578,6 +590,29 @@ void MainWin::drawFill(const QRect* clip) {
 	// 100 %: k = 10, the far edge of a bar a third of the picture wide drawn out 4 times
 	const bool mirror = (conf.vid.sideFill == SFILL_MIRROR);
 	fillDraw.setUniformValue("u_stretch", GLfloat(mirror ? conf.vid.fillStretch * 0.1 : 0.0));
+	// Letterbox: the screen area, without the border, as big as it takes to
+	// cover the view, centred on it
+	GLfloat cover[4] = {0, 0, 0, 0};
+	GLfloat paper[4] = {0, 0, 1, 1};
+	const Video* vid = conf.zx->vid;
+	if ((conf.vid.sideFill == SFILL_LETTERBOX) && (vid->vsze.x > 0) && (vid->vsze.y > 0)) {
+		QRect scr(vid->bord.x - vid->lcut.x, vid->bord.y - vid->lcut.y, vid->scrn.x, vid->scrn.y);
+		scr &= QRect(0, 0, vid->vsze.x, vid->vsze.y);
+		if (scr.isEmpty()) scr = QRect(0, 0, vid->vsze.x, vid->vsze.y);
+		paper[0] = GLfloat(scr.x()) / vid->vsze.x;
+		paper[1] = GLfloat(scr.y()) / vid->vsze.y;
+		paper[2] = GLfloat(scr.width()) / vid->vsze.x;
+		paper[3] = GLfloat(scr.height()) / vid->vsze.y;
+		const double sw = paper[2] * pw;
+		const double sh = paper[3] * ph;
+		const double k = std::max(vw / sw, vh / sh);
+		cover[2] = GLfloat(sw * k);
+		cover[3] = GLfloat(sh * k);
+		cover[0] = GLfloat((vw - sw * k) / 2);
+		cover[1] = GLfloat((vh - sh * k) / 2);
+	}
+	fillDraw.setUniformValue("u_cover", cover[0], cover[1], cover[2], cover[3]);
+	fillDraw.setUniformValue("u_paper", paper[0], paper[1], paper[2], paper[3]);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, fillTex[0]);
 	vao.bind();
