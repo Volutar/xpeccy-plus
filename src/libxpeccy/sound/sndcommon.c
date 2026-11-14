@@ -83,11 +83,13 @@ int snd_beep_flt(sndBeepFlt* st, int lev, int type, int rate) {
 	if (st->kF) {
 		// Chamberlin's state-variable filter, its high-pass out: the sounder
 		// barely moves below its resonance, rings at it and passes what is
-		// above. Scaled by 1/Q, so the peak is where the level was
+		// above. What is above comes out at the level it went in, and the
+		// resonance Q times over it: a sounder is loudest there, which is what
+		// it is made for
 		st->low += (st->band * st->kF) >> 24;
 		long long high = x - st->low - ((st->band * st->kQ) >> 24);
 		st->band += (high * st->kF) >> 24;
-		x = (high * st->kQ) >> 24;
+		x = high;
 	}
 	return (int)((x + (1 << 15)) >> 16);
 }

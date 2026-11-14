@@ -65,10 +65,10 @@ static double hp_fc(int type, int rate) {
 	return 0;
 }
 
-// a resonant high-pass's gain, scaled by 1/Q as the filter is
+// a resonant high-pass's gain: 1 well above f0, about Q at it
 static double res_hp(double hz, double f0, double q) {
 	double r = hz / f0;
-	return r * r / sqrt((1 - r * r) * (1 - r * r) + (r / q) * (r / q)) / q;
+	return r * r / sqrt((1 - r * r) * (1 - r * r) + (r / q) * (r / q));
 }
 
 // gain at a frequency: a sine's peak after it has settled, over its own
@@ -147,9 +147,9 @@ static void piezo(void) {
 		printf("%d: peak %.3f at %.0f Hz, 1 kHz %.3f, 12 kHz %.3f\n", rate / 32, best, at, lo, hi);
 		// a resonant high-pass peaks a little over its f0: 1.03 of it at Q 3
 		check("rings at 4.1 kHz", near(at, 4100, 0.05));
-		check("the peak is where the level was", near(best, 1.0, 0.05));
+		check("Q times the level at the peak", near(best, res_hp(at, 4100, 3), 0.05));
 		check("little bass", near(lo, res_hp(1000, 4100, 3), 0.05));
-		check("the highs on their way to 1/Q", near(hi, res_hp(12000, 4100, 3), 0.02));
+		check("the highs on their way to the level", near(hi, res_hp(12000, 4100, 3), 0.02));
 		check("a held level dies away to nothing", held(BEEP_PIEZO, rate, LEV) == 0);
 	}
 }

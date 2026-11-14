@@ -56,15 +56,15 @@ cut-off as built: ok
 -3 dB there: ok
 a held level dies away to nothing: ok
 == piezo
-44100: peak 1.015 at 4250 Hz, 1 kHz 0.021, 12 kHz 0.376
+44100: peak 3.046 at 4250 Hz, 1 kHz 0.063, 12 kHz 1.127
 rings at 4.1 kHz: ok
-the peak is where the level was: ok
+Q times the level at the peak: ok
 little bass: ok
-the highs on their way to 1/Q: ok
+the highs on their way to the level: ok
 a held level dies away to nothing: ok
-48000: peak 1.015 at 4200 Hz, 1 kHz 0.021, 12 kHz 0.375
+48000: peak 3.045 at 4250 Hz, 1 kHz 0.063, 12 kHz 1.126
 rings at 4.1 kHz: ok
-the peak is where the level was: ok
+Q times the level at the peak: ok
 little bass: ok
-the highs on their way to 1/Q: ok
+the highs on their way to the level: ok
 a held level dies away to nothing: ok
