@@ -436,12 +436,18 @@ static struct alignas(64) {
 
 // The beeper's filter is the machine's, so its rate is sub-samples a second of the
 // machine's time and its cut-offs move with the speed as the pitch does. Not with
-// VSync's steer: a fraction of a percent, and 1x stays as it was. Every offered
-// speed (1/8..x16) divides both output rates exactly.
+// VSync's lock (up to 4.5 %, steered every frame): 1x stays as it was. Every offered
+// speed (1/8..x16) divides both output rates exactly. The lock only when it moves:
+// the sound thread holds it over a whole drain.
+static std::atomic<int> sndBeepRate{0};	// what sm.m.rate was last given
+
 void sndUpdateSpeed(void) {
 	snd_pace();
+	int r = (int)llround(snd_sub_rate() / snd_speed());
+	if (r == sndBeepRate) return;
 	std::lock_guard<std::recursive_mutex> lk(sndWork);
-	sm.m.rate = (int)llround(snd_sub_rate() / snd_speed());
+	sndBeepRate = r;
+	sm.m.rate = r;
 }
 
 // Can the sound thread mix this machine itself. The SAA's and the GS's levels go

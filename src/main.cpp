@@ -126,7 +126,7 @@ void help() {
 	printf("--bench-steps N\t\tthen N instructions more, to stop mid-frame\n");
 	printf("--bench-full\t\tmix the sound, as real play does\n");
 	printf("--bench-speed F\t\tas fast forward xF: each sample spans F times the time;\n");
-	printf("\t\t\t1/N as slow motion 1/N\n");
+	printf("\t\t\t1/N as slow motion 1/N; the keys' speeds, 1/8..16\n");
 	printf("--bench-keys SPEC\t\"F:KEYS[/N],...\": press at frame F, hold N frames (4). KEYS are\n");
 	printf("\t\t\tdigits and small letters, E Enter, C Caps, S Symbol, _ Space;\n");
 	printf("\t\t\tjoy:up+fire or joyb:... a joystick, nmi the NMI button, power a Hard Reset,\n");
@@ -1041,10 +1041,14 @@ int main(int ac,char** av) {
 			} else if (!strcmp(parg,"--bench-skip")) {
 				bnSkip = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-speed")) {
+				// the speeds the keys offer, and only those: the filters are checked there
 				const char* f = av[i++];
 				int slow = !strncmp(f, "1/", 2);
 				int n = atoi(slow ? f + 2 : f);
-				if (n > 1) bnSpeed = slow ? 1.0 / n : n;
+				if (xtime_index(slow ? xtime_slow_steps : xtime_ffwd_steps, n) >= 0)
+					bnSpeed = slow ? 1.0 / n : n;
+				else
+					cli_warn(QString("--bench-speed: not an offered speed: %0").arg(QString::fromLocal8Bit(f)));
 			} else if (!strcmp(parg,"--bench-prof")) {
 				bnProf = av[i++];
 			} else if (!strcmp(parg,"--bench-shot")) {

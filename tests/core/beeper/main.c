@@ -17,6 +17,8 @@
 #define PI	3.14159265358979323846
 #define LEV	8192		// a beeper's swing, about what the mix gives it
 
+static const int outRates[2] = {44100 * 32, 48000 * 32};	// the sound thread's at 1x
+
 static int failures;
 
 static void check(const char* name, int ok) {
@@ -97,10 +99,9 @@ static int held(int type, int rate, int lev) {
 }
 
 static void lowpass(const char* name, int type, double up, double dn) {
-	static const int rates[2] = {44100 * 32, 48000 * 32};
 	printf("== %s\n", name);
 	for (int i = 0; i < 2; i++) {
-		int rate = rates[i];
+		int rate = outRates[i];
 		double fu = step_fc(type, rate, 0, LEV);
 		double fd = step_fc(type, rate, LEV, 0);
 		printf("%d: rise %.0f Hz, fall %.0f Hz\n", rate / 32, fu, fd);
@@ -116,10 +117,9 @@ static void lowpass(const char* name, int type, double up, double dn) {
 }
 
 static void highpass(const char* name, int type, double hp) {
-	static const int rates[2] = {44100 * 32, 48000 * 32};
 	printf("== %s\n", name);
 	for (int i = 0; i < 2; i++) {
-		int rate = rates[i];
+		int rate = outRates[i];
 		double f = hp_fc(type, rate);
 		double g = gain(type, rate, hp);
 		printf("%d: %.0f Hz, gain there %.3f\n", rate / 32, f, g);
@@ -130,10 +130,9 @@ static void highpass(const char* name, int type, double hp) {
 }
 
 static void piezo(void) {
-	static const int rates[2] = {44100 * 32, 48000 * 32};
 	printf("== piezo\n");
 	for (int i = 0; i < 2; i++) {
-		int rate = rates[i];
+		int rate = outRates[i];
 		double best = 0, at = 0;
 		for (double hz = 2000; hz <= 8000; hz += 50) {
 			double g = gain(BEEP_PIEZO, rate, hz);
@@ -156,13 +155,12 @@ static void piezo(void) {
 
 // the Q24 coefficients at both offered rates: libm-made, so pinned here per platform
 static void coefficients(void) {
-	static const int rates[2] = {44100 * 32, 48000 * 32};
 	printf("== coefficients\n");
 	for (int i = 0; i < 2; i++) {
 		for (int t = BEEP_LINE + 1; t < BEEP_TYPES; t++) {
 			sndBeepFlt st;
-			settle(&st, t, rates[i], 0);
-			printf("%d %d: %lld %lld %lld %lld %lld\n", rates[i] / 32, t, st.kUp, st.kDn, st.kHp, st.kF, st.kQ);
+			settle(&st, t, outRates[i], 0);
+			printf("%d %d: %lld %lld %lld %lld %lld\n", outRates[i] / 32, t, st.kUp, st.kDn, st.kHp, st.kF, st.kQ);
 		}
 	}
 }
@@ -174,20 +172,20 @@ static const struct { int num, den; } speeds[7] = {
 	{1, 8}, {1, 4}, {1, 2}, {2, 1}, {4, 1}, {8, 1}, {16, 1},
 };
 
+// as sndUpdateSpeed() works it out
 static int speed_rate(int rate, int i) {
-	return (int)((long long)rate * speeds[i].den / speeds[i].num);
+	return (int)llround(rate / ((double)speeds[i].num / speeds[i].den));
 }
 
 // the Q24 coefficients at every other speed, both rates
 static void coefficients_by_speed(void) {
-	static const int rates[2] = {44100 * 32, 48000 * 32};
 	printf("== coefficients by speed\n");
 	for (int s = 0; s < 7; s++) {
 		for (int i = 0; i < 2; i++) {
 			for (int t = BEEP_LINE + 1; t < BEEP_TYPES; t++) {
 				sndBeepFlt st;
-				settle(&st, t, speed_rate(rates[i], s), 0);
-				printf("%d %d/%d %d: %lld %lld %lld %lld %lld\n", rates[i] / 32, speeds[s].num, speeds[s].den,
+				settle(&st, t, speed_rate(outRates[i], s), 0);
+				printf("%d %d/%d %d: %lld %lld %lld %lld %lld\n", outRates[i] / 32, speeds[s].num, speeds[s].den,
 					t, st.kUp, st.kDn, st.kHp, st.kF, st.kQ);
 			}
 		}
@@ -215,17 +213,16 @@ static double pole_fc(int type, int rate, int from, int to, int hp) {
 
 // every type as built at every other speed: Q24 keeps its cut-offs from 11 MHz to 88 kHz
 static void by_speed(void) {
-	static const int rates[2] = {44100 * 32, 48000 * 32};
 	printf("== by speed\n");
 	for (int s = 0; s < 7; s++) {
 		for (int i = 0; i < 2; i++) {
-			int rate = speed_rate(rates[i], s);
+			int rate = speed_rate(outRates[i], s);
 			double su = pole_fc(BEEP_SPEAKER, rate, 0, LEV, 0), sd = pole_fc(BEEP_SPEAKER, rate, LEV, 0, 0);
 			double tv = pole_fc(BEEP_TV, rate, 0, LEV, 0), evo = pole_fc(BEEP_EVO, rate, 0, LEV, 0);
 			double sc = pole_fc(BEEP_SCORPION, rate, 0, LEV, 1), atm = pole_fc(BEEP_ATM, rate, 0, LEV, 1);
 			double pz = gain(BEEP_PIEZO, rate, 4100);
 			printf("%d/%d %d: speaker %.0f/%.0f, tv %.0f, evo %.0f, scorpion %.0f, atm %.0f, piezo at f0 %.3f\n",
-				speeds[s].num, speeds[s].den, rates[i] / 32, su, sd, tv, evo, sc, atm, pz);
+				speeds[s].num, speeds[s].den, outRates[i] / 32, su, sd, tv, evo, sc, atm, pz);
 			check("cut-offs as built", near(su, 4356, 0.01) && near(sd, 2311, 0.01) && near(tv, 3183, 0.01)
 				&& near(evo, 8600, 0.01) && near(sc, 530, 0.01) && near(atm, 80, 0.01)
 				&& near(pz, res_hp(4100, 4100, 3), 0.05));
@@ -239,10 +236,12 @@ static void by_speed(void) {
 	}
 }
 
-// One sub-sample of a 1 kHz square at a rate; the filter changes rate at 'at' when 'to' > 0
+// One sub-sample of a 1 kHz square in the machine's time; the rate goes from 'from' to
+// 'to' at sub-sample 'at' when 'to' > 0, and the tone stays 1 kHz of the machine's
 static int tone_at(sndBeepFlt* st, int type, int n, int at, int from, int to) {
 	int rate = ((to > 0) && (n >= at)) ? to : from;
-	int x = ((n * 2000LL / from) & 1) ? LEV : 0;	// the tone's own time, the 'from' rate's
+	double sec = (rate == from) ? (double)n / from : (double)at / from + (double)(n - at) / to;
+	int x = ((long long)(sec * 2000) & 1) ? LEV : 0;
 	return snd_beep_flt(st, x, type, rate);
 }
 
@@ -262,16 +261,26 @@ static void speed_change(void) {
 			sndBeepFlt a, b;
 			settle(&a, t, from, 0);
 			settle(&b, t, from, 0);
-			int ya = 0, yb = 0, pb = 0;
+			int ya = 0, yb = 0, pb = 0, peak = 0;
 			for (int n = 0; n <= at; n++) {
 				pb = yb;
 				ya = tone_at(&a, t, n, at, from, to);
 				yb = tone_at(&b, t, n, at, from, 0);
+				if ((n < at) && (abs(yb) > peak)) peak = abs(yb);
 			}
 			int na = tone_at(&a, t, at + 1, at, from, to);
 			int move = abs(yb - pb);
 			if (abs(na - ya) > move) move = abs(na - ya);
 			ok &= (abs(ya - yb) <= 2 * move + 2);
+			// and the ms after: no swell either, the resonator's kept state included
+			int pa = abs(na);
+			for (int n = at + 1; n < at + from / 1000; n++) {
+				int y = tone_at(&b, t, n, at, from, 0);
+				if (abs(y) > peak) peak = abs(y);
+				y = tone_at(&a, t, n + 1, at, from, to);
+				if (abs(y) > pa) pa = abs(y);
+			}
+			ok &= (pa <= peak * 5 / 4 + 2);
 		}
 		printf("%d: ", t);
 		check("no step", ok);
