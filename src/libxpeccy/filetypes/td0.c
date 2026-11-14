@@ -177,7 +177,7 @@ void doTD0(Floppy* flp, size_t(*getBytes)(void*, size_t,void*), void* dptr, int 
 		}
 		if (bad) break;
 		diskFormTrack(flp, (thd.trk << 1) + thd.head, sec, idx);
-		if ((thd.trk < 128) && (thd.trk >= flp->cyls)) flp->cyls = thd.trk + 1;
+		if (thd.trk >= flp->cyls) flp->cyls = thd.trk + 1;
 	}
 }
 

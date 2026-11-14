@@ -15,7 +15,7 @@ int ima_read(Floppy* flp, const char* path) {
 			flp_format_trk(flp, trk, 18, 512, buf);
 		}
 		fclose(file);
-		flp->cyls = 80;
+		flp->cyls = 0;			// 80, no wider than a drive
 		flp_insert(flp, path);
 	} else {
 		res = ERR_CANT_OPEN;

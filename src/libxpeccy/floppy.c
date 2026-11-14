@@ -143,9 +143,7 @@ void flp_sync(Floppy* flp, int ns) {
 	}
 }
 
-// An image wider than any drive goes (past cylinder 86), up to the 128 of a
-// 1 MB TRD: its cylinders, else 0. Such images exist for esxDOS-style mounts,
-// not for real drives; anything narrower is taken as it always was
+// cylinders of an image past any drive's 86 (esxDOS-style mounts, up to 128), else 0
 int flp_wide(Floppy* flp) {
 	if (flp->cyls <= 87) return 0;
 	return (flp->cyls > 128) ? 128 : flp->cyls;

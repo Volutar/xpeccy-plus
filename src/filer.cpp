@@ -1256,7 +1256,7 @@ static void szx_mount(Computer* comp, const QString& snap) {
 				}
 			}
 			flp->protect = m->protect ? 1 : 0;
-			flp->trk = m->cylinder;
+			flp->trk = (m->cylinder > 127) ? 127 : m->cylinder;	// 256 tracks: a damaged file stays in them
 		}
 		if (fresh && !name.isEmpty()) QFile::remove(path);	// read whole, and the drive has the name
 		xlog(XLG_FILE, XLL_INFO, "szx: %s %s%s", (m->kind == SZX_MED_TAPE) ? "tape" : "disk",
