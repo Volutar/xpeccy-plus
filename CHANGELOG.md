@@ -22,7 +22,7 @@ before that point is upstream's history and is not repeated here.
 
 - **Integer Scale**: View > Integer Scale and Options > Video. In fullscreen and in a maximized
   or resized window the picture keeps a whole number of pixels per dot, the largest that fits,
-  and the side fill takes the room around it. *(requested by formicant)*
+  and the side fill takes the room around it.
 
 ### Changed
 
