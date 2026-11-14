@@ -593,7 +593,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.cbEarBack->addItem("Issue 2", EAR_ISSUE2);
 	ui.cbEarBack->addItem("Nothing", EAR_NONE);
 	{
-		static const char* names[] = {"black", "stretched edges", "mirror"};
+		static const char* names[] = {"black", "stretched edges", "mirror", "letterbox"};
 		for (int i = 0; i < SFILL_ITEMS; i++) {
 			const int item = sfillItems[i];
 			QString nam = names[item & ~SFILL_BORDER];

@@ -24,6 +24,10 @@ before that point is upstream's history and is not repeated here.
   or resized window the picture keeps a whole number of pixels per dot, the largest that fits,
   and the side fill takes the room around it.
 
+- **Letterbox side fill**: View > Side Fill and Options > Video. The screen itself, blown up
+  to cover the whole room and blurred, behind the picture; by the picture its edges are
+  carried out into it, so there is no hard edge. Best with no border.
+
 ### Changed
 
 - **ROM labels of the 128K and +2**: the +2 editor ROM has nearly every name of the 128K's

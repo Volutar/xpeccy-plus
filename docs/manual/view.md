@@ -90,27 +90,34 @@ default, and grayed out while **Keep Aspect Ratio** is not ticked.
 ```{index} Side Fill
 ```
 
-**View > Side Fill** sets what fills the room the picture leaves free. The first three
+**View > Side Fill** sets what fills the room the picture leaves free. The first four
 show more border there first, up to the **full** border (with **overscan** chosen, as far
 as the machine's frame goes), so a border that flashes is seen big; the fill takes the
 room past it:
 
 - **Border + Black** - black past the border, the default;
-- **Border + Stretched Edges**, **Border + Mirror** - the fill past the border, as below.
+- **Border + Stretched Edges**, **Border + Mirror**, **Border + Letterbox** - the fill past
+  the border, as below.
 
-The other three keep the border at the size the **Border** slider sets, and the fill
+The other four keep the border at the size the **Border** slider sets, and the fill
 starts at its edge; with **no** border, at the edge of the screen itself:
 
 - **Black** - black bars;
 - **Stretched Edges** - the picture's outer rows and columns carried outwards, blurred and
   dimmed, like a glow;
 - **Mirror** - the picture as it is shown, through the shader and with a curved screen's
-  black corners too, reflected at its edge, blurred and dimmed.
+  black corners too, reflected at its edge, blurred and dimmed;
+- **Letterbox** - the screen itself, without the border, blown up to cover the whole room,
+  blurred and dimmed; by the picture its edges are carried out as with **Stretched Edges**
+  and run into it, so the picture has no hard edge. It looks best with no border and a
+  picture that reaches its edges.
 
 While the window is resized, the border grows with it smoothly, its edge cut at the
 window's edge rather than a whole dot at a time.
 
 ![Mirror in fullscreen](images/view-side-fill.png)
+
+![Letterbox in fullscreen, with no border](images/view-side-fill-letterbox.png)
 
 It is the same setting as **Side fill** on the **Video** page of **Options**, where its
 blur and brightness are set too (see [Side fill](options-video.md#side-fill)). Without
