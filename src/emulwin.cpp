@@ -1695,9 +1695,10 @@ void MainWin::grabPicture() {
 		// bottom, so the gap under it is the frame's bottom border
 		double kx = pic.width() / (double)vid->vsze.x;
 		double ky = pic.height() / (double)vid->vsze.y;
-		int below = vid->rcut.y - vid->send.y;
-		rc = QRect(pic.x() + int((vid->bord.x - vid->lcut.x) * kx + 0.5), pic.y() + int(below * ky + 0.5),
-			int(vid->scrn.x * kx + 0.5), int(vid->scrn.y * ky + 0.5));
+		const QRect scr = vid_paper(vid);
+		int below = vid->vsze.y - scr.y() - scr.height();
+		rc = QRect(pic.x() + int(scr.x() * kx + 0.5), pic.y() + int(below * ky + 0.5),
+			int(scr.width() * kx + 0.5), int(scr.height() * ky + 0.5));
 	}
 	rc &= win;
 	if (rc.isEmpty()) return;

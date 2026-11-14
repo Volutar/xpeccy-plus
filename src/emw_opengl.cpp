@@ -160,9 +160,7 @@ const char* fillBlurShaderBody() {
 // u_stretch: k of ln(1 + k*d) / k, d picture sizes out from the edge - the reflection drawn
 // out like pulled rubber: as it is by the picture, 1 + k*d times wider further out, and its
 // far part off the screen;
-// u_cover (Letterbox, z > 0): the screen area scaled up to cover the view, in framebuffer
-// pixels from the bottom left; u_paper: that area in the texture, uv from the top left.
-// Over u_ramp the edges carried out run into it, so the picture has no seam.
+// u_cover: Letterbox's cover in fb px (z = 0: off), run into over u_ramp; u_paper: its uv
 const char* fillDrawShaderBody() {
 	return
 		"uniform sampler2D u_src;\n"
@@ -492,9 +490,8 @@ bool MainWin::fillWanted() {
 // reflects the picture as it is shown - through the shader, a curved screen and
 // its black corners too - so it is read back from the framebuffer, drawn already;
 // Stretched edges carries the frame's own edge out, which a curved screen leaves
-// black; Letterbox reads the frame as Edges does, its screen area and its edge
-// both from the same texture. The wrap mode is set before the blur, so the blur at the edge already
-// sees what is drawn past it.
+// black; Letterbox reads the frame as Edges does. The wrap mode is set before
+// the blur, so the blur at the edge already sees what is drawn past it.
 void MainWin::prepareFill() {
 	Video* vid = conf.zx->vid;
 	const bool mirror = (conf.vid.sideFill == SFILL_MIRROR);
@@ -590,14 +587,12 @@ void MainWin::drawFill(const QRect* clip) {
 	// 100 %: k = 10, the far edge of a bar a third of the picture wide drawn out 4 times
 	const bool mirror = (conf.vid.sideFill == SFILL_MIRROR);
 	fillDraw.setUniformValue("u_stretch", GLfloat(mirror ? conf.vid.fillStretch * 0.1 : 0.0));
-	// Letterbox: the screen area, without the border, as big as it takes to
-	// cover the view, centred on it
+	// Letterbox: the screen area as big as it takes to cover the view, centred on it
 	GLfloat cover[4] = {0, 0, 0, 0};
 	GLfloat paper[4] = {0, 0, 1, 1};
 	const Video* vid = conf.zx->vid;
-	if ((conf.vid.sideFill == SFILL_LETTERBOX) && (vid->vsze.x > 0) && (vid->vsze.y > 0)) {
-		QRect scr(vid->bord.x - vid->lcut.x, vid->bord.y - vid->lcut.y, vid->scrn.x, vid->scrn.y);
-		scr &= QRect(0, 0, vid->vsze.x, vid->vsze.y);
+	if ((conf.vid.sideFill == SFILL_LETTERBOX) && (vid->vsze.x > 0) && (vid->vsze.y > 0) && (pw > 0) && (ph > 0)) {
+		QRect scr = vid_paper(vid) & QRect(0, 0, vid->vsze.x, vid->vsze.y);
 		if (scr.isEmpty()) scr = QRect(0, 0, vid->vsze.x, vid->vsze.y);
 		paper[0] = GLfloat(scr.x()) / vid->vsze.x;
 		paper[1] = GLfloat(scr.y()) / vid->vsze.y;

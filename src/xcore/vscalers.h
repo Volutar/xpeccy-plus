@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QRect>
 #include <QSize>
 
 #include "../libxpeccy/video/vidcommon.h"
@@ -18,8 +19,7 @@ enum {
 	SFILL_BLACK = 0,
 	SFILL_EDGES,		// the edge rows and columns carried outwards, blurred and dimmed
 	SFILL_MIRROR,		// the picture reflected at its edge, blurred and dimmed
-	SFILL_LETTERBOX		// the screen area scaled up to cover the room, blurred and dimmed,
-				// run into from the edges carried outwards
+	SFILL_LETTERBOX		// the screen area blown up to cover the room, run into from the edges
 };
 const char* sfill_name(int);
 int sfill_id(const char*);
@@ -31,6 +31,8 @@ int sfill_id(const char*);
 extern const int sfillItems[SFILL_ITEMS];
 int sfill_item();		// the one conf has
 void sfill_set(int item);
+// the screen area in the shown frame, in its dots from the top left, not clipped to it
+QRect vid_paper(const Video* vid);
 // the ranges of conf.vid.fill*, and what they start at
 #define SFILL_BLUR_MIN	1
 #define SFILL_BLUR_MAX	16

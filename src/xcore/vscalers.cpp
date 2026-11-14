@@ -69,9 +69,14 @@ int sfill_id(const char* nam) {
 }
 
 const int sfillItems[SFILL_ITEMS] = {
-	SFILL_BORDER | SFILL_BLACK, SFILL_BORDER | SFILL_EDGES, SFILL_BORDER | SFILL_MIRROR, SFILL_BORDER | SFILL_LETTERBOX,
+	SFILL_BORDER | SFILL_BLACK, SFILL_BORDER | SFILL_EDGES,
+	SFILL_BORDER | SFILL_MIRROR, SFILL_BORDER | SFILL_LETTERBOX,
 	SFILL_BLACK, SFILL_EDGES, SFILL_MIRROR, SFILL_LETTERBOX
 };
+
+QRect vid_paper(const Video* vid) {
+	return QRect(vid->bord.x - vid->lcut.x, vid->bord.y - vid->lcut.y, vid->scrn.x, vid->scrn.y);
+}
 
 int sfill_item() {
 	return conf.vid.sideFill | (conf.vid.fillBorder ? SFILL_BORDER : 0);
