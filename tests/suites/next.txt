@@ -21,3 +21,6 @@ next_f9_1       zxnext   boot  1150  50            sd:next/sysnext-24.11-min key
 next_boot_1m    zxnext   boot  850   50            sd:next/sysnext-24.11-min mac:machine.memory=1024
 next_maxbnk_1m  zxnext   boot  1050  50            sd:next/sysnext-24.11-min mac:machine.memory=1024 keys:700:n,760:p,772:r,784:i,796:n,808:t,820:_,832:p,844:e,856:e,868:k,880:_,892:2,904:3,916:4,928:0,940:1,952:E
 next_maxbnk_2m  zxnext   boot  1050  50            sd:next/sysnext-24.11-min keys:700:n,760:p,772:r,784:i,796:n,808:t,820:_,832:p,844:e,856:e,868:k,880:_,892:2,904:3,916:4,928:0,940:1,952:E
+# a .nex holding the DMA by CTC 0 in hardware IM 2, its ISR's length sweeping across the CTC
+# period: RETIs right where the channel fires again (the DMA's held answer, perf-weak-host)
+next_reti_dma   zxnext   open  1500  100   next/dma/reti-ctc-dma.nex sd:next/sysnext-24.11-min put:dot/CD=next/dot/CD put:dot/NEXLOAD=next/dot/NEXLOAD

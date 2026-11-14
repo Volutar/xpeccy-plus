@@ -109,6 +109,7 @@ def set_up(case, corpus, cfg, tmp):
             path, src = v.split("=", 1)
             if not cards:
                 raise OSError("put: needs an sd: or hdd: folder before it")
+            (cards[-1] / path).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(corpus / src, cards[-1] / path)
         elif k == "keys":
             args += ["--bench-keys", v]
@@ -199,14 +200,15 @@ def run_case(case, app, corpus, shots, timeout):
         cfg = Path(tmp) / "config"
         shutil.copytree(app / "config", cfg)
         cmd = [str(app / EXE), "--confdir", str(cfg), "-m", case.machine]
-        if case.how == "auto":
-            cmd += ["--autostart", str(image)]
-        elif case.how == "open":
-            cmd += [str(image)]
+        # the media first, then the image: a .nex starts from the card, which has to be in
         try:
             cmd += set_up(case, corpus, cfg, Path(tmp))
         except OSError as e:
             return case, {"error": f"setup: {e}"}, 0.0
+        if case.how == "auto":
+            cmd += ["--autostart", str(image)]
+        elif case.how == "open":
+            cmd += [str(image)]
         cmd += ["--bench-skip", str(case.skip), "--bench", str(case.frames), "--bench-hash"]
         if shots:
             cmd += ["--bench-shot", str(shots / f"{case.suite}-{case.name}.ppm")]
