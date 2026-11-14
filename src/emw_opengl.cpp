@@ -468,6 +468,12 @@ void MainWin::initFill() {
 // a fill is chosen, there is a frame, and the picture leaves room beside it
 bool MainWin::fillWanted() {
 	if ((conf.vid.sideFill == SFILL_BLACK) || !curtxid || !fillDraw.isLinked()) return false;
+	if (conf.vid.intScale) {
+		// placed in device pixels: a gap of one would round away in logical ones
+		const QRect pic = picRect();
+		const QSize dev = devSize();
+		return (pic.x() > 0) || (pic.y() > 0) || (pic.right() + 1 < dev.width()) || (pic.bottom() + 1 < dev.height());
+	}
 	return (drawX > 0) || (drawY > 0) || (drawX + drawW < width()) || (drawY + drawH < height());
 }
 
@@ -485,15 +491,14 @@ void MainWin::prepareFill() {
 	GLuint src = curtxid;
 	QSize srcSize(vid->vsze.x * 2, vid->vsze.y);		// two frame texels per dot across
 	if (mirror) {
-		const qreal r = widgetDpr(this);
-		srcSize = QSize(int(drawW * r + 0.5), int(drawH * r + 0.5));
+		const QRect pic = picRect();
+		srcSize = pic.size();
 		glBindTexture(GL_TEXTURE_2D, fillPic);
 		if (srcSize != fillPicSize) {
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, srcSize.width(), srcSize.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 			fillPicSize = srcSize;
 		}
-		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, int(drawX * r + 0.5), int(drawY * r + 0.5),
-			srcSize.width(), srcSize.height());
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pic.x(), pic.y(), srcSize.width(), srcSize.height());
 		src = fillPic;
 	}
 	const GLfloat bx = GLfloat(srcSize.width()) / sz.width();
@@ -546,14 +551,15 @@ void MainWin::prepareFill() {
 // corners and all, and the strips above and below it. clip: the framebuffer
 // rectangle the caller has scissored to, which the bars are cut to as well.
 void MainWin::drawFill(const QRect* clip) {
-	const qreal r = widgetDpr(this);
-	const int vw = int(width() * r + 0.5);
-	const int vh = int(height() * r + 0.5);
+	const QSize dev = devSize();
+	const int vw = dev.width();
+	const int vh = dev.height();
 	// the picture as drawPicture's viewport has it, from the bottom left
-	const int px = int(drawX * r + 0.5);
-	const int py = int(drawY * r + 0.5);
-	const int pw = int(drawW * r + 0.5);
-	const int ph = int(drawH * r + 0.5);
+	const QRect pic = picRect();
+	const int px = pic.x();
+	const int py = pic.y();
+	const int pw = pic.width();
+	const int ph = pic.height();
 	const QRect bars[4] = {
 		QRect(0, 0, px, vh),
 		QRect(px + pw, 0, vw - px - pw, vh),
@@ -567,8 +573,8 @@ void MainWin::drawFill(const QRect* clip) {
 	fillDraw.setUniformValue("u_view", GLfloat(vw), GLfloat(vh));
 	fillDraw.setUniformValue("u_dim", GLfloat(conf.vid.fillDim / 100.0));
 	fillDraw.setUniformValue("u_fade", GLfloat(conf.vid.fillFade / 100.0));
-	// a dot is drawW / vsze.x pixels across, and as many down
-	fillDraw.setUniformValue("u_ramp", GLfloat(conf.vid.fillEdge * drawW * r / conf.zx->vid->vsze.x));
+	// a dot is pw / vsze.x pixels across, and as many down
+	fillDraw.setUniformValue("u_ramp", GLfloat(conf.vid.fillEdge * pw / (double)conf.zx->vid->vsze.x));
 	// 100 %: k = 10, the far edge of a bar a third of the picture wide drawn out 4 times
 	const bool mirror = (conf.vid.sideFill == SFILL_MIRROR);
 	fillDraw.setUniformValue("u_stretch", GLfloat(mirror ? conf.vid.fillStretch * 0.1 : 0.0));

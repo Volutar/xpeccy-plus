@@ -13,6 +13,11 @@ int drawY = 0;
 int drawW = 0;
 int drawH = 0;
 int drawZoom = 0;
+int drawPX = 0;
+int drawPY = 0;
+int drawPW = 0;
+int drawPH = 0;
+double drawDpr = 1.0;
 
 const char* brdModeTab[] = {
 	"no",		// VID_BRD_NONE
@@ -81,6 +86,12 @@ void sfill_set(int item) {
 static QSize fitArea;
 // the monitor the window is on, for fullscreen
 static QSize fullscreenSize;
+// device pixels per logical one on that monitor
+static double fitDpr = 1.0;
+
+void vid_set_dpr(double dpr) {
+	if (dpr > 0) fitDpr = dpr;
+}
 
 void vid_set_fit(const QSize& area) {
 	fitArea = area;
@@ -101,13 +112,16 @@ QSize vid_room(int fullscreen) {
 // another size - maximized, snapped, dragged - fit the picture to the room
 // there is instead, keeping its shape: at a screen's resolution, and through
 // a shader, a whole zoom is not worth the black bars it leaves. 'ignore aspect
-// ratio' stretches it to fill.
-vidFit vid_fit(Video* vid, int mode, const QSize& room, int zoom, int keepRatio, int fillBorder, double xscale) {
+// ratio' stretches it to fill. 'integer scale' keeps a fitted picture to whole
+// pixels too, the largest number that fits.
+vidFit vid_fit(Video* vid, int mode, const QSize& room, int zoom, int keepRatio, int intScale, int fillBorder,
+	double xscale, double dpr) {
 	vidFit f;
 	f.crop = vid_crop_size(vid, mode);		// the frame the border size asks for
 	f.widen = 0;
 	f.wideW = 0;
 	f.wideH = 0;
+	int exact = 0;		// px..ph are set already, in device pixels
 	if (room.isEmpty()) {
 		f.kx = xscale * zoom;
 		f.ky = zoom;
@@ -119,7 +133,33 @@ vidFit vid_fit(Video* vid, int mode, const QSize& room, int zoom, int keepRatio,
 	} else {
 		f.roomW = room.width();
 		f.roomH = room.height();
-		if (keepRatio) {
+		// the most whole device pixels a dot the border size's frame fits at; 0 below 1:1, fitted as without
+		f.devW = int(f.roomW * dpr + 0.5);
+		f.devH = int(f.roomH * dpr + 0.5);
+		int k = 0;
+		if (keepRatio && intScale)
+			k = (int)std::floor(std::min(f.devH / (double)f.crop.y, f.devW / (f.crop.x * xscale)) + 1e-6);
+		if (k > 0) {
+			// room on both sides: the border first grows both ways, then the scale steps up
+			if (fillBorder) {
+				f.widen = 1;
+				f.wideW = (int)std::ceil(f.devW / (k * xscale) - 1e-6);
+				f.wideH = (int)std::ceil(f.devH / (double)k - 1e-6);
+				f.crop = vid_widen_size(vid, mode, f.wideW, f.wideH);
+			}
+			f.pw = (int)(f.crop.x * k * xscale + 0.5);
+			f.ph = f.crop.y * k;
+			f.px = (f.devW - f.pw) / 2;
+			f.py = (f.devH - f.ph) / 2;
+			exact = 1;
+			f.kx = k * xscale / dpr;
+			f.ky = k / dpr;
+			f.w = (int)(f.pw / dpr + 0.5);
+			f.h = (int)(f.ph / dpr + 0.5);
+			// whole window pixels per dot too, at 100 and 200 percent
+			const double z = k / dpr;
+			f.zoom = (std::fabs(z - std::floor(z + 0.5)) < 1e-6) ? (int)std::floor(z + 0.5) : 0;
+		} else if (keepRatio) {
 			// The height sets the scale in a room wider than the picture, the
 			// width in a taller one. With the border first, the free room shows
 			// more border, as far as the raster goes: the frame takes a dot
@@ -151,16 +191,28 @@ vidFit vid_fit(Video* vid, int mode, const QSize& room, int zoom, int keepRatio,
 			f.zoom = 0;				// stretched: no whole zoom
 		}
 	}
-	f.x = (f.roomW - f.w) / 2;
-	f.y = (f.roomH - f.h) / 2;
+	if (exact) {
+		// py counts from the bottom, as GL does; y from the top
+		f.x = (int)std::floor(f.px / dpr + 0.5);
+		f.y = (int)std::floor((f.devH - f.py - f.ph) / dpr + 0.5);
+	} else {
+		f.x = (f.roomW - f.w) / 2;
+		f.y = (f.roomH - f.h) / 2;
+		f.px = int(f.x * dpr + 0.5);
+		f.py = int(f.y * dpr + 0.5);
+		f.pw = int(f.w * dpr + 0.5);
+		f.ph = int(f.h * dpr + 0.5);
+		f.devW = int(f.roomW * dpr + 0.5);
+		f.devH = int(f.roomH * dpr + 0.5);
+	}
 	return f;
 }
 
 void vid_upd_scale(const QSize& screenSize) {
 	if (!screenSize.isEmpty()) fullscreenSize = screenSize;
 	Video* vid = conf.zx->vid;
-	vidFit f = vid_fit(vid, vid->brdmode, vid_room(conf.vid.fullScreen), conf.vid.scale,
-		conf.vid.keepRatio, conf.vid.fillBorder, conf.zx->hw->xscale);	// pixel aspect, 1.0 on every zx
+	vidFit f = vid_fit(vid, vid->brdmode, vid_room(conf.vid.fullScreen), conf.vid.scale, conf.vid.keepRatio,
+		conf.vid.intScale, conf.vid.fillBorder, conf.zx->hw->xscale, fitDpr);	// pixel aspect, 1.0 on every zx
 	vid_upd_crop(vid);
 	if (f.widen) vid_widen_crop(vid, f.wideW, f.wideH);
 	drawX = f.x;
@@ -168,6 +220,11 @@ void vid_upd_scale(const QSize& screenSize) {
 	drawW = f.w;
 	drawH = f.h;
 	drawZoom = f.zoom;
+	drawPX = f.px;
+	drawPY = f.py;
+	drawPW = f.pw;
+	drawPH = f.ph;
+	drawDpr = fitDpr;
 }
 
 void vid_set_zoom(int zoom) {
@@ -191,6 +248,11 @@ void vid_set_border_mode(int mode) {
 
 void vid_set_ratio(int f) {
 	conf.vid.keepRatio = f ? 1 : 0;
+	vid_upd_scale();
+}
+
+void vid_set_int_scale(int f) {
+	conf.vid.intScale = f ? 1 : 0;
 	vid_upd_scale();
 }
 

@@ -9,9 +9,10 @@ The page has four groups:
 
 - **Picture** - **Border**, **Side fill**, **Palette** with the {icon}`edit` button for
   the **Palette Editor**, **Shader**, and on the right the window scale
-  (**Scale x1** to **Scale x6**), **Fullscreen**, **Keep ratio**, **VSync**, **Frame skip**
-  and **Gray scale**. The scale, **Fullscreen**, **Keep ratio**, **Side fill**, the palette
-  and the shader are the same settings as in the **View** menu; see [View menu](view.md).
+  (**Scale x1** to **Scale x6**), **Fullscreen**, **Keep ratio**, **Integer scale**,
+  **VSync**, **Frame skip** and **Gray scale**. The scale, **Fullscreen**, **Keep ratio**,
+  **Integer scale**, **Side fill**, the palette and the shader are the same settings as in
+  the **View** menu; see [View menu](view.md).
   For **VSync** see [VSync](#vsync), for **Frame skip** see [Frame skip](#frame-skip).
 - **Anti-flicker** - see [Anti-flicker](#anti-flicker).
 - **Screenshots** - see [Screenshots](#screenshots).

@@ -249,6 +249,7 @@ on the numeric keypad: Alt+Num++ is Alt with the keypad plus.
 | Size x6 | Alt+6 | Alt+6 |
 | Fullscreen | Alt+Return, F11 | Alt+Return |
 | Keep Aspect Ratio | - | Alt+R |
+| Integer Scale | - | - |
 | Anti-flicker | Alt+N | Alt+N |
 | Reload Shader | - | - |
 | Menu Bar | - | - |

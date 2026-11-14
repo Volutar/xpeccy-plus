@@ -1608,6 +1608,16 @@ Integer scaling, so every pixel is the same size</string>
                      </widget>
                     </item>
                     <item>
+                     <widget class="QCheckBox" name="cbIntScale">
+                      <property name="toolTip">
+                       <string>Fullscreen, or a maximized or resized window: the largest whole number of pixels per dot that fits, the side fill around it</string>
+                      </property>
+                      <property name="text">
+                       <string>Integer scale</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
                      <widget class="QCheckBox" name="cbVSync">
                       <property name="toolTip">
                        <string>No tearing; a machine near the screen's rate runs at it</string>

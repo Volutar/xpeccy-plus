@@ -407,6 +407,17 @@ void MainWin::xkey_press(int xkey, bool cmd, QKeyEvent* ev) {
 				setMessage(conf.vid.keepRatio ? " keep aspect ratio " : " stretch to fill ");
 				saveConfig();
 				break;
+			case XCUT_INTSCALE:
+				// a stretched picture has no scale to keep whole, as the menu has it
+				if (!conf.vid.keepRatio) {
+					setMessage(" keep aspect ratio is off ");
+					break;
+				}
+				vid_set_int_scale(!conf.vid.intScale);
+				updateWindow();
+				setMessage(conf.vid.intScale ? " integer scale " : " fit to window ");
+				saveConfig();
+				break;
 			case XCUT_MOUSE:
 				if (grabMice) {
 					mouseGrabOff();

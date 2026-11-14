@@ -397,6 +397,9 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void shotTick();
 		void shotTake();
 		void grabPicture();
+		QRect picRect();
+		QSize devSize();
+		void refitPicture();
 		QImage readBack(const QRect&);
 
 		QImage alphabet;
@@ -472,6 +475,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		QAction* wavAct;
 		QAction* fullAct;
 		QAction* ratioAct;
+		QAction* intAct;
 		QList<QAction*> sizeActs;
 		typedef struct {QAction* act; QString name; int id;} xCutAct;
 		QList<xCutAct> cutActs;		// menu items that are hotkeys, to show the key
