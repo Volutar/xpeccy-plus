@@ -73,7 +73,12 @@ enum {
 	BEEP_SCORPION,		// the Scorpion's coupling cap on its AUDIO line
 	BEEP_ATM,		// the ATM Turbo's coupling cap into its amplifier
 	BEEP_PIEZO,		// a piezo sounder (ZP-3 class) on the port's own output
-	BEEP_TYPES
+	BEEP_TYPES,
+	// TEMP: variants to pick from by ear, not in the bench
+	BEEP_T_SPK0 = BEEP_TYPES, BEEP_T_SPK250, BEEP_T_SPK750,
+	BEEP_T_PZ15, BEEP_T_PZ07, BEEP_T_PZSOFT,
+	BEEP_T_LP5_1, BEEP_T_LP5_2, BEEP_T_LP5_4,
+	BEEP_ALL
 };
 
 // Fixed point (coefficients Q24, levels Q16) so sound hashes match across compilers
@@ -85,6 +90,9 @@ typedef struct {
 	long long kF, kQ;	// resonant high-pass: frequency and damping (0: none)
 	long long lp, hp;	// one-poles' state
 	long long low, band;	// resonator's state
+	long long kBp;		// the resonator's band added to its high-pass (0: none)
+	long long kL[2], kLQ[2];	// up to two 2-pole low-passes (Chamberlin, low out)
+	long long ll[2], lb[2];
 } sndBeepFlt;
 
 // a type's two chains: the beeper's (with the tape), and the mix's the PSG goes through
@@ -94,7 +102,7 @@ int snd_beep_run(sndBeepFlt* st, int lev, int type, int rate, int chain);
 
 // Every sub-sample: line out costs a branch, and marks a type taken again to resettle
 static inline int snd_beep_flt(sndBeepFlt* st, int lev, int type, int rate) {
-	if ((type <= BEEP_LINE) || (type >= BEEP_TYPES) || (rate <= 0)) {
+	if ((type <= BEEP_LINE) || (type >= BEEP_ALL) || (rate <= 0)) {
 		st->type = BEEP_LINE;
 		return lev;
 	}

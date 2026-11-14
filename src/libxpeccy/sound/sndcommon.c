@@ -20,12 +20,15 @@ typedef struct {
 	double up, dn;		// one-pole low-pass, rising and falling edges
 	double hp;		// one-pole high-pass
 	double res, q;		// resonant high-pass (Chamberlin)
+	double bp;		// ...its band added, at this share: 6 dB an octave under f0
+	double lp2;		// 2-pole low-passes, Butterworth
+	int lpn;		// ...of this order: 2 or 4
 } bfChain;
 
 static const struct {
 	bfChain beep;		// the beeper and the tape
 	bfChain mix;		// the PSG, where it is mixed in before the filter (snd_beep_mixes)
-} beepFltTab[BEEP_TYPES] = {
+} beepFltTab[BEEP_ALL] = {
 	{{0, 0, 0, 0, 0}, {0}},			// BEEP_LINE
 	{{4356, 2311, 0, 500, 0.7071067811865476}, {0}},	// BEEP_SPEAKER: pin 28's edges; 500 Hz a guess
 	{{3183, 3183, 0, 0, 0}, {3183, 3183, 0, 0, 0}},	// BEEP_TV: 50 us, all the modulator gets
@@ -34,6 +37,16 @@ static const struct {
 	{{0, 0, 530, 0, 0}, {0}},		// BEEP_SCORPION: 0.1 uF into ~3K
 	{{0, 0, 80, 0, 0}, {0}},		// BEEP_ATM: 0.1 uF into 20K
 	{{0, 0, 0, 4100, 3}, {0}},		// BEEP_PIEZO: ZP-3; Q not in the datasheet
+	// TEMP
+	{{4356, 2311, 0, 0, 0}, {0}},		// speaker, no bass cut
+	{{4356, 2311, 0, 250, 0.7071067811865476}, {0}},
+	{{4356, 2311, 0, 750, 0.7071067811865476}, {0}},	// Fuse's
+	{{0, 0, 0, 4100, 1.5}, {0}},
+	{{0, 0, 0, 4100, 0.7071067811865476}, {0}},
+	{{0, 0, 0, 4100, 3, 1}, {0}},		// piezo, 6 dB an octave under f0
+	{{5000, 5000, 0, 0, 0}, {0}},
+	{{0, 0, 0, 0, 0, 0, 5000, 2}, {0}},
+	{{0, 0, 0, 0, 0, 0, 5000, 4}, {0}},
 };
 
 #define BF_ONE	(1LL << 24)
@@ -58,6 +71,16 @@ static void bf_coefs(sndBeepFlt* st, int type, int rate, int chain) {
 		st->kF = llround(2 * sin(BF_PI * c->res / rate) * BF_ONE);
 		st->kQ = llround(BF_ONE / c->q);
 	}
+	st->kBp = llround(c->bp * BF_ONE);
+	// Butterworth: Q 0.7071 for 2 poles, 0.5412 and 1.3066 for 4
+	static const double q2[1] = {0.7071067811865476}, q4[2] = {0.5411961001461970, 1.3065629648763766};
+	for (int i = 0; i < 2; i++) {
+		st->kL[i] = 0;
+		st->kLQ[i] = 0;
+		if ((c->lp2 <= 0) || (i * 2 >= c->lpn)) continue;
+		st->kL[i] = llround(2 * sin(BF_PI * c->lp2 / rate) * BF_ONE);
+		st->kLQ[i] = llround(BF_ONE / ((c->lpn == 4) ? q4[i] : q2[0]));
+	}
 }
 
 // a type taken anew: its coefficients, and settled where the level is now
@@ -68,6 +91,8 @@ static void bf_setup(sndBeepFlt* st, int lev, int type, int rate, int chain) {
 	st->hp = st->lp;
 	st->low = st->lp;
 	st->band = 0;
+	st->ll[0] = st->ll[1] = st->lp;
+	st->lb[0] = st->lb[1] = 0;
 }
 
 // the filtering types only: snd_beep_flt() and snd_mix_flt() let the rest through.
@@ -93,7 +118,13 @@ int snd_beep_run(sndBeepFlt* st, int lev, int type, int rate, int chain) {
 		st->low += (st->band * st->kF) >> 24;
 		long long high = x - st->low - ((st->band * st->kQ) >> 24);
 		st->band += (high * st->kF) >> 24;
-		x = high;
+		x = high + ((st->band * st->kBp) >> 24);
+	}
+	for (int i = 0; (i < 2) && st->kL[i]; i++) {
+		st->ll[i] += (st->lb[i] * st->kL[i]) >> 24;
+		long long high = x - st->ll[i] - ((st->lb[i] * st->kLQ[i]) >> 24);
+		st->lb[i] += (high * st->kL[i]) >> 24;
+		x = st->ll[i];
 	}
 	return (int)((x + (1 << 15)) >> 16);
 }

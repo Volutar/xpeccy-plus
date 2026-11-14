@@ -2425,6 +2425,11 @@ void SetupWin::buildDevices() {
 	beepBox->setItemData(BEEP_SCORPION, tr("The Scorpion's coupling capacitor:\nlows cut below 530 Hz"), Qt::ToolTipRole);
 	beepBox->setItemData(BEEP_ATM, tr("The ATM's coupling capacitor:\nlows cut below 80 Hz"), Qt::ToolTipRole);
 	beepBox->setItemData(BEEP_PIEZO, tr("A piezo sounder: little bass,\nrings at 4.1 kHz"), Qt::ToolTipRole);
+	// TEMP: variants to pick from by ear (BEEP_T_*)
+	beepBox->addItems(QStringList() << "48K speaker: no bass cut" << "48K speaker: bass cut 250 Hz"
+		<< "48K speaker: bass cut 750 Hz (Fuse)" << "Piezo: Q 1.5" << "Piezo: Q 0.7"
+		<< "Piezo: 6 dB/oct under 4.1 kHz" << "Low-pass 5 kHz, 1 pole" << "Low-pass 5 kHz, 2 poles"
+		<< "Low-pass 5 kHz, 4 poles");
 	devRow(grid, tr("Beeper"), beepBox, NULL, NULL);
 	beepName = qobject_cast<QLabel*>(grid->itemAtPosition(grid->rowCount() - 1, 0)->widget());
 	beepName->setText(tr("Beeper (off)"));	// measured so (finishGroups)
