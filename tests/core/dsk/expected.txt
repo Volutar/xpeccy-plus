@@ -150,3 +150,7 @@
   UDI: 1125620 bytes, last cylinder 79, sum 6C4A8C27
   blank after 1 MB: 0 cylinders, side-track 200 holds a sector: no
   seek to 120: track register 120, head at 86
+  640K after 1 MB: err 0, 80 cylinders, side-track 200 holds a sector: no
+  seek to 120: track register 120, head at 86
+  seek to 60: track register 60, head at 43
+  1 MB, not TR-DOS, saved: err 0, 1048576 bytes, as read: yes

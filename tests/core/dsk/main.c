@@ -763,6 +763,31 @@ static void trd_wide(const char* tmp) {
 	       diskGetSectorData(flp, 200, 1, buf, 256) ? "yes" : "no");
 	beta_disk();
 	beta_seek(120);
+	// a 640K TRD read into the same drive after a 1 MB one, as an open does
+	trd_read(flp, trd);
+	trd_wide_image(img, 160);
+	write_file(trd, img, 0xa0000);
+	err = trd_read(flp, trd);
+	printf("  640K after 1 MB: err %d, %d cylinders, side-track 200 holds a sector: %s\n", err, flp->cyls,
+	       diskGetSectorData(flp, 200, 1, buf, 256) ? "yes" : "no");
+	beta_disk();
+	beta_seek(120);
+	// a 40-track drive stops at 43 with it, as always
+	flp->trk80 = 0;
+	beta_com(0x08);
+	beta_seek(60);
+	difDestroy(dif);
+
+	// 1 MB with no TR-DOS system sector: saved whole all the same
+	trd_wide_image(img, 256);
+	img[8 * 256 + 0xe7] = 0;
+	write_file(trd, img, 0x100000);
+	flp = beta_drive();
+	trd_read(flp, trd);
+	err = trd_write(flp, back);
+	len = read_file(back, got, 0x100000);
+	printf("  1 MB, not TR-DOS, saved: err %d, %d bytes, as read: %s\n", err, (int)len,
+	       ((len == 0x100000) && !memcmp(got, img, len)) ? "yes" : "no");
 	difDestroy(dif);
 
 	remove(trd);
