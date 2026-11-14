@@ -165,9 +165,7 @@ static void coefficients(void) {
 	}
 }
 
-// The speeds offered (1/8..x16): the filter's rate is sub-samples a second of the
-// machine's time, the output's divided by the speed, so its cut-offs are the same
-// in the machine's Hz and heard at fc * speed
+// the speeds offered: the filter's rate is the output's over the speed, its cut-offs heard at fc * speed
 static const struct { int num, den; } speeds[7] = {
 	{1, 8}, {1, 4}, {1, 2}, {2, 1}, {4, 1}, {8, 1}, {16, 1},
 };
@@ -192,9 +190,7 @@ static void coefficients_by_speed(void) {
 	}
 }
 
-// A one-pole's cut-off from what is left of a step, interpolated on its log: exact for a
-// one-pole, where at x16 the low-passes are a sub-sample or two long and a straight line
-// between two sub-samples is not. 'left' is what is left of the step, 1 down to 0.
+// a one-pole's cut-off from a step, interpolated on the log of what is left: exact even a sub-sample long
 static double pole_fc(int type, int rate, int from, int to, int hp) {
 	sndBeepFlt st;
 	settle(&st, type, rate, from);
@@ -211,7 +207,7 @@ static double pole_fc(int type, int rate, int from, int to, int hp) {
 	return 0;
 }
 
-// every type as built at every other speed: Q24 keeps its cut-offs from 11 MHz to 88 kHz
+// every type as built at every other speed: Q24 holds from 11 MHz to 88 kHz
 static void by_speed(void) {
 	printf("== by speed\n");
 	for (int s = 0; s < 7; s++) {
@@ -236,8 +232,7 @@ static void by_speed(void) {
 	}
 }
 
-// One sub-sample of a 1 kHz square in the machine's time; the rate goes from 'from' to
-// 'to' at sub-sample 'at' when 'to' > 0, and the tone stays 1 kHz of the machine's
+// a 1 kHz square in the machine's time; the rate goes from 'from' to 'to' (> 0) at sub-sample 'at'
 static int tone_at(sndBeepFlt* st, int type, int n, int at, int from, int to) {
 	int rate = ((to > 0) && (n >= at)) ? to : from;
 	double sec = (rate == from) ? (double)n / from : (double)at / from + (double)(n - at) / to;
@@ -245,11 +240,8 @@ static int tone_at(sndBeepFlt* st, int type, int n, int at, int from, int to) {
 	return snd_beep_flt(st, x, type, rate);
 }
 
-// A speed change mid-note, 20 us after a rising edge: the state goes on, so the output
-// at the change is off the unchanged filter's by about a sub-sample's move, of either.
-// Settling anew there would drop a low-pass onto the level and a high-pass to 0.
+// 1x -> 1/8, 1x -> x16, x16 -> 1x 20 us after an edge: no step past a sub-sample's move, no swell after
 static void speed_change(void) {
-	static const int pairs[3][2] = {{1, 8}, {1, 0}, {16, 1}};	// 1x -> 1/8, 1x -> x16, x16 -> 1x
 	int rate = 44100 * 32;
 	printf("== speed change mid-note\n");
 	for (int t = BEEP_LINE + 1; t < BEEP_TYPES; t++) {

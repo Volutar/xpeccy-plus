@@ -65,8 +65,7 @@ static void bf_setup(sndBeepFlt* st, int lev, int type, int rate) {
 
 // the filtering types only: snd_beep_flt() lets line out through
 int snd_beep_run(sndBeepFlt* st, int lev, int type, int rate) {
-	// the rate is the machine's time and moves with the speed: the state goes on as
-	// it is, since each stage's output is in its state and not in a coefficient
+	// a speed change keeps the state: each stage's output is in it
 	if (type != st->type)
 		bf_setup(st, lev, type, rate);
 	else if (rate != st->rate)
