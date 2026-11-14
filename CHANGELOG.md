@@ -59,6 +59,9 @@ before that point is upstream's history and is not repeated here.
 - **Menus on Windows** appear whole: moving quickly from menu to menu no longer shows a
   menu's shadow and outline a frame or two before the menu itself.
 
+- **The file dialog's name hints** are back in the legacy Windows builds: typing the start of
+  a name lists the matching files again. *(reported by Volutar)*
+
 - **ProfROM 4.44's shadow monitor opens on the NMI button** instead of starting over and over
   with fast tape loading on.
 
