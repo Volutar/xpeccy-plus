@@ -12,6 +12,7 @@
 #include <QScreen>
 #include <QGuiApplication>
 #include <QHash>
+#include <QList>
 #include <QMenu>
 #include <QTimer>
 #include <QAbstractNativeEventFilter>
@@ -162,11 +163,13 @@ static void cloak(HWND h, BOOL on) {
 }
 
 struct xMenuWin {
-	HWND shadow = nullptr;
+	QList<HWND> shadows;	// a resize before the first paint shows another
 	bool painted = false;
+	unsigned showing = 0;	// a timer left from an earlier showing does not apply
 };
 // shown menus
 static QHash<HWND, xMenuWin> menus;
+static unsigned showings = 0;
 
 // CS_DROPSHADOW is a window of the system's, shown by ShowWindow ahead of the menu's paint
 static void CALLBACK shadow_shown(HWINEVENTHOOK, DWORD, HWND h, LONG obj, LONG, DWORD, DWORD) {
@@ -174,9 +177,9 @@ static void CALLBACK shadow_shown(HWINEVENTHOOK, DWORD, HWND h, LONG obj, LONG, 
 	RECT a, b;
 	if ((obj != OBJID_WINDOW) || menus.isEmpty() || !GetClassNameA(h, cls, sizeof(cls)) || strcmp(cls, "SysShadow") || !GetWindowRect(h, &a)) return;
 	for (auto it = menus.begin(); it != menus.end(); it++) {
-		if (!it->painted && !it->shadow && GetWindowRect(it.key(), &b) && (a.left == b.left) && (a.top == b.top)) {
+		if (!it->painted && !it->shadows.contains(h) && GetWindowRect(it.key(), &b) && (a.left == b.left) && (a.top == b.top)) {
 			cloak(h, TRUE);
-			it->shadow = h;
+			it->shadows.append(h);
 			return;
 		}
 	}
@@ -193,16 +196,18 @@ class xMenuHiding : public QAbstractNativeEventFilter {
 			const MSG* msg = static_cast<const MSG*>(message);
 			if ((msg->message == WM_WINDOWPOSCHANGING) && (reinterpret_cast<const WINDOWPOS*>(msg->lParam)->flags & SWP_HIDEWINDOW)) {
 				auto it = menus.constFind(msg->hwnd);
-				if ((it != menus.constEnd()) && it->shadow && IsWindowVisible(it->shadow))
-					SetWindowPos(it->shadow, nullptr, 0, 0, 0, 0, SWP_HIDEWINDOW | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+				if (it != menus.constEnd())
+					for (HWND s : it->shadows)
+						if (IsWindowVisible(s))
+							SetWindowPos(s, nullptr, 0, 0, 0, 0, SWP_HIDEWINDOW | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 			}
 			return false;
 		}
 };
 
-static void uncloak(HWND menu, bool painted) {
+static void uncloak(HWND menu, bool painted, unsigned showing) {
 	auto it = menus.find(menu);
-	if ((it == menus.end()) || it->painted) return;
+	if ((it == menus.end()) || it->painted || (showing && (it->showing != showing))) return;
 	it->painted = true;
 	// DWM shows GDI's bits a composition after they are drawn
 	if (painted) {
@@ -212,19 +217,24 @@ static void uncloak(HWND menu, bool painted) {
 	cloak(menu, FALSE);
 	// the shadow a composition after the menu, else now and then a frame ahead of it
 	if (painted) DwmFlush();
-	if (it->shadow && IsWindow(it->shadow)) cloak(it->shadow, FALSE);
+	for (HWND s : it->shadows)
+		if (IsWindow(s)) cloak(s, FALSE);
 }
 
 class xMenuWatch : public QObject {
 	protected:
 		bool eventFilter(QObject* obj, QEvent* ev) override {
 			HWND h = reinterpret_cast<HWND>(static_cast<QWidget*>(obj)->internalWinId());
-			if ((ev->type() == QEvent::Paint) && menus.contains(h) && !menus.value(h).painted) {
-				// once the repaint manager has flushed this paint to the window
-				QTimer::singleShot(0, [h]() {uncloak(h, true);});
+			if (ev->type() == QEvent::Paint) {
+				auto it = menus.constFind(h);
+				if ((it != menus.constEnd()) && !it->painted) {
+					const unsigned showing = it->showing;
+					// once the repaint manager has flushed this paint to the window
+					QTimer::singleShot(0, [h, showing]() {uncloak(h, true, showing);});
+				}
 			} else if (ev->type() == QEvent::Hide) {
 				obj->removeEventFilter(this);
-				uncloak(h, false);
+				uncloak(h, false, 0);
 				menus.remove(h);
 			}
 			return false;
@@ -234,17 +244,30 @@ class xMenuWatch : public QObject {
 void menuShowing(QWidget* w) {
 	static xMenuWatch watch;
 	static xMenuHiding hiding;
-	static HWINEVENTHOOK hook = nullptr;
+	static bool hooked = false;
 	if (!qobject_cast<QMenu*>(w) || !w->internalWinId()) return;
-	if (!hook) {
-		hook = SetWinEventHook(EVENT_OBJECT_SHOW, EVENT_OBJECT_SHOW, GetModuleHandleW(nullptr), shadow_shown,
+	HWND h = reinterpret_cast<HWND>(w->internalWinId());
+	// a spontaneous Show of a menu already up
+	if (menus.contains(h)) return;
+	if (!hooked) {
+		hooked = true;
+		// in context: called inside ShowWindow, before DWM can compose the shadow
+		SetWinEventHook(EVENT_OBJECT_SHOW, EVENT_OBJECT_SHOW, GetModuleHandleW(nullptr), shadow_shown,
 				GetCurrentProcessId(), GetCurrentThreadId(), WINEVENT_INCONTEXT);
 		QCoreApplication::instance()->installNativeEventFilter(&hiding);
 	}
-	HWND h = reinterpret_cast<HWND>(w->internalWinId());
+	// menus destroyed or re-created without a Hide
+	for (auto it = menus.begin(); it != menus.end();)
+		it = IsWindow(it.key()) ? std::next(it) : menus.erase(it);
 	cloak(h, TRUE);
-	menus.insert(h, xMenuWin());
+	if (++showings == 0) showings = 1;
+	const unsigned showing = showings;
+	xMenuWin m;
+	m.showing = showing;
+	menus.insert(h, m);
 	w->installEventFilter(&watch);
+	// a menu that never paints still shows
+	QTimer::singleShot(500, [h, showing]() {uncloak(h, false, showing);});
 }
 
 #else
