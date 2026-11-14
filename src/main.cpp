@@ -31,6 +31,7 @@
 
 #include "xapp.h"
 #include "titlebar.h"
+#include "menustyle.h"
 #include "emulwin.h"
 #include "xcore/cheats.h"
 #include "xcore/arcpath.h"
@@ -621,7 +622,7 @@ int main(int ac,char** av) {
 		QSurfaceFormat::setDefaultFormat(fmt);
 	}
 
-#if defined(_WIN32) && (QT_VERSION >= QT_VERSION_CHECK(6,7,0))
+#if defined(_WIN32)
 	// a style asked for by Qt's own -style or QT_STYLE_OVERRIDE stays (QApplication takes
 	// -style out of the arguments, so this looks before). Read as Qt reads it: -style x,
 	// -style=x, and either with "--"
@@ -633,11 +634,18 @@ int main(int ac,char** av) {
 	}
 #endif
 	xApp app(ac,av,true);
-#if defined(_WIN32) && (QT_VERSION >= QT_VERSION_CHECK(6,7,0))
+#if defined(_WIN32)
 	// Qt 6.7 made windows11 the default style on Windows 11. The bundled style sheets are
-	// drawn against windowsvista, Qt 6.6's default, which win-x64 is built with
-	if (!qtStyle && !app.setStyle("windowsvista"))
-		xlog(XLG_APP, XLL_WARN, "no windowsvista style: %s", qPrintable(QStyleFactory::keys().join(", ")));
+	// drawn against windowsvista, Qt 6.6's default, which win-x64 is built with. Set on
+	// every Qt for menuCheckStyle: no square behind a menu tick on Windows 10
+	if (!qtStyle) {
+		QStyle* vista = QStyleFactory::create("windowsvista");
+		if (vista) {
+			app.setStyle(menuCheckStyle(vista));
+		} else {
+			xlog(XLG_APP, XLL_WARN, "no windowsvista style: %s", qPrintable(QStyleFactory::keys().join(", ")));
+		}
+	}
 #endif
 	app.installEventFilter(&app);	// colours each window's titlebar on its first Show
 	installTitleBarClickFix();
