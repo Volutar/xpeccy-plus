@@ -167,9 +167,121 @@ static void coefficients(void) {
 	}
 }
 
+// The speeds offered (1/8..x16): the filter's rate is sub-samples a second of the
+// machine's time, the output's divided by the speed, so its cut-offs are the same
+// in the machine's Hz and heard at fc * speed
+static const struct { int num, den; } speeds[7] = {
+	{1, 8}, {1, 4}, {1, 2}, {2, 1}, {4, 1}, {8, 1}, {16, 1},
+};
+
+static int speed_rate(int rate, int i) {
+	return (int)((long long)rate * speeds[i].den / speeds[i].num);
+}
+
+// the Q24 coefficients at every other speed, both rates
+static void coefficients_by_speed(void) {
+	static const int rates[2] = {44100 * 32, 48000 * 32};
+	printf("== coefficients by speed\n");
+	for (int s = 0; s < 7; s++) {
+		for (int i = 0; i < 2; i++) {
+			for (int t = BEEP_LINE + 1; t < BEEP_TYPES; t++) {
+				sndBeepFlt st;
+				settle(&st, t, speed_rate(rates[i], s), 0);
+				printf("%d %d/%d %d: %lld %lld %lld %lld %lld\n", rates[i] / 32, speeds[s].num, speeds[s].den,
+					t, st.kUp, st.kDn, st.kHp, st.kF, st.kQ);
+			}
+		}
+	}
+}
+
+// A one-pole's cut-off from what is left of a step, interpolated on its log: exact for a
+// one-pole, where at x16 the low-passes are a sub-sample or two long and a straight line
+// between two sub-samples is not. 'left' is what is left of the step, 1 down to 0.
+static double pole_fc(int type, int rate, int from, int to, int hp) {
+	sndBeepFlt st;
+	settle(&st, type, rate, from);
+	double was = 0;
+	for (int n = 1; n < rate; n++) {
+		double y = snd_beep_flt(&st, to, type, rate);
+		double left = hp ? y / to : (to - y) / (double)(to - from);
+		if (left <= 0) return 0;
+		double l = log(left);
+		if (l <= -1)
+			return rate / (2 * PI * (n - 1 + (was + 1) / (was - l)));
+		was = l;
+	}
+	return 0;
+}
+
+// every type as built at every other speed: Q24 keeps its cut-offs from 11 MHz to 88 kHz
+static void by_speed(void) {
+	static const int rates[2] = {44100 * 32, 48000 * 32};
+	printf("== by speed\n");
+	for (int s = 0; s < 7; s++) {
+		for (int i = 0; i < 2; i++) {
+			int rate = speed_rate(rates[i], s);
+			double su = pole_fc(BEEP_SPEAKER, rate, 0, LEV, 0), sd = pole_fc(BEEP_SPEAKER, rate, LEV, 0, 0);
+			double tv = pole_fc(BEEP_TV, rate, 0, LEV, 0), evo = pole_fc(BEEP_EVO, rate, 0, LEV, 0);
+			double sc = pole_fc(BEEP_SCORPION, rate, 0, LEV, 1), atm = pole_fc(BEEP_ATM, rate, 0, LEV, 1);
+			double pz = gain(BEEP_PIEZO, rate, 4100);
+			printf("%d/%d %d: speaker %.0f/%.0f, tv %.0f, evo %.0f, scorpion %.0f, atm %.0f, piezo at f0 %.3f\n",
+				speeds[s].num, speeds[s].den, rates[i] / 32, su, sd, tv, evo, sc, atm, pz);
+			check("cut-offs as built", near(su, 4356, 0.01) && near(sd, 2311, 0.01) && near(tv, 3183, 0.01)
+				&& near(evo, 8600, 0.01) && near(sc, 530, 0.01) && near(atm, 80, 0.01)
+				&& near(pz, res_hp(4100, 4100, 3), 0.05));
+			int lp = 1, hp = 1;
+			for (int t = BEEP_SPEAKER; t <= BEEP_EVO; t++)
+				lp &= (held(t, rate, LEV) == LEV) && (held(t, rate, -LEV) == -LEV);
+			for (int t = BEEP_SCORPION; t <= BEEP_PIEZO; t++)
+				hp &= (held(t, rate, LEV) == 0);
+			check("held levels: through the low-passes, gone from the high-passes", lp && hp);
+		}
+	}
+}
+
+// One sub-sample of a 1 kHz square at a rate; the filter changes rate at 'at' when 'to' > 0
+static int tone_at(sndBeepFlt* st, int type, int n, int at, int from, int to) {
+	int rate = ((to > 0) && (n >= at)) ? to : from;
+	int x = ((n * 2000LL / from) & 1) ? LEV : 0;	// the tone's own time, the 'from' rate's
+	return snd_beep_flt(st, x, type, rate);
+}
+
+// A speed change mid-note, 20 us after a rising edge: the state goes on, so the output
+// at the change is off the unchanged filter's by about a sub-sample's move, of either.
+// Settling anew there would drop a low-pass onto the level and a high-pass to 0.
+static void speed_change(void) {
+	static const int pairs[3][2] = {{1, 8}, {1, 0}, {16, 1}};	// 1x -> 1/8, 1x -> x16, x16 -> 1x
+	int rate = 44100 * 32;
+	printf("== speed change mid-note\n");
+	for (int t = BEEP_LINE + 1; t < BEEP_TYPES; t++) {
+		int ok = 1;
+		for (int p = 0; p < 3; p++) {
+			int from = (p == 2) ? rate / 16 : rate;
+			int to = (p == 0) ? rate * 8 : ((p == 1) ? rate / 16 : rate);
+			int at = (int)(7LL * from / 2000) + from / 50000 + 1;
+			sndBeepFlt a, b;
+			settle(&a, t, from, 0);
+			settle(&b, t, from, 0);
+			int ya = 0, yb = 0, pb = 0;
+			for (int n = 0; n <= at; n++) {
+				pb = yb;
+				ya = tone_at(&a, t, n, at, from, to);
+				yb = tone_at(&b, t, n, at, from, 0);
+			}
+			int na = tone_at(&a, t, at + 1, at, from, to);
+			int move = abs(yb - pb);
+			if (abs(na - ya) > move) move = abs(na - ya);
+			ok &= (abs(ya - yb) <= 2 * move + 2);
+		}
+		printf("%d: ", t);
+		check("no step", ok);
+	}
+}
+
 int main(void) {
 	sndBeepFlt st;
 	coefficients();
+	coefficients_by_speed();
 	printf("== line\n");
 	settle(&st, BEEP_LINE, 48000 * 32, 0);
 	int same = 1;
@@ -191,5 +303,7 @@ int main(void) {
 	highpass("scorpion", BEEP_SCORPION, 530);
 	highpass("atm", BEEP_ATM, 80);
 	piezo();
+	by_speed();
+	speed_change();
 	return failures ? 1 : 0;
 }

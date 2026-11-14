@@ -36,7 +36,7 @@ typedef struct {
 	sndMixIn in;
 	TSound* ts;		// the PSGs
 	int late;		// the Next: ns before the chips' time the sample is due
-	int rate;		// sub-samples a second; 0: none (the beeper's filter steps aside)
+	int rate;		// sub-samples a second of the machine's time; 0: none (the beeper's filter steps aside)
 	// kept by the mix
 	sndBeepFlt bflt;
 	sndDC dc[5];

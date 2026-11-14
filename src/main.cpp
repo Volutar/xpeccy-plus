@@ -125,7 +125,8 @@ void help() {
 	printf("--bench-skip N\t\trun N frames first, left out of the timing and the hashes\n");
 	printf("--bench-steps N\t\tthen N instructions more, to stop mid-frame\n");
 	printf("--bench-full\t\tmix the sound, as real play does\n");
-	printf("--bench-speed F\t\tas fast forward xF: each sample spans F times the time\n");
+	printf("--bench-speed F\t\tas fast forward xF: each sample spans F times the time;\n");
+	printf("\t\t\t1/N as slow motion 1/N\n");
 	printf("--bench-keys SPEC\t\"F:KEYS[/N],...\": press at frame F, hold N frames (4). KEYS are\n");
 	printf("\t\t\tdigits and small letters, E Enter, C Caps, S Symbol, _ Space;\n");
 	printf("\t\t\tjoy:up+fire or joyb:... a joystick, nmi the NMI button, power a Hard Reset,\n");
@@ -961,7 +962,7 @@ int main(int ac,char** av) {
 	int bnNodraw = 0;
 	int bnHeat = 0;
 	int bnRewind = 0;
-	int bnSpeed = 1;		// fast forward xF, as Shift+Numpad sets it
+	double bnSpeed = 1.0;		// fast forward xF or slow motion 1/N, as the keys set them
 #ifdef __APPLE__
 	int style = 0;
 #endif
@@ -1040,7 +1041,10 @@ int main(int ac,char** av) {
 			} else if (!strcmp(parg,"--bench-skip")) {
 				bnSkip = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-speed")) {
-				bnSpeed = atoi(av[i++]);
+				const char* f = av[i++];
+				int slow = !strncmp(f, "1/", 2);
+				int n = atoi(slow ? f + 2 : f);
+				if (n > 1) bnSpeed = slow ? 1.0 / n : n;
 			} else if (!strcmp(parg,"--bench-prof")) {
 				bnProf = av[i++];
 			} else if (!strcmp(parg,"--bench-shot")) {
@@ -1246,8 +1250,8 @@ int main(int ac,char** av) {
 		// a script cannot see the warnings: run nothing on a command line not understood
 		if (cliWarns.isEmpty()) {
 			if (bnWav) snd_wav_open(bnWav);		// what the run sounds like (with --bench-full)
-			if (bnSpeed > 1) {
-				conf.emu.tmode = XTM_FFWD;
+			if (bnSpeed != 1.0) {
+				conf.emu.tmode = (bnSpeed > 1.0) ? XTM_FFWD : XTM_SLOW;
 				conf.emu.speed = bnSpeed;
 				sndUpdateSpeed();
 			}

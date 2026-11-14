@@ -81,3 +81,138 @@ a held level dies away to nothing: ok
 48000 4: 0 0 36334 0 0
 48000 5: 0 0 5489 0 0
 48000 6: 0 0 0 281376 5592405
+== coefficients by speed
+44100 1/8 1: 40624 21565 0 0 0
+44100 1/8 2: 29694 29694 0 0 0
+44100 1/8 3: 80109 80109 0 0 0
+44100 1/8 4: 0 0 4948 0 0
+44100 1/8 5: 0 0 747 0 0
+44100 1/8 6: 0 0 0 38283 5592405
+48000 1/8 1: 37327 19814 0 0 0
+48000 1/8 2: 27284 27284 0 0 0
+48000 1/8 3: 73614 73614 0 0 0
+48000 1/8 4: 0 0 4546 0 0
+48000 1/8 5: 0 0 686 0 0
+48000 1/8 6: 0 0 0 35172 5592405
+44100 1/4 1: 81150 43102 0 0 0
+44100 1/4 2: 59336 59336 0 0 0
+44100 1/4 3: 159835 159835 0 0 0
+44100 1/4 4: 0 0 9895 0 0
+44100 1/4 5: 0 0 1494 0 0
+44100 1/4 6: 0 0 0 76566 5592405
+48000 1/4 1: 74571 39604 0 0 0
+48000 1/4 2: 54523 54523 0 0 0
+48000 1/4 3: 146906 146906 0 0 0
+48000 1/4 4: 0 0 9091 0 0
+48000 1/4 5: 0 0 1373 0 0
+48000 1/4 6: 0 0 0 70345 5592405
+44100 1/2 1: 161907 86092 0 0 0
+44100 1/2 2: 118462 118462 0 0 0
+44100 1/2 3: 318148 318148 0 0 0
+44100 1/2 4: 0 0 19783 0 0
+44100 1/2 5: 0 0 2988 0 0
+44100 1/2 6: 0 0 0 153131 5592405
+48000 1/2 1: 148810 79114 0 0 0
+48000 1/2 2: 108869 108869 0 0 0
+48000 1/2 3: 292525 292525 0 0 0
+48000 1/2 4: 0 0 18177 0 0
+48000 1/2 5: 0 0 2745 0 0
+48000 1/2 6: 0 0 0 140689 5592405
+44100 2/1 1: 638313 341728 0 0 0
+44100 2/1 2: 468854 468854 0 0 0
+44100 2/1 3: 1236848 1236848 0 0 0
+44100 2/1 4: 0 0 78994 0 0
+44100 2/1 5: 0 0 11947 0 0
+44100 2/1 6: 0 0 0 612493 5592405
+48000 2/1 1: 587369 314224 0 0 0
+48000 2/1 2: 431254 431254 0 0 0
+48000 2/1 3: 1139852 1139852 0 0 0
+48000 2/1 4: 0 0 72589 0 0
+48000 2/1 5: 0 0 10977 0 0
+48000 2/1 6: 0 0 0 562733 5592405
+44100 4/1 1: 1252340 676495 0 0 0
+44100 4/1 2: 924605 924605 0 0 0
+44100 4/1 3: 2382514 2382514 0 0 0
+44100 4/1 4: 0 0 157616 0 0
+44100 4/1 5: 0 0 23886 0 0
+44100 4/1 6: 0 0 0 1224781 5592405
+48000 4/1 1: 1154174 622563 0 0 0
+48000 4/1 2: 851422 851422 0 0 0
+48000 4/1 3: 2202262 2202262 0 0 0
+48000 4/1 4: 0 0 144865 0 0
+48000 4/1 5: 0 0 21947 0 0
+48000 4/1 6: 0 0 0 1125307 5592405
+44100 8/1 1: 2411198 1325712 0 0 0
+44100 8/1 2: 1798255 1798255 0 0 0
+44100 8/1 3: 4426690 4426690 0 0 0
+44100 8/1 4: 0 0 313750 0 0
+44100 8/1 5: 0 0 47739 0 0
+44100 8/1 6: 0 0 0 2447930 5592405
+48000 8/1 1: 2228947 1222024 0 0 0
+48000 8/1 2: 1659635 1659635 0 0 0
+48000 8/1 3: 4115443 4115443 0 0 0
+48000 8/1 4: 0 0 288479 0 0
+48000 8/1 5: 0 0 43865 0 0
+48000 8/1 6: 0 0 0 2249348 5592405
+44100 16/1 1: 4475862 2546668 0 0 0
+44100 16/1 2: 3403765 3403765 0 0 0
+44100 16/1 3: 7685392 7685392 0 0 0
+44100 16/1 4: 0 0 621633 0 0
+44100 16/1 5: 0 0 95342 0 0
+44100 16/1 6: 0 0 0 4882815 5592405
+48000 16/1 1: 4161766 2355038 0 0 0
+48000 16/1 2: 3155096 3155096 0 0 0
+48000 16/1 3: 7221370 7221370 0 0 0
+48000 16/1 4: 0 0 571997 0 0
+48000 16/1 5: 0 0 87616 0 0
+48000 16/1 6: 0 0 0 4488576 5592405
+== by speed
+1/8 44100: speaker 4356/2311, tv 3183, evo 8599, scorpion 530, atm 80, piezo at f0 3.000
+cut-offs as built: ok
+held levels: through the low-passes, gone from the high-passes: ok
+1/8 48000: speaker 4357/2311, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+cut-offs as built: ok
+held levels: through the low-passes, gone from the high-passes: ok
+1/4 44100: speaker 4356/2311, tv 3183, evo 8601, scorpion 530, atm 80, piezo at f0 3.000
+cut-offs as built: ok
+held levels: through the low-passes, gone from the high-passes: ok
+1/4 48000: speaker 4356/2311, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+cut-offs as built: ok
+held levels: through the low-passes, gone from the high-passes: ok
+1/2 44100: speaker 4356/2311, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+cut-offs as built: ok
+held levels: through the low-passes, gone from the high-passes: ok
+1/2 48000: speaker 4356/2311, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+cut-offs as built: ok
+held levels: through the low-passes, gone from the high-passes: ok
+2/1 44100: speaker 4356/2311, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+cut-offs as built: ok
+held levels: through the low-passes, gone from the high-passes: ok
+2/1 48000: speaker 4356/2311, tv 3183, evo 8601, scorpion 530, atm 80, piezo at f0 3.000
+cut-offs as built: ok
+held levels: through the low-passes, gone from the high-passes: ok
+4/1 44100: speaker 4356/2311, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+cut-offs as built: ok
+held levels: through the low-passes, gone from the high-passes: ok
+4/1 48000: speaker 4356/2311, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+cut-offs as built: ok
+held levels: through the low-passes, gone from the high-passes: ok
+8/1 44100: speaker 4356/2311, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+cut-offs as built: ok
+held levels: through the low-passes, gone from the high-passes: ok
+8/1 48000: speaker 4356/2311, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+cut-offs as built: ok
+held levels: through the low-passes, gone from the high-passes: ok
+16/1 44100: speaker 4356/2311, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+cut-offs as built: ok
+held levels: through the low-passes, gone from the high-passes: ok
+16/1 48000: speaker 4356/2311, tv 3183, evo 8599, scorpion 530, atm 80, piezo at f0 3.000
+cut-offs as built: ok
+held levels: through the low-passes, gone from the high-passes: ok
+== speed change mid-note
+1: no step: ok
+2: no step: ok
+3: no step: ok
+4: no step: ok
+5: no step: ok
+6: no step: ok
