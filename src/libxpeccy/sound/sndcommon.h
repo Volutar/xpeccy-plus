@@ -62,6 +62,33 @@ static inline void bcSync(bitChan* ch, int ns) {
 
 sndPair mixer(sndPair, sndPair);
 
+// What the beeper is on its way out of the board: the filter between the port bit
+// and the sound (snd_beep_flt). One per machine, from its file ("beeper" in [sound]).
+enum {
+	BEEP_LINE = 0,		// straight out: no filter
+	BEEP_SPEAKER,		// the 48K's ULA pin and its speaker
+	BEEP_TV,		// a TV's FM sound on its RF input: 50 us de-emphasis
+	BEEP_EVO,		// the ZX Evolution's RC on its beeper input
+	BEEP_SCORPION,		// the Scorpion's coupling cap on its AUDIO line
+	BEEP_ATM,		// the ATM Turbo's coupling cap into its amplifier
+	BEEP_PIEZO,		// a piezo sounder (ZP-3 class) on the port's own output
+	BEEP_TYPES
+};
+
+// The filter's state, kept by the mix. Fixed point, so a sound hash is the same
+// on every compiler: coefficients Q24, levels Q16 in 64 bits.
+typedef struct {
+	int type;		// what the coefficients were worked out for
+	int rate;
+	long long kUp, kDn;	// low-pass, rising and falling (0: none)
+	long long kHp;		// high-pass (0: none)
+	long long kF, kQ;	// piezo resonator: frequency and damping (0: none)
+	long long lp, hp;	// one-poles' state
+	long long low, band;	// resonator's state
+} sndBeepFlt;
+
+int snd_beep_flt(sndBeepFlt* st, int lev, int type, int rate);
+
 // A dc blocker, one per device, kept by whoever mixes them. None of the chips swing
 // about zero - an AY sits between silence and full - and that offset is not sound:
 // it is a level the speaker holds, and it eats the headroom every device shares. So

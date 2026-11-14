@@ -868,6 +868,7 @@ static void snd_sub(const sndSub* q) {
 		int late = q->r;
 		int scope = (late < 0);
 		sm.m.late = scope ? (-1 - late) : late;
+		sm.m.rate = conf.snd.rate * DISCRATE;	// what the beeper's filter is timed by
 		lev = sm.mix(&sm.m, &conf.snd.vol);
 		if (scope) {
 			scope_put((lev.left + lev.right) / 2);

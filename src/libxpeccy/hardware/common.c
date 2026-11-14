@@ -164,6 +164,7 @@ void snd_mix_take_wire(sndMix* m, Computer* comp) {
 	m->in.tapeMute = tap->mute;
 	m->in.tapeVolPlay = tap->volPlay;
 	m->in.beep = comp->beep->val;
+	m->in.beepType = comp->beepType;
 }
 
 // Every device is mixed here, and each has a dc blocker of its own on the way in.
@@ -182,6 +183,8 @@ sndPair zx_mix(sndMix* m, sndVolume* sv) {
 	// 2:beeper. The tape reaches the speaker on the same wire and is one level
 	// with it here, so the two share a blocker as well
 	lev += bc_level_of(m->in.beep, sv->beep);
+	// ...and leaves the board through what the machine's beeper type says
+	lev = snd_beep_flt(&m->bflt, lev, m->in.beepType, m->rate);
 	svol.left = lev;
 	svol.right = lev;
 	vol = snd_dc(&m->dc[0], svol, dc);

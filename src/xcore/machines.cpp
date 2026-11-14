@@ -105,6 +105,12 @@ static xMacWord sdrvTab[] = {
 	{"soundrive1", SDRV_105_1}, {"soundrive2", SDRV_105_2}, {NULL, 0}
 };
 
+// what the beeper goes out through (BEEP_*, sndcommon.h)
+static xMacWord beepTab[] = {
+	{"line", BEEP_LINE}, {"speaker", BEEP_SPEAKER}, {"tv", BEEP_TV}, {"evo", BEEP_EVO},
+	{"scorpion", BEEP_SCORPION}, {"atm", BEEP_ATM}, {"piezo", BEEP_PIEZO}, {NULL, 0}
+};
+
 static xMacWord joyTab[] = {
 	{"none", MAC_JOY_NONE}, {"kempston", MAC_JOY_KEMPSTON}, {"kempston8", MAC_JOY_KEMPSTON8}, {NULL, 0}
 };
@@ -250,7 +256,7 @@ static const struct {
 	{"snow", "video"}, {"snow.crash", "video"}, {"floatbus", "video"}, {"border.min", "video"},
 	{"psg.count", "sound"}, {"psg.type", "sound"}, {"psg.frq", "sound"},
 	{"psg.stereo", "sound"}, {"gs", "sound"},
-	{"saa", "sound"}, {"soundrive", "sound"}, {"beeper.mic", "sound"},
+	{"saa", "sound"}, {"soundrive", "sound"}, {"beeper", "sound"}, {"beeper.mic", "sound"},
 	{"disk", "storage"}, {"ide", "storage"}, {"drives", "storage"},
 	{"divmmc", "storage"}, {"divmmc.ram", "storage"}, {"divmmc.eeprom", "storage"},
 	{"zcontroller", "storage"},
@@ -402,6 +408,7 @@ static void mac_defaults(xMachine& mac) {
 	mac.gs = 0;
 	mac.saa = 0;
 	mac.beepmic = 0;
+	mac.beepType = BEEP_LINE;
 	mac.ulaplus = 0;
 	mac.ddpal = 0;
 	mac.romBanks = 4;
@@ -465,6 +472,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "soundrive") mac.soundrive = mac_word(sdrvTab, val, SDRV_NONE, id);
 			else if (nam == "gs") mac.gs = mac_word(gsTab, val, MAC_GS_NONE, id);
 			else if (nam == "saa") mac.saa = arg.b;
+			else if (nam == "beeper") mac.beepType = mac_word(beepTab, val, BEEP_LINE, id);
 			else if (nam == "beeper.mic") mac.beepmic = arg.b;
 		} else if (ln.sect == "storage") {
 			if (nam == "disk") mac.disk = mac_word(diskTab, val, DIF_NONE, id);
@@ -513,7 +521,7 @@ static bool mac_known(const QString& id) {
 static const char* const nextOwnKeys[] = {
 	"cpu.frq", "cpu.turbo", "contio", "contmem", "issue", "scrp.wait",
 	"geometry", "contPattern", "earlyTiming", "4t-border", "snow", "snow.crash", "floatbus", "ULAplus", "DDpal",
-	"psg.count", "psg.type", "psg.frq", "psg.stereo", "gs", "saa", "soundrive", "beeper.mic",
+	"psg.count", "psg.type", "psg.frq", "psg.stereo", "gs", "saa", "soundrive", "beeper", "beeper.mic",
 	"disk", "drives", "ide", "mouse.wheel", "joy", "joy.buttons", NULL
 };
 
@@ -1396,6 +1404,7 @@ static void mac_from_def(const xMachine* mac) {
 	xm_set_gs(comp, mac->gs);
 	comp->saa->enabled = mac->saa;
 	comp->beep->mic = mac->beepmic;
+	comp->beepType = mac->beepType;
 	bc_out(comp->beep, comp->beep->lev, comp->tape->levRec);
 	comp->sdrv->type = mac->soundrive;
 	difSetHW(comp->dif, mac->disk);
@@ -1639,6 +1648,7 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	}
 	mac_put(out, "gs", std::string(mac_word_name(gsTab, xm_gs_of(comp))), std::string(mac_word_name(gsTab, mac->gs)));
 	mac_put_yn(out, "saa", comp->saa->enabled, mac->saa);
+	mac_put(out, "beeper", mac_word_name(beepTab, comp->beepType), mac_word_name(beepTab, mac->beepType));
 	mac_put_yn(out, "beeper.mic", comp->beep->mic, mac->beepmic);
 	mac_put(out, "soundrive", mac_word_name(sdrvTab, comp->sdrv->type), mac_word_name(sdrvTab, mac->soundrive));
 	mac_put(out, "disk", mac_word_name(diskTab, comp->dif->cfg), mac_word_name(diskTab, mac->disk));

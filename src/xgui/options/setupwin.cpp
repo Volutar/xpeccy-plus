@@ -1274,6 +1274,7 @@ void SetupWin::fillPages() {
 	fillDivFirmware();
 
 	sdrvBox->setCurrentIndex(sdrvBox->findData(comp->sdrv->type));
+	beepBox->setCurrentIndex(beepBox->findData(comp->beepType));
 
 	saaBox->setCurrentIndex(comp->saa->enabled ? 1 : 0);
 	clockBox->setCurrentIndex(comp->flgGLUK ? MAC_CLOCK_GLUK : MAC_CLOCK_NONE);
@@ -1606,6 +1607,7 @@ void SetupWin::applyMachine() {
 		}
 		xm_set_gs(comp, gsBox->currentIndex());
 		comp->sdrv->type = getRFIData(sdrvBox);
+		comp->beepType = getRFIData(beepBox);
 		comp->saa->enabled = saaBox->currentIndex() ? 1 : 0;
 	}
 // input
@@ -2399,6 +2401,22 @@ void SetupWin::buildDevices() {
 	kbdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << cbScanTab << btn;
 
 	grid = devGroup(cols, 0, 1, ":/images/speaker.png", tr("Sound"));
+	// what the beeper goes out through, in BEEP_*'s order
+	beepBox = new QComboBox;
+	const QString beepTypes[BEEP_TYPES][2] = {
+		{tr("Line out"), tr("Straight out, nothing filtered")},
+		{tr("48K speaker"), tr("The 48K's ULA pin and speaker:\nthe highs softened")},
+		{tr("TV (RF)"), tr("A TV's aerial input: highs cut\nfrom 3.2 kHz")},
+		{tr("ZX Evolution"), tr("The Evo's RC: highs cut from 8.6 kHz")},
+		{tr("Scorpion"), tr("The Scorpion's coupling capacitor:\nlows cut below 530 Hz")},
+		{tr("ATM Turbo"), tr("The ATM's coupling capacitor:\nlows cut below 80 Hz")},
+		{tr("Piezo"), tr("A piezo sounder: little bass,\nrings at 4.1 kHz")},
+	};
+	for (int i = 0; i < BEEP_TYPES; i++) {
+		beepBox->addItem(beepTypes[i][0], i);
+		beepBox->setItemData(i, beepTypes[i][1], Qt::ToolTipRole);
+	}
+	devRow(grid, tr("Beeper"), beepBox, NULL, NULL);
 	xOptSheet psg;
 	psg.field(tr("Chip"), cbPsgType);
 	psg.field(tr("Clock"), fieldPair(cbPsgFrq, labPsgMhz, false),

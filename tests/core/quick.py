@@ -20,6 +20,7 @@ text cut into `== <case>` sections, and a case passes when its section is the sa
   dsk       dsk-bench: EXTENDED DSK images the bench writes, read by the uPD765 through the +3's ports
   gs        gs-bench: the General Sound mix, original board and NeoGS, on fixed samples and volumes;
             the firmwares in config/roms: their idle loop skipped, the card as when it is not
+  beeper    beeper-bench: the beeper's filter by type - time constants, -3 dB points, the piezo's ring
 
 The programs are committed assembled; core/mkbins.py rebuilds them with sjasmplus.
 """
@@ -38,7 +39,7 @@ from pathlib import Path
 CORE = Path(__file__).resolve().parent
 ROOT = CORE.parent.parent
 BUILD = ROOT / "build" / "out" / "tests"
-BENCHES = ("z80", "tsconf", "baseconf", "divmmc", "tape", "pok", "vfat", "zxnext", "kbd", "esp", "siblings", "brk", "dsk", "gs")
+BENCHES = ("z80", "tsconf", "baseconf", "divmmc", "tape", "pok", "vfat", "zxnext", "kbd", "esp", "siblings", "brk", "dsk", "gs", "beeper")
 EXE = ".exe" if os.name == "nt" else ""
 # the qt6-x64 toolchain of packaging/make-dist.ps1, used when nothing else is given
 WIN_MINGW = Path(r"C:\Qt\Tools\mingw1120_64")
@@ -181,6 +182,10 @@ def bench_gs():
     return run_sections("gs", [str(roms / "gs105b.rom"), str(roms / "neogs111.rom")], rc=False)
 
 
+def bench_beeper():
+    return run_sections("beeper", [], rc=False)
+
+
 def bench_vfat():
     with tempfile.TemporaryDirectory(prefix="xquick-") as tmp:
         return run_sections("vfat", [tmp, "4", "120"], timeout=300)
@@ -240,7 +245,8 @@ def run(args, matches):
             passed, failed = passed + ok, failed + (not ok)
             continue
         got = {"tape": bench_tape, "pok": bench_pok, "vfat": bench_vfat, "zxnext": bench_zxnext,
-               "siblings": bench_siblings, "brk": bench_brk, "dsk": bench_dsk, "gs": bench_gs}.get(bench, lambda: bench_prog(bench, args.jobs))()
+               "siblings": bench_siblings, "brk": bench_brk, "dsk": bench_dsk, "gs": bench_gs,
+               "beeper": bench_beeper}.get(bench, lambda: bench_prog(bench, args.jobs))()
         got = {k: v for k, v in got.items() if matches(k, f"{bench}/{k}", args.k)}
         exp_path = CORE / bench / "expected.txt"
         exp = read_sections(exp_path.read_text(encoding="utf-8")) if exp_path.exists() else {}

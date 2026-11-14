@@ -160,6 +160,7 @@ class SetupWin : public QDialog {
 		// the machine's devices, on the Machine page
 		QComboBox* gsBox;
 		QComboBox* saaBox;
+		QComboBox* beepBox;
 		QComboBox* clockBox;		// the Gluk clock (MAC_CLOCK_*), where the board takes one
 		QList<QWidget*> clockRow;
 		QComboBox* gsRomBox;

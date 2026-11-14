@@ -559,6 +559,7 @@ typedef struct Computer {
 	int romCustom;		// bytes of rom a snapshot put in, until the machine's own are loaded again
 	int earback;		// EAR_*: the ear input with no tape playing
 	int earRC;		// the ear input holds its charge after bit 4 drops (zx_ear)
+	int beepType;		// BEEP_*: what the beeper goes out through (zx_mix)
 	double earV;		// that charge, 0..1, as of earTick
 	int earTick;		// tickCount + cpu->t when earV was
 	int earDead;		// ...and when bit 6 reads 0 again after bit 4 went down

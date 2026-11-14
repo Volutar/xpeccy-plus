@@ -1,0 +1,69 @@
+== line
+line out lets the level through: ok
+no rate: let through: ok
+== speaker
+44100: rise 4356 Hz, fall 2311 Hz
+rise as built: ok
+fall as built: ok
+a held level comes out as it went in: ok
+48000: rise 4356 Hz, fall 2311 Hz
+rise as built: ok
+fall as built: ok
+a held level comes out as it went in: ok
+== tv
+44100: rise 3183 Hz, fall 3183 Hz
+rise as built: ok
+fall as built: ok
+44100: gain at 3183 Hz 0.707
+-3 dB there: ok
+a held level comes out as it went in: ok
+48000: rise 3183 Hz, fall 3183 Hz
+rise as built: ok
+fall as built: ok
+48000: gain at 3183 Hz 0.707
+-3 dB there: ok
+a held level comes out as it went in: ok
+== evo
+44100: rise 8600 Hz, fall 8600 Hz
+rise as built: ok
+fall as built: ok
+44100: gain at 8600 Hz 0.707
+-3 dB there: ok
+a held level comes out as it went in: ok
+48000: rise 8599 Hz, fall 8599 Hz
+rise as built: ok
+fall as built: ok
+48000: gain at 8600 Hz 0.707
+-3 dB there: ok
+a held level comes out as it went in: ok
+== scorpion
+44100: 530 Hz, gain there 0.706
+cut-off as built: ok
+-3 dB there: ok
+a held level dies away to nothing: ok
+48000: 530 Hz, gain there 0.706
+cut-off as built: ok
+-3 dB there: ok
+a held level dies away to nothing: ok
+== atm
+44100: 80 Hz, gain there 0.707
+cut-off as built: ok
+-3 dB there: ok
+a held level dies away to nothing: ok
+48000: 80 Hz, gain there 0.707
+cut-off as built: ok
+-3 dB there: ok
+a held level dies away to nothing: ok
+== piezo
+44100: peak 1.015 at 4250 Hz, 1 kHz 0.021, 12 kHz 0.376
+rings at 4.1 kHz: ok
+the peak is where the level was: ok
+little bass: ok
+the highs on their way to 1/Q: ok
+a held level dies away to nothing: ok
+48000: peak 1.015 at 4200 Hz, 1 kHz 0.021, 12 kHz 0.375
+rings at 4.1 kHz: ok
+the peak is where the level was: ok
+little bass: ok
+the highs on their way to 1/Q: ok
+a held level dies away to nothing: ok
