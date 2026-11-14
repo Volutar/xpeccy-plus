@@ -90,7 +90,7 @@ default, and grayed out while **Keep Aspect Ratio** is not ticked.
 ```{index} Side Fill
 ```
 
-**View > Side Fill** sets what fills the room the picture leaves free. The first three
+**View > Side Fill** sets what fills the room the picture leaves free. The first four
 show more border there first, up to the **full** border (with **overscan** chosen, as far
 as the machine's frame goes), so a border that flashes is seen big; the fill takes the
 room past it:
@@ -99,7 +99,7 @@ room past it:
 - **Border + Stretched Edges**, **Border + Mirror**, **Border + Letterbox** - the fill past
   the border, as below.
 
-The other three keep the border at the size the **Border** slider sets, and the fill
+The other four keep the border at the size the **Border** slider sets, and the fill
 starts at its edge; with **no** border, at the edge of the screen itself:
 
 - **Black** - black bars;
