@@ -2425,7 +2425,7 @@ void SetupWin::buildDevices() {
 	beepBox->setItemData(BEEP_EVO, tr("The Evo's RC: highs cut from 8.6 kHz"), Qt::ToolTipRole);
 	beepBox->setItemData(BEEP_SCORPION, tr("The Scorpion's coupling capacitor:\nlows cut below 530 Hz"), Qt::ToolTipRole);
 	beepBox->setItemData(BEEP_ATM, tr("The ATM's coupling capacitor:\nlows cut below 80 Hz"), Qt::ToolTipRole);
-	beepBox->setItemData(BEEP_PIEZO, tr("A piezo sounder: little bass,\nrings at 4.1 kHz"), Qt::ToolTipRole);
+	beepBox->setItemData(BEEP_PIEZO, tr("A piezo sounder: rings at 4.1 kHz,\nthe bass falls off gently"), Qt::ToolTipRole);
 	// the experimental ones under a heading of their own: the type is each item's data
 	for (int t = 0; t < BEEP_TYPES; t++)
 		beepBox->setItemData(t, t);
@@ -2440,8 +2440,7 @@ void SetupWin::buildDevices() {
 		head->setEnabled(false);
 	}
 	const QStringList xNames = QStringList() << tr("48K speaker, no bass cut") << tr("48K speaker, bass cut 250 Hz")	// BEEP_X_*
-		<< tr("48K speaker, bass cut 750 Hz") << tr("Piezo, 6 dB/oct") << tr("Piezo, 6 dB/oct, Q 2")
-		<< tr("Piezo, 6 dB/oct, Q 1.5") << tr("Low-pass 5 kHz, 1 pole") << tr("Low-pass 5 kHz, 2 poles")
+		<< tr("48K speaker, bass cut 750 Hz") << tr("Low-pass 5 kHz, 1 pole") << tr("Low-pass 5 kHz, 2 poles")
 		<< tr("Low-pass 5 kHz, 4 poles");
 	for (int t = BEEP_TYPES; t < BEEP_ALL; t++)
 		beepBox->addItem(xNames.value(t - BEEP_TYPES), t);

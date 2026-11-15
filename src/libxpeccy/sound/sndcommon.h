@@ -76,7 +76,6 @@ enum {
 	BEEP_TYPES,
 	// experimental, to be judged by ear this release: under EXPERIMENTAL in the list
 	BEEP_X_SPK0 = BEEP_TYPES, BEEP_X_SPK250, BEEP_X_SPK750,
-	BEEP_X_PZSOFT, BEEP_X_PZSOFT2, BEEP_X_PZSOFT15,
 	BEEP_X_LP5_1, BEEP_X_LP5_2, BEEP_X_LP5_4,
 	BEEP_ALL
 };

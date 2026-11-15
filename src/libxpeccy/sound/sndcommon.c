@@ -36,14 +36,11 @@ static const struct {
 	{{8600, 8600, 0, 0, 0}, {0}},		// BEEP_EVO: 2K2 + 10 nF into 12K
 	{{0, 0, 530, 0, 0}, {0}},		// BEEP_SCORPION: 0.1 uF into ~3K
 	{{0, 0, 80, 0, 0}, {0}},		// BEEP_ATM: 0.1 uF into 20K
-	{{0, 0, 0, 4100, 3}, {0}},		// BEEP_PIEZO: ZP-3; Q not in the datasheet
-	// experimental: the speaker's bass cut, a softer piezo, PWM music's 5 kHz
+	{{0, 0, 0, 4100, 3, 1}, {0}},		// BEEP_PIEZO: ZP-3, bass 6 dB/oct by ear; Q not in the datasheet
+	// experimental: the speaker's bass cut, PWM music's 5 kHz
 	{{4356, 2311, 0, 0, 0}, {0}},		// BEEP_X_SPK0
 	{{4356, 2311, 0, 250, 0.7071067811865476}, {0}},
 	{{4356, 2311, 0, 750, 0.7071067811865476}, {0}},	// Fuse's
-	{{0, 0, 0, 4100, 3, 1}, {0}},		// BEEP_X_PZSOFT: 6 dB an octave under f0
-	{{0, 0, 0, 4100, 2, 1}, {0}},
-	{{0, 0, 0, 4100, 1.5, 1}, {0}},
 	{{5000, 5000, 0, 0, 0}, {0}},		// BEEP_X_LP5_1
 	{{0, 0, 0, 0, 0, 0, 5000, 2}, {0}},
 	{{0, 0, 0, 0, 0, 0, 5000, 4}, {0}},
@@ -117,8 +114,10 @@ int snd_beep_run(sndBeepFlt* st, int lev, int type, int rate, int chain) {
 		// Chamberlin SVF, high-pass out: unity above, Q times at the resonance
 		st->low += (st->band * st->kF) >> 24;
 		long long high = x - st->low - ((st->band * st->kQ) >> 24);
+		long long band = st->band;
 		st->band += (high * st->kF) >> 24;
-		x = high + ((st->band * st->kBp) >> 24);
+		// the band half a step on, as high is: the two apart by a step swell the ring at x16
+		x = high + (((band + st->band) * st->kBp) >> 25);
 	}
 	for (int i = 0; (i < 2) && st->kL[i]; i++) {
 		st->ll[i] += (st->lb[i] * st->kL[i]) >> 24;

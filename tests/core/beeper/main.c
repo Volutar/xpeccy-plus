@@ -79,6 +79,12 @@ static double res_hp(double hz, double f0, double q) {
 	return r * r / sqrt((1 - r * r) * (1 - r * r) + (r / q) * (r / q));
 }
 
+// ...with its band added, as the piezo: (s^2 + s) / (s^2 + s/Q + 1), 6 dB an octave under f0
+static double res_soft(double hz, double f0, double q) {
+	double r = hz / f0, re = 1 - r * r, im = r / q;
+	return r * sqrt(r * r + 1) / sqrt(re * re + im * im);
+}
+
 // one-poles' gains
 static double lp1(double hz, double fc) {
 	return 1 / sqrt(1 + (hz / fc) * (hz / fc));
@@ -219,12 +225,6 @@ static void mix(void) {
 	chain = BF_BEEP;
 }
 
-// a resonant high-pass with its band added: (s^2 + s) / (s^2 + s/Q + 1)
-static double res_soft(double hz, double f0, double q) {
-	double r = hz / f0, re = 1 - r * r, im = r / q;
-	return r * sqrt(r * r + 1) / sqrt(re * re + im * im);
-}
-
 // a Butterworth low-pass of n poles
 static double butter(double hz, double fc, int n) {
 	return 1 / sqrt(1 + pow(hz / fc, 2 * n));
@@ -246,14 +246,6 @@ static void experimental(void) {
 		check("speaker 250 / 750: -3 dB there", near(gain(BEEP_X_SPK250, rate, 250), sqrt(0.5), 0.02)
 			&& near(gain(BEEP_X_SPK750, rate, 750), sqrt(0.5), 0.02));
 		int ok = 1;
-		static const double pq[3] = {3, 2, 1.5};
-		for (int k = 0; k < 3; k++) {
-			for (double hz = 500; hz <= 8000; hz *= 2)
-				ok &= near(gain(BEEP_X_PZSOFT + k, rate, hz), res_soft(hz, 4100, pq[k]), 0.05);
-			ok &= (held(BEEP_X_PZSOFT + k, rate, LEV) == 0);
-		}
-		check("piezo, 6 dB/oct: the gains as built, a held level gone", ok);
-		ok = 1;
 		static const int poles[3] = {1, 2, 4};
 		for (int k = 0; k < 3; k++) {
 			for (double hz = 1250; hz <= 20000; hz *= 2)
@@ -279,11 +271,11 @@ static void piezo(void) {
 		double lo = gain(BEEP_PIEZO, rate, 1000);
 		double hi = gain(BEEP_PIEZO, rate, 12000);
 		printf("%d: peak %.3f at %.0f Hz, 1 kHz %.3f, 12 kHz %.3f\n", rate / 32, best, at, lo, hi);
-		// a resonant high-pass peaks a little over its f0: 1.03 of it at Q 3
 		check("rings at 4.1 kHz", near(at, 4100, 0.05));
-		check("Q times the level at the peak", near(best, res_hp(at, 4100, 3), 0.05));
-		check("little bass", near(lo, res_hp(1000, 4100, 3), 0.05));
-		check("the highs on their way to the level", near(hi, res_hp(12000, 4100, 3), 0.02));
+		check("Q times the level at the peak, and the band's", near(best, res_soft(at, 4100, 3), 0.05));
+		check("the bass falling off 6 dB an octave", near(lo, res_soft(1000, 4100, 3), 0.05)
+			&& near(gain(BEEP_PIEZO, rate, 500), res_soft(500, 4100, 3), 0.05));
+		check("the highs on their way to the level", near(hi, res_soft(12000, 4100, 3), 0.02));
 		check("a held level dies away to nothing", held(BEEP_PIEZO, rate, LEV) == 0);
 	}
 }
@@ -366,7 +358,7 @@ static void by_speed(void) {
 			check("cut-offs as built", near(sp, res_hp(100, 500, sqrt(0.5)), 0.05)
 				&& near(p3, lp1(1000, 2500) * hp1(1000, 340), 0.02) && near(tv, 3183, 0.01)
 				&& near(evo, 8600, 0.01) && near(sc, 530, 0.01) && near(atm, 80, 0.01)
-				&& near(pz, res_hp(4100, 4100, 3), 0.05));
+				&& near(pz, res_soft(4100, 4100, 3), 0.05));
 			int lp = 1, hp = 1;
 			for (int t = BEEP_SPEAKER; t <= BEEP_PIEZO; t++) {
 				if ((t == BEEP_TV) || (t == BEEP_EVO))
