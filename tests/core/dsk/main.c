@@ -565,6 +565,44 @@ static void beta_intrq(void) {
 	back_to_p3();
 }
 
+static void beta_trk(const char* what) {
+	int tr = 0xff;
+	difIn(dif, 0x3f, &tr, 1);
+	printf("  %s: track register %d, head at %d\n", what, tr & 0xff, dif->flp[0]->trk);
+}
+
+// RESTORE stopped by a Force Interrupt: Satisfaction's loader writes #00 and #D0 73 T
+// (20.857 us) apart and then reads the track it is on. The command has done nothing yet
+// at that point (no step before TDIR, 24 us at 1 MHz); a millisecond later it has stepped.
+static void beta_restore_d0(void) {
+	printf("== beta-restore-d0\n");
+	beta_on();
+	beta_com(0x00);
+	difOut(dif, 0x7f, 3, 1);
+	beta_com(0x10);
+	fdcFlag = 0;
+	difOut(dif, 0x1f, 0x00, 1);
+	run(20857);
+	difOut(dif, 0x1f, 0xd0, 1);
+	run(1000000);
+	beta_trk("#D0 20.9 us after #00");
+	difOut(dif, 0x1f, 0x00, 1);
+	run(1000000);
+	difOut(dif, 0x1f, 0xd0, 1);
+	run(1000000);
+	beta_trk("#D0 1 ms after #00");
+	difOut(dif, 0x3f, 2, 1);		// the track the head is on
+	difOut(dif, 0x7f, 2, 1);
+	difOut(dif, 0x1f, 0x18, 1);		// a seek to the same track
+	long ns = 0;
+	while (!beta_irq() && (ns < 1000000L)) {
+		run(1000);
+		ns += 1000;
+	}
+	printf("  same-track seek: INTRQ after %ld us\n", ns / 1000);
+	back_to_p3();
+}
+
 static void start(const char* path, const char* path_b) {
 	fdcFlag = 0;
 	dif = difCreate(DIF_P3DOS, dummy_irq, NULL);
@@ -873,6 +911,7 @@ static int cases(const char* tmp) {
 	fdcFlag = 0;
 	beta_after_p3();
 	beta_intrq();
+	beta_restore_d0();
 	format("sc11", 3, 2, 11, 0x5a, 10);
 	format("sc255", 3, 0, 255, 0xa5, 29);
 	format("n-ff", 3, 0xff, 64, 0x33, 0);	// N past 23 counts as 0 bytes, yet 1K each is written

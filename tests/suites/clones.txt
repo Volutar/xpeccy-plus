@@ -4,6 +4,8 @@ dwot_pent       pent      auto  3000  300     disk/dwot.trd
 stag_pent       pent      auto  3000  300     disk/zxstgdak.trd
 atarin_pent     pent      auto  3000  300     disk/atarin.trd
 chordout_pent   pent      auto  3000  300     disk/CHORDOUT.trd
+# its loader stops the drive with RESTORE, then #D0 21 us later; space skips part 1
+satisf_pent     pent      auto  3000  300     disk/SATISFAC.SCL                     keys:1500:_/10
 tsfm_pent       pent      open  50    300     snap/tsfm_volume_test_pentagon128.sna mac:sound.psg.count=2 mac:sound.psg.type=ym2203 --bench-full
 saa_pent        pent      auto  2500  300     tape/testsaa.tap                      mac:sound.saa=yes --bench-full
 gs_pent         pent      auto  3000  300     disk/ATWP2_GS.TRD                     mac:sound.gs=yes --bench-full
@@ -12,6 +14,7 @@ vocoders_pent   pent      auto  3000  300     disk/thevocoders.scl              
 boot_p1024      pent1024  boot  0     400
 powerup_p1024   pent1024  auto  8000  300     disk/powerup2.trd
 greatsh_p1024   pent1024  auto  3000  300     disk/GREAT_SH.TRD
+satisf_p1024    pent1024  auto  3000  300     disk/SATISFAC.SCL                     keys:1500:_/10
 16c_p1024       pent1024  open  50    100     snap/demo16c.sna
 boot_phoenix    phoenix   boot  0     400
 dwot_phoenix    phoenix   auto  3000  300     disk/dwot.trd
@@ -41,6 +44,7 @@ monitor_profi3  profi3    boot  800   300                                       
 boot_scorp      scorp     boot  0     400
 border_scorp    scorp     auto  3000  300     disk/BORDER.scl
 dwot_scorp      scorp     auto  3000  300     disk/dwot.trd
+satisf_scorp    scorp     auto  3000  300     disk/SATISFAC.SCL                     keys:1500:_/10
 monitor_scorp   scorp     boot  800   300                                           keys:300:nmi,450:m
 boot_scorptp    scorptp   boot  0     400
 dwot_scorptp    scorptp   auto  3000  300     disk/dwot.trd

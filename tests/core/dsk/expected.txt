@@ -165,3 +165,7 @@
   saved: err 0, 729088 bytes, the file then zeros: yes
   FF000: err 0, 128 cylinders, side-track 255 after the file blank: yes
   saved: err 0, 1048576 bytes, the file then zeros: yes
+== beta-restore-d0
+  #D0 20.9 us after #00: track register 3, head at 3
+  #D0 1 ms after #00: track register 254, head at 2
+  same-track seek: INTRQ after 25 us
