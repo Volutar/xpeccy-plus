@@ -11,6 +11,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **SMUC 2.x**: Options > Machine, Hard disk row. The home-made SMUC boards, whose ports
+  answer outside TR-DOS too, as Z-Player and Demeter expect. The original SMUC stays as it
+  was.
+
 - **Z-Controller SD card** on the Pentagons and the Scorpions: Options > Machine, SD card row.
   The Scorpion's ProfROM 4.xx.38 and later finds the card and reads it in its navigator,
   FATALL copies files to and from it.
