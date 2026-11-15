@@ -314,9 +314,11 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void fast_key(bool);
 		void fast_toggle();
 		QPoint warpAt;		// where the last recentering aimed
-		unsigned char warpTtl;	// events it stays a candidate for
+		unsigned char warpTtl;	// readings it stays a candidate for
 		unsigned char warpFail;	// recenterings the host undid in a row
-		QPoint mouseLast;	// where the pointer was at the previous move
+		QPoint mouseLast;	// where the pointer was at the previous reading
+		qint64 mouseAt = 0;	// when that was, paceClockNs
+		QPointF mouseVel;	// how fast the hand went then, host pixels a millisecond
 		double mouseRemX = 0.0;	// what the division by the zoom left over
 		double mouseRemY = 0.0;
 		unsigned block:1;
@@ -621,6 +623,8 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void mouseGrabOn();
 		void mouseGrabOff();
 		void mouseRecenter(int fresh = 0);
+		void mouseRead();
+		void mouseWatch();
 		void dropAsk(QString);
 		int askRun();
 		int askRunKeep(const QString&);

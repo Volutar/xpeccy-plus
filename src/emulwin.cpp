@@ -845,6 +845,7 @@ void MainWin::timerEvent(QTimerEvent* ev) {
 //			conf.prof.changed = 0;
 //		}
 		if (block) return;
+		mouseWatch();
 		rzxWatch();
 		if (comp->rzx.overio) {
 			comp->rzx.overio = 0;
