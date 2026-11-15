@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <mutex>
+#include <thread>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -25,6 +27,77 @@
 
 #define VIRTKEYBASE 12
 
+// On Windows SDL's joystick update runs on a thread of its own: after a device change it
+// lists the devices through DirectInput, which can take most of a second.
+// padLock: held over the update, and by whoever lists, opens or reads the pads.
+#if defined(_WIN32) && SDL_VERSION_ATLEAST(2,0,22)
+#define PAD_THREAD 1
+#include <objbase.h>
+static std::recursive_mutex padLock;
+static std::atomic<bool> padQuit{false};
+static std::atomic<int> padOpen{0};		// pads open: none needs no quick update
+static std::thread* padThread = nullptr;
+#define PAD_HOLD std::lock_guard<std::recursive_mutex> padHold(padLock)
+#define PAD_OPEN(n) padOpen += (n)
+#define PAD_LOCK(lk) std::unique_lock<std::recursive_mutex> lk(padLock)
+#define PAD_UNLOCK(lk) lk.unlock()
+
+// padLock for the GUI thread: an update is over in a moment and is waited out (spun, a
+// timed wait is a millisecond at best), the device list is not: false, the caller skips
+static bool pad_try(std::unique_lock<std::recursive_mutex>& lk) {
+	for (int n = 0; n < 2000; n++) {
+		if (lk.try_lock()) return true;
+		YieldProcessor();
+	}
+	return false;
+}
+
+static void pad_thread() {
+	CoInitializeEx(NULL, COINIT_MULTITHREADED);	// DirectInput is called from here
+	while (!padQuit) {
+		{
+			PAD_HOLD;
+			SDL_JoystickUpdate();
+		}
+		SDL_Delay(padOpen ? 1 : 20);
+	}
+	CoUninitialize();
+}
+
+// at exit, before SDL_Quit: registered after it
+static void pad_thread_stop() {
+	if (!padThread) return;
+	padQuit = true;
+	padThread->join();
+	delete padThread;
+	padThread = nullptr;
+}
+
+// at the GUI timer's first tick: a run with no event loop (--bench) has no thread
+static void pad_thread_start() {
+	if (padThread || !SDL_WasInit(SDL_INIT_JOYSTICK)) return;
+	SDL_SetHint(SDL_HINT_AUTO_UPDATE_JOYSTICKS, "0");	// SDL_PollEvent leaves the update to the thread
+	padThread = new std::thread(pad_thread);
+	atexit(pad_thread_stop);
+}
+#else
+#define PAD_HOLD
+#define PAD_OPEN(n)
+#define PAD_LOCK(lk)
+#define PAD_UNLOCK(lk)
+#endif
+
+class xGamepad;
+// a pad's input that moved, kept until the lock is let go (inputChanged's slots may open a dialog)
+struct padMove {
+	xGamepad* pad;
+	int type, num, state;
+};
+static QList<padMove>* padMoves = nullptr;	// where update() puts them; NULL: emitted at once
+static QList<int> padMet;			// slots a new pad took, for newPad
+static QList<int> padGone;			// instances SDL said are gone
+static bool padChanged = false;			// a pad came or went: the slots are worked out again
+static bool padQuiet = false;			// rescan() leaves newPad to its caller
 // SDL_JoystickGetSerial arrived in 2.0.14, SDL_JoystickPathForIndex in 2.24.
 // Linux is built against the distro's SDL, which is often older than the one
 // pinned for Windows, so both are optional and the code falls back a step.
@@ -1392,6 +1465,7 @@ xGamepad::~xGamepad() {
 
 // Every connected pad, with what it takes to recognise it again.
 QList<xPadDev> xGamepad::devList() {
+	PAD_HOLD;		// the indices stand while the list is read
 	QList<xPadDev> res;
 	int cnt = SDL_NumJoysticks();
 	int i;
@@ -1467,6 +1541,7 @@ QList<xPadDev> xGamepad::devList() {
 }
 
 void xGamepad::openDev(const xPadDev& dev) {
+	PAD_HOLD;
 	close();
 	if (dev.index < 0) return;
 	if (dev.ctrl) {
@@ -1485,6 +1560,7 @@ void xGamepad::openDev(const xPadDev& dev) {
 		return;
 	}
 	id = SDL_JoystickInstanceID(sjptr);
+	PAD_OPEN(1);
 	pid = dev.id;
 	ctrl = isController();
 	rebuild();		// a scheme binds a controller by name, a raw pad by number
@@ -1495,6 +1571,8 @@ void xGamepad::openDev(const xPadDev& dev) {
 
 void xGamepad::close() {
 	if (id < 0) return;
+	PAD_HOLD;
+	PAD_OPEN(-1);
 	if (scptr) {
 		SDL_GameControllerClose(scptr);		// takes the joystick with it
 		scptr = NULL;
@@ -1627,8 +1705,19 @@ double xGamepad::axisLevel(const xJoyMapEntry& e) {
 void xGamepad::mouseSpeed(int ms, double* sx, double* sy) {
 	double vx = 0;
 	double vy = 0;
+#ifdef PAD_THREAD
+	std::unique_lock<std::recursive_mutex> lk(padLock, std::defer_lock);
+#endif
 	foreach(const xJoyMapEntry& e, map) {
 		if (!e.held || (e.dev != JMAP_MOUSE)) continue;
+#ifdef PAD_THREAD
+		// the stick is read through SDL: not while the devices are being listed
+		if (!lk.owns_lock() && !pad_try(lk)) {
+			*sx = 0;
+			*sy = 0;
+			return;
+		}
+#endif
 		double lev = axisLevel(e);
 		lev *= lev;		// fine control near the middle of a stick
 		switch (e.dir) {
@@ -1685,7 +1774,10 @@ void pad_mouse_frame(int ns, int* dx, int* dy) {
 void xGamepad::emitChanged(int type, int num, int state) {
 	if (jState[type][num] == state) return;
 	jState[type][num] = state;
-	emit inputChanged(type, num, state);
+	if (padMoves)
+		padMoves->append({this, type, num, state});
+	else
+		emit inputChanged(type, num, state);
 }
 
 // Read the pad and report what moved. A pad SDL knows the layout of is read
@@ -1869,9 +1961,9 @@ int xGamepad::deadZone() {return dead;}
 
 // controller
 
-// Pad poll period. The pads are read on the gui thread, so this is also the
-// delay a press can sit for before the emulation sees it. Polling at all is
-// the stopgap: see the TODO on update().
+// Pad poll period: the pads are handed out on the GUI thread, so a press can sit this
+// long (on Windows a millisecond more, the pad thread's own period) before the emulation
+// sees it. Polling at all is the stopgap: see the TODO on update().
 #define GP_POLL_MS	2
 
 xGamepadController::xGamepadController(QObject* p):QObject(p) {
@@ -1896,6 +1988,7 @@ static int padMatch(const xPadId& want, const xPadDev& dev) {
 // the slots in order instead would let a slot whose own pad has been
 // unplugged grab its twin, out from under the slot that twin belongs to.
 void xGamepadController::rescan() {
+	PAD_LOCK(lk);		// no update between the list and the opens: the indices stand
 	QList<xPadDev> devs = xGamepad::devList();
 	padLogDevices(devs);
 	xGamepad* slot[2] = {gpada, gpadb};
@@ -1953,6 +2046,11 @@ void xGamepadController::rescan() {
 		}
 	}
 	meetNew(devs, pick);
+	PAD_UNLOCK(lk);
+	if (padQuiet) return;		// the timer tells, once its own lock is let go
+	QList<int> met = padMet;
+	padMet.clear();
+	foreach(int s, met) emit newPad(s);
 }
 
 QString pad_game_file(const QString& image) {
@@ -2072,45 +2170,77 @@ void xGamepadController::meetNew(const QList<xPadDev>& devs, const int* pick) {
 			if (slot[s]->inUse()) continue;
 			slot[s]->openDev(devs.at(i));
 			xlog(XLG_INPUT, XLL_INFO, "pad %c: new pad '%s' taken", s ? 'B' : 'A', id.name.toUtf8().data());
-			emit newPad(s);
+			padMet.append(s);
 			break;
 		}
 	}
 }
 
 void xGamepadController::timerEvent(QTimerEvent* e) {
-	// Pump the events first: SDL fills the pad state from the pump, so reading
-	// it before would hand out the values of the previous tick.
+	// Pump the events first: SDL fills the pad state from its update (the pad thread's on
+	// Windows, the pump's elsewhere), so reading it before would hand out the previous tick's.
+	// Not under padLock: the pump dispatches the window's messages too.
 	SDL_Event ev;
-	bool changed = false;
-	// a slot waiting for a pad of its own: a pad never met before goes to one
-	// with none, and newPad says that
-	bool waits[2] = {gpada->inUse() && !gpada->isOpened(), gpadb->inUse() && !gpadb->isOpened()};
-	bool had[2] = {gpada->isOpened() != 0, gpadb->isOpened() != 0};
+#ifdef PAD_THREAD
+	pad_thread_start();
+#endif
 	while (SDL_PollEvent(&ev)) {
 		switch (ev.type) {
 			case SDL_JOYDEVICEREMOVED:
 				xlog(XLG_INPUT, XLL_INFO, "pad removed: instance %i", (int)ev.jdevice.which);
-				if ((ev.jdevice.which == gpada->getId()) && gpada->isOpened()) gpada->close();
-				if ((ev.jdevice.which == gpadb->getId()) && gpadb->isOpened()) gpadb->close();
-				changed = true;
+				padGone.append((int)ev.jdevice.which);
+				padChanged = true;
 				break;
 			case SDL_JOYDEVICEADDED:
 				xlog(XLG_INPUT, XLL_INFO, "pad added: device %i", (int)ev.jdevice.which);
-				changed = true;
+				padChanged = true;
 				break;
 		}
 	}
-	// A pad going or coming shuffles SDL's device indices, so both slots are
-	// worked out again from what is there now.
+	QList<padMove> moved;
+	bool changed, waits[2], had[2];
+	{
+#ifdef PAD_THREAD
+		// an update takes the thread a moment, the device list most of a second: then the
+		// next tick, the pads have not moved for us meanwhile
+		std::unique_lock<std::recursive_mutex> lk(padLock, std::defer_lock);
+		if (!pad_try(lk)) return;
+#endif
+		// a slot waiting for a pad of its own: a pad never met before goes to one
+		// with none, and newPad says that
+		waits[0] = gpada->inUse() && !gpada->isOpened();
+		waits[1] = gpadb->inUse() && !gpadb->isOpened();
+		had[0] = gpada->isOpened() != 0;
+		had[1] = gpadb->isOpened() != 0;
+		changed = padChanged;
+		// A pad going or coming shuffles SDL's device indices, so both slots are
+		// worked out again from what is there now.
+		if (changed) {
+			padChanged = false;
+			foreach(int gone, padGone) {
+				if ((gone == gpada->getId()) && gpada->isOpened()) gpada->close();
+				if ((gone == gpadb->getId()) && gpadb->isOpened()) gpadb->close();
+			}
+			padGone.clear();
+			padQuiet = true;
+			rescan();
+			padQuiet = false;
+		}
+		padMoves = &moved;
+		gpada->update();
+		gpadb->update();
+		padMoves = nullptr;
+	}
+	// the slots of these may open a window or a dialog: the lock is let go first
 	if (changed) {
-		rescan();
+		QList<int> met = padMet;
+		padMet.clear();
+		foreach(int s, met) emit newPad(s);
 		emit devicesChanged();
 		if (waits[0] && gpada->isOpened()) emit padOn(0);
 		if (waits[1] && gpadb->isOpened()) emit padOn(1);
 		if (had[0] && !gpada->isOpened()) emit padOff(0);
 		if (had[1] && !gpadb->isOpened()) emit padOff(1);
 	}
-	gpada->update();
-	gpadb->update();
+	foreach(const padMove& m, moved) emit m.pad->inputChanged(m.type, m.num, m.state);
 }

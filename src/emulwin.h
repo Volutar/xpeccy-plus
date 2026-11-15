@@ -117,6 +117,10 @@ class MainWin;
 
 // Whether the picture can go through OpenGL here; why not, when it cannot
 bool gl_probe(QString* why);
+// Its context made meanwhile on a thread of its own, for gl_probe() to take up;
+// gl_probe_drop() when the probe is not going to be asked (the thread is waited for)
+void gl_probe_begin();
+void gl_probe_drop();
 
 // The picture through OpenGL: a child that covers MainWin and only draws.
 // Keys and the mouse go past it to MainWin. Made only when gl_probe() says

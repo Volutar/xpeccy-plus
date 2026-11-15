@@ -214,7 +214,7 @@ void zx_snd_take(Computer* comp, sndMix* m) {
 	static const sndPair none = {0, 0};
 	snd_mix_take_wire(m, comp);
 	m->ts = comp->ts;
-	m->in.gs = comp->gs->enable ? gsVolume(comp->gs) : none;
+	m->in.gs = comp->gs->enable ? gsVolumeKept(comp->gs, &m->gsk) : none;
 	m->in.sdrv = sdrvVolume(comp->sdrv);
 	m->in.saa = comp->saa->enabled ? saaVolume(comp->saa) : none;
 }

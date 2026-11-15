@@ -1606,6 +1606,7 @@ void szx_rd_gs(Computer* comp, const unsigned char* p, size_t n) {
 	gs->ch2 = p[7];
 	gs->ch3 = p[8];
 	gs->ch4 = p[9];
+	gs_mix_moved();
 	cpu->flgNOINT = (p[10] & SZG_EILAST) ? 1 : 0;
 	cpu->flgHALT = (p[10] & SZG_HALTED) ? 1 : 0;
 	szx_rd_regs(cpu, p + 11, 0);

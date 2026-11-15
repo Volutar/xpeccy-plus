@@ -653,12 +653,24 @@ int main(int ac,char** av) {
 	app.installEventFilter(&app);	// colours each window's titlebar on its first Show
 	installTitleBarClickFix();
 
+	// the GL driver loads on a thread of its own meanwhile, unless no GL picture is made
+	{
+		bool gl = true;
+		for (int n = 1; n < ac; n++)
+			if (!strcmp(av[n], "--no-gl") || !strncmp(av[n], "--bench", 7)) gl = false;
+		if (gl) gl_probe_begin();
+	}
+
 	// On macOS Qt owns the native event queue. SDL video would also drain it
 	// from the gamepad timer's SDL_PollEvent(), including title-bar mouse events.
 	// SDL2 joystick events work without video.
 	Uint32 sdlFlags = SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_TIMER;
 #if !defined(__APPLE__)
 	sdlFlags |= SDL_INIT_VIDEO;
+#endif
+#ifdef _WIN32
+	// raw input and device notices on SDL's own thread, not through this one's message loop
+	SDL_SetHint(SDL_HINT_JOYSTICK_THREAD, "1");
 #endif
 	if (SDL_Init(sdlFlags) < 0)		// the subsystems that did start stay up
 		xlog(XLG_APP, XLL_WARN, "SDL_Init: %s", SDL_GetError());
@@ -751,13 +763,16 @@ int main(int ac,char** av) {
 	// an update finished or cut short, before any file of the install is read; when it
 	// was undone under the new program, the one put back runs instead
 	if (!bench && upd_startup()) {
+		gl_probe_drop();	// its thread is in Qt's code: waited for before the application goes
 		log_done();
 		return 0;
 	}
 
 	// before loadConfig: the debugger takes conf.dbg.font while it is built,
-	// so the family has to be known by then
+	// so the family has to be known by then. The bold face too: a weight Qt has to make
+	// up is an inexact match, and the first one on Windows lists every font installed
 	QFontDatabase::addApplicationFont(":/DejaVuSansMono.ttf");
+	QFontDatabase::addApplicationFont(":/DejaVuSansMono-Bold.ttf");
 
 	conf_init(confdir);
 	shortcut_init();

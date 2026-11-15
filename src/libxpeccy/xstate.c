@@ -312,6 +312,7 @@ int xstate_load(xState* st, Computer* comp) {
 	}
 	mem_derive(comp->mem);			// the map came back without what is worked out of it
 	if (comp->gs && comp->gs->mem) mem_derive(comp->gs->mem);
+	gs_mix_moved();				// the card's channels and volumes came back too
 	comp->vid->nodraw = nodraw;
 	comp->vid->nodrawNext = nodrawNext;
 	comp->vid->flashShow = flashShow;

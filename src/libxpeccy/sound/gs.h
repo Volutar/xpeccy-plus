@@ -100,6 +100,16 @@ void gsFlushMix(GSound*);	// the same for the mix: a CPU parked in a loop stays 
 void gsSettle(GSound*);		// for a snapshot: time owed under an INT period
 void gs_loop_forget(GSound*);	// the CPU or its memory was put somewhere new
 sndPair gsVolume(GSound*);
+// the same, kept in *kept until a channel, a volume or a setting moves; whoever writes
+// the card's channels or volumes from outside gs.c says so with gs_mix_moved()
+typedef struct {
+	const void* gs;		// the card it is of; NULL: nothing kept
+	unsigned stamp;
+	int stereo, sep, model, cfg0;
+	sndPair mix;
+} gsKept;
+sndPair gsVolumeKept(GSound*, gsKept*);
+void gs_mix_moved(void);
 int gsWrite(GSound*, int, int);
 int gsRead(GSound*, int, int*);
 // the card's model: its image into the ROM space, its map, a reset
