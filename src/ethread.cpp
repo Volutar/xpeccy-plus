@@ -1166,8 +1166,9 @@ static unsigned long long bench_mix(unsigned long long h, const unsigned char* p
 // the bench, held N frames (4). keys are matrix names as autostart types them,
 // '_' for space; "joy:" or "joyb:" and joystick rows as a .pad names them (up,
 // fire2...) joined by '+' are the two joysticks, "nmi" is the NMI button, and
-// "pc:" and a keymap name (UP, F1) is a PC key, scancodes and all.
-enum {BK_KEYS = 0, BK_JOY, BK_JOYB, BK_NMI, BK_PC, BK_POWER};
+// "pc:" and a keymap name (UP, F1) is a PC key, scancodes and all; "turbo" is the
+// board's turbo switch, one step on.
+enum {BK_KEYS = 0, BK_JOY, BK_JOYB, BK_NMI, BK_PC, BK_POWER, BK_TURBO};
 
 typedef struct benchKey {
 	int at = 0;
@@ -1204,6 +1205,8 @@ static void bench_keys_parse(const char* spec) {
 			k.kind = BK_NMI;
 		} else if (key == "power") {
 			k.kind = BK_POWER;
+		} else if (key == "turbo") {
+			k.kind = BK_TURBO;
 		} else if (!key.compare(0, 3, "pc:")) {
 			k.kind = BK_PC;
 			k.id = getKeyIdByName(key.substr(3).c_str());
@@ -1238,6 +1241,10 @@ static void bench_key_set(Computer* comp, benchKey& k, int press) {
 			break;
 		case BK_POWER:
 			if (press) xm_power_cycle();	// the Hard Reset: this thread is the emulation's
+			break;
+		case BK_TURBO:
+			if (press && (comp->turboCount > 1))
+				xm_turbo_step(comp, (xm_turbo_index(comp) + 1) % comp->turboCount);
 			break;
 		case BK_PC: {
 			keyEntry ent = getKeyEntry(k.id);
