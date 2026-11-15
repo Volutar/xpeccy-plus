@@ -47,8 +47,14 @@ void phxReset(Computer* comp) {
 	phxMapMem(comp);
 }
 
+// a snapshot knows #7FFD alone: it gets the set that has the BASICs, not the system ROM's
+static void phx_snapmap(Computer* comp) {
+	comp->p37 = 1;
+	phxMapMem(comp);
+}
+
 // Turbo (DD50.2, DD72): the XP20 switch - hwMul - counts while DOSEN/ is high; the memory is
-// always on the 7 MHz timing, so nothing waits
+// always on the 7 MHz timing, so nothing waits, and cont is there for comp_owe's debt alone
 static void phx_cont(Computer* comp, int mreq) {
 }
 
@@ -63,7 +69,7 @@ void phx_irq(Computer* comp, int t) {
 	zx_irq(comp, t);
 	if ((t != IRQ_VID_INT) && (t != IRQ_RZX_INT)) return;
 	Video* vid = comp->vid;
-	if ((comp->hwMul > 1) && !phx_dosen(comp) && (vid->intFRAME == vid->intsize))
+	if ((comp->hwMul > 1) && !phx_dosen(comp) && vid->intFRAME)	// zx_irq raised it
 		vid_set_int_frame(vid, vid->intsize / 2);
 }
 
@@ -202,4 +208,4 @@ static const hwQuiet phx_quiet = {HWQ_ACK_ZX, hwq_no_turbo, NULL, zx_devs_sync, 
 
 HardWare phx_hw_core = {HW_PHOENIX,"Phoenix","ZXM Phoenix",MEM_128K | MEM_1M | MEM_2M,1.0,NULL,zx_port_tab_px,
 			phx_init,phxMapMem,phxOut,phxIn,stdMRd,stdMWr,phx_irq,zx_ack,phxReset,phxSync,zx_keyp,zx_keyr,zx_vol,
-			NULL,phx_cont,&phx_quiet, .sndtake = zx_snd_take, .sndmix = zx_mix};
+			phx_snapmap,phx_cont,&phx_quiet, .contLazy = 1, .sndtake = zx_snd_take, .sndmix = zx_mix};
