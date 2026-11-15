@@ -653,8 +653,7 @@ int main(int ac,char** av) {
 	app.installEventFilter(&app);	// colours each window's titlebar on its first Show
 	installTitleBarClickFix();
 
-	// The GL driver loads meanwhile, on a thread of its own: gl_probe() below takes it
-	// up. Not for a run that makes no GL picture
+	// the GL driver loads on a thread of its own meanwhile, unless no GL picture is made
 	{
 		bool gl = true;
 		for (int n = 1; n < ac; n++)
@@ -760,15 +759,14 @@ int main(int ac,char** av) {
 	// an update finished or cut short, before any file of the install is read; when it
 	// was undone under the new program, the one put back runs instead
 	if (!bench && upd_startup()) {
-		gl_probe_drop();	// its thread is in Qt's code: not left running past the application
+		gl_probe_drop();	// its thread is in Qt's code: waited for before the application goes
 		log_done();
 		return 0;
 	}
 
 	// before loadConfig: the debugger takes conf.dbg.font while it is built,
-	// so the family has to be known by then. The bold face too: a weight Qt has to
-	// make up is a match that is not exact, and on Windows the first such match lists
-	// every font installed (a quarter of a second at start)
+	// so the family has to be known by then. The bold face too: a weight Qt has to make
+	// up is an inexact match, and the first one on Windows lists every font installed
 	QFontDatabase::addApplicationFont(":/DejaVuSansMono.ttf");
 	QFontDatabase::addApplicationFont(":/DejaVuSansMono-Bold.ttf");
 

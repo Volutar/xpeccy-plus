@@ -330,13 +330,11 @@ QString shimLegacyShader(QString src,
 
 } // anonymous namespace
 
-// The first context made is where the driver loads, a third of a second of it.
-// gl_probe_begin() has that context made on a thread of its own while main() sets up
-// the sound, the pads and the config, and gl_probe() takes it from there. Qt 6 on
-// Windows only: that is where it was measured (Qt's static context there is behind
-// a lock, and main() makes no window of Qt's meanwhile).
+// The first context made loads the driver: gl_probe_begin() has it made on a thread of
+// its own while main() goes on, gl_probe() takes it up. main() must make no window of
+// Qt's meanwhile. Qt 6 on Windows only, where Qt's static context is behind a lock.
 #if defined(_WIN32) && (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
-static std::thread* probeThread = nullptr;	// never destroyed unjoined: an exit past it is plain
+static std::thread* probeThread = nullptr;
 static QOpenGLContext* probeCtx = nullptr;	// the thread's, read after its join
 
 void gl_probe_begin() {
@@ -377,11 +375,12 @@ void gl_probe_drop() {
 // and the fallbacks it would take instead are not shipped.
 bool gl_probe(QString* why) {
 	std::unique_ptr<QOpenGLContext> made(probe_take());
+	if (made && !made->isValid()) made.reset();	// not made there: tried here, as ever
 	QOffscreenSurface surf;
 	surf.create();
 	QOpenGLContext own;
 	QOpenGLContext& ctx = made ? *made : own;
-	if (made ? !ctx.isValid() : !ctx.create()) {
+	if (!made && !own.create()) {
 		*why = "no OpenGL context";
 		return false;
 	}
