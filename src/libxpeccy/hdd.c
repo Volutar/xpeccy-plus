@@ -960,8 +960,10 @@ void ideReset(IDE* ide) {
 }
 
 IDECore ide_core_tab[] = {
-	{IDE_NEMO,	ide_nemo_decode,	ide_common_rd,	ide_common_wr},
-	{IDE_NEMOA8,	ide_nemoa8_decode,	ide_common_rd,	ide_common_wr},
+	// the cards on the bus hold IORQGE (a NemoIDE on ZX-BUS, VELESOFT on zx-pk.ru t=12658;
+	// a SMUC, its schematics); the boards' own controllers do not need to
+	{IDE_NEMO,	ide_nemo_decode,	ide_common_rd,	ide_common_wr,	1},
+	{IDE_NEMOA8,	ide_nemoa8_decode,	ide_common_rd,	ide_common_wr,	1},
 	{IDE_SMUC,	ide_smuc_decode,	ide_smuc_rd,	ide_smuc_wr,	1},
 	{IDE_SMUC2,	ide_smuc2_decode,	ide_smuc_rd,	ide_smuc_wr,	1},
 	{IDE_ATM,	ide_atm_decode,		ide_common_rd,	ide_common_wr},

@@ -51,7 +51,7 @@ static xPort p3PortMap[] = {
 };
 
 void pl3Out(Computer* comp, int port, int val) {
-	if (zx_dev_wr(comp, port, val) == IDE_HELD) return;
+	zx_dev_wr(comp, port, val);		// the Amstrad edge has no IORQGE: a card's port is the board's too
 	hwOut(p3PortMap, comp, port, val, 1);
 }
 

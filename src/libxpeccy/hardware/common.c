@@ -237,8 +237,9 @@ void zx_set_pal(Computer* comp) {
 
 // in
 
-// IDE_HELD when a card holding IORQGE took the port: the machine's own ports must
-// not see it (the SMUC's ports are #FE's too on the Scorpion and the Pentagon)
+// IDE_HELD when a card holding IORQGE took the port: a machine whose bus has the
+// line keeps its own ports out (the SMUC's and NemoIDE's ports are #FE's too on the
+// Pentagon); the +2A/+3 edge has none
 int zx_dev_wr(Computer* comp, int adr, int val) {
 	int res;
 	if (div_out(comp->div, adr, val)) return 1;
