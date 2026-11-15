@@ -242,7 +242,7 @@ Disassembled](https://github.com/programandala-net/tr-dos) by
 Marcos Cruz, used with his permission. Sources and terms of every list:
 [`config/labels/README.md`](config/labels/README.md).
 
-The debugger's default font, DejaVu Sans Mono 2.37, is built into the binary so it looks the
+The debugger's default font, DejaVu Sans Mono 2.37 (regular and bold), is built into the binary so it looks the
 same on every platform. It keeps its own terms too - see [`LICENSE_DEJAVU`](LICENSE_DEJAVU).
 
 The FM half of the YM2203, the chip a TurboSound FM board carries, is emulated by

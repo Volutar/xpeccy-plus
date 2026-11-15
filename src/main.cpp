@@ -756,8 +756,11 @@ int main(int ac,char** av) {
 	}
 
 	// before loadConfig: the debugger takes conf.dbg.font while it is built,
-	// so the family has to be known by then
+	// so the family has to be known by then. The bold face too: a weight Qt has to
+	// make up is a match that is not exact, and on Windows the first such match lists
+	// every font installed (a quarter of a second at start)
 	QFontDatabase::addApplicationFont(":/DejaVuSansMono.ttf");
+	QFontDatabase::addApplicationFont(":/DejaVuSansMono-Bold.ttf");
 
 	conf_init(confdir);
 	shortcut_init();
