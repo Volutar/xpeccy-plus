@@ -653,6 +653,15 @@ int main(int ac,char** av) {
 	app.installEventFilter(&app);	// colours each window's titlebar on its first Show
 	installTitleBarClickFix();
 
+	// The GL driver loads meanwhile, on a thread of its own: gl_probe() below takes it
+	// up. Not for a run that makes no GL picture
+	{
+		bool gl = true;
+		for (int n = 1; n < ac; n++)
+			if (!strcmp(av[n], "--no-gl") || !strncmp(av[n], "--bench", 7)) gl = false;
+		if (gl) gl_probe_begin();
+	}
+
 	// On macOS Qt owns the native event queue. SDL video would also drain it
 	// from the gamepad timer's SDL_PollEvent(), including title-bar mouse events.
 	// SDL2 joystick events work without video.
@@ -751,6 +760,7 @@ int main(int ac,char** av) {
 	// an update finished or cut short, before any file of the install is read; when it
 	// was undone under the new program, the one put back runs instead
 	if (!bench && upd_startup()) {
+		gl_probe_drop();	// its thread is in Qt's code: not left running past the application
 		log_done();
 		return 0;
 	}

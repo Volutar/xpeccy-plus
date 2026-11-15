@@ -5,8 +5,11 @@
 #include <QRegularExpression>
 #include <QOffscreenSurface>
 #include <QOpenGLContext>
+#include <QThread>
 #include <algorithm>
 #include <cmath>
+#include <memory>
+#include <thread>
 #include <vector>
 
 namespace {
@@ -327,15 +330,58 @@ QString shimLegacyShader(QString src,
 
 } // anonymous namespace
 
+// The first context made is where the driver loads, a third of a second of it.
+// gl_probe_begin() has that context made on a thread of its own while main() sets up
+// the sound, the pads and the config, and gl_probe() takes it from there. Qt 6 on
+// Windows only: that is where it was measured (Qt's static context there is behind
+// a lock, and main() makes no window of Qt's meanwhile).
+#if defined(_WIN32) && (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
+static std::thread* probeThread = nullptr;	// never destroyed unjoined: an exit past it is plain
+static QOpenGLContext* probeCtx = nullptr;	// the thread's, read after its join
+
+void gl_probe_begin() {
+	if (probeThread) return;
+	QThread* gui = QThread::currentThread();
+	probeThread = new std::thread([gui]() {
+		QOpenGLContext* ctx = new QOpenGLContext;
+		ctx->create();
+		// made current and deleted on the GUI thread
+		if (ctx->shareGroup()) ctx->shareGroup()->moveToThread(gui);
+		ctx->moveToThread(gui);
+		probeCtx = ctx;
+	});
+}
+
+// the context the thread made (valid or not), nullptr when none was begun
+static QOpenGLContext* probe_take() {
+	if (!probeThread) return nullptr;
+	probeThread->join();
+	delete probeThread;
+	probeThread = nullptr;
+	QOpenGLContext* ctx = probeCtx;
+	probeCtx = nullptr;
+	return ctx;
+}
+#else
+void gl_probe_begin() {}
+static QOpenGLContext* probe_take() {return nullptr;}
+#endif
+
+void gl_probe_drop() {
+	delete probe_take();
+}
+
 // A context of the default format, made current, and at least what the renderer
 // needs: GLSL 330 / 300 es and a VAO. Qt can have no GL at all - its blacklist
 // turns the desktop GL of some GPUs off (Arrandale's HD Graphics among them),
 // and the fallbacks it would take instead are not shipped.
 bool gl_probe(QString* why) {
+	std::unique_ptr<QOpenGLContext> made(probe_take());
 	QOffscreenSurface surf;
 	surf.create();
-	QOpenGLContext ctx;
-	if (!ctx.create()) {
+	QOpenGLContext own;
+	QOpenGLContext& ctx = made ? *made : own;
+	if (made ? !ctx.isValid() : !ctx.create()) {
 		*why = "no OpenGL context";
 		return false;
 	}
