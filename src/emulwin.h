@@ -314,7 +314,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void fast_key(bool);
 		void fast_toggle();
 		QPoint warpAim;		// where the last recentering aimed
-		QPoint warpAt;		// that, with the hand's way since read on it
+		QPoint warpAt;		// that, moved along by readings that sit on it
 		unsigned char warpTtl;	// readings it stays a candidate for
 		unsigned char warpFail;	// recenterings the host undid in a row
 		QPoint mouseLast;	// where the pointer was at the previous reading
@@ -623,6 +623,8 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void winCursorTo(QPoint);
 		QPoint winCursorPos();
 		bool winHolds(QPoint);	// a point on the screen is in the picture
+		bool winFar(QPoint);
+		bool mouseHeld();
 		void mouseGrabOn();
 		void mouseGrabOff();
 		void mouseRecenter(int fresh = 0);

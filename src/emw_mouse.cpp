@@ -99,15 +99,12 @@ void MainWin::wheelEvent(QWheelEvent* ev) {
 	}
 }
 
-// How many readings where the pointer was before a recentering counts as
-// undone, and how many recenterings a host may undo before we stop trying.
-#define MOUSE_WARP_TTL	8
-#define MOUSE_WARP_GIVEUP 3
+#define MOUSE_WARP_TTL	8		// readings at the old place that count a recentering undone
+#define MOUSE_WARP_GIVEUP 3		// recenterings undone in a row before we stop trying
 // A hand cannot do this in one event: a recentering that was not absorbed, a
 // window that moved, a screen that changed. Host pixels.
 #define MOUSE_JUMP	256
-// How long the hand is taken to keep its speed, ms.
-#define MOUSE_LEAD_MS	30.0
+#define MOUSE_LEAD_MS	30.0		// how long the hand is taken to keep its speed, ms
 
 QPoint MainWin::winCenter() {
 	return mapToGlobal(rect().center());
@@ -123,6 +120,7 @@ void MainWin::winCursorTo(QPoint pos) {
 #endif
 }
 
+// on X11 a server round trip, at up to the mouse's rate while grabbed
 QPoint MainWin::winCursorPos() {
 #ifdef WIDGET_SCREEN
 	return QCursor::pos(WIDGET_SCREEN);
@@ -135,9 +133,20 @@ bool MainWin::winHolds(QPoint pos) {
 	return rect().contains(mapFromGlobal(pos));
 }
 
-// The one way in and out of the grab: from here the pointer is the machine's,
-// and the state mouseRead keeps has to start over on every new grab
+// past the middle third: worth putting back
+bool MainWin::winFar(QPoint pos) {
+	QPoint cen = winCenter();
+	return (qAbs(pos.x() - cen.x()) > width() / 3) || (qAbs(pos.y() - cen.y()) > height() / 3);
+}
+
+// grabbed and taking moves: pause() lets the pointer go at once, before its pause lands
+bool MainWin::mouseHeld() {
+	return grabMice && !conf.emu.pause && !conf.emu.pauseReq;
+}
+
+// A new grab starts the reading over. Not from a tool window: no focus out would end it
 void MainWin::mouseGrabOn() {
+	if (!isActiveWindow()) return;
 	grabMice = 1;
 	mbHintShow(false);
 	grabMouse(QCursor(Qt::BlankCursor));
@@ -161,6 +170,7 @@ void MainWin::mouseGrabOff() {
 // 'fresh' is a new grab, where what an earlier one learned no longer holds.
 void MainWin::mouseRecenter(int fresh) {
 	if (fresh) {
+		warpTtl = 0;
 		warpFail = 0;
 		mouseVel = QPointF();
 	}
@@ -178,7 +188,7 @@ void MainWin::mouseWarp() {
 }
 
 void MainWin::mouseMoveEvent(QMouseEvent *ev) {
-	if (!grabMice || conf.emu.pause) {
+	if (!mouseHeld()) {
 		if (ev->buttons() & Qt::LeftButton) {
 			calcCoords(ev);
 		}
@@ -189,7 +199,7 @@ void MainWin::mouseMoveEvent(QMouseEvent *ev) {
 
 // Qt sends no moves over another program's window: one that got out is caught here
 void MainWin::mouseWatch() {
-	if (!grabMice || conf.emu.pause) return;
+	if (!mouseHeld() || !isActiveWindow()) return;
 	if (winHolds(winCursorPos())) return;
 	mouseRead();
 }
@@ -204,8 +214,7 @@ void MainWin::mouseRead() {
 		mouseVel = QPointF();
 		ms = MOUSE_LEAD_MS;
 	}
-	// A pending recentering leaves two answers to where the pointer was, a third
-	// of the window apart: the nearer one, once the hand's way since is added
+	// a pending recentering: here or at the old place - the nearer, with the hand's way added
 	QPoint was = mouseLast;
 	bool hand = true;	// the reading is the hand's, not the recentering's
 	if (warpTtl) {
@@ -227,13 +236,15 @@ void MainWin::mouseRead() {
 		} else {
 			// the old place: the device holds it, or the system has not applied it yet
 			mouseLast = gpos;
-			if (!--warpTtl && (++warpFail >= MOUSE_WARP_GIVEUP))
+			if (!winFar(gpos))
+				warpTtl = 0;		// in the middle either way: nothing left to judge
+			else if (!--warpTtl && (++warpFail >= MOUSE_WARP_GIVEUP))
 				xlog(XLG_INPUT, XLL_INFO, "mouse: this host puts the pointer straight back, recentering dropped");
 		}
 	} else {
 		mouseLast = gpos;
 	}
-	// readings that come together say nothing of the speed; a 1000 Hz mouse is caught between steps
+	// readings in one go carry no speed, and one step of a fast mouse is noisy: averaged
 	if (hand && (ms >= 0.5))
 		mouseVel = (mouseVel + QPointF(gpos - was) / ms) / 2;
 	mouseAt = now;
@@ -260,9 +271,7 @@ void MainWin::mouseRead() {
 	if (comp->mouse->xdelta || comp->mouse->ydelta) x_input_bump();
 	comp->mouse->xpos += comp->mouse->xdelta;
 	comp->mouse->ypos -= comp->mouse->ydelta;	// axis is reverted
-	// far enough out to put back; while one is pending, only once out of the window
-	QPoint cen = winCenter();
-	if (((qAbs(gpos.x() - cen.x()) > width() / 3) || (qAbs(gpos.y() - cen.y()) > height() / 3))
-			&& (!warpTtl || !winHolds(gpos)))
+	// while one is pending, again only once out of the window
+	if (winFar(gpos) && (!warpTtl || !winHolds(gpos)))
 		mouseWarp();
 }
