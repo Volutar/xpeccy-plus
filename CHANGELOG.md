@@ -34,6 +34,12 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **ZXM-Phoenix is the real board now**, revision 08.1, from its schematics and firmware:
+  its own frame of 69 888 ticks and a border that changes every eight pixels, so demos
+  written for it draw their border pictures right; the ROM of revision 07 with Fatall 0.25
+  and TR-DOS 6.11Q; NemoIDE, SD card, clock, TurboSound; a turbo that drops to 3.5 MHz in
+  TR-DOS by itself; 128, 1024 or 2048 KB. BIOS 5.03 is still there as `phoenix.rom`.
+
 - **The ZX Spectrum Next runs faster on weak computers**: the heaviest parts of DMA-driven
   demos such as Forever 35 run about half as fast again, and on a Steam Deck keep full speed.
   The Linux and macOS builds are now profile-guided, as the Windows ones are. *(thanks to
