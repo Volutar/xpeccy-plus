@@ -70,14 +70,20 @@ static void bf_coefs(sndBeepFlt* st, int type, int rate, int chain) {
 	}
 	st->kBp = llround(c->bp * BF_ONE);
 	// Butterworth: Q 0.7071 for 2 poles, 0.5412 and 1.3066 for 4
-	static const double q2[1] = {0.7071067811865476}, q4[2] = {0.5411961001461970, 1.3065629648763766};
+	static const double q2 = 0.7071067811865476, q4[2] = {0.5411961001461970, 1.3065629648763766};
 	for (int i = 0; i < 2; i++) {
-		st->kL[i] = 0;
-		st->kLQ[i] = 0;
-		if ((c->lp2 <= 0) || (i * 2 >= c->lpn)) continue;
-		st->kL[i] = llround(2 * sin(BF_PI * c->lp2 / rate) * BF_ONE);
-		st->kLQ[i] = llround(BF_ONE / ((c->lpn == 4) ? q4[i] : q2[0]));
+		int on = (i * 2 < c->lpn);
+		st->kL[i] = on ? llround(2 * sin(BF_PI * c->lp2 / rate) * BF_ONE) : 0;
+		st->kLQ[i] = on ? llround(BF_ONE / ((c->lpn == 4) ? q4[i] : q2)) : 0;
 	}
+}
+
+// one Chamberlin SVF step: low and band move on, high comes back
+static inline long long bf_svf(long long x, long long* low, long long* band, long long kF, long long kQ) {
+	*low += (*band * kF) >> 24;
+	long long high = x - *low - ((*band * kQ) >> 24);
+	*band += (high * kF) >> 24;
+	return high;
 }
 
 // a type taken anew: its coefficients, and settled where the level is now
@@ -111,18 +117,14 @@ int snd_beep_run(sndBeepFlt* st, int lev, int type, int rate, int chain) {
 		x -= st->hp;
 	}
 	if (st->kF) {
-		// Chamberlin SVF, high-pass out: unity above, Q times at the resonance
-		st->low += (st->band * st->kF) >> 24;
-		long long high = x - st->low - ((st->band * st->kQ) >> 24);
+		// high-pass out: unity above, Q times at the resonance
 		long long band = st->band;
-		st->band += (high * st->kF) >> 24;
-		// the band half a step on, as high is: the two apart by a step swell the ring at x16
+		long long high = bf_svf(x, &st->low, &st->band, st->kF, st->kQ);
+		// the band averaged over the step, in phase with high
 		x = high + (((band + st->band) * st->kBp) >> 25);
 	}
 	for (int i = 0; (i < 2) && st->kL[i]; i++) {
-		st->ll[i] += (st->lb[i] * st->kL[i]) >> 24;
-		long long high = x - st->ll[i] - ((st->lb[i] * st->kLQ[i]) >> 24);
-		st->lb[i] += (high * st->kL[i]) >> 24;
+		bf_svf(x, &st->ll[i], &st->lb[i], st->kL[i], st->kLQ[i]);
 		x = st->ll[i];
 	}
 	return (int)((x + (1 << 15)) >> 16);

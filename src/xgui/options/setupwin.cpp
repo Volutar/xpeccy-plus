@@ -2449,7 +2449,7 @@ void SetupWin::buildDevices() {
 	devRow(grid, tr("Beeper"), beepBox, NULL, NULL);
 	beepName = qobject_cast<QLabel*>(grid->itemAtPosition(grid->rowCount() - 1, 0)->widget());
 	beepName->setText(tr("Beeper (off)"));	// measured so (finishGroups)
-	connect(ui.chkBoardFilter, &QCheckBox::toggled, this, [this]() {showBoardFilter();});
+	connect(ui.chkBoardFilter, &QCheckBox::toggled, this, &SetupWin::showBoardFilter);
 	xOptSheet psg;
 	psg.field(tr("Chip"), cbPsgType);
 	psg.field(tr("Clock"), fieldPair(cbPsgFrq, labPsgMhz, false),

@@ -189,7 +189,7 @@ sndPair zx_mix(sndMix* m, sndVolume* sv) {
 	svol.left = lev;
 	svol.right = lev;
 	vol = snd_dc(&m->dc[0], svol, dc);
-	// 3:turbo sound, through the type's filter where the board mixes it in before it
+	// 3:turbo sound, through the board's mix filter (snd_beep_mixes)
 	svol = snd_dc(&m->dc[1], snd_mix_flt(m->pflt, tsGetVolume(m->ts), type, m->rate), dc);
 	vol.left += svol.left * sv->ay / 100;
 	vol.right += svol.right * sv->ay / 100;
