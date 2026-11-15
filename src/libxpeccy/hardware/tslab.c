@@ -883,7 +883,7 @@ static void ts_io_stall(Computer* comp, int port) {
 
 void tslOut(Computer* comp, int port, int val) {
 	ts_io_stall(comp, port);
-	zx_dev_wr(comp, port, val);
+	if (zx_dev_wr(comp, port, val) == IDE_HELD) return;
 	hwOut(tsPortMap, comp, port, val, 1);
 }
 

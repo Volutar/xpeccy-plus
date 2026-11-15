@@ -237,12 +237,16 @@ void zx_set_pal(Computer* comp) {
 
 // in
 
+// IDE_HELD when a card holding IORQGE took the port: a machine whose bus has the
+// line keeps its own ports out (the SMUC's and NemoIDE's ports are #FE's too on the
+// Pentagon); the +2A/+3 edge has none
 int zx_dev_wr(Computer* comp, int adr, int val) {
+	int res;
 	if (div_out(comp->div, adr, val)) return 1;
 	if (gsWrite(comp->gs, adr, val)) return 1;
 	if (!comp->flgBDI && saaWrite(comp->saa, adr, val)) return 1;
 	if (!comp->flgBDI && sdrvWrite(comp->sdrv, adr, val)) return 1;
-	if (ideOut(comp->ide, adr, val, comp->flgBDI)) return 1;
+	if ((res = ideOut(comp->ide, adr, val, comp->flgBDI))) return res;
 	if (ula_wr(comp->vid->ula, adr, val)) return 1;
 	return 0;
 }

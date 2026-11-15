@@ -772,10 +772,10 @@ void evoOut(Computer* comp, int port, int val) {
 	evo_shadow(comp);
 	evo_io_stall(comp, port);
 	evo_cache_clear(comp);
-	zx_dev_wr(comp, port, val);
+	int held = (zx_dev_wr(comp, port, val) == IDE_HELD);
 	if (comp->flgBDI && ((port & 0xff) == 0xfb))	// covox has no shadow term (zports.v covox_wr)
 		sdrvWrite(comp->sdrv, port, val);
-	hwOut(evoCfgPortMap, comp, port, val, 1);
+	if (!held) hwOut(evoCfgPortMap, comp, port, val, 1);
 }
 
 int evoIn(Computer* comp, int port) {

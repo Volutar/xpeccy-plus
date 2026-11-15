@@ -1275,9 +1275,9 @@ void comp_power_phase(Computer* comp) {
 
 // A divMMC takes the place of the disk systems: while it is on, the floppy and
 // hard disk interfaces are out of the machine, and they come back with their
-// drives and disks when it goes. The board owns #3Dxx, so TR-DOS (and SMUC with
-// it) never runs, and a +3 enters ROM 1 through #3D00 too; a Nemo IDE would
-// work beside it, but the rule is one for all.
+// drives and disks when it goes. The board owns #3Dxx, so TR-DOS (and the
+// original SMUC with it) never runs, and a +3 enters ROM 1 through #3D00 too; a
+// Nemo IDE or a SMUC 2.x would work beside it, but the rule is one for all.
 void comp_board_storage(Computer* comp) {
 	int out = (comp->div->model != DIV_NONE);
 	if (out) comp->zc->on = 0;		// one SD board at a time

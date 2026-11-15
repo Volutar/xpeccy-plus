@@ -60,13 +60,27 @@ void ataDestroy(ATADev* ata) {
 	free(ata);
 }
 
-void ataReset(ATADev* ata) {
-	ata->reg.state = HDF_DRDY | HDF_DSC;
-	ata->reg.err = 0x01;		// err contains 01 after reset (it means no errors detected)
+// what a reset and EXECUTE DEVICE DIAGNOSTIC leave: no error, and the ATA device
+// signature - count 1, sector 1, cylinder 0, device 0
+static void ata_signature(ATADev* ata) {
+	ata->reg.err = 0x01;
 	ata->reg.count = 0x01;
 	ata->reg.sec = 0x01;
 	ata->reg.cyl = 0x0000;
 	ata->reg.head = 0x00;
+}
+
+// a device after EXECUTE DEVICE DIAGNOSTIC: ready, nothing pending, its signature
+static void ata_diag(ATADev* ata) {
+	ata->reg.state = HDF_DRDY | HDF_DSC;
+	ata->buf.mode = HDB_IDLE;
+	ata->buf.pos = 0;
+	ata_signature(ata);
+}
+
+void ataReset(ATADev* ata) {
+	ata->reg.state = HDF_DRDY | HDF_DSC;
+	ata_signature(ata);
 	ata->buf.mode = HDB_IDLE;
 	ata->buf.pos = 0;
 	ata->idle = 0;
@@ -228,8 +242,8 @@ void ataExec(ATADev* dev, unsigned char cm) {
 				break;
 			case 0x50:			// format track; TODO: cyl = track; count = spt; drq=1; wait for buffer write, ignore(?) buffer; format track;
 				break;
-			case 0x90:			// execute drive diagnostic; FIXME: both drives must do this
-				dev->reg.err = 0x01;
+			case 0x90:			// execute device diagnostic; the other device: ide_ata_wr()
+				ata_signature(dev);
 				break;
 			case 0x91:			// initialize drive parameters; pass.spt = reg.count; pass.heads = (reg.head & 15) + 1;
 				dev->pass.spt = dev->reg.count;
@@ -329,7 +343,7 @@ void ataExec(ATADev* dev, unsigned char cm) {
 				ata_put_word(dev, 20, dev->pass.type);	// buffer type
 				ata_put_word(dev, 21, dev->pass.vol);	// buffer size
 				copyStringToBuffer(&dev->buf.data[46],dev->pass.mcver,8);	// microcode version (8 bytes)
-				copyStringToBuffer(&dev->buf.data[54],dev->pass.model,10);	// model (40 bytes)
+				copyStringToBuffer(&dev->buf.data[54],dev->pass.model,40);	// model (40 bytes)
 				dev->buf.data[99] = (dev->hasDMA ? 0x01 : 0x00) | (dev->hasLBA ? 0x02 : 0x00);	// lba/dma support
 				// words 54..58: the geometry in use, which 0x91 sets; 60..61: LBA sectors
 				ata_put_word(dev, 53, 0x0001);
@@ -578,9 +592,14 @@ static void ataCloseFile(ATADev* dev) {
 	dev->vfat = NULL;
 }
 
-// a folder serves the HDD boot sector written for this interface's ports
+// a folder serves the HDD boot sector written for this interface's ports; ZXLDR
+// has one for NemoIDE and one for ATM, none for the SMUC or the Profi
 static void ide_vfat_port(IDE* ide) {
-	int port = (ide->cfg == IDE_ATM) ? VF_PORT_ATM : VF_PORT_NEMO;
+	int port = -1;
+	switch (ide->cfg) {
+		case IDE_NEMO: case IDE_NEMOA8: case IDE_NEMO_EVO: port = VF_PORT_NEMO; break;
+		case IDE_ATM: port = VF_PORT_ATM; break;
+	}
 	if (ide->master->vfat) ide->master->vfat->hddport = port;
 	if (ide->slave->vfat) ide->slave->vfat->hddport = port;
 }
@@ -675,6 +694,21 @@ static void ide_select(IDE* ide, int adr, int val) {
 		ide->curDev = (val & HDF_DRV) ? ide->slave : ide->master;
 }
 
+// a register write; EXECUTE DEVICE DIAGNOSTIC runs on both devices and ends with
+// device 0 selected, whichever one it was given to
+static void ide_reg_wr(IDE* ide, int adr, int val) {
+	ide_select(ide, adr, val);
+	ataWr(ide->curDev, adr, val);
+	if ((adr == HDD_COM) && ((val & 0xff) == 0x90)) {
+		// given to an absent slave, ataWr() ran nothing: the master's INTRQ is raised here
+		int irq = !ata_present(ide->curDev) && ata_present(ide->master) && ide->master->inten;
+		ata_diag(ide->master);		// the one given it too: it may be an absent slave
+		ata_diag(ide->slave);
+		ide->curDev = ide->master;
+		if (irq) ide->master->xirq(ide->master->xid, ide->master->xptr);
+	}
+}
+
 void ide_ata_wr(IDE* ide, int adr, int hi, int val) {
 	if (hi) {
 		ide->bus &= 0xff;
@@ -682,8 +716,7 @@ void ide_ata_wr(IDE* ide, int adr, int hi, int val) {
 	} else {
 		ide->bus &= 0xff00;
 		ide->bus |= (val & 0xff);
-		ide_select(ide, adr, val);
-		ataWr(ide->curDev, adr, ide->bus);
+		ide_reg_wr(ide, adr, ide->bus);
 	}
 }
 
@@ -760,8 +793,7 @@ void ide_nemoevo_wr(IDE* ide, ataAddr adr, int val) {
 			}
 		} else {
 			ide->hiTrig = 0;		// non-data ports : next 10 is low
-			ide_select(ide, adr.port, val);
-			ataWr(ide->curDev, adr.port, val);
+			ide_reg_wr(ide, adr.port, val);
 		}
 	}
 }
@@ -801,9 +833,9 @@ ataAddr ide_nemoa8_decode(int port, int dosen, int wr) {
 #define SMUC_SYS	0xa000		// #FFBA
 #define SMUC_IDE	0xa004		// #F8BE..#FFBE
 
-ataAddr ide_smuc_decode(int port, int dosen, int wr) {
+static ataAddr smuc_decode(int port, int on) {
 	ataAddr res;
-	res.iorq = (((port & 0x18e3) == 0x18a2) && dosen) ? 1 : 0;
+	res.iorq = (((port & 0x18e3) == 0x18a2) && on) ? 1 : 0;
 	res.high = 0;
 	res.hdd = 0;
 	res.port = port & 0xa004;
@@ -818,6 +850,17 @@ ataAddr ide_smuc_decode(int port, int dosen, int wr) {
 	return res;
 }
 
+// The original 1.x answers only with TR-DOS paged (/DOS in its decode)
+ataAddr ide_smuc_decode(int port, int dosen, int wr) {
+	return smuc_decode(port, dosen);
+}
+
+// The home-made 2.x boards (2009 on) have /DOS out of the decode, or on a jumper
+// left off: the same ports in any ROM (Black_Cat's SMUC 2.1 and 2.2 schematics)
+ataAddr ide_smuc2_decode(int port, int dosen, int wr) {
+	return smuc_decode(port, 1);
+}
+
 // SYS bit 7 puts the drive's CS1 block where CS0 is: only its register 6,
 // alternate status / device control, is there
 static int smuc_ide_reg(IDE* ide, ataAddr adr) {
@@ -825,18 +868,20 @@ static int smuc_ide_reg(IDE* ide, ataAddr adr) {
 	return (adr.port == 6) ? HDD_ASTATE : -1;
 }
 
-// Version, revision, the empty PIC socket, the virtual FDD's spare bits and the
-// IDE reset are UnrealSpeccy's, which ProfROM works with (MAME differs); no SMUC
-// schematic has been found to check them
+// The empty PIC socket and the virtual FDD's spare bits are UnrealSpeccy's, which
+// ProfROM works with. Version and revision: D7 D6 D5 and D3 are the number, the rest
+// read 1; ProfROM says 1.2 for #3F/#57 and 2.0 for #57/#17 (the 2.x boards set
+// theirs with diodes or in the CPLD, Black_Cat's SMUC 2.1 schematic)
 int ide_smuc_rd(IDE* ide, ataAddr adr) {
+	int v2 = (ide->type == IDE_SMUC2);
 	int res = 0xff;
 	if (adr.hdd) {
 		int reg = smuc_ide_reg(ide, adr);
 		if (reg >= 0) res = ide_ata_rd(ide, reg, adr.high);
 	} else {
 		switch (adr.port) {
-			case SMUC_VER: res = 0x3f; break;
-			case SMUC_REV: res = 0x57; break;
+			case SMUC_VER: res = v2 ? 0x57 : 0x3f; break;
+			case SMUC_REV: res = v2 ? 0x17 : 0x57; break;
 			case SMUC_SYS: res = nvRd(ide->smuc.nv) ? 0xff : 0xbf; break;	// b6: SDA
 			case SMUC_VFDD: res = ide->smuc.fdd | 0x37; break;
 			case SMUC_PIC: res = 0x57; break;
@@ -853,7 +898,11 @@ void ide_smuc_wr(IDE* ide, ataAddr adr, int val) {
 	} else {
 		switch (adr.port) {
 			case SMUC_SYS:
-				if (val & 1) ideReset(ide);
+				// b0 is the drives' /RESET (SMUC 2.1 schematic: DD8 Q0). Taken as a write, not
+				// held: SYS starts at 0 here, and a program that never writes it would find
+				// the drives in reset for good. DD8's own reset is tied high, so SYS outlives
+				// the machine's.
+				if (!(val & 1)) ideReset(ide);
 				ide->smuc.sys = val;
 				nvWr(ide->smuc.nv, val & 0x10, val & 0x40);		// sda,scl
 				break;
@@ -920,6 +969,7 @@ int ideOut(IDE* ide, int port, int val,int dosen) {
 	if (ide->core) {
 		if (ide->core->write)
 			ide->core->write(ide, adr, val);
+		if (ide->core->iorqge) return IDE_HELD;
 	}
 	return 1;
 }
@@ -931,9 +981,12 @@ void ideReset(IDE* ide) {
 }
 
 IDECore ide_core_tab[] = {
-	{IDE_NEMO,	ide_nemo_decode,	ide_common_rd,	ide_common_wr},
-	{IDE_NEMOA8,	ide_nemoa8_decode,	ide_common_rd,	ide_common_wr},
-	{IDE_SMUC,	ide_smuc_decode,	ide_smuc_rd,	ide_smuc_wr},
+	// the cards on the bus hold IORQGE (a NemoIDE on ZX-BUS, VELESOFT on zx-pk.ru t=12658;
+	// a SMUC, its schematics); the boards' own controllers do not need to
+	{IDE_NEMO,	ide_nemo_decode,	ide_common_rd,	ide_common_wr,	1},
+	{IDE_NEMOA8,	ide_nemoa8_decode,	ide_common_rd,	ide_common_wr,	1},
+	{IDE_SMUC,	ide_smuc_decode,	ide_smuc_rd,	ide_smuc_wr,	1},
+	{IDE_SMUC2,	ide_smuc2_decode,	ide_smuc_rd,	ide_smuc_wr,	1},
 	{IDE_ATM,	ide_atm_decode,		ide_common_rd,	ide_common_wr},
 	{IDE_NEMO_EVO,	ide_nemoevo_decode,	ide_nemoevo_rd,	ide_nemoevo_wr},
 	{IDE_PROFI,	ide_profi_decode,	ide_common_rd,	ide_common_wr},

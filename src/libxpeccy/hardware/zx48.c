@@ -75,8 +75,10 @@ static xPort spePortMap[] = {
 
 void speOut(Computer* comp, int port, int val) {
 	difOut(comp->dif, port, val, comp->flgBDI);
-	zx_dev_wr(comp, port, val);
-	hwOut(spePortMap, comp, port, val, 1);
+	// IORQGE reaches the ULA only: #FE (the map's first row) is shut out, the AY's
+	// ports are not
+	int held = (zx_dev_wr(comp, port, val) == IDE_HELD);
+	hwOut(held ? spePortMap + 1 : spePortMap, comp, port, val, 1);
 }
 
 int speIn(Computer* comp, int port) {

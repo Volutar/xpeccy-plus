@@ -99,7 +99,7 @@ is skipped without a word.
 | key | value | |
 |---|---|---|
 | `disk` | `none` `trdos` `plus3` | disk interface |
-| `ide` | `none` `nemo` `nemo-a8` `nemo-evo` `smuc` `atm` `profi` | |
+| `ide` | `none` `nemo` `nemo-a8` `nemo-evo` `smuc` `smuc2` `atm` `profi` | `smuc` the original, its ports only while TR-DOS is paged; `smuc2` a home-made SMUC 2.x, the same ports in any ROM |
 | `drives` | 1..4 | floppy drives on the cable, from A; 2 if absent. A drive left out is not there at all: no disk goes in, and a restore finds no track 0 |
 
 ### `[input]`

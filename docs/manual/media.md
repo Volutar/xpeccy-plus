@@ -43,9 +43,14 @@ interface has two drives, A and B, and runs +3DOS.
 A machine with no disk interface of its own can be given one. Open the
 [Machine page](options-machine.md) of **Options** and pick it in the **Floppy disk** row: **None**, **Beta Disk (WD1793)** or
 **+3 (uPD765)**. The **Hard disk** row does the same for an IDE interface: **NemoIDE**,
-**NemoIDE A8**, **NemoIDE (ZX Evo)**, **SMUC**, **ATM Turbo** or **Profi**. An interface that
+**NemoIDE A8**, **NemoIDE (ZX Evo)**, **SMUC**, **SMUC 2.x**, **ATM Turbo** or **Profi**. An interface that
 is part of the machine's board cannot be changed: the list is grayed out, and its tooltip
 says **Built into this board**. A Beta Disk cannot be added to the +2A and +3.
+
+**SMUC** is the Scorpion's original board: its ports answer only while TR-DOS is paged in,
+so programs reach the hard disk through ProfROM. **SMUC 2.x** stands for the home-made boards
+made since 2009: the same ports answer in any ROM, as programs such as Z-Player and Demeter
+expect. ProfROM works with either, and calls the 2.x version 2.0.
 
 ## Cartridge
 
