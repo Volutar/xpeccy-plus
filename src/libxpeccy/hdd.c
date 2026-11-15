@@ -700,9 +700,12 @@ static void ide_reg_wr(IDE* ide, int adr, int val) {
 	ide_select(ide, adr, val);
 	ataWr(ide->curDev, adr, val);
 	if ((adr == HDD_COM) && ((val & 0xff) == 0x90)) {
+		// given to an absent slave, ataWr() ran nothing: the master's INTRQ is raised here
+		int irq = !ata_present(ide->curDev) && ata_present(ide->master) && ide->master->inten;
 		ata_diag(ide->master);		// the one given it too: it may be an absent slave
 		ata_diag(ide->slave);
 		ide->curDev = ide->master;
+		if (irq) ide->master->xirq(ide->master->xid, ide->master->xptr);
 	}
 }
 
