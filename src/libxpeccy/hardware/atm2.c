@@ -233,9 +233,9 @@ static xPort atm2PortMap[] = {
 
 void atm2Out(Computer* comp, int port, int val) {
 	if (~comp->p77hi & 2) comp->flgBDI = 1;
-	zx_dev_wr(comp, port, val);
+	int held = (zx_dev_wr(comp, port, val) == IDE_HELD);
 	difOut(comp->dif, port, val, comp->flgBDI);
-	hwOut(atm2PortMap, comp, port, val, 1);
+	if (!held) hwOut(atm2PortMap, comp, port, val, 1);
 }
 
 int atm2In(Computer* comp, int port) {

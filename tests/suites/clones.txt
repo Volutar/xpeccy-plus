@@ -49,6 +49,14 @@ stag_scorptp    scorptp   auto  3000  300     disk/zxstgdak.trd
 # take #04D0 of ROM plane 1, where the monitor runs), H its hard disk utility
 smuc_scorptp    scorptp   boot  1350  100                                           keys:880:C6,900:E,1300:nmi
 smuchdd_scorptp scorptp   boot  1450  100                                           keys:880:C6,900:E,1300:nmi,1400:h
+# the same two on SMUC 2.x, whose ports are open outside TR-DOS: ProfROM finds it as the original
+smuc2_scorptp   scorptp   boot  1350  100                                           mac:storage.ide=smuc2 keys:880:C6,900:E,1300:nmi
+smuc2hdd_scorptp scorptp  boot  1450  100                                           mac:storage.ide=smuc2 keys:880:C6,900:E,1300:nmi,1400:h
+# Demeter 1.00 (PLM), set to SMUC v2 and its ID check off: the master on SMUC 2.x, nothing on the original
+smuc2_demeter_scorptp scorptp auto 3000 10    smuc/demeter_noid.trd                 hdd:smuc/hdd cfg:MEDIA.hdd.master.type=1 cfg:MEDIA.hdd.master.lba=yes mac:storage.ide=smuc2 keys:1500:_
+smuc_demeter_scorptp scorptp auto 3000 10     smuc/demeter_noid.trd                 hdd:smuc/hdd cfg:MEDIA.hdd.master.type=1 cfg:MEDIA.hdd.master.lba=yes keys:1500:_
+# Z-Player 5.1 for GS: the hard disk is drive E: on SMUC 2.x
+smuc2_zplay_scorptp scorptp auto 5000 10      smuc/zplay51.trd                      hdd:smuc/hdd cfg:MEDIA.hdd.master.type=1 cfg:MEDIA.hdd.master.lba=yes mac:sound.gs=yes mac:storage.ide=smuc2 keys:2500:E
 boot_atm        atm2      boot  0     400
 dwot_atm        atm2      auto  3000  300     disk/dwot.trd
 stag_atm        atm2      auto  3000  300     disk/zxstgdak.trd

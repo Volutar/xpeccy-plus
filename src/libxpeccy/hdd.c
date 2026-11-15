@@ -806,9 +806,9 @@ ataAddr ide_nemoa8_decode(int port, int dosen, int wr) {
 #define SMUC_SYS	0xa000		// #FFBA
 #define SMUC_IDE	0xa004		// #F8BE..#FFBE
 
-ataAddr ide_smuc_decode(int port, int dosen, int wr) {
+static ataAddr smuc_decode(int port, int on) {
 	ataAddr res;
-	res.iorq = (((port & 0x18e3) == 0x18a2) && dosen) ? 1 : 0;
+	res.iorq = (((port & 0x18e3) == 0x18a2) && on) ? 1 : 0;
 	res.high = 0;
 	res.hdd = 0;
 	res.port = port & 0xa004;
@@ -821,6 +821,17 @@ ataAddr ide_smuc_decode(int port, int dosen, int wr) {
 		res.port = HDD_DATA;
 	}
 	return res;
+}
+
+// The original 1.x answers only with TR-DOS paged (/DOS in its decode)
+ataAddr ide_smuc_decode(int port, int dosen, int wr) {
+	return smuc_decode(port, dosen);
+}
+
+// The home-made 2.x boards (2009 on) have /DOS out of the decode, or on a jumper
+// left off: the same ports in any ROM (Black_Cat's SMUC 2.1 and 2.2 schematics)
+ataAddr ide_smuc2_decode(int port, int dosen, int wr) {
+	return smuc_decode(port, 1);
 }
 
 // SYS bit 7 puts the drive's CS1 block where CS0 is: only its register 6,
@@ -925,6 +936,7 @@ int ideOut(IDE* ide, int port, int val,int dosen) {
 	if (ide->core) {
 		if (ide->core->write)
 			ide->core->write(ide, adr, val);
+		if (ide->core->iorqge) return IDE_HELD;
 	}
 	return 1;
 }
@@ -938,7 +950,8 @@ void ideReset(IDE* ide) {
 IDECore ide_core_tab[] = {
 	{IDE_NEMO,	ide_nemo_decode,	ide_common_rd,	ide_common_wr},
 	{IDE_NEMOA8,	ide_nemoa8_decode,	ide_common_rd,	ide_common_wr},
-	{IDE_SMUC,	ide_smuc_decode,	ide_smuc_rd,	ide_smuc_wr},
+	{IDE_SMUC,	ide_smuc_decode,	ide_smuc_rd,	ide_smuc_wr,	1},
+	{IDE_SMUC2,	ide_smuc2_decode,	ide_smuc_rd,	ide_smuc_wr,	1},
 	{IDE_ATM,	ide_atm_decode,		ide_common_rd,	ide_common_wr},
 	{IDE_NEMO_EVO,	ide_nemoevo_decode,	ide_nemoevo_rd,	ide_nemoevo_wr},
 	{IDE_PROFI,	ide_profi_decode,	ide_common_rd,	ide_common_wr},

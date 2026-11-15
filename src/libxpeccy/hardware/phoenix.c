@@ -167,7 +167,7 @@ void phxOut(Computer* comp, int port, int val) {
 	}
 	if (difOut(comp->dif, port, val, comp->flgBDI)) return;
 	if (ideOut(comp->ide, port, val, 0)) return;		// Nemo ahead of zx_dev_wr's, which TR-DOS shuts out
-	zx_dev_wr(comp, port, val);
+	if (zx_dev_wr(comp, port, val) == IDE_HELD) return;
 	hwOut(phxPortMap, comp, port, val, 1);
 }
 

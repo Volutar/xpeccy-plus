@@ -20,8 +20,13 @@ enum {
 	IDE_SMUC,
 	IDE_ATM,
 	IDE_NEMO_EVO,	// with hi/low trigger
-	IDE_PROFI
+	IDE_PROFI,
+	IDE_SMUC2	// SMUC 2.x: the same board, its ports open outside TR-DOS
 };
+
+#define IDE_HELD	2	// ideOut(): taken by a card that holds IORQGE
+
+static inline int ide_is_smuc(int id) {return (id == IDE_SMUC) || (id == IDE_SMUC2);}
 // device select (+ IDE_NONE)
 enum {
 	IDE_MASTER = 1,
@@ -146,6 +151,7 @@ typedef struct {
 	ataAddr(*decode)(int, int, int);
 	int(*read)(IDE*, ataAddr);
 	void(*write)(IDE*, ataAddr, int);
+	int iorqge;		// holds IORQGE on its ports: the machine's own decoders stay off
 } IDECore;
 
 struct IDE {

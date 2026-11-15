@@ -695,6 +695,9 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	hiface->addItem("NemoIDE A8",IDE_NEMOA8);
 	hiface->addItem("NemoIDE (ZX Evo)",IDE_NEMO_EVO);
 	hiface->addItem("SMUC",IDE_SMUC);
+	hiface->setItemData(hiface->count() - 1, tr("The Scorpion's original: its ports\nanswer only while TR-DOS is paged in"), Qt::ToolTipRole);
+	hiface->addItem("SMUC 2.x",IDE_SMUC2);
+	hiface->setItemData(hiface->count() - 1, tr("The home-made boards: the same ports\nanswer in any ROM"), Qt::ToolTipRole);
 	hiface->addItem("ATM Turbo",IDE_ATM);
 	hiface->addItem("Profi",IDE_PROFI);
 	hm_type->addItem(QIcon(":/images/cancel.png"),"Not connected",IDE_NONE);

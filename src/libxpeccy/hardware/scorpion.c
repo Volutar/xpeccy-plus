@@ -211,8 +211,8 @@ static xPort scrptpPortMap[] = {
 static void sco_out(Computer* comp, int port, int val, xPort* map) {
 	int zc = zc_out(comp->zc, port, val, comp->flgDOS);
 	difOut(comp->dif, port, val, comp->flgBDI);
-	zx_dev_wr(comp, port, val);
-	if (!zc) hwOut(map, comp, port, val, 1);
+	int held = (zx_dev_wr(comp, port, val) == IDE_HELD);	// SMUC's IORQGE
+	if (!zc && !held) hwOut(map, comp, port, val, 1);
 }
 
 // The Kempston mouse is a card on the bus and holds IORQGE, which shuts the

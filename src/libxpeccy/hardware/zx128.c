@@ -44,7 +44,7 @@ static xPort z128PortMap[] = {
 
 void z128Out(Computer* comp, int port, int val) {
 	difOut(comp->dif, port, val, comp->flgBDI);
-	zx_dev_wr(comp, port, val);
+	if (zx_dev_wr(comp, port, val) == IDE_HELD) return;
 	hwOut(z128PortMap, comp, port, val, 1);
 }
 

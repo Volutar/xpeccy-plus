@@ -128,7 +128,7 @@ static xMacWord divTab[] = {
 static xMacWord ideTab[] = {
 	{"none", IDE_NONE}, {"nemo", IDE_NEMO}, {"nemo-a8", IDE_NEMOA8},
 	{"nemo-evo", IDE_NEMO_EVO}, {"smuc", IDE_SMUC}, {"atm", IDE_ATM},
-	{"profi", IDE_PROFI}, {NULL, 0}
+	{"profi", IDE_PROFI}, {"smuc2", IDE_SMUC2}, {NULL, 0}
 };
 
 // what a machine's PC keyboard talks; "none" leaves the core's own type alone
@@ -861,7 +861,7 @@ static void xm_load_nvram() {
 void xm_save_nvram() {
 	if (conf.macId.empty()) return;
 	mac_nv_write(mac_nv_path(".cmos"), conf.zx->cmos.data, 256);
-	if (conf.zx->ide->cfg == IDE_SMUC)		// kept while the board has it out
+	if (ide_is_smuc(conf.zx->ide->cfg))		// kept while the board has it out
 		mac_nv_write(mac_nv_path(".nvram"), conf.zx->ide->smuc.nv->mem, NV_SIZE);
 	if (conf.zx->hw && (conf.zx->hw->id == HW_ZXNEXT)) {
 		unsigned char nv[DS_NV_SIZE];

@@ -51,7 +51,7 @@ static xPort p3PortMap[] = {
 };
 
 void pl3Out(Computer* comp, int port, int val) {
-	zx_dev_wr(comp, port, val);
+	if (zx_dev_wr(comp, port, val) == IDE_HELD) return;
 	hwOut(p3PortMap, comp, port, val, 1);
 }
 

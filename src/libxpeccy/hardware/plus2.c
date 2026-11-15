@@ -84,7 +84,7 @@ static xPort p2PortMap[] = {
 };
 
 void pl2Out(Computer* comp, int port, int val) {
-	zx_dev_wr(comp, port, val);
+	if (zx_dev_wr(comp, port, val) == IDE_HELD) return;
 	hwOut(p2PortMap, comp, port, val, 1);
 }
 
