@@ -36,10 +36,18 @@ static int flt(sndBeepFlt* st, int x, int type, int rate) {
 	return (chain == BF_MIX) ? snd_beep_run(st, x, type, rate, BF_MIX) : snd_beep_flt(st, x, type, rate);
 }
 
-// a fresh filter, settled on a level
-static void settle(sndBeepFlt* st, int type, int rate, int lev) {
+// a fresh filter on a chain, settled on a level
+static void settle_in(sndBeepFlt* st, int type, int rate, int lev, int ch) {
 	st->type = -1;
-	flt(st, lev, type, rate);
+	if (ch == BF_MIX)
+		snd_beep_run(st, lev, type, rate, BF_MIX);
+	else
+		snd_beep_flt(st, lev, type, rate);
+}
+
+// ...on the chain the helpers run
+static void settle(sndBeepFlt* st, int type, int rate, int lev) {
+	settle_in(st, type, rate, lev, chain);
 }
 
 // sub-samples a step from 'from' to 'to' takes to go 63.2 % of the way, as Hz
@@ -289,8 +297,7 @@ static void coefficients(void) {
 			settle(&st, t, outRates[i], 0);
 			printf("%d %d: %lld %lld %lld %lld %lld\n", outRates[i] / 32, t, st.kUp, st.kDn, st.kHp, st.kF, st.kQ);
 			if (!snd_beep_mixes(t)) continue;
-			st.type = -1;
-			snd_beep_run(&st, 0, t, outRates[i], BF_MIX);
+			settle_in(&st, t, outRates[i], 0, BF_MIX);
 			printf("%d %d mix: %lld %lld %lld %lld %lld\n", outRates[i] / 32, t, st.kUp, st.kDn, st.kHp, st.kF, st.kQ);
 		}
 	}
@@ -317,10 +324,30 @@ static void coefficients_by_speed(void) {
 				printf("%d %d/%d %d: %lld %lld %lld %lld %lld\n", outRates[i] / 32, speeds[s].num, speeds[s].den,
 					t, st.kUp, st.kDn, st.kHp, st.kF, st.kQ);
 				if (!snd_beep_mixes(t)) continue;
-				st.type = -1;
-				snd_beep_run(&st, 0, t, speed_rate(outRates[i], s), BF_MIX);
+				settle_in(&st, t, speed_rate(outRates[i], s), 0, BF_MIX);
 				printf("%d %d/%d %d mix: %lld %lld %lld %lld %lld\n", outRates[i] / 32, speeds[s].num, speeds[s].den,
 					t, st.kUp, st.kDn, st.kHp, st.kF, st.kQ);
+			}
+		}
+	}
+}
+
+// every coefficient (the 2-pole low-passes' and the band's too) of every type and chain,
+// the experimental ones included, at both rates and every speed (-1: 1x)
+static void coefficients_all(void) {
+	printf("== all coefficients\n");
+	for (int s = -1; s < 7; s++) {
+		for (int i = 0; i < 2; i++) {
+			int rate = (s < 0) ? outRates[i] : speed_rate(outRates[i], s);
+			for (int t = BEEP_LINE + 1; t < BEEP_ALL; t++) {
+				for (int ch = BF_BEEP; ch <= BF_MIX; ch++) {
+					if ((ch == BF_MIX) && !snd_beep_mixes(t)) continue;
+					sndBeepFlt st;
+					settle_in(&st, t, rate, 0, ch);
+					printf("%d %d/%d %d%s: %lld %lld %lld %lld %lld %lld %lld %lld %lld %lld\n", outRates[i] / 32,
+						(s < 0) ? 1 : speeds[s].num, (s < 0) ? 1 : speeds[s].den, t, ch ? " mix" : "",
+						st.kUp, st.kDn, st.kHp, st.kF, st.kQ, st.kBp, st.kL[0], st.kLQ[0], st.kL[1], st.kLQ[1]);
+				}
 			}
 		}
 	}
@@ -371,19 +398,79 @@ static void by_speed(void) {
 	}
 }
 
+// the experimental types at every other speed
+static void experimental_by_speed(void) {
+	printf("== experimental by speed\n");
+	for (int s = 0; s < 7; s++) {
+		for (int i = 0; i < 2; i++) {
+			int rate = speed_rate(outRates[i], s);
+			double s250 = gain(BEEP_X_SPK250, rate, 250), s750 = gain(BEEP_X_SPK750, rate, 750);
+			// the low-passes at 10 kHz, or faster where 10 kHz heard is lower: at a coarse sub-rate
+			// Chamberlin's response drifts at the top (x16: 0.31 for 0.24 at 10 kHz, -2.6 % at 1.25)
+			double sp = (double)speeds[s].num / speeds[s].den, hz = (sp > 1) ? 10000 / sp : 10000;
+			double tol = (sp > 1) ? 0.02 : 0.005;
+			double l1 = gain(BEEP_X_LP5_1, rate, hz), l2 = gain(BEEP_X_LP5_2, rate, hz);
+			double l4 = gain(BEEP_X_LP5_4, rate, hz), l4c = gain(BEEP_X_LP5_4, rate, 5000);
+			printf("%d/%d %d: speaker 250 %.3f, 750 %.3f; 5 kHz at %.0f Hz %.4f %.4f %.4f, 4 poles at 5 kHz %.4f\n",
+				speeds[s].num, speeds[s].den, outRates[i] / 32, s250, s750, hz, l1, l2, l4, l4c);
+			check("as built", near(s250, sqrt(0.5), 0.02) && near(s750, sqrt(0.5), 0.02)
+				&& (fabs(l1 - butter(hz, 5000, 1)) < tol) && (fabs(l2 - butter(hz, 5000, 2)) < tol)
+				&& (fabs(l4 - butter(hz, 5000, 4)) < tol) && (fabs(l4c - sqrt(0.5)) < 0.005));
+			int ok = (held(BEEP_X_SPK0, rate, LEV) == LEV) && (held(BEEP_X_SPK250, rate, LEV) == 0)
+				&& (held(BEEP_X_SPK750, rate, LEV) == 0);
+			for (int t = BEEP_X_LP5_1; t <= BEEP_X_LP5_4; t++)
+				ok &= (held(t, rate, LEV) == LEV) && (held(t, rate, -LEV) == -LEV);
+			check("held levels: through the low-passes, gone from the bass cuts", ok);
+		}
+	}
+}
+
+// the PSG's chain at every other speed
+static void mix_by_speed(void) {
+	printf("== mix by speed\n");
+	chain = BF_MIX;
+	for (int s = 0; s < 7; s++) {
+		for (int i = 0; i < 2; i++) {
+			int rate = speed_rate(outRates[i], s);
+			double tv = pole_fc(BEEP_TV, rate, 0, LEV, 0), p3 = gain(BEEP_PLUS3, rate, 1000);
+			printf("%d/%d %d: tv %.0f, plus3 at 1 kHz %.3f\n", speeds[s].num, speeds[s].den, outRates[i] / 32, tv, p3);
+			check("cut-offs as built", near(tv, 3183, 0.01) && near(p3, lp1(1000, 2500) * hp1(1000, 150), 0.02));
+			check("held levels: through TV, gone from +2A/+3", (held(BEEP_TV, rate, LEV) == LEV)
+				&& (held(BEEP_TV, rate, -LEV) == -LEV) && (held(BEEP_PLUS3, rate, LEV) == 0));
+		}
+	}
+	chain = BF_BEEP;
+}
+
 // a 1 kHz square in the machine's time; the rate goes from 'from' to 'to' (> 0) at sub-sample 'at'
 static int tone_at(sndBeepFlt* st, int type, int n, int at, int from, int to) {
 	int rate = ((to > 0) && (n >= at)) ? to : from;
 	double sec = (rate == from) ? (double)n / from : (double)at / from + (double)(n - at) / to;
 	int x = ((long long)(sec * 2000) & 1) ? LEV : 0;
-	return snd_beep_flt(st, x, type, rate);
+	return flt(st, x, type, rate);
 }
 
 // 1x -> 1/8, 1x -> x16, x16 -> 1x 20 us after an edge: no step past a sub-sample's move, no swell after
+static int no_step(int t);
+
 static void speed_change(void) {
-	int rate = 44100 * 32;
 	printf("== speed change mid-note\n");
+	for (int t = BEEP_LINE + 1; t < BEEP_ALL; t++) {
+		printf("%d: ", t);
+		check("no step", no_step(t));
+	}
+	chain = BF_MIX;
 	for (int t = BEEP_LINE + 1; t < BEEP_TYPES; t++) {
+		if (!snd_beep_mixes(t)) continue;
+		printf("%d mix: ", t);
+		check("no step", no_step(t));
+	}
+	chain = BF_BEEP;
+}
+
+static int no_step(int t) {
+	int rate = 44100 * 32;
+	{
 		int ok = 1;
 		for (int p = 0; p < 3; p++) {
 			int from = (p == 2) ? rate / 16 : rate;
@@ -402,7 +489,8 @@ static void speed_change(void) {
 			int na = tone_at(&a, t, at + 1, at, from, to);
 			int move = abs(yb - pb);
 			if (abs(na - ya) > move) move = abs(na - ya);
-			ok &= (abs(ya - yb) <= 2 * move + 2);
+			// a 2-pole bass cut curves within one x16 step (750 Hz: 2.2 moves); a resettle is 25
+			ok &= (abs(ya - yb) * 2 <= 5 * move + 4);
 			// and the ms after: no swell either, the resonator's kept state included
 			int pa = abs(na);
 			for (int n = at + 1; n < at + from / 1000; n++) {
@@ -413,8 +501,7 @@ static void speed_change(void) {
 			}
 			ok &= (pa <= peak * 5 / 4 + 2);
 		}
-		printf("%d: ", t);
-		check("no step", ok);
+		return ok;
 	}
 }
 
@@ -437,6 +524,17 @@ int main(void) {
 	for (int n = 0; n < 48000 * 32 / 10; n++) snd_beep_flt(&st, LEV, BEEP_SCORPION, 48000 * 32);
 	for (int n = 0; n < 1000; n++) snd_beep_flt(&st, 0, BEEP_LINE, 48000 * 32);
 	check("a type taken again settles anew", snd_beep_flt(&st, 0, BEEP_SCORPION, 48000 * 32) == 0);
+	printf("== board switch\n");
+	sndVolume sv = {0};
+	int off = 1, on = 1;
+	for (int t = BEEP_LINE; t < BEEP_ALL; t++) {
+		sv.board = 0;
+		off &= (snd_board_type(t, &sv) == BEEP_LINE);
+		sv.board = 1;
+		on &= (snd_board_type(t, &sv) == t);
+	}
+	check("Board filters off: line out for every type", off);
+	check("on: the machine's type", on);
 	speaker();
 	lowpass("tv", BEEP_TV, 3183, 3183);
 	band("plus3", BEEP_PLUS3, 2500, 340);
@@ -447,6 +545,9 @@ int main(void) {
 	mix();
 	experimental();
 	by_speed();
+	experimental_by_speed();
+	mix_by_speed();
 	speed_change();
+	coefficients_all();
 	return failures ? 1 : 0;
 }
