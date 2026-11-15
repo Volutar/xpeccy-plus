@@ -668,6 +668,10 @@ int main(int ac,char** av) {
 #if !defined(__APPLE__)
 	sdlFlags |= SDL_INIT_VIDEO;
 #endif
+#ifdef _WIN32
+	// raw input and device notices on SDL's own thread, not through this one's message loop
+	SDL_SetHint(SDL_HINT_JOYSTICK_THREAD, "1");
+#endif
 	if (SDL_Init(sdlFlags) < 0)		// the subsystems that did start stay up
 		xlog(XLG_APP, XLL_WARN, "SDL_Init: %s", SDL_GetError());
 	atexit(SDL_Quit);
