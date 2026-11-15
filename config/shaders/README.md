@@ -2,8 +2,8 @@
 
 GLSL post-processing filters, drawn through OpenGL: none with `--no-gl` or without an
 OpenGL 3.3 driver (OpenGL ES 3.0). Pick one in Options - Video, or set
-`shader = <file>` in `config/config.conf`. The bundled default is `tvline-nocurve-light.txt`.
-An empty `shader =` turns filtering off.
+`shader = <file>` in `config/config.conf`. A fresh config starts with `tvline-nocurve-light.txt`;
+an empty or missing `shader` line turns filtering off.
 
 Like the ROM images, **these files are not covered by the MIT license of Xpeccy+** - each one
 keeps the terms of its own author, listed below.
