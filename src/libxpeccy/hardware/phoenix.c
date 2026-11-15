@@ -17,19 +17,20 @@ void phxMapMem(Computer* comp) {
 	// DD21/DD23, DD31/DD32: 7FFD.0-2, then 1FFD.4, 7FFD.7, 1FFD.7 and 1FFD.6, the second SIMM
 	int bank = (comp->p7FFD & 7) | ((comp->p1FFD & 0x10) >> 1) | ((comp->p7FFD & 0x80) >> 3) | ((comp->p1FFD & 0x80) >> 2) | (comp->p1FFD & 0x40);
 	memSetBank(comp->mem, 0xc0, MEM_RAM, bank, MEM_16K, NULL, NULL, NULL);
-	if (comp->p1FFD & 1) {
-		memSetBank(comp->mem, 0x00, MEM_RAM, 0, MEM_16K, NULL, NULL, NULL);
-		return;
-	}
 	// RA14 = 7FFD.4 & !1FFD.1, RA15 = !1FFD.1 & (DOS/ ^ 1FFD.3): service, TR-DOS, Basic 128, Basic 48
 	int page = 0;
 	if (!(comp->p1FFD & 2)) {
 		page = comp->flgROM ? 1 : 0;
-		if ((comp->flgDOS ? 0 : 1) ^ ((comp->p1FFD >> 3) & 1)) page |= 2;
+		if (!comp->flgDOS ^ ((comp->p1FFD >> 3) & 1)) page |= 2;
 	}
 	// DD71: the set is the register's, but 1 in TR-DOS; a 64K image is every set
 	int set = comp->flgDOS ? 1 : (comp->p37 & 7);
-	memSetBank(comp->mem, 0x00, MEM_ROM, (set << 2) | page, MEM_16K, NULL, NULL, NULL);
+	// not the 48 basic for the tape traps: another page, or a set that is not TR-DOS's own
+	comp->flgEXT = ((page != 3) || (((set ^ 1) << 16) & comp->mem->romMask)) ? 1 : 0;
+	if (comp->p1FFD & 1)
+		memSetBank(comp->mem, 0x00, MEM_RAM, 0, MEM_16K, NULL, NULL, NULL);
+	else
+		memSetBank(comp->mem, 0x00, MEM_ROM, (set << 2) | page, MEM_16K, NULL, NULL, NULL);
 }
 
 // hw->init runs again on every turbo change: a debt from the old speed goes
@@ -38,9 +39,7 @@ static void phx_init(Computer* comp) {
 	comp->waitDebt = comp->waitPaid = 0;
 }
 
-// The board's reset clears #7FFD, #1FFD, #37 and #EFF7 and comes up in the system ROM of
-// set 0. Basic 48 and TR-DOS are the emulator's short cuts into set 1, as compReset left
-// them; the service page is a program the menu calls, not a place to reset into
+// the board's reset starts the system ROM of set 0; Basic 48 and TR-DOS are short cuts into set 1, the service page is no target
 void phxReset(Computer* comp) {
 	if (!comp->flgROM) comp->flgDOS = 0;
 	comp->p37 = comp->flgROM ? 1 : 0;
@@ -53,8 +52,7 @@ static void phx_snapmap(Computer* comp) {
 	phxMapMem(comp);
 }
 
-// Turbo (DD50.2, DD72): the XP20 switch - hwMul - counts while DOSEN/ is high; the memory is
-// always on the 7 MHz timing, so nothing waits, and cont is there for comp_owe's debt alone
+// turbo (DD50.2): the XP20 switch, hwMul, counts while DOSEN/ is high; nothing waits, cont is there for comp_owe's debt
 static void phx_cont(Computer* comp, int mreq) {
 }
 
@@ -63,8 +61,7 @@ void phxSync(Computer* comp, int ns) {
 	zx_sync(comp, ns);
 }
 
-// DD6.2: INT falls at the end of the frame sync and rises with H6M, which is H5 in turbo:
-// 32 cpu ticks at either speed
+// DD6.2: INT rises with H6M, which is H5 in turbo: 32 cpu ticks at either speed
 void phx_irq(Computer* comp, int t) {
 	zx_irq(comp, t);
 	if ((t != IRQ_VID_INT) && (t != IRQ_RZX_INT)) return;
@@ -103,9 +100,7 @@ int phxInVer(Computer* comp, int port) {
 	return 0x1c;
 }
 
-// The clock, Gluk's ports (0x3A6): the register number is taken at any time, the data port
-// is there with bit 7 of #EFF7. The AVR answers A, B and D by itself; registers from #0E are
-// its EEPROM, 256 of them
+// the clock on Gluk's ports (0x3A6): data behind #EFF7 b7; A, B, D are the AVR's own answers, cells from #0E its EEPROM
 static int phx_clock_on(Computer* comp) {
 	return comp->flgGLUK && (comp->pEFF7 & 0x80);
 }
@@ -114,12 +109,10 @@ void phxOutDFF7(Computer* comp, int port, int val) {
 	if (comp->flgGLUK) comp->cmos.adr = val & 0xff;
 }
 
+// a write to A or B changes nothing the AVR answers: kept out of the cells cmos_rd reads the time by
 void phxOutBFF7(Computer* comp, int port, int val) {
-	if (!phx_clock_on(comp)) return;
-	if (comp->cmos.adr < 0x0e)
+	if (phx_clock_on(comp) && (comp->cmos.adr != 0x0a) && (comp->cmos.adr != 0x0b))
 		cmos_wr(&comp->cmos, CMOS_DATA, val);
-	else
-		comp->cmos.data[comp->cmos.adr] = val & 0xff;
 }
 
 int phxInBFF7(Computer* comp, int port) {
@@ -129,8 +122,7 @@ int phxInBFF7(Computer* comp, int port) {
 		case 0x0b: return 0x02;
 		case 0x0d: return 0x00;
 	}
-	if (comp->cmos.adr < 0x0e) return cmos_rd(&comp->cmos, CMOS_DATA);
-	return comp->cmos.data[comp->cmos.adr];
+	return cmos_rd(&comp->cmos, CMOS_DATA);
 }
 
 static xPort phxPortMap[] = {
@@ -174,7 +166,7 @@ void phxOut(Computer* comp, int port, int val) {
 			return;
 	}
 	if (difOut(comp->dif, port, val, comp->flgBDI)) return;
-	if (ideOut(comp->ide, port, val, 0)) return;		// Nemo, in TR-DOS as well
+	if (ideOut(comp->ide, port, val, 0)) return;		// Nemo ahead of zx_dev_wr's, which TR-DOS shuts out
 	zx_dev_wr(comp, port, val);
 	hwOut(phxPortMap, comp, port, val, 1);
 }
@@ -189,7 +181,7 @@ int phxIn(Computer* comp, int port) {
 			return 0xff;		// DD71 drives the bus for #57 alone
 	}
 	if (difIn(comp->dif, port, &res, comp->flgBDI)) return res;
-	if (ideIn(comp->ide, port, &res, 0)) return res;
+	if (ideIn(comp->ide, port, &res, 0)) return res;	// ...as on the way out
 	if (zx_dev_rd_bus(comp, port, &res)) return res;
 	return hwIn(phxPortMap, comp, port);
 }

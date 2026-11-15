@@ -92,8 +92,7 @@ static const asKey as_scorpion[] = {
 	{ZK_QUOTE, AS_KEY_GAP}, {ZK_QUOTE, AS_KEY_GAP},
 	{ZK_ENTER, 0}, {NULL, 0}
 };
-// phoenix: the menu of the ROM for revision 07 has no tape entry, and 128 BASIC is
-// the third item there as in BIOS 5.03
+// phoenix: no tape entry in the revision 07 ROM's menu; 128 BASIC is third there and in BIOS 5.03
 static const asKey as_phoenix[] = {
 	{ZK_DOWN, AS_KEY_GAP}, {ZK_DOWN, AS_KEY_GAP}, {ZK_ENTER, AS_MENU_GAP},
 	{"l", AS_KEY_GAP}, {"o", AS_KEY_GAP},
