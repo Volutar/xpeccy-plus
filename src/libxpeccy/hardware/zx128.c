@@ -44,8 +44,10 @@ static xPort z128PortMap[] = {
 
 void z128Out(Computer* comp, int port, int val) {
 	difOut(comp->dif, port, val, comp->flgBDI);
-	if (zx_dev_wr(comp, port, val) == IDE_HELD) return;
-	hwOut(z128PortMap, comp, port, val, 1);
+	// IORQGE reaches the ULA only: #FE (the map's first row) is shut out, #7FFD and the
+	// AY's ports are not (VELESOFT, zx-pk.ru t=12658)
+	int held = (zx_dev_wr(comp, port, val) == IDE_HELD);
+	hwOut(held ? z128PortMap + 1 : z128PortMap, comp, port, val, 1);
 }
 
 int z128In(Computer* comp, int port) {

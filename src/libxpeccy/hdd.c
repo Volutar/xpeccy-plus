@@ -895,7 +895,11 @@ void ide_smuc_wr(IDE* ide, ataAddr adr, int val) {
 	} else {
 		switch (adr.port) {
 			case SMUC_SYS:
-				if (!(val & 1)) ideReset(ide);	// b0 is the drives' /RESET (SMUC 2.1 schematic: DD8 Q0)
+				// b0 is the drives' /RESET (SMUC 2.1 schematic: DD8 Q0). Taken as a write, not
+				// held: SYS starts at 0 here, and a program that never writes it would find
+				// the drives in reset for good. DD8's own reset is tied high, so SYS outlives
+				// the machine's.
+				if (!(val & 1)) ideReset(ide);
 				ide->smuc.sys = val;
 				nvWr(ide->smuc.nv, val & 0x10, val & 0x40);		// sda,scl
 				break;
