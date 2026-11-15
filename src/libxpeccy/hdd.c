@@ -584,9 +584,14 @@ static void ataCloseFile(ATADev* dev) {
 	dev->vfat = NULL;
 }
 
-// a folder serves the HDD boot sector written for this interface's ports
+// a folder serves the HDD boot sector written for this interface's ports; ZXLDR
+// has one for NemoIDE and one for ATM, none for the SMUC or the Profi
 static void ide_vfat_port(IDE* ide) {
-	int port = (ide->cfg == IDE_ATM) ? VF_PORT_ATM : VF_PORT_NEMO;
+	int port = -1;
+	switch (ide->cfg) {
+		case IDE_NEMO: case IDE_NEMOA8: case IDE_NEMO_EVO: port = VF_PORT_NEMO; break;
+		case IDE_ATM: port = VF_PORT_ATM; break;
+	}
 	if (ide->master->vfat) ide->master->vfat->hddport = port;
 	if (ide->slave->vfat) ide->slave->vfat->hddport = port;
 }
