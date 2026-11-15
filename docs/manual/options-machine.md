@@ -205,6 +205,18 @@ The low-pass and high-pass filters here are one pole, 6 dB an octave, unless the
 two. The other sound devices - General Sound, the SAA1099, Covox and Soundrive - have outputs
 of their own on every board and are never filtered.
 
+```{index} beeper; experimental filters, PWM music
+```
+
+Under **EXPERIMENTAL** at the end of the list are filters to try by ear. They may change or go
+in a later version:
+
+| Choice | What it does |
+|---|---|
+| **48K speaker, no bass cut** / **bass cut 250 Hz** / **bass cut 750 Hz** | the **48K speaker** with its bass cut moved: none, lower, or higher than its 500 Hz |
+| **Piezo, 6 dB/oct** / **Q 2** / **Q 1.5** | a piezo whose bass falls off more gently, so a tune comes through; the lower Q rings less at 4.1 kHz |
+| **Low-pass 5 kHz, 1 pole** / **2 poles** / **4 poles** | cuts the highs from 5 kHz and keeps the bass. Made for beeper music played by pulse width (PWM), whose pulses carry a whistle far above the tune; such music asks for a filter like this. With 4 poles the whistle is gone and the music is not dulled |
+
 ### PSG
 
 ```{index} PSG, AY, YM, TurboSound, TurboSound FM
