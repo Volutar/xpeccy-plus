@@ -90,8 +90,21 @@ static void board(const char* hw, int ram, int ide, const char* name) {
 	if (open) {
 		snprintf(buf, sizeof(buf), "%s, BASIC: border kept", name);
 		check(buf, border_kept(comp));
+	} else {
+		// nothing holds IORQGE here: the write is the machine's #FE's
+		pout(comp, 0x00fe, 0x05);
+		pout(comp, 0xffba, 0xf2);
+		snprintf(buf, sizeof(buf), "%s, BASIC: #FFBA sets the border", name);
+		check(buf, comp->vid->nextbrd == 2);
 	}
 	// the keyboard (#xxFE, A6 = 1) and the 128K's paging stay the machine's
+	keyEntry kent;
+	memset(&kent, 0, sizeof(kent));
+	kent.zxKey[0] = 'a';
+	kbd_press(comp->keyb, &kent);
+	snprintf(buf, sizeof(buf), "%s, BASIC: key A on #FDFE", name);
+	check(buf, (pin(comp, 0xfdfe) & 0x1f) == 0x1e);
+	kbd_release(comp->keyb, &kent);
 	pout(comp, 0x7ffd, 0x13);
 	snprintf(buf, sizeof(buf), "%s, BASIC: #7FFD written", name);
 	check(buf, comp->p7FFD == 0x13);
