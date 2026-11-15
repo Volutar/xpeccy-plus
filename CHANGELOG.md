@@ -12,8 +12,8 @@ before that point is upstream's history and is not repeated here.
 ### Added
 
 - **SMUC 2.x**: Options > Machine, Hard disk row. The home-made SMUC boards, whose ports
-  answer outside TR-DOS too, as Z-Player and Demeter expect. The original SMUC stays as it
-  was.
+  answer outside TR-DOS too, as Z-Player and Demeter expect; ProfROM calls it version 2.0.
+  The original SMUC stays as it was.
 
 - **Z-Controller SD card** on the Pentagons and the Scorpions: Options > Machine, SD card row.
   The Scorpion's ProfROM 4.xx.38 and later finds the card and reads it in its navigator,
@@ -60,6 +60,9 @@ before that point is upstream's history and is not repeated here.
 - **Starts faster on Windows**: the window is up about half a second sooner.
 
 ### Fixed
+
+- **Demeter finds the hard disk**: the drive gives its whole name and answers its self-test
+  as a real one does.
 
 - **The picture no longer freezes on Windows when a device is plugged in or removed**: it
   could stand still for up to half a second, several times in a row.
