@@ -230,6 +230,11 @@ void ataExec(ATADev* dev, unsigned char cm) {
 				break;
 			case 0x90:			// execute drive diagnostic; FIXME: both drives must do this
 				dev->reg.err = 0x01;
+				// the device signature, as after a reset (ATA: count 1, LBA 1, cylinder 0)
+				dev->reg.count = 0x01;
+				dev->reg.sec = 0x01;
+				dev->reg.cyl = 0x0000;
+				dev->reg.head = 0x00;
 				break;
 			case 0x91:			// initialize drive parameters; pass.spt = reg.count; pass.heads = (reg.head & 15) + 1;
 				dev->pass.spt = dev->reg.count;
