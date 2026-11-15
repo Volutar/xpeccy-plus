@@ -21,7 +21,8 @@ before that point is upstream's history and is not repeated here.
   the AY too), the ZX Evolution's filter, the Scorpion's and the ATM's coupling capacitors,
   or a piezo sounder. Every machine comes with its own, and any can be picked; off by
   default, so the sound stays clean until you tick it. The filter follows Slow Motion and
-  Fast Forward, so a tone it cuts stays cut as it drops in pitch.
+  Fast Forward, so a tone it cuts stays cut as it drops in pitch. Under Experimental in the
+  list: filters to try by ear, among them a 5 kHz low-pass for PWM beeper music.
 
 - **Integer Scale**: View > Integer Scale and Options > Video. In fullscreen and in a maximized
   or resized window the picture keeps a whole number of pixels per dot, the largest that fits,
