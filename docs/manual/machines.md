@@ -37,7 +37,7 @@ The machine list shows them in this order, in five groups.
 | **ATM Turbo 2+** | 1024 KB | Beta Disk | YM, Covox; ATM hard disk, Kempston mouse and joystick, turbo x2 |
 | **Profi v3** | 512 KB | Beta Disk | version 3 board; AY, Covox; Kempston mouse and joystick, turbo x2 |
 | **Profi v5** | 1024 KB | Beta Disk | version 5 board; YM, Covox; Profi hard disk, DD palette, Kempston mouse and joystick, turbo x2 |
-| **ZXM-Phoenix** | 2048 KB | Beta Disk | YM, Covox; Kempston mouse and joystick, turbo x2 |
+| **ZXM-Phoenix** | 2048 KB | Beta Disk | the board of revision 08.1 with the ROM made for revision 07: two YM (TurboSound); NemoIDE hard disk, SD card, clock, Kempston mouse with wheel and joystick, turbo x2 by a switch; see [ZXM-Phoenix](#zxm-phoenix) |
 | **ZX Evolution (BaseConf)** | 4096 KB | Beta Disk | the ZX Evolution board running BaseConf: two YM (TurboSound), Covox; NemoIDE hard disk, SD card, PC keyboard, mouse with wheel, turbo x2 and x4 |
 | **ZX Evolution (TSConf)** | 4096 KB | Beta Disk | the same board running TSConf; as BaseConf |
 | **ALF TV Game** | 48 KB | - | a games console built on the 48K: no AY; cartridges, two joysticks |
@@ -160,8 +160,35 @@ screen. The programs it starts run at the speed its **W** key picks: **Fast** (7
 **Slow** (3.5 MHz), shown at the top of its menu. Gluk keeps the choice in the clock chip; a
 new machine starts with **Slow**.
 
+On the ZXM-Phoenix the turbo is a switch on the case, which no program can reach, and
+**Turbo Mode** is that switch. The board drops to 3.5 MHz by itself while TR-DOS works and
+goes back to 7 MHz after it.
+
 The **Overclock** slider of the **Machine** page of **Options** runs the CPU faster still,
 on any machine; see [Overclock](options-machine.md#overclock).
+
+## ZXM-Phoenix
+
+```{index} ZXM-Phoenix, Fatall, TR-DOS 6.11Q
+```
+
+The ZXM-Phoenix is a clone built of plain logic chips by Mick (Mick Laboratory) since 2009:
+the memory of a KAY and of a Scorpion, up to 2048 KB, and a frame of its own, 312 lines of
+224 ticks. Its border changes color only every eight pixels, so border pictures made for a
+Pentagon look different on it, as on the real board; programs written for the Phoenix draw
+theirs right only here.
+
+The machine is the board of revision 08.1 and starts the ROM made for revision 07: a menu
+with **Fatall 0.25** by savelij, a file manager for the SD card and the hard disk, TR-DOS
+6.11Q, whose drive D is a RAM disk, and both BASICs. On the board are a Beta Disk
+interface, a NemoIDE hard disk interface, an SD card slot, a clock on the
+[Gluk clock](options-machine.md#the-gluk-clock)'s ports, two YM chips as TurboSound, a
+Kempston mouse and a Kempston joystick.
+
+In the **Memory** list of the [Machine page](options-machine.md), **1024 KB** is the board
+with one memory module and **128 KB** the board with its 128 KB jumper closed, for programs
+that set the memory ports carelessly. The older ROM of these boards, BIOS 5.03, is
+`phoenix.rom` in the ROM folder: pick it as the machine's ROM to run it.
 
 ## Pause, Fast Mode, Slow Motion, Fast Forward, Allow Rewind
 

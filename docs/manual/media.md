@@ -34,7 +34,7 @@ the hardware it copies. A divMMC can be added to the Sinclair models and the Pen
 | Profi v3 | Beta Disk | - | |
 | Profi v5 | Beta Disk | Profi | |
 | ZX Evolution, both | Beta Disk | NemoIDE (ZX Evo) | SD card |
-| ZXM-Phoenix | Beta Disk | - | |
+| ZXM-Phoenix | Beta Disk | NemoIDE | SD card (Z-Controller) |
 | ALF TV Game, ALF TV Game 128K | - | - | cartridge |
 
 **Beta Disk** is the TR-DOS disk interface with up to four drives, A to D. The **+3**
