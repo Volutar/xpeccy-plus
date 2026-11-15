@@ -70,6 +70,14 @@ static void ata_signature(ATADev* ata) {
 	ata->reg.head = 0x00;
 }
 
+// a device after EXECUTE DEVICE DIAGNOSTIC: ready, nothing pending, its signature
+static void ata_diag(ATADev* ata) {
+	ata->reg.state = HDF_DRDY | HDF_DSC;
+	ata->buf.mode = HDB_IDLE;
+	ata->buf.pos = 0;
+	ata_signature(ata);
+}
+
 void ataReset(ATADev* ata) {
 	ata->reg.state = HDF_DRDY | HDF_DSC;
 	ata_signature(ata);
@@ -692,7 +700,8 @@ static void ide_reg_wr(IDE* ide, int adr, int val) {
 	ide_select(ide, adr, val);
 	ataWr(ide->curDev, adr, val);
 	if ((adr == HDD_COM) && ((val & 0xff) == 0x90)) {
-		ata_signature((ide->curDev == ide->master) ? ide->slave : ide->master);
+		ata_diag(ide->master);		// the one given it too: it may be an absent slave
+		ata_diag(ide->slave);
 		ide->curDev = ide->master;
 	}
 }
