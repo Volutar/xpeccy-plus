@@ -74,10 +74,10 @@ enum {
 	BEEP_ATM,		// the ATM Turbo's coupling cap into its amplifier
 	BEEP_PIEZO,		// a piezo sounder (ZP-3 class) on the port's own output
 	BEEP_TYPES,
-	// TEMP: variants to pick from by ear, not in the bench
-	BEEP_T_SPK0 = BEEP_TYPES, BEEP_T_SPK250, BEEP_T_SPK750,
-	BEEP_T_PZ15, BEEP_T_PZ07, BEEP_T_PZSOFT,
-	BEEP_T_LP5_1, BEEP_T_LP5_2, BEEP_T_LP5_4,
+	// experimental, to be judged by ear this release: under EXPERIMENTAL in the list
+	BEEP_X_SPK0 = BEEP_TYPES, BEEP_X_SPK250, BEEP_X_SPK750,
+	BEEP_X_PZSOFT, BEEP_X_PZSOFT2, BEEP_X_PZSOFT15,
+	BEEP_X_LP5_1, BEEP_X_LP5_2, BEEP_X_LP5_4,
 	BEEP_ALL
 };
 

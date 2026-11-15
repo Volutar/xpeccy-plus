@@ -219,6 +219,51 @@ static void mix(void) {
 	chain = BF_BEEP;
 }
 
+// a resonant high-pass with its band added: (s^2 + s) / (s^2 + s/Q + 1)
+static double res_soft(double hz, double f0, double q) {
+	double r = hz / f0, re = 1 - r * r, im = r / q;
+	return r * sqrt(r * r + 1) / sqrt(re * re + im * im);
+}
+
+// a Butterworth low-pass of n poles
+static double butter(double hz, double fc, int n) {
+	return 1 / sqrt(1 + pow(hz / fc, 2 * n));
+}
+
+// the experimental types (BEEP_X_*): their Q24 coefficients, and their gains as built
+static void experimental(void) {
+	printf("== experimental\n");
+	for (int i = 0; i < 2; i++) {
+		int rate = outRates[i];
+		for (int t = BEEP_TYPES; t < BEEP_ALL; t++) {
+			sndBeepFlt st;
+			settle(&st, t, rate, 0);
+			printf("%d %d: %lld %lld %lld %lld %lld %lld %lld %lld %lld %lld\n", rate / 32, t, st.kUp, st.kDn,
+				st.kHp, st.kF, st.kQ, st.kBp, st.kL[0], st.kLQ[0], st.kL[1], st.kLQ[1]);
+		}
+		check("speaker, no bass cut: a held level through", held(BEEP_X_SPK0, rate, LEV) == LEV);
+		// as the speaker's 500 Hz: the uneven edges shift a sine's peak a little
+		check("speaker 250 / 750: -3 dB there", near(gain(BEEP_X_SPK250, rate, 250), sqrt(0.5), 0.02)
+			&& near(gain(BEEP_X_SPK750, rate, 750), sqrt(0.5), 0.02));
+		int ok = 1;
+		static const double pq[3] = {3, 2, 1.5};
+		for (int k = 0; k < 3; k++) {
+			for (double hz = 500; hz <= 8000; hz *= 2)
+				ok &= near(gain(BEEP_X_PZSOFT + k, rate, hz), res_soft(hz, 4100, pq[k]), 0.05);
+			ok &= (held(BEEP_X_PZSOFT + k, rate, LEV) == 0);
+		}
+		check("piezo, 6 dB/oct: the gains as built, a held level gone", ok);
+		ok = 1;
+		static const int poles[3] = {1, 2, 4};
+		for (int k = 0; k < 3; k++) {
+			for (double hz = 1250; hz <= 20000; hz *= 2)
+				ok &= (fabs(gain(BEEP_X_LP5_1 + k, rate, hz) - butter(hz, 5000, poles[k])) < 0.005);	// a few levels of 8192
+			ok &= (held(BEEP_X_LP5_1 + k, rate, LEV) == LEV) && (held(BEEP_X_LP5_1 + k, rate, -LEV) == -LEV);
+		}
+		check("low-pass 5 kHz of 1, 2, 4 poles: the gains as built, a held level through", ok);
+	}
+}
+
 static void piezo(void) {
 	printf("== piezo\n");
 	for (int i = 0; i < 2; i++) {
@@ -408,6 +453,7 @@ int main(void) {
 	highpass("atm", BEEP_ATM, 80);
 	piezo();
 	mix();
+	experimental();
 	by_speed();
 	speed_change();
 	return failures ? 1 : 0;

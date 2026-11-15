@@ -1284,7 +1284,7 @@ void SetupWin::fillPages() {
 	fillDivFirmware();
 
 	sdrvBox->setCurrentIndex(sdrvBox->findData(comp->sdrv->type));
-	beepBox->setCurrentIndex(comp->beepType);
+	setRFIndex(beepBox, comp->beepType, BEEP_LINE);
 
 	saaBox->setCurrentIndex(comp->saa->enabled ? 1 : 0);
 	clockBox->setCurrentIndex(comp->flgGLUK ? MAC_CLOCK_GLUK : MAC_CLOCK_NONE);
@@ -1619,7 +1619,7 @@ void SetupWin::applyMachine() {
 		}
 		xm_set_gs(comp, gsBox->currentIndex());
 		comp->sdrv->type = getRFIData(sdrvBox);
-		comp->beepType = beepBox->currentIndex();
+		comp->beepType = qMax(getRFIData(beepBox), (int)BEEP_LINE);
 		comp->saa->enabled = saaBox->currentIndex() ? 1 : 0;
 	}
 // input
@@ -2417,6 +2417,7 @@ void SetupWin::buildDevices() {
 	grid = devGroup(cols, 0, 1, ":/images/speaker.png", tr("Sound"));
 	beepBox = devCombo(QStringList() << tr("Line out") << tr("48K speaker") << tr("TV (RF)")	// BEEP_*
 		<< tr("+2A/+3") << tr("ZX Evolution") << tr("Scorpion") << tr("ATM Turbo") << tr("Piezo"));
+	beepBox->setObjectName("beepBox");
 	beepBox->setItemData(BEEP_LINE, tr("Straight out, nothing filtered"), Qt::ToolTipRole);
 	beepBox->setItemData(BEEP_SPEAKER, tr("The 48K's ULA pin and small speaker:\nthe highs softened, the bass thin"), Qt::ToolTipRole);
 	beepBox->setItemData(BEEP_TV, tr("A TV's aerial input: highs cut\nfrom 3.2 kHz, the PSG's too"), Qt::ToolTipRole);
@@ -2425,11 +2426,27 @@ void SetupWin::buildDevices() {
 	beepBox->setItemData(BEEP_SCORPION, tr("The Scorpion's coupling capacitor:\nlows cut below 530 Hz"), Qt::ToolTipRole);
 	beepBox->setItemData(BEEP_ATM, tr("The ATM's coupling capacitor:\nlows cut below 80 Hz"), Qt::ToolTipRole);
 	beepBox->setItemData(BEEP_PIEZO, tr("A piezo sounder: little bass,\nrings at 4.1 kHz"), Qt::ToolTipRole);
-	// TEMP: variants to pick from by ear (BEEP_T_*)
-	beepBox->addItems(QStringList() << "48K speaker: no bass cut" << "48K speaker: bass cut 250 Hz"
-		<< "48K speaker: bass cut 750 Hz (Fuse)" << "Piezo: Q 1.5" << "Piezo: Q 0.7"
-		<< "Piezo: 6 dB/oct under 4.1 kHz" << "Low-pass 5 kHz, 1 pole" << "Low-pass 5 kHz, 2 poles"
-		<< "Low-pass 5 kHz, 4 poles");
+	// the experimental ones under a heading of their own: the type is each item's data
+	for (int t = 0; t < BEEP_TYPES; t++)
+		beepBox->setItemData(t, t);
+	beepBox->insertSeparator(beepBox->count());
+	beepBox->addItem(tr("EXPERIMENTAL"));
+	QStandardItemModel* beepModel = qobject_cast<QStandardItemModel*>(beepBox->model());
+	if (beepModel) {
+		QStandardItem* head = beepModel->item(beepBox->count() - 1);
+		QFont font = head->font();
+		font.setBold(true);
+		head->setFont(font);
+		head->setEnabled(false);
+	}
+	const QStringList xNames = QStringList() << tr("48K speaker, no bass cut") << tr("48K speaker, bass cut 250 Hz")	// BEEP_X_*
+		<< tr("48K speaker, bass cut 750 Hz") << tr("Piezo, 6 dB/oct") << tr("Piezo, 6 dB/oct, Q 2")
+		<< tr("Piezo, 6 dB/oct, Q 1.5") << tr("Low-pass 5 kHz, 1 pole") << tr("Low-pass 5 kHz, 2 poles")
+		<< tr("Low-pass 5 kHz, 4 poles");
+	for (int t = BEEP_TYPES; t < BEEP_ALL; t++)
+		beepBox->addItem(xNames.value(t - BEEP_TYPES), t);
+	beepBox->setItemData(beepBox->findData(BEEP_X_LP5_4), tr("For PWM music: its carrier gone,\nthe bass kept"), Qt::ToolTipRole);
+	beepBox->setMaxVisibleItems(beepBox->count());
 	devRow(grid, tr("Beeper"), beepBox, NULL, NULL);
 	beepName = qobject_cast<QLabel*>(grid->itemAtPosition(grid->rowCount() - 1, 0)->widget());
 	beepName->setText(tr("Beeper (off)"));	// measured so (finishGroups)
