@@ -16,6 +16,19 @@ greatsh_p1024   pent1024  auto  3000  300     disk/GREAT_SH.TRD
 boot_phoenix    phoenix   boot  0     400
 dwot_phoenix    phoenix   auto  3000  300     disk/dwot.trd
 csp_phoenix     phoenix   auto  4000  300     disk/17993_cscsp26.trd
+# the board's own demos: border effects on its 4 T grid, MLT Picture at 7 MHz, 7FFD.7 in Virus
+parus_phoenix   phoenix   auto  3000  300     disk/phoenix/parus4phoenix.trd        keys:1500:E/30
+gift_phoenix    phoenix   auto  3000  300     disk/phoenix/phoenix_gift.trd         keys:1500:C8,1600:E
+blackcat_phoenix phoenix  auto  3000  300     disk/phoenix/blackcat_phoenix.trd     keys:1500:C8,1600:E
+pussycat_phoenix phoenix  auto  3000  300     disk/phoenix/pussycat.trd             keys:1500:E/30
+newyear_phoenix phoenix   auto  3900  300     disk/phoenix/newyear.trd              keys:1500:E/30
+mlt_phoenix     phoenix   auto  4300  300     disk/phoenix/mlt_picture_1.trd        keys:1400:turbo,1500:E/30,4000:_
+gift12_phoenix  phoenix   auto  3900  300     disk/phoenix/phoenix_gift2012.trd     keys:1500:E/30
+virus_phoenix   phoenix   auto  3900  300     disk/phoenix/virus_demo.trd           keys:1500:E/30
+# a snapshot lands in the ROM set that has the BASICs
+snap_phoenix    phoenix   open  50    200     snap/gt.sna
+# Fatall from the ROM's menu, the SD card in the board's own port
+fatall_phoenix  phoenix   boot  500   300                                           sdimg:zc/card keys:200:E
 boot_profi      profi     boot  0     400
 ptest_profi     profi     auto  3000  300     disk/ptest.trd
 dwot_profi      profi     auto  3000  300     disk/dwot.trd

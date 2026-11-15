@@ -9,8 +9,8 @@ of your computer. The divMMC's cards are in [divMMC](divmmc.md).
 ```{index} SD card, --sdcard
 ```
 
-The two ZX Evolution machines and the ZX Spectrum Next have an SD card slot, and the
-Pentagons and the Scorpions have one with a [Z-Controller](#z-controller) fitted. The Next
+The two ZX Evolution machines, the ZX Spectrum Next and the ZXM-Phoenix have an SD card
+slot, and the Pentagons and the Scorpions have one with a [Z-Controller](#z-controller) fitted. The Next
 starts from a card with System/Next on it, and its menu has **System/Next Card...** too:
 see [The SD card](zx-next.md#the-sd-card). **Media > SD Card** shows the card in
 the slot, or **(no card)**, and has:
@@ -44,6 +44,9 @@ The ProfROM of the Scorpion, from version 4.xx.38 on (the Turbo+ comes with 4.44
 the card at power-on and reads it in its navigator: a FAT32 card, or a folder. FATALL by
 savelij copies files between the card and TR-DOS disks on any of these machines, from FAT16
 or FAT32.
+
+The ZXM-Phoenix has the same two ports in a chip on its own board, so its **SD card** row
+comes set to **Z-Controller**, and Fatall is the first item of its start menu.
 
 ## Hard disks
 

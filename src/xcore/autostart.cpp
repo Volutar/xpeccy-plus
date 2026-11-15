@@ -76,10 +76,6 @@ static const asKey as_keyword_code[] = {
 static const asKey as_menu[] = {
 	{ZK_ENTER, 0}, {NULL, 0}
 };
-// ... the second one
-static const asKey as_menu2[] = {
-	{ZK_DOWN, AS_KEY_GAP}, {ZK_ENTER, 0}, {NULL, 0}
-};
 // ... the last one: one step up beats walking down the whole list. Picking
 // tr-dos this way only reaches its command line, so RUN has to follow - with no
 // name it is the shortcut for the boot file
@@ -91,6 +87,14 @@ static const asKey as_menu_last_run[] = {
 // letter - the 128 editor has no keywords
 static const asKey as_scorpion[] = {
 	{ZK_DOWN, AS_KEY_GAP}, {ZK_ENTER, AS_MENU_GAP},
+	{"l", AS_KEY_GAP}, {"o", AS_KEY_GAP},
+	{"a", AS_KEY_GAP}, {"d", AS_KEY_GAP},
+	{ZK_QUOTE, AS_KEY_GAP}, {ZK_QUOTE, AS_KEY_GAP},
+	{ZK_ENTER, 0}, {NULL, 0}
+};
+// phoenix: no tape entry in the revision 07 ROM's menu; 128 BASIC is third there and in BIOS 5.03
+static const asKey as_phoenix[] = {
+	{ZK_DOWN, AS_KEY_GAP}, {ZK_DOWN, AS_KEY_GAP}, {ZK_ENTER, AS_MENU_GAP},
 	{"l", AS_KEY_GAP}, {"o", AS_KEY_GAP},
 	{"a", AS_KEY_GAP}, {"d", AS_KEY_GAP},
 	{ZK_QUOTE, AS_KEY_GAP}, {ZK_QUOTE, AS_KEY_GAP},
@@ -161,7 +165,7 @@ static const asMachine as_mtab[] = {
 	{HW_P1024,	{RES_128, as_menu},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
 	{HW_PROFI,	{RES_128, as_menu},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
 	{HW_PROFI3,	{RES_128, as_menu},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
-	{HW_PHOENIX,	{RES_128, as_menu2},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
+	{HW_PHOENIX,	{RES_128, as_phoenix},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
 	{HW_SCORP,	{RES_128, as_scorpion},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
 	{HW_SCORPTP,	{RES_128, as_scorpion},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
 	{HW_PLUS2A,	{RES_128, as_menu},	{RES_48, as_keyword_code},	{AS_NOPE, NULL},		{AS_NOPE, NULL}},

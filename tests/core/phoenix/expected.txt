@@ -1,0 +1,67 @@
+== ram
+2048K: 128 combinations of #7FFD b0-b2,b7 and #1FFD b4,b6,b7, 0 wrong
+2048K: all seven bits set, page 7F
+1024K: 128 combinations of #7FFD b0-b2,b7 and #1FFD b4,b6,b7, 0 wrong
+1024K: all seven bits set, page 3F
+128K: 128 combinations of #7FFD b0-b2,b7 and #1FFD b4,b6,b7, 0 wrong
+128K: all seven bits set, page 07
+== rom
+set 0, 7FFD.4=0 1FFD.1=0 1FFD.3=0 dos=0: set 0, Basic 128
+set 0, 7FFD.4=1 1FFD.1=0 1FFD.3=0 dos=0: set 0, Basic 48
+set 0, 7FFD.4=0 1FFD.1=1 1FFD.3=0 dos=0: set 0, service
+set 0, 7FFD.4=1 1FFD.1=1 1FFD.3=0 dos=0: set 0, service
+set 0, 7FFD.4=0 1FFD.1=0 1FFD.3=1 dos=0: set 0, service
+set 0, 7FFD.4=1 1FFD.1=0 1FFD.3=1 dos=0: set 0, TR-DOS
+set 0, 7FFD.4=0 1FFD.1=1 1FFD.3=1 dos=0: set 0, service
+set 0, 7FFD.4=1 1FFD.1=1 1FFD.3=1 dos=0: set 0, service
+set 0, 7FFD.4=0 1FFD.1=0 1FFD.3=0 dos=1: set 1, service
+set 0, 7FFD.4=1 1FFD.1=0 1FFD.3=0 dos=1: set 1, TR-DOS
+set 0, 7FFD.4=0 1FFD.1=1 1FFD.3=0 dos=1: set 1, service
+set 0, 7FFD.4=1 1FFD.1=1 1FFD.3=0 dos=1: set 1, service
+set 0, 7FFD.4=0 1FFD.1=0 1FFD.3=1 dos=1: set 1, Basic 128
+set 0, 7FFD.4=1 1FFD.1=0 1FFD.3=1 dos=1: set 1, Basic 48
+set 0, 7FFD.4=0 1FFD.1=1 1FFD.3=1 dos=1: set 1, service
+set 0, 7FFD.4=1 1FFD.1=1 1FFD.3=1 dos=1: set 1, service
+128 combinations over the 8 sets, 0 wrong
+#37 sets the ROM set: ok
+#B7 is #37 (A7 not decoded): ok
+#27 and #F7 are not: ok
+Basic 48's page of another set is not the tape traps' ROM: ok
+...in set 1 it is: ok
+...TR-DOS's page swapped in by 1FFD.3 is not: ok
+b7 of #37 leaves the ROM read-only: ok
+1FFD.0: RAM page 0 in #0000: ok
+...and writable: ok
+== lock-reset
+7FFD.5 locks #7FFD: ok
+...not #1FFD: ok
+...nor #37: ok
+reset clears #7FFD, #1FFD, #37 and #EFF7: ok
+...into the system ROM of set 0: ok
+a snapshot's reset stands in set 1, where the BASICs are: ok
+#7FFD reads nothing: ok
+#1FFD reads nothing: ok
+== multicard
+version: #00F7 1C, #00DF 1C, #00EF 1C, #01F7 FF
+#EFF7 reads 00 after reset: ok
+the clock is not there without #EFF7 b7: ok
+Kempston on #1F: ok
+...and on #6F (A6-A4 not decoded): ok
+...not on #9F: ok
+#EFF7 reads back: ok
+IODOS takes the Kempston off #6F: ok
+...and puts the Beta Disk's status on #1F: ok
+clock: A 20, B 02, D 00
+clock: minutes 00, seconds 00, year 25
+a write to B leaves the clock in BCD: ok
+EEPROM cell #C0 is not cell #40: ok
+the cells go with #EFF7 b7: ok
+a port nothing decodes reads FF: ok
+#77 reads nothing: ok
+#57 with no card reads FF: ok
+#5F is the Kempston, not the SD port: ok
+== timing
+3.5 MHz: 69888 ticks and 5824 JRs a frame, INT low for 36 ticks
+turbo: 139776 ticks and 11648 JRs a frame, INT low for 24 ticks
+turbo, IODOS: 139776 ticks and 5824 JRs a frame, INT low for 48 ticks
+turbo, out of TR-DOS: 139776 ticks and 11648 JRs a frame, INT low for 24 ticks

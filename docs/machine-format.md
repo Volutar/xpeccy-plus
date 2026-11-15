@@ -52,7 +52,7 @@ is skipped without a word.
 | `cpu` | `cpuCore.name` | `Z80`, `Z80N` (the Next's), or `name@library` for a core from a library |
 | `cpu.frq` | Hz | the board's crystal; the dot clock comes off it too, so it sets the frame rate |
 | `cpu.turbo` | list, `1,2,4` | the turbo steps this board has, x1 first. A board that switches turbo from a port sets it itself; on one whose turbo is a switch on the case, Alt+T is the switch |
-| `memory` | KB | fitted to what the core can page. The 48K and ALF take 48 (16K of their 64K address space is ROM); 64 reads the same |
+| `memory` | KB | fitted to what the core can page (on the ZXM-Phoenix 1024 is the board with one SIMM, 128 its XP21 jumper closed). The 48K and ALF take 48 (16K of their 64K address space is ROM); 64 reads the same |
 | `ram.cold` | hex groups | what RAM holds at power-on, `ff*8 00*8` style; absent leaves it alone |
 | `ram.noise` | 0..1000 | bytes per thousand that come up wrong in that pattern |
 | `reset` | `basic128` `basic48` `dos` `shadow` | which ROM a reset lands in |
@@ -62,7 +62,7 @@ is skipped without a word.
 | `contmem` | yes/no | contended memory |
 | `scrp.wait` | yes/no | Scorpion ZS 256: an opcode fetch from RAM starts on an even T-state |
 | `builtin` | `disk` `ide` `clock` | controllers on the board itself: the options lock them. Read from the definition, never written back |
-| `clock` | `none` `gluk` | a clock chip: Mr Gluk's, on `#EFF7` bit 7, `#DFF7` (address) and `#BFF7` (data); the Pentagon and Pentagon 1024 SL cores only. `builtin = clock` fits it whatever this says |
+| `clock` | `none` `gluk` | a clock chip: Mr Gluk's, on `#EFF7` bit 7, `#DFF7` (address) and `#BFF7` (data); the Pentagon, Pentagon 1024 SL and ZXM-Phoenix cores only. `builtin = clock` fits it whatever this says |
 | `snapshot` | `core` `plus2` | what a snapshot names the machine as where its core does not say: a +2 runs on the 128K's core |
 
 ### `[video]`
