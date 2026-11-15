@@ -891,6 +891,7 @@ void szx_ext_save(szxBuf* b, Computer* comp) {
 		while ((sel < 3) && (comp->dif->fdc->flp != comp->dif->fdc->flop[sel])) sel++;
 		sb_byte(b, sel);			// the drive selected, by the controller's numbering
 		sb_byte(b, UPD_PLANS);
+		sb_byte(b, VG_PLANS);
 		rec_end(b, mark);
 		FDC* fdc = comp->dif->fdc;
 		int nid = (comp->dif->type == DIF_P3DOS) ? upd_format_ids(fdc) : 0;
@@ -1431,6 +1432,8 @@ int szx_ext_load(Computer* comp, const unsigned char* ext, size_t len) {
 					if (n >= 6) comp->dif->fdc->flp = comp->dif->fdc->flop[p[5] & 3];
 					if ((comp->dif->type == DIF_P3DOS) && ((n < 7) || !p[6]))
 						upd_plan_v0(comp->dif->fdc);
+					if ((comp->dif->type == DIF_BDI) && ((n < 8) || !p[7]))
+						vg_plan_v0(comp->dif->fdc);
 				}
 				break;
 			case XR_IDE:

@@ -173,6 +173,9 @@ void dif_plan_set(DiskIF*, int);
 // of layout 0 (2026.9) to where it is now.
 #define UPD_PLANS	1
 void upd_plan_v0(FDC*);
+// The WD1793's, 1 since RESTORE waits its start before #FF goes into the track register
+#define VG_PLANS	1
+void vg_plan_v0(FDC*);
 // A Format in progress as a snapshot keeps it: the IDs it has taken (0 for any other
 // command), and one of them put back as the chip holds it
 int upd_format_ids(FDC*);

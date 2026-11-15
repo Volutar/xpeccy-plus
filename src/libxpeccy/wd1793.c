@@ -9,7 +9,7 @@
 // steps but keeps a command busy for a moment: code that waits for BUSY to rise
 // after a command (the Profi's BIOS) must get to see it.
 static const int pauses[4] = {6000000,12000000,20000000,30000000};	// step rate, type I r bits
-#define VG_START	20000		// command start, before the first step
+#define VG_START	24000		// TDIR at 1 MHz: a type I command shows nothing before its first step
 #define VG_SETTLE	15000000	// head settling: verify, and the E flag of type II/III
 #define VG_TURBO_STEP	20000
 #define VG_TURBO_BYTE	500	// ns a byte takes with fast disk access
@@ -239,10 +239,10 @@ void vgchk(FDC* fdc) {
 
 void vgseek00(FDC*);
 
-// a seek down from track 255 that stops at TRK0
+// after the start: a seek down from track 255 that stops at TRK0
 void vgres00(FDC* fdc) {
 	fdc->trk = 0xff;
-	vgseek00(fdc);
+	fdc->pos++;
 }
 
 // do step in until TRK0 or Rtrk=0
@@ -259,7 +259,7 @@ void vgres01(FDC* fdc) {
 	}
 }
 
-static fdcCall vgRest[] = {&vgres00, &vgres01, &vgchk};
+static fdcCall vgRest[] = {&vgseek00, &vgres00, &vgres01, &vgchk};
 
 // ====
 // seek
@@ -592,6 +592,11 @@ static vgComItem vgComTab[] = {
 // (dif_plan_id())
 fdcCall* const vgPlans[] = {vgStop, vgCheck, vgRest, vgSeek, vgStepF, vgStepB, vgStep,
 	vgRdSec, vgWrSec, vgRdAdr, vgRdTrk, vgWrTrk, NULL};
+
+// Layout 0 had no start step at the head of RESTORE
+void vg_plan_v0(FDC* fdc) {
+	if ((fdc->plan == vgRest) && (fdc->pos >= 1)) fdc->pos++;
+}
 
 void vgExec(FDC* fdc, unsigned char com) {
 	int idx;
