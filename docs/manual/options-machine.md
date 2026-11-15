@@ -199,7 +199,7 @@ Motion** a high tone it cuts stays cut as it drops in pitch.
 | **ZX Evolution** | low-pass, 8.6 kHz | beeper, tape | a 2.2K resistor and a 10 nF capacitor on the beeper's input | ZX Evolution |
 | **Scorpion** | high-pass, 530 Hz | beeper, tape | the coupling capacitor on the beeper's way out | Scorpion ZS 256 and Turbo+ |
 | **ATM Turbo** | high-pass, 80 Hz | beeper, tape | the coupling capacitor into the amplifier | ATM Turbo 2+ |
-| **Piezo** | resonant high-pass, 4.1 kHz | beeper, tape | a piezo sounder of the ZP-3 kind, as some clones had: little bass and a ring. How sharp the ring is is a guess | - |
+| **Piezo** | a ring at 4.1 kHz; under it the bass falls off 6 dB an octave | beeper, tape | a piezo sounder of the ZP-3 kind, as some clones had. The ring is the element's own; how sharp it is and how the bass falls were set by ear, as there is no measurement of the element | - |
 
 The low-pass and high-pass filters here are one pole, 6 dB an octave, unless the table says
 two. The other sound devices - General Sound, the SAA1099, Covox and Soundrive - have outputs
@@ -214,7 +214,6 @@ in a later version:
 | Choice | What it does |
 |---|---|
 | **48K speaker, no bass cut** / **bass cut 250 Hz** / **bass cut 750 Hz** | the **48K speaker** with its bass cut moved: none, lower, or higher than its 500 Hz |
-| **Piezo, 6 dB/oct** / **Q 2** / **Q 1.5** | a piezo whose bass falls off more gently, so a tune comes through; the lower Q rings less at 4.1 kHz |
 | **Low-pass 5 kHz, 1 pole** / **2 poles** / **4 poles** | cuts the highs from 5 kHz and keeps the bass. Made for beeper music played by pulse width (PWM), whose pulses carry a whistle far above the tune; such music asks for a filter like this. With 4 poles the whistle is gone and the music is not dulled |
 
 ### PSG
