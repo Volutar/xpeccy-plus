@@ -36,7 +36,7 @@
 ; @rom <MD5 of a 16K bank> <bundled image> [-NAME / -@ADDR: not in that bank]
 ; ADDR NAME: a name; START END VIEW: a data range
 @ns BASIC48
-@rom 6e09e5d3c4aef166601669feaaadc01c 128-1.rom, 128p-1.rom, phoenix.rom bank 3, profi-bios20.rom bank 3, profi-kramis02.rom bank 3, tsconf.rom bank 3
+@rom 6e09e5d3c4aef166601669feaaadc01c 128-1.rom, 128p-1.rom, phoenix.rom bank 3, phoenix-07.rom bank 7, profi-bios20.rom bank 3, profi-kramis02.rom bank 3, tsconf.rom bank 3
 @rom 643861ad34831b255bf2eb64e8b6ecb8 256s-1.rom, scorpion295.rom bank 1 -UNUSED_ZEROS -UNUSED_TAIL -@3C8F
 @rom 25e7ad37544091af7b82c4727e0bfc4f atm2.rom bank 0 -UNUSED_ZEROS -UNUSED_TAIL -@3C8F
 @rom b3db95931cc844efaeb82db9c171b9f3 plus2-1.rom -UNUSED_ZEROS -UNUSED_TAIL

@@ -249,6 +249,11 @@ int zx_dev_wr(Computer* comp, int adr, int val) {
 
 int zx_dev_rd(Computer* comp, int adr, int* ptr) {
 	if (zc_in(comp->zc, adr, ptr, comp->flgDOS)) return 1;
+	return zx_dev_rd_bus(comp, adr, ptr);
+}
+
+// ...less the Z-Controller, for a board that decodes its SD port itself
+int zx_dev_rd_bus(Computer* comp, int adr, int* ptr) {
 	if (div_in(comp->div, adr, ptr)) return 1;
 	if (gsRead(comp->gs, adr, ptr)) return 1;
 	if (ideIn(comp->ide, adr, ptr, comp->flgBDI)) return 1;

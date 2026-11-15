@@ -17,7 +17,7 @@
 ; ADDR NAME: a name; START END VIEW: a data range
 @ns BASIC48
 @rom 4c42a2f075212361c3117015b107ff68 48.rom, alf.rom bank 1, zxevo-fe.rom bank 7
-@rom 6e09e5d3c4aef166601669feaaadc01c 128-1.rom, 128p-1.rom, phoenix.rom bank 3, profi-bios20.rom bank 3, profi-kramis02.rom bank 3, tsconf.rom bank 3 -KEY_INT -PO_T_UDG -P_SAVE -P_INK -P_PAPER -P_FLASH -STMT_R_1 -STMT_NEXT -LAST -CHARSET -@386E
+@rom 6e09e5d3c4aef166601669feaaadc01c 128-1.rom, 128p-1.rom, phoenix.rom bank 3, phoenix-07.rom bank 7, profi-bios20.rom bank 3, profi-kramis02.rom bank 3, tsconf.rom bank 3 -KEY_INT -PO_T_UDG -P_SAVE -P_INK -P_PAPER -P_FLASH -STMT_R_1 -STMT_NEXT -LAST -CHARSET -@386E
 @rom 643861ad34831b255bf2eb64e8b6ecb8 256s-1.rom, scorpion295.rom bank 1 -ERROR_1 -PRINT_A_1 -KEY_INT -PO_T_UDG -COPY -P_SAVE -P_INK -P_PAPER -P_FLASH -STMT_R_1 -STMT_NEXT -LAST -CHARSET -@0013 -@15BE -@386E
 @rom 25e7ad37544091af7b82c4727e0bfc4f atm2.rom bank 0 -KEY_INT -PO_T_UDG -COPY -COPY_1 -COPY_2 -COPY_BUFF -COPY_3 -COPY_END -CLEAR_PRB -PRB_BYTES -COPY_LINE -COPY_L_1 -COPY_L_2 -COPY_L_3 -COPY_L_4 -COPY_L_5 -P_SAVE -P_INK -P_PAPER -P_FLASH -STMT_R_1 -STMT_NEXT -LAST -CHARSET -@0F0B -@15BE -@386E
 @rom b3db95931cc844efaeb82db9c171b9f3 plus2-1.rom -KEY_INT -CASSETTE -PO_T_UDG -P_SAVE -P_INK -P_PAPER -P_FLASH -STMT_R_1 -STMT_NEXT -LAST -CHARSET -@09A2 -@1392 -@386E

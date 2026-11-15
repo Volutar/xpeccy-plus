@@ -260,6 +260,7 @@ void next_sprites(Computer*, nxSpriteView* out);	// all 128, as the sprite pass 
 
 int zx_dev_wr(Computer*, int, int);
 int zx_dev_rd(Computer*, int, int*);
+int zx_dev_rd_bus(Computer*, int, int*);
 void zx_irq(Computer*, int);
 // a divMMC can sit on this machine's edge connector (the Sinclair models)
 int hw_takes_divmmc(const HardWare*);

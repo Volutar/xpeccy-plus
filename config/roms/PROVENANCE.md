@@ -65,7 +65,8 @@ and with every emulator of them for decades.
 | `atm2.rom` | ATM Turbo 2+ | MicroART | grey | `28ce89a88089417db4d3057de942a1bb` |
 | `zxevo-fe.rom` | ZX Evo (BaseConf) | NedoPC group | grey | EVO Reset Service 0.61 FE, `4d440af2f2d746094527aa6789390705` |
 | `tsconf.rom` | ZX Evo (TSConf) | TS-Labs | grey | TS-BIOS build 2024-07-28, `pentevo/rom/bin/ts-bios.rom` of the zx-evo repository (9ce7544), `9a0a7f6c10ffa0a556748c4b40088554` |
-| `phoenix.rom` | ZXM-Phoenix | ZXM-Phoenix authors | grey | BIOS 5.03, `892a393093f373ad3b4c9453f529b523` |
+| `phoenix.rom` | ZXM-Phoenix | ZXM-Phoenix authors | grey | BIOS 5.03, 64K, the boards before revision 07, `892a393093f373ad3b4c9453f529b523` |
+| `phoenix-07.rom` | ZXM-Phoenix | Mick (Mick Laboratory): system ROM and the build; savelij: Fatall 0.25; Velesoft, Keeper: TR-DOS 6.11Q | grey, offered by the board's author | the image for revision 07 and on, 512K: set 0 "ZXM-Phoenix system ROM" 1.00 of 29.05.2018, set 1 "TR-DOS 6.11Q + Fatall 0.25", `c2391511187cca0e187fe22a3888f7c1` |
 | `alf.rom` | ALF TV Game | SKB Zapad, Brest | grey | 32K: games menu in bank 0, 48 BASIC in bank 1, `f879e22ae833687ccdfc4745aa56b804` |
 
 Source: `256s-*.rom` from <https://github.com/trufanov-nok/fuse-extra-roms>; `alf.rom`
@@ -82,7 +83,10 @@ the 4.xx.0NN builds are a later community fork). `prof444.rom` is `ProfRomZS256_
 that fork's release 4.44 (`ProfRom_full.44.9643`); its author LW writes about it on zx-pk.ru
 (thread 34789) and in the ZS Scorpion chat. The release carries no licence text; the Turbo+
 board's own repository (github.com/romychs/Scorpion256TPlus, `ROM/LW`) ships the fork's
-earlier builds. The rest from the images that have circulated
+earlier builds. `phoenix-07.rom` is `zxm_phoenix.rom` of `zxm_phoenix_rom_07.rar` on the
+board's page, <http://micklab.ru/My%20Computer/ZXMPhoenix.htm> ("TR-DOS 6.11Q + Fatall 0.25,
+build by Mick, for revision 07 boards"); `phoenix.rom` is the same page's BIOS 5.03. The page
+states no licence. The rest from the images that have circulated
 with these machines and with Xpeccy itself.
 
 `alf.rom` is the original firmware, not the patched one that also circulates: it checks

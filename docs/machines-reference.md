@@ -33,7 +33,7 @@ on nothing better than convention is marked **open** and left alone.
 | Profi v3 | 3 500 000 | ULA.Profi | 224 | 320 | 71 680 | 32 **open** | 0 (none) | no | no | no | no |
 | Profi v5 | 3 500 000 | ULA.Profi5 | 224 **open** | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
 | ATM Turbo 2+ | 3 500 000 | ULA.ATM2 | 224 | 312 | 69 888 | 32 **open** | 0 (none) | no | no | no | no |
-| ZXM-Phoenix | 3 500 000 | ULA.Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
+| ZXM-Phoenix | 3 500 000 | ULA.Phoenix | 224 | 312 | 69 888 | 32 | 0 (none) | no | no | yes | no |
 | ZX Evolution (BaseConf) | 3 500 000 | ULA.Evo | 224 | 320 | 71 680 | 32 | 0 (none) | no | no | no | no |
 | ZX Evolution (TSConf) | 3 500 000 | ULA.TSConf | 224 | 320 | 71 680 | 32 | 0 (none) | no | no | no | no |
 | ALF TV Game / 128K | 3 500 000 | ULA.48 | 224 | 312 | 69 888 | 32 **open** | 0 (none) **open** | no | no | no | no |
@@ -51,8 +51,8 @@ tick at the end of each line come from photos of Rak's test on a real +3 and +2A
 `cpu.turbo` lists the turbo steps a board has, as multipliers of its base clock. Five of them
 switch it from a port and the core already does that: Scorpion ZS 256 Turbo+, ATM Turbo 2+ and Pentagon
 1024SL at x2, ZX Evo and TSConf at x2 and x4. Profi and ZXM-Phoenix have 7 MHz too, but no
-port for it, so they are turbo by switch - Alt+T is the switch, and whether the real
-ZXM-Phoenix has a port for it (its `#EFF7` is decoded for nothing today) is **open**.
+port for it, so they are turbo by switch - Alt+T is the switch. The Phoenix's is the XP20
+connector (revision 04 on); a port was proposed on its forum in 2014 and its author declined.
 
 `floatbus` is what a port nothing answers reads back. The 48K, 128K and +2 get `ula`, the
 +2A and +3 `asic`; both were checked against Woodmass's Float48K and Float128K, where the
@@ -60,7 +60,8 @@ first of the four bytes lands one tick earlier than Fuse prints it because these
 run early timings. The clones get `attr`, the documented port `#FF` that hands back the
 attribute of the cell being shown - not a floating bus, but what this emulator has always
 done for them and what a demo written for a Pentagon expects. ZX Evo's BaseConf is `none`:
-its FPGA drives FF on any read nothing claims (`zbus.v`). The +2A/+3 rules (ports
+its FPGA drives FF on any read nothing claims (`zbus.v`), and so is the ZXM-Phoenix: its
+data bus has pull-ups and nothing decodes `#FF` outside TR-DOS. The +2A/+3 rules (ports
 1, 5, ... 4093, paging on, bit 0 forced, the last contended-memory byte between fetches)
 are Ast A. Moore and Hikaru's, sky.relative-path.com/zx/floating_bus.html.
 
@@ -105,6 +106,35 @@ ground, d6/d7 the VG93's DRQ and INTRQ. The joystick connector has no more lines
 8-bit Kempston on them.
 
 Also still open from that work: ATM Turbo 2+ is 11 T out, with no official figure behind it.
+
+The ZXM-Phoenix is read off its author's files (micklab.ru: the schematics of revisions
+05.2, 07.1 and 08.1, the sources of the DD22 port decoder ROM and of the DD71 CPLD, the
+manual) and off the firmware of the multicard in its ATmega8515, Caro's ZXMC2 2.8.1,
+disassembled. The machine is revision 08.1, which to a program is 07.1 with a second YM.
+The frame is 312 lines of 224 T, the counters the same gate for gate in 05.2 and 07.1; INT
+falls at the end of the 16-line frame sync, on the first of the 56 border lines above the
+paper, and lasts until H6 rises: 32 T, and 32 CPU ticks in turbo, where H5 ends it. The
+pixels come out one byte after their counter position and the blanking is not delayed, so the
+left border is 36 T and the right 28 T, and INT is 4 T before the paper column. The border
+bits pass through the attribute latches, clocked once a byte: a write shows from the next
+byte boundary. The author measured 69 888 T a frame, twice that in turbo and 32 T of INT on
+a board, and 12 546 T (give or take 1-2) from INT to the screen; the layout keeps the
+schematic's 12 548, which is where his own demos' border pictures hold together (Parus4Phoenix
+breaks its lines at 12 550, Black cat's border scroller sits a cell off at 12 547).
+Revision 06 alone had a Pentagon-style video and a 312/320-line switch; its author calls it
+not canonical, and it is not modelled.
+
+Its turbo has no waits: the memory runs on the 7 MHz timing at either speed (revision 07
+on). DOSEN/ - TR-DOS paged in, or bit 7 of `#EFF7` - resets the turbo flip-flop, so the
+board is at 3.5 MHz in TR-DOS and back at once after it. `#EFF7` belongs to the multicard:
+bit 7 opens the Beta Disk ports without the TR-DOS ROM and the clock's two ports, and the
+port reads back. The clock is Gluk's ports served from the AVR's memory, with its EEPROM as
+the other registers; a read of `#00F7`, `#00DF` or `#00EF` gives the firmware version, 28.
+The ROM is a 512K flash from revision 07: `#37` picks one of eight 64K sets (set 0 holds a
+system ROM that jumps to set 1), TR-DOS always runs from set 1, and inside a set `#1FFD` b1
+forces the service page, b3 swaps the BASIC half for the service/TR-DOS half, `#7FFD` b4
+picks within the half - so TR-DOS with b4 low shows the service page. Kempston `#1F` is
+decoded on A7 and A3-A0 only and goes away while the Beta Disk ports are open.
 
 ALF TV Game runs on the 48K's layout with no contention. Its ports and joysticks come from
 its schematic ([zxbyte.ru/alf.htm](https://zxbyte.ru/alf.htm)); nobody has measured its
@@ -162,7 +192,7 @@ RAM is what the core's `mask` field allows; the bold size is what the shipped de
 | Profi v3 | 256K, **512K**, 768K, 1M | Beta Disk | none | 1 AY 1.75, ACB + Covox | yes |
 | Profi v5 | 512K, **1M** | Beta Disk | Profi | 1 YM 1.75, ACB + Covox | yes |
 | ATM Turbo 2+ | 128K, 256K, 512K, **1M** | Beta Disk | ATM | 1 YM 1.75, ABC + Covox | yes |
-| ZXM-Phoenix | **2M** | Beta Disk | none | 1 YM 1.75, ABC + Covox | yes |
+| ZXM-Phoenix | 128K, 1M, **2M** | Beta Disk | NemoIDE | 2 YM 1.75, ABC (TurboSound) | yes |
 | ZX Evolution (BaseConf) | **4M** | Beta Disk | NemoIDE | 2 YM 1.75, ABC (TurboSound) + Covox | yes |
 | ZX Evolution (TSConf) | **4M** | Beta Disk | NemoIDE | 2 YM 1.75, ABC (TurboSound) + Covox | yes |
 | ALF TV Game | **64K**, 128K | none | none | beeper | no |
@@ -193,7 +223,7 @@ Both differences are why the 128K has its own core instead of borrowing Pentagon
 ## 4. ROM banks
 
 The bank index is the `rom<N>` key of the machine definition. ROM paging is `(flgDOS ? 2 : 0) | flgROM` on every 128K-style machine,
-so bank 0 is the 128 editor, 1 the 48 BASIC, and 2/3 the interface ROM.
+so bank 0 is the 128 editor, 1 the 48 BASIC, and 2/3 the interface ROM. The ZXM-Phoenix's order is the board's: service, TR-DOS, BASIC 128, BASIC 48.
 
 | machine | 0 | 1 | 2 | 3 |
 |---|---|---|---|---|
@@ -211,7 +241,7 @@ so bank 0 is the 128 editor, 1 the 48 BASIC, and 2/3 the interface ROM.
 | Profi v3 | profi-kramis02.rom (JV "KRAMIS" V.02, TR-DOS 5.03), 64K combined | | | |
 | Profi v5 | profi-bios20.rom (Micco ROM Bios 2.0), or profi-bios10.rom (1.0), 64K combined | | | |
 | ATM Turbo 2+ | atm2.rom, 64K combined | | | |
-| ZXM-Phoenix | phoenix.rom, 64K combined | | | |
+| ZXM-Phoenix | phoenix-07.rom (the revision 07 image), 512K combined, or phoenix.rom (BIOS 5.03), 64K | | | |
 | ZX Evolution (BaseConf) | zxevo-fe.rom, 512K combined | | | |
 | ZX Evolution (TSConf) | tsconf.rom, 64K combined | | | |
 | ALF TV Game / 128K | alf.rom, 32K combined: the games menu, then BASIC 48 | | | |

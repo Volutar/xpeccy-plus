@@ -62,7 +62,7 @@ static const struct {
 	{HW_PLUS3, {{RES_128, "Basic 128"}, {-1, "Syntax 128"}, {-1, "+3DOS"}, {RES_48, "Basic 48"}}},
 	{HW_PROFI, {{RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
 	{HW_PROFI3, {{RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
-	// a reset to the service page lands on TR-DOS here, so it is no target
+	// the service page holds a program the start menu calls (Fatall), so it is no target
 	{HW_PHOENIX, {{-1, NULL}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
 	{HW_ATM2, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
 	{HW_PENTEVO, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
@@ -194,17 +194,18 @@ int hw_kempston8(const HardWare* hw) {
 	return (hw->id != HW_SCORP) && (hw->id != HW_SCORPTP);
 }
 
-// the Gluk clock: an add-on made for the Pentagon, on the P1024's own board
+// the Gluk clock: an add-on made for the Pentagon, on the P1024's own board; the
+// Phoenix's multicard keeps one on the same ports
 int hw_takes_gluk(const HardWare* hw) {
-	return hw && ((hw->id == HW_PENT) || (hw->id == HW_P1024));
+	return hw && ((hw->id == HW_PENT) || (hw->id == HW_P1024) || (hw->id == HW_PHOENIX));
 }
 
 // KOE names KAY, Scorpion and Pentagon-1024SL for its slot (ZC.pdf); a Pentagon 128
-// has the same bus
+// has the same bus. The Phoenix has the SD port in a chip of its own (phoenix.c)
 int hw_takes_zc(const HardWare* hw) {
 	if (!hw) return 0;
 	switch (hw->id) {
-		case HW_PENT: case HW_P1024: case HW_SCORP: case HW_SCORPTP:
+		case HW_PENT: case HW_P1024: case HW_SCORP: case HW_SCORPTP: case HW_PHOENIX:
 			return 1;
 	}
 	return 0;
