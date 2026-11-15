@@ -60,13 +60,19 @@ void ataDestroy(ATADev* ata) {
 	free(ata);
 }
 
-void ataReset(ATADev* ata) {
-	ata->reg.state = HDF_DRDY | HDF_DSC;
-	ata->reg.err = 0x01;		// err contains 01 after reset (it means no errors detected)
+// what a reset and EXECUTE DEVICE DIAGNOSTIC leave: no error, and the ATA device
+// signature - count 1, sector 1, cylinder 0, device 0
+static void ata_signature(ATADev* ata) {
+	ata->reg.err = 0x01;
 	ata->reg.count = 0x01;
 	ata->reg.sec = 0x01;
 	ata->reg.cyl = 0x0000;
 	ata->reg.head = 0x00;
+}
+
+void ataReset(ATADev* ata) {
+	ata->reg.state = HDF_DRDY | HDF_DSC;
+	ata_signature(ata);
 	ata->buf.mode = HDB_IDLE;
 	ata->buf.pos = 0;
 	ata->idle = 0;
@@ -228,13 +234,8 @@ void ataExec(ATADev* dev, unsigned char cm) {
 				break;
 			case 0x50:			// format track; TODO: cyl = track; count = spt; drq=1; wait for buffer write, ignore(?) buffer; format track;
 				break;
-			case 0x90:			// execute drive diagnostic; FIXME: both drives must do this
-				dev->reg.err = 0x01;
-				// the device signature, as after a reset (ATA: count 1, LBA 1, cylinder 0)
-				dev->reg.count = 0x01;
-				dev->reg.sec = 0x01;
-				dev->reg.cyl = 0x0000;
-				dev->reg.head = 0x00;
+			case 0x90:			// execute device diagnostic; the other device: ide_ata_wr()
+				ata_signature(dev);
 				break;
 			case 0x91:			// initialize drive parameters; pass.spt = reg.count; pass.heads = (reg.head & 15) + 1;
 				dev->pass.spt = dev->reg.count;
@@ -680,6 +681,17 @@ static void ide_select(IDE* ide, int adr, int val) {
 		ide->curDev = (val & HDF_DRV) ? ide->slave : ide->master;
 }
 
+// a register write; EXECUTE DEVICE DIAGNOSTIC runs on both devices and ends with
+// device 0 selected, whichever one it was given to
+static void ide_reg_wr(IDE* ide, int adr, int val) {
+	ide_select(ide, adr, val);
+	ataWr(ide->curDev, adr, val);
+	if ((adr == HDD_COM) && ((val & 0xff) == 0x90)) {
+		ata_signature((ide->curDev == ide->master) ? ide->slave : ide->master);
+		ide->curDev = ide->master;
+	}
+}
+
 void ide_ata_wr(IDE* ide, int adr, int hi, int val) {
 	if (hi) {
 		ide->bus &= 0xff;
@@ -687,8 +699,7 @@ void ide_ata_wr(IDE* ide, int adr, int hi, int val) {
 	} else {
 		ide->bus &= 0xff00;
 		ide->bus |= (val & 0xff);
-		ide_select(ide, adr, val);
-		ataWr(ide->curDev, adr, ide->bus);
+		ide_reg_wr(ide, adr, ide->bus);
 	}
 }
 
@@ -765,8 +776,7 @@ void ide_nemoevo_wr(IDE* ide, ataAddr adr, int val) {
 			}
 		} else {
 			ide->hiTrig = 0;		// non-data ports : next 10 is low
-			ide_select(ide, adr.port, val);
-			ataWr(ide->curDev, adr.port, val);
+			ide_reg_wr(ide, adr.port, val);
 		}
 	}
 }
