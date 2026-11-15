@@ -168,6 +168,16 @@ static void zx128_nemo(void) {
 	compDestroy(comp);
 }
 
+// the 48K the same: a NemoIDE's #FFF0 is the AY's #FFFD as well
+static void zx48_nemo(void) {
+	Computer* comp = machine("ZX48", MEM_48K, IDE_NEMO);
+	pout(comp, 0x00fe, 0x05);
+	pout(comp, 0xfff0, 0x07);		// AY register 7 selected by the card's port
+	pout(comp, 0xbffd, 0x3c);
+	check("48K, NemoIDE #FFF0: border kept, the AY's register picked", (comp->vid->nextbrd == 5) && (pin(comp, 0xfffd) == 0x3c));
+	compDestroy(comp);
+}
+
 int main(void) {
 	printf("== decode\n");
 	board("ScorpionTP", MEM_256K, IDE_SMUC, "Scorpion Turbo+, SMUC");
@@ -178,5 +188,6 @@ int main(void) {
 	bus_line("Pentagon", MEM_128K, IDE_NEMO, 0x00f0, 1, "Pentagon, NemoIDE #F0");
 	bus_line("Plus3", MEM_128K, IDE_SMUC2, 0xffba, 0, "+3, SMUC 2.x #FFBA");
 	zx128_nemo();
+	zx48_nemo();
 	return failures ? 1 : 0;
 }

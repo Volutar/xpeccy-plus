@@ -39,3 +39,4 @@ Pentagon, SMUC 2.x: diagnostic ends on the master: ok
 Pentagon, NemoIDE #F0: border kept: ok
 +3, SMUC 2.x #FFBA: border set: ok
 128K, NemoIDE #0010: border kept, #7FFD written: ok
+48K, NemoIDE #FFF0: border kept, the AY's register picked: ok
