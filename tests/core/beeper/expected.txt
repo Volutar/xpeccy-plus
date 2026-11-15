@@ -60,16 +60,16 @@ cut-off as built: ok
 -3 dB there: ok
 a held level dies away to nothing: ok
 == piezo
-44100: peak 3.046 at 4250 Hz, 1 kHz 0.063, 12 kHz 1.127
+44100: peak 4.260 at 4150 Hz, 1 kHz 0.266, 12 kHz 1.191
 rings at 4.1 kHz: ok
-Q times the level at the peak: ok
-little bass: ok
+Q times the level at the peak, and the band's: ok
+the bass falling off 6 dB an octave: ok
 the highs on their way to the level: ok
 a held level dies away to nothing: ok
-48000: peak 3.045 at 4250 Hz, 1 kHz 0.063, 12 kHz 1.126
+48000: peak 4.260 at 4150 Hz, 1 kHz 0.266, 12 kHz 1.190
 rings at 4.1 kHz: ok
-Q times the level at the peak: ok
-little bass: ok
+Q times the level at the peak, and the band's: ok
+the bass falling off 6 dB an octave: ok
 the highs on their way to the level: ok
 a held level dies away to nothing: ok
 == coefficients
@@ -219,46 +219,46 @@ a held level dies away to nothing: ok
 48000 16/1 6: 0 0 87616 0 0
 48000 16/1 7: 0 0 0 4488576 5592405
 == by speed
-1/8 44100: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.879, tv 3183, evo 8599, scorpion 530, atm 80, piezo at f0 3.000
+1/8 44100: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.879, tv 3183, evo 8599, scorpion 530, atm 80, piezo at f0 4.243
 cut-offs as built: ok
 held levels: through the low-passes, gone from the high-passes: ok
-1/8 48000: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.879, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+1/8 48000: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.879, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 4.243
 cut-offs as built: ok
 held levels: through the low-passes, gone from the high-passes: ok
-1/4 44100: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.879, tv 3183, evo 8601, scorpion 530, atm 80, piezo at f0 3.000
+1/4 44100: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.879, tv 3183, evo 8601, scorpion 530, atm 80, piezo at f0 4.243
 cut-offs as built: ok
 held levels: through the low-passes, gone from the high-passes: ok
-1/4 48000: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.879, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+1/4 48000: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.879, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 4.243
 cut-offs as built: ok
 held levels: through the low-passes, gone from the high-passes: ok
-1/2 44100: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.879, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+1/2 44100: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.879, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 4.243
 cut-offs as built: ok
 held levels: through the low-passes, gone from the high-passes: ok
-1/2 48000: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.879, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+1/2 48000: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.879, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 4.243
 cut-offs as built: ok
 held levels: through the low-passes, gone from the high-passes: ok
-2/1 44100: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.878, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+2/1 44100: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.878, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 4.242
 cut-offs as built: ok
 held levels: through the low-passes, gone from the high-passes: ok
-2/1 48000: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.878, tv 3183, evo 8601, scorpion 530, atm 80, piezo at f0 3.000
+2/1 48000: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.878, tv 3183, evo 8601, scorpion 530, atm 80, piezo at f0 4.242
 cut-offs as built: ok
 held levels: through the low-passes, gone from the high-passes: ok
-4/1 44100: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.876, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+4/1 44100: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.876, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 4.241
 cut-offs as built: ok
 held levels: through the low-passes, gone from the high-passes: ok
-4/1 48000: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.877, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+4/1 48000: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.877, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 4.241
 cut-offs as built: ok
 held levels: through the low-passes, gone from the high-passes: ok
-8/1 44100: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.874, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+8/1 44100: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.874, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 4.237
 cut-offs as built: ok
 held levels: through the low-passes, gone from the high-passes: ok
-8/1 48000: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.874, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+8/1 48000: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.874, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 4.238
 cut-offs as built: ok
 held levels: through the low-passes, gone from the high-passes: ok
-16/1 44100: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.869, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 3.000
+16/1 44100: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.869, tv 3183, evo 8600, scorpion 530, atm 80, piezo at f0 4.220
 cut-offs as built: ok
 held levels: through the low-passes, gone from the high-passes: ok
-16/1 48000: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.869, tv 3183, evo 8599, scorpion 530, atm 80, piezo at f0 3.000
+16/1 48000: speaker at 100 Hz 0.042, plus3 at 1 kHz 0.869, tv 3183, evo 8599, scorpion 530, atm 80, piezo at f0 4.224
 cut-offs as built: ok
 held levels: through the low-passes, gone from the high-passes: ok
 == speed change mid-note
@@ -303,26 +303,18 @@ a held level dies away to nothing: ok
 44100 8: 322251 171743 0 0 0 0 0 0 0 0
 44100 9: 322251 171743 0 18675 23726566 0 0 0 0 0
 44100 10: 322251 171743 0 56024 23726566 0 0 0 0 0
-44100 11: 0 0 0 306259 5592405 16777216 0 0 0 0
-44100 12: 0 0 0 306259 8388608 16777216 0 0 0 0
-44100 13: 0 0 0 306259 11184811 16777216 0 0 0 0
-44100 14: 369365 369365 0 0 0 0 0 0 0 0
-44100 15: 0 0 0 0 0 0 373484 23726566 0 0
-44100 16: 0 0 0 0 0 0 373484 31000253 373484 12840725
+44100 11: 369365 369365 0 0 0 0 0 0 0 0
+44100 12: 0 0 0 0 0 0 373484 23726566 0 0
+44100 13: 0 0 0 0 0 0 373484 31000253 373484 12840725
 speaker, no bass cut: a held level through: ok
 speaker 250 / 750: -3 dB there: ok
-piezo, 6 dB/oct: the gains as built, a held level gone: ok
 low-pass 5 kHz of 1, 2, 4 poles: the gains as built, a held level through: ok
 48000 8: 296301 157855 0 0 0 0 0 0 0 0
 48000 9: 296301 157855 0 17157 23726566 0 0 0 0 0
 48000 10: 296301 157855 0 51472 23726566 0 0 0 0 0
-48000 11: 0 0 0 281376 5592405 16777216 0 0 0 0
-48000 12: 0 0 0 281376 8388608 16777216 0 0 0 0
-48000 13: 0 0 0 281376 11184811 16777216 0 0 0 0
-48000 14: 339660 339660 0 0 0 0 0 0 0 0
-48000 15: 0 0 0 0 0 0 343140 23726566 0 0
-48000 16: 0 0 0 0 0 0 343140 31000253 343140 12840725
+48000 11: 339660 339660 0 0 0 0 0 0 0 0
+48000 12: 0 0 0 0 0 0 343140 23726566 0 0
+48000 13: 0 0 0 0 0 0 343140 31000253 343140 12840725
 speaker, no bass cut: a held level through: ok
 speaker 250 / 750: -3 dB there: ok
-piezo, 6 dB/oct: the gains as built, a held level gone: ok
 low-pass 5 kHz of 1, 2, 4 poles: the gains as built, a held level through: ok
