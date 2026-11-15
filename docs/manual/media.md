@@ -50,7 +50,7 @@ says **Built into this board**. A Beta Disk cannot be added to the +2A and +3.
 **SMUC** is the Scorpion's original board: its ports answer only while TR-DOS is paged in,
 so programs reach the hard disk through ProfROM. **SMUC 2.x** stands for the home-made boards
 made since 2009: the same ports answer in any ROM, as programs such as Z-Player and Demeter
-expect. ProfROM works with either.
+expect. ProfROM works with either, and calls the 2.x version 2.0.
 
 ## Cartridge
 
