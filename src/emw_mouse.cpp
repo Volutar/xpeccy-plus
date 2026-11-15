@@ -123,6 +123,18 @@ void MainWin::winCursorTo(QPoint pos) {
 #endif
 }
 
+QPoint MainWin::winCursorPos() {
+#ifdef WIDGET_SCREEN
+	return QCursor::pos(WIDGET_SCREEN);
+#else
+	return QCursor::pos();
+#endif
+}
+
+bool MainWin::winHolds(QPoint pos) {
+	return rect().contains(mapFromGlobal(pos));
+}
+
 // The one way in and out of the grab: from here the pointer is the machine's,
 // and the state mouseRead keeps has to start over on every new grab
 void MainWin::mouseGrabOn() {
@@ -152,11 +164,16 @@ void MainWin::mouseRecenter(int fresh) {
 		warpFail = 0;
 		mouseVel = QPointF();
 	}
-	mouseLast = QCursor::pos();
+	mouseLast = winCursorPos();
 	mouseAt = paceClockNs();
+	mouseWarp();
+}
+
+// A recentering asked again before the last is answered keeps its count of readings
+void MainWin::mouseWarp() {
 	if (warpFail >= MOUSE_WARP_GIVEUP) return;
-	warpAt = winCenter();
-	warpTtl = MOUSE_WARP_TTL;
+	warpAim = warpAt = winCenter();
+	if (!warpTtl) warpTtl = MOUSE_WARP_TTL;
 	winCursorTo(warpAt);
 }
 
@@ -170,37 +187,33 @@ void MainWin::mouseMoveEvent(QMouseEvent *ev) {
 	mouseRead();
 }
 
-// Over another program's window a grab gets no moves: on Windows Qt passes on
-// the first and drops the rest, on macOS a grab holds inside the frame alone.
-// A pointer that got out before a move could recenter it is caught here, a
-// timer tick later.
+// Qt sends no moves over another program's window: one that got out is caught here
 void MainWin::mouseWatch() {
 	if (!grabMice || conf.emu.pause) return;
-	if (rect().contains(mapFromGlobal(QCursor::pos()))) return;
+	if (winHolds(winCursorPos())) return;
 	mouseRead();
 }
 
 void MainWin::mouseRead() {
 	Computer* comp = conf.zx;
-	// Where the pointer is now, not where the event saw it: events arrive in
-	// batches, and one taken before a recentering but handled after it would
-	// read as the host putting the pointer back.
-	QPoint gpos = QCursor::pos();
+	// not the event's position: one queued before a recentering reads as undoing it
+	QPoint gpos = winCursorPos();
 	qint64 now = paceClockNs();
-	double ms = qBound(0.0, (now - mouseAt) / 1e6, MOUSE_LEAD_MS);
-	// The pointer moved by the difference from where it was - but a pending
-	// recentering leaves two answers to where that is, and the nearer one is
-	// it: the two candidates are a third of the window apart. Nearer once the
-	// hand's own way since the last reading is added to both: an event loop
-	// held up for a few milliseconds sees a fast hand far from either.
+	double ms = (now - mouseAt) / 1e6;
+	if (ms > MOUSE_LEAD_MS) {		// the hand has stopped since
+		mouseVel = QPointF();
+		ms = MOUSE_LEAD_MS;
+	}
+	// A pending recentering leaves two answers to where the pointer was, a third
+	// of the window apart: the nearer one, once the hand's way since is added
 	QPoint was = mouseLast;
 	bool hand = true;	// the reading is the hand's, not the recentering's
 	if (warpTtl) {
 		QPoint off = gpos - warpAt;
+		QPoint aim = gpos - warpAim;
 		QPoint lead = (mouseVel * ms).toPoint();
-		if ((qAbs(off.x()) <= 1) && (qAbs(off.y()) <= 1)) {
-			// on the target: no answer yet - a host that undoes the
-			// recentering reads back the target too, until its device speaks
+		if ((qAbs(aim.x()) <= 1) && (qAbs(aim.y()) <= 1)) {
+			// on the target: no answer, an undoing host reads it back too
 			was = warpAt;
 			warpAt = gpos;
 			hand = false;
@@ -212,8 +225,7 @@ void MainWin::mouseRead() {
 			warpTtl = 0;
 			warpFail = 0;
 		} else {
-			// where it was: the device holds it, or the recentering is not
-			// applied yet - the system queues it behind the moves before it
+			// the old place: the device holds it, or the system has not applied it yet
 			mouseLast = gpos;
 			if (!--warpTtl && (++warpFail >= MOUSE_WARP_GIVEUP))
 				xlog(XLG_INPUT, XLL_INFO, "mouse: this host puts the pointer straight back, recentering dropped");
@@ -221,8 +233,7 @@ void MainWin::mouseRead() {
 	} else {
 		mouseLast = gpos;
 	}
-	// readings that come together say nothing of the speed, and one a
-	// millisecond apart catches a 1000 Hz mouse between its steps: averaged
+	// readings that come together say nothing of the speed; a 1000 Hz mouse is caught between steps
 	if (hand && (ms >= 0.5))
 		mouseVel = (mouseVel + QPointF(gpos - was) / ms) / 2;
 	mouseAt = now;
@@ -249,13 +260,9 @@ void MainWin::mouseRead() {
 	if (comp->mouse->xdelta || comp->mouse->ydelta) x_input_bump();
 	comp->mouse->xpos += comp->mouse->xdelta;
 	comp->mouse->ypos -= comp->mouse->ydelta;	// axis is reverted
-	// far enough from the middle to be worth putting back, on a host that
-	// lets it be put back at all. Not again while the last one is unanswered,
-	// unless the pointer is already out: no move may come to say so later
-	if (warpFail < MOUSE_WARP_GIVEUP) {
-		QPoint cen = winCenter();
-		if (((qAbs(gpos.x() - cen.x()) > width() / 3) || (qAbs(gpos.y() - cen.y()) > height() / 3))
-				&& (!warpTtl || !rect().contains(mapFromGlobal(gpos))))
-			mouseRecenter();
-	}
+	// far enough out to put back; while one is pending, only once out of the window
+	QPoint cen = winCenter();
+	if (((qAbs(gpos.x() - cen.x()) > width() / 3) || (qAbs(gpos.y() - cen.y()) > height() / 3))
+			&& (!warpTtl || !winHolds(gpos)))
+		mouseWarp();
 }

@@ -313,7 +313,8 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void releaseChord(QKeyEvent*, bool);
 		void fast_key(bool);
 		void fast_toggle();
-		QPoint warpAt;		// where the last recentering aimed
+		QPoint warpAim;		// where the last recentering aimed
+		QPoint warpAt;		// that, with the hand's way since read on it
 		unsigned char warpTtl;	// readings it stays a candidate for
 		unsigned char warpFail;	// recenterings the host undid in a row
 		QPoint mouseLast;	// where the pointer was at the previous reading
@@ -620,9 +621,12 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void calcCoords(QMouseEvent*);
 		QPoint winCenter();		// the middle of the window, on the screen
 		void winCursorTo(QPoint);
+		QPoint winCursorPos();
+		bool winHolds(QPoint);	// a point on the screen is in the picture
 		void mouseGrabOn();
 		void mouseGrabOff();
 		void mouseRecenter(int fresh = 0);
+		void mouseWarp();
 		void mouseRead();
 		void mouseWatch();
 		void dropAsk(QString);
