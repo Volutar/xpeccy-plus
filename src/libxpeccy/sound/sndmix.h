@@ -8,6 +8,7 @@
 
 #include "sndcommon.h"
 #include "ayym.h"
+#include "gs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,6 +45,7 @@ typedef struct {
 	int bVal, bVol, bLev;	// the beeper's share, for the val and volume it was worked out for
 	unsigned int dOut;	// the DACs' share, likewise
 	int dVol, dL, dR;
+	gsKept gsk;		// the General Sound's level as the take last asked it (zx_snd_take)
 } sndMix;
 
 // the tape's share of a sample, in the beeper's units: what both mixes start from

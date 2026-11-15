@@ -50,7 +50,16 @@ static void gs_map_neogs(GSound* gs) {
 	}
 }
 
+// Moves whenever what gsVolume works its answer out of may have: a channel's byte, a
+// volume, GSCFG0 (gsVolumeKept). One for every card: an answer is only asked again
+static unsigned gsMixStamp = 1;
+
+void gs_mix_moved(void) {
+	gsMixStamp++;
+}
+
 void gs_remap(GSound* gs) {
+	gsMixStamp++;		// a snapshot's loader ends here, its channels and volumes put back
 	if (gs->model == GS_NEOGS) {
 		gs->tickUnits = GS_UNITS_TICK(ngsMHz[(gs->cfg0 >> 4) & 3]);
 		gs_map_neogs(gs);
@@ -85,6 +94,7 @@ int gsmemrd(int adr, int m1, void* ptr) {
 	if ((adr & 0xe000) == 0x6000) {
 		int eight = (gs->model == GS_NEOGS) && (gs->cfg0 & NGS_8CHANS);
 		*gs_ch(gs, (adr >> 8) & (eight ? 7 : 3)) = res;
+		gsMixStamp++;
 		gs->lpDirty = 1;
 	}
 	return res;
@@ -174,6 +184,7 @@ int gsiord(int port, void* ptr) {
 void gsiowr(int port, int val, void* ptr) {
 	GSound* gs = (GSound*)ptr;
 	gs->lpDirty = 1;
+	gsMixStamp++;		// the volumes, GSCFG0
 	val &= 0xff;
 	if (gs->model != GS_NEOGS) {
 		port &= 0x0f;
@@ -299,6 +310,7 @@ GSound* gsCreate() {
 }
 
 void gsDestroy(GSound* gs) {
+	gsMixStamp++;		// another card may come up where this one was
 	cpuDestroy(gs->cpu);
 	memDestroy(gs->mem);
 	free(gs->romGS);
@@ -600,4 +612,19 @@ sndPair gsVolume(GSound* gs) {
 		res.right = (res.right * (100 + sep) + l * (100 - sep)) / 200;
 	}
 	return res;
+}
+
+// the listener's settings are not the card's writes: they are looked at each time
+sndPair gsVolumeKept(GSound* gs, gsKept* k) {
+	if ((k->gs == gs) && (k->stamp == gsMixStamp) && (k->cfg0 == gs->cfg0) && (k->sep == gs->sep)
+			&& (k->stereo == gs->stereo) && (k->model == gs->model))
+		return k->mix;
+	k->mix = gsVolume(gs);
+	k->gs = gs;
+	k->stamp = gsMixStamp;
+	k->cfg0 = gs->cfg0;
+	k->sep = gs->sep;
+	k->stereo = gs->stereo;
+	k->model = gs->model;
+	return k->mix;
 }
