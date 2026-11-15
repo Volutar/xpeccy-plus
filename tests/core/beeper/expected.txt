@@ -299,3 +299,30 @@ a held level dies away to nothing: ok
 48000: 75 Hz 0.447 150 Hz 0.706 450 Hz 0.933 2500 Hz 0.706 10000 Hz 0.242
 the gains as built: ok
 a held level dies away to nothing: ok
+== experimental
+44100 8: 322251 171743 0 0 0 0 0 0 0 0
+44100 9: 322251 171743 0 18675 23726566 0 0 0 0 0
+44100 10: 322251 171743 0 56024 23726566 0 0 0 0 0
+44100 11: 0 0 0 306259 5592405 16777216 0 0 0 0
+44100 12: 0 0 0 306259 8388608 16777216 0 0 0 0
+44100 13: 0 0 0 306259 11184811 16777216 0 0 0 0
+44100 14: 369365 369365 0 0 0 0 0 0 0 0
+44100 15: 0 0 0 0 0 0 373484 23726566 0 0
+44100 16: 0 0 0 0 0 0 373484 31000253 373484 12840725
+speaker, no bass cut: a held level through: ok
+speaker 250 / 750: -3 dB there: ok
+piezo, 6 dB/oct: the gains as built, a held level gone: ok
+low-pass 5 kHz of 1, 2, 4 poles: the gains as built, a held level through: ok
+48000 8: 296301 157855 0 0 0 0 0 0 0 0
+48000 9: 296301 157855 0 17157 23726566 0 0 0 0 0
+48000 10: 296301 157855 0 51472 23726566 0 0 0 0 0
+48000 11: 0 0 0 281376 5592405 16777216 0 0 0 0
+48000 12: 0 0 0 281376 8388608 16777216 0 0 0 0
+48000 13: 0 0 0 281376 11184811 16777216 0 0 0 0
+48000 14: 339660 339660 0 0 0 0 0 0 0 0
+48000 15: 0 0 0 0 0 0 343140 23726566 0 0
+48000 16: 0 0 0 0 0 0 343140 31000253 343140 12840725
+speaker, no bass cut: a held level through: ok
+speaker 250 / 750: -3 dB there: ok
+piezo, 6 dB/oct: the gains as built, a held level gone: ok
+low-pass 5 kHz of 1, 2, 4 poles: the gains as built, a held level through: ok
