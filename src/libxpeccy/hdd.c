@@ -335,7 +335,7 @@ void ataExec(ATADev* dev, unsigned char cm) {
 				ata_put_word(dev, 20, dev->pass.type);	// buffer type
 				ata_put_word(dev, 21, dev->pass.vol);	// buffer size
 				copyStringToBuffer(&dev->buf.data[46],dev->pass.mcver,8);	// microcode version (8 bytes)
-				copyStringToBuffer(&dev->buf.data[54],dev->pass.model,10);	// model (40 bytes)
+				copyStringToBuffer(&dev->buf.data[54],dev->pass.model,40);	// model (40 bytes)
 				dev->buf.data[99] = (dev->hasDMA ? 0x01 : 0x00) | (dev->hasLBA ? 0x02 : 0x00);	// lba/dma support
 				// words 54..58: the geometry in use, which 0x91 sets; 60..61: LBA sectors
 				ata_put_word(dev, 53, 0x0001);
