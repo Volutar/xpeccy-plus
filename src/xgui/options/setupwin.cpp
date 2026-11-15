@@ -1284,13 +1284,15 @@ void SetupWin::fillPages() {
 	fillDivFirmware();
 
 	sdrvBox->setCurrentIndex(sdrvBox->findData(comp->sdrv->type));
-	beepBox->setCurrentIndex(comp->beepType);
+	setRFIndex(beepBox, comp->beepType, BEEP_LINE);
 
 	saaBox->setCurrentIndex(comp->saa->enabled ? 1 : 0);
 	clockBox->setCurrentIndex(comp->flgGLUK ? MAC_CLOCK_GLUK : MAC_CLOCK_NONE);
 
 	ui.senbox->setChecked(conf.snd.enabled);
 	ui.dcbox->setChecked(conf.snd.vol.dc);
+	ui.chkBoardFilter->setChecked(conf.snd.vol.board);
+	showBoardFilter();
 	ui.outbox->setCurrentIndex(ui.outbox->findText(QString::fromLocal8Bit(sndOutput->name)));
 	// Auto keeps conf.snd.rate as the rate actually in use, so the box says
 	// which one that turned out to be rather than leaving the user guessing.
@@ -1617,7 +1619,7 @@ void SetupWin::applyMachine() {
 		}
 		xm_set_gs(comp, gsBox->currentIndex());
 		comp->sdrv->type = getRFIData(sdrvBox);
-		comp->beepType = beepBox->currentIndex();
+		comp->beepType = qMax(getRFIData(beepBox), (int)BEEP_LINE);
 		comp->saa->enabled = saaBox->currentIndex() ? 1 : 0;
 	}
 // input
@@ -1749,6 +1751,7 @@ void SetupWin::applyGlobal() {
 // sound
 	conf.snd.enabled = ui.senbox->isChecked() ? 1 : 0;
 	conf.snd.vol.dc = ui.dcbox->isChecked() ? 1 : 0;
+	conf.snd.vol.board = ui.chkBoardFilter->isChecked() ? 1 : 0;
 
 	conf.snd.vol.master = ui.sbMasterVol->value();
 	conf.snd.vol.beep = ui.sbBeepVol->value();
@@ -2413,15 +2416,40 @@ void SetupWin::buildDevices() {
 
 	grid = devGroup(cols, 0, 1, ":/images/speaker.png", tr("Sound"));
 	beepBox = devCombo(QStringList() << tr("Line out") << tr("48K speaker") << tr("TV (RF)")	// BEEP_*
-		<< tr("ZX Evolution") << tr("Scorpion") << tr("ATM Turbo") << tr("Piezo"));
+		<< tr("+2A/+3") << tr("ZX Evolution") << tr("Scorpion") << tr("ATM Turbo") << tr("Piezo"));
+	beepBox->setObjectName("beepBox");
 	beepBox->setItemData(BEEP_LINE, tr("Straight out, nothing filtered"), Qt::ToolTipRole);
-	beepBox->setItemData(BEEP_SPEAKER, tr("The 48K's ULA pin and speaker:\nthe highs softened"), Qt::ToolTipRole);
-	beepBox->setItemData(BEEP_TV, tr("A TV's aerial input: highs cut\nfrom 3.2 kHz"), Qt::ToolTipRole);
+	beepBox->setItemData(BEEP_SPEAKER, tr("The 48K's ULA pin and small speaker:\nthe highs softened, the bass thin"), Qt::ToolTipRole);
+	beepBox->setItemData(BEEP_TV, tr("A TV's aerial input: highs cut\nfrom 3.2 kHz, the PSG's too"), Qt::ToolTipRole);
+	beepBox->setItemData(BEEP_PLUS3, tr("The +2A/+3's mixer: highs cut\nfrom 2.5 kHz, the PSG's too"), Qt::ToolTipRole);
 	beepBox->setItemData(BEEP_EVO, tr("The Evo's RC: highs cut from 8.6 kHz"), Qt::ToolTipRole);
 	beepBox->setItemData(BEEP_SCORPION, tr("The Scorpion's coupling capacitor:\nlows cut below 530 Hz"), Qt::ToolTipRole);
 	beepBox->setItemData(BEEP_ATM, tr("The ATM's coupling capacitor:\nlows cut below 80 Hz"), Qt::ToolTipRole);
-	beepBox->setItemData(BEEP_PIEZO, tr("A piezo sounder: little bass,\nrings at 4.1 kHz"), Qt::ToolTipRole);
+	beepBox->setItemData(BEEP_PIEZO, tr("A piezo sounder: rings at 4.1 kHz,\nthe bass falls off gently"), Qt::ToolTipRole);
+	// the experimental ones under a heading of their own: the type is each item's data
+	for (int t = 0; t < BEEP_TYPES; t++)
+		beepBox->setItemData(t, t);
+	beepBox->insertSeparator(beepBox->count());
+	beepBox->addItem(tr("EXPERIMENTAL"));
+	QStandardItemModel* beepModel = qobject_cast<QStandardItemModel*>(beepBox->model());
+	if (beepModel) {
+		QStandardItem* head = beepModel->item(beepBox->count() - 1);
+		QFont font = head->font();
+		font.setBold(true);
+		head->setFont(font);
+		head->setEnabled(false);
+	}
+	const QStringList xNames = QStringList() << tr("48K speaker, no bass cut") << tr("48K speaker, bass cut 250 Hz")	// BEEP_X_*
+		<< tr("48K speaker, bass cut 750 Hz") << tr("Low-pass 5 kHz, 1 pole") << tr("Low-pass 5 kHz, 2 poles")
+		<< tr("Low-pass 5 kHz, 4 poles");
+	for (int t = BEEP_TYPES; t < BEEP_ALL; t++)
+		beepBox->addItem(xNames.value(t - BEEP_TYPES), t);
+	beepBox->setItemData(beepBox->findData(BEEP_X_LP5_4), tr("For PWM music: its carrier gone,\nthe bass kept"), Qt::ToolTipRole);
+	beepBox->setMaxVisibleItems(beepBox->count());
 	devRow(grid, tr("Beeper"), beepBox, NULL, NULL);
+	beepName = qobject_cast<QLabel*>(grid->itemAtPosition(grid->rowCount() - 1, 0)->widget());
+	beepName->setText(tr("Beeper (off)"));	// measured so (finishGroups)
+	connect(ui.chkBoardFilter, &QCheckBox::toggled, this, &SetupWin::showBoardFilter);
 	xOptSheet psg;
 	psg.field(tr("Chip"), cbPsgType);
 	psg.field(tr("Clock"), fieldPair(cbPsgFrq, labPsgMhz, false),
@@ -2944,6 +2972,15 @@ void SetupWin::showBoardStorage() {
 	// the board on takes the disk controllers out (comp_board_storage): its name marks it
 	QLabel* divName = qobject_cast<QLabel*>(divRow.value(0));
 	if (divName) divName->setText(board ? tr("SD card (!)") : tr("SD card"));
+}
+
+// Board filters off: the Beeper row still picks, its name and tip say it is not heard
+void SetupWin::showBoardFilter() {
+	bool on = ui.chkBoardFilter->isChecked();
+	beepName->setText(on ? tr("Beeper") : tr("Beeper (off)"));
+	QString tip = on ? QString() : tr("Board filters are off on the Sound page:\nthe sound goes out as Line out");
+	beepName->setToolTip(tip);
+	beepBox->setToolTip(tip);
 }
 
 // the SD card row's choice, of the boards this machine takes

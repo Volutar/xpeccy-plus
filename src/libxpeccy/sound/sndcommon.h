@@ -9,6 +9,7 @@ typedef  struct {
 	int sdrv;
 	int saa;
 	unsigned dc:1;		// take each device's dc offset out before mixing
+	unsigned board:1;	// the machine's beeper type is heard (Board filters); off: line out
 } sndVolume;
 
 typedef struct {
@@ -62,16 +63,21 @@ static inline void bcSync(bitChan* ch, int ns) {
 
 sndPair mixer(sndPair, sndPair);
 
-// What the beeper sounds through on the board: machine key "beeper" in [sound]
+// What the beeper - and on some boards the PSG - sounds through: machine key "beeper" in [sound]
 enum {
 	BEEP_LINE = 0,		// straight out: no filter
 	BEEP_SPEAKER,		// the 48K's ULA pin and its speaker
-	BEEP_TV,		// a TV's FM sound on its RF input: 50 us de-emphasis
+	BEEP_TV,		// a TV's FM sound on its RF input: 50 us de-emphasis, the PSG too
+	BEEP_PLUS3,		// the +2A/+3's TR5 mixer: beeper and PSG through one low-pass
 	BEEP_EVO,		// the ZX Evolution's RC on its beeper input
 	BEEP_SCORPION,		// the Scorpion's coupling cap on its AUDIO line
 	BEEP_ATM,		// the ATM Turbo's coupling cap into its amplifier
 	BEEP_PIEZO,		// a piezo sounder (ZP-3 class) on the port's own output
-	BEEP_TYPES
+	BEEP_TYPES,
+	// experimental, to be judged by ear this release: under EXPERIMENTAL in the list
+	BEEP_X_SPK0 = BEEP_TYPES, BEEP_X_SPK250, BEEP_X_SPK750,
+	BEEP_X_LP5_1, BEEP_X_LP5_2, BEEP_X_LP5_4,
+	BEEP_ALL
 };
 
 // Fixed point (coefficients Q24, levels Q16) so sound hashes match across compilers
@@ -80,20 +86,48 @@ typedef struct {
 	int rate;
 	long long kUp, kDn;	// low-pass, rising and falling (0: none)
 	long long kHp;		// high-pass (0: none)
-	long long kF, kQ;	// piezo resonator: frequency and damping (0: none)
+	long long kF, kQ;	// resonant high-pass: frequency and damping (0: none)
 	long long lp, hp;	// one-poles' state
 	long long low, band;	// resonator's state
+	long long kBp;		// the resonator's band added to its high-pass (0: none)
+	long long kL[2], kLQ[2];	// up to two 2-pole low-passes (Chamberlin, low out)
+	long long ll[2], lb[2];
 } sndBeepFlt;
 
-int snd_beep_run(sndBeepFlt* st, int lev, int type, int rate);
+// a type's two chains: the beeper's (with the tape), and the mix's the PSG goes through
+enum {BF_BEEP = 0, BF_MIX};
+
+int snd_beep_run(sndBeepFlt* st, int lev, int type, int rate, int chain);
 
 // Every sub-sample: line out costs a branch, and marks a type taken again to resettle
 static inline int snd_beep_flt(sndBeepFlt* st, int lev, int type, int rate) {
-	if ((type <= BEEP_LINE) || (type >= BEEP_TYPES) || (rate <= 0)) {
+	if ((type <= BEEP_LINE) || (type >= BEEP_ALL) || (rate <= 0)) {
 		st->type = BEEP_LINE;
 		return lev;
 	}
-	return snd_beep_run(st, lev, type, rate);
+	return snd_beep_run(st, lev, type, rate, BF_BEEP);
+}
+
+// the type a mix hears: the machine's with Board filters on, line out with them off
+static inline int snd_board_type(int type, const sndVolume* sv) {
+	return sv->board ? type : BEEP_LINE;
+}
+
+// the types whose board or TV has the PSG mixed in before its filter
+static inline int snd_beep_mixes(int type) {
+	return (type == BEEP_TV) || (type == BEEP_PLUS3);
+}
+
+// The PSG's left and right through the type's mix chain; the other types let it through
+static inline sndPair snd_mix_flt(sndBeepFlt st[2], sndPair lev, int type, int rate) {
+	if (!snd_beep_mixes(type) || (rate <= 0)) {
+		st[0].type = BEEP_LINE;
+		st[1].type = BEEP_LINE;
+		return lev;
+	}
+	lev.left = snd_beep_run(&st[0], lev.left, type, rate, BF_MIX);
+	lev.right = snd_beep_run(&st[1], lev.right, type, rate, BF_MIX);
+	return lev;
 }
 
 // A dc blocker, one per device, kept by whoever mixes them. None of the chips swing

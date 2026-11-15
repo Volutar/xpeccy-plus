@@ -15,11 +15,14 @@ before that point is upstream's history and is not repeated here.
   The Scorpion's ProfROM 4.xx.38 and later finds the card and reads it in its navigator,
   FATALL copies files to and from it.
 
-- **Beeper type**: Options > Machine, Beeper row - what the beeper sounds through, by the
-  machine's board: the 48K's speaker, a TV, the ZX Evolution's filter, the Scorpion's and
-  the ATM's coupling capacitors, a piezo sounder, or line out. Every machine comes with
-  line out, so the sound is as it was until you pick another. The filter follows Slow
-  Motion and Fast Forward, so a tone it cuts stays cut as it drops in pitch.
+- **Board filters**: Options > Sound, with the choice in the Beeper row of Options > Machine.
+  Each machine sounds through what its board put between the sound and your ears: the
+  48K's ULA and small speaker, a TV on the aerial input or the +2A/+3's own mixer (both with
+  the AY too), the ZX Evolution's filter, the Scorpion's and the ATM's coupling capacitors,
+  or a piezo sounder. Every machine comes with its own, and any can be picked; off by
+  default, so the sound stays clean until you tick it. The filter follows Slow Motion and
+  Fast Forward, so a tone it cuts stays cut as it drops in pitch. Under Experimental in the
+  list: filters to try by ear, among them a 5 kHz low-pass for PWM beeper music.
 
 - **Integer Scale**: View > Integer Scale and Options > Video. In fullscreen and in a maximized
   or resized window the picture keeps a whole number of pixels per dot, the largest that fits,

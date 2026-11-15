@@ -30,10 +30,10 @@ are on the **Sound** page.
   again after a long time with no gaps. The slider then shows the value the program has
   settled on.
 
-```{index} Low cut (DC), High cut (anti-alias), anti-alias filter
+```{index} Low cut (DC), High cut (anti-alias), anti-alias filter, Board filters
 ```
 
-The **Sound** group beside **Output** has three switches:
+The **Sound** group beside **Output** has four switches:
 
 - **Enabled** - with it off, the program plays silence. The machine still runs at its
   normal speed, and its sound is not worked out at all, which leaves more of the
@@ -45,6 +45,11 @@ The **Sound** group beside **Output** has three switches:
 - **High cut (anti-alias)** - takes out the frequencies too high for the output rate.
   Without it they come back as false notes, which is heard most in beeper music as a
   harsh crunch. On by default; it costs a little CPU time.
+- **Board filters** - each machine sounds through what its board put between the sound and
+  your ears: a 48K's small speaker, a TV, a filter or a capacitor on the board. Which one is
+  set in the **Beeper** row of the **Machine** page, and every machine comes with its own (see
+  [Beeper](options-machine.md#beeper)). Off by default: every machine then sounds clean, as
+  **Line out**.
 
 ```{index} Volumes, Master
 ```

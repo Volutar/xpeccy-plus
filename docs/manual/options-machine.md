@@ -179,20 +179,42 @@ device's further settings. How loud each device plays is set on the
 
 The beeper is a single bit of a port, but what you heard from it depended on the board: a
 48K's own small speaker, a TV, an amplifier behind a coupling capacitor, a piezo sounder.
-The **Beeper** row picks which of them the beeper, and a tape you hear loading, sound
-through. The AY and the other sound devices are not changed. Every machine comes with
-**Line out**; the others are there to pick. The filter is the machine's, so it slows down
-and speeds up with it: in **Slow Motion** a high tone it cuts stays cut as it drops in pitch.
+On some machines the sound chip went the same way. The **Beeper** row picks which of them
+the machine sounds through; each machine comes with its own board's choice already set.
 
-| Choice | What it does | The board it is from |
-|---|---|---|
-| **Line out** | nothing: the beeper as the port sets it | boards with no filter |
-| **48K speaker** | softens the highs, the falling edge more than the rising one, as the 48K's ULA drives its speaker | 48K |
-| **TV (RF)** | cuts the highs from 3.2 kHz, as a TV does with sound on its aerial input | 128K, +2, +2A, +3 |
-| **ZX Evolution** | cuts the highs from 8.6 kHz, the board's own filter | ZX Evolution |
-| **Scorpion** | cuts the lows below 530 Hz, the board's coupling capacitor | Scorpion ZS 256 and Turbo+ |
-| **ATM Turbo** | cuts the lows below 80 Hz, the board's coupling capacitor | ATM Turbo 2+ |
-| **Piezo** | little bass and a ring at 4.1 kHz: a piezo sounder of the ZP-3 kind, as some clones had | - |
+It is heard only with **Board filters** ticked on the **Sound** page (see
+[Sound page](options-sound.md)). That is off at first, and every machine then sounds as
+**Line out**: the row's name reads **Beeper (off)**, and it can still be set for when the
+filters are turned on. One tick turns them on, or off, for every machine at once.
+
+The filter belongs to the machine, so it slows down and speeds up with it: in **Slow
+Motion** a high tone it cuts stays cut as it drops in pitch.
+
+| Choice | Filters | What goes through them | What it is on the board | Machines it comes with |
+|---|---|---|---|---|
+| **Line out** | none | - | boards with only resistors between the beeper and the output | Pentagon, Pentagon 1024 SL, Profi, Phoenix, ALF |
+| **48K speaker** | low-pass, 4.4 kHz on a rising edge and 2.3 kHz on a falling one; high-pass, 500 Hz, two poles | beeper, tape | the ULA's pin drives the speaker with slow, uneven edges; the speaker is small and gives little bass. The 500 Hz is a guess: there is no measurement of the speaker | 48K |
+| **TV (RF)** | low-pass, 3.2 kHz | beeper, tape, PSG | a TV's FM sound on its aerial input (50 us de-emphasis); the board mixes the PSG in before the modulator | 128K, +2 |
+| **+2A/+3** | low-pass, 2.5 kHz; high-pass, 340 Hz on the beeper and the tape, 150 Hz on the PSG | beeper, tape, PSG | the transistor that mixes them has a 100 nF capacitor on its output, on every socket; the high-passes are the coupling capacitors. Worked out from the schematic, not measured; the 150 Hz is a guess | +2A, +3 |
+| **ZX Evolution** | low-pass, 8.6 kHz | beeper, tape | a 2.2K resistor and a 10 nF capacitor on the beeper's input | ZX Evolution |
+| **Scorpion** | high-pass, 530 Hz | beeper, tape | the coupling capacitor on the beeper's way out | Scorpion ZS 256 and Turbo+ |
+| **ATM Turbo** | high-pass, 80 Hz | beeper, tape | the coupling capacitor into the amplifier | ATM Turbo 2+ |
+| **Piezo** | a ring at 4.1 kHz; under it the bass falls off 6 dB an octave | beeper, tape | a piezo sounder of the ZP-3 kind, as some clones had. The ring is the element's own; how sharp it is and how the bass falls were set by ear, as there is no measurement of the element | - |
+
+The low-pass and high-pass filters here are one pole, 6 dB an octave, unless the table says
+two. The other sound devices - General Sound, the SAA1099, Covox and Soundrive - have outputs
+of their own on every board and are never filtered.
+
+```{index} beeper; experimental filters, PWM music
+```
+
+Under **EXPERIMENTAL** at the end of the list are filters to try by ear. They may change or go
+in a later version:
+
+| Choice | What it does |
+|---|---|
+| **48K speaker, no bass cut** / **bass cut 250 Hz** / **bass cut 750 Hz** | the **48K speaker** with its bass cut moved: none, lower, or higher than its 500 Hz |
+| **Low-pass 5 kHz, 1 pole** / **2 poles** / **4 poles** | cuts the highs from 5 kHz and keeps the bass. Made for beeper music played by pulse width (PWM), whose pulses carry a whistle far above the tune; such music asks for a filter like this. With 4 poles the whistle is gone and the music is not dulled |
 
 ### PSG
 

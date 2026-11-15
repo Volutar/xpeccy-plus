@@ -107,8 +107,10 @@ static xMacWord sdrvTab[] = {
 
 // what the beeper goes out through (BEEP_*, sndcommon.h)
 static xMacWord beepTab[] = {
-	{"line", BEEP_LINE}, {"speaker", BEEP_SPEAKER}, {"tv", BEEP_TV}, {"evo", BEEP_EVO},
-	{"scorpion", BEEP_SCORPION}, {"atm", BEEP_ATM}, {"piezo", BEEP_PIEZO}, {NULL, 0}
+	{"line", BEEP_LINE}, {"speaker", BEEP_SPEAKER}, {"tv", BEEP_TV}, {"plus3", BEEP_PLUS3}, {"evo", BEEP_EVO},
+	{"scorpion", BEEP_SCORPION}, {"atm", BEEP_ATM}, {"piezo", BEEP_PIEZO},
+	{"x-speaker0", BEEP_X_SPK0}, {"x-speaker250", BEEP_X_SPK250}, {"x-speaker750", BEEP_X_SPK750},	// experimental
+	{"x-lp5-1", BEEP_X_LP5_1}, {"x-lp5-2", BEEP_X_LP5_2}, {"x-lp5-4", BEEP_X_LP5_4}, {NULL, 0}
 };
 
 static xMacWord joyTab[] = {

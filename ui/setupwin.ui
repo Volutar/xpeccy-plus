@@ -2181,6 +2181,16 @@ thin, lower it again after a long clean spell</string>
                </widget>
               </item>
               <item>
+               <widget class="QCheckBox" name="chkBoardFilter">
+                <property name="toolTip">
+                 <string>Each machine sounds through its board's own&#10;filter, set in the Beeper row of the Machine page</string>
+                </property>
+                <property name="text">
+                 <string>Board filters</string>
+                </property>
+               </widget>
+              </item>
+              <item>
                <spacer name="verticalSpacer_23">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
