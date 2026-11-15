@@ -103,8 +103,9 @@ def set_up(case, corpus, cfg, tmp):
             cards.append(dst)
             if k == "sd":
                 args += ["--sdcard", str(dst)]
-            else:
-                ini["cfg"].append(("MEDIA.hdd.master", str(dst)))
+            else:		# the master a drive with LBA, as a card or an image needs
+                ini["cfg"] += [("MEDIA.hdd.master", str(dst)), ("MEDIA.hdd.master.type", "1"),
+                               ("MEDIA.hdd.master.lba", "yes")]
         elif k == "put":
             path, src = v.split("=", 1)
             if not cards:

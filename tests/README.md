@@ -29,7 +29,8 @@ python tests/regress.py list
   - `nvram:FILE` - becomes `nvram/<machine>.cmos`
   - `sd:PATH`, `hdd:PATH` - an image or a folder as the SD card or the IDE master. It is
     copied first, and a folder's files get one fixed mtime: the FAT served for a folder
-    carries the host's dates, which a fresh checkout would change.
+    carries the host's dates, which a fresh checkout would change. `hdd:` makes the master a
+    drive (ATA, LBA): the machine's interface is `mac:storage.ide=...`.
   - `put:PATH=FILE` - lays a file over the card copied just before (`put:bin/autoexec.bat=...`)
   - `sdimg:FOLDER` - the SD card as a FAT16 image made of a folder (`tests/core/divmmc/mksd.py`)
   - `romfile:FILE` - a ROM the bundle has not, copied among the case's `roms/`; name it with

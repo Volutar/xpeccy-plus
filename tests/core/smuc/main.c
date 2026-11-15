@@ -1,8 +1,9 @@
 // Headless SMUC bench: the two boards' decode against Black_Cat's SMUC 2.1/2.2
 // schematics and port table (lab specs/smuc-open-ports). The original 1.x answers
-// only with TR-DOS paged; the home-made 2.x in any ROM. Both hold IORQGE, so a port
-// they take never reaches the machine's own #FE, which A0 = 0 hits on the Pentagon
-// and A0/A1/A5 on the Scorpion.
+// only with TR-DOS paged; the home-made 2.x in any ROM, and reads 2.0. Both hold
+// IORQGE, so a port they take never reaches the machine's own #FE, which A0 = 0 hits
+// on the Pentagon and A0/A1/A5 on the Scorpion - but on the +2A/+3, whose edge has
+// no such line. SYS b0 is the drives' /RESET.
 //
 //	smuc-bench
 
@@ -54,12 +55,13 @@ static Computer* machine(const char* hw, int ram, int ide) {
 	return comp;
 }
 
-// the version and revision registers read #3F/#57 (1.2), and IDE-Hi keeps a byte
-static int answers(Computer* comp) {
+// the version and revision registers read #3F/#57 (1.2) or, on a 2.x, #57/#17
+// (2.0); and IDE-Hi keeps a byte
+static int answers(Computer* comp, int v2) {
 	pout(comp, 0xd8be, 0xa5);
 	int hi = pin(comp, 0xd8be);
 	pout(comp, 0xd8be, 0x5a);
-	return (pin(comp, 0x5fba) == 0x3f) && (pin(comp, 0x5fbe) == 0x57)
+	return (pin(comp, 0x5fba) == (v2 ? 0x57 : 0x3f)) && (pin(comp, 0x5fbe) == (v2 ? 0x17 : 0x57))
 		&& (hi == 0xa5) && (pin(comp, 0xd8be) == 0x5a);
 }
 
@@ -75,18 +77,40 @@ static int border_kept(Computer* comp) {
 	return comp->vid->nextbrd == 5;
 }
 
+// SYS b0 is the drives' /RESET (SMUC 2.1 schematic, DD8 Q0 to the IDE pin 1): a 1
+// keeps the sector count written, a 0 resets it to the signature's 1 (the
+// register itself, read back from the device)
+static void sys_reset(Computer* comp, const char* name) {
+	char buf[128];
+	int was = comp->flgDOS;
+	set_dos(comp, 1);
+	comp->ide->master->type = IDE_ATA;
+	if (!comp->ide->master->image) comp->ide->master->image = strdup("none");	// a drive is there; no file is read
+	pout(comp, 0xffba, 0x77);		// b7 = 0: the CS0 block
+	pout(comp, 0xfebe, 0xe0);		// master, LBA
+	pout(comp, 0xfabe, 0x55);
+	pout(comp, 0xffba, 0x77);
+	snprintf(buf, sizeof(buf), "%s: SYS b0 = 1 runs", name);
+	check(buf, comp->ide->master->reg.count == 0x55);
+	pout(comp, 0xffba, 0x76);
+	pout(comp, 0xffba, 0x77);
+	snprintf(buf, sizeof(buf), "%s: SYS b0 = 0 resets", name);
+	check(buf, comp->ide->master->reg.count == 0x01);
+	set_dos(comp, was);
+}
+
 static void board(const char* hw, int ram, int ide, const char* name) {
 	Computer* comp = machine(hw, ram, ide);
 	int open = (ide == IDE_SMUC2);
 	char buf[128];
 	set_dos(comp, 1);
 	snprintf(buf, sizeof(buf), "%s, TR-DOS: answers", name);
-	check(buf, answers(comp));
+	check(buf, answers(comp, open));
 	snprintf(buf, sizeof(buf), "%s, TR-DOS: border kept", name);
 	check(buf, border_kept(comp));
 	set_dos(comp, 0);
 	snprintf(buf, sizeof(buf), "%s, BASIC: %s", name, open ? "answers" : "silent");
-	check(buf, answers(comp) == open);
+	check(buf, answers(comp, open) == open);
 	if (open) {
 		snprintf(buf, sizeof(buf), "%s, BASIC: border kept", name);
 		check(buf, border_kept(comp));
@@ -108,6 +132,20 @@ static void board(const char* hw, int ram, int ide, const char* name) {
 	pout(comp, 0x7ffd, 0x13);
 	snprintf(buf, sizeof(buf), "%s, BASIC: #7FFD written", name);
 	check(buf, comp->p7FFD == 0x13);
+	sys_reset(comp, name);
+	compDestroy(comp);
+}
+
+// a card's write against the board's #FE: kept out where the bus has IORQGE (a
+// NemoIDE on the Pentagon), not on the +2A/+3, whose edge has no such line
+static void bus_line(const char* hw, int ram, int ide, int port, int kept, const char* name) {
+	Computer* comp = machine(hw, ram, ide);
+	char buf[128];
+	set_dos(comp, 0);
+	pout(comp, 0x00fe, 0x05);
+	pout(comp, port, 0x02);
+	snprintf(buf, sizeof(buf), "%s: %s", name, kept ? "border kept" : "border set");
+	check(buf, comp->vid->nextbrd == (kept ? 5 : 2));
 	compDestroy(comp);
 }
 
@@ -117,5 +155,8 @@ int main(void) {
 	board("ScorpionTP", MEM_256K, IDE_SMUC2, "Scorpion Turbo+, SMUC 2.x");
 	board("Pentagon", MEM_128K, IDE_SMUC, "Pentagon, SMUC");
 	board("Pentagon", MEM_128K, IDE_SMUC2, "Pentagon, SMUC 2.x");
+	printf("== bus\n");
+	bus_line("Pentagon", MEM_128K, IDE_NEMO, 0x00f0, 1, "Pentagon, NemoIDE #F0");
+	bus_line("Plus3", MEM_128K, IDE_SMUC2, 0xffba, 0, "+3, SMUC 2.x #FFBA");
 	return failures ? 1 : 0;
 }
