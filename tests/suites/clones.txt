@@ -25,6 +25,8 @@ newyear_phoenix phoenix   auto  3900  300     disk/phoenix/newyear.trd          
 mlt_phoenix     phoenix   auto  4300  300     disk/phoenix/mlt_picture_1.trd        keys:1400:turbo,1500:E/30,4000:_
 gift12_phoenix  phoenix   auto  3900  300     disk/phoenix/phoenix_gift2012.trd     keys:1500:E/30
 virus_phoenix   phoenix   auto  3900  300     disk/phoenix/virus_demo.trd           keys:1500:E/30
+# a snapshot lands in the ROM set that has the BASICs
+snap_phoenix    phoenix   open  50    200     snap/gt.sna
 # Fatall from the ROM's menu, the SD card in the board's own port
 fatall_phoenix  phoenix   boot  500   300                                           sdimg:zc/card keys:200:E
 boot_profi      profi     boot  0     400

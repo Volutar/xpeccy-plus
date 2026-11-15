@@ -160,6 +160,10 @@ static void lock_reset(void) {
 	check("reset clears #7FFD, #1FFD, #37 and #EFF7",
 		!comp->reg[0] && !comp->reg[1] && !comp->reg[2] && !comp->reg[3]);
 	check("...into the system ROM of set 0", page_at(comp, 0) == 2);
+	comp_snap_reset(comp, RES_128);
+	pout(comp, 0x7ffd, 0x10);
+	check("a snapshot's reset stands in set 1, where the BASICs are", page_at(comp, 0) == ((1 << 2) | 3));
+	compReset(comp, RES_128);
 	check("#7FFD reads nothing", pin(comp, 0x7ffd) == 0xff);
 	check("#1FFD reads nothing", pin(comp, 0x1ffd) == 0xff);
 	compDestroy(comp);

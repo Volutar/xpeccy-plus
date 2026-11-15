@@ -35,6 +35,7 @@ b7 of #37 leaves the ROM read-only: ok
 ...nor #37: ok
 reset clears #7FFD, #1FFD, #37 and #EFF7: ok
 ...into the system ROM of set 0: ok
+a snapshot's reset stands in set 1, where the BASICs are: ok
 #7FFD reads nothing: ok
 #1FFD reads nothing: ok
 == multicard
