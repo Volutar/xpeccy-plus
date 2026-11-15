@@ -68,6 +68,9 @@ before that point is upstream's history and is not repeated here.
   the border, and a NemoIDE's could page memory. The +2A and +3 keep the old way: their
   edge connector has no line for a card to take the bus.
 
+- **The Satisfaction demo loads every part**: after the first part its loader no longer
+  hangs on a disk read. *(reported by Faster)*
+
 - **The picture no longer freezes on Windows when a device is plugged in or removed**: it
   could stand still for up to half a second, several times in a row.
 

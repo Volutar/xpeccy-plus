@@ -182,7 +182,7 @@ taken when the file's core is the running core; on another core only the sound c
 | `BEEP` | the beeper's level and filter |
 | `SAA `, `SDRV` | SAA1099, Soundrive/Covox |
 | `DIF `, `FDC ` | the disk interface and its controller |
-| `FDCP` | the controller's command in progress: `dword plan` (-1 none), `byte` idle/seek-end bits, `byte` selected drive |
+| `FDCP` | the controller's command in progress: `dword plan` (-1 none), `byte` idle/seek-end bits, `byte` selected drive, `byte` the uPD765 plans' layout, `byte` the WD1793 plans' layout |
 | `FLP0`..`FLP3` | each drive: motor, head, track, position on the track, whether its disk was unsaved |
 | `IDE `, `ATA0`, `ATA1` | the IDE interface and its two devices |
 | `SMNV` | SMUC's NVRAM |
