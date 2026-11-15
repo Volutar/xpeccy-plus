@@ -851,18 +851,20 @@ static int smuc_ide_reg(IDE* ide, ataAddr adr) {
 	return (adr.port == 6) ? HDD_ASTATE : -1;
 }
 
-// Version, revision, the empty PIC socket, the virtual FDD's spare bits and the
-// IDE reset are UnrealSpeccy's, which ProfROM works with (MAME differs); no SMUC
-// schematic has been found to check them
+// The empty PIC socket and the virtual FDD's spare bits are UnrealSpeccy's, which
+// ProfROM works with. Version and revision: D7 D6 D5 and D3 are the number, the rest
+// read 1; ProfROM says 1.2 for #3F/#57 and 2.0 for #57/#17 (the 2.x boards set
+// theirs with diodes or in the CPLD, Black_Cat's SMUC 2.1 schematic)
 int ide_smuc_rd(IDE* ide, ataAddr adr) {
+	int v2 = (ide->type == IDE_SMUC2);
 	int res = 0xff;
 	if (adr.hdd) {
 		int reg = smuc_ide_reg(ide, adr);
 		if (reg >= 0) res = ide_ata_rd(ide, reg, adr.high);
 	} else {
 		switch (adr.port) {
-			case SMUC_VER: res = 0x3f; break;
-			case SMUC_REV: res = 0x57; break;
+			case SMUC_VER: res = v2 ? 0x57 : 0x3f; break;
+			case SMUC_REV: res = v2 ? 0x17 : 0x57; break;
 			case SMUC_SYS: res = nvRd(ide->smuc.nv) ? 0xff : 0xbf; break;	// b6: SDA
 			case SMUC_VFDD: res = ide->smuc.fdd | 0x37; break;
 			case SMUC_PIC: res = 0x57; break;
@@ -879,7 +881,7 @@ void ide_smuc_wr(IDE* ide, ataAddr adr, int val) {
 	} else {
 		switch (adr.port) {
 			case SMUC_SYS:
-				if (val & 1) ideReset(ide);
+				if (!(val & 1)) ideReset(ide);	// b0 is the drives' /RESET (SMUC 2.1 schematic: DD8 Q0)
 				ide->smuc.sys = val;
 				nvWr(ide->smuc.nv, val & 0x10, val & 0x40);		// sda,scl
 				break;
