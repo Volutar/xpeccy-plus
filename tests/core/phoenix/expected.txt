@@ -26,6 +26,9 @@ set 0, 7FFD.4=1 1FFD.1=1 1FFD.3=1 dos=1: set 1, service
 #37 sets the ROM set: ok
 #B7 is #37 (A7 not decoded): ok
 #27 and #F7 are not: ok
+Basic 48's page of another set is not the tape traps' ROM: ok
+...in set 1 it is: ok
+...TR-DOS's page swapped in by 1FFD.3 is not: ok
 b7 of #37 leaves the ROM read-only: ok
 1FFD.0: RAM page 0 in #0000: ok
 ...and writable: ok
@@ -50,6 +53,7 @@ IODOS takes the Kempston off #6F: ok
 ...and puts the Beta Disk's status on #1F: ok
 clock: A 20, B 02, D 00
 clock: minutes 00, seconds 00, year 25
+a write to B leaves the clock in BCD: ok
 EEPROM cell #C0 is not cell #40: ok
 the cells go with #EFF7 b7: ok
 a port nothing decodes reads FF: ok

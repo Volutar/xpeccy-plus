@@ -136,6 +136,14 @@ static void rom_pages(void) {
 	pout(comp, 0x0027, 6);
 	pout(comp, 0x00f7, 6);
 	check("#27 and #F7 are not", page_at(comp, 0) == ((3 << 2) | 2));
+	pout(comp, 0x7ffd, 0x10);
+	check("Basic 48's page of another set is not the tape traps' ROM", comp->flgEXT);
+	pout(comp, 0x0037, 1);
+	check("...in set 1 it is", !comp->flgEXT);
+	pout(comp, 0x1ffd, 8);
+	check("...TR-DOS's page swapped in by 1FFD.3 is not", comp->flgEXT);
+	pout(comp, 0x1ffd, 0);
+	pout(comp, 0x7ffd, 0);
 	pout(comp, 0x0037, 0x81);
 	check("b7 of #37 leaves the ROM read-only", (comp->hw->mwr(comp, 0x0000, 0x55), page_at(comp, 0) == ((1 << 2) | 2)));
 	// RAM page 0 under the ROM, 1FFD.0
@@ -191,6 +199,9 @@ static void multicard(void) {
 	printf("clock: minutes %02X, seconds %02X, year %02X\n",
 		(pout(comp, 0xdff7, 2), pin(comp, 0xbff7)), (pout(comp, 0xdff7, 0), pin(comp, 0xbff7)),
 		(pout(comp, 0xdff7, 9), pin(comp, 0xbff7)));
+	pout(comp, 0xdff7, 0x0b);
+	pout(comp, 0xbff7, 0x06);		// DM = 1 on the chip Gluk's ports were made for
+	check("a write to B leaves the clock in BCD", (pout(comp, 0xdff7, 9), pin(comp, 0xbff7)) == 0x25);
 	pout(comp, 0xdff7, 0xc0);
 	pout(comp, 0xbff7, 0x5a);
 	pout(comp, 0xdff7, 0x40);
