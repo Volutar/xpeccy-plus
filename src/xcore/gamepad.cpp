@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <mutex>
+#include <thread>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -24,6 +26,54 @@
 #include "arcpath.h"
 
 #define VIRTKEYBASE 12
+
+// SDL's joystick update on a thread of its own (Windows). After Windows reports a
+// device change the update lists the devices again through DirectInput - a quarter to
+// two thirds of a second where some HID device answers slowly, and SDL does it again
+// 0.3 s and 2 s later. Done from the GUI thread's timer, the picture stood still for it.
+// padLock is held by whoever is in the update, lists or opens devices, or reads the
+// pads: the GUI's timer only tries it and reads on its next tick when the thread has it.
+// The timer's SDL_PollEvent stays as it was, only told not to run the update itself
+// (SDL_HINT_AUTO_UPDATE_JOYSTICKS, SDL 2.0.22): what else it pumps is not changed.
+#if defined(_WIN32) && SDL_VERSION_ATLEAST(2,0,22)
+#define PAD_THREAD 1
+#include <objbase.h>
+static std::recursive_mutex padLock;
+static std::atomic<bool> padQuit{false};
+static std::thread* padThread = nullptr;
+#define PAD_HOLD std::lock_guard<std::recursive_mutex> padHold(padLock)
+
+static void pad_thread() {
+	CoInitializeEx(NULL, COINIT_MULTITHREADED);	// DirectInput is called from here
+	while (!padQuit) {
+		{
+			PAD_HOLD;
+			SDL_JoystickUpdate();
+		}
+		SDL_Delay(1);		// half the GUI's poll period: a press waits no longer for it
+	}
+	CoUninitialize();
+}
+
+// at exit, before SDL_Quit: registered after it
+static void pad_thread_stop() {
+	if (!padThread) return;
+	padQuit = true;
+	padThread->join();
+	delete padThread;
+	padThread = nullptr;
+}
+
+// from the first tick of the GUI's timer: a run with no event loop (--bench) has none
+static void pad_thread_start() {
+	if (padThread || !SDL_WasInit(SDL_INIT_JOYSTICK)) return;
+	SDL_SetHint(SDL_HINT_AUTO_UPDATE_JOYSTICKS, "0");
+	padThread = new std::thread(pad_thread);
+	atexit(pad_thread_stop);
+}
+#else
+#define PAD_HOLD
+#endif
 
 // SDL_JoystickGetSerial arrived in 2.0.14, SDL_JoystickPathForIndex in 2.24.
 // Linux is built against the distro's SDL, which is often older than the one
@@ -1392,6 +1442,7 @@ xGamepad::~xGamepad() {
 
 // Every connected pad, with what it takes to recognise it again.
 QList<xPadDev> xGamepad::devList() {
+	PAD_HOLD;		// the indices stand while the list is read
 	QList<xPadDev> res;
 	int cnt = SDL_NumJoysticks();
 	int i;
@@ -1467,6 +1518,7 @@ QList<xPadDev> xGamepad::devList() {
 }
 
 void xGamepad::openDev(const xPadDev& dev) {
+	PAD_HOLD;
 	close();
 	if (dev.index < 0) return;
 	if (dev.ctrl) {
@@ -1494,6 +1546,7 @@ void xGamepad::openDev(const xPadDev& dev) {
 }
 
 void xGamepad::close() {
+	PAD_HOLD;
 	if (id < 0) return;
 	if (scptr) {
 		SDL_GameControllerClose(scptr);		// takes the joystick with it
@@ -1896,6 +1949,7 @@ static int padMatch(const xPadId& want, const xPadDev& dev) {
 // the slots in order instead would let a slot whose own pad has been
 // unplugged grab its twin, out from under the slot that twin belongs to.
 void xGamepadController::rescan() {
+	PAD_HOLD;		// from the list to the open: no update between shuffles the indices
 	QList<xPadDev> devs = xGamepad::devList();
 	padLogDevices(devs);
 	xGamepad* slot[2] = {gpada, gpadb};
@@ -2087,6 +2141,14 @@ void xGamepadController::timerEvent(QTimerEvent* e) {
 	// with none, and newPad says that
 	bool waits[2] = {gpada->inUse() && !gpada->isOpened(), gpadb->inUse() && !gpadb->isOpened()};
 	bool had[2] = {gpada->isOpened() != 0, gpadb->isOpened() != 0};
+#ifdef PAD_THREAD
+	// The update is the pad thread's: SDL_PollEvent below pumps as ever and hands out
+	// what the update left. While the thread is in it (the devices being listed, maybe)
+	// the pads have not moved for us: the next tick reads them
+	pad_thread_start();
+	std::unique_lock<std::recursive_mutex> lk(padLock, std::try_to_lock);
+	if (!lk.owns_lock()) return;
+#endif
 	while (SDL_PollEvent(&ev)) {
 		switch (ev.type) {
 			case SDL_JOYDEVICEREMOVED:
