@@ -55,6 +55,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **A grabbed mouse stays in the window**: fast moves no longer let the pointer slip out of
+  it, onto the desktop or another monitor. *(reported by Alexey Boldyrev)*
+
 - **The ZX Spectrum Next no longer slows to a crawl** when a program sends to the Wi-Fi
   module much faster than the module listens.
 
