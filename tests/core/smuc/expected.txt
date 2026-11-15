@@ -7,6 +7,7 @@ Scorpion Turbo+, SMUC, BASIC: key A on #FDFE: ok
 Scorpion Turbo+, SMUC, BASIC: #7FFD written: ok
 Scorpion Turbo+, SMUC: SYS b0 = 1 runs: ok
 Scorpion Turbo+, SMUC: SYS b0 = 0 resets: ok
+Scorpion Turbo+, SMUC: diagnostic ends on the master: ok
 Scorpion Turbo+, SMUC 2.x, TR-DOS: answers: ok
 Scorpion Turbo+, SMUC 2.x, TR-DOS: border kept: ok
 Scorpion Turbo+, SMUC 2.x, BASIC: answers: ok
@@ -15,6 +16,7 @@ Scorpion Turbo+, SMUC 2.x, BASIC: key A on #FDFE: ok
 Scorpion Turbo+, SMUC 2.x, BASIC: #7FFD written: ok
 Scorpion Turbo+, SMUC 2.x: SYS b0 = 1 runs: ok
 Scorpion Turbo+, SMUC 2.x: SYS b0 = 0 resets: ok
+Scorpion Turbo+, SMUC 2.x: diagnostic ends on the master: ok
 Pentagon, SMUC, TR-DOS: answers: ok
 Pentagon, SMUC, TR-DOS: border kept: ok
 Pentagon, SMUC, BASIC: silent: ok
@@ -23,6 +25,7 @@ Pentagon, SMUC, BASIC: key A on #FDFE: ok
 Pentagon, SMUC, BASIC: #7FFD written: ok
 Pentagon, SMUC: SYS b0 = 1 runs: ok
 Pentagon, SMUC: SYS b0 = 0 resets: ok
+Pentagon, SMUC: diagnostic ends on the master: ok
 Pentagon, SMUC 2.x, TR-DOS: answers: ok
 Pentagon, SMUC 2.x, TR-DOS: border kept: ok
 Pentagon, SMUC 2.x, BASIC: answers: ok
@@ -31,6 +34,8 @@ Pentagon, SMUC 2.x, BASIC: key A on #FDFE: ok
 Pentagon, SMUC 2.x, BASIC: #7FFD written: ok
 Pentagon, SMUC 2.x: SYS b0 = 1 runs: ok
 Pentagon, SMUC 2.x: SYS b0 = 0 resets: ok
+Pentagon, SMUC 2.x: diagnostic ends on the master: ok
 == bus
 Pentagon, NemoIDE #F0: border kept: ok
 +3, SMUC 2.x #FFBA: border set: ok
+128K, NemoIDE #0010: border kept, #7FFD written: ok

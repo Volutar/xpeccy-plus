@@ -85,7 +85,7 @@ static void sys_reset(Computer* comp, const char* name) {
 	int was = comp->flgDOS;
 	set_dos(comp, 1);
 	comp->ide->master->type = IDE_ATA;
-	if (!comp->ide->master->image) comp->ide->master->image = strdup("none");	// a drive is there; no file is read
+	comp->ide->master->image = strdup("none");	// a drive is there; no file is read
 	pout(comp, 0xffba, 0x77);		// b7 = 0: the CS0 block
 	pout(comp, 0xfebe, 0xe0);		// master, LBA
 	pout(comp, 0xfabe, 0x55);
@@ -96,6 +96,15 @@ static void sys_reset(Computer* comp, const char* name) {
 	pout(comp, 0xffba, 0x77);
 	snprintf(buf, sizeof(buf), "%s: SYS b0 = 0 resets", name);
 	check(buf, comp->ide->master->reg.count == 0x01);
+	// EXECUTE DEVICE DIAGNOSTIC given to an absent slave: both run it, device 0 is
+	// selected and shows its signature
+	pout(comp, 0xfabe, 0x55);
+	pout(comp, 0xfebe, 0xf0);		// the slave
+	pout(comp, 0xffbe, 0x90);
+	snprintf(buf, sizeof(buf), "%s: diagnostic ends on the master", name);
+	check(buf, (comp->ide->curDev == comp->ide->master) && (comp->ide->master->reg.count == 0x01));
+	free(comp->ide->master->image);
+	comp->ide->master->image = NULL;
 	set_dos(comp, was);
 }
 
@@ -149,6 +158,16 @@ static void bus_line(const char* hw, int ram, int ide, int port, int kept, const
 	compDestroy(comp);
 }
 
+// the 128K: IORQGE stops the ULA, not the paging latch - a NemoIDE's #0010 is a
+// #7FFD as well
+static void zx128_nemo(void) {
+	Computer* comp = machine("ZX128", MEM_128K, IDE_NEMO);
+	pout(comp, 0x00fe, 0x05);
+	pout(comp, 0x0010, 0x02);
+	check("128K, NemoIDE #0010: border kept, #7FFD written", (comp->vid->nextbrd == 5) && (comp->p7FFD == 0x02));
+	compDestroy(comp);
+}
+
 int main(void) {
 	printf("== decode\n");
 	board("ScorpionTP", MEM_256K, IDE_SMUC, "Scorpion Turbo+, SMUC");
@@ -158,5 +177,6 @@ int main(void) {
 	printf("== bus\n");
 	bus_line("Pentagon", MEM_128K, IDE_NEMO, 0x00f0, 1, "Pentagon, NemoIDE #F0");
 	bus_line("Plus3", MEM_128K, IDE_SMUC2, 0xffba, 0, "+3, SMUC 2.x #FFBA");
+	zx128_nemo();
 	return failures ? 1 : 0;
 }
