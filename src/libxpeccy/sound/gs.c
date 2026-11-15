@@ -50,8 +50,7 @@ static void gs_map_neogs(GSound* gs) {
 	}
 }
 
-// Moves whenever what gsVolume works its answer out of may have: a channel's byte, a
-// volume, GSCFG0 (gsVolumeKept). One for every card: an answer is only asked again
+// moves when a channel's byte, a volume or GSCFG0 does: gsVolumeKept's answer is stale
 static unsigned gsMixStamp = 1;
 
 void gs_mix_moved(void) {
@@ -59,7 +58,7 @@ void gs_mix_moved(void) {
 }
 
 void gs_remap(GSound* gs) {
-	gsMixStamp++;		// a snapshot's loader ends here, its channels and volumes put back
+	gsMixStamp++;		// a snapshot's loader ends here
 	if (gs->model == GS_NEOGS) {
 		gs->tickUnits = GS_UNITS_TICK(ngsMHz[(gs->cfg0 >> 4) & 3]);
 		gs_map_neogs(gs);
@@ -93,8 +92,9 @@ int gsmemrd(int adr, int m1, void* ptr) {
 	// A10:A8 on a NeoGS in 8 channels (ports.v snd_addr)
 	if ((adr & 0xe000) == 0x6000) {
 		int eight = (gs->model == GS_NEOGS) && (gs->cfg0 & NGS_8CHANS);
-		*gs_ch(gs, (adr >> 8) & (eight ? 7 : 3)) = res;
-		gsMixStamp++;
+		int* ch = gs_ch(gs, (adr >> 8) & (eight ? 7 : 3));
+		if (*ch != res) gsMixStamp++;
+		*ch = res;
 		gs->lpDirty = 1;
 	}
 	return res;
@@ -142,10 +142,10 @@ static void gs_port_wr(GSound* gs, int port, int val) {
 		case 0x02: if (gs->model != GS_NEOGS) gs->pstate &= 0x7f; break;
 		case 0x03: gs->pstate |= 0x80; gs->pb3_gs = val; break;		// ZXDATWR
 		case 0x05: gs->pstate &= 0xfe; break;				// CLRCBIT
-		case 0x06: gs->vol1 = val & 0x3f; break;
-		case 0x07: gs->vol2 = val & 0x3f; break;
-		case 0x08: gs->vol3 = val & 0x3f; break;
-		case 0x09: gs->vol4 = val & 0x3f; gs->vol4b5 = (val >> 5) & 1; break;
+		case 0x06: gs->vol1 = val & 0x3f; gsMixStamp++; break;
+		case 0x07: gs->vol2 = val & 0x3f; gsMixStamp++; break;
+		case 0x08: gs->vol3 = val & 0x3f; gsMixStamp++; break;
+		case 0x09: gs->vol4 = val & 0x3f; gs->vol4b5 = (val >> 5) & 1; gsMixStamp++; break;
 		case 0x0a:
 		case 0x0b: gs_damn(gs, port); break;
 	}
@@ -184,7 +184,6 @@ int gsiord(int port, void* ptr) {
 void gsiowr(int port, int val, void* ptr) {
 	GSound* gs = (GSound*)ptr;
 	gs->lpDirty = 1;
-	gsMixStamp++;		// the volumes, GSCFG0
 	val &= 0xff;
 	if (gs->model != GS_NEOGS) {
 		port &= 0x0f;
@@ -209,10 +208,10 @@ void gsiowr(int port, int val, void* ptr) {
 			gs->pg3 = (val << 1) | (val >> 7);
 			gs_map_neogs(gs);
 			break;
-		case 0x16: gs->vol5 = val & 0x3f; break;
-		case 0x17: gs->vol6 = val & 0x3f; break;
-		case 0x18: gs->vol7 = val & 0x3f; break;
-		case 0x19: gs->vol8 = val & 0x3f; break;
+		case 0x16: gs->vol5 = val & 0x3f; gsMixStamp++; break;
+		case 0x17: gs->vol6 = val & 0x3f; gsMixStamp++; break;
+		case 0x18: gs->vol7 = val & 0x3f; gsMixStamp++; break;
+		case 0x19: gs->vol8 = val & 0x3f; gsMixStamp++; break;
 		case 0x0f:							// GSCFG0
 			gs->cfg0 = val;
 			gs_remap(gs);
@@ -310,7 +309,7 @@ GSound* gsCreate() {
 }
 
 void gsDestroy(GSound* gs) {
-	gsMixStamp++;		// another card may come up where this one was
+	gsMixStamp++;		// another card may be made at this address
 	cpuDestroy(gs->cpu);
 	memDestroy(gs->mem);
 	free(gs->romGS);

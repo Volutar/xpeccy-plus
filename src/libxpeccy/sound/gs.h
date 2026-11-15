@@ -100,9 +100,8 @@ void gsFlushMix(GSound*);	// the same for the mix: a CPU parked in a loop stays 
 void gsSettle(GSound*);		// for a snapshot: time owed under an INT period
 void gs_loop_forget(GSound*);	// the CPU or its memory was put somewhere new
 sndPair gsVolume(GSound*);
-// The same for one who asks at every sub-sample: the answer is kept in *kept, with what
-// it was worked out for, until a channel latches a byte, a port of the card is written
-// or its bytes are put back from outside (gs_mix_moved: a state restored)
+// the same, kept in *kept until a channel, a volume or a setting moves; whoever writes
+// the card's channels or volumes from outside gs.c says so with gs_mix_moved()
 typedef struct {
 	const void* gs;		// the card it is of; NULL: nothing kept
 	unsigned stamp;
