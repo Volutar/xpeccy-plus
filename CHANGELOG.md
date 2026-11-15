@@ -53,7 +53,12 @@ before that point is upstream's history and is not repeated here.
 - **The Scorpion ZS 256 Turbo+ comes with ProfROM 4.44** (LW's, the SMUC build), with its
   navigator, FAT32 and SD card support. ProfROM 4.01 stays in the ROM folder.
 
+- **Starts faster on Windows**: the window is up about half a second sooner.
+
 ### Fixed
+
+- **The picture no longer freezes on Windows when a device is plugged in or removed**: it
+  could stand still for up to half a second, several times in a row.
 
 - **A grabbed mouse stays in the window**: fast moves no longer let the pointer slip out of
   it, onto the desktop or another monitor. *(reported by Alexey Boldyrev)*
