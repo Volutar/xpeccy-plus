@@ -192,11 +192,26 @@ void MainWin::vsyncUpdate() {
 	if (n) vsyncShown = shown;
 }
 
-// While the main window is on top, every other window of ours would open under
-// it: the system lifts only the windows the main window owns at the moment it
-// goes on top. So one shown then goes on top too, and one with no parent - a
-// message box, a file dialog - is made the main window's own. Shown again with
-// the main window no longer on top, it comes down.
+// Another window of ours over an on-top main window, or back as it was; one with
+// no parent is the main window's own meanwhile.
+static void top_lift(QWidget* w, QWindow* own, bool on) {
+	QWindow* win = w->windowHandle();
+	if (!win) return;
+	if (on && !w->parentWidget() && !win->transientParent()) {
+		win->setTransientParent(own);
+		w->setProperty("xTopOwned", true);
+	} else if (!on && w->property("xTopOwned").toBool()) {
+		win->setTransientParent(nullptr);
+		w->setProperty("xTopOwned", false);
+	}
+	w->setProperty("xTopLifted", on);
+	const Qt::WindowFlags flags = w->windowFlags();
+	w->overrideWindowFlags(on ? (flags | Qt::WindowStaysOnTopHint) : (flags & ~Qt::WindowStaysOnTopHint));
+	win->setFlag(Qt::WindowStaysOnTopHint, on);
+}
+
+// The system lifts only the windows the main window owns as it goes on top: one
+// shown after that would open under it.
 class xTopFilter : public QObject {
 	public:
 		xTopFilter(QMainWindow* f) : QObject(f), frame(f) {}
@@ -204,51 +219,45 @@ class xTopFilter : public QObject {
 		bool eventFilter(QObject* obj, QEvent* ev) override {
 			if ((ev->type() != QEvent::Show) || !obj->isWidgetType()) return false;
 			QWidget* w = static_cast<QWidget*>(obj);
-			if ((w == frame) || !w->isWindow()) return false;
+			if ((w == frame) || !w->isWindow() || !frame->windowHandle()) return false;
 			const Qt::WindowType type = w->windowType();
-			if ((type != Qt::Dialog) && (type != Qt::Window) && (type != Qt::Tool)) return false;
-			QWindow* own = frame->windowHandle();
-			QWindow* win = w->windowHandle();
-			if (!own || !win) return false;
-			const bool on = own->flags() & Qt::WindowStaysOnTopHint;
-			if (!on && !w->property("xTopLifted").toBool()) return false;
-			if (on && !w->parentWidget() && !win->transientParent())
-				win->setTransientParent(own);
-			w->setProperty("xTopLifted", on);
-			const Qt::WindowFlags flags = w->windowFlags();
-			w->overrideWindowFlags(on ? (flags | Qt::WindowStaysOnTopHint) : (flags & ~Qt::WindowStaysOnTopHint));
-			win->setFlag(Qt::WindowStaysOnTopHint, on);
+			if ((type == Qt::Dialog) || (type == Qt::Window) || (type == Qt::Tool))
+				top_lift(w, frame->windowHandle(), true);
 			return false;
 		}
 	private:
 		QMainWindow* frame;
 };
 
-// Always on Top, but not in fullscreen: the picture would keep every other
-// window under it. The tool windows are the main window's own and stay over it.
+// Always on Top, but not in fullscreen: the picture would keep every other window under it
 void MainWin::applyOnTop() {
 	const bool on = conf.win.onTop && !conf.vid.fullScreen;
-	static xTopFilter* adopt = nullptr;
-	if (on && !adopt) {
-		adopt = new xTopFilter(frame);
-		qApp->installEventFilter(adopt);
-	}
+	static xTopFilter* lifter = nullptr;
 	QWindow* win = frame->windowHandle();
 	if (!win) {		// not made yet: the flag goes with it
 		if (frame->windowFlags().testFlag(Qt::WindowStaysOnTopHint) != on)
 			frame->setWindowFlag(Qt::WindowStaysOnTopHint, on);
-		return;
-	}
-	if (win->flags().testFlag(Qt::WindowStaysOnTopHint) == on) return;
-	// through the QWindow, which changes the window in place: the widget's own
-	// setWindowFlag would make it again, GL context and all, and hide it
-	Qt::WindowFlags flags = frame->windowFlags();
-	frame->overrideWindowFlags(on ? (flags | Qt::WindowStaysOnTopHint) : (flags & ~Qt::WindowStaysOnTopHint));
-	win->setFlag(Qt::WindowStaysOnTopHint, on);
+	} else if (win->flags().testFlag(Qt::WindowStaysOnTopHint) != on) {
+		// through the QWindow, which changes the window in place: the widget's own
+		// setWindowFlag would make it again, GL context and all, and hide it
+		Qt::WindowFlags flags = frame->windowFlags();
+		frame->overrideWindowFlags(on ? (flags | Qt::WindowStaysOnTopHint) : (flags & ~Qt::WindowStaysOnTopHint));
+		win->setFlag(Qt::WindowStaysOnTopHint, on);
 #if defined(__WIN32)
-	SetWindowPos(reinterpret_cast<HWND>(frame->winId()), on ? HWND_TOPMOST : HWND_NOTOPMOST,
-		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+		SetWindowPos(reinterpret_cast<HWND>(frame->winId()), on ? HWND_TOPMOST : HWND_NOTOPMOST,
+			0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 #endif
+	}
+	if (on && !lifter) {
+		lifter = new xTopFilter(frame);
+		qApp->installEventFilter(lifter);
+	} else if (!on && lifter) {
+		qApp->removeEventFilter(lifter);
+		delete lifter;
+		lifter = nullptr;
+		foreach(QWidget* w, QApplication::topLevelWidgets())
+			if (w->property("xTopLifted").toBool()) top_lift(w, win, false);
+	}
 }
 
 void MainWin::updateWindow() {
