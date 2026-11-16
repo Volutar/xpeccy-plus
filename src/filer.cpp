@@ -2474,13 +2474,26 @@ static int ask_save_changed(Computer* comp, QString what, const char* path, int 
 	mbox.setStandardButtons(QMessageBox::Yes|QMessageBox::No|QMessageBox::Cancel);
 	mbox.setIcon(QMessageBox::Warning);
 	switch (mbox.exec()) {
-		case QMessageBox::Yes:
-			if ((id == FG_TAPE) && tape_recording_part(comp->tape)) {
+		case QMessageBox::Yes: {
+			// what is recorded so far goes into the save as a block, and back to the
+			// recording if there is no save: the tape stays and the block is not cut
+			Tape* tape = comp->tape;
+			bool part = (id == FG_TAPE) && tape_recording_part(tape);
+			int changed = tape->changed;
+			if (part) {
 				emu_lock();
-				tapStoreBlock(comp->tape);	// what is recorded so far becomes a block, the recording goes on
+				tapStoreBlock(tape);
 				emu_unlock();
 			}
-			return save_back(comp, path, id, drv);
+			int res = save_back(comp, path, id, drv);
+			if (part && (res != ERR_OK)) {
+				emu_lock();
+				tapUnstoreBlock(tape);
+				tape->changed = changed;
+				emu_unlock();
+			}
+			return res;
+		}
 		case QMessageBox::No: return ERR_OK;
 	}
 	return ERR_CANCEL;

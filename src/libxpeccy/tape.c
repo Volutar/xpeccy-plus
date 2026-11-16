@@ -262,6 +262,29 @@ void tapSwapBlocks(Tape* tap, int b1, int b2) {
 	}
 }
 
+// tapStoreBlock() taken back: the last block is the recording's again, with what was
+// recorded since after it - its save did not happen. tap->changed is the caller's.
+void tapUnstoreBlock(Tape* tap) {
+	if (tap->blkCount < 1) return;
+	TapeBlock* last = &tap->blkData[tap->blkCount - 1];
+	TapeBlock* now = &tap->tmpBlock;
+	int cnt = last->sigCount + now->sigCount;
+	// room as blkAddPulse() grows it, in steps of 0x10000
+	TapeSignal* data = (TapeSignal*)malloc(((cnt >> 16) + 1) * 0x10000 * sizeof(TapeSignal));
+	if (!data) return;
+	memcpy(data, last->data, last->sigCount * sizeof(TapeSignal));
+	if (now->sigCount) {
+		memcpy(data + last->sigCount, now->data, now->sigCount * sizeof(TapeSignal));
+	} else {
+		now->vol = last->vol;
+		tap->wait = 0;		// the next edge goes on from the block's last pulse
+	}
+	free(now->data);
+	now->data = data;
+	now->sigCount = cnt;
+	tapDelBlock(tap, tap->blkCount - 1);
+}
+
 void tapDelBlock(Tape* tap, int blk) {
 	if (blk < tap->blkCount) {
 		int idx = blk;
