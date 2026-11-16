@@ -21,6 +21,7 @@
 #include "xcore/vscalers.h"
 #include <QToolButton>
 #include <QPainter>
+#include <QPointer>
 
 // socket
 
@@ -506,21 +507,24 @@ void MainWin::socketRead() {
 		if (prm.size() > 2) {
 			QPoint gp = frame->mapToGlobal(QPoint(prm[1].toInt(), prm[2].toInt()));
 			Qt::MouseButton btn = ((prm.size() > 3) && (prm[3] == "right")) ? Qt::RightButton : Qt::LeftButton;
-			QWidget* w = QApplication::widgetAt(gp);
+			// a dialog or a menu the click opens runs its own loop, which may delete the widget
+			QPointer<QWidget> w = QApplication::widgetAt(gp);
+			QByteArray name("nothing");
 			if (w) {
 				QMouseEvent prs(QEvent::MouseButtonPress, w->mapFromGlobal(gp), gp, btn, btn, Qt::NoModifier);
 				QApplication::sendEvent(w, &prs);
 				w = QApplication::widgetAt(gp);		// the press may have put a menu there
 				if (w) {
+					name = w->metaObject()->className();
 					QMouseEvent rls(QEvent::MouseButtonRelease, w->mapFromGlobal(gp), gp, btn, Qt::NoButton, Qt::NoModifier);
 					QApplication::sendEvent(w, &rls);
-					if (btn == Qt::RightButton) {	// the window system makes this one of a real click
+					if (w && (btn == Qt::RightButton)) {	// the window system makes this one of a real click
 						QContextMenuEvent cme(QContextMenuEvent::Mouse, w->mapFromGlobal(gp), gp);
 						QApplication::sendEvent(w, &cme);
 					}
 				}
 			}
-			sock->write(w ? w->metaObject()->className() : "nothing");
+			sock->write(name);
 			sock->write("\r\n");
 		}
 	} else if (com == "click-widget") {
@@ -547,13 +551,16 @@ void MainWin::socketRead() {
 			Qt::KeyboardModifiers mod = ((prm.size() > 4) && (prm[4] == "shift")) ? Qt::ShiftModifier : Qt::NoModifier;
 			sock->write(QString("%0\r\n").arg(hit->metaObject()->className()).toUtf8());
 			sock->flush();		// a menu or a dialog the click opens holds the rest
+			QPointer<QWidget> to(hit);	// the press or the release may delete it in a nested loop
 			QMouseEvent prs(QEvent::MouseButtonPress, pos, gp, btn, btn, mod);
-			QApplication::sendEvent(hit, &prs);
-			QMouseEvent rls(QEvent::MouseButtonRelease, pos, gp, btn, Qt::NoButton, mod);
-			QApplication::sendEvent(hit, &rls);
-			if (btn == Qt::RightButton) {
+			QApplication::sendEvent(to, &prs);
+			if (to) {
+				QMouseEvent rls(QEvent::MouseButtonRelease, pos, gp, btn, Qt::NoButton, mod);
+				QApplication::sendEvent(to, &rls);
+			}
+			if (to && (btn == Qt::RightButton)) {
 				QContextMenuEvent cme(QContextMenuEvent::Mouse, pos, gp);
-				QApplication::sendEvent(hit, &cme);
+				QApplication::sendEvent(to, &cme);
 			}
 		} else {
 			sock->write("nothing\r\n");
