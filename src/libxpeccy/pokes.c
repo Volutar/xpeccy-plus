@@ -162,6 +162,15 @@ static unsigned char* pk_byte(Computer* comp, int bank, int adr, int* err) {
 		*err = POK_NO_PAGE;
 		return NULL;
 	}
+	// the Next's 16K bank of that number, the one #7FFD pages in: its RAM starts past the ROMs
+	if (comp->hw && (comp->hw->id == HW_ZXNEXT)) {
+		int type, abs;
+		if (!comp_cell_xadr(comp, CELL_RAM, (bank << 1) | ((adr >> 13) & 1), adr & 0x1fff, &type, &abs)) {
+			*err = POK_NO_PAGE;
+			return NULL;
+		}
+		return &mem->ramData[abs & mem->ramMask];
+	}
 	return &mem->ramData[((bank << 14) | (adr & 0x3fff)) & mem->ramMask];
 }
 
