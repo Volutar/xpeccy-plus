@@ -4286,11 +4286,8 @@ void MainWin::renderFrame() {
 	emu_unlock();
 }
 
-// A palette or Grayscale change while the machine stands still. The picture is
-// what the beam drew, so it is drawn again: the frame the machine stands in is
-// run to its end and the next one drawn whole, as run-ahead runs its frames, and
-// the machine is put back. The picture is that next frame, the first one the
-// machine draws when it goes on; above the ray the frame in progress takes it too.
+// Paused, new colors: the next frame is drawn from a copy of the machine, as run-ahead
+// does, and shown; the machine is put back and draws that frame first when it goes on.
 void MainWin::redrawHeld() {
 	Computer* comp = conf.zx;
 	if (!hasPicture || !comp || !conf.emu.pause || comp->flgDBG || pause_has(PR_DEZOG) || rewind_active())
