@@ -2671,7 +2671,8 @@ static void webAction(QAction* act, bool on) {
 // sheet's QToolTip rule matches Qt's tips alone, so it is taken over by hand.
 class xMenuPreview : public QLabel {
 	public:
-		xMenuPreview() : QLabel(nullptr, Qt::ToolTip | Qt::WindowTransparentForInput) {
+		// the menu's child, so it goes with the menu and a window system can place it by it
+		xMenuPreview(QWidget* menu) : QLabel(menu, Qt::ToolTip | Qt::WindowTransparentForInput) {
 			setObjectName("xMenuPreview");		// the control port finds it so
 			setAttribute(Qt::WA_TransparentForMouseEvents);
 			setAttribute(Qt::WA_ShowWithoutActivating);
@@ -2720,15 +2721,17 @@ bool xMenu::event(QEvent* ev) {
 void xMenu::showPreview(QAction* act, const QString& tip, const QPoint& at) {
 	if (preview && (previewAct == act)) return;
 	hidePreview();
-	xMenuPreview* pv = new xMenuPreview;
+	xMenuPreview* pv = new xMenuPreview(this);
 	pv->setText(tip);
 	pv->adjustSize();
 	QRect item = actionGeometry(act).translated(mapToGlobal(QPoint(0, 0)));
-	QPoint pos(at.x() + 2, item.bottom() + 1);
+	// from left of the pointer: straight down goes onto it, not onto the next item
+	QPoint pos(at.x() - 2, item.bottom() + 1);
 	QScreen* scr = QGuiApplication::screenAt(at);
 	if (scr) {
 		QRect room = scr->availableGeometry();
 		if (pos.x() + pv->width() > room.right() + 1) pos.setX(room.right() + 1 - pv->width());
+		if (pos.x() < room.left()) pos.setX(room.left());
 		if (pos.y() + pv->height() > room.bottom() + 1) pos.setY(item.top() - pv->height());
 	}
 	pv->move(pos);
@@ -2748,7 +2751,9 @@ bool xMenu::onPreview(QMouseEvent* ev, QMouseEvent** out) {
 	if (!preview || !previewAct || !preview->isVisible()) return false;
 	QPoint gp(qRound(qreal(ev->xGlobalX)), qRound(qreal(ev->xGlobalY)));
 	if (!preview->geometry().contains(gp)) return false;
-	*out = new QMouseEvent(ev->type(), QPointF(actionGeometry(previewAct).center()), QPointF(gp),
+	// the item's own global place too: QMenu passes a point off it to the menu that opened it
+	QPoint mid = actionGeometry(previewAct).center();
+	*out = new QMouseEvent(ev->type(), QPointF(mid), QPointF(mapToGlobal(mid)),
 		ev->button(), ev->buttons(), ev->modifiers());
 	return true;
 }
