@@ -7,6 +7,7 @@
 #include <QComboBox>
 #include <QEvent>
 #include <QHeaderView>
+#include <QWheelEvent>
 #include <QTableWidget>
 #include <QVBoxLayout>
 
@@ -77,8 +78,13 @@ void xFileTypesBox::fill() {
 
 // the wheel over a row's list scrolls the table, it does not change the list
 bool xFileTypesBox::eventFilter(QObject* obj, QEvent* ev) {
-	if ((ev->type() == QEvent::Wheel) && qobject_cast<QComboBox*>(obj)) {
-		QApplication::sendEvent(table->viewport(), ev);
+	QComboBox* box = qobject_cast<QComboBox*>(obj);
+	if (box && (ev->type() == QEvent::Wheel)) {
+		QWheelEvent* we = static_cast<QWheelEvent*>(ev);
+		QPointF at(table->viewport()->mapFromGlobal(we->globalPosition().toPoint()));
+		QWheelEvent fwd(at, we->globalPosition(), we->pixelDelta(), we->angleDelta(), we->buttons(),
+			we->modifiers(), we->phase(), we->inverted());
+		QApplication::sendEvent(table->viewport(), &fwd);
 		return true;
 	}
 	return QWidget::eventFilter(obj, ev);
