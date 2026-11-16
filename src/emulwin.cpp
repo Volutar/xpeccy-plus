@@ -191,6 +191,28 @@ void MainWin::vsyncUpdate() {
 	if (n) vsyncShown = shown;
 }
 
+// Always on Top, but not in fullscreen: the picture would keep every other
+// window under it. The tool windows are the main window's own and stay over it.
+void MainWin::applyOnTop() {
+	const bool on = conf.win.onTop && !conf.vid.fullScreen;
+	QWindow* win = frame->windowHandle();
+	if (!win) {		// not made yet: the flag goes with it
+		if (frame->windowFlags().testFlag(Qt::WindowStaysOnTopHint) != on)
+			frame->setWindowFlag(Qt::WindowStaysOnTopHint, on);
+		return;
+	}
+	if (win->flags().testFlag(Qt::WindowStaysOnTopHint) == on) return;
+	// through the QWindow, which changes the window in place: the widget's own
+	// setWindowFlag would make it again, GL context and all, and hide it
+	Qt::WindowFlags flags = frame->windowFlags();
+	frame->overrideWindowFlags(on ? (flags | Qt::WindowStaysOnTopHint) : (flags & ~Qt::WindowStaysOnTopHint));
+	win->setFlag(Qt::WindowStaysOnTopHint, on);
+#if defined(__WIN32)
+	SetWindowPos(reinterpret_cast<HWND>(frame->winId()), on ? HWND_TOPMOST : HWND_NOTOPMOST,
+		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+#endif
+}
+
 void MainWin::updateWindow() {
 	block = 1;
 	// the texture still holds the frame cut to the old bounds, and painting it
@@ -318,6 +340,7 @@ void MainWin::updateWindow() {
 	bytesPerLine = comp->vid->full.x * 8;
 	bufSize = bytesPerLine * comp->vid->full.y * (comp->vid->linedbl ? 2 : 1);
 	updateHead();
+	applyOnTop();
 	block = 0;
 	// started maximized: the first Restore gets the size the window had by hand
 	if (restoreFree.isValid() && !maxed && !conf.vid.fullScreen && frame->isVisible()) {
@@ -3255,6 +3278,12 @@ void MainWin::initMenuBar() {
 	// the window's size first, then the picture in it
 	fullAct = cutAction(viewMenu, "Fullscreen", XCUT_FULLSCR, "fullscreen");
 	fullAct->setCheckable(true);
+	topAct = viewMenu->addAction("Always on Top", this, [this](bool on) {
+		conf.win.onTop = on;
+		applyOnTop();
+		saveConfig();
+	});
+	topAct->setCheckable(true);
 	// the border sizes Options has, taken at once as its Apply takes them
 	brdMenu = new xMenu("Border", this);
 	viewMenu->addMenu(brdMenu);

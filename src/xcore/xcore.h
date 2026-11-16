@@ -1112,6 +1112,7 @@ struct xConfig {
 		unsigned toolbar:1;
 		unsigned statusbar:1;
 		unsigned tbLocked:1;	// the toolbar's buttons are not dragged around
+		unsigned onTop:1;	// the main window stays over the others, out of fullscreen
 		int tbIcons;		// 16 or 24; 0 for what the window's width allows
 		std::string tbItems;	// the toolbar's buttons, ids and "|", comma-separated; "*" for the default ones
 	} win;

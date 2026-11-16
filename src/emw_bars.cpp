@@ -890,6 +890,7 @@ void MainWin::syncActions() {
 	tip += QString(" - volume %0%").arg(conf.snd.vol.master);
 	if (muteAct->toolTip() != tip) muteAct->setToolTip(tip);	// a change repaints the button
 	fullAct->setChecked(conf.vid.fullScreen);
+	topAct->setChecked(conf.win.onTop);
 	ratioAct->setChecked(conf.vid.keepRatio);
 	intAct->setChecked(conf.vid.intScale);
 	intAct->setEnabled(conf.vid.keepRatio);		// a stretched picture has no scale to keep whole

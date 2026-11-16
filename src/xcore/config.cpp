@@ -363,6 +363,7 @@ void saveConfig() {
 	fprintf(cfile, "toolbar.items = %s\n", conf.win.tbItems.c_str());
 	fprintf(cfile, "toolbar.locked = %s\n", YESNO(conf.win.tbLocked));
 	fprintf(cfile, "statusbar = %s\n", YESNO(conf.win.statusbar));
+	fprintf(cfile, "ontop = %s\n", YESNO(conf.win.onTop));
 	fprintf(cfile, "lowlatency = %s\n", YESNO(conf.vid.lowLatency));
 	fprintf(cfile, "vsync = %s\n", YESNO(conf.vid.vsync));
 	fprintf(cfile, "frameskip = %s\n", YESNO(conf.vid.frameSkip));
@@ -971,6 +972,7 @@ void loadConfig() {
 	conf.win.tbIcons = 0;		// as the window's width allows
 	conf.win.tbItems = "*";
 	conf.win.tbLocked = 1;
+	conf.win.onTop = 0;
 	conf.dbg.numfmt = CPU_NUM_HASH;
 	conf.dbg.hexfmt = CPU_NUM_HASH;
 	conf.dbg.dbsize = 8;
@@ -1343,6 +1345,7 @@ void loadConfig() {
 					if (pnam=="toolbar.items") conf.win.tbItems = pval;
 					if (pnam=="toolbar.locked") conf.win.tbLocked = arg.b;
 					if (pnam=="statusbar") conf.win.statusbar = arg.b;
+					if (pnam=="ontop") conf.win.onTop = arg.b;
 					if (pnam=="lowlatency") conf.vid.lowLatency = arg.b;
 					if (pnam=="vsync") conf.vid.vsync = arg.b;
 					if (pnam=="frameskip") conf.vid.frameSkip = arg.b;

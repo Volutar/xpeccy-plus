@@ -245,6 +245,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void cheatWinShow();
 		void doDebug();
 		void updateWindow();
+		void applyOnTop();
 		void pause(bool, int);
 		bool inputResume();
 		void tapStateChanged(int,int);
@@ -544,6 +545,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		QAction* mbBackAct = nullptr;	// the right-click menu's way back to a hidden one
 		QAction* tbShowAct;
 		QAction* sbShowAct;
+		QAction* topAct;
 		QAction* pauseAct;
 		QAction* fastAct;
 		QAction* tapeAct;
