@@ -252,7 +252,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void onPrfChange();
 		void kPress(QKeyEvent*);
 		void kRelease(QKeyEvent*);
-		void loadShader(bool tell = true);	// tell: "shader compiled" on success
+		void loadShader(bool tell = true);	// tell: the shader's name on success, for the user's own switch
 		bool reloadMedia();
 		// quick saves (emw_saves.cpp)
 		int saveState(int kind);
