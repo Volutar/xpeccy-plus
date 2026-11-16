@@ -3838,14 +3838,16 @@ void MainWin::initMachineMenus() {
 	// a menu of its own, filled with dskMenu's items: one QMenu under two different
 	// items in two menus re-pops on every mouse move under one of them
 	drvMenu = media->addMenu(QIcon(":/images/fdd.png"), "Floppy Drives");
-	// the image in use, the tape or a disk, turned over: no list to pick from, so a key
-	cutAction(media, "Next Side", XCUT_SIDE_NEXT);
-	cutAction(media, "Previous Side", XCUT_SIDE_PREV);
 	QAction* fdcFastAct = media->addAction("Fast Disk Access", this, [](bool on) {
 		setFlagBit(on, &fdcFlag, FDC_FAST);
 		saveConfig();
 	});
 	fdcFastAct->setCheckable(true);
+	media->addSeparator();
+	// the image in use, the tape or a disk, turned over: apart from the drives, as it is
+	// either; no list to pick from, so a key
+	cutAction(media, "Next Side", XCUT_SIDE_NEXT);
+	cutAction(media, "Previous Side", XCUT_SIDE_PREV);
 	media->addSeparator();
 	media->addMenu(cartMenu);
 	media->addAction(divItem);
