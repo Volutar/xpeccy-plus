@@ -1265,6 +1265,13 @@ static void nx_speed_apply(Computer* comp) {
 
 // the start of a memory cycle (mreq) or of an internal T-state, the ray at it
 static void nx_cont(Computer* comp, int mreq) {
+	// 7-28 MHz, no speed change pending, no relock, the DMA idle, no stackless NMI push
+	// or pop, no contention switch due: all that is left of what follows
+	if (NX.speed && !NX.speedPend && !NX.powerFrame && !NX.dma.seq && !NX.dma.busrq && !NX.dma.busak
+			&& !NX.irq.nmiPush && !NX.irq.retnPop && (NX.contDis == ((NX.nr[0x08] >> 6) & 1))) {
+		comp->cpu->flgMSTART = 0;
+		return;
+	}
 	// the ray at the cycle start, for what below reads it: a pending speed change, the
 	// power-on relock, the DMA, a contention switch, contention itself. At 7-28 MHz
 	// with none of them nothing does, and what draws catches up at its own next look.
