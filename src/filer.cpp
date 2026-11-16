@@ -2048,12 +2048,13 @@ xMediaOpen media_last_open() {
 	return media_last;
 }
 
-// A save put back names its game in the title, and Reload opens that image, on the
-// machine the save is on; a machine's save has none. The same image opened before
-// is opened again as it was.
+// Reload after a save is put back: the game the title names, on the save's machine
 static void media_follow_game() {
 	const QString img = game_image();
-	if (!img.isEmpty() && !media_last.path.isEmpty() && same_image(img, media_last.path)) return;
+	if (!img.isEmpty() && !media_last.path.isEmpty() && same_image(img, media_last.path)) {
+		media_last.pinned = true;	// opened before: into the same drive, run or not
+		return;
+	}
 	media_last = {img, FG_ALL, 0, img.isEmpty() ? 0 : conf.autorun, true};
 }
 
