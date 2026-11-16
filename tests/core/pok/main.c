@@ -259,6 +259,10 @@ static void test_next(void) {
 	int ty, ab;
 	int b5 = comp_cell_xadr(comp, CELL_RAM, 10, 16, &ty, &ab) ? ab : -1;
 	int b7 = comp_cell_xadr(comp, CELL_RAM, 14, 20, &ty, &ab) ? ab : -1;
+	if ((b5 < 0) || (b7 < 0)) {
+		printf("no RAM cells 10/14\n");
+		exit(1);
+	}
 	ram[b5] = 0;
 	ram[b7] = 0;
 	comp->hw->out(comp, 0x7ffd, 7);
