@@ -40,3 +40,6 @@ by hand: rom=4 200 201 202 203 undo 10 11 12 13
 == apply128
 page 7 in: check=1 apply=0 page0=201 page7=0 cpu 58813=0 cpu #4000=7
 page 0 in: cpu 58813=201 where=0 undo page0=0
+== applynext
+check=1 apply=0 bank5=7 bank7=9 cpu #4010=7 cpu #C014=9 sram #14010=85 sram #1C014=85
+undo bank5=0 bank7=0

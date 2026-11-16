@@ -243,6 +243,37 @@ static void test_16(void) {
 	compDestroy(comp);
 }
 
+// A page on the Next is its own 16K bank, the one #7FFD pages in: its RAM starts past the
+// ROMs in the SRAM, in 8K cells of two to a bank
+static void test_next(void) {
+	printf("== applynext\n");
+	Computer* comp = compCreate();
+	if (!compSetHardware(comp, "ZXNext")) {
+		printf("no ZXNext core\n");
+		exit(1);
+	}
+	compReset(comp, RES_DEFAULT);
+	unsigned char* ram = comp->mem->ramData;
+	ram[(5 << 14) + 16] = 0x55;		// where a page counted from the SRAM's start would land
+	ram[(7 << 14) + 20] = 0x55;
+	int ty, ab;
+	int b5 = comp_cell_xadr(comp, CELL_RAM, 10, 16, &ty, &ab) ? ab : -1;
+	int b7 = comp_cell_xadr(comp, CELL_RAM, 14, 20, &ty, &ab) ? ab : -1;
+	ram[b5] = 0;
+	ram[b7] = 0;
+	comp->hw->out(comp, 0x7ffd, 7);
+	xPokFile pf;
+	xTrainer* tr = one(&pf, "NPages\nM 5 16400 7 0\nZ 7 49172 9 0\n");
+	printf("check=%d", pok_check(comp, tr));
+	printf(" apply=%d", pok_apply(comp, tr, 0));
+	printf(" bank5=%d bank7=%d cpu #4010=%d cpu #C014=%d sram #14010=%d sram #1C014=%d\n",
+		ram[b5], ram[b7], cpu_rd(comp, 0x4010), cpu_rd(comp, 0xc014), ram[(5 << 14) + 16], ram[(7 << 14) + 20]);
+	pok_undo(comp, tr, 0);
+	printf("undo bank5=%d bank7=%d\n", ram[b5], ram[b7]);
+	pok_free(&pf);
+	compDestroy(comp);
+}
+
 int main(int argc, char** argv) {
 	if (argc > 1 && !strcmp(argv[1], "-sweep")) {
 		for (int i = 2; i < argc; i++) sweep_file(argv[i]);
@@ -252,5 +283,6 @@ int main(int argc, char** argv) {
 	test_16();
 	test_48();
 	test_128();
+	test_next();
 	return 0;
 }
