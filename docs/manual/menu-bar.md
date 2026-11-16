@@ -10,7 +10,7 @@
 | **Favorites** | files you keep at hand |
 | **Machine** | which machine runs, reset, turbo, pause, fast mode, slow motion, fast forward, rewind |
 | **Input** | keyboard and mouse grab, keymaps, gamepads |
-| **Media** | tape player, disk manager, floppy drives, fast disk access, divMMC, cartridge, SD card, hard disks |
+| **Media** | tape player, disk manager, floppy drives, fast disk access, next and previous side, cartridge, divMMC, SD card, hard disks |
 | **Capture** | screenshots, video and sound recording, RZX |
 | **Tools** | **Cheats**, the **Debugger** and its windows, **Options** |
 | **Help** | this manual, the project page, what is new, reporting a problem |
