@@ -246,6 +246,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void doDebug();
 		void updateWindow();
 		void applyOnTop();
+		void redrawHeld();		// a paused picture through the colors now set
 		void pause(bool, int);
 		bool inputResume();
 		void tapStateChanged(int,int);

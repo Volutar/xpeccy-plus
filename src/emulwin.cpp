@@ -51,6 +51,7 @@
 #include "xcore/sound.h"
 #include "xcore/autostart.h"
 #include "xcore/rewind.h"
+#include "libxpeccy/xstate.h"
 #include "xcore/fastload.h"
 #include "xcore/rzxseek.h"
 #include "xcore/rzxrecord.h"
@@ -4239,6 +4240,36 @@ void MainWin::renderFrame() {
 	emu_unlock();
 }
 
+// A palette or Grayscale change while the machine stands still. The picture is
+// what the beam drew, so it is drawn again: the frame the machine stands in is
+// run to its end and the next one drawn whole, as run-ahead runs its frames, and
+// the machine is put back. The picture is that next frame, the first one the
+// machine draws when it goes on; above the ray the frame in progress takes it too.
+void MainWin::redrawHeld() {
+	Computer* comp = conf.zx;
+	if (!hasPicture || !comp || !conf.emu.pause || comp->flgDBG || pause_has(PR_DEZOG) || rewind_active())
+		return;
+	static xState* held = nullptr;
+	emu_lock();
+	if (!held) held = xstate_create();
+	bool done = false;
+	if (held && !comp->vid->nodraw && (comp->vid->nodrawNext < 1) && xstate_safe(comp) && xstate_save_as_is(held, comp)) {
+		Keyboard kbd = *comp->keyb;
+		comp->flgFRM = 0;
+		done = xstate_run_frame(comp) && xstate_run_frame(comp);
+		int seed = comp->sndSeed;	// the sound devices' copy never saw these frames
+		xstate_load(held, comp);
+		comp->sndSeed = seed;
+		*comp->keyb = kbd;
+		if (done) {
+			memcpy(scrimg, bufimg, bufSize);
+			frame_publish();
+		}
+	}
+	emu_unlock();
+	if (done) presentFrame();
+}
+
 void MainWin::onPrfChange() {
 	Computer* comp = conf.zx;
 	emu_lock();		// Options comes here without the lock
@@ -4749,6 +4780,7 @@ void MainWin::palSelected(QAction* act) {
 	}
 	saveConfig();
 	loadPalette();
+	redrawHeld();
 }
 
 // debug stufffff

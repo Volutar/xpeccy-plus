@@ -1721,6 +1721,7 @@ void SetupWin::applyGlobal() {
 	noflicMode = ui.cbNoflicMode->currentIndex();
 	noflicAhead = ui.cbNoflicAhead->isChecked() ? 1 : 0;
 	noflicGamma = ui.sbNoflicGamma->value();
+	int greyWas = greyScale;
 	vid_set_grey(ui.grayscale->isChecked() ? 1 : 0);
 //	scanlines = ui.cbScanlines->isChecked() ? 1 : 0;
 	// a screen dump breakpoint names its file from the emulation thread
@@ -1751,6 +1752,7 @@ void SetupWin::applyGlobal() {
 	palPending.clear();
 	if (palNew) loadPalette();
 	palButtons();
+	if (palNew || (greyScale != greyWas)) emit s_palette();
 // sound
 	conf.snd.enabled = ui.senbox->isChecked() ? 1 : 0;
 	conf.snd.vol.dc = ui.dcbox->isChecked() ? 1 : 0;
@@ -3560,7 +3562,10 @@ void SetupWin::palRestore() {
 	if (nam.isEmpty() || !areSure("Drop your changes to this palette and take it as it ships?")) return;
 	palPending.remove(nam);
 	QFile::remove(palette_own_file(nam));
-	if (nam == QString::fromStdString(conf.palette)) loadPalette();
+	if (nam == QString::fromStdString(conf.palette)) {
+		loadPalette();
+		emit s_palette();
+	}
 	palButtons();
 }
 
