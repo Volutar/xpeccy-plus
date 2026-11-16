@@ -8,6 +8,10 @@
 #include <QScreen>
 #include <QWindow>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 // how long after the last read of the mouse a click still takes it
 #define MOUSE_READ_NS	1000000000LL
 
@@ -154,12 +158,21 @@ void MainWin::mouseGrabOn() {
 	ptrShow();		// the window's own pointer comes back with a release, so not a blank one
 	grabMouse(QCursor(Qt::BlankCursor));
 	setMessage(" grab mouse, " XREL_KEYS " lets go ");
+	rawMouse(true);
+	if (xlog_on(XLG_INPUT, XLL_DEBUG)) {
+		QPoint org = mapToGlobal(QPoint(0, 0));
+		QPoint cen = winCenter();
+		xlog_put(XLG_INPUT, XLL_DEBUG, "mouse: grab on, window %d,%d %dx%d, centre %d,%d, dpr %.2f",
+			org.x(), org.y(), width(), height(), cen.x(), cen.y(), devicePixelRatioF());
+	}
 	mouseRecenter(1);
 }
 
 void MainWin::mouseGrabOff() {
 	grabMice = 0;
 	releaseMouse();
+	rawMouse(false);
+	xlog(XLG_INPUT, XLL_DEBUG, "mouse: grab off, raw reports %u by step, %u absolute", rawRel, rawAbs);
 	setMessage(" release mouse ");
 	winCursorTo(winCenter());		// it was hidden: show it somewhere sane
 	ptrArm();
@@ -177,6 +190,8 @@ void MainWin::mouseRecenter(int fresh) {
 		warpTtl = 0;
 		warpFail = 0;
 		mouseVel = QPointF();
+		rawRel = 0;
+		rawAbs = 0;
 	}
 	mouseLast = winCursorPos();
 	mouseAt = paceClockNs();
@@ -186,10 +201,61 @@ void MainWin::mouseRecenter(int fresh) {
 // A recentering asked again before the last is answered keeps its count of readings
 void MainWin::mouseWarp() {
 	if (warpFail >= MOUSE_WARP_GIVEUP) return;
+	QPoint from = mouseLast;
 	warpAim = warpAt = winCenter();
-	if (!warpTtl) warpTtl = MOUSE_WARP_TTL;
+	if (!warpTtl) {
+		warpTtl = MOUSE_WARP_TTL;
+		warpReqAt = paceClockNs();
+	}
 	winCursorTo(warpAt);
+	xlog(XLG_INPUT, XLL_DEBUG, "mouse: recenter %d,%d -> %d,%d, fails %d, raw %u/%u",
+		from.x(), from.y(), warpAt.x(), warpAt.y(), warpFail, rawRel, rawAbs);
 }
+
+// Windows tells a mouse that moves by steps from a device that gives where to
+// be - a virtual machine, a remote desktop, a tablet as a mouse
+// (MOUSE_MOVE_ABSOLUTE). Asked while grabbed; the messages go on as before
+void MainWin::rawMouse(bool on) {
+#ifdef _WIN32
+	RAWINPUTDEVICE dev;
+	dev.usUsagePage = 1;	// generic desktop
+	dev.usUsage = 2;		// mouse
+	dev.dwFlags = on ? 0 : RIDEV_REMOVE;
+	dev.hwndTarget = on ? (HWND)winId() : NULL;
+	if (!RegisterRawInputDevices(&dev, 1, sizeof(dev)))
+		xlog(XLG_INPUT, XLL_WARN, "mouse: raw input %s failed, error %lu", on ? "on" : "off", GetLastError());
+#else
+	(void)on;
+#endif
+}
+
+// a mouse by steps and nothing absolute this grab: a recentering it shows late is only late
+bool MainWin::mouseByStep() {
+	return rawRel && !rawAbs;
+}
+
+#ifdef _WIN32
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+bool MainWin::nativeEvent(const QByteArray& type, void* msg, qintptr* res) {
+#else
+bool MainWin::nativeEvent(const QByteArray& type, void* msg, long* res) {
+#endif
+	MSG* m = (MSG*)msg;
+	if (m->message == WM_INPUT) {
+		RAWINPUT raw;
+		UINT size = sizeof(raw);
+		if ((GetRawInputData((HRAWINPUT)m->lParam, RID_INPUT, &raw, &size, sizeof(RAWINPUTHEADER)) != (UINT)-1)
+				&& (raw.header.dwType == RIM_TYPEMOUSE)) {
+			if (raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) {
+				rawAbs++;
+			} else if (raw.data.mouse.lLastX || raw.data.mouse.lLastY) {
+				rawRel++;
+			}
+		}
+	}
+	return QWidget::nativeEvent(type, msg, res);	// unhandled: DefWindowProc still sees WM_INPUT
+}
+#endif
 
 void MainWin::mouseMoveEvent(QMouseEvent *ev) {
 	if (!mouseHeld()) {
@@ -204,7 +270,10 @@ void MainWin::mouseMoveEvent(QMouseEvent *ev) {
 // Qt sends no moves over another program's window: one that got out is caught here
 void MainWin::mouseWatch() {
 	if (!mouseHeld() || !isActiveWindow()) return;
-	if (winHolds(winCursorPos())) return;
+	QPoint pos = winCursorPos();
+	if (winHolds(pos)) return;
+	xlog(XLG_INPUT, XLL_DEBUG, "mouse: watch caught it out at %d,%d, pending %d, fails %d",
+		pos.x(), pos.y(), warpTtl, warpFail);
 	mouseRead();
 }
 
@@ -225,26 +294,42 @@ void MainWin::mouseRead() {
 		QPoint off = gpos - warpAt;
 		QPoint aim = gpos - warpAim;
 		QPoint lead = (mouseVel * ms).toPoint();
+		QPoint last = mouseLast;
+		const char* verdict;
 		if ((qAbs(aim.x()) <= 1) && (qAbs(aim.y()) <= 1)) {
 			// on the target: no answer, an undoing host reads it back too
 			was = warpAt;
 			warpAt = gpos;
 			hand = false;
+			verdict = "on target";
 		} else if (gpos == mouseLast) {
 			// nothing moved since the last reading: no answer either
+			verdict = "still";
 		} else if ((off - lead).manhattanLength() <= (gpos - mouseLast - lead).manhattanLength()) {
 			was = warpAt;			// it landed: this is the pointer now
 			mouseLast = gpos;
 			warpTtl = 0;
 			warpFail = 0;
+			verdict = "landed";
 		} else {
 			// the old place: the device holds it, or the system has not applied it yet
 			mouseLast = gpos;
-			if (!winFar(gpos))
+			verdict = "old place";
+			if (!winFar(gpos)) {
 				warpTtl = 0;		// in the middle either way: nothing left to judge
-			else if (!--warpTtl && (++warpFail >= MOUSE_WARP_GIVEUP))
-				xlog(XLG_INPUT, XLL_INFO, "mouse: this host puts the pointer straight back, recentering dropped");
+				verdict = "old place, in the middle";
+			} else if (!--warpTtl) {
+				if (mouseByStep()) {
+					verdict = "old place, late on a mouse by steps";
+				} else if (++warpFail >= MOUSE_WARP_GIVEUP) {
+					xlog(XLG_INPUT, XLL_INFO, "mouse: this host puts the pointer straight back, recentering dropped (raw %u/%u)",
+						rawRel, rawAbs);
+				}
+			}
 		}
+		xlog(XLG_INPUT, XLL_DEBUG, "mouse: read %d,%d aim %d,%d at %d,%d last %d,%d lead %d,%d, %.2f ms, %.2f ms after recenter, ttl %d, fails %d, raw %u/%u: %s",
+			gpos.x(), gpos.y(), warpAim.x(), warpAim.y(), warpAt.x(), warpAt.y(), last.x(), last.y(),
+			lead.x(), lead.y(), ms, (now - warpReqAt) / 1e6, warpTtl, warpFail, rawRel, rawAbs, verdict);
 	} else {
 		mouseLast = gpos;
 	}
