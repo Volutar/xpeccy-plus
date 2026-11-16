@@ -180,6 +180,61 @@ static void dma_clock(Computer* comp, long long e) {
 	}
 }
 
+// The SPI master's last transfer (spiT) is over for good: nx_dma_spi answers 0 to a clock
+// with no port EB strobe. The ray may stand behind cpu->t, so nx_now is early at most.
+// *seen: the transfer this was found for.
+static inline int dma_spi_over(Computer* comp, long long* seen) {
+	if ((NX.spiT < 0) || (NX.spiT == *seen)) return 1;
+	if (nx_now(comp) - NX.spiT <= 32) return 0;
+	*seen = NX.spiT;
+	return 1;
+}
+
+// A byte from memory to memory at 28 MHz, both ports' cycles 3 clocks, the SPI master
+// done: READ_1, 3, 4 and WRITE_1, 3, 4 hold no wait and no stretch (nx_dma_waits is 0
+// past a 2-clock read, nx_dma_stretch is the 3.5 MHz contention's), so the six clocks
+// are dma_clock and dma_edge written out, the read and the write at their own cpu->t.
+static inline int dma_plain(Computer* comp, long long* spiSeen) {
+	return (D.seq == NXD_R1) && (NX.speed == 3) && !D.ioA && !D.ioB && (D.lenA == 1) && (D.lenB == 1)
+		&& D.busrq && (D.rel < 0) && dma_spi_over(comp, spiSeen);
+}
+
+// e: the edge READ_1 starts on; the edge after WRITE_4
+static long long dma_byte(Computer* comp, long long e) {
+	CPU* cpu = comp->cpu;
+	int p = D.presc;
+	// once the SPI master has run, nx_dma_spi brings the ray up to the clock it is asked
+	// at (READ_4's and WRITE_4's start): nx_dma_delay's look reads the time off the ray
+	int spi = (NX.spiT >= 0);
+	D.busrqOld = D.busrq;
+	cpu->t += 2;					// READ_1, READ_3
+	if (spi && (cpu->t > res4)) comp_vid_to_t(comp);
+	cpu->t++;					// READ_4
+	D.data = nx_dma_bus_rd(comp, D.a, 0);		// at its end
+	D.a = D.dst;
+	D.io = 0;
+	nx_dma_bus_wr(comp, D.a, 0, D.data, e + 3);	// WRITE_1's strobe, at its start
+	D.wpend = 0;
+	cpu->t += 2;					// WRITE_1, WRITE_3
+	if (spi && (cpu->t > res4)) comp_vid_to_t(comp);
+	cpu->t++;					// WRITE_4
+	D.counter++;
+	D.src += dma_step(D.dirAB ? D.modeA : D.modeB);
+	D.dst += dma_step(D.dirAB ? D.modeB : D.modeA);
+	D.wait = 0;
+	D.timer = 5;					// 0 at READ_1's end, a clock each since; 4 where WRITE_4 looks
+	D.T = 1;
+	D.a = D.src;
+	D.io = 0;
+	if (p)						// p > (4 >> 5)
+		D.seq = NXD_WAITC;
+	else if (D.counter < D.blen)
+		D.seq = nx_dma_delay(comp, D.edge) ? NXD_START : NXD_R1;
+	else
+		D.seq = NXD_FINISH;
+	return e + 6;
+}
+
 // The bus granted on edge g: the DMA runs until BUSRQ has been let go and the Z80 has
 // seen it (BusAck drops two edges after the release, the cpu's T1 starts there)
 static void dma_hold(Computer* comp, long long g) {
@@ -193,7 +248,13 @@ static void dma_hold(Computer* comp, long long g) {
 		D.busak = 1;
 		if ((D.rel < 0) && !D.busrq) D.rel = e;
 	}
+	long long spiSeen = -1;
 	for (int left = NXD_CAP; left > 0; left--) {
+		if ((left >= 6) && dma_plain(comp, &spiSeen)) {
+			e = dma_byte(comp, e);
+			left -= 5;
+			continue;
+		}
 		dma_clock(comp, e);
 		cpu->t++;
 		e++;
