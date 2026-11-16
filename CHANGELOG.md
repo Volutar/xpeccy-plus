@@ -61,6 +61,12 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The picture of File > Resume Last Session is part of the item**: the pointer can go onto
+  it without the menu closing, and a click on it resumes. *(reported by Volutar)*
+
+- **No "shader compiled" note when the window changes size** and the shader goes off at x1
+  or comes back.
+
 - **The wheel over a list in Options > File types scrolls the table** instead of changing the
   list under the pointer. *(reported by Volutar)*
 
