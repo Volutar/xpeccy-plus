@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <QApplication>
 #include <QComboBox>
+#include <QLabel>
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QTabBar>
@@ -323,7 +324,7 @@ void MainWin::socketRead() {
 			foreach(QWidget* t, QApplication::topLevelWidgets()) {
 				QMenu* m = qobject_cast<QMenu*>(t);
 				if (m && m->isVisible()) pops.append(m);
-				if (t->isVisible() && t->inherits("QTipLabel")) tips.append(t);
+				if (t->isVisible() && (t->inherits("QTipLabel") || (t->objectName() == "xMenuPreview"))) tips.append(t);
 			}
 			std::sort(pops.begin(), pops.end(), [](QMenu* a, QMenu* b) {return a->x() < b->x();});
 			QRect all(QPoint(0, 0), base->size());
@@ -500,6 +501,10 @@ void MainWin::socketRead() {
 			QHelpEvent hev(QEvent::ToolTip, at->mapFrom(win, pos), win->mapToGlobal(pos));
 			QApplication::sendEvent(at, &hev);
 			QString txt = QToolTip::isVisible() ? QToolTip::text() : QString("nothing");
+			foreach(QWidget* w, QApplication::topLevelWidgets()) {
+				QLabel* pv = qobject_cast<QLabel*>(w);		// a menu's own tip (xMenu)
+				if (pv && pv->isVisible() && (pv->objectName() == "xMenuPreview")) txt = pv->text();
+			}
 			sock->write(QString("%0 %1\r\n").arg(at->metaObject()->className(), txt.remove('\n')).toUtf8());
 		} else {
 			sock->write("nothing\r\n");

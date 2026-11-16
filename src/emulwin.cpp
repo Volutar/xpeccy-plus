@@ -28,6 +28,10 @@
 #include <QContextMenuEvent>
 #include <QHelpEvent>
 #include <QToolTip>
+#include <QLabel>
+#include <QRegularExpression>
+#include <QScreen>
+#include <QStylePainter>
 #include <QShortcut>
 #include <QSet>
 #include <QStyleOption>
@@ -2608,11 +2612,15 @@ void MainWin::updateSatellites() {
 // would end.
 class xMenu : public QMenu {
 	public:
-		xMenu(QWidget* p = nullptr) : QMenu(p) {}
-		xMenu(const QString& title, QWidget* p = nullptr) : QMenu(title, p) {}
+		xMenu(QWidget* p = nullptr) : QMenu(p) {watchHover();}
+		xMenu(const QString& title, QWidget* p = nullptr) : QMenu(title, p) {watchHover();}
 	protected:
 		bool event(QEvent*) override;
 		void paintEvent(QPaintEvent*) override;
+		void mouseMoveEvent(QMouseEvent*) override;
+		void mousePressEvent(QMouseEvent*) override;
+		void mouseReleaseEvent(QMouseEvent*) override;
+		void hideEvent(QHideEvent*) override;
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
 		void initStyleOption(QStyleOptionMenuItem* opt, const QAction* act) const override {
 			QMenu::initStyleOption(opt, act);
@@ -2621,6 +2629,15 @@ class xMenu : public QMenu {
 				opt->reservedShortcutWidth = opt->fontMetrics.horizontalAdvance(opt->text.mid(tab + 1));
 		}
 #endif
+	private:
+		QPointer<QLabel> preview;		// an xTip item's picture, see showPreview
+		QPointer<QAction> previewAct;
+		void watchHover() {
+			connect(this, &QMenu::hovered, this, [this](QAction* act) {if (act != previewAct) hidePreview();});
+		}
+		void showPreview(QAction*, const QString&, const QPoint&);
+		void hidePreview();
+		bool onPreview(QMouseEvent*, QMouseEvent**);
 };
 
 static QUrl manual_url(const QString& page = QString(), const QString& part = QString());
@@ -2650,19 +2667,126 @@ static void webAction(QAction* act, bool on) {
 #endif
 }
 
-// An item with an xTip property shows it as its tip, though the menu shows no
-// others: File's items carry the toolbar's tips. Gone when the pointer leaves it.
+// An item's xTip in a tip of the menu's own, as the style draws tips: the style
+// sheet's QToolTip rule matches Qt's tips alone, so it is taken over by hand.
+class xMenuPreview : public QLabel {
+	public:
+		xMenuPreview() : QLabel(nullptr, Qt::ToolTip | Qt::WindowTransparentForInput) {
+			setObjectName("xMenuPreview");		// the control port finds it so
+			setAttribute(Qt::WA_TransparentForMouseEvents);
+			setAttribute(Qt::WA_ShowWithoutActivating);
+			setAttribute(Qt::WA_DeleteOnClose);
+			setForegroundRole(QPalette::ToolTipText);
+			setBackgroundRole(QPalette::ToolTipBase);
+			setPalette(QToolTip::palette());
+			setFont(QToolTip::font());
+			setTextFormat(Qt::RichText);
+			setMargin(1 + style()->pixelMetric(QStyle::PM_ToolTipLabelFrameWidth, nullptr, this));
+			setIndent(1);
+			QRegularExpressionMatch m = QRegularExpression("QToolTip\\s*\\{([^}]*)\\}").match(qApp->styleSheet());
+			sheet = m.hasMatch();
+			if (sheet) setStyleSheet("QLabel {" + m.captured(1) + "}");
+		}
+	protected:
+		void paintEvent(QPaintEvent* ev) override {
+			if (!sheet) {
+				QStylePainter pnt(this);
+				QStyleOptionFrame opt;
+				opt.initFrom(this);
+				pnt.drawPrimitive(QStyle::PE_PanelTipLabel, opt);
+			}
+			QLabel::paintEvent(ev);
+		}
+	private:
+		bool sheet;
+};
+
+// An item with an xTip property shows it, though the menu shows no other tips:
+// File's items carry the toolbar's. It is part of the item: put against its lower
+// edge under the pointer, the pointer on it keeps the item and a click on it picks it.
 bool xMenu::event(QEvent* ev) {
 	if (ev->type() == QEvent::ToolTip) {
 		QHelpEvent* hev = static_cast<QHelpEvent*>(ev);
 		QAction* act = actionAt(hev->pos());
 		QString tip = act ? act->property("xTip").toString() : QString();
 		if (!tip.isEmpty()) {
-			QToolTip::showText(hev->globalPos(), tip, this, actionGeometry(act));
+			showPreview(act, tip, hev->globalPos());
 			return true;
 		}
 	}
 	return QMenu::event(ev);
+}
+
+void xMenu::showPreview(QAction* act, const QString& tip, const QPoint& at) {
+	if (preview && (previewAct == act)) return;
+	hidePreview();
+	xMenuPreview* pv = new xMenuPreview;
+	pv->setText(tip);
+	pv->adjustSize();
+	QRect item = actionGeometry(act).translated(mapToGlobal(QPoint(0, 0)));
+	QPoint pos(at.x() + 2, item.bottom() + 1);
+	QScreen* scr = QGuiApplication::screenAt(at);
+	if (scr) {
+		QRect room = scr->availableGeometry();
+		if (pos.x() + pv->width() > room.right() + 1) pos.setX(room.right() + 1 - pv->width());
+		if (pos.y() + pv->height() > room.bottom() + 1) pos.setY(item.top() - pv->height());
+	}
+	pv->move(pos);
+	pv->show();
+	preview = pv;
+	previewAct = act;
+}
+
+void xMenu::hidePreview() {
+	if (preview) preview->close();
+	preview = nullptr;
+	previewAct = nullptr;
+}
+
+// a pointer event over the picture, as one at the middle of its item
+bool xMenu::onPreview(QMouseEvent* ev, QMouseEvent** out) {
+	if (!preview || !previewAct || !preview->isVisible()) return false;
+	QPoint gp(qRound(qreal(ev->xGlobalX)), qRound(qreal(ev->xGlobalY)));
+	if (!preview->geometry().contains(gp)) return false;
+	*out = new QMouseEvent(ev->type(), QPointF(actionGeometry(previewAct).center()), QPointF(gp),
+		ev->button(), ev->buttons(), ev->modifiers());
+	return true;
+}
+
+void xMenu::mouseMoveEvent(QMouseEvent* ev) {
+	QMouseEvent* at = nullptr;
+	if (onPreview(ev, &at)) {
+		QMenu::mouseMoveEvent(at);
+		delete at;
+		return;
+	}
+	QMenu::mouseMoveEvent(ev);
+	if (preview && (activeAction() != previewAct)) hidePreview();
+}
+
+void xMenu::mousePressEvent(QMouseEvent* ev) {
+	QMouseEvent* at = nullptr;
+	if (onPreview(ev, &at)) {
+		QMenu::mousePressEvent(at);
+		delete at;
+		return;
+	}
+	QMenu::mousePressEvent(ev);
+}
+
+void xMenu::mouseReleaseEvent(QMouseEvent* ev) {
+	QMouseEvent* at = nullptr;
+	if (onPreview(ev, &at)) {
+		QMenu::mouseReleaseEvent(at);
+		delete at;
+		return;
+	}
+	QMenu::mouseReleaseEvent(ev);
+}
+
+void xMenu::hideEvent(QHideEvent* ev) {
+	hidePreview();
+	QMenu::hideEvent(ev);
 }
 
 // Where the style ends a key, and in what colour, is the style's own: the item is
