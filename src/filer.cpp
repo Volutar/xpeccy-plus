@@ -2462,7 +2462,13 @@ static int ask_save_changed(Computer* comp, QString what, const char* path, int 
 	mbox.setStandardButtons(QMessageBox::Yes|QMessageBox::No|QMessageBox::Cancel);
 	mbox.setIcon(QMessageBox::Warning);
 	switch (mbox.exec()) {
-		case QMessageBox::Yes: return save_back(comp, path, id, drv);
+		case QMessageBox::Yes:
+			if ((id == FG_TAPE) && comp->tape->rec && comp->tape->on) {
+				emu_lock();
+				tapUserStop(comp->tape);	// the block being recorded becomes one
+				emu_unlock();
+			}
+			return save_back(comp, path, id, drv);
 		case QMessageBox::No: return ERR_OK;
 	}
 	return ERR_CANCEL;
@@ -2477,7 +2483,9 @@ int saveChangedDisk(Computer* comp,int id) {
 
 int saveChangedTape(Computer* comp) {
 	Tape* tape = comp->tape;
-	if (!tape->changed || (tape->blkCount < 1)) return ERR_OK;
+	// a block still being recorded is not a block yet, but it is a change
+	bool part = tape->rec && tape->on && (tape->tmpBlock.sigCount > 0);
+	if (!part && (!tape->changed || (tape->blkCount < 1))) return ERR_OK;
 	return ask_save_changed(comp, "Tape", tape->path, FG_TAPE, -1);
 }
 
