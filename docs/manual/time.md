@@ -82,9 +82,9 @@ How fast x8 and x16 really run depends on the computer: when it cannot keep up, 
 runs as fast as it can. The ZX Evolution in TSConf mode and the ZX Spectrum Next need the
 most from it.
 
-Both always start from normal speed: switching one on switches the other off, and
-moving the **Overclock** slider ends either of them. Opening a file or switching to another
-machine brings the speed back to normal too.
+Switching one on switches the other off. The **Overclock** slider is a setting of its own:
+it stays where it is through both, and moving it ends neither. Opening a file or switching
+to another machine brings the speed back to normal.
 
 A sign in the top right corner of the picture shows which mode is on.
 
