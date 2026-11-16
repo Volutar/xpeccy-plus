@@ -3889,7 +3889,7 @@ void MainWin::fillUserMenu() {
 	if (conf.vid.shader.empty() || !conf.vid.shd_support) act->setChecked(true);	// none is what runs
 	if (conf.vid.shd_support) {
 		foreach(QString nam, xres_list("shaders", QStringList() << "*.txt")) {
-			act = shdMenu->addAction(nam);
+			act = shdMenu->addAction(QFileInfo(nam).completeBaseName());
 			act->setData(nam);
 			act->setCheckable(true);
 			act->setChecked(nam == conf.vid.shader.c_str());

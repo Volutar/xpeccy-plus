@@ -2153,7 +2153,7 @@ thin, lower it again after a long clean spell</string>
               <item>
                <widget class="QCheckBox" name="senbox">
                 <property name="toolTip">
-                 <string>Off plays silence.&#10;The sound card still sets the pace.</string>
+                 <string>Off plays silence, still paced by the sound card</string>
                 </property>
                 <property name="text">
                  <string>Enabled</string>

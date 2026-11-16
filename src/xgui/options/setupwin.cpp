@@ -141,17 +141,16 @@ void fill_layout_list(QComboBox* box, QString txt = QString()) {
 	box->setCurrentIndex(box->findText(txt));
 }
 
+// the item data keeps the file name, empty for None
 void fill_shader_list(QComboBox* box) {
 	QStringList lst = xres_list("shaders", QStringList() << "*.txt");
 	box->clear();
-	box->addItem("None", 0);
+	box->addItem("None", QString());
 	if (conf.vid.shd_support) {
 		foreach(QString nam, lst) {
-			box->addItem(nam, 1);
+			box->addItem(QFileInfo(nam).completeBaseName(), nam);
 		}
-		box->setCurrentIndex(box->findText(conf.vid.shader.c_str()));
-		if (box->currentIndex() < 0)
-			box->setCurrentIndex(0);
+		setRFIndex(box, QString(conf.vid.shader.c_str()), 0);
 	}
 }
 
@@ -1734,12 +1733,8 @@ void SetupWin::applyGlobal() {
 	applyRecording();
 	vid_set_border_mode(ui.bszsld->value());
 	// with no shaders the list holds None only: the chosen one stays for a run that has them
-	if (!conf.vid.shd_support) {
-	} else if (getRFIData(ui.cbShader) == 0) {
-		conf.vid.shader.clear();
-	} else {
-		conf.vid.shader = std::string(ui.cbShader->currentText().toLocal8Bit().data());
-	}
+	if (conf.vid.shd_support)
+		conf.vid.shader = std::string(getRFSData(ui.cbShader).toLocal8Bit().data());
 	std::string pal = getRFSData(ui.cbPalPreset).toStdString();		// empty: the built-in one
 	bool palNew = (pal != conf.palette) || !palPending.isEmpty();
 	conf.palette = pal;
