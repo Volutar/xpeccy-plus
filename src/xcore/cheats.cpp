@@ -87,7 +87,9 @@ static int ch_resolve(Computer* comp, xTrainer* tr, const chState* st, QString* 
 			return POK_NO_RAM;		// out of a page the CPU does not see: nothing says where
 		}
 		xPoke* pk = &tr->pokes[i];
-		if (abs < 0x20000) {
+		// the Next's banks start past its ROMs (pk_byte): there a place goes by the CPU's address
+		bool next = comp->hw && (comp->hw->id == HW_ZXNEXT);
+		if ((abs < 0x20000) && !next) {
 			pk->bank = abs >> 14;
 			// the page's own offset, in the CPU's 16K slot for the window
 			pk->adr = (byCpu ? (cpu & 0xc000) : 0xc000) | (abs & 0x3fff);
