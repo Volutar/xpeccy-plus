@@ -277,9 +277,9 @@ cell and press Enter.
 
 The {icon}`label` Labels menu of the toolbar has:
 
-- **Show labels** - shows or hides the label rows in the listing. The names inside the
-  instructions are shown either way. The **Switch labels** key does the same: Ctrl+L in
-  both presets.
+- **Show labels** - shows or hides the labels in the listing: off, there are no label
+  rows, and the instructions show plain addresses instead of names. The **Switch labels**
+  key does the same: Ctrl+L in both presets.
 - **Load labels** - reads a labels file.
 - **Save labels** - writes the labels in effect to a file.
 - **Labels list** - opens the **Labels List**.
