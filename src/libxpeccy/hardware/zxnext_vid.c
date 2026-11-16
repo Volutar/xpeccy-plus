@@ -1838,6 +1838,9 @@ static void nxv_take_up(Computer* comp);
 // the one starting made still or drawn
 void nxv_frm(Video* vid) {
 	Computer* comp = (Computer*)vid->xptr;
+#ifndef NX_CONT_CHECK
+	nx_cont_due(comp);		// once a frame whatever: a register poked from outside the machine
+#endif
 	if (vid->still) nxv_settle(comp);
 	int moved = NX.still.dirty || vid->stillBreak || vid->nodraw || vid->debug;
 	if (moved)

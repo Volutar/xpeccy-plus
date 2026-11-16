@@ -4,6 +4,7 @@
 #include "xstate.h"
 #include "xlog.h"
 #include "filetypes/filetypes.h"
+#include "hardware/zxnext.h"
 
 // The machine is a tree of structs allocated one by one, so a snapshot is a
 // list of ranges rather than one block. The list is rebuilt on every save and
@@ -313,6 +314,7 @@ int xstate_load(xState* st, Computer* comp) {
 	mem_derive(comp->mem);			// the map came back without what is worked out of it
 	if (comp->gs && comp->gs->mem) mem_derive(comp->gs->mem);
 	gs_mix_moved();				// the card's channels and volumes came back too
+	if (comp->hw && (comp->hw->id == HW_ZXNEXT)) nx_cont_due(comp);
 	comp->vid->nodraw = nodraw;
 	comp->vid->nodrawNext = nodrawNext;
 	comp->vid->flashShow = flashShow;

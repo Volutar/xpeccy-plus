@@ -416,6 +416,7 @@ int nx_nmi_accepts(Computer* comp) {
 // memory does not
 void nx_nmi_ack(Computer* comp) {
 	IRQ.nmiPush = 2;
+	nx_cont_due(comp);
 	if (NX.nr[0xc0] & 8) IRQ.retnC2 = 1;
 }
 
@@ -552,8 +553,10 @@ void nx_int_opcode(Computer* comp, int v) {
 				IRQ.mfEnable = 0;
 			}
 			// every RETN the T80 has pops NR C2/C3 after a stackless NMI
-			if (IRQ.retnC2 && ((v & 0xc7) == 0x45) && (v != 0x4d))
+			if (IRQ.retnC2 && ((v & 0xc7) == 0x45) && (v != 0x4d)) {
 				IRQ.retnPop = 2;
+				nx_cont_due(comp);
+			}
 			break;
 		case 3:
 			IRQ.dec = ((v == 0xdd) || (v == 0xfd)) ? 3 : (v == 0xed) ? 4 : 0;
@@ -561,8 +564,10 @@ void nx_int_opcode(Computer* comp, int v) {
 		case 4:
 			// ED after DD/FD: nothing for the snooper, but the T80 runs RETN all the same
 			IRQ.dec = 0;
-			if (IRQ.retnC2 && ((v & 0xc7) == 0x45) && (v != 0x4d))
+			if (IRQ.retnC2 && ((v & 0xc7) == 0x45) && (v != 0x4d)) {
 				IRQ.retnPop = 2;
+				nx_cont_due(comp);
+			}
 			break;
 		default:
 			IRQ.dec = 0;
