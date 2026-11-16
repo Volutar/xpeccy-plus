@@ -365,7 +365,9 @@ static void replace_number(QString& cmd, const QString& num, const QString& with
 	}
 }
 
+// Show Labels off: the operands keep their numbers too
 void placeLabel(Computer* comp, dasmData& drow) {
+	if (!conf.dbg.labels) return;
 	int shift = 0;
 	int work = 1;
 	QString lab;
@@ -655,7 +657,7 @@ QList<dasmData> getDisasm(Computer* comp, int& adr) {
 	list.append(drow);
 // add equ's
 	clen = adr - oadr;
-	while (clen > 1) {
+	while (conf.dbg.labels && (clen > 1)) {
 		oadr++;
 		clen--;
 		xadr = dasm_xadr(comp, oadr);
