@@ -3,8 +3,11 @@
 #include "../../xcore/xcore.h"
 #include "../../xcore/filemachine.h"
 
+#include <QApplication>
 #include <QComboBox>
+#include <QEvent>
 #include <QHeaderView>
+#include <QWheelEvent>
 #include <QTableWidget>
 #include <QVBoxLayout>
 
@@ -68,8 +71,23 @@ void xFileTypesBox::fill() {
 		}
 		// a machine that is not there any more comes out as Auto
 		setRFIndex(box, QString::fromLocal8Bit(fm_pref(rows[i].key).c_str()), 0);
+		box->installEventFilter(this);
 		table->setCellWidget(i, FTC_MACHINE, box);
 	}
+}
+
+// the wheel over a row's list scrolls the table, it does not change the list
+bool xFileTypesBox::eventFilter(QObject* obj, QEvent* ev) {
+	QComboBox* box = qobject_cast<QComboBox*>(obj);
+	if (box && (ev->type() == QEvent::Wheel)) {
+		QWheelEvent* we = static_cast<QWheelEvent*>(ev);
+		QPointF at(table->viewport()->mapFromGlobal(we->globalPosition().toPoint()));
+		QWheelEvent fwd(at, we->globalPosition(), we->pixelDelta(), we->angleDelta(), we->buttons(),
+			we->modifiers(), we->phase(), we->inverted());
+		QApplication::sendEvent(table->viewport(), &fwd);
+		return true;
+	}
+	return QWidget::eventFilter(obj, ev);
 }
 
 void xFileTypesBox::apply() {

@@ -184,6 +184,38 @@ static void wav_round_trip(Computer* comp, const char* dir) {
 	compDestroy(c2);
 }
 
+static void print_tmp(const char* what, Tape* tap) {
+	printf("%s: blocks %d wait %d rec", what, tap->blkCount, tap->wait);
+	for (int i = 0; i < tap->tmpBlock.sigCount; i++)
+		printf(" %d", tap->tmpBlock.data[i].size);
+	printf("\n");
+}
+
+// A recording's part stored for a save and taken back when there is no save: the
+// tape as it was, the part the recording's again, with what came in since after it
+static void rec_unstore(void) {
+	printf("== rec_unstore\n");
+	Tape* tap = tape_create(NULL, NULL);
+	tap->rec = 1;
+	tap->on = 1;
+	for (int i = 0; i < 5; i++)
+		blkAddPulse(&tap->tmpBlock, 100 + i, -1);
+	tapStoreBlock(tap);
+	print_tmp("stored", tap);
+	blkAddPulse(&tap->tmpBlock, 0, -1);		// edges the recording took meanwhile
+	blkAddPulse(&tap->tmpBlock, 200, -1);
+	tapUnstoreBlock(tap);
+	print_tmp("back", tap);
+	tapStoreBlock(tap);
+	tapUnstoreBlock(tap);
+	print_tmp("nothing since", tap);
+	// it grows on as blkAddPulse grows it
+	for (int i = 0; i < 0x10000; i++)
+		blkAddPulse(&tap->tmpBlock, 1, -1);
+	printf("grown %d\n", tap->tmpBlock.sigCount);
+	tape_destroy(tap);
+}
+
 int main(int argc, char** argv) {
 	if (argc < 2) {
 		fprintf(stderr, "usage: tape-bench <folder written by mktape.py>\n");
@@ -206,6 +238,7 @@ int main(int argc, char** argv) {
 	printf("== tap_wav\n");
 	Computer* tapComp = load(dir, imgs[0].file);
 	if (tapComp) wav_round_trip(tapComp, dir);
+	rec_unstore();
 	fflush(stdout);
 	return 0;
 }

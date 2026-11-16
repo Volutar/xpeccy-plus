@@ -61,6 +61,35 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The picture of File > Resume Last Session is part of the item**: the pointer can go onto
+  it without the menu closing, and a click on it resumes. *(reported by Volutar)*
+
+- **No "shader compiled" note when the window changes size** and the shader goes off at x1
+  or comes back.
+
+- **The wheel over a list in Options > File types scrolls the table** instead of changing the
+  list under the pointer. *(reported by Volutar)*
+
+- **A tape being recorded is asked about at exit**, as on eject or when another tape is
+  opened: the part recorded so far was lost without a question.
+
+- **Import and Reset to defaults in Options take the Recent list too**: the old one was kept.
+
+- **Options windows such as ROM open at their full width the first time** too, not narrower.
+
+- **Shaders are listed without .txt** in View > Shaders and Options > Video, as palettes are.
+
+- **The hard disk's Properties** show the image's full path as a tip again.
+
+- **Cheats on the ZX Spectrum Next**: a .pok poke into a page lands in that page; it went
+  into the ROM area and did nothing.
+
+- **An SZX of a Profi, a Phoenix or a Scorpion ZS 256 Turbo+ in turbo** goes on exactly as
+  it was taken; it could load a few ticks off.
+
+- **A playing RZX is left alone by the cheats**: opening another cheat file or clearing the
+  list wrote bytes into its machine.
+
 - **Demeter finds the hard disk**: the drive gives its whole name and answers its self-test
   as a real one does.
 

@@ -1078,8 +1078,13 @@ static void ext_comp(Computer* comp, const unsigned char* p, size_t n) {
 	}
 	// the board's own turbo, set from its port, through what works out the timings
 	double was = comp->hwMul;
+	int debt = comp->waitDebt;
+	int paid = comp->waitPaid;
 	comp->hwMul = mul;
 	if (was > 0) compSetHwTurbo(comp, was);
+	// a turbo change runs the core's init, which drops the debt the snapshot carries
+	comp->waitDebt = debt;
+	comp->waitPaid = paid;
 	comp->hw->mapMem(comp);
 }
 

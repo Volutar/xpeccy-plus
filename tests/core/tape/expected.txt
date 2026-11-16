@@ -49,3 +49,8 @@ blocks: 7
 == tap_wav
 wav: 3 blocks
 tap -> wav -> tap: identical, 385 bytes
+== rec_unstore
+stored: blocks 1 wait 1 rec
+back: blocks 0 wait 1 rec 100 101 102 103 104 0 200
+nothing since: blocks 0 wait 0 rec 100 101 102 103 104 0 200
+grown 65543

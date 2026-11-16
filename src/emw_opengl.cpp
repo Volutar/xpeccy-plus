@@ -709,7 +709,7 @@ namespace {
 // outside a paint event. Calling GL with no current context is undefined, and
 // the Intel Gen9.5 driver crashes on it from its shader compiler thread a
 // couple of seconds later.
-void MainWin::loadShader() {
+void MainWin::loadShader(bool tell) {
 	if (!glw || !conf.vid.shd_support) return;
 	glHold hold(glw);
 	shdLoaded = wantedShader();
@@ -761,7 +761,7 @@ void MainWin::loadShader() {
 		prg.addShader(vtx_shd);
 		prg.addShader(frg_shd);
 		if (prg.link()) {
-			if (user_shader) setMessage(" shader compiled ");
+			if (user_shader && tell) setMessage(" shader compiled ");
 			return;
 		}
 		qDebug() << "program link:" << prg.log();
@@ -770,7 +770,7 @@ void MainWin::loadShader() {
 	if (user_shader) {
 		setMessage(" shader error ");
 		conf.vid.shader.clear();
-		loadShader();			// the hold above keeps the context
+		loadShader(tell);		// the hold above keeps the context
 	} else {
 		xlog(XLG_GL, XLL_ERROR, "the default shader failed to compile or link");
 	}

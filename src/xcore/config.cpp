@@ -896,6 +896,7 @@ void loadConfig() {
 		compSetHardware(conf.zx, "Dummy");
 	}
 	conf.bookmarkList.clear();
+	conf.recentList.clear();
 	conf.gpctrl->presets.clear();
 	fm_clear();
 	char buf[0x4000];

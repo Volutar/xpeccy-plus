@@ -141,17 +141,25 @@ void fill_layout_list(QComboBox* box, QString txt = QString()) {
 	box->setCurrentIndex(box->findText(txt));
 }
 
+// a sheet as wide as its rows: ones added while it was hidden leave a layout's size stale
+static void sheet_open(QDialog* win) {
+	foreach(QLayout* lay, win->findChildren<QLayout*>()) lay->invalidate();
+	if (win->layout()) win->layout()->activate();
+	win->adjustSize();
+	win->show();
+	win->raise();
+}
+
+// the item data keeps the file name, empty for None
 void fill_shader_list(QComboBox* box) {
 	QStringList lst = xres_list("shaders", QStringList() << "*.txt");
 	box->clear();
-	box->addItem("None", 0);
+	box->addItem("None", QString());
 	if (conf.vid.shd_support) {
 		foreach(QString nam, lst) {
-			box->addItem(nam, 1);
+			box->addItem(QFileInfo(nam).completeBaseName(), nam);
 		}
-		box->setCurrentIndex(box->findText(conf.vid.shader.c_str()));
-		if (box->currentIndex() < 0)
-			box->setCurrentIndex(0);
+		setRFIndex(box, QString::fromLocal8Bit(conf.vid.shader.c_str()), 0);
 	}
 }
 
@@ -793,16 +801,12 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	// a window of their own. It is the same widgets, moved out of the page -
 	// so everything that reads and writes them stays as it is.
 	advWin = popOut(ui.advBox, "Machine: Advanced Settings");
-	connect(ui.pbAdvMachine, &QPushButton::released, advWin, [this]() {
-		advWin->adjustSize();
-		advWin->show();
-		advWin->raise();
-	});
+	connect(ui.pbAdvMachine, &QPushButton::released, advWin, [this]() {sheet_open(advWin);});
 
 	// the page keeps one button for the ROM set; the slots and the reset
 	// target are in this window
 	romSetWin = popOut(ui.romBox, "Machine: ROM");
-	connect(ui.pbRomSet, &QPushButton::released, romSetWin, [this]() {romSetWin->adjustSize(); romSetWin->show(); romSetWin->raise();});
+	connect(ui.pbRomSet, &QPushButton::released, romSetWin, [this]() {sheet_open(romSetWin);});
 
 	// same for the set file by file: the slots say which file is in which
 	// one, this window has the offsets and sizes behind it
@@ -1734,12 +1738,8 @@ void SetupWin::applyGlobal() {
 	applyRecording();
 	vid_set_border_mode(ui.bszsld->value());
 	// with no shaders the list holds None only: the chosen one stays for a run that has them
-	if (!conf.vid.shd_support) {
-	} else if (getRFIData(ui.cbShader) == 0) {
-		conf.vid.shader.clear();
-	} else {
-		conf.vid.shader = std::string(ui.cbShader->currentText().toLocal8Bit().data());
-	}
+	if (conf.vid.shd_support)
+		conf.vid.shader = std::string(getRFSData(ui.cbShader).toLocal8Bit().data());
 	std::string pal = getRFSData(ui.cbPalPreset).toStdString();		// empty: the built-in one
 	bool palNew = (pal != conf.palette) || !palPending.isEmpty();
 	conf.palette = pal;
@@ -2222,7 +2222,7 @@ QToolButton* SetupWin::sheetButton(QWidget* body, const char* title) {
 	if (body) {
 		QDialog* win = popOut(body, title);
 		btn->setToolTip(tr("More settings"));
-		connect(btn, &QToolButton::released, win, [win]() {win->adjustSize(); win->show(); win->raise();});
+		connect(btn, &QToolButton::released, win, [win]() {sheet_open(win);});
 	} else {
 		btn->setEnabled(false);
 	}

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <QApplication>
 #include <QComboBox>
+#include <QLabel>
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QTabBar>
@@ -21,6 +22,7 @@
 #include "xcore/vscalers.h"
 #include <QToolButton>
 #include <QPainter>
+#include <QPointer>
 
 // socket
 
@@ -66,7 +68,9 @@ extern int dasmrd(int adr, void* ptr);
 extern QString asm_labels(const QString&);
 
 void MainWin::socketRead() {
-	QTcpSocket* sock = (QTcpSocket*)sender();
+	// a dialog or a menu a command opens runs a nested loop, which may close the server
+	QPointer<QTcpSocket> sock = qobject_cast<QTcpSocket*>(sender());
+	if (!sock) return;
 	QByteArray arr = sock->readAll();
 	QString com(arr);
 	com = com.remove("\n");
@@ -320,7 +324,7 @@ void MainWin::socketRead() {
 			foreach(QWidget* t, QApplication::topLevelWidgets()) {
 				QMenu* m = qobject_cast<QMenu*>(t);
 				if (m && m->isVisible()) pops.append(m);
-				if (t->isVisible() && t->inherits("QTipLabel")) tips.append(t);
+				if (t->isVisible() && (t->inherits("QTipLabel") || (t->objectName() == "xMenuPreview"))) tips.append(t);
 			}
 			std::sort(pops.begin(), pops.end(), [](QMenu* a, QMenu* b) {return a->x() < b->x();});
 			QRect all(QPoint(0, 0), base->size());
@@ -497,6 +501,10 @@ void MainWin::socketRead() {
 			QHelpEvent hev(QEvent::ToolTip, at->mapFrom(win, pos), win->mapToGlobal(pos));
 			QApplication::sendEvent(at, &hev);
 			QString txt = QToolTip::isVisible() ? QToolTip::text() : QString("nothing");
+			foreach(QWidget* w, QApplication::topLevelWidgets()) {
+				QLabel* pv = qobject_cast<QLabel*>(w);		// a menu's own tip (xMenu)
+				if (pv && pv->isVisible() && (pv->objectName() == "xMenuPreview")) txt = pv->text();
+			}
 			sock->write(QString("%0 %1\r\n").arg(at->metaObject()->className(), txt.remove('\n')).toUtf8());
 		} else {
 			sock->write("nothing\r\n");
@@ -506,22 +514,27 @@ void MainWin::socketRead() {
 		if (prm.size() > 2) {
 			QPoint gp = frame->mapToGlobal(QPoint(prm[1].toInt(), prm[2].toInt()));
 			Qt::MouseButton btn = ((prm.size() > 3) && (prm[3] == "right")) ? Qt::RightButton : Qt::LeftButton;
-			QWidget* w = QApplication::widgetAt(gp);
+			// a dialog or a menu the click opens runs its own loop, which may delete the widget
+			QPointer<QWidget> w = QApplication::widgetAt(gp);
+			QByteArray name("nothing");
 			if (w) {
 				QMouseEvent prs(QEvent::MouseButtonPress, w->mapFromGlobal(gp), gp, btn, btn, Qt::NoModifier);
 				QApplication::sendEvent(w, &prs);
 				w = QApplication::widgetAt(gp);		// the press may have put a menu there
 				if (w) {
+					name = w->metaObject()->className();
 					QMouseEvent rls(QEvent::MouseButtonRelease, w->mapFromGlobal(gp), gp, btn, Qt::NoButton, Qt::NoModifier);
 					QApplication::sendEvent(w, &rls);
-					if (btn == Qt::RightButton) {	// the window system makes this one of a real click
+					if (w && (btn == Qt::RightButton)) {	// the window system makes this one of a real click
 						QContextMenuEvent cme(QContextMenuEvent::Mouse, w->mapFromGlobal(gp), gp);
 						QApplication::sendEvent(w, &cme);
 					}
 				}
 			}
-			sock->write(w ? w->metaObject()->className() : "nothing");
-			sock->write("\r\n");
+			if (sock) {
+				sock->write(name);
+				sock->write("\r\n");
+			}
 		}
 	} else if (com == "click-widget") {
 		// click-widget NAME DX DY [right|shift]: at that point of a widget, by object name or
@@ -547,13 +560,16 @@ void MainWin::socketRead() {
 			Qt::KeyboardModifiers mod = ((prm.size() > 4) && (prm[4] == "shift")) ? Qt::ShiftModifier : Qt::NoModifier;
 			sock->write(QString("%0\r\n").arg(hit->metaObject()->className()).toUtf8());
 			sock->flush();		// a menu or a dialog the click opens holds the rest
+			QPointer<QWidget> to(hit);	// the press or the release may delete it in a nested loop
 			QMouseEvent prs(QEvent::MouseButtonPress, pos, gp, btn, btn, mod);
-			QApplication::sendEvent(hit, &prs);
-			QMouseEvent rls(QEvent::MouseButtonRelease, pos, gp, btn, Qt::NoButton, mod);
-			QApplication::sendEvent(hit, &rls);
-			if (btn == Qt::RightButton) {
+			QApplication::sendEvent(to, &prs);
+			if (to) {
+				QMouseEvent rls(QEvent::MouseButtonRelease, pos, gp, btn, Qt::NoButton, mod);
+				QApplication::sendEvent(to, &rls);
+			}
+			if (to && (btn == Qt::RightButton)) {
 				QContextMenuEvent cme(QContextMenuEvent::Mouse, pos, gp);
-				QApplication::sendEvent(hit, &cme);
+				QApplication::sendEvent(to, &cme);
 			}
 		} else {
 			sock->write("nothing\r\n");
@@ -723,7 +739,7 @@ void MainWin::socketRead() {
 	} else {
 		sock->write("Unrecognized command\r\n");
 	}
-	if (sock->isOpen())
+	if (sock && sock->isOpen())
 		sock->write("> ");
 }
 

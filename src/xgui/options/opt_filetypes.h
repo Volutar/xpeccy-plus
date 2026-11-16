@@ -13,6 +13,8 @@ class xFileTypesBox : public QWidget {
 		void fill();
 		void apply();
 		void defaults();		// every row back to its first choice
+	protected:
+		bool eventFilter(QObject*, QEvent*) override;
 	private:
 		QTableWidget* table;
 };

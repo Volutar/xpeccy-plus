@@ -794,8 +794,8 @@ void MainWin::hddProps(int id) {
 	dlg.setWindowTitle(QString("Hard Disk: %0").arg((id == IDE_SLAVE) ? "Slave" : "Master"));
 	xOptSheet sheet;
 	QLabel* img = new QLabel(QFileInfo(QString::fromLocal8Bit(dev->image)).fileName());
-	img->setToolTip(QString::fromLocal8Bit(dev->image));
 	sheet.field("Image", img);
+	img->setToolTip(QString::fromLocal8Bit(dev->image));	// after field(), which clears a field's tip
 	sheet.field("C / H / S", new QLabel(QString("%0 / %1 / %2").arg(pass.cyls).arg(pass.hds).arg(pass.spt)));
 	sheet.field("Capacity", new QLabel(QString("%0 MB, %1 sectors").arg(dev->maxlba >> 11).arg(dev->maxlba)));
 	sheet.line();
