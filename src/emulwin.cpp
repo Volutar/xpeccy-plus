@@ -218,9 +218,9 @@ void MainWin::updateWindow() {
 	// a window not shown yet has no state of its own: the config's stands
 	if (!conf.vid.fullScreen && frame->isVisible()) conf.vid.maximized = maxed;
 	if (winFit) vid_set_fit(size());
-	// a size change can switch the shader off or bring it back (wantedShader)
+	// a size change can switch the shader off or bring it back (wantedShader), quietly
 	if (conf.vid.shd_support && (wantedShader() != shdLoaded))
-		loadShader();
+		loadShader(false);
 	blockSignals(true);
 	showBars();
 	if (conf.vid.fullScreen) {
@@ -1519,7 +1519,7 @@ void MainWin::refitPicture() {
 	vid_set_fit(size());
 	refit = 1;
 	if (conf.vid.shd_support && (wantedShader() != shdLoaded))
-		loadShader();
+		loadShader(false);
 }
 
 // The GL view's paint: the frame through the shader, then the indicators.
