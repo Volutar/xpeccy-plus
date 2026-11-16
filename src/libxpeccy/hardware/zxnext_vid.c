@@ -1155,7 +1155,7 @@ static __attribute__((noinline)) void nxv_plain_one(Computer* comp, long long D,
 // nxv_tm_load's answer kept over the dots of a run (nxv_gen_dot); blk LLONG_MIN: none
 typedef struct {
 	long long blk;
-	int wvc, w80;
+	int w80;
 } nxvTmKept;
 
 // one dot on the general path (LoRes, ULANext/ULA+, the tilemap, blend): nxv_draw's mix
@@ -1197,12 +1197,11 @@ static inline __attribute__((always_inline)) void nxv_gen_dot(Computer* comp, co
 	int tmw80 = -1;
 	if ((sp->tmen || sp->tmenb) && (whc < 320) && (wvc < 256)) {
 		// the load's answer and the group it latches are one for the four dots of a block
-		// (whc & ~3) on a line: asked once a block over a run
+		// (whc & ~3): asked once a block over a run
 		long long blk = D - (whc & 3);
-		if ((tk->blk != blk) || (tk->wvc != wvc)) {
+		if (tk->blk != blk) {
 			tk->w80 = nxv_tm_load(comp, D, whc, wvc);
 			tk->blk = blk;
-			tk->wvc = wvc;
 		}
 		tmw80 = tk->w80;
 	}
@@ -1266,7 +1265,7 @@ static inline __attribute__((always_inline)) void nxv_gen_dot(Computer* comp, co
 // nxv_gen_dot for one dot, kept out of nxv_draw_dot
 static __attribute__((noinline)) void nxv_gen_one(Computer* comp, long long D, int phc, int vc, int wvc, int bad, int whc, unsigned int* ptr) {
 	nxvSpan sp;
-	nxvTmKept tk = {LLONG_MIN, 0, 0};
+	nxvTmKept tk = {LLONG_MIN, 0};
 	nxv_span_set(comp, &sp, D);
 	nxv_gen_dot(comp, &sp, V.f[NXF_ORDER], D, phc, vc, wvc, bad, whc, ptr, &tk);
 }
@@ -1572,7 +1571,7 @@ static void nxv_draw(Computer* comp, const nxTiming* t, int L, int F, int vact, 
 // constants of each copy of the loop
 static inline __attribute__((always_inline)) void nxv_span_run(Computer* comp, const nxvSpan* sp, const int gen, const int order,
 		const nxTiming* t, int L, const nxvLine* ln, int rx, int rxe, long long D, unsigned int* ptr) {
-	nxvTmKept tk = {LLONG_MIN, 0, 0};
+	nxvTmKept tk = {LLONG_MIN, 0};
 	for (; rx < rxe; rx++, D++, ptr += 2) {
 		int phc, vc, wvc;
 		nxv_rx_ctr(t, L, ln, rx, &phc, &vc, &wvc);
@@ -1838,9 +1837,6 @@ static void nxv_take_up(Computer* comp);
 // the one starting made still or drawn
 void nxv_frm(Video* vid) {
 	Computer* comp = (Computer*)vid->xptr;
-#ifndef NX_CONT_CHECK
-	nx_cont_due(comp);		// once a frame whatever: a register poked from outside the machine
-#endif
 	if (vid->still) nxv_settle(comp);
 	int moved = NX.still.dirty || vid->stillBreak || vid->nodraw || vid->debug;
 	if (moved)
