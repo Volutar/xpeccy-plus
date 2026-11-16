@@ -67,7 +67,9 @@ extern int dasmrd(int adr, void* ptr);
 extern QString asm_labels(const QString&);
 
 void MainWin::socketRead() {
-	QTcpSocket* sock = (QTcpSocket*)sender();
+	// a dialog or a menu a command opens runs a nested loop, which may close the server
+	QPointer<QTcpSocket> sock = qobject_cast<QTcpSocket*>(sender());
+	if (!sock) return;
 	QByteArray arr = sock->readAll();
 	QString com(arr);
 	com = com.remove("\n");
@@ -524,8 +526,10 @@ void MainWin::socketRead() {
 					}
 				}
 			}
-			sock->write(name);
-			sock->write("\r\n");
+			if (sock) {
+				sock->write(name);
+				sock->write("\r\n");
+			}
 		}
 	} else if (com == "click-widget") {
 		// click-widget NAME DX DY [right|shift]: at that point of a widget, by object name or
@@ -730,7 +734,7 @@ void MainWin::socketRead() {
 	} else {
 		sock->write("Unrecognized command\r\n");
 	}
-	if (sock->isOpen())
+	if (sock && sock->isOpen())
 		sock->write("> ");
 }
 
