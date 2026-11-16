@@ -2048,6 +2048,15 @@ xMediaOpen media_last_open() {
 	return media_last;
 }
 
+// A save put back names its game in the title, and Reload opens that image, on the
+// machine the save is on; a machine's save has none. The same image opened before
+// is opened again as it was.
+static void media_follow_game() {
+	const QString img = game_image();
+	if (!img.isEmpty() && !media_last.path.isEmpty() && same_image(img, media_last.path)) return;
+	media_last = {img, FG_ALL, 0, img.isEmpty() ? 0 : conf.autorun, true};
+}
+
 // Run the machine on to the end of the next INT acknowledge, where loading puts
 // a .sna with interrupts off back, a frame and a bit at most. Returns 0 if it
 // never got there: interrupts kept off, or a breakpoint.
@@ -2329,6 +2338,7 @@ static int quick_put(Computer* comp, quickKept* k) {
 	if (res) {
 		game_put(k->game);
 		last_snapshot = k->game.image;
+		media_follow_game();
 		labels_rom_scan(comp);		// an SZX may hold a ROM of its own
 	}
 	return res;
@@ -2353,6 +2363,7 @@ int quick_load(Computer* comp, const QString& path) {
 	if (res) {
 		cheats_forget();
 		last_snapshot = game_image();	// the title names the game, not the save
+		media_follow_game();
 	}
 	emu_unlock();
 	return res;
