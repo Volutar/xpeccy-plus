@@ -4021,7 +4021,7 @@ void MainWin::fillUserMenu() {
 			act = shdMenu->addAction(QFileInfo(nam).completeBaseName());
 			act->setData(nam);
 			act->setCheckable(true);
-			act->setChecked(nam == conf.vid.shader.c_str());
+			act->setChecked(nam == QString::fromLocal8Bit(conf.vid.shader.c_str()));
 		}
 	}
 	// fill palette menu
