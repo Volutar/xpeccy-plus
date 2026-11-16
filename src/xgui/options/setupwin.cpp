@@ -159,7 +159,7 @@ void fill_shader_list(QComboBox* box) {
 		foreach(QString nam, lst) {
 			box->addItem(QFileInfo(nam).completeBaseName(), nam);
 		}
-		setRFIndex(box, QString(conf.vid.shader.c_str()), 0);
+		setRFIndex(box, QString::fromLocal8Bit(conf.vid.shader.c_str()), 0);
 	}
 }
 
