@@ -72,7 +72,9 @@ two keys: the hotkey, then the file's number. It has no key at first; set one on
 [Hotkeys page](hotkeys.md).
 
 **File > Reload** opens the last file again, the way it was opened: into the same drive,
-run or mounted. If you loaded a labels file in the Debugger, it is read again too.
+run or mounted. After a quick save is loaded, it opens the game the window title names,
+on the machine the save is on. If you loaded a labels file in the Debugger, it is read
+again too.
 
 ```{index} Auto-load labels, labels file
 ```
