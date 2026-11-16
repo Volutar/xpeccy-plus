@@ -101,14 +101,21 @@ static int ch_resolve(Computer* comp, xTrainer* tr, const chState* st, QString* 
 	return POK_FITS;
 }
 
+// a trainer's bytes back; none while an RZX plays, whose frames own the memory
+static bool ch_undo(Computer* comp, xTrainer* tr, int val) {
+	if (!comp || comp->rzx.play) return false;
+	pok_undo(comp, tr, val);
+	return true;
+}
+
 // the file's trainers off, bytes back, and the file gone
 static void ch_drop_file(Computer* comp) {
+	bool wrote = false;
 	for (int i = 0; i < ch_file.cnt; i++) {
-		if (ch_state[i].on && comp) {
-			pok_undo(comp, &ch_file.list[i], ch_state[i].val);
-			rzx_rec_touch();
-		}
+		if (ch_state[i].on && ch_undo(comp, &ch_file.list[i], ch_state[i].val))
+			wrote = true;
 	}
+	if (wrote) rzx_rec_touch();
 	pok_free(&ch_file);
 	ch_state.clear();
 	ch_path.clear();
@@ -122,18 +129,13 @@ static Computer* ch_comp = NULL;	// the machine the trainers that are on went in
 // every cheat off, bytes back (none while an RZX plays), the list kept; a mismatch found
 // was against the old game
 static void ch_all_back() {
-	Computer* comp = (ch_comp && !ch_comp->rzx.play) ? ch_comp : NULL;
 	bool wrote = false;
-	if (ch_hand_st.on && comp) {
-		pok_undo(comp, &ch_hand, 0);
+	if (ch_hand_st.on && ch_undo(ch_comp, &ch_hand, 0))
 		wrote = true;
-	}
 	ch_hand_st.on = 0;
 	for (int i = 0; i < ch_file.cnt; i++) {
-		if (ch_state[i].on && comp) {
-			pok_undo(comp, &ch_file.list[i], ch_state[i].val);
+		if (ch_state[i].on && ch_undo(ch_comp, &ch_file.list[i], ch_state[i].val))
 			wrote = true;
-		}
 		ch_state[i].on = 0;
 		ch_state[i].mismatch = 0;
 	}
@@ -288,10 +290,8 @@ bool cheats_cli() {
 void cheats_clear() {
 	chLock lock;
 	ch_drop_file(ch_comp);
-	if (ch_hand_st.on && ch_comp) {
-		pok_undo(ch_comp, &ch_hand, 0);
+	if (ch_hand_st.on && ch_undo(ch_comp, &ch_hand, 0))
 		rzx_rec_touch();
-	}
 	pok_trainer_free(&ch_hand);
 	ch_hand_st = {0, -1, 0};
 	ch_changed();
@@ -355,10 +355,8 @@ int cheats_hand_poke(Computer* comp, int adr, int val) {
 
 void cheats_hand_clear(Computer* comp) {
 	chLock lock;
-	if (ch_hand_st.on && !comp->rzx.play) {
-		pok_undo(comp, &ch_hand, 0);
+	if (ch_hand_st.on && ch_undo(comp, &ch_hand, 0))
 		rzx_rec_touch();
-	}
 	pok_trainer_free(&ch_hand);
 	ch_hand_st = {0, -1, 0};
 	ch_changed();
