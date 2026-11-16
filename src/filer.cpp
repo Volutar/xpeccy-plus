@@ -1900,10 +1900,22 @@ bool media_mount_can(Computer* comp, const QString& path, int id, int drv) {
 	return mount_disk_reader(inf->id) && flp->fitted && !comp->dif->out;
 }
 
+// a block still being recorded is not a block yet, but it is a change
+static bool tape_recording_part(Tape* tape) {
+	emu_lock();
+	bool part = tape->rec && tape->on && (tape->tmpBlock.sigCount > 0);
+	emu_unlock();
+	return part;
+}
+
+static bool tape_changed(Tape* tape) {
+	return (tape->changed && (tape->blkCount > 0)) || tape_recording_part(tape);
+}
+
 bool media_mount_asks(Computer* comp, const QString& path, int id, int drv) {
 	xFileTypeInfo* inf = file_type_of(comp, id, path);
 	if (inf && inf->ch) return comp->dif->flp[((drv < 0) ? 0 : drv) & 3]->changed;
-	return comp->tape->changed && (comp->tape->blkCount > 0);
+	return tape_changed(comp->tape);
 }
 
 int media_mount_begin(Computer* comp, const QString& path, int id, int drv, xMount* m, bool ask) {
@@ -2463,9 +2475,9 @@ static int ask_save_changed(Computer* comp, QString what, const char* path, int 
 	mbox.setIcon(QMessageBox::Warning);
 	switch (mbox.exec()) {
 		case QMessageBox::Yes:
-			if ((id == FG_TAPE) && comp->tape->rec && comp->tape->on) {
+			if ((id == FG_TAPE) && tape_recording_part(comp->tape)) {
 				emu_lock();
-				tapUserStop(comp->tape);	// the block being recorded becomes one
+				tapStoreBlock(comp->tape);	// what is recorded so far becomes a block, the recording goes on
 				emu_unlock();
 			}
 			return save_back(comp, path, id, drv);
@@ -2483,9 +2495,7 @@ int saveChangedDisk(Computer* comp,int id) {
 
 int saveChangedTape(Computer* comp) {
 	Tape* tape = comp->tape;
-	// a block still being recorded is not a block yet, but it is a change
-	bool part = tape->rec && tape->on && (tape->tmpBlock.sigCount > 0);
-	if (!part && (!tape->changed || (tape->blkCount < 1))) return ERR_OK;
+	if (!tape_changed(tape)) return ERR_OK;
 	return ask_save_changed(comp, "Tape", tape->path, FG_TAPE, -1);
 }
 

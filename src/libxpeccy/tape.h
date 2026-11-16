@@ -188,6 +188,7 @@ int tapUserPlay(Tape*);
 void tapRec(Tape*);
 void tapStop(Tape*);
 void tapUserStop(Tape*);
+void tapStoreBlock(Tape*);		// what is being recorded becomes a block
 void tapRewind(Tape*,int);
 int tap_rewind_at_end(Tape*);
 int tap_rewind_for(Tape*, int, int);
