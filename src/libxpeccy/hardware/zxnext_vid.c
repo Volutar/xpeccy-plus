@@ -207,10 +207,8 @@ static inline int nxv_peek(Computer* comp, int key) {
 	return (key >= NXV_SHADOW) ? NX.shadow[key - NXV_SHADOW] : comp->mem->ramData[key];
 }
 
-// the byte at key as a read at CLK_28 r saw it: writes after r undone. The writes
-// come in time order; most often none is after r, or none after r to a key of the
-// same slot (the two are never 2^31 clk28 apart the wrong way: an old slot only asks
-// for the walk)
+// the byte at key as a read at CLK_28 r saw it: writes after r undone. A slot's time and
+// r are never 2^31 clk28 apart the wrong way: an old slot only asks for the walk
 static __attribute__((noinline)) int nxv_mem_undo(Computer* comp, int key, long long r, int v) {
 	int i = V.wrHead;
 	if ((int)(V.wrT[key & (NXV_WRT - 1)] - (unsigned int)r) <= 0) return v;
@@ -223,7 +221,7 @@ static __attribute__((noinline)) int nxv_mem_undo(Computer* comp, int key, long 
 	return v;
 }
 
-// no write after r, the common case, answered in place
+// the writes come in time order and most often none is after r: answered in place
 static inline int nxv_mem(Computer* comp, int key, long long r) {
 	int v = nxv_peek(comp, key);
 	if (V.wr[(V.wrHead - 1) & (NXV_WRQ - 1)].w <= r) return v;

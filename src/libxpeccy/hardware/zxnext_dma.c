@@ -201,10 +201,7 @@ static inline int dma_spi_over(Computer* comp, long long* seen) {
 	return 1;
 }
 
-// A byte from memory to memory at 28 MHz, both ports' cycles 3 clocks, the SPI master
-// done: READ_1, 3, 4 and WRITE_1, 3, 4 hold no wait and no stretch (nx_dma_waits is 0
-// past a 2-clock read, nx_dma_stretch is the 3.5 MHz contention's), so the six clocks
-// are dma_clock and dma_edge written out, the read and the write at their own cpu->t.
+// 28 MHz memory to memory, 3-clock cycles, SPI done: no wait or stretch, six edges in one go
 static inline int dma_plain(Computer* comp, long long* spiSeen) {
 	return (D.seq == NXD_R1) && (NX.speed == 3) && !D.ioA && !D.ioB && (D.lenA == 1) && (D.lenB == 1)
 		&& D.busrq && (D.rel < 0) && dma_spi_over(comp, spiSeen);
@@ -231,7 +228,7 @@ static long long dma_byte(Computer* comp, long long e) {
 	dma_w1(comp);
 	D.wait = 0;
 	D.timer = 5;					// 0 at READ_1's end, a clock each since
-	dma_w4(comp, 4);				// the timer where WRITE_4 looks
+	dma_w4(comp, D.timer - 1);			// the timer where WRITE_4 looks
 	return e + 6;
 }
 

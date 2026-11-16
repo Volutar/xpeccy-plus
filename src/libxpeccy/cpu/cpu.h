@@ -171,9 +171,8 @@ struct CPU {
 	cbirq xirq;			// send signal
 	void (*xcont)(void*, int);	// contend the bus cycle about to start (mreq)
 	// where xcont has something to do: an address's 256-byte page set in contp
-	// (NULL: everywhere; all zeros while a board's own arbiter has nothing to do), and
-	// an internal cycle only if contInt
-	unsigned char* contp;
+	// (NULL: everywhere), and an internal cycle only if contInt
+	unsigned char* contp;		// all zeros: a board's arbiter is idle
 	int contInt;
 	// the refresh is reported (flgRFSH) where I's page is set in rfshp (NULL: everywhere)
 	unsigned char* rfshp;

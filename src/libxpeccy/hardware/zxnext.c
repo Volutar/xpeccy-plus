@@ -11,6 +11,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#ifdef NX_CONT_CHECK
+#include <stdio.h>
+#endif
 
 #include "zxnext.h"
 #include "zx_step.h"
@@ -1263,10 +1266,7 @@ static void nx_speed_apply(Computer* comp) {
 	NX.refC = s + d;
 }
 
-// the start of a memory cycle (mreq) or of an internal T-state, the ray at it
 #ifdef NX_CONT_CHECK
-#include <stdio.h>
-#include <stdlib.h>
 int nx_cont_off = 0;
 #else
 static unsigned char nx_cont_none[256];		// cpu->contp while nx_cont has nothing to do
@@ -1278,6 +1278,7 @@ static inline int nx_bus_pending(Computer* comp) {
 		|| (NX.contDis != ((NX.nr[0x08] >> 6) & 1));
 }
 
+// the start of a memory cycle (mreq) or of an internal T-state, the ray at it
 static void nx_cont(Computer* comp, int mreq) {
 	// 7-28 MHz, nothing pending, no stackless NMI push or pop: all that is left of what follows
 	if (NX.speed && !nx_bus_pending(comp) && !NX.irq.nmiPush && !NX.irq.retnPop) {
@@ -1297,8 +1298,7 @@ static void nx_cont(Computer* comp, int mreq) {
 	}
 #endif
 	// the ray at the cycle start, for what below reads it: a pending speed change, the
-	// power-on relock, the DMA, a contention switch, contention itself. At 7-28 MHz
-	// with none of them nothing does, and what draws catches up at its own next look.
+	// power-on relock, the DMA, a contention switch, contention itself
 	if (nx_bus_pending(comp) || nx_cont_on(comp))
 		comp_vid_to_t(comp);
 	if (NX.speedPend && (nx_now(comp) >= NX.speedT + 2)) nx_speed_apply(comp);

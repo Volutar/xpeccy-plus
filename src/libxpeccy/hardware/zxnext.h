@@ -138,11 +138,9 @@ void nx_int_catch_up(Computer*);
 // the zxnDMA (zxnext_dma.c) and its side of the bus (zxnext.c)
 long long nx_edge(Computer*);
 int nx_dma_cycle(Computer*);
-// nx_cont has work again: the cpu reports its bus cycles (while nx_cont finds none it
-// leaves cpu->contp on a page table of zeros, and the cpu skips the call). Called
-// wherever nx_cont's idle test can turn. NX_CONT_CHECK builds (one machine a process)
-// keep the reports coming and stop on one that finds work with them switched off.
+// nx_cont has work again (idle, it parks cpu->contp on zeros): called wherever its idle test can turn
 #ifdef NX_CONT_CHECK
+// the check build, one machine a process: the reports keep coming, work found with them off stops it
 extern int nx_cont_off;
 static inline void nx_cont_due(Computer* comp) {(void)comp; nx_cont_off = 0;}
 #else
