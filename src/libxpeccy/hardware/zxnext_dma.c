@@ -36,6 +36,28 @@ static int dma_step(int mode) {
 #define SRC_LEN		dma_cyc(D.dirAB ? D.lenA : D.lenB)
 #define DST_LEN		dma_cyc(D.dirAB ? D.lenB : D.lenA)
 
+// WRITE_1's edge: the byte counted, the addresses stepped
+static inline void dma_w1(Computer* comp) {
+	D.counter++;
+	D.src += dma_step(D.dirAB ? D.modeA : D.modeB);
+	D.dst += dma_step(D.dirAB ? D.modeB : D.modeA);
+}
+
+// WRITE_4's edge, its wait over: what follows the byte; t0: the timer before the edge
+static inline void dma_w4(Computer* comp, unsigned int t0) {
+	int p = D.presc;
+	D.T = 1;
+	D.a = D.src;
+	D.io = SRC_IO;
+	// the prescaler first, so the last byte waits too
+	if (p && (p > (int)(t0 >> 5)))
+		D.seq = NXD_WAITC;
+	else if (D.counter < D.blen)
+		D.seq = nx_dma_delay(comp, D.edge) ? NXD_START : NXD_R1;
+	else
+		D.seq = NXD_FINISH;
+}
+
 // one rising edge of the cpu clock (dma.vhd 250-497); busak: BUSAK was low before it.
 // The compares see the timer as it was before the edge.
 static void dma_edge(Computer* comp, int busak) {
@@ -88,14 +110,12 @@ static void dma_edge(Computer* comp, int busak) {
 			D.wpend = 1;
 			break;
 		case NXD_W1:
-			D.counter++;
 			switch (DST_LEN) {
 				case 2: D.seq = NXD_W4; D.wait = NXD_NOWAIT; break;
 				case 3: D.seq = NXD_W3; break;
 				default: D.seq = NXD_W2; break;
 			}
-			D.src += dma_step(D.dirAB ? D.modeA : D.modeB);
-			D.dst += dma_step(D.dirAB ? D.modeB : D.modeA);
+			dma_w1(comp);
 			break;
 		case NXD_W2:
 			D.seq = NXD_W3;
@@ -109,16 +129,7 @@ static void dma_edge(Computer* comp, int busak) {
 				D.wait--;
 				break;
 			}
-			D.T = 1;
-			D.a = D.src;
-			D.io = SRC_IO;
-			// the prescaler first, so the last byte waits too
-			if (p && (p > (int)(t0 >> 5)))
-				D.seq = NXD_WAITC;
-			else if (D.counter < D.blen)
-				D.seq = nx_dma_delay(comp, D.edge) ? NXD_START : NXD_R1;
-			else
-				D.seq = NXD_FINISH;
+			dma_w4(comp, t0);
 			break;
 		case NXD_WAITC: {
 			int w = p > (int)(t0 >> 5);
@@ -180,6 +191,47 @@ static void dma_clock(Computer* comp, long long e) {
 	}
 }
 
+// The SPI master's last transfer (spiT) is over for good: nx_dma_spi answers 0 to a clock
+// with no port EB strobe. The ray may stand behind cpu->t, so nx_now is early at most.
+// *seen: the transfer this was found for.
+static inline int dma_spi_over(Computer* comp, long long* seen) {
+	if ((NX.spiT < 0) || (NX.spiT == *seen)) return 1;
+	if (nx_now(comp) - NX.spiT <= 32) return 0;
+	*seen = NX.spiT;
+	return 1;
+}
+
+// 28 MHz memory to memory, 3-clock cycles, SPI done: no wait or stretch, six edges in one go
+static inline int dma_plain(Computer* comp, long long* spiSeen) {
+	return (D.seq == NXD_R1) && (NX.speed == 3) && !D.ioA && !D.ioB && (D.lenA == 1) && (D.lenB == 1)
+		&& D.busrq && (D.rel < 0) && dma_spi_over(comp, spiSeen);
+}
+
+// e: the edge READ_1 starts on; the edge after WRITE_4
+static long long dma_byte(Computer* comp, long long e) {
+	CPU* cpu = comp->cpu;
+	// once the SPI master has run, nx_dma_spi brings the ray up to the clock it is asked
+	// at (READ_4's and WRITE_4's start): nx_dma_delay's look reads the time off the ray
+	int spi = (NX.spiT >= 0);
+	D.busrqOld = D.busrq;
+	cpu->t += 2;					// READ_1, READ_3
+	if (spi && (cpu->t > res4)) comp_vid_to_t(comp);
+	cpu->t++;					// READ_4
+	D.data = nx_dma_bus_rd(comp, D.a, 0);		// at its end
+	D.a = D.dst;
+	D.io = 0;
+	nx_dma_bus_wr(comp, D.a, 0, D.data, e + 3);	// WRITE_1's strobe, at its start
+	D.wpend = 0;
+	cpu->t += 2;					// WRITE_1, WRITE_3
+	if (spi && (cpu->t > res4)) comp_vid_to_t(comp);
+	cpu->t++;					// WRITE_4
+	dma_w1(comp);
+	D.wait = 0;
+	D.timer = 5;					// 0 at READ_1's end, a clock each since
+	dma_w4(comp, D.timer - 1);			// the timer where WRITE_4 looks
+	return e + 6;
+}
+
 // The bus granted on edge g: the DMA runs until BUSRQ has been let go and the Z80 has
 // seen it (BusAck drops two edges after the release, the cpu's T1 starts there)
 static void dma_hold(Computer* comp, long long g) {
@@ -193,7 +245,13 @@ static void dma_hold(Computer* comp, long long g) {
 		D.busak = 1;
 		if ((D.rel < 0) && !D.busrq) D.rel = e;
 	}
+	long long spiSeen = -1;
 	for (int left = NXD_CAP; left > 0; left--) {
+		if ((left >= 6) && dma_plain(comp, &spiSeen)) {
+			e = dma_byte(comp, e);
+			left -= 5;
+			continue;
+		}
 		dma_clock(comp, e);
 		cpu->t++;
 		e++;

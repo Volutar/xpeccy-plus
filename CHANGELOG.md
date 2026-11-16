@@ -46,6 +46,7 @@ before that point is upstream's history and is not repeated here.
 
 - **The ZX Spectrum Next runs faster on weak computers**: the heaviest parts of DMA-driven
   demos such as Forever 35 run about half as fast again, and on a Steam Deck keep full speed.
+  On top of that Next games and demos run 3-37% faster, the DMA-driven ones the most.
   The Linux and macOS builds are now profile-guided, as the Windows ones are. *(thanks to
   nodeus for the report and the measurements)*
 

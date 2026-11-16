@@ -416,6 +416,7 @@ int nx_nmi_accepts(Computer* comp) {
 // memory does not
 void nx_nmi_ack(Computer* comp) {
 	IRQ.nmiPush = 2;
+	nx_cont_due(comp);
 	if (NX.nr[0xc0] & 8) IRQ.retnC2 = 1;
 }
 
@@ -531,6 +532,14 @@ int nx_dma_delay(Computer* comp, long long e) {
 
 // == im2_control's opcode decoder: IM shadow (in the Z80N tables), RETI, RETN ==
 
+// v: the byte after ED. Every RETN the T80 has pops NR C2/C3 after a stackless NMI
+static inline void nx_retn_pop(Computer* comp, int v) {
+	if (IRQ.retnC2 && ((v & 0xc7) == 0x45) && (v != 0x4d)) {
+		IRQ.retnPop = 2;
+		nx_cont_due(comp);
+	}
+}
+
 // v: the opcode byte of an M1 fetch
 void nx_int_opcode(Computer* comp, int v) {
 	switch (IRQ.dec) {
@@ -551,9 +560,7 @@ void nx_int_opcode(Computer* comp, int v) {
 				IRQ.mfNmi = 0;
 				IRQ.mfEnable = 0;
 			}
-			// every RETN the T80 has pops NR C2/C3 after a stackless NMI
-			if (IRQ.retnC2 && ((v & 0xc7) == 0x45) && (v != 0x4d))
-				IRQ.retnPop = 2;
+			nx_retn_pop(comp, v);
 			break;
 		case 3:
 			IRQ.dec = ((v == 0xdd) || (v == 0xfd)) ? 3 : (v == 0xed) ? 4 : 0;
@@ -561,8 +568,7 @@ void nx_int_opcode(Computer* comp, int v) {
 		case 4:
 			// ED after DD/FD: nothing for the snooper, but the T80 runs RETN all the same
 			IRQ.dec = 0;
-			if (IRQ.retnC2 && ((v & 0xc7) == 0x45) && (v != 0x4d))
-				IRQ.retnPop = 2;
+			nx_retn_pop(comp, v);
 			break;
 		default:
 			IRQ.dec = 0;

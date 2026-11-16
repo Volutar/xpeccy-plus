@@ -207,14 +207,10 @@ static inline int nxv_peek(Computer* comp, int key) {
 	return (key >= NXV_SHADOW) ? NX.shadow[key - NXV_SHADOW] : comp->mem->ramData[key];
 }
 
-// the byte at key as a read at CLK_28 r saw it: writes after r undone. The writes
-// come in time order; most often none is after r, or none after r to a key of the
-// same slot (the two are never 2^31 clk28 apart the wrong way: an old slot only asks
-// for the walk)
-static int nxv_mem(Computer* comp, int key, long long r) {
-	int v = nxv_peek(comp, key);
+// the byte at key as a read at CLK_28 r saw it: writes after r undone. A slot's time and
+// r are never 2^31 clk28 apart the wrong way: an old slot only asks for the walk
+static __attribute__((noinline)) int nxv_mem_undo(Computer* comp, int key, long long r, int v) {
 	int i = V.wrHead;
-	if (V.wr[(i - 1) & (NXV_WRQ - 1)].w <= r) return v;
 	if ((int)(V.wrT[key & (NXV_WRT - 1)] - (unsigned int)r) <= 0) return v;
 	for (int k = 0; k < NXV_WRQ; k++) {
 		i = (i - 1) & (NXV_WRQ - 1);
@@ -223,6 +219,13 @@ static int nxv_mem(Computer* comp, int key, long long r) {
 		if (e->key == key) v = e->old;
 	}
 	return v;
+}
+
+// the writes come in time order and most often none is after r: answered in place
+static inline int nxv_mem(Computer* comp, int key, long long r) {
+	int v = nxv_peek(comp, key);
+	if (V.wr[(V.wrHead - 1) & (NXV_WRQ - 1)].w <= r) return v;
+	return nxv_mem_undo(comp, key, r, v);
 }
 
 // the key of an SRAM byte: pages 0A, 0B, 0E are the copies behind the CPU's BRAM
@@ -452,8 +455,9 @@ void nxv_regs(Computer* comp, long long w) {
 	unsigned short q[NXF_CMP];
 	nxv_fields(comp, q);
 	// a still frame ends before the first change goes in
-	if (memcmp(q, V.q, sizeof(q)) || nx_cop_on(comp)) nxv_touch(comp);
-	for (int f = 0; f < NXF_CMP; f++) {
+	int moved = memcmp(q, V.q, sizeof(q));
+	if (moved || nx_cop_on(comp)) nxv_touch(comp);
+	for (int f = 0; moved && (f < NXF_CMP); f++) {
 		if (q[f] != V.q[f]) {
 			V.q[f] = q[f];
 			long long a = (nxv_class[f] == NXC_FF) ? (((nxv_fall(comp, w) >> 2) + 1) << 1) : nxv_at(nxv_class[f], w);
@@ -1146,11 +1150,17 @@ static __attribute__((noinline)) void nxv_plain_one(Computer* comp, long long D,
 	nxv_plain_dot(comp, &sp, V.f[NXF_ORDER], D, phc, vc, wvc, bad, whc, ptr);
 }
 
+// nxv_tm_load's answer kept over the dots of a run (nxv_gen_dot); blk LLONG_MIN: none
+typedef struct {
+	long long blk;
+	int w80;
+} nxvTmKept;
+
 // one dot on the general path (LoRes, ULANext/ULA+, the tilemap, blend): nxv_draw's mix
 // with the fields taken from the span. Memory reads as nxv_mem makes them: straight
 // from memory when the span saw no write after its first read.
 static inline __attribute__((always_inline)) void nxv_gen_dot(Computer* comp, const nxvSpan* sp, const int order,
-		long long D, int phc, int vc, int wvc, int bad, int whc, unsigned int* ptr) {
+		long long D, int phc, int vc, int wvc, int bad, int whc, unsigned int* ptr, nxvTmKept* tk) {
 	int s;
 	int s_t = nxv_span_spr(comp, sp, D, whc, wvc, &s);
 	int l2byte = sp->l2On ? nxv_span_l2(comp, sp, phc, vc, wvc, D) : -1;
@@ -1183,8 +1193,16 @@ static inline __attribute__((always_inline)) void nxv_gen_dot(Computer* comp, co
 	int uclip = !(inwin || bad) && !lpen;
 	// the tilemap's group, for both halves
 	int tmw80 = -1;
-	if ((sp->tmen || sp->tmenb) && (whc < 320) && (wvc < 256))
-		tmw80 = nxv_tm_load(comp, D, whc, wvc);
+	if ((sp->tmen || sp->tmenb) && (whc < 320) && (wvc < 256)) {
+		// the load's answer and the group it latches are one for the four dots of a block
+		// (whc & ~3): asked once a block over a run
+		long long blk = D - (whc & 3);
+		if (tk->blk != blk) {
+			tk->w80 = nxv_tm_load(comp, D, whc, wvc);
+			tk->blk = blk;
+		}
+		tmw80 = tk->w80;
+	}
 	int tmwin = (whc >= sp->tcx1) && (whc <= sp->tcx2) && (wvc >= sp->tcy1) && (wvc <= sp->tcy2);
 	// the two halves alike: as nxv_plain_dot, and the tilemap not in 80 columns (the ULA+
 	// bits b2, b3 are set together)
@@ -1245,8 +1263,9 @@ static inline __attribute__((always_inline)) void nxv_gen_dot(Computer* comp, co
 // nxv_gen_dot for one dot, kept out of nxv_draw_dot
 static __attribute__((noinline)) void nxv_gen_one(Computer* comp, long long D, int phc, int vc, int wvc, int bad, int whc, unsigned int* ptr) {
 	nxvSpan sp;
+	nxvTmKept tk = {LLONG_MIN, 0};
 	nxv_span_set(comp, &sp, D);
-	nxv_gen_dot(comp, &sp, V.f[NXF_ORDER], D, phc, vc, wvc, bad, whc, ptr);
+	nxv_gen_dot(comp, &sp, V.f[NXF_ORDER], D, phc, vc, wvc, bad, whc, ptr, &tk);
 }
 
 // One dot drawn on its own where no field moves between its two half-pixels (the dot of
@@ -1550,12 +1569,13 @@ static void nxv_draw(Computer* comp, const nxTiming* t, int L, int F, int vact, 
 // constants of each copy of the loop
 static inline __attribute__((always_inline)) void nxv_span_run(Computer* comp, const nxvSpan* sp, const int gen, const int order,
 		const nxTiming* t, int L, const nxvLine* ln, int rx, int rxe, long long D, unsigned int* ptr) {
+	nxvTmKept tk = {LLONG_MIN, 0};
 	for (; rx < rxe; rx++, D++, ptr += 2) {
 		int phc, vc, wvc;
 		nxv_rx_ctr(t, L, ln, rx, &phc, &vc, &wvc);
 		int bad = (phc & 0x100) || nxv_vbord(vc);
 		if (gen)
-			nxv_gen_dot(comp, sp, order, D, phc, vc, wvc, bad, (phc + 32) & 0x1ff, ptr);
+			nxv_gen_dot(comp, sp, order, D, phc, vc, wvc, bad, (phc + 32) & 0x1ff, ptr, &tk);
 		else
 			nxv_plain_dot(comp, sp, order, D, phc, vc, wvc, bad, (phc + 32) & 0x1ff, ptr);
 	}

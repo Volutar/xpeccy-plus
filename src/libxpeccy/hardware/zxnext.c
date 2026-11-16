@@ -11,6 +11,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#ifdef NX_CONT_CHECK
+#include <stdio.h>
+#endif
 
 #include "zxnext.h"
 #include "zx_step.h"
@@ -1263,13 +1266,40 @@ static void nx_speed_apply(Computer* comp) {
 	NX.refC = s + d;
 }
 
+#ifdef NX_CONT_CHECK
+int nx_cont_off = 0;
+#else
+static unsigned char nx_cont_none[256];		// cpu->contp while nx_cont has nothing to do
+#endif
+
+// a speed change, the power-on relock, the DMA or a contention switch waits for a bus cycle
+static inline int nx_bus_pending(Computer* comp) {
+	return NX.speedPend || NX.powerFrame || NX.dma.seq || NX.dma.busrq || NX.dma.busak
+		|| (NX.contDis != ((NX.nr[0x08] >> 6) & 1));
+}
+
 // the start of a memory cycle (mreq) or of an internal T-state, the ray at it
 static void nx_cont(Computer* comp, int mreq) {
+	// 7-28 MHz, nothing pending, no stackless NMI push or pop: all that is left of what follows
+	if (NX.speed && !nx_bus_pending(comp) && !NX.irq.nmiPush && !NX.irq.retnPop) {
+		comp->cpu->flgMSTART = 0;	// read with mreq 0 only, right after z80_wait set it
+#ifdef NX_CONT_CHECK
+		nx_cont_off = 1;
+#else
+		comp->cpu->contp = nx_cont_none;	// until nx_cont_due()
+#endif
+		return;
+	}
+#ifdef NX_CONT_CHECK
+	if (nx_cont_off) {
+		fprintf(stderr, "NX CONT: work found with the reports off\n");
+		fflush(stderr);
+		abort();
+	}
+#endif
 	// the ray at the cycle start, for what below reads it: a pending speed change, the
-	// power-on relock, the DMA, a contention switch, contention itself. At 7-28 MHz
-	// with none of them nothing does, and what draws catches up at its own next look.
-	if (NX.speedPend || NX.powerFrame || NX.dma.seq || NX.dma.busrq || NX.dma.busak
-			|| nx_cont_on(comp) || (NX.contDis != ((NX.nr[0x08] >> 6) & 1)))
+	// power-on relock, the DMA, a contention switch, contention itself
+	if (nx_bus_pending(comp) || nx_cont_on(comp))
 		comp_vid_to_t(comp);
 	if (NX.speedPend && (nx_now(comp) >= NX.speedT + 2)) nx_speed_apply(comp);
 	int h, v, hc, vc;
@@ -1406,6 +1436,7 @@ static void nx_inta(void* ptr) {
 		}
 	}
 	comp->waitDebt += held;
+	if (held) nx_cont_due(comp);		// comp_cont_hw pays it
 	NX.holds += held;
 }
 
@@ -1666,12 +1697,14 @@ static void nx_nr_write(Computer* comp, int r, int v) {
 		case 0x07:
 			nr[0x07] = v & 3;
 			NX.speedPend = 1;
+			nx_cont_due(comp);
 			nx_vsync(comp);
 			NX.speedT = nx_now(comp);
 			return;
 		case 0x80:
 			nr[0x80] = v;
 			NX.speedPend = 1;		// the bus's enable is taken with the speed
+			nx_cont_due(comp);
 			nx_vsync(comp);
 			NX.speedT = nx_now(comp);
 			return;
@@ -1702,6 +1735,7 @@ static void nx_nr_write(Computer* comp, int r, int v) {
 		case 0x08:
 			if (v & 0x80) NX.p7ffd &= ~0x20;
 			nr[0x08] = v & 0x7f;
+			nx_cont_due(comp);		// b6: the contention switch
 			nx_snd_nr(comp, 0x08, nx_w);
 			return;
 		case 0x06:
@@ -2394,8 +2428,10 @@ static void nx_out_dev(Computer* comp, int port, int val, long long w, int cpu) 
 			nr[0x68] = (nr[0x68] & ~8) | ((val & 1) << 3);
 	}
 	// the zxnDMA's ports; the DMA's own writes to them are not taken (port_dma_wr)
-	if (cpu && (((lo == 0x6b) && (nr[0x82] & 0x20)) || ((lo == 0x0b) && (nr[0x85] & 2))))
+	if (cpu && (((lo == 0x6b) && (nr[0x82] & 0x20)) || ((lo == 0x0b) && (nr[0x85] & 2)))) {
 		nx_dma_port_wr(comp, port, val);
+		nx_cont_due(comp);
+	}
 	nxv_regs(comp, w);
 }
 
@@ -2690,6 +2726,7 @@ static void nx_soft_reset(Computer* comp, long long w) {
 		NX.speed = sp;
 		NX.speedPend = 1;
 		NX.speedT = e - 2;
+		nx_cont_due(comp);
 	}
 	nx_reset_lines(comp);
 	nx_map_mem(comp);
@@ -2936,6 +2973,7 @@ static void nx_reset(Computer* comp) {
 		nx_layout(comp);
 	}
 	nx_reset_lines(comp);
+	nx_cont_due(comp);
 	comp->vid->inten |= 1;		// the ULA interrupt pixel is reported (nx_irq decides)
 	zx_set_pal(comp);
 	vid_set_mode(comp->vid, VID_NEXT);
@@ -3008,8 +3046,7 @@ static struct {
 // takes 4 T and the SRAM wait at 28 MHz; the last one's INT sample stays short of
 // irqDead, its read short of the copper's next move (nx_mrd_in)
 static int nx_halt(Computer* comp, int adr, long long* until) {
-	if (NX.speedPend || NX.powerFrame || NX.dma.seq || NX.dma.busrq || NX.dma.busak) return 0;
-	if ((NX.contDis != ((NX.nr[0x08] >> 6) & 1)) || comp->waitDebt || (NX.irqDead <= 0)) return 0;
+	if (nx_bus_pending(comp) || comp->waitDebt || (NX.irqDead <= 0)) return 0;
 	int t;
 	if ((nxHaltLast.tick == comp->tickTotal) && (nxHaltLast.adr == adr) && (nxHaltLast.copPc == NX.copPc)
 			&& (nxHaltLast.nr62 == NX.nr[0x62]) && (nxHaltLast.speed == NX.speed)) {
