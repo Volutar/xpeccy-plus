@@ -11,6 +11,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Always on Top**: View > Always on Top keeps the main window over other programs'
+  windows; the program's own still open over it. Off in fullscreen, remembered.
+  *(reported by Volutar)*
+
 - **SMUC 2.x**: Options > Machine, Hard disk row. The home-made SMUC boards, whose ports
   answer outside TR-DOS too, as Z-Player and Demeter expect; ProfROM calls it version 2.0.
   The original SMUC still answers only in TR-DOS.
@@ -60,6 +64,15 @@ before that point is upstream's history and is not repeated here.
 
 - **Starts faster on Windows**: the window is up about half a second sooner.
 
+- **Slow Motion and Fast Forward keep the overclock**, and moving the overclock no longer
+  ends them. *(reported by Volutar)*
+
+- **The shader's name on the picture** when one is picked from View > Shaders or read again
+  by Reload Shader, in place of "shader compiled"; nothing at start. *(reported by Volutar)*
+
+- **Next Side and Previous Side stand apart in the Media menu**: they turn over a tape set
+  as well as a disk set. *(reported by Volutar)*
+
 ### Fixed
 
 - **The picture of File > Resume Last Session is part of the item**: the pointer can go onto
@@ -67,6 +80,18 @@ before that point is upstream's history and is not repeated here.
 
 - **No "shader compiled" note when the window changes size** and the shader goes off at x1
   or comes back.
+
+- **File > Reload after a quick load** opens the game the title names, where it said
+  "nothing to reload". *(reported by Volutar)*
+
+- **Debugger: Show Labels off takes the names out of the instructions too**, not only the
+  label rows. *(reported by Volutar)*
+
+- **A palette or Grayscale changed while paused shows at once**, not only after resuming.
+  *(reported by Volutar)*
+
+- **The arrows of a keyboard player no longer move around the Gamepads window** while you
+  try them. *(reported by Volutar)*
 
 - **The wheel over a list in Options > File types scrolls the table** instead of changing the
   list under the pointer. *(reported by Volutar)*
