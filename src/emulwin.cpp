@@ -3921,9 +3921,10 @@ void MainWin::initMachineMenus() {
 	fdcFastAct->setCheckable(true);
 	media->addSeparator();
 	// the image in use, the tape or a disk, turned over: apart from the drives, as it is
-	// either; no list to pick from, so a key
-	cutAction(media, "Next Side", XCUT_SIDE_NEXT);
-	cutAction(media, "Previous Side", XCUT_SIDE_PREV);
+	// either; no list to pick from, so a key. Named as the menu opens (sideMenu).
+	cutAction(media, "Next Tape", XCUT_SIDE_NEXT);
+	cutAction(media, "Previous Tape", XCUT_SIDE_PREV);
+	connect(media, &QMenu::aboutToShow, this, &MainWin::sideMenu);
 	media->addSeparator();
 	media->addMenu(cartMenu);
 	media->addAction(divItem);

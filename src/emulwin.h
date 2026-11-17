@@ -156,7 +156,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 			const QString& note = QString());
 		// a tape or a disk, read in the background
 		void mountMedia(const QString& path, int id, int drv, bool pinned, const QString& from, const QString& note = QString());
-		void sideStep(int step);	// the Next/Previous Side keys
+		void sideStep(int step);	// the Next/Previous Tape or Disk keys
 		void sideStepIn(int src, int step);	// ...the buttons: in the deck (MEDIA_TAPE) or a drive
 		bool hasSides(int src);
 		QString mediaIn(int id, int drv);
@@ -346,6 +346,8 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		bool setOn = false;	// and whether a set was looked for at all (Next tape of a set)
 		bool tapeSides = false;	// the deck's tape can be stepped by hand (a set, or its archive's list) - not inSet
 		QString sideHeld(int src);
+		int sideSlot();
+		void sideMenu();
 		QString sideNext(int src, int step, QString* place);
 		void sidePut(int src, const QString& path, const QString& place);
 		QStringList tapeSeen;	// the tapes that were in, newest first, for the side a set turns back to
