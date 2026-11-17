@@ -11,7 +11,7 @@ the hardware it copies. A divMMC can be added to the Sinclair models and the Pen
 |---|---|
 | {icon}`tape` **Tape Player**, **Tape Play/Stop**, **Tape Record/Stop** | [Tapes](tapes.md) |
 | {icon}`fdd_disk` **Disk Manager**, {icon}`fdd` **Floppy Drives**, **Fast Disk Access** | [Floppy disks](disks.md) |
-| **Next Side**, **Previous Side** | [The other sides beside an image](files.md#the-other-sides-beside-an-image) |
+| **Next Tape**, **Previous Tape** or **Next Disk**, **Previous Disk** | [The other sides beside an image](files.md#the-other-sides-beside-an-image) |
 | {icon}`cartrige` **Cartridge** | [Cartridge](#cartridge), below |
 | {icon}`sdcard` **divMMC** | [divMMC](divmmc.md) |
 | {icon}`sdcard` **SD Card**, {icon}`hdd` **Drives** | [SD cards and hard disks](sd-hdd.md) |
