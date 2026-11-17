@@ -248,11 +248,11 @@ static int snd_board_named(const std::string& val) {
 	if ((val == "machine") || (val == "yes")) return BOARD_MACHINE;
 	if ((val == "off") || (val == "no")) return BEEP_LINE;
 	int type = xm_beep_named(val, -2);
-	if (type < 0) {
+	if (type >= 0) return type;
+	if ((val == "true") || (val == "1") || (val == "on")) return BOARD_MACHINE;	// the old switch's other ons
+	if ((val != "false") && (val != "0"))
 		xlog(XLG_CONF, XLL_WARN, "board.filter: no type '%s' any more, Off", val.c_str());
-		return BEEP_LINE;
-	}
-	return type;
+	return BEEP_LINE;
 }
 
 void saveConfig() {

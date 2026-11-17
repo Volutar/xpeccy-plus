@@ -160,11 +160,12 @@ static xMacWord fbusTab[] = {
 	{"asic", FBUS_ASIC}, {"attr", FBUS_ATTR}, {NULL, 0}
 };
 
+// id NULL: no warning for a value not in the table
 static int mac_word(xMacWord* tab, const std::string& val, int def, const char* id) {
 	for (int i = 0; tab[i].name; i++) {
 		if (!strcmp(tab[i].name, val.c_str())) return tab[i].val;
 	}
-	xlog(XLG_CONF, XLL_WARN, "machine %s: unknown value '%s'", id, val.c_str());
+	if (id) xlog(XLG_CONF, XLL_WARN, "machine %s: unknown value '%s'", id, val.c_str());
 	return def;
 }
 
@@ -1610,18 +1611,11 @@ static const char* mac_word_name(xMacWord* tab, int val) {
 	return "none";
 }
 
-static int mac_word_quiet(xMacWord* tab, const std::string& val, int def) {
-	for (int i = 0; tab[i].name; i++) {
-		if (val == tab[i].name) return tab[i].val;
-	}
-	return def;
-}
-
 // the beeper types and the PSG layouts by their names in the files, for the Sound page's keys
 const char* xm_beep_name(int type) {return mac_word_name(beepTab, type);}
-int xm_beep_named(const std::string& name, int def) {return mac_word_quiet(beepTab, name, def);}
+int xm_beep_named(const std::string& name, int def) {return mac_word(beepTab, name, def, NULL);}
 const char* xm_lay_name(int lay) {return mac_word_name(stereoTab, lay);}
-int xm_lay_named(const std::string& name, int def) {return mac_word_quiet(stereoTab, name, def);}
+int xm_lay_named(const std::string& name, int def) {return mac_word(stereoTab, name, def, NULL);}
 
 // is this named romset the machine's own set under another name?
 
