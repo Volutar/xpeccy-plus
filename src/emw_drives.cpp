@@ -210,11 +210,12 @@ void MainWin::sideMenu() {
 	Computer* comp = conf.zx;
 	const int src = sideSlot();
 	const bool held = !sideHeld(src).isEmpty();
-	const bool tape = held ? (src == MEDIA_TAPE) : ((drive_count(comp) < 1) || !sideHeld(MEDIA_TAPE).isEmpty());
+	// nothing in that slot: either, unless the machine has no drives
+	const char* what = held ? ((src == MEDIA_TAPE) ? "Tape" : "Disk") : (drive_count(comp) < 1) ? "Tape" : "Tape/Disk";
 	const bool can = held && !comp->rzx.play && hasSides(src);
 	for (xCutAct& cut : cutActs) {
 		if ((cut.id != XCUT_SIDE_NEXT) && (cut.id != XCUT_SIDE_PREV)) continue;
-		cut.name = QString("%0 %1").arg((cut.id == XCUT_SIDE_NEXT) ? "Next" : "Previous").arg(tape ? "Tape" : "Disk");
+		cut.name = QString("%0 %1").arg((cut.id == XCUT_SIDE_NEXT) ? "Next" : "Previous").arg(what);
 		cut.act->setEnabled(can);
 	}
 	cutTexts();
