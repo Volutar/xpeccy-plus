@@ -238,9 +238,9 @@ static double butter(double hz, double fc, int n) {
 	return 1 / sqrt(1 + pow(hz / fc, 2 * n));
 }
 
-// the experimental types (BEEP_X_*): their Q24 coefficients, and their gains as built
-static void experimental(void) {
-	printf("== experimental\n");
+// the types past the boards' (BEEP_LP5): their Q24 coefficients, and their gains as built
+static void lowpass5(void) {
+	printf("== low-pass 5 kHz\n");
 	for (int i = 0; i < 2; i++) {
 		int rate = outRates[i];
 		for (int t = BEEP_TYPES; t < BEEP_ALL; t++) {
@@ -250,17 +250,13 @@ static void experimental(void) {
 				st.kHp, st.kF, st.kQ, st.kBp, st.kL[0], st.kLQ[0], st.kL[1], st.kLQ[1]);
 		}
 		int ok = 1;
-		static const int fc[2] = {5000, 11000};
 		// a few levels of 8192; Chamberlin's Q drifts a little that high: 0.990 for 0.999 at 5 kHz
-		static const double tol[2] = {0.005, 0.012};
-		for (int k = 0; k < 2; k++) {
-			for (double hz = 1250; hz <= 20000; hz *= 2)
-				ok &= (fabs(gain(BEEP_X_LP5_4 + k, rate, hz) - butter(hz, fc[k], 4)) < tol[k]);
-			ok &= (held(BEEP_X_LP5_4 + k, rate, LEV) == LEV) && (held(BEEP_X_LP5_4 + k, rate, -LEV) == -LEV);
-		}
-		// the PWM carrier of Final Signal, 16.2 kHz: what each leaves of it
-		printf("16.2 kHz: 5 kHz %.4f, 11 kHz %.4f\n", gain(BEEP_X_LP5_4, rate, 16200), gain(BEEP_X_LP11_4, rate, 16200));
-		check("low-pass 5 and 11 kHz of 4 poles: the gains as built, a held level through", ok);
+		for (double hz = 1250; hz <= 20000; hz *= 2)
+			ok &= (fabs(gain(BEEP_LP5, rate, hz) - butter(hz, 5000, 4)) < 0.005);
+		ok &= (held(BEEP_LP5, rate, LEV) == LEV) && (held(BEEP_LP5, rate, -LEV) == -LEV);
+		// the PWM carrier of Final Signal, 16.2 kHz: what is left of it
+		printf("16.2 kHz: %.4f\n", gain(BEEP_LP5, rate, 16200));
+		check("low-pass 5 kHz, 24 dB an octave: the gains as built, a held level through", ok);
 	}
 }
 
@@ -333,7 +329,7 @@ static void coefficients_by_speed(void) {
 }
 
 // every coefficient (the 2-pole low-passes' and the band's too) of every type and chain,
-// the experimental ones included, at both rates and every speed (-1: 1x)
+// the 5 kHz low-pass included, at both rates and every speed (-1: 1x)
 static void coefficients_all(void) {
 	printf("== all coefficients\n");
 	for (int s = -1; s < 7; s++) {
@@ -398,29 +394,22 @@ static void by_speed(void) {
 	}
 }
 
-// the experimental types at every other speed
-static void experimental_by_speed(void) {
-	printf("== experimental by speed\n");
+// the 5 kHz low-pass at every other speed
+static void lowpass5_by_speed(void) {
+	printf("== low-pass 5 kHz by speed\n");
 	for (int s = 0; s < 7; s++) {
 		for (int i = 0; i < 2; i++) {
 			int rate = speed_rate(outRates[i], s);
-			// the low-passes at twice their cut-off, or faster where that heard is lower: at a coarse
-			// sub-rate Chamberlin's response drifts at the top (x16: 0.31 for 0.24 at 10 kHz)
+			// at twice its cut-off, or faster where that heard is lower: at a coarse sub-rate
+			// Chamberlin's response drifts at the top (x16: 0.31 for 0.24 at 10 kHz)
 			double sp = (double)speeds[s].num / speeds[s].den;
-			double hz5 = (sp > 1) ? 10000 / sp : 10000, hz11 = (sp > 1) ? 22000 / sp : 22000;
+			double hz5 = (sp > 1) ? 10000 / sp : 10000;
 			double tol = (sp > 1) ? 0.02 : 0.005;
-			// 11 kHz fast forward is past hearing (x4: 44 kHz), and nearer the coarse rate's top
-			double tol11 = (sp > 1) ? 0.05 : 0.005;
-			double l5 = gain(BEEP_X_LP5_4, rate, hz5), l5c = gain(BEEP_X_LP5_4, rate, 5000);
-			double l11 = gain(BEEP_X_LP11_4, rate, hz11), l11c = gain(BEEP_X_LP11_4, rate, 11000);
-			printf("%d/%d %d: 5 kHz at %.0f Hz %.4f, at 5 kHz %.4f; 11 kHz at %.0f Hz %.4f, at 11 kHz %.4f\n",
-				speeds[s].num, speeds[s].den, outRates[i] / 32, hz5, l5, l5c, hz11, l11, l11c);
-			check("as built", (fabs(l5 - butter(hz5, 5000, 4)) < tol) && (fabs(l5c - sqrt(0.5)) < 0.005)
-				&& (fabs(l11 - butter(hz11, 11000, 4)) < tol11) && (fabs(l11c - sqrt(0.5)) < 0.005));
-			int ok = 1;
-			for (int t = BEEP_X_LP5_4; t <= BEEP_X_LP11_4; t++)
-				ok &= (held(t, rate, LEV) == LEV) && (held(t, rate, -LEV) == -LEV);
-			check("held levels through", ok);
+			double l5 = gain(BEEP_LP5, rate, hz5), l5c = gain(BEEP_LP5, rate, 5000);
+			printf("%d/%d %d: at %.0f Hz %.4f, at 5 kHz %.4f\n",
+				speeds[s].num, speeds[s].den, outRates[i] / 32, hz5, l5, l5c);
+			check("as built", (fabs(l5 - butter(hz5, 5000, 4)) < tol) && (fabs(l5c - sqrt(0.5)) < 0.005));
+			check("held levels through", (held(BEEP_LP5, rate, LEV) == LEV) && (held(BEEP_LP5, rate, -LEV) == -LEV));
 		}
 	}
 }
@@ -538,6 +527,24 @@ int main(void) {
 	check("Board filter Off: line out for every type", off);
 	check("By machine: the machine's type", on);
 	check("a type picked: that type for every machine", one);
+	// a type picked hears the rest (the PSG and the others) through it: its mix chain where
+	// it has one, else its beeper's; line out lets it through
+	{
+		int rate = 48000 * 32, ok = 1;
+		for (int t = BEEP_LINE; t < BEEP_ALL; t++) {
+			sndBeepFlt all[2], one;
+			all[0].type = all[1].type = -1;
+			settle_in(&one, t, rate, 0, snd_beep_mixes(t) ? BF_MIX : BF_BEEP);
+			snd_all_flt(all, (sndPair){0, 0}, t, rate);
+			for (int n = 0; n < 2000; n++) {
+				int x = ((n / 50) & 1) ? LEV : -LEV;
+				sndPair got = snd_all_flt(all, (sndPair){x, x / 2}, t, rate);
+				int want = (t == BEEP_LINE) ? x : snd_beep_run(&one, x, t, rate, snd_beep_mixes(t) ? BF_MIX : BF_BEEP);
+				ok &= (got.left == want);
+			}
+		}
+		check("a type picked: the rest through its chain, line out through", ok);
+	}
 	speaker();
 	lowpass("tv", BEEP_TV, 3183, 3183);
 	band("plus3", BEEP_PLUS3, 2500, 340);
@@ -546,9 +553,9 @@ int main(void) {
 	highpass("atm", BEEP_ATM, 80);
 	piezo();
 	mix();
-	experimental();
+	lowpass5();
 	by_speed();
-	experimental_by_speed();
+	lowpass5_by_speed();
 	mix_by_speed();
 	speed_change();
 	coefficients_all();
