@@ -23,15 +23,17 @@ before that point is upstream's history and is not repeated here.
   The Scorpion's ProfROM 4.xx.38 and later finds the card and reads it in its navigator,
   FATALL copies files to and from it.
 
-- **Board filter and stereo**: Options > Sound, Stereo and Filters; the filter also under the
-  Mute button's arrow and in Sound of the right-click menu. Every machine can sound through
+- **Board filter and stereo**: Options > Sound, Stereo and Filters; the filter, Low cut and
+  High cut also under the Mute button's arrow and in Sound of the right-click menu. Every
+  machine can sound through
   its own board (By machine): the 48K's ULA and small speaker, a TV on the aerial input or
   the +2A/+3's own mixer (both with the AY too), the ZX Evolution's filter, the Scorpion's
   and the ATM's coupling capacitors. Or one of them, a piezo sounder or a 5 kHz low-pass for
-  PWM beeper music is picked for all, the ZX Next too, and takes all of the sound. Off by
-  default. The filter follows Slow Motion and Fast Forward, so a tone it cuts stays cut as it
+  PWM beeper music is picked for all, the ZX Next too, and takes all of the sound. No filter
+  by default. The filter follows Slow Motion and Fast Forward, so a tone it cuts stays cut as it
   drops in pitch. Beside it, PSG stereo sets the voices' order for every machine (the Next
-  keeps its own), and one Separation serves the PSG, the General Sound and the Next.
+  keeps its own), and one Separation serves the PSG, the General Sound and the Next. The
+  page's Enabled is now Emulate sound, over its groups, which grey while it is off.
 
 - **Integer Scale**: View > Integer Scale and Options > Video. In fullscreen and in a maximized
   or resized window the picture keeps a whole number of pixels per dot, the largest that fits,
