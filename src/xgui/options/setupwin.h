@@ -160,8 +160,9 @@ class SetupWin : public QDialog {
 		xSlider *sldTapeSpeed, *sldSensitivity;
 		QLabel *labTapeSpeedVal, *labPsgMhz;
 		QLabel* psgLayVal;		// the PSG sheet's Stereo: the machine's layout, shown
-		// the Sound page's Filter and stereo group (makeSoundGroup)
+		// the Sound page's Stereo and Filters groups (makeSoundGroup)
 		QComboBox *cbBoard, *cbPsgLay;
+		QCheckBox *chkLowCut, *chkHighCut;	// the Sound page's Filters
 		xSlider* sldSep;
 		QLabel* labSep;
 		int psgFrqMul = 1;	// the chip's clock against the AY's the setting holds

@@ -367,7 +367,7 @@ QString board_type_name(int type) {
 
 QList<xBoardPick> board_picks() {
 	QList<xBoardPick> res;
-	res.append({BEEP_LINE, QObject::tr("Off"), QObject::tr("Every machine straight out,\nnothing filtered"), false});
+	res.append({BEEP_LINE, QObject::tr("No filter"), QObject::tr("Every machine straight out,\nnothing filtered"), false});
 	res.append({BOARD_MACHINE, QObject::tr("By machine"),
 		QObject::tr("Each machine through its board's own\nfilter, shown on the Machine page"), false});
 	static const char* tips[BEEP_ALL] = {NULL,
@@ -400,14 +400,9 @@ static void board_fill_box(QComboBox* box) {
 	box->setMaxVisibleItems(box->count());
 }
 
-// the Sound page's Filter and stereo, between Output and Volumes: what every machine is
-// heard through, a matter of taste rather than of the machine
+// the Sound page's Stereo and Filters, side by side between Output and Volumes: what every
+// machine is heard through, a matter of taste rather than of the machine
 void SetupWin::makeSoundGroup() {
-	QGroupBox* box = new QGroupBox(tr("Filter and stereo"));
-	QGridLayout* grid = new QGridLayout(box);
-	cbBoard = new QComboBox;
-	board_fill_box(cbBoard);
-	cbBoard->setToolTip(tr("A type picked: all the sound through it.\nBy machine: each board's own, the beeper\nand on some boards the PSG"));
 	cbPsgLay = new QComboBox;
 	cbPsgLay->addItem(tr("By machine"), LAY_MACHINE);
 	cbPsgLay->setItemData(0, tr("Each machine's own, shown in its PSG sheet"), Qt::ToolTipRole);
@@ -417,16 +412,38 @@ void SetupWin::makeSoundGroup() {
 	cbPsgLay->setToolTip(tr("The PSG's voices from left to right on every\nmachine; the Next keeps what its software set"));
 	sldSep = sep_slider(&labSep);
 	sldSep->setToolTip(tr("100%: the sides kept apart, 0%: mono;\nthe PSG, the General Sound and the Next"));
-	QWidget* ctl[3] = {cbBoard, cbPsgLay, fieldPair(sldSep, labSep, false)};
-	const QString names[3] = {tr("Board filter"), tr("PSG stereo"), tr("Stereo separation")};
-	for (int i = 0; i < 3; i++) {
-		QLabel* lab = new QLabel(names[i]);
-		grid->addWidget(lab, i, 0);
-		grid->addWidget(ctl[i], i, 1);
-	}
-	cbBoard->setMinimumWidth(200);
-	grid->setColumnStretch(2, 1);
-	ui.verticalLayout_43->insertWidget(1, box);
+	cbBoard = new QComboBox;
+	board_fill_box(cbBoard);
+	cbBoard->setToolTip(tr("A type picked: all the sound through it.\nBy machine: each board's own, the beeper\nand on some boards the PSG"));
+	chkLowCut = new QCheckBox(tr("Low cut (DC)"));
+	chkLowCut->setToolTip(tr("Removes the offset the chips sit on"));
+	chkHighCut = new QCheckBox(tr("High cut (anti-alias)"));
+	chkHighCut->setToolTip(tr("Removes aliasing; costs a little CPU"));
+	// two groups of name and control; the names one width, so the controls start level
+	QLabel* labs[3] = {new QLabel(tr("PSG stereo")), new QLabel(tr("Separation")), new QLabel(tr("Board filter"))};
+	int lw = 0;
+	for (QLabel* lab : labs) lw = qMax(lw, lab->sizeHint().width());
+	for (QLabel* lab : labs) lab->setMinimumWidth(lw);
+	QGroupBox* stereo = new QGroupBox(tr("Stereo"));
+	QGridLayout* sg = new QGridLayout(stereo);
+	sg->addWidget(labs[0], 0, 0);
+	sg->addWidget(cbPsgLay, 0, 1);
+	sg->addWidget(labs[1], 1, 0);
+	sg->addWidget(fieldPair(sldSep, labSep, true), 1, 1);
+	sg->setColumnStretch(1, 1);
+	sg->setRowStretch(2, 1);		// spare height under the rows
+	QGroupBox* filters = new QGroupBox(tr("Filters"));
+	QGridLayout* fg = new QGridLayout(filters);
+	fg->addWidget(labs[2], 0, 0);
+	fg->addWidget(cbBoard, 0, 1);
+	fg->addWidget(chkLowCut, 1, 1);
+	fg->addWidget(chkHighCut, 2, 1);
+	fg->setColumnStretch(1, 1);
+	fg->setRowStretch(3, 1);
+	QHBoxLayout* row = new QHBoxLayout;
+	row->addWidget(stereo, 1);
+	row->addWidget(filters, 1);
+	ui.verticalLayout_43->insertLayout(1, row);
 }
 
 void opt_fill_psg_boxes(QComboBox* cbcount, QComboBox* cbtype, QComboBox* cbfrq) {
@@ -1361,7 +1378,7 @@ void SetupWin::fillPages() {
 	clockBox->setCurrentIndex(comp->flgGLUK ? MAC_CLOCK_GLUK : MAC_CLOCK_NONE);
 
 	ui.senbox->setChecked(conf.snd.enabled);
-	ui.dcbox->setChecked(conf.snd.vol.dc);
+	chkLowCut->setChecked(conf.snd.vol.dc);
 	setRFIndex(cbBoard, conf.snd.vol.board, 0);
 	setRFIndex(cbPsgLay, conf.snd.vol.psgLay, 0);
 	sldSep->setValue(comp->ts->chipA->sep);
@@ -1376,7 +1393,7 @@ void SetupWin::fillPages() {
 	ui.sldSndLatency->setRange(SND_LATENCY_MIN, SND_LATENCY_MAX);	// the block size sets the floor, keep the two together
 	ui.sldSndLatency->setValue(conf.snd.latency);
 	ui.chkSndLatAuto->setChecked(conf.snd.latauto);
-	ui.chkSndFilter->setChecked(conf.snd.filter);
+	chkHighCut->setChecked(conf.snd.filter);
 	chasndlat();
 
 	ui.sbMasterVol->setValue(conf.snd.vol.master);
@@ -1810,7 +1827,7 @@ void SetupWin::applyGlobal() {
 	if (palNew || (greyScale != greyWas)) emit s_palette();
 // sound
 	conf.snd.enabled = ui.senbox->isChecked() ? 1 : 0;
-	conf.snd.vol.dc = ui.dcbox->isChecked() ? 1 : 0;
+	conf.snd.vol.dc = chkLowCut->isChecked() ? 1 : 0;
 	conf.snd.vol.board = getRFIData(cbBoard);
 	conf.snd.vol.psgLay = getRFIData(cbPsgLay);
 
@@ -1832,7 +1849,7 @@ void SetupWin::applyGlobal() {
 	// slider shows what the emulator settled on and is still the way to nudge
 	// it by hand
 	conf.snd.latauto = ui.chkSndLatAuto->isChecked() ? 1 : 0;
-	conf.snd.filter = ui.chkSndFilter->isChecked() ? 1 : 0;
+	conf.snd.filter = chkHighCut->isChecked() ? 1 : 0;
 	int latency = ui.sldSndLatency->value();
 	// reopen on a changed latency too: the pacer would creep to the new target
 	// over tens of seconds, refilling the ring gets there at once
@@ -2785,6 +2802,7 @@ void SetupWin::tidySoundPage() {
 				delete lay->takeAt(i);
 		}
 	}
+	ui.verticalLayout_22->addStretch(1);	// Enabled level with the first output row
 	// the groups keep their height, the page's spare room goes under them
 	ui.verticalLayout_43->addStretch(1);
 }

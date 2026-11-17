@@ -838,10 +838,11 @@ void MainWin::makeBoardActs() {
 	});
 }
 
-// ...in a menu's root, under a line, with the one in use checked as it opens
+// ...in a menu's root, under a line and a caption, with the one in use checked as it opens
 void MainWin::addBoardActs(QMenu* menu) {
 	menu->setToolTipsVisible(true);
 	menu->addSeparator();
+	menu->addAction("Board filter")->setEnabled(false);
 	QList<xBoardPick> picks = board_picks();
 	QList<QAction*> acts = boardGrp->actions();
 	for (int i = 0; (i < picks.size()) && (i < acts.size()); i++) {
