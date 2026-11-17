@@ -2030,7 +2030,7 @@ Integer scaling, so every pixel is the same size</string>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_25">
            <item>
-            <widget class="QGroupBox" name="sndOutGBox">
+            <widget class="xIconGroup" name="sndOutGBox">
              <property name="title">
               <string>Output</string>
              </property>
@@ -2149,7 +2149,7 @@ thin, lower it again after a long clean spell</string>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_32">
            <item>
-            <widget class="QGroupBox" name="groupBox_12">
+            <widget class="xIconGroup" name="groupBox_12">
              <property name="title">
               <string>Volumes</string>
              </property>

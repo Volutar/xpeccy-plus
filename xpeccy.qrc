@@ -217,6 +217,14 @@
         <file>images/grp-ffmpeg-16.png</file>
         <file>images/grp-board.png</file>
         <file>images/grp-board-16.png</file>
+        <file>images/grp-stereo.png</file>
+        <file>images/grp-stereo-16.png</file>
+        <file>images/grp-filters.png</file>
+        <file>images/grp-filters-16.png</file>
+        <file>images/grp-volumes.png</file>
+        <file>images/grp-volumes-16.png</file>
+        <file>images/board-filter.png</file>
+        <file>images/board-filter-16.png</file>
         <file>images/nedoos.png</file>
         <file>images/next.png</file>
         <file>images/grp-cpu.png</file>

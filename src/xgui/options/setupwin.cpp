@@ -420,7 +420,7 @@ void SetupWin::makeSoundGroup() {
 	int lw = 0;
 	for (QLabel* lab : labs) lw = qMax(lw, lab->sizeHint().width());
 	for (QLabel* lab : labs) lab->setMinimumWidth(lw);
-	QGroupBox* stereo = new QGroupBox(tr("Stereo"));
+	QGroupBox* stereo = new xIconGroup(":/images/grp-stereo.png", tr("Stereo"));
 	QGridLayout* sg = new QGridLayout(stereo);
 	sg->addWidget(labs[0], 0, 0);
 	sg->addWidget(cbPsgLay, 0, 1);
@@ -428,9 +428,13 @@ void SetupWin::makeSoundGroup() {
 	sg->addWidget(fieldPair(sldSep, labSep, true), 1, 1);
 	sg->setColumnStretch(1, 1);
 	sg->setRowStretch(2, 1);		// spare height under the rows
-	// Filters: the names in one column, the check boxes left of theirs, the list after its name
-	QGroupBox* filters = new QGroupBox(tr("Filters"));
+	// Filters: the names in one column, the check boxes left of theirs and the Board filter's
+	// icon left of it, the list after its name
+	QGroupBox* filters = new xIconGroup(":/images/grp-filters.png", tr("Filters"));
 	QGridLayout* fg = new QGridLayout(filters);
+	QLabel* ico = new QLabel;
+	ico->setPixmap(QIcon(":/images/board-filter.png").pixmap(16, 16));
+	fg->addWidget(ico, 0, 0, Qt::AlignCenter);
 	fg->addWidget(new QLabel(tr("Board filter")), 0, 1);
 	fg->addWidget(cbBoard, 0, 2);
 	const QString cuts[2] = {tr("Low cut (DC)"), tr("High cut (anti-alias)")};
@@ -946,6 +950,8 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.gbCpu->setIcon(":/images/grp-cpu.png");
 	ui.gbUla->setIcon(":/images/grp-ula.png");
 	ui.gbBoard->setIcon(":/images/grp-board.png");
+	ui.sndOutGBox->setIcon(":/images/speaker.png");
+	ui.groupBox_12->setIcon(":/images/grp-volumes.png");
 // media
 	// the file types sit on the page itself, there is room for them now
 	ftbox = new xFileTypesBox;
