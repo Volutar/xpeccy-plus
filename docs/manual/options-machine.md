@@ -46,7 +46,7 @@ Esc) puts back what it showed when it opened.
 | **Input** | **Joystick** | **None**, **Kempston 5-bit**, **Kempston 8-bit**; not 8-bit on the Scorpion ZS 256 and Turbo+ (see [Joysticks](input.md#joysticks)) |
 | | **Mouse** | **None** or **Kempston mouse**; sensitivity and wheel in its window (see [Mouse](input.md#mouse)) |
 | | **PC keyboard** | ATM Turbo 2+ and ZX Evolution only: which scan codes the machine gets (see [Machines with a keyboard of their own](input.md#machines-with-a-keyboard-of-their-own)) |
-| **Sound** | **Beeper** | what the beeper sounds through, from **Line out** to **Piezo** (see [Beeper](#beeper)) |
+| **Sound** | **Board filter** | what the board put between the beeper and your ears, shown: heard with **Board filter** at **By machine** on the **Sound** page (see [Board filter](#board-filter)) |
 | | **PSG** | the AY/YM chips, from **None** to **x3 - ZX Next**; chip, clock and stereo in its window (see [PSG](#psg)) |
 | | **DAC** | **None**, **Covox only**, **Soundrive 1.05 mode 1** or **mode 2** |
 | | **General Sound** | **None**, **Original** or **NeoGS** (see [General Sound](#general-sound)); its ROM in its window |
@@ -172,49 +172,18 @@ machine only. The button with the {icon}`settings` gear at the end of a row open
 device's further settings. How loud each device plays is set on the
 [Sound page](options-sound.md).
 
-### Beeper
+### Board filter
 
-```{index} Beeper, beeper; speaker, beeper; filter, piezo
+```{index} Board filter; of a machine
 ```
 
 The beeper is a single bit of a port, but what you heard from it depended on the board: a
-48K's own small speaker, a TV, an amplifier behind a coupling capacitor, a piezo sounder.
-On some machines the sound chip went the same way. The **Beeper** row picks which of them
-the machine sounds through; each machine comes with its own board's choice already set.
-
-It is heard only with **Board filters** ticked on the **Sound** page (see
-[Sound page](options-sound.md)). That is off at first, and every machine then sounds as
-**Line out**: the row's name reads **Beeper (off)**, and it can still be set for when the
-filters are turned on. One tick turns them on, or off, for every machine at once.
-
-The filter belongs to the machine, so it slows down and speeds up with it: in **Slow
-Motion** a high tone it cuts stays cut as it drops in pitch.
-
-| Choice | Filters | What goes through them | What it is on the board | Machines it comes with |
-|---|---|---|---|---|
-| **Line out** | none | - | boards with only resistors between the beeper and the output | Pentagon, Pentagon 1024 SL, Profi, Phoenix, ALF |
-| **48K speaker** | low-pass, 4.4 kHz on a rising edge and 2.3 kHz on a falling one; high-pass, 500 Hz, two poles | beeper, tape | the ULA's pin drives the speaker with slow, uneven edges; the speaker is small and gives little bass. The 500 Hz is a guess: there is no measurement of the speaker | 48K |
-| **TV (RF)** | low-pass, 3.2 kHz | beeper, tape, PSG | a TV's FM sound on its aerial input (50 us de-emphasis); the board mixes the PSG in before the modulator | 128K, +2 |
-| **+2A/+3** | low-pass, 2.5 kHz; high-pass, 340 Hz on the beeper and the tape, 150 Hz on the PSG | beeper, tape, PSG | the transistor that mixes them has a 100 nF capacitor on its output, on every socket; the high-passes are the coupling capacitors. Worked out from the schematic, not measured; the 150 Hz is a guess | +2A, +3 |
-| **ZX Evolution** | low-pass, 8.6 kHz | beeper, tape | a 2.2K resistor and a 10 nF capacitor on the beeper's input | ZX Evolution |
-| **Scorpion** | high-pass, 530 Hz | beeper, tape | the coupling capacitor on the beeper's way out | Scorpion ZS 256 and Turbo+ |
-| **ATM Turbo** | high-pass, 80 Hz | beeper, tape | the coupling capacitor into the amplifier | ATM Turbo 2+ |
-| **Piezo** | a ring at 4.1 kHz; under it the bass falls off 6 dB an octave | beeper, tape | a piezo sounder of the ZP-3 kind, as some clones had. The ring is the element's own; how sharp it is and how the bass falls were set by ear, as there is no measurement of the element | - |
-
-The low-pass and high-pass filters here are one pole, 6 dB an octave, unless the table says
-two. The other sound devices - General Sound, the SAA1099, Covox and Soundrive - have outputs
-of their own on every board and are never filtered.
-
-```{index} beeper; experimental filters, PWM music
-```
-
-Under **EXPERIMENTAL** at the end of the list are filters to try by ear. They may change or go
-in a later version:
-
-| Choice | What it does |
-|---|---|
-| **48K speaker, no bass cut** / **bass cut 250 Hz** / **bass cut 750 Hz** | the **48K speaker** with its bass cut moved: none, lower, or higher than its 500 Hz |
-| **Low-pass 5 kHz, 1 pole** / **2 poles** / **4 poles** | cuts the highs from 5 kHz and keeps the bass. Made for beeper music played by pulse width (PWM), whose pulses carry a whistle far above the tune; such music asks for a filter like this. With 4 poles the whistle is gone and the music is not dulled |
+48K's own small speaker, a TV, an amplifier behind a coupling capacitor. On some machines
+the sound chip went the same way. The **Board filter** row shows what this machine's board
+put there - **TV (RF)** on the 128K, **Line out** on the Pentagon. It is a fact of the
+board, not a setting: it is heard with **Board filter** at **By machine** on the **Sound**
+page, where any other filter can be picked for every machine instead (see
+[Board filter](options-sound.md#board-filter)).
 
 ### PSG
 
@@ -238,7 +207,7 @@ how many of them the machine has:
 A program written for one chip plays on the first chip of two or three, and sounds the
 same.
 
-```{index} Machine: PSG, AY-3-8910, YM2149, YM2203, PSG; clock, PSG; stereo, Separation
+```{index} Machine: PSG, AY-3-8910, YM2149, YM2203, PSG; clock, PSG; stereo
 ```
 
 The {icon}`settings` gear opens **Machine: PSG**:
@@ -251,11 +220,10 @@ The {icon}`settings` gear opens **Machine: PSG**:
   value. **1.773447** is the clock of the ZX Spectrum 128, +2 and +3; **1.75** that of
   most clones. Music written for one of them sounds a little out of tune on the other.
   You can also type a clock of your own.
-- **Stereo** - **Mono**, or the order of the three voices from left to right: **ABC**,
-  **ACB**, **BAC**, **BCA**, **CAB**, **CBA**. **ABC** puts the second voice in the
-  middle; **ACB** puts the third voice there.
-- **Separation** - how far apart the left and right sides are: 100% keeps them fully
-  apart, 0% is mono. It is grayed out with **Mono**.
+- **Stereo** - how this board sends the three voices out: **Mono**, or their order from
+  left to right, as **ABC** on the Pentagon or **BAC** on the Scorpion. It is shown, not
+  set: it is heard with **PSG stereo** at **By machine** on the **Sound** page, where
+  another order can be picked for every machine (see [Sound page](options-sound.md)).
 
 ### DAC
 
@@ -280,7 +248,8 @@ Pick the one the program is written for.
 ```
 
 A sound card with a processor and memory of its own, which plays music modules and
-samples for the programs written for it. The row puts one in the machine:
+samples for the programs written for it. How far apart its two sides are is **Stereo
+separation** on the **Sound** page. The row puts one in the machine:
 
 - **Original** - the card as X-Trade made it. A change of a channel's volume clicks, as
   on the card, and each side carries some of the other;
@@ -293,8 +262,6 @@ The {icon}`settings` gear opens **Machine: General Sound**:
 - **ROM** - the card's own: the Original's ROM of this machine, or the NeoGS flash image,
   which every machine shares; another NeoGS image starts the card afresh. Picked from
   the list or from a file with the {icon}`fileopen` folder button;
-- **Separation** - how far apart the two sides are, as for the PSG: at 100% each card
-  sounds as its own circuit mixes it, at 0% it is mono. 75% at first;
 - **Reset** - the card is reset together with the machine.
 
 ### SAA1099

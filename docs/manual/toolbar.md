@@ -28,7 +28,7 @@ To move a button, untick **Lock Toolbar** and drag the button.
 ```{index} Mute, volume
 ```
 
-The arrow beside **Mute** opens a volume slider. Alt with the mouse wheel over the picture
+The arrow beside **Mute** opens a volume slider and the **Board filter** list. Alt with the mouse wheel over the picture
 changes the volume too.
 
 ## The buttons
@@ -54,7 +54,8 @@ in groups. Each one is the command of the same name in a menu, described there:
 A button for a menu - **Model**, **Turbo Mode**, **Size** and the like - opens that menu
 when clicked. A button with an arrow beside it does its command when clicked, and the arrow
 opens its menu: **Reset** lists the ROMs, **Disk Manager** the drives, **divMMC** the cards,
-**Gamepads** the joysticks, **Debugger** its windows, **Mute** the volume slider.
+**Gamepads** the joysticks, **Debugger** its windows, **Mute** the volume slider and the
+Board filter.
 
 **Rewind** has no menu item: it works while the button or its key is held down. The time
 buttons work as their keys do; see [How the keys work](time.md#how-the-keys-work).

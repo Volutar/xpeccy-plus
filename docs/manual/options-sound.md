@@ -16,7 +16,7 @@ are on the **Sound** page.
 ```{index} Driver, Latency, Auto adjust, sound; latency
 ```
 
-**Options > Sound** has three groups.
+**Options > Sound** has four groups.
 
 **Output** - how the sound reaches your speakers:
 
@@ -30,10 +30,10 @@ are on the **Sound** page.
   again after a long time with no gaps. The slider then shows the value the program has
   settled on.
 
-```{index} Low cut (DC), High cut (anti-alias), anti-alias filter, Board filters
+```{index} Low cut (DC), High cut (anti-alias), anti-alias filter
 ```
 
-The **Sound** group beside **Output** has four switches:
+The **Sound** group beside **Output** has three switches:
 
 - **Enabled** - with it off, the program plays silence. The machine still runs at its
   normal speed, and its sound is not worked out at all, which leaves more of the
@@ -45,11 +45,25 @@ The **Sound** group beside **Output** has four switches:
 - **High cut (anti-alias)** - takes out the frequencies too high for the output rate.
   Without it they come back as false notes, which is heard most in beeper music as a
   harsh crunch. On by default; it costs a little CPU time.
-- **Board filters** - each machine sounds through what its board put between the sound and
-  your ears: a 48K's small speaker, a TV, a filter or a capacitor on the board. Which one is
-  set in the **Beeper** row of the **Machine** page, and every machine comes with its own (see
-  [Beeper](options-machine.md#beeper)). Off by default: every machine then sounds clean, as
-  **Line out**.
+
+```{index} Filter and stereo, Board filter, PSG stereo, Stereo separation, PSG; stereo
+```
+
+**Filter and stereo** - how every machine is heard. This is a matter of taste, as a shader
+is, so it is set once here for all of them and stays when the machine changes:
+
+- **Board filter** - what the beeper, and on some boards the sound chip, sounds through (see
+  [Board filter](#board-filter) below). **Off**, the default, plays every machine clean.
+  **By machine** gives each machine its own board's filter, the one its **Board filter** row
+  on the **Machine** page shows. Any other choice puts that filter on every machine.
+- **PSG stereo** - the order of the sound chip's three voices from left to right: **Mono**,
+  **ABC**, **ACB**, **BAC**, **BCA**, **CAB**, **CBA**. **ABC** puts the second voice in the
+  middle; **ACB** puts the third voice there. **By machine**, the default, keeps each
+  board's own - mono on the 128K, **ABC** on the Pentagon, **BAC** on the Scorpion - shown in
+  the machine's **Machine: PSG**. The ZX Next keeps the order its own software sets.
+- **Stereo separation** - how far apart the left and right sides are, for the sound chips
+  (the ZX Next's too) and the General Sound: 100% keeps them fully apart, 0% is mono. 75% at
+  first.
 
 ```{index} Volumes, Master
 ```
@@ -67,6 +81,47 @@ The **Sound** group beside **Output** has four switches:
 | **SAA1099** | the SAA1099 chip |
 
 The **Sound** page is the same for every machine.
+
+## Board filter
+
+```{index} Board filter, beeper; speaker, beeper; filter, piezo
+```
+
+The beeper is a single bit of a port, but what you heard from it depended on the board: a
+48K's own small speaker, a TV, an amplifier behind a coupling capacitor, a piezo sounder.
+On some machines the sound chip went the same way. **Board filter** in **Filter and stereo**
+picks what every machine sounds through. Its list is also under the arrow of the toolbar's
+{icon}`speaker` **Mute** button and in **Sound** of the right-click menu.
+
+The filter runs in the machine's time, so it slows down and speeds up with it: in **Slow
+Motion** a high tone it cuts stays cut as it drops in pitch. **Off** in the list is
+**Line out** on every machine.
+
+| Choice | Filters | What goes through them | What it is on the board | Machines it comes with |
+|---|---|---|---|---|
+| **Line out** | none | - | boards with only resistors between the beeper and the output | Pentagon, Pentagon 1024 SL, Profi, Phoenix, ALF, ZX Next |
+| **48K speaker** | low-pass, 4.4 kHz on a rising edge and 2.3 kHz on a falling one; high-pass, 500 Hz, two poles | beeper, tape | the ULA's pin drives the speaker with slow, uneven edges; the speaker is small and gives little bass. The 500 Hz is a guess: there is no measurement of the speaker | 48K |
+| **TV (RF)** | low-pass, 3.2 kHz | beeper, tape, PSG | a TV's FM sound on its aerial input (50 us de-emphasis); the board mixes the PSG in before the modulator | 128K, +2 |
+| **+2A/+3** | low-pass, 2.5 kHz; high-pass, 340 Hz on the beeper and the tape, 150 Hz on the PSG | beeper, tape, PSG | the transistor that mixes them has a 100 nF capacitor on its output, on every socket; the high-passes are the coupling capacitors. Worked out from the schematic, not measured; the 150 Hz is a guess | +2A, +3 |
+| **ZX Evolution** | low-pass, 8.6 kHz | beeper, tape | a 2.2K resistor and a 10 nF capacitor on the beeper's input | ZX Evolution |
+| **Scorpion** | high-pass, 530 Hz | beeper, tape | the coupling capacitor on the beeper's way out | Scorpion ZS 256 and Turbo+ |
+| **ATM Turbo** | high-pass, 80 Hz | beeper, tape | the coupling capacitor into the amplifier | ATM Turbo 2+ |
+| **Piezo** | a ring at 4.1 kHz; under it the bass falls off 6 dB an octave | beeper, tape | a piezo sounder of the ZP-3 kind, as some clones had. The ring is the element's own; how sharp it is and how the bass falls were set by ear, as there is no measurement of the element | - |
+
+The low-pass and high-pass filters here are one pole, 6 dB an octave, unless the table says
+two. The other sound devices - General Sound, the SAA1099, Covox and Soundrive - have outputs
+of their own on every board and are never filtered.
+
+```{index} Board filter; experimental, PWM music
+```
+
+Under **EXPERIMENTAL** at the end of the list are filters to try by ear. They may change or go
+in a later version:
+
+| Choice | What it does |
+|---|---|
+| **Low-pass 5 kHz, 4 poles** | cuts the highs from 5 kHz and keeps the bass. Made for beeper music played by pulse width (PWM), whose pulses carry a whistle far above the tune; the whistle is gone, and the music is a little dulled |
+| **Low-pass 11 kHz, 4 poles** | the same from 11 kHz: more of the highs kept, and the whistle pressed down rather than gone - a 16 kHz one is about a fifth as loud |
 
 ## Beeper
 
