@@ -16,7 +16,7 @@ are on the **Sound** page.
 ```{index} Driver, Latency, Auto adjust, sound; latency
 ```
 
-**Options > Sound** has four groups.
+**Options > Sound** has five groups.
 
 **Output** - how the sound reaches your speakers:
 
@@ -30,41 +30,44 @@ are on the **Sound** page.
   again after a long time with no gaps. The slider then shows the value the program has
   settled on.
 
+**Sound** beside **Output** has one switch, **Enabled**. With it off, the program plays
+silence. The machine still runs at its normal speed, and its sound is not worked out at
+all, which leaves more of the computer to the emulation. The Debugger's scope and the
+sound of a rewind are silent for that time too.
+
+```{index} Stereo, Filters, Board filter, PSG stereo, Separation, PSG; stereo
+```
+
+**Stereo** and **Filters**, side by side, are how every machine is heard. This is a matter
+of taste, as a shader is, so it is set once here for all of them and stays when the machine
+changes.
+
+**Stereo**:
+
+- **PSG stereo** - the order of the sound chip's three voices from left to right: **Mono**,
+  **ABC**, **ACB**, **BAC**, **BCA**, **CAB**, **CBA**. **ABC** puts the second voice in the
+  middle; **ACB** puts the third voice there. **By machine**, the default, keeps each
+  board's own - mono on the 128K, **ABC** on the Pentagon, **BAC** on the Scorpion - shown in
+  the machine's **Machine: PSG**. The ZX Next keeps the order its own software sets.
+- **Separation** - how far apart the left and right sides are, for the sound chips (the ZX
+  Next's too) and the General Sound: 100% keeps them fully apart, 0% is mono. 75% at first.
+
 ```{index} Low cut (DC), High cut (anti-alias), anti-alias filter
 ```
 
-The **Sound** group beside **Output** has three switches:
+**Filters**:
 
-- **Enabled** - with it off, the program plays silence. The machine still runs at its
-  normal speed, and its sound is not worked out at all, which leaves more of the
-  computer to the emulation. The Debugger's scope and the sound of a rewind are silent
-  for that time too.
+- **Board filter** - what every machine sounds through (see [Board filter](#board-filter)
+  below). **No filter**, the default, plays every machine clean. **By machine** gives each
+  machine its own board's filter, the one its **Board filter** row on the **Machine** page
+  shows: on the beeper, and on some boards on the sound chip. Any other choice puts all of
+  the sound of every machine through that filter.
 - **Low cut (DC)** - takes out the lowest frequencies. The chips' output sits above zero
   rather than around it, and that offset only takes loudness away from the rest of the
   sound. On by default.
 - **High cut (anti-alias)** - takes out the frequencies too high for the output rate.
   Without it they come back as false notes, which is heard most in beeper music as a
   harsh crunch. On by default; it costs a little CPU time.
-
-```{index} Filter and stereo, Board filter, PSG stereo, Stereo separation, PSG; stereo
-```
-
-**Filter and stereo** - how every machine is heard. This is a matter of taste, as a shader
-is, so it is set once here for all of them and stays when the machine changes:
-
-- **Board filter** - what every machine sounds through (see [Board filter](#board-filter)
-  below). **Off**, the default, plays every machine clean. **By machine** gives each machine
-  its own board's filter, the one its **Board filter** row on the **Machine** page shows: on
-  the beeper, and on some boards on the sound chip. Any other choice puts all of the sound of
-  every machine through that filter.
-- **PSG stereo** - the order of the sound chip's three voices from left to right: **Mono**,
-  **ABC**, **ACB**, **BAC**, **BCA**, **CAB**, **CBA**. **ABC** puts the second voice in the
-  middle; **ACB** puts the third voice there. **By machine**, the default, keeps each
-  board's own - mono on the 128K, **ABC** on the Pentagon, **BAC** on the Scorpion - shown in
-  the machine's **Machine: PSG**. The ZX Next keeps the order its own software sets.
-- **Stereo separation** - how far apart the left and right sides are, for the sound chips
-  (the ZX Next's too) and the General Sound: 100% keeps them fully apart, 0% is mono. 75% at
-  first.
 
 ```{index} Volumes, Master
 ```
@@ -90,12 +93,12 @@ The **Sound** page is the same for every machine.
 
 The beeper is a single bit of a port, but what you heard from it depended on the board: a
 48K's own small speaker, a TV, an amplifier behind a coupling capacitor, a piezo sounder.
-On some machines the sound chip went the same way. **Board filter** in **Filter and stereo**
+On some machines the sound chip went the same way. **Board filter** in **Filters**
 picks what every machine sounds through. Its choices are also under the arrow of the
 toolbar's {icon}`speaker` **Mute** button and in **Sound** of the right-click menu.
 
 The filter runs in the machine's time, so it slows down and speeds up with it: in **Slow
-Motion** a high tone it cuts stays cut as it drops in pitch. **Off** in the list is
+Motion** a high tone it cuts stays cut as it drops in pitch. **No filter** in the list is
 **Line out** on every machine.
 
 | Choice | Filters | What goes through them | What it is on the board | Machines it comes with |
