@@ -109,8 +109,7 @@ static xMacWord sdrvTab[] = {
 static xMacWord beepTab[] = {
 	{"line", BEEP_LINE}, {"speaker", BEEP_SPEAKER}, {"tv", BEEP_TV}, {"plus3", BEEP_PLUS3}, {"evo", BEEP_EVO},
 	{"scorpion", BEEP_SCORPION}, {"atm", BEEP_ATM}, {"piezo", BEEP_PIEZO},
-	{"x-speaker0", BEEP_X_SPK0}, {"x-speaker250", BEEP_X_SPK250}, {"x-speaker750", BEEP_X_SPK750},	// experimental
-	{"x-lp5-1", BEEP_X_LP5_1}, {"x-lp5-2", BEEP_X_LP5_2}, {"x-lp5-4", BEEP_X_LP5_4}, {NULL, 0}
+	{"x-lp5-4", BEEP_X_LP5_4}, {"x-lp11-4", BEEP_X_LP11_4}, {NULL, 0}	// experimental
 };
 
 static xMacWord joyTab[] = {
@@ -474,7 +473,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "soundrive") mac.soundrive = mac_word(sdrvTab, val, SDRV_NONE, id);
 			else if (nam == "gs") mac.gs = mac_word(gsTab, val, MAC_GS_NONE, id);
 			else if (nam == "saa") mac.saa = arg.b;
-			else if (nam == "beeper") mac.beepType = mac_word(beepTab, val, BEEP_LINE, id);
+			else if (nam == "beeper") mac.beepType = mac_word(beepTab, val, mac.beepType, id);	// a type gone: the one before
 			else if (nam == "beeper.mic") mac.beepmic = arg.b;
 		} else if (ln.sect == "storage") {
 			if (nam == "disk") mac.disk = mac_word(diskTab, val, DIF_NONE, id);
@@ -1266,6 +1265,19 @@ static double mac_psg_frq(int type, double frq) {
 	return ((mul > 1) && (frq * mul > 4.2)) ? frq / mul : frq;
 }
 
+// The Sound page's stereo separation, one for every device that has sides: the PSGs (the
+// Next's too, which reads chipA's) and the General Sound
+void xm_set_sep(Computer* comp, int sep) {
+	sep = toLimits(sep, 0, 100);
+	for (int i = 0; i < 4; i++) {
+		aymChip* chip = ts_chip(comp->ts, i);
+		if (chip->sep == sep) continue;
+		chip->sep = sep;
+		comp->sndSeed = 1;		// the chips the sound thread mixes take it too
+	}
+	comp->gs->sep = sep;
+}
+
 static void mac_set_psg(Computer* comp, int count, int type, double frq, int stereo) {
 	aymChip* psg[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
 	for (int i = 0; i < 3; i++) {
@@ -1598,6 +1610,19 @@ static const char* mac_word_name(xMacWord* tab, int val) {
 	return "none";
 }
 
+static int mac_word_quiet(xMacWord* tab, const std::string& val, int def) {
+	for (int i = 0; tab[i].name; i++) {
+		if (val == tab[i].name) return tab[i].val;
+	}
+	return def;
+}
+
+// the beeper types and the PSG layouts by their names in the files, for the Sound page's keys
+const char* xm_beep_name(int type) {return mac_word_name(beepTab, type);}
+int xm_beep_named(const std::string& name, int def) {return mac_word_quiet(beepTab, name, def);}
+const char* xm_lay_name(int lay) {return mac_word_name(stereoTab, lay);}
+int xm_lay_named(const std::string& name, int def) {return mac_word_quiet(stereoTab, name, def);}
+
 // is this named romset the machine's own set under another name?
 
 static bool mac_same_roms(const xRomset* rs, const xRomset* set) {
@@ -1916,15 +1941,9 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 		comp->ts->chipC->stereo = arg.i;
 		comp->sndSeed = 1;
 	}
-	else if (nam == "psg.separation") {
-		comp->ts->chipA->sep = arg.i;
-		comp->ts->chipB->sep = arg.i;
-		comp->ts->chipC->sep = arg.i;
-		comp->sndSeed = 1;
-	}
+	else if ((nam == "separation") || (nam == "psg.separation")) xm_set_sep(comp, arg.i);	// the old name: the PSG's
 	else if (nam == "gs.reset") comp->gs->reset = arg.b;
 	else if (nam == "gs.stereo") comp->gs->stereo = arg.b ? GS_12_34 : GS_MONO;
-	else if (nam == "gs.separation") comp->gs->sep = toLimits(arg.i, 0, 100);
 	else if (nam == "mouse.wheel") comp->mouse->hasWheel = arg.b;
 	else if (nam == "mouse.swapButtons") comp->mouse->swapButtons = arg.b;
 	else if (nam == "mouse.sensitivity") comp->mouse->sensitivity = arg.d;

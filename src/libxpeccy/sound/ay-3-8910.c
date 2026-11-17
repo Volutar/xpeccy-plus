@@ -359,7 +359,7 @@ sndPair ay_mix_tab(aymChip* chip, const int* tab) {
 	int volA = ay_chan_dac(chip, &chip->chanA, tab);
 	int volB = ay_chan_dac(chip, &chip->chanB, tab);
 	int volC = ay_chan_dac(chip, &chip->chanC, tab);
-	return ay_mix_stereo(volA, volB, volC, chip->stereo, chip->sep);
+	return ay_mix_stereo(volA, volB, volC, chip->lay, chip->sep);
 }
 
 sndPair ay_vol(aymChip* chip) {

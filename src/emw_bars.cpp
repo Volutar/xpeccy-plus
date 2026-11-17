@@ -479,7 +479,10 @@ void MainWin::initBars() {
 		icon.addFile(":/images/speaker-mute.png", QSize(), QIcon::Normal, QIcon::On);
 		muteAct->setIcon(icon);
 	}
+	boardMenu = makeBoardMenu();
 	add("key.mute", "Sound", muteAct, TB_SPLIT, volumeMenu());
+	sndMenu->addAction(muteAct);
+	sndMenu->addMenu(boardMenu);
 	// shown, not used: it takes no focus and no clicks, so the machine keeps the keys
 	volPop = new xVolBox(this, Qt::ToolTip | Qt::FramelessWindowHint);
 	volPop->setFrameShape(QFrame::StyledPanel);
@@ -814,6 +817,41 @@ QMenu* MainWin::volumeMenu() {
 	menu->addAction(wact);
 	connect(menu, &QMenu::aboutToShow, box, &xVolBox::load);	// the wheel moves it too
 	connect(menu, &QMenu::aboutToHide, this, []() {saveConfig();});
+	menu->addSeparator();
+	menu->addMenu(boardMenu);
+	return menu;
+}
+
+// The Sound page's Board filter, one pick for every machine: under the volume and in
+// the right-click menu's Sound
+QMenu* MainWin::makeBoardMenu() {
+	QMenu* menu = new QMenu("Board filter", this);
+	menu->setToolTipsVisible(true);
+	QActionGroup* grp = new QActionGroup(menu);
+	for (const xBoardPick& p : board_picks()) {
+		if (p.sep) menu->addSeparator();
+		QAction* act = menu->addAction(p.name);
+		if (p.val == BOARD_HEAD) {
+			QFont font = act->font();
+			font.setBold(true);
+			act->setFont(font);
+			act->setEnabled(false);
+			continue;
+		}
+		act->setToolTip(p.tip);
+		act->setData(p.val);
+		act->setCheckable(true);
+		grp->addAction(act);
+	}
+	connect(menu, &QMenu::aboutToShow, menu, [grp]() {
+		for (QAction* act : grp->actions())
+			act->setChecked(act->data().toInt() == conf.snd.vol.board);
+	});
+	connect(grp, &QActionGroup::triggered, this, [this](QAction* act) {
+		conf.snd.vol.board = act->data().toInt();
+		setMessage(QString(" board filter: %0 ").arg(act->text()));
+		saveConfig();
+	});
 	return menu;
 }
 

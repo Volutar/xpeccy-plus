@@ -215,6 +215,20 @@ QWidget* fieldPair(QWidget*, QWidget*, bool);
 // the machines, parted by family (options/setupwin.cpp)
 void fill_machine_list(QComboBox*);
 
+// The Board filter's picks, as the Sound page and the sound menus list them
+// (options/setupwin.cpp): Off (BEEP_LINE), By machine (BOARD_MACHINE), the types,
+// an EXPERIMENTAL heading (BOARD_HEAD) and the types under it. sep: a line before it
+#define BOARD_HEAD	-2
+struct xBoardPick {
+	int val;
+	QString name;
+	QString tip;
+	bool sep;
+};
+QList<xBoardPick> board_picks();
+QString board_type_name(int type);	// a BEEP_* type's name in those lists
+QString psg_lay_name(int lay);		// an AY_* layout's: Mono, ABC...
+
 // a window over the middle of another, and the first time a window is shown,
 // over the one it belongs to (see center_over in classes.cpp); a window with
 // the xCenterOnce property gets the second from xApp on its first show

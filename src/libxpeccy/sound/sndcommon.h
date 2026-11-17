@@ -9,8 +9,12 @@ typedef  struct {
 	int sdrv;
 	int saa;
 	unsigned dc:1;		// take each device's dc offset out before mixing
-	unsigned board:1;	// the machine's beeper type is heard (Board filters); off: line out
+	int board;		// the Board filter: BOARD_MACHINE, or a BEEP_* for every machine (BEEP_LINE: off)
+	int psgLay;		// the PSGs' layout: LAY_MACHINE, or an AY_* for every machine but the Next
 } sndVolume;
+
+#define BOARD_MACHINE	-1	// each machine's own beeper type
+#define LAY_MACHINE	-1	// each machine's own psg.stereo
 
 typedef struct {
 	signed int left;
@@ -75,8 +79,7 @@ enum {
 	BEEP_PIEZO,		// a piezo sounder (ZP-3 class) on the port's own output
 	BEEP_TYPES,
 	// experimental, to be judged by ear this release: under EXPERIMENTAL in the list
-	BEEP_X_SPK0 = BEEP_TYPES, BEEP_X_SPK250, BEEP_X_SPK750,
-	BEEP_X_LP5_1, BEEP_X_LP5_2, BEEP_X_LP5_4,
+	BEEP_X_LP5_4 = BEEP_TYPES, BEEP_X_LP11_4,
 	BEEP_ALL
 };
 
@@ -108,9 +111,9 @@ static inline int snd_beep_flt(sndBeepFlt* st, int lev, int type, int rate) {
 	return snd_beep_run(st, lev, type, rate, BF_BEEP);
 }
 
-// the type a mix hears: the machine's with Board filters on, line out with them off
+// the type a mix hears: the machine's with the Board filter By machine, else the one picked
 static inline int snd_board_type(int type, const sndVolume* sv) {
-	return sv->board ? type : BEEP_LINE;
+	return (sv->board == BOARD_MACHINE) ? type : sv->board;
 }
 
 // the types whose board or TV has the PSG mixed in before its filter

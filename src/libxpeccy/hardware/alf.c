@@ -138,7 +138,7 @@ sndPair alf_mix(sndMix* m, sndVolume* sv) {
 	v.left = snd_beep_flt(&m->bflt, bc_level_of(m->in.beep, sv->beep), type, m->rate);
 	v.right = v.left;
 	p = snd_dc(&m->dc[0], v, sv->dc);
-	v = snd_dc(&m->dc[1], snd_mix_flt(m->pflt, tsGetVolume(m->ts), type, m->rate), sv->dc);
+	v = snd_dc(&m->dc[1], snd_mix_flt(m->pflt, tsGetVolume(m->ts, sv->psgLay), type, m->rate), sv->dc);
 	p.left += v.left * sv->ay / 100;
 	p.right += v.right * sv->ay / 100;
 	return p;

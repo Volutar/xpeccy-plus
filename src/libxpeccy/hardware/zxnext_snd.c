@@ -313,6 +313,18 @@ static void nx_ay_sum(const sndMix* m, int late, int* l, int* r) {
 	*r = ar;
 }
 
+// The Sound page's separation, the PSG's (chipA->sep): the sides drawn together as
+// ay_mix_stereo bleeds them, 100 leaving them as the board has them, 0 mono. The layout
+// itself stays what the Next's software set
+static void nx_ay_sep(const sndMix* m, int* l, int* r) {
+	int sep = m->ts->chipA->sep;
+	if (sep >= 100) return;
+	if (sep < 0) sep = 0;
+	int a = *l, b = *r;
+	*l = (a * (100 + sep) + b * (100 - sep)) / 200;
+	*r = (b * (100 + sep) + a * (100 - sep)) / 200;
+}
+
 static void nx_ay_mix(Computer* comp, int late, int* l, int* r) {
 	sndMix m;
 	nx_ay_retune(comp);
@@ -350,6 +362,7 @@ int nx_snd_late(Computer* comp) {
 // The mix of what nx_vol gathered: the tape and the beeper, the AYs at m->late, the DACs
 sndPair nx_mix(sndMix* m, sndVolume* sv) {
 	int dc = sv->dc;
+	int type = snd_board_type(m->in.beepType, sv);	// the Next's own is line out
 	sndPair res, part;
 	// the tape and the beeper
 	int lev = snd_tape_level(m, sv);
@@ -361,14 +374,17 @@ sndPair nx_mix(sndMix* m, sndVolume* sv) {
 		m->bLev = m->bVal * 640 * NX_GAIN / 255 * m->bVol / 100;
 	}
 	lev += m->bLev;
+	// ...out through the Board filter picked on the Sound page, as zx_mix's
+	lev = snd_beep_flt(&m->bflt, lev, type, m->rate);
 	part.left = part.right = lev;
 	res = snd_dc(&m->dc[0], part, dc);
 	// the AYs, at the time the sample was due
 	int al, ar;
 	nx_ay_sum(m, m->late, &al, &ar);
+	nx_ay_sep(m, &al, &ar);
 	part.left = al * NX_GAIN * sv->ay / 100;
 	part.right = ar * NX_GAIN * sv->ay / 100;
-	part = snd_dc(&m->dc[1], part, dc);
+	part = snd_dc(&m->dc[1], snd_mix_flt(m->pflt, part, type, m->rate), dc);
 	res.left += part.left;
 	res.right += part.right;
 	// the DACs (soundrive.vhd 109-115), around their idle 80+80
