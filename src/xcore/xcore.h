@@ -428,6 +428,7 @@ void x_kbd_release_all(Keyboard*);
 
 // the last finished picture, for the gui to read while the emulation draws on
 void frame_publish();
+int emu_draw_ahead(Computer*);	// paused: the next frame into bufimg, the machine put back
 void frame_taken();		// the gui has the frame signal: the next one may be sent
 const unsigned char* frame_shown_lock();
 void frame_shown_unlock();

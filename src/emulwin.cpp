@@ -51,7 +51,6 @@
 #include "xcore/sound.h"
 #include "xcore/autostart.h"
 #include "xcore/rewind.h"
-#include "libxpeccy/xstate.h"
 #include "xcore/fastload.h"
 #include "xcore/rzxseek.h"
 #include "xcore/rzxrecord.h"
@@ -4293,28 +4292,16 @@ void MainWin::renderFrame() {
 	emu_unlock();
 }
 
-// Paused, new colors: the next frame is drawn from a copy of the machine, as run-ahead
-// does, and shown; the machine is put back and draws that frame first when it goes on.
+// Paused, new colors: the next frame drawn and shown, the machine put back (emu_draw_ahead)
 void MainWin::redrawHeld() {
 	Computer* comp = conf.zx;
 	if (!hasPicture || !comp || !conf.emu.pause || comp->flgDBG || pause_has(PR_DEZOG) || rewind_active())
 		return;
-	static xState* held = nullptr;
 	emu_lock();
-	if (!held) held = xstate_create();
-	bool done = false;
-	if (held && !comp->vid->nodraw && (comp->vid->nodrawNext < 1) && xstate_safe(comp) && xstate_save_as_is(held, comp)) {
-		Keyboard kbd = *comp->keyb;
-		comp->flgFRM = 0;
-		done = xstate_run_frame(comp) && xstate_run_frame(comp);
-		int seed = comp->sndSeed;	// the sound devices' copy never saw these frames
-		xstate_load(held, comp);
-		comp->sndSeed = seed;
-		*comp->keyb = kbd;
-		if (done) {
-			memcpy(scrimg, bufimg, bufSize);
-			frame_publish();
-		}
+	const bool done = !comp->vid->nodraw && (comp->vid->nodrawNext < 1) && emu_draw_ahead(comp);
+	if (done) {
+		memcpy(scrimg, bufimg, bufSize);
+		frame_publish();
 	}
 	emu_unlock();
 	if (done) presentFrame();
