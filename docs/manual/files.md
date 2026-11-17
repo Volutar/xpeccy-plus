@@ -144,8 +144,8 @@ side B after side A, disk 3 after disk 2, and the first after the last; **Previo
 where they are **Next Tape or Disk** and **Previous Tape or Disk**). It works on the tape or
 the drive that the program used last, the one the window title names, and keeps to it while
 you press it again; before the program has used either, on the tape if it is one of a set,
-else on drive A. The menu names which one it is, and grays the items when there is no other
-side to put in. A playing tape is stopped first. A disk that is in another drive is passed
+else on drive A. The menu names which one it is - **Next Tape/Disk** while nothing is in it -
+and grays the items when there is no other side to put in. A playing tape is stopped first. A disk that is in another drive is passed
 over. The screen shows what went in, as `drive A: side B`, or `no other tape`, `no other
 disk`. Of the files of one side, as
 `Side A` and `Side A [a]`, the one with the same notes in brackets goes in. An image from
