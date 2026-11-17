@@ -64,7 +64,8 @@ before that point is upstream's history and is not repeated here.
 
 - **Pentagon border and multicolour effects on the ZX Evolution**, BaseConf and TSConf: the
   border meets the paper where it does on a real Evo. On TSConf that is where it does on the
-  Pentagon, and Across the Edge and RAGE show their pictures whole there.
+  Pentagon, and Across the Edge and RAGE show their pictures whole there. *(thanks to Wally
+  for checking on a real ZX Evolution)*
 
 - **The picture of File > Resume Last Session is part of the item**: the pointer can go onto
   it without the menu closing, and a click on it resumes. *(reported by Volutar)*
