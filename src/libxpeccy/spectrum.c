@@ -1382,6 +1382,26 @@ void compSetHwTurbo(Computer* comp, double mult) {
 	comp_update_timings(comp);
 }
 
+// A board whose cpu clock comes off the raster's own dot counter (the ZX Evolution,
+// zclock.v in both configurations): at 3.5 MHz an edge comes only on an even dot, at
+// 7 MHz on a whole one, the same dots for ever, whatever ran faster before. Switched to
+// such a speed, the cpu waits the part of the step to its next edge, and the video and
+// the cpu's own time both take the wait. 14 MHz keeps the half dot it stands on.
+void compSetHwTurboLocked(Computer* comp, double mult) {
+	if (comp->hwMul == mult) return;
+	compSetHwTurbo(comp, mult);
+	Video* vid = comp->vid;
+	if (!vid->tickWhole) return;
+	long long dot = vid->nsPerDotFixed;
+	long long step = comp->nsPerTickFixed;
+	vid_settle(vid);
+	long long pos = (vid->ray.xb % (int)(step / dot)) * dot + vid->nsDrawFixed;
+	long long gap = (step - pos % step) % step;
+	if (!gap) return;
+	vid_sync_fixed(vid, gap);
+	comp->nsBase += FIXED_TO_NS(gap);
+}
+
 void comp_set_layout(Computer* comp, vLayout* lay) {
 	if (comp->hw->ownLay) return;
 	if (comp->hw->lay)

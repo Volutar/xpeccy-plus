@@ -467,10 +467,10 @@ void tsOut2BAF(Computer* comp, int port, int val) {comp->tsconf.cacheConf = val 
 void tsOut20AF(Computer* comp, int port, int val) {
 	comp->tsconf.cacheConf = (val & 4) ? 0x0f : 0x00;	// SysConfig b2 sets every window at once
 	switch (val & 3) {
-		case 0: compSetHwTurbo(comp,1); break;
-		case 1: compSetHwTurbo(comp,2); break;
-		case 2: compSetHwTurbo(comp,4); break;	// normal
-		case 3: compSetHwTurbo(comp,4); break;	// overclock
+		case 0: compSetHwTurboLocked(comp, 1); break;
+		case 1: compSetHwTurboLocked(comp, 2); break;
+		case 2: compSetHwTurboLocked(comp, 4); break;	// normal
+		case 3: compSetHwTurboLocked(comp, 4); break;	// overclock
 	}
 }
 
