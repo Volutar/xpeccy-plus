@@ -476,6 +476,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		QMenu* sndMenu;		// the right-click menu's Sound: Mute and the Board filter
 		QActionGroup* boardGrp;	// the Board filter's picks, there and in the mute button's list
 		void makeBoardActs();
+		QAction *lowCutAct, *highCutAct;	// the Sound page's Low cut and High cut, beside them
 		void addBoardActs(QMenu*);
 		QMenu* padMenu;		// the window, then each player's joystick
 		QMenu* palMenu;

@@ -415,12 +415,8 @@ void SetupWin::makeSoundGroup() {
 	cbBoard = new QComboBox;
 	board_fill_box(cbBoard);
 	cbBoard->setToolTip(tr("A type picked: all the sound through it.\nBy machine: each board's own, the beeper\nand on some boards the PSG"));
-	chkLowCut = new QCheckBox(tr("Low cut (DC)"));
-	chkLowCut->setToolTip(tr("Removes the offset the chips sit on"));
-	chkHighCut = new QCheckBox(tr("High cut (anti-alias)"));
-	chkHighCut->setToolTip(tr("Removes aliasing; costs a little CPU"));
-	// two groups of name and control; the names one width, so the controls start level
-	QLabel* labs[3] = {new QLabel(tr("PSG stereo")), new QLabel(tr("Separation")), new QLabel(tr("Board filter"))};
+	// Stereo: a name and a control a row, the names one width
+	QLabel* labs[2] = {new QLabel(tr("PSG stereo")), new QLabel(tr("Separation"))};
 	int lw = 0;
 	for (QLabel* lab : labs) lw = qMax(lw, lab->sizeHint().width());
 	for (QLabel* lab : labs) lab->setMinimumWidth(lw);
@@ -432,18 +428,55 @@ void SetupWin::makeSoundGroup() {
 	sg->addWidget(fieldPair(sldSep, labSep, true), 1, 1);
 	sg->setColumnStretch(1, 1);
 	sg->setRowStretch(2, 1);		// spare height under the rows
+	// Filters: the names in one column, the check boxes left of theirs, the list after its name
 	QGroupBox* filters = new QGroupBox(tr("Filters"));
 	QGridLayout* fg = new QGridLayout(filters);
-	fg->addWidget(labs[2], 0, 0);
-	fg->addWidget(cbBoard, 0, 1);
-	fg->addWidget(chkLowCut, 1, 1);
-	fg->addWidget(chkHighCut, 2, 1);
-	fg->setColumnStretch(1, 1);
+	fg->addWidget(new QLabel(tr("Board filter")), 0, 1);
+	fg->addWidget(cbBoard, 0, 2);
+	const QString cuts[2] = {tr("Low cut (DC)"), tr("High cut (anti-alias)")};
+	const QString tips[2] = {tr("Removes the offset the chips sit on"), tr("Removes aliasing; costs a little CPU")};
+	QCheckBox** chk[2] = {&chkLowCut, &chkHighCut};
+	for (int i = 0; i < 2; i++) {
+		*chk[i] = new QCheckBox;
+		QLabel* lab = new QLabel(cuts[i]);
+		(*chk[i])->setToolTip(tips[i]);
+		lab->setToolTip(tips[i]);
+		label_for(lab, *chk[i]);
+		fg->addWidget(*chk[i], i + 1, 0);
+		fg->addWidget(lab, i + 1, 1, 1, 2);
+	}
+	fg->setColumnStretch(2, 1);
 	fg->setRowStretch(3, 1);
 	QHBoxLayout* row = new QHBoxLayout;
 	row->addWidget(stereo, 1);
 	row->addWidget(filters, 1);
 	ui.verticalLayout_43->insertLayout(1, row);
+	// over the groups, the page's own switch: off, nothing is worked out, and the rest greys
+	chkSndOn = new QCheckBox(tr("Emulate sound"));
+	QLabel* hint = new QLabel(tr("Off: silence, its CPU time saved"));
+	QFont fnt = hint->font();
+	fnt.setItalic(true);
+	hint->setFont(fnt);
+	label_for(hint, chkSndOn);
+	QHBoxLayout* top = new QHBoxLayout;
+	top->addWidget(chkSndOn);
+	top->addSpacing(12);
+	top->addWidget(hint);
+	top->addStretch(1);
+	ui.verticalLayout_43->insertLayout(0, top);
+	connect(chkSndOn, &QCheckBox::toggled, this, &SetupWin::soundPageOn);
+}
+
+// the Sound page under Emulate sound, greyed while it is off
+void SetupWin::soundPageOn(bool on) {
+	QLayout* page = ui.verticalLayout_43;
+	for (int i = 1; i < page->count(); i++) {
+		QLayoutItem* it = page->itemAt(i);
+		if (it->widget()) it->widget()->setEnabled(on);
+		QLayout* sub = it->layout();
+		for (int k = 0; sub && (k < sub->count()); k++)
+			if (sub->itemAt(k)->widget()) sub->itemAt(k)->widget()->setEnabled(on);
+	}
 }
 
 void opt_fill_psg_boxes(QComboBox* cbcount, QComboBox* cbtype, QComboBox* cbfrq) {
@@ -1377,7 +1410,8 @@ void SetupWin::fillPages() {
 	saaBox->setCurrentIndex(comp->saa->enabled ? 1 : 0);
 	clockBox->setCurrentIndex(comp->flgGLUK ? MAC_CLOCK_GLUK : MAC_CLOCK_NONE);
 
-	ui.senbox->setChecked(conf.snd.enabled);
+	chkSndOn->setChecked(conf.snd.enabled);
+	soundPageOn(conf.snd.enabled);
 	chkLowCut->setChecked(conf.snd.vol.dc);
 	setRFIndex(cbBoard, conf.snd.vol.board, 0);
 	setRFIndex(cbPsgLay, conf.snd.vol.psgLay, 0);
@@ -1826,7 +1860,7 @@ void SetupWin::applyGlobal() {
 	palButtons();
 	if (palNew || (greyScale != greyWas)) emit s_palette();
 // sound
-	conf.snd.enabled = ui.senbox->isChecked() ? 1 : 0;
+	conf.snd.enabled = chkSndOn->isChecked() ? 1 : 0;
 	conf.snd.vol.dc = chkLowCut->isChecked() ? 1 : 0;
 	conf.snd.vol.board = getRFIData(cbBoard);
 	conf.snd.vol.psgLay = getRFIData(cbPsgLay);
@@ -2796,13 +2830,12 @@ void SetupWin::tidySoundPage() {
 	}
 	grid->setColumnStretch(1, 1);
 	// the gaps that stood above GS reset and under the output rows
-	foreach(QLayout* lay, QList<QLayout*>() << ui.verticalLayout_22 << ui.gridLayout_5) {
+	foreach(QLayout* lay, QList<QLayout*>() << ui.gridLayout_5) {
 		for (int i = lay->count() - 1; i >= 0; i--) {
 			if (lay->itemAt(i)->spacerItem())
 				delete lay->takeAt(i);
 		}
 	}
-	ui.verticalLayout_22->addStretch(1);	// Enabled level with the first output row
 	// the groups keep their height, the page's spare room goes under them
 	ui.verticalLayout_43->addStretch(1);
 }

@@ -68,6 +68,7 @@ class SetupWin : public QDialog {
 		void showDevRows();
 		void showBoardStorage();
 		void makeSoundGroup();
+		void soundPageOn(bool);
 		void fillNextGroup();
 		void showDriveRows();
 		void tidySoundPage();
@@ -163,6 +164,7 @@ class SetupWin : public QDialog {
 		// the Sound page's Stereo and Filters groups (makeSoundGroup)
 		QComboBox *cbBoard, *cbPsgLay;
 		QCheckBox *chkLowCut, *chkHighCut;	// the Sound page's Filters
+		QCheckBox* chkSndOn;	// Emulate sound, over the page's groups
 		xSlider* sldSep;
 		QLabel* labSep;
 		int psgFrqMul = 1;	// the chip's clock against the AY's the setting holds
