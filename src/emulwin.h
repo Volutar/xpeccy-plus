@@ -348,6 +348,8 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		QString sideHeld(int src);
 		int sideSlot();
 		void sideMenu();
+		QString sideMenuKey;	// the disks sideMenu last looked at, and whether that drive had a side
+		bool sideMenuHas = false;
 		QString sideNext(int src, int step, QString* place);
 		void sidePut(int src, const QString& path, const QString& place);
 		QStringList tapeSeen;	// the tapes that were in, newest first, for the side a set turns back to
@@ -592,6 +594,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void volumeChanged();
 		void updateStatus();
 		void cutTexts();
+		void cutText(const xCutAct& cut);
 		void initMenuBar();
 		// the menu over the picture in fullscreen, while the pointer is at the top
 		QMenuBar* fsBar;

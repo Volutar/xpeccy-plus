@@ -204,21 +204,32 @@ void MainWin::sideStep(int step) {
 	sideStepIn(sideSlot(), step);
 }
 
-// The Media menu's items, as it opens: named after what the keys would change, grayed when
-// there is nothing to change it to. The keys themselves still answer why not.
+// The Media menu's items as it opens: named after the keys' slot, grayed with no other side
 void MainWin::sideMenu() {
 	Computer* comp = conf.zx;
 	const int src = sideSlot();
 	const bool held = !sideHeld(src).isEmpty();
 	// nothing in that slot: either, unless the machine has no drives
 	const char* what = held ? ((src == MEDIA_TAPE) ? "Tape" : "Disk") : (drive_count(comp) < 1) ? "Tape" : "Tape/Disk";
-	const bool can = held && !comp->rzx.play && hasSides(src);
+	bool can = held && !comp->rzx.play;
+	if (can && (src != MEDIA_TAPE)) {
+		// a drive's set is read from its folder: once for the disks that are in
+		QString key = QString::number(src) + "|" + mountPath;
+		for (int i = 0; i < 4; i++) key += "|" + sideHeld(i);
+		if (key != sideMenuKey) {
+			sideMenuKey = key;
+			sideMenuHas = hasSides(src);
+		}
+		can = sideMenuHas;
+	} else if (can) {
+		can = tapeSides;
+	}
 	for (xCutAct& cut : cutActs) {
 		if ((cut.id != XCUT_SIDE_NEXT) && (cut.id != XCUT_SIDE_PREV)) continue;
 		cut.name = QString("%0 %1").arg((cut.id == XCUT_SIDE_NEXT) ? "Next" : "Previous").arg(what);
 		cut.act->setEnabled(can);
+		cutText(cut);
 	}
-	cutTexts();
 }
 
 void MainWin::sidePut(int src, const QString& path, const QString& place) {

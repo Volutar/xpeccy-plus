@@ -3244,20 +3244,22 @@ void MainWin::contextMenuEvent(QContextMenuEvent* ev) {
 
 // the keys as they are now, after Options too
 void MainWin::cutTexts() {
-	foreach(const xCutAct& cut, cutActs) {
-		QString key = shortcut_key(cut.id);
-		QString text = cut.name;
-		QString tip = cut.name;
-		tip.remove("...");
-		if (!key.isEmpty()) {
+	foreach(const xCutAct& cut, cutActs) cutText(cut);
+}
+
+void MainWin::cutText(const xCutAct& cut) {
+	QString key = shortcut_key(cut.id);
+	QString text = cut.name;
+	QString tip = cut.name;
+	tip.remove("...");
+	if (!key.isEmpty()) {
 #ifndef __APPLE__	// Cocoa would make a key equivalent of it, and take the key
-			text += "\t" + key;
+		text += "\t" + key;
 #endif
-			tip += QString(" (%0)").arg(key);
-		}
-		cut.act->setText(text);
-		cut.act->setToolTip(tip);
+		tip += QString(" (%0)").arg(key);
 	}
+	cut.act->setText(text);
+	cut.act->setToolTip(tip);
 }
 
 void MainWin::initMenuBar() {
@@ -3925,8 +3927,7 @@ void MainWin::initMachineMenus() {
 	});
 	fdcFastAct->setCheckable(true);
 	media->addSeparator();
-	// the image in use, the tape or a disk, turned over: apart from the drives, as it is
-	// either; no list to pick from, so a key. Named as the menu opens (sideMenu).
+	// the tape or the disk in use, stepped through its set; named as the menu opens (sideMenu)
 	cutAction(media, "Next Tape", XCUT_SIDE_NEXT);
 	cutAction(media, "Previous Tape", XCUT_SIDE_PREV);
 	connect(media, &QMenu::aboutToShow, this, &MainWin::sideMenu);
