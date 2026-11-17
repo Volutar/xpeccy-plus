@@ -28,7 +28,7 @@ To move a button, untick **Lock Toolbar** and drag the button.
 ```{index} Mute, volume
 ```
 
-The arrow beside **Mute** opens a volume slider and the **Board filter** list. Alt with the mouse wheel over the picture
+The arrow beside **Mute** opens a volume slider and the **Board filter**'s choices. Alt with the mouse wheel over the picture
 changes the volume too.
 
 ## The buttons

@@ -20,7 +20,7 @@ Each item is the command of the same name in a menu of the menu bar, described t
 |---|---|
 | {icon}`fileopen` **Open...**, {icon}`star` **Favorites** | [File menu](files.md), [Favorites menu](favorites.md) |
 | {icon}`model-zx48` **Model**, {icon}`clock` **Turbo Mode**, {icon}`shutdown` **Reset** | [Machine menu](machines.md) |
-| {icon}`speaker` **Sound**: **Mute**, **Board filter** | [Mute](machines.md#mute), [Board filter](options-sound.md#board-filter) |
+| {icon}`speaker` **Sound**: **Mute** and the **Board filter**'s choices | [Mute](machines.md#mute), [Board filter](options-sound.md#board-filter) |
 | {icon}`crt` **Shaders**, {icon}`palette` **ZX Palette** | [View menu](view.md) |
 | {icon}`fdd_disk` **Disk Manager**, {icon}`cartrige` **Cartridge**, {icon}`sdcard` **divMMC**, **SD Card**, {icon}`hdd` **Drives**, {icon}`tape` **Tape Player** | [Media menu](media.md) |
 | {icon}`video` **RZX Player** | [Capture menu](capture.md) |
