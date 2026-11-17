@@ -894,4 +894,4 @@ static const hwQuiet evo_quiet = {HWQ_ACK_ZX, NULL, NULL, zx_devs_sync, evo_fetc
 
 HardWare evo_hw_core = {HW_PENTEVO,"Baseconf","ZX Evolution (BaseConf)",MEM_4M,1.0,NULL,evo_port_tab,
 			zx_init,evoMapMem,evoOut,evoIn,evoMRd,evoMWr,evo_irq,evo_ack,evoReset,zx_sync,evo_keyp,evo_keyr,zx_vol,
-			evo_snap_map,NULL,&evo_quiet, .sndtake = zx_snd_take, .sndmix = zx_mix, .intvecs = evo_int_vecs, .intLag = 1};
+			evo_snap_map,NULL,&evo_quiet, .sndtake = zx_snd_take, .sndmix = zx_mix, .intvecs = evo_int_vecs, .intLag = 2};

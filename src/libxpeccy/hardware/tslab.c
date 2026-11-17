@@ -1081,4 +1081,4 @@ xPortDsc zx_port_tab_ts[] = {
 
 HardWare tsl_hw_core = {HW_TSLAB,"TSConf","ZX Evolution (TSConf)",MEM_4M,1.0,NULL,zx_port_tab_ts,
 			zx_init,tslMapMem,tslOut,tslIn,tslMRd,tslMWr,ts_irq,ts_ack,tslReset,ts_sync,ts_keyp,ts_keyr,zx_vol,
-			NULL,NULL,&ts_quiet, .sndtake = zx_snd_take, .sndmix = zx_mix, .intvecs = ts_int_vecs, .intLag = 1};
+			NULL,NULL,&ts_quiet, .sndtake = zx_snd_take, .sndmix = zx_mix, .intvecs = ts_int_vecs, .intLag = 2};

@@ -138,7 +138,7 @@ struct HardWare {
 	sndPair (*sndmix)(sndMix*, sndVolume*);
 	// the INT sources on now and their ack bytes, nothing acked (NULL: one floating #FF)
 	cbHwIntVecs intvecs;
-	int intLag;		// the layout's INT is the pin: the cpu takes it two ticks on (vid_int_place)
+	int intLag;		// cpu ticks from the layout's INT, the pin, to where it is taken (vid_int_place)
 };
 typedef struct HardWare HardWare;
 

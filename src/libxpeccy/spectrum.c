@@ -1204,7 +1204,7 @@ static int comp_tick_to_dots(Computer* comp, int flen, int tick) {
 	int dpt = vid->dotPerFrame / flen;
 	if (dpt * flen != vid->dotPerFrame)
 		return (int)((long long)tick * vid->dotPerFrame / flen);
-	return tick * dpt - (vid->intAt.y * vid->full.x + vid->intAt.x) % dpt;
+	return tick * dpt - (vid->intp.y * vid->full.x + vid->intp.x) % dpt;
 }
 
 static int comp_dots_to_tick(Computer* comp, int flen, int dots) {
@@ -1212,7 +1212,7 @@ static int comp_dots_to_tick(Computer* comp, int flen, int dots) {
 	int dpt = vid->dotPerFrame / flen;
 	if (dpt * flen != vid->dotPerFrame)
 		return (int)((long long)dots * flen / vid->dotPerFrame);
-	return ((dots + (vid->intAt.y * vid->full.x + vid->intAt.x) % dpt) / dpt) % flen;
+	return ((dots + (vid->intp.y * vid->full.x + vid->intp.x) % dpt) / dpt) % flen;
 }
 
 // Where a snapshot with no frame position (.sna, .z80 v1/v2) is put. With
@@ -1348,10 +1348,10 @@ void comp_update_timings(Computer* comp) {
 		comp->nsPerTickFixed = NSD_TO_FIXED(comp->nsPerTick);
 	}
 	// The pin of the frame INT and where it is taken are apart on a board whose layout
-	// says where the pin goes low (hw->intLag): the cpu sees it at its next clock edge and
+	// says where the pin goes low (hw->intLag ticks): the cpu sees it at its next clock edge and
 	// samples it a T before an instruction ends (Z80: on the last T's rising edge), two
 	// ticks in all - 4 dots at 3.5 MHz, 1 at 14 (zint.v, zclock.v on the ZX Evolution).
-	vid_set_int_lag(comp->vid, comp->hw->intLag ? (int)((2 * comp->nsPerTickFixed + comp->vid->nsPerDotFixed / 2) / comp->vid->nsPerDotFixed) : 0);
+	vid_set_int_lag(comp->vid, (int)((comp->hw->intLag * comp->nsPerTickFixed + comp->vid->nsPerDotFixed / 2) / comp->vid->nsPerDotFixed));
 	// the video is only ever handed whole ticks: whole dots too, where a tick is
 	comp->vid->tickWhole = (comp->nsPerTickFixed > 0) && !(comp->nsPerTickFixed % comp->vid->nsPerDotFixed);
 	comp->earTpt = (1e9 / 3.5e6) / comp->nsPerTick;	// machine ticks in a 3.5 MHz T, for zx_ear_edge
@@ -1391,7 +1391,9 @@ void compSetHwTurbo(Computer* comp, double mult) {
 // zclock.v in both configurations): at 3.5 MHz an edge comes only on an even dot, at
 // 7 MHz on a whole one, the same dots for ever, whatever ran faster before. Switched to
 // such a speed, the cpu waits the part of the step to its next edge, and the video and
-// the cpu's own time both take the wait. 14 MHz keeps the half dot it stands on.
+// the cpu's own time both take the wait. 14 MHz keeps the half dot it stands on. The
+// edges fall on even xb in both: xb is BaseConf's hcount less one, TSConf's hcount, and
+// their 3.5 MHz edges come on even and odd hcount (.875 in) respectively.
 void compSetHwTurboLocked(Computer* comp, double mult) {
 	if (comp->hwMul == mult) return;
 	compSetHwTurbo(comp, mult);

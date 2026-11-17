@@ -210,7 +210,7 @@ static int vid_wrap(Video* vid, int dots) {
 void vid_set_ray(Video* vid, int dots) {
 	vid_unlazy(vid);
 	int fx = vid->full.x;
-	int b = vid_wrap(vid, vid->intAt.y * fx + vid->intAt.x + dots);
+	int b = vid_wrap(vid, vid->intp.y * fx + vid->intp.x + dots);
 	vid->ray.yb = b / fx;
 	vid->ray.xb = b % fx;
 	// xb/yb restart where the ray reaches vend.x on line vend.y - 1
@@ -229,7 +229,7 @@ void vid_set_ray(Video* vid, int dots) {
 int vid_ray_dots(Video* vid) {
 	vid_unlazy(vid);
 	int fx = vid->full.x;
-	return vid_wrap(vid, (vid->ray.yb - vid->intAt.y) * fx + vid->ray.xb - vid->intAt.x);
+	return vid_wrap(vid, (vid->ray.yb - vid->intp.y) * fx + vid->ray.xb - vid->intp.x);
 }
 
 // Border shown on each side, in dots and lines. The frame is the same size on
@@ -369,10 +369,12 @@ void vid_set_layout(Video* vid, vLayout* lay) {
 
 // Where the frame INT is seen: an instruction has to end intLag dots past the dot the
 // pin goes low on to take it. A machine whose layout counts that in already has no lag;
-// a pin past the end of the line (TSConf's HSINT can say so) never fires, lag or not.
+// a pin outside the frame (TSConf's HSINT and VSINT can say so) never fires, lag or not.
+// The frame's own count (vid_set_ray, vid_ray_dots) stays on the pin.
 void vid_int_place(Video* vid) {
+	vid->intPend = 0;
 	vid->intAt = vid->intp;
-	if ((vid->intp.x >= vid->full.x) || !vid->intLag) return;
+	if ((vid->intp.x >= vid->full.x) || (vid->intp.y >= vid->full.y) || !vid->intLag) return;
 	vid->intAt.x += vid->intLag;
 	if (vid->intAt.x >= vid->full.x) {
 		vid->intAt.x -= vid->full.x;
@@ -380,9 +382,25 @@ void vid_int_place(Video* vid) {
 	}
 }
 
+// The lag follows the cpu's clock. A switch with the ray between the old point and the
+// new one would take the frame's INT twice (later) or not at all (earlier): later, the
+// new point waits for the next frame; earlier, the INT comes now.
 void vid_set_int_lag(Video* vid, int lag) {
+	if (lag == vid->intLag) return;
+	vCoord old = vid->intAt;
 	vid->intLag = lag;
 	vid_int_place(vid);
+	if (!(vid->inten & 1) || vid->intFRAME) return;
+	long long fx = vid->full.x;
+	long long pos = vid->ray.yb * fx + vid->ray.xb;
+	long long o = old.y * fx + old.x;
+	long long n = vid->intAt.y * fx + vid->intAt.x;
+	if ((n > o) && (pos >= o) && (pos < n)) {
+		vid->intAt = old;
+		vid->intPend = 1;
+	} else if ((n < o) && (pos >= n) && (pos < o)) {
+		vid->xirq(IRQ_VID_INT, vid->xptr);
+	}
 }
 
 // set visible area size
@@ -1819,6 +1837,8 @@ void vid_tick(Video* vid) {
 				vid->cb->vbl(vid);
 		}
 		if (vid->ray.y >= vid->full.y) {		// new frame
+			if (vid->intPend)
+				vid_int_place(vid);
 			vid_frame(vid);				// complete frame image
 			if (vid->nodrawNext >= 0) {
 				vid_nodraw_to(vid, vid->nodrawNext);
