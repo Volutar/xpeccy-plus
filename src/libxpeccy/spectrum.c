@@ -1242,16 +1242,19 @@ void comp_set_frame_tick(Computer* comp, int tick) {
 	if (tick < 0) tick = comp_snap_tick(comp, flen);
 	if (tick >= flen) tick = flen - 1;
 	int dots = comp_tick_to_dots(comp, flen, tick);
-	comp->frmtCount = tick;
+	// the ray counts from the INT pin, frmtCount from where the cpu takes it, intLag later
+	int lag = vid->intLag ? comp->hw->intLag : 0;
+	comp->frmtCount = (tick - lag + flen) % flen;
 	vid_set_ray(vid, dots);
 	// the INT line as it stands at that tick, not as the reset before left it,
 	// and not yet sampled by the cpu: the machine raises it its own way and
 	// the pulse is cut to what is left of it
 	comp->cpu->flgACK = 0;
 	vid_set_int_frame(vid, 0);
+	vid->intSkip = 0;
 	comp->cpu->intrq &= ~Z80_INT;
 	int left = vid->intsize - dots;
-	if ((dots >= 0) && (left > 0) && (vid->inten & 1) && comp->hw->irq && !comp->rzx.play) {
+	if ((dots >= vid->intLag) && (left > 0) && (vid->inten & 1) && comp->hw->irq && !comp->rzx.play) {
 		comp->hw->irq(comp, IRQ_VID_INT);
 		if (vid->intFRAME > left) vid->intFRAME = left;
 	}
@@ -1347,6 +1350,8 @@ void comp_update_timings(Computer* comp) {
 	} else {
 		comp->nsPerTickFixed = NSD_TO_FIXED(comp->nsPerTick);
 	}
+	// hw->intLag cpu ticks from the INT pin to where an instruction end takes it (ZX Evo: zint.v, zclock.v)
+	vid_set_int_lag(comp->vid, (int)((comp->hw->intLag * comp->nsPerTickFixed + comp->vid->nsPerDotFixed / 2) / comp->vid->nsPerDotFixed));
 	// the video is only ever handed whole ticks: whole dots too, where a tick is
 	comp->vid->tickWhole = (comp->nsPerTickFixed > 0) && !(comp->nsPerTickFixed % comp->vid->nsPerDotFixed);
 	comp->earTpt = (1e9 / 3.5e6) / comp->nsPerTick;	// machine ticks in a 3.5 MHz T, for zx_ear_edge
@@ -1380,6 +1385,24 @@ void compSetHwTurbo(Computer* comp, double mult) {
 	if (comp->hwMul == mult) return;
 	comp->hwMul = mult;
 	comp_update_timings(comp);
+}
+
+// A live turbo switch on a board whose cpu edges are fixed to even xb (ZX Evo, zclock.v): wait to the next edge.
+void compSetHwTurboLocked(Computer* comp, double mult) {
+	if (comp->hwMul == mult) return;
+	Video* vid = comp->vid;
+	vCoord old = vid->intAt;
+	compSetHwTurbo(comp, mult);
+	vid_int_moved(vid, old);
+	if (!vid->tickWhole) return;
+	long long dot = vid->nsPerDotFixed;
+	long long step = comp->nsPerTickFixed;
+	vid_settle(vid);
+	long long pos = (vid->ray.xb % (int)(step / dot)) * dot + vid->nsDrawFixed;
+	long long gap = (step - pos % step) % step;
+	if (!gap) return;
+	vid_sync_fixed(vid, gap);
+	comp->nsBase += FIXED_TO_NS(gap);
 }
 
 void comp_set_layout(Computer* comp, vLayout* lay) {

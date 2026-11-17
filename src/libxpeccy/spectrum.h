@@ -866,6 +866,7 @@ void comp_kbd_release(Computer*);
 void compSetBaseFrq(Computer*,double);
 void compSetTurbo(Computer*,double);
 void compSetHwTurbo(Computer*,double);
+void compSetHwTurboLocked(Computer*,double);
 void comp_update_timings(Computer*);
 long long comp_ns(Computer*);
 int compSetHardware(Computer*,const char*);

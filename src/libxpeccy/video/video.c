@@ -364,6 +364,50 @@ void vid_set_layout(Video* vid, vLayout* lay) {
 	vid->intp = lay->intpos;
 	vid->intsize = lay->intSize;
 	vid_upd_layout(vid);
+	vid_int_place(vid);
+}
+
+// intAt = the pin (intp) + intLag dots, wrapping into the next frame; a pin outside the frame never fires.
+void vid_int_place(Video* vid) {
+	vid->intSkip = 0;
+	vid->nsCalmFixed = vid->nsPerDotFixed;		// a lazy run counted to the old point stops here
+	vid->intAt = vid->intp;
+	if ((vid->intp.x >= vid->full.x) || (vid->intp.y >= vid->full.y) || !vid->intLag) return;
+	vid->intAt.x += vid->intLag;
+	if (vid->intAt.x >= vid->full.x) {
+		vid->intAt.x -= vid->full.x;
+		vid->intAt.y = (vid->intAt.y + 1) % vid->full.y;
+	}
+}
+
+void vid_set_int_pos(Video* vid, int x, int y) {
+	vid->intp.x = x;
+	vid->intp.y = y;
+	vid_int_place(vid);
+}
+
+// Only places the point: a switch while the machine runs goes through vid_int_moved() too.
+void vid_set_int_lag(Video* vid, int lag) {
+	if (lag == vid->intLag) return;
+	vid->intLag = lag;
+	vid_int_place(vid);
+}
+
+// intAt moved from old with the ray running: one INT a frame, compared round the frame.
+void vid_int_moved(Video* vid, vCoord old) {
+	if (!(vid->inten & 1) || vid->intFRAME) return;
+	long long fx = vid->full.x;
+	long long fr = fx * vid->full.y;
+	long long pos = vid->ray.yb * fx + vid->ray.xb;
+	long long o = old.y * fx + old.x;
+	long long n = vid->intAt.y * fx + vid->intAt.x;
+	long long d = ((n - o) % fr + fr) % fr;
+	if (d > fr / 2) d -= fr;
+	if ((d > 0) && (((pos - o) % fr + fr) % fr < d)) {
+		vid->intSkip = 1;
+	} else if ((d < 0) && (((pos - n) % fr + fr) % fr < -d)) {
+		vid->xirq(IRQ_VID_INT, vid->xptr);
+	}
 }
 
 // set visible area size
@@ -1016,7 +1060,7 @@ long long vid_quiet_dots(Video* vid, int lineInt) {
 	} else if (vid->inten & 1) {
 		// counted from the blanking edges, the way vid_tick() counts it
 		long long pos = vid->ray.yb * fx + vid->ray.xb;
-		long long to = vid->intp.y * fx + vid->intp.x - pos;
+		long long to = vid->intAt.y * fx + vid->intAt.x - pos;
 		if (to <= 0) to += fx * vid->full.y;
 		if (to < d) d = to;
 	}
@@ -1837,8 +1881,11 @@ void vid_tick(Video* vid) {
 		vid->intFRAME--;
 		if (!vid->intFRAME)
 			vid->xirq(IRQ_VID_IEND, vid->xptr);
-	} else if ((vid->ray.yb == vid->intp.y) && (vid->ray.xb == vid->intp.x) && (vid->inten & 1)) {		// added: ...and frame int enabled
-		vid->xirq(IRQ_VID_INT, vid->xptr);
+	} else if ((vid->ray.yb == vid->intAt.y) && (vid->ray.xb == vid->intAt.x) && (vid->inten & 1)) {		// added: ...and frame int enabled
+		if (vid->intSkip)
+			vid->intSkip = 0;
+		else
+			vid->xirq(IRQ_VID_INT, vid->xptr);
 	}
 }
 
@@ -1860,8 +1907,8 @@ static int vid_run_len(Video* vid, int n) {
 	}
 	if (vid->intFRAME > 0) {
 		if (vid->intFRAME - 1 < k) k = vid->intFRAME - 1;
-	} else if ((vid->inten & 1) && (vid->ray.yb == vid->intp.y) && (vid->intp.x > vid->ray.xb)) {
-		if (vid->intp.x - 1 - vid->ray.xb < k) k = vid->intp.x - 1 - vid->ray.xb;
+	} else if ((vid->inten & 1) && (vid->ray.yb == vid->intAt.y) && (vid->intAt.x > vid->ray.xb)) {
+		if (vid->intAt.x - 1 - vid->ray.xb < k) k = vid->intAt.x - 1 - vid->ray.xb;
 	}
 	return k;
 }

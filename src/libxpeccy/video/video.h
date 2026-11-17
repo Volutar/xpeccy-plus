@@ -212,7 +212,10 @@ struct Video {
 	vCoord dlt;		// top left corner of what is drawn
 	vCoord drb;		// bottom right corner (exclusive)
 	int drawAll;
-	vCoord intp;		// intp.y = the line TSConf raises its INT on
+	vCoord intp;		// where the INT pin goes low; intp.y = the line TSConf raises its INT on
+	int intLag;		// dots from there to where an instruction must end to take it (vid_int_place)
+	vCoord intAt;		// that point: intp + intLag, on the next line past its end
+	int intSkip;		// the INT came at the old intAt this frame: the ray passes the new one once (vid_int_moved)
 	int intsize;
 	vCoord res;		// current resolution (-1 = from layout)
 
@@ -501,6 +504,10 @@ void vid_dark_tail(Video*);
 
 void vid_clear_image(void);
 void vid_set_layout(Video*, vLayout*);
+void vid_int_place(Video*);
+void vid_set_int_pos(Video*, int, int);
+void vid_set_int_lag(Video*, int);
+void vid_int_moved(Video*, vCoord);
 void vid_set_resolution(Video*, int, int);
 void vid_set_border(Video*, int);
 void vid_upd_crop(Video*);

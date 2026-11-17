@@ -113,9 +113,10 @@ static void evo_drop_virt(Computer* comp) {
 
 // Both ports that carry a turbo bit have to work out the same speed, or a write
 // to either flips the clock: #xx77 bit 3 is 14 MHz, else #EFF7 bit 4 picks 3.5
-// or 7. Unreal's set_turbo() (atm.cpp) for ATM3/Evo is the reference.
+// or 7. Unreal's set_turbo() (atm.cpp) for ATM3/Evo is the reference. The new
+// clock's edges are the board's own (compSetHwTurboLocked).
 static void evo_set_turbo(Computer* comp) {
-	compSetHwTurbo(comp, (comp->prt2 & 0x08) ? 4 : ((comp->pEFF7 & 0x10) ? 1 : 2));
+	compSetHwTurboLocked(comp, (comp->prt2 & 0x08) ? 4 : ((comp->pEFF7 & 0x10) ? 1 : 2));
 }
 
 void evoReset(Computer* comp) {
@@ -893,4 +894,4 @@ static const hwQuiet evo_quiet = {HWQ_ACK_ZX, NULL, NULL, zx_devs_sync, evo_fetc
 
 HardWare evo_hw_core = {HW_PENTEVO,"Baseconf","ZX Evolution (BaseConf)",MEM_4M,1.0,NULL,evo_port_tab,
 			zx_init,evoMapMem,evoOut,evoIn,evoMRd,evoMWr,evo_irq,evo_ack,evoReset,zx_sync,evo_keyp,evo_keyr,zx_vol,
-			evo_snap_map,NULL,&evo_quiet, .sndtake = zx_snd_take, .sndmix = zx_mix, .intvecs = evo_int_vecs};
+			evo_snap_map,NULL,&evo_quiet, .sndtake = zx_snd_take, .sndmix = zx_mix, .intvecs = evo_int_vecs, .intLag = 2};
