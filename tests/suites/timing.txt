@@ -9,6 +9,15 @@ ldir48        zx48      auto  2500  200     ULA/ldir48.tap
 ldir128       zx128     auto  2500  200     ULA/ldir128.tap
 ldirpent      pent      auto  2500  200     ULA/ldirpent.tap
 pent128       pent      auto  2500  200     ULA/pent128.tap
+# Pentagon border and multicolour on the ZX Evo's Pentagon raster: the same picture, paper-relative
+pent128_evo   evo-baseconf auto 2500 200   ULA/pent128.tap
+pent128_ts    evo-tsconf auto 2500  200     ULA/pent128.tap
+ate_pent      pent      auto  2250  100     ULA/across_the_edge_fix_0.trd
+ate_evo       evo-baseconf auto 2000 100   ULA/across_the_edge_fix_0.trd
+ate_ts        evo-tsconf auto 2250  100     ULA/across_the_edge_fix_0.trd
+rage_pent     pent      auto  16000 100     ULA/RAGE.TAP          keys:2500:r
+rage_evo      evo-baseconf auto 16000 100  ULA/RAGE.TAP          keys:2500:r
+rage_ts       evo-tsconf auto 16000 100     ULA/RAGE.TAP          keys:2500:r
 snow16k       zx48      auto  2500  200     ULA/snow/snow16k.tap
 buzzsaw       zx48      auto  3000  200     "ULA/rainbow/Buzzsaw+(FoxtonLocksMix).TAP"
 shock         zx48      auto  3000  200     ULA/rainbow/SHOCK.TAP
