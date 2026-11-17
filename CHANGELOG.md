@@ -70,8 +70,9 @@ before that point is upstream's history and is not repeated here.
 - **The shader's name on the picture** when one is picked from View > Shaders or read again
   by Reload Shader, in place of "shader compiled"; nothing at start. *(reported by Volutar)*
 
-- **Next Side and Previous Side stand apart in the Media menu**: they turn over a tape set
-  as well as a disk set. *(reported by Volutar)*
+- **Next Side and Previous Side are Next and Previous Tape or Disk**, apart in the Media menu:
+  the menu names the tape or the disk the key turns over, and grays them when it has no other
+  side. *(reported by Volutar)*
 
 ### Fixed
 
