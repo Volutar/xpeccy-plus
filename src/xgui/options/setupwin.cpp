@@ -361,7 +361,7 @@ static const struct {double frq; const char* name;} psgFrqTab[] = {
 QString board_type_name(int type) {
 	static const char* names[BEEP_ALL] = {"Line out", "48K speaker", "TV (RF)", "+2A/+3",	// BEEP_*
 		"ZX Evolution", "Scorpion", "ATM Turbo", "Piezo",
-		"Low-pass 5 kHz, 4 poles", "Low-pass 11 kHz, 4 poles"};
+		"Low-pass 5 kHz, 24 dB/oct"};
 	return ((type >= 0) && (type < BEEP_ALL)) ? QObject::tr(names[type]) : QString();
 }
 
@@ -372,18 +372,15 @@ QList<xBoardPick> board_picks() {
 		QObject::tr("Each machine through its board's own\nfilter, shown on the Machine page"), false});
 	static const char* tips[BEEP_ALL] = {NULL,
 		"The 48K's ULA pin and small speaker:\nthe highs softened, the bass thin",
-		"A TV's aerial input: highs cut\nfrom 3.2 kHz, the PSG's too",
-		"The +2A/+3's mixer: highs cut\nfrom 2.5 kHz, the PSG's too",
+		"A TV's aerial input: highs cut\nfrom 3.2 kHz",
+		"The +2A/+3's mixer: highs cut\nfrom 2.5 kHz, lows below 340 Hz",
 		"The Evo's RC: highs cut from 8.6 kHz",
 		"The Scorpion's coupling capacitor:\nlows cut below 530 Hz",
 		"The ATM's coupling capacitor:\nlows cut below 80 Hz",
 		"A piezo sounder: rings at 4.1 kHz,\nthe bass falls off gently",
-		"For PWM music: its carrier gone,\nthe bass kept",
-		"For PWM music: its 16 kHz carrier\npressed down, the highs kept"};
-	for (int t = BEEP_LINE + 1; t < BEEP_ALL; t++) {
-		if (t == BEEP_TYPES) res.append({BOARD_HEAD, QObject::tr("EXPERIMENTAL"), QString(), true});
+		"For PWM music: its carrier gone,\nthe bass kept"};
+	for (int t = BEEP_LINE + 1; t < BEEP_ALL; t++)
 		res.append({t, board_type_name(t), QObject::tr(tips[t]), t == BEEP_LINE + 1});
-	}
 	return res;
 }
 
@@ -392,21 +389,13 @@ QString psg_lay_name(int lay) {
 	return ((lay >= 0) && (lay <= AY_CBA)) ? QString(names[lay]) : QString();
 }
 
-// the Board filter's list: its picks, the heading greyed and bold
+// the Board filter's list
 static void board_fill_box(QComboBox* box) {
 	box->clear();
 	for (const xBoardPick& p : board_picks()) {
 		if (p.sep) box->insertSeparator(box->count());
 		box->addItem(p.name, p.val);
-		if (!p.tip.isEmpty()) box->setItemData(box->count() - 1, p.tip, Qt::ToolTipRole);
-		if (p.val != BOARD_HEAD) continue;
-		QStandardItemModel* model = qobject_cast<QStandardItemModel*>(box->model());
-		if (!model) continue;
-		QStandardItem* head = model->item(box->count() - 1);
-		QFont font = head->font();
-		font.setBold(true);
-		head->setFont(font);
-		head->setEnabled(false);
+		box->setItemData(box->count() - 1, p.tip, Qt::ToolTipRole);
 	}
 	box->setMaxVisibleItems(box->count());
 }
@@ -418,7 +407,7 @@ void SetupWin::makeSoundGroup() {
 	QGridLayout* grid = new QGridLayout(box);
 	cbBoard = new QComboBox;
 	board_fill_box(cbBoard);
-	cbBoard->setToolTip(tr("What the beeper, and on some boards the PSG,\nsounds through, on every machine"));
+	cbBoard->setToolTip(tr("A type picked: all the sound through it.\nBy machine: each board's own, the beeper\nand on some boards the PSG"));
 	cbPsgLay = new QComboBox;
 	cbPsgLay->addItem(tr("By machine"), LAY_MACHINE);
 	cbPsgLay->setItemData(0, tr("Each machine's own, shown in its PSG sheet"), Qt::ToolTipRole);

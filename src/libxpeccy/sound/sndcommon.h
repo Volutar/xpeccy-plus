@@ -78,8 +78,8 @@ enum {
 	BEEP_ATM,		// the ATM Turbo's coupling cap into its amplifier
 	BEEP_PIEZO,		// a piezo sounder (ZP-3 class) on the port's own output
 	BEEP_TYPES,
-	// experimental, to be judged by ear this release: under EXPERIMENTAL in the list
-	BEEP_X_LP5_4 = BEEP_TYPES, BEEP_X_LP11_4,
+	// no board's: last in the list, for PWM music
+	BEEP_LP5 = BEEP_TYPES,	// 4-pole Butterworth low-pass at 5 kHz, 24 dB an octave
 	BEEP_ALL
 };
 
@@ -130,6 +130,21 @@ static inline sndPair snd_mix_flt(sndBeepFlt st[2], sndPair lev, int type, int r
 	}
 	lev.left = snd_beep_run(&st[0], lev.left, type, rate, BF_MIX);
 	lev.right = snd_beep_run(&st[1], lev.right, type, rate, BF_MIX);
+	return lev;
+}
+
+// A type picked on the Sound page, not By machine: everything but the beeper (the PSG, the
+// GS, the DACs, the SAA) is heard through it as well, as if it all left that board - through
+// its mix chain where it has one, else its beeper's. Line out lets it through
+static inline sndPair snd_all_flt(sndBeepFlt st[2], sndPair lev, int type, int rate) {
+	if ((type <= BEEP_LINE) || (type >= BEEP_ALL) || (rate <= 0)) {
+		st[0].type = BEEP_LINE;
+		st[1].type = BEEP_LINE;
+		return lev;
+	}
+	int chain = snd_beep_mixes(type) ? BF_MIX : BF_BEEP;
+	lev.left = snd_beep_run(&st[0], lev.left, type, rate, chain);
+	lev.right = snd_beep_run(&st[1], lev.right, type, rate, chain);
 	return lev;
 }
 

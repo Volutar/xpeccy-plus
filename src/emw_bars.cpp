@@ -479,10 +479,10 @@ void MainWin::initBars() {
 		icon.addFile(":/images/speaker-mute.png", QSize(), QIcon::Normal, QIcon::On);
 		muteAct->setIcon(icon);
 	}
-	boardMenu = makeBoardMenu();
+	makeBoardActs();
 	add("key.mute", "Sound", muteAct, TB_SPLIT, volumeMenu());
 	sndMenu->addAction(muteAct);
-	sndMenu->addMenu(boardMenu);
+	addBoardActs(sndMenu);
 	// shown, not used: it takes no focus and no clicks, so the machine keeps the keys
 	volPop = new xVolBox(this, Qt::ToolTip | Qt::FramelessWindowHint);
 	volPop->setFrameShape(QFrame::StyledPanel);
@@ -817,42 +817,41 @@ QMenu* MainWin::volumeMenu() {
 	menu->addAction(wact);
 	connect(menu, &QMenu::aboutToShow, box, &xVolBox::load);	// the wheel moves it too
 	connect(menu, &QMenu::aboutToHide, this, []() {saveConfig();});
-	menu->addSeparator();
-	menu->addMenu(boardMenu);
+	addBoardActs(menu);
 	return menu;
 }
 
-// The Sound page's Board filter, one pick for every machine: under the volume and in
-// the right-click menu's Sound
-QMenu* MainWin::makeBoardMenu() {
-	QMenu* menu = new QMenu("Board filter", this);
-	menu->setToolTipsVisible(true);
-	QActionGroup* grp = new QActionGroup(menu);
+// The Sound page's Board filter, one pick for every machine: its actions, made once and
+// listed under the volume and in the right-click menu's Sound
+void MainWin::makeBoardActs() {
+	boardGrp = new QActionGroup(this);
 	for (const xBoardPick& p : board_picks()) {
-		if (p.sep) menu->addSeparator();
-		QAction* act = menu->addAction(p.name);
-		if (p.val == BOARD_HEAD) {
-			QFont font = act->font();
-			font.setBold(true);
-			act->setFont(font);
-			act->setEnabled(false);
-			continue;
-		}
+		QAction* act = new QAction(p.name, boardGrp);
 		act->setToolTip(p.tip);
 		act->setData(p.val);
 		act->setCheckable(true);
-		grp->addAction(act);
 	}
-	connect(menu, &QMenu::aboutToShow, menu, [grp]() {
-		for (QAction* act : grp->actions())
-			act->setChecked(act->data().toInt() == conf.snd.vol.board);
-	});
-	connect(grp, &QActionGroup::triggered, this, [this](QAction* act) {
+	connect(boardGrp, &QActionGroup::triggered, this, [this](QAction* act) {
 		conf.snd.vol.board = act->data().toInt();
 		setMessage(QString(" board filter: %0 ").arg(act->text()));
 		saveConfig();
 	});
-	return menu;
+}
+
+// ...in a menu's root, under a line, with the one in use checked as it opens
+void MainWin::addBoardActs(QMenu* menu) {
+	menu->setToolTipsVisible(true);
+	menu->addSeparator();
+	QList<xBoardPick> picks = board_picks();
+	QList<QAction*> acts = boardGrp->actions();
+	for (int i = 0; (i < picks.size()) && (i < acts.size()); i++) {
+		if (picks[i].sep) menu->addSeparator();
+		menu->addAction(acts[i]);
+	}
+	connect(menu, &QMenu::aboutToShow, menu, [this]() {
+		for (QAction* act : boardGrp->actions())
+			act->setChecked(act->data().toInt() == conf.snd.vol.board);
+	});
 }
 
 // Alt+wheel moved the volume: the slider comes up under the button for a moment,

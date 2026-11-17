@@ -109,7 +109,7 @@ static xMacWord sdrvTab[] = {
 static xMacWord beepTab[] = {
 	{"line", BEEP_LINE}, {"speaker", BEEP_SPEAKER}, {"tv", BEEP_TV}, {"plus3", BEEP_PLUS3}, {"evo", BEEP_EVO},
 	{"scorpion", BEEP_SCORPION}, {"atm", BEEP_ATM}, {"piezo", BEEP_PIEZO},
-	{"x-lp5-4", BEEP_X_LP5_4}, {"x-lp11-4", BEEP_X_LP11_4}, {NULL, 0}	// experimental
+	{"lp5k", BEEP_LP5}, {"x-lp5-4", BEEP_LP5}, {NULL, 0}	// x-lp5-4: its name in the nightlies
 };
 
 static xMacWord joyTab[] = {

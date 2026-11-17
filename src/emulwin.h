@@ -3,6 +3,7 @@
 #include <QLabel>
 #include <QProgressBar>
 #include <QMainWindow>
+#include <QActionGroup>
 #include <QMenuBar>
 #include <QStatusBar>
 #include <QToolBar>
@@ -473,8 +474,9 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		QMenu* shdMenu;
 		QMenu* keyMenu;
 		QMenu* sndMenu;		// the right-click menu's Sound: Mute and the Board filter
-		QMenu* boardMenu;	// the Board filter's picks, there and in the mute button's list
-		QMenu* makeBoardMenu();
+		QActionGroup* boardGrp;	// the Board filter's picks, there and in the mute button's list
+		void makeBoardActs();
+		void addBoardActs(QMenu*);
 		QMenu* padMenu;		// the window, then each player's joystick
 		QMenu* palMenu;
 		QMenu* dbgMenu;		// the toolbar's Debugger button: a click opens it, its list the panels

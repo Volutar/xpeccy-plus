@@ -374,9 +374,7 @@ sndPair nx_mix(sndMix* m, sndVolume* sv) {
 	ay = snd_sep(ay, m->ts->chipA->sep);
 	part.left = ay.left * NX_GAIN * sv->ay / 100;
 	part.right = ay.right * NX_GAIN * sv->ay / 100;
-	part = snd_dc(&m->dc[1], snd_mix_flt(m->pflt, part, type, m->rate), dc);
-	res.left += part.left;
-	res.right += part.right;
+	sndPair rest = snd_dc(&m->dc[1], part, dc);
 	// the DACs (soundrive.vhd 109-115), around their idle 80+80
 	unsigned int out = m->in.dac[0] | (m->in.dac[1] << 8) | (m->in.dac[2] << 16) | ((unsigned int)m->in.dac[3] << 24);
 	if ((out != m->dOut) || (sv->sdrv != m->dVol)) {
@@ -388,8 +386,12 @@ sndPair nx_mix(sndMix* m, sndVolume* sv) {
 	part.left = m->dL;
 	part.right = m->dR;
 	part = snd_dc(&m->dc[2], part, dc);
-	res.left += part.left;
-	res.right += part.right;
+	rest.left += part.left;
+	rest.right += part.right;
+	// the AYs and the DACs through the type picked as well (the Next's own lets them through)
+	rest = snd_all_flt(m->pflt, rest, type, m->rate);
+	res.left += rest.left;
+	res.right += rest.right;
 	return res;
 }
 

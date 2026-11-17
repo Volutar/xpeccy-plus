@@ -37,9 +37,8 @@ static const struct {
 	{{0, 0, 530, 0, 0}, {0}},		// BEEP_SCORPION: 0.1 uF into ~3K
 	{{0, 0, 80, 0, 0}, {0}},		// BEEP_ATM: 0.1 uF into 20K
 	{{0, 0, 0, 4100, 3, 1}, {0}},		// BEEP_PIEZO: ZP-3, bass 6 dB/oct by ear; Q not in the datasheet
-	// experimental, for PWM music: its carrier out (Final Signal's is 16.2 kHz), the bass kept
-	{{0, 0, 0, 0, 0, 0, 5000, 4}, {0}},	// BEEP_X_LP5_4
-	{{0, 0, 0, 0, 0, 0, 11000, 4}, {0}},	// BEEP_X_LP11_4: Volutar's 11 kHz
+	// for PWM music: its carrier out (Final Signal's is 16.2 kHz), the bass kept
+	{{0, 0, 0, 0, 0, 0, 5000, 4}, {0}},	// BEEP_LP5
 };
 
 #define BF_ONE	(1LL << 24)
