@@ -367,12 +367,10 @@ void vid_set_layout(Video* vid, vLayout* lay) {
 	vid_int_place(vid);
 }
 
-// Where the frame INT is seen: an instruction has to end intLag dots past the dot the
-// pin goes low on to take it. A machine whose layout counts that in already has no lag;
-// a pin outside the frame (TSConf's HSINT and VSINT can say so) never fires, lag or not.
-// The frame's own count (vid_set_ray, vid_ray_dots) stays on the pin.
+// intAt = the pin (intp) + intLag dots, wrapping into the next frame; a pin outside the frame never fires.
 void vid_int_place(Video* vid) {
-	vid->intPend = 0;
+	vid->intSkip = 0;
+	vid->nsCalmFixed = vid->nsPerDotFixed;		// a lazy run counted to the old point stops here
 	vid->intAt = vid->intp;
 	if ((vid->intp.x >= vid->full.x) || (vid->intp.y >= vid->full.y) || !vid->intLag) return;
 	vid->intAt.x += vid->intLag;
@@ -382,23 +380,32 @@ void vid_int_place(Video* vid) {
 	}
 }
 
-// The lag follows the cpu's clock. A switch with the ray between the old point and the
-// new one would take the frame's INT twice (later) or not at all (earlier): later, the
-// new point waits for the next frame; earlier, the INT comes now.
+void vid_set_int_pos(Video* vid, int x, int y) {
+	vid->intp.x = x;
+	vid->intp.y = y;
+	vid_int_place(vid);
+}
+
+// Only places the point: a switch while the machine runs goes through vid_int_moved() too.
 void vid_set_int_lag(Video* vid, int lag) {
 	if (lag == vid->intLag) return;
-	vCoord old = vid->intAt;
 	vid->intLag = lag;
 	vid_int_place(vid);
+}
+
+// intAt moved from old with the ray running: one INT a frame, compared round the frame.
+void vid_int_moved(Video* vid, vCoord old) {
 	if (!(vid->inten & 1) || vid->intFRAME) return;
 	long long fx = vid->full.x;
+	long long fr = fx * vid->full.y;
 	long long pos = vid->ray.yb * fx + vid->ray.xb;
 	long long o = old.y * fx + old.x;
 	long long n = vid->intAt.y * fx + vid->intAt.x;
-	if ((n > o) && (pos >= o) && (pos < n)) {
-		vid->intAt = old;
-		vid->intPend = 1;
-	} else if ((n < o) && (pos >= n) && (pos < o)) {
+	long long d = ((n - o) % fr + fr) % fr;
+	if (d > fr / 2) d -= fr;
+	if ((d > 0) && (((pos - o) % fr + fr) % fr < d)) {
+		vid->intSkip = 1;
+	} else if ((d < 0) && (((pos - n) % fr + fr) % fr < -d)) {
 		vid->xirq(IRQ_VID_INT, vid->xptr);
 	}
 }
@@ -1837,8 +1844,6 @@ void vid_tick(Video* vid) {
 				vid->cb->vbl(vid);
 		}
 		if (vid->ray.y >= vid->full.y) {		// new frame
-			if (vid->intPend)
-				vid_int_place(vid);
 			vid_frame(vid);				// complete frame image
 			if (vid->nodrawNext >= 0) {
 				vid_nodraw_to(vid, vid->nodrawNext);
@@ -1877,7 +1882,10 @@ void vid_tick(Video* vid) {
 		if (!vid->intFRAME)
 			vid->xirq(IRQ_VID_IEND, vid->xptr);
 	} else if ((vid->ray.yb == vid->intAt.y) && (vid->ray.xb == vid->intAt.x) && (vid->inten & 1)) {		// added: ...and frame int enabled
-		vid->xirq(IRQ_VID_INT, vid->xptr);
+		if (vid->intSkip)
+			vid->intSkip = 0;
+		else
+			vid->xirq(IRQ_VID_INT, vid->xptr);
 	}
 }
 
