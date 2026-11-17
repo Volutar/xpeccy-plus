@@ -2,6 +2,7 @@
 #include "xcore/vscalers.h"
 #include "xcore/log.h"
 
+#include <QFileInfo>
 #include <QRegularExpression>
 #include <QOffscreenSurface>
 #include <QOpenGLContext>
@@ -469,7 +470,7 @@ void MainWin::initializeGL() {
 	vao.release();
 	initFill();
 
-	loadShader();
+	loadShader(false);
 	if (!conf.vid.shd_support) xlog(XLG_GL, XLL_WARN, "shaders are not supported");
 	qDebug() << "end:" << __FUNCTION__;
 }
@@ -761,7 +762,13 @@ void MainWin::loadShader(bool tell) {
 		prg.addShader(vtx_shd);
 		prg.addShader(frg_shd);
 		if (prg.link()) {
-			if (user_shader && tell) setMessage(" shader compiled ");
+			if (tell) {
+				const QString name = QFileInfo(QString::fromLocal8Bit(conf.vid.shader.c_str())).completeBaseName();
+				if (conf.vid.shader.empty())
+					setMessage(" no shader ");
+				else		// x1 draws with none (wantedShader); its narrow window clips the name's end
+					setMessage(QString(user_shader ? " shader %0 " : " shader from x2: %0 ").arg(name));
+			}
 			return;
 		}
 		qDebug() << "program link:" << prg.log();
@@ -770,7 +777,7 @@ void MainWin::loadShader(bool tell) {
 	if (user_shader) {
 		setMessage(" shader error ");
 		conf.vid.shader.clear();
-		loadShader(tell);		// the hold above keeps the context
+		loadShader(false);		// the hold above keeps the context; the error stays on screen
 	} else {
 		xlog(XLG_GL, XLL_ERROR, "the default shader failed to compile or link");
 	}

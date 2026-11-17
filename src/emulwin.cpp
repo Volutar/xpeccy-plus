@@ -191,6 +191,79 @@ void MainWin::vsyncUpdate() {
 	if (n) vsyncShown = shown;
 }
 
+// On top or not, in place; on Windows by SetWindowPos only: a Qt flag change rebuilds the style
+static void set_on_top(QWidget* w, bool on) {
+	const Qt::WindowFlags flags = w->windowFlags();
+	w->overrideWindowFlags(on ? (flags | Qt::WindowStaysOnTopHint) : (flags & ~Qt::WindowStaysOnTopHint));
+#if defined(__WIN32)
+	SetWindowPos(reinterpret_cast<HWND>(w->winId()), on ? HWND_TOPMOST : HWND_NOTOPMOST,
+		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+#else
+	w->windowHandle()->setFlag(Qt::WindowStaysOnTopHint, on);
+#endif
+}
+
+// Another window of ours with the on-top main window; a parentless one owned by it meanwhile
+static void top_lift(QWidget* w, QWindow* own, bool on) {
+	QWindow* win = w->windowHandle();
+	if (!win) return;
+	if (on && !w->parentWidget() && !win->transientParent()) {
+		win->setTransientParent(own);
+		w->setProperty("xTopOwned", true);
+	} else if (!on && w->property("xTopOwned").toBool()) {
+		win->setTransientParent(nullptr);
+#if defined(__WIN32)
+		// Qt gives the owner on the next show only
+		SetWindowLongPtr(reinterpret_cast<HWND>(w->winId()), GWLP_HWNDPARENT, 0);
+#endif
+		w->setProperty("xTopOwned", false);
+	}
+	w->setProperty("xTopLifted", on);
+	set_on_top(w, on);
+}
+
+// Windows lifts only what the main window owns as it goes on top; others shown later need it
+class xTopFilter : public QObject {
+	public:
+		xTopFilter(QMainWindow* f) : QObject(f), frame(f) {}
+	protected:
+		bool eventFilter(QObject* obj, QEvent* ev) override {
+			if ((ev->type() != QEvent::Show) || !obj->isWidgetType()) return false;
+			QWidget* w = static_cast<QWidget*>(obj);
+			if ((w == frame) || !w->isWindow() || !frame->windowHandle()) return false;
+			const Qt::WindowType type = w->windowType();
+			if ((type == Qt::Dialog) || (type == Qt::Window) || (type == Qt::Tool))
+				top_lift(w, frame->windowHandle(), true);
+			return false;
+		}
+	private:
+		QMainWindow* frame;
+};
+
+// Always on Top, but not in fullscreen: the picture would keep every other window under it
+void MainWin::applyOnTop() {
+	const bool on = conf.win.onTop && !conf.vid.fullScreen;
+	static xTopFilter* lifter = nullptr;
+	QWindow* win = frame->windowHandle();
+	if (!win) {		// not made yet: the flag goes with it
+		if (frame->windowFlags().testFlag(Qt::WindowStaysOnTopHint) != on)
+			frame->setWindowFlag(Qt::WindowStaysOnTopHint, on);
+	} else if (frame->windowFlags().testFlag(Qt::WindowStaysOnTopHint) != on) {
+		// in place: the widget's setWindowFlag would make it again, GL context and all
+		set_on_top(frame, on);
+	}
+	if (on && !lifter) {
+		lifter = new xTopFilter(frame);
+		qApp->installEventFilter(lifter);
+	} else if (!on && lifter) {
+		qApp->removeEventFilter(lifter);
+		delete lifter;
+		lifter = nullptr;
+		foreach(QWidget* w, QApplication::topLevelWidgets())
+			if (w->property("xTopLifted").toBool()) top_lift(w, win, false);
+	}
+}
+
 void MainWin::updateWindow() {
 	block = 1;
 	// the texture still holds the frame cut to the old bounds, and painting it
@@ -318,6 +391,7 @@ void MainWin::updateWindow() {
 	bytesPerLine = comp->vid->full.x * 8;
 	bufSize = bytesPerLine * comp->vid->full.y * (comp->vid->linedbl ? 2 : 1);
 	updateHead();
+	applyOnTop();
 	block = 0;
 	// started maximized: the first Restore gets the size the window had by hand
 	if (restoreFree.isValid() && !maxed && !conf.vid.fullScreen && frame->isVisible()) {
@@ -3169,20 +3243,22 @@ void MainWin::contextMenuEvent(QContextMenuEvent* ev) {
 
 // the keys as they are now, after Options too
 void MainWin::cutTexts() {
-	foreach(const xCutAct& cut, cutActs) {
-		QString key = shortcut_key(cut.id);
-		QString text = cut.name;
-		QString tip = cut.name;
-		tip.remove("...");
-		if (!key.isEmpty()) {
+	foreach(const xCutAct& cut, cutActs) cutText(cut);
+}
+
+void MainWin::cutText(const xCutAct& cut) {
+	QString key = shortcut_key(cut.id);
+	QString text = cut.name;
+	QString tip = cut.name;
+	tip.remove("...");
+	if (!key.isEmpty()) {
 #ifndef __APPLE__	// Cocoa would make a key equivalent of it, and take the key
-			text += "\t" + key;
+		text += "\t" + key;
 #endif
-			tip += QString(" (%0)").arg(key);
-		}
-		cut.act->setText(text);
-		cut.act->setToolTip(tip);
+		tip += QString(" (%0)").arg(key);
 	}
+	cut.act->setText(text);
+	cut.act->setToolTip(tip);
 }
 
 void MainWin::initMenuBar() {
@@ -3255,6 +3331,12 @@ void MainWin::initMenuBar() {
 	// the window's size first, then the picture in it
 	fullAct = cutAction(viewMenu, "Fullscreen", XCUT_FULLSCR, "fullscreen");
 	fullAct->setCheckable(true);
+	topAct = viewMenu->addAction("Always on Top", this, [this](bool on) {
+		conf.win.onTop = on;
+		applyOnTop();
+		saveConfig();
+	});
+	topAct->setCheckable(true);
 	// the border sizes Options has, taken at once as its Apply takes them
 	brdMenu = new xMenu("Border", this);
 	viewMenu->addMenu(brdMenu);
@@ -3838,14 +3920,16 @@ void MainWin::initMachineMenus() {
 	// a menu of its own, filled with dskMenu's items: one QMenu under two different
 	// items in two menus re-pops on every mouse move under one of them
 	drvMenu = media->addMenu(QIcon(":/images/fdd.png"), "Floppy Drives");
-	// the image in use, the tape or a disk, turned over: no list to pick from, so a key
-	cutAction(media, "Next Side", XCUT_SIDE_NEXT);
-	cutAction(media, "Previous Side", XCUT_SIDE_PREV);
 	QAction* fdcFastAct = media->addAction("Fast Disk Access", this, [](bool on) {
 		setFlagBit(on, &fdcFlag, FDC_FAST);
 		saveConfig();
 	});
 	fdcFastAct->setCheckable(true);
+	media->addSeparator();
+	// the tape or the disk in use, stepped through its set; named as the menu opens (sideMenu)
+	cutAction(media, "Next Tape", XCUT_SIDE_NEXT);
+	cutAction(media, "Previous Tape", XCUT_SIDE_PREV);
+	connect(media, &QMenu::aboutToShow, this, &MainWin::sideMenu);
 	media->addSeparator();
 	media->addMenu(cartMenu);
 	media->addAction(divItem);
@@ -4206,6 +4290,21 @@ void MainWin::renderFrame() {
 		comp_brk(comp, (stop == BRK_GO_CLOSE) ? BRK_STOP : BRK_TEMP);
 	frame_publish();
 	emu_unlock();
+}
+
+// Paused, new colors: the next frame drawn and shown, the machine put back (emu_draw_ahead)
+void MainWin::redrawHeld() {
+	Computer* comp = conf.zx;
+	if (!hasPicture || !comp || !conf.emu.pause || comp->flgDBG || pause_has(PR_DEZOG) || rewind_active())
+		return;
+	emu_lock();
+	const bool done = !comp->vid->nodraw && (comp->vid->nodrawNext < 1) && emu_draw_ahead(comp);
+	if (done) {
+		memcpy(scrimg, bufimg, bufSize);
+		frame_publish();
+	}
+	emu_unlock();
+	if (done) presentFrame();
 }
 
 void MainWin::onPrfChange() {
@@ -4718,6 +4817,7 @@ void MainWin::palSelected(QAction* act) {
 	}
 	saveConfig();
 	loadPalette();
+	redrawHeld();
 }
 
 // debug stufffff

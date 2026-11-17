@@ -527,7 +527,7 @@ QString xres_dir(const char* kind) {
 }
 
 // The overclock scale: the cpu gets a multiplier and the frame rate does not move.
-// Setting it puts emulated time back to normal, or the two would multiply.
+// Slow motion and fast forward are a setting of their own and stay as they are.
 
 double xspeed_mult(int pos) {
 	return (double)(1 << toLimits(pos, 0, XSPD_MAX));
@@ -535,23 +535,23 @@ double xspeed_mult(int pos) {
 
 void xspeed_set(int pos) {
 	pos = toLimits(pos, 0, xspeed_max());
-	conf.emu.tmode = XTM_NONE;
-	conf.emu.speed = 1.0;
-	sndUpdateSpeed();
 	if (conf.zx)
 		compSetTurbo(conf.zx, xspeed_mult(pos));
 }
 
-// Slow motion and fast forward are emulated time run slower or faster than the
-// host's. They start from normal speed: the overclock goes back to x1 first, and
-// moving it again ends them.
-void xspeed_toggle(int mode) {
-	int was = conf.emu.tmode;
-	xspeed_set(XSPD_NORMAL);
-	if (was == mode) return;
+static void xtime_set(int mode, double speed) {
 	conf.emu.tmode = mode;
-	conf.emu.speed = (mode == XTM_SLOW) ? 1.0 / conf.emu.slowDiv : (double)conf.emu.ffMul;
+	conf.emu.speed = speed;
 	sndUpdateSpeed();
+}
+
+// Slow motion and fast forward are emulated time run slower or faster than the
+// host's. The overclock is kept through them.
+void xspeed_toggle(int mode) {
+	if (conf.emu.tmode == mode)
+		xtime_set(XTM_NONE, 1.0);
+	else
+		xtime_set(mode, (mode == XTM_SLOW) ? 1.0 / conf.emu.slowDiv : (double)conf.emu.ffMul);
 }
 
 const int xtime_slow_steps[] = {2, 4, 8, 0};
@@ -593,13 +593,7 @@ int xtime_step(int dir) {
 		}
 	}
 	if (f == 0.0) return 0;
-	xspeed_set(XSPD_NORMAL);	// overclock and either mode off: one speed at a time
-	if (f > 1.0)
-		conf.emu.tmode = XTM_FFWD;
-	else if (f < 1.0)
-		conf.emu.tmode = XTM_SLOW;
-	conf.emu.speed = f;
-	sndUpdateSpeed();
+	xtime_set((f > 1.0) ? XTM_FFWD : (f < 1.0) ? XTM_SLOW : XTM_NONE, f);
 	return 1;
 }
 
@@ -632,7 +626,7 @@ void xspeed_key(int mode, int down) {
 
 // Another tape, disk or machine is another game: it starts at normal speed.
 void xspeed_modes_off() {
-	if (conf.emu.tmode) xspeed_set(XSPD_NORMAL);
+	if (conf.emu.tmode) xtime_set(XTM_NONE, 1.0);
 }
 
 int xspeed_get(void) {

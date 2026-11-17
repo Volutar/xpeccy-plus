@@ -554,14 +554,34 @@ int xThread::takeHits(Computer* comp, int* brkskip, bool conds) {
 // answer a frame early - and a wrong guess (a tape starting, a disk command
 // beginning mid-frame) shows an undrawn frame.
 
-static xState* raState = NULL;
+// A machine to come back to. The keyboard is not in the snapshot (a rewind must not bring
+// back keys let go), but a frame run ahead reads the ps/2 log, so it is kept here.
+typedef struct {
+	xState* state;
+	Keyboard kbd;
+} raHold;
+
+static int ra_hold(raHold* h, Computer* comp) {
+	if (!h->state) h->state = xstate_create();
+	if (!h->state || !xstate_save_as_is(h->state, comp)) return 0;
+	h->kbd = *comp->keyb;
+	return 1;
+}
+
+// Back where the machine stood: where the sound devices' copy (sound.cpp) stands too,
+// it never saw the frames run ahead - so no new start for it
+static int ra_unhold(raHold* h, Computer* comp) {
+	int seed = comp->sndSeed;
+	int ok = xstate_load(h->state, comp);
+	comp->sndSeed = seed;
+	if (ok) *comp->keyb = h->kbd;
+	return ok;
+}
+
+static raHold raState = {NULL, {}};
 static Computer* raOwner = NULL;	// what raBroken was decided about
 static int mixFrame = -2;		// conf.vid.fcount of the last frame antiflicker mixed
 static int raBroken = 0;		// the snapshot cannot be taken at all: stop trying
-// The keyboard is not in the snapshot - a rewind must not bring back keys let go
-// since - but a frame run ahead reads the ps/2 log and runs its repeat, so it is
-// put back with the machine
-static Keyboard raKbd;
 
 // The snapshot run-ahead and the antiflicker's look ahead wind back to, when this
 // frame allows one. xstate_safe() answers for everything the snapshot does not
@@ -576,22 +596,25 @@ static int ra_snapshot(Computer* comp, int finish) {
 	if (conf.emu.fast || (conf.emu.speed > 1.0) || conf.emu.pause || comp->flgDBG || rewind_active()) return 0;
 	if (autostart_busy()) return 0;		// the typist counts frames of its own
 	if (!xstate_safe(comp)) return 0;
-	if (!raState) raState = xstate_create();
-	if (!raState || !xstate_save_as_is(raState, comp)) {
+	if (!ra_hold(&raState, comp)) {
 		raBroken = 1;
 		return 0;
 	}
-	raKbd = *comp->keyb;
 	return 1;
 }
 
-// Back where the machine stood: where the sound devices' copy (sound.cpp) stands too,
-// it never saw the frames run ahead - so no new start for it
 static void ra_wind_back(Computer* comp) {
-	int seed = comp->sndSeed;
-	xstate_load(raState, comp);
-	comp->sndSeed = seed;
-	*comp->keyb = raKbd;
+	ra_unhold(&raState, comp);
+}
+
+// Paused: the next frame into bufimg, the machine put back; run-ahead's snapshot is idle then
+int emu_draw_ahead(Computer* comp) {
+	if (!xstate_safe(comp) || !ra_hold(&raState, comp)) return 0;
+	comp->flgFRM = 0;
+	// to the end of this frame and one whole frame: two swaps, the buffers as they were
+	int done = xstate_run_frame(comp) && xstate_run_frame(comp);
+	ra_unhold(&raState, comp);
+	return done;
 }
 
 static int ra_run_frame(Computer* comp) {
@@ -630,8 +653,7 @@ static struct raKeptT {
 	int first, count;		// the frames kept, by the comp->frmCount each one stands for
 	std::vector<unsigned char> pic[RA_KEEP];	// whole rasters, as bufimg holds one
 	unsigned long long print[RA_KEEP];
-	xState* state;			// the machine at the end of the last one
-	Keyboard kbd;
+	raHold held;			// the machine at the end of the last one
 } raKept;
 static std::vector<unsigned char> raShown;	// the frame made, while the ones ahead draw over it
 
@@ -707,12 +729,7 @@ static int ra_kept_frames(Computer* comp, int k, int shown, int finish) {
 		}
 		if (!last) ra_raster_get(raShown, vid);
 		if (raKept.count > 0) {
-			int seed = comp->sndSeed;		// a frame ahead: see ra_wind_back()
-			int ok = xstate_load(raKept.state, comp);
-			comp->sndSeed = seed;
-			if (ok) {
-				*comp->keyb = raKept.kbd;
-			} else {		// not the machine it was taken from: run them all from this one
+			if (!ra_unhold(&raKept.held, comp)) {		// not the machine it was taken from: run them all from this one
 				raKept.first = n + 1;
 				raKept.count = 0;
 			}
@@ -734,14 +751,12 @@ static int ra_kept_frames(Computer* comp, int k, int shown, int finish) {
 		// where the next frame end goes on from, when it keeps any of these: with one
 		// frame ahead it runs from the machine as it stands then
 		if (k > 1) {
-			if (!raKept.state) raKept.state = xstate_create();
-			if (!raKept.state || !xstate_save_as_is(raKept.state, comp)) {
+			if (!ra_hold(&raKept.held, comp)) {
 				ra_wind_back(comp);
 				if (!last) ra_raster_put(raShown, vid);
 				ra_kept_drop();
 				return 0;
 			}
-			raKept.kbd = *comp->keyb;
 		}
 		ra_wind_back(comp);
 		if (!last) ra_raster_put(raShown, vid);
@@ -1093,8 +1108,8 @@ void xThread::run() {
 			usleep(10);
 #endif
 	} while (!finish);
-	xstate_destroy(raState);
-	raState = NULL;
+	xstate_destroy(raState.state);
+	raState.state = NULL;
 	exit(0);
 }
 

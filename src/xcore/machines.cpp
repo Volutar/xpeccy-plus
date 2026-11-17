@@ -1383,6 +1383,7 @@ static void mac_from_def(const xMachine* mac) {
 	comp->turboCount = mac_turbo_tab(mac->turboSteps, comp->turboTab);
 	comp->turboStep = 1;		// a machine comes up on its base clock...
 	xspeed_set(XSPD_NORMAL);	// ...and at normal speed: neither is a setting
+	xspeed_modes_off();
 	xm_set_ram(mac_ram_size(mac->memory, comp->hw->mask));
 	mac_cold_ram(comp, mac->ramCold, mac->ramNoise);
 	comp->resbank = mac->resbank;

@@ -5,9 +5,9 @@
 
 How big the picture is, how much border it shows, and how it is drawn: the colors, a
 shader, anti-flicker. The quick switches are in the **View** menu; all the settings are on
-the **Video** page of **Options** (see [Video page](options-video.md)). The menu also shows
-and hides the menu bar, the toolbar, the status bar, the virtual keyboard and the input
-overlay.
+the **Video** page of **Options** (see [Video page](options-video.md)). The menu also keeps
+the window over the others, and shows and hides the menu bar, the toolbar, the status bar,
+the virtual keyboard and the input overlay.
 
 ## Size
 
@@ -126,6 +126,16 @@ OpenGL only **Border + Black** and **Black** can be picked.
 Fullscreen is remembered: if the program is closed in fullscreen, it starts in
 fullscreen next time.
 
+## Always on Top
+
+```{index} Always on Top
+```
+
+**View > Always on Top** keeps the main window over the windows of other programs, even
+when another program is in use. The program's own windows - the **Debugger**, the **Tape
+Player**, **Options**, a message - still open over it. It is off in fullscreen and comes
+back when the window does. The switch is remembered.
+
 ## Shaders
 
 ```{index} shader
@@ -155,9 +165,9 @@ A file there with the name of a built-in shader replaces that shader. The file h
 parts in GLSL: a line `vertex:` followed by the vertex shader, and a line `fragment:` followed by
 the fragment shader. The picture comes in as the texture `rubyTexture`, with its size in
 `rubyInputSize` and `rubyTextureSize`; the size of the picture on the screen is in
-`rubyOutputSize`. When a shader is picked, the message **shader compiled** appears on the
-picture. If the shader does not work, the message is **shader error**, and the picture is
-shown without a shader.
+`rubyOutputSize`. When a shader is picked in **View > Shaders** or read again by **Reload
+Shader**, its name appears on the picture, as **shader from x2** at **x1**. If the shader does not work, the message is
+**shader error**, and the picture is shown without a shader.
 
 ```{index} Reload Shader
 ```
@@ -205,6 +215,10 @@ built-in palette is shown instead.
 ```
 
 **Grayscale** in the **Picture** group of **Options > Video** draws the picture in shades of gray.
+
+A palette or **Grayscale** changed while the machine is paused shows at once, unless a tape
+is playing: the picture is drawn again in the new colors, and the machine stays where it
+was.
 
 ```{index} ULA+, ULA plus
 ```

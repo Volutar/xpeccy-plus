@@ -1025,11 +1025,12 @@ void xGamepadWidget::inputChanged(int type, int num, int state) {
 	if (!held.isEmpty()) labTry->setText(held);
 }
 
-void xGamepadWidget::keyTry(int id) {
-	if (!gpad->isKeyboard()) return;
+bool xGamepadWidget::keyTry(int id, bool show) {
+	if (!gpad->isKeyboard()) return false;
 	xJoyMapEntry ev;
 	ev.type = JOY_KEY;
 	ev.num = id;
 	ev.state = 1;
-	tryShow(ev);
+	if (show) tryShow(ev);
+	return !gpad->whatDoes(ev.type, ev.num, ev.state).isEmpty();
 }

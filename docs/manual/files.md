@@ -72,7 +72,9 @@ two keys: the hotkey, then the file's number. It has no key at first; set one on
 [Hotkeys page](hotkeys.md).
 
 **File > Reload** opens the last file again, the way it was opened: into the same drive,
-run or mounted. If you loaded a labels file in the Debugger, it is read again too.
+run or mounted. After a quick save is loaded, it opens the game the window title names,
+on the machine the save is on. If you loaded a labels file in the Debugger, it is read
+again too.
 
 ```{index} Auto-load labels, labels file
 ```
@@ -133,16 +135,19 @@ and its gamepad bindings and its cheat file stay, as when the next tape of a set
 itself (see [Tapes](tapes.md)). The side goes in while the machine runs, with no pause in
 the picture or the sound.
 
-```{index} Next Side, Previous Side, side; changing by a key
+```{index} Next Tape or Disk, Previous Tape or Disk, side; changing by a key
 ```
 
-**Media > Next Side**, Shift+F3, puts in the next side without a menu: side B after side A,
-disk 3 after disk 2, and the first after the last; **Previous Side** goes the other way and
-has no key at first (see [Hotkeys](hotkeys.md)). It works on the tape or the drive that the
-program used last, the one the window title names, and keeps to it while you press it again;
-before the program has used either, on the tape if it is one of a set, else on drive A. A
-playing tape is stopped first. A disk that is in another drive is passed over. The screen
-shows what went in, as `drive A: side B`, or `no other side`. Of the files of one side, as
+**Media > Next Tape** or **Next Disk**, Shift+F3, puts in the next side without a menu:
+side B after side A, disk 3 after disk 2, and the first after the last; **Previous Tape** or
+**Previous Disk** goes the other way and has no key at first (see [Hotkeys](hotkeys.md),
+where they are **Next Tape or Disk** and **Previous Tape or Disk**). It works on the tape or
+the drive that the program used last, the one the window title names, and keeps to it while
+you press it again; before the program has used either, on the tape if it is one of a set,
+else on drive A. The menu names which one it is - **Next Tape/Disk** while nothing is in it -
+and grays the items when there is no other side to put in. A playing tape is stopped first. A disk that is in another drive is passed
+over. The screen shows what went in, as `drive A: side B`, or `no other tape`, `no other
+disk`. Of the files of one side, as
 `Side A` and `Side A [a]`, the one with the same notes in brackets goes in. An image from
 an archive of several whose names make no set, as `BR_MHM1.TRD` and `BR_MHM2.TRD`, steps
 through the archive's list, as its menu shows it; the next tape of a set going in by

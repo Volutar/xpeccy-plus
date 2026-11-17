@@ -212,7 +212,8 @@ apply.
   **(not connected)**.
 
 Under it, a line shows what the last button or key pressed does, so you can try the pad right
-there. A gamepad plugged in for the first time is given to a player that has no device, and
+there. A key a player on the keyboard uses works only that line: the arrows do not move
+around the window. A gamepad plugged in for the first time is given to a player that has no device, and
 the window opens by itself to show it (not in fullscreen).
 
 On macOS a gamepad with an XInput / DInput switch is not seen at all in XInput mode: switch it

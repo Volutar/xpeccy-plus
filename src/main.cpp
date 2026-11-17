@@ -867,6 +867,8 @@ int main(int ac,char** av) {
 	app.connect(&optw, SIGNAL(closed()), &mwin, SLOT(optApply()));
 	app.connect(&optw, SIGNAL(s_apply()), &mwin, SLOT(optApplied()));
 	app.connect(&optw, &SetupWin::s_fill, &mwin, &MainWin::fillPreview);
+	// after the Apply is done: a new layout has the window's raster set up first
+	app.connect(&optw, &SetupWin::s_palette, &mwin, &MainWin::redrawHeld, Qt::QueuedConnection);
 	app.connect(&optw, SIGNAL(s_apply()), &app, SLOT(d_style()));
 	app.connect(&optw, SIGNAL(s_apply()), &dbgw, SLOT(updateStyle()));	// after d_style: the style sheet resets fonts
 	app.connect(&optw, SIGNAL(s_apply()), &dbgw, SLOT(showNumFmt()));

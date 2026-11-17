@@ -260,6 +260,7 @@ class SetupWin : public QDialog {
 		void s_prf_changed();
 		void s_padwin();		// open the gamepads window
 		void s_fill();			// a side fill setting moved: the window shows it
+		void s_palette();		// the colors changed: a paused picture is drawn again
 	private slots:
 		void reject();
 		void apply();

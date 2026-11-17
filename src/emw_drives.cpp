@@ -134,7 +134,7 @@ int drive_count(Computer* comp) {
 
 // THE SIDES OF A SET
 //
-// The Next/Previous Side keys, and the Tape Player's and the Disk Manager's buttons: the
+// The Next/Previous Tape or Disk keys, and the Tape Player's and the Disk Manager's buttons: the
 // next place of the set (Side A -> B, round past the end) in the deck or a drive. It goes
 // in as a pick from the menu does, a playing tape stopped first. A disk in another drive
 // is not taken.
@@ -185,19 +185,51 @@ void MainWin::sideStepIn(int src, int step) {
 	QString place;
 	const QString path = sideNext(src, step, &place);
 	if (path.isEmpty()) {
-		setMessage(" no other side ");
+		setMessage((src == MEDIA_TAPE) ? " no other tape " : " no other disk ");
 		return;
 	}
 	sidePut(src, path, place);
 }
 
-// The keys: in the slot of the image in use - the tape or the drive the title names, or
-// named last while a side changes in it; none yet, the tape if it can be stepped, else drive A
-void MainWin::sideStep(int step) {
+// The keys' slot: the image in use - the tape or the drive the title names, or named last
+// while a side changes in it; none yet, the tape if it can be stepped, else drive A
+int MainWin::sideSlot() {
 	int src = sideSrc;
 	if (sideHeld(src).isEmpty())
 		src = tapeSides ? MEDIA_TAPE : 0;
-	sideStepIn(src, step);
+	return src;
+}
+
+void MainWin::sideStep(int step) {
+	sideStepIn(sideSlot(), step);
+}
+
+// The Media menu's items as it opens: named after the keys' slot, grayed with no other side
+void MainWin::sideMenu() {
+	Computer* comp = conf.zx;
+	const int src = sideSlot();
+	const bool held = !sideHeld(src).isEmpty();
+	// nothing in that slot: either, unless the machine has no drives
+	const char* what = held ? ((src == MEDIA_TAPE) ? "Tape" : "Disk") : (drive_count(comp) < 1) ? "Tape" : "Tape/Disk";
+	bool can = held && !comp->rzx.play;
+	if (can && (src != MEDIA_TAPE)) {
+		// a drive's set is read from its folder: once for the disks that are in
+		QString key = QString::number(src) + "|" + mountPath;
+		for (int i = 0; i < 4; i++) key += "|" + sideHeld(i);
+		if (key != sideMenuKey) {
+			sideMenuKey = key;
+			sideMenuHas = hasSides(src);
+		}
+		can = sideMenuHas;
+	} else if (can) {
+		can = tapeSides;
+	}
+	for (xCutAct& cut : cutActs) {
+		if ((cut.id != XCUT_SIDE_NEXT) && (cut.id != XCUT_SIDE_PREV)) continue;
+		cut.name = QString("%0 %1").arg((cut.id == XCUT_SIDE_NEXT) ? "Next" : "Previous").arg(what);
+		cut.act->setEnabled(can);
+		cutText(cut);
+	}
 }
 
 void MainWin::sidePut(int src, const QString& path, const QString& place) {

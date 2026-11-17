@@ -70,18 +70,17 @@ void xPadWin::execOver() {
 	exec();
 }
 
-// A key pressed anywhere in the window shows on the try line of a player on
-// the keyboard. It is only looked at: the focused control still gets it. The
-// focused one is the first to see it, as it goes up through the parents.
+// A key on a keyboard player's try line; a bound one stops here, or the cursors walk the focus
 bool xPadWin::eventFilter(QObject* obj, QEvent* ev) {
-	if ((ev->type() == QEvent::KeyPress) && (obj == QApplication::focusWidget())
+	bool press = (ev->type() == QEvent::KeyPress);
+	if ((press || (ev->type() == QEvent::KeyRelease)) && (obj == QApplication::focusWidget())
 			&& (((QWidget*)obj)->window() == this)) {
 		QKeyEvent* kev = (QKeyEvent*)ev;
-		if (!kev->isAutoRepeat()) {
-			int id = pad_key_id(kev);
-			pan[0]->keyTry(id);
-			pan[1]->keyTry(id);
-		}
+		int id = pad_key_id(kev);
+		bool show = press && !kev->isAutoRepeat();
+		bool bound = pan[0]->keyTry(id, show);
+		bound = pan[1]->keyTry(id, show) || bound;
+		if (bound) return true;
 	}
 	return QDialog::eventFilter(obj, ev);
 }

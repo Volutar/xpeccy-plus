@@ -94,7 +94,7 @@ class xGamepadWidget : public QWidget {
 		xGamepadWidget(xGamepad*, QWidget* = nullptr);
 		void refresh();
 		void updateList();
-		void keyTry(int);			// a key pressed in the window, for the try line
+		bool keyTry(int, bool show);	// a key pressed in the window: bound here? shown on the try line
 		int nameWidth();			// the name column, as wide as its longest
 		void setNameWidth(int);
 		std::function<void()> changed;		// the player's input now does something else
