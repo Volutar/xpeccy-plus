@@ -133,6 +133,17 @@ static inline sndPair snd_mix_flt(sndBeepFlt st[2], sndPair lev, int type, int r
 	return lev;
 }
 
+// A stereo separation, 0..100: each side takes some of the other, the sum kept;
+// 100 leaves the sides as they are, 0 is mono
+static inline sndPair snd_sep(sndPair lev, int sep) {
+	if (sep >= 100) return lev;
+	if (sep < 0) sep = 0;
+	int l = lev.left;
+	lev.left = (l * (100 + sep) + lev.right * (100 - sep)) / 200;
+	lev.right = (lev.right * (100 + sep) + l * (100 - sep)) / 200;
+	return lev;
+}
+
 // A dc blocker, one per device, kept by whoever mixes them. None of the chips swing
 // about zero - an AY sits between silence and full - and that offset is not sound:
 // it is a level the speaker holds, and it eats the headroom every device shares. So
