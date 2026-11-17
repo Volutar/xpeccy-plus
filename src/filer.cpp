@@ -2048,14 +2048,16 @@ xMediaOpen media_last_open() {
 	return media_last;
 }
 
-// Reload after a save is put back: the game the title names, on the save's machine
+// Reload after a save is put back: the game the title names, on the save's machine; a
+// machine's save names none, and Reload keeps to the file it had
 static void media_follow_game() {
 	const QString img = game_image();
-	if (!img.isEmpty() && !media_last.path.isEmpty() && same_image(img, media_last.path)) {
+	if (img.isEmpty()) return;
+	if (!media_last.path.isEmpty() && same_image(img, media_last.path)) {
 		media_last.pinned = true;	// opened before: into the same drive, run or not
 		return;
 	}
-	media_last = {img, FG_ALL, 0, img.isEmpty() ? 0 : conf.autorun, true};
+	media_last = {img, FG_ALL, 0, conf.autorun, true};
 }
 
 // Run the machine on to the end of the next INT acknowledge, where loading puts
