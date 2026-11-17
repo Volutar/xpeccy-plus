@@ -1204,7 +1204,7 @@ static int comp_tick_to_dots(Computer* comp, int flen, int tick) {
 	int dpt = vid->dotPerFrame / flen;
 	if (dpt * flen != vid->dotPerFrame)
 		return (int)((long long)tick * vid->dotPerFrame / flen);
-	return tick * dpt - (vid->intp.y * vid->full.x + vid->intp.x) % dpt;
+	return tick * dpt - (vid->intAt.y * vid->full.x + vid->intAt.x) % dpt;
 }
 
 static int comp_dots_to_tick(Computer* comp, int flen, int dots) {
@@ -1212,7 +1212,7 @@ static int comp_dots_to_tick(Computer* comp, int flen, int dots) {
 	int dpt = vid->dotPerFrame / flen;
 	if (dpt * flen != vid->dotPerFrame)
 		return (int)((long long)dots * flen / vid->dotPerFrame);
-	return ((dots + (vid->intp.y * vid->full.x + vid->intp.x) % dpt) / dpt) % flen;
+	return ((dots + (vid->intAt.y * vid->full.x + vid->intAt.x) % dpt) / dpt) % flen;
 }
 
 // Where a snapshot with no frame position (.sna, .z80 v1/v2) is put. With
@@ -1347,6 +1347,11 @@ void comp_update_timings(Computer* comp) {
 	} else {
 		comp->nsPerTickFixed = NSD_TO_FIXED(comp->nsPerTick);
 	}
+	// The pin of the frame INT and where it is taken are apart on a board whose layout
+	// says where the pin goes low (hw->intLag): the cpu sees it at its next clock edge and
+	// samples it a T before an instruction ends (Z80: on the last T's rising edge), two
+	// ticks in all - 4 dots at 3.5 MHz, 1 at 14 (zint.v, zclock.v on the ZX Evolution).
+	vid_set_int_lag(comp->vid, comp->hw->intLag ? (int)((2 * comp->nsPerTickFixed + comp->vid->nsPerDotFixed / 2) / comp->vid->nsPerDotFixed) : 0);
 	// the video is only ever handed whole ticks: whole dots too, where a tick is
 	comp->vid->tickWhole = (comp->nsPerTickFixed > 0) && !(comp->nsPerTickFixed % comp->vid->nsPerDotFixed);
 	comp->earTpt = (1e9 / 3.5e6) / comp->nsPerTick;	// machine ticks in a 3.5 MHz T, for zx_ear_edge

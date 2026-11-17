@@ -81,6 +81,7 @@ void tslReset(Computer* comp) {
 	comp->vid->tsconf.lat.mask = 0;
 	comp->vid->intp.x = comp->vid->tsconf.hsint;
 	comp->vid->intp.y = 0;
+	vid_int_place(comp->vid);
 	comp->vid->inten = 1;
 	comp->flgLINT = 0;		// the ack latches are not cleared anywhere else
 	comp->flgDINT = 0;
@@ -486,17 +487,20 @@ void tsOut22AF(Computer* comp, int port, int val) {
 	// counted in dots from the start of the blanking, as ray.xb is (video_sync.v)
 	comp->vid->tsconf.hsint = (val << 1);
 	comp->vid->intp.x = comp->vid->tsconf.hsint;
+	vid_int_place(comp->vid);
 }
 
 void tsOut23AF(Computer* comp, int port, int val) {
 	comp->vid->tsconf.ilinl = val & 0xff;
 	comp->vid->intp.y = comp->vid->tsconf.intLine;
+	vid_int_place(comp->vid);
 }
 
 void tsOut24AF(Computer* comp, int port, int val) {
 	comp->vid->tsconf.ilinh = val & 1;		// VSINT is 9 bits
 	comp->vid->tsconf.intInc = (val >> 4) & 0x0f;
 	comp->vid->intp.y = comp->vid->tsconf.intLine;
+	vid_int_place(comp->vid);
 }
 
 void tsOut26AF(Computer* comp, int port, int val) {
@@ -997,6 +1001,7 @@ void ts_irq(Computer* comp, int t) {
 				if ((v >> 6) == 5) v &= 0x3f;
 				comp->vid->tsconf.intLine = v & 0x1ff;
 				comp->vid->intp.y = comp->vid->tsconf.intLine;
+				vid_int_place(comp->vid);
 			}
 			if (comp->flgVDOS)
 				ts_hold_frame(comp);
@@ -1076,4 +1081,4 @@ xPortDsc zx_port_tab_ts[] = {
 
 HardWare tsl_hw_core = {HW_TSLAB,"TSConf","ZX Evolution (TSConf)",MEM_4M,1.0,NULL,zx_port_tab_ts,
 			zx_init,tslMapMem,tslOut,tslIn,tslMRd,tslMWr,ts_irq,ts_ack,tslReset,ts_sync,ts_keyp,ts_keyr,zx_vol,
-			NULL,NULL,&ts_quiet, .sndtake = zx_snd_take, .sndmix = zx_mix, .intvecs = ts_int_vecs};
+			NULL,NULL,&ts_quiet, .sndtake = zx_snd_take, .sndmix = zx_mix, .intvecs = ts_int_vecs, .intLag = 1};

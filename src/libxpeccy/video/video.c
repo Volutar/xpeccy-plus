@@ -210,7 +210,7 @@ static int vid_wrap(Video* vid, int dots) {
 void vid_set_ray(Video* vid, int dots) {
 	vid_unlazy(vid);
 	int fx = vid->full.x;
-	int b = vid_wrap(vid, vid->intp.y * fx + vid->intp.x + dots);
+	int b = vid_wrap(vid, vid->intAt.y * fx + vid->intAt.x + dots);
 	vid->ray.yb = b / fx;
 	vid->ray.xb = b % fx;
 	// xb/yb restart where the ray reaches vend.x on line vend.y - 1
@@ -229,7 +229,7 @@ void vid_set_ray(Video* vid, int dots) {
 int vid_ray_dots(Video* vid) {
 	vid_unlazy(vid);
 	int fx = vid->full.x;
-	return vid_wrap(vid, (vid->ray.yb - vid->intp.y) * fx + vid->ray.xb - vid->intp.x);
+	return vid_wrap(vid, (vid->ray.yb - vid->intAt.y) * fx + vid->ray.xb - vid->intAt.x);
 }
 
 // Border shown on each side, in dots and lines. The frame is the same size on
@@ -364,6 +364,25 @@ void vid_set_layout(Video* vid, vLayout* lay) {
 	vid->intp = lay->intpos;
 	vid->intsize = lay->intSize;
 	vid_upd_layout(vid);
+	vid_int_place(vid);
+}
+
+// Where the frame INT is seen: an instruction has to end intLag dots past the dot the
+// pin goes low on to take it. A machine whose layout counts that in already has no lag;
+// a pin past the end of the line (TSConf's HSINT can say so) never fires, lag or not.
+void vid_int_place(Video* vid) {
+	vid->intAt = vid->intp;
+	if ((vid->intp.x >= vid->full.x) || !vid->intLag) return;
+	vid->intAt.x += vid->intLag;
+	if (vid->intAt.x >= vid->full.x) {
+		vid->intAt.x -= vid->full.x;
+		vid->intAt.y = (vid->intAt.y + 1) % vid->full.y;
+	}
+}
+
+void vid_set_int_lag(Video* vid, int lag) {
+	vid->intLag = lag;
+	vid_int_place(vid);
 }
 
 // set visible area size
@@ -1016,7 +1035,7 @@ long long vid_quiet_dots(Video* vid, int lineInt) {
 	} else if (vid->inten & 1) {
 		// counted from the blanking edges, the way vid_tick() counts it
 		long long pos = vid->ray.yb * fx + vid->ray.xb;
-		long long to = vid->intp.y * fx + vid->intp.x - pos;
+		long long to = vid->intAt.y * fx + vid->intAt.x - pos;
 		if (to <= 0) to += fx * vid->full.y;
 		if (to < d) d = to;
 	}
@@ -1837,7 +1856,7 @@ void vid_tick(Video* vid) {
 		vid->intFRAME--;
 		if (!vid->intFRAME)
 			vid->xirq(IRQ_VID_IEND, vid->xptr);
-	} else if ((vid->ray.yb == vid->intp.y) && (vid->ray.xb == vid->intp.x) && (vid->inten & 1)) {		// added: ...and frame int enabled
+	} else if ((vid->ray.yb == vid->intAt.y) && (vid->ray.xb == vid->intAt.x) && (vid->inten & 1)) {		// added: ...and frame int enabled
 		vid->xirq(IRQ_VID_INT, vid->xptr);
 	}
 }
@@ -1860,8 +1879,8 @@ static int vid_run_len(Video* vid, int n) {
 	}
 	if (vid->intFRAME > 0) {
 		if (vid->intFRAME - 1 < k) k = vid->intFRAME - 1;
-	} else if ((vid->inten & 1) && (vid->ray.yb == vid->intp.y) && (vid->intp.x > vid->ray.xb)) {
-		if (vid->intp.x - 1 - vid->ray.xb < k) k = vid->intp.x - 1 - vid->ray.xb;
+	} else if ((vid->inten & 1) && (vid->ray.yb == vid->intAt.y) && (vid->intAt.x > vid->ray.xb)) {
+		if (vid->intAt.x - 1 - vid->ray.xb < k) k = vid->intAt.x - 1 - vid->ray.xb;
 	}
 	return k;
 }

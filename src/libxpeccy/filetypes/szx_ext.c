@@ -1126,6 +1126,7 @@ static void ext_vid(Computer* comp, const unsigned char* p, size_t n) {
 	vid->snowLow = tmp_.snowLow;
 	vid->snowBank = tmp_.snowBank;
 	vid->intp = tmp_.intp;
+	vid_int_place(vid);
 	vid->intsize = tmp_.intsize;
 	vid->scrsize = tmp_.scrsize;
 	vid->idx = tmp_.idx;

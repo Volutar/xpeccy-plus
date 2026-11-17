@@ -258,7 +258,7 @@ static long long fl_time_room(Computer* comp, int per) {
 	// nor past the interrupt: the frame's T count restarts there, mid-opcode. It
 	// is placed from the blanking edge (ray.xb/yb), not from the frame's top.
 	long long pos = (long long)vid->ray.yb * vid->full.x + vid->ray.xb;
-	long long intp = (long long)vid->intp.y * vid->full.x + vid->intp.x;
+	long long intp = (long long)vid->intAt.y * vid->full.x + vid->intAt.x;
 	long long toInt = intp - pos;
 	if (toInt <= 0) toInt += (long long)vid->full.x * vid->full.y;
 	if (toInt < dots)
