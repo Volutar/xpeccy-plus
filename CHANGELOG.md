@@ -27,12 +27,11 @@ before that point is upstream's history and is not repeated here.
   Mute button's arrow and in Sound of the right-click menu. Every machine can sound through
   its own board (By machine): the 48K's ULA and small speaker, a TV on the aerial input or
   the +2A/+3's own mixer (both with the AY too), the ZX Evolution's filter, the Scorpion's
-  and the ATM's coupling capacitors - or through one of them, or a piezo sounder, picked for
-  all, the ZX Next too. Off by default. The filter follows Slow Motion and Fast Forward, so a
-  tone it cuts stays cut as it drops in pitch. Under Experimental: 5 and 11 kHz low-passes
-  for PWM beeper music. Beside it, PSG stereo sets the voices' order for every machine (the
-  Next keeps its own), and one Stereo separation serves the PSG, the General Sound and the
-  Next.
+  and the ATM's coupling capacitors. Or one of them, a piezo sounder or a 5 kHz low-pass for
+  PWM beeper music is picked for all, the ZX Next too, and takes all of the sound. Off by
+  default. The filter follows Slow Motion and Fast Forward, so a tone it cuts stays cut as it
+  drops in pitch. Beside it, PSG stereo sets the voices' order for every machine (the Next
+  keeps its own), and one Stereo separation serves the PSG, the General Sound and the Next.
 
 - **Integer Scale**: View > Integer Scale and Options > Video. In fullscreen and in a maximized
   or resized window the picture keeps a whole number of pixels per dot, the largest that fits,
