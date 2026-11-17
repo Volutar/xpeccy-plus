@@ -446,7 +446,12 @@ void SetupWin::makeSoundGroup() {
 		(*chk[i])->setToolTip(tips[i]);
 		lab->setToolTip(tips[i]);
 		label_for(lab, *chk[i]);
-		fg->addWidget(*chk[i], i + 1, 0);
+		// as wide as its box, no gap for a text after it: its middle under the icon's
+		QStyleOptionButton opt;
+		opt.initFrom(*chk[i]);
+		QRect box = (*chk[i])->style()->subElementRect(QStyle::SE_CheckBoxIndicator, &opt, *chk[i]);
+		(*chk[i])->setFixedWidth(box.right() + 1);
+		fg->addWidget(*chk[i], i + 1, 0, Qt::AlignCenter);
 		fg->addWidget(lab, i + 1, 1, 1, 2);
 	}
 	fg->setColumnStretch(2, 1);
