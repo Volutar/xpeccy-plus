@@ -166,7 +166,7 @@ parts in GLSL: a line `vertex:` followed by the vertex shader, and a line `fragm
 the fragment shader. The picture comes in as the texture `rubyTexture`, with its size in
 `rubyInputSize` and `rubyTextureSize`; the size of the picture on the screen is in
 `rubyOutputSize`. When a shader is picked in **View > Shaders** or read again by **Reload
-Shader**, its name appears on the picture. If the shader does not work, the message is
+Shader**, its name appears on the picture, as **shader from x2** at **x1**. If the shader does not work, the message is
 **shader error**, and the picture is shown without a shader.
 
 ```{index} Reload Shader
