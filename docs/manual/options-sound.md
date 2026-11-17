@@ -13,10 +13,20 @@ whatever sound chips and cards the machine has. Which devices a machine has is s
 the **Machine** page of **Options** (see [Sound devices](options-machine.md#sound-devices)); how the sound is played and how loud each device is
 are on the **Sound** page.
 
+```{index} Emulate sound, sound; off
+```
+
+**Emulate sound**, over the groups, switches the sound off and on. With it off, the program
+plays silence. The machine still runs at its normal speed, and its sound is not worked out
+at all, which leaves more of the computer to the emulation. The Debugger's scope and the
+sound of a rewind are silent for that time too. The rest of the page is greyed while it is
+off. This is not the same as the **NULL** driver below, which works the sound out and only
+does not play it.
+
 ```{index} Driver, Latency, Auto adjust, sound; latency
 ```
 
-**Options > Sound** has five groups.
+Under it are four groups.
 
 **Output** - how the sound reaches your speakers:
 
@@ -29,11 +39,6 @@ are on the **Sound** page.
   the value by itself: it raises the latency when the sound runs short and lowers it
   again after a long time with no gaps. The slider then shows the value the program has
   settled on.
-
-**Sound** beside **Output** has one switch, **Enabled**. With it off, the program plays
-silence. The machine still runs at its normal speed, and its sound is not worked out at
-all, which leaves more of the computer to the emulation. The Debugger's scope and the
-sound of a rewind are silent for that time too.
 
 ```{index} Stereo, Filters, Board filter, PSG stereo, Separation, PSG; stereo
 ```
@@ -95,7 +100,8 @@ The beeper is a single bit of a port, but what you heard from it depended on the
 48K's own small speaker, a TV, an amplifier behind a coupling capacitor, a piezo sounder.
 On some machines the sound chip went the same way. **Board filter** in **Filters**
 picks what every machine sounds through. Its choices are also under the arrow of the
-toolbar's {icon}`speaker` **Mute** button and in **Sound** of the right-click menu.
+toolbar's {icon}`speaker` **Mute** button and in **Sound** of the right-click menu, and with
+them, under **Output filters**, **Low cut (DC)** and **High cut (anti-alias)**.
 
 The filter runs in the machine's time, so it slows down and speeds up with it: in **Slow
 Motion** a high tone it cuts stays cut as it drops in pitch. **No filter** in the list is
