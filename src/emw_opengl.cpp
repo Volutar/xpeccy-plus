@@ -762,10 +762,13 @@ void MainWin::loadShader(bool tell) {
 		prg.addShader(vtx_shd);
 		prg.addShader(frg_shd);
 		if (prg.link()) {
-			if (tell && user_shader)
-				setMessage(QString(" shader %0 ").arg(QFileInfo(QString::fromLocal8Bit(shdLoaded.c_str())).completeBaseName()));
-			else if (tell && conf.vid.shader.empty())
-				setMessage(" no shader ");
+			if (tell) {
+				const QString name = QFileInfo(QString::fromLocal8Bit(conf.vid.shader.c_str())).completeBaseName();
+				if (conf.vid.shader.empty())
+					setMessage(" no shader ");
+				else		// x1 draws with none (wantedShader); its narrow window clips the name's end
+					setMessage(QString(user_shader ? " shader %0 " : " shader from x2: %0 ").arg(name));
+			}
 			return;
 		}
 		qDebug() << "program link:" << prg.log();
