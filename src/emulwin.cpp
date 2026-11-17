@@ -192,8 +192,19 @@ void MainWin::vsyncUpdate() {
 	if (n) vsyncShown = shown;
 }
 
-// Another window of ours over an on-top main window, or back as it was; one with
-// no parent is the main window's own meanwhile.
+// On top or not, in place; on Windows by SetWindowPos only: a Qt flag change rebuilds the style
+static void set_on_top(QWidget* w, bool on) {
+	const Qt::WindowFlags flags = w->windowFlags();
+	w->overrideWindowFlags(on ? (flags | Qt::WindowStaysOnTopHint) : (flags & ~Qt::WindowStaysOnTopHint));
+#if defined(__WIN32)
+	SetWindowPos(reinterpret_cast<HWND>(w->winId()), on ? HWND_TOPMOST : HWND_NOTOPMOST,
+		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+#else
+	w->windowHandle()->setFlag(Qt::WindowStaysOnTopHint, on);
+#endif
+}
+
+// Another window of ours with the on-top main window; a parentless one owned by it meanwhile
 static void top_lift(QWidget* w, QWindow* own, bool on) {
 	QWindow* win = w->windowHandle();
 	if (!win) return;
@@ -202,16 +213,17 @@ static void top_lift(QWidget* w, QWindow* own, bool on) {
 		w->setProperty("xTopOwned", true);
 	} else if (!on && w->property("xTopOwned").toBool()) {
 		win->setTransientParent(nullptr);
+#if defined(__WIN32)
+		// Qt gives the owner on the next show only
+		SetWindowLongPtr(reinterpret_cast<HWND>(w->winId()), GWLP_HWNDPARENT, 0);
+#endif
 		w->setProperty("xTopOwned", false);
 	}
 	w->setProperty("xTopLifted", on);
-	const Qt::WindowFlags flags = w->windowFlags();
-	w->overrideWindowFlags(on ? (flags | Qt::WindowStaysOnTopHint) : (flags & ~Qt::WindowStaysOnTopHint));
-	win->setFlag(Qt::WindowStaysOnTopHint, on);
+	set_on_top(w, on);
 }
 
-// The system lifts only the windows the main window owns as it goes on top: one
-// shown after that would open under it.
+// Windows lifts only what the main window owns as it goes on top; others shown later need it
 class xTopFilter : public QObject {
 	public:
 		xTopFilter(QMainWindow* f) : QObject(f), frame(f) {}
@@ -237,16 +249,9 @@ void MainWin::applyOnTop() {
 	if (!win) {		// not made yet: the flag goes with it
 		if (frame->windowFlags().testFlag(Qt::WindowStaysOnTopHint) != on)
 			frame->setWindowFlag(Qt::WindowStaysOnTopHint, on);
-	} else if (win->flags().testFlag(Qt::WindowStaysOnTopHint) != on) {
-		// through the QWindow, which changes the window in place: the widget's own
-		// setWindowFlag would make it again, GL context and all, and hide it
-		Qt::WindowFlags flags = frame->windowFlags();
-		frame->overrideWindowFlags(on ? (flags | Qt::WindowStaysOnTopHint) : (flags & ~Qt::WindowStaysOnTopHint));
-		win->setFlag(Qt::WindowStaysOnTopHint, on);
-#if defined(__WIN32)
-		SetWindowPos(reinterpret_cast<HWND>(frame->winId()), on ? HWND_TOPMOST : HWND_NOTOPMOST,
-			0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-#endif
+	} else if (frame->windowFlags().testFlag(Qt::WindowStaysOnTopHint) != on) {
+		// in place: the widget's setWindowFlag would make it again, GL context and all
+		set_on_top(frame, on);
 	}
 	if (on && !lifter) {
 		lifter = new xTopFilter(frame);
