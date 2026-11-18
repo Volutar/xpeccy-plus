@@ -96,24 +96,7 @@ static inline void alf_devs_sync_in(Computer* comp, int ns) {
 	tsSync(comp->ts, ns);
 }
 
-// The NMI button is a level, as long as it is down (IRQ_NMI .. IRQ_NMI_UP), and
-// this long at least: a menu click or a tap of the key is a press, too
-#define NMI_MIN_FRAMES	3
-
-// the button let go, once it has been down NMI_MIN_FRAMES
-static inline void zx_nmi_up(Computer* comp) {
-	if (comp->nmiUp && (comp->tickTotal >= comp->nmiUntil)) {
-		comp->nmiUp = 0;
-		comp->flgNMIRQ = 0;
-		comp->nmiLine = 0;
-	}
-}
-
-// The Beta disk's "magic" button (the Scorpion's D59.2): a fetch from RAM takes the
-// button into the line, a fetch from ROM lets the line go. The Z80 takes an edge,
-// so a button held down comes again only after the program has been in ROM - the
-// handler at #0066, as a rule. The NMI raises DOS. RAM is above #3FFF, or wherever
-// it is on a board that says so (nmiRamGate).
+// The Beta disk's magic button (Scorpion D59.2): an edge on a fetch from RAM, let go by one from ROM
 static inline void zx_nmi_magic(Computer* comp) {
 	int pc = comp->cpu->regPC;
 	int ram = (pc > 0x3fff) || (comp->nmiRamGate && (mem_get_page(comp->mem, pc)->type == MEM_RAM));
@@ -130,7 +113,6 @@ static inline void zx_nmi_magic(Computer* comp) {
 
 static inline void zx_sync_in(Computer* comp, int ns) {
 	zx_devs_sync_in(comp, ns);
-	if (comp->nmiUp) zx_nmi_up(comp);
 	// nmi: a divMMC's button, or the Beta disk's "magic" one
 	if (comp->div->model) {
 		if (div_nmi(comp->div, comp->flgNMIRQ))

@@ -657,6 +657,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void xkey_release(int);
 		void xcut_release(int);
 		void nmi_let_go();
+		bool nmiKeyDown = false;	// the NMI button is down on a key, not a click
 		int mapHotkey(const QKeySequence&, int, Qt::Key*, Qt::KeyboardModifier*);
 		bool mapIsHotkey(const xJoyMapEntry&);
 		void mapReplayHeld(xGamepad*);

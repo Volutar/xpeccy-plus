@@ -96,10 +96,7 @@ int scoMRd(Computer* comp, int adr, int m1) {
 	return res;
 }
 
-// NMI (the magic button) comes at an opcode fetch from RAM, RAM at #0000 (1FFD.0)
-// too: D9.1 clocks the button into D59.2 on CSRAM (nmiRamGate). It raises DOS and
-// nothing else: ROM A14 stays 7FFD.4, so from 128 it lands in the service ROM,
-// from 48 in TR-DOS.
+// The magic NMI raises DOS alone: ROM A14 stays 7FFD.4 (128: the service ROM, 48: TR-DOS)
 void scoSync(Computer* comp, int ns) {
 	int line = comp->nmiLine;
 	int rom = comp->flgROM;

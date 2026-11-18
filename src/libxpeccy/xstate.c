@@ -301,6 +301,7 @@ int xstate_load(xState* st, Computer* comp) {
 	int brkIO = comp->flgBRKIO;
 	int brkIrq = comp->flgIBRK;
 	int brkCond = comp->flgCOND;
+	int nmiKey = comp->nmiKey;
 	// The stereo separation is the Sound page's (xm_set_sep), not the machine's: a state from
 	// before it moved keeps it, or the chips would go back and the GS, out of a state while
 	// it is off, would not
@@ -342,6 +343,9 @@ int xstate_load(xState* st, Computer* comp) {
 	comp->flgBRKIO = brkIO;
 	comp->flgIBRK = brkIrq;
 	comp->flgCOND = brkCond;
+	// the NMI key let go is not taken back: a state from while it was down lets the button go
+	comp->nmiKey = nmiKey;
+	if (!nmiKey && comp->flgNMIRQ) comp->nmiUp = 1;
 	for (i = 0; comp->ts && (i < 4); i++) ts_chip(comp->ts, i)->sep = sep[i];
 	if (comp->gs) comp->gs->sep = gsSep;
 	if (comp->ts) ts_state_restore(comp->ts);

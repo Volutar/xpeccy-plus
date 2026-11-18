@@ -1514,6 +1514,7 @@ int compSetHardware(Computer* comp, const char* name) {
 		memSetSize(comp->mem, MEM_2M, -1);
 	comp->hw = hw;
 	comp->flgNMIRQ = 0;		// a held NMI button is the old machine's
+	comp->nmiKey = 0;
 	comp->nmiUp = 0;
 	comp->nmiLine = 0;
 	// the Scorpion's magic button takes any fetch from RAM, #0000 too (D9.1 on CSRAM)

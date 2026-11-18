@@ -517,6 +517,7 @@ void MainWin::xkey_press(int xkey, bool cmd, QKeyEvent* ev) {
 				emu_lock();		// the Next raises it on the CPU at once
 				comp_irq(IRQ_NMI, comp);	// every core is a Z80 now, the Next's Z80N included
 				emu_unlock();
+				nmiKeyDown = !cmd;
 				break;
 			case XCUT_TAPWIN:
 				emit s_tape_show();
@@ -566,6 +567,8 @@ void MainWin::xkey_press(int xkey, bool cmd, QKeyEvent* ev) {
 
 void MainWin::keyReleaseEvent(QKeyEvent *ev) {
 	if (ev->isAutoRepeat()) return;
+	// any key up lets the NMI button go: its own may come up named otherwise, its modifier first
+	if (nmiKeyDown) nmi_let_go();
 	releaseChord(ev, false);
 	if (padKey(ev, false)) return;
 	Computer* comp = conf.zx;
@@ -636,6 +639,7 @@ void MainWin::xcut_release(int keyid) {
 
 // the NMI button up: the machine holds it as long as the key, a few frames at least
 void MainWin::nmi_let_go() {
+	nmiKeyDown = false;
 	emu_lock();
 	comp_irq(IRQ_NMI_UP, conf.zx);
 	emu_unlock();

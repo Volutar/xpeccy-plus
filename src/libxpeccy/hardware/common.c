@@ -83,6 +83,18 @@ void zx_snow(Computer* comp) {
 	}
 }
 
+// a click or a tap of the NMI key holds the button this long
+#define NMI_MIN_FRAMES	3
+
+// the button let go (nmiUp), at a frame INT once it has been down NMI_MIN_FRAMES
+static void zx_nmi_up(Computer* comp) {
+	if (comp->nmiUp && (comp->tickTotal >= comp->nmiUntil)) {
+		comp->nmiUp = 0;
+		comp->flgNMIRQ = 0;
+		comp->nmiLine = 0;
+	}
+}
+
 void zx_irq(Computer* comp, int t) {
 	switch(t) {
 		case IRQ_VID_INT:			// frame int start
@@ -91,7 +103,7 @@ void zx_irq(Computer* comp, int t) {
 				comp->intVector = 0xff;
 				comp->cpu->intrq |= Z80_INT;
 			}
-			if (comp->nmiUp) zx_nmi_up(comp);	// for a machine that never runs zx_sync_in
+			zx_nmi_up(comp);
 			break;
 		case IRQ_RZX_INT:
 			// A recording's frame ends after the instruction that used up its
@@ -116,11 +128,13 @@ void zx_irq(Computer* comp, int t) {
 			comp->cpu->intrq &= ~Z80_INT;
 			break;
 		case IRQ_NMI:				// the button down: zx_sync takes it from here
+			comp->nmiKey = 1;
 			comp->flgNMIRQ = 1;
 			comp->nmiUp = 0;
 			comp->nmiUntil = comp->tickTotal + (long long)(NMI_MIN_FRAMES * comp->vid->nsPerFrame / comp->nsPerTick);
 			break;
-		case IRQ_NMI_UP:			// a press shorter than NMI_MIN_FRAMES is let go later
+		case IRQ_NMI_UP:
+			comp->nmiKey = 0;
 			if (comp->flgNMIRQ) comp->nmiUp = 1;
 			zx_nmi_up(comp);
 			break;

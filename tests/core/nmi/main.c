@@ -11,6 +11,7 @@
 
 #include "spectrum.h"
 #include "cpu/Z80/z80.h"
+#include "xstate.h"
 
 static int failures;
 static const char* romdir;
@@ -183,6 +184,25 @@ static void ram_at_0(void) {
 	compDestroy(comp);
 }
 
+// A state from while the key was down (rewind), loaded after it came up: the button
+// is let go, not held with no key
+static void state_back(void) {
+	Computer* comp = machine("Scorpion", RES_48);
+	run_frames(comp, 300);
+	comp_irq(IRQ_NMI, comp);
+	run_frames(comp, 5);
+	xState* st = xstate_create();
+	int saved = xstate_save(st, comp);
+	run_frames(comp, 5);
+	comp_irq(IRQ_NMI_UP, comp);
+	run_frames(comp, 1);
+	xstate_load(st, comp);
+	run_frames(comp, 5);
+	check("Scorpion, a state from while the key was down: let go", saved && !comp->flgNMIRQ);
+	xstate_destroy(st);
+	compDestroy(comp);
+}
+
 int main(int argc, char** argv) {
 	if (argc < 2) {
 		fprintf(stderr, "nmi-bench ROMDIR\n");
@@ -198,5 +218,6 @@ int main(int argc, char** argv) {
 	back_in_ram("Scorpion", "Scorpion");
 	back_in_ram("Pentagon", "Pentagon");
 	ram_at_0();
+	state_back();
 	return failures ? 1 : 0;
 }
