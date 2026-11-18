@@ -53,13 +53,30 @@ static void dirty(Computer* comp) {
 	memset(comp->vid->ula->pal, MARK, sizeof(comp->vid->ula->pal));
 	memset(comp->sdrv->chan, MARK, sizeof(comp->sdrv->chan));
 	comp->ide->smuc.sys = MARK;
+	comp->ide->smuc.fdd = MARK;
 	comp->ide->smuc.nv->state = 3;
+	comp->ide->smuc.nv->adr = MARK;
+	comp->ide->smuc.nv->bitsin = 5;
 	comp->ide->smuc.nv->mem[0x10] = MARK;	// the chip's own: kept
 	comp->tsconf.pwr_up = 0;
 	comp->flgNMIRQ = 1;
 	comp->nmiUp = 1;
+	comp->nmiUntil = 12345;
 	comp->nmiLine = 1;
-	comp->gs->cpu->regPC = 0x1234;
+	GSound* gs = comp->gs;
+	gs->cpu->regPC = 0x1234;
+	gs->vol1 = gs->vol4 = gs->vol5 = gs->vol8 = MARK;
+	gs->ch1 = gs->ch4 = gs->ch5 = gs->ch8 = MARK;
+	gs->pb3_gs = gs->pb3_zx = gs->pbb_zx = gs->pstate = MARK;
+	gs->cfg0 = gs->sctrl = MARK;
+}
+
+// the card's registers as it is made
+static int gs_fresh(GSound* gs) {
+	return !gs->vol1 && !gs->vol4 && !gs->vol5 && !gs->vol8
+		&& (gs->ch1 == 0xff) && (gs->ch4 == 0xff) && (gs->ch5 == 0xff) && (gs->ch8 == 0xff)
+		&& !gs->pb3_gs && !gs->pb3_zx && !gs->pbb_zx && (gs->pstate == 0x7e)
+		&& (gs->cfg0 != MARK) && (gs->sctrl != MARK);
 }
 
 static void power(Computer* comp) {
@@ -73,17 +90,21 @@ static void one(const char* hw) {
 	dirty(comp);
 	power(comp);
 	check(hw, "RAM", !marked(comp->mem->ramData, sizeof(comp->mem->ramData)));
-	check(hw, "the sound card's RAM, its CPU from #0000",
-		!marked(comp->gs->mem->ramData, sizeof(comp->gs->mem->ramData)) && (comp->gs->cpu->regPC == 0));
+	check(hw, "the sound card's RAM and registers, its CPU from #0000",
+		!marked(comp->gs->mem->ramData, sizeof(comp->gs->mem->ramData)) && (comp->gs->cpu->regPC == 0)
+		&& gs_fresh(comp->gs));
 	check(hw, "the divMMC's RAM", !marked(comp->div->data + DIV_EE_SIZE, DIV_RAM_MAX));
 	check(hw, "registers", !marked(comp->reg, sizeof(comp->reg)) && !marked((unsigned char*)comp->xreg, sizeof(comp->xreg)));
-	check(hw, "palettes, sprites, Soundrive",
+	check(hw, "ULA+ palette, Soundrive",
 		!marked(comp->vid->ula->pal, sizeof(comp->vid->ula->pal))
-		&& !marked(comp->vid->tsconf.sfile, sizeof(comp->vid->tsconf.sfile))
 		&& !marked(comp->sdrv->chan, sizeof(comp->sdrv->chan)));
-	check(hw, "PWR_UP set, no NMI held", comp->tsconf.pwr_up && !comp->flgNMIRQ && !comp->nmiUp && !comp->nmiLine);
+	if (!strcmp(hw, "TSConf"))
+		check(hw, "PWR_UP set, sprites cleared", comp->tsconf.pwr_up
+			&& !marked(comp->vid->tsconf.sfile, sizeof(comp->vid->tsconf.sfile)));
+	check(hw, "no NMI held", !comp->flgNMIRQ && !comp->nmiUp && !comp->nmiUntil && !comp->nmiLine);
 	check(hw, "SMUC idle, its NVRAM kept", (comp->ide->smuc.sys == 0) && (comp->ide->smuc.fdd == 0xc0)
-		&& (comp->ide->smuc.nv->state == 0) && (comp->ide->smuc.nv->mem[0x10] == MARK));
+		&& (comp->ide->smuc.nv->state == 0) && !comp->ide->smuc.nv->adr && !comp->ide->smuc.nv->bitsin
+		&& (comp->ide->smuc.nv->mem[0x10] == MARK));
 	compReset(comp, RES_DEFAULT);		// and a reset after it runs
 	for (int i = 0; i < 1000; i++) compExec(comp);
 	compDestroy(comp);
