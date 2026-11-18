@@ -11,6 +11,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **esxDOS 0.9.0** for the divMMC: in Options > Machine, divMMC, Firmware and in New esxDOS
+  Folder, and in the EEPROM of a new configuration. An existing EEPROM keeps its esxDOS.
+  Bundled with the permission of Papaya Dezign.
+
 - **Always on Top**: View > Always on Top keeps the main window over other programs'
   windows; the program's own still open over it. Off in fullscreen, remembered.
   *(reported by Volutar)*
