@@ -85,6 +85,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **Hard Reset clears the memory on every machine**, as it says it does: the RAM, the General
+  Sound card and the palettes come up as at power-on. A Scorpion service monitor stuck in a
+  loop starts afresh. A switch to another machine no longer shows the old one's screen.
+
 - **The magic button on the Scorpion, the Pentagon and the other clones** now works every
   time from 128 BASIC: the NMI key is held as long as it is pressed, as the real button is,
   instead of for a moment that the program often spent in ROM.
