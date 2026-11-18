@@ -1117,35 +1117,37 @@ void MainWin::updateStatus() {
 		}
 		return st != idle;
 	};
-	// the tip says the same, and what drives it; one on screen is put up anew, as
-	// setToolTip leaves it as it was
-	auto tell = [](QLabel* icon, const QString& tip) {
+	// the tip says the same, and what drives it, a line each (nobr: Qt wraps a rich
+	// tip); one on screen is put up anew, as setToolTip leaves it as it was
+	auto tell = [](QLabel* icon, const QString& name, bool read, const QStringList& more) {
+		QString tip = QString("<nobr>%0: <b>%1</b></nobr>").arg(name, read ? "active" : "idle");
+		foreach(const QString& line, more)
+			tip += "<br><nobr>" + line.toHtmlEscaped() + "</nobr>";
 		if (icon->toolTip() == tip) return;
 		icon->setToolTip(tip);
 		if (QToolTip::isVisible() && icon->underMouse())
 			QToolTip::showText(QCursor::pos(), tip, icon);
 	};
-	const char* readText[2] = {"\nNot read by the program", "\nRead by the program"};
 	bool joy = (comp->joy->type == XJ_KEMPSTON);
 	bool mouse = comp->mouse->enable;
 	bool joyRead = light(sbJoyIcon, joy, joySeen, sbJoyShown, SB_JOY_IDLE);
 	bool mouseRead = light(sbMouseIcon, mouse, mouseSeen, sbMouseShown, SB_MOUSE_IDLE);
 	if (joy) {
-		QString tip = QString("Kempston joystick") + readText[joyRead];
+		QStringList players;
 		xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
 		for (int i = 0; i < 2; i++) {
 			xGamepad* gp = pads[i];
 			if (gp->drivesKempston())
-				tip += QString("\nPlayer %0: %1").arg(i + 1)
+				players << QString("Player %0: %1").arg(i + 1)
 					.arg(gp->isKeyboard() ? QString(pad_kbd_name(gp->keyboard())) : gp->padId().title());
 		}
-		tell(sbJoyIcon, tip);
+		tell(sbJoyIcon, "Kempston joystick", joyRead, players);
 	}
 	if (mouse) {
-		QString tip = QString("Kempston mouse") + readText[mouseRead];
+		QStringList grab;
 		// a grabbed pointer never gets here: it is free over the bar only while paused
-		if (grabMice) tip += mouseHeld() ? "\nPC mouse grabbed" : "\nPC mouse grabbed, free while paused";
-		tell(sbMouseIcon, tip);
+		if (grabMice) grab << (mouseHeld() ? "Grabbed" : "Grabbed, free while paused");
+		tell(sbMouseIcon, "Kempston mouse", mouseRead, grab);
 	}
 	sbInputBox->setVisible(joy || mouse);
 }
