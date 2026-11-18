@@ -45,6 +45,12 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **The virtual keyboard's title names its skin**: "Virtual Keyboard - Next (White)", as the
+  Skin menu has it.
+
+- **The status bar's joystick and mouse tips say what they are doing**: whether the program
+  reads them, which players play the joystick, and whether the PC mouse is grabbed.
+
 - **ZXM-Phoenix is the real board now**, revision 08.1, from its schematics and firmware:
   its own frame of 69 888 ticks and a border that changes every eight pixels, so demos
   written for it draw their border pictures right; the ROM of revision 07 with Fatall 0.25
