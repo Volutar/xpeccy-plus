@@ -1073,6 +1073,13 @@ xPortDsc zx_port_tab_ts[] = {
 	{-1, 0, 0}
 };
 
+// The power comes on: PWR_UP (#00AF b6) tells TS-BIOS so, once; SFILE, block RAM
+// in the FPGA, holds nothing (CRAM and the cache are tslReset's)
+static void tsl_power(Computer* comp) {
+	comp->tsconf.pwr_up = 1;
+	memset(comp->vid->tsconf.sfile, 0x00, sizeof(comp->vid->tsconf.sfile));
+}
+
 HardWare tsl_hw_core = {HW_TSLAB,"TSConf","ZX Evolution (TSConf)",MEM_4M,1.0,NULL,zx_port_tab_ts,
 			zx_init,tslMapMem,tslOut,tslIn,tslMRd,tslMWr,ts_irq,ts_ack,tslReset,ts_sync,ts_keyp,ts_keyr,zx_vol,
-			NULL,NULL,&ts_quiet, .sndtake = zx_snd_take, .sndmix = zx_mix, .intvecs = ts_int_vecs, .intLag = 2};
+			NULL,NULL,&ts_quiet, .power = tsl_power, .sndtake = zx_snd_take, .sndmix = zx_mix, .intvecs = ts_int_vecs, .intLag = 2};

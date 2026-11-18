@@ -32,6 +32,7 @@ typedef struct {
 
 nvRam* nvCreate();
 void nvDestroy(nvRam*);
+void nv_power_on(nvRam*);	// the bus idle; the contents kept
 
 void nvWr(nvRam*,int,int);	// sda,scl
 int nvRd(nvRam*);

@@ -972,6 +972,31 @@ int xm_gs_of(Computer* comp) {
 	return (comp->gs->model == GS_NEOGS) ? MAC_GS_NEOGS : MAC_GS_ORIGINAL;
 }
 
+// the text mode font as the power leaves it (see xm_set_roms); a missing file is
+// told to the user at the machine's setup, not again at every Hard Reset
+static void mac_load_font(Computer* comp, const std::string& fntf, bool tell) {
+	if (fntf.empty()) {
+		vid_fnt_del(comp->vid);
+		return;
+	}
+	std::string fpath = xm_rom_path(fntf);
+	FILE* file = rom_open(fpath);
+	if (file) {			// vid_fnt_load, by the UTF-8 name
+		fseek(file, 0, SEEK_END);
+		long size = ftell(file);
+		fseek(file, 0, SEEK_SET);
+		unsigned char* data = (size > 0) ? (unsigned char*)realloc(comp->vid->font.data, size) : NULL;
+		if (data) {		// else the font stays as it was
+			comp->vid->font.data = data;
+			comp->vid->font.size = (int)fread(data, 1, size, file);
+		}
+		fclose(file);
+	} else {
+		xlog(XLG_CONF, XLL_ERROR, "can't load font '%s'", fpath.c_str());
+		if (tell) mac_rom_missing("Font", fpath);
+	}
+}
+
 static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std::string& gsf, const std::string& fntf, bool withfnt) {
 	std::string fpath;
 	int romsz = MEM_256;
@@ -1017,25 +1042,8 @@ static void mac_load_rom(Computer* comp, const QList<xRomFile>& roms, const std:
 	if (!fpath.empty()) mac_rom_missing("General Sound", fpath);
 	gs_rom_refresh(comp->gs);		// the NeoGS image stays as xm_set_ngs_rom read it
 	mac_tell_ngs(comp);
-	if (withfnt) {				// else leave the font the machine put there
-		if (fntf.empty()) {
-			vid_fnt_del(comp->vid);
-		} else {
-			fpath = xm_rom_path(fntf);
-			file = rom_open(fpath);
-			if (file) {			// vid_fnt_load, by the UTF-8 name
-				fseek(file, 0, SEEK_END);
-				comp->vid->font.size = ftell(file);
-				fseek(file, 0, SEEK_SET);
-				comp->vid->font.data = (unsigned char*)realloc(comp->vid->font.data, comp->vid->font.size);
-				comp->vid->font.size = (int)fread(comp->vid->font.data, 1, comp->vid->font.size, file);
-				fclose(file);
-			} else {
-				xlog(XLG_CONF, XLL_ERROR, "can't load font '%s'", fpath.c_str());
-				mac_rom_missing("Font", fpath);
-			}
-		}
-	}
+	if (withfnt)				// else leave the font the machine put there
+		mac_load_font(comp, fntf, true);
 }
 
 // one bank of a set, by the same rule the definitions use: no name empties it
@@ -1299,9 +1307,10 @@ static void mac_set_cpu(Computer* comp, const std::string& val) {
 // a pattern in it and software sees it: on a ZX Evo the service rom's screen
 // comes up striped, and switching video modes leaves specks of the old contents
 // behind. `ram.cold` is that pattern, hex bytes repeated over the whole of ram;
-// no key at all leaves memory as it was, which is what every machine did before.
-// Written when the machine is set up, not on reset - a reset does not clear the
-// ram of real hardware either.
+// a machine with no key (no pattern measured yet) comes up zeroed. Either way
+// nothing of what ran before is left. Written when the machine is set up and at
+// a Hard Reset, not on reset - a reset does not clear the ram of real hardware
+// either.
 //
 // Groups are separated by spaces and a group may carry `*N` to repeat it, since
 // these patterns are runs of one byte - `ff*8 00*8` is eight ff then eight 00.
@@ -1318,8 +1327,7 @@ static void mac_cold_ram(Computer* comp, const std::string& pat, int noise) {
 		}
 		bytes.append(QByteArray::fromHex(grp.toLatin1()).repeated(rep));
 	}
-	if (bytes.isEmpty()) return;
-	mem_cold_fill(comp->mem, (const unsigned char*)bytes.constData(), bytes.size(), noise);
+	mem_power_on(comp->mem, (const unsigned char*)bytes.constData(), bytes.size(), noise);
 }
 
 // A card into the slot: a folder is read only on a machine that has one
@@ -1342,7 +1350,9 @@ static void mac_reread_folders(Computer* comp) {
 }
 
 // Off and on again. What a reset leaves, this clears: the RAM comes up as the
-// machine's does, a divMMC's register, automapper and cards as theirs do. What
+// machine's does, a divMMC's register, automapper and cards as theirs do, the
+// sound card, the palettes and the rest the supply holds (comp_power_on), the
+// text mode font as its file has it. What
 // keeps without power - the CMOS, an EEPROM, the media - keeps; a folder is read
 // again.
 static int powerCount = 0;
@@ -1358,6 +1368,7 @@ void xm_power_cycle() {
 	powerCount++;
 	mac_reread_folders(comp);
 	mac_cold_ram(comp, mac->ramCold, mac->ramNoise);
+	mac_load_font(comp, conf.roms.fntFile, false);
 	div_power_on(comp->div);
 	comp_power_on(comp);
 	x_user_reset(comp, RES_DEFAULT);

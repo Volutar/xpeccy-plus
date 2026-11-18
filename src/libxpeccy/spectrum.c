@@ -1261,9 +1261,25 @@ void comp_set_frame_tick(Computer* comp, int tick) {
 	}
 }
 
-// A core with something of its own to do when the power comes on (the Next's
-// firmware loading its ROMs) does it at the reset that follows.
+// What a reset keeps and the supply does not, as the machine was made
+// (compCreate): the machine's registers, the ULA+ palette, the NMI button's
+// latch, the sound card and the Soundrive, the board's card, SMUC's latches and
+// the bus of its NVRAM chip (what the chip holds stays). The RAM and a divMMC
+// are the caller's: the RAM's pattern is the machine's (mem_power_on).
+// A core with something of its own to do when the power comes on (TSConf's
+// PWR_UP, the Next's firmware loading its ROMs) does it in its power hook.
 void comp_power_on(Computer* comp) {
+	memset(comp->reg, 0x00, sizeof(comp->reg));
+	memset(comp->xreg, 0x00, sizeof(comp->xreg));
+	memset(comp->vid->ula->pal, 0x00, sizeof(comp->vid->ula->pal));
+	comp->flgNMIRQ = 0;		// nmiKey is the key as it is held now
+	comp->nmiUp = 0;
+	comp->nmiUntil = 0;
+	comp->nmiLine = 0;
+	gs_power_on(comp->gs);
+	memset(comp->sdrv->chan, 0x00, sizeof(comp->sdrv->chan));
+	sdc_power_on(comp->sdc);
+	ide_power_on(comp->ide);
 	if (comp->hw && comp->hw->power)
 		comp->hw->power(comp);
 }

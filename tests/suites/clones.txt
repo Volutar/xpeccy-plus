@@ -46,6 +46,11 @@ border_scorp    scorp     auto  3000  300     disk/BORDER.scl
 dwot_scorp      scorp     auto  3000  300     disk/dwot.trd
 satisf_scorp    scorp     auto  3000  300     disk/SATISFAC.SCL                     keys:1500:_/10
 monitor_scorp   scorp     boot  800   300                                           keys:300:nmi,450:m
+# a 2.95 monitor left broken by a long NMI hold (its exit save, corpus snap/scorp-295-loop.szx):
+# the ProfROM keeps it across a reset by a signature in RAM page 8; a Hard Reset clears it,
+# and the NMI button brings up the Main menu; with no Hard Reset, the looping "Limiter" one
+loop_scorp      scorp     open  600   50      snap/scorp-295-loop.szx               keys:50:power,400:nmi
+loopkept_scorp  scorp     open  600   50      snap/scorp-295-loop.szx               keys:400:nmi
 boot_scorptp    scorptp   boot  0     400
 dwot_scorptp    scorptp   auto  3000  300     disk/dwot.trd
 stag_scorptp    scorptp   auto  3000  300     disk/zxstgdak.trd

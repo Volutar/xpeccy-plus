@@ -119,9 +119,12 @@ the **Machine** page of **Options** and mark another ROM (see [ROM images](optio
 ```{index} Hard Reset, power off and on
 ```
 
-**Hard Reset**, at the end of the list, switches the machine off and on again. The RAM
-comes up as the machine's does at power-on, and so does a [divMMC](divmmc.md), which a
-reset leaves as it is. The CMOS memory, an EEPROM and the media keep what they hold.
+**Hard Reset**, at the end of the list, switches the machine off and on again. Nothing of
+what ran before is left: the RAM comes up as the machine's does at power-on (cleared where
+the machine's power-on pattern is not known), and so do a [divMMC](divmmc.md) and a General
+Sound card, which a reset leaves as they are. A program that keeps its state across a
+reset, as the Scorpion's service monitor does, starts afresh. The CMOS memory, an EEPROM
+and the media keep what they hold. A switch to another machine is a power-on too.
 
 ```{index} Reset to 48K, Reset to 128K, Reset to DOS, Reset to Service
 ```

@@ -272,6 +272,26 @@ void gs_set_model(GSound* gs, int model) {
 	gs->intDue = GS_INT_UNITS;
 }
 
+// The machine's power is the card's: its RAM comes up empty, the latches and
+// the DACs at their power-on values, the CPU from its reset. gsCreate ends here.
+void gs_power_on(GSound* gs) {
+	memset(gs->mem->ramData, 0x00, sizeof(gs->mem->ramData));
+	gs->pb3_gs = 0;
+	gs->pb3_zx = 0;
+	gs->pbb_zx = 0;
+	gs->pstate = 0x7e;
+	gs->vol1 = gs->vol2 = gs->vol3 = gs->vol4 = 0;
+	gs->vol5 = gs->vol6 = gs->vol7 = gs->vol8 = 0;
+	gs->ch1 = gs->ch2 = gs->ch3 = gs->ch4 = 0xff;
+	gs->ch5 = gs->ch6 = gs->ch7 = gs->ch8 = 0xff;
+	gs->vol4b5 = 0;
+	gs->cfg0 = 0;
+	gs->sctrl = NGS_SCTRL_RESET;
+	gs->led = 0;
+	gsMixStamp++;
+	gs_set_model(gs, gs->model);
+}
+
 GSound* gsCreate() {
 	GSound* res = (GSound*)malloc(sizeof(GSound));
 	memset(res,0x00,sizeof(GSound));
@@ -292,19 +312,9 @@ GSound* gsCreate() {
 	memSetBank(res->mem, 0x40, MEM_RAM, 0, MEM_16K, NULL, NULL, NULL);
 	memSetBank(res->mem, 0x80, MEM_RAM, 0, MEM_16K, NULL, NULL, NULL);
 	memSetBank(res->mem, 0xc0, MEM_RAM, 1, MEM_16K, NULL, NULL, NULL);
-	res->pstate = 0x7e;
 	res->stereo = GS_12_34;
 	res->sep = 75;		// the PSG's default
-	res->sctrl = NGS_SCTRL_RESET;
-	res->pg3 = 1;
-	res->ch1 = 0xff;
-	res->ch2 = 0xff;
-	res->ch3 = 0xff;
-	res->ch4 = 0xff;
-	res->ch5 = 0xff;
-	res->ch6 = 0xff;
-	res->ch7 = 0xff;
-	res->ch8 = 0xff;
+	gs_power_on(res);
 	return res;
 }
 

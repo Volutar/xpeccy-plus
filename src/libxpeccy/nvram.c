@@ -9,12 +9,23 @@
 nvRam* nvCreate() {
 	nvRam* nv = (nvRam*)malloc(sizeof(nvRam));
 	if (nv == NULL) return NULL;
-	memset(nv, 0x00, sizeof(nvRam));	// NV_IDLE
+	memset(nv, 0x00, sizeof(nvRam));
+	nv_power_on(nv);
+	return nv;
+}
+
+// The bus side comes up idle, the lines high; what the chip holds stays
+void nv_power_on(nvRam* nv) {
+	nv->state = NV_IDLE;
+	nv->adr = 0;
+	nv->datain = 0;
+	nv->dataout = 0;
+	nv->bitsin = 0;
+	nv->bitsout = 0;
 	nv->sda = 1;
 	nv->scl = 1;
 	nv->out = 1;
 	nv->outz = 1;
-	return nv;
 }
 
 void nvDestroy(nvRam* nv) {
