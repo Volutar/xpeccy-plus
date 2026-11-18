@@ -85,6 +85,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **Protected FDI and TD0 disk images** load: a track with extra sector headers or one sector
+  too many is no longer left blank, and the sectors the image marks as having no data, a CRC
+  error or deleted data read that way. ANAMORIG and Gallows now start. *(reported by Alexey
+  Boldyrev)*
+
 - **Hard Reset clears the memory on every machine**, as it says it does: the RAM, the General
   Sound card and the palettes come up as at power-on. A Scorpion service monitor stuck in a
   loop starts afresh. A switch to another machine no longer shows the old one's screen.
