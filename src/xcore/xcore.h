@@ -491,9 +491,10 @@ extern const char* const div_esx_releases[];
 std::string div_esx_dir(const std::string& ver);
 std::string div_esx_rom(const std::string& ver);	// ESXMMC.BIN, or .ROM where the release names it so
 // which release an EEPROM image is, and which one a card folder's system files
-// are (SYS/ESXDOS.SYS), told by their bytes; empty for none of them
+// are (SYS/ESXDOS.SYS, in any case), told by their bytes; empty for none of them
 std::string div_esx_release_of(const unsigned char* img);
 std::string div_esx_card_release(const std::string& folder);
+bool div_esx_checks_sys(const std::string& ver);	// the release refuses another's system files
 void xm_save_media(FILE*);
 std::string getDiskString(Floppy*);
 

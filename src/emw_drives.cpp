@@ -462,29 +462,55 @@ void MainWin::divToggle(bool ask) {
 
 // esxDOS starts only when the EEPROM and the card's system files are the same
 // release, and says nothing useful when they are not. Looked at once a power
-// cycle and once a card: a folder in slot 1 whose SYS is a bundled release other
-// than the chip's is told. An image card is not looked into.
+// cycle and once a card. 0.8.x reads card 1 only and hangs on another release's
+// files; from 0.9.0 the firmware refuses them and tries card 2. A folder card
+// whose SYS is a bundled release the chip will not start from is told. An image
+// card is not looked into, so with one in, a checking firmware may find its own there.
 void MainWin::esxCheck() {
 	Computer* comp = conf.zx;
 	if (!comp->div->model) {
 		esxSeen.clear();
 		return;
 	}
-	const char* img = comp->div->card[0]->image;
-	QString card = img ? QString::fromLocal8Bit(img) : QString();
-	QString key = QString("%0|%1").arg(xm_power_count()).arg(card);
+	QString card[2];
+	bool folder[2], image[2];
+	for (int i = 0; i < 2; i++) {
+		const char* img = comp->div->card[i]->image;
+		card[i] = img ? QString::fromLocal8Bit(img) : QString();
+		QFileInfo info(card[i]);
+		folder[i] = !card[i].isEmpty() && info.isDir();
+		image[i] = !card[i].isEmpty() && info.isFile();		// a path gone is no card
+	}
+	QString key = QString("%0|%1|%2").arg(xm_power_count()).arg(card[0], card[1]);
 	if (key == esxSeen) return;
 	esxSeen = key;
-	if (card.isEmpty() || !QFileInfo(card).isDir()) return;
+	if (!folder[0] && !folder[1]) return;
 	std::string chip = div_esx_release_of(comp->div->data);
-	std::string sys = div_esx_card_release(img);
-	if (chip.empty() || sys.empty() || (chip == sys)) return;
+	if (chip.empty()) return;
+	bool checks = div_esx_checks_sys(chip);
+	int looked = checks ? 2 : 1;
+	int other = -1;
+	std::string sys[2];
+	for (int i = 0; i < looked; i++) {
+		if (image[i] && checks) return;		// it may hold the chip's own
+		if (!folder[i]) continue;
+		sys[i] = div_esx_card_release(comp->div->card[i]->image);
+		if (sys[i] == chip) return;
+		if (!sys[i].empty() && (other < 0)) other = i;
+	}
+	if (other < 0) return;
+	// that release in the EEPROM would start from this card: card 1, or card 2 for a
+	// release that looks there too
+	bool flash = (other == 0) || div_esx_checks_sys(sys[other]);
+	QString what = QString("Card %0 has the system files of esxDOS %1, the EEPROM holds esxDOS %2. "
+		"esxDOS starts only when both are the same release.\n\n")
+		.arg(other + 1).arg(sys[other].c_str()).arg(chip.c_str());
+	what += flash
+		? QString("Write esxDOS %0 to the EEPROM in Options (divMMC, Firmware), or make the card again "
+			"with New esxDOS Folder.").arg(sys[other].c_str())
+		: QString("Make the card again with New esxDOS Folder.");
 	pause(true, PR_EXTRA);
-	QMessageBox::warning(this, "esxDOS releases differ",
-		QString("Card 1 has the system files of esxDOS %0, the EEPROM holds esxDOS %1. "
-		"esxDOS starts only when both are the same release.\n\n"
-		"Write esxDOS %0 to the EEPROM in Options (divMMC, Firmware), or make the card again "
-		"with New esxDOS Folder.").arg(sys.c_str()).arg(chip.c_str()));
+	QMessageBox::warning(this, "esxDOS releases differ", what);
 	pause(false, PR_EXTRA);
 }
 
@@ -801,7 +827,8 @@ void MainWin::sdcNewEsx(int card) {
 	pause(false, PR_FILE);
 	if (path.isEmpty()) return;
 	QDir dir(path);
-	if (dir.exists("SYS") || dir.exists("BIN")) {
+	QStringList had = dir.entryList(QDir::Dirs | QDir::Files | QDir::Hidden | QDir::NoDotAndDotDot);
+	if (had.contains("SYS", Qt::CaseInsensitive) || had.contains("BIN", Qt::CaseInsensitive)) {
 		shitHappens("This folder has SYS or BIN already. Open it with Open Folder");
 		return;
 	}

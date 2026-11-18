@@ -219,7 +219,7 @@ of this project - they stay under the terms of their own copyright holders. Deta
 where each image came from in [`config/roms/PROVENANCE.md`](config/roms/PROVENANCE.md).
 No image was modified; the copyright messages inside them are intact.
 
-`config/esxdos/` holds esxDOS 0.8.5 to 0.8.9, the divMMC's firmware and the files its card
+`config/esxdos/` holds esxDOS 0.8.5 to 0.9.0, the divMMC's firmware and the files its card
 needs, one folder a release, unmodified. esxDOS is (c) Papaya Dezign and is bundled with their permission - many thanks to
 Miguel Guerreiro / Papaya Dezign. It keeps its own terms: see
 [`config/esxdos/LICENSE`](config/esxdos/LICENSE).

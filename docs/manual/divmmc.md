@@ -12,8 +12,8 @@ which the boards sold since, such as the DivMMC EnJOY!, are built on: 8K of EEPR
 firmware, 128K or 512K of RAM, and two SD card slots. Its SD card port has a clock of its
 own, so the card works at any usual CPU speed. Its firmware is esxDOS, which loads `.tap`,
 `.sna`, `.z80` and `.trd` files from the card and adds dot commands to BASIC. esxDOS 0.8.5
-to 0.8.9 come with the emulator, by permission of its authors, Papaya Dezign, and 0.8.9 is
-in the board's EEPROM from the start.
+to 0.9.0 come with the emulator, by permission of its authors, Papaya Dezign, and the newest
+is in the board's EEPROM from the start.
 
 ## Setting it up
 
@@ -23,7 +23,7 @@ in the board's EEPROM from the start.
    - **EEPROM writable** - the board's EEPROM jumper. Leave it off. When it is on, the
      Spectrum can write new firmware into the EEPROM, and the firmware does not start at a
      reset.
-   - **Firmware** - what the EEPROM holds: one of **esxDOS 0.8.9** to **esxDOS 0.8.5**,
+   - **Firmware** - what the EEPROM holds: one of **esxDOS 0.9.0** to **esxDOS 0.8.5**,
      **(erased)**, or **Custom** for anything else, with the esxDOS version in it when it has one. The
      {icon}`fileopen` button picks a firmware file. **Apply** writes the choice into the
      EEPROM; before it replaces a **Custom** firmware, which may exist only in the EEPROM,
@@ -37,10 +37,12 @@ in the board's EEPROM from the start.
 3. Or use a card of your own. Each slot's menu also has **Open Image...**, **Open
    Folder...**, **Eject**, **Refresh** and **Write Protect**, as the ZX Evolution's card has.
    esxDOS needs an image with an MBR and one FAT16 or FAT32 partition, or a folder, holding
-   the `SYS`, `BIN` and `TMP` folders of the same esxDOS release as the EEPROM. When a
-   folder in slot 1 holds another bundled release than the EEPROM, Xpeccy+ says so in a
-   window after the machine is switched on: esxDOS itself does not check, and fails in odd
-   ways.
+   the `SYS`, `BIN` and `TMP` folders of the same esxDOS release as the EEPROM. esxDOS 0.8.x
+   takes them from card 1 without a check, and with another release's it hangs or fails in
+   odd ways. 0.9.0 checks them: it skips a card with another release's, starts from card 2
+   when that one has its own, and shows `[ERROR]` when no card has. When a folder used as a
+   card holds a bundled release the EEPROM will not start from, Xpeccy+ says so in a window
+   after the machine is switched on.
 
 Another esxDOS version, or a firmware of your own, goes in with the {icon}`fileopen` button,
 or the way the real board is flashed: turn **EEPROM writable** on, load the flasher, such as
@@ -95,13 +97,18 @@ card:
   `.tap` files, the NMI silences the sound chips.
 - **0.8.9** - `.scl` images, TR-DOS `MOVE` and `FORMAT`, and a fix for a full card whose
   root folder got damaged.
+- **0.9.0** - long file names up to 65 characters, in `.ls` and in the NMI browser; the
+  BASIC commands `NEW`, `COPY`, `MOVE`, `FORMAT` and streams with `OPEN #`; wildcards; the
+  tape emulator of esxDOS 1.x; FAT fixes; the system commands moved to `SYS/BIN`. It checks
+  the card's system files against itself (see above).
 
 Each release's own `README.TXT` is in `config/esxdos/<version>/`.
 
 ## Using it
 
 - The firmware starts on every reset, then goes to 48K BASIC. Type `.ls` for the files on
-  the card and `.cd` to go into a folder; the dot commands are the files in `BIN`.
+  the card and `.cd` to go into a folder; the dot commands are the files in `BIN`, and in
+  0.9.0 those in `SYS/BIN` too.
 - **Machine > NMI** (Shift+F10 in the Modern preset, F10 in the Classic one) is the board's
   NMI button: esxDOS opens its file browser.
 - A folder used as a card takes what esxDOS saves, unless folders are set to read only

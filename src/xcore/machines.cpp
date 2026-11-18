@@ -9,6 +9,7 @@
 #include <QTimer>
 #include <QCoreApplication>
 #include <QRegularExpression>
+#include <QVersionNumber>
 
 #include "xcore.h"
 #include "dezog.h"
@@ -743,11 +744,18 @@ static void mac_nv_write(const std::string& path, unsigned char* src, int size) 
 
 // THE BUNDLED esxDOS
 //
-// Every release from 0.8.5 is there, unmodified, in a folder of its own. Which
-// one an EEPROM or a card holds is told by the bytes, as the files carry no
-// version a program could read: the firmware's banner says it, ESXDOS.SYS does not.
+// Every release from 0.8.5 is there, unmodified, in a folder of its own, in the
+// 0.8.x shape (0.9.0's files renamed to it). Which one an EEPROM or a card holds is
+// told by the bytes: the firmware's banner says the version, ESXDOS.SYS does not
+// (0.9.0's starts with its version byte, 0.8.x's do not).
 
-const char* const div_esx_releases[] = {"0.8.9", "0.8.8", "0.8.7", "0.8.6", "0.8.5", NULL};
+const char* const div_esx_releases[] = {"0.9.0", "0.8.9", "0.8.8", "0.8.7", "0.8.6", "0.8.5", NULL};
+
+// From 0.9.0 the firmware checks the system files' version and loads them from the
+// first drive that has its own; 0.8.x takes whatever the first drive has.
+bool div_esx_checks_sys(const std::string& ver) {
+	return QVersionNumber::fromString(QString::fromStdString(ver)) >= QVersionNumber(0, 9, 0);
+}
 
 std::string div_esx_dir(const std::string& ver) {
 	return conf.path.esxDir + SLASH + ver;
@@ -759,10 +767,14 @@ std::string div_esx_rom(const std::string& ver) {
 	return div_esx_dir(ver) + SLASH + "ESXMMC.ROM";		// 0.8.6 names it so
 }
 
-static QByteArray esx_file(const std::string& path, int max) {
-	QFile file(QString::fromLocal8Bit(path.c_str()));
+static QByteArray esx_file(const QString& path, int max) {
+	QFile file(path);
 	if (!file.open(QFile::ReadOnly)) return QByteArray();
 	return file.read(max);
+}
+
+static QByteArray esx_file(const std::string& path, int max) {
+	return esx_file(QString::fromLocal8Bit(path.c_str()), max);
 }
 
 std::string div_esx_release_of(const unsigned char* img) {
@@ -774,8 +786,22 @@ std::string div_esx_release_of(const unsigned char* img) {
 	return std::string();
 }
 
+// a name in a folder, matched without regard to case when the exact one is not
+// there: a card copied from a release's zip has sys/esxdos.sys, which a
+// case-sensitive file system does not find as SYS/ESXDOS.SYS
+static QString esx_entry(const QString& dir, const QString& name) {
+	QString path = dir + "/" + name;
+	if (QFileInfo::exists(path)) return path;
+	const QStringList all = QDir(dir).entryList(QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot);
+	for (const QString& ent : all)
+		if (!ent.compare(name, Qt::CaseInsensitive)) return dir + "/" + ent;
+	return path;
+}
+
 std::string div_esx_card_release(const std::string& folder) {
-	QByteArray sys = esx_file(folder + SLASH + "SYS" + SLASH + "ESXDOS.SYS", 0x10000);
+	QString top = QString::fromLocal8Bit(folder.c_str());
+	QString path = esx_entry(esx_entry(top, "SYS"), "ESXDOS.SYS");
+	QByteArray sys = esx_file(path, 0x10000);
 	if (sys.isEmpty()) return std::string();
 	for (int i = 0; div_esx_releases[i]; i++) {
 		std::string own = div_esx_dir(div_esx_releases[i]) + SLASH + "SYS" + SLASH + "ESXDOS.SYS";

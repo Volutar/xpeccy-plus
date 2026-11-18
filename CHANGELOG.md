@@ -15,6 +15,10 @@ before that point is upstream's history and is not repeated here.
   and 50 FPS; 50/60 records a Next in its 60 Hz modes at 60 and every other machine at 50,
   and is the default in new settings.
 
+- **esxDOS 0.9.0** for the divMMC: in Options > Machine, divMMC, Firmware and in New esxDOS
+  Folder, and in the EEPROM of a new configuration. An existing EEPROM keeps its esxDOS.
+  Bundled with the permission of Papaya Dezign.
+
 - **Always on Top**: View > Always on Top keeps the main window over other programs'
   windows; the program's own still open over it. Off in fullscreen, remembered.
   *(reported by Volutar)*
