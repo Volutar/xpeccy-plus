@@ -124,11 +124,11 @@ License (SpecNext Ltd, `LICENSE.md` in it). A test build may stage the release p
 
 ## esxDOS - permission of the rights holder
 
-`../esxdos/` holds esxDOS 0.8.5, 0.8.6, 0.8.7, 0.8.8 and 0.8.9 by Papaya Dezign, each release
-in a folder of its own: the divMMC firmware (`ESXMMC.BIN`; `ESXMMC.ROM` in 0.8.6, as that
+`../esxdos/` holds esxDOS 0.8.5, 0.8.6, 0.8.7, 0.8.8, 0.8.9 and 0.9.0 by Papaya Dezign, each
+release in a folder of its own: the divMMC firmware (`ESXMMC.BIN`; `ESXMMC.ROM` in 0.8.6, as that
 release names it), the `SYS` and `BIN` folders a card needs, and the release's `README.TXT`
-and `.NFO` - unmodified, from the official zips. Bundled with the permission of Papaya Dezign;
-thanks to Miguel Guerreiro / Papaya Dezign. Their terms are in `../esxdos/LICENSE`.
+and `.NFO` - unmodified, from the official zips (0.9.0's files renamed to this shape).
+Bundled with the permission of Papaya Dezign; thanks to Miguel Guerreiro / Papaya Dezign. Their terms are in `../esxdos/LICENSE`.
 
 ### esxDOS 0.8.5
 
@@ -405,6 +405,91 @@ thanks to Miguel Guerreiro / Papaya Dezign. Their terms are in `../esxdos/LICENS
 | `SYS/TRDBOOT.BIN` | 15360 | `313590e963124f498a5b3763aea66c7d` |
 | `SYS/TRDOS54T.KO` | 16412 | `2e0ef5b18368c4d432ec983cb34c6616` |
 | `SYS/VDISK.KO` | 512 | `7f8f7ed83b6c7ad1eee4aadc27c68f22` |
+
+### esxDOS 0.9.0
+
+`../esxdos/0.9.0/`, from <https://www.esxdos.org/files/esxdos090.zip> (sha256 `18b76522294ac51f7dec98134ec8fb27a05da4a47b0e6875e0d5c60f5d82c13e`),
+in the shape of the 0.8.x folders: every name in upper case, `roms/esxdos-0.9.0-divmmc.bin` as
+`ESXMMC.BIN` and `esxdos090.nfo` as `ESX090.NFO`. The divIDE and TC2068 firmware, `docs/` and
+`flashers/` are left out.
+
+| File | Size | MD5 |
+| --- | ---: | --- |
+| `ESXMMC.BIN` | 8192 | `f5bcb0d428a271d04ca4d50960e20bc4` |
+| `BIN/128` | 512 | `9632dc64cbe81eb10b2028a925621dae` |
+| `BIN/CAL` | 603 | `5b858161928fc91e6563c25e67a7d5c5` |
+| `BIN/DBASIC` | 7142 | `6887fc610a81773de612a2431b039b44` |
+| `BIN/DFWLOAD` | 1024 | `6c9fec59ad152fb55db55b3fc20f49c1` |
+| `BIN/DIVIDEO` | 1024 | `fba4e55232dad9278ed16aac2f58ce00` |
+| `BIN/DRIVES` | 1008 | `9a8bc288f48b399974e5676a1dbd6bdc` |
+| `BIN/DSKPROBE` | 2837 | `d5336db574873f68edbfdbec72c2f404` |
+| `BIN/DUMPMEM` | 512 | `e9d02ffab7560f07adfc0739a1e5baf0` |
+| `BIN/EDITOR` | 5632 | `2f5846bbcf38b4bdf9c4b5346d8c4991` |
+| `BIN/FM` | 7168 | `be3f90702bf90b09e62ca2ca07f302ac` |
+| `BIN/FONTEDIT` | 7010 | `17290582f15132b3619903ef919a9b7c` |
+| `BIN/GRAMON` | 2560 | `930ec960019d5802b957d591ddcd7164` |
+| `BIN/HEXDUMP` | 512 | `cd4f68ae03402de1a1299fcc91edde83` |
+| `BIN/HEXVIEW` | 2767 | `489543ce2372ebe07e3f292379660f7c` |
+| `BIN/LAUNCHER` | 1160 | `76a10020fffc4f672690f5496baaadfa` |
+| `BIN/MKTRD` | 512 | `0836e0fada06e3cb0f705a200871f66a` |
+| `BIN/PARTINFO` | 512 | `a35fbbf8a4b54e5dfbb4604a0dcb5b36` |
+| `BIN/PLAYTFM` | 2232 | `c2fc51b9e118a57423bc9cf925908be8` |
+| `BIN/PLAYWAV` | 1536 | `9d617d24638646cc43cccba9f2c8c445` |
+| `BIN/SCL2TRD` | 4075 | `601cd775f8646cdcaaeaf7d0e63b3e05` |
+| `BIN/SPEAKCZ` | 1536 | `cd3b8cf7d0daa65051cb2877ef1a7031` |
+| `BIN/SVIEW` | 6144 | `b4583f2cf82d2fcb32cfdd170616f68b` |
+| `BIN/TOUCH` | 216 | `ffaddc04b757c0dc655004d1d1172513` |
+| `BIN/TSPLAY` | 3584 | `bbefe2eefd9adac8c6051741ce1977ba` |
+| `BIN/VI` | 7168 | `0fffe041d7b51dfb5fcca278d06d1e02` |
+| `ESX090.NFO` | 3269 | `a4e964d72fe001c5077a75e9f9c734cd` |
+| `README.TXT` | 5707 | `86e6ad9cf6daf79c6891b753d54f3e1e` |
+| `SYS/AUTOLOAD.KO` | 512 | `07cb44c05d9d68e9e165c4ba63a8b9d2` |
+| `SYS/BCAT.KO` | 1024 | `566099252fff5bf9f1bd828fd22c0d93` |
+| `SYS/BCOPY.KO` | 1024 | `654bdadf2be105f9457d39d28ca3df4f` |
+| `SYS/BDIR.KO` | 1024 | `988f250e92102b227a1b95d04b92c861` |
+| `SYS/BETADISK.SYS` | 2245 | `82f1d57f622f3343f1e8946a3a49c4d6` |
+| `SYS/BFORMAT.KO` | 1024 | `3f6fc90455bb9152bcecb670caae8148` |
+| `SYS/BIN/CD` | 512 | `56b1de39f1797fbcb84f9ca245f4e5dd` |
+| `SYS/BIN/CHMOD` | 512 | `88f5bdadec18f675c65ef1794ad63c60` |
+| `SYS/BIN/CP` | 1536 | `ecd4e39fa14b0c7982b5c35d7efba7b7` |
+| `SYS/BIN/DATE` | 388 | `49281f0d780bcee65a8697d54ea12549` |
+| `SYS/BIN/DF` | 512 | `95a3e14ac96d6f4197d01bea7f72f11f` |
+| `SYS/BIN/FILE` | 1536 | `031a3a7f28f74db486f984651cc46598` |
+| `SYS/BIN/LS` | 2048 | `a03ce5fea6a54b4e95bc8b099a526954` |
+| `SYS/BIN/LSTAP` | 1024 | `49aa5d87a82f21f14d36f2e13fcd30d6` |
+| `SYS/BIN/MKDIR` | 512 | `51614d2052b0e77b0ffb076eb3f98bf2` |
+| `SYS/BIN/MON` | 6144 | `de9e0b4806940ac7afe8422cd59edbc9` |
+| `SYS/BIN/MORE` | 417 | `f414a55ee44f00286a50a231bd29054a` |
+| `SYS/BIN/MOUNT` | 512 | `3015e417230062e92daf4d2f98e69dc3` |
+| `SYS/BIN/MV` | 1536 | `af9731905ce091cc1889cc03bbf79345` |
+| `SYS/BIN/RM` | 1536 | `b82a789b696c61518eb1ad752a5071f0` |
+| `SYS/BIN/SERCP` | 5120 | `e38a4367627c8745431c3af3fde717d6` |
+| `SYS/BIN/SNAPLOAD` | 3072 | `9a59aaec8dd1410b9edd601615ba5784` |
+| `SYS/BIN/STRINGS` | 1045 | `e4d1d1ff1608736d82a07d7ea9442418` |
+| `SYS/BIN/TAPEIN` | 512 | `7a047dbfc306530ba64943a6dab3315c` |
+| `SYS/BIN/TAPEOUT` | 512 | `a479b4bc9dcc59ec324b04a3deb62b0f` |
+| `SYS/BIN/TAR` | 2691 | `dcab1baa4907675ee3a845986fd53685` |
+| `SYS/BIN/TE` | 1024 | `bc73a3c7299b9e57a74b49a698343f49` |
+| `SYS/BIN/TRKPLAY` | 6144 | `fdcd52d8e123855048b2a757062765cd` |
+| `SYS/BIN/UMOUNT` | 512 | `ea4398cf2a9718d18cbe180840d1b023` |
+| `SYS/BIN/VDISK` | 512 | `8be207ba1844bdbf81ac2b8acb920a5d` |
+| `SYS/BLOAD.KO` | 1024 | `b150af8ccb6c86216bca7dfa83e4e35d` |
+| `SYS/BOPEN.KO` | 512 | `de5503e984ce2185296f05f6997efbfc` |
+| `SYS/BSAVE.KO` | 512 | `d7e18113b5f2e4c5303437fb57162960` |
+| `SYS/BSTREAM.KO` | 1024 | `327e8ad6356b591cc7ad3e4b609bef2d` |
+| `SYS/CONFIG/ESXDOS.CFG` | 253 | `4c13f742284d8f1827d7890b78cc8dc2` |
+| `SYS/CONFIG/SERCP.CFG` | 392 | `201e831d6ee2a2249354ea26cffec069` |
+| `SYS/CONFIG/TRDOS.CFG` | 875 | `3e4870421391bdf18759eab6ae77aa3b` |
+| `SYS/ERRMSG.KO` | 512 | `62a5a9dd6ac8d1e048baa70073b7fecd` |
+| `SYS/ESXDOS.SYS` | 5340 | `058bf29df6e53b59222e0c305b1a3632` |
+| `SYS/FM.SYS` | 22998 | `163fbefb6a82f21a3941703b00a4fe82` |
+| `SYS/NMI.SYS` | 3444 | `4c8de9a855ffef8c7eee4e46691b6739` |
+| `SYS/NMI_HELP.SCR` | 6912 | `427b1c27c8a7ea158830e6b7533a5ecc` |
+| `SYS/TAPE.KO` | 1024 | `78f9abf4aeba66bceb6490d36723a9c5` |
+| `SYS/TC2068.KO` | 1552 | `6e3ae10209a92f0d0d7b1f02fd069bf5` |
+| `SYS/TRDBOOT.BIN` | 15360 | `313590e963124f498a5b3763aea66c7d` |
+| `SYS/TRDOS54T.KO` | 16420 | `ba2804f563a59fb48709f2f7fd14b66d` |
+| `SYS/VDISK.KO` | 512 | `f113eb51f855c6f4fb6c38a961960d54` |
 
 ## Other files
 
