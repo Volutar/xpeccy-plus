@@ -1,0 +1,16 @@
+== hold
+Scorpion, 128 menu: a tap at 10 points of a frame lands 10: ok
+Scorpion, 128 menu: DOS on at #0066, the service ROM: ok
+Pentagon, 128 menu: a tap at 10 points of a frame lands 10: ok
+Pentagon, 128 menu: DOS on at #0066: ok
+Scorpion, 48 BASIC: a second's hold, no NMI: ok
+Scorpion, 48 BASIC: let go, no request left: ok
+Pentagon, 48 BASIC: a second's hold, no NMI: ok
+Pentagon, 48 BASIC: let go, no request left: ok
+== edge
+Scorpion, held: back in RAM 3 times, 3 NMIs: ok
+Scorpion, let go: back in RAM, none: ok
+Pentagon, held: back in RAM 3 times, 3 NMIs: ok
+Pentagon, let go: back in RAM, none: ok
+Scorpion, RAM at #0000: a second's hold, one NMI: ok
+Scorpion, a state from while the key was down: let go: ok
