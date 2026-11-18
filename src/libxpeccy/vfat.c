@@ -233,6 +233,14 @@ void vf_sname_uniq(char* sname, const char* name, int lossy, int (*taken)(void* 
 	}
 }
 
+int vf_sname_pick(const char* name, char* sname, int* ulen, int (*taken)(void* ctx, const char* sname), void* ctx) {
+	char base[12];
+	int how = vf_sname_make(name, base, ulen);
+	memcpy(sname, base, 12);
+	vf_sname_uniq(sname, name, how & VF_SN_LOSSY, taken, ctx);
+	return (how & VF_SN_LFN) || memcmp(sname, base, 11);	// a name made unique needs its long name too
+}
+
 // tree
 
 vFat* vfat_create(void) {
@@ -386,18 +394,14 @@ void vf_fat_stamp(unsigned int mtime, unsigned short* date, unsigned short* tim)
 int vfat_add(vFat* vf, int parent, const char* name, unsigned int size, unsigned int mtime, int isdir) {
 	vfNode* nod;
 	vfSib sib;
-	char sname[12], base[12];
-	int idx, prev, how, lfn, ecnt, ulen;
+	char sname[12];
+	int idx, prev, lfn, ecnt, ulen;
 	if (!vf) return -1;
 	if (!name) name = "";
-	how = vf_sname_make(name, base, &ulen);
-	lfn = how & VF_SN_LFN;
 	if (!stab_room(vf)) return -1;
-	memcpy(sname, base, 12);
 	sib.vf = vf;
 	sib.parent = parent;
-	vf_sname_uniq(sname, name, how & VF_SN_LOSSY, sib_taken, &sib);
-	if (memcmp(sname, base, 11)) lfn = 1;		// a name made unique needs its long name too
+	lfn = vf_sname_pick(name, sname, &ulen, sib_taken, &sib);
 	ecnt = lfn ? (divup(ulen, 13) + 1) : 1;		// the 8.3 entry and 13 characters per long one
 	if ((parent >= 0) && (vf->node[parent].dents + ecnt > VF_MAXDENTS)) return VF_FULL;
 	if (vf->nodes >= vf->cap) {

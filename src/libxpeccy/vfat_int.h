@@ -42,6 +42,8 @@ unsigned int vf_sname_hash(int parent, const char* sname);
 // sname made unique: taken says whether a name is in use among its siblings;
 // a lossy one starts at ~1
 void vf_sname_uniq(char* sname, const char* name, int lossy, int (*taken)(void* ctx, const char* sname), void* ctx);
+// both: the 8.3 name a long one takes among its siblings; 1 when the long name is needed too
+int vf_sname_pick(const char* name, char* sname, int* ulen, int (*taken)(void* ctx, const char* sname), void* ctx);
 void vf_fat_stamp(unsigned int mtime, unsigned short* date, unsigned short* tim);
 void vf_entry(unsigned char* dst, const char* sname, int attr, unsigned int clust, unsigned int size, unsigned short date, unsigned short tim);
 void vf_lfn(unsigned char* dst, unsigned short* name, int len, int part, int last, unsigned char sum);
