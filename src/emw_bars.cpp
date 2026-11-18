@@ -576,10 +576,8 @@ void MainWin::initBars() {
 		sbDiskBox[i] = pair(sbDisk[i], sbDiskIcon[i]);
 	}
 	// lit while the machine reads them, so the slot is kept while they are idle
-	sbJoyIcon = new QLabel;
-	sbJoyIcon->setToolTip("Kempston joystick");
+	sbJoyIcon = new QLabel;		// the tips are updateStatus()'s, with what they are doing
 	sbMouseIcon = new QLabel;
-	sbMouseIcon->setToolTip("Kempston mouse");
 	sbInputBox = pair(sbJoyIcon, sbMouseIcon);
 	sbInputBox->layout()->setSpacing(6);		// two lights, not a light and its text
 	// as wide as the longest they can say, or every change of clock or rate
@@ -1106,8 +1104,8 @@ void MainWin::updateStatus() {
 		}
 		if (sbCardBox->toolTip() != tip) sbCardBox->setToolTip(tip);
 	}
-	// lit if the machine read it since the last look
-	auto light = [this](QLabel* icon, bool fitted, bool& seen, int& shown, int idle) {
+	// lit if the machine read it since the last look; the tip says so, and what drives it
+	auto light = [this](QLabel* icon, bool fitted, bool& seen, int& shown, int idle, QString tip, const QStringList& more) {
 		icon->setVisible(fitted);
 		int st = seen ? idle + 1 : idle;
 		seen = false;
@@ -1115,10 +1113,23 @@ void MainWin::updateStatus() {
 			icon->setPixmap(sbPix[st]);
 			shown = st;
 		}
+		tip += (st != idle) ? "\nRead by the program" : "\nNot read by the program";
+		if (!more.isEmpty()) tip += "\n" + more.join("\n");
+		if (icon->toolTip() != tip) icon->setToolTip(tip);
 	};
 	bool joy = (comp->joy->type == XJ_KEMPSTON);
 	bool mouse = comp->mouse->enable;
-	light(sbJoyIcon, joy, joySeen, sbJoyShown, SB_JOY_IDLE);
-	light(sbMouseIcon, mouse, mouseSeen, sbMouseShown, SB_MOUSE_IDLE);
+	QStringList players;
+	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
+	for (int i = 0; i < 2; i++) {
+		xGamepad* gp = pads[i];
+		if (!gp->drivesKempston()) continue;
+		players << QString("Player %0: %1").arg(i + 1)
+			.arg(gp->isKeyboard() ? QString(pad_kbd_name(gp->keyboard())) : gp->padId().title());
+	}
+	QStringList grab;
+	if (grabMice) grab << "PC mouse grabbed";
+	light(sbJoyIcon, joy, joySeen, sbJoyShown, SB_JOY_IDLE, "Kempston joystick", players);
+	light(sbMouseIcon, mouse, mouseSeen, sbMouseShown, SB_MOUSE_IDLE, "Kempston mouse", grab);
 	sbInputBox->setVisible(joy || mouse);
 }
