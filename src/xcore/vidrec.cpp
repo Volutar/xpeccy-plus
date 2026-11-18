@@ -98,18 +98,10 @@ static std::vector<sndPair> emSnd;
 static double emSlots = 0;	// frames of the file owed, whole ones go with a picture
 static double emSpan = 0;	// frames of the file run since the last picture went
 static long long emHost = 0;
-// VSync's speed when the recording started: a frame of the file lasts what a
-// frame lasted then - 1/60 s for a Next pulled up to 60 Hz, its own 1/58.15
-// without the lock. A lock coming or going later is counted like slow motion.
-static double emLock = 1.0;
+static double emLock = 1.0;	// VSync's speed at the start: the sound heard ran that much faster, the wav's header takes it back
 static double emFrame0 = 1.0;	// the machine's frame at the start, ns: what a frame of the file stands for
 static double emPrevNs = 0;	// the frame running at the last picture: the one that ends next
 static double emUndrawnNs = 0;	// machine time run since the last picture was drawn
-
-// how long a frame of the file lasts, ns
-static double em_frame_ns() {
-	return emFrame0 / emLock;
-}
 static int emSwaps = 0;
 
 static void vr_say(const QString& str) {
@@ -431,8 +423,8 @@ int vrec_fps_of(int fps, int ns) {
 }
 
 // Both FFmpeg runs. w, h: the pictures handed over, two pixels to a dot for
-// the emulated one; ns: a machine frame; path: the file, without extension.
-vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const QString& path, bool quiet) {
+// the emulated one; ns: a machine frame; lock: VSync's speed; path: the file, without extension.
+vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, double lock, const QString& path, bool quiet) {
 	vrecCmd cmd;
 	QString ext = vr_ext(rec);
 	cmd.out = path + "." + ext;
@@ -478,6 +470,7 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const Q
 	ma << "-i" << cmd.tmpVideo << "-i" << cmd.tmpAudio;
 	ma << "-map" << "0:v:0" << "-map" << "1:a:0" << "-c:v" << "copy";
 	QStringList& ms = cmd.sound;
+	double wav = rate / lock;	// the sound heard under VSync's lock ran faster: the header puts it back in the machine's time
 	if (nominal) {
 		// a machine frame lasts 1/50 or 1/60 s of video: the sound follows it.
 		// Its pitch goes with the wav's header, so an override keeps that
@@ -485,10 +478,14 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const Q
 		if (rec.keepPitch) {
 			ms << "-af" << QString("atempo=%0").arg(ratio, 0, 'f', 6);
 		} else {
-			cmd.wavRate = (int)lround(rate * ratio);
-			ms << "-ar" << "48000";
+			wav *= ratio;
 		}
 	}
+	cmd.wavRate = (int)lround(wav);
+	if (nominal && !rec.keepPitch)
+		ms << "-ar" << "48000";
+	else if (cmd.wavRate != rate)
+		ms << "-ar" << QString::number(rate);
 	if (lossless) {
 		ms << "-c:a" << "flac";
 	} else {
@@ -778,7 +775,7 @@ bool vrec_start(Computer* comp, const QString& image, int scrW, int scrH, QStrin
 	}
 	emLock = pacing_lock_speed();
 	emFrame0 = (vid->nsPerFrame > 0) ? vid->nsPerFrame : 20000000.0;
-	vrecCmd cmd = vrec_command(rec, w, h, (int)llround(em_frame_ns()), conf.snd.rate, QDir(dir).filePath(name));
+	vrecCmd cmd = vrec_command(rec, w, h, (int)llround(emFrame0), conf.snd.rate, emLock, QDir(dir).filePath(name));
 	vrWriter* wr = new vrWriter;
 	wr->prog = prog;
 	wr->cmd = cmd;
@@ -927,10 +924,10 @@ void vrec_frame(Computer* comp) {
 	long long now = paceClockNs();
 	double span;
 	if (conf.emu.fast || rewind_active()) {
-		span = double(now - emHost) / em_frame_ns();
+		span = double(now - emHost) / emFrame0;
 		if (span > VR_GAP_MAX) span = VR_GAP_MAX;
 	} else {
-		span = frames / conf.emu.speed * emLock / pacing_lock_speed();
+		span = frames / conf.emu.speed;
 	}
 	emHost = now;
 	emSlots += span;
@@ -941,7 +938,7 @@ void vrec_frame(Computer* comp) {
 	vrJob* job = new vrJob;
 	job->copies = copies;
 	// the sound of the time run, not of the frames shown: a dropped or doubled picture must not bend the pitch
-	job->smp = emSpan * (double)conf.snd.rate * em_frame_ns() / 1e9;
+	job->smp = emSpan * emFrame0 / 1e9 * conf.snd.rate / emLock;
 	emSpan = 0;
 	job->snd.swap(emSnd);
 	emSnd.reserve(job->snd.size());		// the next frame takes about as many

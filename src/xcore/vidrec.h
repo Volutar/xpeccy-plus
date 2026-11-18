@@ -69,7 +69,7 @@ typedef struct {
 	int wavRate;		// what the wav's header says
 } vrecCmd;
 
-vrecCmd vrec_command(const xRecord&, int w, int h, int ns, int rate, const QString& path, bool quiet = true);
+vrecCmd vrec_command(const xRecord&, int w, int h, int ns, int rate, double lock, const QString& path, bool quiet = true);
 QString vrec_command_line(const QStringList&, bool lines = false);
 QString vrec_args_line(const QStringList&);
 QString vrec_file_name(const QString& tpl, const QString& image, const QDateTime& when, int num = 0);
