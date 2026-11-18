@@ -350,7 +350,7 @@ int nx_snd_late(Computer* comp) {
 // The mix of what nx_vol gathered: the tape and the beeper, the AYs at m->late, the DACs
 sndPair nx_mix(sndMix* m, sndVolume* sv) {
 	int dc = sv->dc;
-	int type = snd_board_type(m->in.beepType, sv);	// the Next's own is line out
+	int type = snd_board_type(m->in.beepType, sv->board);	// the Next's own is line out
 	sndPair res, part;
 	// the tape and the beeper
 	int lev = snd_tape_level(m, sv);

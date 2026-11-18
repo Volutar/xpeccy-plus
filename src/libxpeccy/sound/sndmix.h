@@ -57,6 +57,17 @@ static inline int snd_tape_level(const sndMix* m, const sndVolume* sv) {
 	return 0;
 }
 
+// the PSGs' share of a sample (zx_mix, alf_mix): By machine through the board's mix filter,
+// if it has one (snd_beep_mixes); then their dc blocker and volume
+static inline sndPair snd_psg_part(sndMix* m, const sndVolume* sv, int type, int all, int dc) {
+	sndPair v = tsGetVolume(m->ts, sv->psgLay);
+	if (!all) v = snd_mix_flt(m->pflt, v, type, m->rate);
+	v = snd_dc(&m->dc[1], v, dc);
+	v.left = v.left * sv->ay / 100;
+	v.right = v.right * sv->ay / 100;
+	return v;
+}
+
 #ifdef __cplusplus
 }
 #endif

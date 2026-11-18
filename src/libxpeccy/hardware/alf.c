@@ -134,16 +134,15 @@ static const hwQuiet alf_quiet = {HWQ_ACK_ZX, NULL, NULL, alf_devs_sync, NULL, 0
 sndPair alf_mix(sndMix* m, sndVolume* sv) {
 	sndPair p;
 	sndPair v;
-	int type = snd_board_type(m->in.beepType, sv);
+	int dc = sv->dc;		// read once, so the sample agrees with itself (zx_mix)
+	int board = sv->board;
+	int type = snd_board_type(m->in.beepType, board);
+	int all = (board != BOARD_MACHINE);
 	v.left = snd_beep_flt(&m->bflt, bc_level_of(m->in.beep, sv->beep), type, m->rate);
 	v.right = v.left;
-	p = snd_dc(&m->dc[0], v, sv->dc);
-	v = tsGetVolume(m->ts, sv->psgLay);
-	if (sv->board == BOARD_MACHINE) v = snd_mix_flt(m->pflt, v, type, m->rate);
-	v = snd_dc(&m->dc[1], v, sv->dc);
-	v.left = v.left * sv->ay / 100;
-	v.right = v.right * sv->ay / 100;
-	if (sv->board != BOARD_MACHINE) v = snd_all_flt(m->pflt, v, type, m->rate);
+	p = snd_dc(&m->dc[0], v, dc);
+	v = snd_psg_part(m, sv, type, all, dc);
+	if (all) v = snd_all_flt(m->pflt, v, type, m->rate);
 	p.left += v.left;
 	p.right += v.right;
 	return p;

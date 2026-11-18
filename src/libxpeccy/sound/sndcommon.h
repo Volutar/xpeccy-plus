@@ -111,9 +111,10 @@ static inline int snd_beep_flt(sndBeepFlt* st, int lev, int type, int rate) {
 	return snd_beep_run(st, lev, type, rate, BF_BEEP);
 }
 
-// the type a mix hears: the machine's with the Board filter By machine, else the one picked
-static inline int snd_board_type(int type, const sndVolume* sv) {
-	return (sv->board == BOARD_MACHINE) ? type : sv->board;
+// the type a mix hears: the machine's with the Board filter (sndVolume.board) By machine,
+// else the one picked
+static inline int snd_board_type(int type, int board) {
+	return (board == BOARD_MACHINE) ? type : board;
 }
 
 // the types whose board or TV has the PSG mixed in before its filter
@@ -133,9 +134,7 @@ static inline sndPair snd_mix_flt(sndBeepFlt st[2], sndPair lev, int type, int r
 	return lev;
 }
 
-// A type picked on the Sound page, not By machine: everything but the beeper (the PSG, the
-// GS, the DACs, the SAA) is heard through it as well, as if it all left that board - through
-// its mix chain where it has one, else its beeper's. Line out lets it through
+// A type picked, not By machine, takes the rest of the mix too: its mix chain if it has one
 static inline sndPair snd_all_flt(sndBeepFlt st[2], sndPair lev, int type, int rate) {
 	if ((type <= BEEP_LINE) || (type >= BEEP_ALL) || (rate <= 0)) {
 		st[0].type = BEEP_LINE;
