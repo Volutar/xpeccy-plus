@@ -92,6 +92,9 @@ before that point is upstream's history and is not repeated here.
 - **A Next switching 50/60 Hz while a video records** stays in step: the sound no longer
   drifts away from the picture, and keeps its pitch.
 
+- **VSync no longer changes a video recording**: a machine pulled up to the screen's rate is
+  recorded at its own frame rate and pitch, and Keep pitch works with VSync on too.
+
 - **Hard Reset clears the memory on every machine**, as it says it does: the RAM, the General
   Sound card and the palettes come up as at power-on. A Scorpion service monitor stuck in a
   loop starts afresh. A switch to another machine no longer shows the old one's screen.
