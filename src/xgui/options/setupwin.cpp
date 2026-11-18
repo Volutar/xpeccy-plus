@@ -352,7 +352,147 @@ static const struct {double frq; const char* name;} psgFrqTab[] = {
 	{1.75, "ZX 48/ZX-clones"},
 };
 
-void opt_fill_psg_boxes(QComboBox* cbcount, QComboBox* cbtype, QComboBox* cbfrq, QComboBox* cbstereo) {
+// THE BOARD FILTER AND THE PSG LAYOUT
+//
+// The filter is picked once for every machine (sndVolume.board), By machine taking
+// each one's own type (its beeper key, which the Machine page shows); the layout the
+// same way (sndVolume.psgLay), the machine's being its psg.stereo.
+
+QString board_type_name(int type) {
+	static const char* names[BEEP_ALL] = {"Line out", "48K speaker", "TV (RF)", "+2A/+3",	// BEEP_*
+		"ZX Evolution", "Scorpion", "ATM Turbo", "Piezo",
+		"Low-pass 5 kHz, 24 dB/oct"};
+	return ((type >= 0) && (type < BEEP_ALL)) ? QObject::tr(names[type]) : QString();
+}
+
+QList<xBoardPick> board_picks() {
+	QList<xBoardPick> res;
+	res.append({BEEP_LINE, QObject::tr("No filter"), QObject::tr("Every machine straight out,\nnothing filtered"), false});
+	res.append({BOARD_MACHINE, QObject::tr("By machine"),
+		QObject::tr("Each machine through its board's own\nfilter, shown on the Machine page"), false});
+	static const char* tips[BEEP_ALL] = {NULL,
+		"The 48K's ULA pin and small speaker:\nthe highs softened, the bass thin",
+		"A TV's aerial input: highs cut\nfrom 3.2 kHz",
+		"The +2A/+3's mixer: highs cut\nfrom 2.5 kHz, lows below 340 Hz",
+		"The Evo's RC: highs cut from 8.6 kHz",
+		"The Scorpion's coupling capacitor:\nlows cut below 530 Hz",
+		"The ATM's coupling capacitor:\nlows cut below 80 Hz",
+		"A piezo sounder: rings at 4.1 kHz,\nthe bass falls off gently",
+		"For PWM music: its carrier gone,\nthe bass kept"};
+	for (int t = BEEP_LINE + 1; t < BEEP_ALL; t++)
+		res.append({t, board_type_name(t), QObject::tr(tips[t]), t == BEEP_LINE + 1});
+	return res;
+}
+
+QList<xCutPick> cut_picks() {
+	return {{QObject::tr("Low cut (DC)"), QObject::tr("Removes the offset the chips sit on")},	// CUT_LOW
+		{QObject::tr("High cut (anti-alias)"), QObject::tr("Removes aliasing; costs a little CPU")}};
+}
+
+QString psg_lay_name(int lay) {
+	static const char* names[] = {"Mono", "ABC", "ACB", "BAC", "BCA", "CAB", "CBA"};	// AY_*
+	return ((lay >= 0) && (lay <= AY_CBA)) ? QString(names[lay]) : QString();
+}
+
+// the Board filter's list
+static void board_fill_box(QComboBox* box) {
+	box->clear();
+	for (const xBoardPick& p : board_picks()) {
+		if (p.sep) box->insertSeparator(box->count());
+		box->addItem(p.name, p.val);
+		box->setItemData(box->count() - 1, p.tip, Qt::ToolTipRole);
+	}
+	box->setMaxVisibleItems(box->count());
+}
+
+// the Sound page's Stereo and Filters, side by side between Output and Volumes: what every
+// machine is heard through, a matter of taste rather than of the machine
+void SetupWin::makeSoundGroup() {
+	cbPsgLay = new QComboBox;
+	cbPsgLay->addItem(tr("By machine"), LAY_MACHINE);
+	cbPsgLay->setItemData(0, tr("Each machine's own, shown in its PSG sheet"), Qt::ToolTipRole);
+	cbPsgLay->insertSeparator(1);
+	for (int lay = AY_MONO; lay <= AY_CBA; lay++)
+		cbPsgLay->addItem(psg_lay_name(lay), lay);
+	cbPsgLay->setToolTip(tr("The PSG's voices from left to right on every\nmachine; the Next keeps what its software set"));
+	sldSep = sep_slider(&labSep);
+	sldSep->setToolTip(tr("100%: the sides kept apart, 0%: mono;\nthe PSG, the General Sound and the Next"));
+	cbBoard = new QComboBox;
+	board_fill_box(cbBoard);
+	cbBoard->setToolTip(tr("A type picked: all the sound through it.\nBy machine: each board's own, the beeper\nand on some boards the PSG"));
+	// Stereo: a name and a control a row, the names one width
+	QLabel* labs[2] = {new QLabel(tr("PSG stereo")), new QLabel(tr("Separation"))};
+	int lw = 0;
+	for (QLabel* lab : labs) lw = qMax(lw, lab->sizeHint().width());
+	for (QLabel* lab : labs) lab->setMinimumWidth(lw);
+	QGroupBox* stereo = new xIconGroup(":/images/grp-stereo.png", tr("Stereo"));
+	QGridLayout* sg = new QGridLayout(stereo);
+	sg->addWidget(labs[0], 0, 0);
+	sg->addWidget(cbPsgLay, 0, 1);
+	sg->addWidget(labs[1], 1, 0);
+	sg->addWidget(fieldPair(sldSep, labSep, true), 1, 1);
+	sg->setColumnStretch(1, 1);
+	sg->setRowStretch(2, 1);		// spare height under the rows
+	// Filters: the names in one column, the check boxes left of theirs and the Board filter's
+	// icon left of it, the list after its name
+	QGroupBox* filters = new xIconGroup(":/images/grp-filters.png", tr("Filters"));
+	QGridLayout* fg = new QGridLayout(filters);
+	QLabel* ico = new QLabel;
+	ico->setPixmap(QIcon(":/images/board-filter.png").pixmap(16, 16));
+	fg->addWidget(ico, 0, 0, Qt::AlignCenter);
+	fg->addWidget(new QLabel(tr("Board filter")), 0, 1);
+	fg->addWidget(cbBoard, 0, 2);
+	QList<xCutPick> cuts = cut_picks();
+	QCheckBox** chk[2] = {&chkLowCut, &chkHighCut};	// CUT_*
+	for (int i = 0; i < 2; i++) {
+		*chk[i] = new QCheckBox;
+		QLabel* lab = new QLabel(cuts[i].name);
+		(*chk[i])->setToolTip(cuts[i].tip);
+		lab->setToolTip(cuts[i].tip);
+		label_for(lab, *chk[i]);
+		// as wide as its box, no gap for a text after it: its middle under the icon's
+		QStyleOptionButton opt;
+		opt.initFrom(*chk[i]);
+		QRect box = (*chk[i])->style()->subElementRect(QStyle::SE_CheckBoxIndicator, &opt, *chk[i]);
+		(*chk[i])->setFixedWidth(box.right() + 1);
+		fg->addWidget(*chk[i], i + 1, 0, Qt::AlignCenter);
+		fg->addWidget(lab, i + 1, 1, 1, 2);
+	}
+	fg->setColumnStretch(2, 1);
+	fg->setRowStretch(3, 1);
+	QHBoxLayout* row = new QHBoxLayout;
+	row->addWidget(stereo, 1);
+	row->addWidget(filters, 1);
+	ui.verticalLayout_43->insertLayout(1, row);
+	// over the groups, the page's own switch: off, nothing is worked out, and the rest greys
+	chkSndOn = new QCheckBox(tr("Emulate sound"));
+	QLabel* hint = new QLabel(tr("Off: silence, its CPU time saved"));
+	QFont fnt = hint->font();
+	fnt.setItalic(true);
+	hint->setFont(fnt);
+	label_for(hint, chkSndOn);
+	QHBoxLayout* top = new QHBoxLayout;
+	top->addWidget(chkSndOn);
+	top->addSpacing(12);
+	top->addWidget(hint);
+	top->addStretch(1);
+	ui.verticalLayout_43->insertLayout(0, top);
+	connect(chkSndOn, &QCheckBox::toggled, this, &SetupWin::soundPageOn);
+}
+
+// the Sound page under Emulate sound, greyed while it is off
+void SetupWin::soundPageOn(bool on) {
+	QLayout* page = ui.verticalLayout_43;
+	for (int i = 1; i < page->count(); i++) {
+		QLayoutItem* it = page->itemAt(i);
+		if (it->widget()) it->widget()->setEnabled(on);
+		QLayout* sub = it->layout();
+		for (int k = 0; sub && (k < sub->count()); k++)
+			if (sub->itemAt(k)->widget()) sub->itemAt(k)->widget()->setEnabled(on);
+	}
+}
+
+void opt_fill_psg_boxes(QComboBox* cbcount, QComboBox* cbtype, QComboBox* cbfrq) {
 	cbcount->clear();
 	cbcount->addItem(QIcon(":/images/cancel.png"),"None",PSG_NONE);
 	cbcount->addItem(QString::fromUtf8("×1 - AY/YM"),PSG_ONE);
@@ -366,14 +506,6 @@ void opt_fill_psg_boxes(QComboBox* cbcount, QComboBox* cbtype, QComboBox* cbfrq,
 	cbfrq->clear();
 	for (size_t i = 0; i <= sizeof(psgFrqTab) / sizeof(psgFrqTab[0]); i++)
 		cbfrq->addItem(QString());	// Auto and the presets, filled in by chapsg()
-	cbstereo->clear();
-	cbstereo->addItem("Mono",AY_MONO);
-	cbstereo->addItem("ABC",AY_ABC);
-	cbstereo->addItem("ACB",AY_ACB);
-	cbstereo->addItem("BAC",AY_BAC);
-	cbstereo->addItem("BCA",AY_BCA);
-	cbstereo->addItem("CAB",AY_CAB);
-	cbstereo->addItem("CBA",AY_CBA);
 }
 
 // frequency items are "<mhz> - machines", so cut the comment off
@@ -427,27 +559,24 @@ void SetupWin::makeDevWidgets() {
 	cbPsgCount = new QComboBox;
 	cbPsgType = new QComboBox;
 	cbPsgFrq = new QComboBox;
-	cbPsgStereo = new QComboBox;
+	psgLayVal = new QLabel;
 	foreach(QComboBox* box, QList<QComboBox*>() << cbPsgCount << cbPsgType << cbPsgFrq) {
 		box->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
 		box->setMinimumContentsLength(8);
 	}
 	cbPsgFrq->setEditable(true);
 	cbPsgFrq->setInsertPolicy(QComboBox::NoInsert);
-	cbPsgStereo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 	sldTapeSpeed = new xSlider;
 	sldTapeSpeed->setRange(95, 105);
 	sldTapeSpeed->setPageStep(1);
 	sldTapeSpeed->setValue(100);
 	sldTapeSpeed->setTickInterval(1);
-	sldPsgSep = sep_slider(&labPsgSep);
 	sldSensitivity = new xSlider;
 	sldSensitivity->setRange(100, 1900);
 	sldSensitivity->setSingleStep(10);
 	sldSensitivity->setPageStep(100);
 	sldSensitivity->setValue(1000);
 	sldSensitivity->setTickInterval(100);
-	sldGsSep = sep_slider(&labGsSep);
 	foreach(QSlider* sld, QList<QSlider*>() << sldTapeSpeed << sldSensitivity) {
 		sld->setOrientation(Qt::Horizontal);
 		sld->setTickPosition(QSlider::TicksBelow);
@@ -672,7 +801,8 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	for (i = 0; sndRateTab[i]; i++) {
 		ui.ratbox->addItem(QString::number(sndRateTab[i]), sndRateTab[i]);
 	}
-	opt_fill_psg_boxes(cbPsgCount, cbPsgType, cbPsgFrq, cbPsgStereo);
+	opt_fill_psg_boxes(cbPsgCount, cbPsgType, cbPsgFrq);
+	makeSoundGroup();
 	cbPsgCount->setItemDelegate(new xTwoPartDelegate(cbPsgCount));
 	cbPsgFrq->setItemDelegate(new xTwoPartDelegate(cbPsgFrq));
 	new xTwoPartPainter(cbPsgCount);
@@ -829,6 +959,8 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	ui.gbCpu->setIcon(":/images/grp-cpu.png");
 	ui.gbUla->setIcon(":/images/grp-ula.png");
 	ui.gbBoard->setIcon(":/images/grp-board.png");
+	ui.sndOutGBox->setIcon(":/images/speaker.png");
+	ui.groupBox_12->setIcon(":/images/grp-volumes.png");
 // media
 	// the file types sit on the page itself, there is room for them now
 	ftbox = new xFileTypesBox;
@@ -853,12 +985,10 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	connect(ui.bszsld,SIGNAL(valueChanged(int)),this,SLOT(chabsz()));
 	connect(ui.sldSpeed,SIGNAL(valueChanged(int)),this,SLOT(chaspd()));
 	connect(ui.sldNoflic,SIGNAL(valueChanged(int)),this,SLOT(chaflc()));
-	connect(sldPsgSep,SIGNAL(valueChanged(int)),this,SLOT(chapsg()));
 	connect(ui.sldSndLatency,SIGNAL(valueChanged(int)),this,SLOT(chasndlat()));
 	connect(cbPsgCount,SIGNAL(currentIndexChanged(int)),this,SLOT(chapsg()));
 	connect(ui.cbCpuFrq,SIGNAL(currentTextChanged(QString)),this,SLOT(chapsg()));
 	connect(ui.cbSnow,SIGNAL(toggled(bool)),this,SLOT(chasnow()));
-	connect(cbPsgStereo,SIGNAL(currentIndexChanged(int)),this,SLOT(chapsg()));
 
 	connect(ui.layEdit,SIGNAL(released()),this,SLOT(edLayout()));
 	connect(ui.layAdd,SIGNAL(released()),this,SLOT(addNewLayout()));
@@ -1281,7 +1411,6 @@ void SetupWin::fillPages() {
 // sound
 	gsBox->setCurrentIndex(xm_gs_of(comp));
 	gsrbox->setChecked(comp->gs->reset);
-	sldGsSep->setValue(comp->gs->sep);
 	ngsPick = QString::fromUtf8(conf.ngsFile.c_str());
 	rom_box_pick(ngsRomBox, ngsPick);
 	gsRomStack->setCurrentIndex((xm_gs_of(comp) == MAC_GS_NEOGS) ? 1 : 0);
@@ -1291,15 +1420,17 @@ void SetupWin::fillPages() {
 	fillDivFirmware();
 
 	sdrvBox->setCurrentIndex(sdrvBox->findData(comp->sdrv->type));
-	setRFIndex(beepBox, comp->beepType, BEEP_LINE);
+	beepVal->setText(board_type_name(comp->beepType));
 
 	saaBox->setCurrentIndex(comp->saa->enabled ? 1 : 0);
 	clockBox->setCurrentIndex(comp->flgGLUK ? MAC_CLOCK_GLUK : MAC_CLOCK_NONE);
 
-	ui.senbox->setChecked(conf.snd.enabled);
-	ui.dcbox->setChecked(conf.snd.vol.dc);
-	ui.chkBoardFilter->setChecked(conf.snd.vol.board);
-	showBoardFilter();
+	chkSndOn->setChecked(conf.snd.enabled);
+	soundPageOn(conf.snd.enabled);
+	chkLowCut->setChecked(conf.snd.vol.dc);
+	setRFIndex(cbBoard, conf.snd.vol.board, 0);
+	setRFIndex(cbPsgLay, conf.snd.vol.psgLay, 0);
+	sldSep->setValue(comp->ts->chipA->sep);
 	ui.outbox->setCurrentIndex(ui.outbox->findText(QString::fromLocal8Bit(sndOutput->name)));
 	// Auto keeps conf.snd.rate as the rate actually in use, so the box says
 	// which one that turned out to be rather than leaving the user guessing.
@@ -1311,7 +1442,7 @@ void SetupWin::fillPages() {
 	ui.sldSndLatency->setRange(SND_LATENCY_MIN, SND_LATENCY_MAX);	// the block size sets the floor, keep the two together
 	ui.sldSndLatency->setValue(conf.snd.latency);
 	ui.chkSndLatAuto->setChecked(conf.snd.latauto);
-	ui.chkSndFilter->setChecked(conf.snd.filter);
+	chkHighCut->setChecked(conf.snd.filter);
 	chasndlat();
 
 	ui.sbMasterVol->setValue(conf.snd.vol.master);
@@ -1327,8 +1458,7 @@ void SetupWin::fillPages() {
 	if (comp->ts->chipA->type == SND_NONE) psg = PSG_NONE;
 	setRFIndex(cbPsgCount, psg);
 	setRFIndex(cbPsgType, (comp->ts->chipA->type == SND_NONE) ? SND_AY : comp->ts->chipA->type);
-	setRFIndex(cbPsgStereo, comp->ts->chipA->stereo);
-	sldPsgSep->setValue(comp->ts->chipA->sep);
+	psgLayVal->setText(psg_lay_name(comp->ts->chipA->stereo));
 	chapsg();				// the presets at this chip's clock first
 	opt_set_psg_frq(cbPsgFrq, comp->ts->frq * psgFrqMul);	// 0 picks Auto
 // input
@@ -1599,11 +1729,9 @@ void SetupWin::applyMachine() {
 		int chips = (psg == PSG_NEXT) ? 3 : ((psg == PSG_TS) || (psg == PSG_TSFM)) ? 2 : (psg == PSG_ONE) ? 1 : 0;
 		int chtype = (psg == PSG_TSFM) ? SND_YM2203 : getRFIData(cbPsgType);
 		if ((psg != PSG_TSFM) && (chtype == SND_YM2203)) chtype = SND_YM;
-		int chstereo = getRFIData(cbPsgStereo);
 		double psgFrq = opt_get_psg_frq(cbPsgFrq) / psgFrqMul;	// 0: Auto
 		int tsType = (chips > 2) ? TS_ZXNEXT : (chips > 1) ? TS_NEDOPC : TS_NONE;
 		bool chipsNew = (comp->ts->type != tsType);
-		bool stereoNew = false;		// the chips' tick goes on: only the sound thread's copy is told
 		aymChip* chip[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
 		for (int i = 0; i < 3; i++) {			// one setting for all the chips
 			int type = (i < chips) ? chtype : SND_NONE;
@@ -1611,22 +1739,15 @@ void SetupWin::applyMachine() {
 				chip_set_type(chip[i], type);
 				chipsNew = true;
 			}
-			if (chip[i]->stereo != chstereo) {
-				chip[i]->stereo = chstereo;
-				stereoNew = true;
-			}
 		}
 		// a chip of another type takes its clock here too (a YM2203 runs at twice the AY's)
 		if (chipsNew || (psgFrq != shown.psg)) {
 			ts_set_frq(comp->ts, psgFrq, comp->cpuFrq);
 			comp->ts->type = tsType;
 			comp->sndSeed = 1;		// the chips the sound thread mixes take all of it
-		} else if (stereoNew) {
-			comp->sndSeed = 1;
 		}
 		xm_set_gs(comp, gsBox->currentIndex());
 		comp->sdrv->type = getRFIData(sdrvBox);
-		comp->beepType = qMax(getRFIData(beepBox), (int)BEEP_LINE);
 		comp->saa->enabled = saaBox->currentIndex() ? 1 : 0;
 	}
 // input
@@ -1754,9 +1875,10 @@ void SetupWin::applyGlobal() {
 	palButtons();
 	if (palNew || (greyScale != greyWas)) emit s_palette();
 // sound
-	conf.snd.enabled = ui.senbox->isChecked() ? 1 : 0;
-	conf.snd.vol.dc = ui.dcbox->isChecked() ? 1 : 0;
-	conf.snd.vol.board = ui.chkBoardFilter->isChecked() ? 1 : 0;
+	conf.snd.enabled = chkSndOn->isChecked() ? 1 : 0;
+	conf.snd.vol.dc = chkLowCut->isChecked() ? 1 : 0;
+	conf.snd.vol.board = getRFIData(cbBoard);
+	conf.snd.vol.psgLay = getRFIData(cbPsgLay);
 
 	conf.snd.vol.master = ui.sbMasterVol->value();
 	conf.snd.vol.beep = ui.sbBeepVol->value();
@@ -1776,7 +1898,7 @@ void SetupWin::applyGlobal() {
 	// slider shows what the emulator settled on and is still the way to nudge
 	// it by hand
 	conf.snd.latauto = ui.chkSndLatAuto->isChecked() ? 1 : 0;
-	conf.snd.filter = ui.chkSndFilter->isChecked() ? 1 : 0;
+	conf.snd.filter = chkHighCut->isChecked() ? 1 : 0;
 	int latency = ui.sldSndLatency->value();
 	// reopen on a changed latency too: the pacer would creep to the new target
 	// over tens of seconds, refilling the ring gets there at once
@@ -1788,15 +1910,8 @@ void SetupWin::applyGlobal() {
 		setOutput(nname.c_str());
 	}
 
-	int chsep = sldPsgSep->value();
-	aymChip* chip[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
-	for (int i = 0; i < 3; i++) {
-		if (chip[i]->sep == chsep) continue;
-		chip[i]->sep = chsep;
-		comp->sndSeed = 1;
-	}
+	xm_set_sep(comp, sldSep->value());
 	comp->gs->reset = gsrbox->isChecked() ? 1 : 0;
-	comp->gs->sep = sldGsSep->value();
 // input
 	comp->mouse->swapButtons = cbSwapButtons->isChecked() ? 1 : 0;
 	comp->mouse->sensitivity = sldSensitivity->value() * 0.001f;
@@ -2420,48 +2535,15 @@ void SetupWin::buildDevices() {
 	kbdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << cbScanTab << btn;
 
 	grid = devGroup(cols, 0, 1, ":/images/speaker.png", tr("Sound"));
-	beepBox = devCombo(QStringList() << tr("Line out") << tr("48K speaker") << tr("TV (RF)")	// BEEP_*
-		<< tr("+2A/+3") << tr("ZX Evolution") << tr("Scorpion") << tr("ATM Turbo") << tr("Piezo"));
-	beepBox->setObjectName("beepBox");
-	beepBox->setItemData(BEEP_LINE, tr("Straight out, nothing filtered"), Qt::ToolTipRole);
-	beepBox->setItemData(BEEP_SPEAKER, tr("The 48K's ULA pin and small speaker:\nthe highs softened, the bass thin"), Qt::ToolTipRole);
-	beepBox->setItemData(BEEP_TV, tr("A TV's aerial input: highs cut\nfrom 3.2 kHz, the PSG's too"), Qt::ToolTipRole);
-	beepBox->setItemData(BEEP_PLUS3, tr("The +2A/+3's mixer: highs cut\nfrom 2.5 kHz, the PSG's too"), Qt::ToolTipRole);
-	beepBox->setItemData(BEEP_EVO, tr("The Evo's RC: highs cut from 8.6 kHz"), Qt::ToolTipRole);
-	beepBox->setItemData(BEEP_SCORPION, tr("The Scorpion's coupling capacitor:\nlows cut below 530 Hz"), Qt::ToolTipRole);
-	beepBox->setItemData(BEEP_ATM, tr("The ATM's coupling capacitor:\nlows cut below 80 Hz"), Qt::ToolTipRole);
-	beepBox->setItemData(BEEP_PIEZO, tr("A piezo sounder: rings at 4.1 kHz,\nthe bass falls off gently"), Qt::ToolTipRole);
-	// the experimental ones under a heading of their own: the type is each item's data
-	for (int t = 0; t < BEEP_TYPES; t++)
-		beepBox->setItemData(t, t);
-	beepBox->insertSeparator(beepBox->count());
-	beepBox->addItem(tr("EXPERIMENTAL"));
-	QStandardItemModel* beepModel = qobject_cast<QStandardItemModel*>(beepBox->model());
-	if (beepModel) {
-		QStandardItem* head = beepModel->item(beepBox->count() - 1);
-		QFont font = head->font();
-		font.setBold(true);
-		head->setFont(font);
-		head->setEnabled(false);
-	}
-	const QStringList xNames = QStringList() << tr("48K speaker, no bass cut") << tr("48K speaker, bass cut 250 Hz")	// BEEP_X_*
-		<< tr("48K speaker, bass cut 750 Hz") << tr("Low-pass 5 kHz, 1 pole") << tr("Low-pass 5 kHz, 2 poles")
-		<< tr("Low-pass 5 kHz, 4 poles");
-	for (int t = BEEP_TYPES; t < BEEP_ALL; t++)
-		beepBox->addItem(xNames.value(t - BEEP_TYPES), t);
-	beepBox->setItemData(beepBox->findData(BEEP_X_LP5_4), tr("For PWM music: its carrier gone,\nthe bass kept"), Qt::ToolTipRole);
-	beepBox->setMaxVisibleItems(beepBox->count());
-	devRow(grid, tr("Beeper"), beepBox, NULL, NULL);
-	beepName = qobject_cast<QLabel*>(grid->itemAtPosition(grid->rowCount() - 1, 0)->widget());
-	beepName->setText(tr("Beeper (off)"));	// measured so (finishGroups)
-	connect(ui.chkBoardFilter, &QCheckBox::toggled, this, &SetupWin::showBoardFilter);
+	// the board's own filter, as its definition has it: the pick is the Sound page's
+	beepVal = new QLabel;
+	beepVal->setToolTip(tr("The board's own filter: heard with Board filter\nBy machine on the Sound page"));
+	devRow(grid, tr("Board filter"), beepVal, NULL, NULL);
 	xOptSheet psg;
 	psg.field(tr("Chip"), cbPsgType);
 	psg.field(tr("Clock"), fieldPair(cbPsgFrq, labPsgMhz, false),
 		tr("Auto: follows the CPU clock"));
-	psg.field(tr("Stereo"), cbPsgStereo);
-	psg.field(tr("Separation"), fieldPair(sldPsgSep, labPsgSep, false),
-		tr("100%: the channels kept apart, 0%: mono"));
+	psg.field(tr("Stereo"), psgLayVal, tr("The board's own: another is picked on the Sound page"));
 	devRow(grid, tr("PSG"), cbPsgCount, psg.body, "Machine: PSG");
 	devRow(grid, tr("DAC"), sdrvBox, NULL, NULL);
 	gsBox = devCombo(QStringList() << tr("None") << tr("Original") << tr("NeoGS"));	// MAC_GS_*
@@ -2488,8 +2570,6 @@ void SetupWin::buildDevices() {
 		gsRomStack->setCurrentIndex((idx == MAC_GS_NEOGS) ? 1 : 0);
 	});
 	gs.field(tr("ROM"), gsRomStack);
-	gs.field(tr("Separation"), fieldPair(sldGsSep, labGsSep, false),
-		tr("100%: the sides as the card has them, 0%: mono"));
 	gs.line();
 	gs.check(gsrbox, tr("Reset"), tr("The card is reset with the machine"));
 	devRow(grid, tr("General Sound"), gsBox, gs.body, "Machine: General Sound");
@@ -2765,7 +2845,7 @@ void SetupWin::tidySoundPage() {
 	}
 	grid->setColumnStretch(1, 1);
 	// the gaps that stood above GS reset and under the output rows
-	foreach(QLayout* lay, QList<QLayout*>() << ui.verticalLayout_22 << ui.gridLayout_5) {
+	foreach(QLayout* lay, QList<QLayout*>() << ui.gridLayout_5) {
 		for (int i = lay->count() - 1; i >= 0; i--) {
 			if (lay->itemAt(i)->spacerItem())
 				delete lay->takeAt(i);
@@ -2977,15 +3057,6 @@ void SetupWin::showBoardStorage() {
 	// the board on takes the disk controllers out (comp_board_storage): its name marks it
 	QLabel* divName = qobject_cast<QLabel*>(divRow.value(0));
 	if (divName) divName->setText(board ? tr("SD card (!)") : tr("SD card"));
-}
-
-// Board filters off: the Beeper row still picks, its name and tip say it is not heard
-void SetupWin::showBoardFilter() {
-	bool on = ui.chkBoardFilter->isChecked();
-	beepName->setText(on ? tr("Beeper") : tr("Beeper (off)"));
-	QString tip = on ? QString() : tr("Board filters are off on the Sound page:\nthe sound goes out as Line out");
-	beepName->setToolTip(tip);
-	beepBox->setToolTip(tip);
 }
 
 // the SD card row's choice, of the boards this machine takes
@@ -3472,7 +3543,6 @@ void SetupWin::chapsg() {
 	int psg = getRFIData(cbPsgCount);
 	int on = (psg != PSG_NONE);
 	int fm = (psg == PSG_TSFM);
-	int split = on && (getRFIData(cbPsgStereo) != AY_MONO);
 	// TurboSound FM is two YM2203 and nothing else; the others never are
 	QStandardItemModel* types = qobject_cast<QStandardItemModel*>(cbPsgType->model());
 	int fmrow = cbPsgType->findData(SND_YM2203);
@@ -3481,7 +3551,6 @@ void SetupWin::chapsg() {
 	else if (getRFIData(cbPsgType) == SND_YM2203) setRFIndex(cbPsgType, SND_YM);
 	cbPsgType->setEnabled(on && !fm);
 	cbPsgFrq->setEnabled(on);
-	cbPsgStereo->setEnabled(on);
 	// the clock is shown as the chip's own, and set as an AY's
 	int mul = chip_frq_mul(getRFIData(cbPsgType));
 	double ay = opt_get_psg_frq(cbPsgFrq) / psgFrqMul;	// 0: Auto
@@ -3498,8 +3567,6 @@ void SetupWin::chapsg() {
 	}
 	if (moved)		// renaming the current item wipes a figure typed in
 		opt_set_psg_frq(cbPsgFrq, ay * mul);
-	sldPsgSep->setEnabled(split);
-	labPsgSep->setEnabled(split);
 }
 
 // the crash is a property of the snow, not a setting of its own: it says nothing

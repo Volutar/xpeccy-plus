@@ -9,7 +9,7 @@
 ![The menu over the picture](images/menu-picture.png)
 
 A right-click on the picture opens a menu with the commands needed while playing: open a
-file, favorites, machine, turbo, reset, keymap, shaders, palette, the media windows, grab
+file, favorites, machine, turbo, reset, sound, shaders, palette, the media windows, grab
 keyboard, virtual keyboard, gamepads, **Tools** (**Cheats** and the **Debugger**) and
 **Options**. Some of its items act on a click as well as opening their submenu: **Reset**
 resets the machine, **Disk Manager** and **Gamepads** open their windows.
@@ -20,7 +20,7 @@ Each item is the command of the same name in a menu of the menu bar, described t
 |---|---|
 | {icon}`fileopen` **Open...**, {icon}`star` **Favorites** | [File menu](files.md), [Favorites menu](favorites.md) |
 | {icon}`model-zx48` **Model**, {icon}`clock` **Turbo Mode**, {icon}`shutdown` **Reset** | [Machine menu](machines.md) |
-| {icon}`vkeys` **Keymap** | [Input menu](input.md) |
+| {icon}`speaker` **Sound**: **Mute**, the **Board filter**'s choices and the **Output filters** | [Mute](machines.md#mute), [Board filter](options-sound.md#board-filter) |
 | {icon}`crt` **Shaders**, {icon}`palette` **ZX Palette** | [View menu](view.md) |
 | {icon}`fdd_disk` **Disk Manager**, {icon}`cartrige` **Cartridge**, {icon}`sdcard` **divMMC**, **SD Card**, {icon}`hdd` **Drives**, {icon}`tape` **Tape Player** | [Media menu](media.md) |
 | {icon}`video` **RZX Player** | [Capture menu](capture.md) |

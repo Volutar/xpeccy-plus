@@ -604,13 +604,7 @@ sndPair gsVolume(GSound* gs) {
 	sndPair res = {0, 0};
 	if (!gs->enable) return res;
 	res = (gs->model == GS_NEOGS) ? gs_mix_neogs(gs) : gs_mix_original(gs);
-	int sep = (gs->stereo == GS_MONO) ? 0 : (gs->sep < 0) ? 0 : (gs->sep > 100) ? 100 : gs->sep;
-	if (sep < 100) {
-		int l = res.left;
-		res.left = (l * (100 + sep) + res.right * (100 - sep)) / 200;
-		res.right = (res.right * (100 + sep) + l * (100 - sep)) / 200;
-	}
-	return res;
+	return snd_sep(res, (gs->stereo == GS_MONO) ? 0 : gs->sep);
 }
 
 // the listener's settings are not the card's writes: they are looked at each time

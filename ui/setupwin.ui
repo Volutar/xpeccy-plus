@@ -2030,7 +2030,7 @@ Integer scaling, so every pixel is the same size</string>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_25">
            <item>
-            <widget class="QGroupBox" name="sndOutGBox">
+            <widget class="xIconGroup" name="sndOutGBox">
              <property name="title">
               <string>Output</string>
              </property>
@@ -2144,74 +2144,12 @@ thin, lower it again after a long clean spell</string>
              </layout>
             </widget>
            </item>
-           <item>
-            <widget class="QGroupBox" name="sndOptGBox">
-             <property name="title">
-              <string>Sound</string>
-             </property>
-             <layout class="QVBoxLayout" name="verticalLayout_22">
-              <item>
-               <widget class="QCheckBox" name="senbox">
-                <property name="toolTip">
-                 <string>Off plays silence, still paced by the sound card</string>
-                </property>
-                <property name="text">
-                 <string>Enabled</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QCheckBox" name="dcbox">
-                <property name="toolTip">
-                 <string>Removes the offset the chips sit on</string>
-                </property>
-                <property name="text">
-                 <string>Low cut (DC)</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QCheckBox" name="chkSndFilter">
-                <property name="toolTip">
-                 <string>Removes aliasing; costs a little CPU</string>
-                </property>
-                <property name="text">
-                 <string>High cut (anti-alias)</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QCheckBox" name="chkBoardFilter">
-                <property name="toolTip">
-                 <string>Each machine sounds through its board's own&#10;filter, set in the Beeper row of the Machine page</string>
-                </property>
-                <property name="text">
-                 <string>Board filters</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="verticalSpacer_23">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </widget>
-           </item>
           </layout>
          </item>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_32">
            <item>
-            <widget class="QGroupBox" name="groupBox_12">
+            <widget class="xIconGroup" name="groupBox_12">
              <property name="title">
               <string>Volumes</string>
              </property>

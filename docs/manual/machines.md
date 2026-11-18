@@ -201,8 +201,10 @@ These change how fast the machine runs, and let it go back in time; see
 ```
 
 {icon}`speaker` **Mute** on the toolbar, or **Machine > Mute**, silences the sound and
-brings it back. The arrow beside the **Mute** button opens a slider for the volume (see
-[Toolbar](toolbar.md)).
+brings it back. The arrow beside the **Mute** button opens a slider for the volume, the
+**Board filter**'s choices and the **Output filters**, **Low cut** and **High cut** (see
+[Toolbar](toolbar.md) and [Board filter](options-sound.md#board-filter)). **Sound** in the
+right-click menu has **Mute** and the same filters.
 
 Alt with the mouse wheel over the picture turns the volume up or down by 5%. The slider
 under the **Mute** button shows the new volume for a moment; when the toolbar is hidden,

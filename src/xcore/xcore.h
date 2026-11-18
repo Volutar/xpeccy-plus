@@ -459,6 +459,11 @@ void xm_over_migrate();
 void xm_drop_running();		// the config is being read from scratch
 
 void xm_defer(const std::string&, const std::string&);
+void xm_set_sep(Computer*, int);		// the stereo separation, the PSGs' and the GS's
+const char* xm_beep_name(int);			// BEEP_* by its name in the files, and back
+int xm_beep_named(const std::string&, int def);
+const char* xm_lay_name(int);			// AY_* layouts likewise
+int xm_lay_named(const std::string&, int def);
 bool xm_migrate(const std::string&, const std::string&);
 std::string xm_id_for_name(const std::string&);
 void xm_finish_load();

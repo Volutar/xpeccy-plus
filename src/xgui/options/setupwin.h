@@ -67,7 +67,8 @@ class SetupWin : public QDialog {
 		bool applyDivFirmware();
 		void showDevRows();
 		void showBoardStorage();
-		void showBoardFilter();
+		void makeSoundGroup();
+		void soundPageOn(bool);
 		void fillNextGroup();
 		void showDriveRows();
 		void tidySoundPage();
@@ -156,15 +157,21 @@ class SetupWin : public QDialog {
 
 		// the devices' own controls, see makeDevWidgets()
 		QCheckBox *cbTapeAuto, *cbTapeRewind, *cbTapeSet, *cbTapeFast, *cbTapeFlash, *cbTapeEdge, *bdtbox, *cbAddBoot, *a80box, *b80box, *c80box, *d80box, *adsbox, *bdsbox, *cdsbox, *ddsbox, *gsrbox, *ratWheel, *cbSwapButtons;
-		QComboBox *diskTypeBox, *cbFlpInterleave, *hiface, *hm_type, *hs_type, *sdrvBox, *cbScanTab, *cbCpuTurbo, *cbPsgCount, *cbPsgType, *cbPsgFrq, *cbPsgStereo;
-		xSlider *sldTapeSpeed, *sldPsgSep, *sldSensitivity, *sldGsSep;
-		QLabel *labTapeSpeedVal, *labPsgMhz, *labPsgSep, *labGsSep;
+		QComboBox *diskTypeBox, *cbFlpInterleave, *hiface, *hm_type, *hs_type, *sdrvBox, *cbScanTab, *cbCpuTurbo, *cbPsgCount, *cbPsgType, *cbPsgFrq;
+		xSlider *sldTapeSpeed, *sldSensitivity;
+		QLabel *labTapeSpeedVal, *labPsgMhz;
+		QLabel* psgLayVal;		// the PSG sheet's Stereo: the machine's layout, shown
+		// the Sound page's Stereo and Filters groups (makeSoundGroup)
+		QComboBox *cbBoard, *cbPsgLay;
+		QCheckBox *chkLowCut, *chkHighCut;	// the Sound page's Filters
+		QCheckBox* chkSndOn;	// Emulate sound, over the page's groups
+		xSlider* sldSep;
+		QLabel* labSep;
 		int psgFrqMul = 1;	// the chip's clock against the AY's the setting holds
 		// the machine's devices, on the Machine page
 		QComboBox* gsBox;
 		QComboBox* saaBox;
-		QComboBox* beepBox;
-		QLabel* beepName;		// its row's name: "(off)" while Board filters are off
+		QLabel* beepVal;		// the machine's own Board filter, shown: the pick is the Sound page's
 		QComboBox* clockBox;		// the Gluk clock (MAC_CLOCK_*), where the board takes one
 		QList<QWidget*> clockRow;
 		QComboBox* gsRomBox;

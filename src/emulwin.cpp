@@ -3024,7 +3024,10 @@ void MainWin::initUserMenu() {
 	turboMenu = userMenu->addMenu(QIcon(":/images/clock.png"),"Turbo Mode");
 	resMenu = userMenu->addMenu(QIcon(":/images/shutdown.png"),"Reset");
 	userMenu->addSeparator();
-	keyMenu = userMenu->addMenu(QIcon(":/images/vkeys.png"), "Keymap");
+	// Keymap left for Input and the toolbar: Sound has its place, filled in initBars after Mute
+	keyMenu = new QMenu("Keymap", this);
+	keyMenu->setIcon(QIcon(":/images/vkeys.png"));
+	sndMenu = userMenu->addMenu(QIcon(":/images/speaker.png"), "Sound");
 	shdMenu = userMenu->addMenu(QIcon(":/images/crt.png"), "Shaders");
 	palMenu = userMenu->addMenu(QIcon(":/images/palette.png"), "ZX Palette");
 

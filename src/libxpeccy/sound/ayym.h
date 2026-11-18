@@ -158,7 +158,8 @@ struct aymChip {
 	// the fm core ran its timers only (ym2203_lite): its state is not the chip's,
 	// a copy that made the sound holds that (sound.cpp)
 	unsigned fm_stale:1;
-	int stereo;
+	int stereo;		// the machine's layout (psg.stereo)
+	int lay;		// the layout the mix takes: the Sound page's, or stereo (tsGetVolume)
 	int sep;		// stereo separation: 0 = mono, 100 = full panorama
 	int wait;		// waiting. chip is busy when >0
 
@@ -249,7 +250,7 @@ static inline void tsSync(TSound* ts, int ns) {
 	ts_chip_sync(ts->chipC, ns);
 	ts_chip_sync(ts->chipD, ns);
 }
-sndPair tsGetVolume(TSound*);
+sndPair tsGetVolume(TSound*, int lay);
 
 // A chip's registers changed other than by its time: whatever follows the chips
 // (sound.cpp's mirror) is told here, after the change. NULL: nothing follows.

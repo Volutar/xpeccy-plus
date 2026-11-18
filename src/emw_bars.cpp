@@ -479,7 +479,10 @@ void MainWin::initBars() {
 		icon.addFile(":/images/speaker-mute.png", QSize(), QIcon::Normal, QIcon::On);
 		muteAct->setIcon(icon);
 	}
+	makeBoardActs();
 	add("key.mute", "Sound", muteAct, TB_SPLIT, volumeMenu());
+	sndMenu->addAction(muteAct);
+	addBoardActs(sndMenu);
 	// shown, not used: it takes no focus and no clicks, so the machine keeps the keys
 	volPop = new xVolBox(this, Qt::ToolTip | Qt::FramelessWindowHint);
 	volPop->setFrameShape(QFrame::StyledPanel);
@@ -814,7 +817,73 @@ QMenu* MainWin::volumeMenu() {
 	menu->addAction(wact);
 	connect(menu, &QMenu::aboutToShow, box, &xVolBox::load);	// the wheel moves it too
 	connect(menu, &QMenu::aboutToHide, this, []() {saveConfig();});
+	addBoardActs(menu);
 	return menu;
+}
+
+// The Sound page's Board filter, one pick for every machine: its actions, made once and
+// listed under the volume and in the right-click menu's Sound
+void MainWin::makeBoardActs() {
+	boardGrp = new QActionGroup(this);
+	for (const xBoardPick& p : board_picks()) {
+		QAction* act = new QAction(p.name, boardGrp);
+		act->setToolTip(p.tip);
+		act->setData(p.val);
+		act->setCheckable(true);
+	}
+	connect(boardGrp, &QActionGroup::triggered, this, [this](QAction* act) {
+		conf.snd.vol.board = act->data().toInt();
+		setMessage(QString(" board filter: %0 ").arg(act->text()));
+		saveConfig();
+	});
+	// and the Sound page's Low cut and High cut, switches of their own
+	QList<xCutPick> cuts = cut_picks();
+	lowCutAct = new QAction(cuts[CUT_LOW].name, this);
+	lowCutAct->setToolTip(cuts[CUT_LOW].tip);
+	highCutAct = new QAction(cuts[CUT_HIGH].name, this);
+	highCutAct->setToolTip(cuts[CUT_HIGH].tip);
+	for (QAction* act : {lowCutAct, highCutAct}) {
+		act->setCheckable(true);
+		connect(act, &QAction::triggered, this, [this, act](bool on) {
+			if (act == lowCutAct) conf.snd.vol.dc = on ? 1 : 0;
+			else conf.snd.filter = on ? 1 : 0;
+			setMessage(QString(" %0: %1 ").arg(act->text().toLower(), on ? "on" : "off"));
+			saveConfig();
+		});
+	}
+}
+
+// a menu's heading: bold, greyed, not to be picked
+static void menu_heading(QMenu* menu, const char* text) {
+	QAction* act = menu->addAction(text);
+	QFont font = act->font();
+	font.setBold(true);
+	act->setFont(font);
+	act->setEnabled(false);
+}
+
+// ...in a menu's root, each set under a line and a heading, with what is in use checked as
+// it opens
+void MainWin::addBoardActs(QMenu* menu) {
+	menu->setToolTipsVisible(true);
+	menu->addSeparator();
+	menu_heading(menu, "Board filter");
+	QList<xBoardPick> picks = board_picks();
+	QList<QAction*> acts = boardGrp->actions();
+	for (int i = 0; (i < picks.size()) && (i < acts.size()); i++) {
+		if (picks[i].sep) menu->addSeparator();
+		menu->addAction(acts[i]);
+	}
+	menu->addSeparator();
+	menu_heading(menu, "Output filters");
+	menu->addAction(lowCutAct);
+	menu->addAction(highCutAct);
+	connect(menu, &QMenu::aboutToShow, menu, [this]() {
+		for (QAction* act : boardGrp->actions())
+			act->setChecked(act->data().toInt() == conf.snd.vol.board);
+		lowCutAct->setChecked(conf.snd.vol.dc);
+		highCutAct->setChecked(conf.snd.filter);
+	});
 }
 
 // Alt+wheel moved the volume: the slider comes up under the button for a moment,

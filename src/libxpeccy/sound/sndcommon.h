@@ -9,8 +9,12 @@ typedef  struct {
 	int sdrv;
 	int saa;
 	unsigned dc:1;		// take each device's dc offset out before mixing
-	unsigned board:1;	// the machine's beeper type is heard (Board filters); off: line out
+	int board;		// the Board filter: BOARD_MACHINE, or a BEEP_* for every machine (BEEP_LINE: off)
+	int psgLay;		// the PSGs' layout: LAY_MACHINE, or an AY_* for every machine but the Next
 } sndVolume;
+
+#define BOARD_MACHINE	-1	// each machine's own beeper type
+#define LAY_MACHINE	-1	// each machine's own psg.stereo
 
 typedef struct {
 	signed int left;
@@ -74,9 +78,8 @@ enum {
 	BEEP_ATM,		// the ATM Turbo's coupling cap into its amplifier
 	BEEP_PIEZO,		// a piezo sounder (ZP-3 class) on the port's own output
 	BEEP_TYPES,
-	// experimental, to be judged by ear this release: under EXPERIMENTAL in the list
-	BEEP_X_SPK0 = BEEP_TYPES, BEEP_X_SPK250, BEEP_X_SPK750,
-	BEEP_X_LP5_1, BEEP_X_LP5_2, BEEP_X_LP5_4,
+	// no board's: last in the list, for PWM music
+	BEEP_LP5 = BEEP_TYPES,	// 4-pole Butterworth low-pass at 5 kHz, 24 dB an octave
 	BEEP_ALL
 };
 
@@ -108,9 +111,10 @@ static inline int snd_beep_flt(sndBeepFlt* st, int lev, int type, int rate) {
 	return snd_beep_run(st, lev, type, rate, BF_BEEP);
 }
 
-// the type a mix hears: the machine's with Board filters on, line out with them off
-static inline int snd_board_type(int type, const sndVolume* sv) {
-	return sv->board ? type : BEEP_LINE;
+// the type a mix hears: the machine's with the Board filter (sndVolume.board) By machine,
+// else the one picked
+static inline int snd_board_type(int type, int board) {
+	return (board == BOARD_MACHINE) ? type : board;
 }
 
 // the types whose board or TV has the PSG mixed in before its filter
@@ -127,6 +131,30 @@ static inline sndPair snd_mix_flt(sndBeepFlt st[2], sndPair lev, int type, int r
 	}
 	lev.left = snd_beep_run(&st[0], lev.left, type, rate, BF_MIX);
 	lev.right = snd_beep_run(&st[1], lev.right, type, rate, BF_MIX);
+	return lev;
+}
+
+// A type picked, not By machine, takes the rest of the mix too: its mix chain if it has one
+static inline sndPair snd_all_flt(sndBeepFlt st[2], sndPair lev, int type, int rate) {
+	if ((type <= BEEP_LINE) || (type >= BEEP_ALL) || (rate <= 0)) {
+		st[0].type = BEEP_LINE;
+		st[1].type = BEEP_LINE;
+		return lev;
+	}
+	int chain = snd_beep_mixes(type) ? BF_MIX : BF_BEEP;
+	lev.left = snd_beep_run(&st[0], lev.left, type, rate, chain);
+	lev.right = snd_beep_run(&st[1], lev.right, type, rate, chain);
+	return lev;
+}
+
+// A stereo separation, 0..100: each side takes some of the other, the sum kept;
+// 100 leaves the sides as they are, 0 is mono
+static inline sndPair snd_sep(sndPair lev, int sep) {
+	if (sep >= 100) return lev;
+	if (sep < 0) sep = 0;
+	int l = lev.left;
+	lev.left = (l * (100 + sep) + lev.right * (100 - sep)) / 200;
+	lev.right = (lev.right * (100 + sep) + l * (100 - sep)) / 200;
 	return lev;
 }
 

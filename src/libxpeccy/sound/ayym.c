@@ -163,8 +163,10 @@ void ts_state_restore(TSound* ts) {
 // two AYs have always been mixed here. The FM halves are signed and sit on top
 // of it: on the board they reach the summing node through their own resistor,
 // the same one a hard panned SSG channel has.
-sndPair tsGetVolume(TSound* ts) {
+// lay: the layout every chip is heard in, LAY_MACHINE for each chip's own (sndVolume.psgLay)
+sndPair tsGetVolume(TSound* ts, int lay) {
 	aymChip* chip = ts->chipA;
+	chip->lay = (lay < 0) ? chip->stereo : lay;
 	sndPair res = chip->vol(chip);
 	int i, fm = ym2203_fm_out(chip);
 	// an empty socket puts out nothing, and the soft clip leaves a level it is
@@ -172,6 +174,7 @@ sndPair tsGetVolume(TSound* ts) {
 	for (i = 1; i < 4; i++) {
 		chip = ts_chip(ts, i);
 		if (chip->type == SND_NONE) continue;
+		chip->lay = (lay < 0) ? chip->stereo : lay;
 		res = mixer(res, chip->vol(chip));
 		fm += ym2203_fm_out(chip);
 	}
