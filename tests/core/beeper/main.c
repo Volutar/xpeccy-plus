@@ -243,12 +243,10 @@ static void lowpass5(void) {
 	printf("== low-pass 5 kHz\n");
 	for (int i = 0; i < 2; i++) {
 		int rate = outRates[i];
-		for (int t = BEEP_TYPES; t < BEEP_ALL; t++) {
-			sndBeepFlt st;
-			settle(&st, t, rate, 0);
-			printf("%d %d: %lld %lld %lld %lld %lld %lld %lld %lld %lld %lld\n", rate / 32, t, st.kUp, st.kDn,
-				st.kHp, st.kF, st.kQ, st.kBp, st.kL[0], st.kLQ[0], st.kL[1], st.kLQ[1]);
-		}
+		sndBeepFlt st;
+		settle(&st, BEEP_LP5, rate, 0);
+		printf("%d %d: %lld %lld %lld %lld %lld %lld %lld %lld %lld %lld\n", rate / 32, BEEP_LP5, st.kUp, st.kDn,
+			st.kHp, st.kF, st.kQ, st.kBp, st.kL[0], st.kLQ[0], st.kL[1], st.kLQ[1]);
 		int ok = 1;
 		// a few levels of 8192; Chamberlin's Q drifts a little that high: 0.990 for 0.999 at 5 kHz
 		for (double hz = 1250; hz <= 20000; hz *= 2)
@@ -514,33 +512,38 @@ int main(void) {
 	for (int n = 0; n < 1000; n++) snd_beep_flt(&st, 0, BEEP_LINE, 48000 * 32);
 	check("a type taken again settles anew", snd_beep_flt(&st, 0, BEEP_SCORPION, 48000 * 32) == 0);
 	printf("== board switch\n");
-	sndVolume sv = {0};
 	int off = 1, on = 1, one = 1;
 	for (int t = BEEP_LINE; t < BEEP_ALL; t++) {
-		sv.board = BEEP_LINE;
-		off &= (snd_board_type(t, &sv) == BEEP_LINE);
-		sv.board = BOARD_MACHINE;
-		on &= (snd_board_type(t, &sv) == t);
-		sv.board = BEEP_TV;
-		one &= (snd_board_type(t, &sv) == BEEP_TV);
+		off &= (snd_board_type(t, BEEP_LINE) == BEEP_LINE);
+		on &= (snd_board_type(t, BOARD_MACHINE) == t);
+		one &= (snd_board_type(t, BEEP_TV) == BEEP_TV);
 	}
 	check("Board filter Off: line out for every type", off);
 	check("By machine: the machine's type", on);
 	check("a type picked: that type for every machine", one);
-	// a type picked hears the rest (the PSG and the others) through it: its mix chain where
-	// it has one, else its beeper's; line out lets it through
+	// a type picked hears the rest (the PSG and the others) through it: the PSG's chain on
+	// the TV and the +2A/+3, the beeper's on the others; line out (-1) lets it through
 	{
+		static const int want_chain[BEEP_ALL] = {-1, BF_BEEP, BF_MIX, BF_MIX,	// line, speaker, tv, plus3
+			BF_BEEP, BF_BEEP, BF_BEEP, BF_BEEP, BF_BEEP};		// evo, scorpion, atm, piezo, lp5
 		int rate = 48000 * 32, ok = 1;
 		for (int t = BEEP_LINE; t < BEEP_ALL; t++) {
-			sndBeepFlt all[2], one;
+			sndBeepFlt all[2], sideL, sideR;
 			all[0].type = all[1].type = -1;
-			settle_in(&one, t, rate, 0, snd_beep_mixes(t) ? BF_MIX : BF_BEEP);
+			if (want_chain[t] >= 0) {
+				settle_in(&sideL, t, rate, 0, want_chain[t]);
+				settle_in(&sideR, t, rate, 0, want_chain[t]);
+			}
 			snd_all_flt(all, (sndPair){0, 0}, t, rate);
 			for (int n = 0; n < 2000; n++) {
 				int x = ((n / 50) & 1) ? LEV : -LEV;
 				sndPair got = snd_all_flt(all, (sndPair){x, x / 2}, t, rate);
-				int want = (t == BEEP_LINE) ? x : snd_beep_run(&one, x, t, rate, snd_beep_mixes(t) ? BF_MIX : BF_BEEP);
-				ok &= (got.left == want);
+				int wl = x, wr = x / 2;
+				if (want_chain[t] >= 0) {
+					wl = snd_beep_run(&sideL, x, t, rate, want_chain[t]);
+					wr = snd_beep_run(&sideR, x / 2, t, rate, want_chain[t]);
+				}
+				ok &= (got.left == wl) && (got.right == wr);
 			}
 		}
 		check("a type picked: the rest through its chain, line out through", ok);
