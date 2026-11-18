@@ -90,6 +90,10 @@ before that point is upstream's history and is not repeated here.
   error or deleted data read that way. ANAMORIG and Gallows now start. *(reported by Alexey
   Boldyrev)*
 
+- **A disk write the program sends no data for leaves the disk as it was**, as on a real
+  Beta disk interface, instead of spoiling the sectors it named: ANAMORIG's boot does this, and
+  its programs then stopped with a disk error. *(reported by Alexey Boldyrev)*
+
 - **Hard Reset clears the memory on every machine**, as it says it does: the RAM, the General
   Sound card and the palettes come up as at power-on. A Scorpion service monitor stuck in a
   loop starts afresh. A switch to another machine no longer shows the old one's screen.
