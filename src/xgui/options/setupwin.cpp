@@ -4341,12 +4341,7 @@ void SetupWin::showRecSize() {
 	recSizes(&in, &out);
 	int ns = conf.zx->vid->nsPerFrame;
 	int nominal = vrec_fps_of(getRFIData(cbRecFps), ns);
-	QString fps = QString::number(nominal);
-	if (cbRec60->isChecked()) {
-		fps = "60";
-	} else if (!nominal) {
-		fps = QString::number(1e9 / ns, 'f', 2);
-	}
+	QString fps = cbRec60->isChecked() ? QString("60") : nominal ? QString::number(nominal) : QString::number(1e9 / ns, 'f', 2);
 	labRecSize->setText(QString("%0%1%2 @ %3 fps").arg(out.width()).arg(QChar(0xd7)).arg(out.height()).arg(fps));
 	showRecCmd();
 }

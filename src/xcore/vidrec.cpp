@@ -430,7 +430,6 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, double 
 	cmd.out = path + "." + ext;
 	cmd.tmpVideo = path + ".part." + ext;
 	cmd.tmpAudio = path + ".part.wav";
-	cmd.wavRate = rate;
 
 	// the encoder: raw pictures in, video alone out
 	int nominal = vrec_fps_of(rec.fps, ns);
@@ -474,7 +473,7 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, double 
 	if (nominal) {
 		// a machine frame lasts 1/50 or 1/60 s of video: the sound follows it.
 		// Its pitch goes with the wav's header, so an override keeps that
-		double ratio = ns * nominal / 1e9;
+		double ratio = ns * (double)nominal / 1e9;
 		if (rec.keepPitch) {
 			ms << "-af" << QString("atempo=%0").arg(ratio, 0, 'f', 6);
 		} else {
@@ -482,10 +481,8 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, double 
 		}
 	}
 	cmd.wavRate = (int)lround(wav);
-	if (nominal && !rec.keepPitch)
-		ms << "-ar" << "48000";
-	else if (cmd.wavRate != rate)
-		ms << "-ar" << QString::number(rate);
+	if ((nominal && !rec.keepPitch) || (cmd.wavRate != rate))
+		ms << "-ar" << "48000";		// Opus has no 44100
 	if (lossless) {
 		ms << "-c:a" << "flac";
 	} else {
