@@ -134,8 +134,10 @@ QPoint MainWin::winCursorPos() {
 #endif
 }
 
-bool MainWin::winHolds(QPoint pos) {
-	return rect().contains(mapFromGlobal(pos));
+// in and off the edge: a pointer the system clips to the window stops on the
+// edge instead of getting out
+bool MainWin::winInner(QPoint pos) {
+	return rect().adjusted(2, 2, -2, -2).contains(mapFromGlobal(pos));
 }
 
 // past the middle third: worth putting back
@@ -171,6 +173,7 @@ void MainWin::mouseGrabOn() {
 void MainWin::mouseGrabOff() {
 	grabMice = 0;
 	releaseMouse();
+	mouseClip(false);
 	rawMouse(false);
 	xlog(XLG_INPUT, XLL_DEBUG, "mouse: grab off, raw reports %u by step, %u absolute", rawRel, rawAbs);
 	setMessage(" release mouse ");
@@ -234,6 +237,40 @@ bool MainWin::mouseByStep() {
 	return rawRel && !rawAbs;
 }
 
+// A mouse by steps is kept in the window by the system too, as games do: a
+// recentering that lands late no longer lets it out. Put again each watch tick,
+// which follows a moved or resized window and a clip the system dropped. Never
+// for a VM or a remote desktop: their pointer must be free to leave
+void MainWin::mouseClip(bool on) {
+#ifdef _WIN32
+	if (!on) {
+		if (mouseClipped) {
+			ClipCursor(NULL);
+			mouseClipped = false;
+			xlog(XLG_INPUT, XLL_DEBUG, "mouse: clip off");
+		}
+		return;
+	}
+	HWND wnd = (HWND)winId();
+	RECT r;
+	if (!GetClientRect(wnd, &r)) return;
+	POINT tl = {r.left, r.top};
+	POINT br = {r.right, r.bottom};
+	ClientToScreen(wnd, &tl);
+	ClientToScreen(wnd, &br);
+	RECT want = {tl.x, tl.y, br.x, br.y};
+	RECT cur;
+	if (mouseClipped && GetClipCursor(&cur) && EqualRect(&cur, &want)) return;
+	if (ClipCursor(&want)) {
+		if (!mouseClipped)
+			xlog(XLG_INPUT, XLL_DEBUG, "mouse: clip on %ld,%ld-%ld,%ld", want.left, want.top, want.right, want.bottom);
+		mouseClipped = true;
+	}
+#else
+	(void)on;
+#endif
+}
+
 #ifdef _WIN32
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
 bool MainWin::nativeEvent(const QByteArray& type, void* msg, qintptr* res) {
@@ -267,12 +304,15 @@ void MainWin::mouseMoveEvent(QMouseEvent *ev) {
 	mouseRead();
 }
 
-// Qt sends no moves over another program's window: one that got out is caught here
+// Qt sends no moves over another program's window: one that got out is caught
+// here, and one held on the clip's edge, which sends no moves either
 void MainWin::mouseWatch() {
-	if (!mouseHeld() || !isActiveWindow()) return;
+	bool held = mouseHeld() && isActiveWindow();
+	mouseClip(held && mouseByStep());
+	if (!held) return;
 	QPoint pos = winCursorPos();
-	if (winHolds(pos)) return;
-	xlog(XLG_INPUT, XLL_DEBUG, "mouse: watch caught it out at %d,%d, pending %d, fails %d",
+	if (winInner(pos)) return;
+	xlog(XLG_INPUT, XLL_DEBUG, "mouse: watch caught it on the edge or out at %d,%d, pending %d, fails %d",
 		pos.x(), pos.y(), warpTtl, warpFail);
 	mouseRead();
 }
@@ -360,8 +400,9 @@ void MainWin::mouseRead() {
 	if (comp->mouse->xdelta || comp->mouse->ydelta) x_input_bump();
 	comp->mouse->xpos += comp->mouse->xdelta;
 	comp->mouse->ypos -= comp->mouse->ydelta;	// axis is reverted
-	// while one is pending, again only once out of the window
-	if (winFar(gpos) && (!warpTtl || !winHolds(gpos)))
+	// while one is pending, again only once on the edge or out: the moves in flight
+	// can put the pointer back over a recentering, a mouse by steps too
+	if (winFar(gpos) && (!warpTtl || !winInner(gpos)))
 		mouseWarp();
 }
 

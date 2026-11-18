@@ -442,6 +442,7 @@ void MainWin::pause(bool p, int msk) {
 	int paused = conf.emu.pause || conf.emu.pauseReq;
 	if (!grabMice || (paused && grabMice)) {
 		releaseMouse();
+		mouseClip(false);
 	}
 	if (!paused) {
 		if (grabMice) {
@@ -610,6 +611,7 @@ MainWin::MainWin(QMainWindow* frm) {
 }
 
 MainWin::~MainWin() {
+	mouseClip(false);
 	delete snowBox;		// its end stops the snow: while this window is whole
 	cleanupGL();
 	delete(vtx_shd);
@@ -1029,6 +1031,7 @@ void MainWin::focusOutEvent(QFocusEvent*) {
 	if (grabMice) {
 		grabMice = 0;
 		releaseMouse();
+		mouseClip(false);
 	}
 	emit s_keywin_rall(comp->keyb);
 	// nor will the keys of a player on the keyboard
