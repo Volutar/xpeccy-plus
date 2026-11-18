@@ -837,10 +837,11 @@ void MainWin::makeBoardActs() {
 		saveConfig();
 	});
 	// and the Sound page's Low cut and High cut, switches of their own
-	lowCutAct = new QAction("Low cut (DC)", this);
-	lowCutAct->setToolTip("Removes the offset the chips sit on");
-	highCutAct = new QAction("High cut (anti-alias)", this);
-	highCutAct->setToolTip("Removes aliasing; costs a little CPU");
+	QList<xCutPick> cuts = cut_picks();
+	lowCutAct = new QAction(cuts[CUT_LOW].name, this);
+	lowCutAct->setToolTip(cuts[CUT_LOW].tip);
+	highCutAct = new QAction(cuts[CUT_HIGH].name, this);
+	highCutAct->setToolTip(cuts[CUT_HIGH].tip);
 	for (QAction* act : {lowCutAct, highCutAct}) {
 		act->setCheckable(true);
 		connect(act, &QAction::triggered, this, [this, act](bool on) {

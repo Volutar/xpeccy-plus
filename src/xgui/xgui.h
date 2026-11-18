@@ -225,6 +225,13 @@ struct xBoardPick {
 	bool sep;
 };
 QList<xBoardPick> board_picks();
+// ...and the Low cut and High cut beside it, as the page and the menus name them
+struct xCutPick {
+	QString name;
+	QString tip;
+};
+enum {CUT_LOW = 0, CUT_HIGH};
+QList<xCutPick> cut_picks();
 QString board_type_name(int type);	// a BEEP_* type's name in those lists
 QString psg_lay_name(int lay);		// an AY_* layout's: Mono, ABC...
 

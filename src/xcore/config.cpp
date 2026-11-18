@@ -245,13 +245,12 @@ static const char* snd_board_name(int board) {
 }
 
 static int snd_board_named(const std::string& val) {
-	if ((val == "machine") || (val == "yes")) return BOARD_MACHINE;
-	if ((val == "off") || (val == "no")) return BEEP_LINE;
+	// the old switch's on and off, in all their spellings
+	if ((val == "machine") || (val == "yes") || (val == "true") || (val == "1") || (val == "on")) return BOARD_MACHINE;
+	if ((val == "off") || (val == "no") || (val == "false") || (val == "0")) return BEEP_LINE;
 	int type = xm_beep_named(val, -2);
 	if (type >= 0) return type;
-	if ((val == "true") || (val == "1") || (val == "on")) return BOARD_MACHINE;	// the old switch's other ons
-	if ((val != "false") && (val != "0"))
-		xlog(XLG_CONF, XLL_WARN, "board.filter: no type '%s' any more, Off", val.c_str());
+	xlog(XLG_CONF, XLL_WARN, "board.filter: no type '%s' any more, Off", val.c_str());
 	return BEEP_LINE;
 }
 

@@ -384,6 +384,11 @@ QList<xBoardPick> board_picks() {
 	return res;
 }
 
+QList<xCutPick> cut_picks() {
+	return {{QObject::tr("Low cut (DC)"), QObject::tr("Removes the offset the chips sit on")},	// CUT_LOW
+		{QObject::tr("High cut (anti-alias)"), QObject::tr("Removes aliasing; costs a little CPU")}};
+}
+
 QString psg_lay_name(int lay) {
 	static const char* names[] = {"Mono", "ABC", "ACB", "BAC", "BCA", "CAB", "CBA"};	// AY_*
 	return ((lay >= 0) && (lay <= AY_CBA)) ? QString(names[lay]) : QString();
@@ -437,14 +442,13 @@ void SetupWin::makeSoundGroup() {
 	fg->addWidget(ico, 0, 0, Qt::AlignCenter);
 	fg->addWidget(new QLabel(tr("Board filter")), 0, 1);
 	fg->addWidget(cbBoard, 0, 2);
-	const QString cuts[2] = {tr("Low cut (DC)"), tr("High cut (anti-alias)")};
-	const QString tips[2] = {tr("Removes the offset the chips sit on"), tr("Removes aliasing; costs a little CPU")};
-	QCheckBox** chk[2] = {&chkLowCut, &chkHighCut};
+	QList<xCutPick> cuts = cut_picks();
+	QCheckBox** chk[2] = {&chkLowCut, &chkHighCut};	// CUT_*
 	for (int i = 0; i < 2; i++) {
 		*chk[i] = new QCheckBox;
-		QLabel* lab = new QLabel(cuts[i]);
-		(*chk[i])->setToolTip(tips[i]);
-		lab->setToolTip(tips[i]);
+		QLabel* lab = new QLabel(cuts[i].name);
+		(*chk[i])->setToolTip(cuts[i].tip);
+		lab->setToolTip(cuts[i].tip);
 		label_for(lab, *chk[i]);
 		// as wide as its box, no gap for a text after it: its middle under the icon's
 		QStyleOptionButton opt;
