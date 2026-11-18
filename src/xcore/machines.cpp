@@ -9,6 +9,7 @@
 #include <QTimer>
 #include <QCoreApplication>
 #include <QRegularExpression>
+#include <QVersionNumber>
 
 #include "xcore.h"
 #include "dezog.h"
@@ -753,7 +754,7 @@ const char* const div_esx_releases[] = {"0.9.0", "0.8.9", "0.8.8", "0.8.7", "0.8
 // From 0.9.0 the firmware checks the system files' version and loads them from the
 // first drive that has its own; 0.8.x takes whatever the first drive has.
 bool div_esx_checks_sys(const std::string& ver) {
-	return ver.compare("0.9.0") >= 0;	// x.y.z with one digit each
+	return QVersionNumber::fromString(QString::fromStdString(ver)) >= QVersionNumber(0, 9, 0);
 }
 
 std::string div_esx_dir(const std::string& ver) {

@@ -179,8 +179,8 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void slowHint();		// the computer falls behind: Frame skip offered, once a run
 		void nextCard(bool asked = false);		// the Next's own card: made from System/Next, or one the user has
 		void folderNews();		// says once when a folder could not take what the machine wrote
-		void esxCheck();		// says when card 1 and the EEPROM are different esxDOS releases
-		QString esxSeen;		// the power cycle and card it looked at last
+		void esxCheck();		// says when a card's esxDOS release is one the EEPROM will not start from
+		QString esxSeen;		// the power cycle and cards it looked at last
 		void fillDrivesMenu();
 		void otherImages(QMenu*, int id, int drv, QAction* before = nullptr, int inlineMax = 8);
 		void driveOp(std::function<void()>);

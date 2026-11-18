@@ -473,13 +473,18 @@ void MainWin::esxCheck() {
 		return;
 	}
 	QString card[2];
+	bool folder[2], image[2];
 	for (int i = 0; i < 2; i++) {
 		const char* img = comp->div->card[i]->image;
 		card[i] = img ? QString::fromLocal8Bit(img) : QString();
+		QFileInfo info(card[i]);
+		folder[i] = !card[i].isEmpty() && info.isDir();
+		image[i] = !card[i].isEmpty() && info.isFile();		// a path gone is no card
 	}
 	QString key = QString("%0|%1|%2").arg(xm_power_count()).arg(card[0], card[1]);
 	if (key == esxSeen) return;
 	esxSeen = key;
+	if (!folder[0] && !folder[1]) return;
 	std::string chip = div_esx_release_of(comp->div->data);
 	if (chip.empty()) return;
 	bool checks = div_esx_checks_sys(chip);
@@ -487,22 +492,25 @@ void MainWin::esxCheck() {
 	int other = -1;
 	std::string sys[2];
 	for (int i = 0; i < looked; i++) {
-		if (card[i].isEmpty()) continue;
-		if (!QFileInfo(card[i]).isDir()) {
-			if (checks) return;		// it may hold the chip's own
-			continue;
-		}
+		if (image[i] && checks) return;		// it may hold the chip's own
+		if (!folder[i]) continue;
 		sys[i] = div_esx_card_release(comp->div->card[i]->image);
 		if (sys[i] == chip) return;
 		if (!sys[i].empty() && (other < 0)) other = i;
 	}
 	if (other < 0) return;
+	// that release in the EEPROM would start from this card: card 1, or card 2 for a
+	// release that looks there too
+	bool flash = (other == 0) || div_esx_checks_sys(sys[other]);
+	QString what = QString("Card %0 has the system files of esxDOS %1, the EEPROM holds esxDOS %2. "
+		"esxDOS starts only when both are the same release.\n\n")
+		.arg(other + 1).arg(sys[other].c_str()).arg(chip.c_str());
+	what += flash
+		? QString("Write esxDOS %0 to the EEPROM in Options (divMMC, Firmware), or make the card again "
+			"with New esxDOS Folder.").arg(sys[other].c_str())
+		: QString("Make the card again with New esxDOS Folder.");
 	pause(true, PR_EXTRA);
-	QMessageBox::warning(this, "esxDOS releases differ",
-		QString("Card %2 has the system files of esxDOS %0, the EEPROM holds esxDOS %1. "
-		"esxDOS starts only when both are the same release.\n\n"
-		"Write esxDOS %0 to the EEPROM in Options (divMMC, Firmware), or make the card again "
-		"with New esxDOS Folder.").arg(sys[other].c_str()).arg(chip.c_str()).arg(other + 1));
+	QMessageBox::warning(this, "esxDOS releases differ", what);
 	pause(false, PR_EXTRA);
 }
 
