@@ -102,10 +102,7 @@ static long long emHost = 0;
 // frame lasted then - 1/60 s for a Next pulled up to 60 Hz, its own 1/58.15
 // without the lock. A lock coming or going later is counted like slow motion.
 static double emLock = 1.0;
-// The machine's frame when the recording started, ns: a frame of the file
-// stands for that much of its time. A frame of another length later (a Next
-// going 50 <-> 60 Hz) is counted by its length, like slow motion.
-static double emFrame0 = 1.0;
+static double emFrame0 = 1.0;	// the machine's frame at the start, ns: what a frame of the file stands for
 static double emPrevNs = 0;	// the frame running at the last picture: the one that ends next
 static double emUndrawnNs = 0;	// machine time run since the last picture was drawn
 
@@ -920,10 +917,9 @@ void vrec_frame(Computer* comp) {
 	snd_sync_wait();
 	em_sync();
 	Video* vid = comp->vid;
-	// The frame that ended ran at the length there was at the last call: a Next
-	// takes 50/60 Hz at raw line 0, the vblank's lines before the frame ends here
+	// the frame that ended kept the last call's length: a Next takes 50/60 Hz at raw line 0, before vblank ends it
 	emUndrawnNs += emPrevNs;
-	emPrevNs = vid->nsPerFrame;
+	emPrevNs = (vid->nsPerFrame > 0) ? vid->nsPerFrame : emFrame0;
 	if (bufSwaps == emSwaps) return;	// nothing new drawn (fast forward draws one in so many)
 	emSwaps = bufSwaps;
 	double frames = emUndrawnNs / emFrame0;		// whole ones while the frame keeps its length
@@ -944,8 +940,7 @@ void vrec_frame(Computer* comp) {
 	emSlots -= copies;
 	vrJob* job = new vrJob;
 	job->copies = copies;
-	// the sound of the time run, not of the whole frames shown for it: a picture
-	// dropped or shown twice must not bend the pitch
+	// the sound of the time run, not of the frames shown: a dropped or doubled picture must not bend the pitch
 	job->smp = emSpan * (double)conf.snd.rate * em_frame_ns() / 1e9;
 	emSpan = 0;
 	job->snd.swap(emSnd);
