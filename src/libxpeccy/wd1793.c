@@ -78,8 +78,10 @@ int vgSendByte(FDC* fdc) {
 	int res = 0;
 	if (fdc_turbo(fdc)) {
 		if (fdc->drq) {
-			if (fdc->tns > fdc->bytedelay) {
+			if (fdc->tns > fdc->bytedelay) {	// not loaded: a zero written, Lost Data
 				fdc->state |= 0x04;
+				add_crc_16(fdc, 0x00);
+				flpWr(fdc->flp, fdc->side, 0x00);
 				flpNext(fdc->flp, fdc->side);
 				fdc->tns = 0;
 				res = 1;
@@ -94,11 +96,13 @@ int vgSendByte(FDC* fdc) {
 		}
 		fdc->wait = 1;
 	} else {
-		if (fdc->drq) {			// time to write byte, but isn't get it from CPU
+		unsigned char v = fdc->data;
+		if (fdc->drq) {			// time to write byte, but isn't get it from CPU: a zero
 			fdc->state |= 0x04;
+			v = 0x00;
 		}
-		add_crc_16(fdc, fdc->data);
-		flpWr(fdc->flp, fdc->side, fdc->data);
+		add_crc_16(fdc, v);
+		flpWr(fdc->flp, fdc->side, v);
 		flpNext(fdc->flp, fdc->side);
 		fdc->drq = 1;
 		fdc->wait += fdc->bytedelay;
@@ -354,7 +358,7 @@ void vgrds01(FDC* fdc) {
 						fdc->state |= 0x08;					// ADR crc error
 						vgstp(fdc);
 					} else {
-						fdc->cnt = WD_DAM_WINDOW;				// DATA must be in next (22 + 30) bytes
+						fdc->cnt = WD_DAM_WINDOW;				// the data mark must come within these bytes
 						fdc->pos++;						// ADR found, next step
 					}
 				}
@@ -443,6 +447,16 @@ void vgwrs00(FDC* fdc) {
 
 // init crc, set F8/F9 (need roll flp back), prepare to write data
 void vgwrs01(FDC* fdc) {
+	if (fdc->drq) {				// no first byte: nothing written, Lost Data (FD179X, Write Sector)
+		if (fdc_turbo(fdc) && (fdc->hold > 0)) {	// fast access: the cpu has a revolution, as in reads
+			fdc->hold -= fdc->bytedelay;
+			fdc->wait = fdc->bytedelay;
+			return;
+		}
+		fdc->state |= 0x04;
+		vgstp(fdc);
+		return;
+	}
 	flpPrev(fdc->flp, fdc->side);		// back to DATA mark
 	fdc->crc = 0xcdb4;
 	fdc->tmp = (fdc->com & 1) ? 0xf8 : 0xfb;
@@ -473,6 +487,7 @@ void vgwrs03(FDC* fdc) {
 		fdc->sec++;
 		fdc->pos = 2;
 		fdc->cnt = 5;
+		fdc->drq = 1;			// the next sector's first byte
 	} else {
 		fdc->pos++;
 	}

@@ -55,8 +55,8 @@ typedef struct {
 	unsigned char data[0x1800];
 } Sector;
 
-// bytes after an ID's CRC the WD1793 seeks its data mark in: FD179X says 43, flp_format_sec puts it at 44
-#define WD_DAM_WINDOW	52
+// bytes after an ID's CRC to the data mark's F8-FB: its first A1 within 43 (FD179X, MFM)
+#define WD_DAM_WINDOW	46
 
 // Sector.flags: what an image says a sector lacks or has wrong
 #define SEC_NO_DATA	1	// an ID field with no data field after it
