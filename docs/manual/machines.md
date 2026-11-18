@@ -142,6 +142,12 @@ preset and Shift+F10 in the Modern one. With a [divMMC](divmmc.md) on, it is the
 board's NMI button. On the ZX Spectrum Next it is the yellow NMI button on its side (see
 [ZX Spectrum Next](zx-next.md)).
 
+The button is held down as long as its key is, and for three frames at least after a click.
+On the machines with a Beta Disk interface (the Scorpion, the Pentagon and the other clones) it
+is the "magic" button, and as on the real board the NMI comes only when the program runs in
+RAM: from 128 BASIC or a game it lands, from 48 BASIC or the TR-DOS prompt it never does.
+Held down, it comes again each time the program gets back into RAM.
+
 ## Turbo Mode
 
 ```{index} Turbo Mode, turbo, Switch Turbo
