@@ -197,9 +197,11 @@ The **Recording** group on the **Video** page of **Options**:
   indicators. **Screen** records the window as you see it, shader and all.
 - **Scale** - how many times bigger the video is than the machine's picture, from
   **Scale x1** to **Scale x8** (for **RAW frame** only).
-- **Real FPS** or **50 FPS** - **Real FPS** records at the machine's own frame rate, which
-  on most machines is a little different from 50. **50 FPS** records at exactly 50 frames
-  per second, and the sound is adjusted to match.
+- **Real FPS**, **50 FPS**, **60 FPS** or **50/60 FPS** - **Real FPS** records at the
+  machine's own frame rate, which on most machines is a little different from 50. **50 FPS**
+  and **60 FPS** record at exactly 50 or 60 frames per second, and the sound is adjusted to
+  match. **50/60 FPS** takes 60 for a Next in its 60 Hz modes and 50 for everything else.
+  A Next switching between 50 and 60 Hz while it records keeps the rate it started with.
 - **Output** - the folder for the videos; your system's videos folder by default.
 - **FFmpeg** - see [Getting FFmpeg](capture.md#getting-ffmpeg).
 
@@ -217,7 +219,7 @@ setting of the **Picture** group changes the size too.
   **AV1** and the graphics card encoders (**NVENC**, **AMF**, **QSV**) when your FFmpeg and
   computer can use them, and **FFV1, lossless**, which is always saved as MKV.
 - **Sound** - **Codec** (**Auto**, **AAC** or **Opus**) and its bit rate. **Keep pitch at
-  50 FPS** keeps the notes in tune when **50 FPS** speeds the sound up a little.
+  50/60 FPS** keeps the notes in tune when the sound is sped up or slowed down to match.
 - **File name template** - the name of the video file; the name it gives right now is shown
   under it.
 - **Auto recording** - see below.
