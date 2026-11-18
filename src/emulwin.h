@@ -656,6 +656,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void xkey_press(int, bool cmd = false, QKeyEvent* ev = nullptr);
 		void xkey_release(int);
 		void xcut_release(int);
+		void nmi_let_go();
 		int mapHotkey(const QKeySequence&, int, Qt::Key*, Qt::KeyboardModifier*);
 		bool mapIsHotkey(const xJoyMapEntry&);
 		void mapReplayHeld(xGamepad*);

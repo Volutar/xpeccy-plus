@@ -629,7 +629,16 @@ void MainWin::xcut_release(int keyid) {
 		rewind_want(0);
 	} else if (xcut_tmode(keyid)) {
 		xspeed_key(xcut_tmode(keyid), 0);
+	} else if (keyid == XCUT_NMI) {
+		nmi_let_go();
 	}
+}
+
+// the NMI button up: the machine holds it as long as the key, a few frames at least
+void MainWin::nmi_let_go() {
+	emu_lock();
+	comp_irq(IRQ_NMI_UP, conf.zx);
+	emu_unlock();
 }
 
 void MainWin::xkey_release(int keyid) {

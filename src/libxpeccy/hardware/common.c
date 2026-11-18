@@ -91,6 +91,7 @@ void zx_irq(Computer* comp, int t) {
 				comp->intVector = 0xff;
 				comp->cpu->intrq |= Z80_INT;
 			}
+			if (comp->nmiUp) zx_nmi_up(comp);	// for a machine that never runs zx_sync_in
 			break;
 		case IRQ_RZX_INT:
 			// A recording's frame ends after the instruction that used up its
@@ -114,8 +115,14 @@ void zx_irq(Computer* comp, int t) {
 		case IRQ_VID_IEND:			// frame int end (for tsconf see in tslab.c)
 			comp->cpu->intrq &= ~Z80_INT;
 			break;
-		case IRQ_NMI:				// zx_sync takes it from here
+		case IRQ_NMI:				// the button down: zx_sync takes it from here
 			comp->flgNMIRQ = 1;
+			comp->nmiUp = 0;
+			comp->nmiUntil = comp->tickTotal + (long long)(NMI_MIN_FRAMES * comp->vid->nsPerFrame / comp->nsPerTick);
+			break;
+		case IRQ_NMI_UP:			// a press shorter than NMI_MIN_FRAMES is let go later
+			if (comp->flgNMIRQ) comp->nmiUp = 1;
+			zx_nmi_up(comp);
 			break;
 	}
 }

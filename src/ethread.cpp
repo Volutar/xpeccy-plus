@@ -1059,7 +1059,6 @@ void xThread::emuCycle(Computer* comp) {
 	// it stands, not the dots an undrawn frame has only counted
 	vid_unlazy(comp->vid);
 	comp_brk_clear(comp);
-	comp->flgNMIRQ = 0;
 	if (brkskip) skipTick = comp->tickTotal;
 }
 
@@ -1252,7 +1251,7 @@ static void bench_key_set(Computer* comp, benchKey& k, int press) {
 			break;
 		}
 		case BK_NMI:
-			if (press) comp_irq(IRQ_NMI, comp);
+			comp_irq(press ? IRQ_NMI : IRQ_NMI_UP, comp);
 			break;
 		case BK_POWER:
 			if (press) xm_power_cycle();	// the Hard Reset: this thread is the emulation's
@@ -1359,9 +1358,7 @@ int xThread::bench(int frames, int skip, int full, int hash, const char* prof, c
 			if ((benchRecNmi > 0) && (rzx_rec_frames(comp) >= benchRecNmi) && (comp->cpu->regPC > 0x3fff)) {
 				fprintf(stdout, "rzx rec: nmi at frame %i\n", rzx_rec_frames(comp));
 				comp_irq(IRQ_NMI, comp);
-				benchRecNmi = -(rzx_rec_frames(comp) + 1);
-			} else if ((benchRecNmi < 0) && (rzx_rec_frames(comp) >= -benchRecNmi)) {
-				comp->flgNMIRQ = 0;		// let go after a frame, as emuCycle does
+				comp_irq(IRQ_NMI_UP, comp);	// a tap: held the shortest press
 				benchRecNmi = 0;
 			}
 			if ((benchRecJoin > 0) && (rzx_rec_frames(comp) >= benchRecJoin)) {
