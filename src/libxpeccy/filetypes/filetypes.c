@@ -332,7 +332,10 @@ int diskFormFits(Floppy* flp, Sector* sdata, int scount) {
 
 // cut: no sector starts past the track's end, the one running over it is cut there
 static void disk_form_lay(Floppy* flp, int tr, Sector* sdata, int scount, const formGaps* g, int gap3, int cut) {
-	unsigned char* base = flp->data[tr].byte;
+	unsigned char lay[TRKLEN_HD + 0x2000];	// cut: room for the sector run past an HD track's end
+	memcpy(lay, flp->data[tr].byte, TRKLEN_HD);
+	long limit = cut ? (long)sizeof(lay) : TRKLEN_HD;
+	unsigned char* base = lay;
 	unsigned char* ppos = base;
 	int bad[256];			// where the CRCs to spoil are
 	int nbad = 0;
@@ -351,7 +354,7 @@ static void disk_form_lay(Floppy* flp, int tr, Sector* sdata, int scount, const 
 		if (cut && (ppos - base >= flp->trklen)) break;
 		// a size code past 23 counts as nothing in the gap, but its bytes are
 		// written: what would run past the track's buffer stays off it
-		if ((ppos - base) + sec_room(s, ln, g) > (int)sizeof(flp->data[tr].byte)) break;
+		if ((ppos - base) + sec_room(s, ln, g) > limit) break;
 		ppos += g->gap1;				//	GAP1
 		if (!(s->flags & SEC_NO_ID)) {
 			memset(ppos, 0x00, g->sync); ppos += g->sync;	//	space
@@ -382,11 +385,12 @@ static void disk_form_lay(Floppy* flp, int tr, Sector* sdata, int scount, const 
 		}
 		ppos += gap3 + sec_pad(sdata, sc, scount, g, gap3);	//	GAP3
 	}
+	memcpy(flp->data[tr].byte, lay, TRKLEN_HD);
 	flpFillFieldsEx(flp, tr, 1, nid_pos, nid_sz, nnid);
 	for (int i = 0; i < nbad; i++) {
 		if (bad[i] + 1 >= flp->trklen) continue;	// cut off with the track's end
-		base[bad[i]] ^= 0xff;
-		base[bad[i] + 1] ^= 0xff;
+		flp->data[tr].byte[bad[i]] ^= 0xff;
+		flp->data[tr].byte[bad[i] + 1] ^= 0xff;
 	}
 }
 

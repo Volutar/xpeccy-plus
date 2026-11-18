@@ -165,6 +165,7 @@ void vgstp00(FDC* fdc) {
 //	printf("stop\n");
 	// a command's end raises INTRQ; a Force Interrupt's was set by vgExec
 	if ((fdc->com & 0xf0) != 0xd0) fdc->irq = 1;
+	if (((fdc->com & 0xe0) == 0xa0) || ((fdc->com & 0xf0) == 0xf0)) fdc->drq = 0;	// a write's end: no byte asked for
 	fdc->idle = 1;
 	if (!fdc->flp->motor || !(fdc->flp->insert && fdc->flp->door)) {
 		fdc->plan = NULL;
@@ -562,7 +563,7 @@ static fdcCall vgRdTrk[] = {&vgrds00,&vgrdt00,&vgrdt01,&vgstp};
 
 void vgwrt00(FDC* fdc) {
 	fdc->wait += fdc_turbo(fdc) ? VG_TURBO_BYTE : fdc->bytedelay;
-	if (fdc_turbo(fdc) && fdc->drq) fdc->hold -= fdc->bytedelay;	// fast access: a real revolution's time
+	if (fdc_turbo(fdc) && fdc->drq) fdc->hold -= VG_TURBO_BYTE;	// fast access: a real revolution's time
 	if (flpNext(fdc->flp, fdc->side)) {
 		if (fdc->drq) {				// no first byte by the index: Lost Data, nothing written (FD179X)
 			if (fdc_turbo(fdc) && (fdc->hold > 0)) return;	// the next index
