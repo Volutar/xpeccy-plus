@@ -983,10 +983,13 @@ static void mac_load_font(Computer* comp, const std::string& fntf, bool tell) {
 	FILE* file = rom_open(fpath);
 	if (file) {			// vid_fnt_load, by the UTF-8 name
 		fseek(file, 0, SEEK_END);
-		comp->vid->font.size = ftell(file);
+		long size = ftell(file);
 		fseek(file, 0, SEEK_SET);
-		comp->vid->font.data = (unsigned char*)realloc(comp->vid->font.data, comp->vid->font.size);
-		comp->vid->font.size = (int)fread(comp->vid->font.data, 1, comp->vid->font.size, file);
+		unsigned char* data = (size > 0) ? (unsigned char*)realloc(comp->vid->font.data, size) : NULL;
+		if (data) {		// else the font stays as it was
+			comp->vid->font.data = data;
+			comp->vid->font.size = (int)fread(data, 1, size, file);
+		}
 		fclose(file);
 	} else {
 		xlog(XLG_CONF, XLL_ERROR, "can't load font '%s'", fpath.c_str());

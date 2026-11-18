@@ -520,12 +520,19 @@ IDE* ideCreate(int tp, cbirq cb, void* p) {
 	ide->master = ataCreate(IDE_NONE, cb, p, IRQ_HDD_PRI);
 	ide->slave = ataCreate(IDE_NONE, cb, p, IRQ_HDD_PRI);
 	ide->curDev = ide->master;
-	ide->smuc.fdd = 0xc0;
-	ide->smuc.sys = 0x00;
 	ide->smuc.nv = nvCreate();
+	ide_power_on(ide);
 	//ide->type = tp;
 	ide_set_type(ide, tp);
 	return ide;
+}
+
+// SMUC's latches as the power leaves them, and the bus of its NVRAM chip; the
+// drives and what the chip holds are not the supply's
+void ide_power_on(IDE* ide) {
+	ide->smuc.fdd = 0xc0;
+	ide->smuc.sys = 0x00;
+	if (ide->smuc.nv) nv_power_on(ide->smuc.nv);
 }
 
 void ideDestroy(IDE* ide) {

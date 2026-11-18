@@ -179,6 +179,7 @@ void ideDestroy(IDE*);
 int ideIn(IDE*, int, int*, int);
 int ideOut(IDE*, int, int, int);
 void ideReset(IDE*);
+void ide_power_on(IDE*);	// SMUC's latches, its NVRAM's bus
 void ideCloseFiles(IDE*);
 
 void ide_set_type(IDE*, int);
