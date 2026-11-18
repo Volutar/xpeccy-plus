@@ -354,7 +354,7 @@ void vgrds01(FDC* fdc) {
 						fdc->state |= 0x08;					// ADR crc error
 						vgstp(fdc);
 					} else {
-						fdc->cnt = 52;						// DATA must be in next (22 + 30) bytes
+						fdc->cnt = WD_DAM_WINDOW;				// DATA must be in next (22 + 30) bytes
 						fdc->pos++;						// ADR found, next step
 					}
 				}

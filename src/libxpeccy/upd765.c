@@ -844,6 +844,7 @@ void upd_form_id(FDC* fdc, int i, const unsigned char* chrn) {
 	s->sz = chrn[3];
 	s->crc = -1;			// to be worked out
 	s->type = 0xfb;			// a normal data mark
+	s->flags = 0;
 	memset(s->data, fdc->comBuf[4], 128 << (chrn[3] & 3));	// filled with D, as much as diskFormTrack takes
 }
 

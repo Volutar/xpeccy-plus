@@ -254,6 +254,7 @@ void diskFormTRDTrack(Floppy* flp, int tr, unsigned char* bpos) {
 	int sc;
 	unsigned char* ppos = bpos;
 	sct.type = 0xfb;
+	sct.flags = 0;
 	sct.crc = -1;
 	sct.trk = ((tr & 0xfe) >> 1);
 	sct.head = (tr & 0x01) ? 1 : 0;
@@ -267,72 +268,148 @@ void diskFormTRDTrack(Floppy* flp, int tr, unsigned char* bpos) {
 	diskFormTrack(flp,tr,lst,16);
 }
 
-// the gap diskFormTrack puts after each of the sectors
-static long long disk_form_gap(Floppy* flp, Sector* sdata, int scount) {
+// The gaps a track is laid out with: 4E before an ID, 00 before each mark, 4E
+// between an ID and its data
+typedef struct {
+	int gap1;
+	int sync;
+	int gap2;
+} formGaps;
+
+static const formGaps form_std = {10, 12, 22};
+static const formGaps form_tight = {2, 3, 4};	// an image's track the standard one does not hold
+
+// the bytes a sector's data counts for in the gap
+static long long sec_counted(Sector* s) {
+	// A size code past 23 overflowed the shift, which on x86 came out as 0
+	// (221 -> 128 << 29 -> 0). Protected disks carry such codes in an id
+	// field, and Kobrahsoft's SP4/SP5/DB1 boot only with the layout that
+	// gave: so they count as nothing here, on purpose, not 128 << (sz & 3).
+	// Not checked against a real drive.
+	return (s->sz < 24) ? (128LL << s->sz) : 0;
+}
+
+// the bytes a sector takes before the gap after it, with len bytes of data
+static long long sec_room(Sector* s, long long len, const formGaps* g) {
+	long long n = 0;
+	if (!(s->flags & SEC_NO_ID))
+		n += g->gap1 + g->sync + 10;		// 3 A1, FE, CHRN, CRC
+	if (!(s->flags & SEC_NO_DATA))
+		n += ((s->flags & SEC_NO_ID) ? g->gap1 : g->gap2) + g->sync + 4 + len + 2;
+	return n;
+}
+
+// 4E past the gap after an ID with no data: the next data mark past the bytes
+// the WD1793 looks for one in, so that ID reads as Record Not Found
+static int sec_pad(Sector* sdata, int i, int scount, const formGaps* g) {
+	if (!(sdata[i].flags & SEC_NO_DATA) || (i + 1 >= scount)) return 0;
+	Sector* nx = &sdata[i + 1];
+	if (nx->flags & SEC_NO_DATA) return 0;
+	int lead = ((nx->flags & SEC_NO_ID) ? g->gap1 : g->gap1 + g->sync + 10 + g->gap2) + g->sync + 4;
+	return (lead > WD_DAM_WINDOW) ? 0 : WD_DAM_WINDOW + 1 - lead;
+}
+
+// the gap after each of the sectors; start: the track's bytes before the first
+// one that are counted (the standard layout leaves its 16 out, as it always has)
+static long long disk_form_gap(Floppy* flp, Sector* sdata, int scount, const formGaps* g, int start) {
 	long long sum = 0;		// up to a gigabyte a sector by the size code: no int
-	for (int i = 0; i < scount; i++) {
-		// A size code past 23 overflowed the shift, which on x86 came out as 0
-		// (221 -> 128 << 29 -> 0). Protected disks carry such codes in an id
-		// field, and Kobrahsoft's SP4/SP5/DB1 boot only with the layout that
-		// gave: so they count as nothing here, on purpose, not 128 << (sz & 3).
-		// Not checked against a real drive.
-		sum += (sdata[i].sz < 24) ? (128LL << sdata[i].sz) : 0;
-	}
-	return (flp->trklen - sum) / scount - 72;
+	for (int i = 0; i < scount; i++)
+		sum += sec_room(&sdata[i], sec_counted(&sdata[i]), g) + sec_pad(sdata, i, scount, g);
+	return (flp->trklen - start - sum) / scount;
 }
 
 int diskFormFits(Floppy* flp, Sector* sdata, int scount) {
-	return (scount > 0) && (disk_form_gap(flp, sdata, scount) >= 10);
+	return (scount > 0) && (disk_form_gap(flp, sdata, scount, &form_std, 0) >= 10);
 }
 
-// format a single track from sectors list
-// <sdata> is list of <scount> sectors
-// TODO: calculate GAP3 len !!!
-void diskFormTrack(Floppy* flp, int tr, Sector* sdata, int scount) {
-	int ln;
-	int sc;
-	// a track with no sectors (images keep unformatted ones so) is left as the
-	// loader cleared it
-	if ((tr < 0) || (tr > 255) || (scount <= 0)) return;
+// Lay the sectors down with the gaps g and gap3 after each. cut: no sector
+// starts past the track's end, and the one running over it is cut there
+static void disk_form_lay(Floppy* flp, int tr, Sector* sdata, int scount, const formGaps* g, int gap3, int cut) {
 	unsigned char* base = flp->data[tr].byte;
-	unsigned char *ppos = base;
-	long long gap = disk_form_gap(flp, sdata, scount);
-	if (gap < 10) return;
-	int dsz = (int)gap;
+	unsigned char* ppos = base;
+	int bad[256];			// where the CRCs to spoil are
+	int nbad = 0;
+	int nid_pos[256];		// the data marks with no ID before them, and their size codes
+	unsigned char nid_sz[256];
+	int nnid = 0;
 	memset(ppos, 0x4e, flp->trklen);
 	memset(ppos, 0x00, 12); ppos += 12;		// 12	space
 	*(ppos++) = 0xc2;				// 	track mark
 	*(ppos++) = 0xc2;
 	*(ppos++) = 0xc2;
 	*(ppos++) = 0xfc;
-	for (sc = 0; sc < scount; sc++) {
-		ln = (128 << (sdata[sc].sz & 3));
-		// a size code past 23 counts as nothing above, but its bytes are written:
-		// what would run past the track's buffer stays off it
-		if ((ppos - base) + 72 + ln > (int)sizeof(flp->data[tr].byte)) break;
-		/*memset(ppos, 0x4e, 10);*/ ppos += 10;		// 10	sync (GAP1)
-		memset(ppos, 0x00, 12); ppos += 12;		// 12	space
-		*(ppos++) = 0xa1;				//	address mark
-		*(ppos++) = 0xa1;
-		*(ppos++) = 0xa1;
-		*(ppos++) = 0xfe;
-		*(ppos++) = sdata[sc].trk;			// 	addr field
-		*(ppos++) = sdata[sc].head;
-		*(ppos++) = sdata[sc].sec;
-		*(ppos++) = sdata[sc].sz;
-		*(ppos++) = 0xf7; *(ppos++) = 0xf7;
-		/*memset(ppos, 0x4e, 22);*/ ppos += 22;		// 22	sync (GAP2)
-		memset(ppos, 0x00, 12); ppos += 12;		// 12	space
-		*(ppos++) = 0xa1;				//	data mark
-		*(ppos++) = 0xa1;
-		*(ppos++) = 0xa1;
-		*(ppos++) = sdata[sc].type;
-		memcpy(ppos, sdata[sc].data, ln); ppos += ln;	//	data
-		*(ppos++) = 0xf7; *(ppos++) = 0xf7;
-		/*memset(ppos, 0x4e, dsz);*/ ppos += dsz;		// 60	sync (GAP3)
+	for (int sc = 0; (sc < scount) && (sc < 256); sc++) {
+		Sector* s = &sdata[sc];
+		int ln = (128 << (s->sz & 3));
+		if (cut && (ppos - base >= flp->trklen)) break;
+		// a size code past 23 counts as nothing in the gap, but its bytes are
+		// written: what would run past the track's buffer stays off it
+		if ((ppos - base) + sec_room(s, ln, g) > (int)sizeof(flp->data[tr].byte)) break;
+		ppos += g->gap1;				//	GAP1
+		if (!(s->flags & SEC_NO_ID)) {
+			memset(ppos, 0x00, g->sync); ppos += g->sync;	//	space
+			*(ppos++) = 0xa1;			//	address mark
+			*(ppos++) = 0xa1;
+			*(ppos++) = 0xa1;
+			*(ppos++) = 0xfe;
+			*(ppos++) = s->trk;			// 	addr field
+			*(ppos++) = s->head;
+			*(ppos++) = s->sec;
+			*(ppos++) = s->sz;
+			*(ppos++) = 0xf7; *(ppos++) = 0xf7;
+			if (!(s->flags & SEC_NO_DATA)) ppos += g->gap2;	//	GAP2
+		}
+		if (!(s->flags & SEC_NO_DATA)) {
+			memset(ppos, 0x00, g->sync); ppos += g->sync;	//	space
+			*(ppos++) = 0xa1;			//	data mark
+			*(ppos++) = 0xa1;
+			*(ppos++) = 0xa1;
+			if (s->flags & SEC_NO_ID) {
+				nid_pos[nnid] = (int)(ppos - base);
+				nid_sz[nnid++] = s->sz;
+			}
+			*(ppos++) = s->type;
+			memcpy(ppos, s->data, ln); ppos += ln;	//	data
+			if (s->flags & SEC_BAD_CRC) bad[nbad++] = (int)(ppos - base);
+			*(ppos++) = 0xf7; *(ppos++) = 0xf7;
+		}
+		ppos += gap3 + sec_pad(sdata, sc, scount, g);	//	GAP3
 	}
-	// while ((ppos - flp->data[tr].byte) < flp->trklen) *(ppos++) = 0x4e;		// last sync (GAP4)
-	flpFillFields(flp,tr,1);
+	flpFillFieldsEx(flp, tr, 1, nid_pos, nid_sz, nnid);
+	for (int i = 0; i < nbad; i++) {
+		if (bad[i] + 1 >= flp->trklen) continue;	// cut off with the track's end
+		base[bad[i]] ^= 0xff;
+		base[bad[i] + 1] ^= 0xff;
+	}
+}
+
+// format a single track from sectors list
+// <sdata> is list of <scount> sectors
+// TODO: calculate GAP3 len !!!
+void diskFormTrack(Floppy* flp, int tr, Sector* sdata, int scount) {
+	// a track with no sectors (images keep unformatted ones so) is left as the
+	// loader cleared it
+	if ((tr < 0) || (tr > 255) || (scount <= 0)) return;
+	long long gap = disk_form_gap(flp, sdata, scount, &form_std, 0);
+	if (gap < 10) return;
+	disk_form_lay(flp, tr, sdata, scount, &form_std, (int)gap, 0);
+}
+
+// A track of an image file: as diskFormTrack when the standard layout holds
+// it, else with tight gaps, else as much as the track holds - the image says
+// the sectors are there, so the track is not left empty
+void diskFormImageTrack(Floppy* flp, int tr, Sector* sdata, int scount) {
+	if ((tr < 0) || (tr > 255) || (scount <= 0)) return;
+	long long gap = disk_form_gap(flp, sdata, scount, &form_std, 0);
+	if (gap >= 10) {
+		disk_form_lay(flp, tr, sdata, scount, &form_std, (int)gap, 0);
+		return;
+	}
+	gap = disk_form_gap(flp, sdata, scount, &form_tight, 16);
+	if (gap >= 2)
+		disk_form_lay(flp, tr, sdata, scount, &form_tight, (int)gap, 0);
+	else
+		disk_form_lay(flp, tr, sdata, scount, &form_tight, 2, 1);
 }
 
 static unsigned char fbuf[0x100];

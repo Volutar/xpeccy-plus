@@ -79,6 +79,17 @@ int fdi_read(Floppy* flp, const char* name) {
 					trkImg[sec].sec = shd.sec;
 					trkImg[sec].sz = shd.len;
 					trkImg[sec].type = (shd.flag & 0x80) ? 0xf8 : 0xfb;
+					trkImg[sec].flags = 0;
+					trkImg[sec].crc = -1;
+					// The format's text (UKV): bit 6, an address mark with no data
+					// field; bits 0-5, the data reads with a good CRC at 128, 256...
+					// bytes - not set for the length the WD1793 reads, a CRC error
+					if (shd.flag & 0x40) {
+						trkImg[sec].flags = SEC_NO_DATA;
+						continue;
+					}
+					if (!(shd.flag & (1 << (shd.len & 3))))
+						trkImg[sec].flags = SEC_BAD_CRC;
 					shd.len = shd.len & 3;
 					pos = ftell(file);
 					fseek(file, hd.dData + thd.dData + shd.dData, SEEK_SET);
@@ -88,7 +99,7 @@ int fdi_read(Floppy* flp, const char* name) {
 					if (got < want) memset(trkImg[sec].data + got, 0, want - got);
 					fseek(file, pos, SEEK_SET);
 				}
-				diskFormTrack(flp, (trk << 1) + head, trkImg, sec);
+				diskFormImageTrack(flp, (trk << 1) + head, trkImg, sec);
 			}
 		}
 		flp->protect = hd.wp ? 1 : 0;

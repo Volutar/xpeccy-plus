@@ -50,9 +50,20 @@ typedef struct {
 	unsigned char sec;
 	unsigned char sz;	// 0..3 = 128..1024
 	unsigned char type;
+	unsigned char flags;	// SEC_* below: what of the sector is on the disk
 	int crc;
 	unsigned char data[0x1800];
 } Sector;
+
+// The bytes after an ID's CRC the WD1793 looks for the data mark in, else
+// Record Not Found. The FD179X datasheet says 43 in MFM; the TRD and SCL
+// layout (flp_format_sec) puts the mark at 44
+#define WD_DAM_WINDOW	52
+
+// Sector.flags: what an image says a sector lacks or has wrong
+#define SEC_NO_DATA	1	// an ID field with no data field after it
+#define SEC_NO_ID	2	// a data field with no ID field before it
+#define SEC_BAD_CRC	4	// the data field's CRC does not match
 
 typedef struct FDC FDC;
 typedef void(*fdcCall)(FDC*);

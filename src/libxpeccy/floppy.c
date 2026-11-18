@@ -320,7 +320,12 @@ void flpClearDisk(Floppy* flp) {
 }
 
 void flpFillFields(Floppy* flp,int tr, int flag) {
+	flpFillFieldsEx(flp, tr, flag, NULL, NULL, 0);
+}
+
+void flpFillFieldsEx(Floppy* flp, int tr, int flag, const int* npos, const unsigned char* nsz, int nn) {
 	int i, bcnt = 0;
+	int k = 0;		// the next of npos[]
 	unsigned char fld = 0;
 	unsigned char* cpos = flp->data[tr].byte;
 	unsigned char* bpos = cpos;
@@ -376,21 +381,19 @@ void flpFillFields(Floppy* flp,int tr, int flag) {
 						// case 0xfc:			// fc/fd : IAM, index marker
 						//	break
 						case 0xfa:			// fa/fb : DAM, data
-							cpos = bpos;
-							fld = 0x02;
-							bcnt = (128 << (sct & 3));
-							if (scn > 0) {
-								flp->data[tr].map[scn] = i + 1;
-								scn = 0;
-							}
-							break;
 						case 0xf8:			// f8/f9 : DDAM, deleted data
 							cpos = bpos;
-							fld = 0x03;
-							bcnt = (128 << (sct & 3));
-							if (scn > 0) {
-								flp->data[tr].map[scn] = i + 1;
-								scn = 0;
+							fld = ((flp->data[tr].byte[i] & 0xfe) == 0xfa) ? 0x02 : 0x03;
+							while ((k < nn) && (npos[k] < i)) k++;
+							if ((k < nn) && (npos[k] == i)) {
+								bcnt = (128 << (nsz[k] & 3));	// no ID: no sector to map
+								k++;
+							} else {
+								bcnt = (128 << (sct & 3));
+								if (scn > 0) {
+									flp->data[tr].map[scn] = i + 1;
+									scn = 0;
+								}
 							}
 							break;
 						default:
