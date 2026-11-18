@@ -1091,6 +1091,18 @@ static void protected_fdi(const char* path) {
 	beta_seek(3);
 	for (int i = 0; i < 6; i++) fread_sec(3, r3[i]);
 	difDestroy(dif);
+
+	// a writer that sets no CRC flag at all: its sectors are not all bad
+	memset(t, 0, sizeof(t));
+	for (int r = 1; r <= 4; r++) fadd(&t[0], 0, r, 1, (r == 4) ? 0x80 : 0x00);
+	write_fdi(path, t, 1);
+	beta_drive_flp = beta_drive();
+	err = fdi_read(beta_drive_flp, path);
+	printf("== fdi/no-crc-flags\n");
+	printf("  read: err %d\n", err);
+	beta_disk();
+	for (int r = 1; r <= 4; r++) fread_sec(0, r);
+	difDestroy(dif);
 }
 
 static void protected_td0(const char* path) {
@@ -1104,6 +1116,7 @@ static void protected_td0(const char* path) {
 	fadd(&t[0], 0, 5, 1, 0x02);		// CRC error
 	fadd(&t[0], 0, 6, 1, 0x10);		// skipped as unallocated: zeros
 	fadd(&t[0], 0, 8, 1, 0x00);
+	fadd(&t[0], 0, 9, 1, 0x60);		// neither ID nor data: nothing
 	// cylinder 1 as MK_LGN's: data with no ID in front of 9 x 512
 	fadd(&t[1], 1, 109, 2, 0x40);
 	for (int r = 1; r <= 9; r++) fadd(&t[1], 1, r, 2, 0x00);
@@ -1117,7 +1130,7 @@ static void protected_td0(const char* path) {
 	printf("== td0/flags\n");
 	printf("  read: err %d, %d cylinders\n", err, flp->cyls);
 	beta_disk();
-	for (int r = 1; r <= 8; r++) fread_sec(0, r);
+	for (int r = 1; r <= 9; r++) fread_sec(0, r);
 	beta_ids(9);
 	data_alone(0, 0, 7, 256);
 	beta_seek(1);

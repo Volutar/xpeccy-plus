@@ -205,6 +205,7 @@
   R6: status 00, 256 bytes, zeros
   R7: status 10, 0 bytes, -
   R8: status 00, 256 bytes, as the image
+  R9: status 10, 0 bytes, -
   IDs: 1 2 3 4 5 6 8 1 2
   data with no ID, 256 bytes: on the track yes, CRC right: yes
   seek to 1: track register 1, head at 1
@@ -216,3 +217,9 @@
 == wd/dam-window
   R1: status 00, 256 bytes, as the image
   R2: status 10, 0 bytes, -
+== fdi/no-crc-flags
+  read: err 0
+  R1: status 00, 256 bytes, as the image
+  R2: status 00, 256 bytes, as the image
+  R3: status 00, 256 bytes, as the image
+  R4: status 20, 256 bytes, as the image
