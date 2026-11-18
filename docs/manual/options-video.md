@@ -76,8 +76,9 @@ machine on a 60 Hz screen moves as unevenly as it would on a 60 Hz television.
 
 - Fast forward, slow motion and rewind run at their own speed; the screen's rate comes back
   after them.
-- A video recording is what you see: the Next above is recorded at 60 frames a second, at
-  the sound's new pitch. Without **VSync** it is recorded at 58.15.
+- A video recording is the same with **VSync** and without it: the Next above is recorded
+  at its own 58.15 frames a second and its own pitch, or as **50/60 FPS** and **Keep pitch**
+  set in [Recording](#recording).
 - On Windows, fullscreen with **VSync** goes through the desktop's compositor, which adds
   the frame of delay that **Low latency** saves otherwise (see
   [Input lag](options-emulation.md#input-lag)).
