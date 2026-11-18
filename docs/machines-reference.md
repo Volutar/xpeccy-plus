@@ -115,8 +115,10 @@ gets it, on the board as here. 128 BASIC goes through RAM once a frame, for a fe
 a press lands there only because it lasts a frame or more. D59.1 takes the line into DOS at
 the next fetch from RAM, the acknowledge's own. The core holds the button as long as the key is
 down, three frames at least for a click; machines without a schematic read here (Pentagon,
-Profi, ATM...) take the line at a fetch above #3FFF. The Turbo+ does this in its PLD, not read;
-it is taken to be the same.
+Profi, ATM...) take the line at a fetch above #3FFF. The Turbo+ (romychs/Scorpion256TPlus
+v16.2.8a) has the same trigger, DD50.2: C = RAMM1, D = MG, S = RDR- (a ROM read). Held long, the
+button reaches the monitor too when it calls RAM: 2.95 restarts its menu (#E358, ~0.4 s),
+ProfROM 4.44 opens its navigator (#E3C2, ~0.2 s), as its own changes list says it does.
 
 Also still open from that work: ATM Turbo 2+ is 11 T out, with no official figure behind it.
 
