@@ -50,7 +50,7 @@ std::map<std::string, int> shotFormat;
 static const char* recSrcName[] = {"picture", "screen", NULL};
 static const char* iosdSrcName[] = {"auto", "reads", "host", NULL};
 static const char* iosdPosName[] = {"bottom-left", "bottom", "bottom-right", "top-left", "top", "top-right", NULL};
-static const char* recFpsName[] = {"machine", "50", NULL};
+static const char* recFpsName[] = {"machine", "50", "60", "nominal", NULL};
 static const char* recBoxName[] = {"mp4", "mkv", NULL};
 static const char* recAudioName[] = {"aac", "opus", "auto", NULL};
 static const char* recChromaName[] = {"auto", "420", "444", NULL};
@@ -150,7 +150,7 @@ void conf_init(char* confdir) {
 	conf.scrShot.name = SHOT_NAME_DEF;
 	conf.rec.source = VREC_SRC_PICTURE;
 	conf.rec.scale = 4;
-	conf.rec.fps = VREC_FPS_50;
+	conf.rec.fps = VREC_FPS_NOMINAL;
 	conf.rec.container = VREC_MP4;
 	conf.rec.codec = VREC_H264;
 	conf.rec.chroma = VREC_CH_AUTO;
@@ -1318,7 +1318,7 @@ void loadConfig() {
 					if (pnam=="rec.dir") conf.rec.dir = pval;
 					if (pnam=="rec.source") conf.rec.source = rec_id(recSrcName, pval, VREC_SRC_PICTURE);
 					if (pnam=="rec.scale") conf.rec.scale = getRanged(arg.s, 1, VREC_SCALE_MAX);
-					if (pnam=="rec.fps") conf.rec.fps = rec_id(recFpsName, pval, VREC_FPS_50);
+					if (pnam=="rec.fps") conf.rec.fps = rec_id(recFpsName, pval, VREC_FPS_NOMINAL);
 					if (pnam=="rec.container") conf.rec.container = rec_id(recBoxName, pval, VREC_MP4);
 					if (pnam=="rec.codec") conf.rec.codec = rec_id(recCodecName, pval, VREC_H264);
 					if (pnam=="rec.chroma") conf.rec.chroma = rec_id(recChromaName, pval, VREC_CH_AUTO);

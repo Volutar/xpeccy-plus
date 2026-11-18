@@ -11,6 +11,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **60 FPS video**: Options > Video, Recording. **60 FPS** and **50/60 FPS** join Real FPS
+  and 50 FPS; 50/60 records a Next in its 60 Hz modes at 60 and every other machine at 50,
+  and is the default in new settings.
+
 - **Always on Top**: View > Always on Top keeps the main window over other programs'
   windows; the program's own still open over it. Off in fullscreen, remembered.
   *(reported by Volutar)*
@@ -84,6 +88,12 @@ before that point is upstream's history and is not repeated here.
   side. *(reported by Volutar)*
 
 ### Fixed
+
+- **A Next switching 50/60 Hz while a video records** stays in step: the sound no longer
+  drifts away from the picture, and keeps its pitch.
+
+- **VSync no longer changes a video recording**: a machine pulled up to the screen's rate is
+  recorded at its own frame rate and pitch, and Keep pitch works with VSync on too.
 
 - **Hard Reset clears the memory on every machine**, as it says it does: the RAM, the General
   Sound card and the palettes come up as at power-on. A Scorpion service monitor stuck in a

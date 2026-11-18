@@ -937,7 +937,7 @@ typedef struct {
 	int crf;
 	std::string preset;
 	unsigned fps60:1;	// blend up to 60 fps
-	unsigned keepPitch:1;	// at 50 fps: stretch the sound in time, not in pitch
+	unsigned keepPitch:1;	// at 50/60 fps: stretch the sound in time, not in pitch
 	unsigned autoStart:1;	// start by itself...
 	unsigned autoStop:1;	// ...stop by itself
 	int autoStartOp;	// VREC_AT_*: own is code in ram
