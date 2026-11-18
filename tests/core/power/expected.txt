@@ -1,0 +1,116 @@
+== machines
+ZX48: RAM: ok
+ZX48: the sound card's RAM, its CPU from #0000: ok
+ZX48: the divMMC's RAM: ok
+ZX48: registers: ok
+ZX48: palettes, sprites, Soundrive: ok
+ZX48: PWR_UP set, no NMI held: ok
+ZX48: SMUC idle, its NVRAM kept: ok
+ZX128: RAM: ok
+ZX128: the sound card's RAM, its CPU from #0000: ok
+ZX128: the divMMC's RAM: ok
+ZX128: registers: ok
+ZX128: palettes, sprites, Soundrive: ok
+ZX128: PWR_UP set, no NMI held: ok
+ZX128: SMUC idle, its NVRAM kept: ok
+Plus2A: RAM: ok
+Plus2A: the sound card's RAM, its CPU from #0000: ok
+Plus2A: the divMMC's RAM: ok
+Plus2A: registers: ok
+Plus2A: palettes, sprites, Soundrive: ok
+Plus2A: PWR_UP set, no NMI held: ok
+Plus2A: SMUC idle, its NVRAM kept: ok
+Plus3: RAM: ok
+Plus3: the sound card's RAM, its CPU from #0000: ok
+Plus3: the divMMC's RAM: ok
+Plus3: registers: ok
+Plus3: palettes, sprites, Soundrive: ok
+Plus3: PWR_UP set, no NMI held: ok
+Plus3: SMUC idle, its NVRAM kept: ok
+Pentagon: RAM: ok
+Pentagon: the sound card's RAM, its CPU from #0000: ok
+Pentagon: the divMMC's RAM: ok
+Pentagon: registers: ok
+Pentagon: palettes, sprites, Soundrive: ok
+Pentagon: PWR_UP set, no NMI held: ok
+Pentagon: SMUC idle, its NVRAM kept: ok
+Pentagon1024SL: RAM: ok
+Pentagon1024SL: the sound card's RAM, its CPU from #0000: ok
+Pentagon1024SL: the divMMC's RAM: ok
+Pentagon1024SL: registers: ok
+Pentagon1024SL: palettes, sprites, Soundrive: ok
+Pentagon1024SL: PWR_UP set, no NMI held: ok
+Pentagon1024SL: SMUC idle, its NVRAM kept: ok
+Scorpion: RAM: ok
+Scorpion: the sound card's RAM, its CPU from #0000: ok
+Scorpion: the divMMC's RAM: ok
+Scorpion: registers: ok
+Scorpion: palettes, sprites, Soundrive: ok
+Scorpion: PWR_UP set, no NMI held: ok
+Scorpion: SMUC idle, its NVRAM kept: ok
+ScorpionTP: RAM: ok
+ScorpionTP: the sound card's RAM, its CPU from #0000: ok
+ScorpionTP: the divMMC's RAM: ok
+ScorpionTP: registers: ok
+ScorpionTP: palettes, sprites, Soundrive: ok
+ScorpionTP: PWR_UP set, no NMI held: ok
+ScorpionTP: SMUC idle, its NVRAM kept: ok
+Profi3: RAM: ok
+Profi3: the sound card's RAM, its CPU from #0000: ok
+Profi3: the divMMC's RAM: ok
+Profi3: registers: ok
+Profi3: palettes, sprites, Soundrive: ok
+Profi3: PWR_UP set, no NMI held: ok
+Profi3: SMUC idle, its NVRAM kept: ok
+Profi: RAM: ok
+Profi: the sound card's RAM, its CPU from #0000: ok
+Profi: the divMMC's RAM: ok
+Profi: registers: ok
+Profi: palettes, sprites, Soundrive: ok
+Profi: PWR_UP set, no NMI held: ok
+Profi: SMUC idle, its NVRAM kept: ok
+ATM2: RAM: ok
+ATM2: the sound card's RAM, its CPU from #0000: ok
+ATM2: the divMMC's RAM: ok
+ATM2: registers: ok
+ATM2: palettes, sprites, Soundrive: ok
+ATM2: PWR_UP set, no NMI held: ok
+ATM2: SMUC idle, its NVRAM kept: ok
+Phoenix: RAM: ok
+Phoenix: the sound card's RAM, its CPU from #0000: ok
+Phoenix: the divMMC's RAM: ok
+Phoenix: registers: ok
+Phoenix: palettes, sprites, Soundrive: ok
+Phoenix: PWR_UP set, no NMI held: ok
+Phoenix: SMUC idle, its NVRAM kept: ok
+ALF: RAM: ok
+ALF: the sound card's RAM, its CPU from #0000: ok
+ALF: the divMMC's RAM: ok
+ALF: registers: ok
+ALF: palettes, sprites, Soundrive: ok
+ALF: PWR_UP set, no NMI held: ok
+ALF: SMUC idle, its NVRAM kept: ok
+Baseconf: RAM: ok
+Baseconf: the sound card's RAM, its CPU from #0000: ok
+Baseconf: the divMMC's RAM: ok
+Baseconf: registers: ok
+Baseconf: palettes, sprites, Soundrive: ok
+Baseconf: PWR_UP set, no NMI held: ok
+Baseconf: SMUC idle, its NVRAM kept: ok
+TSConf: RAM: ok
+TSConf: the sound card's RAM, its CPU from #0000: ok
+TSConf: the divMMC's RAM: ok
+TSConf: registers: ok
+TSConf: palettes, sprites, Soundrive: ok
+TSConf: PWR_UP set, no NMI held: ok
+TSConf: SMUC idle, its NVRAM kept: ok
+ZXNext: RAM: ok
+ZXNext: the sound card's RAM, its CPU from #0000: ok
+ZXNext: the divMMC's RAM: ok
+ZXNext: registers: ok
+ZXNext: palettes, sprites, Soundrive: ok
+ZXNext: PWR_UP set, no NMI held: ok
+ZXNext: SMUC idle, its NVRAM kept: ok
+== pattern
+Pentagon: the pattern over 128K: ok
+Pentagon: zero past it: ok

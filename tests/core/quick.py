@@ -28,6 +28,8 @@ text cut into `== <case>` sections, and a case passes when its section is the sa
             #FE see its ports
   nmi       nmi-bench: the Beta disk's magic button, held as a level, against the Scorpion's
             schematic - a tap from the 128 menu lands, 48 BASIC never, an edge per return to RAM
+  power     power-bench: the power on every core - nothing of what ran before is left in the RAM,
+            the sound card, the divMMC, the registers and the palettes; the NVRAM keeps
 
 The programs are committed assembled; core/mkbins.py rebuilds them with sjasmplus.
 """
@@ -46,7 +48,7 @@ from pathlib import Path
 CORE = Path(__file__).resolve().parent
 ROOT = CORE.parent.parent
 BUILD = ROOT / "build" / "out" / "tests"
-BENCHES = ("z80", "tsconf", "baseconf", "divmmc", "tape", "pok", "vfat", "zxnext", "kbd", "esp", "siblings", "brk", "dsk", "gs", "beeper", "phoenix", "smuc", "nmi")
+BENCHES = ("z80", "tsconf", "baseconf", "divmmc", "tape", "pok", "vfat", "zxnext", "kbd", "esp", "siblings", "brk", "dsk", "gs", "beeper", "phoenix", "smuc", "nmi", "power")
 EXE = ".exe" if os.name == "nt" else ""
 # the qt6-x64 toolchain of packaging/make-dist.ps1, used when nothing else is given
 WIN_MINGW = Path(r"C:\Qt\Tools\mingw1120_64")
@@ -205,6 +207,10 @@ def bench_nmi():
     return run_sections("nmi", [str(ROOT / "config" / "roms")], rc=False)
 
 
+def bench_power():
+    return run_sections("power", [], rc=False)
+
+
 def bench_vfat():
     with tempfile.TemporaryDirectory(prefix="xquick-") as tmp:
         return run_sections("vfat", [tmp, "4", "120"], timeout=300)
@@ -265,7 +271,7 @@ def run(args, matches):
             continue
         got = {"tape": bench_tape, "pok": bench_pok, "vfat": bench_vfat, "zxnext": bench_zxnext,
                "siblings": bench_siblings, "brk": bench_brk, "dsk": bench_dsk, "gs": bench_gs,
-               "beeper": bench_beeper, "phoenix": bench_phoenix, "smuc": bench_smuc, "nmi": bench_nmi}.get(bench, lambda: bench_prog(bench, args.jobs))()
+               "beeper": bench_beeper, "phoenix": bench_phoenix, "smuc": bench_smuc, "nmi": bench_nmi, "power": bench_power}.get(bench, lambda: bench_prog(bench, args.jobs))()
         got = {k: v for k, v in got.items() if matches(k, f"{bench}/{k}", args.k)}
         exp_path = CORE / bench / "expected.txt"
         exp = read_sections(exp_path.read_text(encoding="utf-8")) if exp_path.exists() else {}
