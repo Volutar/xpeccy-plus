@@ -1176,10 +1176,63 @@ static void dam_window(void) {
 	difDestroy(dif);
 }
 
+// Write Sector with the cpu giving <give> bytes in all (-1: every one asked for), and
+// the byte <late> a byte-time too late. The status, and the bytes it gave
+static int beta_write(int com, int sec, int give, int late, int* moved) {
+	difOut(dif, 0xff, 0x3c, 1);
+	difOut(dif, 0x5f, sec, 1);
+	difOut(dif, 0x1f, com, 1);
+	int n = 0;
+	for (long ns = 0; ns < 2000000000L; ns += 999) {
+		int st = 0xff;
+		difIn(dif, 0xff, &st, 1);
+		if ((st & 0x40) && ((give < 0) || (n < give))) {
+			if (n == late) run(40000);		// past the byte's time
+			difOut(dif, 0x7f, (0x11 + n) & 0xff, 1);
+			n++;
+		}
+		if (st & 0x80) break;
+		run(999);
+	}
+	*moved = n;
+	int st = 0xff;
+	difIn(dif, 0x1f, &st, 1);
+	difOut(dif, 0x7f, 0, 1);		// the request left unanswered: off before the next command
+	return st & 0xff;
+}
+
+// FD179X, Write Sector: the first byte not loaded by the data field - nothing written,
+// Lost Data; a byte missed later - a zero written, Lost Data, the command goes on
+static void write_rules(const char* path) {
+	static fTrk t[1];
+	memset(t, 0, sizeof(t));
+	for (int r = 1; r <= 4; r++) fadd(&t[0], 0, r, 1, 0x02);
+	write_fdi(path, t, 1);
+	beta_drive_flp = beta_drive();
+	fdi_read(beta_drive_flp, path);
+	printf("== wd/write-lost\n");
+	beta_disk();
+	unsigned char buf[256];
+	int n;
+	int st = beta_write(0xa0, 1, 0, -1, &n);
+	printf("  no byte given: status %.2X, %d bytes\n", st, n);
+	fread_sec(0, 1);
+	st = beta_write(0xa0, 2, -1, 10, &n);
+	int zero = diskGetSectorData(beta_drive_flp, 0, 2, buf, 256) && !buf[10] && (buf[9] == 0x11 + 9);
+	printf("  byte 10 late: status %.2X, %d bytes; read back: byte 10 zero: %s\n", st, n, zero ? "yes" : "no");
+	st = beta_sector(0x80, 0, 2, buf, &n);
+	printf("  R2 read: status %.2X\n", st);
+	st = beta_write(0xb0, 3, 256, -1, &n);
+	printf("  multi, R3 given, R4 not: status %.2X, %d bytes\n", st, n);
+	fread_sec(0, 4);
+	difDestroy(dif);
+}
+
 static void protected_images(const char* tmp) {
 	char path[1100];
 	snprintf(path, sizeof(path), "%s.fdi", tmp);
 	protected_fdi(path);
+	write_rules(path);
 	remove(path);
 	snprintf(path, sizeof(path), "%s.td0", tmp);
 	protected_td0(path);

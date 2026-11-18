@@ -223,3 +223,10 @@
   R2: status 00, 256 bytes, as the image
   R3: status 00, 256 bytes, as the image
   R4: status 20, 256 bytes, as the image
+== wd/write-lost
+  no byte given: status 06, 0 bytes
+  R1: status 00, 256 bytes, as the image
+  byte 10 late: status 04, 255 bytes; read back: byte 10 zero: yes
+  R2 read: status 00
+  multi, R3 given, R4 not: status 06, 256 bytes
+  R4: status 00, 256 bytes, as the image
