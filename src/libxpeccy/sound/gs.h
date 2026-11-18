@@ -114,6 +114,8 @@ int gsWrite(GSound*, int, int);
 int gsRead(GSound*, int, int*);
 // the card's model: its image into the ROM space, its map, a reset
 void gs_set_model(GSound*, int);
+// the power comes on: the RAM empty, the card as it was made, from its reset
+void gs_power_on(GSound*);
 // an image was loaded: the model's own goes into the ROM space again
 void gs_rom_refresh(GSound*);
 // the memory map from the registers, after a snapshot put them back

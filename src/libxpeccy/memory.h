@@ -129,6 +129,8 @@ void memSetSize(Memory*, int, int);
 // alone sits past ramSize.
 size_t mem_ram_extent(Memory*);
 void mem_cold_fill(Memory*, const unsigned char*, int, int);
+// the ram as the power leaves it: the pattern, or zero with none (len 0)
+void mem_power_on(Memory*, const unsigned char*, int, int);
 void memSetBank(Memory* mem, int page, int type, int bank, int siz, extmrd rd, extmwr wr, void* data);
 // a device's page over the machine's: plain bytes at data, read only without wr
 void mem_ovl_set(Memory* mem, int page, int type, int num, unsigned char* data, extmrd rd, extmwr wr);

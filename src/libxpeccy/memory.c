@@ -131,6 +131,14 @@ void mem_cold_fill(Memory* mem, const unsigned char* pat, int len, int noise) {
 	}
 }
 
+// Nothing of what ran before is left, past the reach of this machine too: a
+// machine with no pattern of its own (none measured yet) comes up zeroed, as at
+// the start of the program.
+void mem_power_on(Memory* mem, const unsigned char* pat, int len, int noise) {
+	memset(mem->ramData, 0x00, sizeof(mem->ramData));
+	mem_cold_fill(mem, pat, len, noise);
+}
+
 int memRd(Memory* mem, int adr) {
 	int res = -1;
 	MemPage* ptr = &mem->map[(adr >> mem->pgshift) & 0xff];
