@@ -105,6 +105,19 @@ on the Turbo+, D37/D36 on the yellow board): J0-J4 on d0-d4, pulled down by 560 
 ground, d6/d7 the VG93's DRQ and INTRQ. The joystick connector has no more lines, so there is no
 8-bit Kempston on them.
 
+The yellow board's magic button (MAGIC, pulled up by R55, the button pulls it low) is a level,
+not a pulse. D9.1 makes WAIT at every opcode fetch from RAM (clocked by CSRAM, so RAM at #0000
+under 1FFD.0 counts too), and WAIT clocks the button into D59.2, whose output is /NMI; any ROM
+access (CSROM- on its S input) lets the line go. So the NMI comes at the first fetch from RAM
+while the button is down, and comes again only after the program has been in ROM, the handler
+at #0066 as a rule. A program that never runs in RAM - 48 BASIC, the TR-DOS prompt - never
+gets it, on the board as here. 128 BASIC goes through RAM once a frame, for a few dozen T, so
+a press lands there only because it lasts a frame or more. D59.1 takes the line into DOS at
+the next fetch from RAM, the acknowledge's own. The core holds the button as long as the key is
+down, three frames at least for a click; machines without a schematic read here (Pentagon,
+Profi, ATM...) take the line at a fetch above #3FFF. The Turbo+ does this in its PLD, not read;
+it is taken to be the same.
+
 Also still open from that work: ATM Turbo 2+ is 11 T out, with no official figure behind it.
 
 The ZXM-Phoenix is read off its author's files (micklab.ru: the schematics of revisions
