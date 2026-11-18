@@ -34,6 +34,7 @@
 #include "diskio.h"
 #undef DIR
 #include "vfat.h"
+#include "vfat_int.h"
 #include "xlog.h"
 
 // == the host side ==
@@ -2133,39 +2134,126 @@ static int dir_has(const char* dir, const char* name, unsigned int size) {
 	return ok;
 }
 
-// the names and a sync that has nothing to do; by listing, as a lookup of AGAME.TAP is
-// the 8.3 name of "A game.tap" first
-static void names_check(const char* when) {
-	int k;
-	if (!dir_has("/", "AGAME.TAP", 2000) || !dir_has("/", "A game.tap", 1000)) fail("%s: the guest does not list both", when);
-	k = host_ops;
+// the guest's 8.3 name of the file name of that size in dir: sfn, with a long name or
+// (sfn alone, lfn 0) without one
+static void dir_sfn(const char* when, const char* dir, const char* name, unsigned int size, const char* sfn, int lfn) {
+	FF_DIR d;
+	FILINFO fi;
+	int seen = 0;
+	if (f_opendir(&d, dir) != FR_OK) {
+		fail("%s: no %s", when, dir);
+		return;
+	}
+	while ((f_readdir(&d, &fi) == FR_OK) && fi.fname[0]) {
+		if (strcmp(fi.fname, name) || (fi.fsize != size)) continue;
+		seen = 1;
+		if (lfn ? strcmp(fi.altname, sfn) : (fi.altname[0] != 0))
+			fail("%s: \"%s\" is %s%s, not %s%s", when, name, fi.altname[0] ? fi.altname : name,
+				fi.altname[0] ? " with a long name" : "", sfn, lfn ? " with a long name" : "");
+	}
+	f_closedir(&d);
+	if (!seen) fail("%s: the guest does not list \"%s\"", when, name);
+}
+
+// a sync that has nothing to do, and the host as it was
+static void names_quiet(const char* when) {
+	int k = host_ops;
 	sync_checked(0);		// 0 after a mount: nothing written, nothing live
 	if (host_ops != k) fail("%s: the sync after did %i host operations", when, host_ops - k);
 	check_host(sroot, when);
 }
 
-// a name whose 8.3 form another file has already takes ~1 and keeps its long name: at a
-// refresh and at a mount, and the sync after takes it for no rename
+// a lossy name takes ~1 at once, and the plain 8.3 name a host file has later is its own,
+// with no long name; two lossy names alike are ~1 and ~2. A refresh keeps the names the
+// volume has; a mount gives them in scan order, so the later of the two alike may come
+// first there - as a card rewritten on another system would have them.
 static void sc_refresh_names(void) {
 	vfRefresh r;
 	s_begin(126, 1);
-	h_put("A game.tap", 1000, 1700000000);		// AGAME.TAP is its 8.3 name
-	h_put("a cart.tap", 3000, 1700000000);		// ACART.TAP
+	h_put("A game.tap", 1000, 1700000000);
+	h_put("a cart.tap", 3000, 1700000000);
 	s_refresh("names first", VFR_OK, &r);
-	// no long name of their own: ~1 needs one. The fresh scan lists ACART.TAP before
-	// "a cart.tap", so only the volume finds its 8.3 name taken.
+	dir_sfn("names first", "/", "A game.tap", 1000, "AGAME~1.TAP", 1);
+	dir_sfn("names first", "/", "a cart.tap", 3000, "ACART~1.TAP", 1);
 	h_put("AGAME.TAP", 2000, 1700000000);
-	h_put("ACART.TAP", 4000, 1700000000);
+	h_put("A  game.tap", 4000, 1700000000);
 	s_refresh("names second", VFR_OK, &r);
 	if (r.added != 2) fail("names: %i new", r.added);
-	if (!dir_has("/", "ACART.TAP", 4000) || !dir_has("/", "a cart.tap", 3000)) fail("names: the guest does not list both carts");
-	names_check("names");
+	dir_sfn("names", "/", "A game.tap", 1000, "AGAME~1.TAP", 1);
+	dir_sfn("names", "/", "AGAME.TAP", 2000, "AGAME.TAP", 0);
+	dir_sfn("names", "/", "A  game.tap", 4000, "AGAME~2.TAP", 1);
+	dir_sfn("names", "/", "a cart.tap", 3000, "ACART~1.TAP", 1);
+	names_quiet("names");
 	f_unmount("");
 	vfat_free(gvf);
-	gvf = mount_folder(sroot, 1);		// the mount makes the same names
+	gvf = mount_folder(sroot, 1);
 	if (f_mount(&fs, "", 1) != FR_OK) fail("names: remount");
-	names_check("names remount");
+	dir_sfn("names remount", "/", "A  game.tap", 4000, "AGAME~1.TAP", 1);	// "A  " sorts first
+	dir_sfn("names remount", "/", "A game.tap", 1000, "AGAME~2.TAP", 1);
+	dir_sfn("names remount", "/", "AGAME.TAP", 2000, "AGAME.TAP", 0);
+	dir_sfn("names remount", "/", "a cart.tap", 3000, "ACART~1.TAP", 1);
+	names_quiet("names remount");
 	s_end();
+}
+
+typedef struct {
+	char name[8][12];
+	int count;
+} snSet;
+
+static int sn_taken(void* ctx, const char* sname) {
+	snSet* set = (snSet*)ctx;
+	int i;
+	for (i = 0; i < set->count; i++)
+		if (!memcmp(set->name[i], sname, 11)) return 1;
+	return 0;
+}
+
+// the 8.3 names a folder's files get, added in this order into one folder: FAT's rule (a
+// lossy one takes a tail at once; case and cp866 only need the long name)
+static void sc_snames(void) {
+	static const struct { const char* name; const char* sname; int how; } tab[] = {
+		{"GAME.TAP", "GAME    TAP", 0},
+		{"game.tap", "GAME~1  TAP", VF_SN_LFN},			// the plain one has GAME.TAP
+		{"README", "README     ", 0},
+		{"\xd0\xb8\xd0\xb3\xd1\x80\xd0\xb0.tap", "\x88\x83\x90\x80    TAP", VF_SN_LFN},	// cyrillic "igra", into cp866
+		{"A game.tap", "AGAME~1 TAP", VF_SN_LFN | VF_SN_LOSSY},
+		{"enBrowsext.cfg", "ENBROW~1CFG", VF_SN_LFN | VF_SN_LOSSY},
+		{".keep", "KEEP~1     ", VF_SN_LFN | VF_SN_LOSSY},
+		{"x.jpeg", "X~1     JPE", VF_SN_LFN | VF_SN_LOSSY},
+	};
+	static const struct { const char* name; const char* sname; int how; } tab2[] = {
+		{"Aeon.tap.{}", "AEONTA~1{} ", VF_SN_LFN | VF_SN_LOSSY},
+		{"a+b.tap", "A_B~1   TAP", VF_SN_LFN | VF_SN_LOSSY},
+		{"Long name 1.txt", "LONGNA~1TXT", VF_SN_LFN | VF_SN_LOSSY},
+		{"Long name 2.txt", "LONGNA~2TXT", VF_SN_LFN | VF_SN_LOSSY},
+		{"Long name 3.txt", "LONGNA~3TXT", VF_SN_LFN | VF_SN_LOSSY},
+		{"Long name 4.txt", "LONGNA~4TXT", VF_SN_LFN | VF_SN_LOSSY},
+		{"Long name 5.txt", NULL, VF_SN_LFN | VF_SN_LOSSY},	// the hashed form: LOxxxx~1
+		{"LONGNAME.TXT", "LONGNAMETXT", 0},
+	};
+	char base[12], sname[12];
+	snSet set;
+	int i, how, ulen;
+	set.count = 0;
+	for (i = 0; i < (int)(sizeof(tab) / sizeof(tab[0])); i++) {
+		how = vf_sname_make(tab[i].name, base, &ulen);
+		memcpy(sname, base, 12);
+		vf_sname_uniq(sname, tab[i].name, how & VF_SN_LOSSY, sn_taken, &set);
+		if ((how != tab[i].how) || memcmp(sname, tab[i].sname, 11))
+			fail("snames: \"%s\" is \"%.11s\" (%i), not \"%s\" (%i)", tab[i].name, sname, how, tab[i].sname, tab[i].how);
+		memcpy(set.name[set.count++], sname, 12);
+	}
+	set.count = 0;
+	for (i = 0; i < (int)(sizeof(tab2) / sizeof(tab2[0])); i++) {
+		how = vf_sname_make(tab2[i].name, base, &ulen);
+		memcpy(sname, base, 12);
+		vf_sname_uniq(sname, tab2[i].name, how & VF_SN_LOSSY, sn_taken, &set);
+		if ((how != tab2[i].how) || (tab2[i].sname ? memcmp(sname, tab2[i].sname, 11)
+				: (memcmp(sname, "LO", 2) || memcmp(sname + 6, "~1TXT", 5))))
+			fail("snames: \"%s\" is \"%.11s\" (%i)", tab2[i].name, sname, how);
+		memcpy(set.name[set.count++], sname, 12);
+	}
 }
 
 // a host rename, of the case alone too
@@ -2240,7 +2328,7 @@ static int run_scenarios(const char* root) {
 		{"flush", sc_flush}, {"bigfile", sc_bigfile}, {"parked", sc_parked}, {"cap", sc_cap},
 		{"outside", sc_outside}, {"sameslot", sc_sameslot}, {"refresh", sc_refresh}, {"refresh_grow", sc_refresh_grow},
 		{"refresh_refuse", sc_refresh_refuse}, {"refresh_hold", sc_refresh_hold}, {"refresh_names", sc_refresh_names},
-		{"refresh_hidden", sc_refresh_hidden}
+		{"refresh_hidden", sc_refresh_hidden}, {"snames", sc_snames}
 	};
 	unsigned int i;
 	int bad = 0;

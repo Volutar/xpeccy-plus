@@ -32,3 +32,4 @@ refresh_refuse: ok
 refresh_hold: ok
 refresh_names: ok
 refresh_hidden: ok
+snames: ok

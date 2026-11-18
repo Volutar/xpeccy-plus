@@ -73,38 +73,46 @@ static int sname_bad(int c) {
 
 // one character of an 8.3 name: uppercase ASCII, cyrillic folded into cp866
 // (that is what a DOS side expects to see), anything else becomes '_'.
-// -1 means the character is dropped; lossy is raised whenever the result
-// doesn't repeat the original.
-static int sname_char(unsigned int chr, int* lossy) {
+// -1 means the character is dropped. *how gets VF_SN_LFN for a character the
+// 8.3 form keeps in another case or code page, VF_SN_LOSSY for one it drops or
+// replaces - FAT's lossy conversion, which takes a numeric tail.
+static int sname_char(unsigned int chr, int* how) {
 	if ((chr == ' ') || (chr == '.')) {
-		*lossy = 1;
+		*how |= VF_SN_LOSSY;
 		return -1;
 	}
 	if (chr < 0x80) {
 		if ((chr >= 'a') && (chr <= 'z')) {
-			*lossy = 1;
+			*how |= VF_SN_LFN;
 			return chr - 0x20;
 		}
 		if (sname_bad(chr)) {
-			*lossy = 1;
+			*how |= VF_SN_LOSSY;
 			return '_';
 		}
 		return chr;
 	}
-	*lossy = 1;
 	if ((chr >= 0x430) && (chr <= 0x44f)) chr -= 0x20;	// lowercase cyrillic
 	if (chr == 0x451) chr = 0x401;				// yo
-	if ((chr >= 0x410) && (chr <= 0x42f)) return 0x80 + chr - 0x410;
-	if (chr == 0x401) return 0xf0;
+	if ((chr >= 0x410) && (chr <= 0x42f)) {
+		*how |= VF_SN_LFN;
+		return 0x80 + chr - 0x410;
+	}
+	if (chr == 0x401) {
+		*how |= VF_SN_LFN;
+		return 0xf0;
+	}
+	*how |= VF_SN_LOSSY;
 	return '_';
 }
 
-// build a space padded 8.3 name; returns 1 if it doesn't match the real name,
-// *ulen is the length of the real one in UTF-16
+// build a space padded 8.3 name; returns VF_SN_LFN when it doesn't repeat the
+// real name, with VF_SN_LOSSY when it loses some of it (a character dropped or
+// replaced, a part cut); *ulen is the length of the real one in UTF-16
 int vf_sname_make(const char* name, char* dst, int* ulen) {
 	unsigned short buf[VF_MAXNAME + 1];
 	int len = vf_utf16(name, buf, VF_MAXNAME);
-	int lossy = 0;
+	int how = 0;
 	int dot = -1;
 	int i, c, pos;
 	*ulen = len;
@@ -118,25 +126,26 @@ int vf_sname_make(const char* name, char* dst, int* ulen) {
 	}
 	pos = 0;
 	for (i = 0; i < ((dot < 0) ? len : dot); i++) {
-		c = sname_char(buf[i], &lossy);
+		c = sname_char(buf[i], &how);
 		if (c < 0) continue;
 		if (pos < 8) dst[pos++] = c;
-		else lossy = 1;
+		else how |= VF_SN_LOSSY;
 	}
 	if (pos == 0) {
 		dst[0] = '_';
-		lossy = 1;
+		how |= VF_SN_LOSSY;
 	}
 	if (dot >= 0) {
 		pos = 8;
 		for (i = dot + 1; i < len; i++) {
-			c = sname_char(buf[i], &lossy);
+			c = sname_char(buf[i], &how);
 			if (c < 0) continue;
 			if (pos < 11) dst[pos++] = c;
-			else lossy = 1;
+			else how |= VF_SN_LOSSY;
 		}
 	}
-	return lossy;
+	if (how & VF_SN_LOSSY) how |= VF_SN_LFN;
+	return how;
 }
 
 unsigned char vf_sname_sum(const char* sname) {
@@ -198,8 +207,9 @@ static int stab_room(vFat* vf) {
 
 // make the 8.3 name unique among the siblings of parent: BASE~1..~4 first,
 // then two letters, a hash of the long name and ~1..~9, as Windows does - a
-// folder of names alike would otherwise try every number for every name
-void vf_sname_uniq(char* sname, const char* name, int (*taken)(void* ctx, const char* sname), void* ctx) {
+// folder of names alike would otherwise try every number for every name. A
+// lossy name never keeps its bare basis: FAT gives it a tail at once.
+void vf_sname_uniq(char* sname, const char* name, int lossy, int (*taken)(void* ctx, const char* sname), void* ctx) {
 	const unsigned char* s;
 	char base[12];
 	char tail[16];
@@ -209,7 +219,7 @@ void vf_sname_uniq(char* sname, const char* name, int (*taken)(void* ctx, const 
 		lhash = (lhash ^ *s) * 0x01000193;
 	memcpy(base, sname, 12);
 	for (n = 0; n < 1000000; n++) {
-		if (!taken(ctx, sname)) return;
+		if ((n || !lossy) && !taken(ctx, sname)) return;
 		memcpy(sname, base, 11);
 		if (n < 4)
 			sprintf(tail, "~%i", n + 1);
@@ -377,15 +387,16 @@ int vfat_add(vFat* vf, int parent, const char* name, unsigned int size, unsigned
 	vfNode* nod;
 	vfSib sib;
 	char sname[12], base[12];
-	int idx, prev, lfn, ecnt, ulen;
+	int idx, prev, how, lfn, ecnt, ulen;
 	if (!vf) return -1;
 	if (!name) name = "";
-	lfn = vf_sname_make(name, base, &ulen);
+	how = vf_sname_make(name, base, &ulen);
+	lfn = how & VF_SN_LFN;
 	if (!stab_room(vf)) return -1;
 	memcpy(sname, base, 12);
 	sib.vf = vf;
 	sib.parent = parent;
-	vf_sname_uniq(sname, name, sib_taken, &sib);
+	vf_sname_uniq(sname, name, how & VF_SN_LOSSY, sib_taken, &sib);
 	if (memcmp(sname, base, 11)) lfn = 1;		// a name made unique needs its long name too
 	ecnt = lfn ? (divup(ulen, 13) + 1) : 1;		// the 8.3 entry and 13 characters per long one
 	if ((parent >= 0) && (vf->node[parent].dents + ecnt > VF_MAXDENTS)) return VF_FULL;
