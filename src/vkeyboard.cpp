@@ -162,7 +162,6 @@ keyWindow::keyWindow(QWidget* p):QDialog(p) {
 	setMinimumSize(qRound(cnv.width() / 2), qRound(cnv.height() / 2));
 	setZoom(storedZoom());
 	setWindowIcon(QIcon(":/images/vkeys.png"));
-	setWindowTitle("Virtual Keyboard - ZX Spectrum");
 	if (conf.keywin.dock)
 		setDock(true);
 }
@@ -180,6 +179,12 @@ void keyWindow::loadSkin() {
 		if (((name != "black") && (name != "white")) || !skinThere(name)) name = vkSkins[0].name;
 	}
 	skinShown = name;
+	// the skin named as the Skin menu names it: a user's own by its file's name
+	QString title = name;
+	for (const auto& s : vkSkins) {
+		if (name == s.name) title = s.title;
+	}
+	setWindowTitle("Virtual Keyboard - " + title);
 	QString dir = ownSkinDir();
 	QString own = dir + "/zx-" + name + ".json";
 	if (!watcher.files().isEmpty()) watcher.removePaths(watcher.files());
