@@ -28,7 +28,8 @@ The menus are described in [Menu bar](menu-bar.md), the buttons in
    the tape is through that block;
 3. {icon}`diskGreen` **A: B: C: D:** - a light for each floppy drive the machine has;
 4. {icon}`joystick` **joystick** and {icon}`mouse` **mouse** - lit while the running
-   program reads them;
+   program reads them; the tip says so too, which players play the joystick and whether
+   the PC mouse is grabbed;
 5. the CPU clock in MHz;
 6. frames per second, or **paused**.
 

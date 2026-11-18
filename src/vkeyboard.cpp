@@ -37,6 +37,14 @@ static const struct {
 	{"next", "Next (Black)"}, {"next-white", "Next (White)"}, {"next-magenta", "Next (Magenta)"},
 	{"kopir-worn", "Klava"}, {"kopir", "Klava (Washed)"}};
 
+// a skin as the Skin menu and the title name it: a user's own by its file's name
+static QString skinTitle(const QString& name) {
+	for (const auto& sk : vkSkins) {
+		if (name == sk.name) return sk.title;
+	}
+	return name;
+}
+
 // a skin's tone: white, magenta (the Next's), washed (the Kopir's clean one), or black
 // for the classic ones
 static std::string skinTone(const std::string& name) {
@@ -162,7 +170,6 @@ keyWindow::keyWindow(QWidget* p):QDialog(p) {
 	setMinimumSize(qRound(cnv.width() / 2), qRound(cnv.height() / 2));
 	setZoom(storedZoom());
 	setWindowIcon(QIcon(":/images/vkeys.png"));
-	setWindowTitle("Virtual Keyboard - ZX Spectrum");
 	if (conf.keywin.dock)
 		setDock(true);
 }
@@ -180,6 +187,7 @@ void keyWindow::loadSkin() {
 		if (((name != "black") && (name != "white")) || !skinThere(name)) name = vkSkins[0].name;
 	}
 	skinShown = name;
+	setWindowTitle("Virtual Keyboard - " + skinTitle(name));
 	QString dir = ownSkinDir();
 	QString own = dir + "/zx-" + name + ".json";
 	if (!watcher.files().isEmpty()) watcher.removePaths(watcher.files());
@@ -463,9 +471,9 @@ void keyWindow::fillMenu(QMenu* mnu) {
 	act->setChecked(conf.keywin.bymac);
 	skm->addSeparator();
 	QActionGroup* skg = new QActionGroup(skm);
-	auto addSkin = [&](const QString& name, const QString& title) {
+	auto addSkin = [&](const QString& name) {
 		std::string nm = name.toStdString();
-		QAction* sa = skm->addAction(title, this, [this, nm]() {
+		QAction* sa = skm->addAction(skinTitle(name), this, [this, nm]() {
 			// a skin picked by hand stays, whatever the machine
 			conf.keywin.skin = nm;
 			conf.keywin.plain = skinTone(nm);
@@ -479,7 +487,7 @@ void keyWindow::fillMenu(QMenu* mnu) {
 	QStringList builtIn;
 	for (const auto& sk : vkSkins) {
 		builtIn.append(sk.name);
-		if (skinThere(sk.name)) addSkin(sk.name, sk.title);
+		if (skinThere(sk.name)) addSkin(sk.name);
 	}
 	// the user's own layouts of other names, under their names
 	bool first = true;
@@ -488,7 +496,7 @@ void keyWindow::fillMenu(QMenu* mnu) {
 		if (name.isEmpty() || builtIn.contains(name)) continue;
 		if (first) skm->addSeparator();
 		first = false;
-		addSkin(name, name);
+		addSkin(name);
 	}
 	act = mnu->addAction("Dock under the emulator", this, [this]() {setDock(!dock);});
 	act->setCheckable(true);

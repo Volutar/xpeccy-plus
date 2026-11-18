@@ -282,7 +282,7 @@ is easier with the 128K's close-set keys:
   Spectrum Next, the 128K one on a 128K, +2, +2A or +3, the 48K one on a 48K and Klava on
   the clones (Pentagon, Scorpion, Profi, ATM, ZX Evolution and the rest), in the tone
   picked last: Klava (Washed) if it was picked; only the Next has a Magenta one, the others
-  show their classic one.
+  show their classic one. The window's title names the skin it shows.
 - **Dock under the emulator** - the keyboard loses its frame and sits under the main window,
   as wide as the main window, and moves with it. In fullscreen, or when there is no room
   below, it lies over the bottom of the picture.

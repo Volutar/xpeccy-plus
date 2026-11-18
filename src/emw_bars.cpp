@@ -21,6 +21,8 @@
 #include <QStyleOptionSlider>
 #include <QThread>
 #include <QDir>
+#include <QToolTip>
+#include <QCursor>
 #include <functional>
 
 #include "emulwin.h"
@@ -576,10 +578,8 @@ void MainWin::initBars() {
 		sbDiskBox[i] = pair(sbDisk[i], sbDiskIcon[i]);
 	}
 	// lit while the machine reads them, so the slot is kept while they are idle
-	sbJoyIcon = new QLabel;
-	sbJoyIcon->setToolTip("Kempston joystick");
+	sbJoyIcon = new QLabel;		// the tips are updateStatus()'s, with what they are doing
 	sbMouseIcon = new QLabel;
-	sbMouseIcon->setToolTip("Kempston mouse");
 	sbInputBox = pair(sbJoyIcon, sbMouseIcon);
 	sbInputBox->layout()->setSpacing(6);		// two lights, not a light and its text
 	// as wide as the longest they can say, or every change of clock or rate
@@ -1115,10 +1115,39 @@ void MainWin::updateStatus() {
 			icon->setPixmap(sbPix[st]);
 			shown = st;
 		}
+		return st != idle;
+	};
+	// the tip says the same, and what drives it, a line each (nobr: Qt wraps a rich
+	// tip); one on screen is put up anew, as setToolTip leaves it as it was
+	auto tell = [](QLabel* icon, const QString& name, bool read, const QStringList& more) {
+		QString tip = QString("<nobr>%0: <b>%1</b></nobr>").arg(name, read ? "active" : "idle");
+		foreach(const QString& line, more)
+			tip += "<br><nobr>" + line.toHtmlEscaped() + "</nobr>";
+		if (icon->toolTip() == tip) return;
+		icon->setToolTip(tip);
+		if (QToolTip::isVisible() && icon->underMouse())
+			QToolTip::showText(QCursor::pos(), tip, icon);
 	};
 	bool joy = (comp->joy->type == XJ_KEMPSTON);
 	bool mouse = comp->mouse->enable;
-	light(sbJoyIcon, joy, joySeen, sbJoyShown, SB_JOY_IDLE);
-	light(sbMouseIcon, mouse, mouseSeen, sbMouseShown, SB_MOUSE_IDLE);
+	bool joyRead = light(sbJoyIcon, joy, joySeen, sbJoyShown, SB_JOY_IDLE);
+	bool mouseRead = light(sbMouseIcon, mouse, mouseSeen, sbMouseShown, SB_MOUSE_IDLE);
+	if (joy) {
+		QStringList players;
+		xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
+		for (int i = 0; i < 2; i++) {
+			xGamepad* gp = pads[i];
+			if (gp->drivesKempston())
+				players << QString("Player %0: %1").arg(i + 1)
+					.arg(gp->isKeyboard() ? QString(pad_kbd_name(gp->keyboard())) : gp->padId().title());
+		}
+		tell(sbJoyIcon, "Kempston joystick", joyRead, players);
+	}
+	if (mouse) {
+		QStringList grab;
+		// a grabbed pointer never gets here: it is free over the bar only while paused
+		if (grabMice) grab << (mouseHeld() ? "Grabbed" : "Grabbed, free while paused");
+		tell(sbMouseIcon, "Kempston mouse", mouseRead, grab);
+	}
 	sbInputBox->setVisible(joy || mouse);
 }
