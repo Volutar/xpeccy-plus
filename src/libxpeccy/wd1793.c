@@ -562,7 +562,14 @@ static fdcCall vgRdTrk[] = {&vgrds00,&vgrdt00,&vgrdt01,&vgstp};
 
 void vgwrt00(FDC* fdc) {
 	fdc->wait += fdc_turbo(fdc) ? VG_TURBO_BYTE : fdc->bytedelay;
+	if (fdc_turbo(fdc) && fdc->drq) fdc->hold -= fdc->bytedelay;	// fast access: a real revolution's time
 	if (flpNext(fdc->flp, fdc->side)) {
+		if (fdc->drq) {				// no first byte by the index: Lost Data, nothing written (FD179X)
+			if (fdc_turbo(fdc) && (fdc->hold > 0)) return;	// the next index
+			fdc->state |= 0x04;
+			vgstp(fdc);
+			return;
+		}
 		fdc->pos++;
 		fdc->wait = fdc->bytedelay;
 	}
