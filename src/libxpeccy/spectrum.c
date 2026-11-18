@@ -956,6 +956,7 @@ void comp_irq(int t, void* ptr) {
 		case IRQ_TAP_0:			// no handler acts on these, and unlazying would only
 		case IRQ_TAP_1:			// cut short the calm stretch of a loader's edge loop
 		case IRQ_TAP_BLK:
+		case IRQ_NMI_UP:
 			unlazy = 0;
 			break;
 		case IRQ_BRK:
@@ -1512,6 +1513,12 @@ int compSetHardware(Computer* comp, const char* name) {
 	if ((hw->id == HW_ZXNEXT) && !(comp->hw && (comp->hw->id == HW_ZXNEXT)))
 		memSetSize(comp->mem, MEM_2M, -1);
 	comp->hw = hw;
+	comp->flgNMIRQ = 0;		// a held NMI button is the old machine's
+	comp->nmiKey = 0;
+	comp->nmiUp = 0;
+	comp->nmiLine = 0;
+	// the Scorpion's magic button takes any fetch from RAM, #0000 too (D9.1 on CSRAM)
+	comp->nmiRamGate = (hw->id == HW_SCORP) || (hw->id == HW_SCORPTP);
 	// the Evo's AVR makes a host key's combination and puts the mouse's left button on D0;
 	// the rest have the Next's scan (none has a pc keyboard of its own) and the left on D1
 	int evo = (hw->id == HW_PENTEVO) || (hw->id == HW_TSLAB);

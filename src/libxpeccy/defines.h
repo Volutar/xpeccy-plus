@@ -75,7 +75,8 @@ enum {
 	IRQ_KBD_DATA,	// ps/2 keyboard (zx evo)
 	IRQ_TAP_0,	// tape
 	IRQ_TAP_1,
-	IRQ_TAP_BLK
+	IRQ_TAP_BLK,
+	IRQ_NMI_UP	// the NMI button let go (IRQ_NMI is it going down)
 };
 
 typedef void(*cbirq)(int, void*);

@@ -1029,6 +1029,7 @@ void MainWin::focusOutEvent(QFocusEvent*) {
 	rewind_want(0);		// their keys will not be seen going up
 	xspeed_key(XTM_SLOW, 0);
 	xspeed_key(XTM_FFWD, 0);
+	nmi_let_go();
 	tbLetGo();		// nor a toolbar button's
 }
 

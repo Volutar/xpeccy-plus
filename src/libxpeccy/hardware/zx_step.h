@@ -96,17 +96,29 @@ static inline void alf_devs_sync_in(Computer* comp, int ns) {
 	tsSync(comp->ts, ns);
 }
 
+// The Beta disk's magic button (Scorpion D59.2): an edge on a fetch from RAM, let go by one from ROM
+static inline void zx_nmi_magic(Computer* comp) {
+	int pc = comp->cpu->regPC;
+	int ram = (pc > 0x3fff) || (comp->nmiRamGate && (mem_get_page(comp->mem, pc)->type == MEM_RAM));
+	if (!ram) {
+		comp->nmiLine = 0;
+	} else if (!comp->nmiLine) {
+		comp->nmiLine = 1;
+		comp->cpu->intrq |= Z80_NMI;
+		comp->flgDOS = 1;
+		comp->flgROM = 1;
+		comp->hw->mapMem(comp);
+	}
+}
+
 static inline void zx_sync_in(Computer* comp, int ns) {
 	zx_devs_sync_in(comp, ns);
 	// nmi: a divMMC's button, or the Beta disk's "magic" one
 	if (comp->div->model) {
 		if (div_nmi(comp->div, comp->flgNMIRQ))
 			comp->cpu->intrq |= Z80_NMI;
-	} else if ((comp->cpu->regPC > 0x3fff) && comp->flgNMIRQ) {
-		comp->cpu->intrq |= Z80_NMI;	// request nmi
-		comp->flgDOS = 1;			// set dos page
-		comp->flgROM = 1;
-		comp->hw->mapMem(comp);
+	} else if (comp->flgNMIRQ) {
+		zx_nmi_magic(comp);
 	}
 }
 

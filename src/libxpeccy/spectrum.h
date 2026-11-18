@@ -572,6 +572,14 @@ typedef struct Computer {
 	int snowHits;		// refresh cycles that took the ULA's this frame: the gui's
 				// snow notice reads and clears it at the frame's end
 
+	// the NMI button (flgNMIRQ): its key, let go (held until nmiUntil, tickTotal),
+	// the magic line (zx_nmi_magic), and RAM at #0000 taking it too (the Scorpion)
+	int nmiKey;
+	int nmiUp;
+	long long nmiUntil;
+	int nmiLine;
+	int nmiRamGate;
+
 	int frmCount;		// frames since reset (for breakpoint conditions)
 	int tickCount;		// accumulate T
 	long long tickTotal;	// T since the machine was made: tickCount wraps in minutes
