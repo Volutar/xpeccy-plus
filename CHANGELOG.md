@@ -12,8 +12,8 @@ before that point is upstream's history and is not repeated here.
 ### Added
 
 - **60 FPS video**: Options > Video, Recording. **60 FPS** and **50/60 FPS** join Real FPS
-  and 50 FPS; 50/60, the new default, records a Next in its 60 Hz modes at 60 and every
-  other machine at 50.
+  and 50 FPS; 50/60 records a Next in its 60 Hz modes at 60 and every other machine at 50,
+  and is the default in new settings.
 
 - **Always on Top**: View > Always on Top keeps the main window over other programs'
   windows; the program's own still open over it. Off in fullscreen, remembered.
