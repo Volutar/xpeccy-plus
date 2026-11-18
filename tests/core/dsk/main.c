@@ -1225,6 +1225,9 @@ static void write_rules(const char* path) {
 	st = beta_write(0xb0, 3, 256, -1, &n);
 	printf("  multi, R3 given, R4 not: status %.2X, %d bytes\n", st, n);
 	fread_sec(0, 4);
+	st = beta_write(0xf4, 1, 0, -1, &n);
+	printf("  Write Track, no byte given: status %.2X, %d bytes\n", st, n);
+	fread_sec(0, 1);
 	difDestroy(dif);
 }
 
