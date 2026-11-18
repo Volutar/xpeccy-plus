@@ -11,9 +11,9 @@ esx_folder        zx48      boot  650   50      mac:storage.divmmc=divmmc eeprom
 esx_ls            zx48      boot  760   40      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC089.BIN cardimg1:divmmc/esxdos089 keys:660:Sm,672:l,684:s,696:E
 esx_nmi           zx48      boot  760   40      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC089.BIN cardimg1:divmmc/esxdos089 keys:660:nmi
 esx_folder_banner zx48      boot  100   20      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC089.BIN card1:divmmc/esxdos089
-# no eeprom: the EEPROM a fresh config starts with (the bundled esxDOS); same hashes as esx_folder
-esx_default       zx48      boot  650   50      mac:storage.divmmc=divmmc card1:divmmc/esxdos089
-esx_flash         zx48      auto  2500  20      divmmc/ESXMMC089.TAP mac:storage.divmmc=divmmc mac:storage.divmmc.eeprom=writable keys:400:_
+# no eeprom: the EEPROM a fresh config starts with (the newest bundled esxDOS); same hashes as esx090_folder
+esx_default       zx48      boot  650   50      mac:storage.divmmc=divmmc card1:divmmc/esxdos090
+esx_flash         zx48      auto  2500  20      divmmc/ESXMMC089.TAP mac:storage.divmmc=divmmc mac:storage.divmmc.eeprom=writable eeprom:divmmc/ESXMMC089.BIN keys:400:_
 esx_pent          pent      boot  700   50      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC089.BIN cardimg1:divmmc/esxdos089
 esx_pent1024      pent1024  boot  700   50      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC089.BIN cardimg1:divmmc/esxdos089
 esx_pent_trdos    pent      boot  960   40      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC089.BIN cardimg1:divmmc/esxdos089 keys:660:Sm,672:l,684:s,696:E,780:t,792:CS,804:l,816:1,828:5,840:6,852:1,864:6,876:E
@@ -46,3 +46,27 @@ esx088_banner      zx48      boot  100   20      mac:storage.divmmc=divmmc eepro
 esx088_zx48        zx48      boot  650   50      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC088.BIN card1:divmmc/esxdos088
 esx088_zx128       zx128     boot  700   50      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC088.BIN card1:divmmc/esxdos088
 esx088_pent        pent      boot  700   50      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC088.BIN card1:divmmc/esxdos088
+
+# esxDOS 0.9.0 (corpus divmmc/ESXMMC090.BIN, divmmc/esxdos090 as New esxDOS Folder makes it):
+# boots as 0.8.9 on every machine; long names from a folder card (one over its 65-character
+# limit shows as 8.3), .ls -l, the NMI browser (now at $2000) loading a long-named tape; it
+# refuses an 0.8.9 card ([ERROR]) and loads its system files from card 2 when card 2 has them;
+# FORMAT sdb1 on a second image, then a Hard Reset shows the new volume
+esx090_banner      zx48      boot  100   20      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN cardimg1:divmmc/esxdos090
+esx090_zx48        zx48      boot  650   50      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN cardimg1:divmmc/esxdos090
+esx090_zx128       zx128     boot  700   50      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN cardimg1:divmmc/esxdos090
+esx090_plus3       zxplus3   boot  700   50      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN cardimg1:divmmc/esxdos090
+esx090_pent        pent      boot  700   50      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN cardimg1:divmmc/esxdos090
+esx090_pent1024    pent1024  boot  700   50      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN cardimg1:divmmc/esxdos090
+esx090_folder      zx48      boot  650   50      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN card1:divmmc/esxdos090
+esx090_ls          zx48      boot  760   40      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN cardimg1:divmmc/esxdos090 keys:660:Sm,672:l,684:s,696:E
+esx090_lsl         zx48      boot  860   40      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN card1:divmmc/esxdos090 keys:660:Sm,672:l,684:s,696:_,708:Sj,720:l,732:_,744:s,756:y,768:s,780:Sv,792:b,804:i,816:n,828:E
+esx090_lfn         zx48      boot  800   40      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN card1:divmmc/esxdos090 put:Ninja_Man_a_long_file_name_of_forty_one.tap=tape/ninjaman.tap put:A_name_over_sixty_five_characters_long_to_see_what_the_LFN_driver_does_with_it.tap=tape/ninjaman.tap keys:660:Sm,672:l,684:s,696:E
+esx090_nmi         zx48      boot  760   40      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN cardimg1:divmmc/esxdos090 keys:660:nmi
+esx090_nmi_tap     zx48      boot  1400  20      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN card1:divmmc/esxdos090 put:Ninja_Man_a_long_file_name_of_forty_one.tap=tape/ninjaman.tap keys:660:nmi,700:C6,720:C6,740:C6,780:E
+esx090_pent_trdos  pent      boot  960   40      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN cardimg1:divmmc/esxdos090 keys:660:Sm,672:l,684:s,696:E,780:t,792:CS,804:l,816:1,828:5,840:6,852:1,864:6,876:E
+esx090_card089     zx48      boot  100   20      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN cardimg1:divmmc/esxdos089
+esx090_card2       zx48      boot  100   20      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN cardimg1:divmmc/esxdos089 cardimg2:divmmc/esxdos090
+esx090_format      zx48      boot  1900  10      mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN cardimg1:divmmc/esxdos090 cardimg2:divmmc/esxdos090/TMP keys:660:Sm,672:u,684:m,696:o,708:u,720:n,732:t,744:_,756:h,768:d,780:1,792:E,840:CS,852:S0,876:s,888:d,900:b,912:1,924:E,1000:y,1750:power
+esx090_flash       zx48      auto  2500  20      divmmc/ESXMMC090.TAP mac:storage.divmmc=divmmc mac:storage.divmmc.eeprom=writable eeprom:divmmc/ESXMMC089.BIN keys:400:_
+as_esx090_48       zx48      auto  1000  20      tape/ninjaman.tap mac:storage.divmmc=divmmc eeprom:divmmc/ESXMMC090.BIN cardimg1:divmmc/esxdos090
