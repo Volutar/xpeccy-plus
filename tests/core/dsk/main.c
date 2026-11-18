@@ -1092,6 +1092,19 @@ static void protected_fdi(const char* path) {
 	for (int i = 0; i < 6; i++) fread_sec(3, r3[i]);
 	difDestroy(dif);
 
+	// an HD track that holds no 18 x 1K: the last one cut at the end, not left out
+	memset(t, 0, sizeof(t));
+	for (int r = 1; r <= 18; r++) fadd(&t[0], 0, r, 3, 0x08);
+	write_fdi(path, t, 1);
+	beta_drive_flp = beta_drive();
+	flp_set_hd(beta_drive_flp, 1);
+	fdi_read(beta_drive_flp, path);
+	printf("== fdi/long-hd\n");
+	beta_disk();
+	fread_sec(0, 17);
+	fread_sec(0, 18);
+	difDestroy(dif);
+
 	// a writer that sets no CRC flag at all: its sectors are not all bad
 	memset(t, 0, sizeof(t));
 	for (int r = 1; r <= 4; r++) fadd(&t[0], 0, r, 1, (r == 4) ? 0x80 : 0x00);
@@ -1197,7 +1210,6 @@ static int beta_write(int com, int sec, int give, int late, int* moved) {
 	*moved = n;
 	int st = 0xff;
 	difIn(dif, 0x1f, &st, 1);
-	difOut(dif, 0x7f, 0, 1);		// the request left unanswered: off before the next command
 	return st & 0xff;
 }
 
