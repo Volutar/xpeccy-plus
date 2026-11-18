@@ -79,6 +79,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The magic button on the Scorpion, the Pentagon and the other clones** now works every
+  time from 128 BASIC: the NMI key is held as long as it is pressed, as the real button is,
+  instead of for a moment that the program often spent in ROM.
+
 - **Pentagon border and multicolour effects on the ZX Evolution**, BaseConf and TSConf: the
   border meets the paper where it does on a real Evo. On TSConf that is where it does on the
   Pentagon, and Across the Edge and RAGE show their pictures whole there. *(thanks to Wally
