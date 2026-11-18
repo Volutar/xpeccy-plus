@@ -3935,7 +3935,9 @@ void SetupWin::buildRecording() {
 	cbRecFps = new QComboBox;
 	cbRecFps->addItem(tr("Real FPS"), VREC_FPS_MACHINE);
 	cbRecFps->addItem(tr("50 FPS"), VREC_FPS_50);
-	cbRecFps->setToolTip(tr("-framerate: the machine's own, or 50 with the sound fitted to it"));
+	cbRecFps->addItem(tr("60 FPS"), VREC_FPS_60);
+	cbRecFps->addItem(tr("50/60 FPS"), VREC_FPS_NOMINAL);
+	cbRecFps->setToolTip(tr("-framerate: the machine's own, or 50 or 60 with the sound fitted to it. 50/60: the nearer to the machine's"));
 	foreach(QComboBox* box, QList<QComboBox*>() << cbRecSrc << cbRecScale << cbRecFps) {
 		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::showRecSize);
 	}
@@ -4076,7 +4078,7 @@ void SetupWin::buildRecording() {
 	sndLay->addWidget(cbRecAcodec);
 	sndLay->addWidget(cbRecAbr);
 	adv.row(tr("Codec"), sndBox);
-	cbRecPitch->setText(tr("Keep pitch at 50 FPS"));
+	cbRecPitch->setText(tr("Keep pitch at 50/60 FPS"));
 	adv.wide(cbRecPitch);
 	// the frame takes the column's width from Sound, and neither the template
 	// nor what it gives asks for more: a longer name must not move the frames
@@ -4126,7 +4128,7 @@ void SetupWin::buildRecording() {
 	adv.wide(teRecCmd);
 	// the checkboxes lose their tooltips to the sheet, their names keep one
 	cbRec60->setToolTip("framerate=fps=60");
-	cbRecPitch->setToolTip(tr("-af atempo: sped up in time, not in pitch"));
+	cbRecPitch->setToolTip(tr("-af atempo: sped up or slowed down in time, not in pitch"));
 	connect(cbRecCodec, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
 		bool lossy = getRFIData(cbRecCodec) != VREC_FFV1;
 		// FFV1 goes into MKV only, and the choice made for the others is kept
@@ -4336,11 +4338,13 @@ void SetupWin::showRecSize() {
 	QSize in;
 	QSize out;
 	recSizes(&in, &out);
-	QString fps = "50";
+	int ns = conf.zx->vid->nsPerFrame;
+	int nominal = vrec_fps_of(getRFIData(cbRecFps), ns);
+	QString fps = QString::number(nominal);
 	if (cbRec60->isChecked()) {
 		fps = "60";
-	} else if (getRFIData(cbRecFps) == VREC_FPS_MACHINE) {
-		fps = QString::number(1e9 / conf.zx->vid->nsPerFrame, 'f', 2);
+	} else if (!nominal) {
+		fps = QString::number(1e9 / ns, 'f', 2);
 	}
 	labRecSize->setText(QString("%0%1%2 @ %3 fps").arg(out.width()).arg(QChar(0xd7)).arg(out.height()).arg(fps));
 	showRecCmd();
@@ -4415,7 +4419,7 @@ void SetupWin::recEnables() {
 	cbRec60->setEnabled(video);
 	cbRecAcodec->setEnabled(lossy && sound);
 	cbRecAbr->setEnabled(lossy && sound);
-	cbRecPitch->setEnabled((getRFIData(cbRecFps) == VREC_FPS_50) && sound);
+	cbRecPitch->setEnabled((getRFIData(cbRecFps) != VREC_FPS_MACHINE) && sound);
 	cbRecStartAt->setEnabled(cbRecStart->isChecked());
 	leRecStartAt->setEnabled(cbRecStart->isChecked() && (getRFIData(cbRecStartAt) != VREC_AT_OWN));
 	cbRecStopAt->setEnabled(cbRecStop->isChecked());

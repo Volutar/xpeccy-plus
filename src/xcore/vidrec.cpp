@@ -45,7 +45,7 @@
 #define VR_PUSH_WAIT	3000		// ms the machine waits for it before a picture is dropped
 #define VR_GAP_MAX	25.0		// frames: a pause between two pictures is not time shown
 #define VR_TAIL		2048		// bytes of FFmpeg's complaints kept for the log
-#define VR_FRAME_NS	20000000.0	// a frame at 50 fps
+#define VR_NOMINAL_SPLIT	55.0	// fps: a machine frame at this rate or faster is a 60 Hz one
 
 struct vrJob {
 	QByteArray pic;		// RGB0 at the canvas size; empty: the window as last painted
@@ -95,16 +95,23 @@ static int vrH = 0;
 // the emulation thread's own
 static int emGen = 0;
 static std::vector<sndPair> emSnd;
-static double emSlots = 0;
+static double emSlots = 0;	// frames of the file owed, whole ones go with a picture
+static double emSpan = 0;	// frames of the file run since the last picture went
 static long long emHost = 0;
 // VSync's speed when the recording started: a frame of the file lasts what a
 // frame lasted then - 1/60 s for a Next pulled up to 60 Hz, its own 1/58.15
 // without the lock. A lock coming or going later is counted like slow motion.
 static double emLock = 1.0;
+// The machine's frame when the recording started, ns: a frame of the file
+// stands for that much of its time. A frame of another length later (a Next
+// going 50 <-> 60 Hz) is counted by its length, like slow motion.
+static double emFrame0 = 1.0;
+static double emPrevNs = 0;	// the frame running at the last picture: the one that ends next
+static double emUndrawnNs = 0;	// machine time run since the last picture was drawn
 
 // how long a frame of the file lasts, ns
-static double em_frame_ns(const Video* vid) {
-	return vid->nsPerFrame / emLock;
+static double em_frame_ns() {
+	return emFrame0 / emLock;
 }
 static int emSwaps = 0;
 
@@ -417,6 +424,15 @@ static void vr_quiet(QStringList& args, bool quiet) {
 	if (quiet) args << "-hide_banner" << "-nostats" << "-loglevel" << "error" << "-y";
 }
 
+int vrec_fps_of(int fps, int ns) {
+	switch (fps) {
+		case VREC_FPS_50: return 50;
+		case VREC_FPS_60: return 60;
+		case VREC_FPS_NOMINAL: return ((ns > 0) && (1e9 / ns >= VR_NOMINAL_SPLIT)) ? 60 : 50;
+	}
+	return 0;
+}
+
 // Both FFmpeg runs. w, h: the pictures handed over, two pixels to a dot for
 // the emulated one; ns: a machine frame; path: the file, without extension.
 vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const QString& path, bool quiet) {
@@ -428,7 +444,8 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const Q
 	cmd.wavRate = rate;
 
 	// the encoder: raw pictures in, video alone out
-	QString fps = (rec.fps == VREC_FPS_50) ? QString("50") : QString("1000000000/%0").arg(ns);
+	int nominal = vrec_fps_of(rec.fps, ns);
+	QString fps = nominal ? QString::number(nominal) : QString("1000000000/%0").arg(ns);
 	int ow = w;
 	int oh = h;
 	if (rec.source == VREC_SRC_PICTURE) {
@@ -464,10 +481,10 @@ vrecCmd vrec_command(const xRecord& rec, int w, int h, int ns, int rate, const Q
 	ma << "-i" << cmd.tmpVideo << "-i" << cmd.tmpAudio;
 	ma << "-map" << "0:v:0" << "-map" << "1:a:0" << "-c:v" << "copy";
 	QStringList& ms = cmd.sound;
-	if (rec.fps == VREC_FPS_50) {
-		// a machine frame lasts 20 ms of video: the sound follows it. Its
-		// pitch goes with the wav's header, so an override keeps that
-		double ratio = ns / VR_FRAME_NS;
+	if (nominal) {
+		// a machine frame lasts 1/50 or 1/60 s of video: the sound follows it.
+		// Its pitch goes with the wav's header, so an override keeps that
+		double ratio = ns * nominal / 1e9;
 		if (rec.keepPitch) {
 			ms << "-af" << QString("atempo=%0").arg(ratio, 0, 'f', 6);
 		} else {
@@ -763,7 +780,8 @@ bool vrec_start(Computer* comp, const QString& image, int scrW, int scrH, QStrin
 		name = QFileInfo(file).completeBaseName();
 	}
 	emLock = pacing_lock_speed();
-	vrecCmd cmd = vrec_command(rec, w, h, (int)llround(em_frame_ns(vid)), conf.snd.rate, QDir(dir).filePath(name));
+	emFrame0 = (vid->nsPerFrame > 0) ? vid->nsPerFrame : 20000000.0;
+	vrecCmd cmd = vrec_command(rec, w, h, (int)llround(em_frame_ns()), conf.snd.rate, QDir(dir).filePath(name));
 	vrWriter* wr = new vrWriter;
 	wr->prog = prog;
 	wr->cmd = cmd;
@@ -843,8 +861,11 @@ static void em_sync() {
 	emGen = gen;
 	emSnd.clear();
 	emSlots = 0;
+	emSpan = 0;
 	emHost = paceClockNs();
 	emSwaps = bufSwaps;
+	emPrevNs = emFrame0;
+	emUndrawnNs = 0;
 }
 
 void vrec_sample(sndPair lev) {
@@ -898,31 +919,35 @@ void vrec_frame(Computer* comp) {
 	snd_q_flush();
 	snd_sync_wait();
 	em_sync();
-	static int undrawn = 0;			// frames run since the last picture (fast forward draws one in so many)
-	if (bufSwaps == emSwaps) {		// nothing new drawn
-		undrawn++;
-		return;
-	}
-	emSwaps = bufSwaps;
-	int frames = undrawn + 1;
-	undrawn = 0;
 	Video* vid = comp->vid;
+	// The frame that ended ran at the length there was at the last call: a Next
+	// takes 50/60 Hz at raw line 0, the vblank's lines before the frame ends here
+	emUndrawnNs += emPrevNs;
+	emPrevNs = vid->nsPerFrame;
+	if (bufSwaps == emSwaps) return;	// nothing new drawn (fast forward draws one in so many)
+	emSwaps = bufSwaps;
+	double frames = emUndrawnNs / emFrame0;		// whole ones while the frame keeps its length
+	emUndrawnNs = 0;
 	long long now = paceClockNs();
 	double span;
 	if (conf.emu.fast || rewind_active()) {
-		span = double(now - emHost) / em_frame_ns(vid);
+		span = double(now - emHost) / em_frame_ns();
 		if (span > VR_GAP_MAX) span = VR_GAP_MAX;
 	} else {
 		span = frames / conf.emu.speed * emLock / pacing_lock_speed();
 	}
 	emHost = now;
 	emSlots += span;
+	emSpan += span;
 	int copies = (int)(emSlots + 1e-6);
 	if (copies < 1) return;		// its sound goes with the next one
 	emSlots -= copies;
 	vrJob* job = new vrJob;
 	job->copies = copies;
-	job->smp = copies * (double)conf.snd.rate * em_frame_ns(vid) / 1e9;
+	// the sound of the time run, not of the whole frames shown for it: a picture
+	// dropped or shown twice must not bend the pitch
+	job->smp = emSpan * (double)conf.snd.rate * em_frame_ns() / 1e9;
+	emSpan = 0;
 	job->snd.swap(emSnd);
 	emSnd.reserve(job->snd.size());		// the next frame takes about as many
 	if (vrSrc == VREC_SRC_PICTURE)

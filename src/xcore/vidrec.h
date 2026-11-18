@@ -19,8 +19,11 @@ enum {
 // what its frame rate says
 enum {
 	VREC_FPS_MACHINE = 0,	// the machine's own, 48.83 on a Pentagon
-	VREC_FPS_50		// every frame is 20 ms, whatever the machine
+	VREC_FPS_50,		// every frame is 20 ms, whatever the machine
+	VREC_FPS_60,		// every frame is 1/60 s
+	VREC_FPS_NOMINAL	// 50 or 60, the nearer to the machine's frame at the start
 };
+int vrec_fps_of(int fps, int ns);	// what a VREC_FPS_* takes for a frame of ns: 50, 60, 0 the machine's own
 
 enum {VREC_MP4 = 0, VREC_MKV};
 enum {VREC_AAC = 0, VREC_OPUS, VREC_AUDIO_AUTO};
