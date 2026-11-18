@@ -103,18 +103,16 @@ void doTD0(Floppy* flp, size_t(*getBytes)(void*, size_t,void*), void* dptr, int 
 			sec[idx].head = shd.head;
 			sec[idx].sec = shd.sec;
 			sec[idx].sz = shd.secz;
-			// Teledisk's sector flags (Dunfield's notes): 02 read with a CRC
-			// error, 04 deleted data, 10 data skipped as unallocated, 20 an ID
-			// with no data, 40 data with no ID; after 10 or 20 no data block
+			// flags (Dunfield): 02 CRC error, 04 deleted, 10/20 no data block, 20 no data, 40 no ID
 			sec[idx].type = (shd.ctrl & 0x04) ? 0xf8 : 0xfb;
 			sec[idx].flags = 0;
 			if (shd.ctrl & 0x02) sec[idx].flags |= SEC_BAD_CRC;
 			if (shd.ctrl & 0x40) sec[idx].flags |= SEC_NO_ID;
 			sec[idx].crc = -1;
 			memset(sec[idx].data, 0x00, 4096);
-			if (shd.ctrl & 0x20) {				// an ID alone
+			if (shd.ctrl & 0x20) {				// an ID alone; with 40, nothing on the track
 				sec[idx].flags = SEC_NO_DATA;
-				idx++;
+				if (!(shd.ctrl & 0x40)) idx++;
 				continue;
 			}
 			if (shd.ctrl & 0x10) {				// empty sector

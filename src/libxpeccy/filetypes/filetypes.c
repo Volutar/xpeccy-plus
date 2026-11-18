@@ -268,8 +268,7 @@ void diskFormTRDTrack(Floppy* flp, int tr, unsigned char* bpos) {
 	diskFormTrack(flp,tr,lst,16);
 }
 
-// The gaps a track is laid out with: 4E before an ID, 00 before each mark, 4E
-// between an ID and its data
+// a track's gaps: 4E before an ID, 00 before each mark, 4E between an ID and its data
 typedef struct {
 	int gap1;
 	int sync;
@@ -299,31 +298,39 @@ static long long sec_room(Sector* s, long long len, const formGaps* g) {
 	return n;
 }
 
-// 4E past the gap after an ID with no data: the next data mark past the bytes
-// the WD1793 looks for one in, so that ID reads as Record Not Found
-static int sec_pad(Sector* sdata, int i, int scount, const formGaps* g) {
-	if (!(sdata[i].flags & SEC_NO_DATA) || (i + 1 >= scount)) return 0;
-	Sector* nx = &sdata[i + 1];
+// 4E past gap3 after an ID with no data, so that the WD1793 finds no data mark
+// in its window and the ID reads as Record Not Found
+static long long sec_pad(Sector* sdata, int i, int scount, const formGaps* g, long long gap3) {
+	if (!(sdata[i].flags & SEC_NO_DATA)) return 0;
+	Sector* nx = &sdata[(i + 1) % scount];
 	if (nx->flags & SEC_NO_DATA) return 0;
-	int lead = ((nx->flags & SEC_NO_ID) ? g->gap1 : g->gap1 + g->sync + 10 + g->gap2) + g->sync + 4;
+	long long lead = gap3 + ((nx->flags & SEC_NO_ID) ? g->gap1 : g->gap1 + g->sync + 10 + g->gap2) + g->sync + 4;
+	if (i + 1 >= scount) lead += 16;		// past the index: the track's start
 	return (lead > WD_DAM_WINDOW) ? 0 : WD_DAM_WINDOW + 1 - lead;
 }
 
-// the gap after each of the sectors; start: the track's bytes before the first
-// one that are counted (the standard layout leaves its 16 out, as it always has)
-static long long disk_form_gap(Floppy* flp, Sector* sdata, int scount, const formGaps* g, int start) {
+static long long disk_form_sum(Sector* sdata, int scount, const formGaps* g, long long gap3) {
 	long long sum = 0;		// up to a gigabyte a sector by the size code: no int
 	for (int i = 0; i < scount; i++)
-		sum += sec_room(&sdata[i], sec_counted(&sdata[i]), g) + sec_pad(sdata, i, scount, g);
-	return (flp->trklen - start - sum) / scount;
+		sum += sec_room(&sdata[i], sec_counted(&sdata[i]), g) + sec_pad(sdata, i, scount, g, gap3);
+	return sum;
+}
+
+// gap3; start: bytes counted before the first sector (the standard layout's 16 never were)
+static long long disk_form_gap(Floppy* flp, Sector* sdata, int scount, const formGaps* g, int start) {
+	long long gap = (flp->trklen - start - disk_form_sum(sdata, scount, g, 0)) / scount;
+	if (gap > 0) {				// a gap takes the place of padding: count it again
+		long long more = (flp->trklen - start - disk_form_sum(sdata, scount, g, gap)) / scount;
+		if (more > gap) gap = more;
+	}
+	return gap;
 }
 
 int diskFormFits(Floppy* flp, Sector* sdata, int scount) {
 	return (scount > 0) && (disk_form_gap(flp, sdata, scount, &form_std, 0) >= 10);
 }
 
-// Lay the sectors down with the gaps g and gap3 after each. cut: no sector
-// starts past the track's end, and the one running over it is cut there
+// cut: no sector starts past the track's end, the one running over it is cut there
 static void disk_form_lay(Floppy* flp, int tr, Sector* sdata, int scount, const formGaps* g, int gap3, int cut) {
 	unsigned char* base = flp->data[tr].byte;
 	unsigned char* ppos = base;
@@ -373,7 +380,7 @@ static void disk_form_lay(Floppy* flp, int tr, Sector* sdata, int scount, const 
 			if (s->flags & SEC_BAD_CRC) bad[nbad++] = (int)(ppos - base);
 			*(ppos++) = 0xf7; *(ppos++) = 0xf7;
 		}
-		ppos += gap3 + sec_pad(sdata, sc, scount, g);	//	GAP3
+		ppos += gap3 + sec_pad(sdata, sc, scount, g, gap3);	//	GAP3
 	}
 	flpFillFieldsEx(flp, tr, 1, nid_pos, nid_sz, nnid);
 	for (int i = 0; i < nbad; i++) {
@@ -383,29 +390,23 @@ static void disk_form_lay(Floppy* flp, int tr, Sector* sdata, int scount, const 
 	}
 }
 
-// format a single track from sectors list
-// <sdata> is list of <scount> sectors
-// TODO: calculate GAP3 len !!!
-void diskFormTrack(Floppy* flp, int tr, Sector* sdata, int scount) {
-	// a track with no sectors (images keep unformatted ones so) is left as the
-	// loader cleared it
-	if ((tr < 0) || (tr > 255) || (scount <= 0)) return;
+// 0 if the standard layout does not hold them; no sectors: left as the loader cleared it
+static int disk_form_std(Floppy* flp, int tr, Sector* sdata, int scount) {
+	if ((tr < 0) || (tr > 255) || (scount <= 0)) return 1;
 	long long gap = disk_form_gap(flp, sdata, scount, &form_std, 0);
-	if (gap < 10) return;
+	if (gap < 10) return 0;
 	disk_form_lay(flp, tr, sdata, scount, &form_std, (int)gap, 0);
+	return 1;
 }
 
-// A track of an image file: as diskFormTrack when the standard layout holds
-// it, else with tight gaps, else as much as the track holds - the image says
-// the sectors are there, so the track is not left empty
+void diskFormTrack(Floppy* flp, int tr, Sector* sdata, int scount) {
+	disk_form_std(flp, tr, sdata, scount);
+}
+
+// an image's track the standard layout does not hold: tight gaps, else cut at the end
 void diskFormImageTrack(Floppy* flp, int tr, Sector* sdata, int scount) {
-	if ((tr < 0) || (tr > 255) || (scount <= 0)) return;
-	long long gap = disk_form_gap(flp, sdata, scount, &form_std, 0);
-	if (gap >= 10) {
-		disk_form_lay(flp, tr, sdata, scount, &form_std, (int)gap, 0);
-		return;
-	}
-	gap = disk_form_gap(flp, sdata, scount, &form_tight, 16);
+	if (disk_form_std(flp, tr, sdata, scount)) return;
+	long long gap = disk_form_gap(flp, sdata, scount, &form_tight, 16);
 	if (gap >= 2)
 		disk_form_lay(flp, tr, sdata, scount, &form_tight, (int)gap, 0);
 	else

@@ -55,9 +55,7 @@ typedef struct {
 	unsigned char data[0x1800];
 } Sector;
 
-// The bytes after an ID's CRC the WD1793 looks for the data mark in, else
-// Record Not Found. The FD179X datasheet says 43 in MFM; the TRD and SCL
-// layout (flp_format_sec) puts the mark at 44
+// bytes after an ID's CRC the WD1793 seeks its data mark in: FD179X says 43, flp_format_sec puts it at 44
 #define WD_DAM_WINDOW	52
 
 // Sector.flags: what an image says a sector lacks or has wrong
