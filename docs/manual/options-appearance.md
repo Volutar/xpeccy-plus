@@ -1,12 +1,14 @@
 # Appearance page
 
-```{index} Appearance page, Style, interface style
+```{index} Appearance page, Style, interface style, Always on top, Auto-hide mouse pointer
 ```
 
 ![The Appearance page](images/options-appearance.png)
 
 - **Interface** - **Style**: **System** (the look of your system) or one of seven bundled
-  styles.
+  styles. On the right, **Always on top** and **Auto-hide mouse pointer** - the same switches
+  as [Always on Top](view.md#always-on-top) and [Auto-Hide Pointer](view.md#auto-hide-pointer)
+  in the **View** menu.
 - **Indicators** - which signs are shown over the picture. See
   [Indicators on the picture](#indicators-on-the-picture).
 

@@ -134,7 +134,8 @@ fullscreen next time.
 **View > Always on Top** keeps the main window over the windows of other programs, even
 when another program is in use. The program's own windows - the **Debugger**, the **Tape
 Player**, **Options**, a message - still open over it. It is off in fullscreen and comes
-back when the window does. The switch is remembered.
+back when the window does. The switch is remembered; it is also **Always on top** on the
+[Appearance page](options-appearance.md) of **Options**.
 
 ## Auto-Hide Pointer
 
@@ -143,7 +144,8 @@ back when the window does. The switch is remembered.
 
 **View > Auto-Hide Pointer** hides the mouse pointer once it stays still over the picture
 for 2 seconds, in a window and in fullscreen. A move brings it back; over the bars, a menu
-or a dialog it stays. It is on by default, and the switch is remembered.
+or a dialog it stays. It is on by default, and the switch is remembered; it is also
+**Auto-hide mouse pointer** on the [Appearance page](options-appearance.md) of **Options**.
 
 ## Shaders
 
