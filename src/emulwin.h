@@ -50,6 +50,7 @@ struct xMount;
 
 class xSatFilter;
 class xBarFilter;
+class xPtrFilter;
 
 #if USE_QT_GAMEPAD
 #include <QGamepad>
@@ -316,6 +317,19 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		QRect fsNormal;		// a maximized one: what Restore gives back afterwards
 		xSatFilter* satFilter = nullptr;	// passes the tool windows' hotkeys on to this one
 		friend class xBarFilter;
+		// the pointer hides itself, still over the picture (conf.win.ptrHide)
+		friend class xPtrFilter;
+		QTimer ptrIdle;
+		QPoint ptrLast;		// on the screen, at the last move that moved it
+		bool ptrHidden = false;
+		int ptrMode = -1;	// ptrWanted() at the last ptrSync
+		bool ptrWanted();
+		void ptrMoved(QPoint);
+		void ptrArm();
+		void ptrShow();
+		void ptrSync();
+		void ptrIdleOut();
+		void ptrInit();
 		unsigned rzxSeen = 0;			// the recording the player was last told of
 		void releaseChord(QKeyEvent*, bool);
 		void fast_key(bool);

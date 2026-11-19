@@ -2,6 +2,7 @@
 #include "xcore/vscalers.h"
 #include "xcore/pacing.h"
 
+#include <QApplication>
 #include <QMenu>
 #include <QGuiApplication>
 #include <QScreen>
@@ -149,6 +150,8 @@ void MainWin::mouseGrabOn() {
 	if (!isActiveWindow()) return;
 	grabMice = 1;
 	mbHintShow(false);
+	ptrIdle.stop();
+	ptrShow();		// the window's own pointer comes back with a release, so not a blank one
 	grabMouse(QCursor(Qt::BlankCursor));
 	setMessage(" grab mouse, " XREL_KEYS " lets go ");
 	mouseRecenter(1);
@@ -159,6 +162,7 @@ void MainWin::mouseGrabOff() {
 	releaseMouse();
 	setMessage(" release mouse ");
 	winCursorTo(winCenter());		// it was hidden: show it somewhere sane
+	ptrArm();
 }
 
 // Put the pointer back in the middle of the window, so that it has room to
@@ -274,4 +278,117 @@ void MainWin::mouseRead() {
 	// while one is pending, again only once out of the window
 	if (winFar(gpos) && (!warpTtl || !winHolds(gpos)))
 		mouseWarp();
+}
+
+// THE POINTER HIDING ITSELF
+
+#define PTR_IDLE_MS	2000	// still this long over the picture: the pointer goes
+
+// Every move over the window, whatever widget of it is under the pointer, and the
+// menus and dialogs of the program coming and going
+class xPtrFilter : public QObject {
+	public:
+		xPtrFilter(MainWin* m) : QObject(m), mw(m) {}
+	protected:
+		bool eventFilter(QObject* obj, QEvent* ev) override {
+			switch (ev->type()) {
+				case QEvent::MouseMove: {
+					QWidget* w = qobject_cast<QWidget*>(obj);
+					if (w && (w->window() == mw->frame)) {
+						QMouseEvent* mev = static_cast<QMouseEvent*>(ev);
+						mw->ptrMoved(QPoint(int(mev->xGlobalX), int(mev->xGlobalY)));
+					}
+					break;
+				}
+				case QEvent::Show:
+				case QEvent::Hide: {
+					QWidget* w = qobject_cast<QWidget*>(obj);
+					if (!w || !w->isWindow() || (w == mw->frame)) break;
+					Qt::WindowType t = w->windowType();
+					if ((t != Qt::Popup) && (t != Qt::Dialog)) break;	// a tip changes nothing
+					if (ev->type() == QEvent::Show) {
+						mw->ptrIdle.stop();
+						mw->ptrShow();
+					} else {
+						mw->ptrArm();		// gone: the pointer may be still over the picture
+					}
+					break;
+				}
+				default: break;
+			}
+			return false;
+		}
+	private:
+		MainWin* mw;
+};
+
+void MainWin::ptrInit() {
+	ptrIdle.setSingleShot(true);
+	ptrIdle.setInterval(PTR_IDLE_MS);
+	connect(&ptrIdle, &QTimer::timeout, this, &MainWin::ptrIdleOut);
+	qApp->installEventFilter(new xPtrFilter(this));
+	ptrLast = winCursorPos();	// where it rests before any move, as well as it is known
+
+}
+
+bool MainWin::ptrWanted() {
+	switch (conf.win.ptrHide) {
+		case PTR_HIDE_ALWAYS: return true;
+		case PTR_HIDE_FULL: return conf.vid.fullScreen;
+	}
+	return false;
+}
+
+// Only a move that moved it: Windows sends moves with none when a window is shown,
+// activated or its cursor changes - the hiding itself would bring it back.
+// The event's position: on Wayland QCursor::pos() is not kept.
+void MainWin::ptrMoved(QPoint gpos) {
+	if (gpos == ptrLast) return;
+	ptrLast = gpos;
+	ptrShow();
+	ptrArm();
+}
+
+// The grab has a blank pointer of its own as long as it holds
+void MainWin::ptrArm() {
+	if (ptrWanted() && !grabMice) {
+		ptrIdle.start();
+	} else {
+		ptrIdle.stop();
+	}
+}
+
+void MainWin::ptrShow() {
+	if (!ptrHidden) return;
+	ptrHidden = false;
+	unsetCursor();
+}
+
+// fullscreen in or out, or the option changed: shown, and counting again
+void MainWin::ptrSync() {
+	int mode = ptrWanted() ? 1 : 0;
+	if (mode == ptrMode) return;
+	ptrMode = mode;
+	ptrShow();
+	ptrArm();
+}
+
+// Not over a bar, nor while a menu or a dialog is up; not with a button down,
+// a drag going on; not for a window in the background
+void MainWin::ptrIdleOut() {
+	if (ptrHidden || !ptrWanted() || grabMice) return;
+	if (!frame->isActiveWindow() || QApplication::activePopupWidget()
+			|| QApplication::activeModalWidget())
+		return;
+	if (QApplication::mouseButtons()) {		// a release brings no move: counted again
+		ptrIdle.start();
+		return;
+	}
+	// the widget under it, the bars over the picture counted: the picture or its view.
+	// Where the last move left it: a window that moved under a still pointer is mapped
+	// anew, and one gone elsewhere since shows a pointer of its own there anyway
+	QWidget* under = frame->childAt(frame->mapFromGlobal(ptrLast));
+	if (!under || ((under != this) && (under != glw))) return;
+	ptrHidden = true;
+	setCursor(Qt::BlankCursor);
 }
