@@ -4229,7 +4229,7 @@ still over the picture for 2 seconds;
 a move brings it back</string>
                     </property>
                     <property name="text">
-                     <string>Hide pointer</string>
+                     <string>Mouse pointer</string>
                     </property>
                    </widget>
                   </item>
@@ -4242,17 +4242,17 @@ a move brings it back</string>
                     </property>
                     <item>
                      <property name="text">
-                      <string>Never</string>
+                      <string>Always shown</string>
                      </property>
                     </item>
                     <item>
                      <property name="text">
-                      <string>In fullscreen</string>
+                      <string>Hide when idle in fullscreen</string>
                      </property>
                     </item>
                     <item>
                      <property name="text">
-                      <string>Always</string>
+                      <string>Hide when idle</string>
                      </property>
                     </item>
                    </widget>
