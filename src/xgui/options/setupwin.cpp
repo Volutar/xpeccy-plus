@@ -636,7 +636,6 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	QMainWindow* mwin = par ? qobject_cast<QMainWindow*>(par->window()) : nullptr;
 	if (mwin && mwin->menuBar()->isNativeMenuBar()) {
 		ui.cbMenuBar->hide();
-		ui.namMenuBar->hide();
 	}
 	// a .ui iconset holds a single pixmap, which the title bar would have
 	// to downscale; the application icon carries every drawn
@@ -1324,7 +1323,7 @@ void SetupWin::fillPages() {
 	ui.cbStatusBar->setChecked(conf.win.statusbar);
 	ui.cbOnTop->setChecked(conf.win.onTop);
 	ui.cbPtrHide->setChecked(conf.win.ptrHide);
-	// Input lag, Rewind, Interface and Indicators are grids of their own, and
+	// Input lag, Rewind and Indicators are grids of their own, and
 	// columns line up between them only while all are given the same widths.
 	// Measure them here, not in the .ui: a style or a font would outgrow a
 	// number set there.
@@ -1341,7 +1340,7 @@ void SetupWin::fillPages() {
 	for (QComboBox* box : {ui.cbFastPic, cbFolderTrash})
 		box->setFixedWidth(comboFitWidth(box));
 	ui.cbStyleSheet->setFixedWidth(comboFitWidth(ui.cbStyleSheet));
-	QGridLayout* emugrid[6] = {ui.gridLayout_lat, ui.gridLayout_rew, gridPause, gridFolders, ui.gridLayout_look, ui.gridLayout_23};
+	QGridLayout* emugrid[5] = {ui.gridLayout_lat, ui.gridLayout_rew, gridPause, gridFolders, ui.gridLayout_23};
 	for (int col = 0; col < 2; col++) {
 		int wid = 0;
 		for (QGridLayout* g : emugrid)
@@ -1590,14 +1589,16 @@ void SetupWin::fitWidths() {
 	for (QWidget* col : {ui.machButtons, ui.picRight, ui.afRight, ui.ssRight, boxRecAdv})
 		col->setFixedWidth(wid);
 	ui.lookRight->setMinimumWidth(wid);
+	// Style's icon in the check boxes' column: where their box is, Style where their names are
 	QStyleOptionButton opt;
-	opt.initFrom(ui.cbKeysLed);
-	opt.icon = ui.cbKeysLed->icon();
-	opt.iconSize = ui.cbKeysLed->iconSize();
-	QRect box = ui.cbKeysLed->style()->subElementRect(QStyle::SE_CheckBoxContents, &opt, ui.cbKeysLed);
-	int pad = LED_ICON_GAP - ui.cbKeysLed->style()->pixelMetric(QStyle::PM_CheckBoxLabelSpacing, NULL, ui.cbKeysLed);
-	ui.icoStyle->setContentsMargins(box.left() + qMax(pad, 0), 0, 0, 0);	// as spaceLedIcon draws them
-	for (QCheckBox* cb : {ui.cbMenuBar, ui.cbToolBar, ui.cbStatusBar})	// rows as high as the icons' below
+	opt.initFrom(ui.cbToolBar);
+	opt.text = ui.cbToolBar->text();
+	QStyle* sty = ui.cbToolBar->style();
+	QRect ind = sty->subElementRect(QStyle::SE_CheckBoxIndicator, &opt, ui.cbToolBar);
+	QRect txt = sty->subElementRect(QStyle::SE_CheckBoxContents, &opt, ui.cbToolBar);
+	ui.icoStyle->setContentsMargins(ind.left(), 0, 0, 0);
+	ui.icoStyle->setFixedWidth(qMax(txt.left(), ind.left() + LED_ICON_SIZE));
+	for (QCheckBox* cb : {ui.cbMenuBar, ui.cbToolBar, ui.cbStatusBar})	// rows as high as the Indicators'
 		cb->setMinimumHeight(ui.cbKeysLed->sizeHint().height());
 	// Screenshots' column is a layout of its own: rows as high and as far apart as
 	// the grid's keep it level with the grid

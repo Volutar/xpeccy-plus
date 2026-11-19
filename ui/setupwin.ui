@@ -3640,118 +3640,112 @@ Right click: back to the style color</string>
     </property>
     <layout class="QHBoxLayout" name="lookLayout">
      <item>
-      <layout class="QGridLayout" name="gridLayout_look" columnstretch="0,0,1">
-                  <property name="horizontalSpacing">
-                   <number>12</number>
-                  </property>
-                  <property name="verticalSpacing">
-                   <number>8</number>
-                  </property>
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="icoStyle"/>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QLabel" name="label_22">
-                    <property name="toolTip">
-                     <string>Interface style, from config/styles</string>
-                    </property>
-                    <property name="text">
-                     <string>Style</string>
-                    </property>
-                    <property name="buddy">
-                     <cstring>cbStyleSheet</cstring>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="2">
-                   <widget class="QComboBox" name="cbStyleSheet">
-                    <property name="toolTip">
-                     <string>Interface style, from config/styles</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="0">
-                   <widget class="QCheckBox" name="cbMenuBar">
-                    <property name="toolTip">
-                     <string>The menus over the picture</string>
-                    </property>
-                    <property name="text">
-                     <string/>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="1">
-                   <widget class="QLabel" name="namMenuBar">
-                    <property name="toolTip">
-                     <string>The menus over the picture</string>
-                    </property>
-                    <property name="text">
-                     <string>Menu bar</string>
-                    </property>
-                    <property name="buddy">
-                     <cstring>cbMenuBar</cstring>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="0">
-                   <widget class="QCheckBox" name="cbToolBar">
-                    <property name="toolTip">
-                     <string>The buttons under the menus</string>
-                    </property>
-                    <property name="text">
-                     <string/>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="1">
-                   <widget class="QLabel" name="namToolBar">
-                    <property name="toolTip">
-                     <string>The buttons under the menus</string>
-                    </property>
-                    <property name="text">
-                     <string>Toolbar</string>
-                    </property>
-                    <property name="buddy">
-                     <cstring>cbToolBar</cstring>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="3" column="0">
-                   <widget class="QCheckBox" name="cbStatusBar">
-                    <property name="toolTip">
-                     <string>The line under the picture</string>
-                    </property>
-                    <property name="text">
-                     <string/>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="3" column="1">
-                   <widget class="QLabel" name="namStatusBar">
-                    <property name="toolTip">
-                     <string>The line under the picture</string>
-                    </property>
-                    <property name="text">
-                     <string>Status bar</string>
-                    </property>
-                    <property name="buddy">
-                     <cstring>cbStatusBar</cstring>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="4" column="0" colspan="3">
-                   <spacer name="verticalSpacer_look">
-                    <property name="orientation">
-                     <enum>Qt::Vertical</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>20</width>
-                      <height>0</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
+      <layout class="QVBoxLayout" name="lookLeft">
+       <property name="spacing">
+        <number>8</number>
+       </property>
+       <item>
+        <layout class="QHBoxLayout" name="styleRow">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="icoStyle"/>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_22">
+           <property name="toolTip">
+            <string>Interface style, from config/styles</string>
+           </property>
+           <property name="text">
+            <string>Style</string>
+           </property>
+           <property name="buddy">
+            <cstring>cbStyleSheet</cstring>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="styleGap">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Fixed</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>12</width>
+             <height>0</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QComboBox" name="cbStyleSheet">
+           <property name="toolTip">
+            <string>Interface style, from config/styles</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="styleTail">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="cbMenuBar">
+         <property name="toolTip">
+          <string>The menus over the picture</string>
+         </property>
+         <property name="text">
+          <string>Menu bar</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="cbToolBar">
+         <property name="toolTip">
+          <string>The buttons under the menus</string>
+         </property>
+         <property name="text">
+          <string>Toolbar</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="cbStatusBar">
+         <property name="toolTip">
+          <string>The line under the picture</string>
+         </property>
+         <property name="text">
+          <string>Status bar</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_look">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>0</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
       </layout>
      </item>
      <item>
