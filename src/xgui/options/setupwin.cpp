@@ -1323,7 +1323,7 @@ void SetupWin::fillPages() {
 	ui.cbStatusBar->setChecked(conf.win.statusbar);
 	ui.cbOnTop->setChecked(conf.win.onTop);
 	ui.cbPtrHide->setChecked(conf.win.ptrHide);
-	// Input lag, Rewind, Interface and Indicators are grids of their own, and
+	// Input lag, Rewind and Indicators are grids of their own, and
 	// columns line up between them only while all are given the same widths.
 	// Measure them here, not in the .ui: a style or a font would outgrow a
 	// number set there.
@@ -1340,8 +1340,7 @@ void SetupWin::fillPages() {
 	for (QComboBox* box : {ui.cbFastPic, cbFolderTrash})
 		box->setFixedWidth(comboFitWidth(box));
 	ui.cbStyleSheet->setFixedWidth(comboFitWidth(ui.cbStyleSheet));
-	// Interface's Style spans the first two, so its bars stand over the Indicators' descriptions
-	QGridLayout* emugrid[6] = {ui.gridLayout_lat, ui.gridLayout_rew, gridPause, gridFolders, ui.gridLayout_look, ui.gridLayout_23};
+	QGridLayout* emugrid[5] = {ui.gridLayout_lat, ui.gridLayout_rew, gridPause, gridFolders, ui.gridLayout_23};
 	for (int col = 0; col < 2; col++) {
 		int wid = 0;
 		for (QGridLayout* g : emugrid)
@@ -1599,12 +1598,8 @@ void SetupWin::fitWidths() {
 	QRect txt = sty->subElementRect(QStyle::SE_CheckBoxContents, &opt, ui.cbToolBar);
 	ui.icoStyle->setContentsMargins(ind.left(), 0, 0, 0);
 	ui.icoStyle->setFixedWidth(qMax(txt.left(), ind.left() + LED_ICON_SIZE));
-	// the rows alike: as high as the Indicators', or as Style's beside the first;
-	// the right column's in line with the bars
-	int rowh = qMax(ui.cbKeysLed->sizeHint().height(), ui.cbStyleSheet->sizeHint().height());
-	for (QCheckBox* cb : {ui.cbMenuBar, ui.cbToolBar, ui.cbStatusBar, ui.cbOnTop, ui.cbPtrHide})
-		cb->setMinimumHeight(rowh);
-	ui.lookColumn->setSpacing(ui.gridLayout_look->verticalSpacing());
+	for (QCheckBox* cb : {ui.cbMenuBar, ui.cbToolBar, ui.cbStatusBar})	// rows as high as the Indicators'
+		cb->setMinimumHeight(ui.cbKeysLed->sizeHint().height());
 	// Screenshots' column is a layout of its own: rows as high and as far apart as
 	// the grid's keep it level with the grid
 	int rowH = 0;
