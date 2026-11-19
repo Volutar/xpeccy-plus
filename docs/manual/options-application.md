@@ -1,6 +1,6 @@
 # Application page
 
-```{index} Application page, Listen port, DeZog port, Check for updates, Update channel, Hide pointer, pointer; hiding, Confirm exit, Export settings, Import settings, Reset to defaults, log, log file
+```{index} Application page, Listen port, DeZog port, Check for updates, Update channel, Mouse pointer, pointer; hiding, mouse; pointer, Confirm exit, Export settings, Import settings, Reset to defaults, log, log file
 ```
 
 ![The Application page](images/options-application.png)
@@ -11,9 +11,10 @@
   port. Only programs on this computer can connect.
 - **Check for updates**, **Update channel** - how often to look for a newer version, and
   whether development builds count; see [Updates](getting-started.md#updates).
-- **Hide pointer** - when the mouse pointer hides itself after it stays still over the
-  picture for 2 seconds: **Never**, **In fullscreen** (the default) or **Always**, in a
-  window too. A move brings it back; over the bars, a menu or a dialog it stays.
+- **Mouse pointer** - whether the pointer hides itself after it stays still over the
+  picture for 2 seconds: **Always shown**, **Hide when idle in fullscreen** (the default)
+  or **Hide when idle**, in a window too. A move brings it back; over the bars, a menu or
+  a dialog it stays.
 - **Confirm exit** - ask before closing. **Pause when inactive** is on the
   [Emulation page](options-emulation.md) now.
 - {icon}`star` **Manage favorites...** - see [Favorites menu](favorites.md).

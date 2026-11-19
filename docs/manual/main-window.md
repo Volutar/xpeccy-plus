@@ -80,7 +80,7 @@ status bar hidden, tick **FPS** in the **Indicators** group on the **Appearance*
   click lets the mouse go.
 - Alt with the mouse wheel changes the volume.
 - In fullscreen the pointer hides itself after 2 seconds still over the picture, and a
-  move brings it back. **Hide pointer** on the [Application page](options-application.md)
+  move brings it back. **Mouse pointer** on the [Application page](options-application.md)
   of **Options** sets when.
 
 ## Fullscreen
