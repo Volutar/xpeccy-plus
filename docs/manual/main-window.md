@@ -79,9 +79,8 @@ status bar hidden, tick **FPS** in the **Indicators** group on the **Appearance*
 - A click with the middle button grabs the mouse for a program that uses one; another
   click lets the mouse go.
 - Alt with the mouse wheel changes the volume.
-- In fullscreen the pointer hides itself after 2 seconds still over the picture, and a
-  move brings it back. **Mouse pointer** on the [Application page](options-application.md)
-  of **Options** sets when.
+- The pointer hides itself after 2 seconds still over the picture, and a move brings it
+  back; [View > Auto-Hide Pointer](view.md#auto-hide-pointer) turns that off.
 
 ## Fullscreen
 
