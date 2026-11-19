@@ -327,6 +327,8 @@ void MainWin::ptrInit() {
 	ptrIdle.setInterval(PTR_IDLE_MS);
 	connect(&ptrIdle, &QTimer::timeout, this, &MainWin::ptrIdleOut);
 	qApp->installEventFilter(new xPtrFilter(this));
+	ptrLast = winCursorPos();	// where it rests before any move, as well as it is known
+
 }
 
 bool MainWin::ptrWanted() {
@@ -376,8 +378,12 @@ void MainWin::ptrSync() {
 void MainWin::ptrIdleOut() {
 	if (ptrHidden || !ptrWanted() || grabMice) return;
 	if (!frame->isActiveWindow() || QApplication::activePopupWidget()
-			|| QApplication::activeModalWidget() || QApplication::mouseButtons())
+			|| QApplication::activeModalWidget())
 		return;
+	if (QApplication::mouseButtons()) {		// a release brings no move: counted again
+		ptrIdle.start();
+		return;
+	}
 	// the widget under it, the bars over the picture counted: the picture or its view.
 	// Where the last move left it: a window that moved under a still pointer is mapped
 	// anew, and one gone elsewhere since shows a pointer of its own there anyway

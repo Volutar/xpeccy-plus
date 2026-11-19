@@ -119,15 +119,14 @@ int toLimits(int, int, int);
 #define XSPD_MAX	3
 // ...and the ceiling on base x turbo x overclock, whoever asks for it
 #define XSPD_CLOCK_MAX	16
-// slow motion and fast forward: switched on and off by a key each, at the
-// factor the options set, and gone as soon as the speed is set any other way
 // when the pointer hides itself, still for a while over the picture (MainWin::ptrArm)
 enum {
 	PTR_HIDE_NEVER = 0,
 	PTR_HIDE_FULL,		// in fullscreen
 	PTR_HIDE_ALWAYS
 };
-
+// slow motion and fast forward: switched on and off by a key each, at the
+// factor the options set, and gone as soon as the speed is set any other way
 enum {
 	XTM_NONE = 0,
 	XTM_SLOW,
