@@ -1310,6 +1310,8 @@ void SetupWin::fillPages() {
 	fillComboBox(ui.cbStyleSheet, "styles", QStringList() << "*.qss", "System", conf.style.c_str());
 	for (int i = 1; i < ui.cbStyleSheet->count(); i++)
 		ui.cbStyleSheet->setItemText(i, QFileInfo(ui.cbStyleSheet->itemText(i)).completeBaseName());
+	ui.cbOnTop->setChecked(conf.win.onTop);
+	ui.cbPtrHide->setChecked(conf.win.ptrHide);
 	// Input lag, Rewind, Interface and Indicators are grids of their own, and
 	// columns line up between them only while all are given the same widths.
 	// Measure them here, not in the .ui: a style or a font would outgrow a
@@ -1576,6 +1578,7 @@ void SetupWin::fitWidths() {
 		wid = qMax(wid, btn->sizeHint().width());
 	for (QWidget* col : {ui.machButtons, ui.picRight, ui.afRight, ui.ssRight, boxRecAdv})
 		col->setFixedWidth(wid);
+	ui.lookRight->setMinimumWidth(wid);
 	// Screenshots' column is a layout of its own: rows as high and as far apart as
 	// the grid's keep it level with the grid
 	int rowH = 0;
@@ -2003,6 +2006,8 @@ void SetupWin::applyGlobal() {
 		conf.dbg.sysvars = ui.cbSysVars->isChecked() ? 1 : 0;
 		labels_touch();
 	}
+	conf.win.onTop = ui.cbOnTop->isChecked() ? 1 : 0;
+	conf.win.ptrHide = ui.cbPtrHide->isChecked() ? 1 : 0;
 	QString name = getRFSData(ui.cbStyleSheet);
 	std::string style = name.isEmpty() ? std::string() : name.toStdString();
 	if (style != conf.style) {
