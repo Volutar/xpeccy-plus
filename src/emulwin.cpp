@@ -392,6 +392,7 @@ void MainWin::updateWindow() {
 	bufSize = bytesPerLine * comp->vid->full.y * (comp->vid->linedbl ? 2 : 1);
 	updateHead();
 	applyOnTop();
+	ptrSync();
 	block = 0;
 	// started maximized: the first Restore gets the size the window had by hand
 	if (restoreFree.isValid() && !maxed && !conf.vid.fullScreen && frame->isVisible()) {
@@ -478,6 +479,7 @@ MainWin::MainWin(QMainWindow* frm) {
 	frame->setWindowTitle(XPTITLE);
 	setFocusPolicy(Qt::StrongFocus);
 	setMouseTracking(true);
+	ptrInit();
 	frame->setWindowIcon(QGuiApplication::windowIcon());
 	setAcceptDrops(true);
 	// setAutoFillBackground(false);
@@ -1014,6 +1016,8 @@ void MainWin::focusOutEvent(QFocusEvent*) {
 	Computer* comp = conf.zx;
 	mouseReleaseAll(comp->mouse);
 	unsetCursor();
+	ptrHidden = false;
+	ptrIdle.stop();
 	if (grabMice) {
 		grabMice = 0;
 		releaseMouse();
@@ -1034,6 +1038,7 @@ void MainWin::focusOutEvent(QFocusEvent*) {
 }
 
 void MainWin::focusInEvent(QFocusEvent*) {
+	ptrArm();		// back by a key: the pointer may be resting over the picture
 	mapReplayHeld(conf.gpctrl->gpada);
 	mapReplayHeld(conf.gpctrl->gpadb);
 	if (conf.emu.pause & PR_DEBUG)

@@ -4221,7 +4221,43 @@ Right click: back to the style color</string>
                     </item>
                    </widget>
                   </item>
-                  <item row="5" column="0" colspan="2">
+                  <item row="5" column="0">
+                   <widget class="QLabel" name="labPtrHide">
+                    <property name="toolTip">
+                     <string>Hides the mouse pointer once it stays
+still over the picture for 2 seconds;
+a move brings it back</string>
+                    </property>
+                    <property name="text">
+                     <string>Hide pointer</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="5" column="1">
+                   <widget class="QComboBox" name="cbPtrHide">
+                    <property name="toolTip">
+                     <string>Hides the mouse pointer once it stays
+still over the picture for 2 seconds;
+a move brings it back</string>
+                    </property>
+                    <item>
+                     <property name="text">
+                      <string>Never</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>In fullscreen</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>Always</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item row="6" column="0" colspan="2">
                    <widget class="QCheckBox" name="cbConfexit">
                     <property name="toolTip">
                      <string>Ask before closing the emulator</string>
@@ -4262,7 +4298,7 @@ from this computer only</string>
                     </property>
                    </widget>
                   </item>
-                  <item row="6" column="0" colspan="2">
+                  <item row="7" column="0" colspan="2">
                    <spacer name="verticalSpacer_appgrid">
                     <property name="orientation">
                      <enum>Qt::Vertical</enum>
