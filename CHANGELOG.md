@@ -11,9 +11,8 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
-- **The mouse pointer hides itself** after 2 seconds still over the picture, in fullscreen
-  by default: Options > Application, Mouse pointer, also in a window or never. A move
-  brings it back.
+- **The mouse pointer hides itself** after 2 seconds still over the picture, in a window and
+  in fullscreen; a move brings it back. View > Auto-Hide Pointer turns it off.
 
 - **60 FPS video**: Options > Video, Recording. **60 FPS** and **50/60 FPS** join Real FPS
   and 50 FPS; 50/60 records a Next in its 60 Hz modes at 60 and every other machine at 50,
