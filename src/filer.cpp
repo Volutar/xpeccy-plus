@@ -35,11 +35,13 @@
 #include <QMutex>
 #include <QPushButton>
 #include <QRegularExpression>
+#include <QScreen>
 #include <QScrollBar>
 #include <QSet>
 #include <QSortFilterProxyModel>
 #include <QSplitter>
 #include <QStackedWidget>
+#include <QStyle>
 #include <QStyleOptionViewItem>
 #include <QTreeView>
 #include <QTreeWidget>
@@ -130,6 +132,31 @@ private:
 };
 #endif
 
+// The places list's rows no wider than the list, so a long name is cut with "...":
+// a list view widens a row to the view but never narrows it, and scrolls instead
+class xSideRows : public QAbstractItemDelegate {
+public:
+	xSideRows(QAbstractItemDelegate* own, QListView* view) : QAbstractItemDelegate(view), own(own), view(view) {
+		connect(own, &QAbstractItemDelegate::sizeHintChanged, this, &QAbstractItemDelegate::sizeHintChanged);
+	}
+	void paint(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx) const override {own->paint(p, opt, idx);}
+	bool editorEvent(QEvent* ev, QAbstractItemModel* model, const QStyleOptionViewItem& opt, const QModelIndex& idx) override {
+		return own->editorEvent(ev, model, opt, idx);
+	}
+	bool helpEvent(QHelpEvent* ev, QAbstractItemView* v, const QStyleOptionViewItem& opt, const QModelIndex& idx) override {
+		return own->helpEvent(ev, v, opt, idx);
+	}
+	QSize sizeHint(const QStyleOptionViewItem& opt, const QModelIndex& idx) const override {
+		QSize sz = own->sizeHint(opt, idx);
+		if (!full) sz.setWidth(qMin(sz.width(), view->viewport()->width()));
+		return sz;
+	}
+	bool full = false;	// the names' own widths, to fit the list to
+private:
+	QAbstractItemDelegate* own;	// Qt's, still owned by the list
+	QListView* view;
+};
+
 // After every setNameFilter / selectNameFilter of ours: Qt 5's patterns go to the suffix filter
 static void file_dialog_filtered(QFileDialog* dlg) {
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -167,6 +194,24 @@ static void file_dialog_tune(QFileDialog* dlg) {
 		conf.fdlg.sort = qBound(0, col, 3);
 		conf.fdlg.desc = (ord == Qt::DescendingOrder);
 	});
+	// Kept for every file dialog and the next run: the size, and the places list's width as dragged
+	// (only a drag moves the splitter by this signal, not a width given to fit a smaller dialog)
+	QSplitter* split = dlg->findChild<QSplitter*>("splitter");
+	QListView* side = dlg->findChild<QListView*>("sidebar");
+	if (split && side && (split->indexOf(side) == 0))
+		QObject::connect(split, &QSplitter::splitterMoved, dlg, [](int pos, int index) {
+			if (index == 1) conf.fdlg.side = qMax(pos, 0);
+		});
+	QObject::connect(dlg, &QDialog::finished, dlg, [dlg]() {
+		if (!(dlg->windowState() & (Qt::WindowMaximized | Qt::WindowFullScreen))) {
+			conf.fdlg.w = dlg->width();
+			conf.fdlg.h = dlg->height();
+		}
+	});
+	if (side && side->itemDelegate()) {
+		side->setItemDelegate(new xSideRows(side->itemDelegate(), side));
+		side->setResizeMode(QListView::Adjust);		// rows laid out again for the list's new width
+	}
 	QListView* list = dlg->findChild<QListView*>("listView");
 	QStackedWidget* views = dlg->findChild<QStackedWidget*>("stackedWidget");
 	if (!list || !views) return;
@@ -2455,6 +2500,7 @@ void initFileDialog(QWidget* par) {
 // Every Qt file dialog restores the column widths any Qt program last left in
 // the shared QtProject settings, and a long image name gets cut in them. Give
 // the name all the room the other columns do not need, whatever was stored.
+// The size and the places list's width are ours (conf.fdlg), the same for all.
 // Called on Show, after that restore; a native dialog has no tree and is skipped.
 // Also tunes the QFileDialog::get*() dialogs, which may open in a big folder.
 void fitFileDialog(QWidget* w) {
@@ -2468,14 +2514,45 @@ void fitFileDialog(QWidget* w) {
 	hdr->setSectionResizeMode(QHeaderView::ResizeToContents);
 	hdr->setSectionResizeMode(0, QHeaderView::Stretch);
 	hdr->setStretchLastSection(false);
-	// the places list on the left: same shared settings, stored narrower than its names
+	// The size last left in any file dialog, inside the screen. Show comes before
+	// QDialog's own showEvent, which centers the dialog at this size.
+	bool whole = dlg->windowState() & (Qt::WindowMaximized | Qt::WindowFullScreen);
+	if ((conf.fdlg.w > 0) && (conf.fdlg.h > 0) && !whole) {
+		QWidget* par = dlg->parentWidget();
+		QScreen* scr = par ? par->window()->screen() : dlg->screen();
+		QSize sz(conf.fdlg.w, conf.fdlg.h);
+		if (scr) {
+			// the frame is known after the first show; before it, a guess, so the title bar stays on the screen
+			QSize frame = dlg->frameGeometry().size() - dlg->size();
+			if (frame.height() <= 0) {
+				int edge = dlg->style()->pixelMetric(QStyle::PM_DefaultFrameWidth);
+				frame = QSize(2 * edge, dlg->style()->pixelMetric(QStyle::PM_TitleBarHeight) + 2 * edge);
+			}
+			sz = sz.boundedTo(scr->availableGeometry().size() - frame.expandedTo(QSize(0, 0)));
+		}
+		sz = sz.expandedTo(dlg->minimumSizeHint());
+		if (sz != dlg->size()) dlg->resize(sz);
+	}
+	// The places list on the left: the width the user dragged, else its widest
+	// name but at most a third, a longer name cut. Qt's shared settings give
+	// whatever width any Qt program left there.
 	QSplitter* split = dlg->findChild<QSplitter*>("splitter");
 	QListView* side = dlg->findChild<QListView*>("sidebar");
 	if (!split || !side || (split->indexOf(side) != 0) || (split->count() != 2)) return;
-	int need = side->sizeHintForColumn(0) + 2 * side->frameWidth() + side->verticalScrollBar()->sizeHint().width();
+	if (dlg->layout()) dlg->layout()->activate();
 	QList<int> sz = split->sizes();
-	if (sz[0] >= need) return;
-	split->setSizes({need, qMax(sz[0] + sz[1] - need, 0)});
+	int total = sz[0] + sz[1];
+	int want;
+	if (conf.fdlg.side >= 0) {
+		want = qMin(conf.fdlg.side, qMax(total - 200, 0));	// the files keep some room
+	} else {
+		xSideRows* rows = dynamic_cast<xSideRows*>(side->itemDelegate());
+		if (rows) rows->full = true;
+		int need = side->sizeHintForColumn(0) + 2 * side->frameWidth() + side->verticalScrollBar()->sizeHint().width();
+		if (rows) rows->full = false;
+		want = qMin(need, total / 3);
+	}
+	if (want != sz[0]) split->setSizes({want, total - want});
 }
 
 // ERR_OK once the changed medium is safe to lose: saved, or the user said No

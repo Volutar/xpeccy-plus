@@ -185,6 +185,9 @@ void conf_init(char* confdir) {
 	conf.fdlg.sort = 0;
 	conf.fdlg.desc = 0;
 	conf.fdlg.list = 0;
+	conf.fdlg.w = 0;
+	conf.fdlg.h = 0;
+	conf.fdlg.side = -1;
 	conf.vid.skipHint = 1;
 	conf.kbdTyping = 1;
 	conf.saves.perGame = 1;
@@ -269,6 +272,8 @@ void saveConfig() {
 	fprintf(cfile, "lastdir = %s\n", conf.lastDir.c_str());
 	fprintf(cfile, "filedialog.sort = %s %s\n", fdlg_sort_name[conf.fdlg.sort], conf.fdlg.desc ? "desc" : "asc");
 	fprintf(cfile, "filedialog.view = %s\n", conf.fdlg.list ? "list" : "detail");
+	if ((conf.fdlg.w > 0) && (conf.fdlg.h > 0)) fprintf(cfile, "filedialog.size = %dx%d\n", conf.fdlg.w, conf.fdlg.h);
+	if (conf.fdlg.side >= 0) fprintf(cfile, "filedialog.places = %d\n", conf.fdlg.side);
 	fprintf(cfile, "savepaths = %s\n", YESNO(conf.storePaths));
 	fprintf(cfile, "fdcturbo = %s\n", YESNO(fdcFlag & FDC_FAST));
 	fprintf(cfile, "folder.write = %s\n", YESNO(conf.fold.rw));
@@ -1498,6 +1503,14 @@ void loadConfig() {
 						conf.fdlg.desc = (sp != std::string::npos) && (pval.substr(sp + 1) == "desc");
 					}
 					if (pnam == "filedialog.view") conf.fdlg.list = (pval == "list");
+					if (pnam == "filedialog.size") {
+						int w = 0, h = 0;
+						if ((sscanf(pval.c_str(), "%dx%d", &w, &h) == 2) && (w > 0) && (h > 0)) {
+							conf.fdlg.w = w;
+							conf.fdlg.h = h;
+						}
+					}
+					if (pnam == "filedialog.places") conf.fdlg.side = (arg.i >= 0) ? arg.i : -1;
 					if ((pnam == "recent") && (conf.recentList.size() < RECENT_MAX))
 						conf.recentList.append(QString::fromLocal8Bit(pval.c_str()));
 					if (pnam=="savepaths") conf.storePaths = arg.b;

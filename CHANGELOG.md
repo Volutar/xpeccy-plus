@@ -93,6 +93,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The file dialog keeps its size**, and the width of the places list on the left if you
+  drag it, between runs. A very long name there no longer widens the list over the files:
+  it takes at most a third of the dialog and the name is cut. *(reported by Liniya)*
+
 - **Short names on a folder card or disk end in `~1`** when 8.3 cannot hold the long name as
   it is, as Windows makes them: a DOS without long names lists `A_NAME~1.TAP`, not a cut name that
   looks like the file's real one.

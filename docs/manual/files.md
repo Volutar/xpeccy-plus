@@ -172,7 +172,8 @@ images instead, as above.
 ```
 
 All opening and saving goes through the program's own file dialog, the same on every
-system. It starts in the folder you used last.
+system. It starts in the folder you used last, at the size you left it, and keeps the width
+you drag the list of places on the left to.
 
 The list of file types at the bottom is more than a filter: the type you pick says what
 the file is opened as. **Disk** puts a disk into drive A, **RAW file to disk** writes any
