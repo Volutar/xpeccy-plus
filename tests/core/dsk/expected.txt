@@ -169,3 +169,69 @@
   #D0 20.9 us after #00: track register 3, head at 3
   #D0 1 ms after #00: track register 254, head at 2
   same-track seek: INTRQ after 25 us
+== fdi/no-data
+  read: err 0
+  R1: status 00, 256 bytes, as the image
+  R16: status 00, 256 bytes, as the image
+  R65: status 10, 0 bytes, -
+  R80: status 10, 0 bytes, -
+  IDs: 65 1 66 2 67 3 68 4 69 5 70 6 71 7 72 8 73 9 74 10 75 11 76 12 77 13 78 14 79 15 80 16 65 1
+== fdi/crc
+  seek to 1: track register 1, head at 1
+  R1: status 00, 256 bytes, as the image
+  R2: status 08, 256 bytes, as the image
+  R3: status 08, 256 bytes, as the image
+  R4: status 20, 256 bytes, as the image
+== fdi/long
+  seek to 2: track register 2, head at 2
+  R110: status 00, 512 bytes, as the image
+  R1: status 00, 512 bytes, as the image
+  R10: status 00, 512 bytes, as the image
+  IDs: 110 1 2 3 4 5 6 7 8 9 10 110
+  seek to 3: track register 3, head at 3
+  R105: status 00, 1024 bytes, as the image
+  R9: status 00, 1024 bytes, as the image
+  R161: status 00, 1024 bytes, as the image
+  R178: status 00, 1024 bytes, as the image
+  R195: status 00, 1024 bytes, as the image
+  R212: status 08, 1024 bytes, as the image
+== td0/flags
+  read: err 0, 2 cylinders
+  R1: status 00, 256 bytes, as the image
+  R2: status 10, 0 bytes, -
+  R3: status 00, 256 bytes, as the image
+  R4: status 20, 256 bytes, as the image
+  R5: status 08, 256 bytes, as the image
+  R6: status 00, 256 bytes, zeros
+  R7: status 10, 0 bytes, -
+  R8: status 00, 256 bytes, as the image
+  R9: status 10, 0 bytes, -
+  IDs: 1 2 3 4 5 6 8 1 2
+  data with no ID, 256 bytes: on the track yes, CRC right: yes
+  seek to 1: track register 1, head at 1
+  R1: status 00, 512 bytes, as the image
+  R9: status 00, 512 bytes, as the image
+  R109: status 10, 0 bytes, -
+  IDs: 1 2 3 4 5 6 7 8 9 1 2
+  data with no ID, 512 bytes: on the track yes, CRC right: yes
+== wd/dam-window
+  R1: status 00, 256 bytes, as the image
+  R2: status 10, 0 bytes, -
+== fdi/no-crc-flags
+  read: err 0
+  R1: status 00, 256 bytes, as the image
+  R2: status 00, 256 bytes, as the image
+  R3: status 00, 256 bytes, as the image
+  R4: status 20, 256 bytes, as the image
+== wd/write-lost
+  no byte given: status 04, 0 bytes
+  R1: status 00, 256 bytes, as the image
+  byte 10 late: status 04, 255 bytes; read back: byte 10 zero: yes
+  R2 read: status 00
+  multi, R3 given, R4 not: status 04, 256 bytes
+  R4: status 00, 256 bytes, as the image
+  Write Track, no byte given: status 04, 0 bytes
+  R1: status 00, 256 bytes, as the image
+== fdi/long-hd
+  R17: status 08, 1024 bytes, as the image
+  R18: status 10, 0 bytes, -

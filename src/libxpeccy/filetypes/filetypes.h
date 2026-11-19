@@ -133,6 +133,7 @@ void diskClear(Floppy*);
 void trd_format(Floppy*);
 void diskFormTrack(Floppy*,int,Sector*,int);
 int diskFormFits(Floppy*, Sector*, int);	// 1 if diskFormTrack lays all of them down
+void diskFormImageTrack(Floppy*, int, Sector*, int);	// an image's track: never dropped for want of room
 void diskFormTRDTrack(Floppy*,int,unsigned char*);
 
 int diskGetType(Floppy*);

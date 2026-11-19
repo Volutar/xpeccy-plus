@@ -7,6 +7,9 @@
 //	roundtrip	the image saved back, compared with the file it was read from
 //	trd-128		a 1 MB TRD through the Beta disk's WD1793: its last cylinder
 //			read and written, saved as TRD and UDI and read back
+//	fdi/*, td0/*	FDI and TD0 images of protected disks through the WD1793:
+//			IDs with no data, data with no ID, bad CRCs, long tracks
+//	wd/dam-window	a data mark at the end of the WD1793's window and one past it
 //
 //	dsk-bench			the cases, on an image the bench writes
 //	dsk-bench -sweep file.dsk...	load + save for each file, one line a file
@@ -870,6 +873,388 @@ static void trd_wide(const char* tmp) {
 	free(img);
 }
 
+// ---- FDI and TD0 images of protected disks, read by the Beta disk's WD1793:
+// IDs with no data, data with no ID, bad CRCs, tracks the standard layout does
+// not hold; and the WD1793's window for a data mark
+
+static Floppy* beta_drive_flp = NULL;	// the drive of the image under test
+
+typedef struct {
+	unsigned char c, h, r, n, flag;
+} fSec;
+
+typedef struct {
+	int nsec;
+	fSec s[40];
+} fTrk;
+
+static unsigned char fpat(int t, int r, int k) {
+	return (t * 37 + r * 11 + k * 5 + (k >> 8)) & 0xff;
+}
+
+static void put16(unsigned char* p, int v) {
+	p[0] = v & 0xff;
+	p[1] = (v >> 8) & 0xff;
+}
+
+// an FDI of one side; a sector's data is the pattern, none for flag 0x40
+static int write_fdi(const char* path, fTrk* trk, int ntrk) {
+	int hsize = 14;
+	long dsize = 0;
+	for (int t = 0; t < ntrk; t++) {
+		hsize += 7 + 7 * trk[t].nsec;
+		for (int i = 0; i < trk[t].nsec; i++)
+			if (!(trk[t].s[i].flag & 0x40)) dsize += 128 << (trk[t].s[i].n & 3);
+	}
+	unsigned char* f = calloc(1, hsize + 1 + dsize);
+	if (!f) return 0;
+	memcpy(f, "FDI", 3);
+	put16(f + 4, ntrk);
+	put16(f + 6, 1);
+	put16(f + 8, hsize);		// the comment: one 0
+	put16(f + 10, hsize + 1);	// the data
+	unsigned char* h = f + 14;
+	unsigned char* d = f + hsize + 1;
+	long toff = 0;
+	for (int t = 0; t < ntrk; t++) {
+		h[0] = toff & 0xff; h[1] = (toff >> 8) & 0xff; h[2] = (toff >> 16) & 0xff; h[3] = 0;
+		h[6] = trk[t].nsec;
+		h += 7;
+		int soff = 0;
+		for (int i = 0; i < trk[t].nsec; i++) {
+			fSec* s = &trk[t].s[i];
+			h[0] = s->c; h[1] = s->h; h[2] = s->r; h[3] = s->n; h[4] = s->flag;
+			put16(h + 5, soff);	// one with no data: the next one's, as ANAMORIG has it
+			h += 7;
+			if (s->flag & 0x40) continue;
+			int len = 128 << (s->n & 3);
+			for (int k = 0; k < len; k++) d[toff + soff + k] = fpat(t, s->r, k);
+			soff += len;
+		}
+		toff += soff;
+	}
+	int ok = write_file(path, f, hsize + 1 + dsize);
+	free(f);
+	return ok;
+}
+
+// a TD0, uncompressed, one side: the pattern as raw data, no data block after
+// flags 0x10 or 0x20
+static int write_td0(const char* path, fTrk* trk, int ntrk) {
+	unsigned char* f = calloc(1, 0x40000);
+	if (!f) return 0;
+	unsigned char* p = f;
+	*(p++) = 'T'; *(p++) = 'D';
+	*(p++) = 0; *(p++) = 0;		// volume, check sequence
+	*(p++) = 0x15;			// version
+	*(p++) = 0;			// 250 kbps
+	*(p++) = 2;			// drive type
+	*(p++) = 0;			// no comment
+	*(p++) = 0;			// all sectors
+	*(p++) = 1;			// sides
+	*(p++) = 0; *(p++) = 0;		// header CRC: not checked
+	for (int t = 0; t < ntrk; t++) {
+		*(p++) = trk[t].nsec;
+		*(p++) = t;
+		*(p++) = 0;
+		*(p++) = 0;
+		for (int i = 0; i < trk[t].nsec; i++) {
+			fSec* s = &trk[t].s[i];
+			*(p++) = s->c; *(p++) = s->h; *(p++) = s->r; *(p++) = s->n; *(p++) = s->flag;
+			*(p++) = 0;
+			if (s->flag & 0x30) continue;
+			int len = 128 << (s->n & 3);
+			put16(p, len + 1);
+			p += 2;
+			*(p++) = 0;		// raw
+			for (int k = 0; k < len; k++) *(p++) = fpat(t, s->r, k);
+		}
+	}
+	*(p++) = 0xff;
+	int ok = write_file(path, f, p - f);
+	free(f);
+	return ok;
+}
+
+static void fadd(fTrk* t, int c, int r, int n, int flag) {
+	fSec* s = &t->s[t->nsec++];
+	s->c = c; s->h = 0; s->r = r; s->n = n; s->flag = flag;
+}
+
+// a sector read on side 0: its status, the bytes the CPU took, and whether the
+// first 256 of them are the pattern
+static void fread_sec(int t, int r) {
+	unsigned char buf[256];
+	int n;
+	int st = beta_sector(0x80, 0, r, buf, &n);
+	int same = 0, zero = 0;
+	int m = (n < 256) ? n : 256;
+	while ((same < m) && (buf[same] == fpat(t, r, same))) same++;
+	while ((zero < m) && !buf[zero]) zero++;
+	printf("  R%d: status %.2X, %d bytes, %s\n", r, st, n, !n ? "-" : (same == m) ? "as the image" : (zero == m) ? "zeros" : "other");
+}
+
+// READ ADDRESS n times on side 0: the R of each ID, in turn
+static void beta_ids(int n) {
+	difOut(dif, 0xff, 0x3c, 1);
+	printf("  IDs:");
+	for (int i = 0; i < n; i++) {
+		unsigned char id[6] = {0};
+		int k = 0;
+		difOut(dif, 0x1f, 0xc0, 1);
+		for (long ns = 0; ns < 2000000000L; ns += 999) {
+			int st = 0xff;
+			difIn(dif, 0xff, &st, 1);
+			if (st & 0x40) {
+				int v = 0xff;
+				difIn(dif, 0x7f, &v, 1);
+				if (k < 6) id[k] = v & 0xff;
+				k++;
+			}
+			if (st & 0x80) break;
+			run(999);
+		}
+		int st = 0xff;
+		difIn(dif, 0x1f, &st, 1);
+		if ((k < 6) || (st & 0x18))
+			printf(" ?%.2X", st & 0xff);
+		else
+			printf(" %d", id[2]);
+	}
+	printf("\n");
+}
+
+// A data field with no ID, which no command but Read Track reaches: on the track
+// with the image's data, its CRC the right one
+static void data_alone(int tr, int t, int r, int len) {
+	unsigned char* b = beta_drive_flp->data[tr].byte;
+	int tl = beta_drive_flp->trklen;
+	int at = -1;
+	for (int i = 3; (i + 1 + len + 2 <= tl) && (at < 0); i++) {
+		if ((b[i - 3] != 0xa1) || (b[i - 2] != 0xa1) || (b[i - 1] != 0xa1) || (b[i] != 0xfb)) continue;
+		int k = 0;
+		while ((k < len) && (b[i + 1 + k] == fpat(t, r, k))) k++;
+		if (k == len) at = i;
+	}
+	int crc = (at >= 0) ? getCrc(b + at - 3, len + 4) : -1;
+	int good = (at >= 0) && (b[at + 1 + len] == ((crc >> 8) & 0xff)) && (b[at + 2 + len] == (crc & 0xff));
+	printf("  data with no ID, %d bytes: on the track %s, CRC right: %s\n", len, (at >= 0) ? "yes" : "no", good ? "yes" : "no");
+}
+
+static void protected_fdi(const char* path) {
+	static fTrk t[4];
+	memset(t, 0, sizeof(t));
+	// cylinder 0 as ANAMORIG's: each sector after an ID of its own with no data
+	for (int i = 0; i < 16; i++) {
+		int r = (i + 15) % 16 + 1;		// 16, 1, 2 ... 15
+		fadd(&t[0], 0, 64 + r, 1, 0x40);
+		fadd(&t[0], 0, r, 1, 0x02);
+	}
+	// cylinder 1: the CRC flags
+	fadd(&t[1], 1, 1, 1, 0x02);		// good at 256
+	fadd(&t[1], 1, 2, 1, 0x00);		// written with a CRC error
+	fadd(&t[1], 1, 3, 1, 0x04);		// good at 512 only
+	fadd(&t[1], 1, 4, 1, 0x82);		// deleted, good
+	// cylinder 2: 11 x 512, one in front of R1 (Gallows)
+	fadd(&t[2], 2, 110, 2, 0x04);
+	for (int r = 1; r <= 10; r++) fadd(&t[2], 2, r, 2, 0x04);
+	// cylinder 3: 6 x 1K (Supaplex)
+	static const int r3[6] = {105, 9, 161, 178, 195, 212};
+	for (int i = 0; i < 6; i++) fadd(&t[3], 3, r3[i], 3, 0x08);
+	if (!write_fdi(path, t, 4)) {
+		printf("can't write %s\n", path);
+		return;
+	}
+
+	Floppy* flp = beta_drive();
+	beta_drive_flp = flp;
+	int err = fdi_read(flp, path);
+	printf("== fdi/no-data\n");
+	printf("  read: err %d\n", err);
+	beta_disk();
+	fread_sec(0, 1);
+	fread_sec(0, 16);
+	fread_sec(0, 65);
+	fread_sec(0, 80);
+	beta_ids(34);
+
+	printf("== fdi/crc\n");
+	beta_seek(1);
+	for (int r = 1; r <= 4; r++) fread_sec(1, r);
+
+	printf("== fdi/long\n");
+	beta_seek(2);
+	fread_sec(2, 110);
+	fread_sec(2, 1);
+	fread_sec(2, 10);
+	beta_ids(12);
+	beta_seek(3);
+	for (int i = 0; i < 6; i++) fread_sec(3, r3[i]);
+	difDestroy(dif);
+
+	// an HD track that holds no 18 x 1K: the last one cut at the end, not left out
+	memset(t, 0, sizeof(t));
+	for (int r = 1; r <= 18; r++) fadd(&t[0], 0, r, 3, 0x08);
+	write_fdi(path, t, 1);
+	beta_drive_flp = beta_drive();
+	flp_set_hd(beta_drive_flp, 1);
+	fdi_read(beta_drive_flp, path);
+	printf("== fdi/long-hd\n");
+	beta_disk();
+	fread_sec(0, 17);
+	fread_sec(0, 18);
+	difDestroy(dif);
+
+	// a writer that sets no CRC flag at all: its sectors are not all bad
+	memset(t, 0, sizeof(t));
+	for (int r = 1; r <= 4; r++) fadd(&t[0], 0, r, 1, (r == 4) ? 0x80 : 0x00);
+	write_fdi(path, t, 1);
+	beta_drive_flp = beta_drive();
+	err = fdi_read(beta_drive_flp, path);
+	printf("== fdi/no-crc-flags\n");
+	printf("  read: err %d\n", err);
+	beta_disk();
+	for (int r = 1; r <= 4; r++) fread_sec(0, r);
+	difDestroy(dif);
+}
+
+static void protected_td0(const char* path) {
+	static fTrk t[2];
+	memset(t, 0, sizeof(t));
+	fadd(&t[0], 0, 1, 1, 0x00);
+	fadd(&t[0], 0, 2, 1, 0x20);		// an ID, no data
+	fadd(&t[0], 0, 7, 1, 0x40);		// data, no ID: not R2's
+	fadd(&t[0], 0, 3, 1, 0x00);		// read right only if 2 took no data block
+	fadd(&t[0], 0, 4, 1, 0x04);		// deleted
+	fadd(&t[0], 0, 5, 1, 0x02);		// CRC error
+	fadd(&t[0], 0, 6, 1, 0x10);		// skipped as unallocated: zeros
+	fadd(&t[0], 0, 8, 1, 0x00);
+	fadd(&t[0], 0, 9, 1, 0x60);		// neither ID nor data: nothing
+	// cylinder 1 as MK_LGN's: data with no ID in front of 9 x 512
+	fadd(&t[1], 1, 109, 2, 0x40);
+	for (int r = 1; r <= 9; r++) fadd(&t[1], 1, r, 2, 0x00);
+	if (!write_td0(path, t, 2)) {
+		printf("can't write %s\n", path);
+		return;
+	}
+	Floppy* flp = beta_drive();
+	beta_drive_flp = flp;
+	int err = td0_read(flp, path);
+	printf("== td0/flags\n");
+	printf("  read: err %d, %d cylinders\n", err, flp->cyls);
+	beta_disk();
+	for (int r = 1; r <= 9; r++) fread_sec(0, r);
+	beta_ids(9);
+	data_alone(0, 0, 7, 256);
+	beta_seek(1);
+	fread_sec(1, 1);
+	fread_sec(1, 9);
+	fread_sec(1, 109);
+	beta_ids(11);
+	data_alone(2, 1, 109, 512);
+	difDestroy(dif);
+}
+
+// A track laid by hand: R1's data mark the last byte of the WD1793's window
+// after its ID's CRC, R2's the byte after it - Record Not Found
+static void dam_window(void) {
+	unsigned char b[TRKLEN_DD];
+	memset(b, 0x4e, sizeof(b));
+	int p = 80;
+	for (int r = 1; r <= 2; r++) {
+		memset(b + p, 0, 12); p += 12;
+		int c0 = p;
+		b[p++] = 0xa1; b[p++] = 0xa1; b[p++] = 0xa1; b[p++] = 0xfe;
+		b[p++] = 0; b[p++] = 0; b[p++] = r; b[p++] = 1;
+		int crc = getCrc(b + c0, 8);
+		b[p++] = (crc >> 8) & 0xff; b[p++] = crc & 0xff;
+		int gap = WD_DAM_WINDOW - 4 + (r - 1);	// the mark is byte gap + 4 after the CRC
+		memset(b + p + gap - 12, 0, 12);
+		p += gap;
+		c0 = p;
+		b[p++] = 0xa1; b[p++] = 0xa1; b[p++] = 0xa1; b[p++] = 0xfb;
+		for (int k = 0; k < 256; k++) b[p++] = fpat(0, r, k);
+		crc = getCrc(b + c0, 260);
+		b[p++] = (crc >> 8) & 0xff; b[p++] = crc & 0xff;
+		p += 60;
+	}
+	Floppy* flp = beta_drive();
+	beta_drive_flp = flp;
+	flp_insert(flp, NULL);
+	flpPutTrack(flp, 0, b, sizeof(b));
+	printf("== wd/dam-window\n");
+	beta_disk();
+	fread_sec(0, 1);
+	fread_sec(0, 2);
+	difDestroy(dif);
+}
+
+// Write Sector with the cpu giving <give> bytes in all (-1: every one asked for), and
+// the byte <late> a byte-time too late. The status, and the bytes it gave
+static int beta_write(int com, int sec, int give, int late, int* moved) {
+	difOut(dif, 0xff, 0x3c, 1);
+	difOut(dif, 0x5f, sec, 1);
+	difOut(dif, 0x1f, com, 1);
+	int n = 0;
+	for (long ns = 0; ns < 2000000000L; ns += 999) {
+		int st = 0xff;
+		difIn(dif, 0xff, &st, 1);
+		if ((st & 0x40) && ((give < 0) || (n < give))) {
+			if (n == late) run(40000);		// past the byte's time
+			difOut(dif, 0x7f, (0x11 + n) & 0xff, 1);
+			n++;
+		}
+		if (st & 0x80) break;
+		run(999);
+	}
+	*moved = n;
+	int st = 0xff;
+	difIn(dif, 0x1f, &st, 1);
+	return st & 0xff;
+}
+
+// FD179X, Write Sector: the first byte not loaded by the data field - nothing written,
+// Lost Data; a byte missed later - a zero written, Lost Data, the command goes on
+static void write_rules(const char* path) {
+	static fTrk t[1];
+	memset(t, 0, sizeof(t));
+	for (int r = 1; r <= 4; r++) fadd(&t[0], 0, r, 1, 0x02);
+	write_fdi(path, t, 1);
+	beta_drive_flp = beta_drive();
+	fdi_read(beta_drive_flp, path);
+	printf("== wd/write-lost\n");
+	beta_disk();
+	unsigned char buf[256];
+	int n;
+	int st = beta_write(0xa0, 1, 0, -1, &n);
+	printf("  no byte given: status %.2X, %d bytes\n", st, n);
+	fread_sec(0, 1);
+	st = beta_write(0xa0, 2, -1, 10, &n);
+	int zero = diskGetSectorData(beta_drive_flp, 0, 2, buf, 256) && !buf[10] && (buf[9] == 0x11 + 9);
+	printf("  byte 10 late: status %.2X, %d bytes; read back: byte 10 zero: %s\n", st, n, zero ? "yes" : "no");
+	st = beta_sector(0x80, 0, 2, buf, &n);
+	printf("  R2 read: status %.2X\n", st);
+	st = beta_write(0xb0, 3, 256, -1, &n);
+	printf("  multi, R3 given, R4 not: status %.2X, %d bytes\n", st, n);
+	fread_sec(0, 4);
+	st = beta_write(0xf4, 1, 0, -1, &n);
+	printf("  Write Track, no byte given: status %.2X, %d bytes\n", st, n);
+	fread_sec(0, 1);
+	difDestroy(dif);
+}
+
+static void protected_images(const char* tmp) {
+	char path[1100];
+	snprintf(path, sizeof(path), "%s.fdi", tmp);
+	protected_fdi(path);
+	write_rules(path);
+	remove(path);
+	snprintf(path, sizeof(path), "%s.td0", tmp);
+	protected_td0(path);
+	remove(path);
+	dam_window();
+}
+
 static int cases(const char* tmp) {
 	char tmp_b[1100];
 	snprintf(tmp_b, sizeof(tmp_b), "%s.b.dsk", tmp);
@@ -919,6 +1304,7 @@ static int cases(const char* tmp) {
 	cleared(tmp);
 	roundtrip(tmp, "bench");
 	trd_wide(tmp);
+	protected_images(tmp);
 	remove(tmp);
 	remove(tmp_b);
 	return 0;

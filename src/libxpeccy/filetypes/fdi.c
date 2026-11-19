@@ -29,6 +29,23 @@ typedef struct {
 
 #pragma pack (pop)
 
+// 1 if any sector has a CRC flag (bits 0-5): a writer that sets none kept no CRCs
+static int fdi_has_crcs(FILE* file, int tracks) {
+	long at = ftell(file);
+	fdiTHead thd;
+	fdiSHead shd;
+	int res = 0;
+	for (int t = 0; (t < tracks) && !res; t++) {
+		if (fread(&thd, sizeof(thd), 1, file) != 1) break;
+		for (int s = 0; (s < thd.secCount) && !res; s++) {
+			if (fread(&shd, sizeof(shd), 1, file) != 1) break;
+			res = (shd.flag & 0x3f) ? 1 : 0;
+		}
+	}
+	fseek(file, at, SEEK_SET);
+	return res;
+}
+
 int fdi_read(Floppy* flp, const char* name) {
 	FILE* file = fopen(name, "rb");
 	if (!file) return ERR_CANT_OPEN;
@@ -57,6 +74,7 @@ int fdi_read(Floppy* flp, const char* name) {
 		fseek(file, hd.xSize, SEEK_CUR);
 		int trk, head, sec;
 		int cut = 0;		// the file ended: the tracks before stay
+		int crcs = fdi_has_crcs(file, hd.cyls * hd.heads);
 		for (trk = 0; (trk < hd.cyls) && !cut; trk++) {
 			for (head = 0; (head < hd.heads) && !cut; head++) {
 				if (fread((char*)&thd, sizeof(fdiTHead), 1, file) != 1) {
@@ -79,6 +97,14 @@ int fdi_read(Floppy* flp, const char* name) {
 					trkImg[sec].sec = shd.sec;
 					trkImg[sec].sz = shd.len;
 					trkImg[sec].type = (shd.flag & 0x80) ? 0xf8 : 0xfb;
+					trkImg[sec].flags = 0;
+					trkImg[sec].crc = -1;
+					if (shd.flag & 0x40) {			// an ID with no data field
+						trkImg[sec].flags = SEC_NO_DATA;
+						continue;
+					}
+					if (crcs && !(shd.flag & (1 << (shd.len & 3))))	// no good CRC at the length read
+						trkImg[sec].flags = SEC_BAD_CRC;
 					shd.len = shd.len & 3;
 					pos = ftell(file);
 					fseek(file, hd.dData + thd.dData + shd.dData, SEEK_SET);
@@ -88,7 +114,7 @@ int fdi_read(Floppy* flp, const char* name) {
 					if (got < want) memset(trkImg[sec].data + got, 0, want - got);
 					fseek(file, pos, SEEK_SET);
 				}
-				diskFormTrack(flp, (trk << 1) + head, trkImg, sec);
+				diskFormImageTrack(flp, (trk << 1) + head, trkImg, sec);
 			}
 		}
 		flp->protect = hd.wp ? 1 : 0;

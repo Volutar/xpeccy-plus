@@ -50,9 +50,18 @@ typedef struct {
 	unsigned char sec;
 	unsigned char sz;	// 0..3 = 128..1024
 	unsigned char type;
+	unsigned char flags;	// SEC_* below: what of the sector is on the disk
 	int crc;
 	unsigned char data[0x1800];
 } Sector;
+
+// bytes after an ID's CRC to the data mark's F8-FB: its first A1 within 43 (FD179X, MFM)
+#define WD_DAM_WINDOW	46
+
+// Sector.flags: what an image says a sector lacks or has wrong
+#define SEC_NO_DATA	1	// an ID field with no data field after it
+#define SEC_NO_ID	2	// a data field with no ID field before it
+#define SEC_BAD_CRC	4	// the data field's CRC does not match
 
 typedef struct FDC FDC;
 typedef void(*fdcCall)(FDC*);

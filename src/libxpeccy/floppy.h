@@ -113,6 +113,8 @@ void flp_set_interleave(int);
 int flp_get_interleave();
 
 void flpFillFields(Floppy*,int,int);
+// the n data marks at pos[] (ascending) have no ID: their size codes are sz[], not the last ID's
+void flpFillFieldsEx(Floppy*, int tr, int flag, const int* pos, const unsigned char* sz, int n);
 
 void flpPutTrack(Floppy*,int,unsigned char*,int);
 void flpGetTrack(Floppy*,int,unsigned char*);
