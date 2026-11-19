@@ -19,7 +19,9 @@ on your computer at the moment the machine reads that part of the disk.
 
 Names come as long names, as any FAT32 has them, and as the short 8.3 names an older DOS reads.
 In a short name, Russian letters are put into the cp866 code page, the one ZX systems expect;
-other letters become `_`. The tree is read breadth first, so when a limit is reached, it is the
+other letters become `_`. A name that loses something on the way - a long one, one with
+spaces or a second dot - gets a short name ending in `~1`, `~2` and so on, as Windows makes
+them: `A long name.tap` is `ALONGN~1.TAP`. The tree is read breadth first, so when a limit is reached, it is the
 deepest folders that are left out, never the program at the top. A link to a folder is followed
 once; one leading back up the tree is left out, so the machine never sees one file under two
 names.

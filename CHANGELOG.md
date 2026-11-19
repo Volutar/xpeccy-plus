@@ -93,6 +93,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **Short names on a folder card or disk end in `~1`** when 8.3 cannot hold the long name as
+  it is, as Windows makes them: a DOS without long names lists `A_NAME~1.TAP`, not a cut name that
+  looks like the file's real one.
+
 - **A Next switching 50/60 Hz while a video records** stays in step: the sound no longer
   drifts away from the picture, and keeps its pitch.
 

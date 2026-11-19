@@ -1999,7 +1999,7 @@ static int rf_add(vfRf* rf, int parent, const vfNode* fn) {
 	vFat* vf = rf->vf;
 	unsigned int n = fn->isdir ? 1 : rf_nclu(vf, fn->size);
 	unsigned char sec[VF_SECSIZE];
-	char sname[12], base[12];
+	char sname[12];
 	unsigned int* cl = NULL;
 	int idx, ulen;
 	vfNode* nd;
@@ -2015,13 +2015,10 @@ static int rf_add(vfRf* rf, int parent, const vfNode* fn) {
 	}
 	node_append(vf, parent, idx);
 	nd = vf->node + idx;
-	vf_sname_make(fn->name, base, &ulen);
-	memcpy(sname, base, 12);
 	rf->parent = parent;
-	vf_sname_uniq(sname, fn->name, rf_taken, rf);
+	// the volume's own siblings decide, not the fresh scan's
+	nd->lfn = vf_sname_pick(fn->name, sname, &ulen, rf_taken, rf);
 	memcpy(nd->sname, sname, 12);
-	// a name made unique here needs its long name as much as one the 8.3 form loses
-	nd->lfn = (fn->lfn || memcmp(sname, base, 11)) ? 1 : 0;
 	nd->ecnt = nd->lfn ? ((ulen + 12) / 13 + 1) : 1;
 	nd->size = nd->hsize = fn->isdir ? 0 : fn->size;
 	nd->hmtime = fn->hmtime;

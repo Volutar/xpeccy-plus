@@ -34,11 +34,16 @@ void vf_gen_reserved(vFat*, unsigned int lba, unsigned char* dst);	// MBR, gap, 
 int vf_clust_node(vFat*, unsigned int clu);
 
 // directory entries as the build makes them
-int vf_sname_make(const char* name, char* dst, int* ulen);	// 1 when a long name is needed
+#define VF_SN_LFN	1	// the 8.3 form is another name: a long name is needed
+#define VF_SN_LOSSY	2	// it loses some of the name: a numeric tail too
+int vf_sname_make(const char* name, char* dst, int* ulen);	// VF_SN_ flags
 unsigned char vf_sname_sum(const char* sname);
 unsigned int vf_sname_hash(int parent, const char* sname);
-// sname made unique: taken says whether a name is in use among its siblings
-void vf_sname_uniq(char* sname, const char* name, int (*taken)(void* ctx, const char* sname), void* ctx);
+// sname made unique: taken says whether a name is in use among its siblings;
+// a lossy one starts at ~1
+void vf_sname_uniq(char* sname, const char* name, int lossy, int (*taken)(void* ctx, const char* sname), void* ctx);
+// both: the 8.3 name a long one takes among its siblings; 1 when the long name is needed too
+int vf_sname_pick(const char* name, char* sname, int* ulen, int (*taken)(void* ctx, const char* sname), void* ctx);
 void vf_fat_stamp(unsigned int mtime, unsigned short* date, unsigned short* tim);
 void vf_entry(unsigned char* dst, const char* sname, int attr, unsigned int clust, unsigned int size, unsigned short date, unsigned short tim);
 void vf_lfn(unsigned char* dst, unsigned short* name, int len, int part, int last, unsigned char sum);
