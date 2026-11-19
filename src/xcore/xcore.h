@@ -992,6 +992,8 @@ struct xConfig {
 		int sort;		// the column Qt's file dialog sorts by: 0 name, 1 size, 2 type, 3 date
 		unsigned desc:1;
 		unsigned list:1;	// List View, not Detail
+		int w, h;		// the size last left in a file dialog, 0 = none yet
+		int side;		// the places list width the user dragged, -1 = fit to the names
 	} fdlg;
 	struct {
 		std::vector<xBrkPoint> list;
