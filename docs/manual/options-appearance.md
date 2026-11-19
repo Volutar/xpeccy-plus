@@ -10,7 +10,7 @@
   **Always on top** and **Auto-hide mouse pointer**. They are the same switches as in the
   **View** menu: see [Menu Bar, Toolbar and Status Bar](view.md#menu-bar-toolbar-and-status-bar),
   [Always on Top](view.md#always-on-top) and [Auto-Hide Pointer](view.md#auto-hide-pointer).
-  There is no **Menu bar** on macOS.
+  There is no **Menu bar** where the menus are in the system's menu bar, as on macOS.
 - **Indicators** - which signs are shown over the picture. See
   [Indicators on the picture](#indicators-on-the-picture).
 
