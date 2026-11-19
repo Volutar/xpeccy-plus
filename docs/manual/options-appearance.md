@@ -1,14 +1,16 @@
 # Appearance page
 
-```{index} Appearance page, Style, interface style, Always on top, Auto-hide mouse pointer
+```{index} Appearance page, Style, interface style, Menu bar, Toolbar, Status bar, Always on top, Auto-hide mouse pointer
 ```
 
 ![The Appearance page](images/options-appearance.png)
 
 - **Interface** - **Style**: **System** (the look of your system) or one of seven bundled
-  styles. On the right, **Always on top** and **Auto-hide mouse pointer** - the same switches
-  as [Always on Top](view.md#always-on-top) and [Auto-Hide Pointer](view.md#auto-hide-pointer)
-  in the **View** menu.
+  styles. **Menu bar**, **Toolbar**, **Status bar** show and hide the bars; on the right,
+  **Always on top** and **Auto-hide mouse pointer**. They are the same switches as in the
+  **View** menu: see [Menu Bar, Toolbar and Status Bar](view.md#menu-bar-toolbar-and-status-bar),
+  [Always on Top](view.md#always-on-top) and [Auto-Hide Pointer](view.md#auto-hide-pointer).
+  There is no **Menu bar** on macOS.
 - **Indicators** - which signs are shown over the picture. See
   [Indicators on the picture](#indicators-on-the-picture).
 

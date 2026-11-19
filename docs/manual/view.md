@@ -246,7 +246,8 @@ with **ULA plus** in the machine's advanced settings (see
 **View > Menu Bar**, **View > Toolbar** and **View > Status Bar** show and hide the
 [menu bar](menu-bar.md), the [toolbar](toolbar.md) and the
 [status bar](main-window.md#status-bar). The window shrinks by the bar's height, and the
-picture keeps its size.
+picture keeps its size. The same switches are on the
+[Appearance page](options-appearance.md) of **Options**.
 
 The menu bar hidden takes the toolbar with it, as in fullscreen, and both are still at
 hand. Hold the pointer at the top edge of the window: a thin see-through strip in the
