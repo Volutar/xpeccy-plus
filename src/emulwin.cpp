@@ -3572,9 +3572,14 @@ bool MainWin::mbHidden() {
 void MainWin::mbSet(bool on) {
 	conf.win.menubar = on;
 	updateWindow();
+	mbGoneNote(on);
+	saveConfig();
+}
+
+// where a menu bar just taken off is found again
+void MainWin::mbGoneNote(bool on) {
 	if (!on && mbHidden() && !conf.vid.fullScreen)	// fullscreen has it hidden anyway
 		setMessage(" menu bar: top edge or right-click ", 4.0);
-	saveConfig();
 }
 
 // A window that covers the monitor exactly is scanned out on its own, past the
@@ -4192,7 +4197,9 @@ void MainWin::fillPreview() {
 // Options applied: the snow notice is done, its tick not taken over them
 void MainWin::optApplied() {
 	delete snowBox;
+	bool mbOff = mbShowAct && mbShowAct->isChecked() && !conf.win.menubar;	// the menu still has it shown
 	optResize();
+	if (mbOff) mbGoneNote(false);
 }
 
 // Apply in the options dialog, with the dialog still open. The border size may

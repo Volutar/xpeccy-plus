@@ -647,6 +647,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void fsHide();
 		bool mbHidden();
 		void mbSet(bool);
+		void mbGoneNote(bool);
 		void showAbout();
 		void openManual();
 		void favManage();

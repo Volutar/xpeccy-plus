@@ -630,6 +630,10 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	machColMin = ui.machButtons->maximumWidth();
 	appColMin = ui.appButtons->maximumWidth();
 	makeDevWidgets();
+#ifdef __APPLE__
+	ui.cbMenuBar->hide();		// the system's own menu bar, never hidden
+	ui.namMenuBar->hide();
+#endif
 	// a .ui iconset holds a single pixmap, which the title bar would have
 	// to downscale; the application icon carries every drawn
 	// size instead. It has to be set explicitly: an unset icon is inherited
@@ -648,6 +652,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	spaceLedIcon(ui.cbMessage);
 	spaceLedIcon(ui.cbSnowNote);
 	spaceLedIcon(ui.cbFadeLed);
+	ui.icoStyle->setPixmap(QIcon(":/images/palette.png").pixmap(LED_ICON_SIZE, LED_ICON_SIZE));
 	// the notice is the window's, for every machine: one place for it
 	QWidget* snowRow[] = {ui.cbSnow, ui.nam_cbSnow, ui.lab_cbSnow};
 	for (QWidget* w : snowRow)
@@ -1310,6 +1315,9 @@ void SetupWin::fillPages() {
 	fillComboBox(ui.cbStyleSheet, "styles", QStringList() << "*.qss", "System", conf.style.c_str());
 	for (int i = 1; i < ui.cbStyleSheet->count(); i++)
 		ui.cbStyleSheet->setItemText(i, QFileInfo(ui.cbStyleSheet->itemText(i)).completeBaseName());
+	ui.cbMenuBar->setChecked(conf.win.menubar);
+	ui.cbToolBar->setChecked(conf.win.toolbar);
+	ui.cbStatusBar->setChecked(conf.win.statusbar);
 	ui.cbOnTop->setChecked(conf.win.onTop);
 	ui.cbPtrHide->setChecked(conf.win.ptrHide);
 	// Input lag, Rewind, Interface and Indicators are grids of their own, and
@@ -1337,7 +1345,6 @@ void SetupWin::fillPages() {
 		for (QGridLayout* g : emugrid)
 			g->setColumnMinimumWidth(col, wid);
 	}
-	ui.cbStyleSheet->setFixedWidth(ui.gridLayout_look->columnMinimumWidth(1));	// as wide as the names under it
 	fitWidths();
 	// Saves: the numbers alike, as wide as the widest of them asks; the columns
 	// as Emulation's, so the names stand in one place on both pages
@@ -1579,6 +1586,15 @@ void SetupWin::fitWidths() {
 	for (QWidget* col : {ui.machButtons, ui.picRight, ui.afRight, ui.ssRight, boxRecAdv})
 		col->setFixedWidth(wid);
 	ui.lookRight->setMinimumWidth(wid);
+	QStyleOptionButton opt;
+	opt.initFrom(ui.cbKeysLed);
+	opt.icon = ui.cbKeysLed->icon();
+	opt.iconSize = ui.cbKeysLed->iconSize();
+	QRect box = ui.cbKeysLed->style()->subElementRect(QStyle::SE_CheckBoxContents, &opt, ui.cbKeysLed);
+	int pad = LED_ICON_GAP - ui.cbKeysLed->style()->pixelMetric(QStyle::PM_CheckBoxLabelSpacing, NULL, ui.cbKeysLed);
+	ui.icoStyle->setContentsMargins(box.left() + qMax(pad, 0), 0, 0, 0);	// as spaceLedIcon draws them
+	for (QCheckBox* cb : {ui.cbMenuBar, ui.cbToolBar, ui.cbStatusBar})	// rows as high as the icons' below
+		cb->setMinimumHeight(ui.cbKeysLed->sizeHint().height());
 	// Screenshots' column is a layout of its own: rows as high and as far apart as
 	// the grid's keep it level with the grid
 	int rowH = 0;
@@ -2006,6 +2022,11 @@ void SetupWin::applyGlobal() {
 		conf.dbg.sysvars = ui.cbSysVars->isChecked() ? 1 : 0;
 		labels_touch();
 	}
+#ifndef __APPLE__
+	conf.win.menubar = ui.cbMenuBar->isChecked() ? 1 : 0;
+#endif
+	conf.win.toolbar = ui.cbToolBar->isChecked() ? 1 : 0;
+	conf.win.statusbar = ui.cbStatusBar->isChecked() ? 1 : 0;
 	conf.win.onTop = ui.cbOnTop->isChecked() ? 1 : 0;
 	conf.win.ptrHide = ui.cbPtrHide->isChecked() ? 1 : 0;
 	QString name = getRFSData(ui.cbStyleSheet);
