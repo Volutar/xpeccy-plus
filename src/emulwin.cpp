@@ -3346,6 +3346,12 @@ void MainWin::initMenuBar() {
 		saveConfig();
 	});
 	topAct->setCheckable(true);
+	ptrAct = viewMenu->addAction("Auto-Hide Pointer", this, [this](bool on) {
+		conf.win.ptrHide = on;
+		ptrSync();
+		saveConfig();
+	});
+	ptrAct->setCheckable(true);
 	// the border sizes Options has, taken at once as its Apply takes them
 	brdMenu = new xMenu("Border", this);
 	viewMenu->addMenu(brdMenu);

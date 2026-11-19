@@ -322,8 +322,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		QTimer ptrIdle;
 		QPoint ptrLast;		// on the screen, at the last move that moved it
 		bool ptrHidden = false;
-		int ptrMode = -1;	// ptrWanted() at the last ptrSync
-		bool ptrWanted();
+		int ptrMode = -1;	// the option and fullscreen at the last ptrSync
 		void ptrMoved(QPoint);
 		void ptrArm();
 		void ptrShow();
@@ -571,6 +570,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		QAction* tbShowAct;
 		QAction* sbShowAct;
 		QAction* topAct;
+		QAction* ptrAct;
 		QAction* pauseAct;
 		QAction* fastAct;
 		QAction* tapeAct;

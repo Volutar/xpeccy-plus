@@ -1522,7 +1522,6 @@ void SetupWin::fillPages() {
 	ui.sbDezogPort->setEnabled(conf.dezog.on);
 	ui.cbUpdCheck->setCurrentIndex(upd_period());
 	ui.cbUpdChannel->setCurrentIndex(upd_channel());
-	ui.cbPtrHide->setCurrentIndex(conf.win.ptrHide);	// PTR_HIDE_* order
 	ui.cbConfexit->setChecked(conf.confexit);
 	cbPauseInactive->setChecked(conf.pauseInactive);
 	cbPauseMenu->setChecked(conf.pauseMenu);
@@ -1965,7 +1964,6 @@ void SetupWin::applyGlobal() {
 	// a build's default stays unset until changed, so a later build may change it
 	if (ui.cbUpdCheck->currentIndex() != upd_period()) conf.upd.check = ui.cbUpdCheck->currentIndex();
 	if (ui.cbUpdChannel->currentIndex() != upd_channel()) conf.upd.channel = ui.cbUpdChannel->currentIndex();
-	conf.win.ptrHide = ui.cbPtrHide->currentIndex();
 	conf.confexit = ui.cbConfexit->isChecked() ? 1 : 0;
 	conf.pauseInactive = cbPauseInactive->isChecked() ? 1 : 0;
 	conf.pauseMenu = cbPauseMenu->isChecked() ? 1 : 0;
