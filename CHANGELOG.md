@@ -56,6 +56,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **Options > Appearance shows and hides the bars**: Menu bar, Toolbar, Status bar, Always
+  on top and Auto-hide mouse pointer, as in the View menu - for a menu bar that is hidden.
+
 - **The virtual keyboard's title names its skin**: "Virtual Keyboard - Next (White)", as the
   Skin menu has it.
 
