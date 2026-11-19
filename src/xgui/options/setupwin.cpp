@@ -6,6 +6,8 @@
 #include <QFontDialog>
 #include <QFileDialog>
 #include <QDialogButtonBox>
+#include <QMainWindow>
+#include <QMenuBar>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QLabel>
@@ -630,10 +632,12 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	machColMin = ui.machButtons->maximumWidth();
 	appColMin = ui.appButtons->maximumWidth();
 	makeDevWidgets();
-#ifdef __APPLE__
-	ui.cbMenuBar->hide();		// the system's own menu bar, never hidden
-	ui.namMenuBar->hide();
-#endif
+	// the system's own menu bar (macOS, a global menu) is never hidden: View has no item either
+	QMainWindow* mwin = par ? qobject_cast<QMainWindow*>(par->window()) : nullptr;
+	if (mwin && mwin->menuBar()->isNativeMenuBar()) {
+		ui.cbMenuBar->hide();
+		ui.namMenuBar->hide();
+	}
 	// a .ui iconset holds a single pixmap, which the title bar would have
 	// to downscale; the application icon carries every drawn
 	// size instead. It has to be set explicitly: an unset icon is inherited
@@ -2022,9 +2026,8 @@ void SetupWin::applyGlobal() {
 		conf.dbg.sysvars = ui.cbSysVars->isChecked() ? 1 : 0;
 		labels_touch();
 	}
-#ifndef __APPLE__
-	conf.win.menubar = ui.cbMenuBar->isChecked() ? 1 : 0;
-#endif
+	if (!ui.cbMenuBar->isHidden())
+		conf.win.menubar = ui.cbMenuBar->isChecked() ? 1 : 0;
 	conf.win.toolbar = ui.cbToolBar->isChecked() ? 1 : 0;
 	conf.win.statusbar = ui.cbStatusBar->isChecked() ? 1 : 0;
 	conf.win.onTop = ui.cbOnTop->isChecked() ? 1 : 0;

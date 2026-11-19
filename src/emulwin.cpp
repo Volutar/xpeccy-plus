@@ -222,6 +222,13 @@ static void top_lift(QWidget* w, QWindow* own, bool on) {
 	set_on_top(w, on);
 }
 
+// a window of ours that goes on top with the main window
+static bool top_liftable(QWidget* w, QMainWindow* frame) {
+	if ((w == frame) || !w->isWindow() || !frame->windowHandle()) return false;
+	const Qt::WindowType type = w->windowType();
+	return (type == Qt::Dialog) || (type == Qt::Window) || (type == Qt::Tool);
+}
+
 // Windows lifts only what the main window owns as it goes on top; others shown later need it
 class xTopFilter : public QObject {
 	public:
@@ -230,9 +237,7 @@ class xTopFilter : public QObject {
 		bool eventFilter(QObject* obj, QEvent* ev) override {
 			if ((ev->type() != QEvent::Show) || !obj->isWidgetType()) return false;
 			QWidget* w = static_cast<QWidget*>(obj);
-			if ((w == frame) || !w->isWindow() || !frame->windowHandle()) return false;
-			const Qt::WindowType type = w->windowType();
-			if ((type == Qt::Dialog) || (type == Qt::Window) || (type == Qt::Tool))
+			if (top_liftable(w, frame))
 				top_lift(w, frame->windowHandle(), true);
 			return false;
 		}
@@ -255,6 +260,8 @@ void MainWin::applyOnTop() {
 	if (on && !lifter) {
 		lifter = new xTopFilter(frame);
 		qApp->installEventFilter(lifter);
+		foreach(QWidget* w, QApplication::topLevelWidgets())	// up already: Options, a tool window
+			if (w->isVisible() && top_liftable(w, frame)) top_lift(w, win, true);
 	} else if (!on && lifter) {
 		qApp->removeEventFilter(lifter);
 		delete lifter;
@@ -480,6 +487,7 @@ MainWin::MainWin(QMainWindow* frm) {
 	setFocusPolicy(Qt::StrongFocus);
 	setMouseTracking(true);
 	ptrInit();
+	mbSeen = conf.win.menubar;
 	frame->setWindowIcon(QGuiApplication::windowIcon());
 	setAcceptDrops(true);
 	// setAutoFillBackground(false);
@@ -3571,6 +3579,7 @@ bool MainWin::mbHidden() {
 
 void MainWin::mbSet(bool on) {
 	conf.win.menubar = on;
+	mbSeen = on;
 	updateWindow();
 	mbGoneNote(on);
 	saveConfig();
@@ -4197,7 +4206,8 @@ void MainWin::fillPreview() {
 // Options applied: the snow notice is done, its tick not taken over them
 void MainWin::optApplied() {
 	delete snowBox;
-	bool mbOff = mbShowAct && mbShowAct->isChecked() && !conf.win.menubar;	// the menu still has it shown
+	bool mbOff = mbSeen && !conf.win.menubar;
+	mbSeen = conf.win.menubar;
 	optResize();
 	if (mbOff) mbGoneNote(false);
 }

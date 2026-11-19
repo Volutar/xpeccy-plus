@@ -648,6 +648,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		bool mbHidden();
 		void mbSet(bool);
 		void mbGoneNote(bool);
+		bool mbSeen = true;	// the menu bar as the last Options apply or View left it
 		void showAbout();
 		void openManual();
 		void favManage();
