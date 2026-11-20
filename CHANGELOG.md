@@ -11,6 +11,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Robik** in the Virtual Keyboard: the keyboard of the Robik, with its logo and power
+  light; its cursor block is the Kempston joystick, its two RES keys reset the machine
+  together.
+
 - **The mouse pointer hides itself** after 2 seconds still over the picture, in a window and
   in fullscreen; a move brings it back. View > Auto-Hide Pointer turns it off.
 
