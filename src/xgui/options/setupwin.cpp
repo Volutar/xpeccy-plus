@@ -191,10 +191,10 @@ void fillComboBox(QComboBox* box, const char* kind, QStringList filt, QString de
 	setRFIndex(box, sel, 0);
 }
 
-// Indicators page: one checkbox carries the indicator, the icon as it is drawn
-// on screen and the name. The style sets the gap after the check itself, and
-// QCommonStyle puts the name 4px past iconSize - so pad the picture on the left
-// and make iconSize wider than it to get the same air on both sides of it.
+// Indicators window: the checkbox carries the icon as it is drawn on screen, the
+// name is a label in the next column. The style sets the gap after the check
+// itself - pad the picture on the left to LED_ICON_GAP; the gap to the name is
+// the grid's, the box cut to end at the icon (fitWidths).
 
 #define	LED_ICON_SIZE	16
 #define	LED_ICON_GAP	10
@@ -947,16 +947,17 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	romSetWin = popOut(ui.romBox, "Machine: ROM");
 	connect(ui.pbRomSet, &QPushButton::released, romSetWin, [this]() {sheet_open(romSetWin);});
 
-	// the indicators too; the ones the status bar shows while it is there are grey then
-	QLabel* ledNote = new QLabel(tr("Grey: in the status bar while it is shown"));
+	// the indicators too, and which of them the status bar shows while it is there
+	// (fullscreen hides it, and they are over the picture then)
+	QLabel* ledNote = new QLabel(tr("Joystick, Mouse, Tape, Disk, FPS, CPU clock: in the status bar while it is shown"));
 	QFont fnt = ledNote->font();
 	fnt.setItalic(true);
 	ledNote->setFont(fnt);
+	ledNote->setWordWrap(true);
 	ui.gridLayout_23->addWidget(ledNote, ui.gridLayout_23->rowCount(), 0, 1, 3);
 	ui.gbIndicators->setTitle(QString());
 	ledWin = popOut(ui.gbIndicators, "Appearance: Indicators");
 	connect(ui.pbIndicators, &QPushButton::released, ledWin, [this]() {sheet_open(ledWin);});
-	connect(ui.cbStatusBar, &QCheckBox::toggled, this, &SetupWin::ledRows);
 
 	// same for the set file by file: the slots say which file is in which
 	// one, this window has the offsets and sizes behind it
@@ -1332,7 +1333,6 @@ void SetupWin::fillPages() {
 	ui.cbMenuBar->setChecked(conf.win.menubar);
 	ui.cbToolBar->setChecked(conf.win.toolbar);
 	ui.cbStatusBar->setChecked(conf.win.statusbar);
-	ledRows();
 	ui.cbOnTop->setChecked(conf.win.onTop);
 	ui.cbPtrHide->setChecked(conf.win.ptrHide);
 	// Input lag, Rewind, Pause and Folders are grids of their own, and
@@ -2323,16 +2323,6 @@ static void sheet_put(QWidget* w, const QVariant& val) {
 	} else if (QLineEdit* le = qobject_cast<QLineEdit*>(w)) {
 		le->setText(val.toString());
 	}
-}
-
-void SetupWin::ledRows() {
-	bool sb = ui.cbStatusBar->isChecked();
-	QWidget* rows[][3] = {
-		{ui.cbJoyLed, ui.namJoyLed, ui.labJoyLed}, {ui.cbMouseLed, ui.namMouseLed, ui.labMouseLed},
-		{ui.cbTapeLed, ui.namTapeLed, ui.labTapeLed}, {ui.cbDiskLed, ui.namDiskLed, ui.labDiskLed},
-		{ui.cbFpsLed, ui.namFpsLed, ui.labFpsLed}, {ui.cbClockLed, ui.namClockLed, ui.labClockLed}};
-	for (auto& r : rows)
-		for (QWidget* w : r) w->setEnabled(!sb);
 }
 
 QDialog* SetupWin::popOut(QWidget* box, const char* title) {
