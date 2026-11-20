@@ -79,7 +79,7 @@ in drive A, a snapshot - and again when another one is opened or the machine is 
 
 Tick **Don't show this again** before either button to have no more of these messages, for
 any game: the snow is shown as before, without a word. **Snow notice** in
-**Options > Appearance**, **Indicators**, brings the message back (see
+**Options > Appearance**, **Configure indicators**, brings the message back (see
 [Indicators on the picture](options-appearance.md#indicators-on-the-picture)). Settings
 applied in **Options** while the message is up close it, and a tick in it is not kept.
 

@@ -1,13 +1,17 @@
 # Appearance page
 
-```{index} Appearance page, Style, interface style
+```{index} Appearance page, Style, interface style, Menu bar, Toolbar, Status bar, Always on top, Auto-hide pointer, Configure indicators
 ```
 
 ![The Appearance page](images/options-appearance.png)
 
-- **Interface** - **Style**: **System** (the look of your system) or one of seven bundled
-  styles.
-- **Indicators** - which signs are shown over the picture. See
+- **Style** - **System** (the look of your system) or one of seven bundled styles.
+- **Always on top**, **Auto-hide pointer**, **Menu bar**, **Toolbar**, **Status bar** - the
+  same switches as in the **View** menu: see [Always on Top](view.md#always-on-top),
+  [Auto-Hide Pointer](view.md#auto-hide-pointer) and
+  [Menu Bar, Toolbar and Status Bar](view.md#menu-bar-toolbar-and-status-bar). There is no
+  **Menu bar** where the menus are in the system's menu bar, as on macOS.
+- {icon}`lamp` **Configure indicators** - which signs are shown over the picture. See
   [Indicators on the picture](#indicators-on-the-picture).
 
 ## Indicators on the picture
@@ -15,8 +19,11 @@
 ```{index} Indicators, CPU clock, HALT indicator, Fade out, Snow notice
 ```
 
-The **Indicators** group on the **Appearance** page of **Options** sets what is drawn
-over the picture. Tick the ones you want:
+**Configure indicators** on the **Appearance** page of **Options** opens a window that sets
+what is drawn over the picture. Tick the ones you want; **OK** keeps them for the
+**Options** window, **Cancel** puts them back as they were:
+
+![The indicators](images/options-indicators.png)
 
 | Indicator | What it shows |
 |---|---|
@@ -34,7 +41,8 @@ over the picture. Tick the ones you want:
 
 **Joystick**, **Mouse**, **Tape**, **Disk**, **FPS** and **CPU clock** are drawn on the
 picture only while the status bar is hidden; with the status bar shown, they are in the
-status bar instead (see [Status bar](main-window.md#status-bar)).
+status bar instead (see [Status bar](main-window.md#status-bar)). Fullscreen hides the
+status bar, so there they are over the picture.
 
 In the top right corner a sign also shows the speed mode, in the manner of a video
 recorder: pause, rewind with how many seconds back, fast mode, fast forward or slow

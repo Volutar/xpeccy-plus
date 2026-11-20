@@ -728,7 +728,7 @@ void MainWin::socketRead() {
 		out += QString("drawdev: %0,%1 %2x%3 dpr %4 intScale %5\r\n").arg(drawPX).arg(drawPY).arg(drawPW).arg(drawPH)
 			.arg(drawDpr).arg(conf.vid.intScale);
 		out += QString("pointer: hidden %0 shape %1 idle %2 mode %3\r\n").arg(ptrHidden ? 1 : 0)
-			.arg(int(cursor().shape())).arg(ptrIdle.isActive() ? 1 : 0).arg(conf.win.ptrHide);
+			.arg(int(cursor().shape())).arg(ptrIdle.isActive() ? 1 : 0).arg(conf.win.ptrHide ? 1 : 0);
 		out += QString("fsbar: %0 fstool: %1\r\n").arg(fsBar && fsBar->isVisible() ? 1 : 0).arg(fsTool && fsTool->isVisible() ? 1 : 0);
 		// the size the icons are drawn at, and the one set (0 = Auto)
 		out += QString("toolbar: icons %0 set %1 fstool %2\r\n").arg(toolBar->iconSize().width()).arg(conf.win.tbIcons)

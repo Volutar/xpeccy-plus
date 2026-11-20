@@ -331,14 +331,6 @@ void MainWin::ptrInit() {
 
 }
 
-bool MainWin::ptrWanted() {
-	switch (conf.win.ptrHide) {
-		case PTR_HIDE_ALWAYS: return true;
-		case PTR_HIDE_FULL: return conf.vid.fullScreen;
-	}
-	return false;
-}
-
 // Only a move that moved it: Windows sends moves with none when a window is shown,
 // activated or its cursor changes - the hiding itself would bring it back.
 // The event's position: on Wayland QCursor::pos() is not kept.
@@ -351,7 +343,7 @@ void MainWin::ptrMoved(QPoint gpos) {
 
 // The grab has a blank pointer of its own as long as it holds
 void MainWin::ptrArm() {
-	if (ptrWanted() && !grabMice) {
+	if (conf.win.ptrHide && !grabMice) {
 		ptrIdle.start();
 	} else {
 		ptrIdle.stop();
@@ -366,7 +358,7 @@ void MainWin::ptrShow() {
 
 // fullscreen in or out, or the option changed: shown, and counting again
 void MainWin::ptrSync() {
-	int mode = ptrWanted() ? 1 : 0;
+	int mode = (conf.win.ptrHide ? 1 : 0) | (conf.vid.fullScreen ? 2 : 0);
 	if (mode == ptrMode) return;
 	ptrMode = mode;
 	ptrShow();
@@ -376,7 +368,7 @@ void MainWin::ptrSync() {
 // Not over a bar, nor while a menu or a dialog is up; not with a button down,
 // a drag going on; not for a window in the background
 void MainWin::ptrIdleOut() {
-	if (ptrHidden || !ptrWanted() || grabMice) return;
+	if (ptrHidden || !conf.win.ptrHide || grabMice) return;
 	if (!frame->isActiveWindow() || QApplication::activePopupWidget()
 			|| QApplication::activeModalWidget())
 		return;

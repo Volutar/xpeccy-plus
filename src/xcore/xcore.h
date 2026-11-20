@@ -119,12 +119,6 @@ int toLimits(int, int, int);
 #define XSPD_MAX	3
 // ...and the ceiling on base x turbo x overclock, whoever asks for it
 #define XSPD_CLOCK_MAX	16
-// when the pointer hides itself, still for a while over the picture (MainWin::ptrArm)
-enum {
-	PTR_HIDE_NEVER = 0,
-	PTR_HIDE_FULL,		// in fullscreen
-	PTR_HIDE_ALWAYS
-};
 // slow motion and fast forward: switched on and off by a key each, at the
 // factor the options set, and gone as soon as the speed is set any other way
 enum {
@@ -1128,7 +1122,7 @@ struct xConfig {
 		unsigned statusbar:1;
 		unsigned tbLocked:1;	// the toolbar's buttons are not dragged around
 		unsigned onTop:1;	// the main window stays over the others, out of fullscreen
-		int ptrHide;		// PTR_HIDE_*: when the pointer hides itself over the picture
+		unsigned ptrHide:1;	// the pointer hides itself, still for a while over the picture (MainWin::ptrArm)
 		int tbIcons;		// 16 or 24; 0 for what the window's width allows
 		std::string tbItems;	// the toolbar's buttons, ids and "|", comma-separated; "*" for the default ones
 	} win;

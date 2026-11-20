@@ -6,8 +6,8 @@
 How big the picture is, how much border it shows, and how it is drawn: the colors, a
 shader, anti-flicker. The quick switches are in the **View** menu; all the settings are on
 the **Video** page of **Options** (see [Video page](options-video.md)). The menu also keeps
-the window over the others, and shows and hides the menu bar, the toolbar, the status bar,
-the virtual keyboard and the input overlay.
+the window over the others, hides a still pointer, and shows and hides the menu bar, the
+toolbar, the status bar, the virtual keyboard and the input overlay.
 
 ## Size
 
@@ -134,7 +134,18 @@ fullscreen next time.
 **View > Always on Top** keeps the main window over the windows of other programs, even
 when another program is in use. The program's own windows - the **Debugger**, the **Tape
 Player**, **Options**, a message - still open over it. It is off in fullscreen and comes
-back when the window does. The switch is remembered.
+back when the window does. The switch is remembered; it is also **Always on top** on the
+[Appearance page](options-appearance.md) of **Options**.
+
+## Auto-Hide Pointer
+
+```{index} Auto-Hide Pointer, pointer; hiding, mouse; pointer
+```
+
+**View > Auto-Hide Pointer** hides the mouse pointer once it stays still over the picture
+for 2 seconds, in a window and in fullscreen. A move brings it back; over the bars, a menu
+or a dialog it stays. It is on by default, and the switch is remembered; it is also
+**Auto-hide pointer** on the [Appearance page](options-appearance.md) of **Options**.
 
 ## Shaders
 
@@ -235,7 +246,8 @@ with **ULA plus** in the machine's advanced settings (see
 **View > Menu Bar**, **View > Toolbar** and **View > Status Bar** show and hide the
 [menu bar](menu-bar.md), the [toolbar](toolbar.md) and the
 [status bar](main-window.md#status-bar). The window shrinks by the bar's height, and the
-picture keeps its size.
+picture keeps its size. The same switches are on the
+[Appearance page](options-appearance.md) of **Options**.
 
 The menu bar hidden takes the toolbar with it, as in fullscreen, and both are still at
 hand. Hold the pointer at the top edge of the window: a thin see-through strip in the

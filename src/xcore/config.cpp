@@ -68,7 +68,6 @@ static const char* fdlg_sort_name[] = {"name", "size", "type", "date", NULL};	//
 static const char* upd_check_name[] = {"day", "week", "never", NULL};	// UPC_* order
 static const char* upd_channel_name[] = {"releases", "development", NULL};	// UP_RELEASES, UP_DEV
 static const char* upd_native_name[] = {"ask", "asked", "no", NULL};	// UPN_* order
-static const char* ptr_hide_name[] = {"never", "fullscreen", "always", NULL};	// PTR_HIDE_* order
 
 // before Ask it was yes/no, and yes was the default, always written out: only no was chosen
 static int autorun_of(const std::string& val) {
@@ -387,7 +386,7 @@ void saveConfig() {
 	fprintf(cfile, "toolbar.locked = %s\n", YESNO(conf.win.tbLocked));
 	fprintf(cfile, "statusbar = %s\n", YESNO(conf.win.statusbar));
 	fprintf(cfile, "ontop = %s\n", YESNO(conf.win.onTop));
-	fprintf(cfile, "pointer.hide = %s\n", ptr_hide_name[conf.win.ptrHide]);
+	fprintf(cfile, "pointer.hide = %s\n", YESNO(conf.win.ptrHide));
 	fprintf(cfile, "lowlatency = %s\n", YESNO(conf.vid.lowLatency));
 	fprintf(cfile, "vsync = %s\n", YESNO(conf.vid.vsync));
 	fprintf(cfile, "frameskip = %s\n", YESNO(conf.vid.frameSkip));
@@ -997,7 +996,7 @@ void loadConfig() {
 	conf.win.tbItems = "*";
 	conf.win.tbLocked = 1;
 	conf.win.onTop = 0;
-	conf.win.ptrHide = PTR_HIDE_FULL;
+	conf.win.ptrHide = 1;
 	conf.dbg.numfmt = CPU_NUM_HASH;
 	conf.dbg.hexfmt = CPU_NUM_HASH;
 	conf.dbg.dbsize = 8;
@@ -1372,7 +1371,7 @@ void loadConfig() {
 					if (pnam=="toolbar.locked") conf.win.tbLocked = arg.b;
 					if (pnam=="statusbar") conf.win.statusbar = arg.b;
 					if (pnam=="ontop") conf.win.onTop = arg.b;
-					if (pnam=="pointer.hide") conf.win.ptrHide = rec_id(ptr_hide_name, pval, PTR_HIDE_FULL);
+					if (pnam=="pointer.hide") conf.win.ptrHide = (pval != "never") && arg.b;	// once never/fullscreen/always
 					if (pnam=="lowlatency") conf.vid.lowLatency = arg.b;
 					if (pnam=="vsync") conf.vid.vsync = arg.b;
 					if (pnam=="frameskip") conf.vid.frameSkip = arg.b;
