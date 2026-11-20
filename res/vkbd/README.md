@@ -22,8 +22,9 @@
   on photos of the real one, the case white as it was before it yellowed and sand-rough round
   the keys; the cursor block presses the Kempston, the two RES reset the machine together, the
   power lamp is lit while the machine runs; its caps with a straight foot under the slopes,
-  their lettering hollow. Made by `make-robik.py` (the lettering measured, the logo built of
-  rings and strokes, on a photo) in the project's lab, then kept as it is.
+  their lettering the caps' engraving font, drawn as strokes. Made by `make-robik.py` (the
+  lettering measured, the logo built of rings and strokes, on photos) in the project's lab,
+  then kept as it is.
 - In the menu: 48K (Classic), 48K (White), 128K (Classic), 128K (White), Next (Black), Next
   (White), Next (Magenta), Klava (the worn Kopir), Klava (Washed), Robik - black, white, 128,
   128-white, next, next-white, next-magenta, kopir-worn, kopir, robik in the config.
@@ -51,9 +52,7 @@ In `canvas`:
   or a ring inside its cap's edge on a key with no dome, `"light_w"` units wide (1.8) - for
   keys set too close for a contour to carry a light (the 128K).
 
-In a label: `"eb"` - that many canvas pixels thicker, a number or `[x, y]`; `"hollow"` - only
-the letters' outline, that many canvas units wide inside their edge, drawn in gray (the Robik's
-engraved lettering).
+In a label: `"eb"` - that many canvas pixels thicker, a number or `[x, y]`.
 
 In a key:
 - `"zx"` - what it presses: `"1"`..`"0"`, `"A"`..`"Z"`, `"CS"`, `"SS"`, `"ENTER"`, `"SPACE"`,
@@ -138,7 +137,9 @@ makes one sand-rough, each pixel up to that much lighter or darker, the same eve
 
 An icon's `"rings"` - polygons, `[[[x, y], ...], ...]`, filled as one shape, even-odd: a ring
 inside another is a hole in it (a letter of a logo with its counters). `"polys"` fills each
-polygon by itself.
+polygon by itself. `"strokes"` - open lines, `[[[x, y], ...], ...]`, drawn with a round pen
+`"sw"` wide, or with `"hollow"` only the pen's outline that wide: a stroke font's word (the
+Robik's engraved lettering, each label an icon).
 
 In `rainbow`: `"bands"` - `[[color, x], ...]`, each band's x at `"y0"`; the bands run from
 `"y0"` to `"y1"` (by default the four of the 48K, over the whole height); `"bands": []` for
