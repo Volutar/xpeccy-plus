@@ -788,12 +788,14 @@ QList<xAdr> labels_place_cells(const dtPlace& p) {
 		case DT_PLACE_CPU:
 			res.append(comp_get_xadr(comp, p.ofs & 0xffff, MEM_VIEW_READ));
 			break;
+		// an offset is in its page, as LABELSLIST has it: 05:5C3A is 05:1C3A
 		case DT_PLACE_PAGE:
-			if (comp_cell_xadr(comp, CELL_RAM, p.page, p.ofs, &type, &abs)) res.append(cell_xadr(type, abs));
+		case DT_PLACE_AREA: {
+			int area = (p.kind == DT_PLACE_PAGE) ? CELL_RAM : p.area;
+			int unit = comp_cell_unit(comp, area);
+			if (unit && comp_cell_xadr(comp, area, p.page, p.ofs % unit, &type, &abs)) res.append(cell_xadr(type, abs));
 			break;
-		case DT_PLACE_AREA:
-			if (comp_cell_xadr(comp, p.area, p.page, p.ofs, &type, &abs)) res.append(cell_xadr(type, abs));
-			break;
+		}
 		case DT_PLACE_ROM:
 			if (p.ofs < MEM_16K) {
 				foreach(int b, rom_name_banks(p.name)) res.append(cell_xadr(MEM_ROM, b * MEM_16K + p.ofs));
@@ -1610,14 +1612,15 @@ int session_save(const QString& path, bool machine, bool images) {
 	QByteArray out("; Xpeccy+ Debugger session (docs/debugger-format.md)\n");
 	if (machine && !conf.macId.empty()) out.append(QString("machine %1\n").arg(QString::fromLocal8Bit(conf.macId.c_str())).toUtf8());
 	if (images) {
-		if (comp->tape->path && comp->tape->blkCount)
+		auto named = [](const char* raw) {return raw && raw[0];};
+		if (named(comp->tape->path) && comp->tape->blkCount)
 			out.append(QString("open %1\n").arg(session_path_text(path, comp->tape->path)).toUtf8());
 		for (int i = 0; i < 4; i++) {
 			Floppy* flp = comp->dif->flp[i];
-			if (flp->insert && flp->path)
+			if (flp->insert && named(flp->path))
 				out.append(QString("open %1: %2\n").arg(QChar('A' + i)).arg(session_path_text(path, flp->path)).toUtf8());
 		}
-		if (comp->slot->path)
+		if (named(comp->slot->path))
 			out.append(QString("open %1\n").arg(session_path_text(path, comp->slot->path)).toUtf8());
 	}
 	int lost = 0;

@@ -151,7 +151,7 @@ QVariant xDisasmModel::data(const QModelIndex& idx, int role) const {
 		case Qt::EditRole:
 			switch(col) {
 				// a decimal address is padded with spaces for the column, not for typing
-				case 0: res = dasm[row].iscom ? dasm[row].aname : QString(dasm[row].aname).remove(' '); break;
+				case 0: res = dasm[row].iscom ? dasm[row].comment : QString(dasm[row].aname).remove(' '); break;
 				case 1: res = dasm[row].bytes; break;
 				case 2: res = dasm[row].command; break;
 			}
@@ -614,14 +614,17 @@ QList<dasmData> getDisasm(Computer* comp, int& adr) {
 	}
 	drow.isbrk = (drow.flag & MEM_BRK_ANY) ? 1 : 0;
 
-	// comments
+	// comments: a row a line, each edits the whole comment
 	lab = find_comment(xadr);
 	if (!lab.isEmpty()) {
 		drow.islab = 1;
 		drow.iscom = 1;
-		drow.aname = lab;
-		drow.aname.prepend("; ");
-		list.append(drow);
+		drow.comment = "; " + dt_escape(lab);
+		foreach(const QString& line, lab.split('\n')) {
+			drow.aname = "; " + line;
+			list.append(drow);
+		}
+		drow.comment.clear();
 		drow.iscom = 0;
 		lab.clear();
 	}
@@ -967,9 +970,8 @@ bool xDisasmModel::setData(const QModelIndex& cidx, const QVariant& val, int rol
 						}
 					}
 				}
-			} else if (str.startsWith(";")) {		// ; comment
-				str.remove(";");
-				str = str.trimmed();
+			} else if (str.startsWith(";")) {		// ; comment, \n between its lines
+				str = dt_unescape(str.mid(1).trimmed());
 				if (str.isEmpty()) {
 					del_comment(xadr);
 				} else {
