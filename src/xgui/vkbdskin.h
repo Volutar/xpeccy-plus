@@ -99,6 +99,7 @@ class VkSkin {
 			QColor edge;			// a line inside its rim, ew wide...
 			Grad edgeGrad;			// ...or shaded along a gradient of its own
 			double ew = 0;
+			double soft = 0;		// its edge blurred that wide, in canvas units: no rim, it melts into the cap
 		};
 		// the cap's sloped sides seen from above: a band inside its edge, w wide on
 		// each side, cut into four by the corners' diagonals, each darker or lighter

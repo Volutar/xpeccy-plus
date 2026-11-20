@@ -682,6 +682,7 @@ void VkSkin::readDome(const QJsonObject& o, Dome& d) const {
 		}
 	}
 	d.ew = num(o, "ew", d.ew);
+	d.soft = num(o, "soft", d.soft);
 }
 
 // the sides, over what they had: "w", "shade" and "fill" one value for all four or
@@ -908,6 +909,36 @@ bool VkSkin::makeKeys(QString* err) {
 }
 
 // ---------------------------------------------------------------- drawing
+
+// a grayscale picture blurred: three box passes each way, r pixels to each side, so
+// near a Gaussian
+static void blurGray(QImage& img, int r) {
+	int w = img.width();
+	int h = img.height();
+	if ((w < 1) || (h < 1) || (r < 1)) return;
+	std::vector<int> buf(std::max(w, h));
+	for (int pass = 0; pass < 3; pass++) {
+		for (int y = 0; y < h; y++) {
+			uchar* row = img.scanLine(y);
+			int sum = 0;
+			for (int x = -r; x <= r; x++) sum += row[std::min(std::max(x, 0), w - 1)];
+			for (int x = 0; x < w; x++) {
+				buf[x] = sum;
+				sum += row[std::min(x + r + 1, w - 1)] - row[std::max(x - r, 0)];
+			}
+			for (int x = 0; x < w; x++) row[x] = (uchar)(buf[x] / (2 * r + 1));
+		}
+		for (int x = 0; x < w; x++) {
+			int sum = 0;
+			for (int y = -r; y <= r; y++) sum += img.scanLine(std::min(std::max(y, 0), h - 1))[x];
+			for (int y = 0; y < h; y++) {
+				buf[y] = sum;
+				sum += img.scanLine(std::min(y + r + 1, h - 1))[x] - img.scanLine(std::max(y - r, 0))[x];
+			}
+			for (int y = 0; y < h; y++) img.scanLine(y)[x] = (uchar)(buf[y] / (2 * r + 1));
+		}
+	}
+}
 
 // a label's coverage, one byte per channel (R, G, B) - all three the same for gray
 struct Mask {
@@ -1323,7 +1354,39 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 		} else {
 			p.setBrush(gradAt(dm.grad, joined.boundingRect(), s));
 		}
-		p.drawPath(dp);
+		if (dm.soft > 0) {
+			// a soft edge: the dome's paint over the whole cap, as much of it at each
+			// pixel as a blurred picture of the dome has there
+			QRect br = path.boundingRect().toAlignedRect();
+			QImage mask(br.size(), QImage::Format_Grayscale8);
+			mask.fill(0);
+			QPainter mp(&mask);
+			mp.setRenderHint(QPainter::Antialiasing, true);
+			mp.translate(-br.topLeft());
+			mp.fillPath(dp, Qt::white);
+			mp.end();
+			blurGray(mask, std::max(1, fr(dm.soft * s / 2)));
+			QImage layer(br.size(), QImage::Format_ARGB32_Premultiplied);
+			layer.fill(Qt::transparent);
+			QPainter lp(&layer);
+			lp.translate(-br.topLeft());
+			lp.fillPath(path, p.brush());
+			lp.end();
+			for (int y = 0; y < layer.height(); y++) {
+				QRgb* d = (QRgb*)layer.scanLine(y);
+				const uchar* m = mask.constScanLine(y);
+				for (int x = 0; x < layer.width(); x++) {
+					int a = m[x];
+					d[x] = qRgba(qRed(d[x]) * a / 255, qGreen(d[x]) * a / 255, qBlue(d[x]) * a / 255, qAlpha(d[x]) * a / 255);
+				}
+			}
+			p.save();
+			p.setClipPath(path, Qt::IntersectClip);
+			p.drawImage(br.topLeft(), layer);
+			p.restore();
+		} else {
+			p.drawPath(dp);
+		}
 		// its edge: inside its rim and its cuts, where these are on the cap;
 		// lit, the light in its place
 		QColor ec = klit ? litCol : dm.edge;

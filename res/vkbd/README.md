@@ -124,7 +124,8 @@ and dark on the other: `{"angle": 15, "stops": [[0, "#808080"], [1, "#d0d0d0"]]}
 `"outline"` of its own, `[[x, y], ...]` from the key's top left, with `"corner"` one radius
 for all its corners or one each; `"more"` lists more such shapes (inset or outline, corner,
 cut), joined to it - the 128K's Enter: a wide key's round end and a channel up its narrow
-part.
+part. `"soft"` blurs its edge that wide, in canvas units: no rim, the top melts into the sides
+(the Robik's caps).
 
 `"bars"` - strips on the ground that are not keys (the case's steps, the Next's colors):
 `[{"x", "y", "w", "h", "corner", "gradient" or "fill"}, ...]` in canvas units; `"grain"` (0..1)
