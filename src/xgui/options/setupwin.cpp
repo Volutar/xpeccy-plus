@@ -659,7 +659,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	// the notice is the window's, for every machine: one place for it
 	QWidget* snowRow[] = {ui.cbSnow, ui.nam_cbSnow, ui.lab_cbSnow};
 	for (QWidget* w : snowRow)
-		w->setToolTip("The notice when a game snows:\nOptions > Appearance > Indicators");
+		w->setToolTip("The notice when a game snows:\nOptions > Appearance > Configure indicators");
 
 	rseditor = new xRomsetEditor(this);
 	rseditor->setModal(true);
