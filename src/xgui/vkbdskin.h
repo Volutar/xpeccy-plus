@@ -30,6 +30,11 @@ struct VkKey {
 	QRectF hit;		// what a click on it takes: the key and its words
 	QPolygonF hitPoly;	// an outline or turned key's contour: a click takes this, not hit
 	int row, col;		// where it is in the layout
+	int joy = 0;		// the Kempston contacts it presses instead (XJ_*), 0 for none
+	bool reset = false;	// the machine resets while every such key is down
+	QColor lamp;		// a light, not a key: its color while the machine runs
+	// whether a click takes it
+	bool clickable() const {return !zx.isEmpty() || joy || reset;}
 };
 
 class VkSkin {
@@ -109,6 +114,9 @@ class VkSkin {
 			QString shape, sn;
 			QByteArray zx;			// the keys it presses...
 			bool hasZx = false;		// ...or none given: its place says
+			int joy = 0;			// the Kempston's contacts instead
+			bool reset = false;		// one of the keys that reset the machine together
+			QColor lamp;			// a light: its color when on
 			QVector<QPointF> outline;	// a polygon of right angles instead of the box
 			double corner[4];		// tl, tr, br, bl...
 			bool hasCorner = false;		// ...or the preset's
@@ -136,6 +144,7 @@ class VkSkin {
 			double corner = 0;
 			Grad grad;		// a gradient...
 			QColor fill;		// ...or one color
+			double grain = 0;	// a sand-rough surface: each pixel up to that much lighter or darker
 		};
 		struct Icon {
 			QVector<QVector<QPointF>> polys;	// filled even-odd, or stroked with sw
@@ -144,6 +153,7 @@ class VkSkin {
 			QRectF box;
 			bool isBox = false;
 			bool isLine = false;
+			bool oneShape = false;			// polys filled as one shape, even-odd: holes in it
 			QPointF p1, p2;
 			double sw = 0;
 		};

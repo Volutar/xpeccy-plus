@@ -147,6 +147,7 @@ keyWindow::keyWindow(QWidget* p):QDialog(p) {
 	dock = 0;
 	hover = -1;
 	held = -1;
+	heldJoy = 0;
 	picScale = 0;
 	setMouseTracking(true);		// for the key under the pointer
 	memset(&xent, 0, sizeof(xent));
@@ -219,7 +220,17 @@ void keyWindow::loadSkin() {
 			qWarning("vkbd: built-in %s: %s", name.toLocal8Bit().constData(), err.toLocal8Bit().constData());
 	}
 	if (sk.isNull() && skin.isNull()) return;	// nothing to show at all
-	if (!sk.isNull()) skin = sk;
+	if (!sk.isNull()) {
+		// the Kempston's contacts the old one latched go up with it: the new one
+		// may have no key to let them go
+		const QVector<VkKey>& was = skin.keys();
+		for (int n = 0; (n < was.size()) && (n < latched.size()); n++) {
+			if (latched[n] && was[n].joy) pressJoy(was[n].joy, false);
+		}
+		pressJoy(heldJoy, false);
+		heldJoy = 0;
+		skin = sk;
+	}
 	QSizeF old = cnv;
 	cnv = skin.canvas();
 	hover = -1;
@@ -509,11 +520,7 @@ void keyWindow::fillMenu(QMenu* mnu) {
 	act->setCheckable(true);
 	act->setChecked(conf.keywin.hover);
 	mnu->addSeparator();
-	mnu->addAction("Release all keys", this, [this]() {
-		if (kb) x_kbd_release_all(kb);
-		latched.fill(false);
-		update();
-	});
+	mnu->addAction("Release all keys", this, [this]() {releaseAll();});
 }
 
 // The window is free to take any shape here; the picture keeps its own and sits
@@ -657,6 +664,8 @@ QByteArray keyWindow::matrixSig() {
 	sig.append((const char*)kb->nxKeys, sizeof(kb->nxKeys));
 	sig.append((char)kb->nxCaps);
 	sig.append((char)kb->nxSym);
+	if (conf.zx && conf.zx->joy) sig.append((char)conf.zx->joy->state);
+	sig.append((char)lampOn());
 	return sig;
 }
 
@@ -802,7 +811,11 @@ QVector<double> keyWindow::lights(const QByteArray& down) {
 		const VkKey& key = keys[n];
 		bool mine = (n == held) || ((n < latched.size()) && latched[n]);
 		int bit;
-		if (unsigned char* ext = nextExtKey(kb, key.zx, &bit)) {
+		if (key.joy) {			// from wherever the Kempston is pressed: a pad too
+			lv[n] = (conf.zx && conf.zx->joy && (conf.zx->joy->state & key.joy)) ? 1 : 0;
+		} else if (key.reset) {
+			lv[n] = mine ? 1 : 0;
+		} else if (unsigned char* ext = nextExtKey(kb, key.zx, &bit)) {
 			lv[n] = (*ext & bit) ? 1 : 0;
 		} else if (key.ch) {
 			if (mine && down.contains((char)key.ch)) {	// a latch let go of elsewhere is none
@@ -861,6 +874,56 @@ void keyWindow::pressKeys(const QByteArray& zx, bool down) {
 		kbd_release(kb, &xent);
 	}
 	emu_unlock();
+}
+
+// every key up: the machine's, and the Kempston's contacts this window latched
+void keyWindow::releaseAll() {
+	if (kb) x_kbd_release_all(kb);
+	const QVector<VkKey>& keys = skin.keys();
+	for (int n = 0; (n < keys.size()) && (n < latched.size()); n++) {
+		if (latched[n] && keys[n].joy) pressJoy(keys[n].joy, false);
+	}
+	latched.fill(false);
+	update();
+}
+
+// the Kempston's contacts pressed or let go of
+void keyWindow::pressJoy(int mask, bool down) {
+	if (!mask || !conf.zx || !conf.zx->joy) return;
+	emu_lock();
+	if (down) {
+		joyPress(conf.zx->joy, mask);
+	} else {
+		joyRelease(conf.zx->joy, mask);
+	}
+	emu_unlock();
+}
+
+// The keys that reset the machine together (the Robik's two RES, in series): one
+// down does nothing, all of them down reset it, and the ones latched go up again
+void keyWindow::checkReset() {
+	const QVector<VkKey>& keys = skin.keys();
+	int count = 0;
+	for (int n = 0; n < keys.size(); n++) {
+		if (!keys[n].reset) continue;
+		if ((n != held) && !((n < latched.size()) && latched[n])) return;
+		count++;
+	}
+	if (!count || !conf.zx) return;
+	emu_lock();
+	x_user_reset(conf.zx, RES_DEFAULT);
+	emu_unlock();
+	for (int n = 0; (n < keys.size()) && (n < latched.size()); n++) {
+		if (keys[n].reset) latched[n] = false;
+	}
+	update();
+	emit s_key_click();
+}
+
+// A light on the case (the Robik's power LED) is on while the machine runs: off
+// while it is paused or stopped in the debugger
+bool keyWindow::lampOn() {
+	return kb && conf.zx && !(conf.emu.pause & (PR_PAUSE | PR_DEBUG));
 }
 
 void keyWindow::paintEvent(QPaintEvent*) {
@@ -928,6 +991,37 @@ void keyWindow::paintEvent(QPaintEvent*) {
 		drawPic(litPic);
 		pnt.restore();
 	}
+	// the lamps, on: their color with a glow round it; the painter is in device
+	// pixels on an exact picture, in canvas units on a stretched one
+	if (lampOn()) {
+		pnt.setTransform(onPic);
+		pnt.setRenderHint(QPainter::Antialiasing, true);
+		pnt.setPen(Qt::NoPen);
+		double u = exact ? sd : 1.0;
+		for (int n = 0; n < keys.size(); n++) {
+			const VkKey& key = keys[n];
+			if (!key.lamp.isValid()) continue;
+			QRectF b(key.box.x() * u, key.box.y() * u, key.box.width() * u, key.box.height() * u);
+			QPointF mid = b.center();
+			double rx = b.width() / 2 + 3 * u;
+			double ry = b.height() / 2 + 3 * u;
+			QRadialGradient glow(mid, rx);
+			QColor c = key.lamp;
+			c.setAlpha(90);
+			glow.setColorAt(0, c);
+			c.setAlpha(0);
+			glow.setColorAt(1, c);
+			pnt.save();
+			pnt.translate(mid);
+			pnt.scale(1, ry / rx);		// the glow as long as the lamp
+			pnt.translate(-mid);
+			pnt.setBrush(glow);
+			pnt.drawEllipse(mid, rx, rx);
+			pnt.restore();
+			pnt.setBrush(key.lamp);
+			pnt.drawRoundedRect(b, b.height() / 3, b.height() / 3);
+		}
+	}
 	pnt.end();
 }
 
@@ -936,7 +1030,7 @@ int keyWindow::keyAt(QPointF ipos) {
 	const QVector<VkKey>& keys = skin.keys();
 	for (int n = 0; n < keys.size(); n++) {
 		const VkKey& key = keys[n];
-		if (key.zx.isEmpty()) continue;		// lettering, not a key
+		if (!key.clickable()) continue;		// lettering, not a key
 		if (key.hitPoly.isEmpty() ? key.hit.contains(ipos) : key.hitPoly.containsPoint(ipos, Qt::OddEvenFill))
 			return n;
 	}
@@ -988,7 +1082,8 @@ void keyWindow::mousePressEvent(QMouseEvent* ev) {
 			showMenu(mapToGlobal(QPoint(ev->xEventX, ev->xEventY)));
 		return;
 	}
-	QByteArray zx = skin.keys()[n].zx;
+	const VkKey& key = skin.keys()[n];
+	QByteArray zx = key.zx;
 	// a shift held for a click and let go would do nothing: the left button
 	// latches it, as the right one latches any key
 	bool shift = (zx == "C") || (zx == "S");
@@ -999,20 +1094,29 @@ void keyWindow::mousePressEvent(QMouseEvent* ev) {
 				break;
 			}
 			pressKeys(heldZx, false);	// a press whose release was missed
+			pressJoy(heldJoy, false);
 			held = n;
 			heldZx = zx;
+			heldJoy = key.joy;
 			pressKeys(zx, true);
+			pressJoy(key.joy, true);
 			update();
+			if (key.reset) {
+				checkReset();		// one alone holds, and resumes nothing
+				break;
+			}
 			emit s_key_click();		// in the machine already, and it resumes; a shift alone does not
 			break;
 		case Qt::RightButton:
 			latchKey(n, zx);
-			if (!shift) emit s_key_click();
+			if (key.reset) {
+				checkReset();
+			} else if (!shift) {
+				emit s_key_click();
+			}
 			break;
 		case Qt::MiddleButton:
-			x_kbd_release_all(kb);
-			latched.fill(false);
-			update();
+			releaseAll();
 			break;
 		default:
 			break;
@@ -1022,6 +1126,17 @@ void keyWindow::mousePressEvent(QMouseEvent* ev) {
 // Down for good, or up again if all its keys are down: a combination as one
 // key, so a CAPS SHIFT down by itself stays down when EDIT is let go
 void keyWindow::latchKey(int n, const QByteArray& zx) {
+	const VkKey& key = skin.keys()[n];
+	if (key.joy || key.reset) {
+		bool was = (n < latched.size()) && latched[n];
+		if (key.joy) {		// down already from elsewhere: up, as a combination is
+			was = conf.zx && conf.zx->joy && ((conf.zx->joy->state & key.joy) == key.joy);
+			pressJoy(key.joy, !was);
+		}
+		if (n < latched.size()) latched[n] = !was;
+		update();
+		return;
+	}
 	int bit;
 	unsigned char* ext = nextExtKey(kb, zx, &bit);
 	bool all = ext ? ((*ext & bit) != 0) : allIn(zx, keysDown());
@@ -1034,7 +1149,9 @@ void keyWindow::mouseReleaseEvent(QMouseEvent* ev) {
 	if (!kb) return;
 	if (ev->button() == Qt::LeftButton) {
 		pressKeys(heldZx, false);
+		pressJoy(heldJoy, false);
 		heldZx.clear();
+		heldJoy = 0;
 		held = -1;
 	}
 	update();

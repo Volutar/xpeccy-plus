@@ -27,6 +27,8 @@
 #include <vector>
 
 #include <ft2build.h>
+#include "libxpeccy/input/input.h"	// XJ_*
+
 #include FT_FREETYPE_H
 #include FT_OUTLINE_H
 #include FT_ADVANCES_H
@@ -370,6 +372,7 @@ bool VkSkin::load(const QByteArray& json, QString* err, BaseFile base) {
 		bar.r = QRectF(num(bo, "x", 0), num(bo, "y", 0), num(bo, "w", 0), num(bo, "h", 0));
 		bar.corner = num(bo, "corner", 0);
 		bar.fill = color(bo.value("fill").toString());
+		bar.grain = num(bo, "grain", 0);
 		if (bo.contains("gradient")) readGrad(bo.value("gradient"), bar.grad);
 		bars.append(bar);
 	}
@@ -414,6 +417,11 @@ bool VkSkin::load(const QByteArray& json, QString* err, BaseFile base) {
 		} else if (!g.value("polys").toArray().isEmpty()) {
 			foreach(QJsonValue p, g.value("polys").toArray())
 				ic.polys.append(points(p));
+		} else if (!g.value("rings").toArray().isEmpty()) {
+			// one shape: a ring inside another is a hole in it
+			foreach(QJsonValue p, g.value("rings").toArray())
+				ic.polys.append(points(p));
+			ic.oneShape = true;
 		} else {
 			ic.polys.append(points(g.value("pts")));
 		}
@@ -454,6 +462,27 @@ bool VkSkin::load(const QByteArray& json, QString* err, BaseFile base) {
 					if (!c) return fail(QString("no Spectrum key is called \"%0\"").arg(z.toString()));
 					key.zx.append((char)c);
 				}
+			}
+			// the Kempston's contacts instead of keys, the machine's reset, a light: none
+			// of them a Spectrum key
+			if (ko.contains("joy")) {
+				static const struct {const char* name; int mask;} joys[] = {
+					{"right", XJ_RIGHT}, {"left", XJ_LEFT}, {"down", XJ_DOWN}, {"up", XJ_UP}, {"fire", XJ_FIRE}};
+				QString jn = ko.value("joy").toString();
+				for (const auto& j : joys) {
+					if (jn == j.name) key.joy = j.mask;
+				}
+				if (!key.joy) return fail(QString("no joystick contact is called \"%0\"").arg(jn));
+				key.hasZx = true;
+			}
+			if (ko.value("reset").toBool()) {
+				key.reset = true;
+				key.hasZx = true;
+			}
+			if (ko.contains("lamp")) {
+				key.lamp = color(ko.value("lamp").toString());
+				if (!key.lamp.isValid()) return fail(QString("the lamp's color is not one: %0").arg(ko.value("lamp").toString()));
+				key.hasZx = true;
 			}
 			// a polygon of right angles instead of the box; the box is its bounds
 			if (ko.contains("outline")) {
@@ -813,6 +842,9 @@ bool VkSkin::makeKeys(QString* err) {
 				return false;
 			}
 			vk.ch = (vk.zx.size() == 1) ? (unsigned char)vk.zx[0] : 0;
+			vk.joy = key.joy;
+			vk.reset = key.reset;
+			vk.lamp = key.lamp;
 			vk.box = QRectF(key.x, key.y, key.w, key.h);
 			QTransform tr = tiltAt(key, vk.box.center());
 			if (!key.outline.isEmpty()) {
@@ -1185,7 +1217,26 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 		} else {
 			p.setBrush(gradAt(bar.grad, r, s));
 		}
-		p.drawPath(rrect(r.x(), r.y(), r.width(), r.height(), bar.corner * s));
+		QPainterPath bp = rrect(r.x(), r.y(), r.width(), r.height(), bar.corner * s);
+		p.drawPath(bp);
+		if (bar.grain > 0) {
+			// sand: each pixel a little lighter or darker, the same ones every time,
+			// in the picture's own pixels whatever its size
+			QRect ir = r.toAlignedRect() & img.rect();
+			QImage gr(ir.size(), QImage::Format_ARGB32_Premultiplied);
+			for (int y = 0; y < gr.height(); y++) {
+				QRgb* line = (QRgb*)gr.scanLine(y);
+				for (int x = 0; x < gr.width(); x++) {
+					double v = (unitHash(7, ir.y() + y, ir.x() + x, 0) + unitHash(7, ir.y() + y, ir.x() + x, 1)) - 1.0;
+					int a = std::min(255, fr(std::fabs(v) * bar.grain * 255));
+					line[x] = (v > 0) ? qRgba(a, a, a, a) : qRgba(0, 0, 0, a);
+				}
+			}
+			p.save();
+			p.setClipPath(bp);
+			p.drawImage(ir.topLeft(), gr);
+			p.restore();
+		}
 	}
 	// the contours, cut out of the ground and the rainbow alike
 	p.setCompositionMode(QPainter::CompositionMode_DestinationOut);
@@ -1356,6 +1407,10 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 						foreach(const QVector<QPointF>& c, ic.cutPolys)
 							path.addPolygon(QPolygonF(c)), path.closeSubpath();
 						put(iconMask(place(tr.map(path)), 0, false, false), lab.col);
+					} else if (ic.oneShape) {
+						foreach(const QVector<QPointF>& c, ic.polys)
+							path.addPolygon(QPolygonF(c)), path.closeSubpath();
+						put(iconMask(place(tr.map(path)), ic.sw * s, ic.sw > 0, false), lab.col);
 					} else {
 						foreach(const QVector<QPointF>& c, ic.polys) {
 							QPainterPath pp;

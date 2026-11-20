@@ -51,6 +51,15 @@ In a key:
 - `"zx"` - what it presses: `"1"`..`"0"`, `"A"`..`"Z"`, `"CS"`, `"SS"`, `"ENTER"`, `"SPACE"`,
   or several at once, `["CS", "1"]`; `[]` presses nothing (lettering). Without it the key's
   place in the 48K's four rows of ten says what it is.
+- `"joy"` - `"up"`, `"down"`, `"left"`, `"right"` or `"fire"`: presses the Kempston joystick,
+  not a key (the Robik's cursor block). It is lit while the joystick is pressed, from a
+  gamepad too.
+- `"reset": true` - the machine resets when every key so marked is down at once: the Robik's
+  two RES, in series; one held alone does nothing. A click holds one, the right button
+  latches one; the latched ones go up once the machine is reset.
+- `"lamp"` - a color: not a key but a light on the case, drawn in that color, with a glow,
+  while the machine runs (not paused, not stopped in the debugger); `"shape": "ghost"` leaves
+  the picture under it (the slot it is in, a bar) as it is.
 - `"y"`, `"h"` - its own, over the row's.
 - `"outline"` - `[[x, y], ...]`, a polygon of right angles in canvas units drawn instead of
   the box (an Enter over two rows); its labels are placed from the middle of its bounds.
@@ -113,7 +122,12 @@ cut), joined to it - the 128K's Enter: a wide key's round end and a channel up i
 part.
 
 `"bars"` - strips on the ground that are not keys (the case's steps, the Next's colors):
-`[{"x", "y", "w", "h", "corner", "gradient" or "fill"}, ...]` in canvas units.
+`[{"x", "y", "w", "h", "corner", "gradient" or "fill"}, ...]` in canvas units; `"grain"` (0..1)
+makes one sand-rough, each pixel up to that much lighter or darker, the same every time.
+
+An icon's `"rings"` - polygons, `[[[x, y], ...], ...]`, filled as one shape, even-odd: a ring
+inside another is a hole in it (a letter of a logo with its counters). `"polys"` fills each
+polygon by itself.
 
 In `rainbow`: `"bands"` - `[[color, x], ...]`, each band's x at `"y0"`; the bands run from
 `"y0"` to `"y1"` (by default the four of the 48K, over the whole height); `"bands": []` for
