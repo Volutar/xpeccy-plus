@@ -35,7 +35,7 @@ static const struct {
 	const char* title;
 } vkSkins[] = {{"black", "48K (Classic)"}, {"white", "48K (White)"}, {"128", "128K (Classic)"}, {"128-white", "128K (White)"},
 	{"next", "Next (Black)"}, {"next-white", "Next (White)"}, {"next-magenta", "Next (Magenta)"},
-	{"kopir-worn", "Klava"}, {"kopir", "Klava (Washed)"}};
+	{"kopir-worn", "Klava"}, {"kopir", "Klava (Washed)"}, {"robik", "Robik"}};
 
 // a skin as the Skin menu and the title name it: a user's own by its file's name
 static QString skinTitle(const QString& name) {

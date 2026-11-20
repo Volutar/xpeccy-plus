@@ -18,9 +18,14 @@
   case: cream, grey and a red BREAK, its Enter two rows tall with a flat step, its L with a
   strip glued on (`"parts"`); its caps a little wider than the real ones, for the lettering.
   The worn one is it with some caps crooked and the cream ones yellowed (`"base"`, `"wobble"`).
+- `zx-robik.json` - the Robik (Selto-Rotor, Cherkassy): the keyboard with the MF key, laid out
+  on photos of the real one, the case white as it was before it yellowed and sand-rough round
+  the keys; the cursor block presses the Kempston, the two RES reset the machine together, the
+  power lamp is lit while the machine runs. Made by `make-robik.py` and `make-logo.py` (the
+  logo traced on the photo) in the project's lab, then kept as it is.
 - In the menu: 48K (Classic), 48K (White), 128K (Classic), 128K (White), Next (Black), Next
-  (White), Next (Magenta), Klava (the worn Kopir), Klava (Washed) - black, white, 128,
-  128-white, next, next-white, next-magenta, kopir-worn, kopir in the config.
+  (White), Next (Magenta), Klava (the worn Kopir), Klava (Washed), Robik - black, white, 128,
+  128-white, next, next-white, next-magenta, kopir-worn, kopir, robik in the config.
 - `keys-font.ttf` - the lettering, Latin-1 and Cyrillic, made by `tools/vkbd_font.py` from
   Liberation Sans Bold 2.1.5; see LICENSE_ICONS and LICENSE_LIBERATION.
 
