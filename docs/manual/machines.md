@@ -17,7 +17,7 @@ interface, sound and timing are already set as on the real hardware.
 
 ## The built-in machines
 
-```{index} machine; built-in, ZX Spectrum 48K, ZX Spectrum 128K, ZX Spectrum +2, ZX Spectrum +2A, ZX Spectrum +3, ZX Spectrum Next, Pentagon, Pentagon 1024 SL, Scorpion ZS 256, Scorpion ZS 256 Turbo+, ATM Turbo 2+, Profi v3, Profi v5, ZXM-Phoenix, ZX Evolution, ZX Evolution; BaseConf, ZX Evolution; TSConf, BaseConf, TSConf, ALF TV Game, ALF TV Game 128K
+```{index} machine; built-in, ZX Spectrum 48K, ZX Spectrum 128K, ZX Spectrum +2, ZX Spectrum +2A, ZX Spectrum +3, ZX Spectrum Next, Pentagon, Pentagon 1024 SL, Scorpion ZS 256, Scorpion ZS 256 Turbo+, ATM Turbo 2+, Profi v3, Profi v5, ZXM-Phoenix, ZX Evolution, ZX Evolution; BaseConf, ZX Evolution; TSConf, BaseConf, TSConf, ALF TV Game, ALF TV Game 128K, Robik
 ```
 
 The machine list shows them in this order, in five groups.
@@ -30,6 +30,7 @@ The machine list shows them in this order, in five groups.
 | **ZX Spectrum +2A** | 128 KB | - | Amstrad's later model: Amstrad gate array, four +3 ROMs; AY |
 | **ZX Spectrum +3** | 128 KB | +3, two drives | the +2A with a 3-inch disk drive; AY |
 | **ZX Spectrum Next** | 1024 or 2048 KB | - | a group of its own: Z80N up to 28 MHz, three AYs and DACs, divMMC and SD card, Wi-Fi; see [ZX Spectrum Next](zx-next.md) |
+| **Robik** | 48 KB | - | a 48K clone of plain logic chips from Cherkasy: beeper on a piezo, Kempston joystick; Cyrillic ROM, 11 keys of its own, shadow RAM; see [Robik](#robik) |
 | **Pentagon** | 128 KB | Beta Disk | YM, Covox; Kempston mouse and joystick |
 | **Pentagon 1024 SL** | 1024 KB | Beta Disk | as the Pentagon; turbo x2, Gluk clock; starts Gluk Reset Service |
 | **Scorpion ZS 256** | 256 KB | Beta Disk | AY, Covox; Kempston mouse and joystick |
@@ -198,6 +199,40 @@ In the **Memory** list of the [Machine page](options-machine.md), **1024 KB** is
 with one memory module and **128 KB** the board with its 128 KB jumper closed, for programs
 that set the memory ports carelessly. The older ROM of these boards, BIOS 5.03, is
 `phoenix.rom` in the ROM folder: pick it as the machine's ROM to run it.
+
+## Robik
+
+```{index} Robik, shadow RAM; Robik, BRIGHT; Robik, cell edges; Robik
+```
+
+The Robik is a ZX Spectrum 48K built of plain logic chips by NPO Rotor in Cherkasy. Its ROM,
+version V03, is the 48K's BASIC with Cyrillic letters and a keyboard of 64 keys; it starts
+in white on blue with "© "SELTO-ROTOR" Computer V03". Its frame is its own, 313 lines of 212
+ticks, and nothing in it is contended but a write to the screen's memory, #4000-#5FFF, which
+waits from 1 to 4 ticks; the timings were measured on two owners' boards.
+
+Three things differ from board to board, and the **Board** group of the
+[Machine page](options-machine.md) of **Options** has a row for each:
+
+- **Shadow RAM**: 16 KB of RAM under the ROM. Any OUT or IN on port 15 swaps the ROM and
+  this RAM, and a write to the ROM's addresses always goes into the RAM, so a ROM loaded
+  into memory can be copied there and switched in - the owners did so with the 48K's ROM
+  for programs the Robik's own does not run. Reset brings the ROM back; the RAM keeps its
+  bytes until the power goes. On by default; not every board has it.
+- **BRIGHT**: the factory board does not wire BRIGHT, so every color is bright, the border's
+  too (**All bright**, the default). **Two levels** is the owners' jumper: bright and normal,
+  as on a 48K.
+- **Cell edges**: most boards show a thin line, half a pixel wide, where a character cell's
+  colors differ from the one before it - pixels of the new cell drawn for a moment in the old
+  colors. On by default.
+
+The 11 keys of its own (Х, Ж, Э, Б, Ю, comma, period, EDIT, DELETE and the language keys C
+and L) are on the PC keys at their places on the Robik's case in the keyboard layout
+**Robik** (see [Keymaps](input.md#keymaps)): Tab is EDIT, Backspace DELETE, `-` the
+period, `/` the comma, `[` Х, `;` Ж, `'` Э, `,` Б, `.` Ю, Right Alt C and Right Ctrl L.
+
+Not yet known: whether the piezo also sounds the tape output, and exactly where the line of
+**Cell edges** falls at the start of a line: it is drawn as the owners' photos show it.
 
 ## Pause, Fast Mode, Slow Motion, Fast Forward, Allow Rewind
 

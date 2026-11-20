@@ -26,6 +26,7 @@ on nothing better than convention is marked **open** and left alone.
 | ZX Spectrum +2 | 3 546 900 | ULA.128 | 228 | 311 | 70 908 | 36 | 1 (Ferranti) | yes | yes | yes | no |
 | ZX Spectrum +2A | 3 546 900 | ULA.Plus3 | 228 | 311 | 70 908 | 32 **open** | 2 (Amstrad) | no | yes | yes | - |
 | ZX Spectrum +3 | 3 546 900 | ULA.Plus3 | 228 | 311 | 70 908 | 32 **open** | 2 (Amstrad) | no | yes | yes | - |
+| Robik | 3 325 000 | ULA.Robik | 212 | 313 | 66 356 | 32 | 0 (none) | no | no | no | no |
 | Pentagon | 3 500 000 | ULA.Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
 | Pentagon 1024 SL | 3 500 000 | ULA.Pentagon | 224 | 320 | 71 680 | 36 | 0 (none) | no | no | no | no |
 | Scorpion ZS 256 | 3 500 000 | ULA.Scorpion | 224 | 312 | 69 888 | 32 | 0 (none) | no | no | yes | no |
@@ -200,6 +201,7 @@ RAM is what the core's `mask` field allows; the bold size is what the shipped de
 | ZX Spectrum 128K / +2 | **128K** | none | none | 1 AY 1.773, mono | no |
 | ZX Spectrum +2A | **128K** | none | none | 1 AY 1.773, mono | no |
 | ZX Spectrum +3 | **128K** | uPD765 | none | 1 AY 1.773, mono | no |
+| Robik | **48K** (+16K shadow RAM) | none | none | beeper (piezo) | no |
 | Pentagon | **128K**, 512K | Beta Disk | none | 1 YM 1.75, ABC + Covox | yes |
 | Pentagon 1024 SL | **1M** | Beta Disk | none | 1 YM 1.75, ABC + Covox | yes |
 | Scorpion ZS 256 | **256K** | Beta Disk | none | 1 AY 1.75, BAC + Covox | yes |
@@ -249,6 +251,7 @@ so bank 0 is the 128 editor, 1 the 48 BASIC, and 2/3 the interface ROM. The ZXM-
 | ZX Spectrum +2 (ROM set of the 128K) | plus2-0.rom | plus2-1.rom | - | - |
 | ZX Spectrum +2A / +3 (v4.0) | plus3-0.rom | plus3-1.rom | plus3-2.rom | plus3-3.rom |
 | ZX Spectrum +3 (v4.1) | plus3-41.rom, 64K combined | | | |
+| Robik | robik.rom (V03) | - | - | - |
 | Pentagon 128 | 128p-0.rom | 128p-1.rom | gluk661.rom | trdos504t.rom |
 | Pentagon 128 (TR-DOS 5.03) | 128p-0.rom | 128p-1.rom | gluk661.rom | trdos.rom |
 | Scorpion ZS 256 | scorpion295.rom (ROM 2.95), 64K combined | | | |
@@ -261,11 +264,11 @@ so bank 0 is the 128 editor, 1 the 48 BASIC, and 2/3 the interface ROM. The ZXM-
 | ZX Evolution (TSConf) | tsconf.rom, 64K combined | | | |
 | ALF TV Game / 128K | alf.rom, 32K combined: the games menu, then BASIC 48 | | | |
 
-Every machine except the 48K, the +2A/+3 and ALF also names `gs = gs105b.rom` (General Sound),
+Every machine except the 48K, the +2A/+3, ALF and the Robik also names `gs = gs105b.rom` (General Sound),
 and ATM and both Evo sets name `font = sgen.rom`.
 
 ## 5. Names
 
 The display names and the machine ids are the definitions' own. The cores, the `hw` key, are
 `ZX48`, `ZX128`, `Plus2A`, `Plus3`, `Pentagon`,
-`Pentagon1024SL`, `Scorpion`, `ScorpionTP`, `Profi3`, `Profi`, `ATM2`, `Phoenix`, `Baseconf`, `TSConf` and `ALF`.
+`Pentagon1024SL`, `Scorpion`, `ScorpionTP`, `Profi3`, `Profi`, `ATM2`, `Phoenix`, `Baseconf`, `TSConf`, `ALF` and `Robik`.
