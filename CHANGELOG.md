@@ -11,6 +11,11 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Robik**, the 48K clone from Cherkasy: its V03 ROM with Cyrillic, its 11 extra keys and
+  a keymap for them, its own frame and screen-write wait. Options > Machine, Board: shadow
+  RAM under the ROM, BRIGHT as the factory board or two levels, and the thin lines at cell
+  edges most boards show. *(timings measured by Mikhail Sudakov and AlexZor)*
+
 - **The mouse pointer hides itself** after 2 seconds still over the picture, in a window and
   in fullscreen; a move brings it back. View > Auto-Hide Pointer turns it off.
 
