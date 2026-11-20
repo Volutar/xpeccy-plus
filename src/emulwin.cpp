@@ -4712,7 +4712,9 @@ void MainWin::setMachine(const std::string& id) {
 }
 
 // The machine a session names, if it is another one and there is such a machine,
-// then its tape and disks, put in as an image opened here with nothing started
+// then its tape and disks, put in as an image opened here with nothing started.
+// Read here and now, one after another: a mount in the background would cancel the
+// one before it, and come in after the session's labels, over them
 void MainWin::openSession(const QString& machine, const QStringList& media) {
 	if (!machine.isEmpty()) {
 		std::string id = machine.toLocal8Bit().constData();
@@ -4727,12 +4729,21 @@ void MainWin::openSession(const QString& machine, const QStringList& media) {
 		int tab = item.indexOf('\t');
 		int drv = item.left(tab).toInt();
 		QString path = item.mid(tab + 1);
-		if (!QFileInfo(path).isFile()) {
+		// an image in an archive (game.zip/game.tap) or a folder as a disk is one too
+		if (!QFileInfo::exists(path) && !arc_exists(path)) {
 			xlog(XLG_FILE, XLL_WARN, "session: no %s", path.toLocal8Bit().constData());
 			continue;
 		}
-		openMedia(path, FG_ALL, (drv < 0) ? 0 : drv, AR_MOUNT, true);
+		Computer* comp = conf.zx;
+		int d = (drv < 0) ? 0 : drv;
+		QByteArray loc = path.toLocal8Bit();
+		emu_lock();
+		x_media_replaced();
+		int err = load_file(comp, loc.data(), FG_ALL, d);
+		emu_unlock();
+		if (err == ERR_OK) mediaOpened(path, FG_ALL, d, AR_MOUNT, true, QString(), media_to_drive(comp, path, FG_ALL));
 	}
+	if (!media.isEmpty()) emit s_tape_upd(conf.zx->tape);
 }
 
 void MainWin::chooseMachine(const std::string& id) {

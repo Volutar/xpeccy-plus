@@ -936,12 +936,13 @@ static void statements_out(QList<dtRecord>* out, int adr, const QList<int>& lens
 	}
 }
 
-// SkoolKit's numbers: $hex, %binary, 0x, decimal
+// SkoolKit's numbers: $hex, %binary, 0x, decimal (a leading 0 is no octal)
 static int ctl_int(QString str, bool* ok) {
 	str = str.trimmed();
 	if (str.startsWith('$')) return str.mid(1).toInt(ok, 16);
 	if (str.startsWith('%')) return str.mid(1).toInt(ok, 2);
-	return str.toInt(ok, 0);
+	if (str.startsWith("0x", Qt::CaseInsensitive)) return str.mid(2).toInt(ok, 16);
+	return str.toInt(ok, 10);
 }
 
 // One statement's length of a SkoolKit sub-block: its parts a:b:c add up (a
@@ -1072,10 +1073,11 @@ static bool ctl_read(QFile& file, bool isNext, QList<QPair<int, dtRecord> >* lat
 			subs[s.end] = rest;
 		}
 	}
-	// the last block only ends the one before it
-	for (int b = 0; b + 1 < starts.size(); b++) {
+	// a block runs to the next one; the last, to the end of the 64K (an i block there,
+	// as files end with, marks nothing)
+	for (int b = 0; b < starts.size(); b++) {
 		int bstart = starts.at(b);
-		int bend = starts.at(b + 1);
+		int bend = (b + 1 < starts.size()) ? starts.at(b + 1) : 0x10000;
 		QChar bt = blocks.value(bstart);
 		if (bt == 'i') continue;		// ignored: no view
 		QList<int> at;
@@ -1305,8 +1307,12 @@ static bool sld_read(QFile& file, bool isNext, QList<QPair<int, dtRecord> >* lat
 			QList<dtWord> w;
 			dtPlace p = here;
 			if (!where.isEmpty()) {
-				int adr;
-				if (!brk_list_adr(where, &adr, nullptr) || (adr < 0)) {
+				// DeZog's numbers are decimal unless 0x/$ says otherwise; else a label
+				int adr = -1;
+				bool ok = false;
+				if (where.at(0).isDigit() || where.startsWith('$')) adr = ctl_int(where, &ok);
+				else ok = brk_list_adr(where, &adr, nullptr);
+				if (!ok || (adr < 0) || (adr > 0xffff)) {
 					if ((*bad)++ < 10) xlog(XLG_FILE, XLL_WARN, "labels: line %i: WPMEM: no address %s", r.num, where.toLocal8Bit().constData());
 					continue;
 				}
@@ -1408,6 +1414,9 @@ static int labels_read(const QString& path) {
 				break;
 		}
 	}
+	// the marks and the breakpoint list are the running machine's too: an image's
+	// labels come in while it runs
+	EmuLock lock;
 	int brks = 0;
 	for (const auto& it : later) {
 		const dtRecord& r = it.second;

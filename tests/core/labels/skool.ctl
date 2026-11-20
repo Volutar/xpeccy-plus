@@ -11,3 +11,5 @@ w $8012 A table of words
   $8012,4,2
 L $8012,4,2
 i $801A
+b $C000 The last block runs to the end; 010 is ten
+  $C000,010,5

@@ -2441,6 +2441,9 @@ void DebugWin::loadMap() {
 		QString mac;
 		QStringList media;
 		session_media(path, &mac, &media);
+		// the machine and the images go in only as Options say (Machine / Images in sessions)
+		if (!conf.dbg.sessmac) mac.clear();
+		if (!conf.dbg.sessimg) media.clear();
 		if (!mac.isEmpty() || !media.isEmpty()) emit wannaSession(mac, media);
 		if (!session_load(path)) {
 			shitHappens("Can't open file");

@@ -12,6 +12,7 @@ sjasm-sld.asm|9||0|2|32773|K|; LOGPOINT [GAME] value=${A:hex8} at ${HL}
 sjasm-sld.asm|9||0|2|32773|F|start.loop
 sjasm-sld.asm|9||0|2|32773|L|,start,loop,+local,+used
 sjasm-sld.asm|9||0|2|32773|T|
+sjasm-sld.asm|10||0|2|32774|K|; WPMEM 32768, 2, w
 sjasm-sld.asm|10||0|2|32774|T|
 sjasm-sld.asm|11||0|2|32775|T|
 sjasm-sld.asm|12||0|2|32777|K|; WPMEM, 3, w

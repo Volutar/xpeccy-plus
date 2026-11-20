@@ -54,7 +54,8 @@ accepted).
 | `START` | (not on a label line) where the label `START` is. |
 | `io:7FFD`, `io:00FE/00FF` | (`brk` only) a port, and the bits of it that count. |
 
-A range is `PLACE-END`, END an offset in the same memory: `:5B00-5BFF`, `05:1A00-1AFF`.
+A range is `PLACE-END`, END an offset in the same memory, counted from the first place's
+page (it may run on into the next pages): `:5B00-5BFF`, `05:1A00-1AFF`, `00:3FF0-400F`.
 
 `FF:8000` and a page with hex digits in it (`0A:0010`) are read as Xpeccy+ before 2026.8.2
 wrote them: a CPU address, and a hex page.

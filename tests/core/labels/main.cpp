@@ -332,7 +332,7 @@ int main(int argc, char** argv) {
 		"comment :8003 jump table\\nstarts here\nLA:0010 MYROM\ndb LA:3D20 2\nstruct LATER db 1\n"
 		"brk START exec\nbrk :5B00-5BFF write count\nbrk io:00FE/00FF read\nbrk 05:1A00 read log \"A,DE\"\n"
 		"brk LA:0010 if \"A == #FF\" span=open\nbrk irq off\nbrk if \"FRAME == 300\" onchange\n"
-		"brk :8100 frobnicate\nbrk NOSUCH\n");
+		"brk :8100 frobnicate\nbrk NOSUCH\nbrk 00:3FF0-400F write\n");
 	uf.close();
 	conf.brk.list.clear();
 	check("load a file of the text format", loadLabels(user.toLocal8Bit().constData()) == 1);
@@ -350,7 +350,7 @@ int main(int argc, char** argv) {
 	for (const xBrkPoint& b : conf.brk.list) points.append(brk_text_line(b));
 	check("its breakpoints", points == QStringList({"brk :8000 exec", "brk :5B00-5BFF write count",
 		"brk io:00FE/00FF read", "brk 05:1A00 read log \"A,DE\"", "brk ROM0:0010 exec if \"A == #FF\" span=open",
-		"brk irq off", "brk if \"FRAME == 300\" onchange", "brk :8100 exec"}));
+		"brk irq off", "brk if \"FRAME == 300\" onchange", "brk :8100 exec", "brk 00:3FF0-400F write"}));
 	// a session: all of it saved, then read in place of what the Debugger has
 	auto marks = [&]() {
 		QByteArray m((const char*)comp->brkRamMap, comp->mem->ramMask + 1);
@@ -438,7 +438,7 @@ int main(int argc, char** argv) {
 	check("SLD comments, DeZog's keywords as breakpoints",
 		find_comment(comp_get_xadr(comp, 0x8009, MEM_VIEW_READ)) == "WPMEM, 3, w"
 		&& points == QStringList({"brk 02:0000 exec if \"!(A < 7)\"", "brk 02:0005 exec log \"A,HL\" count",
-			"brk 02:0009-000B write"}));
+			"brk :8000-8001 write", "brk 02:0009-000B write"}));
 	conf.brk.list.clear();
 	memset(comp->brkRamMap, 0, MEM_4M);
 	check("load a SkoolKit control file", loadLabels(fixtures.filePath("skool.ctl").toLocal8Bit().constData()) == 1);
@@ -452,6 +452,9 @@ int main(int argc, char** argv) {
 		&& flag(0x8012) == (DBG_VIEW_WORD | DBG_STMT) && flag(0x8014) == (DBG_VIEW_WORD | DBG_STMT)
 		&& flag(0x8016) == (DBG_VIEW_WORD | DBG_STMT) && flag(0x8018) == (DBG_VIEW_WORD | DBG_STMT)
 		&& flag(0x801A) == 0);
+	check("ctl: the last block to the end, 010 decimal", flag(0xC000) == (DBG_VIEW_BYTE | DBG_STMT)
+		&& flag(0xC005) == (DBG_VIEW_BYTE | DBG_STMT) && flag(0xC009) == DBG_VIEW_BYTE
+		&& flag(0xC00A) == (DBG_VIEW_BYTE | DBG_STMT) && flag(0xFFFF) == DBG_VIEW_BYTE);
 	memset(comp->brkRamMap, 0, MEM_4M);
 	memset(comp->brkRomMap, 0, MEM_512K);
 	check("load ZX Spin's symbols", loadLabels(fixtures.filePath("spin.sym").toLocal8Bit().constData()) == 1);

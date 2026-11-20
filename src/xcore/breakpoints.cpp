@@ -1556,11 +1556,8 @@ QString brk_text_line(const xBrkPoint& brk) {
 			// the page in the machine's own unit (the Next's 8K), or an area's token
 			dtPlace p = labels_cell_place(brk_mem_type(brk.type), brk.adr);
 			if (p.kind == DT_PLACE_NONE) return QString();
-			if (brk.eadr > brk.adr) {
-				dtPlace e = labels_cell_place(brk_mem_type(brk.type), brk.eadr);
-				if ((e.kind != p.kind) || (e.area != p.area) || (e.page != p.page)) return QString();
-				p.end = e.ofs;
-			}
+			// the end as an offset from the first cell's page: past it into the next ones
+			if (brk.eadr > brk.adr) p.end = p.ofs + (brk.eadr - brk.adr);
 			line.append(" ").append(dt_place_text(p));
 			break;
 		}

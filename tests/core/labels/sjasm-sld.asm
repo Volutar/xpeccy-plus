@@ -7,7 +7,7 @@ CONST	EQU 3
 start:	ld a,1		; ASSERTION A < 7
 	ld hl,table
 .loop:	ld (hl),a	; LOGPOINT [GAME] value=${A:hex8} at ${HL}
-	inc hl
+	inc hl		; WPMEM 32768, 2, w
 	jr .loop
 table:	db 1,2,3	; WPMEM, 3, w
 	MODULE gfx
