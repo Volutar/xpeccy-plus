@@ -21,8 +21,8 @@
 - In the menu: 48K (Classic), 48K (White), 128K (Classic), 128K (White), Next (Black), Next
   (White), Next (Magenta), Klava (the worn Kopir), Klava (Washed) - black, white, 128,
   128-white, next, next-white, next-magenta, kopir-worn, kopir in the config.
-- `keys-font.ttf` - the lettering, made by `tools/vkbd_font.py` from Liberation Sans Bold
-  2.1.5; see LICENSE_ICONS and LICENSE_LIBERATION.
+- `keys-font.ttf` - the lettering, Latin-1 and Cyrillic, made by `tools/vkbd_font.py` from
+  Liberation Sans Bold 2.1.5; see LICENSE_ICONS and LICENSE_LIBERATION.
 
 A file of the same name in `vkbd/` of the settings folder is drawn instead of the built-in
 one, and again each time it is saved. A file of any other name there, `zx-<name>.json`, is

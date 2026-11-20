@@ -1,4 +1,4 @@
-# Cut Liberation Sans Bold down for the on-screen keyboard and rename it (OFL).
+# Cut Liberation Sans Bold down (Latin-1, Cyrillic) for the on-screen keyboard and rename it (OFL).
 # usage: python tools/vkbd_font.py <LiberationSans-Bold.ttf of liberation-fonts-ttf-2.1.5> res/vkbd/keys-font.ttf
 # needs fonttools (pip install fonttools); the same input gives the same bytes
 import sys
@@ -15,7 +15,8 @@ opt.legacy_kern = True      # the 'kern' table is where the kerning comes from
 opt.name_IDs = ["*"]
 opt.notdef_outline = True
 sub = subset.Subsetter(opt)
-sub.populate(unicodes=list(range(0x20, 0x7F)) + list(range(0xA0, 0x100)))
+# Latin-1, and the Cyrillic letters (the Robik's caps)
+sub.populate(unicodes=list(range(0x20, 0x7F)) + list(range(0xA0, 0x100)) + [0x401, 0x451] + list(range(0x410, 0x450)))
 sub.subset(font)
 
 # OFL: a Modified Version may not use the Reserved Font Names (Liberation, Arimo)
@@ -30,7 +31,7 @@ for pid, eid, lid in ((3, 1, 0x409), (1, 0, 0)):
     name.setName(full + "; derived from Liberation Sans Bold 2.1.5", 3, pid, eid, lid)
     name.setName(full, 4, pid, eid, lid)
     name.setName(ps, 6, pid, eid, lid)
-    name.setName("Liberation Sans Bold 2.1.5, cut down to Latin-1 and renamed for the "
+    name.setName("Liberation Sans Bold 2.1.5, cut down to Latin-1 and Cyrillic and renamed for the "
                  "Xpeccy+ on-screen keyboard", 10, pid, eid, lid)
 # the timestamps stay the release's, so the same input gives the same bytes
 font.save(out, reorderTables=True)
