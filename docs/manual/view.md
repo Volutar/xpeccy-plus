@@ -331,7 +331,7 @@ The Robik keyboard has keys the Spectrum has not:
 - Edit and Del are Caps Shift with 1 and with 0; the full stop and the comma are Symbol
   Shift with M and with N.
 - Х, Ж, Э, Б, Ю, C, L and MF do nothing yet.
-- The red light under the logo is on while the machine runs, and off while it is paused or stopped in the Debugger.
+- The red light under the logo is the power light: always on.
 
 For layout authors: a file `zx-black.json`, `zx-white.json`, `zx-128.json`,
 `zx-128-white.json`, `zx-next.json`, `zx-next-white.json`, `zx-next-magenta.json`,
