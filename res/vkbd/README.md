@@ -64,8 +64,9 @@ In a key:
 - `"reset": true` - the machine resets when every key so marked is down at once: the Robik's
   two RES, in series; one held alone does nothing. A click holds one, the right button
   latches one; the latched ones go up once the machine is reset.
-- `"lamp"` - a color: not a key but a light on the case, always lit, drawn in that color
-  with a glow (a power light); `"shape": "ghost"` leaves the picture under it (the slot it
+- `"lamp"` - a color: not a key but a light on the case, always lit (a power light): drawn
+  in that color, bright in the middle, a glow on the case round it and the dark slot next
+  to it lit; `"shape": "ghost"` leaves the picture under it (the slot it
   is in, a bar) as it is.
 - `"y"`, `"h"` - its own, over the row's.
 - `"outline"` - `[[x, y], ...]`, a polygon of right angles in canvas units drawn instead of

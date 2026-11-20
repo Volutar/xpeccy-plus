@@ -992,9 +992,10 @@ void keyWindow::paintEvent(QPaintEvent*) {
 		drawPic(litPic);
 		pnt.restore();
 	}
-	// the lamps (the Robik's power LED), always on, as with the power on: their color
-	// with a glow round it; the painter is in device pixels on an exact picture, in
-	// canvas units on a stretched one
+	// the lamps (the Robik's power LED), always on, as with the power on, and bright: a
+	// glow on the case round it, the dark bezel next to it lit red, the lamp hot in the
+	// middle; the painter is in device pixels on an exact picture, in canvas units on a
+	// stretched one
 	pnt.setTransform(onPic);
 	pnt.setRenderHint(QPainter::Antialiasing, true);
 	pnt.setPen(Qt::NoPen);
@@ -1004,23 +1005,49 @@ void keyWindow::paintEvent(QPaintEvent*) {
 		if (!key.lamp.isValid()) continue;
 		QRectF b(key.box.x() * u, key.box.y() * u, key.box.width() * u, key.box.height() * u);
 		QPointF mid = b.center();
-		double rx = b.width() / 2 + 3 * u;
-		double ry = b.height() / 2 + 3 * u;
+		// the glow: an ellipse as long as the lamp, 5 units past it
+		double rx = b.width() / 2 + 5 * u;
+		double ry = b.height() / 2 + 5 * u;
 		QRadialGradient glow(mid, rx);
-		QColor c = key.lamp;
-		c.setAlpha(90);
-		glow.setColorAt(0, c);
-		c.setAlpha(0);
-		glow.setColorAt(1, c);
+		const QPair<double, int> stops[] = {{0, 95}, {0.45, 63}, {0.75, 24}, {1, 0}};
+		for (const auto& st : stops) {
+			QColor c = key.lamp;
+			c.setAlpha(st.second);
+			glow.setColorAt(st.first, c);
+		}
 		pnt.save();
 		pnt.translate(mid);
-		pnt.scale(1, ry / rx);		// the glow as long as the lamp
+		pnt.scale(1, ry / rx);
 		pnt.translate(-mid);
 		pnt.setBrush(glow);
 		pnt.drawEllipse(mid, rx, rx);
 		pnt.restore();
-		pnt.setBrush(key.lamp);
-		pnt.drawRoundedRect(b, b.height() / 3, b.height() / 3);
+		// the bezel lit through: light added, so the black turns dark red and the white
+		// case stays white; three rounds up to 1.6 units out soften its edge
+		pnt.setCompositionMode(QPainter::CompositionMode_Screen);
+		QColor rim = key.lamp;
+		rim.setAlpha(53);
+		pnt.setBrush(rim);
+		for (int i = 1; i <= 3; i++) {
+			double d = 1.6 * u * i / 3;
+			QRectF r = b.adjusted(-d, -d, d, d);
+			pnt.drawRoundedRect(r, r.height() / 3, r.height() / 3);
+		}
+		pnt.setCompositionMode(QPainter::CompositionMode_SourceOver);
+		// the lamp, near white in the middle: drawn round on a square, squeezed to its
+		// height, so the gradient is as long as the lamp
+		QRadialGradient body(mid, b.width() / 2);
+		body.setColorAt(0, QColor::fromHsvF(key.lamp.hsvHueF(), key.lamp.hsvSaturationF() * 0.35, 1.0));
+		body.setColorAt(0.55, key.lamp.lighter(115));
+		body.setColorAt(1, key.lamp);
+		pnt.save();
+		pnt.translate(mid);
+		pnt.scale(1, b.height() / b.width());
+		pnt.translate(-mid);
+		pnt.setBrush(body);
+		QRectF sq(mid.x() - b.width() / 2, mid.y() - b.width() / 2, b.width(), b.width());
+		pnt.drawRoundedRect(sq, b.height() / 3, b.width() / 3);
+		pnt.restore();
 	}
 	pnt.end();
 }
