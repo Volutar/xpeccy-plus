@@ -295,8 +295,8 @@ there too.
 | Trace | Ctrl+T | Ctrl+T |
 | Load dump | Ctrl+O | Ctrl+O |
 | Save dump | Ctrl+Shift+S | Ctrl+S |
-| Load xmap | - | - |
-| Save xmap | - | - |
+| Load session | - | - |
+| Save session | - | - |
 | Find pattern | Ctrl+F | Ctrl+F |
 | Switch labels | Ctrl+L | Ctrl+L |
 | Decimal numbers | Ctrl+Shift+H | Ctrl+Shift+H |

@@ -58,4 +58,7 @@ style's own.
 name, if there is one. See [Disasm panel](debugger-code.md). **ROM labels**: known ROMs
 name their routines in the listing and show their data as data. **System variables**: the
 variables of BASIC and TR-DOS are named in instructions, `LD HL,(CH_ADD)`. See
-[ROM labels](debugger-code.md#rom-labels).
+[ROM labels](debugger-code.md#rom-labels). **Machine in sessions**: **Save session** names
+the machine, and **Load session** switches to it. **Images in sessions**: **Save session**
+names the tape and the disks in the machine, and **Load session** puts them in. See
+[Sessions](debugger-code.md#sessions).

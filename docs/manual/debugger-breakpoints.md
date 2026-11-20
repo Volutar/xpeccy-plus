@@ -569,9 +569,38 @@ An expression that cannot be worked out at that moment is written as `?`.
 
 {icon}`save-as` **Save** in the **Breakpoints** panel writes the list to a text file,
 `.xbrk`; {icon}`fileopen` **Open** loads one, in place of the list you have. A file can be
-written by hand too: one breakpoint a line, its fields split by colons. Lines starting with
-`;` are skipped. **Open** takes a `bpx.ini` too: its lines `x0=0x8000`, `r0=...` and
-`w0=...`, an address or a range, become address breakpoints on fetch, read and write.
+written by hand too: one breakpoint a line, `brk`, where, then what it does, as in the
+Debugger's labels files and sessions (see
+[Label files](debugger-code.md#label-files)). Lines starting with `;` are skipped. **Open**
+takes a `bpx.ini` too: its lines `x0=0x8000`, `r0=...` and `w0=...`, an address or a range,
+become address breakpoints on fetch, read and write.
+
+```
+; Xpeccy+ Debugger breakpoints (docs/debugger-format.md)
+brk :8000 exec
+brk :4000-5AFF write
+brk io:00FE/0001 write if "(VAL & 7) == 2"
+brk 05:0000-1AFF write count
+brk ROM0:0038 exec log count
+brk if "SP < 0x5B00" onchange
+brk START exec log "HL, BC" span=open count
+brk DONE exec if "DT > 11400" span=close
+```
+
+| Part | What it is |
+|---|---|
+| where | `:8000` a CPU address, `:4000-5AFF` a range; `05:0000` RAM page 5 (decimal, the Next's 8K pages there), `ROM0:0038`, `DIV3:0010`, `DIVROM:0000`, `SLT0:0000` a cell of that memory, `-END` a range of them; `io:00FE/0001` a port and its mask; `irq` an **Interrupt**; a label's name; none, for a global condition (`brk if ...`) |
+| `exec`, `read`, `write` | **Fetch**, **Read**, **Write**; none given: `exec`, a port's `read` and `write` |
+| `if "..."` | the condition |
+| `log`, `log "..."` | **Log**: every register, or these expressions split by commas |
+| `count`, `screen` | the action **Counter** or **Screen dump**; none: **Debugger** |
+| `span=open`, `span=close` | the breakpoint opens or closes a span |
+| `onchange` | **On change**, for a global condition |
+| `off` | switched off |
+
+A word the program does not know is named in the log and passed over.
+
+Lists of earlier versions still load: one breakpoint a line, its fields split by colons.
 
 ```
 ; Xpeccy+ Debugger breakpoints list
@@ -598,13 +627,13 @@ CPU:DONE::F]:DBG:DT > 11400
 A line can stop after the condition; the last two fields can be empty.
 
 An address in a list is hex without a prefix, as **Save** writes it, or a label of the
-labels loaded at the time: `CPU:START`, `CPU:START-DONE`. A label takes priority over hex
-written the same way; `#`, `$` or `0x` in front makes it a number. A label carries its
-page, so the page field can be left empty: `RAM::SCREEN_BUF:W:CNT:`. On the Next a RAM page
-is 8K, as in the editor. A `CPU` line with a label that is not paged in when the list is
-loaded, or with a ROM name of several systems, gets cell breakpoints where the label runs, as
-`--bp` does: `CPU:LD_BYTES` on a +3 is a **ROM cell** in ROM 1 and one in ROM 3. **Save**
-writes the addresses as numbers.
+labels loaded at the time: `brk START`, and in an older line `CPU:START`, `CPU:START-DONE`.
+In an older line a label takes priority over hex written the same way; `#`, `$` or `0x` in
+front makes it a number. A label carries its page, so an older line's page field can be left
+empty: `RAM::SCREEN_BUF:W:CNT:`. On the Next a RAM page is 8K, as in the editor. A label that
+is not paged in when the list is loaded, or a ROM name of several systems, gets cell
+breakpoints where the label runs, as `--bp` does: `brk LD_BYTES` on a +3 is a **ROM cell** in
+ROM 1 and one in ROM 3. **Save** writes the addresses as numbers.
 
 A line that cannot be read is left out and named in the log. A condition or a log
 expression that does not compile is kept as it is: the condition then fires every time, and

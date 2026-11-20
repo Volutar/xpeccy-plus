@@ -267,7 +267,9 @@ gets the new name. A name that reads as a hex number, such as `FADE` or `C0DE`, 
 an address: start such a name with `_`.
 
 To add a comment, type `;` and the text in the address cell: `; draws the score`. The
-comment shows on a gray row above the address.
+comment shows on a gray row above the address. Type `\n` where a new line should start:
+`; draws the score\nA = the digit` makes two rows. Editing any of a comment's rows edits all
+of it.
 
 To remove a label or a comment, open the address cell of the row it is shown on, clear the
 cell and press Enter.
@@ -280,7 +282,8 @@ The {icon}`label` Labels menu of the toolbar has:
 - **Show labels** - shows or hides the labels in the listing: off, there are no label
   rows, and the instructions show plain addresses instead of names. The **Switch labels**
   key does the same: Ctrl+L in both presets.
-- **Load labels** - reads a labels file.
+- **Load labels** - reads a labels file, or another tool's file of names (see
+  [Label files](#label-files)).
 - **Save labels** - writes the labels in effect to a file.
 - **Labels list** - opens the **Labels List**.
 
@@ -302,8 +305,9 @@ arrow keys or the mouse. The same list appears in the
 ```{index} label; file, SjASMPlus, LABELSLIST
 ```
 
-A labels file holds one label per line: the RAM page, a colon, the address, and the name.
-The page is a decimal number, as SjASMPlus writes it. On most ZX machines the pages are 16K:
+A labels file is a text file of the Debugger's own format, line by line. Most of its lines
+are labels: the RAM page, a colon, the address, and the name. The page is a decimal number,
+as SjASMPlus writes it. On most ZX machines the pages are 16K:
 
 ```
 02:8010 print_score
@@ -340,6 +344,41 @@ the one in effect. **Save labels** writes the set in effect in the same form. A 
 other memory is saved with that memory's name, as `ROM0:0038` or `DIV3:0010`, and loads
 back to the same place. Only Xpeccy+ reads such lines.
 
+```{index} label; file format, db, dw, comment; in a file, breakpoint; in a labels file
+```
+
+Besides labels, the file can say how memory is shown, hold comments and set breakpoints,
+one thing a line:
+
+```
+db :9000 7*4                four DB statements of 7 bytes from 9000
+dw :9100 2                  one DW of 2 words
+dm :9200 40                 40 characters of text
+code :8000 256              code
+comment :8003 jump table\nentries of 3 bytes
+brk START exec
+brk :5B00-5BFF write count
+```
+
+The whole format, line by line, is in `docs/debugger-format.md` of the sources: it is meant
+for assemblers and other tools to write. A line Xpeccy+ does not know is skipped, so a file of
+a newer version still loads.
+
+```{index} SLD, SkoolKit, ctl, ZX Spin, sym
+```
+
+**Load labels** also reads these files, knowing each by what is in it:
+
+- SjASMPlus's **SLD** file (`--sld`): the labels on their pages, every instruction as code,
+  the comments its `SLDOPT COMMENT` keeps, and DeZog's keywords in them as breakpoints:
+  `; WPMEM` watches the bytes (`; WPMEM, 3, w`: three bytes, writes), `; ASSERTION A < 7`
+  stops where the condition is false, `; LOGPOINT [GAME] A=${A}` writes the values to the
+  breakpoint log without stopping. An SLD has no data statements: mark data yourself, or
+  load a labels file with `db` lines too.
+- A SkoolKit **control file** (`.ctl`): its labels, and its code, data and text blocks with
+  their statement lengths.
+- A ZX Spin **symbol file** (`.sym`): its names, data and comments.
+
 Labels typed in the listing go into the set in effect, or into a new set called `noname`
 when there is none.
 
@@ -374,8 +413,11 @@ it shows the full name.
 The ROM lists also say which parts of the ROM are data, and those are shown as data where
 you have marked nothing yourself: the 48K's character set at 3D00 as `DB` rows, the keyword
 and message tables as `DC "..."` (text whose last character has bit 7 set), the report code
-after an error call as `DB`, so the instructions after it line up. A mark of yours wins, and
-the ROM's marks are not saved in a memory map.
+after an error call as `DB`, so the instructions after it line up. Where the disassembly a
+list comes from has a `DEFB`, `DEFW` or `DEFM` line for each statement (the 48K, the 128K and
++2 editors, the 128K's 48 BASIC), the data is shown the same way: the key table of the 48K a
+key a row, its channel table a `DW` a row. A mark of yours wins, and the ROM's marks are not
+saved in a session.
 
 ```{index} system variables, CH_ADD, ERR_SP
 ```
@@ -401,7 +443,7 @@ the address column makes a label of yours, as a new name does; `@LD_BYTES` goes 
 `LD_BYTES` (on a +2A/+3, of the ROM paged in now). A ROM label cannot be removed, and **Save
 labels** does not save it. **ROM labels** on the **Debugger** page of **Options** switches
 the names and the data marks off, **System variables** the variables. Where they come from,
-and their licenses, is in `config/labels/README.md` beside the program.
+and their licenses, is in `config/rom-labels/README.md` beside the program.
 
 ```{index} Auto-load labels, label; loading automatically
 ```
@@ -482,6 +524,15 @@ Memory not marked yet is shown as instructions. How many bytes go on a `DB` row,
 `DW` row and characters on a text row is set by **DB in row**, **DW in row** and
 **Max text length** on the **Debugger** page of **Options**. A label always starts a new row.
 
+```{index} statement
+```
+
+Data is made of statements, as an assembler's source has them: `DB 1,2,3` is one, the next
+`DB` another. A row of data ends where its statement does, even with room left on it; a
+statement longer than a row goes on over as many rows as it needs. **View** makes the
+selected block one statement, and so does a `db`, `dw` or `db "..."` typed in the command
+column. A labels file can say each statement's length (see [Label files](#label-files)).
+
 The marks belong to the memory itself, not to an address: a mark on RAM page 3 moves with
 the page wherever it is paged in. Labels and comments belong to the memory the same way.
 
@@ -495,8 +546,8 @@ runs, after the Debugger is closed. Play the program for a while, open the Debug
 and the data shows as data. **Clear mapping** removes every mark, the ones you set too,
 after asking.
 
-The marks, the labels and the comments are kept together in a memory map file: see
-[Memory maps](#memory-maps).
+The marks, the labels, the comments and the breakpoints are kept together in a session
+file: see [Sessions](#sessions).
 
 ## The toolbar
 
@@ -513,7 +564,7 @@ The marks, the labels and the comments are kept together in a memory map file: s
 | {icon}`settings` **Options** | how the listing looks and works, see below |
 | **HEX** or **DEC** | hex or decimal numbers, see [Hex or decimal](#hex-or-decimal) |
 | {icon}`refresh` (circular arrows) | **Reload snapshot & labels** |
-| {icon}`floppy` (floppy disk) | **Disasm to file**, **Load dump**, **Save dump**, **Load map**, **Save map** |
+| {icon}`floppy` (floppy disk) | **Disasm to file**, **Load dump**, **Save dump**, **Load session**, **Save session** |
 
 A right-click on the listing opens a shorter menu: **Breakpoints**, **View**,
 **Labels list**, **Trace and stop here** and **Show labels**.
@@ -559,25 +610,33 @@ of yours in the block has its name, the instructions get its address instead. An
 
 Ctrl+C copies the same text for the block, without the first line.
 
-## Memory maps
+## Sessions
 
-```{index} memory map, XMAP, Save map, Load map
+```{index} session, xdbg, Save session, Load session, memory map, XMAP
 ```
 
-A memory map, a `.xmap` file, keeps what you have worked out about a program:
+A session, a `.xdbg` file, keeps what you have worked out about a program:
 
-- how each byte of RAM, ROM and a cartridge is shown, code or data;
-- every set of labels;
-- the comments.
+- how each byte of RAM, ROM, a cartridge and a divMMC is shown, code or data, and where
+  each statement starts;
+- the labels in effect;
+- the comments;
+- the breakpoints;
+- the machine, and the tape and the disks in it - each if ticked on the **Debugger** page of
+  **Options** (**Machine in sessions**, **Images in sessions**).
 
-**Save map** and **Load map** in the {icon}`floppy` floppy disk menu write and read it.
-Loading a map replaces all label sets and comments. Comments are only kept in a memory map,
-never in a labels file, so save a map when you have written comments. A map does not hold
-breakpoints: they have a file of their own (see
-[Breakpoints panel](debugger-breakpoints.md)).
+**Save session** and **Load session** in the {icon}`floppy` floppy disk menu write and read
+it. Loading a session switches to its machine and puts its tape and disks in, with nothing
+started; then its marks, comments and breakpoints take the place of the Debugger's, and its
+labels become the set in effect. A tape or disk beside the session, or in a folder under it,
+is kept by its path from there, so the folder can move as a whole.
 
-From the command line, `--xmap` loads a map at start (see
-[Command line](command-line.md#debugging)).
+A session is a labels file too (see [Label files](#label-files)), one line a thing: it can be
+read, edited and joined with other files. **Load labels** reads one as well, adding to what
+there is and leaving the machine and the images as they are.
+
+**Load session** also opens a memory map (`.xmap`) of earlier versions. From the command
+line, `--xmap` loads one at start (see [Command line](command-line.md#debugging)).
 
 ## Reload snapshot & labels
 
@@ -619,4 +678,4 @@ an instruction, the last row you selected was an instruction of several bytes, a
 first byte was marked: select the rows still wrong and choose **View > Byte** again. A
 table of addresses reads better as **View > Address**, and a message as **View > ASCII**.
 
-Save a memory map (**Save map**) to keep the marks for the next time.
+Save a session (**Save session**) to keep the marks for the next time.
