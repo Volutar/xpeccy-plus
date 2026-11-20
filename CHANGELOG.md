@@ -100,6 +100,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The file dialog shows every local drive at once** on Windows. A mapped network drive that
+  does not answer no longer hides them for half a minute, and a flash drive plugged in with the
+  dialog open shows within a second.
+
 - **The file dialog keeps its size**, and the width of the places list on the left if you
   drag it, between runs. A very long name there no longer widens the list over the files:
   it takes at most a third of the dialog and the name is cut. *(reported by Liniya)*
