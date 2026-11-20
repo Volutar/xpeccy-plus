@@ -1195,6 +1195,73 @@ void vidDrawNormal(Video* vid) {
 	vid_dot_full(vid, col);
 }
 
+// The Robik: the screen as vidDrawNormal() draws it, with two things of its own.
+// BRIGHT is not wired on the factory board, so every colour, the border's too,
+// comes at its bright level (allBright); the owners' jumper gives a 48K's two.
+// Most boards show a thin line where a cell's attribute differs from the one
+// before (cellEdge): the first half-dot of a cell is its pixel in the old
+// attribute's colours, and after column 31 the paper stays half a dot into the
+// border. A line's first cell takes column 30's attribute, the one rule that fits
+// the owners' photos (none after a line alternating to the end, one after a line
+// ending in a run) until a test settles it.
+static unsigned char rbInk30, rbPap30;		// column 30's colours, for the next line's start
+
+static void rb_cols(Video* vid) {
+	zx_attr_cols(vid, vid->atrbyte, &scrbyte, &ink, &pap, 0);
+	if (vid->allBright) {
+		ink |= 8;
+		pap |= 8;
+	}
+}
+
+void vidDrawRobik(Video* vid) {
+	unsigned char brd = vid->brdcol | (vid->allBright ? 8 : 0);
+	if (vid->vbrd) {
+		vid->atrbyte = 0xff;
+		vid_dot_full(vid, brd);
+		return;
+	}
+	xscr = vid->ray.x - vid->bord.x;
+	yscr = vid->ray.y - vid->bord.y;
+	if ((xscr & 7) == 3) {
+		adr = zx_box_pix_adr(vid->idx);
+		nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+	}
+	if (vid->hbrd) {
+		vid->atrbyte = 0xff;
+		if (vid->cellEdge && (xscr == vid->scrn.x)) {	// column 31's paper, half a dot on
+			vid_dot_half(vid, pap);
+			vid_dot_half(vid, brd);
+		} else {
+			vid_dot_full(vid, brd);
+		}
+		return;
+	}
+	if ((xscr & 7) == 0) {
+		unsigned char oldInk = xscr ? ink : rbInk30;
+		unsigned char oldPap = xscr ? pap : rbPap30;
+		scrbyte = nxtbyte;
+		adr = zx_box_atr_adr(vid->idx);
+		vid->atrbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+		if (vid->idx < 0x1b00) vid->idx++;
+		rb_cols(vid);
+		if (xscr == 30 * 8) {
+			rbInk30 = ink;
+			rbPap30 = pap;
+		}
+		if (vid->cellEdge) {
+			int on = scrbyte & 0x80;
+			vid_dot_half(vid, on ? oldInk : oldPap);
+			vid_dot_half(vid, on ? ink : pap);
+			scrbyte <<= 1;
+			return;
+		}
+	}
+	col = (scrbyte & 0x80) ? ink : pap;
+	scrbyte <<= 1;
+	vid_dot_full(vid, col);
+}
+
 // this mode default for ZX48K ULA (defferent moments of pix/atr read)
 static int adr2;		// the odd box's pixel address, taken at the even box's start
 
@@ -1792,6 +1859,7 @@ static xVideoMode vidModeTab[] = {
 	{VID_PRF_MC, NULL, vidProfiScr, NULL, NULL, NULL, NULL, NULL, VL_NONE},
 	{VID_PRF_MONO, NULL, vidProfiMono, NULL, NULL, NULL, NULL, NULL, VL_NONE},
 	{VID_NEXT, NULL, nxv_dot, NULL, NULL, NULL, nxv_frm, nxv_run, VL_NONE, nxv_drawn, nxv_wake, nxv_sweep},
+	{VID_ROBIK, NULL, vidDrawRobik, NULL, NULL, NULL, NULL, NULL, VL_NONE},
 
 
 	{VID_UNKNOWN, NULL, vidDrawBorder, NULL, NULL, NULL, NULL, NULL, VL_NONE}

@@ -83,6 +83,7 @@ enum {ED_NONE = 0, ED_SINCLAIR, ED_PLUS2};
 static int snap_editor(int hwid, int model) {
 	switch (hwid) {
 		case HW_ZX48:
+		case HW_ROBIK:
 		case HW_PLUS2A:
 		case HW_PLUS3:
 		case HW_ZXNEXT:
@@ -130,7 +131,7 @@ int snapHwRuns(int snap, int hwid, int model) {
 		case SNAP_HW_PLUS2:
 			if (rom) return snap_on_model(snap, hwid, model);
 			if (editor) return snap_editor(hwid, model) == ((snap == SNAP_HW_PLUS2) ? ED_PLUS2 : ED_SINCLAIR);
-			return hwid != HW_ZX48;
+			return (hwid != HW_ZX48) && (hwid != HW_ROBIK);
 		// one ROM, but a +3 in its editor has +3DOS set up for a drive the +2A lacks
 		case SNAP_HW_PLUS2A: return (hwid == HW_PLUS2A) || (!rom && (hwid == HW_PLUS3));
 		case SNAP_HW_PLUS3: return (hwid == HW_PLUS3) || (!rom && (hwid == HW_PLUS2A));

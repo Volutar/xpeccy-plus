@@ -847,6 +847,9 @@ typedef struct {
 	unsigned brd4t:1;
 	unsigned snow:1;		// the ULA snow effect
 	unsigned snowcrash:1;		// ...and ram that cannot take it
+	unsigned shadow:1;		// the Robik's shadow RAM under the ROM, switched by port 15
+	unsigned bright:1;		// the Robik's BRIGHT wired (a 48K's two levels; not: all bright)
+	unsigned edges:1;		// the Robik's cell-edge lines
 	int floatbus;			// FBUS_*: what a port nothing answers reads back
 	int brdmin;			// VID_BRD_*: the frame its own screen modes fill
 	int psgCount;

@@ -49,6 +49,7 @@
         <file>res/styles/ZX Spectrum.pal</file>
         <file>res/styles/ZX Spectrum.qss</file>
         <file>res/keymaps/ZX Spectrum 48K.map</file>
+        <file>res/keymaps/Robik.map</file>
         <file>res/help/cond-syntax.html</file>
         <file>res/help/rec-cli.html</file>
         <file>res/fallback/config.conf</file>
@@ -63,6 +64,7 @@
         <file>res/machines/phoenix.conf</file>
         <file>res/machines/profi3.conf</file>
         <file>res/machines/profi.conf</file>
+        <file>res/machines/robik.conf</file>
         <file>res/machines/scorp.conf</file>
         <file>res/machines/scorptp.conf</file>
         <file>res/machines/zx128.conf</file>
