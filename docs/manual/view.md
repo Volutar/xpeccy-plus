@@ -145,7 +145,7 @@ back when the window does. The switch is remembered; it is also **Always on top*
 **View > Auto-Hide Pointer** hides the mouse pointer once it stays still over the picture
 for 2 seconds, in a window and in fullscreen. A move brings it back; over the bars, a menu
 or a dialog it stays. It is on by default, and the switch is remembered; it is also
-**Auto-hide mouse pointer** on the [Appearance page](options-appearance.md) of **Options**.
+**Auto-hide pointer** on the [Appearance page](options-appearance.md) of **Options**.
 
 ## Shaders
 

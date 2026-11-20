@@ -66,7 +66,7 @@ card. Either button on it opens the menu of **Media > SD Card**.
 ```
 
 The status bar shows how many frames a second the machine actually runs at. With the
-status bar hidden, tick **FPS** in the **Indicators** group on the **Appearance** page of
+status bar hidden, tick **FPS** under **Configure indicators** on the **Appearance** page of
 **Options** to see the number in the top right corner of the picture.
 
 ## The picture

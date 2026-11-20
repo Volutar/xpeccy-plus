@@ -250,5 +250,5 @@ the tape is through it, with the commands of the deck on a right-click: see
 click on it opens the **Tape Player**.
 
 With the status bar hidden, a light over the picture blinks while the tape plays (green) or
-records (red). **Tape** in the **Indicators** group of the **Appearance** page of
+records (red). **Tape** under **Configure indicators** on the **Appearance** page of
 **Options** turns this light on and off.
