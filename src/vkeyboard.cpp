@@ -660,7 +660,6 @@ QByteArray keyWindow::matrixSig() {
 	sig.append((char)kb->nxCaps);
 	sig.append((char)kb->nxSym);
 	if (conf.zx && conf.zx->joy) sig.append((char)conf.zx->joy->state);
-	sig.append((char)lampOn());
 	return sig;
 }
 
@@ -928,12 +927,6 @@ void keyWindow::checkReset() {
 	emit s_key_click();
 }
 
-// A light on the case (the Robik's power LED) is on while the machine runs: off
-// while it is paused or stopped in the debugger
-bool keyWindow::lampOn() {
-	return kb && conf.zx && !(conf.emu.pause & (PR_PAUSE | PR_DEBUG));
-}
-
 void keyWindow::paintEvent(QPaintEvent*) {
 	QPainter pnt;
 	double sd = devScale();
@@ -999,36 +992,35 @@ void keyWindow::paintEvent(QPaintEvent*) {
 		drawPic(litPic);
 		pnt.restore();
 	}
-	// the lamps, on: their color with a glow round it; the painter is in device
-	// pixels on an exact picture, in canvas units on a stretched one
-	if (lampOn()) {
-		pnt.setTransform(onPic);
-		pnt.setRenderHint(QPainter::Antialiasing, true);
-		pnt.setPen(Qt::NoPen);
-		double u = exact ? sd : 1.0;
-		for (int n = 0; n < keys.size(); n++) {
-			const VkKey& key = keys[n];
-			if (!key.lamp.isValid()) continue;
-			QRectF b(key.box.x() * u, key.box.y() * u, key.box.width() * u, key.box.height() * u);
-			QPointF mid = b.center();
-			double rx = b.width() / 2 + 3 * u;
-			double ry = b.height() / 2 + 3 * u;
-			QRadialGradient glow(mid, rx);
-			QColor c = key.lamp;
-			c.setAlpha(90);
-			glow.setColorAt(0, c);
-			c.setAlpha(0);
-			glow.setColorAt(1, c);
-			pnt.save();
-			pnt.translate(mid);
-			pnt.scale(1, ry / rx);		// the glow as long as the lamp
-			pnt.translate(-mid);
-			pnt.setBrush(glow);
-			pnt.drawEllipse(mid, rx, rx);
-			pnt.restore();
-			pnt.setBrush(key.lamp);
-			pnt.drawRoundedRect(b, b.height() / 3, b.height() / 3);
-		}
+	// the lamps (the Robik's power LED), always on, as with the power on: their color
+	// with a glow round it; the painter is in device pixels on an exact picture, in
+	// canvas units on a stretched one
+	pnt.setTransform(onPic);
+	pnt.setRenderHint(QPainter::Antialiasing, true);
+	pnt.setPen(Qt::NoPen);
+	double u = exact ? sd : 1.0;
+	for (int n = 0; n < keys.size(); n++) {
+		const VkKey& key = keys[n];
+		if (!key.lamp.isValid()) continue;
+		QRectF b(key.box.x() * u, key.box.y() * u, key.box.width() * u, key.box.height() * u);
+		QPointF mid = b.center();
+		double rx = b.width() / 2 + 3 * u;
+		double ry = b.height() / 2 + 3 * u;
+		QRadialGradient glow(mid, rx);
+		QColor c = key.lamp;
+		c.setAlpha(90);
+		glow.setColorAt(0, c);
+		c.setAlpha(0);
+		glow.setColorAt(1, c);
+		pnt.save();
+		pnt.translate(mid);
+		pnt.scale(1, ry / rx);		// the glow as long as the lamp
+		pnt.translate(-mid);
+		pnt.setBrush(glow);
+		pnt.drawEllipse(mid, rx, rx);
+		pnt.restore();
+		pnt.setBrush(key.lamp);
+		pnt.drawRoundedRect(b, b.height() / 3, b.height() / 3);
 	}
 	pnt.end();
 }

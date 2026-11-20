@@ -89,7 +89,6 @@ class keyWindow : public QDialog {
 		void syncJoy();
 		void releaseAll();
 		void checkReset();
-		bool lampOn();
 		void latchKey(int, const QByteArray&);
 		void placeUndocked();
 		double scale();

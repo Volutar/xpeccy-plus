@@ -21,10 +21,10 @@
 - `zx-robik.json` - the Robik (Selto-Rotor, Cherkassy): the keyboard with the MF key, laid out
   on photos of the real one, the case white as it was before it yellowed and sand-rough round
   the keys; the cursor block presses the Kempston, the two RES reset the machine together, the
-  power lamp is lit while the machine runs; its caps with a straight foot under the slopes,
-  their lettering the caps' engraving font, drawn as strokes. Made by `make-robik.py` (the
-  lettering measured, the logo built of rings and strokes, on photos) in the project's lab,
-  then kept as it is.
+  power lamp is always lit; its caps with a straight foot under the slopes, their lettering
+  the caps' engraving font, drawn as strokes. Made by `make-robik.py` (the lettering
+  measured, the logo built of rings and strokes, on photos) in the project's lab, then kept
+  as it is.
 - In the menu: 48K (Classic), 48K (White), 128K (Classic), 128K (White), Next (Black), Next
   (White), Next (Magenta), Klava (the worn Kopir), Klava (Washed), Robik - black, white, 128,
   128-white, next, next-white, next-magenta, kopir-worn, kopir, robik in the config.
@@ -64,9 +64,9 @@ In a key:
 - `"reset": true` - the machine resets when every key so marked is down at once: the Robik's
   two RES, in series; one held alone does nothing. A click holds one, the right button
   latches one; the latched ones go up once the machine is reset.
-- `"lamp"` - a color: not a key but a light on the case, drawn in that color, with a glow,
-  while the machine runs (not paused, not stopped in the debugger); `"shape": "ghost"` leaves
-  the picture under it (the slot it is in, a bar) as it is.
+- `"lamp"` - a color: not a key but a light on the case, always lit, drawn in that color
+  with a glow (a power light); `"shape": "ghost"` leaves the picture under it (the slot it
+  is in, a bar) as it is.
 - `"y"`, `"h"` - its own, over the row's.
 - `"outline"` - `[[x, y], ...]`, a polygon of right angles in canvas units drawn instead of
   the box (an Enter over two rows); its labels are placed from the middle of its bounds.
