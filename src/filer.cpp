@@ -33,6 +33,7 @@
 #include <QListWidget>
 #include <QMessageBox>
 #include <QMutex>
+#include <QPointer>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QScreen>
@@ -54,22 +55,35 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include <dbt.h>
+#include <QAbstractNativeEventFilter>
+#include <QApplication>
+#include <thread>
 #endif
 
 static QFileDialog* fileDlg = nullptr;
 static QWidget* fileDlgParent = nullptr;
 
+// A drive the model made from a path has the info of "X:", its current folder: asked about as "X:/", it is a drive
+static QFileInfo drive_root(const QFileInfo& fi) {
+#ifdef _WIN32
+	const QString path = fi.filePath();
+	if ((path.size() == 2) && (path.at(1) == ':') && path.at(0).isLetter()) return QFileInfo(path + '/');
+#endif
+	return fi;
+}
+
 // Type by suffix: Qt 6 reads a file of an unknown suffix on the GUI thread to name its MIME type
 class xFileTypes : public QFileIconProvider {
 public:
 	QString type(const QFileInfo& fi) const override {
-		if (!fi.isFile()) return QFileIconProvider::type(fi);
+		if (!fi.isFile()) return QFileIconProvider::type(drive_root(fi));
 		QString ext = fi.suffix().toUpper();
 		return ext.isEmpty() ? QString("File") : ext + " File";
 	}
 	// With an icon theme Qt picks a file's icon by its MIME type, read from the file: once per suffix
 	QIcon icon(const QFileInfo& fi) const override {
-		if (!fi.isFile() || QIcon::themeName().isEmpty()) return QFileIconProvider::icon(fi);
+		if (!fi.isFile() || QIcon::themeName().isEmpty()) return QFileIconProvider::icon(drive_root(fi));
 		QString ext = fi.suffix().toLower();
 		QMutexLocker lock(&mutex);
 		auto it = icons.constFind(ext);
@@ -235,6 +249,113 @@ static void file_dialog_recall(QFileDialog* dlg) {
 	const QFileDialog::ViewMode mode = conf.fdlg.list ? QFileDialog::List : QFileDialog::Detail;
 	if (dlg->viewMode() != mode) dlg->setViewMode(mode);
 }
+
+#ifdef _WIN32
+// Qt lists the drives in one pass and shows none until each has answered, so a disconnected
+// network drive held the local ones back for tens of seconds. These are asked for by path,
+// which the model shows at once; network drives and CD/DVD still come with Qt's pass.
+
+// Whether the drive is a local one that answers; off the GUI thread, as a sleeping disk may take seconds
+static bool drive_answers(int letter) {
+	const wchar_t root[] = {wchar_t(L'A' + letter), L':', L'\\', 0};
+	const UINT type = GetDriveTypeW(root);
+	if ((type != DRIVE_FIXED) && (type != DRIVE_REMOVABLE) && (type != DRIVE_RAMDISK)) return false;
+	DWORD old = 0;
+	SetThreadErrorMode(SEM_FAILCRITICALERRORS, &old);	// no "insert a disk" box for an empty slot
+	const bool res = (GetFileAttributesW(root) != INVALID_FILE_ATTRIBUTES);
+	SetThreadErrorMode(old, nullptr);
+	return res;
+}
+
+// The dialog's model takes the drives by path, and shows each at once
+static void drives_show(QFileDialog* dlg, DWORD found) {
+	QFileSystemModel* fsm = dlg->findChild<QFileSystemModel*>();
+	if (!fsm) return;
+	const int rows = fsm->rowCount(QModelIndex());
+	DWORD old = 0;
+	SetThreadErrorMode(SEM_FAILCRITICALERRORS, &old);
+	for (int i = 0; i < 26; i++)
+		if (found & (1u << i)) fsm->index(QString(QChar('A' + i)) + ":/");
+	SetThreadErrorMode(old, nullptr);
+	// new rows are sorted only on a change of column: My Computer in view is sorted by another one and back
+	QTreeView* tree = dlg->findChild<QTreeView*>("treeView");
+	if (tree && !tree->rootIndex().isValid() && (fsm->rowCount(QModelIndex()) != rows)) {
+		const int col = tree->header()->sortIndicatorSection();
+		const Qt::SortOrder ord = tree->header()->sortIndicatorOrder();
+		fsm->sort((col + 1) % fsm->columnCount(QModelIndex()), ord);
+		fsm->sort(col, ord);
+	}
+}
+
+static QObject* drivesHome = nullptr;	// the GUI thread's end of the workers; never freed, a worker may outlive the dialogs
+static DWORD drivesBusy = 0;	// letters with a worker out
+static DWORD drivesAsked = 0;	// letters asked for again while their worker was out
+static DWORD drivesArrived = 0;
+
+// A worker per letter, so a slow drive holds back none of the others; each visible file dialog of ours gets the ones that answer
+static void drives_ask(DWORD mask) {
+	drivesAsked |= mask & GetLogicalDrives();
+	for (int i = 0; i < 26; i++) {
+		const DWORD bit = 1u << i;
+		if (!(drivesAsked & bit) || (drivesBusy & bit)) continue;
+		drivesAsked &= ~bit;
+		drivesBusy |= bit;
+		std::thread([i, bit]() {
+			const bool found = drive_answers(i);
+			if (QCoreApplication::closingDown()) return;
+			QMetaObject::invokeMethod(drivesHome, [found, bit]() {
+				drivesBusy &= ~bit;
+				for (QWidget* w : QApplication::topLevelWidgets()) {
+					QFileDialog* dlg = qobject_cast<QFileDialog*>(w);
+					if (found && dlg && dlg->isVisible() && dlg->property("xTuned").toBool()) drives_show(dlg, bit);
+				}
+				drives_ask(0);
+			}, Qt::QueuedConnection);
+		}).detach();
+	}
+}
+
+// A volume arriving comes to every top-level window: the letters are gathered for a moment, then
+// asked for now and a few more times over 5 s, as a drive just plugged in may not answer yet
+static void drives_arrived(DWORD mask) {
+	if (!drivesArrived)
+		QTimer::singleShot(50, drivesHome, []() {
+			const DWORD mask = drivesArrived;
+			drivesArrived = 0;
+			drives_ask(mask);
+			for (int ms : {500, 2000, 5000})
+				QTimer::singleShot(ms, drivesHome, [mask]() {drives_ask(mask);});
+		});
+	drivesArrived |= mask;
+}
+
+class xDriveArrival : public QAbstractNativeEventFilter {
+public:
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+	bool nativeEventFilter(const QByteArray&, void* message, qintptr*) override {
+#else
+	bool nativeEventFilter(const QByteArray&, void* message, long*) override {
+#endif
+		const MSG* m = static_cast<const MSG*>(message);
+		if ((m->message == WM_DEVICECHANGE) && (m->wParam == DBT_DEVICEARRIVAL) && m->lParam) {
+			const DEV_BROADCAST_HDR* hdr = reinterpret_cast<const DEV_BROADCAST_HDR*>(m->lParam);
+			if (hdr->dbch_devicetype == DBT_DEVTYP_VOLUME)
+				drives_arrived(reinterpret_cast<const DEV_BROADCAST_VOLUME*>(hdr)->dbcv_unitmask);
+		}
+		return false;
+	}
+};
+
+// On each show of a file dialog of ours: every local drive, and from now on any that arrives
+static void file_dialog_drives() {
+	if (!drivesHome) {
+		drivesHome = new QObject;
+		static xDriveArrival filter;
+		QCoreApplication::instance()->installNativeEventFilter(&filter);
+	}
+	drives_ask((1u << 26) - 1);
+}
+#endif
 
 // Built on first use, in the folder it is about to show: a Qt dialog built
 // without one lists and watches the cwd on the GUI thread, and started from a
@@ -2510,6 +2631,9 @@ void fitFileDialog(QWidget* w) {
 	file_dialog_tune(dlg);
 	file_dialog_recall(dlg);
 	file_dialog_filtered(dlg);	// whatever patterns Qt put on the model since
+#ifdef _WIN32
+	file_dialog_drives();
+#endif
 	QHeaderView* hdr = tree->header();
 	hdr->setSectionResizeMode(QHeaderView::ResizeToContents);
 	hdr->setSectionResizeMode(0, QHeaderView::Stretch);
