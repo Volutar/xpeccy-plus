@@ -10,6 +10,7 @@
 // text is hinted (FreeType, vertical-only) and may be subpixel.
 
 #include "vkbdskin.h"
+#include "libxpeccy/input/input.h"	// XJ_*
 
 #include <QFile>
 #include <QJsonArray>
@@ -27,8 +28,6 @@
 #include <vector>
 
 #include <ft2build.h>
-#include "libxpeccy/input/input.h"	// XJ_*
-
 #include FT_FREETYPE_H
 #include FT_OUTLINE_H
 #include FT_ADVANCES_H
@@ -1220,22 +1219,21 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 		QPainterPath bp = rrect(r.x(), r.y(), r.width(), r.height(), bar.corner * s);
 		p.drawPath(bp);
 		if (bar.grain > 0) {
-			// sand: each pixel a little lighter or darker, the same ones every time,
-			// in the picture's own pixels whatever its size
-			QRect ir = r.toAlignedRect() & img.rect();
-			QImage gr(ir.size(), QImage::Format_ARGB32_Premultiplied);
-			for (int y = 0; y < gr.height(); y++) {
-				QRgb* line = (QRgb*)gr.scanLine(y);
-				for (int x = 0; x < gr.width(); x++) {
-					double v = (unitHash(7, ir.y() + y, ir.x() + x, 0) + unitHash(7, ir.y() + y, ir.x() + x, 1)) - 1.0;
+			// sand: each pixel a little lighter or darker, in the picture's own pixels
+			// whatever its size - a tile of them laid from the picture's corner, the
+			// same every time
+			const int T = 128;
+			QImage tile(T, T, QImage::Format_ARGB32_Premultiplied);
+			for (int y = 0; y < T; y++) {
+				QRgb* line = (QRgb*)tile.scanLine(y);
+				for (int x = 0; x < T; x++) {
+					double v = (unitHash(7, y, x, 0) + unitHash(7, y, x, 1)) - 1.0;
 					int a = std::min(255, fr(std::fabs(v) * bar.grain * 255));
 					line[x] = (v > 0) ? qRgba(a, a, a, a) : qRgba(0, 0, 0, a);
 				}
 			}
-			p.save();
-			p.setClipPath(bp);
-			p.drawImage(ir.topLeft(), gr);
-			p.restore();
+			p.setBrush(QBrush(tile));
+			p.drawPath(bp);
 		}
 	}
 	// the contours, cut out of the ground and the rainbow alike

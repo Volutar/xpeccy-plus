@@ -148,6 +148,7 @@ keyWindow::keyWindow(QWidget* p):QDialog(p) {
 	hover = -1;
 	held = -1;
 	heldJoy = 0;
+	joyMine = 0;
 	picScale = 0;
 	setMouseTracking(true);		// for the key under the pointer
 	memset(&xent, 0, sizeof(xent));
@@ -220,17 +221,11 @@ void keyWindow::loadSkin() {
 			qWarning("vkbd: built-in %s: %s", name.toLocal8Bit().constData(), err.toLocal8Bit().constData());
 	}
 	if (sk.isNull() && skin.isNull()) return;	// nothing to show at all
-	if (!sk.isNull()) {
-		// the Kempston's contacts the old one latched go up with it: the new one
-		// may have no key to let them go
-		const QVector<VkKey>& was = skin.keys();
-		for (int n = 0; (n < was.size()) && (n < latched.size()); n++) {
-			if (latched[n] && was[n].joy) pressJoy(was[n].joy, false);
-		}
-		pressJoy(heldJoy, false);
-		heldJoy = 0;
-		skin = sk;
-	}
+	// the Kempston's contacts this window holds go up with the keys that hold them
+	heldJoy = 0;
+	latched.fill(false);
+	syncJoy();
+	if (!sk.isNull()) skin = sk;
 	QSizeF old = cnv;
 	cnv = skin.canvas();
 	hover = -1;
@@ -730,6 +725,13 @@ void keyWindow::hostTidy(const QByteArray& down) {
 void keyWindow::rall(Keyboard* k) {
 	if (!isVisible()) {
 		x_kbd_release_all(k);
+		// and the Kempston's contacts it latched: nothing on screen would say so
+		const QVector<VkKey>& keys = skin.keys();
+		for (int n = 0; (n < keys.size()) && (n < latched.size()); n++) {
+			if (keys[n].joy) latched[n] = false;
+		}
+		heldJoy = 0;
+		syncJoy();
 	}
 }
 
@@ -879,24 +881,30 @@ void keyWindow::pressKeys(const QByteArray& zx, bool down) {
 // every key up: the machine's, and the Kempston's contacts this window latched
 void keyWindow::releaseAll() {
 	if (kb) x_kbd_release_all(kb);
-	const QVector<VkKey>& keys = skin.keys();
-	for (int n = 0; (n < keys.size()) && (n < latched.size()); n++) {
-		if (latched[n] && keys[n].joy) pressJoy(keys[n].joy, false);
-	}
 	latched.fill(false);
+	syncJoy();
 	update();
 }
 
-// the Kempston's contacts pressed or let go of
-void keyWindow::pressJoy(int mask, bool down) {
-	if (!mask || !conf.zx || !conf.zx->joy) return;
-	emu_lock();
-	if (down) {
-		joyPress(conf.zx->joy, mask);
-	} else {
-		joyRelease(conf.zx->joy, mask);
+// The Kempston's contacts as this window's keys want them: the one the left button holds
+// and the latched ones down, the others it pressed up. A contact down already (a gamepad
+// holds it) is not taken over, so it is never let go of from here.
+void keyWindow::syncJoy() {
+	if (!conf.zx || !conf.zx->joy) return;
+	Joystick* joy = conf.zx->joy;
+	const QVector<VkKey>& keys = skin.keys();
+	int want = heldJoy;
+	for (int n = 0; (n < keys.size()) && (n < latched.size()); n++) {
+		if (latched[n]) want |= keys[n].joy;
 	}
+	int down = want & ~joy->state;
+	int up = joyMine & ~want;
+	if (!down && !up) return;
+	emu_lock();
+	if (down) joyPress(joy, down);
+	if (up) joyRelease(joy, up);
 	emu_unlock();
+	joyMine = (joyMine | down) & ~up;
 }
 
 // The keys that reset the machine together (the Robik's two RES, in series): one
@@ -1094,12 +1102,11 @@ void keyWindow::mousePressEvent(QMouseEvent* ev) {
 				break;
 			}
 			pressKeys(heldZx, false);	// a press whose release was missed
-			pressJoy(heldJoy, false);
 			held = n;
 			heldZx = zx;
 			heldJoy = key.joy;
 			pressKeys(zx, true);
-			pressJoy(key.joy, true);
+			syncJoy();
 			update();
 			if (key.reset) {
 				checkReset();		// one alone holds, and resumes nothing
@@ -1128,12 +1135,8 @@ void keyWindow::mousePressEvent(QMouseEvent* ev) {
 void keyWindow::latchKey(int n, const QByteArray& zx) {
 	const VkKey& key = skin.keys()[n];
 	if (key.joy || key.reset) {
-		bool was = (n < latched.size()) && latched[n];
-		if (key.joy) {		// down already from elsewhere: up, as a combination is
-			was = conf.zx && conf.zx->joy && ((conf.zx->joy->state & key.joy) == key.joy);
-			pressJoy(key.joy, !was);
-		}
-		if (n < latched.size()) latched[n] = !was;
+		if (n < latched.size()) latched[n] = !latched[n];
+		syncJoy();
 		update();
 		return;
 	}
@@ -1146,12 +1149,14 @@ void keyWindow::latchKey(int n, const QByteArray& zx) {
 }
 
 void keyWindow::mouseReleaseEvent(QMouseEvent* ev) {
+	if (ev->button() == Qt::LeftButton) {		// the Kempston's go up with no keyboard too
+		heldJoy = 0;
+		syncJoy();
+	}
 	if (!kb) return;
 	if (ev->button() == Qt::LeftButton) {
 		pressKeys(heldZx, false);
-		pressJoy(heldJoy, false);
 		heldZx.clear();
-		heldJoy = 0;
 		held = -1;
 	}
 	update();

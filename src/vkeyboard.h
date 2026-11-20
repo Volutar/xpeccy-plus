@@ -70,7 +70,8 @@ class keyWindow : public QDialog {
 		int hover;		// the key under the pointer, -1 for none
 		int held;		// the key the left button holds down, -1 for none
 		QByteArray heldZx;	// what it pressed, to let go of the same
-		int heldJoy;		// the Kempston's contacts it pressed
+		int heldJoy;		// the Kempston's contacts it presses
+		int joyMine;		// the Kempston's contacts this window put down, and only it
 		QVector<bool> latched;	// keys a click put down for good
 		QVector<int> firstCopy;	// of a key the skin has twice (the shifts), the left one
 		QVector<int> lastCopy;	// and the right one
@@ -85,7 +86,7 @@ class keyWindow : public QDialog {
 		void hostTidy(const QByteArray&);
 		QVector<double> lights(const QByteArray&);
 		void pressKeys(const QByteArray&, bool);
-		void pressJoy(int, bool);
+		void syncJoy();
 		void releaseAll();
 		void checkReset();
 		bool lampOn();
