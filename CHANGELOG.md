@@ -18,7 +18,7 @@ before that point is upstream's history and is not repeated here.
 
 - **Data statements in the Debugger**: a `DB`, `DW` or text row ends where its statement
   does, as in an assembler's source, and a labels file can give each statement's length
-  (`db :9000 7*4` is four `DB` of 7). The ROMs' tables are cut as Richard Dymond's and Paul
+  (`db :9000 7*4` is four `DB` of 7); statements of one byte share a row. The ROMs' tables are cut as Richard Dymond's and Paul
   Farrow's disassemblies have them.
 
 - **Load labels reads SjASMPlus's SLD**, with DeZog's `WPMEM`, `ASSERTION` and `LOGPOINT`

@@ -406,13 +406,25 @@ void placeLabel(Computer* comp, dasmData& drow) {
 	}
 }
 
+// a DB statement of one byte: it starts at the cell, and the next cell does not
+// go on with it
+static bool dasm_byte_single(Computer* comp, int adr, unsigned char fl) {
+	if ((fl & (DBG_VIEW_MASK | DBG_STMT)) != (DBG_VIEW_BYTE | DBG_STMT)) return false;
+	return (dasm_flag(comp, adr + 1) & (DBG_VIEW_MASK | DBG_STMT)) != DBG_VIEW_BYTE;
+}
+
 int dasmByte(Computer* comp, int adr, dasmData& drow) {
 	int len = 1;
 	drow.command = QString("DB %0").arg(dasm_byte(dasmrd(adr, comp), drow.fmt));
+	// a run of statements of a byte each (a key table, a font) fills rows as
+	// bytes with no statements do; a longer statement has rows of its own
+	bool singles = dasm_byte_single(comp, adr, dasm_flag(comp, adr));
 	adr++;
 	unsigned char fl = dasm_flag(comp, adr);
 	xAdr xadr = dasm_xadr(comp, adr);
-	while ((len < conf.dbg.dbsize) && (fl == DBG_VIEW_BYTE) && find_label(xadr).isEmpty()) {
+	while ((len < conf.dbg.dbsize)
+		&& ((fl == DBG_VIEW_BYTE) || (singles && (fl == (DBG_VIEW_BYTE | DBG_STMT)) && dasm_byte_single(comp, adr, fl)))
+		&& find_label(xadr).isEmpty()) {
 		drow.command.append(QString(",%0").arg(dasm_byte(dasmrd(adr, comp), drow.fmt)));
 		len++;
 		adr++;

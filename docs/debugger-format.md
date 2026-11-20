@@ -180,7 +180,8 @@ these lines ignores them.
 ## Statements in the Debugger
 
 Bit 7 of a cell's flag byte marks where a statement starts (`DBG_STMT`); bits 4-6 are its view.
-A DB or DW row stops where the next statement starts, at a label, or at the row's size; a text
+A DB or DW row stops where the next statement starts, at a label, or at the row's size - but
+DB statements of one byte each, one after another, share a row as bytes with no statements do; a text
 row where the next statement starts, at a character it cannot show, after a character with
 bit 7, or at Max text length. Typing `db`, `dw` or `db "text"` in the listing starts a
 statement there; View on a selection makes the selection one statement.
