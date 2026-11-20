@@ -413,6 +413,12 @@ bool VkSkin::load(const QByteArray& json, QString* err, BaseFile base) {
 					ic.cutPolys.append(points(c));
 				}
 			}
+		} else if (!g.value("strokes").toArray().isEmpty()) {
+			// open lines drawn with a round pen sw wide, or only its outline, hollow wide
+			foreach(QJsonValue p, g.value("strokes").toArray())
+				ic.polys.append(points(p));
+			ic.open = true;
+			ic.hollow = std::max(0.0, num(g, "hollow", 0));
 		} else if (!g.value("polys").toArray().isEmpty()) {
 			foreach(QJsonValue p, g.value("polys").toArray())
 				ic.polys.append(points(p));
@@ -584,7 +590,6 @@ bool VkSkin::load(const QByteArray& json, QString* err, BaseFile base) {
 				QJsonValue eb = lo.value("eb");
 				lab.ebx = eb.isArray() ? eb.toArray().at(0).toDouble() : eb.toDouble(0);
 				lab.eby = eb.isArray() ? eb.toArray().at(1).toDouble() : eb.toDouble(0);
-				lab.hollow = std::max(0.0, num(lo, "hollow", 0));
 				lab.anchor = lo.value("a").toString();
 				lab.sn = lo.value("sn").toString();
 				if (!lab.icon.isEmpty() && !icons.contains(lab.icon)) {
@@ -1001,6 +1006,42 @@ static Mask iconMask(const QPainterPath& path, double sw, bool stroke, bool flat
 		p.setBrush(Qt::black);
 	}
 	p.drawPath(path);
+	p.end();
+	m.x = box.x();
+	m.y = box.y();
+	m.w = box.width();
+	m.h = box.height();
+	m.c.resize(m.w * m.h * 3);
+	for (int y = 0; y < m.h; y++) {
+		const uchar* s = msk.constScanLine(y);
+		uchar* d = m.c.data() + y * m.w * 3;
+		for (int x = 0; x < m.w; x++, d += 3)
+			d[0] = d[1] = d[2] = s[x];
+	}
+	return m;
+}
+
+// open lines drawn with a round pen, sw pixels wide; inner > 0: that much of the middle
+// taken out again, its outline left (an engraved letter)
+static Mask strokeMask(const QPainterPath& path, double sw, double inner) {
+	Mask m;
+	QPen pen(Qt::black, sw, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+	QRect box = QPainterPathStroker(pen).createStroke(path).boundingRect().toAlignedRect().adjusted(-1, -1, 1, 1);
+	if (box.isEmpty()) return m;
+	QImage msk(box.size(), QImage::Format_Alpha8);
+	msk.fill(0);
+	QPainter p(&msk);
+	p.setRenderHint(QPainter::Antialiasing, true);
+	p.translate(-box.topLeft());
+	p.setBrush(Qt::NoBrush);
+	p.setPen(pen);
+	p.drawPath(path);
+	if (inner > 0) {
+		p.setCompositionMode(QPainter::CompositionMode_Clear);
+		pen.setWidthF(inner);
+		p.setPen(pen);
+		p.drawPath(path);
+	}
 	p.end();
 	m.x = box.x();
 	m.y = box.y();
@@ -1483,6 +1524,14 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 						foreach(const QVector<QPointF>& c, ic.cutPolys)
 							path.addPolygon(QPolygonF(c)), path.closeSubpath();
 						put(iconMask(place(tr.map(path)), 0, false, false), lab.col);
+					} else if (ic.open) {
+						foreach(const QVector<QPointF>& c, ic.polys) {
+							if (c.isEmpty()) continue;
+							path.moveTo(c[0]);
+							for (int i = 1; i < c.size(); i++)
+								path.lineTo(c[i]);
+						}
+						put(strokeMask(place(tr.map(path)), ic.sw * s, (ic.hollow > 0) ? std::max(0.0, ic.sw - 2 * ic.hollow) * s : 0), lab.col);
 					} else if (ic.oneShape) {
 						foreach(const QVector<QPointF>& c, ic.polys)
 							path.addPolygon(QPolygonF(c)), path.closeSubpath();
@@ -1530,48 +1579,6 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 				FT_Set_Char_Size(face, (FT_F26Dot6)std::lround(ppx * 64), (FT_F26Dot6)std::lround(ppy * 64), 72, 72);
 				// every glyph rendered at its own subpixel x, then laid into one mask
 				struct Glyph {int x, y, w, h; std::vector<uchar> c;};
-				// a hollow one in gray: its outline taken out channel by channel came out in colors
-				bool glcd = klcd && (lab.hollow <= 0);
-				// one glyph at its pen place, emboldened as the label says, then grown that
-				// many pixels each way about its middle (less than 0: thinned); false if blank
-				auto glyphAt = [&](FT_UInt gi, double gx, double gy, double more, Glyph& g) {
-					int ix = (int)std::floor(gx);
-					int iy = (int)std::floor(gy);
-					FT_Vector delta = {(FT_Pos)std::lround((gx - ix) * 64), (FT_Pos)std::lround(-(gy - iy) * 64)};
-					FT_Set_Transform(face, turned ? &ftm : nullptr, &delta);
-					// the font's own hinting on both paths; LIGHT would hand the glyph to the auto-hinter
-					if (FT_Load_Glyph(face, gi, (glcd ? FT_LOAD_TARGET_LCD : FT_LOAD_TARGET_NORMAL) | FT_LOAD_NO_AUTOHINT)) return false;
-					if ((lab.ebx != 0) || (lab.eby != 0))
-						FT_Outline_EmboldenXY(&face->glyph->outline, std::lround(lab.ebx * s * 64), std::lround(lab.eby * s * 64));
-					if (more != 0) {
-						// emboldening keeps the bottom left where it was: moved back by half
-						FT_Pos m = std::lround(more * 64);
-						FT_Outline_EmboldenXY(&face->glyph->outline, 2 * m, 2 * m);
-						FT_Outline_Translate(&face->glyph->outline, -m, -m);
-					}
-					if (FT_Render_Glyph(face->glyph, glcd ? FT_RENDER_MODE_LCD : FT_RENDER_MODE_NORMAL)) return false;
-					const FT_Bitmap& bm = face->glyph->bitmap;
-					if (!bm.width || !bm.rows) return false;
-					g.w = glcd ? bm.width / 3 : bm.width;
-					g.h = bm.rows;
-					g.x = ix + face->glyph->bitmap_left;
-					g.y = iy - face->glyph->bitmap_top;
-					g.c.resize(g.w * g.h * 3);
-					for (int yy = 0; yy < g.h; yy++) {
-						const uchar* s = bm.buffer + yy * bm.pitch;
-						uchar* d = g.c.data() + yy * g.w * 3;
-						for (int xx = 0; xx < g.w; xx++, d += 3) {
-							if (glcd) {
-								d[0] = s[xx * 3];
-								d[1] = s[xx * 3 + 1];
-								d[2] = s[xx * 3 + 2];
-							} else {
-								d[0] = d[1] = d[2] = s[xx];
-							}
-						}
-					}
-					return true;
-				};
 				QVector<Glyph> gl;
 				for (int i = 0; i < gid.size(); i++) {
 					double gx = x + pos[i] * ppx / upem;
@@ -1581,21 +1588,33 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 						gx = q.x();
 						gy = q.y();
 					}
+					int ix = (int)std::floor(gx);
+					int iy = (int)std::floor(gy);
+					FT_Vector delta = {(FT_Pos)std::lround((gx - ix) * 64), (FT_Pos)std::lround(-(gy - iy) * 64)};
+					FT_Set_Transform(face, turned ? &ftm : nullptr, &delta);
+					// the font's own hinting on both paths; LIGHT would hand the glyph to the auto-hinter
+					if (FT_Load_Glyph(face, gid[i], (klcd ? FT_LOAD_TARGET_LCD : FT_LOAD_TARGET_NORMAL) | FT_LOAD_NO_AUTOHINT)) continue;
+					if ((lab.ebx != 0) || (lab.eby != 0))
+						FT_Outline_EmboldenXY(&face->glyph->outline, std::lround(lab.ebx * s * 64), std::lround(lab.eby * s * 64));
+					if (FT_Render_Glyph(face->glyph, klcd ? FT_RENDER_MODE_LCD : FT_RENDER_MODE_NORMAL)) continue;
+					const FT_Bitmap& bm = face->glyph->bitmap;
+					if (!bm.width || !bm.rows) continue;
 					Glyph g;
-					if (!glyphAt(gid[i], gx, gy, 0, g)) continue;
-					// hollow: its thinned self taken out of it, its outline left
-					Glyph in;
-					if ((lab.hollow > 0) && glyphAt(gid[i], gx, gy, -lab.hollow * s, in)) {
-						for (int yy = 0; yy < in.h; yy++) {
-							int ty = in.y - g.y + yy;
-							if ((ty < 0) || (ty >= g.h)) continue;
-							for (int xx = 0; xx < in.w; xx++) {
-								int tx = in.x - g.x + xx;
-								if ((tx < 0) || (tx >= g.w)) continue;
-								uchar* d = g.c.data() + (ty * g.w + tx) * 3;
-								const uchar* c = in.c.data() + (yy * in.w + xx) * 3;
-								for (int k = 0; k < 3; k++)
-									d[k] = d[k] * (255 - c[k]) / 255;
+					g.w = klcd ? bm.width / 3 : bm.width;
+					g.h = bm.rows;
+					g.x = ix + face->glyph->bitmap_left;
+					g.y = iy - face->glyph->bitmap_top;
+					g.c.resize(g.w * g.h * 3);
+					for (int yy = 0; yy < g.h; yy++) {
+						const uchar* s = bm.buffer + yy * bm.pitch;
+						uchar* d = g.c.data() + yy * g.w * 3;
+						for (int xx = 0; xx < g.w; xx++, d += 3) {
+							if (klcd) {
+								d[0] = s[xx * 3];
+								d[1] = s[xx * 3 + 1];
+								d[2] = s[xx * 3 + 2];
+							} else {
+								d[0] = d[1] = d[2] = s[xx];
 							}
 						}
 					}

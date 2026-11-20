@@ -70,7 +70,6 @@ class VkSkin {
 			QString icon;		// ...or an icon
 			QColor col;
 			double sz, dx, dy, tl, th, ebx, eby;
-			double hollow;		// > 0: only its outline, that wide inside its edge
 			bool hasTl;
 			QString anchor;		// "", start, middle, end
 			QString sn;		// "", off, px, half
@@ -159,6 +158,8 @@ class VkSkin {
 			bool isBox = false;
 			bool isLine = false;
 			bool oneShape = false;			// polys filled as one shape, even-odd: holes in it
+			bool open = false;			// polys are open lines, a round pen's (a stroke font)...
+			double hollow = 0;			// ...or its outline alone, that wide
 			QPointF p1, p2;
 			double sw = 0;
 		};
