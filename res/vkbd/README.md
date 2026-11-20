@@ -21,8 +21,9 @@
 - `zx-robik.json` - the Robik (Selto-Rotor, Cherkassy): the keyboard with the MF key, laid out
   on photos of the real one, the case white as it was before it yellowed and sand-rough round
   the keys; the cursor block presses the Kempston, the two RES reset the machine together, the
-  power lamp is lit while the machine runs. Made by `make-robik.py` and `make-logo.py` (the
-  logo traced on the photo) in the project's lab, then kept as it is.
+  power lamp is lit while the machine runs; its caps with a straight foot under the slopes,
+  their lettering hollow. Made by `make-robik.py` (the logo traced on a photo) in the project's
+  lab, then kept as it is.
 - In the menu: 48K (Classic), 48K (White), 128K (Classic), 128K (White), Next (Black), Next
   (White), Next (Magenta), Klava (the worn Kopir), Klava (Washed), Robik - black, white, 128,
   128-white, next, next-white, next-magenta, kopir-worn, kopir, robik in the config.
@@ -50,7 +51,9 @@ In `canvas`:
   or a ring inside its cap's edge on a key with no dome, `"light_w"` units wide (1.8) - for
   keys set too close for a contour to carry a light (the 128K).
 
-In a label: `"eb"` - that many canvas pixels thicker, a number or `[x, y]`.
+In a label: `"eb"` - that many canvas pixels thicker, a number or `[x, y]`; `"hollow"` - only
+the letters' outline, that many canvas units wide inside their edge, drawn in gray (the Robik's
+engraved lettering).
 
 In a key:
 - `"zx"` - what it presses: `"1"`..`"0"`, `"A"`..`"Z"`, `"CS"`, `"SS"`, `"ENTER"`, `"SPACE"`,
@@ -96,7 +99,9 @@ from loading.
 key's own): a band `"w"` wide inside the cap's edge, `[left, top, right, bottom]` in canvas
 units, cut into four by the lines from its outer corners to its inner ones, each side
 `"shade"`d - from 0 to 1 that much darker, from 0 to -1 that much lighter - or a `"fill"` color
-of its own. `"w"`, `"shade"` and `"fill"` each take one value for all four. The sides are drawn
+of its own. `"foot"` - the straight foot the slope stands on, a band that wide inside the edge
+over the slope's outer part, `"foot_shade"`d as a side is (the Robik's caps). `"w"`, `"shade"`,
+`"fill"`, `"foot"` and `"foot_shade"` each take one value for all four. The sides are drawn
 over the cap's gradient and under its dome.
 
 `"wobble"` - some caps sitting a little crooked, as on a worn keyboard: `{"tilt", "shift",

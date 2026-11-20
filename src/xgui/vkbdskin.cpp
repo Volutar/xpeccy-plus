@@ -584,6 +584,7 @@ bool VkSkin::load(const QByteArray& json, QString* err, BaseFile base) {
 				QJsonValue eb = lo.value("eb");
 				lab.ebx = eb.isArray() ? eb.toArray().at(0).toDouble() : eb.toDouble(0);
 				lab.eby = eb.isArray() ? eb.toArray().at(1).toDouble() : eb.toDouble(0);
+				lab.hollow = std::max(0.0, num(lo, "hollow", 0));
 				lab.anchor = lo.value("a").toString();
 				lab.sn = lo.value("sn").toString();
 				if (!lab.icon.isEmpty() && !icons.contains(lab.icon)) {
@@ -700,6 +701,8 @@ void VkSkin::readSide(const QJsonValue& v, Side& sd) const {
 		if (o.contains("w")) sd.w[i] = four(o.value("w"), i).toDouble();
 		if (o.contains("shade")) sd.shade[i] = std::max(-1.0, std::min(1.0, four(o.value("shade"), i).toDouble()));
 		if (o.contains("fill")) sd.fill[i] = color(four(o.value("fill"), i).toString());
+		if (o.contains("foot")) sd.foot[i] = four(o.value("foot"), i).toDouble();
+		if (o.contains("foot_shade")) sd.footShade[i] = std::max(-1.0, std::min(1.0, four(o.value("foot_shade"), i).toDouble()));
 	}
 	sd.on = true;
 }
@@ -1327,6 +1330,18 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 					p.setBrush(c);
 					p.drawPolygon(q);
 				}
+				// the straight foot under the slope, over its outer part
+				QVector<QPointF> fin = offsetPoly4(out, -fr(sd.foot[0] * s), -fr(sd.foot[1] * s), -fr(sd.foot[2] * s), -fr(sd.foot[3] * s));
+				for (int i = 0; i < out.size(); i++) {
+					int j = (i + 1) % out.size();
+					int f = edgeFaces(out, i);
+					double sh = sd.footShade[f];
+					if ((sd.foot[f] <= 0) || (sh == 0)) continue;
+					QPolygonF q;
+					q << out[i] << out[j] << fin[j] << fin[i];
+					p.setBrush((sh > 0) ? QColor(0, 0, 0, fr(sh * 255)) : QColor(255, 255, 255, fr(-sh * 255)));
+					p.drawPolygon(q);
+				}
 				p.restore();
 			}
 		}
@@ -1515,6 +1530,48 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 				FT_Set_Char_Size(face, (FT_F26Dot6)std::lround(ppx * 64), (FT_F26Dot6)std::lround(ppy * 64), 72, 72);
 				// every glyph rendered at its own subpixel x, then laid into one mask
 				struct Glyph {int x, y, w, h; std::vector<uchar> c;};
+				// a hollow one in gray: its outline taken out channel by channel came out in colors
+				bool glcd = klcd && (lab.hollow <= 0);
+				// one glyph at its pen place, emboldened as the label says, then grown that
+				// many pixels each way about its middle (less than 0: thinned); false if blank
+				auto glyphAt = [&](FT_UInt gi, double gx, double gy, double more, Glyph& g) {
+					int ix = (int)std::floor(gx);
+					int iy = (int)std::floor(gy);
+					FT_Vector delta = {(FT_Pos)std::lround((gx - ix) * 64), (FT_Pos)std::lround(-(gy - iy) * 64)};
+					FT_Set_Transform(face, turned ? &ftm : nullptr, &delta);
+					// the font's own hinting on both paths; LIGHT would hand the glyph to the auto-hinter
+					if (FT_Load_Glyph(face, gi, (glcd ? FT_LOAD_TARGET_LCD : FT_LOAD_TARGET_NORMAL) | FT_LOAD_NO_AUTOHINT)) return false;
+					if ((lab.ebx != 0) || (lab.eby != 0))
+						FT_Outline_EmboldenXY(&face->glyph->outline, std::lround(lab.ebx * s * 64), std::lround(lab.eby * s * 64));
+					if (more != 0) {
+						// emboldening keeps the bottom left where it was: moved back by half
+						FT_Pos m = std::lround(more * 64);
+						FT_Outline_EmboldenXY(&face->glyph->outline, 2 * m, 2 * m);
+						FT_Outline_Translate(&face->glyph->outline, -m, -m);
+					}
+					if (FT_Render_Glyph(face->glyph, glcd ? FT_RENDER_MODE_LCD : FT_RENDER_MODE_NORMAL)) return false;
+					const FT_Bitmap& bm = face->glyph->bitmap;
+					if (!bm.width || !bm.rows) return false;
+					g.w = glcd ? bm.width / 3 : bm.width;
+					g.h = bm.rows;
+					g.x = ix + face->glyph->bitmap_left;
+					g.y = iy - face->glyph->bitmap_top;
+					g.c.resize(g.w * g.h * 3);
+					for (int yy = 0; yy < g.h; yy++) {
+						const uchar* s = bm.buffer + yy * bm.pitch;
+						uchar* d = g.c.data() + yy * g.w * 3;
+						for (int xx = 0; xx < g.w; xx++, d += 3) {
+							if (glcd) {
+								d[0] = s[xx * 3];
+								d[1] = s[xx * 3 + 1];
+								d[2] = s[xx * 3 + 2];
+							} else {
+								d[0] = d[1] = d[2] = s[xx];
+							}
+						}
+					}
+					return true;
+				};
 				QVector<Glyph> gl;
 				for (int i = 0; i < gid.size(); i++) {
 					double gx = x + pos[i] * ppx / upem;
@@ -1524,33 +1581,21 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 						gx = q.x();
 						gy = q.y();
 					}
-					int ix = (int)std::floor(gx);
-					int iy = (int)std::floor(gy);
-					FT_Vector delta = {(FT_Pos)std::lround((gx - ix) * 64), (FT_Pos)std::lround(-(gy - iy) * 64)};
-					FT_Set_Transform(face, turned ? &ftm : nullptr, &delta);
-					// the font's own hinting on both paths; LIGHT would hand the glyph to the auto-hinter
-					if (FT_Load_Glyph(face, gid[i], (klcd ? FT_LOAD_TARGET_LCD : FT_LOAD_TARGET_NORMAL) | FT_LOAD_NO_AUTOHINT)) continue;
-					if ((lab.ebx != 0) || (lab.eby != 0))
-						FT_Outline_EmboldenXY(&face->glyph->outline, std::lround(lab.ebx * s * 64), std::lround(lab.eby * s * 64));
-					if (FT_Render_Glyph(face->glyph, klcd ? FT_RENDER_MODE_LCD : FT_RENDER_MODE_NORMAL)) continue;
-					const FT_Bitmap& bm = face->glyph->bitmap;
-					if (!bm.width || !bm.rows) continue;
 					Glyph g;
-					g.w = klcd ? bm.width / 3 : bm.width;
-					g.h = bm.rows;
-					g.x = ix + face->glyph->bitmap_left;
-					g.y = iy - face->glyph->bitmap_top;
-					g.c.resize(g.w * g.h * 3);
-					for (int yy = 0; yy < g.h; yy++) {
-						const uchar* s = bm.buffer + yy * bm.pitch;
-						uchar* d = g.c.data() + yy * g.w * 3;
-						for (int xx = 0; xx < g.w; xx++, d += 3) {
-							if (klcd) {
-								d[0] = s[xx * 3];
-								d[1] = s[xx * 3 + 1];
-								d[2] = s[xx * 3 + 2];
-							} else {
-								d[0] = d[1] = d[2] = s[xx];
+					if (!glyphAt(gid[i], gx, gy, 0, g)) continue;
+					// hollow: its thinned self taken out of it, its outline left
+					Glyph in;
+					if ((lab.hollow > 0) && glyphAt(gid[i], gx, gy, -lab.hollow * s, in)) {
+						for (int yy = 0; yy < in.h; yy++) {
+							int ty = in.y - g.y + yy;
+							if ((ty < 0) || (ty >= g.h)) continue;
+							for (int xx = 0; xx < in.w; xx++) {
+								int tx = in.x - g.x + xx;
+								if ((tx < 0) || (tx >= g.w)) continue;
+								uchar* d = g.c.data() + (ty * g.w + tx) * 3;
+								const uchar* c = in.c.data() + (yy * in.w + xx) * 3;
+								for (int k = 0; k < 3; k++)
+									d[k] = d[k] * (255 - c[k]) / 255;
 							}
 						}
 					}

@@ -70,6 +70,7 @@ class VkSkin {
 			QString icon;		// ...or an icon
 			QColor col;
 			double sz, dx, dy, tl, th, ebx, eby;
+			double hollow;		// > 0: only its outline, that wide inside its edge
 			bool hasTl;
 			QString anchor;		// "", start, middle, end
 			QString sn;		// "", off, px, half
@@ -109,6 +110,9 @@ class VkSkin {
 			double w[4] = {0, 0, 0, 0};	// left, top, right, bottom
 			double shade[4] = {0, 0, 0, 0};	// > 0 darker, < 0 lighter, 1 at most
 			QColor fill[4];			// over the shade when given
+			// its straight foot under the slope: a band inside the edge, shaded of its own
+			double foot[4] = {0, 0, 0, 0};
+			double footShade[4] = {0, 0, 0, 0};
 		};
 		struct Key {
 			double x, y, w, h, ax, ay;	// an outline key: its bounds
