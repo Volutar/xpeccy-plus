@@ -19,7 +19,8 @@
 ;
 ; Converted to the Debugger's text format on 2026-11-20 (docs/debugger-format.md):
 ; rom NAME <MD5 of a 16K bank> [skip what that bank has not], the bundled images
-; above it; NAME:ADDR LABEL a name; db/dw/da/dm/dc NAME:ADDR LENGTH a data range.
+; above it; NAME:ADDR LABEL a name; db/dw/da/dm/dc NAME:ADDR LENGTH data, N*K for
+; K statements of N.
 ; zxevo-fe.rom bank 9
 rom TRDOS_ZXEVO_FE_BANK_9 aa8207b8cc39d2c10e1bd9e1c3c13ad8
 TRDOS_ZXEVO_FE_BANK_9:0010 TRDOS.RST_10

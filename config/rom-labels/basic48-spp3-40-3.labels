@@ -25,7 +25,8 @@
 ;
 ; Converted to the Debugger's text format on 2026-11-20 (docs/debugger-format.md):
 ; rom NAME <MD5 of a 16K bank> [skip what that bank has not], the bundled images
-; above it; NAME:ADDR LABEL a name; db/dw/da/dm/dc NAME:ADDR LENGTH a data range.
+; above it; NAME:ADDR LABEL a name; db/dw/da/dm/dc NAME:ADDR LENGTH data, N*K for
+; K statements of N.
 ; plus3-3.rom
 rom BASIC48_SPP3_40_3 a148bcc575e51389e84fdf5d555c3196
 ; plus3-41.rom bank 3

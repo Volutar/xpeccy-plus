@@ -28,7 +28,8 @@
 ;
 ; Converted to the Debugger's text format on 2026-11-20 (docs/debugger-format.md):
 ; rom NAME <MD5 of a 16K bank> [skip what that bank has not], the bundled images
-; above it; NAME:ADDR LABEL a name; db/dw/da/dm/dc NAME:ADDR LENGTH a data range.
+; above it; NAME:ADDR LABEL a name; db/dw/da/dm/dc NAME:ADDR LENGTH data, N*K for
+; K statements of N.
 ; plus3-2.rom
 rom P3DOS_40 3b6dd659d5e4ec97f0e2f7878152c987
 P3DOS_40:0000 P3DOS.FILL_0000

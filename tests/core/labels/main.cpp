@@ -422,6 +422,45 @@ int main(int argc, char** argv) {
 	for (const xBrkPoint& b : conf.brk.list) again.append(brk_text_line(b));
 	check("an older breakpoint list still reads", !bbad
 		&& (again == QStringList({"brk :8000 exec", "brk 05:0010-001F write count", "brk :8100 exec"})));
+	// other tools' files: SjASMPlus's SLD, a SkoolKit control file, ZX Spin's symbols
+	conf.brk.list.clear();
+	memset(comp->brkRamMap, 0, MEM_4M);
+	check("load SjASMPlus's SLD", loadLabels(fixtures.filePath("sjasm-sld.sld").toLocal8Bit().constData()) == 1);
+	check("SLD labels with their banks, EQU and modules left out", find_label("start").abs == 0x8000
+		&& find_label("start.loop").abs == 0x8005 && find_label("gfx.draw").abs == 0x800c
+		&& find_label("b7").abs == ((7 << 14) | 0x123) && find_label("CONST").type < 0 && find_label("gfx").type < 0);
+	auto bank7 = [&](int ofs) { return comp->brkRamMap[(7 << 14) | ofs] & 0xf0; };
+	check("SLD instructions as code", flag(0x8000) == (DBG_VIEW_EXEC | DBG_STMT) && flag(0x8002) == DBG_VIEW_EXEC
+		&& flag(0x8007) == DBG_VIEW_EXEC && flag(0x8009) == 0 && flag(0x800c) == (DBG_VIEW_EXEC | DBG_STMT)
+		&& bank7(0x123) == (DBG_VIEW_EXEC | DBG_STMT) && bank7(0x124) == DBG_VIEW_EXEC);
+	points.clear();
+	for (const xBrkPoint& b : conf.brk.list) points.append(brk_text_line(b));
+	check("SLD comments, DeZog's keywords as breakpoints",
+		find_comment(comp_get_xadr(comp, 0x8009, MEM_VIEW_READ)) == "WPMEM, 3, w"
+		&& points == QStringList({"brk 02:0000 exec if \"!(A < 7)\"", "brk 02:0005 exec log \"A,HL\" count",
+			"brk 02:0009-000B write"}));
+	conf.brk.list.clear();
+	memset(comp->brkRamMap, 0, MEM_4M);
+	check("load a SkoolKit control file", loadLabels(fixtures.filePath("skool.ctl").toLocal8Bit().constData()) == 1);
+	check("ctl labels", find_label("MAIN").adr == 0x8000 && find_label("DATA").adr == 0x8004);
+	check("ctl blocks and their statements", flag(0x8000) == (DBG_VIEW_EXEC | DBG_STMT) && flag(0x8003) == DBG_VIEW_EXEC
+		&& flag(0x8004) == (DBG_VIEW_BYTE | DBG_STMT) && flag(0x8005) == DBG_VIEW_BYTE
+		&& flag(0x8006) == (DBG_VIEW_BYTE | DBG_STMT) && flag(0x8008) == (DBG_VIEW_BYTE | DBG_STMT)
+		&& flag(0x800A) == (DBG_VIEW_BYTE | DBG_STMT) && flag(0x800B) == (DBG_VIEW_BYTE | DBG_STMT)
+		&& flag(0x800C) == (DBG_VIEW_BYTE | DBG_STMT) && flag(0x800D) == DBG_VIEW_BYTE
+		&& flag(0x800E) == (DBG_VIEW_TEXT | DBG_STMT) && flag(0x8011) == DBG_VIEW_TEXT
+		&& flag(0x8012) == (DBG_VIEW_WORD | DBG_STMT) && flag(0x8014) == (DBG_VIEW_WORD | DBG_STMT)
+		&& flag(0x8016) == (DBG_VIEW_WORD | DBG_STMT) && flag(0x8018) == (DBG_VIEW_WORD | DBG_STMT)
+		&& flag(0x801A) == 0);
+	memset(comp->brkRamMap, 0, MEM_4M);
+	memset(comp->brkRomMap, 0, MEM_512K);
+	check("load ZX Spin's symbols", loadLabels(fixtures.filePath("spin.sym").toLocal8Bit().constData()) == 1);
+	check("Spin symbols where the CPU sees them", find_label("START").type == MEM_ROM && find_label("START").abs == 0
+		&& find_label("KSTATE").abs == ((5 << 14) | 0x1c00) && find_label("DEFADD").adr == 0x5c0b);
+	check("Spin kinds and comments", (comp->brkRomMap[0x95] & 0xf0) == (DBG_VIEW_TEXT | DBG_STMT)
+		&& (comp->brkRomMap[0x98] & 0xf0) == DBG_VIEW_TEXT && flag(0x5c00) == (DBG_VIEW_BYTE | DBG_STMT)
+		&& flag(0x5c07) == DBG_VIEW_BYTE && flag(0x5c0b) == (DBG_VIEW_WORD | DBG_STMT)
+		&& find_comment(comp_get_xadr(comp, 0x5c00, MEM_VIEW_READ)) == "Used in reading the keyboard");
 	conf.brk.list.clear();
 	conf.dbg.sysvars = 0;
 	check("system variables switched off", find_label(var, nullptr, LAB_SYSVAR).isEmpty() && find_label("ERR_SP").type < 0);

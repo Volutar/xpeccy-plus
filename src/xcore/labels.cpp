@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileDialog>
+#include <QRegularExpression>
 
 #include <QDebug>
 
@@ -53,7 +54,17 @@ struct romLabData {
 	int end;
 	unsigned char view;	// DBG_VIEW_*
 	int step;		// bytes a statement takes, 0: one statement for all of it
-	QString key;		// "@START": how a rom record's skip drops it
+};
+
+// what a bank of a ROM's variant has not: names, and data starting in ranges
+struct romSkip {
+	QSet<QString> names;
+	QList<QPair<int, int> > data;
+	bool has_data(int ofs) const {
+		for (const auto& r : data)
+			if ((ofs >= r.first) && (ofs <= r.second)) return true;
+		return false;
+	}
 };
 
 struct romLab {
@@ -70,7 +81,7 @@ struct romLabList {
 	QList<romLab> labs;
 	QList<romLabData> data;
 	QSet<QString> spaces;				// the namespaces of its names
-	QHash<QByteArray, QSet<QString> > banks;	// MD5 (hex) of a bank -> names and @data it has not
+	QHash<QByteArray, romSkip> banks;		// MD5 (hex) of a bank -> what it has not
 };
 
 // a file's system variables: there while a ROM with names of their namespace is
@@ -104,11 +115,6 @@ static QString rom_space(const QString& full) {
 	return (dot > 0) ? full.left(dot) : QString();
 }
 
-// a skip key for data starting at an offset, as a rom record's skip says it
-static QString rom_data_key(int ofs) {
-	return QString("@%1").arg(ofs, 4, 16, QChar('0')).toUpper();
-}
-
 // One list file: what it says of each ROM name it uses, and its system variables.
 // Lines it cannot use are counted, and logged once for the file
 static void rom_list_file(const QString& path) {
@@ -140,9 +146,9 @@ static void rom_list_file(const QString& path) {
 			case DT_REC_NONE:
 				break;
 			case DT_REC_ROM: {
-				QSet<QString> drop;
-				foreach(const QString& nm, rec.skipNames) drop.insert(nm);
-				foreach(const dtPlace& pl, rec.skipPlaces) drop.insert(rom_data_key(pl.ofs));
+				romSkip drop;
+				foreach(const QString& nm, rec.skipNames) drop.names.insert(nm);
+				foreach(const dtPlace& pl, rec.skipPlaces) drop.data.append(qMakePair(pl.ofs, (pl.end < 0) ? pl.ofs : pl.end));
 				list_of(rec.name).banks[rec.md5.toLatin1()] = drop;
 				break;
 			}
@@ -175,7 +181,6 @@ static void rom_list_file(const QString& path) {
 					dat.view = rec.view;
 					// one statement each: the count's; dc's strings end themselves
 					dat.step = ((rec.count > 1) && !rec.dc) ? rec.len * rec.unit : 0;
-					dat.key = rom_data_key(rec.at.ofs);
 					if (dat.end < MEM_16K) list_of(rec.at.name).data.append(dat);
 					else skipped++;
 				} else {
@@ -246,11 +251,11 @@ void labels_rom_scan(Computer* comp) {
 	QSet<QString> fitted;		// the namespaces of the banks found
 	for (int b = 0; b < banks.size(); b++) {
 		foreach(const romLabList& lst, romLists) {
-			QHash<QByteArray, QSet<QString> >::const_iterator it = lst.banks.constFind(banks.at(b));
+			QHash<QByteArray, romSkip>::const_iterator it = lst.banks.constFind(banks.at(b));
 			if (it == lst.banks.constEnd()) continue;
 			fitted.unite(lst.spaces);
 			foreach(const romLab& lab, lst.labs) {
-				if (it->contains(lab.bare) || it->contains(lab.full)) continue;
+				if (it->names.contains(lab.bare) || it->names.contains(lab.full)) continue;
 				int abs = b * MEM_16K + lab.ofs;
 				romByAbs[abs] = lab.full;
 				QList<int>& cells = romByName[lab.full];
@@ -258,7 +263,7 @@ void labels_rom_scan(Computer* comp) {
 				short_add(romShort, lab.bare, lab.full);
 			}
 			foreach(const romLabData& dat, lst.data) {
-				if (it->contains(dat.key)) continue;
+				if (it->has_data(dat.start)) continue;
 				char* cell = romView.data() + b * MEM_16K;
 				for (int ofs = dat.start; ofs <= dat.end; ofs++) {
 					bool first = dat.step ? (((ofs - dat.start) % dat.step) == 0) : (ofs == dat.start);
@@ -884,11 +889,471 @@ static bool labels_text_label(const dtRecord& rec, bool isNext, int* wide) {
 	}
 }
 
+// Files of other tools, read into records of the text format (a place, a view
+// and its statements) and taken as one of its files is.
+
+// a label at a CPU address of a file that has no pages: the cell the CPU sees
+// there now (the Next keeps it at the address, as LABELSLIST's are)
+static void labels_add_here(bool isNext, int adr, const QString& name) {
+	if (isNext || !conf.zx) labels_add_cpu(isNext, adr, name);
+	else add_label(comp_get_xadr(conf.zx, adr & 0xffff, MEM_VIEW_READ), name);
+}
+
+static dtRecord data_record(const dtPlace& at, int view, int unit, int len, int count, bool dc = false) {
+	dtRecord rec;
+	dt_parse_line(QString(), &rec);		// every field cleared
+	rec.type = DT_REC_DATA;
+	rec.at = at;
+	rec.view = view;
+	rec.unit = unit;
+	rec.len = len;
+	rec.count = count;
+	rec.dc = dc;
+	return rec;
+}
+
+static dtPlace cpu_place(int adr) {
+	dtPlace p;
+	dt_place_clear(&p);
+	p.kind = DT_PLACE_CPU;
+	p.ofs = adr & 0xffff;
+	return p;
+}
+
+// statements of these lengths (bytes) from adr on, one record a run of one length
+static void statements_out(QList<dtRecord>* out, int adr, const QList<int>& lens, int view) {
+	int unit = ((view == DBG_VIEW_WORD) || (view == DBG_VIEW_ADDR)) ? 2 : 1;
+	int i = 0;
+	while (i < lens.size()) {
+		int len = lens.at(i);
+		int count = 1;
+		while ((i + count < lens.size()) && (lens.at(i + count) == len)) count++;
+		if (len / unit > 0) out->append(data_record(cpu_place(adr), view, unit, len / unit, count));
+		adr += len * count;
+		i += count;
+	}
+}
+
+// SkoolKit's numbers: $hex, %binary, 0x, decimal
+static int ctl_int(QString str, bool* ok) {
+	str = str.trimmed();
+	if (str.startsWith('$')) return str.mid(1).toInt(ok, 16);
+	if (str.startsWith('%')) return str.mid(1).toInt(ok, 2);
+	return str.toInt(ok, 0);
+}
+
+// One statement's length of a SkoolKit sub-block: its parts a:b:c add up (a
+// base or type letter in front of a part is only how it is shown); an S
+// statement is its first part, the rest is what fills it
+static int ctl_statement(const QString& spec, QChar ctl, bool* ok) {
+	int sum = 0;
+	*ok = true;
+	QStringList parts = spec.split(':');
+	for (int i = 0; i < parts.size(); i++) {
+		QString p = parts.at(i);
+		int k = 0;
+		while ((k < p.size()) && (k < 2) && p.at(k).isLetter()) k++;
+		bool good;
+		int n = p.mid(k).isEmpty() ? 0 : ctl_int(p.mid(k), &good);
+		if (!p.mid(k).isEmpty() && !good) {
+			*ok = false;
+			return 0;
+		}
+		sum += n;
+		if (ctl == 'S') break;
+	}
+	return sum;
+}
+
+typedef struct {
+	QChar ctl;		// B C S T W (upper: a sub-block's type)
+	int start;
+	int end;		// -1: to the next sub-block
+	QList<int> stmts;	// its statements' lengths, the last one repeating
+} ctlSub;
+
+// A SkoolKit control file (skoolkit.ca, Control files): a CPU's 64K, no pages.
+// Labels from @label=, data views from its blocks and sub-blocks with their
+// statement lengths, loops unrolled; comments and the rest are left. false: none
+static bool ctl_read(QFile& file, bool isNext, QList<QPair<int, dtRecord> >* later, int* bad) {
+	QMap<int, QChar> blocks;
+	QMap<int, ctlSub> subs;
+	QList<QList<int> > loops;	// start, length, count
+	int num = 0;
+	while (!file.atEnd()) {
+		QString line = QString::fromUtf8(file.readLine());
+		num++;
+		while (line.endsWith('\n') || line.endsWith('\r')) line.chop(1);
+		if (line.trimmed().isEmpty()) continue;
+		QChar first = line.at(0);
+		QString content = line.mid(1).trimmed();
+		if (first == '@') {
+			// @ $ADDR label=NAME; other directives are the assembler's
+			QStringList f = content.split(' ', X_SkipEmptyParts);
+			bool ok;
+			if ((f.size() > 1) && f.at(1).startsWith("label=")) {
+				int adr = ctl_int(f.at(0), &ok);
+				QString name = f.at(1).mid(6);
+				if (ok && !name.isEmpty() && (adr >= 0) && (adr < 0x10000)) labels_add_here(isNext, adr, name);
+			}
+			continue;
+		}
+		if (!QString(" bBcCgiLsStTuwW").contains(first)) continue;		// comments, D, N, R...
+		QString params = content.section(' ', 0, 0);
+		QStringList p = params.split(',');
+		bool ok;
+		int start = ctl_int(p.at(0), &ok);
+		if (!ok || (start < 0) || (start > 0xffff)) {
+			if ((*bad)++ < 10) xlog(XLG_FILE, XLL_WARN, "labels: line %i: not an address", num);
+			continue;
+		}
+		if (QString("bcgistuw").contains(first)) {
+			blocks[start] = first;
+			continue;
+		}
+		if (first == 'L') {
+			int len = (p.size() > 1) ? ctl_int(p.at(1), &ok) : 0;
+			int count = (p.size() > 2) ? ctl_int(p.at(2), &ok) : 0;
+			if ((len > 0) && (count > 0)) loops.append({start, len, count});
+			continue;
+		}
+		ctlSub sub;
+		sub.ctl = first;
+		sub.start = start;
+		sub.end = -1;
+		if (p.size() > 1) {
+			int len = ctl_int(p.at(1), &ok);
+			if (ok && (len > 0)) sub.end = start + len;
+		}
+		for (int i = 2; i < p.size(); i++) {
+			QString n = p.at(i).section('*', 0, 0);
+			int times = p.at(i).contains('*') ? ctl_int(p.at(i).section('*', 1), &ok) : 1;
+			int s = ctl_statement(n, first.toUpper(), &ok);
+			for (int t = 0; ok && (t < times); t++) sub.stmts.append(s);
+		}
+		subs[start] = sub;
+	}
+	if (blocks.isEmpty()) return false;
+	// a blank sub-block is its block's type: code, DEFS, text, words, else bytes
+	QList<int> starts = blocks.keys();
+	auto block_of = [&](int adr) -> QChar {
+		QMap<int, QChar>::const_iterator it = blocks.upperBound(adr);
+		if (it == blocks.constBegin()) return QChar();
+		return (--it).value();
+	};
+	auto sub_type = [&](QChar b) -> QChar {
+		return QString("cstw").contains(b) ? b.toUpper() : QChar('B');
+	};
+	for (auto it = subs.begin(); it != subs.end(); ++it)
+		if (it->ctl == ' ') it->ctl = sub_type(block_of(it->start));
+	// loops: the sub-blocks in [start, start + length) again, count - 1 times more
+	foreach(const QList<int>& lp, loops) {
+		QList<ctlSub> body;
+		foreach(const ctlSub& s, subs)
+			if ((s.start >= lp.at(0)) && (s.start < lp.at(0) + lp.at(1))) body.append(s);
+		for (int k = 1; k < lp.at(2); k++) {
+			foreach(ctlSub s, body) {
+				int shift = k * lp.at(1);
+				s.start += shift;
+				if (s.end >= 0) s.end += shift;
+				if (s.start < 0x10000) subs[s.start] = s;
+			}
+		}
+	}
+	// what a sub-block with a length leaves to the next one is its block's again
+	foreach(const ctlSub& s, subs.values()) {
+		if ((s.end >= 0) && (s.end < 0x10000) && !subs.contains(s.end) && !blocks.contains(s.end)) {
+			ctlSub rest;
+			rest.ctl = QChar(' ');
+			rest.start = s.end;
+			rest.end = -1;
+			subs[s.end] = rest;
+		}
+	}
+	// the last block only ends the one before it
+	for (int b = 0; b + 1 < starts.size(); b++) {
+		int bstart = starts.at(b);
+		int bend = starts.at(b + 1);
+		QChar bt = blocks.value(bstart);
+		if (bt == 'i') continue;		// ignored: no view
+		QList<int> at;
+		at.append(bstart);
+		for (auto it = subs.lowerBound(bstart); (it != subs.end()) && (it.key() < bend); ++it)
+			if (it.key() > bstart) at.append(it.key());
+		for (int i = 0; i < at.size(); i++) {
+			int s = at.at(i);
+			int e = (i + 1 < at.size()) ? at.at(i + 1) : bend;
+			ctlSub sub = subs.value(s);
+			if (!subs.contains(s) || (sub.ctl == ' ')) {
+				sub.ctl = sub_type(bt);
+				sub.stmts.clear();
+			}
+			int view = (sub.ctl == 'C') ? DBG_VIEW_EXEC : (sub.ctl == 'T') ? DBG_VIEW_TEXT
+				: (sub.ctl == 'W') ? DBG_VIEW_WORD : DBG_VIEW_BYTE;
+			if (view == DBG_VIEW_EXEC) {
+				later->append(qMakePair(0, data_record(cpu_place(s), view, 1, e - s, 1)));
+				continue;
+			}
+			// its statements, the last length again as long as it fits; none: one
+			QList<int> lens;
+			int adr = s;
+			for (int k = 0; (adr < e) && !sub.stmts.isEmpty(); k++) {
+				int n = sub.stmts.at(qMin(k, sub.stmts.size() - 1));
+				if (n <= 0) break;
+				n = qMin(n, e - adr);
+				lens.append(n);
+				adr += n;
+			}
+			if (adr < e) lens.append(e - adr);
+			QList<dtRecord> recs;
+			statements_out(&recs, s, lens, view);
+			foreach(const dtRecord& r, recs) later->append(qMakePair(0, r));
+		}
+	}
+	return true;
+}
+
+// ZX Spin's symbol file: $AAAA[,B|W|TT80[,COUNT]]<tab>NAME [;comment], ;@rom
+// lines for the ROM it fits. CPU addresses, no pages. false: not one
+static bool spin_read(QFile& file, bool isNext, QList<QPair<int, dtRecord> >* later, int* bad) {
+	static const QRegularExpression re("^\\$([0-9A-Fa-f]{1,4})(?:,([A-Za-z]+[0-9A-Fa-f]*)(?:,(\\d+))?)?\\s+(\\S+)(?:\\s+;\\s?(.*))?$");
+	int num = 0;
+	int taken = 0;
+	while (!file.atEnd()) {
+		QString line = QString::fromUtf8(file.readLine()).trimmed();
+		num++;
+		if (line.isEmpty() || line.startsWith(';')) continue;
+		QRegularExpressionMatch m = re.match(line);
+		if (!m.hasMatch()) {
+			if ((*bad)++ < 10) xlog(XLG_FILE, XLL_WARN, "labels: line %i: not a symbol: %s", num, line.toLocal8Bit().constData());
+			continue;
+		}
+		int adr = m.captured(1).toInt(nullptr, 16);
+		QString kind = m.captured(2).toUpper();
+		int count = m.captured(3).isEmpty() ? 0 : m.captured(3).toInt();
+		labels_add_here(isNext, adr, m.captured(4));
+		taken++;
+		if (kind == "B") {
+			later->append(qMakePair(num, data_record(cpu_place(adr), DBG_VIEW_BYTE, 1, count ? count : 1, 1)));
+		} else if (kind == "W") {
+			later->append(qMakePair(num, data_record(cpu_place(adr), DBG_VIEW_WORD, 2, count ? qMax(1, count / 2) : 1, 1)));
+		} else if (kind.startsWith("T") && count) {
+			// TT80: text up to a character with bit 7, as DC
+			later->append(qMakePair(num, data_record(cpu_place(adr), DBG_VIEW_TEXT, 1, count, 1, kind.startsWith("TT"))));
+		}
+		if (!m.captured(5).isEmpty()) {
+			dtRecord c = data_record(cpu_place(adr), 0, 1, 1, 1);
+			c.type = DT_REC_COMMENT;
+			c.text = m.captured(5).trimmed();
+			later->append(qMakePair(num, c));
+		}
+	}
+	return taken > 0;
+}
+
+// The text of a DeZog keyword in a comment, up to the next ';', or the end
+static bool sld_keyword(const QString& text, const char* key, QString* arg) {
+	int at = text.indexOf(QLatin1String(key));
+	if (at < 0) return false;
+	QString rest = text.mid(at + (int)strlen(key));
+	if (!rest.isEmpty() && (rest.at(0).isLetterOrNumber() || (rest.at(0) == '_'))) return false;
+	int semi = rest.indexOf(';');
+	*arg = ((semi < 0) ? rest : rest.left(semi)).trimmed();
+	return true;
+}
+
+static dtRecord brk_record(const QList<dtWord>& words) {
+	dtRecord r;
+	dt_parse_line(QString(), &r);
+	r.type = DT_REC_BRK;
+	r.words = words;
+	return r;
+}
+
+static dtWord word_of(const QString& text, bool quoted = false) {
+	dtWord w;
+	w.text = text;
+	w.quoted = quoted;
+	return w;
+}
+
+typedef struct {
+	Computer* comp;
+	dtPlace at;
+	int adr;
+} sldCell;
+
+static int sld_cell_read(int adr, void* ptr) {
+	sldCell* c = (sldCell*)ptr;
+	int ofs = c->at.ofs + ((adr - c->adr) & 0xffff);
+	int v = (c->at.kind == DT_PLACE_PAGE) ? comp_cell_peek(c->comp, CELL_RAM, c->at.page, ofs)
+		: comp_peek(c->comp, ofs & 0xffff, MEM_VIEW_READ, NULL);
+	return (v < 0) ? 0xff : (v & 0xff);
+}
+
+// SjASMPlus's SLD (--sld): file|line|deffile|defline|page|value|type|data. Its
+// labels (L, EQU left out) with their pages, the start of every instruction (T)
+// as code, the comments its SLDOPT COMMENT keywords picked (K) as comments, and
+// DeZog's keywords in them as breakpoints: WPMEM [addr[,len[,r|w|rw]]] watches,
+// ASSERTION expr stops where expr is false, LOGPOINT [group] text ${expr} logs
+static bool sld_read(QFile& file, bool isNext, QList<QPair<int, dtRecord> >* later, int* bad) {
+	Computer* comp = conf.zx;
+	int pageSize = 0;
+	int pageCount = 0;
+	struct sldRec {int num; int page; int value; QChar type; QString data;};
+	QList<sldRec> recs;
+	int num = 0;
+	while (!file.atEnd()) {
+		QString line = QString::fromUtf8(file.readLine());
+		num++;
+		while (line.endsWith('\n') || line.endsWith('\r')) line.chop(1);
+		QStringList f = line.split('|');
+		if ((f.size() < 8) || f.at(0).isEmpty() || (f.at(6).size() != 1)) continue;		// control lines
+		sldRec r = {num, f.at(4).toInt(), f.at(5).toInt(), f.at(6).at(0), QStringList(f.mid(7)).join("|")};
+		if (r.type == 'Z') {
+			// pages.size:16384,pages.count:8,slots.count:4,slots.adr:...
+			foreach(const QString& kv, r.data.split(',')) {
+				if (kv.startsWith("pages.size:")) pageSize = kv.mid(11).toInt();
+				if (kv.startsWith("pages.count:")) pageCount = kv.mid(12).toInt();
+			}
+		} else {
+			recs.append(r);
+		}
+	}
+	if (recs.isEmpty() && !pageSize) return false;
+	// a device with banks: its page and offset into the machine's own pages; with
+	// none (48K, or 64K of no pages), a CPU address
+	bool banked = (pageSize > 0) && (pageCount > 0) && ((long long)pageSize * pageCount > 0x10000);
+	int unit = comp ? comp_cell_unit(comp, CELL_RAM) : MEM_16K;
+	auto place_of = [&](int page, int value) {
+		dtPlace p = cpu_place(value);
+		if (banked && (page >= 0) && (unit > 0)) {
+			long long linear = (long long)page * pageSize + (value & (pageSize - 1));
+			p.kind = DT_PLACE_PAGE;
+			p.page = (int)(linear / unit);
+			p.ofs = (int)(linear % unit);
+		}
+		return p;
+	};
+	// labels: module, main, local - the full name as SjASMPlus's LABELSLIST has it
+	QMap<QPair<int, int>, int> starts;		// (page, value) of each instruction
+	foreach(const sldRec& r, recs) {
+		if (r.type == 'L') {
+			QStringList parts = r.data.split(',');
+			if (parts.size() < 3) continue;
+			bool equ = false;
+			bool skip = false;
+			for (int i = 3; i < parts.size(); i++) {
+				if (parts.at(i) == "+equ") equ = true;
+				if ((parts.at(i) == "+module") || (parts.at(i) == "+endmod") || (parts.at(i) == "+struct_def")) skip = true;
+			}
+			QStringList name;
+			for (int i = 0; i < 3; i++) if (!parts.at(i).isEmpty()) name.append(parts.at(i));
+			if (equ || skip || name.isEmpty() || (r.page < 0 && banked)) continue;
+			dtPlace p = place_of(r.page, r.value);
+			if (p.kind == DT_PLACE_PAGE) labels_add_ram(isNext, p.page, p.ofs, name.join('.'));
+			else labels_add_here(isNext, r.value, name.join('.'));
+		} else if (r.type == 'T') {
+			starts[qMakePair(banked ? r.page : -1, r.value & 0xffff)] = 1;
+		}
+	}
+	// instructions one after another make one run of code
+	QList<QPair<int, int> > keys = starts.keys();
+	int i = 0;
+	while (comp && (i < keys.size())) {
+		int page = keys.at(i).first;
+		int first = keys.at(i).second;
+		int end = first;
+		while ((i < keys.size()) && (keys.at(i).first == page) && (keys.at(i).second == end)) {
+			int adr = end;
+			// its length: up to the next start when that is near, else as the CPU reads it
+			int len = 0;
+			if ((i + 1 < keys.size()) && (keys.at(i + 1).first == page)) {
+				int d = keys.at(i + 1).second - adr;
+				if ((d > 0) && (d <= 4)) len = d;
+			}
+			if (!len) {
+				sldCell c = {comp, place_of(page, adr), adr};
+				char buf[256];
+				xMnem mn = cpuDisasmFmt(comp->cpu, adr, buf, sld_cell_read, &c, CPU_NUM_HASH);
+				len = qBound(1, mn.len, 4);
+			}
+			end = adr + len;
+			i++;
+		}
+		later->append(qMakePair(0, data_record(place_of(page, first), DBG_VIEW_EXEC, 1, end - first, 1)));
+	}
+	// comments, and DeZog's keywords in them
+	foreach(const sldRec& r, recs) {
+		if (r.type != 'K') continue;
+		dtPlace here = place_of(banked ? r.page : -1, r.value);
+		QString text = r.data.trimmed();
+		while (text.startsWith(';')) text = text.mid(1).trimmed();
+		dtRecord c = data_record(here, 0, 1, 1, 1);
+		c.type = DT_REC_COMMENT;
+		c.text = text;
+		later->append(qMakePair(r.num, c));
+		QString arg;
+		if (sld_keyword(text, "WPMEM", &arg)) {
+			if (arg.startsWith(',')) arg.prepend(' ');
+			QStringList a = arg.split(',');
+			QString where = a.value(0).trimmed();
+			int len = a.value(1).trimmed().isEmpty() ? 1 : ctl_int(a.value(1), nullptr);
+			QString acc = a.value(2).trimmed().toLower();
+			QList<dtWord> w;
+			dtPlace p = here;
+			if (!where.isEmpty()) {
+				int adr;
+				if (!brk_list_adr(where, &adr, nullptr) || (adr < 0)) {
+					if ((*bad)++ < 10) xlog(XLG_FILE, XLL_WARN, "labels: line %i: WPMEM: no address %s", r.num, where.toLocal8Bit().constData());
+					continue;
+				}
+				p = cpu_place(adr);		// a given address is a CPU one
+			}
+			if (len > 1) p.end = p.ofs + len - 1;
+			w.append(word_of(dt_place_text(p)));
+			if (acc.isEmpty() || acc.contains('r')) w.append(word_of("read"));
+			if (acc.isEmpty() || acc.contains('w')) w.append(word_of("write"));
+			later->append(qMakePair(r.num, brk_record(w)));
+		}
+		if (sld_keyword(text, "ASSERTION", &arg)) {
+			QList<dtWord> w;
+			w.append(word_of(dt_place_text(here)));
+			w.append(word_of("exec"));
+			if (!arg.isEmpty() && (arg != "false")) {
+				w.append(word_of("if"));
+				w.append(word_of(QString("!(%1)").arg(arg), true));
+			}
+			later->append(qMakePair(r.num, brk_record(w)));
+		}
+		if (sld_keyword(text, "LOGPOINT", &arg)) {
+			// what it prints: the expressions in ${...}, formats left out
+			QStringList exprs;
+			int at = 0;
+			while ((at = arg.indexOf("${", at)) >= 0) {
+				int close = arg.indexOf('}', at);
+				if (close < 0) break;
+				exprs.append(arg.mid(at + 2, close - at - 2).section(':', 0, 0).trimmed());
+				at = close + 1;
+			}
+			QList<dtWord> w;
+			w.append(word_of(dt_place_text(here)));
+			w.append(word_of("exec"));
+			w.append(word_of("log"));
+			if (!exprs.isEmpty()) w.append(word_of(exprs.join(","), true));
+			w.append(word_of("count"));
+			later->append(qMakePair(r.num, brk_record(w)));
+		}
+	}
+	return true;
+}
+
 // One file of labels into the set named after it, which is then the one in
 // effect: the Debugger's text format (docs/debugger-format.md), of which
-// SjASMPlus's LABELSLIST is a part, or a CSPECTMAP. Its pages are taken as the
-// machine in use has them. Data, comments and breakpoints are taken after the
-// labels, so a name in them may be a label of the file. 0: it could not be
+// SjASMPlus's LABELSLIST is a part, a CSPECTMAP, SjASMPlus's SLD, a SkoolKit
+// control file (.ctl) or a ZX Spin symbol file (.sym). Its pages are taken as
+// the machine in use has them. Data, comments and breakpoints are taken after
+// the labels, so a name in them may be a label of the file. 0: it could not be
 // opened, and nothing changed.
 static int labels_read(const QString& path) {
 	QFile file(path);
@@ -904,7 +1369,19 @@ static int labels_read(const QString& path) {
 	int num = 0;
 	QList<QPair<int, dtRecord> > later;
 	dtRecord rec;
-	while(!file.atEnd()) {
+	// another tool's file, by what it holds
+	QByteArray head = file.peek(4096);
+	QString suffix = QFileInfo(path).suffix().toLower();
+	bool other = false;
+	if (head.startsWith("|SLD.data.version|")) {
+		other = sld_read(file, isNext, &later, &bad);
+	} else if (suffix == "ctl") {
+		other = ctl_read(file, isNext, &later, &bad);
+	} else if ((suffix == "sym") && QString::fromLatin1(head).contains(QRegularExpression("(^|\\n)\\$[0-9A-Fa-f]{4}"))) {
+		other = spin_read(file, isNext, &later, &bad);
+	}
+	if (!other) file.seek(0);
+	while(!other && !file.atEnd()) {
 		QString line = QString::fromUtf8(file.readLine());
 		num++;
 		if (labels_map_line(isNext, line)) continue;
@@ -958,7 +1435,8 @@ static int labels_read(const QString& path) {
 int loadLabels(const char* fn) {
 	QString path(fn);
 	if (path.isEmpty())
-		path = QFileDialog::getOpenFileName(NULL, "Load SJASM labels",QString(),QString(),nullptr,QFileDialog::DontUseNativeDialog);
+		path = QFileDialog::getOpenFileName(NULL, "Load labels", QString(),
+			"Labels (*.labels *.xdbg *.sld *.txt *.map *.ctl *.sym);;All files (*)", nullptr, QFileDialog::DontUseNativeDialog);
 	if (path.isEmpty()) return 1;
 	if (!labels_read(path)) return 0;
 	conf.labpath = path;

@@ -37,7 +37,7 @@ enum {
 	DT_REC_LABEL,		// WHERE NAME [SIZE]
 	DT_REC_DATA,		// db/dw/da/dm/dc WHERE LEN|N*K, code WHERE LEN
 	DT_REC_COMMENT,		// comment WHERE text
-	DT_REC_ROM,		// rom NAME MD5 [skip X...]
+	DT_REC_ROM,		// rom NAME MD5 [skip X...]: X a name, a place, a range of places
 	DT_REC_BRK,		// brk [WHERE] words
 	DT_REC_MACHINE,		// machine NAME
 	DT_REC_OPEN,		// open PATH
@@ -64,7 +64,7 @@ typedef struct {
 	QString text;		// COMMENT: its text, line breaks in it; OPEN: the path
 	QString md5;		// ROM: of its 16K bank, lower case
 	QStringList skipNames;	// ROM: labels this one has not
-	QList<dtPlace> skipPlaces;	// ...and data that starts at these offsets
+	QList<dtPlace> skipPlaces;	// ...and data that starts at these offsets (or in these ranges)
 	QList<dtWord> words;	// BRK: everything after brk, the place included
 	QString keyword;	// UNKNOWN: the word that starts the line
 	QString error;		// BAD: what is wrong with it

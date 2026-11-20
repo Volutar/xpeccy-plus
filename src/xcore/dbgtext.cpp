@@ -324,7 +324,7 @@ bool dt_parse_line(const QString& raw, dtRecord* rec) {
 		for (wd = dt_take(line, &pos); !wd.isEmpty(); wd = dt_take(line, &pos)) {
 			dtPlace pl;
 			if (wd.contains(':')) {
-				if (!dt_place_parse(wd, &pl, false) || (pl.kind != DT_PLACE_ROM) || (pl.name != rec->name) || (pl.end >= 0))
+				if (!dt_place_parse(wd, &pl, false) || (pl.kind != DT_PLACE_ROM) || (pl.name != rec->name))
 					return dt_bad(rec, "not a place in this ROM: " + wd);
 				rec->skipPlaces.append(pl);
 			} else {
