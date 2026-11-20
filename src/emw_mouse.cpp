@@ -8,6 +8,16 @@
 #include <QScreen>
 #include <QWindow>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <QAbstractNativeEventFilter>
+#include <QCoreApplication>
+#endif
+
+// mouse reports this grab (Windows raw input): by steps, and ones that give where to be
+static unsigned rawRel = 0;
+static unsigned rawAbs = 0;
+
 // how long after the last read of the mouse a click still takes it
 #define MOUSE_READ_NS	1000000000LL
 
@@ -130,8 +140,10 @@ QPoint MainWin::winCursorPos() {
 #endif
 }
 
-bool MainWin::winHolds(QPoint pos) {
-	return rect().contains(mapFromGlobal(pos));
+// in and off the edge: a pointer the system clips to the window stops on the
+// edge instead of getting out
+bool MainWin::winInner(QPoint pos) {
+	return rect().adjusted(2, 2, -2, -2).contains(mapFromGlobal(pos));
 }
 
 // past the middle third: worth putting back
@@ -154,12 +166,22 @@ void MainWin::mouseGrabOn() {
 	ptrShow();		// the window's own pointer comes back with a release, so not a blank one
 	grabMouse(QCursor(Qt::BlankCursor));
 	setMessage(" grab mouse, " XREL_KEYS " lets go ");
+	rawMouse(true);
+	if (xlog_on(XLG_INPUT, XLL_DEBUG)) {
+		QPoint org = mapToGlobal(QPoint(0, 0));
+		QPoint cen = winCenter();
+		xlog_put(XLG_INPUT, XLL_DEBUG, "mouse: grab on, window %d,%d %dx%d, center %d,%d, dpr %.2f",
+			org.x(), org.y(), width(), height(), cen.x(), cen.y(), devicePixelRatioF());
+	}
 	mouseRecenter(1);
 }
 
 void MainWin::mouseGrabOff() {
 	grabMice = 0;
 	releaseMouse();
+	mouseClip(false);
+	rawMouse(false);
+	xlog(XLG_INPUT, XLL_DEBUG, "mouse: grab off, raw reports %u by step, %u absolute", rawRel, rawAbs);
 	setMessage(" release mouse ");
 	winCursorTo(winCenter());		// it was hidden: show it somewhere sane
 	ptrArm();
@@ -177,6 +199,8 @@ void MainWin::mouseRecenter(int fresh) {
 		warpTtl = 0;
 		warpFail = 0;
 		mouseVel = QPointF();
+		rawRel = 0;
+		rawAbs = 0;
 	}
 	mouseLast = winCursorPos();
 	mouseAt = paceClockNs();
@@ -187,8 +211,100 @@ void MainWin::mouseRecenter(int fresh) {
 void MainWin::mouseWarp() {
 	if (warpFail >= MOUSE_WARP_GIVEUP) return;
 	warpAim = warpAt = winCenter();
-	if (!warpTtl) warpTtl = MOUSE_WARP_TTL;
+	if (!warpTtl)
+		warpTtl = MOUSE_WARP_TTL;
 	winCursorTo(warpAt);
+}
+
+#ifdef _WIN32
+// Counts WM_INPUT for any window: not handled, DefWindowProc still sees it
+class xRawMouse : public QAbstractNativeEventFilter {
+	public:
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+		bool nativeEventFilter(const QByteArray&, void* message, qintptr*) override {
+#else
+		bool nativeEventFilter(const QByteArray&, void* message, long*) override {
+#endif
+			MSG* m = static_cast<MSG*>(message);
+			if (m->message != WM_INPUT) return false;
+			RAWINPUT raw;
+			UINT size = sizeof(raw);
+			if ((GetRawInputData((HRAWINPUT)m->lParam, RID_INPUT, &raw, &size, sizeof(RAWINPUTHEADER)) != (UINT)-1)
+					&& (raw.header.dwType == RIM_TYPEMOUSE)) {
+				if (raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) {
+					rawAbs++;
+				} else if (raw.data.mouse.lLastX || raw.data.mouse.lLastY) {
+					rawRel++;
+				}
+			}
+			return false;
+		}
+};
+static xRawMouse rawFilter;
+static bool rawOn = false;
+#endif
+
+// Tells a mouse by steps from a VM, a remote desktop or a tablet (MOUSE_MOVE_ABSOLUTE).
+// To the frame: a winId() of this child would make native windows of it and its siblings
+void MainWin::rawMouse(bool on) {
+#ifdef _WIN32
+	if (on == rawOn) return;
+	RAWINPUTDEVICE dev;
+	dev.usUsagePage = 1;	// generic desktop
+	dev.usUsage = 2;		// mouse
+	dev.dwFlags = on ? 0 : RIDEV_REMOVE;
+	dev.hwndTarget = on ? (HWND)frame->winId() : NULL;
+	if (!RegisterRawInputDevices(&dev, 1, sizeof(dev))) {
+		xlog(XLG_INPUT, XLL_WARN, "mouse: raw input %s failed, error %lu", on ? "on" : "off", GetLastError());
+		if (on) return;
+	}
+	rawOn = on;
+	QCoreApplication* app = QCoreApplication::instance();
+	if (!app) return;
+	if (on) {
+		app->installNativeEventFilter(&rawFilter);
+	} else {
+		app->removeNativeEventFilter(&rawFilter);
+	}
+#else
+	(void)on;
+#endif
+}
+
+// a mouse by steps and nothing absolute this grab: a recentering it shows late is only late
+bool MainWin::mouseByStep() {
+	return rawRel && !rawAbs;
+}
+
+// A mouse by steps is kept in the picture by the system, as games do; never a VM's pointer
+void MainWin::mouseClip(bool on) {
+#ifdef _WIN32
+	if (!on) {
+		if (mouseClipped) {
+			ClipCursor(NULL);
+			mouseClipped = false;
+			xlog(XLG_INPUT, XLL_DEBUG, "mouse: clip off");
+		}
+		return;
+	}
+	// the picture in the frame's client area, in the frame's own (physical) pixels
+	HWND wnd = (HWND)frame->winId();
+	double dpr = frame->devicePixelRatioF();
+	QPoint org = mapTo(frame, QPoint(0, 0));
+	POINT tl = {(LONG)qRound(org.x() * dpr), (LONG)qRound(org.y() * dpr)};
+	POINT br = {(LONG)qRound((org.x() + width()) * dpr), (LONG)qRound((org.y() + height()) * dpr)};
+	if (!ClientToScreen(wnd, &tl) || !ClientToScreen(wnd, &br)) return;
+	RECT want = {tl.x, tl.y, br.x, br.y};
+	RECT cur;
+	if (mouseClipped && GetClipCursor(&cur) && EqualRect(&cur, &want)) return;
+	if (ClipCursor(&want)) {
+		if (!mouseClipped)
+			xlog(XLG_INPUT, XLL_DEBUG, "mouse: clip on %ld,%ld-%ld,%ld", want.left, want.top, want.right, want.bottom);
+		mouseClipped = true;
+	}
+#else
+	(void)on;
+#endif
 }
 
 void MainWin::mouseMoveEvent(QMouseEvent *ev) {
@@ -201,10 +317,17 @@ void MainWin::mouseMoveEvent(QMouseEvent *ev) {
 	mouseRead();
 }
 
-// Qt sends no moves over another program's window: one that got out is caught here
+// Qt sends no moves over another program's window: one that got out is caught
+// here, and one held on the clip's edge, which sends no moves either
 void MainWin::mouseWatch() {
-	if (!mouseHeld() || !isActiveWindow()) return;
-	if (winHolds(winCursorPos())) return;
+	bool held = mouseHeld() && isActiveWindow();
+	mouseClip(held && mouseByStep());
+	if (!held) return;
+	QPoint pos = winCursorPos();
+	if (winInner(pos)) return;
+	if (warpFail < MOUSE_WARP_GIVEUP)	// given up: it rests out there, a line a tick
+		xlog(XLG_INPUT, XLL_DEBUG, "mouse: watch caught it on the edge or out at %d,%d, pending %d, fails %d",
+			pos.x(), pos.y(), warpTtl, warpFail);
 	mouseRead();
 }
 
@@ -240,10 +363,13 @@ void MainWin::mouseRead() {
 		} else {
 			// the old place: the device holds it, or the system has not applied it yet
 			mouseLast = gpos;
-			if (!winFar(gpos))
+			if (!winFar(gpos)) {
 				warpTtl = 0;		// in the middle either way: nothing left to judge
-			else if (!--warpTtl && (++warpFail >= MOUSE_WARP_GIVEUP))
-				xlog(XLG_INPUT, XLL_INFO, "mouse: this host puts the pointer straight back, recentering dropped");
+			} else if (!--warpTtl && !mouseByStep() && (++warpFail >= MOUSE_WARP_GIVEUP)) {
+				// not a mouse by steps: moves in flight undo some, giving up pins it on the clip's edge
+				xlog(XLG_INPUT, XLL_INFO, "mouse: this host puts the pointer straight back, recentering dropped (raw %u/%u)",
+					rawRel, rawAbs);
+			}
 		}
 	} else {
 		mouseLast = gpos;
@@ -275,8 +401,9 @@ void MainWin::mouseRead() {
 	if (comp->mouse->xdelta || comp->mouse->ydelta) x_input_bump();
 	comp->mouse->xpos += comp->mouse->xdelta;
 	comp->mouse->ypos -= comp->mouse->ydelta;	// axis is reverted
-	// while one is pending, again only once out of the window
-	if (winFar(gpos) && (!warpTtl || !winHolds(gpos)))
+	// while one is pending, again only once on the edge or out: the moves in flight
+	// can put the pointer back over a recentering, a mouse by steps too
+	if (winFar(gpos) && (!warpTtl || !winInner(gpos)))
 		mouseWarp();
 }
 

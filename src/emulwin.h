@@ -342,6 +342,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		QPointF mouseVel;	// how fast the hand went then, host pixels a millisecond
 		double mouseRemX = 0.0;	// what the division by the zoom left over
 		double mouseRemY = 0.0;
+		bool mouseClipped = false;	// the system keeps the pointer in the window
 		unsigned block:1;
 		unsigned hasPicture:1;	// the emulation has handed over a frame
 		int upSwaps;		// bufSwaps at the last upload the timer made, -1: upload
@@ -656,8 +657,8 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		QPoint winCenter();		// the middle of the window, on the screen
 		void winCursorTo(QPoint);
 		QPoint winCursorPos();
-		bool winHolds(QPoint);	// a point on the screen is in the picture
 		bool winFar(QPoint);
+		bool winInner(QPoint);	// a point on the screen is in the picture, off its edge
 		bool mouseHeld();
 		void mouseGrabOn();
 		void mouseGrabOff();
@@ -665,6 +666,9 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void mouseWarp();
 		void mouseRead();
 		void mouseWatch();
+		void rawMouse(bool);
+		bool mouseByStep();
+		void mouseClip(bool);
 		void dropAsk(QString);
 		int askRun();
 		int askRunKeep(const QString&);
