@@ -287,10 +287,10 @@ is easier with the 128K's close-set keys:
 - **Zoom x1**, **Zoom x1.5**, **Zoom x2**, **Zoom x3** - the size of the window. You can
   also drag its edge; the picture keeps its shape and is drawn sharp at any size.
 - **Skin** - **48K (Classic)**, **48K (White)**, **128K (Classic)**, **128K (White)**,
-  **Next (Black)**, **Next (White)**, **Next (Magenta)**, **Klava** or **Klava (Washed)**;
-  one picked here stays whatever the machine. Klava is the 58-key keyboard of many clones
-  of the early 1990s, worn, with some caps crooked and the cream ones yellowed; Klava
-  (Washed) is it clean. **By machine**, on by default, shows the Next keyboard on the ZX
+  **Next (Black)**, **Next (White)**, **Next (Magenta)**, **Klava**, **Klava (Washed)** or
+  **Robik**; one picked here stays whatever the machine. Klava is the 58-key keyboard of
+  many clones of the early 1990s, worn, with some caps crooked and the cream ones yellowed;
+  Klava (Washed) is it clean. Robik is the keyboard of the Robik, below. **By machine**, on by default, shows the Next keyboard on the ZX
   Spectrum Next, the 128K one on a 128K, +2, +2A or +3, the 48K one on a 48K and Klava on
   the clones (Pentagon, Scorpion, Profi, ATM, ZX Evolution and the rest), in the tone
   picked last: Klava (Washed) if it was picked; only the Next has a Magenta one, the others
@@ -318,6 +318,20 @@ light up dimly. Pressed one by one, they light up fully and the extra key stays 
 and the two Symbol Shifts only one lights up: the one you clicked, otherwise the one on the
 side of the PC key that holds it (the right Shift lights the right one), otherwise the left
 one.
+
+![The Robik skin](images/virtual-keyboard-robik.png)
+
+The Robik keyboard has keys the Spectrum has not:
+
+- The cursor block on the right and the key with the crosshair are the Kempston joystick:
+  up, down, left, right and fire. They light up while the joystick is pressed, from a
+  gamepad too.
+- The two RES keys reset the machine together, as on the real one: a click on one does
+  nothing but hold it. Right-click one RES to lock it down, then click the other.
+- Edit and Del are Caps Shift with 1 and with 0; the full stop and the comma are Symbol
+  Shift with M and with N.
+- Х, Ж, Э, Б, Ю, C, L and MF do nothing yet.
+- The red light under the logo is on while the machine runs, and off while it is paused or stopped in the Debugger.
 
 For layout authors: a file `zx-black.json`, `zx-white.json`, `zx-128.json`,
 `zx-128-white.json`, `zx-next.json`, `zx-next-white.json`, `zx-next-magenta.json`,

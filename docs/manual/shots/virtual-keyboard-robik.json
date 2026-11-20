@@ -1,0 +1,5 @@
+{
+  "config": {"GENERAL": {"machine": "zx48", "start.machine": "zx48", "keywin.skin": "robik", "keywin.bymachine": "no", "keywin.width": "1215"}},
+  "steps": [["wait", 3000], ["run", "run-action key.keywin"], ["wait", 1500]],
+  "frames": []
+}
