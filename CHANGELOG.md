@@ -11,6 +11,23 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Debugger sessions**: Save session and Load session (`.xdbg`) keep the labels, the data
+  marks, the comments and the breakpoints together, and the machine and its tape and disks
+  as Options > Debugger says. A session is a text file, one line a thing: it can be edited,
+  joined with others and read by Load labels too. Old memory maps (`.xmap`) still load.
+
+- **Data statements in the Debugger**: a `DB`, `DW` or text row ends where its statement
+  does, as in an assembler's source, and a labels file can give each statement's length
+  (`db :9000 7*4` is four `DB` of 7). The ROMs' tables are cut as Richard Dymond's and Paul
+  Farrow's disassemblies have them.
+
+- **Load labels reads SjASMPlus's SLD**, with DeZog's `WPMEM`, `ASSERTION` and `LOGPOINT`
+  comments as breakpoints, **SkoolKit control files** and **ZX Spin symbol files**. A labels
+  file can hold data marks, comments and breakpoints as well; the format is in
+  `docs/debugger-format.md`.
+
+- **Comments of several lines** in the Debugger: `\n` where a line ends.
+
 - **The mouse pointer hides itself** after 2 seconds still over the picture, in fullscreen
   by default: Options > Application, Mouse pointer, also in a window or never. A move
   brings it back.
@@ -56,6 +73,10 @@ before that point is upstream's history and is not repeated here.
   carried out into it, so there is no hard edge. Best with no border.
 
 ### Changed
+
+- **The Debugger's breakpoint list is saved as `brk` lines** (`brk :8000 exec if "A==#FF"`);
+  lists saved before, and Unreal Speccy's `bpx.ini`, still load. The ROM lists moved to
+  `config/rom-labels`.
 
 - **The virtual keyboard's title names its skin**: "Virtual Keyboard - Next (White)", as the
   Skin menu has it.
