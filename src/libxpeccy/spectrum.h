@@ -63,6 +63,8 @@ enum {
 	DBG_VIEW_TEXT = 0x40,
 	DBG_VIEW_EXEC = 0x50
 };
+#define DBG_VIEW_MASK	0x70	// the view in a cell's flag byte (bits 4-6)
+#define DBG_STMT	0x80	// bit 7: a statement (DB, DW, text) starts at this cell
 
 // a TSConf DMA address: 16-bit words, wrapping in its 256/512-byte block with align on
 typedef struct {
@@ -684,8 +686,8 @@ typedef struct Computer {
 	// ranges around it. A field that DOES belong in a snapshot has to go before
 	// brkRamMap or after brkIOMap - one put between them would be left out with
 	// nothing to say so. (The rzx frame buffer above is skipped the same way.)
-	unsigned char brkRamMap[MEM_4M];	// ram brk/type : b0..3:brk flags, b4..7:type
-	unsigned char brkRomMap[MEM_512K];	// rom brk/type : b0..3:brk flags, b4..7:type
+	unsigned char brkRamMap[MEM_4M];	// ram brk/type : b0..3:brk flags, b4..6:view, b7:statement start
+	unsigned char brkRomMap[MEM_512K];	// rom brk/type : b0..3:brk flags, b4..6:view, b7:statement start
 	unsigned char brkAdrMap[MEM_64K];	// adr brk
 	unsigned char brkIOMap[MEM_64K];	// io brk
 	xHeatBank heatRam;			// ram read/write/exec hit counters, sized to mem->ramMask+1

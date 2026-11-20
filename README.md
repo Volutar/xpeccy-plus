@@ -228,7 +228,7 @@ Miguel Guerreiro / Papaya Dezign. It keeps its own terms: see
 their own get it appended when they are opened. It is Dimon boot 2024 by Dmitry Yurinov and
 keeps its own terms, like the ROM images.
 
-`config/labels/` holds the lists that name the routines of known ROMs in the Debugger: data
+`config/rom-labels/` holds the lists that name the routines of known ROMs in the Debugger: data
 files the emulator reads when it starts, not built into it, each under the terms of its
 source. `48.labels`, the 48K BASIC's, comes from [The Complete Spectrum ROM
 Disassembly](https://github.com/skoolkid/rom) by Richard Dymond, under CC BY-SA 3.0. The
@@ -240,7 +240,7 @@ disassemblies](http://www.fruitcake.plus.com/Sinclair/Spectrum128/ROMDisassembly
 Farrow, used with his permission. TR-DOS's come from [TR-DOS
 Disassembled](https://github.com/programandala-net/tr-dos) by
 Marcos Cruz, used with his permission. Sources and terms of every list:
-[`config/labels/README.md`](config/labels/README.md).
+[`config/rom-labels/README.md`](config/rom-labels/README.md).
 
 The debugger's default font, DejaVu Sans Mono 2.37 (regular and bold), is built into the binary so it looks the
 same on every platform. It keeps its own terms too - see [`LICENSE_DEJAVU`](LICENSE_DEJAVU).

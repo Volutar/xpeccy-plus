@@ -6,6 +6,7 @@
 #include <cstdio>
 
 #include "../../../src/xcore/xcore.h"
+#include "../../../src/xcore/dbgtext.h"
 #include "../../../src/libxpeccy/cpu/Z80/z80.h"
 
 xConfig conf;
@@ -27,12 +28,67 @@ static xResult eval(const char* expression, int type = 0) {
 	return xEval(expression, type);
 }
 
+static dtRecord parsed(const char* line) {
+	dtRecord rec;
+	dt_parse_line(QString::fromUtf8(line), &rec);
+	return rec;
+}
+
+// the format's lines, read with no machine (docs/debugger-format.md)
+static void parser_checks() {
+	dtRecord r = parsed("05:1A00 SPRITES\r\n");
+	check("text: a LABELSLIST line", r.type == DT_REC_LABEL && r.at.kind == DT_PLACE_PAGE && r.at.page == 5
+		&& r.at.ofs == 0x1a00 && r.name == "SPRITES" && r.size == 0);
+	r = parsed(":8000 START");
+	dtRecord ff = parsed("FF:8000 START");
+	dtRecord hx = parsed("0A:0010 old_hex");
+	check("text: CPU address, and pages of older files", r.at.kind == DT_PLACE_CPU && r.at.ofs == 0x8000
+		&& ff.at.kind == DT_PLACE_CPU && hx.at.kind == DT_PLACE_PAGE && hx.at.page == 10 && hx.at.hexPage);
+	r = parsed("ROM0:0038 MY_IM1");
+	dtRecord rom = parsed("BASIC48:0556 BASIC48.LD_BYTES");
+	dtRecord sz = parsed("05:5BA0 BASIC128.STRIP2 8");
+	check("text: an area, a ROM's name, a size", r.at.kind == DT_PLACE_AREA && r.at.area == CELL_ROM && r.at.page == 0
+		&& rom.at.kind == DT_PLACE_ROM && rom.at.name == "BASIC48" && rom.at.ofs == 0x556
+		&& sz.size == 8 && sz.name == "BASIC128.STRIP2");
+	r = parsed("db :9000 7*4");
+	dtRecord dw = parsed("dw SPRITES #10");
+	dtRecord dc = parsed("dc BASIC48:0095 368");
+	dtRecord code = parsed("code :8000 256");
+	check("text: data records", r.type == DT_REC_DATA && r.view == DBG_VIEW_BYTE && r.len == 7 && r.count == 4
+		&& dw.view == DBG_VIEW_WORD && dw.unit == 2 && dw.len == 16 && dw.at.kind == DT_PLACE_NAME
+		&& dc.view == DBG_VIEW_TEXT && dc.dc && dc.len == 368 && code.view == DBG_VIEW_EXEC && code.len == 256);
+	check("text: what is not a data record", parsed("code :8000 2*4").type == DT_REC_BAD
+		&& parsed("db 9000 8").type == DT_REC_BAD && parsed("db :9000 0").type == DT_REC_BAD
+		&& parsed("db :9000-9010 8").type == DT_REC_BAD);
+	r = parsed("comment :8003 two\\nlines \\\\ and ; too");
+	check("text: a comment's lines", r.type == DT_REC_COMMENT && r.text == "two\nlines \\ and ; too"
+		&& dt_escape(r.text) == "two\\nlines \\\\ and ; too");
+	r = parsed("rom BASIC48 4C42A2F075212361C3117015B107FF68 skip BASIC48.KEY_INT BASIC48:386E");
+	check("text: a rom record", r.type == DT_REC_ROM && r.name == "BASIC48" && r.md5 == "4c42a2f075212361c3117015b107ff68"
+		&& r.skipNames == QStringList("BASIC48.KEY_INT") && r.skipPlaces.size() == 1 && r.skipPlaces.at(0).ofs == 0x386e);
+	check("text: a ROM's name is no area or page", parsed("rom ROM48 4c42a2f075212361c3117015b107ff68").type == DT_REC_BAD
+		&& parsed("rom CAFE 4c42a2f075212361c3117015b107ff68").type == DT_REC_BAD
+		&& parsed("rom X 4c42a2f0").type == DT_REC_BAD);
+	r = parsed("brk :8000 exec if \"A == #FF\" span=open");
+	check("text: a brk record's words", r.type == DT_REC_BRK && r.words.size() == 5 && r.words.at(3).quoted
+		&& r.words.at(3).text == "A == #FF" && !r.words.at(0).quoted && r.words.at(0).text == ":8000");
+	check("text: blank, comment, unknown", parsed("  ").type == DT_REC_NONE && parsed("; x").type == DT_REC_NONE
+		&& parsed("struct ENTITY db 1").type == DT_REC_UNKNOWN && parsed("open  C:\\ZX\\a b.tap ").text == "C:\\ZX\\a b.tap");
+	dtPlace pl;
+	bool rt = true;
+	const char* places[] = {"05:1A00", ":8000", "ROM0:0038", "DIV3:0010", "BASIC48:0556", "io:00FE/00FF", "io:7FFD",
+		":5B00-5BFF", "START"};
+	for (const char* p : places) rt &= dt_place_parse(p, &pl) && (dt_place_text(pl) == p);
+	check("text: places written as read", rt);
+}
+
 int main(int argc, char** argv) {
 	QCoreApplication app(argc, argv);
 	if (argc != 2) return 2;
 	QDir fixtures(QString::fromLocal8Bit(argv[1]));
 	QTemporaryDir temp;
 	if (!temp.isValid()) return 2;
+	parser_checks();
 	Computer* comp = compCreate();
 	conf.zx = comp;
 	compSetHardware(comp, "ZXNext");
@@ -161,17 +217,18 @@ int main(int argc, char** argv) {
 		QCryptographicHash::Md5).toHex();
 	QString md5b = QCryptographicHash::hash(QByteArray((const char*)comp->mem->romData + MEM_16K, MEM_16K),
 		QCryptographicHash::Md5).toHex();
-	QDir(temp.path()).mkdir("labels");
+	QDir(temp.path()).mkdir("rom-labels");
 	installDir = temp.path();
 	const char* lists[][2] = {
-		{"a.labels", "@ns SYSA\n@rom %1\n0010 ENTRY\n0020 ONLYA\n3D00 3D07 db\n0100 0103 text\n"},
-		{"b.labels", "@ns SYSB\n@rom %1 -@0200 -@3e00\n0018 ENTRY\n0200 0201 dw\n0300 0301 dw\n3E00 3E01 db\n"},
-		{"b2.labels", "@ns SYSA\n@rom %1\n0020 ONLYA\n"},
-		{"c.labels", "@ns SYSA\n@ram 5\n5C3D ERR_SP\n5C3F LIST_SP\n"},
-		{"d.labels", "@ns SYSC\n@ram 5\n5C00 NOT_FITTED\n"},
-		{"e.labels", "@ns SYSD\n@rom %2\n0030 ONLYA\n0040 LATER\n"}};
+		{"a.labels", "; a list\nrom LA %1\nLA:0010 SYSA.ENTRY\nLA:0020 SYSA.ONLYA\ndb LA:3D00 8\ndm LA:0100 4\n"
+			"db LA:3D10 3*2\n"},
+		{"b.labels", "rom LB %1 skip LB:0200 LB:3E00\nLB:0018 SYSB.ENTRY\ndw LB:0200 1\ndw LB:0300 1\ndb LB:3E00 2\n"},
+		{"b2.labels", "rom LB2 %1\nLB2:0020 SYSA.ONLYA\n"},
+		{"c.labels", "05:5C3D SYSA.ERR_SP\n05:5C3F SYSA.LIST_SP\n"},
+		{"d.labels", "05:5C00 SYSC.NOT_FITTED\n"},
+		{"e.labels", "rom LE %2\nLE:0030 SYSD.ONLYA\nLE:0040 SYSD.LATER\n"}};
 	for (auto& lst : lists) {
-		QFile out(temp.filePath(QString("labels/") + lst[0]));
+		QFile out(temp.filePath(QString("rom-labels/") + lst[0]));
 		out.open(QIODevice::WriteOnly);
 		out.write(QString(lst[1]).replace("%1", md5).replace("%2", md5b).toLatin1());
 	}
@@ -192,10 +249,14 @@ int main(int argc, char** argv) {
 	check("a label of the user's takes the short name", find_label("ONLYA").adr == 0x8000
 		&& find_label(r20) == "SYSA.ONLYA" && find_label("SYSA.ONLYA").adr == 0x20);
 	del_label("ONLYA");
-	check("data ranges, one dropped on that bank", labels_rom_view(0x3D00) == DBG_VIEW_BYTE
+	check("data ranges, one dropped on that bank", labels_rom_view(0x3D00) == (DBG_VIEW_BYTE | DBG_STMT)
 		&& labels_rom_view(0x3D07) == DBG_VIEW_BYTE && labels_rom_view(0x3D08) == DBG_VIEW_CODE
 		&& labels_rom_view(0x101) == DBG_VIEW_TEXT && labels_rom_view(0x200) == DBG_VIEW_CODE
-		&& labels_rom_view(0x300) == DBG_VIEW_WORD && labels_rom_view(0x3E00) == DBG_VIEW_CODE);
+		&& labels_rom_view(0x300) == (DBG_VIEW_WORD | DBG_STMT) && labels_rom_view(0x301) == DBG_VIEW_WORD
+		&& labels_rom_view(0x3E00) == DBG_VIEW_CODE);
+	check("statements of a data range", labels_rom_view(0x3D10) == (DBG_VIEW_BYTE | DBG_STMT)
+		&& labels_rom_view(0x3D11) == DBG_VIEW_BYTE && labels_rom_view(0x3D13) == (DBG_VIEW_BYTE | DBG_STMT)
+		&& labels_rom_view(0x3D15) == DBG_VIEW_BYTE && labels_rom_view(0x3D16) == DBG_VIEW_CODE);
 	check("a name two lists of a bank share is one cell", labels_rom_cells("SYSA.ONLYA").size() == 1);
 	// ONLYA is SYSA's in bank 0 and SYSD's in bank 1: the one paged in
 	xExpr paged = xexpr_compile("ONLYA");
