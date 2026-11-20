@@ -342,8 +342,6 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		QPointF mouseVel;	// how fast the hand went then, host pixels a millisecond
 		double mouseRemX = 0.0;	// what the division by the zoom left over
 		double mouseRemY = 0.0;
-		unsigned rawRel = 0;	// mouse reports by steps this grab (Windows raw input)
-		unsigned rawAbs = 0;	// and ones that give where to be: a VM, a remote desktop
 		bool mouseClipped = false;	// the system keeps the pointer in the window
 		unsigned block:1;
 		unsigned hasPicture:1;	// the emulation has handed over a frame
@@ -708,13 +706,6 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void focusInEvent(QFocusEvent*) override;
 		void timerEvent(QTimerEvent*) override;
 		void resizeEvent(QResizeEvent*) override;
-#if defined(_WIN32)
-	#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
-		bool nativeEvent(const QByteArray&, void*, qintptr*) override;
-	#else
-		bool nativeEvent(const QByteArray&, void*, long*) override;
-	#endif
-#endif
 		void paintPlain(QPainter&);
 		xGLView* glw = nullptr;		// the picture through OpenGL; none: drawn here, plain
 		unsigned curtex:2;

@@ -612,6 +612,7 @@ MainWin::MainWin(QMainWindow* frm) {
 
 MainWin::~MainWin() {
 	mouseClip(false);
+	rawMouse(false);
 	delete snowBox;		// its end stops the snow: while this window is whole
 	cleanupGL();
 	delete(vtx_shd);
@@ -1032,6 +1033,7 @@ void MainWin::focusOutEvent(QFocusEvent*) {
 		grabMice = 0;
 		releaseMouse();
 		mouseClip(false);
+		rawMouse(false);
 	}
 	emit s_keywin_rall(comp->keyb);
 	// nor will the keys of a player on the keyboard
