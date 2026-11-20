@@ -125,6 +125,8 @@ class SetupWin : public QDialog {
 		xRomsetEditor* rseditor;
 		QDialog* advWin;		// the machine-defining settings
 		QDialog* romSetWin;		// the slots and where a reset starts
+		QDialog* ledWin;		// Appearance's indicators
+		void ledRows();
 		QDialog* romWin;		// the set, file by file
 		xFileTypesBox* ftbox;
 		xRomsetModel* rsmodel;

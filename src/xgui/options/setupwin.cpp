@@ -198,7 +198,6 @@ void fillComboBox(QComboBox* box, const char* kind, QStringList filt, QString de
 
 #define	LED_ICON_SIZE	16
 #define	LED_ICON_GAP	10
-#define	LED_ICON_TEXT	4	// QCommonStyle's own icon-to-text gap, which has no metric to ask for
 
 static void spaceLedIcon(QCheckBox* box) {
 	QPixmap src = box->icon().pixmap(QSize(LED_ICON_SIZE, LED_ICON_SIZE));
@@ -213,7 +212,7 @@ static void spaceLedIcon(QCheckBox* box) {
 	pnt.drawPixmap(pad, 0, src);
 	pnt.end();
 	box->setIcon(QIcon(pix));
-	box->setIconSize(QSize(LED_ICON_SIZE + pad + LED_ICON_GAP - LED_ICON_TEXT, LED_ICON_SIZE));
+	box->setIconSize(QSize(LED_ICON_SIZE + pad, LED_ICON_SIZE));
 }
 
 // OBJECT
@@ -636,6 +635,7 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	QMainWindow* mwin = par ? qobject_cast<QMainWindow*>(par->window()) : nullptr;
 	if (mwin && mwin->menuBar()->isNativeMenuBar()) {
 		ui.cbMenuBar->hide();
+		ui.labMenuBar->hide();
 	}
 	// a .ui iconset holds a single pixmap, which the title bar would have
 	// to downscale; the application icon carries every drawn
@@ -946,6 +946,17 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	// target are in this window
 	romSetWin = popOut(ui.romBox, "Machine: ROM");
 	connect(ui.pbRomSet, &QPushButton::released, romSetWin, [this]() {sheet_open(romSetWin);});
+
+	// the indicators too; the ones the status bar shows while it is there are grey then
+	QLabel* ledNote = new QLabel(tr("Grey: in the status bar while it is shown"));
+	QFont fnt = ledNote->font();
+	fnt.setItalic(true);
+	ledNote->setFont(fnt);
+	ui.gridLayout_23->addWidget(ledNote, ui.gridLayout_23->rowCount(), 0, 1, 3);
+	ui.gbIndicators->setTitle(QString());
+	ledWin = popOut(ui.gbIndicators, "Appearance: Indicators");
+	connect(ui.pbIndicators, &QPushButton::released, ledWin, [this]() {sheet_open(ledWin);});
+	connect(ui.cbStatusBar, &QCheckBox::toggled, this, &SetupWin::ledRows);
 
 	// same for the set file by file: the slots say which file is in which
 	// one, this window has the offsets and sizes behind it
@@ -1321,9 +1332,10 @@ void SetupWin::fillPages() {
 	ui.cbMenuBar->setChecked(conf.win.menubar);
 	ui.cbToolBar->setChecked(conf.win.toolbar);
 	ui.cbStatusBar->setChecked(conf.win.statusbar);
+	ledRows();
 	ui.cbOnTop->setChecked(conf.win.onTop);
 	ui.cbPtrHide->setChecked(conf.win.ptrHide);
-	// Input lag, Rewind and Indicators are grids of their own, and
+	// Input lag, Rewind, Pause and Folders are grids of their own, and
 	// columns line up between them only while all are given the same widths.
 	// Measure them here, not in the .ui: a style or a font would outgrow a
 	// number set there.
@@ -1340,7 +1352,7 @@ void SetupWin::fillPages() {
 	for (QComboBox* box : {ui.cbFastPic, cbFolderTrash})
 		box->setFixedWidth(comboFitWidth(box));
 	ui.cbStyleSheet->setFixedWidth(comboFitWidth(ui.cbStyleSheet));
-	QGridLayout* emugrid[5] = {ui.gridLayout_lat, ui.gridLayout_rew, gridPause, gridFolders, ui.gridLayout_23};
+	QGridLayout* emugrid[4] = {ui.gridLayout_lat, ui.gridLayout_rew, gridPause, gridFolders};
 	for (int col = 0; col < 2; col++) {
 		int wid = 0;
 		for (QGridLayout* g : emugrid)
@@ -1588,7 +1600,7 @@ void SetupWin::fitWidths() {
 		wid = qMax(wid, btn->sizeHint().width());
 	for (QWidget* col : {ui.machButtons, ui.picRight, ui.afRight, ui.ssRight, boxRecAdv})
 		col->setFixedWidth(wid);
-	ui.lookRight->setMinimumWidth(wid);
+	ui.lookButtons->setFixedWidth(qMax(wid, ui.pbIndicators->sizeHint().width()));	// its name whole
 	// Style's icon in the check boxes' column: where their box is, Style where their names are
 	QStyleOptionButton opt;
 	opt.initFrom(ui.cbToolBar);
@@ -1598,8 +1610,20 @@ void SetupWin::fitWidths() {
 	QRect txt = sty->subElementRect(QStyle::SE_CheckBoxContents, &opt, ui.cbToolBar);
 	ui.icoStyle->setContentsMargins(ind.left(), 0, 0, 0);
 	ui.icoStyle->setFixedWidth(qMax(txt.left(), ind.left() + LED_ICON_SIZE));
-	for (QCheckBox* cb : {ui.cbMenuBar, ui.cbToolBar, ui.cbStatusBar})	// rows as high as the Indicators'
+	for (QCheckBox* cb : {ui.cbOnTop, ui.cbPtrHide, ui.cbMenuBar, ui.cbToolBar, ui.cbStatusBar})	// rows as high as the Indicators'
 		cb->setMinimumHeight(ui.cbKeysLed->sizeHint().height());
+	// the indicators' boxes end past their icon, a hair of room so none is cut
+	foreach(QCheckBox* cb, ui.gbIndicators->findChildren<QCheckBox*>()) {
+		QStyleOptionButton led;
+		led.initFrom(cb);
+		led.icon = cb->icon();
+		led.iconSize = cb->iconSize();
+		QRect con = cb->style()->subElementRect(QStyle::SE_CheckBoxContents, &led, cb);
+		cb->setFixedWidth(con.left() + cb->iconSize().width() + 2);
+	}
+	// the descriptions farther from the names than the names from the icons
+	ui.gridLayout_23->setColumnMinimumWidth(1, 0);
+	ui.gridLayout_23->setColumnMinimumWidth(1, gridColWidth(ui.gridLayout_23, 1) + 8);
 	// Screenshots' column is a layout of its own: rows as high and as far apart as
 	// the grid's keep it level with the grid
 	int rowH = 0;
@@ -2299,6 +2323,16 @@ static void sheet_put(QWidget* w, const QVariant& val) {
 	} else if (QLineEdit* le = qobject_cast<QLineEdit*>(w)) {
 		le->setText(val.toString());
 	}
+}
+
+void SetupWin::ledRows() {
+	bool sb = ui.cbStatusBar->isChecked();
+	QWidget* rows[][3] = {
+		{ui.cbJoyLed, ui.namJoyLed, ui.labJoyLed}, {ui.cbMouseLed, ui.namMouseLed, ui.labMouseLed},
+		{ui.cbTapeLed, ui.namTapeLed, ui.labTapeLed}, {ui.cbDiskLed, ui.namDiskLed, ui.labDiskLed},
+		{ui.cbFpsLed, ui.namFpsLed, ui.labFpsLed}, {ui.cbClockLed, ui.namClockLed, ui.labClockLed}};
+	for (auto& r : rows)
+		for (QWidget* w : r) w->setEnabled(!sb);
 }
 
 QDialog* SetupWin::popOut(QWidget* box, const char* title) {
