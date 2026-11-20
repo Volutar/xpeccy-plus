@@ -22,8 +22,8 @@
   on photos of the real one, the case white as it was before it yellowed and sand-rough round
   the keys; the cursor block presses the Kempston, the two RES reset the machine together, the
   power lamp is lit while the machine runs; its caps with a straight foot under the slopes,
-  their lettering hollow. Made by `make-robik.py` (the logo traced on a photo) in the project's
-  lab, then kept as it is.
+  their lettering hollow. Made by `make-robik.py` (the lettering measured, the logo built of
+  rings and strokes, on a photo) in the project's lab, then kept as it is.
 - In the menu: 48K (Classic), 48K (White), 128K (Classic), 128K (White), Next (Black), Next
   (White), Next (Magenta), Klava (the worn Kopir), Klava (Washed), Robik - black, white, 128,
   128-white, next, next-white, next-magenta, kopir-worn, kopir, robik in the config.
