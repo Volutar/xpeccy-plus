@@ -41,8 +41,8 @@ what is drawn over the picture. Tick the ones you want; **OK** keeps them for th
 
 **Joystick**, **Mouse**, **Tape**, **Disk**, **FPS** and **CPU clock** are drawn on the
 picture only while the status bar is hidden; with the status bar shown, they are in the
-status bar instead (see [Status bar](main-window.md#status-bar)), and grey in the window
-while **Status bar** is ticked.
+status bar instead (see [Status bar](main-window.md#status-bar)). Fullscreen hides the
+status bar, so there they are over the picture.
 
 In the top right corner a sign also shows the speed mode, in the manner of a video
 recorder: pause, rewind with how many seconds back, fast mode, fast forward or slow
