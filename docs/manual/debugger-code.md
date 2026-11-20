@@ -415,8 +415,8 @@ you have marked nothing yourself: the 48K's character set at 3D00 as `DB` rows, 
 and message tables as `DC "..."` (text whose last character has bit 7 set), the report code
 after an error call as `DB`, so the instructions after it line up. Where the disassembly a
 list comes from has a `DEFB`, `DEFW` or `DEFM` line for each statement (the 48K, the 128K and
-+2 editors, the 128K's 48 BASIC), the data is shown the same way: the key table of the 48K a
-key a row, its channel table a `DW` a row. A mark of yours wins, and the ROM's marks are not
++2 editors, the 128K's 48 BASIC), the data is shown the same way: the 48K's channel table a `DW`
+a row. Statements of a byte each, as its key table and character set have, share a row. A mark of yours wins, and the ROM's marks are not
 saved in a session.
 
 ```{index} system variables, CH_ADD, ERR_SP
@@ -529,6 +529,7 @@ Memory not marked yet is shown as instructions. How many bytes go on a `DB` row,
 
 Data is made of statements, as an assembler's source has them: `DB 1,2,3` is one, the next
 `DB` another. A row of data ends where its statement does, even with room left on it; a
+run of `DB` statements of a byte each fills its rows as if it were one; a
 statement longer than a row goes on over as many rows as it needs. **View** makes the
 selected block one statement, and so does a `db`, `dw` or `db "..."` typed in the command
 column. A labels file can say each statement's length (see [Label files](#label-files)).
