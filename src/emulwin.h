@@ -169,6 +169,8 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void fsOverlay(QWidget*);
 		void setMachine(const std::string&);
 		void chooseMachine(const std::string&);		// the user's pick, see xm_choose
+		// a Debugger session's machine and images (session_media): put in, nothing started
+		void openSession(const QString& machine, const QStringList& media);
 		void askStartMachine();
 		void resetMachine(int);
 		void resetTo(int);

@@ -4711,6 +4711,30 @@ void MainWin::setMachine(const std::string& id) {
 	emit s_machine();
 }
 
+// The machine a session names, if it is another one and there is such a machine,
+// then its tape and disks, put in as an image opened here with nothing started
+void MainWin::openSession(const QString& machine, const QStringList& media) {
+	if (!machine.isEmpty()) {
+		std::string id = machine.toLocal8Bit().constData();
+		if (!xm_find(id)) {
+			xlog(XLG_FILE, XLL_WARN, "session: no machine %s here", id.c_str());
+			setMessage(QString("No machine %1").arg(machine));
+		} else if (id != conf.macId) {
+			setMachine(id);
+		}
+	}
+	foreach(const QString& item, media) {
+		int tab = item.indexOf('\t');
+		int drv = item.left(tab).toInt();
+		QString path = item.mid(tab + 1);
+		if (!QFileInfo(path).isFile()) {
+			xlog(XLG_FILE, XLL_WARN, "session: no %s", path.toLocal8Bit().constData());
+			continue;
+		}
+		openMedia(path, FG_ALL, (drv < 0) ? 0 : drv, AR_MOUNT, true);
+	}
+}
+
 void MainWin::chooseMachine(const std::string& id) {
 	setMachine(id);
 	if (conf.macId == id) conf.macBase = id;

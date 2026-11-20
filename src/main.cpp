@@ -855,6 +855,7 @@ int main(int ac,char** av) {
 	app.connect(&dbgw, SIGNAL(wannaReload()), &mwin, SLOT(reloadMedia()));
 	// a tool window's open picks no machine and starts nothing
 	QObject::connect(&dbgw, &DebugWin::wannaOpen, &mwin, [&mwin]() {mwin.openMedia(QString(), FG_ALL, -1, 0, true);});
+	QObject::connect(&dbgw, &DebugWin::wannaSession, &mwin, [&mwin](QString mac, QStringList media) {mwin.openSession(mac, media);});
 	app.connect(&mwin, SIGNAL(s_machine()), &dbgw, SLOT(onPrfChange()));
 
 	app.connect(&mwin, SIGNAL(s_debug()), &dbgw, SLOT(start()));

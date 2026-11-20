@@ -1266,10 +1266,11 @@ static int brk_add_unreal(QString line) {
 	return 1;
 }
 
-// load / save the breakpoint list. one breakpoint per line:
-// type:arg1:arg2:flags:action:condition:log - log is what a logged hit writes,
-// and an expression has no colons in it. lines in unreal's bpx.ini format are
-// taken too.
+// load / save the breakpoint list. one breakpoint per line: a brk record of the
+// Debugger's text format (docs/debugger-format.md), which the list is saved as;
+// the older type:arg1:arg2:flags:action:condition:log lines (log is what a
+// logged hit writes, and an expression has no colons in it) and unreal's
+// bpx.ini lines are read too.
 // An address may be a label, so the labels go in first. bad counts the lines
 // not understood and the conditions that do not compile, each logged. add
 // keeps the points already set, as the command line does with several lists
@@ -1285,6 +1286,145 @@ static bool brk_twin(xBrkPoint* brk) {
 		if ((it->cond == brk->cond) && (it->logx == brk->logx)) return true;
 	}
 	return false;
+}
+
+// A point read from a list, into it: one point, or one on each cell when the
+// place stood for several (a name of several systems, a ROM in several banks),
+// each as long as the point. A point the list already has is not taken twice
+// (a second list with it would count every hit twice); a condition or a log
+// expression that does not compile is kept, logged and counted in bad.
+static bool brk_list_take(xBrkPoint brk, const QList<xAdr>& cells, const QString& cond, const QString& logx,
+		const char* fpath, int num, int* bad) {
+	brk_reset_stats(&brk);
+	brk.temp = 0;
+	brk.last = 0;
+	brk_set_cond(&brk, cond.toLocal8Bit().data());
+	brk_set_logx(&brk, logx.toLocal8Bit().data());
+	std::vector<xBrkPoint> made;
+	if (cells.isEmpty()) made.push_back(brk);
+	int span = std::max(0, brk.eadr - brk.adr);
+	for (const xAdr& cell : cells) {
+		xBrkPoint pt = brk;
+		pt.id = brk_new_id();
+		pt.type = brk_cell_type(cell.type);
+		pt.adr = cell.abs;
+		pt.eadr = cell.abs + span;
+		if (pt.type >= 0) made.push_back(pt);
+	}
+	bool added = false;
+	for (xBrkPoint& pt : made) {
+		if (brk_twin(&pt)) continue;
+		conf.brk.list.push_back(pt);
+		added = true;
+	}
+	if (!added) return false;
+	if (!cond.isEmpty() && !xexpr_ok(brk.script)) {
+		// kept: a broken condition fires every time
+		xlog(XLG_BRK, XLL_WARN, "%s, line %i: condition: %s", fpath, num, brk.script.err.c_str());
+		if (bad) (*bad)++;
+	}
+	for (auto it = brk.logexp.begin(); it != brk.logexp.end(); it++) {
+		if (xexpr_ok(*it)) continue;
+		// kept too: the line says ? for it
+		xlog(XLG_BRK, XLL_WARN, "%s, line %i: log %s: %s", fpath, num, it->src.c_str(), it->err.c_str());
+		if (bad) (*bad)++;
+	}
+	return true;
+}
+
+// A brk record (docs/debugger-format.md): the place - a CPU address or range, a
+// label, a cell of a page or a ROM, io:PORT/MASK - or irq, or none for a global
+// condition; then its words: exec read write (exec when none is given; a port's
+// read and write), off, if "EXPR", log ["EXPR,..."], span=open|close, screen or
+// count, onchange (a global condition's). A word this version does not know is
+// logged and passed over; a place that is not here is not a point
+bool brk_text_record(const dtRecord& rec, const char* fpath, int num, int* bad) {
+	xBrkPoint brk{};
+	QList<xAdr> cells;
+	QString cond, logx;
+	const QList<dtWord>& w = rec.words;
+	auto fail = [&](const QString& why) {
+		xlog(XLG_BRK, XLL_WARN, "%s, line %i: %s", fpath, num, why.toLocal8Bit().data());
+		if (bad) (*bad)++;
+		return false;
+	};
+	if (w.isEmpty()) return fail("brk: no place");
+	brk.id = brk_new_id();
+	brk.action = BRK_ACT_DBG;
+	int i = 1;
+	QString head = w.at(0).quoted ? QString() : w.at(0).text.toLower();
+	if (head == "irq") {
+		brk.type = BRK_IRQ;
+	} else if (head == "if") {
+		brk.type = BRK_COND;
+		i = 0;
+	} else {
+		dtPlace p;
+		if (w.at(0).quoted || !dt_place_parse(w.at(0).text, &p)) return fail("brk: not a place: " + w.at(0).text);
+		switch (p.kind) {
+			case DT_PLACE_CPU:
+				brk.type = BRK_CPUADR;
+				brk.adr = p.ofs & 0xffff;
+				brk.eadr = ((p.end >= 0) ? p.end : p.ofs) & 0xffff;
+				break;
+			case DT_PLACE_NAME:
+				// a label not paged in now, or a name of several systems: on the
+				// cells it runs at, as --bp sets it; else where the CPU sees it
+				brk.type = BRK_CPUADR;
+				cells = brk_label_cells(p.name);
+				if (cells.isEmpty()) {
+					xAdr xadr = find_label(p.name);
+					if ((xadr.type < 0) || (xadr.adr < 0)) return fail("brk: no such label: " + p.name);
+					brk.adr = brk.eadr = xadr.adr & 0xffff;
+				}
+				break;
+			case DT_PLACE_PORT:
+				brk.type = BRK_IOPORT;
+				brk.adr = p.ofs;
+				brk.mask = p.mask;
+				break;
+			default: {
+				cells = labels_place_cells(p);
+				if (cells.isEmpty() || (brk_cell_type(cells.first().type) < 0))
+					return fail("brk: no such cell here: " + w.at(0).text);
+				brk.type = brk_cell_type(cells.first().type);
+				brk.adr = 0;
+				brk.eadr = (p.end >= 0) ? (p.end - p.ofs) : 0;
+				break;
+			}
+		}
+	}
+	bool access = false;
+	for (; i < w.size(); i++) {
+		QString wd = w.at(i).quoted ? QString() : w.at(i).text.toLower();
+		bool hasArg = (i + 1 < w.size());
+		if (wd == "exec") { brk.fetch = 1; access = true; }
+		else if (wd == "read") { brk.read = 1; access = true; }
+		else if (wd == "write") { brk.write = 1; access = true; }
+		else if (wd == "off") brk.off = 1;
+		else if (wd == "onchange") brk.onchg = 1;
+		else if (wd == "screen") brk.action = BRK_ACT_SCR;
+		else if (wd == "count") brk.action = BRK_ACT_COUNT;
+		else if (wd == "span=open") brk.span = BRK_SPAN_OPEN;
+		else if (wd == "span=close") brk.span = BRK_SPAN_CLOSE;
+		else if (wd == "if") {
+			if (!hasArg) return fail("brk: if with no condition");
+			cond = w.at(++i).text;
+		} else if (wd == "log") {
+			brk.log = 1;
+			if (hasArg && w.at(i + 1).quoted) logx = w.at(++i).text;
+		} else {
+			xlog(XLG_BRK, XLL_WARN, "%s, line %i: brk: a word passed over: %s", fpath, num,
+				dt_word_text(w.at(i).text, w.at(i).quoted).toLocal8Bit().data());
+		}
+	}
+	if (!access && (brk.type != BRK_IRQ) && (brk.type != BRK_COND)) {
+		if (brk.type == BRK_IOPORT) brk.read = brk.write = 1;
+		else brk.fetch = 1;
+	}
+	if (brk.type != BRK_COND) brk.onchg = 0;		// On change is a global condition's
+	if ((brk.type == BRK_COND) && cond.isEmpty()) return fail("brk: if with no condition");
+	return brk_list_take(brk, cells, cond, logx, fpath, num, bad);
 }
 
 int brk_load_list(const char* fpath, int* bad, bool add) {
@@ -1303,6 +1443,18 @@ int brk_load_list(const char* fpath, int* bad, bool add) {
 		num++;
 		if (line.trimmed().isEmpty()) continue;
 		if (brk_add_unreal(line)) continue;	// unreal's bpx.ini line
+		QString first = line.trimmed().section(' ', 0, 0).section('\t', 0, 0);
+		if (first.compare("brk", Qt::CaseInsensitive) == 0) {
+			// the text format's brk record (docs/debugger-format.md)
+			dtRecord rec;
+			if (dt_parse_line(line, &rec) && (rec.type == DT_REC_BRK)) {
+				brk_text_record(rec, fpath, num, bad);
+			} else {
+				xlog(XLG_BRK, XLL_WARN, "%s, line %i: %s", fpath, num, rec.error.toLocal8Bit().data());
+				if (bad) (*bad)++;
+			}
+			continue;
+		}
 		if (!line.startsWith(";")) {
 			xBrkPoint brk{};		// every field zeroed, not left from the line before
 			QList<xAdr> cells;
@@ -1363,41 +1515,7 @@ int brk_load_list(const char* fpath, int* bad, bool add) {
 				brk.action = BRK_ACT_DBG;
 			}
 			if (b0 && b1) {
-				brk_reset_stats(&brk);
-				brk.temp = 0;
-				brk.last = 0;
-				brk_set_cond(&brk, cond.toLocal8Bit().data());
-				brk_set_logx(&brk, logx.toLocal8Bit().data());
-				std::vector<xBrkPoint> made;
-				if (cells.isEmpty()) made.push_back(brk);
-				for (const xAdr& cell : cells) {
-					xBrkPoint pt = brk;
-					pt.id = brk_new_id();
-					pt.type = brk_cell_type(cell.type);
-					pt.adr = cell.abs;
-					pt.eadr = cell.abs;
-					if (pt.type >= 0) made.push_back(pt);
-				}
-				// a line the list already holds word for word (a second list
-				// with it, a line written twice) would count every hit twice
-				bool added = false;
-				for (xBrkPoint& pt : made) {
-					if (brk_twin(&pt)) continue;
-					conf.brk.list.push_back(pt);
-					added = true;
-				}
-				if (!added) continue;
-				if (!cond.isEmpty() && !xexpr_ok(brk.script)) {
-					// kept: a broken condition fires every time
-					xlog(XLG_BRK, XLL_WARN, "%s, line %i: condition: %s", fpath, num, brk.script.err.c_str());
-					if (bad) (*bad)++;
-				}
-				for (auto it = brk.logexp.begin(); it != brk.logexp.end(); it++) {
-					if (xexpr_ok(*it)) continue;
-					// kept too: the line says ? for it
-					xlog(XLG_BRK, XLL_WARN, "%s, line %i: log %s: %s", fpath, num, it->src.c_str(), it->err.c_str());
-					if (bad) (*bad)++;
-				}
+				brk_list_take(brk, cells, cond, logx, fpath, num, bad);
 			} else {
 				xlog(XLG_BRK, XLL_WARN, "%s, line %i: not understood: %s", fpath, num, line.trimmed().toLocal8Bit().data());
 				if (bad) (*bad)++;
@@ -1409,81 +1527,81 @@ int brk_load_list(const char* fpath, int* bad, bool add) {
 	return 1;
 }
 
-int brk_save_list(const char* fpath) {
-	xBrkPoint brk;
-	QString fnam(fpath);
-	QFile file(fnam);
-	QString nm,ar1,ar2,flag,act;
-	if (!file.open(QFile::WriteOnly)) return 0;
-	file.write("; Xpeccy+ Debugger breakpoints list\n");
-	foreach(brk, conf.brk.list) {
-		switch(brk.type) {
-			case BRK_IOPORT:
-				nm = "IO";
-				ar1 = gethexword(brk.adr & 0xffff);
-				ar2 = gethexword(brk.mask & 0xffff);
-				break;
-			case BRK_CPUADR:
-				nm = "CPU";
-				ar1 = gethexword(brk.adr & 0xffff);
-				ar2.clear();
-				if (brk.eadr > brk.adr) {
-					ar1.append("-");
-					ar1.append(gethexword(brk.eadr & 0xffff));
-				}
-				break;
-			case BRK_MEMRAM:
-			case BRK_MEMROM:
-			case BRK_MEMSLT:
-			case BRK_MEMDIV: {
-				// the page in the machine's own unit (the Next's 8K), or an area's token
-				int ofs;
-				nm = (brk.type == BRK_MEMRAM) ? "RAM" : (brk.type == BRK_MEMROM) ? "ROM"
-					: (brk.type == BRK_MEMDIV) ? "DIV" : "SLT";
-				ar1 = cell_page_text(brk_mem_type(brk.type), brk.adr, &ofs);
-				ar2 = gethexword(ofs);
-				if (brk.eadr > brk.adr) {
-					cell_page_text(brk_mem_type(brk.type), brk.eadr, &ofs);
-					ar2.append("-");
-					ar2.append(gethexword(ofs));
-				}
-				break;
+// one point as a brk record of the text format; empty for one it cannot say
+QString brk_text_line(const xBrkPoint& brk) {
+	QString line("brk");
+	switch(brk.type) {
+		case BRK_IOPORT: {
+			dtPlace p;
+			dt_place_clear(&p);
+			p.kind = DT_PLACE_PORT;
+			p.ofs = brk.adr & 0xffff;
+			p.mask = brk.mask & 0xffff;
+			line.append(" ").append(dt_place_text(p));
+			break;
+		}
+		case BRK_CPUADR: {
+			dtPlace p;
+			dt_place_clear(&p);
+			p.kind = DT_PLACE_CPU;
+			p.ofs = brk.adr & 0xffff;
+			if (brk.eadr > brk.adr) p.end = brk.eadr & 0xffff;
+			line.append(" ").append(dt_place_text(p));
+			break;
+		}
+		case BRK_MEMRAM:
+		case BRK_MEMROM:
+		case BRK_MEMSLT:
+		case BRK_MEMDIV: {
+			// the page in the machine's own unit (the Next's 8K), or an area's token
+			dtPlace p = labels_cell_place(brk_mem_type(brk.type), brk.adr);
+			if (p.kind == DT_PLACE_NONE) return QString();
+			if (brk.eadr > brk.adr) {
+				dtPlace e = labels_cell_place(brk_mem_type(brk.type), brk.eadr);
+				if ((e.kind != p.kind) || (e.area != p.area) || (e.page != p.page)) return QString();
+				p.end = e.ofs;
 			}
-			case BRK_IRQ:
-				nm = "IRQ";
-				ar1.clear();
-				ar2.clear();
-				break;
-			case BRK_COND:
-				nm = "COND";
-				ar1.clear();
-				ar2.clear();
-				break;
-			default:
-				nm.clear();
-				break;
+			line.append(" ").append(dt_place_text(p));
+			break;
 		}
-		switch(brk.action) {
-			case BRK_ACT_DBG: act = "DBG"; break;
-			case BRK_ACT_SCR: act = "SCR"; break;
-			case BRK_ACT_COUNT: act = "CNT"; break;
-			default: act.clear(); break;
-		}
-		if (!nm.isEmpty()) {
-			flag.clear();
-			if (brk.fetch) flag.append("F");
-			if (brk.read) flag.append("R");
-			if (brk.write) flag.append("W");
-			if (brk.off) flag.append("0");
-			if (brk.onchg) flag.append("E");
-			if (brk.log) flag.append("L");
-			if (brk.span == BRK_SPAN_OPEN) flag.append("[");
-			if (brk.span == BRK_SPAN_CLOSE) flag.append("]");
-			QString line = QString("%0:%1:%2:%3:%4:%5").arg(nm).arg(ar1).arg(ar2).arg(flag).arg(act).arg(brk.cond.c_str());
-			if (!brk.logx.empty()) line.append(QString(":%0").arg(brk.logx.c_str()));
-			file.write(line.append("\n").toUtf8());
-		}
+		case BRK_IRQ:
+			line.append(" irq");
+			break;
+		case BRK_COND:
+			break;
+		default:
+			return QString();
 	}
+	if (brk.type != BRK_COND) {
+		if (brk.fetch) line.append(" exec");
+		if (brk.read) line.append(" read");
+		if (brk.write) line.append(" write");
+	}
+	if (!brk.cond.empty()) line.append(" if ").append(dt_word_text(QString::fromUtf8(brk.cond.c_str()), true));
+	if (brk.onchg) line.append(" onchange");
+	if (brk.log) {
+		line.append(" log");
+		if (!brk.logx.empty()) line.append(" ").append(dt_word_text(QString::fromUtf8(brk.logx.c_str()), true));
+	}
+	if (brk.span == BRK_SPAN_OPEN) line.append(" span=open");
+	if (brk.span == BRK_SPAN_CLOSE) line.append(" span=close");
+	if (brk.action == BRK_ACT_SCR) line.append(" screen");
+	if (brk.action == BRK_ACT_COUNT) line.append(" count");
+	if (brk.off) line.append(" off");
+	return line;
+}
+
+int brk_save_list(const char* fpath) {
+	QFile file{QString(fpath)};
+	if (!file.open(QFile::WriteOnly)) return 0;
+	file.write("; Xpeccy+ Debugger breakpoints (docs/debugger-format.md)\n");
+	int lost = 0;
+	for (const xBrkPoint& brk : conf.brk.list) {
+		QString line = brk_text_line(brk);
+		if (line.isEmpty()) lost++;
+		else file.write(line.append("\n").toUtf8());
+	}
+	if (lost) xlog(XLG_BRK, XLL_WARN, "breakpoints: %i not saved, in memory with no name to write", lost);
 	file.close();
 	return 1;
 }

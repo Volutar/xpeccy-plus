@@ -678,18 +678,8 @@ QString label_block(xAdr xadr) {
 	return QString();
 }
 
-// The page of a LABELSLIST line. SjASMPlus writes it in decimal; a page with a
-// hex digit in it comes from Xpeccy+ before 2026.8.2, which wrote hex. FF and an
-// empty page (":ADDR") are a CPU address: -2. -1: not a page.
-static int labels_page(const QString& str) {
-	if (str.isEmpty() || (str.compare("FF", Qt::CaseInsensitive) == 0)) return -2;
-	bool ok;
-	int page = str.toInt(&ok, 10);
-	if (!ok) page = str.toInt(&ok, 16);
-	return (ok && (page >= 0)) ? page : -1;
-}
-
-// ...and back, the way SjASMPlus writes it
+// A LABELSLIST page the way SjASMPlus writes it: decimal (a page with a hex
+// digit in it, from Xpeccy+ before 2026.8.2, still reads - dt_place_parse)
 static QString labels_page_str(int page) {
 	return QString("%1").arg(page, 2, 10, QChar('0'));
 }
@@ -757,62 +747,207 @@ static bool labels_map_line(bool isNext, const QString& line) {
 	return true;
 }
 
-// A line of Xpeccy+'s own for memory that is not the machine's RAM pages:
-// ROM0:0123, DIV3:0010 (saveLabels). false: not one
-static bool labels_area_line(const QStringList& arr) {
-	int area, page, type, abs;
-	bool ok;
-	if (!conf.zx || !cell_token_parse(arr.at(0).toLatin1().constData(), &area, &page)) return false;
-	int ofs = arr.at(1).toInt(&ok, 16);
-	if (!ok || !comp_cell_xadr(conf.zx, area, page, ofs, &type, &abs)) return true;
+// ROM names a file of the user's gave its own rom records: name -> the MD5s
+static QHash<QString, QSet<QByteArray> > userRoms;
+
+// the banks of the machine's ROM a ROM name of the lists (or the user's) is
+static QList<int> rom_name_banks(const QString& mem) {
+	QList<int> res;
+	for (int b = 0; b < romBanks.size(); b++) {
+		bool hit = userRoms.value(mem).contains(romBanks.at(b));
+		for (int i = 0; !hit && (i < romLists.size()); i++)
+			hit = (romLists.at(i).mem == mem) && romLists.at(i).banks.contains(romBanks.at(b));
+		if (hit) res.append(b);
+	}
+	return res;
+}
+
+static xAdr cell_xadr(int type, int abs) {
 	xAdr xadr;
 	xadr.type = type;
 	xadr.abs = abs;
 	xadr.bank = abs >> 14;
-	xadr.adr = comp_find_xadr(conf.zx, type, abs, MEM_VIEW_READ);
-	add_label(xadr, arr.at(2));
+	xadr.adr = conf.zx ? comp_find_xadr(conf.zx, type, abs, MEM_VIEW_READ) : -1;
+	return xadr;
+}
+
+// The cells a place of the text format stands for in the machine in use: one, or
+// one in each bank a ROM name is in. A CPU address is the cell the CPU sees there
+// now; a label's name, its cell. Empty: none
+QList<xAdr> labels_place_cells(const dtPlace& p) {
+	QList<xAdr> res;
+	Computer* comp = conf.zx;
+	if (!comp) return res;
+	int type, abs;
+	switch (p.kind) {
+		case DT_PLACE_CPU:
+			res.append(comp_get_xadr(comp, p.ofs & 0xffff, MEM_VIEW_READ));
+			break;
+		case DT_PLACE_PAGE:
+			if (comp_cell_xadr(comp, CELL_RAM, p.page, p.ofs, &type, &abs)) res.append(cell_xadr(type, abs));
+			break;
+		case DT_PLACE_AREA:
+			if (comp_cell_xadr(comp, p.area, p.page, p.ofs, &type, &abs)) res.append(cell_xadr(type, abs));
+			break;
+		case DT_PLACE_ROM:
+			if (p.ofs < MEM_16K) {
+				foreach(int b, rom_name_banks(p.name)) res.append(cell_xadr(MEM_ROM, b * MEM_16K + p.ofs));
+			}
+			break;
+		case DT_PLACE_NAME: {
+			xAdr xadr = find_label_cell(p.name);
+			if (xadr.type == MEM_IO) xadr = comp_get_xadr(comp, xadr.abs & 0xffff, MEM_VIEW_READ);
+			if (xadr.type >= 0) res.append(xadr);
+			break;
+		}
+	}
+	return res;
+}
+
+// ...and back: a cell as the text format writes it - RAM as its page in the
+// machine's own pages, other memory as its area's token, a CPU label's address.
+// DT_PLACE_NONE: a cell with no name (the SRAM behind the Next's banks 5 and 7)
+dtPlace labels_cell_place(int type, int abs) {
+	dtPlace p;
+	dt_place_clear(&p);
+	if (type == MEM_IO) {
+		p.kind = DT_PLACE_CPU;
+		p.ofs = abs & 0xffff;
+		return p;
+	}
+	if (!conf.zx) return p;
+	xCell cell = comp_cell(conf.zx, type, abs);
+	if (cell.area == CELL_NONE) return p;
+	p.kind = (cell.area == CELL_RAM) ? DT_PLACE_PAGE : DT_PLACE_AREA;
+	p.area = cell.area;
+	p.page = cell.page;
+	p.ofs = cell.ofs;
+	return p;
+}
+
+// a cell's flag byte (breakpoint bits, view, statement start); NULL if it has none
+static unsigned char* cell_flag(Computer* comp, int type, int abs) {
+	switch (type) {
+		case MEM_RAM: return comp->brkRamMap + (abs & comp->mem->ramMask);
+		case MEM_ROM: return comp->brkRomMap + (abs & comp->mem->romMask);
+		case MEM_SLOT: return comp->slot->brkMap ? comp->slot->brkMap + (abs & comp->slot->memMask) : NULL;
+		case MEM_DIV: return comp->div ? comp->div->brkMap + (abs % (DIV_EE_SIZE + DIV_RAM_MAX)) : NULL;
+	}
+	return NULL;
+}
+
+// A data record onto the cells: their view, and where each statement starts. A
+// CPU address goes cell by cell as the CPU sees them now; other places run on in
+// their memory. false: no cell there
+static bool labels_mark(const dtRecord& rec) {
+	Computer* comp = conf.zx;
+	QList<xAdr> cells = labels_place_cells(rec.at);
+	if (cells.isEmpty()) return false;
+	int step = rec.len * rec.unit;
+	int bytes = step * rec.count;
+	foreach(const xAdr& start, cells) {
+		for (int i = 0; i < bytes; i++) {
+			xAdr xadr = start;
+			if (rec.at.kind == DT_PLACE_CPU) xadr = comp_get_xadr(comp, (rec.at.ofs + i) & 0xffff, MEM_VIEW_READ);
+			else xadr.abs += i;
+			unsigned char* fl = cell_flag(comp, xadr.type, xadr.abs);
+			if (!fl) continue;
+			// dc's strings end themselves: the record starts one statement
+			bool first = (i == 0) || (!rec.dc && (rec.view != DBG_VIEW_EXEC) && ((i % step) == 0));
+			*fl = (*fl & 0x0f) | rec.view | (first ? DBG_STMT : 0);
+		}
+	}
 	return true;
 }
 
-// One SjASMPlus LABELSLIST or CSPECTMAP file into the set named after it, which
-// is then the one in effect. Its pages are taken as the machine in use has them.
-// 0: it could not be opened, and nothing changed.
+// A label line of a user's file, placed as LABELSLIST's always was: a page in the
+// machine's own pages, a CPU address in the 128K's bank behind it (the Next keeps
+// it at its address)
+static bool labels_text_label(const dtRecord& rec, bool isNext, int* wide) {
+	const dtPlace& p = rec.at;
+	switch (p.kind) {
+		case DT_PLACE_CPU:
+			if (p.ofs > 0xffff) return false;
+			labels_add_cpu(isNext, p.ofs, rec.name);
+			return true;
+		case DT_PLACE_PAGE:
+			if (p.ofs > 0xffff) return false;
+			if (p.ofs > 0x1fff) (*wide)++;
+			labels_add_ram(isNext, p.page, p.ofs, rec.name);
+			return true;
+		default: {
+			QList<xAdr> cells = labels_place_cells(p);
+			if (cells.isEmpty()) return false;
+			add_label(cells.first(), rec.name);
+			return true;
+		}
+	}
+}
+
+// One file of labels into the set named after it, which is then the one in
+// effect: the Debugger's text format (docs/debugger-format.md), of which
+// SjASMPlus's LABELSLIST is a part, or a CSPECTMAP. Its pages are taken as the
+// machine in use has them. Data, comments and breakpoints are taken after the
+// labels, so a name in them may be a label of the file. 0: it could not be
+// opened, and nothing changed.
 static int labels_read(const QString& path) {
-	QString line;
-	QStringList arr;
 	QFile file(path);
 	if (!file.open(QFile::ReadOnly)) return 0;
 	bool isNext = conf.zx && (conf.zx->hw->id == HW_ZXNEXT);
 	xLabelSet* set = newLabelSet(QFileInfo(path).fileName());
 	set->list.clear();		// before it is made current, or its old map is built for nothing
 	setLabelSet(set);
-#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
-	static const QRegularExpression sep("[: \t\r\n]");
-#else
-	static const QRegExp sep("[: \t\r\n]");
-#endif
+	QByteArray pathb = path.toLocal8Bit();
 	int wide = 0;		// offsets past 8K: a 16K-page file
+	int unknown = 0;
+	int bad = 0;
+	int num = 0;
+	QList<QPair<int, dtRecord> > later;
+	dtRecord rec;
 	while(!file.atEnd()) {
-		line = file.readLine();
+		QString line = QString::fromUtf8(file.readLine());
+		num++;
 		if (labels_map_line(isNext, line)) continue;
-		if (line.startsWith(":"))
-			line.prepend("FF");
-		arr = line.split(sep, X_SkipEmptyParts);
-		if ((arr.size() > 2) && labels_area_line(arr)) continue;
-		if (arr.size() > 2) {
-			bool adrOk;
-			int page = labels_page(arr.at(0));
-			int adr = arr.at(1).toInt(&adrOk, 16);
-			if ((page == -1) || !adrOk || (adr < 0) || (adr > 0xffff)) continue;
-			if (page == -2) {
-				labels_add_cpu(isNext, adr, arr.at(2));
-			} else {
-				if (adr > 0x1fff) wide++;
-				labels_add_ram(isNext, page, adr, arr.at(2));
-			}
+		bool ok = dt_parse_line(line, &rec);
+		if (ok && (rec.type == DT_REC_LABEL)) ok = labels_text_label(rec, isNext, &wide);
+		if (!ok) {
+			if (bad++ < 10) xlog(XLG_FILE, XLL_WARN, "labels: %s, line %i: %s", pathb.constData(), num,
+				(rec.error.isEmpty() ? line.trimmed() : rec.error).toLocal8Bit().constData());
+			continue;
+		}
+		switch (rec.type) {
+			case DT_REC_ROM:
+				userRoms[rec.name].insert(rec.md5.toLatin1());
+				break;
+			case DT_REC_DATA:
+			case DT_REC_COMMENT:
+			case DT_REC_BRK:
+				later.append(qMakePair(num, rec));
+				break;
+			case DT_REC_UNKNOWN:
+				unknown++;
+				break;
 		}
 	}
-	xlog(XLG_FILE, XLL_INFO, "labels from %s", path.toLocal8Bit().constData());
+	int brks = 0;
+	for (const auto& it : later) {
+		const dtRecord& r = it.second;
+		bool ok = true;
+		if (r.type == DT_REC_DATA) {
+			ok = labels_mark(r);
+		} else if (r.type == DT_REC_COMMENT) {
+			QList<xAdr> cells = labels_place_cells(r.at);
+			foreach(const xAdr& cell, cells) add_comment(cell, r.text);
+			ok = !cells.isEmpty();
+		} else if (brk_text_record(r, pathb.constData(), it.first, &bad)) {
+			brks++;
+		}
+		if (!ok && (bad++ < 10))
+			xlog(XLG_FILE, XLL_WARN, "labels: %s, line %i: no such place here", pathb.constData(), it.first);
+	}
+	if (brks) brkInstallAll();
+	xlog(XLG_FILE, XLL_INFO, "labels from %s", pathb.constData());
+	if (unknown) xlog(XLG_FILE, XLL_INFO, "labels: %s: %i lines of a newer kind skipped", pathb.constData(), unknown);
 	if (isNext && wide)
 		xlog(XLG_FILE, XLL_WARN, "labels: %i offsets past 8K, the file has 16K pages - read as the Next's 8K ones", wide);
 	return 1;
@@ -930,4 +1065,162 @@ QString find_comment(xAdr xadr) {
 
 void clear_comments() {
 	conf.commap.clear();
+}
+
+// sessions: everything the Debugger knows of the machine's memory in one file of
+// the text format (docs/debugger-format.md), the machine and its images if asked
+
+// a map's marks as data records: a statement runs from its first cell to the
+// next one that starts a statement or has another view; statements of one
+// length one after another make one N*K record
+static void session_marks(QByteArray& out, int type, const unsigned char* map, int size, const unsigned char* bytes) {
+	int i = 0;
+	while (i < size) {
+		int view = map[i] & DBG_VIEW_MASK;
+		if (!view) {
+			i++;
+			continue;
+		}
+		auto stmt_end = [&](int from) {
+			int j = from + 1;
+			while ((j < size) && ((map[j] & DBG_VIEW_MASK) == view) && !(map[j] & DBG_STMT)) j++;
+			return j;
+		};
+		int start = i;
+		i = stmt_end(start);
+		int len = i - start;
+		int count = 1;
+		// the next statements of the same length join it (code's are one each)
+		while ((view != DBG_VIEW_EXEC) && (i < size) && ((map[i] & DBG_VIEW_MASK) == view)) {
+			int next = stmt_end(i);
+			if (next - i != len) break;
+			count++;
+			i = next;
+		}
+		dtPlace p = labels_cell_place(type, start);
+		if (p.kind == DT_PLACE_NONE) continue;
+		int unit = ((view == DBG_VIEW_WORD) || (view == DBG_VIEW_ADDR)) ? 2 : 1;
+		if (len / unit < 1) continue;		// a word mark on one byte: not a word
+		const char* kw = "db";
+		switch (view) {
+			case DBG_VIEW_WORD: kw = "dw"; break;
+			case DBG_VIEW_ADDR: kw = "da"; break;
+			case DBG_VIEW_EXEC: kw = "code"; break;
+			case DBG_VIEW_TEXT:
+				// one string that ends with bit 7 reads best as dc; the cells are the same
+				kw = ((count == 1) && bytes && (bytes[start + len - 1] & 0x80)) ? "dc" : "dm";
+				break;
+		}
+		QString line = QString("%1 %2 %3").arg(kw, dt_place_text(p)).arg(len / unit);
+		if (count > 1) line.append(QString("*%1").arg(count));
+		out.append(line.append("\n").toUtf8());
+	}
+}
+
+// a path a session keeps: beside or under the session, relative to it
+static QString session_path_text(const QString& session, const char* raw) {
+	QString path = QFileInfo(QString::fromLocal8Bit(raw)).absoluteFilePath();
+	QString rel = QFileInfo(session).absoluteDir().relativeFilePath(path);
+	return rel.startsWith("..") ? QDir::toNativeSeparators(path) : QDir::toNativeSeparators(rel);
+}
+
+int session_save(const QString& path, bool machine, bool images) {
+	Computer* comp = conf.zx;
+	if (!comp) return 0;
+	QFile file(path);
+	if (!file.open(QFile::WriteOnly)) return 0;
+	QByteArray out("; Xpeccy+ Debugger session (docs/debugger-format.md)\n");
+	if (machine && !conf.macId.empty()) out.append(QString("machine %1\n").arg(QString::fromLocal8Bit(conf.macId.c_str())).toUtf8());
+	if (images) {
+		if (comp->tape->path && comp->tape->blkCount)
+			out.append(QString("open %1\n").arg(session_path_text(path, comp->tape->path)).toUtf8());
+		for (int i = 0; i < 4; i++) {
+			Floppy* flp = comp->dif->flp[i];
+			if (flp->insert && flp->path)
+				out.append(QString("open %1: %2\n").arg(QChar('A' + i)).arg(session_path_text(path, flp->path)).toUtf8());
+		}
+		if (comp->slot->path)
+			out.append(QString("open %1\n").arg(session_path_text(path, comp->slot->path)).toUtf8());
+	}
+	int lost = 0;
+	if (conf.curlabset) {
+		foreach(const QString& key, conf.curlabset->list.keys()) {
+			QString line = labels_line(key, conf.curlabset->list.value(key));
+			if (line.isEmpty()) lost++;
+			else out.append(line.toUtf8());
+		}
+	}
+	session_marks(out, MEM_RAM, comp->brkRamMap, comp->mem->ramMask + 1, comp->mem->ramData);
+	session_marks(out, MEM_ROM, comp->brkRomMap, comp->mem->romMask + 1, comp->mem->romData);
+	if (comp->slot->brkMap) session_marks(out, MEM_SLOT, comp->slot->brkMap, comp->slot->memMask + 1, NULL);
+	if (comp->div) session_marks(out, MEM_DIV, comp->div->brkMap, DIV_EE_SIZE + DIV_RAM_MAX, NULL);
+	for (auto tp = conf.commap.constBegin(); tp != conf.commap.constEnd(); tp++) {
+		for (auto it = tp->constBegin(); it != tp->constEnd(); it++) {
+			dtPlace p = labels_cell_place(tp.key(), it.key());
+			if (p.kind == DT_PLACE_NONE) {
+				lost++;
+				continue;
+			}
+			out.append(QString("comment %1 %2\n").arg(dt_place_text(p), dt_escape(it.value())).toUtf8());
+		}
+	}
+	for (const xBrkPoint& brk : conf.brk.list) {
+		QString line = brk_text_line(brk);
+		if (line.isEmpty()) lost++;
+		else out.append(line.append("\n").toUtf8());
+	}
+	if (lost) xlog(XLG_FILE, XLL_WARN, "session: %i not saved, in memory with no name to write", lost);
+	bool ok = (file.write(out) == out.size());
+	file.close();
+	return ok ? 1 : 0;
+}
+
+// The machine and the images a session names, for the window that puts them in:
+// media gets "DRIVE<tab>PATH", the drive -1 for the deck or the slot (where the
+// file says), the path made whole against the session's folder
+void session_media(const QString& path, QString* machine, QStringList* media) {
+	machine->clear();
+	media->clear();
+	QFile file(path);
+	if (!file.open(QFile::ReadOnly)) return;
+	QDir dir = QFileInfo(path).absoluteDir();
+	dtRecord rec;
+	while (!file.atEnd()) {
+		if (!dt_parse_line(QString::fromUtf8(file.readLine()), &rec)) continue;
+		if (rec.type == DT_REC_MACHINE) {
+			*machine = rec.name;
+		} else if (rec.type == DT_REC_OPEN) {
+			QString img = rec.text;
+			int drv = -1;
+			// A: to D: and a blank: a drive (C:\ is a path)
+			if ((img.size() > 3) && (img.at(1) == ':') && img.at(2).isSpace()) {
+				drv = img.at(0).toUpper().unicode() - 'A';
+				if ((drv < 0) || (drv > 3)) continue;
+				img = img.mid(3).trimmed();
+			}
+			media->append(QString("%1\t%2").arg(drv).arg(QDir::cleanPath(dir.absoluteFilePath(img))));
+		}
+	}
+}
+
+// A session in place of what the Debugger had: its marks, comments and
+// breakpoints go, the session's come; its labels are the set named after it
+int session_load(const QString& path) {
+	Computer* comp = conf.zx;
+	if (!comp || !QFileInfo(path).isFile()) return 0;
+	{
+		EmuLock lock;
+		auto unmark = [](unsigned char* map, int size) {
+			for (int i = 0; i < size; i++) map[i] &= 0x0f;
+		};
+		unmark(comp->brkRamMap, comp->mem->ramMask + 1);
+		unmark(comp->brkRomMap, comp->mem->romMask + 1);
+		if (comp->slot->brkMap) unmark(comp->slot->brkMap, comp->slot->memMask + 1);
+		if (comp->div) unmark(comp->div->brkMap, DIV_EE_SIZE + DIV_RAM_MAX);
+		clear_comments();
+		conf.brk.list.clear();
+	}
+	int res = labels_read(path);
+	brkInstallAll();
+	return res;
 }

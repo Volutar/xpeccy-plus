@@ -2426,21 +2426,42 @@ void DebugWin::mmapEdit(int bank) {
 	fillMem();
 }
 
+// Load session: the machine and the images it names go in first (the main
+// window does that, as an image opened there), then its labels, marks, comments
+// and breakpoints take the place of the Debugger's. A memory map of older
+// versions (.xmap) still loads
 void DebugWin::loadMap() {
-	QString path = QFileDialog::getOpenFileName(this, "Open the universe", "", "Xpeccy memory map (*.xmap)",nullptr,QFileDialog::DontUseNativeDialog);
+	QString path = QFileDialog::getOpenFileName(this, "Load session", xmap_path,
+		"Debugger session (*.xdbg);;Memory map of older versions (*.xmap)", nullptr, QFileDialog::DontUseNativeDialog);
 	if (path.isEmpty()) return;
-	load_xmap(path);
+	if (path.endsWith(".xmap", Qt::CaseInsensitive)) {
+		load_xmap(path);
+		brkInstallAll();
+	} else {
+		QString mac;
+		QStringList media;
+		session_media(path, &mac, &media);
+		if (!mac.isEmpty() || !media.isEmpty()) emit wannaSession(mac, media);
+		if (!session_load(path)) {
+			shitHappens("Can't open file");
+			return;
+		}
+	}
 	xmap_path = path;
-	brkInstallAll();
 	fillAll();
 }
 
 void DebugWin::saveMap() {
-	QString path = QFileDialog::getSaveFileName(this, "Save the universe", xmap_path, "Xpeccy memory map (*.xmap)",nullptr,QFileDialog::DontUseNativeDialog);
+	// an old map loaded last: its session goes beside it
+	QString suggest = xmap_path.endsWith(".xmap", Qt::CaseInsensitive) ? (xmap_path.chopped(5) + ".xdbg") : xmap_path;
+	QString path = QFileDialog::getSaveFileName(this, "Save session", suggest, "Debugger session (*.xdbg)",nullptr,QFileDialog::DontUseNativeDialog);
 	if (path.isEmpty()) return;
-	if (!path.endsWith(".xmap",Qt::CaseInsensitive))
-		path.append(".xmap");
-	save_xmap(path);
+	if (!path.endsWith(".xdbg",Qt::CaseInsensitive))
+		path.append(".xdbg");
+	if (!session_save(path, conf.dbg.sessmac, conf.dbg.sessimg)) {
+		shitHappens("Can't write file");
+		return;
+	}
 	xmap_path = path;
 }
 
@@ -2868,18 +2889,21 @@ void DebugWin::chaCellProperty(QAction* act) {
 //			}
 		}
 	} else {						// change cell type
+		// the selection is one statement: it starts at its first cell (code is
+		// none - its rows are its instructions)
 		while (adr <= end) {
 			ptr = getBrkPtr(comp, adr);
 			*ptr &= 0x0f;
-			if ((data & 0xf0) == DBG_VIEW_TEXT) {
+			unsigned char stmt = ((adr == bgn) && (data & DBG_VIEW_MASK)) ? DBG_STMT : 0;
+			if ((data & DBG_VIEW_MASK) == DBG_VIEW_TEXT) {
 				bt = rdbyte(adr, comp);
 				if ((bt < 32) || (bt > 127)) {
-					*ptr |= DBG_VIEW_BYTE;
+					*ptr |= DBG_VIEW_BYTE | stmt;
 				} else {
-					*ptr |= DBG_VIEW_TEXT;
+					*ptr |= DBG_VIEW_TEXT | stmt;
 				}
 			} else {
-				*ptr |= (data & 0xf0);
+				*ptr |= (data & DBG_VIEW_MASK) | stmt;
 			}
 			adr++;
 		}
