@@ -204,15 +204,10 @@ void MainWin::mouseRecenter(int fresh) {
 // A recentering asked again before the last is answered keeps its count of readings
 void MainWin::mouseWarp() {
 	if (warpFail >= MOUSE_WARP_GIVEUP) return;
-	QPoint from = mouseLast;
 	warpAim = warpAt = winCenter();
-	if (!warpTtl) {
+	if (!warpTtl)
 		warpTtl = MOUSE_WARP_TTL;
-		warpReqAt = paceClockNs();
-	}
 	winCursorTo(warpAt);
-	xlog(XLG_INPUT, XLL_DEBUG, "mouse: recenter %d,%d -> %d,%d, fails %d, raw %u/%u",
-		from.x(), from.y(), warpAt.x(), warpAt.y(), warpFail, rawRel, rawAbs);
 }
 
 // Windows tells a mouse that moves by steps from a device that gives where to
@@ -334,42 +329,30 @@ void MainWin::mouseRead() {
 		QPoint off = gpos - warpAt;
 		QPoint aim = gpos - warpAim;
 		QPoint lead = (mouseVel * ms).toPoint();
-		QPoint last = mouseLast;
-		const char* verdict;
 		if ((qAbs(aim.x()) <= 1) && (qAbs(aim.y()) <= 1)) {
 			// on the target: no answer, an undoing host reads it back too
 			was = warpAt;
 			warpAt = gpos;
 			hand = false;
-			verdict = "on target";
 		} else if (gpos == mouseLast) {
 			// nothing moved since the last reading: no answer either
-			verdict = "still";
 		} else if ((off - lead).manhattanLength() <= (gpos - mouseLast - lead).manhattanLength()) {
 			was = warpAt;			// it landed: this is the pointer now
 			mouseLast = gpos;
 			warpTtl = 0;
 			warpFail = 0;
-			verdict = "landed";
 		} else {
 			// the old place: the device holds it, or the system has not applied it yet
 			mouseLast = gpos;
-			verdict = "old place";
 			if (!winFar(gpos)) {
 				warpTtl = 0;		// in the middle either way: nothing left to judge
-				verdict = "old place, in the middle";
-			} else if (!--warpTtl) {
-				if (mouseByStep()) {
-					verdict = "old place, late on a mouse by steps";
-				} else if (++warpFail >= MOUSE_WARP_GIVEUP) {
-					xlog(XLG_INPUT, XLL_INFO, "mouse: this host puts the pointer straight back, recentering dropped (raw %u/%u)",
-						rawRel, rawAbs);
-				}
+			} else if (!--warpTtl && !mouseByStep() && (++warpFail >= MOUSE_WARP_GIVEUP)) {
+				// a mouse by steps is never given up on: there the moves in flight undo
+				// some recenterings, and giving up would pin it on the clip's edge
+				xlog(XLG_INPUT, XLL_INFO, "mouse: this host puts the pointer straight back, recentering dropped (raw %u/%u)",
+					rawRel, rawAbs);
 			}
 		}
-		xlog(XLG_INPUT, XLL_DEBUG, "mouse: read %d,%d aim %d,%d at %d,%d last %d,%d lead %d,%d, %.2f ms, %.2f ms after recenter, ttl %d, fails %d, raw %u/%u: %s",
-			gpos.x(), gpos.y(), warpAim.x(), warpAim.y(), warpAt.x(), warpAt.y(), last.x(), last.y(),
-			lead.x(), lead.y(), ms, (now - warpReqAt) / 1e6, warpTtl, warpFail, rawRel, rawAbs, verdict);
 	} else {
 		mouseLast = gpos;
 	}

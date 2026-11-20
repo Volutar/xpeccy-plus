@@ -344,7 +344,6 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		double mouseRemY = 0.0;
 		unsigned rawRel = 0;	// mouse reports by steps this grab (Windows raw input)
 		unsigned rawAbs = 0;	// and ones that give where to be: a VM, a remote desktop
-		qint64 warpReqAt = 0;	// when the pending recentering was asked, paceClockNs
 		bool mouseClipped = false;	// the system keeps the pointer in the window
 		unsigned block:1;
 		unsigned hasPicture:1;	// the emulation has handed over a frame
