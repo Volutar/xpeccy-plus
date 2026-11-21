@@ -209,7 +209,7 @@ The Robik is a ZX Spectrum 48K built of plain logic chips by NPO Rotor in Cherka
 version V03, is the 48K's BASIC with Cyrillic letters and a keyboard of 64 keys; it starts
 in white on blue with "© "SELTO-ROTOR" Computer V03". Its frame is its own, 313 lines of 212
 ticks, and nothing in it is contended but a write to the screen's memory, #4000-#5FFF, which
-waits from 1 to 4 ticks; the timings were measured on two owners' boards.
+waits from 1 to 4 ticks; the timings were measured on three owners' boards.
 
 Three things differ from board to board, and the **Board** group of the
 [Machine page](options-machine.md) of **Options** has a row for each:
@@ -231,8 +231,7 @@ and L) are on the PC keys at their places on the Robik's case in the keyboard la
 **Robik** (see [Keymaps](input.md#keymaps)): Tab is EDIT, Backspace DELETE, `-` the
 period, `/` the comma, `[` Х, `;` Ж, `'` Э, `,` Б, `.` Ю, Right Alt C and Right Ctrl L.
 
-Not yet known: whether the piezo also sounds the tape output, and exactly where the line of
-**Cell edges** falls at the start of a line: it is drawn as the owners' photos show it.
+Not yet known: whether the piezo also sounds the tape output.
 
 ## Pause, Fast Mode, Slow Motion, Fast Forward, Allow Rewind
 
