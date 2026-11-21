@@ -1,0 +1,6 @@
+# Robik: the V03 ROM's start, the factory test tape loaded to its Cyrillic menu, and ROBIK
+# TEST 1 (the screen-write wait, port 15, the frame) as three owners' boards showed it.
+# name          machine   how   skip  frames  file                  options
+boot_robik      robik     boot  0     400
+basictest_robik robik     auto  2800  300     robik/basictest.tap
+robtest_robik   robik     auto  4600  300     robik/robtest.tap
