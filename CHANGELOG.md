@@ -11,6 +11,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Sharp Stretched Edges**: Options > Video, Side fill settings, Blur at Off. The picture's
+  edge dots run on to the window's edges as they are, row by row, through the shader with its
+  scanlines; with Border + Stretched Edges a loading border fills the whole screen.
+
 - **The mouse pointer hides itself** after 2 seconds still over the picture, in a window and
   in fullscreen; a move brings it back. View > Auto-Hide Pointer turns it off.
 
