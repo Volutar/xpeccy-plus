@@ -4240,7 +4240,7 @@ static int* fill_val(int i) {
 // fixed. Every move goes to conf and the window at once, so it can be judged.
 void SetupWin::makeFillPopup() {
 	static const struct {const char* name; const char* tip; int min; int max; int step; int tick; int def;} rows[5] = {
-		{"Blur", "How soft the fill is, from crisp to a wide glow", SFILL_BLUR_MIN, SFILL_BLUR_MAX, 1, 1, SFILL_BLUR_DEF},
+		{"Blur", "How soft the fill is, up to a wide glow. Off: Stretched Edges carries the edge dots out sharp, through the shader", SFILL_BLUR_MIN, SFILL_BLUR_MAX, 1, 1, SFILL_BLUR_DEF},
 		{"Brightness", "How bright the fill is beside the picture", SFILL_DIM_MIN, 100, 5, 10, SFILL_DIM_DEF},
 		{"Fade", "How much darker it gets towards the screen's edge", 0, 100, 5, 10, SFILL_FADE_DEF},
 		{"Edge", "How gently the picture runs into the fill", 0, SFILL_EDGE_MAX, 1, 4, SFILL_EDGE_DEF},
@@ -4262,8 +4262,15 @@ void SetupWin::makeFillPopup() {
 		sld->setTickInterval(rows[i].tick);
 		sld->setMinimumWidth(200);
 		sld->setToolTip(lab->toolTip());
-		lay->addWidget(lab, i, 0);
-		lay->addWidget(sld, i, 1);
+		// Blur's first step is Off, named on a row of its own under it
+		const int row = (i == 0) ? 0 : i + 1;
+		lay->addWidget(lab, row, 0);
+		lay->addWidget(sld, row, 1);
+		if (i == 0) {
+			QLabel* off = new QLabel(tr("Off"));
+			off->setToolTip(lab->toolTip());
+			lay->addWidget(off, 1, 1, Qt::AlignLeft | Qt::AlignTop);
+		}
 		sldFill[i] = sld;
 		connect(sld, &QSlider::valueChanged, this, [this, i](int val) {
 			*fill_val(i) = val;
@@ -4273,7 +4280,7 @@ void SetupWin::makeFillPopup() {
 	QPushButton* def = new QPushButton(tr("Defaults"));
 	def->setObjectName("fillDefaults");
 	def->setToolTip(tr("Every slider back to where it starts"));
-	lay->addWidget(def, 5, 1, Qt::AlignRight);
+	lay->addWidget(def, 6, 1, Qt::AlignRight);
 	connect(def, &QPushButton::released, this, [this]() {
 		for (int i = 0; i < 5; i++)
 			sldFill[i]->setValue(rows[i].def);

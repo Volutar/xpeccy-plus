@@ -1660,11 +1660,14 @@ void MainWin::paintGLView() {
 	// and the window is painted before that happens. Binding a texture name
 	// that was never generated is undefined - macOS says so out loud, other
 	// drivers quietly sample black.
-	drawPicture();
+	fillOn = fillWanted();
+	fillWide = fillOn && sfill_sharp();
+	drawPicture(fillWide);
 	// after the picture: Mirror reads it back as it is shown, and the fill only
 	// goes beside it
-	fillOn = fillWanted();
-	if (fillOn) {
+	if (fillWide) {
+		drawFill(nullptr, true);
+	} else if (fillOn) {
 		prepareFill();
 		drawFill();
 	}
@@ -1693,8 +1696,13 @@ void MainWin::paintGLView() {
 			glScissor(cut.x(), cut.y(), cut.width(), cut.height());
 			glClearColor(0, 0, 0, 1);
 			glClear(GL_COLOR_BUFFER_BIT);
-			if (fillOn) drawFill(&cut);		// the slot is in the room beside the picture
-			drawPicture();
+			if (fillWide) {
+				drawPicture(true);
+				drawFill(&cut, true);
+			} else {
+				if (fillOn) drawFill(&cut);		// the slot is in the room beside the picture
+				drawPicture();
+			}
 			glDisable(GL_SCISSOR_TEST);
 			glFlush();
 			top.endNativePainting();
@@ -1704,8 +1712,9 @@ void MainWin::paintGLView() {
 	}
 }
 
-// the frame, through the shader, where drawX/Y/W/H say
-void MainWin::drawPicture() {
+// the frame, through the shader, where drawX/Y/W/H say. wide: on over the whole
+// view, the frame's edge dots carried out to its edges (Stretched Edges, Blur Off)
+void MainWin::drawPicture(bool wide) {
 	if (prg.isLinked() && curtxid) {
 		Computer* comp = conf.zx;
 		const GLfloat tex_w = GLfloat(comp->vid->vsze.x * 2);
@@ -1714,7 +1723,33 @@ void MainWin::drawPicture() {
 		// fullscreen it is a whole-zoom rectangle in the middle of the screen,
 		// with the cleared black around it
 		const QRect pic = picRect();
-		glViewport(pic.x(), pic.y(), pic.width(), pic.height());
+		const QSize view = devSize();
+		wide = wide && !pic.isEmpty() && !view.isEmpty();
+		if (wide) {
+			// GL cuts a draw at its viewport, so the viewport is the view and the
+			// shader's gl_Position is placed into it (u_place_); the quad's
+			// coordinates run on past 0 and 1 in the picture's own units
+			glViewport(0, 0, view.width(), view.height());
+			if ((pic != wideFor) || (view != wideView)) {
+				const GLfloat x0 = GLfloat(-pic.x()) / pic.width();
+				const GLfloat x1 = GLfloat(view.width() - pic.x()) / pic.width();
+				const GLfloat y0 = GLfloat(pic.y() + pic.height() - view.height()) / pic.height();	// the view's top
+				const GLfloat y1 = GLfloat(pic.y() + pic.height()) / pic.height();			// its bottom
+				const GLfloat quad[] = {
+					x1, y0,  x1, y0,
+					x0, y0,  x0, y0,
+					x1, y1,  x1, y1,
+					x0, y1,  x0, y1,
+				};
+				vboWide.bind();
+				vboWide.write(0, quad, sizeof(quad));
+				vboWide.release();
+				wideFor = pic;
+				wideView = view;
+			}
+		} else {
+			glViewport(pic.x(), pic.y(), pic.width(), pic.height());
+		}
 		static const QMatrix4x4 legacyMvp = []{
 			QMatrix4x4 m;
 			m.ortho(0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f);
@@ -1732,13 +1767,38 @@ void MainWin::drawPicture() {
 		const double ppy = pic.height() / double(comp->vid->vsze.y);
 		const bool whole = (std::fabs(ppx - std::floor(ppx + 0.5)) < 0.001) && (std::fabs(ppy - std::floor(ppy + 0.5)) < 0.001);
 		prg.setUniformValue("u_smooth", GLint(whole ? 0 : 1));
+		// the picture's clip space into the viewport's (placeVertexShader)
+		if (wide) {
+			const GLfloat sx = GLfloat(pic.width()) / view.width();
+			const GLfloat sy = GLfloat(pic.height()) / view.height();
+			prg.setUniformValue("u_place_", sx, sy,
+				GLfloat(2 * pic.x() + pic.width()) / view.width() - 1.0f,
+				GLfloat(2 * pic.y() + pic.height()) / view.height() - 1.0f);
+		} else {
+			prg.setUniformValue("u_place_", 1.0f, 1.0f, 0.0f, 0.0f);
+		}
+		// for a shader of its own to tell (the bundled ones leave their corners
+		// and vignette off then, so the picture runs into the bars with no seam)
+		prg.setUniformValue("xpWide", GLfloat(wide ? 1 : 0));
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, curtxid);
+		// past the edge, the edge dot - not the border's black, which curved
+		// screens show at their corners otherwise
+		if (wide) {
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		}
 
-		vao.bind();
+		QOpenGLVertexArrayObject& arr = wide ? vaoWide : vao;
+		arr.bind();
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-		vao.release();
+		arr.release();
+
+		if (wide) {
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+		}
 
 		prg.release();
 	}

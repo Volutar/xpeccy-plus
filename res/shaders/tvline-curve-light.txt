@@ -162,6 +162,9 @@ fragment:
         uniform sampler2D rubyTexture;
         uniform vec2 rubyInputSize;
         uniform vec2 rubyTextureSize;
+        // Xpeccy+: 1 when the picture is drawn on past its edges (Side fill: Stretched
+        // Edges, Blur Off) - the curve kept to the picture, no corners
+        uniform float xpWide;
 
         varying vec2 texCoord;
         varying vec2 one;
@@ -280,11 +283,12 @@ fragment:
 
                 // Texture coordinates of the texel containing the active pixel.
         #ifdef CURVATURE
-                vec2 xy = transform(texCoord);
+                vec2 inPic = clamp(texCoord, vec2(0.0), rubyInputSize / rubyTextureSize);
+                vec2 xy = transform(inPic) + (texCoord - inPic);
         #else
                 vec2 xy = texCoord;
         #endif
-                float cval = corner(xy);
+                float cval = max(corner(xy), xpWide);
 
                 // Of all the pixels that are mapped onto the texel we are
                 // currently rendering, which pixel are we currently rendering?

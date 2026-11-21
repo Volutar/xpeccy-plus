@@ -87,6 +87,10 @@ void sfill_set(int item) {
 	conf.vid.fillBorder = (item & SFILL_BORDER) ? 1 : 0;
 }
 
+bool sfill_sharp() {
+	return (conf.vid.sideFill == SFILL_EDGES) && (conf.vid.fillBlur <= 0);
+}
+
 // the picture area of a window that is not the zoom's size, empty when it is
 static QSize fitArea;
 // the monitor the window is on, for fullscreen

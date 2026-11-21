@@ -164,7 +164,8 @@ const char* fillBlurShaderBody() {
 // u_stretch: k of ln(1 + k*d) / k, d picture sizes out from the edge - the reflection drawn
 // out like pulled rubber: as it is by the picture, 1 + k*d times wider further out, and its
 // far part off the screen;
-// u_cover: Letterbox's cover in fb px (z = 0: off), run into over u_ramp; u_paper: its uv
+// u_cover: Letterbox's cover in fb px (z = 0: off), run into over u_ramp; u_paper: its uv;
+// u_only: the dimming alone, to multiply what is drawn there already (sfill_sharp)
 const char* fillDrawShaderBody() {
 	return
 		"uniform sampler2D u_src;\n"
@@ -176,8 +177,22 @@ const char* fillDrawShaderBody() {
 		"uniform float u_stretch;\n"
 		"uniform vec4 u_cover;\n"
 		"uniform vec4 u_paper;\n"
+		"uniform int u_only;\n"
 		"out vec4 fragColor;\n"
 		"void main() {\n"
+		"    vec2 room_lo = max(u_pic.xy, vec2(1.0));\n"
+		"    vec2 room_hi = max(u_view - u_pic.xy - u_pic.zw, vec2(1.0));\n"
+		"    vec2 out_lo = (u_pic.xy - gl_FragCoord.xy) / room_lo;\n"
+		"    vec2 out_hi = (gl_FragCoord.xy - u_pic.xy - u_pic.zw) / room_hi;\n"
+		"    vec2 d = max(max(out_lo, out_hi), vec2(0.0));\n"
+		"    float f = clamp(max(d.x, d.y), 0.0, 1.0);\n"
+		"    vec2 px = max(max(u_pic.xy - gl_FragCoord.xy, gl_FragCoord.xy - u_pic.xy - u_pic.zw), vec2(0.0));\n"
+		"    float t = smoothstep(0.0, max(u_ramp, 1.0), max(px.x, px.y));\n"
+		"    float k = mix(1.0, u_dim, t);\n"
+		"    if (u_only != 0) {\n"
+		"        fragColor = vec4(vec3(k * (1.0 - u_fade * f)), 1.0);\n"
+		"        return;\n"
+		"    }\n"
 		"    vec2 p = (gl_FragCoord.xy - u_pic.xy) / u_pic.zw;\n"
 		"    if (u_stretch > 0.0) {\n"
 		"        vec2 lo = max(-p, vec2(0.0));\n"
@@ -186,20 +201,11 @@ const char* fillDrawShaderBody() {
 		"        p -= hi - log(1.0 + u_stretch * hi) / u_stretch;\n"
 		"    }\n"
 		"    vec3 c = texture(u_src, vec2(p.x, 1.0 - p.y)).rgb;\n"
-		"    vec2 lo = max(u_pic.xy, vec2(1.0));\n"
-		"    vec2 hi = max(u_view - u_pic.xy - u_pic.zw, vec2(1.0));\n"
-		"    vec2 out_lo = (u_pic.xy - gl_FragCoord.xy) / lo;\n"
-		"    vec2 out_hi = (gl_FragCoord.xy - u_pic.xy - u_pic.zw) / hi;\n"
-		"    vec2 d = max(max(out_lo, out_hi), vec2(0.0));\n"
-		"    float f = clamp(max(d.x, d.y), 0.0, 1.0);\n"
-		"    vec2 px = max(max(u_pic.xy - gl_FragCoord.xy, gl_FragCoord.xy - u_pic.xy - u_pic.zw), vec2(0.0));\n"
-		"    float t = smoothstep(0.0, max(u_ramp, 1.0), max(px.x, px.y));\n"
 		"    if (u_cover.z > 0.0) {\n"
 		"        vec2 q = (gl_FragCoord.xy - u_cover.xy) / u_cover.zw;\n"
 		"        vec3 b = texture(u_src, u_paper.xy + vec2(q.x, 1.0 - q.y) * u_paper.zw).rgb;\n"
 		"        c = mix(c, b, t);\n"
 		"    }\n"
-		"    float k = mix(1.0, u_dim, t);\n"
 		"    fragColor = vec4(c * k * (1.0 - u_fade * f), 1.0);\n"
 		"}\n";
 }
@@ -327,6 +333,25 @@ QString shimLegacyShader(QString src,
 	src = applyRewrites(std::move(src), sharedRewrites());
 	src = applyRewrites(std::move(src), stageRewrites);
 	return preamble + src;
+}
+
+// Any vertex shader, built-in or not: its main() runs as it was written, for the
+// picture's viewport, and gl_Position is then placed into the one actually set
+// (u_place_: scale, offset). The picture drawn on past its edges (drawPicture's
+// wide) has the whole view as its viewport; texture coordinates, a mask taken from
+// gl_Position and the like still come out in the picture's terms. Unset, as the
+// uniform is after every link, it would put everything in one point:
+// drawPicture() sets it on each draw.
+QString placeVertexShader(QString src) {
+	static const QRegularExpression re(QStringLiteral(R"((?<!\w)main(?=\s*\())"));
+	if (!src.contains(re)) return src;
+	src.replace(re, QStringLiteral("xpq_main_"));
+	return src + QStringLiteral(
+		"\nuniform vec4 u_place_;\n"
+		"void main() {\n"
+		"    xpq_main_();\n"
+		"    gl_Position.xy = gl_Position.xy * u_place_.xy + u_place_.zw * gl_Position.w;\n"
+		"}\n");
 }
 
 } // anonymous namespace
@@ -480,6 +505,8 @@ void MainWin::cleanupGL() {
 	glw->makeCurrent();
 	if (vao.isCreated()) vao.destroy();
 	if (vbo.isCreated()) vbo.destroy();
+	if (vaoWide.isCreated()) vaoWide.destroy();
+	if (vboWide.isCreated()) vboWide.destroy();
 	prg.removeAllShaders();
 	glDeleteTextures(4, texids);
 	fillDown.removeAllShaders();
@@ -494,6 +521,19 @@ void MainWin::cleanupGL() {
 // The side fill's programs and its two small render targets. If any of it
 // fails the fill is not drawn - black, as with no fill.
 void MainWin::initFill() {
+	vaoWide.create();
+	vaoWide.bind();
+	vboWide.create();
+	vboWide.bind();
+	vboWide.setUsagePattern(QOpenGLBuffer::DynamicDraw);
+	vboWide.allocate(kQuadVertices, sizeof(kQuadVertices));		// made for the picture on its first draw
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), reinterpret_cast<void *>(0));
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), reinterpret_cast<void *>(2 * sizeof(GLfloat)));
+	vboWide.release();
+	vaoWide.release();
+	wideFor = QRect();
 	glGenTextures(2, fillTex);
 	glGenFramebuffers(2, fillFbo);
 	fillSize = QSize(1, 1);
@@ -541,7 +581,7 @@ bool MainWin::fillWanted() {
 void MainWin::prepareFill() {
 	Video* vid = conf.zx->vid;
 	const bool mirror = (conf.vid.sideFill == SFILL_MIRROR);
-	const int blk = qBound(SFILL_BLUR_MIN, conf.vid.fillBlur, SFILL_BLUR_MAX);	// the blur is 2 texels: 2 * blk dots
+	const int blk = qBound(SFILL_BLUR_LOW, conf.vid.fillBlur, SFILL_BLUR_MAX);	// the blur is 2 texels: 2 * blk dots
 	QSize sz((vid->vsze.x + blk - 1) / blk, (vid->vsze.y + blk - 1) / blk);
 	GLuint src = curtxid;
 	QSize srcSize(vid->vsze.x * 2, vid->vsze.y);		// two frame texels per dot across
@@ -605,7 +645,10 @@ void MainWin::prepareFill() {
 // fillTex[0], dimmed, into the room beside the picture only: the bars at the sides,
 // corners and all, and the strips above and below it. clip: the framebuffer
 // rectangle the caller has scissored to, which the bars are cut to as well.
-void MainWin::drawFill(const QRect* clip) {
+// dimOnly: the picture drawn on past its edges is there already (sfill_sharp), and
+// only Brightness and Fade go over it, multiplied in - nothing at all at 100 and 0.
+void MainWin::drawFill(const QRect* clip, bool dimOnly) {
+	if (dimOnly && (conf.vid.fillDim >= 100) && (conf.vid.fillFade <= 0)) return;
 	const QSize dev = devSize();
 	const int vw = dev.width();
 	const int vh = dev.height();
@@ -654,9 +697,14 @@ void MainWin::drawFill(const QRect* clip) {
 	}
 	fillDraw.setUniformValue("u_cover", cover[0], cover[1], cover[2], cover[3]);
 	fillDraw.setUniformValue("u_paper", paper[0], paper[1], paper[2], paper[3]);
+	fillDraw.setUniformValue("u_only", GLint(dimOnly ? 1 : 0));
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, fillTex[0]);
 	vao.bind();
+	if (dimOnly) {
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+	}
 	glEnable(GL_SCISSOR_TEST);
 	for (const QRect& bar : bars) {
 		const QRect cut = clip ? (bar & *clip) : bar;
@@ -664,6 +712,7 @@ void MainWin::drawFill(const QRect* clip) {
 		glScissor(cut.x(), cut.y(), cut.width(), cut.height());
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	}
+	if (dimOnly) glDisable(GL_BLEND);
 	if (clip) {
 		glScissor(clip->x(), clip->y(), clip->width(), clip->height());
 	} else {
@@ -751,6 +800,7 @@ void MainWin::loadShader(bool tell) {
 		vtx = shimLegacyShader(std::move(vtx), vertexRewrites(),   vertexShimPreamble());
 		frg = shimLegacyShader(std::move(frg), fragmentRewrites(), fragmentShimPreamble());
 	}
+	vtx = placeVertexShader(std::move(vtx));
 
 	prg.removeAllShaders();
 	const bool vtx_ok = vtx_shd->compileSourceCode(vtx);

@@ -5,6 +5,12 @@ OpenGL 3.3 driver (OpenGL ES 3.0). Pick one in Options - Video, or set
 `shader = <file>` in `config/config.conf`. A fresh config starts with `tvline-nocurve-light.txt`;
 an empty or missing `shader` line turns filtering off.
 
+With Side fill set to Stretched Edges and its Blur to Off, the shader draws the whole view:
+the texture coordinates run on past 0 and 1 to the view's edges, the frame is clamped at its
+edge dots there, and `uniform float xpWide` is 1 (0 otherwise). A shader of your own can read
+it to leave off what belongs to the tube's edge - rounded corners, a vignette - as the bundled
+ones do; a curve is best kept to the picture, `warp(clamp(uv, 0.0, 1.0)) + (uv - clamp(uv, 0.0, 1.0))`.
+
 Like the ROM images, **these files are not covered by the MIT license of Xpeccy+** - each one
 keeps the terms of its own author, listed below.
 

@@ -74,7 +74,10 @@ fragment:
 	}
 
 	void main() {
-		vec2 uv = warp(v_texCoord);
+		vec2 inPic = clamp(v_texCoord, 0.0, 1.0);
+		// Xpeccy+: drawn on past its edges (Side fill: Stretched Edges, Blur Off), the
+		// curve is kept to the picture
+		vec2 uv = warp(inPic) + (v_texCoord - inPic);
 
 		float yp  = uv.y * rubyTextureSize.y - 0.5;
 		float row = floor(yp);

@@ -452,7 +452,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void rzxFinalizeFile();
 		int rzxContStage = 0;		// Open and Continue: 1 waits for the playback, 2 for the run to its end
 		void grabScreen();
-		void drawPicture();
+		void drawPicture(bool wide = false);
 		QRect modeSlot();
 		void drawSign(QPainter&, int);
 		int speedOsd();
@@ -731,8 +731,14 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		GLuint fillPic = 0;		// Mirror: the picture as shown, read back from the framebuffer
 		QSize fillPicSize;
 		bool fillOn = false;		// this paint has drawn it
+		bool fillWide = false;		// as the picture itself, drawn on past its edges (sfill_sharp)
+		// the picture's quad with its coordinates run on to the view's edges: drawPicture(true)
+		QOpenGLVertexArrayObject vaoWide;
+		QOpenGLBuffer vboWide;
+		QRect wideFor;			// the picture's rectangle and the view's size it was made for
+		QSize wideView;
 		void initFill();
 		bool fillWanted();
 		void prepareFill();
-		void drawFill(const QRect* clip = nullptr);
+		void drawFill(const QRect* clip = nullptr, bool dimOnly = false);
 };
