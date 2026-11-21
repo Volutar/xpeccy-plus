@@ -20,7 +20,7 @@
 
 #define ROBIK_SHADOW	3		// the RAM page under the ROM (48K uses 5, 2, 0)
 #define ROBIK_WAIT_PHASE	4	// dots: where the 8-dot video cell starts against the INT
-#define ROBIK_BORDER_LAG	4	// T from an OUT's I/O cycle start to the border's new color
+#define ROBIK_BORDER_LAG	5	// T from an OUT's I/O cycle start to the border's new color
 
 void robik_map_mem(Computer* comp) {
 	Memory* mem = comp->mem;
@@ -87,11 +87,11 @@ static void robik_out_0f(Computer* comp, int port, int val) {
 	robik_flip(comp);
 }
 
-// The border takes a new color 3 T later than iowr() brings the OUT here (the I/O
-// cycle's start + 1): at the cycle's end, where the write strobe ends (ROBIK TEST
-// 2's timed border on AlexZor's board, against the paper).
-// The ray is walked there first; the I/O cycle is an OUT's last, so it does not
-// run ahead of the instruction.
+// The border takes a new color 4 T later than iowr() brings the OUT here (the I/O
+// cycle's start + 1): a T past the cycle's end (ROBIK TEST 2's timed border against
+// the paper, on AlexZor's and Sudakov's boards through RGB).
+// The ray is walked there first, a T past the OUT's end; the INT check allows for
+// a video ahead of the cpu (zx_irq_ack_in), and nothing else reads the ray that soon.
 static void robik_out_fe(Computer* comp, int port, int val) {
 	comp_vid_to_lazy(comp, comp->cpu->t + ROBIK_BORDER_LAG);
 	vid_settle(comp->vid);

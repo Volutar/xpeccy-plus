@@ -1201,10 +1201,12 @@ void vidDrawNormal(Video* vid) {
 // comes at its bright level (allBright); the owners' jumper gives a 48K's two.
 // Most boards show a thin line where a cell's attribute differs from the one
 // before (cellEdge): the first half-dot of a cell is its pixel in the old
-// attribute's colors, and after column 31 the paper stays half a dot into the
-// border. A line's first cell takes column 20's attribute, as ROBIK TEST 2 spelled
-// it on AlexZor's board: the column count runs on through the border and the
-// blank, 21 more cells of a 53-cell line, and the last one it fetches is 20.
+// attribute's colors. The column count is 5 bits and runs on through the border
+// and the blank, 21 more cells of a 53-cell line: after column 31 comes the same
+// line's column 0, whose first pixel shows half a dot into the border in column
+// 31's colors (the owners' photos of the start screen: a dot of the copyright
+// sign at the right edge), and the last cell it fetches before the paper, the
+// line's first cell's old attribute, is column 20 (ROBIK TEST 2 on two boards).
 static unsigned char rbInkL, rbPapL;		// column 20's colors, for the next line's start
 
 static void rb_cols(Video* vid) {
@@ -1229,13 +1231,16 @@ void vidDrawRobik(Video* vid) {
 		nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
 	}
 	if (vid->hbrd) {
-		vid->atrbyte = 0xff;
-		if (vid->cellEdge && (xscr == vid->scrn.x)) {	// column 31's paper, half a dot on
-			vid_dot_half(vid, pap);
+		if (vid->cellEdge && (xscr == vid->scrn.x)) {	// column 0's first pixel, column 31's colors
+			unsigned char pix = vid->mrd(MADR(vid->vidPage, zx_box_pix_adr(vid->idx - 32)), vid->xptr);
+			if ((vid->atrbyte & 0x80) && vid_flash_shown(vid) && !vid->ula->active)
+				pix ^= 0xff;
+			vid_dot_half(vid, (pix & 0x80) ? ink : pap);
 			vid_dot_half(vid, brd);
 		} else {
 			vid_dot_full(vid, brd);
 		}
+		vid->atrbyte = 0xff;
 		return;
 	}
 	if ((xscr & 7) == 0) {
