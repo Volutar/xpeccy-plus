@@ -114,6 +114,6 @@ static void robik_reset(Computer* comp) {
 	zx_reset(comp);
 }
 
-HardWare robik_hw_core = {HW_ROBIK,"Robik","Robik",MEM_48K,1.0,NULL,NULL,
+HardWare robik_hw_core = {HW_ROBIK,"Robik","Robik",MEM_64K | MEM_48K,1.0,NULL,NULL,
 			zx_init,robik_map_mem,robik_out,robik_in,stdMRd,robik_mwr,zx_irq,zx_ack,robik_reset,zx_sync,zx_keyp,zx_keyr,zx_vol,
 			NULL,NULL,&hwq_zx, .sndtake = zx_snd_take, .sndmix = zx_mix};
