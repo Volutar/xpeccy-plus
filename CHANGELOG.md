@@ -104,6 +104,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **OTLA turbo tapes load with Auto play** again (River Raid+, Crazy Cars II+): the tape no
+  longer stays stopped after the BASIC part.
+
 - **The file dialog shows every local drive at once** on Windows. A mapped network drive that
   does not answer no longer hides them for half a minute, and a flash drive plugged in with the
   dialog open shows within a second.
