@@ -637,7 +637,8 @@ static int tap_pulse_ahead(Tape* tap) {
 // the port for a signal stores what it reads (Popeye 3's title, which
 // Spectaculator leaves the tape stopped for), and a loop that moves nothing is
 // waiting for a key (Insult's LD A,#7F / IN / RRCA / JR C). Nor does a read
-// the playing tape would take for no loader's: B jumping, or A alone moving.
+// the playing tape would take for no loader's: B jumping, or what the IN read
+// alone moving.
 // Started, it would stop a frame later and start again, every frame
 // (Overlander's IN A,(C) from a table of half-rows, B #FB / #BF). A tape flash
 // loading armed is pressed by such a read as before: play disarms it, so it
@@ -665,18 +666,24 @@ static int tap_pulse_ahead(Tape* tap) {
 // the whole gap, and a loader may time it. Once the next pulses come and only
 // the keys are read, the loader has gone - and in the last pause on the tape
 // there is nothing to wait for (Destiny Mission's 27 s after its game). A loop
-// that moves nothing but A, which holds what it read, is waiting for a key on a
-// playing tape too (Donald's Alphabet Chase's SPACE).
-void tapDetectLoader(Tape* tap, int tick, int pc, const unsigned char* regs, int kind, int fromRam) {
+// that moves nothing but the register its IN wrote, which holds what it read, is
+// waiting for a key on a playing tape too (Donald's Alphabet Chase's SPACE).
+// That register is inReg (A 0, B..L 1..6), -1 for none: OTLA reads by IN F,(C)
+// and counts in A.
+void tapDetectLoader(Tape* tap, int tick, int pc, const unsigned char* regs, int inReg, int kind, int fromRam) {
 	int tickDiff = tick - tap->detectLastTick;
 	int bDiff = (regs[1] - tap->detectRegs[1]) & 0xff;
 	int step = (bDiff == 1) || (bDiff == 0xff);
 	// one register alone, the loop's counter, moved since a read from the same place
 	int moved = 0;
-	for (int i = 0; i < 7; i++)
-		moved += (regs[i] != tap->detectRegs[i]);
+	int idle = (pc == tap->detectLastPc);
+	for (int i = 0; i < 7; i++) {
+		int m = (regs[i] != tap->detectRegs[i]);
+		moved += m;
+		if (m && (i != inReg))
+			idle = 0;
+	}
 	int turn = (pc == tap->detectLastPc) && (moved == 1);
-	int idle = (pc == tap->detectLastPc) && !memcmp(regs + 1, tap->detectRegs + 1, 6);
 	int loose = (kind != TAPE_RD_KEYS) && (tickDiff <= 1000) && (step || !bDiff) && !idle;
 	tap->detectLastTick = tick;
 	tap->detectLastPc = pc;
