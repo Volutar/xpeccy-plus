@@ -95,7 +95,6 @@ static int szx_snap_of(int mid) {
 static int szx_mid_of(Computer* comp) {
 	switch (comp->hw->id) {
 		case HW_ZX48: return (comp->mem->ramSize <= MEM_16K) ? SZM_16K : SZM_48K;
-		case HW_ROBIK: return SZM_48K;
 		case HW_ZX128: return (comp->snapModel == SNAP_HW_PLUS2) ? SZM_PLUS2 : SZM_128K;
 		case HW_PLUS2A: return SZM_PLUS2A;
 		case HW_PLUS3: return SZM_PLUS3;

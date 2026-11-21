@@ -174,7 +174,7 @@ struct Video {
 	int brdstep;
 	int brdmode;		// VID_BRD_* : how much border to show
 	int brdmin;		// VID_BRD_* : the least the machine's own picture needs
-	int allBright;		// VID_ROBIK: BRIGHT not wired, every colour at its bright level
+	int allBright;		// VID_ROBIK: BRIGHT not wired, every color at its bright level
 	int cellEdge;		// VID_ROBIK: half a dot of the old attribute where a cell starts
 	unsigned char brdcol;
 	unsigned char nextbrd;

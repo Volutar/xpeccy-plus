@@ -130,8 +130,9 @@ static const szxField fld_comp[] = {
 	FLD(Computer, tsconf),
 	FLDEND
 };
-// the machine's own flags, not the debugger's or the settings' - nor the NMI button's (4)
-static const int comp_state_flags[] = {11, 12, 13, 14, 15, 20, -1};
+// the machine's own flags, not the debugger's or the settings' - nor the NMI button's (4);
+// 26 is the Robik's port 15 latch
+static const int comp_state_flags[] = {11, 12, 13, 14, 15, 20, 26, -1};
 
 static const szxField fld_vid[] = {
 	FLDRAW("bits1", 12, 4),		// intLINE..vbrd

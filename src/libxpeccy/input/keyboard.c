@@ -89,7 +89,7 @@ keyScan keyTab[] = {
 	{'q',5,1},{'w',5,2},{'e',5,4},{'r',5,8},{'t',5,16},{'y',2,16},{'u',2,8},{'i',2,4},{'o',2,2},{'p',2,1},
 	{'a',6,1},{'s',6,2},{'d',6,4},{'f',6,8},{'g',6,16},{'h',1,16},{'j',1,8},{'k',1,4},{'l',1,2},{'E',1,1},
 	{'C',7,1},{'z',7,2},{'x',7,4},{'c',7,8},{'v',7,16},{'b',0,16},{'n',0,8},{'m',0,4},{'S',0,2},{' ',0,1},
-	// the Robik's own keys on D5 and D7, a 48K's #FE never shows them (kbdScanZX):
+	// the Robik's own keys on D5 and D7, which only its #FE reads (robik_in_fe; kbdScanZX keeps D5 high):
 	// the five Cyrillic letters by the character its ROM gives them in Latin (Yu @,
 	// Kh [, E \, B ^, Zh ]); then , . EDIT ! DELETE # and the language keys C (R), L (L)
 	{'@',7,32},{'[',7,128},{',',6,32},{'\\',6,128},{'^',5,32},{']',5,128},
@@ -295,7 +295,7 @@ int kbdScanZX(Keyboard* kbd, int port) {
 			res &= kbd->map[i];
 		port <<= 1;
 	}
-	return res;
+	return res | 0x20;		// D5 is a board's own: the Robik's keys, the Profi's EXT
 }
 
 // profi: a zx keyboard, and with the host keyboard grabbed the layout of its own

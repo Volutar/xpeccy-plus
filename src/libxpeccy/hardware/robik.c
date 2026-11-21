@@ -16,6 +16,7 @@
 //
 // Keyboard: the 48K's 40 keys and eleven of its own on D5 and D7 of #FE
 // (keyTab). Kempston on #1F, no floating bus, #FF on the bus at INT acknowledge.
+// A Beta Disk is no part of it, but one fitted pages TR-DOS in as on the 48K.
 
 #define ROBIK_SHADOW	3		// the RAM page under the ROM (48K uses 5, 2, 0)
 #define ROBIK_WAIT_PHASE	4	// dots: where the 8-dot video cell starts against the INT
@@ -23,7 +24,11 @@
 void robik_map_mem(Computer* comp) {
 	Memory* mem = comp->mem;
 	mem->ramMask = MEM_128K - 1;
-	if (comp->flgSHDW && comp->flgSHDON) {
+	if (!comp->flgSHDW)
+		comp->flgSHDON = 0;		// no page, no latch: switched on again it starts at the ROM
+	if (comp->flgDOS) {			// a Beta Disk fitted: TR-DOS as on the 48K
+		memSetBank(mem, 0x00, MEM_ROM, 1, MEM_16K, NULL, NULL, NULL);
+	} else if (comp->flgSHDW && comp->flgSHDON) {
 		memSetBank(mem, 0x00, MEM_RAM, ROBIK_SHADOW, MEM_16K, NULL, NULL, NULL);
 	} else {
 		memSetBank(mem, 0x00, MEM_ROM, 0, MEM_16K, NULL, NULL, NULL);

@@ -1135,6 +1135,7 @@ int vid_zx_palette(Video* vid) {
 	switch (vid->vmode) {
 		case VID_NORMAL:
 		case VID_ULA_SCR:
+		case VID_ROBIK:
 		case VID_ALCO:
 		case VID_HWMC:
 			return 1;
@@ -1196,26 +1197,26 @@ void vidDrawNormal(Video* vid) {
 }
 
 // The Robik: the screen as vidDrawNormal() draws it, with two things of its own.
-// BRIGHT is not wired on the factory board, so every colour, the border's too,
+// BRIGHT is not wired on the factory board, so every color, the border's too,
 // comes at its bright level (allBright); the owners' jumper gives a 48K's two.
 // Most boards show a thin line where a cell's attribute differs from the one
 // before (cellEdge): the first half-dot of a cell is its pixel in the old
-// attribute's colours, and after column 31 the paper stays half a dot into the
+// attribute's colors, and after column 31 the paper stays half a dot into the
 // border. A line's first cell takes column 30's attribute, the one rule that fits
 // the owners' photos (none after a line alternating to the end, one after a line
 // ending in a run) until a test settles it.
-static unsigned char rbInk30, rbPap30;		// column 30's colours, for the next line's start
+static unsigned char rbInk30, rbPap30;		// column 30's colors, for the next line's start
 
 static void rb_cols(Video* vid) {
 	zx_attr_cols(vid, vid->atrbyte, &scrbyte, &ink, &pap, 0);
-	if (vid->allBright) {
+	if (vid->allBright && !vid->ula->active) {	// a ULA+ index has no bright bit
 		ink |= 8;
 		pap |= 8;
 	}
 }
 
 void vidDrawRobik(Video* vid) {
-	unsigned char brd = vid->brdcol | (vid->allBright ? 8 : 0);
+	unsigned char brd = zx_brd_col(vid) | ((vid->allBright && !vid->ula->active) ? 8 : 0);
 	if (vid->vbrd) {
 		vid->atrbyte = 0xff;
 		vid_dot_full(vid, brd);

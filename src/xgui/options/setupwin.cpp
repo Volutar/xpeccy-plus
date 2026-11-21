@@ -2658,10 +2658,10 @@ void SetupWin::buildDevices() {
 	robikRow(tr("Shadow RAM"), shadowBox, tr("16K of RAM under the ROM: any OUT or IN on port 15\n"
 		"swaps the two, and a write to the ROM's addresses lands in it.\nNot every board has it"));
 	brightBox = devCombo(QStringList() << tr("All bright") << tr("Two levels"));
-	robikRow(tr("BRIGHT"), brightBox, tr("All bright: every colour bright, as the factory board\n"
+	robikRow(tr("BRIGHT"), brightBox, tr("All bright: every color bright, as the factory board\n"
 		"shows it. Two levels: as a 48K, with the owners' jumper"));
 	edgesBox = devCombo(QStringList() << tr("Off") << tr("On"));
-	robikRow(tr("Cell edges"), edgesBox, tr("A thin line where a character cell's colours change,\n"
+	robikRow(tr("Cell edges"), edgesBox, tr("A thin line where a character cell's colors change,\n"
 		"as most boards show it"));
 	finishGroups(cols);
 	qobject_cast<QLabel*>(divRow[0])->setText(tr("SD card"));

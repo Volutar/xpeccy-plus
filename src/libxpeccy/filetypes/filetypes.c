@@ -126,6 +126,9 @@ int snapHwRuns(int snap, int hwid, int model) {
 	snap = SNAP_HW_OF(snap);
 	if (snap >= SNAP_HW_CORE) return hwid == snap - SNAP_HW_CORE;
 	switch (snap) {
+		// the Robik's V03 rewrites KEY-SCAN and the printing of tokens: one stopped in
+		// Sinclair's ROM goes on there only
+		case SNAP_HW_48K: return !(rom && (hwid == HW_ROBIK));
 		case SNAP_HW_128K:
 		case SNAP_HW_PENTAGON:
 		case SNAP_HW_PLUS2:
