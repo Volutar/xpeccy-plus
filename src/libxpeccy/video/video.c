@@ -1202,10 +1202,10 @@ void vidDrawNormal(Video* vid) {
 // Most boards show a thin line where a cell's attribute differs from the one
 // before (cellEdge): the first half-dot of a cell is its pixel in the old
 // attribute's colors, and after column 31 the paper stays half a dot into the
-// border. A line's first cell takes column 30's attribute, the one rule that fits
-// the owners' photos (none after a line alternating to the end, one after a line
-// ending in a run) until a test settles it.
-static unsigned char rbInk30, rbPap30;		// column 30's colors, for the next line's start
+// border. A line's first cell takes column 20's attribute, as ROBIK TEST 2 spelled
+// it on AlexZor's board: the column count runs on through the border and the
+// blank, 21 more cells of a 53-cell line, and the last one it fetches is 20.
+static unsigned char rbInkL, rbPapL;		// column 20's colors, for the next line's start
 
 static void rb_cols(Video* vid) {
 	zx_attr_cols(vid, vid->atrbyte, &scrbyte, &ink, &pap, 0);
@@ -1239,16 +1239,16 @@ void vidDrawRobik(Video* vid) {
 		return;
 	}
 	if ((xscr & 7) == 0) {
-		unsigned char oldInk = xscr ? ink : rbInk30;
-		unsigned char oldPap = xscr ? pap : rbPap30;
+		unsigned char oldInk = xscr ? ink : rbInkL;
+		unsigned char oldPap = xscr ? pap : rbPapL;
 		scrbyte = nxtbyte;
 		adr = zx_box_atr_adr(vid->idx);
 		vid->atrbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
 		if (vid->idx < 0x1b00) vid->idx++;
 		rb_cols(vid);
-		if (xscr == 30 * 8) {
-			rbInk30 = ink;
-			rbPap30 = pap;
+		if (xscr == 20 * 8) {
+			rbInkL = ink;
+			rbPapL = pap;
 		}
 		if (vid->cellEdge) {
 			int on = scrbyte & 0x80;
