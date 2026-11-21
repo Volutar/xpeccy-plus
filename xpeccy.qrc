@@ -327,6 +327,7 @@
         <file>res/vkbd/zx-kopir.json</file>
         <file>res/vkbd/zx-kopir-worn.json</file>
         <file>res/vkbd/zx-robik.json</file>
+        <file>res/vkbd/zx-robik-compact.json</file>
         <file>res/vkbd/keys-font.ttf</file>
     </qresource>
 </RCC>

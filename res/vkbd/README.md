@@ -25,9 +25,14 @@
   the caps' engraving font, drawn as strokes. Made by `make-robik.py` (the lettering
   measured, the logo built of rings and strokes, on photos) in the project's lab, then kept
   as it is.
+- `zx-robik-compact.json` - the Robik with the case round the keys narrow, so the keys come
+  out larger in the window: its keys, logo, lamp and cursor block as they are, closer
+  together (`"base": "robik"`, its own only the canvas, the bars and the rows; made by
+  `make-robik.py` too).
 - In the menu: 48K (Classic), 48K (White), 128K (Classic), 128K (White), Next (Black), Next
-  (White), Next (Magenta), Klava (the worn Kopir), Klava (Washed), Robik - black, white, 128,
-  128-white, next, next-white, next-magenta, kopir-worn, kopir, robik in the config.
+  (White), Next (Magenta), Klava (the worn Kopir), Klava (Washed), Robik, Robik (Compact) -
+  black, white, 128, 128-white, next, next-white, next-magenta, kopir-worn, kopir, robik,
+  robik-compact in the config.
 - `keys-font.ttf` - the lettering, Latin-1 and Cyrillic, made by `tools/vkbd_font.py` from
   Liberation Sans Bold 2.1.5; see LICENSE_ICONS and LICENSE_LIBERATION.
 
