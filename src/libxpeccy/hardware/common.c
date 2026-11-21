@@ -505,11 +505,23 @@ int zx_in_use(Computer* comp, int pc) {
 	return 0;
 }
 
+// The register the IN before pc wrote, as tapDetectLoader numbers them (A 0,
+// B..L 1..6), or -1: IN r,(C) writes r, IN F,(C) only the flags (OTLA's edge
+// loop, counting in A), IN A,(n) and the rest A.
+static int zx_in_reg(Computer* comp, int pc) {
+	static const signed char reg[8] = {1, 2, 3, 4, 5, 6, -1, 0};
+	int op = memRd(comp->mem, (pc - 1) & 0xffff) & 0xff;
+	if (((memRd(comp->mem, (pc - 2) & 0xffff) & 0xff) == 0xed) && ((op & 0xc7) == 0x40))
+		return reg[(op >> 3) & 7];
+	return 0;
+}
+
 // what a #FE read owes the tape, for a machine whose port handler is its own
 void zx_tape_detect(Computer* comp) {
 	Tape* tap = comp->tape;
 	int kind = TAPE_RD_EDGE;
 	int ram = 0;
+	int inReg = 0;		// the rom's edge routine and copies of it: IN A,(#FE)
 	int edge = zx_ld_edge(comp);
 	if (edge == 2) {
 		kind = TAPE_RD_EAR;		// the loader's own read of the ear bit, done by rom code
@@ -526,13 +538,14 @@ void zx_tape_detect(Computer* comp) {
 		ram = !zx_rom_code(comp, pc);
 		kind = (tap->inUse == ZX_IN_KEYS) ? TAPE_RD_KEYS
 			: ((ram && (tap->inUse == ZX_IN_EAR)) ? TAPE_RD_EAR : TAPE_RD_OTHER);
+		inReg = zx_in_reg(comp, pc);
 	}
 	if (kind != TAPE_RD_KEYS)
 		tap->portReads++;	// the rom's own reads too: fast loading counts them
 	CPU* cpu = comp->cpu;
 	unsigned char regs[7] = {(unsigned char)cpu->regA, (unsigned char)cpu->regB, (unsigned char)cpu->regC,
 		(unsigned char)cpu->regD, (unsigned char)cpu->regE, (unsigned char)cpu->regH, (unsigned char)cpu->regL};
-	tapDetectLoader(tap, comp->tickCount, cpu->regPC, regs, kind, ram);
+	tapDetectLoader(tap, comp->tickCount, cpu->regPC, regs, inReg, kind, ram);
 }
 
 int xInFE(Computer* comp, int port) {
