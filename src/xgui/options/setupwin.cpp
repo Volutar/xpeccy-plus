@@ -4240,7 +4240,7 @@ static int* fill_val(int i) {
 // fixed. Every move goes to conf and the window at once, so it can be judged.
 void SetupWin::makeFillPopup() {
 	static const struct {const char* name; const char* tip; int min; int max; int step; int tick; int def;} rows[5] = {
-		{"Blur", "How soft the fill is, from crisp to a wide glow", SFILL_BLUR_MIN, SFILL_BLUR_MAX, 1, 1, SFILL_BLUR_DEF},
+		{"Blur", "How soft the fill is, up to a wide glow. Off: Stretched Edges carries the edge dots out sharp, through the shader", SFILL_BLUR_MIN, SFILL_BLUR_MAX, 1, 1, SFILL_BLUR_DEF},
 		{"Brightness", "How bright the fill is beside the picture", SFILL_DIM_MIN, 100, 5, 10, SFILL_DIM_DEF},
 		{"Fade", "How much darker it gets towards the screen's edge", 0, 100, 5, 10, SFILL_FADE_DEF},
 		{"Edge", "How gently the picture runs into the fill", 0, SFILL_EDGE_MAX, 1, 4, SFILL_EDGE_DEF},
@@ -4262,8 +4262,15 @@ void SetupWin::makeFillPopup() {
 		sld->setTickInterval(rows[i].tick);
 		sld->setMinimumWidth(200);
 		sld->setToolTip(lab->toolTip());
-		lay->addWidget(lab, i, 0);
-		lay->addWidget(sld, i, 1);
+		// Blur's first step is Off, named on a row of its own under it
+		const int row = (i == 0) ? 0 : i + 1;
+		lay->addWidget(lab, row, 0);
+		lay->addWidget(sld, row, 1);
+		if (i == 0) {
+			fillOff = new QLabel(tr("Off"));
+			fillOff->setToolTip(lab->toolTip());
+			lay->addWidget(fillOff, 1, 1, Qt::AlignLeft | Qt::AlignTop);
+		}
 		sldFill[i] = sld;
 		connect(sld, &QSlider::valueChanged, this, [this, i](int val) {
 			*fill_val(i) = val;
@@ -4273,7 +4280,7 @@ void SetupWin::makeFillPopup() {
 	QPushButton* def = new QPushButton(tr("Defaults"));
 	def->setObjectName("fillDefaults");
 	def->setToolTip(tr("Every slider back to where it starts"));
-	lay->addWidget(def, 5, 1, Qt::AlignRight);
+	lay->addWidget(def, 6, 1, Qt::AlignRight);
 	connect(def, &QPushButton::released, this, [this]() {
 		for (int i = 0; i < 5; i++)
 			sldFill[i]->setValue(rows[i].def);
@@ -4286,7 +4293,7 @@ void SetupWin::makeFillPopup() {
 	connect(ui.cbSideFill, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
 		fillSet(getRFIData(ui.cbSideFill));
 		ui.tbSideFill->setEnabled(conf.vid.gl && (conf.vid.sideFill != SFILL_BLACK));
-		sldFill[4]->setEnabled(conf.vid.sideFill == SFILL_MIRROR);
+		fillModeToUi();
 		emit s_fill();
 	});
 }
@@ -4301,6 +4308,18 @@ void SetupWin::fillSet(int item) {
 	}
 }
 
+// The sliders the chosen fill has: Off is Stretched Edges' alone - the others' Blur starts at
+// 1, and a 0 kept for Edges shows there as 1 without being changed
+void SetupWin::fillModeToUi() {
+	const bool edges = (conf.vid.sideFill == SFILL_EDGES);
+	sldFill[0]->blockSignals(true);
+	sldFill[0]->setMinimum(edges ? SFILL_BLUR_MIN : SFILL_BLUR_LOW);
+	sldFill[0]->setValue(conf.vid.fillBlur);
+	sldFill[0]->blockSignals(false);
+	fillOff->setVisible(edges);
+	sldFill[4]->setEnabled(conf.vid.sideFill == SFILL_MIRROR);
+}
+
 void SetupWin::fillToUi() {
 	QStandardItemModel* mdl = qobject_cast<QStandardItemModel*>(ui.cbSideFill->model());
 	for (int i = 0; mdl && (i < ui.cbSideFill->count()); i++) {
@@ -4312,12 +4331,12 @@ void SetupWin::fillToUi() {
 	setRFIndex(ui.cbSideFill, conf.vid.gl ? sfill_item() : (sfill_item() & SFILL_BORDER));
 	ui.cbSideFill->blockSignals(false);
 	ui.tbSideFill->setEnabled(conf.vid.gl && (conf.vid.sideFill != SFILL_BLACK));
-	sldFill[4]->setEnabled(conf.vid.sideFill == SFILL_MIRROR);
 	for (int i = 0; i < 5; i++) {
 		sldFill[i]->blockSignals(true);
 		sldFill[i]->setValue(*fill_val(i));
 		sldFill[i]->blockSignals(false);
 	}
+	fillModeToUi();
 }
 
 void SetupWin::fillTake() {

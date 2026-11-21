@@ -1103,7 +1103,7 @@ struct xConfig {
 		unsigned skipHint:1;	// offer Frame skip when the computer falls behind (MainWin::slowHint)
 		int border;		// VID_BRD_* : how much border to show
 		int sideFill;		// SFILL_* : what fills the room beside a fitted picture
-		int fillBlur;		// dots per texel of the shrunk frame, SFILL_BLUR_MIN..MAX
+		int fillBlur;		// dots per texel of the shrunk frame, SFILL_BLUR_LOW..MAX; 0 Off (sfill_sharp)
 		int fillDim;		// its brightness, % of the picture's
 		int fillFade;		// how much darker it gets by the screen's edge, %
 		int fillEdge;		// dots from the picture's edge to the full dimming

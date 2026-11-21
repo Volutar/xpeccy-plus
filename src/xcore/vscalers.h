@@ -33,8 +33,12 @@ int sfill_item();		// the one conf has
 void sfill_set(int item);
 // the screen area in the shown frame, in its dots from the top left, not clipped to it
 QRect vid_paper(const Video* vid);
-// the ranges of conf.vid.fill*, and what they start at
-#define SFILL_BLUR_MIN	1
+// Stretched Edges with Blur Off: the picture itself drawn on past its edges, sharp
+bool sfill_sharp();
+// the ranges of conf.vid.fill*, and what they start at; Blur 0 is Off, Stretched
+// Edges' own - Mirror and Letterbox take it as 1
+#define SFILL_BLUR_MIN	0
+#define SFILL_BLUR_LOW	1
 #define SFILL_BLUR_MAX	16
 #define SFILL_DIM_MIN	10
 #define SFILL_EDGE_MAX	32

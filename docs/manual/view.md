@@ -104,7 +104,8 @@ starts at its edge; with **no** border, at the edge of the screen itself:
 
 - **Black** - black bars;
 - **Stretched Edges** - the picture's outer rows and columns carried outwards, blurred and
-  dimmed, like a glow;
+  dimmed, like a glow; with **Blur** at **Off**, sharp - each row of dots runs on as it is,
+  the shader's scanlines with it, so a loading border fills the whole screen;
 - **Mirror** - the picture as it is shown, through the shader and with a curved screen's
   black corners too, reflected at its edge, blurred and dimmed;
 - **Letterbox** - the screen itself, without the border, blown up to cover the whole room,
