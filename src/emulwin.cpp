@@ -1712,8 +1712,7 @@ void MainWin::paintGLView() {
 	}
 }
 
-// the frame, through the shader, where drawX/Y/W/H say. wide: on over the whole
-// view, the frame's edge dots carried out to its edges (Stretched Edges, Blur Off)
+// the frame, through the shader, where drawX/Y/W/H say; wide: on to the view's edges (sfill_sharp)
 void MainWin::drawPicture(bool wide) {
 	if (prg.isLinked() && curtxid) {
 		Computer* comp = conf.zx;
@@ -1726,9 +1725,7 @@ void MainWin::drawPicture(bool wide) {
 		const QSize view = devSize();
 		wide = wide && !pic.isEmpty() && !view.isEmpty();
 		if (wide) {
-			// GL cuts a draw at its viewport, so the viewport is the view and the
-			// shader's gl_Position is placed into it (u_place_); the quad's
-			// coordinates run on past 0 and 1 in the picture's own units
+			// GL clips at the viewport: the view's, the quad running past 0..1 in picture units
 			glViewport(0, 0, view.width(), view.height());
 			if ((pic != wideFor) || (view != wideView)) {
 				const GLfloat x0 = GLfloat(-pic.x()) / pic.width();
@@ -1777,15 +1774,16 @@ void MainWin::drawPicture(bool wide) {
 		} else {
 			prg.setUniformValue("u_place_", 1.0f, 1.0f, 0.0f, 0.0f);
 		}
-		// for a shader of its own to tell (the bundled ones leave their corners
-		// and vignette off then, so the picture runs into the bars with no seam)
+		// the bundled shaders leave their corners and vignette off then, or the bars get a seam
 		prg.setUniformValue("xpWide", GLfloat(wide ? 1 : 0));
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, curtxid);
-		// past the edge, the edge dot - not the border's black, which curved
-		// screens show at their corners otherwise
+		// past the edge the edge dot; put back after, ES 3.0 has no CLAMP_TO_BORDER to set
+		GLint wrap[2] = {GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE};
 		if (wide) {
+			glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, &wrap[0]);
+			glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, &wrap[1]);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		}
@@ -1796,8 +1794,8 @@ void MainWin::drawPicture(bool wide) {
 		arr.release();
 
 		if (wide) {
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap[0]);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap[1]);
 		}
 
 		prg.release();

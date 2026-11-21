@@ -4267,9 +4267,9 @@ void SetupWin::makeFillPopup() {
 		lay->addWidget(lab, row, 0);
 		lay->addWidget(sld, row, 1);
 		if (i == 0) {
-			QLabel* off = new QLabel(tr("Off"));
-			off->setToolTip(lab->toolTip());
-			lay->addWidget(off, 1, 1, Qt::AlignLeft | Qt::AlignTop);
+			fillOff = new QLabel(tr("Off"));
+			fillOff->setToolTip(lab->toolTip());
+			lay->addWidget(fillOff, 1, 1, Qt::AlignLeft | Qt::AlignTop);
 		}
 		sldFill[i] = sld;
 		connect(sld, &QSlider::valueChanged, this, [this, i](int val) {
@@ -4293,7 +4293,7 @@ void SetupWin::makeFillPopup() {
 	connect(ui.cbSideFill, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
 		fillSet(getRFIData(ui.cbSideFill));
 		ui.tbSideFill->setEnabled(conf.vid.gl && (conf.vid.sideFill != SFILL_BLACK));
-		sldFill[4]->setEnabled(conf.vid.sideFill == SFILL_MIRROR);
+		fillModeToUi();
 		emit s_fill();
 	});
 }
@@ -4308,6 +4308,18 @@ void SetupWin::fillSet(int item) {
 	}
 }
 
+// The sliders the chosen fill has: Off is Stretched Edges' alone - the others' Blur starts at
+// 1, and a 0 kept for Edges shows there as 1 without being changed
+void SetupWin::fillModeToUi() {
+	const bool edges = (conf.vid.sideFill == SFILL_EDGES);
+	sldFill[0]->blockSignals(true);
+	sldFill[0]->setMinimum(edges ? SFILL_BLUR_MIN : SFILL_BLUR_LOW);
+	sldFill[0]->setValue(conf.vid.fillBlur);
+	sldFill[0]->blockSignals(false);
+	fillOff->setVisible(edges);
+	sldFill[4]->setEnabled(conf.vid.sideFill == SFILL_MIRROR);
+}
+
 void SetupWin::fillToUi() {
 	QStandardItemModel* mdl = qobject_cast<QStandardItemModel*>(ui.cbSideFill->model());
 	for (int i = 0; mdl && (i < ui.cbSideFill->count()); i++) {
@@ -4319,12 +4331,12 @@ void SetupWin::fillToUi() {
 	setRFIndex(ui.cbSideFill, conf.vid.gl ? sfill_item() : (sfill_item() & SFILL_BORDER));
 	ui.cbSideFill->blockSignals(false);
 	ui.tbSideFill->setEnabled(conf.vid.gl && (conf.vid.sideFill != SFILL_BLACK));
-	sldFill[4]->setEnabled(conf.vid.sideFill == SFILL_MIRROR);
 	for (int i = 0; i < 5; i++) {
 		sldFill[i]->blockSignals(true);
 		sldFill[i]->setValue(*fill_val(i));
 		sldFill[i]->blockSignals(false);
 	}
+	fillModeToUi();
 }
 
 void SetupWin::fillTake() {

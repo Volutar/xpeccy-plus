@@ -335,13 +335,8 @@ QString shimLegacyShader(QString src,
 	return preamble + src;
 }
 
-// Any vertex shader, built-in or not: its main() runs as it was written, for the
-// picture's viewport, and gl_Position is then placed into the one actually set
-// (u_place_: scale, offset). The picture drawn on past its edges (drawPicture's
-// wide) has the whole view as its viewport; texture coordinates, a mask taken from
-// gl_Position and the like still come out in the picture's terms. Unset, as the
-// uniform is after every link, it would put everything in one point:
-// drawPicture() sets it on each draw.
+// main() renamed and wrapped: u_place_ moves gl_Position from the picture's clip space into the
+// viewport's, so a mask from gl_Position keeps its pitch; unset it collapses all, drawPicture sets it
 QString placeVertexShader(QString src) {
 	static const QRegularExpression re(QStringLiteral(R"((?<!\w)main(?=\s*\())"));
 	if (!src.contains(re)) return src;
@@ -645,8 +640,7 @@ void MainWin::prepareFill() {
 // fillTex[0], dimmed, into the room beside the picture only: the bars at the sides,
 // corners and all, and the strips above and below it. clip: the framebuffer
 // rectangle the caller has scissored to, which the bars are cut to as well.
-// dimOnly: the picture drawn on past its edges is there already (sfill_sharp), and
-// only Brightness and Fade go over it, multiplied in - nothing at all at 100 and 0.
+// dimOnly: over the picture drawn on past its edges (sfill_sharp), Brightness and Fade multiplied in
 void MainWin::drawFill(const QRect* clip, bool dimOnly) {
 	if (dimOnly && (conf.vid.fillDim >= 100) && (conf.vid.fillFade <= 0)) return;
 	const QSize dev = devSize();
