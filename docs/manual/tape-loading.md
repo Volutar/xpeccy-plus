@@ -23,7 +23,7 @@ says more, so Xpeccy+ looks at the code right after it:
 A loader waiting for the next pulse also reads in a tight loop: the same instruction again and
 again, with exactly one register moving - its counter, which counts by one when it is B. Code
 that plays a sound or draws from the port stores what it reads, and more registers move; a loop
-where nothing moves, or only the A register, waits for a key.
+where nothing moves, or only the register the read went into, waits for a key.
 
 ## Auto play / stop
 
