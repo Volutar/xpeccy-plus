@@ -275,7 +275,7 @@ that machine.
 ```
 
 **NEX** programs and **SNX** snapshots need the ZX Spectrum Next. It starts them, and `.sna`
-snapshots too, through NextZXOS, from its SD card - and a `.z80` when **Auto** does not
+snapshots too, through NextZXOS, from a card of their own - and a `.z80` when **Auto** does not
 switch it to the model it names: see
 [Starting programs](zx-next.md#starting-programs). The Next's own state saves as `.szx`: a
 `.sna` or `.z80` has no room for it, and a `.nex` holds a program, not a running machine. See

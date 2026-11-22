@@ -51,7 +51,7 @@ skips the **Start Machine** question (see [Machine at start](options-application
 
 ## Machine and media
 
-```{index} -m, --machine, -p, --disk, --sdcard, --confdir
+```{index} -m, --machine, -p, --disk, --sdcard, --next-system, --confdir
 ```
 
 - `-m ID`, `--machine ID` - start on this machine. ID is the machine's name as the
@@ -66,6 +66,9 @@ skips the **Start Machine** question (see [Machine at start](options-application
   `A` to `D`. Without it a disk goes into drive A.
 - `--sdcard PATH` - the SD card of the ZX Evolution, the ZX Spectrum Next or a
   Z-Controller: an image, or a folder served as a card.
+- `--next-system DIR` - the System/Next folder a ZX Spectrum Next program starts from,
+  instead of the release unpacked in the settings folder (see
+  [Starting programs](zx-next.md#starting-programs)).
 - `--uart-esp PORT`, `--uart-pi PORT` - for this run only, what is on the ZX Spectrum
   Next's ESP UART or Pi UART: a serial port of this computer (`COM3`, `/dev/ttyUSB0`,
   `\\.\pipe\NAME` on Windows), `esp` for the emulated ESP-01, `-` for nothing (see

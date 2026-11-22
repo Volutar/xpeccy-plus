@@ -147,19 +147,30 @@ over anything put there. Xpeccy+ types the commands on the keyboard instead, as 
 NextZXOS's **NextBASIC**, `.cd` to the program's folder, and `.nexload` for a `.nex` or
 `SPECTRUM` for a snapshot. The picture stays blank in fast mode while it types.
 
-- **A program on the card** is started where it is, and its saves stay on the card.
-- **A program from elsewhere** is put on the card as an extra folder for as long as the
-  card is in. The Next is switched off and on first, so that NextZXOS sees the new folder.
-  The folder comes with everything in it, for the files a program reads beside it - unless
-  it holds over 2000 files and folders, a collection, or the program is a `.sna` or `.z80`:
-  then the program's file is the only one in it.
-  What the program saves there is kept only in memory and lost on a reset; the message
-  **saves lost on reset: put the game on the card** says so. To keep saves, copy the
-  program into the card's folder.
+```{index} ZX Spectrum Next; program's card
+```
 
-This works with a card that is a folder, not an image. With an image card, or none, the
-message is **NEX and SNX files start from NextZXOS: put the System/Next folder in the SD
-card slot**. A file name with letters that cannot be typed in NextZXOS is replaced by its
+Whatever is in the slot - an image, a folder, the Next's own card or none, write-protected
+or not - a program starts on a card of its own:
+
+- **System/Next** as its release has it. The first time a program starts, Xpeccy+ unpacks
+  the release into `next-system` in the settings folder, from the archive the
+  **ZX Spectrum Next SD Card** window downloaded or one beside the program. Its NextZXOS
+  settings are the release's, not your card's, and what NextZXOS writes there stays in
+  memory.
+- **The program's folder**, in the card's root, with everything in it for the files a
+  program reads beside it. What the program saves there goes into that folder on your disk.
+  A folder of over 2000 files and folders, a collection, or a `.sna` or `.z80` program puts
+  the program's file there alone, and what it writes stays in memory.
+
+The Next is switched off and on first, so that NextZXOS starts from the new card. Your card
+is put aside while the program's card is in: **Media > SD Card** shows **Card for** and the
+program's name, and **Eject** there puts your card back. It comes back too when you open
+another card or switch machines, and the settings keep it all along. An `.szx` snapshot
+saved while a program runs makes its card again when opened.
+
+With no System/Next here at all, Xpeccy+ offers to download it, about 51 MB, and then starts
+the program. A file name with letters that cannot be typed in NextZXOS is replaced by its
 short name on the card; where even that fails, the message is **The file's name cannot be
 typed in NextZXOS**.
 
