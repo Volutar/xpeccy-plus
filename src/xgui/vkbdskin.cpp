@@ -734,6 +734,7 @@ void VkSkin::readSide(const QJsonValue& v, Side& sd) const {
 		if (o.contains("foot")) sd.foot[i] = four(o.value("foot"), i).toDouble();
 		if (o.contains("foot_shade")) sd.footShade[i] = std::max(-1.0, std::min(1.0, four(o.value("foot_shade"), i).toDouble()));
 	}
+	if (o.contains("blend")) sd.blend = std::max(0.0, o.value("blend").toDouble());
 	sd.on = true;
 }
 
@@ -1056,16 +1057,20 @@ static Mask iconMask(const QPainterPath& path, double sw, bool stroke, bool flat
 }
 
 // open lines drawn with a round pen, sw pixels wide; inner > 0: that much of the middle
-// taken out again, its outline left (an engraved letter)
+// taken out again, its outline left (an engraved letter). Drawn four times larger and
+// averaged down: a wall under a pixel wide stays even, where drawn at its size a slanting
+// one came out in broken pieces
 static Mask strokeMask(const QPainterPath& path, double sw, double inner) {
 	Mask m;
+	const int k = 4;
 	QPen pen(Qt::black, sw, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
 	QRect box = QPainterPathStroker(pen).createStroke(path).boundingRect().toAlignedRect().adjusted(-1, -1, 1, 1);
 	if (box.isEmpty()) return m;
-	QImage msk(box.size(), QImage::Format_Alpha8);
+	QImage msk(box.size() * k, QImage::Format_Alpha8);
 	msk.fill(0);
 	QPainter p(&msk);
 	p.setRenderHint(QPainter::Antialiasing, true);
+	p.scale(k, k);
 	p.translate(-box.topLeft());
 	p.setBrush(Qt::NoBrush);
 	p.setPen(pen);
@@ -1082,11 +1087,18 @@ static Mask strokeMask(const QPainterPath& path, double sw, double inner) {
 	m.w = box.width();
 	m.h = box.height();
 	m.c.resize(m.w * m.h * 3);
+	// each k x k block of the large one, averaged
 	for (int y = 0; y < m.h; y++) {
-		const uchar* s = msk.constScanLine(y);
 		uchar* d = m.c.data() + y * m.w * 3;
-		for (int x = 0; x < m.w; x++, d += 3)
-			d[0] = d[1] = d[2] = s[x];
+		for (int x = 0; x < m.w; x++, d += 3) {
+			int sum = 0;
+			for (int j = 0; j < k; j++) {
+				const uchar* s = msk.constScanLine(y * k + j) + x * k;
+				for (int i = 0; i < k; i++)
+					sum += s[i];
+			}
+			d[0] = d[1] = d[2] = (sum + k * k / 2) / (k * k);
+		}
 	}
 	return m;
 }
@@ -1393,17 +1405,63 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 				QVector<QPointF> in = offsetPoly4(out, -fr(sd.w[0] * s), -fr(sd.w[1] * s), -fr(sd.w[2] * s), -fr(sd.w[3] * s));
 				p.save();
 				p.setClipPath(path);
-				for (int i = 0; i < out.size(); i++) {
-					int j = (i + 1) % out.size();
-					int f = edgeFaces(out, i);
-					QColor c = sd.fill[f];
-					if (!c.isValid() && (sd.shade[f] != 0))
-						c = (sd.shade[f] > 0) ? QColor(0, 0, 0, fr(sd.shade[f] * 255)) : QColor(255, 255, 255, fr(-sd.shade[f] * 255));
-					if (!c.isValid() || !c.alpha()) continue;
-					QPolygonF q;
-					q << out[i] << out[j] << in[j] << in[i];
-					p.setBrush(c);
-					p.drawPolygon(q);
+				bool fills = false;
+				for (int f = 0; f < 4; f++)
+					fills = fills || sd.fill[f].isValid();
+				if ((sd.blend > 0) && key.outline.isEmpty() && !fills) {
+					// sides that melt into each other at the corners: each pixel's shade
+					// the sides' own, weighed by how near it is to each (its depth into
+					// that side's band, as a part of the band)
+					const double wpx[4] = {(double)fr(sd.w[0] * s), (double)fr(sd.w[1] * s), (double)fr(sd.w[2] * s), (double)fr(sd.w[3] * s)};
+					QRect br = body.toAlignedRect();
+					QImage im(br.size(), QImage::Format_ARGB32_Premultiplied);
+					im.fill(0);
+					for (int y = 0; y < im.height(); y++) {
+						QRgb* line = reinterpret_cast<QRgb*>(im.scanLine(y));
+						double py = br.y() + y + 0.5;
+						for (int x = 0; x < im.width(); x++) {
+							double px = br.x() + x + 0.5;
+							const double depth[4] = {px - body.left(), py - body.top(), body.right() - px, body.bottom() - py};
+							double e[4];
+							double emin = 1e9;
+							int own = 0;
+							for (int f = 0; f < 4; f++) {
+								e[f] = (wpx[f] > 0) ? depth[f] / wpx[f] : 1e9;
+								if (e[f] < emin) {
+									emin = e[f];
+									own = f;
+								}
+							}
+							// the band's inner edge smooth over a pixel
+							double cov = std::max(0.0, std::min(1.0, (1 - emin) * wpx[own] + 0.5));
+							if (cov <= 0) continue;
+							double sw = 0, sum = 0;
+							for (int f = 0; f < 4; f++) {
+								if (e[f] >= 1e9) continue;
+								double wt = std::exp(-(e[f] - emin) / sd.blend);
+								sw += wt;
+								sum += wt * sd.shade[f];
+							}
+							double sh = sum / sw;
+							int a = fr(std::min(1.0, std::fabs(sh)) * cov * 255);
+							if (a <= 0) continue;
+							line[x] = (sh > 0) ? qRgba(0, 0, 0, a) : qRgba(a, a, a, a);
+						}
+					}
+					p.drawImage(br.topLeft(), im);
+				} else {
+					for (int i = 0; i < out.size(); i++) {
+						int j = (i + 1) % out.size();
+						int f = edgeFaces(out, i);
+						QColor c = sd.fill[f];
+						if (!c.isValid() && (sd.shade[f] != 0))
+							c = (sd.shade[f] > 0) ? QColor(0, 0, 0, fr(sd.shade[f] * 255)) : QColor(255, 255, 255, fr(-sd.shade[f] * 255));
+						if (!c.isValid() || !c.alpha()) continue;
+						QPolygonF q;
+						q << out[i] << out[j] << in[j] << in[i];
+						p.setBrush(c);
+						p.drawPolygon(q);
+					}
 				}
 				// the straight foot under the slope, over its outer part
 				QVector<QPointF> fin = offsetPoly4(out, -fr(sd.foot[0] * s), -fr(sd.foot[1] * s), -fr(sd.foot[2] * s), -fr(sd.foot[3] * s));
@@ -1565,9 +1623,9 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 							for (int i = 1; i < c.size(); i++)
 								path.lineTo(c[i]);
 						}
-						// a hollow line's walls at least a pixel each: thinner, a slanting one
-						// came out in broken pieces on a small window
-						double inner = (ic.hollow > 0) ? std::max(0.0, ic.sw * s - 2 * std::max(ic.hollow * s, 1.0)) : 0;
+						// a hollow line's walls at least 0.7 of a pixel each, so a small window
+						// still reads them
+						double inner = (ic.hollow > 0) ? std::max(0.0, ic.sw * s - 2 * std::max(ic.hollow * s, 0.7)) : 0;
 						put(strokeMask(place(tr.map(path)), ic.sw * s, inner), lab.col);
 					} else if (ic.oneShape) {
 						foreach(const QVector<QPointF>& c, ic.polys)

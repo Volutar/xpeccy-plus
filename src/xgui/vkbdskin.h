@@ -116,6 +116,7 @@ class VkSkin {
 			// its straight foot under the slope: a band inside the edge, shaded of its own
 			double foot[4] = {0, 0, 0, 0};
 			double footShade[4] = {0, 0, 0, 0};
+			double blend = 0;		// > 0: the sides melt into each other at the corners
 		};
 		struct Key {
 			double x, y, w, h, ax, ay;	// an outline key: its bounds

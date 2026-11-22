@@ -111,7 +111,9 @@ key's own): a band `"w"` wide inside the cap's edge, `[left, top, right, bottom]
 units, cut into four by the lines from its outer corners to its inner ones, each side
 `"shade"`d - from 0 to 1 that much darker, from 0 to -1 that much lighter - or a `"fill"` color
 of its own. `"foot"` - the straight foot the slope stands on, a band that wide inside the edge
-over the slope's outer part, `"foot_shade"`d as a side is. `"w"`, `"shade"`,
+over the slope's outer part, `"foot_shade"`d as a side is. `"blend"` - the sides melting
+into each other at the corners instead of meeting on a line: how far, as a part of the band
+(0.25 the Robik's caps; a key with no outline and no side `"fill"`s). `"w"`, `"shade"`,
 `"fill"`, `"foot"` and `"foot_shade"` each take one value for all four. The sides are drawn
 over the cap's gradient and under its dome.
 
