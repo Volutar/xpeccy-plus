@@ -92,8 +92,10 @@ static void robik_out_0f(Computer* comp, int port, int val) {
 // the paper, on AlexZor's and Sudakov's boards through RGB).
 // The ray is walked there first, a T past the OUT's end; the INT check allows for
 // a video ahead of the cpu (zx_irq_ack_in), and nothing else reads the ray that soon.
+// An OUT from outside a step (a flash load's hand-over, DeZog) has no cycle to lag.
 static void robik_out_fe(Computer* comp, int port, int val) {
-	comp_vid_to_lazy(comp, comp->cpu->t + ROBIK_BORDER_LAG);
+	if (comp->flgIOWR)
+		comp_vid_to_lazy(comp, comp->cpu->t + ROBIK_BORDER_LAG);
 	vid_settle(comp->vid);
 	xOutFE(comp, port, val);
 }

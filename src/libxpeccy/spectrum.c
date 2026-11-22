@@ -890,7 +890,9 @@ static inline void iowr_out(Computer* comp, int port, int val) {
 	vid_settle(comp->vid);
 	if (comp->vid->nodraw && comp->vid->cb->latch)
 		vid_latch(comp->vid);
+	comp->flgIOWR = 1;
 	comp->hw->out(comp, port, val);
+	comp->flgIOWR = 0;
 }
 
 void iowr(int port, int val, void* ptr) {
