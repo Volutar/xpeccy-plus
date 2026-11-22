@@ -64,6 +64,7 @@ is skipped without a word.
 | `builtin` | `disk` `ide` `clock` | controllers on the board itself: the options lock them. Read from the definition, never written back |
 | `clock` | `none` `gluk` | a clock chip: Mr Gluk's, on `#EFF7` bit 7, `#DFF7` (address) and `#BFF7` (data); the Pentagon, Pentagon 1024 SL and ZXM-Phoenix cores only. `builtin = clock` fits it whatever this says |
 | `snapshot` | `core` `plus2` | what a snapshot names the machine as where its core does not say: a +2 runs on the 128K's core |
+| `shadow` | `no` `robik` | RAM under the ROM, and how it is switched in: `robik`, 16K that any IN or OUT on port `#0F` swaps with the ROM, every write to `#0000-#3FFF` going into it; the Robik core only. `yes` reads as `robik` |
 
 ### `[video]`
 
@@ -79,6 +80,8 @@ is skipped without a word.
 | `border.min` | `no` `tiny` `small` `medium` `full` `overscan` | the least border shown whatever the border size says, for a machine whose own screen modes are bigger than 256x192. Read from the definition, never written back |
 | `ULAplus` | yes/no | |
 | `DDpal` | yes/no | Profi's own palette registers |
+| `bright` | yes/no | the Robik: BRIGHT wired, two levels as on a 48K; `no` is every color bright, as the factory board |
+| `cell.edges` | yes/no | the Robik: a half-dot in the old attribute's colors where a cell's attribute changes |
 
 ### `[sound]`
 

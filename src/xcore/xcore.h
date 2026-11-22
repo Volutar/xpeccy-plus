@@ -814,6 +814,12 @@ enum {
 	MAC_CLOCK_GLUK		// Mr Gluk's: #EFF7 bit 7, #DFF7, #BFF7
 };
 
+// how the shadow RAM under the ROM is switched in; the Options list in this order
+enum {
+	MAC_SHADOW_NONE = 0,
+	MAC_SHADOW_ROBIK	// any IN or OUT on port #0F flips it (the Robik)
+};
+
 // What a machine is: read-only, from the binary's own resources, with a file of
 // the same id in machines/ of the config directory patching it - and a file
 // with an id of its own being a machine of its own. See docs/machine-format.md.
@@ -847,7 +853,7 @@ typedef struct {
 	unsigned brd4t:1;
 	unsigned snow:1;		// the ULA snow effect
 	unsigned snowcrash:1;		// ...and ram that cannot take it
-	unsigned shadow:1;		// the Robik's shadow RAM under the ROM, switched by port 15
+	unsigned shadow:2;		// the shadow RAM under the ROM, how it is switched (MAC_SHADOW_*)
 	unsigned bright:1;		// the Robik's BRIGHT wired (a 48K's two levels; not: all bright)
 	unsigned edges:1;		// the Robik's cell-edge lines
 	int floatbus;			// FBUS_*: what a port nothing answers reads back

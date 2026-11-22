@@ -1449,7 +1449,7 @@ void SetupWin::fillPages() {
 
 	saaBox->setCurrentIndex(comp->saa->enabled ? 1 : 0);
 	clockBox->setCurrentIndex(comp->flgGLUK ? MAC_CLOCK_GLUK : MAC_CLOCK_NONE);
-	shadowBox->setCurrentIndex(comp->flgSHDW ? 1 : 0);
+	shadowBox->setCurrentIndex(comp->flgSHDW ? MAC_SHADOW_ROBIK : MAC_SHADOW_NONE);
 	brightBox->setCurrentIndex(comp->vid->allBright ? 0 : 1);
 	edgesBox->setCurrentIndex(comp->vid->cellEdge ? 1 : 0);
 
@@ -1740,7 +1740,7 @@ void SetupWin::applyMachine() {
 	if (!own) comp->flgEM1 = ui.scrpwait->isChecked();
 	if (comp->hw->id == HW_ZX48) comp->mem->ramMask = MEM_128K - 1;		// TODO: find a better way
 	if (comp->hw->id == HW_ROBIK) {
-		comp->flgSHDW = shadowBox->currentIndex() ? 1 : 0;
+		comp->flgSHDW = (shadowBox->currentIndex() == MAC_SHADOW_ROBIK);
 		comp->vid->allBright = brightBox->currentIndex() ? 0 : 1;
 		comp->vid->cellEdge = edgesBox->currentIndex() ? 1 : 0;
 		comp->hw->mapMem(comp);		// the page out, if the shadow RAM went
@@ -2654,9 +2654,10 @@ void SetupWin::buildDevices() {
 		box->setToolTip(tip);
 		robikRows << lab << box << b;
 	};
-	shadowBox = devCombo(QStringList() << tr("Off") << tr("On"));
-	robikRow(tr("Shadow RAM"), shadowBox, tr("16K of RAM under the ROM: any OUT or IN on port 15\n"
-		"swaps the two, and a write to the ROM's addresses lands in it.\nNot every board has it"));
+	shadowBox = devCombo(QStringList() << tr("Off") << tr("Port #0F (Robik)"));	// MAC_SHADOW_*
+	robikRow(tr("Shadow RAM"), shadowBox, tr("16K of RAM under the ROM, and how it is switched in.\n"
+		"Port #0F (Robik): any OUT or IN on port 15 swaps\nthe two, and a write to the ROM's addresses\n"
+		"lands in the RAM. Not every board has it"));
 	brightBox = devCombo(QStringList() << tr("All bright") << tr("Two levels"));
 	robikRow(tr("BRIGHT"), brightBox, tr("All bright: every color bright, as the factory board\n"
 		"shows it. Two levels: as a 48K, with the owners' jumper"));

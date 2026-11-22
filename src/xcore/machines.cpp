@@ -140,6 +140,12 @@ static xMacWord clockTab[] = {
 	{"none", MAC_CLOCK_NONE}, {"gluk", MAC_CLOCK_GLUK}, {NULL, 0}
 };
 
+// the shadow RAM's switch; the first name of a value is the one written
+static xMacWord shadowTab[] = {
+	{"no", MAC_SHADOW_NONE}, {"robik", MAC_SHADOW_ROBIK},
+	{"none", MAC_SHADOW_NONE}, {"yes", MAC_SHADOW_ROBIK}, {NULL, 0}
+};
+
 static xMacWord resetTab[] = {
 	{"basic128", RES_128}, {"basic48", RES_48},
 	{"dos", RES_DOS}, {"shadow", RES_SHADOW}, {NULL, 0}
@@ -457,7 +463,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "contio") mac.contio = arg.b;
 			else if (nam == "contmem") mac.contmem = arg.b;
 			else if (nam == "scrp.wait") mac.scrpwait = arg.b;
-			else if (nam == "shadow") mac.shadow = arg.b;
+			else if (nam == "shadow") mac.shadow = mac_word(shadowTab, val, MAC_SHADOW_NONE, id);
 			else if (nam == "snapshot") mac.snapModel = mac_word(snapTab, val, 0, id);
 			else if (nam != "inherit")	// mac_build's, and it is done with
 				xlog(XLG_CONF, XLL_WARN, "machine %s: unknown setting '%s'", id, nam.c_str());
@@ -1460,7 +1466,7 @@ static void mac_from_def(const xMachine* mac) {
 	comp->vid->brdmin = mac->brdmin;
 	xm_snow_set(comp, mac->snow);
 	comp->flgSNOWX = mac->snowcrash;
-	comp->flgSHDW = mac->shadow;
+	comp->flgSHDW = (mac->shadow == MAC_SHADOW_ROBIK);
 	comp->vid->allBright = !mac->bright;
 	comp->vid->cellEdge = mac->edges;
 	mac_set_psg(comp, mac->psgCount, mac->psgType, mac->psgFrq, mac->psgStereo);
@@ -1705,7 +1711,8 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put_yn(out, "snow", snowUser, mac->snow);
 	mac_put_yn(out, "snow.crash", comp->flgSNOWX, mac->snowcrash);
 	if (comp->hw->id == HW_ROBIK) {		// the board's own: nothing else draws or pages by them
-		mac_put_yn(out, "shadow", comp->flgSHDW, mac->shadow);
+		mac_put(out, "shadow", mac_word_name(shadowTab, comp->flgSHDW ? MAC_SHADOW_ROBIK : MAC_SHADOW_NONE),
+			mac_word_name(shadowTab, mac->shadow));
 		mac_put_yn(out, "bright", !comp->vid->allBright, mac->bright);
 		mac_put_yn(out, "cell.edges", comp->vid->cellEdge, mac->edges);
 	}
