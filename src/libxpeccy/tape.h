@@ -229,7 +229,7 @@ enum {
 	TAPE_RD_EAR,		// code in ram that tests the ear bit
 	TAPE_RD_KEYS,		// a keyboard scan
 };
-void tapDetectLoader(Tape*, int tick, int pc, const unsigned char* regs, int kind, int fromRam);
+void tapDetectLoader(Tape*, int tick, int pc, const unsigned char* regs, int inReg, int kind, int fromRam);
 int tap_block_rom(TapeBlock*);
 int tap_block_bytes(TapeBlock*);
 void tap_detect_skipped(Tape*, int tick, int regB);

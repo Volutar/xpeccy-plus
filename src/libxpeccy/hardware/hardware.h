@@ -28,7 +28,8 @@ enum {
 	HW_ALF,		// ALF TV Game (a ZX48 clone console)
 	HW_SCORPTP,	// Scorpion ZS 256 Turbo+
 	HW_PROFI3,	// Profi v3.x (HW_PROFI is v5)
-	HW_ZXNEXT	// ZX Spectrum Next
+	HW_ZXNEXT,	// ZX Spectrum Next
+	HW_ROBIK	// Robik (a ZX48 clone, NPO Rotor)
 };
 
 // Hardware callbacks

@@ -305,7 +305,10 @@ fragment:
         }
 
         void main() {
-                vec2 pos = Warp(v_texCoord.xy * (rubyTextureSize / rubyInputSize)) * (rubyInputSize / rubyTextureSize);
+                vec2 inPic = clamp(v_texCoord.xy, vec2(0.0), rubyInputSize / rubyTextureSize);
+                // Xpeccy+: drawn on past its edges (Side fill: Stretched Edges, Blur Off), the
+                // curve is kept to the picture
+                vec2 pos = Warp(inPic * (rubyTextureSize / rubyInputSize)) * (rubyInputSize / rubyTextureSize) + (v_texCoord.xy - inPic);
                 vec3 outColor = Tri(pos);
 
                 // Add Bloom

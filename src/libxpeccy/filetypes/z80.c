@@ -382,7 +382,7 @@ xlog(XLG_FILE, XLL_DEBUG, ".z80 version 1");
 // question the other way round - a machine added here belongs there too.
 static int z80_snap_hw(int hwid) {
 	switch (hwid) {
-		case HW_ZX48: return SNAP_HW_48K;
+		case HW_ZX48: case HW_ROBIK: return SNAP_HW_48K;
 		case HW_ZX128: return SNAP_HW_128K;
 		case HW_PLUS2A: return SNAP_HW_PLUS2A;
 		case HW_PLUS3: return SNAP_HW_PLUS3;

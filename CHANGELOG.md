@@ -11,6 +11,15 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Sharp Stretched Edges**: Options > Video, Side fill settings, Blur at Off. The picture's
+  edge dots run on to the window's edges as they are, row by row, through the shader with its
+  scanlines; with Border + Stretched Edges a loading border fills the whole screen.
+
+- **Robik**, the 48K clone from Cherkasy: its V03 ROM with Cyrillic, its 11 extra keys and
+  a keymap for them, its own frame and screen-write wait. Options > Machine, Board: shadow
+  RAM under the ROM, BRIGHT as the factory board or two levels, and the thin lines at cell
+  edges most boards show. *(timings measured by Mikhail Sudakov and AlexZor)*
+
 - **Robik** in the Virtual Keyboard: the keyboard of the Robik, with its logo and power
   light; its cursor block is the Kempston joystick, its two RES keys reset the machine
   together.
@@ -103,6 +112,13 @@ before that point is upstream's history and is not repeated here.
   side. *(reported by Volutar)*
 
 ### Fixed
+
+- **OTLA turbo tapes load with Auto play** again (River Raid+, Crazy Cars II+): the tape no
+  longer stays stopped after the BASIC part.
+
+- **The file dialog shows every local drive at once** on Windows. A mapped network drive that
+  does not answer no longer hides them for half a minute, and a flash drive plugged in with the
+  dialog open shows within a second.
 
 - **The file dialog keeps its size**, and the width of the places list on the left if you
   drag it, between runs. A very long name there no longer widens the list over the files:

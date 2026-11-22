@@ -112,6 +112,8 @@ class SetupWin : public QDialog {
 		// window shows each move at once, and Cancel puts back what was there
 		QFrame* fillPop;
 		xSlider* sldFill[5];		// blur, brightness, fade, edge, stretch
+		QLabel* fillOff;		// Blur's Off, Stretched Edges' alone
+		void fillModeToUi();
 		int fillWas[7];			// sideFill, the five, fillBorder, as applied
 		void makeFillPopup();
 		void fillToUi();
@@ -175,6 +177,11 @@ class SetupWin : public QDialog {
 		QLabel* beepVal;		// the machine's own Board filter, shown: the pick is the Sound page's
 		QComboBox* clockBox;		// the Gluk clock (MAC_CLOCK_*), where the board takes one
 		QList<QWidget*> clockRow;
+		// the Robik's board: its shadow RAM, BRIGHT and cell edges (rows of its own)
+		QComboBox* shadowBox;
+		QComboBox* brightBox;
+		QComboBox* edgesBox;
+		QList<QWidget*> robikRows;
 		QComboBox* gsRomBox;
 		QComboBox* ngsRomBox;		// the NeoGS flash, in the ROM row while the card is one
 		QStackedWidget* gsRomStack;

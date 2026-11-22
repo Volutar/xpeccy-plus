@@ -34,7 +34,11 @@ every slider back where it starts, and **Cancel** puts back what was there.
 
 ![The side fill settings](images/options-video-side-fill.png)
 
-- **Blur** - how soft the fill is, from crisp to a wide glow;
+- **Blur** - how soft the fill is, from crisp to a wide glow. At **Off**, its left end,
+  **Stretched edges** is sharp: every row of the picture's edge dots runs on to the
+  window's edge as it is, through the shader with its scanlines and mask; **Mirror** and
+  **Letterbox** take Off as the first step. A shader of your own draws there what it draws
+  past the picture's edge (see `config/shaders/README.md`);
 - **Brightness** - how bright it is beside the picture;
 - **Fade** - how much darker it gets towards the screen's edge;
 - **Edge** - how gently the picture runs into the fill; with **Letterbox**, also how wide

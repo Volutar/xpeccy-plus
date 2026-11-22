@@ -13,6 +13,7 @@ chromatron_fast zx128     auto  2500  300     "tape/Chromatrons Attack (2013)(R-
 influence_full  zx128     auto  1500  300     tape/INFLUENC.TAP                     cfg:TAPE.fast=yes --bench-full
 robocop         zx128     open  50    300     snap/robocop.z80
 overlander_fuel zx128     open  50    300     snap/overlander_fuel.szx              mac:input.joy=kempston --bench-full
+otla_cc2        zx48      auto  1800  300     tape/CrazyCars2plus_by_thealfest_v0.4_otla_turbo.tzx
 aytest_full     zx128     auto  3600  300     tape/AYtest_v0.2.tap                  keys:3000:E,3200:E,3400:1 --bench-full
 kmouse_128      zx128     auto  1500  100     tape/PD_v3.2.tap                      cfg:TAPE.fast=yes mac:input.mouse=yes
 ula128_p2       zxplus2   auto  2500  200     ULA/ula128.tap

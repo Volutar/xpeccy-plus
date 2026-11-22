@@ -140,6 +140,12 @@ static xMacWord clockTab[] = {
 	{"none", MAC_CLOCK_NONE}, {"gluk", MAC_CLOCK_GLUK}, {NULL, 0}
 };
 
+// the shadow RAM's switch; the first name of a value is the one written
+static xMacWord shadowTab[] = {
+	{"no", MAC_SHADOW_NONE}, {"robik", MAC_SHADOW_ROBIK},
+	{"none", MAC_SHADOW_NONE}, {"yes", MAC_SHADOW_ROBIK}, {NULL, 0}
+};
+
 static xMacWord resetTab[] = {
 	{"basic128", RES_128}, {"basic48", RES_48},
 	{"dos", RES_DOS}, {"shadow", RES_SHADOW}, {NULL, 0}
@@ -253,10 +259,11 @@ static const struct {
 	{"memory", "machine"}, {"ram.cold", "machine"}, {"ram.noise", "machine"},
 	{"reset", "machine"}, {"contio", "machine"}, {"issue", "machine"}, {"ear.rc", "machine"},
 	{"contmem", "machine"}, {"scrp.wait", "machine"}, {"builtin", "machine"}, {"snapshot", "machine"},
-	{"clock", "machine"},
+	{"clock", "machine"}, {"shadow", "machine"},
 	{"geometry", "video"}, {"contPattern", "video"}, {"earlyTiming", "video"},
 	{"4t-border", "video"}, {"ULAplus", "video"}, {"DDpal", "video"},
 	{"snow", "video"}, {"snow.crash", "video"}, {"floatbus", "video"}, {"border.min", "video"},
+	{"bright", "video"}, {"cell.edges", "video"},
 	{"psg.count", "sound"}, {"psg.type", "sound"}, {"psg.frq", "sound"},
 	{"psg.stereo", "sound"}, {"gs", "sound"},
 	{"saa", "sound"}, {"soundrive", "sound"}, {"beeper", "sound"}, {"beeper.mic", "sound"},
@@ -388,6 +395,9 @@ static void mac_defaults(xMachine& mac) {
 	mac.brd4t = 0;
 	mac.snow = 0;
 	mac.snowcrash = 0;
+	mac.shadow = 0;
+	mac.bright = 1;
+	mac.edges = 0;
 	mac.floatbus = FBUS_NONE;
 	mac.brdmin = VID_BRD_NONE;
 	mac.ramCold.clear();
@@ -453,6 +463,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "contio") mac.contio = arg.b;
 			else if (nam == "contmem") mac.contmem = arg.b;
 			else if (nam == "scrp.wait") mac.scrpwait = arg.b;
+			else if (nam == "shadow") mac.shadow = mac_word(shadowTab, val, MAC_SHADOW_NONE, id);
 			else if (nam == "snapshot") mac.snapModel = mac_word(snapTab, val, 0, id);
 			else if (nam != "inherit")	// mac_build's, and it is done with
 				xlog(XLG_CONF, XLL_WARN, "machine %s: unknown setting '%s'", id, nam.c_str());
@@ -463,6 +474,8 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "4t-border") mac.brd4t = arg.b;
 			else if (nam == "snow") mac.snow = arg.b;
 			else if (nam == "snow.crash") mac.snowcrash = arg.b;
+			else if (nam == "bright") mac.bright = arg.b;
+			else if (nam == "cell.edges") mac.edges = arg.b;
 			else if (nam == "floatbus") mac.floatbus = mac_word(fbusTab, val, FBUS_NONE, id);
 			else if (nam == "border.min") mac.brdmin = brd_mode_id(val.c_str());
 			else if (nam == "ULAplus") mac.ulaplus = arg.b;
@@ -1453,6 +1466,9 @@ static void mac_from_def(const xMachine* mac) {
 	comp->vid->brdmin = mac->brdmin;
 	xm_snow_set(comp, mac->snow);
 	comp->flgSNOWX = mac->snowcrash;
+	comp->flgSHDW = (mac->shadow == MAC_SHADOW_ROBIK);
+	comp->vid->allBright = !mac->bright;
+	comp->vid->cellEdge = mac->edges;
 	mac_set_psg(comp, mac->psgCount, mac->psgType, mac->psgFrq, mac->psgStereo);
 	xm_set_gs(comp, mac->gs);
 	comp->saa->enabled = mac->saa;
@@ -1694,6 +1710,12 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put_yn(out, "4t-border", comp->vid->brdstep & 0x06, mac->brd4t);
 	mac_put_yn(out, "snow", snowUser, mac->snow);
 	mac_put_yn(out, "snow.crash", comp->flgSNOWX, mac->snowcrash);
+	if (comp->hw->id == HW_ROBIK) {		// the board's own: nothing else draws or pages by them
+		mac_put(out, "shadow", mac_word_name(shadowTab, comp->flgSHDW ? MAC_SHADOW_ROBIK : MAC_SHADOW_NONE),
+			mac_word_name(shadowTab, mac->shadow));
+		mac_put_yn(out, "bright", !comp->vid->allBright, mac->bright);
+		mac_put_yn(out, "cell.edges", comp->vid->cellEdge, mac->edges);
+	}
 	mac_put(out, "floatbus", mac_word_name(fbusTab, comp->fbus), mac_word_name(fbusTab, mac->floatbus));
 	mac_put_yn(out, "ULAplus", comp->vid->ula->enabled, mac->ulaplus);
 	mac_put_yn(out, "DDpal", comp->flgDDP, mac->ddpal);

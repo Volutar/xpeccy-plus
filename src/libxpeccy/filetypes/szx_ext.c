@@ -130,8 +130,9 @@ static const szxField fld_comp[] = {
 	FLD(Computer, tsconf),
 	FLDEND
 };
-// the machine's own flags, not the debugger's or the settings' - nor the NMI button's (4)
-static const int comp_state_flags[] = {11, 12, 13, 14, 15, 20, -1};
+// the machine's own flags, not the debugger's or the settings' - nor the NMI button's (4);
+// 26 is the Robik's port 15 latch
+static const int comp_state_flags[] = {11, 12, 13, 14, 15, 20, 26, -1};
 
 static const szxField fld_vid[] = {
 	FLDRAW("bits1", 12, 4),		// intLINE..vbrd
@@ -1089,10 +1090,14 @@ static void ext_comp(Computer* comp, const unsigned char* p, size_t n) {
 }
 
 // After the core has paged from its ports: a page it did not put back is set
-// plainly, ram or rom, which is all a window paged from a port of its own is
+// plainly, ram or rom, which is all a window paged from a port of its own is.
+// The Robik's map is its flags' and nothing else: with its shadow RAM off in the
+// settings, a snapshot that had the page in comes back with the ROM, as on a board
+// without the page.
 static void ext_map(Computer* comp, const unsigned char* p, size_t n) {
 	int i;
 	if (n < 256 * 5) return;
+	if (comp->hw->id == HW_ROBIK) return;
 	for (i = 0; i < 256; i++) {
 		int type = p[i * 5];
 		int num = (int)rd_dword(p + i * 5 + 1);

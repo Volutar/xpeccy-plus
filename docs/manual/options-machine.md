@@ -7,7 +7,7 @@
 
 This page sets up the running machine: **Model**, **Memory**, **ROM** and the **Overclock**
 slider at the top, then its devices in four groups - **Storage**, **Input**, **Sound** and
-**Board**. The {icon}`settings` gear beside a device opens the rest of its settings.
+**Board features**. The {icon}`settings` gear beside a device opens the rest of its settings.
 
 What you change here is kept for this machine only. {icon}`save-as` **Save machine...**,
 {icon}`refresh` **Restore machine** and {icon}`cancel` **Delete this machine** are explained
@@ -51,10 +51,13 @@ Esc) puts back what it showed when it opened.
 | | **DAC** | **None**, **Covox only**, **Soundrive 1.05 mode 1** or **mode 2** |
 | | **General Sound** | **None**, **Original** or **NeoGS** (see [General Sound](#general-sound)); its ROM in its window |
 | | **SAA1099** | **Off** or **On** |
-| **Board** | **Turbo** | the turbo steps: **x1 (no turbo)**, **x1, x2** or **x1, x2, x4** |
+| **Board features** | **Turbo** | the turbo steps: **x1 (no turbo)**, **x1, x2** or **x1, x2, x4** |
 | | **Clock** | Pentagon, Pentagon 1024 SL and ZXM-Phoenix only: **None** or **Gluk**, the clock chip Gluk Reset Service shows (see [The Gluk clock](#the-gluk-clock)); on the Pentagon 1024 SL and the ZXM-Phoenix it is part of the board |
 | | **ESP UART** | ZX Spectrum Next only: **Not connected**, **ESP-01 (emulated)** - the Wi-Fi module with Espressif's AT firmware 1.7.6, on this computer's network - or a serial port of this computer with a real module on it. In its window, **Server on the network** lets other computers reach a server the module opens, and a UDP link's own port; off, only this computer reaches the server, at 127.0.0.1, and a UDP link hears only whom it sent to. On, Windows asks once whether to let Xpeccy+ through its firewall |
 | | **Pi UART** | ZX Spectrum Next only: a serial port of this computer for the Pi's UART |
+| | **Shadow RAM** | Robik only: the 16 KB under the ROM and how it is switched in - **Off**, or **Port #0F (Robik)**: any IN or OUT on port 15 swaps it with the ROM (see [Robik](machines.md#robik)) |
+| | **BRIGHT** | Robik only: **All bright**, the factory board, or **Two levels**, BRIGHT wired by the owners' jumper |
+| | **Cell edges** | Robik only: **Off** or **On**, the thin line where a character cell's colors change |
 
 Changes take effect when you press **Apply** or {icon}`ok-apply` **OK**.
 
@@ -76,7 +79,7 @@ other machines.
 | **Storage** | **SD card**, the card's path (it is put in from the **Media** menu, see [The SD card](zx-next.md#the-sd-card)); **NextZXOS**, the version the machine runs; **Tape** with its settings (see [Machine: Tape](#machine-tape)) |
 | **Input** | **Joystick**, the left and the right one; **Mouse**, its DPI and buttons, with a {icon}`settings` gear for the mouse's **Sensitivity** and **Swap buttons** - its check box is this computer's mouse in use, a click in the window then takes the pointer; **Keyboard**, issue 2 or 3 |
 | **Sound** | **PSG**: the chip, **x3** with TurboSound on (all three play) or **x1**, and the stereo; **AY mono** for each chip; **DAC**: Covox; **Beeper**: where BEEP goes, and the internal speaker |
-| **Board** | **Timing**: the CPU speed, 50 or 60 Hz, and the timings; **Contention**, **Timex RD** and **ULAplus**; **ESP UART** and **Pi UART** |
+| **Board features** | **Timing**: the CPU speed, 50 or 60 Hz, and the timings; **Contention**, **Timex RD** and **ULAplus**; **ESP UART** and **Pi UART** |
 
 The values are what the machine has set now; hold the mouse over one to see what else it can
 be. To change them, press NMI, then **Settings**, in NextZXOS: a change made there takes

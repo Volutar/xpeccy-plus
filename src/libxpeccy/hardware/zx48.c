@@ -6,8 +6,12 @@
 // the clones read at display time. Only the first leaves a multicolour
 // engine room to rewrite an attribute right after the ULA has taken it, so
 // the machines that have such a ULA - the ones with a contention pattern -
-// get the early-fetch drawer.
+// get the early-fetch drawer. The Robik has a drawer of its own (vidDrawRobik).
 void zx_set_vmode(Computer* comp) {
+	if (comp->hw && (comp->hw->id == HW_ROBIK)) {
+		vid_set_mode(comp->vid, VID_ROBIK);
+		return;
+	}
 	vid_set_mode(comp->vid, (comp->vid->ula->conttype == CONT_NONE) ? VID_NORMAL : VID_ULA_SCR);
 }
 

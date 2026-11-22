@@ -130,6 +130,9 @@ typedef struct {
 #define flgBOOT	sysflag[22]		// hw->boot is due before the next instruction
 #define flgBRKIO sysflag[23]		// a port breakpoint is set
 #define flgGLUK	sysflag[24]		// the Gluk clock is fitted (Pentagon; the P1024 has it on board)
+#define flgSHDW	sysflag[25]		// the Robik's shadow RAM is fitted (port 15 and the page under the ROM)
+#define flgSHDON sysflag[26]		// ...and its latch has the page in at #0000-#3FFF
+#define flgIOWR	sysflag[27]		// hw->out is called from the cpu's own I/O cycle (iowr), not from outside
 
 #define PWATCH_MAX	16		// ports the debugger can watch at once
 
