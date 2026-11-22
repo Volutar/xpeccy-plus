@@ -40,7 +40,7 @@ HASH_RE = re.compile(r"^hash: frames (\w+) sound (\w+) ram (\w+) cpu (\w+) pc (\
 
 HOWS = ("auto", "open", "boot")
 OPTS = ("cfg", "mac", "nvram", "sd", "hdd", "put", "keys", "eeprom", "card1", "card2", "cardimg1", "cardimg2",
-        "romfile", "sdimg")
+        "romfile", "sdimg", "sys")
 PINNED = 946684800  # 2000-01-01: a folder card's FAT carries the host mtimes
 
 
@@ -106,10 +106,15 @@ def set_up(case, corpus, cfg, tmp):
             else:		# the master a drive with LBA, as a card or an image needs
                 ini["cfg"] += [("MEDIA.hdd.master", str(dst)), ("MEDIA.hdd.master.type", "1"),
                                ("MEDIA.hdd.master.lba", "yes")]
+        elif k == "sys":		# the System/Next folder a Next program starts from (--next-system)
+            src, dst = corpus / v, tmp / f"sys-{Path(v).name}"
+            shutil.copytree(src, dst)
+            cards.append(dst)
+            args += ["--next-system", str(dst)]
         elif k == "put":
             path, src = v.split("=", 1)
             if not cards:
-                raise OSError("put: needs an sd: or hdd: folder before it")
+                raise OSError("put: needs an sd:, hdd: or sys: folder before it")
             (cards[-1] / path).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(corpus / src, cards[-1] / path)
         elif k == "keys":
