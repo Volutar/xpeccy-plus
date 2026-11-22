@@ -64,7 +64,7 @@ is skipped without a word.
 | `builtin` | `disk` `ide` `clock` | controllers on the board itself: the options lock them. Read from the definition, never written back |
 | `clock` | `none` `gluk` | a clock chip: Mr Gluk's, on `#EFF7` bit 7, `#DFF7` (address) and `#BFF7` (data); the Pentagon, Pentagon 1024 SL and ZXM-Phoenix cores only. `builtin = clock` fits it whatever this says |
 | `snapshot` | `core` `plus2` | what a snapshot names the machine as where its core does not say: a +2 runs on the 128K's core |
-| `shadow` | `no` `robik` | RAM under the ROM, and how it is switched in: `robik`, 16K that any IN or OUT on port `#0F` swaps with the ROM, every write to `#0000-#3FFF` going into it; the Robik core only. `yes` reads as `robik` |
+| `shadow` | `no` `robik` | RAM under the ROM, and how it is switched in: `robik`, 16K that any IN or OUT on port `#0F` swaps with the ROM, every write to `#0000-#3FFF` going into it; the Robik core at 48 only (at 128 it has `#7FFD` and the ROM pair in banks 2-3 instead). `yes` reads as `robik` |
 
 ### `[video]`
 

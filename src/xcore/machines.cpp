@@ -1136,6 +1136,8 @@ QList<int> xm_reset_targets() {
 		}
 		if (!own && (cover[i] < 0)) continue;
 		if ((role.res == RES_DOS) && (conf.zx->dif->type != DIF_BDI)) continue;
+		// the Robik's 128 editor is there only on a board taken to 128K
+		if ((role.res == RES_128) && (hw == HW_ROBIK) && (conf.zx->mem->ramSize < MEM_128K)) continue;
 		res.append(role.res);
 	}
 	return res;

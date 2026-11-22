@@ -2658,6 +2658,14 @@ void SetupWin::buildDevices() {
 	robikRow(tr("Shadow RAM"), shadowBox, tr("16K of RAM under the ROM, and how it is switched in.\n"
 		"Port #0F (Robik): any OUT or IN on port 15 swaps\nthe two, and a write to the ROM's addresses\n"
 		"lands in the RAM. Not every board has it"));
+	// a board taken to 128K has none here: page 3 is 128K software's, and how such a
+	// board switched one nobody wrote down
+	QString shadowTip = shadowBox->toolTip();
+	connect(ui.mszbox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, shadowTip](int) {
+		bool fits = getRFIData(ui.mszbox) < MEM_128K;
+		shadowBox->setEnabled(fits);
+		shadowBox->setToolTip(fits ? shadowTip : shadowTip + "\n\n" + tr("Not with 128 KB: how such a board\nswitched it is not known"));
+	});
 	brightBox = devCombo(QStringList() << tr("All bright") << tr("Two levels"));
 	robikRow(tr("BRIGHT"), brightBox, tr("All bright: every color bright, as the factory board\n"
 		"shows it. Two levels: as a 48K, with the owners' jumper"));
