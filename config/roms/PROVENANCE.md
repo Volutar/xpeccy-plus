@@ -68,6 +68,7 @@ and with every emulator of them for decades.
 | `phoenix.rom` | ZXM-Phoenix | ZXM-Phoenix authors | grey | BIOS 5.03, 64K, the boards before revision 07, `892a393093f373ad3b4c9453f529b523` |
 | `phoenix-07.rom` | ZXM-Phoenix | Mick (Mick Laboratory): system ROM and the build; savelij: Fatall 0.25; Velesoft, Keeper: TR-DOS 6.11Q | grey, offered by the board's author | the image for revision 07 and on, 512K: set 0 "ZXM-Phoenix system ROM" 1.00 of 29.05.2018, set 1 "TR-DOS 6.11Q + Fatall 0.25", `c2391511187cca0e187fe22a3888f7c1` |
 | `alf.rom` | ALF TV Game | SKB Zapad, Brest | grey | 32K: games menu in bank 0, 48 BASIC in bank 1, `f879e22ae833687ccdfc4745aa56b804` |
+| `robik.rom` | Robik | NPO Rotor (SELTO-ROTOR), Cherkasy | grey | V03, 16K: Sinclair's 48 BASIC with a Cyrillic font and keyboard mode and a scan of the Robik's 64 keys, boot line "© "SELTO-ROTOR" Computer V03", `be7315292b295876cf6bc4644bae4a71` |
 
 Source: `256s-*.rom` from <https://github.com/trufanov-nok/fuse-extra-roms>; `alf.rom`
 from <https://zxbyte.ru/alf.htm>, which publishes it as a dump of the console's 27C256;

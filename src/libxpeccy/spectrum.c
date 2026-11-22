@@ -890,7 +890,9 @@ static inline void iowr_out(Computer* comp, int port, int val) {
 	vid_settle(comp->vid);
 	if (comp->vid->nodraw && comp->vid->cb->latch)
 		vid_latch(comp->vid);
+	comp->flgIOWR = 1;
 	comp->hw->out(comp, port, val);
+	comp->flgIOWR = 0;
 }
 
 void iowr(int port, int val, void* ptr) {
@@ -1546,7 +1548,7 @@ int compSetHardware(Computer* comp, const char* name) {
 //	comp->cpu->nod = 0;
 	comp->vid->mrd = vid_mrd_cb;
 	comp->tape->xen = 0;
-	comp->tape->is48 = (hw->id == HW_ZX48);	// what a TZX's "stop if 48K" means
+	comp->tape->is48 = (hw->id == HW_ZX48) || (hw->id == HW_ROBIK);	// what a TZX's "stop if 48K" means
 	compSetBaseFrq(comp, 0);	// recalculations
 	comp_pwatch_sync(comp);
 	return 1;

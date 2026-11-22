@@ -52,7 +52,8 @@ enum {
 	VID_TSL_TEXT,
 	VID_PRF_MC,	// Profi 512x240, v5: in color
 	VID_PRF_MONO,	// Profi 512x240, v3: in the border colors
-	VID_NEXT	// ZX Spectrum Next: the core's own ULA, layers and mixer (hardware/zxnext_vid.c)
+	VID_NEXT,	// ZX Spectrum Next: the core's own ULA, layers and mixer (hardware/zxnext_vid.c)
+	VID_ROBIK	// Robik: the ZX screen with its own BRIGHT and cell edges
 };
 
 extern int bufSize;
@@ -173,6 +174,8 @@ struct Video {
 	int brdstep;
 	int brdmode;		// VID_BRD_* : how much border to show
 	int brdmin;		// VID_BRD_* : the least the machine's own picture needs
+	int allBright;		// VID_ROBIK: BRIGHT not wired, every color at its bright level
+	int cellEdge;		// VID_ROBIK: half a dot of the old attribute where a cell starts
 	unsigned char brdcol;
 	unsigned char nextbrd;
 

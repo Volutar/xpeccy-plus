@@ -1135,6 +1135,7 @@ int vid_zx_palette(Video* vid) {
 	switch (vid->vmode) {
 		case VID_NORMAL:
 		case VID_ULA_SCR:
+		case VID_ROBIK:
 		case VID_ALCO:
 		case VID_HWMC:
 			return 1;
@@ -1192,6 +1193,78 @@ void vidDrawNormal(Video* vid) {
 			scrbyte <<= 1;
 		}
 	}
+	vid_dot_full(vid, col);
+}
+
+// The Robik: the screen as vidDrawNormal() draws it, with two things of its own.
+// BRIGHT is not wired on the factory board, so every color, the border's too,
+// comes at its bright level (allBright); the owners' jumper gives a 48K's two.
+// Most boards show a thin line where a cell's attribute differs from the one
+// before (cellEdge): the first half-dot of a cell is its pixel in the old
+// attribute's colors. The column count is 5 bits and runs on through the border
+// and the blank, 21 more cells of a 53-cell line: after column 31 comes the same
+// line's column 0, whose first pixel shows half a dot into the border in column
+// 31's colors (the owners' photos of the start screen: a dot of the copyright
+// sign at the right edge), and the last cell it fetches before the paper, the
+// line's first cell's old attribute, is column 20 (ROBIK TEST 2 on two boards).
+static unsigned char rbInkL, rbPapL;		// column 20's colors, for the next line's start
+
+static void rb_cols(Video* vid) {
+	zx_attr_cols(vid, vid->atrbyte, &scrbyte, &ink, &pap, 0);
+	if (vid->allBright && !vid->ula->active) {	// a ULA+ index has no bright bit
+		ink |= 8;
+		pap |= 8;
+	}
+}
+
+void vidDrawRobik(Video* vid) {
+	unsigned char brd = zx_brd_col(vid) | ((vid->allBright && !vid->ula->active) ? 8 : 0);
+	if (vid->vbrd) {
+		vid->atrbyte = 0xff;
+		vid_dot_full(vid, brd);
+		return;
+	}
+	xscr = vid->ray.x - vid->bord.x;
+	yscr = vid->ray.y - vid->bord.y;
+	if ((xscr & 7) == 3) {
+		adr = zx_box_pix_adr(vid->idx);
+		nxtbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+	}
+	if (vid->hbrd) {
+		if (vid->cellEdge && (xscr == vid->scrn.x)) {	// column 0's first pixel, column 31's colors
+			unsigned char pix = vid->mrd(MADR(vid->vidPage, zx_box_pix_adr(vid->idx - 32)), vid->xptr);
+			if ((vid->atrbyte & 0x80) && vid_flash_shown(vid) && !vid->ula->active)
+				pix ^= 0xff;
+			vid_dot_half(vid, (pix & 0x80) ? ink : pap);
+			vid_dot_half(vid, brd);
+		} else {
+			vid_dot_full(vid, brd);
+		}
+		vid->atrbyte = 0xff;
+		return;
+	}
+	if ((xscr & 7) == 0) {
+		unsigned char oldInk = xscr ? ink : rbInkL;
+		unsigned char oldPap = xscr ? pap : rbPapL;
+		scrbyte = nxtbyte;
+		adr = zx_box_atr_adr(vid->idx);
+		vid->atrbyte = vid->mrd(MADR(vid->vidPage, adr), vid->xptr);
+		if (vid->idx < 0x1b00) vid->idx++;
+		rb_cols(vid);
+		if (xscr == 20 * 8) {
+			rbInkL = ink;
+			rbPapL = pap;
+		}
+		if (vid->cellEdge) {
+			int on = scrbyte & 0x80;
+			vid_dot_half(vid, on ? oldInk : oldPap);
+			vid_dot_half(vid, on ? ink : pap);
+			scrbyte <<= 1;
+			return;
+		}
+	}
+	col = (scrbyte & 0x80) ? ink : pap;
+	scrbyte <<= 1;
 	vid_dot_full(vid, col);
 }
 
@@ -1792,6 +1865,7 @@ static xVideoMode vidModeTab[] = {
 	{VID_PRF_MC, NULL, vidProfiScr, NULL, NULL, NULL, NULL, NULL, VL_NONE},
 	{VID_PRF_MONO, NULL, vidProfiMono, NULL, NULL, NULL, NULL, NULL, VL_NONE},
 	{VID_NEXT, NULL, nxv_dot, NULL, NULL, NULL, nxv_frm, nxv_run, VL_NONE, nxv_drawn, nxv_wake, nxv_sweep},
+	{VID_ROBIK, NULL, vidDrawRobik, NULL, NULL, NULL, NULL, NULL, VL_NONE},
 
 
 	{VID_UNKNOWN, NULL, vidDrawBorder, NULL, NULL, NULL, NULL, NULL, VL_NONE}

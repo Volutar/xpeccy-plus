@@ -118,7 +118,7 @@ static std::deque<QByteArray> dzStates;
 
 static int dz_model_of(Computer* comp) {
 	switch (comp->hw->id) {
-		case HW_ZX48: case HW_ALF: return DZ_ZX48K;
+		case HW_ZX48: case HW_ALF: case HW_ROBIK: return DZ_ZX48K;
 		case HW_ZXNEXT: return DZ_NEXT;
 	}
 	return DZ_ZX128K;

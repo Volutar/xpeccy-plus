@@ -92,7 +92,10 @@ the **Keymap** list on the **Input** page of **Options**:
   Ctrl keys Symbol Shift, as on a PC keyboard;
 - **ZX Spectrum 48K** - Caps Shift on both left Shift and left Ctrl, Symbol Shift on both
   right Shift and right Ctrl, as the two keys are placed on a 48K. The `\` key is GRAPHICS
-  (Caps Shift + 9).
+  (Caps Shift + 9);
+- **Robik** - the 48K one, and the Robik's 11 keys of its own at their places on its case
+  (see [Robik](machines.md#robik)); right Ctrl is its L key there, so Symbol Shift is the
+  right Shift only.
 
 A keymap changes only the keys it names; all the others stay as in ZX Spectrum 128K.
 

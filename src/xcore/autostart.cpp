@@ -160,6 +160,7 @@ typedef struct {
 
 static const asMachine as_mtab[] = {
 	{HW_ZX48,	{RES_48, as_keyword},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
+	{HW_ROBIK,	{RES_48, as_keyword},	{RES_48, as_keyword_code},	{AS_NOPE, NULL},	{AS_NOPE, NULL}},
 	{HW_ZX128,	{RES_128, as_menu},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
 	{HW_PENT,	{RES_128, as_menu},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},
 	{HW_P1024,	{RES_128, as_menu},	{RES_48, as_keyword_code},	{RES_48, as_trdos_basic},	{AS_NOPE, NULL}},

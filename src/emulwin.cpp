@@ -2625,7 +2625,7 @@ static QImage shot_picture(Computer* comp) {
 // else would give bytes that are not the picture
 static bool shot_zx_screen(Computer* comp) {
 	int m = comp->vid->vmode;
-	return (m == VID_NORMAL) || (m == VID_ULA_SCR) || (m == VID_TSL_NORMAL);
+	return (m == VID_NORMAL) || (m == VID_ULA_SCR) || (m == VID_ROBIK) || (m == VID_TSL_NORMAL);
 }
 
 // clip: to the clipboard, as a picture whatever the format. The picture is the

@@ -1449,6 +1449,9 @@ void SetupWin::fillPages() {
 
 	saaBox->setCurrentIndex(comp->saa->enabled ? 1 : 0);
 	clockBox->setCurrentIndex(comp->flgGLUK ? MAC_CLOCK_GLUK : MAC_CLOCK_NONE);
+	shadowBox->setCurrentIndex(comp->flgSHDW ? MAC_SHADOW_ROBIK : MAC_SHADOW_NONE);
+	brightBox->setCurrentIndex(comp->vid->allBright ? 0 : 1);
+	edgesBox->setCurrentIndex(comp->vid->cellEdge ? 1 : 0);
 
 	chkSndOn->setChecked(conf.snd.enabled);
 	soundPageOn(conf.snd.enabled);
@@ -1736,6 +1739,12 @@ void SetupWin::applyMachine() {
 		xspeed_set(ui.sldSpeed->value());
 	if (!own) comp->flgEM1 = ui.scrpwait->isChecked();
 	if (comp->hw->id == HW_ZX48) comp->mem->ramMask = MEM_128K - 1;		// TODO: find a better way
+	if (comp->hw->id == HW_ROBIK) {
+		comp->flgSHDW = (shadowBox->currentIndex() == MAC_SHADOW_ROBIK);
+		comp->vid->allBright = brightBox->currentIndex() ? 0 : 1;
+		comp->vid->cellEdge = edgesBox->currentIndex() ? 1 : 0;
+		comp->hw->mapMem(comp);		// the page out, if the shadow RAM went
+	}
 	// NextZXOS finds the memory at power-on, by a test of its own: off and on again
 	if ((msz != shown.mem) && own) xm_power_cycle();
 	emu_unlock();
@@ -2631,12 +2640,30 @@ void SetupWin::buildDevices() {
 	saaBox = devCombo(QStringList() << tr("Off") << tr("On"));
 	devRow(grid, tr("SAA1099"), saaBox, NULL, NULL);
 
-	grid = devGroup(cols, 1, 1, ":/images/grp-board.png", tr("Board"));
+	grid = devGroup(cols, 1, 1, ":/images/grp-board.png", tr("Board features"));
 	devRow(grid, tr("Turbo"), cbCpuTurbo, NULL, NULL);
 	clockBox = devCombo(QStringList() << tr("None") << tr("Gluk"));	// MAC_CLOCK_*
 	btn = devRow(grid, tr("Clock"), clockBox, NULL, NULL);
 	clockRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << clockBox << btn;
 	clockRow[0]->setToolTip(tr("Mr Gluk's clock on ports #EFF7, #DFF7, #BFF7. It tells your computer's time"));
+	// the Robik's own
+	auto robikRow = [this, grid](const QString& name, QComboBox* box, const QString& tip) {
+		QToolButton* b = devRow(grid, name, box, NULL, NULL);
+		QWidget* lab = grid->itemAtPosition(grid->rowCount() - 1, 0)->widget();
+		lab->setToolTip(tip);
+		box->setToolTip(tip);
+		robikRows << lab << box << b;
+	};
+	shadowBox = devCombo(QStringList() << tr("Off") << tr("Port #0F (Robik)"));	// MAC_SHADOW_*
+	robikRow(tr("Shadow RAM"), shadowBox, tr("16K of RAM under the ROM, and how it is switched in.\n"
+		"Port #0F (Robik): any OUT or IN on port 15 swaps\nthe two, and a write to the ROM's addresses\n"
+		"lands in the RAM. Not every board has it"));
+	brightBox = devCombo(QStringList() << tr("All bright") << tr("Two levels"));
+	robikRow(tr("BRIGHT"), brightBox, tr("All bright: every color bright, as the factory board\n"
+		"shows it. Two levels: as a 48K, with the owners' jumper"));
+	edgesBox = devCombo(QStringList() << tr("Off") << tr("On"));
+	robikRow(tr("Cell edges"), edgesBox, tr("A thin line where a character cell's colors change,\n"
+		"as most boards show it"));
 	finishGroups(cols);
 	qobject_cast<QLabel*>(divRow[0])->setText(tr("SD card"));
 
@@ -2776,7 +2803,7 @@ void SetupWin::buildDevices() {
 		<< flag("Int. speaker", tr("Int. speaker"), tr("The board's own speaker")), NULL, false);
 	lineUp(grid);
 
-	grid = nxGroup(1, 1, ":/images/grp-board.png", tr("Board"));
+	grid = nxGroup(1, 1, ":/images/grp-board.png", tr("Board features"));
 	line(grid, tr("Timing"), QList<QWidget*>()
 		<< field("CPU speed", QStringList() << "3.5 MHz" << "28 MHz", tr("CPU speed: 3.5, 7, 14 or 28 MHz,\nas programs ask"))
 		<< field("Frequency", QStringList() << "50 Hz", tr("Frames: 50 or 60 Hz"))
@@ -3056,6 +3083,7 @@ void SetupWin::showDevRows() {
 	foreach(QWidget* w, slotRow) w->setVisible(slot);
 	foreach(QWidget* w, kbdRow) w->setVisible(kbd);
 	foreach(QWidget* w, clockRow) w->setVisible(hw_takes_gluk(conf.zx->hw));
+	foreach(QWidget* w, robikRows) w->setVisible(hw == HW_ROBIK);
 	showDriveRows();
 	showBoardStorage();
 	// the Next sets itself up, by its nextregs: its own groups in place of the usual
