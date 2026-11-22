@@ -228,9 +228,10 @@ Three things differ from board to board, and the **Board features** group of the
   colors. On by default.
 
 The 11 keys of its own (Х, Ж, Э, Б, Ю, comma, period, EDIT, DELETE and the language keys C
-and L) are on the PC keys at their places on the Robik's case in the keyboard layout
-**Robik** (see [Keymaps](input.md#keymaps)): Tab is EDIT, Backspace DELETE, `-` the
-period, `/` the comma, `[` Х, `;` Ж, `'` Э, `,` Б, `.` Ю, Right Alt C and Right Ctrl L.
+and L) are on the PC keys at their places on the Robik's case in the keymap **Robik**,
+which the Robik takes by itself (see [Keymaps](input.md#keymaps)): Tab is EDIT, Backspace
+DELETE, `-` the period, `/` the comma, `[` Х, `;` Ж, `'` Э, `,` Б, `.` Ю, Right Alt C and
+Right Ctrl L.
 
 Not yet known: whether the piezo also sounds the tape output.
 
