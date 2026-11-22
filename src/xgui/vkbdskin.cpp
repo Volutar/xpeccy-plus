@@ -1565,7 +1565,10 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 							for (int i = 1; i < c.size(); i++)
 								path.lineTo(c[i]);
 						}
-						put(strokeMask(place(tr.map(path)), ic.sw * s, (ic.hollow > 0) ? std::max(0.0, ic.sw - 2 * ic.hollow) * s : 0), lab.col);
+						// a hollow line's walls at least a pixel each: thinner, a slanting one
+						// came out in broken pieces on a small window
+						double inner = (ic.hollow > 0) ? std::max(0.0, ic.sw * s - 2 * std::max(ic.hollow * s, 1.0)) : 0;
+						put(strokeMask(place(tr.map(path)), ic.sw * s, inner), lab.col);
 					} else if (ic.oneShape) {
 						foreach(const QVector<QPointF>& c, ic.polys)
 							path.addPolygon(QPolygonF(c)), path.closeSubpath();
