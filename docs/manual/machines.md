@@ -228,14 +228,15 @@ Three things differ from board to board, and the **Board features** group of the
   colors. On by default.
 
 Owners took some boards to 128 KB, with an AY and a Kempston mouse beside them. **128 KB** in
-the **Memory** list is such a board: port #7FFD pages memory as on a Pentagon 128, and the ROM
-is a Pentagon 128's pair, its menu with a TR-DOS item (**Basic 128**) and the 48K BASIC that
-menu runs, as the Robik's own ROM cannot stand in for it. The frame, the clock and the wait
-stay the Robik's; a write into either screen, page 5 or page 7, waits wherever the page is.
-How such a board switched its shadow RAM is not known, so it has none: **Shadow RAM** is
-grayed. Changing **Memory** between 48 and 128 KB switches the machine off and on again, as
-fitting the other board would, and it boots that board's ROM: the menu at 128 KB, the Robik's
-BASIC at 48 (the ROM page can pick another). The AY and the mouse are picked on the same page, at any memory
+the **Memory** list is such a board: port #7FFD pages memory as on a Pentagon 128, and the ROMs
+are the Pentagon 128's, in its order: ROM 0 its menu with a TR-DOS item (**Basic 128**), ROM 1
+48K BASIC, ROM 2 the service ROM, ROM 3 TR-DOS. The upgrade replaced the Robik's own ROM, so it
+is in ROM 4 and runs only at 48 KB. The frame, the clock and the wait stay the Robik's; a
+write into either screen, page 5 or page 7, waits wherever the page is. How such a board
+switched its shadow RAM is not known, so it has none: **Shadow RAM** is grayed. Changing
+**Memory** between 48 and 128 KB switches the machine off and on again, as fitting the other
+board would, and it boots that board's ROM: the menu at 128 KB, the Robik's BASIC at 48 (the
+ROM page can pick another). The AY and the mouse are picked on the same page, at any memory
 size.
 
 The 11 keys of its own (Х, Ж, Э, Б, Ю, comma, period, EDIT, DELETE and the language keys C
