@@ -234,7 +234,8 @@ menu runs, as the Robik's own ROM cannot stand in for it. The frame, the clock a
 stay the Robik's; a write into either screen, page 5 or page 7, waits wherever the page is.
 How such a board switched its shadow RAM is not known, so it has none: **Shadow RAM** is
 grayed. Changing **Memory** between 48 and 128 KB switches the machine off and on again, as
-fitting the other board would. The AY and the mouse are picked on the same page, at any memory
+fitting the other board would, and it boots that board's ROM: the menu at 128 KB, the Robik's
+BASIC at 48 (the ROM page can pick another). The AY and the mouse are picked on the same page, at any memory
 size.
 
 The 11 keys of its own (Х, Ж, Э, Б, Ю, comma, period, EDIT, DELETE and the language keys C
