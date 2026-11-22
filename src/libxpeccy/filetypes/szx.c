@@ -743,12 +743,16 @@ int loadSZX_buf(Computer* comp, const unsigned char* buf, size_t len) {
 			next_ram_size(comp, held);
 		}
 	}
-	// a Robik of the other size likewise: at 128 KB it pages through #7FFD, at 48 not
+	// a Robik of the other size likewise: at 128 KB it pages through #7FFD and boots the
+	// menu, at 48 its own ROM. A file of before the size was written is of a 48 KB one
 	if ((comp->hw->id == HW_ROBIK) && (SNAP_HW_OF(snap) == SNAP_HW_CORE + HW_ROBIK)) {
 		int held = szx_ext_ram_size(buf, len);
-		if (((held == MEM_64K) || (held == MEM_128K)) && (held != comp->mem->ramSize)) {
+		if (held != MEM_128K) held = MEM_64K;
+		if (held != comp->mem->ramSize) {
 			xlog(XLG_FILE, XLL_INFO, "szx: taken on a %i KB Robik, this one runs on that", (held == MEM_64K) ? 48 : 128);
 			memSetSize(comp->mem, held, -1);
+			if ((held == MEM_128K) && (comp->resbank == RES_48)) comp->resbank = RES_128;
+			if ((held == MEM_64K) && (comp->resbank != RES_DOS)) comp->resbank = RES_48;
 		}
 	}
 

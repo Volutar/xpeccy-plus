@@ -80,10 +80,10 @@ enum {ED_NONE = 0, ED_SINCLAIR, ED_PLUS2};
 // Sinclair's (a few bytes patched, the same addresses); the +2's was assembled
 // again, its addresses moved from #9B on; the +2A/+3 and the Next have four ROMs
 // of their own, and the ALF its games menu.
-static int snap_editor(int hwid, int model) {
+static int snap_editor(int hwid, int model, int ram) {
 	switch (hwid) {
+		case HW_ROBIK: return (ram >= MEM_128K) ? ED_SINCLAIR : ED_NONE;	// the Pentagon 128's set
 		case HW_ZX48:
-		case HW_ROBIK:
 		case HW_PLUS2A:
 		case HW_PLUS3:
 		case HW_ZXNEXT:
@@ -108,12 +108,12 @@ int snap_rom_flags(int pc, int p7ffd) {
 // One stopped in its ROM goes on only on the model it names: the clones patch
 // the very menu (the Pentagon's TR-DOS item), and the +2's editor is another
 // build.
-static int snap_on_model(int snap, int hwid, int model) {
-	int ed = snap_editor(hwid, model);
+static int snap_on_model(int snap, int hwid, int model, int ram) {
+	int ed = snap_editor(hwid, model, ram);
 	switch (snap) {
 		case SNAP_HW_128K: return (hwid == HW_ZX128) && (ed == ED_SINCLAIR);
 		case SNAP_HW_PLUS2: return ed == ED_PLUS2;
-		case SNAP_HW_PENTAGON: return (hwid == HW_PENT) || (hwid == HW_P1024);
+		case SNAP_HW_PENTAGON: return (hwid == HW_PENT) || (hwid == HW_P1024) || ((hwid == HW_ROBIK) && (ram >= MEM_128K));
 	}
 	return 0;
 }
@@ -128,13 +128,13 @@ int snapHwRuns(int snap, int hwid, int model, int ram) {
 	if (snap >= SNAP_HW_CORE) return hwid == snap - SNAP_HW_CORE;
 	switch (snap) {
 		// the Robik's V03 rewrites KEY-SCAN and the printing of tokens: one stopped in
-		// Sinclair's ROM goes on there only
-		case SNAP_HW_48K: return !(rom && (hwid == HW_ROBIK));
+		// Sinclair's ROM goes on there only (at 128 KB the Robik has the Pentagon's ROMs)
+		case SNAP_HW_48K: return !(rom && (hwid == HW_ROBIK) && (ram < MEM_128K));
 		case SNAP_HW_128K:
 		case SNAP_HW_PENTAGON:
 		case SNAP_HW_PLUS2:
-			if (rom) return snap_on_model(snap, hwid, model);
-			if (editor) return snap_editor(hwid, model) == ((snap == SNAP_HW_PLUS2) ? ED_PLUS2 : ED_SINCLAIR);
+			if (rom) return snap_on_model(snap, hwid, model, ram);
+			if (editor) return snap_editor(hwid, model, ram) == ((snap == SNAP_HW_PLUS2) ? ED_PLUS2 : ED_SINCLAIR);
 			return (hwid != HW_ZX48) && ((hwid != HW_ROBIK) || (ram >= MEM_128K));
 		// one ROM, but a +3 in its editor has +3DOS set up for a drive the +2A lacks
 		case SNAP_HW_PLUS2A: return (hwid == HW_PLUS2A) || (!rom && (hwid == HW_PLUS3));

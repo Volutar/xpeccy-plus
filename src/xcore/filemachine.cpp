@@ -120,7 +120,7 @@ bool fm_runs(const std::string& id, int need, int snap) {
 	const xMachine* mac = xm_find(id);
 	if (!mac) return false;
 	HardWare* hw = findHardware(mac->hw.c_str());
-	return hw && fm_takes(hw->id, mac->snapModel, mac->memory << 10, mac->disk, need, snap);
+	return hw && fm_takes(hw->id, mac->snapModel, xm_ram_size(id, NULL), mac->disk, need, snap);
 }
 
 // Is that machine the model the file names. A .z80's hw 9 is written for every

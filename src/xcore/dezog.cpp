@@ -157,11 +157,6 @@ static int dz_slot_of(int adr) {
 	return (adr < 0x4000) ? 0 : 1;
 }
 
-// the ROM page the 128K's ROM 0 is: a Robik at 128 KB keeps its pair in pages 2 and 3
-static int dz_rom_base(Computer* comp) {
-	return (comp->hw->id == HW_ROBIK) ? 2 : 0;
-}
-
 // The bank DeZog's model names for what the cpu reads in a slot. ROM pages past
 // the two of the 128K and anything that is neither RAM nor ROM (an interface's
 // own memory) are 0xFE, a bank no model has
@@ -173,9 +168,8 @@ static int dz_slot_bank(Computer* comp, int slot) {
 		case DZ_ZX128K: {
 			xAdr xa = comp_get_xadr(comp, slot << 14, MEM_VIEW_READ);
 			if (xa.type == MEM_RAM) return dz_ram_bank((xa.abs & comp->mem->ramMask) >> 14);
-			int rom = ((xa.abs & comp->mem->romMask) >> 14) - dz_rom_base(comp);
-			if ((xa.type == MEM_ROM) && (rom >= 0) && (rom < 2))
-				return 8 + rom;
+			if ((xa.type == MEM_ROM) && (((xa.abs & comp->mem->romMask) >> 14) < 2))
+				return 8 + ((xa.abs & comp->mem->romMask) >> 14);
 			return 0xfe;
 		}
 	}
@@ -197,7 +191,7 @@ static int dz_cell(Computer* comp, int bank, int adr, int* area, int* page, int*
 			if (bank >= 0xfe) return 0;
 			if ((bank == 8) || (bank == 9)) {
 				*area = CELL_ROM;
-				*page = bank - 8 + dz_rom_base(comp);
+				*page = bank - 8;
 			} else {
 				*area = CELL_RAM;
 				*page = dz_bank_ram(bank);
@@ -219,7 +213,7 @@ static int dz_bank_peek(Computer* comp, int bank, int ofs) {
 			return comp_cell_peek(comp, CELL_RAM, bank, ofs);
 		case DZ_ZX128K:
 			if ((bank >= 0xfe) || (ofs >= 0x4000)) return -1;
-			if ((bank == 8) || (bank == 9)) return comp_cell_peek(comp, CELL_ROM, bank - 8 + dz_rom_base(comp), ofs);
+			if ((bank == 8) || (bank == 9)) return comp_cell_peek(comp, CELL_ROM, bank - 8, ofs);
 			return comp_cell_peek(comp, CELL_RAM, dz_bank_ram(bank), ofs);
 	}
 	if (bank == 0) return (ofs < 0x4000) ? comp_peek(comp, ofs, MEM_VIEW_READ, NULL) : -1;

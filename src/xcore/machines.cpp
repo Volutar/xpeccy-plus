@@ -276,7 +276,7 @@ static const struct {
 };
 
 static QString mac_key_place(const QString& key, QString* sect) {
-	if (key.startsWith("rom")) {		// rom0..rom3, rom.gs, rom.font
+	if (key.startsWith("rom")) {		// rom0..rom4, rom.gs, rom.font
 		*sect = "rom";
 		return key.startsWith("rom.") ? key.mid(4) : key;
 	}
@@ -506,7 +506,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if ((nam == "joy.buttons") && (mac.joy != MAC_JOY_NONE)) mac.joy = arg.b ? MAC_JOY_KEMPSTON8 : MAC_JOY_KEMPSTON;
 			else if (nam == "kbd.scantab") mac.scantab = mac_word(scanTab, val, 0, id);
 		} else if (ln.sect == "rom") {
-			if (nam == "banks") mac.romBanks = toLimits(arg.i, 1, 4);
+			if (nam == "banks") mac.romBanks = toLimits(arg.i, 1, ROM_ROLE_BANKS);
 			else if (nam == "gs") mac.roms.gsFile = val;
 			else if (nam == "font") mac.roms.fntFile = val;
 			else if ((nam.compare(0, 3, "rom") == 0) && isdigit(nam[3]))
@@ -1128,7 +1128,7 @@ QList<int> xm_reset_targets() {
 	int hw = conf.zx->hw->id;
 	QVector<int> cover = xm_rom_cover(conf.roms, mac->romBanks);
 	for (int i = 0; i < mac->romBanks; i++) {
-		xRomRole role = hw_rom_role(hw, i);
+		xRomRole role = hw_rom_role_ram(hw, conf.zx->mem->ramSize, i);
 		if (role.res < 0) continue;
 		bool own = false;
 		foreach(xRomFile rf, conf.roms.roms) {
@@ -1136,15 +1136,13 @@ QList<int> xm_reset_targets() {
 		}
 		if (!own && (cover[i] < 0)) continue;
 		if ((role.res == RES_DOS) && (conf.zx->dif->type != DIF_BDI)) continue;
-		// the Robik's 128 editor is there only on a board taken to 128K
-		if ((role.res == RES_128) && (hw == HW_ROBIK) && (conf.zx->mem->ramSize < MEM_128K)) continue;
 		res.append(role.res);
 	}
 	return res;
 }
 
 QString xm_reset_name(int res) {
-	int bank = conf.zx ? hw_reset_bank(conf.zx->hw->id, res) : -1;
+	int bank = conf.zx ? hw_reset_bank_ram(conf.zx->hw->id, conf.zx->mem->ramSize, res) : -1;
 	const char* nam = (bank < 0) ? NULL : hw_rom_role(conf.zx->hw->id, bank).name;
 	return nam ? QString(nam) : QString();
 }

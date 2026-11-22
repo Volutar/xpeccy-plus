@@ -19,18 +19,19 @@
 // A Beta Disk is no part of it, but one fitted pages TR-DOS in as on the 48K.
 //
 // 128K: no factory model, but owners' boards were taken there (Faultless #08, 1997:
-// #7FFD as the Pentagon's). Here #7FFD as the Pentagon 128's, and a 128K's pair of
-// ROMs in banks 2 and 3: the 128 editor calls its own 48 BASIC, which the Robik's
-// V03 is not (it hangs there). The Robik's frame, clock and wait stay, writes into
-// either screen's 8K waiting. How such a board switched its shadow RAM nobody wrote
-// down, so it has none.
+// #7FFD as the Pentagon's). Here #7FFD as the Pentagon 128's, and the ROM set the
+// Pentagon 128's too, in its order (banks 0-3): the V03 went with the upgrade, as the
+// 128 editor calls its own 48 BASIC (with the V03 under it the menu hangs). The
+// Robik's frame, clock and wait stay, writes into either screen's 8K waiting. How
+// such a board switched its shadow RAM nobody wrote down, so it has none.
 
 #define ROBIK_SHADOW	3		// the RAM page under the ROM (48K uses 5, 2, 0)
 #define ROBIK_WAIT_PHASE	4	// dots: where the 8-dot video cell starts against the INT
 #define ROBIK_BORDER_LAG	5	// T from an OUT's I/O cycle start to the border's new color
-// ROM banks: 0 the Robik's own BASIC, 1 TR-DOS, 2 and 3 the 128K's pair
-#define ROBIK_ROM_128	2	// the 128 editor, #7FFD D4 = 0
-#define ROBIK_ROM_48_128	3	// its 48 BASIC, D4 = 1
+// ROM banks: 0-3 the Pentagon 128's (the 128 editor, 48 BASIC, service, TR-DOS),
+// paged at 128 KB as a Pentagon pages them; at 48 KB the Robik's own V03 and TR-DOS
+#define ROBIK_ROM_DOS	3
+#define ROBIK_ROM_OWN	4
 
 static int robik_is_128(Computer* comp) {
 	return comp->mem->ramSize >= MEM_128K;
@@ -55,13 +56,14 @@ void robik_map_mem(Computer* comp) {
 		comp->flgROM = 1;
 		comp->vid->vidPage = 5;
 	}
-	if (comp->flgDOS) {			// a Beta Disk fitted: TR-DOS as on the 48K
-		memSetBank(mem, 0x00, MEM_ROM, 1, MEM_16K, NULL, NULL, NULL);
+	if (is128) {				// the Pentagon's: TR-DOS or service by flgDOS, 48 or 128 by D4
+		memSetBank(mem, 0x00, MEM_ROM, (comp->flgDOS ? 2 : 0) | (comp->flgROM ? 1 : 0), MEM_16K, NULL, NULL, NULL);
+	} else if (comp->flgDOS) {		// a Beta Disk fitted: TR-DOS as on the 48K
+		memSetBank(mem, 0x00, MEM_ROM, ROBIK_ROM_DOS, MEM_16K, NULL, NULL, NULL);
 	} else if (comp->flgSHDON) {
 		memSetBank(mem, 0x00, MEM_RAM, ROBIK_SHADOW, MEM_16K, NULL, NULL, NULL);
 	} else {
-		memSetBank(mem, 0x00, MEM_ROM, !is128 ? 0 : comp->flgROM ? ROBIK_ROM_48_128 : ROBIK_ROM_128,
-			MEM_16K, NULL, NULL, NULL);
+		memSetBank(mem, 0x00, MEM_ROM, ROBIK_ROM_OWN, MEM_16K, NULL, NULL, NULL);
 	}
 	memSetBank(mem, 0x40, MEM_RAM, 5, MEM_16K, NULL, NULL, NULL);
 	memSetBank(mem, 0x80, MEM_RAM, 2, MEM_16K, NULL, NULL, NULL);
