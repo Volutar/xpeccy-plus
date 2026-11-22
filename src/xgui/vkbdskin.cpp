@@ -1632,9 +1632,9 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 							for (int i = 1; i < c.size(); i++)
 								path.lineTo(c[i]);
 						}
-						// a hollow line's walls at least 0.7 of a pixel each, so a small window
-						// still reads them
-						double inner = (ic.hollow > 0) ? std::max(0.0, ic.sw * s - 2 * std::max(ic.hollow * s, 0.7)) : 0;
+						// the walls as thin as they are, however small: strokeMask keeps a
+						// wall under a pixel even, it only comes out lighter
+						double inner = (ic.hollow > 0) ? std::max(0.0, ic.sw - 2 * ic.hollow) * s : 0;
 						put(strokeMask(place(tr.map(path)), ic.sw * s, inner), lab.col);
 					} else if (ic.oneShape) {
 						foreach(const QVector<QPointF>& c, ic.polys)
