@@ -161,7 +161,8 @@ or not - a program starts on a card of its own:
 - **The program's folder**, in the card's root, with everything in it for the files a
   program reads beside it. What the program saves there goes into that folder on your disk.
   A folder of over 2000 files and folders, a collection, or a `.sna` or `.z80` program puts
-  the program's file there alone, and what it writes stays in memory.
+  the program's file there alone, and what it writes stays in memory. A program that comes
+  with System/Next starts where it is on that card, and what it writes stays in memory too.
 
 The Next is switched off and on first, so that NextZXOS starts from the new card. Your card
 is put aside while the program's card is in: **Media > SD Card** shows **Card for** and the
