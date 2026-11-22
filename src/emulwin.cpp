@@ -471,7 +471,7 @@ bool MainWin::inputResume() {
 // own events of these keys are not the machine's (ev_to_keyid)
 static struct {
 	unsigned bit;		// MACMOD_*
-	int held;
+	int held;		// as the machine was given it
 	int qkey;		// Qt::Key: the physical Ctrl is Qt's Meta
 	int id;			// XKEY_*
 } mac_mod_tab[6] = {
@@ -484,23 +484,42 @@ static struct {
 };
 
 static MainWin* mac_mod_win = nullptr;
+static unsigned mac_mods_now = 0;		// MACMOD_* held, as the last flags change in the program said
 
-// a press only while the machine takes keys, as on Windows; a release always,
-// so nothing stays held whatever window had the key last
-static void mac_mods_changed(unsigned held, unsigned long flags) {
+// The machine given what is held: a press only while it takes keys, as on
+// Windows, and one held meanwhile goes in later - with the next change or the
+// next key, ahead of that key (key: a key press, which reaches the machine
+// paused too); a release always. Sent at once, so it is in before the key
+// that came with it.
+void mac_mods_sync(bool key) {
 	MainWin* win = mac_mod_win;
 	if (!win) return;
 	QWidget* front = QApplication::activeWindow();
-	bool take = !conf.emu.pause && (win->isActiveWindow() || (front && front->inherits("keyWindow")));
-	xlog(XLG_INPUT, XLL_DEBUG, "mac modifiers: flags %08lx, held %02x%s", flags, held, take ? "" : " (not taken)");
+	bool take = (key || !conf.emu.pause) && (win->isActiveWindow() || (front && front->inherits("keyWindow")));
 	for (auto& m : mac_mod_tab) {
-		int now = (held & m.bit) ? 1 : 0;
-		if (now == m.held) continue;
+		int now = (mac_mods_now & m.bit) ? 1 : 0;
+		if ((now == m.held) || (now && !take)) continue;
 		m.held = now;
-		if (now && !take) continue;
-		QApplication::postEvent(win, new QKeyEvent(now ? QEvent::KeyPress : QEvent::KeyRelease,
-			m.qkey, Qt::NoModifier, MACMOD_EVENT, m.id, 0));
+		QKeyEvent ev(now ? QEvent::KeyPress : QEvent::KeyRelease, m.qkey, Qt::NoModifier, MACMOD_EVENT, m.id, 0);
+		QApplication::sendEvent(win, &ev);
 	}
+}
+
+static void mac_mods_changed(unsigned held, unsigned long flags) {
+	xlog(XLG_INPUT, XLL_DEBUG, "mac modifiers: flags %08lx, held %02x", flags, held);
+	mac_mods_now = held;
+	mac_mods_sync(false);
+}
+
+// the machine's keys let go (focusOutEvent): what is still held goes in again
+void mac_mods_let_go() {
+	for (auto& m : mac_mod_tab) m.held = 0;
+}
+
+// the program left: a key let go in another one is never told here
+static void mac_mods_away() {
+	mac_mods_now = 0;
+	mac_mods_sync(false);
 }
 
 #endif
@@ -619,6 +638,9 @@ MainWin::MainWin(QMainWindow* frm) {
 #ifdef __APPLE__
 	mac_mod_win = this;
 	mac_mods_watch(mac_mods_changed);
+	connect(qApp, &QGuiApplication::applicationStateChanged, this, [](Qt::ApplicationState st) {
+		if (st != Qt::ApplicationActive) mac_mods_away();
+	});
 #endif
 
 #ifdef __APPLE__
@@ -658,6 +680,9 @@ MainWin::MainWin(QMainWindow* frm) {
 }
 
 MainWin::~MainWin() {
+#ifdef __APPLE__
+	mac_mod_win = nullptr;		// the monitor outlives this window
+#endif
 	mouseClip(false);
 	rawMouse(false);
 	delete snowBox;		// its end stops the snow: while this window is whole
@@ -1086,6 +1111,9 @@ void MainWin::focusOutEvent(QFocusEvent*) {
 		rawMouse(false);
 	}
 	emit s_keywin_rall(comp->keyb);
+#ifdef __APPLE__
+	mac_mods_let_go();
+#endif
 	// nor will the keys of a player on the keyboard
 	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
 	for (xGamepad* gp : pads) {

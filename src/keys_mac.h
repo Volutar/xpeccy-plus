@@ -16,6 +16,9 @@
 
 // cb gets the MACMOD_* keys held and the raw flags, on every change of them
 void mac_mods_watch(void (*cb)(unsigned, unsigned long));
+// emulwin.cpp: the machine given the modifiers held (key: ahead of a key press), and let go of them
+void mac_mods_sync(bool key);
+void mac_mods_let_go();
 
 // Qt's own event of a Shift, Ctrl or Option: no side, and not every one comes;
 // the machine and the pads take these keys from our own events instead

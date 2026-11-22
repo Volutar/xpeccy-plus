@@ -131,6 +131,11 @@ void MainWin::keyPressEvent(QKeyEvent* ev) {
 	int keyid;
 	keyEntry kent;
 	Computer* comp = conf.zx;
+#ifdef __APPLE__
+	// a Shift held while the machine took no keys goes in ahead of this key
+	if (!ev->isAutoRepeat() && (ev->nativeScanCode() != MACMOD_EVENT) && !mac_mod_key(ev))
+		mac_mods_sync(true);
+#endif
 	releaseChord(ev, true);
 	if (padKey(ev, true)) return;
 //	qDebug() << ev->key();
