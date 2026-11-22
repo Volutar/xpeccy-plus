@@ -899,13 +899,17 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 		ui.gridLayout_21->setHorizontalSpacing(12);
 		ui.keyMapBox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 		ui.typingBox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-		connect(ui.keyMapBox, QOverload<int>::of(&QComboBox::currentIndexChanged), kmNote, [this, kmNote]() {
+		// By machine names the keymap of the machine picked on the Machine page
+		auto kmShow = [this, kmNote]() {
 			QString nam = ui.keyMapBox->currentData().toString();
-			kmNote->setText((nam == KMAP_MACHINE) ? tr("%1 for this machine").arg(keymap_title(keymap_for_machine(conf.macId)))
+			std::string mid = getRFSData(ui.machbox).toLocal8Bit().data();
+			kmNote->setText((nam == KMAP_MACHINE) ? tr("%1 for this machine").arg(keymap_title(keymap_for_machine(mid)))
 				: nam.isEmpty() ? tr("Both Shifts are Caps Shift, both Ctrls Symbol Shift")
 				: (nam == KMAP_48K) ? tr("Caps Shift on the left, Symbol Shift on the right")
 				: tr("Your own keymap"));
-		});
+		};
+		connect(ui.keyMapBox, QOverload<int>::of(&QComboBox::currentIndexChanged), kmNote, kmShow);
+		connect(ui.machbox, QOverload<int>::of(&QComboBox::currentIndexChanged), kmNote, kmShow);
 		connect(ui.typingBox, QOverload<int>::of(&QComboBox::currentIndexChanged), tyNote, [this, tyNote]() {
 			tyNote->setText(getRFIData(ui.typingBox) ? tr("Symbol keys as on the PC: Shift+; is :, Shift+/ is ?")
 				: tr("Shift is Caps Shift with every key, as on the Spectrum"));
