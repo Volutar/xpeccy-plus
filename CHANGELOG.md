@@ -60,6 +60,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **A ZX Spectrum Next program starts whatever card is in the slot**: a `.nex` or `.snx`
+  runs on a card of its own, System/Next and the program's folder, with an image card, a
+  folder or none. What it saves goes into its folder. Eject puts your card back.
+
 - **Options > Appearance shows and hides the bars**: Menu bar, Toolbar, Status bar, Always
   on top and Auto-hide pointer, as in the View menu - for a menu bar that is hidden. The
   indicators have a window of their own there: Configure indicators.
