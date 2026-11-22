@@ -512,7 +512,10 @@ static const struct {
 	{0x16, XKEY_6}, {0x1a, XKEY_7}, {0x1c, XKEY_8}, {0x19, XKEY_9}, {0x1d, XKEY_0},
 	{0x1b, XKEY_MINUS}, {0x18, XKEY_EQUAL}, {0x21, XKEY_LBRACK}, {0x1e, XKEY_RBRACK},
 	{0x2a, XKEY_SLASH}, {0x29, XKEY_DOTCOM}, {0x27, XKEY_APOS}, {0x2b, XKEY_COMMA},
-	{0x2f, XKEY_PERIOD}, {0x2c, XKEY_BSLASH}, {0x32, XKEY_TILDA}
+	{0x2f, XKEY_PERIOD}, {0x2c, XKEY_BSLASH}, {0x32, XKEY_TILDA},
+	// Qt's event of a modifier has its key's code too (the key, not its side, in Qt's name)
+	{0x38, XKEY_LSHIFT}, {0x3c, XKEY_RSHIFT}, {0x3b, XKEY_LCTRL}, {0x3e, XKEY_RCTRL},
+	{0x3a, XKEY_LALT}, {0x3d, XKEY_RALT}
 };
 
 // a Mac's native key code as a key id, 0 for a key Qt's own name tells (qKey2id)

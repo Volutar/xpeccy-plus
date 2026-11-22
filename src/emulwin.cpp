@@ -55,6 +55,7 @@
 #include "xcore/rzxseek.h"
 #include "xcore/rzxrecord.h"
 #include "emulwin.h"
+#include "keys_mac.h"
 #include "xcore/cheats.h"
 #include "filer.h"
 #include "xcore/arcpath.h"
@@ -463,6 +464,47 @@ bool MainWin::inputResume() {
 	return true;
 }
 
+#ifdef __APPLE__
+
+// Shift, Ctrl and Option on a Mac, left and right apart (keys_mac.mm): each
+// change goes in as a key event of its own, as the Windows poll's do, and Qt's
+// own events of these keys are not the machine's (ev_to_keyid)
+static struct {
+	unsigned bit;		// MACMOD_*
+	int held;
+	int qkey;		// Qt::Key: the physical Ctrl is Qt's Meta
+	int id;			// XKEY_*
+} mac_mod_tab[6] = {
+	{MACMOD_LSHIFT, 0, Qt::Key_Shift, XKEY_LSHIFT},
+	{MACMOD_RSHIFT, 0, Qt::Key_Shift, XKEY_RSHIFT},
+	{MACMOD_LCTRL, 0, Qt::Key_Meta, XKEY_LCTRL},
+	{MACMOD_RCTRL, 0, Qt::Key_Meta, XKEY_RCTRL},
+	{MACMOD_LALT, 0, Qt::Key_Alt, XKEY_LALT},
+	{MACMOD_RALT, 0, Qt::Key_Alt, XKEY_RALT}
+};
+
+static MainWin* mac_mod_win = nullptr;
+
+// a press only while the machine takes keys, as on Windows; a release always,
+// so nothing stays held whatever window had the key last
+static void mac_mods_changed(unsigned held, unsigned long flags) {
+	MainWin* win = mac_mod_win;
+	if (!win) return;
+	QWidget* front = QApplication::activeWindow();
+	bool take = !conf.emu.pause && (win->isActiveWindow() || (front && front->inherits("keyWindow")));
+	xlog(XLG_INPUT, XLL_DEBUG, "mac modifiers: flags %08lx, held %02x%s", flags, held, take ? "" : " (not taken)");
+	for (auto& m : mac_mod_tab) {
+		int now = (held & m.bit) ? 1 : 0;
+		if (now == m.held) continue;
+		m.held = now;
+		if (now && !take) continue;
+		QApplication::postEvent(win, new QKeyEvent(now ? QEvent::KeyPress : QEvent::KeyRelease,
+			m.qkey, Qt::NoModifier, MACMOD_EVENT, m.id, 0));
+	}
+}
+
+#endif
+
 // Main window
 
 MainWin::MainWin(QMainWindow* frm) {
@@ -573,6 +615,11 @@ MainWin::MainWin(QMainWindow* frm) {
 	});
 	fillUserMenu();
 	fillPadMenu();		// not empty before its first opening
+
+#ifdef __APPLE__
+	mac_mod_win = this;
+	mac_mods_watch(mac_mods_changed);
+#endif
 
 #ifdef __APPLE__
 	// Cocoa always gives the app a menu bar, even though this app never creates a
@@ -751,6 +798,9 @@ bool MainWin::padKey(QKeyEvent* ev, bool down) {
 		if (bound) echoes.insert(id); else echoes.remove(id);
 		return bound;
 	}
+#endif
+#ifdef __APPLE__
+	if (mac_mod_key(ev)) return false;	// a player's Shift/Ctrl/Option comes as our own event (mac_mods_changed)
 #endif
 	bool took = false;
 	for (xGamepad* gp : pads) {

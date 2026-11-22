@@ -10,6 +10,10 @@
 #include <QFileInfo>
 #include <QUrl>
 
+#ifdef __APPLE__
+#include "../keys_mac.h"
+#endif
+
 #if USE_QT_GAMEPAD
 #include <QGamepadManager>
 #endif
@@ -583,6 +587,10 @@ int pad_key_id(QKeyEvent* ev) {
 #if defined(__linux) || defined(__BSD) || defined(__WIN32)
 	return ev->nativeScanCode();		// the keymap counts keys by scan code here
 #else
+#ifdef __APPLE__
+	if (ev->nativeScanCode() == MACMOD_EVENT) return ev->nativeVirtualKey();	// a modifier with its side
+	if (mac_mod_key(ev)) return macKeyId(ev->nativeVirtualKey());		// Qt's: its own key's side
+#endif
 	// as the layout takes it; Shift+Tab is Tab too
 	return qKey2id((ev->key() == Qt::Key_Backtab) ? Qt::Key_Tab : ev->key(), ev->modifiers());
 #endif

@@ -1,4 +1,5 @@
 #include "emulwin.h"
+#include "keys_mac.h"
 #include "filer.h"
 #include "xcore/xcore.h"
 #include "xcore/vscalers.h"
@@ -94,10 +95,16 @@ int ev_to_keyid(QKeyEvent* ev, bool kgrab, bool* fallback = nullptr) {
 				keyid = 0;
 			}
 #elif defined(__APPLE__)
-			keyid = macKeyId(ev->nativeVirtualKey());	// the digits and symbols by their place
-			if (!keyid) keyid = qKey2id(ev->key(), ev->modifiers());
-			if ((keyid > 0) && !ev->isAutoRepeat() && ev->nativeVirtualKey())
-				mac_key_down.insert(ev->nativeVirtualKey(), keyid);
+			if (ev->nativeScanCode() == MACMOD_EVENT) {
+				keyid = ev->nativeVirtualKey();		// a Shift, Ctrl or Option with its side (mac_mods_changed)
+			} else if (mac_mod_key(ev)) {
+				keyid = 0;
+			} else {
+				keyid = macKeyId(ev->nativeVirtualKey());	// the digits and symbols by their place
+				if (!keyid) keyid = qKey2id(ev->key(), ev->modifiers());
+				if ((keyid > 0) && !ev->isAutoRepeat() && ev->nativeVirtualKey())
+					mac_key_down.insert(ev->nativeVirtualKey(), keyid);
+			}
 #else
 			keyid = qKey2id(ev->key(), ev->modifiers());
 #endif
@@ -601,8 +608,14 @@ void MainWin::keyReleaseEvent(QKeyEvent *ev) {
 					key_press_map[keyid] = 0;
 				}
 #elif defined(__APPLE__)
-				keyid = mac_key_down.take(ev->nativeVirtualKey());
-				if (!keyid) keyid = qKey2id(ev->key());
+				if (ev->nativeScanCode() == MACMOD_EVENT) {
+					keyid = ev->nativeVirtualKey();
+				} else if (mac_mod_key(ev)) {
+					keyid = 0;
+				} else {
+					keyid = mac_key_down.take(ev->nativeVirtualKey());
+					if (!keyid) keyid = qKey2id(ev->key());
+				}
 #else
 				keyid = qKey2id(ev->key());
 #endif
