@@ -155,7 +155,8 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	# for vkeyboard_mac.mm, dispsync_mac.mm and keys_mac.mm
 	find_library(APPKIT_LIBRARY AppKit)
 	find_library(COREVIDEO_LIBRARY CoreVideo)
-	set(LIBRARIES ${LIBRARIES} ${APPKIT_LIBRARY} ${COREVIDEO_LIBRARY})
+	find_library(COREGRAPHICS_LIBRARY CoreGraphics)
+	set(LIBRARIES ${LIBRARIES} ${APPKIT_LIBRARY} ${COREVIDEO_LIBRARY} ${COREGRAPHICS_LIBRARY})
 
 	if(CMAKE_OSX_ARCHITECTURES)
 		string(REPLACE ";" "-" XARCH "${CMAKE_OSX_ARCHITECTURES}")

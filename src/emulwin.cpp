@@ -486,16 +486,27 @@ static struct {
 static MainWin* mac_mod_win = nullptr;
 static unsigned mac_mods_now = 0;		// MACMOD_* held, as the last flags change in the program said
 
+// what the system holds now, past what a menu's or a drag's own loop kept from the monitor
+static void mac_mods_reread() {
+	unsigned long flags;
+	unsigned live = mac_mods_live(mac_mods_now, &flags);
+	if (live == mac_mods_now) return;
+	xlog(XLG_INPUT, XLL_DEBUG, "mac modifiers: reread flags %08lx, held %02x -> %02x", flags, mac_mods_now, live);
+	mac_mods_now = live;
+}
+
 // The machine given what is held: a press only while it takes keys, as on
-// Windows, and one held meanwhile goes in later - with the next change or the
-// next key, ahead of that key (key: a key press, which reaches the machine
-// paused too); a release always. Sent at once, so it is in before the key
-// that came with it.
+// Windows (not paused, nor held by the Debugger), and one held meanwhile goes
+// in later - with the next change or the next key, ahead of that key (key: a
+// key press, which reaches the machine paused too); a release always. Sent at
+// once, so it is in before the key that came with it.
 void mac_mods_sync(bool key) {
 	MainWin* win = mac_mod_win;
 	if (!win) return;
+	if (key) mac_mods_reread();
 	QWidget* front = QApplication::activeWindow();
-	bool take = (key || !conf.emu.pause) && (win->isActiveWindow() || (front && front->inherits("keyWindow")));
+	bool take = (key || !conf.emu.pause) && !(conf.zx && conf.zx->flgDBG)
+		&& (win->isActiveWindow() || (front && front->inherits("keyWindow")));
 	for (auto& m : mac_mod_tab) {
 		int now = (mac_mods_now & m.bit) ? 1 : 0;
 		if ((now == m.held) || (now && !take)) continue;
@@ -511,14 +522,29 @@ static void mac_mods_changed(unsigned held, unsigned long flags) {
 	mac_mods_sync(false);
 }
 
-// the machine's keys let go (focusOutEvent): what is still held goes in again
+// focusOutEvent: the machine lets go of what it was given, by a release of each
+// (the window keys' Release All skips the matrix while the virtual keyboard is
+// up), and what is still held goes in again with the next key or change
 void mac_mods_let_go() {
-	for (auto& m : mac_mod_tab) m.held = 0;
+	MainWin* win = mac_mod_win;
+	for (auto& m : mac_mod_tab) {
+		if (!m.held) continue;
+		m.held = 0;
+		if (!win) continue;
+		QKeyEvent ev(QEvent::KeyRelease, m.qkey, Qt::NoModifier, MACMOD_EVENT, m.id, 0);
+		QApplication::sendEvent(win, &ev);
+	}
 }
 
 // the program left: a key let go in another one is never told here
 static void mac_mods_away() {
 	mac_mods_now = 0;
+	mac_mods_sync(false);
+}
+
+// the program or the window back: the keys as they are now
+static void mac_mods_back() {
+	mac_mods_reread();
 	mac_mods_sync(false);
 }
 
@@ -639,7 +665,11 @@ MainWin::MainWin(QMainWindow* frm) {
 	mac_mod_win = this;
 	mac_mods_watch(mac_mods_changed);
 	connect(qApp, &QGuiApplication::applicationStateChanged, this, [](Qt::ApplicationState st) {
-		if (st != Qt::ApplicationActive) mac_mods_away();
+		if (st != Qt::ApplicationActive) {
+			mac_mods_away();
+		} else {
+			mac_mods_back();
+		}
 	});
 #endif
 
@@ -1110,10 +1140,10 @@ void MainWin::focusOutEvent(QFocusEvent*) {
 		mouseClip(false);
 		rawMouse(false);
 	}
-	emit s_keywin_rall(comp->keyb);
 #ifdef __APPLE__
-	mac_mods_let_go();
+	mac_mods_let_go();		// first: Release All below may leave the matrix as it is
 #endif
+	emit s_keywin_rall(comp->keyb);
 	// nor will the keys of a player on the keyboard
 	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
 	for (xGamepad* gp : pads) {
@@ -1130,6 +1160,9 @@ void MainWin::focusOutEvent(QFocusEvent*) {
 
 void MainWin::focusInEvent(QFocusEvent*) {
 	ptrArm();		// back by a key: the pointer may be resting over the picture
+#ifdef __APPLE__
+	mac_mods_back();
+#endif
 	mapReplayHeld(conf.gpctrl->gpada);
 	mapReplayHeld(conf.gpctrl->gpadb);
 	if (conf.emu.pause & PR_DEBUG)

@@ -16,6 +16,8 @@
 
 // cb gets the MACMOD_* keys held and the raw flags, on every change of them
 void mac_mods_watch(void (*cb)(unsigned, unsigned long));
+// the MACMOD_* keys held as the system says now; last: for a pair it gives no side of
+unsigned mac_mods_live(unsigned last, unsigned long* flagsOut);
 // emulwin.cpp: the machine given the modifiers held (key: ahead of a key press), and let go of them
 void mac_mods_sync(bool key);
 void mac_mods_let_go();

@@ -8,6 +8,7 @@
 // as it was: its modifiers stay right for the hotkeys.
 
 #import <AppKit/AppKit.h>
+#import <CoreGraphics/CoreGraphics.h>
 
 #include "keys_mac.h"
 
@@ -40,6 +41,13 @@ static const struct {
 	{NX_DEVICELALTKEYMASK, MACMOD_LALT}, {NX_DEVICERALTKEYMASK, MACMOD_RALT}
 };
 
+static unsigned dev_held(unsigned long flags) {
+	unsigned held = 0;
+	for (const auto& m : modTab)
+		if (flags & m.dev) held |= m.bit;
+	return held;
+}
+
 static void (*modsCb)(unsigned, unsigned long) = NULL;
 static id modsMonitor = nil;
 
@@ -48,13 +56,34 @@ void mac_mods_watch(void (*cb)(unsigned, unsigned long)) {
 	if (modsMonitor != nil) return;
 	modsMonitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskFlagsChanged handler:^NSEvent*(NSEvent* ev) {
 		unsigned long flags = (unsigned long)[ev modifierFlags];
-		unsigned held = 0;
-		for (const auto& m : modTab)
-			if (flags & m.dev) held |= m.bit;
-		if (modsCb) modsCb(held, flags);
+		if (modsCb) modsCb(dev_held(flags), flags);
 		return ev;
 	}];
 #if !__has_feature(objc_arc)
 	[modsMonitor retain];		// kept for the program's life
 #endif
+}
+
+// The keys as the system holds them now. A menu's or a window drag's own event
+// loop takes the flags changes the monitor would see, so what it last said may
+// be old. A pair whose shared bit is off is up; one whose side the system does
+// not say (no device bits here) stays as it was, so a guess never presses one.
+unsigned mac_mods_live(unsigned last, unsigned long* flagsOut) {
+	static const struct {
+		unsigned long any;
+		unsigned pair;
+	} pairTab[] = {
+		{kCGEventFlagMaskShift, MACMOD_LSHIFT | MACMOD_RSHIFT},
+		{kCGEventFlagMaskControl, MACMOD_LCTRL | MACMOD_RCTRL},
+		{kCGEventFlagMaskAlternate, MACMOD_LALT | MACMOD_RALT}
+	};
+	unsigned long flags = (unsigned long)CGEventSourceFlagsState(kCGEventSourceStateHIDSystemState);
+	unsigned dev = dev_held(flags);
+	unsigned held = 0;
+	for (const auto& p : pairTab) {
+		if (!(flags & p.any)) continue;
+		held |= (dev & p.pair) ? (dev & p.pair) : (last & p.pair);
+	}
+	if (flagsOut) *flagsOut = flags;
+	return held;
 }
