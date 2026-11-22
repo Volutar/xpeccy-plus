@@ -1057,12 +1057,12 @@ static Mask iconMask(const QPainterPath& path, double sw, bool stroke, bool flat
 }
 
 // open lines drawn with a round pen, sw pixels wide; inner > 0: that much of the middle
-// taken out again, its outline left (an engraved letter). Drawn four times larger and
-// averaged down: a wall under a pixel wide stays even, where drawn at its size a slanting
-// one came out in broken pieces
+// taken out again, its outline left (an engraved letter). Walls under two pixels drawn four
+// times larger and averaged down: they stay even, where drawn at their size a slanting one
+// came out in broken pieces
 static Mask strokeMask(const QPainterPath& path, double sw, double inner) {
 	Mask m;
-	const int k = 4;
+	const int k = ((inner > 0) && (sw - inner < 4)) ? 4 : 1;
 	QPen pen(Qt::black, sw, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
 	QRect box = QPainterPathStroker(pen).createStroke(path).boundingRect().toAlignedRect().adjusted(-1, -1, 1, 1);
 	if (box.isEmpty()) return m;
@@ -1417,7 +1417,10 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 				bool fills = false;
 				for (int f = 0; f < 4; f++)
 					fills = fills || sd.fill[f].isValid();
-				if ((sd.blend > 0) && key.outline.isEmpty() && !fills) {
+				bool bands = false;
+				for (int f = 0; f < 4; f++)
+					bands = bands || (fr(sd.w[f] * s) > 0);
+				if ((sd.blend > 0) && bands && key.outline.isEmpty() && !fills) {
 					// sides that melt into each other at the corners: each pixel's shade
 					// the sides' own, weighed by how near it is to each (its depth into
 					// that side's band, as a part of the band)
