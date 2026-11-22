@@ -73,6 +73,7 @@ const char* szx_carried_link(int kind, int drive);
 // creator block's own data, NULL when the block is someone else's.
 const unsigned char* szx_ext_find(const unsigned char* data, size_t len, size_t* extlen);
 int szx_ext_hardware(const unsigned char* file, size_t len);	// SNAP_HW_* of a file of ours
+int szx_ext_ram_size(const unsigned char* file, size_t len);	// a Robik's RAM, 0: not said
 // 1 when it stood the machine where in the frame it was, exactly
 int szx_ext_load(Computer*, const unsigned char* ext, size_t len);
 void szx_ext_forget(void);	// the last file's card and media state dropped

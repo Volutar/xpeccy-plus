@@ -314,7 +314,7 @@ xlog(XLG_FILE, XLL_DEBUG, ".z80 version 2");
 		// a 48K has no paging, and byte 35 means nothing there: taking it
 		// as 7ffd would put the 128 rom in on a machine that has one
 		if (hw == SNAP_HW_48K) pg = 0x10;
-		if ((p1ffd >= 0) && z80_hw(hw)->p1ffd && snapHwRuns(hw, comp->hw->id, comp->snapModel))
+		if ((p1ffd >= 0) && z80_hw(hw)->p1ffd && snapHwRuns(hw, comp->hw->id, comp->snapModel, comp->mem->ramSize))
 			comp->hw->out(comp, 0x1ffd, p1ffd);
 		else
 			snap_plus3_basic48(comp, hw, pg);

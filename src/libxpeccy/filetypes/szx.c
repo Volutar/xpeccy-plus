@@ -743,6 +743,14 @@ int loadSZX_buf(Computer* comp, const unsigned char* buf, size_t len) {
 			next_ram_size(comp, held);
 		}
 	}
+	// a Robik of the other size likewise: at 128 KB it pages through #7FFD, at 48 not
+	if ((comp->hw->id == HW_ROBIK) && (SNAP_HW_OF(snap) == SNAP_HW_CORE + HW_ROBIK)) {
+		int held = szx_ext_ram_size(buf, len);
+		if (((held == MEM_64K) || (held == MEM_128K)) && (held != comp->mem->ramSize)) {
+			xlog(XLG_FILE, XLL_INFO, "szx: taken on a %i KB Robik, this one runs on that", (held == MEM_64K) ? 48 : 128);
+			memSetSize(comp->mem, held, -1);
+		}
+	}
 
 	// a 128K reset, not a 48K one: that locks paging on a +2A, and the
 	// specregs block is still to come
@@ -817,7 +825,7 @@ int loadSZX_buf(Computer* comp, const unsigned char* buf, size_t len) {
 		if ((ld.mid == SZM_PENT1024) && (ld.p1ffd >= 0))
 			comp->hw->out(comp, 0xeff7, ld.p1ffd);
 	} else if ((ld.p1ffd >= 0) && (snap == SNAP_HW_PLUS2A || snap == SNAP_HW_PLUS3 || snap == SNAP_HW_SCORPION)
-			&& snapHwRuns(snap, comp->hw->id, comp->snapModel)) {
+			&& snapHwRuns(snap, comp->hw->id, comp->snapModel, comp->mem->ramSize)) {
 		comp->hw->out(comp, 0x1ffd, ld.p1ffd);
 	} else {
 		snap_plus3_basic48(comp, snap, (szx_is48(ld.mid) || (ld.p7ffd < 0)) ? 0x10 : ld.p7ffd);

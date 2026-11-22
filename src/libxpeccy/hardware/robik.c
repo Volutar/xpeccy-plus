@@ -48,7 +48,10 @@ void robik_map_mem(Computer* comp) {
 	comp->tape->is48 = !is128;		// a TZX's "stop if 48K"; the size can change without a reset
 	if (!robik_has_shadow(comp))
 		comp->flgSHDON = 0;		// no page, no latch: switched on again it starts at the ROM
-	if (!is128) {				// a 48K's: the 128K's paging, left by a reset, is not there
+	if (is128) {				// what #7FFD holds, whatever the size was before
+		comp->flgROM = (comp->p7FFD & 0x10) ? 1 : 0;
+		comp->vid->vidPage = (comp->p7FFD & 0x08) ? 7 : 5;
+	} else {				// a 48K's: the 128K's paging, left by a reset, is not there
 		comp->flgROM = 1;
 		comp->vid->vidPage = 5;
 	}
@@ -135,9 +138,7 @@ static void robik_out_fe(Computer* comp, int port, int val) {
 static void robik_out_7ffd(Computer* comp, int port, int val) {
 	if (!robik_is_128(comp) || (comp->p7FFD & 0x20)) return;	// locked until reset
 	comp->p7FFD = val & 0xff;
-	comp->flgROM = (val & 0x10) ? 1 : 0;
-	comp->vid->vidPage = (val & 0x08) ? 7 : 5;
-	robik_map_mem(comp);
+	robik_map_mem(comp);		// the ROM and the screen with it
 }
 
 // The AY and the Kempston mouse are add-ons, decoded as the 48K's map has them
@@ -169,9 +170,7 @@ static int robik_in(Computer* comp, int port) {
 
 static void robik_reset(Computer* comp) {
 	comp->flgSHDON = 0;
-	comp->flgROM = (comp->p7FFD & 0x10) ? 1 : 0;	// what the reset's target left; a 48K has 1
-	comp->vid->vidPage = 5;
-	robik_map_mem(comp);
+	robik_map_mem(comp);		// the ROM by the reset's target, through #7FFD on a 128K
 	zx_reset(comp);
 }
 

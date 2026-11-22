@@ -119,8 +119,9 @@ static int snap_on_model(int snap, int hwid, int model) {
 }
 
 // can a machine on that core run a snapshot taken on that hardware: the paging
-// has to be there, the editor paged in, and for one running the ROM, that ROM
-int snapHwRuns(int snap, int hwid, int model) {
+// has to be there, the editor paged in, and for one running the ROM, that ROM.
+// The Robik has the 128K's paging only at 128 KB.
+int snapHwRuns(int snap, int hwid, int model, int ram) {
 	int rom = snap & SNAP_IN_ROM;
 	int editor = snap & SNAP_EDITOR;
 	snap = SNAP_HW_OF(snap);
@@ -134,7 +135,7 @@ int snapHwRuns(int snap, int hwid, int model) {
 		case SNAP_HW_PLUS2:
 			if (rom) return snap_on_model(snap, hwid, model);
 			if (editor) return snap_editor(hwid, model) == ((snap == SNAP_HW_PLUS2) ? ED_PLUS2 : ED_SINCLAIR);
-			return (hwid != HW_ZX48) && (hwid != HW_ROBIK);
+			return (hwid != HW_ZX48) && ((hwid != HW_ROBIK) || (ram >= MEM_128K));
 		// one ROM, but a +3 in its editor has +3DOS set up for a drive the +2A lacks
 		case SNAP_HW_PLUS2A: return (hwid == HW_PLUS2A) || (!rom && (hwid == HW_PLUS3));
 		case SNAP_HW_PLUS3: return (hwid == HW_PLUS3) || (!rom && (hwid == HW_PLUS2A));

@@ -1745,8 +1745,10 @@ void SetupWin::applyMachine() {
 		comp->vid->cellEdge = edgesBox->currentIndex() ? 1 : 0;
 		comp->hw->mapMem(comp);		// the page out, if the shadow RAM went
 	}
-	// NextZXOS finds the memory at power-on, by a test of its own: off and on again
-	if ((msz != shown.mem) && own) xm_power_cycle();
+	// NextZXOS finds the memory at power-on, by a test of its own: off and on again.
+	// A Robik taken to 128K or back is another board, its ROMs too: the same
+	bool robik128 = (comp->hw->id == HW_ROBIK) && ((msz >= MEM_128K) != (shown.mem >= MEM_128K));
+	if ((msz != shown.mem) && (own || robik128)) xm_power_cycle();
 	emu_unlock();
 // video
 	if (!own) {
@@ -2661,10 +2663,16 @@ void SetupWin::buildDevices() {
 	// a board taken to 128K has none here: page 3 is 128K software's, and how such a
 	// board switched one nobody wrote down
 	QString shadowTip = shadowBox->toolTip();
-	connect(ui.mszbox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, shadowTip](int) {
+	QWidget* shadowLab = robikRows[robikRows.size() - 3];
+	connect(ui.mszbox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, shadowTip, shadowLab](int) {
 		bool fits = getRFIData(ui.mszbox) < MEM_128K;
+		QString tip = fits ? shadowTip : shadowTip + "\n\n" + tr("Not with 128 KB: how such a board\nswitched it is not known");
 		shadowBox->setEnabled(fits);
-		shadowBox->setToolTip(fits ? shadowTip : shadowTip + "\n\n" + tr("Not with 128 KB: how such a board\nswitched it is not known"));
+		shadowLab->setEnabled(fits);
+		shadowBox->setToolTip(tip);
+		shadowLab->setToolTip(tip);
+		if (conf.zx && (conf.zx->hw->id == HW_ROBIK))
+			fillRomSlots();		// which ROM boots goes with the size
 	});
 	brightBox = devCombo(QStringList() << tr("All bright") << tr("Two levels"));
 	robikRow(tr("BRIGHT"), brightBox, tr("All bright: every color bright, as the factory board\n"
@@ -3325,8 +3333,15 @@ void SetupWin::fillRomSlots() {
 	int hw = conf.zx->hw->id;
 	bool resets = false;
 	int row = 0;
+	// the Robik boots its own ROM at 48 KB, the 128K's pair at 128 (the size as picked here)
+	bool robik128 = (hw == HW_ROBIK) && (getRFIData(ui.mszbox) >= MEM_128K);
 	for (int i = 0; i < mac->romBanks; i++) {
 		xRomRole role = hw_rom_role(hw, i);
+		if (hw == HW_ROBIK) {
+			if ((i == 0) && robik128) role.res = -1;
+			if ((i == 2) && !robik128) role.res = -1;
+			if ((i == 3) && robik128) role.res = RES_48;
+		}
 		QString name = QString("ROM %0").arg(i);
 		if (role.name) name += QString(" (%0)").arg(role.name);
 		QRadioButton* rb = NULL;
