@@ -11,6 +11,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Keymap By machine**, the default: Input > Keymap and Options > Input. The Robik takes the
+  Robik's keymap, the ZX Spectrum 48K the 48K one, every other machine ZX Spectrum 128K. A
+  keymap named after a machine of your own (`My Scorpion.map`) is taken by it.
+
 - **Sharp Stretched Edges**: Options > Video, Side fill settings, Blur at Off. The picture's
   edge dots run on to the window's edges as they are, row by row, through the shader with its
   scanlines; with Border + Stretched Edges a loading border fills the whole screen.
@@ -117,6 +121,9 @@ before that point is upstream's history and is not repeated here.
   side. *(reported by Volutar)*
 
 ### Fixed
+
+- **macOS: the right Shift, Control and Option** are keys of their own, so the 48K and Robik
+  keymaps have Symbol Shift there, and both Shifts held together give extended mode.
 
 - **OTLA turbo tapes load with Auto play** again (River Raid+, Crazy Cars II+): the tape no
   longer stays stopped after the BASIC part.

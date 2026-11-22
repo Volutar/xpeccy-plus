@@ -55,6 +55,7 @@
 #include "xcore/rzxseek.h"
 #include "xcore/rzxrecord.h"
 #include "emulwin.h"
+#include "keys_mac.h"
 #include "xcore/cheats.h"
 #include "filer.h"
 #include "xcore/arcpath.h"
@@ -463,6 +464,92 @@ bool MainWin::inputResume() {
 	return true;
 }
 
+#ifdef __APPLE__
+
+// Shift, Ctrl and Option on a Mac, left and right apart (keys_mac.mm): each
+// change goes in as a key event of its own, as the Windows poll's do, and Qt's
+// own events of these keys are not the machine's (ev_to_keyid)
+static struct {
+	unsigned bit;		// MACMOD_*
+	int held;		// as the machine was given it
+	int qkey;		// Qt::Key: the physical Ctrl is Qt's Meta
+	int id;			// XKEY_*
+} mac_mod_tab[6] = {
+	{MACMOD_LSHIFT, 0, Qt::Key_Shift, XKEY_LSHIFT},
+	{MACMOD_RSHIFT, 0, Qt::Key_Shift, XKEY_RSHIFT},
+	{MACMOD_LCTRL, 0, Qt::Key_Meta, XKEY_LCTRL},
+	{MACMOD_RCTRL, 0, Qt::Key_Meta, XKEY_RCTRL},
+	{MACMOD_LALT, 0, Qt::Key_Alt, XKEY_LALT},
+	{MACMOD_RALT, 0, Qt::Key_Alt, XKEY_RALT}
+};
+
+static MainWin* mac_mod_win = nullptr;
+static unsigned mac_mods_now = 0;		// MACMOD_* held, as the last flags change in the program said
+
+// what the system holds now, past what a menu's or a drag's own loop kept from the monitor
+static void mac_mods_reread() {
+	unsigned long flags;
+	unsigned live = mac_mods_live(mac_mods_now, &flags);
+	if (live == mac_mods_now) return;
+	xlog(XLG_INPUT, XLL_DEBUG, "mac modifiers: reread flags %08lx, held %02x -> %02x", flags, mac_mods_now, live);
+	mac_mods_now = live;
+}
+
+// The machine given what is held: a press only while it takes keys, as on
+// Windows (not paused, nor held by the Debugger), and one held meanwhile goes
+// in later - with the next change or the next key, ahead of that key (key: a
+// key press, which reaches the machine paused too); a release always. Sent at
+// once, so it is in before the key that came with it.
+void mac_mods_sync(bool key) {
+	MainWin* win = mac_mod_win;
+	if (!win) return;
+	if (key) mac_mods_reread();
+	QWidget* front = QApplication::activeWindow();
+	bool take = (key || !conf.emu.pause) && !(conf.zx && conf.zx->flgDBG)
+		&& (win->isActiveWindow() || (front && front->inherits("keyWindow")));
+	for (auto& m : mac_mod_tab) {
+		int now = (mac_mods_now & m.bit) ? 1 : 0;
+		if ((now == m.held) || (now && !take)) continue;
+		m.held = now;
+		QKeyEvent ev(now ? QEvent::KeyPress : QEvent::KeyRelease, m.qkey, Qt::NoModifier, MACMOD_EVENT, m.id, 0);
+		QApplication::sendEvent(win, &ev);
+	}
+}
+
+static void mac_mods_changed(unsigned held, unsigned long flags) {
+	xlog(XLG_INPUT, XLL_DEBUG, "mac modifiers: flags %08lx, held %02x", flags, held);
+	mac_mods_now = held;
+	mac_mods_sync(false);
+}
+
+// focusOutEvent: the machine lets go of what it was given, by a release of each
+// (the window keys' Release All skips the matrix while the virtual keyboard is
+// up), and what is still held goes in again with the next key or change
+void mac_mods_let_go() {
+	MainWin* win = mac_mod_win;
+	for (auto& m : mac_mod_tab) {
+		if (!m.held) continue;
+		m.held = 0;
+		if (!win) continue;
+		QKeyEvent ev(QEvent::KeyRelease, m.qkey, Qt::NoModifier, MACMOD_EVENT, m.id, 0);
+		QApplication::sendEvent(win, &ev);
+	}
+}
+
+// the program left: a key let go in another one is never told here
+static void mac_mods_away() {
+	mac_mods_now = 0;
+	mac_mods_sync(false);
+}
+
+// the program or the window back: the keys as they are now
+static void mac_mods_back() {
+	mac_mods_reread();
+	mac_mods_sync(false);
+}
+
+#endif
+
 // Main window
 
 MainWin::MainWin(QMainWindow* frm) {
@@ -575,6 +662,18 @@ MainWin::MainWin(QMainWindow* frm) {
 	fillPadMenu();		// not empty before its first opening
 
 #ifdef __APPLE__
+	mac_mod_win = this;
+	mac_mods_watch(mac_mods_changed);
+	connect(qApp, &QGuiApplication::applicationStateChanged, this, [](Qt::ApplicationState st) {
+		if (st != Qt::ApplicationActive) {
+			mac_mods_away();
+		} else {
+			mac_mods_back();
+		}
+	});
+#endif
+
+#ifdef __APPLE__
 	// Cocoa always gives the app a menu bar, even though this app never creates a
 	// QMenuBar, and that menu already binds Cmd+Q to its own stub Quit item. Qt's
 	// menu-role merging only replaces that stub with an app-supplied QuitRole action
@@ -611,6 +710,9 @@ MainWin::MainWin(QMainWindow* frm) {
 }
 
 MainWin::~MainWin() {
+#ifdef __APPLE__
+	mac_mod_win = nullptr;		// the monitor outlives this window
+#endif
 	mouseClip(false);
 	rawMouse(false);
 	delete snowBox;		// its end stops the snow: while this window is whole
@@ -751,6 +853,9 @@ bool MainWin::padKey(QKeyEvent* ev, bool down) {
 		if (bound) echoes.insert(id); else echoes.remove(id);
 		return bound;
 	}
+#endif
+#ifdef __APPLE__
+	if (mac_mod_key(ev)) return false;	// a player's Shift/Ctrl/Option comes as our own event (mac_mods_changed)
 #endif
 	bool took = false;
 	for (xGamepad* gp : pads) {
@@ -1035,6 +1140,9 @@ void MainWin::focusOutEvent(QFocusEvent*) {
 		mouseClip(false);
 		rawMouse(false);
 	}
+#ifdef __APPLE__
+	mac_mods_let_go();		// first: Release All below may leave the matrix as it is
+#endif
 	emit s_keywin_rall(comp->keyb);
 	// nor will the keys of a player on the keyboard
 	xGamepad* pads[2] = {conf.gpctrl->gpada, conf.gpctrl->gpadb};
@@ -1052,6 +1160,9 @@ void MainWin::focusOutEvent(QFocusEvent*) {
 
 void MainWin::focusInEvent(QFocusEvent*) {
 	ptrArm();		// back by a key: the pointer may be resting over the picture
+#ifdef __APPLE__
+	mac_mods_back();
+#endif
 	mapReplayHeld(conf.gpctrl->gpada);
 	mapReplayHeld(conf.gpctrl->gpadb);
 	if (conf.emu.pause & PR_DEBUG)
@@ -4180,11 +4291,16 @@ void MainWin::fillUserMenu() {
 	act->setData(RES_POWER);
 	// fill keymaps menu
 	keyMenu->clear();
+	act = keyMenu->addAction("By machine");
+	act->setData(KMAP_MACHINE);
+	act->setCheckable(true);
+	act->setChecked(conf.kmapBymac);
+	keyMenu->addSeparator();
 	for (const auto& km : keymap_list()) {
 		act = keyMenu->addAction(km.first);
 		act->setData(km.second);
 		act->setCheckable(true);
-		act->setChecked(conf.kmapName == km.second.toUtf8().constData());
+		act->setChecked(!conf.kmapBymac && (conf.kmapName == km.second.toUtf8().constData()));
 	}
 	// fill shader menu
 	shdMenu->clear();
@@ -4893,12 +5009,11 @@ void MainWin::keySelected(QAction* act) {
 		saveConfig();
 		return;
 	}
+	// By machine, or a layout picked for every machine (empty: the built-in one)
 	QString str = act->data().toString();
-	if (str.isEmpty()) {
-		conf.kmapName.clear();
-	} else {
+	conf.kmapBymac = (str == KMAP_MACHINE) ? 1 : 0;
+	if (!conf.kmapBymac)
 		conf.kmapName = std::string(str.toUtf8().data());
-	}
 	saveConfig();
 	loadKeys();
 }

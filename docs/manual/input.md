@@ -82,12 +82,16 @@ The ZX Spectrum Next takes the keys as its own PS/2 keyboard does, Shift as Caps
 
 ## Keymaps
 
-```{index} keymap
+```{index} keymap, By machine; keymap
 ```
 
 A keymap says which PC key presses which Spectrum key. Pick one in **Input > Keymap**, or in
 the **Keymap** list on the **Input** page of **Options**:
 
+- **By machine**, the default - each machine takes its own: the ZX Spectrum 48K the 48K
+  keymap, the Robik the Robik's, every other machine ZX Spectrum 128K (see
+  [A keymap for a machine](#a-keymap-for-a-machine)). The **Input** page shows which one the
+  current machine takes;
 - **ZX Spectrum 128K** - the keys described above: both Shift keys are Caps Shift and both
   Ctrl keys Symbol Shift, as on a PC keyboard;
 - **ZX Spectrum 48K** - Caps Shift on both left Shift and left Ctrl, Symbol Shift on both
@@ -97,10 +101,12 @@ the **Keymap** list on the **Input** page of **Options**:
   (see [Robik](machines.md#robik)); right Ctrl is its L key there, so Symbol Shift is the
   right Shift only.
 
-A keymap changes only the keys it names; all the others stay as in ZX Spectrum 128K.
+A keymap picked by name is used on every machine. A keymap changes only the keys it names;
+all the others stay as in ZX Spectrum 128K.
 
-On macOS the program cannot tell the left Shift from the right one, nor the left Ctrl from
-the right one. The 48K keymap then has no Symbol Shift: use ZX Spectrum 128K there.
+On macOS the left and right Shift, Control and Option keys are told apart too. A MacBook's
+keyboard has no right Control: there the 48K keymap's Symbol Shift is the right Shift, and
+the Robik's L key is not on the keyboard.
 
 ### Your own keymap
 
@@ -113,6 +119,20 @@ the **Keymap** menu by its name without `.map` the next time the menu is opened.
 the name of a built-in keymap is used instead of that one. A `ZX Spectrum 128K.map` left from
 an earlier version is not listed, that keymap is built in now; one you changed is listed as
 **ZX Spectrum 128K.map**.
+
+### A keymap for a machine
+
+```{index} keymap; for a machine
+```
+
+With **By machine**, a machine takes the keymap with its own name: the Robik takes
+`Robik.map`. A machine of your own (see [Machine page](options-machine.md)) with no keymap of
+its name takes the one of the machine it was made from, so **Robik (mine)** takes the Robik's.
+A machine with neither takes ZX Spectrum 128K.
+
+To give a machine a keymap of its own, name the file after the machine as the machine list
+shows it, letter for letter, without the `*` of a changed one: `Pentagon.map` for the
+Pentagon, `My Scorpion.map` for a machine named My Scorpion.
 
 Each line is one PC key, then the Spectrum keys it presses, all separated by tabs:
 

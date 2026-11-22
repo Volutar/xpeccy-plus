@@ -190,6 +190,7 @@ void conf_init(char* confdir) {
 	conf.fdlg.side = -1;
 	conf.vid.skipHint = 1;
 	conf.kbdTyping = 1;
+	conf.kmapBymac = 1;
 	conf.saves.perGame = 1;
 	conf.saves.carry = 1;
 	conf.saves.snapMedia = SNAP_MEDIA_ASK;
@@ -477,7 +478,9 @@ void saveConfig() {
 	fprintf(cfile, "\n[INPUT]\n\n");
 	fprintf(cfile, "mouse.swapButtons = %s\n", YESNO(conf.zx->mouse->swapButtons));
 	fprintf(cfile, "mouse.sensitivity = %f\n", conf.zx->mouse->sensitivity);
-	fprintf(cfile, "keymap = %s\n", conf.kmapName.c_str());
+	// By machine, the built-in one by its name, or the file picked
+	fprintf(cfile, "keymap = %s\n", conf.kmapBymac ? KMAP_MACHINE
+		: conf.kmapName.empty() ? KMAP_BUILTIN : conf.kmapName.c_str());
 	fprintf(cfile, "keyboard.typing = %s\n", YESNO(conf.kbdTyping));
 	fprintf(cfile, "gamepad.seen = %s\n", conf.gpctrl->seen.join(",").toUtf8().data());
 	// What each slot remembers, whether or not that pad is plugged in now.
@@ -1267,7 +1270,11 @@ void loadConfig() {
 					else xm_defer(pnam, pval);
 					break;
 				case SECT_INPUT:
-					if (pnam=="keymap") conf.kmapName = keymap_name(pval);
+					// the old default (empty, "default", the 128K file as shipped) is By machine now
+					if (pnam=="keymap") {
+						conf.kmapName = (pval == KMAP_BUILTIN) ? std::string() : keymap_name(pval);
+						conf.kmapBymac = (pval == KMAP_MACHINE) || ((pval != KMAP_BUILTIN) && conf.kmapName.empty());
+					}
 					if (pnam=="keyboard.typing") conf.kbdTyping = arg.b;
 					// gamepad.map is from before the table; the rest is the table
 					if (pnam=="gamepad.map") {

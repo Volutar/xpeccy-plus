@@ -254,9 +254,37 @@ QList<QPair<QString, QString>> keymap_list() {
 	return res;
 }
 
-// a layout's name as a config or a machine file gives it (UTF-8): Default and the old 128K file are ""
+// a layout's name as a config or an old profile gives it (UTF-8): Default and the old 128K file are ""
 std::string keymap_name(const std::string& name) {
 	return ((name == "default") || kmap_old_128k(QString::fromUtf8(name.c_str()))) ? std::string() : name;
+}
+
+// By machine: a machine takes the keymap named as it is ("Robik" - Robik.map),
+// else the one of the machine it was made from, and so on up; none is the
+// built-in one. No key in the machine's file: a file of the right name is all
+// a machine of the user's own needs.
+QString keymap_for_machine(const std::string& id) {
+	const xMachine* mac = xm_find(id);
+	for (int depth = 0; mac && (depth < 16); depth++) {		// a loop in the files ends too
+		QString nam = QString::fromLocal8Bit(mac->name.c_str()) + ".map";	// as xm_list_name() reads it
+		if (QFile::exists(xres_path("keymaps", nam)))
+			return kmap_old_128k(nam) ? QString() : nam;
+		mac = mac->parent.empty() ? NULL : xm_find(mac->parent);
+	}
+	return QString();
+}
+
+// the file the keys are loaded from now, empty for the built-in layout
+QString keymap_file() {
+	return conf.kmapBymac ? keymap_for_machine(conf.macId) : QString::fromUtf8(conf.kmapName.c_str());
+}
+
+// the layout's name as a list shows it (keymap_list)
+QString keymap_title(const QString& file) {
+	for (const auto& km : keymap_list()) {
+		if (km.second == file) return km.first;
+	}
+	return QFileInfo(file).completeBaseName();
 }
 
 // the layout gives the key something of its own: a key that is the user's to say
@@ -268,8 +296,11 @@ bool keyRemapped(int id) {
 }
 
 static void load_key_file() {
-	if (conf.kmapName.empty()) return;
-	QFile file(xres_path("keymaps", QString::fromUtf8(conf.kmapName.c_str())));
+	QString nam = keymap_file();
+	xlog(XLG_INPUT, XLL_INFO, "keymap: %s%s", nam.isEmpty() ? KMAP_BUILTIN : nam.toUtf8().constData(),
+		conf.kmapBymac ? " (by machine)" : "");
+	if (nam.isEmpty()) return;
+	QFile file(xres_path("keymaps", nam));
 	if (!file.open(QFile::ReadOnly)) {
 		xlog(XLG_INPUT, XLL_WARN, "can't open the keyboard layout, using the default one");
 		return;
@@ -481,7 +512,10 @@ static const struct {
 	{0x16, XKEY_6}, {0x1a, XKEY_7}, {0x1c, XKEY_8}, {0x19, XKEY_9}, {0x1d, XKEY_0},
 	{0x1b, XKEY_MINUS}, {0x18, XKEY_EQUAL}, {0x21, XKEY_LBRACK}, {0x1e, XKEY_RBRACK},
 	{0x2a, XKEY_SLASH}, {0x29, XKEY_DOTCOM}, {0x27, XKEY_APOS}, {0x2b, XKEY_COMMA},
-	{0x2f, XKEY_PERIOD}, {0x2c, XKEY_BSLASH}, {0x32, XKEY_TILDA}
+	{0x2f, XKEY_PERIOD}, {0x2c, XKEY_BSLASH}, {0x32, XKEY_TILDA},
+	// Qt's event of a modifier has its key's code too (the key, not its side, in Qt's name)
+	{0x38, XKEY_LSHIFT}, {0x3c, XKEY_RSHIFT}, {0x3b, XKEY_LCTRL}, {0x3e, XKEY_RCTRL},
+	{0x3a, XKEY_LALT}, {0x3d, XKEY_RALT}
 };
 
 // a Mac's native key code as a key id, 0 for a key Qt's own name tells (qKey2id)
