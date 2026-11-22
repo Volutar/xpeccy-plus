@@ -718,6 +718,8 @@ static void check_host(const char* root, const char* when) {
 
 // == operations ==
 
+static const char* m_keep;		// an entry the random moves and deletes leave be (a home)
+
 static FATFS fs;
 static int ops_done[16];
 
@@ -801,7 +803,7 @@ static int op_move(int wantDir) {
 	char np[1024], a[1100], b[1100];
 	const char* dir;
 	int j;
-	if (i < 0) return 0;
+	if ((i < 0) || (m_keep && !strcmp(model[i].path, m_keep))) return 0;
 	dir = rnd(2) ? m_rand_dir() : NULL;
 	if (dir) {
 		size_t l = strlen(model[i].path);
@@ -855,7 +857,7 @@ static int op_mkdir(void) {
 static int op_rmtree(void) {
 	int i = m_rand_of(1);
 	char fp[1100];
-	if (i < 0) return 0;
+	if ((i < 0) || (m_keep && !strcmp(model[i].path, m_keep))) return 0;
 	char* top = strdup(model[i].path);
 	size_t l = strlen(top);
 	int again = 1;
@@ -2319,6 +2321,259 @@ static void sc_refresh_hidden(void) {
 	s_end();
 }
 
+// == a home: a volume of which only one pinned folder follows the guest (the Next's card for
+// a program from elsewhere). The volume's own folder must never change; the home's host folder
+// must hold what the guest has under /game, and nothing of ours.
+
+static char home_parent[1100];		// the home's host folder is home_parent/game, outside the volume's
+static unsigned long long base_sum;	// the volume's own folder as it was built
+static const char* m_keep = NULL;
+static const char* m_only = NULL;	// check_home_guest: the part of the model it reads back
+
+static unsigned long long sum_add(unsigned long long h, const void* p, size_t n) {
+	const unsigned char* b = (const unsigned char*)p;
+	size_t i;
+	for (i = 0; i < n; i++) h = (h ^ b[i]) * 1099511628211ULL;
+	return h;
+}
+
+// names, kinds and content of a host tree, in name order
+static unsigned long long tree_sum(const char* dir, unsigned long long h) {
+	hList l;
+	char full[1200];
+	char** names;
+	int i, j;
+	hl_list(dir, &l);
+	names = (char**)malloc((l.n + 1) * sizeof(char*));
+	for (i = 0; i < l.n; i++) names[i] = l.name[i];
+	qsort(names, l.n, sizeof(char*), cmp_name);
+	for (i = 0; i < l.n; i++) {
+		for (j = 0; strcmp(l.name[j], names[i]); j++);
+		snprintf(full, sizeof(full), "%s/%s", dir, names[i]);
+		h = sum_add(h, names[i], strlen(names[i]) + 1);
+		h = sum_add(h, l.isdir[j] ? "d" : "f", 1);
+		if (l.isdir[j]) {
+			h = tree_sum(full, h);
+		} else {
+			unsigned char buf[4096];
+			size_t got;
+			FILE* f = h_open(NULL, full, "rb");
+			if (!f) continue;
+			while ((got = fread(buf, 1, sizeof(buf), f)) > 0) h = sum_add(h, buf, got);
+			fclose(f);
+		}
+	}
+	free(names);
+	hl_free(&l);
+	return h;
+}
+
+// names of ours anywhere down a host tree
+static int tmp_down(const char* dir) {
+	hList l;
+	char full[1200];
+	int i, n = 0;
+	hl_list(dir, &l);
+	for (i = 0; i < l.n; i++) {
+		if (!strncmp(l.name[i], VF_TMPMARK, strlen(VF_TMPMARK))) n++;
+		snprintf(full, sizeof(full), "%s/%s", dir, l.name[i]);
+		if (l.isdir[i]) n += tmp_down(full);
+	}
+	hl_free(&l);
+	return n;
+}
+
+// the home's files on the host, into the model under game/
+static void home_build(void) {
+	static const char* dirs[] = {"game", "game/data", "game/data/levels"};
+	static const char* files[] = {"game/run.nex", "game/score.dat", "game/data/gfx.bin", "game/data/levels/1.lev", "game/data/levels/2.lev"};
+	char full[1200];
+	unsigned int i;
+	rm_tree(home_parent);
+	h_mkdir(NULL, home_parent);
+	for (i = 0; i < sizeof(dirs) / sizeof(dirs[0]); i++) {
+		snprintf(full, sizeof(full), "%s/%s", home_parent, dirs[i]);
+		h_mkdir(NULL, full);
+		if (i) m_add(dirs[i], 1);
+	}
+	for (i = 0; i < sizeof(files) / sizeof(files[0]); i++) {
+		int m = m_add(files[i], 0);
+		unsigned int size = 50 + rnd(30000);
+		model[m].data = (unsigned char*)malloc(size + 1);
+		model[m].size = size;
+		fill_rand(model[m].data, size);
+		snprintf(full, sizeof(full), "%s/%s", home_parent, files[i]);
+		FILE* f = h_open(NULL, full, "wb");
+		fwrite(model[m].data, 1, size, f);
+		fclose(f);
+	}
+}
+
+static void home_add_tree(vFat* vf, int parent, const char* dir) {
+	hList l;
+	char full[1200];
+	int i;
+	hl_list(dir, &l);
+	for (i = 0; i < l.n; i++) {
+		long long sz = 0, mt = 1600000000;
+		snprintf(full, sizeof(full), "%s/%s", dir, l.name[i]);
+		h_stat(NULL, full, &sz, &mt);
+		int idx = vfat_add(vf, parent, l.name[i], l.isdir[i] ? 0 : (unsigned int)sz, (unsigned int)mt, l.isdir[i]);
+		if (l.isdir[i] && (idx >= 0)) home_add_tree(vf, idx, full);
+	}
+	hl_free(&l);
+}
+
+// the volume's own folder, with home_parent/game pinned in its root as /game and made its home
+static vFat* home_mount(const char* root) {
+	char game[1200];
+	unsigned long long bytes;
+	vFat* vf = scan_folder(root, 0, &bytes);
+	int idx = vfat_add(vf, 0, "game", 0, 1600000000, 1);
+	snprintf(game, sizeof(game), "%s/game", home_parent);
+	vfat_pin(vf, idx, game);
+	vfat_home(vf, idx);
+	home_add_tree(vf, idx, game);
+	vfat_build(vf, (unsigned int)((bytes / 512) * 2 + 128 * 2048));
+	vf->writable = 1;
+	return vf;
+}
+
+static void home_begin(unsigned int seed) {
+	rng = seed;
+	build_tree(sroot);
+	home_build();
+	m_add("game", 1);
+	base_sum = tree_sum(sroot, 1469598103934665603ULL);
+	gvf = home_mount(sroot);
+	if (f_mount(&fs, "", 1) != FR_OK) fail("home mount");
+	fail_pat = sroot;		// the volume's own folder takes nothing, as one on a disk that cannot be written
+}
+
+static void home_end(void) {
+	s_end();
+	fail_pat = NULL;
+}
+
+// the guest reads the model back, only the part under m_only when set
+static void check_home_guest(const char* when) {
+	int i, n = mn;
+	mEnt* keep = model;
+	mEnt* part = (mEnt*)malloc((mn + 1) * sizeof(mEnt));
+	int pn = 0;
+	for (i = 0; i < n; i++)
+		if (!m_only || !strncmp(model[i].path, m_only, strlen(m_only))) part[pn++] = model[i];
+	model = part;
+	mn = pn;
+	check_guest(when);
+	model = keep;
+	mn = n;
+	free(part);
+}
+
+// the home's host folder holds the model's game/ and nothing else; the volume's own folder
+// as it was; no names of ours left anywhere
+static void home_check(const char* when) {
+	char game[1200];
+	int count = 0, i, n = 0;
+	snprintf(game, sizeof(game), "%s/game", home_parent);
+	host_walk(home_parent, "game", &count, when);
+	for (i = 0; i < mn; i++)
+		if (!strncmp(model[i].path, "game/", 5)) n++;
+	if (count != n) fail("%s: the home holds %i entries, the model %i", when, count, n);
+	if (tree_sum(sroot, 1469598103934665603ULL) != base_sum) fail("%s: the volume's own folder changed", when);
+	if (tmp_down(game) || tmp_down(sroot)) fail("%s: temporary names left", when);
+}
+
+static void home_sync(const char* when) {
+	if (!sync_checked(0)) fail("%s: sync refused, detached %i pending %i", when, vfat_detached(gvf), vfat_pending(gvf));
+	if (vfat_detached(gvf)) fail("%s: detached", when);
+	check_guest(when);
+	home_check(when);
+}
+
+// a fresh mount reads the home back as the guest left it
+static void home_remount(const char* when) {
+	f_unmount("");
+	vfat_free(gvf);
+	gvf = home_mount(sroot);
+	if (f_mount(&fs, "", 1) != FR_OK) { fail("%s: remount", when); return; }
+	m_only = "game/";
+	check_home_guest(when);
+	m_only = NULL;
+	home_check(when);
+}
+
+static int run_home(unsigned int seed, int ops) {
+	char when[64];
+	int k;
+	fails = 0;
+	home_begin(seed);
+	m_keep = "game";
+	for (k = 0; (k < ops) && !fails; k++) {
+		int r = rnd(100), done = 0;
+		if (r < 22) done = op_create();
+		else if (r < 34) done = op_append();
+		else if (r < 46) done = op_patch();
+		else if (r < 54) done = op_cut();
+		else if (r < 70) done = op_move(0);
+		else if (r < 76) done = op_move(1);
+		else if (r < 86) done = op_delete();
+		else if (r < 94) done = op_mkdir();
+		else done = (rnd(4) == 0) ? op_rmtree() : op_mkdir();
+		(void)done;
+		if (rnd(4) == 0) {
+			snprintf(when, sizeof(when), "home seed %u op %i", seed, k);
+			home_sync(when);
+		}
+	}
+	snprintf(when, sizeof(when), "home seed %u end", seed);
+	home_sync(when);
+	snprintf(when, sizeof(when), "home seed %u remount", seed);
+	home_remount(when);
+	m_keep = NULL;
+	home_end();
+	return !fails;
+}
+
+// the edges, one by one: what is outside stays in memory, what is in follows, a move across
+// is a new file on one side and a gone one on the other, the home itself never moves
+static void sc_home(void) {
+	char p[1200];
+	home_begin(140);
+	s_write("docs/fine.txt", 3000);			// outside: in memory only
+	s_write("game/save.dat", 2000);			// in: written there
+	home_sync("home write");
+	snprintf(p, sizeof(p), "%s/game/save.dat", home_parent);
+	if (!file_eq(p, model[m_find("game/save.dat")].data, 2000)) fail("home write: save.dat not on the host");
+	s_ren("game/score.dat", "game/data/score.old");	// a move inside
+	home_sync("home move in");
+	s_ren("docs/manual of everything.txt", "game/manual.txt");	// into the home
+	home_sync("home move into");
+	s_ren("game/data/gfx.bin", "docs/gfx.bin");	// out of it
+	home_sync("home move out");
+	s_ren("game/data", "empty/data");		// a folder out of it
+	home_sync("home folder out");
+	s_mkdir("game/saves");
+	s_write("game/saves/slot1.sav", 700);
+	home_sync("home new folder");
+	s_del("game/run.nex");
+	home_sync("home delete");
+	home_remount("home remount");
+	home_end();
+	// the home's own entry renamed: the host folder stays, what goes in follows it there
+	home_begin(141);
+	s_ren("game", "prog");
+	s_write("prog/new.dat", 900);
+	if (!sync_checked(0)) fail("home rename: sync refused");
+	check_guest("home rename");
+	snprintf(p, sizeof(p), "%s/game/new.dat", home_parent);
+	if (!file_eq(p, model[m_find("prog/new.dat")].data, 900)) fail("home rename: new.dat not in the home's folder");
+	if (tree_sum(sroot, 1469598103934665603ULL) != base_sum) fail("home rename: the volume's own folder changed");
+	if (tmp_down(sroot)) fail("home rename: temporary names left");
+	home_end();
+}
+
 static int run_scenarios(const char* root) {
 	static const struct { const char* name; void (*fn)(void); } list[] = {
 		{"swap", sc_swap}, {"replace", sc_replace}, {"fragment", sc_fragment}, {"bigdir", sc_bigdir},
@@ -2328,7 +2583,7 @@ static int run_scenarios(const char* root) {
 		{"flush", sc_flush}, {"bigfile", sc_bigfile}, {"parked", sc_parked}, {"cap", sc_cap},
 		{"outside", sc_outside}, {"sameslot", sc_sameslot}, {"refresh", sc_refresh}, {"refresh_grow", sc_refresh_grow},
 		{"refresh_refuse", sc_refresh_refuse}, {"refresh_hold", sc_refresh_hold}, {"refresh_names", sc_refresh_names},
-		{"refresh_hidden", sc_refresh_hidden}, {"snames", sc_snames}
+		{"refresh_hidden", sc_refresh_hidden}, {"snames", sc_snames}, {"home", sc_home}
 	};
 	unsigned int i;
 	int bad = 0;
@@ -2356,6 +2611,7 @@ int main(int argc, char** argv) {
 	if (argc > 3) ops = atoi(argv[3]);
 	snprintf(root, sizeof(root), "%s/vol", argv[1]);
 	snprintf(trash_dir, sizeof(trash_dir), "%s/trash", argv[1]);
+	snprintf(home_parent, sizeof(home_parent), "%s/home", argv[1]);
 	h_mkdir(NULL, argv[1]);
 	rm_tree(trash_dir);
 	h_mkdir(NULL, trash_dir);
@@ -2390,5 +2646,17 @@ int main(int argc, char** argv) {
 	torture = 0;
 	printf("%u seeds\n", (seeds + 4) / 5);
 	bad += run_scenarios(root);
+	printf("== home\n");
+	{
+		int hb = 0;
+		for (s = 1; s <= seeds; s++) {
+			if (!run_home(2000 + s, ops)) {
+				printf("seed %u: FAIL %s (%i)\n", 2000 + s, failmsg, fails);
+				hb++;
+			}
+		}
+		printf("%u seeds, %i failed\n", seeds, hb);
+		bad += hb;
+	}
 	return bad ? 1 : 0;
 }
