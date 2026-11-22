@@ -92,6 +92,20 @@ static unsigned char zxKeyNamed(QString name) {
 	return 0;
 }
 
+// One of the Robik's own keys by its name in a layout's "robik", as keyboard.c's keyTab
+// has it (on #FE bits 5 and 7); 0 for a name that is none
+static unsigned char robikKeyNamed(const QString& name) {
+	static const struct {const char* name; char ch;} own[] = {
+		{"EDIT", '!'}, {"DELETE", '#'}, {".", '.'}, {",", ','}, {"C", 'R'}, {"L", 'L'},
+		{"\xD0\xAE", '@'}, {"\xD0\xA5", '['}, {"\xD0\xAD", '\\'}, {"\xD0\x91", '^'},
+		{"\xD0\x96", ']'}};	// UTF-8: Yu Kh E B Zh
+	QString nm = name.trimmed().toUpper();
+	for (const auto& k : own) {
+		if (nm == QString::fromUtf8(k.name)) return k.ch;
+	}
+	return 0;
+}
+
 // ---------------------------------------------------------------- outlines
 
 // A polygon of right angles without the points that do not turn it: a point
@@ -468,6 +482,17 @@ bool VkSkin::load(const QByteArray& json, QString* err, BaseFile base) {
 					key.zx.append((char)c);
 				}
 			}
+			// on a Robik, its own key instead: EDIT, DELETE, ".", ",", "C", "L" or a
+			// Cyrillic letter of its own
+			if (ko.contains("robik")) {
+				QJsonValue rv = ko.value("robik");
+				QJsonArray ra = rv.isArray() ? rv.toArray() : QJsonArray({rv});
+				foreach(QJsonValue r, ra) {
+					unsigned char c = robikKeyNamed(r.toString());
+					if (!c) return fail(QString("no key of the Robik's own is called \"%0\"").arg(r.toString()));
+					key.robik.append((char)c);
+				}
+			}
 			// the Kempston's contacts instead of keys, the machine's reset, a light: none
 			// of them a Spectrum key
 			if (ko.contains("joy")) {
@@ -766,6 +791,13 @@ unsigned char VkSkin::zxKeyAt(int row, int pos) {
 	return ((row >= 0) && (row < 4) && (pos >= 0) && (pos < 10)) ? zxRows[row][pos] : 0;
 }
 
+void VkSkin::forRobik(bool on) {
+	for (VkKey& vk : keytab) {
+		vk.zx = (on && !vk.robikZx.isEmpty()) ? vk.robikZx : vk.plainZx;
+		vk.ch = (vk.zx.size() == 1) ? (unsigned char)vk.zx[0] : 0;
+	}
+}
+
 // How far a label reaches up and down, in canvas units, when its anchor point is
 // at height y: the ink of its glyphs (or its icon's shape), unhinted
 bool VkSkin::labelSpan(const Label& lab, double y, double& top, double& bot) const {
@@ -850,6 +882,8 @@ bool VkSkin::makeKeys(QString* err) {
 				return false;
 			}
 			vk.ch = (vk.zx.size() == 1) ? (unsigned char)vk.zx[0] : 0;
+			vk.plainZx = vk.zx;
+			vk.robikZx = key.robik;
 			vk.joy = key.joy;
 			vk.reset = key.reset;
 			vk.lamp = key.lamp;

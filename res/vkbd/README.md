@@ -21,18 +21,20 @@
 - `zx-robik.json` - the Robik (Selto-Rotor, Cherkassy): the keyboard with the MF key, laid out
   on photos of the real one, the case white as it was before it yellowed and sand-rough round
   the keys; the cursor block presses the Kempston, the two RES reset the machine together, the
-  power lamp is always lit; its caps with a straight foot under the slopes, their lettering
+  power lamp is always lit; EDIT, DEL, the full stop and comma, the five Cyrillic letters, C
+  and L press the Robik's own keys on the Robik, elsewhere EDIT, DEL, . and , press the
+  Spectrum's combinations; its caps with a straight foot under the slopes, their lettering
   the caps' engraving font, drawn as strokes. Made by `make-robik.py` (the lettering
   measured, the logo built of rings and strokes, on photos) in the project's lab, then kept
   as it is.
 - `zx-robik-compact.json` - the Robik with the case round the keys narrow, so the keys come
-  out larger in the window: its keys, logo, lamp and cursor block as they are, closer
-  together (`"base": "robik"`, its own only the canvas, the bars and the rows; made by
+  out larger in the window - the one the Robik shows by machine: its keys, logo, lamp and
+  cursor block as they are, closer together (`"base": "robik"`, its own only the canvas, the bars and the rows; made by
   `make-robik.py` too).
 - In the menu: 48K (Classic), 48K (White), 128K (Classic), 128K (White), Next (Black), Next
-  (White), Next (Magenta), Klava (the worn Kopir), Klava (Washed), Robik, Robik (Compact) -
-  black, white, 128, 128-white, next, next-white, next-magenta, kopir-worn, kopir, robik,
-  robik-compact in the config.
+  (White), Next (Magenta), Klava (the worn Kopir), Klava (Washed), Robik (Compact), Robik
+  (Full-Size) - black, white, 128, 128-white, next, next-white, next-magenta, kopir-worn,
+  kopir, robik-compact, robik in the config.
 - `keys-font.ttf` - the lettering, Latin-1 and Cyrillic, made by `tools/vkbd_font.py` from
   Liberation Sans Bold 2.1.5; see LICENSE_ICONS and LICENSE_LIBERATION.
 
@@ -63,6 +65,9 @@ In a key:
 - `"zx"` - what it presses: `"1"`..`"0"`, `"A"`..`"Z"`, `"CS"`, `"SS"`, `"ENTER"`, `"SPACE"`,
   or several at once, `["CS", "1"]`; `[]` presses nothing (lettering). Without it the key's
   place in the 48K's four rows of ten says what it is.
+- `"robik"` - on a Robik, the key of its own it is, pressed instead of `"zx"`: `"EDIT"`,
+  `"DELETE"`, `"."`, `","`, `"C"`, `"L"` or the Cyrillic `"Ю"`, `"Х"`, `"Э"`, `"Б"`, `"Ж"`
+  (keyboard.c's keyTab, bits 5 and 7 of `#FE`); on other machines the key is its `"zx"`.
 - `"joy"` - `"up"`, `"down"`, `"left"`, `"right"` or `"fire"`: presses the Kempston joystick,
   not a key (the Robik's cursor block). It is lit while the joystick is pressed, from a
   gamepad too.

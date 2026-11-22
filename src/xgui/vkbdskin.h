@@ -25,6 +25,8 @@
 struct VkKey {
 	QByteArray zx;		// the Spectrum keys it presses, as keyEntry::zxKey takes them; none for lettering
 	unsigned char ch;	// the one key it is, 0 for a combination: what lights it from the matrix
+	QByteArray plainZx;	// zx on any machine...
+	QByteArray robikZx;	// ...and on a Robik, its own key, if it is one (VkSkin::forRobik)
 	QRectF box;		// the key as drawn (an outline's bounds), in canvas units
 	QPainterPath fill;	// where its light goes on a stretched picture, in canvas units
 	QRectF hit;		// what a click on it takes: the key and its words
@@ -53,6 +55,8 @@ class VkSkin {
 		QColor litColor() const {return litCol;}
 		bool padLight() const {return padLit;}
 		const QVector<VkKey>& keys() const {return keytab;}
+		// the keys as on a Robik - its own keys pressed as its own - or as on any other
+		void forRobik(bool on);
 		// where key n's light goes in a picture of that scale, in its pixels:
 		// the key and its contour as the picture has them, never a neighbour
 		QPainterPath fillAt(int n, double scale) const;
@@ -118,6 +122,7 @@ class VkSkin {
 			QString shape, sn;
 			QByteArray zx;			// the keys it presses...
 			bool hasZx = false;		// ...or none given: its place says
+			QByteArray robik;		// on a Robik: its own keys instead
 			int joy = 0;			// the Kempston's contacts instead
 			bool reset = false;		// one of the keys that reset the machine together
 			QColor lamp;			// a light: its color when on

@@ -239,10 +239,10 @@
         {"i": "t23", "col": "ink", "dx": -11.8, "dy": -21.47},
         {"i": "t24", "col": "ink", "dx": -11.8, "dy": -2.0}
       ]},
-      {"x": 490, "w": 40, "corner": 4.2, "zx": ["SS", "M"], "labels": [
+      {"x": 490, "w": 40, "corner": 4.2, "zx": ["SS", "M"], "robik": ".", "labels": [
         {"i": "t25", "col": "ink", "dx": -1.139, "dy": -10.46}
       ]},
-      {"x": 530, "w": 38, "corner": 4.2, "zx": ["CS", "0"], "style": "grey", "labels": [
+      {"x": 530, "w": 38, "corner": 4.2, "zx": ["CS", "0"], "style": "grey", "robik": "DELETE", "labels": [
         {"i": "t26", "col": "gink", "dx": -9.207, "dy": -6.9}
       ]},
       {"x": 649, "w": 114, "zx": [], "shape": "ghost", "y": 41, "h": 38, "labels": [
@@ -253,7 +253,7 @@
       ]}
     ]},
     {"y": 83, "h": 40, "keys": [
-      {"x": 52, "w": 58, "corner": 4.2, "zx": ["CS", "1"], "style": "grey", "labels": [
+      {"x": 52, "w": 58, "corner": 4.2, "zx": ["CS", "1"], "style": "grey", "robik": "EDIT", "labels": [
         {"i": "t27", "col": "gink", "dx": -10.787, "dy": -6.9}
       ]},
       {"x": 110, "w": 40, "corner": 4.2, "zx": "Q", "labels": [
@@ -317,7 +317,7 @@
       {"x": 52, "w": 38, "corner": 4.2, "style": "grey", "reset": true, "labels": [
         {"i": "t0", "col": "gink", "dx": -9.516, "dy": -6.9}
       ]},
-      {"x": 90, "w": 40, "corner": 4.2, "zx": ["SS", "N"], "labels": [
+      {"x": 90, "w": 40, "corner": 4.2, "zx": ["SS", "N"], "robik": ",", "labels": [
         {"i": "t61", "col": "ink", "dx": -1.139, "dy": -10.915}
       ]},
       {"x": 130, "w": 40, "corner": 4.2, "zx": "A", "labels": [
@@ -368,11 +368,11 @@
         {"i": "t90", "col": "kw", "dx": -4.451, "dy": 12.3},
         {"i": "t91", "col": "ink", "dx": 0.86, "dy": -12.8}
       ]},
-      {"x": 490, "w": 40, "corner": 4.2, "zx": [], "labels": [
+      {"x": 490, "w": 40, "corner": 4.2, "zx": [], "robik": "Ж", "labels": [
         {"i": "t92", "col": "ink", "dx": 0.809, "dy": -3.6},
         {"i": "t93", "col": "ink", "dx": 2.542, "dy": -16.0}
       ]},
-      {"x": 530, "w": 38, "corner": 4.2, "zx": [], "style": "grey", "labels": [
+      {"x": 530, "w": 38, "corner": 4.2, "zx": [], "style": "grey", "robik": "Э", "labels": [
         {"i": "t94", "col": "gink", "dx": -0.225, "dy": -12.8},
         {"i": "t95", "col": "gink", "dx": -3.941, "dy": -3.6}
       ]}
@@ -382,7 +382,7 @@
         {"i": "t96", "col": "gink", "dx": -13.196, "dy": -14.8},
         {"i": "t97", "col": "gink", "dx": -14.153, "dy": 1.0}
       ]},
-      {"x": 110, "w": 40, "corner": 4.2, "zx": [], "labels": [
+      {"x": 110, "w": 40, "corner": 4.2, "zx": [], "robik": "Х", "labels": [
         {"i": "t98", "col": "ink", "dx": 3.504, "dy": -3.6},
         {"i": "t99", "col": "ink", "dx": -2.958, "dy": -16.0}
       ]},
@@ -425,11 +425,11 @@
         {"i": "t123", "col": "ink", "dx": 3.565, "dy": -3.6},
         {"i": "t124", "col": "kw", "dx": -7.927, "dy": 12.3}
       ]},
-      {"x": 430, "w": 40, "corner": 4.2, "zx": [], "labels": [
+      {"x": 430, "w": 40, "corner": 4.2, "zx": [], "robik": "Б", "labels": [
         {"i": "t125", "col": "ink", "dx": 4.163, "dy": -3.6},
         {"i": "t126", "col": "ink", "dx": 5.372, "dy": -12.8}
       ]},
-      {"x": 470, "w": 40, "corner": 4.2, "zx": [], "labels": [
+      {"x": 470, "w": 40, "corner": 4.2, "zx": [], "robik": "Ю", "labels": [
         {"i": "t127", "col": "ink", "dx": 0.858, "dy": -3.6}
       ]},
       {"x": 510, "w": 58, "corner": 4.2, "zx": "SS", "style": "grey", "labels": [
@@ -458,10 +458,10 @@
         {"i": "t129", "col": "gink", "dx": -6.694, "dy": -6.9}
       ]},
       {"x": 168, "w": 322, "corner": 4.2, "zx": "SPACE"},
-      {"x": 490, "w": 40, "corner": 4.2, "zx": [], "style": "grey", "labels": [
+      {"x": 490, "w": 40, "corner": 4.2, "zx": [], "style": "grey", "robik": "C", "labels": [
         {"i": "t107", "col": "gink", "dx": -4.055, "dy": -8.1}
       ]},
-      {"x": 530, "w": 38, "corner": 4.2, "zx": [], "style": "grey", "labels": [
+      {"x": 530, "w": 38, "corner": 4.2, "zx": [], "style": "grey", "robik": "L", "labels": [
         {"i": "t88", "col": "gink", "dx": -3.507, "dy": -8.1}
       ]},
       {"x": 690, "w": 40, "corner": 4.2, "joy": "down", "labels": [

@@ -29,14 +29,16 @@
 #endif
 #endif
 
+extern "C" keyScan keyTab[];		// keyboard.c: the keys, the Robik's own at the end
+
 // the skins there are, as named in the config and in res/vkbd/zx-<name>.json
 static const struct {
 	const char* name;
 	const char* title;
 } vkSkins[] = {{"black", "48K (Classic)"}, {"white", "48K (White)"}, {"128", "128K (Classic)"}, {"128-white", "128K (White)"},
 	{"next", "Next (Black)"}, {"next-white", "Next (White)"}, {"next-magenta", "Next (Magenta)"},
-	{"kopir-worn", "Klava"}, {"kopir", "Klava (Washed)"}, {"robik", "Robik"},
-	{"robik-compact", "Robik (Compact)"}};
+	{"kopir-worn", "Klava"}, {"kopir", "Klava (Washed)"}, {"robik-compact", "Robik (Compact)"},
+	{"robik", "Robik (Full-Size)"}};
 
 // a skin as the Skin menu and the title name it: a user's own by its file's name
 static QString skinTitle(const QString& name) {
@@ -64,10 +66,16 @@ static bool skinThere(const QString& name) {
 	return QFile::exists(":/res/vkbd/zx-" + name + ".json") || QFile::exists(ownSkinDir() + "/zx-" + name + ".json");
 }
 
+// whether the machine is a Robik: its own keys are its own there
+static bool onRobik() {
+	return conf.zx && conf.zx->hw && (conf.zx->hw->id == HW_ROBIK);
+}
+
 // The skin to show: the one picked by hand, or by the machine - the Next's on the
 // Next, the 128's on a Sinclair 128K, +2, +2A or +3, the 48K's on a Sinclair 48K,
-// the Kopir's on the clones - worn, unless the clean one was picked - in the tone
-// picked last (magenta only the Next has: black elsewhere)
+// the Robik's compact one on the Robik, the Kopir's on the other clones - worn, unless
+// the clean one was picked - in the tone picked last (magenta only the Next has: black
+// elsewhere)
 static QString wantedSkin() {
 	if (!conf.keywin.bymac) return QString::fromStdString(conf.keywin.skin);
 	int hw = (conf.zx && conf.zx->hw) ? conf.zx->hw->id : HW_NULL;
@@ -76,6 +84,7 @@ static QString wantedSkin() {
 	bool white = (conf.keywin.plain == "white");
 	if (hw == HW_ZXNEXT) return white ? QString("next-white") : (conf.keywin.plain == "magenta") ? QString("next-magenta") : QString("next");
 	if (is128) return white ? QString("128-white") : QString("128");
+	if (hw == HW_ROBIK) return QString("robik-compact");
 	if (clone) return (conf.keywin.plain == "washed") ? QString("kopir") : QString("kopir-worn");
 	return white ? QString("white") : QString("black");
 }
@@ -227,6 +236,8 @@ void keyWindow::loadSkin() {
 	latched.fill(false);
 	syncJoy();
 	if (!sk.isNull()) skin = sk;
+	skinRobik = onRobik();
+	skin.forRobik(skinRobik);
 	QSizeF old = cnv;
 	cnv = skin.canvas();
 	hover = -1;
@@ -641,10 +652,10 @@ void keyWindow::switcher() {
 }
 
 // Comes on a switch of machine as well as on keys: a machine of another kind
-// may want another skin
+// may want another skin, or the Robik's keys of this one
 void keyWindow::upd(Keyboard* k) {
 	kb = k;
-	if (wantedSkin() != skinWant)
+	if ((wantedSkin() != skinWant) || (onRobik() != skinRobik))
 		loadSkin();
 	if (isVisible())
 		repaint();
@@ -781,6 +792,10 @@ QByteArray keyWindow::keysDown() {
 			val >>= 1;
 			pos += (i & 4) ? 1 : -1;
 		}
+	}
+	// the Robik's own keys, on bits 5 and 7 of the rows
+	for (const keyScan* k = keyTab; k->key; k++) {
+		if ((k->mask & 0xa0) && !(kb->map[k->row & 7] & k->mask)) res.append(k->key);
 	}
 	return res;
 }

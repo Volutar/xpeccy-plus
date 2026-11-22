@@ -59,6 +59,7 @@ class keyWindow : public QDialog {
 		VkSkin skin;
 		QString skinWant;	// the skin asked for when it was loaded: by hand or by the machine
 		QString skinShown;	// the one shown: another if that one has no layout
+		bool skinRobik = false;	// its keys as on a Robik (VkSkin::forRobik)
 		QSizeF cnv;		// the layout's canvas, in its own units
 		QPixmap pic;		// the picture as last drawn
 		QPixmap litPic;		// a pad light's: every key lit, for over the pressed ones
