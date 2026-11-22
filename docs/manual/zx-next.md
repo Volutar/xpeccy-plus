@@ -174,7 +174,8 @@ saved while a program runs makes its card again when opened.
 With no System/Next here at all, Xpeccy+ offers to download it, about 51 MB, and then starts
 the program. A file or folder name with a space or letters that cannot be typed in NextZXOS
 is replaced by its short name on the card; where even that fails, the message is **The
-file's name cannot be typed in NextZXOS**, and your card stays in.
+file's name cannot be typed in NextZXOS**, and the card in the slot stays as it was, with
+whatever program is running from it.
 
 ## Snapshots
 
