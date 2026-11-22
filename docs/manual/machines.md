@@ -211,7 +211,7 @@ in white on blue with "© "SELTO-ROTOR" Computer V03". Its frame is its own, 313
 ticks, and nothing in it is contended but a write to the screen's memory, #4000-#5FFF, which
 waits from 1 to 4 ticks; the timings were measured on three owners' boards.
 
-Three things differ from board to board, and the **Board** group of the
+Three things differ from board to board, and the **Board features** group of the
 [Machine page](options-machine.md) of **Options** has a row for each:
 
 - **Shadow RAM**: 16 KB of RAM under the ROM. Any OUT or IN on port 15 swaps the ROM and
