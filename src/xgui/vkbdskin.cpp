@@ -734,6 +734,7 @@ void VkSkin::readSide(const QJsonValue& v, Side& sd) const {
 		if (o.contains("foot")) sd.foot[i] = four(o.value("foot"), i).toDouble();
 		if (o.contains("foot_shade")) sd.footShade[i] = std::max(-1.0, std::min(1.0, four(o.value("foot_shade"), i).toDouble()));
 	}
+	if (o.contains("blend")) sd.blend = std::max(0.0, o.value("blend").toDouble());
 	sd.on = true;
 }
 
@@ -1056,16 +1057,20 @@ static Mask iconMask(const QPainterPath& path, double sw, bool stroke, bool flat
 }
 
 // open lines drawn with a round pen, sw pixels wide; inner > 0: that much of the middle
-// taken out again, its outline left (an engraved letter)
+// taken out again, its outline left (an engraved letter). Walls under two pixels drawn four
+// times larger and averaged down: they stay even, where drawn at their size a slanting one
+// came out in broken pieces
 static Mask strokeMask(const QPainterPath& path, double sw, double inner) {
 	Mask m;
+	const int k = ((inner > 0) && (sw - inner < 4)) ? 4 : 1;
 	QPen pen(Qt::black, sw, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
 	QRect box = QPainterPathStroker(pen).createStroke(path).boundingRect().toAlignedRect().adjusted(-1, -1, 1, 1);
 	if (box.isEmpty()) return m;
-	QImage msk(box.size(), QImage::Format_Alpha8);
+	QImage msk(box.size() * k, QImage::Format_Alpha8);
 	msk.fill(0);
 	QPainter p(&msk);
 	p.setRenderHint(QPainter::Antialiasing, true);
+	p.scale(k, k);
 	p.translate(-box.topLeft());
 	p.setBrush(Qt::NoBrush);
 	p.setPen(pen);
@@ -1082,11 +1087,18 @@ static Mask strokeMask(const QPainterPath& path, double sw, double inner) {
 	m.w = box.width();
 	m.h = box.height();
 	m.c.resize(m.w * m.h * 3);
+	// each k x k block of the large one, averaged
 	for (int y = 0; y < m.h; y++) {
-		const uchar* s = msk.constScanLine(y);
 		uchar* d = m.c.data() + y * m.w * 3;
-		for (int x = 0; x < m.w; x++, d += 3)
-			d[0] = d[1] = d[2] = s[x];
+		for (int x = 0; x < m.w; x++, d += 3) {
+			int sum = 0;
+			for (int j = 0; j < k; j++) {
+				const uchar* s = msk.constScanLine(y * k + j) + x * k;
+				for (int i = 0; i < k; i++)
+					sum += s[i];
+			}
+			d[0] = d[1] = d[2] = (sum + k * k / 2) / (k * k);
+		}
 	}
 	return m;
 }
@@ -1146,12 +1158,17 @@ QRect VkSkin::keyBox(const Key& key, double s) const {
 	return QPolygonF(snapPoly(key.outline, s)).boundingRect().toRect();
 }
 
+QPainterPath VkSkin::keyPath(const Key& key, double s, int dx, int dy, double base, double grow) const {
+	return keyPath(key, s, dx, dy, dx, dy, base, grow);
+}
+
 // A key's shape in the picture's pixels - its outline, or its box when its corners
-// are its own - pushed out by dx, dy whole pixels (in, if negative). A corner that
+// are its own - pushed out by l, t, r, b whole pixels on the edges facing left, up,
+// right and down (in, if negative). A corner that
 // juts out is rounded with its radius at that scale plus grow pixels, one that
 // cuts in with that radius less grow: the edge keeps its distance all round.
 // The radius is the key's own, or base; a corner cutting in takes the smallest.
-QPainterPath VkSkin::keyPath(const Key& key, double s, int dx, int dy, double base, double grow) const {
+QPainterPath VkSkin::keyPath(const Key& key, double s, int l, int t, int r, int b, double base, double grow) const {
 	QVector<QPointF> pts;
 	if (key.outline.isEmpty()) {
 		QRect kb = keyBox(key, s);
@@ -1182,7 +1199,7 @@ QPainterPath VkSkin::keyPath(const Key& key, double s, int dx, int dy, double ba
 		}
 		rad[i] = juts ? (c * s + grow) : std::max(0.0, c * s - grow);
 	}
-	return roundPoly(offsetPoly(pts, dx, dy), rad);
+	return roundPoly(offsetPoly4(pts, l, t, r, b), rad);
 }
 
 // one cap's contour in the picture's pixels, not turned
@@ -1302,7 +1319,6 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 	QImage img(W, H, QImage::Format_ARGB32_Premultiplied);
 	img.fill(Qt::transparent);
 	if (isNull()) return img;
-	auto px = [s](double v) {return pxWidth(v, s);};
 	// a key drawn by keyPath(): an outline, or corners of its own
 	auto shaped = [](const Key& key) {return !key.outline.isEmpty() || key.hasCorner;};
 
@@ -1365,11 +1381,16 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 		bool klit = lit && !key.unlit;
 		const Preset* pr = preset(key.shape);
 		QRect kb = keyBox(key, s);
-		int ins = px(pr->inset);
-		QRectF body(kb.x() + ins, kb.y() + ins, kb.width() - 2 * ins, kb.height() - 2 * ins);
+		// the gap between two caps side by side - this one's inset on the right and the
+		// next one's on the left - rounded as a whole, so a small window shows one
+		// pixel there, not two: the left and top inset its smaller half
+		int gap = (pr->inset > 0) ? std::max(1, fr(2 * pr->inset * s)) : 0;
+		int insA = gap / 2;
+		int insB = gap - insA;
+		QRectF body(kb.x() + insA, kb.y() + insA, kb.width() - gap, kb.height() - gap);
 		QPainterPath path;
 		if (shaped(key)) {
-			path = keyPath(key, s, -ins, -ins, pr->corner, -pr->inset * s);
+			path = keyPath(key, s, -insA, -insA, -insB, -insB, pr->corner, -pr->inset * s);
 			body = path.boundingRect();
 		} else {
 			path = rrect(body.x(), body.y(), body.width(), body.height(), std::max(0.0, pr->corner - pr->inset) * s);
@@ -1387,23 +1408,72 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 			if (key.outline.isEmpty()) {
 				out << body.topLeft() << body.topRight() << body.bottomRight() << body.bottomLeft();
 			} else {
-				out = offsetPoly(snapPoly(key.outline, s), -ins, -ins);
+				out = offsetPoly4(snapPoly(key.outline, s), -insA, -insA, -insB, -insB);
 			}
 			if (isRectilinear(out)) {
 				QVector<QPointF> in = offsetPoly4(out, -fr(sd.w[0] * s), -fr(sd.w[1] * s), -fr(sd.w[2] * s), -fr(sd.w[3] * s));
 				p.save();
 				p.setClipPath(path);
-				for (int i = 0; i < out.size(); i++) {
-					int j = (i + 1) % out.size();
-					int f = edgeFaces(out, i);
-					QColor c = sd.fill[f];
-					if (!c.isValid() && (sd.shade[f] != 0))
-						c = (sd.shade[f] > 0) ? QColor(0, 0, 0, fr(sd.shade[f] * 255)) : QColor(255, 255, 255, fr(-sd.shade[f] * 255));
-					if (!c.isValid() || !c.alpha()) continue;
-					QPolygonF q;
-					q << out[i] << out[j] << in[j] << in[i];
-					p.setBrush(c);
-					p.drawPolygon(q);
+				bool fills = false;
+				for (int f = 0; f < 4; f++)
+					fills = fills || sd.fill[f].isValid();
+				bool bands = false;
+				for (int f = 0; f < 4; f++)
+					bands = bands || (fr(sd.w[f] * s) > 0);
+				if ((sd.blend > 0) && bands && key.outline.isEmpty() && !fills) {
+					// sides that melt into each other at the corners: each pixel's shade
+					// the sides' own, weighed by how near it is to each (its depth into
+					// that side's band, as a part of the band)
+					const double wpx[4] = {(double)fr(sd.w[0] * s), (double)fr(sd.w[1] * s), (double)fr(sd.w[2] * s), (double)fr(sd.w[3] * s)};
+					QRect br = body.toAlignedRect();
+					QImage im(br.size(), QImage::Format_ARGB32_Premultiplied);
+					im.fill(0);
+					for (int y = 0; y < im.height(); y++) {
+						QRgb* line = reinterpret_cast<QRgb*>(im.scanLine(y));
+						double py = br.y() + y + 0.5;
+						for (int x = 0; x < im.width(); x++) {
+							double px = br.x() + x + 0.5;
+							const double depth[4] = {px - body.left(), py - body.top(), body.right() - px, body.bottom() - py};
+							double e[4];
+							double emin = 1e9;
+							int own = 0;
+							for (int f = 0; f < 4; f++) {
+								e[f] = (wpx[f] > 0) ? depth[f] / wpx[f] : 1e9;
+								if (e[f] < emin) {
+									emin = e[f];
+									own = f;
+								}
+							}
+							// the band's inner edge smooth over a pixel
+							double cov = std::max(0.0, std::min(1.0, (1 - emin) * wpx[own] + 0.5));
+							if (cov <= 0) continue;
+							double sw = 0, sum = 0;
+							for (int f = 0; f < 4; f++) {
+								if (e[f] >= 1e9) continue;
+								double wt = std::exp(-(e[f] - emin) / sd.blend);
+								sw += wt;
+								sum += wt * sd.shade[f];
+							}
+							double sh = sum / sw;
+							int a = fr(std::min(1.0, std::fabs(sh)) * cov * 255);
+							if (a <= 0) continue;
+							line[x] = (sh > 0) ? qRgba(0, 0, 0, a) : qRgba(a, a, a, a);
+						}
+					}
+					p.drawImage(br.topLeft(), im);
+				} else {
+					for (int i = 0; i < out.size(); i++) {
+						int j = (i + 1) % out.size();
+						int f = edgeFaces(out, i);
+						QColor c = sd.fill[f];
+						if (!c.isValid() && (sd.shade[f] != 0))
+							c = (sd.shade[f] > 0) ? QColor(0, 0, 0, fr(sd.shade[f] * 255)) : QColor(255, 255, 255, fr(-sd.shade[f] * 255));
+						if (!c.isValid() || !c.alpha()) continue;
+						QPolygonF q;
+						q << out[i] << out[j] << in[j] << in[i];
+						p.setBrush(c);
+						p.drawPolygon(q);
+					}
 				}
 				// the straight foot under the slope, over its outer part
 				QVector<QPointF> fin = offsetPoly4(out, -fr(sd.foot[0] * s), -fr(sd.foot[1] * s), -fr(sd.foot[2] * s), -fr(sd.foot[3] * s));
@@ -1565,7 +1635,10 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 							for (int i = 1; i < c.size(); i++)
 								path.lineTo(c[i]);
 						}
-						put(strokeMask(place(tr.map(path)), ic.sw * s, (ic.hollow > 0) ? std::max(0.0, ic.sw - 2 * ic.hollow) * s : 0), lab.col);
+						// the walls as thin as they are, however small: strokeMask keeps a
+						// wall under a pixel even, it only comes out lighter
+						double inner = (ic.hollow > 0) ? std::max(0.0, ic.sw - 2 * ic.hollow) * s : 0;
+						put(strokeMask(place(tr.map(path)), ic.sw * s, inner), lab.col);
 					} else if (ic.oneShape) {
 						foreach(const QVector<QPointF>& c, ic.polys)
 							path.addPolygon(QPolygonF(c)), path.closeSubpath();

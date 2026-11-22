@@ -116,6 +116,7 @@ class VkSkin {
 			// its straight foot under the slope: a band inside the edge, shaded of its own
 			double foot[4] = {0, 0, 0, 0};
 			double footShade[4] = {0, 0, 0, 0};
+			double blend = 0;		// > 0: the sides melt into each other at the corners
 		};
 		struct Key {
 			double x, y, w, h, ax, ay;	// an outline key: its bounds
@@ -199,6 +200,7 @@ class VkSkin {
 		QPainterPath domePart(const Key& key, const DomePart& p, double s) const;
 		QRect keyBox(const Key& key, double s) const;
 		QPainterPath keyPath(const Key& key, double s, int dx, int dy, double base, double grow) const;
+		QPainterPath keyPath(const Key& key, double s, int l, int t, int r, int b, double base, double grow) const;
 		QPainterPath contourOf(const Key& key, double s) const;
 		QVector<QPainterPath> contoursAt(const Key& key, double s) const;
 };

@@ -31,14 +31,17 @@
 
 extern "C" keyScan keyTab[];		// keyboard.c: the keys, the Robik's own at the end
 
-// the skins there are, as named in the config and in res/vkbd/zx-<name>.json
+// the skins there are, as named in the config and in res/vkbd/zx-<name>.json; the Skin
+// menu puts a line between groups
 static const struct {
 	const char* name;
 	const char* title;
-} vkSkins[] = {{"black", "48K (Classic)"}, {"white", "48K (White)"}, {"128", "128K (Classic)"}, {"128-white", "128K (White)"},
-	{"next", "Next (Black)"}, {"next-white", "Next (White)"}, {"next-magenta", "Next (Magenta)"},
-	{"kopir-worn", "Klava"}, {"kopir", "Klava (Washed)"}, {"robik-compact", "Robik (Compact)"},
-	{"robik", "Robik (Full-Size)"}};
+	int group;
+} vkSkins[] = {{"black", "48K (Classic)", 0}, {"white", "48K (White)", 0},
+	{"128", "128K (Classic)", 0}, {"128-white", "128K (White)", 0},
+	{"next", "Next (Black)", 1}, {"next-white", "Next (White)", 1}, {"next-magenta", "Next (Magenta)", 1},
+	{"kopir-worn", "Klava", 2}, {"kopir", "Klava (Washed)", 2},
+	{"robik-compact", "Robik (Compact)", 2}, {"robik", "Robik (Full-Size)", 2}};
 
 // a skin as the Skin menu and the title name it: a user's own by its file's name
 static QString skinTitle(const QString& name) {
@@ -503,9 +506,13 @@ void keyWindow::fillMenu(QMenu* mnu) {
 		sa->setActionGroup(skg);
 	};
 	QStringList builtIn;
+	int group = vkSkins[0].group;
 	for (const auto& sk : vkSkins) {
 		builtIn.append(sk.name);
-		if (skinThere(sk.name)) addSkin(sk.name);
+		if (!skinThere(sk.name)) continue;
+		if (sk.group != group) skm->addSeparator();
+		group = sk.group;
+		addSkin(sk.name);
 	}
 	// the user's own layouts of other names, under their names
 	bool first = true;
