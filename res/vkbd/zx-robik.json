@@ -8,7 +8,7 @@
   "gradient": {"angle": 5, "stops": [[0, "#eeeeeb"], [0.7, "#e1e0dc"], [1, "#e6e5e1"]]},
   "dome": {"inset": [4.4, 2.6, 4.4, 8.6], "corner": 5, "soft": 1.0, "gradient": {"angle": 20, "stops": [[0, "#ebebe8"], [0.35, "#f8f8f6"], [1, "#fcfcfa"]]}},
   "styles": {"grey": {"gradient": {"angle": 5, "stops": [[0, "#8f9195"], [0.7, "#828488"], [1, "#8b8d91"]]}, "dome": {"gradient": {"angle": 20, "stops": [[0, "#939599"], [0.35, "#a1a3a7"], [1, "#a5a7ab"]]}}}},
-  "side": {"w": [4.4, 2.6, 4.4, 8.6], "shade": [0.1, -0.12, 0.06, 0.1], "foot": [0.6, 0, 0.6, 2.4], "foot_shade": [0.08, 0, 0.06, 0.12]},
+  "side": {"w": [4.4, 2.6, 4.4, 8.6], "shade": [0.1, -0.12, 0.06, 0.2]},
   "contour": {"inset": 1, "out_lr": 0.6, "out_tb": 0.6, "corner": 4.6},
   "rainbow": {"bands": []},
   "colors": {"ink": "#4e4e4c", "gink": "#4a4a48", "kw": "#5a5a58", "cur": "#5c5c5a", "case": "#eeede9", "emb_lo": "#a9a8a3", "emb_rim": "#c2c1bc", "emb_hi": "#fbfbf9"},

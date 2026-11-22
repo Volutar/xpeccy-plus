@@ -31,14 +31,19 @@
 
 extern "C" keyScan keyTab[];		// keyboard.c: the keys, the Robik's own at the end
 
-// the skins there are, as named in the config and in res/vkbd/zx-<name>.json
+// the skins there are, as named in the config and in res/vkbd/zx-<name>.json; the Skin
+// menu puts a line between groups, and lists a hidden one only while it is shown
 static const struct {
 	const char* name;
 	const char* title;
-} vkSkins[] = {{"black", "48K (Classic)"}, {"white", "48K (White)"}, {"128", "128K (Classic)"}, {"128-white", "128K (White)"},
-	{"next", "Next (Black)"}, {"next-white", "Next (White)"}, {"next-magenta", "Next (Magenta)"},
-	{"kopir-worn", "Klava"}, {"kopir", "Klava (Washed)"}, {"robik-compact", "Robik (Compact)"},
-	{"robik", "Robik (Full-Size)"}};
+	int group;
+	bool hidden;
+} vkSkins[] = {{"black", "48K (Classic)", 0, false}, {"white", "48K (White)", 0, false},
+	{"128", "128K (Classic)", 0, false}, {"128-white", "128K (White)", 0, false},
+	{"next", "Next (Black)", 1, false}, {"next-white", "Next (White)", 1, false},
+	{"next-magenta", "Next (Magenta)", 1, false},
+	{"kopir-worn", "Klava", 2, false}, {"kopir", "Klava (Washed)", 2, false},
+	{"robik-compact", "Robik (Compact)", 2, false}, {"robik", "Robik (Full-Size)", 2, true}};
 
 // a skin as the Skin menu and the title name it: a user's own by its file's name
 static QString skinTitle(const QString& name) {
@@ -503,9 +508,13 @@ void keyWindow::fillMenu(QMenu* mnu) {
 		sa->setActionGroup(skg);
 	};
 	QStringList builtIn;
+	int group = vkSkins[0].group;
 	for (const auto& sk : vkSkins) {
 		builtIn.append(sk.name);
-		if (skinThere(sk.name)) addSkin(sk.name);
+		if (!skinThere(sk.name) || (sk.hidden && (skinShown != sk.name))) continue;
+		if (sk.group != group) skm->addSeparator();
+		group = sk.group;
+		addSkin(sk.name);
 	}
 	// the user's own layouts of other names, under their names
 	bool first = true;

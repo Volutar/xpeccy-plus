@@ -23,18 +23,19 @@
   the keys; the cursor block presses the Kempston, the two RES reset the machine together, the
   power lamp is always lit; EDIT, DEL, the full stop and comma, the five Cyrillic letters, C
   and L press the Robik's own keys on the Robik, elsewhere EDIT, DEL, . and , press the
-  Spectrum's combinations; its caps with a straight foot under the slopes, their lettering
-  the caps' engraving font, drawn as strokes. Made by `make-robik.py` (the lettering
+  Spectrum's combinations; its caps' front slope darker than the others, their lettering
+  the caps' engraving font, drawn as strokes. Robik (Full-Size): the Skin menu lists it only
+  while it is shown (`robik` in the config). Made by `make-robik.py` (the lettering
   measured, the logo built of rings and strokes, on photos) in the project's lab, then kept
   as it is.
-- `zx-robik-compact.json` - the Robik with the case round the keys narrow, so the keys come
-  out larger in the window - the one the Robik shows by machine: its keys, logo, lamp and
+- `zx-robik-compact.json` - the Robik with a thin rim of the case round the keys, so the keys
+  come out larger in the window - the one the Robik shows by machine: its keys, logo, lamp and
   cursor block as they are, closer together (`"base": "robik"`, its own only the canvas, the bars and the rows; made by
   `make-robik.py` too).
-- In the menu: 48K (Classic), 48K (White), 128K (Classic), 128K (White), Next (Black), Next
-  (White), Next (Magenta), Klava (the worn Kopir), Klava (Washed), Robik (Compact), Robik
-  (Full-Size) - black, white, 128, 128-white, next, next-white, next-magenta, kopir-worn,
-  kopir, robik-compact, robik in the config.
+- In the menu, a line between the Spectrum's, the Next's and the clones': 48K (Classic), 48K
+  (White), 128K (Classic), 128K (White) | Next (Black), Next (White), Next (Magenta) | Klava
+  (the worn Kopir), Klava (Washed), Robik (Compact) - black, white, 128, 128-white, next,
+  next-white, next-magenta, kopir-worn, kopir, robik-compact in the config.
 - `keys-font.ttf` - the lettering, Latin-1 and Cyrillic, made by `tools/vkbd_font.py` from
   Liberation Sans Bold 2.1.5; see LICENSE_ICONS and LICENSE_LIBERATION.
 
@@ -110,7 +111,7 @@ key's own): a band `"w"` wide inside the cap's edge, `[left, top, right, bottom]
 units, cut into four by the lines from its outer corners to its inner ones, each side
 `"shade"`d - from 0 to 1 that much darker, from 0 to -1 that much lighter - or a `"fill"` color
 of its own. `"foot"` - the straight foot the slope stands on, a band that wide inside the edge
-over the slope's outer part, `"foot_shade"`d as a side is (the Robik's caps). `"w"`, `"shade"`,
+over the slope's outer part, `"foot_shade"`d as a side is. `"w"`, `"shade"`,
 `"fill"`, `"foot"` and `"foot_shade"` each take one value for all four. The sides are drawn
 over the cap's gradient and under its dome.
 
