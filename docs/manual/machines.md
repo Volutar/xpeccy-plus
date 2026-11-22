@@ -218,7 +218,8 @@ Three things differ from board to board, and the **Board features** group of the
   this RAM, and a write to the ROM's addresses always goes into the RAM, so a ROM loaded
   into memory can be copied there and switched in - the owners did so with the 48K's ROM
   for programs the Robik's own does not run. Reset brings the ROM back; the RAM keeps its
-  bytes until the power goes. On by default; not every board has it.
+  bytes until the power goes. **Port #0F (Robik)** by default, **Off** for a board without
+  it.
 - **BRIGHT**: the factory board does not wire BRIGHT, so every color is bright, the border's
   too (**All bright**, the default). **Two levels** is the owners' jumper: bright and normal,
   as on a 48K.
