@@ -162,7 +162,8 @@ or not - a program starts on a card of its own:
   program reads beside it. What the program saves there goes into that folder on your disk.
   A folder of over 2000 files and folders, a collection, or a `.sna` or `.z80` program puts
   the program's file there alone, and what it writes stays in memory. A program that comes
-  with System/Next starts where it is on that card, and what it writes stays in memory too.
+  with System/Next, of any release in `next-system`, starts where it is on that release, and
+  what it writes stays in memory too.
 
 The Next is switched off and on first, so that NextZXOS starts from the new card. Your card
 is put aside while the program's card is in: **Media > SD Card** shows **Card for** and the
@@ -171,9 +172,9 @@ another card or switch machines, and the settings keep it all along. An `.szx` s
 saved while a program runs makes its card again when opened.
 
 With no System/Next here at all, Xpeccy+ offers to download it, about 51 MB, and then starts
-the program. A file name with letters that cannot be typed in NextZXOS is replaced by its
-short name on the card; where even that fails, the message is **The file's name cannot be
-typed in NextZXOS**.
+the program. A file or folder name with a space or letters that cannot be typed in NextZXOS
+is replaced by its short name on the card; where even that fails, the message is **The
+file's name cannot be typed in NextZXOS**, and your card stays in.
 
 ## Snapshots
 
