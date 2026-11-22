@@ -103,6 +103,7 @@ typedef struct {
 	int writable;			// the guest's writes are taken
 	int hold;			// and kept in memory: the folder waits for the user's word before it changes
 	const char* frozen;		// non-NULL: the folder takes no more of them, they stay in memory; why (vfat_read_only)
+	int home;			// a pinned folder that alone follows the guest (vfat_home), 0 none
 	vfWr* wr;			// what they did, from the first one on
 } vFat;
 
@@ -115,6 +116,10 @@ void vfat_set_root(vFat*, const char* root, const vfHost* host);
 // a folder of the tree that is somewhere else on the host: its files are read from there,
 // and what the guest does in it stays in the volume
 void vfat_pin(vFat*, int idx, const char* hostpath);
+// the pinned folder pin, whole (not cut), the only part of the volume the host follows: what
+// the guest does in it goes to its host folder, the rest of the volume and the folder's own
+// entry stay in memory. Our temporary names go there too. Before the first write.
+void vfat_home(vFat*, int pin);
 // a pinned folder of the root by its name as put on: its node, -1 if none
 int vfat_pin_node(vFat*, const char* name);
 // the entries a pinned folder holds, down its tree

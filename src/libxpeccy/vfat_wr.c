@@ -458,7 +458,8 @@ typedef struct {
 	unsigned char act;		// VFA_*
 	unsigned char moved;		// its host name or folder changes
 	unsigned char failed;
-	unsigned char pin;		// in a pinned folder: the host side leaves it be
+	unsigned char pin;		// in a pinned folder, or on a volume with a home outside it: the host side leaves it be
+	unsigned char in;		// in the home folder (vFat.home)
 	unsigned char conflict;		// its host file was changed outside the emulator since
 	unsigned int clu, size;
 	unsigned short date, time;
@@ -784,8 +785,14 @@ static int utf8_cut(const char* s, int max) {
 
 // our temporary name for a file's content ('f') or a parked entry ('m'): the host name it
 // stands for comes after it, so an unfinished sync leaves something to restore it by
+// the host folder our temporary names, parked entries and recovered content go to: the
+// volume's own, or its home's
+static const char* home_dir(vFat* vf) {
+	return vf->home ? vf->node[vf->home].hroot : vf->root;
+}
+
 static int tmp_path(vFat* vf, int n, char kind, const char* hname, char* buf, int max) {
-	return snprintf(buf, max, "%s/" VF_TMPMARK "%c%i~%.*s", vf->root, kind, n, utf8_cut(hname, VFW_TMPNAME), hname) < max;
+	return snprintf(buf, max, "%s/" VF_TMPMARK "%c%i~%.*s", home_dir(vf), kind, n, utf8_cut(hname, VFW_TMPNAME), hname) < max;
 }
 
 // "base (recovered).ext" of a host name
@@ -801,7 +808,7 @@ char* vfat_tmp_restore(vFat* vf, const char* name) {
 	char* chosen = NULL;
 	const char* p;
 	char kind;
-	if (!vf || !vf->root || !vf->host.rename || !vf->host.kind || !name || strncmp(name, VF_TMPMARK, ml)) return NULL;
+	if (!vf || !home_dir(vf) || !vf->host.rename || !vf->host.kind || !name || strncmp(name, VF_TMPMARK, ml)) return NULL;
 	kind = name[ml];
 	if ((kind != 'm') && (kind != 'f')) return NULL;
 	for (p = name + ml + 1; (*p >= '0') && (*p <= '9'); p++);
@@ -812,14 +819,14 @@ char* vfat_tmp_restore(vFat* vf, const char* name) {
 	} else {
 		snprintf(want, sizeof(want), "recovered");
 	}
-	if (snprintf(from, sizeof(from), "%s/%s", vf->root, name) >= (int)sizeof(from)) return NULL;
-	if (!host_free_name(vf, vf->root, want, to, sizeof(to), &chosen)) return NULL;
+	if (snprintf(from, sizeof(from), "%s/%s", home_dir(vf), name) >= (int)sizeof(from)) return NULL;
+	if (!host_free_name(vf, home_dir(vf), want, to, sizeof(to), &chosen)) return NULL;
 	if (vf->host.rename(vf->host.ctx, from, to)) {
-		xlog(XLG_DISK, XLL_WARN, "folder %s: can't give %s a visible name", vf->root, name);
+		xlog(XLG_DISK, XLL_WARN, "folder %s: can't give %s a visible name", home_dir(vf), name);
 		free(chosen);
 		return NULL;
 	}
-	xlog(XLG_DISK, XLL_WARN, "folder %s: %s, left by a sync that did not finish, is %s", vf->root, name, chosen);
+	xlog(XLG_DISK, XLL_WARN, "folder %s: %s, left by a sync that did not finish, is %s", home_dir(vf), name, chosen);
 	return chosen;
 }
 
@@ -831,6 +838,15 @@ static int node_pinned(vFat* vf, int idx) {
 	for (; idx > 0; idx = vf->node[idx].parent)
 		if (vf->node[idx].pinned) return 1;
 	return 0;
+}
+
+// the host side leaves it be: a pinned folder and what is in it - or, on a volume with a
+// home, everything but what is in the home folder
+static int node_kept(vFat* vf, int idx) {
+	if (!vf->home) return node_pinned(vf, idx);
+	for (idx = (idx > 0) ? vf->node[idx].parent : -1; idx > 0; idx = vf->node[idx].parent)
+		if (idx == vf->home) return 0;
+	return 1;
 }
 
 static int depth_of(vFat* vf, int idx) {
@@ -1018,10 +1034,10 @@ static void tmp_recover(vFat* vf, vfEnt* e) {
 	int ok = 0;
 	if (!tmp_path(vf, e->tmp, 'f', e->hname, tmp, sizeof(tmp))) return;
 	recovered_name(e->hname, want, sizeof(want));
-	if (nd && nd->rname && (snprintf(path, sizeof(path), "%s/%s", vf->root, nd->rname) < (int)sizeof(path))
+	if (nd && nd->rname && (snprintf(path, sizeof(path), "%s/%s", home_dir(vf), nd->rname) < (int)sizeof(path))
 			&& (host_kind(vf, path) == 1) && !vf->host.replace(vf->host.ctx, tmp, path)) {
 		ok = 1;
-	} else if (host_free_name(vf, vf->root, want, path, sizeof(path), &chosen) && !vf->host.rename(vf->host.ctx, tmp, path)) {
+	} else if (host_free_name(vf, home_dir(vf), want, path, sizeof(path), &chosen) && !vf->host.rename(vf->host.ctx, tmp, path)) {
 		ok = 1;
 		if (nd) {
 			free(nd->rname);
@@ -1030,7 +1046,7 @@ static void tmp_recover(vFat* vf, vfEnt* e) {
 			int idx = node_new(vf, chosen, chosen, 0);
 			if (idx >= 0) {
 				nd = vf->node + idx;
-				node_append(vf, 0, idx);
+				node_append(vf, vf->home, idx);
 				memcpy(nd->sname, e->sname, 11);
 				nd->lfn = e->lfn;
 				nd->size = e->size;
@@ -1050,8 +1066,8 @@ static void tmp_recover(vFat* vf, vfEnt* e) {
 	}
 	free(chosen);
 	vfw_fail(vf, e->name);
-	if (ok) xlog(XLG_DISK, XLL_WARN, "folder %s: %s could not be put in place, kept as %s", vf->root, e->name, path);
-	else xlog(XLG_DISK, XLL_ERROR, "folder %s: %s could not be put in place, its content stays in %s", vf->root, e->name, tmp);
+	if (ok) xlog(XLG_DISK, XLL_WARN, "folder %s: %s could not be put in place, kept as %s", home_dir(vf), e->name, path);
+	else xlog(XLG_DISK, XLL_ERROR, "folder %s: %s could not be put in place, its content stays in %s", home_dir(vf), e->name, tmp);
 	e->tmp = -1;		// either way not ours to remove: a hidden one is made visible at the next mount
 }
 
@@ -1061,12 +1077,12 @@ static void park_restore(vFat* vf, vfEnt* e) {
 	char path[2048];
 	char* chosen = NULL;
 	vfNode* nd = vf->node + e->node;
-	if (nd->dead || (nd->parent != 0) || !nd->hname || strncmp(nd->hname, VF_TMPMARK, strlen(VF_TMPMARK))) return;
+	if (nd->dead || (nd->parent != vf->home) || !nd->hname || strncmp(nd->hname, VF_TMPMARK, strlen(VF_TMPMARK))) return;
 	vfw_fail(vf, e->name);
-	if (host_free_name(vf, vf->root, e->phname, path, sizeof(path), &chosen) && node_move(vf, e->node, 0, chosen))
-		xlog(XLG_DISK, XLL_WARN, "folder %s: %s could not be moved, left as %s", vf->root, e->name, path);
+	if (host_free_name(vf, home_dir(vf), e->phname, path, sizeof(path), &chosen) && node_move(vf, e->node, vf->home, chosen))
+		xlog(XLG_DISK, XLL_WARN, "folder %s: %s could not be moved, left as %s", home_dir(vf), e->name, path);
 	else
-		xlog(XLG_DISK, XLL_ERROR, "folder %s: %s could not be moved, left as %s", vf->root, e->name, vf->node[e->node].hname);
+		xlog(XLG_DISK, XLL_ERROR, "folder %s: %s could not be moved, left as %s", home_dir(vf), e->name, vf->node[e->node].hname);
 	free(chosen);
 }
 
@@ -1219,8 +1235,22 @@ int vfat_sync(vFat* vf, int force) {
 	}
 	for (i = 1; i < sc.n; i++) {
 		vfEnt* e = sc.ent + i;
+		vfEnt* p = sc.ent + e->parent;
+		if (vf->home) {
+			// with a home, only what is in it follows; an entry moved across its edge is
+			// another file on each side: new where it went, gone where it was
+			e->in = p->in || ((p->node > 0) && (p->node == vf->home));
+			if ((e->node >= 0) && (e->in == node_kept(vf, e->node))) {
+				match[e->node] = -1;
+				e->node = -1;
+			}
+			e->pin = !e->in;
+			// the home's own entry is left as it is on the host, but what is in it follows
+			if (!e->ok || (e->pin && ((e->node < 0) || (e->node != vf->home)))) e->failed = 1;
+			continue;
+		}
 		// a pinned folder and what is in it: what the guest does there stays in the volume
-		e->pin = sc.ent[e->parent].pin || ((e->node >= 0) && node_pinned(vf, e->node));
+		e->pin = p->pin || ((e->node >= 0) && node_pinned(vf, e->node));
 		if (!e->ok || e->pin) e->failed = 1;	// left as it is
 		// new there, or a file changed: it lives only as long as the volume
 		if (e->pin && e->ok && !w->pinwrote) {
@@ -1232,17 +1262,17 @@ int vfat_sync(vFat* vf, int force) {
 	// == what goes: an old child of a folder read back that nothing became, and what a
 	// going folder held; a file only once its clusters are free or someone else's
 	live = 0;
-	for (i = 1; i < oldNodes; i++) if (!vf->node[i].dead) live++;
+	for (i = 1; i < oldNodes; i++) if (!vf->node[i].dead && (!vf->home || !node_kept(vf, i))) live++;
 	for (i = 0; i < sc.n; i++) {
 		vfEnt* e = sc.ent + i;
 		if (!e->isdir || !e->ok || (e->node < 0)) continue;
 		for (j = vf->node[e->node].child; j >= 0; j = vf->node[j].next)
-			if ((j < oldNodes) && (match[j] < 0) && !vf->node[j].dead && !node_pinned(vf, j)) gone[j] = 1;
+			if ((j < oldNodes) && (match[j] < 0) && !vf->node[j].dead && !node_kept(vf, j)) gone[j] = 1;
 	}
 	for (i = 1; i < oldNodes; i++) {
 		if (vf->node[i].dead || (match[i] >= 0) || gone[i]) continue;
-		if (node_pinned(vf, i)) {
-			if (!w->pinwrote) w->pinwrote = 1;	// deleted there: back on the next mount
+		if (node_kept(vf, i)) {
+			if (!vf->home && !w->pinwrote) w->pinwrote = 1;	// deleted there: back on the next mount
 			continue;
 		}
 		for (j = vf->node[i].parent; j > 0; j = vf->node[j].parent) {
@@ -1289,6 +1319,7 @@ int vfat_sync(vFat* vf, int force) {
 			vfNode* nd = vf->node + e->node;
 			e->hname = !strcmp(nd->name, e->name) ? vf_strdup(nd->hname) : host_name(e->name);
 			e->moved = !e->hname || (p->node != nd->parent) || strcmp(e->hname, nd->hname);
+			if (vf->home && (e->node == vf->home)) e->moved = 0;	// the home folder stays where it is on the host
 			if (!e->isdir) {
 				int rel = chain_rel(vf, &sc, e, e->node);
 				if ((rel == 2) && (e->size == nd->size) && !dirty[e->node]) e->act = VFA_NONE;
@@ -1307,6 +1338,26 @@ int vfat_sync(vFat* vf, int force) {
 	// keep: none of it may move
 	for (i = 0; i < sc.n; i++) {
 		vfEnt* e = sc.ent + i;
+		if (vf->home && e->ok && e->pin && e->failed) {
+			// left as it is, but a cluster of its that another node held may change hands (a
+			// file of the home gone or rewritten): what the guest reads there stays
+			for (k = 0; k < e->nch; k++) {
+				c = sc.pool[e->chain + k];
+				o = w->own[c];
+				if ((o < 0) || (o == e->node)) continue;
+				for (s = 0; s < vf->spc; s++) {
+					vfSnap* sn;
+					if (sec_in_ovl(vf, c, s)) continue;
+					sn = (vfSnap*)realloc(snap, (nsnap + 1) * sizeof(vfSnap));
+					if (!sn) goto out;
+					snap = sn;
+					snap[nsnap].lba = clu_lba(vf, c, s);
+					vfw_read(vf, snap[nsnap].lba, snap[nsnap].data);
+					nsnap++;
+				}
+			}
+			continue;
+		}
 		if (!e->ok || e->failed) continue;
 		unsigned long long fl = (unsigned long long)e->size / VF_SECSIZE * VF_SECSIZE;	// past this the host has no say
 		for (k = 0; k < e->nch; k++) {
@@ -1371,7 +1422,7 @@ int vfat_sync(vFat* vf, int force) {
 		char tn[300];
 		snprintf(tn, sizeof(tn), VF_TMPMARK "m%i~%.*s", w->tmpn++, utf8_cut(hn, VFW_TMPNAME), hn);
 		e->phname = vf_strdup(hn);
-		if (!e->phname || !node_move(vf, e->node, 0, tn)) {
+		if (!e->phname || !node_move(vf, e->node, vf->home, tn)) {
 			e->failed = 1;
 			failed++;
 			vfw_fail(vf, e->name);
