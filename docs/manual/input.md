@@ -131,8 +131,8 @@ its name takes the one of the machine it was made from, so **Robik (mine)** take
 A machine with neither takes ZX Spectrum 128K.
 
 To give a machine a keymap of its own, name the file after the machine as the machine list
-shows it, without the `*` of a changed one: `Pentagon.map` for the Pentagon, `My
-Scorpion.map` for a machine named My Scorpion.
+shows it, letter for letter, without the `*` of a changed one: `Pentagon.map` for the
+Pentagon, `My Scorpion.map` for a machine named My Scorpion.
 
 Each line is one PC key, then the Spectrum keys it presses, all separated by tabs:
 
