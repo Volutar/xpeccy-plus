@@ -452,11 +452,16 @@ static struct {
 	bool cut = false;
 } launch;
 
-bool sdc_mount_launch(SDCard* sdc, const QString& base, const QString& sub, const QString& subName, const QString* only, int* entries) {
+bool sdc_mount_launch(SDCard* sdc, const QString& base, const QString& sub, const QString& subName, const QString* only, int* entries,
+		std::function<bool(vFat*)> ok) {
 	if (!sdc) return false;
 	vfat_flush(sdc->vfat);
 	vFat* vf = vfat_scan_launch(base, sub, subName, only);
 	if (!vf) return false;
+	if (ok && !ok(vf)) {		// refused as made: the card in stays as it is
+		vfat_free(vf);
+		return false;
+	}
 	if (entries) *entries = vfat_pin_entries(vf, vfat_pin_node(vf, subName.toUtf8().constData()));
 	sdcSetFolder(sdc, base.toLocal8Bit().constData(), vf);
 	launch.sdc = sdc;

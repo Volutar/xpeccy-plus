@@ -363,7 +363,8 @@ int autostart_arm(Computer* comp, int kind) {
 static int as_nex_line(int n, const char* cmd, const char* arg, const char* tail, int gap, int dry) {
 	for (int part = 0; part < 3; part++) {
 		for (const char* s = (part == 0) ? cmd : (part == 1) ? arg : tail; *s; s++) {
-			const char* k = ((part == 1) && (*s == ' ') && !*tail) ? NULL : as_nex_char(*s);
+			// a quote in a name would end the quoted one; a space only inside one
+			const char* k = ((part == 1) && ((*s == '"') || ((*s == ' ') && !*tail))) ? NULL : as_nex_char(*s);
 			if (!k || (n >= AS_NEX_KEYS - 2)) return -1;
 			if (!dry) {
 				snprintf(as_nex_str[n], 3, "%s", k);
@@ -392,7 +393,7 @@ static int as_nex_build(const char* dir, const char* name, int welcome, int snx,
 
 int autostart_nex_word(const char* word) {
 	for (const char* s = word; *s; s++)
-		if ((*s == ' ') || !as_nex_char(*s)) return 0;
+		if ((*s == ' ') || (*s == '"') || !as_nex_char(*s)) return 0;
 	return *word != 0;
 }
 

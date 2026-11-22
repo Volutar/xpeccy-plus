@@ -537,34 +537,45 @@ static QString vf_short(vFat* vf, int i) {
 	return ext.isEmpty() ? sn : sn + "." + ext;
 }
 
-// The program is typed in by its names: each folder on the way and the file by its own where
-// the keyboard types it, else by the card's 8.3 one (a space, a letter it has not got).
-// The path .cd takes from the card's root (node 0) down rel to the program's folder, *node
-// that folder's; empty if a folder is not there
-static QByteArray nex_cd(vFat* vf, const QString& rel, int* node) {
-	QByteArray cd;
-	*node = 0;
-	foreach(QString part, rel.split('/', X_SkipEmptyParts)) {
-		*node = vf_child(vf, *node, part.toUtf8().constData());
-		if (*node < 0) return QByteArray();
-		QByteArray own = part.toLatin1();
-		cd += "/" + ((part.toUtf8() == own) && autostart_nex_word(own.constData()) ? own : vf_short(vf, *node).toLatin1());
-	}
-	return cd.isEmpty() ? QByteArray("/") : cd;
+// a name as the keyboard types it, empty if it cannot be
+static QByteArray nex_typed(const QString& name) {
+	QByteArray own = name.toLatin1();
+	return ((name.toUtf8() == own) && autostart_nex_word(own.constData())) ? own : QByteArray();
 }
 
-// ...and the file's name in that folder (dir), empty if no name of it can be typed
-static QByteArray nex_file(vFat* vf, int dir, const QByteArray& cd, const QFileInfo& inf, int snx) {
-	QString name = inf.fileName();
-	QByteArray own = name.toLatin1();
-	if ((name.toUtf8() == own) && autostart_nex_can(cd.constData(), own.constData(), snx)) return own;
-	QByteArray want = name.toUtf8();
-	for (int i = (dir >= 0) ? vf->node[dir].child : -1; i >= 0; i = vf->node[i].next) {
-		if (vf->node[i].isdir || (want != vf->node[i].name)) continue;
-		QByteArray sn = vf_short(vf, i).toLatin1();
-		return autostart_nex_can(cd.constData(), sn.constData(), snx) ? sn : QByteArray();
+// The program is typed in by its names, read off the card made for it before that card goes
+// in: each folder on the way and the file by its own where the keyboard types it, else by the
+// card's 8.3 one (a space, a letter it has not got) - all by 8.3 when the long ones are too
+// many keys. *cd: the path .cd takes from the card's root down rel to the program's folder,
+// *file the name NEXLOAD (snx: SPECTRUM) takes there; rooted: cd starts with /. ERR_CANT_OPEN when a folder or the file
+// is not on the card (a card cut short), ERR_NEX_NAME when no name of it can be typed
+static int nex_names(vFat* vf, const QString& rel, bool rooted, const QFileInfo& inf, int snx, QByteArray* cd, QByteArray* file) {
+	QStringList parts = rel.split('/', X_SkipEmptyParts);
+	QByteArray want = inf.fileName().toUtf8();
+	for (int shortOnly = 0; shortOnly < 2; shortOnly++) {
+		int node = 0;
+		cd->clear();
+		foreach(QString part, parts) {
+			node = vf_child(vf, node, part.toUtf8().constData());
+			if (node < 0) return ERR_CANT_OPEN;
+			QByteArray own = shortOnly ? QByteArray() : nex_typed(part);
+			*cd += "/" + (own.isEmpty() ? vf_short(vf, node).toLatin1() : own);
+		}
+		if (cd->isEmpty()) *cd = "/";
+		else if (!rooted) *cd = cd->mid(1);	// from the root, where NextZXOS starts
+		int f = vf->node[node].child;
+		while ((f >= 0) && (vf->node[f].isdir || (want != vf->node[f].name)))
+			f = vf->node[f].next;
+		if (f < 0) return ERR_CANT_OPEN;
+		QByteArray own = inf.fileName().toLatin1();
+		if (!shortOnly && (inf.fileName().toUtf8() == own) && autostart_nex_can(cd->constData(), own.constData(), snx)) {
+			*file = own;
+			return ERR_OK;
+		}
+		*file = vf_short(vf, f).toLatin1();
+		if (autostart_nex_can(cd->constData(), file->constData(), snx)) return ERR_OK;
 	}
-	return QByteArray();
+	return ERR_NEX_NAME;
 }
 
 // the System/Next folder the program's folder is in, in the program's spelling; empty if
@@ -617,41 +628,48 @@ static int load_next(Computer* comp, const char* name, int snx) {
 		xlog(XLG_FILE, XLL_WARN, "next: %s", err.toUtf8().constData());
 		return ERR_NEX_SYSTEM;
 	}
-	// On the card just made, the lines that start the program are checked before anything else
-	// changes: when no name of it can be typed the user's card goes back and the machine is
-	// left alone. Then off and on: the card changes under the machine, which a soft reset does
-	// not tell - NextZXOS's disk layer keeps in memory what it read of the old one, and the
-	// program's folder is not found ("No such file or dir").
-	auto start = [comp, &inf, snx](const QByteArray& cd, int dir) {
-		vFat* vf = comp->sdc->vfat;
-		if (!vf || cd.isEmpty() || (dir < 0)) {		// the folder is not on the card made
-			xm_next_launch_end();
-			return ERR_CANT_OPEN;
-		}
-		QByteArray file = nex_file(vf, dir, cd, inf, snx);
-		if (file.isEmpty()) {
-			xlog(XLG_FILE, XLL_WARN, "next: %s cannot be typed in NextZXOS", inf.absoluteFilePath().toUtf8().constData());
-			xm_next_launch_end();
-			return ERR_NEX_NAME;
-		}
+	// The lines that start the program are found on the card made for it before that card goes
+	// in: when they cannot be typed, the card in - and a program running from it - stays as it
+	// is. Then off and on: the card changes under the machine, which a soft reset does not tell -
+	// NextZXOS's disk layer keeps in memory what it read of the old one, and the program's folder
+	// is not found ("No such file or dir").
+	QByteArray cd, typed;
+	int res = ERR_OK;		// ...what the card made said: ERR_OK when it was not asked (not read)
+	auto names = [&](const QString& rel, bool rooted) {
+		return [&, rel, rooted](vFat* vf) {
+			res = nex_names(vf, rel, rooted, inf, snx, &cd, &typed);
+			return res == ERR_OK;
+		};
+	};
+	auto refused = [&]() {
+		if (res == ERR_NEX_NAME)
+			xlog(XLG_FILE, XLL_WARN, "next: no name of %s or of its folders can be typed in NextZXOS; the card in stays",
+				inf.absoluteFilePath().toUtf8().constData());
+		else
+			xlog(XLG_FILE, XLL_WARN, "next: %s is not on the card made for it; the card in stays", inf.absoluteFilePath().toUtf8().constData());
+		return res;
+	};
+	auto start = [&]() {
 		xm_power_cycle(false);
-		vf = comp->sdc->vfat;
+		vFat* vf = comp->sdc->vfat;
 		// a card nobody has booted yet runs its welcome pages until they are turned off
 		// with D, which this card does not keep
 		int welcome = (vf_child(vf, vf_child(vf, 0, "nextzxos"), "autoexec.1st") >= 0) ? 1 : 0;
-		return autostart_arm_nex(comp, cd.constData(), file.constData(), welcome, snx, 1) ? ERR_OK : ERR_NEX_NAME;
+		return autostart_arm_nex(comp, cd.constData(), typed.constData(), welcome, snx, 1) ? ERR_OK : ERR_NEX_NAME;
 	};
 	// a program inside System/Next itself starts where it is, on that card with nothing of its
 	// own put on: what it writes stays in memory, as System/Next is never written
 	if (!here.isEmpty()) {
 		QString rel = QDir(here).relativeFilePath(inf.absolutePath());
 		if (rel == ".") rel.clear();
-		if (!xm_next_launch(inf.fileName(), here, QString(), QString(), NULL, NULL)) return ERR_CANT_OPEN;
-		int node = -1;
-		QByteArray cd = nex_cd(comp->sdc->vfat, rel, &node);
+		if (!xm_next_launch(inf.fileName(), here, QString(), QString(), NULL, NULL, names(rel, true))) {
+			if (res != ERR_OK) return refused();
+			xlog(XLG_FILE, XLL_WARN, "next: %s cannot be read", here.toUtf8().constData());
+			return ERR_CANT_OPEN;
+		}
 		xlog(XLG_FILE, XLL_INFO, "next: a card of its own, System/Next from %s, the program in it at /%s (.cd %s)",
 			here.toUtf8().constData(), rel.toUtf8().constData(), cd.constData());
-		return start(cd, node);
+		return start();
 	}
 	// the folder's name, as the keyboard types it, and one System/Next's root has not got
 	QString base;
@@ -670,14 +688,15 @@ static int load_next(Computer* comp, const char* name, int snx) {
 	QString why = ((ext == "sna") || (ext == "z80")) ? QString("a snapshot reads nothing beside it")
 		: pin_huge(inf.absolutePath()) ? QString("its folder holds over %0 entries").arg(PIN_MAX) : QString();
 	int n = 0;
-	if (!xm_next_launch(file, sys, inf.absolutePath(), dir, why.isEmpty() ? NULL : &file, &n)) {
+	if (!xm_next_launch(file, sys, inf.absolutePath(), dir, why.isEmpty() ? NULL : &file, &n, names(dir, false))) {
+		if (res != ERR_OK) return refused();
 		xlog(XLG_FILE, XLL_WARN, "next: %s cannot be read", sys.toUtf8().constData());
 		return ERR_CANT_OPEN;
 	}
 	QString what = why.isEmpty() ? QString("%0 put on as /%1, %2 entries").arg(inf.absolutePath(), dir, QString::number(n))
 		: QString("%0 put on alone as /%1: %2").arg(inf.absoluteFilePath(), dir, why);
 	xlog(XLG_FILE, XLL_INFO, "next: a card of its own, System/Next from %s; %s", sys.toUtf8().constData(), what.toUtf8().constData());
-	return start(dir.toLatin1(), vf_child(comp->sdc->vfat, 0, dir.toUtf8().constData()));
+	return start();
 }
 
 static int load_nex(Computer* comp, const char* name, int drv) {
@@ -1349,6 +1368,8 @@ static void szx_card_mount(Computer* comp, bool load, const QString& snap) {
 	if (load && bare && !(same() && xm_next_launch_in() && in && !in->home)) {
 		if (xm_next_launch(QFileInfo(snap).fileName(), path, QString(), QString()))
 			xlog(XLG_FILE, XLL_INFO, "szx: the program's own card, System/Next from %s", c->path);
+		else
+			xlog(XLG_FILE, XLL_WARN, "szx: the program's own card could not be made, System/Next from %s", c->path);
 	} else if (load && !same() && !sys) {
 		if (QFileInfo::exists(path)) {
 			xm_next_put_card(path);

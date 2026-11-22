@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include <string>
 #include <vector>
 #include <map>
@@ -471,9 +472,10 @@ void xm_sd_mount(const QString& path);	// a card into the slot; a folder read on
 void xm_next_card(bool force = false);	// a ZX Spectrum Next with no System/Next card gets its own (force: whatever is in)
 void xm_next_put_card(const QString& path);	// the card a snapshot names goes in, the machine not restarted
 bool xm_next_own_in();		// the Next's own card (System/Next) is the one in the slot
-// a program from elsewhere's card into the slot (sdc_mount_launch), the user's set aside
+// a program from elsewhere's card into the slot (sdc_mount_launch), the user's set aside; ok
+// refuses the card made before it goes in, nothing changed
 bool xm_next_launch(const QString& what, const QString& base, const QString& sub, const QString& subName, const QString* only = NULL,
-	int* entries = NULL);
+	int* entries = NULL, std::function<bool(vFat*)> ok = nullptr);
 bool xm_next_launch_in();		// ...and it is the one in the slot
 QString xm_next_launch_what();		// the program it is for, by its file name; empty when it is not in
 void xm_next_launch_end();		// it taken out: the user's card back in

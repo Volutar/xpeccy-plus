@@ -1525,11 +1525,12 @@ static std::string xm_next_user_card() {
 	return comp->sdc->image ? comp->sdc->image : "";
 }
 
-bool xm_next_launch(const QString& what, const QString& base, const QString& sub, const QString& subName, const QString* only, int* entries) {
+bool xm_next_launch(const QString& what, const QString& base, const QString& sub, const QString& subName, const QString* only, int* entries,
+		std::function<bool(vFat*)> ok) {
 	Computer* comp = conf.zx;
 	std::string user = xm_next_user_card();
 	int lock = xm_next_launch_in() ? launchLock : comp->sdc->lock;
-	if (!sdc_mount_launch(comp->sdc, base, sub, subName, only, entries)) return false;
+	if (!sdc_mount_launch(comp->sdc, base, sub, subName, only, entries, ok)) return false;
 	launchAside = user;
 	launchLock = lock;
 	launchWhat = what;
