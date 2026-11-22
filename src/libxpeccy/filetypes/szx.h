@@ -40,9 +40,11 @@ void szx_media_clear(void);
 // (sdc_dir_print) - the card is never in the file.
 #define SZX_PINS	4
 #define SZX_CARD_CONTENT	0x02	// the record's flags: the print is of what the card holds
+#define SZX_CARD_OWN		0x04	// ...the card was a program's own, System/Next held in memory
 typedef struct {
 	int on;			// the file names a card
 	int folder;		// ...a folder, not an image
+	int own;		// ...a program's own (SZX_CARD_OWN): made again, the user's card set aside
 	unsigned long long print;	// what it held when saved (fat_dir_print), 0 unknown
 	char path[4096];
 	int pins;

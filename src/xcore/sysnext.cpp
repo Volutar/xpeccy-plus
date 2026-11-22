@@ -1,5 +1,6 @@
 #include <QCoreApplication>
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -252,6 +253,125 @@ bool sn_card_ok(const QString& path) {
 	bool ok = sdc_has_file(sdc, rom) != 0;
 	sdcDestroy(sdc);
 	return ok;
+}
+
+// == System/Next for programs from elsewhere ==
+// <config>/next-system/<release>/ holds a release as its archive has it, with <release>.ok
+// beside it once it was checked. A program's card is made of it and never writes there.
+
+static QString sn_system_root() {
+	return QString::fromLocal8Bit(conf.path.confDir.c_str()) + "/next-system";
+}
+
+static bool sn_system_ready(const QString& dir) {
+	return QFileInfo(dir + ".ok").isFile() && QFileInfo(dir + "/machines/next/enNextZX.rom").isFile();
+}
+
+// the newest release unpacked and checked, empty if none
+static QString sn_system_newest(QString* release) {
+	QList<snRelease> got;
+	foreach(QFileInfo inf, QDir(sn_system_root()).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+		if (sn_system_ready(inf.absoluteFilePath())) got.append(sn_bare(inf.fileName()));
+	}
+	if (got.isEmpty()) return QString();
+	std::sort(got.begin(), got.end(), sn_newer);
+	*release = got.first().release;
+	return sn_system_root() + "/" + got.first().release;
+}
+
+// a release's archive unpacked into its folder there, the tree checked when it is known
+static QString sn_system_make(const snRelease& rel, QString* err) {
+	QString dir = sn_system_root() + "/" + rel.release;
+	QString part = dir + ".part";
+	QDir(part).removeRecursively();
+	QDir(dir).removeRecursively();		// not checked: left by a run that stopped short
+	QFile::remove(dir + ".ok");
+	qint64 start = QDateTime::currentMSecsSinceEpoch();
+	bool known = !rel.archiveSha.isEmpty() && rel.local.endsWith(".tar.gz") && (sn_file_hash(rel.local) == rel.archiveSha);
+	bool bad = !sn_unpack_archive(rel.local, part, err);
+	QString root = sn_unpacked_root(part);
+	QString sum;
+	if (bad) {
+		// said why in *err
+	} else if (!QFileInfo(root + "/machines/next/enNextZX.rom").isFile()) {
+		*err = QDir::toNativeSeparators(rel.local) + " is not a System/Next release";
+		bad = true;
+	} else if (!known && rel.checked() && ((sum = sn_tree_hash(root)) != rel.treeSha)) {
+		*err = QString("The files of %0 are not those of System/Next %1").arg(QDir::toNativeSeparators(rel.local), rel.release);
+		bad = true;
+	} else if (!QDir().rename(root, dir)) {
+		*err = "Cannot write into " + QDir::toNativeSeparators(sn_system_root());
+	} else {
+		QFile ok(dir + ".ok");
+		if (ok.open(QFile::WriteOnly)) ok.write((known ? rel.treeSha : sum.isEmpty() ? QString("unchecked") : sum).toLatin1() + "\n");
+		if (!ok.isOpen()) *err = "Cannot write into " + QDir::toNativeSeparators(sn_system_root());
+	}
+	QDir(part).removeRecursively();
+	// a download that is not the release goes, so the next try downloads it again
+	if (bad && rel.cached) QFile::remove(rel.local);
+	if (!err->isEmpty()) {
+		QDir(dir).removeRecursively();
+		return QString();
+	}
+	xlog(XLG_FILE, XLL_INFO, "next: System/Next %s unpacked from %s in %lli ms", rel.release.toUtf8().constData(),
+		rel.local.toUtf8().constData(), QDateTime::currentMSecsSinceEpoch() - start);
+	return dir;
+}
+
+QString sn_system_dir(QString* err) {
+	err->clear();
+	if (!conf.path.nextSystem.empty()) {
+		QString dir = QString::fromLocal8Bit(conf.path.nextSystem.c_str());
+		if (QFileInfo(dir + "/machines/next/enNextZX.rom").isFile()) return dir;
+		*err = "There is no System/Next in " + QDir::toNativeSeparators(dir);
+		return QString();
+	}
+	QString have;
+	QString ready = sn_system_newest(&have);
+	const snRelease* arch = nullptr;
+	QList<snRelease> rels = sn_releases();
+	for (const snRelease& rel : rels) {
+		if (!rel.local.isEmpty()) {
+			arch = &rel;
+			break;
+		}
+	}
+	if (!ready.isEmpty() && (!arch || !sn_newer(*arch, sn_bare(have)))) return ready;
+	if (arch) {
+		QString made = sn_system_make(*arch, err);
+		if (!made.isEmpty()) return made;
+		xlog(XLG_FILE, XLL_WARN, "next: %s", err->toUtf8().constData());
+	}
+	if (!ready.isEmpty()) {
+		err->clear();
+		return ready;
+	}
+	// last: a folder there may be someone's card, booted and changed since
+	QString beside = QString::fromLocal8Bit(conf.path.sysnextDir.c_str());
+	if (!beside.isEmpty() && QFileInfo(beside + "/machines/next/enNextZX.rom").isFile()) {
+		err->clear();
+		return beside;
+	}
+	if (err->isEmpty()) *err = "There is no System/Next release here to start it from";
+	return QString();
+}
+
+// where a folder of the settings really is, asked every time (a junction may be repointed)
+static QString sn_real_of(const std::string& path) {
+	return vfat_real_dir(QString::fromLocal8Bit(path.c_str()));
+}
+
+// compared where they really are: a junction or subst of the config's folder is the same one
+bool sn_system_is(const QString& path, bool beside) {
+	if (!QFileInfo(path).isDir()) return false;
+	QString real = vfat_real_dir(path);
+	if (!conf.path.nextSystem.empty() && (real == sn_real_of(conf.path.nextSystem)))
+		return true;
+	if (beside && !conf.path.sysnextDir.empty() && (real == sn_real_of(conf.path.sysnextDir)))
+		return true;
+	// in this config's next-system/ or another's: checked, its .ok beside it - beside the name
+	// it has there (a release that is itself a junction) or beside where it really is
+	return sn_system_ready(path) || sn_system_ready(real);
 }
 
 QString sn_default_path(bool image) {

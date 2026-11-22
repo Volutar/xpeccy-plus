@@ -26,5 +26,9 @@ int autostart_busy();
 // .cd goes into a folder of the card's root and NEXLOAD (snx: SPECTRUM) starts a file
 // there; 0 if a name cannot be typed. welcome: the card starts NextZXOS's welcome pages first
 int autostart_arm_nex(Computer*, const char* dir, const char* name, int welcome, int snx, int powered);
+// those lines can be typed, asked before anything changes; a word (a folder's name for .cd,
+// a file's for NEXLOAD) the keyboard types as it is, with no space
+int autostart_nex_can(const char* dir, const char* name, int snx);
+int autostart_nex_word(const char* word);
 // press or let go of keys named as a keymap names them ("E", "Sp"...)
 void autostart_key(Computer*, const char* keys, int press);

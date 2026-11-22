@@ -90,6 +90,7 @@ void help() {
 	printf("--dezog-port N\t\tthe same, on port N\n");
 	printf("--disk X\t\tselect drive to loading file (0..3 | a..d | A..D)\n");
 	printf("--sdcard PATH\t\tset SD card image, or a folder served as one\n");
+	printf("--next-system DIR\tthe System/Next folder Next programs start from, not the one unpacked\n");
 	printf("--uart-esp PORT\t\tZX Next: the ESP UART to a serial port of the host (COM3,\n");
 	printf("\t\t\t/dev/ttyUSB0, \\\\.\\pipe\\NAME on Windows), esp for the emulated\n");
 	printf("\t\t\tESP-01, - for none; this run only\n");
@@ -1162,6 +1163,9 @@ int main(int ac,char** av) {
 			} else if (!strcmp(parg, "--uart-esp") || !strcmp(parg, "--uart-pi")) {
 				QString nam = QString::fromLocal8Bit(av[i++]);
 				serial_cli(parg[7] == 'p', (nam == "-") ? QString() : nam);
+			} else if (!strcmp(parg, "--next-system")) {
+				conf.path.nextSystem = QDir::cleanPath(QFileInfo(QString::fromLocal8Bit(av[i])).absoluteFilePath()).toLocal8Bit().constData();
+				i++;
 			} else if (!strcmp(parg, "--sdcard")) {
 				xm_sd_mount(QString::fromLocal8Bit(av[i]));
 				xm_next_card();		// the Next starts from it, or takes its own, or asks

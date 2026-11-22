@@ -16,6 +16,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
+#include <QMessageBox>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QTimer>
@@ -534,4 +535,75 @@ bool next_card_dialog(QWidget* parent, QString* path, bool* own, bool asked) {
 	*path = dlg.path;
 	*own = dlg.own;
 	return true;
+}
+
+// System/Next for a program from elsewhere when there is none here: the newest release known
+// here downloaded into the cache, which sn_system_dir() unpacks it from
+bool next_system_download(QWidget* parent) {
+	QList<snRelease> rels = sn_releases();
+	snRelease rel;
+	for (const snRelease& r : rels) {
+		if (!r.local.isEmpty()) return false;	// one is here and did not do: downloading would not help
+		if (r.checked() && rel.release.isEmpty()) rel = r;
+	}
+	QString why;
+	if (rel.release.isEmpty() || !conf.path.nextSystem.empty() || !dl_available(&why)) return false;
+	QMessageBox ask(QMessageBox::Question, "System/Next",
+		QString("NEX and SNX files start from NextZXOS, which comes with System/Next. It is not part of "
+			"Xpeccy+: it is downloaded from GitLab once, about %0.\n\nDownload System/Next %1 now?")
+			.arg(nc_size_name(rel.bytes)).arg(rel.release),
+		QMessageBox::Yes | QMessageBox::No, parent);
+	ask.button(QMessageBox::Yes)->setText("Download");
+	ask.button(QMessageBox::Yes)->setIcon(QIcon(":/images/ok-apply.png"));
+	ask.button(QMessageBox::No)->setText("Cancel");
+	ask.button(QMessageBox::No)->setIcon(QIcon(":/images/cancel.png"));
+	if (ask.exec() != QMessageBox::Yes) return false;
+	QDialog dlg(parent);
+	dlg.setWindowTitle("System/Next");
+	QVBoxLayout* lay = new QVBoxLayout(&dlg);
+	QLabel* lab = new QLabel(QString("Downloading System/Next %0").arg(rel.release));
+	lab->setMinimumWidth(360);
+	lay->addWidget(lab);
+	QProgressBar* bar = new QProgressBar;
+	bar->setTextVisible(false);
+	lay->addWidget(bar);
+	QLabel* line = new QLabel;
+	QFont fnt = line->font();
+	fnt.setItalic(true);
+	line->setFont(fnt);
+	lay->addWidget(line);
+	QDialogButtonBox* box = new QDialogButtonBox(QDialogButtonBox::Cancel);
+	box->button(QDialogButtonBox::Cancel)->setIcon(QIcon(":/images/cancel.png"));
+	lay->addWidget(box);
+	xDownload dl;
+	QDir().mkpath(sn_cache_dir());
+	QString archive = sn_cache_dir() + sn_archive_name(rel);
+	QString part = archive + ".part";
+	QString err;
+	bool ok = false;
+	QObject::connect(box, &QDialogButtonBox::rejected, &dlg, [&dl, &dlg]() {
+		dl.cancel();
+		dlg.reject();
+	});
+	dl.toFile(sn_archive_url(rel), part);
+	dl_follow(&dlg, &dl, bar, line, [&](const dlStatus& st) {
+		if (st.state == DL_FAIL) {
+			err = st.error;
+			dlg.reject();
+		}
+		if (st.state != DL_DONE) return;
+		QFile::remove(archive);
+		if (QFile::rename(part, archive)) {
+			ok = true;
+			dlg.accept();
+		} else {
+			QFile::remove(part);
+			err = "Cannot write into the config folder";
+			dlg.reject();
+		}
+	}, rel.bytes);
+	dlg.exec();
+	dl.cancel();
+	if (!err.isEmpty()) QMessageBox::warning(parent, "System/Next", "System/Next was not downloaded: " + err);
+	return ok;
 }

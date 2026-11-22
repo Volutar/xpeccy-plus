@@ -33,3 +33,6 @@ refresh_hold: ok
 refresh_names: ok
 refresh_hidden: ok
 snames: ok
+home: ok
+== home
+4 seeds, 0 failed

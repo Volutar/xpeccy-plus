@@ -74,7 +74,7 @@ enum {
 	ERR_FILE_TYPE,		// the extension is none the machine knows
 	ERR_SNAP_SHORT,		// a snapshot shorter than its own header says it is
 	ERR_NEX_HW,		// a .nex on a machine that is not a ZX Spectrum Next
-	ERR_NEX_CARD,		// a .nex with no folder in the SD card slot to boot NextZXOS from
+	ERR_NEX_SYSTEM,		// a .nex with no System/Next release here to boot NextZXOS from
 	ERR_NEX_NAME,		// a .nex whose name cannot be typed
 	ERR_SNAP_NEXT,		// a snapshot of the Next in .sna or .z80: only .szx keeps its state
 	ERR_DSK_WIDE		// a disk of more cylinders than a .dsk is written with

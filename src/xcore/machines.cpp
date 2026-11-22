@@ -1400,12 +1400,12 @@ int xm_power_count() {
 	return powerCount;
 }
 
-void xm_power_cycle() {
+void xm_power_cycle(bool reread) {
 	const xMachine* mac = xm_find(conf.macId);
 	Computer* comp = conf.zx;
 	if (!mac || !comp) return;
 	powerCount++;
-	mac_reread_folders(comp);
+	if (reread) mac_reread_folders(comp);
 	mac_cold_ram(comp, mac->ramCold, mac->ramNoise);
 	mac_load_font(comp, conf.roms.fntFile, false);
 	div_power_on(comp->div);
@@ -1523,6 +1523,47 @@ bool xm_next_own_in() {
 	return !nextIn.empty() && comp->sdc->image && (nextIn == comp->sdc->image);
 }
 
+// A program from elsewhere starts on a card made for it (filer.cpp load_next), whatever the
+// user has in: their card is set aside as for the Next's own, and put back the same way.
+static std::string launchAside;		// the card a program's card stands in for ("" none)
+static int launchLock = 0;		// ...and its lock switch, which a folder card clears
+static QString launchWhat;		// the program's file name
+
+bool xm_next_launch_in() {
+	return sdc_launch_in(conf.zx->sdc);
+}
+
+// the card the user put in: the one in the slot unless a card of the Next's stands in for it
+static std::string xm_next_user_card() {
+	Computer* comp = conf.zx;
+	if (xm_next_launch_in()) return launchAside;
+	if (xm_next_own_in()) return nextAside;
+	return comp->sdc->image ? comp->sdc->image : "";
+}
+
+bool xm_next_launch(const QString& what, const QString& base, const QString& sub, const QString& subName, const QString* only, int* entries,
+		std::function<bool(vFat*)> ok) {
+	Computer* comp = conf.zx;
+	std::string user = xm_next_user_card();
+	int lock = xm_next_launch_in() ? launchLock : comp->sdc->lock;
+	if (!sdc_mount_launch(comp->sdc, base, sub, subName, only, entries, ok)) return false;
+	launchAside = user;
+	launchLock = lock;
+	launchWhat = what;
+	nextAside.clear();
+	nextIn.clear();
+	nextWants = false;		// it has a card to start from: nobody is asked for one
+	return true;
+}
+
+std::string xm_next_card_kept() {
+	return xm_next_user_card();
+}
+
+QString xm_next_launch_what() {
+	return xm_next_launch_in() ? launchWhat : QString();
+}
+
 // the card the Next takes when the slot has none it can start from, empty if none;
 // the configured one only if System/Next is still on it
 static QString xm_next_own() {
@@ -1535,6 +1576,12 @@ static QString xm_next_own() {
 // the card the user put in, the Next's own taken out again; not read: every caller puts
 // another in or leaves the machine next (a big folder takes seconds)
 static void xm_next_card_back() {
+	if (xm_next_launch_in()) {
+		sdc_mount_later(conf.zx->sdc, QString::fromLocal8Bit(launchAside.c_str()));
+		sdcSetLock(conf.zx->sdc, launchLock);
+		launchAside.clear();
+		return;
+	}
 	if (!xm_next_own_in()) return;
 	sdc_mount_later(conf.zx->sdc, QString::fromLocal8Bit(nextAside.c_str()));
 	nextAside.clear();
@@ -1548,7 +1595,7 @@ void xm_next_card(bool force) {
 	nextWants = false;
 	if (!comp->hw || (comp->hw->id != HW_ZXNEXT)) return;
 	if (force) xm_next_card_back();
-	if (xm_next_own_in()) return;
+	if (xm_next_own_in() || xm_next_launch_in()) return;
 	if (!force && comp->sdc->image && sdc_has_file(comp->sdc, "machines/next/enNextZX.rom")) return;
 	QString own = xm_next_own();
 	if (own.isEmpty()) {
@@ -1577,6 +1624,17 @@ void xm_next_put_card(const QString& path) {
 	}
 	xm_next_card_back();
 	sdc_mount(comp->sdc, path);
+}
+
+// the program's card taken out: the user's card in again, read now, and the Next's own in
+// its place if the Next cannot start from it
+void xm_next_launch_end() {
+	if (!xm_next_launch_in()) return;
+	xlog(XLG_FILE, XLL_INFO, "next: the card for %s out, %s in again", launchWhat.toUtf8().constData(),
+		launchAside.empty() ? "no card" : launchAside.c_str());
+	xm_next_card_back();
+	if (sdc_unread(conf.zx->sdc)) sdc_remount(conf.zx->sdc);
+	xm_next_card();
 }
 
 bool xm_next_wants_card() {
@@ -2039,8 +2097,8 @@ void xm_save_media(FILE* file) {
 	fprintf(file, "hdd.slave.type = %i\n", comp->ide->slave->type);
 	fprintf(file, "hdd.slave.lba = %s\n", YESNO(comp->ide->slave->hasLBA));
 	fprintf(file, "hdd.slave = %s\n", comp->ide->slave->image ? comp->ide->slave->image : "");
-	fprintf(file, "sdcard = %s\n", xm_next_own_in() ? nextAside.c_str() : comp->sdc->image ? comp->sdc->image : "");
-	fprintf(file, "sdcard.lock = %s\n", YESNO(comp->sdc->lock));
+	fprintf(file, "sdcard = %s\n", xm_next_user_card().c_str());
+	fprintf(file, "sdcard.lock = %s\n", YESNO(xm_next_launch_in() ? launchLock : comp->sdc->lock));
 	fprintf(file, "next.card = %s\n", conf.next.card.c_str());
 	fprintf(file, "next.card.own = %s\n", YESNO(conf.next.own));
 	fprintf(file, "next.esp = %s\n", serial_conf(0).toLocal8Bit().constData());

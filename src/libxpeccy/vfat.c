@@ -295,6 +295,11 @@ void vfat_pin(vFat* vf, int idx, const char* hostpath) {
 	vf->node[idx].pinned = 1;
 }
 
+void vfat_home(vFat* vf, int pin) {
+	if (!vf || (pin <= 0) || (pin >= vf->nodes) || !vf->node[pin].pinned || vf->node[pin].cut) return;
+	vf->home = pin;
+}
+
 int vfat_pin_node(vFat* vf, const char* name) {
 	int i;
 	for (i = vf ? vf->node[0].child : -1; i >= 0; i = vf->node[i].next) {

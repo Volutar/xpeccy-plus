@@ -239,11 +239,13 @@ own, all opaque:
   in memory. The record names the card (an image or a folder), the folder a program opened
   from elsewhere was put on it as, and a print of what the card holds as the Next reads it.
   A load puts the card back in and that folder back on it, and says so when what it holds
-  has changed since. A collection an older build put on whole (see
+  has changed since. A program's own card (b2) is made again from that System/Next, with the
+  user's card set aside as opening the program sets it. A collection an older build put on whole (see
   [Starting programs](zx-next.md#starting-programs)) goes back empty: the program is in memory already.
 
 ```
-  byte  flags             b0: a folder, not an image; b1: the print at the end follows
+  byte  flags             b0: a folder, not an image; b1: the print at the end follows;
+                          b2: a program's own card - the path is System/Next, never written
   qword old print         0 with b1; without it, a print of every directory entry, not compared
   char  path[]            zero terminated
   byte  folders           how many follow (one at a time is put on a card)
