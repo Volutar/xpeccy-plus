@@ -588,6 +588,23 @@ static int load_next(Computer* comp, const char* name, int snx) {
 		vFat* vf = comp->sdc->vfat;
 		return (vf_child(vf, vf_child(vf, 0, "nextzxos"), "autoexec.1st") >= 0) ? 1 : 0;
 	};
+	// a program inside System/Next itself starts where it is, on that card with nothing of its
+	// own put on: what it writes stays in memory, as System/Next is never written
+	QString sysReal = QFileInfo(sys).canonicalFilePath();
+	QString folder = inf.absoluteDir().canonicalPath();
+	if (!sysReal.isEmpty() && ((folder == sysReal) || folder.startsWith(sysReal + "/"))) {
+		QString rel = QDir(sysReal).relativeFilePath(folder);
+		if (rel == ".") rel.clear();
+		if (rel.toLatin1() != rel.toUtf8()) return ERR_NEX_NAME;	// a path the keyboard cannot type
+		if (!xm_next_launch(inf.fileName(), sys, QString(), QString(), NULL, NULL)) return ERR_CANT_OPEN;
+		xlog(XLG_FILE, XLL_INFO, "next: a card of its own, System/Next from %s, the program in it at /%s",
+			sys.toUtf8().constData(), rel.toUtf8().constData());
+		xm_power_cycle(false);
+		int node = 0;
+		foreach(QString part, rel.split('/', X_SkipEmptyParts))
+			node = vf_child(comp->sdc->vfat, node, part.toUtf8().constData());
+		return (node < 0) ? ERR_CANT_OPEN : nex_arm(comp, node, ("/" + rel).toLatin1(), inf, welcome(), snx, 1);
+	}
 	// the folder's name, as the keyboard types it, and one System/Next's root has not got
 	QString base;
 	foreach(QChar c, inf.absoluteDir().dirName().toLower()) {
@@ -607,7 +624,7 @@ static int load_next(Computer* comp, const char* name, int snx) {
 	int n = 0;
 	if (!xm_next_launch(file, sys, inf.absolutePath(), dir, why.isEmpty() ? NULL : &file, &n)) {
 		xlog(XLG_FILE, XLL_WARN, "next: %s cannot be read", sys.toUtf8().constData());
-		return ERR_NEX_SYSTEM;
+		return ERR_CANT_OPEN;
 	}
 	QString what = why.isEmpty() ? QString("%0 put on as /%1, %2 entries").arg(inf.absolutePath(), dir, QString::number(n))
 		: QString("%0 put on alone as /%1: %2").arg(inf.absoluteFilePath(), dir, why);
@@ -1279,7 +1296,12 @@ static void szx_card_mount(Computer* comp, bool load) {
 		return comp->sdc->image && (QFileInfo(QString::fromLocal8Bit(comp->sdc->image)).canonicalFilePath() == QFileInfo(path).canonicalFilePath());
 	};
 	bool sys = c->pins && sn_system_is(path);
-	if (load && !same() && !sys) {
+	// a program inside an unpacked System/Next ran on it with nothing put on: made again so
+	bool bare = !c->pins && QFileInfo(path + ".ok").isFile() && sn_system_is(path);
+	if (load && bare && !(same() && xm_next_launch_in())) {
+		if (xm_next_launch(QFileInfo(path).fileName(), path, QString(), QString()))
+			xlog(XLG_FILE, XLL_INFO, "szx: the program's own card, System/Next from %s", c->path);
+	} else if (load && !same() && !sys) {
 		if (QFileInfo::exists(path)) {
 			xm_next_put_card(path);
 			xlog(XLG_FILE, XLL_INFO, "szx: SD card %s", c->path);

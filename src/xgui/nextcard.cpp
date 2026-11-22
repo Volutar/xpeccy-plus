@@ -547,7 +547,7 @@ bool next_system_download(QWidget* parent) {
 		if (r.checked() && rel.release.isEmpty()) rel = r;
 	}
 	QString why;
-	if (rel.release.isEmpty() || !dl_available(&why)) return false;
+	if (rel.release.isEmpty() || !conf.path.nextSystem.empty() || !dl_available(&why)) return false;
 	QMessageBox ask(QMessageBox::Question, "System/Next",
 		QString("NEX and SNX files start from NextZXOS, which comes with System/Next. It is not part of "
 			"Xpeccy+: it is downloaded from GitLab once, about %0.\n\nDownload System/Next %1 now?")

@@ -308,8 +308,10 @@ static void vfat_scan_tree(vFat* vf, const QString& root, const QString& sub, co
 				return;
 			}
 			if (inf.fileName().startsWith(VF_TMPMARK)) {		// left by an interrupted sync
-				// ours are where the volume writes: its root, or its home
-				char* back = (restore && writable && (cur.idx == vf->home)) ? vfat_tmp_restore(vf, inf.fileName().toUtf8().constData()) : NULL;
+				// ours are where the volume writes: its root, or its home - none on a program's card
+				// with no home, whose folder takes nothing
+				char* back = (restore && writable && (cur.idx == vf->home) && (!home || vf->home))
+					? vfat_tmp_restore(vf, inf.fileName().toUtf8().constData()) : NULL;
 				if (!back) continue;
 				inf = QFileInfo(QDir(cur.path).filePath(QString::fromUtf8(back)));
 				free(back);
@@ -428,12 +430,13 @@ vFat* vfat_scan_sized(const QString& path, unsigned int sectors) {
 
 // The Next's card for a program from elsewhere: System/Next's folder base, which never gets a
 // write, with the program's folder sub in its root as subName - the one part that follows the
-// guest, at once, nothing asked - or, cut (only), its file alone, all of it in memory.
+// guest, at once, nothing asked - or, cut (only), its file alone; with no home (cut, or no sub:
+// a program inside System/Next itself) all of it stays in memory.
 static vFat* vfat_scan_launch(const QString& base, const QString& sub, const QString& subName, const QString* only) {
 	vFat* vf = vfat_scan_in(base, true, sub, subName, only, 0, true, NULL, true);
 	if (!vf) return NULL;
 	vf->hold = 0;
-	if (only) vfat_read_only(vf, "a program's file alone");
+	if (!vf->home) vfat_read_only(vf, "a program's card with nothing to write to");
 	return vf;
 }
 
@@ -497,7 +500,9 @@ QString fold_news(Computer* comp) {
 		int errors = 0;
 		int k = vfat_news(vf[i], &why, &errors);
 		if (!k) continue;
-		QString root = QDir::toNativeSeparators(QString::fromUtf8(vf[i]->root ? vf[i]->root : ""));
+		// a program's card follows its home alone: that is the folder the news are of
+		const char* top = vf[i]->home ? vf[i]->node[vf[i]->home].hroot : vf[i]->root;
+		QString root = QDir::toNativeSeparators(QString::fromUtf8(top ? top : ""));
 		if (k == 1)
 			return QString("The folder\n%0\nno longer follows the machine: %1.\n\n"
 				"What the machine writes there stays in memory, and is lost when the folder is "
@@ -602,7 +607,8 @@ void ide_mount(IDE* ide, int dev, const QString& path) {
 QString fold_refresh(vFat* vf, vfRefresh* r) {
 	memset(r, 0x00, sizeof(vfRefresh));
 	if (!vf || !vf->root) return QString();
-	if (vf->home) return QString("A program's card is not refreshed: open the program again.");
+	if (vf->home || (launch.sdc && (launch.sdc->vfat == vf)))
+		return QString("A program's card is not refreshed: open the program again.");
 	vfat_flush(vf);
 	int res = vfat_refresh_ready(vf);		// before the scan: a refused one reads nothing
 	if (res == VFR_STUCK) {		// once more: a guest mid-save, or what the user has cleared since
