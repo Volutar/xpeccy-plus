@@ -267,7 +267,8 @@ static QString real_dir(const QString& path) {
 // the loader in the root. A folder reached a second time - a junction back up the tree,
 // two to one place - is taken once, and a junction into the tree itself not at all:
 // deleting one copy would take the file from the other.
-static void vfat_scan_tree(vFat* vf, const QString& root, const QString& sub, const QString& subName, const QString* only, bool writable, bool restore, vfsDrop& drop) {
+static void vfat_scan_tree(vFat* vf, const QString& root, const QString& sub, const QString& subName, const QString* only, bool writable, bool restore,
+		bool home, vfsDrop& drop) {
 	QList<vfsDir> queue;
 	QSet<QString> seen;
 	QString top = real_dir(root);
@@ -280,6 +281,7 @@ static void vfat_scan_tree(vFat* vf, const QString& root, const QString& sub, co
 		if (idx >= 0) {
 			vfat_pin(vf, idx, QDir::cleanPath(QFileInfo(sub).absoluteFilePath()).toUtf8().constData());
 			if (!only) {
+				if (home) vfat_home(vf, idx);
 				queue.append({idx, sub, 1});
 			} else {
 				// the folder is not listed: the one file is asked for by its name
@@ -306,7 +308,8 @@ static void vfat_scan_tree(vFat* vf, const QString& root, const QString& sub, co
 				return;
 			}
 			if (inf.fileName().startsWith(VF_TMPMARK)) {		// left by an interrupted sync
-				char* back = (restore && writable && !cur.idx) ? vfat_tmp_restore(vf, inf.fileName().toUtf8().constData()) : NULL;
+				// ours are where the volume writes: its root, or its home
+				char* back = (restore && writable && (cur.idx == vf->home)) ? vfat_tmp_restore(vf, inf.fileName().toUtf8().constData()) : NULL;
 				if (!back) continue;
 				inf = QFileInfo(QDir(cur.path).filePath(QString::fromUtf8(back)));
 				free(back);
@@ -359,9 +362,9 @@ static void vfat_scan_tree(vFat* vf, const QString& root, const QString& sub, co
 // sub: one more folder, put in the root as subName (a name the root does not have), with
 // only that file of it if only is given (none if it is empty); sectors: the volume's size,
 // 0 for what it holds plus room to write in when writable. build false: the tree alone, and
-// *cut says whether the entries' limit cut it short
+// *cut says whether the entries' limit cut it short; home: sub, whole, is the volume's home
 static vFat* vfat_scan_in(const QString& path, bool writable, const QString& sub, const QString& subName, const QString* only, unsigned int sectors,
-		bool build = true, bool* cut = NULL) {
+		bool build = true, bool* cut = NULL, bool home = false) {
 	QFileInfo inf(path);
 	if (!inf.isDir() || !inf.isReadable()) return NULL;
 	vFat* vf = vfat_create();
@@ -376,7 +379,7 @@ static vFat* vfat_scan_in(const QString& path, bool writable, const QString& sub
 		drop.slow = vfsSlowRoots.contains(path);
 	}
 	vfat_add(vf, -1, "", 0, mtime, 1);		// root
-	vfat_scan_tree(vf, path, sub, subName, only, writable, build, drop);
+	vfat_scan_tree(vf, path, sub, subName, only, writable, build, home, drop);
 	{
 		QMutexLocker lock(&vfsSlowLock);
 		if (paceClockNs() - drop.start > VFS_SLOW_NS) vfsSlowRoots.insert(path);
@@ -421,6 +424,45 @@ vFat* vfat_scan(const QString& path, bool writable, const QString& sub, const QS
 // for an image made of the folder: laid out as a volume that takes writes
 vFat* vfat_scan_sized(const QString& path, unsigned int sectors) {
 	return vfat_scan_in(path, true, QString(), QString(), NULL, sectors);
+}
+
+// The Next's card for a program from elsewhere: System/Next's folder base, which never gets a
+// write, with the program's folder sub in its root as subName - the one part that follows the
+// guest, at once, nothing asked - or, cut (only), its file alone, all of it in memory.
+static vFat* vfat_scan_launch(const QString& base, const QString& sub, const QString& subName, const QString* only) {
+	vFat* vf = vfat_scan_in(base, true, sub, subName, only, 0, true, NULL, true);
+	if (!vf) return NULL;
+	vf->hold = 0;
+	if (only) vfat_read_only(vf, "a program's file alone");
+	return vf;
+}
+
+// the card sdc_mount_launch put in last, to read again as it was made
+static struct {
+	SDCard* sdc = NULL;
+	QString base, sub, name, only;
+	bool cut = false;
+} launch;
+
+bool sdc_mount_launch(SDCard* sdc, const QString& base, const QString& sub, const QString& subName, const QString* only, int* entries) {
+	if (!sdc) return false;
+	vfat_flush(sdc->vfat);
+	vFat* vf = vfat_scan_launch(base, sub, subName, only);
+	if (!vf) return false;
+	if (entries) *entries = vfat_pin_entries(vf, vfat_pin_node(vf, subName.toUtf8().constData()));
+	sdcSetFolder(sdc, base.toLocal8Bit().constData(), vf);
+	launch.sdc = sdc;
+	launch.base = base;
+	launch.sub = sub;
+	launch.name = subName;
+	launch.only = only ? *only : QString();
+	launch.cut = (only != NULL);
+	return true;
+}
+
+// closed too (sdcCloseFile at exit): the config still keeps the user's card, not this one
+bool sdc_launch_in(SDCard* sdc) {
+	return sdc && (launch.sdc == sdc) && sdc->image && (QString::fromLocal8Bit(sdc->image) == launch.base);
 }
 
 // the Next's own card, made in the Next SD Card window: it takes writes and asks nothing
@@ -478,7 +520,7 @@ void fold_read_only(Computer* comp, const char* why) {
 	vFat* vf[5];
 	fold_volumes(comp, vf);
 	for (int i = 0; i < 5; i++) {
-		if (!vf[i]) continue;
+		if (!vf[i] || vf[i]->home) continue;	// a program's card writes beside the program, as it was asked to
 		if (vfs_own(QString::fromUtf8(vf[i]->root ? vf[i]->root : "")))
 			vfat_release(vf[i]);	// never on hold today; were it, a No must not leave it asking
 		else
@@ -490,6 +532,7 @@ void fold_read_only(Computer* comp, const char* why) {
 // again: the machine is held for it, so the quiet spell that would carry it never comes.
 void sdc_mount(SDCard* sdc, const QString& path) {
 	if (!sdc) return;
+	if (launch.sdc == sdc) launch.sdc = NULL;
 	vfat_flush(sdc->vfat);
 	if (path.isEmpty()) {
 		sdcSetImage(sdc, "");
@@ -507,6 +550,7 @@ void sdc_mount(SDCard* sdc, const QString& path) {
 // slot for it, nor for a card that is about to be taken out again
 void sdc_mount_later(SDCard* sdc, const QString& path) {
 	if (!sdc) return;
+	if (launch.sdc == sdc) launch.sdc = NULL;
 	if (!QFileInfo(path).isDir()) {
 		sdc_mount(sdc, path);
 		return;
@@ -517,6 +561,14 @@ void sdc_mount_later(SDCard* sdc, const QString& path) {
 
 void sdc_remount(SDCard* sdc) {
 	if (!sdc || !sdc->image) return;
+	if (sdc_launch_in(sdc)) {		// a program's card is made again, not read as a plain folder
+		QString only = launch.only;
+		if (sdc_mount_launch(sdc, launch.base, launch.sub, launch.name, launch.cut ? &only : NULL, NULL)) return;
+		// reads as no card, still the program's: the user's stays aside, and the next read tries again
+		xlog(XLG_DISK, XLL_WARN, "next: the program's card could not be made again");
+		sdcSetUnread(sdc, launch.base.toLocal8Bit().constData());
+		return;
+	}
 	QString path = QString::fromLocal8Bit(sdc->image);	// own the path: mounting frees it
 	sdc_mount(sdc, path);
 }
@@ -550,6 +602,7 @@ void ide_mount(IDE* ide, int dev, const QString& path) {
 QString fold_refresh(vFat* vf, vfRefresh* r) {
 	memset(r, 0x00, sizeof(vfRefresh));
 	if (!vf || !vf->root) return QString();
+	if (vf->home) return QString("A program's card is not refreshed: open the program again.");
 	vfat_flush(vf);
 	int res = vfat_refresh_ready(vf);		// before the scan: a refused one reads nothing
 	if (res == VFR_STUCK) {		// once more: a guest mid-save, or what the user has cleared since

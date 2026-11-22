@@ -16,6 +16,11 @@ void sdc_mount_later(SDCard*, const QString&);	// as sdc_mount, but a folder is 
 // a folder card read again with another folder in its root (only: as vfat_scan); *entries: what
 // that folder brought, itself left out
 bool sdc_mount_over(SDCard*, const QString& sub, const QString& subName, const QString* only = NULL, int* entries = NULL);
+// the Next's card for a program from elsewhere: System/Next's folder base, never written, with the
+// program's folder sub in its root as subName, written beside the program (only: its file alone,
+// in memory); read again as it was made
+bool sdc_mount_launch(SDCard*, const QString& base, const QString& sub, const QString& subName, const QString* only = NULL, int* entries = NULL);
+bool sdc_launch_in(SDCard*);		// the card in is the one sdc_mount_launch made
 
 void ide_mount(IDE*, int, const QString&);	// same for one IDE device (IDE_MASTER / IDE_SLAVE)
 void ide_remount(IDE*);

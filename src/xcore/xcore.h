@@ -471,9 +471,16 @@ void xm_sd_mount(const QString& path);	// a card into the slot; a folder read on
 void xm_next_card(bool force = false);	// a ZX Spectrum Next with no System/Next card gets its own (force: whatever is in)
 void xm_next_put_card(const QString& path);	// the card a snapshot names goes in, the machine not restarted
 bool xm_next_own_in();		// the Next's own card (System/Next) is the one in the slot
+// a program from elsewhere's card into the slot (sdc_mount_launch), the user's set aside
+bool xm_next_launch(const QString& what, const QString& base, const QString& sub, const QString& subName, const QString* only = NULL,
+	int* entries = NULL);
+bool xm_next_launch_in();		// ...and it is the one in the slot
+QString xm_next_launch_what();		// the program it is for, by its file name; empty when it is not in
+void xm_next_launch_end();		// it taken out: the user's card back in
+std::string xm_next_card_kept();	// the card the user put in, whatever stands in for it ("" none)
 bool xm_next_wants_card();	// once: the Next has no card to start from, the window asks for one
 void xm_save_nvram();
-void xm_power_cycle();		// off and on again: the caller holds emu_lock
+void xm_power_cycle(bool reread = true);	// off and on again: the caller holds emu_lock; reread: folders read again
 void xm_set_ram(int size);		// the RAM the machine file gives (a snapshot's own lasts the session)
 int xm_own_ram();			// ...and what that is now
 int xm_power_count();		// power cycles so far: something to notice one by
@@ -1220,6 +1227,7 @@ struct xConfig {
 		std::string boot;
 		std::string esxDir;	// esxdos/: the bundled esxDOS, its firmware and card files
 		std::string sysnextDir;	// sysnext/ beside the program, if any (tests): the Next's card when none was made
+		std::string nextSystem;	// --next-system: the System/Next a program from elsewhere starts from ("" found: sn_system_dir)
 	} path;
 	struct {
 		unsigned labels:1;

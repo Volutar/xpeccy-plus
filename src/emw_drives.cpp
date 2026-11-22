@@ -255,7 +255,8 @@ void MainWin::fillCardMenu(QMenu* m, int card) {
 	bool dir = sdc->image && QFileInfo(QString::fromLocal8Bit(sdc->image)).isDir();
 	QAction* act;
 	if (card < 0) {
-		act = m->addAction(sdc->image ? drive_media(sdc->image, true) : QString("(no card)"));
+		QString prog = xm_next_launch_what();
+		act = m->addAction(!prog.isEmpty() ? QString("Card for %0").arg(prog) : sdc->image ? drive_media(sdc->image, true) : QString("(no card)"));
 		act->setEnabled(false);
 		m->addSeparator();
 	}
@@ -268,7 +269,7 @@ void MainWin::fillCardMenu(QMenu* m, int card) {
 	act = m->addAction(QIcon(":/images/tape-eject.png"), "Eject", this, [this, card]() {cardEject(card);});
 	act->setEnabled(sdc->image != NULL);
 	act = m->addAction(QIcon(":/images/refresh.png"), "Refresh", this, [this, card]() {folderRefresh(false, card);});
-	act->setEnabled(sdc->vfat != NULL);
+	act->setEnabled((sdc->vfat != NULL) && !((card < 0) && xm_next_launch_in()));	// a program's card is made, not read
 	m->addSeparator();
 	// the card's lock switch; a folder is read only whatever it says unless Options lets
 	// folders take writes
@@ -631,6 +632,10 @@ void MainWin::driveOp(std::function<void()> fn) {
 
 void MainWin::cardEject(int card) {
 	driveOp([card]() {
+		if ((card < 0) && xm_next_launch_in()) {
+			xm_next_launch_end();		// a program's card out: the user's back in
+			return;
+		}
 		sdc_mount(sd_card(conf.zx, card), QString());
 		xm_next_card();		// the Next takes its own card back
 	});

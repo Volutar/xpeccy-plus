@@ -46,4 +46,12 @@ QString sn_unpacked_root(const QString& dir);
 bool sn_make_image(const QString& dir, const QString& file, qint64 size, QString* err, std::function<bool(int)> tick = nullptr);
 // a card the Next can start from: System/Next's machine folder on it
 bool sn_card_ok(const QString& path);
+
+// System/Next as a program from elsewhere starts from (filer.cpp load_next), whatever card the
+// user has: --next-system's folder; else a release unpacked into <config>/next-system/ from its
+// archive, checked once - unpacked now when an archive here is newer than any unpacked; else
+// sysnext/ beside the program. Empty, with *err saying why, when there is nothing to start from.
+QString sn_system_dir(QString* err);
+// a folder sn_system_dir() gives or gave: a snapshot's card record names one
+bool sn_system_is(const QString& path);
 QString sn_default_path(bool image);
