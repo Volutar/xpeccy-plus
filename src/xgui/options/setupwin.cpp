@@ -2664,14 +2664,21 @@ void SetupWin::buildDevices() {
 	// board switched one nobody wrote down
 	QString shadowTip = shadowBox->toolTip();
 	QWidget* shadowLab = robikRows[robikRows.size() - 3];
-	connect(ui.mszbox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, shadowTip, shadowLab](int) {
-		bool fits = getRFIData(ui.mszbox) < MEM_128K;
+	connect(ui.mszbox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, shadowTip, shadowLab, was = -1](int) mutable {
+		int now = getRFIData(ui.mszbox);
+		bool fits = now < MEM_128K;
+		// the user taking the Robik to 128K or back: the other board boots its own ROM,
+		// the 128 menu or 48 BASIC (a list refilled, from -1, is no such change)
+		bool robik = conf.zx && (conf.zx->hw->id == HW_ROBIK);
+		if (robik && (was >= 0) && (now >= 0) && ((was < MEM_128K) != fits))
+			resTarget = fits ? RES_48 : RES_128;
+		was = now;
 		QString tip = fits ? shadowTip : shadowTip + "\n\n" + tr("Not with 128 KB: how such a board\nswitched it is not known");
 		shadowBox->setEnabled(fits);
 		shadowLab->setEnabled(fits);
 		shadowBox->setToolTip(tip);
 		shadowLab->setToolTip(tip);
-		if (conf.zx && (conf.zx->hw->id == HW_ROBIK))
+		if (robik)
 			fillRomSlots();		// which ROM boots goes with the size
 	});
 	brightBox = devCombo(QStringList() << tr("All bright") << tr("Two levels"));
