@@ -530,20 +530,54 @@ static int vf_child(vFat* vf, int dir, const char* name) {
 	return -1;
 }
 
-// started from dir (a node of the card, cd the path NextZXOS goes there by): by its
-// name, else by the card's 8.3 name for it, which any name has and the keyboard can type
-static int nex_arm(Computer* comp, int dir, const QByteArray& cd, const QFileInfo& inf, int welcome, int snx, int powered) {
-	vFat* vf = comp->sdc->vfat;
-	if (autostart_arm_nex(comp, cd.constData(), inf.fileName().toLocal8Bit().constData(), welcome, snx, powered)) return ERR_OK;
-	QByteArray want = inf.fileName().toUtf8();
+// the card's 8.3 name of a node, as the guest lists it: NAME.EXT
+static QString vf_short(vFat* vf, int i) {
+	QString sn = QString::fromLatin1(vf->node[i].sname, 8).trimmed();
+	QString ext = QString::fromLatin1(vf->node[i].sname + 8, 3).trimmed();
+	return ext.isEmpty() ? sn : sn + "." + ext;
+}
+
+// The program is typed in by its names: each folder on the way and the file by its own where
+// the keyboard types it, else by the card's 8.3 one (a space, a letter it has not got).
+// The path .cd takes from the card's root (node 0) down rel to the program's folder, *node
+// that folder's; empty if a folder is not there
+static QByteArray nex_cd(vFat* vf, const QString& rel, int* node) {
+	QByteArray cd;
+	*node = 0;
+	foreach(QString part, rel.split('/', X_SkipEmptyParts)) {
+		*node = vf_child(vf, *node, part.toUtf8().constData());
+		if (*node < 0) return QByteArray();
+		QByteArray own = part.toLatin1();
+		cd += "/" + ((part.toUtf8() == own) && autostart_nex_word(own.constData()) ? own : vf_short(vf, *node).toLatin1());
+	}
+	return cd.isEmpty() ? QByteArray("/") : cd;
+}
+
+// ...and the file's name in that folder (dir), empty if no name of it can be typed
+static QByteArray nex_file(vFat* vf, int dir, const QByteArray& cd, const QFileInfo& inf, int snx) {
+	QString name = inf.fileName();
+	QByteArray own = name.toLatin1();
+	if ((name.toUtf8() == own) && autostart_nex_can(cd.constData(), own.constData(), snx)) return own;
+	QByteArray want = name.toUtf8();
 	for (int i = (dir >= 0) ? vf->node[dir].child : -1; i >= 0; i = vf->node[i].next) {
 		if (vf->node[i].isdir || (want != vf->node[i].name)) continue;
-		QString sn = QString::fromLatin1(vf->node[i].sname, 8).trimmed();
-		QString ext = QString::fromLatin1(vf->node[i].sname + 8, 3).trimmed();
-		if (!ext.isEmpty()) sn += "." + ext;
-		return autostart_arm_nex(comp, cd.constData(), sn.toLatin1().constData(), welcome, snx, powered) ? ERR_OK : ERR_NEX_NAME;
+		QByteArray sn = vf_short(vf, i).toLatin1();
+		return autostart_nex_can(cd.constData(), sn.constData(), snx) ? sn : QByteArray();
 	}
-	return ERR_NEX_NAME;
+	return QByteArray();
+}
+
+// the System/Next folder the program's folder is in, in the program's spelling; empty if
+// none. Any release counts (an older one, a junction to it): its files are never written.
+// sysnext/ beside the program only as the one it starts from (sys): it may be the user's card
+static QString nex_system_above(const QString& folder, const QString& sys) {
+	QString sysReal = sys.isEmpty() ? QString() : vfat_real_dir(sys);
+	QDir d(folder);
+	do {
+		QString p = d.absolutePath();
+		if ((!sysReal.isEmpty() && (vfat_real_dir(p) == sysReal)) || sn_system_is(p, false)) return p;
+	} while (d.cdUp());
+	return QString();
 }
 
 // The folder goes with the program for what it reads beside it (res/, data/ and the like),
@@ -578,32 +612,46 @@ static int load_next(Computer* comp, const char* name, int snx) {
 	QFileInfo inf(QString::fromLocal8Bit(name));
 	QString err;
 	QString sys = sn_system_dir(&err);
-	if (sys.isEmpty()) {
+	QString here = nex_system_above(inf.absolutePath(), sys);
+	if (sys.isEmpty() && here.isEmpty()) {
 		xlog(XLG_FILE, XLL_WARN, "next: %s", err.toUtf8().constData());
 		return ERR_NEX_SYSTEM;
 	}
-	// a card nobody has booted yet runs its welcome pages until they are turned off
-	// with D, which this card does not keep
-	auto welcome = [comp]() {
+	// On the card just made, the lines that start the program are checked before anything else
+	// changes: when no name of it can be typed the user's card goes back and the machine is
+	// left alone. Then off and on: the card changes under the machine, which a soft reset does
+	// not tell - NextZXOS's disk layer keeps in memory what it read of the old one, and the
+	// program's folder is not found ("No such file or dir").
+	auto start = [comp, &inf, snx](const QByteArray& cd, int dir) {
 		vFat* vf = comp->sdc->vfat;
-		return (vf_child(vf, vf_child(vf, 0, "nextzxos"), "autoexec.1st") >= 0) ? 1 : 0;
+		if (!vf || cd.isEmpty() || (dir < 0)) {		// the folder is not on the card made
+			xm_next_launch_end();
+			return ERR_CANT_OPEN;
+		}
+		QByteArray file = nex_file(vf, dir, cd, inf, snx);
+		if (file.isEmpty()) {
+			xlog(XLG_FILE, XLL_WARN, "next: %s cannot be typed in NextZXOS", inf.absoluteFilePath().toUtf8().constData());
+			xm_next_launch_end();
+			return ERR_NEX_NAME;
+		}
+		xm_power_cycle(false);
+		vf = comp->sdc->vfat;
+		// a card nobody has booted yet runs its welcome pages until they are turned off
+		// with D, which this card does not keep
+		int welcome = (vf_child(vf, vf_child(vf, 0, "nextzxos"), "autoexec.1st") >= 0) ? 1 : 0;
+		return autostart_arm_nex(comp, cd.constData(), file.constData(), welcome, snx, 1) ? ERR_OK : ERR_NEX_NAME;
 	};
 	// a program inside System/Next itself starts where it is, on that card with nothing of its
 	// own put on: what it writes stays in memory, as System/Next is never written
-	QString sysReal = QFileInfo(sys).canonicalFilePath();
-	QString folder = inf.absoluteDir().canonicalPath();
-	if (!sysReal.isEmpty() && ((folder == sysReal) || folder.startsWith(sysReal + "/"))) {
-		QString rel = QDir(sysReal).relativeFilePath(folder);
+	if (!here.isEmpty()) {
+		QString rel = QDir(here).relativeFilePath(inf.absolutePath());
 		if (rel == ".") rel.clear();
-		if (rel.toLatin1() != rel.toUtf8()) return ERR_NEX_NAME;	// a path the keyboard cannot type
-		if (!xm_next_launch(inf.fileName(), sys, QString(), QString(), NULL, NULL)) return ERR_CANT_OPEN;
-		xlog(XLG_FILE, XLL_INFO, "next: a card of its own, System/Next from %s, the program in it at /%s",
-			sys.toUtf8().constData(), rel.toUtf8().constData());
-		xm_power_cycle(false);
-		int node = 0;
-		foreach(QString part, rel.split('/', X_SkipEmptyParts))
-			node = vf_child(comp->sdc->vfat, node, part.toUtf8().constData());
-		return (node < 0) ? ERR_CANT_OPEN : nex_arm(comp, node, ("/" + rel).toLatin1(), inf, welcome(), snx, 1);
+		if (!xm_next_launch(inf.fileName(), here, QString(), QString(), NULL, NULL)) return ERR_CANT_OPEN;
+		int node = -1;
+		QByteArray cd = nex_cd(comp->sdc->vfat, rel, &node);
+		xlog(XLG_FILE, XLL_INFO, "next: a card of its own, System/Next from %s, the program in it at /%s (.cd %s)",
+			here.toUtf8().constData(), rel.toUtf8().constData(), cd.constData());
+		return start(cd, node);
 	}
 	// the folder's name, as the keyboard types it, and one System/Next's root has not got
 	QString base;
@@ -629,11 +677,7 @@ static int load_next(Computer* comp, const char* name, int snx) {
 	QString what = why.isEmpty() ? QString("%0 put on as /%1, %2 entries").arg(inf.absolutePath(), dir, QString::number(n))
 		: QString("%0 put on alone as /%1: %2").arg(inf.absoluteFilePath(), dir, why);
 	xlog(XLG_FILE, XLL_INFO, "next: a card of its own, System/Next from %s; %s", sys.toUtf8().constData(), what.toUtf8().constData());
-	// The card changes under the machine, which a soft reset does not tell: NextZXOS's
-	// disk layer keeps in memory what it read of the old one, and the program's folder is
-	// not found ("No such file or dir"). So off and on, with the card just made.
-	xm_power_cycle(false);
-	return nex_arm(comp, vf_child(comp->sdc->vfat, 0, dir.toUtf8().constData()), dir.toLatin1(), inf, welcome(), snx, 1);
+	return start(dir.toLatin1(), vf_child(comp->sdc->vfat, 0, dir.toUtf8().constData()));
 }
 
 static int load_nex(Computer* comp, const char* name, int drv) {
@@ -1287,7 +1331,7 @@ static bool szx_holds(Computer* comp, const szxMedia* m, const QString& link) {
 // Told on the screen, not refused and not in a box: the user may know better.
 static bool szxCardChanged = false;
 
-static void szx_card_mount(Computer* comp, bool load) {
+static void szx_card_mount(Computer* comp, bool load, const QString& snap) {
 	const szxCard* c = szx_card();
 	szxCardChanged = false;
 	if (!c->on || !comp->hw || (comp->hw->id != HW_ZXNEXT)) return;
@@ -1295,11 +1339,15 @@ static void szx_card_mount(Computer* comp, bool load) {
 	auto same = [comp, &path]() {
 		return comp->sdc->image && (QFileInfo(QString::fromLocal8Bit(comp->sdc->image)).canonicalFilePath() == QFileInfo(path).canonicalFilePath());
 	};
-	bool sys = c->pins && sn_system_is(path);
-	// a program inside an unpacked System/Next ran on it with nothing put on: made again so
-	bool bare = !c->pins && QFileInfo(path + ".ok").isFile() && sn_system_is(path);
-	if (load && bare && !(same() && xm_next_launch_in())) {
-		if (xm_next_launch(QFileInfo(path).fileName(), path, QString(), QString()))
+	// a program's own card (said so since; before, a card with a folder put on in a release),
+	// made again with the user's set aside: with the folder, or - a program inside System/Next
+	// that ran on it with nothing put on - bare
+	bool own = c->own || (c->pins && sn_system_is(path));
+	bool sys = own && c->pins;
+	bool bare = own && !c->pins;
+	vFat* in = comp->sdc->vfat;
+	if (load && bare && !(same() && xm_next_launch_in() && in && !in->home)) {
+		if (xm_next_launch(QFileInfo(snap).fileName(), path, QString(), QString()))
 			xlog(XLG_FILE, XLL_INFO, "szx: the program's own card, System/Next from %s", c->path);
 	} else if (load && !same() && !sys) {
 		if (QFileInfo::exists(path)) {
@@ -1462,7 +1510,7 @@ static void szx_mount(Computer* comp, const QString& snap) {
 	szx_ext_media(comp, carried, load);
 	for (int i = 0; i < 4; i++)
 		if (gone & (1 << i)) comp->dif->flp[i]->changed = 1;
-	szx_card_mount(comp, load);
+	szx_card_mount(comp, load, snap);
 	if (szxCardChanged)
 		comp->msg = (char*)" the SD card has changed since this save ";
 }

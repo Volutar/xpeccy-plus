@@ -263,6 +263,10 @@ static QString real_dir(const QString& path) {
 #endif
 }
 
+QString vfat_real_dir(const QString& path) {
+	return real_dir(path);
+}
+
 // breadth first, so whatever a limit cuts off is the deepest level and never
 // the loader in the root. A folder reached a second time - a junction back up the tree,
 // two to one place - is taken once, and a junction into the tree itself not at all:
@@ -436,6 +440,7 @@ static vFat* vfat_scan_launch(const QString& base, const QString& sub, const QSt
 	vFat* vf = vfat_scan_in(base, true, sub, subName, only, 0, true, NULL, true);
 	if (!vf) return NULL;
 	vf->hold = 0;
+	vf->own = 1;
 	if (!vf->home) vfat_read_only(vf, "a program's card with nothing to write to");
 	return vf;
 }

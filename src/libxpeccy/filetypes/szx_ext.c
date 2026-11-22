@@ -734,7 +734,7 @@ static void ext_card_save(szxBuf* b, Computer* comp) {
 	if (!sdc || !sdc->image) return;
 	unsigned long long print = sdc_dir_print(sdc);
 	rec_begin(b, XR_SDCD, &mark);
-	sb_byte(b, (sdc->vfat ? 1 : 0) | SZX_CARD_CONTENT);
+	sb_byte(b, (sdc->vfat ? 1 : 0) | SZX_CARD_CONTENT | ((sdc->vfat && sdc->vfat->own) ? SZX_CARD_OWN : 0));
 	sb_dword(b, 0);			// the old print's place: 0, which a build of before compares with nothing
 	sb_dword(b, 0);
 	ext_put_string(b, sdc->image);
@@ -783,6 +783,7 @@ static void ext_card_load(const unsigned char* p, size_t n) {
 	memset(c, 0, sizeof(*c));
 	if (n < 10) return;
 	c->folder = p[0] & 1;
+	c->own = (p[0] & SZX_CARD_OWN) ? 1 : 0;
 	// the qword at 1 is the old print (the directories' bytes, layout and all): not compared
 	if (!ext_get_string(p, n, &pos, c->path, sizeof(c->path)) || (pos >= n)) return;
 	int pins = p[pos++];

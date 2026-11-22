@@ -104,6 +104,7 @@ typedef struct {
 	int hold;			// and kept in memory: the folder waits for the user's word before it changes
 	const char* frozen;		// non-NULL: the folder takes no more of them, they stay in memory; why (vfat_read_only)
 	int home;			// a pinned folder that alone follows the guest (vfat_home), 0 none
+	int own;			// a program's own card (System/Next and its folder), not one the user put in
 	vfWr* wr;			// what they did, from the first one on
 } vFat;
 

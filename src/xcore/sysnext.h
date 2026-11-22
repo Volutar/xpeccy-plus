@@ -52,6 +52,7 @@ bool sn_card_ok(const QString& path);
 // archive, checked once - unpacked now when an archive here is newer than any unpacked; else
 // sysnext/ beside the program. Empty, with *err saying why, when there is nothing to start from.
 QString sn_system_dir(QString* err);
-// a folder sn_system_dir() gives or gave: a snapshot's card record names one
-bool sn_system_is(const QString& path);
+// a folder sn_system_dir() gives or gave: a snapshot's card record names one. beside: sysnext/
+// beside the program counts too, which in a user's install is their own card
+bool sn_system_is(const QString& path, bool beside = true);
 QString sn_default_path(bool image);

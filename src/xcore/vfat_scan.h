@@ -21,6 +21,7 @@ bool sdc_mount_over(SDCard*, const QString& sub, const QString& subName, const Q
 // in memory); read again as it was made
 bool sdc_mount_launch(SDCard*, const QString& base, const QString& sub, const QString& subName, const QString* only = NULL, int* entries = NULL);
 bool sdc_launch_in(SDCard*);		// the card in is the one sdc_mount_launch made
+QString vfat_real_dir(const QString&);	// where a folder really is, junctions followed, to compare
 
 void ide_mount(IDE*, int, const QString&);	// same for one IDE device (IDE_MASTER / IDE_SLAVE)
 void ide_remount(IDE*);

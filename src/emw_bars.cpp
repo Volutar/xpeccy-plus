@@ -1099,7 +1099,8 @@ void MainWin::updateStatus() {
 			QString prog = xm_next_launch_what();
 			if (!prog.isEmpty()) {
 				QString user = QString::fromLocal8Bit(xm_next_card_kept().c_str());
-				tip = QString("SD card\nCard for %0: System/Next and the program's folder").arg(prog);
+				tip = QString("SD card\nCard for %0: %1").arg(prog, (sdc->vfat && !sdc->vfat->home)
+					? QString("System/Next, what is written kept in memory") : QString("System/Next and the program's folder"));
 				if (!user.isEmpty()) tip += QString("\nyours, %0, is back on Eject").arg(QFileInfo(user).fileName());
 			}
 			if (sdc->image && sdc_protected(sdc)) tip += "\nwrite protected";

@@ -356,13 +356,13 @@ QString sn_system_dir(QString* err) {
 	return QString();
 }
 
-bool sn_system_is(const QString& path) {
-	QFileInfo inf(path);
-	if (!inf.isDir()) return false;
-	QString real = inf.canonicalFilePath();
-	if (!conf.path.nextSystem.empty() && (real == QFileInfo(QString::fromLocal8Bit(conf.path.nextSystem.c_str())).canonicalFilePath()))
+// compared where they really are: a junction or subst of the config's folder is the same one
+bool sn_system_is(const QString& path, bool beside) {
+	if (!QFileInfo(path).isDir()) return false;
+	QString real = vfat_real_dir(path);
+	if (!conf.path.nextSystem.empty() && (real == vfat_real_dir(QString::fromLocal8Bit(conf.path.nextSystem.c_str()))))
 		return true;
-	if (!conf.path.sysnextDir.empty() && (real == QFileInfo(QString::fromLocal8Bit(conf.path.sysnextDir.c_str())).canonicalFilePath()))
+	if (beside && !conf.path.sysnextDir.empty() && (real == vfat_real_dir(QString::fromLocal8Bit(conf.path.sysnextDir.c_str()))))
 		return true;
 	return sn_system_ready(real);		// in this config's next-system/ or another's: checked, its .ok beside it
 }

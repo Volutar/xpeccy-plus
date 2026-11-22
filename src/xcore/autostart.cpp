@@ -359,30 +359,51 @@ int autostart_arm(Computer* comp, int kind) {
 }
 
 // one typed line: a command, its argument and what closes it, then Enter; a space in
-// the argument only where it is quoted
-static int as_nex_line(int n, const char* cmd, const char* arg, const char* tail, int gap) {
+// the argument only where it is quoted. dry: only counted, nothing written
+static int as_nex_line(int n, const char* cmd, const char* arg, const char* tail, int gap, int dry) {
 	for (int part = 0; part < 3; part++) {
 		for (const char* s = (part == 0) ? cmd : (part == 1) ? arg : tail; *s; s++) {
 			const char* k = ((part == 1) && (*s == ' ') && !*tail) ? NULL : as_nex_char(*s);
 			if (!k || (n >= AS_NEX_KEYS - 2)) return -1;
-			snprintf(as_nex_str[n], 3, "%s", k);
-			as_nex[n].keys = as_nex_str[n];
-			as_nex[n++].gap = AS_KEY_GAP;
+			if (!dry) {
+				snprintf(as_nex_str[n], 3, "%s", k);
+				as_nex[n].keys = as_nex_str[n];
+				as_nex[n].gap = AS_KEY_GAP;
+			}
+			n++;
 		}
 	}
-	as_nex[n++] = {ZK_ENTER, gap};
+	if (!dry) as_nex[n] = {ZK_ENTER, gap};
+	return n + 1;
+}
+
+// the keys that start it, or with dry only how many; -1 if a name cannot be typed
+static int as_nex_build(const char* dir, const char* name, int welcome, int snx, int dry) {
+	int n = 0;
+	if (welcome && !dry) as_nex[n] = {" ", AS_MENU_GAP};	// SPACE=Start NextZXOS
+	if (welcome) n++;
+	if (!dry) as_nex[n] = {"n", AS_MENU_GAP};		// NextBASIC
+	n++;
+	n = as_nex_line(n, ".cd ", dir, "", AS_MENU_GAP, dry);
+	if ((n >= 0) && snx) n = as_nex_line(n, "cls:spectrum \"", name, "\"", 0, dry);
+	else if (n >= 0) n = as_nex_line(n, "cls:.nexload ", name, "", 0, dry);
 	return n;
+}
+
+int autostart_nex_word(const char* word) {
+	for (const char* s = word; *s; s++)
+		if ((*s == ' ') || !as_nex_char(*s)) return 0;
+	return *word != 0;
+}
+
+int autostart_nex_can(const char* dir, const char* name, int snx) {
+	return as_nex_build(dir, name, 1, snx, 1) >= 0;
 }
 
 int autostart_arm_nex(Computer* comp, const char* dir, const char* name, int welcome, int snx, int powered) {
 	autostart_stop();
 	if (!comp || (comp->hw->id != HW_ZXNEXT)) return 0;
-	int n = 0;
-	if (welcome) as_nex[n++] = {" ", AS_MENU_GAP};	// SPACE=Start NextZXOS
-	as_nex[n++] = {"n", AS_MENU_GAP};		// NextBASIC
-	n = as_nex_line(n, ".cd ", dir, "", AS_MENU_GAP);
-	if ((n >= 0) && snx) n = as_nex_line(n, "cls:spectrum \"", name, "\"", 0);
-	else if (n >= 0) n = as_nex_line(n, "cls:.nexload ", name, "", 0);
+	int n = as_nex_build(dir, name, welcome, snx, 0);
 	if (n < 0) return 0;
 	as_nex[n] = {NULL, 0};
 	if (!powered) x_user_reset(comp, RES_DEFAULT);	// else the caller has just power-cycled it
