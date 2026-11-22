@@ -2640,7 +2640,7 @@ void SetupWin::buildDevices() {
 	saaBox = devCombo(QStringList() << tr("Off") << tr("On"));
 	devRow(grid, tr("SAA1099"), saaBox, NULL, NULL);
 
-	grid = devGroup(cols, 1, 1, ":/images/grp-board.png", tr("Board"));
+	grid = devGroup(cols, 1, 1, ":/images/grp-board.png", tr("Board features"));
 	devRow(grid, tr("Turbo"), cbCpuTurbo, NULL, NULL);
 	clockBox = devCombo(QStringList() << tr("None") << tr("Gluk"));	// MAC_CLOCK_*
 	btn = devRow(grid, tr("Clock"), clockBox, NULL, NULL);
@@ -2802,7 +2802,7 @@ void SetupWin::buildDevices() {
 		<< flag("Int. speaker", tr("Int. speaker"), tr("The board's own speaker")), NULL, false);
 	lineUp(grid);
 
-	grid = nxGroup(1, 1, ":/images/grp-board.png", tr("Board"));
+	grid = nxGroup(1, 1, ":/images/grp-board.png", tr("Board features"));
 	line(grid, tr("Timing"), QList<QWidget*>()
 		<< field("CPU speed", QStringList() << "3.5 MHz" << "28 MHz", tr("CPU speed: 3.5, 7, 14 or 28 MHz,\nas programs ask"))
 		<< field("Frequency", QStringList() << "50 Hz", tr("Frames: 50 or 60 Hz"))
