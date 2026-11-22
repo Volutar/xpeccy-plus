@@ -2235,7 +2235,10 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 			else if ((nam == "mouse.wheel") || (nam == "mouse.swapButtons")
 				|| (nam == "mouse.sensitivity") || (nam == "kbd.scantab")) xm_defer(nam, val);
 			else if (nam == "joy.extbuttons") comp->joy->extbuttons = (arg.b && hw_kempston8(comp->hw)) ? 1 : 0;
-			else if (nam == "keymap") conf.kmapName = keymap_name(val);
+			else if (nam == "keymap") {		// the user's pick then; the default stays By machine
+				conf.kmapName = keymap_name(val);
+				if (!conf.kmapName.empty()) conf.kmapBymac = 0;
+			}
 			else if (nam == "gamepad.map") conf.jmapNameA = val;
 			else if (nam == "gamepad2.map") conf.jmapNameB = val;
 			break;

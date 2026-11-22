@@ -694,6 +694,10 @@ int key2qid(int);
 QList<QPair<QString, QString>> keymap_list();
 int macKeyId(unsigned);
 std::string keymap_name(const std::string&);
+#define KMAP_MACHINE "machine"		// the config's word for By machine
+QString keymap_for_machine(const std::string&);
+QString keymap_file();
+QString keymap_title(const QString&);
 bool keyRemapped(int);
 int keyTyped(int, bool, unsigned char*);
 
@@ -992,7 +996,8 @@ struct xConfig {
 	xRomset roms;			// what it loads: its own, that variant, your files
 	std::string ngsFile;		// the NeoGS flash, one for every machine as the card model is
 	std::string palette;		// colour palette file
-	std::string kmapName;		// keyboard layout, empty for the built-in one (KMAP_BUILTIN)
+	std::string kmapName;		// keyboard layout picked, empty for the built-in one (KMAP_BUILTIN)
+	unsigned kmapBymac:1;		// the layout goes by the machine (keymap_for_machine), not kmapName
 	unsigned kbdTyping:1;		// a key types the symbol it prints (keyTyped), else goes by position
 	std::string jmapNameA;		// the .pad an old config names, brought into the table once
 	std::string jmapNameB;

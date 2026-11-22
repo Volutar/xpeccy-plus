@@ -4180,11 +4180,16 @@ void MainWin::fillUserMenu() {
 	act->setData(RES_POWER);
 	// fill keymaps menu
 	keyMenu->clear();
+	act = keyMenu->addAction("By machine");
+	act->setData(KMAP_MACHINE);
+	act->setCheckable(true);
+	act->setChecked(conf.kmapBymac);
+	keyMenu->addSeparator();
 	for (const auto& km : keymap_list()) {
 		act = keyMenu->addAction(km.first);
 		act->setData(km.second);
 		act->setCheckable(true);
-		act->setChecked(conf.kmapName == km.second.toUtf8().constData());
+		act->setChecked(!conf.kmapBymac && (conf.kmapName == km.second.toUtf8().constData()));
 	}
 	// fill shader menu
 	shdMenu->clear();
@@ -4893,12 +4898,11 @@ void MainWin::keySelected(QAction* act) {
 		saveConfig();
 		return;
 	}
+	// By machine, or a layout picked for every machine (empty: the built-in one)
 	QString str = act->data().toString();
-	if (str.isEmpty()) {
-		conf.kmapName.clear();
-	} else {
+	conf.kmapBymac = (str == KMAP_MACHINE) ? 1 : 0;
+	if (!conf.kmapBymac)
 		conf.kmapName = std::string(str.toUtf8().data());
-	}
 	saveConfig();
 	loadKeys();
 }

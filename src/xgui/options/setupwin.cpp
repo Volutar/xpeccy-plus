@@ -901,7 +901,8 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 		ui.typingBox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 		connect(ui.keyMapBox, QOverload<int>::of(&QComboBox::currentIndexChanged), kmNote, [this, kmNote]() {
 			QString nam = ui.keyMapBox->currentData().toString();
-			kmNote->setText(nam.isEmpty() ? tr("Both Shifts are Caps Shift, both Ctrls Symbol Shift")
+			kmNote->setText((nam == KMAP_MACHINE) ? tr("%1 for this machine").arg(keymap_title(keymap_for_machine(conf.macId)))
+				: nam.isEmpty() ? tr("Both Shifts are Caps Shift, both Ctrls Symbol Shift")
 				: (nam == KMAP_48K) ? tr("Caps Shift on the left, Symbol Shift on the right")
 				: tr("Your own keymap"));
 		});
@@ -1973,7 +1974,10 @@ void SetupWin::applyGlobal() {
 // input
 	comp->mouse->swapButtons = cbSwapButtons->isChecked() ? 1 : 0;
 	comp->mouse->sensitivity = sldSensitivity->value() * 0.001f;
-	conf.kmapName = ui.keyMapBox->currentData().toString().toUtf8().constData();	// none: the built-in one
+	QString kmap = ui.keyMapBox->currentData().toString();
+	conf.kmapBymac = (kmap == KMAP_MACHINE) ? 1 : 0;
+	if (!conf.kmapBymac)
+		conf.kmapName = kmap.toUtf8().constData();	// none: the built-in one
 	conf.kbdTyping = getRFIData(ui.typingBox) ? 1 : 0;
 	loadKeys();
 	conf.gpctrl->gameOn = cbPadFiles->isChecked();
@@ -3545,9 +3549,11 @@ void SetupWin::setRom(xRomFile f) {
 
 void SetupWin::buildkeylist() {
 	ui.keyMapBox->clear();
+	ui.keyMapBox->addItem(tr("By machine"), KMAP_MACHINE);
 	for (const auto& km : keymap_list())
 		ui.keyMapBox->addItem(km.first, km.second);
-	setRFIndex(ui.keyMapBox, QString::fromUtf8(conf.kmapName.c_str()), 0);
+	// a picked file that is gone reads as the built-in one, next after By machine
+	setRFIndex(ui.keyMapBox, conf.kmapBymac ? QString(KMAP_MACHINE) : QString::fromUtf8(conf.kmapName.c_str()), conf.kmapBymac ? 0 : 1);
 }
 
 // the core's mask bit, and the size it stands for (768K has no bit of its own)
