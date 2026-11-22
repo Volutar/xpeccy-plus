@@ -24,8 +24,7 @@
   power lamp is always lit; EDIT, DEL, the full stop and comma, the five Cyrillic letters, C
   and L press the Robik's own keys on the Robik, elsewhere EDIT, DEL, . and , press the
   Spectrum's combinations; its caps' front slope darker than the others, their lettering
-  the caps' engraving font, drawn as strokes. Robik (Full-Size): the Skin menu lists it only
-  while it is shown (`robik` in the config). Made by `make-robik.py` (the lettering
+  the caps' engraving font, drawn as strokes. Made by `make-robik.py` (the lettering
   measured, the logo built of rings and strokes, on photos) in the project's lab, then kept
   as it is.
 - `zx-robik-compact.json` - the Robik with a thin rim of the case round the keys, so the keys
@@ -34,8 +33,9 @@
   `make-robik.py` too).
 - In the menu, a line between the Spectrum's, the Next's and the clones': 48K (Classic), 48K
   (White), 128K (Classic), 128K (White) | Next (Black), Next (White), Next (Magenta) | Klava
-  (the worn Kopir), Klava (Washed), Robik (Compact) - black, white, 128, 128-white, next,
-  next-white, next-magenta, kopir-worn, kopir, robik-compact in the config.
+  (the worn Kopir), Klava (Washed), Robik (Compact), Robik (Full-Size) - black, white, 128,
+  128-white, next, next-white, next-magenta, kopir-worn, kopir, robik-compact, robik in the
+  config.
 - `keys-font.ttf` - the lettering, Latin-1 and Cyrillic, made by `tools/vkbd_font.py` from
   Liberation Sans Bold 2.1.5; see LICENSE_ICONS and LICENSE_LIBERATION.
 
