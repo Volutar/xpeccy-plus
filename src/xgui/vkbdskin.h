@@ -200,6 +200,7 @@ class VkSkin {
 		QPainterPath domePart(const Key& key, const DomePart& p, double s) const;
 		QRect keyBox(const Key& key, double s) const;
 		QPainterPath keyPath(const Key& key, double s, int dx, int dy, double base, double grow) const;
+		QPainterPath keyPath(const Key& key, double s, int l, int t, int r, int b, double base, double grow) const;
 		QPainterPath contourOf(const Key& key, double s) const;
 		QVector<QPainterPath> contoursAt(const Key& key, double s) const;
 };

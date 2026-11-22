@@ -1158,12 +1158,17 @@ QRect VkSkin::keyBox(const Key& key, double s) const {
 	return QPolygonF(snapPoly(key.outline, s)).boundingRect().toRect();
 }
 
+QPainterPath VkSkin::keyPath(const Key& key, double s, int dx, int dy, double base, double grow) const {
+	return keyPath(key, s, dx, dy, dx, dy, base, grow);
+}
+
 // A key's shape in the picture's pixels - its outline, or its box when its corners
-// are its own - pushed out by dx, dy whole pixels (in, if negative). A corner that
+// are its own - pushed out by l, t, r, b whole pixels on the edges facing left, up,
+// right and down (in, if negative). A corner that
 // juts out is rounded with its radius at that scale plus grow pixels, one that
 // cuts in with that radius less grow: the edge keeps its distance all round.
 // The radius is the key's own, or base; a corner cutting in takes the smallest.
-QPainterPath VkSkin::keyPath(const Key& key, double s, int dx, int dy, double base, double grow) const {
+QPainterPath VkSkin::keyPath(const Key& key, double s, int l, int t, int r, int b, double base, double grow) const {
 	QVector<QPointF> pts;
 	if (key.outline.isEmpty()) {
 		QRect kb = keyBox(key, s);
@@ -1194,7 +1199,7 @@ QPainterPath VkSkin::keyPath(const Key& key, double s, int dx, int dy, double ba
 		}
 		rad[i] = juts ? (c * s + grow) : std::max(0.0, c * s - grow);
 	}
-	return roundPoly(offsetPoly(pts, dx, dy), rad);
+	return roundPoly(offsetPoly4(pts, l, t, r, b), rad);
 }
 
 // one cap's contour in the picture's pixels, not turned
@@ -1314,7 +1319,6 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 	QImage img(W, H, QImage::Format_ARGB32_Premultiplied);
 	img.fill(Qt::transparent);
 	if (isNull()) return img;
-	auto px = [s](double v) {return pxWidth(v, s);};
 	// a key drawn by keyPath(): an outline, or corners of its own
 	auto shaped = [](const Key& key) {return !key.outline.isEmpty() || key.hasCorner;};
 
@@ -1377,11 +1381,16 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 		bool klit = lit && !key.unlit;
 		const Preset* pr = preset(key.shape);
 		QRect kb = keyBox(key, s);
-		int ins = px(pr->inset);
-		QRectF body(kb.x() + ins, kb.y() + ins, kb.width() - 2 * ins, kb.height() - 2 * ins);
+		// the gap between two caps side by side - this one's inset on the right and the
+		// next one's on the left - rounded as a whole, so a small window shows one
+		// pixel there, not two: the left and top inset its smaller half
+		int gap = (pr->inset > 0) ? std::max(1, fr(2 * pr->inset * s)) : 0;
+		int insA = gap / 2;
+		int insB = gap - insA;
+		QRectF body(kb.x() + insA, kb.y() + insA, kb.width() - gap, kb.height() - gap);
 		QPainterPath path;
 		if (shaped(key)) {
-			path = keyPath(key, s, -ins, -ins, pr->corner, -pr->inset * s);
+			path = keyPath(key, s, -insA, -insA, -insB, -insB, pr->corner, -pr->inset * s);
 			body = path.boundingRect();
 		} else {
 			path = rrect(body.x(), body.y(), body.width(), body.height(), std::max(0.0, pr->corner - pr->inset) * s);
@@ -1399,7 +1408,7 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 			if (key.outline.isEmpty()) {
 				out << body.topLeft() << body.topRight() << body.bottomRight() << body.bottomLeft();
 			} else {
-				out = offsetPoly(snapPoly(key.outline, s), -ins, -ins);
+				out = offsetPoly4(snapPoly(key.outline, s), -insA, -insA, -insB, -insB);
 			}
 			if (isRectilinear(out)) {
 				QVector<QPointF> in = offsetPoly4(out, -fr(sd.w[0] * s), -fr(sd.w[1] * s), -fr(sd.w[2] * s), -fr(sd.w[3] * s));
