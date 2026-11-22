@@ -356,24 +356,18 @@ QString sn_system_dir(QString* err) {
 	return QString();
 }
 
-// where a folder of the settings really is, worked out once per spelling
-static QString sn_real_of(const std::string& path, QString* key, QString* real) {
-	QString now = QString::fromLocal8Bit(path.c_str());
-	if (now != *key) {
-		*key = now;
-		*real = now.isEmpty() ? QString() : vfat_real_dir(now);
-	}
-	return *real;
+// where a folder of the settings really is, asked every time (a junction may be repointed)
+static QString sn_real_of(const std::string& path) {
+	return vfat_real_dir(QString::fromLocal8Bit(path.c_str()));
 }
 
 // compared where they really are: a junction or subst of the config's folder is the same one
 bool sn_system_is(const QString& path, bool beside) {
-	static QString nsKey, nsReal, bsKey, bsReal;
 	if (!QFileInfo(path).isDir()) return false;
 	QString real = vfat_real_dir(path);
-	if (!conf.path.nextSystem.empty() && (real == sn_real_of(conf.path.nextSystem, &nsKey, &nsReal)))
+	if (!conf.path.nextSystem.empty() && (real == sn_real_of(conf.path.nextSystem)))
 		return true;
-	if (beside && !conf.path.sysnextDir.empty() && (real == sn_real_of(conf.path.sysnextDir, &bsKey, &bsReal)))
+	if (beside && !conf.path.sysnextDir.empty() && (real == sn_real_of(conf.path.sysnextDir)))
 		return true;
 	// in this config's next-system/ or another's: checked, its .ok beside it - beside the name
 	// it has there (a release that is itself a junction) or beside where it really is

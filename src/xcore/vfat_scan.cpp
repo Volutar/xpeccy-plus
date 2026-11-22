@@ -456,9 +456,11 @@ bool sdc_mount_launch(SDCard* sdc, const QString& base, const QString& sub, cons
 		std::function<bool(vFat*)> ok) {
 	if (!sdc) return false;
 	vfat_flush(sdc->vfat);
+	char* msg = conf.zx ? conf.zx->msg : NULL;
 	vFat* vf = vfat_scan_launch(base, sub, subName, only);
 	if (!vf) return false;
-	if (ok && !ok(vf)) {		// refused as made: the card in stays as it is
+	if (ok && !ok(vf)) {		// refused as made: the card in stays as it is, its notice unsaid
+		if (conf.zx) conf.zx->msg = msg;
 		vfat_free(vf);
 		return false;
 	}

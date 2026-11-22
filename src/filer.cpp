@@ -563,12 +563,17 @@ static int nex_names(vFat* vf, const QString& rel, bool rooted, const QFileInfo&
 		}
 		if (cd->isEmpty()) *cd = "/";
 		else if (!rooted) *cd = cd->mid(1);	// from the root, where NextZXOS starts
+		// the file by its exact name, else without case (GAME.NEX given, game.nex on disk)
 		int f = vf->node[node].child;
 		while ((f >= 0) && (vf->node[f].isdir || (want != vf->node[f].name)))
 			f = vf->node[f].next;
+		for (int i = (f < 0) ? vf->node[node].child : -1; (i >= 0) && (f < 0); i = vf->node[i].next) {
+			if (!vf->node[i].isdir && !QString::compare(QString::fromUtf8(vf->node[i].name), inf.fileName(), Qt::CaseInsensitive)) f = i;
+		}
 		if (f < 0) return ERR_CANT_OPEN;
-		QByteArray own = inf.fileName().toLatin1();
-		if (!shortOnly && (inf.fileName().toUtf8() == own) && autostart_nex_can(cd->constData(), own.constData(), snx)) {
+		QString name = QString::fromUtf8(vf->node[f].name);
+		QByteArray own = name.toLatin1();
+		if (!shortOnly && (name.toUtf8() == own) && autostart_nex_can(cd->constData(), own.constData(), snx)) {
 			*file = own;
 			return ERR_OK;
 		}
