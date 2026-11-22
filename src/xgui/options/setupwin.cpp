@@ -1288,7 +1288,7 @@ void SetupWin::fillPages() {
 	updateMachineButtons();
 	memArmed = false;
 	roms = conf.roms;
-	resTarget = comp->resbank;
+	resTarget = xm_own_reset();		// the machine's own, not one a snapshot set
 	rsmodel->fill(&roms);
 	fillRomSlots();
 	ui.machbox->setCurrentIndex(ui.machbox->findData(QString::fromLocal8Bit(conf.macId.c_str())));
@@ -1730,7 +1730,7 @@ void SetupWin::applyMachine() {
 // machine
 	emu_lock();		// roms and memory size are rebuilt below
 	xm_set_roms(roms);
-	comp->resbank = resTarget;
+	xm_set_reset(resTarget);
 	int msz = getRFIData(ui.mszbox);
 	double frq = own ? comp->cpuFrq : xcpu_frq_parse(ui.cbCpuFrq->currentText(), comp->cpuFrq);
 	if (msz != shown.mem) xm_set_ram(msz);

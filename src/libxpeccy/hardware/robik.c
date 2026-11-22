@@ -33,6 +33,9 @@
 #define ROBIK_ROM_DOS	3
 #define ROBIK_ROM_OWN	4
 
+int zx_rd_ff(int, void*);		// zx48.c: a window nothing answers in
+void zx_wr_null(int, int, void*);
+
 static int robik_is_128(Computer* comp) {
 	return comp->mem->ramSize >= MEM_128K;
 }
@@ -62,6 +65,8 @@ void robik_map_mem(Computer* comp) {
 		memSetBank(mem, 0x00, MEM_ROM, ROBIK_ROM_DOS, MEM_16K, NULL, NULL, NULL);
 	} else if (comp->flgSHDON) {
 		memSetBank(mem, 0x00, MEM_RAM, ROBIK_SHADOW, MEM_16K, NULL, NULL, NULL);
+	} else if ((ROBIK_ROM_OWN << 14) > mem->romMask) {	// robik.rom missing: no ROM there
+		memSetBank(mem, 0x00, MEM_EXT, 0, MEM_16K, zx_rd_ff, zx_wr_null, comp);
 	} else {
 		memSetBank(mem, 0x00, MEM_ROM, ROBIK_ROM_OWN, MEM_16K, NULL, NULL, NULL);
 	}

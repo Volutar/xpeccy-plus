@@ -441,7 +441,7 @@ int saveZ80(Computer* comp, const char* name, int drv) {
 	if ((snap == SNAP_HW_128K) && (comp->snapModel == SNAP_HW_PLUS2))
 		snap = SNAP_HW_PLUS2;		// the same core, the definition tells them apart
 	if ((comp->hw->id == HW_ROBIK) && (comp->mem->ramSize >= MEM_128K))
-		snap = SNAP_HW_128K;		// one taken to 128K by its owner pages as a 128K does
+		snap = SNAP_HW_PENTAGON;	// one taken to 128K has the Pentagon 128's paging and ROMs
 	if (snap == SNAP_HW_UNKNOWN) return ERR_Z80_HW;
 	const z80Hardware* hwi = z80_hw(snap);
 	FILE* file = fopen(name, "wb");

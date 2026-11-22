@@ -1252,8 +1252,10 @@ static const struct {
 };
 
 // The RAM the machine file gives, which xm_save_over writes: a snapshot may run the
-// machine on another size for the session (a Next's SZX of 1 MB on a 2 MB Next)
+// machine on another size for the session (a Next's SZX of 1 MB on a 2 MB Next), and
+// the boot target with it (a Robik's of the other size). -1: none set, the machine's
 static int macRam = 0;
+static int macRes = -1;
 
 int xm_set_hardware(std::string nm) {
 	for (int i = 0; hwAliasTab[i].oldName; i++) {
@@ -1264,6 +1266,7 @@ int xm_set_hardware(std::string nm) {
 	}
 	int res = compSetHardware(conf.zx, nm.empty() ? NULL : nm.c_str());
 	macRam = conf.zx->mem->ramSize;		// the board as it comes, until a size is set
+	macRes = -1;
 	return res;
 }
 
@@ -1272,6 +1275,15 @@ int xm_set_hardware(std::string nm) {
 
 int xm_own_ram() {
 	return macRam ? macRam : conf.zx->mem->ramSize;
+}
+
+int xm_own_reset() {
+	return (macRes >= 0) ? macRes : conf.zx->resbank;
+}
+
+void xm_set_reset(int res) {
+	conf.zx->resbank = res;
+	macRes = res;
 }
 
 void xm_set_ram(int size) {
@@ -1449,7 +1461,7 @@ static void mac_from_def(const xMachine* mac) {
 	xspeed_modes_off();
 	xm_set_ram(mac_ram_size(mac->memory, comp->hw->mask));
 	mac_cold_ram(comp, mac->ramCold, mac->ramNoise);
-	comp->resbank = mac->resbank;
+	xm_set_reset(mac->resbank);
 	comp->flgGLUK = xm_gluk_fitted(comp, mac, mac->clock);
 	comp->snapModel = mac->snapModel;
 	comp->earback = mac->earback;
@@ -1695,7 +1707,7 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put(out, "cpu.frq", int(comp->cpuFrq * 1e6), mac->cpufrq);
 	mac_put(out, "cpu.turbo", mac_turbo_str(comp->turboTab, comp->turboCount), mac->turboSteps);
 	mac_put(out, "memory", mac_ram_kb(macRam ? macRam : comp->mem->ramSize, comp->hw->mask), mac->memory);
-	mac_put(out, "reset", mac_word_name(resetTab, comp->resbank), mac_word_name(resetTab, mac->resbank));
+	mac_put(out, "reset", mac_word_name(resetTab, xm_own_reset()), mac_word_name(resetTab, mac->resbank));
 	if (hw_takes_gluk(comp->hw) && !(mac->builtin & MAC_BI_CLOCK))	// one on the board is no choice
 		mac_put(out, "clock", mac_word_name(clockTab, comp->flgGLUK ? MAC_CLOCK_GLUK : MAC_CLOCK_NONE),
 			mac_word_name(clockTab, mac->clock));
