@@ -20,6 +20,11 @@ before that point is upstream's history and is not repeated here.
   RAM under the ROM, BRIGHT as the factory board or two levels, and the thin lines at cell
   edges most boards show. *(timings measured by Mikhail Sudakov and AlexZor)*
 
+- **Robik (Compact)** and **Robik (Full-Size)** in the Virtual Keyboard: the Robik's
+  keyboard with its logo and power light, the compact one shown on the Robik. Its extra keys
+  are the Robik's own, its cursor block is the Kempston joystick, its two RES keys reset the
+  machine together.
+
 - **The mouse pointer hides itself** after 2 seconds still over the picture, in a window and
   in fullscreen; a move brings it back. View > Auto-Hide Pointer turns it off.
 

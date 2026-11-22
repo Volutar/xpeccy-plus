@@ -29,13 +29,16 @@
 #endif
 #endif
 
+extern "C" keyScan keyTab[];		// keyboard.c: the keys, the Robik's own at the end
+
 // the skins there are, as named in the config and in res/vkbd/zx-<name>.json
 static const struct {
 	const char* name;
 	const char* title;
 } vkSkins[] = {{"black", "48K (Classic)"}, {"white", "48K (White)"}, {"128", "128K (Classic)"}, {"128-white", "128K (White)"},
 	{"next", "Next (Black)"}, {"next-white", "Next (White)"}, {"next-magenta", "Next (Magenta)"},
-	{"kopir-worn", "Klava"}, {"kopir", "Klava (Washed)"}};
+	{"kopir-worn", "Klava"}, {"kopir", "Klava (Washed)"}, {"robik-compact", "Robik (Compact)"},
+	{"robik", "Robik (Full-Size)"}};
 
 // a skin as the Skin menu and the title name it: a user's own by its file's name
 static QString skinTitle(const QString& name) {
@@ -63,10 +66,16 @@ static bool skinThere(const QString& name) {
 	return QFile::exists(":/res/vkbd/zx-" + name + ".json") || QFile::exists(ownSkinDir() + "/zx-" + name + ".json");
 }
 
+// whether the machine is a Robik: its own keys are its own there
+static bool onRobik() {
+	return conf.zx && conf.zx->hw && (conf.zx->hw->id == HW_ROBIK);
+}
+
 // The skin to show: the one picked by hand, or by the machine - the Next's on the
 // Next, the 128's on a Sinclair 128K, +2, +2A or +3, the 48K's on a Sinclair 48K,
-// the Kopir's on the clones - worn, unless the clean one was picked - in the tone
-// picked last (magenta only the Next has: black elsewhere)
+// the Robik's compact one on the Robik, the Kopir's on the other clones - worn, unless
+// the clean one was picked - in the tone picked last (magenta only the Next has: black
+// elsewhere)
 static QString wantedSkin() {
 	if (!conf.keywin.bymac) return QString::fromStdString(conf.keywin.skin);
 	int hw = (conf.zx && conf.zx->hw) ? conf.zx->hw->id : HW_NULL;
@@ -75,6 +84,7 @@ static QString wantedSkin() {
 	bool white = (conf.keywin.plain == "white");
 	if (hw == HW_ZXNEXT) return white ? QString("next-white") : (conf.keywin.plain == "magenta") ? QString("next-magenta") : QString("next");
 	if (is128) return white ? QString("128-white") : QString("128");
+	if (hw == HW_ROBIK) return QString("robik-compact");
 	if (clone) return (conf.keywin.plain == "washed") ? QString("kopir") : QString("kopir-worn");
 	return white ? QString("white") : QString("black");
 }
@@ -147,6 +157,8 @@ keyWindow::keyWindow(QWidget* p):QDialog(p) {
 	dock = 0;
 	hover = -1;
 	held = -1;
+	heldJoy = 0;
+	joyMine = 0;
 	picScale = 0;
 	setMouseTracking(true);		// for the key under the pointer
 	memset(&xent, 0, sizeof(xent));
@@ -219,7 +231,13 @@ void keyWindow::loadSkin() {
 			qWarning("vkbd: built-in %s: %s", name.toLocal8Bit().constData(), err.toLocal8Bit().constData());
 	}
 	if (sk.isNull() && skin.isNull()) return;	// nothing to show at all
+	// the Kempston's contacts this window holds go up with the keys that hold them
+	heldJoy = 0;
+	latched.fill(false);
+	syncJoy();
 	if (!sk.isNull()) skin = sk;
+	skinRobik = onRobik();
+	skin.forRobik(skinRobik);
 	QSizeF old = cnv;
 	cnv = skin.canvas();
 	hover = -1;
@@ -509,11 +527,7 @@ void keyWindow::fillMenu(QMenu* mnu) {
 	act->setCheckable(true);
 	act->setChecked(conf.keywin.hover);
 	mnu->addSeparator();
-	mnu->addAction("Release all keys", this, [this]() {
-		if (kb) x_kbd_release_all(kb);
-		latched.fill(false);
-		update();
-	});
+	mnu->addAction("Release all keys", this, [this]() {releaseAll();});
 }
 
 // The window is free to take any shape here; the picture keeps its own and sits
@@ -638,10 +652,10 @@ void keyWindow::switcher() {
 }
 
 // Comes on a switch of machine as well as on keys: a machine of another kind
-// may want another skin
+// may want another skin, or the Robik's keys of this one
 void keyWindow::upd(Keyboard* k) {
 	kb = k;
-	if (wantedSkin() != skinWant)
+	if ((wantedSkin() != skinWant) || (onRobik() != skinRobik))
 		loadSkin();
 	if (isVisible())
 		repaint();
@@ -657,6 +671,7 @@ QByteArray keyWindow::matrixSig() {
 	sig.append((const char*)kb->nxKeys, sizeof(kb->nxKeys));
 	sig.append((char)kb->nxCaps);
 	sig.append((char)kb->nxSym);
+	if (conf.zx && conf.zx->joy) sig.append((char)conf.zx->joy->state);
 	return sig;
 }
 
@@ -721,6 +736,13 @@ void keyWindow::hostTidy(const QByteArray& down) {
 void keyWindow::rall(Keyboard* k) {
 	if (!isVisible()) {
 		x_kbd_release_all(k);
+		// and the Kempston's contacts it latched: nothing on screen would say so
+		const QVector<VkKey>& keys = skin.keys();
+		for (int n = 0; (n < keys.size()) && (n < latched.size()); n++) {
+			if (keys[n].joy) latched[n] = false;
+		}
+		heldJoy = 0;
+		syncJoy();
 	}
 }
 
@@ -771,6 +793,10 @@ QByteArray keyWindow::keysDown() {
 			pos += (i & 4) ? 1 : -1;
 		}
 	}
+	// the Robik's own keys, on bits 5 and 7 of the rows
+	for (const keyScan* k = keyTab; k->key; k++) {
+		if ((k->mask & 0xa0) && !(kb->map[k->row & 7] & k->mask)) res.append(k->key);
+	}
 	return res;
 }
 
@@ -802,7 +828,11 @@ QVector<double> keyWindow::lights(const QByteArray& down) {
 		const VkKey& key = keys[n];
 		bool mine = (n == held) || ((n < latched.size()) && latched[n]);
 		int bit;
-		if (unsigned char* ext = nextExtKey(kb, key.zx, &bit)) {
+		if (key.joy) {			// from wherever the Kempston is pressed: a pad too
+			lv[n] = (conf.zx && conf.zx->joy && (conf.zx->joy->state & key.joy)) ? 1 : 0;
+		} else if (key.reset) {
+			lv[n] = mine ? 1 : 0;
+		} else if (unsigned char* ext = nextExtKey(kb, key.zx, &bit)) {
 			lv[n] = (*ext & bit) ? 1 : 0;
 		} else if (key.ch) {
 			if (mine && down.contains((char)key.ch)) {	// a latch let go of elsewhere is none
@@ -861,6 +891,56 @@ void keyWindow::pressKeys(const QByteArray& zx, bool down) {
 		kbd_release(kb, &xent);
 	}
 	emu_unlock();
+}
+
+// every key up: the machine's, and the Kempston's contacts this window latched
+void keyWindow::releaseAll() {
+	if (kb) x_kbd_release_all(kb);
+	latched.fill(false);
+	syncJoy();
+	update();
+}
+
+// The Kempston's contacts as this window's keys want them: the one the left button holds
+// and the latched ones down, the others it pressed up. A contact down already (a gamepad
+// holds it) is not taken over, so it is never let go of from here.
+void keyWindow::syncJoy() {
+	if (!conf.zx || !conf.zx->joy) return;
+	Joystick* joy = conf.zx->joy;
+	const QVector<VkKey>& keys = skin.keys();
+	int want = heldJoy;
+	for (int n = 0; (n < keys.size()) && (n < latched.size()); n++) {
+		if (latched[n]) want |= keys[n].joy;
+	}
+	int down = want & ~joy->state;
+	int up = joyMine & ~want;
+	if (!down && !up) return;
+	emu_lock();
+	if (down) joyPress(joy, down);
+	if (up) joyRelease(joy, up);
+	emu_unlock();
+	joyMine = (joyMine | down) & ~up;
+}
+
+// The keys that reset the machine together (the Robik's two RES, in series): one
+// down does nothing, all of them down reset it, and the ones latched go up again
+void keyWindow::checkReset() {
+	const QVector<VkKey>& keys = skin.keys();
+	int count = 0;
+	for (int n = 0; n < keys.size(); n++) {
+		if (!keys[n].reset) continue;
+		if ((n != held) && !((n < latched.size()) && latched[n])) return;
+		count++;
+	}
+	if (!count || !conf.zx) return;
+	emu_lock();
+	x_user_reset(conf.zx, RES_DEFAULT);
+	emu_unlock();
+	for (int n = 0; (n < keys.size()) && (n < latched.size()); n++) {
+		if (keys[n].reset) latched[n] = false;
+	}
+	update();
+	emit s_key_click();
 }
 
 void keyWindow::paintEvent(QPaintEvent*) {
@@ -928,6 +1008,63 @@ void keyWindow::paintEvent(QPaintEvent*) {
 		drawPic(litPic);
 		pnt.restore();
 	}
+	// the lamps (the Robik's power LED), always on, as with the power on, and bright: a
+	// glow on the case round it, the dark bezel next to it lit red, the lamp hot in the
+	// middle; the painter is in device pixels on an exact picture, in canvas units on a
+	// stretched one
+	pnt.setTransform(onPic);
+	pnt.setRenderHint(QPainter::Antialiasing, true);
+	pnt.setPen(Qt::NoPen);
+	double u = exact ? sd : 1.0;
+	for (int n = 0; n < keys.size(); n++) {
+		const VkKey& key = keys[n];
+		if (!key.lamp.isValid()) continue;
+		QRectF b(key.box.x() * u, key.box.y() * u, key.box.width() * u, key.box.height() * u);
+		QPointF mid = b.center();
+		// the glow: an ellipse as long as the lamp, 5 units past it
+		double rx = b.width() / 2 + 5 * u;
+		double ry = b.height() / 2 + 5 * u;
+		QRadialGradient glow(mid, rx);
+		const QPair<double, int> stops[] = {{0, 95}, {0.45, 63}, {0.75, 24}, {1, 0}};
+		for (const auto& st : stops) {
+			QColor c = key.lamp;
+			c.setAlpha(st.second);
+			glow.setColorAt(st.first, c);
+		}
+		pnt.save();
+		pnt.translate(mid);
+		pnt.scale(1, ry / rx);
+		pnt.translate(-mid);
+		pnt.setBrush(glow);
+		pnt.drawEllipse(mid, rx, rx);
+		pnt.restore();
+		// the bezel lit through: light added, so the black turns dark red and the white
+		// case stays white; three rounds up to 1.6 units out soften its edge
+		pnt.setCompositionMode(QPainter::CompositionMode_Screen);
+		QColor rim = key.lamp;
+		rim.setAlpha(53);
+		pnt.setBrush(rim);
+		for (int i = 1; i <= 3; i++) {
+			double d = 1.6 * u * i / 3;
+			QRectF r = b.adjusted(-d, -d, d, d);
+			pnt.drawRoundedRect(r, r.height() / 3, r.height() / 3);
+		}
+		pnt.setCompositionMode(QPainter::CompositionMode_SourceOver);
+		// the lamp, near white in the middle: drawn round on a square, squeezed to its
+		// height, so the gradient is as long as the lamp
+		QRadialGradient body(mid, b.width() / 2);
+		body.setColorAt(0, QColor::fromHsvF(key.lamp.hsvHueF(), key.lamp.hsvSaturationF() * 0.35, 1.0));
+		body.setColorAt(0.55, key.lamp.lighter(115));
+		body.setColorAt(1, key.lamp);
+		pnt.save();
+		pnt.translate(mid);
+		pnt.scale(1, b.height() / b.width());
+		pnt.translate(-mid);
+		pnt.setBrush(body);
+		QRectF sq(mid.x() - b.width() / 2, mid.y() - b.width() / 2, b.width(), b.width());
+		pnt.drawRoundedRect(sq, b.height() / 3, b.width() / 3);
+		pnt.restore();
+	}
 	pnt.end();
 }
 
@@ -936,7 +1073,7 @@ int keyWindow::keyAt(QPointF ipos) {
 	const QVector<VkKey>& keys = skin.keys();
 	for (int n = 0; n < keys.size(); n++) {
 		const VkKey& key = keys[n];
-		if (key.zx.isEmpty()) continue;		// lettering, not a key
+		if (!key.clickable()) continue;		// lettering, not a key
 		if (key.hitPoly.isEmpty() ? key.hit.contains(ipos) : key.hitPoly.containsPoint(ipos, Qt::OddEvenFill))
 			return n;
 	}
@@ -988,7 +1125,8 @@ void keyWindow::mousePressEvent(QMouseEvent* ev) {
 			showMenu(mapToGlobal(QPoint(ev->xEventX, ev->xEventY)));
 		return;
 	}
-	QByteArray zx = skin.keys()[n].zx;
+	const VkKey& key = skin.keys()[n];
+	QByteArray zx = key.zx;
 	// a shift held for a click and let go would do nothing: the left button
 	// latches it, as the right one latches any key
 	bool shift = (zx == "C") || (zx == "S");
@@ -1001,18 +1139,26 @@ void keyWindow::mousePressEvent(QMouseEvent* ev) {
 			pressKeys(heldZx, false);	// a press whose release was missed
 			held = n;
 			heldZx = zx;
+			heldJoy = key.joy;
 			pressKeys(zx, true);
+			syncJoy();
 			update();
+			if (key.reset) {
+				checkReset();		// one alone holds, and resumes nothing
+				break;
+			}
 			emit s_key_click();		// in the machine already, and it resumes; a shift alone does not
 			break;
 		case Qt::RightButton:
 			latchKey(n, zx);
-			if (!shift) emit s_key_click();
+			if (key.reset) {
+				checkReset();
+			} else if (!shift) {
+				emit s_key_click();
+			}
 			break;
 		case Qt::MiddleButton:
-			x_kbd_release_all(kb);
-			latched.fill(false);
-			update();
+			releaseAll();
 			break;
 		default:
 			break;
@@ -1022,6 +1168,13 @@ void keyWindow::mousePressEvent(QMouseEvent* ev) {
 // Down for good, or up again if all its keys are down: a combination as one
 // key, so a CAPS SHIFT down by itself stays down when EDIT is let go
 void keyWindow::latchKey(int n, const QByteArray& zx) {
+	const VkKey& key = skin.keys()[n];
+	if (key.joy || key.reset) {
+		if (n < latched.size()) latched[n] = !latched[n];
+		syncJoy();
+		update();
+		return;
+	}
 	int bit;
 	unsigned char* ext = nextExtKey(kb, zx, &bit);
 	bool all = ext ? ((*ext & bit) != 0) : allIn(zx, keysDown());
@@ -1031,6 +1184,10 @@ void keyWindow::latchKey(int n, const QByteArray& zx) {
 }
 
 void keyWindow::mouseReleaseEvent(QMouseEvent* ev) {
+	if (ev->button() == Qt::LeftButton) {		// the Kempston's go up with no keyboard too
+		heldJoy = 0;
+		syncJoy();
+	}
 	if (!kb) return;
 	if (ev->button() == Qt::LeftButton) {
 		pressKeys(heldZx, false);

@@ -10,6 +10,7 @@
 // text is hinted (FreeType, vertical-only) and may be subpixel.
 
 #include "vkbdskin.h"
+#include "libxpeccy/input/input.h"	// XJ_*
 
 #include <QFile>
 #include <QJsonArray>
@@ -88,6 +89,20 @@ static unsigned char zxKeyNamed(QString name) {
 	char c = name[0].toLatin1();
 	if ((c >= '0') && (c <= '9')) return c;
 	if ((c >= 'A') && (c <= 'Z')) return c - 'A' + 'a';
+	return 0;
+}
+
+// One of the Robik's own keys by its name in a layout's "robik", as keyboard.c's keyTab
+// has it (on #FE bits 5 and 7); 0 for a name that is none
+static unsigned char robikKeyNamed(const QString& name) {
+	static const struct {const char* name; char ch;} own[] = {
+		{"EDIT", '!'}, {"DELETE", '#'}, {".", '.'}, {",", ','}, {"C", 'R'}, {"L", 'L'},
+		{"\xD0\xAE", '@'}, {"\xD0\xA5", '['}, {"\xD0\xAD", '\\'}, {"\xD0\x91", '^'},
+		{"\xD0\x96", ']'}};	// UTF-8: Yu Kh E B Zh
+	QString nm = name.trimmed().toUpper();
+	for (const auto& k : own) {
+		if (nm == QString::fromUtf8(k.name)) return k.ch;
+	}
 	return 0;
 }
 
@@ -370,6 +385,7 @@ bool VkSkin::load(const QByteArray& json, QString* err, BaseFile base) {
 		bar.r = QRectF(num(bo, "x", 0), num(bo, "y", 0), num(bo, "w", 0), num(bo, "h", 0));
 		bar.corner = num(bo, "corner", 0);
 		bar.fill = color(bo.value("fill").toString());
+		bar.grain = num(bo, "grain", 0);
 		if (bo.contains("gradient")) readGrad(bo.value("gradient"), bar.grad);
 		bars.append(bar);
 	}
@@ -411,9 +427,20 @@ bool VkSkin::load(const QByteArray& json, QString* err, BaseFile base) {
 					ic.cutPolys.append(points(c));
 				}
 			}
+		} else if (!g.value("strokes").toArray().isEmpty()) {
+			// open lines drawn with a round pen sw wide, or only its outline, hollow wide
+			foreach(QJsonValue p, g.value("strokes").toArray())
+				ic.polys.append(points(p));
+			ic.open = true;
+			ic.hollow = std::max(0.0, num(g, "hollow", 0));
 		} else if (!g.value("polys").toArray().isEmpty()) {
 			foreach(QJsonValue p, g.value("polys").toArray())
 				ic.polys.append(points(p));
+		} else if (!g.value("rings").toArray().isEmpty()) {
+			// one shape: a ring inside another is a hole in it
+			foreach(QJsonValue p, g.value("rings").toArray())
+				ic.polys.append(points(p));
+			ic.oneShape = true;
 		} else {
 			ic.polys.append(points(g.value("pts")));
 		}
@@ -454,6 +481,38 @@ bool VkSkin::load(const QByteArray& json, QString* err, BaseFile base) {
 					if (!c) return fail(QString("no Spectrum key is called \"%0\"").arg(z.toString()));
 					key.zx.append((char)c);
 				}
+			}
+			// on a Robik, its own key instead: EDIT, DELETE, ".", ",", "C", "L" or a
+			// Cyrillic letter of its own
+			if (ko.contains("robik")) {
+				QJsonValue rv = ko.value("robik");
+				QJsonArray ra = rv.isArray() ? rv.toArray() : QJsonArray({rv});
+				foreach(QJsonValue r, ra) {
+					unsigned char c = robikKeyNamed(r.toString());
+					if (!c) return fail(QString("no key of the Robik's own is called \"%0\"").arg(r.toString()));
+					key.robik.append((char)c);
+				}
+			}
+			// the Kempston's contacts instead of keys, the machine's reset, a light: none
+			// of them a Spectrum key
+			if (ko.contains("joy")) {
+				static const struct {const char* name; int mask;} joys[] = {
+					{"right", XJ_RIGHT}, {"left", XJ_LEFT}, {"down", XJ_DOWN}, {"up", XJ_UP}, {"fire", XJ_FIRE}};
+				QString jn = ko.value("joy").toString();
+				for (const auto& j : joys) {
+					if (jn == j.name) key.joy = j.mask;
+				}
+				if (!key.joy) return fail(QString("no joystick contact is called \"%0\"").arg(jn));
+				key.hasZx = true;
+			}
+			if (ko.value("reset").toBool()) {
+				key.reset = true;
+				key.hasZx = true;
+			}
+			if (ko.contains("lamp")) {
+				key.lamp = color(ko.value("lamp").toString());
+				if (!key.lamp.isValid()) return fail(QString("the lamp's color is not one: %0").arg(ko.value("lamp").toString()));
+				key.hasZx = true;
 			}
 			// a polygon of right angles instead of the box; the box is its bounds
 			if (ko.contains("outline")) {
@@ -654,6 +713,7 @@ void VkSkin::readDome(const QJsonObject& o, Dome& d) const {
 		}
 	}
 	d.ew = num(o, "ew", d.ew);
+	d.soft = num(o, "soft", d.soft);
 }
 
 // the sides, over what they had: "w", "shade" and "fill" one value for all four or
@@ -671,6 +731,8 @@ void VkSkin::readSide(const QJsonValue& v, Side& sd) const {
 		if (o.contains("w")) sd.w[i] = four(o.value("w"), i).toDouble();
 		if (o.contains("shade")) sd.shade[i] = std::max(-1.0, std::min(1.0, four(o.value("shade"), i).toDouble()));
 		if (o.contains("fill")) sd.fill[i] = color(four(o.value("fill"), i).toString());
+		if (o.contains("foot")) sd.foot[i] = four(o.value("foot"), i).toDouble();
+		if (o.contains("foot_shade")) sd.footShade[i] = std::max(-1.0, std::min(1.0, four(o.value("foot_shade"), i).toDouble()));
 	}
 	sd.on = true;
 }
@@ -727,6 +789,13 @@ static const char* zxRows[] = {"1234567890", "qwertyuiop", "asdfghjklE", "Czxcvb
 
 unsigned char VkSkin::zxKeyAt(int row, int pos) {
 	return ((row >= 0) && (row < 4) && (pos >= 0) && (pos < 10)) ? zxRows[row][pos] : 0;
+}
+
+void VkSkin::forRobik(bool on) {
+	for (VkKey& vk : keytab) {
+		vk.zx = (on && !vk.robikZx.isEmpty()) ? vk.robikZx : vk.plainZx;
+		vk.ch = (vk.zx.size() == 1) ? (unsigned char)vk.zx[0] : 0;
+	}
 }
 
 // How far a label reaches up and down, in canvas units, when its anchor point is
@@ -813,6 +882,11 @@ bool VkSkin::makeKeys(QString* err) {
 				return false;
 			}
 			vk.ch = (vk.zx.size() == 1) ? (unsigned char)vk.zx[0] : 0;
+			vk.plainZx = vk.zx;
+			vk.robikZx = key.robik;
+			vk.joy = key.joy;
+			vk.reset = key.reset;
+			vk.lamp = key.lamp;
 			vk.box = QRectF(key.x, key.y, key.w, key.h);
 			QTransform tr = tiltAt(key, vk.box.center());
 			if (!key.outline.isEmpty()) {
@@ -878,6 +952,36 @@ bool VkSkin::makeKeys(QString* err) {
 
 // ---------------------------------------------------------------- drawing
 
+// a grayscale picture blurred: three box passes each way, r pixels to each side, so
+// near a Gaussian
+static void blurGray(QImage& img, int r) {
+	int w = img.width();
+	int h = img.height();
+	if ((w < 1) || (h < 1) || (r < 1)) return;
+	std::vector<int> buf(std::max(w, h));
+	for (int pass = 0; pass < 3; pass++) {
+		for (int y = 0; y < h; y++) {
+			uchar* row = img.scanLine(y);
+			int sum = 0;
+			for (int x = -r; x <= r; x++) sum += row[std::min(std::max(x, 0), w - 1)];
+			for (int x = 0; x < w; x++) {
+				buf[x] = sum;
+				sum += row[std::min(x + r + 1, w - 1)] - row[std::max(x - r, 0)];
+			}
+			for (int x = 0; x < w; x++) row[x] = (uchar)(buf[x] / (2 * r + 1));
+		}
+		for (int x = 0; x < w; x++) {
+			int sum = 0;
+			for (int y = -r; y <= r; y++) sum += img.scanLine(std::min(std::max(y, 0), h - 1))[x];
+			for (int y = 0; y < h; y++) {
+				buf[y] = sum;
+				sum += img.scanLine(std::min(y + r + 1, h - 1))[x] - img.scanLine(std::max(y - r, 0))[x];
+			}
+			for (int y = 0; y < h; y++) img.scanLine(y)[x] = (uchar)(buf[y] / (2 * r + 1));
+		}
+	}
+}
+
 // a label's coverage, one byte per channel (R, G, B) - all three the same for gray
 struct Mask {
 	int x = 0, y = 0, w = 0, h = 0;
@@ -936,6 +1040,42 @@ static Mask iconMask(const QPainterPath& path, double sw, bool stroke, bool flat
 		p.setBrush(Qt::black);
 	}
 	p.drawPath(path);
+	p.end();
+	m.x = box.x();
+	m.y = box.y();
+	m.w = box.width();
+	m.h = box.height();
+	m.c.resize(m.w * m.h * 3);
+	for (int y = 0; y < m.h; y++) {
+		const uchar* s = msk.constScanLine(y);
+		uchar* d = m.c.data() + y * m.w * 3;
+		for (int x = 0; x < m.w; x++, d += 3)
+			d[0] = d[1] = d[2] = s[x];
+	}
+	return m;
+}
+
+// open lines drawn with a round pen, sw pixels wide; inner > 0: that much of the middle
+// taken out again, its outline left (an engraved letter)
+static Mask strokeMask(const QPainterPath& path, double sw, double inner) {
+	Mask m;
+	QPen pen(Qt::black, sw, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+	QRect box = QPainterPathStroker(pen).createStroke(path).boundingRect().toAlignedRect().adjusted(-1, -1, 1, 1);
+	if (box.isEmpty()) return m;
+	QImage msk(box.size(), QImage::Format_Alpha8);
+	msk.fill(0);
+	QPainter p(&msk);
+	p.setRenderHint(QPainter::Antialiasing, true);
+	p.translate(-box.topLeft());
+	p.setBrush(Qt::NoBrush);
+	p.setPen(pen);
+	p.drawPath(path);
+	if (inner > 0) {
+		p.setCompositionMode(QPainter::CompositionMode_Clear);
+		pen.setWidthF(inner);
+		p.setPen(pen);
+		p.drawPath(path);
+	}
 	p.end();
 	m.x = box.x();
 	m.y = box.y();
@@ -1185,7 +1325,25 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 		} else {
 			p.setBrush(gradAt(bar.grad, r, s));
 		}
-		p.drawPath(rrect(r.x(), r.y(), r.width(), r.height(), bar.corner * s));
+		QPainterPath bp = rrect(r.x(), r.y(), r.width(), r.height(), bar.corner * s);
+		p.drawPath(bp);
+		if (bar.grain > 0) {
+			// sand: each pixel a little lighter or darker, in the picture's own pixels
+			// whatever its size - a tile of them laid from the picture's corner, the
+			// same every time
+			const int T = 128;
+			QImage tile(T, T, QImage::Format_ARGB32_Premultiplied);
+			for (int y = 0; y < T; y++) {
+				QRgb* line = (QRgb*)tile.scanLine(y);
+				for (int x = 0; x < T; x++) {
+					double v = (unitHash(7, y, x, 0) + unitHash(7, y, x, 1)) - 1.0;
+					int a = std::min(255, fr(std::fabs(v) * bar.grain * 255));
+					line[x] = (v > 0) ? qRgba(a, a, a, a) : qRgba(0, 0, 0, a);
+				}
+			}
+			p.setBrush(QBrush(tile));
+			p.drawPath(bp);
+		}
 	}
 	// the contours, cut out of the ground and the rainbow alike
 	p.setCompositionMode(QPainter::CompositionMode_DestinationOut);
@@ -1247,6 +1405,18 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 					p.setBrush(c);
 					p.drawPolygon(q);
 				}
+				// the straight foot under the slope, over its outer part
+				QVector<QPointF> fin = offsetPoly4(out, -fr(sd.foot[0] * s), -fr(sd.foot[1] * s), -fr(sd.foot[2] * s), -fr(sd.foot[3] * s));
+				for (int i = 0; i < out.size(); i++) {
+					int j = (i + 1) % out.size();
+					int f = edgeFaces(out, i);
+					double sh = sd.footShade[f];
+					if ((sd.foot[f] <= 0) || (sh == 0)) continue;
+					QPolygonF q;
+					q << out[i] << out[j] << fin[j] << fin[i];
+					p.setBrush((sh > 0) ? QColor(0, 0, 0, fr(sh * 255)) : QColor(255, 255, 255, fr(-sh * 255)));
+					p.drawPolygon(q);
+				}
 				p.restore();
 			}
 		}
@@ -1274,7 +1444,39 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 		} else {
 			p.setBrush(gradAt(dm.grad, joined.boundingRect(), s));
 		}
-		p.drawPath(dp);
+		if (dm.soft > 0) {
+			// a soft edge: the dome's paint over the whole cap, as much of it at each
+			// pixel as a blurred picture of the dome has there
+			QRect br = path.boundingRect().toAlignedRect();
+			QImage mask(br.size(), QImage::Format_Grayscale8);
+			mask.fill(0);
+			QPainter mp(&mask);
+			mp.setRenderHint(QPainter::Antialiasing, true);
+			mp.translate(-br.topLeft());
+			mp.fillPath(dp, Qt::white);
+			mp.end();
+			blurGray(mask, std::max(1, fr(dm.soft * s / 2)));
+			QImage layer(br.size(), QImage::Format_ARGB32_Premultiplied);
+			layer.fill(Qt::transparent);
+			QPainter lp(&layer);
+			lp.translate(-br.topLeft());
+			lp.fillPath(path, p.brush());
+			lp.end();
+			for (int y = 0; y < layer.height(); y++) {
+				QRgb* d = (QRgb*)layer.scanLine(y);
+				const uchar* m = mask.constScanLine(y);
+				for (int x = 0; x < layer.width(); x++) {
+					int a = m[x];
+					d[x] = qRgba(qRed(d[x]) * a / 255, qGreen(d[x]) * a / 255, qBlue(d[x]) * a / 255, qAlpha(d[x]) * a / 255);
+				}
+			}
+			p.save();
+			p.setClipPath(path, Qt::IntersectClip);
+			p.drawImage(br.topLeft(), layer);
+			p.restore();
+		} else {
+			p.drawPath(dp);
+		}
 		// its edge: inside its rim and its cuts, where these are on the cap;
 		// lit, the light in its place
 		QColor ec = klit ? litCol : dm.edge;
@@ -1356,6 +1558,18 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 						foreach(const QVector<QPointF>& c, ic.cutPolys)
 							path.addPolygon(QPolygonF(c)), path.closeSubpath();
 						put(iconMask(place(tr.map(path)), 0, false, false), lab.col);
+					} else if (ic.open) {
+						foreach(const QVector<QPointF>& c, ic.polys) {
+							if (c.isEmpty()) continue;
+							path.moveTo(c[0]);
+							for (int i = 1; i < c.size(); i++)
+								path.lineTo(c[i]);
+						}
+						put(strokeMask(place(tr.map(path)), ic.sw * s, (ic.hollow > 0) ? std::max(0.0, ic.sw - 2 * ic.hollow) * s : 0), lab.col);
+					} else if (ic.oneShape) {
+						foreach(const QVector<QPointF>& c, ic.polys)
+							path.addPolygon(QPolygonF(c)), path.closeSubpath();
+						put(iconMask(place(tr.map(path)), ic.sw * s, ic.sw > 0, false), lab.col);
 					} else {
 						foreach(const QVector<QPointF>& c, ic.polys) {
 							QPainterPath pp;
