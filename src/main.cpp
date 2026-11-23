@@ -620,6 +620,14 @@ int main(int ac,char** av) {
 		fmt.setVersion(2, 1);
 		fmt.setProfile(QSurfaceFormat::CompatibilityProfile);
 #endif
+#if !defined(_WIN32) && !defined(__APPLE__)
+		// a test switch: an OpenGL ES 3.0 context, to try the shaders on one (tests/shaders/README.md)
+		if (qEnvironmentVariableIsSet("XPECCY_GL_ES")) {
+			fmt.setRenderableType(QSurfaceFormat::OpenGLES);
+			fmt.setVersion(3, 0);
+			fmt.setProfile(QSurfaceFormat::NoProfile);
+		}
+#endif
 		fmt.setDepthBufferSize(24);
 		fmt.setStencilBufferSize(8);
 		fmt.setSwapInterval(0);
