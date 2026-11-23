@@ -177,15 +177,20 @@ A file there with the name of a built-in shader replaces that shader. The file h
 parts in GLSL: a line `vertex:` followed by the vertex shader, and a line `fragment:` followed by
 the fragment shader. The picture comes in as the texture `rubyTexture`, with its size in
 `rubyInputSize` and `rubyTextureSize`; the size of the picture on the screen is in
-`rubyOutputSize`. When a shader is picked in **View > Shaders** or read again by **Reload
-Shader**, its name appears on the picture, as **shader from x2** at **x1**. If the shader does not work, the message is
-**shader error**, and the picture is shown without a shader.
+`rubyOutputSize`. A file can also hold several passes, each drawn into a picture of its own
+that the next one reads, with parameters and textures; `config/shaders/README.md` describes
+the format.
+
+If the shader does not work, the message on the picture is **shader error** and the picture
+is shown without a shader. **Options > Video** then shows the first error under the
+**Shader** list, with the file's line; a click on it opens all of them. The shader stays
+chosen: correct the file and read it again.
 
 ```{index} Reload Shader
 ```
 
 The **Reload Shader** action reads the shader file again, so you can see a change you
-have just saved. It has no key by default; give it one on the **Hotkeys** page of
+have just saved, and says **shader reloaded**. It has no key by default; give it one on the **Hotkeys** page of
 **Options** (see [Hotkeys page](hotkeys.md)).
 
 ## ZX Palette
