@@ -41,7 +41,7 @@ static const struct {
 	{"128", "128K (Classic)", 0}, {"128-white", "128K (White)", 0},
 	{"next", "Next (Black)", 1}, {"next-white", "Next (White)", 1}, {"next-magenta", "Next (Magenta)", 1},
 	{"kopir-worn", "Klava", 2}, {"kopir", "Klava (Washed)", 2},
-	{"robik-compact", "Robik (Compact)", 2}, {"robik", "Robik (Full-Size)", 2}};
+	{"robik-compact", "Robik", 2}, {"robik", "Robik (Full-Size)", 2}};
 
 // a skin as the Skin menu and the title name it: a user's own by its file's name
 static QString skinTitle(const QString& name) {

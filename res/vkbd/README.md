@@ -33,7 +33,7 @@
   closer together; a layout of its own, its keys as big (made by `make-robik.py` too).
 - In the menu, a line between the Spectrum's, the Next's and the clones': 48K (Classic), 48K
   (White), 128K (Classic), 128K (White) | Next (Black), Next (White), Next (Magenta) | Klava
-  (the worn Kopir), Klava (Washed), Robik (Compact), Robik (Full-Size) - black, white, 128,
+  (the worn Kopir), Klava (Washed), Robik, Robik (Full-Size) - black, white, 128,
   128-white, next, next-white, next-magenta, kopir-worn, kopir, robik-compact, robik in the
   config.
 - `keys-font.ttf` - the lettering, Latin-1 and Cyrillic, made by `tools/vkbd_font.py` from
