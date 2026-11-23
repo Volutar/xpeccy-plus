@@ -769,6 +769,28 @@ bool numbered(const QString& name, const char* prefix, int* index, bool* size) {
 	return ok && (*index >= 0);
 }
 
+// the GLSL type a name of that kind must have to be fed; 0: any
+GLenum kindType(int kind) {
+	if (kind < K_SAMPLERS) return GL_SAMPLER_2D;
+	switch (kind) {
+		case K_SOURCE_SIZE: case K_ORIGINAL_SIZE: case K_HISTORY_SIZE: case K_PASSOUT_SIZE:
+		case K_FEEDBACK_SIZE: case K_TEXTURE_SIZE: case K_OUTPUT_SIZE: case K_FINAL_SIZE:
+		case K_PLACE: case K_XP_PICTURE: case K_XP_RASTER: case K_XP_CARRIER:
+			return GL_FLOAT_VEC4;
+		case K_RUBY_INPUT: case K_RUBY_TEXTURE: case K_RUBY_OUTPUT: case K_XP_WINDOW:
+			return GL_FLOAT_VEC2;
+		case K_FRAMECOUNT: case K_SUBFRAME: case K_SUBFRAMES:
+			return GL_UNSIGNED_INT;
+		case K_DIRECTION: case K_SMOOTH: case K_XP_FRAME:
+			return GL_INT;
+		case K_MVP:
+			return GL_FLOAT_MAT4;
+		case K_WIDE: case K_PARAM:
+			return GL_FLOAT;
+	}
+	return 0;
+}
+
 void size4(QOpenGLExtraFunctions* gl, GLint loc, const QSize& s) {
 	const float w = float(std::max(s.width(), 1));
 	const float h = float(std::max(s.height(), 1));
@@ -1174,7 +1196,7 @@ void xShaderChain::makeBinds(xGlProgram& p, std::vector<Bind>& binds) {
 		glGetActiveUniform(p.id(), u, sizeof(raw), &len, &size, &type, raw);
 		QString name = QString::fromLatin1(raw, len);
 		if (name.endsWith("[0]")) name.chop(3);
-		Bind b = {-1, 0, -1, 0};
+		Bind b = {-1, 0, -1, 0, false};
 		for (const FixedName& fx : kFixed) {
 			if (name == QLatin1String(fx.name)) {
 				b.kind = fx.kind;
@@ -1213,7 +1235,13 @@ void xShaderChain::makeBinds(xGlProgram& p, std::vector<Bind>& binds) {
 			if (name == preset.params[k].name) b.kind = K_PARAM;
 			b.index = k;
 		}
+		// an old file may call its one texture anything: main drew with the frame on
+		// unit 0, where a sampler nobody set reads
+		if ((b.kind < 0) && (type == GL_SAMPLER_2D) && preset.legacy) b.kind = K_SOURCE;
 		if (b.kind < 0) continue;
+		// a name of ours declared as another type is the shader's own: left alone
+		b.asInt = (b.kind == K_FRAMECOUNT) && (type == GL_INT);
+		if (!b.asInt && (type != kindType(b.kind))) continue;
 		b.loc = glGetUniformLocation(p.id(), raw);
 		if (b.loc < 0) continue;
 		if (b.kind < K_SAMPLERS) {
@@ -1366,7 +1394,10 @@ void xShaderChain::apply(const std::vector<Bind>& binds, int pass, const xChainF
 		switch (b.kind) {
 			case K_OUTPUT_SIZE: size4(this, b.loc, outSize); break;
 			case K_FINAL_SIZE: size4(this, b.loc, frm.pic.size()); break;
-			case K_FRAMECOUNT: glUniform1ui(b.loc, frameCount); break;
+			case K_FRAMECOUNT:
+				if (b.asInt) glUniform1i(b.loc, int(frameCount & 0x7fffffff));
+				else glUniform1ui(b.loc, frameCount);
+				break;
 			case K_DIRECTION: glUniform1i(b.loc, frm.direction); break;
 			case K_SUBFRAME: glUniform1ui(b.loc, 1); break;
 			case K_SUBFRAMES: glUniform1ui(b.loc, 1); break;

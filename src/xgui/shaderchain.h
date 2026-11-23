@@ -216,6 +216,7 @@ class xShaderChain : protected QOpenGLExtraFunctions {
 			int index;
 			GLint loc;
 			int unit;		// samplers
+			bool asInt;		// FrameCount declared int, as older shaders have it
 		};
 		struct Target {
 			GLuint tex = 0;
