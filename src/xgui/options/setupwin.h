@@ -32,6 +32,7 @@
 class QRadioButton;
 class QTextEdit;
 class QThread;
+class xShdErrLine;
 
 class SetupWin : public QDialog {
 	Q_OBJECT
@@ -218,6 +219,7 @@ class SetupWin : public QDialog {
 		QList<QWidget*> drvRow[4];
 		QComboBox* drvCountBox;
 		// screenshots
+		xShdErrLine* shdErrLine;	// under the Shader list: the last load's error, if it failed
 		QComboBox* cbShotSrc;
 		QComboBox* cbShotScale;
 		QLineEdit* leShotName;

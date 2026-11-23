@@ -26,6 +26,7 @@
 #include <QLineEdit>
 #include <QIntValidator>
 #include <QTextEdit>
+#include <QPlainTextEdit>
 #include <QAbstractTextDocumentLayout>
 #include <QFontDatabase>
 #include <QDateTime>
@@ -154,6 +155,56 @@ static void sheet_open(QDialog* win) {
 }
 
 // the item data keeps the file name, empty for None
+// The last shader load's first error, shortened to the row; a click opens all of them.
+class xShdErrLine : public xElideLabel {
+	public:
+		xShdErrLine(QWidget* p);
+		void setLog(const QString& text);
+	protected:
+		void mouseReleaseEvent(QMouseEvent*) override;
+		void paintEvent(QPaintEvent*) override;
+	private:
+		QString log;
+		QString first;
+};
+
+// cut at its end, not in the middle: the file, the line and what is wrong come first
+void xShdErrLine::paintEvent(QPaintEvent*) {
+	QPainter pnt(this);
+	const QString txt = fontMetrics().elidedText(first, Qt::ElideRight, contentsRect().width());
+	style()->drawItemText(&pnt, contentsRect(), alignment(), palette(), isEnabled(), txt, foregroundRole());
+}
+
+xShdErrLine::xShdErrLine(QWidget* p) : xElideLabel(p) {
+	setCursor(Qt::PointingHandCursor);
+	setForegroundRole(QPalette::Link);
+	hide();
+}
+
+void xShdErrLine::setLog(const QString& text) {
+	if (text == log) return;
+	log = text;
+	first = text.section('\n', 0, 0);
+	setFull(first);
+	setVisible(!text.isEmpty());
+}
+
+void xShdErrLine::mouseReleaseEvent(QMouseEvent*) {
+	QDialog dlg(window());
+	dlg.setWindowTitle("Shader errors");
+	QVBoxLayout* lay = new QVBoxLayout(&dlg);
+	QPlainTextEdit* edit = new QPlainTextEdit(&dlg);
+	edit->setReadOnly(true);
+	edit->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+	edit->setPlainText(log);
+	lay->addWidget(edit);
+	QDialogButtonBox* box = new QDialogButtonBox(QDialogButtonBox::Close, &dlg);
+	connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+	lay->addWidget(box);
+	dlg.resize(640, 240);
+	dlg.exec();
+}
+
 void fill_shader_list(QComboBox* box) {
 	QStringList lst = xres_list("shaders", QStringList() << "*.txt");
 	box->clear();
@@ -764,6 +815,16 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 
 //	ui.cbScanlines->setVisible(false);
 	fill_shader_list(ui.cbShader);
+	// under the list, only after a load that failed; the load ends a few frames
+	// after Apply, so the line is looked at again while the window is up
+	shdErrLine = new xShdErrLine(this);
+	ui.gridLayout_2->addWidget(shdErrLine, 5, 1, 1, 2);
+	QTimer* shdErrTimer = new QTimer(this);
+	shdErrTimer->setInterval(300);
+	connect(shdErrTimer, &QTimer::timeout, this, [this]() {
+		if (isVisible()) shdErrLine->setLog(QString::fromStdString(conf.vid.shdError));
+	});
+	shdErrTimer->start();
 	fillPalettes();
 	paleditor = new xPalEditor(this);
 	paleditor->setModal(true);
