@@ -562,7 +562,7 @@ static int nx_mrd_in(Computer* comp, int adr) {
 		// is frozen once MREQ is low, zxnext.vhd 3001-3065); the ray is walked to T3 -
 		// unless the clock, counted from the T, is still short of the copper's next move
 		long long ts = comp->tickTotal + comp->cpu->t;
-		if (NX.copN || (NX.refT < 0) || (NX.refC + (ts - NX.refT) * (8 >> NX.speed) + 4 >= NX.copWake)) {
+		if (!nx_cop_asleep(comp, ts, 4)) {
 			comp_vid_to_t(comp);
 			long long now = nx_now(comp);
 			NX.refT = ts;
@@ -3065,6 +3065,10 @@ static int nx_halt(Computer* comp, int adr, long long* until) {
 		if (NX.copN || (NX.refT < 0)) return 0;
 		long long g = nx_tick28(comp);		// the read at the step start + 2 T
 		long long c = NX.refT + nx_fdiv(NX.copWake - 4 - NX.refC + g - 1, g) - 2;
+		if (c < u) u = c;
+		// ...and at its end nx_cop_asleep(.., 8) still: the samples the run passed are
+		// taken after it (nx_snd_late), with nothing the copper writes in between
+		c = NX.refT + nx_fdiv(NX.copWake - 8 - NX.refC + g - 1, g) - t;
 		if (c < u) u = c;
 	}
 	*until = u;

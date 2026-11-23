@@ -190,6 +190,8 @@ void nxv_memw(Computer* comp, int key, int old, long long w) {
 	e->w = w;
 	e->key = key;
 	e->old = old;
+	e->prev = V.wrH[key & (NXV_WRT - 1)];
+	V.wrH[key & (NXV_WRT - 1)] = V.wrHead;
 	V.wrHead = (V.wrHead + 1) & (NXV_WRQ - 1);
 	V.wrT[key & (NXV_WRT - 1)] = (unsigned int)w;
 	// the next write takes the oldest one's place: if a read may still have to undo it
@@ -208,14 +210,19 @@ static inline int nxv_peek(Computer* comp, int key) {
 }
 
 // the byte at key as a read at CLK_28 r saw it: writes after r undone. A slot's time and
-// r are never 2^31 clk28 apart the wrong way: an old slot only asks for the walk
+// r are never 2^31 clk28 apart the wrong way: an old slot only asks for the walk, of its
+// own slot's writes, the newest first. A place written over since holds a newer write
+// (the age goes down) or another slot's: the walk ends there, what r needs is never
+// written over. Nothing here may write: the drawing is compiled knowing it only reads
 static __attribute__((noinline)) int nxv_mem_undo(Computer* comp, int key, long long r, int v) {
-	int i = V.wrHead;
 	if ((int)(V.wrT[key & (NXV_WRT - 1)] - (unsigned int)r) <= 0) return v;
-	for (int k = 0; k < NXV_WRQ; k++) {
-		i = (i - 1) & (NXV_WRQ - 1);
-		nxvWrite* e = &V.wr[i];
-		if (e->w <= r) break;
+	int age = -1;
+	// (the places are a snapshot's as it came: masked)
+	for (int i = V.wrH[key & (NXV_WRT - 1)] & (NXV_WRQ - 1); ; i = V.wr[i].prev & (NXV_WRQ - 1)) {
+		const nxvWrite* e = &V.wr[i];
+		int a = (V.wrHead - 1 - i) & (NXV_WRQ - 1);
+		if ((a <= age) || (e->w <= r) || ((e->key ^ key) & (NXV_WRT - 1))) break;
+		age = a;
 		if (e->key == key) v = e->old;
 	}
 	return v;
@@ -2106,6 +2113,7 @@ void nxv_reset(Computer* comp) {
 	memset(V.wr, 0, sizeof(V.wr));
 	V.wrHead = 0;
 	memset(V.wrT, 0, sizeof(V.wrT));
+	memset(V.wrH, 0, sizeof(V.wrH));
 	memset(V.sprKeep, 0, sizeof(V.sprKeep));
 	V.sprKeepTo[0] = V.sprKeepTo[1] = -1;
 	V.sprKeepNew = 0;

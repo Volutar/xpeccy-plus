@@ -54,6 +54,11 @@ extern int nx_cop_hold;
 static inline int nx_cop_on(Computer* comp) {
 	return (NX.nr[0x62] & 0xc0) || NX.copLast || NX.copN;
 }
+// ...and does nothing up to margin CLK_28 past the cpu's T ts: by the clock counted from
+// a T, which says so without the ray (nx_halt bounds its run by the same count)
+static inline int nx_cop_asleep(Computer* comp, long long ts, int margin) {
+	return !NX.copN && (NX.refT >= 0) && (NX.refC + (ts - NX.refT) * (8 >> NX.speed) + margin < NX.copWake);
+}
 
 // the picture (zxnext_vid.c)
 void nxv_reset(Computer*);
