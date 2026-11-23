@@ -95,8 +95,9 @@ before that point is upstream's history and is not repeated here.
 
 - **Shaders start without a wait**: a compiled shader is kept between runs, and one that has
   to be compiled is built beside the picture. A shader that does not compile stays chosen:
-  a warning button beside the Shader list of Options > Video has the first error and its
-  line, a click opens all of them. No message on the picture when a shader is picked.
+  the button Error: check the log beside the Shader list of Options > Video has the first
+  error and its line in its tip, a click opens all of them. No message on the picture when
+  a shader is picked.
 
 - **A shader file can hold several passes**, with parameters, textures, earlier frames and
   its own last output, under the names RetroArch's slang shaders use:
