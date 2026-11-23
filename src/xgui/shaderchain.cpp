@@ -1507,9 +1507,10 @@ void xShaderChain::run(const xChainFrame& frm, bool use) {
 		}
 		// last paint's output stays in the other texture for those who read it back
 		const bool hadBoth = p.feedback && p.tgt[0].tex && p.tgt[1].tex;
-		if (hadBoth) p.cur ^= 1;
-		if (!target(p, p.cur, size, p.fmt)) continue;
-		if (p.feedback && !target(p, 1 - p.cur, size, p.fmt)) continue;
+		const int next = hadBoth ? 1 - p.cur : p.cur;
+		if (!target(p, next, size, p.fmt)) continue;
+		if (p.feedback && !target(p, 1 - next, size, p.fmt)) continue;
+		p.cur = next;
 		p.flipped = true;
 		segBegin(i);
 		if (sp.mipmap) {
