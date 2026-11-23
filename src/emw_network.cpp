@@ -695,6 +695,28 @@ void MainWin::socketRead() {
 		}
 		if (hit) list = line(hit) + "\r\n";
 		sock->write(list.isEmpty() ? "nothing\r\n" : list.toUtf8());
+	} else if (com == "shader-info") {
+		// shader-info: the shader's chain as built - each pass, its target, cached or
+		// compiled and in how long, the parameters, the last load's errors
+		sock->write(glw ? chain.info().toUtf8() : QByteArray("no OpenGL\r\n"));
+	} else if (com == "shader-param") {
+		// shader-param NAME [VALUE]: a parameter of the loaded shader, read or set
+		if (prm.size() < 2) {
+			sock->write("shader-param NAME [VALUE]\r\n");
+		} else {
+			bool found = (prm.size() < 3) || chain.setParam(prm[1], prm[2].toFloat());
+			QString out = "no such parameter\r\n";
+			for (const xShdParam& sp : chain.params()) {
+				if (!found || (sp.name != prm[1])) continue;
+				out = QString("%0 = %1 (%2 .. %3)\r\n").arg(sp.name).arg(sp.value).arg(sp.min).arg(sp.max);
+			}
+			sock->write(out.toUtf8());
+		}
+	} else if (com == "gpu-time") {
+		// gpu-time [on|off]: GPU time of each pass, the picture and the side fill, a
+		// mean of about 60 paints. Timed only while on
+		if (prm.size() > 1) chain.timing(prm[1] == "on");
+		sock->write(chain.timeReport().toUtf8());
 	} else if (com == "uistate") {
 		// uistate: what holds the input and where the picture goes - the modal window,
 		// the popup, the grabs, the window's state, the crop and the draw rectangle
