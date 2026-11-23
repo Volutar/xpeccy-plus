@@ -183,6 +183,7 @@ typedef struct {
 	long long w;		// clk28 of the write
 	int key;		// the byte: ramData offset, or NXV_SHADOW + offset in shadow[]
 	unsigned char old;	// what it held before
+	unsigned short prev;	// the write before it to a key of its wrT slot, as a place in wr[]
 } nxvWrite;
 
 typedef struct {
@@ -225,7 +226,8 @@ typedef struct {
 	int late;			// changes that came after their pixel was drawn (should stay 0)
 	nxvWrite wr[NXV_WRQ];
 	int wrHead;
-	unsigned int wrT[NXV_WRT];	// low 32 bits of the clk28 of the last write to a key of each slot
+	unsigned int wrT[NXV_WRT];	// low 32 bits of the clk28 of the last write to a key of each slot...
+	unsigned short wrH[NXV_WRT];	// ...and its place in wr[]
 	unsigned short sprKeep[2][320];	// sprite line buffers the pass cleared before they were drawn
 	long long sprKeepTo[2];		// ...the last dot each was shown on (-1 none)
 	unsigned char sprKeepNew;	// the newer of the two
