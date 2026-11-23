@@ -54,10 +54,10 @@ Written for this project. Same MIT license as the rest of Xpeccy+.
 ## Writing a shader
 
 A shader is one text file in this folder. The reload key (Options - Hotkeys, "Reload Shader")
-loads it again; if it does not compile, the picture is drawn plain, a warning button stands
-beside the Shader list of Options - Video (the first error in its tip, all of them on a
-click), and the event log has every error as `file:line: text`. The file stays chosen: fix
-it and press the key.
+loads it again; if it does not compile, the picture is drawn plain, the button "Error: check
+the log" stands beside the Shader list of Options - Video (the first error in its tip, all
+of them on a click), and the event log has every error as `file:line: text`. The file stays
+chosen: fix it and press the key.
 
 ### One pass
 
