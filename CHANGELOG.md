@@ -22,7 +22,9 @@ before that point is upstream's history and is not repeated here.
 - **Robik**, the 48K clone from Cherkasy: its V03 ROM with Cyrillic, its 11 extra keys and
   a keymap for them, its own frame and screen-write wait. Options > Machine, Board: shadow
   RAM under the ROM, BRIGHT as the factory board or two levels, and the thin lines at cell
-  edges most boards show. *(timings measured by Mikhail Sudakov and AlexZor)*
+  edges most boards show. Memory 128 KB is a board its owners upgraded: the Pentagon 128's
+  paging and ROMs, its menu at start. A PSG and the Kempston mouse can be fitted.
+  *(timings measured by Mikhail Sudakov and AlexZor)*
 
 - **Robik (Compact)** and **Robik (Full-Size)** in the Virtual Keyboard: the Robik's
   keyboard with its logo and power light, the compact one shown on the Robik. Its extra keys
