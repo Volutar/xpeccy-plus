@@ -825,8 +825,9 @@ long long xThread::haltRoom(Computer* comp) {
 	if ((held >= 0) && (held < LATE_NO_HOLD)) return nsPerSampleFixed - sndNsFixed;
 	const hwQuiet* q = comp->hw->quiet;
 	if (q->sndLate && !comp->gs->enable) {
-		if (q->sndLate(comp)) return snd_need_room(sndNsFixed);
-		lateNoTick = comp->tickTotal;
+		int late = q->sndLate(comp);
+		if (late > 0) return snd_need_room(sndNsFixed);
+		if (!late) lateNoTick = comp->tickTotal;	// -1: a no for this sample only
 	}
 	return nsPerSampleFixed - sndNsFixed;
 }

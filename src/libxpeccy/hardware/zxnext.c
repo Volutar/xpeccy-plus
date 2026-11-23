@@ -3066,6 +3066,10 @@ static int nx_halt(Computer* comp, int adr, long long* until) {
 		long long g = nx_tick28(comp);		// the read at the step start + 2 T
 		long long c = NX.refT + nx_fdiv(NX.copWake - 4 - NX.refC + g - 1, g) - 2;
 		if (c < u) u = c;
+		// ...and its end still asleep by nx_cop_asleep: the samples the run passed are
+		// taken after it (nx_snd_late), with nothing the copper writes in between
+		c = NX.refT + nx_fdiv(NX.copWake - 8 - NX.refC + g - 1, g) - t;
+		if (c < u) u = c;
 	}
 	*until = u;
 	return t;

@@ -95,7 +95,7 @@ typedef struct {
 	void (*haltDone)(Computer*, int adr, long long t0, long long n, int t);
 	// The real-time HALT run-on may pass the sound's samples, taken after it: what the
 	// machine's mix reads stands still meanwhile or is read at the sample's own time
-	// (comp->sndAgo). NULL or 0: the run stops at every sample
+	// (comp->sndAgo). NULL or 0: the run stops at every sample; -1: at this one
 	int (*sndLate)(Computer*);
 } hwQuiet;
 
