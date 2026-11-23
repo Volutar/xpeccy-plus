@@ -217,7 +217,8 @@ static inline int nxv_peek(Computer* comp, int key) {
 static __attribute__((noinline)) int nxv_mem_undo(Computer* comp, int key, long long r, int v) {
 	if ((int)(V.wrT[key & (NXV_WRT - 1)] - (unsigned int)r) <= 0) return v;
 	int age = -1;
-	for (int i = V.wrH[key & (NXV_WRT - 1)]; ; i = V.wr[i].prev) {
+	// (the places are a snapshot's as it came: masked)
+	for (int i = V.wrH[key & (NXV_WRT - 1)] & (NXV_WRQ - 1); ; i = V.wr[i].prev & (NXV_WRQ - 1)) {
 		const nxvWrite* e = &V.wr[i];
 		int a = (V.wrHead - 1 - i) & (NXV_WRQ - 1);
 		if ((a <= age) || (e->w <= r) || ((e->key ^ key) & (NXV_WRT - 1))) break;

@@ -818,7 +818,7 @@ static int tape_hook_at(Computer* comp) {
 // where the machine's mix takes its samples after their time (hwQuiet.sndLate) - to
 // the one that meets the pacer's need. A no is held for LATE_NO_HOLD T rather than
 // asked at every sub-sample: a no kept too long only leaves the run as short as it
-// always was
+// always was. A no for one sample (-1: the Next's copper about to move) is not held
 #define LATE_NO_HOLD	4096
 long long xThread::haltRoom(Computer* comp) {
 	long long held = comp->tickTotal - lateNoTick;		// < 0: the machine was reset since

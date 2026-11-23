@@ -332,11 +332,9 @@ void next_audio(Computer* comp, int* l, int* r, int* env) {
 	*env = comp->ts->chipA->chanE.vol;
 }
 
-// The copper has nothing to do yet at the T the cpu stands at: by the clock counted from
-// the T, which says so without the ray
-static inline int nx_cop_asleep(Computer* comp) {
-	long long ts = comp->tickTotal + comp->cpu->t;
-	return !NX.copN && (NX.refT >= 0) && (NX.refC + (ts - NX.refT) * (8 >> NX.speed) + 8 < NX.copWake);
+// the copper has nothing to do yet at the T the cpu stands at
+static inline int nx_snd_cop_asleep(Computer* comp) {
+	return nx_cop_asleep(comp, comp->tickTotal + comp->cpu->t, 8);
 }
 
 // hwQuiet.sndLate: nx_vol hears the AYs and the DACs at the sample's own time, and
@@ -348,7 +346,7 @@ static inline int nx_cop_asleep(Computer* comp) {
 int nx_snd_late(Computer* comp) {
 	if (nx_cop_on(comp)) {
 		if (!(NX.nr[0x62] & 0xc0)) return 0;
-		if (!nx_cop_asleep(comp) || SND.qN) return -1;
+		if (!nx_snd_cop_asleep(comp) || SND.qN) return -1;
 	}
 	bitChan* bc = comp->beep;
 	if ((bc->val != (bc->lev ? bc->hi : bc->lo)) || (bc->perH && bc->perL)) return 0;
@@ -411,7 +409,7 @@ sndPair nx_mix(sndMix* m, sndVolume* sv) {
 void nx_snd_take(Computer* comp, sndMix* m) {
 	// the copper writes the DACs and the mixer's nextregs: its moves up to the dot under
 	// the ray count here, as the video, which runs it, may not have walked that far yet
-	if (nx_cop_on(comp) && !nx_cop_asleep(comp))
+	if (nx_cop_on(comp) && !nx_snd_cop_asleep(comp))
 		nx_cop_run(comp, nx_now(comp) & ~3LL);
 	snd_mix_take_wire(m, comp);
 	// the AYs are heard at the time the sample was due (comp->sndAgo)
