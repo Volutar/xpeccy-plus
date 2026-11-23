@@ -1546,6 +1546,8 @@ void MainWin::frame_timer() {
 		// fast loading finishes a picture 30 times a second at most, and one
 		// upload of it is enough however often the window is painted
 		if (conf.emu.pause || (upSwaps != bufSwaps)) {
+			// at full speed the pictures shown are far apart: none is the frame before another
+			if (!conf.emu.pause) ringCount += XP_RING_MAX;
 			upSwaps = bufSwaps;
 			uploadOffPaint();
 		}
