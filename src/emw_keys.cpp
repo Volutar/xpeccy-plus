@@ -362,7 +362,7 @@ void MainWin::xkey_press(int xkey, bool cmd, QKeyEvent* ev) {
 //				saveConfig();
 				break;
 			case XCUT_RELOAD_SHD:
-				loadShader();
+				loadShader(true);
 				break;
 			case XCUT_RELOAD:
 				setMessage(reloadMedia() ? " reloaded " : " nothing to reload ");

@@ -3,8 +3,8 @@
 #include "xcore/log.h"
 
 #include <QFileInfo>
-#include <QRegularExpression>
 #include <QOffscreenSurface>
+#include <QStandardPaths>
 #include <QOpenGLContext>
 #include <QThread>
 #include <algorithm>
@@ -25,71 +25,6 @@ constexpr GLfloat kQuadVertices[] = {
 	1.0f, 1.0f,  1.0f, 1.0f,
 	0.0f, 1.0f,  0.0f, 1.0f,
 };
-
-bool currentContextIsGLES() {
-	QOpenGLContext* ctx = QOpenGLContext::currentContext();
-	return ctx && ctx->isOpenGLES();
-}
-
-constexpr const char* glslVersionPrefix(bool es) {
-	return es
-		? "#version 300 es\nprecision highp float;\n"
-		: "#version 330\n";
-}
-
-const char* defaultVertexShaderBody() {
-	return
-		"layout(location=0) in vec2 a_pos;\n"
-		"layout(location=1) in vec2 a_uv;\n"
-		"out vec2 v_uv;\n"
-		"void main() {\n"
-		"    v_uv = a_uv;\n"
-		"    gl_Position = vec4(a_pos.x * 2.0 - 1.0, 1.0 - a_pos.y * 2.0, 0.0, 1.0);\n"
-		"}\n";
-}
-
-// No shader chosen. At a whole zoom each texel is a block of whole pixels and is
-// taken as it is. At any other scale (u_smooth) the texel's middle stays flat and
-// only the one pixel where two texels meet is mixed of both, so the dots keep one
-// width and the picture stays sharp. The mix is done here, from the NEAREST texture.
-const char* defaultFragmentShaderBody() {
-	return
-		"in vec2 v_uv;\n"
-		"out vec4 fragColor;\n"
-		"uniform sampler2D u_tex;\n"
-		"uniform int u_smooth;\n"
-		"uniform vec2 rubyTextureSize;\n"
-		"uniform vec2 rubyOutputSize;\n"
-		"void main() {\n"
-		"    if (u_smooth == 0) {\n"
-		"        fragColor = texture(u_tex, v_uv);\n"
-		"        return;\n"
-		"    }\n"
-		"    vec2 scale = rubyOutputSize / rubyTextureSize;\n"
-		"    vec2 texel = v_uv * rubyTextureSize;\n"
-		"    vec2 cell = floor(texel);\n"
-		"    vec2 off = texel - cell - 0.5;\n"
-		"    vec2 flat_half = max(0.5 - 0.5 / scale, vec2(0.0));\n"
-		"    vec2 p = cell + (off - clamp(off, -flat_half, flat_half)) * scale;\n"
-		"    ivec2 i0 = ivec2(floor(p));\n"
-		"    vec2 w = p - floor(p);\n"
-		"    ivec2 hi = ivec2(rubyTextureSize) - 1;\n"
-		"    vec4 a = texelFetch(u_tex, clamp(i0, ivec2(0), hi), 0);\n"
-		"    vec4 b = texelFetch(u_tex, clamp(i0 + ivec2(1, 0), ivec2(0), hi), 0);\n"
-		"    vec4 c = texelFetch(u_tex, clamp(i0 + ivec2(0, 1), ivec2(0), hi), 0);\n"
-		"    vec4 d = texelFetch(u_tex, clamp(i0 + ivec2(1, 1), ivec2(0), hi), 0);\n"
-		// mixed as light, gamma 2.2: a mix of the stored values is darker than
-		// either side's light, and the seams would show as a moire
-		"    const vec3 g = vec3(2.2);\n"
-		"    vec3 m = mix(mix(pow(a.rgb, g), pow(b.rgb, g), w.x), mix(pow(c.rgb, g), pow(d.rgb, g), w.x), w.y);\n"
-		"    fragColor = vec4(pow(m, 1.0 / g), 1.0);\n"
-		"}\n";
-}
-
-QString composeShader(const char* body) {
-	return QString::fromLatin1(glslVersionPrefix(currentContextIsGLES()))
-	     + QString::fromLatin1(body);
-}
 
 // -----------------------------------------------------------------------------
 // Side fill: the room beside a fitted picture. The frame is shrunk to a few
@@ -210,145 +145,6 @@ const char* fillDrawShaderBody() {
 		"}\n";
 }
 
-bool linkFill(QOpenGLShaderProgram& prg, const char* frag) {
-	prg.removeAllShaders();
-	if (prg.addShaderFromSourceCode(QOpenGLShader::Vertex, composeShader(fillVertexShaderBody()))
-	    && prg.addShaderFromSourceCode(QOpenGLShader::Fragment, composeShader(frag))
-	    && prg.link())
-		return true;
-	xlog(XLG_GL, XLL_WARN, "side fill: %s", prg.log().toLocal8Bit().data());
-	prg.removeAllShaders();
-	return false;
-}
-
-// -----------------------------------------------------------------------------
-// Legacy GLSL 110 shim.
-//
-// Rewrites fixed-function-era shader source onto the core-compatible VBO
-// attribute and uniform layout. The transformation is entirely data-driven
-// by the tables below — to add a new legacy identifier, append a row to the
-// relevant table; to add a new preamble attribute or uniform, edit the stage
-// preamble helper. No change to loadShader or the shim pipeline is needed.
-// -----------------------------------------------------------------------------
-
-struct Rewrite {
-	QRegularExpression pattern;
-	QString replacement;
-};
-
-// Build a word-boundary-bounded regex for an identifier. Lookaround is used
-// instead of \b so tokens ending in punctuation (e.g. gl_TexCoord[0]) can
-// still be exact-matched as a future extension.
-QRegularExpression wordBoundedRegex(const char* identifier) {
-	return QRegularExpression(
-		QStringLiteral(R"((?<!\w))")
-		+ QRegularExpression::escape(QLatin1String(identifier))
-		+ QStringLiteral(R"((?!\w))"));
-}
-
-Rewrite rewrite(const char* identifier, const char* replacement) {
-	return { wordBoundedRegex(identifier), QString::fromLatin1(replacement) };
-}
-
-// Pure: apply a list of rewrites via left fold.
-QString applyRewrites(QString s, const std::vector<Rewrite>& rewrites) {
-	for (const auto& r : rewrites) s.replace(r.pattern, r.replacement);
-	return s;
-}
-
-// Signals whose presence in the source triggers the shim pipeline.
-// Absence of all of them lets a modern shader pass through untouched.
-const std::vector<QRegularExpression>& legacySignalPatterns() {
-	static const std::vector<QRegularExpression> r{
-		wordBoundedRegex("gl_Vertex"),
-		wordBoundedRegex("gl_MultiTexCoord0"),
-		wordBoundedRegex("gl_ModelViewProjectionMatrix"),
-		wordBoundedRegex("gl_FragColor"),
-		wordBoundedRegex("varying"),
-	};
-	return r;
-}
-
-bool sourceNeedsLegacyShim(const QString& src) {
-	const auto& patterns = legacySignalPatterns();
-	return std::any_of(patterns.begin(), patterns.end(),
-		[&src](const QRegularExpression& re) { return src.contains(re); });
-}
-
-// Pure: strip any existing `#version` directive so the shim can supply its own.
-QString stripVersionDirective(QString s) {
-	static const QRegularExpression re(
-		QStringLiteral(R"(^[ \t]*#[ \t]*version\b[^\n]*\n?)"),
-		QRegularExpression::MultilineOption);
-	s.replace(re, QString{});
-	return s;
-}
-
-// Rewrites applied to both vertex and fragment stages.
-const std::vector<Rewrite>& sharedRewrites() {
-	static const std::vector<Rewrite> r{
-		rewrite("texture2D", "texture"),
-	};
-	return r;
-}
-
-// Vertex-only rewrites.
-const std::vector<Rewrite>& vertexRewrites() {
-	static const std::vector<Rewrite> r{
-		rewrite("varying",                      "out"),
-		rewrite("gl_Vertex",                    "vec4(a_pos_.x, a_pos_.y, 0.0, 1.0)"),
-		rewrite("gl_MultiTexCoord0",            "vec4(a_uv_.x,  a_uv_.y,  0.0, 0.0)"),
-		rewrite("gl_ModelViewProjectionMatrix", "u_mvp_"),
-	};
-	return r;
-}
-
-// Fragment-only rewrites.
-const std::vector<Rewrite>& fragmentRewrites() {
-	static const std::vector<Rewrite> r{
-		rewrite("varying",      "in"),
-		rewrite("gl_FragColor", "frag_out_"),
-	};
-	return r;
-}
-
-QString vertexShimPreamble() {
-	return QString::fromLatin1(glslVersionPrefix(currentContextIsGLES()))
-	     + QStringLiteral(
-		     "layout(location=0) in vec2 a_pos_;\n"
-		     "layout(location=1) in vec2 a_uv_;\n"
-		     "uniform mat4 u_mvp_;\n");
-}
-
-QString fragmentShimPreamble() {
-	return QString::fromLatin1(glslVersionPrefix(currentContextIsGLES()))
-	     + QStringLiteral("out vec4 frag_out_;\n");
-}
-
-// Pipeline: strip version → shared rewrites → stage rewrites → prepend preamble.
-QString shimLegacyShader(QString src,
-                         const std::vector<Rewrite>& stageRewrites,
-                         const QString& preamble) {
-	src = stripVersionDirective(std::move(src));
-	src = applyRewrites(std::move(src), sharedRewrites());
-	src = applyRewrites(std::move(src), stageRewrites);
-	return preamble + src;
-}
-
-// main() renamed and wrapped: u_place_ moves gl_Position from the picture's clip space into the
-// viewport's, so a mask from gl_Position keeps its pitch; unset it collapses all, drawPicture sets it
-QString placeVertexShader(QString src) {
-	static const QRegularExpression re(QStringLiteral(R"((?<!\w)main(?=\s*\())"));
-	if (!src.contains(re)) return src;
-	src.replace(re, QStringLiteral("xpq_main_"));
-	return src + QStringLiteral(
-		"\nuniform vec4 u_place_;\n"
-		"void main() {\n"
-		"    xpq_main_();\n"
-		"    gl_Position.xy = gl_Position.xy * u_place_.xy + u_place_.zw * gl_Position.w;\n"
-		"}\n");
-}
-
 } // anonymous namespace
 
 // The first context made loads the driver: gl_probe_begin() has it made on a thread of
@@ -458,15 +254,15 @@ void MainWin::initializeGL() {
 			conf.vid.shd_support ? "yes" : "no");
 	}
 	curtex = 0;
+	ringSize = 4;
+	ringCount = 0;
 	// nothing has been rendered yet, see paintEvent
 	curtxid = 0;
-	qDebug() << "vtx_shd";
-	vtx_shd = new QOpenGLShader(QOpenGLShader::Vertex);
-	qDebug() << "frg_shd";
-	frg_shd = new QOpenGLShader(QOpenGLShader::Fragment);
-	glGenTextures(4, texids);
+	glGenTextures(XP_RING_MAX, texids);
 	glEnable(GL_MULTISAMPLE);
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < XP_RING_MAX; i++) {
+		ringInfo[i] = xFrameTex();
+		ringSeq[i] = -1;
 		glBindTexture(GL_TEXTURE_2D, texids[i]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
@@ -488,7 +284,20 @@ void MainWin::initializeGL() {
 	                      reinterpret_cast<void *>(2 * sizeof(GLfloat)));
 	vbo.release();
 	vao.release();
+	// The programs' binaries: beside the config on Windows, where the program keeps to
+	// its own folder, in the system's cache elsewhere
+#ifdef _WIN32
+	const QString cache = QString::fromLocal8Bit(conf.path.confDir.c_str()) + "/shader-cache";
+#else
+	const QString cache = QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + "/xpeccy-plus/shaders";
+#endif
+	// a context made again: the fill's programs were the old one's
+	fillDown.forget();
+	fillBlur.forget();
+	fillDraw.forget();
+	if (!chain.init(cache)) xlog(XLG_GL, XLL_ERROR, "the default shader failed to compile or link");
 	initFill();
+	glReady = true;
 
 	loadShader(false);
 	if (!conf.vid.shd_support) xlog(XLG_GL, XLL_WARN, "shaders are not supported");
@@ -502,19 +311,21 @@ void MainWin::cleanupGL() {
 	if (vbo.isCreated()) vbo.destroy();
 	if (vaoWide.isCreated()) vaoWide.destroy();
 	if (vboWide.isCreated()) vboWide.destroy();
-	prg.removeAllShaders();
-	glDeleteTextures(4, texids);
-	fillDown.removeAllShaders();
-	fillBlur.removeAllShaders();
-	fillDraw.removeAllShaders();
+	chain.destroy();
+	glDeleteTextures(XP_RING_MAX, texids);
+	fillDown.destroy();
+	fillBlur.destroy();
+	fillDraw.destroy();
+	glReady = false;
 	glDeleteFramebuffers(2, fillFbo);
 	glDeleteTextures(2, fillTex);
 	glDeleteTextures(1, &fillPic);
 	glw->doneCurrent();
 }
 
-// The side fill's programs and its two small render targets. If any of it
-// fails the fill is not drawn - black, as with no fill.
+// The side fill's two small render targets. Its programs are built when a fill is
+// first drawn (fillPrograms). If any of it fails the fill is not drawn - black, as
+// with no fill.
 void MainWin::initFill() {
 	vaoWide.create();
 	vaoWide.bind();
@@ -550,21 +361,36 @@ void MainWin::initFill() {
 	glBindFramebuffer(GL_FRAMEBUFFER, glw->defaultFramebufferObject());
 	glBindTexture(GL_TEXTURE_2D, 0);
 	if (!ok) xlog(XLG_GL, XLL_WARN, "side fill: framebuffer incomplete");
-	if (!ok || !linkFill(fillDown, fillDownShaderBody()) || !linkFill(fillBlur, fillBlurShaderBody())
-	    || !linkFill(fillDraw, fillDrawShaderBody()))
-		fillDraw.removeAllShaders();		// fillWanted() looks at this one
+	fillFboOk = ok;
+	fillState = 0;
+}
+
+// the three programs, from the cache or compiled, the first time a fill is to be drawn
+bool MainWin::fillPrograms() {
+	if (fillState) return fillState > 0;
+	fillState = -1;
+	if (!fillFboOk) return false;
+	const QByteArray vtx = xshd_compose(fillVertexShaderBody());
+	chain.builtin(fillDown, vtx, xshd_compose(fillDownShaderBody()));
+	chain.builtin(fillBlur, vtx, xshd_compose(fillBlurShaderBody()));
+	chain.builtin(fillDraw, vtx, xshd_compose(fillDrawShaderBody()));
+	if (fillDown.ready() && fillBlur.ready() && fillDraw.ready()) fillState = 1;
+	return fillState > 0;
 }
 
 // a fill is chosen, there is a frame, and the picture leaves room beside it
 bool MainWin::fillWanted() {
-	if ((conf.vid.sideFill == SFILL_BLACK) || !curtxid || !fillDraw.isLinked()) return false;
+	if ((conf.vid.sideFill == SFILL_BLACK) || !curtxid || (fillState < 0)) return false;
+	bool room;
 	if (conf.vid.intScale) {
 		// placed in device pixels: a gap of one would round away in logical ones
 		const QRect pic = picRect();
 		const QSize dev = devSize();
-		return (pic.x() > 0) || (pic.y() > 0) || (pic.right() + 1 < dev.width()) || (pic.bottom() + 1 < dev.height());
+		room = (pic.x() > 0) || (pic.y() > 0) || (pic.right() + 1 < dev.width()) || (pic.bottom() + 1 < dev.height());
+	} else {
+		room = (drawX > 0) || (drawY > 0) || (drawX + drawW < width()) || (drawY + drawH < height());
 	}
-	return (drawX > 0) || (drawY > 0) || (drawX + drawW < width()) || (drawY + drawH < height());
+	return room && fillPrograms();
 }
 
 // The picture shrunk into fillTex[0] and blurred there, across and down. Mirror
@@ -615,24 +441,24 @@ void MainWin::prepareFill() {
 	glActiveTexture(GL_TEXTURE0);
 	vao.bind();
 	glBindFramebuffer(GL_FRAMEBUFFER, fillFbo[0]);
-	fillDown.bind();
-	fillDown.setUniformValue("u_src", 0);
-	fillDown.setUniformValue("u_blk", bx, by);
-	fillDown.setUniformValue("u_flip", GLint(mirror ? 1 : 0));
-	fillDown.setUniformValue("u_lod", GLfloat(useMip ? std::log2(std::max(bx, by)) : -1.0));
+	glUseProgram(fillDown.id());
+	glUniform1i(fillDown.loc("u_src"), 0);
+	glUniform2f(fillDown.loc("u_blk"), bx, by);
+	glUniform1i(fillDown.loc("u_flip"), mirror ? 1 : 0);
+	glUniform1f(fillDown.loc("u_lod"), GLfloat(useMip ? std::log2(std::max(bx, by)) : -1.0));
 	glBindTexture(GL_TEXTURE_2D, src);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	fillBlur.bind();
-	fillBlur.setUniformValue("u_src", 0);
+	glUseProgram(fillBlur.id());
+	glUniform1i(fillBlur.loc("u_src"), 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, fillFbo[1]);
-	fillBlur.setUniformValue("u_dir", GLfloat(1.0 / sz.width()), GLfloat(0));
+	glUniform2f(fillBlur.loc("u_dir"), GLfloat(1.0 / sz.width()), GLfloat(0));
 	glBindTexture(GL_TEXTURE_2D, fillTex[0]);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glBindFramebuffer(GL_FRAMEBUFFER, fillFbo[0]);
-	fillBlur.setUniformValue("u_dir", GLfloat(0), GLfloat(1.0 / sz.height()));
+	glUniform2f(fillBlur.loc("u_dir"), GLfloat(0), GLfloat(1.0 / sz.height()));
 	glBindTexture(GL_TEXTURE_2D, fillTex[1]);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	fillBlur.release();
+	glUseProgram(0);
 	vao.release();
 	glBindFramebuffer(GL_FRAMEBUFFER, glw->defaultFramebufferObject());
 }
@@ -659,17 +485,17 @@ void MainWin::drawFill(const QRect* clip, bool dimOnly) {
 		QRect(px, py + ph, pw, vh - py - ph)
 	};
 	glViewport(0, 0, vw, vh);
-	fillDraw.bind();
-	fillDraw.setUniformValue("u_src", 0);
-	fillDraw.setUniformValue("u_pic", GLfloat(px), GLfloat(py), GLfloat(pw), GLfloat(ph));
-	fillDraw.setUniformValue("u_view", GLfloat(vw), GLfloat(vh));
-	fillDraw.setUniformValue("u_dim", GLfloat(conf.vid.fillDim / 100.0));
-	fillDraw.setUniformValue("u_fade", GLfloat(conf.vid.fillFade / 100.0));
+	glUseProgram(fillDraw.id());
+	glUniform1i(fillDraw.loc("u_src"), 0);
+	glUniform4f(fillDraw.loc("u_pic"), GLfloat(px), GLfloat(py), GLfloat(pw), GLfloat(ph));
+	glUniform2f(fillDraw.loc("u_view"), GLfloat(vw), GLfloat(vh));
+	glUniform1f(fillDraw.loc("u_dim"), GLfloat(conf.vid.fillDim / 100.0));
+	glUniform1f(fillDraw.loc("u_fade"), GLfloat(conf.vid.fillFade / 100.0));
 	// a dot is pw / vsze.x pixels across, and as many down
-	fillDraw.setUniformValue("u_ramp", GLfloat(conf.vid.fillEdge * pw / (double)conf.zx->vid->vsze.x));
+	glUniform1f(fillDraw.loc("u_ramp"), GLfloat(conf.vid.fillEdge * pw / (double)conf.zx->vid->vsze.x));
 	// 100 %: k = 10, the far edge of a bar a third of the picture wide drawn out 4 times
 	const bool mirror = (conf.vid.sideFill == SFILL_MIRROR);
-	fillDraw.setUniformValue("u_stretch", GLfloat(mirror ? conf.vid.fillStretch * 0.1 : 0.0));
+	glUniform1f(fillDraw.loc("u_stretch"), GLfloat(mirror ? conf.vid.fillStretch * 0.1 : 0.0));
 	// Letterbox: the screen area as big as it takes to cover the view, centred on it
 	GLfloat cover[4] = {0, 0, 0, 0};
 	GLfloat paper[4] = {0, 0, 1, 1};
@@ -689,9 +515,9 @@ void MainWin::drawFill(const QRect* clip, bool dimOnly) {
 		cover[0] = GLfloat((vw - sw * k) / 2);
 		cover[1] = GLfloat((vh - sh * k) / 2);
 	}
-	fillDraw.setUniformValue("u_cover", cover[0], cover[1], cover[2], cover[3]);
-	fillDraw.setUniformValue("u_paper", paper[0], paper[1], paper[2], paper[3]);
-	fillDraw.setUniformValue("u_only", GLint(dimOnly ? 1 : 0));
+	glUniform4f(fillDraw.loc("u_cover"), cover[0], cover[1], cover[2], cover[3]);
+	glUniform4f(fillDraw.loc("u_paper"), paper[0], paper[1], paper[2], paper[3]);
+	glUniform1i(fillDraw.loc("u_only"), dimOnly ? 1 : 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, fillTex[0]);
 	vao.bind();
@@ -713,7 +539,7 @@ void MainWin::drawFill(const QRect* clip, bool dimOnly) {
 		glDisable(GL_SCISSOR_TEST);
 	}
 	vao.release();
-	fillDraw.release();
+	glUseProgram(0);
 }
 
 void MainWin::resizeGL(int w, int h) {
@@ -726,11 +552,10 @@ void MainWin::resizeGL(int w, int h) {
 }
 
 // The shader filters a picture that has been scaled up; at 1:1 there is nothing
-// for it to work on, so the chosen one is ignored. It stays in the config, and
-// comes back as soon as the size does.
-std::string MainWin::wantedShader() {
-	if (drawZoom == 1) return std::string();
-	return conf.vid.shader;
+// for it to work on, so the chosen one is not drawn through. Its chain stays
+// loaded, and draws again as soon as the size does.
+bool MainWin::shaderUsed() {
+	return (drawZoom != 1) && !conf.vid.shader.empty();
 }
 
 // Holds the widget's context current while it is in scope, and only takes it
@@ -748,86 +573,24 @@ namespace {
 	};
 }
 
-// Compiling and linking needs the context current on this thread, and the
-// options dialog, the shader menu and the reload hotkey all get here from
-// outside a paint event. Calling GL with no current context is undefined, and
-// the Intel Gen9.5 driver crashes on it from its shader compiler thread a
-// couple of seconds later.
+// Loading programs needs the context current on this thread, and the options
+// dialog, the shader menu and the reload hotkey all get here from outside a paint
+// event. Calling GL with no current context is undefined, and the Intel Gen9.5
+// driver crashes on it from its shader compiler thread a couple of seconds later.
+// A program found in the cache is there on return; what has to be compiled is
+// built over the next paints, the picture drawn by the built-in program meanwhile
+// (paintGLView). A shader that fails stays chosen: fixed, the reload key takes it.
 void MainWin::loadShader(bool tell) {
-	if (!glw || !conf.vid.shd_support) return;
+	if (!glw || !conf.vid.shd_support || !glReady) return;
 	glHold hold(glw);
-	shdLoaded = wantedShader();
-
-	QString vtx;
-	QString frg;
-	bool user_shader = false;
-
-	if (!shdLoaded.empty()) {
-		QFile file(xres_path("shaders", QString::fromLocal8Bit(shdLoaded.c_str())));
-		if (file.open(QFile::ReadOnly)) {
-			int mode = 0;
-			QString lin;
-			while (!file.atEnd()) {
-				lin = file.readLine().trimmed().append("\n");
-				if (lin.startsWith("vertex:")) {
-					mode = 1;
-				} else if (lin.startsWith("fragment:")) {
-					mode = 2;
-				} else {
-					switch (mode) {
-						case 1: vtx.append(lin); break;
-						case 2: frg.append(lin); break;
-					}
-				}
-			}
-			file.close();
-			user_shader = true;
-		} else {
-			shitHappens("Can't open shader file");
-		}
-	}
-
-	if (!user_shader) {
-		vtx = composeShader(defaultVertexShaderBody());
-		frg = composeShader(defaultFragmentShaderBody());
-	} else if (sourceNeedsLegacyShim(vtx) || sourceNeedsLegacyShim(frg)) {
-		vtx = shimLegacyShader(std::move(vtx), vertexRewrites(),   vertexShimPreamble());
-		frg = shimLegacyShader(std::move(frg), fragmentRewrites(), fragmentShimPreamble());
-	}
-	vtx = placeVertexShader(std::move(vtx));
-
-	prg.removeAllShaders();
-	const bool vtx_ok = vtx_shd->compileSourceCode(vtx);
-	if (!vtx_ok) qDebug() << "vertex shader:" << vtx_shd->log();
-	const bool frg_ok = frg_shd->compileSourceCode(frg);
-	if (!frg_ok) qDebug() << "fragment shader:" << frg_shd->log();
-
-	if (vtx_ok && frg_ok) {
-		prg.addShader(vtx_shd);
-		prg.addShader(frg_shd);
-		if (prg.link()) {
-			if (tell) {
-				const QString name = QFileInfo(QString::fromLocal8Bit(conf.vid.shader.c_str())).completeBaseName();
-				if (conf.vid.shader.empty())
-					setMessage(" no shader ");
-				else		// x1 draws with none (wantedShader); its narrow window clips the name's end
-					setMessage(QString(user_shader ? " shader %0 " : " shader from x2: %0 ").arg(name));
-			}
-			return;
-		}
-		qDebug() << "program link:" << prg.log();
-	}
-
-	if (user_shader) {
-		setMessage(" shader error ");
-		conf.vid.shader.clear();
-		loadShader(false);		// the hold above keeps the context; the error stays on screen
-	} else {
-		xlog(XLG_GL, XLL_ERROR, "the default shader failed to compile or link");
-	}
+	shdLoaded = conf.vid.shader;
+	shdSettled = false;
+	shdTell = tell;
+	chain.load(xres_path("shaders", QString::fromLocal8Bit(shdLoaded.c_str())));
+	shaderSay();
 }
 
 void MainWin::shdSelected(QAction* act) {
 	conf.vid.shader = act->data().toString().toLocal8Bit().data();
-	loadShader();
+	loadShader(false);
 }

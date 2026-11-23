@@ -1529,6 +1529,17 @@ none - nothing comes back (+2A, +3)</string>
                  </property>
                 </widget>
                </item>
+               <item row="4" column="2" alignment="Qt::AlignLeft">
+                <widget class="xSideButton" name="pbShaderErr">
+                 <property name="text">
+                  <string>Error: check the log</string>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../xpeccy.qrc">
+                   <normaloff>:/images/exclamation.png</normaloff>:/images/exclamation.png</iconset>
+                 </property>
+                </widget>
+               </item>
                </layout>
               </item>
               <item>

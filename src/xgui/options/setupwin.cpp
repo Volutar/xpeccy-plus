@@ -26,6 +26,7 @@
 #include <QLineEdit>
 #include <QIntValidator>
 #include <QTextEdit>
+#include <QPlainTextEdit>
 #include <QAbstractTextDocumentLayout>
 #include <QFontDatabase>
 #include <QDateTime>
@@ -151,6 +152,31 @@ static void sheet_open(QDialog* win) {
 	win->adjustSize();
 	win->show();
 	win->raise();
+}
+
+// The button beside the Shader list, there only after a load that failed: the first
+// error in its tip, whole, all of them in a window on a click.
+void SetupWin::shaderError(const QString& log) {
+	if (log == shdErrLog) return;
+	shdErrLog = log;
+	ui.pbShaderErr->setVisible(!log.isEmpty());
+	ui.pbShaderErr->setToolTip(log.section('\n', 0, 0));
+}
+
+void SetupWin::shaderErrorLog() {
+	QDialog dlg(this);
+	dlg.setWindowTitle("Shader errors");
+	QVBoxLayout* lay = new QVBoxLayout(&dlg);
+	QPlainTextEdit* edit = new QPlainTextEdit(&dlg);
+	edit->setReadOnly(true);
+	edit->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+	edit->setPlainText(shdErrLog);
+	lay->addWidget(edit);
+	QDialogButtonBox* box = new QDialogButtonBox(QDialogButtonBox::Close, &dlg);
+	connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+	lay->addWidget(box);
+	dlg.resize(640, 240);
+	dlg.exec();
 }
 
 // the item data keeps the file name, empty for None
@@ -764,6 +790,20 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 
 //	ui.cbScanlines->setVisible(false);
 	fill_shader_list(ui.cbShader);
+	// beside the list, only after a load that failed; the load ends a few frames
+	// after Apply, so it is looked at again while the window is up
+	// its room is kept while it is hidden: the page does not move when it comes
+	QSizePolicy errPolicy = ui.pbShaderErr->sizePolicy();
+	errPolicy.setRetainSizeWhenHidden(true);
+	ui.pbShaderErr->setSizePolicy(errPolicy);
+	ui.pbShaderErr->hide();
+	connect(ui.pbShaderErr, &QPushButton::released, this, &SetupWin::shaderErrorLog);
+	QTimer* shdErrTimer = new QTimer(this);
+	shdErrTimer->setInterval(300);
+	connect(shdErrTimer, &QTimer::timeout, this, [this]() {
+		if (isVisible()) shaderError(QString::fromStdString(conf.vid.shdError));
+	});
+	shdErrTimer->start();
 	fillPalettes();
 	paleditor = new xPalEditor(this);
 	paleditor->setModal(true);
@@ -1613,6 +1653,18 @@ void SetupWin::fitWidths() {
 	for (QWidget* col : {ui.machButtons, ui.picRight, ui.afRight, ui.ssRight, boxRecAdv})
 		col->setFixedWidth(wid);
 	ui.lookButtons->setFixedWidth(qMax(wid, ui.pbIndicators->sizeHint().width()));	// its name whole
+	// the shader's warning button stands alone, in no column: as wide as its words and
+	// sign take inside the frame this style draws
+	{
+		xSideButton* btn = ui.pbShaderErr;
+		const QSize hint = btn->sizeHint();
+		QStyleOptionButton opt;
+		opt.initFrom(btn);
+		opt.rect = QRect(QPoint(0, 0), hint);
+		const int room = btn->style()->subElementRect(QStyle::SE_PushButtonContents, &opt, btn).width();
+		const int need = btn->fontMetrics().horizontalAdvance(btn->text()) + 12 + btn->iconSize().width();
+		btn->setFixedWidth(hint.width() + qMax(0, need - room));
+	}
 	// Style's icon in the check boxes' column: where their box is, Style where their names are
 	QStyleOptionButton opt;
 	opt.initFrom(ui.cbToolBar);

@@ -444,6 +444,8 @@ int emu_draw_ahead(Computer*);	// paused: the next frame into bufimg, the machin
 void frame_taken();		// the gui has the frame signal: the next one may be sent
 const unsigned char* frame_shown_lock();
 void frame_shown_unlock();
+struct xFrameNums;
+void frame_shown_nums(xFrameNums*);	// that picture's frame number and raster; between lock and unlock
 int frame_shown_input(InState*);	// the input overlay's state for that picture, 0: off
 int snow_now();			// the game snows; out after 2 s of none, held while not watched
 void snow_watch_reset();		// a new image: watch from the start
@@ -1149,6 +1151,7 @@ struct xConfig {
 		long long fctime;	// time of that frame, ns (see paceClockNs)
 		double curfps;		// last measured fps
 		std::string shader;
+		std::string shdError;	// the last shader load's errors, a line each; empty: it loaded. Not saved
 		int shd_support;
 		int gl;			// the picture goes through OpenGL: decided at start, see gl_probe
 	} vid;
