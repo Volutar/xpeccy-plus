@@ -131,6 +131,7 @@ class xGlProgram {
 		GLuint id() const {return prog;}
 		GLint loc(const char* name);		// a uniform's location, kept
 		void destroy();
+		void forget();			// its context is gone: nothing to delete
 		bool cached = false;		// came from the cache
 		double ms = 0;			// from set() to Ready
 		QString vtxLog;			// the driver's words, per stage and of the link

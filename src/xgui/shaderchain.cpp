@@ -710,6 +710,13 @@ GLint xGlProgram::loc(const char* name) {
 	return l;
 }
 
+void xGlProgram::forget() {
+	prog = 0;
+	shd[0] = shd[1] = 0;
+	locs.clear();
+	st = Empty;
+}
+
 void xGlProgram::destroy() {
 	if (gl && QOpenGLContext::currentContext()) {
 		dropShaders();
@@ -805,6 +812,22 @@ const char* formatName(GLenum fmt) {
 } // anonymous namespace
 
 bool xShaderChain::init(const QString& cacheDir) {
+	// Qt makes the widget's context again when its window moves to another GPU: what
+	// the old one held went with it, and its names may be the new one's by now
+	if (vao) {
+		for (Pass& p : passes) {
+			p.prg.forget();
+			p.tgt[0] = p.tgt[1] = Target();
+		}
+		passes.clear();
+		textures.clear();
+		preset = xShdPreset();
+		none.forget();
+		for (Seg& s : segs) s = Seg();
+		black = vao = vbo = 0;
+		bad = live = false;
+	}
+	caps = xGlCaps();
 	initializeOpenGLFunctions();
 	QOpenGLContext* ctx = QOpenGLContext::currentContext();
 	const QSurfaceFormat f = ctx->format();

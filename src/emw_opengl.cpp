@@ -291,6 +291,10 @@ void MainWin::initializeGL() {
 #else
 	const QString cache = QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + "/xpeccy-plus/shaders";
 #endif
+	// a context made again: the fill's programs were the old one's
+	fillDown.forget();
+	fillBlur.forget();
+	fillDraw.forget();
 	if (!chain.init(cache)) xlog(XLG_GL, XLL_ERROR, "the default shader failed to compile or link");
 	initFill();
 	glReady = true;
