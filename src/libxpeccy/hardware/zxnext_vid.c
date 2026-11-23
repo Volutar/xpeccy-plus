@@ -615,6 +615,70 @@ static void nxv_fetch(Computer* comp, nxvFetch* fe, long long d, int hc, int vc,
 	}
 }
 
+// Where no byte the fetch reads is seen: a border line, and a line's border but for
+// its last 16 dots (the next line's display takes nothing read before them). The mixer
+// drops the pixel bits there (border_active) and the floating bus is off
+static inline int nxv_fetch_unseen(int hc, int vc, int L) {
+	return nxv_vbord(vc) || ((hc >= 0x110) && (hc < L - 16));
+}
+
+// a dot of it there: no read; the samples, the modes and the loads' border go on
+static void nxv_fetch_idle(Computer* comp, nxvFetch* fe, long long d, int hc, int vc) {
+	int n = hc & 15;
+	if (n & 1) {
+		fe->fbR = 0xff;
+		fe->fbEn = 0;
+		if ((n == 3) || (n == 0xb))
+			nxv_sample(comp, fe, d, hc, vc);
+		if (n == 7) {
+			fe->mode0 = fe->smode;
+			fe->scroll0 = ((fe->px & 7) << 1) | (fe->px >> 8);
+		} else if (n == 0xb) {
+			fe->mode1 = fe->smode;
+			fe->scroll1 = ((fe->px & 7) << 1) | (fe->px >> 8);
+		}
+		fe->vramSh = fe->sshadow;
+	} else {
+		nxv_load(comp, fe, d, hc, vc, n == 0xc);
+	}
+}
+
+// no change is seen at t or later
+static inline int nxv_hquiet(const nxvHist* h, long long t) {
+	return !h->n || (h->t[(h->head + h->n - 1) & (NXV_HIST - 1)] < t);
+}
+
+// nothing the fetch samples changes from t on, and its modes have settled
+static int nxv_fetch_quiet(Computer* comp, long long t) {
+	return nxv_hquiet(&V.hBrd, t) && nxv_hquiet(&V.hPff, t) && nxv_hquiet(&V.hShadow, t)
+		&& nxv_hquiet(&V.hSx, t) && nxv_hquiet(&V.hSy, t) && nxv_hquiet(&V.hFine, t)
+		&& (V.fe.mode0 == V.fe.smode) && (V.fe.mode1 == V.fe.smode);
+}
+
+// the loads of k unseen dots from d on (hc its counter) with the fetch quiet: every one
+// puts the same border in its eight dots
+static void nxv_fetch_fill(Computer* comp, long long d, int hc, int k) {
+	int off = (4 - hc) & 7;
+	if (off >= k) return;
+	int n = ((k - off + 7) >> 3) << 3;
+	int mode = V.fe.mode0;
+	int a;
+	if (mode & 4) {
+		int c = (nxv_hnew(&V.hPff) >> 3) & 7;
+		a = 0x40 | ((~c & 7) << 3) | c;
+	} else {
+		int b = nxv_hnew(&V.hBrd);
+		a = (b << 3) | b;
+	}
+	int m2 = ((mode >> 2) & 1) * 0x0c;
+	for (long long x = d + off; n > 0; n--, x++) {
+		int i = (int)(x & (NXV_ULA - 1));
+		V.ula[i].attr[0] = a;
+		V.ula[i].attr[1] = a;
+		V.ula[i].bits = (V.ula[i].bits & 0xf0) | m2;
+	}
+}
+
 // the raw counters k dots after (h, v) (k may be negative)
 static void nxv_step(Computer* comp, int* h, int* v, int k) {
 	int L = nx_tim(comp)->L;
@@ -1901,8 +1965,28 @@ static void nxv_fetch_to(Computer* comp, long long end) {
 	nxv_step(comp, &h, &v, (int)(d - (NX.frameBase + h)));
 	nx_ula_seen(comp, h, v, &hc, &vc);
 	for (; d < end; d++) {
-		if ((hc & 1) || ((hc & 7) == 4))	// an even dot other than n = 4, C does nothing
-			nxv_fetch(comp, &V.fe, d, hc, vc, 0);
+		int idle = nxv_fetch_unseen(hc, vc, L);
+		if (idle) {
+			// a quiet stretch of it (up to where the counters are asked again) in one go,
+			// but for its last 16 dots: any 16 hold a sample, so they leave the fetch's
+			// registers as dot by dot does. Quiet for 32 dots before: both modes latched
+			long long z = ((h < r0) ? r0 : L) - h;
+			if (!nxv_vbord(vc) && (z > L - 16 - hc)) z = L - 16 - hc;
+			if (z > end - d) z = end - d;
+			if ((z > 32) && nxv_fetch_quiet(comp, (d - 32) * 4)) {
+				int k = (int)z - 16;
+				nxv_fetch_fill(comp, d, hc, k);
+				d += k;
+				h += k;
+				hc += k;
+			}
+		}
+		if ((hc & 1) || ((hc & 7) == 4)) {	// an even dot other than n = 4, C does nothing
+			if (idle)
+				nxv_fetch_idle(comp, &V.fe, d, hc, vc);
+			else
+				nxv_fetch(comp, &V.fe, d, hc, vc, 0);
+		}
 		if (!hc && !vc) {
 			// flash_cnt counts at the end of (0, 0); pixel_en uses it from the next half-pixel on
 			V.flash = (V.flash + 1) & 31;
