@@ -1383,8 +1383,12 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 		QRect kb = keyBox(key, s);
 		// the gap between two caps side by side - this one's inset on the right and the
 		// next one's on the left - rounded as a whole, so a small window shows one
-		// pixel there, not two: the left and top inset its smaller half
+		// pixel there, not two: the left and top inset its smaller half. With the
+		// contour light each side keeps at least a pixel: the lit contour of a pressed
+		// key runs in that gap, and one pixel broke it up on a small window
 		int gap = (pr->inset > 0) ? std::max(1, fr(2 * pr->inset * s)) : 0;
+		if (!padLit)
+			gap = 2 * pxWidth(pr->inset, s);
 		int insA = gap / 2;
 		int insB = gap - insA;
 		QRectF body(kb.x() + insA, kb.y() + insA, kb.width() - gap, kb.height() - gap);
