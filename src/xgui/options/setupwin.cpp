@@ -154,31 +154,13 @@ static void sheet_open(QDialog* win) {
 	win->raise();
 }
 
-// A tip's second part: a long line broken at spaces to the width tips keep here.
-static QString tip_lines(const QString& text, int cols = 44) {
-	QString out;
-	int len = 0;
-	for (const QString& word : text.split(' ', Qt::SkipEmptyParts)) {
-		if (len && (len + 1 + word.size() > cols)) {
-			out += '\n';
-			len = 0;
-		} else if (len) {
-			out += ' ';
-			len++;
-		}
-		out += word;
-		len += word.size();
-	}
-	return out;
-}
-
 // The button beside the Shader list, there only after a load that failed: the first
-// error in its tip, all of them in a window on a click.
+// error in its tip, whole, all of them in a window on a click.
 void SetupWin::shaderError(const QString& log) {
 	if (log == shdErrLog) return;
 	shdErrLog = log;
-	ui.tbShaderErr->setVisible(!log.isEmpty());
-	ui.tbShaderErr->setToolTip(tr("Shader error: click for the log") + "\n" + tip_lines(log.section('\n', 0, 0)));
+	ui.pbShaderErr->setVisible(!log.isEmpty());
+	ui.pbShaderErr->setToolTip(log.section('\n', 0, 0));
 }
 
 void SetupWin::shaderErrorLog() {
@@ -811,11 +793,11 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	// beside the list, only after a load that failed; the load ends a few frames
 	// after Apply, so it is looked at again while the window is up
 	// its room is kept while it is hidden: the page does not move when it comes
-	QSizePolicy errPolicy = ui.tbShaderErr->sizePolicy();
+	QSizePolicy errPolicy = ui.pbShaderErr->sizePolicy();
 	errPolicy.setRetainSizeWhenHidden(true);
-	ui.tbShaderErr->setSizePolicy(errPolicy);
-	ui.tbShaderErr->hide();
-	connect(ui.tbShaderErr, &QToolButton::released, this, &SetupWin::shaderErrorLog);
+	ui.pbShaderErr->setSizePolicy(errPolicy);
+	ui.pbShaderErr->hide();
+	connect(ui.pbShaderErr, &QPushButton::released, this, &SetupWin::shaderErrorLog);
 	QTimer* shdErrTimer = new QTimer(this);
 	shdErrTimer->setInterval(300);
 	connect(shdErrTimer, &QTimer::timeout, this, [this]() {
@@ -1671,6 +1653,18 @@ void SetupWin::fitWidths() {
 	for (QWidget* col : {ui.machButtons, ui.picRight, ui.afRight, ui.ssRight, boxRecAdv})
 		col->setFixedWidth(wid);
 	ui.lookButtons->setFixedWidth(qMax(wid, ui.pbIndicators->sizeHint().width()));	// its name whole
+	// the shader's warning button stands alone, in no column: as wide as its words and
+	// sign take inside the frame this style draws
+	{
+		xSideButton* btn = ui.pbShaderErr;
+		const QSize hint = btn->sizeHint();
+		QStyleOptionButton opt;
+		opt.initFrom(btn);
+		opt.rect = QRect(QPoint(0, 0), hint);
+		const int room = btn->style()->subElementRect(QStyle::SE_PushButtonContents, &opt, btn).width();
+		const int need = btn->fontMetrics().horizontalAdvance(btn->text()) + 12 + btn->iconSize().width();
+		btn->setFixedWidth(hint.width() + qMax(0, need - room));
+	}
 	// Style's icon in the check boxes' column: where their box is, Style where their names are
 	QStyleOptionButton opt;
 	opt.initFrom(ui.cbToolBar);
