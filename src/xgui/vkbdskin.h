@@ -49,6 +49,8 @@ class VkSkin {
 		QSizeF canvas() const {return QSizeF(cw, ch);}
 		// what the window puts under the picture, so what the contours show
 		QColor ground() const {return grnd;}
+		// the picture's own backdrop, round the case
+		QColor background() const {return bg;}
 		// a pressed key's light: its color, and where it is - through the contour
 		// round the key, under the picture, or by its pad's rim, the lit picture
 		// over the key ("light": "pad")

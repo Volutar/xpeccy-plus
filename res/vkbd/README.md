@@ -24,16 +24,16 @@
   power lamp is always lit; EDIT, DEL, the full stop and comma, the five Cyrillic letters, C
   and L press the Robik's own keys on the Robik, elsewhere EDIT, DEL, . and , press the
   Spectrum's combinations; its caps' front slope darker than the others, their lettering
-  the caps' engraving font, drawn as strokes. Made by `make-robik.py` (the lettering
-  measured, the logo built of rings and strokes, on photos) in the project's lab, then kept
-  as it is.
-- `zx-robik-compact.json` - the Robik with a thin rim of the case round the keys, so the keys
-  come out larger in the window - the one the Robik shows by machine: its keys, logo, lamp and
-  cursor block as they are, closer together (`"base": "robik"`, its own only the canvas, the bars and the rows; made by
-  `make-robik.py` too).
+  the caps' engraving font, drawn as strokes; a key 57 units, as the 128K's, so Zoom x1 shows
+  the keys as big. Made by `make-robik.py` (the lettering measured, the logo built of rings
+  and strokes, on photos) in the project's lab, then kept as it is.
+- `zx-robik-compact.json` - the Robik with a narrow rim of the case round the keys and less of
+  it between the key block and the cursor block, so the keys come out larger in the window -
+  the one the Robik shows by machine: its keys, logo, lamp and cursor block as they are,
+  closer together; a layout of its own, its keys as big (made by `make-robik.py` too).
 - In the menu, a line between the Spectrum's, the Next's and the clones': 48K (Classic), 48K
   (White), 128K (Classic), 128K (White) | Next (Black), Next (White), Next (Magenta) | Klava
-  (the worn Kopir), Klava (Washed), Robik (Compact), Robik (Full-Size) - black, white, 128,
+  (the worn Kopir), Klava (Washed), Robik, Robik (Full-Size) - black, white, 128,
   128-white, next, next-white, next-magenta, kopir-worn, kopir, robik-compact, robik in the
   config.
 - `keys-font.ttf` - the lettering, Latin-1 and Cyrillic, made by `tools/vkbd_font.py` from
