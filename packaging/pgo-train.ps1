@@ -54,8 +54,9 @@ try {
 		if (-not (Test-Path $SysNext)) { throw "Not found: $SysNext" }
 		$card = Join-Path $work 'card'
 		Copy-Item -Recurse $SysNext $card
-		# NextZXOS boots for some 1200 frames before a program starts
-		$next = "-m zxnext --sdcard `"$card`" --bench-skip 1500"
+		# NextZXOS boots for some 1200 frames before a program starts; a program starts from
+		# the System/Next named, and the build under training has none of its own
+		$next = "-m zxnext --sdcard `"$card`" --next-system `"$card`" --bench-skip 1500"
 		$cases.Add(@{ a = $next; own = $false })
 		foreach ($p in 'demos/scrollnutter/ScrollNutter.nex', 'demos/Spectron 2084/Spectron2084.nex',
 				'demos/tilemap/tm.nex', 'demos/WidescreenImageDemo/Daybreak.nex', 'games/Next/TX-1696/main.nex',
@@ -86,7 +87,9 @@ try {
 		$cl = "--confdir `"$dir`" --no-update-check $($c.a) --bench $Frames --bench-full"
 		$p = Start-Process $exe -ArgumentList $cl -NoNewWindow -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError "$out.err"
 		$line = Get-Content $out | Select-String '^bench' | Select-Object -Last 1
-		if (($p.ExitCode -eq 0) -and $line) {
+		# a program that did not open leaves the machine idle: counts of nothing
+		$opened = -not (Select-String -Path "$out.err" -Pattern ' open .* failed, error ' -Quiet)
+		if (($p.ExitCode -eq 0) -and $line -and $opened) {
 			Write-Host ("pgo {0,2}/{1}: {2}" -f $n, $cases.Count, ($line.Line -replace '^bench: ', ''))
 		} elseif ($c.own) {
 			# one that fails costs its own counts only
