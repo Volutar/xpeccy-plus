@@ -289,13 +289,13 @@ is easier with the 128K's close-set keys:
   also drag its edge; the picture keeps its shape and is drawn sharp at any size.
 - **Skin** - **48K (Classic)**, **48K (White)**, **128K (Classic)**, **128K (White)**,
   **Next (Black)**, **Next (White)**, **Next (Magenta)**, **Klava**, **Klava (Washed)**,
-  **Robik (Compact)** or **Robik (Full-Size)**; one picked here stays whatever the machine.
+  **Robik** or **Robik (Full-Size)**; one picked here stays whatever the machine.
   Klava is the 58-key keyboard of many clones of the early 1990s, worn, with some caps
-  crooked and the cream ones yellowed; Klava (Washed) is it clean. Robik (Compact), below,
+  crooked and the cream ones yellowed; Klava (Washed) is it clean. Robik, below,
   is the keyboard of the Robik with a narrow rim of its case round the keys; Robik
   (Full-Size) is it in its whole case, the keys smaller in the window. **By machine**, on by default, shows
   the Next keyboard on the ZX Spectrum Next, the 128K one on a 128K, +2, +2A or +3, the 48K
-  one on a 48K, Robik (Compact) on the Robik and Klava on the other clones (Pentagon,
+  one on a 48K, Robik on the Robik and Klava on the other clones (Pentagon,
   Scorpion, Profi, ATM, ZX Evolution and the rest), in the tone
   picked last: Klava (Washed) if it was picked; only the Next has a Magenta one, the others
   show their classic one. The window's title names the skin it shows.
@@ -323,7 +323,7 @@ and the two Symbol Shifts only one lights up: the one you clicked, otherwise the
 side of the PC key that holds it (the right Shift lights the right one), otherwise the left
 one.
 
-![The Robik (Compact) skin](images/virtual-keyboard-robik.png)
+![The Robik skin](images/virtual-keyboard-robik.png)
 
 The Robik keyboard has keys the Spectrum has not:
 
