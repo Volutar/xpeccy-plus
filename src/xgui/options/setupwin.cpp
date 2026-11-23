@@ -154,7 +154,6 @@ static void sheet_open(QDialog* win) {
 	win->raise();
 }
 
-// the item data keeps the file name, empty for None
 // The last shader load's first error, shortened to the row; a click opens all of them.
 class xShdErrLine : public xElideLabel {
 	public:
@@ -205,6 +204,7 @@ void xShdErrLine::mouseReleaseEvent(QMouseEvent*) {
 	dlg.exec();
 }
 
+// the item data keeps the file name, empty for None
 void fill_shader_list(QComboBox* box) {
 	QStringList lst = xres_list("shaders", QStringList() << "*.txt");
 	box->clear();
