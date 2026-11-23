@@ -613,6 +613,7 @@ void xGlProgram::saveBinary() {
 	QByteArray data(12 + len, '\0');
 	GLsizei got = 0;
 	GLenum fmt = 0;
+	while (gl->glGetError() != GL_NO_ERROR) {}		// an error left by someone else is not this call's
 	gl->glGetProgramBinary(prog, len, &got, &fmt, data.data() + 12);
 	if ((gl->glGetError() != GL_NO_ERROR) || (got <= 0)) return;
 	const quint32 f32 = fmt;
