@@ -146,6 +146,9 @@ before that point is upstream's history and is not repeated here.
 
 ### Fixed
 
+- **The virtual keyboard fills its window** at every size: at some widths a dark line ran
+  down its right edge.
+
 - **macOS: the right Shift, Control and Option** are keys of their own, so the 48K and Robik
   keymaps have Symbol Shift there, and both Shifts held together give extended mode.
 
