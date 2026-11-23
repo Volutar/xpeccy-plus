@@ -1585,6 +1585,8 @@ void SetupWin::fillPages() {
 	ui.cbDbgFrame->setChecked(conf.dbg.showfrm);
 	ui.cbDbgRay->setChecked(conf.dbg.showray);
 	ui.cbImgLabels->setChecked(conf.dbg.imglabels);
+	ui.cbSessMachine->setChecked(conf.dbg.sessmac);
+	ui.cbSessImages->setChecked(conf.dbg.sessimg);
 	ui.cbRomLabels->setChecked(conf.dbg.romlabels);
 	ui.cbSysVars->setChecked(conf.dbg.sysvars);
 	portwid->setPorts(getWatchPorts(conf.zx));
@@ -2063,6 +2065,8 @@ void SetupWin::applyGlobal() {
 	conf.dbg.showfrm = ui.cbDbgFrame->isChecked() ? 1 : 0;
 	conf.dbg.showray = ui.cbDbgRay->isChecked() ? 1 : 0;
 	conf.dbg.imglabels = ui.cbImgLabels->isChecked() ? 1 : 0;
+	conf.dbg.sessmac = ui.cbSessMachine->isChecked() ? 1 : 0;
+	conf.dbg.sessimg = ui.cbSessImages->isChecked() ? 1 : 0;
 	if (!conf.dbg.imglabels) labels_image(QString());	// the set from before is back now
 	if (conf.dbg.romlabels != (ui.cbRomLabels->isChecked() ? 1 : 0)) {
 		conf.dbg.romlabels = ui.cbRomLabels->isChecked() ? 1 : 0;

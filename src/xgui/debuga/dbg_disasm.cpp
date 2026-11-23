@@ -50,7 +50,7 @@ bool is_block_end(const dasmData& drow) {
 		NULL
 	};
 	if (drow.islab) return false;
-	switch (drow.flag & 0xf0) {
+	switch (drow.flag & DBG_VIEW_MASK) {
 		case DBG_VIEW_CODE:
 		case DBG_VIEW_EXEC: break;
 		default: return false;
@@ -151,7 +151,7 @@ QVariant xDisasmModel::data(const QModelIndex& idx, int role) const {
 		case Qt::EditRole:
 			switch(col) {
 				// a decimal address is padded with spaces for the column, not for typing
-				case 0: res = dasm[row].iscom ? dasm[row].aname : QString(dasm[row].aname).remove(' '); break;
+				case 0: res = dasm[row].iscom ? dasm[row].comment : QString(dasm[row].aname).remove(' '); break;
 				case 1: res = dasm[row].bytes; break;
 				case 2: res = dasm[row].command; break;
 			}
@@ -293,7 +293,7 @@ static bool dasm_is_text(const QString& cmd) {
 static unsigned char dasm_flag(Computer* comp, int adr, int access = MEM_VIEW_PC) {
 	if (mode != XVIEW_CPU) access = MEM_VIEW_READ;
 	unsigned char fl = getBrkView(comp, adr, access);
-	if (fl & 0xf0) return fl;
+	if (fl & DBG_VIEW_MASK) return fl;
 	xAdr xadr = dasm_xadr(comp, adr, access);
 	if (xadr.type == MEM_ROM) fl |= labels_rom_view(xadr.abs);
 	return fl;
@@ -390,7 +390,7 @@ void placeLabel(Computer* comp, dasmData& drow) {
 			int reach = labels_sys_size(xadr);
 			if (!reach) {
 				mn.len = 8;					// default seek range
-				if ((drow.flag & 0xf0) == DBG_VIEW_CODE) {	// for code - size of opcode only
+				if ((drow.flag & DBG_VIEW_MASK) == DBG_VIEW_CODE) {	// for code - size of opcode only
 					mn = dasm_mnem(comp, drow.oadr - shift, NULL, drow.fmt);
 				}
 				reach = qMin(mn.len, 8);
@@ -406,13 +406,25 @@ void placeLabel(Computer* comp, dasmData& drow) {
 	}
 }
 
+// a DB statement of one byte: it starts at the cell, and the next cell does not
+// go on with it
+static bool dasm_byte_single(Computer* comp, int adr, unsigned char fl) {
+	if ((fl & (DBG_VIEW_MASK | DBG_STMT)) != (DBG_VIEW_BYTE | DBG_STMT)) return false;
+	return (dasm_flag(comp, adr + 1) & (DBG_VIEW_MASK | DBG_STMT)) != DBG_VIEW_BYTE;
+}
+
 int dasmByte(Computer* comp, int adr, dasmData& drow) {
 	int len = 1;
 	drow.command = QString("DB %0").arg(dasm_byte(dasmrd(adr, comp), drow.fmt));
+	// a run of statements of a byte each (a key table, a font) fills rows as
+	// bytes with no statements do; a longer statement has rows of its own
+	bool singles = dasm_byte_single(comp, adr, dasm_flag(comp, adr));
 	adr++;
 	unsigned char fl = dasm_flag(comp, adr);
 	xAdr xadr = dasm_xadr(comp, adr);
-	while ((len < conf.dbg.dbsize) && (fl == DBG_VIEW_BYTE) && find_label(xadr).isEmpty()) {
+	while ((len < conf.dbg.dbsize)
+		&& ((fl == DBG_VIEW_BYTE) || (singles && (fl == (DBG_VIEW_BYTE | DBG_STMT)) && dasm_byte_single(comp, adr, fl)))
+		&& find_label(xadr).isEmpty()) {
 		drow.command.append(QString(",%0").arg(dasm_byte(dasmrd(adr, comp), drow.fmt)));
 		len++;
 		adr++;
@@ -452,12 +464,20 @@ int dasmAddr(Computer* comp, int adr, dasmData& drow) {
 	return len;
 }
 
+// a cell of the text a row has from its first one: text, and not where the
+// next statement starts
+static bool dasm_text_on(unsigned char fl, int clen) {
+	return ((fl & DBG_VIEW_MASK) == DBG_VIEW_TEXT) && (!clen || !(fl & DBG_STMT));
+}
+
 int dasmText(Computer* comp, int adr, dasmData& drow) {
 	int clen = 0;
 	drow.command = QString("DB \"");
 	unsigned char fl = dasm_flag(comp, adr);
 	unsigned char bt = dasmrd(adr, comp);
-	while (((fl & 0xf0) == DBG_VIEW_TEXT) && dasm_printable(bt) && (clen < conf.dbg.dmsize)) {
+	// a row of text runs to the end of its statement (the next one starts with
+	// DBG_STMT), a character it cannot show, or the row's size
+	while (dasm_text_on(fl, clen) && dasm_printable(bt) && (clen < conf.dbg.dmsize)) {
 		drow.command.append(QChar(bt));
 		clen++;
 		bt = dasmrd(adr + clen, comp);
@@ -465,7 +485,7 @@ int dasmText(Computer* comp, int adr, dasmData& drow) {
 	}
 	// a character with bit 7 set ends the text, as the ROMs keep theirs: DC "..."
 	// (not #FF: the +3's messages end in it as a byte of its own)
-	if (((fl & 0xf0) == DBG_VIEW_TEXT) && (bt & 0x80) && dasm_printable(bt & 0x7f) && (bt != 0xff)) {
+	if (dasm_text_on(fl, clen) && (bt & 0x80) && dasm_printable(bt & 0x7f) && (bt != 0xff)) {
 		drow.command.append(QChar(bt & 0x7f));
 		drow.command.replace(0, 2, "DC");
 		clen++;
@@ -519,7 +539,7 @@ int dasmCode(Computer* comp, int adr, dasmData& drow) {
 // with a letter gets a 0 in front (C9h is a name to it, 0C9h a number). The
 // row's own label and a row of text (DB "...") are left alone
 QString dasm_export(const dasmData& drow) {
-	if ((drow.fmt != CPU_NUM_H) || ((drow.flag & 0xf0) == DBG_VIEW_TEXT)) return drow.command;
+	if ((drow.fmt != CPU_NUM_H) || ((drow.flag & DBG_VIEW_MASK) == DBG_VIEW_TEXT)) return drow.command;
 	static const QRegularExpression letterHex("(?<![\\w#$])([A-F][0-9A-F]*h)(?!\\w)");
 	QString res = drow.command;
 	QList<int> at;
@@ -544,7 +564,7 @@ int dasmSome(Computer* comp, int adr, dasmData& drow, int fmt) {
 	drow.flag = dasm_flag(comp, adr, dasm_access(comp, adr));
 	drow.oflag = 0;
 	drow.oadr = -1;
-	switch(drow.flag & 0xf0) {
+	switch(drow.flag & DBG_VIEW_MASK) {
 		case DBG_VIEW_WORD: clen = dasmWord(comp, adr, drow); break;
 		case DBG_VIEW_ADDR: clen = dasmAddr(comp, adr, drow); break;
 		case DBG_VIEW_TEXT: clen = dasmText(comp, adr, drow); break;
@@ -606,14 +626,17 @@ QList<dasmData> getDisasm(Computer* comp, int& adr) {
 	}
 	drow.isbrk = (drow.flag & MEM_BRK_ANY) ? 1 : 0;
 
-	// comments
+	// comments: a row a line, each edits the whole comment
 	lab = find_comment(xadr);
 	if (!lab.isEmpty()) {
 		drow.islab = 1;
 		drow.iscom = 1;
-		drow.aname = lab;
-		drow.aname.prepend("; ");
-		list.append(drow);
+		drow.comment = "; " + dt_escape(lab);
+		foreach(const QString& line, lab.split('\n')) {
+			drow.aname = "; " + line;
+			list.append(drow);
+		}
+		drow.comment.clear();
 		drow.iscom = 0;
 		lab.clear();
 	}
@@ -959,9 +982,8 @@ bool xDisasmModel::setData(const QModelIndex& cidx, const QVariant& val, int rol
 						}
 					}
 				}
-			} else if (str.startsWith(";")) {		// ; comment
-				str.remove(";");
-				str = str.trimmed();
+			} else if (str.startsWith(";")) {		// ; comment, \n between its lines
+				str = dt_unescape(str.mid(1).trimmed());
 				if (str.isEmpty()) {
 					del_comment(xadr);
 				} else {
@@ -1008,7 +1030,7 @@ bool xDisasmModel::setData(const QModelIndex& cidx, const QVariant& val, int rol
 						// another page, or (DIV, EXT) have none at all
 						ptr = getBrkPtr(comp, (adr + idx) & 0xffff);
 						*ptr &= 0x0f;
-						*ptr |= DBG_VIEW_TEXT;
+						*ptr |= DBG_VIEW_TEXT | (idx ? 0 : DBG_STMT);
 					}
 					if (isdc && (len > 0)) buf[len - 1] |= 0x80;
 				} else if (isdc) {
@@ -1020,7 +1042,7 @@ bool xDisasmModel::setData(const QModelIndex& cidx, const QVariant& val, int rol
 						len = 1;
 						buf[0] = idx & 0xff;
 						*ptr &= 0x0f;
-						*ptr |= DBG_VIEW_BYTE;
+						*ptr |= DBG_VIEW_BYTE | DBG_STMT;
 					} else {
 						len = 0;
 					}
@@ -1031,7 +1053,7 @@ bool xDisasmModel::setData(const QModelIndex& cidx, const QVariant& val, int rol
 				if ((xadr.type >= 0) && (xadr.adr >= 0)) {	// check label
 					idx = xadr.adr;
 					*ptr &= 0x0f;
-					*ptr |= DBG_VIEW_ADDR;
+					*ptr |= DBG_VIEW_ADDR | DBG_STMT;
 					ptr = getBrkPtr(comp, (adr + 1) & 0xffff);
 					*ptr &= 0x0f;
 					*ptr |= DBG_VIEW_ADDR;
@@ -1041,7 +1063,7 @@ bool xDisasmModel::setData(const QModelIndex& cidx, const QVariant& val, int rol
 					if (flag) {
 						len = 2;
 						*ptr &= 0x0f;
-						*ptr |= DBG_VIEW_WORD;
+						*ptr |= DBG_VIEW_WORD | DBG_STMT;
 						ptr = getBrkPtr(comp, (adr + 1) & 0xffff);
 						*ptr &= 0x0f;
 						*ptr |= DBG_VIEW_WORD;
@@ -1060,7 +1082,7 @@ bool xDisasmModel::setData(const QModelIndex& cidx, const QVariant& val, int rol
 				if (len > 0) {
 					for(idx = 0; idx < len; idx++) {
 						*ptr &= 0x0f;
-						*ptr |= DBG_VIEW_EXEC;
+						*ptr |= DBG_VIEW_EXEC | DBG_STMT;
 					}
 				} else if (!asm_ambiguous(str).isEmpty()) {	// a name of several ROMs: say which there are
 					shitHappens(QString("Which one: %0").arg(asm_ambiguous(str).join(", ")).toLocal8Bit().constData());

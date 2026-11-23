@@ -6,6 +6,7 @@
 #include <cstdio>
 
 #include "../../../src/xcore/xcore.h"
+#include "../../../src/xcore/dbgtext.h"
 #include "../../../src/libxpeccy/cpu/Z80/z80.h"
 
 xConfig conf;
@@ -15,6 +16,18 @@ QString gethexword(int value) { return QString("%1").arg(value & 0xffff, 4, 16, 
 static QString installDir;		// the ROM lists of the test are in its labels/
 QString xconf_install_dir() { return installDir; }
 QString arc_beside(const QString& path, const QString& ext) { return path + ext; }	// labels_image: unused here
+// what breakpoints.cpp takes from the rest of the program, as far as a list's records need it
+QString gethex6(int value) { return QString("%1").arg(value & 0xffffff, 6, 16, QChar('0')).toUpper(); }
+QString gethexint(int value) { return QString("%1").arg((unsigned)value, 8, 16, QChar('0')).toUpper(); }
+QString dbg_word(int value) { return gethexword(value); }
+int str_num(QString str, bool* ok) {
+	if (str.startsWith('#') || str.startsWith('$')) return str.mid(1).toInt(ok, 16);
+	return str.toInt(ok, 0);
+}
+void emu_lock() {}
+void emu_unlock() {}
+FILE* log_open_beside(const char*, QString*) { return nullptr; }
+QString shot_path(const QString&) { return QString(); }
 
 static int failures;
 
@@ -27,12 +40,67 @@ static xResult eval(const char* expression, int type = 0) {
 	return xEval(expression, type);
 }
 
+static dtRecord parsed(const char* line) {
+	dtRecord rec;
+	dt_parse_line(QString::fromUtf8(line), &rec);
+	return rec;
+}
+
+// the format's lines, read with no machine (docs/debugger-format.md)
+static void parser_checks() {
+	dtRecord r = parsed("05:1A00 SPRITES\r\n");
+	check("text: a LABELSLIST line", r.type == DT_REC_LABEL && r.at.kind == DT_PLACE_PAGE && r.at.page == 5
+		&& r.at.ofs == 0x1a00 && r.name == "SPRITES" && r.size == 0);
+	r = parsed(":8000 START");
+	dtRecord ff = parsed("FF:8000 START");
+	dtRecord hx = parsed("0A:0010 old_hex");
+	check("text: CPU address, and pages of older files", r.at.kind == DT_PLACE_CPU && r.at.ofs == 0x8000
+		&& ff.at.kind == DT_PLACE_CPU && hx.at.kind == DT_PLACE_PAGE && hx.at.page == 10 && hx.at.hexPage);
+	r = parsed("ROM0:0038 MY_IM1");
+	dtRecord rom = parsed("BASIC48:0556 BASIC48.LD_BYTES");
+	dtRecord sz = parsed("05:5BA0 BASIC128.STRIP2 8");
+	check("text: an area, a ROM's name, a size", r.at.kind == DT_PLACE_AREA && r.at.area == CELL_ROM && r.at.page == 0
+		&& rom.at.kind == DT_PLACE_ROM && rom.at.name == "BASIC48" && rom.at.ofs == 0x556
+		&& sz.size == 8 && sz.name == "BASIC128.STRIP2");
+	r = parsed("db :9000 7*4");
+	dtRecord dw = parsed("dw SPRITES #10");
+	dtRecord dc = parsed("dc BASIC48:0095 368");
+	dtRecord code = parsed("code :8000 256");
+	check("text: data records", r.type == DT_REC_DATA && r.view == DBG_VIEW_BYTE && r.len == 7 && r.count == 4
+		&& dw.view == DBG_VIEW_WORD && dw.unit == 2 && dw.len == 16 && dw.at.kind == DT_PLACE_NAME
+		&& dc.view == DBG_VIEW_TEXT && dc.dc && dc.len == 368 && code.view == DBG_VIEW_EXEC && code.len == 256);
+	check("text: what is not a data record", parsed("code :8000 2*4").type == DT_REC_BAD
+		&& parsed("db 9000 8").type == DT_REC_BAD && parsed("db :9000 0").type == DT_REC_BAD
+		&& parsed("db :9000-9010 8").type == DT_REC_BAD);
+	r = parsed("comment :8003 two\\nlines \\\\ and ; too");
+	check("text: a comment's lines", r.type == DT_REC_COMMENT && r.text == "two\nlines \\ and ; too"
+		&& dt_escape(r.text) == "two\\nlines \\\\ and ; too");
+	r = parsed("rom BASIC48 4C42A2F075212361C3117015B107FF68 skip BASIC48.KEY_INT BASIC48:386E");
+	check("text: a rom record", r.type == DT_REC_ROM && r.name == "BASIC48" && r.md5 == "4c42a2f075212361c3117015b107ff68"
+		&& r.skipNames == QStringList("BASIC48.KEY_INT") && r.skipPlaces.size() == 1 && r.skipPlaces.at(0).ofs == 0x386e);
+	check("text: a ROM's name is no area or page", parsed("rom ROM48 4c42a2f075212361c3117015b107ff68").type == DT_REC_BAD
+		&& parsed("rom CAFE 4c42a2f075212361c3117015b107ff68").type == DT_REC_BAD
+		&& parsed("rom X 4c42a2f0").type == DT_REC_BAD);
+	r = parsed("brk :8000 exec if \"A == #FF\" span=open");
+	check("text: a brk record's words", r.type == DT_REC_BRK && r.words.size() == 5 && r.words.at(3).quoted
+		&& r.words.at(3).text == "A == #FF" && !r.words.at(0).quoted && r.words.at(0).text == ":8000");
+	check("text: blank, comment, unknown", parsed("  ").type == DT_REC_NONE && parsed("; x").type == DT_REC_NONE
+		&& parsed("struct ENTITY db 1").type == DT_REC_UNKNOWN && parsed("open  C:\\ZX\\a b.tap ").text == "C:\\ZX\\a b.tap");
+	dtPlace pl;
+	bool rt = true;
+	const char* places[] = {"05:1A00", ":8000", "ROM0:0038", "DIV3:0010", "BASIC48:0556", "io:00FE/00FF", "io:7FFD",
+		":5B00-5BFF", "START"};
+	for (const char* p : places) rt &= dt_place_parse(p, &pl) && (dt_place_text(pl) == p);
+	check("text: places written as read", rt);
+}
+
 int main(int argc, char** argv) {
 	QCoreApplication app(argc, argv);
 	if (argc != 2) return 2;
 	QDir fixtures(QString::fromLocal8Bit(argv[1]));
 	QTemporaryDir temp;
 	if (!temp.isValid()) return 2;
+	parser_checks();
 	Computer* comp = compCreate();
 	conf.zx = comp;
 	compSetHardware(comp, "ZXNext");
@@ -161,17 +229,18 @@ int main(int argc, char** argv) {
 		QCryptographicHash::Md5).toHex();
 	QString md5b = QCryptographicHash::hash(QByteArray((const char*)comp->mem->romData + MEM_16K, MEM_16K),
 		QCryptographicHash::Md5).toHex();
-	QDir(temp.path()).mkdir("labels");
+	QDir(temp.path()).mkdir("rom-labels");
 	installDir = temp.path();
 	const char* lists[][2] = {
-		{"a.labels", "@ns SYSA\n@rom %1\n0010 ENTRY\n0020 ONLYA\n3D00 3D07 db\n0100 0103 text\n"},
-		{"b.labels", "@ns SYSB\n@rom %1 -@0200 -@3e00\n0018 ENTRY\n0200 0201 dw\n0300 0301 dw\n3E00 3E01 db\n"},
-		{"b2.labels", "@ns SYSA\n@rom %1\n0020 ONLYA\n"},
-		{"c.labels", "@ns SYSA\n@ram 5\n5C3D ERR_SP\n5C3F LIST_SP\n"},
-		{"d.labels", "@ns SYSC\n@ram 5\n5C00 NOT_FITTED\n"},
-		{"e.labels", "@ns SYSD\n@rom %2\n0030 ONLYA\n0040 LATER\n"}};
+		{"a.labels", "; a list\nrom LA %1\nLA:0010 SYSA.ENTRY\nLA:0020 SYSA.ONLYA\ndb LA:3D00 8\ndm LA:0100 4\n"
+			"db LA:3D10 3*2\n"},
+		{"b.labels", "rom LB %1 skip LB:0200 LB:3E00\nLB:0018 SYSB.ENTRY\ndw LB:0200 1\ndw LB:0300 1\ndb LB:3E00 2\n"},
+		{"b2.labels", "rom LB2 %1\nLB2:0020 SYSA.ONLYA\n"},
+		{"c.labels", "05:5C3D SYSA.ERR_SP\n05:5C3F SYSA.LIST_SP\n"},
+		{"d.labels", "05:5C00 SYSC.NOT_FITTED\n"},
+		{"e.labels", "rom LE %2\nLE:0030 SYSD.ONLYA\nLE:0040 SYSD.LATER\n"}};
 	for (auto& lst : lists) {
-		QFile out(temp.filePath(QString("labels/") + lst[0]));
+		QFile out(temp.filePath(QString("rom-labels/") + lst[0]));
 		out.open(QIODevice::WriteOnly);
 		out.write(QString(lst[1]).replace("%1", md5).replace("%2", md5b).toLatin1());
 	}
@@ -192,10 +261,14 @@ int main(int argc, char** argv) {
 	check("a label of the user's takes the short name", find_label("ONLYA").adr == 0x8000
 		&& find_label(r20) == "SYSA.ONLYA" && find_label("SYSA.ONLYA").adr == 0x20);
 	del_label("ONLYA");
-	check("data ranges, one dropped on that bank", labels_rom_view(0x3D00) == DBG_VIEW_BYTE
+	check("data ranges, one dropped on that bank", labels_rom_view(0x3D00) == (DBG_VIEW_BYTE | DBG_STMT)
 		&& labels_rom_view(0x3D07) == DBG_VIEW_BYTE && labels_rom_view(0x3D08) == DBG_VIEW_CODE
 		&& labels_rom_view(0x101) == DBG_VIEW_TEXT && labels_rom_view(0x200) == DBG_VIEW_CODE
-		&& labels_rom_view(0x300) == DBG_VIEW_WORD && labels_rom_view(0x3E00) == DBG_VIEW_CODE);
+		&& labels_rom_view(0x300) == (DBG_VIEW_WORD | DBG_STMT) && labels_rom_view(0x301) == DBG_VIEW_WORD
+		&& labels_rom_view(0x3E00) == DBG_VIEW_CODE);
+	check("statements of a data range", labels_rom_view(0x3D10) == (DBG_VIEW_BYTE | DBG_STMT)
+		&& labels_rom_view(0x3D11) == DBG_VIEW_BYTE && labels_rom_view(0x3D13) == (DBG_VIEW_BYTE | DBG_STMT)
+		&& labels_rom_view(0x3D15) == DBG_VIEW_BYTE && labels_rom_view(0x3D16) == DBG_VIEW_CODE);
 	check("a name two lists of a bank share is one cell", labels_rom_cells("SYSA.ONLYA").size() == 1);
 	// ONLYA is SYSA's in bank 0 and SYSD's in bank 1: the one paged in
 	xExpr paged = xexpr_compile("ONLYA");
@@ -250,6 +323,148 @@ int main(int argc, char** argv) {
 		&& labels_sys_size(comp_get_xadr(comp, 0x5C3F, MEM_VIEW_READ)) == 2);
 	check("a system not in the machine names nothing", find_label("NOT_FITTED").type < 0
 		&& find_label("SYSC.NOT_FITTED").type < 0);
+	// a user's file of the text format: labels, data and its statements, comments,
+	// breakpoints, a place in a ROM of the lists
+	QString user = temp.filePath("game.labels");
+	QFile uf(user);
+	uf.open(QIODevice::WriteOnly);
+	uf.write(":8000 START\n05:1A00 SPRITES\ncode :8000 4\ndb :9000 7*4\ndw :9100 2\ndc :9200 3\n"
+		"comment :8003 jump table\\nstarts here\nLA:0010 MYROM\ndb LA:3D20 2\nstruct LATER db 1\n"
+		"brk START exec\nbrk :5B00-5BFF write count\nbrk io:00FE/00FF read\nbrk 05:1A00 read log \"A,DE\"\n"
+		"brk LA:0010 if \"A == #FF\" span=open\nbrk irq off\nbrk if \"FRAME == 300\" onchange\n"
+		"brk :8100 frobnicate\nbrk NOSUCH\nbrk 00:3FF0-400F write\n");
+	uf.close();
+	conf.brk.list.clear();
+	check("load a file of the text format", loadLabels(user.toLocal8Bit().constData()) == 1);
+	auto flag = [&](int adr) { return comp->brkRamMap[comp_get_xadr(comp, adr, MEM_VIEW_READ).abs] & 0xf0; };
+	check("its labels", find_label("START").adr == 0x8000 && find_label("SPRITES").abs == ((5 << 14) | 0x1a00)
+		&& find_label("MYROM").type == MEM_ROM && find_label("MYROM").abs == 0x10);
+	check("its data, statement by statement", flag(0x9000) == (DBG_VIEW_BYTE | DBG_STMT) && flag(0x9001) == DBG_VIEW_BYTE
+		&& flag(0x9007) == (DBG_VIEW_BYTE | DBG_STMT) && flag(0x901B) == DBG_VIEW_BYTE && flag(0x901C) == 0
+		&& flag(0x9100) == (DBG_VIEW_WORD | DBG_STMT) && flag(0x9102) == DBG_VIEW_WORD && flag(0x9104) == 0
+		&& flag(0x9200) == (DBG_VIEW_TEXT | DBG_STMT) && flag(0x9202) == DBG_VIEW_TEXT
+		&& flag(0x8000) == (DBG_VIEW_EXEC | DBG_STMT) && flag(0x8003) == DBG_VIEW_EXEC && flag(0x8004) == 0
+		&& (comp->brkRomMap[0x3D20] & 0xf0) == (DBG_VIEW_BYTE | DBG_STMT));
+	check("its comment, two lines", find_comment(comp_get_xadr(comp, 0x8003, MEM_VIEW_READ)) == "jump table\nstarts here");
+	QStringList points;
+	for (const xBrkPoint& b : conf.brk.list) points.append(brk_text_line(b));
+	check("its breakpoints", points == QStringList({"brk :8000 exec", "brk :5B00-5BFF write count",
+		"brk io:00FE/00FF read", "brk 05:1A00 read log \"A,DE\"", "brk ROM0:0010 exec if \"A == #FF\" span=open",
+		"brk irq off", "brk if \"FRAME == 300\" onchange", "brk :8100 exec", "brk 00:3FF0-400F write"}));
+	// a session: all of it saved, then read in place of what the Debugger has
+	auto marks = [&]() {
+		QByteArray m((const char*)comp->brkRamMap, comp->mem->ramMask + 1);
+		m.append((const char*)comp->brkRomMap, comp->mem->romMask + 1);
+		for (int i = 0; i < m.size(); i++) m[i] = (char)(m.at(i) & 0xf0);
+		return m;
+	};
+	auto userLabels = [&]() {
+		QStringList res;
+		for (auto it = conf.curlabset->list.begin(); it != conf.curlabset->list.end(); ++it)
+			res.append(QString("%1 %2 %3").arg(it.key()).arg(it.value().type).arg(it.value().abs, 0, 16));
+		return res;
+	};
+	QByteArray marksBefore = marks();
+	QStringList labsBefore = userLabels();
+	auto commBefore = conf.commap;
+	conf.macId = "ZX128";
+	QString sess = temp.filePath("game.xdbg");
+	check("save a session", session_save(sess, true, true) == 1);
+	QFile sf(sess);
+	sf.open(QIODevice::ReadOnly);
+	QByteArray stext = sf.readAll();
+	sf.close();
+	QString mac;
+	QStringList media;
+	session_media(sess, &mac, &media);
+	check("a session names its machine", stext.startsWith("; Xpeccy+ Debugger session") && mac == "ZX128" && media.isEmpty()
+		&& stext.contains("\ndb :9000 7*4\n") == false && stext.contains("\ndb 02:1000 7*4\n")
+		&& stext.contains("\ncomment 02:0003 jump table\\nstarts here\n"));
+	add_comment(comp_get_xadr(comp, 0x8100, MEM_VIEW_READ), "stray");
+	comp->brkRamMap[comp_get_xadr(comp, 0x8200, MEM_VIEW_READ).abs] |= DBG_VIEW_WORD;
+	add_label(comp_get_xadr(comp, 0x8300, MEM_VIEW_READ), "STRAY");
+	check("load a session", session_load(sess) == 1);
+	QStringList sessPoints;
+	for (const xBrkPoint& b : conf.brk.list) sessPoints.append(brk_text_line(b));
+	check("a session read back is what was saved", (marks() == marksBefore) && (conf.commap == commBefore)
+		&& (sessPoints == points) && (userLabels() == labsBefore) && (conf.curlabset->name == "game.xdbg"));
+	// its lines stand alone: sorted, the file still says the same
+	QList<QByteArray> slines = stext.split('\n');
+	std::sort(slines.begin(), slines.end());
+	QString sorted = temp.filePath("sorted.xdbg");
+	QFile so(sorted);
+	so.open(QIODevice::WriteOnly);
+	so.write(slines.join('\n'));
+	so.close();
+	session_load(sorted);
+	QStringList sortedPoints;
+	for (const xBrkPoint& b : conf.brk.list) sortedPoints.append(brk_text_line(b));
+	sortedPoints.sort();
+	QStringList pointsSorted = points;
+	pointsSorted.sort();
+	check("a session sorted line by line loads the same", (marks() == marksBefore) && (conf.commap == commBefore)
+		&& (sortedPoints == pointsSorted) && (userLabels() == labsBefore));
+	session_load(sess);		// the points in the file's order again
+	QString blist = temp.filePath("points.txt");
+	brk_save_list(blist.toLocal8Bit().constData());
+	conf.brk.list.clear();
+	int bbad = 0;
+	brk_load_list(blist.toLocal8Bit().constData(), &bbad);
+	QStringList again;
+	for (const xBrkPoint& b : conf.brk.list) again.append(brk_text_line(b));
+	check("a breakpoint list saved and read back", (again == points) && !bbad);
+	QFile old(blist);
+	old.open(QIODevice::WriteOnly);
+	old.write("; an older list\nCPU:8000::F:DBG::\nRAM:5:0010-001F:W:CNT::\nx0=0x8100\n");
+	old.close();
+	brk_load_list(blist.toLocal8Bit().constData(), &bbad);
+	again.clear();
+	for (const xBrkPoint& b : conf.brk.list) again.append(brk_text_line(b));
+	check("an older breakpoint list still reads", !bbad
+		&& (again == QStringList({"brk :8000 exec", "brk 05:0010-001F write count", "brk :8100 exec"})));
+	// other tools' files: SjASMPlus's SLD, a SkoolKit control file, ZX Spin's symbols
+	conf.brk.list.clear();
+	memset(comp->brkRamMap, 0, MEM_4M);
+	check("load SjASMPlus's SLD", loadLabels(fixtures.filePath("sjasm-sld.sld").toLocal8Bit().constData()) == 1);
+	check("SLD labels with their banks, EQU and modules left out", find_label("start").abs == 0x8000
+		&& find_label("start.loop").abs == 0x8005 && find_label("gfx.draw").abs == 0x800c
+		&& find_label("b7").abs == ((7 << 14) | 0x123) && find_label("CONST").type < 0 && find_label("gfx").type < 0);
+	auto bank7 = [&](int ofs) { return comp->brkRamMap[(7 << 14) | ofs] & 0xf0; };
+	check("SLD instructions as code", flag(0x8000) == (DBG_VIEW_EXEC | DBG_STMT) && flag(0x8002) == DBG_VIEW_EXEC
+		&& flag(0x8007) == DBG_VIEW_EXEC && flag(0x8009) == 0 && flag(0x800c) == (DBG_VIEW_EXEC | DBG_STMT)
+		&& bank7(0x123) == (DBG_VIEW_EXEC | DBG_STMT) && bank7(0x124) == DBG_VIEW_EXEC);
+	points.clear();
+	for (const xBrkPoint& b : conf.brk.list) points.append(brk_text_line(b));
+	check("SLD comments, DeZog's keywords as breakpoints",
+		find_comment(comp_get_xadr(comp, 0x8009, MEM_VIEW_READ)) == "WPMEM, 3, w"
+		&& points == QStringList({"brk 02:0000 exec if \"!(A < 7)\"", "brk 02:0005 exec log \"A,HL\" count",
+			"brk :8000-8001 write", "brk 02:0009-000B write"}));
+	conf.brk.list.clear();
+	memset(comp->brkRamMap, 0, MEM_4M);
+	check("load a SkoolKit control file", loadLabels(fixtures.filePath("skool.ctl").toLocal8Bit().constData()) == 1);
+	check("ctl labels", find_label("MAIN").adr == 0x8000 && find_label("DATA").adr == 0x8004);
+	check("ctl blocks and their statements", flag(0x8000) == (DBG_VIEW_EXEC | DBG_STMT) && flag(0x8003) == DBG_VIEW_EXEC
+		&& flag(0x8004) == (DBG_VIEW_BYTE | DBG_STMT) && flag(0x8005) == DBG_VIEW_BYTE
+		&& flag(0x8006) == (DBG_VIEW_BYTE | DBG_STMT) && flag(0x8008) == (DBG_VIEW_BYTE | DBG_STMT)
+		&& flag(0x800A) == (DBG_VIEW_BYTE | DBG_STMT) && flag(0x800B) == (DBG_VIEW_BYTE | DBG_STMT)
+		&& flag(0x800C) == (DBG_VIEW_BYTE | DBG_STMT) && flag(0x800D) == DBG_VIEW_BYTE
+		&& flag(0x800E) == (DBG_VIEW_TEXT | DBG_STMT) && flag(0x8011) == DBG_VIEW_TEXT
+		&& flag(0x8012) == (DBG_VIEW_WORD | DBG_STMT) && flag(0x8014) == (DBG_VIEW_WORD | DBG_STMT)
+		&& flag(0x8016) == (DBG_VIEW_WORD | DBG_STMT) && flag(0x8018) == (DBG_VIEW_WORD | DBG_STMT)
+		&& flag(0x801A) == 0);
+	check("ctl: the last block to the end, 010 decimal", flag(0xC000) == (DBG_VIEW_BYTE | DBG_STMT)
+		&& flag(0xC005) == (DBG_VIEW_BYTE | DBG_STMT) && flag(0xC009) == DBG_VIEW_BYTE
+		&& flag(0xC00A) == (DBG_VIEW_BYTE | DBG_STMT) && flag(0xFFFF) == DBG_VIEW_BYTE);
+	memset(comp->brkRamMap, 0, MEM_4M);
+	memset(comp->brkRomMap, 0, MEM_512K);
+	check("load ZX Spin's symbols", loadLabels(fixtures.filePath("spin.sym").toLocal8Bit().constData()) == 1);
+	check("Spin symbols where the CPU sees them", find_label("START").type == MEM_ROM && find_label("START").abs == 0
+		&& find_label("KSTATE").abs == ((5 << 14) | 0x1c00) && find_label("DEFADD").adr == 0x5c0b);
+	check("Spin kinds and comments", (comp->brkRomMap[0x95] & 0xf0) == (DBG_VIEW_TEXT | DBG_STMT)
+		&& (comp->brkRomMap[0x98] & 0xf0) == DBG_VIEW_TEXT && flag(0x5c00) == (DBG_VIEW_BYTE | DBG_STMT)
+		&& flag(0x5c07) == DBG_VIEW_BYTE && flag(0x5c0b) == (DBG_VIEW_WORD | DBG_STMT)
+		&& find_comment(comp_get_xadr(comp, 0x5c00, MEM_VIEW_READ)) == "Used in reading the keyboard");
+	conf.brk.list.clear();
 	conf.dbg.sysvars = 0;
 	check("system variables switched off", find_label(var, nullptr, LAB_SYSVAR).isEmpty() && find_label("ERR_SP").type < 0);
 	conf.dbg.romlabels = 0;

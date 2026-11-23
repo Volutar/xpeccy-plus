@@ -1,0 +1,6 @@
+; Spin2 ROM symbols in the shape of ZX Spin 2's (written for this test)
+;@rom 4c42a2f075212361c3117015b107ff68 Sinclair 48K BASIC
+$0000	START ;the start
+$0095,TT80,4	TOKENS
+$5C00,B,8	KSTATE ;Used in reading the keyboard
+$5C0B,W	DEFADD

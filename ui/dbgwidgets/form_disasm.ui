@@ -407,7 +407,7 @@
      <normaloff>:/images/save-as.png</normaloff>:/images/save-as.png</iconset>
    </property>
    <property name="text">
-    <string>Save map</string>
+    <string>Save session</string>
    </property>
   </action>
   <action name="actLoadMap">
@@ -416,7 +416,7 @@
      <normaloff>:/images/fileopen.png</normaloff>:/images/fileopen.png</iconset>
    </property>
    <property name="text">
-    <string>Load map</string>
+    <string>Load session</string>
    </property>
   </action>
   <action name="actDisasm">

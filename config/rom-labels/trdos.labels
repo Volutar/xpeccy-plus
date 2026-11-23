@@ -1,0 +1,49 @@
+; TR-DOS labels for the Xpeccy+ debugger.
+;
+; Names and data ranges from "TR-DOS Disassembled" by Marcos Cruz
+; (programandala.net), 2016-2017 (https://github.com/programandala-net/tr-dos, commit
+; 3f58896b, 2023-10-31): trdos.symbols.input.z80s, inc/zx_spectrum_trdos_addresses.z80s,
+; trdos.blocks.txt. Used with his permission (e-mail of 2026-11-08: "you can use the
+; labels and any other material from my TR-DOS 5.03 dissassembly in any way you need").
+;
+; Changed for Xpeccy+ on 2026-11-08: names in capitals, a dot written as an
+; underscore (cli_command.cat as CLI_COMMAND_CAT), as the debugger takes them;
+; cli_command.gosub renamed CLI_COMMAND_LOAD, the handler his own table gives the
+; LOAD token; message.insert_destination_disk moved from #2725, inside an
+; instruction, to #2785, where that text is; the message, token and title blocks
+; shown as text.
+;
+; This list: the entry points at #3D00-#3D2F, which every TR-DOS has.
+;
+; Converted to the Debugger's text format on 2026-11-20 (docs/debugger-format.md):
+; rom NAME <MD5 of a 16K bank> [skip what that bank has not], the bundled images
+; above it; NAME:ADDR LABEL a name; db/dw/da/dm/dc NAME:ADDR LENGTH data, N*K for
+; K statements of N.
+; trdos.rom
+rom TRDOS 0da70a5d2a0e733398e005b96b7e4ba6
+; 256s-3.rom
+rom TRDOS ce0723f9bc02f4948c15d3b3230ae831
+; atm2.rom bank 1
+rom TRDOS 26b2b42ffa5490275090c087b949a987
+; phoenix.rom bank 1, profi-kramis02.rom bank 1
+rom TRDOS 0c42e3b9ab8dd91ea096f1d0c07c55e5
+; prof39f.rom bank 3
+rom TRDOS 95bd108b61c8bc4862529a8c8b4a7c91
+; prof401.rom bank 3
+rom TRDOS f89d6a0c667cdc53aff6068edae7aa75
+; profi-bios10.rom bank 1, profi-bios20.rom bank 1, trdos504t.rom, tsconf.rom bank 1
+rom TRDOS b4c9634312b796063015450daef13dfa
+; scorpion295.rom bank 3
+rom TRDOS e522f5c4e2fd9c735f4a2a79f66c7c89
+; zxevo-fe.rom bank 9
+rom TRDOS aa8207b8cc39d2c10e1bd9e1c3c13ad8
+; zxevo-fe.rom bank 13
+rom TRDOS 8479eb48908e7f4dd3ab616594e6ba9b
+; zxevo-fe.rom bank 29
+rom TRDOS 7d8aa7d31bed0380faef83a75bfee7c9
+TRDOS:3D00 TRDOS.TRDOS_ENTRY_ENTER_TRDOS_FROM_BASIC
+TRDOS:3D03 TRDOS.TRDOS_ENTRY_INTERPRET_REM_COMMAND
+TRDOS:3D13 TRDOS.TRDOS_ENTRY_EXECUTE_COMMAND_IN_C
+TRDOS:3D1A TRDOS.INTERPRET_REM_COMMAND_IN_BASIC
+TRDOS:3D21 TRDOS.ENTRY_INIT_DOS
+TRDOS:3D2F TRDOS.TRDOS_ENTRY_CALL_PUSHED_ADDRESS

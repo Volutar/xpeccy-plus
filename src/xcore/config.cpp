@@ -547,6 +547,8 @@ void saveConfig() {
 	fprintf(cfile, "labels.image = %s\n", YESNO(conf.dbg.imglabels));
 	fprintf(cfile, "labels.rom = %s\n", YESNO(conf.dbg.romlabels));
 	fprintf(cfile, "labels.sysvars = %s\n", YESNO(conf.dbg.sysvars));
+	fprintf(cfile, "session.machine = %s\n", YESNO(conf.dbg.sessmac));
+	fprintf(cfile, "session.images = %s\n", YESNO(conf.dbg.sessimg));
 	fprintf(cfile, "dim.address = %s\n", YESNO(conf.dbg.dimadr));
 	fprintf(cfile, "dim.opcodes = %s\n", YESNO(conf.dbg.dimops));
 	fprintf(cfile, "numbers = %s\n", dbg_numfmt_name(conf.dbg.numfmt));
@@ -716,7 +718,7 @@ static void seedConfigDir(const QString& src) {
 	while (it.hasNext()) {
 		QString path = it.next();
 		QString rel = sdir.relativeFilePath(path);
-		if ((rel == "labels") || rel.startsWith("labels/")) continue;	// read where installed
+		if ((rel == "rom-labels") || rel.startsWith("rom-labels/")) continue;	// read where installed
 		if (it.fileInfo().isDir()) {
 			QDir().mkpath(dst + "/" + rel);
 		} else if (!QFile::exists(dst + "/" + rel)) {
@@ -1041,6 +1043,8 @@ void loadConfig() {
 	conf.dbg.reglayout = DBG_REGS_AUTO;
 	conf.dbg.regsplit = 1;
 	conf.dbg.imglabels = 1;
+	conf.dbg.sessmac = 1;
+	conf.dbg.sessimg = 1;
 	conf.dbg.romlabels = 1;
 	conf.dbg.sysvars = 1;
 	conf.dbg.dimadr = 0;
@@ -1225,6 +1229,8 @@ void loadConfig() {
 					if (pnam == "labels.image") conf.dbg.imglabels = arg.b;
 					if (pnam == "labels.rom") conf.dbg.romlabels = arg.b;
 					if (pnam == "labels.sysvars") conf.dbg.sysvars = arg.b;
+					if (pnam == "session.machine") conf.dbg.sessmac = arg.b;
+					if (pnam == "session.images") conf.dbg.sessimg = arg.b;
 					if (pnam == "dim.address") conf.dbg.dimadr = arg.b;
 					if (pnam == "dim.opcodes") conf.dbg.dimops = arg.b;
 					if (pnam == "numbers") {

@@ -56,7 +56,11 @@ if(XPECCY_QT_TESTS)
 	if(NOT SDL2_INCLUDE_DIR)
 		message(FATAL_ERROR "Set SDL2_INCLUDE_DIR to the SDL2 headers")
 	endif()
-	add_executable(labels-check core/labels/main.cpp ${XROOT}/src/xcore/labels.cpp ${XROOT}/src/xcore/xexpr.cpp)
+	add_executable(labels-check core/labels/main.cpp ${XROOT}/src/xcore/labels.cpp ${XROOT}/src/xcore/dbgtext.cpp
+		${XROOT}/src/xcore/breakpoints.cpp ${XROOT}/src/xcore/xexpr.cpp)
+	# the breakpoint log's header names the build: this one is the test's
+	file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/qtgen/version.h "#define XPRODUCT \"Xpeccy+\"\n#define XVERSION \"labels-check\"\n")
+	target_include_directories(labels-check PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/qtgen)
 	set_target_properties(labels-check PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 	target_include_directories(labels-check PRIVATE ${SDL2_INCLUDE_DIR})
 	target_link_libraries(labels-check PRIVATE xpeccycore Qt${QTVERSION}::Widgets)

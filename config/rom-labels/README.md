@@ -23,16 +23,24 @@ one keeps the terms of its own source, listed below.
 
 ## The format
 
+The Debugger's text format, described in `docs/debugger-format.md` of the sources. A list
+uses these lines of it:
+
 ```
-@ns BASIC128                      namespace of the names below
-@rom <MD5> <image> [-NAME] [-@ADDR]   a 16K bank the list fits; what it has not
-@ram 5                            the names below are RAM cells of bank 5 (system variables)
-0556 LD_BYTES                     a name: address, name
-5BA0 STRIP2 8                     a system variable that says its size (else up to the next)
-3D00 3FFF db                      data: first, last address, view (db, dw, da, text)
+rom BASIC48 <MD5> [skip X...]       a 16K bank the list fits; X: a name, or where data it has
+                                    not starts (an offset, or a range of them)
+BASIC48:0556 BASIC48.LD_BYTES       a name: the ROM's name and the offset in it, the full name
+db BASIC48:3D00 768                 data: db, dw, da (words shown as addresses), dm (text),
+dc BASIC48:0095 368                 dc (text whose strings end with bit 7); the length in
+                                    bytes or words, N*K for K statements of N
+05:5C3A BASIC48.ERR_NR 1            a system variable: RAM bank 5 at its CPU address, the size
 ```
 
-`text` ends at a character with bit 7 set when there is one, shown as `DC "..."`.
+A list's ROM name only ties its names to its `rom` lines; the namespace is the first part of
+each name. A system variable is there while a ROM with names of its namespace is. Where a
+source gives each statement of data a line of its own (Richard Dymond's and Paul Farrow's
+`DEFB`, `DEFW`, `DEFM` lines), the list's data is cut into those statements, so the Debugger
+shows a table row by row as the disassembly does; a string ending with bit 7 stays one `dc`.
 
 ## 48K BASIC - Richard Dymond, CC BY-SA 3.0
 

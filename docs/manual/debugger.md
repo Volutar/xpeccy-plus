@@ -196,7 +196,7 @@ a button to see its name. The menus that belong to the listing are described in 
 | {icon}`other` **Tools** | **Search**, **Fill...**, **Sprite scanner** ([DUMP panel](debugger-memory.md)), **Keyboard** (the [Virtual Keyboard](view.md#virtual-keyboard)), **Watcher** ([Breakpoints panel](debugger-breakpoints.md)) |
 | {icon}`settings` **Options** | how the listing looks, writing to ROM, runtime mapping ([Disasm panel](debugger-code.md)), and **Reset panel layout** |
 | {icon}`refresh` **Reload snapshot & labels** | opens the last file again and its labels, as **File > Reload** does |
-| {icon}`floppy` (disk) | **Disasm to file**, **Load dump**, **Save dump**, **Load map**, **Save map** - see [Disasm panel](debugger-code.md) and [DUMP panel](debugger-memory.md) |
+| {icon}`floppy` (disk) | **Disasm to file**, **Load dump**, **Save dump**, **Load session**, **Save session** - see [Disasm panel](debugger-code.md) and [DUMP panel](debugger-memory.md) |
 
 ## Running and stepping
 

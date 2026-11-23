@@ -28,6 +28,7 @@ class QKeyEvent;
 #include "../libxpeccy/input/inview.h"
 #include "gamepad.h"
 #include "xexpr.h"
+#include "dbgtext.h"
 
 #ifndef USEMUTEX
 #define USEMUTEX 0
@@ -281,6 +282,8 @@ unsigned char labels_rom_view(int abs);	// the data mark a ROM list gives a ROM 
 int labels_sys_size(xAdr);		// a system variable's size at that cell, 0 if none
 void labels_full(bool);			// built-in names with their namespace while on
 int labels_ns_len(const QString&);	// the namespace's length in BASIC48.LD_BYTES, 0 if none
+QList<xAdr> labels_place_cells(const dtPlace&);	// a text format place's cells in the machine in use
+dtPlace labels_cell_place(int type, int abs);	// ...and a cell as the format writes it
 // "global.local": how much of it is the global, 0 if not local; the global a cell is under
 int label_local_prefix(const QString&);
 QString label_block(xAdr);
@@ -293,6 +296,11 @@ int saveLabels(const char*);
 bool labels_named_on();
 // an image opened: <image>.labels beside it is in effect until the next one
 void labels_image(const QString&);
+// a session of the Debugger (.xdbg): labels, marks, comments, breakpoints; the machine
+// and the images in it as Options say
+int session_save(const QString&, bool machine, bool images);
+void session_media(const QString&, QString* machine, QStringList* media);	// DRIVE, a tab, PATH; -1 the deck
+int session_load(const QString&);	// in place of what there was
 
 // comments
 
@@ -399,6 +407,8 @@ void brk_trace_flush();
 void brk_trace_done(bool out = false);	// out: the spans' totals to stdout too
 extern int brk_cond_n;		// conditions not bound to an address, asked per instruction
 int brk_load_list(const char*, int* bad = NULL, bool add = false);
+// a brk record of the text format into the list; false: not taken (bad counts it)
+bool brk_text_record(const dtRecord&, const char* fpath, int line, int* bad);
 // a label, #/$/0x hex or plain hex; cell gets a label's cell, type -1 for a number
 bool brk_list_adr(QString, int* adr, xAdr* cell);
 // the cells a label runs at where its CPU address would not do (a name of several
@@ -413,6 +423,7 @@ QString cell_text(int memType, int abs, bool withType);
 QString cell_view_text(int memType, int abs, bool withType = false);
 bool cell_from_text(int memType, QString page, int ofs, int* abs, bool wrap = false);	// a page so written and an offset
 int brk_save_list(const char*);
+QString brk_text_line(const xBrkPoint&);	// a point as a brk record, empty if it cannot be said
 
 // hold the emulation thread while the machine is rebuilt (defined in ethread.cpp)
 void emu_lock();
@@ -1278,6 +1289,8 @@ struct xConfig {
 		unsigned imglabels:1;	// an image's .labels comes with it
 		unsigned romlabels:1;	// known ROMs name their routines
 		unsigned sysvars:1;	// ...and their systems' variables, in operands
+		unsigned sessmac:1;	// Save session writes the machine
+		unsigned sessimg:1;	// ...and the tape and disks in it
 		QFont font;
 		int numfmt;		// how addresses and the listing's values are written, CPU_NUM_*
 		int hexfmt;		// the hex form the decimal switch goes back to

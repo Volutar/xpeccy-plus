@@ -80,8 +80,10 @@ again too.
 ```
 
 When **Auto-load labels** is ticked on the **Debugger** page of **Options**, opening a file
-also loads a `.labels` file of the same name from the same folder, if there is one. A disk
-opened into drive B, C or D does not load labels.
+also loads a `.labels` file of the same name from the same folder, if there is one, with
+the marks, comments and breakpoints it may hold (see
+[Label files](debugger-code.md#label-files)). A disk opened into drive B, C or D does not
+load labels.
 
 ### Images in archives
 

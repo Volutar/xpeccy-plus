@@ -72,6 +72,7 @@ class DebugWin : public QMainWindow {
 		void wannaOptions();
 		void wannaOpen();
 		void wannaReload();
+		void wannaSession(QString, QStringList);	// a session's machine and images to put in
 		void needStep();
 	public slots:
 		void start();

@@ -34,6 +34,23 @@ before that point is upstream's history and is not repeated here.
 - **The mouse pointer hides itself** after 2 seconds still over the picture, in a window and
   in fullscreen; a move brings it back. View > Auto-Hide Pointer turns it off.
 
+- **Debugger sessions**: Save session and Load session (`.xdbg`) keep the labels, the data
+  marks, the comments and the breakpoints together, and the machine and its tape and disks
+  as Options > Debugger says. A session is a text file, one line a thing: it can be edited,
+  joined with others and read by Load labels too. Old memory maps (`.xmap`) still load.
+
+- **Data statements in the Debugger**: a `DB`, `DW` or text row ends where its statement
+  does, as in an assembler's source, and a labels file can give each statement's length
+  (`db :9000 7*4` is four `DB` of 7); statements of one byte share a row. The ROMs' tables are cut as Richard Dymond's and Paul
+  Farrow's disassemblies have them.
+
+- **Load labels reads SjASMPlus's SLD**, with DeZog's `WPMEM`, `ASSERTION` and `LOGPOINT`
+  comments as breakpoints, **SkoolKit control files** and **ZX Spin symbol files**. A labels
+  file can hold data marks, comments and breakpoints as well; the format is in
+  `docs/debugger-format.md`.
+
+- **Comments of several lines** in the Debugger: `\n` where a line ends.
+
 - **60 FPS video**: Options > Video, Recording. **60 FPS** and **50/60 FPS** join Real FPS
   and 50 FPS; 50/60 records a Next in its 60 Hz modes at 60 and every other machine at 50,
   and is the default in new settings.
@@ -83,6 +100,10 @@ before that point is upstream's history and is not repeated here.
 - **Options > Appearance shows and hides the bars**: Menu bar, Toolbar, Status bar, Always
   on top and Auto-hide pointer, as in the View menu - for a menu bar that is hidden. The
   indicators have a window of their own there: Configure indicators.
+
+- **The Debugger's breakpoint list is saved as `brk` lines** (`brk :8000 exec if "A==#FF"`);
+  lists saved before, and Unreal Speccy's `bpx.ini`, still load. The ROM lists moved to
+  `config/rom-labels`.
 
 - **The virtual keyboard's title names its skin**: "Virtual Keyboard - Next (White)", as the
   Skin menu has it.

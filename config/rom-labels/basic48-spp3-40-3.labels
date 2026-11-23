@@ -6,7 +6,7 @@
 ; 2026-11-06), MIT license:
 ;
 ; MIT License
-; Copyright (c) 2021 草鞋没号
+; Copyright (c) 2021 èéæ²¡å·
 ; Permission is hereby granted, free of charge, to any person obtaining a copy
 ; of this software and associated documentation files (the "Software"), to deal
 ; in the Software without restriction, including without limitation the rights
@@ -23,14 +23,17 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 ;
-; @rom <MD5 of a 16K bank> <bundled image> [-NAME / -@ADDR: not in that bank]
-; ADDR NAME: a name; START END VIEW: a data range
-@ns BASIC48
-@rom a148bcc575e51389e84fdf5d555c3196 plus3-3.rom
-@rom ef7bf942a1c1f9ed5d583d0a49e26db7 plus3-41.rom bank 3
-3A29 HOOK_REPORT
-3A34 HOOK_TO_010F
-3A3B HOOK_STMT_JUMP
-3A46 HOOK_TO_0112
-3A4B HOOK_STMT_NEXT
-3A55 HOOK_TO_0115
+; Converted to the Debugger's text format on 2026-11-20 (docs/debugger-format.md):
+; rom NAME <MD5 of a 16K bank> [skip what that bank has not], the bundled images
+; above it; NAME:ADDR LABEL a name; db/dw/da/dm/dc NAME:ADDR LENGTH data, N*K for
+; K statements of N.
+; plus3-3.rom
+rom BASIC48_SPP3_40_3 a148bcc575e51389e84fdf5d555c3196
+; plus3-41.rom bank 3
+rom BASIC48_SPP3_40_3 ef7bf942a1c1f9ed5d583d0a49e26db7
+BASIC48_SPP3_40_3:3A29 BASIC48.HOOK_REPORT
+BASIC48_SPP3_40_3:3A34 BASIC48.HOOK_TO_010F
+BASIC48_SPP3_40_3:3A3B BASIC48.HOOK_STMT_JUMP
+BASIC48_SPP3_40_3:3A46 BASIC48.HOOK_TO_0112
+BASIC48_SPP3_40_3:3A4B BASIC48.HOOK_STMT_NEXT
+BASIC48_SPP3_40_3:3A55 BASIC48.HOOK_TO_0115

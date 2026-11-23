@@ -37,6 +37,7 @@ typedef struct {
 	int oflag;			// opcode flag
 	int fmt;			// the form of its numbers (CPU_NUM_*): the debugger's, # for the trace log
 	QString aname;			// label/segment/address
+	QString comment;		// a comment's row: all of the comment as typed, \n between its lines
 	QString bytes;			// all bytes inside command
 	QString command;		// command with replaced addr->label
 	QString label;			// label put into the command, if any

@@ -152,8 +152,10 @@ These are for this run only:
 ```
 
 - `-d`, `--debug` - open the Debugger at once.
-- `-l FILE`, `--labels FILE` - load labels made by SjASMPlus (its `LABELSLIST`). They take
-  precedence over the labels that come with an image.
+- `-l FILE`, `--labels FILE` - load a labels file: the Debugger's own, SjASMPlus's
+  `LABELSLIST`, `CSPECTMAP` or SLD, a SkoolKit control file or a ZX Spin symbol file (see
+  [Label files](debugger-code.md#label-files)). They take precedence over the labels that
+  come with an image.
 - `-a ADR`, `--adr ADR` - the address `-f` loads the file at, 16384 (`0x4000`) if not
   given.
 - `-f FILE`, `--file FILE` - load a binary file into memory at that address.
@@ -168,7 +170,7 @@ These are for this run only:
   `--bp` sets them. Give it more than once to load several lists.
 - `--brk-log FILE` - where the [breakpoint log](debugger-breakpoints.md#the-breakpoint-log)
   goes; `-` writes it to the standard output.
-- `--xmap FILE` - load a memory map saved by the Debugger (`.xmap`).
+- `--xmap FILE` - load a memory map saved by earlier versions of the Debugger (`.xmap`).
 - `--dezog` - let [DeZog](debugger-dezog.md) debug the machine from VS Code, on the port
   **Options > Application > DeZog port** sets; for this run.
 - `--dezog-port N` - the same, on port N.
