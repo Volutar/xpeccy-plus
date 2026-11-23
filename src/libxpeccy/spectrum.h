@@ -187,7 +187,7 @@ typedef struct {
 } nxvWrite;
 
 typedef struct {
-	unsigned short vramA;	// vram_a, and the bank it reads (1: bank 7)
+	unsigned short vramA;	// vram_a, and the bank it reads (1: bank 7); it and the bytes are stale through a border (nxv_fetch_unseen)
 	unsigned char vramSh;
 	unsigned char pb00, pb01, pb10, pb11, ab00, ab01, ab10, ab11;
 	unsigned short px;	// the sample of n = 3 / B: px, py, screen_mode, ula_shadow
