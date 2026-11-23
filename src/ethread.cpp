@@ -8,6 +8,7 @@
 
 #include "ethread.h"
 #include "xcore/xcore.h"
+#include "xcore/framenums.h"
 #include "xgui/xgui.h"
 #include "xcore/sound.h"
 #include "xcore/pacing.h"
@@ -65,6 +66,25 @@ static int shownSwaps = -1;		// bufSwaps of the copy, -1: none yet
 static long long shownNs = 0;
 static InState shownInput;
 static int shownInputOn = 0;
+static xFrameNums shownNums;
+
+// PAL's color carrier, 4.43361875 MHz, against the machine's dots. A 128K (and the
+// grey +2, the same board) makes both from one 17.734475 MHz crystal: 5/8 cycle a dot,
+// 285 a line, the pattern standing still. A +2A / +3 has 35.469 MHz = 8 carriers =
+// 5 dots, 5/8 too - by arithmetic, its divider not read from the schematic yet. A 48K
+// has a crystal for each, and a machine with no encoder gets an outside one on its
+// own crystal: the carrier runs free of the dots.
+static void frame_nums(Computer* comp, xFrameNums* n) {
+	Video* vid = comp->vid;
+	n->frame = comp->frmCount - 1;		// the frame that has ended: it is counted by now
+	n->fullX = vid->full.x;
+	n->fullY = vid->full.y;
+	n->cutX = vid->lcut.x;
+	n->cutY = vid->lcut.y;
+	const int id = comp->hw ? comp->hw->id : HW_NULL;
+	n->locked = (id == HW_ZX128) || (id == HW_PLUS2A) || (id == HW_PLUS3);
+	n->carrier = n->locked ? 0.625 : 4433618.75 * vid->nsPerDotExact * 1e-9;
+}
 
 // fast mode and fast forward make frames far quicker than anyone looks at them
 #define SHOWN_FAST_NS 10000000LL
@@ -76,6 +96,7 @@ void frame_publish() {
 	shownSwaps = bufSwaps;
 	shownNs = paceClockNs();
 	shownInputOn = iosd_state(conf.zx, &shownInput);
+	frame_nums(conf.zx, &shownNums);
 }
 
 int frame_shown_input(InState* st) {
@@ -183,6 +204,12 @@ const unsigned char* frame_shown_lock() {
 
 void frame_shown_unlock() {
 	shownGuard.unlock();
+}
+
+// the numbers of the picture frame_shown_lock() gave
+void frame_shown_nums(xFrameNums* n) {
+	if (conf.emu.pause || ((int)shownImg.size() < bufSize)) frame_nums(conf.zx, n);
+	else *n = shownNums;
 }
 
 #define LOG_OUTPUT 0

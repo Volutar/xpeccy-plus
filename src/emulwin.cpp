@@ -299,8 +299,8 @@ void MainWin::updateWindow() {
 	// a window not shown yet has no state of its own: the config's stands
 	if (!conf.vid.fullScreen && frame->isVisible()) conf.vid.maximized = maxed;
 	if (winFit) vid_set_fit(size());
-	// a size change can switch the shader off or bring it back (wantedShader), quietly
-	if (conf.vid.shd_support && (wantedShader() != shdLoaded))
+	// another shader chosen (Options): its chain is loaded here
+	if (conf.vid.shd_support && (conf.vid.shader != shdLoaded))
 		loadShader(false);
 	blockSignals(true);
 	showBars();
@@ -692,11 +692,6 @@ MainWin::MainWin(QMainWindow* frm) {
 	openServer();
 	connect(&srv, SIGNAL(newConnection()),this, SLOT(connected()));
 
-	// initializeGL creates the shaders, and it only runs when the window is
-	// first shown. Exiting before that - "xpeccy-plus --help" does - would
-	// otherwise leave the destructor deleting an uninitialized pointer.
-	vtx_shd = NULL;
-	frg_shd = NULL;
 	if (conf.vid.gl) {
 		glw = new xGLView(this);
 		glw->lower();
@@ -717,8 +712,6 @@ MainWin::~MainWin() {
 	rawMouse(false);
 	delete snowBox;		// its end stops the snow: while this window is whole
 	cleanupGL();
-	delete(vtx_shd);
-	delete(frg_shd);
 }
 
 // gamepad mapper
@@ -1487,6 +1480,12 @@ void MainWin::uploadFrame() {
 	const unsigned char* img = frame_shown_lock();
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, vid->vsze.x * 2, vid->vsze.y, 0,
 		GL_RGBA, GL_UNSIGNED_BYTE, comp->flgDBG ? scrimg : img);
+	// every caller has bound the ring's current texture: what it holds now
+	xFrameTex& slot = ringInfo[curtex];
+	slot.tex = texids[curtex];
+	slot.size = QSize(vid->vsze.x * 2, vid->vsze.y);
+	frame_shown_nums(&slot.nums);
+	ringSeq[curtex] = ringCount;
 	frame_shown_unlock();
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 	glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
@@ -1570,7 +1569,8 @@ void MainWin::d_frame() {
 		if (queue.size() > (conf.vid.lowLatency ? 1 : 2))
 			queue.takeFirst();
 		uploadOffPaint();
-		curtex++;
+		curtex = (curtex + 1) % ringSize;
+		ringCount++;
 	}
 	// Low latency: show the frame now. Buffered: let the timer show it - unless
 	// VSync paces the frames, see frame_timer()
@@ -1722,7 +1722,7 @@ void MainWin::refitPicture() {
 	vid_set_dpr(widgetDpr(this));
 	vid_set_fit(size());
 	refit = 1;
-	if (conf.vid.shd_support && (wantedShader() != shdLoaded))
+	if (conf.vid.shd_support && (conf.vid.shader != shdLoaded))
 		loadShader(false);
 }
 
@@ -1743,6 +1743,16 @@ void MainWin::paintGLView() {
 	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
 
+	// the programs being built are looked at; the picture never waits for them
+	chain.step();
+	shaderSay();
+	// the frames the shader looks back at are kept from here on
+	const int ring = 4 + chain.historyDepth();
+	if (ring != ringSize) {
+		ringSize = ring;
+		curtex %= ringSize;
+	}
+
 	// Low latency: take the newest frame and drop the rest for the lowest
 	// lag. Buffered: take the oldest (FIFO) so the small buffer smooths jitter.
 	if (!queue.isEmpty()) {
@@ -1759,7 +1769,7 @@ void MainWin::paintGLView() {
 	// buffer again with the new bounds instead of stretching the old texture
 	// over the new window - and while the machine is paused, no new frame is
 	// coming to do it later.
-	if (refit && prg.isLinked()) {		// isLinked: initializeGL has run, texids are real
+	if (refit && glReady) {		// initializeGL has run, texids are real
 		refit = 0;
 		glBindTexture(GL_TEXTURE_2D, texids[curtex]);
 		uploadFrame();
@@ -1773,15 +1783,20 @@ void MainWin::paintGLView() {
 	// drivers quietly sample black.
 	fillOn = fillWanted();
 	fillWide = fillOn && sfill_sharp();
+	// the shader's passes before the last one, into their own textures
+	chainFrameSet();
+	chain.run(chainFrame, shaderUsed());
 	drawPicture(fillWide);
 	// after the picture: Mirror reads it back as it is shown, and the fill only
 	// goes beside it
+	chain.segBegin(xShaderChain::SEG_FILL);
 	if (fillWide) {
 		drawFill(nullptr, true);
 	} else if (fillOn) {
 		prepareFill();
 		drawFill();
 	}
+	chain.segEnd();
 	// before the indicators go on
 	if ((shotDue || shotClip) && (conf.scrShot.source == VREC_SRC_SCREEN))
 		grabPicture();
@@ -1823,94 +1838,81 @@ void MainWin::paintGLView() {
 	}
 }
 
+// This paint's frame as the chain is to see it: the texture shown, the ones before it
+// in the ring while they are the frames before it, and where the picture goes.
+void MainWin::chainFrameSet() {
+	chainFrame = xChainFrame();
+	chainFrame.pic = picRect();
+	chainFrame.view = devSize();
+	chainFrame.direction = rewind_active() ? -1 : 1;
+	int at = -1;
+	for (int i = 0; (at < 0) && (i < XP_RING_MAX); i++)
+		if (curtxid && (texids[i] == curtxid) && ringInfo[i].tex) at = i;
+	if (at < 0) return;
+	chainFrame.cur = ringInfo[at];
+	chainFrame.dots = QSize(chainFrame.cur.size.width() / 2, chainFrame.cur.size.height());
+	for (int n = 1; (n <= chain.historyDepth()) && (n < ringSize); n++) {
+		const int was = (at - n + ringSize) % ringSize;
+		if ((at < ringSize) && ringInfo[was].tex && (ringSeq[was] == ringSeq[at] - n))
+			chainFrame.hist[n] = ringInfo[was];
+	}
+}
+
+// The load's outcome on screen, once it is known: a failure always, a success when
+// the reload key asked.
+void MainWin::shaderSay() {
+	if (shdSettled || chain.pending()) return;
+	shdSettled = true;
+	conf.vid.shdError = chain.failed() ? chain.error().toStdString() : std::string();	// Options shows it
+	if (chain.failed()) setMessage(" shader error ");
+	else if (shdTell) setMessage(conf.vid.shader.empty() ? " no shader " : " shader reloaded ");
+	shdTell = false;
+}
+
 // the frame, through the shader, where drawX/Y/W/H say; wide: on to the view's edges (sfill_sharp)
 void MainWin::drawPicture(bool wide) {
-	if (prg.isLinked() && curtxid) {
-		Computer* comp = conf.zx;
-		const GLfloat tex_w = GLfloat(comp->vid->vsze.x * 2);
-		const GLfloat tex_h = GLfloat(comp->vid->vsze.y);
-		// the quad covers the viewport, and the viewport is the picture: in
-		// fullscreen it is a whole-zoom rectangle in the middle of the screen,
-		// with the cleared black around it
-		const QRect pic = picRect();
-		const QSize view = devSize();
-		wide = wide && !pic.isEmpty() && !view.isEmpty();
-		if (wide) {
-			// GL clips at the viewport: the view's, the quad running past 0..1 in picture units
-			glViewport(0, 0, view.width(), view.height());
-			if ((pic != wideFor) || (view != wideView)) {
-				const GLfloat x0 = GLfloat(-pic.x()) / pic.width();
-				const GLfloat x1 = GLfloat(view.width() - pic.x()) / pic.width();
-				const GLfloat y0 = GLfloat(pic.y() + pic.height() - view.height()) / pic.height();	// the view's top
-				const GLfloat y1 = GLfloat(pic.y() + pic.height()) / pic.height();			// its bottom
-				const GLfloat quad[] = {
-					x1, y0,  x1, y0,
-					x0, y0,  x0, y0,
-					x1, y1,  x1, y1,
-					x0, y1,  x0, y1,
-				};
-				vboWide.bind();
-				vboWide.write(0, quad, sizeof(quad));
-				vboWide.release();
-				wideFor = pic;
-				wideView = view;
-			}
-		} else {
-			glViewport(pic.x(), pic.y(), pic.width(), pic.height());
+	if (!glReady || !curtxid || !chainFrame.cur.tex) return;
+	// the quad covers the viewport, and the viewport is the picture: in
+	// fullscreen it is a whole-zoom rectangle in the middle of the screen,
+	// with the cleared black around it
+	const QRect pic = chainFrame.pic;
+	const QSize view = chainFrame.view;
+	wide = wide && !pic.isEmpty() && !view.isEmpty();
+	// the picture's clip space into the viewport's (placeVertexShader)
+	GLfloat place[4] = {1.0f, 1.0f, 0.0f, 0.0f};
+	if (wide) {
+		// GL clips at the viewport: the view's, the quad running past 0..1 in picture units
+		glViewport(0, 0, view.width(), view.height());
+		if ((pic != wideFor) || (view != wideView)) {
+			const GLfloat x0 = GLfloat(-pic.x()) / pic.width();
+			const GLfloat x1 = GLfloat(view.width() - pic.x()) / pic.width();
+			const GLfloat y0 = GLfloat(pic.y() + pic.height() - view.height()) / pic.height();	// the view's top
+			const GLfloat y1 = GLfloat(pic.y() + pic.height()) / pic.height();			// its bottom
+			const GLfloat quad[] = {
+				x1, y0,  x1, y0,
+				x0, y0,  x0, y0,
+				x1, y1,  x1, y1,
+				x0, y1,  x0, y1,
+			};
+			vboWide.bind();
+			vboWide.write(0, quad, sizeof(quad));
+			vboWide.release();
+			wideFor = pic;
+			wideView = view;
 		}
-		static const QMatrix4x4 legacyMvp = []{
-			QMatrix4x4 m;
-			m.ortho(0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f);
-			return m;
-		}();
-		prg.bind();
-		prg.setUniformValue("u_tex", 0);
-		prg.setUniformValue("rubyTexture", 0);
-		prg.setUniformValue("u_mvp_", legacyMvp);
-		prg.setUniformValue("rubyInputSize",   tex_w, tex_h);
-		prg.setUniformValue("rubyTextureSize", tex_w, tex_h);
-		prg.setUniformValue("rubyOutputSize",  GLfloat(pic.width()), GLfloat(pic.height()));
-		// the built-in one: smooth when a dot is not a whole number of pixels either way
-		const double ppx = pic.width() / double(comp->vid->vsze.x);
-		const double ppy = pic.height() / double(comp->vid->vsze.y);
-		const bool whole = (std::fabs(ppx - std::floor(ppx + 0.5)) < 0.001) && (std::fabs(ppy - std::floor(ppy + 0.5)) < 0.001);
-		prg.setUniformValue("u_smooth", GLint(whole ? 0 : 1));
-		// the picture's clip space into the viewport's (placeVertexShader)
-		if (wide) {
-			const GLfloat sx = GLfloat(pic.width()) / view.width();
-			const GLfloat sy = GLfloat(pic.height()) / view.height();
-			prg.setUniformValue("u_place_", sx, sy,
-				GLfloat(2 * pic.x() + pic.width()) / view.width() - 1.0f,
-				GLfloat(2 * pic.y() + pic.height()) / view.height() - 1.0f);
-		} else {
-			prg.setUniformValue("u_place_", 1.0f, 1.0f, 0.0f, 0.0f);
-		}
-		// the bundled shaders leave their corners and vignette off then, or the bars get a seam
-		prg.setUniformValue("xpWide", GLfloat(wide ? 1 : 0));
-
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, curtxid);
-		// past the edge the edge dot; put back after, ES 3.0 has no CLAMP_TO_BORDER to set
-		GLint wrap[2] = {GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE};
-		if (wide) {
-			glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, &wrap[0]);
-			glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, &wrap[1]);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		}
-
-		QOpenGLVertexArrayObject& arr = wide ? vaoWide : vao;
+		place[0] = GLfloat(pic.width()) / view.width();
+		place[1] = GLfloat(pic.height()) / view.height();
+		place[2] = GLfloat(2 * pic.x() + pic.width()) / view.width() - 1.0f;
+		place[3] = GLfloat(2 * pic.y() + pic.height()) / view.height() - 1.0f;
+	} else {
+		glViewport(pic.x(), pic.y(), pic.width(), pic.height());
+	}
+	QOpenGLVertexArrayObject& arr = wide ? vaoWide : vao;
+	chain.drawLast(chainFrame, place, wide, [this, &arr]() {
 		arr.bind();
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 		arr.release();
-
-		if (wide) {
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap[0]);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap[1]);
-		}
-
-		prg.release();
-	}
+	});
 }
 
 // The window as it was just painted, shader and indicators and all. Read

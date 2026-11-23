@@ -109,6 +109,11 @@ typedef struct {
 #include <QOpenGLBuffer>
 #include <QOpenGLVertexArrayObject>
 
+#include "xgui/shaderchain.h"
+
+// the frame textures: the queue's four and the frames a shader may look back at
+#define XP_RING_MAX	(4 + XSHD_HISTORY_MAX)
+
 // where the image named in the title is (drives are 0..3, the divMMC's cards 5..6)
 #define	MEDIA_TAPE	4
 #define	MEDIA_CARD	5
@@ -258,7 +263,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void onPrfChange();
 		void kPress(QKeyEvent*);
 		void kRelease(QKeyEvent*);
-		void loadShader(bool tell = true);	// tell: the shader's name on success, for the user's own switch
+		void loadShader(bool tell = false);	// tell: say so when it is ready too (the reload key), not only a failure
 		bool reloadMedia();
 		// quick saves (emw_saves.cpp)
 		int saveState(int kind);
@@ -351,7 +356,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		unsigned refit:1;	// geometry changed: re-read the frame before painting it
 		unsigned paintOwed:1;	// presentFrame asked, or resizeGL left an empty framebuffer
 
-		std::string shdLoaded;	// the shader the program is linked with now
+		std::string shdLoaded;	// the shader the chain was loaded from
 		int mediaSrc;		// where the image in use is: a drive, the tape, a divMMC card, or a snapshot
 		int sideSrc = -1;	// the drive or the tape last in use, kept while a side changes in it; -1 none
 		int mediaSeen;		// the drive motors (bits 0..3), the tape playing, the cards read, as last seen
@@ -388,7 +393,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		bool padGameEdited();
 		int padK8 = -1;		// the machine's Kempston had 8 buttons, as last seen
 		void showMedia(const QString&, int src);
-		std::string wantedShader();
+		bool shaderUsed();
 
 		int timid;
 		int secid;
@@ -710,23 +715,37 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void resizeEvent(QResizeEvent*) override;
 		void paintPlain(QPainter&);
 		xGLView* glw = nullptr;		// the picture through OpenGL; none: drawn here, plain
-		unsigned curtex:2;
-		GLuint texids[4];
+		// The frames' textures, a ring written at curtex: four for the queue, and as many
+		// more as the shader looks back (OriginalHistoryN). ringSeq: a slot's place in
+		// the row of frames, so the frame N back is known to be that one
+		int curtex = 0;
+		int ringSize = 4;
+		int ringCount = 0;
+		GLuint texids[XP_RING_MAX];
+		xFrameTex ringInfo[XP_RING_MAX];
+		int ringSeq[XP_RING_MAX];
 		GLuint curtxid;
 		QList<GLuint> queue;
 		void initializeGL();
 		void resizeGL(int,int);
 		void paintGLView();
 		void cleanupGL();
-		QOpenGLShaderProgram prg;
-		QOpenGLShader* vtx_shd;
-		QOpenGLShader* frg_shd;
+		bool glReady = false;		// initializeGL has run: the textures and programs are real
+		xShaderChain chain;		// the shader's passes, and the built-in program
+		xChainFrame chainFrame;		// this paint's frame, for the chain
+		bool shdSettled = true;		// the load's outcome has been told
+		bool shdTell = false;		// ...and is told when it is a success too (the reload key)
+		void chainFrameSet();
+		void shaderSay();
 		QOpenGLVertexArrayObject vao;
 		QOpenGLBuffer vbo;
 		// the side fill (emw_opengl.cpp): the frame shrunk and blurred in fillTex[0]
-		QOpenGLShaderProgram fillDown;
-		QOpenGLShaderProgram fillBlur;
-		QOpenGLShaderProgram fillDraw;
+		xGlProgram fillDown;
+		xGlProgram fillBlur;
+		xGlProgram fillDraw;
+		int fillState = 0;		// its programs: 0 not built yet, 1 there, -1 no fill
+		bool fillFboOk = false;
+		bool fillPrograms();
 		GLuint fillTex[2] = {0, 0};
 		GLuint fillFbo[2] = {0, 0};
 		QSize fillSize;
