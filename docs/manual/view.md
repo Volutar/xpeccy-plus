@@ -182,9 +182,9 @@ that the next one reads, with parameters and textures; `config/shaders/README.md
 the format.
 
 If the shader does not work, the message on the picture is **shader error** and the picture
-is shown without a shader. **Options > Video** then shows the first error under the
-**Shader** list, with the file's line; a click on it opens all of them. The shader stays
-chosen: correct the file and read it again.
+is shown without a shader. A warning button then stands beside the **Shader** list of
+**Options > Video**: its tip has the first error with the file's line, a click on it opens
+all of them. The shader stays chosen: correct the file and read it again.
 
 ```{index} Reload Shader
 ```
