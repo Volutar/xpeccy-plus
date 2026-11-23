@@ -1861,6 +1861,8 @@ void MainWin::chainFrameSet() {
 // The load's outcome on screen, once it is known: a failure always, a success when
 // the reload key asked.
 void MainWin::shaderSay() {
+	// a pass a parameter turned on later can fail after the load was told
+	if (shdSettled && chain.failed() && conf.vid.shdError.empty()) shdSettled = false;
 	if (shdSettled || chain.pending()) return;
 	shdSettled = true;
 	conf.vid.shdError = chain.failed() ? chain.error().toStdString() : std::string();	// Options shows it
