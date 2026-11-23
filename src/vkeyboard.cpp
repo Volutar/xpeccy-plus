@@ -288,10 +288,17 @@ double keyWindow::scale() {
 	return (sx < sy) ? sx : sy;
 }
 
-// the same in the screen's own pixels: what the picture is drawn at
+// the same in the screen's own pixels: what the picture is drawn at. The window's
+// height is its width's, rounded: rounded down, the height alone made the picture
+// a pixel narrower than the window. As wide as the window it is taken whenever
+// its own height rounds into the window's.
 double keyWindow::devScale() {
 	double dpr = devicePixelRatioF();
-	return qRound(cnv.width() * scale() * dpr) / cnv.width();
+	double sd = qRound(cnv.width() * scale() * dpr) / cnv.width();
+	double sw = qRound(width() * dpr) / cnv.width();
+	if ((sw > sd) && (qRound(cnv.height() * sw) <= qRound(height() * dpr)))
+		sd = sw;
+	return sd;
 }
 
 // The picture's top left corner, on a whole device pixel, so it is put down 1:1
@@ -964,13 +971,16 @@ void keyWindow::paintEvent(QPaintEvent*) {
 	// The picture is drawn to sit on a ground of its own: the keys are opaque and
 	// only a thin contour around each one is clear, so what shows through it is
 	// a contour light - under a light theme the window colour would outline
-	// every key all the time
-	pnt.fillRect(rect(), skin.ground());
+	// every key all the time. The ground is under the picture alone: a window of
+	// another shape than the picture gets the picture's backdrop beside it - in
+	// the ground it was a dark strip by the Robik's light case.
+	double dpr = devicePixelRatioF();
+	pnt.fillRect(rect(), skin.background());
+	pnt.fillRect(QRectF(picOrigin(), QSizeF(qRound(cnv.width() * sd), qRound(cnv.height() * sd)) / dpr), skin.ground());
 	// The picture drawn for this size is in device pixels, and so are its
 	// contours - the lit keys are put there in the same pixels. A stale one being
 	// stretched takes them in canvas units.
 	bool exact = (sd == picScale);
-	double dpr = devicePixelRatioF();
 	pnt.translate(picOrigin());
 	if (exact) {
 		pnt.scale(1 / dpr, 1 / dpr);
