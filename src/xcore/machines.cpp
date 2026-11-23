@@ -2195,11 +2195,12 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 		case PS_ROMSET:
 			if (nam == "current") oldRomset = val;
 			else if (nam == "reset") {
-				comp->resbank = RES_48;
-				if ((val == "basic128") || (val == "0")) comp->resbank = RES_128;
-				if ((val == "basic48") || (val == "1")) comp->resbank = RES_48;
-				if ((val == "shadow") || (val == "2")) comp->resbank = RES_SHADOW;
-				if ((val == "dos") || (val == "3")) comp->resbank = RES_DOS;
+				int res = RES_48;
+				if ((val == "basic128") || (val == "0")) res = RES_128;
+				if ((val == "basic48") || (val == "1")) res = RES_48;
+				if ((val == "shadow") || (val == "2")) res = RES_SHADOW;
+				if ((val == "dos") || (val == "3")) res = RES_DOS;
+				xm_set_reset(res);		// the machine's own, as the file will hold it
 			}
 			break;
 		case PS_VIDEO:
