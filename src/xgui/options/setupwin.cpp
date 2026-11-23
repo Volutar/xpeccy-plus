@@ -154,48 +154,41 @@ static void sheet_open(QDialog* win) {
 	win->raise();
 }
 
-// The last shader load's first error, shortened to the row; a click opens all of them.
-class xShdErrLine : public xElideLabel {
-	public:
-		xShdErrLine(QWidget* p);
-		void setLog(const QString& text);
-	protected:
-		void mouseReleaseEvent(QMouseEvent*) override;
-		void paintEvent(QPaintEvent*) override;
-	private:
-		QString log;
-		QString first;
-};
-
-// cut at its end, not in the middle: the file, the line and what is wrong come first
-void xShdErrLine::paintEvent(QPaintEvent*) {
-	QPainter pnt(this);
-	const QString txt = fontMetrics().elidedText(first, Qt::ElideRight, contentsRect().width());
-	style()->drawItemText(&pnt, contentsRect(), alignment(), palette(), isEnabled(), txt, foregroundRole());
+// A tip's second part: a long line broken at spaces to the width tips keep here.
+static QString tip_lines(const QString& text, int cols = 44) {
+	QString out;
+	int len = 0;
+	for (const QString& word : text.split(' ', Qt::SkipEmptyParts)) {
+		if (len && (len + 1 + word.size() > cols)) {
+			out += '\n';
+			len = 0;
+		} else if (len) {
+			out += ' ';
+			len++;
+		}
+		out += word;
+		len += word.size();
+	}
+	return out;
 }
 
-xShdErrLine::xShdErrLine(QWidget* p) : xElideLabel(p) {
-	setCursor(Qt::PointingHandCursor);
-	setForegroundRole(QPalette::Link);
-	hide();
+// The button beside the Shader list, there only after a load that failed: the first
+// error in its tip, all of them in a window on a click.
+void SetupWin::shaderError(const QString& log) {
+	if (log == shdErrLog) return;
+	shdErrLog = log;
+	ui.tbShaderErr->setVisible(!log.isEmpty());
+	ui.tbShaderErr->setToolTip(tr("Shader error: click for the log") + "\n" + tip_lines(log.section('\n', 0, 0)));
 }
 
-void xShdErrLine::setLog(const QString& text) {
-	if (text == log) return;
-	log = text;
-	first = text.section('\n', 0, 0);
-	setFull(first);
-	setVisible(!text.isEmpty());
-}
-
-void xShdErrLine::mouseReleaseEvent(QMouseEvent*) {
-	QDialog dlg(window());
+void SetupWin::shaderErrorLog() {
+	QDialog dlg(this);
 	dlg.setWindowTitle("Shader errors");
 	QVBoxLayout* lay = new QVBoxLayout(&dlg);
 	QPlainTextEdit* edit = new QPlainTextEdit(&dlg);
 	edit->setReadOnly(true);
 	edit->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-	edit->setPlainText(log);
+	edit->setPlainText(shdErrLog);
 	lay->addWidget(edit);
 	QDialogButtonBox* box = new QDialogButtonBox(QDialogButtonBox::Close, &dlg);
 	connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
@@ -815,14 +808,18 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 
 //	ui.cbScanlines->setVisible(false);
 	fill_shader_list(ui.cbShader);
-	// under the list, only after a load that failed; the load ends a few frames
-	// after Apply, so the line is looked at again while the window is up
-	shdErrLine = new xShdErrLine(this);
-	ui.gridLayout_2->addWidget(shdErrLine, 5, 1, 1, 2);
+	// beside the list, only after a load that failed; the load ends a few frames
+	// after Apply, so it is looked at again while the window is up
+	// its room is kept while it is hidden: the page does not move when it comes
+	QSizePolicy errPolicy = ui.tbShaderErr->sizePolicy();
+	errPolicy.setRetainSizeWhenHidden(true);
+	ui.tbShaderErr->setSizePolicy(errPolicy);
+	ui.tbShaderErr->hide();
+	connect(ui.tbShaderErr, &QToolButton::released, this, &SetupWin::shaderErrorLog);
 	QTimer* shdErrTimer = new QTimer(this);
 	shdErrTimer->setInterval(300);
 	connect(shdErrTimer, &QTimer::timeout, this, [this]() {
-		if (isVisible()) shdErrLine->setLog(QString::fromStdString(conf.vid.shdError));
+		if (isVisible()) shaderError(QString::fromStdString(conf.vid.shdError));
 	});
 	shdErrTimer->start();
 	fillPalettes();
