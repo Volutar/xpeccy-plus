@@ -485,6 +485,8 @@ void xm_save_nvram();
 void xm_power_cycle(bool reread = true);	// off and on again: the caller holds emu_lock; reread: folders read again
 void xm_set_ram(int size);		// the RAM the machine file gives (a snapshot's own lasts the session)
 int xm_own_ram();			// ...and what that is now
+void xm_set_reset(int res);		// the boot target the machine file gives (RES_*)...
+int xm_own_reset();			// ...and what that is now, whatever a snapshot set for the session
 int xm_power_count();		// power cycles so far: something to notice one by
 // ULA snow as the user set it (machine file, Options), and a switch-off for the
 // image in use that is never written anywhere: the snow notice's "for now"

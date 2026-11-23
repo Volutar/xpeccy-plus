@@ -52,39 +52,57 @@ tabHwItem tabHwPtr[] = {
 
 static const struct {
 	int hw;
-	xRomRole bank[4];
+	xRomRole bank[ROM_ROLE_BANKS];
 } romRoles[] = {
-	{HW_ZX48, {{RES_48, "Basic 48"}, {RES_DOS, "TR-DOS"}, {-1, NULL}, {-1, NULL}}},
-	{HW_ROBIK, {{RES_48, "Basic 48"}, {RES_DOS, "TR-DOS"}, {-1, NULL}, {-1, NULL}}},
-	{HW_ZX128, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
-	{HW_PENT, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
-	{HW_P1024, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
-	{HW_SCORP, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
-	{HW_SCORPTP, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}}},
-	{HW_PLUS2A, {{RES_128, "Basic 128"}, {-1, "Syntax 128"}, {-1, "+3DOS"}, {RES_48, "Basic 48"}}},
-	{HW_PLUS3, {{RES_128, "Basic 128"}, {-1, "Syntax 128"}, {-1, "+3DOS"}, {RES_48, "Basic 48"}}},
-	{HW_PROFI, {{RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
-	{HW_PROFI3, {{RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
+	{HW_ZX48, {{RES_48, "Basic 48"}, {RES_DOS, "TR-DOS"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
+	// the Robik at 128 KB, as its owners took it there: the Pentagon 128's, its own ROM in 4
+	{HW_ROBIK, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {-1, "Robik"}}},
+	{HW_ZX128, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {-1, NULL}}},
+	{HW_PENT, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {-1, NULL}}},
+	{HW_P1024, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {-1, NULL}}},
+	{HW_SCORP, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {-1, NULL}}},
+	{HW_SCORPTP, {{RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {-1, NULL}}},
+	{HW_PLUS2A, {{RES_128, "Basic 128"}, {-1, "Syntax 128"}, {-1, "+3DOS"}, {RES_48, "Basic 48"}, {-1, NULL}}},
+	{HW_PLUS3, {{RES_128, "Basic 128"}, {-1, "Syntax 128"}, {-1, "+3DOS"}, {RES_48, "Basic 48"}, {-1, NULL}}},
+	{HW_PROFI, {{RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {-1, NULL}}},
+	{HW_PROFI3, {{RES_SHADOW, "Service"}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {-1, NULL}}},
 	// the service page holds a program the start menu calls (Fatall), so it is no target
-	{HW_PHOENIX, {{-1, NULL}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}}},
-	{HW_ATM2, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
-	{HW_PENTEVO, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
-	{HW_TSLAB, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
-	{HW_ALF, {{-1, "Menu"}, {-1, "Basic 48"}, {-1, NULL}, {-1, NULL}}},
-	{HW_ZXNEXT, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
-	{HW_NULL, {{-1, NULL}, {-1, NULL}, {-1, NULL}, {-1, NULL}}}
+	{HW_PHOENIX, {{-1, NULL}, {RES_DOS, "TR-DOS"}, {RES_128, "Basic 128"}, {RES_48, "Basic 48"}, {-1, NULL}}},
+	{HW_ATM2, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
+	{HW_PENTEVO, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
+	{HW_TSLAB, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
+	{HW_ALF, {{-1, "Menu"}, {-1, "Basic 48"}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
+	{HW_ZXNEXT, {{-1, "Firmware"}, {-1, NULL}, {-1, NULL}, {-1, NULL}, {-1, NULL}}},
+	{HW_NULL, {{-1, NULL}, {-1, NULL}, {-1, NULL}, {-1, NULL}, {-1, NULL}}}
 };
 
 xRomRole hw_rom_role(int hw, int bank) {
 	int i = 0;
+	xRomRole none = {-1, NULL};
+	if ((bank < 0) || (bank >= ROM_ROLE_BANKS)) return none;
 	while ((romRoles[i].hw != HW_NULL) && (romRoles[i].hw != hw)) i++;
-	return romRoles[i].bank[bank & 3];		// an unknown core gets the empty last row
+	return romRoles[i].bank[bank];		// an unknown core gets the empty last row
+}
+
+// ...on a machine of that much RAM: the Robik at 48 KB boots its own ROM, bank 4,
+// or TR-DOS; the Pentagon's banks are there, but nothing pages them
+xRomRole hw_rom_role_ram(int hw, int ram, int bank) {
+	xRomRole role = hw_rom_role(hw, bank);
+	if ((hw == HW_ROBIK) && (ram < MEM_128K)) {
+		if (bank == 4) role.res = RES_48;
+		else if (role.res != RES_DOS) role.res = -1;
+	}
+	return role;
 }
 
 // the bank a reset lands in on this core, -1 when it has no such target
 int hw_reset_bank(int hw, int res) {
-	for (int i = 0; i < 4; i++) {
-		if (hw_rom_role(hw, i).res == res) return i;
+	return hw_reset_bank_ram(hw, MEM_4M, res);
+}
+
+int hw_reset_bank_ram(int hw, int ram, int res) {
+	for (int i = 0; i < ROM_ROLE_BANKS; i++) {
+		if (hw_rom_role_ram(hw, ram, i).res == res) return i;
 	}
 	return -1;
 }

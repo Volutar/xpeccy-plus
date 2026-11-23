@@ -80,13 +80,13 @@ const char* fm_need_text(int need) {
 
 // a disk has to be started, not just read, so it asks the one table that knows;
 // model is the machine's snapModel, which tells a +2 from a 128K
-static bool fm_takes(int hwid, int model, int dif, int need, int snap) {
+static bool fm_takes(int hwid, int model, int ram, int dif, int need, int snap) {
 	switch (need) {
 		case FMN_TSCONF: return hwid == HW_TSLAB;
 		case FMN_NEXT: return hwid == HW_ZXNEXT;
 		case FMN_TRDOS: return autostart_can(hwid, dif, AS_DISK);
 		case FMN_PLUS3DOS: return autostart_can(hwid, dif, AS_DISK3);
-		case FMN_SNAPSHOT: return snapHwRuns(snap, hwid, model);
+		case FMN_SNAPSHOT: return snapHwRuns(snap, hwid, model, ram);
 		case FMN_RZX:
 		case FMN_EXACT: return snapHwIs(snap, hwid);
 	}
@@ -116,11 +116,11 @@ static bool fm_exact_on(const std::string& id, int snap, const std::string& targ
 // it was set is not in its definition yet
 bool fm_runs(const std::string& id, int need, int snap) {
 	if ((id == conf.macId) && conf.zx)
-		return fm_takes(conf.zx->hw->id, conf.zx->snapModel, conf.zx->dif->cfg, need, snap);	// out under a divMMC is still its
+		return fm_takes(conf.zx->hw->id, conf.zx->snapModel, conf.zx->mem->ramSize, conf.zx->dif->cfg, need, snap);	// out under a divMMC is still its
 	const xMachine* mac = xm_find(id);
 	if (!mac) return false;
 	HardWare* hw = findHardware(mac->hw.c_str());
-	return hw && fm_takes(hw->id, mac->snapModel, mac->disk, need, snap);
+	return hw && fm_takes(hw->id, mac->snapModel, xm_ram_size(id, NULL), mac->disk, need, snap);
 }
 
 // Is that machine the model the file names. A .z80's hw 9 is written for every

@@ -176,8 +176,12 @@ typedef struct {
 	const char* name;	// what the bank holds, NULL unknown
 } xRomRole;
 
+#define ROM_ROLE_BANKS	5	// the most a core names: the Robik's four of the Pentagon and its own
+
 xRomRole hw_rom_role(int hw, int bank);
+xRomRole hw_rom_role_ram(int hw, int ram, int bank);	// on a machine of ram bytes of RAM
 int hw_reset_bank(int hw, int res);
+int hw_reset_bank_ram(int hw, int ram, int res);
 // A fetch on a Beta Disk machine that pages TR-DOS: out, from ram while it is
 // in; in, from #3Dxx of the basic rom while it is out
 static inline int bdi_fetch_pages(Computer* comp, MemPage* pg, int adr) {

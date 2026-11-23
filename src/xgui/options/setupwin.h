@@ -133,6 +133,7 @@ class SetupWin : public QDialog {
 		xRomsetModel* rsmodel;
 		xRomset roms;			// the set the page edits, until Apply
 		int resTarget;			// where a reset starts, until Apply
+		bool memArmed = false;		// a change of Memory is the user's, not the page filling
 		QButtonGroup* resGroup;
 		QComboBox* cbStart;		// the machine a start takes: Last, Ask, then the machines
 		QComboBox* cbFolderWrite;	// Folder as a disk: read only or read and write

@@ -327,7 +327,7 @@ enum {
 #define SNAP_UNSURE	0x80000		// tied to its ROM, but which model's the file does not tell
 #define SNAP_HW_OF(snap)	((snap) & ~(SNAP_EDITOR | SNAP_IN_ROM | SNAP_UNSURE))
 
-int snapHwRuns(int snap, int hwid, int model);	// model: the machine's snapModel
+int snapHwRuns(int snap, int hwid, int model, int ram);	// model: the machine's snapModel; ram its size, bytes
 int snapHwIs(int snap, int hwid);
 int snap_rom_flags(int pc, int p7ffd);		// SNAP_EDITOR, SNAP_IN_ROM of a 128K snapshot
 void snap_plus3_basic48(Computer* comp, int snap, int p7ffd);	// 1FFD for a file that has none

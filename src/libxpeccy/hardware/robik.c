@@ -17,26 +17,69 @@
 // Keyboard: the 48K's 40 keys and eleven of its own on D5 and D7 of #FE
 // (keyTab). Kempston on #1F, no floating bus, #FF on the bus at INT acknowledge.
 // A Beta Disk is no part of it, but one fitted pages TR-DOS in as on the 48K.
+//
+// 128K: no factory model, but owners' boards were taken there (Faultless #08, 1997:
+// #7FFD as the Pentagon's). Here #7FFD as the Pentagon 128's, and the ROM set the
+// Pentagon 128's too, in its order (banks 0-3): the V03 went with the upgrade, as the
+// 128 editor calls its own 48 BASIC (with the V03 under it the menu hangs). The
+// Robik's frame, clock and wait stay, writes into either screen's 8K waiting. How
+// such a board switched its shadow RAM nobody wrote down, so it has none.
 
 #define ROBIK_SHADOW	3		// the RAM page under the ROM (48K uses 5, 2, 0)
 #define ROBIK_WAIT_PHASE	4	// dots: where the 8-dot video cell starts against the INT
 #define ROBIK_BORDER_LAG	5	// T from an OUT's I/O cycle start to the border's new color
+// ROM banks: 0-3 the Pentagon 128's (the 128 editor, 48 BASIC, service, TR-DOS),
+// paged at 128 KB as a Pentagon pages them; at 48 KB the Robik's own V03 and TR-DOS
+#define ROBIK_ROM_DOS	3
+#define ROBIK_ROM_OWN	4
+
+int zx_rd_ff(int, void*);		// zx48.c: a window nothing answers in
+void zx_wr_null(int, int, void*);
+
+static int robik_is_128(Computer* comp) {
+	return comp->mem->ramSize >= MEM_128K;
+}
+
+// the shadow page, fitted and on a board that has one: not on a 128K
+static int robik_has_shadow(Computer* comp) {
+	return comp->flgSHDW && !robik_is_128(comp);
+}
 
 void robik_map_mem(Computer* comp) {
 	Memory* mem = comp->mem;
+	int is128 = robik_is_128(comp);
 	mem->ramMask = MEM_128K - 1;
-	if (!comp->flgSHDW)
+	comp->tape->is48 = !is128;		// a TZX's "stop if 48K"; the size can change without a reset
+	if (!robik_has_shadow(comp))
 		comp->flgSHDON = 0;		// no page, no latch: switched on again it starts at the ROM
-	if (comp->flgDOS) {			// a Beta Disk fitted: TR-DOS as on the 48K
-		memSetBank(mem, 0x00, MEM_ROM, 1, MEM_16K, NULL, NULL, NULL);
-	} else if (comp->flgSHDW && comp->flgSHDON) {
+	if (is128) {				// what #7FFD holds, whatever the size was before
+		comp->flgROM = (comp->p7FFD & 0x10) ? 1 : 0;
+		comp->vid->vidPage = (comp->p7FFD & 0x08) ? 7 : 5;
+	} else {				// a 48K's: the 128K's paging, left by a reset, is not there
+		comp->flgROM = 1;
+		comp->vid->vidPage = 5;
+	}
+	if (is128) {				// the Pentagon's: TR-DOS or service by flgDOS, 48 or 128 by D4
+		memSetBank(mem, 0x00, MEM_ROM, (comp->flgDOS ? 2 : 0) | (comp->flgROM ? 1 : 0), MEM_16K, NULL, NULL, NULL);
+	} else if (comp->flgDOS) {		// a Beta Disk fitted: TR-DOS as on the 48K
+		memSetBank(mem, 0x00, MEM_ROM, ROBIK_ROM_DOS, MEM_16K, NULL, NULL, NULL);
+	} else if (comp->flgSHDON) {
 		memSetBank(mem, 0x00, MEM_RAM, ROBIK_SHADOW, MEM_16K, NULL, NULL, NULL);
+	} else if ((ROBIK_ROM_OWN << 14) > mem->romMask) {	// robik.rom missing: no ROM there
+		memSetBank(mem, 0x00, MEM_EXT, 0, MEM_16K, zx_rd_ff, zx_wr_null, comp);
 	} else {
-		memSetBank(mem, 0x00, MEM_ROM, 0, MEM_16K, NULL, NULL, NULL);
+		memSetBank(mem, 0x00, MEM_ROM, ROBIK_ROM_OWN, MEM_16K, NULL, NULL, NULL);
 	}
 	memSetBank(mem, 0x40, MEM_RAM, 5, MEM_16K, NULL, NULL, NULL);
 	memSetBank(mem, 0x80, MEM_RAM, 2, MEM_16K, NULL, NULL, NULL);
-	memSetBank(mem, 0xc0, MEM_RAM, 0, MEM_16K, NULL, NULL, NULL);
+	memSetBank(mem, 0xc0, MEM_RAM, is128 ? (comp->p7FFD & 7) : 0, MEM_16K, NULL, NULL, NULL);
+}
+
+// a write into a screen's 8K: #4000-#5FFF, or page 5 or 7 at #C000 on a 128K
+static int robik_screen_wr(Computer* comp, int adr) {
+	if ((adr & 0xe000) == 0x4000) return 1;
+	if (((adr & 0xe000) != 0xc000) || !robik_is_128(comp)) return 0;
+	return (comp->p7FFD & 5) == 5;		// page 5 or 7
 }
 
 // A write into the screen copy waits for the video's next cell: 1 to 4 T, never 0.
@@ -50,17 +93,17 @@ static void robik_wait(Computer* comp) {
 
 void robik_mwr(Computer* comp, int adr, int val) {
 	if (adr < 0x4000) {
-		if (comp->flgSHDW)
+		if (robik_has_shadow(comp))
 			comp->mem->ramData[(ROBIK_SHADOW << 14) | adr] = val & 0xff;
 		return;
 	}
-	if ((adr & 0xe000) == 0x4000)
+	if (robik_screen_wr(comp, adr))
 		robik_wait(comp);
 	mem_wr_fast(comp->mem, adr, val);
 }
 
 static void robik_flip(Computer* comp) {
-	if (!comp->flgSHDW) return;
+	if (!robik_has_shadow(comp)) return;
 	comp->flgSHDON ^= 1;
 	robik_map_mem(comp);
 }
@@ -100,10 +143,24 @@ static void robik_out_fe(Computer* comp, int port, int val) {
 	xOutFE(comp, port, val);
 }
 
+// #7FFD on a 128K, as the Pentagon 128's: A15 and A1, a read does not page
+static void robik_out_7ffd(Computer* comp, int port, int val) {
+	if (!robik_is_128(comp) || (comp->p7FFD & 0x20)) return;	// locked until reset
+	comp->p7FFD = val & 0xff;
+	robik_map_mem(comp);		// the ROM and the screen with it
+}
+
+// The AY and the Kempston mouse are add-ons, decoded as the 48K's map has them
 static xPort robikPortMap[] = {
 	{0x0001,0x00fe,2,2,2,robik_in_fe,	robik_out_fe},
 	{0x00ff,0x000f,2,2,2,robik_in_0f,	robik_out_0f},
+	{0x8002,0x7ffd,2,2,2,NULL,	robik_out_7ffd},
+	{0xc002,0xfffd,2,2,2,xInFFFD,	xOutFFFD},
+	{0xc002,0xbffd,2,2,2,NULL,	xOutBFFD},
 	{0x00e1,0x001f,2,2,2,zx_in_joy,	NULL},
+	{0x0320,0xfadf,2,2,2,xInFADF,	NULL},		// Kempston mouse: A5, A8-A10
+	{0x0720,0xfbdf,2,2,2,xInFBDF,	NULL},
+	{0x0720,0xffdf,2,2,2,xInFFDF,	NULL},
 	{0x0000,0x0000,2,2,2,zx_in_float,NULL}
 };
 
@@ -122,12 +179,10 @@ static int robik_in(Computer* comp, int port) {
 
 static void robik_reset(Computer* comp) {
 	comp->flgSHDON = 0;
-	comp->flgROM = 1;
-	comp->vid->vidPage = 5;
-	robik_map_mem(comp);
+	robik_map_mem(comp);		// the ROM by the reset's target, through #7FFD on a 128K
 	zx_reset(comp);
 }
 
-HardWare robik_hw_core = {HW_ROBIK,"Robik","Robik",MEM_64K | MEM_48K,1.0,NULL,NULL,
+HardWare robik_hw_core = {HW_ROBIK,"Robik","Robik",MEM_128K | MEM_64K | MEM_48K,1.0,NULL,NULL,
 			zx_init,robik_map_mem,robik_out,robik_in,stdMRd,robik_mwr,zx_irq,zx_ack,robik_reset,zx_sync,zx_keyp,zx_keyr,zx_vol,
 			NULL,NULL,&hwq_zx, .sndtake = zx_snd_take, .sndmix = zx_mix};

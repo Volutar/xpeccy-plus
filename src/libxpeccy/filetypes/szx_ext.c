@@ -567,6 +567,7 @@ static const szxField fld_rtc[] = {
 
 // ids of the records
 #define XR_MACH	BID('M','A','C','H')
+#define XR_RAMS	BID('R','A','M','S')	// the RAM's size, of a core that pages by it (the Robik)
 #define XR_CPU	BID('C','P','U',' ')
 #define XR_COMP	BID('C','O','M','P')
 #define XR_VID	BID('V','I','D',' ')
@@ -820,6 +821,11 @@ void szx_ext_save(szxBuf* b, Computer* comp) {
 	ext_put_string(b, comp->hw->name);
 	ext_put_string(b, szx_mac_id);
 	rec_end(b, mark);
+	if (comp->hw->id == HW_ROBIK) {		// 48 or 128 KB: the paging comes with the size
+		rec_begin(b, XR_RAMS, &mark);
+		sb_dword(b, (unsigned)comp->mem->ramSize);
+		rec_end(b, mark);
+	}
 
 	rec_fields(b, XR_CPU, comp->cpu, fld_cpu);
 	rec_fields(b, XR_COMP, comp, fld_comp);
@@ -1003,6 +1009,20 @@ static void ext_mach(const unsigned char* ext, size_t len, char* core, size_t cs
 		}
 		return;
 	}
+}
+
+// the RAM a file's Robik had, 0 if it does not say (a file of before, another machine)
+int szx_ext_ram_size(const unsigned char* file, size_t len) {
+	size_t extlen;
+	size_t pos = 0;
+	unsigned id;
+	const unsigned char* p;
+	size_t n;
+	const unsigned char* ext = ext_of_file(file, len, &extlen);
+	while (ext && ext_next(ext, extlen, &pos, &id, &p, &n)) {
+		if ((id == XR_RAMS) && (n >= 4)) return (int)rd_dword(p);
+	}
+	return 0;
 }
 
 int szx_ext_hardware(const unsigned char* file, size_t len) {

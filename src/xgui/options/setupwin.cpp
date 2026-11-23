@@ -1291,8 +1291,9 @@ void SetupWin::fillPages() {
 		cbStart->setCurrentIndex((conf.macStart == MS_ASK) ? 1 : (conf.macStart == MS_RESUME) ? 2 : 0);
 	}
 	updateMachineButtons();
+	memArmed = false;
 	roms = conf.roms;
-	resTarget = comp->resbank;
+	resTarget = xm_own_reset();		// the machine's own, not one a snapshot set
 	rsmodel->fill(&roms);
 	fillRomSlots();
 	ui.machbox->setCurrentIndex(ui.machbox->findData(QString::fromLocal8Bit(conf.macId.c_str())));
@@ -1300,6 +1301,7 @@ void SetupWin::fillPages() {
 	// the machine's own size: one a snapshot runs it on lasts the session only
 	ui.mszbox->setCurrentIndex(ui.mszbox->findData(xm_own_ram()));
 	if (ui.mszbox->currentIndex() < 0) ui.mszbox->setCurrentIndex(ui.mszbox->count() - 1);
+	memArmed = true;
 	ui.sldSpeed->setMaximum(xspeed_max());	// a board already on turbo has less room
 	ui.sldSpeed->setValue(xspeed_get());
 	ui.sldSpeed->setEnabled(!comp->rzx.play);	// an rzx is tied to the frame it was taken at
@@ -1733,7 +1735,7 @@ void SetupWin::applyMachine() {
 // machine
 	emu_lock();		// roms and memory size are rebuilt below
 	xm_set_roms(roms);
-	comp->resbank = resTarget;
+	xm_set_reset(resTarget);
 	int msz = getRFIData(ui.mszbox);
 	double frq = own ? comp->cpuFrq : xcpu_frq_parse(ui.cbCpuFrq->currentText(), comp->cpuFrq);
 	if (msz != shown.mem) xm_set_ram(msz);
@@ -1750,8 +1752,10 @@ void SetupWin::applyMachine() {
 		comp->vid->cellEdge = edgesBox->currentIndex() ? 1 : 0;
 		comp->hw->mapMem(comp);		// the page out, if the shadow RAM went
 	}
-	// NextZXOS finds the memory at power-on, by a test of its own: off and on again
-	if ((msz != shown.mem) && own) xm_power_cycle();
+	// NextZXOS finds the memory at power-on, by a test of its own: off and on again.
+	// A Robik taken to 128K or back is another board, its ROMs too: the same
+	bool robik128 = (comp->hw->id == HW_ROBIK) && ((msz >= MEM_128K) != (shown.mem >= MEM_128K));
+	if ((msz != shown.mem) && (own || robik128)) xm_power_cycle();
 	emu_unlock();
 // video
 	if (!own) {
@@ -2666,6 +2670,27 @@ void SetupWin::buildDevices() {
 	robikRow(tr("Shadow RAM"), shadowBox, tr("16K of RAM under the ROM, and how it is switched in.\n"
 		"Port #0F (Robik): any OUT or IN on port 15 swaps\nthe two, and a write to the ROM's addresses\n"
 		"lands in the RAM. Not every board has it"));
+	// a board taken to 128K has none here: page 3 is 128K software's, and how such a
+	// board switched one nobody wrote down
+	QString shadowTip = shadowBox->toolTip();
+	QWidget* shadowLab = robikRows[robikRows.size() - 3];
+	connect(ui.mszbox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, shadowTip, shadowLab, was = -1](int) mutable {
+		int now = getRFIData(ui.mszbox);
+		bool fits = now < MEM_128K;
+		// the user taking the Robik to 128K or back: the other board boots its own ROM,
+		// the 128 menu or 48 BASIC (the page filling the list is no such change)
+		bool robik = conf.zx && (conf.zx->hw->id == HW_ROBIK);
+		if (robik && memArmed && (was >= 0) && (now >= 0) && ((was < MEM_128K) != fits))
+			resTarget = fits ? RES_48 : RES_128;
+		was = now;
+		QString tip = fits ? shadowTip : shadowTip + "\n\n" + tr("Not with 128 KB: how such a board\nswitched it is not known");
+		shadowBox->setEnabled(fits);
+		shadowLab->setEnabled(fits);
+		shadowBox->setToolTip(tip);
+		shadowLab->setToolTip(tip);
+		if (robik)
+			fillRomSlots();		// which ROM boots goes with the size
+	});
 	brightBox = devCombo(QStringList() << tr("All bright") << tr("Two levels"));
 	robikRow(tr("BRIGHT"), brightBox, tr("All bright: every color bright, as the factory board\n"
 		"shows it. Two levels: as a 48K, with the owners' jumper"));
@@ -3325,8 +3350,10 @@ void SetupWin::fillRomSlots() {
 	int hw = conf.zx->hw->id;
 	bool resets = false;
 	int row = 0;
+	// what boots goes with the size as picked here (the Robik's own ROM at 48 KB)
+	int ram = getRFIData(ui.mszbox);
 	for (int i = 0; i < mac->romBanks; i++) {
-		xRomRole role = hw_rom_role(hw, i);
+		xRomRole role = hw_rom_role_ram(hw, (ram > 0) ? ram : conf.zx->mem->ramSize, i);
 		QString name = QString("ROM %0").arg(i);
 		if (role.name) name += QString(" (%0)").arg(role.name);
 		QRadioButton* rb = NULL;
@@ -3587,6 +3614,8 @@ void SetupWin::setmszbox(int idx) {
 	int t = 0;
 	int size = xm_ram_size(std::string(ui.machbox->itemData(idx).toString().toLocal8Bit().data()), &t);
 	if (!t) return;
+	bool armed = memArmed;		// the list refilled is not the user's pick
+	memArmed = false;
 	ui.mszbox->clear();
 	idx = 0;
 	while (memNameTab[idx].mask > 0) {
@@ -3597,6 +3626,7 @@ void SetupWin::setmszbox(int idx) {
 		idx++;
 	}
 	ui.mszbox->setCurrentIndex(ui.mszbox->findData(size));
+	memArmed = armed;
 }
 
 // hobeta header crc = ((105 + 257 * std::accumulate(data, data + 15, 0u)) & 0xffff))

@@ -314,7 +314,7 @@ xlog(XLG_FILE, XLL_DEBUG, ".z80 version 2");
 		// a 48K has no paging, and byte 35 means nothing there: taking it
 		// as 7ffd would put the 128 rom in on a machine that has one
 		if (hw == SNAP_HW_48K) pg = 0x10;
-		if ((p1ffd >= 0) && z80_hw(hw)->p1ffd && snapHwRuns(hw, comp->hw->id, comp->snapModel))
+		if ((p1ffd >= 0) && z80_hw(hw)->p1ffd && snapHwRuns(hw, comp->hw->id, comp->snapModel, comp->mem->ramSize))
 			comp->hw->out(comp, 0x1ffd, p1ffd);
 		else
 			snap_plus3_basic48(comp, hw, pg);
@@ -440,6 +440,8 @@ int saveZ80(Computer* comp, const char* name, int drv) {
 	int snap = z80_snap_hw(comp->hw->id);
 	if ((snap == SNAP_HW_128K) && (comp->snapModel == SNAP_HW_PLUS2))
 		snap = SNAP_HW_PLUS2;		// the same core, the definition tells them apart
+	if ((comp->hw->id == HW_ROBIK) && (comp->mem->ramSize >= MEM_128K))
+		snap = SNAP_HW_PENTAGON;	// one taken to 128K has the Pentagon 128's paging and ROMs
 	if (snap == SNAP_HW_UNKNOWN) return ERR_Z80_HW;
 	const z80Hardware* hwi = z80_hw(snap);
 	FILE* file = fopen(name, "wb");

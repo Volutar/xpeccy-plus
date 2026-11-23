@@ -276,7 +276,7 @@ static const struct {
 };
 
 static QString mac_key_place(const QString& key, QString* sect) {
-	if (key.startsWith("rom")) {		// rom0..rom3, rom.gs, rom.font
+	if (key.startsWith("rom")) {		// rom0..rom4, rom.gs, rom.font
 		*sect = "rom";
 		return key.startsWith("rom.") ? key.mid(4) : key;
 	}
@@ -506,7 +506,7 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if ((nam == "joy.buttons") && (mac.joy != MAC_JOY_NONE)) mac.joy = arg.b ? MAC_JOY_KEMPSTON8 : MAC_JOY_KEMPSTON;
 			else if (nam == "kbd.scantab") mac.scantab = mac_word(scanTab, val, 0, id);
 		} else if (ln.sect == "rom") {
-			if (nam == "banks") mac.romBanks = toLimits(arg.i, 1, 4);
+			if (nam == "banks") mac.romBanks = toLimits(arg.i, 1, ROM_ROLE_BANKS);
 			else if (nam == "gs") mac.roms.gsFile = val;
 			else if (nam == "font") mac.roms.fntFile = val;
 			else if ((nam.compare(0, 3, "rom") == 0) && isdigit(nam[3]))
@@ -1128,7 +1128,7 @@ QList<int> xm_reset_targets() {
 	int hw = conf.zx->hw->id;
 	QVector<int> cover = xm_rom_cover(conf.roms, mac->romBanks);
 	for (int i = 0; i < mac->romBanks; i++) {
-		xRomRole role = hw_rom_role(hw, i);
+		xRomRole role = hw_rom_role_ram(hw, conf.zx->mem->ramSize, i);
 		if (role.res < 0) continue;
 		bool own = false;
 		foreach(xRomFile rf, conf.roms.roms) {
@@ -1142,7 +1142,7 @@ QList<int> xm_reset_targets() {
 }
 
 QString xm_reset_name(int res) {
-	int bank = conf.zx ? hw_reset_bank(conf.zx->hw->id, res) : -1;
+	int bank = conf.zx ? hw_reset_bank_ram(conf.zx->hw->id, conf.zx->mem->ramSize, res) : -1;
 	const char* nam = (bank < 0) ? NULL : hw_rom_role(conf.zx->hw->id, bank).name;
 	return nam ? QString(nam) : QString();
 }
@@ -1252,8 +1252,10 @@ static const struct {
 };
 
 // The RAM the machine file gives, which xm_save_over writes: a snapshot may run the
-// machine on another size for the session (a Next's SZX of 1 MB on a 2 MB Next)
+// machine on another size for the session (a Next's SZX of 1 MB on a 2 MB Next), and
+// the boot target with it (a Robik's of the other size). -1: none set, the machine's
 static int macRam = 0;
+static int macRes = -1;
 
 int xm_set_hardware(std::string nm) {
 	for (int i = 0; hwAliasTab[i].oldName; i++) {
@@ -1264,6 +1266,7 @@ int xm_set_hardware(std::string nm) {
 	}
 	int res = compSetHardware(conf.zx, nm.empty() ? NULL : nm.c_str());
 	macRam = conf.zx->mem->ramSize;		// the board as it comes, until a size is set
+	macRes = -1;
 	return res;
 }
 
@@ -1272,6 +1275,15 @@ int xm_set_hardware(std::string nm) {
 
 int xm_own_ram() {
 	return macRam ? macRam : conf.zx->mem->ramSize;
+}
+
+int xm_own_reset() {
+	return (macRes >= 0) ? macRes : conf.zx->resbank;
+}
+
+void xm_set_reset(int res) {
+	conf.zx->resbank = res;
+	macRes = res;
 }
 
 void xm_set_ram(int size) {
@@ -1449,7 +1461,7 @@ static void mac_from_def(const xMachine* mac) {
 	xspeed_modes_off();
 	xm_set_ram(mac_ram_size(mac->memory, comp->hw->mask));
 	mac_cold_ram(comp, mac->ramCold, mac->ramNoise);
-	comp->resbank = mac->resbank;
+	xm_set_reset(mac->resbank);
 	comp->flgGLUK = xm_gluk_fitted(comp, mac, mac->clock);
 	comp->snapModel = mac->snapModel;
 	comp->earback = mac->earback;
@@ -1753,7 +1765,7 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put(out, "cpu.frq", int(comp->cpuFrq * 1e6), mac->cpufrq);
 	mac_put(out, "cpu.turbo", mac_turbo_str(comp->turboTab, comp->turboCount), mac->turboSteps);
 	mac_put(out, "memory", mac_ram_kb(macRam ? macRam : comp->mem->ramSize, comp->hw->mask), mac->memory);
-	mac_put(out, "reset", mac_word_name(resetTab, comp->resbank), mac_word_name(resetTab, mac->resbank));
+	mac_put(out, "reset", mac_word_name(resetTab, xm_own_reset()), mac_word_name(resetTab, mac->resbank));
 	if (hw_takes_gluk(comp->hw) && !(mac->builtin & MAC_BI_CLOCK))	// one on the board is no choice
 		mac_put(out, "clock", mac_word_name(clockTab, comp->flgGLUK ? MAC_CLOCK_GLUK : MAC_CLOCK_NONE),
 			mac_word_name(clockTab, mac->clock));
@@ -2241,11 +2253,12 @@ static void mac_set_old_key(int sect, const std::string& nam, const std::string&
 		case PS_ROMSET:
 			if (nam == "current") oldRomset = val;
 			else if (nam == "reset") {
-				comp->resbank = RES_48;
-				if ((val == "basic128") || (val == "0")) comp->resbank = RES_128;
-				if ((val == "basic48") || (val == "1")) comp->resbank = RES_48;
-				if ((val == "shadow") || (val == "2")) comp->resbank = RES_SHADOW;
-				if ((val == "dos") || (val == "3")) comp->resbank = RES_DOS;
+				int res = RES_48;
+				if ((val == "basic128") || (val == "0")) res = RES_128;
+				if ((val == "basic48") || (val == "1")) res = RES_48;
+				if ((val == "shadow") || (val == "2")) res = RES_SHADOW;
+				if ((val == "dos") || (val == "3")) res = RES_DOS;
+				xm_set_reset(res);		// the machine's own, as the file will hold it
 			}
 			break;
 		case PS_VIDEO:

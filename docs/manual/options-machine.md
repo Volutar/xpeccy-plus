@@ -55,7 +55,7 @@ Esc) puts back what it showed when it opened.
 | | **Clock** | Pentagon, Pentagon 1024 SL and ZXM-Phoenix only: **None** or **Gluk**, the clock chip Gluk Reset Service shows (see [The Gluk clock](#the-gluk-clock)); on the Pentagon 1024 SL and the ZXM-Phoenix it is part of the board |
 | | **ESP UART** | ZX Spectrum Next only: **Not connected**, **ESP-01 (emulated)** - the Wi-Fi module with Espressif's AT firmware 1.7.6, on this computer's network - or a serial port of this computer with a real module on it. In its window, **Server on the network** lets other computers reach a server the module opens, and a UDP link's own port; off, only this computer reaches the server, at 127.0.0.1, and a UDP link hears only whom it sent to. On, Windows asks once whether to let Xpeccy+ through its firewall |
 | | **Pi UART** | ZX Spectrum Next only: a serial port of this computer for the Pi's UART |
-| | **Shadow RAM** | Robik only: the 16 KB under the ROM and how it is switched in - **Off**, or **Port #0F (Robik)**: any IN or OUT on port 15 swaps it with the ROM (see [Robik](machines.md#robik)) |
+| | **Shadow RAM** | Robik only: the 16 KB under the ROM and how it is switched in - **Off**, or **Port #0F (Robik)**: any IN or OUT on port 15 swaps it with the ROM (see [Robik](machines.md#robik)); grayed with 128 KB |
 | | **BRIGHT** | Robik only: **All bright**, the factory board, or **Two levels**, BRIGHT wired by the owners' jumper |
 | | **Cell edges** | Robik only: **Off** or **On**, the thin line where a character cell's colors change |
 
