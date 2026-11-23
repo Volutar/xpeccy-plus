@@ -93,6 +93,15 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **Shaders start without a wait**: a compiled shader is kept between runs, and one that has
+  to be compiled is built beside the picture. A shader that does not compile stays chosen:
+  Options > Video shows the first error and its line under the Shader list, a click opens
+  all of them. No message on the picture when a shader is picked.
+
+- **A shader file can hold several passes**, with parameters, textures, earlier frames and
+  its own last output, under the names RetroArch's slang shaders use:
+  `config/shaders/README.md`. For shader authors; the format may still change.
+
 - **A ZX Spectrum Next program starts whatever card is in the slot**: a `.nex` or `.snx`
   runs on a card of its own, System/Next and the program's folder, with an image card, a
   folder or none. What it saves goes into its folder. Eject puts your card back.
@@ -145,6 +154,9 @@ before that point is upstream's history and is not repeated here.
   side. *(reported by Volutar)*
 
 ### Fixed
+
+- **Linux: the zx-rf-artifact shader** works with Mesa drivers, and the aperture grille and
+  shadow mask shaders with OpenGL ES.
 
 - **The virtual keyboard fills its window** at every size: at some widths a dark line ran
   down its right edge.
