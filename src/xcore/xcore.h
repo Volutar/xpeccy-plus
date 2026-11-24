@@ -1154,6 +1154,7 @@ struct xConfig {
 		std::string shdPreset;	// the shader's preset: one of the file's, or a user's .preset by name; see xgui/displaylook.h
 		int shdTiming;		// sheets of knobs shown: the chain is timed for them...
 		double shdGpuUs;	// ...and this is what a paint of the look takes, us; below 0: not known
+		int shdRaw;		// the look in use takes frames unmixed: antiflicker is its own to do
 		std::string shdError;	// the last shader load's errors, a line each; empty: it loaded. Not saved
 		int shd_support;
 		int gl;			// the picture goes through OpenGL: decided at start, see gl_probe

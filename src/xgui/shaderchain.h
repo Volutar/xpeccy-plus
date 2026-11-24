@@ -107,6 +107,8 @@ struct xShdPreset {
 	QString file;			// its name, for messages
 	bool legacy = true;		// no pass line: one vertex and one fragment section, as ever
 	QString title;			// its `name` line: what the lists show
+	bool raw = false;		// its `frames raw` line: frames are wanted before antiflicker mixes them
+	QString rawWhen;		// ...while this parameter is not 0; empty: always
 	QVector<xShdSet> sets;		// its `preset` lines
 	QVector<xShdParam> params;
 	QVector<xShdTexture> textures;
@@ -224,6 +226,8 @@ class xShaderChain : protected QOpenGLExtraFunctions {
 		void builtin(xGlProgram& p, const QByteArray& vtx, const QByteArray& frg);
 		// parameters by name
 		bool setParam(const QString& name, float value);
+		// the chain wants its frames unmixed now (`frames raw`, its parameter not 0)
+		bool rawFrames() const;
 		const QVector<xShdParam>& params() const {return preset.params;}
 		// GPU time: asked for, the passes and the window's own segments are timed
 		void timing(bool on);

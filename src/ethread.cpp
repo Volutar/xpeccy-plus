@@ -74,6 +74,8 @@ static xFrameNums shownNums;
 // 5 dots, 5/8 too - by arithmetic, its divider not read from the schematic yet. A 48K
 // has a crystal for each, and a machine with no encoder gets an outside one on its
 // own crystal: the carrier runs free of the dots.
+static double frameBlend = 0.0;		// of the frame being finished, see the mixing
+
 static void frame_nums(Computer* comp, xFrameNums* n) {
 	Video* vid = comp->vid;
 	n->frame = comp->frmCount - 1;		// the frame that has ended: it is counted by now
@@ -84,6 +86,7 @@ static void frame_nums(Computer* comp, xFrameNums* n) {
 	const int id = comp->hw ? comp->hw->id : HW_NULL;
 	n->locked = (id == HW_ZX128) || (id == HW_PLUS2A) || (id == HW_PLUS3);
 	n->carrier = n->locked ? 0.625 : 4433618.75 * vid->nsPerDotExact * 1e-9;
+	n->blend = frameBlend;
 }
 
 // fast mode and fast forward make frames far quicker than anyone looks at them
@@ -659,7 +662,7 @@ static int ra_frames(Computer* comp, int* shown) {
 	if (conf.emu.tmode == XTM_FFWD) return *shown = 0;
 	int r = comp->rzx.play ? 0 : conf.emu.runahead;
 	int l = 0;
-	if (!conf.emu.fast && (noflic > 0) && noflicAhead && !frame_skipping()
+	if (!conf.emu.fast && (noflic > 0) && noflicAhead && !frame_skipping() && !conf.vid.shdRaw
 			&& ((noflicMode == AF_2C_ADAPTIVE) || (noflicMode == AF_3C_ADAPTIVE))
 			&& (comp->hw->id != HW_ZXNEXT))		// too dear there
 		l = AF_AHEAD;
@@ -1054,7 +1057,12 @@ void xThread::emuCycle(Computer* comp) {
 			// fast forward's undrawn frames are not mixed, and its drawn ones follow on;
 			// while Frame skip leaves frames out the host is short anyway: no mixing
 			int ffwd = fast_ffwd_frame();
-			if (!conf.emu.fast && (noflic > 0) && (ffwd >= 0) && !frame_skipping()) {
+			// A look that models the signal takes the frames as the machine made them -
+			// a program that swaps two screens for the color carrier would reach it grey -
+			// and is told how strong a mix it is to make of its own
+			const bool mixing = !conf.emu.fast && (noflic > 0) && (ffwd >= 0) && !frame_skipping();
+			frameBlend = (mixing && conf.vid.shdRaw) ? noflic / 100.0 : 0.0;
+			if (mixing && !conf.vid.shdRaw) {
 				const uint32_t* ahead = ahead_ok ? af_look_ahead(comp, shown + 1, k - shown) : NULL;
 				scrMix(pscr, (unsigned char*)af_crop(comp->vid),
 					comp->vid->vsze.x * 2, comp->vid->vsze.y, bytesPerLine,

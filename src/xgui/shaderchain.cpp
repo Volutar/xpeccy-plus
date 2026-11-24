@@ -412,9 +412,16 @@ bool headLine(const QString& lin, int n, xShdPreset& out, HeadNotes& head) {
 	static const QRegularExpression reText(QStringLiteral(R"re(^(tip|list)\s+([A-Za-z_]\w*)\s*=\s*(.+)$)re"));
 	static const QRegularExpression reMore(QStringLiteral(R"re(^more((?:\s+[A-Za-z_]\w*)+)\s*$)re"));
 	static const QRegularExpression reSet(QStringLiteral(R"re(^preset\s+"([^"]+)"\s*:\s*(.*)$)re"));
+	static const QRegularExpression reRaw(QStringLiteral(R"re(^frames\s+raw(?:\s+when\s+([A-Za-z_]\w*))?\s*$)re"));
 	QRegularExpressionMatch m = reName.match(lin);
 	if (m.hasMatch()) {
 		out.title = m.captured(1);
+		return true;
+	}
+	m = reRaw.match(lin);
+	if (m.hasMatch()) {
+		out.raw = true;
+		out.rawWhen = m.captured(1);
 		return true;
 	}
 	m = reGroup.match(lin);
@@ -851,7 +858,7 @@ enum {
 	K_FRAMECOUNT, K_DIRECTION, K_SUBFRAME, K_SUBFRAMES,
 	K_MVP,
 	K_RUBY_INPUT, K_RUBY_TEXTURE, K_RUBY_OUTPUT, K_SMOOTH, K_PLACE, K_WIDE,
-	K_XP_PICTURE, K_XP_WINDOW, K_XP_RASTER, K_XP_CARRIER, K_XP_FRAME,
+	K_XP_PICTURE, K_XP_WINDOW, K_XP_RASTER, K_XP_CARRIER, K_XP_FRAME, K_XP_BLEND,
 	K_PARAM
 };
 
@@ -871,7 +878,7 @@ const FixedName kFixed[] = {
 	{"rubyInputSize", K_RUBY_INPUT}, {"rubyTextureSize", K_RUBY_TEXTURE}, {"rubyOutputSize", K_RUBY_OUTPUT},
 	{"u_smooth", K_SMOOTH}, {"u_place_", K_PLACE}, {"xpWide", K_WIDE},
 	{"xpPicture", K_XP_PICTURE}, {"xpWindow", K_XP_WINDOW}, {"xpRaster", K_XP_RASTER},
-	{"xpCarrier", K_XP_CARRIER}, {"xpFrame", K_XP_FRAME},
+	{"xpCarrier", K_XP_CARRIER}, {"xpFrame", K_XP_FRAME}, {"xpBlend", K_XP_BLEND},
 };
 
 // "PassOutput3" or "PassOutput3Size" under the prefix "PassOutput": the number, and whether a size
@@ -902,7 +909,7 @@ GLenum kindType(int kind) {
 			return GL_INT;
 		case K_MVP:
 			return GL_FLOAT_MAT4;
-		case K_WIDE: case K_PARAM:
+		case K_WIDE: case K_XP_BLEND: case K_PARAM:
 			return GL_FLOAT;
 	}
 	return 0;
@@ -1065,6 +1072,14 @@ void xShaderChain::refreshOn() {
 		passes[i].on = passOn(i);
 }
 
+bool xShaderChain::rawFrames() const {
+	if (!preset.raw || passes.empty()) return false;
+	if (preset.rawWhen.isEmpty()) return true;
+	for (const xShdParam& p : preset.params)
+		if (p.name == preset.rawWhen) return p.value != 0.0f;
+	return false;
+}
+
 bool xShaderChain::setParam(const QString& name, float value) {
 	for (xShdParam& p : preset.params) {
 		if (p.name != name) continue;
@@ -1105,7 +1120,7 @@ QByteArray xShaderChain::preamble(int i, bool vertex) {
 		"uniform uint FrameCount;\nuniform int FrameDirection;\n"
 		"uniform uint CurrentSubFrame;\nuniform uint TotalSubFrames;\n"
 		"uniform vec4 xpPicture;\nuniform vec2 xpWindow;\nuniform vec4 xpRaster;\n"
-		"uniform vec4 xpCarrier;\nuniform int xpFrame;\nuniform float xpWide;\n";
+		"uniform vec4 xpCarrier;\nuniform int xpFrame;\nuniform float xpWide;\nuniform float xpBlend;\n";
 	for (const xShdParam& p : preset.params)
 		s += QString("uniform float %1;\n").arg(p.name);
 	if (vertex)
@@ -1578,6 +1593,7 @@ void xShaderChain::apply(const std::vector<Bind>& binds, int pass, const xChainF
 				break;
 			}
 			case K_XP_FRAME: glUniform1i(b.loc, m.frame); break;
+			case K_XP_BLEND: glUniform1f(b.loc, GLfloat(m.blend)); break;
 			case K_PARAM: glUniform1f(b.loc, preset.params[b.index].value); break;
 		}
 	}

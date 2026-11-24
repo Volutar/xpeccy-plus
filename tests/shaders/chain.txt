@@ -11,6 +11,8 @@
 
 #pragma parameter TRAIL "Trail length" 0.70 0.0 0.99 0.01
 #pragma parameter GRIDON "Grid pass" 1.0 0.0 1.0 1.0
+#pragma parameter RAW "Frames unmixed" 0.0 0.0 1.0 1.0
+frames raw when RAW
 texture GRID = grid.png nearest repeat
 
 common:
@@ -80,6 +82,7 @@ fragment:
 		if (n == 8) return FrameCount & 65535u;			// paints
 		if (n == 9) return uint(OriginalSize.x);		// the frame's texels across
 		if (n == 10) return uint(FinalViewportSize.x);		// the picture's pixels across
+		if (n == 11) return uint(xpBlend * 100.0 + 0.5);	// antiflicker left to the chain, per cent
 		return 0u;
 	}
 
@@ -87,7 +90,7 @@ fragment:
 		vec3 c = src(vTexCoord);
 		vec2 p = gl_FragCoord.xy - xpPicture.xy;
 		ivec2 cell = ivec2(floor(p / 8.0));
-		if ((p.x >= 0.0) && (p.y >= 0.0) && (cell.x < 16) && (cell.y < 11)) {
+		if ((p.x >= 0.0) && (p.y >= 0.0) && (cell.x < 16) && (cell.y < 12)) {
 			vec2 f = p - vec2(cell) * 8.0;
 			bool on = ((row(cell.y) >> uint(15 - cell.x)) & 1u) != 0u;
 			if ((f.x >= 1.0) && (f.y >= 1.0)) c = on ? vec3(1.0, 1.0, 0.0) : vec3(0.0, 0.0, 0.5);
