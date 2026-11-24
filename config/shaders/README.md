@@ -48,18 +48,26 @@ at 0, when its pass is not drawn at all.
 | Mask | aperture grille, slot mask or shadow mask, as fine as the tube: triads to a dot of the picture |
 | Glow | light around bright things |
 | Afterglow | a lit dot fades over the next frames, blue first |
-| Signal | a ghost beside the picture, interference, noise |
+| Signal | the cable - RGB, composite or RF: a PAL picture made and decoded by the machine's own color carrier; a ghost, interference, noise |
 | Screen | curvature, round corners, vignette, brightness, contrast |
 
 The mask is drawn in whole screen pixels and thins out by itself as the picture gets
 smaller; a small picture has no curve. What the scanlines and the mask take is given back.
 
+With Input at Composite or RF each line is coded as a PAL encoder does it - luma with
+the color on a carrier, by `xpCarrier` and `xpRaster` - and decoded as a set does: the
+color low-passed and averaged with the line above, the luma less a band around the
+carrier. So fine black and white patterns take on color and color edges crawl; a 128K's
+carrier is locked to its dots and its patterns stand (Phase picks one of the 8 ways it
+can lock at power-on), a 48K's runs free and they move. Such a look takes the frames
+before Anti-flicker mixes them and mixes them itself, after decoding.
+
 | Preset | Look |
 | --- | --- |
-| Home TV | a 14" set: a coarse slot mask, a soft beam, glow, a bulging screen |
+| Home TV | a 14" set on the aerial cable: a coarse slot mask, a soft beam, glow, a bulging screen |
 | RGB monitor | the Commodore 1084S: a finer slot mask, a sharp beam, a slight curve |
 | PVM | a broadcast monitor: aperture grille, the sharpest beam, flat |
-| Xpixie | soft and glowing, with afterglow, a ghost and noise |
+| Xpixie | soft and glowing, over composite, with afterglow, a ghost and noise |
 
 The two-pass beam follows Hyllian's CRT (MIT); the mask layouts Timothy Lottes's and
 hunterk's (public domain); the beams' parting towards the edges is Volutar's; the ghost,

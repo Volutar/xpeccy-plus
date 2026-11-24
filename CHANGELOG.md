@@ -25,6 +25,11 @@ before that point is upstream's history and is not repeated here.
   the mask as fine as the tube's own and thinning out as the picture gets smaller. A new
   installation starts with RGB monitor. *(beam divergence by Volutar)*
 
+- **Composite and RF input** for the CRT looks: a PAL picture by the machine's own color
+  carrier. Fine patterns take on color, color edges crawl on a 48K and stand on a 128K,
+  and programs that draw with it - Chromatrons Attack - show their picture, with
+  Anti-flicker on too. Home TV is on RF, Xpixie on composite.
+
 - **The older shader files are the tube now**: the aperture grille and shadow mask looks,
   TV lines, monitor-1084 and pvm-sharp open the tube set to stand for each. An old file
   put into `config/shaders` still works.
