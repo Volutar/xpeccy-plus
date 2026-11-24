@@ -54,16 +54,16 @@ tip DIVBX = Dots, at the screen's edge
 tip DIVBY = Lines, at the screen's edge
 more DIVMID DIVRX DIVRY DIVBX DIVBY
 
-group "Mask"
-#pragma parameter MASK "Type" 1 0 3 1
-list MASK = None, Aperture grille, Slot mask, Shadow mask
+group "Mask" when MASKS 0.4
+#pragma parameter MASK "Type" 1 1 3 1
+list MASK = Aperture grille, Slot mask, Shadow mask
 #pragma parameter MASKS "Strength" 0.4 0.0 1.0 0.05
 tip MASKS = How much the mask holds back between its openings
 #pragma parameter PITCH "Fineness" 1.5 0.5 3.5 0.1
 tip PITCH = Triads of the mask to a dot of the picture
-#pragma parameter MBEND "On the glass" 0 0 1 1
-list MBEND = Off, On
-tip MBEND = The mask bends with a curved screen
+#pragma parameter MBEND "On the glass" 0 0 2 1
+list MBEND = Auto, Off, On
+tip MBEND = The mask bends with a curved screen. Auto: where a triad has pixels enough
 more MBEND
 
 group "Glow" when GLOW 0.3
@@ -92,7 +92,7 @@ more GHOSTX
 
 group "Screen"
 #pragma parameter CURVE "Curvature" 0.0 0.0 0.15 0.005
-tip CURVE = How much the screen bulges. 0: flat
+tip CURVE = How much the screen bulges. A small picture stays flat
 #pragma parameter CORNER "Corners" 0.0 0.0 0.1 0.005
 tip CORNER = How round the screen's corners are
 #pragma parameter VIGN "Vignette" 0.0 0.0 1.0 0.05
@@ -107,7 +107,7 @@ more CURVEX CURVEY
 preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.5, WIDTH 0.9, FOCUS 0.35, GROW 0.8, DIVERGE 0.5, GLOW 0.3, CURVE 0.05, CORNER 0.03, VIGN 0.25
 preset "RGB monitor": MASK 2, MASKS 0.45, PITCH 1.9, SCAN 0.6, WIDTH 0.55, FOCUS 0.6, GROW 0.7, DIVERGE 0.2, GLOW 0.05, CURVE 0.04, CORNER 0.02, VIGN 0.1
 preset "PVM": MASK 1, MASKS 0.5, PITCH 3.0, SCAN 0.8, WIDTH 0.8, FOCUS 0.8, GROW 0.7, DIVERGE 0.15
-preset "Pixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.35, WIDTH 1.0, FOCUS 0.3, DIVERGE 0.6, DIVMID 1.0, GLOW 0.3, AFTER 0.5, GHOST 0.5, NOISE 0.5, CURVE 0.06, CORNER 0.04, VIGN 0.5
+preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.35, WIDTH 1.0, FOCUS 0.3, DIVERGE 0.45, DIVMID 1.0, GLOW 0.3, AFTER 0.5, GHOST 0.4, NOISE 0.5, CURVE 0.06, CORNER 0.04, VIGN 0.5
 
 common:
 	// a mix's share snapped at its ends: in linear light a thousandth of white over
@@ -154,37 +154,38 @@ fragment:
 	// A dot's light spreads along the line as a raised cosine of radius r texels. This is
 	// its integral taken twice: the light, left of t, of an edge at 0 lit to its right,
 	// summed again over a stretch that ends at t. r = 0 is a hard edge.
-	float spread(float t, float r) {
-		float c = clamp(t, -r, r);
-		float v = 0.5 * c + c * c / (4.0 * r) - r * cos(PI * c / r) / (2.0 * PI * PI) + 0.25 * r - r / (2.0 * PI * PI);
+	vec3 spread(vec3 t, float r) {
+		vec3 c = clamp(t, -r, r);
+		vec3 v = 0.5 * c + c * c / (4.0 * r) - r * cos(PI * c / r) / (2.0 * PI * PI) + 0.25 * r - r / (2.0 * PI * PI);
 		return v + max(t - r, 0.0);
 	}
 
-	// the light of the screen pixel that stands at x texels along this line
-	vec3 lit(float x) {
+	// The light of the screen pixel that stands at x texels along this line; each color's
+	// beam lands at texels off its place, a dot spreads r texels. One walk along the
+	// texels for the three: a texel is read once, each color takes its own share of it
+	vec3 lit(float x, vec3 at, float r) {
 		float foot = SourceSize.x * OutputSize.z;		// a screen pixel, in texels
-		float from = x - 0.5 * foot;
-		float to = x + 0.5 * foot;
-		float r = max((1.0 - FOCUS) * 3.0, 0.0001);
+		vec3 from = x + at - 0.5 * foot;
+		vec3 to = from + foot;
 		int row = int(vTexCoord.y * SourceSize.y);
-		int first = int(floor(from - r));
+		int first = int(floor(min(from.r, min(from.g, from.b)) - r));
 		int last = int(SourceSize.x) - 1;
+		float end = max(to.r, max(to.g, to.b)) + r;
 		// each texel's share of the pixel: what its left edge lights less what its right does
-		float left = spread(to - float(first), r) - spread(from - float(first), r);
+		vec3 left = spread(to - float(first), r) - spread(from - float(first), r);
 		vec3 sum = vec3(0.0);
-		float all = 0.0;
-		for (int n = 0; n < 11; n++) {
+		vec3 all = vec3(0.0);
+		for (int n = 0; n < 24; n++) {
 			// past the pixel and the dot's spread nothing is left
-			if (float(first + n) >= to + r) break;
-			float right = spread(to - float(first + n + 1), r) - spread(from - float(first + n + 1), r);
-			float w = max((left - right) / foot - 0.0005, 0.0);
+			if (float(first + n) >= end) break;
+			vec3 right = spread(to - float(first + n + 1), r) - spread(from - float(first + n + 1), r);
+			vec3 w = max((left - right) / foot - 0.0005, vec3(0.0));
 			left = right;
-			if (w <= 0.0) continue;
 			vec3 c = texelFetch(Source, ivec2(clamp(first + n, 0, last), row), 0).rgb;
 			sum += pow(c, vec3(2.2)) * w;
 			all += w;
 		}
-		return sum / max(all, 0.0001);
+		return sum / max(all, vec3(0.0001));
 	}
 
 	void main() {
@@ -196,14 +197,17 @@ fragment:
 			x += WIGGLE * 0.0012 * SourceSize.x
 				* sin(0.1 * t + y * 13.0) * sin(0.23 * t + y * 19.0) * sin(0.3 + 0.11 * t + y * 23.0);
 		}
-		vec3 col = lit(x);
+		float r = max((1.0 - FOCUS) * 3.0, 0.0001);
+		vec3 at = vec3(0.0);
 		if (DIVERGE > 0.0) {
 			// two texels a dot
-			col.r = lit(x + 2.0 * parting(vTexCoord, vec2(DIVRX, DIVRY)).x).r;
-			col.b = lit(x + 2.0 * parting(vTexCoord, vec2(DIVBX, DIVBY)).x).b;
+			at.r = 2.0 * parting(vTexCoord, vec2(DIVRX, DIVRY)).x;
+			at.b = 2.0 * parting(vTexCoord, vec2(DIVBX, DIVBY)).x;
 		}
-		// the ghost: the picture once more, faint, to the right
-		if (GHOST > 0.0) col += GHOST * 0.15 * lit(x - GHOSTX * 0.01 * SourceSize.x);
+		vec3 col = lit(x, at, r);
+		// the ghost: the picture once more to the right, faint and out of focus - a glow
+		// that stands aside, not a second picture
+		if (GHOST > 0.0) col += GHOST * 0.15 * lit(x - GHOSTX * 0.01 * SourceSize.x, vec3(0.0), 4.0);
 		FragColor = vec4(pow(min(col, vec3(1.0)), vec3(1.0 / 2.2)), 1.0);
 	}
 
@@ -278,17 +282,18 @@ fragment:
 
 	// ...and down to u anywhere, for a line of the strength amp: from tc to 1 - tc it
 	// is flat - out of the dip, or where it would pass full light
-	vec3 light(vec3 amp, vec3 tc, float u, vec3 depth, float width) {
+	// atTc: dip() at tc
+	vec3 light(vec3 amp, vec3 tc, vec3 atTc, float u, vec3 depth, float width) {
 		vec3 uu = vec3(u);
 		vec3 head = amp * dip(min(uu, tc), depth, width);
 		vec3 flat_ = min(amp, vec3(1.0)) * clamp(uu - tc, vec3(0.0), 1.0 - 2.0 * tc);
-		vec3 tail = amp * (dip(tc, depth, width) - dip(clamp(1.0 - uu, vec3(0.0), tc), depth, width));
+		vec3 tail = amp * (atTc - dip(clamp(1.0 - uu, vec3(0.0), tc), depth, width));
 		return head + flat_ + tail;
 	}
 
-	vec2 warp(vec2 uv) {
+	vec2 warp(vec2 uv, float bend) {
 		vec2 p = uv * 2.0 - 1.0;
-		p *= vec2(1.0 + p.y * p.y * CURVE * CURVEX, 1.0 + p.x * p.x * CURVE * CURVEY);
+		p *= vec2(1.0 + p.y * p.y * bend * CURVEX, 1.0 + p.x * p.x * bend * CURVEY);
 		return p * 0.5 + 0.5;
 	}
 
@@ -296,19 +301,22 @@ fragment:
 		return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 	}
 
-	// What the mask lets through at a screen pixel, for each color, and how much of the
-	// light it lets through over all (what is given back). scale: screen pixels a dot
-	vec3 mask(vec2 px, float scale, out float mean) {
-		mean = 1.0;
-		if (MASK == 0.0) return vec3(1.0);
-		// A triad is as wide as the tube's fineness makes it, in whole stripes of screen
-		// pixels: red, green and blue, each n wide. With under two and a half pixels to
-		// a triad there is no room for three: two colors a pair, magenta and green
+	// A triad is as wide as the tube's fineness makes it, in whole stripes of screen
+	// pixels: red, green and blue, each n wide. With under two and a half pixels to a
+	// triad there is no room for three: two colors a pair, magenta and green.
+	// scale: screen pixels a dot. Returns the triad's width
+	float triad(float scale, out bool pair, out float n) {
 		float room = scale / PITCH;
-		bool pair = (room < 2.5);
-		float n = max(1.0, floor(room / 3.0 + 0.5));
+		pair = (room < 2.5);
+		n = max(1.0, floor(room / 3.0 + 0.5));
+		return pair ? 2.0 : 3.0 * n;
+	}
+
+	// What the mask lets through at a screen pixel, for each color, and how much of the
+	// light it lets through over all (what is given back)
+	vec3 mask(vec2 px, float cell, bool pair, float n, out float mean) {
+		mean = 1.0;
 		float dark = 1.0 - MASKS;
-		float cell = pair ? 2.0 : 3.0 * n;		// a triad's width
 		float x = px.x;
 		float gap = 1.0;				// the slot's bar between two openings
 		if (MASK == 2.0) {
@@ -340,8 +348,12 @@ fragment:
 		// the curve is kept to the picture: drawn on past its edges (Side fill: Stretched
 		// Edges, Blur Off) the coordinates run on straight
 		vec2 inPic = clamp(vTexCoord, vec2(0.0), vec2(1.0));
-		bool flat_ = (CURVE == 0.0);
-		vec2 uv = flat_ ? vTexCoord : warp(inPic) + (vTexCoord - inPic);
+		// a small picture has no room for a curve: it comes in between two and a half
+		// and three and a half pixels a dot
+		float dot_ = 1.0 / (lineSize.y * OutputSize.w);
+		float bend = CURVE * smoothstep(2.5, 3.5, dot_);
+		bool flat_ = (bend == 0.0);
+		vec2 uv = flat_ ? vTexCoord : warp(inPic, bend) + (vTexCoord - inPic);
 
 		// a screen pixel's height in lines, and what the picture has there; the red and
 		// blue beams from a little off
@@ -353,11 +365,16 @@ fragment:
 			col.b = picture(uv + vec2(0.0, parting(uv, vec2(DIVBX, DIVBY)).y * lineSize.w), foot).b;
 		}
 
-		// the mask: counted in the window's pixels, or in the picture's own where it is
-		// to bend with the glass
-		vec2 px = (MBEND == 1.0) ? uv * OutputSize.xy : gl_FragCoord.xy - xpPicture.xy;
+		// The mask: counted in the window's pixels, or in the picture's own where it is
+		// to bend with the glass - by itself where a triad has six pixels or more, under
+		// which a bent mask beats with them
+		bool pair;
+		float n;
+		float cell = triad(dot_, pair, n);
+		bool glass = !flat_ && ((MBEND == 2.0) || ((MBEND == 0.0) && (cell >= 6.0)));
+		vec2 px = glass ? uv * OutputSize.xy : gl_FragCoord.xy - xpPicture.xy;
 		float mean;
-		vec3 through = mask(px, 1.0 / (lineSize.y * OutputSize.w), mean);
+		vec3 through = mask(px, cell, pair, n, mean);
 
 		// A scanline follows the picture's lines on a curved screen and where asked;
 		// else it takes a whole number of screen rows, every one the same at any scale.
@@ -369,7 +386,8 @@ fragment:
 		vec3 amp = max(col * through / mean / (1.0 - 0.5 * depth * WIDTH), vec3(0.000001));
 		// where the dip ends, or sooner where the line would pass full light
 		vec3 tc = WIDTH * acos(clamp((2.0 / depth) * (1.0 - 1.0 / amp) - 1.0, -1.0, 1.0)) / PI2;
-		vec3 whole = light(amp, tc, 1.0, depth, WIDTH);
+		vec3 atTc = dip(tc, depth, WIDTH);
+		vec3 whole = 2.0 * amp * atTc + min(amp, vec3(1.0)) * (1.0 - 2.0 * tc);
 		// the pixel's share of the scanline, the gap on its last row; a roll moves the
 		// lines down the screen
 		float period = rows ? max(1.0, floor(scale + 0.5)) : scale;
@@ -378,7 +396,7 @@ fragment:
 		float from = row / period;
 		float to = (row + 1.0) / period;
 		vec3 sum = (floor(to) - floor(from)) * whole
-			+ light(amp, tc, fract(to), depth, WIDTH) - light(amp, tc, fract(from), depth, WIDTH);
+			+ light(amp, tc, atTc, fract(to), depth, WIDTH) - light(amp, tc, atTc, fract(from), depth, WIDTH);
 		vec3 lit = max(sum * period, vec3(0.0));
 
 		// the light around bright things, over the dark between the lines and the mask too
