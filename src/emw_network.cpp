@@ -578,7 +578,7 @@ void MainWin::socketRead() {
 		// set-value NAME VALUE: a field filled in, by object name - the one in the window
 		// in front first. A hex field takes hex, a spin box a number, a list the text of
 		// an item (an editable one any text), a tab bar the text of a tab, a box to tick 1 or 0,
-		// a line the rest of the command, spaces and all
+		// a slider its position, a line the rest of the command, spaces and all
 		QWidget* hit = NULL;
 		foreach(QWidget* w, QApplication::allWidgets()) {
 			if (!w->isVisible() || (w->objectName() != prm.value(1))) continue;
@@ -601,6 +601,8 @@ void MainWin::socketRead() {
 				if (tb->tabText(i) == val) idx = i;
 			ok = (idx >= 0);
 			if (ok) tb->setCurrentIndex(idx);
+		} else if (QAbstractSlider* sl = qobject_cast<QAbstractSlider*>(hit)) {
+			sl->setValue(val.toInt(&ok));
 		} else if (QAbstractButton* ab = qobject_cast<QAbstractButton*>(hit)) {
 			ab->setChecked(val == "1");
 		} else if (QLineEdit* le = qobject_cast<QLineEdit*>(hit)) {
@@ -699,6 +701,20 @@ void MainWin::socketRead() {
 		// shader-info: the shader's chain as built - each pass, its target, cached or
 		// compiled and in how long, the parameters, the last load's errors
 		sock->write(glw ? chain.info().toUtf8() : QByteArray("no OpenGL\r\n"));
+	} else if (com == "display-looks") {
+		// display-looks: the Display list as it stands - title | file | preset, the
+		// chosen look with a star, the knobs it has turned after it
+		const xLook cur = look_current();
+		QString out;
+		foreach(const xLook& lk, look_list()) {
+			out += QString("%1 %2 | %3 | %4").arg((lk == cur) ? "*" : " ", lk.title, lk.file, lk.preset);
+			if (lk == cur) {
+				foreach(const xShdValue& v, look_values(lk))
+					out += QString(" | %1 %2").arg(v.name).arg(v.value);
+			}
+			out += "\r\n";
+		}
+		sock->write(out.toUtf8());
 	} else if (com == "shader-param") {
 		// shader-param NAME [VALUE]: a parameter of the loaded shader, read or set
 		if (prm.size() < 2) {
