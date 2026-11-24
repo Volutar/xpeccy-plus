@@ -162,15 +162,13 @@ of **Options > Video**, where it shows at once and **Cancel** puts back the one 
 there. The list has four parts:
 
 - **None** - the picture as it is - and **Scanlines**: plain scan lines with a hard or a
-  soft dot, even at any window size and about as bright as **None**;
+  soft dot, a line of the picture each, about as bright as **None**;
 - the looks of a tube: **Home TV** - a small set with a coarse mask, a soft beam and a
-  bulging screen; **RGB monitor** - the Commodore 1084S; **PVM** - a broadcast monitor,
-  sharp and flat; **Xpixie** - soft and glowing, with afterglow, a ghost and noise. And
-  **Aperture grille**, **Fine grille**, **Shadow mask**, **Wide shadow mask**, each also as
-  **soft**: plain masks over hard or softer lines;
+  bulging screen; **RGB monitor** - the Commodore 1084S, the look a new installation starts
+  with; **PVM** - a broadcast monitor, sharp and flat; **Xpixie** - soft and glowing, with
+  afterglow, a ghost and noise;
 - the presets you saved;
-- the other shaders, each a file: **tvline-nocurve-light**, the one a new installation
-  starts with, and the rest.
+- the other shaders, each a file, and any of your own.
 
 ```{index} Display; settings, knobs, preset
 ```
