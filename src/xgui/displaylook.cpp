@@ -15,7 +15,7 @@
 
 #define	LOOK_KIND	"shaders"
 #define	LOOK_STORE	"values.conf"
-#define	LOOK_LOTTES	"crt-lottes.txt"
+#define	LOOK_TUBE	"crt.txt"
 
 // ---------------------------------------------------------------- the files
 
@@ -427,31 +427,58 @@ bool look_delete_preset(const xLook& lk) {
 
 // ---------------------------------------------------------------- old names
 
-// The aperture grille and shadow mask shaders were a file a look; each is a preset of
-// one file now, the curved ones with what they had on top.
+// The looks that were files of their own - the aperture grille and shadow mask shaders,
+// the TV lines, the first monitor looks - are the tube now: each old name opens the tube's
+// look nearest to it with the knobs turned to stand for it (measured beside the old file
+// on a test card: the lines' depth on bright and on plain white, the dot's sharpness,
+// the light over all, the bend). The knobs are turned only on a look not turned yet.
+#define	OLD_CRISP	"MASKS 0.6, SCAN 1.0, WIDTH 0.8, FOCUS 0.9, GROW 0, GLOW 0.1, BRIGHT 0.55, DIVERGE 0"
+#define	OLD_SOFT	"MASKS 0.45, SCAN 0.6, WIDTH 0.8, FOCUS 0.65, GROW 0, GLOW 0.1, BRIGHT 0.7, DIVERGE 0"
+#define	OLD_GRILLE	"MASK 1, PITCH 1.0, "
+#define	OLD_FINE	"MASK 1, PITCH 2.0, "
+#define	OLD_SHADOW	"MASK 3, PITCH 1.0, "
+#define	OLD_WIDE	"MASK 3, PITCH 0.5, "
+#define	OLD_CURVE	", CURVE 0.02"
+#define	OLD_TVLINE	"MASK 1, MASKS 0.3, PITCH 2.5, WIDTH 0.8, FOCUS 0.85, GLOW 0, DIVERGE 0, "
+
 void look_old_names() {
-	static const struct {const char* old; const char* preset; const char* extra;} names[] = {
-		{"grille-nocurve-crisp.txt", "Aperture grille", ""},
-		{"grille-nocurve-light.txt", "Aperture grille, soft", ""},
-		{"grille2-nocurve-crisp.txt", "Fine grille", ""},
-		{"grille2-nocurve-light.txt", "Fine grille, soft", ""},
-		{"tridot-nocurve-crisp.txt", "Shadow mask", ""},
-		{"tridot-nocurve-light.txt", "Shadow mask, soft", ""},
-		{"tridot-curve-crisp.txt", "Shadow mask", "curve 0.025, curveY 0, brightBoost 1"},
-		{"tridot-curve-light.txt", "Shadow mask, soft", "curve 0.025"},
-		{"widetridot-nocurve-crisp.txt", "Wide shadow mask", ""},
-		{"widetridot-nocurve-light.txt", "Wide shadow mask, soft", ""},
-		{"widetridot-curve-crisp.txt", "Wide shadow mask", "curve 0.025"},
-		{"widetridot-curve-light.txt", "Wide shadow mask, soft", "curve 0.025, brightBoost 1.1"},
+	// old: the file's name, and for the file of round (a) its preset too
+	static const struct {const char* old; const char* was; const char* preset; const char* extra;} names[] = {
+		{"grille-nocurve-crisp.txt", "", "PVM", OLD_GRILLE OLD_CRISP},
+		{"grille-nocurve-light.txt", "", "PVM", OLD_GRILLE OLD_SOFT},
+		{"grille2-nocurve-crisp.txt", "", "PVM", OLD_FINE OLD_CRISP},
+		{"grille2-nocurve-light.txt", "", "PVM", OLD_FINE OLD_SOFT},
+		{"tridot-nocurve-crisp.txt", "", "PVM", OLD_SHADOW OLD_CRISP},
+		{"tridot-nocurve-light.txt", "", "PVM", OLD_SHADOW OLD_SOFT},
+		{"tridot-curve-crisp.txt", "", "PVM", OLD_SHADOW OLD_CRISP OLD_CURVE},
+		{"tridot-curve-light.txt", "", "PVM", OLD_SHADOW OLD_SOFT OLD_CURVE},
+		{"widetridot-nocurve-crisp.txt", "", "PVM", OLD_WIDE OLD_CRISP},
+		{"widetridot-nocurve-light.txt", "", "PVM", OLD_WIDE OLD_SOFT},
+		{"widetridot-curve-crisp.txt", "", "PVM", OLD_WIDE OLD_CRISP OLD_CURVE},
+		{"widetridot-curve-light.txt", "", "PVM", OLD_WIDE OLD_SOFT OLD_CURVE},
+		{"crt-lottes.txt", "Aperture grille", "PVM", OLD_GRILLE OLD_CRISP},
+		{"crt-lottes.txt", "Aperture grille, soft", "PVM", OLD_GRILLE OLD_SOFT},
+		{"crt-lottes.txt", "Fine grille", "PVM", OLD_FINE OLD_CRISP},
+		{"crt-lottes.txt", "Fine grille, soft", "PVM", OLD_FINE OLD_SOFT},
+		{"crt-lottes.txt", "Shadow mask", "PVM", OLD_SHADOW OLD_CRISP},
+		{"crt-lottes.txt", "Shadow mask, soft", "PVM", OLD_SHADOW OLD_SOFT},
+		{"crt-lottes.txt", "Wide shadow mask", "PVM", OLD_WIDE OLD_CRISP},
+		{"crt-lottes.txt", "Wide shadow mask, soft", "PVM", OLD_WIDE OLD_SOFT},
+		{"tvline-nocurve-light.txt", "", "PVM", OLD_TVLINE "SCAN 1.0, GROW 0.85, BRIGHT 0.7"},
+		{"tvline-curve-light.txt", "", "PVM", OLD_TVLINE "SCAN 0.9, GROW 1.0, BRIGHT 0.95, CURVE 0.02, CORNER 0.03"},
+		{"monitor-1084.txt", "", "RGB monitor", ""},
+		{"monitor-1084-flat.txt", "", "RGB monitor", "CURVE 0, CORNER 0, VIGN 0"},
+		{"pvm-sharp.txt", "", "PVM", ""},
 	};
 	const QString old = QString::fromLocal8Bit(conf.vid.shader.c_str());
+	const QString was = QString::fromUtf8(conf.vid.shdPreset.c_str());
 	for (const auto& row : names) {
-		if (old != row.old) continue;
+		if ((old != row.old) || (row.was[0] && (was != row.was))) continue;
 		// a file of that name in the user's folder is the user's shader
 		if (QFile::exists(xres_dir(LOOK_KIND) + "/" + old)) return;
 		xLook lk;
 		lk.part = LOOK_PRESET;
-		lk.file = LOOK_LOTTES;
+		lk.file = LOOK_TUBE;
 		lk.preset = row.preset;
 		look_choose(lk);
 		store_read();

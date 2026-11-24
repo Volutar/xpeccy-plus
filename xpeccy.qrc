@@ -14,14 +14,8 @@
         <file>res/palettes/wiki2.txt</file>
         <file>res/shaders/composite-crt-flat.txt</file>
         <file>res/shaders/composite-crt.txt</file>
-        <file>res/shaders/crt-lottes.txt</file>
         <file>res/shaders/crt.txt</file>
-        <file>res/shaders/monitor-1084-flat.txt</file>
-        <file>res/shaders/monitor-1084.txt</file>
-        <file>res/shaders/pvm-sharp.txt</file>
         <file>res/shaders/scanlines.txt</file>
-        <file>res/shaders/tvline-curve-light.txt</file>
-        <file>res/shaders/tvline-nocurve-light.txt</file>
         <file>res/shaders/zx-rf-artifact.txt</file>
         <file>res/styles/Dark.pal</file>
         <file>res/styles/Dark.qss</file>

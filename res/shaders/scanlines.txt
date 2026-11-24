@@ -18,7 +18,7 @@ tip DEPTH = How dark the gap between two lines is
 tip WIDTH = How much of a line its gap takes: narrow and hard, or wide
 #pragma parameter SOFT "Softness" 0.3 0.0 1.0 0.05
 tip SOFT = How far a dot runs into the next one
-#pragma parameter FIT "Line fit" 0 0 1 1
+#pragma parameter FIT "Line fit" 1 0 1 1
 list FIT = Whole pixels, The picture's lines
 tip FIT = What the lines follow at a scale that is not whole
 more FIT
