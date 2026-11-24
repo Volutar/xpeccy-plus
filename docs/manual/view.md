@@ -186,6 +186,10 @@ stays with the look: pick another and come back, and it is as you left it.
   the list;
 - **Delete preset** - removes a preset of yours.
 
+What you changed in the looks goes into the file of **Export settings...**, and
+**Reset to defaults** puts every look back as it comes
+(see [Application page](options-application.md)); your presets stay.
+
 A look is not used at **x1**, where there is no room for its effect. With **None**,
 a picture that is not a whole number of screen pixels per dot - in fullscreen, in a
 maximized window - has only the seams between dots softened, so every dot keeps the same
