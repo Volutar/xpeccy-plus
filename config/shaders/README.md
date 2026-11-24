@@ -64,7 +64,7 @@ at 0, when its pass is not drawn at all.
 | Glow | light around bright things |
 | Afterglow | a lit dot fades over the next frames, blue first |
 | Signal | a ghost beside the picture, interference, noise |
-| Screen | curvature, round corners, vignette, contrast |
+| Screen | curvature, round corners, vignette, brightness, contrast |
 
 The mask is drawn in whole screen pixels and thins out by itself as the picture gets
 smaller; a small picture has no curve. What the scanlines and the mask take is given back.
