@@ -31,8 +31,8 @@ before that point is upstream's history and is not repeated here.
   Anti-flicker on too. Home TV is on RF, Xpixie on composite.
 
 - **The older shader files are the tube now**: the aperture grille and shadow mask looks,
-  TV lines, monitor-1084 and pvm-sharp open the tube set to stand for each. An old file
-  put into `config/shaders` still works.
+  TV lines, monitor-1084, pvm-sharp, composite-crt and zx-rf-artifact open the tube set to
+  stand for each. An old file put into `config/shaders` still works.
 
 - **Keymap By machine**, the default: Input > Keymap and Options > Input. The Robik takes the
   Robik's keymap, the ZX Spectrum 48K the 48K one, every other machine ZX Spectrum 128K. A

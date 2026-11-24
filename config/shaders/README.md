@@ -78,19 +78,11 @@ domain), which Xpixie is named after.
 
 The aperture grille and shadow mask files (`grille-nocurve-crisp.txt`,
 `tridot-curve-light.txt`...), `tvline-nocurve-light.txt` and `tvline-curve-light.txt`,
-`monitor-1084.txt`, `monitor-1084-flat.txt` and `pvm-sharp.txt` are not bundled any more:
+`monitor-1084.txt`, `monitor-1084-flat.txt`, `pvm-sharp.txt`, `composite-crt.txt`,
+`composite-crt-flat.txt` and `zx-rf-artifact.txt` are not bundled any more:
 the tube does what each did. A config that names one opens the tube with its knobs turned
 to stand for it. A file of that name put into this folder is used as it is, as any shader
 of your own.
-
-## Signal looks - Xpeccy+
-
-Single-pass looks of a composite and an RF picture. MIT.
-
-| File | Look |
-| --- | --- |
-| `composite-crt.txt`, `composite-crt-flat.txt` | composite / RF home TV, with and without curvature |
-| `zx-rf-artifact.txt` | ZX Spectrum RF color artifacts |
 
 ## Writing a shader
 
