@@ -1,6 +1,7 @@
 #include "displaylook.h"
 
 #include "../xcore/xcore.h"
+#include "../xcore/log.h"
 
 #include <QDateTime>
 #include <QDir>
@@ -60,7 +61,12 @@ QString num_text(float val) {
 	return QString::number(val, 'g', 7);
 }
 
-QList<UserPreset> user_presets() {
+// The user's presets as the folder has them. Read again by every listing (a menu, a
+// window opening) and after one is saved or deleted - not at every step of a slider.
+QList<UserPreset> userCache;
+bool userRead = false;
+
+QList<UserPreset> read_user_presets() {
 	QList<UserPreset> res;
 	const QDir dir(xres_dir(LOOK_KIND));
 	for (const QString& nam : dir.entryList(QStringList() << "*.preset", QDir::Files, QDir::Name)) {
@@ -81,6 +87,31 @@ QList<UserPreset> user_presets() {
 		if (!up.shader.isEmpty()) res << up;
 	}
 	return res;
+}
+
+const QList<UserPreset>& user_presets(bool fresh = false) {
+	if (fresh || !userRead) {
+		userCache = read_user_presets();
+		userRead = true;
+	}
+	return userCache;
+}
+
+// the user's preset a new one of that name would be written over: the same title or
+// the same file name, in any case of letters
+const UserPreset* user_clash(const QString& title, const QString& base) {
+	for (const UserPreset& up : user_presets()) {
+		if (!up.title.compare(title, Qt::CaseInsensitive) || !up.base.compare(base, Qt::CaseInsensitive))
+			return &up;
+	}
+	return nullptr;
+}
+
+// a preset's file name: its title less what a file name or a section name cannot hold
+QString preset_base(const QString& title) {
+	QString base = title;
+	base.replace(QRegularExpression(QStringLiteral(R"([\\/:*?"<>|#=\[\]])")), "_");
+	return base;
 }
 
 // ------------------------------------------------------------ the kept values
@@ -174,7 +205,7 @@ QList<xLook> look_list() {
 				parts[lk.part] << lk;
 			}
 		}
-		for (const UserPreset& up : user_presets()) {
+		for (const UserPreset& up : user_presets(true)) {
 			if (!look_file(up.shader)) continue;
 			xLook lk;
 			lk.part = LOOK_USER;
@@ -196,7 +227,7 @@ QList<xLook> look_list() {
 xLook look_current() {
 	xLook lk;
 	lk.file = QString::fromLocal8Bit(conf.vid.shader.c_str());
-	lk.preset = QString::fromLocal8Bit(conf.vid.shdPreset.c_str());
+	lk.preset = QString::fromUtf8(conf.vid.shdPreset.c_str());
 	if (lk.file.isEmpty()) {
 		lk.preset.clear();
 		lk.title = "None";
@@ -217,7 +248,7 @@ xLook look_current() {
 
 void look_choose(const xLook& lk) {
 	conf.vid.shader = lk.file.toLocal8Bit().constData();
-	conf.vid.shdPreset = lk.preset.toLocal8Bit().constData();
+	conf.vid.shdPreset = lk.preset.toUtf8().constData();	// a name the user typed: any letters
 }
 
 bool look_has_knobs(const xLook& lk) {
@@ -290,6 +321,20 @@ bool look_changed(const xLook& lk) {
 	return store.contains(look_id(lk));
 }
 
+// the configuration is read again: what the files have now, not what was turned
+void look_store_reload() {
+	store.clear();
+	storeRead = false;
+	storeDirty = false;
+	userRead = false;
+}
+
+QString look_preset_taken(const QString& name) {
+	const QString title = name.trimmed();
+	const UserPreset* old = user_clash(title, preset_base(title));
+	return old ? old->title : QString();
+}
+
 xLookStore look_store_take() {
 	store_read();
 	return store;
@@ -304,13 +349,17 @@ void look_store_put(const xLookStore& was) {
 
 void look_store_save() {
 	if (!storeDirty) return;
-	storeDirty = false;
 	QFile file(store_path());
 	if (store.isEmpty()) {
-		file.remove();
+		storeDirty = file.exists() && !file.remove();
 		return;
 	}
-	if (!file.open(QFile::WriteOnly | QFile::Truncate)) return;
+	// not written: still owed, the next save tries again
+	if (!file.open(QFile::WriteOnly | QFile::Truncate)) {
+		xlog(XLG_CONF, XLL_WARN, "can't write %s", store_path().toLocal8Bit().constData());
+		return;
+	}
+	storeDirty = false;
 	QByteArray out("# The Display knobs turned, by look: shader file # preset\n");
 	for (auto st = store.constBegin(); st != store.constEnd(); ++st) {
 		out += "\n[" + st.key().toUtf8() + "]\n";
@@ -329,8 +378,8 @@ bool look_save_preset(const xLook& lk, const QString& name, QString* err) {
 		*err = title.isEmpty() ? "A preset needs a name" : "This look has no settings to save";
 		return false;
 	}
-	QString base = title;
-	base.replace(QRegularExpression(QStringLiteral(R"([\\/:*?"<>|#=\[\]])")), "_");
+	QString base = preset_base(title);
+	if (const UserPreset* old = user_clash(title, base)) base = old->base;
 	for (const xLook& o : look_list()) {
 		if (o.user) continue;
 		if (!o.title.compare(title, Qt::CaseInsensitive) || !o.preset.compare(base, Qt::CaseInsensitive)) {
@@ -352,6 +401,7 @@ bool look_save_preset(const xLook& lk, const QString& name, QString* err) {
 	}
 	file.write(out);
 	file.close();
+	user_presets(true);
 	xLook made;
 	made.part = LOOK_USER;
 	made.file = lk.file;
@@ -369,6 +419,7 @@ bool look_delete_preset(const xLook& lk) {
 	if (!lk.user) return false;
 	const bool chosen = (look_current() == lk);
 	if (!QFile::remove(xres_dir(LOOK_KIND) + "/" + lk.preset + ".preset")) return false;
+	user_presets(true);
 	look_reset(lk);
 	if (chosen) look_choose(look_current());	// to the file's first look
 	return true;

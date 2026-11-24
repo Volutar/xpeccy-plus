@@ -52,10 +52,13 @@ typedef QMap<QString, QMap<QString, float> > xLookStore;
 xLookStore look_store_take();
 void look_store_put(const xLookStore&);
 void look_store_save();				// to values.conf, if anything changed
+void look_store_reload();			// the configuration is read again
 
 // The look as it stands, as a preset of the user's: <name>.preset in the config's
 // shaders folder; it becomes the chosen look. false: err says why
 bool look_save_preset(const xLook&, const QString& name, QString* err);
+// the title of the user's preset that one saved under this name would replace, or empty
+QString look_preset_taken(const QString& name);
 bool look_delete_preset(const xLook&);
 
 // a shader file name of an older version in the config: the look it is now

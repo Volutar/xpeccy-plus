@@ -83,13 +83,16 @@ void xDisplaySheet::setLook() {
 
 void xDisplaySheet::build() {
 	setWindowTitle(tr("Display: %1").arg(look.title));
-	const xShdPreset* head = look_has_knobs(look) ? look_file(look.file) : nullptr;
+	// a copy: the file is looked at again as the rows are made, and may have changed
+	const xShdPreset* file = look_has_knobs(look) ? look_file(look.file) : nullptr;
+	const QVector<xShdParam> params = file ? file->params : QVector<xShdParam>();
+	const bool head = !params.isEmpty();
 	bool more = false;
 	xOptSheet sheet;
 	if (head) {
 		QString group;
 		bool first = true;
-		for (const xShdParam& p : head->params) {
+		for (const xShdParam& p : params) {
 			more = more || p.more;
 			if (p.more && !all) continue;
 			const QString name = p.group.isEmpty() ? tr("Parameters") : p.group;
@@ -113,7 +116,7 @@ void xDisplaySheet::build() {
 	btnAll->setVisible(more);
 	btnAll->setText(all ? tr("Fewer settings") : tr("All settings"));
 	btnDef->setEnabled(look_changed(look));
-	btnSave->setEnabled(head != nullptr);
+	btnSave->setEnabled(head);
 	btnDel->setVisible(look.user);
 	// the window follows its rows, once the old ones are gone
 	QMetaObject::invokeMethod(this, [this]() {adjustSize();}, Qt::QueuedConnection);
@@ -185,11 +188,10 @@ void xDisplaySheet::savePreset() {
 	const QString name = QInputDialog::getText(this, tr("Save as Preset"), tr("Name"), QLineEdit::Normal,
 		look.user ? look.title : QString(), &ok).trimmed();
 	if (!ok || name.isEmpty()) return;
-	foreach(const xLook& o, look_list()) {
-		if (!o.user || o.title.compare(name, Qt::CaseInsensitive)) continue;
-		if (QMessageBox::question(this, tr("Save as Preset"), tr("Replace the preset \"%1\"?").arg(o.title)) != QMessageBox::Yes)
-			return;
-	}
+	const QString taken = look_preset_taken(name);
+	if (!taken.isEmpty()
+			&& (QMessageBox::question(this, tr("Save as Preset"), tr("Replace the preset \"%1\"?").arg(taken)) != QMessageBox::Yes))
+		return;
 	QString err;
 	if (!look_save_preset(look, name, &err)) {
 		QMessageBox::warning(this, tr("Save as Preset"), err);
