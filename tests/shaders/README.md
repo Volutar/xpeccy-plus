@@ -4,7 +4,7 @@
 in a form a window shot can prove. It is not a look. `grid.png` is its texture.
 
 To run it, copy both files into `shaders/` of a config directory, start the emulator with
-that `--confdir` and pick **chain** in View > Shaders. Over the control port (`port` in
+that `--confdir` and pick **chain** in View > Display. Over the control port (`port` in
 `config.conf`):
 
 - `shader-info` - the chain as built: every pass, its target's size and format, whether its

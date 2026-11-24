@@ -1,9 +1,22 @@
 # Bundled shaders
 
 GLSL post-processing filters, drawn through OpenGL: none with `--no-gl` or without an
-OpenGL 3.3 driver (OpenGL ES 3.0). Pick one in Options - Video, or set
-`shader = <file>` in `config/config.conf`. A fresh config starts with `tvline-nocurve-light.txt`;
-an empty or missing `shader` line turns filtering off.
+OpenGL 3.3 driver (OpenGL ES 3.0). Pick a look in the Display list of Options - Video or in
+View - Display; in `config/config.conf` it is `shader = <file>` and, for a file with presets,
+`shader.preset = <name>`. A fresh config starts with `tvline-nocurve-light.txt`; an empty or
+missing `shader` line turns filtering off.
+
+A shader with parameters has a sheet of knobs: the gear beside the list, or View - Display -
+Settings. A knob turned is kept with its look, in `values.conf` of this folder. Save as
+preset writes the look as it stands into `<name>.preset` here - the shader's file, a name
+and the values that are not the shader's defaults:
+
+```
+shader = crt-lottes.txt
+name = My TV
+scanSharp = 18
+curve = 0.02
+```
 
 With Side fill set to Stretched Edges and its Blur to Off, the shader draws the whole view:
 the texture coordinates run on past 0 and 1 to the view's edges, the frame is clamped at its
@@ -16,18 +29,26 @@ keeps the terms of its own author, listed below.
 
 ## Aperture grille and shadow mask - Timothy Lottes, tuned by Volutar
 
-Public domain ("Please take and use, change, or whatever" - see the header of each file).
-`crisp` keeps the scanlines hard, `light` softens them; `curve` bends the screen, `nocurve`
-leaves it flat.
+Public domain ("Please take and use, change, or whatever" - see the header of the file).
+One file, `crt-lottes.txt`, with parameters; the looks are its presets, each with hard
+scanlines and, as "soft", with softer ones. Curvature is a knob.
 
-| File | Look |
+| Preset | Look |
 | --- | --- |
-| `grille-nocurve-crisp.txt`, `grille-nocurve-light.txt` | aperture grille, Trinitron-like |
-| `grille2-nocurve-crisp.txt`, `grille2-nocurve-light.txt` | the same with a finer grille |
-| `tridot-curve-crisp.txt`, `tridot-curve-light.txt` | shadow-mask triads, curved screen |
-| `tridot-nocurve-crisp.txt`, `tridot-nocurve-light.txt` | shadow-mask triads, flat screen |
-| `widetridot-curve-crisp.txt`, `widetridot-curve-light.txt` | wider triads, curved screen |
-| `widetridot-nocurve-crisp.txt`, `widetridot-nocurve-light.txt` | wider triads, flat screen |
+| Aperture grille | aperture grille, Trinitron-like |
+| Fine grille | the same with a finer grille |
+| Shadow mask | shadow-mask triads |
+| Wide shadow mask | wider triads |
+
+A config that names one of the twelve files this used to be (`grille-nocurve-crisp.txt`,
+`tridot-curve-light.txt`...) opens the preset it is now, a curved one with its curve.
+
+## Scanlines - Xpeccy+
+
+`scanlines.txt`, MIT as the rest of Xpeccy+: plain scanlines with a hard or a soft dot. Two
+knobs, Depth and Softness. The lines stay even at a scale that is not a whole number, and
+the light the gaps take is given back: the picture is as bright as with no shader, but for
+colors at full light, whose lines are flat on top and a little darker over all.
 
 ## TV scanlines - cgwg, Themaister and DOLLS
 
@@ -55,16 +76,16 @@ Written for this project. Same MIT license as the rest of Xpeccy+.
 
 A shader is one text file in this folder. The reload key (Options - Hotkeys, "Reload Shader")
 loads it again; if it does not compile, the picture is drawn plain, the button "Error: check
-the log" stands beside the Shader list of Options - Video (the first error in its tip, all
+the log" stands beside the Display list of Options - Video (the first error in its tip, all
 of them on a click), and the event log has every error as `file:line: text`. The file stays
 chosen: fix it and press the key.
 
 ### One pass
 
 Two sections, `vertex:` and `fragment:`; what stands before the first one is free text. The
-bundled files are written this way, in GLSL 1.10 with the names below (they are rewritten
-for the context at load), and a file in GLSL 3.30 / ES 3.00 with its own `#version` line is
-taken as it is.
+older bundled files are written this way, in GLSL 1.10 with the names below (they are
+rewritten for the context at load), and a file in GLSL 3.30 / ES 3.00 with its own `#version`
+line is taken as it is.
 
 | Name | What |
 | --- | --- |
@@ -110,7 +131,15 @@ fragment:
 
 - `#pragma parameter NAME "text" default min max step` - a number the shader reads as
   `uniform float NAME`. The engine declares it, as it declares every name below: a pass has
-  no `#version` line and declares only its own `in` and `out`.
+  no `#version` line and declares only its own `in` and `out`. Each parameter is a knob
+  of the sheet, and the lines below, before the first pass, say how it is shown:
+  - `name "text"` - what the lists call the file; without it, its file name.
+  - `group "Title"` - a frame of the sheet: the parameters after it stand in it.
+  - `tip NAME = text` - a line of what the knob does.
+  - `list NAME = a, b, c` - the knob is a list; the names stand for min, min + step...
+  - `more NAME ...` - shown only under All settings.
+  - `preset "Name": NAME value, NAME value` - a named set of values, a line of the
+    Display list. A file with presets is listed by them.
 - `texture NAME = file.png [linear|nearest] [repeat|clamp|border|mirror] [mipmap]` - a
   picture beside the preset, read as `NAME`, its size as `NAMESize`.
 - `pass [name]:` starts a pass; lines of its own may follow, then `vertex:` (optional: the
