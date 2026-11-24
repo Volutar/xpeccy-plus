@@ -1,0 +1,90 @@
+# Scanlines - Xpeccy+
+#
+# Plain scanlines with a soft or a hard dot, in one pass, worked in linear light.
+# A scanline takes a whole number of screen rows, the nearest to what a line of the
+# picture has, so every one is the same at any scale and none beats with the rows; its
+# profile is averaged over the pixel's height, not sampled at its middle. The light
+# the gaps take is given back: the picture is as bright as without the shader, and a
+# line at full light is flat where it would pass it, as a bright beam is wider.
+#
+# Same MIT license as the rest of Xpeccy+.
+
+name "Scanlines"
+
+group "Scanlines"
+#pragma parameter DEPTH "Depth" 0.5 0.0 1.0 0.05
+tip DEPTH = How dark the gap between two lines is
+#pragma parameter SOFT "Softness" 0.3 0.0 1.0 0.05
+tip SOFT = How far a dot runs into the next one
+#pragma parameter FIT "Line fit" 0 0 1 1
+list FIT = Whole pixels, The picture's lines
+tip FIT = What the lines follow at a scale that is not whole
+more FIT
+
+pass:
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	const float PI2 = 6.28318530718;
+
+	// a texel in linear light; past the frame's edge, the edge
+	vec3 lin(ivec2 p) {
+		p = clamp(p, ivec2(0), ivec2(SourceSize.xy) - 1);
+		return pow(texelFetch(Source, p, 0).rgb, vec3(2.2));
+	}
+
+	// The light of a line from its top down to u of its height, the gap at the top:
+	// amp over the profile 1 - depth / 2 * (1 + cos)
+	vec3 part(vec3 amp, vec3 u, float depth) {
+		return amp * (u * (1.0 - 0.5 * depth) - depth / (2.0 * PI2) * sin(PI2 * u));
+	}
+
+	// ...with the line flat at full light from tc to 1 - tc. toTc: part() at tc
+	vec3 light(vec3 amp, vec3 tc, vec3 toTc, float u, float depth) {
+		vec3 uu = vec3(u);
+		vec3 whole = amp * (1.0 - 0.5 * depth);
+		vec3 head = part(amp, min(uu, tc), depth);
+		vec3 flat_ = clamp(uu - tc, vec3(0.0), 1.0 - 2.0 * tc);
+		vec3 tail = part(amp, max(uu, 1.0 - tc), depth) - (whole - toTc);
+		return head + flat_ + tail;
+	}
+
+	void main() {
+		vec2 pos = vTexCoord * SourceSize.xy;		// texels across, lines down
+		vec2 foot = SourceSize.xy * OutputSize.zw;	// a screen pixel, in them
+		// the two texels and the two lines the pixel stands between
+		vec2 b = pos - 0.5;
+		vec2 i = floor(b);
+		vec2 f = b - i;
+		// one runs into the next over the pixel's own size (a sharp edge), or over more
+		vec2 zone = min(vec2(1.0), mix(foot, max(foot, vec2(1.0, 0.5)), SOFT));
+		vec2 k = clamp((f - 0.5) / zone + 0.5, 0.0, 1.0);
+		// a pixel that lies whole in one texel takes nothing of the next: in linear
+		// light a thousandth of white over black is seen
+		k = clamp((k - 0.001) / 0.998, 0.0, 1.0);
+		ivec2 p = ivec2(i);
+		vec3 top = mix(lin(p), lin(p + ivec2(1, 0)), k.x);
+		vec3 bot = mix(lin(p + ivec2(0, 1)), lin(p + ivec2(1, 1)), k.x);
+		vec3 col = mix(top, bot, k.y);
+
+		float depth = max(DEPTH, 0.0001);
+		vec3 amp = max(col / (1.0 - 0.5 * depth), vec3(0.000001));
+		// where the line would pass full light
+		vec3 tc = acos(clamp((2.0 / depth) * (1.0 - 1.0 / amp) - 1.0, -1.0, 1.0)) / PI2;
+		vec3 toTc = part(amp, tc, depth);
+		vec3 whole = 2.0 * toTc + 1.0 - 2.0 * tc;
+		// How many screen rows a scanline takes: as many as a line of the picture has,
+		// or a whole number of them - then every scanline is the same at any scale,
+		// where the picture's own lines would beat with the rows
+		float scale = 1.0 / foot.y;
+		float period = (FIT == 0.0) ? max(1.0, floor(scale + 0.5)) : scale;
+		// The pixel's share of the scanline, from its top to its bottom. The profile is
+		// counted from half a pixel up, so the gap is the scanline's last row
+		float row = pos.y * scale;
+		float from = row / period;
+		float to = (row + 1.0) / period;
+		vec3 sum = (floor(to) - floor(from)) * whole
+			+ light(amp, tc, toTc, fract(to), depth) - light(amp, tc, toTc, fract(from), depth);
+		FragColor = vec4(pow(max(sum * period, vec3(0.0)), vec3(1.0 / 2.2)), 1.0);
+	}
