@@ -42,6 +42,8 @@ QString knob_text(const xShdParam& p, float val) {
 
 xDisplaySheet::xDisplaySheet(QWidget* parent) : QDialog(parent) {
 	lay = new QVBoxLayout(this);
+	// the window is as large as its rows need, whenever they change
+	lay->setSizeConstraint(QLayout::SetFixedSize);
 	QHBoxLayout* row = new QHBoxLayout;
 	btnAll = new QPushButton(tr("All settings"));
 	btnAll->setCheckable(true);
@@ -121,14 +123,44 @@ void xDisplaySheet::build() {
 	bool more = false;
 	xOptSheet sheet;
 	if (head) {
+		// A look of many stages stands in two columns of frames, about as tall as each
+		// other, so that the window fits a screen: the frames in their order, the first
+		// ones on the left. A frame weighs its rows and a row and a half for itself
+		QList<int> rowsOf;
 		QString group;
 		bool first = true;
+		for (const xShdParam& p : params) {
+			if (p.more && !all) continue;
+			const QString name = p.group.isEmpty() ? tr("Parameters") : p.group;
+			if (first || (name != group)) rowsOf << 0;
+			rowsOf.last()++;
+			first = false;
+			group = name;
+		}
+		float whole = 0;
+		for (int n : rowsOf) whole += n + 1.5f;
+		int left = rowsOf.size();		// frames in the left column; all: one column
+		if ((rowsOf.size() > 1) && (whole > 16)) {
+			float sum = 0;
+			float best = whole;
+			for (int i = 0; i < rowsOf.size() - 1; i++) {
+				sum += rowsOf[i] + 1.5f;
+				if (qAbs(whole - 2 * sum) < best) {
+					best = qAbs(whole - 2 * sum);
+					left = i + 1;
+				}
+			}
+		}
+		const bool columns = (left < rowsOf.size());
+		int frame = -1;
+		first = true;
 		for (const xShdParam& p : params) {
 			more = more || p.more;
 			if (p.more && !all) continue;
 			const QString name = p.group.isEmpty() ? tr("Parameters") : p.group;
 			if (first || (name != group)) {
-				QGroupBox* box = sheet.group(name);
+				frame++;
+				QGroupBox* box = sheet.group(name, columns ? ((frame < left) ? 0 : 1) : -1);
 				// a stage with a switch: off, its pass is not run and its knobs stand idle
 				if (!p.groupSwitch.isEmpty()) {
 					const QString sw = p.groupSwitch;
@@ -168,8 +200,6 @@ void xDisplaySheet::build() {
 	btnDef->setEnabled(look_changed(look));
 	btnSave->setEnabled(head);
 	btnDel->setVisible(look.user);
-	// the window follows its rows, once the old ones are gone
-	QMetaObject::invokeMethod(this, [this]() {adjustSize();}, Qt::QueuedConnection);
 }
 
 // a slider with its figure, or a list where the values have names
