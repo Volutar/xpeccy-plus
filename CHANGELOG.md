@@ -11,6 +11,15 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Display, with knobs**: the Shader list of Options > Video is Display, and View > Shaders
+  is View > Display. A look with settings has a sheet of knobs - the gear beside the list, or
+  View > Display > Settings: each move shows on the picture and stays with the look. Save as
+  preset makes a look of your own.
+
+- **Scanlines**, beside None in the Display list: plain scanlines with a hard or a soft dot,
+  by Depth and Softness. The lines stay even at any window size, and the picture keeps its
+  brightness.
+
 - **Keymap By machine**, the default: Input > Keymap and Options > Input. The Robik takes the
   Robik's keymap, the ZX Spectrum 48K the 48K one, every other machine ZX Spectrum 128K. A
   keymap named after a machine of your own (`My Scorpion.map`) is taken by it.
@@ -95,9 +104,13 @@ before that point is upstream's history and is not repeated here.
 
 - **Shaders start without a wait**: a compiled shader is kept between runs, and one that has
   to be compiled is built beside the picture. A shader that does not compile stays chosen:
-  the button Error: check the log beside the Shader list of Options > Video has the first
+  the button Error: check the log beside the Display list of Options > Video has the first
   error and its line in its tip, a click opens all of them. No message on the picture when
   a shader is picked.
+
+- **The aperture grille and shadow mask shaders are one file**: eight looks of the Display
+  list - Aperture grille, Fine grille, Shadow mask, Wide shadow mask, each also soft - with
+  curvature as a knob. A config that names one of the old files opens its look.
 
 - **A shader file can hold several passes**, with parameters, textures, earlier frames and
   its own last output, under the names RetroArch's slang shaders use:
