@@ -316,17 +316,20 @@ fragment:
 
 	// What the mask lets through at a screen pixel, for each color, and how much of the
 	// light it lets through over all (what is given back)
-	vec3 mask(vec2 px, float cell, bool pair, float n, out float mean) {
+	// lines: screen rows a scanline takes
+	vec3 mask(vec2 px, float cell, bool pair, float n, float lines, out float mean) {
 		mean = 1.0;
 		float dark = 1.0 - MASKS;
 		float x = px.x;
 		float gap = 1.0;				// the slot's bar between two openings
 		if (MASK == 2.0) {
-			// openings four stripes tall, a bar a stripe tall between them; every other
-			// triad half an opening lower
-			float tall = pair ? 4.0 : 4.0 * n;
+			// openings about four stripes tall, a bar a stripe tall between them; every
+			// other triad half an opening lower. As tall as a whole number of scanlines:
+			// any other height beats with them
+			float want = pair ? 4.0 : 4.0 * n;
+			float tall = lines * max(1.0, floor(want / lines + 0.5));
 			float bar = pair ? 1.0 : n;
-			float y = px.y + mod(floor(x / cell), 2.0) * 0.5 * tall;
+			float y = px.y + mod(floor(x / cell), 2.0) * floor(0.5 * tall);
 			if (mod(y, tall) < bar) gap = dark;
 			mean *= 1.0 - MASKS * bar / tall;
 		} else if (MASK == 3.0) {
@@ -376,7 +379,7 @@ fragment:
 		bool glass = !flat_ && ((MBEND == 2.0) || ((MBEND == 0.0) && (cell >= 6.0)));
 		vec2 px = glass ? uv * OutputSize.xy : gl_FragCoord.xy - xpPicture.xy;
 		float mean;
-		vec3 through = mask(px, cell, pair, n, mean);
+		vec3 through = mask(px, cell, pair, n, max(2.0, floor(dot_ + 0.5)), mean);
 
 		// A scanline follows the picture's lines on a curved screen and where asked;
 		// else it takes a whole number of screen rows, every one the same at any scale.
