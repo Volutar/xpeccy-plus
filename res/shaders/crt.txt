@@ -106,10 +106,10 @@ more CURVEX CURVEY
 # The masks' fineness is the tubes' own: triads across the screen over the 352 dots of a
 # full frame - a 14" TV's 0.65 mm slot mask 1.2, the 1084's 0.42 mm one 1.9, a 14" PVM's
 # 0.25 mm grille 3.0 (Philips data handbook T08 of 1986, Sony's PVM brochures)
-preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.5, WIDTH 0.9, FOCUS 0.35, GROW 0.8, DIVERGE 0.5, GLOW 0.3, CURVE 0.05, CORNER 0.03, VIGN 0.25
-preset "RGB monitor": MASK 2, MASKS 0.45, PITCH 1.9, SCAN 0.6, WIDTH 0.55, FOCUS 0.6, GROW 0.7, DIVERGE 0.2, GLOW 0.05, CURVE 0.04, CORNER 0.02, VIGN 0.1
-preset "PVM": MASK 1, MASKS 0.5, PITCH 3.0, SCAN 0.8, WIDTH 0.8, FOCUS 0.8, GROW 0.7, DIVERGE 0.15
-preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.3, WIDTH 1.0, FOCUS 0.25, DIVERGE 0.45, DIVMID 1.0, GLOW 0.35, AFTER 0.5, GHOST 0.4, NOISE 0.5, CURVE 0.07, CORNER 0.04, VIGN 0.7, CONTRAST 0.6
+preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, CORNER 0.03, VIGN 0.25
+preset "RGB monitor": MASK 2, MASKS 0.45, PITCH 1.9, SCAN 0.9, WIDTH 0.8, FOCUS 0.5, GROW 0.15, DIVERGE 0.2, GLOW 0.1, CURVE 0.04, CORNER 0.02, VIGN 0.1
+preset "PVM": MASK 1, MASKS 0.5, PITCH 3.0, SCAN 0.8, WIDTH 0.8, FOCUS 0.7, GROW 0.3, DIVERGE 0.15
+preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.3, WIDTH 1.0, FOCUS 0.2, DIVERGE 0.45, DIVMID 1.0, GLOW 0.35, AFTER 0.5, GHOST 0.1, GHOSTX 0.8, NOISE 0.5, CURVE 0.07, CORNER 0.04, VIGN 0.7, CONTRAST 0.5
 
 common:
 	// a mix's share snapped at its ends: in linear light a thousandth of white over
@@ -412,10 +412,12 @@ fragment:
 			+ light(amp, tc, atTc, fract(to), depth, WIDTH) - light(amp, tc, atTc, fract(from), depth, WIDTH);
 		vec3 lit = max(sum * period, vec3(0.0));
 
-		// the light around bright things, over the dark between the lines and the mask too
+		// The light that spills around bright things: a part of each point's light is
+		// spread about, so a plain field keeps its brightness and the dark beside a
+		// bright thing gets a veil - at most a quarter
 		if (GLOW > 0.0) {
 			vec3 around = pow(texture(glowv, uv).rgb, vec3(2.2));
-			lit = 1.0 - (1.0 - min(lit, vec3(1.0))) * (1.0 - GLOW * around);
+			lit = mix(lit, around, 0.25 * GLOW);
 		}
 		if (NOISE > 0.0) {
 			// another grain each frame, not the same one moved along
