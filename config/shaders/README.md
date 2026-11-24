@@ -45,10 +45,41 @@ A config that names one of the twelve files this used to be (`grille-nocurve-cri
 
 ## Scanlines - Xpeccy+
 
-`scanlines.txt`, MIT as the rest of Xpeccy+: plain scanlines with a hard or a soft dot. Two
-knobs, Depth and Softness. The lines stay even at a scale that is not a whole number, and
-the light the gaps take is given back: the picture is as bright as with no shader, but for
-colors at full light, whose lines are flat on top and a little darker over all.
+`scanlines.txt`, MIT as the rest of Xpeccy+: plain scanlines with a hard or a soft dot.
+Three knobs: Depth, Gap width and Softness. The lines stay even at a scale that is not a
+whole number, and the light the gaps take is given back: the picture is as bright as with
+no shader, but for colors at full light, whose lines are flat on top and a little darker
+over all.
+
+## CRT - Xpeccy+
+
+`crt.txt`, MIT as the rest of Xpeccy+: a tube in stages, each a frame of knobs and each off
+at 0, when its pass is not drawn at all.
+
+| Stage | What it does |
+| --- | --- |
+| Beam | scanlines (how dark the gap, how wide), the dot's focus along the line, bright lines wider |
+| Divergence | the red and blue beams land beside the green one, more towards the screen's edges |
+| Mask | aperture grille, slot mask or shadow mask, as fine as the tube: triads to a dot of the picture |
+| Glow | light around bright things |
+| Afterglow | a lit dot fades over the next frames, blue first |
+| Signal | a ghost beside the picture, interference, noise |
+| Screen | curvature, round corners, vignette, contrast |
+
+The mask is drawn in whole screen pixels and thins out by itself as the picture gets
+smaller; a small picture has no curve. What the scanlines and the mask take is given back.
+
+| Preset | Look |
+| --- | --- |
+| Home TV | a 14" set: a coarse slot mask, a soft beam, glow, a bulging screen |
+| RGB monitor | the Commodore 1084S: a finer slot mask, a sharp beam, a slight curve |
+| PVM | a broadcast monitor: aperture grille, the sharpest beam, flat |
+| Xpixie | soft and glowing, with afterglow, a ghost and noise |
+
+The two-pass beam follows Hyllian's CRT (MIT); the mask layouts Timothy Lottes's and
+hunterk's (public domain); the beams' parting towards the edges is Volutar's; the ghost,
+the interference and the noise are after Mattias Gustavsson's newpixie CRT (MIT / public
+domain), which Xpixie is named after.
 
 ## TV scanlines - cgwg, Themaister and DOLLS
 
@@ -135,6 +166,8 @@ fragment:
   of the sheet, and the lines below, before the first pass, say how it is shown:
   - `name "text"` - what the lists call the file; without it, its file name.
   - `group "Title"` - a frame of the sheet: the parameters after it stand in it.
+    `group "Title" when NAME value` gives the frame a switch: off sets NAME to 0 (a pass
+    `when NAME` is then not drawn), on puts back what it had, or `value`.
   - `tip NAME = text` - a line of what the knob does.
   - `list NAME = a, b, c` - the knob is a list; the names stand for min, min + step...
   - `more NAME ...` - shown only under All settings.
