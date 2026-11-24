@@ -166,8 +166,9 @@ fragment:
   of the sheet, and the lines below, before the first pass, say how it is shown:
   - `name "text"` - what the lists call the file; without it, its file name.
   - `group "Title"` - a frame of the sheet: the parameters after it stand in it.
-    `group "Title" when NAME value` gives the frame a switch: off sets NAME to 0 (a pass
-    `when NAME` is then not drawn), on puts back what it had, or `value`.
+    `group "Title" when NAME [value]` gives the frame a switch: off sets NAME to 0 (a pass
+    `when NAME` is then not drawn), on puts back what it had, or `value` (with none, the
+    parameter's default).
   - `tip NAME = text` - a line of what the knob does.
   - `list NAME = a, b, c` - the knob is a list; the names stand for min, min + step...
   - `more NAME ...` - shown only under All settings.
