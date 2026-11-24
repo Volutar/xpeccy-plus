@@ -159,7 +159,7 @@ or a dialog it stays. It is on by default, and the switch is remembered; it is a
 A look changes the picture after it is drawn: scan lines, the mask of a CRT tube, a curved
 screen, the blur of a TV signal. Pick one in **View > Display**, or in the **Display** list
 of **Options > Video**, where it shows at once and **Cancel** puts back the one that was
-there. The list has four parts:
+there. The list has up to four parts:
 
 - **None** - the picture as it is - and **Scanlines**: plain scan lines with a hard or a
   soft dot, a line of the picture each, about as bright as **None**;
@@ -168,7 +168,7 @@ there. The list has four parts:
   with; **PVM** - a broadcast monitor, sharp and flat; **Xpixie** - soft and glowing, with
   afterglow, a ghost and noise;
 - the presets you saved;
-- the other shaders, each a file, and any of your own.
+- shader files of your own, from the `shaders` folder of the configuration.
 
 ```{index} Display; settings, knobs, preset
 ```
