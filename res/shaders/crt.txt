@@ -78,6 +78,15 @@ tip AFTER = How much of a lit dot is left a frame later
 more AFTERR AFTERG AFTERB
 
 group "Signal"
+#pragma parameter INPUT "Input" 0 0 2 1
+list INPUT = RGB, Composite, RF
+tip INPUT = The cable: a monitor's, a video input's or the aerial's
+#pragma parameter COLOR "Color" 1.0 0.0 2.0 0.05
+tip COLOR = How strong the colors of a composite or RF picture are
+#pragma parameter SHARP "Sharpness" 0.5 0.0 1.0 0.05
+tip SHARP = How fine a detail the set's video path lets through
+#pragma parameter PHASE "Phase" 0 0 7 1
+tip PHASE = The color carrier against the dots, as a 128K finds it at power-on
 #pragma parameter GHOST "Ghost" 0.0 0.0 1.0 0.05
 tip GHOST = A faint second picture beside the first
 #pragma parameter GHOSTX "Ghost's distance" 1.6 0.0 5.0 0.1
@@ -85,7 +94,10 @@ tip GHOSTX = Per cent of the picture's width
 #pragma parameter WIGGLE "Interference" 0.0 0.0 1.0 0.05
 tip WIGGLE = Lines pushed aside by a wave that runs down
 #pragma parameter NOISE "Noise" 0.0 0.0 1.0 0.05
-more GHOSTX
+more SHARP PHASE GHOSTX
+
+# Composite and RF take each frame as the machine made it and mix after decoding
+frames raw when INPUT
 
 group "Screen"
 #pragma parameter CURVE "Curvature" 0.0 0.0 0.15 0.005
@@ -105,10 +117,10 @@ more CURVEX CURVEY
 # The masks' fineness is the tubes' own: triads across the screen over the 352 dots of a
 # full frame - a 14" TV's 0.65 mm slot mask 1.2, the 1084's 0.42 mm one 1.9, a 14" PVM's
 # 0.25 mm grille 3.0 (Philips data handbook T08 of 1986, Sony's PVM brochures)
-preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, CORNER 0.03, VIGN 0.25
+preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, CORNER 0.03, VIGN 0.25, INPUT 2
 preset "RGB monitor": MASK 2, MASKS 0.45, PITCH 1.9, SCAN 0.9, WIDTH 0.8, FOCUS 0.5, GROW 0.15, DIVERGE 0.2, GLOW 0.1, CURVE 0.04, CORNER 0.02, VIGN 0.1
 preset "PVM": MASK 1, MASKS 0.5, PITCH 3.0, SCAN 0.8, WIDTH 0.8, FOCUS 0.7, GROW 0.3, DIVERGE 0.15
-preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.4, WIDTH 1.0, FOCUS 0.2, GROW 0, DIVERGE 0.9, DIVMID 1.0, GLOW 0.35, AFTER 0.5, GHOST 0.1, GHOSTX 0.8, NOISE 0.5, CURVE 0.07, CORNER 0.04, VIGN 0.7, BRIGHT 0.9, CONTRAST 0.5
+preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.4, WIDTH 1.0, FOCUS 0.2, GROW 0, DIVERGE 0.9, DIVMID 1.0, GLOW 0.35, AFTER 0.5, GHOST 0.1, GHOSTX 0.8, NOISE 0.5, CURVE 0.07, CORNER 0.04, VIGN 0.7, BRIGHT 0.9, CONTRAST 0.5, INPUT 1
 
 common:
 	// a mix's share snapped at its ends: in linear light a thousandth of white over
@@ -127,6 +139,117 @@ common:
 	// and so meets itself when the count of frames starts again
 	float turn(uint frames, uint k) {
 		return 6.28318530718 * float(((frames % 1000u) * k) % 1000u) / 1000.0;
+	}
+
+// The picture as a PAL set gets it over a composite or an aerial cable: each line made
+// into luma with the color on a carrier, by the machine's own numbers (xpCarrier,
+// xpRaster) - a 128K's carrier is locked to its dots and its pattern stands, a 48K's
+// runs free and crawls, the V switch turns every line and does not start again with a
+// frame - and taken apart again as a set does it: color by the carrier, low-passed and
+// averaged with the line above (the delay line), luma less a band around the carrier.
+// Fine black and white detail comes out colored and color edges crawl, as they did.
+// Two texels a dot.
+pass signal:
+	when INPUT
+	filter nearest
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	const float PI2 = 6.28318530718;
+	const int TAPS = 8;
+
+	// the carrier's turn, radians, at a texel column of a line of the whole raster
+	float turnAt(float tx, float line) {
+		float dot_ = xpRaster.z + tx * 0.5;
+		float perLine = fract(xpCarrier.x * xpRaster.x);
+		return PI2 * (fract(xpCarrier.x * dot_) + fract(perLine * line) + xpCarrier.z + PHASE * 0.125);
+	}
+
+	// the V switch's sense on a line
+	float sense(float line) {
+		return (mod(line + xpCarrier.w, 2.0) < 0.5) ? 1.0 : -1.0;
+	}
+
+	float rand(vec2 co) { return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453); }
+
+	// the signal at a texel: luma with the color on its carrier
+	float coded(int tx, int ty, float line, float sw) {
+		vec3 c = texelFetch(Source, ivec2(clamp(tx, 0, int(SourceSize.x) - 1), ty), 0).rgb;
+		float y = dot(c, vec3(0.299, 0.587, 0.114));
+		float th = turnAt(float(tx), line);
+		return y + 0.492 * (c.b - y) * sin(th) + sw * 0.877 * (c.r - y) * cos(th);
+	}
+
+	// ...as the cable brings it: an aerial's has a ghost of itself and noise
+	float sent(int tx, int ty, float line, float sw) {
+		float s = coded(tx, ty, line, sw);
+		if (GHOST > 0.0) s += GHOST * 0.15 * coded(tx - int(GHOSTX * 0.01 * SourceSize.x), ty, line, sw);
+		if (NOISE > 0.0) {
+			float t = float(FrameCount % 1024u);
+			s += NOISE * 0.08 * (rand(vec2(float(tx), float(ty)) + vec2(t * 17.13, t * 5.71)) - 0.5);
+		}
+		return s;
+	}
+
+	void main() {
+		ivec2 at = ivec2(vTexCoord * SourceSize.xy);
+		int up = max(at.y - 1, 0);
+		float line = xpRaster.w + float(at.y);
+		float sw = sense(line);
+		float swUp = sense(line - 1.0);
+		bool rf = (INPUT > 1.5);
+		// how wide the set's filters are, texels: the color's, the luma's, the trap's
+		float sc = rf ? 3.0 : 2.4;
+		float sy = 1.2 - 0.8 * SHARP + (rf ? 0.8 : 0.0);
+		const float sn = 3.0;
+		const float late = 1.0;		// the color arrives a texel after its luma
+		float u = 0.0, v = 0.0, uUp = 0.0, vUp = 0.0, y = 0.0, trap = 0.0;
+		float wcSum = 0.0, wySum = 0.0, wnSum = 0.0;
+		for (int k = -TAPS; k <= TAPS; k++) {
+			float kf = float(k);
+			// the color's filter stands `late` to the left: the same texels serve both
+			float wc = exp(-0.5 * (kf + late) * (kf + late) / (sc * sc));
+			float wy = exp(-0.5 * kf * kf / (sy * sy));
+			float wn = exp(-0.5 * kf * kf / (sn * sn));
+			float s = sent(at.x + k, at.y, line, sw);
+			y += wy * s;
+			trap += wn * 2.0 * cos(PI2 * xpCarrier.x * 0.5 * kf) * s;
+			float th = turnAt(float(at.x + k), line);
+			u += wc * s * 2.0 * sin(th);
+			v += wc * s * 2.0 * cos(th);
+			float su = sent(at.x + k, up, line - 1.0, swUp);
+			float thUp = turnAt(float(at.x + k), line - 1.0);
+			uUp += wc * su * 2.0 * sin(thUp);
+			vUp += wc * su * 2.0 * cos(thUp);
+			wcSum += wc;
+			wySum += wy;
+			wnSum += wn;
+		}
+		// the trap takes out what the low-pass has left of the carrier, no more
+		float fc = xpCarrier.x * 0.5;
+		y = y / wySum - exp(-19.7392 * sy * sy * fc * fc) * trap / wnSum;
+		u = COLOR * 0.5 * (u + uUp) / wcSum;
+		v = COLOR * 0.5 * (v * sw + vUp * swUp) / wcSum;
+		float r = y + v / 0.877;
+		float b = y + u / 0.492;
+		float g = (y - 0.299 * r - 0.114 * b) / 0.587;
+		FragColor = vec4(clamp(vec3(r, g, b), 0.0, 1.0), 1.0);
+	}
+
+// Antiflicker, left to the look while the frames come unmixed: the decoded frame with
+// the one before, in linear light
+pass seen:
+	when INPUT
+	filter nearest
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	void main() {
+		vec3 now = pow(texture(Source, vTexCoord).rgb, vec3(2.2));
+		vec3 was = pow(texture(signalFeedback, vTexCoord).rgb, vec3(2.2));
+		FragColor = vec4(pow(mix(now, was, xpBlend), vec3(1.0 / 2.2)), 1.0);
 	}
 
 pass afterglow:
@@ -210,7 +333,8 @@ fragment:
 		vec3 col = lit(x, at, r);
 		// the ghost: the picture once more to the right, faint and out of focus - a glow
 		// that stands aside, not a second picture
-		if (GHOST > 0.0) col += GHOST * 0.15 * lit(x - GHOSTX * 0.01 * SourceSize.x, vec3(0.0), 4.0);
+		// (a composite or RF picture has its ghost in the signal)
+		if ((GHOST > 0.0) && (INPUT == 0.0)) col += GHOST * 0.15 * lit(x - GHOSTX * 0.01 * SourceSize.x, vec3(0.0), 4.0);
 		FragColor = vec4(pow(min(col, vec3(1.0)), vec3(1.0 / 2.2)), 1.0);
 	}
 
@@ -420,7 +544,7 @@ fragment:
 			vec3 around = pow(texture(glowv, uv).rgb, vec3(2.2));
 			lit = mix(lit, around, 0.25 * GLOW);
 		}
-		if (NOISE > 0.0) {
+		if ((NOISE > 0.0) && (INPUT == 0.0)) {
 			// another grain each frame, not the same one moved along
 			float t = float(FrameCount % 1024u);
 			vec2 seed = gl_FragCoord.xy + vec2(t * 17.13, t * 5.71);
