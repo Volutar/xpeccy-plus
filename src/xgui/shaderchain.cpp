@@ -399,13 +399,16 @@ bool textureLine(const QString& lin, xShdTexture& tx) {
 // preset "..": NAME value, ... What names a parameter is tied to it once all are read.
 struct HeadNotes {
 	QString group;				// the one the next parameters stand in
+	QString groupSwitch;			// ...its switch, if it has one
+	float groupOn = 0;
 	struct Line {int n; QString kind; QString name; QString text;};
 	QVector<Line> lines;
 };
 
 bool headLine(const QString& lin, int n, xShdPreset& out, HeadNotes& head) {
 	static const QRegularExpression reName(QStringLiteral(R"re(^name\s+"([^"]*)"\s*$)re"));
-	static const QRegularExpression reGroup(QStringLiteral(R"re(^group\s+"([^"]*)"\s*$)re"));
+	static const QRegularExpression reGroup(QStringLiteral(
+		R"re(^group\s+"([^"]*)"(?:\s+when\s+([A-Za-z_]\w*)(?:\s+(\S+))?)?\s*$)re"));
 	static const QRegularExpression reText(QStringLiteral(R"re(^(tip|list)\s+([A-Za-z_]\w*)\s*=\s*(.+)$)re"));
 	static const QRegularExpression reMore(QStringLiteral(R"re(^more((?:\s+[A-Za-z_]\w*)+)\s*$)re"));
 	static const QRegularExpression reSet(QStringLiteral(R"re(^preset\s+"([^"]+)"\s*:\s*(.*)$)re"));
@@ -417,6 +420,8 @@ bool headLine(const QString& lin, int n, xShdPreset& out, HeadNotes& head) {
 	m = reGroup.match(lin);
 	if (m.hasMatch()) {
 		head.group = m.captured(1);
+		head.groupSwitch = m.captured(2);
+		head.groupOn = m.captured(3).toFloat();
 		return true;
 	}
 	m = reText.match(lin);
@@ -466,6 +471,11 @@ void headApply(xShdPreset& out, const HeadNotes& head) {
 			for (const QString& s : l.text.split(','))
 				p->names << s.trimmed();
 		}
+	}
+	for (xShdParam& p : out.params) {
+		if (p.groupSwitch.isEmpty() || find(p.groupSwitch)) continue;
+		out.notes << QString("%1: group \"%2\" when %3: no such parameter").arg(out.file, p.group, p.groupSwitch);
+		p.groupSwitch.clear();
 	}
 	for (xShdSet& set : out.sets) {
 		for (int i = set.values.size() - 1; i >= 0; i--) {
@@ -540,7 +550,11 @@ bool xshd_parse(const QString& path, xShdPreset& out, QString* err) {
 			prm.max = pm.captured(5).toFloat();
 			prm.step = pm.captured(6).toFloat();
 			prm.value = prm.def;
-			if (mode == TOP) prm.group = head.group;
+			if (mode == TOP) {
+				prm.group = head.group;
+				prm.groupSwitch = head.groupSwitch;
+				prm.groupOn = head.groupOn;
+			}
 			bool have = false;
 			for (const xShdParam& o : out.params) have = have || (o.name == prm.name);
 			if (!have) out.params << prm;
@@ -1780,6 +1794,21 @@ QString xShaderChain::timeReport() {
 	}
 	out += QString("total: %1 us\r\n").arg(total, 0, 'f', 1);
 	return out;
+}
+
+// what the look costs: its passes and the picture's draw, the side fill left out
+double xShaderChain::timeTotal() {
+	if (!caps.timer || !timed) return -1;
+	double total = 0;
+	bool any = false;
+	for (int i = 0; i <= SEG_PICTURE; i++) {
+		const Seg& s = segs[i];
+		if (!s.used || !s.n) continue;
+		if ((i < (int)passes.size()) && !passes[i].ran && (i < (int)passes.size() - 1)) continue;
+		total += s.sum / s.n / 1000.0;
+		any = true;
+	}
+	return any ? total : -1;
 }
 
 QString xShaderChain::info() {

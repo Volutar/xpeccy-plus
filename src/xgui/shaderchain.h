@@ -56,6 +56,8 @@ struct xShdParam {
 	float value = 0;
 	// how the sheet of knobs shows it
 	QString group;			// the frame it stands in; empty: none named
+	QString groupSwitch;		// the frame has a switch: this parameter, off at 0...
+	float groupOn = 0;		// ...and this when switched on with no value of its own to go back to
 	QString tip;
 	QStringList names;		// a list: what min, min + step... are called
 	bool more = false;		// only under All settings
@@ -229,6 +231,7 @@ class xShaderChain : protected QOpenGLExtraFunctions {
 		void segBegin(int seg);
 		void segEnd();
 		QString timeReport();
+		double timeTotal();		// the passes and the picture, us; below 0: not timed
 		QString info();
 		QStringList notes() const {return preset.notes;}
 	private:
