@@ -421,7 +421,7 @@ bool headLine(const QString& lin, int n, xShdPreset& out, HeadNotes& head) {
 	if (m.hasMatch()) {
 		head.group = m.captured(1);
 		head.groupSwitch = m.captured(2);
-		head.groupOn = m.captured(3).toFloat();
+		head.groupOn = m.captured(3).toFloat();	// 0: none given, see headApply
 		return true;
 	}
 	m = reText.match(lin);
@@ -473,9 +473,17 @@ void headApply(xShdPreset& out, const HeadNotes& head) {
 		}
 	}
 	for (xShdParam& p : out.params) {
-		if (p.groupSwitch.isEmpty() || find(p.groupSwitch)) continue;
-		out.notes << QString("%1: group \"%2\" when %3: no such parameter").arg(out.file, p.group, p.groupSwitch);
-		p.groupSwitch.clear();
+		if (p.groupSwitch.isEmpty()) continue;
+		const xShdParam* sw = find(p.groupSwitch);
+		if (!sw) {
+			out.notes << QString("%1: group \"%2\" when %3: no such parameter").arg(out.file, p.group, p.groupSwitch);
+			p.groupSwitch.clear();
+			continue;
+		}
+		// switched on with nothing to go back to: the value the line gives, inside the
+		// parameter's range; none given - its default, or its most if that is 0
+		p.groupOn = std::min(std::max(p.groupOn, sw->min), sw->max);
+		if (p.groupOn == 0.0f) p.groupOn = (sw->def != 0.0f) ? sw->def : sw->max;
 	}
 	for (xShdSet& set : out.sets) {
 		for (int i = set.values.size() - 1; i >= 0; i--) {
