@@ -198,7 +198,8 @@ that can be switched off, and then costs nothing:
   **Color**, how strong they are; **Ghost**, a faint second picture beside the first;
   **Interference**, a wave that pushes the lines aside; **Noise**. On a 128K the color
   pattern stands still and **Phase**, under **All settings**, picks one of the eight
-  ways it can fall, as the machine picks one at power-on; on a 48K it crawls;
+  ways it can fall, as the machine picks one at power-on; on a 48K it crawls. **Shimmer**,
+  there too, is how much of the pattern's flicker from frame to frame shows;
 - **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**, **Contrast**. A small
   picture, under about three screen pixels a dot, stays flat.
 
