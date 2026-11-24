@@ -2042,10 +2042,7 @@ void SetupWin::applyGlobal() {
 	emu_unlock();
 	applyRecording();
 	vid_set_border_mode(ui.bszsld->value());
-	// with no shaders the list holds None only: the chosen one stays for a run that has them
-	if (conf.vid.shd_support)
-		look_choose(list_look(ui.cbShader));
-	lookTake();		// the look and its knobs are in place already: now they stay
+	lookTake();		// the look and its knobs are in place since they were picked: now they stay
 	look_store_save();
 	std::string pal = getRFSData(ui.cbPalPreset).toStdString();		// empty: the built-in one
 	bool palNew = (pal != conf.palette) || !palPending.isEmpty();

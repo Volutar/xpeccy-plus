@@ -583,9 +583,9 @@ namespace {
 void MainWin::loadShader(bool tell) {
 	if (!glw || !conf.vid.shd_support || !glReady) return;
 	glHold hold(glw);
-	// a preset that is gone, or none named where the file has them: the file's first
+	// A preset that is gone, or none named where the file has them: the file's first is
+	// loaded. The config keeps the name it has: the preset may be back at the next start
 	const xLook lk = look_current();
-	look_choose(lk);
 	shdLoaded = conf.vid.shader;
 	shdPresetLoaded = conf.vid.shdPreset;
 	shdSettled = false;
