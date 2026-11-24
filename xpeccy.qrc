@@ -12,11 +12,8 @@
         <file>res/palettes/spectaculator.txt</file>
         <file>res/palettes/wiki1.txt</file>
         <file>res/palettes/wiki2.txt</file>
-        <file>res/shaders/composite-crt-flat.txt</file>
-        <file>res/shaders/composite-crt.txt</file>
         <file>res/shaders/crt.txt</file>
         <file>res/shaders/scanlines.txt</file>
-        <file>res/shaders/zx-rf-artifact.txt</file>
         <file>res/styles/Dark.pal</file>
         <file>res/styles/Dark.qss</file>
         <file>res/styles/Dracula.pal</file>

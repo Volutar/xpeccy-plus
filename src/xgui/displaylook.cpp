@@ -428,7 +428,7 @@ bool look_delete_preset(const xLook& lk) {
 // ---------------------------------------------------------------- old names
 
 // The looks that were files of their own - the aperture grille and shadow mask shaders,
-// the TV lines, the first monitor looks - are the tube now: each old name opens the tube's
+// the TV lines, the first monitor and signal looks - are the tube now: each old name opens the tube's
 // look nearest to it with the knobs turned to stand for it (measured beside the old file
 // on a test card: the lines' depth on bright and on plain white, the dot's sharpness,
 // the light over all, the bend). The knobs are turned only on a look not turned yet.
@@ -469,6 +469,9 @@ void look_old_names() {
 		{"monitor-1084.txt", "", "RGB monitor", ""},
 		{"monitor-1084-flat.txt", "", "RGB monitor", "CURVE 0, CORNER 0, VIGN 0"},
 		{"pvm-sharp.txt", "", "PVM", ""},
+		{"composite-crt.txt", "", "Home TV", ""},
+		{"composite-crt-flat.txt", "", "Home TV", "CURVE 0, CORNER 0, VIGN 0"},
+		{"zx-rf-artifact.txt", "", "Home TV", ""},
 	};
 	const QString old = QString::fromLocal8Bit(conf.vid.shader.c_str());
 	const QString was = QString::fromUtf8(conf.vid.shdPreset.c_str());
