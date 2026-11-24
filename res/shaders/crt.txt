@@ -87,6 +87,8 @@ tip COLOR = How strong the colors of a composite or RF picture are
 tip SHARP = How fine a detail the set's video path lets through
 #pragma parameter PHASE "Phase" 0 0 7 1
 tip PHASE = The color carrier against the dots, as a 128K finds it at power-on
+#pragma parameter SHIMMER "Shimmer" 0.15 0.0 1.0 0.05
+tip SHIMMER = How much of the color pattern's flicker from frame to frame shows
 #pragma parameter GHOST "Ghost" 0.0 0.0 1.0 0.05
 tip GHOST = A faint second picture beside the first
 #pragma parameter GHOSTX "Ghost's distance" 1.6 0.0 5.0 0.1
@@ -94,7 +96,7 @@ tip GHOSTX = Per cent of the picture's width
 #pragma parameter WIGGLE "Interference" 0.0 0.0 1.0 0.05
 tip WIGGLE = Lines pushed aside by a wave that runs down
 #pragma parameter NOISE "Noise" 0.0 0.0 1.0 0.05
-more SHARP PHASE GHOSTX
+more SHARP PHASE SHIMMER GHOSTX
 
 # Composite and RF take each frame as the machine made it and mix after decoding
 frames raw when INPUT
@@ -181,11 +183,11 @@ fragment:
 		return y + 0.492 * (c.b - y) * sin(th) + sw * 0.877 * (c.r - y) * cos(th);
 	}
 
-	// ...as the cable brings it: an aerial's has a ghost of itself and noise
+	// ...as the cable brings it: with a ghost of itself, and an aerial's with noise
 	float sent(int tx, int ty, float line, float sw) {
 		float s = coded(tx, ty, line, sw);
 		if (GHOST > 0.0) s += GHOST * 0.15 * coded(tx - int(GHOSTX * 0.01 * SourceSize.x), ty, line, sw);
-		if (NOISE > 0.0) {
+		if ((NOISE > 0.0) && (INPUT > 1.5)) {
 			float t = float(FrameCount % 1024u);
 			s += NOISE * 0.08 * (rand(vec2(float(tx), float(ty)) + vec2(t * 17.13, t * 5.71)) - 0.5);
 		}
@@ -237,8 +239,13 @@ fragment:
 		FragColor = vec4(clamp(vec3(r, g, b), 0.0, 1.0), 1.0);
 	}
 
-// Antiflicker, left to the look while the frames come unmixed: the decoded frame with
-// the one before, in linear light
+// The decoded frame with the one before, in linear light. The carrier's pattern turns
+// over from one frame to the next - the V switch on a 128K, half a cycle on a 48K - and
+// on a set the eye takes the two as one; on a screen that shows each frame whole, and
+// not at the machine's own rate, they beat. So where the picture itself stands still
+// the two frames are averaged, but for the part Shimmer leaves. Where it moves there is
+// nothing to average, and antiflicker, left to the look while the frames come unmixed,
+// has its own say.
 pass seen:
 	when INPUT
 	filter nearest
@@ -249,7 +256,20 @@ fragment:
 	void main() {
 		vec3 now = pow(texture(Source, vTexCoord).rgb, vec3(2.2));
 		vec3 was = pow(texture(signalFeedback, vTexCoord).rgb, vec3(2.2));
-		FragColor = vec4(pow(mix(now, was, xpBlend), vec3(1.0 / 2.2)), 1.0);
+		// still: the frame's own texels here, as far as the decoder's filters reach
+		// that matters, and on the line above are what they were a frame ago
+		ivec2 at = ivec2(vTexCoord * OriginalSize.xy);
+		ivec2 last = ivec2(OriginalSize.xy) - 1;
+		float moved = 0.0;
+		for (int k = -4; k <= 4; k++) {
+			ivec2 p = clamp(at + ivec2(k, 0), ivec2(0), last);
+			ivec2 q = clamp(at + ivec2(k, -1), ivec2(0), last);
+			vec3 d = abs(texelFetch(Original, p, 0).rgb - texelFetch(OriginalHistory1, p, 0).rgb)
+				+ abs(texelFetch(Original, q, 0).rgb - texelFetch(OriginalHistory1, q, 0).rgb);
+			moved += d.r + d.g + d.b;
+		}
+		float even = (moved < 0.004) ? 0.5 * (1.0 - SHIMMER) : 0.0;
+		FragColor = vec4(pow(mix(now, was, max(xpBlend, even)), vec3(1.0 / 2.2)), 1.0);
 	}
 
 pass afterglow:
@@ -278,9 +298,9 @@ fragment:
 
 	const float PI = 3.14159265;
 
-	// A dot's light spreads along the line as a raised cosine of radius r texels. This is
-	// its integral taken twice: the light, left of t, of an edge at 0 lit to its right,
-	// summed again over a stretch that ends at t. r = 0 is a hard edge.
+	// A dot spreads along the line as a raised cosine of radius r texels. This is its
+	// integral taken twice: what an edge at 0, lit to its right, gives left of t, summed
+	// again over a stretch that ends at t. r = 0 is a hard edge.
 	vec3 spread(vec3 t, float r) {
 		vec3 c = clamp(t, -r, r);
 		vec3 v = 0.5 * c + c * c / (4.0 * r) - r * cos(PI * c / r) / (2.0 * PI * PI) + 0.25 * r - r / (2.0 * PI * PI);
@@ -288,7 +308,11 @@ fragment:
 	}
 
 	// The light of the screen pixel that stands at x texels along this line; each color's
-	// beam lands at texels off its place, a dot spreads r texels. One walk along the
+	// beam lands at texels off its place, a dot spreads r texels. What spreads is the
+	// drive, not the light: a video path too slow for a dot rounds the voltage, and the
+	// tube makes light of what is left - so a lone lit dot comes out narrower than its
+	// place and dimmer, a lone dark one stays dark, as on a tube; spread as light, lit
+	// dots would swell into bricks and close the dark between them. One walk along the
 	// texels for the three: a texel is read once, each color takes its own share of it
 	vec3 lit(float x, vec3 at, float r) {
 		float foot = SourceSize.x * OutputSize.z;		// a screen pixel, in texels
@@ -309,10 +333,10 @@ fragment:
 			vec3 w = max((left - right) / foot - 0.0005, vec3(0.0));
 			left = right;
 			vec3 c = texelFetch(Source, ivec2(clamp(first + n, 0, last), row), 0).rgb;
-			sum += pow(c, vec3(2.2)) * w;
+			sum += c * w;
 			all += w;
 		}
-		return sum / max(all, vec3(0.0001));
+		return pow(sum / max(all, vec3(0.0001)), vec3(2.2));
 	}
 
 	void main() {
@@ -544,7 +568,8 @@ fragment:
 			vec3 around = pow(texture(glowv, uv).rgb, vec3(2.2));
 			lit = mix(lit, around, 0.25 * GLOW);
 		}
-		if ((NOISE > 0.0) && (INPUT == 0.0)) {
+		// (an aerial's noise is in the signal)
+		if ((NOISE > 0.0) && (INPUT < 1.5)) {
 			// another grain each frame, not the same one moved along
 			float t = float(FrameCount % 1024u);
 			vec2 seed = gl_FragCoord.xy + vec2(t * 17.13, t * 5.71);
