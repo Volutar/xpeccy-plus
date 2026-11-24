@@ -163,8 +163,11 @@ there. The list has four parts:
 
 - **None** - the picture as it is - and **Scanlines**: plain scan lines with a hard or a
   soft dot, even at any window size and about as bright as **None**;
-- the looks of a tube with its mask: **Aperture grille**, **Fine grille**, **Shadow mask**
-  and **Wide shadow mask**, each also as **soft**, with softer lines and dots;
+- the looks of a tube: **Home TV** - a small set with a coarse mask, a soft beam and a
+  bulging screen; **RGB monitor** - the Commodore 1084S; **PVM** - a broadcast monitor,
+  sharp and flat; **Xpixie** - soft and glowing, with afterglow, a ghost and noise. And
+  **Aperture grille**, **Fine grille**, **Shadow mask**, **Wide shadow mask**, each also as
+  **soft**: plain masks over hard or softer lines;
 - the presets you saved;
 - the other shaders, each a file: **tvline-nocurve-light**, the one a new installation
   starts with, and the rest.
@@ -174,11 +177,30 @@ there. The list has four parts:
 
 A look with settings has a window of them: **View > Display > Settings...**, or the
 {icon}`settings` button beside the list in **Options**. **Scanlines** has **Depth** - how
-dark the gap between two lines is - and **Softness**; a tube's look has its lines, mask,
-bloom, curvature and brightness. The picture shows every move at once, and what you set
-stays with the look: pick another and come back, and it is as you left it.
+dark the gap between two lines is - **Gap width** and **Softness**. The picture shows every
+move at once, and what you set stays with the look: pick another and come back, and it is
+as you left it.
 
 ![The settings of a look](images/options-video-display.png)
+
+A tube's settings are in frames, one a part of the tube; a frame with a tick is a part
+that can be switched off, and then costs nothing:
+
+- **Beam** - **Scanlines**, how dark the gap between two lines is; **Gap width**, how much
+  of a line it takes; **Focus**, how sharp a dot is along the line;
+- **Divergence** - how far the red and the blue beam land from the green one, more towards
+  the screen's edges;
+- **Mask** - **Aperture grille**, **Slot mask** or **Shadow mask**, its **Strength** and
+  **Fineness**: how many triads of the mask a dot of the picture has. The mask is drawn in
+  whole screen pixels, so in a small window it is coarser than the number says;
+- **Glow** - light around bright things, and how far it reaches;
+- **Afterglow** - how much of a lit dot is left a frame later;
+- **Signal** - **Ghost**, a faint second picture beside the first; **Interference**, a wave
+  that pushes the lines aside; **Noise**;
+- **Screen** - **Curvature**, **Corners**, **Vignette**, **Contrast**. A small picture, under
+  about three screen pixels a dot, stays flat.
+
+Under the frames is the **GPU time** the look takes of the graphics card for a frame.
 
 - **All settings** - shows the finer ones too;
 - **Defaults** - puts every setting of this look back;

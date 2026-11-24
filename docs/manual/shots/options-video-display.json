@@ -4,8 +4,8 @@
       "machine": "zx128"
     },
     "VIDEO": {
-      "shader": "crt-lottes.txt",
-      "shader.preset": "Aperture grille"
+      "shader": "crt.txt",
+      "shader.preset": "Home TV"
     }
   },
   "steps": [
