@@ -748,9 +748,10 @@ static void seedConfigDir(const QString& src) {
 
 #define	XCONF_MARK	"[["
 
-// the settings themselves; the machines come from the module that owns them
+// the settings themselves, the Display knobs turned among them; the machines come from
+// the module that owns them
 
-static const char* xconfFile[] = {"config.conf", "layouts.conf", NULL};
+static const char* xconfFile[] = {"config.conf", "layouts.conf", "shaders/values.conf", NULL};
 
 static QString xconf_dir() {
 	return QString::fromLocal8Bit(conf.path.confDir.c_str());
@@ -889,6 +890,9 @@ void loadConfig() {
 	// on every start, not only on the first one: this is how a new file added
 	// by an update reaches a config directory that already exists
 	seedConfigDir(sysConfigDir());
+	// a config read again (import, reset) has its own look and knobs, or none
+	conf.vid.shdPreset.clear();
+	look_store_reload();
 	std::ifstream file(conf.path.confFile);
 	char fname[FILENAME_MAX];
 	if (!file.good()) {
