@@ -1748,6 +1748,12 @@ void MainWin::paintGLView() {
 	// the programs being built are looked at; the picture never waits for them
 	chain.step();
 	shaderSay();
+	// a sheet of knobs is up: it shows what the look costs
+	if ((conf.vid.shdTiming > 0) != sheetTimed) {
+		sheetTimed = (conf.vid.shdTiming > 0);
+		chain.timing(sheetTimed);
+	}
+	if (sheetTimed) conf.vid.shdGpuUs = chain.timeTotal();
 	// The machine stands (paused, Options open) and a program is still being built:
 	// no frame comes to show the look once it is ready, so the paint is asked again
 	if (chain.pending() && !chainPoll && (conf.emu.pause || conf.zx->flgDBG)) {

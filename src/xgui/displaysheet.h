@@ -6,7 +6,9 @@
 #include "displaylook.h"
 
 #include <QDialog>
+#include <QHash>
 
+class QLabel;
 class QPushButton;
 class QVBoxLayout;
 
@@ -19,6 +21,7 @@ class xDisplaySheet : public QDialog {
 		void s_param(const QString& name, float value);	// a knob moved
 		void s_look();			// another look is chosen, or every knob is back
 	protected:
+		void showEvent(QShowEvent*) override;
 		void hideEvent(QHideEvent*) override;
 	private:
 		xLook look;
@@ -29,6 +32,8 @@ class xDisplaySheet : public QDialog {
 		QPushButton* btnDef;
 		QPushButton* btnSave;
 		QPushButton* btnDel;
+		QLabel* gpuLab;			// what the look costs, while the window is up
+		QHash<QString, float> lastOn;	// a switched-off group's value, to come back to
 		void build();
 		QWidget* knob(const xShdParam&);
 		void moved(const QString& name, float value);

@@ -187,7 +187,7 @@ class xOptSheet {
 	public:
 		QWidget* body;
 		xOptSheet();
-		void group(const QString&, int side = -1, const QString& icon = QString());
+		QGroupBox* group(const QString&, int side = -1, const QString& icon = QString());
 		void field(const QString&, QWidget*, const QString& = QString());
 		QLabel* row(const QString&, QWidget*);
 		void wide(QWidget*);

@@ -2,7 +2,12 @@
 
 #include "xgui.h"
 
+#include "../xcore/xcore.h"
+
 #include <QComboBox>
+#include <QGroupBox>
+#include <QShowEvent>
+#include <QTimer>
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QLabel>
@@ -54,6 +59,12 @@ xDisplaySheet::xDisplaySheet(QWidget* parent) : QDialog(parent) {
 	btnClose->setObjectName("dispClose");
 	foreach(QPushButton* btn, QList<QPushButton*>() << btnAll << btnDef << btnSave << btnDel << btnClose)
 		btn->setAutoDefault(false);
+	gpuLab = new QLabel;
+	gpuLab->setToolTip(tr("What this look takes of the graphics card, a frame"));
+	QFont fnt = gpuLab->font();
+	fnt.setItalic(true);
+	gpuLab->setFont(fnt);
+	lay->addWidget(gpuLab);
 	row->addWidget(btnAll);
 	row->addWidget(btnDef);
 	row->addStretch(1);
@@ -69,9 +80,27 @@ xDisplaySheet::xDisplaySheet(QWidget* parent) : QDialog(parent) {
 	connect(btnSave, &QPushButton::clicked, this, &xDisplaySheet::savePreset);
 	connect(btnDel, &QPushButton::clicked, this, &xDisplaySheet::deletePreset);
 	connect(btnClose, &QPushButton::clicked, this, &QDialog::close);
+	QTimer* tick = new QTimer(this);
+	tick->setInterval(500);
+	connect(tick, &QTimer::timeout, this, [this]() {
+		if (!isVisible()) return;
+		const double us = conf.vid.shdGpuUs;
+		gpuLab->setText((us < 0) ? QString() : tr("GPU time: %1 ms a frame").arg(us / 1000.0, 0, 'f', 2));
+	});
+	tick->start();
+}
+
+void xDisplaySheet::showEvent(QShowEvent* ev) {
+	if (!ev->spontaneous()) {
+		conf.vid.shdGpuUs = -1;
+		conf.vid.shdTiming++;
+		gpuLab->setText(QString());
+	}
+	QDialog::showEvent(ev);
 }
 
 void xDisplaySheet::hideEvent(QHideEvent* ev) {
+	if (!ev->spontaneous() && (conf.vid.shdTiming > 0)) conf.vid.shdTiming--;
 	look_store_save();
 	QDialog::hideEvent(ev);
 }
@@ -96,7 +125,24 @@ void xDisplaySheet::build() {
 			more = more || p.more;
 			if (p.more && !all) continue;
 			const QString name = p.group.isEmpty() ? tr("Parameters") : p.group;
-			if (first || (name != group)) sheet.group(name);
+			if (first || (name != group)) {
+				QGroupBox* box = sheet.group(name);
+				// a stage with a switch: off, its pass is not run and its knobs stand idle
+				if (!p.groupSwitch.isEmpty()) {
+					const QString sw = p.groupSwitch;
+					const float on = p.groupOn;
+					box->setObjectName("group_" + sw);
+					box->setCheckable(true);
+					box->setChecked(look_value(look, sw) != 0.0f);
+					connect(box, &QGroupBox::toggled, this, [this, sw, on](bool yes) {
+						float val = 0;
+						if (yes) val = lastOn.value(sw, on);
+						else lastOn[sw] = look_value(look, sw);
+						moved(sw, val);
+						QMetaObject::invokeMethod(this, [this]() {build();}, Qt::QueuedConnection);
+					});
+				}
+			}
 			first = false;
 			group = name;
 			QWidget* wid = knob(p);
