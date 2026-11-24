@@ -15,6 +15,7 @@
         <file>res/shaders/composite-crt-flat.txt</file>
         <file>res/shaders/composite-crt.txt</file>
         <file>res/shaders/crt-lottes.txt</file>
+        <file>res/shaders/crt.txt</file>
         <file>res/shaders/monitor-1084-flat.txt</file>
         <file>res/shaders/monitor-1084.txt</file>
         <file>res/shaders/pvm-sharp.txt</file>

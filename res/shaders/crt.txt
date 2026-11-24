@@ -1,0 +1,356 @@
+# CRT - Xpeccy+
+#
+# A tube in stages, each drawn once at the size it needs; a stage whose knob is at 0 is
+# not drawn at all:
+#   afterglow  at the source's size: each color keeps the brighter of this frame and its
+#              own last picture faded - the phosphor's decay
+#   line       along the line, at the picture's width and the source's lines: how far a
+#              dot spreads (the beam's focus), averaged over the screen pixel; the red and
+#              blue beams parted from the green one
+#   glowh, glowv  a quarter of the picture, blurred across and down: the light around
+#              bright things
+#   last       down the screen: the beam's profile (scanlines, flat where a line would
+#              pass full light), the mask through which it lands, the screen's curve, its
+#              corners and vignette
+# Light is linear inside and stored gamma-encoded between the passes, so an 8-bit target
+# holds it as well as a float one. What the scanlines and the mask take is given back.
+#
+# The two-pass beam follows Hyllian's CRT (MIT), the mask layouts Timothy Lottes's and
+# hunterk's (public domain). The beams' parting towards the screen's edges is Volutar's.
+# Same MIT license as the rest of Xpeccy+.
+
+name "CRT"
+
+group "Beam"
+#pragma parameter SCAN "Scanlines" 0.5 0.0 1.0 0.05
+tip SCAN = How dark the gap between two lines is
+#pragma parameter FOCUS "Focus" 0.6 0.0 1.0 0.05
+tip FOCUS = How sharp a dot is along the line
+#pragma parameter GROW "Wider where brighter" 0.3 0.0 1.0 0.05
+tip GROW = A bright line fills more of its gap
+#pragma parameter FIT "Line fit" 0 0 1 1
+list FIT = Whole pixels, The picture's lines
+tip FIT = What the lines follow at a scale that is not whole
+more GROW FIT
+
+group "Divergence" when DIVERGE 1.0
+#pragma parameter DIVERGE "Amount" 0.0 0.0 2.0 0.05
+tip DIVERGE = How far red and blue part from green at the edges
+#pragma parameter DIVRX "Red across" -0.55 -2.0 2.0 0.05
+#pragma parameter DIVRY "Red down" -0.3 -2.0 2.0 0.05
+#pragma parameter DIVBX "Blue across" 0.55 -2.0 2.0 0.05
+#pragma parameter DIVBY "Blue down" 0.3 -2.0 2.0 0.05
+tip DIVRX = Dots, at the screen's edge
+tip DIVRY = Lines, at the screen's edge
+tip DIVBX = Dots, at the screen's edge
+tip DIVBY = Lines, at the screen's edge
+#pragma parameter DIVMID "At the middle" 0.18 0.0 1.0 0.02
+tip DIVMID = The share of it left at the screen's middle
+more DIVRX DIVRY DIVBX DIVBY DIVMID
+
+group "Mask"
+#pragma parameter MASK "Type" 1 0 3 1
+list MASK = None, Aperture grille, Slot mask, Shadow mask
+#pragma parameter MASKS "Strength" 0.4 0.0 1.0 0.05
+tip MASKS = How much the mask holds back between its openings
+#pragma parameter MSIZE "Size" 0 0 3 1
+list MSIZE = Auto, 1 pixel, 2 pixels, 3 pixels
+tip MSIZE = Screen pixels to a stripe. Auto: by the picture's scale
+#pragma parameter MBEND "On the glass" 0 0 1 1
+list MBEND = Off, On
+tip MBEND = The mask bends with a curved screen
+more MSIZE MBEND
+
+group "Glow" when GLOW 0.3
+#pragma parameter GLOW "Amount" 0.0 0.0 1.0 0.05
+tip GLOW = How much light spills around bright things
+#pragma parameter GLOWR "Radius" 1.5 0.5 4.0 0.25
+tip GLOWR = How far it spills
+more GLOWR
+
+group "Afterglow" when AFTER 0.5
+#pragma parameter AFTER "Amount" 0.0 0.0 0.95 0.05
+tip AFTER = How much of a lit dot is left a frame later
+#pragma parameter AFTERR "Red" 1.0 0.0 1.0 0.05
+#pragma parameter AFTERG "Green" 0.95 0.0 1.0 0.05
+#pragma parameter AFTERB "Blue" 0.8 0.0 1.0 0.05
+more AFTERR AFTERG AFTERB
+
+group "Screen"
+#pragma parameter CURVE "Curvature" 0.0 0.0 0.15 0.005
+tip CURVE = How much the screen bulges. 0: flat
+#pragma parameter CORNER "Corners" 0.0 0.0 0.1 0.005
+tip CORNER = How round the screen's corners are
+#pragma parameter VIGN "Vignette" 0.0 0.0 1.0 0.05
+tip VIGN = How much darker the screen is towards its edges
+#pragma parameter CURVEX "Curve of the sides" 1 0 1 0.05
+#pragma parameter CURVEY "Curve of top and bottom" 1 0 1 0.05
+more CURVEX CURVEY
+
+common:
+	// a mix's share snapped at its ends: in linear light a thousandth of white over
+	// black is seen
+	float snap(float k) { return clamp((k - 0.001) / 0.998, 0.0, 1.0); }
+
+	// How far a beam lands from the green one at a point of the picture (0 .. 1 both
+	// ways): dots across and lines down, growing from the screen's middle to its edges.
+	// most: what it is at the edge
+	vec2 parting(vec2 uv, vec2 most) {
+		vec2 d = uv * 2.0 - 1.0;
+		return DIVERGE * most * (DIVMID + (1.0 - DIVMID) * length(d)) * d;
+	}
+
+pass afterglow:
+	when AFTER
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	void main() {
+		vec3 now = texture(Source, vTexCoord).rgb;
+		vec3 was = texture(afterglowFeedback, vTexCoord).rgb;
+		// fades in linear light, is kept encoded; a step of 8 bits less each frame, or the
+		// last of it would stay for good
+		vec3 left = was * pow(AFTER * vec3(AFTERR, AFTERG, AFTERB), vec3(1.0 / 2.2)) - 1.0 / 255.0;
+		FragColor = vec4(max(now, left), 1.0);
+	}
+
+pass line:
+	scale_x viewport 1.0
+	scale_y source 1.0
+	format rgba16f
+	filter nearest
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	const float PI = 3.14159265;
+
+	// A dot's light spreads along the line as a raised cosine of radius r texels. This is
+	// its integral taken twice: the light, left of t, of an edge at 0 lit to its right,
+	// summed again over a stretch that ends at t. r = 0 is a hard edge.
+	float spread(float t, float r) {
+		float c = clamp(t, -r, r);
+		float v = 0.5 * c + c * c / (4.0 * r) - r * cos(PI * c / r) / (2.0 * PI * PI) + 0.25 * r - r / (2.0 * PI * PI);
+		return v + max(t - r, 0.0);
+	}
+
+	// the light of the screen pixel that stands at x texels along this line
+	vec3 lit(float x) {
+		float foot = SourceSize.x * OutputSize.z;		// a screen pixel, in texels
+		float from = x - 0.5 * foot;
+		float to = x + 0.5 * foot;
+		float r = max((1.0 - FOCUS) * 3.0, 0.0001);
+		int row = int(vTexCoord.y * SourceSize.y);
+		int first = int(floor(from - r));
+		int last = int(SourceSize.x) - 1;
+		// each texel's share of the pixel: what its left edge lights less what its right does
+		float left = spread(to - float(first), r) - spread(from - float(first), r);
+		vec3 sum = vec3(0.0);
+		float all = 0.0;
+		for (int n = 0; n < 11; n++) {
+			float right = spread(to - float(first + n + 1), r) - spread(from - float(first + n + 1), r);
+			float w = max((left - right) / foot - 0.0005, 0.0);
+			left = right;
+			if (w <= 0.0) continue;
+			vec3 c = texelFetch(Source, ivec2(clamp(first + n, 0, last), row), 0).rgb;
+			sum += pow(c, vec3(2.2)) * w;
+			all += w;
+		}
+		return sum / max(all, 0.0001);
+	}
+
+	void main() {
+		float x = vTexCoord.x * SourceSize.x;
+		vec3 col = lit(x);
+		if (DIVERGE > 0.0) {
+			// two texels a dot
+			col.r = lit(x + 2.0 * parting(vTexCoord, vec2(DIVRX, DIVRY)).x).r;
+			col.b = lit(x + 2.0 * parting(vTexCoord, vec2(DIVBX, DIVBY)).x).b;
+		}
+		FragColor = vec4(pow(col, vec3(1.0 / 2.2)), 1.0);
+	}
+
+pass glowh:
+	scale viewport 0.25
+	filter linear
+	wrap clamp
+	when GLOW
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	void main() {
+		vec3 sum = vec3(0.0);
+		float all = 0.0;
+		for (int n = -4; n <= 4; n++) {
+			float w = exp(-0.125 * float(n * n));
+			sum += pow(texture(Source, vTexCoord + vec2(float(n) * GLOWR * OutputSize.z, 0.0)).rgb, vec3(2.2)) * w;
+			all += w;
+		}
+		FragColor = vec4(pow(sum / all, vec3(1.0 / 2.2)), 1.0);
+	}
+
+pass glowv:
+	scale viewport 0.25
+	filter linear
+	wrap clamp
+	when GLOW
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	void main() {
+		vec3 sum = vec3(0.0);
+		float all = 0.0;
+		for (int n = -4; n <= 4; n++) {
+			float w = exp(-0.125 * float(n * n));
+			sum += pow(texture(Source, vTexCoord + vec2(0.0, float(n) * GLOWR * OutputSize.w)).rgb, vec3(2.2)) * w;
+			all += w;
+		}
+		FragColor = vec4(pow(sum / all, vec3(1.0 / 2.2)), 1.0);
+	}
+
+pass:
+	filter linear
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	const float PI2 = 6.28318530718;
+
+	// a line of the line pass at x, in linear light
+	vec3 lineAt(float x, float row) {
+		return pow(texture(line, vec2(x, (row + 0.5) * lineSize.w)).rgb, vec3(2.2));
+	}
+
+	// the picture at a point: the two lines the screen pixel stands between, by the share
+	// each has of it. foot: the pixel's height in lines
+	vec3 picture(vec2 uv, float foot) {
+		float b = uv.y * lineSize.y - 0.5;
+		float i = floor(b);
+		float k = snap(clamp((b - i - 0.5) / min(foot, 1.0) + 0.5, 0.0, 1.0));
+		return mix(lineAt(uv.x, i), lineAt(uv.x, i + 1.0), k);
+	}
+
+	// The light of a scanline from its top down to u of its height, the gap at the top:
+	// amp over the profile 1 - depth / 2 * (1 + cos)
+	vec3 part(vec3 amp, vec3 u, vec3 depth) {
+		return amp * (u * (1.0 - 0.5 * depth) - depth / (2.0 * PI2) * sin(PI2 * u));
+	}
+
+	// ...with the line flat at full light from tc to 1 - tc. toTc: part() at tc
+	vec3 light(vec3 amp, vec3 tc, vec3 toTc, float u, vec3 depth) {
+		vec3 uu = vec3(u);
+		vec3 whole = amp * (1.0 - 0.5 * depth);
+		vec3 head = part(amp, min(uu, tc), depth);
+		vec3 flat_ = clamp(uu - tc, vec3(0.0), 1.0 - 2.0 * tc);
+		vec3 tail = part(amp, max(uu, 1.0 - tc), depth) - (whole - toTc);
+		return head + flat_ + tail;
+	}
+
+	vec2 warp(vec2 uv) {
+		vec2 p = uv * 2.0 - 1.0;
+		p *= vec2(1.0 + p.y * p.y * CURVE * CURVEX, 1.0 + p.x * p.x * CURVE * CURVEY);
+		return p * 0.5 + 0.5;
+	}
+
+	// What the mask lets through at a screen pixel, for each color, and how much of the
+	// light it lets through over all (what is given back). scale: screen pixels a line
+	vec3 mask(vec2 px, float scale, out float mean) {
+		mean = 1.0;
+		if (MASK == 0.0) return vec3(1.0);
+		// stripes of a pixel while a line has few of them: two colors a pair, magenta and
+		// green. With room, red, green and blue, each n pixels wide
+		float n = (MSIZE > 0.0) ? MSIZE : max(1.0, floor(scale / 5.0 + 0.5));
+		bool pair = (MSIZE == 0.0) && (scale < 3.5);
+		float dark = 1.0 - MASKS;
+		float cell = pair ? 2.0 : 3.0 * n;		// a triad's width
+		float x = px.x;
+		float gap = 1.0;				// the slot's bar between two openings
+		if (MASK == 2.0) {
+			// openings four stripes tall, a bar a stripe tall between them; every other
+			// triad half an opening lower
+			float tall = pair ? 4.0 : 4.0 * n;
+			float bar = pair ? 1.0 : n;
+			float y = px.y + mod(floor(x / cell), 2.0) * 0.5 * tall;
+			if (mod(y, tall) < bar) gap = dark;
+			mean *= 1.0 - MASKS * bar / tall;
+		} else if (MASK == 3.0) {
+			// rows of dots, every other row half a triad along
+			float tall = pair ? 1.0 : 2.0 * n;
+			x += mod(floor(px.y / tall), 2.0) * 0.5 * cell;
+		}
+		vec3 m = vec3(dark);
+		if (pair) {
+			if (mod(floor(x), 2.0) < 1.0) m.rb = vec2(1.0); else m.g = 1.0;
+			mean *= 1.0 - 0.5 * MASKS;
+		} else {
+			float s = mod(floor(x / n), 3.0);
+			if (s < 1.0) m.r = 1.0; else if (s < 2.0) m.g = 1.0; else m.b = 1.0;
+			mean *= 1.0 - MASKS * 2.0 / 3.0;
+		}
+		return m * gap;
+	}
+
+	void main() {
+		// the curve is kept to the picture: drawn on past its edges (Side fill: Stretched
+		// Edges, Blur Off) the coordinates run on straight
+		vec2 inPic = clamp(vTexCoord, vec2(0.0), vec2(1.0));
+		bool flat_ = (CURVE == 0.0);
+		vec2 uv = flat_ ? vTexCoord : warp(inPic) + (vTexCoord - inPic);
+
+		// a screen pixel's height in lines, and what the picture has there; the red and
+		// blue beams from a little off
+		float foot = flat_ ? lineSize.y * OutputSize.w : max(fwidth(uv.y) * lineSize.y, 0.0001);
+		float scale = 1.0 / foot;
+		vec3 col = picture(uv, foot);
+		if (DIVERGE > 0.0) {
+			col.r = picture(uv + vec2(0.0, parting(uv, vec2(DIVRX, DIVRY)).y * lineSize.w), foot).r;
+			col.b = picture(uv + vec2(0.0, parting(uv, vec2(DIVBX, DIVBY)).y * lineSize.w), foot).b;
+		}
+
+		// the mask: counted in the window's pixels, or in the picture's own where it is
+		// to bend with the glass
+		vec2 px = (MBEND == 1.0) ? uv * OutputSize.xy : gl_FragCoord.xy - xpPicture.xy;
+		float mean;
+		vec3 through = mask(px, 1.0 / (lineSize.y * OutputSize.w), mean);
+
+		// A scanline follows the picture's lines on a curved screen and where asked;
+		// else it takes a whole number of screen rows, every one the same at any scale.
+		// Lines that follow the picture beat with the rows at a small scale: shallower there
+		bool rows = flat_ && (FIT == 0.0);
+		float deep = SCAN * (rows ? 1.0 : mix(0.4, 1.0, smoothstep(2.0, 4.0, scale)) * step(1.5, scale));
+		vec3 depth = max(deep * (1.0 - GROW * col), vec3(0.0001));
+		vec3 amp = max(col * through / mean / (1.0 - 0.5 * depth), vec3(0.000001));
+		// where the line would pass full light
+		vec3 tc = acos(clamp((2.0 / depth) * (1.0 - 1.0 / amp) - 1.0, -1.0, 1.0)) / PI2;
+		vec3 toTc = part(amp, tc, depth);
+		vec3 whole = 2.0 * toTc + 1.0 - 2.0 * tc;
+		// the pixel's share of the scanline, the gap on its last row
+		float period = rows ? max(1.0, floor(scale + 0.5)) : scale;
+		float row = rows ? vTexCoord.y * OutputSize.y : uv.y * lineSize.y * scale;
+		float from = row / period;
+		float to = (row + 1.0) / period;
+		vec3 sum = (floor(to) - floor(from)) * whole
+			+ light(amp, tc, toTc, fract(to), depth) - light(amp, tc, toTc, fract(from), depth);
+		vec3 lit = max(sum * period, vec3(0.0));
+
+		// the light around bright things, over the dark between the lines and the mask too
+		if (GLOW > 0.0) {
+			vec3 around = pow(texture(glowv, uv).rgb, vec3(2.2));
+			lit = 1.0 - (1.0 - min(lit, vec3(1.0))) * (1.0 - GLOW * around);
+		}
+
+		// the screen's own edge: corners rounded in the window's pixels, a vignette
+		if (xpWide < 0.5) {
+			vec2 size = OutputSize.xy;
+			float rad = CORNER * min(size.x, size.y);
+			vec2 q = abs(vTexCoord - 0.5) * size - (0.5 * size - rad);
+			float out_ = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - rad;
+			lit *= clamp(0.5 - out_, 0.0, 1.0);
+			vec2 u = inPic;
+			lit *= mix(1.0, pow(16.0 * u.x * u.y * (1.0 - u.x) * (1.0 - u.y), 0.25), VIGN);
+		}
+		FragColor = vec4(pow(lit, vec3(1.0 / 2.2)), 1.0);
+	}
