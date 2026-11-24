@@ -17,13 +17,17 @@ before that point is upstream's history and is not repeated here.
   preset makes a look of your own.
 
 - **Scanlines**, beside None in the Display list: plain scanlines with a hard or a soft dot,
-  by Depth, Gap width and Softness. The lines stay even at any window size, and the picture
-  keeps its brightness.
+  by Depth, Gap width and Softness. Each is a line of the picture at any window size, and
+  the picture keeps its brightness.
 
 - **CRT looks**: Home TV, RGB monitor, PVM and Xpixie in the Display list. One tube in
   stages that switch off - beam, divergence, mask, glow, afterglow, signal, screen - with
-  the mask as fine as the tube's own and thinning out as the picture gets smaller.
-  *(beam divergence by Volutar)*
+  the mask as fine as the tube's own and thinning out as the picture gets smaller. A new
+  installation starts with RGB monitor. *(beam divergence by Volutar)*
+
+- **The older shader files are the tube now**: the aperture grille and shadow mask looks,
+  TV lines, monitor-1084 and pvm-sharp open the tube set to stand for each. An old file
+  put into `config/shaders` still works.
 
 - **Keymap By machine**, the default: Input > Keymap and Options > Input. The Robik takes the
   Robik's keymap, the ZX Spectrum 48K the 48K one, every other machine ZX Spectrum 128K. A
@@ -112,10 +116,6 @@ before that point is upstream's history and is not repeated here.
   the button Error: check the log beside the Display list of Options > Video has the first
   error and its line in its tip, a click opens all of them. No message on the picture when
   a shader is picked.
-
-- **The aperture grille and shadow mask shaders are one file**: eight looks of the Display
-  list - Aperture grille, Fine grille, Shadow mask, Wide shadow mask, each also soft - with
-  curvature as a knob. A config that names one of the old files opens its look.
 
 - **A shader file can hold several passes**, with parameters, textures, earlier frames and
   its own last output, under the names RetroArch's slang shaders use:

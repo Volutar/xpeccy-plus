@@ -3,7 +3,7 @@
 GLSL post-processing filters, drawn through OpenGL: none with `--no-gl` or without an
 OpenGL 3.3 driver (OpenGL ES 3.0). Pick a look in the Display list of Options - Video or in
 View - Display; in `config/config.conf` it is `shader = <file>` and, for a file with presets,
-`shader.preset = <name>`. A fresh config starts with `tvline-nocurve-light.txt`; an empty or
+`shader.preset = <name>`. A fresh config starts with the RGB monitor look of `crt.txt`; an empty or
 missing `shader` line turns filtering off.
 
 A shader with parameters has a sheet of knobs: the gear beside the list, or View - Display -
@@ -12,10 +12,10 @@ preset writes the look as it stands into `<name>.preset` here - the shader's fil
 and the values that are not the shader's defaults:
 
 ```
-shader = crt-lottes.txt
+shader = crt.txt
 name = My TV
-scanSharp = 18
-curve = 0.02
+SCAN = 0.7
+CURVE = 0.02
 ```
 
 With Side fill set to Stretched Edges and its Blur to Off, the shader draws the whole view:
@@ -24,30 +24,15 @@ edge dots there, and `uniform float xpWide` is 1 (0 otherwise). A shader of your
 it to leave off what belongs to the tube's edge - rounded corners, a vignette - as the bundled
 ones do; a curve is best kept to the picture, `warp(clamp(uv, 0.0, 1.0)) + (uv - clamp(uv, 0.0, 1.0))`.
 
-Like the ROM images, **these files are not covered by the MIT license of Xpeccy+** - each one
-keeps the terms of its own author, listed below.
-
-## Aperture grille and shadow mask - Timothy Lottes, tuned by Volutar
-
-Public domain ("Please take and use, change, or whatever" - see the header of the file).
-One file, `crt-lottes.txt`, with parameters; the looks are its presets, each with hard
-scanlines and, as "soft", with softer ones. Curvature is a knob.
-
-| Preset | Look |
-| --- | --- |
-| Aperture grille | aperture grille, Trinitron-like |
-| Fine grille | the same with a finer grille |
-| Shadow mask | shadow-mask triads |
-| Wide shadow mask | wider triads |
-
-A config that names one of the twelve files this used to be (`grille-nocurve-crisp.txt`,
-`tridot-curve-light.txt`...) opens the preset it is now, a curved one with its curve.
+The bundled files are Xpeccy+'s own, under its MIT license; what each builds on is named
+with it below.
 
 ## Scanlines - Xpeccy+
 
 `scanlines.txt`, MIT as the rest of Xpeccy+: plain scanlines with a hard or a soft dot.
-Three knobs: Depth, Gap width and Softness. The lines stay even at a scale that is not a
-whole number, and the light the gaps take is given back: the picture is as bright as with
+Three knobs: Depth, Gap width and Softness. A scanline is a line of the picture at any
+scale (Line fit, under All settings, counts whole screen rows instead: even lines, but no
+longer one to a line of the picture). The light the gaps take is given back: the picture is as bright as with
 no shader, but for colors at full light, whose lines are flat on top and a little darker
 over all.
 
@@ -81,26 +66,22 @@ hunterk's (public domain); the beams' parting towards the edges is Volutar's; th
 the interference and the noise are after Mattias Gustavsson's newpixie CRT (MIT / public
 domain), which Xpixie is named after.
 
-## TV scanlines - cgwg, Themaister and DOLLS
+## Names of older versions
 
-Copyright (C) 2010-2012 cgwg, Themaister and DOLLS, **GNU GPL v2 or later** - the notice is
-kept intact at the top of each file. Distributed here as a separate data file, not linked
-into the emulator.
+The aperture grille and shadow mask files (`grille-nocurve-crisp.txt`,
+`tridot-curve-light.txt`...), `tvline-nocurve-light.txt` and `tvline-curve-light.txt`,
+`monitor-1084.txt`, `monitor-1084-flat.txt` and `pvm-sharp.txt` are not bundled any more:
+the tube does what each did. A config that names one opens the tube with its knobs turned
+to stand for it. A file of that name put into this folder is used as it is, as any shader
+of your own.
 
-| File | Look |
-| --- | --- |
-| `tvline-nocurve-light.txt` | soft TV scanlines, flat screen - **the default** |
-| `tvline-curve-light.txt` | the same with screen curvature |
+## Signal looks - Xpeccy+
 
-## Display models - Xpeccy+
-
-Written for this project. Same MIT license as the rest of Xpeccy+.
+Single-pass looks of a composite and an RF picture. MIT.
 
 | File | Look |
 | --- | --- |
 | `composite-crt.txt`, `composite-crt-flat.txt` | composite / RF home TV, with and without curvature |
-| `monitor-1084.txt`, `monitor-1084-flat.txt` | Commodore 1084 shadow-mask RGB monitor |
-| `pvm-sharp.txt` | Sony PVM broadcast monitor, sharp |
 | `zx-rf-artifact.txt` | ZX Spectrum RF color artifacts |
 
 ## Writing a shader
