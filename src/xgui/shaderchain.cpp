@@ -394,6 +394,88 @@ bool textureLine(const QString& lin, xShdTexture& tx) {
 	return true;
 }
 
+// The lines that say how the sheet of knobs shows the parameters, before the first
+// pass: name "..", group "..", tip NAME = text, list NAME = a, b, c, more NAME ..,
+// preset "..": NAME value, ... What names a parameter is tied to it once all are read.
+struct HeadNotes {
+	QString group;				// the one the next parameters stand in
+	struct Line {int n; QString kind; QString name; QString text;};
+	QVector<Line> lines;
+};
+
+bool headLine(const QString& lin, int n, xShdPreset& out, HeadNotes& head) {
+	static const QRegularExpression reName(QStringLiteral(R"re(^name\s+"([^"]*)"\s*$)re"));
+	static const QRegularExpression reGroup(QStringLiteral(R"re(^group\s+"([^"]*)"\s*$)re"));
+	static const QRegularExpression reText(QStringLiteral(R"re(^(tip|list)\s+([A-Za-z_]\w*)\s*=\s*(.+)$)re"));
+	static const QRegularExpression reMore(QStringLiteral(R"re(^more((?:\s+[A-Za-z_]\w*)+)\s*$)re"));
+	static const QRegularExpression reSet(QStringLiteral(R"re(^preset\s+"([^"]+)"\s*:\s*(.*)$)re"));
+	QRegularExpressionMatch m = reName.match(lin);
+	if (m.hasMatch()) {
+		out.title = m.captured(1);
+		return true;
+	}
+	m = reGroup.match(lin);
+	if (m.hasMatch()) {
+		head.group = m.captured(1);
+		return true;
+	}
+	m = reText.match(lin);
+	if (m.hasMatch()) {
+		head.lines.append({n, m.captured(1), m.captured(2), m.captured(3).trimmed()});
+		return true;
+	}
+	m = reMore.match(lin);
+	if (m.hasMatch()) {
+		for (const QString& nam : m.captured(1).split(QRegularExpression("\\s+"), Qt::SkipEmptyParts))
+			head.lines.append({n, "more", nam, QString()});
+		return true;
+	}
+	m = reSet.match(lin);
+	if (m.hasMatch()) {
+		xShdSet set;
+		set.name = m.captured(1);
+		for (const QString& item : m.captured(2).split(',', Qt::SkipEmptyParts)) {
+			const QStringList t = item.trimmed().split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+			bool ok = (t.size() == 2);
+			const float val = ok ? t[1].toFloat(&ok) : 0.0f;
+			if (ok) set.values.append({t[0], val});
+			else out.notes << QString("%1:%2: preset \"%3\": not understood: %4").arg(out.file).arg(n + 1).arg(set.name, item.trimmed());
+		}
+		out.sets << set;
+		return true;
+	}
+	return false;
+}
+
+void headApply(xShdPreset& out, const HeadNotes& head) {
+	auto find = [&out](const QString& name) -> xShdParam* {
+		for (xShdParam& p : out.params)
+			if (p.name == name) return &p;
+		return nullptr;
+	};
+	for (const HeadNotes::Line& l : head.lines) {
+		xShdParam* p = find(l.name);
+		if (!p) {
+			out.notes << QString("%1:%2: %3 %4: no such parameter").arg(out.file).arg(l.n + 1).arg(l.kind, l.name);
+		} else if (l.kind == "tip") {
+			p->tip = l.text;
+		} else if (l.kind == "more") {
+			p->more = true;
+		} else {
+			p->names.clear();
+			for (const QString& s : l.text.split(','))
+				p->names << s.trimmed();
+		}
+	}
+	for (xShdSet& set : out.sets) {
+		for (int i = set.values.size() - 1; i >= 0; i--) {
+			if (find(set.values[i].name)) continue;
+			out.notes << QString("%1: preset \"%2\": %3: no such parameter").arg(out.file, set.name, set.values[i].name);
+			set.values.remove(i);
+		}
+	}
+}
+
 } // anonymous namespace
 
 QByteArray xshd_compose(const char* body) {
@@ -442,6 +524,7 @@ bool xshd_parse(const QString& path, xShdPreset& out, QString* err) {
 	}
 	enum {TOP, COMMON, SETTINGS, VERTEX, FRAGMENT};
 	int mode = TOP;
+	HeadNotes head;
 	auto note = [&out](int n, const QString& text) {
 		out.notes << QString("%1:%2: %3").arg(out.file).arg(n + 1).arg(text);
 	};
@@ -457,6 +540,7 @@ bool xshd_parse(const QString& path, xShdPreset& out, QString* err) {
 			prm.max = pm.captured(5).toFloat();
 			prm.step = pm.captured(6).toFloat();
 			prm.value = prm.def;
+			if (mode == TOP) prm.group = head.group;
 			bool have = false;
 			for (const xShdParam& o : out.params) have = have || (o.name == prm.name);
 			if (!have) out.params << prm;
@@ -500,6 +584,8 @@ bool xshd_parse(const QString& path, xShdPreset& out, QString* err) {
 					tx.line = n + 1;
 					if (textureLine(lin, tx)) out.textures << tx;
 					else note(n, "a texture line not understood");
+				} else {
+					headLine(lin, n, out, head);
 				}
 				break;		// anything else before the passes is free text
 			}
@@ -525,6 +611,7 @@ bool xshd_parse(const QString& path, xShdPreset& out, QString* err) {
 		*err = QString("%1: more than %2 passes").arg(out.file).arg(XSHD_PASS_MAX);
 		return false;
 	}
+	headApply(out, head);
 	for (int i = 0; i < out.passes.size(); i++) {
 		xShdPass& p = out.passes[i];
 		if (p.frg.trimmed().isEmpty()) {
@@ -1048,7 +1135,7 @@ void xShaderChain::startPass(int i) {
 	}
 }
 
-void xShaderChain::load(const QString& path) {
+void xShaderChain::load(const QString& path, const xShdValues& values) {
 	clear();
 	loadAt = chainClock().nsecsElapsed();
 	if (path.isEmpty()) return;
@@ -1065,6 +1152,11 @@ void xShaderChain::load(const QString& path) {
 	}
 	for (const QString& n : preset.notes)
 		xlog(XLG_GL, XLL_WARN, "shader %s", n.toLocal8Bit().constData());
+	// before anything is built: a pass's `when` reads them
+	for (const xShdValue& v : values) {
+		for (xShdParam& p : preset.params)
+			if (p.name == v.name) p.value = std::min(std::max(v.value, p.min), p.max);
+	}
 	passes.resize(preset.passes.size());
 	const QString dir = QFileInfo(path).absolutePath();
 	for (const xShdTexture& t : preset.textures) {
