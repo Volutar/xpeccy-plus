@@ -106,7 +106,9 @@ void xDisplaySheet::hideEvent(QHideEvent* ev) {
 }
 
 void xDisplaySheet::setLook() {
-	look = look_current();
+	const xLook now = look_current();
+	if (!(now == look)) lastOn.clear();	// what a stage had is its look's alone
+	look = now;
 	build();
 }
 
@@ -136,8 +138,10 @@ void xDisplaySheet::build() {
 					box->setChecked(look_value(look, sw) != 0.0f);
 					connect(box, &QGroupBox::toggled, this, [this, sw, on](bool yes) {
 						float val = 0;
+						// back on: what it had, if that was anything; else the file's value
+						const float had = look_value(look, sw);
 						if (yes) val = lastOn.value(sw, on);
-						else lastOn[sw] = look_value(look, sw);
+						else if (had != 0.0f) lastOn[sw] = had;
 						moved(sw, val);
 						QMetaObject::invokeMethod(this, [this]() {build();}, Qt::QueuedConnection);
 					});
@@ -224,6 +228,7 @@ void xDisplaySheet::moved(const QString& name, float value) {
 }
 
 void xDisplaySheet::defaults() {
+	lastOn.clear();
 	look_reset(look);
 	emit s_look();
 	build();
