@@ -146,6 +146,9 @@ fragment:
   no `#version` line and declares only its own `in` and `out`. Each parameter is a knob
   of the sheet, and the lines below, before the first pass, say how it is shown:
   - `name "text"` - what the lists call the file; without it, its file name.
+  - `frames raw [when NAME]` - the frames come as the machine made them, before
+    Anti-flicker mixes them (while NAME is not 0): a model of a color signal needs each
+    frame as it was, and mixes after decoding, by `xpBlend`.
   - `group "Title"` - a frame of the sheet: the parameters after it stand in it.
     `group "Title" when NAME [value]` gives the frame a switch: off sets NAME to 0 (a pass
     `when NAME` is then not drawn), on puts back what it had, or `value` (with none, the
@@ -199,5 +202,6 @@ The machine's own numbers, for a shader that models the signal:
 | `xpRaster` (`vec4`) | dots a line, lines a frame, the first shown dot, the first shown line |
 | `xpCarrier` (`vec4`) | PAL color carrier: cycles a dot; 1 if it is locked to the dots; its phase at the frame's first dot, in cycles; the V switch's sense on the frame's first line |
 | `xpFrame` (`int`) | the machine's number of the frame shown |
+| `xpBlend` (`float`) | Anti-flicker left to the shader (`frames raw`): the frame before's part in the mix, 0 .. 0.5; else 0 |
 
 `tests/shaders/chain.txt` in the source tree uses all of it.
