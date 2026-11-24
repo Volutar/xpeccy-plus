@@ -197,8 +197,8 @@ that can be switched off, and then costs nothing:
 - **Afterglow** - how much of a lit dot is left a frame later;
 - **Signal** - **Ghost**, a faint second picture beside the first; **Interference**, a wave
   that pushes the lines aside; **Noise**;
-- **Screen** - **Curvature**, **Corners**, **Vignette**, **Contrast**. A small picture, under
-  about three screen pixels a dot, stays flat.
+- **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**, **Contrast**. A small
+  picture, under about three screen pixels a dot, stays flat.
 
 Under the frames is the **GPU time** the look takes of the graphics card for a frame.
 
