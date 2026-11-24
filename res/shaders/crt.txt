@@ -124,8 +124,11 @@ common:
 		return DIVERGE * most * (DIVMID + (1.0 - DIVMID) * length(d)) * d;
 	}
 
-	// a time that turns over, so that what moves by it never jumps far
-	float timeOf(uint frames) { return float(frames % 849u); }
+	// What moves with time: a turn (0 .. 2 pi) that goes round k times in 1000 frames
+	// and so meets itself when the count of frames starts again
+	float turn(uint frames, uint k) {
+		return 6.28318530718 * float(((frames % 1000u) * k) % 1000u) / 1000.0;
+	}
 
 pass afterglow:
 	when AFTER
@@ -177,7 +180,7 @@ fragment:
 		vec3 left = spread(to - float(first), r) - spread(from - float(first), r);
 		vec3 sum = vec3(0.0);
 		vec3 all = vec3(0.0);
-		for (int n = 0; n < 24; n++) {
+		for (int n = 0; n < 28; n++) {
 			// past the pixel and the dot's spread nothing is left
 			if (float(first + n) >= end) break;
 			vec3 right = spread(to - float(first + n + 1), r) - spread(from - float(first + n + 1), r);
@@ -194,17 +197,16 @@ fragment:
 		float x = vTexCoord.x * SourceSize.x;
 		// interference: a wave that runs down the screen pushes the lines aside
 		if (WIGGLE > 0.0) {
-			float t = timeOf(FrameCount) * 36.0;
 			float y = vTexCoord.y;
-			x += WIGGLE * 0.0012 * SourceSize.x
-				* sin(0.1 * t + y * 13.0) * sin(0.23 * t + y * 19.0) * sin(0.3 + 0.11 * t + y * 23.0);
+			x += WIGGLE * 0.0012 * SourceSize.x * sin(turn(FrameCount, 573u) + y * 13.0)
+				* sin(turn(FrameCount, 318u) + y * 19.0) * sin(0.3 + turn(FrameCount, 630u) + y * 23.0);
 		}
 		float r = max((1.0 - FOCUS) * 3.0, 0.0001);
 		vec3 at = vec3(0.0);
 		if (DIVERGE > 0.0) {
-			// two texels a dot
-			at.r = 2.0 * parting(vTexCoord, vec2(DIVRX, DIVRY)).x;
-			at.b = 2.0 * parting(vTexCoord, vec2(DIVBX, DIVBY)).x;
+			// two texels a dot; no further than the walk along the line reaches
+			at.r = clamp(2.0 * parting(vTexCoord, vec2(DIVRX, DIVRY)).x, -8.0, 8.0);
+			at.b = clamp(2.0 * parting(vTexCoord, vec2(DIVBX, DIVBY)).x, -8.0, 8.0);
 		}
 		vec3 col = lit(x, at, r);
 		// the ghost: the picture once more to the right, faint and out of focus - a glow
@@ -261,8 +263,10 @@ fragment:
 
 	const float PI2 = 6.28318530718;
 
-	// a line of the line pass at x, in linear light
+	// a line of the line pass at x, in linear light; past the first and the last line,
+	// that line: a beam that lands a line off keeps its color at the picture's edge
 	vec3 lineAt(float x, float row) {
+		row = clamp(row, 0.0, lineSize.y - 1.0);
 		return pow(texture(line, vec2(x, (row + 0.5) * lineSize.w)).rgb, vec3(2.2));
 	}
 
@@ -315,8 +319,10 @@ fragment:
 	}
 
 	// What the mask lets through at a screen pixel, for each color, and how much of the
-	// light it lets through over all (what is given back)
-	// lines: screen rows a scanline takes
+	// light it lets through over all (what is given back).
+	// lines: screen rows a scanline takes, a whole number. Where the scanlines follow
+	// the picture (a curved screen, Line fit) they take a little more or less, and a
+	// slot mask still beats with them, faintly
 	vec3 mask(vec2 px, float cell, bool pair, float n, float lines, out float mean) {
 		mean = 1.0;
 		float dark = 1.0 - MASKS;
@@ -397,7 +403,9 @@ fragment:
 		// lines down the screen
 		float period = rows ? max(1.0, floor(scale + 0.5)) : scale;
 		float row = rows ? vTexCoord.y * OutputSize.y : uv.y * lineSize.y * scale;
-		if (ROLL > 0.0) row -= fract(timeOf(FrameCount) * ROLL * 0.05) * period;
+		// a step of Roll is a turn in 400 frames: the lines meet themselves when the
+		// count of frames starts again
+		if (ROLL > 0.0) row -= fract(float(FrameCount % 400u) * floor(ROLL * 20.0 + 0.5) / 400.0) * period;
 		float from = row / period;
 		float to = (row + 1.0) / period;
 		vec3 sum = (floor(to) - floor(from)) * whole
@@ -410,12 +418,17 @@ fragment:
 			lit = 1.0 - (1.0 - min(lit, vec3(1.0))) * (1.0 - GLOW * around);
 		}
 		if (NOISE > 0.0) {
-			vec2 seed = gl_FragCoord.xy + timeOf(FrameCount);
+			// another grain each frame, not the same one moved along
+			float t = float(FrameCount % 1024u);
+			vec2 seed = gl_FragCoord.xy + vec2(t * 17.13, t * 5.71);
 			lit = max(lit - 0.03 * NOISE * pow(vec3(rand(seed), rand(seed * 2.0), rand(seed * 3.0)), vec3(1.5)), vec3(0.0));
 		}
 
-		// the screen's own edge: corners rounded in the window's pixels, a vignette
+		// the screen's own edge: past a bent picture's top and bottom nothing is lit
+		// (its sides are the line pass's edge); corners rounded in the window's pixels,
+		// a vignette
 		if (xpWide < 0.5) {
+			if (!flat_) lit *= clamp(min(uv.y, 1.0 - uv.y) * lineSize.y * scale + 0.5, 0.0, 1.0);
 			vec2 size = OutputSize.xy;
 			float rad = CORNER * min(size.x, size.y);
 			vec2 q = abs(vTexCoord - 0.5) * size - (0.5 * size - rad);
