@@ -1748,11 +1748,12 @@ void MainWin::paintGLView() {
 	// the programs being built are looked at; the picture never waits for them
 	chain.step();
 	shaderSay();
-	// a sheet of knobs is up: it shows what the look costs
-	if ((conf.vid.shdTiming > 0) != sheetTimed) {
-		sheetTimed = (conf.vid.shdTiming > 0);
-		chain.timing(sheetTimed);
-	}
+	// A sheet of knobs is up: it shows what the look costs. The control port may have
+	// asked for the times too (gpuAsked): they stop when neither wants them
+	const bool sheetUp = (conf.vid.shdTiming > 0);
+	if (sheetUp && !chain.timingOn()) chain.timing(true);
+	if (!sheetUp && sheetTimed && !gpuAsked) chain.timing(false);
+	sheetTimed = sheetUp;
 	if (sheetTimed) conf.vid.shdGpuUs = chain.timeTotal();
 	// The machine stands (paused, Options open) and a program is still being built:
 	// no frame comes to show the look once it is ready, so the paint is asked again

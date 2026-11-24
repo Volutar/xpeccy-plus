@@ -744,6 +744,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		bool shdSettled = true;		// the load's outcome has been told
 		bool shdTell = false;		// ...and is told when it is a success too (the reload key)
 		bool sheetTimed = false;	// the chain is timed for a sheet of knobs (conf.vid.shdTiming)
+		bool gpuAsked = false;		// ...and for the control port's gpu-time
 		bool chainPoll = false;		// a paint is asked for a chain being built while the machine stands
 		void chainFrameSet();
 		void shaderSay();

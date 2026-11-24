@@ -732,7 +732,11 @@ void MainWin::socketRead() {
 	} else if (com == "gpu-time") {
 		// gpu-time [on|off]: GPU time of each pass, the picture and the side fill, a
 		// mean of about 60 paints. Timed only while on
-		if (prm.size() > 1) chain.timing(prm[1] == "on");
+		if (prm.size() > 1) {
+			gpuAsked = (prm[1] == "on");
+			// off while a sheet of knobs shows the times leaves them running for it
+			if (gpuAsked || (conf.vid.shdTiming <= 0)) chain.timing(gpuAsked);
+		}
 		sock->write(chain.timeReport().toUtf8());
 	} else if (com == "uistate") {
 		// uistate: what holds the input and where the picture goes - the modal window,
