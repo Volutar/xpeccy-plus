@@ -193,8 +193,12 @@ that can be switched off, and then costs nothing:
   whole screen pixels, so in a small window it is coarser than the number says;
 - **Glow** - light around bright things, and how far it reaches;
 - **Afterglow** - how much of a lit dot is left a frame later;
-- **Signal** - **Ghost**, a faint second picture beside the first; **Interference**, a wave
-  that pushes the lines aside; **Noise**;
+- **Signal** - **Input**, the cable: **RGB** as a monitor gets it, **Composite** or **RF** as
+  a TV set does, with the colors a real set made of fine patterns and at color edges;
+  **Color**, how strong they are; **Ghost**, a faint second picture beside the first;
+  **Interference**, a wave that pushes the lines aside; **Noise**. On a 128K the color
+  pattern stands still and **Phase**, under **All settings**, picks one of the eight
+  ways it can fall, as the machine picks one at power-on; on a 48K it crawls;
 - **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**, **Contrast**. A small
   picture, under about three screen pixels a dot, stays flat.
 
