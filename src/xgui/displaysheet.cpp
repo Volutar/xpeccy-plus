@@ -1,0 +1,212 @@
+#include "displaysheet.h"
+
+#include "xgui.h"
+
+#include <QComboBox>
+#include <QHBoxLayout>
+#include <QInputDialog>
+#include <QLabel>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QVBoxLayout>
+
+#include <cmath>
+
+#define	KNOB_WIDTH	200		// a slider, as wide as a list
+#define	KNOB_STEPS	100		// of a parameter that names no step
+
+namespace {
+
+float knob_step(const xShdParam& p) {
+	return (p.step > 0) ? p.step : (p.max - p.min) / KNOB_STEPS;
+}
+
+int knob_count(const xShdParam& p) {
+	const float step = knob_step(p);
+	return (step > 0) ? qMax(1, qRound((p.max - p.min) / step)) : 1;
+}
+
+// as many decimals as the step has
+QString knob_text(const xShdParam& p, float val) {
+	const float step = knob_step(p);
+	const int dec = (step >= 1) ? 0 : (step >= 0.1f) ? 1 : (step >= 0.01f) ? 2 : 3;
+	return QString::number(val, 'f', dec);
+}
+
+}
+
+xDisplaySheet::xDisplaySheet(QWidget* parent) : QDialog(parent) {
+	lay = new QVBoxLayout(this);
+	QHBoxLayout* row = new QHBoxLayout;
+	btnAll = new QPushButton(tr("All settings"));
+	btnAll->setCheckable(true);
+	btnAll->setToolTip(tr("The finer knobs too"));
+	btnDef = new QPushButton(tr("Defaults"));
+	btnDef->setToolTip(tr("Every knob back to where this look has it"));
+	btnSave = new QPushButton(tr("Save as preset..."));
+	btnSave->setToolTip(tr("A look of your own in the Display list"));
+	btnDel = new QPushButton(tr("Delete preset"));
+	QPushButton* btnClose = new QPushButton(tr("Close"));
+	btnAll->setObjectName("dispAll");
+	btnDef->setObjectName("dispDefaults");
+	btnSave->setObjectName("dispSave");
+	btnDel->setObjectName("dispDelete");
+	btnClose->setObjectName("dispClose");
+	foreach(QPushButton* btn, QList<QPushButton*>() << btnAll << btnDef << btnSave << btnDel << btnClose)
+		btn->setAutoDefault(false);
+	row->addWidget(btnAll);
+	row->addWidget(btnDef);
+	row->addStretch(1);
+	row->addWidget(btnSave);
+	row->addWidget(btnDel);
+	row->addWidget(btnClose);
+	lay->addLayout(row);
+	connect(btnAll, &QPushButton::toggled, this, [this](bool on) {
+		all = on;
+		build();
+	});
+	connect(btnDef, &QPushButton::clicked, this, &xDisplaySheet::defaults);
+	connect(btnSave, &QPushButton::clicked, this, &xDisplaySheet::savePreset);
+	connect(btnDel, &QPushButton::clicked, this, &xDisplaySheet::deletePreset);
+	connect(btnClose, &QPushButton::clicked, this, &QDialog::close);
+}
+
+void xDisplaySheet::hideEvent(QHideEvent* ev) {
+	look_store_save();
+	QDialog::hideEvent(ev);
+}
+
+void xDisplaySheet::setLook() {
+	look = look_current();
+	build();
+}
+
+void xDisplaySheet::build() {
+	setWindowTitle(tr("Display: %1").arg(look.title));
+	const xShdPreset* head = look_has_knobs(look) ? look_file(look.file) : nullptr;
+	bool more = false;
+	xOptSheet sheet;
+	if (head) {
+		QString group;
+		bool first = true;
+		for (const xShdParam& p : head->params) {
+			more = more || p.more;
+			if (p.more && !all) continue;
+			const QString name = p.group.isEmpty() ? tr("Parameters") : p.group;
+			if (first || (name != group)) sheet.group(name);
+			first = false;
+			group = name;
+			QWidget* wid = knob(p);
+			QLabel* lab = sheet.row(p.text, wid);
+			lab->setToolTip(p.tip);
+		}
+	} else {
+		sheet.group(QString());
+		sheet.wide(new QLabel(tr("This look has no settings.")));
+	}
+	if (body) {
+		lay->removeWidget(body);
+		body->deleteLater();
+	}
+	body = sheet.body;
+	lay->insertWidget(0, body);
+	btnAll->setVisible(more);
+	btnAll->setText(all ? tr("Fewer settings") : tr("All settings"));
+	btnDef->setEnabled(look_changed(look));
+	btnSave->setEnabled(head != nullptr);
+	btnDel->setVisible(look.user);
+	// the window follows its rows, once the old ones are gone
+	QMetaObject::invokeMethod(this, [this]() {adjustSize();}, Qt::QueuedConnection);
+}
+
+// a slider with its figure, or a list where the values have names
+QWidget* xDisplaySheet::knob(const xShdParam& p) {
+	const float step = knob_step(p);
+	const int count = knob_count(p);
+	const float val = look_value(look, p.name);
+	const int pos = qBound(0, qRound((val - p.min) / ((step > 0) ? step : 1.0f)), count);
+	const QString name = p.name;
+	const float min = p.min;
+	const float max = p.max;
+	if (!p.names.isEmpty()) {
+		QComboBox* box = new QComboBox;
+		for (int i = 0; i <= count; i++)
+			box->addItem((i < p.names.size()) ? p.names[i] : knob_text(p, min + i * step));
+		box->setCurrentIndex(pos);
+		box->setToolTip(p.tip);
+		box->setObjectName("knob_" + name);
+		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, name, min, max, step](int idx) {
+			moved(name, qMin(max, min + idx * step));
+		});
+		return box;
+	}
+	xSlider* sld = new xSlider;
+	sld->setOrientation(Qt::Horizontal);
+	sld->setRange(0, count);
+	sld->setPageStep(qMax(1, count / 10));
+	sld->setValue(pos);
+	sld->setFixedWidth(KNOB_WIDTH);
+	sld->setToolTip(p.tip);
+	sld->setObjectName("knob_" + name);
+	QLabel* fig = new QLabel(knob_text(p, val));
+	fig->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+	// as wide as its longest figure, so the sliders stand in one column
+	const QFontMetrics fm = fig->fontMetrics();
+	fig->setFixedWidth(qMax(fm.horizontalAdvance(knob_text(p, min)), fm.horizontalAdvance(knob_text(p, max))) + 4);
+	const xShdParam prm = p;
+	connect(sld, &QSlider::valueChanged, this, [this, fig, prm, step](int at) {
+		const float now = qMin(prm.max, prm.min + at * step);
+		fig->setText(knob_text(prm, now));
+		moved(prm.name, now);
+	});
+	QWidget* wid = new QWidget;
+	QHBoxLayout* box = new QHBoxLayout(wid);
+	box->setContentsMargins(0, 0, 0, 0);
+	box->addWidget(sld);
+	box->addWidget(fig);
+	wid->setFocusProxy(sld);
+	return wid;
+}
+
+void xDisplaySheet::moved(const QString& name, float value) {
+	look_keep(look, name, value);
+	btnDef->setEnabled(look_changed(look));
+	emit s_param(name, value);
+}
+
+void xDisplaySheet::defaults() {
+	look_reset(look);
+	emit s_look();
+	build();
+}
+
+void xDisplaySheet::savePreset() {
+	bool ok = false;
+	const QString name = QInputDialog::getText(this, tr("Save as Preset"), tr("Name"), QLineEdit::Normal,
+		look.user ? look.title : QString(), &ok).trimmed();
+	if (!ok || name.isEmpty()) return;
+	foreach(const xLook& o, look_list()) {
+		if (!o.user || o.title.compare(name, Qt::CaseInsensitive)) continue;
+		if (QMessageBox::question(this, tr("Save as Preset"), tr("Replace the preset \"%1\"?").arg(o.title)) != QMessageBox::Yes)
+			return;
+	}
+	QString err;
+	if (!look_save_preset(look, name, &err)) {
+		QMessageBox::warning(this, tr("Save as Preset"), err);
+		return;
+	}
+	look_store_save();
+	emit s_look();
+	setLook();
+}
+
+void xDisplaySheet::deletePreset() {
+	if (!look.user) return;
+	if (QMessageBox::question(this, tr("Delete Preset"), tr("Delete the preset \"%1\"?").arg(look.title),
+			QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
+		return;
+	if (!look_delete_preset(look)) return;
+	look_store_save();
+	emit s_look();
+	setLook();
+}

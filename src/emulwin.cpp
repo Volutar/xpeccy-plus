@@ -299,8 +299,8 @@ void MainWin::updateWindow() {
 	// a window not shown yet has no state of its own: the config's stands
 	if (!conf.vid.fullScreen && frame->isVisible()) conf.vid.maximized = maxed;
 	if (winFit) vid_set_fit(size());
-	// another shader chosen (Options): its chain is loaded here
-	if (conf.vid.shd_support && (conf.vid.shader != shdLoaded))
+	// another look chosen (Options): its chain is loaded here
+	if (lookStale())
 		loadShader(false);
 	blockSignals(true);
 	showBars();
@@ -1724,7 +1724,7 @@ void MainWin::refitPicture() {
 	vid_set_dpr(widgetDpr(this));
 	vid_set_fit(size());
 	refit = 1;
-	if (conf.vid.shd_support && (conf.vid.shader != shdLoaded))
+	if (lookStale())
 		loadShader(false);
 }
 
@@ -1748,6 +1748,15 @@ void MainWin::paintGLView() {
 	// the programs being built are looked at; the picture never waits for them
 	chain.step();
 	shaderSay();
+	// The machine stands (paused, Options open) and a program is still being built:
+	// no frame comes to show the look once it is ready, so the paint is asked again
+	if (chain.pending() && !chainPoll && (conf.emu.pause || conf.zx->flgDBG)) {
+		chainPoll = true;
+		QTimer::singleShot(15, this, [this]() {
+			chainPoll = false;
+			presentFrame();
+		});
+	}
 	// the frames the shader looks back at are kept from here on
 	const int ring = 4 + chain.historyDepth();
 	if (ring != ringSize) {
@@ -3222,7 +3231,7 @@ void MainWin::initUserMenu() {
 	keyMenu = new QMenu("Keymap", this);
 	keyMenu->setIcon(QIcon(":/images/vkeys.png"));
 	sndMenu = userMenu->addMenu(QIcon(":/images/speaker.png"), "Sound");
-	shdMenu = userMenu->addMenu(QIcon(":/images/crt.png"), "Shaders");
+	shdMenu = userMenu->addMenu(QIcon(":/images/crt.png"), "Display");
 	palMenu = userMenu->addMenu(QIcon(":/images/palette.png"), "ZX Palette");
 
 	userMenu->addSeparator();
@@ -4308,18 +4317,19 @@ void MainWin::fillUserMenu() {
 		act->setCheckable(true);
 		act->setChecked(!conf.kmapBymac && (conf.kmapName == km.second.toUtf8().constData()));
 	}
-	// fill shader menu
+	// fill the Display menu: the looks, a line between the list's parts
 	shdMenu->clear();
-	act = shdMenu->addAction("None");
-	act->setData("");
-	act->setCheckable(true);
-	if (conf.vid.shader.empty() || !conf.vid.shd_support) act->setChecked(true);	// none is what runs
-	if (conf.vid.shd_support) {
-		foreach(QString nam, xres_list("shaders", QStringList() << "*.txt")) {
-			act = shdMenu->addAction(QFileInfo(nam).completeBaseName());
-			act->setData(nam);
+	{
+		// with no shaders the list is None alone, and None is what runs
+		const xLook cur = conf.vid.shd_support ? look_current() : xLook();
+		int part = LOOK_BASIC;
+		foreach(const xLook& lk, look_list()) {
+			if (lk.part != part) shdMenu->addSeparator();
+			part = lk.part;
+			act = shdMenu->addAction(lk.title);
+			act->setData(QStringList() << lk.file << lk.preset);
 			act->setCheckable(true);
-			act->setChecked(nam == QString::fromLocal8Bit(conf.vid.shader.c_str()));
+			act->setChecked(lk == cur);
 		}
 	}
 	// fill palette menu
@@ -4339,6 +4349,11 @@ void MainWin::fillUserMenu() {
 	menu_one_tick(keyMenu);
 	menu_one_tick(shdMenu);
 	menu_one_tick(palMenu);
+	// the look's knobs, out of the looks' one tick
+	shdMenu->addSeparator();
+	act = shdMenu->addAction(QIcon(":/images/settings.png"), "Settings...");
+	act->setObjectName("displaySettings");
+	act->setEnabled(look_has_knobs(look_current()));
 	// a switch of its own, out of the layouts' one tick
 	keyMenu->addSeparator();
 	act = keyMenu->addAction("Type PC Symbols");

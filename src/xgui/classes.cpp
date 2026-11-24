@@ -942,8 +942,8 @@ void xOptSheet::group(const QString& title, int side, const QString& icon) {
 	cols->grids.append(grid);
 }
 
-// one line: the name and the control, at a list's width
-void xOptSheet::row(const QString& name, QWidget* wid) {
+// one line: the name and the control, at a list's width; the name's label is handed back
+QLabel* xOptSheet::row(const QString& name, QWidget* wid) {
 	int row = grid->rowCount();
 	QLabel* nam = new QLabel(name);
 	nam->setContentsMargins(0, 0, SHEET_GAP, 0);
@@ -960,6 +960,7 @@ void xOptSheet::row(const QString& name, QWidget* wid) {
 	}
 	new xFollowEnabled(wid, QList<QWidget*>() << nam);
 	label_for(nam, wid);
+	return nam;
 }
 
 // across the whole frame, under the rows

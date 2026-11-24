@@ -189,7 +189,7 @@ class xOptSheet {
 		xOptSheet();
 		void group(const QString&, int side = -1, const QString& icon = QString());
 		void field(const QString&, QWidget*, const QString& = QString());
-		void row(const QString&, QWidget*);
+		QLabel* row(const QString&, QWidget*);
 		void wide(QWidget*);
 		void line();
 		void check(QCheckBox*, const QString&, const QString&, bool global = false);

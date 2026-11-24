@@ -1151,6 +1151,7 @@ struct xConfig {
 		long long fctime;	// time of that frame, ns (see paceClockNs)
 		double curfps;		// last measured fps
 		std::string shader;
+		std::string shdPreset;	// the shader's preset: one of the file's, or a user's .preset by name; see xgui/displaylook.h
 		std::string shdError;	// the last shader load's errors, a line each; empty: it loaded. Not saved
 		int shd_support;
 		int gl;			// the picture goes through OpenGL: decided at start, see gl_probe
