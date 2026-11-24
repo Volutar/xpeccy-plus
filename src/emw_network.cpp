@@ -602,7 +602,8 @@ void MainWin::socketRead() {
 			ok = (idx >= 0);
 			if (ok) tb->setCurrentIndex(idx);
 		} else if (QAbstractSlider* sl = qobject_cast<QAbstractSlider*>(hit)) {
-			sl->setValue(val.toInt(&ok));
+			const int pos = val.toInt(&ok);
+			if (ok) sl->setValue(pos);
 		} else if (QAbstractButton* ab = qobject_cast<QAbstractButton*>(hit)) {
 			ab->setChecked(val == "1");
 		} else if (QLineEdit* le = qobject_cast<QLineEdit*>(hit)) {
