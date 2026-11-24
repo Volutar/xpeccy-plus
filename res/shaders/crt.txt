@@ -32,12 +32,9 @@ tip WIDTH = How much of a line its gap takes: narrow and hard, or wide
 tip FOCUS = How sharp a dot is along the line
 #pragma parameter GROW "Wider where brighter" 0.3 0.0 1.0 0.05
 tip GROW = A bright line fills more of its gap
-#pragma parameter FIT "Line fit" 0 0 1 1
-list FIT = Whole pixels, The picture's lines
-tip FIT = What the lines follow at a scale that is not whole
 #pragma parameter ROLL "Roll" 0.0 0.0 1.0 0.05
 tip ROLL = How fast the scanlines drift down the screen
-more GROW FIT ROLL
+more GROW ROLL
 
 group "Divergence" when DIVERGE 1.0
 #pragma parameter DIVERGE "Amount" 0.0 0.0 2.0 0.05
@@ -97,6 +94,8 @@ tip CURVE = How much the screen bulges. A small picture stays flat
 tip CORNER = How round the screen's corners are
 #pragma parameter VIGN "Vignette" 0.0 0.0 1.0 0.05
 tip VIGN = How much darker the screen is towards its edges
+#pragma parameter BRIGHT "Brightness" 1.0 0.5 1.5 0.05
+tip BRIGHT = How much light the picture is given
 #pragma parameter CONTRAST "Contrast" 0.0 0.0 1.0 0.05
 tip CONTRAST = Darks darker and lights lighter, as a set turned up
 #pragma parameter CURVEX "Curve of the sides" 1 0 1 0.05
@@ -109,7 +108,7 @@ more CURVEX CURVEY
 preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, CORNER 0.03, VIGN 0.25
 preset "RGB monitor": MASK 2, MASKS 0.45, PITCH 1.9, SCAN 0.9, WIDTH 0.8, FOCUS 0.5, GROW 0.15, DIVERGE 0.2, GLOW 0.1, CURVE 0.04, CORNER 0.02, VIGN 0.1
 preset "PVM": MASK 1, MASKS 0.5, PITCH 3.0, SCAN 0.8, WIDTH 0.8, FOCUS 0.7, GROW 0.3, DIVERGE 0.15
-preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.3, WIDTH 1.0, FOCUS 0.2, DIVERGE 0.45, DIVMID 1.0, GLOW 0.35, AFTER 0.5, GHOST 0.1, GHOSTX 0.8, NOISE 0.5, CURVE 0.07, CORNER 0.04, VIGN 0.7, CONTRAST 0.5
+preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.4, WIDTH 1.0, FOCUS 0.2, GROW 0, DIVERGE 0.9, DIVMID 1.0, GLOW 0.35, AFTER 0.5, GHOST 0.1, GHOSTX 0.8, NOISE 0.5, CURVE 0.07, CORNER 0.04, VIGN 0.7, BRIGHT 0.9, CONTRAST 0.5
 
 common:
 	// a mix's share snapped at its ends: in linear light a thousandth of white over
@@ -375,6 +374,7 @@ fragment:
 			col.r = picture(uv + vec2(0.0, parting(uv, vec2(DIVRX, DIVRY)).y * lineSize.w), foot).r;
 			col.b = picture(uv + vec2(0.0, parting(uv, vec2(DIVBX, DIVBY)).y * lineSize.w), foot).b;
 		}
+		col *= BRIGHT;
 
 		// The mask: counted in the window's pixels, or in the picture's own where it is
 		// to bend with the glass - by itself where a triad has six pixels or more, under
@@ -387,10 +387,11 @@ fragment:
 		float mean;
 		vec3 through = mask(px, cell, pair, n, max(2.0, floor(dot_ + 0.5)), mean);
 
-		// A scanline follows the picture's lines on a curved screen and where asked;
-		// else it takes a whole number of screen rows, every one the same at any scale.
-		// Lines that follow the picture beat with the rows at a small scale: shallower there
-		bool rows = flat_ && (FIT == 0.0);
+		// A scanline is a line of the picture, at any scale: one that kept to whole
+		// screen rows would cut across the picture's lines. On a flat screen at a whole
+		// scale the two are the same thing and the rows are counted. Lines that do not
+		// fall on rows beat with them at a small scale: shallower there
+		bool rows = flat_ && (abs(scale - floor(scale + 0.5)) < 0.01);
 		float deep = SCAN * (rows ? 1.0 : mix(0.4, 1.0, smoothstep(2.0, 4.0, scale)) * step(1.5, scale));
 		vec3 depth = max(deep * (1.0 - GROW * col), vec3(0.0001));
 		// what the gaps and the mask take is given back
