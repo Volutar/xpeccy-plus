@@ -17,8 +17,13 @@ before that point is upstream's history and is not repeated here.
   preset makes a look of your own.
 
 - **Scanlines**, beside None in the Display list: plain scanlines with a hard or a soft dot,
-  by Depth and Softness. The lines stay even at any window size, and the picture keeps its
-  brightness.
+  by Depth, Gap width and Softness. The lines stay even at any window size, and the picture
+  keeps its brightness.
+
+- **CRT looks**: Home TV, RGB monitor, PVM and Xpixie in the Display list. One tube in
+  stages that switch off - beam, divergence, mask, glow, afterglow, signal, screen - with
+  the mask as fine as the tube's own and thinning out as the picture gets smaller.
+  *(beam divergence by Volutar)*
 
 - **Keymap By machine**, the default: Input > Keymap and Options > Input. The Robik takes the
   Robik's keymap, the ZX Spectrum 48K the 48K one, every other machine ZX Spectrum 128K. A
