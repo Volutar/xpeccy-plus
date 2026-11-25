@@ -31,11 +31,11 @@ tabHwItem tabHwPtr[] = {
 	{HW_PLUS3, &pl3_hw_core},
 	{HW_ZXNEXT, &nxt_hw_core},	// the official heir: after the Sinclair/Amstrad line
 	{HW_DUMMY, NULL},
-	{HW_ROBIK, &robik_hw_core},
 	{HW_PENT, &pnt_hw_core},
 	{HW_P1024, &p1m_hw_core},
 	{HW_SCORP, &sco_hw_core},
 	{HW_SCORPTP, &scotp_hw_core},
+	{HW_ROBIK, &robik_hw_core},
 	{HW_ATM2, &atm_hw_core},
 	{HW_PROFI3, &prf3_hw_core},
 	{HW_PROFI, &prf_hw_core},
