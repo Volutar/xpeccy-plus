@@ -62,7 +62,10 @@ tip PITCH = Triads of the mask to a dot of the picture
 #pragma parameter MBEND "On the glass" 0 0 2 1
 list MBEND = Auto, Off, On
 tip MBEND = The mask bends with a curved screen. Auto: where a triad has pixels enough
-more MBEND
+#pragma parameter PANEL "Display's subpixels" 0 0 2 1
+list PANEL = RGB, BGR, Other
+tip PANEL = Your display's own order: a fine mask is drawn with them. Other: a mask without colors
+more MBEND PANEL
 
 group "Beam"
 #pragma parameter SCAN "Scanlines" 0.5 0.0 1.0 0.05
@@ -650,15 +653,23 @@ fragment:
 		return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 	}
 
-	// A triad is as wide as the tube's fineness makes it, in whole stripes of screen
-	// pixels: red, green and blue, each n wide. With under two and a half pixels to a
-	// triad there is no room for three: two colors a pair, magenta and green.
+	// A triad is as wide as the tube's fineness makes it, in whole screen pixels: one of
+	// the layouts below, kind pixels wide, each of its pixels drawn n wide. A coarse one
+	// is stripes of red, green and blue; the fine ones, where a pixel has to stand for
+	// more than one stripe, count on the display's own subpixels.
 	// scale: screen pixels a dot. Returns the triad's width
-	float triad(float scale, out bool pair, out float n) {
+	float triad(float scale, out float kind, out float n) {
 		float room = scale / PITCH;
-		pair = (room < 2.5);
-		n = max(1.0, floor(room / 3.0 + 0.5));
-		return pair ? 2.0 : 3.0 * n;
+		n = 1.0;
+		if (room < 2.5) kind = 2.0;
+		else if (room < 3.5) kind = 3.0;
+		else if (room < 4.5) kind = 4.0;
+		else if (room < 5.5) kind = 5.0;
+		else if (room < 6.5) { kind = 3.0; n = 2.0; }
+		else if (room < 7.5) kind = 7.0;
+		else if (room < 8.5) { kind = 4.0; n = 2.0; }
+		else { kind = 3.0; n = floor(room / 3.0 + 0.5); }
+		return kind * n;
 	}
 
 	// What the mask lets through at a screen pixel, for each color, and how much of the
@@ -666,35 +677,64 @@ fragment:
 	// lines: screen rows a scanline takes, a whole number. Where the scanlines follow
 	// the picture (a curved screen, Line fit) they take a little more or less, and a
 	// slot mask still beats with them, faintly
-	vec3 mask(vec2 px, float cell, bool pair, float n, float lines, out float mean) {
+	vec3 mask(vec2 px, float cell, float kind, float n, float lines, out float mean) {
 		mean = 1.0;
 		float dark = 1.0 - MASKS;
 		float x = px.x;
 		float gap = 1.0;				// the slot's bar between two openings
 		if (MASK == 2.0) {
-			// openings about four stripes tall, a bar a stripe tall between them; every
-			// other triad half an opening lower. As tall as a whole number of scanlines:
-			// any other height beats with them
-			float want = pair ? 4.0 : 4.0 * n;
+			// openings a third taller than the triad is wide, a bar a stripe tall between
+			// them; every other triad half an opening lower. As tall as a whole number of
+			// scanlines: any other height beats with them
+			float want = (kind == 2.0) ? 4.0 : floor(cell * 4.0 / 3.0 + 0.5);
 			float tall = lines * max(1.0, floor(want / lines + 0.5));
-			float bar = pair ? 1.0 : n;
+			float bar = (kind == 2.0) ? 1.0 : max(1.0, floor(cell / 3.0 + 0.5));
 			float y = px.y + mod(floor(x / cell), 2.0) * floor(0.5 * tall);
 			if (mod(y, tall) < bar) gap = dark;
 			mean *= 1.0 - MASKS * bar / tall;
 		} else if (MASK == 3.0) {
 			// rows of dots, every other row half a triad along
-			float tall = pair ? 1.0 : 2.0 * n;
+			float tall = (kind == 2.0) ? 1.0 : max(1.0, floor(cell * 2.0 / 3.0 + 0.5));
 			x += mod(floor(px.y / tall), 2.0) * 0.5 * cell;
 		}
+		// The triad's pixels, after hunterk's subpixel masks: a color takes lit of the
+		// triad. On a display whose subpixels run blue first, the other way round
+		float s = mod(floor(x / n), kind);
+		if (PANEL == 1.0) s = kind - 1.0 - s;
 		vec3 m = vec3(dark);
-		if (pair) {
-			if (mod(floor(x), 2.0) < 1.0) m.rb = vec2(1.0); else m.g = 1.0;
-			mean *= 1.0 - 0.5 * MASKS;
-		} else {
-			float s = mod(floor(x / n), 3.0);
+		float lit;
+		if (PANEL == 2.0) {
+			// any other display: no colors, the triad's second half lit
+			float on = floor(0.5 * cell + 0.5);
+			if (mod(floor(x), cell) >= cell - on) m = vec3(1.0);
+			lit = on / cell;
+		} else if (kind == 2.0) {
+			// magenta, green
+			if (s < 1.0) m.rb = vec2(1.0); else m.g = 1.0;
+			lit = 0.5;
+		} else if (kind == 3.0) {
 			if (s < 1.0) m.r = 1.0; else if (s < 2.0) m.g = 1.0; else m.b = 1.0;
-			mean *= 1.0 - MASKS * 2.0 / 3.0;
+			lit = 1.0 / 3.0;
+		} else if (kind == 4.0) {
+			// red, yellow, cyan, blue
+			if (s < 2.0) m.r = 1.0;
+			if ((s >= 1.0) && (s < 3.0)) m.g = 1.0;
+			if (s >= 2.0) m.b = 1.0;
+			lit = 0.5;
+		} else if (kind == 5.0) {
+			// red, magenta, blue, green, green
+			if (s < 2.0) m.r = 1.0;
+			if ((s >= 1.0) && (s < 3.0)) m.b = 1.0;
+			if (s >= 3.0) m.g = 1.0;
+			lit = 0.4;
+		} else {
+			// red, red, yellow, green, cyan, blue, blue
+			if (s < 3.0) m.r = 1.0;
+			if ((s >= 2.0) && (s < 5.0)) m.g = 1.0;
+			if (s >= 4.0) m.b = 1.0;
+			lit = 3.0 / 7.0;
 		}
+		mean *= 1.0 - MASKS * (1.0 - lit);
 		return m * gap;
 	}
 
@@ -723,13 +763,13 @@ fragment:
 		// The mask: counted in the window's pixels, or in the picture's own where it is
 		// to bend with the glass - by itself where a triad has six pixels or more, under
 		// which a bent mask beats with them
-		bool pair;
+		float kind;
 		float n;
-		float cell = triad(dot_, pair, n);
+		float cell = triad(dot_, kind, n);
 		bool glass = !flat_ && ((MBEND == 2.0) || ((MBEND == 0.0) && (cell >= 6.0)));
 		vec2 px = glass ? uv * OutputSize.xy : gl_FragCoord.xy - xpPicture.xy;
 		float mean;
-		vec3 through = mask(px, cell, pair, n, max(2.0, floor(dot_ + 0.5)), mean);
+		vec3 through = mask(px, cell, kind, n, max(2.0, floor(dot_ + 0.5)), mean);
 
 		// A scanline is a line of the picture, at any scale: one that kept to whole
 		// screen rows would cut across the picture's lines. On a flat screen at a whole
