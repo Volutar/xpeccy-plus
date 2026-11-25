@@ -252,14 +252,14 @@ static inline void tsSync(TSound* ts, int ns) {
 }
 sndPair tsGetVolume(TSound*, int lay);
 
-// A channel that puts out nothing whatever its counters do, until a register is written:
-// muted, at a fixed volume 0 (index 1 at most: both DAC tables' 0), an envelope held at 0
+// A channel silent whatever its counters do: muted, an envelope held at 0, a fixed volume 0
+// (index 1: 0 in ayDACvol and ymDACvol; the Next's tables are not asked, nx_chan)
 static inline int ay_chan_rests(const aymChip* ay, const aymChan* ch) {
 	if (ch->mute) return 1;
 	if (!ch->een) return (ch->vol & 0x1f) <= 1;
 	return !ay->chanE.step && !(ay->chanE.vol & 0x1f);
 }
-// ...and a chip of such channels, or none. A YM2203's fm half has a time of its own
+// ...and a chip of them, or none; not a YM2203, whose fm half has a time of its own
 static inline int ay_chip_rests(const aymChip* ay) {
 	if (ay->type == SND_NONE) return 1;
 	if (((ay->type != SND_AY) && (ay->type != SND_YM)) || ay->fm) return 0;

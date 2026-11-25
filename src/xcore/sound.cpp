@@ -140,8 +140,7 @@ static long long firSum = 0;			// ...their sum
 // then has no wrapping in it and the compiler can take it apart.
 static int sb_pos = 0;
 static sndPair smpBuf[SND_FIR_TAPS * 2] = {{0,0}};
-// the last level put in the window and how many of it in a row (SND_FIR_TAPS at most):
-// at that many the window holds nothing else
+// the last level put in the window, and how many in a row: SND_FIR_TAPS is all of it
 static sndPair sbLast = {0,0};
 static int sbSame = 0;
 
@@ -889,12 +888,9 @@ static inline sndPair snd_master(sndPair lev) {
 	return snd_clip16(lev);
 }
 
-// The mirror's mix at rest. A mix is a function of its sndMix, the volumes and the chips
-// (sndmix.h). With the chips silent whatever their counters do (ts_rests), no token since,
-// and the volumes and the rate as they were, a step that left the sndMix as it found it
-// gives that same level at every step after. The level is then taken as it stands and the
-// mix made once in SND_REST_LOOK sub-samples: the chips stay counted, their meters fed,
-// and a rest that no longer holds is found
+// The mirror's mix at rest: a step that left its sndMix as it found it gives the same level
+// until a token, a volume, the rate or a chip that sounds (ts_rests) says otherwise. The mix
+// is still made once in SND_REST_LOOK, which keeps the chips counted and their meters fed
 #define SND_REST_LOOK	256
 static struct {
 	int left;		// sub-samples the level holds for, before the next look
@@ -945,7 +941,12 @@ static void snd_sub(const sndSub* q) {
 		int late = q->r;
 		int scope = (late < 0);
 		sm.m.late = scope ? (-1 - late) : late;
-		lev = snd_mix_step();
+		if (scope) {		// the Debugger's step: the chips it shows counted up to here
+			sr.left = 0;
+			lev = sm.mix(&sm.m, &conf.snd.vol);
+		} else {
+			lev = snd_mix_step();
+		}
 		if (scope) {
 			scope_put((lev.left + lev.right) / 2);
 			return;
@@ -971,8 +972,7 @@ static void snd_sub(const sndSub* q) {
 	sb_pos++;
 	if ((sb_pos % DISCRATE) != 0) return;
 	if (sbSame >= SND_FIR_TAPS) {
-		// ...and its sample is the sum below with every term the same: the level, or
-		// with the filter the level by the taps' sum (each tap serves two of them)
+		// ...and its sample is the level, with the filter by the taps' sum (each serves two)
 		if (conf.snd.filter) {
 			lev.left = (int)(((long long)(lev.left + lev.left) * firSum) >> SND_FIR_SHIFT);
 			lev.right = (int)(((long long)(lev.right + lev.right) * firSum) >> SND_FIR_SHIFT);
