@@ -27,8 +27,10 @@
 #include <atomic>
 #include <cmath>
 #include <cstring>
+#include <exception>
 #include <functional>
 #include <map>
+#include <mutex>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -966,7 +968,7 @@ static void blurGray(QImage& img, int r) {
 	int h = img.height();
 	if ((w < 1) || (h < 1) || (r < 1)) return;
 	std::vector<int> buf(std::max(w, h));
-	uchar* bits = img.bits();		// lines by pointer: scanLine() per pixel was most of the time
+	uchar* bits = img.bits();		// by pointer: scanLine() per pixel is slow
 	const qsizetype bpl = img.bytesPerLine();
 	for (int pass = 0; pass < 3; pass++) {
 		for (int y = 0; y < h; y++) {
@@ -1322,8 +1324,7 @@ QPainterPath VkSkin::fillAt(int n, double s) const {
 	return out;
 }
 
-// What a picture is made of before it is drawn (prepare()), and what the plain and the
-// lit picture of a pair share: made for the first, taken by the second
+// a picture's parts made before it is drawn; a pair's lit picture takes the plain one's
 struct VkSkin::Work {
 	bool pair = false;
 	QImage under;			// a pair's: the ground, the bars, the contours - all under the caps
@@ -1344,15 +1345,25 @@ struct VkSkin::Work {
 	std::vector<std::pair<QColor, std::vector<Mask>>> masks;	// each label's, in the layout's order
 };
 
-// f(0) .. f(n - 1) in any order on up to 8 threads, this one among them, a core left for
-// the emulation; this one runs own() first, alone - the part that must stay on it
+// f(0..n-1) on up to 8 threads, two cores left to the emulation and sound; own() on this one
 static void spread(int n, const std::function<void(int)>& f, const std::function<void()>& own) {
 	std::atomic<int> next(0);
-	auto run = [&]() {
-		for (int i = next++; i < n; i = next++)
-			f(i);
+	std::mutex lock;
+	std::exception_ptr err;		// the first throw, thrown again here once all are joined
+	auto caught = [&]() {
+		std::lock_guard<std::mutex> hold(lock);
+		if (!err) err = std::current_exception();
+		next = n;
 	};
-	int extra = std::min(std::min((int)std::thread::hardware_concurrency() - 1, 8), n) - 1;
+	auto run = [&]() {
+		try {
+			for (int i = next++; i < n; i = next++)
+				f(i);
+		} catch (...) {
+			caught();
+		}
+	};
+	int extra = std::min(std::min((int)std::thread::hardware_concurrency() - 2, 8), n) - 1;
 	std::vector<std::thread> pool;
 	for (int i = 0; i < extra; i++) {
 		try {
@@ -1361,10 +1372,15 @@ static void spread(int n, const std::function<void(int)>& f, const std::function
 			break;
 		}
 	}
-	own();
+	try {
+		own();
+	} catch (...) {
+		caught();
+	}
 	run();
 	for (std::thread& t : pool)
 		t.join();
+	if (err) std::rethrow_exception(err);
 }
 
 QImage VkSkin::render(double s, bool lcd, bool lit) const {
@@ -1661,9 +1677,7 @@ static QImage softLayer(const QPainterPath& path, const QPainterPath& dp, const 
 	return layer;
 }
 
-// What the caps and the lettering take, made before any of it is drawn: each cap's outline
-// and dome here, then on worker threads the soft domes' layers, the blended sides and the
-// icons' masks, while this thread makes the texts' - FreeType's one face is not to be shared
+// the caps' shapes, then their layers and the icons' masks on threads; text on this one (one FT_Face)
 void VkSkin::prepare(double s, bool lcd, Work& w) const {
 	w.prepared = true;
 	std::vector<std::function<void()>> jobs;
@@ -1701,8 +1715,7 @@ void VkSkin::prepare(double s, bool lcd, Work& w) const {
 		if (sd.on && (pr->fill == FILL_CAP) && key.outline.isEmpty() && (sd.blend > 0) && bands && !fills) {
 			const double wpx[4] = {(double)fr(sd.w[0] * s), (double)fr(sd.w[1] * s), (double)fr(sd.w[2] * s), (double)fr(sd.w[3] * s)};
 			QRect br = c.body.toAlignedRect();
-			// a body on whole pixels gives the same picture wherever it is (each pixel's
-			// depths come out exact): one per size and look - a Robik's 59 caps have 7-8
+			// on whole pixels the depths are exact: one picture per size and look
 			bool whole = (c.body.left() == br.left()) && (c.body.top() == br.top()) &&
 				     (c.body.width() == br.width()) && (c.body.height() == br.height());
 			std::vector<double> look = {(double)br.width(), (double)br.height(), sd.blend};
