@@ -466,7 +466,7 @@ void look_old_names() {
 		{"crt-lottes.txt", "Wide shadow mask, soft", "PVM", OLD_WIDE OLD_SOFT},
 		{"crt-lottes.txt", "", "PVM", OLD_GRILLE OLD_CRISP},	// no preset, or one not its own
 		{"tvline-nocurve-light.txt", "", "PVM", OLD_TVLINE "SCAN 1.0, GROW 0.85, BRIGHT 0.7"},
-		{"tvline-curve-light.txt", "", "PVM", OLD_TVLINE "SCAN 0.9, GROW 1.0, BRIGHT 0.95, CURVE 0.02, CORNER 0.03"},
+		{"tvline-curve-light.txt", "", "PVM", OLD_TVLINE "SCAN 0.9, GROW 1.0, BRIGHT 0.95, CURVE 0.02"},
 		{"monitor-1084.txt", "", "RGB monitor", ""},
 		{"monitor-1084-flat.txt", "", "RGB monitor", "CURVE 0, CORNER 0, VIGN 0"},
 		{"pvm-sharp.txt", "", "PVM", ""},
