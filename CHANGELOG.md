@@ -20,7 +20,7 @@ before that point is upstream's history and is not repeated here.
   by Depth, Gap width and Softness. Each is a line of the picture at any window size, and
   the picture keeps its brightness.
 
-- **CRT looks**: Home TV, RGB monitor, PVM and Xpixie in the Display list. One tube in
+- **CRT looks**: Home TV, Home TV (composite), RGB monitor, PVM and Xpixie in the Display list. One tube in
   stages that switch off - beam, divergence, mask, glow, afterglow, signal, screen - with
   the mask as fine as the tube's own and thinning out as the picture gets smaller. A new
   installation starts with RGB monitor. *(beam divergence by Volutar)*
@@ -29,7 +29,7 @@ before that point is upstream's history and is not repeated here.
   patterns take on color; with a 128K's color carrier they stand, with a 48K's they
   crawl - a setting, the same for any machine. Programs that draw with the carrier -
   Chromatrons Attack - show their picture, with Anti-flicker on too. And a SECAM set,
-  where a checkerboard of dots turns one flat warm color. Under Input in a look's settings; the looks come on RGB.
+  where a checkerboard of dots turns one flat warm color. Under Input in a look's settings; the looks come on RGB, but for Home TV (composite).
 
 - **The older shader files are the tube now**: the aperture grille and shadow mask looks,
   TV lines, monitor-1084, pvm-sharp, composite-crt and zx-rf-artifact open the tube set to

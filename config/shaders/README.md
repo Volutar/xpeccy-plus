@@ -44,7 +44,7 @@ at 0, when its pass is not drawn at all.
 | Stage | What it does |
 | --- | --- |
 | Signal | the cable - RGB; composite or RF into a PAL set, by a 128K's color carrier or a 48K's; or a SECAM set; a ghost, interference, noise |
-| Mask | aperture grille, slot mask or shadow mask, as fine as the tube: triads to a dot of the picture |
+| Mask | aperture grille, slot mask (thin bridges, every other triad half an opening lower) or shadow mask, as fine as the tube: triads to a dot of the picture |
 | Beam | scanlines (how dark the gap, how wide), the dot's focus along the line, bright lines wider |
 | Screen | curvature, round corners, vignette, brightness, contrast |
 | Glow | light around bright things |
@@ -71,12 +71,13 @@ color difference as the frequency of a carrier and the set reads that frequency 
 (ITU-R BT.470's numbers): a pattern of a dot on, a dot off - 3.5 MHz, beside the
 carrier's band - pulls the reading its way and takes on one flat warm color, the same
 for a checkerboard and for stripes, with no crawl. Such a look takes the frames
-before Anti-flicker mixes them and mixes them itself, after decoding. Every preset comes
-on RGB: Input is turned by hand.
+before Anti-flicker mixes them and mixes them itself, after decoding. Every preset but
+Home TV (composite) comes on RGB: Input is turned by hand.
 
 | Preset | Look |
 | --- | --- |
 | Home TV | a 14" set: a coarse slot mask, a soft beam, glow, a bulging screen |
+| Home TV (composite) | the same set on its video input: a PAL picture as it decodes it |
 | RGB monitor | the Commodore 1084S: a finer slot mask, a sharp beam, a slight curve |
 | PVM | a broadcast monitor: aperture grille, the sharpest beam, flat |
 | Xpixie | soft and glowing, with afterglow, a ghost and noise |
