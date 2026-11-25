@@ -51,8 +51,11 @@ at 0, when its pass is not drawn at all.
 | Divergence | the red and blue beams land beside the green one, more towards the screen's edges |
 | Afterglow | a lit dot fades over the next frames, blue first |
 
-The mask is drawn in whole screen pixels and thins out by itself as the picture gets
-smaller; a small picture has no curve. What the scanlines and the mask take is given back.
+The mask is drawn in whole screen pixels - a triad two to eight of them wide, then in
+steps of three - and thins out by itself as the picture gets smaller. A triad narrower
+than its three stripes counts on the display's own subpixels: under All settings,
+**Display's subpixels** is their order, RGB or BGR, or Other for a mask without colors. A
+small picture has no curve. What the scanlines and the mask take is given back.
 A bent picture goes on to the edge of its place as its border does, and the corners are
 rounded there: the glass is lit to its rim.
 
