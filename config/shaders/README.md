@@ -60,14 +60,15 @@ color low-passed and averaged with the line above, the luma less a band around t
 carrier. So fine black and white patterns take on color and color edges crawl; a 128K's
 carrier is locked to its dots and its patterns stand (Phase picks one of the 8 ways it
 can lock at power-on), a 48K's runs free and they move. Such a look takes the frames
-before Anti-flicker mixes them and mixes them itself, after decoding.
+before Anti-flicker mixes them and mixes them itself, after decoding. Every preset comes
+on RGB: Input is turned by hand.
 
 | Preset | Look |
 | --- | --- |
-| Home TV | a 14" set on the aerial cable: a coarse slot mask, a soft beam, glow, a bulging screen |
+| Home TV | a 14" set: a coarse slot mask, a soft beam, glow, a bulging screen |
 | RGB monitor | the Commodore 1084S: a finer slot mask, a sharp beam, a slight curve |
 | PVM | a broadcast monitor: aperture grille, the sharpest beam, flat |
-| Xpixie | soft and glowing, over composite, with afterglow, a ghost and noise |
+| Xpixie | soft and glowing, with afterglow, a ghost and noise |
 
 The two-pass beam follows Hyllian's CRT (MIT); the mask layouts Timothy Lottes's and
 hunterk's (public domain); the beams' parting towards the edges is Volutar's; the ghost,

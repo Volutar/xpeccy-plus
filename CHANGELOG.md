@@ -28,7 +28,7 @@ before that point is upstream's history and is not repeated here.
 - **Composite and RF input** for the CRT looks: a PAL picture by the machine's own color
   carrier. Fine patterns take on color, color edges crawl on a 48K and stand on a 128K,
   and programs that draw with it - Chromatrons Attack - show their picture, with
-  Anti-flicker on too. Home TV is on RF, Xpixie on composite.
+  Anti-flicker on too. Under Input in a look's settings; the looks come on RGB.
 
 - **The older shader files are the tube now**: the aperture grille and shadow mask looks,
   TV lines, monitor-1084, pvm-sharp, composite-crt and zx-rf-artifact open the tube set to
