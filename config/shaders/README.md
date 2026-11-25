@@ -48,18 +48,19 @@ at 0, when its pass is not drawn at all.
 | Mask | aperture grille, slot mask or shadow mask, as fine as the tube: triads to a dot of the picture |
 | Glow | light around bright things |
 | Afterglow | a lit dot fades over the next frames, blue first |
-| Signal | the cable - RGB, composite or RF: a PAL picture made and decoded by the machine's own color carrier; a ghost, interference, noise |
+| Signal | the cable - RGB, composite or RF: a PAL picture made and decoded, by a 128K's color carrier or a 48K's; a ghost, interference, noise |
 | Screen | curvature, round corners, vignette, brightness, contrast |
 
 The mask is drawn in whole screen pixels and thins out by itself as the picture gets
 smaller; a small picture has no curve. What the scanlines and the mask take is given back.
 
 With Input at Composite or RF each line is coded as a PAL encoder does it - luma with
-the color on a carrier, by `xpCarrier` and `xpRaster` - and decoded as a set does: the
-color low-passed and averaged with the line above, the luma less a band around the
-carrier. So fine black and white patterns take on color and color edges crawl; a 128K's
-carrier is locked to its dots and its patterns stand (Phase picks one of the 8 ways it
-can lock at power-on), a 48K's runs free and they move. Such a look takes the frames
+the color on a carrier - and decoded as a set does: the color low-passed and averaged
+with the line above, the luma less a band around the carrier. So fine black and white
+patterns take on color and color edges crawl. Color carrier picks the encoder, for any
+machine alike: a 128K's is locked to its dots and its patterns stand (Phase picks one
+of the 8 ways it can lock at power-on), a 48K's runs free and they move. Programs that
+draw with the carrier are written for the 128K's. Such a look takes the frames
 before Anti-flicker mixes them and mixes them itself, after decoding. Every preset comes
 on RGB: Input is turned by hand.
 

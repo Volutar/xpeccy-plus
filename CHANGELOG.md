@@ -25,10 +25,10 @@ before that point is upstream's history and is not repeated here.
   the mask as fine as the tube's own and thinning out as the picture gets smaller. A new
   installation starts with RGB monitor. *(beam divergence by Volutar)*
 
-- **Composite and RF input** for the CRT looks: a PAL picture by the machine's own color
-  carrier. Fine patterns take on color, color edges crawl on a 48K and stand on a 128K,
-  and programs that draw with it - Chromatrons Attack - show their picture, with
-  Anti-flicker on too. Under Input in a look's settings; the looks come on RGB.
+- **Composite and RF input** for the CRT looks: a PAL picture as a set decodes it. Fine
+  patterns take on color; with a 128K's color carrier they stand, with a 48K's they
+  crawl - a setting, the same for any machine. Programs that draw with the carrier -
+  Chromatrons Attack - show their picture, with Anti-flicker on too. Under Input in a look's settings; the looks come on RGB.
 
 - **The older shader files are the tube now**: the aperture grille and shadow mask looks,
   TV lines, monitor-1084, pvm-sharp, composite-crt and zx-rf-artifact open the tube set to
