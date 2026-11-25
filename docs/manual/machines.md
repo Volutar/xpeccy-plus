@@ -30,11 +30,11 @@ The machine list shows them in this order, in five groups.
 | **ZX Spectrum +2A** | 128 KB | - | Amstrad's later model: Amstrad gate array, four +3 ROMs; AY |
 | **ZX Spectrum +3** | 128 KB | +3, two drives | the +2A with a 3-inch disk drive; AY |
 | **ZX Spectrum Next** | 1024 or 2048 KB | - | a group of its own: Z80N up to 28 MHz, three AYs and DACs, divMMC and SD card, Wi-Fi; see [ZX Spectrum Next](zx-next.md) |
-| **Robik** | 48 or 128 KB | - | a 48K clone of plain logic chips from Cherkasy: beeper on a piezo, Kempston joystick; Cyrillic ROM, 11 keys of its own, shadow RAM; see [Robik](#robik) |
 | **Pentagon** | 128 KB | Beta Disk | YM, Covox; Kempston mouse and joystick |
 | **Pentagon 1024 SL** | 1024 KB | Beta Disk | as the Pentagon; turbo x2, Gluk clock; starts Gluk Reset Service |
 | **Scorpion ZS 256** | 256 KB | Beta Disk | AY, Covox; Kempston mouse and joystick |
 | **Scorpion ZS 256 Turbo+** | 256 KB | Beta Disk | the Scorpion with the Turbo+ board: SMUC hard disk, turbo x2, ProfROM 4.44 |
+| **Robik** | 48 or 128 KB | - | a 48K clone of plain logic chips from Cherkasy: beeper on a piezo, Kempston joystick; Cyrillic ROM, 11 keys of its own, shadow RAM; see [Robik](#robik) |
 | **ATM Turbo 2+** | 1024 KB | Beta Disk | YM, Covox; ATM hard disk, Kempston mouse and joystick, turbo x2 |
 | **Profi v3** | 512 KB | Beta Disk | version 3 board; AY, Covox; Kempston mouse and joystick, turbo x2 |
 | **Profi v5** | 1024 KB | Beta Disk | version 5 board; YM, Covox; Profi hard disk, DD palette, Kempston mouse and joystick, turbo x2 |
