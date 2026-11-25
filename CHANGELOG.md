@@ -148,6 +148,9 @@ before that point is upstream's history and is not repeated here.
 - **Less CPU used at normal speed** while the machine is silent and no gamepad is connected:
   a 48K at its prompt takes about a quarter less.
 
+- **The virtual keyboard draws faster**: the 128K and Klava skins in a quarter to a third less
+  time, the Robik ones several times faster than they first did.
+
 - **Slow Motion and Fast Forward keep the overclock**, and moving the overclock no longer
   ends them. *(reported by Volutar)*
 
