@@ -960,9 +960,11 @@ static void blurGray(QImage& img, int r) {
 	int h = img.height();
 	if ((w < 1) || (h < 1) || (r < 1)) return;
 	std::vector<int> buf(std::max(w, h));
+	uchar* bits = img.bits();		// lines by pointer: scanLine() per pixel was most of the time
+	const qsizetype bpl = img.bytesPerLine();
 	for (int pass = 0; pass < 3; pass++) {
 		for (int y = 0; y < h; y++) {
-			uchar* row = img.scanLine(y);
+			uchar* row = bits + y * bpl;
 			int sum = 0;
 			for (int x = -r; x <= r; x++) sum += row[std::min(std::max(x, 0), w - 1)];
 			for (int x = 0; x < w; x++) {
@@ -972,13 +974,14 @@ static void blurGray(QImage& img, int r) {
 			for (int x = 0; x < w; x++) row[x] = (uchar)(buf[x] / (2 * r + 1));
 		}
 		for (int x = 0; x < w; x++) {
+			uchar* col = bits + x;
 			int sum = 0;
-			for (int y = -r; y <= r; y++) sum += img.scanLine(std::min(std::max(y, 0), h - 1))[x];
+			for (int y = -r; y <= r; y++) sum += col[std::min(std::max(y, 0), h - 1) * bpl];
 			for (int y = 0; y < h; y++) {
 				buf[y] = sum;
-				sum += img.scanLine(std::min(y + r + 1, h - 1))[x] - img.scanLine(std::max(y - r, 0))[x];
+				sum += col[std::min(y + r + 1, h - 1) * bpl] - col[std::max(y - r, 0) * bpl];
 			}
-			for (int y = 0; y < h; y++) img.scanLine(y)[x] = (uchar)(buf[y] / (2 * r + 1));
+			for (int y = 0; y < h; y++) col[y * bpl] = (uchar)(buf[y] / (2 * r + 1));
 		}
 	}
 }
