@@ -78,12 +78,12 @@ tip AFTER = How much of a lit dot is left a frame later
 more AFTERR AFTERG AFTERB
 
 group "Signal"
-#pragma parameter INPUT "Input" 0 0 2 1
-list INPUT = RGB, Composite, RF
-tip INPUT = The cable: a monitor's, a video input's or the aerial's
+#pragma parameter INPUT "Input" 0 0 3 1
+list INPUT = RGB, Composite, RF, SECAM
+tip INPUT = A monitor's cable, a PAL set's video or aerial input, or a SECAM set
 #pragma parameter CARRIER "Color carrier" 0 0 1 1
 list CARRIER = 128K: locked, 48K: free
-tip CARRIER = A 128K's color pattern stands still, a 48K's crawls
+tip CARRIER = A PAL encoder's: a 128K's pattern stands still, a 48K's crawls
 #pragma parameter COLOR "Color" 1.0 0.0 2.0 0.05
 tip COLOR = How strong the colors of a composite or RF picture are
 #pragma parameter SHARP "Sharpness" 0.5 0.0 1.0 0.05
@@ -219,6 +219,94 @@ fragment:
 
 	float rand(vec2 co) { return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453); }
 
+	// SECAM. A line carries one of the two color differences, turn about, as the
+	// frequency of a carrier: D'R = -1.902 (R - Y) about 4.40625 MHz, 280 kHz a unit,
+	// D'B = 1.505 (B - Y) about 4.250 MHz, 230 kHz a unit, kept within +350 / -506 and
+	// +506 / -350 kHz; the carrier is 0.115 of the luma's range at 4.286 MHz and larger
+	// away from it (the "bell"). The set takes the band about 4.286 MHz, cares for the
+	// carrier's frequency alone, and has the other difference from the line before (ITU-R
+	// BT.470, table 2). A frequency has no phase to cancel by, and a set told nothing
+	// apart from a carrier: fine luma - a dot on, a dot off is 3.5 MHz - near that band
+	// pulls the reading its way, the same way on every line and every frame. That is the
+	// flat color a pattern took on such a set. Cycles a texel, at 14 MHz:
+	const float S_FC = 0.306143;
+	const float S_FR = 0.314732;
+	const float S_FB = 0.303571;
+	const float S_DR = 0.020000;
+	const float S_DB = 0.016429;
+	const int S_TAPS = 12;
+
+	// the carrier's frequency for a texel of the coder's picture on a line of one kind
+	float secamSent(vec3 c, bool red) {
+		vec2 uv = 2.0 * (c.gb - 128.0 / 255.0);
+		if (red) return S_FR + S_DR * clamp(-1.902 * uv.y / 0.877, -1.807, 1.25);
+		return S_FB + S_DB * clamp(1.505 * uv.x / 0.492, -1.522, 2.2);
+	}
+
+	float bell(float f) {
+		float F = f / S_FC - S_FC / f;
+		return sqrt((1.0 + 256.0 * F * F) / (1.0 + 1.5876 * F * F));
+	}
+
+	// the set's band about the carrier, as a window over the texels: a bell 4.5 texels
+	// wide, brought down to nothing at the taps' ends
+	float band(float d) {
+		return exp(-0.5 * d * d / 20.25) * (0.5 + 0.5 * cos(3.14159265 * clamp(d / float(S_TAPS), -1.0, 1.0)));
+	}
+
+	// What the set reads on a line at a texel: the color difference of the line's kind
+	// (.x), and the luma less the carrier's band (.y). The carrier is made as the walk
+	// goes out from the texel both ways, its phase kept as it grows, so that inside the
+	// set's window it is one whole carrier.
+	vec2 secamRead(ivec2 at, bool red, float start) {
+		int last = int(SourceSize.x) - 1;
+		vec2 za = vec2(0.0), zb = vec2(0.0);
+		float y = 0.0, trap = 0.0, wySum = 0.0, wnSum = 0.0;
+		float sy = 1.2 - 0.8 * SHARP;
+		float phase = start;
+		float before = 0.0;
+		for (int n = 0; n <= 2 * S_TAPS; n++) {
+			// 0, 1 .. S_TAPS, then -1 .. -S_TAPS
+			int k = (n <= S_TAPS) ? n : S_TAPS - n;
+			vec3 c = texelFetch(Source, ivec2(clamp(at.x + k, 0, last), at.y), 0).rgb;
+			float f = secamSent(c, red);
+			if (n == 0) before = f;
+			else if (n <= S_TAPS) phase += PI2 * f;
+			else {
+				if (n == S_TAPS + 1) phase = start;
+				phase -= PI2 * before;
+				before = f;
+			}
+			float s = c.r + 0.115 * bell(f) * cos(phase);
+			float kf = float(k);
+			// the set's band about 4.286 MHz, read half a texel left and half a texel
+			// right of here: the turn between the two is the frequency
+			// (the two windows are one window moved: anything else reads a frequency
+			// pulled towards the band's middle)
+			float edge = 0.5 + 0.5 * cos(3.14159265 * clamp(kf / (float(S_TAPS) + 0.5), -1.0, 1.0));
+			// (the set's band filter - the bell turned over - leaves 0.17 of a 3.5 MHz
+			// luma; this window leaves 0.47 of it: 0.36 of the luma goes in)
+			vec2 mixed = (s - 0.64 * c.r) * vec2(cos(PI2 * S_FC * kf), -sin(PI2 * S_FC * kf));
+			za += band(kf + 0.5) * mixed;
+			zb += band(kf - 0.5) * mixed;
+			float wy = exp(-0.5 * kf * kf / (sy * sy));
+			float wn = exp(-0.5 * kf * kf / 9.0) * edge;
+			y += wy * s;
+			trap += wn * 2.0 * cos(PI2 * S_FC * kf) * s;
+			wySum += wy;
+			wnSum += wn;
+		}
+		float read = S_FC + atan(zb.y * za.x - zb.x * za.y, zb.x * za.x + zb.y * za.y) / PI2;
+		// A discriminator is a tuned circuit: true inside the range the standard uses,
+		// and past it the further off the frequency, the less it gives (as 1 / distance)
+		float d = red ? (read - S_FR) / S_DR : (read - S_FB) / S_DB;
+		float lo = red ? -1.807 : -1.522;
+		float hi = red ? 1.25 : 2.2;
+		if (d < lo) d = lo * lo / d;
+		if (d > hi) d = hi * hi / d;
+		return vec2(d, y / wySum - exp(-19.7392 * sy * sy * S_FC * S_FC) * trap / wnSum);
+	}
+
 	// the signal at a texel: luma with the color on its carrier
 	float coded(int tx, int ty, float line, float sw) {
 		vec3 c = texelFetch(Source, ivec2(clamp(tx, 0, int(SourceSize.x) - 1), ty), 0).rgb;
@@ -242,6 +330,20 @@ fragment:
 		ivec2 at = ivec2(vTexCoord * SourceSize.xy);
 		int up = max(at.y - 1, 0);
 		float line = xpRaster.w + float(at.y);
+		if (INPUT > 2.5) {
+			bool red = (mod(line, 2.0) < 0.5);
+			// the carrier starts a line where it left the last, more or less: anywhere
+			float start = PI2 * rand(vec2(line, float(xpFrame & 3)));
+			vec2 mine = secamRead(at, red, start);
+			vec2 above = secamRead(ivec2(at.x, up), !red, start + 2.0);
+			float dR = red ? mine.x : above.x;
+			float dB = red ? above.x : mine.x;
+			float r = mine.y - COLOR * dR / 1.902;
+			float b = mine.y + COLOR * dB / 1.505;
+			float g = (mine.y - 0.299 * r - 0.114 * b) / 0.587;
+			FragColor = vec4(clamp(vec3(r, g, b), 0.0, 1.0), 1.0);
+			return;
+		}
 		float sw = sense(line);
 		float swUp = sense(line - 1.0);
 		bool rf = (INPUT > 1.5);
