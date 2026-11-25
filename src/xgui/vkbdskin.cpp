@@ -23,8 +23,14 @@
 #include <QRegion>
 #include <QVariant>
 
+#include <array>
+#include <atomic>
 #include <cmath>
 #include <cstring>
+#include <functional>
+#include <map>
+#include <thread>
+#include <utility>
 #include <vector>
 
 #include <ft2build.h>
@@ -1316,14 +1322,71 @@ QPainterPath VkSkin::fillAt(int n, double s) const {
 	return out;
 }
 
+// What a picture is made of before it is drawn (prepare()), and what the plain and the
+// lit picture of a pair share: made for the first, taken by the second
+struct VkSkin::Work {
+	bool pair = false;
+	QImage under;			// a pair's: the ground, the bars, the contours - all under the caps
+	bool prepared = false;
+	struct Cap {
+		QPainterPath path;	// its outline, in the picture's pixels
+		QRectF body;		// its box inside the gap round it
+		int insA = 0, insB = 0;	// that gap: left and top, right and bottom
+		int side = -1;		// its blended sides: sideImg's, or -1 for none
+		bool domed = false;	// a dome: its shapes joined, that on the cap, its paint
+		QPainterPath joined, dp;
+		QBrush brush;
+		QImage soft;		// a soft dome: its layer, and where it goes
+		QPoint softAt;
+	};
+	std::map<const Key*, Cap> caps;
+	std::vector<QImage> sideImg;
+	std::vector<std::pair<QColor, std::vector<Mask>>> masks;	// each label's, in the layout's order
+};
+
+// f(0) .. f(n - 1) in any order on up to 8 threads, this one among them, a core left for
+// the emulation; this one runs own() first, alone - the part that must stay on it
+static void spread(int n, const std::function<void(int)>& f, const std::function<void()>& own) {
+	std::atomic<int> next(0);
+	auto run = [&]() {
+		for (int i = next++; i < n; i = next++)
+			f(i);
+	};
+	int extra = std::min(std::min((int)std::thread::hardware_concurrency() - 1, 8), n) - 1;
+	std::vector<std::thread> pool;
+	for (int i = 0; i < extra; i++) {
+		try {
+			pool.emplace_back(run);
+		} catch (...) {		// no more threads to be had: fewer do it
+			break;
+		}
+	}
+	own();
+	run();
+	for (std::thread& t : pool)
+		t.join();
+}
+
 QImage VkSkin::render(double s, bool lcd, bool lit) const {
+	Work w;
+	return paint(s, lcd, lit, w);
+}
+
+QImage VkSkin::renderBoth(double s, bool lcd, QImage& lit) const {
+	Work w;
+	w.pair = true;
+	QImage plain = paint(s, lcd, false, w);
+	lit = paint(s, lcd, true, w);
+	return plain;
+}
+
+QImage VkSkin::paint(double s, bool lcd, bool lit, Work& w) const {
 	int W = std::max(1, fr(cw * s));
 	int H = std::max(1, fr(ch * s));
+	if (!w.under.isNull()) return paintCaps(std::move(w.under), s, lcd, lit, w);
 	QImage img(W, H, QImage::Format_ARGB32_Premultiplied);
 	img.fill(Qt::transparent);
 	if (isNull()) return img;
-	// a key drawn by keyPath(): an outline, or corners of its own
-	auto shaped = [](const Key& key) {return !key.outline.isEmpty() || key.hasCorner;};
 
 	QPainter p(&img);
 	p.fillRect(img.rect(), bg);
@@ -1375,33 +1438,29 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 			}
 		}
 	}
+	p.end();
+	// the lit picture of a pair starts from the same
+	if (w.pair) w.under = img.copy();
+	return paintCaps(std::move(img), s, lcd, lit, w);
+}
+
+// the caps over the contours, then the lettering
+QImage VkSkin::paintCaps(QImage img, double s, bool lcd, bool lit, Work& w) const {
+	if (!w.prepared) prepare(s, lcd, w);
 	// the caps over them: the edge pixel is the cap's colour with what is left of
 	// its alpha, so a pressed key shows through exactly where the contour is
-	p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+	QPainter p(&img);
+	p.setRenderHint(QPainter::Antialiasing, true);
+	p.setPen(Qt::NoPen);
+	p.setBrush(Qt::black);
 	// one cap: its body, its sides, its dome
 	auto cap = [&](const Key& key) {
 		// lit, unless a part that stays as it is
 		bool klit = lit && !key.unlit;
 		const Preset* pr = preset(key.shape);
-		QRect kb = keyBox(key, s);
-		// the gap between two caps side by side - this one's inset on the right and the
-		// next one's on the left - rounded as a whole, so a small window shows one
-		// pixel there, not two: the left and top inset its smaller half. With the
-		// contour light each side keeps at least a pixel: the lit contour of a pressed
-		// key runs in that gap, and one pixel broke it up on a small window
-		int gap = (pr->inset > 0) ? std::max(1, fr(2 * pr->inset * s)) : 0;
-		if (!padLit)
-			gap = 2 * pxWidth(pr->inset, s);
-		int insA = gap / 2;
-		int insB = gap - insA;
-		QRectF body(kb.x() + insA, kb.y() + insA, kb.width() - gap, kb.height() - gap);
-		QPainterPath path;
-		if (shaped(key)) {
-			path = keyPath(key, s, -insA, -insA, -insB, -insB, pr->corner, -pr->inset * s);
-			body = path.boundingRect();
-		} else {
-			path = rrect(body.x(), body.y(), body.width(), body.height(), std::max(0.0, pr->corner - pr->inset) * s);
-		}
+		const Work::Cap& cs = w.caps.at(&key);
+		const QPainterPath& path = cs.path;
+		const QRectF& body = cs.body;
 		if (pr->fill == FILL_CAP) {
 			p.setBrush(gradAt(key.grad, body, s));
 		} else {
@@ -1415,59 +1474,15 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 			if (key.outline.isEmpty()) {
 				out << body.topLeft() << body.topRight() << body.bottomRight() << body.bottomLeft();
 			} else {
-				out = offsetPoly4(snapPoly(key.outline, s), -insA, -insA, -insB, -insB);
+				out = offsetPoly4(snapPoly(key.outline, s), -cs.insA, -cs.insA, -cs.insB, -cs.insB);
 			}
 			if (isRectilinear(out)) {
 				QVector<QPointF> in = offsetPoly4(out, -fr(sd.w[0] * s), -fr(sd.w[1] * s), -fr(sd.w[2] * s), -fr(sd.w[3] * s));
 				p.save();
 				p.setClipPath(path);
-				bool fills = false;
-				for (int f = 0; f < 4; f++)
-					fills = fills || sd.fill[f].isValid();
-				bool bands = false;
-				for (int f = 0; f < 4; f++)
-					bands = bands || (fr(sd.w[f] * s) > 0);
-				if ((sd.blend > 0) && bands && key.outline.isEmpty() && !fills) {
-					// sides that melt into each other at the corners: each pixel's shade
-					// the sides' own, weighed by how near it is to each (its depth into
-					// that side's band, as a part of the band)
-					const double wpx[4] = {(double)fr(sd.w[0] * s), (double)fr(sd.w[1] * s), (double)fr(sd.w[2] * s), (double)fr(sd.w[3] * s)};
-					QRect br = body.toAlignedRect();
-					QImage im(br.size(), QImage::Format_ARGB32_Premultiplied);
-					im.fill(0);
-					for (int y = 0; y < im.height(); y++) {
-						QRgb* line = reinterpret_cast<QRgb*>(im.scanLine(y));
-						double py = br.y() + y + 0.5;
-						for (int x = 0; x < im.width(); x++) {
-							double px = br.x() + x + 0.5;
-							const double depth[4] = {px - body.left(), py - body.top(), body.right() - px, body.bottom() - py};
-							double e[4];
-							double emin = 1e9;
-							int own = 0;
-							for (int f = 0; f < 4; f++) {
-								e[f] = (wpx[f] > 0) ? depth[f] / wpx[f] : 1e9;
-								if (e[f] < emin) {
-									emin = e[f];
-									own = f;
-								}
-							}
-							// the band's inner edge smooth over a pixel
-							double cov = std::max(0.0, std::min(1.0, (1 - emin) * wpx[own] + 0.5));
-							if (cov <= 0) continue;
-							double sw = 0, sum = 0;
-							for (int f = 0; f < 4; f++) {
-								if (e[f] >= 1e9) continue;
-								double wt = std::exp(-(e[f] - emin) / sd.blend);
-								sw += wt;
-								sum += wt * sd.shade[f];
-							}
-							double sh = sum / sw;
-							int a = fr(std::min(1.0, std::fabs(sh)) * cov * 255);
-							if (a <= 0) continue;
-							line[x] = (sh > 0) ? qRgba(0, 0, 0, a) : qRgba(a, a, a, a);
-						}
-					}
-					p.drawImage(br.topLeft(), im);
+				if (cs.side >= 0) {
+					// sides that melt into each other at the corners: made beforehand
+					p.drawImage(body.toAlignedRect().topLeft(), w.sideImg[cs.side]);
 				} else {
 					for (int i = 0; i < out.size(); i++) {
 						int j = (i + 1) % out.size();
@@ -1499,7 +1514,7 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 		}
 		// the dome: its shapes, each cut flat at its top, joined, never off the cap
 		const Dome& dm = key.dome;
-		if (!dm.on || (pr->fill != FILL_CAP) || (!dm.fill.isValid() && dm.grad.stops.isEmpty())) {
+		if (!cs.domed) {
 			// lit, a cap with no pad lights inside its own edge
 			if (klit && pr->contour) {
 				p.save();
@@ -1511,45 +1526,15 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 			}
 			return;
 		}
-		QPainterPath joined = domePart(key, dm.shape, s);
-		foreach(const DomePart& part, dm.more)
-			joined = joined.united(domePart(key, part, s));
-		QPainterPath dp = joined.intersected(path);
+		const QPainterPath& joined = cs.joined;
+		const QPainterPath& dp = cs.dp;
 		if (dp.isEmpty()) return;
-		if (dm.fill.isValid()) {
-			p.setBrush(dm.fill);
-		} else {
-			p.setBrush(gradAt(dm.grad, joined.boundingRect(), s));
-		}
+		p.setBrush(cs.brush);
 		if (dm.soft > 0) {
-			// a soft edge: the dome's paint over the whole cap, as much of it at each
-			// pixel as a blurred picture of the dome has there
-			QRect br = path.boundingRect().toAlignedRect();
-			QImage mask(br.size(), QImage::Format_Grayscale8);
-			mask.fill(0);
-			QPainter mp(&mask);
-			mp.setRenderHint(QPainter::Antialiasing, true);
-			mp.translate(-br.topLeft());
-			mp.fillPath(dp, Qt::white);
-			mp.end();
-			blurGray(mask, std::max(1, fr(dm.soft * s / 2)));
-			QImage layer(br.size(), QImage::Format_ARGB32_Premultiplied);
-			layer.fill(Qt::transparent);
-			QPainter lp(&layer);
-			lp.translate(-br.topLeft());
-			lp.fillPath(path, p.brush());
-			lp.end();
-			for (int y = 0; y < layer.height(); y++) {
-				QRgb* d = (QRgb*)layer.scanLine(y);
-				const uchar* m = mask.constScanLine(y);
-				for (int x = 0; x < layer.width(); x++) {
-					int a = m[x];
-					d[x] = qRgba(qRed(d[x]) * a / 255, qGreen(d[x]) * a / 255, qBlue(d[x]) * a / 255, qAlpha(d[x]) * a / 255);
-				}
-			}
+			// a soft edge: its layer, made beforehand, inside the cap
 			p.save();
 			p.setClipPath(path, Qt::IntersectClip);
-			p.drawImage(br.topLeft(), layer);
+			p.drawImage(cs.softAt, cs.soft);
 			p.restore();
 		} else {
 			p.drawPath(dp);
@@ -1580,8 +1565,8 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 		for (const Key& part : key.parts)
 			if (part.over) cap(part);
 	};
-	foreach(const Row& row, rows) {
-		foreach(const Key& key, row.keys) {
+	for (const Row& row : rows) {
+		for (const Key& key : row.keys) {
 			if (preset(key.shape)->fill == FILL_NONE) continue;
 			if (key.tilt == 0) {
 				caps(key);
@@ -1596,166 +1581,374 @@ QImage VkSkin::render(double s, bool lcd, bool lit) const {
 	}
 	p.end();
 
-	FT_Face face = keysFace();
-	foreach(const Row& row, rows) {
-		foreach(const Key& key, row.keys) {
-			// a turned key's words and icons drawn turned, each glyph by FreeType's own
-			// transform - a turned bitmap of them came out soft
-			bool klcd = lcd;
-			bool turned = (key.tilt != 0);
-			QTransform kt = turned ? tiltPx(key, s) : QTransform();
-			auto put = [&](const Mask& m, const QColor& col) {composite(img, m, col);};
-			auto place = [&](const QPainterPath& pp) {return turned ? kt.map(pp) : pp;};
-			// the same turn for FreeType, its y up
-			FT_Matrix ftm = {(FT_Fixed)std::lround(kt.m11() * 65536), (FT_Fixed)std::lround(-kt.m21() * 65536),
-			                 (FT_Fixed)std::lround(-kt.m12() * 65536), (FT_Fixed)std::lround(kt.m22() * 65536)};
+	// the lettering in the layout's order, so where two meet the later is over
+	for (const auto& lm : w.masks) {
+		for (const Mask& m : lm.second)
+			composite(img, m, lm.first);
+	}
+	return img;
+}
+
+// sides that melt into each other at the corners: each pixel's shade the sides' own,
+// weighed by how near it is to each (its depth into that side's band, as a part of the
+// band); wpx: the bands' widths in pixels
+static QImage blendedSides(const QRectF& body, const double* wpx, const double* shade, double blend) {
+	QRect br = body.toAlignedRect();
+	QImage im(br.size(), QImage::Format_ARGB32_Premultiplied);
+	im.fill(0);
+	for (int y = 0; y < im.height(); y++) {
+		QRgb* line = reinterpret_cast<QRgb*>(im.scanLine(y));
+		double py = br.y() + y + 0.5;
+		for (int x = 0; x < im.width(); x++) {
+			double px = br.x() + x + 0.5;
+			const double depth[4] = {px - body.left(), py - body.top(), body.right() - px, body.bottom() - py};
+			double e[4];
+			double emin = 1e9;
+			int own = 0;
+			for (int f = 0; f < 4; f++) {
+				e[f] = (wpx[f] > 0) ? depth[f] / wpx[f] : 1e9;
+				if (e[f] < emin) {
+					emin = e[f];
+					own = f;
+				}
+			}
+			// the band's inner edge smooth over a pixel
+			double cov = std::max(0.0, std::min(1.0, (1 - emin) * wpx[own] + 0.5));
+			if (cov <= 0) continue;
+			double sw = 0, sum = 0;
+			for (int f = 0; f < 4; f++) {
+				if (e[f] >= 1e9) continue;
+				double wt = std::exp(-(e[f] - emin) / blend);
+				sw += wt;
+				sum += wt * shade[f];
+			}
+			double sh = sum / sw;
+			int a = fr(std::min(1.0, std::fabs(sh)) * cov * 255);
+			if (a <= 0) continue;
+			line[x] = (sh > 0) ? qRgba(0, 0, 0, a) : qRgba(a, a, a, a);
+		}
+	}
+	return im;
+}
+
+// a soft dome: its paint (brush) over the whole cap (path), as much of it at each pixel
+// as a picture of the dome (dp) blurred r pixels has there; where it goes in at
+static QImage softLayer(const QPainterPath& path, const QPainterPath& dp, const QBrush& brush, int r, QPoint& at) {
+	QRect br = path.boundingRect().toAlignedRect();
+	at = br.topLeft();
+	QImage mask(br.size(), QImage::Format_Grayscale8);
+	mask.fill(0);
+	QPainter mp(&mask);
+	mp.setRenderHint(QPainter::Antialiasing, true);
+	mp.translate(-br.topLeft());
+	mp.fillPath(dp, Qt::white);
+	mp.end();
+	blurGray(mask, r);
+	QImage layer(br.size(), QImage::Format_ARGB32_Premultiplied);
+	layer.fill(Qt::transparent);
+	QPainter lp(&layer);
+	lp.translate(-br.topLeft());
+	lp.fillPath(path, brush);
+	lp.end();
+	for (int y = 0; y < layer.height(); y++) {
+		QRgb* d = (QRgb*)layer.scanLine(y);
+		const uchar* m = mask.constScanLine(y);
+		for (int x = 0; x < layer.width(); x++) {
+			int a = m[x];
+			d[x] = qRgba(qRed(d[x]) * a / 255, qGreen(d[x]) * a / 255, qBlue(d[x]) * a / 255, qAlpha(d[x]) * a / 255);
+		}
+	}
+	return layer;
+}
+
+// What the caps and the lettering take, made before any of it is drawn: each cap's outline
+// and dome here, then on worker threads the soft domes' layers, the blended sides and the
+// icons' masks, while this thread makes the texts' - FreeType's one face is not to be shared
+void VkSkin::prepare(double s, bool lcd, Work& w) const {
+	w.prepared = true;
+	std::vector<std::function<void()>> jobs;
+	// a cap's outline and its dome's shapes, as drawn
+	std::map<std::vector<double>, int> looks;	// blended sides by size and look: one each
+	auto capShape = [&](const Key& key) {
+		Work::Cap& c = w.caps[&key];
+		const Preset* pr = preset(key.shape);
+		QRect kb = keyBox(key, s);
+		// the gap between two caps side by side - this one's inset on the right and the
+		// next one's on the left - rounded as a whole, so a small window shows one
+		// pixel there, not two: the left and top inset its smaller half. With the
+		// contour light each side keeps at least a pixel: the lit contour of a pressed
+		// key runs in that gap, and one pixel broke it up on a small window
+		int gap = (pr->inset > 0) ? std::max(1, fr(2 * pr->inset * s)) : 0;
+		if (!padLit)
+			gap = 2 * pxWidth(pr->inset, s);
+		c.insA = gap / 2;
+		c.insB = gap - c.insA;
+		c.body = QRectF(kb.x() + c.insA, kb.y() + c.insA, kb.width() - gap, kb.height() - gap);
+		if (!key.outline.isEmpty() || key.hasCorner) {
+			c.path = keyPath(key, s, -c.insA, -c.insA, -c.insB, -c.insB, pr->corner, -pr->inset * s);
+			c.body = c.path.boundingRect();
+		} else {
+			c.path = rrect(c.body.x(), c.body.y(), c.body.width(), c.body.height(), std::max(0.0, pr->corner - pr->inset) * s);
+		}
+		// blended sides: only on a plain box with bands and no colors of their own
+		const Side& sd = key.side;
+		bool fills = false;
+		bool bands = false;
+		for (int f = 0; f < 4; f++) {
+			fills = fills || sd.fill[f].isValid();
+			bands = bands || (fr(sd.w[f] * s) > 0);
+		}
+		if (sd.on && (pr->fill == FILL_CAP) && key.outline.isEmpty() && (sd.blend > 0) && bands && !fills) {
+			const double wpx[4] = {(double)fr(sd.w[0] * s), (double)fr(sd.w[1] * s), (double)fr(sd.w[2] * s), (double)fr(sd.w[3] * s)};
+			QRect br = c.body.toAlignedRect();
+			// a body on whole pixels gives the same picture wherever it is (each pixel's
+			// depths come out exact): one per size and look - a Robik's 59 caps have 7-8
+			bool whole = (c.body.left() == br.left()) && (c.body.top() == br.top()) &&
+				     (c.body.width() == br.width()) && (c.body.height() == br.height());
+			std::vector<double> look = {(double)br.width(), (double)br.height(), sd.blend};
+			for (int f = 0; f < 4; f++) {
+				look.push_back(wpx[f]);
+				look.push_back(sd.shade[f]);
+			}
+			auto made = whole ? looks.find(look) : looks.end();
+			if (made != looks.end()) {
+				c.side = made->second;
+			} else {
+				c.side = (int)w.sideImg.size();
+				if (whole) looks[look] = c.side;
+				w.sideImg.push_back(QImage());
+				QRectF body = c.body;
+				std::array<double, 4> wa = {wpx[0], wpx[1], wpx[2], wpx[3]};
+				const Side* sp = &sd;
+				int n = c.side;
+				jobs.push_back([&w, body, wa, sp, n]() {
+					w.sideImg[n] = blendedSides(body, wa.data(), sp->shade, sp->blend);
+				});
+			}
+		}
+		// the dome: its shapes, each cut flat at its top, joined, never off the cap
+		const Dome& dm = key.dome;
+		c.domed = dm.on && (pr->fill == FILL_CAP) && (dm.fill.isValid() || !dm.grad.stops.isEmpty());
+		if (!c.domed) return;
+		c.joined = domePart(key, dm.shape, s);
+		foreach(const DomePart& part, dm.more)
+			c.joined = c.joined.united(domePart(key, part, s));
+		c.dp = c.joined.intersected(c.path);
+		if (c.dp.isEmpty()) return;
+		if (dm.fill.isValid()) {
+			c.brush = QBrush(dm.fill);
+		} else {
+			c.brush = QBrush(gradAt(dm.grad, c.joined.boundingRect(), s));
+		}
+		if (dm.soft > 0) {
+			int r = std::max(1, fr(dm.soft * s / 2));
+			Work::Cap* cp = &c;
+			jobs.push_back([cp, r]() {
+				cp->soft = softLayer(cp->path, cp->dp, cp->brush, r, cp->softAt);
+			});
+		}
+	};
+	for (const Row& row : rows) {
+		for (const Key& key : row.keys) {
+			if (preset(key.shape)->fill == FILL_NONE) continue;
+			for (const Key& part : key.parts)
+				capShape(part);
+			capShape(key);
+		}
+	}
+
+	// the lettering: each label's place, its masks made below
+	struct Job {
+		const Key* key;
+		const Label* lab;
+		double x, y;		// where it goes, in pixels
+		QTransform kt;		// a turned key's turn, in pixels
+	};
+	std::vector<Job> labs;
+	std::vector<int> textJobs;
+	// an icon is drawn as a shape (or open lines) into masks of its own
+	auto iconJob = [&](int n) {
+		const Job& j = labs[n];
+		std::vector<Mask>& out = w.masks[n].second;
+		auto found = icons.constFind(j.lab->icon);
+		if (found == icons.constEnd()) return;
+		const Icon& ic = *found;
+		// a turned key's icons drawn turned
+		bool turned = (j.key->tilt != 0);
+		auto place = [&](const QPainterPath& pp) {return turned ? j.kt.map(pp) : pp;};
+		QTransform tr;
+		tr.translate(j.x, j.y);
+		tr.scale(s, s);
+		QPainterPath path;
+		path.setFillRule(Qt::OddEvenFill);
+		if (ic.isLine) {
+			path.moveTo(ic.p1);
+			path.lineTo(ic.p2);
+			out.push_back(iconMask(place(tr.map(path)), (ic.sw > 0 ? ic.sw : 1) * s, true, true));
+		} else if (ic.isBox) {
+			path.addRect(ic.box);
+			foreach(QRectF c, ic.cuts)
+				path.addRect(c);
+			foreach(const QVector<QPointF>& c, ic.cutPolys)
+				path.addPolygon(QPolygonF(c)), path.closeSubpath();
+			out.push_back(iconMask(place(tr.map(path)), 0, false, false));
+		} else if (ic.open) {
+			foreach(const QVector<QPointF>& c, ic.polys) {
+				if (c.isEmpty()) continue;
+				path.moveTo(c[0]);
+				for (int i = 1; i < c.size(); i++)
+					path.lineTo(c[i]);
+			}
+			// the walls as thin as they are, however small: strokeMask keeps a
+			// wall under a pixel even, it only comes out lighter
+			double inner = (ic.hollow > 0) ? std::max(0.0, ic.sw - 2 * ic.hollow) * s : 0;
+			out.push_back(strokeMask(place(tr.map(path)), ic.sw * s, inner));
+		} else if (ic.oneShape) {
+			foreach(const QVector<QPointF>& c, ic.polys)
+				path.addPolygon(QPolygonF(c)), path.closeSubpath();
+			out.push_back(iconMask(place(tr.map(path)), ic.sw * s, ic.sw > 0, false));
+		} else {
+			foreach(const QVector<QPointF>& c, ic.polys) {
+				QPainterPath pp;
+				pp.setFillRule(Qt::OddEvenFill);
+				pp.addPolygon(QPolygonF(c));
+				pp.closeSubpath();
+				out.push_back(iconMask(place(tr.map(pp)), ic.sw * s, ic.sw > 0, false));
+			}
+		}
+	};
+	// a text: its glyphs by FreeType, a turned key's each by FreeType's own transform -
+	// a turned bitmap of them came out soft
+	auto textJob = [&](int jn) {
+		FT_Face face = keysFace();
+		if (!face) return;
+		const Job& j = labs[jn];
+		const Label& lab = *j.lab;
+		bool klcd = lcd;
+		bool turned = (j.key->tilt != 0);
+		const QTransform& kt = j.kt;
+		// the same turn for FreeType, its y up
+		FT_Matrix ftm = {(FT_Fixed)std::lround(kt.m11() * 65536), (FT_Fixed)std::lround(-kt.m21() * 65536),
+		                 (FT_Fixed)std::lround(-kt.m12() * 65536), (FT_Fixed)std::lround(kt.m22() * 65536)};
+		double x = j.x;
+		double y = j.y;
+		// the run's glyphs and their places in font units, kerned
+		QVector<uint> cps = lab.text.toUcs4();
+		QVector<FT_UInt> gid;
+		QVector<long> pos;
+		long pen = 0;
+		for (int i = 0; i < cps.size(); i++)
+			gid.append(FT_Get_Char_Index(face, cps[i]));
+		for (int i = 0; i < gid.size(); i++) {
+			pos.append(pen);
+			FT_Fixed adv = 0;
+			FT_Get_Advance(face, gid[i], FT_LOAD_NO_SCALE, &adv);
+			pen += adv;
+			if (i + 1 < gid.size()) {
+				FT_Vector kv;
+				if (!FT_Get_Kerning(face, gid[i], gid[i + 1], FT_KERNING_UNSCALED, &kv))
+					pen += kv.x;
+			}
+		}
+		double upem = face->units_per_EM;
+		double natural = pen * lab.sz / upem;
+		double kx = (lab.hasTl && (lab.tl >= 4) && (natural > 0)) ? lab.tl / natural : 1.0;
+		double ky = (lab.th > 0) ? lab.th / lab.sz : 1.0;
+		QString anc = !lab.anchor.isEmpty() ? lab.anchor : (!anchor.isEmpty() ? anchor : QString("middle"));
+		if (anc == "middle") x -= natural * kx * s / 2.0;
+		else if (anc == "end") x -= natural * kx * s;
+		int base = fr(y);		// the baseline on a whole pixel, always
+		double ppx = lab.sz * s * kx;	// pixels per em, each way
+		double ppy = lab.sz * s * ky;
+		FT_Set_Char_Size(face, (FT_F26Dot6)std::lround(ppx * 64), (FT_F26Dot6)std::lround(ppy * 64), 72, 72);
+		// every glyph rendered at its own subpixel x, then laid into one mask
+		struct Glyph {int x, y, w, h; std::vector<uchar> c;};
+		QVector<Glyph> gl;
+		for (int i = 0; i < gid.size(); i++) {
+			double gx = x + pos[i] * ppx / upem;
+			double gy = base;
+			if (turned) {
+				QPointF q = kt.map(QPointF(gx, gy));
+				gx = q.x();
+				gy = q.y();
+			}
+			int ix = (int)std::floor(gx);
+			int iy = (int)std::floor(gy);
+			FT_Vector delta = {(FT_Pos)std::lround((gx - ix) * 64), (FT_Pos)std::lround(-(gy - iy) * 64)};
+			FT_Set_Transform(face, turned ? &ftm : nullptr, &delta);
+			// the font's own hinting on both paths; LIGHT would hand the glyph to the auto-hinter
+			if (FT_Load_Glyph(face, gid[i], (klcd ? FT_LOAD_TARGET_LCD : FT_LOAD_TARGET_NORMAL) | FT_LOAD_NO_AUTOHINT)) continue;
+			if ((lab.ebx != 0) || (lab.eby != 0))
+				FT_Outline_EmboldenXY(&face->glyph->outline, std::lround(lab.ebx * s * 64), std::lround(lab.eby * s * 64));
+			if (FT_Render_Glyph(face->glyph, klcd ? FT_RENDER_MODE_LCD : FT_RENDER_MODE_NORMAL)) continue;
+			const FT_Bitmap& bm = face->glyph->bitmap;
+			if (!bm.width || !bm.rows) continue;
+			Glyph g;
+			g.w = klcd ? bm.width / 3 : bm.width;
+			g.h = bm.rows;
+			g.x = ix + face->glyph->bitmap_left;
+			g.y = iy - face->glyph->bitmap_top;
+			g.c.resize(g.w * g.h * 3);
+			for (int yy = 0; yy < g.h; yy++) {
+				const uchar* src = bm.buffer + yy * bm.pitch;
+				uchar* d = g.c.data() + yy * g.w * 3;
+				for (int xx = 0; xx < g.w; xx++, d += 3) {
+					if (klcd) {
+						d[0] = src[xx * 3];
+						d[1] = src[xx * 3 + 1];
+						d[2] = src[xx * 3 + 2];
+					} else {
+						d[0] = d[1] = d[2] = src[xx];
+					}
+				}
+			}
+			gl.append(g);
+		}
+		FT_Set_Transform(face, nullptr, nullptr);
+		if (gl.isEmpty()) return;
+		QRect box(gl[0].x, gl[0].y, gl[0].w, gl[0].h);
+		foreach(const Glyph& g, gl)
+			box |= QRect(g.x, g.y, g.w, g.h);
+		Mask m;
+		m.x = box.x();
+		m.y = box.y();
+		m.w = box.width();
+		m.h = box.height();
+		m.c.assign(m.w * m.h * 3, 0);
+		foreach(const Glyph& g, gl) {
+			for (int yy = 0; yy < g.h; yy++) {
+				const uchar* src = g.c.data() + yy * g.w * 3;
+				uchar* d = m.c.data() + ((g.y - m.y + yy) * m.w + (g.x - m.x)) * 3;
+				for (int k = 0; k < g.w * 3; k++)	// overlapping glyphs: one over the other
+					d[k] = 255 - (255 - d[k]) * (255 - src[k]) / 255;
+			}
+		}
+		w.masks[jn].second.push_back(std::move(m));
+	};
+	for (const Row& row : rows) {
+		for (const Key& key : row.keys) {
+			QTransform kt = (key.tilt != 0) ? tiltPx(key, s) : QTransform();
 			QRect kb = keyBox(key, s);
 			QString kmode = key.sn.isEmpty() ? sn : key.sn;
 			double rx = snapTo((kb.left() + kb.left() + kb.width()) / 2.0 + key.ax * s, kmode);
 			double ry = snapTo((kb.top() + kb.top() + kb.height()) / 2.0 + key.ay * s, kmode);
-			foreach(const Label& lab, key.labels) {
+			for (const Label& lab : key.labels) {
 				QString mode = lab.sn.isEmpty() ? kmode : lab.sn;
-				double x = snapTo(rx + lab.dx * s, mode);
-				double y = snapTo(ry + lab.dy * s, mode);
+				int n = (int)labs.size();
+				labs.push_back({&key, &lab, snapTo(rx + lab.dx * s, mode), snapTo(ry + lab.dy * s, mode), kt});
 				if (!lab.icon.isEmpty()) {
-					const Icon& ic = icons[lab.icon];
-					QTransform tr;
-					tr.translate(x, y);
-					tr.scale(s, s);
-					QPainterPath path;
-					path.setFillRule(Qt::OddEvenFill);
-					if (ic.isLine) {
-						path.moveTo(ic.p1);
-						path.lineTo(ic.p2);
-						put(iconMask(place(tr.map(path)), (ic.sw > 0 ? ic.sw : 1) * s, true, true), lab.col);
-					} else if (ic.isBox) {
-						path.addRect(ic.box);
-						foreach(QRectF c, ic.cuts)
-							path.addRect(c);
-						foreach(const QVector<QPointF>& c, ic.cutPolys)
-							path.addPolygon(QPolygonF(c)), path.closeSubpath();
-						put(iconMask(place(tr.map(path)), 0, false, false), lab.col);
-					} else if (ic.open) {
-						foreach(const QVector<QPointF>& c, ic.polys) {
-							if (c.isEmpty()) continue;
-							path.moveTo(c[0]);
-							for (int i = 1; i < c.size(); i++)
-								path.lineTo(c[i]);
-						}
-						// the walls as thin as they are, however small: strokeMask keeps a
-						// wall under a pixel even, it only comes out lighter
-						double inner = (ic.hollow > 0) ? std::max(0.0, ic.sw - 2 * ic.hollow) * s : 0;
-						put(strokeMask(place(tr.map(path)), ic.sw * s, inner), lab.col);
-					} else if (ic.oneShape) {
-						foreach(const QVector<QPointF>& c, ic.polys)
-							path.addPolygon(QPolygonF(c)), path.closeSubpath();
-						put(iconMask(place(tr.map(path)), ic.sw * s, ic.sw > 0, false), lab.col);
-					} else {
-						foreach(const QVector<QPointF>& c, ic.polys) {
-							QPainterPath pp;
-							pp.setFillRule(Qt::OddEvenFill);
-							pp.addPolygon(QPolygonF(c));
-							pp.closeSubpath();
-							put(iconMask(place(tr.map(pp)), ic.sw * s, ic.sw > 0, false), lab.col);
-						}
-					}
-					continue;
+					jobs.push_back([&iconJob, n]() {iconJob(n);});
+				} else if (!lab.text.isEmpty()) {
+					textJobs.push_back(n);
 				}
-				if (!face || lab.text.isEmpty()) continue;
-				// the run's glyphs and their places in font units, kerned
-				QVector<uint> cps = lab.text.toUcs4();
-				QVector<FT_UInt> gid;
-				QVector<long> pos;
-				long pen = 0;
-				for (int i = 0; i < cps.size(); i++)
-					gid.append(FT_Get_Char_Index(face, cps[i]));
-				for (int i = 0; i < gid.size(); i++) {
-					pos.append(pen);
-					FT_Fixed adv = 0;
-					FT_Get_Advance(face, gid[i], FT_LOAD_NO_SCALE, &adv);
-					pen += adv;
-					if (i + 1 < gid.size()) {
-						FT_Vector kv;
-						if (!FT_Get_Kerning(face, gid[i], gid[i + 1], FT_KERNING_UNSCALED, &kv))
-							pen += kv.x;
-					}
-				}
-				double upem = face->units_per_EM;
-				double natural = pen * lab.sz / upem;
-				double kx = (lab.hasTl && (lab.tl >= 4) && (natural > 0)) ? lab.tl / natural : 1.0;
-				double ky = (lab.th > 0) ? lab.th / lab.sz : 1.0;
-				QString anc = !lab.anchor.isEmpty() ? lab.anchor : (!anchor.isEmpty() ? anchor : QString("middle"));
-				if (anc == "middle") x -= natural * kx * s / 2.0;
-				else if (anc == "end") x -= natural * kx * s;
-				int base = fr(y);		// the baseline on a whole pixel, always
-				double ppx = lab.sz * s * kx;	// pixels per em, each way
-				double ppy = lab.sz * s * ky;
-				FT_Set_Char_Size(face, (FT_F26Dot6)std::lround(ppx * 64), (FT_F26Dot6)std::lround(ppy * 64), 72, 72);
-				// every glyph rendered at its own subpixel x, then laid into one mask
-				struct Glyph {int x, y, w, h; std::vector<uchar> c;};
-				QVector<Glyph> gl;
-				for (int i = 0; i < gid.size(); i++) {
-					double gx = x + pos[i] * ppx / upem;
-					double gy = base;
-					if (turned) {
-						QPointF q = kt.map(QPointF(gx, gy));
-						gx = q.x();
-						gy = q.y();
-					}
-					int ix = (int)std::floor(gx);
-					int iy = (int)std::floor(gy);
-					FT_Vector delta = {(FT_Pos)std::lround((gx - ix) * 64), (FT_Pos)std::lround(-(gy - iy) * 64)};
-					FT_Set_Transform(face, turned ? &ftm : nullptr, &delta);
-					// the font's own hinting on both paths; LIGHT would hand the glyph to the auto-hinter
-					if (FT_Load_Glyph(face, gid[i], (klcd ? FT_LOAD_TARGET_LCD : FT_LOAD_TARGET_NORMAL) | FT_LOAD_NO_AUTOHINT)) continue;
-					if ((lab.ebx != 0) || (lab.eby != 0))
-						FT_Outline_EmboldenXY(&face->glyph->outline, std::lround(lab.ebx * s * 64), std::lround(lab.eby * s * 64));
-					if (FT_Render_Glyph(face->glyph, klcd ? FT_RENDER_MODE_LCD : FT_RENDER_MODE_NORMAL)) continue;
-					const FT_Bitmap& bm = face->glyph->bitmap;
-					if (!bm.width || !bm.rows) continue;
-					Glyph g;
-					g.w = klcd ? bm.width / 3 : bm.width;
-					g.h = bm.rows;
-					g.x = ix + face->glyph->bitmap_left;
-					g.y = iy - face->glyph->bitmap_top;
-					g.c.resize(g.w * g.h * 3);
-					for (int yy = 0; yy < g.h; yy++) {
-						const uchar* s = bm.buffer + yy * bm.pitch;
-						uchar* d = g.c.data() + yy * g.w * 3;
-						for (int xx = 0; xx < g.w; xx++, d += 3) {
-							if (klcd) {
-								d[0] = s[xx * 3];
-								d[1] = s[xx * 3 + 1];
-								d[2] = s[xx * 3 + 2];
-							} else {
-								d[0] = d[1] = d[2] = s[xx];
-							}
-						}
-					}
-					gl.append(g);
-				}
-				FT_Set_Transform(face, nullptr, nullptr);
-				if (gl.isEmpty()) continue;
-				QRect box(gl[0].x, gl[0].y, gl[0].w, gl[0].h);
-				foreach(const Glyph& g, gl)
-					box |= QRect(g.x, g.y, g.w, g.h);
-				Mask m;
-				m.x = box.x();
-				m.y = box.y();
-				m.w = box.width();
-				m.h = box.height();
-				m.c.assign(m.w * m.h * 3, 0);
-				foreach(const Glyph& g, gl) {
-					for (int yy = 0; yy < g.h; yy++) {
-						const uchar* s = g.c.data() + yy * g.w * 3;
-						uchar* d = m.c.data() + ((g.y - m.y + yy) * m.w + (g.x - m.x)) * 3;
-						for (int k = 0; k < g.w * 3; k++)	// overlapping glyphs: one over the other
-							d[k] = 255 - (255 - d[k]) * (255 - s[k]) / 255;
-					}
-				}
-				put(m, lab.col);
 			}
 		}
 	}
-	return img;
+	w.masks.resize(labs.size());
+	for (size_t i = 0; i < labs.size(); i++)
+		w.masks[i].first = labs[i].lab->col;
+	spread((int)jobs.size(), [&](int n) {jobs[n]();}, [&]() {
+		for (int n : textJobs)
+			textJob(n);
+	});
 }

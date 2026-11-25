@@ -70,7 +70,15 @@ class VkSkin {
 		// key lit, its pad's rim in the lit color, or a ring inside the cap's edge
 		// on a key with no pad - the window draws it over a pressed key alone
 		QImage render(double scale, bool lcd, bool lit = false) const;
+		// the plain picture and the lit one into lit, as render() makes them, from one
+		// go: what the two share (the ground, the lettering, the domes' soft edges, the
+		// caps' sides) made once
+		QImage renderBoth(double scale, bool lcd, QImage& lit) const;
 	private:
+		struct Work;	// a picture's parts made before it is drawn; a pair's, shared
+		QImage paint(double s, bool lcd, bool lit, Work& w) const;
+		QImage paintCaps(QImage img, double s, bool lcd, bool lit, Work& w) const;
+		void prepare(double s, bool lcd, Work& w) const;
 		struct Label {
 			QString text;		// a text label...
 			QString icon;		// ...or an icon
