@@ -470,9 +470,9 @@ void look_old_names() {
 		{"monitor-1084.txt", "", "RGB monitor", ""},
 		{"monitor-1084-flat.txt", "", "RGB monitor", "CURVE 0, CORNER 0, VIGN 0"},
 		{"pvm-sharp.txt", "", "PVM", ""},
-		{"composite-crt.txt", "", "Home TV", ""},
-		{"composite-crt-flat.txt", "", "Home TV", "CURVE 0, CORNER 0, VIGN 0"},
-		{"zx-rf-artifact.txt", "", "Home TV", ""},
+		{"composite-crt.txt", "", "Home TV (composite)", ""},
+		{"composite-crt-flat.txt", "", "Home TV (composite)", "CURVE 0, VIGN 0"},
+		{"zx-rf-artifact.txt", "", "Home TV (composite)", "INPUT 2"},
 	};
 	const QString old = QString::fromLocal8Bit(conf.vid.shader.c_str());
 	const QString was = QString::fromUtf8(conf.vid.shdPreset.c_str());
