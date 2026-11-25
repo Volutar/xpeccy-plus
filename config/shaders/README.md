@@ -48,7 +48,7 @@ at 0, when its pass is not drawn at all.
 | Mask | aperture grille, slot mask or shadow mask, as fine as the tube: triads to a dot of the picture |
 | Glow | light around bright things |
 | Afterglow | a lit dot fades over the next frames, blue first |
-| Signal | the cable - RGB, composite or RF: a PAL picture made and decoded, by a 128K's color carrier or a 48K's; a ghost, interference, noise |
+| Signal | the cable - RGB; composite or RF into a PAL set, by a 128K's color carrier or a 48K's; or a SECAM set; a ghost, interference, noise |
 | Screen | curvature, round corners, vignette, brightness, contrast |
 
 The mask is drawn in whole screen pixels and thins out by itself as the picture gets
@@ -60,7 +60,11 @@ with the line above, the luma less a band around the carrier. So fine black and 
 patterns take on color and color edges crawl. Color carrier picks the encoder, for any
 machine alike: a 128K's is locked to its dots and its patterns stand (Phase picks one
 of the 8 ways it can lock at power-on), a 48K's runs free and they move. Programs that
-draw with the carrier are written for the 128K's. Such a look takes the frames
+draw with the carrier are written for the 128K's. With Input at SECAM a line carries one
+color difference as the frequency of a carrier and the set reads that frequency alone
+(ITU-R BT.470's numbers): a pattern of a dot on, a dot off - 3.5 MHz, beside the
+carrier's band - pulls the reading its way and takes on one flat warm color, the same
+for a checkerboard and for stripes, with no crawl. Such a look takes the frames
 before Anti-flicker mixes them and mixes them itself, after decoding. Every preset comes
 on RGB: Input is turned by hand.
 

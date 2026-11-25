@@ -28,7 +28,8 @@ before that point is upstream's history and is not repeated here.
 - **Composite and RF input** for the CRT looks: a PAL picture as a set decodes it. Fine
   patterns take on color; with a 128K's color carrier they stand, with a 48K's they
   crawl - a setting, the same for any machine. Programs that draw with the carrier -
-  Chromatrons Attack - show their picture, with Anti-flicker on too. Under Input in a look's settings; the looks come on RGB.
+  Chromatrons Attack - show their picture, with Anti-flicker on too. And a SECAM set,
+  where a checkerboard of dots turns one flat warm color. Under Input in a look's settings; the looks come on RGB.
 
 - **The older shader files are the tube now**: the aperture grille and shadow mask looks,
   TV lines, monitor-1084, pvm-sharp, composite-crt and zx-rf-artifact open the tube set to
