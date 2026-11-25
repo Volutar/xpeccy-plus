@@ -196,10 +196,12 @@ that can be switched off, and then costs nothing:
 - **Signal** - **Input**, the cable: **RGB** as a monitor gets it, **Composite** or **RF** as
   a TV set does, with the colors a real set made of fine patterns and at color edges;
   **Color**, how strong they are; **Ghost**, a faint second picture beside the first;
-  **Interference**, a wave that pushes the lines aside; **Noise**. On a 128K the color
-  pattern stands still and **Phase**, under **All settings**, picks one of the eight
-  ways it can fall, as the machine picks one at power-on; on a 48K it crawls. **Shimmer**,
-  there too, is how much of the pattern's flicker from frame to frame shows;
+  **Interference**, a wave that pushes the lines aside; **Noise**. **Color carrier** is the
+  encoder the picture comes through, whatever the machine: a **128K**'s, whose color
+  pattern stands still - programs that paint with it, such as Chromatrons Attack, need
+  this one - or a **48K**'s, whose pattern crawls. Under **All settings**, **Phase** picks
+  one of the eight ways a 128K's pattern can fall, as the machine picks one at power-on,
+  and **Shimmer** is how much of the pattern's flicker from frame to frame shows;
 - **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**, **Contrast**. A small
   picture, under about three screen pixels a dot, stays flat.
 
