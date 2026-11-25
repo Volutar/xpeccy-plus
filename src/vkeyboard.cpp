@@ -341,12 +341,14 @@ void keyWindow::redraw() {
 	double sd = devScale();
 	if (sd <= 0) return;
 	bool lcd = (sd <= VK_LCD_MAX + 1e-6) && hostLcd(this);
-	QImage img = skin.render(sd, lcd);
+	// a pad light's lit picture comes with the plain one: the two share most of the work
+	QImage lit;
+	QImage img = skin.padLight() ? skin.renderBoth(sd, lcd, lit) : skin.render(sd, lcd);
 	pic = QPixmap::fromImage(img);
 	pic.setDevicePixelRatio(devicePixelRatioF());
 	litPic = QPixmap();
 	if (skin.padLight()) {
-		litPic = QPixmap::fromImage(skin.render(sd, lcd, true));
+		litPic = QPixmap::fromImage(lit);
 		litPic.setDevicePixelRatio(devicePixelRatioF());
 	}
 	picScale = sd;
