@@ -907,7 +907,7 @@ static struct {
 static sndPair snd_mix_look() {
 	static sndMix was;
 	sr.left = 0;
-	sr.wait = SND_REST_LOOK;
+	sr.wait = SND_REST_LOOK - 1;
 	if (!ts_rests(&sm.ts)) return sm.mix(&sm.m, &conf.snd.vol);
 	memcpy(&sr.sv, &conf.snd.vol, sizeof(sr.sv));
 	sr.rate = sm.m.rate;
@@ -915,6 +915,7 @@ static sndPair snd_mix_look() {
 	sndPair lev = sm.mix(&sm.m, &sr.sv);
 	if (!memcmp(&was, &sm.m, sizeof(was))) {
 		sr.left = SND_REST_LOOK - 1;
+		sr.wait = 0;		// the next look right after it
 		sr.lev = lev;
 	}
 	return lev;
