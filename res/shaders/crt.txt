@@ -81,12 +81,15 @@ group "Signal"
 #pragma parameter INPUT "Input" 0 0 2 1
 list INPUT = RGB, Composite, RF
 tip INPUT = The cable: a monitor's, a video input's or the aerial's
+#pragma parameter CARRIER "Color carrier" 0 0 1 1
+list CARRIER = 128K: locked, 48K: free
+tip CARRIER = A 128K's color pattern stands still, a 48K's crawls
 #pragma parameter COLOR "Color" 1.0 0.0 2.0 0.05
 tip COLOR = How strong the colors of a composite or RF picture are
 #pragma parameter SHARP "Sharpness" 0.5 0.0 1.0 0.05
 tip SHARP = How fine a detail the set's video path lets through
 #pragma parameter PHASE "Phase" 0 0 7 1
-tip PHASE = The color carrier against the dots, as a 128K finds it at power-on
+tip PHASE = A locked carrier against the dots, as a 128K finds it at power-on
 #pragma parameter SHIMMER "Shimmer" 0.15 0.0 1.0 0.05
 tip SHIMMER = How much of the color pattern's flicker from frame to frame shows
 #pragma parameter GHOST "Ghost" 0.0 0.0 1.0 0.05
@@ -144,10 +147,13 @@ common:
 	}
 
 // The picture as a PAL set gets it over a composite or an aerial cable: each line made
-// into luma with the color on a carrier, by the machine's own numbers (xpCarrier,
-// xpRaster) - a 128K's carrier is locked to its dots and its pattern stands, a 48K's
-// runs free and crawls, the V switch turns every line and does not start again with a
-// frame - and taken apart again as a set does it: color by the carrier, low-passed and
+// into luma with the color on a carrier, and taken apart again as a set does it. The
+// encoder is the look's own choice, the same for every machine (a clone had none of its
+// own, and what stood between it and the set was anybody's): a 128K's - 5/8 cycle a dot
+// from the dots' own crystal, whole cycles a line, so the pattern stands; 311 lines, so
+// the V switch, which turns every line, comes to a line the other way round each frame -
+// or a 48K's - a crystal of its own, 283.7516 cycles a line, half a cycle on each frame,
+// so the pattern crawls; 312 lines, the V switch the same each frame. Decoding: color by the carrier, low-passed and
 // averaged with the line above (the delay line), luma less a band around the carrier.
 // Fine black and white detail comes out colored and color edges crawl, as they did.
 // Two texels a dot.
@@ -161,16 +167,22 @@ fragment:
 	const float PI2 = 6.28318530718;
 	const int TAPS = 8;
 
+	// the carrier, cycles a dot: 4.43361875 MHz against a 128K's 7.0938 MHz and a 48K's 7
+	float cycles() { return (CARRIER < 0.5) ? 0.625 : 0.63337411; }
+
 	// the carrier's turn, radians, at a texel column of a line of the whole raster
 	float turnAt(float tx, float line) {
 		float dot_ = xpRaster.z + tx * 0.5;
-		float perLine = fract(xpCarrier.x * xpRaster.x);
-		return PI2 * (fract(xpCarrier.x * dot_) + fract(perLine * line) + xpCarrier.z + PHASE * 0.125);
+		if (CARRIER < 0.5) return PI2 * (fract(0.625 * dot_) + PHASE * 0.125);
+		// 0.4992 cycle further each frame: the two crystals do not keep step
+		float frame = fract(float(xpFrame % 1250) * 0.4992);
+		return PI2 * (fract(0.63337411 * dot_) + fract(0.7516 * line) + frame);
 	}
 
 	// the V switch's sense on a line
 	float sense(float line) {
-		return (mod(line + xpCarrier.w, 2.0) < 0.5) ? 1.0 : -1.0;
+		float turned = (CARRIER < 0.5) ? float(xpFrame & 1) : 0.0;
+		return (mod(line + turned, 2.0) < 0.5) ? 1.0 : -1.0;
 	}
 
 	float rand(vec2 co) { return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -216,7 +228,7 @@ fragment:
 			float wn = exp(-0.5 * kf * kf / (sn * sn));
 			float s = sent(at.x + k, at.y, line, sw);
 			y += wy * s;
-			trap += wn * 2.0 * cos(PI2 * xpCarrier.x * 0.5 * kf) * s;
+			trap += wn * 2.0 * cos(PI2 * cycles() * 0.5 * kf) * s;
 			float th = turnAt(float(at.x + k), line);
 			u += wc * s * 2.0 * sin(th);
 			v += wc * s * 2.0 * cos(th);
@@ -229,7 +241,7 @@ fragment:
 			wnSum += wn;
 		}
 		// the trap takes out what the low-pass has left of the carrier, no more
-		float fc = xpCarrier.x * 0.5;
+		float fc = cycles() * 0.5;
 		y = y / wySum - exp(-19.7392 * sy * sy * fc * fc) * trap / wnSum;
 		u = COLOR * 0.5 * (u + uUp) / wcSum;
 		v = COLOR * 0.5 * (v * sw + vUp * swUp) / wcSum;
@@ -240,7 +252,7 @@ fragment:
 	}
 
 // The decoded frame with the one before, in linear light. The carrier's pattern turns
-// over from one frame to the next - the V switch on a 128K, half a cycle on a 48K - and
+// over from one frame to the next - the V switch of a 128K, half a cycle of a 48K - and
 // on a set the eye takes the two as one; on a screen that shows each frame whole, and
 // not at the machine's own rate, they beat. So where the picture itself stands still
 // the two frames are averaged, but for the part Shimmer leaves. Where it moves there is
