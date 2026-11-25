@@ -1973,12 +1973,11 @@ int xGamepad::deadZone() {return dead;}
 // long (on Windows a millisecond more, the pad thread's own period) before the emulation
 // sees it. Polling at all is the stopgap: see the TODO on update().
 #define GP_POLL_MS	2
-// ...and with no pad open there is only one coming to look for: not worth 500 wakes a
-// second of the GUI thread
+// ...and with no pad open, when only one coming is looked for
 #define GP_IDLE_MS	20
 
 void xGamepadController::pollEvery(int ms) {
-	if (ms == pollMs) return;
+	if (pollId && (ms == pollMs)) return;
 	if (pollId) killTimer(pollId);
 	pollMs = ms;
 	pollId = startTimer(ms, (ms < GP_IDLE_MS) ? Qt::PreciseTimer : Qt::CoarseTimer);
@@ -2065,6 +2064,8 @@ void xGamepadController::rescan() {
 	}
 	meetNew(devs, pick);
 	PAD_UNLOCK(lk);
+	// a pad opened here (Options, the config) is polled at its rate at once
+	pollEvery((gpada->isOpened() || gpadb->isOpened()) ? GP_POLL_MS : GP_IDLE_MS);
 	if (padQuiet) return;		// the timer tells, once its own lock is let go
 	QList<int> met = padMet;
 	padMet.clear();
