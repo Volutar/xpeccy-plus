@@ -159,8 +159,9 @@ common:
 // from the dots' own crystal, whole cycles a line, so the pattern stands; 311 lines, so
 // the V switch, which turns every line, comes to a line the other way round each frame -
 // or a 48K's - a crystal of its own, 283.7516 cycles a line, half a cycle on each frame,
-// so the pattern crawls; 312 lines, the V switch the same each frame. Decoding: color by the carrier, low-passed and
-// averaged with the line above (the delay line), luma less a band around the carrier.
+// so the pattern crawls; 312 lines, the V switch the same each frame. Decoding: color by
+// the carrier, low-passed and combined with what the set's delay line holds of the line
+// before, luma less a band around the carrier.
 // Fine black and white detail comes out colored and color edges crawl, as they did.
 // Two texels a dot.
 //
@@ -268,7 +269,7 @@ fragment:
 		int last = int(SourceSize.x) - 1;
 		vec2 za = vec2(0.0), zb = vec2(0.0);
 		float y = 0.0, trap = 0.0, wySum = 0.0, wnSum = 0.0;
-		float sy = 1.2 - 0.8 * SHARP;
+		float sy = 1.9 - 1.2 * SHARP;
 		float phase = start;
 		float before = 0.0;
 		for (int n = 0; n <= 2 * S_TAPS; n++) {
@@ -333,15 +334,20 @@ fragment:
 	}
 
 	// ...and between two texels: the picture's own values mixed, the carrier where it is
-	float sentAt(float fx, int ty, float line, float sw) {
+	float codedAt(float fx, int ty, float line, float sw) {
 		int last = int(SourceSize.x) - 1;
 		float f = floor(fx);
 		vec3 c = mix(texelFetch(Source, ivec2(clamp(int(f), 0, last), ty), 0).rgb,
 			texelFetch(Source, ivec2(clamp(int(f) + 1, 0, last), ty), 0).rgb, fx - f);
 		float th = turnAt(fx, line);
 		vec2 uv = 2.0 * (c.gb - 128.0 / 255.0);
-		float s = c.r + uv.x * sin(th) + sw * uv.y * cos(th);
-		if (GHOST > 0.0) s += GHOST * 0.15 * coded(int(f) - int(GHOSTX * 0.01 * SourceSize.x), ty, line, sw);
+		return c.r + uv.x * sin(th) + sw * uv.y * cos(th);
+	}
+
+	float sentAt(float fx, int ty, float line, float sw) {
+		float f = floor(fx);
+		float s = codedAt(fx, ty, line, sw);
+		if (GHOST > 0.0) s += GHOST * 0.15 * codedAt(fx - float(int(GHOSTX * 0.01 * SourceSize.x)), ty, line, sw);
 		if ((NOISE > 0.0) && (INPUT > 1.5)) {
 			float t = float(FrameCount % 1024u);
 			s += NOISE * 0.08 * (rand(vec2(f, float(ty)) + vec2(t * 17.13, t * 5.71)) - 0.5);
@@ -382,7 +388,8 @@ fragment:
 		// is the line above 4.8 texels to the right of here (a 48K's, 283.75 cycles:
 		// 0.8). It is taken there, and by the carrier as it stands now - which is how
 		// two lines of a pattern that an "average with the line above" would cancel
-		// give the colors they gave.
+		// give the colors they gave. The line's length is the encoder's own here, as
+		// its carrier is, whatever machine the picture comes from.
 		float delay = (CARRIER < 0.5) ? 4.8 : 0.79;
 		float u = 0.0, v = 0.0, uUp = 0.0, vUp = 0.0, y = 0.0, trap = 0.0;
 		float wcSum = 0.0, wySum = 0.0, wnSum = 0.0;
@@ -761,12 +768,12 @@ fragment:
 		col *= BRIGHT;
 
 		// The mask: counted in the window's pixels, or in the picture's own where it is
-		// to bend with the glass - by itself where a triad has six pixels or more, under
-		// which a bent mask beats with them
+		// to bend with the glass - by itself where a pixel of its layout is two screen
+		// pixels or more, under which a bent mask beats with them
 		float kind;
 		float n;
 		float cell = triad(dot_, kind, n);
-		bool glass = !flat_ && ((MBEND == 2.0) || ((MBEND == 0.0) && (cell >= 6.0)));
+		bool glass = !flat_ && ((MBEND == 2.0) || ((MBEND == 0.0) && (n >= 2.0)));
 		vec2 px = glass ? uv * OutputSize.xy : gl_FragCoord.xy - xpPicture.xy;
 		float mean;
 		vec3 through = mask(px, cell, kind, n, max(2.0, floor(dot_ + 0.5)), mean);
@@ -801,7 +808,9 @@ fragment:
 		// spread about, so a plain field keeps its brightness and the dark beside a
 		// bright thing gets a veil - at most a quarter
 		if (GLOW > 0.0) {
-			vec3 around = pow(texture(glowv, uv).rgb, vec3(2.2));
+			// (past a bent picture's edge, its edge - as the picture itself is there)
+			vec2 in_ = clamp(uv, 0.5 * glowvSize.zw, 1.0 - 0.5 * glowvSize.zw);
+			vec3 around = pow(texture(glowv, in_).rgb, vec3(2.2));
 			lit = mix(lit, around, 0.25 * GLOW);
 		}
 		// (an aerial's noise is in the signal)
