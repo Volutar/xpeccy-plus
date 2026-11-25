@@ -154,6 +154,11 @@ before that point is upstream's history and is not repeated here.
   the menu names the tape or the disk the key turns over, and grays them when it has no other
   side. *(reported by Volutar)*
 
+### Removed
+
+- **`-p` and `--profile` on the command line**, the old name of `-m`. `-m` still takes the
+  name a profile went by.
+
 ### Fixed
 
 - **Linux: the zx-rf-artifact shader** works with Mesa drivers, and the aperture grille and
