@@ -72,7 +72,7 @@ void help() {
 	printf("-s | --size {1..6}\tset window size x1..x6.\n");
 	printf("-n | --noflick {0..100}\tset noflick level\n");
 	printf("-r | --ratio {0|1}\tset 'keep aspect ratio' property\n");
-	printf("-m | --machine ID\tstart this machine (-p is the old name for it)\n");
+	printf("-m | --machine ID\tstart this machine\n");
 	printf("-b | --bank NUM\t\tset rampage NUM to #c000 memory window\n");
 	printf("-a | --adr ADR\t\tset loading address (see -f below)\n");
 	printf("-f | --file NAME\tload binary file to address defined by -a (see above)\n");
@@ -735,8 +735,7 @@ int main(int ac,char** av) {
 		} else if (!strncmp(earg, "--bench", 7)) {
 			xhost_time_fixed = 1790000000;	// the machines are built below: freeze their clock first
 			bench = true;
-		} else if (!strcmp(earg, "-m") || !strcmp(earg, "--machine")
-				|| !strcmp(earg, "-p") || !strcmp(earg, "--profile")) {
+		} else if (!strcmp(earg, "-m") || !strcmp(earg, "--machine")) {
 			if (n < ac) {			// the last one wins
 				cliMac = av[n++];
 				pinned = true;
@@ -995,8 +994,7 @@ int main(int ac,char** av) {
 	int style = 0;
 #endif
 	// loadConfig() built it; only a migrated config needs the switch.
-	// -p is what the profiles answered to, so the name a profile went by still
-	// names its machine
+	// the name a profile went by still names its machine
 	if (cliMac) {
 		std::string mid = xm_id_for_name(cliMac);
 		if (mid.empty()) {
@@ -1059,9 +1057,12 @@ int main(int ac,char** av) {
 #endif
 		} else if (i < ac) {
 			if (!strcmp(parg,"-m") || !strcmp(parg,"--machine")
-				|| !strcmp(parg,"-p") || !strcmp(parg,"--profile")
 				|| !strcmp(parg,"--update-from")) {
 				i++;		// taken above
+			} else if (!strcmp(parg,"-p") || !strcmp(parg,"--profile")) {
+				// removed: its machine name is not a file to open
+				cli_warn(QString("%0 was removed, use -m").arg(parg));
+				i++;
 			} else if (!strcmp(parg,"--bench")) {
 				bnFrames = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-rewind")) {
