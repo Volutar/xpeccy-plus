@@ -194,7 +194,8 @@ that can be switched off, and then costs nothing:
 - **Glow** - light around bright things, and how far it reaches;
 - **Afterglow** - how much of a lit dot is left a frame later;
 - **Signal** - **Input**, the cable: **RGB** as a monitor gets it, **Composite** or **RF** as
-  a TV set does, with the colors a real set made of fine patterns and at color edges;
+  a PAL TV set does, with the colors a real set made of fine patterns and at color edges,
+  or **SECAM**, a set of that system, on which a fine pattern turns one flat warm color;
   **Color**, how strong they are; **Ghost**, a faint second picture beside the first;
   **Interference**, a wave that pushes the lines aside; **Noise**. **Color carrier** is the
   encoder the picture comes through, whatever the machine: a **128K**'s, whose color
