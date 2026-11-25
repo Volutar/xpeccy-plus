@@ -119,10 +119,10 @@ more CURVEX CURVEY
 # The masks' fineness is the tubes' own: triads across the screen over the 352 dots of a
 # full frame - a 14" TV's 0.65 mm slot mask 1.2, the 1084's 0.42 mm one 1.9, a 14" PVM's
 # 0.25 mm grille 3.0 (Philips data handbook T08 of 1986, Sony's PVM brochures)
-preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, CORNER 0.03, VIGN 0.25, INPUT 2
+preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, CORNER 0.03, VIGN 0.25
 preset "RGB monitor": MASK 2, MASKS 0.45, PITCH 1.9, SCAN 0.9, WIDTH 0.8, FOCUS 0.5, GROW 0.15, DIVERGE 0.2, GLOW 0.1, CURVE 0.04, CORNER 0.02, VIGN 0.1
 preset "PVM": MASK 1, MASKS 0.5, PITCH 3.0, SCAN 0.8, WIDTH 0.8, FOCUS 0.7, GROW 0.3, DIVERGE 0.15
-preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.4, WIDTH 1.0, FOCUS 0.2, GROW 0, DIVERGE 0.9, DIVMID 1.0, GLOW 0.35, AFTER 0.5, GHOST 0.1, GHOSTX 0.8, NOISE 0.5, CURVE 0.07, CORNER 0.04, VIGN 0.7, BRIGHT 0.9, CONTRAST 0.5, INPUT 1
+preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.4, WIDTH 1.0, FOCUS 0.2, GROW 0, DIVERGE 0.9, DIVMID 1.0, GLOW 0.35, AFTER 0.5, GHOST 0.1, GHOSTX 0.8, NOISE 0.5, CURVE 0.07, CORNER 0.04, VIGN 0.7, BRIGHT 0.9, CONTRAST 0.5
 
 common:
 	// a mix's share snapped at its ends: in linear light a thousandth of white over
