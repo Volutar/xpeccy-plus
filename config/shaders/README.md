@@ -55,8 +55,9 @@ The mask is drawn in whole screen pixels and thins out by itself as the picture 
 smaller; a small picture has no curve. What the scanlines and the mask take is given back.
 
 With Input at Composite or RF each line is coded as a PAL encoder does it - luma with
-the color on a carrier - and decoded as a set does: the color low-passed and averaged
-with the line above, the luma less a band around the carrier. So fine black and white
+the color on a carrier - and decoded as a set does: the color low-passed and combined
+with what its delay line holds of the line before, the luma less a band around the
+carrier. So fine black and white
 patterns take on color and color edges crawl. Color carrier picks the encoder, for any
 machine alike: a 128K's is locked to its dots and its patterns stand (Phase picks one
 of the 8 ways it can lock at power-on), a 48K's runs free and they move. Programs that
