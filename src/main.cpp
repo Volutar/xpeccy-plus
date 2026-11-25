@@ -1059,6 +1059,10 @@ int main(int ac,char** av) {
 			if (!strcmp(parg,"-m") || !strcmp(parg,"--machine")
 				|| !strcmp(parg,"--update-from")) {
 				i++;		// taken above
+			} else if (!strcmp(parg,"-p") || !strcmp(parg,"--profile")) {
+				// removed: its machine name is not a file to open
+				cli_warn(QString("%0 was removed, use -m").arg(parg));
+				i++;
 			} else if (!strcmp(parg,"--bench")) {
 				bnFrames = atoi(av[i++]);
 			} else if (!strcmp(parg,"--bench-rewind")) {
