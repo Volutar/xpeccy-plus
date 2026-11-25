@@ -196,7 +196,10 @@ that can be switched off, and then costs nothing:
   to frame shows; **Interference**, a wave that pushes the lines aside;
 - **Mask** - **Aperture grille**, **Slot mask** or **Shadow mask**, its **Strength** and
   **Fineness**: how many triads of the mask a dot of the picture has. The mask is drawn in
-  whole screen pixels, so in a small window it is coarser than the number says;
+  whole screen pixels, so in a small window it is coarser than the number says. A fine
+  mask is drawn with the display's own subpixels: if its colors look wrong, set
+  **Display's subpixels** under **All settings** to your display's order, **RGB** or
+  **BGR**, or to **Other** for a mask without colors;
 - **Beam** - **Scanlines**, how dark the gap between two lines is; **Gap width**, how much
   of a line it takes; **Focus**, how sharp a dot is along the line;
 - **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**. A small picture,
