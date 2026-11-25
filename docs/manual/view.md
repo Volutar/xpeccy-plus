@@ -184,27 +184,28 @@ as you left it.
 A tube's settings are in frames, one a part of the tube; a frame with a tick is a part
 that can be switched off, and then costs nothing:
 
-- **Beam** - **Scanlines**, how dark the gap between two lines is; **Gap width**, how much
-  of a line it takes; **Focus**, how sharp a dot is along the line;
-- **Divergence** - how far the red and the blue beam land from the green one, more towards
-  the screen's edges;
-- **Mask** - **Aperture grille**, **Slot mask** or **Shadow mask**, its **Strength** and
-  **Fineness**: how many triads of the mask a dot of the picture has. The mask is drawn in
-  whole screen pixels, so in a small window it is coarser than the number says;
-- **Glow** - light around bright things, and how far it reaches;
-- **Afterglow** - how much of a lit dot is left a frame later;
 - **Signal** - **Input**, the cable: **RGB** as a monitor gets it, **Composite** or **RF** as
   a PAL TV set does, with the colors a real set made of fine patterns and at color edges,
   or **SECAM**, a set of that system, on which a fine pattern turns one flat warm color;
   **Color**, how strong they are; **Ghost**, a faint second picture beside the first;
-  **Interference**, a wave that pushes the lines aside; **Noise**. **Color carrier** is the
-  encoder the picture comes through, whatever the machine: a **128K**'s, whose color
-  pattern stands still - programs that paint with it, such as Chromatrons Attack, need
-  this one - or a **48K**'s, whose pattern crawls. Under **All settings**, **Phase** picks
-  one of the eight ways a 128K's pattern can fall, as the machine picks one at power-on,
-  and **Shimmer** is how much of the pattern's flicker from frame to frame shows;
-- **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**, **Contrast**. A small
-  picture, under about three screen pixels a dot, stays flat.
+  **Noise**. Under **All settings**: **Color carrier**, the encoder the picture comes
+  through, whatever the machine - a **128K**'s, whose color pattern stands still (programs
+  that paint with it, such as Chromatrons Attack, need this one), or a **48K**'s, whose
+  pattern crawls; **Phase**, one of the eight ways a 128K's pattern can fall, as the
+  machine picks one at power-on; **Shimmer**, how much of the pattern's flicker from frame
+  to frame shows; **Interference**, a wave that pushes the lines aside;
+- **Mask** - **Aperture grille**, **Slot mask** or **Shadow mask**, its **Strength** and
+  **Fineness**: how many triads of the mask a dot of the picture has. The mask is drawn in
+  whole screen pixels, so in a small window it is coarser than the number says;
+- **Beam** - **Scanlines**, how dark the gap between two lines is; **Gap width**, how much
+  of a line it takes; **Focus**, how sharp a dot is along the line;
+- **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**. A small picture,
+  under about three screen pixels a dot, stays flat. A curved picture goes on to the edge
+  of its place as its border does, and the corners are rounded there;
+- **Glow** - light around bright things;
+- **Divergence** - how far the red and the blue beam land from the green one, more towards
+  the screen's edges;
+- **Afterglow** - how much of a lit dot is left a frame later.
 
 Under the frames is the **GPU time** the look takes of the graphics card for a frame.
 
