@@ -341,7 +341,7 @@ fragment:
 			float r = mine.y - COLOR * dR / 1.902;
 			float b = mine.y + COLOR * dB / 1.505;
 			float g = (mine.y - 0.299 * r - 0.114 * b) / 0.587;
-			FragColor = vec4(clamp(vec3(r, g, b), 0.0, 1.0), 1.0);
+			FragColor = vec4(clamp(vec3(r, g, b), 0.0, 1.0), float(xpFrame % 250) / 255.0);
 			return;
 		}
 		float sw = sense(line);
@@ -382,7 +382,8 @@ fragment:
 		float r = y + v / 0.877;
 		float b = y + u / 0.492;
 		float g = (y - 0.299 * r - 0.114 * b) / 0.587;
-		FragColor = vec4(clamp(vec3(r, g, b), 0.0, 1.0), 1.0);
+		// alpha: which frame this is, for the pass that mixes frames
+		FragColor = vec4(clamp(vec3(r, g, b), 0.0, 1.0), float(xpFrame % 250) / 255.0);
 	}
 
 // The decoded frame with the one before, in linear light. The carrier's pattern turns
@@ -391,7 +392,11 @@ fragment:
 // not at the machine's own rate, they beat. So where the picture itself stands still
 // the two frames are averaged, but for the part Shimmer leaves. Where it moves there is
 // nothing to average, and antiflicker, left to the look while the frames come unmixed,
-// has its own say.
+// has its own say: all of the picture, or - an adaptive mode - only where a texel
+// is what it was two frames ago and not what it was one frame ago, which is a flicker
+// and not a thing that moves.
+// The same frame painted twice (the machine paused, a window redrawn) has no frame
+// before it here: it is shown as it was shown.
 pass seen:
 	when INPUT
 	filter nearest
@@ -400,22 +405,34 @@ fragment:
 	layout(location = 0) out vec4 FragColor;
 
 	void main() {
+		vec4 before = texture(signalFeedback, vTexCoord);
+		if (abs(before.a - texture(Source, vTexCoord).a) < 0.002) {
+			FragColor = texture(seenFeedback, vTexCoord);
+			return;
+		}
 		vec3 now = pow(texture(Source, vTexCoord).rgb, vec3(2.2));
-		vec3 was = pow(texture(signalFeedback, vTexCoord).rgb, vec3(2.2));
-		// still: the frame's own texels here, as far as the decoder's filters reach
-		// that matters, and on the line above are what they were a frame ago
+		vec3 was = pow(before.rgb, vec3(2.2));
+		// the frame's own texels here, as far as the decoder's filters reach that
+		// matters, and on the line above: against a frame ago, and against two
 		ivec2 at = ivec2(vTexCoord * OriginalSize.xy);
 		ivec2 last = ivec2(OriginalSize.xy) - 1;
 		float moved = 0.0;
+		float back = 0.0;
 		for (int k = -4; k <= 4; k++) {
 			ivec2 p = clamp(at + ivec2(k, 0), ivec2(0), last);
 			ivec2 q = clamp(at + ivec2(k, -1), ivec2(0), last);
-			vec3 d = abs(texelFetch(Original, p, 0).rgb - texelFetch(OriginalHistory1, p, 0).rgb)
-				+ abs(texelFetch(Original, q, 0).rgb - texelFetch(OriginalHistory1, q, 0).rgb);
+			vec3 a = texelFetch(Original, p, 0).rgb;
+			vec3 b = texelFetch(Original, q, 0).rgb;
+			vec3 d = abs(a - texelFetch(OriginalHistory1, p, 0).rgb) + abs(b - texelFetch(OriginalHistory1, q, 0).rgb);
+			vec3 e = abs(a - texelFetch(OriginalHistory2, p, 0).rgb) + abs(b - texelFetch(OriginalHistory2, q, 0).rgb);
 			moved += d.r + d.g + d.b;
+			back += e.r + e.g + e.b;
 		}
-		float even = (moved < 0.004) ? 0.5 * (1.0 - SHIMMER) : 0.0;
-		FragColor = vec4(pow(mix(now, was, max(xpBlend, even)), vec3(1.0 / 2.2)), 1.0);
+		bool still = (moved < 0.004);
+		float even = still ? 0.5 * (1.0 - SHIMMER) : 0.0;
+		bool flicker = !still && (back < 0.004);
+		float mixed = ((xpBlend.y < 0.5) || flicker) ? xpBlend.x : 0.0;
+		FragColor = vec4(pow(mix(now, was, max(mixed, even)), vec3(1.0 / 2.2)), 1.0);
 	}
 
 pass afterglow:
@@ -503,8 +520,8 @@ fragment:
 		vec3 col = lit(x, at, r);
 		// the ghost: the picture once more to the right, faint and out of focus - a glow
 		// that stands aside, not a second picture
-		// (a composite or RF picture has its ghost in the signal)
-		if ((GHOST > 0.0) && (INPUT == 0.0)) col += GHOST * 0.15 * lit(x - GHOSTX * 0.01 * SourceSize.x, vec3(0.0), 4.0);
+		// (a PAL picture has its ghost in the signal)
+		if ((GHOST > 0.0) && ((INPUT == 0.0) || (INPUT > 2.5))) col += GHOST * 0.15 * lit(x - GHOSTX * 0.01 * SourceSize.x, vec3(0.0), 4.0);
 		FragColor = vec4(pow(min(col, vec3(1.0)), vec3(1.0 / 2.2)), 1.0);
 	}
 
@@ -715,7 +732,7 @@ fragment:
 			lit = mix(lit, around, 0.25 * GLOW);
 		}
 		// (an aerial's noise is in the signal)
-		if ((NOISE > 0.0) && (INPUT < 1.5)) {
+		if ((NOISE > 0.0) && ((INPUT < 1.5) || (INPUT > 2.5))) {
 			// another grain each frame, not the same one moved along
 			float t = float(FrameCount % 1024u);
 			vec2 seed = gl_FragCoord.xy + vec2(t * 17.13, t * 5.71);
