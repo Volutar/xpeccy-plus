@@ -314,6 +314,9 @@ class xGamepadController : public QObject {
 		QStringList gameStart;			// player 1's table as the game's file left it
 		QString gameBeside;			// the open image's own .pad, there or not: never a preset
 		void meetNew(const QList<xPadDev>&, const int*);
+		int pollId = 0;				// the timer, and its period
+		int pollMs = 0;
+		void pollEvery(int);
 };
 
 // The mouse the pads move: the gui sets its speed as it reads them, the

@@ -1973,12 +1973,22 @@ int xGamepad::deadZone() {return dead;}
 // long (on Windows a millisecond more, the pad thread's own period) before the emulation
 // sees it. Polling at all is the stopgap: see the TODO on update().
 #define GP_POLL_MS	2
+// ...and with no pad open there is only one coming to look for: not worth 500 wakes a
+// second of the GUI thread
+#define GP_IDLE_MS	20
+
+void xGamepadController::pollEvery(int ms) {
+	if (ms == pollMs) return;
+	if (pollId) killTimer(pollId);
+	pollMs = ms;
+	pollId = startTimer(ms, (ms < GP_IDLE_MS) ? Qt::PreciseTimer : Qt::CoarseTimer);
+}
 
 xGamepadController::xGamepadController(QObject* p):QObject(p) {
 	gpada = new xGamepad;
 	gpadb = new xGamepad;
 	gpadb->slot = 1;
-	startTimer(GP_POLL_MS, Qt::PreciseTimer);
+	pollEvery(GP_IDLE_MS);
 }
 
 // How well a connected device answers to what a slot remembers. 0 is no.
@@ -2239,6 +2249,7 @@ void xGamepadController::timerEvent(QTimerEvent* e) {
 		gpadb->update();
 		padMoves = nullptr;
 	}
+	pollEvery((gpada->isOpened() || gpadb->isOpened()) ? GP_POLL_MS : GP_IDLE_MS);
 	// the slots of these may open a window or a dialog: the lock is let go first
 	if (changed) {
 		QList<int> met = padMet;
