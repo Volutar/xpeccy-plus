@@ -1806,7 +1806,8 @@ void MainWin::paintGLView() {
 	chain.run(chainFrame, shaderUsed());
 	// a look with a signal model wants the frames before antiflicker mixes them, and
 	// mixes them itself: the emulation thread reads this at its next frame
-	conf.vid.shdRaw = (shaderUsed() && chain.rawFrames()) ? 1 : 0;
+	// (only a chain that is drawing: one still being built or one that failed mixes nothing)
+	conf.vid.shdRaw = (shaderUsed() && chain.active() && !chain.failed() && chain.rawFrames()) ? 1 : 0;
 	drawPicture(fillWide);
 	// after the picture: Mirror reads it back as it is shown, and the fill only
 	// goes beside it

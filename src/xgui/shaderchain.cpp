@@ -465,6 +465,10 @@ void headApply(xShdPreset& out, const HeadNotes& head) {
 			if (p.name == name) return &p;
 		return nullptr;
 	};
+	if (out.raw && !out.rawWhen.isEmpty() && !find(out.rawWhen)) {
+		out.notes << QString("%1: frames raw when %2: no such parameter").arg(out.file, out.rawWhen);
+		out.raw = false;
+	}
 	for (const HeadNotes::Line& l : head.lines) {
 		xShdParam* p = find(l.name);
 		if (!p) {
@@ -901,7 +905,7 @@ GLenum kindType(int kind) {
 		case K_FEEDBACK_SIZE: case K_TEXTURE_SIZE: case K_OUTPUT_SIZE: case K_FINAL_SIZE:
 		case K_PLACE: case K_XP_PICTURE: case K_XP_RASTER: case K_XP_CARRIER:
 			return GL_FLOAT_VEC4;
-		case K_RUBY_INPUT: case K_RUBY_TEXTURE: case K_RUBY_OUTPUT: case K_XP_WINDOW:
+		case K_RUBY_INPUT: case K_RUBY_TEXTURE: case K_RUBY_OUTPUT: case K_XP_WINDOW: case K_XP_BLEND:
 			return GL_FLOAT_VEC2;
 		case K_FRAMECOUNT: case K_SUBFRAME: case K_SUBFRAMES:
 			return GL_UNSIGNED_INT;
@@ -909,7 +913,7 @@ GLenum kindType(int kind) {
 			return GL_INT;
 		case K_MVP:
 			return GL_FLOAT_MAT4;
-		case K_WIDE: case K_XP_BLEND: case K_PARAM:
+		case K_WIDE: case K_PARAM:
 			return GL_FLOAT;
 	}
 	return 0;
@@ -1120,7 +1124,7 @@ QByteArray xShaderChain::preamble(int i, bool vertex) {
 		"uniform uint FrameCount;\nuniform int FrameDirection;\n"
 		"uniform uint CurrentSubFrame;\nuniform uint TotalSubFrames;\n"
 		"uniform vec4 xpPicture;\nuniform vec2 xpWindow;\nuniform vec4 xpRaster;\n"
-		"uniform vec4 xpCarrier;\nuniform int xpFrame;\nuniform float xpWide;\nuniform float xpBlend;\n";
+		"uniform vec4 xpCarrier;\nuniform int xpFrame;\nuniform float xpWide;\nuniform vec2 xpBlend;\n";
 	for (const xShdParam& p : preset.params)
 		s += QString("uniform float %1;\n").arg(p.name);
 	if (vertex)
@@ -1593,7 +1597,7 @@ void xShaderChain::apply(const std::vector<Bind>& binds, int pass, const xChainF
 				break;
 			}
 			case K_XP_FRAME: glUniform1i(b.loc, m.frame); break;
-			case K_XP_BLEND: glUniform1f(b.loc, GLfloat(m.blend)); break;
+			case K_XP_BLEND: glUniform2f(b.loc, GLfloat(m.blend), m.blendAdaptive ? 1.0f : 0.0f); break;
 			case K_PARAM: glUniform1f(b.loc, preset.params[b.index].value); break;
 		}
 	}

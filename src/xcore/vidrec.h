@@ -82,6 +82,7 @@ int vrec_state();
 QString vrec_message();			// what the window should say, once
 
 bool vrec_wants_screen();
+bool vrec_wants_frames();		// the machine's own picture is being recorded
 void vrec_screen(const QImage&);	// the window as painted, bottom row first
 
 // emulation thread

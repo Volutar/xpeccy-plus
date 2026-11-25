@@ -82,7 +82,7 @@ fragment:
 		if (n == 8) return FrameCount & 65535u;			// paints
 		if (n == 9) return uint(OriginalSize.x);		// the frame's texels across
 		if (n == 10) return uint(FinalViewportSize.x);		// the picture's pixels across
-		if (n == 11) return uint(xpBlend * 100.0 + 0.5);	// antiflicker left to the chain, per cent
+		if (n == 11) return uint(xpBlend.x * 100.0 + 0.5) + 256u * uint(xpBlend.y);	// antiflicker left to the chain, per cent; + 256 adaptive
 		return 0u;
 	}
 

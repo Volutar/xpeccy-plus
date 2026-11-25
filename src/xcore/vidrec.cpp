@@ -839,6 +839,10 @@ bool vrec_wants_screen() {
 	return vrOn.load() && (vrSrc == VREC_SRC_SCREEN);
 }
 
+bool vrec_wants_frames() {
+	return vrOn.load() && (vrSrc != VREC_SRC_SCREEN);
+}
+
 void vrec_screen(const QImage& img) {
 	QMutexLocker lock(&vrMutex);
 	vrScreen = img;
