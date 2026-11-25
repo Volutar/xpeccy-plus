@@ -133,12 +133,16 @@ OutSys* findOutSys(const char*);
 #define SND_FIR_MASK	(SND_FIR_TAPS - 1)
 #define SND_FIR_SHIFT	24
 static int firTaps[SND_FIR_TAPS / 2] = {0};	// symmetric: half is enough
+static long long firSum = 0;			// ...their sum
 
 // The window is held twice over, so the last SND_FIR_TAPS samples are always
 // one straight stretch of memory whatever the write position: the filter loop
 // then has no wrapping in it and the compiler can take it apart.
 static int sb_pos = 0;
 static sndPair smpBuf[SND_FIR_TAPS * 2] = {{0,0}};
+// the last level put in the window, and how many in a row: SND_FIR_TAPS is all of it
+static sndPair sbLast = {0,0};
+static int sbSame = 0;
 
 // The sound thread. The emulation thread mixes the machine (hw->vol) at every
 // sub-sample and queues the level; everything after the mix - the scope, the
@@ -884,6 +888,51 @@ static inline sndPair snd_master(sndPair lev) {
 	return snd_clip16(lev);
 }
 
+// The mirror's mix at rest: a step that left its sndMix as it found it gives the same level
+// until a token, a volume, the rate or a chip that sounds (ts_rests) says otherwise. The mix
+// is still made once in SND_REST_LOOK, which keeps the chips counted and their meters fed
+#define SND_REST_LOOK	256
+static struct {
+	int left;		// sub-samples the level holds for, before the next look
+	int wait;		// ...or, not at rest, before the next try
+	sndPair lev;
+	sndVolume sv;		// the volumes and the rate it holds with
+	int rate;
+} sr;
+
+static sndPair snd_mix_look() {
+	static sndMix was;
+	sr.left = 0;
+	sr.wait = SND_REST_LOOK - 1;
+	if (!ts_rests(&sm.ts)) return sm.mix(&sm.m, &conf.snd.vol);
+	memcpy(&sr.sv, &conf.snd.vol, sizeof(sr.sv));
+	sr.rate = sm.m.rate;
+	memcpy(&was, &sm.m, sizeof(was));
+	sndPair lev = sm.mix(&sm.m, &sr.sv);
+	if (!memcmp(&was, &sm.m, sizeof(was))) {
+		sr.left = SND_REST_LOOK - 1;
+		sr.wait = 0;		// the next look right after it
+		sr.lev = lev;
+	}
+	return lev;
+}
+
+static inline sndPair snd_mix_step() {
+	if (sr.left > 0) {
+		if ((sm.m.rate == sr.rate) && !memcmp(&conf.snd.vol, &sr.sv, sizeof(sr.sv))) {
+			sr.left--;
+			return sr.lev;
+		}
+		sr.left = 0;
+		sr.wait = 0;
+	}
+	if (sr.wait > 0) {
+		sr.wait--;
+		return sm.mix(&sm.m, &conf.snd.vol);
+	}
+	return snd_mix_look();
+}
+
 // one sub-sample through the scope and the window; every DISCRATE-th makes a sample
 static void snd_sub(const sndSub* q) {
 	sndPair lev;
@@ -892,7 +941,12 @@ static void snd_sub(const sndSub* q) {
 		int late = q->r;
 		int scope = (late < 0);
 		sm.m.late = scope ? (-1 - late) : late;
-		lev = sm.mix(&sm.m, &conf.snd.vol);
+		if (scope) {		// the Debugger's step: the chips it shows counted up to here
+			sr.left = 0;
+			lev = sm.mix(&sm.m, &conf.snd.vol);
+		} else {
+			lev = snd_mix_step();
+		}
 		if (scope) {
 			scope_put((lev.left + lev.right) / 2);
 			return;
@@ -907,11 +961,24 @@ static void snd_sub(const sndSub* q) {
 	// not at another speed
 	if (conf.emu.rewind.on)
 		rewind_sound(lev, rwNs);
-	smpBuf[sb_pos & SND_FIR_MASK] = lev;
-	smpBuf[(sb_pos & SND_FIR_MASK) + SND_FIR_TAPS] = lev;
+	// a window of this level throughout already takes nothing from one more of it
+	int same = (lev.left == sbLast.left) && (lev.right == sbLast.right);
+	if (!same || (sbSame < SND_FIR_TAPS)) {
+		smpBuf[sb_pos & SND_FIR_MASK] = lev;
+		smpBuf[(sb_pos & SND_FIR_MASK) + SND_FIR_TAPS] = lev;
+		sbSame = same ? sbSame + 1 : 1;
+		sbLast = lev;
+	}
 	sb_pos++;
 	if ((sb_pos % DISCRATE) != 0) return;
-	if (conf.snd.filter) {
+	if (sbSame >= SND_FIR_TAPS) {
+		// ...and its sample is the level, with the filter by the taps' sum (each serves two)
+		if (conf.snd.filter) {
+			lev.left = (int)(((long long)(lev.left + lev.left) * firSum) >> SND_FIR_SHIFT);
+			lev.right = (int)(((long long)(lev.right + lev.right) * firSum) >> SND_FIR_SHIFT);
+			lev = snd_clip16(lev);
+		}
+	} else if (conf.snd.filter) {
 		// The window ends at the newest sample, so it starts SND_FIR_TAPS
 		// back - which is where sb_pos points now. The taps are symmetric,
 		// so the two ends of the window share one and half the multiplies
@@ -975,6 +1042,7 @@ static void snd_quiet_play(long long n) {
 	long long first = DISCRATE - (pos % DISCRATE);
 	long long count = (n >= first) ? 1 + (n - first) / DISCRATE : 0;
 	sb_pos = (int)(pos + (unsigned)n);
+	sbSame = 0;
 	for (long long k = 0; k < count; k++) {
 		if (conf.snd.wavout)
 			snd_wav_write(none);
@@ -983,6 +1051,9 @@ static void snd_quiet_play(long long n) {
 }
 
 static void snd_do_tok(const sndTok* t) {
+	// whatever it brings, the mix does not rest across it
+	sr.left = 0;
+	sr.wait = SND_REST_LOOK;
 	switch (t->kind) {
 		case SND_T_DROP:
 			sndDropWant = 1;
@@ -990,6 +1061,7 @@ static void snd_do_tok(const sndTok* t) {
 		case SND_T_RESET:
 			memset(smpBuf, 0, sizeof(smpBuf));
 			sb_pos = 0;
+			sbSame = 0;
 			break;
 		case SND_T_PUT:
 			snd_ring_put(conf.snd.enabled ? t->lev : sndPair());
@@ -1648,8 +1720,11 @@ static void snd_init_filter() {
 	// unity gain at DC, so switching the filter on and off does not step the
 	// volume. Only the first half is kept: the convolution pairs the window up
 	// and uses each tap twice.
-	for (int i = 0; i < SND_FIR_TAPS / 2; i++)
+	firSum = 0;
+	for (int i = 0; i < SND_FIR_TAPS / 2; i++) {
 		firTaps[i] = (int)llround(h[i] / sum * (1 << SND_FIR_SHIFT));
+		firSum += firTaps[i];
+	}
 }
 
 void sndInit() {

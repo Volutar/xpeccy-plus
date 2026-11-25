@@ -252,6 +252,23 @@ static inline void tsSync(TSound* ts, int ns) {
 }
 sndPair tsGetVolume(TSound*, int lay);
 
+// A channel silent whatever its counters do: muted, an envelope held at 0, a fixed volume 0
+// (index 1: 0 in ayDACvol and ymDACvol; the Next's tables are not asked, nx_chan)
+static inline int ay_chan_rests(const aymChip* ay, const aymChan* ch) {
+	if (ch->mute) return 1;
+	if (!ch->een) return (ch->vol & 0x1f) <= 1;
+	return !ay->chanE.step && !(ay->chanE.vol & 0x1f);
+}
+// ...and a chip of them, or none; not a YM2203, whose fm half has a time of its own
+static inline int ay_chip_rests(const aymChip* ay) {
+	if (ay->type == SND_NONE) return 1;
+	if (((ay->type != SND_AY) && (ay->type != SND_YM)) || ay->fm) return 0;
+	return ay_chan_rests(ay, &ay->chanA) && ay_chan_rests(ay, &ay->chanB) && ay_chan_rests(ay, &ay->chanC);
+}
+static inline int ts_rests(const TSound* ts) {
+	return ay_chip_rests(ts->chipA) && ay_chip_rests(ts->chipB) && ay_chip_rests(ts->chipC) && ay_chip_rests(ts->chipD);
+}
+
 // A chip's registers changed other than by its time: whatever follows the chips
 // (sound.cpp's mirror) is told here, after the change. NULL: nothing follows.
 // AYL_TYPE: chip_set_type() - the type, the clock and the tick's fraction set anew;

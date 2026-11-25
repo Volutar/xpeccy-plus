@@ -407,7 +407,9 @@ static void nxv_hprune(nxvHist* h, long long from) {
 
 #define NXV_HFULL	(NXV_HIST - 2)
 
-// every history of nxVideo, for what walks them all (one added goes here too)
+// every history of nxVideo, for what walks them all (one added goes here too); the
+// first NXV_NFETCH are the ones the ULA's fetch samples
+#define NXV_NFETCH	6
 static const size_t nxv_hists[] = {
 	offsetof(nxVideo, hBrd), offsetof(nxVideo, hPff), offsetof(nxVideo, hShadow),
 	offsetof(nxVideo, hSx), offsetof(nxVideo, hSy), offsetof(nxVideo, hFine),
@@ -523,6 +525,16 @@ static void nxv_sample(Computer* comp, nxvFetch* fe, long long d, int hc, int vc
 	fe->sshadow = sh;
 }
 
+// the border as an attribute: the hi-res one (port FF b5:3), the plain one
+static inline int nxv_hires_attr(int pff) {
+	int c = (pff >> 3) & 7;
+	return 0x40 | ((~c & 7) << 3) | c;
+}
+
+static inline int nxv_brd_attr(int brd) {
+	return (brd << 3) | brd;
+}
+
 // a shift register load (t = 2 of n = C or 4): sixteen half-pixels, for the dots d..d+7
 static void nxv_load(Computer* comp, nxvFetch* fe, long long d, int hc, int vc, int s0) {
 	long long t = d * 4 + 2;
@@ -539,12 +551,10 @@ static void nxv_load(Computer* comp, nxvFetch* fe, long long d, int hc, int vc, 
 	unsigned int sr = (unsigned int)((((unsigned long long)sr32) << scroll) >> 16) & 0xffff;
 	int attr;
 	if (mode & 4) {
-		int c = (nxv_hat(&V.hPff, t) >> 3) & 7;
-		int a = 0x40 | ((~c & 7) << 3) | c;
+		int a = nxv_hires_attr(nxv_hat(&V.hPff, t));
 		attr = (a << 8) | a;
 	} else if ((((hc - 12) & 0x1ff) & 0x100) || nxv_vbord(vc)) {
-		int b = nxv_hat(&V.hBrd, t);
-		int a = (b << 3) | b;
+		int a = nxv_brd_attr(nxv_hat(&V.hBrd, t));
 		attr = (a << 8) | a;
 	} else {
 		attr = ab;
@@ -559,6 +569,19 @@ static void nxv_load(Computer* comp, nxvFetch* fe, long long d, int hc, int vc, 
 		V.ula[i].attr[0] = (scroll + k < 16) ? ahi : alo;
 		V.ula[i].attr[1] = (scroll + k + 1 < 16) ? ahi : alo;
 		V.ula[i].bits = (V.ula[i].bits & 0xf0) | ((sr >> (15 - k)) & 1) | (((sr >> (14 - k)) & 1) << 1) | m2;
+	}
+}
+
+// an odd dot's sample (n = 3, B) and mode latches (n = 7, B)
+static inline void nxv_fetch_latch(Computer* comp, nxvFetch* fe, long long d, int hc, int vc, int n) {
+	if ((n == 3) || (n == 0xb))
+		nxv_sample(comp, fe, d, hc, vc);
+	if (n == 7) {
+		fe->mode0 = fe->smode;
+		fe->scroll0 = ((fe->px & 7) << 1) | (fe->px >> 8);
+	} else if (n == 0xb) {
+		fe->mode1 = fe->smode;
+		fe->scroll1 = ((fe->px & 7) << 1) | (fe->px >> 8);
 	}
 }
 
@@ -587,15 +610,7 @@ static void nxv_fetch(Computer* comp, nxvFetch* fe, long long d, int hc, int vc,
 		} else if (n >= 0xb) {
 			fe->fbR = b;
 		}
-		if ((n == 3) || (n == 0xb))
-			nxv_sample(comp, fe, d, hc, vc);
-		if (n == 7) {
-			fe->mode0 = fe->smode;
-			fe->scroll0 = ((fe->px & 7) << 1) | (fe->px >> 8);
-		} else if (n == 0xb) {
-			fe->mode1 = fe->smode;
-			fe->scroll1 = ((fe->px & 7) << 1) | (fe->px >> 8);
-		}
+		nxv_fetch_latch(comp, fe, d, hc, vc, n);
 		// the address for the next read, set at the end of this period
 		int py = fe->py;
 		int ap = ((py & 0xc0) | ((py & 7) << 3) | ((py >> 3) & 7)) << 5;
@@ -612,6 +627,63 @@ static void nxv_fetch(Computer* comp, nxvFetch* fe, long long d, int hc, int vc,
 		fe->vramSh = fe->sshadow;
 	} else if (!dry && ((n == 4) || (n == 0xc))) {
 		nxv_load(comp, fe, d, hc, vc, n == 0xc);
+	}
+}
+
+#define NXV_FETCH_LEAD	16	// a line's last dots, fetched in full: the next line's display starts from them
+#define NXV_FETCH_TAIL	16	// dots after a jump taken one by one: any 16 hold a sample
+#define NXV_FETCH_QUIET	32	// dots a change keeps the fetch out of a jump
+
+// The dots from here where no byte the fetch reads is seen (0: it is): a border line, and
+// a line's border short of NXV_FETCH_LEAD. The mixer drops the pixel bits there
+// (border_active), the floating bus is off; pb, ab and vramA keep their last read
+static inline int nxv_fetch_unseen(int hc, int vc, int L) {
+	if (nxv_vbord(vc)) return L;
+	return ((hc >= 0x110) && (hc < L - NXV_FETCH_LEAD)) ? L - NXV_FETCH_LEAD - hc : 0;
+}
+
+// a dot of it there: no read; the samples, the modes and the loads' border go on
+static void nxv_fetch_idle(Computer* comp, nxvFetch* fe, long long d, int hc, int vc) {
+	int n = hc & 15;
+	if (n & 1) {
+		fe->fbR = 0xff;
+		fe->fbEn = 0;
+		nxv_fetch_latch(comp, fe, d, hc, vc, n);
+		fe->vramSh = fe->sshadow;
+	} else {
+		nxv_load(comp, fe, d, hc, vc, n == 0xc);
+	}
+}
+
+// the first change of what the fetch samples that a flop sees after t (LLONG_MAX: none)
+static long long nxv_fetch_next(Computer* comp, long long t) {
+	long long r = LLONG_MAX;
+	for (unsigned i = 0; i < NXV_NFETCH; i++) {
+		const nxvHist* h = nxv_hist(comp, i);
+		for (int k = h->n - 1; k >= 0; k--) {
+			long long ht = h->t[(h->head + k) & (NXV_HIST - 1)];
+			if (ht < t) break;
+			if (ht < r) r = ht;
+		}
+	}
+	return r;
+}
+
+// the loads of k unseen dots from d on (hc its counter), no change seen in them: every
+// one puts the same border in its eight dots
+static void nxv_fetch_fill(Computer* comp, long long d, int hc, int k) {
+	int off = (4 - hc) & 7;
+	if (off >= k) return;
+	int n = ((k - off + 7) >> 3) << 3;
+	int mode = V.fe.mode0;
+	long long t = d * 4 + 2;
+	int a = (mode & 4) ? nxv_hires_attr(nxv_hat(&V.hPff, t)) : nxv_brd_attr(nxv_hat(&V.hBrd, t));
+	int m2 = ((mode >> 2) & 1) * 0x0c;
+	for (long long x = d + off; n > 0; n--, x++) {
+		int i = (int)(x & (NXV_ULA - 1));
+		V.ula[i].attr[0] = a;
+		V.ula[i].attr[1] = a;
+		V.ula[i].bits = (V.ula[i].bits & 0xf0) | m2;
 	}
 }
 
@@ -1423,13 +1495,7 @@ static void nxv_draw(Computer* comp, const nxTiming* t, int L, int F, int vact, 
 		if ((NX.timing == NXT_PENT) && bad) {
 			// the Pentagon's border colour is taken again on every CLK_14 edge
 			long long te = D * 4 + 2 + h * 2;
-			if (m2) {
-				int c = (nxv_hat(&V.hPff, te) >> 3) & 7;
-				attr = 0x40 | ((~c & 7) << 3) | c;
-			} else {
-				int b = nxv_hat(&V.hBrd, te);
-				attr = (b << 3) | b;
-			}
+			attr = m2 ? nxv_hires_attr(nxv_hat(&V.hPff, te)) : nxv_brd_attr(nxv_hat(&V.hBrd, te));
 		}
 		int flash = (f[NXF_FLASH] >> 4) & 1;
 		int pen = (pix ^ ((attr >> 7) & flash & !f[NXF_ULANEXT] & !f[NXF_ULAP])) & !bad;
@@ -1900,9 +1966,37 @@ static void nxv_fetch_to(Computer* comp, long long end) {
 	nx_raw(comp, &h, &v);
 	nxv_step(comp, &h, &v, (int)(d - (NX.frameBase + h)));
 	nx_ula_seen(comp, h, v, &hc, &vc);
+	long long retry = 0;		// no jump is tried before this dot
 	for (; d < end; d++) {
-		if ((hc & 1) || ((hc & 7) == 4))	// an even dot other than n = 4, C does nothing
-			nxv_fetch(comp, &V.fe, d, hc, vc, 0);
+		int idle = nxv_fetch_unseen(hc, vc, L);
+		if (idle && (d >= retry)) {
+			// A stretch of it in one go: up to where the counters are asked again, short
+			// of the tail, and of the next change of what the fetch samples
+			long long z = ((h < r0) ? r0 : L) - h;
+			if (z > idle) z = idle;
+			if (z > end - d) z = end - d;
+			z -= NXV_FETCH_TAIL;
+			if (z >= NXV_FETCH_TAIL) {
+				long long tn = nxv_fetch_next(comp, (d - NXV_FETCH_QUIET) * 4);
+				if ((tn >> 2) - d < z) z = (tn >> 2) - d;
+				// (a change's time may be gone from a history, nxv_hprune: the modes are asked)
+				int settled = (V.fe.mode0 == V.fe.smode) && (V.fe.mode1 == V.fe.smode);
+				if ((z >= NXV_FETCH_TAIL) && settled) {
+					nxv_fetch_fill(comp, d, hc, (int)z);
+					d += z;
+					h += (int)z;
+					hc += (int)z;
+				} else {
+					retry = settled ? (tn >> 2) + NXV_FETCH_QUIET + 1 : d + 8;
+				}
+			}
+		}
+		if ((hc & 1) || ((hc & 7) == 4)) {	// an even dot other than n = 4, C does nothing
+			if (idle)
+				nxv_fetch_idle(comp, &V.fe, d, hc, vc);
+			else
+				nxv_fetch(comp, &V.fe, d, hc, vc, 0);
+		}
 		if (!hc && !vc) {
 			// flash_cnt counts at the end of (0, 0); pixel_en uses it from the next half-pixel on
 			V.flash = (V.flash + 1) & 31;
