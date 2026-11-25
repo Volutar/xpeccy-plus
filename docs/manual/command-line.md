@@ -51,14 +51,14 @@ skips the **Start Machine** question (see [Machine at start](options-application
 
 ## Machine and media
 
-```{index} -m, --machine, -p, --disk, --sdcard, --next-system, --confdir
+```{index} -m, --machine, --disk, --sdcard, --next-system, --confdir
 ```
 
 - `-m ID`, `--machine ID` - start on this machine. ID is the machine's name as the
   list shows it, such as `"ZX Spectrum 128K"`, or its short id: the name of its file,
   such as `zx48`, `zx128`, `zxplus2`, `zxplus2a`, `zxplus3`, `zxnext`, `pent`, `pent1024`,
   `scorp`, `scorptp`, `robik`, `atm2`, `profi3`, `profi`, `phoenix`, `evo-baseconf`,
-  `evo-tsconf`, `alf`, `alf128`. `-p` is the older name of the same option. `-m` is acted on before anything
+  `evo-tsconf`, `alf`, `alf128`. `-m` is acted on before anything
   else, wherever it stands, so a snapshot named before it is not lost; if it is given
   twice, the last one counts. It counts as if you had picked the machine in the
   **Machine** menu.
