@@ -157,6 +157,38 @@ common:
 // averaged with the line above (the delay line), luma less a band around the carrier.
 // Fine black and white detail comes out colored and color edges crawl, as they did.
 // Two texels a dot.
+//
+// First the encoder's own part: luma as it is, the two color differences low-passed -
+// an encoder has no more than about 1.3 MHz of color to put on its carrier (a 128K's
+// changes its color 5 times in 8 dots). Without this a pattern of two colors dot by dot
+// would put its color on the carrier at the dots' rate and come back as stripes.
+// Kept as luma and the two halved, about 128 of 255.
+pass coder:
+	when INPUT
+	filter nearest
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	void main() {
+		ivec2 at = ivec2(vTexCoord * SourceSize.xy);
+		int last = int(SourceSize.x) - 1;
+		vec3 here = texelFetch(Source, at, 0).rgb;
+		float y = dot(here, vec3(0.299, 0.587, 0.114));
+		vec2 uv = vec2(0.0);
+		float all = 0.0;
+		for (int k = -4; k <= 4; k++) {
+			vec3 c = texelFetch(Source, ivec2(clamp(at.x + k, 0, last), at.y), 0).rgb;
+			float yk = dot(c, vec3(0.299, 0.587, 0.114));
+			// a bell 1.8 texels wide, brought down to nothing at the taps' ends
+			float w = exp(-0.5 * float(k * k) / 3.24) * (0.5 + 0.5 * cos(0.62831853 * float(k)));
+			uv += w * vec2(0.492 * (c.b - yk), 0.877 * (c.r - yk));
+			all += w;
+		}
+		// (128 of 255 is a level the target has; one half is not, and would come back as a tint)
+		FragColor = vec4(y, 128.0 / 255.0 + 0.5 * uv / all, 1.0);
+	}
+
 pass signal:
 	when INPUT
 	filter nearest
@@ -190,9 +222,9 @@ fragment:
 	// the signal at a texel: luma with the color on its carrier
 	float coded(int tx, int ty, float line, float sw) {
 		vec3 c = texelFetch(Source, ivec2(clamp(tx, 0, int(SourceSize.x) - 1), ty), 0).rgb;
-		float y = dot(c, vec3(0.299, 0.587, 0.114));
 		float th = turnAt(float(tx), line);
-		return y + 0.492 * (c.b - y) * sin(th) + sw * 0.877 * (c.r - y) * cos(th);
+		vec2 uv = 2.0 * (c.gb - 128.0 / 255.0);
+		return c.r + uv.x * sin(th) + sw * uv.y * cos(th);
 	}
 
 	// ...as the cable brings it: with a ghost of itself, and an aerial's with noise
