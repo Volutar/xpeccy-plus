@@ -43,16 +43,18 @@ at 0, when its pass is not drawn at all.
 
 | Stage | What it does |
 | --- | --- |
-| Beam | scanlines (how dark the gap, how wide), the dot's focus along the line, bright lines wider |
-| Divergence | the red and blue beams land beside the green one, more towards the screen's edges |
-| Mask | aperture grille, slot mask or shadow mask, as fine as the tube: triads to a dot of the picture |
-| Glow | light around bright things |
-| Afterglow | a lit dot fades over the next frames, blue first |
 | Signal | the cable - RGB; composite or RF into a PAL set, by a 128K's color carrier or a 48K's; or a SECAM set; a ghost, interference, noise |
+| Mask | aperture grille, slot mask or shadow mask, as fine as the tube: triads to a dot of the picture |
+| Beam | scanlines (how dark the gap, how wide), the dot's focus along the line, bright lines wider |
 | Screen | curvature, round corners, vignette, brightness, contrast |
+| Glow | light around bright things |
+| Divergence | the red and blue beams land beside the green one, more towards the screen's edges |
+| Afterglow | a lit dot fades over the next frames, blue first |
 
 The mask is drawn in whole screen pixels and thins out by itself as the picture gets
 smaller; a small picture has no curve. What the scanlines and the mask take is given back.
+A bent picture goes on to the edge of its place as its border does, and the corners are
+rounded there: the glass is lit to its rim.
 
 With Input at Composite or RF each line is coded as a PAL encoder does it - luma with
 the color on a carrier - and decoded as a set does: the color low-passed and combined
