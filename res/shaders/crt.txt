@@ -23,60 +23,8 @@
 
 name "CRT"
 
-group "Beam"
-#pragma parameter SCAN "Scanlines" 0.5 0.0 1.0 0.05
-tip SCAN = How dark the gap between two lines is
-#pragma parameter WIDTH "Gap width" 0.8 0.2 1.0 0.05
-tip WIDTH = How much of a line its gap takes: narrow and hard, or wide
-#pragma parameter FOCUS "Focus" 0.6 0.0 1.0 0.05
-tip FOCUS = How sharp a dot is along the line
-#pragma parameter GROW "Wider where brighter" 0.3 0.0 1.0 0.05
-tip GROW = A bright line fills more of its gap
-#pragma parameter ROLL "Roll" 0.0 0.0 1.0 0.05
-tip ROLL = How fast the scanlines drift down the screen
-more GROW ROLL
-
-group "Divergence" when DIVERGE 1.0
-#pragma parameter DIVERGE "Amount" 0.0 0.0 2.0 0.05
-tip DIVERGE = How far red and blue land from green
-#pragma parameter DIVMID "At the middle" 0.18 0.0 1.0 0.02
-tip DIVMID = The share of it left at the screen's middle
-#pragma parameter DIVRX "Red across" -0.55 -2.0 2.0 0.05
-#pragma parameter DIVRY "Red down" -0.3 -2.0 2.0 0.05
-#pragma parameter DIVBX "Blue across" 0.55 -2.0 2.0 0.05
-#pragma parameter DIVBY "Blue down" 0.3 -2.0 2.0 0.05
-tip DIVRX = Dots, at the screen's edge
-tip DIVRY = Lines, at the screen's edge
-tip DIVBX = Dots, at the screen's edge
-tip DIVBY = Lines, at the screen's edge
-more DIVMID DIVRX DIVRY DIVBX DIVBY
-
-group "Mask" when MASKS 0.4
-#pragma parameter MASK "Type" 1 1 3 1
-list MASK = Aperture grille, Slot mask, Shadow mask
-#pragma parameter MASKS "Strength" 0.4 0.0 1.0 0.05
-tip MASKS = How much the mask holds back between its openings
-#pragma parameter PITCH "Fineness" 1.5 0.5 3.5 0.1
-tip PITCH = Triads of the mask to a dot of the picture
-#pragma parameter MBEND "On the glass" 0 0 2 1
-list MBEND = Auto, Off, On
-tip MBEND = The mask bends with a curved screen. Auto: where a triad has pixels enough
-more MBEND
-
-group "Glow" when GLOW 0.3
-#pragma parameter GLOW "Amount" 0.0 0.0 1.0 0.05
-tip GLOW = How much light spills around bright things
-#pragma parameter GLOWR "Radius" 1.5 0.5 4.0 0.25
-tip GLOWR = How far it spills
-
-group "Afterglow" when AFTER 0.5
-#pragma parameter AFTER "Amount" 0.0 0.0 0.95 0.05
-tip AFTER = How much of a lit dot is left a frame later
-#pragma parameter AFTERR "Red" 1.0 0.0 1.0 0.05
-#pragma parameter AFTERG "Green" 0.95 0.0 1.0 0.05
-#pragma parameter AFTERB "Blue" 0.8 0.0 1.0 0.05
-more AFTERR AFTERG AFTERB
-
+# The frames in the order of what changes the picture most: the signal the set is
+# given and the tube's mask first.
 group "Signal"
 #pragma parameter INPUT "Input" 0 0 3 1
 list INPUT = RGB, Composite, RF, SECAM
@@ -99,10 +47,35 @@ tip GHOSTX = Per cent of the picture's width
 #pragma parameter WIGGLE "Interference" 0.0 0.0 1.0 0.05
 tip WIGGLE = Lines pushed aside by a wave that runs down
 #pragma parameter NOISE "Noise" 0.0 0.0 1.0 0.05
-more SHARP PHASE SHIMMER GHOSTX
+more CARRIER SHARP PHASE SHIMMER GHOSTX WIGGLE
 
 # Composite and RF take each frame as the machine made it and mix after decoding
 frames raw when INPUT
+
+group "Mask" when MASKS 0.4
+#pragma parameter MASK "Type" 1 1 3 1
+list MASK = Aperture grille, Slot mask, Shadow mask
+#pragma parameter MASKS "Strength" 0.4 0.0 1.0 0.05
+tip MASKS = How much the mask holds back between its openings
+#pragma parameter PITCH "Fineness" 1.5 0.5 3.5 0.1
+tip PITCH = Triads of the mask to a dot of the picture
+#pragma parameter MBEND "On the glass" 0 0 2 1
+list MBEND = Auto, Off, On
+tip MBEND = The mask bends with a curved screen. Auto: where a triad has pixels enough
+more MBEND
+
+group "Beam"
+#pragma parameter SCAN "Scanlines" 0.5 0.0 1.0 0.05
+tip SCAN = How dark the gap between two lines is
+#pragma parameter WIDTH "Gap width" 0.8 0.2 1.0 0.05
+tip WIDTH = How much of a line its gap takes: narrow and hard, or wide
+#pragma parameter FOCUS "Focus" 0.6 0.0 1.0 0.05
+tip FOCUS = How sharp a dot is along the line
+#pragma parameter GROW "Wider where brighter" 0.3 0.0 1.0 0.05
+tip GROW = A bright line fills more of its gap
+#pragma parameter ROLL "Roll" 0.0 0.0 1.0 0.05
+tip ROLL = How fast the scanlines drift down the screen
+more GROW ROLL
 
 group "Screen"
 #pragma parameter CURVE "Curvature" 0.0 0.0 0.15 0.005
@@ -117,7 +90,37 @@ tip BRIGHT = How much light the picture is given
 tip CONTRAST = Darks darker and lights lighter, as a set turned up
 #pragma parameter CURVEX "Curve of the sides" 1 0 1 0.05
 #pragma parameter CURVEY "Curve of top and bottom" 1 0 1 0.05
-more CURVEX CURVEY
+more CONTRAST CURVEX CURVEY
+
+group "Glow" when GLOW 0.3
+#pragma parameter GLOW "Amount" 0.0 0.0 1.0 0.05
+tip GLOW = How much light spills around bright things
+#pragma parameter GLOWR "Radius" 1.5 0.5 4.0 0.25
+tip GLOWR = How far it spills
+more GLOWR
+
+group "Divergence" when DIVERGE 1.0
+#pragma parameter DIVERGE "Amount" 0.0 0.0 2.0 0.05
+tip DIVERGE = How far red and blue land from green
+#pragma parameter DIVMID "At the middle" 0.18 0.0 1.0 0.02
+tip DIVMID = The share of it left at the screen's middle
+#pragma parameter DIVRX "Red across" -0.55 -2.0 2.0 0.05
+#pragma parameter DIVRY "Red down" -0.3 -2.0 2.0 0.05
+#pragma parameter DIVBX "Blue across" 0.55 -2.0 2.0 0.05
+#pragma parameter DIVBY "Blue down" 0.3 -2.0 2.0 0.05
+tip DIVRX = Dots, at the screen's edge
+tip DIVRY = Lines, at the screen's edge
+tip DIVBX = Dots, at the screen's edge
+tip DIVBY = Lines, at the screen's edge
+more DIVMID DIVRX DIVRY DIVBX DIVBY
+
+group "Afterglow" when AFTER 0.5
+#pragma parameter AFTER "Amount" 0.0 0.0 0.95 0.05
+tip AFTER = How much of a lit dot is left a frame later
+#pragma parameter AFTERR "Red" 1.0 0.0 1.0 0.05
+#pragma parameter AFTERG "Green" 0.95 0.0 1.0 0.05
+#pragma parameter AFTERB "Blue" 0.8 0.0 1.0 0.05
+more AFTERR AFTERG AFTERB
 
 # The masks' fineness is the tubes' own: triads across the screen over the 352 dots of a
 # full frame - a 14" TV's 0.65 mm slot mask 1.2, the 1084's 0.42 mm one 1.9, a 14" PVM's
@@ -600,10 +603,13 @@ fragment:
 
 	const float PI2 = 6.28318530718;
 
-	// a line of the line pass at x, in linear light; past the first and the last line,
-	// that line: a beam that lands a line off keeps its color at the picture's edge
+	// A line of the line pass at x, in linear light. Past the picture's edges, its edge:
+	// a beam that lands a line off keeps its color there, and a bent picture, whose
+	// corners stand in from its place's, goes on to the place's edge as its own border
+	// does - the glass of a tube is lit to its rim, not to a bowed line inside it
 	vec3 lineAt(float x, float row) {
 		row = clamp(row, 0.0, lineSize.y - 1.0);
+		x = clamp(x, 0.5 * lineSize.z, 1.0 - 0.5 * lineSize.z);
 		return pow(texture(line, vec2(x, (row + 0.5) * lineSize.w)).rgb, vec3(2.2));
 	}
 
@@ -766,11 +772,8 @@ fragment:
 			lit = max(lit - 0.03 * NOISE * pow(vec3(rand(seed), rand(seed * 2.0), rand(seed * 3.0)), vec3(1.5)), vec3(0.0));
 		}
 
-		// the screen's own edge: past a bent picture's top and bottom nothing is lit
-		// (its sides are the line pass's edge); corners rounded in the window's pixels,
-		// a vignette
+		// the screen's own edge: its place's, with the corners rounded, and a vignette
 		if (xpWide < 0.5) {
-			if (!flat_) lit *= clamp(min(uv.y, 1.0 - uv.y) * lineSize.y * scale + 0.5, 0.0, 1.0);
 			vec2 size = OutputSize.xy;
 			float rad = CORNER * min(size.x, size.y);
 			vec2 q = abs(vTexCoord - 0.5) * size - (0.5 * size - rad);
