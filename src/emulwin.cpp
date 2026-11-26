@@ -59,6 +59,7 @@
 #include "xcore/cheats.h"
 #include "filer.h"
 #include "xcore/arcpath.h"
+#include "libxpeccy/cpu/Z80/z80.h"
 #include "xcore/saves.h"
 #include "watcher.h"
 #include "xgui/favorites.h"
@@ -591,6 +592,16 @@ MainWin::MainWin(QMainWindow* frm) {
 	block = 0;
 	hasPicture = 0;
 	upSwaps = -1;
+	scrView.flash = new QTimer(this);
+	connect(scrView.flash, &QTimer::timeout, this, [this]() {
+		scrView.phase ^= 1;
+		viewDraw();
+	});
+	// a reset or another machine ends a view shown - not the start-up's, before its first
+	// frame; from any thread, so through the event loop
+	x_state_hook = [this]() {
+		if (scrView.shown) QMetaObject::invokeMethod(this, [this]() {viewEnd();}, Qt::QueuedConnection);
+	};
 	refit = 0;
 	winFit = 0;
 	winFree = 0;
@@ -2144,7 +2155,7 @@ void MainWin::drawSign(QPainter& pnt, int sign) {
 
 // the speed mode, VCR style
 int MainWin::speedOsd() {
-	if (conf.emu.pause)		// the one place a pause shows
+	if (conf.emu.pause & ~PR_VIEW)	// the one place a pause shows; a screen viewed is not one
 		return osd_pause;
 	if (rewind_active())
 		return osd_rewind;
@@ -2498,6 +2509,7 @@ void MainWin::openMedia(const QString& path, int id, int drv, int run, bool pinn
 		if (!held) pause(true, PR_FILE);
 		held = true;
 	};
+	viewEnd();
 	if (path.isEmpty()) hold();
 	QString fpath = path.isEmpty() ? file_ask_open(comp, &id, &drv) : path;
 	// an archive: the image in it, picked when it holds several
@@ -2505,6 +2517,12 @@ void MainWin::openMedia(const QString& path, int id, int drv, int run, bool pinn
 		QString err;
 		if (media_candidates(comp, fpath, id, drv, &err).size() != 1) hold();	// a list, or why not
 		fpath = media_from_archive(comp, fpath, id, drv, true);
+	}
+	// a screen is shown over the machine, which stays as it is; the debugger takes it in
+	if (!fpath.isEmpty() && !comp->flgDBG && file_is_screen(comp, fpath, id)) {
+		if (held) pause(false, PR_FILE);
+		if (viewOpen(fpath)) recent_add(fpath);
+		return;
 	}
 	// cheats only fill their window: nothing is reset, replaced or started
 	if (file_is_pok(fpath)) {
@@ -2796,7 +2814,7 @@ void MainWin::screenShot(bool clip) {
 	QString fnams = shot_path(fext);
 	QFile file(fnams);
 	bool saved = false;
-	char* sptr = (char*)(comp->mem->ramData + (comp->vid->vidPage << 14));
+	char* sptr = scrView.on ? scrView.data.data() : (char*)(comp->mem->ramData + (comp->vid->vidPage << 14));
 	switch (frm) {
 		case SCR_HOB: {
 			if (!file.open(QFile::WriteOnly)) break;
@@ -4483,6 +4501,7 @@ void MainWin::optApply() {
 }
 
 void MainWin::doDebug() {
+	viewEnd();
 	conf.emu.fast = 0;
 	pause(true, PR_DEBUG);
 	conf.zx->flgDBG = 1;
@@ -4565,6 +4584,10 @@ void MainWin::renderFrame() {
 // Paused, new colors: the next frame drawn and shown, the machine put back (emu_draw_ahead)
 void MainWin::redrawHeld() {
 	Computer* comp = conf.zx;
+	if (scrView.on) {
+		viewDraw();
+		return;
+	}
 	if (!hasPicture || !comp || !conf.emu.pause || comp->flgDBG || pause_has(PR_DEZOG) || rewind_active())
 		return;
 	emu_lock();
@@ -4575,6 +4598,91 @@ void MainWin::redrawHeld() {
 	}
 	emu_unlock();
 	if (done) presentFrame();
+}
+
+// The view's frames: the screen in, the program standing (halted, no interrupt), the
+// FLASH given; all of it put back after
+static void view_prep(Computer* comp, void* arg) {
+	xScrView* v = static_cast<xScrView*>(arg);
+	comp->vid->flashShow = v->phase;
+	scr_put(comp, (const unsigned char*)v->data.constData(), v->pal, 1);
+	CPU* cpu = comp->cpu;
+	cpu->flgHALT = 1;
+	cpu->flgIFF1 = 0;
+	cpu->flgIFF2 = 0;
+	cpu->inten = 0;
+}
+
+bool MainWin::viewDraw() {
+	Computer* comp = conf.zx;
+	if (!scrView.on || !comp || comp->flgDBG || rewind_active()) return false;
+	emu_lock();
+	int show = comp->vid->flashShow;
+	int tape = comp->tape->on;		// the tape stands: its signal is not in the state
+	comp->tape->on = 0;
+	const bool done = !comp->vid->nodraw && (comp->vid->nodrawNext < 1) && emu_draw_ahead(comp, view_prep, &scrView);
+	comp->tape->on = tape;
+	comp->vid->flashShow = show;
+	if (done) {
+		memcpy(scrimg, bufimg, bufSize);
+		frame_publish();
+	}
+	emu_unlock();
+	if (done) presentFrame();
+	return done;
+}
+
+bool MainWin::viewOpen(const QString& path) {
+	Computer* comp = conf.zx;
+	QString why;
+	QString local = arc_local(path, &why);	// an archive's entry: its unpacked copy
+	if (local.isEmpty()) {
+		shitHappens(why.toLocal8Bit().constData());
+		return false;
+	}
+	QByteArray data(SCR_BUF, 0);
+	int pal = 0;
+	int err = scr_read(local.toLocal8Bit().constData(), (unsigned char*)data.data(), &pal);
+	if ((err == ERR_OK) && !vid_zx_shown(comp->vid)) err = ERR_SCR_MODE;
+	if (err != ERR_OK) {
+		file_errors(err);
+		return false;
+	}
+	viewEnd();
+	scrView.on = true;
+	scrView.data = data;
+	scrView.pal = pal;
+	scrView.phase = 0;
+	pause(true, PR_VIEW);
+	xlog(XLG_FILE, XLL_INFO, "view ZX screen: %s", path.toLocal8Bit().constData());
+	// from the event loop: at start-up the machine is not stepped before it is up
+	QTimer::singleShot(0, this, [this]() {
+		if (!scrView.on) return;
+		if (!viewDraw()) {
+			viewEnd();
+			xlog(XLG_FILE, XLL_WARN, "view: the machine cannot draw a frame now");
+			setMessage(" the screen cannot be shown now ");
+			return;
+		}
+		scrView.shown = true;
+		// FLASH blinks every 16 frames, unless ULA+ took the bit for its palette
+		const unsigned char* at = (const unsigned char*)scrView.data.constData() + SCR_SIZE - 768;
+		bool flash = false;
+		for (int i = 0; i < 768; i++) flash |= (at[i] & 0x80) != 0;
+		if (scrView.pal && (conf.zx->hw->id != HW_ZXNEXT)) flash = false;
+		if (flash) scrView.flash->start(qMax(20, int(16LL * conf.zx->vid->nsPerFrame / 1000000)));
+	});
+	return true;
+}
+
+void MainWin::viewEnd() {
+	if (!scrView.on) return;
+	scrView.on = false;
+	scrView.shown = false;
+	scrView.flash->stop();
+	scrView.data.clear();
+	redrawHeld();		// the machine's own picture, before anything holds it again
+	pause(false, PR_VIEW);
 }
 
 void MainWin::onPrfChange() {

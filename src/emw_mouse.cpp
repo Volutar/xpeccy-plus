@@ -23,6 +23,11 @@ static unsigned rawAbs = 0;
 
 void MainWin::mousePressEvent(QMouseEvent *ev){
 	Computer* comp = conf.zx;
+	if (scrView.on && (ev->button() == Qt::LeftButton)) {
+		viewEnd();
+		scrView.click = true;
+		return;
+	}
 	if (comp->flgDBG) {
 		if (ev->button() == Qt::LeftButton) {
 			calcCoords(ev);
@@ -56,6 +61,10 @@ void MainWin::mousePressEvent(QMouseEvent *ev){
 }
 
 void MainWin::mouseReleaseEvent(QMouseEvent *ev) {
+	if (scrView.click && (ev->button() == Qt::LeftButton)) {	// it ended a view
+		scrView.click = false;
+		return;
+	}
 	if (clickResumed) {
 		clickResumed = false;
 		return;

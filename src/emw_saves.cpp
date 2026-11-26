@@ -65,6 +65,7 @@ int MainWin::saveState(int kind) {
 
 // a save put back, on the machine it was taken on
 bool MainWin::loadState(const QString& path) {
+	viewEnd();
 	char id[256] = "";
 	szx_machine_of(path.toLocal8Bit().constData(), id, sizeof(id));
 	quick_keep_undo(conf.zx);
@@ -81,6 +82,7 @@ void MainWin::quickSave() {
 
 // the newest quick save of the game, else the one held in memory
 void MainWin::quickLoad() {
+	viewEnd();
 	QList<xSave> list = saves_list(saves_dir(false), SAVE_QUICK);
 	bool done = false;
 	if (!list.isEmpty()) {

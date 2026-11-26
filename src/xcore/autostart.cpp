@@ -260,46 +260,6 @@ static void autostart_stop() {
 	as_comp = NULL;
 }
 
-static struct {
-	unsigned char data[SCR_BUF];
-	int pal;
-	int on;
-	int wait;		// -1: until the ROM scans the keyboard
-	int life;
-} as_scr;
-static char as_scr_mode[] = " the machine is not showing the ZX screen ";
-
-int autostart_screen(Computer* comp, const char* path) {
-	int err = scr_read(path, as_scr.data, &as_scr.pal);
-	if (err != ERR_OK) return err;
-	as_scr.on = 1;
-	as_scr.wait = -1;
-	as_scr.life = AS_GIVEUP;
-	comp->keyb->scanmask = 0;
-	return ERR_OK;
-}
-
-void autostart_screen_cancel() {
-	as_scr.on = 0;
-}
-
-// as the keys wait: the ROM scanning the whole keyboard, then settled
-static void as_screen_frame(Computer* comp) {
-	if (!as_scr.on) return;
-	if (--as_scr.life < 0) {
-		as_scr.on = 0;
-		xlog(XLG_FILE, XLL_INFO, "screen dropped: the ROM never scanned the keyboard");
-		return;
-	}
-	if (as_scr.wait < 0) {
-		if (comp->keyb->scanmask != 0xff) return;
-		as_scr.wait = AS_SETTLE;
-	}
-	if (as_scr.wait-- > 0) return;
-	as_scr.on = 0;
-	if (scr_put(comp, as_scr.data, as_scr.pal) == ERR_SCR_MODE) comp->msg = as_scr_mode;
-}
-
 void autostart_cancel() {
 	if (as_seq) xlog(XLG_FILE, XLL_INFO, "autostart cancelled");
 	autostart_stop();
@@ -459,7 +419,6 @@ int autostart_arm_nex(Computer* comp, const char* dir, const char* name, int wel
 }
 
 void autostart_frame(Computer* comp) {
-	as_screen_frame(comp);
 	if (!as_seq) return;
 	// not in arm(): the window is not up yet there. Again every frame: fast
 	// loading from the tape before this one lets go on the first, and takes

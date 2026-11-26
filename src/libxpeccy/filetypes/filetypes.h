@@ -395,7 +395,9 @@ int scr_hobeta_head(const unsigned char* head, size_t size);	// its header and s
 // the file's screen into buf (SCR_BUF): a bitmap alone with black-on-white attributes, the
 // ULA+ palette after it when *pal
 int scr_read(const char* name, unsigned char* buf, int* pal);
-int scr_put(Computer*, const unsigned char* scr, int pal);	// into the screen shown, the border too
+// into the screen shown, the border too; view: for a frame that is thrown away (ULA+ switched
+// on for a palette, nothing told of the change)
+int scr_put(Computer*, const unsigned char* scr, int pal, int view);
 
 // disk
 

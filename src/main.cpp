@@ -371,8 +371,8 @@ static void open_pending(xApp& app, MainWin& mwin) {
 static QString cliPok;
 static QStringList cliPokes;
 static QString cliImage;
-// no snapshot on the command line yet: the machine powers on
-static bool cliFresh = true;
+// no window (--bench): a screen goes into the machine
+static bool cliHeadless = false;
 
 // A file on the command line: the machine it wants first, unless the command
 // line names the machine itself.
@@ -393,19 +393,11 @@ static void open_cli_file(MainWin& mwin, const char* name, int drv, int run, boo
 	if (!mac.empty())
 		mwin.setMachine(mac);
 	const bool screen = file_is_screen(conf.zx, path, FG_ALL);
-	if (screen && cliFresh) {		// the ROM's start-up would clear it
-		QString why;
-		QString local = arc_local(path, &why);
-		int err = local.isEmpty() ? ERR_CANT_OPEN : autostart_screen(conf.zx, local.toLocal8Bit().constData());
-		file_errors(err);
-		if (err != ERR_OK) return;
-		xlog(XLG_FILE, XLL_INFO, "open ZX screen once the ROM is up: %s", path.toLocal8Bit().constData());
-		media_opened(path, FG_ALL, drv, run, pinned);
+	if (screen && !cliHeadless) {		// shown over the machine, which starts after a key
+		mwin.viewOpen(path);
 		return;
 	}
-	autostart_screen_cancel();		// a screen held before goes under what comes after it
 	if (load_file(conf.zx, path.toLocal8Bit().constData(), FG_ALL, drv) != ERR_OK) return;
-	if (!screen && !file_is_medium(conf.zx, path, FG_ALL)) cliFresh = false;
 	if ((drv < 1) && !screen) {	// a screen is not the game
 		mwin.padGame(path);
 		cheats_pick(path);
@@ -812,6 +804,7 @@ int main(int ac,char** av) {
 	// a file named below picks its machine with no one to ask (the exact rule is set
 	// again once every option is read)
 	media_autorun_headless(bench);
+	cliHeadless = bench;
 
 	// before the window: it is made with the GL view or without it
 	QString glWhy;

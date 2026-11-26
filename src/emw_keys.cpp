@@ -137,6 +137,11 @@ void MainWin::keyPressEvent(QKeyEvent* ev) {
 		mac_mods_sync(true);
 #endif
 	releaseChord(ev, true);
+	if (scrView.on && !ev->isAutoRepeat() && !key_lone(ev) && (ev_to_keyid(ev, false) < 0x10000)) {
+		viewEnd();
+		scrView.keys.insert(ev->key());
+		return;
+	}
 	if (padKey(ev, true)) return;
 //	qDebug() << ev->key();
 	if (comp->flgDBG) {
@@ -229,7 +234,23 @@ void MainWin::machineKey(Computer* comp, keyEntry* kent, bool down) {
 
 // cmd: a hotkey asked for from a menu, which a grabbed keyboard does not take;
 // ev: the key's own event, for what it typed (key_typed)
+// what can be done over a screen viewed: the look of the picture, shots of it, windows
+static bool view_keeps(int xkey) {
+	switch (xkey) {
+		case XCUT_SCRSHOT: case XCUT_COMBOSHOT: case XCUT_SCRCOPY:
+		case XCUT_SIZEX1: case XCUT_SIZEX2: case XCUT_SIZEX3:
+		case XCUT_SIZEX4: case XCUT_SIZEX5: case XCUT_SIZEX6:
+		case XCUT_FULLSCR: case XCUT_RATIO: case XCUT_INTSCALE: case XCUT_MENUBAR:
+		case XCUT_NOFLICK: case XCUT_RELOAD_SHD: case XCUT_MUTE: case XCUT_OPTIONS:
+		case XCUT_HOTKEYS: case XCUT_RECENT: case XCUT_KEYBOARD: case XCUT_TAPWIN:
+		case XCUT_PADWIN: case XCUT_SCRWIN: case XCUT_SNDWIN: case XCUT_HEATWIN:
+			return true;
+	}
+	return false;
+}
+
 void MainWin::xkey_press(int xkey, bool cmd, QKeyEvent* ev) {
+	if (scrView.on && (xkey >= 0x10000) && !view_keeps(xkey)) viewEnd();
 	keyEntry kent = getKeyEntry(xkey);
 	key_typed(ev, &kent);
 	int x;
@@ -578,6 +599,7 @@ void MainWin::xkey_press(int xkey, bool cmd, QKeyEvent* ev) {
 }
 
 void MainWin::keyReleaseEvent(QKeyEvent *ev) {
+	if (scrView.keys.remove(ev->key())) return;	// it ended a view
 	if (ev->isAutoRepeat()) return;
 	// any key up lets the NMI button go: its own may come up named otherwise, its modifier first
 	if (nmiKeyDown) nmi_let_go();

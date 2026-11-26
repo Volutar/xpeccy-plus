@@ -69,7 +69,7 @@ static int scr_border_of(Video* vid, const unsigned char* scr) {
 	return b;
 }
 
-int scr_put(Computer* comp, const unsigned char* data, int pal) {
+int scr_put(Computer* comp, const unsigned char* data, int pal, int view) {
 	Video* vid = comp->vid;
 	Memory* mem = comp->mem;
 	int i;
@@ -79,6 +79,7 @@ int scr_put(Computer* comp, const unsigned char* data, int pal) {
 		mem->ramData[MADR(vid->vidPage, i) & mem->ramMask] = data[i];
 	// ULA+: the palette and the mode on, or the mode off for a plain screen
 	ulaPlus* ula = vid->ula;
+	if (view && pal && (comp->hw->id != HW_ZXNEXT)) ula->enabled = 1;
 	if (ula->enabled && (comp->hw->id != HW_ZXNEXT)) {
 		if (pal) memcpy(ula->pal, data + SCR_SIZE, SCR_PAL);
 		ula->active = pal;
@@ -90,6 +91,7 @@ int scr_put(Computer* comp, const unsigned char* data, int pal) {
 	// the border as a cpu OUT sets it, the beeper and MIC as they are
 	comp_out_outside(comp, 0xfe, (comp->beep->lev ? 0x10 : 0) | (comp->tape->levRec ? 0x08 : 0)
 		| scr_border_of(vid, data));
+	if (view) return ERR_OK;
 	rzx_rec_touch();		// a poke, as a cheat's
 	x_input_bump();
 	return ERR_OK;
@@ -99,5 +101,5 @@ int loadSCR(Computer* comp, const char* name, int drv) {
 	unsigned char buf[SCR_BUF];
 	int pal;
 	int err = scr_read(name, buf, &pal);
-	return (err == ERR_OK) ? scr_put(comp, buf, pal) : err;
+	return (err == ERR_OK) ? scr_put(comp, buf, pal, 0) : err;
 }

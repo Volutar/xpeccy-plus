@@ -168,6 +168,7 @@ QString gethexword(int);
 extern std::atomic<int> xUserResets;
 void x_user_reset(Computer*, int);
 void x_state_replaced();		// under emu_lock
+extern std::function<void()> x_state_hook;	// the window's: called from x_state_replaced
 void x_media_replaced();		// under emu_lock
 int unreal_num(QString, bool*);		// #/$/0x hex, 0 octal, else decimal
 int str_num(QString, bool*);		// by dbg_num_parse: #/$/0x or h behind hex, else decimal
@@ -237,6 +238,7 @@ enum {
 #define	PR_SAVES	(1<<11)		// Save History is open: a menu of saves, held as menus are
 #define	PR_TAPE		(1<<12)		// the machine waits for the gui to put in the next tape of a set
 #define	PR_DEZOG	(1<<13)		// stopped for DeZog, which runs it on (xcore/dezog.cpp)
+#define	PR_VIEW		(1<<14)		// a screen file shown over the machine (MainWin::viewOpen)
 
 // labels
 
@@ -439,7 +441,8 @@ void x_kbd_release_all(Keyboard*);
 
 // the last finished picture, for the gui to read while the emulation draws on
 void frame_publish();
-int emu_draw_ahead(Computer*);	// paused: the next frame into bufimg, the machine put back
+// paused: the next frame into bufimg, the machine put back; prep changes it first
+int emu_draw_ahead(Computer*, void (*prep)(Computer*, void*) = nullptr, void* arg = nullptr);
 void frame_taken();		// the gui has the frame signal: the next one may be sent
 const unsigned char* frame_shown_lock();
 void frame_shown_unlock();

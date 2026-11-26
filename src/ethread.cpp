@@ -640,8 +640,9 @@ static void ra_wind_back(Computer* comp) {
 }
 
 // Paused: the next frame into bufimg, the machine put back; run-ahead's snapshot is idle then
-int emu_draw_ahead(Computer* comp) {
+int emu_draw_ahead(Computer* comp, void (*prep)(Computer*, void*), void* arg) {
 	if (!xstate_safe(comp) || !ra_hold(&raState, comp)) return 0;
+	if (prep) prep(comp, arg);		// changes the frames see, put back with the rest
 	comp->flgFRM = 0;
 	// to the end of this frame and one whole frame: two swaps, the buffers as they were
 	int done = xstate_run_frame(comp) && xstate_run_frame(comp);
