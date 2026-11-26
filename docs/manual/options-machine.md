@@ -194,6 +194,8 @@ heard through:
 
 Every choice but the first is this machine's own, heard whatever the **Sound** page says.
 No two choices sound the same: a filter the first two already give is not listed again.
+A filter picked takes all of the sound, so **TV (RF)** is not **TV (RF) - machine spec**,
+which filters what the board filtered.
 The {icon}`refresh` button at the end of the row puts it back on the first. The filters are
 described in [Board filter](options-sound.md#board-filter); [A machine's own](options-sound.md#a-machines-own)
 says how the **Sound** page shows the machines with a choice of their own.

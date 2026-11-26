@@ -111,16 +111,12 @@ Any choice but the first is the machine's own. It is heard whatever this page sa
 change here does not take it away. The {icon}`refresh` button beside the list puts the
 machine back on the first choice.
 
-While some machine is heard otherwise than this page says, a line under **Stereo** and
+While some machine has a choice of its own, a line under **Stereo** and
 **Filters** names them - **Own settings on 2 machines: ZX Spectrum 128K, Scorpion ZS 256** -
 and its tooltip says what each one has of its own. **All to Sound page** puts every machine
 back on this page's choices: it asks first, with the same list, and keeps whatever else you
 changed on them. It is done at once: **Cancel** in **Options** does not bring their choices
 back.
-
-When this page comes to say the same as a machine's own choice, its list shows the first
-choice and the line leaves the machine out. Its own choice is kept, for when this page
-changes again.
 
 The ZX Next has no choices of its own here: it is heard as this page says.
 
