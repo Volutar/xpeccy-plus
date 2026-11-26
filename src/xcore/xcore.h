@@ -856,6 +856,16 @@ enum {
 // the same id in machines/ of the config directory patching it - and a file
 // with an id of its own being a machine of its own. See docs/machine-format.md.
 
+// Sound picks, Global (the Sound page's) or a machine's own: lay LAY_MACHINE or AY_*, board
+// BOARD_MACHINE or BEEP_*, sep with an AY_* of its own only; SND_GLOBAL: none of its own
+#define SND_GLOBAL	-2
+
+typedef struct {
+	int lay;
+	int board;
+	int sep;		// 0..100; a machine's SND_GLOBAL as the others
+} xSndPicks;
+
 typedef struct {
 	std::string id;
 	std::string name;
@@ -894,6 +904,7 @@ typedef struct {
 	int psgType;			// SND_*
 	double psgFrq;			// MHz, 0 = the chip type's own clock
 	int psgStereo;			// AY_*
+	xSndPicks snd;			// the user's own sound picks for it, SND_GLOBAL where none
 	int soundrive;			// SDRV_*
 	int disk;			// DIF_*
 	int ide;			// IDE_*
@@ -937,6 +948,10 @@ const xMachine* xm_find(std::string);		// as the user has it
 const xMachine* xm_stock(std::string);		// as it ships
 const xMachine* xm_find_by_core(std::string);
 int xm_ram_size(std::string, int* mask = NULL);
+// the sound picks a machine has over Global (conf.snd)
+void xm_snd_apply();			// the running machine heard with its own picks over Global
+enum {SND_GRP_LAY = 0, SND_GRP_BOARD};	// the Sound page's groups: Stereo (layout, separation), Filters (board filter)
+void xm_snd_drop_own(int grp);		// every machine's own picks of a group dropped from its file
 
 // layouts
 
@@ -1188,7 +1203,9 @@ struct xConfig {
 		int latency;		// ms of sound kept in the ring buffer (see sound.h)
 		int latauto;		// let the emulator find that number by itself
 		int filter;		// filter down to the output rate, else just average
-		sndVolume vol;
+		sndVolume vol;		// what is mixed: its board and psgLay those heard (xm_snd_apply)
+		xSndPicks all;		// Global, the Sound page's, what config.conf keeps
+		xSndPicks own;		// the running machine's own, what its file keeps
 		FILE* wavfile;
 	} snd;
 	struct {

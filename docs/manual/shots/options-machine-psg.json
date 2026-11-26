@@ -1,0 +1,23 @@
+{
+  "config": {
+    "GENERAL": {
+      "machine": "pent"
+    }
+  },
+  "steps": [
+    ["wait", 3000],
+    ["run", "run-action key.options"],
+    ["wait", 1200],
+    ["click", "pageList", 60, 16],
+    ["wait", 800],
+    ["click", "SetupWin", 735, 246],
+    ["wait", 800],
+    ["run", "set-value ownLayBox ACB"],
+    ["run", "set-value ownSepSlider 60"],
+    ["wait", 300],
+    ["run", "activate-window Machine: PSG"],
+    ["wait", 500]
+  ],
+  "frames": [],
+  "note": "The Pentagon's PSG sheet with an order of its own, so the Separation row shows"
+}

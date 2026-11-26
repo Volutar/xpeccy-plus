@@ -46,7 +46,7 @@ Esc) puts back what it showed when it opened.
 | **Input** | **Joystick** | **None**, **Kempston 5-bit**, **Kempston 8-bit**; not 8-bit on the Scorpion ZS 256 and Turbo+ (see [Joysticks](input.md#joysticks)) |
 | | **Mouse** | **None** or **Kempston mouse**; sensitivity and wheel in its window (see [Mouse](input.md#mouse)) |
 | | **PC keyboard** | ATM Turbo 2+ and ZX Evolution only: which scan codes the machine gets (see [Machines with a keyboard of their own](input.md#machines-with-a-keyboard-of-their-own)) |
-| **Sound** | **Board filter** | what the board put between the beeper and your ears, shown: heard with **Board filter** at **By machine** on the **Sound** page (see [Board filter](#board-filter)) |
+| **Sound** | **Board filter** | the **Sound** page's, the board's own - what it put between the beeper and your ears - or any filter, for this machine only (see [Board filter](#board-filter)) |
 | | **PSG** | the AY/YM chips, from **None** to **x3 - ZX Next**; chip, clock and stereo in its window (see [PSG](#psg)) |
 | | **DAC** | **None**, **Covox only**, **Soundrive 1.05 mode 1** or **mode 2** |
 | | **General Sound** | **None**, **Original** or **NeoGS** (see [General Sound](#general-sound)); its ROM in its window |
@@ -182,11 +182,21 @@ device's further settings. How loud each device plays is set on the
 
 The beeper is a single bit of a port, but what you heard from it depended on the board: a
 48K's own small speaker, a TV, an amplifier behind a coupling capacitor. On some machines
-the sound chip went the same way. The **Board filter** row shows what this machine's board
-put there - **TV (RF)** on the 128K, **Line out** on the Pentagon. It is a fact of the
-board, not a setting: it is heard with **Board filter** at **By machine** on the **Sound**
-page, where any other filter can be picked for every machine instead (see
-[Board filter](options-sound.md#board-filter)).
+the sound chip went the same way. The **Board filter** list picks what this machine is
+heard through:
+
+- **Global setting**, the default - the **Board filter** of the **Sound** page, in gray:
+  **Global setting (No filter)**, or with **By machine** there, **Global setting (Machine
+  spec)**, its board's own. Its tooltip says what this machine is heard through.
+- **Machine spec** - its board's own: **Machine spec (TV (RF))** on the 128K, **Machine
+  spec (No filter)** on the Pentagon.
+- under a line, **No filter** and the other filters.
+
+Every choice but the first is this machine's own, heard whatever the **Sound** page says.
+A filter picked takes all of the sound, so **TV (RF)** is not **Machine spec (TV (RF))**,
+which filters what the board filtered. The filters are
+described in [Board filter](options-sound.md#board-filter); [A machine's own](options-sound.md#a-machines-own)
+says how the **Sound** page shows the machines with a choice of their own.
 
 ### PSG
 
@@ -215,6 +225,9 @@ same.
 
 The {icon}`settings` gear opens **Machine: PSG**:
 
+![Machine: PSG, an order of the machine's own](images/options-machine-psg.png)
+
+
 - **Chip** - **AY-3-8910** or **YM2149**. The two sound alike; the YM2149 plays volume
   envelopes in finer steps. **YM2203** is the chip of TurboSound FM: choosing
   **x2 - TurboSound FM** sets it, and the list is then grayed out.
@@ -223,10 +236,17 @@ The {icon}`settings` gear opens **Machine: PSG**:
   value. **1.773447** is the clock of the ZX Spectrum 128, +2 and +3; **1.75** that of
   most clones. Music written for one of them sounds a little out of tune on the other.
   You can also type a clock of your own.
-- **Stereo** - how this board sends the three voices out: **Mono**, or their order from
-  left to right, as **ABC** on the Pentagon or **BAC** on the Scorpion. It is shown, not
-  set: it is heard with **PSG stereo** at **By machine** on the **Sound** page, where
-  another order can be picked for every machine (see [Sound page](options-sound.md)).
+- **Stereo** - the order of the three voices from left to right for this machine. The
+  first choice, the default, is **PSG stereo** of the **Sound** page - **Global setting
+  (ABC, 75%)**, or with **By machine** there, **Global setting (Machine spec)**: how this
+  board sends them out. The line under it says what you hear: **Result: Mono (machine
+  spec)**. **Machine spec** is the board's own whatever the **Sound** page says: **Machine
+  spec (Mono)** on the 128K, **Machine spec (ABC)** on the Pentagon. **Mono** or another
+  order is this machine's own too (see [A machine's own](options-sound.md#a-machines-own)).
+- **Separation** - with an order of the machine's own, how far apart its sides are, as
+  **Separation** on the **Sound** page is for the others. It starts at that page's value.
+  With the first choice, the board's own or **Mono** it is grayed out, at the **Sound**
+  page's.
 
 ### DAC
 

@@ -40,12 +40,13 @@ Under it are four groups.
   again after a long time with no gaps. The slider then shows the value the program has
   settled on.
 
-```{index} Stereo, Filters, Board filter, PSG stereo, Separation, PSG; stereo
+```{index} Stereo, Filters, Board filter, PSG stereo, Separation, PSG; stereo, By machine
 ```
 
 **Stereo** and **Filters**, side by side, are how every machine is heard. This is a matter
 of taste, as a shader is, so it is set once here for all of them and stays when the machine
-changes.
+changes. A machine can have its own **PSG stereo**, **Separation** and **Board filter** over
+these (see [A machine's own](#a-machines-own) below).
 
 **Stereo**:
 
@@ -64,8 +65,8 @@ changes.
 
 - **Board filter** - what every machine sounds through (see [Board filter](#board-filter)
   below). **No filter**, the default, plays every machine clean. **By machine** gives each
-  machine its own board's filter, the one its **Board filter** row on the **Machine** page
-  shows: on the beeper, and on some boards on the sound chip. Any other choice puts all of
+  machine its own board's filter, the one its **Board filter** list on the **Machine** page
+  names: on the beeper, and on some boards on the sound chip. Any other choice puts all of
   the sound of every machine through that filter.
 - **Low cut (DC)** - takes out the lowest frequencies. The chips' output sits above zero
   rather than around it, and that offset only takes loudness away from the rest of the
@@ -89,7 +90,38 @@ changes.
 | **General Sound** | the General Sound card |
 | **SAA1099** | the SAA1099 chip |
 
-The **Sound** page is the same for every machine.
+The rest of the **Sound** page is the same for every machine.
+
+## A machine's own
+
+```{index} A machine's own, Apply to all machines, Overridden, Global setting, Machine spec
+```
+
+A machine can be heard otherwise than this page says: its **PSG stereo** and **Separation**
+in **Machine: PSG** (see [PSG](options-machine.md#psg)), its **Board filter** on the
+**Machine** page (see [Board filter](options-machine.md#board-filter)). The first two
+choices of those lists say in gray what they stand for:
+
+- **Global setting**, the default - this page's choice: **Global setting (ABC, 75%)**, or
+  with **By machine** here, **Global setting (Machine spec)**: each machine as its board was
+  made. What it gives this machine is noted under **Stereo** in **Machine: PSG** - **Result:
+  Mono (machine spec)** - and in the **Board filter**'s tooltip;
+- **Machine spec** - how its board was made, whatever this page says: **Machine spec (TV
+  (RF))**;
+- then, under a line, the values.
+
+Any choice but the first is the machine's own. It is heard whatever this page says, and a
+change here does not take it away. The first choice puts the machine back on this page.
+
+While some machine has a choice of its own, the foot of **Stereo** or **Filters** says
+how many, marked {icon}`exclamation` - **Overridden: 2** - and its tooltip names them, one a
+line, with what each one has. **Apply to all machines** beside it, grayed out while there
+are none, sets that group's choice for every machine at once: **Stereo**'s order and
+**Separation**, taking their own order and separation away, or **Filters**' board filter,
+taking theirs. It asks first, with the same list, and keeps whatever else you changed on
+them. **Cancel** in **Options** does not undo it.
+
+The ZX Next has no choices of its own here: it is heard as this page says.
 
 ## Board filter
 
@@ -101,15 +133,16 @@ The beeper is a single bit of a port, but what you heard from it depended on the
 On some machines the sound chip went the same way. **Board filter** in **Filters**
 picks what every machine sounds through. Its choices are also under the arrow of the
 toolbar's {icon}`speaker` **Mute** button and in **Sound** of the right-click menu, and with
-them, under **Output filters**, **Low cut (DC)** and **High cut (anti-alias)**.
+them, under **Output filters**, **Low cut (DC)** and **High cut (anti-alias)**. They are
+this page's: when the running machine is heard through a filter of its own, the menu says so
+over them.
 
 The filter runs in the machine's time, so it slows down and speeds up with it: in **Slow
-Motion** a high tone it cuts stays cut as it drops in pitch. **No filter** in the list is
-**Line out** on every machine.
+Motion** a high tone it cuts stays cut as it drops in pitch.
 
 | Choice | Filters | What goes through them | What it is on the board | Machines it comes with |
 |---|---|---|---|---|
-| **Line out** | none | - | boards with only resistors between the beeper and the output | Pentagon, Pentagon 1024 SL, Profi, Phoenix, ALF, ZX Next |
+| **No filter** | none | - | boards with only resistors between the beeper and the output | Pentagon, Pentagon 1024 SL, Profi, Phoenix, ALF, ZX Next |
 | **48K speaker** | low-pass, 4.4 kHz on a rising edge and 2.3 kHz on a falling one; high-pass, 500 Hz, 12 dB an octave | beeper, tape | the ULA's pin drives the speaker with slow, uneven edges; the speaker is small and gives little bass. The 500 Hz is a guess: there is no measurement of the speaker | 48K |
 | **TV (RF)** | low-pass, 3.2 kHz | beeper, tape, PSG | a TV's FM sound on its aerial input (50 us de-emphasis); the board mixes the PSG in before the modulator | 128K, +2 |
 | **+2A/+3** | low-pass, 2.5 kHz; high-pass, 340 Hz on the beeper and the tape, 150 Hz on the PSG | beeper, tape, PSG | the transistor that mixes them has a 100 nF capacitor on its output, on every socket; the high-passes are the coupling capacitors. Worked out from the schematic, not measured; the 150 Hz is a guess | +2A, +3 |
@@ -121,7 +154,7 @@ Motion** a high tone it cuts stays cut as it drops in pitch. **No filter** in th
 The low-pass and high-pass filters here fall off 6 dB an octave unless the table says
 otherwise.
 
-**By machine**, a filter takes what the table's third column says, as the board did; the
+With **By machine**, a filter takes what the table's third column says, as the board did; the
 other sound devices - General Sound, the SAA1099, Covox and Soundrive - have outputs of their
 own on every board and are not filtered. A filter picked from the list takes all of the sound,
 the sound chips and cards too: it is how the music would sound through that board, whether
