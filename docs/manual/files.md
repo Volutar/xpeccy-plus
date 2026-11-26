@@ -30,7 +30,7 @@ saves. Tapes and disks have pages of their own under the **Media** menu:
 | Any file | **RAW file to disk** | yes, onto disk A | no |
 | Cartridge | `.rom`, `.bin` | yes | no |
 | Recording | `.rzx` | yes | from the **Capture** menu |
-| Screen | `.scr`, a Hobeta screen (`.$C`) | yes, into the screen shown: see [Screens](#screens) | as a screenshot |
+| Screen | `.scr`, a Hobeta screen (`.$C`) | yes, shown over the machine: see [Screens](#screens) | as a screenshot |
 | Cheats | `.pok` | yes, into the [Cheats](cheats.md) window | no |
 | Archive | `.zip`, `.gz`, `.7z` | yes, an image in it: see [Images in archives](#images-in-archives) | no |
 
@@ -52,9 +52,10 @@ Screenshots, video and sound files are in [Capture menu](capture.md).
 ```{index} SCR; open, screen file
 ```
 
-A screen file goes into the screen the machine is showing, page 5 or the second screen,
-as `LOAD "" SCREEN$` would put it there. Nothing is reset: the machine runs on, and a
-running program may draw over the picture at once. In BASIC it stays.
+A screen file is shown over the machine, which stops meanwhile. The picture is drawn as
+the machine draws its own screen, with its border, through the shader, size and border
+size set. Press any key that is not a hotkey, or click the picture, and the machine goes
+on from where it stopped, its memory, colors and border as they were.
 
 | Size | What it holds |
 |---|---|
@@ -62,21 +63,22 @@ running program may draw over the picture at once. In BASIC it stays.
 | 6144 bytes | the picture alone: black on white |
 | 6976 bytes | the picture and a ULA+ palette |
 
-The palette needs **ULA plus** ticked in the machine's [Advanced Settings](options-machine.md#advanced-settings);
-without it, and on the ZX Spectrum Next, the picture shows in the plain colors and a
-message says so. A screen of 6912 or 6144 bytes turns ULA+ off.
+A ULA+ palette shows even on a machine with **ULA plus** off; the ZX Spectrum Next shows
+the picture in the plain colors and a message says so. FLASH blinks.
 
 The border takes the color most of the picture's edge has, BRIGHT left out; with a ULA+
-palette, the border color nearest to it. A program may set its own at once; in BASIC the
-next key press brings the old one back.
+palette, the border color nearest to it.
+
+Over the picture you can take screenshots - an SCR or Hobeta one saves the screen shown -
+change the size, go fullscreen or switch the shader. A hotkey that changes
+the machine, such as Reset, Open, Quick Load, Pause or the Debugger, ends the picture
+first. A reset or another machine ends it too.
 
 A screen never switches the machine, and it is not the game: the window title, pads,
-cheats and saves stay with the game that was in. **Recent** and **Reload** take it. A
-machine in a video mode of its own (Profi, ATM, ZX Evo, TSConf) says **The machine is not
-showing the ZX screen**. While the machine is paused, the picture shows once it runs. A
-screen named on the command line waits until the machine has started up, which would
-clear it; after a snapshot named before it, it goes in at once, and a file named after it
-takes its place.
+cheats and saves stay with the game that was in. **Recent** takes it, **Reload** keeps to
+the game. A machine in a video mode of its own (Profi, ATM, ZX Evo, TSConf) says **The
+machine is not showing the ZX screen**. A screen named on the command line shows before
+the machine starts; the machine starts after the key.
 
 ## Opening a file
 
