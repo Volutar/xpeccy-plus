@@ -39,8 +39,8 @@ python tests/regress.py list
     4 frames (`/N` for N). Keys are matrix names as autostart types them (`E` Enter, `C`
     Caps, `S` Symbol, `_` Space, `C6` down); `joy:fire+up` and `joyb:...` are the two
     joysticks, with the row names of a `.pad` (`up`... `fire`, `fire2`..`fire4`), `nmi` the
-    NMI button, `turbo` the board's turbo switch, `pc:NAME` a PC key by its keymap name
-    (`pc:F9`), on a ZX Evolution or a Next.
+    NMI button, `reset` the Reset button, `power` the Hard Reset, `turbo` the board's turbo
+    switch, `pc:NAME` a PC key by its keymap name (`pc:F9`), on a ZX Evolution or a Next.
 - Every case gets a fresh copy of the build's `config/`, so nothing carries over between
   cases; they run in parallel (`-j`, half the CPU threads by default), the longest first.
 
