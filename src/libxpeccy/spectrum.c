@@ -698,10 +698,16 @@ void zx_cont_tn(Computer* comp, int port) {
 
 static unsigned char ula_levs[8] = {0x00, 0x24, 0x49, 0x6d, 0x92, 0xb6, 0xdb, 0xff};
 
+// the mode off: the 16 plain colors back, as a reset puts them
 void zxSetUlaPalete(Computer* comp) {
 	int i;
 	int col;
 	xColor xc;
+	if (!comp->vid->ula->active) {
+		for (i = 0; i < 16; i++)
+			vid_reset_col(comp->vid, i);
+		return;
+	}
 	for (i = 0; i < 64; i++) {
 		col = (comp->vid->ula->pal[i] << 1) & 7;	// blue
 		if (col & 2) col |= 1;

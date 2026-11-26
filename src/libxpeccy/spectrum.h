@@ -836,6 +836,7 @@ typedef struct {
 
 Computer* compCreate();
 void comp_set_identity(Computer*, const char*, int, int);
+void zxSetUlaPalete(Computer*);		// ULA+ palette or mode changed: the live colors
 void compDestroy(Computer*);
 void compReset(Computer*,int);
 int comp_reset_bank(Computer*);		// the RES_* a plain reset lands in
