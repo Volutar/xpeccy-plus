@@ -2725,7 +2725,8 @@ void MainWin::rzxWatch() {
 
 // ...
 
-uchar hobHead[HOB_HEAD_SIZE] = {'s','c','r','e','e','n',' ',' ','C',0,0,0,0x1b,0,0x1b,0xe7,0x81};	// last 2 bytes is crc
+// "screen  C", start #4000, 6912 bytes in 27 sectors, then the crc (saveHobeta's)
+uchar hobHead[HOB_HEAD_SIZE] = {'s','c','r','e','e','n',' ',' ','C',0x00,0x40,0x00,0x1b,0,0x1b,0xe2,0x7c};
 
 // A frame holds two pixels a dot; one whose pairs differ somewhere has dots of
 // half the width: Profi, the ATM's and the Evo's hi-res, the Next's 640 layer 2
