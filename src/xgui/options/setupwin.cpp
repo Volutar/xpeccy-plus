@@ -1895,9 +1895,9 @@ void SetupWin::applyMachine() {
 	}
 // hdd
 	if (!own) {
+		emu_lock();		// the machine never sees the interface without its folder
 		ide_set_type(comp->ide, getRFIData(hiface));
-		emu_lock();
-		ide_read_pending(comp->ide);	// a folder kept while the machine had no interface
+		ide_read_pending(comp->ide);
 		emu_unlock();
 	}
 	// what is mounted is the Drives menu's, a folder read again only with the power off
