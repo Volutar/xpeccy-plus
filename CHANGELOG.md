@@ -104,12 +104,11 @@ before that point is upstream's history and is not repeated here.
   PWM beeper music is picked for all, the ZX Next too, and takes all of the sound. No filter
   by default. The filter follows Slow Motion and Fast Forward, so a tone it cuts stays cut as it
   drops in pitch. Beside it, PSG stereo sets the voices' order for every machine (the Next
-  keeps its own), and one Separation serves the PSG, the General Sound and the Next. All
-  three are set for every machine: a machine can have its own on the Machine page and in its
-  PSG sheet (Global setting, Machine spec or a value, each of the first two saying what it
-  gives), and the Sound page says how many machines override each group, with Apply to all
-  machines under it. The page's
-  Enabled is now Emulate sound, over its groups, which grey while it is off.
+  keeps its own), and one Separation serves the PSG, the General Sound and the Next. A
+  machine can have its own filter and stereo on the Machine page and in its PSG sheet
+  (Global setting, Machine spec or a value; a separation with an order of its own), and the
+  Sound page says how many machines override each group, with Apply to all machines beside
+  it. The page's Enabled is now Emulate sound, over its groups, which grey while it is off.
 
 - **Integer Scale**: View > Integer Scale and Options > Video. In fullscreen and in a maximized
   or resized window the picture keeps a whole number of pixels per dot, the largest that fits,
