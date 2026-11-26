@@ -1223,7 +1223,8 @@ static unsigned long long bench_mix(unsigned long long h, const unsigned char* p
 // '_' for space; "joy:" or "joyb:" and joystick rows as a .pad names them (up,
 // fire2...) joined by '+' are the two joysticks, "nmi" is the NMI button, and
 // "pc:" and a keymap name (UP, F1) is a PC key, scancodes and all; "turbo" is the
-// board's turbo switch, one step on; "reset" is the plain reset (the Reset button), "power" the Hard Reset.
+// board's turbo switch, one step on; "reset" is the plain reset (the Reset
+// button), "power" the Hard Reset.
 enum {BK_KEYS = 0, BK_JOY, BK_JOYB, BK_NMI, BK_PC, BK_POWER, BK_RESET, BK_TURBO};
 
 typedef struct benchKey {
