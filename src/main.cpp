@@ -391,7 +391,7 @@ static void open_cli_file(MainWin& mwin, const char* name, int drv, int run, boo
 	if (!mac.empty())
 		mwin.setMachine(mac);
 	if (load_file(conf.zx, path.toLocal8Bit().constData(), FG_ALL, drv) != ERR_OK) return;
-	if (drv < 1) {
+	if ((drv < 1) && !file_is_screen(conf.zx, path, FG_ALL)) {	// a screen is not the game
 		mwin.padGame(path);
 		cheats_pick(path);
 		cliImage = path;

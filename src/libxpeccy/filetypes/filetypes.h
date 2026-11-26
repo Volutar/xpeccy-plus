@@ -77,7 +77,9 @@ enum {
 	ERR_NEX_SYSTEM,		// a .nex with no System/Next release here to boot NextZXOS from
 	ERR_NEX_NAME,		// a .nex whose name cannot be typed
 	ERR_SNAP_NEXT,		// a snapshot of the Next in .sna or .z80: only .szx keeps its state
-	ERR_DSK_WIDE		// a disk of more cylinders than a .dsk is written with
+	ERR_DSK_WIDE,		// a disk of more cylinders than a .dsk is written with
+	ERR_SCR_SIZE,		// a screen file of none of the sizes a ZX screen is
+	ERR_SCR_MODE		// a screen file while the machine shows no ZX screen
 };
 
 // spg
@@ -381,6 +383,11 @@ wavExport wav_export_default(void);
 const int* wav_export_rates(void);	// 0 terminated
 const int* wav_export_rates(void);	// 0 terminated
 int wav_export_rate(Computer*);
+
+// screen
+
+int loadSCR(Computer*,const char*,int);
+int scr_hobeta_head(const unsigned char* head, size_t size);	// its 17 bytes and size: a Hobeta screen
 
 // disk
 

@@ -746,6 +746,7 @@ static xFileTypeInfo ft_tab[] = {
 	{FL_IMA, 1, ".ima", "*.ima", load_ima, NULL, "1.44 FDD image"},
 	{FL_PCIMG, 1, ".img", "*.img", load_ima, NULL, "1.44 FDD image"},
 	{FL_RZX, 0, ".rzx", "*.rzx", loadRZX, NULL, "RZX playback"},
+	{FL_SCR, 0, ".scr", "*.scr *.$c", loadSCR, NULL, "ZX screen"},
 	{FL_POK, 0, ".pok", "*.pok", NULL, NULL, "Cheats"},
 	{FL_RAW, 0, NULL, "*", loadRaw, NULL, "RAW file to TR-DOS disk"},			// * for all files; *.* for all files that have extension
 	{0, 0, NULL, NULL, NULL, NULL, NULL}
@@ -753,6 +754,8 @@ static xFileTypeInfo ft_tab[] = {
 
 static xFileTypeInfo ft_sltraw = {FL_SLT_BIN, 0, NULL, NULL, loadSlot, NULL, "RAW cartridge image"};
 static xFileTypeInfo ft_raw = {FL_RAW, 0, NULL, NULL, loadRaw, NULL, "RAW file to disk A"};
+// picked as a screen: a .$c too
+static xFileTypeInfo ft_scr = {FL_SCR, 0, NULL, NULL, loadSCR, NULL, "ZX screen"};
 static xFileTypeInfo ft_dum = {FL_NONE, 0, NULL, NULL, NULL, NULL, "Dummy entry"};
 
 #define DISK_TYPES FL_SCL, FL_TRD, FL_TD0, FL_FDI, FL_UDI, FL_DSK, FL_IMA, FL_PCIMG, FL_HOBETA, 0
@@ -770,6 +773,7 @@ static xFileGroupInfo fg_tab[] = {
 	{FG_DISK_B, ".trd", 1, "Disk B", NULL, {DISK_TYPES}},
 	{FG_DISK_C, ".trd", 2, "Disk C", NULL, {DISK_TYPES}},
 	{FG_DISK_D, ".trd", 3, "Disk D", NULL, {DISK_TYPES}},
+	{FG_SCREEN, "", -1, "Screen", &ft_scr, {FL_SCR, 0}},
 	{FG_RAW, "", 0, "RAW file to disk", &ft_raw, {FL_RAW, 0}},
 	{FG_IF2_ROM, "", -1, "Cartridge image", &ft_sltraw, {FL_SLT_ROM, FL_SLT_BIN, 0}},
 	{FG_RZX, "", -1, "RZX playback", NULL, {FL_RZX, 0}},
@@ -785,7 +789,7 @@ static bool ft_export(xFileTypeInfo* inf) {
 }
 
 static xFileHWInfo fh_tab[] = {
-	{FH_SPECTRUM, {FG_SNAPSHOT, FG_TAPE, FG_DISKS, FG_DISK_A, FG_DISK_B, FG_DISK_C, FG_DISK_D, FG_RAW, FG_RZX, FG_IF2_ROM, FG_POK, 0}},
+	{FH_SPECTRUM, {FG_SNAPSHOT, FG_TAPE, FG_DISKS, FG_DISK_A, FG_DISK_B, FG_DISK_C, FG_DISK_D, FG_SCREEN, FG_RAW, FG_RZX, FG_IF2_ROM, FG_POK, 0}},
 	{FH_ALF, {FG_IF2_ROM, FG_SNAPSHOT, 0}},
 	{FH_SLOTS, {FG_IF2_ROM, 0}},
 	{FH_DRIVE_A, {FG_DISK_A, FG_RAW, 0}},
@@ -896,11 +900,26 @@ xFileTypeInfo* file_find_hw_ext(int hw, QString path) {
 	return inf;
 }
 
+// a Hobeta file of a screen (scr_hobeta_head)
+static bool file_hobeta_screen(const QString& path) {
+	QString err;
+	QFile file(arc_local(path, &err));	// an archive's entry: its unpacked copy
+	if (!file.open(QFile::ReadOnly)) return false;
+	QByteArray head = file.read(17);
+	return (head.size() == 17) && scr_hobeta_head((const unsigned char*)head.constData(), file.size());
+}
+
 // what a file opened as id is: the group's own type when it has one (a raw
-// file, a cartridge), otherwise whatever the extension says
+// file, a cartridge, a screen), otherwise whatever the extension says - and a
+// Hobeta screen opened as any file is a screen, the Disk group puts it on the disk
 static xFileTypeInfo* file_type_of(Computer* comp, int id, const QString& path) {
 	xFileGroupInfo* grp = file_find_group(id);	// not a group: the empty one
-	return grp->fti ? grp->fti : file_find_hw_ext(comp->hw->id, path);
+	if (grp->fti) return grp->fti;
+	xFileTypeInfo* inf = file_find_hw_ext(comp->hw->id, path);
+	if (inf && (inf->id == FL_HOBETA) && (id == FG_ALL) && path.endsWith(".$c", Qt::CaseInsensitive)
+			&& file_hobeta_screen(path))
+		return &ft_scr;
+	return inf;
 }
 
 static QString allfilt;
@@ -1015,6 +1034,8 @@ static xFilerError err_tab[] = {
 	{ERR_NEX_SYSTEM, "NEX and SNX files start from NextZXOS, and there is no System/Next release here to start them from"},
 	{ERR_NEX_NAME, "The file's name cannot be typed in NextZXOS"},
 	{ERR_SNAP_NEXT, "The ZX Spectrum Next's state saves only as .szx"},
+	{ERR_SCR_SIZE, "A screen file is 6912, 6144 or 6976 bytes"},
+	{ERR_SCR_MODE, "The machine is not showing the ZX screen"},
 	{ERR_OK, ""}
 };
 
@@ -1222,10 +1243,11 @@ static bool media_ask_machine(const QString& path, const xFileMacPick& pick, std
 // back empty to keep the running one. Only what is about to run gets a say - a
 // snapshot always, a tape or a disk only when it is started, and a disk only
 // from drive A, the one that boots. false: the user backed out of the question.
-// a tape or a disk that is not started stays on the running machine: nothing to look at
+// a tape or a disk that is not started stays on the running machine: nothing to look at,
+// and so does a screen, which goes into whatever machine runs
 bool media_machine_known(Computer* comp, const QString& path, int id, int drv, int run) {
 	xFileTypeInfo* inf = file_type_of(comp, id, path);
-	if (!inf) return true;
+	if (!inf || (inf->id == FL_SCR)) return true;
 	int kind = as_kind_of(inf->id);		// AS_NONE: a snapshot, or nothing that runs
 	return (kind != AS_NONE) && (!run || !as_runnable(kind, drv));
 }
@@ -1656,11 +1678,22 @@ QStringList media_candidates(Computer* comp, const QString& archive, int id, int
 	}
 	QSet<int> types;
 	id_types(comp, id, drv, &types);
+	// picked as a screen, the game's screenshot beside it counts too; opened as any
+	// file, a screen is the image only when the archive holds no other
+	const bool screen = (id == FG_SCREEN);
+	QStringList screens;
 	for (const arcEntry& entry : *list) {
-		if (entry.folder || arc_beside_image(entry.name) || (arc_type(entry.name) != ARC_NONE)) continue;
+		if (entry.folder || (arc_beside_image(entry.name) && !screen) || (arc_type(entry.name) != ARC_NONE)) continue;
+		if (screen) {
+			if (entry.name.endsWith(".scr", Qt::CaseInsensitive) || entry.name.endsWith(".$c", Qt::CaseInsensitive))
+				res.append(entry.name);
+			continue;
+		}
 		xFileTypeInfo* inf = file_find_hw_ext(comp->hw->id, entry.name);
-		if (inf && types.contains(inf->id)) res.append(entry.name);
+		if (!inf || !types.contains(inf->id)) continue;
+		(inf->id == FL_SCR ? screens : res).append(entry.name);
 	}
+	if (res.isEmpty()) res = screens;
 	std::stable_sort(res.begin(), res.end(), natural_less);
 	if (res.isEmpty())
 		*err = QString("%1 holds no image this machine can open here").arg(QFileInfo(archive).fileName());
@@ -2075,6 +2108,10 @@ int load_file(Computer* comp, const char* name, int id, int drv) {
 					case FL_RZX:			// its snapshots load as it plays
 						last_snapshot = path;
 						break;
+					case FL_SCR:			// a poke of the screen, as a cheat's
+						rzx_rec_touch();
+						x_input_bump();
+						break;
 				}
 				if (inf->id == FL_RZX)
 					rzx_path = path;
@@ -2113,6 +2150,11 @@ bool file_is_pok(const QString& path) {
 bool file_is_medium(Computer* comp, const QString& path, int id) {
 	xFileTypeInfo* inf = file_type_of(comp, id, path);
 	return inf && (inf->ch || (as_kind_of(inf->id) == AS_TAPE) || (inf->id == FL_HOBETA));
+}
+
+bool file_is_screen(Computer* comp, const QString& path, int id) {
+	xFileTypeInfo* inf = file_type_of(comp, id, path);
+	return inf && (inf->id == FL_SCR);
 }
 
 // MOUNTING AWAY FROM THE EMULATION (xMount, filer.h)
@@ -2306,7 +2348,8 @@ static xMediaOpen media_last = {QString(), FG_ALL, 0, 0, false};
 
 void media_opened(const QString& path, int id, int drv, int run, bool pinned, bool newGame) {
 	media_last = {path, id, drv, run, pinned};
-	if (drv < 1) {				// a disk in drive B is not the program
+	// a disk in drive B is not the program, nor is a screen
+	if ((drv < 1) && !file_is_screen(conf.zx, path, id)) {
 		labels_image(path);
 		if (newGame) game_set(last_loaded.isEmpty() ? path : last_loaded);
 	}

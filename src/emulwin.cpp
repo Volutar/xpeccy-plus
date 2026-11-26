@@ -2543,11 +2543,12 @@ void MainWin::openMedia(const QString& path, int id, int drv, int run, bool pinn
 		mountPath.clear();
 		QByteArray loc = fpath.toLocal8Bit();
 		bool medium = file_is_medium(comp, fpath, id);
+		bool screen = file_is_screen(comp, fpath, id);	// a poke: the machine as it is
 		// the pause does not wait for the cycle, and a snapshot resets the machine
 		emu_lock();
 		if (medium)
 			x_media_replaced();		// a run resets the machine below, and that replaces it
-		else
+		else if (!screen)
 			x_state_replaced();
 		int err = load_file(comp, loc.data(), id, drv);
 		emu_unlock();
@@ -2557,7 +2558,7 @@ void MainWin::openMedia(const QString& path, int id, int drv, int run, bool pinn
 		}
 		media_autorun(comp, run);
 		// its reset starts the game, not ends it
-		if ((err == ERR_OK) && (drv < 1)) game_restamp();
+		if ((err == ERR_OK) && (drv < 1) && !screen) game_restamp();
 	}
 	if (held) pause(false, PR_FILE);
 	rzxWatch();
@@ -2586,6 +2587,10 @@ QString MainWin::mediaIn(int id, int drv) {
 // or disk (from: what went out), which keeps the game, as auto play's next tape does.
 void MainWin::mediaOpened(const QString& path, int id, int drv, int run, bool pinned, const QString& from, bool disk) {
 	recent_add(path);		// the list is saved with the rest on exit
+	if (file_is_screen(conf.zx, path, id)) {		// the game stays the one it was
+		media_opened(path, id, drv, run, pinned, false);
+		return;
+	}
 	bool kept = (drv < 1) && game_side_next(from, path, disk);
 	if ((drv < 1) && !kept) {
 		padGame(path);
