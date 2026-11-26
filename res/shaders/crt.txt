@@ -5,14 +5,17 @@
 #   afterglow  at the source's size: each color keeps the brighter of this frame and its
 #              own last picture faded - the phosphor's decay
 #   line       along the line, at the picture's width and the source's lines: how far a
-#              dot spreads (the beam's focus), averaged over the screen pixel; the red and
-#              blue beams parted from the green one; a faint second picture beside the
-#              first (a ghost), lines pushed aside by interference
+#              dot's edge spreads (the video path: the drive is rounded, not the light),
+#              averaged over the screen pixel; the red and blue beams parted from the
+#              green one; a faint second picture beside the first (a ghost), lines pushed
+#              aside by interference
+#   spot       the same size: the beam's spot along the line - the light spread as a bell
 #   glowh, glowv  a quarter of the picture, blurred across and down: the light around
 #              bright things
-#   last       down the screen: the beam's profile (scanlines, flat where a line would
-#              pass full light), the mask through which it lands, the screen's curve, its
-#              corners and vignette
+#   last       down the screen: a line as a bell that reaches into its neighbors' rows,
+#              wider where brighter and flat where it would pass full light (scanlines),
+#              the mask through which it lands, the screen's curve, its corners and
+#              vignette
 # Light is linear inside and stored gamma-encoded between the passes, so an 8-bit target
 # holds it as well as a float one. What the scanlines and the mask take is given back.
 #
@@ -69,11 +72,13 @@ more MBEND PANEL
 
 group "Beam"
 #pragma parameter SCAN "Scanlines" 0.5 0.0 1.0 0.05
-tip SCAN = How dark the gap between two lines is
+tip SCAN = How dark the gap between two lit lines is
 #pragma parameter WIDTH "Gap width" 0.8 0.2 1.0 0.05
-tip WIDTH = How much of a line its gap takes: narrow and hard, or wide
+tip WIDTH = How much of a line its edges take: a band with a thin gap, or a soft bell
 #pragma parameter FOCUS "Focus" 0.6 0.0 1.0 0.05
-tip FOCUS = How sharp a dot is along the line
+tip FOCUS = How sharp a dot's edge is along the line
+#pragma parameter SPOT "Spot" 0.0 0.0 1.0 0.05
+tip SPOT = How wide the beam's spot is: a dot's ends round off, fine detail runs together
 #pragma parameter GROW "Wider where brighter" 0.3 0.0 1.0 0.05
 tip GROW = A bright line fills more of its gap
 #pragma parameter ROLL "Roll" 0.0 0.0 1.0 0.05
@@ -128,17 +133,13 @@ more AFTERR AFTERG AFTERB
 # The masks' fineness is the tubes' own: triads across the screen over the 352 dots of a
 # full frame - a 14" TV's 0.65 mm slot mask 1.2, the 1084's 0.42 mm one 1.9, a 14" PVM's
 # 0.25 mm grille 3.0 (Philips data handbook T08 of 1986, Sony's PVM brochures)
-preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, VIGN 0.25
-preset "Home TV (composite)": INPUT 1, MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, VIGN 0.25
-preset "RGB monitor": MASK 2, MASKS 0.45, PITCH 1.9, SCAN 0.9, WIDTH 0.8, FOCUS 0.5, GROW 0.15, DIVERGE 0.2, GLOW 0.1, CURVE 0.04, VIGN 0.1
-preset "PVM": MASK 1, MASKS 0.5, PITCH 3.0, SCAN 0.8, WIDTH 0.8, FOCUS 0.7, GROW 0.3, DIVERGE 0.15
-preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.4, WIDTH 1.0, FOCUS 0.2, GROW 0, DIVERGE 0.9, DIVMID 1.0, GLOW 0.35, AFTER 0.3, GHOST 0.1, GHOSTX 0.8, NOISE 0.5, CURVE 0.03, VIGN 0.7, BRIGHT 0.9, CONTRAST 0.5
+preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, SPOT 0.5, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, VIGN 0.25
+preset "Home TV (composite)": INPUT 1, MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, SPOT 0.5, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, VIGN 0.25
+preset "RGB monitor": MASK 2, MASKS 0.45, PITCH 1.9, SCAN 0.9, WIDTH 0.8, FOCUS 0.5, SPOT 0.5, GROW 0.15, DIVERGE 0.2, GLOW 0.1, CURVE 0.04, VIGN 0.1
+preset "PVM": MASK 1, MASKS 0.3, PITCH 3.0, SCAN 0.9, WIDTH 1.0, FOCUS 0.7, SPOT 0.3, GROW 0.5, DIVERGE 0.15, CURVE 0.02, CURVEX 0
+preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.4, WIDTH 1.0, FOCUS 0.2, SPOT 0.4, GROW 0, DIVERGE 0.9, DIVMID 1.0, GLOW 0.35, AFTER 0.3, GHOST 0.1, GHOSTX 0.8, NOISE 0.5, CURVE 0.03, VIGN 0.7, BRIGHT 0.9, CONTRAST 0.5
 
 common:
-	// a mix's share snapped at its ends: in linear light a thousandth of white over
-	// black is seen
-	float snap(float k) { return clamp((k - 0.001) / 0.998, 0.0, 1.0); }
-
 	// How far a beam lands from the green one at a point of the picture (0 .. 1 both
 	// ways): dots across and lines down, growing from the screen's middle to its edges.
 	// most: what it is at the edge
@@ -566,6 +567,41 @@ fragment:
 		FragColor = vec4(pow(min(col, vec3(1.0)), vec3(1.0 / 2.2)), 1.0);
 	}
 
+// The beam's spot along the line: the light itself spread, as a bell. The line pass rounds
+// the drive, which keeps a lone dot narrow and the dark between two dots dark; the spot is
+// what lands on the glass, and it has a size - a dot's end fades over it, and with the
+// line thinner where it is dimmer the end comes out round, as on a tube (a BVM's dot
+// photographed: an ellipse, not a brick).
+pass spot:
+	scale source 1.0
+	format rgba16f
+	filter nearest
+	when SPOT
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	void main() {
+		// the spot's width in screen pixels: the frame has two texels a dot
+		float sigma = 0.6 * SPOT * SourceSize.x / (0.5 * OriginalSize.x);
+		ivec2 at = ivec2(vTexCoord * SourceSize.xy);
+		if (sigma < 0.2) {
+			FragColor = texelFetch(Source, at, 0);
+			return;
+		}
+		int reach = int(min(ceil(2.5 * sigma), 10.0));
+		int last = int(SourceSize.x) - 1;
+		vec3 sum = vec3(0.0);
+		float all = 0.0;
+		for (int k = -reach; k <= reach; k++) {
+			float d = float(k);
+			float w = exp(-0.5 * d * d / (sigma * sigma));
+			sum += w * pow(texelFetch(Source, ivec2(clamp(at.x + k, 0, last), at.y), 0).rgb, vec3(2.2));
+			all += w;
+		}
+		FragColor = vec4(pow(sum / all, vec3(1.0 / 2.2)), 1.0);
+	}
+
 pass glowh:
 	scale viewport 0.25
 	filter linear
@@ -619,36 +655,61 @@ fragment:
 	// corners stand in from its place's, goes on to the place's edge as its own border
 	// does - the glass of a tube is lit to its rim, not to a bowed line inside it
 	vec3 lineAt(float x, float row) {
-		row = clamp(row, 0.0, lineSize.y - 1.0);
-		x = clamp(x, 0.5 * lineSize.z, 1.0 - 0.5 * lineSize.z);
-		return pow(texture(line, vec2(x, (row + 0.5) * lineSize.w)).rgb, vec3(2.2));
+		row = clamp(row, 0.0, spotSize.y - 1.0);
+		x = clamp(x, 0.5 * spotSize.z, 1.0 - 0.5 * spotSize.z);
+		return pow(texture(spot, vec2(x, (row + 0.5) * spotSize.w)).rgb, vec3(2.2));
 	}
 
-	// the picture at a point: the two lines the screen pixel stands between, by the share
-	// each has of it. foot: the pixel's height in lines
-	vec3 picture(vec2 uv, float foot) {
-		float b = uv.y * lineSize.y - 0.5;
-		float i = floor(b);
-		float k = snap(clamp((b - i - 0.5) / min(foot, 1.0) + 0.5, 0.0, 1.0));
-		return mix(lineAt(uv.x, i), lineAt(uv.x, i + 1.0), k);
+	// ...and the three beams' lines, each at its own row
+	vec3 linesAt(float x, vec3 row, bool apart) {
+		vec3 c = lineAt(x, row.g);
+		if (apart) {
+			c.r = lineAt(x, row.r).r;
+			c.b = lineAt(x, row.b).b;
+		}
+		return c;
 	}
 
-	// A scanline's gap is a dip of the shape of a cosine, as deep as depth and as wide
-	// as width of the line's height, half of it at each end of the line. This is the
-	// light from the line's top down to x of its height, inside the dip (x <= width / 2)
-	vec3 dip(vec3 x, vec3 depth, float width) {
-		return x - 0.5 * depth * (x + width / PI2 * sin(PI2 * x / width));
+	// A line of the beam is a bell down the screen: full over its middle (core, to each
+	// side of its centre), then a skirt down to nothing. It reaches past its own rows
+	// into its neighbors' - that is what closes the gap between two lit lines, and what
+	// leaves a lone line a soft edge, not a cut one.
+	// The skirt is two parabolas, 1 - 2 u^2 and then 2 (1 - u)^2 over u = 0 .. 1: smooth,
+	// and the same turned over about its middle, so two skirts that cross there add up
+	// to 1. This is the bell's light from its centre out to t, for a top of 1; rate: 1
+	// over the skirt's width
+	vec3 bellTo(vec3 t, float core, float skirt, float rate) {
+		vec3 u = clamp((t - core) * rate, vec3(0.0), vec3(1.0));
+		vec3 w = min(u, 1.0 - u);
+		return min(t, vec3(core)) + skirt * (min(u, vec3(0.5)) - (2.0 / 3.0) * w * w * w);
 	}
 
-	// ...and down to u anywhere, for a line of the strength amp: from tc to 1 - tc it
-	// is flat - out of the dip, or where it would pass full light
-	// atTc: dip() at tc
-	vec3 light(vec3 amp, vec3 tc, vec3 atTc, float u, vec3 depth, float width) {
-		vec3 uu = vec3(u);
-		vec3 head = amp * dip(min(uu, tc), depth, width);
-		vec3 flat_ = min(amp, vec3(1.0)) * clamp(uu - tc, vec3(0.0), 1.0 - 2.0 * tc);
-		vec3 tail = amp * (atTc - dip(clamp(1.0 - uu, vec3(0.0), tc), depth, width));
-		return head + flat_ + tail;
+	// ...and what a line at the centre mid gives the stretch from a to b, lines: amp is
+	// the light it has to bring, depth how dark it leaves the gap to an equal neighbor,
+	// width the skirts' share of the bell. One shape for the line's three beams
+	vec3 bell(vec3 a, vec3 b, vec3 mid, vec3 amp, float depth, float width) {
+		// two equal lines meet half a line from each at (1 - depth) / 2 of the top
+		float reach = 0.5 / ((1.0 - width) + width * (1.0 - 0.5 * sqrt(1.0 - depth)));
+		float core = reach * (1.0 - width);
+		float skirt = reach * width;
+		float rate = 1.0 / max(skirt, 0.0001);
+		vec3 ta = abs(a - mid);
+		vec3 tb = abs(b - mid);
+		vec3 sa = sign(a - mid);
+		vec3 sb = sign(b - mid);
+		vec3 la = bellTo(ta, core, skirt, rate);
+		vec3 lb = bellTo(tb, core, skirt, rate);
+		// what the gaps take is given back: the bell's area is the line's light
+		vec3 h = amp / (reach * (2.0 - width));
+		if (all(lessThanEqual(h, vec3(1.0)))) return h * (sb * lb - sa * la);
+		// A line that would pass more than full light passes that: its top is cut flat
+		// as far as cut from its centre, and the line is the wider for it. (How far
+		// into the skirt it is down to 1 / h: the parabolas turned round.) Cut here, on
+		// the line, and not on the pixel's sum: that would beat with the rows
+		vec3 y = min(1.0 / max(h, vec3(0.000001)), vec3(1.0));
+		vec3 cut = step(y, vec3(0.999999)) * (core + skirt * mix(1.0 - sqrt(0.5 * y), sqrt(0.5 * (1.0 - y)), step(vec3(0.5), y)));
+		vec3 lit = bellTo(cut, core, skirt, rate);
+		return sb * (min(tb, cut) + h * max(lb - lit, vec3(0.0))) - sa * (min(ta, cut) + h * max(la - lit, vec3(0.0)));
 	}
 
 	vec2 warp(vec2 uv, float bend) {
@@ -762,21 +823,14 @@ fragment:
 		vec2 inPic = clamp(vTexCoord, vec2(0.0), vec2(1.0));
 		// a small picture has no room for a curve: it comes in between two and a half
 		// and three and a half pixels a dot
-		float dot_ = 1.0 / (lineSize.y * OutputSize.w);
+		float dot_ = 1.0 / (spotSize.y * OutputSize.w);
 		float bend = CURVE * smoothstep(2.5, 3.5, dot_);
 		bool flat_ = (bend == 0.0);
 		vec2 uv = flat_ ? vTexCoord : warp(inPic, bend) + (vTexCoord - inPic);
 
-		// a screen pixel's height in lines, and what the picture has there; the red and
-		// blue beams from a little off
-		float foot = flat_ ? lineSize.y * OutputSize.w : max(fwidth(uv.y) * lineSize.y, 0.0001);
+		// a screen pixel's height in lines
+		float foot = flat_ ? spotSize.y * OutputSize.w : max(fwidth(uv.y) * spotSize.y, 0.0001);
 		float scale = 1.0 / foot;
-		vec3 col = picture(uv, foot);
-		if (DIVERGE > 0.0) {
-			col.r = picture(uv + vec2(0.0, parting(uv, vec2(DIVRX, DIVRY)).y * lineSize.w), foot).r;
-			col.b = picture(uv + vec2(0.0, parting(uv, vec2(DIVBX, DIVBY)).y * lineSize.w), foot).b;
-		}
-		col *= BRIGHT;
 
 		// The mask: counted in the window's pixels, or in the picture's own where it is
 		// to bend with the glass - by itself where a pixel of its layout is two screen
@@ -791,29 +845,43 @@ fragment:
 
 		// A scanline is a line of the picture, at any scale: one that kept to whole
 		// screen rows would cut across the picture's lines. On a flat screen at a whole
-		// scale the two are the same thing and the rows are counted. Lines that do not
-		// fall on rows beat with them at a small scale: shallower there
+		// scale the two fall together. Lines that do not fall on rows beat with them at
+		// a small scale: shallower there
 		bool rows = flat_ && (abs(scale - floor(scale + 0.5)) < 0.01);
 		float deep = SCAN * (rows ? 1.0 : mix(0.4, 1.0, smoothstep(2.0, 4.0, scale)) * step(1.5, scale));
-		vec3 depth = max(deep * (1.0 - GROW * col), vec3(0.0001));
-		// what the gaps and the mask take is given back
-		vec3 amp = max(col * through / mean / (1.0 - 0.5 * depth * WIDTH), vec3(0.000001));
-		// where the dip ends, or sooner where the line would pass full light
-		vec3 tc = WIDTH * acos(clamp((2.0 / depth) * (1.0 - 1.0 / amp) - 1.0, -1.0, 1.0)) / PI2;
-		vec3 atTc = dip(tc, depth, WIDTH);
-		vec3 whole = 2.0 * amp * atTc + min(amp, vec3(1.0)) * (1.0 - 2.0 * tc);
-		// the pixel's share of the scanline, the gap on its last row; a roll moves the
-		// lines down the screen
-		float period = rows ? max(1.0, floor(scale + 0.5)) : scale;
-		float row = rows ? vTexCoord.y * OutputSize.y : uv.y * lineSize.y * scale;
-		// a step of Roll is a turn in 400 frames: the lines meet themselves when the
-		// count of frames starts again
-		if (ROLL > 0.0) row -= fract(float(FrameCount % 400u) * floor(ROLL * 20.0 + 0.5) / 400.0) * period;
-		float from = row / period;
-		float to = (row + 1.0) / period;
-		vec3 sum = (floor(to) - floor(from)) * whole
-			+ light(amp, tc, atTc, fract(to), depth, WIDTH) - light(amp, tc, atTc, fract(from), depth, WIDTH);
-		vec3 lit = max(sum * period, vec3(0.0));
+		// with no scanlines a line is its own rows and no more: the picture as it is
+		float width = WIDTH * clamp(deep / 0.2, 0.0, 1.0);
+		// where the pixel stands, in lines, for each beam: the red and the blue land a
+		// little off; a roll moves the lines down the screen - a step of Roll is a turn
+		// in 400 frames, so the lines meet themselves when the count starts again
+		// (rows that fall on the lines are counted: a line's edge is a row's, to the bit)
+		float per = max(1.0, floor(scale + 0.5));
+		float prow = floor(vTexCoord.y * OutputSize.y);
+		float top = rows ? prow / per : uv.y * spotSize.y - 0.5 * foot;
+		float bottom = rows ? (prow + 1.0) / per : top + foot;
+		vec3 off = vec3(0.0);
+		bool apart = (DIVERGE > 0.0);
+		if (apart) {
+			off.r = parting(uv, vec2(DIVRX, DIVRY)).y;
+			off.b = parting(uv, vec2(DIVBX, DIVBY)).y;
+		}
+		float roll = (ROLL > 0.0) ? fract(float(FrameCount % 400u) * floor(ROLL * 20.0 + 0.5) / 400.0) : 0.0;
+		off -= roll;
+		vec3 a = top + off;
+		vec3 b = bottom + off;
+		// the two lines it stands between
+		vec3 first = floor(0.5 * (a + b) - 0.5);
+		float shown = floor(roll + 0.5);
+		vec3 sum = vec3(0.0);
+		for (int k = 0; k < 2; k++) {
+			vec3 row = first + float(k);
+			vec3 col = linesAt(uv.x, row + shown, apart) * BRIGHT;
+			// a bright line fills more of its gap
+			float depth = clamp(deep * (1.0 - GROW * max(col.r, max(col.g, col.b))), 0.0, 1.0);
+			// what the mask takes is given back
+			sum += bell(a, b, row + 0.5, col * through / mean, depth, width);
+		}
+		vec3 lit = max(sum / (bottom - top), vec3(0.0));
 
 		// The light that spills around bright things: a part of each point's light is
 		// spread about, so a plain field keeps its brightness and the dark beside a
