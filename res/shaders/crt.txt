@@ -583,13 +583,13 @@ fragment:
 
 	void main() {
 		// the spot's width in screen pixels: the frame has two texels a dot
-		float sigma = 0.6 * SPOT * SourceSize.x / (0.5 * OriginalSize.x);
+		float sigma = min(0.6 * SPOT * SourceSize.x / (0.5 * OriginalSize.x), 6.4);
 		ivec2 at = ivec2(vTexCoord * SourceSize.xy);
 		if (sigma < 0.2) {
 			FragColor = texelFetch(Source, at, 0);
 			return;
 		}
-		int reach = int(min(ceil(2.5 * sigma), 10.0));
+		int reach = int(ceil(2.5 * sigma));
 		int last = int(SourceSize.x) - 1;
 		vec3 sum = vec3(0.0);
 		float all = 0.0;
@@ -847,7 +847,8 @@ fragment:
 		// screen rows would cut across the picture's lines. On a flat screen at a whole
 		// scale the two fall together. Lines that do not fall on rows beat with them at
 		// a small scale: shallower there
-		bool rows = flat_ && (abs(scale - floor(scale + 0.5)) < 0.01);
+		float per = max(1.0, floor(scale + 0.5));
+		bool rows = flat_ && (abs(scale - per) * spotSize.y < 0.5);
 		float deep = SCAN * (rows ? 1.0 : mix(0.4, 1.0, smoothstep(2.0, 4.0, scale)) * step(1.5, scale));
 		// with no scanlines a line is its own rows and no more: the picture as it is
 		float width = WIDTH * clamp(deep / 0.2, 0.0, 1.0);
@@ -855,7 +856,6 @@ fragment:
 		// little off; a roll moves the lines down the screen - a step of Roll is a turn
 		// in 400 frames, so the lines meet themselves when the count starts again
 		// (rows that fall on the lines are counted: a line's edge is a row's, to the bit)
-		float per = max(1.0, floor(scale + 0.5));
 		float prow = floor(vTexCoord.y * OutputSize.y);
 		float top = rows ? prow / per : uv.y * spotSize.y - 0.5 * foot;
 		float bottom = rows ? (prow + 1.0) / per : top + foot;
@@ -869,13 +869,18 @@ fragment:
 		off -= roll;
 		vec3 a = top + off;
 		vec3 b = bottom + off;
-		// the two lines it stands between
-		vec3 first = floor(0.5 * (a + b) - 0.5);
-		float shown = floor(roll + 0.5);
+		// the two lines it stands between; a pixel over half a line tall (a small
+		// picture) may reach a third one's skirt: the line it stands on and both beside
+		vec3 mid = 0.5 * (a + b);
+		bool tall = (foot > 0.5);
+		vec3 first = tall ? floor(mid) - 1.0 : floor(mid - 0.5);
+		// under a roll the lines move and the picture stays: each takes what the
+		// picture has where the pixel stands
+		vec3 still = floor(mid + roll);
 		vec3 sum = vec3(0.0);
-		for (int k = 0; k < 2; k++) {
+		for (int k = 0; k < (tall ? 3 : 2); k++) {
 			vec3 row = first + float(k);
-			vec3 col = linesAt(uv.x, row + shown, apart) * BRIGHT;
+			vec3 col = linesAt(uv.x, (roll > 0.0) ? still : row, apart) * BRIGHT;
 			// a bright line fills more of its gap
 			float depth = clamp(deep * (1.0 - GROW * max(col.r, max(col.g, col.b))), 0.0, 1.0);
 			// what the mask takes is given back
