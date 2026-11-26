@@ -168,7 +168,7 @@ there. The list has up to four parts:
   colors a PAL set makes of fine patterns and at color edges; **RGB monitor** - the
   Commodore 1084S; **PVM** - a broadcast monitor, sharp, bent a little as a cylinder is,
   the look a new installation starts with; **Tridot** - a fine dot mask, three screen
-  pixels a triad at any scale, and a sharp beam; **Xpixie** - soft and glowing, with
+  pixels a triad at any scale, a thin sharp beam and deep scanlines; **Xpixie** - soft and glowing, with
   afterglow, a ghost and noise;
 - the presets you saved;
 - shader files of your own, from the `shaders` folder of the configuration.
@@ -205,11 +205,15 @@ that can be switched off, and then costs nothing:
   mask is drawn with the display's own subpixels: if its colors look wrong, set
   **Display's subpixels** under **All settings** to your display's order, **RGB** or
   **BGR**, or to **Other** for a mask without colors;
-- **Beam** - **Scanlines**, how dark the gap between two lit lines is; **Gap width**, how
+- **Beam** - **Scanlines**, how dark the gap between two lit lines is - past 1 the beam
+  gets thinner and a black band opens between the lines; **Gap width**, how
   much of a line its soft edges take; **Focus**, how sharp a dot's edge is along the line;
   **Spot**, how wide the beam's spot is - with it a dot's ends come out round and a
   bright line a little thicker than a dim one, as on a tube;
-- **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**; **Bloom** - the mask
+- **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**; **Keep brightness** -
+  the light the mask and the scanlines take is given back to the lit lines, so the picture
+  stays as bright as without a look; turned down, less of it is, and the picture is
+  darker, with deeper gaps on bright things; **Bloom** - the mask
   and the scanlines take light, and a pixel cannot give all of it back to what is
   already bright: with Bloom the brightest things keep their light, and the mask and
   the scanlines fade on them instead. A small picture,
