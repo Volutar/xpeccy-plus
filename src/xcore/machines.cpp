@@ -2040,7 +2040,7 @@ void xm_reset_over() {
 	xm_set(id);
 }
 
-// "All to Global": every machine's own sound picks go, the rest of its file stays
+// "All to Sound page": every machine's own sound picks go, the rest of its file stays
 
 void xm_snd_all_global() {
 	int done = 0;
@@ -2060,7 +2060,7 @@ void xm_snd_all_global() {
 	conf.snd.own.lay = conf.snd.own.board = conf.snd.own.sep = SND_GLOBAL;
 	if (done) xm_load_all();
 	xm_snd_apply();
-	xlog(XLG_CONF, XLL_INFO, "sound picks of %i machine files dropped: every machine on Global", done);
+	xlog(XLG_CONF, XLL_INFO, "sound picks of %i machine files dropped: every machine on the Sound page's", done);
 }
 
 // A config from before the machine files kept the same settings in

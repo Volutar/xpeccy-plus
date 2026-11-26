@@ -73,7 +73,7 @@ class SetupWin : public QDialog {
 		void makeSoundGroup();
 		void soundPageOn(bool);
 		void sndOwnShow();		// the own picks' texts, rows and the Sound page's line, as the lists stand
-		void sndAllGlobal();		// All to Global, asked first
+		void sndAllGlobal();		// All to Sound page, asked first
 		void fillNextGroup();
 		void showDriveRows();
 		void tidySoundPage();
@@ -177,8 +177,8 @@ class SetupWin : public QDialog {
 		QComboBox *diskTypeBox, *cbFlpInterleave, *hiface, *hm_type, *hs_type, *sdrvBox, *cbScanTab, *cbCpuTurbo, *cbPsgCount, *cbPsgType, *cbPsgFrq;
 		xSlider *sldTapeSpeed, *sldSensitivity;
 		QLabel *labTapeSpeedVal, *labPsgMhz;
-		// the machine's own sound picks over Global: the PSG sheet's Stereo and Separation, the
-		// Machine page's Board filter, each with its button back to Global
+		// the machine's own sound picks over the Sound page's: the PSG sheet's Stereo and
+		// Separation, the Machine page's Board filter, each with its button back to the Sound page
 		QComboBox *cbOwnLay = nullptr, *cbOwnBoard = nullptr;
 		QToolButton *btnOwnLay = nullptr, *btnOwnBoard = nullptr;
 		xSlider* sldOwnSep = nullptr;
@@ -186,8 +186,13 @@ class SetupWin : public QDialog {
 		QWidget* ownSepPair = nullptr;
 		int ownLayShown = SND_GLOBAL;	// the Stereo item sndOwnShow() saw last
 		int ownSepKept = SND_GLOBAL;	// its separation while the Stereo is off an order
-		// the other machines with picks of their own, as their files have them (sndOthersRead)
-		struct xSndOwnRow {std::string id; QString name; xSndPicks snd;};
+		// the picks as the machine's file has them; a list the user has not touched keeps them
+		xSndPicks ownKept = {SND_GLOBAL, SND_GLOBAL, SND_GLOBAL};
+		bool ownLayTouched = false, ownBoardTouched = false;
+		xSndPicks ownPicks();		// the picks as Apply takes them
+		// the other machines with picks of their own, as their files have them (sndOthersRead),
+		// with their spec: psg.stereo and beeper
+		struct xSndOwnRow {std::string id; QString name; xSndPicks snd; int specLay; int specBoard;};
 		QList<xSndOwnRow> sndOthers;
 		void sndOthersRead();
 		// the Sound page's Stereo and Filters groups (makeSoundGroup)
@@ -196,7 +201,7 @@ class SetupWin : public QDialog {
 		QCheckBox* chkSndOn;	// Emulate sound, over the page's groups
 		xSlider* sldSep;
 		QLabel* labSep;
-		// under them: the machines with picks of their own, and All to Global
+		// under them: the machines heard otherwise by picks of their own, and All to Sound page
 		QWidget* ownRow;
 		xElideLabel* ownLine = nullptr;	// made after the machine's lists, which call on it
 		QPushButton* btnAllGlobal;

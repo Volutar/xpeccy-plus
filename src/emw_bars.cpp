@@ -834,10 +834,10 @@ void MainWin::makeBoardActs() {
 	connect(boardGrp, &QActionGroup::triggered, this, [this](QAction* act) {
 		conf.snd.all.board = act->data().toInt();
 		xm_snd_apply();
-		// a machine with its own is not heard through it: the message says so
+		// a machine heard through its own is not through it: the message says so
 		QString own = board_own_note();
 		setMessage(own.isEmpty() ? QString(" board filter: %0 ").arg(act->text())
-			: QString(" Global board filter: %0; %1 ").arg(act->text(), own));
+			: QString(" board filter: %0; %1 ").arg(act->text(), own));
 		saveConfig();
 	});
 	// and the Sound page's Low cut and High cut, switches of their own
@@ -872,7 +872,7 @@ void MainWin::addBoardActs(QMenu* menu) {
 	menu->setToolTipsVisible(true);
 	menu->addSeparator();
 	menu_heading(menu, "Board filter");
-	// the picks are Global: a machine with its own says so over them
+	// the picks are the Sound page's: a machine heard through its own says so over them
 	QAction* own = menu->addAction(QString());
 	own->setEnabled(false);
 	QList<xBoardPick> picks = board_picks();
