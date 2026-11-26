@@ -63,7 +63,10 @@ list MASK = Aperture grille, Slot mask, Shadow mask
 #pragma parameter MASKS "Strength" 0.4 0.0 1.0 0.05
 tip MASKS = How much the mask holds back between its openings
 #pragma parameter PITCH "Fineness" 1.5 0.5 3.5 0.1
-tip PITCH = Triads of the mask to a dot of the picture
+tip PITCH = Triads of the mask to a dot of the picture, with Size by fineness
+#pragma parameter MSIZE "Size" 0 0 3 1
+list MSIZE = By fineness, 2 pixels, 3 pixels, 6 pixels
+tip MSIZE = A triad's width on your screen: by the tube's fineness, or the same at any scale
 #pragma parameter MBEND "On the glass" 0 0 2 1
 list MBEND = Auto, Off, On
 tip MBEND = The mask bends with a curved screen. Auto: where a triad has pixels enough
@@ -136,11 +139,14 @@ more AFTERR AFTERG AFTERB
 
 # The masks' fineness is the tubes' own: triads across the screen over the 352 dots of a
 # full frame - a 14" TV's 0.65 mm slot mask 1.2, the 1084's 0.42 mm one 1.9, a 14" PVM's
-# 0.25 mm grille 3.0 (Philips data handbook T08 of 1986, Sony's PVM brochures)
+# 0.25 mm grille 3.0 (Philips data handbook T08 of 1986, Sony's PVM brochures). Tridot
+# is the older look of the name: a dot mask three screen pixels a triad at any scale, and
+# about as bright
 preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, SPOT 0.5, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, VIGN 0.25
 preset "Home TV (composite)": INPUT 1, MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, SPOT 0.5, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, VIGN 0.25
 preset "RGB monitor": MASK 2, MASKS 0.45, PITCH 1.9, SCAN 0.9, WIDTH 0.8, FOCUS 0.5, SPOT 0.5, GROW 0.15, DIVERGE 0.2, GLOW 0.1, CURVE 0.04, VIGN 0.1
 preset "PVM": MASK 1, MASKS 0.3, PITCH 3.0, SCAN 0.95, WIDTH 1.0, FOCUS 0.7, SPOT 0.3, GROW 0.2, DIVERGE 0.15, CURVE 0.02, CURVEX 0
+preset "Tridot": MASK 3, MSIZE 2, MASKS 0.6, SCAN 0.9, WIDTH 0.5, FOCUS 0.9, SPOT 0, GROW 0.2, BRIGHT 0.75
 preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.4, WIDTH 1.0, FOCUS 0.2, SPOT 0.4, GROW 0, DIVERGE 0.9, DIVMID 1.0, GLOW 0.35, AFTER 0.3, GHOST 0.1, GHOSTX 0.8, NOISE 0.5, CURVE 0.03, VIGN 0.7, BRIGHT 0.9, CONTRAST 0.5
 
 common:
@@ -780,8 +786,9 @@ fragment:
 			gap = 1.0 - deep * cover;
 			mean *= 1.0 - deep * bar / tall;
 		} else if (MASK == 3.0) {
-			// rows of dots, every other row half a triad along
-			float tall = (kind == 2.0) ? 1.0 : max(1.0, floor(cell * 2.0 / 3.0 + 0.5));
+			// rows of dots, every other row half a triad along. The dots of a shadow mask lie
+			// in a hexagon, so a row is sqrt(3) / 6 of a triad tall: a 3 pixel triad, one row
+			float tall = max(1.0, floor(cell * 0.2887 + 0.5));
 			x += mod(floor(px.y / tall), 2.0) * 0.5 * cell;
 		}
 		// The triad's pixels, after hunterk's subpixel masks: a color takes lit of the
@@ -846,6 +853,13 @@ fragment:
 		float kind;
 		float n;
 		float cell = triad(dot_, kind, n);
+		// ...or as many screen pixels at any scale: magenta and green, a triad, or a
+		// triad of two pixels a color
+		if (MSIZE > 0.5) {
+			kind = (MSIZE < 1.5) ? 2.0 : 3.0;
+			n = (MSIZE > 2.5) ? 2.0 : 1.0;
+			cell = kind * n;
+		}
 		bool glass = !flat_ && ((MBEND == 2.0) || ((MBEND == 0.0) && (n >= 2.0)));
 		vec2 px = glass ? uv * OutputSize.xy : gl_FragCoord.xy - xpPicture.xy;
 		float mean;
@@ -864,7 +878,9 @@ fragment:
 		// little off; a roll moves the lines down the screen - a step of Roll is a turn
 		// in 400 frames, so the lines meet themselves when the count starts again
 		// (rows that fall on the lines are counted: a line's edge is a row's, to the bit)
-		float prow = floor(vTexCoord.y * OutputSize.y);
+		// Two rows a line are the two halves of its bell, lit alike whatever its shape: there
+		// the lines go half a row down, so one row is a line's middle and the next its gap
+		float prow = floor(vTexCoord.y * OutputSize.y) + ((per == 2.0) ? 0.5 : 0.0);
 		float top = rows ? prow / per : uv.y * spotSize.y - 0.5 * foot;
 		float bottom = rows ? (prow + 1.0) / per : top + foot;
 		vec3 off = vec3(0.0);
