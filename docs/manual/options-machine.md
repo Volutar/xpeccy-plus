@@ -185,9 +185,9 @@ The beeper is a single bit of a port, but what you heard from it depended on the
 the sound chip went the same way. The **Board filter** list picks what this machine is
 heard through:
 
-- **Use global setting**, the default - what the **Board filter** of the **Sound** page
-  gives this machine, in gray: **Use global setting (No filter)**, or with **By machine**
-  there, its board's own: **Use global setting (TV (RF))**.
+- **Global setting**, the default - what the **Board filter** of the **Sound** page gives
+  this machine, in gray: **Global setting (No filter)**, or with **By machine** there, its
+  board's own: **Global setting (TV (RF))**.
 - **Machine spec** - its board's own: **Machine spec (TV (RF))** on the 128K, **Machine
   spec (No filter)** on the Pentagon.
 - under a line, **No filter** and the other filters.
@@ -239,7 +239,7 @@ The {icon}`settings` gear opens **Machine: PSG**:
   You can also type a clock of your own.
 - **Stereo** - the order of the three voices from left to right for this machine. The
   first choice, the default, is what **PSG stereo** of the **Sound** page gives it -
-  **Use global setting (ABC, 75%)**, or with **By machine** there, how this board sends
+  **Global setting (ABC, 75%)**, or with **By machine** there, how this board sends
   them out. **Machine spec** is the board's own whatever the **Sound** page says: **Machine
   spec (Mono)** on the 128K, **Machine spec (ABC)** on the Pentagon. **Mono** or another
   order is this machine's own too. The {icon}`refresh` button puts it

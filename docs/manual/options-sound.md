@@ -94,7 +94,7 @@ The rest of the **Sound** page is the same for every machine.
 
 ## A machine's own
 
-```{index} A machine's own, Apply to all machines, Overridden, Use global setting, Machine spec
+```{index} A machine's own, Apply to all machines, Overridden, Global setting, Machine spec
 ```
 
 A machine can be heard otherwise than this page says: its **PSG stereo** and **Separation**
@@ -102,8 +102,8 @@ in **Machine: PSG** (see [PSG](options-machine.md#psg)), its **Board filter** on
 **Machine** page (see [Board filter](options-machine.md#board-filter)). The first two
 choices of those lists say in gray what they give this machine:
 
-- **Use global setting**, the default - what this page gives it: **Use global setting (ABC,
-  75%)**, or with **By machine** here, how its board was made: **Use global setting (Mono)**;
+- **Global setting**, the default - what this page gives it: **Global setting (ABC, 75%)**,
+  or with **By machine** here, how its board was made: **Global setting (Mono)**;
 - **Machine spec** - how its board was made, whatever this page says: **Machine spec (TV
   (RF))**;
 - then, under a line, the values.
@@ -113,9 +113,9 @@ change here does not take it away. The {icon}`refresh` button beside the list pu
 machine back on the first choice.
 
 While some machine has a choice of its own, the foot of **Stereo** or **Filters** says
-how many, marked {icon}`exclamation` - **Overridden on 2 machines** - and its tooltip names
-them, one a line, with what each one has. **Apply to all machines** under it puts every
-machine back on that group's choice: **Stereo**'s takes their own order and separation,
+how many, marked {icon}`exclamation` - **Overridden: 2** - and its tooltip names them, one a
+line, with what each one has. **Apply to all machines** beside it, grayed out while there
+are none, puts every machine back on that group's choice: **Stereo**'s takes their own order and separation,
 **Filters**' their own board filter. It asks first, with the same list, and keeps whatever
 else you changed on them. It is done at once: **Cancel** in **Options** does not bring their
 choices back.
