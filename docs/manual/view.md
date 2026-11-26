@@ -205,7 +205,10 @@ that can be switched off, and then costs nothing:
   much of a line its soft edges take; **Focus**, how sharp a dot's edge is along the line;
   **Spot**, how wide the beam's spot is - with it a dot's ends come out round and a
   bright line a little thicker than a dim one, as on a tube;
-- **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**. A small picture,
+- **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**; **Bloom** - the mask
+  and the scanlines take light, and a pixel cannot give all of it back to what is
+  already bright: with Bloom the brightest things keep their light, and the mask and
+  the scanlines fade on them instead. A small picture,
   under about three screen pixels a dot, stays flat. A curved picture goes on to the edge
   of its place as its border does, and the corners are rounded there;
 - **Glow** - light around bright things;
