@@ -464,8 +464,8 @@ bool look_delete_preset(const xLook& lk) {
 #define	OLD_SOFT	"CURVE 0, CURVEX 1, SPOT 0, MASKS 0.45, SCAN 0.6, WIDTH 0.8, FOCUS 0.65, GROW 0, GLOW 0.1, BRIGHT 0.7, DIVERGE 0"
 #define	OLD_GRILLE	"MASK 1, PITCH 1.0, "
 #define	OLD_FINE	"MASK 1, PITCH 2.0, "
-#define	OLD_SHADOW	"MASK 3, PITCH 1.0, "
-#define	OLD_WIDE	"MASK 3, PITCH 0.5, "
+#define	OLD_SHADOW	"MASK 3, MSIZE 2, "
+#define	OLD_WIDE	"MASK 3, MSIZE 3, "
 #define	OLD_CURVE	", CURVE 0.02"
 #define	OLD_TVLINE	"CURVE 0, CURVEX 1, SPOT 0, MASK 1, MASKS 0.3, PITCH 2.5, WIDTH 0.8, FOCUS 0.85, GLOW 0, DIVERGE 0, "
 
@@ -476,22 +476,22 @@ void look_old_names() {
 		{"grille-nocurve-light.txt", "", "PVM", OLD_GRILLE OLD_SOFT},
 		{"grille2-nocurve-crisp.txt", "", "PVM", OLD_FINE OLD_CRISP},
 		{"grille2-nocurve-light.txt", "", "PVM", OLD_FINE OLD_SOFT},
-		{"tridot-nocurve-crisp.txt", "", "PVM", OLD_SHADOW OLD_CRISP},
-		{"tridot-nocurve-light.txt", "", "PVM", OLD_SHADOW OLD_SOFT},
-		{"tridot-curve-crisp.txt", "", "PVM", OLD_SHADOW OLD_CRISP OLD_CURVE},
-		{"tridot-curve-light.txt", "", "PVM", OLD_SHADOW OLD_SOFT OLD_CURVE},
-		{"widetridot-nocurve-crisp.txt", "", "PVM", OLD_WIDE OLD_CRISP},
-		{"widetridot-nocurve-light.txt", "", "PVM", OLD_WIDE OLD_SOFT},
-		{"widetridot-curve-crisp.txt", "", "PVM", OLD_WIDE OLD_CRISP OLD_CURVE},
-		{"widetridot-curve-light.txt", "", "PVM", OLD_WIDE OLD_SOFT OLD_CURVE},
+		{"tridot-nocurve-crisp.txt", "", "Tridot", OLD_SHADOW OLD_CRISP},
+		{"tridot-nocurve-light.txt", "", "Tridot", OLD_SHADOW OLD_SOFT},
+		{"tridot-curve-crisp.txt", "", "Tridot", OLD_SHADOW OLD_CRISP OLD_CURVE},
+		{"tridot-curve-light.txt", "", "Tridot", OLD_SHADOW OLD_SOFT OLD_CURVE},
+		{"widetridot-nocurve-crisp.txt", "", "Tridot", OLD_WIDE OLD_CRISP},
+		{"widetridot-nocurve-light.txt", "", "Tridot", OLD_WIDE OLD_SOFT},
+		{"widetridot-curve-crisp.txt", "", "Tridot", OLD_WIDE OLD_CRISP OLD_CURVE},
+		{"widetridot-curve-light.txt", "", "Tridot", OLD_WIDE OLD_SOFT OLD_CURVE},
 		{"crt-lottes.txt", "Aperture grille", "PVM", OLD_GRILLE OLD_CRISP},
 		{"crt-lottes.txt", "Aperture grille, soft", "PVM", OLD_GRILLE OLD_SOFT},
 		{"crt-lottes.txt", "Fine grille", "PVM", OLD_FINE OLD_CRISP},
 		{"crt-lottes.txt", "Fine grille, soft", "PVM", OLD_FINE OLD_SOFT},
-		{"crt-lottes.txt", "Shadow mask", "PVM", OLD_SHADOW OLD_CRISP},
-		{"crt-lottes.txt", "Shadow mask, soft", "PVM", OLD_SHADOW OLD_SOFT},
-		{"crt-lottes.txt", "Wide shadow mask", "PVM", OLD_WIDE OLD_CRISP},
-		{"crt-lottes.txt", "Wide shadow mask, soft", "PVM", OLD_WIDE OLD_SOFT},
+		{"crt-lottes.txt", "Shadow mask", "Tridot", OLD_SHADOW OLD_CRISP},
+		{"crt-lottes.txt", "Shadow mask, soft", "Tridot", OLD_SHADOW OLD_SOFT},
+		{"crt-lottes.txt", "Wide shadow mask", "Tridot", OLD_WIDE OLD_CRISP},
+		{"crt-lottes.txt", "Wide shadow mask, soft", "Tridot", OLD_WIDE OLD_SOFT},
 		{"crt-lottes.txt", "", "PVM", OLD_GRILLE OLD_CRISP},	// no preset, or one not its own
 		{"tvline-nocurve-light.txt", "", "PVM", OLD_TVLINE "SCAN 1.0, GROW 0.85, BRIGHT 0.7"},
 		{"tvline-curve-light.txt", "", "PVM", OLD_TVLINE "SCAN 0.9, GROW 1.0, BRIGHT 0.95, CURVE 0.02"},
