@@ -245,7 +245,9 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 	QWidget* wid = new QWidget;
 	QHBoxLayout* box = new QHBoxLayout(wid);
 	box->setContentsMargins(0, 0, 0, 0);
+	// what the row has over goes between the two: a short figure does not move its slider
 	box->addWidget(sld);
+	box->addStretch(1);
 	box->addWidget(fig);
 	wid->setFocusProxy(sld);
 	return wid;
