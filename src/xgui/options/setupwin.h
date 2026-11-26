@@ -181,7 +181,7 @@ class SetupWin : public QDialog {
 		QComboBox *cbOwnLay = nullptr, *cbOwnBoard = nullptr;
 		QToolButton *btnOwnLay = nullptr, *btnOwnBoard = nullptr;
 		xSlider* sldOwnSep = nullptr;
-		QLabel *labOwnSep = nullptr, *ownSepName = nullptr, *ownLayNote = nullptr;
+		QLabel *labOwnSep = nullptr, *ownSepName = nullptr, *ownLayNote = nullptr, *ownNoteName = nullptr;
 		QWidget* ownSepPair = nullptr;
 		int ownLayShown = SND_GLOBAL;	// the Stereo item sndOwnShow() saw last
 		int ownSepKept = SND_GLOBAL;	// its separation while the Stereo is off an order

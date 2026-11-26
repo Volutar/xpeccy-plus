@@ -678,8 +678,8 @@ xSndPicks SetupWin::ownPicks() {
 }
 
 // The machine's own picks as the lists stand, applied or not. The first two items say what
-// they give this machine, as the PSG count's do ("Global setting (ABC, 85%)", "Machine
-// spec (Mono)"), the values after them plain. The Separation row is there with an order of
+// they stand for, as the PSG count's do ("Global setting (Machine spec)", "Machine spec
+// (Mono)"), the values after them plain; under the first, the PSG sheet notes the result. The Separation row is there with an order of
 // its own, a button back to the Sound page only with something to go back from; and the
 // Sound page's groups say how many machines override them, this one as its lists have it.
 void SetupWin::sndOwnShow() {
@@ -690,14 +690,21 @@ void SetupWin::sndOwnShow() {
 	int glay = getRFIData(cbPsgLay);
 	int gboard = getRFIData(cbBoard);
 	int heard = (glay == LAY_MACHINE) ? spec : glay;
-	QString gtxt = psg_lay_name(heard);
-	if (heard != AY_MONO) gtxt += QString(", %0%").arg(sldSep->value());
-	// "name - detail": the name bold, the detail grey (xTwoPartDelegate)
-	cbOwnLay->setItemText(0, tr("Global setting") + detail_sep + QString("(%0)").arg(gtxt));
-	cbOwnLay->setItemText(1, tr("Machine spec") + detail_sep + QString("(%0)").arg(psg_lay_name(spec)));
+	QString htxt = psg_lay_name(heard);
+	if (heard != AY_MONO) htxt += QString(", %0%").arg(sldSep->value());
+	// "name - detail": the name bold, the detail grey (xTwoPartDelegate). The first item's
+	// detail is the Sound page's pick, not what it gives this machine: "(ABC, 75%)" there is
+	// ABC for every machine, "(Machine spec)" each its own - what this one hears is the note's
+	QString spectxt = tr("Machine spec");
+	cbOwnLay->setItemText(0, tr("Global setting") + detail_sep
+		+ QString("(%0)").arg((glay == LAY_MACHINE) ? spectxt : htxt));
+	cbOwnLay->setItemText(1, spectxt + detail_sep + QString("(%0)").arg(psg_lay_name(spec)));
 	cbOwnBoard->setItemText(0, tr("Global setting") + detail_sep
-		+ QString("(%0)").arg(board_type_name((gboard == BOARD_MACHINE) ? sboard : gboard)));
-	cbOwnBoard->setItemText(1, tr("Machine spec") + detail_sep + QString("(%0)").arg(board_type_name(sboard)));
+		+ QString("(%0)").arg((gboard == BOARD_MACHINE) ? spectxt : board_type_name(gboard)));
+	cbOwnBoard->setItemText(1, spectxt + detail_sep + QString("(%0)").arg(board_type_name(sboard)));
+	// the Board filter has no note under it: what the first item gives is in its tooltip
+	cbOwnBoard->setItemData(0, tr("What the Sound page picks; By machine there:\nas this machine's board was made")
+		+ "\n" + tr("Result: %0").arg(board_type_name((gboard == BOARD_MACHINE) ? sboard : gboard)), Qt::ToolTipRole);
 	int lay = getRFIData(cbOwnLay);
 	bool was = (ownLayShown >= 0);
 	ownLayShown = lay;
@@ -705,14 +712,23 @@ void SetupWin::sndOwnShow() {
 	if (was && (lay < 0)) ownSepKept = sldOwnSep->value();
 	if ((lay >= 0) && !was) sldOwnSep->setValue((ownSepKept >= 0) ? ownSepKept : sldSep->value());
 	bool sep = (lay >= 0) && (lay != AY_MONO);
-	if (ownSepPair->isVisibleTo(ownSepPair->window()) != sep) {
-		ownSepName->setVisible(sep);
-		ownSepPair->setVisible(sep);
-		if (ownSepPair->window()->isVisible()) ownSepPair->window()->adjustSize();	// the sheet open: to its rows
+	// under the first item, what it gives this machine; any other item says it itself
+	bool note = (lay == SND_GLOBAL);
+	ownLayNote->setText(tr("Result: %0").arg(htxt) + ((glay == LAY_MACHINE) ? tr(" (machine spec)") : QString()));
+	bool moved = (ownSepPair->isVisibleTo(ownSepPair->window()) != sep)
+		|| (ownLayNote->isVisibleTo(ownLayNote->window()) != note);
+	ownSepName->setVisible(sep);
+	ownSepPair->setVisible(sep);
+	ownLayNote->setVisible(note);
+	if (ownNoteName) ownNoteName->setVisible(note);	// its empty name keeps a row too
+	if (moved && ownSepPair->window()->isVisible()) {	// the sheet open: to its rows
+		// the rows' layout first, or the sheet takes the size they had
+		for (QWidget* w = ownLayNote->parentWidget(); w; w = w->isWindow() ? NULL : w->parentWidget())
+			if (w->layout()) w->layout()->activate();
+		ownSepPair->window()->adjustSize();
 	}
 	btnOwnLay->setEnabled(lay != SND_GLOBAL);
 	btnOwnBoard->setEnabled(getRFIData(cbOwnBoard) != SND_GLOBAL);
-	ownLayNote->setText((lay == SND_GLOBAL) ? tr("Follows the global setting on the Sound page") : tr("This machine's own"));
 	// the notices: the others as their files have them, this one first as the lists have it
 	QList<xSndOwnRow> macs;
 	const xMachine* mac = xm_find(conf.macId);
@@ -875,10 +891,6 @@ void SetupWin::makeDevWidgets() {
 	QFont nfnt = ownLayNote->font();
 	nfnt.setItalic(true);
 	ownLayNote->setFont(nfnt);
-	// one line, as wide as the longer of its two texts: the sheet keeps its width as they swap
-	QFontMetrics nfm(nfnt);
-	ownLayNote->setMinimumWidth(qMax(nfm.horizontalAdvance(tr("Follows the global setting on the Sound page")),
-		nfm.horizontalAdvance(tr("This machine's own"))) + 2);
 	foreach(QComboBox* box, QList<QComboBox*>() << cbPsgCount << cbPsgType << cbPsgFrq) {
 		box->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
 		box->setMinimumContentsLength(8);
@@ -2986,7 +2998,7 @@ void SetupWin::buildDevices() {
 	psg.field(tr("Stereo"), fieldPair(cbOwnLay, btnOwnLay, false));
 	ownSepPair = fieldPair(sldOwnSep, labOwnSep, true);
 	ownSepName = psg.row(tr("Separation"), ownSepPair);
-	psg.row(QString(), ownLayNote);
+	ownNoteName = psg.row(QString(), ownLayNote);
 	devRow(grid, tr("PSG"), cbPsgCount, psg.body, "Machine: PSG");
 	devRow(grid, tr("DAC"), sdrvBox, NULL, NULL);
 	gsBox = devCombo(QStringList() << tr("None") << tr("Original") << tr("NeoGS"));	// MAC_GS_*
