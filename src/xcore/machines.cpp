@@ -267,6 +267,7 @@ static const struct {
 	{"psg.count", "sound"}, {"psg.type", "sound"}, {"psg.frq", "sound"},
 	{"psg.stereo", "sound"}, {"gs", "sound"},
 	{"saa", "sound"}, {"soundrive", "sound"}, {"beeper", "sound"}, {"beeper.mic", "sound"},
+	{"psg.layout", "sound"}, {"separation", "sound"}, {"board.filter", "sound"},
 	{"disk", "storage"}, {"ide", "storage"}, {"drives", "storage"},
 	{"divmmc", "storage"}, {"divmmc.ram", "storage"}, {"divmmc.eeprom", "storage"},
 	{"zcontroller", "storage"},
@@ -422,6 +423,9 @@ static void mac_defaults(xMachine& mac) {
 	mac.saa = 0;
 	mac.beepmic = 0;
 	mac.beepType = BEEP_LINE;
+	mac.snd.lay = SND_GLOBAL;
+	mac.snd.board = SND_GLOBAL;
+	mac.snd.sep = SND_GLOBAL;
 	mac.ulaplus = 0;
 	mac.ddpal = 0;
 	mac.romBanks = 4;
@@ -490,6 +494,10 @@ static void mac_apply(xMachine& mac, const QList<xMacLine>& lines) {
 			else if (nam == "saa") mac.saa = arg.b;
 			else if (nam == "beeper") mac.beepType = mac_word(beepTab, val, mac.beepType, id);	// a type gone: the one before
 			else if (nam == "beeper.mic") mac.beepmic = arg.b;
+			// the user's picks over Global, in their file only
+			else if (nam == "psg.layout") mac.snd.lay = xm_snd_lay_of(val);
+			else if (nam == "separation") mac.snd.sep = toLimits(arg.i, 0, 100);
+			else if (nam == "board.filter") mac.snd.board = xm_snd_board_of(val);
 		} else if (ln.sect == "storage") {
 			if (nam == "disk") mac.disk = mac_word(diskTab, val, DIF_NONE, id);
 			else if (nam == "ide") mac.ide = mac_word(ideTab, val, IDE_NONE, id);
@@ -538,6 +546,7 @@ static const char* const nextOwnKeys[] = {
 	"cpu.frq", "cpu.turbo", "contio", "contmem", "issue", "scrp.wait",
 	"geometry", "contPattern", "earlyTiming", "4t-border", "snow", "snow.crash", "floatbus", "ULAplus", "DDpal",
 	"psg.count", "psg.type", "psg.frq", "psg.stereo", "gs", "saa", "soundrive", "beeper", "beeper.mic",
+	"psg.layout", "separation", "board.filter",		// it follows Global: its stereo is its software's
 	"disk", "drives", "ide", "mouse.wheel", "joy", "joy.buttons", NULL
 };
 
@@ -1338,6 +1347,32 @@ void xm_set_sep(Computer* comp, int sep) {
 	comp->gs->sep = sep;
 }
 
+// What is heard: the running machine's own picks, Global where it has none. The Next
+// has none: its stereo is what its software set, and the rest follows Global
+void xm_snd_apply() {
+	Computer* comp = conf.zx;
+	if (!comp) return;
+	xSndPicks own = conf.snd.own;
+	if (comp->hw->id == HW_ZXNEXT) own.lay = own.board = own.sep = SND_GLOBAL;
+	conf.snd.vol.psgLay = (own.lay != SND_GLOBAL) ? own.lay : conf.snd.all.lay;
+	conf.snd.vol.board = (own.board != SND_GLOBAL) ? own.board : conf.snd.all.board;
+	xm_set_sep(comp, ((own.lay >= 0) && (own.sep >= 0)) ? own.sep : conf.snd.all.sep);
+}
+
+bool xm_snd_owns(const xSndPicks& p) {
+	return (p.lay != SND_GLOBAL) || (p.board != SND_GLOBAL);
+}
+
+QList<xMachine> xm_snd_own_list() {
+	QList<xMachine> res;
+	foreach(xMachine mac, xm_list()) {
+		if (mac.id == conf.macId) mac.snd = conf.snd.own;	// its file is written on Apply
+		HardWare* hw = findHardware(mac.hw.c_str());
+		if (hw && (hw->id != HW_ZXNEXT) && xm_snd_owns(mac.snd)) res << mac;
+	}
+	return res;
+}
+
 static void mac_set_psg(Computer* comp, int count, int type, double frq, int stereo) {
 	aymChip* psg[3] = {comp->ts->chipA, comp->ts->chipB, comp->ts->chipC};
 	for (int i = 0; i < 3; i++) {
@@ -1510,6 +1545,8 @@ static void mac_from_def(const xMachine* mac) {
 	comp->joy->extbuttons = ((mac->joy == MAC_JOY_KEMPSTON8) && hw_kempston8(comp->hw)) ? 1 : 0;
 	comp->keyb->pcmode = mac->scantab;
 	conf.layName = mac->geometry;
+	conf.snd.own = mac->snd;
+	xm_snd_apply();
 }
 
 // the RAM size a machine comes up with, before it is loaded: the value it has
@@ -1752,6 +1789,38 @@ int xm_beep_named(const std::string& name, int def) {return mac_word(beepTab, na
 const char* xm_lay_name(int lay) {return mac_word_name(stereoTab, lay);}
 int xm_lay_named(const std::string& name, int def) {return mac_word(stereoTab, name, def, NULL);}
 
+// a machine's own picks in its file: spec is the machine's own psg.stereo and beeper
+// type, an order or a type is a value, global (never written) is none
+const char* xm_snd_lay_key(int lay) {
+	if (lay == SND_GLOBAL) return "global";
+	if (lay == LAY_MACHINE) return "spec";
+	return mac_word_name(stereoTab, lay);
+}
+
+int xm_snd_lay_of(const std::string& val) {
+	if (val == "spec") return LAY_MACHINE;
+	int lay = mac_word(stereoTab, val, SND_GLOBAL, NULL);
+	if ((lay == SND_GLOBAL) && (val != "global"))
+		xlog(XLG_CONF, XLL_WARN, "psg.layout: no layout '%s', Global", val.c_str());
+	return lay;
+}
+
+const char* xm_snd_board_key(int board) {
+	if (board == SND_GLOBAL) return "global";
+	if (board == BOARD_MACHINE) return "spec";
+	if (board == BEEP_LINE) return "off";
+	return mac_word_name(beepTab, board);
+}
+
+int xm_snd_board_of(const std::string& val) {
+	if (val == "spec") return BOARD_MACHINE;
+	if (val == "off") return BEEP_LINE;
+	int type = mac_word(beepTab, val, SND_GLOBAL, NULL);
+	if ((type == SND_GLOBAL) && (val != "global"))
+		xlog(XLG_CONF, XLL_WARN, "board.filter: no type '%s', Global", val.c_str());
+	return type;
+}
+
 // is this named romset the machine's own set under another name?
 
 static bool mac_same_roms(const xRomset* rs, const xRomset* set) {
@@ -1813,6 +1882,11 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put_yn(out, "saa", comp->saa->enabled, mac->saa);
 	mac_put(out, "beeper", mac_word_name(beepTab, comp->beepType), mac_word_name(beepTab, mac->beepType));
 	mac_put_yn(out, "beeper.mic", comp->beep->mic, mac->beepmic);
+	// the user's own over Global: none ships, so any is written
+	mac_put(out, "psg.layout", std::string(xm_snd_lay_key(conf.snd.own.lay)), std::string(xm_snd_lay_key(mac->snd.lay)));
+	if (conf.snd.own.lay >= 0)		// an order of its own: its separation with it
+		mac_put(out, "separation", conf.snd.own.sep, mac->snd.sep);
+	mac_put(out, "board.filter", std::string(xm_snd_board_key(conf.snd.own.board)), std::string(xm_snd_board_key(mac->snd.board)));
 	mac_put(out, "soundrive", mac_word_name(sdrvTab, comp->sdrv->type), mac_word_name(sdrvTab, mac->soundrive));
 	mac_put(out, "disk", mac_word_name(diskTab, comp->dif->cfg), mac_word_name(diskTab, mac->disk));
 	int drives = 0;
@@ -1962,6 +2036,29 @@ void xm_reset_over() {
 	xm_set(id);
 }
 
+// "All to Global": every machine's own sound picks go, the rest of its file stays
+
+void xm_snd_all_global() {
+	int done = 0;
+	foreach(QString qid, macUsr.keys()) {
+		const QList<xMacLine>& lines = macUsr.value(qid).lines;
+		QList<xMacLine> kept;
+		foreach(const xMacLine& ln, lines) {
+			if ((ln.sect != "sound") || ((ln.name != "psg.layout") && (ln.name != "separation")
+				&& (ln.name != "board.filter"))) kept << ln;
+		}
+		if (kept.size() == lines.size()) continue;
+		std::string id = qid.toLocal8Bit().data();
+		if (kept.isEmpty()) QFile::remove(xm_user_path(id));
+		else mac_write(id, kept);
+		done++;
+	}
+	conf.snd.own.lay = conf.snd.own.board = conf.snd.own.sep = SND_GLOBAL;
+	if (done) xm_load_all();
+	xm_snd_apply();
+	xlog(XLG_CONF, XLL_INFO, "sound picks of %i machine files dropped: every machine on Global", done);
+}
+
 // A config from before the machine files kept the same settings in
 // [MACHINE.<id>] blocks of config.conf. Read once, they are written out as
 // machine files - merged into a file the machine may already have.
@@ -2076,7 +2173,10 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 		comp->ts->chipC->stereo = arg.i;
 		comp->sndSeed = 1;
 	}
-	else if ((nam == "separation") || (nam == "psg.separation")) xm_set_sep(comp, arg.i);	// the old name: the PSG's
+	else if (nam == "psg.separation") {		// an old profile's: Global
+		conf.snd.all.sep = toLimits(arg.i, 0, 100);
+		xm_snd_apply();
+	}
 	else if (nam == "gs.reset") comp->gs->reset = arg.b;
 	else if (nam == "gs.stereo") comp->gs->stereo = arg.b ? GS_12_34 : GS_MONO;
 	else if (nam == "mouse.wheel") comp->mouse->hasWheel = arg.b;

@@ -853,6 +853,19 @@ enum {
 // the same id in machines/ of the config directory patching it - and a file
 // with an id of its own being a machine of its own. See docs/machine-format.md.
 
+// The sound picks that are a matter of taste, Global on the Sound page and a machine's
+// own over it: the PSG layout (LAY_MACHINE: the machine spec, its psg.stereo, or an AY_*),
+// the board filter (BOARD_MACHINE: the spec, its beeper type, or a BEEP_*) and the
+// separation, a machine's own only with an AY_* of its own. SND_GLOBAL in a machine's:
+// it takes the Global one.
+#define SND_GLOBAL	-2
+
+typedef struct {
+	int lay;
+	int board;
+	int sep;		// 0..100; a machine's SND_GLOBAL as the others
+} xSndPicks;
+
 typedef struct {
 	std::string id;
 	std::string name;
@@ -891,6 +904,7 @@ typedef struct {
 	int psgType;			// SND_*
 	double psgFrq;			// MHz, 0 = the chip type's own clock
 	int psgStereo;			// AY_*
+	xSndPicks snd;			// the user's own sound picks for it, SND_GLOBAL where none
 	int soundrive;			// SDRV_*
 	int disk;			// DIF_*
 	int ide;			// IDE_*
@@ -934,6 +948,15 @@ const xMachine* xm_find(std::string);		// as the user has it
 const xMachine* xm_stock(std::string);		// as it ships
 const xMachine* xm_find_by_core(std::string);
 int xm_ram_size(std::string, int* mask = NULL);
+// the sound picks a machine has over Global (conf.snd)
+void xm_snd_apply();			// the running machine heard with its own picks over Global
+bool xm_snd_owns(const xSndPicks&);	// a machine's picks hold one of its own
+QList<xMachine> xm_snd_own_list();	// the machines with sound picks of their own, the running one as it is now
+void xm_snd_all_global();		// every machine's own sound picks dropped
+const char* xm_snd_lay_key(int);	// a machine file's psg.layout value and back
+int xm_snd_lay_of(const std::string&);
+const char* xm_snd_board_key(int);	// ...its board.filter
+int xm_snd_board_of(const std::string&);
 
 // layouts
 
@@ -1185,7 +1208,9 @@ struct xConfig {
 		int latency;		// ms of sound kept in the ring buffer (see sound.h)
 		int latauto;		// let the emulator find that number by itself
 		int filter;		// filter down to the output rate, else just average
-		sndVolume vol;
+		sndVolume vol;		// what is mixed: its board and psgLay those heard (xm_snd_apply)
+		xSndPicks all;		// Global, the Sound page's, what config.conf keeps
+		xSndPicks own;		// the running machine's own, what its file keeps
 		FILE* wavfile;
 	} snd;
 	struct {

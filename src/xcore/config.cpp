@@ -419,8 +419,9 @@ void saveConfig() {
 	fprintf(cfile, "\n[SOUND]\n\n");
 	fprintf(cfile, "enabled = %s\n", YESNO(conf.snd.enabled));
 	fprintf(cfile, "dc.filter = %s\n", YESNO(conf.snd.vol.dc));
-	fprintf(cfile, "board.filter = %s\n", snd_board_name(conf.snd.vol.board));
-	fprintf(cfile, "psg.layout = %s\n", (conf.snd.vol.psgLay < 0) ? "machine" : xm_lay_name(conf.snd.vol.psgLay));
+	// Global: a machine's own picks are in its file
+	fprintf(cfile, "board.filter = %s\n", snd_board_name(conf.snd.all.board));
+	fprintf(cfile, "psg.layout = %s\n", (conf.snd.all.lay < 0) ? "machine" : xm_lay_name(conf.snd.all.lay));
 	fprintf(cfile, "soundsys = %s\n", sndOutput->name);
 	fprintf(cfile, "rate = %i\n", conf.snd.rate);
 	fprintf(cfile, "rate_auto = %s\n", YESNO(conf.snd.rateauto));
@@ -438,7 +439,7 @@ void saveConfig() {
 
 	// psg.frq and psg.stereo belong to the machine now and are not written here
 	// any more; an older config still sets them, the once
-	fprintf(cfile, "separation = %i\n", conf.zx->ts->chipA->sep);	// the GS's as well
+	fprintf(cfile, "separation = %i\n", conf.snd.all.sep);	// the GS's as well
 	fprintf(cfile, "gs.reset = %s\n", YESNO(conf.zx->gs->reset));
 	fprintf(cfile, "gs.stereo = %i\n", conf.zx->gs->stereo);
 	fprintf(cfile, "gs.neogs.rom = %s\n", conf.ngsFile.c_str());
@@ -1068,8 +1069,12 @@ void loadConfig() {
 	conf.dbg.font = QFont("DejaVu Sans Mono", 9);		// default, shipped in the resources
 // init volumes
 	conf.snd.vol.dc = 1;		// most devices idle at a level, not at zero
-	conf.snd.vol.board = BEEP_LINE;		// the Board filter: Off, the machines' types there to pick
-	conf.snd.vol.psgLay = LAY_MACHINE;
+	conf.snd.all.board = BEEP_LINE;		// the Board filter: Off, the machines' types there to pick
+	conf.snd.all.lay = LAY_MACHINE;
+	conf.snd.all.sep = 75;
+	conf.snd.own.lay = conf.snd.own.board = conf.snd.own.sep = SND_GLOBAL;
+	conf.snd.vol.board = conf.snd.all.board;	// xm_snd_apply's, once a machine is up
+	conf.snd.vol.psgLay = conf.snd.all.lay;
 	conf.snd.vol.master = 100;
 	conf.snd.vol.beep = 80;
 	conf.snd.vol.tape = 80;
@@ -1484,8 +1489,8 @@ void loadConfig() {
 				case SECT_SOUND:
 					if (pnam=="enabled") conf.snd.enabled = arg.b;
 					if (pnam=="dc.filter") conf.snd.vol.dc = arg.b;
-					if (pnam=="board.filter") conf.snd.vol.board = snd_board_named(pval);
-					if (pnam=="psg.layout") conf.snd.vol.psgLay = (pval == "machine") ? LAY_MACHINE : xm_lay_named(pval, LAY_MACHINE);
+					if (pnam=="board.filter") conf.snd.all.board = snd_board_named(pval);
+					if (pnam=="psg.layout") conf.snd.all.lay = (pval == "machine") ? LAY_MACHINE : xm_lay_named(pval, LAY_MACHINE);
 					if (pnam=="soundsys") soutnam = pval;
 					// a config written by an older build can name a rate this
 					// one no longer offers; sndInit's default stands instead
@@ -1509,8 +1514,8 @@ void loadConfig() {
 					// psg.frq and psg.stereo are read no more: an old global value
 					// would land on whatever machine is up and stay there as its own
 					// one separation now: an older config's psg.separation is it, its gs.separation is dropped
-					if ((pnam=="separation") || (pnam=="psg.separation")
-						|| (pnam=="gs.reset") || (pnam=="gs.stereo")) xm_defer(pnam, pval);
+					if ((pnam=="separation") || (pnam=="psg.separation")) conf.snd.all.sep = getRanged(arg.s, 0, 100);
+					if ((pnam=="gs.reset") || (pnam=="gs.stereo")) xm_defer(pnam, pval);
 					if (pnam=="gs.separation") xlog(XLG_CONF, XLL_INFO, "gs.separation %s: one separation now, the PSG's", pval.c_str());
 					break;
 				case SECT_TOOLS:
