@@ -17,8 +17,8 @@ before that point is upstream's history and is not repeated here.
   preset makes a look of your own.
 
 - **Scanlines**, beside None in the Display list: plain scanlines with a hard or a soft dot,
-  by Depth, Gap width and Softness. Each is a line of the picture at any window size, and
-  the picture keeps its brightness.
+  by Depth (past 1 a black band), Gap width, Keep brightness and Softness. Each is a line of
+  the picture at any window size, and the picture keeps its brightness unless asked not to.
 
 - **CRT looks**: Home TV, Home TV (composite), RGB monitor, PVM, Tridot and Xpixie in the
   Display list. One tube in stages that switch off - beam, divergence, mask, glow,
