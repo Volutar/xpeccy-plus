@@ -186,6 +186,8 @@ void ide_set_type(IDE*, int);
 void ide_set_out(IDE*, int);	// out of the machine and back; the images stay
 void ideSetImage(IDE*,int,const char*);
 void ideSetFolder(IDE*,int,const char*,vFat*);
+void ideSetUnread(IDE*,int,const char*);	// a folder's path kept, nothing read
+int ide_unread(IDE*,int);			// ...and is one such
 ATAPassport ideGetPassport(IDE*,int);
 
 unsigned short ataRd(ATADev*, int);

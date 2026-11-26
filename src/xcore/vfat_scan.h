@@ -27,7 +27,9 @@ bool sdc_launch_in(SDCard*);		// the card in is the one sdc_mount_launch made
 QString vfat_real_dir(const QString&);	// where a folder really is, junctions followed, to compare
 
 void ide_mount(IDE*, int, const QString&);	// same for one IDE device (IDE_MASTER / IDE_SLAVE)
-void ide_remount(IDE*);
+void ide_remount(IDE*);			// as ide_mount_later, each device's path again
+void ide_mount_later(IDE*, int, const QString&);	// a folder not read yet on a machine with no IDE (ideSetUnread)
+void ide_read_pending(IDE*);		// an interface set: what was kept unread is read now
 
 // a folder changed on the host goes into the volume serving it, the machine running on: empty
 // when done (*r says what changed), else why not, for the user
