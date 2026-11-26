@@ -93,6 +93,10 @@ before that point is upstream's history and is not repeated here.
 
 ### Changed
 
+- **Starts faster**: the first frame comes about 0.1 s sooner, and a folder opened as a hard
+  disk or a divMMC card is read only on a machine that has that drive - with one, the
+  ZX Spectrum Next starts about 0.3 s sooner.
+
 - **Shaders start without a wait**: a compiled shader is kept between runs, and one that has
   to be compiled is built beside the picture. A shader that does not compile stays chosen:
   the button Error: check the log beside the Shader list of Options > Video has the first
