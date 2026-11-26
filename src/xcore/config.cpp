@@ -1073,8 +1073,6 @@ void loadConfig() {
 	conf.snd.all.lay = LAY_MACHINE;
 	conf.snd.all.sep = 75;
 	conf.snd.own.lay = conf.snd.own.board = conf.snd.own.sep = SND_GLOBAL;
-	conf.snd.vol.board = conf.snd.all.board;	// xm_snd_apply's, once a machine is up
-	conf.snd.vol.psgLay = conf.snd.all.lay;
 	conf.snd.vol.master = 100;
 	conf.snd.vol.beep = 80;
 	conf.snd.vol.tape = 80;

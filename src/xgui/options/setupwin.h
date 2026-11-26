@@ -31,8 +31,6 @@
 #include "ui_layedit.h"
 
 class QRadioButton;
-class QPushButton;
-class xElideLabel;
 class QTextEdit;
 class QThread;
 
@@ -187,7 +185,7 @@ class SetupWin : public QDialog {
 		xSndPicks ownPicks();		// the picks as the lists stand
 		// the other machines with picks of their own, as their files have them (sndOthersRead),
 		// with their spec: psg.stereo and beeper
-		struct xSndOwnRow {std::string id; QString name; xSndPicks snd; int specLay; int specBoard;};
+		struct xSndOwnRow {QString name; xSndPicks snd; int specLay; int specBoard;};
 		QList<xSndOwnRow> sndOthers;
 		void sndOthersRead();
 		// the Sound page's Stereo and Filters groups (makeSoundGroup)
@@ -196,13 +194,13 @@ class SetupWin : public QDialog {
 		QCheckBox* chkSndOn;	// Emulate sound, over the page's groups
 		xSlider* sldSep;
 		QLabel* labSep;
-		// at the foot of each (0 Stereo, 1 Filters): how many machines override it, and
-		// Apply to all machines, greyed with none
+		// at the foot of each (SND_GRP_*): how many machines override it, and Apply to all
+		// machines, greyed with none
 		QWidget* ownRow[2] = {nullptr, nullptr};	// made after the machine's lists, which call on them
 		QLabel *ownMark[2], *ownLine[2];
-		QPushButton* btnAllGlobal[2];
+		xSideButton* btnApplyAll[2];
 		QStringList sndOwnTips[2];	// each of them and what it has of its own
-		void sndAllGlobal(int grp);	// Apply to all machines, asked first
+		void sndApplyAll(int grp);	// Apply to all machines, asked first
 		int psgFrqMul = 1;	// the chip's clock against the AY's the setting holds
 		// the machine's devices, on the Machine page
 		QComboBox* gsBox;

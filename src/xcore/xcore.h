@@ -853,11 +853,8 @@ enum {
 // the same id in machines/ of the config directory patching it - and a file
 // with an id of its own being a machine of its own. See docs/machine-format.md.
 
-// The sound picks that are a matter of taste, Global on the Sound page and a machine's
-// own over it: the PSG layout (LAY_MACHINE: the machine spec, its psg.stereo, or an AY_*),
-// the board filter (BOARD_MACHINE: the spec, its beeper type, or a BEEP_*) and the
-// separation, a machine's own only with an AY_* of its own. SND_GLOBAL in a machine's:
-// it takes the Global one.
+// Sound picks, Global (the Sound page's) or a machine's own: lay LAY_MACHINE or AY_*, board
+// BOARD_MACHINE or BEEP_*, sep with an AY_* of its own only; SND_GLOBAL: none of its own
 #define SND_GLOBAL	-2
 
 typedef struct {
@@ -950,14 +947,8 @@ const xMachine* xm_find_by_core(std::string);
 int xm_ram_size(std::string, int* mask = NULL);
 // the sound picks a machine has over Global (conf.snd)
 void xm_snd_apply();			// the running machine heard with its own picks over Global
-bool xm_snd_owns(const xSndPicks&);	// a machine's picks hold one of its own
-QList<xMachine> xm_snd_own_list();	// the machines with sound picks of their own, the running one as it is now
-enum {SND_OWN_LAY = 1, SND_OWN_BOARD = 2};	// xm_snd_all_global's groups
-void xm_snd_all_global(int what);	// every machine's own picks of the groups dropped: SND_OWN_LAY its psg.layout and separation, SND_OWN_BOARD its board.filter
-const char* xm_snd_lay_key(int);	// a machine file's psg.layout value and back
-int xm_snd_lay_of(const std::string&);
-const char* xm_snd_board_key(int);	// ...its board.filter
-int xm_snd_board_of(const std::string&);
+enum {SND_GRP_LAY = 0, SND_GRP_BOARD};	// the Sound page's groups: Stereo (layout, separation), Filters (board filter)
+void xm_snd_drop_own(int grp);		// every machine's own picks of a group dropped from its file
 
 // layouts
 
