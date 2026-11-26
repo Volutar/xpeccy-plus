@@ -19,8 +19,8 @@
 # Light is linear inside and stored gamma-encoded between the passes, so an 8-bit target
 # holds it as well as a float one. What the scanlines and the mask take is given back,
 # as far as a pixel can give: a line too bright for that loses light, or with Bloom is
-# drawn the plainer and keeps it. Keep brightness turned down gives back less, as the
-# older looks did: a darker picture with deep gaps on bright things too.
+# drawn the plainer and keeps it. Keep brightness turned down gives back less: a darker
+# picture with deep gaps on bright things too.
 #
 # The two-pass beam follows Hyllian's CRT (MIT), the mask layouts Timothy Lottes's and
 # hunterk's (public domain). The beams' parting towards the screen's edges is Volutar's.
@@ -143,9 +143,8 @@ more AFTERR AFTERG AFTERB
 # The masks' fineness is the tubes' own: triads across the screen over the 352 dots of a
 # full frame - a 14" TV's 0.65 mm slot mask 1.2, the 1084's 0.42 mm one 1.9, a 14" PVM's
 # 0.25 mm grille 3.0 (Philips data handbook T08 of 1986, Sony's PVM brochures). Tridot
-# is the older look of the name: a dot mask three screen pixels a triad at any scale, a
-# thin beam, half the light given back - as dark as the old crisp file, its gaps and its
-# mask as deep on white
+# is a dot mask three screen pixels a triad at any scale, a thin sharp beam with deep
+# gaps, and half the light the two take given back
 preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, SPOT 0.5, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, VIGN 0.25
 preset "Home TV (composite)": INPUT 1, MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, SPOT 0.5, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, VIGN 0.25
 preset "RGB monitor": MASK 2, MASKS 0.45, PITCH 1.9, SCAN 0.9, WIDTH 0.8, FOCUS 0.5, SPOT 0.5, GROW 0.15, DIVERGE 0.2, GLOW 0.1, CURVE 0.04, VIGN 0.1
@@ -707,17 +706,20 @@ fragment:
 		return r * (1.0 - max(depth - 1.0, 0.0));
 	}
 
-	// What a line's bell is divided by: its own area, the light of a line with no gap -
-	// or, with Keep brightness turned down, nearer 1: the gap's light is not given back
-	float areaOf(float reach, float width) {
-		float own = reach * (2.0 - width);
+	// What a share of the light left (the mask's mean, a bell's area) is given back by:
+	// all of it, or with Keep brightness turned down, nearer 1 - less given back
+	float keptOf(float own) {
 		return (KEEP >= 1.0) ? own : mix(1.0, own, KEEP);
 	}
 
+	// What a line's bell is divided by: its own area, the light of a line with no gap
+	float areaOf(float reach, float width) {
+		return keptOf(reach * (2.0 - width));
+	}
+
 	// ...and what a line at the centre mid gives the stretch from a to b, lines: amp is
-	// the light it has to bring, area what its bell's top is divided by. One shape for the
-	// line's three beams
-	vec3 bell(vec3 a, vec3 b, vec3 mid, vec3 amp, float reach, float width, float area) {
+	// the light it has to bring. One shape for the line's three beams
+	vec3 bell(vec3 a, vec3 b, vec3 mid, vec3 amp, float reach, float width) {
 		float core = reach * (1.0 - width);
 		float skirt = reach * width;
 		float rate = 1.0 / max(skirt, 0.0001);
@@ -727,9 +729,8 @@ fragment:
 		vec3 sb = sign(b - mid);
 		vec3 la = bellTo(ta, core, skirt, rate);
 		vec3 lb = bellTo(tb, core, skirt, rate);
-		// what the gaps take is given back: the bell's area is the line's light (area is
-		// the bell's own, or less of it with Keep brightness turned down)
-		vec3 h = amp / area;
+		// what the gaps take is given back: the bell's area is the line's light
+		vec3 h = amp / areaOf(reach, width);
 		if (all(lessThanEqual(h, vec3(1.0)))) return h * (sb * lb - sa * la);
 		// A line that would pass more than full light passes that: its top is cut flat
 		// as far as cut from its centre, and the line is the wider for it. (How far
@@ -869,8 +870,9 @@ fragment:
 		bool rows = flat_ && (abs(scale - per) * spotSize.y < 0.5);
 		// Two rows a line are the two halves of its bell, lit alike whatever its shape: there
 		// the lines go half a row down, so one row is a line's middle and the next its gap -
-		// and the mask with them, so a slot's bridge stays on a line's middle
-		float half_ = (rows && (per == 2.0)) ? 0.5 : 0.0;
+		// and the mask with them, so a slot's bridge stays on a line's middle. With no
+		// scanlines the rows stay: two rows a line, the picture as it is
+		float half_ = (rows && (per == 2.0) && (SCAN > 0.0)) ? 0.5 : 0.0;
 
 		// The mask: counted in the window's pixels, or in the picture's own where it is
 		// to bend with the glass - by itself where a pixel of its layout is two screen
@@ -912,13 +914,18 @@ fragment:
 		vec3 a = top + off;
 		vec3 b = bottom + off;
 		// the two lines it stands between; a pixel over half a line tall (a small
-		// picture) may reach a third one's skirt: the line it stands on and both beside
+		// picture), or one on a line's middle with the lines half a row down, may reach
+		// a third one's skirt: the line it stands on and both beside
 		vec3 here = 0.5 * (a + b);
-		bool tall = (foot > 0.5);
+		bool tall = (foot > 0.5) || (half_ > 0.0);
 		vec3 first = tall ? floor(here) - 1.0 : floor(here - 0.5);
 		// under a roll the lines move and the picture stays: each takes what the
 		// picture has where the pixel stands
 		vec3 still = floor(here + roll);
+		// what the mask takes is given back - all of it, or as much as Keep brightness
+		// says: with none, the picture is as much darker as the mask and the gaps take
+		float kept = keptOf(mean);
+		vec3 pass0 = through / kept;
 		vec3 sum = vec3(0.0);
 		for (int k = 0; k < (tall ? 3 : 2); k++) {
 			vec3 row = first + float(k);
@@ -926,10 +933,7 @@ fragment:
 			// a bright line fills more of its gap
 			float depth = clamp(deep * (1.0 - GROW * max(col.r, max(col.g, col.b))), 0.0, 1.5);
 			float reach = reachOf(depth, width);
-			// what the mask takes is given back - all of it, or as much as Keep brightness
-			// says: with none, the picture is as much darker as the mask and the gaps take
-			float kept = (KEEP >= 1.0) ? mean : mix(1.0, mean, KEEP);
-			vec3 pass_ = through / kept;
+			vec3 pass_ = pass0;
 			// Bloom: a line brighter than 1 / peak cannot pass its light through the bell
 			// and the mask; it gets a shallower gap and a fainter mask by what does not fit
 			if (BLOOM > 0.0) {
@@ -939,7 +943,7 @@ fragment:
 				pass_ = mix(pass_, vec3(1.0), plain);
 				reach = reachOf(depth * (1.0 - max(plain.r, max(plain.g, plain.b))), width);
 			}
-			sum += bell(a, b, row + 0.5, col * pass_, reach, width, areaOf(reach, width));
+			sum += bell(a, b, row + 0.5, col * pass_, reach, width);
 		}
 		vec3 lit = max(sum / (bottom - top), vec3(0.0));
 
