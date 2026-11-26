@@ -178,7 +178,9 @@ there. The list has up to four parts:
 
 A look with settings has a window of them: **View > Display > Settings...**, or the
 {icon}`settings` button beside the list in **Options**. **Scanlines** has **Depth** - how
-dark the gap between two lines is - **Gap width** and **Softness**. The picture shows every
+dark the gap between two lines is, past 1 a thicker black band - **Gap width**, **Keep
+brightness** - turned down, less of the light the gaps take is given back, and bright
+things keep deep gaps too - and **Softness**. The picture shows every
 move at once, and what you set stays with the look: pick another and come back, and it is
 as you left it.
 
