@@ -112,6 +112,15 @@ int ev_to_keyid(QKeyEvent* ev, bool kgrab, bool* fallback = nullptr) {
 	return keyid;
 }
 
+// the physical key, the same in its press and its release whatever the modifiers
+static int view_key(QKeyEvent* ev) {
+#ifdef __APPLE__
+	return ev->nativeVirtualKey();
+#else
+	return ev->nativeScanCode() ? ev->nativeScanCode() : ev->nativeVirtualKey();
+#endif
+}
+
 // a key held only with others, or one that only switches a light: not a key to resume by
 static bool key_lone(QKeyEvent* ev) {
 	switch (ev->key()) {
@@ -137,9 +146,11 @@ void MainWin::keyPressEvent(QKeyEvent* ev) {
 		mac_mods_sync(true);
 #endif
 	releaseChord(ev, true);
-	if (scrView.on && !ev->isAutoRepeat() && !key_lone(ev) && (ev_to_keyid(ev, false) < 0x10000)) {
+	if (!ev->isAutoRepeat()) scrView.keys.remove(view_key(ev));	// its release was lost
+	if (scrView.on && !ev->isAutoRepeat() && !key_lone(ev)
+			&& (hotkey_for(hotkey_key(ev), ev->modifiers(), false, nullptr) < 0)) {
 		viewEnd();
-		scrView.keys.insert(ev->key());
+		scrView.keys.insert(view_key(ev));
 		return;
 	}
 	if (padKey(ev, true)) return;
@@ -232,8 +243,6 @@ void MainWin::machineKey(Computer* comp, keyEntry* kent, bool down) {
 		emit s_keywin_host(host_zx(comp, kent), down, right);
 }
 
-// cmd: a hotkey asked for from a menu, which a grabbed keyboard does not take;
-// ev: the key's own event, for what it typed (key_typed)
 // what can be done over a screen viewed: the look of the picture, shots of it, windows
 static bool view_keeps(int xkey) {
 	switch (xkey) {
@@ -249,6 +258,8 @@ static bool view_keeps(int xkey) {
 	return false;
 }
 
+// cmd: a hotkey asked for from a menu, which a grabbed keyboard does not take;
+// ev: the key's own event, for what it typed (key_typed)
 void MainWin::xkey_press(int xkey, bool cmd, QKeyEvent* ev) {
 	if (scrView.on && (xkey >= 0x10000) && !view_keeps(xkey)) viewEnd();
 	keyEntry kent = getKeyEntry(xkey);
@@ -599,7 +610,7 @@ void MainWin::xkey_press(int xkey, bool cmd, QKeyEvent* ev) {
 }
 
 void MainWin::keyReleaseEvent(QKeyEvent *ev) {
-	if (scrView.keys.remove(ev->key())) return;	// it ended a view
+	if (!ev->isAutoRepeat() && scrView.keys.remove(view_key(ev))) return;	// it ended a view
 	if (ev->isAutoRepeat()) return;
 	// any key up lets the NMI button go: its own may come up named otherwise, its modifier first
 	if (nmiKeyDown) nmi_let_go();

@@ -665,6 +665,7 @@ MainWin::MainWin(QMainWindow* frm) {
 	menuWatch(userMenu);
 	connect(qApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState st) {
 		bool away = (st != Qt::ApplicationActive);
+		if (away) scrView.keys.clear();	// their releases come elsewhere
 		if (away == bool(conf.emu.pause & PR_FOCUS)) return;
 		if (away && !conf.pauseInactive) return;
 		pause(away, PR_FOCUS);
@@ -716,6 +717,7 @@ MainWin::MainWin(QMainWindow* frm) {
 }
 
 MainWin::~MainWin() {
+	x_state_hook = nullptr;
 #ifdef __APPLE__
 	mac_mod_win = nullptr;		// the monitor outlives this window
 #endif
@@ -2806,7 +2808,7 @@ void MainWin::screenShot(bool clip) {
 		case SCR_SCR: fext = "scr"; break;
 		case SCR_HOB: fext = "$C"; break;
 	}
-	if (((frm == SCR_SCR) || (frm == SCR_HOB)) && !shot_zx_screen(comp)) {
+	if (((frm == SCR_SCR) || (frm == SCR_HOB)) && !scrView.on && !shot_zx_screen(comp)) {
 		scrCounter = 0;		// a series would only say it again
 		setMessage(" not the ZX screen: no SCR ");
 		return;
@@ -4478,8 +4480,12 @@ void MainWin::optResize() {
 	vsyncProbe();		// before updateWindow: VSync keeps fullscreen composed
 	updateWindow();
 	// bufimg holds the last whole frame until a new layout; a redraw steps the machine on
-	if (hasPicture && ((bytesPerLine != bplWas) || (bufSize != sizeWas)))
-		renderFrame();		// nothing to clean up before the first
+	if (hasPicture && ((bytesPerLine != bplWas) || (bufSize != sizeWas))) {
+		if (scrView.on)
+			viewDraw();
+		else
+			renderFrame();		// nothing to clean up before the first
+	}
 	presentFrame();
 }
 
@@ -4615,7 +4621,7 @@ static void view_prep(Computer* comp, void* arg) {
 
 bool MainWin::viewDraw() {
 	Computer* comp = conf.zx;
-	if (!scrView.on || !comp || comp->flgDBG || rewind_active()) return false;
+	if (!scrView.on || !comp || comp->flgDBG || pause_has(PR_DEZOG) || rewind_active()) return false;
 	emu_lock();
 	int show = comp->vid->flashShow;
 	int tape = comp->tape->on;		// the tape stands: its signal is not in the state
@@ -4654,6 +4660,7 @@ bool MainWin::viewOpen(const QString& path) {
 	scrView.pal = pal;
 	scrView.phase = 0;
 	pause(true, PR_VIEW);
+	if (pal && (comp->hw->id == HW_ZXNEXT)) setMessage(" the screen without its ULA+ palette ");
 	xlog(XLG_FILE, XLL_INFO, "view ZX screen: %s", path.toLocal8Bit().constData());
 	// from the event loop: at start-up the machine is not stepped before it is up
 	QTimer::singleShot(0, this, [this]() {

@@ -87,13 +87,13 @@ static struct boardHooks {
 	boardHooks() {next_board_reset = x_board_reset;}
 } boardHooksSet;
 
+std::function<void()> x_state_hook;
+
 // What was kept for the machine as it stood goes when it is reset, switched or
 // loaded over: the fast-loading wind back would bring the old state back,
 // autostart would go on typing into whatever came instead, and the cheats that
 // were on are gone with the memory they were in. autostart_arm()
 // resets through x_user_reset() too, before it arms, so it does not cancel itself.
-std::function<void()> x_state_hook;
-
 void x_state_replaced() {
 	x_input_bump();
 	snd_drop();		// the old machine's sound

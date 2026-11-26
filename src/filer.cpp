@@ -1683,8 +1683,9 @@ QStringList media_candidates(Computer* comp, const QString& archive, int id, int
 	QStringList screens;
 	for (const arcEntry& entry : *list) {
 		if (entry.folder || (arc_beside_image(entry.name) && !screen) || (arc_type(entry.name) != ARC_NONE)) continue;
-		// a Hobeta screen by its size, the header read only when it is opened
-		const bool hob = entry.name.endsWith(".$c", Qt::CaseInsensitive) && (entry.size == HOB_HEAD_SIZE + SCR_SIZE);
+		// a Hobeta screen as any file or a screen opens it: its size, then its header
+		const bool hob = ((id == FG_ALL) || screen) && entry.name.endsWith(".$c", Qt::CaseInsensitive)
+			&& (entry.size == HOB_HEAD_SIZE + SCR_SIZE) && file_hobeta_screen(arc_join(archive, entry.name));
 		if (screen) {
 			if (hob || entry.name.endsWith(".scr", Qt::CaseInsensitive)) res.append(entry.name);
 			continue;

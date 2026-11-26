@@ -85,7 +85,7 @@ int scr_put(Computer* comp, const unsigned char* data, int pal, int view) {
 		ula->active = pal;
 		zxSetUlaPalete(comp);
 		ula->palchan = 0;
-	} else if (pal) {
+	} else if (pal && !view) {
 		comp->msg = " the screen without its ULA+ palette ";
 	}
 	// the border as a cpu OUT sets it, the beeper and MIC as they are

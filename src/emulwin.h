@@ -7,6 +7,7 @@
 #include <QMenuBar>
 #include <QStatusBar>
 #include <QToolBar>
+#include <atomic>
 #include <QSet>
 #include <QTimer>
 #include <QWidget>
@@ -127,7 +128,7 @@ class MainWin;
 // a screen file shown over the paused machine (MainWin::viewOpen)
 struct xScrView {
 	bool on = false;
-	bool shown = false;		// drawn once: what the machine does now ends it
+	std::atomic<bool> shown{false};	// drawn once: what the machine does now ends it
 	QByteArray data;		// scr_read's
 	int pal = 0;
 	int phase = 0;		// the FLASH shown
