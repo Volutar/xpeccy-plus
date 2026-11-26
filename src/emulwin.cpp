@@ -1574,6 +1574,13 @@ void MainWin::d_frame() {
 	// no frame at normal speed until it is over, and frame_timer() shows
 	// nothing without this
 	hasPicture = 1;
+	if (scrView.on && scrView.waiting) {	// the first frame set the machine up: the view now
+		scrView.waiting = false;
+		viewStart();
+	} else if (scrView.shown) {	// a frame the machine finished as the view began: drawn over
+		viewDraw();
+		return;
+	}
 	if (conf.emu.fast) return;
 	upSwaps = -1;		// the texture the timer shows next is not this one
 	if (glw) {
@@ -4614,6 +4621,8 @@ static void view_prep(Computer* comp, void* arg) {
 	vid->flashShow = v->phase;
 	vid->nodraw = 0;			// fast mode and fast loading draw nothing
 	vid->nodrawNext = -1;
+	vid->still = 0;				// nor does a still frame (the Next's)
+	vid->stillOk = 0;
 	scr_put(comp, (const unsigned char*)v->data.constData(), v->pal, 1);
 	CPU* cpu = comp->cpu;
 	cpu->flgHALT = 1;
@@ -4631,6 +4640,7 @@ bool MainWin::viewDraw() {
 	const int show = comp->vid->flashShow;
 	const int nodraw = comp->vid->nodraw;
 	const int nodrawNext = comp->vid->nodrawNext;
+	if (scrView.under.isEmpty()) scrView.under = QByteArray((const char*)bufimg, bufSize);
 	const int tape = comp->tape->on;	// the tape stands: its signal is not in the state
 	comp->tape->on = 0;
 	const bool done = drawAhead(view_prep, &scrView);
@@ -4663,9 +4673,17 @@ bool MainWin::viewOpen(const QString& path) {
 	scrView.data = data;
 	scrView.pal = pal;
 	scrView.phase = 0;
-	pause(true, PR_VIEW);
 	xlog(XLG_FILE, XLL_INFO, "view ZX screen: %s", path.toLocal8Bit().constData());
-	// from the event loop: at start-up the machine is not stepped before it is up
+	// at start-up the machine is set up by its first frame (the Next powers on in it): the
+	// view waits for that one (d_frame)
+	scrView.waiting = !hasPicture;
+	if (!scrView.waiting) viewStart();
+	return true;
+}
+
+// held, then drawn from the event loop: the machine is not stepped before it is up
+void MainWin::viewStart() {
+	pause(true, PR_VIEW);
 	QTimer::singleShot(0, this, [this]() {
 		if (!scrView.on) return;
 		if (!viewDraw()) {
@@ -4678,16 +4696,27 @@ bool MainWin::viewOpen(const QString& path) {
 		if (scr_flashes((const unsigned char*)scrView.data.constData(), scrView.pal))
 			scrView.flash->start(qMax(20, int(16LL * conf.zx->vid->nsPerFrame / 1000000)));
 	});
-	return true;
 }
 
 void MainWin::viewEnd() {
 	if (!scrView.on) return;
 	scrView.on = false;
 	scrView.shown = false;
+	scrView.waiting = false;
 	scrView.flash->stop();
 	scrView.data.clear();
-	redrawHeld();		// the machine's own picture, before anything holds it again
+	// the machine's own picture, before anything holds it again; a new layout since: drawn
+	if (scrView.under.size() == bufSize) {
+		emu_lock();
+		memcpy(bufimg, scrView.under.constData(), bufSize);
+		memcpy(scrimg, bufimg, bufSize);
+		frame_publish();
+		emu_unlock();
+		presentFrame();
+	} else {
+		redrawHeld();
+	}
+	scrView.under.clear();
 	pause(false, PR_VIEW);
 }
 

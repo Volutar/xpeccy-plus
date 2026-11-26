@@ -51,6 +51,7 @@ static int save_keep(int kind) {
 // a new save of that kind in the folder of the game: 2 written, 1 held in
 // memory (a machine with no .szx), 0 failed
 int MainWin::saveState(int kind) {
+	viewEnd();				// the picture saved is the machine's
 	QImage pic = save_picture();		// the frame the key was pressed on
 	if (!szxCanSave(conf.zx)) return quick_save(conf.zx, QString());	// held in memory: no folder
 	QString dir = saves_dir(true);

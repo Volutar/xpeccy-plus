@@ -129,7 +129,9 @@ class MainWin;
 struct xScrView {
 	bool on = false;
 	std::atomic<bool> shown{false};	// drawn once: what the machine does now ends it
+	bool waiting = false;		// at start-up: for the machine's first frame, which sets it up
 	QByteArray data;		// scr_read's
+	QByteArray under;		// the machine's frame it covers, put back as it ends
 	int pal = 0;
 	int phase = 0;		// the FLASH shown
 	QTimer* flash = nullptr;
@@ -411,6 +413,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		quint64 mountGen = 0;		// the last mount started (mountMedia)
 		xScrView scrView;
 		bool viewDraw();
+		void viewStart();
 		bool drawAhead(void (*prep)(Computer*, void*), void* arg);
 		QString mountPath;		// ...the image it reads while it does, empty after
 		int mountSrc = -1;		// ...and where it goes: a drive, or MEDIA_TAPE
