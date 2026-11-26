@@ -669,8 +669,7 @@ QString ide_refresh(IDE* ide, int dev, vfRefresh* r) {
 	return fold_refresh(ide ? ((dev == IDE_MASTER) ? ide->master->vfat : ide->slave->vfat) : NULL, r);
 }
 
-// A folder is read only for a machine with an IDE interface set (out behind a divMMC
-// counts: it comes back); for one with none the path is kept and read when it gets one
+// a folder is read only with an IDE interface set (one out behind a divMMC counts)
 void ide_mount_later(IDE* ide, int dev, const QString& path) {
 	if (!ide) return;
 	if ((ide->cfg != IDE_NONE) || !QFileInfo(path).isDir()) {

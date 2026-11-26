@@ -15,8 +15,7 @@ xRomsetEditor::xRomsetEditor(QWidget* par):QDialog(par) {
 
 void xRomsetEditor::edit(xRomFile f) {
 	xrf = f;
-	// on the first open, not at the start: the model reads the folder, and Qt
-	// loads its MIME database for the files' icons on the GUI thread
+	// here, not at the start: listing the folder loads Qt's MIME database
 	ui.cbFile->setDir(QString::fromLocal8Bit(conf.path.romDir.c_str()));
 	ui.cbFile->setCurrentFile(QString::fromUtf8(f.name.c_str()));
 	ui.cbFoffset->setValue(f.foffset);

@@ -632,8 +632,7 @@ void ideSetFolder(IDE* ide, int wut, const char* name, vFat* vf) {
 	ide_vfat_port(ide);
 }
 
-// A folder a machine with no IDE interface holds: the path only, read when one with an
-// interface comes up (ide_mount_later)
+// a folder kept by path only, on a machine with no IDE interface (ide_mount_later)
 void ideSetUnread(IDE* ide, int wut, const char* name) {
 	ATADev* dev = ide_get_dev(ide, wut);
 	if (dev == NULL) return;

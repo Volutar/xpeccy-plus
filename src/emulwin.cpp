@@ -4726,8 +4726,7 @@ void MainWin::fillPadMenu() {
 	act->setEnabled(conf.gpctrl->gameFile.isEmpty());
 }
 
-// The Gamepads window, built when first wanted: it costs the start tens of ms, and until it
-// is shown there is nothing in it to keep up to date
+// the Gamepads window, built on first use: not at the start
 xPadWin* MainWin::pads() {
 	if (!padWin) {
 		padWin = new xPadWin(this);
