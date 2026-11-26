@@ -567,6 +567,7 @@ void vid_set_grey(int);
 xColor vid_get_col(Video*, int);
 void vid_set_col(Video*, int, xColor);
 int vid_zx_palette(Video*);
+int vid_zx_shown(Video*);
 void vid_set_bcol(Video*, int, xColor);
 void vid_reset_col(Video*, int);
 

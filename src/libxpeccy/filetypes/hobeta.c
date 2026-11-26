@@ -51,18 +51,21 @@ int loadHobeta(Computer* comp, const char* name, int drv) {
 	return hobeta_read(comp->dif->flp[drv & 3], name);
 }
 
-int saveHobeta(TRFile dsc,char* data,const char* name) {
-	FILE* file = fopen(name, "wb");
-	if (!file) return ERR_CANT_OPEN;
-	unsigned short crc;
-	unsigned char buf[17];			// header
+void hobeta_head(TRFile dsc, unsigned char* buf) {
 	memcpy((char*)buf,(char*)&dsc,13);
 	buf[13] = 0x00;
 	buf[14] = dsc.slen;
-	crc = ((105 + 257 * stdAccumulate(buf, 15, 0)) & 0xffff);
+	unsigned short crc = ((105 + 257 * stdAccumulate(buf, 15, 0)) & 0xffff);
 	buf[15] = crc & 0xff;
 	buf[16] = ((crc & 0xff00) >> 8);
-	fwrite((char*)buf, 17, 1, file);
+}
+
+int saveHobeta(TRFile dsc,char* data,const char* name) {
+	FILE* file = fopen(name, "wb");
+	if (!file) return ERR_CANT_OPEN;
+	unsigned char buf[HOB_HEAD_SIZE];
+	hobeta_head(dsc, buf);
+	fwrite((char*)buf, HOB_HEAD_SIZE, 1, file);
 	fwrite(data, dsc.slen << 8, 1, file);
 	fclose(file);
 	return ERR_OK;

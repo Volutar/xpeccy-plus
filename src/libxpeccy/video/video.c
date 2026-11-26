@@ -1143,6 +1143,19 @@ int vid_zx_palette(Video* vid) {
 	return 0;
 }
 
+// the ZX screen of memory on screen: the ULA's modes, TSConf's, the Next's ULA layer
+int vid_zx_shown(Video* vid) {
+	switch (vid->vmode) {
+		case VID_NORMAL:
+		case VID_ULA_SCR:
+		case VID_ROBIK:
+		case VID_TSL_NORMAL:
+		case VID_NEXT:
+			return 1;
+	}
+	return 0;
+}
+
 // set base color palette (used for preset loading)
 void vid_set_bcol(Video* vid, int i, xColor xcol) {
 	vid->bpal[i & 0xff] = xcol.r | (xcol.g << 8) | (xcol.b << 16) | (0xff << 24);

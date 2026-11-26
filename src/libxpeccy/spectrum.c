@@ -901,6 +901,17 @@ static inline void iowr_out(Computer* comp, int port, int val) {
 	comp->flgIOWR = 0;
 }
 
+// an OUT from outside the cpu (a file put in): the devices run to now and the picture
+// latched as for a cpu OUT, no bus cycle, breakpoint or watch
+void comp_out_outside(Computer* comp, int port, int val) {
+	comp_run_io(comp);
+	iowr_out(comp, port, val);
+	if (comp->vid->ula->palchan) {
+		zxSetUlaPalete(comp);
+		comp->vid->ula->palchan = 0;
+	}
+}
+
 void iowr(int port, int val, void* ptr) {
 	Computer* comp = (Computer*)ptr;
 	comp_run_io(comp);

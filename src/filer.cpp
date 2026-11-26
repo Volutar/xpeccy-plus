@@ -905,8 +905,8 @@ static bool file_hobeta_screen(const QString& path) {
 	QString err;
 	QFile file(arc_local(path, &err));	// an archive's entry: its unpacked copy
 	if (!file.open(QFile::ReadOnly)) return false;
-	QByteArray head = file.read(17);
-	return (head.size() == 17) && scr_hobeta_head((const unsigned char*)head.constData(), file.size());
+	QByteArray head = file.read(HOB_HEAD_SIZE);
+	return (head.size() == HOB_HEAD_SIZE) && scr_hobeta_head((const unsigned char*)head.constData(), file.size());
 }
 
 // what a file opened as id is: the group's own type when it has one (a raw
@@ -1684,7 +1684,7 @@ QStringList media_candidates(Computer* comp, const QString& archive, int id, int
 	for (const arcEntry& entry : *list) {
 		if (entry.folder || (arc_beside_image(entry.name) && !screen) || (arc_type(entry.name) != ARC_NONE)) continue;
 		// a Hobeta screen by its size, the header read only when it is opened
-		const bool hob = entry.name.endsWith(".$c", Qt::CaseInsensitive) && (entry.size == 17 + 6912);
+		const bool hob = entry.name.endsWith(".$c", Qt::CaseInsensitive) && (entry.size == HOB_HEAD_SIZE + SCR_SIZE);
 		if (screen) {
 			if (hob || entry.name.endsWith(".scr", Qt::CaseInsensitive)) res.append(entry.name);
 			continue;

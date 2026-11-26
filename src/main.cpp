@@ -396,13 +396,14 @@ static void open_cli_file(MainWin& mwin, const char* name, int drv, int run, boo
 	if (screen && cliFresh) {		// the ROM's start-up would clear it
 		QString why;
 		QString local = arc_local(path, &why);
-		int err = local.isEmpty() ? ERR_CANT_OPEN : scr_hold(conf.zx, local.toLocal8Bit().constData());
+		int err = local.isEmpty() ? ERR_CANT_OPEN : autostart_screen(conf.zx, local.toLocal8Bit().constData());
 		file_errors(err);
 		if (err != ERR_OK) return;
 		xlog(XLG_FILE, XLL_INFO, "open ZX screen once the ROM is up: %s", path.toLocal8Bit().constData());
 		media_opened(path, FG_ALL, drv, run, pinned);
 		return;
 	}
+	autostart_screen_cancel();		// a screen held before goes under what comes after it
 	if (load_file(conf.zx, path.toLocal8Bit().constData(), FG_ALL, drv) != ERR_OK) return;
 	if (!screen && !file_is_medium(conf.zx, path, FG_ALL)) cliFresh = false;
 	if ((drv < 1) && !screen) {	// a screen is not the game

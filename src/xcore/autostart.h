@@ -30,5 +30,9 @@ int autostart_arm_nex(Computer*, const char* dir, const char* name, int welcome,
 // a file's for NEXLOAD) the keyboard types as it is, with no space
 int autostart_nex_can(const char* dir, const char* name, int snx);
 int autostart_nex_word(const char* word);
+// a screen file held while the ROM starts up, which would clear it (the command line):
+// in once the ROM is ready for keys; dropped if it never is, or when cancelled
+int autostart_screen(Computer*, const char* path);
+void autostart_screen_cancel();
 // press or let go of keys named as a keymap names them ("E", "Sp"...)
 void autostart_key(Computer*, const char* keys, int press);

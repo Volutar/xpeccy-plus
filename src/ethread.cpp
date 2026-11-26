@@ -1030,7 +1030,6 @@ void xThread::emuCycle(Computer* comp) {
 			comp->mouse->ypos += mdy;
 			ldc_frame();
 			autostart_frame(comp);
-			scr_hold_frame(comp);
 			fastload_frame(comp);
 			rzx_seek_frame(comp);
 			rzxr_frame(comp);

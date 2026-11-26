@@ -2730,8 +2730,6 @@ void MainWin::rzxWatch() {
 
 // ...
 
-// "screen  C", start #4000, 6912 bytes in 27 sectors, then the crc (saveHobeta's)
-uchar hobHead[HOB_HEAD_SIZE] = {'s','c','r','e','e','n',' ',' ','C',0x00,0x40,0x00,0x1b,0,0x1b,0xe2,0x7c};
 
 // A frame holds two pixels a dot; one whose pairs differ somewhere has dots of
 // half the width: Profi, the ATM's and the Evo's hi-res, the Next's 640 layer 2
@@ -2767,8 +2765,7 @@ static QImage shot_picture(Computer* comp) {
 // SCR and Hobeta are the ZX screen's memory: a mode that draws from anything
 // else would give bytes that are not the picture
 static bool shot_zx_screen(Computer* comp) {
-	int m = comp->vid->vmode;
-	return (m == VID_NORMAL) || (m == VID_ULA_SCR) || (m == VID_ROBIK) || (m == VID_TSL_NORMAL);
+	return vid_zx_shown(comp->vid) && (comp->vid->vmode != VID_NEXT);
 }
 
 // clip: to the clipboard, as a picture whatever the format. The picture is the
@@ -2801,11 +2798,22 @@ void MainWin::screenShot(bool clip) {
 	bool saved = false;
 	char* sptr = (char*)(comp->mem->ramData + (comp->vid->vidPage << 14));
 	switch (frm) {
-		case SCR_HOB:
+		case SCR_HOB: {
 			if (!file.open(QFile::WriteOnly)) break;
-			saved = (file.write((char*)hobHead, HOB_HEAD_SIZE) == HOB_HEAD_SIZE) && (file.write(sptr, SCR_SIZE) == SCR_SIZE);
+			TRFile dsc;		// "screen  C" at #4000, loaded back by LOAD "screen" CODE
+			memset(&dsc, 0, sizeof(dsc));
+			memcpy(dsc.name, "screen  ", 8);
+			dsc.ext = 'C';
+			dsc.hst = 0x40;
+			dsc.llen = SCR_SIZE & 0xff;
+			dsc.hlen = SCR_SIZE >> 8;
+			dsc.slen = SCR_SIZE >> 8;
+			unsigned char head[HOB_HEAD_SIZE];
+			hobeta_head(dsc, head);
+			saved = (file.write((char*)head, HOB_HEAD_SIZE) == HOB_HEAD_SIZE) && (file.write(sptr, SCR_SIZE) == SCR_SIZE);
 			file.close();
 			break;
+		}
 		case SCR_SCR:
 			if (!file.open(QFile::WriteOnly)) break;
 			saved = (file.write(sptr, SCR_SIZE) == SCR_SIZE);
