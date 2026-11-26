@@ -201,8 +201,10 @@ that can be switched off, and then costs nothing:
   mask is drawn with the display's own subpixels: if its colors look wrong, set
   **Display's subpixels** under **All settings** to your display's order, **RGB** or
   **BGR**, or to **Other** for a mask without colors;
-- **Beam** - **Scanlines**, how dark the gap between two lines is; **Gap width**, how much
-  of a line it takes; **Focus**, how sharp a dot is along the line;
+- **Beam** - **Scanlines**, how dark the gap between two lit lines is; **Gap width**, how
+  much of a line its soft edges take; **Focus**, how sharp a dot's edge is along the line;
+  **Spot**, how wide the beam's spot is - with it a dot's ends come out round and a
+  bright line a little thicker than a dim one, as on a tube;
 - **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**. A small picture,
   under about three screen pixels a dot, stays flat. A curved picture goes on to the edge
   of its place as its border does, and the corners are rounded there;
