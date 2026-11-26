@@ -3,7 +3,7 @@
 GLSL post-processing filters, drawn through OpenGL: none with `--no-gl` or without an
 OpenGL 3.3 driver (OpenGL ES 3.0). Pick a look in the Display list of Options - Video or in
 View - Display; in `config/config.conf` it is `shader = <file>` and, for a file with presets,
-`shader.preset = <name>`. A fresh config starts with the RGB monitor look of `crt.txt`; an empty or
+`shader.preset = <name>`. A fresh config starts with the PVM look of `crt.txt`; an empty or
 missing `shader` line turns filtering off.
 
 A shader with parameters has a sheet of knobs: the gear beside the list, or View - Display -
