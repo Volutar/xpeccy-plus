@@ -90,12 +90,15 @@ is skipped without a word.
 | `psg.count` | 0..3 | AY/YM chips (TurboSound) |
 | `psg.type` | `none` `ay` `ym` `ym2203` | |
 | `psg.frq` | MHz | an AY's clock, absent or 0 is Auto: half the CPU's `cpu.frq`; a `ym2203` runs at twice it |
-| `psg.stereo` | `mono` `abc` `acb` `bac` `bca` `cab` `cba` | the board's layout, heard while `psg.layout` in config.conf's `[SOUND]` is `machine` (the default) |
+| `psg.stereo` | `mono` `abc` `acb` `bac` `bca` `cab` `cba` | the board's layout, its Machine spec: heard while the machine's `psg.layout` or, with none, config.conf's `[SOUND]` one is `spec` / `machine` (the default) |
 | `soundrive` | `none` `covox` `soundrive1` `soundrive2` | |
 | `gs` | yes/no | General Sound |
 | `saa` | yes/no | SAA1099 |
-| `beeper` | `line` `speaker` `tv` `plus3` `evo` `scorpion` `atm` `piezo` `lp5k` | what the beeper and the tape sound through, and with `tv` and `plus3` the PSG too (`BEEP_*`, `snd_beep_flt`, `snd_mix_flt`); heard while `board.filter` in config.conf's `[SOUND]` is `machine`; absent is `line`, no filter |
+| `beeper` | `line` `speaker` `tv` `plus3` `evo` `scorpion` `atm` `piezo` `lp5k` | what the beeper and the tape sound through, and with `tv` and `plus3` the PSG too (`BEEP_*`, `snd_beep_flt`, `snd_mix_flt`); heard while the machine's `board.filter` or, with none, config.conf's `[SOUND]` one is `spec` / `machine`; absent is `line`, no filter |
 | `beeper.mic` | yes/no | bit 3 (MIC) is heard with the beeper, at a tenth of bit 4, as on a ULA |
+| `psg.layout` | `spec` `mono` `abc` `acb` `bac` `bca` `cab` `cba` | the user's own over Global (config.conf's `[SOUND] psg.layout`), never in a stock file; `spec` is `psg.stereo`, absent or `global` is Global (`conf.snd.own`, `xm_snd_apply`); the ZX Next takes none |
+| `separation` | 0..100 | the user's own, with an order of its own in `psg.layout`; else Global's |
+| `board.filter` | `spec` `off` `speaker` `tv` `plus3` `evo` `scorpion` `atm` `piezo` `lp5k` | the user's own over Global; `spec` is `beeper` as the board takes it, a type takes all of the sound as config.conf's does |
 
 ### `[storage]`
 

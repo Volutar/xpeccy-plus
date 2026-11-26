@@ -1790,7 +1790,8 @@ const char* xm_lay_name(int lay) {return mac_word_name(stereoTab, lay);}
 int xm_lay_named(const std::string& name, int def) {return mac_word(stereoTab, name, def, NULL);}
 
 // a machine's own picks in its file: spec is the machine's own psg.stereo and beeper
-// type, an order or a type is a value, global (never written) is none
+// type (machine too, config.conf's word for it), an order or a type is a value, global
+// (never written) is none
 const char* xm_snd_lay_key(int lay) {
 	if (lay == SND_GLOBAL) return "global";
 	if (lay == LAY_MACHINE) return "spec";
@@ -1798,7 +1799,7 @@ const char* xm_snd_lay_key(int lay) {
 }
 
 int xm_snd_lay_of(const std::string& val) {
-	if (val == "spec") return LAY_MACHINE;
+	if ((val == "spec") || (val == "machine")) return LAY_MACHINE;
 	int lay = mac_word(stereoTab, val, SND_GLOBAL, NULL);
 	if ((lay == SND_GLOBAL) && (val != "global"))
 		xlog(XLG_CONF, XLL_WARN, "psg.layout: no layout '%s', Global", val.c_str());
@@ -1813,7 +1814,7 @@ const char* xm_snd_board_key(int board) {
 }
 
 int xm_snd_board_of(const std::string& val) {
-	if (val == "spec") return BOARD_MACHINE;
+	if ((val == "spec") || (val == "machine")) return BOARD_MACHINE;
 	if (val == "off") return BEEP_LINE;
 	int type = mac_word(beepTab, val, SND_GLOBAL, NULL);
 	if ((type == SND_GLOBAL) && (val != "global"))
