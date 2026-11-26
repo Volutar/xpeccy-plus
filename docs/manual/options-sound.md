@@ -112,7 +112,8 @@ back to **Global**.
 While some machine has its own, a line under **Stereo** and **Filters** names them -
 **Own settings on 2 machines: ZX Spectrum +2, Pentagon** - and its tooltip says what each
 one has of its own. **All to Global** puts every machine back to **Global**: it asks first,
-with the same list, and keeps whatever else you changed on them.
+with the same list, and keeps whatever else you changed on them. It is done at once:
+**Cancel** in **Options** does not bring their choices back.
 
 The ZX Next has no choices of its own here: it is heard as **Global** sets.
 
