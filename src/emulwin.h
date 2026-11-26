@@ -7,6 +7,8 @@
 #include <QMenuBar>
 #include <QStatusBar>
 #include <QToolBar>
+#include <atomic>
+#include <QSet>
 #include <QTimer>
 #include <QWidget>
 #include <QString>
@@ -122,6 +124,20 @@ typedef struct {
 #define	MEDIA_SNAP	-1
 
 class MainWin;
+
+// a screen file shown over the paused machine (MainWin::viewOpen)
+struct xScrView {
+	bool on = false;
+	std::atomic<bool> shown{false};	// drawn once: what the machine does now ends it
+	bool waiting = false;		// at start-up: for the machine's first frame, which sets it up
+	QByteArray data;		// scr_read's
+	QByteArray under;		// the machine's frame it covers, put back as it ends
+	int pal = 0;
+	int phase = 0;		// the FLASH shown
+	QTimer* flash = nullptr;
+	QSet<int> keys;		// keys that ended it: their release is not the machine's
+	ulong clickAt = 0;	// the click that ended it: a double click after it is its own
+};
 
 // Whether the picture can go through OpenGL here; why not, when it cannot
 bool gl_probe(QString* why);
@@ -257,6 +273,10 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void updateWindow();
 		void applyOnTop();
 		void redrawHeld();		// a paused picture through the colors now set
+		// A screen file shown over the paused machine, drawn by the machine's own video and
+		// the machine put back at once: open (false: said why), end (the machine goes on)
+		bool viewOpen(const QString& path);
+		void viewEnd();
 		void pause(bool, int);
 		bool inputResume();
 		void tapStateChanged(int,int);
@@ -391,6 +411,11 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		QString tapeSparePlace;
 		quint64 spareGen = 0;
 		quint64 mountGen = 0;		// the last mount started (mountMedia)
+		xScrView scrView;
+		bool viewDraw();
+		void viewStart();
+		bool drawAhead(void (*prep)(Computer*, void*), void* arg);
+		void publishHeld();
 		QString mountPath;		// ...the image it reads while it does, empty after
 		int mountSrc = -1;		// ...and where it goes: a drive, or MEDIA_TAPE
 		double hwMulSeen = 1.0;	// the board's turbo as last reported
@@ -714,6 +739,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void keyPressEvent(QKeyEvent*) override;
 		void keyReleaseEvent(QKeyEvent*) override;
 		void mousePressEvent(QMouseEvent*) override;
+		void mouseDoubleClickEvent(QMouseEvent*) override;
 		void contextMenuEvent(QContextMenuEvent*) override;
 		void mouseReleaseEvent(QMouseEvent*) override;
 		void mouseMoveEvent(QMouseEvent*) override;

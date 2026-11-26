@@ -3,15 +3,15 @@
 ```{index} File menu
 ```
 
-Xpeccy+ opens snapshots, tapes, disks, cartridges and RZX recordings, and saves snapshots,
-tapes and disks. The **File** menu opens and saves them and keeps the quick saves. Tapes
-and disks have pages of their own under the **Media** menu:
+Xpeccy+ opens snapshots, tapes, disks, cartridges, RZX recordings and ZX screens, and saves
+snapshots, tapes and disks. The **File** menu opens and saves them and keeps the quick
+saves. Tapes and disks have pages of their own under the **Media** menu:
 [Tapes](tapes.md) and [Floppy disks](disks.md). Which machine a file runs on is set on the
 [File types page](options-file-types.md).
 
 ## File formats
 
-```{index} file format, TAP, TZX, WAV, TRD, SCL, UDI, DSK, TD0, FDI, IMA, IMG, Hobeta, cartridge; file
+```{index} file format, TAP, TZX, WAV, TRD, SCL, UDI, DSK, TD0, FDI, IMA, IMG, Hobeta, SCR, cartridge; file
 ```
 
 | Kind | Files | Open | Save |
@@ -30,11 +30,14 @@ and disks have pages of their own under the **Media** menu:
 | Any file | **RAW file to disk** | yes, onto disk A | no |
 | Cartridge | `.rom`, `.bin` | yes | no |
 | Recording | `.rzx` | yes | from the **Capture** menu |
+| Screen | `.scr`, a Hobeta screen (`.$C`) | yes, shown over the machine: see [Screens](#screens) | as a screenshot |
 | Cheats | `.pok` | yes, into the [Cheats](cheats.md) window | no |
 | Archive | `.zip`, `.gz`, `.7z` | yes, an image in it: see [Images in archives](#images-in-archives) | no |
 
 A Hobeta file opens as a TR-DOS file on a disk: in drive A, or in the drive picked from the
-file types of the open dialog. A drive with no disk gets a new, formatted one first.
+file types of the open dialog. A drive with no disk gets a new, formatted one first. A
+Hobeta screen (a `C` file of 6912 bytes) opens as a screen, unless **Disk** is picked in
+the open dialog.
 
 ```{index} RAW file to disk
 ```
@@ -43,6 +46,39 @@ file types of the open dialog. A drive with no disk gets a new, formatted one fi
 the disk in drive A as a TR-DOS file, in parts if the file is long.
 
 Screenshots, video and sound files are in [Capture menu](capture.md).
+
+### Screens
+
+```{index} SCR; open, screen file
+```
+
+A screen file is shown over the machine, which stops meanwhile. The picture is drawn as
+the machine draws its own screen, with its border, through the shader, size and border
+size set. Press any key that is not a hotkey, or click the picture, and the machine goes
+on from where it stopped, its memory, colors and border as they were.
+
+| Size | What it holds |
+|---|---|
+| 6912 bytes | the picture and its colors |
+| 6144 bytes | the picture alone: black on white |
+| 6976 bytes | the picture and a ULA+ palette |
+
+A ULA+ palette shows on every machine, **ULA plus** on or not. FLASH blinks.
+
+The border takes the color most of the picture's edge has, BRIGHT left out; with a ULA+
+palette, the border color nearest to it.
+
+Over the picture you can take screenshots - an SCR or Hobeta one saves the screen shown -
+change the size, go fullscreen or switch the shader. A hotkey that changes
+the machine, such as Reset, Open, Quick Load, Pause or the Debugger, ends the picture
+first. A reset or another machine ends it too.
+
+A screen never switches the machine, and it is not the game: the window title, pads,
+cheats and saves stay with the game that was in. **Recent** takes it, **Reload** keeps to
+the game. It shows on every machine, whatever video mode the machine is in: the picture is
+drawn as a plain ZX screen, the machine's own modes and layers set aside. While a disk is
+being read or written it cannot be shown, and a message says so. A screen named on the
+command line shows before the machine starts; the machine starts after the key.
 
 ## Opening a file
 
@@ -96,7 +132,9 @@ command line. No archiver is needed.
 
 Only the images the open is for are offered: **Disk** in the open dialog offers the disks
 in the archive, the Tape Player's **Open** its tapes. Text files, pictures, cheats and the
-`SCRSHOT`, `INFO` and `POKES` folders of an archive are left out.
+`SCRSHOT`, `INFO` and `POKES` folders of an archive are left out. A screen opens from an
+archive only when there is no other image in it; **Screen** in the open dialog offers
+every screen in the archive, those in `SCRSHOT` too.
 
 ![Open from Archive](images/open-archive.png)
 

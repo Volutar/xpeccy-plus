@@ -991,7 +991,7 @@ void brk_log_hit(xBrkPoint* brk, Computer* comp) {
 // named as a screenshot is
 static void brk_dump_screen(Computer* comp) {
 	QFile file(shot_path("scr"));
-	if (!file.open(QFile::WriteOnly) || (file.write((char*)(comp->mem->ramData + (comp->vid->vidPage << 14)), 0x1b00) != 0x1b00))
+	if (!file.open(QFile::WriteOnly) || (file.write((char*)(comp->mem->ramData + (comp->vid->vidPage << 14)), SCR_SIZE) != SCR_SIZE))
 		xlog(XLG_APP, XLL_WARN, "can't save screenshot %s", file.fileName().toLocal8Bit().data());
 	file.close();
 }

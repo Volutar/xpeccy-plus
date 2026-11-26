@@ -77,7 +77,9 @@ enum {
 	ERR_NEX_SYSTEM,		// a .nex with no System/Next release here to boot NextZXOS from
 	ERR_NEX_NAME,		// a .nex whose name cannot be typed
 	ERR_SNAP_NEXT,		// a snapshot of the Next in .sna or .z80: only .szx keeps its state
-	ERR_DSK_WIDE		// a disk of more cylinders than a .dsk is written with
+	ERR_DSK_WIDE,		// a disk of more cylinders than a .dsk is written with
+	ERR_SCR_SIZE,		// a screen file of none of the sizes a ZX screen is
+	ERR_SCR_MODE		// a screen file while the machine shows no ZX screen
 };
 
 // spg
@@ -382,6 +384,23 @@ const int* wav_export_rates(void);	// 0 terminated
 const int* wav_export_rates(void);	// 0 terminated
 int wav_export_rate(Computer*);
 
+// screen
+
+#define SCR_SIZE	0x1b00	// a ZX screen: pixels and attributes
+#define HOB_HEAD_SIZE	17	// a Hobeta file's header
+#define SCR_BUF		(HOB_HEAD_SIZE + SCR_SIZE + 64)
+
+int loadSCR(Computer*,const char*,int);
+int scr_hobeta_head(const unsigned char* head, size_t size);	// its header and size: a Hobeta screen
+// the file's screen into buf (SCR_BUF): a bitmap alone with black-on-white attributes, the
+// ULA+ palette after it when *pal
+int scr_read(const char* name, unsigned char* buf, int* pal);
+// into the screen shown, the border too; view: for a frame that is thrown away (ULA+ switched
+// on for a palette, nothing told of the change)
+int scr_put(Computer*, const unsigned char* scr, int pal, int view);
+int scr_flashes(const unsigned char* scr, int pal);	// FLASH cells that blink
+void scr_hobeta_make(unsigned char* head);		// the screenshot's Hobeta header
+
 // disk
 
 int loadRaw(Computer*,const char*, int);
@@ -391,6 +410,7 @@ int loadHobeta(Computer*,const char*,int);
 int hobeta_read(Floppy*, const char*);
 int saveHobetaFile(Floppy*,int,const char*);
 int saveHobeta(TRFile,char*,const char*);
+void hobeta_head(TRFile, unsigned char*);	// HOB_HEAD_SIZE bytes, the crc included
 
 int loadSCL(Computer*,const char*,int);
 int scl_read(Floppy*, const char*);

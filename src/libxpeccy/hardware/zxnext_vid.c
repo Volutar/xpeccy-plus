@@ -41,7 +41,7 @@ static inline long long nxv_ray_dot(Computer* comp) {
 
 // the picture is being drawn: in step with the machine, the frame drawn and not still
 static inline int nxv_drawing(Computer* comp) {
-	return V.live && !comp->vid->nodraw && !comp->vid->still;
+	return V.live && !comp->vid->nodraw && !comp->vid->still && (comp->vid->vmode == VID_NEXT);
 }
 
 // an SZX keeps nxVideo as one field, its length in 16 bits
@@ -2045,7 +2045,8 @@ static void nxv_take_up(Computer* comp) {
 // show a dot or so back
 static void nxv_flush(Computer* comp, long long end) {
 	Video* vid = comp->vid;
-	if (vid->still) return;
+	// a mode other than the Next's (a screen file viewed): its own drawer has the frame
+	if (vid->still || (vid->vmode != VID_NEXT)) return;
 	if (vid->nodraw) {
 		V.live = 0;		// taken up afresh when the drawing is (nxv_frm)
 		V.upAt = -1;

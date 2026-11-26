@@ -23,6 +23,12 @@ static unsigned rawAbs = 0;
 
 void MainWin::mousePressEvent(QMouseEvent *ev){
 	Computer* comp = conf.zx;
+	if (scrView.on && (ev->button() == Qt::LeftButton)) {
+		viewEnd();
+		scrView.clickAt = ev->timestamp();
+		clickResumed = true;		// its release is not the machine's
+		return;
+	}
 	if (comp->flgDBG) {
 		if (ev->button() == Qt::LeftButton) {
 			calcCoords(ev);
@@ -53,6 +59,17 @@ void MainWin::mousePressEvent(QMouseEvent *ev){
 			default: break;
 		}
 	}
+}
+
+// the second half of a double click whose first press ended a view: no press of its own
+void MainWin::mouseDoubleClickEvent(QMouseEvent* ev) {
+	if (scrView.clickAt && (ev->button() == Qt::LeftButton)
+			&& (ev->timestamp() - scrView.clickAt <= (ulong)QApplication::doubleClickInterval())) {
+		scrView.clickAt = 0;
+		clickResumed = true;
+		return;
+	}
+	QWidget::mouseDoubleClickEvent(ev);
 }
 
 void MainWin::mouseReleaseEvent(QMouseEvent *ev) {

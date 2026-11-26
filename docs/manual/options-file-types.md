@@ -40,7 +40,7 @@ is used for every file of that format that it can run. **Restore defaults** sets
 row back to **Auto**.
 
 Only a file that is about to run can switch the machine: a snapshot always, a tape or a disk
-only when it is run, and a disk only from drive A.
+only when it is run, and a disk only from drive A. A screen file never does.
 
 ```{index} snapshot; which machine runs it
 ```

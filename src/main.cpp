@@ -371,6 +371,8 @@ static void open_pending(xApp& app, MainWin& mwin) {
 static QString cliPok;
 static QStringList cliPokes;
 static QString cliImage;
+// no window (--bench): a screen goes into the machine
+static bool cliHeadless = false;
 
 // A file on the command line: the machine it wants first, unless the command
 // line names the machine itself.
@@ -390,7 +392,13 @@ static void open_cli_file(MainWin& mwin, const char* name, int drv, int run, boo
 		return;
 	if (!mac.empty())
 		mwin.setMachine(mac);
+	const bool screen = file_is_screen(conf.zx, path, FG_ALL);
+	if (screen && !cliHeadless) {		// shown over the machine, which starts after a key
+		mwin.viewOpen(path);
+		return;
+	}
 	if (load_file(conf.zx, path.toLocal8Bit().constData(), FG_ALL, drv) != ERR_OK) return;
+	if (screen) return;			// --bench: put in; not the game
 	if (drv < 1) {
 		mwin.padGame(path);
 		cheats_pick(path);
@@ -797,6 +805,7 @@ int main(int ac,char** av) {
 	// a file named below picks its machine with no one to ask (the exact rule is set
 	// again once every option is read)
 	media_autorun_headless(bench);
+	cliHeadless = bench;
 
 	// before the window: it is made with the GL view or without it
 	QString glWhy;

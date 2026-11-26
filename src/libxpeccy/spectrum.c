@@ -698,10 +698,16 @@ void zx_cont_tn(Computer* comp, int port) {
 
 static unsigned char ula_levs[8] = {0x00, 0x24, 0x49, 0x6d, 0x92, 0xb6, 0xdb, 0xff};
 
+// the mode off: the 16 plain colors back, as a reset puts them
 void zxSetUlaPalete(Computer* comp) {
 	int i;
 	int col;
 	xColor xc;
+	if (!comp->vid->ula->active) {
+		for (i = 0; i < 16; i++)
+			vid_reset_col(comp->vid, i);
+		return;
+	}
 	for (i = 0; i < 64; i++) {
 		col = (comp->vid->ula->pal[i] << 1) & 7;	// blue
 		if (col & 2) col |= 1;
@@ -884,6 +890,13 @@ int iord(int port, void* ptr) {
 	return res;
 }
 
+// ULA+ palette or mode written: the live colors
+static inline void comp_ula_palette(Computer* comp) {
+	if (!comp->vid->ula->palchan) return;
+	zxSetUlaPalete(comp);
+	comp->vid->ula->palchan = 0;
+}
+
 // the OUT reaching the device, the ray where it is: the page or the mode it may
 // change are latched first in an undrawn frame (vid_latch)
 static inline void iowr_out(Computer* comp, int port, int val) {
@@ -893,6 +906,14 @@ static inline void iowr_out(Computer* comp, int port, int val) {
 	comp->flgIOWR = 1;
 	comp->hw->out(comp, port, val);
 	comp->flgIOWR = 0;
+}
+
+// an OUT from outside the cpu (a file put in): the devices run to now and the picture
+// latched as for a cpu OUT, no bus cycle, breakpoint or watch
+void comp_out_outside(Computer* comp, int port, int val) {
+	comp_run_io(comp);
+	iowr_out(comp, port, val);
+	comp_ula_palette(comp);
 }
 
 void iowr(int port, int val, void* ptr) {
@@ -910,10 +931,7 @@ void iowr(int port, int val, void* ptr) {
 		comp_vid_to_lazy(comp, comp->cpu->t + 1);
 		iowr_out(comp, port, val);
 	}
-	if (comp->vid->ula->palchan) {
-		zxSetUlaPalete(comp);
-		comp->vid->ula->palchan = 0;
-	}
+	comp_ula_palette(comp);
 // brk
 	if (comp->brkIOMap[port] & MEM_BRK_WR)
 		comp_brk_add(comp, BRK_IOPORT, port, MEM_BRK_WR, port, val & 0xff);
