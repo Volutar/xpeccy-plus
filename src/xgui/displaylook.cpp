@@ -464,8 +464,10 @@ bool look_delete_preset(const xLook& lk) {
 #define	OLD_SOFT	"CURVE 0, CURVEX 1, SPOT 0, MASKS 0.45, SCAN 0.6, WIDTH 0.8, FOCUS 0.65, GROW 0, GLOW 0.1, BRIGHT 0.7, DIVERGE 0"
 #define	OLD_GRILLE	"MASK 1, PITCH 1.0, "
 #define	OLD_FINE	"MASK 1, PITCH 2.0, "
-#define	OLD_SHADOW	"MASK 3, MSIZE 2, KEEP 1, "
-#define	OLD_WIDE	"MASK 3, MSIZE 3, KEEP 1, "
+// (Tridot's own ghost, grain, glow and the like back to none: the old files had none)
+#define	OLD_TRIDOT	"KEEP 1, PITCH 1.5, MBEND 0, SHIMMER 0.15, GHOST 0, GHOSTX 1.6, WIGGLE 0, NOISE 0, CORNER 0, BLOOM 0, CONTRAST 0, CURVEY 1, GLOWR 1.5, AFTER 0, "
+#define	OLD_SHADOW	"MASK 3, MSIZE 2, " OLD_TRIDOT
+#define	OLD_WIDE	"MASK 3, MSIZE 3, " OLD_TRIDOT
 #define	OLD_CURVE	", CURVE 0.02"
 #define	OLD_TVLINE	"CURVE 0, CURVEX 1, SPOT 0, MASK 1, MASKS 0.3, PITCH 2.5, WIDTH 0.8, FOCUS 0.85, GLOW 0, DIVERGE 0, "
 
