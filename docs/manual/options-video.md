@@ -186,7 +186,7 @@ on the page, such as **PNG, 352×288**; a high-resolution picture comes out twic
 |---|---|
 | **PNG**, **BMP**, **JPG** | the picture, as **Source** and the size say |
 | **SCR** | the 6912 bytes of the machine's screen memory, to load back on a Spectrum |
-| **Hobeta** | the same screen memory as a Hobeta file (`.$C`), which goes onto a TR-DOS disk as `screen` |
+| **Hobeta** | the same screen memory as a Hobeta file (`.$C`), which goes onto a TR-DOS disk as `screen` and loads back with `LOAD "screen" CODE` |
 
 **SCR** and **Hobeta** hold only the standard Spectrum screen. In another video mode (Profi,
 ATM, ZX Evo and TSConf modes of their own, the ZX Spectrum Next) no file is saved and the
