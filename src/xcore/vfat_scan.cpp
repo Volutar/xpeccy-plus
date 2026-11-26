@@ -669,10 +669,28 @@ QString ide_refresh(IDE* ide, int dev, vfRefresh* r) {
 	return fold_refresh(ide ? ((dev == IDE_MASTER) ? ide->master->vfat : ide->slave->vfat) : NULL, r);
 }
 
+// a folder is read only with an IDE interface set (one out behind a divMMC counts)
+void ide_mount_later(IDE* ide, int dev, const QString& path) {
+	if (!ide) return;
+	if ((ide->cfg != IDE_NONE) || !QFileInfo(path).isDir()) {
+		ide_mount(ide, dev, path);
+		return;
+	}
+	vfat_flush((dev == IDE_MASTER) ? ide->master->vfat : ide->slave->vfat);
+	ideSetUnread(ide, dev, path.toLocal8Bit().constData());
+}
+
+// an interface just set: a folder kept unread is read now
+void ide_read_pending(IDE* ide) {
+	if (!ide || (ide->cfg == IDE_NONE)) return;
+	if (ide_unread(ide, IDE_MASTER)) ide_mount(ide, IDE_MASTER, QString::fromLocal8Bit(ide->master->image));
+	if (ide_unread(ide, IDE_SLAVE)) ide_mount(ide, IDE_SLAVE, QString::fromLocal8Bit(ide->slave->image));
+}
+
 void ide_remount(IDE* ide) {
 	if (!ide) return;
 	QString mpath = ide->master->image ? QString::fromLocal8Bit(ide->master->image) : QString();
 	QString spath = ide->slave->image ? QString::fromLocal8Bit(ide->slave->image) : QString();
-	if (!mpath.isEmpty()) ide_mount(ide, IDE_MASTER, mpath);
-	if (!spath.isEmpty()) ide_mount(ide, IDE_SLAVE, spath);
+	if (!mpath.isEmpty()) ide_mount_later(ide, IDE_MASTER, mpath);
+	if (!spath.isEmpty()) ide_mount_later(ide, IDE_SLAVE, spath);
 }

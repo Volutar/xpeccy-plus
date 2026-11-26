@@ -1957,7 +1957,12 @@ void SetupWin::applyMachine() {
 		difSetDrives(comp->dif, fit);
 	}
 // hdd
-	if (!own) ide_set_type(comp->ide, getRFIData(hiface));
+	if (!own) {
+		emu_lock();		// the machine never sees the interface without its folder
+		ide_set_type(comp->ide, getRFIData(hiface));
+		ide_read_pending(comp->ide);
+		emu_unlock();
+	}
 	// what is mounted is the Drives menu's, a folder read again only with the power off
 // sd card board: one put on, off or given other RAM powers the machine off and on
 	int board = sdBoard();

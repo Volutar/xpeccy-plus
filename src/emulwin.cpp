@@ -3265,13 +3265,11 @@ void MainWin::initUserMenu() {
 	diskWin->others = [this](QMenu* m, int drv) {otherImages(m, FH_DRIVE_A + drv, drv, nullptr, 999);};
 	diskWin->side = [this](int drv, int step) {sideStepIn(drv, step);};
 	diskWin->hasSides = [this](int drv) {return hasSides(drv);};
-	padWin = new xPadWin(this);
-	addSatellite(padWin);
-	padWin->gameEdited = [this]() {padGameEdited();};
+	padWin = nullptr;		// built on its first open (pads())
 	// a model never met before took a slot: say so, and show what it does
 	connect(conf.gpctrl, &xGamepadController::newPad, this, [this](int slot) {
 		setMessage(QString(" gamepad: player %0 ").arg(slot + 1));
-		if (!conf.vid.fullScreen) padWin->showWindow();
+		if (!conf.vid.fullScreen) pads()->showWindow();
 	});
 	connect(conf.gpctrl, &xGamepadController::padOn, this, [this](int slot) {
 		setMessage(QString(" gamepad on: player %0 ").arg(slot + 1));
@@ -4648,14 +4646,14 @@ void MainWin::watchPads() {
 		padK8 = k8;
 		conf.gpctrl->gpada->rebuild();
 		conf.gpctrl->gpadb->rebuild();
-		padWin->sync();
+		if (padWin) padWin->sync();
 	}
 }
 
 // An image opened: player 1 takes its .pad, or goes back to its own table.
 void MainWin::padGame(const QString& image) {
 	if (!conf.gpctrl->gameImage(image)) return;
-	padWin->sync();
+	if (padWin) padWin->sync();
 	QString game = conf.gpctrl->gameFile;
 	setMessage(game.isEmpty() ? QString(" gamepad: own bindings ") : QString(" gamepad: %0 ").arg(QFileInfo(game).fileName()));
 }
@@ -4689,7 +4687,7 @@ bool MainWin::padGameEdited() {
 		box.exec();
 		if (box.clickedButton() == btAll) {
 			c->gameKeep();		// the table is the player's own from now on
-			padWin->sync();
+			if (padWin) padWin->sync();
 			saveConfig();
 			return true;
 		}
@@ -4699,7 +4697,7 @@ bool MainWin::padGameEdited() {
 			c->gameEdit = GE_NOW;
 		} else {
 			c->gameUndo();		// and the next change asks again
-			padWin->sync();
+			if (padWin) padWin->sync();
 			setMessage(" gamepad: change cancelled ");
 			return false;
 		}
@@ -4732,7 +4730,7 @@ void MainWin::fillPadMenu() {
 	section(QString("Player 1: %0").arg(dev));
 	// a change from here: the window shows it, a game's table asks where it goes
 	auto done = [this](const QString& msg) {
-		padWin->sync();
+		if (padWin) padWin->sync();
 		if (!padGameEdited()) return;
 		saveConfig();
 		setMessage(QString(" %0 ").arg(msg));
@@ -4769,12 +4767,22 @@ void MainWin::fillPadMenu() {
 	act->setEnabled(conf.gpctrl->gameFile.isEmpty());
 }
 
+// the Gamepads window, built on first use: not at the start
+xPadWin* MainWin::pads() {
+	if (!padWin) {
+		padWin = new xPadWin(this);
+		addSatellite(padWin);
+		padWin->gameEdited = [this]() {padGameEdited();};
+	}
+	return padWin;
+}
+
 void MainWin::padWinShow() {
-	padWin->showWindow();
+	pads()->showWindow();
 }
 
 void MainWin::padWinModal() {
-	padWin->execOver();
+	pads()->execOver();
 }
 
 void MainWin::cheatWinShow() {

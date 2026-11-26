@@ -1393,11 +1393,20 @@ void xm_sd_mount(const QString& path) {
 // machine had no slot (a Z-Controller just put in) is read now, once.
 static void mac_reread_folders(Computer* comp) {
 	SDCard* cards[3] = {comp->sdc, comp->div->card[0], comp->div->card[1]};
-	for (int i = 0; i < 3; i++) {
-		if ((cards[i]->vfat || sdc_unread(cards[i])) && (i || comp_has_sd(comp))) sdc_remount(cards[i]);
+	if ((cards[0]->vfat || sdc_unread(cards[0])) && comp_has_sd(comp)) sdc_remount(cards[0]);
+	for (int i = 1; i < 3; i++) {		// a divMMC's: one kept unread is read with the board on
+		if (cards[i]->vfat || (sdc_unread(cards[i]) && (comp->div->model != DIV_NONE))) sdc_remount(cards[i]);
 	}
-	if (comp->ide->master->vfat) ide_mount(comp->ide, IDE_MASTER, QString::fromLocal8Bit(comp->ide->master->image));
-	if (comp->ide->slave->vfat) ide_mount(comp->ide, IDE_SLAVE, QString::fromLocal8Bit(comp->ide->slave->image));
+	if (comp->ide->master->vfat || ide_unread(comp->ide, IDE_MASTER))
+		ide_mount_later(comp->ide, IDE_MASTER, QString::fromLocal8Bit(comp->ide->master->image));
+	if (comp->ide->slave->vfat || ide_unread(comp->ide, IDE_SLAVE))
+		ide_mount_later(comp->ide, IDE_SLAVE, QString::fromLocal8Bit(comp->ide->slave->image));
+}
+
+// A divMMC card from the config: a folder is read only on a machine with the board on
+static void mac_div_card(Computer* comp, int i, const QString& path) {
+	if (comp->div->model != DIV_NONE) sdc_mount(comp->div->card[i], path);
+	else sdc_mount_later(comp->div->card[i], path);
 }
 
 // Off and on again. What a reset leaves, this clears: the RAM comes up as the
@@ -1699,10 +1708,13 @@ bool xm_set(std::string id) {
 	// them. Open them again for this one: what is mounted is a property of the
 	// emulator, not of the machine, and it stays mounted across a switch. A
 	// folder served as a disk is re-read here, which is the other half of it.
+	// One with no IDE or no divMMC keeps the path and reads the folder when it gets one.
 	ide_remount(conf.zx->ide);
 	if (comp_has_sd(conf.zx)) sdc_remount(conf.zx->sdc);	// the others leave it as it is
-	sdc_remount(conf.zx->div->card[0]);
-	sdc_remount(conf.zx->div->card[1]);
+	if (conf.zx->div->model != DIV_NONE) {
+		sdc_remount(conf.zx->div->card[0]);
+		sdc_remount(conf.zx->div->card[1]);
+	}
 	xm_next_card();
 	if (another) {		// says so in the window, whoever asked for it
 		static std::string msg;
@@ -2037,18 +2049,18 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 		if ((drv >= 0) && (drv < 4)) mac_set_disk(comp->dif->flp[drv], val);
 	} else if (nam == "hdd.master.type") comp->ide->master->type = arg.i;
 	else if (nam == "hdd.master.lba") comp->ide->master->hasLBA = arg.b;
-	else if (nam == "hdd.master") ide_mount(comp->ide, IDE_MASTER, QString::fromLocal8Bit(arg.s));
+	else if (nam == "hdd.master") ide_mount_later(comp->ide, IDE_MASTER, QString::fromLocal8Bit(arg.s));
 	else if (nam == "hdd.slave.type") comp->ide->slave->type = arg.i;
 	else if (nam == "hdd.slave.lba") comp->ide->slave->hasLBA = arg.b;
-	else if (nam == "hdd.slave") ide_mount(comp->ide, IDE_SLAVE, QString::fromLocal8Bit(arg.s));
+	else if (nam == "hdd.slave") ide_mount_later(comp->ide, IDE_SLAVE, QString::fromLocal8Bit(arg.s));
 	else if (nam == "sdcard") xm_sd_mount(QString::fromLocal8Bit(arg.s));
 	else if (nam == "sdcard.lock") sdcSetLock(comp->sdc, arg.b);
 	else if (nam == "next.card") conf.next.card = val;
 	else if (nam == "next.card.own") conf.next.own = arg.b;
 	else if (nam == "next.esp.lan") conf.next.espLan = arg.b;
-	else if (nam == "divmmc.card1") sdc_mount(comp->div->card[0], QString::fromLocal8Bit(arg.s));
+	else if (nam == "divmmc.card1") mac_div_card(comp, 0, QString::fromLocal8Bit(arg.s));
 	else if (nam == "divmmc.card1.lock") sdcSetLock(comp->div->card[0], arg.b);
-	else if (nam == "divmmc.card2") sdc_mount(comp->div->card[1], QString::fromLocal8Bit(arg.s));
+	else if (nam == "divmmc.card2") mac_div_card(comp, 1, QString::fromLocal8Bit(arg.s));
 	else if (nam == "divmmc.card2.lock") sdcSetLock(comp->div->card[1], arg.b);
 	else if (nam == "cartrige") {
 		if (conf.storePaths) sltSetPath(comp->slot, arg.s);

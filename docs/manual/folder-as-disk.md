@@ -56,9 +56,10 @@ in it; esxDOS reads directories again each time.
 
 A folder of many thousands of files takes seconds to read, and the window waits meanwhile:
 when a read goes on for over a second, the status bar says **Reading the folder ...**. The
-SD card slot of the ZX Evo, the Next and a Z-Controller is read only on a machine that has
-it: on another one the card stays named, and its folder is read when a machine with the slot
-is chosen again.
+SD card slot of the ZX Evo, the Next and a Z-Controller, the hard disks and the divMMC's cards
+are read only on a machine that has them: on another one the card or disk stays named, and its
+folder is read when a machine with that drive is chosen, or when **Options** give the machine
+a hard disk interface.
 
 ## Writing back
 

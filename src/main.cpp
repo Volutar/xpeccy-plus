@@ -775,6 +775,7 @@ int main(int ac,char** av) {
 		log_done();
 		return 0;
 	}
+	labels_rom_prefetch();		// after the update: it moves the install's files
 
 	// before loadConfig: the debugger takes conf.dbg.font while it is built,
 	// so the family has to be known by then. The bold face too: a weight Qt has to make

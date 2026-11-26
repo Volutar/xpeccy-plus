@@ -9,6 +9,7 @@
 #include <QRegularExpression>
 
 #include <QDebug>
+#include <future>
 
 // labels
 
@@ -95,6 +96,14 @@ struct sysVar {
 	int size;		// up to the next variable
 };
 
+// what the list files say, read once
+struct romListSet {
+	QList<romLabList> lists;
+	QList<sysLabList> sys;
+	QSet<QString> spaces;			// every namespace of the lists
+	QStringList warnings;			// logged by the thread that takes the set
+};
+
 static QList<romLabList> romLists;
 static QList<sysLabList> sysLists;
 static QSet<QString> romSpaces;			// every namespace of the lists
@@ -117,29 +126,28 @@ static QString rom_space(const QString& full) {
 
 // One list file: what it says of each ROM name it uses, and its system variables.
 // Lines it cannot use are counted, and logged once for the file
-static void rom_list_file(const QString& path) {
+static void rom_list_file(const QString& path, romListSet& into) {
 	QFile file(path);
 	if (!file.open(QFile::ReadOnly)) return;
-	QHash<QString, int> byName;		// a ROM name -> its list in romLists
+	QHash<QString, int> byName;		// a ROM name -> its list in into.lists
 	sysLabList sys;
 	int skipped = 0;
 	int num = 0;
 	auto list_of = [&](const QString& mem) -> romLabList& {
 		if (!byName.contains(mem)) {
-			byName[mem] = romLists.size();
+			byName[mem] = into.lists.size();
 			romLabList lst;
 			lst.mem = mem;
-			romLists.append(lst);
+			into.lists.append(lst);
 		}
-		return romLists[byName[mem]];
+		return into.lists[byName[mem]];
 	};
 	dtRecord rec;
 	while (!file.atEnd()) {
 		num++;
 		QString line = QString::fromUtf8(file.readLine());
 		if (!dt_parse_line(line, &rec)) {
-			xlog(XLG_FILE, XLL_WARN, "ROM labels: %s, line %i: %s", path.toLocal8Bit().constData(), num,
-				rec.error.toLocal8Bit().constData());
+			into.warnings << QString("ROM labels: %1, line %2: %3").arg(path).arg(num).arg(rec.error);
 			continue;
 		}
 		switch (rec.type) {
@@ -156,7 +164,7 @@ static void rom_list_file(const QString& path) {
 				QString space = rom_space(rec.name);
 				romLab lab = {rec.at.ofs, rec.name, space.isEmpty() ? rec.name : rec.name.mid(space.size() + 1),
 					rec.size, -1};
-				if (!space.isEmpty()) romSpaces.insert(space);
+				if (!space.isEmpty()) into.spaces.insert(space);
 				if ((rec.at.kind == DT_PLACE_ROM) && (rec.at.ofs < MEM_16K)) {
 					romLabList& lst = list_of(rec.at.name);
 					lst.labs.append(lab);
@@ -192,21 +200,38 @@ static void rom_list_file(const QString& path) {
 				break;
 		}
 	}
-	if (!sys.labs.isEmpty()) sysLists.append(sys);
+	if (!sys.labs.isEmpty()) into.sys.append(sys);
 	if (skipped)
-		xlog(XLG_FILE, XLL_WARN, "ROM labels: %s: %i lines not for a ROM list, skipped", path.toLocal8Bit().constData(), skipped);
+		into.warnings << QString("ROM labels: %1: %2 lines not for a ROM list, skipped").arg(path).arg(skipped);
 }
 
 // The lists are files in config/rom-labels of the installed program, each under
 // the license of its source (config/rom-labels/README.md)
+static romListSet rom_lists_load() {
+	romListSet set;
+	QDir dir(xconf_install_dir() + "/rom-labels");
+	if (!dir.exists()) set.warnings << QString("ROM labels: no %1").arg(dir.path());
+	foreach(QString fn, dir.entryList(QStringList("*.labels"), QDir::Files, QDir::Name))
+		rom_list_file(dir.filePath(fn), set);
+	return set;
+}
+
+// read on a thread meanwhile: the first machine set up needs them
+static std::future<romListSet> romPrefetch;
+
+void labels_rom_prefetch() {
+	if (!romPrefetch.valid()) romPrefetch = std::async(std::launch::async, rom_lists_load);
+}
+
 static void rom_lists_read() {
 	static bool done = false;
 	if (done) return;
 	done = true;
-	QDir dir(xconf_install_dir() + "/rom-labels");
-	if (!dir.exists()) xlog(XLG_FILE, XLL_WARN, "ROM labels: no %s", dir.path().toLocal8Bit().constData());
-	foreach(QString fn, dir.entryList(QStringList("*.labels"), QDir::Files, QDir::Name))
-		rom_list_file(dir.filePath(fn));
+	romListSet set = romPrefetch.valid() ? romPrefetch.get() : rom_lists_load();
+	romLists = std::move(set.lists);
+	sysLists = std::move(set.sys);
+	romSpaces = std::move(set.spaces);
+	foreach(const QString& w, set.warnings) xlog(XLG_FILE, XLL_WARN, "%s", w.toLocal8Bit().constData());
 }
 
 // the length of a name's namespace, BASIC48 of BASIC48.LD_BYTES; 0 if it has none

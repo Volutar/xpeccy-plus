@@ -498,6 +498,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		QMenu* hddMenu;
 		xDiskWin* diskWin;
 		xPadWin* padWin;
+		xPadWin* pads();
 		xCheatWin* cheatWin;
 		QMenu* turboMenu;
 		QMenu* shdMenu;

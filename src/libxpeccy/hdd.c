@@ -632,6 +632,23 @@ void ideSetFolder(IDE* ide, int wut, const char* name, vFat* vf) {
 	ide_vfat_port(ide);
 }
 
+// a folder kept by path only, on a machine with no IDE interface (ide_mount_later)
+void ideSetUnread(IDE* ide, int wut, const char* name) {
+	ATADev* dev = ide_get_dev(ide, wut);
+	if (dev == NULL) return;
+	ataCloseFile(dev);
+	free(dev->image);
+	dev->image = NULL;
+	if (!name || !*name) return;
+	dev->image = (char*)malloc(strlen(name) + 1);
+	strcpy(dev->image, name);
+}
+
+int ide_unread(IDE* ide, int wut) {
+	ATADev* dev = ide_get_dev(ide, wut);
+	return dev && dev->image && !dev->vfat && !dev->file;
+}
+
 void ideSetImage(IDE *ide, int wut, const char *name) {
 	ATADev* dev = ide_get_dev(ide, wut);
 	if (dev == NULL) return;
