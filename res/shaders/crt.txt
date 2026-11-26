@@ -894,12 +894,8 @@ fragment:
 			float reach = reachOf(depth, width);
 			// what the mask takes is given back
 			vec3 pass_ = through / mean;
-			// Bloom. The bell and the mask heap a line's light on a part of its place,
-			// up to peak times what the line has: a line brighter than 1 / peak cannot
-			// pass it all, and its light would be lost. Such a line is drawn the plainer
-			// by as much as it does not fit: a shallower gap, so a wider bell, and a
-			// fainter mask. The mask and the scanlines fade where the picture is
-			// bright, and it keeps its light - all of it with Bloom at 1
+			// Bloom: a line brighter than 1 / peak cannot pass its light through the bell
+			// and the mask; it gets a shallower gap and a fainter mask by what does not fit
 			if (BLOOM > 0.0) {
 				float peak = 1.0 / (mean * reach * (2.0 - width));
 				vec3 fits = clamp((1.0 / max(col, vec3(0.000001)) - 1.0) / max(peak - 1.0, 0.000001), vec3(0.0), vec3(1.0));

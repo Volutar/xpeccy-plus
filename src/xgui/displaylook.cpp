@@ -180,8 +180,8 @@ const xShdPreset* look_file(const QString& file) {
 // ---------------------------------------------------------------- the list
 
 // The shader files the tube came instead of. They stay in the build, listed apart under
-// Legacy, until the side fill and the bezel are done for the tube; then they go, and
-// look_old_names() takes a config that names one over to the tube.
+// Legacy, until the tube does all they did (its side fill and bezel are to come); then
+// they go, and look_old_names() takes a config that names one over to the tube.
 static const char* const legacyFiles[] = {
 	"composite-crt-flat.txt", "composite-crt.txt", "grille-nocurve-crisp.txt", "grille-nocurve-light.txt",
 	"grille2-nocurve-crisp.txt", "grille2-nocurve-light.txt", "monitor-1084-flat.txt", "monitor-1084.txt",
@@ -194,6 +194,11 @@ static bool legacy_file(const QString& file) {
 	for (const char* name : legacyFiles)
 		if (file == name) return true;
 	return false;
+}
+
+// ...and is in this build
+static bool legacy_kept(const QString& file) {
+	return legacy_file(file) && QFile::exists(xres_root(LOOK_KIND) + "/" + file);
 }
 
 QList<xLook> look_list() {
@@ -209,7 +214,7 @@ QList<xLook> look_list() {
 			lk.file = file;
 			lk.title = (head && !head->title.isEmpty()) ? head->title : QFileInfo(file).completeBaseName();
 			// (a file of an old look's name in the user's folder is the user's own)
-			if (legacy_file(file) && builtin.contains(file) && !QFile::exists(xres_dir(LOOK_KIND) + "/" + file)) {
+			if (legacy_kept(file) && !QFile::exists(xres_dir(LOOK_KIND) + "/" + file)) {
 				lk.part = LOOK_LEGACY;
 				parts[LOOK_LEGACY] << lk;
 			} else if (head && !head->sets.isEmpty()) {
@@ -403,7 +408,7 @@ bool look_save_preset(const xLook& lk, const QString& name, QString* err) {
 	QString base = preset_base(title);
 	if (const UserPreset* old = user_clash(title, base)) base = old->base;
 	for (const xLook& o : look_list()) {
-		if (o.user) continue;
+		if (o.user || (o.part == LOOK_LEGACY)) continue;
 		if (!o.title.compare(title, Qt::CaseInsensitive) || !o.preset.compare(base, Qt::CaseInsensitive)) {
 			*err = "A built-in look has this name";
 			return false;
@@ -450,8 +455,9 @@ bool look_delete_preset(const xLook& lk) {
 // ---------------------------------------------------------------- old names
 
 // The looks that were files of their own - the aperture grille and shadow mask shaders,
-// the TV lines, the first monitor and signal looks - are the tube now: each old name opens the tube's
-// look nearest to it with the knobs turned to stand for it (measured beside the old file
+// the TV lines, the first monitor and signal looks - are the tube: an old name whose file
+// is not there (see legacyFiles: they are, for now) opens the tube's look nearest to it
+// with the knobs turned to stand for it (measured beside the old file
 // on a test card: the lines' depth on bright and on plain white, the dot's sharpness,
 // the light over all, the bend). The knobs are turned only on a look not turned yet.
 #define	OLD_CRISP	"CURVE 0, CURVEX 1, SPOT 0, BLOOM 0, MASKS 0.6, SCAN 1.0, WIDTH 0.8, FOCUS 0.9, GROW 0, GLOW 0.1, BRIGHT 0.55, DIVERGE 0"
@@ -500,9 +506,9 @@ void look_old_names() {
 	const QString was = QString::fromUtf8(conf.vid.shdPreset.c_str());
 	for (const auto& row : names) {
 		if ((old != row.old) || (row.was[0] && (was != row.was))) continue;
-		// a file of that name is the shader: the user's own, or the build's old look
-		// while it is kept
-		if (look_file(old)) return;
+		// a file of that name is the shader, readable or not: the user's own, or the
+		// build's old look while it is kept
+		if (QFile::exists(xres_dir(LOOK_KIND) + "/" + old) || legacy_kept(old)) return;
 		xLook lk;
 		lk.part = LOOK_PRESET;
 		lk.file = LOOK_TUBE;

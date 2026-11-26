@@ -4330,13 +4330,16 @@ void MainWin::fillUserMenu() {
 	}
 	// fill the Display menu: the looks, a line between the list's parts
 	shdMenu->clear();
+	QMenu* legacy = NULL;
+	bool legacyOn = false;
 	{
 		// with no shaders the list is None alone, and None is what runs
 		const xLook cur = conf.vid.shd_support ? look_current() : xLook();
 		// (the last fill's submenu goes with it)
 		foreach(QMenu* old, shdMenu->findChildren<QMenu*>(QString(), Qt::FindDirectChildrenOnly)) old->deleteLater();
 		int part = LOOK_BASIC;
-		QMenu* legacy = NULL;
+		legacy = NULL;
+		legacyOn = (cur.part == LOOK_LEGACY);
 		foreach(const xLook& lk, look_list()) {
 			if (lk.part != part) shdMenu->addSeparator();
 			part = lk.part;
@@ -4367,6 +4370,11 @@ void MainWin::fillUserMenu() {
 	menu_one_tick(keyMenu);
 	menu_one_tick(shdMenu);
 	menu_one_tick(palMenu);
+	// the Legacy item shows that the look is one of its own; not one of the tick's group
+	if (legacy) {
+		legacy->menuAction()->setCheckable(true);
+		legacy->menuAction()->setChecked(legacyOn);
+	}
 	// the look's knobs, out of the looks' one tick
 	shdMenu->addSeparator();
 	act = shdMenu->addAction(QIcon(":/images/settings.png"), "Settings...");

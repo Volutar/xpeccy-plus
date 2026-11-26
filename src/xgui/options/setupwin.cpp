@@ -192,7 +192,8 @@ static void fill_look_list(QComboBox* box) {
 	foreach(const xLook& lk, look_list()) {
 		if (lk.part != part) box->insertSeparator(box->count());
 		part = lk.part;
-		box->addItem(lk.title, QStringList() << lk.file << lk.preset);
+		// (the menu has the older files in a submenu)
+		box->addItem((lk.part == LOOK_LEGACY) ? "Legacy: " + lk.title : lk.title, QStringList() << lk.file << lk.preset);
 	}
 	const xLook cur = look_current();
 	box->setCurrentIndex(qMax(0, box->findData(QStringList() << cur.file << cur.preset)));
