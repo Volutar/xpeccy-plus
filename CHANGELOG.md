@@ -106,7 +106,7 @@ before that point is upstream's history and is not repeated here.
   drops in pitch. Beside it, PSG stereo sets the voices' order for every machine (the Next
   keeps its own), and one Separation serves the PSG, the General Sound and the Next. All
   three are set for every machine: a machine can have its own on the Machine page and in its
-  PSG sheet (Use global setting, Machine spec or a value, each of the first two saying what it
+  PSG sheet (Global setting, Machine spec or a value, each of the first two saying what it
   gives), and the Sound page says how many machines override each group, with Apply to all
   machines under it. The page's
   Enabled is now Emulate sound, over its groups, which grey while it is off.
