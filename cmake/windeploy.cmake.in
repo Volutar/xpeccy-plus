@@ -38,6 +38,7 @@ if(@TRIMDEPLOY@)
 #                   this app talks over plain QTcpServer/QTcpSocket
 #   iconengines   - SVG icon engine, and xpeccy.qrc holds no .svg at all
 #   Qt[56]Svg.dll - same reason
+#   Qt6Pdf.dll    - the qpdf image plugin's, which goes below; nothing else imports it
 #   networkinformation, tls - Qt6 only; TLS backends serve QSslSocket, never used
 #   ANGLE + opengl32sw - the OpenGL fallbacks. Not merely unused: under
 #                   QT_OPENGL=angle the app dies with 0xC0000005, and under
@@ -47,7 +48,7 @@ if(@TRIMDEPLOY@)
 
 set(DROP_DIRS bearer iconengines networkinformation tls)
 set(DROP_FILES
-	Qt5Svg.dll Qt6Svg.dll
+	Qt5Svg.dll Qt6Svg.dll Qt6Pdf.dll
 	D3Dcompiler_47.dll libEGL.dll libGLESv2.dll opengl32sw.dll
 )
 set(KEEP_IMAGEFORMATS qjpeg.dll)
