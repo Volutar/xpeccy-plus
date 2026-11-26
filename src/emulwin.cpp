@@ -4632,6 +4632,8 @@ bool MainWin::viewDraw() {
 	if (done) {
 		memcpy(scrimg, bufimg, bufSize);
 		frame_publish();
+		// a picture now, before the machine's first frame at start-up: the paused timer uploads it
+		hasPicture = 1;
 	}
 	emu_unlock();
 	if (done) presentFrame();
