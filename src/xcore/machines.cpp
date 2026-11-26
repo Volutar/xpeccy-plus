@@ -1837,7 +1837,8 @@ static bool mac_same_roms(const xRomset* rs, const xRomset* set) {
 
 // everything about the machine in use that differs from what it ships with
 
-static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
+// taste: the user's sound picks over Global too, which are no part of what the machine is
+static void mac_put_all(QList<xMacLine>& out, const xMachine* mac, bool taste = true) {
 	if (!mac || !conf.zx) return;
 	Computer* comp = conf.zx;
 	std::string cpu = comp->cpu->core->name;
@@ -1883,10 +1884,12 @@ static void mac_put_all(QList<xMacLine>& out, const xMachine* mac) {
 	mac_put(out, "beeper", mac_word_name(beepTab, comp->beepType), mac_word_name(beepTab, mac->beepType));
 	mac_put_yn(out, "beeper.mic", comp->beep->mic, mac->beepmic);
 	// the user's own over Global: none ships, so any is written
-	mac_put(out, "psg.layout", std::string(xm_snd_lay_key(conf.snd.own.lay)), std::string(xm_snd_lay_key(mac->snd.lay)));
-	if (conf.snd.own.lay >= 0)		// an order of its own: its separation with it
-		mac_put(out, "separation", conf.snd.own.sep, mac->snd.sep);
-	mac_put(out, "board.filter", std::string(xm_snd_board_key(conf.snd.own.board)), std::string(xm_snd_board_key(mac->snd.board)));
+	if (taste) {
+		mac_put(out, "psg.layout", std::string(xm_snd_lay_key(conf.snd.own.lay)), std::string(xm_snd_lay_key(mac->snd.lay)));
+		if (conf.snd.own.lay >= 0)		// an order of its own: its separation with it
+			mac_put(out, "separation", conf.snd.own.sep, mac->snd.sep);
+		mac_put(out, "board.filter", std::string(xm_snd_board_key(conf.snd.own.board)), std::string(xm_snd_board_key(mac->snd.board)));
+	}
 	mac_put(out, "soundrive", mac_word_name(sdrvTab, comp->sdrv->type), mac_word_name(sdrvTab, mac->soundrive));
 	mac_put(out, "disk", mac_word_name(diskTab, comp->dif->cfg), mac_word_name(diskTab, mac->disk));
 	int drives = 0;
@@ -1984,7 +1987,7 @@ std::string xm_signature() {
 	const xMachine* base = xm_stock(conf.macId);
 	if (!macLive || !conf.zx || !base) return "";
 	QList<xMacLine> lines;
-	mac_put_all(lines, base);
+	mac_put_all(lines, base, false);	// a pick of taste neither ends a recording nor the rewind
 	std::string res = conf.macId;
 	for (const xMacLine& ln : lines)
 		res += "\n" + ln.sect + "." + ln.name + "=" + ln.val;
