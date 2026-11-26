@@ -449,7 +449,7 @@ static const struct {double frq; const char* name;} psgFrqTab[] = {
 // is heard and where it comes from, one item a sound. What is heard is xm_snd_apply's.
 
 QString board_type_name(int type) {
-	static const char* names[BEEP_ALL] = {"Line out", "48K speaker", "TV (RF)", "+2A/+3",	// BEEP_*
+	static const char* names[BEEP_ALL] = {"No filter", "48K speaker", "TV (RF)", "+2A/+3",	// BEEP_*
 		"ZX Evolution", "Scorpion", "ATM Turbo", "Piezo",
 		"Low-pass 5 kHz, 24 dB/oct"};
 	return ((type >= 0) && (type < BEEP_ALL)) ? QObject::tr(names[type]) : QString();
@@ -499,13 +499,18 @@ static bool snd_board_same(int own, int gboard, int spec) {
 		&& (((gboard == BOARD_MACHINE) ? spec : gboard) == BEEP_LINE);
 }
 
-// what a machine has of its own, for the Sound page's line: "stereo ACB 60%, filter Line out"
+// what a machine has of its own, for the Sound page's line: "stereo ACB 60%, filter TV (RF)",
+// "no filter - machine spec"
 static QString snd_own_text(const xSndPicks& p, int specLay, int specBoard, bool lay, bool board) {
 	QStringList res;
 	if (lay && (p.lay == LAY_MACHINE)) res << QObject::tr("stereo %0 - machine spec").arg(psg_lay_name(specLay));
 	else if (lay && (p.lay >= 0)) res << QObject::tr("stereo %0").arg(psg_lay_name(p.lay))
 		+ (((p.lay != AY_MONO) && (p.sep >= 0)) ? QString(" %0%").arg(p.sep) : QString());
-	if (board) res << QObject::tr("filter %0").arg(board_pick_name(p.board, specBoard));
+	if (board) {
+		QString name = board_pick_name(p.board, specBoard);
+		bool none = (((p.board == BOARD_MACHINE) ? specBoard : p.board) == BEEP_LINE);
+		res << (none ? name.replace(0, 1, name.at(0).toLower()) : QObject::tr("filter %0").arg(name));
+	}
 	return res.join(", ");
 }
 
@@ -590,16 +595,23 @@ void SetupWin::makeSoundGroup() {
 	row->addWidget(stereo, 1);
 	row->addWidget(filters, 1);
 	ui.verticalLayout_43->insertLayout(1, row);
-	// under them, the machines with picks of their own, and the way back
+	// under them, the machines with picks of their own, a mark before them, and the way
+	// back: a button with its icon at the edge, as the Machine page's
+	QLabel* mark = new QLabel;
+	mark->setPixmap(QIcon(":/images/exclamation.png").pixmap(16, 16));
 	ownLine = new xElideLabel;
 	ownLine->setMode(Qt::ElideRight);
-	btnAllGlobal = new QPushButton(tr("All to Sound page"));
+	xSideButton* all = new xSideButton;
+	all->setText(tr("Use for all machines"));
+	all->setIcon(QIcon(":/images/refresh.png"));
+	btnAllGlobal = all;
 	btnAllGlobal->setObjectName("allGlobalBtn");
-	btnAllGlobal->setToolTip(tr("Every machine takes the picks above again:\ntheir own stereo, separation and filter go"));
+	btnAllGlobal->setToolTip(tr("Every machine takes the picks above:\ntheir own stereo, separation and filter go"));
 	ownRow = new QWidget;
 	ownRow->setObjectName("ownRow");
 	QHBoxLayout* orow = new QHBoxLayout(ownRow);
 	orow->setContentsMargins(9, 0, 0, 0);
+	orow->addWidget(mark);
 	orow->addWidget(ownLine, 1);
 	orow->addWidget(btnAllGlobal);
 	ui.verticalLayout_43->insertWidget(2, ownRow);
@@ -726,8 +738,8 @@ void SetupWin::sndOwnShow() {
 			m.snd.lay != SND_GLOBAL, m.snd.board != SND_GLOBAL));
 	}
 	ownRow->setVisible(!names.isEmpty());
-	ownLine->setFull((names.size() == 1) ? tr("Own settings: %0").arg(names.first())
-		: tr("Own settings on %0 machines: %1").arg(names.size()).arg(names.join(", ")));
+	ownLine->setFull((names.size() == 1) ? tr("Overridden on %0").arg(names.first())
+		: tr("Overridden on %0 machines: %1").arg(names.size()).arg(names.join(", ")));
 	ownLine->setToolTip(sndOwnTips.join("\n"));
 }
 
@@ -741,7 +753,7 @@ void SetupWin::sndOthersRead() {
 void SetupWin::sndAllGlobal() {
 	QStringList lines;
 	for (const QString& tip : sndOwnTips) lines << tip.toHtmlEscaped();
-	QString msg = tr("Put every machine on this page's picks now? Their own picks go,<br>and Cancel in Options will not bring them back:") + "<br><br>" + lines.join("<br>");
+	QString msg = tr("Use these settings for all machines now? Their own go,<br>and Cancel in Options will not bring them back:") + "<br><br>" + lines.join("<br>");
 	if (!areSure(msg.toUtf8().constData())) return;
 	xm_snd_all_global();
 	sndOthersRead();

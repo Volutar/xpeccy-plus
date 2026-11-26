@@ -73,7 +73,7 @@ class SetupWin : public QDialog {
 		void makeSoundGroup();
 		void soundPageOn(bool);
 		void sndOwnShow();		// the own picks' texts, rows and the Sound page's line, as the lists stand
-		void sndAllGlobal();		// All to Sound page, asked first
+		void sndAllGlobal();		// Use for all machines, asked first
 		void fillNextGroup();
 		void showDriveRows();
 		void tidySoundPage();
@@ -198,7 +198,7 @@ class SetupWin : public QDialog {
 		QCheckBox* chkSndOn;	// Emulate sound, over the page's groups
 		xSlider* sldSep;
 		QLabel* labSep;
-		// under them: the machines with picks of their own, and All to Sound page
+		// under them: the machines with picks of their own, and Use for all machines
 		QWidget* ownRow;
 		xElideLabel* ownLine = nullptr;	// made after the machine's lists, which call on it
 		QPushButton* btnAllGlobal;

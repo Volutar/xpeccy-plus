@@ -2040,7 +2040,7 @@ void xm_reset_over() {
 	xm_set(id);
 }
 
-// "All to Sound page": every machine's own sound picks go, the rest of its file stays
+// "Use for all machines": every machine's own sound picks go, the rest of its file stays
 
 void xm_snd_all_global() {
 	int done = 0;
