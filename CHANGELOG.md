@@ -116,6 +116,11 @@ before that point is upstream's history and is not repeated here.
   to cover the whole room and blurred, behind the picture; by the picture its edges are
   carried out into it, so there is no hard edge. Best with no border.
 
+- **Screen files open**: a `.scr` (6912 or 6144 bytes, or 6976 with a ULA+ palette) or a Hobeta
+  screen, by File > Open, a drop, Recent, Favorites, an archive or the command line, is shown over
+  the paused machine on any machine, with its border and FLASH, until a key or a click. The
+  machine goes on as it was.
+
 ### Changed
 
 - **Starts faster**: the first frame comes about 0.1 s sooner, and a folder opened as a hard
@@ -196,6 +201,12 @@ before that point is upstream's history and is not repeated here.
   name a profile went by.
 
 ### Fixed
+
+- **ULA+ switched off brings the plain colors back**: a program that turns the ULA+ mode off no
+  longer draws in its palette's colors.
+
+- **A Hobeta screenshot loads back** to the screen: it starts at #4000 and its header is
+  right.
 
 - **Linux: the zx-rf-artifact shader** works with Mesa drivers, and the aperture grille and
   shadow mask shaders with OpenGL ES.
