@@ -608,15 +608,16 @@ void SetupWin::makeSoundGroup() {
 	row->addWidget(stereo, 1);
 	row->addWidget(filters, 1);
 	ui.verticalLayout_43->insertLayout(1, row);
-	// at the foot of each, the machines that override it: a mark, how many (the names in
-	// the tooltip) and the way back, a button with its icon at the edge, as the Machine page's
+	// at the foot of each, the machines that override it: a mark and how many (the names in
+	// the tooltip), shown while there are any, and the way back, a button with its icon at the
+	// edge, as the Machine page's, greyed while there are none
 	static const char* const allTips[2] = {
 		QT_TR_NOOP("Every machine takes the stereo above:\ntheir own order and separation go"),
 		QT_TR_NOOP("Every machine takes the board filter\nabove: their own go")};
 	QGridLayout* foot[2] = {sg, fg};
 	const int footRow[2] = {3, 4}, footCols[2] = {2, 3};	// under each one's spare height
 	for (int grp = 0; grp < 2; grp++) {
-		QLabel* mark = new QLabel;
+		QLabel* mark = ownMark[grp] = new QLabel;
 		mark->setPixmap(QIcon(":/images/exclamation.png").pixmap(16, 16));
 		ownLine[grp] = new QLabel;
 		xSideButton* all = new xSideButton;
@@ -627,13 +628,12 @@ void SetupWin::makeSoundGroup() {
 		btnAllGlobal[grp] = all;
 		ownRow[grp] = new QWidget;
 		ownRow[grp]->setObjectName(grp ? "ownBoardRow" : "ownLayRow");
-		// the button under the notice, at the right: side by side they would widen the window
-		QGridLayout* orow = new QGridLayout(ownRow[grp]);
+		QHBoxLayout* orow = new QHBoxLayout(ownRow[grp]);
 		orow->setContentsMargins(0, 0, 0, 0);
-		orow->addWidget(mark, 0, 0);
-		orow->addWidget(ownLine[grp], 0, 1);
-		orow->addWidget(all, 1, 1, Qt::AlignRight);
-		orow->setColumnStretch(1, 1);
+		orow->addWidget(mark);
+		orow->addWidget(ownLine[grp]);
+		orow->addStretch(1);		// the button at the right, the notice hidden too
+		orow->addWidget(all);
 		foot[grp]->addWidget(ownRow[grp], footRow[grp], 0, 1, footCols[grp]);
 		connect(all, &QPushButton::released, this, [this, grp]() {sndAllGlobal(grp);});
 	}
@@ -678,7 +678,7 @@ xSndPicks SetupWin::ownPicks() {
 }
 
 // The machine's own picks as the lists stand, applied or not. The first two items say what
-// they give this machine, as the PSG count's do ("Use global setting (ABC, 85%)", "Machine
+// they give this machine, as the PSG count's do ("Global setting (ABC, 85%)", "Machine
 // spec (Mono)"), the values after them plain. The Separation row is there with an order of
 // its own, a button back to the Sound page only with something to go back from; and the
 // Sound page's groups say how many machines override them, this one as its lists have it.
@@ -693,9 +693,9 @@ void SetupWin::sndOwnShow() {
 	QString gtxt = psg_lay_name(heard);
 	if (heard != AY_MONO) gtxt += QString(", %0%").arg(sldSep->value());
 	// "name - detail": the name bold, the detail grey (xTwoPartDelegate)
-	cbOwnLay->setItemText(0, tr("Use global setting") + detail_sep + QString("(%0)").arg(gtxt));
+	cbOwnLay->setItemText(0, tr("Global setting") + detail_sep + QString("(%0)").arg(gtxt));
 	cbOwnLay->setItemText(1, tr("Machine spec") + detail_sep + QString("(%0)").arg(psg_lay_name(spec)));
-	cbOwnBoard->setItemText(0, tr("Use global setting") + detail_sep
+	cbOwnBoard->setItemText(0, tr("Global setting") + detail_sep
 		+ QString("(%0)").arg(board_type_name((gboard == BOARD_MACHINE) ? sboard : gboard)));
 	cbOwnBoard->setItemText(1, tr("Machine spec") + detail_sep + QString("(%0)").arg(board_type_name(sboard)));
 	int lay = getRFIData(cbOwnLay);
@@ -712,7 +712,7 @@ void SetupWin::sndOwnShow() {
 	}
 	btnOwnLay->setEnabled(lay != SND_GLOBAL);
 	btnOwnBoard->setEnabled(getRFIData(cbOwnBoard) != SND_GLOBAL);
-	ownLayNote->setText((lay == SND_GLOBAL) ? tr("Follows the Sound page") : tr("This machine's own"));
+	ownLayNote->setText((lay == SND_GLOBAL) ? tr("Follows the global setting on the Sound page") : tr("This machine's own"));
 	// the notices: the others as their files have them, this one first as the lists have it
 	QList<xSndOwnRow> macs;
 	const xMachine* mac = xm_find(conf.macId);
@@ -726,8 +726,11 @@ void SetupWin::sndOwnShow() {
 				sndOwnTips[grp] << QString("%0: %1").arg(m.name, snd_own_text(m.snd, m.specLay, m.specBoard, grp));
 		}
 		int n = sndOwnTips[grp].size();
-		ownRow[grp]->setVisible(n > 0);
-		ownLine[grp]->setText((n == 1) ? tr("Overridden on 1 machine") : tr("Overridden on %0 machines").arg(n));
+		ownMark[grp]->setVisible(n > 0);
+		ownLine[grp]->setVisible(n > 0);
+		btnAllGlobal[grp]->setEnabled(n > 0);
+		// short: beside the button in half the page; "Overridden on 2 machines" would widen it
+		ownLine[grp]->setText(tr("Overridden: %0").arg(n));
 		ownRow[grp]->setToolTip(sndOwnTips[grp].join("\n"));	// over the mark too; the button has its own
 	}
 }
@@ -872,7 +875,10 @@ void SetupWin::makeDevWidgets() {
 	QFont nfnt = ownLayNote->font();
 	nfnt.setItalic(true);
 	ownLayNote->setFont(nfnt);
-	ownLayNote->setWordWrap(true);
+	// one line, as wide as the longer of its two texts: the sheet keeps its width as they swap
+	QFontMetrics nfm(nfnt);
+	ownLayNote->setMinimumWidth(qMax(nfm.horizontalAdvance(tr("Follows the global setting on the Sound page")),
+		nfm.horizontalAdvance(tr("This machine's own"))) + 2);
 	foreach(QComboBox* box, QList<QComboBox*>() << cbPsgCount << cbPsgType << cbPsgFrq) {
 		box->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
 		box->setMinimumContentsLength(8);
