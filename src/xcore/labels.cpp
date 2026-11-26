@@ -101,6 +101,7 @@ struct romListSet {
 	QList<romLabList> lists;
 	QList<sysLabList> sys;
 	QSet<QString> spaces;			// every namespace of the lists
+	QStringList warnings;			// logged by the thread that takes the set
 };
 
 static QList<romLabList> romLists;
@@ -146,8 +147,7 @@ static void rom_list_file(const QString& path, romListSet& into) {
 		num++;
 		QString line = QString::fromUtf8(file.readLine());
 		if (!dt_parse_line(line, &rec)) {
-			xlog(XLG_FILE, XLL_WARN, "ROM labels: %s, line %i: %s", path.toLocal8Bit().constData(), num,
-				rec.error.toLocal8Bit().constData());
+			into.warnings << QString("ROM labels: %1, line %2: %3").arg(path).arg(num).arg(rec.error);
 			continue;
 		}
 		switch (rec.type) {
@@ -202,7 +202,7 @@ static void rom_list_file(const QString& path, romListSet& into) {
 	}
 	if (!sys.labs.isEmpty()) into.sys.append(sys);
 	if (skipped)
-		xlog(XLG_FILE, XLL_WARN, "ROM labels: %s: %i lines not for a ROM list, skipped", path.toLocal8Bit().constData(), skipped);
+		into.warnings << QString("ROM labels: %1: %2 lines not for a ROM list, skipped").arg(path).arg(skipped);
 }
 
 // The lists are files in config/rom-labels of the installed program, each under
@@ -210,13 +210,13 @@ static void rom_list_file(const QString& path, romListSet& into) {
 static romListSet rom_lists_load() {
 	romListSet set;
 	QDir dir(xconf_install_dir() + "/rom-labels");
-	if (!dir.exists()) xlog(XLG_FILE, XLL_WARN, "ROM labels: no %s", dir.path().toLocal8Bit().constData());
+	if (!dir.exists()) set.warnings << QString("ROM labels: no %1").arg(dir.path());
 	foreach(QString fn, dir.entryList(QStringList("*.labels"), QDir::Files, QDir::Name))
 		rom_list_file(dir.filePath(fn), set);
 	return set;
 }
 
-// read on a thread from the start on: the first machine set up needs them, tens of ms in
+// read on a thread meanwhile: the first machine set up needs them
 static std::future<romListSet> romPrefetch;
 
 void labels_rom_prefetch() {
@@ -231,6 +231,7 @@ static void rom_lists_read() {
 	romLists = std::move(set.lists);
 	sysLists = std::move(set.sys);
 	romSpaces = std::move(set.spaces);
+	foreach(const QString& w, set.warnings) xlog(XLG_FILE, XLL_WARN, "%s", w.toLocal8Bit().constData());
 }
 
 // the length of a name's namespace, BASIC48 of BASIC48.LD_BYTES; 0 if it has none
