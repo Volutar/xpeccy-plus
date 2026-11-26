@@ -185,16 +185,15 @@ The beeper is a single bit of a port, but what you heard from it depended on the
 the sound chip went the same way. The **Board filter** list picks what this machine is
 heard through:
 
-- the first, the default - what the **Board filter** of the **Sound** page gives this
-  machine: **No filter - Sound page**, or with **By machine** there, its board's own:
-  **TV (RF) - machine spec**.
-- its board's own, when the first is something else: **TV (RF) - machine spec** on the 128K,
-  **No filter - machine spec** on the Pentagon.
-- **No filter** or any other filter of the list.
+- **Use global setting**, the default - what the **Board filter** of the **Sound** page
+  gives this machine, in gray: **Use global setting (No filter)**, or with **By machine**
+  there, its board's own: **Use global setting (TV (RF))**.
+- **Machine spec** - its board's own: **Machine spec (TV (RF))** on the 128K, **Machine
+  spec (No filter)** on the Pentagon.
+- under a line, **No filter** and the other filters.
 
 Every choice but the first is this machine's own, heard whatever the **Sound** page says.
-No two choices sound the same: a filter the first two already give is not listed again.
-A filter picked takes all of the sound, so **TV (RF)** is not **TV (RF) - machine spec**,
+A filter picked takes all of the sound, so **TV (RF)** is not **Machine spec (TV (RF))**,
 which filters what the board filtered.
 The {icon}`refresh` button at the end of the row puts it back on the first. The filters are
 described in [Board filter](options-sound.md#board-filter); [A machine's own](options-sound.md#a-machines-own)
@@ -240,10 +239,10 @@ The {icon}`settings` gear opens **Machine: PSG**:
   You can also type a clock of your own.
 - **Stereo** - the order of the three voices from left to right for this machine. The
   first choice, the default, is what **PSG stereo** of the **Sound** page gives it -
-  **ABC, 75% - Sound page**, or with **By machine** there, how this board sends them out:
-  **Mono - machine spec** on the 128K, **ABC - machine spec** on the Pentagon. When the
-  **Sound** page picks an order, the board's own comes next. **Mono** or another order is
-  this machine's own, whatever the **Sound** page says. The {icon}`refresh` button puts it
+  **Use global setting (ABC, 75%)**, or with **By machine** there, how this board sends
+  them out. **Machine spec** is the board's own whatever the **Sound** page says: **Machine
+  spec (Mono)** on the 128K, **Machine spec (ABC)** on the Pentagon. **Mono** or another
+  order is this machine's own too. The {icon}`refresh` button puts it
   back on the first choice (see [A machine's own](options-sound.md#a-machines-own)).
 - **Separation** - with an order of the machine's own, how far apart its sides are, as
   **Separation** on the **Sound** page is for the others. It starts at that page's value.

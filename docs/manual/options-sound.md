@@ -94,29 +94,31 @@ The rest of the **Sound** page is the same for every machine.
 
 ## A machine's own
 
-```{index} A machine's own, Use for all machines, Overridden, machine spec
+```{index} A machine's own, Apply to all machines, Overridden, Use global setting, Machine spec
 ```
 
 A machine can be heard otherwise than this page says: its **PSG stereo** and **Separation**
 in **Machine: PSG** (see [PSG](options-machine.md#psg)), its **Board filter** on the
-**Machine** page (see [Board filter](options-machine.md#board-filter)). Each choice in those
-lists names what you hear and where it comes from, and no two of them sound the same:
+**Machine** page (see [Board filter](options-machine.md#board-filter)). The first two
+choices of those lists say in gray what they give this machine:
 
-- the first, the default, is what this page gives the machine - **ABC, 75% - Sound page**,
-  or with **By machine** here, how its board was made: **Mono - machine spec**;
-- then, when that is something else, how its board was made: **TV (RF) - machine spec**;
-- then the other values.
+- **Use global setting**, the default - what this page gives it: **Use global setting (ABC,
+  75%)**, or with **By machine** here, how its board was made: **Use global setting (Mono)**;
+- **Machine spec** - how its board was made, whatever this page says: **Machine spec (TV
+  (RF))**;
+- then, under a line, the values.
 
 Any choice but the first is the machine's own. It is heard whatever this page says, and a
 change here does not take it away. The {icon}`refresh` button beside the list puts the
 machine back on the first choice.
 
-While some machine has a choice of its own, a line under **Stereo** and
-**Filters** names them, marked {icon}`exclamation` - **Overridden on 2 machines: ZX Spectrum
-128K, Scorpion ZS 256** - and its tooltip says what each one has of its own. **Use for all
-machines** puts every machine back on this page's choices: it asks first, with the same list, and keeps whatever else you
-changed on them. It is done at once: **Cancel** in **Options** does not bring their choices
-back.
+While some machine has a choice of its own, the foot of **Stereo** or **Filters** says
+how many, marked {icon}`exclamation` - **Overridden on 2 machines** - and its tooltip names
+them, one a line, with what each one has. **Apply to all machines** under it puts every
+machine back on that group's choice: **Stereo**'s takes their own order and separation,
+**Filters**' their own board filter. It asks first, with the same list, and keeps whatever
+else you changed on them. It is done at once: **Cancel** in **Options** does not bring their
+choices back.
 
 The ZX Next has no choices of its own here: it is heard as this page says.
 
