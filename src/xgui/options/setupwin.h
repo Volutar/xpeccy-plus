@@ -179,12 +179,17 @@ class SetupWin : public QDialog {
 		QLabel *labTapeSpeedVal, *labPsgMhz;
 		// the machine's own sound picks over Global: the PSG sheet's Stereo and Separation, the
 		// Machine page's Board filter, each with its button back to Global
-		QComboBox *cbOwnLay, *cbOwnBoard;
-		QToolButton *btnOwnLay, *btnOwnBoard;
-		xSlider* sldOwnSep;
-		QLabel *labOwnSep, *ownSepName, *ownLayNote;
-		QWidget* ownSepPair;
+		QComboBox *cbOwnLay = nullptr, *cbOwnBoard = nullptr;
+		QToolButton *btnOwnLay = nullptr, *btnOwnBoard = nullptr;
+		xSlider* sldOwnSep = nullptr;
+		QLabel *labOwnSep = nullptr, *ownSepName = nullptr, *ownLayNote = nullptr;
+		QWidget* ownSepPair = nullptr;
 		int ownLayShown = SND_GLOBAL;	// the Stereo item sndOwnShow() saw last
+		int ownSepKept = SND_GLOBAL;	// its separation while the Stereo is off an order
+		// the other machines with picks of their own, as their files have them (sndOthersRead)
+		struct xSndOwnRow {std::string id; QString name; xSndPicks snd;};
+		QList<xSndOwnRow> sndOthers;
+		void sndOthersRead();
 		// the Sound page's Stereo and Filters groups (makeSoundGroup)
 		QComboBox *cbBoard, *cbPsgLay;
 		QCheckBox *chkLowCut, *chkHighCut;	// the Sound page's Filters

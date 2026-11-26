@@ -631,7 +631,7 @@ void SetupWin::soundPageOn(bool on) {
 // back to Global only with something to go back from; and the Sound page's line names the
 // machines with their own picks, this one as its lists have it.
 void SetupWin::sndOwnShow() {
-	if (!ownLine) return;		// still being built
+	if (!ownLine || !ownSepPair) return;		// still being built
 	Computer* comp = conf.zx;
 	int spec = comp->ts->chipA->stereo;
 	int glay = getRFIData(cbPsgLay);
@@ -647,7 +647,9 @@ void SetupWin::sndOwnShow() {
 	int lay = getRFIData(cbOwnLay);
 	bool was = (ownLayShown >= 0);
 	ownLayShown = lay;
-	if ((lay >= 0) && !was) sldOwnSep->setValue(sldSep->value());	// an order of its own starts from Global's
+	// an order of its own takes back its separation, a first one starts from Global's
+	if (was && (lay < 0)) ownSepKept = sldOwnSep->value();
+	if ((lay >= 0) && !was) sldOwnSep->setValue((ownSepKept >= 0) ? ownSepKept : sldSep->value());
 	bool sep = (lay >= 0) && (lay != AY_MONO);
 	if (ownSepPair->isVisibleTo(ownSepPair->window()) != sep) {
 		ownSepName->setVisible(sep);
@@ -659,12 +661,10 @@ void SetupWin::sndOwnShow() {
 	ownLayNote->setText((lay == SND_GLOBAL) ? tr("As on the Sound page")
 		: (lay == LAY_MACHINE) ? tr("As the board was made") : tr("This machine's own"));
 	// the line: the others as their files have them, this one first as the lists have it
-	QList<xMachine> macs;
-	for (const xMachine& m : xm_snd_own_list())
-		if (m.id != conf.macId) macs << m;
+	QList<xSndOwnRow> macs = sndOthers;
 	const xMachine* cur = xm_find(conf.macId);
 	if (cur && (comp->hw->id != HW_ZXNEXT)) {
-		xMachine m = *cur;
+		xSndOwnRow m = {cur->id, QString::fromLocal8Bit(cur->name.c_str()), cur->snd};
 		m.snd.lay = lay;
 		m.snd.board = getRFIData(cbOwnBoard);
 		m.snd.sep = sep ? sldOwnSep->value() : SND_GLOBAL;
@@ -672,10 +672,9 @@ void SetupWin::sndOwnShow() {
 	}
 	QStringList names;
 	sndOwnTips.clear();
-	for (const xMachine& m : macs) {
-		QString name = QString::fromLocal8Bit(m.name.c_str());
-		names << name;
-		sndOwnTips << QString("%0: %1").arg(name, snd_own_text(m.snd));
+	for (const xSndOwnRow& m : macs) {
+		names << m.name;
+		sndOwnTips << QString("%0: %1").arg(m.name, snd_own_text(m.snd));
 	}
 	ownRow->setVisible(!macs.isEmpty());
 	ownLine->setFull((macs.size() == 1) ? tr("Own settings: %0").arg(names.first())
@@ -683,12 +682,20 @@ void SetupWin::sndOwnShow() {
 	ownLine->setToolTip(sndOwnTips.join("\n"));
 }
 
+void SetupWin::sndOthersRead() {
+	sndOthers.clear();
+	for (const xMachine& m : xm_snd_own_list())
+		if (m.id != conf.macId) sndOthers.append({m.id, QString::fromLocal8Bit(m.name.c_str()), m.snd});
+}
+
 void SetupWin::sndAllGlobal() {
 	QStringList lines;
 	for (const QString& tip : sndOwnTips) lines << tip.toHtmlEscaped();
-	QString msg = tr("Put every machine back to Global? Their own picks go:") + "<br><br>" + lines.join("<br>");
+	QString msg = tr("Put every machine back to Global now? Their own picks go,<br>and Cancel will not bring them back:") + "<br><br>" + lines.join("<br>");
 	if (!areSure(msg.toUtf8().constData())) return;
 	xm_snd_all_global();
+	sndOthersRead();
+	ownSepKept = SND_GLOBAL;
 	cbOwnLay->setCurrentIndex(0);
 	cbOwnBoard->setCurrentIndex(0);
 	// the marks on the machines that carried nothing else of the user's go
@@ -1749,6 +1756,8 @@ void SetupWin::fillPages() {
 	setRFIndex(cbPsgCount, psg);
 	setRFIndex(cbPsgType, (comp->ts->chipA->type == SND_NONE) ? SND_AY : comp->ts->chipA->type);
 	// the machine's own over Global, its separation once its order is in
+	sndOthersRead();
+	ownSepKept = conf.snd.own.sep;
 	setRFIndex(cbOwnLay, conf.snd.own.lay, 0);
 	setRFIndex(cbOwnBoard, conf.snd.own.board, 0);
 	sldOwnSep->setValue((conf.snd.own.sep >= 0) ? conf.snd.own.sep : conf.snd.all.sep);
