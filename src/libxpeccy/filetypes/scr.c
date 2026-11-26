@@ -112,6 +112,10 @@ static int scr_put(Computer* comp, const unsigned char* data, size_t size) {
 			ula_wr(ula, 0xff3b, pal);
 		}
 		ula->reg = reg;
+		if (ula->palchan) {		// as after an OUT: the colors at once
+			zxSetUlaPalete(comp);
+			ula->palchan = 0;
+		}
 	} else if (pal) {
 		comp->msg = " the screen without its ULA+ palette ";
 	}
