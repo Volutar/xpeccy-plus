@@ -46,7 +46,7 @@ Esc) puts back what it showed when it opened.
 | **Input** | **Joystick** | **None**, **Kempston 5-bit**, **Kempston 8-bit**; not 8-bit on the Scorpion ZS 256 and Turbo+ (see [Joysticks](input.md#joysticks)) |
 | | **Mouse** | **None** or **Kempston mouse**; sensitivity and wheel in its window (see [Mouse](input.md#mouse)) |
 | | **PC keyboard** | ATM Turbo 2+ and ZX Evolution only: which scan codes the machine gets (see [Machines with a keyboard of their own](input.md#machines-with-a-keyboard-of-their-own)) |
-| **Sound** | **Board filter** | **Global** (the **Sound** page's), **Machine spec** - what the board put between the beeper and your ears - or any filter, for this machine only (see [Board filter](#board-filter)) |
+| **Sound** | **Board filter** | the **Sound** page's, the board's own - what it put between the beeper and your ears - or any filter, for this machine only (see [Board filter](#board-filter)) |
 | | **PSG** | the AY/YM chips, from **None** to **x3 - ZX Next**; chip, clock and stereo in its window (see [PSG](#psg)) |
 | | **DAC** | **None**, **Covox only**, **Soundrive 1.05 mode 1** or **mode 2** |
 | | **General Sound** | **None**, **Original** or **NeoGS** (see [General Sound](#general-sound)); its ROM in its window |
@@ -185,14 +185,16 @@ The beeper is a single bit of a port, but what you heard from it depended on the
 the sound chip went the same way. The **Board filter** list picks what this machine is
 heard through:
 
-- **Global**, the default - the **Board filter** of the **Sound** page, which every machine
-  set to **Global** shares; in brackets, what that is now.
-- **Machine spec** - what this machine's board put there, named in brackets: **TV (RF)** on
-  the 128K, **Line out** on the Pentagon.
-- **No filter** or any filter of the list - for this machine only, whatever the **Sound**
-  page says.
+- the first, the default - what the **Board filter** of the **Sound** page gives this
+  machine: **No filter - Sound page**, or with **By machine** there, its board's own:
+  **TV (RF) - machine spec**.
+- its board's own, when the first is something else: **TV (RF) - machine spec** on the 128K,
+  **Line out - machine spec** on the Pentagon.
+- **No filter** or any other filter of the list.
 
-The {icon}`refresh` button at the end of the row puts it back to **Global**. The filters are
+Every choice but the first is this machine's own, heard whatever the **Sound** page says.
+No two choices sound the same: a filter the first two already give is not listed again.
+The {icon}`refresh` button at the end of the row puts it back on the first. The filters are
 described in [Board filter](options-sound.md#board-filter); [A machine's own](options-sound.md#a-machines-own)
 says how the **Sound** page shows the machines with a choice of their own.
 
@@ -234,15 +236,16 @@ The {icon}`settings` gear opens **Machine: PSG**:
   value. **1.773447** is the clock of the ZX Spectrum 128, +2 and +3; **1.75** that of
   most clones. Music written for one of them sounds a little out of tune on the other.
   You can also type a clock of your own.
-- **Stereo** - the order of the three voices from left to right for this machine:
-  **Global** (the default) takes **PSG stereo** of the **Sound** page; **Machine spec** how
-  this board sends them out - **Mono** on the 128K, **ABC** on the Pentagon, **BAC** on the
-  Scorpion; **Mono** or an order is this machine's own, whatever the **Sound** page says.
-  The {icon}`refresh` button puts it back to **Global** (see
-  [A machine's own](options-sound.md#a-machines-own)).
+- **Stereo** - the order of the three voices from left to right for this machine. The
+  first choice, the default, is what **PSG stereo** of the **Sound** page gives it -
+  **ABC, 75% - Sound page**, or with **By machine** there, how this board sends them out:
+  **Mono - machine spec** on the 128K, **ABC - machine spec** on the Pentagon. When the
+  **Sound** page picks an order, the board's own comes next. **Mono** or another order is
+  this machine's own, whatever the **Sound** page says. The {icon}`refresh` button puts it
+  back on the first choice (see [A machine's own](options-sound.md#a-machines-own)).
 - **Separation** - with an order of the machine's own, how far apart its sides are, as
   **Separation** on the **Sound** page is for the others. It starts at that page's value.
-  **Global** and **Machine spec** take the **Sound** page's.
+  The first choice and the board's own take the **Sound** page's.
 
 ### DAC
 

@@ -40,19 +40,19 @@ Under it are four groups.
   again after a long time with no gaps. The slider then shows the value the program has
   settled on.
 
-```{index} Stereo, Filters, Board filter, PSG stereo, Separation, PSG; stereo, Global, Machine spec
+```{index} Stereo, Filters, Board filter, PSG stereo, Separation, PSG; stereo, By machine
 ```
 
 **Stereo** and **Filters**, side by side, are how every machine is heard. This is a matter
-of taste, as a shader is, so it is set once here for all of them - **Global** - and stays
-when the machine changes. A machine can have its own **PSG stereo**, **Separation** and
-**Board filter** over these (see [A machine's own](#a-machines-own) below).
+of taste, as a shader is, so it is set once here for all of them and stays when the machine
+changes. A machine can have its own **PSG stereo**, **Separation** and **Board filter** over
+these (see [A machine's own](#a-machines-own) below).
 
 **Stereo**:
 
 - **PSG stereo** - the order of the sound chip's three voices from left to right: **Mono**,
   **ABC**, **ACB**, **BAC**, **BCA**, **CAB**, **CBA**. **ABC** puts the second voice in the
-  middle; **ACB** puts the third voice there. **Machine spec**, the default, keeps each
+  middle; **ACB** puts the third voice there. **By machine**, the default, keeps each
   board's own - mono on the 128K, **ABC** on the Pentagon, **BAC** on the Scorpion - shown in
   the machine's **Machine: PSG**. The ZX Next keeps the order its own software sets.
 - **Separation** - how far apart the left and right sides are, for the sound chips (the ZX
@@ -64,7 +64,7 @@ when the machine changes. A machine can have its own **PSG stereo**, **Separatio
 **Filters**:
 
 - **Board filter** - what every machine sounds through (see [Board filter](#board-filter)
-  below). **No filter**, the default, plays every machine clean. **Machine spec** gives each
+  below). **No filter**, the default, plays every machine clean. **By machine** gives each
   machine its own board's filter, the one its **Board filter** list on the **Machine** page
   names: on the beeper, and on some boards on the sound chip. Any other choice puts all of
   the sound of every machine through that filter.
@@ -94,28 +94,35 @@ The rest of the **Sound** page is the same for every machine.
 
 ## A machine's own
 
-```{index} A machine's own, All to Global, Own settings
+```{index} A machine's own, All to Sound page, Own settings, machine spec
 ```
 
-A machine can be heard otherwise than **Global**: its **PSG stereo** and **Separation** in
-**Machine: PSG** (see [PSG](options-machine.md#psg)), its **Board filter** on the **Machine**
-page (see [Board filter](options-machine.md#board-filter)). Each of those lists starts with
-two choices, the value each stands for now in brackets:
+A machine can be heard otherwise than this page says: its **PSG stereo** and **Separation**
+in **Machine: PSG** (see [PSG](options-machine.md#psg)), its **Board filter** on the
+**Machine** page (see [Board filter](options-machine.md#board-filter)). Each choice in those
+lists names what you hear and where it comes from, and no two of them sound the same:
 
-- **Global**, the default - the machine is heard as this page sets every machine.
-- **Machine spec** - as its board was made, whatever this page says.
+- the first, the default, is what this page gives the machine - **ABC, 75% - Sound page**,
+  or with **By machine** here, how its board was made: **Mono - machine spec**;
+- then, when that is something else, how its board was made: **TV (RF) - machine spec**;
+- then the other values.
 
-Any other choice is the machine's own. It is heard whatever this page says, and a change
-here does not take it away. The {icon}`refresh` button beside the list puts the machine
-back to **Global**.
+Any choice but the first is the machine's own. It is heard whatever this page says, and a
+change here does not take it away. The {icon}`refresh` button beside the list puts the
+machine back on the first choice.
 
-While some machine has its own, a line under **Stereo** and **Filters** names them -
-**Own settings on 2 machines: ZX Spectrum +2, Pentagon** - and its tooltip says what each
-one has of its own. **All to Global** puts every machine back to **Global**: it asks first,
-with the same list, and keeps whatever else you changed on them. It is done at once:
-**Cancel** in **Options** does not bring their choices back.
+While some machine is heard otherwise than this page says, a line under **Stereo** and
+**Filters** names them - **Own settings on 2 machines: ZX Spectrum 128K, Scorpion ZS 256** -
+and its tooltip says what each one has of its own. **All to Sound page** puts every machine
+back on this page's choices: it asks first, with the same list, and keeps whatever else you
+changed on them. It is done at once: **Cancel** in **Options** does not bring their choices
+back.
 
-The ZX Next has no choices of its own here: it is heard as **Global** sets.
+When this page comes to say the same as a machine's own choice, its list shows the first
+choice and the line leaves the machine out. Its own choice is kept, for when this page
+changes again.
+
+The ZX Next has no choices of its own here: it is heard as this page says.
 
 ## Board filter
 
@@ -128,7 +135,8 @@ On some machines the sound chip went the same way. **Board filter** in **Filters
 picks what every machine sounds through. Its choices are also under the arrow of the
 toolbar's {icon}`speaker` **Mute** button and in **Sound** of the right-click menu, and with
 them, under **Output filters**, **Low cut (DC)** and **High cut (anti-alias)**. They are
-**Global**: when the running machine has a filter of its own, the menu says so over them.
+this page's: when the running machine is heard through a filter of its own, the menu says so
+over them.
 
 The filter runs in the machine's time, so it slows down and speeds up with it: in **Slow
 Motion** a high tone it cuts stays cut as it drops in pitch. **No filter** in the list is
@@ -148,7 +156,7 @@ Motion** a high tone it cuts stays cut as it drops in pitch. **No filter** in th
 The low-pass and high-pass filters here fall off 6 dB an octave unless the table says
 otherwise.
 
-With **Machine spec**, a filter takes what the table's third column says, as the board did; the
+With **By machine**, a filter takes what the table's third column says, as the board did; the
 other sound devices - General Sound, the SAA1099, Covox and Soundrive - have outputs of their
 own on every board and are not filtered. A filter picked from the list takes all of the sound,
 the sound chips and cards too: it is how the music would sound through that board, whether
