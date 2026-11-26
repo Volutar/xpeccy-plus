@@ -20,10 +20,11 @@ before that point is upstream's history and is not repeated here.
   by Depth, Gap width and Softness. Each is a line of the picture at any window size, and
   the picture keeps its brightness.
 
-- **CRT looks**: Home TV, Home TV (composite), RGB monitor, PVM and Xpixie in the Display
-  list. One tube in stages that switch off - beam, divergence, mask, glow, afterglow,
-  signal, screen - with the mask as fine as the tube's own and thinning out as the picture
-  gets smaller. A new installation starts with PVM. *(beam divergence by Volutar)*
+- **CRT looks**: Home TV, Home TV (composite), RGB monitor, PVM, Tridot and Xpixie in the
+  Display list. One tube in stages that switch off - beam, divergence, mask, glow,
+  afterglow, signal, screen - with the mask as fine as the tube's own and thinning out as
+  the picture gets smaller, or a set number of screen pixels at any scale. A new
+  installation starts with PVM. *(beam divergence by Volutar)*
 
 - **Composite and RF input** for the CRT looks: a PAL picture as a set decodes it. Fine
   patterns take on color; with a 128K's color carrier they stand, with a 48K's they
