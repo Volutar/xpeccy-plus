@@ -69,7 +69,9 @@ message says so. A screen of 6912 or 6144 bytes turns ULA+ off.
 A screen never switches the machine, and it is not the game: the window title, pads,
 cheats and saves stay with the game that was in. **Recent** and **Reload** take it. A
 machine in a video mode of its own (Profi, ATM, ZX Evo, TSConf) says **The machine is not
-showing the ZX screen**. While the machine is paused, the picture shows once it runs.
+showing the ZX screen**. While the machine is paused, the picture shows once it runs. A
+screen named on the command line waits until the machine has started up, which would
+clear it; after a snapshot named before it, it goes in at once.
 
 ## Opening a file
 
