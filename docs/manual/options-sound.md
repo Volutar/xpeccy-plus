@@ -116,10 +116,10 @@ change here does not take it away. The first choice puts the machine back on thi
 While some machine has a choice of its own, the foot of **Stereo** or **Filters** says
 how many, marked {icon}`exclamation` - **Overridden: 2** - and its tooltip names them, one a
 line, with what each one has. **Apply to all machines** beside it, grayed out while there
-are none, puts every machine back on that group's choice: **Stereo**'s takes their own order and separation,
-**Filters**' their own board filter. It asks first, with the same list, and keeps whatever
-else you changed on them. It is done at once: **Cancel** in **Options** does not bring their
-choices back.
+are none, sets that group's choice for every machine at once: **Stereo**'s order and
+**Separation**, taking their own order and separation away, or **Filters**' board filter,
+taking theirs. It asks first, with the same list, and keeps whatever else you changed on
+them. **Cancel** in **Options** does not undo it.
 
 The ZX Next has no choices of its own here: it is heard as this page says.
 
