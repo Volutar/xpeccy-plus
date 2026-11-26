@@ -194,8 +194,7 @@ heard through:
 
 Every choice but the first is this machine's own, heard whatever the **Sound** page says.
 A filter picked takes all of the sound, so **TV (RF)** is not **Machine spec (TV (RF))**,
-which filters what the board filtered.
-The {icon}`refresh` button at the end of the row puts it back on the first. The filters are
+which filters what the board filtered. The filters are
 described in [Board filter](options-sound.md#board-filter); [A machine's own](options-sound.md#a-machines-own)
 says how the **Sound** page shows the machines with a choice of their own.
 
@@ -243,11 +242,11 @@ The {icon}`settings` gear opens **Machine: PSG**:
   board sends them out. The line under it says what you hear: **Result: Mono (machine
   spec)**. **Machine spec** is the board's own whatever the **Sound** page says: **Machine
   spec (Mono)** on the 128K, **Machine spec (ABC)** on the Pentagon. **Mono** or another
-  order is this machine's own too. The {icon}`refresh` button puts it
-  back on the first choice (see [A machine's own](options-sound.md#a-machines-own)).
+  order is this machine's own too (see [A machine's own](options-sound.md#a-machines-own)).
 - **Separation** - with an order of the machine's own, how far apart its sides are, as
   **Separation** on the **Sound** page is for the others. It starts at that page's value.
-  The first choice and the board's own take the **Sound** page's.
+  With the first choice, the board's own or **Mono** it is grayed out, at the **Sound**
+  page's.
 
 ### DAC
 

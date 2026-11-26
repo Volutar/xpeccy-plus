@@ -111,8 +111,7 @@ choices of those lists say in gray what they stand for:
 - then, under a line, the values.
 
 Any choice but the first is the machine's own. It is heard whatever this page says, and a
-change here does not take it away. The {icon}`refresh` button beside the list puts the
-machine back on the first choice.
+change here does not take it away. The first choice puts the machine back on this page.
 
 While some machine has a choice of its own, the foot of **Stereo** or **Filters** says
 how many, marked {icon}`exclamation` - **Overridden: 2** - and its tooltip names them, one a
