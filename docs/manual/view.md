@@ -166,8 +166,9 @@ there. The list has up to four parts:
 - the looks of a tube: **Home TV** - a small set with a coarse mask, a soft beam and a
   bulging screen; **Home TV (composite)** - the same set on its video input, with the
   colors a PAL set makes of fine patterns and at color edges; **RGB monitor** - the
-  Commodore 1084S, the look a new installation starts with; **PVM** - a broadcast monitor,
-  sharp, bent a little as a cylinder is; **Xpixie** - soft and glowing, with afterglow, a ghost and noise;
+  Commodore 1084S; **PVM** - a broadcast monitor, sharp, bent a little as a cylinder is,
+  the look a new installation starts with; **Xpixie** - soft and glowing, with
+  afterglow, a ghost and noise;
 - the presets you saved;
 - shader files of your own, from the `shaders` folder of the configuration.
 
