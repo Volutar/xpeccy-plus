@@ -177,11 +177,10 @@ class SetupWin : public QDialog {
 		xSlider *sldTapeSpeed, *sldSensitivity;
 		QLabel *labTapeSpeedVal, *labPsgMhz;
 		// the machine's own sound picks over the Sound page's: the PSG sheet's Stereo and
-		// Separation, the Machine page's Board filter, each with its button back to the Sound page
+		// Separation, the Machine page's Board filter; the first item of a list goes back
 		QComboBox *cbOwnLay = nullptr, *cbOwnBoard = nullptr;
-		QToolButton *btnOwnLay = nullptr, *btnOwnBoard = nullptr;
 		xSlider* sldOwnSep = nullptr;
-		QLabel *labOwnSep = nullptr, *ownSepName = nullptr, *ownLayNote = nullptr, *ownNoteName = nullptr;
+		QLabel *labOwnSep = nullptr, *ownLayNote = nullptr;
 		QWidget* ownSepPair = nullptr;
 		int ownLayShown = SND_GLOBAL;	// the Stereo item sndOwnShow() saw last
 		int ownSepKept = SND_GLOBAL;	// its separation while the Stereo is off an order
