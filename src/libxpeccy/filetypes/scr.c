@@ -44,6 +44,53 @@ static int scr_read(const char* name, unsigned char* buf, size_t* size) {
 	return ERR_OK;
 }
 
+// a ULA+ entry GGGRRRBB as 3-bit r, g, b: the blue's low bit is either of its two
+static void scr_ulap_rgb(unsigned char v, int* c) {
+	c[0] = (v >> 2) & 7;
+	c[1] = (v >> 5) & 7;
+	c[2] = ((v & 3) << 1) | ((v & 3) ? 1 : 0);
+}
+
+// The border nearest the picture's outer dots: the color most of them have (BRIGHT
+// dropped, under ULA+ the nearest of the eight border entries), ties to the lower
+static int scr_border_of(const unsigned char* scr, const ulaPlus* ula) {
+	int cnt[8] = {0};
+	int brd[8][3];
+	int i, b, x, y;
+	for (b = 0; b < 8; b++) scr_ulap_rgb(ula->pal[8 | b], brd[b]);
+	for (i = 0; i < 2 * 256 + 2 * 190; i++) {
+		if (i < 512) {
+			x = i & 255;
+			y = (i < 256) ? 0 : 191;
+		} else {
+			x = (i < 702) ? 0 : 255;
+			y = 1 + ((i - 512) % 190);
+		}
+		unsigned char px = scr[((y & 0xc0) << 5) | ((y & 7) << 8) | ((y & 0x38) << 2) | (x >> 3)];
+		unsigned char at = scr[0x1800 + ((y >> 3) << 5) + (x >> 3)];
+		int ink = (px >> (7 - (x & 7))) & 1;
+		if (!ula->active) {
+			cnt[ink ? (at & 7) : ((at >> 3) & 7)]++;
+			continue;
+		}
+		int idx = ((at & 0xc0) >> 2) | (ink ? (at & 7) : (((at >> 3) & 7) | 8));
+		int c[3], best = 0, dmin = 1 << 30;
+		scr_ulap_rgb(ula->pal[idx], c);
+		for (b = 0; b < 8; b++) {
+			int d = (c[0] - brd[b][0]) * (c[0] - brd[b][0]) + (c[1] - brd[b][1]) * (c[1] - brd[b][1])
+				+ (c[2] - brd[b][2]) * (c[2] - brd[b][2]);
+			if (d < dmin) {
+				dmin = d;
+				best = b;
+			}
+		}
+		cnt[best]++;
+	}
+	for (i = 0, b = 0; i < 8; i++)
+		if (cnt[i] > cnt[b]) b = i;
+	return b;
+}
+
 static int scr_put(Computer* comp, const unsigned char* data, size_t size) {
 	Video* vid = comp->vid;
 	if (!scr_zx_shown(vid)) return ERR_SCR_MODE;
@@ -68,6 +115,12 @@ static int scr_put(Computer* comp, const unsigned char* data, size_t size) {
 	} else if (pal) {
 		comp->msg = " the screen without its ULA+ palette ";
 	}
+	// the border through port FE, as a program sets it, the beeper and MIC as they are
+	unsigned char scr[SCR_FULL];
+	for (i = 0; i < SCR_FULL; i++)
+		scr[i] = mem->ramData[MADR(vid->vidPage, i) & mem->ramMask];
+	comp->hw->out(comp, 0xfe, (comp->beep->lev ? 0x10 : 0) | (comp->tape->levRec ? 0x08 : 0)
+		| scr_border_of(scr, ula));
 	rzx_rec_touch();		// a poke, as a cheat's
 	x_input_bump();
 	return ERR_OK;
