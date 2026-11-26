@@ -167,7 +167,8 @@ there. The list has up to four parts:
   bulging screen; **Home TV (composite)** - the same set on its video input, with the
   colors a PAL set makes of fine patterns and at color edges; **RGB monitor** - the
   Commodore 1084S; **PVM** - a broadcast monitor, sharp, bent a little as a cylinder is,
-  the look a new installation starts with; **Xpixie** - soft and glowing, with
+  the look a new installation starts with; **Tridot** - a fine dot mask, three screen
+  pixels a triad at any scale, and a sharp beam; **Xpixie** - soft and glowing, with
   afterglow, a ghost and noise;
 - the presets you saved;
 - shader files of your own, from the `shaders` folder of the configuration.
@@ -198,7 +199,9 @@ that can be switched off, and then costs nothing:
   to frame shows; **Interference**, a wave that pushes the lines aside;
 - **Mask** - **Aperture grille**, **Slot mask** or **Shadow mask**, its **Strength** and
   **Fineness**: how many triads of the mask a dot of the picture has. The mask is drawn in
-  whole screen pixels, so in a small window it is coarser than the number says. A fine
+  whole screen pixels, so in a small window it is coarser than the number says. **Size**
+  keeps a triad the same width on your screen at any scale instead: **2 pixels** (magenta
+  and green, the colors run together), **3 pixels** or **6 pixels**. A fine
   mask is drawn with the display's own subpixels: if its colors look wrong, set
   **Display's subpixels** under **All settings** to your display's order, **RGB** or
   **BGR**, or to **Other** for a mask without colors;
