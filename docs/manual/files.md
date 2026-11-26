@@ -63,8 +63,7 @@ on from where it stopped, its memory, colors and border as they were.
 | 6144 bytes | the picture alone: black on white |
 | 6976 bytes | the picture and a ULA+ palette |
 
-A ULA+ palette shows even on a machine with **ULA plus** off; the ZX Spectrum Next shows
-the picture in the plain colors and a message says so. FLASH blinks.
+A ULA+ palette shows on every machine, **ULA plus** on or not. FLASH blinks.
 
 The border takes the color most of the picture's edge has, BRIGHT left out; with a ULA+
 palette, the border color nearest to it.
@@ -76,9 +75,10 @@ first. A reset or another machine ends it too.
 
 A screen never switches the machine, and it is not the game: the window title, pads,
 cheats and saves stay with the game that was in. **Recent** takes it, **Reload** keeps to
-the game. A machine in a video mode of its own (Profi, ATM, ZX Evo, TSConf) says **The
-machine is not showing the ZX screen**. A screen named on the command line shows before
-the machine starts; the machine starts after the key.
+the game. It shows on every machine, whatever video mode the machine is in: the picture is
+drawn as a plain ZX screen, the machine's own modes and layers set aside. While a disk is
+being read or written it cannot be shown, and a message says so. A screen named on the
+command line shows before the machine starts; the machine starts after the key.
 
 ## Opening a file
 
