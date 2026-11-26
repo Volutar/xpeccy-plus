@@ -107,7 +107,7 @@ before that point is upstream's history and is not repeated here.
   keeps its own), and one Separation serves the PSG, the General Sound and the Next. All
   three are set for every machine: a machine can have its own on the Machine page and in its
   PSG sheet, each choice named by its sound and where it comes from (Mono - machine spec), and
-  the Sound page names such machines and puts them back with All to Sound page. The page's
+  the Sound page names such machines and puts them back with Use for all machines. The page's
   Enabled is now Emulate sound, over its groups, which grey while it is off.
 
 - **Integer Scale**: View > Integer Scale and Options > Video. In fullscreen and in a maximized
