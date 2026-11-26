@@ -189,7 +189,7 @@ heard through:
   machine: **No filter - Sound page**, or with **By machine** there, its board's own:
   **TV (RF) - machine spec**.
 - its board's own, when the first is something else: **TV (RF) - machine spec** on the 128K,
-  **Line out - machine spec** on the Pentagon.
+  **No filter - machine spec** on the Pentagon.
 - **No filter** or any other filter of the list.
 
 Every choice but the first is this machine's own, heard whatever the **Sound** page says.

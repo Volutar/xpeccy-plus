@@ -94,7 +94,7 @@ The rest of the **Sound** page is the same for every machine.
 
 ## A machine's own
 
-```{index} A machine's own, All to Sound page, Own settings, machine spec
+```{index} A machine's own, Use for all machines, Overridden, machine spec
 ```
 
 A machine can be heard otherwise than this page says: its **PSG stereo** and **Separation**
@@ -112,9 +112,9 @@ change here does not take it away. The {icon}`refresh` button beside the list pu
 machine back on the first choice.
 
 While some machine has a choice of its own, a line under **Stereo** and
-**Filters** names them - **Own settings on 2 machines: ZX Spectrum 128K, Scorpion ZS 256** -
-and its tooltip says what each one has of its own. **All to Sound page** puts every machine
-back on this page's choices: it asks first, with the same list, and keeps whatever else you
+**Filters** names them, marked {icon}`exclamation` - **Overridden on 2 machines: ZX Spectrum
+128K, Scorpion ZS 256** - and its tooltip says what each one has of its own. **Use for all
+machines** puts every machine back on this page's choices: it asks first, with the same list, and keeps whatever else you
 changed on them. It is done at once: **Cancel** in **Options** does not bring their choices
 back.
 
@@ -135,12 +135,11 @@ this page's: when the running machine is heard through a filter of its own, the 
 over them.
 
 The filter runs in the machine's time, so it slows down and speeds up with it: in **Slow
-Motion** a high tone it cuts stays cut as it drops in pitch. **No filter** in the list is
-**Line out** on every machine.
+Motion** a high tone it cuts stays cut as it drops in pitch.
 
 | Choice | Filters | What goes through them | What it is on the board | Machines it comes with |
 |---|---|---|---|---|
-| **Line out** | none | - | boards with only resistors between the beeper and the output | Pentagon, Pentagon 1024 SL, Profi, Phoenix, ALF, ZX Next |
+| **No filter** | none | - | boards with only resistors between the beeper and the output | Pentagon, Pentagon 1024 SL, Profi, Phoenix, ALF, ZX Next |
 | **48K speaker** | low-pass, 4.4 kHz on a rising edge and 2.3 kHz on a falling one; high-pass, 500 Hz, 12 dB an octave | beeper, tape | the ULA's pin drives the speaker with slow, uneven edges; the speaker is small and gives little bass. The 500 Hz is a guess: there is no measurement of the speaker | 48K |
 | **TV (RF)** | low-pass, 3.2 kHz | beeper, tape, PSG | a TV's FM sound on its aerial input (50 us de-emphasis); the board mixes the PSG in before the modulator | 128K, +2 |
 | **+2A/+3** | low-pass, 2.5 kHz; high-pass, 340 Hz on the beeper and the tape, 150 Hz on the PSG | beeper, tape, PSG | the transistor that mixes them has a 100 nF capacitor on its output, on every socket; the high-passes are the coupling capacitors. Worked out from the schematic, not measured; the 150 Hz is a guess | +2A, +3 |
