@@ -832,7 +832,8 @@ void MainWin::makeBoardActs() {
 		act->setCheckable(true);
 	}
 	connect(boardGrp, &QActionGroup::triggered, this, [this](QAction* act) {
-		conf.snd.vol.board = act->data().toInt();
+		conf.snd.all.board = act->data().toInt();
+		xm_snd_apply();
 		setMessage(QString(" board filter: %0 ").arg(act->text()));
 		saveConfig();
 	});
@@ -868,6 +869,9 @@ void MainWin::addBoardActs(QMenu* menu) {
 	menu->setToolTipsVisible(true);
 	menu->addSeparator();
 	menu_heading(menu, "Board filter");
+	// the picks are Global: a machine with its own says so over them
+	QAction* own = menu->addAction(QString());
+	own->setEnabled(false);
 	QList<xBoardPick> picks = board_picks();
 	QList<QAction*> acts = boardGrp->actions();
 	for (int i = 0; (i < picks.size()) && (i < acts.size()); i++) {
@@ -878,9 +882,12 @@ void MainWin::addBoardActs(QMenu* menu) {
 	menu_heading(menu, "Output filters");
 	menu->addAction(lowCutAct);
 	menu->addAction(highCutAct);
-	connect(menu, &QMenu::aboutToShow, menu, [this]() {
+	connect(menu, &QMenu::aboutToShow, menu, [this, own]() {
+		QString note = board_own_note();
+		own->setText(note);
+		own->setVisible(!note.isEmpty());
 		for (QAction* act : boardGrp->actions())
-			act->setChecked(act->data().toInt() == conf.snd.vol.board);
+			act->setChecked(act->data().toInt() == conf.snd.all.board);
 		lowCutAct->setChecked(conf.snd.vol.dc);
 		highCutAct->setChecked(conf.snd.filter);
 	});

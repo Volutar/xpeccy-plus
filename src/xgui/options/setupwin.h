@@ -31,6 +31,8 @@
 #include "ui_layedit.h"
 
 class QRadioButton;
+class QPushButton;
+class xElideLabel;
 class QTextEdit;
 class QThread;
 
@@ -70,6 +72,8 @@ class SetupWin : public QDialog {
 		void showBoardStorage();
 		void makeSoundGroup();
 		void soundPageOn(bool);
+		void sndOwnShow();		// the own picks' texts, rows and the Sound page's line, as the lists stand
+		void sndAllGlobal();		// All to Global, asked first
 		void fillNextGroup();
 		void showDriveRows();
 		void tidySoundPage();
@@ -173,18 +177,29 @@ class SetupWin : public QDialog {
 		QComboBox *diskTypeBox, *cbFlpInterleave, *hiface, *hm_type, *hs_type, *sdrvBox, *cbScanTab, *cbCpuTurbo, *cbPsgCount, *cbPsgType, *cbPsgFrq;
 		xSlider *sldTapeSpeed, *sldSensitivity;
 		QLabel *labTapeSpeedVal, *labPsgMhz;
-		QLabel* psgLayVal;		// the PSG sheet's Stereo: the machine's layout, shown
+		// the machine's own sound picks over Global: the PSG sheet's Stereo and Separation, the
+		// Machine page's Board filter, each with its button back to Global
+		QComboBox *cbOwnLay, *cbOwnBoard;
+		QToolButton *btnOwnLay, *btnOwnBoard;
+		xSlider* sldOwnSep;
+		QLabel *labOwnSep, *ownSepName, *ownLayNote;
+		QWidget* ownSepPair;
+		int ownLayShown = SND_GLOBAL;	// the Stereo item sndOwnShow() saw last
 		// the Sound page's Stereo and Filters groups (makeSoundGroup)
 		QComboBox *cbBoard, *cbPsgLay;
 		QCheckBox *chkLowCut, *chkHighCut;	// the Sound page's Filters
 		QCheckBox* chkSndOn;	// Emulate sound, over the page's groups
 		xSlider* sldSep;
 		QLabel* labSep;
+		// under them: the machines with picks of their own, and All to Global
+		QWidget* ownRow;
+		xElideLabel* ownLine = nullptr;	// made after the machine's lists, which call on it
+		QPushButton* btnAllGlobal;
+		QStringList sndOwnTips;		// each of them and what it has of its own
 		int psgFrqMul = 1;	// the chip's clock against the AY's the setting holds
 		// the machine's devices, on the Machine page
 		QComboBox* gsBox;
 		QComboBox* saaBox;
-		QLabel* beepVal;		// the machine's own Board filter, shown: the pick is the Sound page's
 		QComboBox* clockBox;		// the Gluk clock (MAC_CLOCK_*), where the board takes one
 		QList<QWidget*> clockRow;
 		// the Robik's board: its shadow RAM, BRIGHT and cell edges (rows of its own)

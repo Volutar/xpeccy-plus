@@ -1113,7 +1113,7 @@ QSize xElideLabel::minimumSizeHint() const {
 
 void xElideLabel::paintEvent(QPaintEvent*) {
 	QPainter pnt(this);
-	QString txt = fontMetrics().elidedText(full, Qt::ElideMiddle, contentsRect().width());
+	QString txt = fontMetrics().elidedText(full, mode, contentsRect().width());
 	style()->drawItemText(&pnt, contentsRect(), alignment(), palette(), isEnabled(), txt, foregroundRole());
 }
 

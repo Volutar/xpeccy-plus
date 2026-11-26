@@ -442,9 +442,10 @@ static const struct {double frq; const char* name;} psgFrqTab[] = {
 
 // THE BOARD FILTER AND THE PSG LAYOUT
 //
-// The filter is picked once for every machine (sndVolume.board), By machine taking
-// each one's own type (its beeper key, which the Machine page shows); the layout the
-// same way (sndVolume.psgLay), the machine's being its psg.stereo.
+// The Sound page picks them for every machine (Global, conf.snd.all), Machine spec
+// taking each one's own: its beeper type and its psg.stereo. A machine can have its own
+// over Global (conf.snd.own), picked on the Machine page: Global, Machine spec or a
+// value, and the separation with an order of its own. What is heard is xm_snd_apply's.
 
 QString board_type_name(int type) {
 	static const char* names[BEEP_ALL] = {"Line out", "48K speaker", "TV (RF)", "+2A/+3",	// BEEP_*
@@ -456,7 +457,7 @@ QString board_type_name(int type) {
 QList<xBoardPick> board_picks() {
 	QList<xBoardPick> res;
 	res.append({BEEP_LINE, QObject::tr("No filter"), QObject::tr("Every machine straight out,\nnothing filtered"), false});
-	res.append({BOARD_MACHINE, QObject::tr("By machine"),
+	res.append({BOARD_MACHINE, QObject::tr("Machine spec"),
 		QObject::tr("Each machine through its board's own\nfilter, shown on the Machine page"), false});
 	static const char* tips[BEEP_ALL] = {NULL,
 		"The 48K's ULA pin and small speaker:\nthe highs softened, the bass thin",
@@ -482,6 +483,34 @@ QString psg_lay_name(int lay) {
 	return ((lay >= 0) && (lay <= AY_CBA)) ? QString(names[lay]) : QString();
 }
 
+// a board filter pick's name: No filter, Machine spec or a type
+static QString board_pick_name(int board) {
+	if (board == BEEP_LINE) return QObject::tr("No filter");
+	if (board == BOARD_MACHINE) return QObject::tr("Machine spec");
+	return board_type_name(board);
+}
+
+// what a machine has of its own, for the Sound page's list: "stereo ACB 60%, filter Line out"
+static QString snd_own_text(const xSndPicks& p) {
+	QStringList res;
+	if (p.lay == LAY_MACHINE) res << QObject::tr("stereo Machine spec");
+	else if (p.lay >= 0) res << QObject::tr("stereo %0").arg(psg_lay_name(p.lay))
+		+ (((p.lay != AY_MONO) && (p.sep >= 0)) ? QString(" %0%").arg(p.sep) : QString());
+	if (p.board != SND_GLOBAL) res << QObject::tr("filter %0").arg(board_pick_name(p.board));
+	return res.join(", ");
+}
+
+// the right-click menu's Board filter is Global: the running machine with its own says so there
+QString board_own_note() {
+	if (!conf.zx || (conf.zx->hw->id == HW_ZXNEXT) || (conf.snd.own.board == SND_GLOBAL)) return QString();
+	const xMachine* mac = xm_find(conf.macId);
+	QString name = mac ? QString::fromLocal8Bit(mac->name.c_str()) : QString();
+	QString pick = (conf.snd.own.board == BOARD_MACHINE)
+		? QObject::tr("Machine spec (%0)").arg(board_type_name(conf.zx->beepType))
+		: board_pick_name(conf.snd.own.board);
+	return QObject::tr("%0: its own, %1").arg(name, pick);
+}
+
 // the Board filter's list
 static void board_fill_box(QComboBox* box) {
 	box->clear();
@@ -497,17 +526,17 @@ static void board_fill_box(QComboBox* box) {
 // machine is heard through, a matter of taste rather than of the machine
 void SetupWin::makeSoundGroup() {
 	cbPsgLay = new QComboBox;
-	cbPsgLay->addItem(tr("By machine"), LAY_MACHINE);
-	cbPsgLay->setItemData(0, tr("Each machine's own, shown in its PSG sheet"), Qt::ToolTipRole);
+	cbPsgLay->addItem(tr("Machine spec"), LAY_MACHINE);
+	cbPsgLay->setItemData(0, tr("Each machine as its board was made,\nshown in its PSG sheet"), Qt::ToolTipRole);
 	cbPsgLay->insertSeparator(1);
 	for (int lay = AY_MONO; lay <= AY_CBA; lay++)
 		cbPsgLay->addItem(psg_lay_name(lay), lay);
-	cbPsgLay->setToolTip(tr("The PSG's voices from left to right on every\nmachine; the Next keeps what its software set"));
+	cbPsgLay->setToolTip(tr("Global: the PSG's voices from left to right on\nevery machine set to Global (its PSG sheet);\nthe Next keeps what its software set"));
 	sldSep = sep_slider(&labSep);
-	sldSep->setToolTip(tr("100%: the sides kept apart, 0%: mono;\nthe PSG, the General Sound and the Next"));
+	sldSep->setToolTip(tr("Global: 100% the sides kept apart, 0% mono;\nthe PSG, the General Sound and the Next"));
 	cbBoard = new QComboBox;
 	board_fill_box(cbBoard);
-	cbBoard->setToolTip(tr("A type picked: all the sound through it.\nBy machine: each board's own, the beeper\nand on some boards the PSG"));
+	cbBoard->setToolTip(tr("Global, for every machine set to Global.\nA type picked: all the sound through it.\nMachine spec: each board's own, the beeper\nand on some boards the PSG"));
 	// Stereo: a name and a control a row, the names one width
 	QLabel* labs[2] = {new QLabel(tr("PSG stereo")), new QLabel(tr("Separation"))};
 	int lw = 0;
@@ -552,6 +581,23 @@ void SetupWin::makeSoundGroup() {
 	row->addWidget(stereo, 1);
 	row->addWidget(filters, 1);
 	ui.verticalLayout_43->insertLayout(1, row);
+	// under them, the machines that have their own picks over these, and the way back
+	ownLine = new xElideLabel;
+	ownLine->setMode(Qt::ElideRight);
+	btnAllGlobal = new QPushButton(tr("All to Global"));
+	btnAllGlobal->setObjectName("allGlobalBtn");
+	btnAllGlobal->setToolTip(tr("Every machine takes the picks above again:\ntheir own stereo, separation and filter go"));
+	ownRow = new QWidget;
+	ownRow->setObjectName("ownRow");
+	QHBoxLayout* orow = new QHBoxLayout(ownRow);
+	orow->setContentsMargins(9, 0, 0, 0);
+	orow->addWidget(ownLine, 1);
+	orow->addWidget(btnAllGlobal);
+	ui.verticalLayout_43->insertWidget(2, ownRow);
+	connect(btnAllGlobal, &QPushButton::released, this, &SetupWin::sndAllGlobal);
+	for (QComboBox* box : {cbPsgLay, cbBoard})
+		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::sndOwnShow);
+	connect(sldSep, &QSlider::valueChanged, this, &SetupWin::sndOwnShow);
 	// over the groups, the page's own switch: off, nothing is worked out, and the rest greys
 	chkSndOn = new QCheckBox(tr("Emulate sound"));
 	QLabel* hint = new QLabel(tr("Off: silence, its CPU time saved"));
@@ -578,6 +624,80 @@ void SetupWin::soundPageOn(bool on) {
 		for (int k = 0; sub && (k < sub->count()); k++)
 			if (sub->itemAt(k)->widget()) sub->itemAt(k)->widget()->setEnabled(on);
 	}
+}
+
+// The machine's own picks as the lists stand, applied or not: Global and Machine spec say
+// what they stand for now, the Separation row is there with an order of its own, a button
+// back to Global only with something to go back from; and the Sound page's line names the
+// machines with their own picks, this one as its lists have it.
+void SetupWin::sndOwnShow() {
+	if (!ownLine) return;		// still being built
+	Computer* comp = conf.zx;
+	int spec = comp->ts->chipA->stereo;
+	int glay = getRFIData(cbPsgLay);
+	int heard = (glay == LAY_MACHINE) ? spec : glay;
+	QString gtxt = psg_lay_name(heard);
+	if (heard != AY_MONO) gtxt += QString(", %0%").arg(sldSep->value());
+	cbOwnLay->setItemText(0, tr("Global (%0)").arg(gtxt));
+	cbOwnLay->setItemText(1, tr("Machine spec (%0)").arg(psg_lay_name(spec)));
+	int gboard = getRFIData(cbBoard);
+	QString own = board_type_name(comp->beepType);
+	cbOwnBoard->setItemText(0, tr("Global (%0)").arg((gboard == BOARD_MACHINE) ? own : board_pick_name(gboard)));
+	cbOwnBoard->setItemText(1, tr("Machine spec (%0)").arg(own));
+	int lay = getRFIData(cbOwnLay);
+	bool was = (ownLayShown >= 0);
+	ownLayShown = lay;
+	if ((lay >= 0) && !was) sldOwnSep->setValue(sldSep->value());	// an order of its own starts from Global's
+	bool sep = (lay >= 0) && (lay != AY_MONO);
+	if (ownSepPair->isVisibleTo(ownSepPair->window()) != sep) {
+		ownSepName->setVisible(sep);
+		ownSepPair->setVisible(sep);
+		if (ownSepPair->window()->isVisible()) ownSepPair->window()->adjustSize();	// the sheet open: to its rows
+	}
+	btnOwnLay->setEnabled(lay != SND_GLOBAL);
+	btnOwnBoard->setEnabled(getRFIData(cbOwnBoard) != SND_GLOBAL);
+	ownLayNote->setText((lay == SND_GLOBAL) ? tr("As on the Sound page")
+		: (lay == LAY_MACHINE) ? tr("As the board was made") : tr("This machine's own"));
+	// the line: the others as their files have them, this one first as the lists have it
+	QList<xMachine> macs;
+	for (const xMachine& m : xm_snd_own_list())
+		if (m.id != conf.macId) macs << m;
+	const xMachine* cur = xm_find(conf.macId);
+	if (cur && (comp->hw->id != HW_ZXNEXT)) {
+		xMachine m = *cur;
+		m.snd.lay = lay;
+		m.snd.board = getRFIData(cbOwnBoard);
+		m.snd.sep = sep ? sldOwnSep->value() : SND_GLOBAL;
+		if (xm_snd_owns(m.snd)) macs.prepend(m);
+	}
+	QStringList names;
+	sndOwnTips.clear();
+	for (const xMachine& m : macs) {
+		QString name = QString::fromLocal8Bit(m.name.c_str());
+		names << name;
+		sndOwnTips << QString("%0: %1").arg(name, snd_own_text(m.snd));
+	}
+	ownRow->setVisible(!macs.isEmpty());
+	ownLine->setFull((macs.size() == 1) ? tr("Own settings: %0").arg(names.first())
+		: tr("Own settings on %0 machines: %1").arg(macs.size()).arg(names.join(", ")));
+	ownLine->setToolTip(sndOwnTips.join("\n"));
+}
+
+void SetupWin::sndAllGlobal() {
+	QStringList lines;
+	for (const QString& tip : sndOwnTips) lines << tip.toHtmlEscaped();
+	QString msg = tr("Put every machine back to Global? Their own picks go:") + "<br><br>" + lines.join("<br>");
+	if (!areSure(msg.toUtf8().constData())) return;
+	xm_snd_all_global();
+	cbOwnLay->setCurrentIndex(0);
+	cbOwnBoard->setCurrentIndex(0);
+	// the marks on the machines that carried nothing else of the user's go
+	for (int i = 0; i < ui.machbox->count(); i++) {
+		const xMachine* mac = xm_find(ui.machbox->itemData(i).toString().toLocal8Bit().data());
+		if (mac) ui.machbox->setItemText(i, xm_list_name(*mac));
+	}
+	updateMachineButtons();
+	sndOwnShow();
 }
 
 void opt_fill_psg_boxes(QComboBox* cbcount, QComboBox* cbtype, QComboBox* cbfrq) {
@@ -647,7 +767,44 @@ void SetupWin::makeDevWidgets() {
 	cbPsgCount = new QComboBox;
 	cbPsgType = new QComboBox;
 	cbPsgFrq = new QComboBox;
-	psgLayVal = new QLabel;
+	// the machine's own sound picks over the Sound page's: the first two items' texts are
+	// filled in by sndOwnShow(), with what they stand for now
+	auto ownBox = [this](QComboBox*& box, QToolButton*& btn) {
+		box = new QComboBox;
+		box->addItem(QString(), SND_GLOBAL);
+		box->setItemData(0, tr("As the Sound page sets every machine"), Qt::ToolTipRole);
+		box->addItem(QString(), LAY_MACHINE);		// BOARD_MACHINE: the same -1
+		box->setItemData(1, tr("As this machine's board was made"), Qt::ToolTipRole);
+		box->insertSeparator(2);
+		btn = new QToolButton;
+		btn->setIcon(QIcon(":/images/refresh.png"));
+		btn->setToolTip(tr("Back to Global"));
+		connect(btn, &QToolButton::released, this, [box]() {box->setCurrentIndex(0);});
+	};
+	ownBox(cbOwnLay, btnOwnLay);
+	for (int lay = AY_MONO; lay <= AY_CBA; lay++)
+		cbOwnLay->addItem(psg_lay_name(lay), lay);
+	ownBox(cbOwnBoard, btnOwnBoard);
+	cbOwnLay->setObjectName("ownLayBox");
+	cbOwnBoard->setObjectName("ownBoardBox");
+	for (const xBoardPick& p : board_picks()) {
+		if (p.val == BOARD_MACHINE) continue;
+		cbOwnBoard->addItem(p.name, p.val);
+		cbOwnBoard->setItemData(cbOwnBoard->count() - 1, p.tip, Qt::ToolTipRole);
+	}
+	cbOwnBoard->setMaxVisibleItems(cbOwnBoard->count());
+	cbOwnBoard->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+	cbOwnBoard->setMinimumContentsLength(8);
+	sldOwnSep = sep_slider(&labOwnSep);
+	sldOwnSep->setObjectName("ownSepSlider");
+	for (QComboBox* box : {cbOwnLay, cbOwnBoard})		// filled: the first item no longer fires
+		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::sndOwnShow);
+	connect(sldOwnSep, &QSlider::valueChanged, this, &SetupWin::sndOwnShow);
+	ownLayNote = new QLabel;
+	QFont nfnt = ownLayNote->font();
+	nfnt.setItalic(true);
+	ownLayNote->setFont(nfnt);
+	ownLayNote->setWordWrap(true);
 	foreach(QComboBox* box, QList<QComboBox*>() << cbPsgCount << cbPsgType << cbPsgFrq) {
 		box->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
 		box->setMinimumContentsLength(8);
@@ -1551,7 +1708,6 @@ void SetupWin::fillPages() {
 	fillDivFirmware();
 
 	sdrvBox->setCurrentIndex(sdrvBox->findData(comp->sdrv->type));
-	beepVal->setText(board_type_name(comp->beepType));
 
 	saaBox->setCurrentIndex(comp->saa->enabled ? 1 : 0);
 	clockBox->setCurrentIndex(comp->flgGLUK ? MAC_CLOCK_GLUK : MAC_CLOCK_NONE);
@@ -1562,9 +1718,9 @@ void SetupWin::fillPages() {
 	chkSndOn->setChecked(conf.snd.enabled);
 	soundPageOn(conf.snd.enabled);
 	chkLowCut->setChecked(conf.snd.vol.dc);
-	setRFIndex(cbBoard, conf.snd.vol.board, 0);
-	setRFIndex(cbPsgLay, conf.snd.vol.psgLay, 0);
-	sldSep->setValue(comp->ts->chipA->sep);
+	setRFIndex(cbBoard, conf.snd.all.board, 0);
+	setRFIndex(cbPsgLay, conf.snd.all.lay, 0);
+	sldSep->setValue(conf.snd.all.sep);
 	ui.outbox->setCurrentIndex(ui.outbox->findText(QString::fromLocal8Bit(sndOutput->name)));
 	// Auto keeps conf.snd.rate as the rate actually in use, so the box says
 	// which one that turned out to be rather than leaving the user guessing.
@@ -1592,7 +1748,11 @@ void SetupWin::fillPages() {
 	if (comp->ts->chipA->type == SND_NONE) psg = PSG_NONE;
 	setRFIndex(cbPsgCount, psg);
 	setRFIndex(cbPsgType, (comp->ts->chipA->type == SND_NONE) ? SND_AY : comp->ts->chipA->type);
-	psgLayVal->setText(psg_lay_name(comp->ts->chipA->stereo));
+	// the machine's own over Global, its separation once its order is in
+	setRFIndex(cbOwnLay, conf.snd.own.lay, 0);
+	setRFIndex(cbOwnBoard, conf.snd.own.board, 0);
+	sldOwnSep->setValue((conf.snd.own.sep >= 0) ? conf.snd.own.sep : conf.snd.all.sep);
+	sndOwnShow();
 	chapsg();				// the presets at this chip's clock first
 	opt_set_psg_frq(cbPsgFrq, comp->ts->frq * psgFrqMul);	// 0 picks Auto
 // input
@@ -1931,6 +2091,10 @@ void SetupWin::applyMachine() {
 			comp->sndSeed = 1;		// the chips the sound thread mixes take all of it
 		}
 		xm_set_gs(comp, gsBox->currentIndex());
+		conf.snd.own.lay = getRFIData(cbOwnLay);
+		conf.snd.own.board = getRFIData(cbOwnBoard);
+		// a separation goes with an order of its own; Mono has none
+		conf.snd.own.sep = ((conf.snd.own.lay >= 0) && (conf.snd.own.lay != AY_MONO)) ? sldOwnSep->value() : SND_GLOBAL;
 		comp->sdrv->type = getRFIData(sdrvBox);
 		comp->saa->enabled = saaBox->currentIndex() ? 1 : 0;
 	}
@@ -2065,8 +2229,9 @@ void SetupWin::applyGlobal() {
 // sound
 	conf.snd.enabled = chkSndOn->isChecked() ? 1 : 0;
 	conf.snd.vol.dc = chkLowCut->isChecked() ? 1 : 0;
-	conf.snd.vol.board = getRFIData(cbBoard);
-	conf.snd.vol.psgLay = getRFIData(cbPsgLay);
+	conf.snd.all.board = getRFIData(cbBoard);
+	conf.snd.all.lay = getRFIData(cbPsgLay);
+	conf.snd.all.sep = sldSep->value();
 
 	conf.snd.vol.master = ui.sbMasterVol->value();
 	conf.snd.vol.beep = ui.sbBeepVol->value();
@@ -2098,7 +2263,7 @@ void SetupWin::applyGlobal() {
 		setOutput(nname.c_str());
 	}
 
-	xm_set_sep(comp, sldSep->value());
+	xm_snd_apply();		// Global under the machine's own picks
 	comp->gs->reset = gsrbox->isChecked() ? 1 : 0;
 // input
 	comp->mouse->swapButtons = cbSwapButtons->isChecked() ? 1 : 0;
@@ -2735,15 +2900,20 @@ void SetupWin::buildDevices() {
 	kbdRow << grid->itemAtPosition(grid->rowCount() - 1, 0)->widget() << cbScanTab << btn;
 
 	grid = devGroup(cols, 0, 1, ":/images/speaker.png", tr("Sound"));
-	// the board's own filter, as its definition has it: the pick is the Sound page's
-	beepVal = new QLabel;
-	beepVal->setToolTip(tr("The board's own filter: heard with Board filter\nBy machine on the Sound page"));
-	devRow(grid, tr("Board filter"), beepVal, NULL, NULL);
+	// the board filter this machine is heard through: Global, its board's own or another;
+	// the button back to Global where the others have their sheet's
+	QToolButton* noSheet = devRow(grid, tr("Board filter"), cbOwnBoard, NULL, NULL);
+	grid->removeWidget(noSheet);
+	delete noSheet;
+	grid->addWidget(btnOwnBoard, grid->rowCount() - 1, 2);
 	xOptSheet psg;
 	psg.field(tr("Chip"), cbPsgType);
 	psg.field(tr("Clock"), fieldPair(cbPsgFrq, labPsgMhz, false),
 		tr("Auto: follows the CPU clock"));
-	psg.field(tr("Stereo"), psgLayVal, tr("The board's own: another is picked on the Sound page"));
+	psg.field(tr("Stereo"), fieldPair(cbOwnLay, btnOwnLay, false));
+	ownSepPair = fieldPair(sldOwnSep, labOwnSep, true);
+	ownSepName = psg.row(tr("Separation"), ownSepPair);
+	psg.row(QString(), ownLayNote);
 	devRow(grid, tr("PSG"), cbPsgCount, psg.body, "Machine: PSG");
 	devRow(grid, tr("DAC"), sdrvBox, NULL, NULL);
 	gsBox = devCombo(QStringList() << tr("None") << tr("Original") << tr("NeoGS"));	// MAC_GS_*

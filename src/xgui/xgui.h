@@ -216,7 +216,7 @@ QWidget* fieldPair(QWidget*, QWidget*, bool);
 void fill_machine_list(QComboBox*);
 
 // The Board filter's picks, as the Sound page and the sound menus list them
-// (options/setupwin.cpp): Off (BEEP_LINE), By machine (BOARD_MACHINE), the types.
+// (options/setupwin.cpp): Off (BEEP_LINE), Machine spec (BOARD_MACHINE), the types.
 // sep: a line before it
 struct xBoardPick {
 	int val;
@@ -234,6 +234,7 @@ enum {CUT_LOW = 0, CUT_HIGH};
 QList<xCutPick> cut_picks();
 QString board_type_name(int type);	// a BEEP_* type's name in those lists
 QString psg_lay_name(int lay);		// an AY_* layout's: Mono, ABC...
+QString board_own_note();		// "ZX Spectrum +2: its own, Line out", empty when it takes Global
 
 // a window over the middle of another, and the first time a window is shown,
 // over the one it belongs to (see center_over in classes.cpp); a window with
@@ -308,17 +309,19 @@ struct dlStatus;
 class QProgressBar;
 void dl_follow(QObject* owner, xDownload* dl, QProgressBar* bar, QLabel* line, std::function<void(const dlStatus&)> done, qint64 expect = 0);
 
-// a text that shortens in the middle to the width it gets, whole in its tooltip
+// a text that shortens in the middle (or where setMode says) to the width it gets, whole in its tooltip
 class xElideLabel : public QLabel {
 	public:
 		xElideLabel(QWidget* p = NULL);
 		void setFull(const QString&);
+		void setMode(Qt::TextElideMode m) {mode = m;}
 		QSize sizeHint() const;
 		QSize minimumSizeHint() const;
 	protected:
 		void paintEvent(QPaintEvent*);
 	private:
 		QString full;
+		Qt::TextElideMode mode = Qt::ElideMiddle;
 };
 
 class xLabel : public QLabel {
