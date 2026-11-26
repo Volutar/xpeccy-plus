@@ -398,7 +398,8 @@ static void open_cli_file(MainWin& mwin, const char* name, int drv, int run, boo
 		return;
 	}
 	if (load_file(conf.zx, path.toLocal8Bit().constData(), FG_ALL, drv) != ERR_OK) return;
-	if ((drv < 1) && !screen) {	// a screen is not the game
+	if (screen) return;			// --bench: put in; not the game
+	if (drv < 1) {
 		mwin.padGame(path);
 		cheats_pick(path);
 		cliImage = path;

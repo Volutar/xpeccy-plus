@@ -1683,9 +1683,9 @@ QStringList media_candidates(Computer* comp, const QString& archive, int id, int
 	QStringList screens;
 	for (const arcEntry& entry : *list) {
 		if (entry.folder || (arc_beside_image(entry.name) && !screen) || (arc_type(entry.name) != ARC_NONE)) continue;
-		// a Hobeta screen as any file or a screen opens it: its size, then its header
+		// a Hobeta screen as any file or a screen opens it, by its size; file_type_of reads the header
 		const bool hob = ((id == FG_ALL) || screen) && entry.name.endsWith(".$c", Qt::CaseInsensitive)
-			&& (entry.size == HOB_HEAD_SIZE + SCR_SIZE) && file_hobeta_screen(arc_join(archive, entry.name));
+			&& (entry.size == HOB_HEAD_SIZE + SCR_SIZE);
 		if (screen) {
 			if (hob || entry.name.endsWith(".scr", Qt::CaseInsensitive)) res.append(entry.name);
 			continue;
@@ -2344,7 +2344,6 @@ void media_mount_free(xMount* m) {
 static xMediaOpen media_last = {QString(), FG_ALL, 0, 0, false};
 
 void media_opened(const QString& path, int id, int drv, int run, bool pinned, bool newGame) {
-	if (file_is_screen(conf.zx, path, id)) return;	// not the program: Reload keeps to it
 	media_last = {path, id, drv, run, pinned};
 	if (drv < 1) {				// a disk in drive B is not the program
 		labels_image(path);

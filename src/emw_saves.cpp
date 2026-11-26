@@ -109,7 +109,7 @@ void MainWin::quickUndo() {
 // of the machine, as a quick save goes; the config says which is the last
 // session
 void MainWin::autoSave(int kind) {
-	if (!szxCanSave(conf.zx)) return;
+	if (scrView.on || !szxCanSave(conf.zx)) return;	// its picture would be the screen viewed
 	QImage pic = save_picture();
 	QString dir = saves_dir(true);
 	if (dir.isEmpty()) return;

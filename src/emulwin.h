@@ -134,7 +134,7 @@ struct xScrView {
 	int phase = 0;		// the FLASH shown
 	QTimer* flash = nullptr;
 	QSet<int> keys;		// keys that ended it: their release is not the machine's
-	bool click = false;	// ...and the button
+	ulong clickAt = 0;	// the click that ended it: a double click after it is its own
 };
 
 // Whether the picture can go through OpenGL here; why not, when it cannot
@@ -411,6 +411,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		quint64 mountGen = 0;		// the last mount started (mountMedia)
 		xScrView scrView;
 		bool viewDraw();
+		bool drawAhead(void (*prep)(Computer*, void*), void* arg);
 		QString mountPath;		// ...the image it reads while it does, empty after
 		int mountSrc = -1;		// ...and where it goes: a drive, or MEDIA_TAPE
 		double hwMulSeen = 1.0;	// the board's turbo as last reported
@@ -734,6 +735,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void keyPressEvent(QKeyEvent*) override;
 		void keyReleaseEvent(QKeyEvent*) override;
 		void mousePressEvent(QMouseEvent*) override;
+		void mouseDoubleClickEvent(QMouseEvent*) override;
 		void contextMenuEvent(QContextMenuEvent*) override;
 		void mouseReleaseEvent(QMouseEvent*) override;
 		void mouseMoveEvent(QMouseEvent*) override;

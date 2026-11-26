@@ -148,7 +148,7 @@ void MainWin::keyPressEvent(QKeyEvent* ev) {
 	releaseChord(ev, true);
 	if (!ev->isAutoRepeat()) scrView.keys.remove(view_key(ev));	// its release was lost
 	if (scrView.on && !ev->isAutoRepeat() && !key_lone(ev)
-			&& (hotkey_for(hotkey_key(ev), ev->modifiers(), false, nullptr) < 0)) {
+			&& (hotkey_for(hotkey_key(ev), ev->modifiers(), pckAct->isChecked(), nullptr) < 0)) {
 		viewEnd();
 		scrView.keys.insert(view_key(ev));
 		return;
@@ -610,8 +610,8 @@ void MainWin::xkey_press(int xkey, bool cmd, QKeyEvent* ev) {
 }
 
 void MainWin::keyReleaseEvent(QKeyEvent *ev) {
-	if (!ev->isAutoRepeat() && scrView.keys.remove(view_key(ev))) return;	// it ended a view
 	if (ev->isAutoRepeat()) return;
+	if (scrView.keys.remove(view_key(ev))) return;	// it ended a view
 	// any key up lets the NMI button go: its own may come up named otherwise, its modifier first
 	if (nmiKeyDown) nmi_let_go();
 	releaseChord(ev, false);

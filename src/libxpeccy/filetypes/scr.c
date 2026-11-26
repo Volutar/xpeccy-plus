@@ -79,22 +79,48 @@ int scr_put(Computer* comp, const unsigned char* data, int pal, int view) {
 		mem->ramData[MADR(vid->vidPage, i) & mem->ramMask] = data[i];
 	// ULA+: the palette and the mode on, or the mode off for a plain screen
 	ulaPlus* ula = vid->ula;
-	if (view && pal && (comp->hw->id != HW_ZXNEXT)) ula->enabled = 1;
-	if (ula->enabled && (comp->hw->id != HW_ZXNEXT)) {
+	if (view && pal) ula->enabled = 1;	// a view's frame is drawn plain ZX, the Next's too
+	if (ula->enabled && (view || (comp->hw->id != HW_ZXNEXT))) {
 		if (pal) memcpy(ula->pal, data + SCR_SIZE, SCR_PAL);
 		ula->active = pal;
-		zxSetUlaPalete(comp);
+		zxSetUlaPalete(comp);		// now: the border is picked from the colors
 		ula->palchan = 0;
 	} else if (pal && !view) {
 		comp->msg = " the screen without its ULA+ palette ";
 	}
 	// the border as a cpu OUT sets it, the beeper and MIC as they are
-	comp_out_outside(comp, 0xfe, (comp->beep->lev ? 0x10 : 0) | (comp->tape->levRec ? 0x08 : 0)
-		| scr_border_of(vid, data));
-	if (view) return ERR_OK;
+	int brd = scr_border_of(vid, data);
+	comp_out_outside(comp, 0xfe, (comp->beep->lev ? 0x10 : 0) | (comp->tape->levRec ? 0x08 : 0) | brd);
+	if (view) {			// TSConf's palette bank out of the border too
+		vid->brdcol = brd;
+		vid->nextbrd = brd;
+		return ERR_OK;
+	}
 	rzx_rec_touch();		// a poke, as a cheat's
 	x_input_bump();
 	return ERR_OK;
+}
+
+// a FLASH that blinks: a cell with it, and no ULA+ palette taking the bit
+int scr_flashes(const unsigned char* scr, int pal) {
+	int i;
+	if (pal) return 0;
+	for (i = SCR_PIX; i < SCR_SIZE; i++)
+		if (scr[i] & 0x80) return 1;
+	return 0;
+}
+
+// the screenshot's Hobeta header: "screen  C" at #4000, loaded back by LOAD "screen" CODE
+void scr_hobeta_make(unsigned char* head) {
+	TRFile dsc;
+	memset(&dsc, 0, sizeof(dsc));
+	memcpy(dsc.name, "screen  ", 8);
+	dsc.ext = 'C';
+	dsc.hst = 0x40;
+	dsc.llen = SCR_SIZE & 0xff;
+	dsc.hlen = SCR_SIZE >> 8;
+	dsc.slen = SCR_SIZE >> 8;
+	hobeta_head(dsc, head);
 }
 
 int loadSCR(Computer* comp, const char* name, int drv) {

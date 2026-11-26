@@ -25,7 +25,8 @@ void MainWin::mousePressEvent(QMouseEvent *ev){
 	Computer* comp = conf.zx;
 	if (scrView.on && (ev->button() == Qt::LeftButton)) {
 		viewEnd();
-		scrView.click = true;
+		scrView.clickAt = ev->timestamp();
+		clickResumed = true;		// its release is not the machine's
 		return;
 	}
 	if (comp->flgDBG) {
@@ -60,11 +61,18 @@ void MainWin::mousePressEvent(QMouseEvent *ev){
 	}
 }
 
-void MainWin::mouseReleaseEvent(QMouseEvent *ev) {
-	if (scrView.click && (ev->button() == Qt::LeftButton)) {	// it ended a view
-		scrView.click = false;
+// the second half of a double click whose first press ended a view: no press of its own
+void MainWin::mouseDoubleClickEvent(QMouseEvent* ev) {
+	if (scrView.clickAt && (ev->button() == Qt::LeftButton)
+			&& (ev->timestamp() - scrView.clickAt <= (ulong)QApplication::doubleClickInterval())) {
+		scrView.clickAt = 0;
+		clickResumed = true;
 		return;
 	}
+	QWidget::mouseDoubleClickEvent(ev);
+}
+
+void MainWin::mouseReleaseEvent(QMouseEvent *ev) {
 	if (clickResumed) {
 		clickResumed = false;
 		return;

@@ -87,7 +87,7 @@ static struct boardHooks {
 	boardHooks() {next_board_reset = x_board_reset;}
 } boardHooksSet;
 
-std::function<void()> x_state_hook;
+std::function<void()> x_view_end;
 
 // What was kept for the machine as it stood goes when it is reset, switched or
 // loaded over: the fast-loading wind back would bring the old state back,
@@ -98,7 +98,7 @@ void x_state_replaced() {
 	x_input_bump();
 	snd_drop();		// the old machine's sound
 	autostart_cancel();
-	if (x_state_hook) x_state_hook();
+	if (x_view_end) x_view_end();
 	fastload_forget();
 	cheats_forget();
 	// a breakpoint hit not acted on yet (a stop the redraw ran into) was the

@@ -168,7 +168,7 @@ QString gethexword(int);
 extern std::atomic<int> xUserResets;
 void x_user_reset(Computer*, int);
 void x_state_replaced();		// under emu_lock
-extern std::function<void()> x_state_hook;	// the window's: called from x_state_replaced
+extern std::function<void()> x_view_end;	// a screen viewed ends: the machine is replaced, or DeZog takes it
 void x_media_replaced();		// under emu_lock
 int unreal_num(QString, bool*);		// #/$/0x hex, 0 octal, else decimal
 int str_num(QString, bool*);		// by dbg_num_parse: #/$/0x or h behind hex, else decimal

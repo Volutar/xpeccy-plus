@@ -31,7 +31,7 @@ enum {
 	FL_POK,
 	FL_NEX,
 	FL_SNX,
-	FL_SCR		// a ZX screen: into the screen the machine shows
+	FL_SCR		// a ZX screen: shown over the machine (MainWin::viewOpen)
 };
 
 enum {

@@ -890,6 +890,13 @@ int iord(int port, void* ptr) {
 	return res;
 }
 
+// ULA+ palette or mode written: the live colors
+static inline void comp_ula_palette(Computer* comp) {
+	if (!comp->vid->ula->palchan) return;
+	zxSetUlaPalete(comp);
+	comp->vid->ula->palchan = 0;
+}
+
 // the OUT reaching the device, the ray where it is: the page or the mode it may
 // change are latched first in an undrawn frame (vid_latch)
 static inline void iowr_out(Computer* comp, int port, int val) {
@@ -906,10 +913,7 @@ static inline void iowr_out(Computer* comp, int port, int val) {
 void comp_out_outside(Computer* comp, int port, int val) {
 	comp_run_io(comp);
 	iowr_out(comp, port, val);
-	if (comp->vid->ula->palchan) {
-		zxSetUlaPalete(comp);
-		comp->vid->ula->palchan = 0;
-	}
+	comp_ula_palette(comp);
 }
 
 void iowr(int port, int val, void* ptr) {
@@ -927,10 +931,7 @@ void iowr(int port, int val, void* ptr) {
 		comp_vid_to_lazy(comp, comp->cpu->t + 1);
 		iowr_out(comp, port, val);
 	}
-	if (comp->vid->ula->palchan) {
-		zxSetUlaPalete(comp);
-		comp->vid->ula->palchan = 0;
-	}
+	comp_ula_palette(comp);
 // brk
 	if (comp->brkIOMap[port] & MEM_BRK_WR)
 		comp_brk_add(comp, BRK_IOPORT, port, MEM_BRK_WR, port, val & 0xff);

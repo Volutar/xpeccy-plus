@@ -398,6 +398,8 @@ int scr_read(const char* name, unsigned char* buf, int* pal);
 // into the screen shown, the border too; view: for a frame that is thrown away (ULA+ switched
 // on for a palette, nothing told of the change)
 int scr_put(Computer*, const unsigned char* scr, int pal, int view);
+int scr_flashes(const unsigned char* scr, int pal);	// FLASH cells that blink
+void scr_hobeta_make(unsigned char* head);		// the screenshot's Hobeta header
 
 // disk
 
