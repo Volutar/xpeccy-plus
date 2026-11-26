@@ -1,0 +1,105 @@
+# Composite / RF home-TV look, FLAT (no screen curvature)
+#
+# Same signal model as composite-crt.txt (horizontal bleed, RF chroma fringing,
+# faint mask, scanlines, vignette) but with a flat geometry. Retuned exposure so
+# black text stays readable on white backgrounds.
+vertex:
+	#version 110
+	varying vec2 v_texCoord;
+	void main() {
+		gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+		v_texCoord = gl_MultiTexCoord0.xy;
+	}
+fragment:
+	#version 110
+	uniform sampler2D rubyTexture;
+	uniform vec2 rubyTextureSize;
+	uniform vec2 rubyOutputSize;
+	// Xpeccy+: 1 when the picture is drawn on past its edges (Side fill: Stretched
+	// Edges, Blur Off) - no vignette
+	uniform float xpWide;
+	varying vec2 v_texCoord;
+
+	// ---- tunables ----
+	#define GAMMA_IN    2.4
+	#define GAMMA_OUT   2.2
+	#define BRIGHT      1.05    // keep whites from clipping (black text stays readable)
+	#define WARM        vec3(1.03, 1.00, 0.95)
+
+	#define BLUR_STEP   0.55    // horizontal bleed spacing (source texels per tap)
+	#define CHROMA      0.35    // R/B horizontal separation (RF color fringing), texels
+
+	#define BEAM_MIN    0.70
+	#define BEAM_BLOOM  0.30    // limited bloom so highlights don't wash over dark areas
+	#define BEAM_SHARP  2.6
+
+	#define MASK_W      2.0
+	#define MASK_DARK   0.90
+	#define MASK_LIGHT  1.06
+
+	#define VIG_STR     16.0    // vignette strength (set 0-ish to disable)
+	#define VIG_PWR     0.18
+
+	vec3 toLin(vec3 c)  { return pow(c, vec3(GAMMA_IN)); }
+	vec3 toDisp(vec3 c) { return pow(clamp(c, 0.0, 1.0), vec3(1.0 / GAMMA_OUT)); }
+	float lum(vec3 c)   { return dot(c, vec3(0.299, 0.587, 0.114)); }
+
+	vec3 blurRow(float cx, float y) {
+		vec3 s = vec3(0.0);
+		float sum = 0.0;
+		for (int k = -2; k <= 2; k++) {
+			float off = float(k) * BLUR_STEP / rubyTextureSize.x;
+			float w = exp(-float(k * k) * 0.5);
+			s += w * toLin(texture2D(rubyTexture, vec2(cx + off, y)).rgb);
+			sum += w;
+		}
+		return s / sum;
+	}
+
+	vec3 sampleC(float cx, float y) {
+		float dx = CHROMA / rubyTextureSize.x;
+		vec3 r = blurRow(cx - dx, y);
+		vec3 g = blurRow(cx,      y);
+		vec3 b = blurRow(cx + dx, y);
+		return vec3(r.r, g.g, b.b);
+	}
+
+	float beam(float dist, float l) {
+		float w = BEAM_MIN + BEAM_BLOOM * l;
+		float x = dist / w;
+		return exp(-BEAM_SHARP * x * x);
+	}
+
+	vec3 mask(float fx) {
+		float i = mod(floor(fx / MASK_W), 3.0);
+		vec3 m = vec3(MASK_DARK);
+		if      (i < 1.0) m.r = MASK_LIGHT;
+		else if (i < 2.0) m.g = MASK_LIGHT;
+		else              m.b = MASK_LIGHT;
+		return m;
+	}
+
+	float vignette(vec2 uv) {
+		vec2 v = uv * (1.0 - uv);
+		return clamp(pow(v.x * v.y * VIG_STR, VIG_PWR), 0.0, 1.0);
+	}
+
+	void main() {
+		vec2 uv = v_texCoord;   // flat: no barrel warp
+
+		float yp  = uv.y * rubyTextureSize.y - 0.5;
+		float row = floor(yp);
+		float fy  = yp - row;
+		float y0  = (row + 0.5) / rubyTextureSize.y;
+		float y1  = (row + 1.5) / rubyTextureSize.y;
+
+		vec3 c0 = sampleC(uv.x, y0);
+		vec3 c1 = sampleC(uv.x, y1);
+		vec3 col = c0 * beam(fy, lum(c0)) + c1 * beam(1.0 - fy, lum(c1));
+
+		col *= mask(gl_FragCoord.x);
+		col *= WARM * BRIGHT;
+		col *= max(vignette(uv), xpWide);
+
+		gl_FragColor = vec4(toDisp(col), 1.0);
+	}

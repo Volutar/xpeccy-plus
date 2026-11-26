@@ -1,0 +1,88 @@
+# Sony PVM / broadcast monitor look (single pass, Xpeccy pipeline)
+#
+# Sharp RGB input, fine Trinitron-style aperture grille (vertical stripes),
+# tight bright scanlines with mild bloom on highlights, flat geometry.
+# Approximates a PVM-20xx: neutral colors, high focus, visible grille.
+#
+# Written in legacy-110 "ruby" style so Xpeccy's shim compiles it as #version 330.
+vertex:
+	#version 110
+	uniform vec2 rubyOutputSize;
+	varying vec2 v_texCoord;
+	void main() {
+		gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+		v_texCoord = gl_MultiTexCoord0.xy;
+	}
+fragment:
+	#version 110
+	uniform sampler2D rubyTexture;
+	uniform vec2 rubyTextureSize;
+	uniform vec2 rubyOutputSize;
+	varying vec2 v_texCoord;
+
+	// ---- tunables ----
+	#define GAMMA_IN    2.4     // assumed CRT gamma of the source signal
+	#define GAMMA_OUT   2.2     // display gamma
+	#define BRIGHT      1.15    // overall gain (compensates scanline/mask darkening)
+
+	#define SHARP       0.20    // horizontal sharpness: 1.0=linear, ->0=nearest
+	#define BEAM_MIN    0.62    // scanline beam half-width (in source-line units)
+	#define BEAM_BLOOM  0.55    // extra beam width added by pixel luminance (bloom)
+	#define BEAM_SHARP  3.0     // gaussian falloff steepness of the beam
+
+	#define MASK_W      1.0     // aperture-grille subpixel width, in output pixels
+	#define MASK_DARK   0.60    // brightness of the two "off" channels per subpixel
+	#define MASK_LIGHT  1.30    // brightness of the "on" channel per subpixel
+
+	vec3 toLin(vec3 c)  { return pow(c, vec3(GAMMA_IN)); }
+	vec3 toDisp(vec3 c) { return pow(clamp(c, 0.0, 1.0), vec3(1.0 / GAMMA_OUT)); }
+	float lum(vec3 c)   { return dot(c, vec3(0.299, 0.587, 0.114)); }
+
+	// Sharp-bilinear horizontal reconstruction: a linear ramp of adjustable
+	// steepness across one texel, giving crisp pixels without hard nearest edges.
+	vec3 sampleH(float cx, float y) {
+		float xt = cx * rubyTextureSize.x - 0.5;
+		float xi = floor(xt);
+		float xf = xt - xi;
+		float t  = clamp((xf - 0.5) / SHARP + 0.5, 0.0, 1.0);
+		vec3 a = toLin(texture2D(rubyTexture, vec2((xi + 0.5) / rubyTextureSize.x, y)).rgb);
+		vec3 b = toLin(texture2D(rubyTexture, vec2((xi + 1.5) / rubyTextureSize.x, y)).rgb);
+		return mix(a, b, t);
+	}
+
+	// Gaussian scanline beam; width grows with luminance to bloom bright lines.
+	float beam(float dist, float l) {
+		float w = BEAM_MIN + BEAM_BLOOM * l;
+		float x = dist / w;
+		return exp(-BEAM_SHARP * x * x);
+	}
+
+	// Vertical RGB aperture grille (Trinitron-style stripes).
+	vec3 mask(float fx) {
+		float i = mod(floor(fx / MASK_W), 3.0);
+		vec3 m = vec3(MASK_DARK);
+		if      (i < 1.0) m.r = MASK_LIGHT;
+		else if (i < 2.0) m.g = MASK_LIGHT;
+		else              m.b = MASK_LIGHT;
+		return m;
+	}
+
+	void main() {
+		vec2 uv = v_texCoord;
+
+		// two nearest source scanlines and the beam distance to each
+		float yp   = uv.y * rubyTextureSize.y - 0.5;
+		float row  = floor(yp);
+		float fy   = yp - row;
+		float y0   = (row + 0.5) / rubyTextureSize.y;
+		float y1   = (row + 1.5) / rubyTextureSize.y;
+
+		vec3 c0 = sampleH(uv.x, y0);
+		vec3 c1 = sampleH(uv.x, y1);
+		vec3 col = c0 * beam(fy, lum(c0)) + c1 * beam(1.0 - fy, lum(c1));
+
+		col *= mask(gl_FragCoord.x);
+		col *= BRIGHT;
+
+		gl_FragColor = vec4(toDisp(col), 1.0);
+	}

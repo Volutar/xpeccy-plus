@@ -1,0 +1,84 @@
+# Commodore 1084 / shadow-mask RGB monitor look, FLAT (no screen curvature)
+#
+# Same as monitor-1084.txt (RGB-sharp signal, triad shadow mask with row
+# stagger, moderate scanlines, warm tube) but flat geometry, with retuned
+# exposure so black text stays readable on white backgrounds.
+vertex:
+	#version 110
+	varying vec2 v_texCoord;
+	void main() {
+		gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+		v_texCoord = gl_MultiTexCoord0.xy;
+	}
+fragment:
+	#version 110
+	uniform sampler2D rubyTexture;
+	uniform vec2 rubyTextureSize;
+	uniform vec2 rubyOutputSize;
+	varying vec2 v_texCoord;
+
+	// ---- tunables ----
+	#define GAMMA_IN    2.4
+	#define GAMMA_OUT   2.2
+	#define BRIGHT      1.08    // keep whites from clipping (black text stays readable)
+	#define WARM        vec3(1.02, 1.00, 0.97)
+
+	#define SHARP       0.40    // moderately soft RGB (between PVM and composite)
+	#define BEAM_MIN    0.68
+	#define BEAM_BLOOM  0.30    // limited bloom so highlights don't wash over dark areas
+	#define BEAM_SHARP  2.8
+
+	#define MASK_W      2.0     // shadow-mask cell size in output px
+	#define MASK_DARK   0.80
+	#define MASK_LIGHT  1.12
+
+	vec3 toLin(vec3 c)  { return pow(c, vec3(GAMMA_IN)); }
+	vec3 toDisp(vec3 c) { return pow(clamp(c, 0.0, 1.0), vec3(1.0 / GAMMA_OUT)); }
+	float lum(vec3 c)   { return dot(c, vec3(0.299, 0.587, 0.114)); }
+
+	vec3 sampleH(float cx, float y) {
+		float xt = cx * rubyTextureSize.x - 0.5;
+		float xi = floor(xt);
+		float xf = xt - xi;
+		float t  = clamp((xf - 0.5) / SHARP + 0.5, 0.0, 1.0);
+		vec3 a = toLin(texture2D(rubyTexture, vec2((xi + 0.5) / rubyTextureSize.x, y)).rgb);
+		vec3 b = toLin(texture2D(rubyTexture, vec2((xi + 1.5) / rubyTextureSize.x, y)).rgb);
+		return mix(a, b, t);
+	}
+
+	float beam(float dist, float l) {
+		float w = BEAM_MIN + BEAM_BLOOM * l;
+		float x = dist / w;
+		return exp(-BEAM_SHARP * x * x);
+	}
+
+	// Triad shadow mask: RGB dots, every other row shifted by 1.5 subpixels.
+	vec3 mask(vec2 fc) {
+		vec2 cell = floor(fc / MASK_W);
+		float stagger = mod(cell.y, 2.0) * 1.5;
+		float i = mod(cell.x + stagger, 3.0);
+		vec3 m = vec3(MASK_DARK);
+		if      (i < 1.0) m.r = MASK_LIGHT;
+		else if (i < 2.0) m.g = MASK_LIGHT;
+		else              m.b = MASK_LIGHT;
+		return m;
+	}
+
+	void main() {
+		vec2 uv = v_texCoord;   // flat: no barrel warp
+
+		float yp  = uv.y * rubyTextureSize.y - 0.5;
+		float row = floor(yp);
+		float fy  = yp - row;
+		float y0  = (row + 0.5) / rubyTextureSize.y;
+		float y1  = (row + 1.5) / rubyTextureSize.y;
+
+		vec3 c0 = sampleH(uv.x, y0);
+		vec3 c1 = sampleH(uv.x, y1);
+		vec3 col = c0 * beam(fy, lum(c0)) + c1 * beam(1.0 - fy, lum(c1));
+
+		col *= mask(gl_FragCoord.xy);
+		col *= WARM * BRIGHT;
+
+		gl_FragColor = vec4(toDisp(col), 1.0);
+	}

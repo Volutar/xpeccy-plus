@@ -179,8 +179,25 @@ const xShdPreset* look_file(const QString& file) {
 
 // ---------------------------------------------------------------- the list
 
+// The shader files the tube came instead of. They stay in the build, listed apart under
+// Legacy, until the side fill and the bezel are done for the tube; then they go, and
+// look_old_names() takes a config that names one over to the tube.
+static const char* const legacyFiles[] = {
+	"composite-crt-flat.txt", "composite-crt.txt", "grille-nocurve-crisp.txt", "grille-nocurve-light.txt",
+	"grille2-nocurve-crisp.txt", "grille2-nocurve-light.txt", "monitor-1084-flat.txt", "monitor-1084.txt",
+	"pvm-sharp.txt", "tridot-curve-crisp.txt", "tridot-curve-light.txt", "tridot-nocurve-crisp.txt",
+	"tridot-nocurve-light.txt", "tvline-curve-light.txt", "tvline-nocurve-light.txt", "widetridot-curve-crisp.txt",
+	"widetridot-curve-light.txt", "widetridot-nocurve-crisp.txt", "widetridot-nocurve-light.txt", "zx-rf-artifact.txt",
+};
+
+static bool legacy_file(const QString& file) {
+	for (const char* name : legacyFiles)
+		if (file == name) return true;
+	return false;
+}
+
 QList<xLook> look_list() {
-	QList<xLook> parts[LOOK_FILE + 1];
+	QList<xLook> parts[LOOK_LEGACY + 1];
 	xLook none;
 	none.title = "None";
 	parts[LOOK_BASIC] << none;
@@ -191,7 +208,11 @@ QList<xLook> look_list() {
 			xLook lk;
 			lk.file = file;
 			lk.title = (head && !head->title.isEmpty()) ? head->title : QFileInfo(file).completeBaseName();
-			if (head && !head->sets.isEmpty()) {
+			// (a file of an old look's name in the user's folder is the user's own)
+			if (legacy_file(file) && builtin.contains(file) && !QFile::exists(xres_dir(LOOK_KIND) + "/" + file)) {
+				lk.part = LOOK_LEGACY;
+				parts[LOOK_LEGACY] << lk;
+			} else if (head && !head->sets.isEmpty()) {
 				// a file with presets is listed by them
 				lk.part = LOOK_PRESET;
 				for (const xShdSet& set : head->sets) {
@@ -218,6 +239,7 @@ QList<xLook> look_list() {
 		auto byTitle = [](const xLook& a, const xLook& b) {return a.title.compare(b.title, Qt::CaseInsensitive) < 0;};
 		std::sort(parts[LOOK_USER].begin(), parts[LOOK_USER].end(), byTitle);
 		std::sort(parts[LOOK_FILE].begin(), parts[LOOK_FILE].end(), byTitle);
+		std::sort(parts[LOOK_LEGACY].begin(), parts[LOOK_LEGACY].end(), byTitle);
 	}
 	QList<xLook> res;
 	for (const QList<xLook>& p : parts) res << p;
@@ -478,8 +500,9 @@ void look_old_names() {
 	const QString was = QString::fromUtf8(conf.vid.shdPreset.c_str());
 	for (const auto& row : names) {
 		if ((old != row.old) || (row.was[0] && (was != row.was))) continue;
-		// a file of that name in the user's folder is the user's shader
-		if (QFile::exists(xres_dir(LOOK_KIND) + "/" + old)) return;
+		// a file of that name is the shader: the user's own, or the build's old look
+		// while it is kept
+		if (look_file(old)) return;
 		xLook lk;
 		lk.part = LOOK_PRESET;
 		lk.file = LOOK_TUBE;

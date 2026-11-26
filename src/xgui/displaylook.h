@@ -15,7 +15,8 @@ enum {
 	LOOK_BASIC = 0,		// None, and the built-in files with knobs and no presets
 	LOOK_PRESET,		// a file's own presets
 	LOOK_USER,		// the user's presets
-	LOOK_FILE		// the other shader files
+	LOOK_FILE,		// the other shader files
+	LOOK_LEGACY		// the build's older shader files: a submenu, until the tube does all they did
 };
 
 struct xLook {

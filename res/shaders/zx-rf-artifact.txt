@@ -1,0 +1,107 @@
+# ZX Spectrum RF / composite artifact simulation (single pass)
+#
+# Emulates the RF-modulator colour path of a 48k Spectrum: the narrow chroma
+# bandwidth of a composite/RF signal makes a per-pixel checkerboard (attribute
+# clash / dithering) fall inside the colour decoder's passband, so the decoder
+# mistakes the luma square-wave for chroma and produces a solid "artifact"
+# colour -- the classic yellowish/bluish merge, same mechanism as Mega Drive
+# dithering blending on composite.
+#
+# Signal chain, all in one fragment:
+#   RGB -> YUV  ->  composite = Y + U*sin(ph) + V*cos(ph)
+#       ->  low-pass Y (narrow) + demodulate & low-pass chroma (wide)  ->  RGB
+#
+# Key tunables:
+#   SUBC  - subcarrier in cycles per source texel. 0.5 lines the carrier up with
+#           a 1px checkerboard, so it merges to a SOLID colour (the ZX look).
+#   PHASE - hue of the artifact colour. Add 3.14159 to flip yellow <-> blue.
+#   SAT   - chroma gain (strength of the artifact / real colours).
+vertex:
+	#version 110
+	varying vec2 v_texCoord;
+	void main() {
+		gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+		v_texCoord = gl_MultiTexCoord0.xy;
+	}
+fragment:
+	#version 110
+	uniform sampler2D rubyTexture;
+	uniform vec2 rubyTextureSize;
+	varying vec2 v_texCoord;
+
+	#define PI 3.14159265
+
+	// ---- signal tunables ----
+	#define SUBC      0.5      // subcarrier, cycles per source texel (0.5 = per-pixel checkerboard -> solid colour)
+	#define PHASE     0.0      // artifact hue; PHASE + PI flips yellow <-> blue
+	#define PAL_SWING 0.0      // 0 = stable colour (NTSC-like). 1 = full PAL line phase alternation
+	#define SAT       1.5      // chroma gain
+	#define GAIN      1.05     // overall brightness
+
+	#define SIGMA_Y   1.0      // luma low-pass width (texels): must kill the subcarrier
+	#define SIGMA_C   2.4      // chroma low-pass width (texels): wider -> more colour bleed
+	#define NT        43       // number of sub-samples across the filter window (odd)
+	#define SUBSTEP   0.3333   // sub-sample stride in texels (NT*SUBSTEP = window span)
+
+	// ---- scanlines (subtle; the artifact colour is the star) ----
+	#define SL_DEPTH  0.22     // 0 = off
+	#define SL_WIDTH  0.34
+
+	// BT.601 RGB->YUV encode.
+	float encY(vec3 c) { return dot(c, vec3( 0.29900,  0.58700,  0.11400)); }
+	float encU(vec3 c) { return dot(c, vec3(-0.14713, -0.28886,  0.43600)); }
+	float encV(vec3 c) { return dot(c, vec3( 0.61500, -0.51499, -0.10001)); }
+
+	void main() {
+		vec2 uv = v_texCoord;
+		float TW = rubyTextureSize.x;
+		float TH = rubyTextureSize.y;
+
+		float cx   = uv.x * TW;                 // centre position, in source texels
+		float line = floor(uv.y * TH);
+		float palP = mod(line, 2.0) * PAL_SWING * PI;   // PAL: alternate chroma phase per line
+
+		float half = float(NT - 1) * 0.5;
+
+		float sumY = 0.0, wY = 0.0;
+		float sumU = 0.0, sumV = 0.0, wC = 0.0;
+
+		for (int i = 0; i < NT; i++) {
+			float d  = (float(i) - half) * SUBSTEP;   // offset from centre, in texels
+			float sx = cx + d;
+
+			vec3 rgb = texture2D(rubyTexture, vec2(sx / TW, uv.y)).rgb;  // NEAREST -> source texel colour
+			float Y = encY(rgb);
+			float U = encU(rgb);
+			float V = encV(rgb);
+
+			float ph = 2.0 * PI * SUBC * sx + PHASE + palP;
+			float cs = sin(ph);
+			float cc = cos(ph);
+			float comp = Y + U * cs + V * cc;         // encoded composite signal
+
+			float gY = exp(-d * d / (2.0 * SIGMA_Y * SIGMA_Y));
+			float gC = exp(-d * d / (2.0 * SIGMA_C * SIGMA_C));
+
+			sumY += comp * gY;          wY += gY;      // luma = low-pass(composite)
+			sumU += comp * cs * gC;                    // demodulate U
+			sumV += comp * cc * gC;     wC += gC;      // demodulate V
+		}
+
+		float Yo = sumY / wY;
+		float Uo = 2.0 * SAT * sumU / wC;
+		float Vo = 2.0 * SAT * sumV / wC;
+
+		// YUV -> RGB decode.
+		vec3 col;
+		col.r = Yo + 1.13983 * Vo;
+		col.g = Yo - 0.39465 * Uo - 0.58060 * Vo;
+		col.b = Yo + 2.03211 * Uo;
+
+		// subtle scanlines
+		float f    = fract(uv.y * TH) - 0.5;
+		float scan = mix(1.0, exp(-f * f / (2.0 * SL_WIDTH * SL_WIDTH)), SL_DEPTH);
+
+		col = clamp(col * GAIN * scan, 0.0, 1.0);
+		gl_FragColor = vec4(col, 1.0);
+	}

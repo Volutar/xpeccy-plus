@@ -4333,14 +4333,21 @@ void MainWin::fillUserMenu() {
 	{
 		// with no shaders the list is None alone, and None is what runs
 		const xLook cur = conf.vid.shd_support ? look_current() : xLook();
+		// (the last fill's submenu goes with it)
+		foreach(QMenu* old, shdMenu->findChildren<QMenu*>(QString(), Qt::FindDirectChildrenOnly)) old->deleteLater();
 		int part = LOOK_BASIC;
+		QMenu* legacy = NULL;
 		foreach(const xLook& lk, look_list()) {
 			if (lk.part != part) shdMenu->addSeparator();
 			part = lk.part;
-			act = shdMenu->addAction(lk.title);
+			// the older shader files: a menu of their own
+			if ((lk.part == LOOK_LEGACY) && !legacy) legacy = shdMenu->addMenu("Legacy");
+			act = ((lk.part == LOOK_LEGACY) ? legacy : shdMenu)->addAction(lk.title);
 			act->setData(QStringList() << lk.file << lk.preset);
 			act->setCheckable(true);
 			act->setChecked(lk == cur);
+			// one tick for the whole list
+			if (lk.part == LOOK_LEGACY) xMenuGroup(shdMenu, "pick")->addAction(act);
 		}
 	}
 	// fill palette menu
