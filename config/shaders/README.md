@@ -24,8 +24,9 @@ edge dots there, and `uniform float xpWide` is 1 (0 otherwise). A shader of your
 it to leave off what belongs to the tube's edge - rounded corners, a vignette - as the bundled
 ones do; a curve is best kept to the picture, `warp(clamp(uv, 0.0, 1.0)) + (uv - clamp(uv, 0.0, 1.0))`.
 
-The bundled files are Xpeccy+'s own, under its MIT license; what each builds on is named
-with it below.
+Scanlines and CRT are Xpeccy+'s own, under its MIT license; what each builds on is named
+with it below. The older files kept under Display > Legacy keep their authors' terms: see
+"Names of older versions".
 
 ## Scanlines - Xpeccy+
 
@@ -55,7 +56,9 @@ The mask is drawn in whole screen pixels - a triad two to eight of them wide, th
 steps of three - and thins out by itself as the picture gets smaller. A triad narrower
 than its three stripes counts on the display's own subpixels: under All settings,
 **Display's subpixels** is their order, RGB or BGR, or Other for a mask without colors. A
-small picture has no curve. What the scanlines and the mask take is given back.
+small picture has no curve. What the scanlines and the mask take is given back, as far as
+a pixel can give: a line too bright for that loses light, or with Bloom is drawn the
+plainer and keeps it.
 A bent picture goes on to the edge of its place as its border does, and the corners are
 rounded there: the glass is lit to its rim.
 
@@ -96,6 +99,17 @@ The aperture grille and shadow mask files (`grille-nocurve-crisp.txt`,
 and a config that names one opens it as before. They will go once the tube does all they
 did; a config that names one will then open the tube with its knobs turned to stand for
 it. A file of that name put into this folder is used as it is, as any shader of your own.
+
+They are not all under the MIT license of Xpeccy+ - each keeps the terms of its author:
+
+- the aperture grille and shadow mask files (`grille*`, `tridot*`, `widetridot*`): Timothy
+  Lottes, tuned by Volutar - public domain ("Please take and use, change, or whatever",
+  see the header of each file);
+- `tvline-nocurve-light.txt`, `tvline-curve-light.txt`: Copyright (C) 2010-2012 cgwg,
+  Themaister and DOLLS, **GNU GPL v2 or later** - the notice is kept intact at the top of
+  each file;
+- `monitor-1084*.txt`, `pvm-sharp.txt`, `composite-crt*.txt`, `zx-rf-artifact.txt`: written
+  for this project, MIT.
 
 ## Writing a shader
 
