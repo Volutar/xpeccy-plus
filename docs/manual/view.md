@@ -168,8 +168,8 @@ there. The list has up to four parts:
   colors a PAL set makes of fine patterns and at color edges; **RGB monitor** - the
   Commodore 1084S; **PVM** - a broadcast monitor, sharp, bent a little as a cylinder is,
   the look a new installation starts with; **Tridot** - a fine dot mask, three screen
-  pixels a triad at any scale, a thin sharp beam and deep scanlines; **Xpixie** - soft and glowing, with
-  afterglow, a ghost and noise;
+  pixels a triad at any scale, a thin sharp beam and deep scanlines; **Xpixie** - soft
+  and glowing, with afterglow, a ghost and noise;
 - the presets you saved;
 - shader files of your own, from the `shaders` folder of the configuration.
 
