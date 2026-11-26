@@ -54,7 +54,7 @@ int loadSCR(Computer* comp, const char* name, int drv) {
 		mem->ramData[MADR(vid->vidPage, i) & mem->ramMask] = (i < (int)size) ? data[i] : 0x38;
 	// ULA+ through its ports, as a program sets it: the palette group, then the mode -
 	// on for a screen that brings its palette, off for a plain one, whose attributes
-	// mean the plain colours
+	// mean the plain colors
 	int pal = (size == SCR_FULL + SCR_PAL);
 	if (vid->ula->enabled && (comp->hw->id != HW_ZXNEXT)) {
 		for (i = 0; pal && (i < SCR_PAL); i++) {
@@ -66,7 +66,7 @@ int loadSCR(Computer* comp, const char* name, int drv) {
 			ula_wr(vid->ula, 0xff3b, pal);
 		}
 	} else if (pal) {
-		comp->msg = " ULA+ is off: no palette ";
+		comp->msg = " the screen without its ULA+ palette ";
 	}
 	return ERR_OK;
 }
