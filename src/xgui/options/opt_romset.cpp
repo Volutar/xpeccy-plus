@@ -9,13 +9,15 @@ std::string getRFText(QComboBox*);
 
 xRomsetEditor::xRomsetEditor(QWidget* par):QDialog(par) {
 	ui.setupUi(this);
-	ui.cbFile->setDir(QString::fromLocal8Bit(conf.path.romDir.c_str()));
 	connect(ui.rse_apply, SIGNAL(clicked()), this, SLOT(store()));
 	connect(ui.rse_cancel, SIGNAL(clicked()), this, SLOT(hide()));
 }
 
 void xRomsetEditor::edit(xRomFile f) {
 	xrf = f;
+	// on the first open, not at the start: the model reads the folder, and Qt
+	// loads its MIME database for the files' icons on the GUI thread
+	ui.cbFile->setDir(QString::fromLocal8Bit(conf.path.romDir.c_str()));
 	ui.cbFile->setCurrentFile(QString::fromUtf8(f.name.c_str()));
 	ui.cbFoffset->setValue(f.foffset);
 	ui.cbFsize->setValue(f.fsize);
