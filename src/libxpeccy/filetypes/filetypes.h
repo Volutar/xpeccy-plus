@@ -388,6 +388,11 @@ int wav_export_rate(Computer*);
 
 int loadSCR(Computer*,const char*,int);
 int scr_hobeta_head(const unsigned char* head, size_t size);	// its 17 bytes and size: a Hobeta screen
+// held until the ROM has started up (the command line); frame() each frame, cancel() when
+// the machine is replaced
+int scr_hold(Computer*, const char*);
+void scr_hold_frame(Computer*);
+void scr_hold_cancel(void);
 
 // disk
 

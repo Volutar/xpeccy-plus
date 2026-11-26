@@ -96,6 +96,7 @@ void x_state_replaced() {
 	x_input_bump();
 	snd_drop();		// the old machine's sound
 	autostart_cancel();
+	scr_hold_cancel();
 	fastload_forget();
 	cheats_forget();
 	// a breakpoint hit not acted on yet (a stop the redraw ran into) was the

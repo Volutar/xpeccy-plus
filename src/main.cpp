@@ -371,6 +371,8 @@ static void open_pending(xApp& app, MainWin& mwin) {
 static QString cliPok;
 static QStringList cliPokes;
 static QString cliImage;
+// no snapshot on the command line yet: the machine powers on
+static bool cliFresh = true;
 
 // A file on the command line: the machine it wants first, unless the command
 // line names the machine itself.
@@ -390,8 +392,20 @@ static void open_cli_file(MainWin& mwin, const char* name, int drv, int run, boo
 		return;
 	if (!mac.empty())
 		mwin.setMachine(mac);
+	const bool screen = file_is_screen(conf.zx, path, FG_ALL);
+	if (screen && cliFresh) {		// the ROM's start-up would clear it
+		QString why;
+		QString local = arc_local(path, &why);
+		int err = local.isEmpty() ? ERR_CANT_OPEN : scr_hold(conf.zx, local.toLocal8Bit().constData());
+		file_errors(err);
+		if (err != ERR_OK) return;
+		xlog(XLG_FILE, XLL_INFO, "open ZX screen once the ROM is up: %s", path.toLocal8Bit().constData());
+		media_opened(path, FG_ALL, drv, run, pinned);
+		return;
+	}
 	if (load_file(conf.zx, path.toLocal8Bit().constData(), FG_ALL, drv) != ERR_OK) return;
-	if ((drv < 1) && !file_is_screen(conf.zx, path, FG_ALL)) {	// a screen is not the game
+	if (!screen && !file_is_medium(conf.zx, path, FG_ALL)) cliFresh = false;
+	if ((drv < 1) && !screen) {	// a screen is not the game
 		mwin.padGame(path);
 		cheats_pick(path);
 		cliImage = path;

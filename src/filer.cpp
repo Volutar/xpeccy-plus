@@ -910,8 +910,8 @@ static bool file_hobeta_screen(const QString& path) {
 }
 
 // what a file opened as id is: the group's own type when it has one (a raw
-// file, a cartridge, a screen), otherwise whatever the extension says - and a
-// Hobeta screen opened as any file is a screen, the Disk group puts it on the disk
+// file, a cartridge, a screen), otherwise whatever the extension says; a Hobeta
+// screen is a screen but through the Disk group
 static xFileTypeInfo* file_type_of(Computer* comp, int id, const QString& path) {
 	xFileGroupInfo* grp = file_find_group(id);	// not a group: the empty one
 	if (grp->fti) return grp->fti;
@@ -1678,20 +1678,20 @@ QStringList media_candidates(Computer* comp, const QString& archive, int id, int
 	}
 	QSet<int> types;
 	id_types(comp, id, drv, &types);
-	// picked as a screen, the game's screenshot beside it counts too; opened as any
-	// file, a screen is the image only when the archive holds no other
+	// a screen only when there is nothing else; picked as one, from SCRSHOT too
 	const bool screen = (id == FG_SCREEN);
 	QStringList screens;
 	for (const arcEntry& entry : *list) {
 		if (entry.folder || (arc_beside_image(entry.name) && !screen) || (arc_type(entry.name) != ARC_NONE)) continue;
+		// a Hobeta screen by its size, the header read only when it is opened
+		const bool hob = entry.name.endsWith(".$c", Qt::CaseInsensitive) && (entry.size == 17 + 6912);
 		if (screen) {
-			if (entry.name.endsWith(".scr", Qt::CaseInsensitive) || entry.name.endsWith(".$c", Qt::CaseInsensitive))
-				res.append(entry.name);
+			if (hob || entry.name.endsWith(".scr", Qt::CaseInsensitive)) res.append(entry.name);
 			continue;
 		}
 		xFileTypeInfo* inf = file_find_hw_ext(comp->hw->id, entry.name);
 		if (!inf || !types.contains(inf->id)) continue;
-		(inf->id == FL_SCR ? screens : res).append(entry.name);
+		((inf->id == FL_SCR) || hob ? screens : res).append(entry.name);
 	}
 	if (res.isEmpty()) res = screens;
 	std::stable_sort(res.begin(), res.end(), natural_less);
@@ -2107,10 +2107,6 @@ int load_file(Computer* comp, const char* name, int id, int drv) {
 						break;
 					case FL_RZX:			// its snapshots load as it plays
 						last_snapshot = path;
-						break;
-					case FL_SCR:			// a poke of the screen, as a cheat's
-						rzx_rec_touch();
-						x_input_bump();
 						break;
 				}
 				if (inf->id == FL_RZX)
