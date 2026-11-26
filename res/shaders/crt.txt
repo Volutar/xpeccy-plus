@@ -847,6 +847,16 @@ fragment:
 		float foot = flat_ ? spotSize.y * OutputSize.w : max(fwidth(uv.y) * spotSize.y, 0.0001);
 		float scale = 1.0 / foot;
 
+		// A scanline is a line of the picture, at any scale: one that kept to whole
+		// screen rows would cut across the picture's lines. On a flat screen at a whole
+		// scale the two fall together
+		float per = max(1.0, floor(scale + 0.5));
+		bool rows = flat_ && (abs(scale - per) * spotSize.y < 0.5);
+		// Two rows a line are the two halves of its bell, lit alike whatever its shape: there
+		// the lines go half a row down, so one row is a line's middle and the next its gap -
+		// and the mask with them, so a slot's bridge stays on a line's middle
+		float half_ = (rows && (per == 2.0)) ? 0.5 : 0.0;
+
 		// The mask: counted in the window's pixels, or in the picture's own where it is
 		// to bend with the glass - by itself where a pixel of its layout is two screen
 		// pixels or more, under which a bent mask beats with them
@@ -861,16 +871,11 @@ fragment:
 			cell = kind * n;
 		}
 		bool glass = !flat_ && ((MBEND == 2.0) || ((MBEND == 0.0) && (n >= 2.0)));
-		vec2 px = glass ? uv * OutputSize.xy : gl_FragCoord.xy - xpPicture.xy;
+		vec2 px = glass ? uv * OutputSize.xy : gl_FragCoord.xy - xpPicture.xy - vec2(0.0, half_);
 		float mean;
 		vec3 through = mask(px, cell, kind, n, max(2.0, floor(dot_ + 0.5)), mean);
 
-		// A scanline is a line of the picture, at any scale: one that kept to whole
-		// screen rows would cut across the picture's lines. On a flat screen at a whole
-		// scale the two fall together. Lines that do not fall on rows beat with them at
-		// a small scale: shallower there
-		float per = max(1.0, floor(scale + 0.5));
-		bool rows = flat_ && (abs(scale - per) * spotSize.y < 0.5);
+		// Lines that do not fall on rows beat with them at a small scale: shallower there
 		float deep = SCAN * (rows ? 1.0 : mix(0.4, 1.0, smoothstep(2.0, 4.0, scale)) * step(1.5, scale));
 		// with no scanlines a line is its own rows and no more: the picture as it is
 		float width = WIDTH * clamp(deep / 0.2, 0.0, 1.0);
@@ -878,9 +883,7 @@ fragment:
 		// little off; a roll moves the lines down the screen - a step of Roll is a turn
 		// in 400 frames, so the lines meet themselves when the count starts again
 		// (rows that fall on the lines are counted: a line's edge is a row's, to the bit)
-		// Two rows a line are the two halves of its bell, lit alike whatever its shape: there
-		// the lines go half a row down, so one row is a line's middle and the next its gap
-		float prow = floor(vTexCoord.y * OutputSize.y) + ((per == 2.0) ? 0.5 : 0.0);
+		float prow = floor(vTexCoord.y * OutputSize.y) + half_;
 		float top = rows ? prow / per : uv.y * spotSize.y - 0.5 * foot;
 		float bottom = rows ? (prow + 1.0) / per : top + foot;
 		vec3 off = vec3(0.0);
