@@ -24,7 +24,7 @@ before that point is upstream's history and is not repeated here.
   Display list. One tube in stages that switch off - beam, divergence, mask, glow,
   afterglow, signal, screen - with the mask as fine as the tube's own and thinning out as
   the picture gets smaller, or a set number of screen pixels at any scale. A new
-  installation starts with PVM. *(beam divergence by Volutar)*
+  installation starts with PVM. *(beam divergence and Tridot's settings by Volutar)*
 
 - **Composite and RF input** for the CRT looks: a PAL picture as a set decodes it. Fine
   patterns take on color; with a 128K's color carrier they stand, with a 48K's they
