@@ -265,6 +265,7 @@ xAdr label_cpu(xAdr);		// ...and that, for a cell find_label_cell() gave
 unsigned labels_gen();		// changes whenever the labels in effect do
 void labels_touch();		// ...and makes it change
 // the labels of known ROMs, below the user's: found again when the ROM changes
+void labels_rom_prefetch();		// the list files read on a thread meanwhile
 void labels_rom_scan(Computer*);	// under emu_lock
 void labels_rom_check(Computer*);	// ...if a snapshot put a ROM in since
 QList<int> labels_rom_cells(const QString&);	// a ROM label's cells, a bank each

@@ -646,6 +646,7 @@ int main(int ac,char** av) {
 	}
 #endif
 	xApp app(ac,av,true);
+	labels_rom_prefetch();		// needs the program's folder, which the application knows
 #if defined(_WIN32)
 	// Qt 6.7 made windows11 the default style on Windows 11. The bundled style sheets are
 	// drawn against windowsvista, Qt 6.6's default, which win-x64 is built with
