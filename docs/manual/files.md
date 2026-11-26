@@ -75,7 +75,8 @@ cheats and saves stay with the game that was in. **Recent** and **Reload** take 
 machine in a video mode of its own (Profi, ATM, ZX Evo, TSConf) says **The machine is not
 showing the ZX screen**. While the machine is paused, the picture shows once it runs. A
 screen named on the command line waits until the machine has started up, which would
-clear it; after a snapshot named before it, it goes in at once.
+clear it; after a snapshot named before it, it goes in at once, and a file named after it
+takes its place.
 
 ## Opening a file
 
