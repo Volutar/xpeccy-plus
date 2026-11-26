@@ -90,7 +90,8 @@ folder is **Folder to serve as the card** or **Folder to serve as the disk**. Ho
 written back is in [A folder as a disk](folder-as-disk.md) of Under the Hood.
 
 - The folder is read when it is opened, and again at **Machine > Reset > Hard Reset** and
-  when you switch machines; **Apply** in **Options** does not read it again. To bring in
+  when you switch machines; **Apply** in **Options** does not read it again, except a hard
+  disk's folder the machine had no interface for until then. To bring in
   files added, changed or deleted since without a reset, use **Refresh** (see
   [Refresh](#refresh)).
 - The disk is made big enough for the folder, from 512 MB up to 32 GB. A folder that takes
