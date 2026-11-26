@@ -286,6 +286,7 @@ set(MOCFILES
 	./src/xgui/debuga/dbg_zxscr.h
 	./src/xgui/sndwin.h
 	./src/xgui/heatwin.h
+	./src/xgui/displaysheet.h
 	./src/xgui/debuga/dbg_sndchip.h
 	./src/xgui/evowin.h
 	./src/xgui/debuga/dbg_evo.h

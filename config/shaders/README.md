@@ -1,9 +1,22 @@
 # Bundled shaders
 
 GLSL post-processing filters, drawn through OpenGL: none with `--no-gl` or without an
-OpenGL 3.3 driver (OpenGL ES 3.0). Pick one in Options - Video, or set
-`shader = <file>` in `config/config.conf`. A fresh config starts with `tvline-nocurve-light.txt`;
-an empty or missing `shader` line turns filtering off.
+OpenGL 3.3 driver (OpenGL ES 3.0). Pick a look in the Display list of Options - Video or in
+View - Display; in `config/config.conf` it is `shader = <file>` and, for a file with presets,
+`shader.preset = <name>`. A fresh config starts with the PVM look of `crt.txt`; an empty or
+missing `shader` line turns filtering off.
+
+A shader with parameters has a sheet of knobs: the gear beside the list, or View - Display -
+Settings. A knob turned is kept with its look, in `values.conf` of this folder. Save as
+preset writes the look as it stands into `<name>.preset` here - the shader's file, a name
+and the values that are not the shader's defaults:
+
+```
+shader = crt.txt
+name = My TV
+SCAN = 0.7
+CURVE = 0.02
+```
 
 With Side fill set to Stretched Edges and its Blur to Off, the shader draws the whole view:
 the texture coordinates run on past 0 and 1 to the view's edges, the frame is clamped at its
@@ -11,60 +24,107 @@ edge dots there, and `uniform float xpWide` is 1 (0 otherwise). A shader of your
 it to leave off what belongs to the tube's edge - rounded corners, a vignette - as the bundled
 ones do; a curve is best kept to the picture, `warp(clamp(uv, 0.0, 1.0)) + (uv - clamp(uv, 0.0, 1.0))`.
 
-Like the ROM images, **these files are not covered by the MIT license of Xpeccy+** - each one
-keeps the terms of its own author, listed below.
+Scanlines and CRT are Xpeccy+'s own, under its MIT license; what each builds on is named
+with it below. The older files kept under Display > Legacy keep their authors' terms: see
+"Names of older versions".
 
-## Aperture grille and shadow mask - Timothy Lottes, tuned by Volutar
+## Scanlines - Xpeccy+
 
-Public domain ("Please take and use, change, or whatever" - see the header of each file).
-`crisp` keeps the scanlines hard, `light` softens them; `curve` bends the screen, `nocurve`
-leaves it flat.
+`scanlines.txt`, MIT as the rest of Xpeccy+: plain scanlines with a hard or a soft dot.
+Three knobs: Depth, Gap width and Softness. A scanline is a line of the picture at any
+scale (Line fit, under All settings, counts whole screen rows instead: even lines, but no
+longer one to a line of the picture). The light the gaps take is given back: the picture is as bright as with
+no shader, but for colors at full light, whose lines are flat on top and a little darker
+over all.
 
-| File | Look |
+## CRT - Xpeccy+
+
+`crt.txt`, MIT as the rest of Xpeccy+: a tube in stages, each a frame of knobs and each off
+at 0, when its pass is not drawn at all.
+
+| Stage | What it does |
 | --- | --- |
-| `grille-nocurve-crisp.txt`, `grille-nocurve-light.txt` | aperture grille, Trinitron-like |
-| `grille2-nocurve-crisp.txt`, `grille2-nocurve-light.txt` | the same with a finer grille |
-| `tridot-curve-crisp.txt`, `tridot-curve-light.txt` | shadow-mask triads, curved screen |
-| `tridot-nocurve-crisp.txt`, `tridot-nocurve-light.txt` | shadow-mask triads, flat screen |
-| `widetridot-curve-crisp.txt`, `widetridot-curve-light.txt` | wider triads, curved screen |
-| `widetridot-nocurve-crisp.txt`, `widetridot-nocurve-light.txt` | wider triads, flat screen |
+| Signal | the cable - RGB; composite or RF into a PAL set, by a 128K's color carrier or a 48K's; or a SECAM set; a ghost, interference, noise |
+| Mask | aperture grille, slot mask (thin bridges, every other triad half an opening lower) or shadow mask, as fine as the tube: triads to a dot of the picture |
+| Beam | scanlines - a line is a bell that reaches into its neighbors' rows, wider where brighter; the focus of a dot's edge along the line; the beam's spot, which rounds a dot's ends |
+| Screen | curvature, round corners, vignette, brightness, bloom (bright things keep their light: the mask and the scanlines fade there), contrast |
+| Glow | light around bright things |
+| Divergence | the red and blue beams land beside the green one, more towards the screen's edges |
+| Afterglow | a lit dot fades over the next frames, blue first |
 
-## TV scanlines - cgwg, Themaister and DOLLS
+The mask is drawn in whole screen pixels - a triad two to eight of them wide, then in
+steps of three - and thins out by itself as the picture gets smaller. A triad narrower
+than its three stripes counts on the display's own subpixels: under All settings,
+**Display's subpixels** is their order, RGB or BGR, or Other for a mask without colors. A
+small picture has no curve. What the scanlines and the mask take is given back, as far as
+a pixel can give: a line too bright for that loses light, or with Bloom is drawn the
+plainer and keeps it.
+A bent picture goes on to the edge of its place as its border does, and the corners are
+rounded there: the glass is lit to its rim.
 
-Copyright (C) 2010-2012 cgwg, Themaister and DOLLS, **GNU GPL v2 or later** - the notice is
-kept intact at the top of each file. Distributed here as a separate data file, not linked
-into the emulator.
+With Input at Composite or RF each line is coded as a PAL encoder does it - luma with
+the color on a carrier - and decoded as a set does: the color low-passed and combined
+with what its delay line holds of the line before, the luma less a band around the
+carrier. So fine black and white
+patterns take on color and color edges crawl. Color carrier picks the encoder, for any
+machine alike: a 128K's is locked to its dots and its patterns stand (Phase picks one
+of the 8 ways it can lock at power-on), a 48K's runs free and they move. Programs that
+draw with the carrier are written for the 128K's. With Input at SECAM a line carries one
+color difference as the frequency of a carrier and the set reads that frequency alone
+(ITU-R BT.470's numbers): a pattern of a dot on, a dot off - 3.5 MHz, beside the
+carrier's band - pulls the reading its way and takes on one flat warm color, the same
+for a checkerboard and for stripes, with no crawl. Such a look takes the frames
+before Anti-flicker mixes them and mixes them itself, after decoding. Every preset but
+Home TV (composite) comes on RGB: Input is turned by hand.
 
-| File | Look |
+| Preset | Look |
 | --- | --- |
-| `tvline-nocurve-light.txt` | soft TV scanlines, flat screen - **the default** |
-| `tvline-curve-light.txt` | the same with screen curvature |
+| Home TV | a 14" set: a coarse slot mask, a soft beam, glow, a bulging screen |
+| Home TV (composite) | the same set on its video input: a PAL picture as it decodes it |
+| RGB monitor | the Commodore 1084S: a finer slot mask, a sharp beam, a slight curve |
+| PVM | a broadcast monitor: a fine aperture grille, the sharpest beam, a cylinder's slight curve |
+| Xpixie | soft and glowing, with afterglow, a ghost and noise |
 
-## Display models - Xpeccy+
+The two-pass beam follows Hyllian's CRT (MIT); the mask layouts Timothy Lottes's and
+hunterk's (public domain); the beams' parting towards the edges is Volutar's; the ghost,
+the interference and the noise are after Mattias Gustavsson's newpixie CRT (MIT / public
+domain), which Xpixie is named after.
 
-Written for this project. Same MIT license as the rest of Xpeccy+.
+## Names of older versions
 
-| File | Look |
-| --- | --- |
-| `composite-crt.txt`, `composite-crt-flat.txt` | composite / RF home TV, with and without curvature |
-| `monitor-1084.txt`, `monitor-1084-flat.txt` | Commodore 1084 shadow-mask RGB monitor |
-| `pvm-sharp.txt` | Sony PVM broadcast monitor, sharp |
-| `zx-rf-artifact.txt` | ZX Spectrum RF color artifacts |
+The aperture grille and shadow mask files (`grille-nocurve-crisp.txt`,
+`tridot-curve-light.txt`...), `tvline-nocurve-light.txt` and `tvline-curve-light.txt`,
+`monitor-1084.txt`, `monitor-1084-flat.txt`, `pvm-sharp.txt`, `composite-crt.txt`,
+`composite-crt-flat.txt` and `zx-rf-artifact.txt` are kept for now under Display > Legacy,
+and a config that names one opens it as before. They will go once the tube does all they
+did; a config that names one will then open the tube with its knobs turned to stand for
+it. A file of that name put into this folder is used as it is, as any shader of your own.
+
+They are not all under the MIT license of Xpeccy+ - each keeps the terms of its author:
+
+- the aperture grille and shadow mask files (`grille*`, `tridot*`, `widetridot*`): Timothy
+  Lottes, tuned by Volutar - public domain ("Please take and use, change, or whatever",
+  see the header of each file);
+- `tvline-nocurve-light.txt`, `tvline-curve-light.txt`: Copyright (C) 2010-2012 cgwg,
+  Themaister and DOLLS, **GNU GPL v2 or later** - the notice is kept intact at the top of
+  each file;
+- `monitor-1084*.txt`, `pvm-sharp.txt`, `composite-crt*.txt`, `zx-rf-artifact.txt`: written
+  for this project, MIT.
 
 ## Writing a shader
 
 A shader is one text file in this folder. The reload key (Options - Hotkeys, "Reload Shader")
 loads it again; if it does not compile, the picture is drawn plain, the button "Error: check
-the log" stands beside the Shader list of Options - Video (the first error in its tip, all
+the log" stands beside the Display list of Options - Video (the first error in its tip, all
 of them on a click), and the event log has every error as `file:line: text`. The file stays
 chosen: fix it and press the key.
 
 ### One pass
 
 Two sections, `vertex:` and `fragment:`; what stands before the first one is free text. The
-bundled files are written this way, in GLSL 1.10 with the names below (they are rewritten
-for the context at load), and a file in GLSL 3.30 / ES 3.00 with its own `#version` line is
-taken as it is.
+older bundled files are written this way, in GLSL 1.10 with the names below (they are
+rewritten for the context at load), and a file in GLSL 3.30 / ES 3.00 with its own `#version`
+line is taken as it is.
 
 | Name | What |
 | --- | --- |
@@ -110,7 +170,22 @@ fragment:
 
 - `#pragma parameter NAME "text" default min max step` - a number the shader reads as
   `uniform float NAME`. The engine declares it, as it declares every name below: a pass has
-  no `#version` line and declares only its own `in` and `out`.
+  no `#version` line and declares only its own `in` and `out`. Each parameter is a knob
+  of the sheet, and the lines below, before the first pass, say how it is shown:
+  - `name "text"` - what the lists call the file; without it, its file name.
+  - `frames raw [when NAME]` - the frames come as the machine made them, before
+    Anti-flicker mixes them (while NAME is not 0): a model of a color signal needs each
+    frame as it was, and mixes after decoding, by `xpBlend`. Not while the machine's own
+    picture is being recorded: the recording takes the same frames, mixed.
+  - `group "Title"` - a frame of the sheet: the parameters after it stand in it.
+    `group "Title" when NAME [value]` gives the frame a switch: off sets NAME to 0 (a pass
+    `when NAME` is then not drawn), on puts back what it had, or `value` (with none, the
+    parameter's default).
+  - `tip NAME = text` - a line of what the knob does.
+  - `list NAME = a, b, c` - the knob is a list; the names stand for min, min + step...
+  - `more NAME ...` - shown only under All settings.
+  - `preset "Name": NAME value, NAME value` - a named set of values, a line of the
+    Display list. A file with presets is listed by them.
 - `texture NAME = file.png [linear|nearest] [repeat|clamp|border|mirror] [mipmap]` - a
   picture beside the preset, read as `NAME`, its size as `NAMESize`.
 - `pass [name]:` starts a pass; lines of its own may follow, then `vertex:` (optional: the
@@ -155,5 +230,6 @@ The machine's own numbers, for a shader that models the signal:
 | `xpRaster` (`vec4`) | dots a line, lines a frame, the first shown dot, the first shown line |
 | `xpCarrier` (`vec4`) | PAL color carrier: cycles a dot; 1 if it is locked to the dots; its phase at the frame's first dot, in cycles; the V switch's sense on the frame's first line |
 | `xpFrame` (`int`) | the machine's number of the frame shown |
+| `xpBlend` (`vec2`) | Anti-flicker left to the shader (`frames raw`): the frame before's part in the mix, 0 .. 0.5, else 0; 1 if only what flickers is to be mixed (the adaptive modes) |
 
 `tests/shaders/chain.txt` in the source tree uses all of it.

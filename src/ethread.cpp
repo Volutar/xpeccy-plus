@@ -67,6 +67,9 @@ static long long shownNs = 0;
 static InState shownInput;
 static int shownInputOn = 0;
 static xFrameNums shownNums;
+// antiflicker left to the look, for the frame being finished: see the mixing
+static double frameBlend = 0.0;
+static bool frameBlendAdaptive = false;
 
 // PAL's color carrier, 4.43361875 MHz, against the machine's dots. A 128K (and the
 // grey +2, the same board) makes both from one 17.734475 MHz crystal: 5/8 cycle a dot,
@@ -84,6 +87,8 @@ static void frame_nums(Computer* comp, xFrameNums* n) {
 	const int id = comp->hw ? comp->hw->id : HW_NULL;
 	n->locked = (id == HW_ZX128) || (id == HW_PLUS2A) || (id == HW_PLUS3);
 	n->carrier = n->locked ? 0.625 : 4433618.75 * vid->nsPerDotExact * 1e-9;
+	n->blend = frameBlend;
+	n->blendAdaptive = frameBlendAdaptive;
 }
 
 // fast mode and fast forward make frames far quicker than anyone looks at them
@@ -654,12 +659,12 @@ static int ra_run_frame(Computer* comp) {
 // The frames run ahead at a frame end: run-ahead shows the last of conf.emu.runahead
 // of them, the adaptive antiflicker's look ahead mixes with the AF_AHEAD after it.
 // *shown: how many run-ahead takes.
-static int ra_frames(Computer* comp, int* shown) {
+static int ra_frames(Computer* comp, int* shown, bool raw) {
 	// a recording takes no input to win time on, and fast forward shows a frame in so many
 	if (conf.emu.tmode == XTM_FFWD) return *shown = 0;
 	int r = comp->rzx.play ? 0 : conf.emu.runahead;
 	int l = 0;
-	if (!conf.emu.fast && (noflic > 0) && noflicAhead && !frame_skipping()
+	if (!conf.emu.fast && (noflic > 0) && noflicAhead && !frame_skipping() && !raw
 			&& ((noflicMode == AF_2C_ADAPTIVE) || (noflicMode == AF_3C_ADAPTIVE))
 			&& (comp->hw->id != HW_ZXNEXT))		// too dear there
 		l = AF_AHEAD;
@@ -1041,7 +1046,10 @@ void xThread::emuCycle(Computer* comp) {
 			// the frame just made is not the one to show: run on to the one
 			// the player's last key press is already in
 			int shown;
-			int k = ra_frames(comp, &shown);
+			// Taken once a frame: the gui writes it at every paint. A recording of
+			// the machine's own picture takes these frames too, and wants them mixed
+			const bool raw = conf.vid.shdRaw && !vrec_wants_frames();
+			int k = ra_frames(comp, &shown, raw);
 			int ahead_ok = 0;
 			if (k > 0) {
 				ahead_ok = ra_kept_frames(comp, k, shown, finish);
@@ -1054,7 +1062,13 @@ void xThread::emuCycle(Computer* comp) {
 			// fast forward's undrawn frames are not mixed, and its drawn ones follow on;
 			// while Frame skip leaves frames out the host is short anyway: no mixing
 			int ffwd = fast_ffwd_frame();
-			if (!conf.emu.fast && (noflic > 0) && (ffwd >= 0) && !frame_skipping()) {
+			// A look that models the signal takes the frames as the machine made them -
+			// a program that swaps two screens for the color carrier would reach it grey -
+			// and is told how strong a mix it is to make of its own
+			const bool mixing = !conf.emu.fast && (noflic > 0) && (ffwd >= 0) && !frame_skipping();
+			frameBlend = (mixing && raw) ? noflic / 100.0 : 0.0;
+			frameBlendAdaptive = (noflicMode == AF_2C_ADAPTIVE) || (noflicMode == AF_3C_ADAPTIVE);
+			if (mixing && !raw) {
 				const uint32_t* ahead = ahead_ok ? af_look_ahead(comp, shown + 1, k - shown) : NULL;
 				scrMix(pscr, (unsigned char*)af_crop(comp->vid),
 					comp->vid->vsze.x * 2, comp->vid->vsze.y, bytesPerLine,

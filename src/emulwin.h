@@ -110,6 +110,7 @@ typedef struct {
 #include <QOpenGLVertexArrayObject>
 
 #include "xgui/shaderchain.h"
+#include "xgui/displaysheet.h"
 
 // the frame textures: the queue's four and the frames a shader may look back at
 #define XP_RING_MAX	(4 + XSHD_HISTORY_MAX)
@@ -278,6 +279,10 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void saveHistory();
 		void recentSaves(QMenu* menu, const QString& dir);
 		void fillPreview();	// Options moved a side fill setting
+		// the Display look (emw_opengl.cpp, xgui/displaylook.h)
+		void displaySettings();		// its sheet of knobs, beside the picture
+		void lookParam(const QString&, float);	// a knob moved
+		void lookPicked();		// the look or its values changed as a whole
 		void startSize();
 		void keepSize();
 	private slots:
@@ -356,7 +361,10 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		unsigned refit:1;	// geometry changed: re-read the frame before painting it
 		unsigned paintOwed:1;	// presentFrame asked, or resizeGL left an empty framebuffer
 
-		std::string shdLoaded;	// the shader the chain was loaded from
+		std::string shdLoaded;	// the shader the chain was loaded from...
+		std::string shdPresetLoaded;	// ...and its preset
+		bool lookStale();
+		xDisplaySheet* dispSheet = nullptr;
 		int mediaSrc;		// where the image in use is: a drive, the tape, a divMMC card, or a snapshot
 		int sideSrc = -1;	// the drive or the tape last in use, kept while a side changes in it; -1 none
 		int mediaSeen;		// the drive motors (bits 0..3), the tape playing, the cards read, as last seen
@@ -735,6 +743,9 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		xChainFrame chainFrame;		// this paint's frame, for the chain
 		bool shdSettled = true;		// the load's outcome has been told
 		bool shdTell = false;		// ...and is told when it is a success too (the reload key)
+		bool sheetTimed = false;	// the chain is timed for a sheet of knobs (conf.vid.shdTiming)
+		bool gpuAsked = false;		// ...and for the control port's gpu-time
+		bool chainPoll = false;		// a paint is asked for a chain being built while the machine stands
 		void chainFrameSet();
 		void shaderSay();
 		QOpenGLVertexArrayObject vao;

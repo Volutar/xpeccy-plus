@@ -148,20 +148,88 @@ for 2 seconds, in a window and in fullscreen. A move brings it back; over the ba
 or a dialog it stays. It is on by default, and the switch is remembered; it is also
 **Auto-hide pointer** on the [Appearance page](options-appearance.md) of **Options**.
 
-## Shaders
+## Display
 
-```{index} shader
+```{index} Display, shader, look
 ```
 
-```{index} see: scan lines; shader
+```{index} see: scan lines; Display
 ```
 
-A shader changes the look of the picture after it is drawn: scan lines, the mask of a
-CRT tube, a curved screen, the blur of a TV signal. Pick one in **View > Shaders**, or in
-the **Shader** list of **Options > Video**; **None** turns it off. The program comes with
-twenty shaders built in, and one of them is on by default.
+A look changes the picture after it is drawn: scan lines, the mask of a CRT tube, a curved
+screen, the blur of a TV signal. Pick one in **View > Display**, or in the **Display** list
+of **Options > Video**, where it shows at once and **Cancel** puts back the one that was
+there. The list has up to four parts:
 
-The shader is not used at **x1**, where there is no room for its effect. With **None**,
+- **None** - the picture as it is - and **Scanlines**: plain scan lines with a hard or a
+  soft dot, a line of the picture each, about as bright as **None**;
+- the looks of a tube: **Home TV** - a small set with a coarse mask, a soft beam and a
+  bulging screen; **Home TV (composite)** - the same set on its video input, with the
+  colors a PAL set makes of fine patterns and at color edges; **RGB monitor** - the
+  Commodore 1084S; **PVM** - a broadcast monitor, sharp, bent a little as a cylinder is,
+  the look a new installation starts with; **Xpixie** - soft and glowing, with
+  afterglow, a ghost and noise;
+- the presets you saved;
+- shader files of your own, from the `shaders` folder of the configuration.
+
+```{index} Display; settings, knobs, preset
+```
+
+A look with settings has a window of them: **View > Display > Settings...**, or the
+{icon}`settings` button beside the list in **Options**. **Scanlines** has **Depth** - how
+dark the gap between two lines is - **Gap width** and **Softness**. The picture shows every
+move at once, and what you set stays with the look: pick another and come back, and it is
+as you left it.
+
+![The settings of a look](images/options-video-display.png)
+
+A tube's settings are in frames, one a part of the tube; a frame with a tick is a part
+that can be switched off, and then costs nothing:
+
+- **Signal** - **Input**, the cable: **RGB** as a monitor gets it, **Composite** or **RF** as
+  a PAL TV set does, with the colors a real set made of fine patterns and at color edges,
+  or **SECAM**, a set of that system, on which a fine pattern turns one flat warm color;
+  **Color**, how strong they are; **Ghost**, a faint second picture beside the first;
+  **Noise**. Under **All settings**: **Color carrier**, the encoder the picture comes
+  through, whatever the machine - a **128K**'s, whose color pattern stands still (programs
+  that paint with it, such as Chromatrons Attack, need this one), or a **48K**'s, whose
+  pattern crawls; **Phase**, one of the eight ways a 128K's pattern can fall, as the
+  machine picks one at power-on; **Shimmer**, how much of the pattern's flicker from frame
+  to frame shows; **Interference**, a wave that pushes the lines aside;
+- **Mask** - **Aperture grille**, **Slot mask** or **Shadow mask**, its **Strength** and
+  **Fineness**: how many triads of the mask a dot of the picture has. The mask is drawn in
+  whole screen pixels, so in a small window it is coarser than the number says. A fine
+  mask is drawn with the display's own subpixels: if its colors look wrong, set
+  **Display's subpixels** under **All settings** to your display's order, **RGB** or
+  **BGR**, or to **Other** for a mask without colors;
+- **Beam** - **Scanlines**, how dark the gap between two lit lines is; **Gap width**, how
+  much of a line its soft edges take; **Focus**, how sharp a dot's edge is along the line;
+  **Spot**, how wide the beam's spot is - with it a dot's ends come out round and a
+  bright line a little thicker than a dim one, as on a tube;
+- **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**; **Bloom** - the mask
+  and the scanlines take light, and a pixel cannot give all of it back to what is
+  already bright: with Bloom the brightest things keep their light, and the mask and
+  the scanlines fade on them instead. A small picture,
+  under about three screen pixels a dot, stays flat. A curved picture goes on to the edge
+  of its place as its border does, and the corners are rounded there;
+- **Glow** - light around bright things;
+- **Divergence** - how far the red and the blue beam land from the green one, more towards
+  the screen's edges;
+- **Afterglow** - how much of a lit dot is left a frame later.
+
+Under the frames is the **GPU time** the look takes of the graphics card for a frame.
+
+- **All settings** - shows the finer ones too;
+- **Defaults** - puts every setting of this look back;
+- **Save as preset...** - saves the look as it stands under a name of yours; it joins
+  the list;
+- **Delete preset** - removes a preset of yours.
+
+What you changed in the looks goes into the file of **Export settings...**, and
+**Reset to defaults** puts every look back as it comes
+(see [Application page](options-application.md)); your presets stay.
+
+A look is not used at **x1**, where there is no room for its effect. With **None**,
 a picture that is not a whole number of screen pixels per dot - in fullscreen, in a
 maximized window - has only the seams between dots softened, so every dot keeps the same
 width and the picture stays sharp. When the
@@ -172,18 +240,19 @@ the start; `--no-gl` does the same on purpose.
 ```{index} shader; own, GLSL
 ```
 
-Your own shaders go in the `shaders` folder of the settings folder, as `.txt` files.
+Your own shaders go in the `shaders` folder of the settings folder, as `.txt` files; your
+presets are kept there too, as `.preset` files.
 A file there with the name of a built-in shader replaces that shader. The file holds two
 parts in GLSL: a line `vertex:` followed by the vertex shader, and a line `fragment:` followed by
 the fragment shader. The picture comes in as the texture `rubyTexture`, with its size in
 `rubyInputSize` and `rubyTextureSize`; the size of the picture on the screen is in
 `rubyOutputSize`. A file can also hold several passes, each drawn into a picture of its own
-that the next one reads, with parameters and textures; `config/shaders/README.md` describes
-the format.
+that the next one reads, with textures and with parameters, which are the settings of its
+window; `config/shaders/README.md` describes the format.
 
 If the shader does not work, the message on the picture is **shader error** and the picture
 is shown without a shader. The button **Error: check the log** then stands beside the
-**Shader** list of **Options > Video**: its tip has the first error with the file's line, a
+**Display** list of **Options > Video**: its tip has the first error with the file's line, a
 click on it opens all of them. The shader stays chosen: correct the file and read it again.
 
 ```{index} Reload Shader

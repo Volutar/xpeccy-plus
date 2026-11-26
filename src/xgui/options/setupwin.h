@@ -18,6 +18,7 @@
 #include "../../xcore/vidrec.h"
 #include "../../xcore/vscalers.h"
 #include "../portwatch.h"
+#include "../displaysheet.h"
 #include "opt_romset.h"
 #include "opt_diskcat.h"
 #include "opt_tapecat.h"
@@ -120,6 +121,14 @@ class SetupWin : public QDialog {
 		void fillSet(int item);		// a Side fill item into conf
 		void fillTake();
 		void fillPut();
+		// the Display look: picked and tuned live, as the side fill is
+		xDisplaySheet* dispSheet;
+		std::string lookWas[2];		// the shader and its preset, as applied
+		xLookStore lookKept;		// ...and the knobs turned
+		void makeDisplay();
+		void lookToUi();
+		void lookTake();
+		void lookPut();
 
 		Ui::SetupWin ui;
 		Ui::LayEditor layUi;
@@ -279,6 +288,8 @@ class SetupWin : public QDialog {
 		void s_prf_changed();
 		void s_padwin();		// open the gamepads window
 		void s_fill();			// a side fill setting moved: the window shows it
+		void s_look();			// another Display look, or its knobs as a whole
+		void s_lookParam(const QString& name, float value);	// one knob moved
 		void s_palette();		// the colors changed: a paused picture is drawn again
 	private slots:
 		void reject();

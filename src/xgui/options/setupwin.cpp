@@ -154,12 +154,16 @@ static void sheet_open(QDialog* win) {
 	win->raise();
 }
 
-// The button beside the Shader list, there only after a load that failed: the first
+// The button beside the Display list, in the gear's place after a load that failed: the first
 // error in its tip, whole, all of them in a window on a click.
 void SetupWin::shaderError(const QString& log) {
 	if (log == shdErrLog) return;
 	shdErrLog = log;
-	ui.pbShaderErr->setVisible(!log.isEmpty());
+	// the one that goes, goes first: the two side by side would widen the window for good
+	QWidget* in = log.isEmpty() ? static_cast<QWidget*>(ui.tbDisplay) : ui.pbShaderErr;
+	QWidget* out = log.isEmpty() ? static_cast<QWidget*>(ui.pbShaderErr) : ui.tbDisplay;
+	out->hide();
+	in->show();
 	ui.pbShaderErr->setToolTip(log.section('\n', 0, 0));
 }
 
@@ -179,17 +183,73 @@ void SetupWin::shaderErrorLog() {
 	dlg.exec();
 }
 
-// the item data keeps the file name, empty for None
-void fill_shader_list(QComboBox* box) {
-	QStringList lst = xres_list("shaders", QStringList() << "*.txt");
+// The Display list: the looks, a line between its parts; an item's data is the
+// look's file and preset. With no shaders it holds None only.
+static void fill_look_list(QComboBox* box) {
+	box->blockSignals(true);
 	box->clear();
-	box->addItem("None", QString());
-	if (conf.vid.shd_support) {
-		foreach(QString nam, lst) {
-			box->addItem(QFileInfo(nam).completeBaseName(), nam);
-		}
-		setRFIndex(box, QString::fromLocal8Bit(conf.vid.shader.c_str()), 0);
+	int part = LOOK_BASIC;
+	foreach(const xLook& lk, look_list()) {
+		if (lk.part != part) box->insertSeparator(box->count());
+		part = lk.part;
+		// (the menu has the older files in a submenu)
+		box->addItem((lk.part == LOOK_LEGACY) ? "Legacy: " + lk.title : lk.title, QStringList() << lk.file << lk.preset);
 	}
+	const xLook cur = look_current();
+	box->setCurrentIndex(qMax(0, box->findData(QStringList() << cur.file << cur.preset)));
+	box->blockSignals(false);
+}
+
+static xLook list_look(QComboBox* box) {
+	const QStringList id = box->currentData().toStringList();
+	xLook lk;
+	lk.file = id.value(0);
+	lk.preset = id.value(1);
+	return lk;
+}
+
+// The Display list and its gear. A look picked is shown at once, as a side fill is,
+// and Cancel puts the look and its knobs back (lookTake, lookPut).
+void SetupWin::makeDisplay() {
+	dispSheet = new xDisplaySheet(this);
+	dispSheet->setModal(true);
+	connect(dispSheet, &xDisplaySheet::s_param, this, &SetupWin::s_lookParam);
+	connect(dispSheet, &xDisplaySheet::s_look, this, [this]() {
+		emit s_look();
+		lookToUi();		// a preset saved or deleted: the list has it, or has it no more
+	});
+	connect(ui.tbDisplay, &QToolButton::clicked, this, [this]() {
+		dispSheet->setLook();
+		dispSheet->show();
+		dispSheet->raise();
+	});
+	connect(ui.cbShader, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
+		if (!conf.vid.shd_support) return;
+		look_choose(list_look(ui.cbShader));
+		ui.tbDisplay->setEnabled(look_has_knobs(look_current()));
+		emit s_look();
+	});
+}
+
+void SetupWin::lookToUi() {
+	fill_look_list(ui.cbShader);
+	ui.tbDisplay->setEnabled(look_has_knobs(look_current()));
+}
+
+void SetupWin::lookTake() {
+	lookWas[0] = conf.vid.shader;
+	lookWas[1] = conf.vid.shdPreset;
+	lookKept = look_store_take();
+}
+
+void SetupWin::lookPut() {
+	const bool same = (conf.vid.shader == lookWas[0]) && (conf.vid.shdPreset == lookWas[1]) && (look_store_take() == lookKept);
+	if (same) return;
+	conf.vid.shader = lookWas[0];
+	conf.vid.shdPreset = lookWas[1];
+	look_store_put(lookKept);
+	look_store_save();
+	emit s_look();
 }
 
 /*
@@ -789,15 +849,13 @@ SetupWin::SetupWin(QWidget* par):QDialog(par) {
 	cbCpuTurbo->addItem(QString::fromUtf8("×1, ×2, ×4"), "1,2,4");
 
 //	ui.cbScanlines->setVisible(false);
-	fill_shader_list(ui.cbShader);
+	makeDisplay();
+	lookToUi();
 	// beside the list, only after a load that failed; the load ends a few frames
 	// after Apply, so it is looked at again while the window is up
-	// its room is kept while it is hidden: the page does not move when it comes
-	QSizePolicy errPolicy = ui.pbShaderErr->sizePolicy();
-	errPolicy.setRetainSizeWhenHidden(true);
-	ui.pbShaderErr->setSizePolicy(errPolicy);
+	// it stands where the gear does: a look that did not load has nothing to tune
 	ui.pbShaderErr->hide();
-	connect(ui.pbShaderErr, &QPushButton::released, this, &SetupWin::shaderErrorLog);
+	connect(ui.pbShaderErr, &QPushButton::clicked, this, &SetupWin::shaderErrorLog);
 	QTimer* shdErrTimer = new QTimer(this);
 	shdErrTimer->setInterval(300);
 	connect(shdErrTimer, &QTimer::timeout, this, [this]() {
@@ -1477,7 +1535,8 @@ void SetupWin::fillPages() {
 	ui.geombox->setCurrentIndex(ui.geombox->findText(QString::fromLocal8Bit(conf.layName.c_str())));
 	ui.ulaPlus->setChecked(comp->vid->ula->enabled);
 	ui.cbDDp->setChecked(comp->flgDDP);
-	fill_shader_list(ui.cbShader);
+	lookToUi();
+	lookTake();
 	palPending.clear();		// what a Cancel left behind
 	fillPalettes();
 // sound
@@ -1664,6 +1723,10 @@ void SetupWin::fitWidths() {
 		const int room = btn->style()->subElementRect(QStyle::SE_PushButtonContents, &opt, btn).width();
 		const int need = btn->fontMetrics().horizontalAdvance(btn->text()) + 12 + btn->iconSize().width();
 		btn->setFixedWidth(hint.width() + qMax(0, need - room));
+		// it comes in the gear's place: its room is the cell's at all times, so the page
+		// does not move when it comes
+		ui.gridLayout_2->setColumnMinimumWidth(2, btn->width());
+		ui.gridLayout_2->setRowMinimumHeight(4, hint.height());
 	}
 	// Style's icon in the check boxes' column: where their box is, Style where their names are
 	QStyleOptionButton opt;
@@ -1980,9 +2043,8 @@ void SetupWin::applyGlobal() {
 	emu_unlock();
 	applyRecording();
 	vid_set_border_mode(ui.bszsld->value());
-	// with no shaders the list holds None only: the chosen one stays for a run that has them
-	if (conf.vid.shd_support)
-		conf.vid.shader = std::string(getRFSData(ui.cbShader).toLocal8Bit().data());
+	lookTake();		// the look and its knobs are in place since they were picked: now they stay
+	look_store_save();
 	std::string pal = getRFSData(ui.cbPalPreset).toStdString();		// empty: the built-in one
 	bool palNew = (pal != conf.palette) || !palPending.isEmpty();
 	conf.palette = pal;
@@ -2189,6 +2251,7 @@ void SetupWin::openLogDir() {
 
 void SetupWin::reject() {
 	fillPut();		// shown while it was set, and not applied
+	lookPut();
 	hide();
 	emit closed();
 }

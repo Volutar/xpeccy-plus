@@ -11,6 +11,29 @@ before that point is upstream's history and is not repeated here.
 
 ### Added
 
+- **Display, with knobs**: the Shader list of Options > Video is Display, and View > Shaders
+  is View > Display. A look with settings has a sheet of knobs - the gear beside the list, or
+  View > Display > Settings: each move shows on the picture and stays with the look. Save as
+  preset makes a look of your own.
+
+- **Scanlines**, beside None in the Display list: plain scanlines with a hard or a soft dot,
+  by Depth, Gap width and Softness. Each is a line of the picture at any window size, and
+  the picture keeps its brightness.
+
+- **CRT looks**: Home TV, Home TV (composite), RGB monitor, PVM and Xpixie in the Display list. One tube in
+  stages that switch off - beam, divergence, mask, glow, afterglow, signal, screen - with
+  the mask as fine as the tube's own and thinning out as the picture gets smaller. A new
+  installation starts with PVM. *(beam divergence by Volutar)*
+
+- **Composite and RF input** for the CRT looks: a PAL picture as a set decodes it. Fine
+  patterns take on color; with a 128K's color carrier they stand, with a 48K's they
+  crawl - a setting, the same for any machine. Programs that draw with the carrier -
+  Chromatrons Attack - show their picture, with Anti-flicker on too. And a SECAM set,
+  where a checkerboard of dots turns one flat warm color. Under Input in a look's settings; the looks come on RGB, but for Home TV (composite).
+
+- **The older shader files are under Display > Legacy** for now: the aperture grille and
+  shadow mask looks, TV lines, monitor-1084, pvm-sharp, composite-crt and zx-rf-artifact.
+
 - **Keymap By machine**, the default: Input > Keymap and Options > Input. The Robik takes the
   Robik's keymap, the ZX Spectrum 48K the 48K one, every other machine ZX Spectrum 128K. A
   keymap named after a machine of your own (`My Scorpion.map`) is taken by it.
@@ -95,7 +118,7 @@ before that point is upstream's history and is not repeated here.
 
 - **Shaders start without a wait**: a compiled shader is kept between runs, and one that has
   to be compiled is built beside the picture. A shader that does not compile stays chosen:
-  the button Error: check the log beside the Shader list of Options > Video has the first
+  the button Error: check the log beside the Display list of Options > Video has the first
   error and its line in its tip, a click opens all of them. No message on the picture when
   a shader is picked.
 

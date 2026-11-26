@@ -11,4 +11,6 @@ struct xFrameNums {
 	int cutY = 0;
 	double carrier = 0;		// color carrier, cycles a dot
 	bool locked = false;		// to the dot clock: the pattern stands still
+	double blend = 0;		// antiflicker left to the look (frames came unmixed): the frame before's part, 0 .. 0.5
+	bool blendAdaptive = false;	// ...and only where the picture flickers (the adaptive modes)
 };

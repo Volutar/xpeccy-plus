@@ -54,6 +54,25 @@ struct xShdParam {
 	float max = 1;
 	float step = 0;
 	float value = 0;
+	// how the sheet of knobs shows it
+	QString group;			// the frame it stands in; empty: none named
+	QString groupSwitch;		// the frame has a switch: this parameter, off at 0...
+	float groupOn = 0;		// ...and this when switched on with no value of its own to go back to
+	QString tip;
+	QStringList names;		// a list: what min, min + step... are called
+	bool more = false;		// only under All settings
+};
+
+// a named set of values: a `preset` line of the file
+struct xShdValue {
+	QString name;
+	float value = 0;
+};
+typedef QVector<xShdValue> xShdValues;
+
+struct xShdSet {
+	QString name;
+	xShdValues values;
 };
 
 struct xShdTexture {
@@ -87,6 +106,10 @@ struct xShdPreset {
 	QString path;
 	QString file;			// its name, for messages
 	bool legacy = true;		// no pass line: one vertex and one fragment section, as ever
+	QString title;			// its `name` line: what the lists show
+	bool raw = false;		// its `frames raw` line: frames are wanted before antiflicker mixes them
+	QString rawWhen;		// ...while this parameter is not 0; empty: always
+	QVector<xShdSet> sets;		// its `preset` lines
 	QVector<xShdParam> params;
 	QVector<xShdTexture> textures;
 	QString common;
@@ -181,8 +204,9 @@ class xShaderChain : protected QOpenGLExtraFunctions {
 		bool init(const QString& cacheDir);
 		void destroy();
 		// A preset by its path, empty for none. Programs found in the cache are ready
-		// on return, the others are built over the next paints (step)
-		void load(const QString& path);
+		// on return, the others are built over the next paints (step). values: the
+		// parameters that do not stand at the file's defaults
+		void load(const QString& path, const xShdValues& values = xShdValues());
 		// once a paint, before run(): the programs being built looked at
 		void step();
 		QString file() const {return preset.file;}
@@ -202,6 +226,8 @@ class xShaderChain : protected QOpenGLExtraFunctions {
 		void builtin(xGlProgram& p, const QByteArray& vtx, const QByteArray& frg);
 		// parameters by name
 		bool setParam(const QString& name, float value);
+		// the chain wants its frames unmixed now (`frames raw`, its parameter not 0)
+		bool rawFrames() const;
 		const QVector<xShdParam>& params() const {return preset.params;}
 		// GPU time: asked for, the passes and the window's own segments are timed
 		void timing(bool on);
@@ -209,6 +235,7 @@ class xShaderChain : protected QOpenGLExtraFunctions {
 		void segBegin(int seg);
 		void segEnd();
 		QString timeReport();
+		double timeTotal();		// the passes and the picture, us; below 0: not timed
 		QString info();
 		QStringList notes() const {return preset.notes;}
 	private:

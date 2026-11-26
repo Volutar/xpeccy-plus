@@ -876,6 +876,8 @@ int main(int ac,char** av) {
 	app.connect(&optw, SIGNAL(closed()), &mwin, SLOT(optApply()));
 	app.connect(&optw, SIGNAL(s_apply()), &mwin, SLOT(optApplied()));
 	app.connect(&optw, &SetupWin::s_fill, &mwin, &MainWin::fillPreview);
+	app.connect(&optw, &SetupWin::s_look, &mwin, &MainWin::lookPicked);
+	app.connect(&optw, &SetupWin::s_lookParam, &mwin, &MainWin::lookParam);
 	// after the Apply is done: a new layout has the window's raster set up first
 	app.connect(&optw, &SetupWin::s_palette, &mwin, &MainWin::redrawHeld, Qt::QueuedConnection);
 	app.connect(&optw, SIGNAL(s_apply()), &app, SLOT(d_style()));

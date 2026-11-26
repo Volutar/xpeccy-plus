@@ -14,6 +14,7 @@
         <file>res/palettes/wiki2.txt</file>
         <file>res/shaders/composite-crt-flat.txt</file>
         <file>res/shaders/composite-crt.txt</file>
+        <file>res/shaders/crt.txt</file>
         <file>res/shaders/grille-nocurve-crisp.txt</file>
         <file>res/shaders/grille-nocurve-light.txt</file>
         <file>res/shaders/grille2-nocurve-crisp.txt</file>
@@ -21,6 +22,7 @@
         <file>res/shaders/monitor-1084-flat.txt</file>
         <file>res/shaders/monitor-1084.txt</file>
         <file>res/shaders/pvm-sharp.txt</file>
+        <file>res/shaders/scanlines.txt</file>
         <file>res/shaders/tridot-curve-crisp.txt</file>
         <file>res/shaders/tridot-curve-light.txt</file>
         <file>res/shaders/tridot-nocurve-crisp.txt</file>

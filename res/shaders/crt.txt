@@ -1,0 +1,940 @@
+# CRT - Xpeccy+
+#
+# A tube in stages, each drawn once at the size it needs; a stage whose knob is at 0 is
+# not drawn at all:
+#   afterglow  at the source's size: each color keeps the brighter of this frame and its
+#              own last picture faded - the phosphor's decay
+#   line       along the line, at the picture's width and the source's lines: how far a
+#              dot's edge spreads (the video path: the drive is rounded, not the light),
+#              averaged over the screen pixel; the red and blue beams parted from the
+#              green one; a faint second picture beside the first (a ghost), lines pushed
+#              aside by interference
+#   spot       the same size: the beam's spot along the line - the light spread as a bell
+#   glowh, glowv  a quarter of the picture, blurred across and down: the light around
+#              bright things
+#   last       down the screen: a line as a bell that reaches into its neighbors' rows,
+#              wider where brighter and flat where it would pass full light (scanlines),
+#              the mask through which it lands, the screen's curve, its corners and
+#              vignette
+# Light is linear inside and stored gamma-encoded between the passes, so an 8-bit target
+# holds it as well as a float one. What the scanlines and the mask take is given back,
+# as far as a pixel can give: a line too bright for that loses light, or with Bloom is
+# drawn the plainer and keeps it.
+#
+# The two-pass beam follows Hyllian's CRT (MIT), the mask layouts Timothy Lottes's and
+# hunterk's (public domain). The beams' parting towards the screen's edges is Volutar's.
+# The ghost, the interference and the noise are after Mattias Gustavsson's newpixie CRT
+# (MIT / public domain). Same MIT license as the rest of Xpeccy+.
+
+name "CRT"
+
+# The frames in the order of what changes the picture most: the signal the set is
+# given and the tube's mask first.
+group "Signal"
+#pragma parameter INPUT "Input" 0 0 3 1
+list INPUT = RGB, Composite, RF, SECAM
+tip INPUT = A monitor's cable, a PAL set's video or aerial input, or a SECAM set
+#pragma parameter CARRIER "Color carrier" 0 0 1 1
+list CARRIER = 128K: locked, 48K: free
+tip CARRIER = A PAL encoder's: a 128K's pattern stands still, a 48K's crawls
+#pragma parameter COLOR "Color" 1.0 0.0 2.0 0.05
+tip COLOR = How strong the colors of a composite or RF picture are
+#pragma parameter SHARP "Sharpness" 0.5 0.0 1.0 0.05
+tip SHARP = How fine a detail the set's video path lets through
+#pragma parameter PHASE "Phase" 0 0 7 1
+tip PHASE = A locked carrier against the dots, as a 128K finds it at power-on
+#pragma parameter SHIMMER "Shimmer" 0.15 0.0 1.0 0.05
+tip SHIMMER = How much of the color pattern's flicker from frame to frame shows
+#pragma parameter GHOST "Ghost" 0.0 0.0 1.0 0.05
+tip GHOST = A faint second picture beside the first
+#pragma parameter GHOSTX "Ghost's distance" 1.6 0.0 5.0 0.1
+tip GHOSTX = Per cent of the picture's width
+#pragma parameter WIGGLE "Interference" 0.0 0.0 1.0 0.05
+tip WIGGLE = Lines pushed aside by a wave that runs down
+#pragma parameter NOISE "Noise" 0.0 0.0 1.0 0.05
+more CARRIER SHARP PHASE SHIMMER GHOSTX WIGGLE
+
+# Composite and RF take each frame as the machine made it and mix after decoding
+frames raw when INPUT
+
+group "Mask" when MASKS 0.4
+#pragma parameter MASK "Type" 1 1 3 1
+list MASK = Aperture grille, Slot mask, Shadow mask
+#pragma parameter MASKS "Strength" 0.4 0.0 1.0 0.05
+tip MASKS = How much the mask holds back between its openings
+#pragma parameter PITCH "Fineness" 1.5 0.5 3.5 0.1
+tip PITCH = Triads of the mask to a dot of the picture
+#pragma parameter MBEND "On the glass" 0 0 2 1
+list MBEND = Auto, Off, On
+tip MBEND = The mask bends with a curved screen. Auto: where a triad has pixels enough
+#pragma parameter PANEL "Display's subpixels" 0 0 2 1
+list PANEL = RGB, BGR, Other
+tip PANEL = Your display's own order: a fine mask is drawn with them. Other: a mask without colors
+more MBEND PANEL
+
+group "Beam"
+#pragma parameter SCAN "Scanlines" 0.5 0.0 1.0 0.05
+tip SCAN = How dark the gap between two lit lines is
+#pragma parameter WIDTH "Gap width" 0.8 0.2 1.0 0.05
+tip WIDTH = How much of a line its edges take: a band with a thin gap, or a soft bell
+#pragma parameter FOCUS "Focus" 0.6 0.0 1.0 0.05
+tip FOCUS = How sharp a dot's edge is along the line
+#pragma parameter SPOT "Spot" 0.0 0.0 1.0 0.05
+tip SPOT = How wide the beam's spot is: a dot's ends round off, fine detail runs together
+#pragma parameter GROW "Wider where brighter" 0.3 0.0 1.0 0.05
+tip GROW = A bright line fills more of its gap
+#pragma parameter ROLL "Roll" 0.0 0.0 1.0 0.05
+tip ROLL = How fast the scanlines drift down the screen
+more GROW ROLL
+
+group "Screen"
+#pragma parameter CURVE "Curvature" 0.0 0.0 0.15 0.005
+tip CURVE = How much the screen bulges. A small picture stays flat
+#pragma parameter CORNER "Corners" 0.0 0.0 0.1 0.005
+tip CORNER = How round the screen's corners are
+#pragma parameter VIGN "Vignette" 0.0 0.0 1.0 0.05
+tip VIGN = How much darker the screen is towards its edges
+#pragma parameter BRIGHT "Brightness" 1.0 0.5 1.5 0.05
+tip BRIGHT = How much light the picture is given
+#pragma parameter BLOOM "Bloom" 0.0 0.0 1.0 0.05
+tip BLOOM = Bright things keep their light: the mask and the scanlines fade there
+#pragma parameter CONTRAST "Contrast" 0.0 0.0 1.0 0.05
+tip CONTRAST = Darks darker and lights lighter, as a set turned up
+#pragma parameter CURVEX "Curve of the sides" 1 0 1 0.05
+#pragma parameter CURVEY "Curve of top and bottom" 1 0 1 0.05
+more CONTRAST CURVEX CURVEY
+
+group "Glow" when GLOW 0.3
+#pragma parameter GLOW "Amount" 0.0 0.0 1.0 0.05
+tip GLOW = How much light spills around bright things
+#pragma parameter GLOWR "Radius" 1.5 0.5 4.0 0.25
+tip GLOWR = How far it spills
+more GLOWR
+
+group "Divergence" when DIVERGE 1.0
+#pragma parameter DIVERGE "Amount" 0.0 0.0 2.0 0.05
+tip DIVERGE = How far red and blue land from green
+#pragma parameter DIVMID "At the middle" 0.18 0.0 1.0 0.02
+tip DIVMID = The share of it left at the screen's middle
+#pragma parameter DIVRX "Red across" -0.55 -2.0 2.0 0.05
+#pragma parameter DIVRY "Red down" -0.3 -2.0 2.0 0.05
+#pragma parameter DIVBX "Blue across" 0.55 -2.0 2.0 0.05
+#pragma parameter DIVBY "Blue down" 0.3 -2.0 2.0 0.05
+tip DIVRX = Dots, at the screen's edge
+tip DIVRY = Lines, at the screen's edge
+tip DIVBX = Dots, at the screen's edge
+tip DIVBY = Lines, at the screen's edge
+more DIVMID DIVRX DIVRY DIVBX DIVBY
+
+group "Afterglow" when AFTER 0.5
+#pragma parameter AFTER "Amount" 0.0 0.0 0.95 0.05
+tip AFTER = How much of a lit dot is left a frame later
+#pragma parameter AFTERR "Red" 1.0 0.0 1.0 0.05
+#pragma parameter AFTERG "Green" 0.95 0.0 1.0 0.05
+#pragma parameter AFTERB "Blue" 0.8 0.0 1.0 0.05
+more AFTERR AFTERG AFTERB
+
+# The masks' fineness is the tubes' own: triads across the screen over the 352 dots of a
+# full frame - a 14" TV's 0.65 mm slot mask 1.2, the 1084's 0.42 mm one 1.9, a 14" PVM's
+# 0.25 mm grille 3.0 (Philips data handbook T08 of 1986, Sony's PVM brochures)
+preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, SPOT 0.5, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, VIGN 0.25
+preset "Home TV (composite)": INPUT 1, MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, SPOT 0.5, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, VIGN 0.25
+preset "RGB monitor": MASK 2, MASKS 0.45, PITCH 1.9, SCAN 0.9, WIDTH 0.8, FOCUS 0.5, SPOT 0.5, GROW 0.15, DIVERGE 0.2, GLOW 0.1, CURVE 0.04, VIGN 0.1
+preset "PVM": MASK 1, MASKS 0.3, PITCH 3.0, SCAN 0.95, WIDTH 1.0, FOCUS 0.7, SPOT 0.3, GROW 0.2, DIVERGE 0.15, CURVE 0.02, CURVEX 0
+preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.4, WIDTH 1.0, FOCUS 0.2, SPOT 0.4, GROW 0, DIVERGE 0.9, DIVMID 1.0, GLOW 0.35, AFTER 0.3, GHOST 0.1, GHOSTX 0.8, NOISE 0.5, CURVE 0.03, VIGN 0.7, BRIGHT 0.9, CONTRAST 0.5
+
+common:
+	// How far a beam lands from the green one at a point of the picture (0 .. 1 both
+	// ways): dots across and lines down, growing from the screen's middle to its edges.
+	// most: what it is at the edge
+	vec2 parting(vec2 uv, vec2 most) {
+		vec2 d = uv * 2.0 - 1.0;
+		return DIVERGE * most * (DIVMID + (1.0 - DIVMID) * length(d)) * d;
+	}
+
+	// What moves with time: a turn (0 .. 2 pi) that goes round k times in 1000 frames
+	// and so meets itself when the count of frames starts again
+	float turn(uint frames, uint k) {
+		return 6.28318530718 * float(((frames % 1000u) * k) % 1000u) / 1000.0;
+	}
+
+// The picture as a PAL set gets it over a composite or an aerial cable: each line made
+// into luma with the color on a carrier, and taken apart again as a set does it. The
+// encoder is the look's own choice, the same for every machine (a clone had none of its
+// own, and what stood between it and the set was anybody's): a 128K's - 5/8 cycle a dot
+// from the dots' own crystal, whole cycles a line, so the pattern stands; 311 lines, so
+// the V switch, which turns every line, comes to a line the other way round each frame -
+// or a 48K's - a crystal of its own, 283.7516 cycles a line, half a cycle on each frame,
+// so the pattern crawls; 312 lines, the V switch the same each frame. Decoding: color by
+// the carrier, low-passed and combined with what the set's delay line holds of the line
+// before, luma less a band around the carrier.
+// Fine black and white detail comes out colored and color edges crawl, as they did.
+// Two texels a dot.
+//
+// First the encoder's own part: luma as it is, the two color differences low-passed -
+// an encoder has no more than about 1.3 MHz of color to put on its carrier (a 128K's
+// changes its color 5 times in 8 dots). Without this a pattern of two colors dot by dot
+// would put its color on the carrier at the dots' rate and come back as stripes.
+// Kept as luma and the two halved, about 128 of 255.
+pass coder:
+	when INPUT
+	filter nearest
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	void main() {
+		ivec2 at = ivec2(vTexCoord * SourceSize.xy);
+		int last = int(SourceSize.x) - 1;
+		vec3 here = texelFetch(Source, at, 0).rgb;
+		float y = dot(here, vec3(0.299, 0.587, 0.114));
+		vec2 uv = vec2(0.0);
+		float all = 0.0;
+		for (int k = -4; k <= 4; k++) {
+			vec3 c = texelFetch(Source, ivec2(clamp(at.x + k, 0, last), at.y), 0).rgb;
+			float yk = dot(c, vec3(0.299, 0.587, 0.114));
+			// a bell 1.8 texels wide, brought down to nothing at the taps' ends
+			float w = exp(-0.5 * float(k * k) / 3.24) * (0.5 + 0.5 * cos(0.62831853 * float(k)));
+			uv += w * vec2(0.492 * (c.b - yk), 0.877 * (c.r - yk));
+			all += w;
+		}
+		// (128 of 255 is a level the target has; one half is not, and would come back as a tint)
+		FragColor = vec4(y, 128.0 / 255.0 + 0.5 * uv / all, 1.0);
+	}
+
+pass signal:
+	when INPUT
+	filter nearest
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	const float PI2 = 6.28318530718;
+	const int TAPS = 10;
+
+	// the carrier, cycles a dot: 4.43361875 MHz against a 128K's 7.0938 MHz and a 48K's 7
+	float cycles() { return (CARRIER < 0.5) ? 0.625 : 0.63337411; }
+
+	// the carrier's turn, radians, at a texel column of a line of the whole raster
+	float turnAt(float tx, float line) {
+		float dot_ = xpRaster.z + tx * 0.5;
+		if (CARRIER < 0.5) return PI2 * (fract(0.625 * dot_) + PHASE * 0.125);
+		// 0.4992 cycle further each frame: the two crystals do not keep step
+		float frame = fract(float(xpFrame % 1250) * 0.4992);
+		return PI2 * (fract(0.63337411 * dot_) + fract(0.7516 * line) + frame);
+	}
+
+	// the V switch's sense on a line
+	float sense(float line) {
+		float turned = (CARRIER < 0.5) ? float(xpFrame & 1) : 0.0;
+		return (mod(line + turned, 2.0) < 0.5) ? 1.0 : -1.0;
+	}
+
+	float rand(vec2 co) { return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453); }
+
+	// SECAM. A line carries one of the two color differences, turn about, as the
+	// frequency of a carrier: D'R = -1.902 (R - Y) about 4.40625 MHz, 280 kHz a unit,
+	// D'B = 1.505 (B - Y) about 4.250 MHz, 230 kHz a unit, kept within +350 / -506 and
+	// +506 / -350 kHz; the carrier is 0.115 of the luma's range at 4.286 MHz and larger
+	// away from it (the "bell"). The set takes the band about 4.286 MHz, cares for the
+	// carrier's frequency alone, and has the other difference from the line before (ITU-R
+	// BT.470, table 2). A frequency has no phase to cancel by, and a set told nothing
+	// apart from a carrier: fine luma - a dot on, a dot off is 3.5 MHz - near that band
+	// pulls the reading its way, the same way on every line and every frame. That is the
+	// flat color a pattern took on such a set. Cycles a texel, at 14 MHz:
+	const float S_FC = 0.306143;
+	const float S_FR = 0.314732;
+	const float S_FB = 0.303571;
+	const float S_DR = 0.020000;
+	const float S_DB = 0.016429;
+	const int S_TAPS = 12;
+
+	// the carrier's frequency for a texel of the coder's picture on a line of one kind
+	float secamSent(vec3 c, bool red) {
+		vec2 uv = 2.0 * (c.gb - 128.0 / 255.0);
+		if (red) return S_FR + S_DR * clamp(-1.902 * uv.y / 0.877, -1.807, 1.25);
+		return S_FB + S_DB * clamp(1.505 * uv.x / 0.492, -1.522, 2.2);
+	}
+
+	float bell(float f) {
+		float F = f / S_FC - S_FC / f;
+		return sqrt((1.0 + 256.0 * F * F) / (1.0 + 1.5876 * F * F));
+	}
+
+	// the set's band about the carrier, as a window over the texels: a bell 4.5 texels
+	// wide, brought down to nothing at the taps' ends
+	float band(float d) {
+		return exp(-0.5 * d * d / 20.25) * (0.5 + 0.5 * cos(3.14159265 * clamp(d / float(S_TAPS), -1.0, 1.0)));
+	}
+
+	// What the set reads on a line at a texel: the color difference of the line's kind
+	// (.x), and the luma less the carrier's band (.y). The carrier is made as the walk
+	// goes out from the texel both ways, its phase kept as it grows, so that inside the
+	// set's window it is one whole carrier.
+	vec2 secamRead(ivec2 at, bool red, float start) {
+		int last = int(SourceSize.x) - 1;
+		vec2 za = vec2(0.0), zb = vec2(0.0);
+		float y = 0.0, trap = 0.0, wySum = 0.0, wnSum = 0.0;
+		float sy = 1.9 - 1.2 * SHARP;
+		float phase = start;
+		float before = 0.0;
+		for (int n = 0; n <= 2 * S_TAPS; n++) {
+			// 0, 1 .. S_TAPS, then -1 .. -S_TAPS
+			int k = (n <= S_TAPS) ? n : S_TAPS - n;
+			vec3 c = texelFetch(Source, ivec2(clamp(at.x + k, 0, last), at.y), 0).rgb;
+			float f = secamSent(c, red);
+			if (n == 0) before = f;
+			else if (n <= S_TAPS) phase += PI2 * f;
+			else {
+				if (n == S_TAPS + 1) phase = start;
+				phase -= PI2 * before;
+				before = f;
+			}
+			float s = c.r + 0.115 * bell(f) * cos(phase);
+			float kf = float(k);
+			// the set's band about 4.286 MHz, read half a texel left and half a texel
+			// right of here: the turn between the two is the frequency
+			// (the two windows are one window moved: anything else reads a frequency
+			// pulled towards the band's middle)
+			float edge = 0.5 + 0.5 * cos(3.14159265 * clamp(kf / (float(S_TAPS) + 0.5), -1.0, 1.0));
+			// (the set's band filter - the bell turned over - leaves 0.17 of a 3.5 MHz
+			// luma; this window leaves 0.47 of it: 0.36 of the luma goes in)
+			vec2 mixed = (s - 0.64 * c.r) * vec2(cos(PI2 * S_FC * kf), -sin(PI2 * S_FC * kf));
+			za += band(kf + 0.5) * mixed;
+			zb += band(kf - 0.5) * mixed;
+			float wy = exp(-0.5 * kf * kf / (sy * sy));
+			float wn = exp(-0.5 * kf * kf / 9.0) * edge;
+			y += wy * s;
+			trap += wn * 2.0 * cos(PI2 * S_FC * kf) * s;
+			wySum += wy;
+			wnSum += wn;
+		}
+		float read = S_FC + atan(zb.y * za.x - zb.x * za.y, zb.x * za.x + zb.y * za.y) / PI2;
+		// A discriminator is a tuned circuit: true inside the range the standard uses,
+		// and past it the further off the frequency, the less it gives (as 1 / distance)
+		float d = red ? (read - S_FR) / S_DR : (read - S_FB) / S_DB;
+		float lo = red ? -1.807 : -1.522;
+		float hi = red ? 1.25 : 2.2;
+		if (d < lo) d = lo * lo / d;
+		if (d > hi) d = hi * hi / d;
+		return vec2(d, y / wySum - exp(-19.7392 * sy * sy * S_FC * S_FC) * trap / wnSum);
+	}
+
+	// the signal at a texel: luma with the color on its carrier
+	float coded(int tx, int ty, float line, float sw) {
+		vec3 c = texelFetch(Source, ivec2(clamp(tx, 0, int(SourceSize.x) - 1), ty), 0).rgb;
+		float th = turnAt(float(tx), line);
+		vec2 uv = 2.0 * (c.gb - 128.0 / 255.0);
+		return c.r + uv.x * sin(th) + sw * uv.y * cos(th);
+	}
+
+	// ...as the cable brings it: with a ghost of itself, and an aerial's with noise
+	float sent(int tx, int ty, float line, float sw) {
+		float s = coded(tx, ty, line, sw);
+		if (GHOST > 0.0) s += GHOST * 0.15 * coded(tx - int(GHOSTX * 0.01 * SourceSize.x), ty, line, sw);
+		if ((NOISE > 0.0) && (INPUT > 1.5)) {
+			float t = float(FrameCount % 1024u);
+			s += NOISE * 0.08 * (rand(vec2(float(tx), float(ty)) + vec2(t * 17.13, t * 5.71)) - 0.5);
+		}
+		return s;
+	}
+
+	// ...and between two texels: the picture's own values mixed, the carrier where it is
+	float codedAt(float fx, int ty, float line, float sw) {
+		int last = int(SourceSize.x) - 1;
+		float f = floor(fx);
+		vec3 c = mix(texelFetch(Source, ivec2(clamp(int(f), 0, last), ty), 0).rgb,
+			texelFetch(Source, ivec2(clamp(int(f) + 1, 0, last), ty), 0).rgb, fx - f);
+		float th = turnAt(fx, line);
+		vec2 uv = 2.0 * (c.gb - 128.0 / 255.0);
+		return c.r + uv.x * sin(th) + sw * uv.y * cos(th);
+	}
+
+	float sentAt(float fx, int ty, float line, float sw) {
+		float f = floor(fx);
+		float s = codedAt(fx, ty, line, sw);
+		if (GHOST > 0.0) s += GHOST * 0.15 * codedAt(fx - float(int(GHOSTX * 0.01 * SourceSize.x)), ty, line, sw);
+		if ((NOISE > 0.0) && (INPUT > 1.5)) {
+			float t = float(FrameCount % 1024u);
+			s += NOISE * 0.08 * (rand(vec2(f, float(ty)) + vec2(t * 17.13, t * 5.71)) - 0.5);
+		}
+		return s;
+	}
+
+	void main() {
+		ivec2 at = ivec2(vTexCoord * SourceSize.xy);
+		int up = max(at.y - 1, 0);
+		float line = xpRaster.w + float(at.y);
+		if (INPUT > 2.5) {
+			bool red = (mod(line, 2.0) < 0.5);
+			// the carrier starts a line where it left the last, more or less: anywhere
+			float start = PI2 * rand(vec2(line, float(xpFrame & 3)));
+			vec2 mine = secamRead(at, red, start);
+			vec2 above = secamRead(ivec2(at.x, up), !red, start + 2.0);
+			float dR = red ? mine.x : above.x;
+			float dB = red ? above.x : mine.x;
+			float r = mine.y - COLOR * dR / 1.902;
+			float b = mine.y + COLOR * dB / 1.505;
+			float g = (mine.y - 0.299 * r - 0.114 * b) / 0.587;
+			FragColor = vec4(clamp(vec3(r, g, b), 0.0, 1.0), float(xpFrame % 250) / 255.0);
+			return;
+		}
+		float sw = sense(line);
+		float swUp = sense(line - 1.0);
+		bool rf = (INPUT > 1.5);
+		// how wide the set's filters are, texels: the color's, the luma's, the trap's
+		// (a set's video path is soft: an aerial input softer than a video one)
+		float sc = rf ? 3.4 : 3.0;
+		float sy = 1.9 - 1.2 * SHARP + (rf ? 0.8 : 0.0);
+		const float sn = 3.0;
+		const float late = 1.0;		// the color arrives a texel after its luma
+		// The set's delay line holds the signal for 283.5 cycles of the carrier, 63.943
+		// microseconds - a line of a broadcast, less a bit. A Spectrum's line is not a
+		// broadcast's: a 128K's is 285 cycles long, so what comes out of the delay line
+		// is the line above 4.8 texels to the right of here (a 48K's, 283.75 cycles:
+		// 0.8). It is taken there, and by the carrier as it stands now - which is how
+		// two lines of a pattern that an "average with the line above" would cancel
+		// give the colors they gave. The line's length is the encoder's own here, as
+		// its carrier is, whatever machine the picture comes from.
+		float delay = (CARRIER < 0.5) ? 4.8 : 0.79;
+		float u = 0.0, v = 0.0, uUp = 0.0, vUp = 0.0, y = 0.0, trap = 0.0;
+		float wcSum = 0.0, wySum = 0.0, wnSum = 0.0;
+		for (int k = -TAPS; k <= TAPS; k++) {
+			float kf = float(k);
+			// the color's filter stands `late` to the left: the same texels serve both
+			float wc = exp(-0.5 * (kf + late) * (kf + late) / (sc * sc));
+			float wy = exp(-0.5 * kf * kf / (sy * sy));
+			float wn = exp(-0.5 * kf * kf / (sn * sn));
+			float s = sent(at.x + k, at.y, line, sw);
+			y += wy * s;
+			trap += wn * 2.0 * cos(PI2 * cycles() * 0.5 * kf) * s;
+			float th = turnAt(float(at.x + k), line);
+			u += wc * s * 2.0 * sin(th);
+			v += wc * s * 2.0 * cos(th);
+			float su = sentAt(float(at.x + k) + delay, up, line - 1.0, swUp);
+			uUp += wc * su * 2.0 * sin(th);
+			vUp += wc * su * 2.0 * cos(th);
+			wcSum += wc;
+			wySum += wy;
+			wnSum += wn;
+		}
+		// the trap takes out what the low-pass has left of the carrier, no more
+		float fc = cycles() * 0.5;
+		y = y / wySum - exp(-19.7392 * sy * sy * fc * fc) * trap / wnSum;
+		// the delayed line's carrier is half a cycle on, and its V the other way round:
+		// the difference of the two is U, their sum V
+		u = COLOR * 0.5 * (u - uUp) / wcSum;
+		v = COLOR * 0.5 * sw * (v + vUp) / wcSum;
+		float r = y + v / 0.877;
+		float b = y + u / 0.492;
+		float g = (y - 0.299 * r - 0.114 * b) / 0.587;
+		// alpha: which frame this is, for the pass that mixes frames
+		FragColor = vec4(clamp(vec3(r, g, b), 0.0, 1.0), float(xpFrame % 250) / 255.0);
+	}
+
+// The decoded frame with the one before, in linear light. The carrier's pattern turns
+// over from one frame to the next - the V switch of a 128K, half a cycle of a 48K - and
+// on a set the eye takes the two as one; on a screen that shows each frame whole, and
+// not at the machine's own rate, they beat. So where the picture itself stands still
+// the two frames are averaged, but for the part Shimmer leaves. Where it moves there is
+// nothing to average, and antiflicker, left to the look while the frames come unmixed,
+// has its own say: all of the picture, or - an adaptive mode - only where a texel
+// is what it was two frames ago and not what it was one frame ago, which is a flicker
+// and not a thing that moves.
+// The same frame painted twice (the machine paused, a window redrawn) has no frame
+// before it here: it is shown as it was shown.
+pass seen:
+	when INPUT
+	filter nearest
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	void main() {
+		vec4 before = texture(signalFeedback, vTexCoord);
+		if (abs(before.a - texture(Source, vTexCoord).a) < 0.002) {
+			FragColor = texture(seenFeedback, vTexCoord);
+			return;
+		}
+		vec3 now = pow(texture(Source, vTexCoord).rgb, vec3(2.2));
+		vec3 was = pow(before.rgb, vec3(2.2));
+		// the frame's own texels here, as far as the decoder's filters reach that
+		// matters, and on the line above: against a frame ago, and against two
+		ivec2 at = ivec2(vTexCoord * OriginalSize.xy);
+		ivec2 last = ivec2(OriginalSize.xy) - 1;
+		float moved = 0.0;
+		float back = 0.0;
+		for (int k = -4; k <= 4; k++) {
+			ivec2 p = clamp(at + ivec2(k, 0), ivec2(0), last);
+			ivec2 q = clamp(at + ivec2(k, -1), ivec2(0), last);
+			vec3 a = texelFetch(Original, p, 0).rgb;
+			vec3 b = texelFetch(Original, q, 0).rgb;
+			vec3 d = abs(a - texelFetch(OriginalHistory1, p, 0).rgb) + abs(b - texelFetch(OriginalHistory1, q, 0).rgb);
+			vec3 e = abs(a - texelFetch(OriginalHistory2, p, 0).rgb) + abs(b - texelFetch(OriginalHistory2, q, 0).rgb);
+			moved += d.r + d.g + d.b;
+			back += e.r + e.g + e.b;
+		}
+		bool still = (moved < 0.004);
+		float even = still ? 0.5 * (1.0 - SHIMMER) : 0.0;
+		bool flicker = !still && (back < 0.004);
+		float mixed = ((xpBlend.y < 0.5) || flicker) ? xpBlend.x : 0.0;
+		FragColor = vec4(pow(mix(now, was, max(mixed, even)), vec3(1.0 / 2.2)), 1.0);
+	}
+
+pass afterglow:
+	when AFTER
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	void main() {
+		vec3 now = texture(Source, vTexCoord).rgb;
+		vec3 was = texture(afterglowFeedback, vTexCoord).rgb;
+		// fades in linear light, is kept encoded; a step of 8 bits less each frame, or the
+		// last of it would stay for good
+		vec3 left = was * pow(AFTER * vec3(AFTERR, AFTERG, AFTERB), vec3(1.0 / 2.2)) - 1.0 / 255.0;
+		FragColor = vec4(max(now, left), 1.0);
+	}
+
+pass line:
+	scale_x viewport 1.0
+	scale_y source 1.0
+	format rgba16f
+	filter nearest
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	const float PI = 3.14159265;
+
+	// A dot spreads along the line as a raised cosine of radius r texels. This is its
+	// integral taken twice: what an edge at 0, lit to its right, gives left of t, summed
+	// again over a stretch that ends at t. r = 0 is a hard edge.
+	vec3 spread(vec3 t, float r) {
+		vec3 c = clamp(t, -r, r);
+		vec3 v = 0.5 * c + c * c / (4.0 * r) - r * cos(PI * c / r) / (2.0 * PI * PI) + 0.25 * r - r / (2.0 * PI * PI);
+		return v + max(t - r, 0.0);
+	}
+
+	// The light of the screen pixel that stands at x texels along this line; each color's
+	// beam lands at texels off its place, a dot spreads r texels. What spreads is the
+	// drive, not the light: a video path too slow for a dot rounds the voltage, and the
+	// tube makes light of what is left - so a lone lit dot comes out narrower than its
+	// place and dimmer, a lone dark one stays dark, as on a tube; spread as light, lit
+	// dots would swell into bricks and close the dark between them. One walk along the
+	// texels for the three: a texel is read once, each color takes its own share of it
+	vec3 lit(float x, vec3 at, float r) {
+		float foot = SourceSize.x * OutputSize.z;		// a screen pixel, in texels
+		vec3 from = x + at - 0.5 * foot;
+		vec3 to = from + foot;
+		int row = int(vTexCoord.y * SourceSize.y);
+		int first = int(floor(min(from.r, min(from.g, from.b)) - r));
+		int last = int(SourceSize.x) - 1;
+		float end = max(to.r, max(to.g, to.b)) + r;
+		// each texel's share of the pixel: what its left edge lights less what its right does
+		vec3 left = spread(to - float(first), r) - spread(from - float(first), r);
+		vec3 sum = vec3(0.0);
+		vec3 all = vec3(0.0);
+		for (int n = 0; n < 28; n++) {
+			// past the pixel and the dot's spread nothing is left
+			if (float(first + n) >= end) break;
+			vec3 right = spread(to - float(first + n + 1), r) - spread(from - float(first + n + 1), r);
+			vec3 w = max((left - right) / foot - 0.0005, vec3(0.0));
+			left = right;
+			vec3 c = texelFetch(Source, ivec2(clamp(first + n, 0, last), row), 0).rgb;
+			sum += c * w;
+			all += w;
+		}
+		return pow(sum / max(all, vec3(0.0001)), vec3(2.2));
+	}
+
+	void main() {
+		float x = vTexCoord.x * SourceSize.x;
+		// interference: a wave that runs down the screen pushes the lines aside
+		if (WIGGLE > 0.0) {
+			float y = vTexCoord.y;
+			x += WIGGLE * 0.0012 * SourceSize.x * sin(turn(FrameCount, 573u) + y * 13.0)
+				* sin(turn(FrameCount, 318u) + y * 19.0) * sin(0.3 + turn(FrameCount, 630u) + y * 23.0);
+		}
+		float r = max((1.0 - FOCUS) * 3.0, 0.0001);
+		vec3 at = vec3(0.0);
+		if (DIVERGE > 0.0) {
+			// two texels a dot; no further than the walk along the line reaches
+			at.r = clamp(2.0 * parting(vTexCoord, vec2(DIVRX, DIVRY)).x, -8.0, 8.0);
+			at.b = clamp(2.0 * parting(vTexCoord, vec2(DIVBX, DIVBY)).x, -8.0, 8.0);
+		}
+		vec3 col = lit(x, at, r);
+		// the ghost: the picture once more to the right, faint and out of focus - a glow
+		// that stands aside, not a second picture
+		// (a PAL picture has its ghost in the signal)
+		if ((GHOST > 0.0) && ((INPUT == 0.0) || (INPUT > 2.5))) col += GHOST * 0.15 * lit(x - GHOSTX * 0.01 * SourceSize.x, vec3(0.0), 4.0);
+		FragColor = vec4(pow(min(col, vec3(1.0)), vec3(1.0 / 2.2)), 1.0);
+	}
+
+// The beam's spot along the line: the light itself spread, as a bell. The line pass rounds
+// the drive, which keeps a lone dot narrow and the dark between two dots dark; the spot is
+// what lands on the glass, and it has a size - a dot's end fades over it, and with the
+// line thinner where it is dimmer the end comes out round, as on a tube (a BVM's dot
+// photographed: an ellipse, not a brick).
+pass spot:
+	scale source 1.0
+	format rgba16f
+	filter nearest
+	when SPOT
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	void main() {
+		// the spot's width in screen pixels: the frame has two texels a dot
+		float sigma = min(0.6 * SPOT * SourceSize.x / (0.5 * OriginalSize.x), 6.4);
+		ivec2 at = ivec2(vTexCoord * SourceSize.xy);
+		if (sigma < 0.2) {
+			FragColor = texelFetch(Source, at, 0);
+			return;
+		}
+		int reach = int(ceil(2.5 * sigma));
+		int last = int(SourceSize.x) - 1;
+		vec3 sum = vec3(0.0);
+		float all = 0.0;
+		for (int k = -reach; k <= reach; k++) {
+			float d = float(k);
+			float w = exp(-0.5 * d * d / (sigma * sigma));
+			sum += w * pow(texelFetch(Source, ivec2(clamp(at.x + k, 0, last), at.y), 0).rgb, vec3(2.2));
+			all += w;
+		}
+		FragColor = vec4(pow(sum / all, vec3(1.0 / 2.2)), 1.0);
+	}
+
+pass glowh:
+	scale viewport 0.25
+	filter linear
+	wrap clamp
+	when GLOW
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	void main() {
+		vec3 sum = vec3(0.0);
+		float all = 0.0;
+		for (int n = -4; n <= 4; n++) {
+			float w = exp(-0.125 * float(n * n));
+			sum += pow(texture(Source, vTexCoord + vec2(float(n) * GLOWR * OutputSize.z, 0.0)).rgb, vec3(2.2)) * w;
+			all += w;
+		}
+		FragColor = vec4(pow(sum / all, vec3(1.0 / 2.2)), 1.0);
+	}
+
+pass glowv:
+	scale viewport 0.25
+	filter linear
+	wrap clamp
+	when GLOW
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	void main() {
+		vec3 sum = vec3(0.0);
+		float all = 0.0;
+		for (int n = -4; n <= 4; n++) {
+			float w = exp(-0.125 * float(n * n));
+			sum += pow(texture(Source, vTexCoord + vec2(0.0, float(n) * GLOWR * OutputSize.w)).rgb, vec3(2.2)) * w;
+			all += w;
+		}
+		FragColor = vec4(pow(sum / all, vec3(1.0 / 2.2)), 1.0);
+	}
+
+pass:
+	filter linear
+fragment:
+	in vec2 vTexCoord;
+	layout(location = 0) out vec4 FragColor;
+
+	const float PI2 = 6.28318530718;
+
+	// A line of the line pass at x, in linear light. Past the picture's edges, its edge:
+	// a beam that lands a line off keeps its color there, and a bent picture, whose
+	// corners stand in from its place's, goes on to the place's edge as its own border
+	// does - the glass of a tube is lit to its rim, not to a bowed line inside it
+	vec3 lineAt(float x, float row) {
+		row = clamp(row, 0.0, spotSize.y - 1.0);
+		x = clamp(x, 0.5 * spotSize.z, 1.0 - 0.5 * spotSize.z);
+		return pow(texture(spot, vec2(x, (row + 0.5) * spotSize.w)).rgb, vec3(2.2));
+	}
+
+	// ...and the three beams' lines, each at its own row
+	vec3 linesAt(float x, vec3 row, bool apart) {
+		vec3 c = lineAt(x, row.g);
+		if (apart) {
+			c.r = lineAt(x, row.r).r;
+			c.b = lineAt(x, row.b).b;
+		}
+		return c;
+	}
+
+	// A line of the beam is a bell down the screen: full over its middle (core, to each
+	// side of its centre), then a skirt down to nothing. It reaches past its own rows
+	// into its neighbors' - that is what closes the gap between two lit lines, and what
+	// leaves a lone line a soft edge, not a cut one.
+	// The skirt is two parabolas, 1 - 2 u^2 and then 2 (1 - u)^2 over u = 0 .. 1: smooth,
+	// and the same turned over about its middle, so two skirts that cross there add up
+	// to 1. This is the bell's light from its centre out to t, for a top of 1; rate: 1
+	// over the skirt's width
+	vec3 bellTo(vec3 t, float core, float skirt, float rate) {
+		vec3 u = clamp((t - core) * rate, vec3(0.0), vec3(1.0));
+		vec3 w = min(u, 1.0 - u);
+		return min(t, vec3(core)) + skirt * (min(u, vec3(0.5)) - (2.0 / 3.0) * w * w * w);
+	}
+
+	// How far a line's bell reaches from its centre: two equal lines meet half a line
+	// from each at (1 - depth) / 2 of the top. depth: how dark the line leaves the gap to
+	// an equal neighbor; width: the skirts' share of the bell
+	float reachOf(float depth, float width) {
+		return 0.5 / ((1.0 - width) + width * (1.0 - 0.5 * sqrt(1.0 - depth)));
+	}
+
+	// ...and what a line at the centre mid gives the stretch from a to b, lines: amp is
+	// the light it has to bring. One shape for the line's three beams
+	vec3 bell(vec3 a, vec3 b, vec3 mid, vec3 amp, float reach, float width) {
+		float core = reach * (1.0 - width);
+		float skirt = reach * width;
+		float rate = 1.0 / max(skirt, 0.0001);
+		vec3 ta = abs(a - mid);
+		vec3 tb = abs(b - mid);
+		vec3 sa = sign(a - mid);
+		vec3 sb = sign(b - mid);
+		vec3 la = bellTo(ta, core, skirt, rate);
+		vec3 lb = bellTo(tb, core, skirt, rate);
+		// what the gaps take is given back: the bell's area is the line's light
+		vec3 h = amp / (reach * (2.0 - width));
+		if (all(lessThanEqual(h, vec3(1.0)))) return h * (sb * lb - sa * la);
+		// A line that would pass more than full light passes that: its top is cut flat
+		// as far as cut from its centre, and the line is the wider for it. (How far
+		// into the skirt it is down to 1 / h: the parabolas turned round.) Cut here, on
+		// the line, and not on the pixel's sum: that would beat with the rows
+		vec3 y = min(1.0 / max(h, vec3(0.000001)), vec3(1.0));
+		vec3 cut = step(y, vec3(0.999999)) * (core + skirt * mix(1.0 - sqrt(0.5 * y), sqrt(0.5 * (1.0 - y)), step(vec3(0.5), y)));
+		vec3 lit = bellTo(cut, core, skirt, rate);
+		return sb * (min(tb, cut) + h * max(lb - lit, vec3(0.0))) - sa * (min(ta, cut) + h * max(la - lit, vec3(0.0)));
+	}
+
+	vec2 warp(vec2 uv, float bend) {
+		vec2 p = uv * 2.0 - 1.0;
+		p *= vec2(1.0 + p.y * p.y * bend * CURVEX, 1.0 + p.x * p.x * bend * CURVEY);
+		return p * 0.5 + 0.5;
+	}
+
+	float rand(vec2 co) {
+		return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+	}
+
+	// A triad is as wide as the tube's fineness makes it, in whole screen pixels: one of
+	// the layouts below, kind pixels wide, each of its pixels drawn n wide. A coarse one
+	// is stripes of red, green and blue; the fine ones, where a pixel has to stand for
+	// more than one stripe, count on the display's own subpixels.
+	// scale: screen pixels a dot. Returns the triad's width
+	float triad(float scale, out float kind, out float n) {
+		float room = scale / PITCH;
+		n = 1.0;
+		if (room < 2.5) kind = 2.0;
+		else if (room < 3.5) kind = 3.0;
+		else if (room < 4.5) kind = 4.0;
+		else if (room < 5.5) kind = 5.0;
+		else if (room < 6.5) { kind = 3.0; n = 2.0; }
+		else if (room < 7.5) kind = 7.0;
+		else if (room < 8.5) { kind = 4.0; n = 2.0; }
+		else { kind = 3.0; n = floor(room / 3.0 + 0.5); }
+		return kind * n;
+	}
+
+	// What the mask lets through at a screen pixel, for each color, and how much of the
+	// light it lets through over all (what is given back).
+	// lines: screen rows a scanline takes, a whole number. Where the scanlines follow
+	// the picture (a curved screen, Line fit) they take a little more or less, and a
+	// slot mask still beats with them, faintly
+	vec3 mask(vec2 px, float cell, float kind, float n, float lines, out float mean) {
+		mean = 1.0;
+		float dark = 1.0 - MASKS;
+		float x = px.x;
+		float gap = 1.0;				// the slot's bar between two openings
+		if (MASK == 2.0) {
+			// Openings a third taller than the triad is wide, as tall as a whole number of
+			// scanlines (any other height beats with them), a bridge between them; every
+			// other triad half an opening lower.
+			float want = (kind == 2.0) ? 4.0 : floor(cell * 4.0 / 3.0 + 0.5);
+			float tall = lines * max(1.0, floor(want / lines + 0.5));
+			// A tube's bridge is thin, an eighth of the opening's height or so (the 1084S
+			// photographed): a notch in the stripe, not a bar across it. Where that is
+			// less than a row, the row is as much lighter
+			float bar = max(1.0, floor(tall / 8.0 + 0.5));
+			float deep = MASKS * min(1.0, tall / (8.0 * bar));
+			// The bridges stand at a quarter and at three quarters of the height, each
+			// row dark by the share of it a bridge covers: half a height apart whatever
+			// the height (three rows have no whole half), and the same to both sides of
+			// a scanline's middle
+			float mid = (0.25 + 0.5 * mod(floor(x / cell), 2.0)) * tall;
+			float off = abs(mod(px.y - mid + 0.5 * tall, tall) - 0.5 * tall);
+			float cover = clamp(0.5 * (bar + 1.0) - off, 0.0, 1.0);
+			gap = 1.0 - deep * cover;
+			mean *= 1.0 - deep * bar / tall;
+		} else if (MASK == 3.0) {
+			// rows of dots, every other row half a triad along
+			float tall = (kind == 2.0) ? 1.0 : max(1.0, floor(cell * 2.0 / 3.0 + 0.5));
+			x += mod(floor(px.y / tall), 2.0) * 0.5 * cell;
+		}
+		// The triad's pixels, after hunterk's subpixel masks: a color takes lit of the
+		// triad. On a display whose subpixels run blue first, the other way round
+		float s = mod(floor(x / n), kind);
+		if (PANEL == 1.0) s = kind - 1.0 - s;
+		vec3 m = vec3(dark);
+		float lit;
+		if (PANEL == 2.0) {
+			// any other display: no colors, the triad's second half lit
+			float on = floor(0.5 * cell + 0.5);
+			if (mod(floor(x), cell) >= cell - on) m = vec3(1.0);
+			lit = on / cell;
+		} else if (kind == 2.0) {
+			// magenta, green
+			if (s < 1.0) m.rb = vec2(1.0); else m.g = 1.0;
+			lit = 0.5;
+		} else if (kind == 3.0) {
+			if (s < 1.0) m.r = 1.0; else if (s < 2.0) m.g = 1.0; else m.b = 1.0;
+			lit = 1.0 / 3.0;
+		} else if (kind == 4.0) {
+			// red, yellow, cyan, blue
+			if (s < 2.0) m.r = 1.0;
+			if ((s >= 1.0) && (s < 3.0)) m.g = 1.0;
+			if (s >= 2.0) m.b = 1.0;
+			lit = 0.5;
+		} else if (kind == 5.0) {
+			// red, magenta, blue, green, green
+			if (s < 2.0) m.r = 1.0;
+			if ((s >= 1.0) && (s < 3.0)) m.b = 1.0;
+			if (s >= 3.0) m.g = 1.0;
+			lit = 0.4;
+		} else {
+			// red, red, yellow, green, cyan, blue, blue
+			if (s < 3.0) m.r = 1.0;
+			if ((s >= 2.0) && (s < 5.0)) m.g = 1.0;
+			if (s >= 4.0) m.b = 1.0;
+			lit = 3.0 / 7.0;
+		}
+		mean *= 1.0 - MASKS * (1.0 - lit);
+		return m * gap;
+	}
+
+	void main() {
+		// the curve is kept to the picture: drawn on past its edges (Side fill: Stretched
+		// Edges, Blur Off) the coordinates run on straight
+		vec2 inPic = clamp(vTexCoord, vec2(0.0), vec2(1.0));
+		// a small picture has no room for a curve: it comes in between two and a half
+		// and three and a half pixels a dot
+		float dot_ = 1.0 / (spotSize.y * OutputSize.w);
+		float bend = CURVE * smoothstep(2.5, 3.5, dot_);
+		bool flat_ = (bend == 0.0);
+		vec2 uv = flat_ ? vTexCoord : warp(inPic, bend) + (vTexCoord - inPic);
+
+		// a screen pixel's height in lines
+		float foot = flat_ ? spotSize.y * OutputSize.w : max(fwidth(uv.y) * spotSize.y, 0.0001);
+		float scale = 1.0 / foot;
+
+		// The mask: counted in the window's pixels, or in the picture's own where it is
+		// to bend with the glass - by itself where a pixel of its layout is two screen
+		// pixels or more, under which a bent mask beats with them
+		float kind;
+		float n;
+		float cell = triad(dot_, kind, n);
+		bool glass = !flat_ && ((MBEND == 2.0) || ((MBEND == 0.0) && (n >= 2.0)));
+		vec2 px = glass ? uv * OutputSize.xy : gl_FragCoord.xy - xpPicture.xy;
+		float mean;
+		vec3 through = mask(px, cell, kind, n, max(2.0, floor(dot_ + 0.5)), mean);
+
+		// A scanline is a line of the picture, at any scale: one that kept to whole
+		// screen rows would cut across the picture's lines. On a flat screen at a whole
+		// scale the two fall together. Lines that do not fall on rows beat with them at
+		// a small scale: shallower there
+		float per = max(1.0, floor(scale + 0.5));
+		bool rows = flat_ && (abs(scale - per) * spotSize.y < 0.5);
+		float deep = SCAN * (rows ? 1.0 : mix(0.4, 1.0, smoothstep(2.0, 4.0, scale)) * step(1.5, scale));
+		// with no scanlines a line is its own rows and no more: the picture as it is
+		float width = WIDTH * clamp(deep / 0.2, 0.0, 1.0);
+		// where the pixel stands, in lines, for each beam: the red and the blue land a
+		// little off; a roll moves the lines down the screen - a step of Roll is a turn
+		// in 400 frames, so the lines meet themselves when the count starts again
+		// (rows that fall on the lines are counted: a line's edge is a row's, to the bit)
+		float prow = floor(vTexCoord.y * OutputSize.y);
+		float top = rows ? prow / per : uv.y * spotSize.y - 0.5 * foot;
+		float bottom = rows ? (prow + 1.0) / per : top + foot;
+		vec3 off = vec3(0.0);
+		bool apart = (DIVERGE > 0.0);
+		if (apart) {
+			off.r = parting(uv, vec2(DIVRX, DIVRY)).y;
+			off.b = parting(uv, vec2(DIVBX, DIVBY)).y;
+		}
+		float roll = (ROLL > 0.0) ? fract(float(FrameCount % 400u) * floor(ROLL * 20.0 + 0.5) / 400.0) : 0.0;
+		off -= roll;
+		vec3 a = top + off;
+		vec3 b = bottom + off;
+		// the two lines it stands between; a pixel over half a line tall (a small
+		// picture) may reach a third one's skirt: the line it stands on and both beside
+		vec3 here = 0.5 * (a + b);
+		bool tall = (foot > 0.5);
+		vec3 first = tall ? floor(here) - 1.0 : floor(here - 0.5);
+		// under a roll the lines move and the picture stays: each takes what the
+		// picture has where the pixel stands
+		vec3 still = floor(here + roll);
+		vec3 sum = vec3(0.0);
+		for (int k = 0; k < (tall ? 3 : 2); k++) {
+			vec3 row = first + float(k);
+			vec3 col = linesAt(uv.x, (roll > 0.0) ? still : row, apart) * BRIGHT;
+			// a bright line fills more of its gap
+			float depth = clamp(deep * (1.0 - GROW * max(col.r, max(col.g, col.b))), 0.0, 1.0);
+			float reach = reachOf(depth, width);
+			// what the mask takes is given back
+			vec3 pass_ = through / mean;
+			// Bloom: a line brighter than 1 / peak cannot pass its light through the bell
+			// and the mask; it gets a shallower gap and a fainter mask by what does not fit
+			if (BLOOM > 0.0) {
+				float peak = 1.0 / (mean * reach * (2.0 - width));
+				vec3 fits = clamp((1.0 / max(col, vec3(0.000001)) - 1.0) / max(peak - 1.0, 0.000001), vec3(0.0), vec3(1.0));
+				vec3 plain = BLOOM * (1.0 - fits);
+				pass_ = mix(pass_, vec3(1.0), plain);
+				reach = reachOf(depth * (1.0 - max(plain.r, max(plain.g, plain.b))), width);
+			}
+			sum += bell(a, b, row + 0.5, col * pass_, reach, width);
+		}
+		vec3 lit = max(sum / (bottom - top), vec3(0.0));
+
+		// The light that spills around bright things: a part of each point's light is
+		// spread about, so a plain field keeps its brightness and the dark beside a
+		// bright thing gets a veil - at most a quarter
+		if (GLOW > 0.0) {
+			// (past a bent picture's edge, its edge - as the picture itself is there)
+			vec2 in_ = clamp(uv, 0.5 * glowvSize.zw, 1.0 - 0.5 * glowvSize.zw);
+			vec3 around = pow(texture(glowv, in_).rgb, vec3(2.2));
+			lit = mix(lit, around, 0.25 * GLOW);
+		}
+		// (an aerial's noise is in the signal)
+		if ((NOISE > 0.0) && ((INPUT < 1.5) || (INPUT > 2.5))) {
+			// another grain each frame, not the same one moved along
+			float t = float(FrameCount % 1024u);
+			vec2 seed = gl_FragCoord.xy + vec2(t * 17.13, t * 5.71);
+			lit = max(lit - 0.03 * NOISE * pow(vec3(rand(seed), rand(seed * 2.0), rand(seed * 3.0)), vec3(1.5)), vec3(0.0));
+		}
+
+		// the screen's own edge: its place's, with the corners rounded, and a vignette
+		if (xpWide < 0.5) {
+			vec2 size = OutputSize.xy;
+			float rad = CORNER * min(size.x, size.y);
+			vec2 q = abs(vTexCoord - 0.5) * size - (0.5 * size - rad);
+			float out_ = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - rad;
+			lit *= clamp(0.5 - out_, 0.0, 1.0);
+			vec2 u = inPic;
+			lit *= mix(1.0, pow(16.0 * u.x * u.y * (1.0 - u.x) * (1.0 - u.y), 0.25), VIGN);
+		}
+		vec3 seen = pow(lit, vec3(1.0 / 2.2));
+		if (CONTRAST > 0.0) seen = mix(seen, seen * seen * (3.0 - 2.0 * seen), CONTRAST);
+		FragColor = vec4(seen, 1.0);
+	}

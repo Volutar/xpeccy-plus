@@ -917,7 +917,7 @@ xOptSheet::xOptSheet() {
 
 // A frame of its own; what follows goes into it. side 0 and 1 put it in the
 // left or right column of a row of frames, -1 across the sheet under them.
-void xOptSheet::group(const QString& title, int side, const QString& icon) {
+QGroupBox* xOptSheet::group(const QString& title, int side, const QString& icon) {
 	if (grid->count() == 0) rows->hide();		// nothing before the first frame
 	QGroupBox* frm = icon.isEmpty() ? new QGroupBox(title) : new xIconGroup(icon, title);
 	if (side < 0) {
@@ -940,10 +940,11 @@ void xOptSheet::group(const QString& title, int side, const QString& icon) {
 	nameSet = (side >= 0) ? (side & 1) : 0;
 	grid = sheet_grid(frm, pair != NULL);
 	cols->grids.append(grid);
+	return frm;
 }
 
-// one line: the name and the control, at a list's width
-void xOptSheet::row(const QString& name, QWidget* wid) {
+// one line: the name and the control, at a list's width; the name's label is handed back
+QLabel* xOptSheet::row(const QString& name, QWidget* wid) {
 	int row = grid->rowCount();
 	QLabel* nam = new QLabel(name);
 	nam->setContentsMargins(0, 0, SHEET_GAP, 0);
@@ -960,6 +961,7 @@ void xOptSheet::row(const QString& name, QWidget* wid) {
 	}
 	new xFollowEnabled(wid, QList<QWidget*>() << nam);
 	label_for(nam, wid);
+	return nam;
 }
 
 // across the whole frame, under the rows

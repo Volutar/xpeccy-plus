@@ -583,14 +583,62 @@ namespace {
 void MainWin::loadShader(bool tell) {
 	if (!glw || !conf.vid.shd_support || !glReady) return;
 	glHold hold(glw);
+	// A preset that is gone, or none named where the file has them: the file's first is
+	// loaded. The config keeps the name it has: the preset may be back at the next start
+	const xLook lk = look_current();
 	shdLoaded = conf.vid.shader;
+	shdPresetLoaded = conf.vid.shdPreset;
 	shdSettled = false;
 	shdTell = tell;
-	chain.load(xres_path("shaders", QString::fromLocal8Bit(shdLoaded.c_str())));
+	chain.load(xres_path("shaders", lk.file), look_values(lk));
 	shaderSay();
+	if (dispSheet) dispSheet->setLook();
+	if (QAction* act = shdMenu->findChild<QAction*>("displaySettings"))
+		act->setEnabled(look_has_knobs(lk));
 }
 
+// another look chosen (Options, the menu): its chain is to be loaded
+bool MainWin::lookStale() {
+	return conf.vid.shd_support && ((conf.vid.shader != shdLoaded) || (conf.vid.shdPreset != shdPresetLoaded));
+}
+
+// an item of the Display menu: a look, as file and preset, or the sheet of knobs
 void MainWin::shdSelected(QAction* act) {
-	conf.vid.shader = act->data().toString().toLocal8Bit().data();
+	if (act->objectName() == "displaySettings") {
+		displaySettings();
+		return;
+	}
+	const QStringList id = act->data().toStringList();
+	xLook lk;
+	lk.file = id.value(0);
+	lk.preset = id.value(1);
+	look_choose(lk);
 	loadShader(false);
+}
+
+// the knobs of the look, beside the running picture
+void MainWin::displaySettings() {
+	if (!dispSheet) {
+		dispSheet = new xDisplaySheet(this);
+		connect(dispSheet, &xDisplaySheet::s_param, this, &MainWin::lookParam);
+		connect(dispSheet, &xDisplaySheet::s_look, this, &MainWin::lookPicked);
+	}
+	dispSheet->setLook();
+	dispSheet->show();
+	dispSheet->raise();
+	dispSheet->activateWindow();
+}
+
+// a knob moved: the picture shows it at once, paused or not
+void MainWin::lookParam(const QString& name, float value) {
+	chain.setParam(name, value);
+	presentFrame();
+	// moved in Options' copy of the sheet: this one shows it too
+	if (dispSheet && dispSheet->isVisible() && (sender() != dispSheet)) dispSheet->setLook();
+}
+
+// the sheet made or removed a preset, or put every knob back: the chain follows
+void MainWin::lookPicked() {
+	loadShader(false);
+	presentFrame();
 }

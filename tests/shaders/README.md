@@ -4,7 +4,7 @@
 in a form a window shot can prove. It is not a look. `grid.png` is its texture.
 
 To run it, copy both files into `shaders/` of a config directory, start the emulator with
-that `--confdir` and pick **chain** in View > Shaders. Over the control port (`port` in
+that `--confdir` and pick **chain** in View > Display. Over the control port (`port` in
 `config.conf`):
 
 - `shader-info` - the chain as built: every pass, its target's size and format, whether its
@@ -28,7 +28,11 @@ What to see:
 The rows, from the bottom: dots a line, lines a frame, the first shown dot, the first shown
 line, the color carrier in cycles a dot x 65536, locked x 2 + the V switch's sense, the
 carrier's phase x 65535, the machine's frame number, the paints counted, the frame texture's
-width, the picture's width in the window.
+width, the picture's width in the window, antiflicker left to the chain in per cent.
+
+`shader-param RAW 1` asks for frames unmixed (`frames raw when RAW`): with Anti-flicker on,
+the top row then reads its strength (50 at full, and 256 more in an adaptive mode) and a picture that flickers between two frames is no
+longer mixed; at `RAW 0` the row is 0 and the frames come mixed as ever.
 
 ## OpenGL ES
 
