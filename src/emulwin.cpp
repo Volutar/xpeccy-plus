@@ -598,8 +598,12 @@ MainWin::MainWin(QMainWindow* frm) {
 		viewDraw();
 	});
 	// any thread: through the event loop; before the first draw it is the start-up's own
-	x_view_end = [this]() {
-		if (scrView.shown) QMetaObject::invokeMethod(this, [this]() {viewEnd();}, Qt::QueuedConnection);
+	x_view_end = [this](bool replaced) {
+		if (!scrView.shown) return;
+		QMetaObject::invokeMethod(this, [this, replaced]() {
+			if (replaced) scrView.under.clear();	// another machine's frame: drawn anew
+			viewEnd();
+		}, Qt::QueuedConnection);
 	};
 	refit = 0;
 	winFit = 0;
@@ -4589,15 +4593,21 @@ bool MainWin::drawAhead(void (*prep)(Computer*, void*), void* arg) {
 	Computer* comp = conf.zx;
 	if (!comp || comp->flgDBG || pause_has(PR_DEZOG) || rewind_active()) return false;
 	if (!emu_draw_ahead(comp, prep, arg)) return false;
+	publishHeld();
+	return true;
+}
+
+// bufimg as the paused window shows it (under the lock)
+void MainWin::publishHeld() {
 	memcpy(scrimg, bufimg, bufSize);
 	frame_publish();
-	return true;
 }
 
 // Paused, new colors: the frame drawn again through them
 void MainWin::redrawHeld() {
 	Computer* comp = conf.zx;
 	if (scrView.on) {
+		scrView.under.clear();	// in the old colors: drawn anew at the end
 		viewDraw();
 		return;
 	}
@@ -4640,7 +4650,7 @@ bool MainWin::viewDraw() {
 	const int show = comp->vid->flashShow;
 	const int nodraw = comp->vid->nodraw;
 	const int nodrawNext = comp->vid->nodrawNext;
-	if (scrView.under.isEmpty()) scrView.under = QByteArray((const char*)bufimg, bufSize);
+	if (!scrView.shown && scrView.under.isEmpty()) scrView.under = QByteArray((const char*)bufimg, bufSize);
 	const int tape = comp->tape->on;	// the tape stands: its signal is not in the state
 	comp->tape->on = 0;
 	const bool done = drawAhead(view_prep, &scrView);
@@ -4709,8 +4719,7 @@ void MainWin::viewEnd() {
 	if (scrView.under.size() == bufSize) {
 		emu_lock();
 		memcpy(bufimg, scrView.under.constData(), bufSize);
-		memcpy(scrimg, bufimg, bufSize);
-		frame_publish();
+		publishHeld();
 		emu_unlock();
 		presentFrame();
 	} else {

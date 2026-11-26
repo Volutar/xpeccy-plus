@@ -597,7 +597,7 @@ static void dz_command(int seq, int cmd, const QByteArray& in) {
 			dzLoading = 1;
 			dzOn = 1;
 			pause_add(PR_DEZOG);		// DeZog starts from a machine that stands
-			if (x_view_end) x_view_end();	// ...its own, not under a screen viewed
+			if (x_view_end) x_view_end(false);	// ...its own, not under a screen viewed
 			r.append((char)0);
 			r.append((char)2);
 			r.append((char)2);

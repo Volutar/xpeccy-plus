@@ -415,6 +415,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		bool viewDraw();
 		void viewStart();
 		bool drawAhead(void (*prep)(Computer*, void*), void* arg);
+		void publishHeld();
 		QString mountPath;		// ...the image it reads while it does, empty after
 		int mountSrc = -1;		// ...and where it goes: a drive, or MEDIA_TAPE
 		double hwMulSeen = 1.0;	// the board's turbo as last reported
