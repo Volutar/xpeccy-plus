@@ -27,9 +27,7 @@ next_maxbnk_2m  zxnext   boot  1050  50            sd:next/sysnext-24.11-min key
 next_reti_dma   zxnext   open  1500  100   next/dma/reti-ctc-dma.nex sys:next/sysnext-24.11-min put:dot/CD=next/dot/CD put:dot/NEXLOAD=next/dot/NEXLOAD
 # ...whatever card is in the slot: an image here, the same hashes as next_reti_dma
 next_reti_dma_img zxnext open 1500  100   next/dma/reti-ctc-dma.nex sdimg:next/sysnext-24.11-min sys:next/sysnext-24.11-min put:dot/CD=next/dot/CD put:dot/NEXLOAD=next/dot/NEXLOAD
-# NextZXOS keeps the Browser's place in RAM through a reset, not through a power cycle
-# (Browser.gde PREFS; the user's N-Go): the Browser in C:/SYS/ on a file, a reset, Browser again.
-# F4, F9+1 and Machine > Reset: the same frames as next_browser; a Hard Reset (power): C:/
+# the Browser's place survives a reset, not a power cycle: _f4, _f9_1, _reset bless only with next_browser's frames
 next_browser       zxnext   boot  2300  50            sd:next/sysnext-24.11-min keys:760:pc:ENT,900:pc:DOWN,930:pc:DOWN,960:pc:ENT,1010:pc:DOWN,1030:pc:DOWN,1050:pc:DOWN
 next_browser_f4    zxnext   boot  2300  50            sd:next/sysnext-24.11-min keys:760:pc:ENT,900:pc:DOWN,930:pc:DOWN,960:pc:ENT,1010:pc:DOWN,1030:pc:DOWN,1050:pc:DOWN,1150:pc:F4,2150:pc:ENT
 next_browser_f9_1  zxnext   boot  2300  50            sd:next/sysnext-24.11-min keys:760:pc:ENT,900:pc:DOWN,930:pc:DOWN,960:pc:ENT,1010:pc:DOWN,1030:pc:DOWN,1050:pc:DOWN,1150:pc:F9/10,1152:pc:1,2150:pc:ENT

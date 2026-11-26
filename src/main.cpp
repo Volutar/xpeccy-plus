@@ -131,7 +131,7 @@ void help() {
 	printf("--bench-keys SPEC\t\"F:KEYS[/N],...\": press at frame F, hold N frames (4). KEYS are\n");
 	printf("\t\t\tdigits and small letters, E Enter, C Caps, S Symbol, _ Space;\n");
 	printf("\t\t\tjoy:up+fire or joyb:... a joystick, nmi the NMI button, power a Hard Reset,\n");
-	printf("\t\t\treset Machine > Reset, turbo the board's turbo switch, one step on,\n");
+	printf("\t\t\treset the Reset button, turbo the board's turbo switch, one step on,\n");
 	printf("\t\t\tpc:NAME a PC key by its keymap name (UP, F1, ENT)\n");
 	printf("--bench-apply F\t\tOk in Options at frame F, counted as for --bench-keys, nothing changed\n");
 	printf("--bench-hash\t\tprint hashes of the frames, sound, RAM and registers, PC and T\n");
