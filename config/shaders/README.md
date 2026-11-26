@@ -45,7 +45,7 @@ at 0, when its pass is not drawn at all.
 | --- | --- |
 | Signal | the cable - RGB; composite or RF into a PAL set, by a 128K's color carrier or a 48K's; or a SECAM set; a ghost, interference, noise |
 | Mask | aperture grille, slot mask (thin bridges, every other triad half an opening lower) or shadow mask, as fine as the tube: triads to a dot of the picture |
-| Beam | scanlines (how dark the gap, how wide), the dot's focus along the line, bright lines wider |
+| Beam | scanlines - a line is a bell that reaches into its neighbors' rows, wider where brighter; the focus of a dot's edge along the line; the beam's spot, which rounds a dot's ends |
 | Screen | curvature, round corners, vignette, brightness, contrast |
 | Glow | light around bright things |
 | Divergence | the red and blue beams land beside the green one, more towards the screen's edges |
