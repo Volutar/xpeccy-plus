@@ -691,7 +691,7 @@ void SetupWin::sndOthersRead() {
 void SetupWin::sndAllGlobal() {
 	QStringList lines;
 	for (const QString& tip : sndOwnTips) lines << tip.toHtmlEscaped();
-	QString msg = tr("Put every machine back to Global now? Their own picks go,<br>and Cancel will not bring them back:") + "<br><br>" + lines.join("<br>");
+	QString msg = tr("Put every machine back to Global now? Their own picks go,<br>and Cancel in Options will not bring them back:") + "<br><br>" + lines.join("<br>");
 	if (!areSure(msg.toUtf8().constData())) return;
 	xm_snd_all_global();
 	sndOthersRead();
