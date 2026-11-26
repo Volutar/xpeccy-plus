@@ -186,10 +186,7 @@ class SetupWin : public QDialog {
 		QWidget* ownSepPair = nullptr;
 		int ownLayShown = SND_GLOBAL;	// the Stereo item sndOwnShow() saw last
 		int ownSepKept = SND_GLOBAL;	// its separation while the Stereo is off an order
-		// the picks as the machine's file has them; a list the user has not touched keeps them
-		xSndPicks ownKept = {SND_GLOBAL, SND_GLOBAL, SND_GLOBAL};
-		bool ownLayTouched = false, ownBoardTouched = false;
-		xSndPicks ownPicks();		// the picks as Apply takes them
+		xSndPicks ownPicks();		// the picks as the lists stand
 		// the other machines with picks of their own, as their files have them (sndOthersRead),
 		// with their spec: psg.stereo and beeper
 		struct xSndOwnRow {std::string id; QString name; xSndPicks snd; int specLay; int specBoard;};
@@ -201,7 +198,7 @@ class SetupWin : public QDialog {
 		QCheckBox* chkSndOn;	// Emulate sound, over the page's groups
 		xSlider* sldSep;
 		QLabel* labSep;
-		// under them: the machines heard otherwise by picks of their own, and All to Sound page
+		// under them: the machines with picks of their own, and All to Sound page
 		QWidget* ownRow;
 		xElideLabel* ownLine = nullptr;	// made after the machine's lists, which call on it
 		QPushButton* btnAllGlobal;
