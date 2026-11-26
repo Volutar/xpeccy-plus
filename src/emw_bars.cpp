@@ -834,7 +834,10 @@ void MainWin::makeBoardActs() {
 	connect(boardGrp, &QActionGroup::triggered, this, [this](QAction* act) {
 		conf.snd.all.board = act->data().toInt();
 		xm_snd_apply();
-		setMessage(QString(" board filter: %0 ").arg(act->text()));
+		// a machine with its own is not heard through it: the message says so
+		QString own = board_own_note();
+		setMessage(own.isEmpty() ? QString(" board filter: %0 ").arg(act->text())
+			: QString(" Global board filter: %0; %1 ").arg(act->text(), own));
 		saveConfig();
 	});
 	// and the Sound page's Low cut and High cut, switches of their own
