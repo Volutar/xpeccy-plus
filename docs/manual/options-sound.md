@@ -100,10 +100,12 @@ The rest of the **Sound** page is the same for every machine.
 A machine can be heard otherwise than this page says: its **PSG stereo** and **Separation**
 in **Machine: PSG** (see [PSG](options-machine.md#psg)), its **Board filter** on the
 **Machine** page (see [Board filter](options-machine.md#board-filter)). The first two
-choices of those lists say in gray what they give this machine:
+choices of those lists say in gray what they stand for:
 
-- **Global setting**, the default - what this page gives it: **Global setting (ABC, 75%)**,
-  or with **By machine** here, how its board was made: **Global setting (Mono)**;
+- **Global setting**, the default - this page's choice: **Global setting (ABC, 75%)**, or
+  with **By machine** here, **Global setting (Machine spec)**: each machine as its board was
+  made. What it gives this machine is noted under **Stereo** in **Machine: PSG** - **Result:
+  Mono (machine spec)** - and in the **Board filter**'s tooltip;
 - **Machine spec** - how its board was made, whatever this page says: **Machine spec (TV
   (RF))**;
 - then, under a line, the values.
