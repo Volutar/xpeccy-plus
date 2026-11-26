@@ -79,7 +79,7 @@ Home TV (composite) comes on RGB: Input is turned by hand.
 | Home TV | a 14" set: a coarse slot mask, a soft beam, glow, a bulging screen |
 | Home TV (composite) | the same set on its video input: a PAL picture as it decodes it |
 | RGB monitor | the Commodore 1084S: a finer slot mask, a sharp beam, a slight curve |
-| PVM | a broadcast monitor: aperture grille, the sharpest beam, flat |
+| PVM | a broadcast monitor: a fine aperture grille, the sharpest beam, a cylinder's slight curve |
 | Xpixie | soft and glowing, with afterglow, a ghost and noise |
 
 The two-pass beam follows Hyllian's CRT (MIT); the mask layouts Timothy Lottes's and

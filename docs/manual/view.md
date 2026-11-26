@@ -167,7 +167,7 @@ there. The list has up to four parts:
   bulging screen; **Home TV (composite)** - the same set on its video input, with the
   colors a PAL set makes of fine patterns and at color edges; **RGB monitor** - the
   Commodore 1084S, the look a new installation starts with; **PVM** - a broadcast monitor,
-  sharp and flat; **Xpixie** - soft and glowing, with afterglow, a ghost and noise;
+  sharp, bent a little as a cylinder is; **Xpixie** - soft and glowing, with afterglow, a ghost and noise;
 - the presets you saved;
 - shader files of your own, from the `shaders` folder of the configuration.
 
