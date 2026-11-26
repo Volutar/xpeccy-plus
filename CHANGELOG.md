@@ -31,9 +31,8 @@ before that point is upstream's history and is not repeated here.
   Chromatrons Attack - show their picture, with Anti-flicker on too. And a SECAM set,
   where a checkerboard of dots turns one flat warm color. Under Input in a look's settings; the looks come on RGB, but for Home TV (composite).
 
-- **The older shader files are the tube now**: the aperture grille and shadow mask looks,
-  TV lines, monitor-1084, pvm-sharp, composite-crt and zx-rf-artifact open the tube set to
-  stand for each. An old file put into `config/shaders` still works.
+- **The older shader files are under Display > Legacy** for now: the aperture grille and
+  shadow mask looks, TV lines, monitor-1084, pvm-sharp, composite-crt and zx-rf-artifact.
 
 - **Keymap By machine**, the default: Input > Keymap and Options > Input. The Robik takes the
   Robik's keymap, the ZX Spectrum 48K the 48K one, every other machine ZX Spectrum 128K. A

@@ -92,10 +92,10 @@ domain), which Xpixie is named after.
 The aperture grille and shadow mask files (`grille-nocurve-crisp.txt`,
 `tridot-curve-light.txt`...), `tvline-nocurve-light.txt` and `tvline-curve-light.txt`,
 `monitor-1084.txt`, `monitor-1084-flat.txt`, `pvm-sharp.txt`, `composite-crt.txt`,
-`composite-crt-flat.txt` and `zx-rf-artifact.txt` are not bundled any more:
-the tube does what each did. A config that names one opens the tube with its knobs turned
-to stand for it. A file of that name put into this folder is used as it is, as any shader
-of your own.
+`composite-crt-flat.txt` and `zx-rf-artifact.txt` are kept for now under Display > Legacy,
+and a config that names one opens it as before. They will go once the tube does all they
+did; a config that names one will then open the tube with its knobs turned to stand for
+it. A file of that name put into this folder is used as it is, as any shader of your own.
 
 ## Writing a shader
 
