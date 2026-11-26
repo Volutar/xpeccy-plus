@@ -78,7 +78,7 @@ more MBEND PANEL
 
 group "Beam"
 #pragma parameter SCAN "Scanlines" 0.5 0.0 1.5 0.05
-tip SCAN = How dark the gap between two lit lines is. Past 1 the beam is thinner, a black band between
+tip SCAN = How dark the gap between two lit lines is. Past 1 the beam is thinner, a black band between the lines
 #pragma parameter WIDTH "Gap width" 0.8 0.2 1.0 0.05
 tip WIDTH = How much of a line its edges take: a band with a thin gap, or a soft bell
 #pragma parameter FOCUS "Focus" 0.6 0.0 1.0 0.05
