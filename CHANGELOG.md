@@ -98,14 +98,16 @@ before that point is upstream's history and is not repeated here.
 - **Board filter and stereo**: Options > Sound, Stereo and Filters; the filter, Low cut and
   High cut also under the Mute button's arrow and in Sound of the right-click menu. Every
   machine can sound through
-  its own board (By machine): the 48K's ULA and small speaker, a TV on the aerial input or
+  its own board (Machine spec): the 48K's ULA and small speaker, a TV on the aerial input or
   the +2A/+3's own mixer (both with the AY too), the ZX Evolution's filter, the Scorpion's
   and the ATM's coupling capacitors. Or one of them, a piezo sounder or a 5 kHz low-pass for
   PWM beeper music is picked for all, the ZX Next too, and takes all of the sound. No filter
   by default. The filter follows Slow Motion and Fast Forward, so a tone it cuts stays cut as it
   drops in pitch. Beside it, PSG stereo sets the voices' order for every machine (the Next
-  keeps its own), and one Separation serves the PSG, the General Sound and the Next. The
-  page's Enabled is now Emulate sound, over its groups, which grey while it is off.
+  keeps its own), and one Separation serves the PSG, the General Sound and the Next. All
+  three are Global: a machine can have its own on the Machine page and in its PSG sheet, and
+  the Sound page names such machines and puts them back with All to Global. The page's
+  Enabled is now Emulate sound, over its groups, which grey while it is off.
 
 - **Integer Scale**: View > Integer Scale and Options > Video. In fullscreen and in a maximized
   or resized window the picture keeps a whole number of pixels per dot, the largest that fits,
