@@ -66,6 +66,10 @@ The palette needs **ULA plus** ticked in the machine's [Advanced Settings](optio
 without it, and on the ZX Spectrum Next, the picture shows in the plain colors and a
 message says so. A screen of 6912 or 6144 bytes turns ULA+ off.
 
+The border takes the color most of the picture's edge has, BRIGHT left out; with a ULA+
+palette, the border color nearest to it. A program may set its own at once; in BASIC the
+next key press brings the old one back.
+
 A screen never switches the machine, and it is not the game: the window title, pads,
 cheats and saves stay with the game that was in. **Recent** and **Reload** take it. A
 machine in a video mode of its own (Profi, ATM, ZX Evo, TSConf) says **The machine is not
