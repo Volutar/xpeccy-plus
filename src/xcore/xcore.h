@@ -952,7 +952,8 @@ int xm_ram_size(std::string, int* mask = NULL);
 void xm_snd_apply();			// the running machine heard with its own picks over Global
 bool xm_snd_owns(const xSndPicks&);	// a machine's picks hold one of its own
 QList<xMachine> xm_snd_own_list();	// the machines with sound picks of their own, the running one as it is now
-void xm_snd_all_global();		// every machine's own sound picks dropped
+enum {SND_OWN_LAY = 1, SND_OWN_BOARD = 2};	// xm_snd_all_global's groups
+void xm_snd_all_global(int what);	// every machine's own picks of the groups dropped: SND_OWN_LAY its psg.layout and separation, SND_OWN_BOARD its board.filter
 const char* xm_snd_lay_key(int);	// a machine file's psg.layout value and back
 int xm_snd_lay_of(const std::string&);
 const char* xm_snd_board_key(int);	// ...its board.filter

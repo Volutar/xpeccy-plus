@@ -2040,16 +2040,19 @@ void xm_reset_over() {
 	xm_set(id);
 }
 
-// "Use for all machines": every machine's own sound picks go, the rest of its file stays
+// "Apply to all machines": every machine's own picks of a group go (the Stereo's or the
+// Filters'), the rest of its file stays
 
-void xm_snd_all_global() {
+void xm_snd_all_global(int what) {
 	int done = 0;
 	foreach(QString qid, macUsr.keys()) {
 		const QList<xMacLine>& lines = macUsr.value(qid).lines;
 		QList<xMacLine> kept;
 		foreach(const xMacLine& ln, lines) {
-			if ((ln.sect != "sound") || ((ln.name != "psg.layout") && (ln.name != "separation")
-				&& (ln.name != "board.filter"))) kept << ln;
+			bool drop = (ln.sect == "sound") && ((((what & SND_OWN_LAY) != 0)
+				&& ((ln.name == "psg.layout") || (ln.name == "separation")))
+				|| (((what & SND_OWN_BOARD) != 0) && (ln.name == "board.filter")));
+			if (!drop) kept << ln;
 		}
 		if (kept.size() == lines.size()) continue;
 		std::string id = qid.toLocal8Bit().data();
@@ -2057,10 +2060,11 @@ void xm_snd_all_global() {
 		else mac_write(id, kept);
 		done++;
 	}
-	conf.snd.own.lay = conf.snd.own.board = conf.snd.own.sep = SND_GLOBAL;
+	if (what & SND_OWN_LAY) conf.snd.own.lay = conf.snd.own.sep = SND_GLOBAL;
+	if (what & SND_OWN_BOARD) conf.snd.own.board = SND_GLOBAL;
 	if (done) xm_load_all();
 	xm_snd_apply();
-	xlog(XLG_CONF, XLL_INFO, "sound picks of %i machine files dropped: every machine on the Sound page's", done);
+	xlog(XLG_CONF, XLL_INFO, "sound picks (%i) of %i machine files dropped: every machine on the Sound page's", what, done);
 }
 
 // A config from before the machine files kept the same settings in

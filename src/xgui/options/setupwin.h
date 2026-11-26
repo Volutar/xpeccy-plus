@@ -72,8 +72,7 @@ class SetupWin : public QDialog {
 		void showBoardStorage();
 		void makeSoundGroup();
 		void soundPageOn(bool);
-		void sndOwnShow();		// the own picks' texts, rows and the Sound page's line, as the lists stand
-		void sndAllGlobal();		// Use for all machines, asked first
+		void sndOwnShow();		// the own picks' texts, rows and the Sound page's notices, as the lists stand
 		void fillNextGroup();
 		void showDriveRows();
 		void tidySoundPage();
@@ -198,11 +197,13 @@ class SetupWin : public QDialog {
 		QCheckBox* chkSndOn;	// Emulate sound, over the page's groups
 		xSlider* sldSep;
 		QLabel* labSep;
-		// under them: the machines with picks of their own, and Use for all machines
-		QWidget* ownRow;
-		xElideLabel* ownLine = nullptr;	// made after the machine's lists, which call on it
-		QPushButton* btnAllGlobal;
-		QStringList sndOwnTips;		// each of them and what it has of its own
+		// at the foot of each (0 Stereo, 1 Filters): how many machines override it, and
+		// Apply to all machines
+		QWidget* ownRow[2] = {nullptr, nullptr};	// made after the machine's lists, which call on them
+		QLabel* ownLine[2];
+		QPushButton* btnAllGlobal[2];
+		QStringList sndOwnTips[2];	// each of them and what it has of its own
+		void sndAllGlobal(int grp);	// Apply to all machines, asked first
 		int psgFrqMul = 1;	// the chip's clock against the AY's the setting holds
 		// the machine's devices, on the Machine page
 		QComboBox* gsBox;
