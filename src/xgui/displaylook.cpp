@@ -460,14 +460,14 @@ bool look_delete_preset(const xLook& lk) {
 // with the knobs turned to stand for it (measured beside the old file
 // on a test card: the lines' depth on bright and on plain white, the dot's sharpness,
 // the light over all, the bend). The knobs are turned only on a look not turned yet.
-#define	OLD_CRISP	"CURVE 0, CURVEX 1, SPOT 0, BLOOM 0, MASKS 0.6, SCAN 1.0, WIDTH 0.8, FOCUS 0.9, GROW 0, GLOW 0.1, BRIGHT 0.55, DIVERGE 0"
-#define	OLD_SOFT	"CURVE 0, CURVEX 1, SPOT 0, BLOOM 0, MASKS 0.45, SCAN 0.6, WIDTH 0.8, FOCUS 0.65, GROW 0, GLOW 0.1, BRIGHT 0.7, DIVERGE 0"
+#define	OLD_CRISP	"CURVE 0, CURVEX 1, SPOT 0, MASKS 0.6, SCAN 1.0, WIDTH 0.8, FOCUS 0.9, GROW 0, GLOW 0.1, BRIGHT 0.55, DIVERGE 0"
+#define	OLD_SOFT	"CURVE 0, CURVEX 1, SPOT 0, MASKS 0.45, SCAN 0.6, WIDTH 0.8, FOCUS 0.65, GROW 0, GLOW 0.1, BRIGHT 0.7, DIVERGE 0"
 #define	OLD_GRILLE	"MASK 1, PITCH 1.0, "
 #define	OLD_FINE	"MASK 1, PITCH 2.0, "
 #define	OLD_SHADOW	"MASK 3, PITCH 1.0, "
 #define	OLD_WIDE	"MASK 3, PITCH 0.5, "
 #define	OLD_CURVE	", CURVE 0.02"
-#define	OLD_TVLINE	"CURVE 0, CURVEX 1, SPOT 0, BLOOM 0, MASK 1, MASKS 0.3, PITCH 2.5, WIDTH 0.8, FOCUS 0.85, GLOW 0, DIVERGE 0, "
+#define	OLD_TVLINE	"CURVE 0, CURVEX 1, SPOT 0, MASK 1, MASKS 0.3, PITCH 2.5, WIDTH 0.8, FOCUS 0.85, GLOW 0, DIVERGE 0, "
 
 void look_old_names() {
 	// old: the file's name, and for the file of round (a) its preset too
