@@ -3,6 +3,7 @@
 #include "xgui.h"
 
 #include "../xcore/xcore.h"
+#include "dispsync.h"
 
 #include <QComboBox>
 #include <QGroupBox>
@@ -94,9 +95,9 @@ xDisplaySheet::xDisplaySheet(QWidget* parent) : QDialog(parent) {
 			return;
 		}
 		QString text = tr("GPU time: %1 ms a frame").arg(us / 1000.0, 0, 'f', 2);
-		// ...and its share of a refresh of the display: how far the card is from falling behind
-		const QScreen* scr = screen();
-		const double hz = scr ? scr->refreshRate() : 0.0;
+		// ...and its share of a refresh of the main window's display: how far from falling behind
+		double hz = dsync_rate();
+		if ((hz <= 1.0) && screen()) hz = screen()->refreshRate();
 		if (hz > 1.0) {
 			const double pct = us * hz / 10000.0;
 			text += " " + tr("(%1% at %2 Hz)").arg(pct, 0, 'f', (pct < 1.0) ? 2 : 1).arg(qRound(hz));
@@ -198,8 +199,10 @@ void xDisplaySheet::build() {
 			QWidget* wid = knob(p);
 			QLabel* lab = sheet.row(p.text, wid);
 			if (p.flat && conf.vid.flatScreen) {
-				const QString flat = tr("Flat screen (View > Display) has it off unless set here");
-				lab->setToolTip(p.tip.isEmpty() ? flat : p.tip + ". " + flat);
+				QString tip = p.tip;
+				while (tip.endsWith('.')) tip.chop(1);
+				lab->setToolTip(tip.isEmpty() ? tr("Flat screen (View > Display) has it off unless set here")
+					: tr("%1. Flat screen (View > Display) has it off unless set here").arg(tip));
 			} else {
 				lab->setToolTip(p.tip);
 			}
@@ -254,7 +257,9 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 	auto putBack = [this, name, stage](float own) {
 		const float had = look_value(look, name);
 		if (stage && (own == 0.0f) && (had != 0.0f)) lastOn[name] = had;
-		moved(name, own);
+		look_back(look, name);
+		btnDef->setEnabled(look_changed(look));
+		emit s_param(name, own);
 		if (stage) QMetaObject::invokeMethod(this, [this]() {build();}, Qt::QueuedConnection);
 	};
 	if (!p.names.isEmpty()) {

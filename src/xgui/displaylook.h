@@ -50,6 +50,7 @@ void look_keep(const xLook&, const QString& name, float value);
 void look_reset(const xLook&);			// every knob back
 bool look_changed(const xLook&);		// a knob is turned
 bool look_turned(const xLook&, const QString& name);	// this one is
+void look_back(const xLook&, const QString& name);	// ...and is no more
 float look_own(const xLook&, const QString& name);	// what it is back at: the look's own value
 
 // the kept values as a whole, for a window that can be cancelled
