@@ -189,9 +189,7 @@ void xDisplaySheet::build() {
 		sheet.group(QString());
 		sheet.wide(new QLabel(tr("This look has no settings.")));
 	}
-	// The new rows go in shown at once: a layout shows a widget only a turn of the event
-	// loop later, and the window, as large as its rows, would shrink to its buttons and
-	// grow back in between
+	// shown at once: a layout shows it a turn later, and the window would shrink and grow
 	setUpdatesEnabled(false);
 	if (body) {
 		body->hide();

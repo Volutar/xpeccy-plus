@@ -144,12 +144,9 @@ more AFTERR AFTERG AFTERB
 
 # The masks' fineness is the tubes' own: triads across the screen over the 352 dots of a
 # full frame - a 14" TV's 0.65 mm slot mask 1.2, the 1084's 0.42 mm one 1.9, a 14" PVM's
-# 0.25 mm grille 3.0 (Philips data handbook T08 of 1986, Sony's PVM brochures). Tridot
-# is a dot mask three screen pixels a triad at any scale on a flat screen, a soft beam
-# with light scanlines, a glow and a bloom, and a set's ghost, interference and grain
-# (Volutar's settings). Commodore 1084S is RGB monitor with its slot mask drawn as the
-# user's own 1084S shows it close up - slots a scanline tall, every other triad half a
-# slot lower, a dark bridge between - three screen pixels a triad at any scale
+# 0.25 mm grille 3.0 (Philips data handbook T08 of 1986, Sony's PVM brochures).
+# Commodore 1084S is RGB monitor with its slot mask three screen pixels a triad, the slots
+# apart as bricks
 preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, SPOT 0.5, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, VIGN 0.25
 preset "Home TV (composite)": INPUT 1, MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, SPOT 0.5, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, VIGN 0.25
 preset "RGB monitor": MASK 2, MASKS 0.45, PITCH 1.9, SCAN 0.9, WIDTH 0.8, FOCUS 0.5, SPOT 0.5, GROW 0.15, DIVERGE 0.2, GLOW 0.1, CURVE 0.04, VIGN 0.1
@@ -804,8 +801,7 @@ fragment:
 			// less than a row, the row is as much lighter
 			float bar = max(1.0, floor(tall / 8.0 + 0.5));
 			float deep = MASKS * min(1.0, tall / (8.0 * bar));
-			// ...or, with Bridges, a whole row as dark as the mask: the slots of a mask
-			// drawn larger than the tube's stand apart as bricks (the 1084S close up)
+			// ...or, with Bridges, a whole row as dark as the mask
 			if (SLOTB > 0.0) deep = mix(deep, MASKS, SLOTB);
 			// The bridges stand at a quarter and at three quarters of the height, each
 			// row dark by the share of it a bridge covers: half a height apart whatever
@@ -883,12 +879,8 @@ fragment:
 		// scale the two fall together
 		float per = max(1.0, floor(scale + 0.5));
 		bool rows = flat_ && (abs(scale - per) * spotSize.y < 0.5);
-		// Two rows a line are the two halves of its bell, lit alike whatever its shape, and
-		// at three a line's edge rows are darkened alike, a gap two rows thick for one lit:
-		// at two rows and at an odd count the lines go half a row down, so the gap is one
-		// row on the border of two lines and the rest of them the line - and the mask with
-		// them, so a slot's bridge stays on a line's middle. With no scanlines the rows
-		// stay: whole rows a line, the picture as it is
+		// At 2 rows a line and at an odd count the lines (and the mask) go half a row down:
+		// the gap is one row, on the lines' border
 		bool odd = (mod(per, 2.0) > 0.5) && (per > 1.5);
 		float half_ = (rows && ((per == 2.0) || odd) && (SCAN > 0.0)) ? 0.5 : 0.0;
 

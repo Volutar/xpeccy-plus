@@ -18,6 +18,11 @@
 #define	LOOK_STORE	"values.conf"
 #define	LOOK_TUBE	"crt.txt"
 
+// The tube's looks that took another name: the old one is no user preset's to take
+static const struct {const char* was; const char* now;} lookRenamed[] = {
+	{"PVM", "Sony PVM"},
+};
+
 // ---------------------------------------------------------------- the files
 
 namespace {
@@ -203,7 +208,7 @@ static bool legacy_kept(const QString& file) {
 }
 
 QString look_legacy_tip() {
-	return QCoreApplication::translate("Display", "Deprecated: goes in a coming release. The CRT looks do what it did.");
+	return QCoreApplication::translate("Display", "Deprecated: to be removed in a coming release. The CRT looks replace it.");
 }
 
 QList<xLook> look_list() {
@@ -419,6 +424,12 @@ bool look_save_preset(const xLook& lk, const QString& name, QString* err) {
 			return false;
 		}
 	}
+	for (const auto& row : lookRenamed) {
+		if (!title.compare(row.was, Qt::CaseInsensitive) || !base.compare(row.was, Qt::CaseInsensitive)) {
+			*err = "A built-in look had this name";
+			return false;
+		}
+	}
 	QByteArray out("shader = " + lk.file.toUtf8() + "\nname = " + title.toUtf8() + "\n");
 	for (const xShdParam& p : head->params) {
 		const float val = look_value(lk, p.name);
@@ -476,26 +487,56 @@ bool look_delete_preset(const xLook& lk) {
 #define	OLD_CURVE	", CURVE 0.02"
 #define	OLD_TVLINE	"CURVE 0, CURVEX 1, SPOT 0, MASK 1, MASKS 0.3, PITCH 2.5, WIDTH 0.8, FOCUS 0.85, GLOW 0, DIVERGE 0, "
 
+// a look of the tube moves to another name: the config that has it and its kept knobs
+static void look_move(const QString& was, const QString& now) {
+	const QString from = QString(LOOK_TUBE) + "#" + was;	// look_id() of the tube's look
+	const QString to = QString(LOOK_TUBE) + "#" + now;
+	if (store.contains(from)) {
+		// both kept: what the new name has stays, the old one's other knobs join it
+		const QMap<QString, float> old = store.take(from);
+		for (auto it = old.constBegin(); it != old.constEnd(); ++it)
+			if (!store[to].contains(it.key())) store[to][it.key()] = it.value();
+		storeDirty = true;
+	}
+	if ((QString::fromLocal8Bit(conf.vid.shader.c_str()) == LOOK_TUBE) && (QString::fromUtf8(conf.vid.shdPreset.c_str()) == was))
+		conf.vid.shdPreset = now.toUtf8().constData();
+}
+
+// the user's preset of the tube by that file name, if any
+static const UserPreset* user_tube_preset(const QString& base) {
+	for (const UserPreset& up : user_presets())
+		if ((up.shader == LOOK_TUBE) && !up.base.compare(base, Qt::CaseInsensitive)) return &up;
+	return nullptr;
+}
+
 // The tube's looks renamed: a config that has the old name, and the knobs kept for it,
-// go over to the new one
+// go over to the new one. A preset of the user's that has the new name (saved before it
+// was the tube's) is renamed first, its knobs with it; one that has the old name keeps it
 static void look_renamed() {
-	static const struct {const char* was; const char* now;} names[] = {
-		{"PVM", "Sony PVM"},
-	};
 	store_read();
-	for (const auto& row : names) {
-		xLook from;
-		from.file = LOOK_TUBE;
-		from.preset = row.was;
-		xLook to = from;
-		to.preset = row.now;
-		if (store.contains(look_id(from))) {
-			if (!store.contains(look_id(to))) store[look_id(to)] = store.value(look_id(from));
-			store.remove(look_id(from));
-			storeDirty = true;
+	user_presets(true);		// the folder as this config has it, not as read before it was loaded
+	for (const auto& row : lookRenamed) {
+		if (const UserPreset* up = user_tube_preset(row.now)) {
+			const QString dir = xres_dir(LOOK_KIND) + "/";
+			QString base = up->base + " (user)";
+			for (int n = 2; QFile::exists(dir + base + ".preset"); n++) base = up->base + QString(" (user %1)").arg(n);
+			QFile file(dir + up->base + ".preset");
+			if (file.open(QFile::ReadOnly)) {
+				QByteArray text = file.readAll();
+				file.close();
+				text.replace("\nname = " + up->title.toUtf8() + "\n", "\nname = " + base.toUtf8() + "\n");
+				QFile out(dir + base + ".preset");
+				if (out.open(QFile::WriteOnly) && (out.write(text) == text.size())) {
+					out.close();
+					file.remove();
+					look_move(up->base, base);
+					xlog(XLG_CONF, XLL_INFO, "the preset %s is now %s: a built-in look has its name",
+						up->base.toUtf8().constData(), base.toUtf8().constData());
+				}
+			}
+			user_presets(true);
 		}
-		if ((QString::fromLocal8Bit(conf.vid.shader.c_str()) == LOOK_TUBE) && (QString::fromUtf8(conf.vid.shdPreset.c_str()) == row.was))
-			look_choose(to);
+		if (!user_tube_preset(row.was)) look_move(row.was, row.now);
 	}
 }
 
