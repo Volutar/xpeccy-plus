@@ -1530,16 +1530,13 @@ static void szx_mount(Computer* comp, const QString& snap) {
 				tapRewind(comp->tape, m->block);
 			} else if ((m->block == comp->tape->blkCount) && (m->block > 0)) {
 				// taken with the tape run out: it stays run out, for
-				// "Rewind at end" to wind back to the block a load asks for.
-				// Put where it was, not read: the window takes blkChange for
-				// a tape in use and would name it over the save's game, so
-				// the Tape Player is told to draw its list again instead
-				int moved = comp->tape->blkChange;
+				// "Rewind at end" to wind back to the block a load asks for
 				tapRewind(comp->tape, m->block - 1);
 				tapNextBlock(comp->tape);
-				comp->tape->blkChange = moved;
-				comp->tape->newBlock = 1;
 			}
+			// put where it was, not read: blkChange would name it in the title as a tape in use
+			comp->tape->blkChange = 0;
+			comp->tape->newBlock = 1;
 		} else {
 			int drv = m->drive & 3;
 			Floppy* flp = comp->dif->flp[drv];
