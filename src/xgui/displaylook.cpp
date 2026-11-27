@@ -212,7 +212,7 @@ QString look_legacy_tip() {
 }
 
 QString look_flat_tip() {
-	return QCoreApplication::translate("Display", "Every look without curvature, corners or vignette, unless set in its settings");
+	return QCoreApplication::translate("Display", "Every look without curvature, corners or vignette. Moving one of them in a look's settings turns this off");
 }
 
 QList<xLook> look_list() {
@@ -326,8 +326,12 @@ xShdValues look_values(const xLook& lk) {
 		res.append({it.key(), it.value()});
 	const xShdPreset* head = conf.vid.flatScreen ? look_file(lk.file) : nullptr;
 	if (head) {
-		for (const xShdParam& p : head->params)
-			if (p.flat) res.append({p.name, qBound(p.min, 0.0f, p.max)});
+		for (const xShdParam& p : head->params) {
+			if (!p.flat) continue;
+			for (int i = res.size() - 1; i >= 0; i--)
+				if (res[i].name == p.name) res.remove(i);
+			res.append({p.name, qBound(p.min, 0.0f, p.max)});
+		}
 	}
 	return res;
 }

@@ -132,21 +132,28 @@ void xDisplaySheet::setLook() {
 	else build();
 }
 
-const xShdParam* xDisplaySheet::param(const QString& name) const {
+// a copy: the file may be read again, and its parameters made anew, while one is used
+QVector<xShdParam> xDisplaySheet::params() const {
 	const xShdPreset* file = look_has_knobs(look) ? look_file(look.file) : nullptr;
-	if (file) {
-		for (const xShdParam& p : file->params)
-			if (p.name == name) return &p;
-	}
-	return nullptr;
+	return file ? file->params : QVector<xShdParam>();
 }
 
-QStringList xDisplaySheet::shown() const {
-	QStringList res;
-	const xShdPreset* file = look_has_knobs(look) ? look_file(look.file) : nullptr;
-	if (file) {
-		for (const xShdParam& p : file->params)
-			if (all || !p.more) res << p.name;
+bool xDisplaySheet::param(const QString& name, xShdParam* out) const {
+	for (const xShdParam& p : params()) {
+		if (p.name != name) continue;
+		*out = p;
+		return true;
+	}
+	return false;
+}
+
+// the knobs build() would make now, all that shapes them: the same, and they need only be set
+QString xDisplaySheet::shown() const {
+	QString res;
+	for (const xShdParam& p : params()) {
+		if (p.more && !all) continue;
+		res += QString("%1 %2 %3 %4 %5 %6 %7|").arg(p.name).arg(p.min).arg(p.max).arg(p.step)
+			.arg(p.names.join(','), p.group, p.groupSwitch);
 	}
 	return res;
 }
@@ -161,9 +168,9 @@ static QString knob_tip(const xShdParam& p) {
 
 void xDisplaySheet::refresh() {
 	if (!body) return;
-	for (const QString& name : rows) {
-		const xShdParam* p = param(name);
-		if (!p) continue;
+	for (const xShdParam& prm : params()) {
+		const xShdParam* p = &prm;
+		const QString name = p->name;
 		const float val = look_value(look, name);
 		const float step = knob_step(*p);
 		const int pos = qBound(0, qRound((val - p->min) / ((step > 0) ? step : 1.0f)), knob_count(*p));
@@ -306,11 +313,14 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 	back->setSizePolicy(keep);
 	back->setVisible(look_turned(look, name));
 	// put back, a stage's switch may switch the stage: what it had is kept to tick it on again
-	auto putBack = [this, name](float own) {
+	const bool flat = p.flat;
+	auto putBack = [this, name, flat](float own) {
 		const float had = look_value(look, name);
 		if ((own == 0.0f) && (had != 0.0f)) lastOn[name] = had;
 		look_back(look, name);
-		emit s_param(name, own);
+		// under Flat screen the picture keeps its flat value: the look's own is for later
+		if (flat && conf.vid.flatScreen) emit s_look();
+		else emit s_param(name, own);
 		refresh();
 	};
 	if (!p.names.isEmpty()) {
@@ -388,11 +398,10 @@ void xDisplaySheet::moved(const QString& name, float value) {
 	look_keep(look, name, value);
 	btnDef->setEnabled(look_changed(look));
 	// a curve set by hand: the screen is no longer to be flat, for any look
-	const xShdParam* p = param(name);
-	if (p && p->flat && conf.vid.flatScreen) {
+	xShdParam p;
+	if (param(name, &p) && p.flat && conf.vid.flatScreen) {
 		conf.vid.flatScreen = 0;
-		saveConfig();
-		emit s_look();
+		emit s_flat();
 		refresh();
 		return;
 	}

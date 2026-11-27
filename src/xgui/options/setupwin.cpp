@@ -223,6 +223,11 @@ void SetupWin::makeDisplay() {
 		emit s_look();
 		lookToUi();		// a preset saved or deleted: the list has it, or has it no more
 	});
+	// Flat screen off by a knob: shown at once, kept by OK as the rest (Cancel puts it back)
+	connect(dispSheet, &xDisplaySheet::s_flat, this, [this]() {
+		emit s_look();
+		lookToUi();
+	});
 	connect(ui.tbDisplay, &QToolButton::clicked, this, [this]() {
 		dispSheet->setLook();
 		dispSheet->show();

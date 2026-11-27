@@ -595,9 +595,6 @@ void MainWin::loadShader(bool tell) {
 	if (dispSheet) dispSheet->setLook();
 	if (QAction* act = shdMenu->findChild<QAction*>("displaySettings"))
 		act->setEnabled(look_has_knobs(lk));
-	// (switched in Options too)
-	if (QAction* act = shdMenu->findChild<QAction*>("flatScreen"))
-		act->setChecked(conf.vid.flatScreen);
 }
 
 // another look chosen (Options, the menu): its chain is to be loaded
@@ -631,6 +628,11 @@ void MainWin::displaySettings() {
 		dispSheet = new xDisplaySheet(this);
 		connect(dispSheet, &xDisplaySheet::s_param, this, &MainWin::lookParam);
 		connect(dispSheet, &xDisplaySheet::s_look, this, &MainWin::lookPicked);
+		// written at once, as the menu's switch is
+		connect(dispSheet, &xDisplaySheet::s_flat, this, [this]() {
+			saveConfig();
+			lookPicked();
+		});
 	}
 	dispSheet->setLook();
 	dispSheet->show();
@@ -648,6 +650,9 @@ void MainWin::lookParam(const QString& name, float value) {
 
 // the sheet made or removed a preset, or put every knob back: the chain follows
 void MainWin::lookPicked() {
+	// (Flat screen switched in Options, or by a knob of the sheet)
+	if (QAction* act = shdMenu->findChild<QAction*>("flatScreen"))
+		act->setChecked(conf.vid.flatScreen);
 	loadShader(false);
 	presentFrame();
 }

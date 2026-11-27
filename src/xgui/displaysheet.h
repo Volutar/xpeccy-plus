@@ -20,6 +20,7 @@ class xDisplaySheet : public QDialog {
 	signals:
 		void s_param(const QString& name, float value);	// a knob moved
 		void s_look();			// another look is chosen, or every knob is back
+		void s_flat();			// a curvature knob moved turned Flat screen off: the chain and the switches follow
 	protected:
 		void showEvent(QShowEvent*) override;
 		void hideEvent(QHideEvent*) override;
@@ -34,11 +35,12 @@ class xDisplaySheet : public QDialog {
 		QPushButton* btnDel;
 		QLabel* gpuLab;			// what the look costs, while the window is up
 		QHash<QString, float> lastOn;	// a switched-off group's value, to come back to
-		QStringList rows;		// the knobs build() made, by name
+		QString rows;			// the knobs build() made, as shown() has them
 		void build();
 		void refresh();			// the knobs made set to where they stand, nothing made anew
-		QStringList shown() const;	// the knobs build() would make now
-		const xShdParam* param(const QString& name) const;
+		QString shown() const;		// the knobs build() would make now
+		QVector<xShdParam> params() const;
+		bool param(const QString& name, xShdParam* out) const;
 		QWidget* knob(const xShdParam&);
 		void moved(const QString& name, float value);
 		void defaults();
