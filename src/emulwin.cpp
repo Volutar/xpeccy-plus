@@ -4419,6 +4419,7 @@ void MainWin::fillUserMenu() {
 	act->setToolTip(look_flat_tip());
 	act->setCheckable(true);
 	act->setChecked(conf.vid.flatScreen);
+	act->setEnabled(conf.vid.shd_support);
 	act = shdMenu->addAction(QIcon(":/images/settings.png"), "Settings...");
 	act->setObjectName("displaySettings");
 	act->setEnabled(look_has_knobs(look_current()));

@@ -613,6 +613,7 @@ void MainWin::shdSelected(QAction* act) {
 	}
 	if (act->objectName() == "flatScreen") {
 		conf.vid.flatScreen = act->isChecked() ? 1 : 0;
+		saveConfig();
 		lookPicked();
 		return;
 	}
