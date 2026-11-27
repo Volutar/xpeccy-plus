@@ -1571,6 +1571,13 @@ none - nothing comes back (+2A, +3)</string>
                  </item>
                 </layout>
                </item>
+               <item row="5" column="1" colspan="2">
+                <widget class="QCheckBox" name="cbFlatScreen">
+                 <property name="text">
+                  <string>Flat screen</string>
+                 </property>
+                </widget>
+               </item>
                </layout>
               </item>
               <item>

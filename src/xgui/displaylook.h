@@ -30,6 +30,7 @@ struct xLook {
 
 QList<xLook> look_list();
 QString look_legacy_tip();				// what a Legacy item says of itself
+QString look_flat_tip();				// ...and Flat screen
 xLook look_current();
 void look_choose(const xLook&);
 bool look_has_knobs(const xLook&);		// its file has parameters
@@ -48,6 +49,9 @@ float look_value(const xLook&, const QString& name);
 void look_keep(const xLook&, const QString& name, float value);
 void look_reset(const xLook&);			// every knob back
 bool look_changed(const xLook&);		// a knob is turned
+bool look_turned(const xLook&, const QString& name);	// this one is
+void look_back(const xLook&, const QString& name);	// ...and is no more
+float look_own(const xLook&, const QString& name);	// what it is back at: the look's own value
 
 // the kept values as a whole, for a window that can be cancelled
 typedef QMap<QString, QMap<QString, float> > xLookStore;

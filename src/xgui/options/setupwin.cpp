@@ -219,10 +219,14 @@ void SetupWin::makeDisplay() {
 	dispSheet = new xDisplaySheet(this);
 	dispSheet->setModal(true);
 	connect(dispSheet, &xDisplaySheet::s_param, this, &SetupWin::s_lookParam);
-	connect(dispSheet, &xDisplaySheet::s_look, this, [this]() {
+	// a preset saved or deleted: the list has it, or has it no more; Flat screen off by a
+	// knob: shown at once, kept by OK as the rest (Cancel puts it back)
+	auto follow = [this]() {
 		emit s_look();
-		lookToUi();		// a preset saved or deleted: the list has it, or has it no more
-	});
+		lookToUi();
+	};
+	connect(dispSheet, &xDisplaySheet::s_look, this, follow);
+	connect(dispSheet, &xDisplaySheet::s_flat, this, follow);
 	connect(ui.tbDisplay, &QToolButton::clicked, this, [this]() {
 		dispSheet->setLook();
 		dispSheet->show();
@@ -234,24 +238,36 @@ void SetupWin::makeDisplay() {
 		ui.tbDisplay->setEnabled(look_has_knobs(look_current()));
 		emit s_look();
 	});
+	ui.cbFlatScreen->setToolTip(look_flat_tip());
+	connect(ui.cbFlatScreen, &QCheckBox::toggled, this, [this](bool on) {
+		conf.vid.flatScreen = on ? 1 : 0;
+		emit s_look();
+	});
 }
 
 void SetupWin::lookToUi() {
 	fill_look_list(ui.cbShader);
 	ui.tbDisplay->setEnabled(look_has_knobs(look_current()));
+	ui.cbFlatScreen->blockSignals(true);
+	ui.cbFlatScreen->setChecked(conf.vid.flatScreen);
+	ui.cbFlatScreen->setEnabled(conf.vid.shd_support);
+	ui.cbFlatScreen->blockSignals(false);
 }
 
 void SetupWin::lookTake() {
 	lookWas[0] = conf.vid.shader;
 	lookWas[1] = conf.vid.shdPreset;
 	lookKept = look_store_take();
+	flatWas = (conf.vid.flatScreen != 0);
 }
 
 void SetupWin::lookPut() {
-	const bool same = (conf.vid.shader == lookWas[0]) && (conf.vid.shdPreset == lookWas[1]) && (look_store_take() == lookKept);
+	const bool same = (conf.vid.shader == lookWas[0]) && (conf.vid.shdPreset == lookWas[1]) && (look_store_take() == lookKept)
+		&& ((conf.vid.flatScreen != 0) == flatWas);
 	if (same) return;
 	conf.vid.shader = lookWas[0];
 	conf.vid.shdPreset = lookWas[1];
+	conf.vid.flatScreen = flatWas ? 1 : 0;
 	look_store_put(lookKept);
 	look_store_save();
 	emit s_look();

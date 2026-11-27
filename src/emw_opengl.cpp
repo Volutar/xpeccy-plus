@@ -608,6 +608,11 @@ void MainWin::shdSelected(QAction* act) {
 		displaySettings();
 		return;
 	}
+	if (act->objectName() == "flatScreen") {
+		conf.vid.flatScreen = act->isChecked() ? 1 : 0;
+		flatPicked();
+		return;
+	}
 	const QStringList id = act->data().toStringList();
 	xLook lk;
 	lk.file = id.value(0);
@@ -622,6 +627,7 @@ void MainWin::displaySettings() {
 		dispSheet = new xDisplaySheet(this);
 		connect(dispSheet, &xDisplaySheet::s_param, this, &MainWin::lookParam);
 		connect(dispSheet, &xDisplaySheet::s_look, this, &MainWin::lookPicked);
+		connect(dispSheet, &xDisplaySheet::s_flat, this, &MainWin::flatPicked);
 	}
 	dispSheet->setLook();
 	dispSheet->show();
@@ -639,6 +645,17 @@ void MainWin::lookParam(const QString& name, float value) {
 
 // the sheet made or removed a preset, or put every knob back: the chain follows
 void MainWin::lookPicked() {
+	// (Flat screen switched in Options, or by a knob of the sheet)
+	if (QAction* act = shdMenu->findChild<QAction*>("flatScreen"))
+		act->setChecked(conf.vid.flatScreen);
 	loadShader(false);
 	presentFrame();
+	// (its tips name Flat screen: set even where no chain was loaded)
+	if (dispSheet && dispSheet->isVisible()) dispSheet->setLook();
+}
+
+// Flat screen switched in the menu, or off by a knob of the sheet: written at once
+void MainWin::flatPicked() {
+	saveConfig();
+	lookPicked();
 }

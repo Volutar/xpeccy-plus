@@ -410,7 +410,7 @@ bool headLine(const QString& lin, int n, xShdPreset& out, HeadNotes& head) {
 	static const QRegularExpression reGroup(QStringLiteral(
 		R"re(^group\s+"([^"]*)"(?:\s+when\s+([A-Za-z_]\w*)(?:\s+(\S+))?)?\s*$)re"));
 	static const QRegularExpression reText(QStringLiteral(R"re(^(tip|list)\s+([A-Za-z_]\w*)\s*=\s*(.+)$)re"));
-	static const QRegularExpression reMore(QStringLiteral(R"re(^more((?:\s+[A-Za-z_]\w*)+)\s*$)re"));
+	static const QRegularExpression reMore(QStringLiteral(R"re(^(more|flat)((?:\s+[A-Za-z_]\w*)+)\s*$)re"));
 	static const QRegularExpression reSet(QStringLiteral(R"re(^preset\s+"([^"]+)"\s*:\s*(.*)$)re"));
 	static const QRegularExpression reRaw(QStringLiteral(R"re(^frames\s+raw(?:\s+when\s+([A-Za-z_]\w*))?\s*$)re"));
 	QRegularExpressionMatch m = reName.match(lin);
@@ -438,8 +438,8 @@ bool headLine(const QString& lin, int n, xShdPreset& out, HeadNotes& head) {
 	}
 	m = reMore.match(lin);
 	if (m.hasMatch()) {
-		for (const QString& nam : m.captured(1).split(QRegularExpression("\\s+"), Qt::SkipEmptyParts))
-			head.lines.append({n, "more", nam, QString()});
+		for (const QString& nam : m.captured(2).split(QRegularExpression("\\s+"), Qt::SkipEmptyParts))
+			head.lines.append({n, m.captured(1), nam, QString()});
 		return true;
 	}
 	m = reSet.match(lin);
@@ -477,6 +477,8 @@ void headApply(xShdPreset& out, const HeadNotes& head) {
 			p->tip = l.text;
 		} else if (l.kind == "more") {
 			p->more = true;
+		} else if (l.kind == "flat") {
+			p->flat = true;
 		} else {
 			p->names.clear();
 			for (const QString& s : l.text.split(','))

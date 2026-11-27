@@ -303,6 +303,7 @@ class MainWin : public QWidget, protected QOpenGLFunctions {
 		void displaySettings();		// its sheet of knobs, beside the picture
 		void lookParam(const QString&, float);	// a knob moved
 		void lookPicked();		// the look or its values changed as a whole
+		void flatPicked();		// ...Flat screen switched: also written to the config
 		void startSize();
 		void keepSize();
 	private slots:

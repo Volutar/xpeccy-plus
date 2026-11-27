@@ -3,6 +3,7 @@
 #include "xgui.h"
 
 #include "../xcore/xcore.h"
+#include "dispsync.h"
 
 #include <QComboBox>
 #include <QGroupBox>
@@ -13,6 +14,8 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QScreen>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 #include <cmath>
@@ -29,6 +32,12 @@ float knob_step(const xShdParam& p) {
 int knob_count(const xShdParam& p) {
 	const float step = knob_step(p);
 	return (step > 0) ? qMax(1, qRound((p.max - p.min) / step)) : 1;
+}
+
+// where a value stands on the knob
+int knob_pos(const xShdParam& p, float val) {
+	const float step = knob_step(p);
+	return qBound(0, qRound((val - p.min) / ((step > 0) ? step : 1.0f)), knob_count(p));
 }
 
 // as many decimals as the step has
@@ -62,7 +71,7 @@ xDisplaySheet::xDisplaySheet(QWidget* parent) : QDialog(parent) {
 	foreach(QPushButton* btn, QList<QPushButton*>() << btnAll << btnDef << btnSave << btnDel << btnClose)
 		btn->setAutoDefault(false);
 	gpuLab = new QLabel;
-	gpuLab->setToolTip(tr("What this look takes of the graphics card, a frame"));
+	gpuLab->setToolTip(tr("What this look takes of the graphics card, a frame, and of the time between two refreshes of the display"));
 	QFont fnt = gpuLab->font();
 	fnt.setItalic(true);
 	gpuLab->setFont(fnt);
@@ -87,7 +96,19 @@ xDisplaySheet::xDisplaySheet(QWidget* parent) : QDialog(parent) {
 	connect(tick, &QTimer::timeout, this, [this]() {
 		if (!isVisible()) return;
 		const double us = conf.vid.shdGpuUs;
-		gpuLab->setText((us < 0) ? QString() : tr("GPU time: %1 ms a frame").arg(us / 1000.0, 0, 'f', 2));
+		if (us < 0) {
+			gpuLab->setText(QString());
+			return;
+		}
+		QString text = tr("GPU time: %1 ms a frame").arg(us / 1000.0, 0, 'f', 2);
+		// ...and its share of a refresh of the main window's display: how far from falling behind
+		double hz = dsync_rate();
+		if ((hz <= 1.0) && screen()) hz = screen()->refreshRate();
+		if (hz > 1.0) {
+			const double pct = us * hz / 10000.0;
+			text += " " + tr("(%1% at %2 Hz)").arg(pct, 0, 'f', (pct < 1.0) ? 2 : 1).arg(qRound(hz));
+		}
+		gpuLab->setText(text);
 	});
 	tick->start();
 }
@@ -109,17 +130,83 @@ void xDisplaySheet::hideEvent(QHideEvent* ev) {
 
 void xDisplaySheet::setLook() {
 	const xLook now = look_current();
-	if (!(now == look)) lastOn.clear();	// what a stage had is its look's alone
+	const bool same = (now == look);
+	if (!same) lastOn.clear();	// what a stage had is its look's alone
 	look = now;
-	build();
+	// the same knobs: set where they are, a sheet made anew shows its sliders jump
+	if (same && body && (shown() == rows)) refresh();
+	else build();
+}
+
+// a copy: the file may be read again, and its parameters made anew, while one is used
+QVector<xShdParam> xDisplaySheet::params() const {
+	const xShdPreset* file = look_has_knobs(look) ? look_file(look.file) : nullptr;
+	return file ? file->params : QVector<xShdParam>();
+}
+
+bool xDisplaySheet::param(const QString& name, xShdParam* out) const {
+	for (const xShdParam& p : params()) {
+		if (p.name != name) continue;
+		*out = p;
+		return true;
+	}
+	return false;
+}
+
+// the knobs build() would make now, all that shapes them: the same, and they need only be set
+QString xDisplaySheet::shown() const {
+	QString res;
+	for (const xShdParam& p : params()) {
+		if (p.more && !all) continue;
+		res += QString("%1 %2 %3 %4 %5 %6 %7|").arg(p.name).arg(p.min).arg(p.max).arg(p.step)
+			.arg(p.names.join(','), p.group, p.groupSwitch);
+	}
+	return res;
+}
+
+static QString knob_tip(const xShdParam& p) {
+	if (!(p.flat && conf.vid.flatScreen)) return p.tip;
+	QString tip = p.tip;
+	while (tip.endsWith('.')) tip.chop(1);
+	return tip.isEmpty() ? xDisplaySheet::tr("Flat screen is on: moving it turns Flat screen off")
+		: xDisplaySheet::tr("%1. Flat screen is on: moving it turns Flat screen off").arg(tip);
+}
+
+void xDisplaySheet::refresh() {
+	if (!body) return;
+	for (const xShdParam& p : params()) {
+		const QString name = p.name;
+		const float val = look_value(look, name);
+		const int pos = knob_pos(p, val);
+		if (xSlider* sld = body->findChild<xSlider*>("knob_" + name)) {
+			sld->blockSignals(true);
+			sld->setValue(pos);
+			sld->blockSignals(false);
+		}
+		if (QComboBox* box = body->findChild<QComboBox*>("knob_" + name)) {
+			box->blockSignals(true);
+			box->setCurrentIndex(pos);
+			box->blockSignals(false);
+		}
+		if (QLabel* fig = body->findChild<QLabel*>("fig_" + name)) fig->setText(knob_text(p, val));
+		if (QToolButton* back = body->findChild<QToolButton*>("back_" + name)) back->setVisible(look_turned(look, name));
+		if (QLabel* lab = body->findChild<QLabel*>("label_" + name)) lab->setToolTip(knob_tip(p));
+	}
+	// a stage's frame ticked as its switch stands (the frame's knobs go with it)
+	for (QGroupBox* grp : body->findChildren<QGroupBox*>()) {
+		if (!grp->objectName().startsWith("group_")) continue;
+		grp->blockSignals(true);
+		grp->setChecked(look_value(look, grp->objectName().mid(6)) != 0.0f);
+		grp->blockSignals(false);
+	}
+	btnDef->setEnabled(look_changed(look));
 }
 
 void xDisplaySheet::build() {
 	setWindowTitle(tr("Display: %1").arg(look.title));
 	// a copy: the file is looked at again as the rows are made, and may have changed
-	const xShdPreset* file = look_has_knobs(look) ? look_file(look.file) : nullptr;
-	const QVector<xShdParam> params = file ? file->params : QVector<xShdParam>();
-	const bool head = !params.isEmpty();
+	const QVector<xShdParam> list = params();
+	const bool head = !list.isEmpty();
 	bool more = false;
 	xOptSheet sheet;
 	if (head) {
@@ -129,7 +216,7 @@ void xDisplaySheet::build() {
 		QList<int> rowsOf;
 		QString group;
 		bool first = true;
-		for (const xShdParam& p : params) {
+		for (const xShdParam& p : list) {
 			if (p.more && !all) continue;
 			const QString name = p.group.isEmpty() ? tr("Parameters") : p.group;
 			if (first || (name != group)) rowsOf << 0;
@@ -154,7 +241,7 @@ void xDisplaySheet::build() {
 		const bool columns = (left < rowsOf.size());
 		int frame = -1;
 		first = true;
-		for (const xShdParam& p : params) {
+		for (const xShdParam& p : list) {
 			more = more || p.more;
 			if (p.more && !all) continue;
 			const QString name = p.group.isEmpty() ? tr("Parameters") : p.group;
@@ -175,7 +262,7 @@ void xDisplaySheet::build() {
 						if (yes) val = lastOn.value(sw, on);
 						else if (had != 0.0f) lastOn[sw] = had;
 						moved(sw, val);
-						QMetaObject::invokeMethod(this, [this]() {build();}, Qt::QueuedConnection);
+						refresh();
 					});
 				}
 			}
@@ -183,7 +270,8 @@ void xDisplaySheet::build() {
 			group = name;
 			QWidget* wid = knob(p);
 			QLabel* lab = sheet.row(p.text, wid);
-			lab->setToolTip(p.tip);
+			lab->setObjectName("label_" + p.name);
+			lab->setToolTip(knob_tip(p));
 		}
 	} else {
 		sheet.group(QString());
@@ -200,6 +288,7 @@ void xDisplaySheet::build() {
 	lay->insertWidget(0, body);
 	body->show();
 	setUpdatesEnabled(true);
+	rows = shown();
 	btnAll->setVisible(more);
 	btnAll->setText(all ? tr("Fewer settings") : tr("All settings"));
 	btnDef->setEnabled(look_changed(look));
@@ -212,10 +301,34 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 	const float step = knob_step(p);
 	const int count = knob_count(p);
 	const float val = look_value(look, p.name);
-	const int pos = qBound(0, qRound((val - p.min) / ((step > 0) ? step : 1.0f)), count);
+	const int pos = knob_pos(p, val);
 	const QString name = p.name;
 	const float min = p.min;
 	const float max = p.max;
+	// back to the look's own value: there while the knob is turned, its room kept when not
+	QToolButton* back = new QToolButton;
+	back->setIcon(QIcon(":/images/refresh.png"));
+	back->setAutoRaise(true);
+	back->setToolTip(tr("Back to this look's value"));
+	back->setObjectName("back_" + name);
+	QSizePolicy keep = back->sizePolicy();
+	keep.setRetainSizeWhenHidden(true);
+	back->setSizePolicy(keep);
+	// put back, a stage's switch may switch the stage: what it had is kept to tick it on again
+	const bool flat = p.flat;
+	connect(back, &QToolButton::clicked, this, [this, name, flat]() {
+		const float own = look_own(look, name);
+		const float had = look_value(look, name);
+		if ((own == 0.0f) && (had != 0.0f)) lastOn[name] = had;
+		look_back(look, name);
+		// under Flat screen the picture keeps its flat value: the look's own is for later
+		if (flat && conf.vid.flatScreen) emit s_look();
+		else emit s_param(name, own);
+		refresh();
+	});
+	QWidget* wid = new QWidget;
+	QHBoxLayout* row = new QHBoxLayout(wid);
+	row->setContentsMargins(0, 0, 0, 0);
 	if (!p.names.isEmpty()) {
 		QComboBox* box = new QComboBox;
 		for (int i = 0; i <= count; i++)
@@ -223,10 +336,17 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 		box->setCurrentIndex(pos);
 		box->setToolTip(p.tip);
 		box->setObjectName("knob_" + name);
-		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, name, min, max, step](int idx) {
+		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, name, min, max, step, back](int idx) {
 			moved(name, qMin(max, min + idx * step));
+			back->setVisible(look_turned(look, name));
 		});
-		return box;
+		// the list as wide as the row lets it, as without the icon
+		row->addWidget(box, 1);
+		row->addWidget(back);
+		wid->setFocusProxy(box);
+		// (shown only once in its row: with no parent it would be a window of its own)
+		back->setVisible(look_turned(look, name));
+		return wid;
 	}
 	xSlider* sld = new xSlider;
 	sld->setOrientation(Qt::Horizontal);
@@ -237,30 +357,39 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 	sld->setToolTip(p.tip);
 	sld->setObjectName("knob_" + name);
 	QLabel* fig = new QLabel(knob_text(p, val));
+	fig->setObjectName("fig_" + name);
 	fig->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 	// as wide as its longest figure, so the sliders stand in one column
 	const QFontMetrics fm = fig->fontMetrics();
 	fig->setFixedWidth(qMax(fm.horizontalAdvance(knob_text(p, min)), fm.horizontalAdvance(knob_text(p, max))) + 4);
 	const xShdParam prm = p;
-	connect(sld, &QSlider::valueChanged, this, [this, fig, prm, step](int at) {
+	connect(sld, &QSlider::valueChanged, this, [this, fig, prm, step, back](int at) {
 		const float now = qMin(prm.max, prm.min + at * step);
 		fig->setText(knob_text(prm, now));
 		moved(prm.name, now);
+		back->setVisible(look_turned(look, prm.name));
 	});
-	QWidget* wid = new QWidget;
-	QHBoxLayout* box = new QHBoxLayout(wid);
-	box->setContentsMargins(0, 0, 0, 0);
 	// what the row has over goes between the two: a short figure does not move its slider
-	box->addWidget(sld);
-	box->addStretch(1);
-	box->addWidget(fig);
+	row->addWidget(sld);
+	row->addStretch(1);
+	row->addWidget(fig);
+	row->addWidget(back);
 	wid->setFocusProxy(sld);
+	back->setVisible(look_turned(look, name));
 	return wid;
 }
 
 void xDisplaySheet::moved(const QString& name, float value) {
 	look_keep(look, name, value);
 	btnDef->setEnabled(look_changed(look));
+	// a curve set by hand: the screen is no longer to be flat, for any look
+	xShdParam p;
+	if (param(name, &p) && p.flat && conf.vid.flatScreen) {
+		conf.vid.flatScreen = 0;
+		emit s_flat();
+		refresh();
+		return;
+	}
 	emit s_param(name, value);
 }
 
@@ -268,7 +397,7 @@ void xDisplaySheet::defaults() {
 	lastOn.clear();
 	look_reset(look);
 	emit s_look();
-	build();
+	refresh();
 }
 
 void xDisplaySheet::savePreset() {

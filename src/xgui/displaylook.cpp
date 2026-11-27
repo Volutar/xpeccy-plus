@@ -211,6 +211,10 @@ QString look_legacy_tip() {
 	return QCoreApplication::translate("Display", "Deprecated: to be removed in a coming release. The CRT looks replace it.");
 }
 
+QString look_flat_tip() {
+	return QCoreApplication::translate("Display", "Every look without curvature, corners or vignette. Moving one of them in a look's settings turns this off");
+}
+
 QList<xLook> look_list() {
 	QList<xLook> parts[LOOK_LEGACY + 1];
 	xLook none;
@@ -309,16 +313,26 @@ xShdValues look_base(const xLook& lk) {
 	return xShdValues();
 }
 
+// Flat screen is over the whole look, knobs turned too: its flat knobs at 0 (or their nearest)
 xShdValues look_values(const xLook& lk) {
 	xShdValues res = look_base(lk);
 	store_read();
 	const QMap<QString, float> kept = store.value(look_id(lk));
 	for (auto it = kept.constBegin(); it != kept.constEnd(); ++it)
 		res.append({it.key(), it.value()});
+	const xShdPreset* head = conf.vid.flatScreen ? look_file(lk.file) : nullptr;
+	if (head) {
+		for (const xShdParam& p : head->params) {
+			if (!p.flat) continue;
+			for (int i = res.size() - 1; i >= 0; i--)
+				if (res[i].name == p.name) res.remove(i);
+			res.append({p.name, qBound(p.min, 0.0f, p.max)});
+		}
+	}
 	return res;
 }
 
-static float own_value(const xLook& lk, const QString& name) {
+float look_own(const xLook& lk, const QString& name) {
 	float val = 0;
 	if (const xShdParam* p = file_param(lk, name)) val = p->def;
 	for (const xShdValue& v : look_base(lk))
@@ -330,27 +344,42 @@ float look_value(const xLook& lk, const QString& name) {
 	store_read();
 	const QMap<QString, float> kept = store.value(look_id(lk));
 	if (kept.contains(name)) return kept.value(name);
-	return own_value(lk, name);
+	return look_own(lk, name);
+}
+
+static void forget(const xLook& lk, const QString& name) {
+	const QString id = look_id(lk);
+	if (!store.contains(id) || !store[id].contains(name)) return;
+	store[id].remove(name);
+	if (store[id].isEmpty()) store.remove(id);
+	storeDirty = true;
 }
 
 void look_keep(const xLook& lk, const QString& name, float value) {
 	store_read();
-	const QString id = look_id(lk);
 	const xShdParam* p = file_param(lk, name);
 	const float slack = (p ? std::fabs(p->step) : 0.0f) * 0.001f + 1e-7f;
-	if (std::fabs(value - own_value(lk, name)) <= slack) {
-		if (!store.contains(id)) return;
-		store[id].remove(name);
-		if (store[id].isEmpty()) store.remove(id);
-	} else {
-		store[id][name] = value;
+	if (std::fabs(value - look_own(lk, name)) <= slack) {
+		forget(lk, name);
+		return;
 	}
+	store[look_id(lk)][name] = value;
 	storeDirty = true;
+}
+
+void look_back(const xLook& lk, const QString& name) {
+	store_read();
+	forget(lk, name);
 }
 
 void look_reset(const xLook& lk) {
 	store_read();
 	if (store.remove(look_id(lk))) storeDirty = true;
+}
+
+bool look_turned(const xLook& lk, const QString& name) {
+	store_read();
+	return store.value(look_id(lk)).contains(name);
 }
 
 bool look_changed(const xLook& lk) {

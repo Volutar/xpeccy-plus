@@ -4,10 +4,13 @@ GLSL post-processing filters, drawn through OpenGL: none with `--no-gl` or witho
 OpenGL 3.3 driver (OpenGL ES 3.0). Pick a look in the Display list of Options - Video or in
 View - Display; in `config/config.conf` it is `shader = <file>` and, for a file with presets,
 `shader.preset = <name>`. A fresh config starts with the Sony PVM look of `crt.txt`; an empty or
-missing `shader` line turns filtering off.
+missing `shader` line turns filtering off. View - Display - Flat screen (`shader.flat`, on at
+first) keeps every look flat: no curvature, corners or vignette. A look's sheet still shows its
+own values, and moving one of them turns Flat screen off.
 
 A shader with parameters has a sheet of knobs: the gear beside the list, or View - Display -
-Settings. A knob turned is kept with its look, in `values.conf` of this folder. Save as
+Settings. A knob turned is kept with its look, in `values.conf` of this folder, and the icon
+beside it puts it back to the look's own value. Save as
 preset writes the look as it stands into `<name>.preset` here - the shader's file, a name
 and the values that are not the shader's defaults:
 
@@ -47,17 +50,18 @@ at 0, when its pass is not drawn at all.
 | --- | --- |
 | Signal | the cable - RGB; composite or RF into a PAL set, by a 128K's color carrier or a 48K's; or a SECAM set; a ghost, interference, noise |
 | Mask | aperture grille, slot mask (every other triad half an opening lower; Bridges, from a thin notch to a dark row) or shadow mask, as fine as the tube - triads to a dot of the picture - or 2, 3 or 6 screen pixels a triad at any scale |
-| Beam | scanlines - a line is a bell that reaches into its neighbors' rows, wider where brighter, past 1 thinner with a black band between; the focus of a dot's edge along the line; the beam's spot, which rounds a dot's ends |
+| Beam | scanlines - a line is a bell that reaches into its neighbors' rows, wider where brighter, past 1 thinner with a black band between (at 1.9 a tenth of its row); a roll turns the scanlines into bands a little shorter than a line that move over the picture; the focus of a dot's edge along the line; the beam's spot, which rounds a dot's ends |
 | Screen | curvature, round corners, vignette, brightness, keep brightness (how much of what the mask and the scanlines take is given back), bloom (bright things keep their light: the mask and the scanlines fade there), contrast |
 | Glow | light around bright things |
-| Divergence | the red and blue beams land beside the green one, more towards the screen's edges |
+| Divergence | the red and blue beams land beside the green one, more towards the screen's edges, or (All over) the same everywhere |
 | Afterglow | a lit dot fades over the next frames, blue first |
 
 The mask is drawn in whole screen pixels - a triad two to eight of them wide, then in
 steps of three - and thins out by itself as the picture gets smaller. A triad narrower
 than its three stripes counts on the display's own subpixels: under All settings,
 **Display's subpixels** is their order, RGB or BGR, or Other for a mask without colors. A
-small picture has no curve. What the scanlines and the mask take is given back, as far as
+small picture has no curve. On the glass the mask is averaged over each screen pixel, so its
+columns slip past the screen's without steps. What the scanlines and the mask take is given back, as far as
 a pixel can give: a line too bright for that loses light, or with Bloom is drawn the
 plainer and keeps it.
 A bent picture goes on to the edge of its place as its border does, and the corners are
@@ -187,6 +191,7 @@ fragment:
   - `tip NAME = text` - a line of what the knob does.
   - `list NAME = a, b, c` - the knob is a list; the names stand for min, min + step...
   - `more NAME ...` - shown only under All settings.
+  - `flat NAME ...` - 0 (or the nearest the knob goes) in every look under View - Display - Flat screen; moving it in the sheet turns Flat screen off.
   - `preset "Name": NAME value, NAME value` - a named set of values, a line of the
     Display list. A file with presets is listed by them.
 - `texture NAME = file.png [linear|nearest] [repeat|clamp|border|mirror] [mipmap]` - a

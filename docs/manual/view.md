@@ -176,6 +176,13 @@ there. The list has up to four parts:
 - the presets you saved;
 - shader files of your own, from the `shaders` folder of the configuration.
 
+```{index} Display; Flat screen, curvature
+```
+
+**View > Display > Flat screen**, also a tick under the **Display** list in **Options**,
+keeps every look flat: no **Curvature**, **Corners** or **Vignette**. It is on at first.
+A look's settings still show its own values, and moving one of the three turns Flat screen off.
+
 The shader files the tube's looks came instead of are still there, in **View > Display >
 Legacy shaders (deprecated)** and as **Legacy:** items in the **Options** list. They are to
 be removed in a coming release; a configuration that names one then opens the tube's look
@@ -190,7 +197,7 @@ dark the gap between two lines is, past 1 a thicker black band - **Gap width**, 
 brightness** - turned down, less of the light the gaps take is given back, and bright
 things keep deep gaps too - and **Softness**. The picture shows every
 move at once, and what you set stays with the look: pick another and come back, and it is
-as you left it.
+as you left it. Beside a setting you changed is {icon}`refresh`, which puts that one back.
 
 ![The settings of a look](images/options-video-display.png)
 
@@ -217,10 +224,14 @@ that can be switched off, and then costs nothing:
   **Display's subpixels** under **All settings** to your display's order, **RGB** or
   **BGR**, or to **Other** for a mask without colors;
 - **Beam** - **Scanlines**, how dark the gap between two lit lines is - past 1 the beam
-  gets thinner and a black band opens between the lines; **Gap width**, how
+  gets thinner and a black band opens between the lines, at 1.9 a line is a tenth of its
+  row; **Gap width**, how
   much of a line its soft edges take; **Focus**, how sharp a dot's edge is along the line;
   **Spot**, how wide the beam's spot is - with it a dot's ends come out round and a
-  bright line a little thicker than a dim one, as on a tube;
+  bright line a little thicker than a dim one, as on a tube. Under **All settings**:
+  **Wider where brighter**, how much a bright line fills of its gap; **Roll**, how fast
+  the scanlines drift down the screen: they become bands a little shorter than a line,
+  moving over the picture, which stays where it is;
 - **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**; **Keep brightness** -
   the light the mask and the scanlines take is given back to the lit lines, so the picture
   stays as bright as without a look; turned down, less of it is, and the picture is
@@ -232,10 +243,11 @@ that can be switched off, and then costs nothing:
   of its place as its border does, and the corners are rounded there;
 - **Glow** - light around bright things;
 - **Divergence** - how far the red and the blue beam land from the green one, more towards
-  the screen's edges;
+  the screen's edges; under **All settings**, **All over** makes a share of it the same all
+  over the screen, as from beams set off;
 - **Afterglow** - how much of a lit dot is left a frame later.
 
-Under the frames is the **GPU time** the look takes of the graphics card for a frame.
+Under the frames is the **GPU time** the look takes of the graphics card for a frame, and in brackets what share that is of the time between two refreshes of your display: near 100%, the card falls behind.
 
 - **All settings** - shows the finer ones too;
 - **Defaults** - puts every setting of this look back;
