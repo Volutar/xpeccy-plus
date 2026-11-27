@@ -13,6 +13,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QScreen>
 #include <QToolButton>
 #include <QVBoxLayout>
 
@@ -63,7 +64,7 @@ xDisplaySheet::xDisplaySheet(QWidget* parent) : QDialog(parent) {
 	foreach(QPushButton* btn, QList<QPushButton*>() << btnAll << btnDef << btnSave << btnDel << btnClose)
 		btn->setAutoDefault(false);
 	gpuLab = new QLabel;
-	gpuLab->setToolTip(tr("What this look takes of the graphics card, a frame"));
+	gpuLab->setToolTip(tr("What this look takes of the graphics card, a frame, and of the time between two refreshes of the display"));
 	QFont fnt = gpuLab->font();
 	fnt.setItalic(true);
 	gpuLab->setFont(fnt);
@@ -88,7 +89,19 @@ xDisplaySheet::xDisplaySheet(QWidget* parent) : QDialog(parent) {
 	connect(tick, &QTimer::timeout, this, [this]() {
 		if (!isVisible()) return;
 		const double us = conf.vid.shdGpuUs;
-		gpuLab->setText((us < 0) ? QString() : tr("GPU time: %1 ms a frame").arg(us / 1000.0, 0, 'f', 2));
+		if (us < 0) {
+			gpuLab->setText(QString());
+			return;
+		}
+		QString text = tr("GPU time: %1 ms a frame").arg(us / 1000.0, 0, 'f', 2);
+		// ...and its share of a refresh of the display: how far the card is from falling behind
+		const QScreen* scr = screen();
+		const double hz = scr ? scr->refreshRate() : 0.0;
+		if (hz > 1.0) {
+			const double pct = us * hz / 10000.0;
+			text += " " + tr("(%1% at %2 Hz)").arg(pct, 0, 'f', (pct < 1.0) ? 2 : 1).arg(qRound(hz));
+		}
+		gpuLab->setText(text);
 	});
 	tick->start();
 }
