@@ -53,7 +53,7 @@ at 0, when its pass is not drawn at all.
 | Beam | scanlines - a line is a bell that reaches into its neighbors' rows, wider where brighter, past 1 thinner with a black band between (at 1.9 a tenth of its row); a roll moves the gaps down the screen, not the picture; the focus of a dot's edge along the line; the beam's spot, which rounds a dot's ends |
 | Screen | curvature, round corners, vignette, brightness, keep brightness (how much of what the mask and the scanlines take is given back), bloom (bright things keep their light: the mask and the scanlines fade there), contrast |
 | Glow | light around bright things |
-| Divergence | the red and blue beams land beside the green one, more towards the screen's edges |
+| Divergence | the red and blue beams land beside the green one, more towards the screen's edges, or (All over) the same everywhere |
 | Afterglow | a lit dot fades over the next frames, blue first |
 
 The mask is drawn in whole screen pixels - a triad two to eight of them wide, then in
