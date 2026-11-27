@@ -230,7 +230,8 @@ that can be switched off, and then costs nothing:
   **Spot**, how wide the beam's spot is - with it a dot's ends come out round and a
   bright line a little thicker than a dim one, as on a tube. Under **All settings**:
   **Wider where brighter**, how much a bright line fills of its gap; **Roll**, how fast
-  the gaps drift down the screen - the picture stays where it is;
+  the scanlines drift down the screen: they become bands a little shorter than a line,
+  moving over the picture, which stays where it is;
 - **Screen** - **Curvature**, **Corners**, **Vignette**, **Brightness**; **Keep brightness** -
   the light the mask and the scanlines take is given back to the lit lines, so the picture
   stays as bright as without a look; turned down, less of it is, and the picture is
