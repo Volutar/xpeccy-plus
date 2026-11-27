@@ -124,16 +124,18 @@ group "Divergence" when DIVERGE 1.0
 #pragma parameter DIVERGE "Amount" 0.0 0.0 2.0 0.01
 tip DIVERGE = How far red and blue land from green
 #pragma parameter DIVMID "At the middle" 0.18 0.0 1.0 0.01
-tip DIVMID = The share of it left at the screen's middle
+tip DIVMID = How it grows towards the edges: 1 evenly from the middle, less slowly at first and fast near the edges
+#pragma parameter DIVFIX "All over" 0.0 0.0 1.0 0.01
+tip DIVFIX = The share that is the same all over the screen, as from beams set off: the rest grows towards the edges
 #pragma parameter DIVRX "Red across" -0.55 -2.0 2.0 0.01
 #pragma parameter DIVRY "Red down" -0.3 -2.0 2.0 0.01
 #pragma parameter DIVBX "Blue across" 0.55 -2.0 2.0 0.01
 #pragma parameter DIVBY "Blue down" 0.3 -2.0 2.0 0.01
-tip DIVRX = Dots, at the screen's edge
-tip DIVRY = Lines, at the screen's edge
-tip DIVBX = Dots, at the screen's edge
-tip DIVBY = Lines, at the screen's edge
-more DIVMID DIVRX DIVRY DIVBX DIVBY
+tip DIVRX = Dots, at the screen's edge (All over: everywhere)
+tip DIVRY = Lines, at the screen's edge (All over: everywhere)
+tip DIVBX = Dots, at the screen's edge (All over: everywhere)
+tip DIVBY = Lines, at the screen's edge (All over: everywhere)
+more DIVMID DIVFIX DIVRX DIVRY DIVBX DIVBY
 
 group "Afterglow" when AFTER 0.5
 #pragma parameter AFTER "Amount" 0.0 0.0 0.95 0.05
@@ -154,15 +156,16 @@ preset "RGB monitor": MASK 2, MASKS 0.45, PITCH 1.9, SCAN 0.9, WIDTH 0.8, FOCUS 
 preset "Commodore 1084S": MASK 2, MSIZE 2, SLOTB 1, MASKS 0.8, BLOOM 0.3, PITCH 1.9, SCAN 0.9, WIDTH 0.8, FOCUS 0.5, SPOT 0.5, GROW 0.15, DIVERGE 0.2, GLOW 0.1, CURVE 0.04, VIGN 0.1
 preset "Sony PVM": MASK 1, MASKS 0.3, PITCH 3.0, SCAN 0.95, WIDTH 1.0, FOCUS 0.7, SPOT 0.3, GROW 0.2, DIVERGE 0.15, CURVE 0.02, CURVEX 0
 preset "Tridot": SHIMMER 0.1, GHOST 0.25, GHOSTX 0.5, WIGGLE 0.15, NOISE 0.05, MASK 3, MASKS 0.6, PITCH 1, MSIZE 2, MBEND 1, SCAN 0.7, WIDTH 0.9, FOCUS 0.4, SPOT 0.1, GROW 0.2, CORNER 0.015, BLOOM 0.35, CONTRAST 0.55, CURVEX 0, CURVEY 0.5, GLOW 0.35, GLOWR 0.5, DIVERGE 0.95, DIVMID 0, DIVRX -0.2, DIVRY -0.2, DIVBX 0.2, DIVBY 0.2, AFTER 0.15
-preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.4, WIDTH 1.0, FOCUS 0.2, SPOT 0.4, GROW 0, DIVERGE 0.9, DIVMID 1.0, GLOW 0.35, AFTER 0.3, GHOST 0.1, GHOSTX 0.8, NOISE 0.5, CURVE 0.03, VIGN 0.7, BRIGHT 0.9, CONTRAST 0.5
+preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.4, WIDTH 1.0, FOCUS 0.2, SPOT 0.4, GROW 0, DIVERGE 1.0, DIVFIX 1.0, DIVRX 0.24, DIVRY -0.46, DIVBX -0.54, DIVBY -0.25, GLOW 0.35, AFTER 0.3, GHOST 0.1, GHOSTX 0.8, NOISE 0.5, CURVE 0.03, VIGN 0.7, BRIGHT 0.9, CONTRAST 0.5
 
 common:
 	// How far a beam lands from the green one at a point of the picture (0 .. 1 both
-	// ways): dots across and lines down, growing from the screen's middle to its edges.
-	// most: what it is at the edge
+	// ways): dots across and lines down, growing from the screen's middle to its edges,
+	// or with All over the same everywhere. most: what it is at the edge
 	vec2 parting(vec2 uv, vec2 most) {
 		vec2 d = uv * 2.0 - 1.0;
-		return DIVERGE * most * (DIVMID + (1.0 - DIVMID) * length(d)) * d;
+		if (DIVFIX <= 0.0) return DIVERGE * most * (DIVMID + (1.0 - DIVMID) * length(d)) * d;
+		return DIVERGE * most * mix((DIVMID + (1.0 - DIVMID) * length(d)) * d, vec2(1.0), DIVFIX);
 	}
 
 	// What moves with time: a turn (0 .. 2 pi) that goes round k times in 1000 frames
