@@ -5,8 +5,8 @@ OpenGL 3.3 driver (OpenGL ES 3.0). Pick a look in the Display list of Options - 
 View - Display; in `config/config.conf` it is `shader = <file>` and, for a file with presets,
 `shader.preset = <name>`. A fresh config starts with the Sony PVM look of `crt.txt`; an empty or
 missing `shader` line turns filtering off. View - Display - Flat screen (`shader.flat`, on at
-first) keeps every look flat: no curvature, corners or vignette but where a look's own knob
-is turned.
+first) keeps every look flat: no curvature, corners or vignette. A look's sheet still shows its
+own values, and moving one of them turns Flat screen off.
 
 A shader with parameters has a sheet of knobs: the gear beside the list, or View - Display -
 Settings. A knob turned is kept with its look, in `values.conf` of this folder, and the icon
@@ -191,7 +191,7 @@ fragment:
   - `tip NAME = text` - a line of what the knob does.
   - `list NAME = a, b, c` - the knob is a list; the names stand for min, min + step...
   - `more NAME ...` - shown only under All settings.
-  - `flat NAME ...` - 0 (or the nearest the knob goes) in every look under View - Display - Flat screen, unless turned in the look.
+  - `flat NAME ...` - 0 (or the nearest the knob goes) in every look under View - Display - Flat screen; moving it in the sheet turns Flat screen off.
   - `preset "Name": NAME value, NAME value` - a named set of values, a line of the
     Display list. A file with presets is listed by them.
 - `texture NAME = file.png [linear|nearest] [repeat|clamp|border|mirror] [mipmap]` - a
