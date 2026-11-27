@@ -169,12 +169,16 @@ there. The list has up to four parts:
   Commodore 1084S, its mask as fine as the tube's own; **Commodore 1084S** - the same
   monitor with its slot mask as it looks close up, its slots standing apart as bricks,
   three screen pixels a triad at any scale; **PVM** - a broadcast monitor, sharp, bent
-  a little as a cylinder is, the look a new installation starts with; **Tridot** - a fine dot mask, three screen
-  pixels a triad at any scale, on a flat screen, a bright soft picture with a glow, a
-  little afterglow and a set's ghost and grain; **Xpixie** - soft
-  and glowing, with afterglow, a ghost and noise;
+  a little as a cylinder is, the look a new installation starts with; **Tridot** - a
+  fine dot mask, three screen pixels a triad at any scale, on a flat screen, a bright
+  soft picture with a glow, a little afterglow and a set's ghost and grain; **Xpixie** -
+  soft and glowing, with afterglow, a ghost and noise;
 - the presets you saved;
 - shader files of your own, from the `shaders` folder of the configuration.
+
+The shader files the tube's looks came instead of are still there, in **View > Display >
+Legacy shaders (deprecated)** and as **Legacy:** items in the **Options** list. They go in
+a coming release; a configuration that names one then opens the tube's look nearest to it.
 
 ```{index} Display; settings, knobs, preset
 ```
