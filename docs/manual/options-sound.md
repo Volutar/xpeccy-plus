@@ -45,8 +45,8 @@ Under it are four groups.
 
 **Stereo** and **Filters**, side by side, are how every machine is heard. This is a matter
 of taste, as a shader is, so it is set once here for all of them and stays when the machine
-changes. A machine can have its own **PSG stereo**, **Separation** and **Board filter** over
-these (see [A machine's own](#a-machines-own) below).
+changes. A machine can have its own **PSG stereo** and **Board filter** over these (see
+[A machine's own](#a-machines-own) below).
 
 **Stereo**:
 
@@ -57,6 +57,7 @@ these (see [A machine's own](#a-machines-own) below).
   the machine's **Machine: PSG**. The ZX Next keeps the order its own software sets.
 - **Separation** - how far apart the left and right sides are, for the sound chips (the ZX
   Next's too) and the General Sound: 100% keeps them fully apart, 0% is mono. 75% at first.
+  It is one for every machine.
 
 ```{index} Low cut (DC), High cut (anti-alias), anti-alias filter
 ```
@@ -94,32 +95,28 @@ The rest of the **Sound** page is the same for every machine.
 
 ## A machine's own
 
-```{index} A machine's own, Apply to all machines, Overridden, Global setting, Machine spec
+```{index} A machine's own, Overridden, Global setting, Machine spec
 ```
 
-A machine can be heard otherwise than this page says: its **PSG stereo** and **Separation**
-in **Machine: PSG** (see [PSG](options-machine.md#psg)), its **Board filter** on the
-**Machine** page (see [Board filter](options-machine.md#board-filter)). The first two
-choices of those lists say in gray what they stand for:
+A machine can be heard otherwise than this page says: its **PSG stereo** in **Machine: PSG**
+(see [PSG](options-machine.md#psg)), its **Board filter** on the **Machine** page (see
+[Board filter](options-machine.md#board-filter)). Those lists have:
 
-- **Global setting**, the default - this page's choice: **Global setting (ABC, 75%)**, or
-  with **By machine** here, **Global setting (Machine spec)**: each machine as its board was
-  made. What it gives this machine is noted under **Stereo** in **Machine: PSG** - **Result:
-  Mono (machine spec)** - and in the **Board filter**'s tooltip;
-- **Machine spec** - how its board was made, whatever this page says: **Machine spec (TV
-  (RF))**;
-- then, under a line, the values.
+- **Global setting**, the default - this page's choice, named in gray: **Global setting
+  (ABC)**, or with **By machine** here, **Global setting (Machine spec)**: each machine as
+  its board was made. What it gives this machine is noted under **Stereo** in **Machine:
+  PSG** - **Result: Mono (machine spec)** - and in the **Board filter**'s tooltip;
+- then, under a line, the values. The one the board was made with is marked: **Mono
+  (Machine spec)**, **TV (RF) (Machine spec)**.
 
 Any choice but the first is the machine's own. It is heard whatever this page says, and a
 change here does not take it away. The first choice puts the machine back on this page.
 
-While some machine has a choice of its own, the foot of **Stereo** or **Filters** says
-how many, marked {icon}`exclamation` - **Overridden: 2** - and its tooltip names them, one a
-line, with what each one has. **Apply to all machines** beside it, grayed out while there
-are none, sets that group's choice for every machine at once: **Stereo**'s order and
-**Separation**, taking their own order and separation away, or **Filters**' board filter,
-taking theirs. It asks first, with the same list, and keeps whatever else you changed on
-them. **Cancel** in **Options** does not undo it.
+While some machine has a choice of its own, a button marked {icon}`exclamation` stands
+after **PSG stereo** or **Board filter** with how many do, and its tooltip names them, one
+a line, with what each one has. A click on it sets that list's choice for every machine at
+once, taking their own away. It asks first, with the same list, and keeps whatever else you
+changed on them. **Cancel** in **Options** does not undo it.
 
 The ZX Next has no choices of its own here: it is heard as this page says.
 
@@ -135,7 +132,8 @@ picks what every machine sounds through. Its choices are also under the arrow of
 toolbar's {icon}`speaker` **Mute** button and in **Sound** of the right-click menu, and with
 them, under **Output filters**, **Low cut (DC)** and **High cut (anti-alias)**. They are
 this page's: when the running machine is heard through a filter of its own, the menu says so
-over them.
+over them. **By machine** there names what it gives the running machine: **By machine (TV
+(RF))**.
 
 The filter runs in the machine's time, so it slows down and speeds up with it: in **Slow
 Motion** a high tone it cuts stays cut as it drops in pitch.

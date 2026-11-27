@@ -188,13 +188,12 @@ heard through:
 - **Global setting**, the default - the **Board filter** of the **Sound** page, in gray:
   **Global setting (No filter)**, or with **By machine** there, **Global setting (Machine
   spec)**, its board's own. Its tooltip says what this machine is heard through.
-- **Machine spec** - its board's own: **Machine spec (TV (RF))** on the 128K, **Machine
-  spec (No filter)** on the Pentagon.
-- under a line, **No filter** and the other filters.
+- under a line, **No filter** and the other filters. The board's own is marked: **TV (RF)
+  (Machine spec)** on the 128K, **No filter (Machine spec)** on the Pentagon.
 
 Every choice but the first is this machine's own, heard whatever the **Sound** page says.
-A filter picked takes all of the sound, so **TV (RF)** is not **Machine spec (TV (RF))**,
-which filters what the board filtered. The filters are
+The marked one filters what the board filtered; another filter takes all of the sound. The
+wheel does not change the list while it is closed. The filters are
 described in [Board filter](options-sound.md#board-filter); [A machine's own](options-sound.md#a-machines-own)
 says how the **Sound** page shows the machines with a choice of their own.
 
@@ -225,7 +224,7 @@ same.
 
 The {icon}`settings` gear opens **Machine: PSG**:
 
-![Machine: PSG, an order of the machine's own](images/options-machine-psg.png)
+![Machine: PSG](images/options-machine-psg.png)
 
 
 - **Chip** - **AY-3-8910** or **YM2149**. The two sound alike; the YM2149 plays volume
@@ -238,15 +237,12 @@ The {icon}`settings` gear opens **Machine: PSG**:
   You can also type a clock of your own.
 - **Stereo** - the order of the three voices from left to right for this machine. The
   first choice, the default, is **PSG stereo** of the **Sound** page - **Global setting
-  (ABC, 75%)**, or with **By machine** there, **Global setting (Machine spec)**: how this
+  (ABC)**, or with **By machine** there, **Global setting (Machine spec)**: how this
   board sends them out. The line under it says what you hear: **Result: Mono (machine
-  spec)**. **Machine spec** is the board's own whatever the **Sound** page says: **Machine
-  spec (Mono)** on the 128K, **Machine spec (ABC)** on the Pentagon. **Mono** or another
-  order is this machine's own too (see [A machine's own](options-sound.md#a-machines-own)).
-- **Separation** - with an order of the machine's own, how far apart its sides are, as
-  **Separation** on the **Sound** page is for the others. It starts at that page's value.
-  With the first choice, the board's own or **Mono** it is grayed out, at the **Sound**
-  page's.
+  spec)**. **Mono** or an order is this machine's own, whatever the **Sound** page says;
+  the board's own is marked: **Mono (Machine spec)** on the 128K, **ABC (Machine spec)**
+  on the Pentagon (see [A machine's own](options-sound.md#a-machines-own)). How far apart
+  the sides are is **Separation** on the **Sound** page, for every machine.
 
 ### DAC
 
