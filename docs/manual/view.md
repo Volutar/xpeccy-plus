@@ -245,7 +245,7 @@ that can be switched off, and then costs nothing:
   the screen's edges;
 - **Afterglow** - how much of a lit dot is left a frame later.
 
-Under the frames is the **GPU time** the look takes of the graphics card for a frame.
+Under the frames is the **GPU time** the look takes of the graphics card for a frame, and in brackets what share that is of the time between two refreshes of your display: near 100%, the card falls behind.
 
 - **All settings** - shows the finer ones too;
 - **Defaults** - puts every setting of this look back;
