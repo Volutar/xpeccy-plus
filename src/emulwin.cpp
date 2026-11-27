@@ -4413,6 +4413,12 @@ void MainWin::fillUserMenu() {
 	}
 	// the look's knobs, out of the looks' one tick
 	shdMenu->addSeparator();
+	shdMenu->setToolTipsVisible(true);
+	act = shdMenu->addAction(tr("Flat screen"));
+	act->setObjectName("flatScreen");
+	act->setToolTip(look_flat_tip());
+	act->setCheckable(true);
+	act->setChecked(conf.vid.flatScreen);
 	act = shdMenu->addAction(QIcon(":/images/settings.png"), "Settings...");
 	act->setObjectName("displaySettings");
 	act->setEnabled(look_has_knobs(look_current()));

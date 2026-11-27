@@ -61,6 +61,7 @@ struct xShdParam {
 	QString tip;
 	QStringList names;		// a list: what min, min + step... are called
 	bool more = false;		// only under All settings
+	bool flat = false;		// 0 under Flat screen, unless turned in the look
 };
 
 // a named set of values: a `preset` line of the file

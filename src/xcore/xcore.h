@@ -1158,6 +1158,7 @@ struct xConfig {
 		unsigned vsync:1;	// wait for the display's vblank, and run at its rate when close (xgui/dispsync)
 		unsigned frameSkip:1;	// a frame is left undrawn while the emulation is behind (fast_picture_frame)
 		unsigned skipHint:1;	// offer Frame skip when the computer falls behind (MainWin::slowHint)
+		unsigned flatScreen:1;	// Flat screen: a look's `flat` knobs 0 unless turned in it (xgui/displaylook)
 		int border;		// VID_BRD_* : how much border to show
 		int sideFill;		// SFILL_* : what fills the room beside a fitted picture
 		int fillBlur;		// dots per texel of the shrunk frame, SFILL_BLUR_LOW..MAX; 0 Off (sfill_sharp)

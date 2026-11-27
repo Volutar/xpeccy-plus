@@ -13,6 +13,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 #include <cmath>
@@ -183,7 +184,8 @@ void xDisplaySheet::build() {
 			group = name;
 			QWidget* wid = knob(p);
 			QLabel* lab = sheet.row(p.text, wid);
-			lab->setToolTip(p.tip);
+			lab->setToolTip((p.flat && conf.vid.flatScreen)
+				? tr("%1. Flat screen (View > Display) has it 0 unless set here").arg(p.tip) : p.tip);
 		}
 	} else {
 		sheet.group(QString());
@@ -216,6 +218,16 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 	const QString name = p.name;
 	const float min = p.min;
 	const float max = p.max;
+	// back to the look's own value: there while the knob is turned, its room kept when not
+	QToolButton* back = new QToolButton;
+	back->setIcon(QIcon(":/images/refresh.png"));
+	back->setAutoRaise(true);
+	back->setToolTip(tr("Back to this look's value"));
+	back->setObjectName("back_" + name);
+	QSizePolicy keep = back->sizePolicy();
+	keep.setRetainSizeWhenHidden(true);
+	back->setSizePolicy(keep);
+	back->setVisible(look_turned(look, name));
 	if (!p.names.isEmpty()) {
 		QComboBox* box = new QComboBox;
 		for (int i = 0; i <= count; i++)
@@ -223,10 +235,26 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 		box->setCurrentIndex(pos);
 		box->setToolTip(p.tip);
 		box->setObjectName("knob_" + name);
-		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, name, min, max, step](int idx) {
+		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, name, min, max, step, back](int idx) {
 			moved(name, qMin(max, min + idx * step));
+			back->setVisible(look_turned(look, name));
 		});
-		return box;
+		connect(back, &QToolButton::clicked, this, [this, name, min, step, count, box, back]() {
+			const float own = look_own(look, name);
+			box->blockSignals(true);
+			box->setCurrentIndex(qBound(0, qRound((own - min) / ((step > 0) ? step : 1.0f)), count));
+			box->blockSignals(false);
+			moved(name, own);
+			back->setVisible(false);
+		});
+		QWidget* wid = new QWidget;
+		QHBoxLayout* row = new QHBoxLayout(wid);
+		row->setContentsMargins(0, 0, 0, 0);
+		row->addWidget(box);
+		row->addStretch(1);
+		row->addWidget(back);
+		wid->setFocusProxy(box);
+		return wid;
 	}
 	xSlider* sld = new xSlider;
 	sld->setOrientation(Qt::Horizontal);
@@ -242,10 +270,21 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 	const QFontMetrics fm = fig->fontMetrics();
 	fig->setFixedWidth(qMax(fm.horizontalAdvance(knob_text(p, min)), fm.horizontalAdvance(knob_text(p, max))) + 4);
 	const xShdParam prm = p;
-	connect(sld, &QSlider::valueChanged, this, [this, fig, prm, step](int at) {
+	connect(sld, &QSlider::valueChanged, this, [this, fig, prm, step, back](int at) {
 		const float now = qMin(prm.max, prm.min + at * step);
 		fig->setText(knob_text(prm, now));
 		moved(prm.name, now);
+		back->setVisible(look_turned(look, prm.name));
+	});
+	connect(back, &QToolButton::clicked, this, [this, sld, fig, prm, step, count, back]() {
+		// the look's own value as it is, if it is between two of the slider's steps
+		const float own = look_own(look, prm.name);
+		sld->blockSignals(true);
+		sld->setValue(qBound(0, qRound((own - prm.min) / ((step > 0) ? step : 1.0f)), count));
+		sld->blockSignals(false);
+		fig->setText(knob_text(prm, own));
+		moved(prm.name, own);
+		back->setVisible(false);
 	});
 	QWidget* wid = new QWidget;
 	QHBoxLayout* box = new QHBoxLayout(wid);
@@ -254,6 +293,7 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 	box->addWidget(sld);
 	box->addStretch(1);
 	box->addWidget(fig);
+	box->addWidget(back);
 	wid->setFocusProxy(sld);
 	return wid;
 }

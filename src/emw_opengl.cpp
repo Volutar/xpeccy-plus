@@ -595,6 +595,9 @@ void MainWin::loadShader(bool tell) {
 	if (dispSheet) dispSheet->setLook();
 	if (QAction* act = shdMenu->findChild<QAction*>("displaySettings"))
 		act->setEnabled(look_has_knobs(lk));
+	// (switched in Options too)
+	if (QAction* act = shdMenu->findChild<QAction*>("flatScreen"))
+		act->setChecked(conf.vid.flatScreen);
 }
 
 // another look chosen (Options, the menu): its chain is to be loaded
@@ -606,6 +609,11 @@ bool MainWin::lookStale() {
 void MainWin::shdSelected(QAction* act) {
 	if (act->objectName() == "displaySettings") {
 		displaySettings();
+		return;
+	}
+	if (act->objectName() == "flatScreen") {
+		conf.vid.flatScreen = act->isChecked() ? 1 : 0;
+		lookPicked();
 		return;
 	}
 	const QStringList id = act->data().toStringList();

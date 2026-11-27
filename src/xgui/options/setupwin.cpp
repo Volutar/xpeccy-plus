@@ -234,24 +234,36 @@ void SetupWin::makeDisplay() {
 		ui.tbDisplay->setEnabled(look_has_knobs(look_current()));
 		emit s_look();
 	});
+	ui.cbFlatScreen->setToolTip(look_flat_tip());
+	connect(ui.cbFlatScreen, &QCheckBox::toggled, this, [this](bool on) {
+		conf.vid.flatScreen = on ? 1 : 0;
+		emit s_look();
+	});
 }
 
 void SetupWin::lookToUi() {
 	fill_look_list(ui.cbShader);
 	ui.tbDisplay->setEnabled(look_has_knobs(look_current()));
+	ui.cbFlatScreen->blockSignals(true);
+	ui.cbFlatScreen->setChecked(conf.vid.flatScreen);
+	ui.cbFlatScreen->setEnabled(conf.vid.shd_support);
+	ui.cbFlatScreen->blockSignals(false);
 }
 
 void SetupWin::lookTake() {
 	lookWas[0] = conf.vid.shader;
 	lookWas[1] = conf.vid.shdPreset;
 	lookKept = look_store_take();
+	flatWas = conf.vid.flatScreen;
 }
 
 void SetupWin::lookPut() {
-	const bool same = (conf.vid.shader == lookWas[0]) && (conf.vid.shdPreset == lookWas[1]) && (look_store_take() == lookKept);
+	const bool same = (conf.vid.shader == lookWas[0]) && (conf.vid.shdPreset == lookWas[1]) && (look_store_take() == lookKept)
+		&& (int(conf.vid.flatScreen) == flatWas);
 	if (same) return;
 	conf.vid.shader = lookWas[0];
 	conf.vid.shdPreset = lookWas[1];
+	conf.vid.flatScreen = flatWas ? 1 : 0;
 	look_store_put(lookKept);
 	look_store_save();
 	emit s_look();

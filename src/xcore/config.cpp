@@ -416,6 +416,7 @@ void saveConfig() {
 	fprintf(cfile, "noflick.ahead = %s\n", YESNO(noflicAhead));
 	fprintf(cfile, "shader = %s\n", conf.vid.shader.c_str());
 	fprintf(cfile, "shader.preset = %s\n", conf.vid.shdPreset.c_str());
+	fprintf(cfile, "shader.flat = %s\n", YESNO(conf.vid.flatScreen));
 	fprintf(cfile, "\n[SOUND]\n\n");
 	fprintf(cfile, "enabled = %s\n", YESNO(conf.snd.enabled));
 	fprintf(cfile, "dc.filter = %s\n", YESNO(conf.snd.vol.dc));
@@ -995,6 +996,7 @@ void loadConfig() {
 	conf.vid.border = VID_BRD_FULL;
 	conf.vid.sideFill = SFILL_BLACK;
 	conf.vid.fillBorder = 1;
+	conf.vid.flatScreen = 1;
 	conf.vid.intScale = 0;
 	conf.vid.fillBlur = SFILL_BLUR_DEF;
 	conf.vid.fillDim = SFILL_DIM_DEF;
@@ -1431,6 +1433,7 @@ void loadConfig() {
 					if (pnam=="greyscale") vid_set_grey(arg.b);
 					if (pnam=="shader") conf.vid.shader = pval;
 					if (pnam=="shader.preset") conf.vid.shdPreset = pval;
+					if (pnam=="shader.flat") conf.vid.flatScreen = arg.b;
 					break;
 				case SECT_ROMSETS:
 					// file:part, the numbers read from the end so a drive letter's

@@ -211,6 +211,10 @@ QString look_legacy_tip() {
 	return QCoreApplication::translate("Display", "Deprecated: to be removed in a coming release. The CRT looks replace it.");
 }
 
+QString look_flat_tip() {
+	return QCoreApplication::translate("Display", "Every look without curvature, corners or vignette, unless set in its settings");
+}
+
 QList<xLook> look_list() {
 	QList<xLook> parts[LOOK_LEGACY + 1];
 	xLook none;
@@ -295,7 +299,7 @@ bool look_has_knobs(const xLook& lk) {
 
 // ---------------------------------------------------------------- the values
 
-xShdValues look_base(const xLook& lk) {
+static xShdValues preset_values(const xLook& lk) {
 	if (lk.user) {
 		for (const UserPreset& up : user_presets())
 			if ((up.base == lk.preset) && (up.shader == lk.file)) return up.values;
@@ -307,6 +311,18 @@ xShdValues look_base(const xLook& lk) {
 			if (set.name == lk.preset) return set.values;
 	}
 	return xShdValues();
+}
+
+// Flat screen: the file's flat knobs 0 in every look, over its preset's (a knob turned
+// in the look is kept on top, and wins)
+xShdValues look_base(const xLook& lk) {
+	xShdValues res = preset_values(lk);
+	const xShdPreset* head = conf.vid.flatScreen ? look_file(lk.file) : nullptr;
+	if (head) {
+		for (const xShdParam& p : head->params)
+			if (p.flat) res.append({p.name, 0.0f});
+	}
+	return res;
 }
 
 xShdValues look_values(const xLook& lk) {
@@ -356,6 +372,15 @@ void look_reset(const xLook& lk) {
 bool look_changed(const xLook& lk) {
 	store_read();
 	return store.contains(look_id(lk));
+}
+
+bool look_turned(const xLook& lk, const QString& name) {
+	store_read();
+	return store.value(look_id(lk)).contains(name);
+}
+
+float look_own(const xLook& lk, const QString& name) {
+	return own_value(lk, name);
 }
 
 // the configuration is read again: what the files have now, not what was turned
