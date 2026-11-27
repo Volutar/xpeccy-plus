@@ -191,7 +191,7 @@ fragment:
   - `tip NAME = text` - a line of what the knob does.
   - `list NAME = a, b, c` - the knob is a list; the names stand for min, min + step...
   - `more NAME ...` - shown only under All settings.
-  - `flat NAME ...` - 0 in every look under View - Display - Flat screen, unless turned in the look.
+  - `flat NAME ...` - 0 (or the nearest the knob goes) in every look under View - Display - Flat screen, unless turned in the look.
   - `preset "Name": NAME value, NAME value` - a named set of values, a line of the
     Display list. A file with presets is listed by them.
 - `texture NAME = file.png [linear|nearest] [repeat|clamp|border|mirror] [mipmap]` - a
