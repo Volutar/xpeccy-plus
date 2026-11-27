@@ -168,7 +168,7 @@ there. The list has up to four parts:
   colors a PAL set makes of fine patterns and at color edges; **RGB monitor** - the
   Commodore 1084S, its mask as fine as the tube's own; **Commodore 1084S** - the same
   monitor with its slot mask as it looks close up, its slots standing apart as bricks,
-  three screen pixels a triad at any scale; **PVM** - a broadcast monitor, sharp, bent
+  three screen pixels a triad at any scale; **Sony PVM** - a studio monitor, sharp, bent
   a little as a cylinder is, the look a new installation starts with; **Tridot** - a
   fine dot mask, three screen pixels a triad at any scale, on a flat screen, a bright
   soft picture with a glow, a little afterglow and a set's ghost and grain; **Xpixie** -
