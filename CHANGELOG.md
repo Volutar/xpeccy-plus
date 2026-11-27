@@ -36,8 +36,8 @@ before that point is upstream's history and is not repeated here.
 
 - **The older shader files are under Display > Legacy shaders (deprecated)**: the aperture
   grille and shadow mask looks, TV lines, monitor-1084, pvm-sharp, composite-crt and
-  zx-rf-artifact. They go in a coming release; a config naming one then opens the nearest
-  CRT look.
+  zx-rf-artifact. They are to be removed in a coming release; a config naming one then
+  opens the nearest CRT look.
 
 - **Keymap By machine**, the default: Input > Keymap and Options > Input. The Robik takes the
   Robik's keymap, the ZX Spectrum 48K the 48K one, every other machine ZX Spectrum 128K. A
