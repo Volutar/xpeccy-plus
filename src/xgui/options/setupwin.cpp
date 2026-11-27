@@ -475,9 +475,9 @@ QString board_type_name(int type) {
 
 QList<xBoardPick> board_picks() {
 	QList<xBoardPick> res;
-	res.append({BEEP_LINE, QObject::tr("No filter"), QObject::tr("Every machine straight out,\nnothing filtered"), false});
 	res.append({BOARD_MACHINE, QObject::tr("By machine"),
 		QObject::tr("Each machine as its Machine page says:\nits board's own filter, or its own pick"), false});
+	res.append({BEEP_LINE, QObject::tr("No filter"), QObject::tr("Every machine straight out,\nnothing filtered"), true});
 	static const char* tips[BEEP_ALL] = {NULL,
 		"The 48K's ULA pin and small speaker:\nthe highs softened, the bass thin",
 		"A TV's aerial input: highs cut\nfrom 3.2 kHz",
@@ -870,16 +870,20 @@ void SetupWin::makeDevWidgets() {
 		new xWheelGuard(box);		// a stray wheel would take the machine off the Sound page
 		box->addItem(QString(), SND_GLOBAL);
 		box->setItemData(0, tr(ownGlobalTip), Qt::ToolTipRole);
-		box->insertSeparator(1);
 	};
 	ownBox(cbOwnLay);
+	cbOwnLay->insertSeparator(1);
 	for (int lay = AY_MONO; lay <= AY_CBA; lay++)
 		own_add_value(cbOwnLay, lay);
 	ownBox(cbOwnBoard);
 	cbOwnLay->setObjectName("ownLayBox");
 	cbOwnBoard->setObjectName("ownBoardBox");
-	for (const xBoardPick& p : board_picks())
-		if (p.val != BOARD_MACHINE) own_add_value(cbOwnBoard, p.val, p.tip);
+	// the Sound page's list, Global setting in By machine's place
+	for (const xBoardPick& p : board_picks()) {
+		if (p.val == BOARD_MACHINE) continue;
+		if (p.sep) cbOwnBoard->insertSeparator(cbOwnBoard->count());
+		own_add_value(cbOwnBoard, p.val, p.tip);
+	}
 	cbOwnBoard->setMaxVisibleItems(cbOwnBoard->count());
 	cbOwnBoard->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
 	cbOwnBoard->setMinimumContentsLength(8);

@@ -216,7 +216,7 @@ QWidget* fieldPair(QWidget*, QWidget*, bool);
 void fill_machine_list(QComboBox*);
 
 // The Board filter's picks, as the Sound page and the sound menus list them
-// (options/setupwin.cpp): Off (BEEP_LINE), By machine (BOARD_MACHINE), the types.
+// (options/setupwin.cpp): By machine (BOARD_MACHINE), No filter (BEEP_LINE), the types.
 // sep: a line before it
 struct xBoardPick {
 	int val;
