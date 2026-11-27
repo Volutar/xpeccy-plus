@@ -50,7 +50,7 @@ at 0, when its pass is not drawn at all.
 | --- | --- |
 | Signal | the cable - RGB; composite or RF into a PAL set, by a 128K's color carrier or a 48K's; or a SECAM set; a ghost, interference, noise |
 | Mask | aperture grille, slot mask (every other triad half an opening lower; Bridges, from a thin notch to a dark row) or shadow mask, as fine as the tube - triads to a dot of the picture - or 2, 3 or 6 screen pixels a triad at any scale |
-| Beam | scanlines - a line is a bell that reaches into its neighbors' rows, wider where brighter, past 1 thinner with a black band between (at 1.9 a tenth of its row); a roll moves the gaps down the screen, not the picture; the focus of a dot's edge along the line; the beam's spot, which rounds a dot's ends |
+| Beam | scanlines - a line is a bell that reaches into its neighbors' rows, wider where brighter, past 1 thinner with a black band between (at 1.9 a tenth of its row); a roll turns the scanlines into bands a little shorter than a line that move over the picture; the focus of a dot's edge along the line; the beam's spot, which rounds a dot's ends |
 | Screen | curvature, round corners, vignette, brightness, keep brightness (how much of what the mask and the scanlines take is given back), bloom (bright things keep their light: the mask and the scanlines fade there), contrast |
 | Glow | light around bright things |
 | Divergence | the red and blue beams land beside the green one, more towards the screen's edges, or (All over) the same everywhere |
