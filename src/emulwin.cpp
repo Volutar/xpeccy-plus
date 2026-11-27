@@ -4964,8 +4964,16 @@ bool MainWin::openCheats(const QString& path) {
 void MainWin::watchMedia() {
 	Computer* comp = conf.zx;
 	QString snap = file_take_snapshot();		// whoever loaded it
-	if (!snap.isEmpty())
-		showMedia(snap, MEDIA_SNAP);
+	if (!snap.isEmpty()) {
+		// a save's game that is the tape or the disk in A is named as theirs: it goes when they do
+		int src = MEDIA_SNAP;
+		const char* tape = comp->tape->blkCount ? comp->tape->path : nullptr;
+		const char* disk = comp->dif->flp[0]->insert ? comp->dif->flp[0]->path : nullptr;
+		if (tape && same_image(snap, QString::fromLocal8Bit(tape))) src = MEDIA_TAPE;
+		else if (disk && same_image(snap, QString::fromLocal8Bit(disk))) src = 0;
+		if (src != MEDIA_SNAP) mediaRaw[src] = (src == MEDIA_TAPE) ? tape : disk;
+		showMedia(snap, src);
+	}
 	// a user reset or a machine switch: nothing runs until something starts,
 	// so the title names no image and saves go to the machine's folder
 	if (game_stale()) {

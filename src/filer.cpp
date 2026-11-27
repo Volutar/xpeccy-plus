@@ -1534,6 +1534,9 @@ static void szx_mount(Computer* comp, const QString& snap) {
 				tapRewind(comp->tape, m->block - 1);
 				tapNextBlock(comp->tape);
 			}
+			// put where it was, not read: blkChange would name it in the title as a tape in use
+			comp->tape->blkChange = 0;
+			comp->tape->newBlock = 1;
 		} else {
 			int drv = m->drive & 3;
 			Floppy* flp = comp->dif->flp[drv];
