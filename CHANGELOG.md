@@ -13,8 +13,8 @@ before that point is upstream's history and is not repeated here.
 
 - **Display, with knobs**: the Shader list of Options > Video is Display, and View > Shaders
   is View > Display. A look with settings has a sheet of knobs - the gear beside the list, or
-  View > Display > Settings: each move shows on the picture and stays with the look. Save as
-  preset makes a look of your own.
+  View > Display > Settings: each move shows on the picture and stays with the look, and an
+  icon beside a changed one puts it back. Save as preset makes a look of your own.
 
 - **Scanlines**, beside None in the Display list: plain scanlines with a hard or a soft dot,
   by Depth (past 1 a black band), Gap width, Keep brightness and Softness. Each is a line of
@@ -24,8 +24,9 @@ before that point is upstream's history and is not repeated here.
   Tridot and Xpixie in the Display list. One tube in stages that switch off - beam,
   divergence, mask, glow, afterglow, signal, screen - with the mask as fine as the tube's
   own and thinning out as the picture gets smaller, or a set number of screen pixels at
-  any scale. A new installation starts with Sony PVM. *(beam divergence and Tridot's
-  settings by Volutar)*
+  any scale. A new installation starts with Sony PVM. View > Display > Flat screen, on at
+  first, keeps every look flat - no curvature, corners or vignette but where a look's own
+  knob is turned. *(beam divergence and Tridot's settings by Volutar)*
 
 - **Composite and RF input** for the CRT looks: a PAL picture as a set decodes it. Fine
   patterns take on color; with a 128K's color carrier they stand, with a 48K's they
