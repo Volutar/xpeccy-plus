@@ -311,10 +311,11 @@ static void spaceLedIcon(QCheckBox* box) {
 
 // Two-part list items: "value - detail". The value is drawn bold and the
 // detail at reduced alpha, so no colour is hardcoded and every style sheet
-// keeps working. Experimental, wired to the PSG boxes only. Items carrying an
-// icon fall back to the plain painting - none of them has a detail part.
+// keeps working. Items carrying an icon fall back to the plain painting - none
+// of them has a detail part.
 
-static const QString detail_sep = " - ";
+const QString detail_sep = " - ";
+enum {BoldRole = Qt::UserRole + 1};	// set: an item with no detail is bold as a value is
 
 static void draw_two_part(QPainter* pnt, QRect rc, const QFont& fnt, QColor col, const QString& txt, int cut) {
 	QFont bld = fnt;
@@ -351,6 +352,7 @@ class xTwoPartDelegate : public QStyledItemDelegate {
 			QStyleOptionViewItem opt = op;
 			initStyleOption(&opt, idx);
 			int cut = opt.text.indexOf(detail_sep);
+			if ((cut < 0) && idx.data(BoldRole).toBool()) cut = opt.text.size();
 			if ((cut < 0) || !opt.icon.isNull()) {
 				QStyledItemDelegate::paint(pnt, op, idx);
 				return;
@@ -412,6 +414,7 @@ class xTwoPartPainter : public QObject {
 
 		int textCut(const QString& txt) {
 			int cut = txt.indexOf(detail_sep);
+			if ((cut < 0) && cbox->currentData(BoldRole).toBool()) cut = txt.size();
 			if (!cbox->itemIcon(cbox->currentIndex()).isNull()) cut = -1;
 			return cut;
 		}
@@ -473,12 +476,9 @@ QString board_type_name(int type) {
 	return ((type >= 0) && (type < BEEP_ALL)) ? QObject::tr(names[type]) : QString();
 }
 
-QList<xBoardPick> board_picks() {
-	QList<xBoardPick> res;
-	res.append({BOARD_MACHINE, QObject::tr("By machine"),
-		QObject::tr("Each machine as its Machine page says:\nits board's own filter, or its own pick"), false});
-	res.append({BEEP_LINE, QObject::tr("No filter"), QObject::tr("Every machine straight out,\nnothing filtered"), true});
-	static const char* tips[BEEP_ALL] = {NULL,
+// a BEEP_* type's tooltip in those lists
+static QString board_type_tip(int type) {
+	static const char* tips[BEEP_ALL] = {"Every machine straight out,\nnothing filtered",
 		"The 48K's ULA pin and small speaker:\nthe highs softened, the bass thin",
 		"A TV's aerial input: highs cut\nfrom 3.2 kHz",
 		"The +2A/+3's mixer: highs cut\nfrom 2.5 kHz, lows below 340 Hz",
@@ -487,8 +487,15 @@ QList<xBoardPick> board_picks() {
 		"The ATM's coupling capacitor:\nlows cut below 80 Hz",
 		"A piezo sounder: rings at 4.1 kHz,\nthe bass falls off gently",
 		"For PWM music: its carrier gone,\nthe bass kept"};
-	for (int t = BEEP_LINE + 1; t < BEEP_ALL; t++)
-		res.append({t, board_type_name(t), QObject::tr(tips[t]), t == BEEP_LINE + 1});
+	return ((type >= 0) && (type < BEEP_ALL)) ? QObject::tr(tips[type]) : QString();
+}
+
+QList<xBoardPick> board_picks() {
+	QList<xBoardPick> res;
+	res.append({BOARD_MACHINE, QObject::tr("By machine"),
+		QObject::tr("Each machine as its Machine page says:\nits board's own filter, or its own pick"), false});
+	for (int t = BEEP_LINE; t < BEEP_ALL; t++)		// No filter and the first type under a line each
+		res.append({t, board_type_name(t), board_type_tip(t), t <= BEEP_LINE + 1});
 	return res;
 }
 
@@ -516,53 +523,23 @@ static QString own_pick_name(int pick, int spec, QString (*name)(int)) {
 	return name(pick);
 }
 
-// A machine's list: the first item follows the Sound page, then the values. The spec's
-// value is marked and is the Machine spec pick (LAY_MACHINE / BOARD_MACHINE); a value's
-// own number and tooltip stay in these roles
-enum {OwnValRole = Qt::UserRole + 1, OwnTipRole};
-
-static void own_add_value(QComboBox* box, int val, const QString& tip = QString()) {
-	box->addItem(QString(), val);
-	box->setItemData(box->count() - 1, val, OwnValRole);
-	box->setItemData(box->count() - 1, tip, OwnTipRole);
-}
-
-static void own_mark_spec(QComboBox* box, int spec, QString (*name)(int)) {
+// a machine's list for the machine shown: its spec's value marked (the Machine spec pick: ownPicks)
+static void own_mark_spec(QComboBox* box, int spec, QString (*name)(int), QString (*tip)(int)) {
 	for (int i = 0; i < box->count(); i++) {
-		QVariant val = box->itemData(i, OwnValRole);
-		if (!val.isValid()) continue;		// the first item, the line
+		QVariant val = box->itemData(i);
+		if (!val.isValid() || (val.toInt() < 0)) continue;		// a line, the first item
 		bool is = (val.toInt() == spec);
 		box->setItemText(i, is ? two_part(name(spec), QObject::tr("Machine spec")) : name(val.toInt()));
-		box->setItemData(i, is ? LAY_MACHINE : val.toInt());
 		box->setItemData(i, is ? QObject::tr("As this machine's board was made")
-			: box->itemData(i, OwnTipRole).toString(), Qt::ToolTipRole);
+			: tip ? tip(val.toInt()) : QString(), Qt::ToolTipRole);
 	}
 }
-
-// a closed list is not changed by the wheel: what is under it scrolls instead
-class xWheelGuard : public QObject {
-	public:
-		xWheelGuard(QObject* par) : QObject(par) {par->installEventFilter(this);}
-	protected:
-		bool eventFilter(QObject*, QEvent* ev) {
-			if (ev->type() != QEvent::Wheel) return false;
-			ev->ignore();
-			return true;
-		}
-};
 
 // a machine's own Board filter heard as the Sound page's gives it: the same pick, or no
 // filter either way
 static bool snd_board_same(int own, int gboard, int spec) {
 	if ((own == SND_GLOBAL) || (own == gboard)) return true;
 	return (snd_heard(own, spec) == BEEP_LINE) && (snd_heard(gboard, spec) == BEEP_LINE);
-}
-
-// what a machine has of its own in a group (SND_GRP_*), for the Sound page's mark: "ACB",
-// "Mono (machine spec)", "TV (RF)"
-static QString snd_own_text(const xSndPicks& p, int specLay, int specBoard, int grp) {
-	if (grp == SND_GRP_BOARD) return own_pick_name(p.board, specBoard, board_type_name);
-	return own_pick_name(p.lay, specLay, psg_lay_name);
 }
 
 // a machine has its own in a group: Stereo's order, Filters' type
@@ -584,6 +561,15 @@ QString board_own_note() {
 	return QObject::tr("%0 keeps its own: %1").arg(name, own_pick_name(conf.snd.own.board, comp->beepType, board_type_name));
 }
 
+// By machine in those menus, with what it gives the running machine: "By machine (TV (RF))"
+QString board_machine_note() {
+	QString name = QObject::tr("By machine");
+	Computer* comp = conf.zx;
+	if (!comp) return name;
+	int own = (conf.snd.own.board == SND_GLOBAL) ? BOARD_MACHINE : conf.snd.own.board;
+	return QString("%0 (%1)").arg(name, board_type_name(snd_heard(own, comp->beepType)));
+}
+
 // the machine list's names, with their marks of the user's changes
 static void mach_box_names(QComboBox* box) {
 	for (int i = 0; i < box->count(); i++) {
@@ -592,49 +578,60 @@ static void mach_box_names(QComboBox* box) {
 	}
 }
 
-// By machine in the Sound page's lists: a two-part item with no detail, so its name is
-// bold as Global setting and the marked value are in a machine's
-static QString by_machine_item() {return QObject::tr("By machine") + detail_sep;}
+// The stereo and board filter lists. The Sound page's start with By machine; a machine's
+// own with Global setting, its text sndOwnShow's
+static void snd_first_item(QComboBox* box, bool own, const QString& tip) {
+	box->addItem(own ? QString() : QObject::tr("By machine"), own ? SND_GLOBAL : LAY_MACHINE);
+	box->setItemData(0, true, BoldRole);
+	box->setItemData(0, own ? QObject::tr(ownGlobalTip) : tip, Qt::ToolTipRole);
+}
 
-// the Board filter's list
-static void board_fill_box(QComboBox* box) {
-	box->clear();
+static void lay_fill_box(QComboBox* box, bool own) {
+	snd_first_item(box, own, QObject::tr("Each machine as its PSG sheet says: as\nits board was made, or its own pick"));
+	box->insertSeparator(1);
+	for (int lay = AY_MONO; lay <= AY_CBA; lay++)
+		box->addItem(psg_lay_name(lay), lay);
+}
+
+static void board_fill_box(QComboBox* box, bool own) {
 	for (const xBoardPick& p : board_picks()) {
 		if (p.sep) box->insertSeparator(box->count());
-		box->addItem((p.val == BOARD_MACHINE) ? by_machine_item() : p.name, p.val);
+		if (p.val == BOARD_MACHINE) {
+			snd_first_item(box, own, p.tip);
+			continue;
+		}
+		box->addItem(p.name, p.val);
 		box->setItemData(box->count() - 1, p.tip, Qt::ToolTipRole);
 	}
 	box->setMaxVisibleItems(box->count());
+}
+
+// ...drawn in two parts; narrow: a short width hint, so what stands beside the list keeps its place
+static void two_part_box(QComboBox* box, bool narrow) {
+	box->setItemDelegate(new xTwoPartDelegate(box));
+	new xTwoPartPainter(box);
+	if (!narrow) return;
+	box->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+	box->setMinimumContentsLength(8);
 }
 
 // the Sound page's Stereo and Filters, side by side between Output and Volumes: what every
 // machine is heard through, a matter of taste rather than of the machine
 void SetupWin::makeSoundGroup() {
 	cbPsgLay = new QComboBox;
-	cbPsgLay->addItem(by_machine_item(), LAY_MACHINE);
-	cbPsgLay->setItemData(0, tr("Each machine as its PSG sheet says: as\nits board was made, or its own pick"), Qt::ToolTipRole);
-	cbPsgLay->insertSeparator(1);
-	for (int lay = AY_MONO; lay <= AY_CBA; lay++)
-		cbPsgLay->addItem(psg_lay_name(lay), lay);
+	lay_fill_box(cbPsgLay, false);
 	cbPsgLay->setToolTip(tr("The PSG's voices from left to right on every\nmachine without its own pick (its PSG sheet);\nthe Next keeps what its software set"));
 	sldSep = sep_slider(&labSep);
 	sldSep->setToolTip(tr("100% the sides kept apart, 0% mono;\nthe PSG, the General Sound and the Next"));
 	cbBoard = new QComboBox;
-	board_fill_box(cbBoard);
+	board_fill_box(cbBoard, false);
 	cbBoard->setToolTip(tr("For every machine without its own pick\n(its Machine page). A type picked: all the\nsound through it. By machine: each board's\nown, the beeper and on some boards the PSG"));
 	cbPsgLay->setObjectName("sndLayBox");		// for the control port
 	sldSep->setObjectName("sndSepSlider");
 	cbBoard->setObjectName("sndBoardBox");
-	// a short width hint each: a mark beside a list leaves the two groups their halves;
-	// drawn as a machine's lists are
-	for (QComboBox* box : {cbPsgLay, cbBoard}) {
-		box->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
-		box->setMinimumContentsLength(8);
-		box->setItemDelegate(new xTwoPartDelegate(box));
-		new xTwoPartPainter(box);
-	}
-	// after each list, a mark with how many machines override it, there only with some:
-	// their names in its tooltip, a click puts them back on the list (asked first)
+	for (QComboBox* box : {cbPsgLay, cbBoard})
+		two_part_box(box, true);		// narrow: a mark beside a list leaves the two groups their halves
+	// after each list, the mark of the machines that override it: sndOwnShow, sndResetOwn
 	for (int grp = SND_GRP_LAY; grp <= SND_GRP_BOARD; grp++) {
 		QToolButton* btn = btnOwn[grp] = new QToolButton;
 		btn->setIcon(QIcon(":/images/exclamation.png"));
@@ -717,11 +714,11 @@ void SetupWin::soundPageOn(bool on) {
 	}
 }
 
+// the machine's lists as they stand: the marked value is the Machine spec pick
 xSndPicks SetupWin::ownPicks() {
-	xSndPicks res;
-	res.lay = getRFIData(cbOwnLay);
-	res.board = getRFIData(cbOwnBoard);
-	res.sep = SND_GLOBAL;
+	xSndPicks res = {getRFIData(cbOwnLay), getRFIData(cbOwnBoard)};
+	if (res.lay == conf.zx->ts->chipA->stereo) res.lay = LAY_MACHINE;
+	if (res.board == conf.zx->beepType) res.board = BOARD_MACHINE;
 	return res;
 }
 
@@ -741,7 +738,7 @@ void SetupWin::sndOwnShow() {
 	cbOwnBoard->setItemData(0, tr(ownGlobalTip) + "\n"
 		+ tr("Result: %0").arg(board_type_name(snd_heard(gboard, sboard))), Qt::ToolTipRole);
 	ownLayNote->setText((getRFIData(cbOwnLay) != SND_GLOBAL) ? QString()
-		: tr("Result: %0").arg(psg_lay_name(snd_heard(glay, spec))) + ((glay == LAY_MACHINE) ? tr(" (machine spec)") : QString()));
+		: tr("Result: %0").arg(own_pick_name(glay, spec, psg_lay_name)));
 	// the marks: this machine as its lists have it, the others as their files do
 	QList<xSndOwnRow> macs;
 	const xMachine* mac = xm_find(conf.macId);
@@ -751,8 +748,9 @@ void SetupWin::sndOwnShow() {
 	for (int grp = SND_GRP_LAY; grp <= SND_GRP_BOARD; grp++) {
 		sndOwnTips[grp].clear();
 		for (const xSndOwnRow& m : macs) {
-			if (snd_owns_grp(m.snd, grp))
-				sndOwnTips[grp] << QString("%0: %1").arg(m.name, snd_own_text(m.snd, m.specLay, m.specBoard, grp));
+			if (!snd_owns_grp(m.snd, grp)) continue;
+			sndOwnTips[grp] << QString("%0: %1").arg(m.name, (grp == SND_GRP_BOARD)
+				? own_pick_name(m.snd.board, m.specBoard, board_type_name) : own_pick_name(m.snd.lay, m.specLay, psg_lay_name));
 		}
 		int n = sndOwnTips[grp].size();
 		btnOwn[grp]->setVisible(n > 0);
@@ -775,7 +773,7 @@ void SetupWin::sndOthersRead() {
 // asked first, as it is done at once, past Cancel
 void SetupWin::sndResetOwn(int grp) {
 	bool board = (grp == SND_GRP_BOARD);
-	QString val = (board ? cbBoard : cbPsgLay)->currentText().section(detail_sep, 0, 0);
+	QString val = (board ? cbBoard : cbPsgLay)->currentText();
 	QStringList lines;
 	for (const QString& tip : sndOwnTips[grp]) lines << tip.toHtmlEscaped();
 	QString msg = (board ? tr("Reset the board filter of all machines to <b>%0</b> now?")
@@ -861,34 +859,21 @@ void SetupWin::makeDevWidgets() {
 	cbPsgCount = new QComboBox;
 	cbPsgType = new QComboBox;
 	cbPsgFrq = new QComboBox;
-	// the machine's own sound picks over the Sound page's: the first item's text is
-	// sndOwnShow()'s, the values' own_mark_spec()'s, with this machine's spec marked
-	auto ownBox = [this](QComboBox*& box) {
-		box = new QComboBox;
-		box->setItemDelegate(new xTwoPartDelegate(box));
-		new xTwoPartPainter(box);
-		new xWheelGuard(box);		// a stray wheel would take the machine off the Sound page
-		box->addItem(QString(), SND_GLOBAL);
-		box->setItemData(0, tr(ownGlobalTip), Qt::ToolTipRole);
-	};
-	ownBox(cbOwnLay);
-	cbOwnLay->insertSeparator(1);
-	for (int lay = AY_MONO; lay <= AY_CBA; lay++)
-		own_add_value(cbOwnLay, lay);
-	ownBox(cbOwnBoard);
+	// the machine's own sound picks over the Sound page's (the texts: sndOwnShow, own_mark_spec)
+	cbOwnLay = new QComboBox;
+	lay_fill_box(cbOwnLay, true);
+	two_part_box(cbOwnLay, false);
+	cbOwnBoard = new QComboBox;
+	board_fill_box(cbOwnBoard, true);
+	two_part_box(cbOwnBoard, true);
 	cbOwnLay->setObjectName("ownLayBox");
 	cbOwnBoard->setObjectName("ownBoardBox");
-	// the Sound page's list, Global setting in By machine's place
-	for (const xBoardPick& p : board_picks()) {
-		if (p.val == BOARD_MACHINE) continue;
-		if (p.sep) cbOwnBoard->insertSeparator(cbOwnBoard->count());
-		own_add_value(cbOwnBoard, p.val, p.tip);
-	}
-	cbOwnBoard->setMaxVisibleItems(cbOwnBoard->count());
-	cbOwnBoard->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
-	cbOwnBoard->setMinimumContentsLength(8);
-	for (QComboBox* box : {cbOwnLay, cbOwnBoard})		// filled: the first item no longer fires
+	for (QComboBox* box : {cbOwnLay, cbOwnBoard}) {
+		// a stray wheel would take the machine off the Sound page: it neither changes the list nor focuses it
+		new xWheelGuard(box);
+		box->setFocusPolicy(Qt::StrongFocus);
 		connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SetupWin::sndOwnShow);
+	}
 	ownLayNote = new QLabel;
 	QFont nfnt = ownLayNote->font();
 	nfnt.setItalic(true);
@@ -1812,7 +1797,7 @@ void SetupWin::fillPages() {
 		setRFIndex(cbBoard, conf.snd.all.board, 0);
 		setRFIndex(cbPsgLay, conf.snd.all.lay, 0);
 	}
-	sldSep->setValue(conf.snd.all.sep);
+	sldSep->setValue(conf.snd.sep);
 	ui.outbox->setCurrentIndex(ui.outbox->findText(QString::fromLocal8Bit(sndOutput->name)));
 	// Auto keeps conf.snd.rate as the rate actually in use, so the box says
 	// which one that turned out to be rather than leaving the user guessing.
@@ -1840,17 +1825,15 @@ void SetupWin::fillPages() {
 	if (comp->ts->chipA->type == SND_NONE) psg = PSG_NONE;
 	setRFIndex(cbPsgCount, psg);
 	setRFIndex(cbPsgType, (comp->ts->chipA->type == SND_NONE) ? SND_AY : comp->ts->chipA->type);
-	// the machine's own over the Sound page's: this machine's spec marked, its picks set
-	// quietly, then shown once
+	// the machine's own picks set quietly, then shown once; Machine spec stands on the marked value
 	sndOthersRead();
 	{
 		QSignalBlocker ql(cbOwnLay), qb(cbOwnBoard);
 		int spec = comp->ts->chipA->stereo;
-		own_mark_spec(cbOwnLay, spec, psg_lay_name);
-		own_mark_spec(cbOwnBoard, comp->beepType, board_type_name);
-		// a pick that names the spec's value is the marked item
-		setRFIndex(cbOwnLay, (conf.snd.own.lay == spec) ? LAY_MACHINE : conf.snd.own.lay, 0);
-		setRFIndex(cbOwnBoard, (conf.snd.own.board == comp->beepType) ? BOARD_MACHINE : conf.snd.own.board, 0);
+		own_mark_spec(cbOwnLay, spec, psg_lay_name, NULL);
+		own_mark_spec(cbOwnBoard, comp->beepType, board_type_name, board_type_tip);
+		setRFIndex(cbOwnLay, snd_heard(conf.snd.own.lay, spec), 0);
+		setRFIndex(cbOwnBoard, snd_heard(conf.snd.own.board, comp->beepType), 0);
 	}
 	sndOwnShow();
 	chapsg();				// the presets at this chip's clock first
@@ -2325,7 +2308,7 @@ void SetupWin::applyGlobal() {
 	conf.snd.vol.dc = chkLowCut->isChecked() ? 1 : 0;
 	conf.snd.all.board = getRFIData(cbBoard);
 	conf.snd.all.lay = getRFIData(cbPsgLay);
-	conf.snd.all.sep = sldSep->value();
+	conf.snd.sep = sldSep->value();
 
 	conf.snd.vol.master = ui.sbMasterVol->value();
 	conf.snd.vol.beep = ui.sbBeepVol->value();

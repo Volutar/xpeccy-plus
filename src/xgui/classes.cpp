@@ -691,6 +691,18 @@ void xSlider::paintEvent(QPaintEvent* ev) {
 	}
 }
 
+// xWheelGuard
+
+xWheelGuard::xWheelGuard(QObject* par) : QObject(par) {
+	par->installEventFilter(this);
+}
+
+bool xWheelGuard::eventFilter(QObject*, QEvent* ev) {
+	if (ev->type() != QEvent::Wheel) return false;
+	ev->ignore();
+	return true;
+}
+
 // xSideButton
 
 QActionGroup* xMenuGroup(QMenu* menu, const char* name) {

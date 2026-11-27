@@ -427,7 +427,6 @@ static void mac_defaults(xMachine& mac) {
 	mac.beepType = BEEP_LINE;
 	mac.snd.lay = SND_GLOBAL;
 	mac.snd.board = SND_GLOBAL;
-	mac.snd.sep = SND_GLOBAL;
 	mac.ulaplus = 0;
 	mac.ddpal = 0;
 	mac.romBanks = 4;
@@ -1340,8 +1339,8 @@ static double mac_psg_frq(int type, double frq) {
 
 // The Sound page's stereo separation, one for every device that has sides: the PSGs (the
 // Next's too, which reads chipA's) and the General Sound
-void xm_set_sep(Computer* comp, int sep) {
-	sep = toLimits(sep, 0, 100);
+void xm_set_sep(Computer* comp) {
+	int sep = toLimits(conf.snd.sep, 0, 100);
 	for (int i = 0; i < 4; i++) {
 		aymChip* chip = ts_chip(comp->ts, i);
 		if (chip->sep == sep) continue;
@@ -1351,9 +1350,7 @@ void xm_set_sep(Computer* comp, int sep) {
 	comp->gs->sep = sep;
 }
 
-// What is heard: the running machine's own picks, Global where it has none. The Next
-// has none: its stereo is what its software set, and the rest follows Global. The
-// separation is Global's for every machine
+// What is heard: the running machine's own picks, Global where it has none (the Next always)
 void xm_snd_apply() {
 	Computer* comp = conf.zx;
 	if (!comp) return;
@@ -1361,7 +1358,7 @@ void xm_snd_apply() {
 	if (comp->hw->id == HW_ZXNEXT) own.lay = own.board = SND_GLOBAL;
 	conf.snd.vol.psgLay = (own.lay != SND_GLOBAL) ? own.lay : conf.snd.all.lay;
 	conf.snd.vol.board = (own.board != SND_GLOBAL) ? own.board : conf.snd.all.board;
-	xm_set_sep(comp, conf.snd.all.sep);
+	xm_set_sep(comp);
 }
 
 static void mac_set_psg(Computer* comp, int count, int type, double frq, int stereo) {
@@ -2151,7 +2148,7 @@ static void mac_set_defer_key(const std::string& nam, const std::string& val) {
 		comp->sndSeed = 1;
 	}
 	else if (nam == "psg.separation") {		// an old profile's: Global
-		conf.snd.all.sep = toLimits(arg.i, 0, 100);
+		conf.snd.sep = toLimits(arg.i, 0, 100);
 		xm_snd_apply();
 	}
 	else if (nam == "gs.reset") comp->gs->reset = arg.b;

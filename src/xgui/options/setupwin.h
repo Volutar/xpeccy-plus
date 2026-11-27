@@ -174,13 +174,11 @@ class SetupWin : public QDialog {
 		QComboBox *diskTypeBox, *cbFlpInterleave, *hiface, *hm_type, *hs_type, *sdrvBox, *cbScanTab, *cbCpuTurbo, *cbPsgCount, *cbPsgType, *cbPsgFrq;
 		xSlider *sldTapeSpeed, *sldSensitivity;
 		QLabel *labTapeSpeedVal, *labPsgMhz;
-		// the machine's own sound picks over the Sound page's: the PSG sheet's Stereo, the
-		// Machine page's Board filter; the first item of a list goes back
+		// the machine's own sound picks: the PSG sheet's Stereo, the Machine page's Board filter
 		QComboBox *cbOwnLay = nullptr, *cbOwnBoard = nullptr;
 		QLabel* ownLayNote = nullptr;
 		xSndPicks ownPicks();		// the picks as the lists stand
-		// the other machines with picks of their own, as their files have them (sndOthersRead),
-		// with their spec: psg.stereo and beeper
+		// the other machines with picks of their own (sndOthersRead), and their spec
 		struct xSndOwnRow {QString name; xSndPicks snd; int specLay; int specBoard;};
 		QList<xSndOwnRow> sndOthers;
 		void sndOthersRead();
@@ -190,8 +188,7 @@ class SetupWin : public QDialog {
 		QCheckBox* chkSndOn;	// Emulate sound, over the page's groups
 		xSlider* sldSep;
 		QLabel* labSep;
-		// after each one's list (SND_GRP_*): how many machines override it, there with some;
-		// made after the machine's lists, which call on them
+		// after each one's list (SND_GRP_*): how many machines override it, hidden with none
 		QToolButton* btnOwn[2] = {nullptr, nullptr};
 		QStringList sndOwnTips[2];	// each of them and what it has of its own
 		void sndResetOwn(int grp);	// the list's value for all machines, asked first

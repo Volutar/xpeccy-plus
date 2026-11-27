@@ -830,6 +830,7 @@ void MainWin::makeBoardActs() {
 		act->setToolTip(p.tip);
 		act->setData(p.val);
 		act->setCheckable(true);
+		if (p.val == BOARD_MACHINE) boardMacAct = act;
 	}
 	connect(boardGrp, &QActionGroup::triggered, this, [this](QAction* act) {
 		conf.snd.all.board = act->data().toInt();
@@ -889,14 +890,9 @@ void MainWin::addBoardActs(QMenu* menu) {
 		QString note = board_own_note();
 		own->setText(note);
 		own->setVisible(!note.isEmpty());
-		for (QAction* act : boardGrp->actions()) {
+		for (QAction* act : boardGrp->actions())
 			act->setChecked(act->data().toInt() == conf.snd.all.board);
-			// By machine names what it gives the running one: its own pick, else its board's
-			if ((act->data().toInt() == BOARD_MACHINE) && conf.zx) {
-				int own = conf.snd.own.board;
-				act->setText(QString("By machine (%0)").arg(board_type_name((own >= 0) ? own : conf.zx->beepType)));
-			}
-		}
+		boardMacAct->setText(board_machine_note());
 		lowCutAct->setChecked(conf.snd.vol.dc);
 		highCutAct->setChecked(conf.snd.filter);
 	});

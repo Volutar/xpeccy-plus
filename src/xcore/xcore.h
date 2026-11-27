@@ -477,7 +477,7 @@ void xm_over_migrate();
 void xm_drop_running();		// the config is being read from scratch
 
 void xm_defer(const std::string&, const std::string&);
-void xm_set_sep(Computer*, int);		// the stereo separation, the PSGs' and the GS's
+void xm_set_sep(Computer*);		// conf.snd.sep to the PSGs and the GS
 const char* xm_beep_name(int);			// BEEP_* by its name in the files, and back
 int xm_beep_named(const std::string&, int def);
 const char* xm_lay_name(int);			// AY_* layouts likewise
@@ -856,15 +856,12 @@ enum {
 // the same id in machines/ of the config directory patching it - and a file
 // with an id of its own being a machine of its own. See docs/machine-format.md.
 
-// Sound picks, Global (the Sound page's) or a machine's own: lay LAY_MACHINE or AY_*, board
-// BOARD_MACHINE or BEEP_*; SND_GLOBAL: none of its own. A machine's own that names its
-// spec's value is read as LAY_MACHINE / BOARD_MACHINE
+// Sound picks, the Sound page's or a machine's own (SND_GLOBAL: none; its spec's value reads as *_MACHINE)
 #define SND_GLOBAL	-2
 
 typedef struct {
-	int lay;
-	int board;
-	int sep;		// 0..100, Global's only: a machine has none of its own
+	int lay;		// LAY_MACHINE or AY_*
+	int board;		// BOARD_MACHINE or BEEP_*
 } xSndPicks;
 
 typedef struct {
@@ -1207,6 +1204,7 @@ struct xConfig {
 		sndVolume vol;		// what is mixed: its board and psgLay those heard (xm_snd_apply)
 		xSndPicks all;		// Global, the Sound page's, what config.conf keeps
 		xSndPicks own;		// the running machine's own, what its file keeps
+		int sep;		// the stereo separation, 0..100, one for every machine
 		FILE* wavfile;
 	} snd;
 	struct {
