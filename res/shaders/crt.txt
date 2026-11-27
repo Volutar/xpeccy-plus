@@ -878,7 +878,7 @@ fragment:
 			float tall = max(1.0, floor(cell * 0.2887 + 0.5));
 			float h = (tall > 1.5) ? min(soft.y, tall) : 0.0;
 			float y0 = px.y - 0.5 * h;
-			float r0 = floor(((h > 0.0) ? y0 : px.y) / tall);
+			float r0 = floor(y0 / tall);
 			m = stripes(x + mod(r0, 2.0) * 0.5 * cell, soft.x, kind, n, cell, dark, lit);
 			if (h > 0.0) {
 				float first = clamp(((r0 + 1.0) * tall - y0) / h, 0.0, 1.0);
@@ -909,12 +909,11 @@ fragment:
 		// A scanline is a line of the picture, at any scale: one that kept to whole
 		// screen rows would cut across the picture's lines. On a flat screen at a whole
 		// scale the two fall together
-		float per = max(1.0, floor(scale + 0.5));
-		bool rows = flat_ && (abs(scale - per) * spotSize.y < 0.5);
-		// At 2 rows a line and at an odd count the lines (and the mask) go half a row down:
-		// the gap is one row, on the lines' border. By the picture's scale, so a slight curve keeps it
 		float perPic = max(1.0, floor(dot_ + 0.5));
 		bool whole = (abs(dot_ - perPic) * spotSize.y < 0.5);
+		bool rows = flat_ && whole;
+		// At 2 rows a line and at an odd count the lines (and the mask) go half a row down:
+		// the gap is one row, on the lines' border. By the picture's scale, so a slight curve keeps it
 		bool odd = (mod(perPic, 2.0) > 0.5) && (perPic > 1.5);
 		float half_ = (whole && ((perPic == 2.0) || odd) && (SCAN > 0.0)) ? 0.5 : 0.0;
 
@@ -937,10 +936,9 @@ fragment:
 		// on the glass a pixel covers more or less than one of the mask's
 		vec2 pixel = fwidth(bent);
 		float mean;
-		vec3 through = mask(px, glass ? pixel : vec2(0.0), cell, kind, n, max(2.0, floor(dot_ + 0.5)), mean);
+		vec3 through = mask(px, glass ? pixel : vec2(0.0), cell, kind, n, max(2.0, perPic), mean);
 
-		// Under a roll the bands are a little shorter than a line (newpixie's 4.2 screen
-		// pixels at 4.9 a line): a band the line's own would step with every line at once
+		// Under a roll, bands 0.86 of a line (newpixie's): bands a line apart would step with every line at once
 		bool rolling = (ROLL > 0.0);
 		const float BAND = 0.86;
 		float bandScale = rolling ? scale * BAND : scale;
@@ -954,8 +952,8 @@ fragment:
 		// in 400 frames, so the lines meet themselves when the count starts again
 		// (rows that fall on the lines are counted: a line's edge is a row's, to the bit)
 		float prow = floor(vTexCoord.y * OutputSize.y) + half_;
-		float top = rows ? prow / per : uv.y * spotSize.y + (half_ - 0.5) * foot;
-		float bottom = rows ? (prow + 1.0) / per : top + foot;
+		float top = rows ? prow / perPic : uv.y * spotSize.y + (half_ - 0.5) * foot;
+		float bottom = rows ? (prow + 1.0) / perPic : top + foot;
 		vec3 off = vec3(0.0);
 		bool apart = (DIVERGE > 0.0);
 		if (apart) {
@@ -966,13 +964,14 @@ fragment:
 		vec3 a = top + off;
 		vec3 b = bottom + off;
 		float span = bottom - top;
-		// Under a roll the bands move over the picture: every band here takes the picture's
-		// color at the pixel, its lines by their share; a and b then count bands
+		// Under a roll every band takes the picture's color at the pixel; a and b then count bands
 		vec3 own = vec3(0.0);
 		if (rolling) {
 			vec3 j = floor(a);
 			vec3 share = clamp((j + 1.0 - a) / max(b - a, vec3(0.000001)), vec3(0.0), vec3(1.0));
 			own = mix(linesAt(uv.x, j + 1.0, apart), linesAt(uv.x, j, apart), share);
+			// (half a row down, a flat picture's edge rows have no line past them)
+			if (rows && (half_ > 0.0)) own *= clamp((min(b.g, spotSize.y) - max(a.g, 0.0)) / max(b.g - a.g, 0.000001), 0.0, 1.0);
 			a = a / BAND - roll;
 			b = b / BAND - roll;
 			span /= BAND;
@@ -990,6 +989,7 @@ fragment:
 		vec3 sum = vec3(0.0);
 		// Half a row down, a flat picture's edge rows have no line past them: the green beam's share dims all three alike
 		vec3 cut = vec3(0.0);
+		bool edges = rows && !rolling && (half_ > 0.0);
 		for (int k = 0; k < (tall ? 3 : 2); k++) {
 			vec3 row = first + float(k);
 			vec3 col = rolling ? own : linesAt(uv.x, row, apart);
@@ -1009,9 +1009,9 @@ fragment:
 			}
 			vec3 line = bell(a, b, row + 0.5, col * pass_, reach, width);
 			sum += line;
-			if (rows && !rolling && (half_ > 0.0)) cut += line * step(vec3(0.0), row) * step(row, vec3(spotSize.y - 1.0));
+			if (edges) cut += line * step(vec3(0.0), row) * step(row, vec3(spotSize.y - 1.0));
 		}
-		if (rows && !rolling && (half_ > 0.0)) {
+		if (edges) {
 			if (sum.g <= 0.000001) sum = cut;
 			else if (cut.g < sum.g) sum *= cut.g / sum.g;
 		}
