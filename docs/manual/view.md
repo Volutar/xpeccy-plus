@@ -166,19 +166,29 @@ there. The list has up to four parts:
 - the looks of a tube: **Home TV** - a small set with a coarse mask, a soft beam and a
   bulging screen; **Home TV (composite)** - the same set on its video input, with the
   colors a PAL set makes of fine patterns and at color edges; **RGB monitor** - the
-  Commodore 1084S; **PVM** - a broadcast monitor, sharp, bent a little as a cylinder is,
-  the look a new installation starts with; **Tridot** - a fine dot mask, three screen
-  pixels a triad at any scale, a thin sharp beam and deep scanlines; **Xpixie** - soft
-  and glowing, with afterglow, a ghost and noise;
+  Commodore 1084S, its mask as fine as the tube's own; **Commodore 1084S** - the same
+  monitor with its slot mask as it looks close up, its slots standing apart as bricks,
+  three screen pixels a triad at any scale; **Sony PVM** - a studio monitor, sharp, bent
+  a little as a cylinder is, the look a new installation starts with; **Tridot** - a
+  fine dot mask, three screen pixels a triad at any scale, on a flat screen, a bright
+  soft picture with a glow, a little afterglow and a set's ghost and grain; **Xpixie** -
+  soft and glowing, with afterglow, a ghost and noise;
 - the presets you saved;
 - shader files of your own, from the `shaders` folder of the configuration.
+
+The shader files the tube's looks came instead of are still there, in **View > Display >
+Legacy shaders (deprecated)** and as **Legacy:** items in the **Options** list. They are to
+be removed in a coming release; a configuration that names one then opens the tube's look
+nearest to it.
 
 ```{index} Display; settings, knobs, preset
 ```
 
 A look with settings has a window of them: **View > Display > Settings...**, or the
 {icon}`settings` button beside the list in **Options**. **Scanlines** has **Depth** - how
-dark the gap between two lines is - **Gap width** and **Softness**. The picture shows every
+dark the gap between two lines is, past 1 a thicker black band - **Gap width**, **Keep
+brightness** - turned down, less of the light the gaps take is given back, and bright
+things keep deep gaps too - and **Softness**. The picture shows every
 move at once, and what you set stays with the look: pick another and come back, and it is
 as you left it.
 
@@ -201,7 +211,8 @@ that can be switched off, and then costs nothing:
   **Fineness**: how many triads of the mask a dot of the picture has. The mask is drawn in
   whole screen pixels, so in a small window it is coarser than the number says. **Size**
   keeps a triad the same width on your screen at any scale instead: **2 pixels** (magenta
-  and green, the colors run together), **3 pixels** or **6 pixels**. A fine
+  and green, the colors run together), **3 pixels** or **6 pixels**. **Bridges**, under
+  **All settings**: how dark the bars between a slot mask's openings are. A fine
   mask is drawn with the display's own subpixels: if its colors look wrong, set
   **Display's subpixels** under **All settings** to your display's order, **RGB** or
   **BGR**, or to **Other** for a mask without colors;

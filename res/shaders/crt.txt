@@ -68,13 +68,15 @@ tip PITCH = Triads of the mask to a dot of the picture, with Size by fineness
 #pragma parameter MSIZE "Size" 0 0 3 1
 list MSIZE = By fineness, 2 pixels, 3 pixels, 6 pixels
 tip MSIZE = A triad's width on your screen: by the tube's fineness, or the same at any scale
+#pragma parameter SLOTB "Bridges" 0.0 0.0 1.0 0.05
+tip SLOTB = A slot mask's bars between its openings: a thin notch, or a row as dark as the mask holds back
 #pragma parameter MBEND "On the glass" 0 0 2 1
 list MBEND = Auto, Off, On
 tip MBEND = The mask bends with a curved screen. Auto: where a triad has pixels enough
 #pragma parameter PANEL "Display's subpixels" 0 0 2 1
 list PANEL = RGB, BGR, Other
 tip PANEL = Your display's own order: a fine mask is drawn with them. Other: a mask without colors
-more MBEND PANEL
+more SLOTB MBEND PANEL
 
 group "Beam"
 #pragma parameter SCAN "Scanlines" 0.5 0.0 1.5 0.05
@@ -113,19 +115,19 @@ more CONTRAST CURVEX CURVEY
 group "Glow" when GLOW 0.3
 #pragma parameter GLOW "Amount" 0.0 0.0 1.0 0.05
 tip GLOW = How much light spills around bright things
-#pragma parameter GLOWR "Radius" 1.5 0.5 4.0 0.25
+#pragma parameter GLOWR "Radius" 1.5 0.1 4.0 0.05
 tip GLOWR = How far it spills
 more GLOWR
 
 group "Divergence" when DIVERGE 1.0
-#pragma parameter DIVERGE "Amount" 0.0 0.0 2.0 0.05
+#pragma parameter DIVERGE "Amount" 0.0 0.0 2.0 0.01
 tip DIVERGE = How far red and blue land from green
-#pragma parameter DIVMID "At the middle" 0.18 0.0 1.0 0.02
+#pragma parameter DIVMID "At the middle" 0.18 0.0 1.0 0.01
 tip DIVMID = The share of it left at the screen's middle
-#pragma parameter DIVRX "Red across" -0.55 -2.0 2.0 0.05
-#pragma parameter DIVRY "Red down" -0.3 -2.0 2.0 0.05
-#pragma parameter DIVBX "Blue across" 0.55 -2.0 2.0 0.05
-#pragma parameter DIVBY "Blue down" 0.3 -2.0 2.0 0.05
+#pragma parameter DIVRX "Red across" -0.55 -2.0 2.0 0.01
+#pragma parameter DIVRY "Red down" -0.3 -2.0 2.0 0.01
+#pragma parameter DIVBX "Blue across" 0.55 -2.0 2.0 0.01
+#pragma parameter DIVBY "Blue down" 0.3 -2.0 2.0 0.01
 tip DIVRX = Dots, at the screen's edge
 tip DIVRY = Lines, at the screen's edge
 tip DIVBX = Dots, at the screen's edge
@@ -142,14 +144,15 @@ more AFTERR AFTERG AFTERB
 
 # The masks' fineness is the tubes' own: triads across the screen over the 352 dots of a
 # full frame - a 14" TV's 0.65 mm slot mask 1.2, the 1084's 0.42 mm one 1.9, a 14" PVM's
-# 0.25 mm grille 3.0 (Philips data handbook T08 of 1986, Sony's PVM brochures). Tridot
-# is a dot mask three screen pixels a triad at any scale, a thin sharp beam with deep
-# gaps, and half the light the two take given back
+# 0.25 mm grille 3.0 (Philips data handbook T08 of 1986, Sony's PVM brochures).
+# Commodore 1084S is RGB monitor with its slot mask three screen pixels a triad, the slots
+# apart as bricks
 preset "Home TV": MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, SPOT 0.5, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, VIGN 0.25
 preset "Home TV (composite)": INPUT 1, MASK 2, MASKS 0.6, PITCH 1.2, SCAN 0.6, WIDTH 0.9, FOCUS 0.4, SPOT 0.5, GROW 0.3, DIVERGE 0.5, GLOW 0.2, CURVE 0.05, VIGN 0.25
 preset "RGB monitor": MASK 2, MASKS 0.45, PITCH 1.9, SCAN 0.9, WIDTH 0.8, FOCUS 0.5, SPOT 0.5, GROW 0.15, DIVERGE 0.2, GLOW 0.1, CURVE 0.04, VIGN 0.1
-preset "PVM": MASK 1, MASKS 0.3, PITCH 3.0, SCAN 0.95, WIDTH 1.0, FOCUS 0.7, SPOT 0.3, GROW 0.2, DIVERGE 0.15, CURVE 0.02, CURVEX 0
-preset "Tridot": MASK 3, MSIZE 2, MASKS 0.7, SCAN 1.15, WIDTH 0.5, FOCUS 0.9, SPOT 0, GROW 0, BRIGHT 1.05, KEEP 0.5
+preset "Commodore 1084S": MASK 2, MSIZE 2, SLOTB 1, MASKS 0.8, BLOOM 0.3, PITCH 1.9, SCAN 0.9, WIDTH 0.8, FOCUS 0.5, SPOT 0.5, GROW 0.15, DIVERGE 0.2, GLOW 0.1, CURVE 0.04, VIGN 0.1
+preset "Sony PVM": MASK 1, MASKS 0.3, PITCH 3.0, SCAN 0.95, WIDTH 1.0, FOCUS 0.7, SPOT 0.3, GROW 0.2, DIVERGE 0.15, CURVE 0.02, CURVEX 0
+preset "Tridot": SHIMMER 0.1, GHOST 0.25, GHOSTX 0.5, WIGGLE 0.15, NOISE 0.05, MASK 3, MASKS 0.6, PITCH 1, MSIZE 2, MBEND 1, SCAN 0.7, WIDTH 0.9, FOCUS 0.4, SPOT 0.1, GROW 0.2, CORNER 0.015, BLOOM 0.35, CONTRAST 0.55, CURVEX 0, CURVEY 0.5, GLOW 0.35, GLOWR 0.5, DIVERGE 0.95, DIVMID 0, DIVRX -0.2, DIVRY -0.2, DIVBX 0.2, DIVBY 0.2, AFTER 0.15
 preset "Xpixie": MASK 1, MASKS 0.25, PITCH 1.0, SCAN 0.4, WIDTH 1.0, FOCUS 0.2, SPOT 0.4, GROW 0, DIVERGE 0.9, DIVMID 1.0, GLOW 0.35, AFTER 0.3, GHOST 0.1, GHOSTX 0.8, NOISE 0.5, CURVE 0.03, VIGN 0.7, BRIGHT 0.9, CONTRAST 0.5
 
 common:
@@ -624,12 +627,16 @@ fragment:
 	in vec2 vTexCoord;
 	layout(location = 0) out vec4 FragColor;
 
+	// A bell of 2 Radius texels each way, every texel of it read: texels skipped over
+	// a radius past one would beat into waves
 	void main() {
 		vec3 sum = vec3(0.0);
 		float all = 0.0;
-		for (int n = -4; n <= 4; n++) {
-			float w = exp(-0.125 * float(n * n));
-			sum += pow(texture(Source, vTexCoord + vec2(float(n) * GLOWR * OutputSize.z, 0.0)).rgb, vec3(2.2)) * w;
+		int reach = max(1, int(ceil(4.0 * GLOWR)));
+		for (int n = -reach; n <= reach; n++) {
+			float t = float(n) / GLOWR;
+			float w = exp(-0.125 * t * t);
+			sum += pow(texture(Source, vTexCoord + vec2(float(n) * OutputSize.z, 0.0)).rgb, vec3(2.2)) * w;
 			all += w;
 		}
 		FragColor = vec4(pow(sum / all, vec3(1.0 / 2.2)), 1.0);
@@ -647,9 +654,11 @@ fragment:
 	void main() {
 		vec3 sum = vec3(0.0);
 		float all = 0.0;
-		for (int n = -4; n <= 4; n++) {
-			float w = exp(-0.125 * float(n * n));
-			sum += pow(texture(Source, vTexCoord + vec2(0.0, float(n) * GLOWR * OutputSize.w)).rgb, vec3(2.2)) * w;
+		int reach = max(1, int(ceil(4.0 * GLOWR)));
+		for (int n = -reach; n <= reach; n++) {
+			float t = float(n) / GLOWR;
+			float w = exp(-0.125 * t * t);
+			sum += pow(texture(Source, vTexCoord + vec2(0.0, float(n) * OutputSize.w)).rgb, vec3(2.2)) * w;
 			all += w;
 		}
 		FragColor = vec4(pow(sum / all, vec3(1.0 / 2.2)), 1.0);
@@ -792,6 +801,8 @@ fragment:
 			// less than a row, the row is as much lighter
 			float bar = max(1.0, floor(tall / 8.0 + 0.5));
 			float deep = MASKS * min(1.0, tall / (8.0 * bar));
+			// ...or, with Bridges, a whole row as dark as the mask
+			if (SLOTB > 0.0) deep = mix(deep, MASKS, SLOTB);
 			// The bridges stand at a quarter and at three quarters of the height, each
 			// row dark by the share of it a bridge covers: half a height apart whatever
 			// the height (three rows have no whole half), and the same to both sides of
@@ -868,11 +879,10 @@ fragment:
 		// scale the two fall together
 		float per = max(1.0, floor(scale + 0.5));
 		bool rows = flat_ && (abs(scale - per) * spotSize.y < 0.5);
-		// Two rows a line are the two halves of its bell, lit alike whatever its shape: there
-		// the lines go half a row down, so one row is a line's middle and the next its gap -
-		// and the mask with them, so a slot's bridge stays on a line's middle. With no
-		// scanlines the rows stay: two rows a line, the picture as it is
-		float half_ = (rows && (per == 2.0) && (SCAN > 0.0)) ? 0.5 : 0.0;
+		// At 2 rows a line and at an odd count the lines (and the mask) go half a row down:
+		// the gap is one row, on the lines' border
+		bool odd = (mod(per, 2.0) > 0.5) && (per > 1.5);
+		float half_ = (rows && ((per == 2.0) || odd) && (SCAN > 0.0)) ? 0.5 : 0.0;
 
 		// The mask: counted in the window's pixels, or in the picture's own where it is
 		// to bend with the glass - by itself where a pixel of its layout is two screen
@@ -892,8 +902,9 @@ fragment:
 		float mean;
 		vec3 through = mask(px, cell, kind, n, max(2.0, floor(dot_ + 0.5)), mean);
 
-		// Lines that do not fall on rows beat with them at a small scale: shallower there
-		float deep = SCAN * (rows ? 1.0 : mix(0.4, 1.0, smoothstep(2.0, 4.0, scale)) * step(1.5, scale));
+		// Lines that do not fall on rows beat with them at a small scale: shallower there -
+		// near two rows a line the most, from three on hardly at all
+		float deep = SCAN * (rows ? 1.0 : mix(0.4, 1.0, smoothstep(2.0, 3.0, scale)) * step(1.5, scale));
 		// with no scanlines a line is its own rows and no more: the picture as it is
 		float width = WIDTH * clamp(deep / 0.2, 0.0, 1.0);
 		// where the pixel stands, in lines, for each beam: the red and the blue land a
@@ -919,9 +930,6 @@ fragment:
 		vec3 here = 0.5 * (a + b);
 		bool tall = (foot > 0.5) || (half_ > 0.0);
 		vec3 first = tall ? floor(here) - 1.0 : floor(here - 0.5);
-		// under a roll the lines move and the picture stays: each takes what the
-		// picture has where the pixel stands
-		vec3 still = floor(here + roll);
 		// what the mask takes is given back - all of it, or as much as Keep brightness
 		// says: with none, the picture is as much darker as the mask and the gaps take
 		float kept = keptOf(mean);
@@ -929,7 +937,15 @@ fragment:
 		vec3 sum = vec3(0.0);
 		for (int k = 0; k < (tall ? 3 : 2); k++) {
 			vec3 row = first + float(k);
-			vec3 col = linesAt(uv.x, (roll > 0.0) ? still : row, apart) * BRIGHT;
+			vec3 col = linesAt(uv.x, row, apart);
+			// under a roll the lines move and the picture stays: a line takes the two of
+			// the picture it stands over, by how much of each - its beams too, so a red
+			// and a blue land off by as much as without a roll, not by whole lines
+			if (roll > 0.0) col = mix(col, linesAt(uv.x, row + 1.0, apart), roll);
+			col *= BRIGHT;
+			// with the lines half a row down the picture's last row reaches past its last
+			// line: there is no line there, not the last one again
+			if (half_ > 0.0) col *= step(vec3(0.0), row) * step(row, vec3(spotSize.y - 1.0));
 			// a bright line fills more of its gap
 			float depth = clamp(deep * (1.0 - GROW * max(col.r, max(col.g, col.b))), 0.0, 1.5);
 			float reach = reachOf(depth, width);

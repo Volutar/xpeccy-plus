@@ -17,14 +17,15 @@ before that point is upstream's history and is not repeated here.
   preset makes a look of your own.
 
 - **Scanlines**, beside None in the Display list: plain scanlines with a hard or a soft dot,
-  by Depth, Gap width and Softness. Each is a line of the picture at any window size, and
-  the picture keeps its brightness.
+  by Depth (past 1 a black band), Gap width, Keep brightness and Softness. Each is a line of
+  the picture at any window size, and the picture keeps its brightness unless asked not to.
 
-- **CRT looks**: Home TV, Home TV (composite), RGB monitor, PVM, Tridot and Xpixie in the
-  Display list. One tube in stages that switch off - beam, divergence, mask, glow,
-  afterglow, signal, screen - with the mask as fine as the tube's own and thinning out as
-  the picture gets smaller, or a set number of screen pixels at any scale. A new
-  installation starts with PVM. *(beam divergence by Volutar)*
+- **CRT looks**: Home TV, Home TV (composite), RGB monitor, Commodore 1084S, Sony PVM,
+  Tridot and Xpixie in the Display list. One tube in stages that switch off - beam,
+  divergence, mask, glow, afterglow, signal, screen - with the mask as fine as the tube's
+  own and thinning out as the picture gets smaller, or a set number of screen pixels at
+  any scale. A new installation starts with Sony PVM. *(beam divergence and Tridot's
+  settings by Volutar)*
 
 - **Composite and RF input** for the CRT looks: a PAL picture as a set decodes it. Fine
   patterns take on color; with a 128K's color carrier they stand, with a 48K's they
@@ -33,8 +34,10 @@ before that point is upstream's history and is not repeated here.
   where a checkerboard of dots turns one flat warm color. Under Input in a look's settings;
   every look but Home TV (composite) starts on RGB.
 
-- **The older shader files are under Display > Legacy** for now: the aperture grille and
-  shadow mask looks, TV lines, monitor-1084, pvm-sharp, composite-crt and zx-rf-artifact.
+- **The older shader files are under Display > Legacy shaders (deprecated)**: the aperture
+  grille and shadow mask looks, TV lines, monitor-1084, pvm-sharp, composite-crt and
+  zx-rf-artifact. They are to be removed in a coming release; a config naming one then
+  opens the nearest CRT look.
 
 - **Keymap By machine**, the default: Input > Keymap and Options > Input. The Robik takes the
   Robik's keymap, the ZX Spectrum 48K the 48K one, every other machine ZX Spectrum 128K. A

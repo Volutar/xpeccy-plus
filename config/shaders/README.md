@@ -3,7 +3,7 @@
 GLSL post-processing filters, drawn through OpenGL: none with `--no-gl` or without an
 OpenGL 3.3 driver (OpenGL ES 3.0). Pick a look in the Display list of Options - Video or in
 View - Display; in `config/config.conf` it is `shader = <file>` and, for a file with presets,
-`shader.preset = <name>`. A fresh config starts with the PVM look of `crt.txt`; an empty or
+`shader.preset = <name>`. A fresh config starts with the Sony PVM look of `crt.txt`; an empty or
 missing `shader` line turns filtering off.
 
 A shader with parameters has a sheet of knobs: the gear beside the list, or View - Display -
@@ -25,17 +25,18 @@ it to leave off what belongs to the tube's edge - rounded corners, a vignette - 
 ones do; a curve is best kept to the picture, `warp(clamp(uv, 0.0, 1.0)) + (uv - clamp(uv, 0.0, 1.0))`.
 
 Scanlines and CRT are Xpeccy+'s own, under its MIT license; what each builds on is named
-with it below. The older files kept under Display > Legacy keep their authors' terms: see
+with it below. The older files kept under Display > Legacy shaders (deprecated) keep their authors' terms: see
 "Names of older versions".
 
 ## Scanlines - Xpeccy+
 
 `scanlines.txt`, MIT as the rest of Xpeccy+: plain scanlines with a hard or a soft dot.
-Three knobs: Depth, Gap width and Softness. A scanline is a line of the picture at any
+Its knobs: Depth (past 1 the gap is a thicker black band), Gap width, Keep brightness and
+Softness. A scanline is a line of the picture at any
 scale (Line fit, under All settings, counts whole screen rows instead: even lines, but no
-longer one to a line of the picture). The light the gaps take is given back: the picture is as bright as with
-no shader, but for colors at full light, whose lines are flat on top and a little darker
-over all.
+longer one to a line of the picture). The light the gaps take is given back: the picture is
+as bright as with no shader, but for colors at full light, whose lines are flat on top and a
+little darker over all; Keep brightness turned down gives back less.
 
 ## CRT - Xpeccy+
 
@@ -45,9 +46,9 @@ at 0, when its pass is not drawn at all.
 | Stage | What it does |
 | --- | --- |
 | Signal | the cable - RGB; composite or RF into a PAL set, by a 128K's color carrier or a 48K's; or a SECAM set; a ghost, interference, noise |
-| Mask | aperture grille, slot mask (thin bridges, every other triad half an opening lower) or shadow mask, as fine as the tube: triads to a dot of the picture |
-| Beam | scanlines - a line is a bell that reaches into its neighbors' rows, wider where brighter; the focus of a dot's edge along the line; the beam's spot, which rounds a dot's ends |
-| Screen | curvature, round corners, vignette, brightness, bloom (bright things keep their light: the mask and the scanlines fade there), contrast |
+| Mask | aperture grille, slot mask (every other triad half an opening lower; Bridges, from a thin notch to a dark row) or shadow mask, as fine as the tube - triads to a dot of the picture - or 2, 3 or 6 screen pixels a triad at any scale |
+| Beam | scanlines - a line is a bell that reaches into its neighbors' rows, wider where brighter, past 1 thinner with a black band between; the focus of a dot's edge along the line; the beam's spot, which rounds a dot's ends |
+| Screen | curvature, round corners, vignette, brightness, keep brightness (how much of what the mask and the scanlines take is given back), bloom (bright things keep their light: the mask and the scanlines fade there), contrast |
 | Glow | light around bright things |
 | Divergence | the red and blue beams land beside the green one, more towards the screen's edges |
 | Afterglow | a lit dot fades over the next frames, blue first |
@@ -81,8 +82,10 @@ Home TV (composite) comes on RGB: Input is turned by hand.
 | --- | --- |
 | Home TV | a 14" set: a coarse slot mask, a soft beam, glow, a bulging screen |
 | Home TV (composite) | the same set on its video input: a PAL picture as it decodes it |
-| RGB monitor | the Commodore 1084S: a finer slot mask, a sharp beam, a slight curve |
-| PVM | a broadcast monitor: a fine aperture grille, the sharpest beam, a cylinder's slight curve |
+| RGB monitor | the Commodore 1084S as fine as its tube: a finer slot mask, a sharp beam, a slight curve |
+| Commodore 1084S | the same monitor with its slot mask as it looks close up: slots apart as bricks, 3 screen pixels a triad |
+| Sony PVM | a studio monitor: a fine aperture grille, the sharpest beam, a cylinder's slight curve |
+| Tridot | a dot mask 3 screen pixels a triad on a flat screen, a soft bright picture with glow, bloom, a ghost and grain |
 | Xpixie | soft and glowing, with afterglow, a ghost and noise |
 
 The two-pass beam follows Hyllian's CRT (MIT); the mask layouts Timothy Lottes's and
@@ -95,10 +98,10 @@ domain), which Xpixie is named after.
 The aperture grille and shadow mask files (`grille-nocurve-crisp.txt`,
 `tridot-curve-light.txt`...), `tvline-nocurve-light.txt` and `tvline-curve-light.txt`,
 `monitor-1084.txt`, `monitor-1084-flat.txt`, `pvm-sharp.txt`, `composite-crt.txt`,
-`composite-crt-flat.txt` and `zx-rf-artifact.txt` are kept for now under Display > Legacy,
-and a config that names one opens it as before. They will go once the tube does all they
-did; a config that names one will then open the tube with its knobs turned to stand for
-it. A file of that name put into this folder is used as it is, as any shader of your own.
+`composite-crt-flat.txt` and `zx-rf-artifact.txt` are deprecated, kept for now under
+Display > Legacy shaders (deprecated), and a config that names one opens it as before. They
+are to be removed in a coming release; a config that names one will then open the tube with
+its knobs turned to stand for it. A file of that name put into this folder is used as it is, as any shader of your own.
 
 They are not all under the MIT license of Xpeccy+ - each keeps the terms of its author:
 

@@ -29,6 +29,7 @@ struct xLook {
 };
 
 QList<xLook> look_list();
+QString look_legacy_tip();				// what a Legacy item says of itself
 xLook look_current();
 void look_choose(const xLook&);
 bool look_has_knobs(const xLook&);		// its file has parameters

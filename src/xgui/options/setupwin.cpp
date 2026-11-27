@@ -193,7 +193,12 @@ static void fill_look_list(QComboBox* box) {
 		if (lk.part != part) box->insertSeparator(box->count());
 		part = lk.part;
 		// (the menu has the older files in a submenu)
-		box->addItem((lk.part == LOOK_LEGACY) ? "Legacy: " + lk.title : lk.title, QStringList() << lk.file << lk.preset);
+		if (lk.part == LOOK_LEGACY) {
+			box->addItem(QCoreApplication::translate("Display", "Legacy: %1").arg(lk.title), QStringList() << lk.file << lk.preset);
+			box->setItemData(box->count() - 1, look_legacy_tip(), Qt::ToolTipRole);
+		} else {
+			box->addItem(lk.title, QStringList() << lk.file << lk.preset);
+		}
 	}
 	const xLook cur = look_current();
 	box->setCurrentIndex(qMax(0, box->findData(QStringList() << cur.file << cur.preset)));
