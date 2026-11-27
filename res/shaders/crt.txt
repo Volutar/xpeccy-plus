@@ -116,7 +116,7 @@ flat CURVE CORNER VIGN
 group "Glow" when GLOW 0.3
 #pragma parameter GLOW "Amount" 0.0 0.0 1.0 0.05
 tip GLOW = How much light spills around bright things
-#pragma parameter GLOWR "Radius" 1.5 0.05 4.0 0.05
+#pragma parameter GLOWR "Radius" 1.5 0.05 2.0 0.01
 tip GLOWR = How far it spills
 more GLOWR
 
@@ -781,10 +781,7 @@ fragment:
 		return kind * n;
 	}
 
-	// The triad's pixels, after hunterk's subpixel masks: a color takes lit of the
-	// triad. c: which of the triad's parts, each a subpixel (n pixels) wide - or a pixel,
-	// on a display without colors. On a display whose subpixels run blue first, the
-	// other way round
+	// The triad's part c (after hunterk's subpixel masks; BGR the other way round): a color takes lit of the triad
 	vec3 stripe(float c, float kind, float cell, float dark, out float lit) {
 		vec3 m = vec3(dark);
 		if (PANEL == 2.0) {
@@ -825,9 +822,7 @@ fragment:
 		return m;
 	}
 
-	// ...across a pixel at x: what its middle has, or, soft (the pixel's width in the
-	// triad's pixels), the parts it covers by how much of it each - a bent mask then
-	// has no steps where its columns slip past the screen's
+	// ...across a pixel soft wide: the parts it covers by their share, so a bent mask has no steps
 	vec3 stripes(float x, float soft, float kind, float n, float cell, float dark, out float lit) {
 		float unit = (PANEL == 2.0) ? 1.0 : n;
 		if (soft <= 0.0) return stripe(floor(x / unit), kind, cell, dark, lit);
@@ -842,8 +837,7 @@ fragment:
 	// light it lets through over all (what is given back).
 	// lines: screen rows a scanline takes, a whole number. Where the scanlines follow
 	// the picture (a curved screen, Line fit) they take a little more or less, and a
-	// slot mask still beats with them, faintly. soft: on the glass, the pixel's size in
-	// the mask's pixels (0: a flat mask, pixel for pixel)
+	// slot mask still beats with them, faintly. soft: the pixel's size on the glass, 0 flat
 	vec3 mask(vec2 px, vec2 soft, float cell, float kind, float n, float lines, out float mean) {
 		mean = 1.0;
 		float dark = 1.0 - MASKS;
@@ -877,8 +871,7 @@ fragment:
 		if (MASK == 3.0) {
 			// rows of dots, every other row half a triad along. The dots of a shadow mask lie
 			// in a hexagon, so a row is sqrt(3) / 6 of a triad tall: a 3 pixel triad, one row.
-			// Soft, the two rows a pixel covers, by how much of it each - rows of two pixels
-			// or more: one a pixel tall would be smeared into the next, no dots left
+			// Soft: two rows by their share, only rows of 2+ pixels (1-pixel dots would smear)
 			float tall = max(1.0, floor(cell * 0.2887 + 0.5));
 			float h = (tall > 1.5) ? min(soft.y, tall) : 0.0;
 			float y0 = px.y - 0.5 * h;
@@ -916,8 +909,7 @@ fragment:
 		float per = max(1.0, floor(scale + 0.5));
 		bool rows = flat_ && (abs(scale - per) * spotSize.y < 0.5);
 		// At 2 rows a line and at an odd count the lines (and the mask) go half a row down:
-		// the gap is one row, on the lines' border. By the picture's scale, not the pixel's:
-		// a curve as slight as you like keeps them where a flat screen has them
+		// the gap is one row, on the lines' border. By the picture's scale, so a slight curve keeps it
 		float perPic = max(1.0, floor(dot_ + 0.5));
 		bool whole = (abs(dot_ - perPic) * spotSize.y < 0.5);
 		bool odd = (mod(perPic, 2.0) > 0.5) && (perPic > 1.5);
@@ -939,7 +931,7 @@ fragment:
 		bool glass = !flat_ && ((MBEND == 2.0) || ((MBEND == 0.0) && (n >= 2.0)));
 		vec2 bent = uv * OutputSize.xy;
 		vec2 px = glass ? bent : gl_FragCoord.xy - xpPicture.xy - vec2(0.0, half_);
-		// on the glass a pixel covers a little more or less of the mask than one of its pixels
+		// on the glass a pixel covers more or less than one of the mask's
 		vec2 pixel = fwidth(bent);
 		float mean;
 		vec3 through = mask(px, glass ? pixel : vec2(0.0), cell, kind, n, max(2.0, floor(dot_ + 0.5)), mean);
@@ -976,9 +968,7 @@ fragment:
 		// says: with none, the picture is as much darker as the mask and the gaps take
 		float kept = keptOf(mean);
 		vec3 pass0 = through / kept;
-		// Under a roll only the gaps move: every line here has the picture's color at this
-		// pixel, as with no roll and no scanlines - its lines by how much of the pixel
-		// each takes, each beam at its own (a red and a blue land off as without a roll)
+		// Under a roll only the gaps move: every line here takes the picture's color at the pixel
 		vec3 own = vec3(0.0);
 		if (roll > 0.0) {
 			vec3 a0 = a + roll;
@@ -987,11 +977,7 @@ fragment:
 			own = mix(linesAt(uv.x, j + 1.0, apart), linesAt(uv.x, j, apart), share);
 		}
 		vec3 sum = vec3(0.0);
-		// With the lines half a row down a flat picture's first and last rows reach past its
-		// lines: there is no line there, not the edge one again (a bent one goes on to the
-		// glass's rim, as its border does). The green beam's lines
-		// that are there dim all three alike: a red or a blue landing off would leave a
-		// colored strip at the edge (where there is no green, each beam by its own lines)
+		// Half a row down, a flat picture's edge rows have no line past them: the green beam's share dims all three alike
 		vec3 cut = vec3(0.0);
 		for (int k = 0; k < (tall ? 3 : 2); k++) {
 			vec3 row = first + float(k);
