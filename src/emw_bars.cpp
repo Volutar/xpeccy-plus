@@ -891,9 +891,11 @@ void MainWin::addBoardActs(QMenu* menu) {
 		own->setVisible(!note.isEmpty());
 		for (QAction* act : boardGrp->actions()) {
 			act->setChecked(act->data().toInt() == conf.snd.all.board);
-			// By machine names what it gives the running one
-			if ((act->data().toInt() == BOARD_MACHINE) && conf.zx)
-				act->setText(QString("By machine (%0)").arg(board_type_name(conf.zx->beepType)));
+			// By machine names what it gives the running one: its own pick, else its board's
+			if ((act->data().toInt() == BOARD_MACHINE) && conf.zx) {
+				int own = conf.snd.own.board;
+				act->setText(QString("By machine (%0)").arg(board_type_name((own >= 0) ? own : conf.zx->beepType)));
+			}
 		}
 		lowCutAct->setChecked(conf.snd.vol.dc);
 		highCutAct->setChecked(conf.snd.filter);

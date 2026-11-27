@@ -629,7 +629,7 @@ void SetupWin::makeSoundGroup() {
 		btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
 		btn->setObjectName((grp == SND_GRP_BOARD) ? "ownBoardBtn" : "ownLayBtn");
 		btn->hide();
-		connect(btn, &QToolButton::released, this, [this, grp]() {sndResetOwn(grp);});
+		connect(btn, &QToolButton::clicked, this, [this, grp]() {sndResetOwn(grp);});
 	}
 	// Stereo: a name and a control a row, the names one width
 	QLabel* labs[2] = {new QLabel(tr("PSG stereo")), new QLabel(tr("Separation"))};
@@ -1829,10 +1829,12 @@ void SetupWin::fillPages() {
 	sndOthersRead();
 	{
 		QSignalBlocker ql(cbOwnLay), qb(cbOwnBoard);
-		own_mark_spec(cbOwnLay, comp->ts->chipA->stereo, psg_lay_name);
+		int spec = comp->ts->chipA->stereo;
+		own_mark_spec(cbOwnLay, spec, psg_lay_name);
 		own_mark_spec(cbOwnBoard, comp->beepType, board_type_name);
-		setRFIndex(cbOwnLay, conf.snd.own.lay, 0);
-		setRFIndex(cbOwnBoard, conf.snd.own.board, 0);
+		// a pick that names the spec's value is the marked item
+		setRFIndex(cbOwnLay, (conf.snd.own.lay == spec) ? LAY_MACHINE : conf.snd.own.lay, 0);
+		setRFIndex(cbOwnBoard, (conf.snd.own.board == comp->beepType) ? BOARD_MACHINE : conf.snd.own.board, 0);
 	}
 	sndOwnShow();
 	chapsg();				// the presets at this chip's clock first

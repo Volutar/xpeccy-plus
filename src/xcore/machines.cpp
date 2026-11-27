@@ -2016,12 +2016,15 @@ void xm_reset_over() {
 
 void xm_snd_drop_own(int grp) {
 	int done = 0;
-	const char* key = (grp == SND_GRP_LAY) ? "psg.layout" : "board.filter";
 	foreach(QString qid, macUsr.keys()) {
 		const QList<xMacLine>& lines = macUsr.value(qid).lines;
 		QList<xMacLine> kept;
-		foreach(const xMacLine& ln, lines)
-			if ((ln.sect != "sound") || (ln.name != key)) kept << ln;
+		foreach(const xMacLine& ln, lines) {
+			// separation: no key of a machine's, a file may still have one beside its order
+			bool lay = (ln.name == "psg.layout") || (ln.name == "separation");
+			bool board = (ln.name == "board.filter");
+			if ((ln.sect != "sound") || !((grp == SND_GRP_LAY) ? lay : board)) kept << ln;
+		}
 		if (kept.size() == lines.size()) continue;
 		mac_write_or_remove(qid.toLocal8Bit().data(), kept);
 		done++;

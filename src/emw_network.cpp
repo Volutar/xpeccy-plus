@@ -592,6 +592,7 @@ void MainWin::socketRead() {
 			sb->setValue(val.toInt(&ok));
 		} else if (QComboBox* cb = qobject_cast<QComboBox*>(hit)) {
 			int idx = cb->findText(val);
+			if (idx < 0) idx = cb->findText(val + " - ", Qt::MatchStartsWith);	// a two-part item by its name
 			ok = (idx >= 0) || cb->isEditable();
 			if (idx >= 0) cb->setCurrentIndex(idx);
 			else if (ok) cb->setEditText(val);		// an editable list takes any text
