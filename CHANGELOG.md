@@ -203,7 +203,7 @@ before that point is upstream's history and is not repeated here.
 ### Fixed
 
 - **A quick save comes back under its own game**: with another program's finished tape still in
-  the deck, loading the save no longer put that tape in the title and sent the next quick saves
+  the deck, loading the save no longer puts that tape in the title or sends the next quick saves
   to it. The same for Undo, Resume Last Session and a snapshot opened from a file.
   *(reported by Volutar)*
 
