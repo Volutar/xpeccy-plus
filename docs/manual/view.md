@@ -177,8 +177,9 @@ there. The list has up to four parts:
 - shader files of your own, from the `shaders` folder of the configuration.
 
 The shader files the tube's looks came instead of are still there, in **View > Display >
-Legacy shaders (deprecated)** and as **Legacy:** items in the **Options** list. They go in
-a coming release; a configuration that names one then opens the tube's look nearest to it.
+Legacy shaders (deprecated)** and as **Legacy:** items in the **Options** list. They are to
+be removed in a coming release; a configuration that names one then opens the tube's look
+nearest to it.
 
 ```{index} Display; settings, knobs, preset
 ```
