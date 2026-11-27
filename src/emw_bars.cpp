@@ -889,8 +889,12 @@ void MainWin::addBoardActs(QMenu* menu) {
 		QString note = board_own_note();
 		own->setText(note);
 		own->setVisible(!note.isEmpty());
-		for (QAction* act : boardGrp->actions())
+		for (QAction* act : boardGrp->actions()) {
 			act->setChecked(act->data().toInt() == conf.snd.all.board);
+			// By machine names what it gives the running one
+			if ((act->data().toInt() == BOARD_MACHINE) && conf.zx)
+				act->setText(QString("By machine (%0)").arg(board_type_name(conf.zx->beepType)));
+		}
 		lowCutAct->setChecked(conf.snd.vol.dc);
 		highCutAct->setChecked(conf.snd.filter);
 	});

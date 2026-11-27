@@ -96,9 +96,8 @@ is skipped without a word.
 | `saa` | yes/no | SAA1099 |
 | `beeper` | `line` `speaker` `tv` `plus3` `evo` `scorpion` `atm` `piezo` `lp5k` | what the beeper and the tape sound through, and with `tv` and `plus3` the PSG too (`BEEP_*`, `snd_beep_flt`, `snd_mix_flt`); heard while the machine's `board.filter` or, with none, config.conf's `[SOUND]` one is `spec` / `machine`; absent is `line`, no filter |
 | `beeper.mic` | yes/no | bit 3 (MIC) is heard with the beeper, at a tenth of bit 4, as on a ULA |
-| `psg.layout` | `spec` `mono` `abc` `acb` `bac` `bca` `cab` `cba` | the user's own over the Sound page's (config.conf's `[SOUND] psg.layout`), never in a stock file; `spec` is `psg.stereo`, absent or `global` is the Sound page's (`conf.snd.own`, `xm_snd_apply`); the ZX Next takes none |
-| `separation` | 0..100 | the user's own, with an order of its own in `psg.layout`; else the Sound page's |
-| `board.filter` | `spec` `off` `speaker` `tv` `plus3` `evo` `scorpion` `atm` `piezo` `lp5k` | the user's own over the Sound page's; `spec` is `beeper` as the board takes it, a type takes all of the sound as config.conf's does |
+| `psg.layout` | `spec` `mono` `abc` `acb` `bac` `bca` `cab` `cba` | the user's own over the Sound page's (config.conf's `[SOUND] psg.layout`), never in a stock file; `spec` is `psg.stereo`, as is an order that names it; absent or `global` is the Sound page's (`conf.snd.own`, `xm_snd_apply`); the ZX Next takes none. The separation is config.conf's for every machine |
+| `board.filter` | `spec` `off` `speaker` `tv` `plus3` `evo` `scorpion` `atm` `piezo` `lp5k` | the user's own over the Sound page's; `spec` is `beeper` as the board takes it, as is a type that names it; another type takes all of the sound as config.conf's does |
 
 ### `[storage]`
 
