@@ -476,13 +476,37 @@ bool look_delete_preset(const xLook& lk) {
 #define	OLD_CURVE	", CURVE 0.02"
 #define	OLD_TVLINE	"CURVE 0, CURVEX 1, SPOT 0, MASK 1, MASKS 0.3, PITCH 2.5, WIDTH 0.8, FOCUS 0.85, GLOW 0, DIVERGE 0, "
 
+// The tube's looks renamed: a config that has the old name, and the knobs kept for it,
+// go over to the new one
+static void look_renamed() {
+	static const struct {const char* was; const char* now;} names[] = {
+		{"PVM", "Sony PVM"},
+	};
+	store_read();
+	for (const auto& row : names) {
+		xLook from;
+		from.file = LOOK_TUBE;
+		from.preset = row.was;
+		xLook to = from;
+		to.preset = row.now;
+		if (store.contains(look_id(from))) {
+			if (!store.contains(look_id(to))) store[look_id(to)] = store.value(look_id(from));
+			store.remove(look_id(from));
+			storeDirty = true;
+		}
+		if ((QString::fromLocal8Bit(conf.vid.shader.c_str()) == LOOK_TUBE) && (QString::fromUtf8(conf.vid.shdPreset.c_str()) == row.was))
+			look_choose(to);
+	}
+}
+
 void look_old_names() {
+	look_renamed();
 	// old: the file's name, and for the file of round (a) its preset too
 	static const struct {const char* old; const char* was; const char* preset; const char* extra;} names[] = {
-		{"grille-nocurve-crisp.txt", "", "PVM", OLD_GRILLE OLD_CRISP},
-		{"grille-nocurve-light.txt", "", "PVM", OLD_GRILLE OLD_SOFT},
-		{"grille2-nocurve-crisp.txt", "", "PVM", OLD_FINE OLD_CRISP},
-		{"grille2-nocurve-light.txt", "", "PVM", OLD_FINE OLD_SOFT},
+		{"grille-nocurve-crisp.txt", "", "Sony PVM", OLD_GRILLE OLD_CRISP},
+		{"grille-nocurve-light.txt", "", "Sony PVM", OLD_GRILLE OLD_SOFT},
+		{"grille2-nocurve-crisp.txt", "", "Sony PVM", OLD_FINE OLD_CRISP},
+		{"grille2-nocurve-light.txt", "", "Sony PVM", OLD_FINE OLD_SOFT},
 		{"tridot-nocurve-crisp.txt", "", "Tridot", OLD_SHADOW OLD_CRISP},
 		{"tridot-nocurve-light.txt", "", "Tridot", OLD_SHADOW OLD_SOFT},
 		{"tridot-curve-crisp.txt", "", "Tridot", OLD_SHADOW OLD_CRISP OLD_CURVE},
@@ -491,20 +515,20 @@ void look_old_names() {
 		{"widetridot-nocurve-light.txt", "", "Tridot", OLD_WIDE OLD_SOFT},
 		{"widetridot-curve-crisp.txt", "", "Tridot", OLD_WIDE OLD_CRISP OLD_CURVE},
 		{"widetridot-curve-light.txt", "", "Tridot", OLD_WIDE OLD_SOFT OLD_CURVE},
-		{"crt-lottes.txt", "Aperture grille", "PVM", OLD_GRILLE OLD_CRISP},
-		{"crt-lottes.txt", "Aperture grille, soft", "PVM", OLD_GRILLE OLD_SOFT},
-		{"crt-lottes.txt", "Fine grille", "PVM", OLD_FINE OLD_CRISP},
-		{"crt-lottes.txt", "Fine grille, soft", "PVM", OLD_FINE OLD_SOFT},
+		{"crt-lottes.txt", "Aperture grille", "Sony PVM", OLD_GRILLE OLD_CRISP},
+		{"crt-lottes.txt", "Aperture grille, soft", "Sony PVM", OLD_GRILLE OLD_SOFT},
+		{"crt-lottes.txt", "Fine grille", "Sony PVM", OLD_FINE OLD_CRISP},
+		{"crt-lottes.txt", "Fine grille, soft", "Sony PVM", OLD_FINE OLD_SOFT},
 		{"crt-lottes.txt", "Shadow mask", "Tridot", OLD_SHADOW OLD_CRISP},
 		{"crt-lottes.txt", "Shadow mask, soft", "Tridot", OLD_SHADOW OLD_SOFT},
 		{"crt-lottes.txt", "Wide shadow mask", "Tridot", OLD_WIDE OLD_CRISP},
 		{"crt-lottes.txt", "Wide shadow mask, soft", "Tridot", OLD_WIDE OLD_SOFT},
-		{"crt-lottes.txt", "", "PVM", OLD_GRILLE OLD_CRISP},	// no preset, or one not its own
-		{"tvline-nocurve-light.txt", "", "PVM", OLD_TVLINE "SCAN 1.0, GROW 0.85, BRIGHT 0.7"},
-		{"tvline-curve-light.txt", "", "PVM", OLD_TVLINE "SCAN 0.9, GROW 1.0, BRIGHT 0.95, CURVE 0.02"},
+		{"crt-lottes.txt", "", "Sony PVM", OLD_GRILLE OLD_CRISP},	// no preset, or one not its own
+		{"tvline-nocurve-light.txt", "", "Sony PVM", OLD_TVLINE "SCAN 1.0, GROW 0.85, BRIGHT 0.7"},
+		{"tvline-curve-light.txt", "", "Sony PVM", OLD_TVLINE "SCAN 0.9, GROW 1.0, BRIGHT 0.95, CURVE 0.02"},
 		{"monitor-1084.txt", "", "RGB monitor", ""},
 		{"monitor-1084-flat.txt", "", "RGB monitor", "CURVE 0, CORNER 0, VIGN 0"},
-		{"pvm-sharp.txt", "", "PVM", ""},
+		{"pvm-sharp.txt", "", "Sony PVM", ""},
 		{"composite-crt.txt", "", "Home TV (composite)", ""},
 		{"composite-crt-flat.txt", "", "Home TV (composite)", "CURVE 0, VIGN 0"},
 		{"zx-rf-artifact.txt", "", "Home TV (composite)", "INPUT 2"},
