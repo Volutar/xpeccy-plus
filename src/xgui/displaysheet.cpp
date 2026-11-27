@@ -124,9 +124,71 @@ void xDisplaySheet::hideEvent(QHideEvent* ev) {
 
 void xDisplaySheet::setLook() {
 	const xLook now = look_current();
-	if (!(now == look)) lastOn.clear();	// what a stage had is its look's alone
+	const bool same = (now == look);
+	if (!same) lastOn.clear();	// what a stage had is its look's alone
 	look = now;
-	build();
+	// the same knobs: set where they are, a sheet made anew shows its sliders jump
+	if (same && body && (shown() == rows)) refresh();
+	else build();
+}
+
+const xShdParam* xDisplaySheet::param(const QString& name) const {
+	const xShdPreset* file = look_has_knobs(look) ? look_file(look.file) : nullptr;
+	if (file) {
+		for (const xShdParam& p : file->params)
+			if (p.name == name) return &p;
+	}
+	return nullptr;
+}
+
+QStringList xDisplaySheet::shown() const {
+	QStringList res;
+	const xShdPreset* file = look_has_knobs(look) ? look_file(look.file) : nullptr;
+	if (file) {
+		for (const xShdParam& p : file->params)
+			if (all || !p.more) res << p.name;
+	}
+	return res;
+}
+
+static QString knob_tip(const xShdParam& p) {
+	if (!(p.flat && conf.vid.flatScreen)) return p.tip;
+	QString tip = p.tip;
+	while (tip.endsWith('.')) tip.chop(1);
+	return tip.isEmpty() ? xDisplaySheet::tr("Flat screen is on: moving it turns Flat screen off")
+		: xDisplaySheet::tr("%1. Flat screen is on: moving it turns Flat screen off").arg(tip);
+}
+
+void xDisplaySheet::refresh() {
+	if (!body) return;
+	for (const QString& name : rows) {
+		const xShdParam* p = param(name);
+		if (!p) continue;
+		const float val = look_value(look, name);
+		const float step = knob_step(*p);
+		const int pos = qBound(0, qRound((val - p->min) / ((step > 0) ? step : 1.0f)), knob_count(*p));
+		if (xSlider* sld = body->findChild<xSlider*>("knob_" + name)) {
+			sld->blockSignals(true);
+			sld->setValue(pos);
+			sld->blockSignals(false);
+		}
+		if (QComboBox* box = body->findChild<QComboBox*>("knob_" + name)) {
+			box->blockSignals(true);
+			box->setCurrentIndex(pos);
+			box->blockSignals(false);
+		}
+		if (QLabel* fig = body->findChild<QLabel*>("fig_" + name)) fig->setText(knob_text(*p, val));
+		if (QToolButton* back = body->findChild<QToolButton*>("back_" + name)) back->setVisible(look_turned(look, name));
+		if (QLabel* lab = body->findChild<QLabel*>("label_" + name)) lab->setToolTip(knob_tip(*p));
+	}
+	// a stage's frame ticked as its switch stands (the frame's knobs go with it)
+	for (QGroupBox* grp : body->findChildren<QGroupBox*>()) {
+		if (!grp->objectName().startsWith("group_")) continue;
+		grp->blockSignals(true);
+		grp->setChecked(look_value(look, grp->objectName().mid(6)) != 0.0f);
+		grp->blockSignals(false);
+	}
+	btnDef->setEnabled(look_changed(look));
 }
 
 void xDisplaySheet::build() {
@@ -190,7 +252,7 @@ void xDisplaySheet::build() {
 						if (yes) val = lastOn.value(sw, on);
 						else if (had != 0.0f) lastOn[sw] = had;
 						moved(sw, val);
-						QMetaObject::invokeMethod(this, [this]() {build();}, Qt::QueuedConnection);
+						refresh();
 					});
 				}
 			}
@@ -198,14 +260,8 @@ void xDisplaySheet::build() {
 			group = name;
 			QWidget* wid = knob(p);
 			QLabel* lab = sheet.row(p.text, wid);
-			if (p.flat && conf.vid.flatScreen) {
-				QString tip = p.tip;
-				while (tip.endsWith('.')) tip.chop(1);
-				lab->setToolTip(tip.isEmpty() ? tr("Flat screen (View > Display) has it off unless set here")
-					: tr("%1. Flat screen (View > Display) has it off unless set here").arg(tip));
-			} else {
-				lab->setToolTip(p.tip);
-			}
+			lab->setObjectName("label_" + p.name);
+			lab->setToolTip(knob_tip(p));
 		}
 	} else {
 		sheet.group(QString());
@@ -222,6 +278,7 @@ void xDisplaySheet::build() {
 	lay->insertWidget(0, body);
 	body->show();
 	setUpdatesEnabled(true);
+	rows = shown();
 	btnAll->setVisible(more);
 	btnAll->setText(all ? tr("Fewer settings") : tr("All settings"));
 	btnDef->setEnabled(look_changed(look));
@@ -248,19 +305,13 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 	keep.setRetainSizeWhenHidden(true);
 	back->setSizePolicy(keep);
 	back->setVisible(look_turned(look, name));
-	// a stage's switch put back may switch the stage: its frame follows, as when ticked
-	bool stage = false;
-	if (const xShdPreset* file = look_file(look.file)) {
-		for (const xShdParam& o : file->params)
-			stage = stage || (o.groupSwitch == name);
-	}
-	auto putBack = [this, name, stage](float own) {
+	// put back, a stage's switch may switch the stage: what it had is kept to tick it on again
+	auto putBack = [this, name](float own) {
 		const float had = look_value(look, name);
-		if (stage && (own == 0.0f) && (had != 0.0f)) lastOn[name] = had;
+		if ((own == 0.0f) && (had != 0.0f)) lastOn[name] = had;
 		look_back(look, name);
-		btnDef->setEnabled(look_changed(look));
 		emit s_param(name, own);
-		if (stage) QMetaObject::invokeMethod(this, [this]() {build();}, Qt::QueuedConnection);
+		refresh();
 	};
 	if (!p.names.isEmpty()) {
 		QComboBox* box = new QComboBox;
@@ -299,6 +350,7 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 	sld->setToolTip(p.tip);
 	sld->setObjectName("knob_" + name);
 	QLabel* fig = new QLabel(knob_text(p, val));
+	fig->setObjectName("fig_" + name);
 	fig->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 	// as wide as its longest figure, so the sliders stand in one column
 	const QFontMetrics fm = fig->fontMetrics();
@@ -335,6 +387,15 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 void xDisplaySheet::moved(const QString& name, float value) {
 	look_keep(look, name, value);
 	btnDef->setEnabled(look_changed(look));
+	// a curve set by hand: the screen is no longer to be flat, for any look
+	const xShdParam* p = param(name);
+	if (p && p->flat && conf.vid.flatScreen) {
+		conf.vid.flatScreen = 0;
+		saveConfig();
+		emit s_look();
+		refresh();
+		return;
+	}
 	emit s_param(name, value);
 }
 
@@ -342,7 +403,7 @@ void xDisplaySheet::defaults() {
 	lastOn.clear();
 	look_reset(look);
 	emit s_look();
-	build();
+	refresh();
 }
 
 void xDisplaySheet::savePreset() {

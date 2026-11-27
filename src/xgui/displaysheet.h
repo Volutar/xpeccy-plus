@@ -34,7 +34,11 @@ class xDisplaySheet : public QDialog {
 		QPushButton* btnDel;
 		QLabel* gpuLab;			// what the look costs, while the window is up
 		QHash<QString, float> lastOn;	// a switched-off group's value, to come back to
+		QStringList rows;		// the knobs build() made, by name
 		void build();
+		void refresh();			// the knobs made set to where they stand, nothing made anew
+		QStringList shown() const;	// the knobs build() would make now
+		const xShdParam* param(const QString& name) const;
 		QWidget* knob(const xShdParam&);
 		void moved(const QString& name, float value);
 		void defaults();

@@ -313,49 +313,31 @@ static xShdValues preset_values(const xLook& lk) {
 	return xShdValues();
 }
 
-// Flat screen: the file's flat knobs at 0 (or their nearest) over the preset's
-static xShdValues base_values(const xLook& lk, bool flat) {
-	xShdValues res = preset_values(lk);
-	const xShdPreset* head = flat ? look_file(lk.file) : nullptr;
-	if (head) {
-		for (const xShdParam& p : head->params) {
-			if (!p.flat) continue;
-			const float off = qBound(p.min, 0.0f, p.max);
-			bool had = false;
-			for (xShdValue& v : res) {
-				if (v.name != p.name) continue;
-				v.value = off;
-				had = true;
-			}
-			if (!had) res.append({p.name, off});
-		}
-	}
-	return res;
-}
-
 xShdValues look_base(const xLook& lk) {
-	return base_values(lk, conf.vid.flatScreen);
+	return preset_values(lk);
 }
 
+// Flat screen is over the whole look, knobs turned too: its flat knobs at 0 (or their nearest)
 xShdValues look_values(const xLook& lk) {
 	xShdValues res = look_base(lk);
 	store_read();
 	const QMap<QString, float> kept = store.value(look_id(lk));
 	for (auto it = kept.constBegin(); it != kept.constEnd(); ++it)
 		res.append({it.key(), it.value()});
+	const xShdPreset* head = conf.vid.flatScreen ? look_file(lk.file) : nullptr;
+	if (head) {
+		for (const xShdParam& p : head->params)
+			if (p.flat) res.append({p.name, qBound(p.min, 0.0f, p.max)});
+	}
 	return res;
 }
 
-static float own_value(const xLook& lk, const QString& name, bool flat) {
+static float own_value(const xLook& lk, const QString& name) {
 	float val = 0;
 	if (const xShdParam* p = file_param(lk, name)) val = p->def;
-	for (const xShdValue& v : base_values(lk, flat))
+	for (const xShdValue& v : look_base(lk))
 		if (v.name == name) val = v.value;
 	return val;
-}
-
-static float own_value(const xLook& lk, const QString& name) {
-	return own_value(lk, name, conf.vid.flatScreen);
 }
 
 float look_value(const xLook& lk, const QString& name) {
@@ -363,13 +345,6 @@ float look_value(const xLook& lk, const QString& name) {
 	const QMap<QString, float> kept = store.value(look_id(lk));
 	if (kept.contains(name)) return kept.value(name);
 	return own_value(lk, name);
-}
-
-// the look's own value with or without Flat screen, as near as a step's thousandth
-static bool is_own(const xLook& lk, const QString& name, float value, bool flat) {
-	const xShdParam* p = file_param(lk, name);
-	const float slack = (p ? std::fabs(p->step) : 0.0f) * 0.001f + 1e-7f;
-	return std::fabs(value - own_value(lk, name, flat)) <= slack;
 }
 
 static void forget(const xLook& lk, const QString& name) {
@@ -380,12 +355,11 @@ static void forget(const xLook& lk, const QString& name) {
 	storeDirty = true;
 }
 
-// a flat knob is let go only at the look's own value with Flat screen and without
 void look_keep(const xLook& lk, const QString& name, float value) {
 	store_read();
 	const xShdParam* p = file_param(lk, name);
-	const bool flat = p && p->flat;
-	if (is_own(lk, name, value, conf.vid.flatScreen) && (!flat || is_own(lk, name, value, !conf.vid.flatScreen))) {
+	const float slack = (p ? std::fabs(p->step) : 0.0f) * 0.001f + 1e-7f;
+	if (std::fabs(value - own_value(lk, name)) <= slack) {
 		forget(lk, name);
 		return;
 	}
@@ -490,11 +464,8 @@ bool look_save_preset(const xLook& lk, const QString& name, QString* err) {
 		}
 	}
 	QByteArray out("shader = " + lk.file.toUtf8() + "\nname = " + title.toUtf8() + "\n");
-	// Flat screen is no part of a preset: a flat knob not turned saves the look's own value
-	store_read();
-	const QMap<QString, float> kept = store.value(look_id(lk));
 	for (const xShdParam& p : head->params) {
-		const float val = kept.contains(p.name) ? kept.value(p.name) : own_value(lk, p.name, false);
+		const float val = look_value(lk, p.name);
 		if (std::fabs(val - p.def) > std::fabs(p.step) * 0.001f + 1e-7f)
 			out += p.name.toUtf8() + " = " + num_text(val).toUtf8() + "\n";
 	}
