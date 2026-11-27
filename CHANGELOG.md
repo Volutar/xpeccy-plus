@@ -110,8 +110,9 @@ before that point is upstream's history and is not repeated here.
   drops in pitch. Beside it, PSG stereo sets the voices' order for every machine (the Next
   keeps its own), and one Separation serves the PSG, the General Sound and the Next. A
   machine can have its own filter and stereo on the Machine page and in its PSG sheet
-  (Global setting or a value, the board's own marked Machine spec), and the Sound page marks
-  a list some machines override, with how many: a click puts them all back on it.
+  (Global setting or a value, the board's own marked Machine spec: that filter takes what
+  the board filtered, any other all of the sound), and the Sound page marks a list some
+  machines override, with how many: a click puts them all back on it.
   The page's Enabled is now Emulate sound, over its groups, which grey while it is off.
 
 - **Integer Scale**: View > Integer Scale and Options > Video. In fullscreen and in a maximized
