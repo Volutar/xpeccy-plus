@@ -33,8 +33,10 @@ before that point is upstream's history and is not repeated here.
   where a checkerboard of dots turns one flat warm color. Under Input in a look's settings;
   every look but Home TV (composite) starts on RGB.
 
-- **The older shader files are under Display > Legacy** for now: the aperture grille and
-  shadow mask looks, TV lines, monitor-1084, pvm-sharp, composite-crt and zx-rf-artifact.
+- **The older shader files are under Display > Legacy shaders (deprecated)**: the aperture
+  grille and shadow mask looks, TV lines, monitor-1084, pvm-sharp, composite-crt and
+  zx-rf-artifact. They go in a coming release; a config naming one then opens the nearest
+  CRT look.
 
 - **Keymap By machine**, the default: Input > Keymap and Options > Input. The Robik takes the
   Robik's keymap, the ZX Spectrum 48K the 48K one, every other machine ZX Spectrum 128K. A
