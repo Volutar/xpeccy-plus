@@ -242,7 +242,8 @@ that can be switched off, and then costs nothing:
   of its place as its border does, and the corners are rounded there;
 - **Glow** - light around bright things;
 - **Divergence** - how far the red and the blue beam land from the green one, more towards
-  the screen's edges;
+  the screen's edges; under **All settings**, **All over** makes a share of it the same all
+  over the screen, as from beams set off;
 - **Afterglow** - how much of a lit dot is left a frame later.
 
 Under the frames is the **GPU time** the look takes of the graphics card for a frame, and in brackets what share that is of the time between two refreshes of your display: near 100%, the card falls behind.
