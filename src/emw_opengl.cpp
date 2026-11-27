@@ -610,8 +610,7 @@ void MainWin::shdSelected(QAction* act) {
 	}
 	if (act->objectName() == "flatScreen") {
 		conf.vid.flatScreen = act->isChecked() ? 1 : 0;
-		saveConfig();
-		lookPicked();
+		flatPicked();
 		return;
 	}
 	const QStringList id = act->data().toStringList();
@@ -628,11 +627,7 @@ void MainWin::displaySettings() {
 		dispSheet = new xDisplaySheet(this);
 		connect(dispSheet, &xDisplaySheet::s_param, this, &MainWin::lookParam);
 		connect(dispSheet, &xDisplaySheet::s_look, this, &MainWin::lookPicked);
-		// written at once, as the menu's switch is
-		connect(dispSheet, &xDisplaySheet::s_flat, this, [this]() {
-			saveConfig();
-			lookPicked();
-		});
+		connect(dispSheet, &xDisplaySheet::s_flat, this, &MainWin::flatPicked);
 	}
 	dispSheet->setLook();
 	dispSheet->show();
@@ -655,4 +650,12 @@ void MainWin::lookPicked() {
 		act->setChecked(conf.vid.flatScreen);
 	loadShader(false);
 	presentFrame();
+	// (its tips name Flat screen: set even where no chain was loaded)
+	if (dispSheet && dispSheet->isVisible()) dispSheet->setLook();
+}
+
+// Flat screen switched in the menu, or off by a knob of the sheet: written at once
+void MainWin::flatPicked() {
+	saveConfig();
+	lookPicked();
 }

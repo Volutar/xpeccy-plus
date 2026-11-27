@@ -126,7 +126,7 @@ class SetupWin : public QDialog {
 		xDisplaySheet* dispSheet;
 		std::string lookWas[2];		// the shader and its preset, as applied
 		xLookStore lookKept;		// ...and the knobs turned
-		int flatWas = 1;		// ...and Flat screen
+		bool flatWas = true;		// ...and Flat screen
 		void makeDisplay();
 		void lookToUi();
 		void lookTake();

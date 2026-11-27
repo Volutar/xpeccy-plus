@@ -219,15 +219,14 @@ void SetupWin::makeDisplay() {
 	dispSheet = new xDisplaySheet(this);
 	dispSheet->setModal(true);
 	connect(dispSheet, &xDisplaySheet::s_param, this, &SetupWin::s_lookParam);
-	connect(dispSheet, &xDisplaySheet::s_look, this, [this]() {
-		emit s_look();
-		lookToUi();		// a preset saved or deleted: the list has it, or has it no more
-	});
-	// Flat screen off by a knob: shown at once, kept by OK as the rest (Cancel puts it back)
-	connect(dispSheet, &xDisplaySheet::s_flat, this, [this]() {
+	// a preset saved or deleted: the list has it, or has it no more; Flat screen off by a
+	// knob: shown at once, kept by OK as the rest (Cancel puts it back)
+	auto follow = [this]() {
 		emit s_look();
 		lookToUi();
-	});
+	};
+	connect(dispSheet, &xDisplaySheet::s_look, this, follow);
+	connect(dispSheet, &xDisplaySheet::s_flat, this, follow);
 	connect(ui.tbDisplay, &QToolButton::clicked, this, [this]() {
 		dispSheet->setLook();
 		dispSheet->show();
@@ -259,12 +258,12 @@ void SetupWin::lookTake() {
 	lookWas[0] = conf.vid.shader;
 	lookWas[1] = conf.vid.shdPreset;
 	lookKept = look_store_take();
-	flatWas = conf.vid.flatScreen;
+	flatWas = (conf.vid.flatScreen != 0);
 }
 
 void SetupWin::lookPut() {
 	const bool same = (conf.vid.shader == lookWas[0]) && (conf.vid.shdPreset == lookWas[1]) && (look_store_take() == lookKept)
-		&& (int(conf.vid.flatScreen) == flatWas);
+		&& ((conf.vid.flatScreen != 0) == flatWas);
 	if (same) return;
 	conf.vid.shader = lookWas[0];
 	conf.vid.shdPreset = lookWas[1];

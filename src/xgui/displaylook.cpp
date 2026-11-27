@@ -299,7 +299,7 @@ bool look_has_knobs(const xLook& lk) {
 
 // ---------------------------------------------------------------- the values
 
-static xShdValues preset_values(const xLook& lk) {
+xShdValues look_base(const xLook& lk) {
 	if (lk.user) {
 		for (const UserPreset& up : user_presets())
 			if ((up.base == lk.preset) && (up.shader == lk.file)) return up.values;
@@ -311,10 +311,6 @@ static xShdValues preset_values(const xLook& lk) {
 			if (set.name == lk.preset) return set.values;
 	}
 	return xShdValues();
-}
-
-xShdValues look_base(const xLook& lk) {
-	return preset_values(lk);
 }
 
 // Flat screen is over the whole look, knobs turned too: its flat knobs at 0 (or their nearest)
@@ -336,7 +332,7 @@ xShdValues look_values(const xLook& lk) {
 	return res;
 }
 
-static float own_value(const xLook& lk, const QString& name) {
+float look_own(const xLook& lk, const QString& name) {
 	float val = 0;
 	if (const xShdParam* p = file_param(lk, name)) val = p->def;
 	for (const xShdValue& v : look_base(lk))
@@ -348,7 +344,7 @@ float look_value(const xLook& lk, const QString& name) {
 	store_read();
 	const QMap<QString, float> kept = store.value(look_id(lk));
 	if (kept.contains(name)) return kept.value(name);
-	return own_value(lk, name);
+	return look_own(lk, name);
 }
 
 static void forget(const xLook& lk, const QString& name) {
@@ -363,7 +359,7 @@ void look_keep(const xLook& lk, const QString& name, float value) {
 	store_read();
 	const xShdParam* p = file_param(lk, name);
 	const float slack = (p ? std::fabs(p->step) : 0.0f) * 0.001f + 1e-7f;
-	if (std::fabs(value - own_value(lk, name)) <= slack) {
+	if (std::fabs(value - look_own(lk, name)) <= slack) {
 		forget(lk, name);
 		return;
 	}
@@ -389,10 +385,6 @@ bool look_turned(const xLook& lk, const QString& name) {
 bool look_changed(const xLook& lk) {
 	store_read();
 	return store.contains(look_id(lk));
-}
-
-float look_own(const xLook& lk, const QString& name) {
-	return own_value(lk, name);
 }
 
 // the configuration is read again: what the files have now, not what was turned

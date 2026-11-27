@@ -34,6 +34,12 @@ int knob_count(const xShdParam& p) {
 	return (step > 0) ? qMax(1, qRound((p.max - p.min) / step)) : 1;
 }
 
+// where a value stands on the knob
+int knob_pos(const xShdParam& p, float val) {
+	const float step = knob_step(p);
+	return qBound(0, qRound((val - p.min) / ((step > 0) ? step : 1.0f)), knob_count(p));
+}
+
 // as many decimals as the step has
 QString knob_text(const xShdParam& p, float val) {
 	const float step = knob_step(p);
@@ -168,12 +174,10 @@ static QString knob_tip(const xShdParam& p) {
 
 void xDisplaySheet::refresh() {
 	if (!body) return;
-	for (const xShdParam& prm : params()) {
-		const xShdParam* p = &prm;
-		const QString name = p->name;
+	for (const xShdParam& p : params()) {
+		const QString name = p.name;
 		const float val = look_value(look, name);
-		const float step = knob_step(*p);
-		const int pos = qBound(0, qRound((val - p->min) / ((step > 0) ? step : 1.0f)), knob_count(*p));
+		const int pos = knob_pos(p, val);
 		if (xSlider* sld = body->findChild<xSlider*>("knob_" + name)) {
 			sld->blockSignals(true);
 			sld->setValue(pos);
@@ -184,9 +188,9 @@ void xDisplaySheet::refresh() {
 			box->setCurrentIndex(pos);
 			box->blockSignals(false);
 		}
-		if (QLabel* fig = body->findChild<QLabel*>("fig_" + name)) fig->setText(knob_text(*p, val));
+		if (QLabel* fig = body->findChild<QLabel*>("fig_" + name)) fig->setText(knob_text(p, val));
 		if (QToolButton* back = body->findChild<QToolButton*>("back_" + name)) back->setVisible(look_turned(look, name));
-		if (QLabel* lab = body->findChild<QLabel*>("label_" + name)) lab->setToolTip(knob_tip(*p));
+		if (QLabel* lab = body->findChild<QLabel*>("label_" + name)) lab->setToolTip(knob_tip(p));
 	}
 	// a stage's frame ticked as its switch stands (the frame's knobs go with it)
 	for (QGroupBox* grp : body->findChildren<QGroupBox*>()) {
@@ -201,9 +205,8 @@ void xDisplaySheet::refresh() {
 void xDisplaySheet::build() {
 	setWindowTitle(tr("Display: %1").arg(look.title));
 	// a copy: the file is looked at again as the rows are made, and may have changed
-	const xShdPreset* file = look_has_knobs(look) ? look_file(look.file) : nullptr;
-	const QVector<xShdParam> params = file ? file->params : QVector<xShdParam>();
-	const bool head = !params.isEmpty();
+	const QVector<xShdParam> list = params();
+	const bool head = !list.isEmpty();
 	bool more = false;
 	xOptSheet sheet;
 	if (head) {
@@ -213,7 +216,7 @@ void xDisplaySheet::build() {
 		QList<int> rowsOf;
 		QString group;
 		bool first = true;
-		for (const xShdParam& p : params) {
+		for (const xShdParam& p : list) {
 			if (p.more && !all) continue;
 			const QString name = p.group.isEmpty() ? tr("Parameters") : p.group;
 			if (first || (name != group)) rowsOf << 0;
@@ -238,7 +241,7 @@ void xDisplaySheet::build() {
 		const bool columns = (left < rowsOf.size());
 		int frame = -1;
 		first = true;
-		for (const xShdParam& p : params) {
+		for (const xShdParam& p : list) {
 			more = more || p.more;
 			if (p.more && !all) continue;
 			const QString name = p.group.isEmpty() ? tr("Parameters") : p.group;
@@ -298,7 +301,7 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 	const float step = knob_step(p);
 	const int count = knob_count(p);
 	const float val = look_value(look, p.name);
-	const int pos = qBound(0, qRound((val - p.min) / ((step > 0) ? step : 1.0f)), count);
+	const int pos = knob_pos(p, val);
 	const QString name = p.name;
 	const float min = p.min;
 	const float max = p.max;
@@ -311,10 +314,10 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 	QSizePolicy keep = back->sizePolicy();
 	keep.setRetainSizeWhenHidden(true);
 	back->setSizePolicy(keep);
-	back->setVisible(look_turned(look, name));
 	// put back, a stage's switch may switch the stage: what it had is kept to tick it on again
 	const bool flat = p.flat;
-	auto putBack = [this, name, flat](float own) {
+	connect(back, &QToolButton::clicked, this, [this, name, flat]() {
+		const float own = look_own(look, name);
 		const float had = look_value(look, name);
 		if ((own == 0.0f) && (had != 0.0f)) lastOn[name] = had;
 		look_back(look, name);
@@ -322,7 +325,10 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 		if (flat && conf.vid.flatScreen) emit s_look();
 		else emit s_param(name, own);
 		refresh();
-	};
+	});
+	QWidget* wid = new QWidget;
+	QHBoxLayout* row = new QHBoxLayout(wid);
+	row->setContentsMargins(0, 0, 0, 0);
 	if (!p.names.isEmpty()) {
 		QComboBox* box = new QComboBox;
 		for (int i = 0; i <= count; i++)
@@ -334,21 +340,12 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 			moved(name, qMin(max, min + idx * step));
 			back->setVisible(look_turned(look, name));
 		});
-		connect(back, &QToolButton::clicked, this, [this, name, min, step, count, box, back, putBack]() {
-			const float own = look_own(look, name);
-			box->blockSignals(true);
-			box->setCurrentIndex(qBound(0, qRound((own - min) / ((step > 0) ? step : 1.0f)), count));
-			box->blockSignals(false);
-			back->setVisible(false);
-			putBack(own);
-		});
-		QWidget* wid = new QWidget;
-		QHBoxLayout* row = new QHBoxLayout(wid);
-		row->setContentsMargins(0, 0, 0, 0);
 		// the list as wide as the row lets it, as without the icon
 		row->addWidget(box, 1);
 		row->addWidget(back);
 		wid->setFocusProxy(box);
+		// (shown only once in its row: with no parent it would be a window of its own)
+		back->setVisible(look_turned(look, name));
 		return wid;
 	}
 	xSlider* sld = new xSlider;
@@ -372,25 +369,13 @@ QWidget* xDisplaySheet::knob(const xShdParam& p) {
 		moved(prm.name, now);
 		back->setVisible(look_turned(look, prm.name));
 	});
-	connect(back, &QToolButton::clicked, this, [this, sld, fig, prm, step, count, back, putBack]() {
-		// the look's own value as it is, if it is between two of the slider's steps
-		const float own = look_own(look, prm.name);
-		sld->blockSignals(true);
-		sld->setValue(qBound(0, qRound((own - prm.min) / ((step > 0) ? step : 1.0f)), count));
-		sld->blockSignals(false);
-		fig->setText(knob_text(prm, own));
-		back->setVisible(false);
-		putBack(own);
-	});
-	QWidget* wid = new QWidget;
-	QHBoxLayout* box = new QHBoxLayout(wid);
-	box->setContentsMargins(0, 0, 0, 0);
 	// what the row has over goes between the two: a short figure does not move its slider
-	box->addWidget(sld);
-	box->addStretch(1);
-	box->addWidget(fig);
-	box->addWidget(back);
+	row->addWidget(sld);
+	row->addStretch(1);
+	row->addWidget(fig);
+	row->addWidget(back);
 	wid->setFocusProxy(sld);
+	back->setVisible(look_turned(look, name));
 	return wid;
 }
 
