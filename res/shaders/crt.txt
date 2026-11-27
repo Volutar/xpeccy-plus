@@ -916,9 +916,12 @@ fragment:
 		float per = max(1.0, floor(scale + 0.5));
 		bool rows = flat_ && (abs(scale - per) * spotSize.y < 0.5);
 		// At 2 rows a line and at an odd count the lines (and the mask) go half a row down:
-		// the gap is one row, on the lines' border
-		bool odd = (mod(per, 2.0) > 0.5) && (per > 1.5);
-		float half_ = (rows && ((per == 2.0) || odd) && (SCAN > 0.0)) ? 0.5 : 0.0;
+		// the gap is one row, on the lines' border. By the picture's scale, not the pixel's:
+		// a curve as slight as you like keeps them where a flat screen has them
+		float perPic = max(1.0, floor(dot_ + 0.5));
+		bool whole = (abs(dot_ - perPic) * spotSize.y < 0.5);
+		bool odd = (mod(perPic, 2.0) > 0.5) && (perPic > 1.5);
+		float half_ = (whole && ((perPic == 2.0) || odd) && (SCAN > 0.0)) ? 0.5 : 0.0;
 
 		// The mask: counted in the window's pixels, or in the picture's own where it is
 		// to bend with the glass - by itself where a pixel of its layout is two screen
@@ -951,7 +954,7 @@ fragment:
 		// in 400 frames, so the lines meet themselves when the count starts again
 		// (rows that fall on the lines are counted: a line's edge is a row's, to the bit)
 		float prow = floor(vTexCoord.y * OutputSize.y) + half_;
-		float top = rows ? prow / per : uv.y * spotSize.y - 0.5 * foot;
+		float top = rows ? prow / per : uv.y * spotSize.y + (half_ - 0.5) * foot;
 		float bottom = rows ? (prow + 1.0) / per : top + foot;
 		vec3 off = vec3(0.0);
 		bool apart = (DIVERGE > 0.0);
@@ -984,8 +987,9 @@ fragment:
 			own = mix(linesAt(uv.x, j + 1.0, apart), linesAt(uv.x, j, apart), share);
 		}
 		vec3 sum = vec3(0.0);
-		// With the lines half a row down the picture's first and last rows reach past its
-		// lines: there is no line there, not the edge one again. The green beam's lines
+		// With the lines half a row down a flat picture's first and last rows reach past its
+		// lines: there is no line there, not the edge one again (a bent one goes on to the
+		// glass's rim, as its border does). The green beam's lines
 		// that are there dim all three alike: a red or a blue landing off would leave a
 		// colored strip at the edge (where there is no green, each beam by its own lines)
 		vec3 cut = vec3(0.0);
@@ -1008,9 +1012,9 @@ fragment:
 			}
 			vec3 line = bell(a, b, row + 0.5, col * pass_, reach, width);
 			sum += line;
-			if (half_ > 0.0) cut += line * step(vec3(0.0), row) * step(row, vec3(spotSize.y - 1.0));
+			if (rows && (half_ > 0.0)) cut += line * step(vec3(0.0), row) * step(row, vec3(spotSize.y - 1.0));
 		}
-		if (half_ > 0.0) {
+		if (rows && (half_ > 0.0)) {
 			if (sum.g <= 0.000001) sum = cut;
 			else if (cut.g < sum.g) sum *= cut.g / sum.g;
 		}
