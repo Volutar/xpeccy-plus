@@ -3,6 +3,7 @@
 #include "../xcore/xcore.h"
 #include "../xcore/log.h"
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -199,6 +200,10 @@ static bool legacy_file(const QString& file) {
 // ...and is in this build
 static bool legacy_kept(const QString& file) {
 	return legacy_file(file) && QFile::exists(xres_root(LOOK_KIND) + "/" + file);
+}
+
+QString look_legacy_tip() {
+	return QCoreApplication::translate("Display", "Deprecated: goes in a coming release. The CRT looks do what it did.");
 }
 
 QList<xLook> look_list() {

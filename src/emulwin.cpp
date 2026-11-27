@@ -4376,8 +4376,12 @@ void MainWin::fillUserMenu() {
 			if (lk.part != part) shdMenu->addSeparator();
 			part = lk.part;
 			// the older shader files: a menu of their own
-			if ((lk.part == LOOK_LEGACY) && !legacy) legacy = shdMenu->addMenu("Legacy");
+			if ((lk.part == LOOK_LEGACY) && !legacy) {
+				legacy = shdMenu->addMenu(tr("Legacy shaders (deprecated)"));
+				legacy->setToolTipsVisible(true);
+			}
 			act = ((lk.part == LOOK_LEGACY) ? legacy : shdMenu)->addAction(lk.title);
+			if (lk.part == LOOK_LEGACY) act->setToolTip(look_legacy_tip());
 			act->setData(QStringList() << lk.file << lk.preset);
 			act->setCheckable(true);
 			act->setChecked(lk == cur);
