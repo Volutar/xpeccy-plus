@@ -621,6 +621,11 @@ void SetupWin::makeSoundGroup() {
 	cbPsgLay->setObjectName("sndLayBox");		// for the control port
 	sldSep->setObjectName("sndSepSlider");
 	cbBoard->setObjectName("sndBoardBox");
+	// a short width hint each: a mark beside a list leaves the two groups their halves
+	for (QComboBox* box : {cbPsgLay, cbBoard}) {
+		box->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+		box->setMinimumContentsLength(8);
+	}
 	// after each list, a mark with how many machines override it, there only with some:
 	// their names in its tooltip, a click puts them back on the list (asked first)
 	for (int grp = SND_GRP_LAY; grp <= SND_GRP_BOARD; grp++) {
