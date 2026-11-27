@@ -592,12 +592,16 @@ static void mach_box_names(QComboBox* box) {
 	}
 }
 
+// By machine in the Sound page's lists: a two-part item with no detail, so its name is
+// bold as Global setting and the marked value are in a machine's
+static QString by_machine_item() {return QObject::tr("By machine") + detail_sep;}
+
 // the Board filter's list
 static void board_fill_box(QComboBox* box) {
 	box->clear();
 	for (const xBoardPick& p : board_picks()) {
 		if (p.sep) box->insertSeparator(box->count());
-		box->addItem(p.name, p.val);
+		box->addItem((p.val == BOARD_MACHINE) ? by_machine_item() : p.name, p.val);
 		box->setItemData(box->count() - 1, p.tip, Qt::ToolTipRole);
 	}
 	box->setMaxVisibleItems(box->count());
@@ -607,7 +611,7 @@ static void board_fill_box(QComboBox* box) {
 // machine is heard through, a matter of taste rather than of the machine
 void SetupWin::makeSoundGroup() {
 	cbPsgLay = new QComboBox;
-	cbPsgLay->addItem(tr("By machine"), LAY_MACHINE);
+	cbPsgLay->addItem(by_machine_item(), LAY_MACHINE);
 	cbPsgLay->setItemData(0, tr("Each machine as its PSG sheet says: as\nits board was made, or its own pick"), Qt::ToolTipRole);
 	cbPsgLay->insertSeparator(1);
 	for (int lay = AY_MONO; lay <= AY_CBA; lay++)
@@ -621,10 +625,13 @@ void SetupWin::makeSoundGroup() {
 	cbPsgLay->setObjectName("sndLayBox");		// for the control port
 	sldSep->setObjectName("sndSepSlider");
 	cbBoard->setObjectName("sndBoardBox");
-	// a short width hint each: a mark beside a list leaves the two groups their halves
+	// a short width hint each: a mark beside a list leaves the two groups their halves;
+	// drawn as a machine's lists are
 	for (QComboBox* box : {cbPsgLay, cbBoard}) {
 		box->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
 		box->setMinimumContentsLength(8);
+		box->setItemDelegate(new xTwoPartDelegate(box));
+		new xTwoPartPainter(box);
 	}
 	// after each list, a mark with how many machines override it, there only with some:
 	// their names in its tooltip, a click puts them back on the list (asked first)
@@ -768,7 +775,7 @@ void SetupWin::sndOthersRead() {
 // asked first, as it is done at once, past Cancel
 void SetupWin::sndResetOwn(int grp) {
 	bool board = (grp == SND_GRP_BOARD);
-	QString val = (board ? cbBoard : cbPsgLay)->currentText();
+	QString val = (board ? cbBoard : cbPsgLay)->currentText().section(detail_sep, 0, 0);
 	QStringList lines;
 	for (const QString& tip : sndOwnTips[grp]) lines << tip.toHtmlEscaped();
 	QString msg = (board ? tr("Reset the board filter of all machines to <b>%0</b> now?")
