@@ -123,6 +123,14 @@ class xSlider : public QSlider {
 		void paintEvent(QPaintEvent*);
 };
 
+// a closed list the wheel does not change: what is under it scrolls instead
+class xWheelGuard : public QObject {
+	public:
+		xWheelGuard(QObject* par);
+	protected:
+		bool eventFilter(QObject*, QEvent*);
+};
+
 // The image in a drive or the deck as a drop-down: the box shows its path, and its
 // list is a menu that fill makes as it opens - the other images of its set, as the
 // drive and tape menus have them. With nothing in it, the menu says empty.
@@ -216,7 +224,7 @@ QWidget* fieldPair(QWidget*, QWidget*, bool);
 void fill_machine_list(QComboBox*);
 
 // The Board filter's picks, as the Sound page and the sound menus list them
-// (options/setupwin.cpp): Off (BEEP_LINE), By machine (BOARD_MACHINE), the types.
+// (options/setupwin.cpp): By machine (BOARD_MACHINE), No filter (BEEP_LINE), the types.
 // sep: a line before it
 struct xBoardPick {
 	int val;
@@ -235,6 +243,8 @@ QList<xCutPick> cut_picks();
 QString board_type_name(int type);	// a BEEP_* type's name in those lists
 QString psg_lay_name(int lay);		// an AY_* layout's: Mono, ABC...
 QString board_own_note();		// "ZX Spectrum 128K keeps its own: machine spec (TV (RF))", or empty
+QString board_machine_note();		// "By machine (TV (RF))": what it gives the running machine
+extern const QString detail_sep;	// " - ", between a two-part list item's name and its detail
 
 // a window over the middle of another, and the first time a window is shown,
 // over the one it belongs to (see center_over in classes.cpp); a window with

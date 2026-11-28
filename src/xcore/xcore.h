@@ -477,7 +477,7 @@ void xm_over_migrate();
 void xm_drop_running();		// the config is being read from scratch
 
 void xm_defer(const std::string&, const std::string&);
-void xm_set_sep(Computer*, int);		// the stereo separation, the PSGs' and the GS's
+void xm_set_sep(Computer*);		// conf.snd.sep to the PSGs and the GS
 const char* xm_beep_name(int);			// BEEP_* by its name in the files, and back
 int xm_beep_named(const std::string&, int def);
 const char* xm_lay_name(int);			// AY_* layouts likewise
@@ -856,14 +856,12 @@ enum {
 // the same id in machines/ of the config directory patching it - and a file
 // with an id of its own being a machine of its own. See docs/machine-format.md.
 
-// Sound picks, Global (the Sound page's) or a machine's own: lay LAY_MACHINE or AY_*, board
-// BOARD_MACHINE or BEEP_*, sep with an AY_* of its own only; SND_GLOBAL: none of its own
+// Sound picks, the Sound page's or a machine's own (SND_GLOBAL: none; its spec's value reads as *_MACHINE)
 #define SND_GLOBAL	-2
 
 typedef struct {
-	int lay;
-	int board;
-	int sep;		// 0..100; a machine's SND_GLOBAL as the others
+	int lay;		// LAY_MACHINE or AY_*
+	int board;		// BOARD_MACHINE or BEEP_*
 } xSndPicks;
 
 typedef struct {
@@ -950,8 +948,8 @@ const xMachine* xm_find_by_core(std::string);
 int xm_ram_size(std::string, int* mask = NULL);
 // the sound picks a machine has over Global (conf.snd)
 void xm_snd_apply();			// the running machine heard with its own picks over Global
-enum {SND_GRP_LAY = 0, SND_GRP_BOARD};	// the Sound page's groups: Stereo (layout, separation), Filters (board filter)
-void xm_snd_drop_own(int grp);		// every machine's own picks of a group dropped from its file
+enum {SND_GRP_LAY = 0, SND_GRP_BOARD};	// the Sound page's groups: Stereo (layout), Filters (board filter)
+void xm_snd_drop_own(int grp);		// every machine's own pick of a group dropped from its file
 
 // layouts
 
@@ -1207,6 +1205,7 @@ struct xConfig {
 		sndVolume vol;		// what is mixed: its board and psgLay those heard (xm_snd_apply)
 		xSndPicks all;		// Global, the Sound page's, what config.conf keeps
 		xSndPicks own;		// the running machine's own, what its file keeps
+		int sep;		// the stereo separation, 0..100, one for every machine
 		FILE* wavfile;
 	} snd;
 	struct {

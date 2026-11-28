@@ -830,6 +830,7 @@ void MainWin::makeBoardActs() {
 		act->setToolTip(p.tip);
 		act->setData(p.val);
 		act->setCheckable(true);
+		if (p.val == BOARD_MACHINE) boardMacAct = act;
 	}
 	connect(boardGrp, &QActionGroup::triggered, this, [this](QAction* act) {
 		conf.snd.all.board = act->data().toInt();
@@ -891,6 +892,7 @@ void MainWin::addBoardActs(QMenu* menu) {
 		own->setVisible(!note.isEmpty());
 		for (QAction* act : boardGrp->actions())
 			act->setChecked(act->data().toInt() == conf.snd.all.board);
+		boardMacAct->setText(board_machine_note());
 		lowCutAct->setChecked(conf.snd.vol.dc);
 		highCutAct->setChecked(conf.snd.filter);
 	});

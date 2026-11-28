@@ -440,7 +440,7 @@ void saveConfig() {
 
 	// psg.frq and psg.stereo belong to the machine now and are not written here
 	// any more; an older config still sets them, the once
-	fprintf(cfile, "separation = %i\n", conf.snd.all.sep);	// the GS's as well
+	fprintf(cfile, "separation = %i\n", conf.snd.sep);	// the GS's as well
 	fprintf(cfile, "gs.reset = %s\n", YESNO(conf.zx->gs->reset));
 	fprintf(cfile, "gs.stereo = %i\n", conf.zx->gs->stereo);
 	fprintf(cfile, "gs.neogs.rom = %s\n", conf.ngsFile.c_str());
@@ -1073,8 +1073,8 @@ void loadConfig() {
 	conf.snd.vol.dc = 1;		// most devices idle at a level, not at zero
 	conf.snd.all.board = BEEP_LINE;		// the Board filter: Off, the machines' types there to pick
 	conf.snd.all.lay = LAY_MACHINE;
-	conf.snd.all.sep = 75;
-	conf.snd.own.lay = conf.snd.own.board = conf.snd.own.sep = SND_GLOBAL;
+	conf.snd.sep = 75;
+	conf.snd.own.lay = conf.snd.own.board = SND_GLOBAL;
 	conf.snd.vol.master = 100;
 	conf.snd.vol.beep = 80;
 	conf.snd.vol.tape = 80;
@@ -1515,7 +1515,7 @@ void loadConfig() {
 					// psg.frq and psg.stereo are read no more: an old global value
 					// would land on whatever machine is up and stay there as its own
 					// one separation now: an older config's psg.separation is it, its gs.separation is dropped
-					if ((pnam=="separation") || (pnam=="psg.separation")) conf.snd.all.sep = getRanged(arg.s, 0, 100);
+					if ((pnam=="separation") || (pnam=="psg.separation")) conf.snd.sep = getRanged(arg.s, 0, 100);
 					if ((pnam=="gs.reset") || (pnam=="gs.stereo")) xm_defer(pnam, pval);
 					if (pnam=="gs.separation") xlog(XLG_CONF, XLL_INFO, "gs.separation %s: one separation now, the PSG's", pval.c_str());
 					break;

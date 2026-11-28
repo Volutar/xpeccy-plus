@@ -70,7 +70,7 @@ class SetupWin : public QDialog {
 		void showBoardStorage();
 		void makeSoundGroup();
 		void soundPageOn(bool);
-		void sndOwnShow();		// the own picks' texts, rows and the Sound page's notices, as the lists stand
+		void sndOwnShow();		// the own picks' texts and the Sound page's marks, as the lists stand
 		void fillNextGroup();
 		void showDriveRows();
 		void tidySoundPage();
@@ -175,17 +175,11 @@ class SetupWin : public QDialog {
 		QComboBox *diskTypeBox, *cbFlpInterleave, *hiface, *hm_type, *hs_type, *sdrvBox, *cbScanTab, *cbCpuTurbo, *cbPsgCount, *cbPsgType, *cbPsgFrq;
 		xSlider *sldTapeSpeed, *sldSensitivity;
 		QLabel *labTapeSpeedVal, *labPsgMhz;
-		// the machine's own sound picks over the Sound page's: the PSG sheet's Stereo and
-		// Separation, the Machine page's Board filter; the first item of a list goes back
+		// the machine's own sound picks: the PSG sheet's Stereo, the Machine page's Board filter
 		QComboBox *cbOwnLay = nullptr, *cbOwnBoard = nullptr;
-		xSlider* sldOwnSep = nullptr;
-		QLabel *labOwnSep = nullptr, *ownLayNote = nullptr;
-		QWidget* ownSepPair = nullptr;
-		int ownLayShown = SND_GLOBAL;	// the Stereo item sndOwnShow() saw last
-		int ownSepKept = SND_GLOBAL;	// its separation while the Stereo is off an order
+		QLabel* ownLayNote = nullptr;
 		xSndPicks ownPicks();		// the picks as the lists stand
-		// the other machines with picks of their own, as their files have them (sndOthersRead),
-		// with their spec: psg.stereo and beeper
+		// the other machines with picks of their own (sndOthersRead), and their spec
 		struct xSndOwnRow {QString name; xSndPicks snd; int specLay; int specBoard;};
 		QList<xSndOwnRow> sndOthers;
 		void sndOthersRead();
@@ -195,13 +189,10 @@ class SetupWin : public QDialog {
 		QCheckBox* chkSndOn;	// Emulate sound, over the page's groups
 		xSlider* sldSep;
 		QLabel* labSep;
-		// at the foot of each (SND_GRP_*): how many machines override it, and Apply to all
-		// machines, greyed with none
-		QWidget* ownRow[2] = {nullptr, nullptr};	// made after the machine's lists, which call on them
-		QLabel *ownMark[2], *ownLine[2];
-		xSideButton* btnApplyAll[2];
+		// after each one's list (SND_GRP_*): how many machines override it, hidden with none
+		QToolButton* btnOwn[2] = {nullptr, nullptr};
 		QStringList sndOwnTips[2];	// each of them and what it has of its own
-		void sndApplyAll(int grp);	// Apply to all machines, asked first
+		void sndResetOwn(int grp);	// the list's value for all machines, asked first
 		int psgFrqMul = 1;	// the chip's clock against the AY's the setting holds
 		// the machine's devices, on the Machine page
 		QComboBox* gsBox;
